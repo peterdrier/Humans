@@ -188,6 +188,88 @@ public class TicketControllerTests
     }
 
     [HumansTheory]
+    [InlineData("participation", "merged")]
+    [InlineData("participation", "missing")]
+    [InlineData("participation", "cancelled")]
+    [InlineData("attendees", "merged")]
+    [InlineData("attendees", "missing")]
+    [InlineData("attendees", "cancelled")]
+    [InlineData("orders", "merged")]
+    [InlineData("orders", "missing")]
+    [InlineData("orders", "cancelled")]
+    [InlineData("donations", "merged")]
+    [InlineData("donations", "missing")]
+    [InlineData("donations", "cancelled")]
+    public async Task AuditedOperations_ResolveTheActorBeforeReadingOrWriting(string action, string account)
+    {
+        using var request = new CancellationTokenSource();
+        var cookieId = Guid.NewGuid();
+        var actorId = Guid.NewGuid();
+        var users = Substitute.For<IUserService>();
+        users.GetUserInfoAsync(cookieId, Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+            return new ValueTask<UserInfo?>(string.Equals(account, "missing", StringComparison.Ordinal)
+                ? null : UserInfo.Create(new User { Id = actorId }, [], [], null));
+        });
+        var queries = Substitute.For<ITicketManagement>();
+        queries.GetAttendeeExportDataAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns([]);
+        queries.GetOrderExportDataAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns([]);
+        queries.GetDonationExportDataAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns([]);
+        var backfill = Substitute.For<IUserParticipationBackfillService>();
+        backfill.BackfillFromCsvAsync(2026, "input", Arg.Any<Guid>(), Arg.Any<CancellationToken>(), false)
+            .Returns(new ParticipationBackfillResult(true, "Preview", 1, "parsed"));
+        var dashboard = new TicketDashboardPageBuilder(Substitute.For<ITicketVendorService>(),
+            Options.Create(new TicketVendorSettings()), queries, NullLogger<TicketDashboardPageBuilder>.Instance);
+        var http = new DefaultHttpContext
+        {
+            RequestAborted = request.Token,
+            User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, cookieId.ToString())], "test"))
+        };
+        var controller = new TicketController(queries, Substitute.For<ITicketSyncService>(), backfill, dashboard,
+            users, NullLogger<TicketController>.Instance)
+        {
+            ControllerContext = new ControllerContext { HttpContext = http },
+            TempData = new TempDataDictionary(http, Substitute.For<ITempDataProvider>()),
+            Url = Substitute.For<IUrlHelper>()
+        };
+        Func<Task<IActionResult>> run = () => action switch
+        {
+            "participation" => controller.ParticipationBackfill(new ParticipationBackfillViewModel { Year = 2026, CsvData = "input" }),
+            "attendees" => controller.ExportAttendees(),
+            "orders" => controller.ExportOrders(),
+            _ => controller.ExportDonations()
+        };
+        if (string.Equals(account, "cancelled", StringComparison.Ordinal))
+        {
+            await request.CancelAsync();
+            await run.Should().ThrowAsync<OperationCanceledException>();
+        }
+        else
+        {
+            var result = await run();
+            if (string.Equals(account, "missing", StringComparison.Ordinal)) result.Should().BeOfType<ForbidResult>();
+            else
+            {
+                switch (action)
+                {
+                    case "participation":
+                        await backfill.Received(1).BackfillFromCsvAsync(2026, "input", actorId, CancellationToken.None, false);
+                        break;
+                    case "attendees": await queries.Received(1).GetAttendeeExportDataAsync(actorId, request.Token); break;
+                    case "orders": await queries.Received(1).GetOrderExportDataAsync(actorId, request.Token); break;
+                    default: await queries.Received(1).GetDonationExportDataAsync(actorId, request.Token); break;
+                }
+            }
+        }
+        if (!string.Equals(account, "merged", StringComparison.Ordinal))
+        {
+            queries.ReceivedCalls().Should().BeEmpty();
+            backfill.ReceivedCalls().Should().BeEmpty();
+        }
+    }
+
+    [HumansTheory]
     [InlineData(false, false)]
     [InlineData(false, true)]
     [InlineData(true, false)]
@@ -195,6 +277,9 @@ public class TicketControllerTests
     public async Task ParticipationImport_RequiresActor_AndSeparatesReviewFromConfirm(bool hasActor, bool confirmed)
     {
         var actorId = Guid.NewGuid();
+        var users = Substitute.For<IUserService>();
+        users.GetUserInfoAsync(actorId, Arg.Any<CancellationToken>())
+            .Returns(UserInfo.Create(new User { Id = actorId }, [], [], null));
         var backfill = Substitute.For<IUserParticipationBackfillService>();
         backfill.BackfillFromCsvAsync(2026, "input", actorId, default, confirmed)
             .Returns(new ParticipationBackfillResult(true, "Processed", 1, confirmed ? null : "parsed rows"));
@@ -207,7 +292,7 @@ public class TicketControllerTests
                 ? [new Claim(ClaimTypes.NameIdentifier, actorId.ToString())] : [], "Test"))
         };
         var controller = new TicketController(queries, Substitute.For<ITicketSyncService>(),
-            backfill, dashboard, Substitute.For<IUserService>(), NullLogger<TicketController>.Instance)
+            backfill, dashboard, users, NullLogger<TicketController>.Instance)
         {
             ControllerContext = new ControllerContext { HttpContext = http },
             TempData = new TempDataDictionary(http, Substitute.For<ITempDataProvider>())
@@ -271,13 +356,16 @@ public class TicketControllerTests
     public async Task PersonalDataExport_RequiresAnActorAndPassesItToTheAuditedService(bool attendees, bool hasActor)
     {
         var actor = Guid.NewGuid();
+        var users = Substitute.For<IUserService>();
+        users.GetUserInfoAsync(actor, Arg.Any<CancellationToken>())
+            .Returns(UserInfo.Create(new User { Id = actor }, [], [], null));
         var queries = Substitute.For<ITicketManagement>();
         queries.GetAttendeeExportDataAsync(actor).Returns([]);
         queries.GetOrderExportDataAsync(actor).Returns([]);
         var dashboard = new TicketDashboardPageBuilder(Substitute.For<ITicketVendorService>(),
             Options.Create(new TicketVendorSettings()), queries, NullLogger<TicketDashboardPageBuilder>.Instance);
         var controller = new TicketController(queries, Substitute.For<ITicketSyncService>(),
-            Substitute.For<IUserParticipationBackfillService>(), dashboard, Substitute.For<IUserService>(),
+            Substitute.For<IUserParticipationBackfillService>(), dashboard, users,
             NullLogger<TicketController>.Instance)
         {
             ControllerContext = new ControllerContext
@@ -316,6 +404,9 @@ public class TicketControllerTests
     public async Task PersonalDataExport_OrdersCsvRows(bool attendees)
     {
         var actor = Guid.NewGuid();
+        var users = Substitute.For<IUserService>();
+        users.GetUserInfoAsync(actor, Arg.Any<CancellationToken>())
+            .Returns(UserInfo.Create(new User { Id = actor }, [], [], null));
         var queries = Substitute.For<ITicketManagement>();
         queries.GetAttendeeExportDataAsync(actor, Arg.Any<CancellationToken>()).Returns(
         [
@@ -332,7 +423,7 @@ public class TicketControllerTests
         var dashboard = new TicketDashboardPageBuilder(Substitute.For<ITicketVendorService>(),
             Options.Create(new TicketVendorSettings()), queries, NullLogger<TicketDashboardPageBuilder>.Instance);
         var controller = new TicketController(queries, Substitute.For<ITicketSyncService>(),
-            Substitute.For<IUserParticipationBackfillService>(), dashboard, Substitute.For<IUserService>(),
+            Substitute.For<IUserParticipationBackfillService>(), dashboard, users,
             NullLogger<TicketController>.Instance)
         {
             ControllerContext = new ControllerContext

@@ -206,6 +206,8 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
     public async Task Csv_export_reads_honor_browser_cancellation_and_preserve_completed_read_audits(string export, bool cancelled, bool hasActor)
     {
         var actor = Guid.NewGuid();
+        _userService.GetUserInfoAsync(actor, Arg.Any<CancellationToken>())
+            .Returns(UserInfo.Create(new User { Id = actor }, [], [], null));
         using var aborted = new CancellationTokenSource();
         if (cancelled) await aborted.CancelAsync();
         var dashboard = new TicketDashboardPageBuilder(Substitute.For<ITicketVendorService>(),
