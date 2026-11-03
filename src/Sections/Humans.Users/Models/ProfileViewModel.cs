@@ -189,7 +189,6 @@ internal sealed class ProfileViewModel
 
 internal sealed class TeamMembershipViewModel
 {
-    public Guid TeamId { get; set; }
     public string TeamName { get; set; } = string.Empty;
     public string TeamSlug { get; set; } = string.Empty;
     public bool IsCoordinator { get; set; }

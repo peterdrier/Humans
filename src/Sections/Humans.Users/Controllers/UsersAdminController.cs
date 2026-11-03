@@ -14,7 +14,6 @@ using Humans.Base.Authorization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Localization;
-using NodaTime;
 using Humans.Users.Services;
 using Humans.Application.Services.Users.AccountLifecycle;
 
@@ -33,7 +32,6 @@ internal sealed class UsersAdminController(
     IAccountDeletionService accountDeletionService,
     IGoogleIntegrationService googleIdentities,
     IWebHostEnvironment environment,
-    IClock clock,
     ILogger<UsersAdminController> logger,
     IStringLocalizer<SharedResource> localizer) : HumansControllerBase(userService)
 {
@@ -117,8 +115,7 @@ internal sealed class UsersAdminController(
             applications,
             membershipTier,
             userEmails,
-            consentCount,
-            clock.GetCurrentInstant());
+            consentCount);
 
         return View(viewModel);
     }

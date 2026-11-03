@@ -72,7 +72,6 @@ public sealed class ProfileCardViewComponent(
             .OrderBy(tm => tm.TeamInfo.Name, StringComparer.Ordinal)
             .Select(tm => new TeamMembershipViewModel
             {
-                TeamId = tm.TeamInfo.Id,
                 TeamName = GetDisplayName(tm.TeamInfo, teamsById, viewMode != ProfileCardViewMode.Public),
                 TeamSlug = tm.TeamInfo.Slug,
                 IsCoordinator = tm.Membership!.Role == TeamMemberRole.Coordinator,

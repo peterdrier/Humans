@@ -37,7 +37,6 @@ public class UsersAdminControllerPurgeTests
     private readonly IOnboardingIntake _onboarding = Substitute.For<IOnboardingIntake>();
     private readonly IUsersAudienceService _audience = Substitute.For<IUsersAudienceService>();
     private readonly IWebHostEnvironment _environment = Substitute.For<IWebHostEnvironment>();
-    private readonly IClock _clock = Substitute.For<IClock>();
     private readonly IStringLocalizer<SharedResource> _localizer = Substitute.For<IStringLocalizer<SharedResource>>();
     private readonly Guid _adminUserId = Guid.NewGuid();
 
@@ -68,7 +67,6 @@ public class UsersAdminControllerPurgeTests
             _deletion,
             Substitute.For<Humans.GoogleIntegration.Contracts.IGoogleIntegrationService>(),
             _environment,
-            _clock,
             NullLogger<UsersAdminController>.Instance,
             _localizer);
 
