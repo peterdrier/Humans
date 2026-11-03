@@ -23,14 +23,14 @@ public interface ICalendarEventForm
     bool IsAllDay { get; set; }
 
     /// <summary>All-day: the first day. Timed: the start's date in <see cref="TimeZoneId"/>.</summary>
-    DateOnly? StartDate { get; set; }
+    LocalDate? StartDate { get; set; }
 
-    TimeOnly? StartTime { get; set; }
+    LocalTime? StartTime { get; set; }
 
     /// <summary>All-day: the last day, inclusive. Timed: the end's date in <see cref="TimeZoneId"/>.</summary>
-    DateOnly? EndDate { get; set; }
+    LocalDate? EndDate { get; set; }
 
-    TimeOnly? EndTime { get; set; }
+    LocalTime? EndTime { get; set; }
 
     /// <summary>IANA id the timed fields are read in.</summary>
     string TimeZoneId { get; set; }
@@ -72,10 +72,10 @@ public static class CalendarEventForm
         var s = start.InZone(zone).LocalDateTime;
         var e = end.InZone(zone).LocalDateTime;
         form.IsAllDay = false;
-        form.StartDate = s.Date.ToDateOnly();
-        form.StartTime = s.TimeOfDay.ToTimeOnly();
-        form.EndDate = e.Date.ToDateOnly();
-        form.EndTime = e.TimeOfDay.ToTimeOnly();
+        form.StartDate = s.Date;
+        form.StartTime = s.TimeOfDay;
+        form.EndDate = e.Date;
+        form.EndTime = e.TimeOfDay;
         form.TimeZoneId = zone.Id;
     }
 
@@ -84,8 +84,8 @@ public static class CalendarEventForm
     {
         ArgumentNullException.ThrowIfNull(form);
         form.IsAllDay = true;
-        form.StartDate = start.ToDateOnly();
-        form.EndDate = CalendarService.AllDayInclusiveEndDate(endExclusive).ToDateOnly();
+        form.StartDate = start;
+        form.EndDate = CalendarService.AllDayInclusiveEndDate(endExclusive);
     }
 
     /// <summary>
@@ -118,8 +118,8 @@ public static class CalendarEventForm
             modelState.AddModelError(nameof(ICalendarEventForm.StartDate), localizer["Calendar_StartDateRequired"]);
             return null;
         }
-        var first = LocalDate.FromDateOnly(startDate);
-        var last = form.EndDate is { } endDate ? LocalDate.FromDateOnly(endDate) : first;
+        var first = startDate;
+        var last = form.EndDate ?? first;
         if (last < first)
         {
             modelState.AddModelError(nameof(ICalendarEventForm.EndDate), localizer["Calendar_EndDateBeforeStart"]);
@@ -155,8 +155,8 @@ public static class CalendarEventForm
             modelState.AddModelError(nameof(ICalendarEventForm.EndTime), localizer["Calendar_EndRequired"]);
             return null;
         }
-        var start = Local(startDate, startTime).InZoneLeniently(zone).ToInstant();
-        var end = Local(form.EndDate ?? startDate, endTime).InZoneLeniently(zone).ToInstant();
+        var start = startDate.At(startTime).InZoneLeniently(zone).ToInstant();
+        var end = (form.EndDate ?? startDate).At(endTime).InZoneLeniently(zone).ToInstant();
         if (end < start)
         {
             modelState.AddModelError(nameof(ICalendarEventForm.EndTime), localizer["Calendar_EndBeforeStart"]);
@@ -164,7 +164,4 @@ public static class CalendarEventForm
         }
         return new CalendarEventTimes(start, end, null, null, rule, rule is null ? null : zone.Id);
     }
-
-    private static LocalDateTime Local(DateOnly date, TimeOnly time) =>
-        LocalDate.FromDateOnly(date).At(LocalTime.FromTimeOnly(time));
 }

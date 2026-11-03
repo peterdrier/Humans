@@ -86,9 +86,10 @@ public class CalendarControllerICalTests
             ["OwningTeamId"] = teamId.ToString(),
             ["IsAllDay"] = "false",
             ["StartDate"] = "2026-06-02",
-            ["StartTime"] = "10:00",
+            // Seconds included: the browser's "HH:mm" needs the Shell's binder, which this harness doesn't register.
+            ["StartTime"] = "10:00:00",
             ["EndDate"] = "2026-06-02",
-            ["EndTime"] = "11:00",
+            ["EndTime"] = "11:00:00",
             ["RecurrenceRule"] = "FREQ=WEEKLY",
             ["TimeZoneId"] = "UTC"
         };
@@ -190,8 +191,8 @@ public class CalendarControllerICalTests
             fields["EndDate"] = "2026-06-02";
             if (!allDay)
             {
-                fields["StartTime"] = "10:00";
-                fields["EndTime"] = "11:00";
+                fields["StartTime"] = "10:00:00";
+                fields["EndTime"] = "11:00:00";
             }
         }
         if (postedZone) fields[zoneField] = "UTC";
@@ -280,10 +281,10 @@ public class CalendarControllerICalTests
         {
             Title = "Updated",
             OwningTeamId = teamId,
-            StartDate = new DateOnly(2026, 6, 2),
-            StartTime = new TimeOnly(10, 0),
-            EndDate = new DateOnly(2026, 6, 2),
-            EndTime = new TimeOnly(11, 0),
+            StartDate = new LocalDate(2026, 6, 2),
+            StartTime = new LocalTime(10, 0),
+            EndDate = new LocalDate(2026, 6, 2),
+            EndTime = new LocalTime(11, 0),
             TimeZoneId = "UTC"
         };
         var ct = Xunit.TestContext.Current.CancellationToken;
@@ -392,9 +393,9 @@ public class CalendarControllerICalTests
             Title = "Last day",
             OwningTeamId = teamId,
             IsAllDay = true,
-            StartDate = new DateOnly(9999, 12, string.Equals(endKind, "blank", StringComparison.Ordinal) ? 31 : 30),
+            StartDate = new LocalDate(9999, 12, string.Equals(endKind, "blank", StringComparison.Ordinal) ? 31 : 30),
             EndDate = string.Equals(endKind, "blank", StringComparison.Ordinal) ? null
-                : new DateOnly(9999, 12, string.Equals(endKind, "valid", StringComparison.Ordinal) ? 30 : 31)
+                : new LocalDate(9999, 12, string.Equals(endKind, "valid", StringComparison.Ordinal) ? 30 : 31)
         };
         var controller = CreateController();
         var ct = Xunit.TestContext.Current.CancellationToken;
@@ -575,9 +576,9 @@ public class CalendarControllerICalTests
 
         var model = result.Should().BeOfType<ViewResult>()
             .Which.Model.Should().BeOfType<CalendarEventFormViewModel>().Subject;
-        model.StartDate.Should().Be(new DateOnly(2026, 6, 2));
-        model.StartTime.Should().Be(new TimeOnly(19, 0));
-        model.EndDate.Should().Be(new DateOnly(2026, 6, 2));
+        model.StartDate.Should().Be(new LocalDate(2026, 6, 2));
+        model.StartTime.Should().Be(new LocalTime(19, 0));
+        model.EndDate.Should().Be(new LocalDate(2026, 6, 2));
         model.TimeZoneId.Should().Be("Asia/Tokyo");
     }
 
@@ -595,8 +596,8 @@ public class CalendarControllerICalTests
 
         var model = result.Should().BeOfType<ViewResult>()
             .Which.Model.Should().BeOfType<CalendarEventFormViewModel>().Subject;
-        model.StartDate.Should().Be(new DateOnly(2026, 6, 1));
-        model.StartTime.Should().Be(new TimeOnly(19, 0));
+        model.StartDate.Should().Be(new LocalDate(2026, 6, 1));
+        model.StartTime.Should().Be(new LocalTime(19, 0));
         model.TimeZoneId.Should().Be("Asia/Tokyo");
     }
 

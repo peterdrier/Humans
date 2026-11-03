@@ -2,6 +2,7 @@ using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Humans.Calendar.Services.Dtos;
 using Humans.Calendar.Contracts;
+using NodaTime;
 
 namespace Humans.Calendar.Models;
 
@@ -26,13 +27,13 @@ internal sealed class CalendarEventFormViewModel : ICalendarEventForm
 
     public bool IsAllDay { get; set; }
 
-    public DateOnly? StartDate { get; set; }
+    public LocalDate? StartDate { get; set; }
 
-    public TimeOnly? StartTime { get; set; }
+    public LocalTime? StartTime { get; set; }
 
-    public DateOnly? EndDate { get; set; }
+    public LocalDate? EndDate { get; set; }
 
-    public TimeOnly? EndTime { get; set; }
+    public LocalTime? EndTime { get; set; }
 
     [BindRequired]
     public bool IsRecurring { get; set; }

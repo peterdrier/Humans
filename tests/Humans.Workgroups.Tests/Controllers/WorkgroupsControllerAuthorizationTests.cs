@@ -174,9 +174,9 @@ public sealed class WorkgroupsControllerAuthorizationTests : WorkgroupsTestHarne
         model.TimeZoneId.Should().Be("America/New_York");
 
         model.Title = "Sync";
-        model.StartDate = model.EndDate = new DateOnly(2026, 6, 2);
-        model.StartTime = new TimeOnly(10, 0);
-        model.EndTime = new TimeOnly(11, 0);
+        model.StartDate = model.EndDate = new LocalDate(2026, 6, 2);
+        model.StartTime = new LocalTime(10, 0);
+        model.EndTime = new LocalTime(11, 0);
         (await controller.SaveMeeting(workgroup.Slug, model, Ct)).Should().BeOfType<RedirectToActionResult>();
 
         // June in New York is UTC-4.

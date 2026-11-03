@@ -195,13 +195,13 @@ internal sealed class MeetingFormViewModel : ICalendarEventForm
     [StringLength(4000, ErrorMessage = "Validation_MaxLength")]
     public string? Description { get; set; }
 
-    public DateOnly? StartDate { get; set; }
+    public LocalDate? StartDate { get; set; }
 
-    public TimeOnly? StartTime { get; set; }
+    public LocalTime? StartTime { get; set; }
 
-    public DateOnly? EndDate { get; set; }
+    public LocalDate? EndDate { get; set; }
 
-    public TimeOnly? EndTime { get; set; }
+    public LocalTime? EndTime { get; set; }
 
     public string TimeZoneId { get; set; } = string.Empty;
 

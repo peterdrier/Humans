@@ -16,7 +16,7 @@ public sealed class CalendarEventFormTests
     [HumansFact]
     public void Timed_fields_are_read_in_the_chosen_zone()
     {
-        var form = Timed("Europe/Madrid", new TimeOnly(19, 0), new TimeOnly(20, 0));
+        var form = Timed("Europe/Madrid", new LocalTime(19, 0), new LocalTime(20, 0));
 
         var times = CalendarEventForm.Resolve(form, new ModelStateDictionary(), Localizer);
 
@@ -42,7 +42,7 @@ public sealed class CalendarEventFormTests
     [HumansFact]
     public void An_end_before_the_start_is_a_field_error()
     {
-        var form = Timed("UTC", new TimeOnly(11, 0), new TimeOnly(10, 0));
+        var form = Timed("UTC", new LocalTime(11, 0), new LocalTime(10, 0));
         var modelState = new ModelStateDictionary();
 
         CalendarEventForm.Resolve(form, modelState, Localizer).Should().BeNull();
@@ -54,7 +54,7 @@ public sealed class CalendarEventFormTests
     [HumansFact]
     public void All_day_is_ignored_when_the_host_does_not_support_it()
     {
-        var form = Timed("UTC", new TimeOnly(10, 0), new TimeOnly(11, 0));
+        var form = Timed("UTC", new LocalTime(10, 0), new LocalTime(11, 0));
         form.IsAllDay = true;
         form.AllDay = false;
 
@@ -69,7 +69,7 @@ public sealed class CalendarEventFormTests
     [InlineData(false, null, null)]
     public void Recurrence_resolves_only_when_the_host_supports_it(bool supported, string? rule, string? zone)
     {
-        var form = Timed("UTC", new TimeOnly(10, 0), new TimeOnly(11, 0));
+        var form = Timed("UTC", new LocalTime(10, 0), new LocalTime(11, 0));
         form.Recurrence = supported;
         form.IsRecurring = true;
         form.RecurrenceRule = "FREQ=WEEKLY";
@@ -80,11 +80,11 @@ public sealed class CalendarEventFormTests
         times.RecurrenceTimezone.Should().Be(zone);
     }
 
-    private static Form Timed(string zone, TimeOnly start, TimeOnly end) => new()
+    private static Form Timed(string zone, LocalTime start, LocalTime end) => new()
     {
-        StartDate = new DateOnly(2026, 6, 2),
+        StartDate = new LocalDate(2026, 6, 2),
         StartTime = start,
-        EndDate = new DateOnly(2026, 6, 2),
+        EndDate = new LocalDate(2026, 6, 2),
         EndTime = end,
         TimeZoneId = zone,
     };
@@ -103,10 +103,10 @@ public sealed class CalendarEventFormTests
         public string? Location { get; set; }
         public string? LocationUrl { get; set; }
         public bool IsAllDay { get; set; }
-        public DateOnly? StartDate { get; set; }
-        public TimeOnly? StartTime { get; set; }
-        public DateOnly? EndDate { get; set; }
-        public TimeOnly? EndTime { get; set; }
+        public LocalDate? StartDate { get; set; }
+        public LocalTime? StartTime { get; set; }
+        public LocalDate? EndDate { get; set; }
+        public LocalTime? EndTime { get; set; }
         public string TimeZoneId { get; set; } = "UTC";
         public bool IsRecurring { get; set; }
         public string? RecurrenceRule { get; set; }

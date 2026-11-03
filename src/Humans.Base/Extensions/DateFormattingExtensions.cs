@@ -136,10 +136,10 @@ public static class DateFormattingExtensions
         value.ToString("HH:mm", CultureInfo.InvariantCulture);
 
     /// <summary>Invariant 24-hour time, "HH:mm" — the value an <c>&lt;input type="time"&gt;</c> expects.</summary>
-    public static string ToInvariantTime(this TimeOnly value) =>
-        value.ToString("HH:mm", CultureInfo.InvariantCulture);
+    public static string ToInvariantTime(this LocalTime value) =>
+        TimeOfDayPattern.Format(value);
 
-    public static string? ToInvariantTime(this TimeOnly? value) =>
+    public static string? ToInvariantTime(this LocalTime? value) =>
         value?.ToInvariantTime();
 
     public static string ToFileTimestamp(this DateTime value) =>
