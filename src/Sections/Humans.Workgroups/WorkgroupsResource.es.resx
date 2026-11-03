@@ -238,14 +238,7 @@
   <!-- Meeting form -->
   <data name="Workgroups_MeetingNewTitle" xml:space="preserve"><value>Nueva reunión</value></data>
   <data name="Workgroups_MeetingEditTitle" xml:space="preserve"><value>Editar reunión</value></data>
-  <data name="Workgroups_Field_MeetingTitle" xml:space="preserve"><value>Título</value></data>
-  <data name="Workgroups_Field_StartDate" xml:space="preserve"><value>Fecha de inicio</value></data>
-  <data name="Workgroups_Field_StartTime" xml:space="preserve"><value>Hora de inicio</value></data>
-  <data name="Workgroups_Field_EndDate" xml:space="preserve"><value>Fecha de fin</value></data>
-  <data name="Workgroups_Field_EndTime" xml:space="preserve"><value>Hora de fin</value></data>
   <data name="Workgroups_Field_TimesAreUtc" xml:space="preserve"><value>Las horas están en UTC.</value></data>
-  <data name="Workgroups_Field_Location" xml:space="preserve"><value>Ubicación</value></data>
-  <data name="Workgroups_Field_LocationUrl" xml:space="preserve"><value>URL de la ubicación</value></data>
   <data name="Workgroups_Field_IsPublic" xml:space="preserve"><value>Mostrar en el calendario comunitario</value></data>
   <data name="Workgroups_Field_IsPublicHelp" xml:space="preserve"><value>Cualquier persona con acceso a la aplicación puede leer la reunión y las actas en la página del grupo. Esta opción también muestra la reunión en el calendario comunitario.</value></data>
   <data name="Workgroups_Field_Minutes" xml:space="preserve"><value>Acta</value></data>

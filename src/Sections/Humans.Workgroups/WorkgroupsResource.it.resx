@@ -238,14 +238,7 @@
   <!-- Meeting form -->
   <data name="Workgroups_MeetingNewTitle" xml:space="preserve"><value>Nuova riunione</value></data>
   <data name="Workgroups_MeetingEditTitle" xml:space="preserve"><value>Modifica riunione</value></data>
-  <data name="Workgroups_Field_MeetingTitle" xml:space="preserve"><value>Titolo</value></data>
-  <data name="Workgroups_Field_StartDate" xml:space="preserve"><value>Data di inizio</value></data>
-  <data name="Workgroups_Field_StartTime" xml:space="preserve"><value>Ora di inizio</value></data>
-  <data name="Workgroups_Field_EndDate" xml:space="preserve"><value>Data di fine</value></data>
-  <data name="Workgroups_Field_EndTime" xml:space="preserve"><value>Ora di fine</value></data>
   <data name="Workgroups_Field_TimesAreUtc" xml:space="preserve"><value>Gli orari sono in UTC.</value></data>
-  <data name="Workgroups_Field_Location" xml:space="preserve"><value>Luogo</value></data>
-  <data name="Workgroups_Field_LocationUrl" xml:space="preserve"><value>URL del luogo</value></data>
   <data name="Workgroups_Field_IsPublic" xml:space="preserve"><value>Mostra nel calendario della comunità</value></data>
   <data name="Workgroups_Field_IsPublicHelp" xml:space="preserve"><value>Chiunque abbia accesso all'app può leggere la riunione e il verbale nella pagina del gruppo. Questa opzione mostra la riunione anche nel calendario della comunità.</value></data>
   <data name="Workgroups_Field_Minutes" xml:space="preserve"><value>Verbale</value></data>

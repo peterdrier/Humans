@@ -38,7 +38,7 @@ internal sealed class WorkgroupCalendarContributor(IWorkgroupService workgroups)
         $"workgroup-meeting-{m.Id}@humans.nobodies.team",
         SourceName,
         $"{w.Name}: {m.Title}",
-        w.Deliverable,
+        m.Description ?? w.Deliverable,
         m.StartUtc,
         m.EndUtc,
         m.Location,

@@ -15,6 +15,7 @@ internal sealed class WorkgroupMeetingConfiguration : IEntityTypeConfiguration<W
         b.Property(m => m.Title).HasMaxLength(200).IsRequired();
         b.Property(m => m.StartUtc).IsRequired();
         b.Property(m => m.EndUtc).IsRequired();
+        b.Property(m => m.Description).HasMaxLength(4000);
         b.Property(m => m.Location).HasMaxLength(500);
         b.Property(m => m.LocationUrl).HasMaxLength(2000);
         // IsRequired only: HasDefaultValue(false) is the sentinel trap.

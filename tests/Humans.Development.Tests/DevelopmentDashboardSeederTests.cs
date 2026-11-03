@@ -180,6 +180,9 @@ public class DevelopmentDashboardSeederTests
         public Task SetValueAsync(string key, string value, CancellationToken cancellationToken = default) =>
             Task.CompletedTask;
 
+        public Task<string> GetTimeZoneIdAsync(CancellationToken cancellationToken = default) =>
+            Task.FromResult("Europe/Madrid");
+
         public Task<EventSettingsInfo?> GetActiveEventSettingsAsync(CancellationToken cancellationToken = default) =>
             Task.FromResult(_events.Values.FirstOrDefault(e => e.Status == EventSettingsStatus.Active));
 
