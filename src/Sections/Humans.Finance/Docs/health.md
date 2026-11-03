@@ -204,7 +204,7 @@ Specified, not built. Not ranked, not struck.
   admin-only ([`localization-admin-exempt`](../../../../memory/code/localization-admin-exempt.md)).
 - **No per-report paid state.** A SEPA payout pays a balance, not a report.
 - **No nullable `Balance` on the creditor DTOs.** Both reads return null wholesale when an account has
-  no cached lines. `HoldedCreditorAccountRow` keeps its `decimal?` — the admin list carries accounts
+  no cached lines. `CreditorAccountRow` keeps its `decimal?` — the admin list carries accounts
   with no lines yet.
 - **No split of `Service.cs` into per-shape services.** The shapes share the repository, the clock
   and the contact cache; the pure parts (matcher, file builder) are already out.

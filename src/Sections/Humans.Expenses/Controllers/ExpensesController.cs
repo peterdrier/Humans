@@ -59,7 +59,7 @@ internal sealed class ExpensesController(
 
             // Own account only. GetCreditorLedgerAsync returns null both for "not bound" and "bound, nothing cached
             // yet", so the binding is read separately: telling a bound member to get bound is worse than silence.
-            HoldedCreditorLedger? accountLedger = null;
+            CreditorLedger? accountLedger = null;
             var binding = await finance.GetCreditorContactByUserAsync(user.Id, HttpContext.RequestAborted);
             var boundAccountNum = binding?.SupplierAccountNum;
             if (boundAccountNum is { } accNum)
@@ -815,7 +815,7 @@ internal sealed class ExpensesController(
     /// minting a duplicate. Empty for everyone else.
     /// </summary>
     private async Task<(int? BoundAccountNum, string? BoundAccountName, bool HasContact,
-        IReadOnlyList<HoldedCreditorAccountRow> Accounts)> GetCreditorBindingViewAsync(
+        IReadOnlyList<CreditorAccountRow> Accounts)> GetCreditorBindingViewAsync(
         Guid submitterUserId, bool isFinanceAdmin, CancellationToken ct)
     {
         if (!isFinanceAdmin) return (null, null, false, []);
@@ -959,7 +959,7 @@ internal sealed class ExpensesController(
 
     /// <summary>Budget-category accounts first. The service refuses a cross-year rebooking, so one list serves the new
     /// form, the edit form and the approval override.</summary>
-    private async Task<IReadOnlyList<HoldedExpenseAccountOption>> BuildAccountOptionsAsync(
+    private async Task<IReadOnlyList<ExpenseAccountOption>> BuildAccountOptionsAsync(
         CancellationToken ct = default)
     {
         var accounts = await finance.ListExpenseAccountsAsync(activeOnly: true, ct);

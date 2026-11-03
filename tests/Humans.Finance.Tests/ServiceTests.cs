@@ -3402,7 +3402,7 @@ public class HoldedFinanceServiceTests
 
         var result = await MakeService().CreateOrLinkExpenseAccountAsync("Workgroups / ALM 2027", null, TestContext.Current.CancellationToken);
 
-        result.Should().Be(new HoldedExpenseAccountRef(62900102, "new-1", "Workgroups / ALM 2027", Created: true));
+        result.Should().Be(new ExpenseAccountRef(62900102, "new-1", "Workgroups / ALM 2027", Created: true));
         await _repo.Received(1).UpsertManagedAccountAsync(
             Arg.Is<HoldedManagedAccount>(a => a.HoldedAccountNumber == 62900102 && a.HoldedAccountId == "new-1"
                 && a.Label == "Workgroups / ALM 2027" && a.IsActive && a.CreatedAt == FixedNow),
@@ -3443,7 +3443,7 @@ public class HoldedFinanceServiceTests
 
         var result = await MakeService().CreateOrLinkExpenseAccountAsync("Workgroups / ALM 2027", null, TestContext.Current.CancellationToken);
 
-        result.Should().Be(new HoldedExpenseAccountRef(62900150, "acc-150", "workgroups /  alm 2027", Created: false));
+        result.Should().Be(new ExpenseAccountRef(62900150, "acc-150", "workgroups /  alm 2027", Created: false));
         await _client.DidNotReceive().CreateExpenseAccountAsync(Arg.Any<int>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
         await _repo.Received(1).UpsertManagedAccountAsync(
             Arg.Is<HoldedManagedAccount>(a => a.HoldedAccountNumber == 62900150 && a.Label == "workgroups /  alm 2027"),
@@ -3461,7 +3461,7 @@ public class HoldedFinanceServiceTests
 
         var result = await MakeService().CreateOrLinkExpenseAccountAsync("Workgroups / ALM 2027", 62900151, TestContext.Current.CancellationToken);
 
-        result.Should().Be(new HoldedExpenseAccountRef(62900151, "acc-151", "Other", Created: false));
+        result.Should().Be(new ExpenseAccountRef(62900151, "acc-151", "Other", Created: false));
         await _client.DidNotReceive().CreateExpenseAccountAsync(Arg.Any<int>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
     }
 

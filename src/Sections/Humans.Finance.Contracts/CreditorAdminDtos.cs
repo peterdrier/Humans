@@ -22,7 +22,7 @@ namespace Humans.Finance.Contracts;
 /// the payout also refuses on.</item>
 /// </list>
 /// </remarks>
-public sealed record HoldedCreditorAccountRow(
+public sealed record CreditorAccountRow(
     int SupplierAccountNum,
     string Name,
     decimal? Balance,
@@ -46,15 +46,15 @@ public sealed record CreditorContactBinding(
 /// <remarks>
 /// A null <paramref name="Contact"/> (none cached, including when Holded is down) costs the header, not the statement.
 /// </remarks>
-public sealed record HoldedCreditorLedger(
+public sealed record CreditorLedger(
     int SupplierAccountNum,
     decimal Balance,
     decimal OwedToMember,
     IReadOnlyList<CreditorLedgerLine> Lines,
-    HoldedContactInfo? Contact = null);
+    CreditorContactInfo? Contact = null);
 
 /// <summary>Every field is optional: Holded fills what the contact record carries.</summary>
-public sealed record HoldedContactInfo(
+public sealed record CreditorContactInfo(
     string? Name,
     string? TradeName,
     string? Email,

@@ -426,7 +426,7 @@ public sealed partial class ExpenseReportServiceTests
         SetupActiveYear();
         _finance.ListExpenseAccountsAsync(true, Arg.Any<CancellationToken>()).Returns(
         [
-            new HoldedExpenseAccountOption(OtherAccountNumber, OtherAccountId, "Other", IsBudgetCategory: false, IsActive: true),
+            new ExpenseAccountOption(OtherAccountNumber, OtherAccountId, "Other", IsBudgetCategory: false, IsActive: true),
         ]);
 
         var submitter = Guid.NewGuid();
@@ -3283,7 +3283,7 @@ public sealed partial class ExpenseReportServiceTests
         await _expenseRepo.SetLineHoldedDocIdAsync(seededLineId, "doc-1", FakeNow, TestContext.Current.CancellationToken);
 
         _finance.GetCreditorStatusAsync(40000007, Arg.Any<CancellationToken>())
-            .Returns(new HoldedCreditorStatus(40000007, Balance: -200m, OwedToMember: 200m,
+            .Returns(new CreditorStatus(40000007, Balance: -200m, OwedToMember: 200m,
                 LastPaymentDate: null, TotalPaid: 0m));
 
         var report = await _sut.GetAsync(reportId, TestContext.Current.CancellationToken);
@@ -3316,7 +3316,7 @@ public sealed partial class ExpenseReportServiceTests
         _userService.GetUserInfoAsync(survivorId, Arg.Any<CancellationToken>())
             .Returns(survivor! with { MergedUserIds = [sourceId] });
         _finance.GetCreditorStatusAsync(40000007, Arg.Any<CancellationToken>())
-            .Returns(new HoldedCreditorStatus(40000007, Balance: -200m, OwedToMember: 200m,
+            .Returns(new CreditorStatus(40000007, Balance: -200m, OwedToMember: 200m,
                 LastPaymentDate: null, TotalPaid: 0m));
 
         var report = await _sut.GetAsync(survivorReportId, ct);
@@ -3342,7 +3342,7 @@ public sealed partial class ExpenseReportServiceTests
         await _expenseRepo.SetLineHoldedDocIdAsync(seededLineId, "doc-1", FakeNow, TestContext.Current.CancellationToken);
 
         _finance.GetCreditorStatusAsync(40000007, Arg.Any<CancellationToken>())
-            .Returns(new HoldedCreditorStatus(40000007, Balance: -30m, OwedToMember: 30m,
+            .Returns(new CreditorStatus(40000007, Balance: -30m, OwedToMember: 30m,
                 LastPaymentDate: null, TotalPaid: 0m));
 
         if (withdrawn)
@@ -3383,7 +3383,7 @@ public sealed partial class ExpenseReportServiceTests
         await _expenseRepo.SetLineHoldedDocIdAsync(lineAId, "doc-a", FakeNow, TestContext.Current.CancellationToken);
 
         _finance.GetCreditorStatusAsync(40000007, Arg.Any<CancellationToken>())
-            .Returns(new HoldedCreditorStatus(40000007, Balance: -40m, OwedToMember: 40m,
+            .Returns(new CreditorStatus(40000007, Balance: -40m, OwedToMember: 40m,
                 LastPaymentDate: null, TotalPaid: 0m));
 
         if (withdrawn)
@@ -3408,7 +3408,7 @@ public sealed partial class ExpenseReportServiceTests
         await _expenseRepo.SetLineHoldedDocIdAsync(seededLineId, "doc-1", FakeNow, TestContext.Current.CancellationToken);
 
         _finance.GetCreditorStatusAsync(40000007, Arg.Any<CancellationToken>())
-            .Returns(new HoldedCreditorStatus(40000007, Balance: -50m, OwedToMember: 50m,
+            .Returns(new CreditorStatus(40000007, Balance: -50m, OwedToMember: 50m,
                 LastPaymentDate: new LocalDate(2026, 4, 20), TotalPaid: 50m));
 
         var report = await _sut.GetAsync(reportId, TestContext.Current.CancellationToken);
@@ -4137,12 +4137,12 @@ public sealed partial class ExpenseReportServiceTests
     private void StubExpenseAccounts(params (Guid CategoryId, int AccountNumber, string AccountId)[] categoryAccounts)
     {
         var options = categoryAccounts
-            .Select(a => new HoldedExpenseAccountOption(a.AccountNumber, a.AccountId, $"Category {a.AccountNumber}", IsBudgetCategory: true, IsActive: true))
-            .Append(new HoldedExpenseAccountOption(OtherAccountNumber, OtherAccountId, "Other account", IsBudgetCategory: false, IsActive: true))
+            .Select(a => new ExpenseAccountOption(a.AccountNumber, a.AccountId, $"Category {a.AccountNumber}", IsBudgetCategory: true, IsActive: true))
+            .Append(new ExpenseAccountOption(OtherAccountNumber, OtherAccountId, "Other account", IsBudgetCategory: false, IsActive: true))
             .ToList();
         _finance.ListExpenseAccountsAsync(Arg.Any<bool>(), Arg.Any<CancellationToken>()).Returns(options);
         _finance.GetCategoryMapAsync(Arg.Any<CancellationToken>()).Returns(categoryAccounts
-            .Select(a => new HoldedCategoryMapRow(a.CategoryId, null, null, a.AccountNumber, a.AccountId, $"tag-{a.AccountNumber}", true, FakeNow))
+            .Select(a => new CategoryAccountRow(a.CategoryId, null, null, a.AccountNumber, a.AccountId, $"tag-{a.AccountNumber}", true, FakeNow))
             .ToList());
     }
 

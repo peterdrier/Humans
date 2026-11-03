@@ -21,7 +21,7 @@ namespace Humans.Backdoor.Controllers;
 /// <summary>
 /// GET only. Authorization is imperative, like <c>ExpensesController</c>: each action checks
 /// <see cref="IAuthorizationService"/> against the key owner's roles. No raw IBAN leaves: the projections mask
-/// <see cref="ExpenseReportDto.PayeeIban"/> and <see cref="HoldedContactInfo.Iban"/>, and
+/// <see cref="ExpenseReportDto.PayeeIban"/> and <see cref="CreditorContactInfo.Iban"/>, and
 /// <see cref="OnResultExecuting"/> masks every other string.
 /// </summary>
 [ApiController]
@@ -523,7 +523,7 @@ internal sealed class BackdoorFinanceController(
     };
 
     private static object ProjectCreditorAccount(
-        HoldedCreditorAccountRow a, IReadOnlyDictionary<Guid, string> names) => new
+        CreditorAccountRow a, IReadOnlyDictionary<Guid, string> names) => new
         {
             supplierAccountNum = a.SupplierAccountNum,
             name = a.Name,
@@ -545,9 +545,9 @@ internal sealed class BackdoorFinanceController(
         description = l.Description,
     };
 
-    /// <summary>Never null-forgiving on <see cref="HoldedContactInfo.Iban"/> — masked here, the one
+    /// <summary>Never null-forgiving on <see cref="CreditorContactInfo.Iban"/> — masked here, the one
     /// place this DTO crosses into Backdoor's output.</summary>
-    private static object? ProjectContact(HoldedContactInfo? c) => c is null ? null : new
+    private static object? ProjectContact(CreditorContactInfo? c) => c is null ? null : new
     {
         name = c.Name,
         tradeName = c.TradeName,

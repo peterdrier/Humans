@@ -17,7 +17,7 @@ public interface IFinanceWrite : IApplicationService
     /// doc sync attributes their docs. Throws <see cref="InvalidOperationException"/> when the explicit number is not
     /// in Holded.</summary>
     [ExternalWrite]
-    Task<HoldedExpenseAccountRef> CreateOrLinkExpenseAccountAsync(
+    Task<ExpenseAccountRef> CreateOrLinkExpenseAccountAsync(
         string name, int? existingAccountNum, CancellationToken ct = default);
 
     /// <summary>Only affects the pickers; the account is never touched in Holded. No-op for an account Finance does not

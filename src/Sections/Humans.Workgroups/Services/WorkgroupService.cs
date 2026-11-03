@@ -595,7 +595,7 @@ internal sealed partial class WorkgroupService(
         return new();
     }
 
-    public async Task<WorkgroupMutationResult<HoldedExpenseAccountRef?>> SetBudgetAsync(
+    public async Task<WorkgroupMutationResult<ExpenseAccountRef?>> SetBudgetAsync(
         Guid workgroupId, Guid actorUserId, WorkgroupBudgetSave save, CancellationToken ct = default)
     {
         ArgumentNullException.ThrowIfNull(save);
@@ -609,7 +609,7 @@ internal sealed partial class WorkgroupService(
             WorkgroupStatus.Active, WorkgroupStatus.Dormant) is { } statusRefusal) return new(Refusal: statusRefusal);
 
         // Finance first, before any write: a failed create or unknown account leaves the row as it was.
-        HoldedExpenseAccountRef? account = null;
+        ExpenseAccountRef? account = null;
         var needsAccount = save.Amount is not null
             && (workgroup.HoldedAccountNumber is null
                 || (save.ExistingAccountNum is { } wanted && wanted != workgroup.HoldedAccountNumber));
@@ -653,7 +653,7 @@ internal sealed partial class WorkgroupService(
     }
 
     /// <summary>Finance faults log and return retry guidance; cancellation propagates.</summary>
-    private async Task<WorkgroupMutationResult<HoldedExpenseAccountRef>> ResolveBudgetAccountAsync(
+    private async Task<WorkgroupMutationResult<ExpenseAccountRef>> ResolveBudgetAccountAsync(
         Workgroup workgroup, int? existingAccountNum, CancellationToken ct)
     {
         try

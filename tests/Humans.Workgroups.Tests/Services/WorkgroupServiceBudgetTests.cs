@@ -77,7 +77,7 @@ public sealed class WorkgroupServiceBudgetTests : WorkgroupsTestHarness
             .Returns(async _ =>
             {
                 await cancellation.CancelAsync();
-                return new HoldedExpenseAccountRef(62900170, "account", "Workgroups", !linkExisting);
+                return new ExpenseAccountRef(62900170, "account", "Workgroups", !linkExisting);
             });
 
         var result = (await NewService().SetBudgetAsync(group.Id, actor, new WorkgroupBudgetSave(100m, requested), cancellation.Token)).Value;
@@ -217,7 +217,7 @@ public sealed class WorkgroupServiceBudgetTests : WorkgroupsTestHarness
     {
         var workgroup = await SeedWorkgroupAsync();
         Finance.CreateOrLinkExpenseAccountAsync(Arg.Any<string>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())
-            .Returns<HoldedExpenseAccountRef>(_ => throw new InvalidOperationException("Holded has no expense account 1."));
+            .Returns<ExpenseAccountRef>(_ => throw new InvalidOperationException("Holded has no expense account 1."));
 
         var act = () => NewService().SetBudgetAsync(workgroup.Id, SeedUser(), new WorkgroupBudgetSave(10m, 1), Ct);
 

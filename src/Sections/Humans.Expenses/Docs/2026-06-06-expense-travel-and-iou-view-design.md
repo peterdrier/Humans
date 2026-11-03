@@ -151,7 +151,7 @@ Surface the rows without adding an interface method:
 
 - New small record `HoldedPaymentInfo(LocalDate Date, decimal Amount, string? DocumentType)`
   (Finance DTOs).
-- Extend `HoldedCreditorStatus` with `IReadOnlyList<HoldedPaymentInfo> Payments` (map the
+- Extend `CreditorStatus` with `IReadOnlyList<HoldedPaymentInfo> Payments` (map the
   rows it already holds).
 - Extend `ExpenseHoldedTimeline` with `IReadOnlyList<HoldedPaymentInfo> Payments`
   (`GetHoldedTimelineAsync` maps `status.Payments` through).
@@ -193,7 +193,7 @@ only the returned DTO grows. Holded boundary unchanged (read-only cache).
 **Application**
 - `Services/Expenses/Dtos/TravelReimbursementConfig.cs` (new config DTO).
 - `Services/Finance/Dtos/HoldedPaymentInfo.cs` (new record) ·
-  `HoldedCreditorStatus.Payments` · `ExpenseHoldedTimeline.Payments` (record extensions).
+  `CreditorStatus.Payments` · `ExpenseHoldedTimeline.Payments` (record extensions).
 - `ExpenseLineDto.LineType` (DTO field).
 - `IExpenseReportManagement` (mutation interface) gains
   `AddMileageLineWithResultAsync(...)` and `AddPerDiemLineWithResultAsync(...)`.

@@ -237,16 +237,16 @@ public class FinanceControllerTests
     public async Task HoldedUnmatched_OrdersDocumentsNewestFirst()
     {
         _finance.GetUnmatchedAsync(Arg.Any<CancellationToken>()).Returns([
-            new HoldedUnmatchedRow("old", "F1", "Acme", null, 10m, "No account, no tag", "https://holded/old")
+            new UnmatchedDocRow("old", "F1", "Acme", null, 10m, "No account, no tag", "https://holded/old")
                 { Date = new LocalDate(2026, 1, 1) },
-            new HoldedUnmatchedRow("new", "F2", "Acme", null, 20m, "No account, no tag", "https://holded/new")
+            new UnmatchedDocRow("new", "F2", "Acme", null, 20m, "No account, no tag", "https://holded/new")
                 { Date = new LocalDate(2026, 6, 1) },
         ]);
 
         var result = await MakeController().HoldedUnmatched();
 
         var rows = result.Should().BeOfType<ViewResult>().Which.Model.Should()
-            .BeAssignableTo<IReadOnlyList<HoldedUnmatchedRow>>().Which;
+            .BeAssignableTo<IReadOnlyList<UnmatchedDocRow>>().Which;
         rows.Select(d => d.HoldedDocId).Should().Equal("new", "old");
     }
 
@@ -363,11 +363,11 @@ public class FinanceControllerTests
     private static CreditorContactBinding Bound(Guid userId, int? num) =>
         new(userId, $"contact-{userId:N}"[..12], num, CreditorContactSource.Auto);
 
-    private static HoldedCreditorAccountRow Row(
+    private static CreditorAccountRow Row(
         int num, string name, decimal? balance, params CreditorContactBinding[] bindings) =>
         new(num, name, balance, balance is { } b ? Math.Max(0m, -b) : 0m, bindings);
 
-    private static HoldedCreditorAccountRow RowWithDocs(int num, string name, decimal? balance, int? openDocs) =>
+    private static CreditorAccountRow RowWithDocs(int num, string name, decimal? balance, int? openDocs) =>
         new(num, name, balance, balance is { } b ? Math.Max(0m, -b) : 0m, [], OpenDocumentCount: openDocs);
 
     private void NameThem(params (Guid Id, string Burner)[] people) =>
@@ -376,7 +376,7 @@ public class FinanceControllerTests
                 as IReadOnlyDictionary<Guid, UserInfo>);
 
     private void Accounts(
-        IReadOnlyList<HoldedCreditorAccountRow> rows,
+        IReadOnlyList<CreditorAccountRow> rows,
         IReadOnlyList<CreditorContactBinding>? unresolved = null) =>
         _finance.ListCreditorAccountsAsync(Arg.Any<CancellationToken>())
             .Returns((rows, unresolved ?? []));
@@ -671,7 +671,7 @@ public class FinanceControllerTests
     public async Task CreditorStatement_AccountWithNoCachedLedger_IsNotFound()
     {
         _finance.GetCreditorLedgerAsync(40000002, Arg.Any<CancellationToken>())
-            .Returns((HoldedCreditorLedger?)null);
+            .Returns((CreditorLedger?)null);
 
         (await MakeControllerWithHttpContext(Ana).CreditorStatement(40000002)).Should().BeOfType<NotFoundResult>();
     }
@@ -682,7 +682,7 @@ public class FinanceControllerTests
         var day1 = Instant.FromUtc(2026, 3, 1, 0, 0);
         var day2 = Instant.FromUtc(2026, 3, 2, 0, 0);
         _finance.GetCreditorLedgerAsync(40000002, Arg.Any<CancellationToken>()).Returns(
-            new HoldedCreditorLedger(40000002, -10m, 10m,
+            new CreditorLedger(40000002, -10m, 10m,
             [
                 Ledger(entry: 5, line: 1, day1),
                 Ledger(entry: 9, line: 2, day2),
@@ -705,7 +705,7 @@ public class FinanceControllerTests
         var day1 = Instant.FromUtc(2026, 3, 1, 0, 0);
         var day2 = Instant.FromUtc(2026, 3, 2, 0, 0);
         _finance.GetCreditorLedgerAsync(40000002, Arg.Any<CancellationToken>()).Returns(
-            new HoldedCreditorLedger(40000002, -30m, 30m,
+            new CreditorLedger(40000002, -30m, 30m,
             [
                 Ledger(entry: 9, line: 1, day2) with { Credit = 0m, Debit = 50m, RunningBalance = 30m },
                 Ledger(entry: 5, line: 1, day1) with { Credit = 100m, RunningBalance = 100m },
@@ -724,7 +724,7 @@ public class FinanceControllerTests
     public async Task CreditorStatement_MemberOwingTheOrganisation_ShowsNegativeBalance()
     {
         _finance.GetCreditorLedgerAsync(40000002, Arg.Any<CancellationToken>())
-            .Returns(new HoldedCreditorLedger(40000002, 25m, 0m, []));
+            .Returns(new CreditorLedger(40000002, 25m, 0m, []));
 
         var result = await MakeControllerWithHttpContext(Ana).CreditorStatement(40000002);
 
@@ -737,13 +737,13 @@ public class FinanceControllerTests
     {
         var day = Instant.FromUtc(2026, 3, 1, 0, 0);
         _finance.GetCreditorLedgerAsync(40000002, Arg.Any<CancellationToken>()).Returns(
-            new HoldedCreditorLedger(40000002, 0m, 0m,
+            new CreditorLedger(40000002, 0m, 0m,
             [
                 Ledger(entry: 1, line: 1, day) with { Type = "purchase", Description = "Tent pegs" },
                 Ledger(entry: 2, line: 1, day) with { Type = "payment", Description = "Tent pegs", Credit = 0m, Debit = 1m },
                 Ledger(entry: 3, line: 1, day) with { Type = "payment", Description = "Tent pegs" },
             ],
-            new HoldedContactInfo("Ana López", null, null, null, null, null, null, null)));
+            new CreditorContactInfo("Ana López", null, null, null, null, null, null, null)));
 
         var model = (await MakeControllerWithHttpContext(Ana).CreditorStatement(40000002))
             .Should().BeOfType<ViewResult>().Subject.Model.Should().BeOfType<CreditorStatementVm>().Subject;
@@ -756,7 +756,7 @@ public class FinanceControllerTests
     public async Task CreditorStatement_ListsOnlyTheExpenseReportsBookedToTheAccount_NewestApprovalFirst()
     {
         _finance.GetCreditorLedgerAsync(40000002, Arg.Any<CancellationToken>())
-            .Returns(new HoldedCreditorLedger(40000002, 0m, 0m, []));
+            .Returns(new CreditorLedger(40000002, 0m, 0m, []));
         _expenses.GetReviewQueueAsync(Ana, true, Arg.Any<CancellationToken>()).Returns(
         [
             Report(40000002, Instant.FromUtc(2026, 3, 1, 0, 0)),

@@ -14,7 +14,7 @@ namespace Humans.Expenses.Tests.Models;
 public class ExpensesIndexViewModelTests
 {
     private static ExpensesIndexViewModel Vm(
-        int? boundAccountNum, HoldedCreditorLedger? ledger, params string?[] reportHoldedDocIds) =>
+        int? boundAccountNum, CreditorLedger? ledger, params string?[] reportHoldedDocIds) =>
         new()
         {
             Reports = [.. reportHoldedDocIds.Select(Report)],
@@ -58,7 +58,7 @@ public class ExpensesIndexViewModelTests
     [HumansFact]
     public void A_rendered_statement_is_not_awaiting_activity()
     {
-        var ledger = new HoldedCreditorLedger(
+        var ledger = new CreditorLedger(
             SupplierAccountNum: 40000004, Balance: -23m, OwedToMember: 23m, Lines: []);
 
         var vm = Vm(boundAccountNum: 40000004, ledger: ledger);

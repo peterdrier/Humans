@@ -634,7 +634,7 @@ internal sealed class BudgetAdminController(
             }
         }
 
-        IReadOnlyDictionary<Guid, HoldedActualRow> holdedActuals = new Dictionary<Guid, HoldedActualRow>();
+        IReadOnlyDictionary<Guid, CategoryActualRow> holdedActuals = new Dictionary<Guid, CategoryActualRow>();
         if (int.TryParse(year.Year, System.Globalization.NumberStyles.None,
                 System.Globalization.CultureInfo.InvariantCulture, out var calendarYear))
         {

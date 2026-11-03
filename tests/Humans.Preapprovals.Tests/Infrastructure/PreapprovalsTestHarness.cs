@@ -54,10 +54,10 @@ public abstract class PreapprovalsTestHarness : IDisposable
 
         Finance = Substitute.For<IFinanceService>();
         Finance.ListExpenseAccountsAsync(Arg.Any<bool>(), Arg.Any<CancellationToken>())
-            .Returns(_ => Task.FromResult<IReadOnlyList<HoldedExpenseAccountOption>>(
+            .Returns(_ => Task.FromResult<IReadOnlyList<ExpenseAccountOption>>(
             [
-                new HoldedExpenseAccountOption(62900150, "acc-62900150", "Creativity grants", true, true),
-                new HoldedExpenseAccountOption(62900160, "acc-62900160", "Infrastructure", true, true)
+                new ExpenseAccountOption(62900150, "acc-62900150", "Creativity grants", true, true),
+                new ExpenseAccountOption(62900160, "acc-62900160", "Infrastructure", true, true)
             ]));
 
         Notifications = Substitute.For<INotificationEmitter>();

@@ -93,7 +93,7 @@ public abstract class WorkgroupsTestHarness : IDisposable
 
         Finance = Substitute.For<IFinanceWrite>();
         Finance.CreateOrLinkExpenseAccountAsync(Arg.Any<string>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())
-            .Returns(call => new HoldedExpenseAccountRef(
+            .Returns(call => new ExpenseAccountRef(
                 call.Arg<int?>() ?? 62900150, $"acc-{call.Arg<int?>() ?? 62900150}", call.Arg<string>(),
                 Created: call.Arg<int?>() is null));
 

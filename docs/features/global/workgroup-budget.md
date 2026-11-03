@@ -50,7 +50,7 @@ the group page is a pull by Workgroups through `IHoldedService.GetLedgerLinesAsy
 **Public surface** (`Humans.Finance.Contracts`) — new members, approved by Peter. The two writes sit on `IFinanceWrite`, the list on `IFinanceService`:
 
 - `IFinanceWrite.CreateOrLinkExpenseAccountAsync(string name, int? existingAccountNum, CancellationToken)`
-  → `HoldedExpenseAccountRef(int AccountNum, string AccountId, string Name, bool Created)`.
+  → `ExpenseAccountRef(int AccountNum, string AccountId, string Name, bool Created)`.
   1. `existingAccountNum` given: the account must exist in the live chart
      (`IHoldedClient.ListExpenseAccountsAsync`); returns it, `Created = false`. Unknown number → throws.
   2. Otherwise match `name` against the live chart by normalized name (trim, collapse whitespace,
@@ -65,7 +65,7 @@ the group page is a pull by Workgroups through `IHoldedService.GetLedgerLinesAsy
 - `IFinanceWrite.SetExpenseAccountActiveAsync(int accountNum, bool isActive, CancellationToken)`
   — flips the registry row. No-op when the number is a category account or unknown.
 - `IFinanceService.ListExpenseAccountsAsync(bool activeOnly, CancellationToken)`
-  → `IReadOnlyList<HoldedExpenseAccountOption(int AccountNum, string AccountId, string Label, bool IsBudgetCategory, bool IsActive)>`.
+  → `IReadOnlyList<ExpenseAccountOption(int AccountNum, string AccountId, string Label, bool IsBudgetCategory, bool IsActive)>`.
   Union of the category map (label `Group / Category` from the active budget year, always active)
   and the managed registry (its `Label`). Cache reads only — no Holded call. This is what the
   Workgroups picker and the phase-2 Expenses dropdown consume; the "link existing" picker in

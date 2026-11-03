@@ -2,7 +2,7 @@ using NodaTime;
 
 namespace Humans.Finance.Contracts;
 
-public sealed record HoldedCreditorStatus(
+public sealed record CreditorStatus(
     int SupplierAccountNum,
     decimal Balance,            // signed; negative = org owes the member
     decimal OwedToMember,       // = max(0, -Balance)

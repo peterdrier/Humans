@@ -475,9 +475,9 @@ public class BackdoorFinanceControllerTests
         var orphan = Guid.NewGuid();
         var newerOrphan = Guid.NewGuid();
         _finance.ListCreditorAccountsAsync(Arg.Any<CancellationToken>()).Returns((
-            (IReadOnlyList<HoldedCreditorAccountRow>)
+            (IReadOnlyList<CreditorAccountRow>)
             [
-                new HoldedCreditorAccountRow(40000060, "Ana Torres", -50m, 50m,
+                new CreditorAccountRow(40000060, "Ana Torres", -50m, 50m,
                     [
                         new CreditorContactBinding(ben, "c-ben", 40000060, CreditorContactSource.Manual)
                             { CreatedAt = Instant.FromUtc(2026, 2, 1, 0, 0) },
@@ -520,9 +520,9 @@ public class BackdoorFinanceControllerTests
     {
         SetPrincipal(Guid.NewGuid());
         SetFinanceAdmin(true);
-        _finance.GetCreditorLedgerAsync(40000060, Arg.Any<CancellationToken>()).Returns(new HoldedCreditorLedger(
+        _finance.GetCreditorLedgerAsync(40000060, Arg.Any<CancellationToken>()).Returns(new CreditorLedger(
             40000060, -50m, 50m, [],
-            new HoldedContactInfo("Ana Torres", null, "ana@example.com", null, null,
+            new CreditorContactInfo("Ana Torres", null, "ana@example.com", null, null,
                 "ES7921000813610123456789", null, null)));
 
         var result = await _sut.CreditorLedger(40000060, Xunit.TestContext.Current.CancellationToken);
@@ -550,7 +550,7 @@ public class BackdoorFinanceControllerTests
         SetFinanceAdmin(true);
         var categoryId = Guid.NewGuid();
         _finance.GetCategoryMapAsync(Arg.Any<CancellationToken>()).Returns([
-            new HoldedCategoryMapRow(categoryId, "Staff", "Operations", 62900101, "acc-1", "staff", true,
+            new CategoryAccountRow(categoryId, "Staff", "Operations", 62900101, "acc-1", "staff", true,
                 Instant.FromUtc(2026, 6, 1, 0, 0)),
         ]);
 
@@ -624,9 +624,9 @@ public class BackdoorFinanceControllerTests
         _holded.GetPurchaseDocumentsAsync(Arg.Any<CancellationToken>()).Returns(
             new HoldedPurchaseDocMirror(Instant.FromUtc(2026, 6, 1, 3, 0), "Idle", null, 12, null, []));
         _finance.GetUnmatchedAsync(Arg.Any<CancellationToken>()).Returns([
-            new HoldedUnmatchedRow("d0", "F250001", "Acme", "Old supplies", 20m, "No account, no tag", "https://holded/d0")
+            new UnmatchedDocRow("d0", "F250001", "Acme", "Old supplies", 20m, "No account, no tag", "https://holded/d0")
                 { Date = new LocalDate(2026, 1, 1) },
-            new HoldedUnmatchedRow("d1", "F260001", "Acme", "Supplies", 30m, "No account, no tag", "https://holded/d1")
+            new UnmatchedDocRow("d1", "F260001", "Acme", "Supplies", 30m, "No account, no tag", "https://holded/d1")
                 { Date = new LocalDate(2026, 6, 1) },
         ]);
 
@@ -746,16 +746,16 @@ public class BackdoorFinanceControllerTests
         _expenses.TryReadAttachmentAsync(report, attachmentId, Arg.Any<CancellationToken>())
             .Returns(new ExpenseAttachmentDownload([1, 2, 3], "application/pdf", CompactIban + ".pdf"));
         _finance.ListCreditorAccountsAsync(Arg.Any<CancellationToken>()).Returns((
-            (IReadOnlyList<HoldedCreditorAccountRow>)
+            (IReadOnlyList<CreditorAccountRow>)
             [
-                new HoldedCreditorAccountRow(40000060, Tainted, -50m, 50m,
+                new CreditorAccountRow(40000060, Tainted, -50m, 50m,
                     [new CreditorContactBinding(userId, Tainted, 40000060, CreditorContactSource.Auto)], Tainted),
             ],
             (IReadOnlyList<CreditorContactBinding>)
             [
                 new CreditorContactBinding(userId, Tainted, null, CreditorContactSource.Auto),
             ]));
-        _finance.GetCreditorLedgerAsync(40000060, Arg.Any<CancellationToken>()).Returns(new HoldedCreditorLedger(
+        _finance.GetCreditorLedgerAsync(40000060, Arg.Any<CancellationToken>()).Returns(new CreditorLedger(
             40000060, -50m, 50m,
             [
                 new CreditorLedgerLine
@@ -770,9 +770,9 @@ public class BackdoorFinanceControllerTests
                     Description = Tainted,
                 },
             ],
-            new HoldedContactInfo(Tainted, Tainted, Tainted, Tainted, Tainted, CompactIban, Tainted, Tainted)));
+            new CreditorContactInfo(Tainted, Tainted, Tainted, Tainted, Tainted, CompactIban, Tainted, Tainted)));
         _finance.GetCategoryMapAsync(Arg.Any<CancellationToken>()).Returns([
-            new HoldedCategoryMapRow(Guid.NewGuid(), Tainted, Tainted, 62900101, Tainted, Tainted, true,
+            new CategoryAccountRow(Guid.NewGuid(), Tainted, Tainted, 62900101, Tainted, Tainted, true,
                 Instant.FromUtc(2026, 6, 1, 0, 0)),
         ]);
         _finance.GetSepaTransfersAsync(Arg.Any<CancellationToken>()).Returns((
@@ -787,7 +787,7 @@ public class BackdoorFinanceControllerTests
         _holded.GetPurchaseDocumentsAsync(Arg.Any<CancellationToken>()).Returns(
             new HoldedPurchaseDocMirror(Instant.FromUtc(2026, 6, 1, 3, 0), Tainted, Tainted, 12, null, []));
         _finance.GetUnmatchedAsync(Arg.Any<CancellationToken>()).Returns([
-            new HoldedUnmatchedRow(Tainted, Tainted, Tainted, Tainted, 30m, Tainted, Tainted),
+            new UnmatchedDocRow(Tainted, Tainted, Tainted, Tainted, 30m, Tainted, Tainted),
         ]);
         _finance.GetExpenseReconAsync(null, Arg.Any<CancellationToken>()).Returns(new ExpenseReconReport(
             null, null, null, [],
