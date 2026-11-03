@@ -37,18 +37,19 @@ can mute the chatter but never the work.
 | 5 | "How much work is waiting for someone like me?" | `NotificationMeterProvider.GetMetersForUserAsync` |
 | 6 | "What is unread for this key's owner?" | `INotificationInboxRead.GetUnreadInboxAsync`, served by Backdoor at `/api/backdoor/notifications` |
 | 7 | "Throw away what has aged out." | `INotificationRetention.PurgeExpiredAsync`, driven nightly by `CleanupNotificationsJob` |
+| 8 | "Which sources exist, and which are retired?" | `INotificationSourceContributor`, collected by `NotificationSourceRegistry` at startup |
 | 9 | "Give me / erase everything you hold about this human." | `IUserDataContributor` on `NotificationInboxService` |
 | 10 | "These two accounts are one human — fold them." | `IUserMerge.ReassignAsync` on `NotificationService` |
 
-Shapes 1, 2, 7 and 10 are the cross-section write contract; 6 is the one cross-section read;
-3–5 are the section's own pages.
+Shapes 1, 2, 7 and 8 are the cross-section write contract; 6 is the one cross-section read;
+3–5 are the section's own pages; 9 and 10 are the platform fan-outs every people-holding
+section answers.
 
 ## 3. Structure
 
-- **One contracts leaf** carrying shapes 1, 2, 7 and 8 plus the three enums their signatures
-  name, because a dozen sections emit and must not reference the whole section. Shape 6 lives
-  in the section's own `Contracts/` folder: its only consumer, Backdoor, already references
-  the section project, as it does for every section it serves.
+- **One contracts leaf** carrying shapes 1, 2, 6, 7 and 8 plus the enums their signatures
+  name, because a dozen sections emit and must not reference the whole section. Backdoor reads
+  shape 6 from the same leaf.
 - **One dispatch path.** Build rows, apply the preference filter, persist.
   Explicit recipients get a row each; a role gets one shared row.
 - **One inbox service** for shapes 2, 3, 4, 7 and 9: read models, per-row transitions, the
@@ -59,6 +60,9 @@ Shapes 1, 2, 7 and 10 are the cross-section write contract; 6 is the one cross-s
 - **One repository**, the only code touching `notifications` / `notification_recipients`.
 - **One controller** that parses, calls and formats.
 - **One row shape between service and view**, carrying only what a page renders.
+- **One outcome shape for a per-row transition**, from repository to controller, carrying
+  success, not-found and forbidden.
+- **One registry** of every section's sources, built and checked when the host starts.
 
 ## 4. Invariants
 
@@ -71,7 +75,7 @@ Shapes 1, 2, 7 and 10 are the cross-section write contract; 6 is the one cross-s
 - An `Actionable` notification cannot be dismissed, singly or in bulk — `src/Sections/Humans.Notifications/Data/NotificationRepository.cs:83`, `src/Sections/Humans.Notifications/Data/NotificationRepository.cs:176`.
 - Only a recipient can resolve, dismiss, mark read or click through a notification — `src/Sections/Humans.Notifications/Data/NotificationRepository.cs:54`, `src/Sections/Humans.Notifications/Data/NotificationRepository.cs:80`, `src/Sections/Humans.Notifications/Data/NotificationRepository.cs:103`, `src/Sections/Humans.Notifications/Data/NotificationRepository.cs:152`, `src/Sections/Humans.Notifications/Data/NotificationRepository.cs:205`.
 - Every page route acts on the signed-in human's own pile and nobody else's — `src/Sections/Humans.Notifications/Controllers/NotificationsController.cs:21`.
-- Badge counts read committed recipient state directly through `NotificationInboxService.GetUnreadBadgeCountsAsync`, including after a transition, merge or purge.
+- Badge counts are counted from committed recipient rows on every read, never cached — `src/Sections/Humans.Notifications/Data/NotificationRepository.cs:276`.
 - The purge deletes resolved rows past 7 days, unresolved informational rows past 30 days and
   unresolved rows of retired sources, and nothing else — `src/Sections/Humans.Notifications/Services/NotificationInboxService.cs:214`.
 - Meters are computed on read and never stored — `src/Sections/Humans.Notifications/Services/NotificationMeterProvider.cs:230`.

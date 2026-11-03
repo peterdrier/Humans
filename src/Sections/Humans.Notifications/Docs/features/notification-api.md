@@ -24,10 +24,10 @@ X-Api-Key: <personal key>
   "notifications": [
     {
       "date": "2026-04-10T09:00:00Z",
-      "source": "ConsentReviewNeeded",
-      "subject": "Consent review pending: Alice",
-      "link": "/Consent/ReviewQueue",
-      "priority": "high",
+      "source": "IssueAssigned",
+      "subject": "Issue assigned to you: Login page broken",
+      "link": "/Issues",
+      "priority": "normal",
       "class": "actionable",
       "unread": true
     }
