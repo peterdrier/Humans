@@ -98,7 +98,7 @@ public sealed class HoldedAdminOverviewTests
             Instant.FromUtc(2020, 1, 1, 0, 0), FixedNow, null, lines, FixedNow, ct);
 
     [HumansFact]
-    public async Task Calls_group_by_madrid_month_newest_first_with_per_endpoint_counts()
+    public async Task Calls_group_by_madrid_month_oldest_first_with_per_endpoint_counts()
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
         await _repo.AddApiCallsAsync(
@@ -116,13 +116,13 @@ public sealed class HoldedAdminOverviewTests
             .BeAssignableTo<IReadOnlyList<HoldedMonthlyCalls>>().Which;
 
         calls.Should().HaveCount(2);
-        calls[0].Year.Should().Be(2026);
-        calls[0].Month.Should().Be(8);
-        calls[0].Total.Should().Be(3);
-        calls[0].ByEndpoint["ListLedgerEntriesAsync"].Should().Be(2);
-        calls[0].ByEndpoint["GetUsageAsync"].Should().Be(1);
-        calls[1].Month.Should().Be(7);
-        calls[1].Total.Should().Be(1);
+        calls[0].Month.Should().Be(7);
+        calls[0].Total.Should().Be(1);
+        calls[1].Year.Should().Be(2026);
+        calls[1].Month.Should().Be(8);
+        calls[1].Total.Should().Be(3);
+        calls[1].ByEndpoint["ListLedgerEntriesAsync"].Should().Be(2);
+        calls[1].ByEndpoint["GetUsageAsync"].Should().Be(1);
 
         var summary = await _service.GetSummaryAsync(ct);
         summary.MonthlyCallBudget.Should().Be(2000);

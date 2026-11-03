@@ -1,6 +1,7 @@
 @model Humans.Finance.Models.HoldedDuplicateApplyResult
 @{
     ViewData["Title"] = "Duplicate Holded Documents — applied";
+    ViewData[Humans.Base.ViewComponents.AdminNavComposition.ParentKey] = "Holded";
     // Holded's own sign: a negative creditor balance is money the organisation owes.
     string Owed(decimal? balance) => balance is { } b ? (-b).ToEuro() : "—";
 }

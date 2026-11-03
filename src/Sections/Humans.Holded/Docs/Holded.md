@@ -61,8 +61,9 @@ mirror tables runs before this baseline recreates them.
 
 ## Routing
 
-Every page under `/Holded` reads the mirror and links to the others (Summary, Accounts, API calls,
-and one "Finance" link to `/Finance/Holded`). Each page does one thing.
+Every page under `/Holded` reads the mirror. Summary, Accounts and API calls are the Holded admin nav
+group's items, so the admin shell renders them as the tab strip; an account's or entry's page sits
+under Accounts. Each page does one thing.
 
 - `/Holded` — summary: configured or not (`IsConfigured`), live API usage as one line (GET
   /usage, skipped when not configured; budget = `Holded:MonthlyCallBudget`, default 2000), per
@@ -71,8 +72,10 @@ and one "Finance" link to `/Finance/Holded`). Each page does one thing.
   and the Sync now / Full resync buttons with the full resync's cost estimate (one call per 200
   lines plus the chart; 42 today).
 - `/Holded/Accounts` — the chart grouped by PGC group (English group name from the leading digit,
-  not Holded's Spanish `group` string). Groups are collapsed, showing account count, Holded and
-  mirror balance, lines and mismatches; expanded rows show number, Holded name, English name,
+  not Holded's Spanish `group` string), and within each group by PGC subgroup (first two digits,
+  English name from `PgcAccountNames`; 40 suppliers, 41 creditors, 44 debtors, 47 public
+  administrations). Groups and subgroups are collapsed, each showing account count, Holded and
+  mirror balance, lines and mismatches; a group with one subgroup opens it. Expanded rows show number, Holded name, English name,
   both balances, lines and the ✓/✗. Archived and empty accounts (no cached line, no Holded totals,
   no disagreement) are hidden by default, each with a toggle (`?archived=true`, `?empty=true`);
   `?mismatched=true` shows only non-archived accounts that disagree. An account seen only on a
@@ -84,7 +87,8 @@ and one "Finance" link to `/Finance/Holded`). Each page does one thing.
 - `/Holded/Entries/{number}` — every leg of one journal entry (account + name, type, description,
   signed Amount, Checked) and the entry's Holded id, no balancing total row. 404 when no cached
   line carries the entry number. No link into Holded's app yet: its entry URL is unverified.
-- `/Holded/Calls` — API calls by Madrid month and endpoint, from `holded_api_calls`.
+- `/Holded/Calls` — API calls from `holded_api_calls` as a pivot: one row per endpoint (busiest
+  first), one column per Madrid month (oldest first), with row and column totals.
 
 **English names** come from `PgcAccountNames`, a static dictionary of the PGC PYMES chart (plus
 the non-profit adaptation's own accounts) keyed by number prefix, longest matching prefix first.
@@ -163,7 +167,7 @@ Audit entries stay with the calling section, which knows why it wrote.
 
 - The Accounts controller orders PGC groups by leading digit and each group's accounts by number. Service grouping, filters and totals do not impose display order; summary counts are independent of row order.
 
-- The summary controller orders sync-state rows by kind using ordinal comparison, and the calls controller orders Madrid month buckets newest first. Services supply the state and aggregated counts without display ordering.
+- The summary controller orders sync-state rows by kind using ordinal comparison, and the calls controller orders Madrid month buckets oldest first (the pivot's columns). Services supply the state and aggregated counts without display ordering.
 
 - `GetChartAsync` returns mirror account metadata, including archived accounts, without display ordering. Workgroups' account pickers order by number in their views.
 
