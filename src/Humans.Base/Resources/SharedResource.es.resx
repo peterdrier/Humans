@@ -304,12 +304,6 @@
   <data name="LinkPreview_Expenses_Description" xml:space="preserve">
     <value>Solicitudes de gastos y reembolsos.</value>
   </data>
-  <data name="LinkPreview_Feedback_Title" xml:space="preserve">
-    <value>Comentarios</value>
-  </data>
-  <data name="LinkPreview_Feedback_Description" xml:space="preserve">
-    <value>Envía comentarios sobre Humans.</value>
-  </data>
   <data name="LinkPreview_Finance_Title" xml:space="preserve">
     <value>Finanzas</value>
   </data>

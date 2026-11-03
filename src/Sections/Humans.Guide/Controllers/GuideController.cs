@@ -107,7 +107,6 @@ internal sealed class GuideController(
         ["Events"] = "LinkPreview_Events_Title",
         ["Calendar"] = "LinkPreview_Calendar_Title",
         ["Issues"] = "LinkPreview_Issues_Title",
-        ["Feedback"] = "LinkPreview_Feedback_Title",
         ["Governance"] = "LinkPreview_Governance_Title",
         ["Budget"] = "LinkPreview_Budget_Title",
         ["Expenses"] = "LinkPreview_Expenses_Title",

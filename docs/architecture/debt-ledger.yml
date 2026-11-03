@@ -23,7 +23,7 @@
 # citing its id in the PR. Shape, `status:` values and `root:` linking:
 # memory/process/debt-ledger-additions.md.
 version: 1
-next_id: 106
+next_id: 107
 recent_sections: [Campaigns, Feedback, Governance]
 themes:
   - id: grandfathered-hum0028-invalidators
@@ -153,7 +153,7 @@ themes:
     detect: "cat docs/architecture/debt-ledger.yml src/Sections/*/Docs/debt.yml 2>/dev/null | grep -c '^  - added:'"
     review: per-item
     last_swept: 2026-11-03
-    remaining: 1
+    remaining: 2
     notes: >-
       Each inbox entry carries its own review tier and a stable `id`; an item is
       closed by deleting its row and citing the id in the PR — ids are never
@@ -165,4 +165,8 @@ inbox:
   - added: 2026-10-21
     id: CENTRAL-95
     what: "Retirement PR for data migration google.workspace-identities (Users decomposition, GoogleIntegration): once GET /api/data-migrations reports it done on production, delete the migration and these legacy readers: WorkspaceIdentityService's legacy fallback, UserEmailInfo.IsGoogle/GoogleEmailStatus (HUM_USER_GOOGLE_IDENTITY), LegacyGoogleEmailStatus, the merge re-FK's IsGoogle = false, and the Users export keys IsGoogle/GoogleEmailStatus. Quote the production reading and date in the PR; it is the standing approval for the matching USERS drop row (memory/architecture/no-drops-until-prod-verified.md)."
+    review: panel
+  - added: 2026-11-03
+    id: CENTRAL-106
+    what: "The User and UserEmail EF entities are public in Humans.Base (src/Humans.Base/Users/), moved there with UserInfo so Base has no project references. Entities should not cross a section boundary. HUM0039 holds the eleven assemblies that still name either entity (Auth, Camps, CityPlanning, Development, Finance, GoogleIntegration, Governance, Shifts, Teams, Tickets, Web) as a shrink-only baseline: move each onto UserInfo / IUserService and delete its entry, then narrow what stays public (UserManager<User> callers need the type)."
     review: panel

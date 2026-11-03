@@ -2739,6 +2739,27 @@ public class HoldedFinanceServiceTests
     }
 
     [HumansFact]
+    public async Task PreviewSepaPayout_ShowsTheBatchAndWritesNothing()
+    {
+        ConfigureSepa();
+        var userId = SeedPayableCreditor();
+
+        var preview = await MakeService().PreviewSepaPayoutAsync(
+            [new SepaPayoutSelection(40000004, 12.34m)], 50m, TestContext.Current.CancellationToken);
+
+        preview.Succeeded.Should().BeTrue();
+        var line = preview.Lines.Should().ContainSingle().Subject;
+        line.UserId.Should().Be(userId);
+        line.IbanMasked.Should().Be("ES79****789");
+        line.Amount.Should().Be(12.34m);
+        line.OwedAfter.Should().Be(line.Owed - 12.34m);
+        await _repo.DidNotReceive().AddSepaPayoutAsync(
+            Arg.Any<SepaPayoutFile>(), Arg.Any<IReadOnlyList<SepaPayoutTransfer>>(), Arg.Any<CancellationToken>());
+        await _audit.DidNotReceiveWithAnyArgs().LogAsync(
+            default!, default!, default, default!, default(Guid), default, default);
+    }
+
+    [HumansFact]
     public async Task GenerateSepaPayout_PersistsTheFileAndAuditsEachTransferWithAMaskedIban()
     {
         ConfigureSepa();

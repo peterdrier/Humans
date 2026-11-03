@@ -38,7 +38,7 @@ One controller per audience: `DebugController` (`/Debug/*`, diagnostics and the 
 | `/Debug/CacheStats/Reset` | POST | Admin | Reset cache statistics |
 | `/Debug/ClientStats` | GET | Board, Admin | Browser/device/status-code telemetry |
 | `/Debug/FormatGallery` | GET | Board, Admin | Date/time formatting reference |
-| `/Debug/Translations` | GET | Board, Admin | Translation coverage for every resource set: `SharedResource` first, then each section's `<Section>Resource` by name (from `ISectionCatalog`, so Debug references no section for it); grand key total, jump list, and per set its missing-by-language counts and orphan keys |
+| `/Debug/Translations` | GET | Board, Admin | Translation coverage for every resource set: `SharedResource` first, then each section's `<Section>Resource` by name (from `ISectionCatalog`, so Debug references no section for it); grand key total and per-language coverage up top; the body shows one set (`?set=`, default Shared, with its orphan keys), narrowed by a search (`?q=`); `?set=All` searches every set and lists nothing without a search; optionally only rows with missing translations (`?missing=true`) |
 | `/Debug/Maintenance` | GET | Board, Admin | Maintenance operations |
 | `/Debug/Maintenance/ClearHangfireLocks` | POST | Admin | Clear stale Hangfire locks |
 | `/Debug/Users` | GET | Board, Admin | All-users debug grid (`UsersDebugController`): flat paginated/sortable table of every user incl. tombstones, every column from the cached `UserInfo` snapshot via `IUserService.GetAllRawUserInfosAsync`; page size clamped 10-200, offsets past the end give an empty page |

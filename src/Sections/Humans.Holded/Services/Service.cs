@@ -52,6 +52,11 @@ internal sealed class Service(
         return lines.Select(ToInfo).ToList();
     }
 
+    public async Task<Instant?> GetLedgerSyncedAtAsync(CancellationToken ct = default) =>
+        (await repo.GetSyncStatesAsync(ct))
+            .Where(s => s.Kind is HoldedSyncKind.Ledger or HoldedSyncKind.FullSync)
+            .Max(s => s.LastSyncAt);
+
     public async Task<IReadOnlyDictionary<int, decimal>> GetAccountBalancesAsync(
         CancellationToken ct = default) =>
         (await repo.GetAccountTotalsAsync(ct)).ToDictionary(t => t.AccountNum, t => t.Balance);
@@ -242,7 +247,13 @@ internal sealed class Service(
             .Select(g => new HoldedAccountGroup(
                 g.Key, GroupName(g.First().Number), g.ToList(),
                 g.Sum(r => r.HoldedBalance), g.Sum(r => r.LocalBalance ?? 0m),
-                g.Sum(r => r.LocalLineCount), g.Count(r => !r.Reconciled)))
+                g.Sum(r => r.LocalLineCount), g.Count(r => !r.Reconciled),
+                g.GroupBy(r => PgcAccountNames.Subgroup(r.Number))
+                    .Select(sg => new HoldedAccountSubgroup(
+                        sg.Key, PgcAccountNames.SubgroupName(sg.Key), sg.ToList(),
+                        sg.Sum(r => r.HoldedBalance), sg.Sum(r => r.LocalBalance ?? 0m),
+                        sg.Sum(r => r.LocalLineCount), sg.Count(r => !r.Reconciled)))
+                    .ToList()))
             .ToList();
 
         return new HoldedAccountsPage(filter, groups, hiddenArchived, hiddenEmpty);

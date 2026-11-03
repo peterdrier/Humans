@@ -1,6 +1,6 @@
 <!-- freshness:triggers
   src/Sections/Humans.Users/Services/PersonSearchMatcher.cs
-  src/Sections/Humans.Users.Contracts/PersonSearchFields.cs
+  src/Humans.Base/Users/PersonSearchFields.cs
   src/Sections/Humans.Users/Data/CachingUserService.cs
   src/Sections/Humans.Search/Controllers/SearchController.cs
   src/Sections/Humans.Users/Controllers/ProfileApiController.cs

@@ -607,6 +607,18 @@ internal static class PgcAccountNames
         return null;
     }
 
+    /// <summary>The PGC subgroup an account sits in: the first two digits of its number.</summary>
+    public static int Subgroup(int number)
+    {
+        var digits = Math.Abs(number).ToString(CultureInfo.InvariantCulture);
+        return int.Parse(digits[..Math.Min(2, digits.Length)], CultureInfo.InvariantCulture);
+    }
+
+    /// <summary>The subgroup's English name; where PYMES and the non-profit adaptation disagree, the PYMES one.
+    /// Null for a subgroup the chart does not name.</summary>
+    public static string? SubgroupName(int subgroup) =>
+        ByPrefix.TryGetValue(subgroup.ToString(CultureInfo.InvariantCulture), out var names) ? names[0].English : null;
+
     /// <summary>Case, accents, quote marks and repeated spaces don't make a name non-standard.</summary>
     internal static string Normalize(string s)
     {

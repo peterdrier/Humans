@@ -47,7 +47,7 @@ public class SectionCatalogTests
         issues.HasContracts.Should().BeTrue();
         issues.ServiceInterfaces.Should().Contain("IIssuesService");
         issues.Repositories.Should().Contain("IIssuesRepository");
-        issues.DependsOn.Should().Contain("Users");
+        issues.DependsOn.Should().Contain("Auth");
 
         // The issue-queue seam sits on the sections that own a queue, not on Issues.
         Build().Sections.Single(s => string.Equals(s.Name, "Tickets", StringComparison.Ordinal))

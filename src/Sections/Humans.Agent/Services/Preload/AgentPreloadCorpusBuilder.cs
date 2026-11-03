@@ -22,7 +22,7 @@ internal sealed class AgentPreloadCorpusBuilder(
     // that never appears in this index is one the agent has no reason to ask for.
     private static readonly IReadOnlyList<string> Tier2Sections =
         ["Onboarding", "Teams", "Consent", "Governance", "Shifts", "Tickets", "Users", "Auth",
-         "Budget", "Camps", "CityPlanning", "Campaigns", "Feedback", "GoogleIntegration",
+         "Budget", "Camps", "CityPlanning", "Campaigns", "GoogleIntegration",
          "Events", "Guide", "Store", "Scanner", "Gate", "Calendar", "Cantina", "Containers", "Issues"];
 
     private static readonly MemoryCacheEntryOptions HoldForever =

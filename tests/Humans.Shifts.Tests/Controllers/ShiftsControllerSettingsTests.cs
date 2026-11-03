@@ -137,7 +137,7 @@ public sealed class ShiftsControllerSettingsTests
     {
         var ctrl = new ShiftsController(
             _shiftMgmt, _burnSettings, _signupService, _volunteerTrackingService, _shiftView, _teamService,
-            _auditLogService, _userService, _localizer, _onboardingLocalizer, _clock, _builder, _logger);
+            _auditLogService, Substitute.For<IAuditViewerService>(), _userService, _localizer, _onboardingLocalizer, _clock, _builder, _logger);
         var actorId = Guid.NewGuid();
         _userService.GetUserInfoAsync(actorId, Arg.Any<CancellationToken>())
             .Returns(UserInfoStubHelpers.MakeUserInfo(actorId));

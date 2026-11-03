@@ -75,9 +75,6 @@ internal sealed class AgentPromptAssembler : IAgentPromptAssembler
         if (snapshot.OpenTicketIds.Count > 0)
             sb.AppendLine(string.Create(CultureInfo.InvariantCulture, $"OpenTickets: {snapshot.OpenTicketIds.Count}"));
 
-        if (snapshot.OpenFeedbackIds.Count > 0)
-            sb.AppendLine(string.Create(CultureInfo.InvariantCulture, $"OpenFeedback: {snapshot.OpenFeedbackIds.Count}"));
-
         if (snapshot.UpcomingShifts.Count > 0)
         {
             sb.AppendLine("UpcomingShifts:");

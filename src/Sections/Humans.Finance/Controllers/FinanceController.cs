@@ -13,7 +13,6 @@ using Humans.Users.Contracts;
 
 namespace Humans.Finance.Controllers;
 
-/// <summary>Budget's <c>BudgetAdminController</c> shares the <c>Finance</c> route prefix.</summary>
 [Authorize(Policy = FinancePolicies.Read)]
 [Route("Finance")]
 internal sealed class FinanceController(
@@ -25,6 +24,10 @@ internal sealed class FinanceController(
     CreditorMatchService creditorMatches,
     ILogger<FinanceController> logger) : HumansControllerBase(userService)
 {
+    /// <summary>Placeholder index until the Finance overview (balances, owed, budget vs actuals) exists.</summary>
+    [HttpGet("")]
+    public IActionResult Index() => View();
+
     [HttpGet("CashFlow")]
     public async Task<IActionResult> CashFlow(string period = "monthly")
     {
@@ -139,6 +142,37 @@ internal sealed class FinanceController(
     public async Task<IActionResult> ExpenseRecon(int? year, CancellationToken ct)
         => View(await holdedFinance.GetExpenseReconAsync(year, ct));
 
+    /// <summary>The "are you sure" step: the same refusals as generation, nothing written. Posted, not linked, because
+    /// the selection is a form.</summary>
+    [HttpPost("Sepa/Review")]
+    [Authorize(Policy = FinancePolicies.Manage)]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> ReviewSepa(
+        int[] selected, Dictionary<int, string> amounts, string maxPerTransfer, CancellationToken ct)
+    {
+        if (GetCurrentUserId() is not { } viewerUserId) return Challenge();
+        if (!ModelState.IsValid)
+        {
+            logger.LogWarning("Rejected malformed SEPA payout selection for actor {ActorUserId}", viewerUserId);
+            return BadRequest(ModelState);
+        }
+        if (ParseSepaForm(selected, amounts, maxPerTransfer) is not (var picked, var cap))
+            return RedirectToAction(nameof(Creditors));
+
+        var preview = await holdedConnector.PreviewSepaPayoutAsync(picked, cap, ct);
+        if (!preview.Succeeded)
+        {
+            SetError(preview.ErrorMessage!);
+            return RedirectToAction(nameof(Creditors));
+        }
+
+        var paid = preview.Lines.Select(l => l.SupplierAccountNum).ToHashSet();
+        var (rows, _) = await holdedFinance.ListCreditorAccountsAsync(ct);
+        var matches = await creditorMatches.GetForMemberAccountsAsync(
+            rows.Where(r => paid.Contains(r.SupplierAccountNum)), viewerUserId, ct);
+        return View("SepaReview", new SepaReviewVm(preview.Lines, matches, cap));
+    }
+
     /// <summary>Streams a pain.001.001.09 file. All-or-nothing: one bad amount refuses the batch, so the treasurer
     /// never uploads half of one.</summary>
     [HttpPost("Sepa/Generate")]
@@ -155,14 +189,30 @@ internal sealed class FinanceController(
             logger.LogWarning("Rejected malformed SEPA payout selection for actor {ActorUserId}", actorUserId);
             return BadRequest(ModelState);
         }
+        if (ParseSepaForm(selected, amounts, maxPerTransfer) is not (var picked, var cap))
+            return RedirectToAction(nameof(Creditors));
 
+        var result = await holdedConnector.GenerateSepaPayoutAsync(picked, cap, actorUserId, ct);
+        if (!result.Succeeded)
+        {
+            SetError(result.ErrorMessage!);
+            return RedirectToAction(nameof(Creditors));
+        }
+
+        return File(Encoding.UTF8.GetBytes(result.Xml!), "application/xml", result.FileName!);
+    }
+
+    /// <summary>Null, with the error set, when the cap is unusable.</summary>
+    private (List<SepaPayoutSelection> Picked, decimal Cap)? ParseSepaForm(
+        int[] selected, Dictionary<int, string> amounts, string maxPerTransfer)
+    {
         // Parsed invariantly like the amounts below. The posted value is authoritative; Sepa:MaxPayoutPerTransfer is
         // only the prefill. Grouping is forbidden so a comma decimal cannot silently become a larger amount.
         if (!decimal.TryParse(maxPerTransfer, NumberStyles.Number & ~NumberStyles.AllowThousands, CultureInfo.InvariantCulture, out var cap)
             || cap <= 0m)
         {
             SetError("The per-transfer cap must be a positive amount.");
-            return RedirectToAction(nameof(Creditors));
+            return null;
         }
 
         // A checkbox posts only when ticked, so `selected` is the batch, keyed like the amount boxes. Parsed
@@ -176,15 +226,7 @@ internal sealed class FinanceController(
                     ? amount
                     : 0m))
             .ToList();
-
-        var result = await holdedConnector.GenerateSepaPayoutAsync(picked, cap, actorUserId, ct);
-        if (!result.Succeeded)
-        {
-            SetError(result.ErrorMessage!);
-            return RedirectToAction(nameof(Creditors));
-        }
-
-        return File(Encoding.UTF8.GetBytes(result.Xml!), "application/xml", result.FileName!);
+        return (picked, cap);
     }
 
     /// <summary>Newest file first.</summary>

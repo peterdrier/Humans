@@ -28,6 +28,7 @@ internal sealed class ShiftsController(
     IShiftRowView shiftView,
     ITeamService teamService,
     IAuditLogService auditLogService,
+    IAuditViewerService auditViewer,
     IUserService userService,
     IStringLocalizer<ShiftsResource> localizer,
     // The name-gate message is Onboarding's copy, rendered from here.
@@ -463,7 +464,7 @@ internal sealed class ShiftsController(
     public async Task<IActionResult> OrphanSignups(CancellationToken ct)
     {
         var allSignups = await signupService.GetAllForOrphanScanAsync(ct);
-        var auditedIds = await auditLogService.GetEntityIdsForEntityTypeActionsAsync(
+        var auditedIds = await auditViewer.GetEntityIdsForEntityTypeActionsAsync(
             nameof(ShiftSignup),
             [ShiftsAuditActions.ShiftSignupCreated, ShiftsAuditActions.ShiftSignupVoluntold, ShiftsAuditActions.ShiftSignupConfirmed],
             ct);

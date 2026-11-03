@@ -25,6 +25,7 @@ internal sealed class IssuesService(
     INotificationEmitter notifications,
     INotificationAutoResolve notificationInbox,
     IAuditLogService audit,
+    IAuditViewerService auditViewer,
     IClock clock,
     IFileStorage fileStorage,
     ISectionCatalog sectionCatalog,
@@ -333,17 +334,17 @@ internal sealed class IssuesService(
 
         // IssueCreated is written only by the machine path, where filer and reporter can differ, so it is the one
         // place the thread can say who actually filed it.
-        var auditEntries = await audit.GetFilteredEntriesAsync(
+        var auditEntries = await auditViewer.GetFilteredAsync(
             entityType: AuditEntityTypes.Issue,
             entityId: issueId,
             userId: null,
             actions:
             [
-                IssuesAuditActions.IssueCreated,
-                IssuesAuditActions.IssueStatusChanged,
-                IssuesAuditActions.IssueAssigneeChanged,
-                IssuesAuditActions.IssueSectionChanged,
-                IssuesAuditActions.IssueGitHubLinked
+                IssuesAuditActions.IssueCreated.Name,
+                IssuesAuditActions.IssueStatusChanged.Name,
+                IssuesAuditActions.IssueAssigneeChanged.Name,
+                IssuesAuditActions.IssueSectionChanged.Name,
+                IssuesAuditActions.IssueGitHubLinked.Name
             ],
             limit: int.MaxValue,
             ct: ct);
@@ -375,7 +376,7 @@ internal sealed class IssuesService(
             a.ActorUserId.HasValue && actorUsers.TryGetValue(a.ActorUserId.Value, out var u)
                 ? u.BurnerName
                 : null,
-            a.Action,
+            a.Action.Name,
             a.Description));
 
         return commentEvents

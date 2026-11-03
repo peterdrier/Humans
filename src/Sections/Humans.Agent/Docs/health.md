@@ -76,9 +76,8 @@ that enforces each:
 
 - **Rate-limit persistence (Phase 2).** Counters are in-memory by design; a persisted
   `agent_rate_limits` table is reserved space, built only if abuse traffic warrants it.
-- **Legacy handoff columns.** `HandedOffToFeedbackId` and Feedback's `AgentConversationId`
-  exist only for historical rows from the superseded auto-create flow; readers tolerate them,
-  nothing new writes them.
+- **Legacy handoff column.** `HandedOffToFeedbackId` exists only for historical rows from the
+  superseded auto-create flow; Feedback is removed, so it points at nothing and nothing writes it.
 
 ## Deliberately not done
 

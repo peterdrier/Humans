@@ -102,7 +102,6 @@ Reached from the Roles item of the Users admin sidebar group and the Role Assign
 | TeamsAdmin | Teams | Manage all teams, approve membership, assign leads, configure Google Group prefixes system-wide |
 | CampsAdmin | Camps (was `CampAdmin`) | Manage camps, approve/reject season registrations, configure camp settings system-wide |
 | TicketsAdmin | Tickets (was `TicketAdmin`) | Manage ticket vendor integration, trigger syncs, generate discount codes, export ticket data |
-| FeedbackAdmin | Feedback | No privileges — Feedback is `AdminOnly`. Kept assignable; still admits the holder to the `/Admin` shell via `AnyAdminRole` |
 | FinanceAdmin | Finance | Full access to Finance section (budgets, audit log) |
 | ShiftsNoInfo | Shifts (was `NoInfoAdmin`) | Approve/voluntell shift signups (cannot create/edit shifts); access to volunteer-event-profile medical data |
 | StoreAdmin | Store | Store-domain superset: catalog, orders, payments, invoices, treasury sync; FinanceAdmin retains parallel access for accounting workflows |

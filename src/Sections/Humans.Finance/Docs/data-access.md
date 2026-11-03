@@ -119,10 +119,11 @@ existing `PayPurchaseDocumentAsync` / `ListPurchaseDocumentsAsync`. Journal rema
 through `IExpenseHoldedBookingService.GetHoldedBookingsAsync` (Expenses, DTOs only) and
 deletes through `IHoldedClient.DeletePurchaseDocumentAsync` / `DeleteContactAsync`.
 `GetExpenseReconAsync` (public, `IHoldedFinanceService`; `/Finance/ExpenseRecon`, the
-`/Finance/Creditors` banner, `ExpenseReconJob` and Backdoor) reads `HoldedDocSyncStates`,
-`HoldedExpenseDocs`, `HoldedCreditorContacts` and `SepaPayoutTransfers`, plus
-`IExpenseHoldedBookingService.GetHoldedReconLinesAsync`, `IHoldedService.GetAccountBalancesAsync`
-and `IUserService.GetUserInfosAsync`. **No `IHoldedClient` call, no write.**
+`/Finance/Creditors` banner, `ExpenseReconJob` and Backdoor) reads `HoldedCreditorContacts` and `SepaPayoutTransfers`, plus
+`IExpenseHoldedBookingService.GetHoldedReconLinesAsync`, `IHoldedService.GetLedgerSyncedAtAsync`,
+`GetAccountBalancesAsync` and `GetLedgerLinesAsync` (every creditor-range account), the cached `IHoldedClient.ListContactsAsync`
+that `/Finance/Creditors` also reads (which account each bound contact is on), and
+`IUserService.GetUserInfosAsync`. **No write.**
 
 `ISepaBankBooking.RunAsync` (`Humans.Finance.Contracts`, public — the Hangfire
 job needs a public concrete type but must not take the internal

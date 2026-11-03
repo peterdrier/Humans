@@ -304,12 +304,6 @@
   <data name="LinkPreview_Expenses_Description" xml:space="preserve">
     <value>Richieste di spesa e rimborsi.</value>
   </data>
-  <data name="LinkPreview_Feedback_Title" xml:space="preserve">
-    <value>Feedback</value>
-  </data>
-  <data name="LinkPreview_Feedback_Description" xml:space="preserve">
-    <value>Invia un feedback su Humans.</value>
-  </data>
   <data name="LinkPreview_Finance_Title" xml:space="preserve">
     <value>Finanze</value>
   </data>

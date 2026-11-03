@@ -30,7 +30,7 @@ The goal is to identify cross-section table overlap, duplicated caching, and cac
 > | `GovernanceDbContext` | `Applications`, `ApplicationStateHistories`, `BoardVotes`, `AssemblyVotes`, `AssemblyVoteOptions`, `AssemblyVoteRosterEntries`, `AssemblyBallots`, `AssemblyBallotHistories`, `AssemblyVotePeeks`, `governance_membership_tiers` (own project, `src/Sections/Humans.Governance/`) |
 > | `CampaignsDbContext` | `Campaigns`, `CampaignCodes`, `CampaignGrants` (own project, `src/Sections/Humans.Campaigns/`) |
 > | `GoogleIntegrationDbContext` | `GoogleResources`, `GoogleSyncOutboxEvents`, `SyncServiceSettings`, `GoogleSyncLog`, `google_workspace_identities` (own project, `src/Sections/Humans.GoogleIntegration/`; owns no table beyond these — see [Monitor](../../src/Sections/Humans.Monitor/Docs/data-access.md) for the related horizontal section) |
-> | `FeedbackDbContext` | `FeedbackReports`, `FeedbackMessages` (own project, `src/Sections/Humans.Feedback/`) |
+> | `FeedbackDbContext` | none: an empty stub that carries the migration dropping Feedback's tables (`src/Sections/Humans.Feedback/`) |
 > | `CityPlanningDbContext` | `CityPlanningSettings`, `CampPolygons`, `CampPolygonHistories` (own project, `src/Sections/Humans.CityPlanning/`) |
 > | `BudgetDbContext` | `BudgetYears`, `BudgetGroups`, `BudgetCategories`, `BudgetLineItems`, `BudgetAuditLogs`, `TicketingProjections` (own project, `src/Sections/Humans.Budget/`) |
 > | `CampsDbContext` | `Camps`, `CampSeasons`, `CampHistoricalNames`, `CampImages`, `CampSettings`, `CampMembers`, `CampRoleDefinitions`, `CampRoleAssignments` (own project, `src/Sections/Humans.Camps/`) |
@@ -339,8 +339,8 @@ Every table is owned by exactly one repository; there are no HUM0025
 16. **Backdoor is a key-authed machine API, not a table consumer.** The
     `/api/backdoor/*` controllers are thin orchestrators: each calls exactly
     one other section's read/triage contracts interface —
-    `IAgentTranscriptRead` (Agent), `IIssueTriage` (Issues), `IFeedbackTriage`
-    (Feedback), `ISurveyAnalysisRead` (Surveys) — and formats the result.
+    `IAgentTranscriptRead` (Agent), `IIssueTriage` (Issues),
+    `ISurveyAnalysisRead` (Surveys) — and formats the result.
     `IBackdoorApiKeyRepository` is the only repository Backdoor's own service
     touches, scoped to its one table, `backdoor_api_keys`. The four consumed
     interfaces exist solely for this machine surface and carry no other
@@ -363,7 +363,6 @@ separately below the key table.
 
 | Key | TTL | Type | Populated By | Invalidated By |
 |-----|-----|------|-------------|----------------|
-| `FeedbackBadgeCount` | 2 min | Static | **FeedbackService** (`GetActionableCountAsync`) | FeedbackService (evicts its own key) |
 | `NotificationMeters` | 2 min | Static | NotificationMeterProvider | TTL only |
 | `HoldedContacts` | 2 min | Static | **Finance** `Service` (Holded contact list) | expiry only |
 | `NavBadge:Voting:{userId}` | 2 min | Per-User | **ApplicationDecisionService** (`GetUnvotedApplicationCountAsync`) | ApplicationDecisionService (evicts its own key) |
@@ -402,8 +401,8 @@ separately below the key table.
 
 ### Cache Issues / Notes
 
-1. **Nav-badge caches are owned by services.** `FeedbackBadgeCount` is populated by
-   `FeedbackService`, and `NavBadge:Voting:{userId}` by `ApplicationDecisionService`.
+1. **Nav-badge caches are owned by services.** `NavBadge:Voting:{userId}` is populated by
+   `ApplicationDecisionService`.
    Notifications reads unread recipient counts and Issues reads actionable counts directly, without badge caches.
 
 2. **Ticket user holdings are tracked, not `IMemoryCache` keys.**
@@ -445,7 +444,7 @@ goes through the owning section's service interface per design-rules §2c.
 itself owns no DbContext). `AdminController`'s direct DB reads go behind
 `IAdminDatabaseDiagnosticsService`. All web
 controllers (Email, Google, Profile, Board, Budget, CampAdmin, Guest,
-Unsubscribe, TeamAdmin, ShiftAdmin, Calendar, Feedback, Issues, Tickets,
+Unsubscribe, TeamAdmin, ShiftAdmin, Calendar, Issues, Tickets,
 Finance, DevLogin, etc.) go entirely through service interfaces.
 
 ### View Components (cache populators)
@@ -478,5 +477,4 @@ Controllers and components that touch `IMemoryCache` directly.
 
 The §15 work continues to push cache populators into the owning service
 behind transparent decorators. No view component injects `IMemoryCache`; nav
-badge counts are owned by `FeedbackService` (`FeedbackBadgeCount`) and
-`ApplicationDecisionService` (`NavBadge:Voting:{userId}`).
+badge counts are owned by `ApplicationDecisionService` (`NavBadge:Voting:{userId}`).

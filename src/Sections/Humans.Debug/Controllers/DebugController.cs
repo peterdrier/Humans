@@ -317,8 +317,11 @@ internal sealed class DebugController(
     [HttpGet("Translations")]
     public IActionResult Translations(
         [FromServices] IStringLocalizer<SharedResource> shared,
-        [FromServices] IStringLocalizerFactory localizerFactory) =>
-        View(TranslationsPageModelBuilder.Build(shared, localizerFactory, sectionCatalog));
+        [FromServices] IStringLocalizerFactory localizerFactory,
+        string? set = null,
+        string? q = null,
+        bool missing = false) =>
+        View(TranslationsPageModelBuilder.Build(shared, localizerFactory, sectionCatalog, set, q, missing));
 
     private static string StatusCategory(int statusCode) => statusCode switch
     {
