@@ -163,16 +163,9 @@ internal sealed class JoinTeamViewModel
 internal sealed class TeamJoinRequestViewModel
 {
     public Guid Id { get; set; }
-    public Guid TeamId { get; set; }
-    public string TeamName { get; set; } = string.Empty;
     public Guid UserId { get; set; }
-    public string UserEmail { get; set; } = string.Empty;
-    public TeamJoinRequestStatus Status { get; set; }
     public string? Message { get; set; }
     public DateTime RequestedAt { get; set; }
-    public DateTime? ResolvedAt { get; set; }
-    public string? ReviewedByName { get; set; }
-    public string? ReviewNotes { get; set; }
 }
 
 internal sealed class CreateTeamViewModel : TeamFormViewModelBase;
@@ -251,8 +244,6 @@ internal sealed class TeamMembersViewModel
 
     public string? ParentDepartmentName { get; set; }
 
-    public string? ParentDepartmentSlug { get; set; }
-
     public bool IsSensitive { get; set; }
 
     /// <summary>For the audit preview in the sensitive-team modal.</summary>
@@ -279,8 +270,6 @@ internal sealed class BirthdayEntryViewModel
 {
     public Guid UserId { get; set; }
     public int DayOfMonth { get; set; }
-    public int Month { get; set; }
-    public string MonthName { get; set; } = string.Empty;
     public List<string> TeamNames { get; set; } = [];
 }
 

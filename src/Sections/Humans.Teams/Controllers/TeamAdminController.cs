@@ -151,11 +151,7 @@ internal sealed class TeamAdminController(
             .Select(r => new TeamJoinRequestViewModel
             {
                 Id = r.Id,
-                TeamId = r.TeamId,
-                TeamName = team.Name,
                 UserId = r.UserId,
-                UserEmail = r.UserEmail ?? "",
-                Status = r.Status,
                 Message = r.Message,
                 RequestedAt = r.RequestedAt.ToDateTimeUtc()
             }).ToList();
@@ -165,12 +161,10 @@ internal sealed class TeamAdminController(
 
         var parentDepartmentResources = new List<GoogleResourceSnapshot>();
         string? parentDepartmentName = null;
-        string? parentDepartmentSlug = null;
         if (team.ParentTeamId is { } parentTeamId &&
             await _teamService.GetTeamAsync(parentTeamId) is { } parentTeam)
         {
             parentDepartmentName = parentTeam.Name;
-            parentDepartmentSlug = parentTeam.CustomSlug ?? parentTeam.Slug;
             var allParentResources = await teamResourceService.GetTeamResourcesAsync(parentTeam.Id);
             parentDepartmentResources = allParentResources.Where(r => r.IsActive).OrderBy(r => r.ResourceType).ThenBy(r => r.Name, StringComparer.Ordinal).ToList();
         }
@@ -192,7 +186,6 @@ internal sealed class TeamAdminController(
             TeamResources = teamResources.Select(MapResourceAccess).ToList(),
             ParentDepartmentResources = parentDepartmentResources.Select(MapResourceAccess).ToList(),
             ParentDepartmentName = parentDepartmentName,
-            ParentDepartmentSlug = parentDepartmentSlug,
             IsSensitive = team.IsSensitive,
             ActorUserId = user.Id
         };

@@ -279,8 +279,6 @@ internal sealed class TeamController(
             {
                 UserId = p.UserId,
                 DayOfMonth = p.Day,
-                Month = p.Month,
-                MonthName = monthName,
                 TeamNames = teamsByUser.GetValueOrDefault(p.UserId, [])
             }).ToList()
         };
