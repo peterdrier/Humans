@@ -92,7 +92,7 @@ public sealed class ExpensesControllerTests
             var model = result.Should().BeOfType<ViewResult>().Which.Model;
             if (model is ExpenseLineEditViewModel line) line.CanEditLines.Should().BeFalse();
             if (model is ExpenseLineProofsViewModel proofs) proofs.CanEditLines.Should().BeFalse();
-            if (model is ExpenseIbanViewModel iban) iban.MemberName.Should().BeNull();
+            if (model is ExpenseIbanViewModel iban) iban.OnBehalfOfUserId.Should().BeNull();
         }
         else
             result.Should().BeOfType<ForbidResult>();
@@ -322,6 +322,53 @@ public sealed class ExpensesControllerTests
             else
                 controller.TempData[TempDataKeys.ErrorMessage].Should().Be(translated);
         }
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task Iban_AnotherMembersMissingProfileStillProducesOnBehalfGuidance(bool post)
+    {
+        var actorId = Guid.NewGuid();
+        var memberId = Guid.NewGuid();
+        var reportId = Guid.NewGuid();
+        var users = Substitute.For<IUserService>();
+        users.GetUserInfoAsync(actorId, Arg.Any<CancellationToken>()).Returns(
+            UserInfo.Create(new User { Id = actorId }, [], [], null));
+        var reports = Substitute.For<IExpenseReportManagement>();
+        reports.GetAsync(reportId, Arg.Any<CancellationToken>()).Returns(new ExpenseReportDto
+        {
+            Id = reportId, SubmitterUserId = memberId, HoldedAccountNumber = 0,
+            BudgetCategoryId = null, BudgetYearId = null,
+            Status = ExpenseReportStatus.Draft, PayeeName = "", PayeeIban = "", Total = 0,
+            CreatedAt = default, UpdatedAt = default, Lines = [],
+        });
+        const string messageKey = "Expenses_Iban_InvalidFormat";
+        reports.SaveSubmitterIbanWithResultAsync(reportId, actorId, Arg.Any<string?>())
+            .Returns(new ExpenseIbanSaveResult(false, true, messageKey));
+        var localizer = Substitute.For<IStringLocalizer<ExpensesResource>>();
+        localizer[messageKey].Returns(new LocalizedString(messageKey, "Invalid IBAN"));
+        var authorization = Substitute.For<IAuthorizationService>();
+        authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(), Arg.Any<IEnumerable<IAuthorizationRequirement>>())
+            .Returns(AuthorizationResult.Success());
+        var http = new DefaultHttpContext
+        {
+            User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, actorId.ToString())], "test")),
+        };
+        var controller = new ExpensesController(users, reports, Substitute.For<IBudgetService>(),
+            Substitute.For<IHoldedFinanceService>(), Substitute.For<IFinanceService>(), Substitute.For<IPreapprovalService>(),
+            authorization, TestClock, NullLogger<ExpensesController>.Instance, localizer)
+        {
+            ControllerContext = new ControllerContext { HttpContext = http },
+            TempData = new TempDataDictionary(http, Substitute.For<ITempDataProvider>()),
+        };
+
+        var result = post ? await controller.Iban(reportId, new ExpenseIbanViewModel { OnBehalfOfUserId = actorId })
+            : await controller.Iban(reportId);
+
+        var model = result.Should().BeOfType<ViewResult>().Which.Model.Should().BeOfType<ExpenseIbanViewModel>().Which;
+        model.OnBehalfOfUserId.Should().Be(memberId);
+        await users.DidNotReceive().GetUserInfoAsync(memberId, Arg.Any<CancellationToken>());
     }
 
     [HumansFact]

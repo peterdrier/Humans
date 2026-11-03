@@ -337,7 +337,7 @@ public sealed partial class ExpenseReportServiceTests
     }
 
     [HumansFact]
-    public async Task Review_LeavesMissingAndBlankSubmitterNamesToTheLocalizedViewFallback()
+    public async Task Review_PassesSubmitterIdsToTheViewWithoutBulkNameHydration()
     {
         var (year, category) = SetupActiveYear();
         var viewerId = Guid.NewGuid();
@@ -348,12 +348,6 @@ public sealed partial class ExpenseReportServiceTests
             await SeedReportWithStatusAsync(Guid.NewGuid(), userId, category.Id, year.Id, ExpenseReportStatus.Submitted);
         _userService.GetUserInfoAsync(viewerId, Arg.Any<CancellationToken>()).Returns(
             UserInfo.Create(new User { Id = viewerId }, [], [], null));
-        _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>()).Returns(
-            new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(new Dictionary<Guid, UserInfo>
-            {
-                [namedId] = UserInfo.Create(new User { Id = namedId, BurnerName = "Known member" }, [], [], null),
-                [blankId] = UserInfo.Create(new User { Id = blankId, BurnerName = " " }, [], [], null),
-            }));
         var authorization = Substitute.For<IAuthorizationService>();
         authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(), Arg.Any<string>())
             .Returns(AuthorizationResult.Success());
@@ -373,7 +367,8 @@ public sealed partial class ExpenseReportServiceTests
         var model = (await controller.Review()).Should().BeOfType<ViewResult>().Subject.Model
             .Should().BeOfType<ExpenseReviewViewModel>().Subject;
         model.Reports.Should().HaveCount(3);
-        model.SubmitterNames.Should().ContainSingle().Which.Should().Be(new KeyValuePair<Guid, string>(namedId, "Known member"));
+        model.Reports.Select(r => r.SubmitterUserId).Should().BeEquivalentTo([namedId, blankId, missingId]);
+        await _userService.DidNotReceiveWithAnyArgs().GetUserInfosAsync(default!, default);
         controller.TempData.Should().BeEmpty();
     }
 

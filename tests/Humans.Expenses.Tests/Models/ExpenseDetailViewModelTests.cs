@@ -39,7 +39,6 @@ public class ExpenseDetailViewModelTests
         new()
         {
             CanSeeNames = canSeeNames,
-            SubmitterBurnerName = "Ada B",
             SubmitterLegalName = "Ada Lovelace",
             Report = report,
             BookingLabel = "Ops / Fuel",
@@ -83,7 +82,7 @@ public class ExpenseDetailViewModelTests
     {
         var vm = Vm(Report(), isSubmitter: false, isFinanceAdmin: false, canSeeNames: true);
 
-        vm.VisibleBurnerName.Should().Be("Ada B");
+        vm.VisibleSubmitterUserId.Should().Be(vm.Report.SubmitterUserId);
         vm.VisibleLegalName.Should().Be("Ada Lovelace");
         vm.PayeeMaskedIban.Should().BeNull();
     }
@@ -93,7 +92,7 @@ public class ExpenseDetailViewModelTests
     {
         var vm = Vm(Report(), isSubmitter: true, isFinanceAdmin: false, canSeeNames: true);
 
-        vm.VisibleBurnerName.Should().Be("Ada B");
+        vm.VisibleSubmitterUserId.Should().Be(vm.Report.SubmitterUserId);
         vm.VisibleLegalName.Should().Be("Ada Lovelace");
         vm.PayeeMaskedIban.Should().NotBeNullOrEmpty().And.NotContain("0200051332");
     }
@@ -103,7 +102,7 @@ public class ExpenseDetailViewModelTests
     {
         var vm = Vm(Report(), isSubmitter: false, isFinanceAdmin: false);
 
-        vm.VisibleBurnerName.Should().BeNull();
+        vm.VisibleSubmitterUserId.Should().BeNull();
         vm.VisibleLegalName.Should().BeNull();
         vm.PayeeMaskedIban.Should().BeNull();
     }

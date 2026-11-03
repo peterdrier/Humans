@@ -1,5 +1,6 @@
 @model Humans.Expenses.Models.ExpenseReviewViewModel
 @using Microsoft.AspNetCore.Html
+@using Humans.Base.ViewComponents
 @{
     ViewData["Title"] = Localizer["Expenses_ReviewQueueTitle"].Value;
     ViewData["BodyClass"] = "page-wide";
@@ -30,9 +31,17 @@
         <ul class="mb-0 mt-2">
             @foreach (var failed in Model.Reports.Where(r => Model.FailedHoldedPushReportIds.Contains(r.Id)))
             {
+                var submitter = await Component.InvokeAsync(typeof(HumanViewComponent), new
+                {
+                    userId = failed.SubmitterUserId,
+                    link = HumanLink.None,
+                });
+                using var submitterWriter = new System.IO.StringWriter();
+                submitter.WriteTo(submitterWriter, System.Text.Encodings.Web.HtmlEncoder.Default);
+                var submitterHtml = new HtmlString(submitterWriter.ToString().Trim());
                 <li>
                     <a asp-action="Detail" asp-route-id="@failed.Id" class="alert-link">@failed.Id.ToString()[..8]…</a>
-                    — @(Model.SubmitterNames.TryGetValue(failed.SubmitterUserId, out var failedName) ? failedName : SharedLocalizer["Common_Unknown"].Value),
+                    — @submitterHtml,
                     @failed.Payable.ToEuro()
                 </li>
             }
@@ -50,6 +59,8 @@ else
 {
     Func<ExpenseReportDto, IHtmlContent> reportCell =
         @<text><a asp-action="Detail" asp-route-id="@item.Id">@item.Id.ToString()[..8]…</a></text>;
+    Func<ExpenseReportDto, IHtmlContent> submitterCell =
+        @<text><vc:human user-id="@item.SubmitterUserId" link="None" /></text>;
     Func<ExpenseReportDto, IHtmlContent> creditorCell =
         @<text>@if (item.HoldedSupplierAccountNum is { } accountNum)
         {
@@ -93,7 +104,7 @@ else
             : Model.IsRevoked(r.Id) ? "table-warning"
             : null);
         var table = builder
-            .Column(Localizer["Expenses_ColSubmittedBy"].Value, r => Model.SubmitterNames.TryGetValue(r.SubmitterUserId, out var name) ? name : SharedLocalizer["Common_Unknown"].Value)
+            .Template(Localizer["Expenses_ColSubmittedBy"].Value, submitterCell)
             .Column(Localizer["Expenses_HoldedAccount"].Value, r => Model.BookingLabels.TryGetValue(r.Id, out var booking) ? booking : SharedLocalizer["Common_Unknown"].Value, c => c.SelectFilter())
             .Column(Localizer["Expenses_ColSubject"].Value, r => r.Note is { Length: > 80 } n
                 ? n[..(char.IsHighSurrogate(n[79]) && char.IsLowSurrogate(n[80]) ? 79 : 80)] + "…" : r.Note)

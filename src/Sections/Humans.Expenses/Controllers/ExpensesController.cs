@@ -245,7 +245,6 @@ internal sealed class ExpensesController(
                 CanWithdraw = await AllowsAsync(report, ExpenseReportOperation.Withdraw),
                 IsSubmitter = isSubmitter,
                 CanSeeNames = true,
-                SubmitterBurnerName = string.IsNullOrWhiteSpace(submitterInfo?.BurnerName) ? null : submitterInfo!.BurnerName,
                 SubmitterLegalName = !string.IsNullOrWhiteSpace(report.PayeeName)
                     ? report.PayeeName
                     : (profileLegalName.Length > 0 ? profileLegalName : null),
@@ -566,9 +565,7 @@ internal sealed class ExpensesController(
                 HasIban = iban.HasIban,
                 MaskedIban = iban.MaskedIban,
                 ReportStatus = report.Status,
-                MemberName = user.AllUserIds.Contains(report.SubmitterUserId)
-                    ? null
-                    : (await _userService.GetUserInfoAsync(report.SubmitterUserId, HttpContext.RequestAborted))?.BurnerName,
+                OnBehalfOfUserId = user.AllUserIds.Contains(report.SubmitterUserId) ? null : report.SubmitterUserId,
             };
             return View(model);
         }
@@ -606,9 +603,7 @@ internal sealed class ExpensesController(
         model.HasIban = iban.HasIban;
         model.MaskedIban = iban.MaskedIban;
         model.ReportStatus = report.Status;
-        model.MemberName = user.AllUserIds.Contains(report.SubmitterUserId)
-            ? null
-            : (await _userService.GetUserInfoAsync(report.SubmitterUserId))?.BurnerName;
+        model.OnBehalfOfUserId = user.AllUserIds.Contains(report.SubmitterUserId) ? null : report.SubmitterUserId;
         return View(model);
     }
 
@@ -741,11 +736,9 @@ internal sealed class ExpensesController(
             var reports = (await service.GetReviewQueueAsync(user.Id, isFinanceAdmin, HttpContext.RequestAborted))
                 .OrderByDescending(r => r.SubmittedAt ?? r.CreatedAt)
                 .ToList();
-            var submitterNames = await ResolveSubmitterNamesAsync(reports, HttpContext.RequestAborted);
             return View(new ExpenseReviewViewModel
             {
                 Reports = reports,
-                SubmitterNames = submitterNames,
                 BookingLabels = await ResolveBookingLabelsAsync(reports, HttpContext.RequestAborted),
                 Grants = await ResolveGrantsAsync(reports, HttpContext.RequestAborted),
                 FailedHoldedPushReportIds = (await service.GetFailedHoldedPushReportIdsAsync(
@@ -890,18 +883,6 @@ internal sealed class ExpensesController(
     /// <summary>The submitter keeps this at any status (it is their own profile), on top of the Edit grant.</summary>
     private async Task<bool> CanSetReportIbanAsync(ExpenseReportDto report, UserInfo user) =>
         user.AllUserIds.Contains(report.SubmitterUserId) || await AllowsAsync(report, ExpenseReportOperation.Edit);
-
-    private async Task<IReadOnlyDictionary<Guid, string>> ResolveSubmitterNamesAsync(
-        IReadOnlyCollection<ExpenseReportDto> reports, CancellationToken ct)
-    {
-        var ids = reports.Select(r => r.SubmitterUserId).Distinct().ToList();
-        if (ids.Count == 0) return new Dictionary<Guid, string>();
-
-        var users = await _userService.GetUserInfosAsync(ids, ct);
-        return ids
-            .Where(id => users.TryGetValue(id, out var user) && !string.IsNullOrWhiteSpace(user.BurnerName))
-            .ToDictionary(id => id, id => users[id].BurnerName);
-    }
 
     /// <summary>The account's label (retired accounts included, so an old report still reads), or for reports that
     /// predate the account column, their category in the booked year.</summary>
