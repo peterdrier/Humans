@@ -130,12 +130,6 @@ internal sealed class CampSeasonDetailViewModel
     public bool IsNameLocked { get; set; }
 }
 
-internal sealed class CampLeadViewModel
-{
-    public Guid LeadId { get; set; }
-    public Guid UserId { get; set; }
-}
-
 internal class CampRegisterViewModel
 {
     [Required(ErrorMessage = "Validation_Required")]
@@ -288,7 +282,7 @@ internal sealed class CampSummaryRowViewModel
     public string Zone { get; set; } = string.Empty;
     public string SpaceRequirement { get; set; } = string.Empty;
     public int YearsParticipating { get; set; }
-    public List<CampLeadViewModel> Leads { get; set; } = [];
+    public List<Guid> LeadUserIds { get; set; } = [];
     /// <summary>EE slot cap for this season (CampAdmin-managed).</summary>
     public int EeSlotCount { get; set; }
     /// <summary>Count of Active members with HasEarlyEntry=true for this season.</summary>
