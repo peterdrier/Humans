@@ -28,6 +28,78 @@ namespace Humans.Issues.Tests.Controllers;
 public sealed class IssuesControllerTests
 {
     [HumansTheory]
+    [InlineData("submit", false)]
+    [InlineData("comment", false)]
+    [InlineData("comment", true)]
+    [InlineData("status", false)]
+    [InlineData("status", true)]
+    [InlineData("assignee", false)]
+    [InlineData("assignee", true)]
+    [InlineData("section", false)]
+    [InlineData("section", true)]
+    [InlineData("github", false)]
+    [InlineData("github", true)]
+    public async Task MutationPreflight_CancelsAccountAndIssueReads(string action, bool afterAccount)
+    {
+        using var request = new CancellationTokenSource();
+        var actorId = Guid.NewGuid();
+        var issueId = Guid.NewGuid();
+        var users = Substitute.For<IUserService>();
+        async ValueTask<UserInfo?> ReadUserAsync(CancellationToken ct)
+        {
+            ct.ThrowIfCancellationRequested();
+            if (afterAccount) await request.CancelAsync();
+            return UserInfo.Create(new User { Id = actorId }, [], [], null);
+        }
+        users.GetUserInfoAsync(actorId, Arg.Any<CancellationToken>()).Returns(call => ReadUserAsync(call.Arg<CancellationToken>()));
+        var issues = Substitute.For<IIssuesService>();
+        issues.GetIssueByIdAsync(issueId, Arg.Any<IssueViewer>(), Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+            return new IssueDetail(issueId, IssueStatus.Open, default, null, "Title", "Details",
+                null, null, null, null, actorId, null, null, null, null, default, default, default, 0);
+        });
+        issues.SubmitIssueAsync(default, default, default!, default!, default, default, default, default, default)
+            .ReturnsForAnyArgs(new IssueSubmissionResult(new Issue { Id = issueId }));
+        issues.PostCommentAsync(default, default!, default, default!)
+            .ReturnsForAnyArgs(new IssueCommentResult(null));
+        issues.UpdateStatusAsync(default, default!, default, default).ReturnsForAnyArgs(new IssueMutationResult(true, false, null));
+        issues.UpdateAssigneeAsync(default, default!, default, default).ReturnsForAnyArgs(new IssueMutationResult(true, false, null));
+        issues.UpdateSectionAsync(default, default!, default, default).ReturnsForAnyArgs(new IssueMutationResult(true, false, null));
+        issues.SetGitHubIssueNumberAsync(default, default!, default, default).ReturnsForAnyArgs(new IssueMutationResult(true, false, null));
+        var authorization = Substitute.For<IAuthorizationService>();
+        authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object>(), Arg.Any<IEnumerable<IAuthorizationRequirement>>())
+            .Returns(AuthorizationResult.Success());
+        var localizer = Substitute.For<IStringLocalizer<IssuesResource>>();
+        localizer[Arg.Any<string>()].Returns(call => new LocalizedString(call.Arg<string>(), call.Arg<string>()));
+        var http = new DefaultHttpContext
+        {
+            RequestAborted = request.Token,
+            User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, actorId.ToString())], "test"))
+        };
+        var controller = new IssuesController(issues, authorization, users, new IssueSectionRouting([]),
+            localizer, NullLogger<IssuesController>.Instance)
+        {
+            ControllerContext = new ControllerContext { HttpContext = http },
+            TempData = new TempDataDictionary(http, Substitute.For<ITempDataProvider>()),
+            Url = Substitute.For<IUrlHelper>()
+        };
+        if (!afterAccount) await request.CancelAsync();
+        Func<Task<IActionResult>> run = () => action switch
+        {
+            "submit" => controller.Submit(new SubmitIssueViewModel { Title = "Title", Description = "Details" }),
+            "comment" => controller.PostComment(issueId, new PostIssueCommentModel { Content = "Reply" }),
+            "status" => controller.UpdateStatus(issueId, new UpdateIssueStatusModel { Status = IssueStatus.Triage }),
+            "assignee" => controller.UpdateAssignee(issueId, new UpdateIssueAssigneeModel()),
+            "section" => controller.UpdateSection(issueId, new UpdateIssueSectionModel()),
+            _ => controller.SetGitHubIssue(issueId, new SetIssueGitHubIssueModel())
+        };
+        await run.Should().ThrowAsync<OperationCanceledException>();
+        issues.ReceivedCalls().Should().OnlyContain(call =>
+            string.Equals(call.GetMethodInfo().Name, nameof(IIssuesService.GetIssueByIdAsync), StringComparison.Ordinal));
+    }
+
+    [HumansTheory]
     [InlineData(false)]
     [InlineData(true)]
     public async Task Detail_CarriesIdentityIds_WithoutLoadingDisplayUsers(bool partial)

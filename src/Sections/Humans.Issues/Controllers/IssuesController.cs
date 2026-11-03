@@ -138,7 +138,7 @@ internal sealed class IssuesController(
     {
         var isAjax = Request.Headers.XRequestedWith == "XMLHttpRequest";
 
-        var (userMissing, user) = await RequireCurrentUserAsync();
+        var (userMissing, user) = await RequireCurrentUserAsync(HttpContext.RequestAborted);
         if (userMissing is not null)
         {
             return isAjax ? Unauthorized() : userMissing;
@@ -286,12 +286,12 @@ internal sealed class IssuesController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> PostComment(Guid id, PostIssueCommentModel model)
     {
-        var (userMissing, user) = await RequireCurrentUserAsync();
+        var (userMissing, user) = await RequireCurrentUserAsync(HttpContext.RequestAborted);
         if (userMissing is not null) return userMissing;
 
         var viewer = ViewerFor(user.Id);
         // Null for gone and for out of reach alike: only a handler or the reporter sees an issue.
-        var issue = await issues.GetIssueByIdAsync(id, viewer);
+        var issue = await issues.GetIssueByIdAsync(id, viewer, HttpContext.RequestAborted);
         if (issue is null) return NotFound();
 
         var canHandle = (await authorization.AuthorizeAsync(User, issue, IssuesOperationRequirement.Handle)).Succeeded;
@@ -326,11 +326,11 @@ internal sealed class IssuesController(
 
     private async Task<(IActionResult? Error, IssueViewer? Viewer)> RequireTriageAsync(Guid id)
     {
-        var (userMissing, user) = await RequireCurrentUserAsync();
+        var (userMissing, user) = await RequireCurrentUserAsync(HttpContext.RequestAborted);
         if (userMissing is not null) return (userMissing, null);
 
         var viewer = ViewerFor(user.Id);
-        var issue = await issues.GetIssueByIdAsync(id, viewer);
+        var issue = await issues.GetIssueByIdAsync(id, viewer, HttpContext.RequestAborted);
         if (issue is null) return (NotFound(), null);
         var auth = await authorization.AuthorizeAsync(User, issue, IssuesOperationRequirement.Handle);
         if (!auth.Succeeded) return (Forbid(), null);

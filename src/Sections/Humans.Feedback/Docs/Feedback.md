@@ -117,6 +117,8 @@ There is no per-message admin/reporter flag — admin-vs-reporter is derived by 
 
 ## Invariants
 
+- Message, status, assignment and GitHub-link actions use request cancellation for account lookup before mutation. Lookup cancellation propagates outside mutation error handling; saved replies and triage mutations retain their existing tokens and failure handling.
+
 - The queue detail panel accepts only the latest selection request’s response; earlier successes and unavailable responses cannot replace the selected item’s content or wire stale forms.
 
 - Status updates reject undefined enum values before persistence or audit.

@@ -121,6 +121,52 @@ public sealed class FeedbackServiceTests
     }
 
     [HumansTheory]
+    [InlineData("message")]
+    [InlineData("status")]
+    [InlineData("assignment")]
+    [InlineData("github")]
+    public async Task MutationPreflight_CancelsAccountLookupBeforeChangingFeedback(string action)
+    {
+        using var request = new CancellationTokenSource();
+        var report = await CreateTestReportAsync();
+        var actorId = Guid.NewGuid();
+        SeedUser(actorId, "Admin", "admin@example.org");
+        var users = Substitute.For<IUserService>();
+        users.GetUserInfoAsync(actorId, Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+            return new ValueTask<UserInfo?>(_people[actorId]);
+        });
+        var http = new DefaultHttpContext
+        {
+            RequestAborted = request.Token,
+            User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, actorId.ToString())], "test"))
+        };
+        var controller = new FeedbackController(_service, Substitute.For<ITeamService>(), users, NullLogger<FeedbackController>.Instance)
+        {
+            ControllerContext = new ControllerContext { HttpContext = http },
+            TempData = new Microsoft.AspNetCore.Mvc.ViewFeatures.TempDataDictionary(http,
+                Substitute.For<Microsoft.AspNetCore.Mvc.ViewFeatures.ITempDataProvider>()),
+            Url = Substitute.For<IUrlHelper>()
+        };
+        await request.CancelAsync();
+        Func<Task<IActionResult>> run = () => action switch
+        {
+            "message" => controller.PostMessage(report.Id, new PostFeedbackMessageModel { Content = "Reply" }),
+            "status" => controller.UpdateStatus(report.Id, new UpdateFeedbackStatusModel { Status = FeedbackStatus.Resolved }),
+            "assignment" => controller.UpdateAssignment(report.Id, new UpdateFeedbackAssignmentModel { AssignedToUserId = actorId }),
+            _ => controller.SetGitHubIssue(report.Id, new SetGitHubIssueModel { IssueNumber = 123 })
+        };
+        await run.Should().ThrowAsync<OperationCanceledException>();
+        await using var stored = await FeedbackDbFactory.CreateDbContextAsync(Xunit.TestContext.Current.CancellationToken);
+        var saved = await stored.FeedbackReports.SingleAsync(Xunit.TestContext.Current.CancellationToken);
+        saved.Status.Should().Be(FeedbackStatus.Open);
+        saved.AssignedToUserId.Should().BeNull();
+        saved.GitHubIssueNumber.Should().BeNull();
+        _auditLog.ReceivedCalls().Should().BeEmpty();
+    }
+
+    [HumansTheory]
     [InlineData("message", false)]
     [InlineData("message", true)]
     [InlineData("status", false)]
