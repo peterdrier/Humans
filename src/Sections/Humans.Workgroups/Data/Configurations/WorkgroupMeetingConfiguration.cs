@@ -15,6 +15,8 @@ internal sealed class WorkgroupMeetingConfiguration : IEntityTypeConfiguration<W
         b.Property(m => m.Title).HasMaxLength(200).IsRequired();
         b.Property(m => m.StartUtc).IsRequired();
         b.Property(m => m.EndUtc).IsRequired();
+        b.Property(m => m.RecurrenceRule).HasMaxLength(500);
+        b.Property(m => m.RecurrenceTimezone).HasMaxLength(100);
         b.Property(m => m.Description).HasMaxLength(4000);
         b.Property(m => m.Location).HasMaxLength(500);
         b.Property(m => m.LocationUrl).HasMaxLength(2000);

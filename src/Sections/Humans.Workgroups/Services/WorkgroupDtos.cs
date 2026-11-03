@@ -59,7 +59,9 @@ internal sealed record WorkgroupMeetingInfo(
     Guid? CreatedByUserId,
     Instant CreatedAt,
     Instant UpdatedAt,
-    string? Description = null);
+    string? Description = null,
+    string? RecurrenceRule = null,
+    string? RecurrenceTimezone = null);
 
 internal sealed record WorkgroupLogEntryInfo(
     Guid Id,
@@ -71,7 +73,8 @@ internal sealed record WorkgroupLogEntryInfo(
     Guid? DocumentId,
     Guid? SurveyId,
     Instant CreatedAt,
-    Instant UpdatedAt);
+    Instant UpdatedAt,
+    Guid? MeetingId = null);
 
 internal sealed record WorkgroupDocumentInfo(
     Guid Id,
@@ -138,15 +141,20 @@ internal sealed record WorkgroupMeetingSave(
     string? Location,
     string? LocationUrl,
     bool IsPublic,
-    string? Minutes,
-    string? Description = null);
+    string? Description = null,
+    string? RecurrenceRule = null,
+    string? RecurrenceTimezone = null);
 
-/// <summary><paramref name="Kind"/> must be a member kind: Update, Disclosure, StatusRequested or Note.</summary>
+/// <summary>
+/// <paramref name="Kind"/> must be a member kind: Update, Disclosure, StatusRequested, Note or MeetingNotes.
+/// <paramref name="MeetingId"/>, kept only on MeetingNotes, must be one of the group's live meetings.
+/// </summary>
 internal sealed record WorkgroupLogEntrySave(
     WorkgroupLogKind Kind,
     LocalDate OccurredOn,
     string? Title,
-    string? Body);
+    string? Body,
+    Guid? MeetingId = null);
 
 internal sealed record WorkgroupDocumentSave(
     string Title,

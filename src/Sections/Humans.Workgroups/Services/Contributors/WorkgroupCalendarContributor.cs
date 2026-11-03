@@ -28,8 +28,9 @@ internal sealed class WorkgroupCalendarContributor(IWorkgroupService workgroups)
         // A sensitive group's meetings are its members' business; their personal feed still carries them.
         return register
             .Where(w => w.Status == WorkgroupStatus.Active && !w.IsSensitive)
+            // A series is passed whole once it has started; Calendar trims its occurrences to the window.
             .SelectMany(w => w.Meetings
-                .Where(m => m.IsPublic && m.StartUtc < to && m.EndUtc > from)
+                .Where(m => m.IsPublic && m.StartUtc < to && (m.RecurrenceRule is not null || m.EndUtc > from))
                 .Select(m => ToItem(w, m)))
             .ToList();
     }
@@ -42,5 +43,7 @@ internal sealed class WorkgroupCalendarContributor(IWorkgroupService workgroups)
         m.StartUtc,
         m.EndUtc,
         m.Location,
-        $"/Workgroups/{w.Slug}");
+        $"/Workgroups/{w.Slug}",
+        m.RecurrenceRule,
+        m.RecurrenceTimezone);
 }
