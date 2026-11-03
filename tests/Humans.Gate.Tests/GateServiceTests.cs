@@ -748,6 +748,24 @@ public class GateServiceTests
     }
 
     [HumansFact]
+    public async Task GetShiftRoster_CancelsTheShiftsReadWhenTheRequestIsAborted()
+    {
+        using var aborted = new CancellationTokenSource();
+        _burn.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns(BurnFixtures.Burn());
+        _shifts.GetBrowseShiftsAsync(Arg.Any<ShiftBrowseQuery>(), Arg.Any<CancellationToken>())
+            .Returns(async call =>
+            {
+                await aborted.CancelAsync();
+                call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+                return (IReadOnlyList<UrgentShiftInfo>)[];
+            });
+
+        var act = () => _svc.GetShiftRosterAsync(Guid.NewGuid(), aborted.Token);
+
+        await act.Should().ThrowAsync<OperationCanceledException>();
+    }
+
+    [HumansFact]
     public async Task GetShiftRoster_NoActiveEvent_ReturnsEmpty()
     {
         _burn.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns((EventSettingsInfo?)null);

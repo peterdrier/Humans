@@ -329,7 +329,7 @@ internal sealed class GateService(
         var openingDate = activeEvent.GateOpeningDate;
 
         var gateShifts = await shifts.GetBrowseShiftsAsync(new ShiftBrowseQuery(
-            activeEvent.Id, DepartmentId: rosterTeamId, Flags: ShiftBrowseQueryFlags.IncludeSignups));
+            activeEvent.Id, DepartmentId: rosterTeamId, Flags: ShiftBrowseQueryFlags.IncludeSignups), ct);
 
         return gateShifts
             .Where(s => StartsWithinWindow(openingDate, s.Shift, zone, now))
