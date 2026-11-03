@@ -216,12 +216,12 @@ internal sealed class CampAdminController(
     [Authorize(Policy = CampsPolicies.Manage)]
     public async Task<IActionResult> ExportCamps()
     {
-        var actorUserId = GetCurrentUserId();
-        if (actorUserId is null) return Unauthorized();
+        var actor = await GetCurrentUserInfoAsync(HttpContext.RequestAborted);
+        if (actor is null) return Unauthorized();
 
         try
         {
-            var export = await campCsvExportBuilder.BuildAsync(actorUserId.Value, HttpContext.RequestAborted);
+            var export = await campCsvExportBuilder.BuildAsync(actor.Id, HttpContext.RequestAborted);
             return File(export.Content, export.ContentType, export.FileName);
         }
         catch (OperationCanceledException) when (HttpContext.RequestAborted.IsCancellationRequested)
