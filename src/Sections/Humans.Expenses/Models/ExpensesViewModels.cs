@@ -108,9 +108,7 @@ internal sealed class ExpenseDetailViewModel
     /// <summary>Submitter and reviewers (category coordinator, finance admin): wider than <see cref="CanSeePayee"/>,
     /// which also unlocks the IBAN. Set explicitly even though only those hold View.</summary>
     public bool CanSeeNames { get; init; }
-    /// <summary>Null unless <see cref="CanSeeNames"/>.</summary>
-    public string? SubmitterBurnerName { get; init; }
-    public string? VisibleBurnerName => CanSeeNames ? SubmitterBurnerName : null;
+    public Guid? VisibleSubmitterUserId => CanSeeNames ? Report.SubmitterUserId : null;
     public string? VisibleLegalName => CanSeeNames ? SubmitterLegalName : null;
     /// <summary>The frozen snapshot once submitted, else their current profile.</summary>
     public string? SubmitterLegalName { get; init; }
@@ -211,7 +209,6 @@ internal sealed class DeclineLineInputModel
 internal sealed class ExpenseReviewViewModel
 {
     public required IReadOnlyList<ExpenseReportDto> Reports { get; init; }
-    public required IReadOnlyDictionary<Guid, string> SubmitterNames { get; init; }
     public required IReadOnlyDictionary<Guid, string> BookingLabels { get; init; }
     /// <summary>Written-off pushes. Empty hides the banner and the Holded column.</summary>
     public required IReadOnlySet<Guid> FailedHoldedPushReportIds { get; init; }
@@ -257,7 +254,7 @@ internal sealed class ExpenseIbanViewModel
     public bool HasIban { get; set; }
 
     /// <summary>Set when it is not the viewer's own, so an admin sees whose account they are typing.</summary>
-    public string? MemberName { get; set; }
+    public Guid? OnBehalfOfUserId { get; set; }
 
     /// <summary>Decides whether removal is still on offer.</summary>
     public ExpenseReportStatus ReportStatus { get; set; }

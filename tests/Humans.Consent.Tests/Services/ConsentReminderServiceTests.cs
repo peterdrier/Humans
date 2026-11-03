@@ -42,7 +42,7 @@ public sealed class ConsentReminderServiceTests : IDisposable
                 CreatedAt = Now,
                 Email = "ana@example.test",
             },
-            [], [], [], null, []);
+            [], [], null);
         _users.GetUserInfoAsync(info.Id, Arg.Any<CancellationToken>()).Returns(info);
         return info;
     }

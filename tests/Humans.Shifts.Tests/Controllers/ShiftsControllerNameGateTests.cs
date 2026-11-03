@@ -1,3 +1,4 @@
+using AwesomeAssertions;
 using System.Security.Claims;
 using Humans.Onboarding;
 using Humans.AuditLog.Contracts;
@@ -51,6 +52,38 @@ public class ShiftsControllerNameGateTests
         _builder = new ShiftBrowsePageBuilder(_shiftMgmt, _burnSettings, _teamService);
     }
 
+    [HumansTheory]
+    [InlineData("toggle")]
+    [InlineData("bail")]
+    [InlineData("bail-range")]
+    [InlineData("availability")]
+    [InlineData("tags")]
+    public async Task MemberMutation_CancelsAccountLookupBeforeWriting(string action)
+    {
+        using var request = new CancellationTokenSource();
+        var userId = Guid.NewGuid();
+        var controller = BuildSut(userId, MakeUserInfo(userId, "Burner", "First", "Last"));
+        controller.HttpContext.RequestAborted = request.Token;
+        _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+            return new ValueTask<UserInfo?>((UserInfo?)null);
+        });
+        await request.CancelAsync();
+        Func<Task<IActionResult>> write = () => action switch
+        {
+            "toggle" => controller.ToggleDay(Guid.NewGuid(), request.Token),
+            "bail" => controller.Bail(Guid.NewGuid(), null),
+            "bail-range" => controller.BailRange(Guid.NewGuid()),
+            "availability" => controller.SaveAvailability([]),
+            _ => controller.SaveTagPreferences([])
+        };
+        await write.Should().ThrowAsync<OperationCanceledException>();
+        _signupService.ReceivedCalls().Should().BeEmpty();
+        _shiftMgmt.ReceivedCalls().Should().BeEmpty();
+        _volunteerTrackingService.ReceivedCalls().Should().BeEmpty();
+    }
+
     private ShiftsController BuildSut(Guid userId, UserInfo userInfo)
     {
         _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(userInfo);
@@ -85,7 +118,6 @@ public class ShiftsControllerNameGateTests
                     : UserState.Active,
             },
             userEmails: [],
-            eventParticipations: [],
             externalLogins: [],
             profile: new Profile
             {
@@ -98,8 +130,7 @@ public class ShiftsControllerNameGateTests
             },
             contactFields: [],
             profileLanguages: [],
-            volunteerHistory: [],
-            communicationPreferences: []);
+            volunteerHistory: []);
 
     [HumansFact]
     public async Task Index_NamelessUser_RedirectsToOnboardingWidget()

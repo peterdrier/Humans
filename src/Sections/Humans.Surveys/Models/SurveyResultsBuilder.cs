@@ -55,7 +55,6 @@ internal static class SurveyResultsBuilder
     private static SurveyResultsRespondentViewModel BuildRespondent(RespondentDetail r) => new()
     {
         UserId = r.UserId,
-        Name = r.Name,
         SubmittedAt = FormatInstant(r.SubmittedAt),
         Answers = r.Answers,
     };
@@ -107,7 +106,6 @@ internal sealed class SurveyResultsQuestionViewModel
 internal sealed class SurveyResultsRespondentViewModel
 {
     public Guid UserId { get; init; }
-    public string Name { get; init; } = string.Empty;
     public string SubmittedAt { get; init; } = "—";
     public IReadOnlyList<RespondentAnswer> Answers { get; init; } = [];
 }

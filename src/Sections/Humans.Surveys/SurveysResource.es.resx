@@ -47,7 +47,6 @@
   <data name="Surveys_AsociadoIneligible_Heading" xml:space="preserve"><value>No tienes derecho a votar</value></data>
   <data name="Surveys_AsociadoIneligible_Body" xml:space="preserve"><value>Esta votación vinculante está restringida a quienes actualmente son Asociados activos y aprobados. Si crees que tu registro de membresía es incorrecto, ponte en contacto con la Junta antes de que cierre el periodo de votación.</value></data>
   <data name="Surveys_TitleFallback" xml:space="preserve"><value>Encuesta</value></data>
-  <data name="Surveys_ResumeNotice" xml:space="preserve"><value>Tienes respuestas en curso — continúa donde lo dejaste.</value></data>
   <data name="Surveys_Language" xml:space="preserve"><value>Idioma</value></data>
   <data name="Surveys_AnonymityLegend" xml:space="preserve"><value>¿Cómo quieres responder?</value></data>
   <data name="Surveys_Anonymity_Identified" xml:space="preserve"><value>Identificado</value></data>
@@ -58,7 +57,6 @@
   <data name="Surveys_Anonymity_AnonymousHelp" xml:space="preserve"><value>sin ningún vínculo contigo.</value></data>
   <data name="Surveys_AnonymityFootnote" xml:space="preserve"><value>Las respuestas anónimas y con participación registrada no se pueden retomar, y aún podrías recibir un recordatorio. Solo una respuesta identificada se puede pausar y continuar más tarde.</value></data>
   <data name="Surveys_Start" xml:space="preserve"><value>Empezar</value></data>
-  <data name="Surveys_Continue" xml:space="preserve"><value>Continuar</value></data>
   <data name="Surveys_PageOf" xml:space="preserve"><value>Página {0} de {1}</value></data>
   <data name="Surveys_QuestionRequired" xml:space="preserve"><value>Esta pregunta es obligatoria.</value></data>
   <data name="Surveys_ValidationAlert" xml:space="preserve"><value>Revisa las respuestas resaltadas antes de continuar.</value></data>

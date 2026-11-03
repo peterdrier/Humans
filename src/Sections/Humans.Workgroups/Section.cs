@@ -140,9 +140,12 @@ public sealed class Section :
         if (!Guid.TryParse(user.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
             return [];
 
+        var viewer = await services.GetRequiredService<IUserService>().GetUserInfoAsync(userId, ct);
+        if (viewer is null) return [];
+
         var now = services.GetRequiredService<IClock>().GetCurrentInstant();
-        var mine = await services.GetRequiredService<IWorkgroupService>().GetForMemberAsync(userId, ct);
-        var coordinated = mine.Where(w => w.CoordinatorUserIds().Contains(userId)).ToList();
+        var mine = await services.GetRequiredService<IWorkgroupService>().GetForMemberAsync(viewer.Id, ct);
+        var coordinated = mine.Where(w => w.CoordinatorUserIds().Contains(viewer.Id)).ToList();
         if (coordinated.Count == 0)
             return [];
 

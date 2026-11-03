@@ -109,7 +109,7 @@ Per-user reads on `consent_records` chain-follow merge tombstones via `UserInfo.
 | RejectedByUserId | Guid? | |
 | UpdatedAt | Instant | |
 
-- **Legacy fallback.** Until the `consent.profile-review` data migration reports done in production, a member with no row reads the frozen `profiles` review columns through `UserInfo` (`[Obsolete(HUM_PROFILE_REVIEW)]`, one suppressed reader, `ConsentReviewService.LegacyReview`). A write to a member with no row starts from that legacy review. The copy also records a legacy rejection as `users.State = Rejected` where the stored state never did.
+- **Review ownership.** Reads and writes use only `consent_reviews`; a member without a row has no review yet. Production `GET https://humans.nobodies.team/api/data-migrations` reported `{"key":"consent.profile-review","pending":0,"done":true}` on 2026-11-03. The copy, legacy fallback and review fields on `ProfileInfo` are retired; Users' frozen storage columns await a separate schema drop. The copy also recorded legacy rejections in `users.State`, so `UserInfo.IsRejected` and later state transitions no longer consult profile columns.
 - **Merge.** No `IUserMerge`: rows stay keyed to the id they were written for, and reads resolve a merged-away id forward via `GetUserInfoAsync`, so the survivor's own review stands — as when these were profile columns the profile fold never moved.
 - **The rejection state lives in Users.** Reject writes the record here (`IConsentWrite.RecordRejectionAsync`) and the state there (`IUserWrite.SetRejectedAsync`); every gate reads `UserInfo.IsRejected` / the stored `UserState.Rejected` or `ConsentReviewInfo.IsRejected`.
 - **GDPR.** Export slice `ConsentReview` (the rows of every id in the member's merge chain). Erasure keeps status, dates, approval and reviewer ids (Art. 17(3)(e) — how the association admitted or rejected the member) and erases the notes and the rejection reason.
@@ -177,6 +177,10 @@ Document archival uses the shared `data-confirm` handler: each click prompts onc
 
 - The admin GitHub-folder preview renders pasted URL parts as text. It preserves the full URL until the server validates the configured repository and branch and normalizes the folder path.
 - The admin legal-document controller orders the document list by team name, then document name, using ordinal comparison. The service returns document data without display ordering.
+
+- Legal-document create, edit, archive, manual sync and version-summary actions resolve their actor through Users before mutation. Merged sessions use the surviving account for audit attribution; missing accounts receive Unauthorized. Account lookup uses request cancellation, while document writes and sync retain their non-cancellable mutation boundary.
+
+- Consent submission and review actions forward request cancellation through their pre-write account reads. Unchecked-consent redisplay and invalid legal-document forms also cancel detail/team reads. Cancellation propagates before mutation; consent writes, onboarding reports and review mutation tokens keep their existing boundaries.
 
 - Legal-document forms require explicit required/active flags and grace-period days; omission redisplays field errors before any write and cannot reactivate a document, change its consent requirement or reset its grace period. Explicit false flags remain valid.
 
@@ -295,7 +299,7 @@ A delayed per-key or bulk consent load cannot republish its old result after an 
 - **Aggregate-local navs still declared (not cross-section):**
   - `ConsentRecord.DocumentVersion` — walked by `ConsentRepository.GetAllForUserIdsAsync` (`.ThenInclude(v => v.LegalDocument)`) to surface document name + version on the consent-history view. This is aggregate-local for `consent_records` → `document_versions` → `legal_documents`; not a cross-section nav.
   - `DocumentVersion.ConsentRecords` — declared and configured (`DocumentVersionConfiguration`); not navigated by any current service path.
-- **Cross-section calls:** `ITeamService`, `INotificationEmitter`, `IHumanLifecycleService`, `IMembershipCalculator`, `IUserService`, `IUserWrite` (`SetRejectedAsync`, from the `consent.profile-review` copy only).
+- **Cross-section calls:** `ITeamService`, `INotificationEmitter`, `IHumanLifecycleService`, `IMembershipCalculator`, `IUserService`.
 - **User parts.** `ConsentReviewCardViewComponent` on `UserPartSlots.AdminDetail` (English, admin view mode only: the consent-check badge and, for a Rejected account, the reason, time and reviewer) and `RejectionReasonViewComponent` on `UserPartSlots.AccountStatus` (Gdpr's status wall, Self view mode, `Consent_AccountStatus_ReasonLabel` in six cultures).
 - **Architecture tests:** `tests/Humans.Consent.Tests/Architecture/LegalArchitectureTests.cs` (Octokit containment — the sync service must not reference Octokit), `tests/Humans.Consent.Tests/Architecture/ConsentArchitectureTests.cs` (ConsentService, IConsentRepository append-only shape). Page rendering — the §15 step 12 check — is `tests/Humans.Integration.Tests/Controllers/ConsentPageRenderTests.cs`.
 

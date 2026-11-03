@@ -53,7 +53,7 @@ public sealed class StoreControllerRecordPaymentTests
         Payments = [],
     };
 
-    private StoreController BuildController(string role)
+    private StoreController BuildController(string role, IUserService? identityUsers = null)
     {
         var settings = Substitute.For<ISettingsService>();
         settings.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns(BurnFixtures.Burn(year: 2026, timeZoneId: "Europe/Madrid"));
@@ -74,16 +74,17 @@ public sealed class StoreControllerRecordPaymentTests
         var services = new ServiceCollection();
         services.AddLogging();
         services.AddAuthorizationCore();
-        services.AddSingleton<IAuthorizationHandler>(new OrderAuthorizationHandler(camps, teams, settings, clock));
+        services.AddSingleton<IAuthorizationHandler>(new OrderAuthorizationHandler(camps, teams, settings, clock, new Microsoft.AspNetCore.Http.HttpContextAccessor()));
         var auth = services.BuildServiceProvider().GetRequiredService<IAuthorizationService>();
 
-        var users = Substitute.For<IUserService>();
-        users.GetUserInfoAsync(_userId, Arg.Any<CancellationToken>())
-            .Returns(call =>
-            {
-                call.Arg<CancellationToken>().ThrowIfCancellationRequested();
-                return new ValueTask<UserInfo?>(MakeUserInfo(_userId));
-            });
+        var users = identityUsers ?? Substitute.For<IUserService>();
+        if (identityUsers is null)
+            users.GetUserInfoAsync(_userId, Arg.Any<CancellationToken>())
+                .Returns(call =>
+                {
+                    call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+                    return new ValueTask<UserInfo?>(MakeUserInfo(_userId));
+                });
         var localizer = Substitute.For<IStringLocalizer<StoreResource>>();
         localizer[Arg.Any<string>()].Returns(ci => new LocalizedString(ci.Arg<string>(), ci.Arg<string>()));
 
@@ -101,7 +102,79 @@ public sealed class StoreControllerRecordPaymentTests
 
     private static UserInfo MakeUserInfo(Guid id) => new(
         id, "Tester", false, "en", null, Instant.FromUtc(2026, 1, 1, 0, 0), null, null, null, null,
-        null, null, null, null, null, [], [], [], null, []);
+        null, null, null, null, null, [], [], null);
+
+    [HumansTheory]
+    [InlineData("pay")]
+    [InlineData("invoice")]
+    [InlineData("record-payment")]
+    [InlineData("delete-payment")]
+    [InlineData("create")]
+    [InlineData("create-team")]
+    [InlineData("delete")]
+    [InlineData("add-line")]
+    [InlineData("remove-line")]
+    [InlineData("counterparty")]
+    [InlineData("repair-years")]
+    [InlineData("repair-methods")]
+    [InlineData("missing-payments")]
+    [InlineData("save-product")]
+    [InlineData("deactivate")]
+    [InlineData("invoice-order")]
+    public async Task MutationPreflight_CancelsBeforeStoreWrites(string action)
+    {
+        using var request = new CancellationTokenSource();
+        var afterAccount = string.Equals(action, "invoice-order", StringComparison.Ordinal);
+        var users = Substitute.For<IUserService>();
+        async ValueTask<UserInfo?> ReadUserAsync(CancellationToken ct)
+        {
+            ct.ThrowIfCancellationRequested();
+            if (afterAccount) await request.CancelAsync();
+            return MakeUserInfo(_userId);
+        }
+        users.GetUserInfoAsync(_userId, Arg.Any<CancellationToken>()).Returns(call => ReadUserAsync(call.Arg<CancellationToken>()));
+        var controller = BuildController(RoleNames.Admin, users);
+        controller.HttpContext.RequestAborted = request.Token;
+        controller.Url = Substitute.For<IUrlHelper>();
+        controller.Url.Action(Arg.Any<Microsoft.AspNetCore.Mvc.Routing.UrlActionContext>()).Returns("https://example.org/order");
+        var admin = new StoreAdminController(_service, users)
+        {
+            ControllerContext = controller.ControllerContext,
+            TempData = controller.TempData,
+            Url = controller.Url
+        };
+        _repo.GetOrderWithLinesAndPaymentsAsync(_order.Id, Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+            return _order;
+        });
+        _repo.ClearReceivedCalls();
+        if (!afterAccount) await request.CancelAsync();
+        Func<Task<IActionResult>> run = () => action switch
+        {
+            "pay" => controller.Pay(_order.Id, 10m, request.Token),
+            "invoice" or "invoice-order" => controller.IssueInvoice(_order.Id),
+            "record-payment" => controller.RecordPayment(_order.Id, PaymentMethod.DepositReturn, 10m, null, null, request.Token),
+            "delete-payment" => controller.DeletePayment(_order.Id, Guid.NewGuid(), request.Token),
+            "create" => controller.Create(_order.CampSeasonId!.Value, request.Token),
+            "create-team" => controller.CreateTeamOrder(Guid.NewGuid(), request.Token),
+            "delete" => controller.Delete(_order.Id, request.Token),
+            "add-line" => controller.AddLine(_order.Id, Guid.NewGuid(), 1, request.Token),
+            "remove-line" => controller.RemoveLine(_order.Id, Guid.NewGuid(), request.Token),
+            "counterparty" => controller.UpdateCounterparty(_order.Id, new(null, null, null, null, null), request.Token),
+            "repair-years" => admin.RepairOrderYears(request.Token),
+            "repair-methods" => admin.RepairPaymentMethods(request.Token),
+            "missing-payments" => admin.RecordMissingPayments(request.Token),
+            "save-product" => admin.Save(new ProductInputModel(), request.Token),
+            _ => admin.Deactivate(Guid.NewGuid(), request.Token)
+        };
+        await run.Should().ThrowAsync<OperationCanceledException>();
+        await users.Received(1).GetUserInfoAsync(_userId, request.Token);
+        _repo.ReceivedCalls().Should().OnlyContain(call =>
+            string.Equals(call.GetMethodInfo().Name, nameof(IStoreRepository.GetOrderWithLinesAndPaymentsAsync), StringComparison.Ordinal));
+        if (!afterAccount) _repo.ReceivedCalls().Should().BeEmpty();
+        _audit.ReceivedCalls().Should().BeEmpty();
+    }
 
     [HumansTheory]
     [InlineData(false)]

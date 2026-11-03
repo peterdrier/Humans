@@ -74,16 +74,12 @@ internal sealed class GrantsAdminController(
         var (program, forbidden) = await AuthorizedAsync(programId, ProgramOperationRequirement.View, ct);
         if (forbidden is not null) return forbidden;
 
-        var ids = program!.Grants.Select(g => g.IssuedByUserId)
-            .Concat(program.Grants.Select(g => g.RevokedByUserId).OfType<Guid>())
-            .Concat(program.ManagerUserIds).Distinct().ToList();
         return View(new AdminProgramViewModel
         {
-            Program = program,
+            Program = program!,
             Today = grants.Today,
             CanAdminister = (await authorization.AuthorizeAsync(User, program, ProgramOperationRequirement.Administer)).Succeeded,
             CanManage = (await authorization.AuthorizeAsync(User, program, ProgramOperationRequirement.Manage)).Succeeded,
-            People = await UserService.GetUserInfosAsync(ids, ct)
         });
     }
 
@@ -178,7 +174,6 @@ internal sealed class GrantsAdminController(
 
     private async Task<ProgramFormViewModel> FillAsync(ProgramFormViewModel model, CancellationToken ct)
     {
-        model.People = await UserService.GetUserInfosAsync(model.ManagerUserIds, ct);
         model.Events = (await settings.GetAllEventSettingsAsync(ct))
             .Where(e => e.Status != EventSettingsStatus.Deleted)
             .OrderByDescending(e => e.GateOpeningDate)

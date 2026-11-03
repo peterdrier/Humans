@@ -5,7 +5,6 @@ namespace Humans.Agent.Models;
 
 /// <summary>One row per message in the 30-day window; the 24h/7d/30d aggregates are computed in memory.</summary>
 internal sealed record AgentStatusMessageRow(
-    Guid ConversationId,
     Guid UserId,
     Instant CreatedAt,
     AgentRole Role,

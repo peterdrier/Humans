@@ -153,7 +153,7 @@
                 @foreach (var inv in Model.Invitations)
                 {
                     <tr>
-                        <td>@inv.Name</td>
+                        <td><vc:human user-id="@inv.UserId" link="None" /></td>
                         <td>@FormatInstant(inv.SentAt)</td>
                         <td><span class="badge @EmailBadge(inv.EmailStatus)">@(inv.EmailStatus?.ToString() ?? "—")</span></td>
                         <td>@FormatInstant(inv.ReminderSentAt)</td>

@@ -4,6 +4,7 @@ using System.Security.Claims;
 using Humans.Base.Constants;
 using Humans.Preapprovals.Services;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 
 namespace Humans.Preapprovals.Authorization;
 
@@ -20,18 +21,19 @@ internal sealed class PreapprovalsAccessRequirement : IAuthorizationRequirement;
 /// The role short-circuit avoids a query on the common admin path. Both policies resolve the live user id, so a
 /// merged-away id sees what the surviving account sees.
 /// </summary>
-internal sealed class PreapprovalsPolicyHandler(IPreapprovalManagement preapprovals) : IAuthorizationHandler
+internal sealed class PreapprovalsPolicyHandler(IPreapprovalManagement preapprovals, IHttpContextAccessor httpContextAccessor) : IAuthorizationHandler
 {
     public async Task HandleAsync(AuthorizationHandlerContext context)
     {
+        var ct = httpContextAccessor.HttpContext?.RequestAborted ?? CancellationToken.None;
         foreach (var requirement in context.PendingRequirements.ToList())
         {
             switch (requirement)
             {
-                case ManagesPreapprovalsRequirement manage when await ManagesAsync(context.User):
+                case ManagesPreapprovalsRequirement manage when await ManagesAsync(context.User, ct):
                     context.Succeed(manage);
                     break;
-                case PreapprovalsAccessRequirement access when await ManagesAsync(context.User) || await HasAnythingAsync(context.User):
+                case PreapprovalsAccessRequirement access when await ManagesAsync(context.User, ct) || await HasAnythingAsync(context.User, ct):
                     context.Succeed(access);
                     break;
             }
@@ -45,11 +47,11 @@ internal sealed class PreapprovalsPolicyHandler(IPreapprovalManagement preapprov
     internal static bool IsAdministeringRole(ClaimsPrincipal user) =>
         user.IsInRole(RoleNames.Admin) || user.IsInRole(FinanceRoles.FinanceAdmin);
 
-    private async Task<bool> ManagesAsync(ClaimsPrincipal user) =>
-        IsReadingRole(user) || (UserId(user) is { } id && await preapprovals.ManagesAnyProgramAsync(id));
+    private async Task<bool> ManagesAsync(ClaimsPrincipal user, CancellationToken ct) =>
+        IsReadingRole(user) || (UserId(user) is { } id && await preapprovals.ManagesAnyProgramAsync(id, ct));
 
-    private async Task<bool> HasAnythingAsync(ClaimsPrincipal user) =>
-        UserId(user) is { } id && await preapprovals.HasAnythingForUserAsync(id);
+    private async Task<bool> HasAnythingAsync(ClaimsPrincipal user, CancellationToken ct) =>
+        UserId(user) is { } id && await preapprovals.HasAnythingForUserAsync(id, ct);
 
     private static Guid? UserId(ClaimsPrincipal user) =>
         Guid.TryParse(user.FindFirstValue(ClaimTypes.NameIdentifier), out var id) ? id : null;

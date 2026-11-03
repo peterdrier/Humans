@@ -45,7 +45,7 @@ internal sealed partial class WorkgroupService
 
         // Once per thirty-day window (day 30, 60, 90 …); the register badge carries it in between.
         var days = (int)silence.TotalDays;
-        if (days % (int)WorkgroupRhythm.UpdateDueAfter.TotalDays != 0)
+        if (days % (int)WorkgroupInfo.UpdateDueAfter.TotalDays != 0)
             return;
 
         var coordinators = info.CoordinatorUserIds();
@@ -61,7 +61,7 @@ internal sealed partial class WorkgroupService
         Workgroup workgroup, WorkgroupInfo info, Instant now, CancellationToken ct)
     {
         if (!info.IsRegistrationOverdue(now)
-            || !JustCrossed(now - info.AppliedAt, WorkgroupRhythm.RegistrationDueAfter))
+            || !JustCrossed(now - info.AppliedAt, WorkgroupInfo.RegistrationDueAfter))
         {
             return;
         }

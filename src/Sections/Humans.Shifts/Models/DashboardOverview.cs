@@ -94,3 +94,15 @@ internal sealed record CoverageHeatmapRotaRow(
     IReadOnlyList<CoverageHeatmapCell> Cells);
 
 internal sealed record CoverageHeatmapCell(int DayOffset, int TotalSlots, int FilledSlots);
+
+internal static class StaffingCoveragePresentation
+{
+    internal static double Percentage(int filled, int total) => total == 0 ? 0 : 100.0 * filled / total;
+
+    internal static (string BadgeClass, string CellClass, string StatusKey) Describe(double percentage) =>
+        percentage >= 80
+            ? ("bg-success", "bg-success text-white", "Shifts_ShiftDash_Status_OnTrack")
+            : percentage >= 60
+                ? ("bg-warning text-dark", "bg-warning text-dark", "Shifts_ShiftDash_Status_AtRisk")
+                : ("bg-danger", "bg-danger text-white", "Shifts_ShiftDash_Status_BelowTarget");
+}

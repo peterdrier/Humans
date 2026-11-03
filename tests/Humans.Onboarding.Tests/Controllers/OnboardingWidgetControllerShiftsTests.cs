@@ -75,8 +75,8 @@ public class OnboardingWidgetControllerShiftsTests
         var inputId = mergedAlias ? Guid.NewGuid() : userId;
         var shiftId = Guid.NewGuid();
         _userService.GetUserInfoAsync(inputId, Arg.Any<CancellationToken>())
-            .Returns(UserInfo.Create(new User { Id = userId, State = UserState.Active }, [], [], [],
-                UserFixtures.Profile(burnerName: "Burner", firstName: "First", lastName: "Last"), []));
+            .Returns(UserInfo.Create(new User { Id = userId, State = UserState.Active }, [], [],
+                UserFixtures.Profile(burnerName: "Burner", firstName: "First", lastName: "Last")));
         _burnSettings.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>())
             .Returns(BurnFixtures.Burn());
         _shiftMgmt.GetBrowseShiftsAsync(Arg.Any<ShiftBrowseQuery>(), Arg.Any<CancellationToken>())
@@ -121,7 +121,7 @@ public class OnboardingWidgetControllerShiftsTests
     {
         var userId = Guid.NewGuid();
         var shiftId = Guid.NewGuid();
-        _signups.SignUpAsync(userId, shiftId, actorUserId: userId)
+        _signups.SignUpAsync(userId, shiftId)
             .Returns(SignupResult.Ok(Guid.NewGuid(), warning));
         var ctrl = BuildSut(userId);
 
@@ -130,7 +130,7 @@ public class OnboardingWidgetControllerShiftsTests
         var redirect = Assert.IsType<RedirectToActionResult>(result);
         Assert.Equal(nameof(OnboardingWidgetController.Consents), redirect.ActionName);
         Assert.Equal(warning, ctrl.TempData[TempDataKeys.InfoMessage]);
-        await _signups.Received(1).SignUpAsync(userId, shiftId, actorUserId: userId);
+        await _signups.Received(1).SignUpAsync(userId, shiftId);
     }
 
     [HumansFact]
@@ -138,7 +138,7 @@ public class OnboardingWidgetControllerShiftsTests
     {
         var userId = Guid.NewGuid();
         var shiftId = Guid.NewGuid();
-        _signups.SignUpAsync(userId, shiftId, actorUserId: userId)
+        _signups.SignUpAsync(userId, shiftId)
             .Returns(SignupResult.Fail("nope"));
         var ctrl = BuildSut(userId);
 

@@ -137,7 +137,7 @@ internal sealed class OnboardingWidgetController(
     public async Task<IActionResult> SignUp(Guid shiftId)
     {
         var userId = CurrentUserId();
-        var result = await signupService.SignUpAsync(userId, shiftId, actorUserId: userId);
+        var result = await signupService.SignUpAsync(userId, shiftId);
         if (!result.Success)
         {
             SetError(result.Error ?? localizer["Onboarding_ShiftsSignUpFailed"].Value);

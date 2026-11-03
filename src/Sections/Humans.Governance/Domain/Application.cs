@@ -93,10 +93,7 @@ internal sealed class Application
         StateMachine.Fire(ApplicationTrigger.Approve);
         ReviewedByUserId = reviewerUserId;
         ReviewNotes = notes;
-        var now = clock.GetCurrentInstant();
-        UpdatedAt = now;
-        ResolvedAt = now;
-        AddStateHistory(ApplicationStatus.Approved, reviewerUserId, clock, notes);
+        RecordResolution(ApplicationStatus.Approved, reviewerUserId, clock, notes);
     }
 
     public void Reject(Guid reviewerUserId, string reason, IClock clock)
@@ -104,23 +101,20 @@ internal sealed class Application
         StateMachine.Fire(ApplicationTrigger.Reject);
         ReviewedByUserId = reviewerUserId;
         ReviewNotes = reason;
-        var now = clock.GetCurrentInstant();
-        UpdatedAt = now;
-        ResolvedAt = now;
-        AddStateHistory(ApplicationStatus.Rejected, reviewerUserId, clock, reason);
+        RecordResolution(ApplicationStatus.Rejected, reviewerUserId, clock, reason);
     }
 
     public void Withdraw(IClock clock)
     {
         StateMachine.Fire(ApplicationTrigger.Withdraw);
+        RecordResolution(ApplicationStatus.Withdrawn, UserId, clock);
+    }
+
+    private void RecordResolution(ApplicationStatus newStatus, Guid actorUserId, IClock clock, string? notes = null)
+    {
         var now = clock.GetCurrentInstant();
         UpdatedAt = now;
         ResolvedAt = now;
-        AddStateHistory(ApplicationStatus.Withdrawn, UserId, clock);
-    }
-
-    private void AddStateHistory(ApplicationStatus newStatus, Guid actorUserId, IClock clock, string? notes = null)
-    {
         StateHistory.Add(new ApplicationStateHistory
         {
             ApplicationId = Id,

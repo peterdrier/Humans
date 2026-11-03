@@ -28,6 +28,135 @@ namespace Humans.Issues.Tests.Controllers;
 public sealed class IssuesControllerTests
 {
     [HumansTheory]
+    [InlineData("submit", false)]
+    [InlineData("comment", false)]
+    [InlineData("comment", true)]
+    [InlineData("status", false)]
+    [InlineData("status", true)]
+    [InlineData("assignee", false)]
+    [InlineData("assignee", true)]
+    [InlineData("section", false)]
+    [InlineData("section", true)]
+    [InlineData("github", false)]
+    [InlineData("github", true)]
+    public async Task MutationPreflight_CancelsAccountAndIssueReads(string action, bool afterAccount)
+    {
+        using var request = new CancellationTokenSource();
+        var actorId = Guid.NewGuid();
+        var issueId = Guid.NewGuid();
+        var users = Substitute.For<IUserService>();
+        async ValueTask<UserInfo?> ReadUserAsync(CancellationToken ct)
+        {
+            ct.ThrowIfCancellationRequested();
+            if (afterAccount) await request.CancelAsync();
+            return UserInfo.Create(new User { Id = actorId }, [], [], null);
+        }
+        users.GetUserInfoAsync(actorId, Arg.Any<CancellationToken>()).Returns(call => ReadUserAsync(call.Arg<CancellationToken>()));
+        var issues = Substitute.For<IIssuesService>();
+        issues.GetIssueByIdAsync(issueId, Arg.Any<IssueViewer>(), Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+            return new IssueDetail(issueId, IssueStatus.Open, default, null, "Title", "Details",
+                null, null, null, null, actorId, null, null, null, null, default, default, default, 0);
+        });
+        issues.SubmitIssueAsync(default, default, default!, default!, default, default, default, default, default)
+            .ReturnsForAnyArgs(new IssueSubmissionResult(new Issue { Id = issueId }));
+        issues.PostCommentAsync(default, default!, default, default!)
+            .ReturnsForAnyArgs(new IssueCommentResult(null));
+        issues.UpdateStatusAsync(default, default!, default, default).ReturnsForAnyArgs(new IssueMutationResult(true, false, null));
+        issues.UpdateAssigneeAsync(default, default!, default, default).ReturnsForAnyArgs(new IssueMutationResult(true, false, null));
+        issues.UpdateSectionAsync(default, default!, default, default).ReturnsForAnyArgs(new IssueMutationResult(true, false, null));
+        issues.SetGitHubIssueNumberAsync(default, default!, default, default).ReturnsForAnyArgs(new IssueMutationResult(true, false, null));
+        var authorization = Substitute.For<IAuthorizationService>();
+        authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object>(), Arg.Any<IEnumerable<IAuthorizationRequirement>>())
+            .Returns(AuthorizationResult.Success());
+        var localizer = Substitute.For<IStringLocalizer<IssuesResource>>();
+        localizer[Arg.Any<string>()].Returns(call => new LocalizedString(call.Arg<string>(), call.Arg<string>()));
+        var http = new DefaultHttpContext
+        {
+            RequestAborted = request.Token,
+            User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, actorId.ToString())], "test"))
+        };
+        var controller = new IssuesController(issues, authorization, users, new IssueSectionRouting([]),
+            localizer, NullLogger<IssuesController>.Instance)
+        {
+            ControllerContext = new ControllerContext { HttpContext = http },
+            TempData = new TempDataDictionary(http, Substitute.For<ITempDataProvider>()),
+            Url = Substitute.For<IUrlHelper>()
+        };
+        if (!afterAccount) await request.CancelAsync();
+        Func<Task<IActionResult>> run = () => action switch
+        {
+            "submit" => controller.Submit(new SubmitIssueViewModel { Title = "Title", Description = "Details" }),
+            "comment" => controller.PostComment(issueId, new PostIssueCommentModel { Content = "Reply" }),
+            "status" => controller.UpdateStatus(issueId, new UpdateIssueStatusModel { Status = IssueStatus.Triage }),
+            "assignee" => controller.UpdateAssignee(issueId, new UpdateIssueAssigneeModel()),
+            "section" => controller.UpdateSection(issueId, new UpdateIssueSectionModel()),
+            _ => controller.SetGitHubIssue(issueId, new SetIssueGitHubIssueModel())
+        };
+        await run.Should().ThrowAsync<OperationCanceledException>();
+        issues.ReceivedCalls().Should().OnlyContain(call =>
+            string.Equals(call.GetMethodInfo().Name, nameof(IIssuesService.GetIssueByIdAsync), StringComparison.Ordinal));
+    }
+
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Detail_CarriesIdentityIds_WithoutLoadingDisplayUsers(bool partial)
+    {
+        using var services = new ServiceCollection().AddLogging().AddLocalization().BuildServiceProvider();
+        var reporterId = Guid.NewGuid();
+        var resolverId = Guid.NewGuid();
+        var issueId = Guid.NewGuid();
+        var issues = Substitute.For<IIssuesService>();
+        issues.GetIssueByIdAsync(issueId, Arg.Any<IssueViewer>(), Arg.Any<CancellationToken>()).Returns(
+            new IssueDetail(issueId, IssueStatus.Resolved, default, null, "Title", "Details",
+                null, null, null, null, reporterId, Guid.NewGuid(), resolverId, null, null,
+                default, default, default(NodaTime.Instant), 1));
+        issues.GetThreadAsync(issueId, Arg.Any<IssueViewer>(), Arg.Any<CancellationToken>()).Returns(
+            new IssueThreadEvent[]
+            {
+                new IssueCommentEvent(Guid.NewGuid(), default, reporterId, "Reporter", true, "Comment"),
+                new IssueAuditEvent(default, resolverId, "Resolver", "Resolved", "Closed"),
+                new IssueAuditEvent(default, null, null, "System", "Automatic"),
+            });
+        var users = Substitute.For<IUserService>();
+        users.GetUserInfoAsync(reporterId, Arg.Any<CancellationToken>()).Returns(
+            UserInfo.Create(new User { Id = reporterId }, [], [], null));
+        var authorization = Substitute.For<IAuthorizationService>();
+        authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object>(),
+                Arg.Any<IEnumerable<IAuthorizationRequirement>>())
+            .Returns(AuthorizationResult.Failed());
+        var controller = new IssuesController(issues, authorization, users, new IssueSectionRouting([]),
+            services.GetRequiredService<IStringLocalizer<IssuesResource>>(), NullLogger<IssuesController>.Instance)
+        {
+            ControllerContext = new ControllerContext
+            {
+                HttpContext = new DefaultHttpContext
+                {
+                    User = new ClaimsPrincipal(new ClaimsIdentity(
+                        [new Claim(ClaimTypes.NameIdentifier, reporterId.ToString())], "test"))
+                }
+            }
+        };
+
+        var result = await controller.Detail(issueId, partial);
+
+        if (partial)
+        {
+            var model = result.Should().BeOfType<PartialViewResult>().Which.Model
+                .Should().BeOfType<IssueDetailViewModel>().Which;
+            model.ReporterUserId.Should().Be(reporterId);
+            model.ResolvedByUserId.Should().Be(resolverId);
+            model.Thread.Select(e => e.ActorUserId).Should().Equal(reporterId, resolverId, null);
+        }
+        else
+            result.Should().BeOfType<RedirectToActionResult>().Which.ActionName.Should().Be("Index");
+        await users.DidNotReceive().GetUserInfosAsync(
+            Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansTheory]
     [InlineData("en")]
     [InlineData("es")]
     [InlineData("de")]
@@ -47,7 +176,7 @@ public sealed class IssuesControllerTests
                 null, null, null, null, actor, Guid.NewGuid(), actor, 42, null, default, default, null, 0));
         var users = Substitute.For<IUserService>();
         users.GetUserInfoAsync(actor, Arg.Any<CancellationToken>()).Returns(
-            UserInfo.Create(new User { Id = actor }, [], [], [], null, []));
+            UserInfo.Create(new User { Id = actor }, [], [], null));
         var authorization = Substitute.For<IAuthorizationService>();
         authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object>(), Arg.Any<IEnumerable<IAuthorizationRequirement>>())
             .Returns(AuthorizationResult.Success());
@@ -157,7 +286,7 @@ public sealed class IssuesControllerTests
             .Returns(IssueMutationResult.Success());
         var users = Substitute.For<IUserService>();
         users.GetUserInfoAsync(viewerId, Arg.Any<CancellationToken>()).Returns(
-            UserInfo.Create(new User { Id = viewerId }, [], [], [], null, []));
+            UserInfo.Create(new User { Id = viewerId }, [], [], null));
         var authorization = Substitute.For<IAuthorizationService>();
         authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object>(), Arg.Any<IEnumerable<IAuthorizationRequirement>>())
             .Returns(allowed ? AuthorizationResult.Success() : AuthorizationResult.Failed());
@@ -204,7 +333,7 @@ public sealed class IssuesControllerTests
             .Returns(IssueMutationResult.Success());
         var users = Substitute.For<IUserService>();
         users.GetUserInfoAsync(actor, Arg.Any<CancellationToken>()).Returns(
-            UserInfo.Create(new User { Id = actor }, [], [], [], null, []));
+            UserInfo.Create(new User { Id = actor }, [], [], null));
         var authorization = Substitute.For<IAuthorizationService>();
         authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object>(), Arg.Any<IEnumerable<IAuthorizationRequirement>>())
             .Returns(AuthorizationResult.Success());
@@ -274,7 +403,7 @@ public sealed class IssuesControllerTests
         var users = Substitute.For<IUserService>();
         if (viewerExists)
             users.GetUserInfoAsync(actor, Arg.Any<CancellationToken>()).Returns(
-                UserInfo.Create(new User { Id = actor }, [], [], [], null, []));
+                UserInfo.Create(new User { Id = actor }, [], [], null));
         var registrations = new ServiceCollection().AddLogging();
         registrations.AddControllers();
         using var services = registrations.BuildServiceProvider();
@@ -347,7 +476,7 @@ public sealed class IssuesControllerTests
             });
         var users = Substitute.For<IUserService>();
         users.GetUserInfoAsync(adminId, Arg.Any<CancellationToken>()).Returns(
-            UserInfo.Create(new User { Id = adminId }, [], [], [], null, []));
+            UserInfo.Create(new User { Id = adminId }, [], [], null));
         var controller = new IssuesController(issues, Substitute.For<IAuthorizationService>(), users,
             new IssueSectionRouting([]), Substitute.For<IStringLocalizer<IssuesResource>>(),
             NullLogger<IssuesController>.Instance)
@@ -379,7 +508,7 @@ public sealed class IssuesControllerTests
         var issues = Substitute.For<IIssuesService>();
         var users = Substitute.For<IUserService>();
         users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(
-            UserInfo.Create(new User { Id = userId }, [], [], [], null, []));
+            UserInfo.Create(new User { Id = userId }, [], [], null));
         var controller = new IssuesController(issues, Substitute.For<IAuthorizationService>(), users,
             new IssueSectionRouting([]), Substitute.For<IStringLocalizer<IssuesResource>>(),
             NullLogger<IssuesController>.Instance)

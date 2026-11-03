@@ -85,10 +85,8 @@ public class OnboardingWidgetControllerConsentsTests
             State = UserFixtures.StateFor(profile),
         },
         userEmails: [],
-        eventParticipations: [],
         externalLogins: [],
-        profile: profile,
-        communicationPreferences: []);
+        profile: profile);
 
     [HumansFact]
     public async Task Consents_Get_StubProfile_RedirectsToNames_WithLocalizedInfo()

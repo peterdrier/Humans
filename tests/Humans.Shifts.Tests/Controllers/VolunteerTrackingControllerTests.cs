@@ -57,6 +57,40 @@ public class VolunteerTrackingControllerTests
             new LocalizedString(ci.Arg<string>(), ci.Arg<string>()));
     }
 
+    [HumansTheory]
+    [InlineData("set-camp")]
+    [InlineData("clear-camp")]
+    [InlineData("set-day-off")]
+    [InlineData("clear-day-off")]
+    [InlineData("set-availability")]
+    [InlineData("clear-availability")]
+    public async Task TrackingMutation_CancelsAccountLookupBeforeWriting(string action)
+    {
+        using var request = new CancellationTokenSource();
+        var current = new User { Id = Guid.NewGuid() };
+        var target = Guid.NewGuid();
+        var controller = BuildSut(current);
+        controller.HttpContext.RequestAborted = request.Token;
+        _burnSettings.GetActiveAsync(Arg.Any<CancellationToken>()).Returns(MakeBurn(Guid.NewGuid()));
+        _userService.GetUserInfoAsync(current.Id, Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+            return new ValueTask<UserInfo?>((UserInfo?)null);
+        });
+        await request.CancelAsync();
+        Func<Task<IActionResult>> write = () => action switch
+        {
+            "set-camp" => controller.SetCampSetup(new SetCampSetupForm { UserId = target, Date = "2026-06-01" }, null, request.Token),
+            "clear-camp" => controller.ClearCampSetup(target, null, request.Token),
+            "set-day-off" => controller.SetDayOff(new SetDayOffForm { UserId = target }, null, request.Token),
+            "clear-day-off" => controller.ClearDayOff(new ClearDayOffForm { UserId = target }, null, request.Token),
+            "set-availability" => controller.SetAvailabilityDay(target, 0, null, request.Token),
+            _ => controller.ClearAvailabilityDay(target, 0, null, request.Token)
+        };
+        await write.Should().ThrowAsync<OperationCanceledException>();
+        _service.ReceivedCalls().Should().BeEmpty();
+    }
+
     private VolunteerTrackingController BuildSut(User? currentUser)
     {
         if (currentUser is not null)
@@ -67,9 +101,7 @@ public class VolunteerTrackingControllerTests
                     currentUser,
                     [],
                     [],
-                    [],
                     profile: null,
-                    [],
                     [],
                     [],
                     [])));
@@ -167,6 +199,28 @@ public class VolunteerTrackingControllerTests
         model.HasActiveEvent.Should().BeFalse();
         model.MainCohort.Should().BeEmpty();
         model.UnbookedCohort.Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task Index_cancels_department_loading_when_the_request_is_aborted()
+    {
+        using var aborted = new CancellationTokenSource();
+        var es = MakeBurn(Guid.NewGuid());
+        _burnSettings.GetActiveAsync(Arg.Any<CancellationToken>()).Returns(es);
+        _service.GetTrackingDataAsync(Arg.Any<CancellationToken>())
+            .Returns(new VolunteerTrackingViewModel(true, es.BuildStartOffset, es.GateOpeningDate, es.GateOpeningDate, [], []));
+        _shiftMgmt.GetDepartmentsWithRotasAsync(es.Id, Arg.Any<CancellationToken>())
+            .Returns(async call =>
+            {
+                await aborted.CancelAsync();
+                call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+                return (IReadOnlyList<(Guid TeamId, string TeamName)>)[];
+            });
+        var controller = BuildSut(new User { Id = Guid.NewGuid() });
+
+        var act = () => controller.Index(ct: aborted.Token);
+
+        await act.Should().ThrowAsync<OperationCanceledException>();
     }
 
     [HumansFact]
@@ -722,13 +776,11 @@ public class VolunteerTrackingControllerTests
         return UserInfoFactory.Create(
             user: user,
             userEmails: [],
-            eventParticipations: [],
             externalLogins: [],
             profile: profile,
             contactFields: [],
             profileLanguages: [],
-            volunteerHistory: [],
-            communicationPreferences: []);
+            volunteerHistory: []);
     }
 
     // These tests only care about the burn's Id (it is what gets forwarded to

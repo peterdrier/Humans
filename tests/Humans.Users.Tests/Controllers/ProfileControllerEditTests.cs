@@ -124,6 +124,30 @@ public class ProfileControllerEditTests
     }
 
     [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Profile_mutation_account_preflight_observes_cancellation(bool medical)
+    {
+        using var request = new CancellationTokenSource();
+        _controller.HttpContext.RequestAborted = request.Token;
+        _userService.GetUserInfoAsync(_userId, Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            call.Arg<CancellationToken>().Should().Be(request.Token);
+            call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+            return new ValueTask<UserInfo?>(new User { Id = _userId }.ToUserInfo());
+        });
+        await request.CancelAsync();
+        Func<Task<IActionResult>> invoke = medical
+            ? () => _controller.Medical(new MedicalViewModel())
+            : () => _controller.Edit(new ProfileViewModel());
+
+        await invoke.Should().ThrowAsync<OperationCanceledException>();
+        _profileEditorService.ReceivedCalls().Should().BeEmpty();
+        _userService.ReceivedCalls().Should().OnlyContain(call => call.GetMethodInfo().Name == nameof(IUserService.GetUserInfoAsync));
+        _controller.TempData.Should().BeEmpty();
+    }
+
+    [HumansTheory]
     [InlineData("missingType", "BoardOnly")]
     [InlineData("missingVisibility", "BoardOnly")]
     [InlineData("retired", "BoardOnly")]
@@ -247,8 +271,8 @@ public class ProfileControllerEditTests
             Value = "legacy@example.org",
             Visibility = ContactFieldVisibility.BoardOnly
         };
-        var info = UserInfoFactory.Create(new User { Id = _userId, PreferredLanguage = "en" }, [], [], [],
-            new Profile { Id = _profileId, UserId = _userId, FirstName = "First", LastName = "Last" }, [legacy], [], [], []);
+        var info = UserInfoFactory.Create(new User { Id = _userId, PreferredLanguage = "en" }, [], [],
+            new Profile { Id = _profileId, UserId = _userId, FirstName = "First", LastName = "Last" }, [legacy], [], []);
         _userService.GetUserInfoAsync(_userId, Arg.Any<CancellationToken>()).Returns(new ValueTask<UserInfo?>(info));
         var model = MakeValidModel();
         model.ContactFields = [new() { Id = Guid.NewGuid(), Value = "untrusted@example.org" }];
@@ -408,13 +432,17 @@ public class ProfileControllerEditTests
     }
 
     [HumansTheory]
-    [InlineData(UserState.Active, false)]
-    [InlineData(UserState.Active, true)]
-    [InlineData(UserState.Bare, false)]
-    [InlineData(UserState.Bare, true)]
-    public async Task Edit_Post_RedisplayUsesAccountSetupMode(UserState state, bool serviceRefusal)
+    [InlineData(UserState.Active, false, false)]
+    [InlineData(UserState.Active, false, true)]
+    [InlineData(UserState.Active, true, false)]
+    [InlineData(UserState.Active, true, true)]
+    [InlineData(UserState.Bare, false, false)]
+    [InlineData(UserState.Bare, false, true)]
+    [InlineData(UserState.Bare, true, false)]
+    [InlineData(UserState.Bare, true, true)]
+    public async Task Edit_Post_RedisplayRestoresTrustedPresentationAndSetupMode(UserState state, bool serviceRefusal, bool hasPicture)
     {
-        var info = BuildUserInfo(new Profile { UserId = _userId, BurnerName = "Burner" }) with { State = state };
+        var info = BuildUserInfo(new Profile { UserId = _userId, BurnerName = "Burner", ProfilePictureContentType = hasPicture ? "image/png" : null }) with { State = state };
         _userService.GetUserInfoAsync(_userId, Arg.Any<CancellationToken>()).Returns(info);
         if (serviceRefusal)
             _profileEditorService.SaveProfileAsync(Arg.Any<Guid>(), Arg.Any<ProfileSaveRequest>(), Arg.Any<CancellationToken>())
@@ -423,11 +451,17 @@ public class ProfileControllerEditTests
             _controller.ModelState.AddModelError(nameof(ProfileViewModel.BurnerName), "Invalid");
         var model = MakeValidModel();
         model.IsInitialSetup = state != UserState.Bare;
+        model.UserId = Guid.NewGuid();
+        model.HasCustomProfilePicture = !hasPicture;
+        model.BurnerName = "Unsaved edited name";
 
         var result = await _controller.Edit(model);
 
         result.Should().BeOfType<ViewResult>().Which.Model.Should().BeSameAs(model);
         model.IsInitialSetup.Should().Be(state == UserState.Bare);
+        model.UserId.Should().Be(_userId);
+        model.HasCustomProfilePicture.Should().Be(hasPicture);
+        model.BurnerName.Should().Be("Unsaved edited name");
     }
 
     [HumansFact]
@@ -540,11 +574,9 @@ public class ProfileControllerEditTests
     private UserInfo BuildUserInfo(Profile? profile) => UserInfoFactory.Create(
         user: new User { Id = _userId, DisplayName = "Test Human", PreferredLanguage = "en" },
         userEmails: [],
-        eventParticipations: [],
         externalLogins: [],
         profile: profile,
         contactFields: [],
         profileLanguages: [],
-        volunteerHistory: [],
-        communicationPreferences: []);
+        volunteerHistory: []);
 }

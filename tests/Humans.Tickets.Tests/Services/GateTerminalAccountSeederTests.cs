@@ -1,3 +1,8 @@
+using System.Security.Claims;
+using Humans.Tickets.Controllers;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using Humans.AuditLog.Contracts;
 using Humans.Base.Constants;
 using Humans.Onboarding.Contracts;
@@ -53,6 +58,60 @@ public sealed class GateTerminalAccountSeederTests : TicketsTestHarness
                 _storedUser.LastName = "Terminal";
                 return new ProfileEditResult(true);
             });
+    }
+
+    [HumansTheory]
+    [InlineData(AccountScenario.Merged)]
+    [InlineData(AccountScenario.Missing)]
+    [InlineData(AccountScenario.Cancelled)]
+    public async Task PasswordController_ResolvesItsActorBeforeTouchingCredentials(AccountScenario account)
+    {
+        using var request = new CancellationTokenSource();
+        _storedUser = new User { Id = SystemUserIds.GateTerminal, PasswordHash = "existing" };
+        var cookieId = Guid.NewGuid();
+        var actorId = Guid.NewGuid();
+        var users = Substitute.For<IUserService>();
+        users.GetUserInfoAsync(cookieId, Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+            return new ValueTask<UserInfo?>(account == AccountScenario.Missing
+                ? null : UserInfo.Create(new User { Id = actorId }, [], [], null));
+        });
+        var http = new DefaultHttpContext
+        {
+            RequestAborted = request.Token,
+            User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, cookieId.ToString())], "test"))
+        };
+        var controller = new TicketsGateAdminController(users, NewService())
+        {
+            ControllerContext = new ControllerContext { HttpContext = http },
+            TempData = new TempDataDictionary(http, Substitute.For<ITempDataProvider>()),
+            Url = Substitute.For<IUrlHelper>()
+        };
+        if (account == AccountScenario.Cancelled)
+        {
+            await request.CancelAsync();
+            await Assert.ThrowsAnyAsync<OperationCanceledException>(() => controller.SetPassword("password"));
+        }
+        else
+        {
+            var result = await controller.SetPassword("password");
+            if (account == AccountScenario.Merged)
+            {
+                Assert.IsType<RedirectToActionResult>(result);
+                await _userWrite.Received(1).MarkFakeAsync(SystemUserIds.GateTerminal, actorId, Arg.Any<string>(), Arg.Any<CancellationToken>());
+                await _audit.Received(1).LogAsync(TicketsAuditActions.GateTerminalPasswordSet, nameof(User),
+                    SystemUserIds.GateTerminal, "Gate terminal password set", actorId);
+            }
+            else Assert.IsType<ChallengeResult>(result);
+        }
+        if (account != AccountScenario.Merged)
+        {
+            Assert.Empty(_users.ReceivedCalls());
+            Assert.Empty(_credentialUsers.ReceivedCalls());
+            Assert.Empty(_userWrite.ReceivedCalls());
+            Assert.Empty(_audit.ReceivedCalls());
+        }
     }
 
     [HumansTheory]

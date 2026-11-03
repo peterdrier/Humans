@@ -231,15 +231,13 @@ public class OnboardingWidgetControllerNamesTests
                     : UserState.Active,
             },
             userEmails: [],
-            eventParticipations: [],
             externalLogins: [],
             profile: UserFixtures.Profile(
                 burnerName: burner,
                 firstName: first,
                 lastName: last,
                 city: city,
-                bio: bio),
-            communicationPreferences: []);
+                bio: bio));
 
     [HumansTheory]
     [InlineData(false)]

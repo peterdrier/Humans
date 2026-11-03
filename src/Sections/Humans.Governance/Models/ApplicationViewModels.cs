@@ -32,7 +32,7 @@ internal abstract class ApplicationDetailViewModelBase
     public MembershipTier MembershipTier { get; set; }
     public DateTime SubmittedAt { get; set; }
     public DateTime? ReviewStartedAt { get; set; }
-    public string? ReviewerName { get; set; }
+    public Guid? ReviewedByUserId { get; set; }
     public string? ReviewNotes { get; set; }
     public List<ApplicationHistoryViewModel> History { get; set; } = [];
 }
@@ -47,7 +47,7 @@ internal sealed class ApplicationHistoryViewModel
 {
     public ApplicationStatus Status { get; set; }
     public DateTime ChangedAt { get; set; }
-    public string ChangedBy { get; set; } = string.Empty;
+    public Guid ChangedByUserId { get; set; }
     public string? Notes { get; set; }
 }
 

@@ -153,10 +153,8 @@ public sealed class TicketTransferService_OnwardTransferTests
             .Returns(UserInfo.Create(
                 user: carol,
                 userEmails: [],
-                eventParticipations: [],
                 externalLogins: [],
-                profile: carolProfile,
-                communicationPreferences: []));
+                profile: carolProfile));
         _transferRepo.GetBySenderAsync(UserB, Arg.Any<CancellationToken>())
             .Returns([]);
 

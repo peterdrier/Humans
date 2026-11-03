@@ -1295,7 +1295,7 @@ internal sealed class TeamService(
         Guid roleDefinitionId, Guid actorUserId,
         CancellationToken cancellationToken = default)
     {
-        var definition = await repo.FindRoleDefinitionWithMembersForMutationAsync(roleDefinitionId, cancellationToken);
+        var definition = await repo.FindRoleDefinitionForMutationAsync(roleDefinitionId, cancellationToken);
         if (definition is null)
             return new(Refusal: $"Role definition {roleDefinitionId} not found");
         var team = await GetRoleDefinitionTeamAsync(definition, cancellationToken);
@@ -2003,7 +2003,6 @@ internal sealed class TeamService(
         request.Team?.Name,
         request.UserId,
         UserDisplayName: null,
-        UserEmail: null,
         UserProfilePictureUrl: null,
         request.Status,
         request.Message,
@@ -2020,7 +2019,6 @@ internal sealed class TeamService(
         return ToJoinRequestSnapshot(request) with
         {
             UserDisplayName = user?.BurnerName,
-            UserEmail = user?.Email,
             UserProfilePictureUrl = user?.ProfilePictureUrl
         };
     }

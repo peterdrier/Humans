@@ -1,14 +1,22 @@
+@inject Microsoft.AspNetCore.Mvc.Localization.IHtmlLocalizer<EmailResource> HtmlLocalizer
 @{
     ViewData["Title"] = Localizer["Email_Unsubscribe_Title"].Value;
-    var displayName = ViewData["DisplayName"] as string;
     var categoryName = Localizer["Email_CommPrefs_Name_Marketing"].Value;
 }
 
 <h1>@Html.Raw(string.Format(Localizer["Email_Unsubscribe_Heading"].Value, Html.Encode(categoryName)))</h1>
 
-@if (!string.IsNullOrEmpty(displayName))
+@if (ViewData["UserId"] is Guid userId)
 {
-    <p>@Html.Raw(string.Format(Localizer["Email_Unsubscribe_Greeting"].Value, "<strong>" + Html.Encode(displayName) + "</strong>"))</p>
+    var human = await Component.InvokeAsync(typeof(Humans.Base.ViewComponents.HumanViewComponent), new
+    {
+        userId,
+        link = Humans.Base.ViewComponents.HumanLink.None,
+    });
+    using var humanWriter = new System.IO.StringWriter();
+    human.WriteTo(humanWriter, System.Text.Encodings.Web.HtmlEncoder.Default);
+    var humanHtml = new Microsoft.AspNetCore.Html.HtmlString($"<strong>{humanWriter.ToString().Trim()}</strong>");
+    <p>@HtmlLocalizer["Email_Unsubscribe_Greeting", humanHtml]</p>
 }
 
 <p>@Html.Raw(string.Format(Localizer["Email_Unsubscribe_ConfirmMessage"].Value, Html.Encode(categoryName)))</p>

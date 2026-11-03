@@ -47,11 +47,14 @@ public sealed class ControllerTests : PreapprovalsTestHarness
             .Cast<RouteAttribute>().Single().Template.Should().Be("Preapprovals/Admin");
     }
 
-    [HumansFact]
-    public async Task ManagerOfA_OnB_IsForbidden_AndSeesOnlyA()
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task ManagerOfA_OnB_IsForbidden_AndSeesOnlyA(bool merged)
     {
-        var manager = SeedUser("Manager");
-        var a = await SeedProgramAsync(name: "A", managers: manager);
+        var archived = Guid.NewGuid();
+        var manager = SeedUser("Manager", mergedIds: merged ? [archived] : []);
+        var a = await SeedProgramAsync(name: "A", managers: merged ? archived : manager);
         var b = await SeedProgramAsync(name: "B");
         var applicationOnB = await SeedGrantAsync(b, status: GrantStatus.Applied);
         var controller = BuildAdmin(manager);
@@ -62,6 +65,7 @@ public sealed class ControllerTests : PreapprovalsTestHarness
         (await controller.Edit(a.Id, Ct)).Should().BeOfType<ForbidResult>("managers never edit the program itself");
         (await ReadGrantAsync(applicationOnB.Id)).Status.Should().Be(GrantStatus.Applied);
 
+        (await controller.Program(a.Id, Ct)).Should().BeOfType<ViewResult>();
         var index = (await controller.Index(Ct)).Should().BeOfType<ViewResult>().Which.Model.Should().BeOfType<AdminIndexViewModel>().Subject;
         index.Programs.Select(p => p.Id).Should().Equal(a.Id);
         index.CanAdminister.Should().BeFalse();
@@ -346,6 +350,8 @@ public sealed class ControllerTests : PreapprovalsTestHarness
     {
         var services = new ServiceCollection();
         services.AddLogging();
+        services.AddSingleton(Users);
+        services.AddHttpContextAccessor();
         services.AddAuthorization(options =>
         {
             ((ISectionPolicies)new Section()).AddPolicies(options);
@@ -355,7 +361,7 @@ public sealed class ControllerTests : PreapprovalsTestHarness
                 policy => policy.RequireRole(FinanceRoles.FinanceAdmin, RoleNames.Admin));
         });
         services.AddScoped<IAuthorizationHandler, ProgramAuthorizationHandler>();
-        services.AddScoped<IAuthorizationHandler>(_ => new PreapprovalsPolicyHandler(NewService()));
+        services.AddScoped<IAuthorizationHandler>(_ => new PreapprovalsPolicyHandler(NewService(), new Microsoft.AspNetCore.Http.HttpContextAccessor()));
         var provider = services.BuildServiceProvider();
         _localizer[Arg.Any<string>(), Arg.Any<object[]>()]
             .Returns(call => new LocalizedString(call.ArgAt<string>(0), call.ArgAt<string>(0)));

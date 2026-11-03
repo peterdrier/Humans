@@ -17,19 +17,17 @@ internal sealed record UnsubscribeTokenResult
     public bool IsExpired { get; init; }
     public bool IsLegacy { get; init; }
     public Guid? UserId { get; init; }
-    public string? DisplayName { get; init; }
     public MessageCategory? Category { get; init; }
 
     public static UnsubscribeTokenResult Invalid() => new() { IsValid = false };
     public static UnsubscribeTokenResult Expired() => new() { IsValid = false, IsExpired = true };
 
     public static UnsubscribeTokenResult Valid(
-        Guid userId, string displayName, MessageCategory category, bool isLegacy = false) =>
+        Guid userId, MessageCategory category, bool isLegacy = false) =>
         new()
         {
             IsValid = true,
             UserId = userId,
-            DisplayName = displayName,
             Category = category,
             IsLegacy = isLegacy
         };

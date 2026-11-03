@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using Humans.Cantina.Contracts;
 using Humans.Shifts.Contracts;
 using Humans.Shifts.Controllers;
@@ -148,6 +149,26 @@ public class ShiftDashboardControllerTests
         Assert.Equal(activity[1].AggregatePendingCount, parent.AggregatePendingCount);
         Assert.Equal(new[] { "Recent", "Parent", "Z Never", "A Empty" },
             activity.Select(r => r.TeamName), StringComparer.Ordinal);
+    }
+
+    [HumansFact]
+    public async Task Voluntell_CancelsActorLookupBeforeAssignment()
+    {
+        using var request = new CancellationTokenSource();
+        var userId = Guid.NewGuid();
+        var controller = Controller();
+        controller.HttpContext.RequestAborted = request.Token;
+        controller.HttpContext.User = new ClaimsPrincipal(new ClaimsIdentity(
+            [new Claim(ClaimTypes.NameIdentifier, userId.ToString())], "test"));
+        _users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+            return new ValueTask<UserInfo?>((UserInfo?)null);
+        });
+        await request.CancelAsync();
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => controller.Voluntell(Guid.NewGuid(), Guid.NewGuid()));
+        Assert.Empty(_signups.ReceivedCalls());
     }
 
     private ShiftDashboardController Controller() => new(

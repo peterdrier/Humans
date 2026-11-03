@@ -27,7 +27,7 @@ public static class CalendarRecurrence
             Id: Guid.Empty, Title: string.Empty, Description: null, Location: null, LocationUrl: null,
             OwningTeamId: Guid.Empty, StartUtc: start, EndUtc: end, IsAllDay: false,
             RecurrenceRule: recurring ? rule : null, RecurrenceTimezone: recurring ? timeZoneId : null,
-            RecurrenceUntilUtc: null, CreatedByUserId: Guid.Empty, CreatedAt: start, UpdatedAt: start,
+            RecurrenceUntilUtc: null, CreatedAt: start, UpdatedAt: start,
             Exceptions: []);
         return CalendarOccurrenceExpander
             .Expand([info], from, to, new Dictionary<Guid, string>(), NullLogger.Instance)

@@ -272,10 +272,10 @@ public sealed class ConsentReviewQueueServiceTests
     }
 
     private static UserInfo ToUserInfo(User user, ProfileInfo profile) =>
-        UserInfo.Create(user, [], [], [], profile: profile, []);
+        UserInfo.Create(user, [], [], profile: profile);
 
     private static UserInfo MakeUserInfo(Guid userId, ProfileInfo profile) =>
         UserInfo.Create(
             new User { Id = userId, PreferredLanguage = "en", BurnerName = profile.BurnerName, State = UserFixtures.StateFor(profile) },
-            [], [], [], profile: profile, []);
+            [], [], profile: profile);
 }

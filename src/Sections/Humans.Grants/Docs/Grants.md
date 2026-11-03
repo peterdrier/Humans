@@ -28,7 +28,7 @@ A grant entitles a human to a thing (a cheaper ticket, early entry for build, st
 | Entitles | string(500) | What the person gets, in their notice and on their profile |
 | Description | string(2000)? | Managers, Grants Admin and Board only |
 | Year | int | the event's year, for display and sorting |
-| EventSettingsId | Guid? | index; the event. Null on programs from before events were tracked: they read as the earliest non-deleted event of their year (by gate opening) until the `grants.event-ids` data migration (on `/Debug/DataMigrations`) stamps that event |
+| EventSettingsId | Guid? | index; the stored event id. Legacy unassigned programs retain their year label without inferring an event; the `grants.event-ids` migration and fallback retired after production reported done on 2026-11-03 |
 | IssuedBy | GrantIssuer (string) | `Managers` or `Source` |
 | SourceKey | string(32)? | Set only when `IssuedBy = Source`; the key the source section passes |
 | GrantsExpireOn | LocalDate? | Default expiry for its grants; null = never |
@@ -75,6 +75,10 @@ Admin pages live at `/Grants/Admin` (`GrantsAdminController`), in the Admin side
 
 ## Invariants
 
+- Authorization’s viewer and program-manager reads retain HTTP request cancellation; callers without an HTTP context use the non-cancellable default.
+
+- Admin program pages and edit forms render manager and actor IDs through the shared Human component without profile links. Missing members use its localized fallback. Manager order, comma separators and posted manager IDs are preserved; page models carry no display-name dictionary.
+
 - A person holds at most one live grant per program (filtered unique index); issuing to a holder is skipped (manual) or returns the existing id (source write). Issuance resolves merged recipient ids before deduplication and saves new grants under the survivor id. A live grant under any of the person's archived ids also counts as held, and source revocation finds it through any alias.
 - A managers' program is filled only by hand; a source program only through `IGrantWrite` with the matching source key. A closed program takes no new grants either way.
 - At most one program per source key is open at a time (refused on create and edit), so `IGrantWrite` callers pass only their key and Grants resolves the program. Source issue/revoke return `GrantIssueResult` / `GrantRevokeResult`: no open program and overlong source references/reasons are typed refusals before mutation, audit or notices. Existing live grant IDs and the no-live-grant revoke outcome remain explicit. Dependency failures propagate.
@@ -84,7 +88,7 @@ Admin pages live at `/Grants/Admin` (`GrantsAdminController`), in the Admin side
 - Manual and source issuance share one persist/audit/notice pipeline. Persistence retains caller cancellation; after commit, audit and notices finish independently of browser cancellation. Their distinct batch and source-reference audit descriptions are preserved.
 - Every issue, revoke, resend and program change writes an audit entry (`GrantIssued`, `GrantRevoked`, `GrantNoticeResent`, `GrantProgram*`). Program edits persist fields and manager additions/removals together in one save; a failed manager write leaves the program unchanged and emits no success audit.
 - Grant reads, GDPR exports (held grants and programs created), and issue/revoke/resend audits use the program's current Settings event year, falling back to its stored year when the event is unavailable. Audit year resolution finishes before the mutation commits.
-- A failed email or in-app notice is logged and never fails the write; the two channels fail independently (an in-app outage still sends the email, and vice versa); a manager can resend. A successful recipient lookup supplies the email address too; if that lookup fails, the email step retains its independent lookup attempt.
+- A failed email or in-app notice is logged and never fails the write; the two channels fail independently (an in-app outage still sends the email, and vice versa); a manager can resend. A successful recipient lookup supplies the email address too; if that lookup fails, the email step retains its independent lookup attempt and uses the recovered recipient’s canonical id, burner name and preferred language as well as their address.
 - Program-level refusals are English text: every page that shows them is admin-only (`memory/code/localization-admin-exempt.md`). Member-facing copy (notice, email, My grants card) is in all six cultures.
 
 ## Negative Access Rules

@@ -1,3 +1,5 @@
+using System.Security.Claims;
+using Humans.Base.Enums;
 using Humans.GoogleIntegration.Contracts;
 using AwesomeAssertions;
 using Humans.Users.Contracts;
@@ -19,12 +21,73 @@ namespace Humans.GoogleIntegration.Tests;
 /// </summary>
 public class GoogleControllerSyncCancellationTests
 {
+    public enum AdminMutation
+    {
+        UpdateSyncSetting,
+        ProvisionEmail,
+        ProvisionAccount,
+        SuspendAccount,
+        ReactivateAccount,
+        ResetPassword,
+        ResetPasswordAndGenerate2Fa,
+        LinkAccount,
+        RequeueOutboxEvent,
+        RequeueAllFailedOutboxEvents,
+        RerunGoogleSync
+    }
+
     private readonly ILogger<GoogleController> _logger = Substitute.For<ILogger<GoogleController>>();
     private readonly IUserService _users = Substitute.For<IUserService>();
     private readonly ITeamResourceManagement _resources = Substitute.For<ITeamResourceManagement>();
     private readonly IGoogleAdminService _admin = Substitute.For<IGoogleAdminService>();
     private readonly IGoogleSyncManagement _syncService = Substitute.For<IGoogleSyncManagement>();
     private readonly IGoogleGroupSync _groupSync = Substitute.For<IGoogleGroupSync>();
+    private readonly IEmailProvisioningService _provisioning = Substitute.For<IEmailProvisioningService>();
+
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task DiagnosticChecks_ForwardBrowserTokenToReadOnlyDetection(bool groupSettings)
+    {
+        var controller = BuildSut(alreadyAbortedRequest: true);
+        _admin.DetectEmailRenamesAsync(Arg.Any<CancellationToken>()).Returns(new EmailRenameDetectionResult());
+        _syncService.CheckGroupSettingsAsync(Arg.Any<CancellationToken>()).Returns(new GroupSettingsDriftResult());
+
+        (await (groupSettings ? controller.CheckGroupSettings() : controller.CheckEmailRenames()))
+            .Should().BeOfType<RedirectToActionResult>().Which.ActionName.Should().Be(
+                groupSettings ? nameof(GoogleController.GroupSettingsResults) : nameof(GoogleController.EmailRenames));
+
+        if (groupSettings)
+            await _syncService.Received(1).CheckGroupSettingsAsync(controller.HttpContext.RequestAborted);
+        else
+            await _admin.Received(1).DetectEmailRenamesAsync(controller.HttpContext.RequestAborted);
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(false, false)]
+    [Xunit.InlineData(false, true)]
+    [Xunit.InlineData(true, false)]
+    [Xunit.InlineData(true, true)]
+    public async Task DiagnosticChecks_SeparateCallerAndDependencyCancellation(bool groupSettings, bool callerAborted)
+    {
+        var controller = BuildSut(alreadyAbortedRequest: callerAborted);
+        var failure = new OperationCanceledException(controller.HttpContext.RequestAborted);
+        _admin.DetectEmailRenamesAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<EmailRenameDetectionResult>(failure));
+        _syncService.CheckGroupSettingsAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<GroupSettingsDriftResult>(failure));
+        Func<Task<IActionResult>> act = groupSettings ? controller.CheckGroupSettings : controller.CheckEmailRenames;
+        if (callerAborted)
+            (await act.Should().ThrowAsync<OperationCanceledException>()).Which.Should().BeSameAs(failure);
+        else
+            (await act()).Should().BeOfType<RedirectToActionResult>().Which.ActionName.Should().Be(nameof(GoogleController.Index));
+
+        var resultKey = groupSettings ? Humans.Base.Constants.TempDataKeys.GroupSettingsResult : Humans.Base.Constants.TempDataKeys.EmailRenameResult;
+        controller.TempData.ContainsKey(resultKey).Should().BeFalse();
+        var args = _logger.ReceivedCalls().Should().ContainSingle().Subject.GetArguments();
+        args[0].Should().Be(callerAborted ? LogLevel.Warning : LogLevel.Error);
+        args[3].Should().BeSameAs(callerAborted ? null : failure);
+    }
 
     [HumansFact]
     public async Task AllGroups_ForwardsBrowserTokenToGroupAndTeamReads()
@@ -190,6 +253,56 @@ public class GoogleControllerSyncCancellationTests
         return box;
     }
 
+    [HumansTheory]
+    [Xunit.InlineData(AdminMutation.UpdateSyncSetting)]
+    [Xunit.InlineData(AdminMutation.ProvisionEmail)]
+    [Xunit.InlineData(AdminMutation.ProvisionAccount)]
+    [Xunit.InlineData(AdminMutation.SuspendAccount)]
+    [Xunit.InlineData(AdminMutation.ReactivateAccount)]
+    [Xunit.InlineData(AdminMutation.ResetPassword)]
+    [Xunit.InlineData(AdminMutation.ResetPasswordAndGenerate2Fa)]
+    [Xunit.InlineData(AdminMutation.LinkAccount)]
+    [Xunit.InlineData(AdminMutation.RequeueOutboxEvent)]
+    [Xunit.InlineData(AdminMutation.RequeueAllFailedOutboxEvents)]
+    [Xunit.InlineData(AdminMutation.RerunGoogleSync)]
+    public async Task Account_preflight_cancellation_prevents_admin_mutations(AdminMutation action)
+    {
+        var actorId = Guid.NewGuid();
+        var controller = BuildSut(alreadyAbortedRequest: true);
+        controller.HttpContext.User = new ClaimsPrincipal(new ClaimsIdentity(
+            [new Claim(ClaimTypes.NameIdentifier, actorId.ToString())], "test"));
+        _users.GetUserInfoAsync(actorId, Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            call.Arg<CancellationToken>().Should().Be(controller.HttpContext.RequestAborted);
+            call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+            return new ValueTask<UserInfo?>(UserInfo.Create(new User { Id = actorId }, [], [], null));
+        });
+        var settings = Substitute.For<ISyncSettingsService>();
+        var targetId = Guid.NewGuid();
+        Func<Task<IActionResult>> invoke = action switch
+        {
+            AdminMutation.UpdateSyncSetting => () => controller.UpdateSyncSetting(settings, SyncServiceType.GoogleDrive, SyncMode.None),
+            AdminMutation.ProvisionEmail => () => controller.ProvisionEmail(targetId, "member"),
+            AdminMutation.ProvisionAccount => () => controller.ProvisionAccount(new ProvisionWorkspaceAccountModel { EmailPrefix = "member" }),
+            AdminMutation.SuspendAccount => () => controller.SuspendAccount("member@example.org"),
+            AdminMutation.ReactivateAccount => () => controller.ReactivateAccount("member@example.org"),
+            AdminMutation.ResetPassword => () => controller.ResetPassword("member@example.org"),
+            AdminMutation.ResetPasswordAndGenerate2Fa => () => controller.ResetPasswordAndGenerate2Fa("member@example.org"),
+            AdminMutation.LinkAccount => () => controller.LinkAccount("member@example.org", targetId),
+            AdminMutation.RequeueOutboxEvent => () => controller.RequeueOutboxEvent(targetId),
+            AdminMutation.RequeueAllFailedOutboxEvents => () => controller.RequeueAllFailedOutboxEvents(),
+            AdminMutation.RerunGoogleSync => () => controller.RerunGoogleSync(targetId),
+            _ => throw new ArgumentOutOfRangeException(nameof(action)),
+        };
+
+        await invoke.Should().ThrowAsync<OperationCanceledException>();
+        settings.ReceivedCalls().Should().BeEmpty();
+        _admin.ReceivedCalls().Should().BeEmpty();
+        _provisioning.ReceivedCalls().Should().BeEmpty();
+        _syncService.ReceivedCalls().Should().BeEmpty();
+        controller.TempData.Should().BeEmpty();
+    }
+
     private GoogleController BuildSut(bool alreadyAbortedRequest)
     {
         var controller = new GoogleController(
@@ -197,7 +310,7 @@ public class GoogleControllerSyncCancellationTests
             _syncService,
             _groupSync,
             _resources,
-            Substitute.For<IEmailProvisioningService>(),
+            _provisioning,
             _admin,
             Substitute.For<IGoogleIntegrationService>(),
             Substitute.For<IGoogleSyncLogService>(),

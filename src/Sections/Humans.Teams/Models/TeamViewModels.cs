@@ -69,7 +69,7 @@ internal sealed class TeamDetailViewModel
     public string? PageContentHtml { get; set; }
     public List<CallToAction>? CallsToAction { get; set; }
     public DateTime? PageContentUpdatedAt { get; set; }
-    public string? PageContentUpdatedByDisplayName { get; set; }
+    public Guid? PageContentUpdatedByUserId { get; set; }
 
     public bool IsAuthenticated { get; set; }
     public bool CanEditPageContent { get; set; }
@@ -163,16 +163,9 @@ internal sealed class JoinTeamViewModel
 internal sealed class TeamJoinRequestViewModel
 {
     public Guid Id { get; set; }
-    public Guid TeamId { get; set; }
-    public string TeamName { get; set; } = string.Empty;
     public Guid UserId { get; set; }
-    public string UserEmail { get; set; } = string.Empty;
-    public TeamJoinRequestStatus Status { get; set; }
     public string? Message { get; set; }
     public DateTime RequestedAt { get; set; }
-    public DateTime? ResolvedAt { get; set; }
-    public string? ReviewedByName { get; set; }
-    public string? ReviewNotes { get; set; }
 }
 
 internal sealed class CreateTeamViewModel : TeamFormViewModelBase;
@@ -255,8 +248,6 @@ internal sealed class TeamMembersViewModel
 
     public string? ParentDepartmentName { get; set; }
 
-    public string? ParentDepartmentSlug { get; set; }
-
     public bool IsSensitive { get; set; }
 
     /// <summary>For the audit preview in the sensitive-team modal.</summary>
@@ -283,8 +274,6 @@ internal sealed class BirthdayEntryViewModel
 {
     public Guid UserId { get; set; }
     public int DayOfMonth { get; set; }
-    public int Month { get; set; }
-    public string MonthName { get; set; } = string.Empty;
     public List<string> TeamNames { get; set; } = [];
 }
 
@@ -352,13 +341,6 @@ internal sealed class TeamRoleDefinitionViewModel
             {
                 SlotIndex = i,
                 Priority = priority,
-                PriorityBadgeClass = priority switch
-                {
-                    SlotPriority.Critical => "bg-danger",
-                    SlotPriority.Important => "bg-warning text-dark",
-                    SlotPriority.NiceToHave => "bg-secondary",
-                    _ => "bg-light text-dark"
-                },
                 IsFilled = assignment is not null,
                 AssignedUserId = assignment?.AssignedUserId,
                 TeamMemberId = assignment?.TeamMemberId
@@ -386,7 +368,6 @@ internal sealed class TeamRoleSlotViewModel
 {
     public int SlotIndex { get; set; }
     public SlotPriority Priority { get; set; }
-    public string PriorityBadgeClass { get; set; } = string.Empty;
     public bool IsFilled { get; set; }
     public Guid? AssignedUserId { get; set; }
     public Guid? TeamMemberId { get; set; }
@@ -472,11 +453,9 @@ internal sealed class RosterSlotViewModel
     public Guid RoleDefinitionId { get; set; }
     public int SlotNumber { get; set; }
     public SlotPriority Priority { get; set; }
-    public string PriorityBadgeClass { get; set; } = string.Empty;
     public RolePeriod Period { get; set; }
     public bool IsFilled { get; set; }
     public Guid? AssignedUserId { get; set; }
-    public string? AssignedUserName { get; set; }
 }
 
 internal sealed class AdminTeamListViewModel
@@ -527,3 +506,22 @@ internal sealed record TeamRosterViewModel(
 
 /// <summary>No name field: the burner name renders through <c>&lt;vc:human&gt;</c>.</summary>
 internal sealed record TeamRosterRowViewModel(Guid UserId, string LegalName, Instant JoinedAt);
+
+internal static class RoleBadgeExtensions
+{
+    internal static string GetBadgeClass(this SlotPriority priority) => priority switch
+    {
+        SlotPriority.Critical => "bg-danger",
+        SlotPriority.Important => "bg-warning text-dark",
+        SlotPriority.NiceToHave => "bg-secondary",
+        _ => "bg-light text-dark"
+    };
+
+    internal static string GetBadgeClass(this RolePeriod period) => period switch
+    {
+        RolePeriod.Build => "bg-info",
+        RolePeriod.Event => "bg-success",
+        RolePeriod.Strike => "bg-secondary",
+        _ => "bg-light text-dark"
+    };
+}

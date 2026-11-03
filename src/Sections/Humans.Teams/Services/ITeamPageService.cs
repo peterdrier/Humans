@@ -40,11 +40,9 @@ internal sealed record TeamRosterSlotSummary(
     Guid RoleDefinitionId,
     int SlotNumber,
     string Priority,
-    string PriorityBadgeClass,
     string Period,
     bool IsFilled,
     Guid? AssignedUserId,
-    string? AssignedUserName,
     bool IsPublic);
 
 internal sealed record MyTeamMembershipSummary(
@@ -149,7 +147,6 @@ internal sealed record TeamPageDetailResult(
     bool CanCurrentUserEditTeam,
     Guid? CurrentUserPendingRequestId,
     int PendingRequestCount,
-    string? PageContentUpdatedByDisplayName,
     TeamPageShiftsSummary? ShiftsSummary,
     IReadOnlyList<TeamPageChildTeamMemberSummary> SubteamLeads,
     IReadOnlyList<TeamPageChildTeamMemberSummary> SubteamMembers);

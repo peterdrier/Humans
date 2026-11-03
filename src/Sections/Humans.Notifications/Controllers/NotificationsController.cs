@@ -21,12 +21,12 @@ internal sealed class NotificationsController(
     public async Task<IActionResult> Index(
         string? search, string filter = "all", string tab = "unread")
     {
-        var userId = GetCurrentUserId();
-        if (userId is null) return Unauthorized();
+        var user = await GetCurrentUserInfoAsync(HttpContext.RequestAborted);
+        if (user is null) return Unauthorized();
 
-        var result = await inboxService.GetInboxAsync(userId.Value, search, filter, tab, HttpContext.RequestAborted);
+        var result = await inboxService.GetInboxAsync(user.Id, search, filter, tab, HttpContext.RequestAborted);
 
-        var meters = await meterProvider.GetMetersForUserAsync(User, HttpContext.RequestAborted);
+        var meters = await meterProvider.GetMetersForUserAsync(User, HttpContext.RequestAborted, user.Id);
 
         return View(new NotificationInboxViewModel
         {
@@ -47,12 +47,12 @@ internal sealed class NotificationsController(
     [HttpGet("Popup")]
     public async Task<IActionResult> GetPopup()
     {
-        var userId = GetCurrentUserId();
-        if (userId is null) return Unauthorized();
+        var user = await GetCurrentUserInfoAsync(HttpContext.RequestAborted);
+        if (user is null) return Unauthorized();
 
-        var result = await inboxService.GetPopupAsync(userId.Value, HttpContext.RequestAborted);
+        var result = await inboxService.GetPopupAsync(user.Id, HttpContext.RequestAborted);
 
-        var meters = await meterProvider.GetMetersForUserAsync(User, HttpContext.RequestAborted);
+        var meters = await meterProvider.GetMetersForUserAsync(User, HttpContext.RequestAborted, user.Id);
 
         return PartialView("_NotificationPopup", new NotificationPopupViewModel
         {
@@ -68,10 +68,10 @@ internal sealed class NotificationsController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Resolve(Guid id)
     {
-        var userId = GetCurrentUserId();
-        if (userId is null) return Unauthorized();
+        var user = await GetCurrentUserInfoAsync(HttpContext.RequestAborted);
+        if (user is null) return Unauthorized();
 
-        var result = await inboxService.ResolveAsync(id, userId.Value);
+        var result = await inboxService.ResolveAsync(id, user.Id);
 
         if (result.NotFound) return NotFound();
         if (result.Forbidden) return Forbid();
@@ -86,10 +86,10 @@ internal sealed class NotificationsController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Dismiss(Guid id)
     {
-        var userId = GetCurrentUserId();
-        if (userId is null) return Unauthorized();
+        var user = await GetCurrentUserInfoAsync(HttpContext.RequestAborted);
+        if (user is null) return Unauthorized();
 
-        var result = await inboxService.DismissAsync(id, userId.Value);
+        var result = await inboxService.DismissAsync(id, user.Id);
 
         if (result.NotFound) return NotFound();
         if (result.Forbidden) return Forbid();
@@ -104,10 +104,10 @@ internal sealed class NotificationsController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> MarkRead(Guid id)
     {
-        var userId = GetCurrentUserId();
-        if (userId is null) return Unauthorized();
+        var user = await GetCurrentUserInfoAsync(HttpContext.RequestAborted);
+        if (user is null) return Unauthorized();
 
-        var result = await inboxService.MarkReadAsync(id, userId.Value);
+        var result = await inboxService.MarkReadAsync(id, user.Id);
 
         if (result.NotFound) return NotFound();
 
@@ -121,10 +121,10 @@ internal sealed class NotificationsController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> MarkAllRead()
     {
-        var userId = GetCurrentUserId();
-        if (userId is null) return Unauthorized();
+        var user = await GetCurrentUserInfoAsync(HttpContext.RequestAborted);
+        if (user is null) return Unauthorized();
 
-        await inboxService.MarkAllReadAsync(userId.Value);
+        await inboxService.MarkAllReadAsync(user.Id);
 
         if (Request.Headers.XRequestedWith == "XMLHttpRequest")
             return Ok();
@@ -136,19 +136,19 @@ internal sealed class NotificationsController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> BulkResolve(List<Guid> selectedIds)
     {
-        var userId = GetCurrentUserId();
-        if (userId is null) return Unauthorized();
+        var user = await GetCurrentUserInfoAsync(HttpContext.RequestAborted);
+        if (user is null) return Unauthorized();
 
         if (!ModelState.IsValid)
         {
-            logger.LogWarning("Rejected malformed notification bulk-resolve selection for user {UserId}", userId.Value);
+            logger.LogWarning("Rejected malformed notification bulk-resolve selection for user {UserId}", user.Id);
             return BadRequest(ModelState);
         }
 
         if (selectedIds.Count == 0)
             return RedirectToAction(nameof(Index));
 
-        await inboxService.BulkResolveAsync(selectedIds, userId.Value);
+        await inboxService.BulkResolveAsync(selectedIds, user.Id);
 
         if (Request.Headers.XRequestedWith == "XMLHttpRequest")
             return Ok();
@@ -160,19 +160,19 @@ internal sealed class NotificationsController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> BulkDismiss(List<Guid> selectedIds)
     {
-        var userId = GetCurrentUserId();
-        if (userId is null) return Unauthorized();
+        var user = await GetCurrentUserInfoAsync(HttpContext.RequestAborted);
+        if (user is null) return Unauthorized();
 
         if (!ModelState.IsValid)
         {
-            logger.LogWarning("Rejected malformed notification bulk-dismiss selection for user {UserId}", userId.Value);
+            logger.LogWarning("Rejected malformed notification bulk-dismiss selection for user {UserId}", user.Id);
             return BadRequest(ModelState);
         }
 
         if (selectedIds.Count == 0)
             return RedirectToAction(nameof(Index));
 
-        await inboxService.BulkDismissAsync(selectedIds, userId.Value);
+        await inboxService.BulkDismissAsync(selectedIds, user.Id);
 
         if (Request.Headers.XRequestedWith == "XMLHttpRequest")
             return Ok();
@@ -183,10 +183,10 @@ internal sealed class NotificationsController(
     [HttpGet("ClickThrough/{id}")]
     public async Task<IActionResult> ClickThrough(Guid id)
     {
-        var userId = GetCurrentUserId();
-        if (userId is null) return Unauthorized();
+        var user = await GetCurrentUserInfoAsync(HttpContext.RequestAborted);
+        if (user is null) return Unauthorized();
 
-        var url = await inboxService.ClickThroughAsync(id, userId.Value);
+        var url = await inboxService.ClickThroughAsync(id, user.Id);
 
         if (url is null) return NotFound();
 

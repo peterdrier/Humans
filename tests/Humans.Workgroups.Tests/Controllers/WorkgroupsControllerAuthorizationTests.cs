@@ -536,6 +536,8 @@ public sealed class WorkgroupsControllerAuthorizationTests : WorkgroupsTestHarne
         var services = new ServiceCollection();
         services.AddLogging();
         services.AddAuthorization();
+        services.AddSingleton(Users);
+        services.AddHttpContextAccessor();
         services.AddScoped<IAuthorizationHandler, WorkgroupAuthorizationHandler>();
         var provider = services.BuildServiceProvider();
         _localizer[Arg.Any<string>(), Arg.Any<object[]>()]

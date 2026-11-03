@@ -149,11 +149,12 @@ internal sealed partial class PreapprovalService
         try
         {
             var infos = await users.GetUserInfosAsync(ids, ct);
-            foreach (var id in ids)
+            var recipients = ids.Select(id => (Id: id, Person: infos.GetValueOrDefault(id)))
+                .DistinctBy(recipient => recipient.Person?.Id ?? recipient.Id);
+            foreach (var (id, person) in recipients)
             {
                 try
                 {
-                    infos.TryGetValue(id, out var person);
                     var address = person?.Email;
                     if (string.IsNullOrWhiteSpace(address))
                     {
@@ -163,7 +164,7 @@ internal sealed partial class PreapprovalService
                     }
                     var language = person?.PreferredLanguage;
                     await email.SendAsync(emailFactory.Notice(new PreapprovalNoticeRequest(
-                        id, address, person?.BurnerName, kind, info.ProgramName, info.Label, info.MaxAmount, info.ClaimBy,
+                        person?.Id ?? id, address, person?.BurnerName, kind, info.ProgramName, info.Label, info.MaxAmount, info.ClaimBy,
                         url, detail, language.IsSupportedCultureCode() ? language : CultureCatalog.DefaultCultureCode, previousAmount)), ct);
                 }
                 catch (OperationCanceledException) when (ct.IsCancellationRequested)

@@ -58,7 +58,6 @@ public class ShiftBrowsePageBuilderDayFilterTests
         ToDate: null,
         Period: null,
         Day: day,
-        ShowFull: false,
         TagIds: null,
         Sort: sort,
         Periods: null,

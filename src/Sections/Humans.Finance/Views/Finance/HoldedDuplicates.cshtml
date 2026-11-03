@@ -1,8 +1,6 @@
 @model Humans.Finance.Models.HoldedDuplicatesVm
 @{
     ViewData["Title"] = "Duplicate Holded Documents";
-    var names = ViewBag.MemberNames as Dictionary<Guid, string> ?? new Dictionary<Guid, string>();
-    string MemberName(Guid id) => names.TryGetValue(id, out var n) ? n : id.ToString();
 }
 
 <div class="d-flex justify-content-between align-items-center mb-4">
@@ -68,7 +66,7 @@ else
     <div class="card mb-4">
         <div class="card-header d-flex justify-content-between align-items-center">
             <span>
-                <strong>@MemberName(member.UserId)</strong>
+                <strong><vc:human user-id="@member.UserId" link="None" /></strong>
                 <span class="text-muted">@member.ContactName</span>
                 @if (member.SupplierAccountNum is { } account)
                 {

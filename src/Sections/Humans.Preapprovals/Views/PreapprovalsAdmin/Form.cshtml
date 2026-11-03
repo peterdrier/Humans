@@ -111,7 +111,7 @@
                     @foreach (var id in Model.ManagerUserIds.Distinct())
                     {
                         <li class="list-group-item d-flex justify-content-between align-items-center">
-                            <span>@(Model.People.TryGetValue(id, out var info) ? info.BurnerName : id.ToString())</span>
+                            <vc:human user-id="@id" link="None" />
                             <input type="hidden" name="ManagerUserIds" value="@id" />
                             <button type="button" class="btn btn-sm btn-outline-secondary pre-remove">✕</button>
                         </li>

@@ -16,7 +16,6 @@ using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.AspNetCore.Mvc.ViewComponents;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.DependencyInjection;
 using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
@@ -52,11 +51,11 @@ public class PaymentDetailsTests
 
     private static CancellationToken Ct => Xunit.TestContext.Current.CancellationToken;
 
-    private UserInfo SeedUser(Guid id, string? legacyIban = null, Guid? resolvesTo = null)
+    private UserInfo SeedUser(Guid id, Guid? resolvesTo = null)
     {
         var info = UserInfo.Create(
             new User { Id = resolvesTo ?? id, BurnerName = "Ana", CreatedAt = Now },
-            [], [], [], UserFixtures.Profile(iban: legacyIban), []);
+            [], [], UserFixtures.Profile());
         _users.GetUserInfoAsync(id, Arg.Any<CancellationToken>()).Returns(info);
         _users.GetRawUserInfoAsync(id, Arg.Any<CancellationToken>()).Returns(info);
         return info;
@@ -70,7 +69,7 @@ public class PaymentDetailsTests
         var source = Guid.NewGuid();
         var survivor = Guid.NewGuid();
         SeedUser(source, resolvesTo: survivor);
-        SeedUser(survivor, legacyIban: Iban);
+        SeedUser(survivor);
         await _repo.UpsertAsync(survivor, Iban, Now, Ct);
 
         (await _sut.SetIbanAsync(source, value, Ct)).Should().BeTrue();
@@ -103,22 +102,23 @@ public class PaymentDetailsTests
     }
 
     [HumansFact]
-    public async Task GetIban_FallsBackToTheLegacyProfileValue_UntilARowExists()
+    public async Task GetIban_ReturnsNullUntilPaymentDetailsAreSet()
     {
         var id = Guid.NewGuid();
-        SeedUser(id, legacyIban: Iban);
+        SeedUser(id);
 
-        (await _sut.GetIbanAsync(id, Ct)).Should().Be(Iban);
+        (await _sut.GetIbanAsync(id, Ct)).Should().BeNull();
 
         (await _sut.SetIbanAsync(id, OtherIban, Ct)).Should().BeTrue();
         (await _sut.GetIbanAsync(id, Ct)).Should().Be(OtherIban);
     }
 
     [HumansFact]
-    public async Task SetIban_Clearing_RecordsTheRemoval_SoTheLegacyValueDoesNotComeBack()
+    public async Task SetIban_Clearing_RecordsTheRemoval()
     {
         var id = Guid.NewGuid();
-        SeedUser(id, legacyIban: Iban);
+        SeedUser(id);
+        await _sut.SetIbanAsync(id, Iban, Ct);
 
         (await _sut.SetIbanAsync(id, "  ", Ct)).Should().BeTrue();
 
@@ -154,7 +154,8 @@ public class PaymentDetailsTests
     {
         var target = Guid.NewGuid();
         var admin = Guid.NewGuid();
-        SeedUser(target, legacyIban: Iban);
+        SeedUser(target);
+        await _sut.SetIbanAsync(target, Iban, Ct);
 
         (await _sut.RevealIbanAsync(target, admin, Ct)).Should().Be(Iban);
 
@@ -177,39 +178,6 @@ public class PaymentDetailsTests
     }
 
     [HumansFact]
-    public async Task Migration_ListsEveryUncopiedLegacyIbanMasked_CopiesThem_AndIsIdempotent()
-    {
-        var pending = Guid.NewGuid();
-        var alreadyRow = Guid.NewGuid();
-        var noIban = Guid.NewGuid();
-        var users = new[]
-        {
-            SeedUser(pending, legacyIban: Iban),
-            SeedUser(alreadyRow, legacyIban: OtherIban),
-            SeedUser(noIban),
-        };
-        _users.GetAllUserInfosAsync(Arg.Any<CancellationToken>()).Returns(users);
-        await _sut.SetIbanAsync(alreadyRow, null, Ct);
-
-        var services = new ServiceCollection()
-            .AddSingleton<IPaymentDetailsManagement>(_sut)
-            .BuildServiceProvider();
-        var migration = ((ISectionDataMigrations)new Section()).Migrations()
-            .Single(m => string.Equals(m.Key, "finance.iban-to-payment-details", StringComparison.Ordinal));
-
-        var status = await migration.Status(services, Ct);
-        status.Pending.Should().Be(1);
-        status.PendingRows[0][0].Should().Be(pending.ToString());
-        status.PendingRows[0][2].Should().Be(Humans.Base.Helpers.IbanFormatter.Mask(Iban)).And.NotBe(Iban);
-
-        (await migration.Apply(services, Guid.NewGuid(), Ct)).Should().Be(1);
-        (await migration.Apply(services, Guid.NewGuid(), Ct)).Should().Be(0);
-        (await migration.Status(services, Ct)).Done.Should().BeTrue();
-        (await _repo.GetAsync(pending, Ct))!.Iban.Should().Be(Iban);
-        (await _sut.GetIbanAsync(alreadyRow, Ct)).Should().BeNull(); // the removal is kept
-    }
-
-    [HumansFact]
     public async Task Merge_MovesTheSourceRow_WhenTheSurvivorHasNone()
     {
         var source = Guid.NewGuid();
@@ -229,12 +197,13 @@ public class PaymentDetailsTests
     [Xunit.InlineData(false, false)]
     [Xunit.InlineData(true, false)]
     [Xunit.InlineData(false, true)]
-    public async Task Merge_PreservesTheSourcesLegacyIban_WithoutRevivingClearedDetails(
+    public async Task Merge_PreservesTheSourcesIban_WithoutRevivingClearedDetails(
         bool sourceCleared, bool survivorCleared)
     {
         var source = Guid.NewGuid();
         var target = Guid.NewGuid();
-        SeedUser(source, Iban);
+        SeedUser(source);
+        await _sut.SetIbanAsync(source, Iban, Ct);
         SeedUser(target);
         if (sourceCleared) await _sut.SetIbanAsync(source, null, Ct);
         if (survivorCleared) await _sut.SetIbanAsync(target, null, Ct);
@@ -248,12 +217,13 @@ public class PaymentDetailsTests
     }
 
     [HumansFact]
-    public async Task Merge_KeepsTheSurvivorsIban_IncludingOneStillOnItsLegacyProfile()
+    public async Task Merge_KeepsTheSurvivorsIban()
     {
         var source = Guid.NewGuid();
         var target = Guid.NewGuid();
         SeedUser(source);
-        SeedUser(target, legacyIban: OtherIban);
+        SeedUser(target);
+        await _sut.SetIbanAsync(target, OtherIban, Ct);
         await _sut.SetIbanAsync(source, Iban, Ct);
 
         await _sut.ReassignAsync(source, target, Guid.NewGuid(), Now, Ct);
@@ -297,7 +267,8 @@ public class PaymentDetailsTests
     {
         var target = Guid.NewGuid();
         var admin = Guid.NewGuid();
-        SeedUser(target, legacyIban: Iban);
+        SeedUser(target);
+        await _sut.SetIbanAsync(target, Iban, Ct);
         var controller = BuildController(admin);
 
         var result = await controller.RevealIban(target, Ct);
@@ -326,7 +297,8 @@ public class PaymentDetailsTests
     public async Task Card_RendersNothing_OutsideTheAdminHost_OrForANonAdmin(bool isAdmin, ProfileCardViewMode mode)
     {
         var id = Guid.NewGuid();
-        SeedUser(id, legacyIban: Iban);
+        SeedUser(id);
+        await _sut.SetIbanAsync(id, Iban, Ct);
 
         var result = await BuildCard(isAdmin).InvokeAsync(id, mode);
 
@@ -337,7 +309,8 @@ public class PaymentDetailsTests
     public async Task Card_ShowsTheMaskedIbanToAnAdmin()
     {
         var id = Guid.NewGuid();
-        SeedUser(id, legacyIban: Iban);
+        SeedUser(id);
+        await _sut.SetIbanAsync(id, Iban, Ct);
 
         var result = await BuildCard(isAdmin: true).InvokeAsync(id, ProfileCardViewMode.Admin);
 
@@ -358,6 +331,7 @@ public class PaymentDetailsTests
 
     private PaymentDetailsAdminController BuildController(Guid actorId)
     {
+        SeedUser(actorId);
         var http = new DefaultHttpContext
         {
             User = new ClaimsPrincipal(new ClaimsIdentity(

@@ -1,3 +1,4 @@
+using Humans.Shifts.Contracts;
 using Humans.Shifts.Services.Dtos;
 using Humans.Shifts.Domain;
 using Humans.Shifts.Data;
@@ -52,7 +53,7 @@ internal sealed class ShiftViewService : IShiftRowView
         Dictionary<Guid, GeneralAvailability> availabilityByUser = [];
         Dictionary<Guid, VolunteerBuildStatus> buildStatusByUser = [];
         Dictionary<Guid, IReadOnlyList<ShiftSignup>> signupsByUser = [];
-        Humans.Settings.Contracts.EventSettingsInfo? calendar = null;
+        Humans.Shifts.Contracts.BurnSettingsInfo? calendar = null;
 
         if (activeEvent is not null)
         {

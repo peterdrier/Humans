@@ -1,12 +1,14 @@
 using Humans.Finance.Contracts;
 using System.Security.Claims;
 using AwesomeAssertions;
+using NSubstitute;
 using Humans.Base.Constants;
 using Humans.Preapprovals.Authorization;
 using Humans.Preapprovals.Domain;
 using Humans.Preapprovals.Services;
 using Humans.Preapprovals.Tests.Infrastructure;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 
 namespace Humans.Preapprovals.Tests.Authorization;
 
@@ -18,18 +20,55 @@ public sealed class AuthorizationHandlerTests : PreapprovalsTestHarness
             roles.Select(r => new Claim(ClaimTypes.Role, r)).Prepend(new Claim(ClaimTypes.NameIdentifier, userId.ToString())),
             authenticationType: "test"));
 
-    private static async Task<bool> ProgramAllowedAsync(ClaimsPrincipal user, ProgramInfo program, ProgramOperationRequirement requirement)
+    private async Task<bool> ProgramAllowedAsync(ClaimsPrincipal user, ProgramInfo program, ProgramOperationRequirement requirement)
     {
         var context = new AuthorizationHandlerContext([requirement], user, program);
-        await new ProgramAuthorizationHandler().HandleAsync(context);
+        await new ProgramAuthorizationHandler(Users, new HttpContextAccessor()).HandleAsync(context);
         return context.HasSucceeded;
     }
 
     private async Task<bool> PolicyAllowedAsync(ClaimsPrincipal user, IAuthorizationRequirement requirement)
     {
         var context = new AuthorizationHandlerContext([requirement], user, resource: null);
-        await new PreapprovalsPolicyHandler(NewService()).HandleAsync(context);
+        await new PreapprovalsPolicyHandler(NewService(), new Microsoft.AspNetCore.Http.HttpContextAccessor()).HandleAsync(context);
         return context.HasSucceeded;
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(true)]
+    [Xunit.InlineData(false)]
+    public async Task AuthorizationReads_PropagateAbandonedRequests(bool atManager)
+    {
+        using var request = new CancellationTokenSource();
+        var http = new HttpContextAccessor { HttpContext = new DefaultHttpContext { RequestAborted = request.Token } };
+        var userId = Guid.NewGuid();
+        var preapprovals = NSubstitute.Substitute.For<IPreapprovalManagement>();
+        var observed = CancellationToken.None;
+        void Read(bool manager, CancellationToken ct)
+        {
+            if (manager == atManager)
+            {
+                observed = ct;
+                request.Cancel();
+            }
+            ct.ThrowIfCancellationRequested();
+        }
+        preapprovals.ManagesAnyProgramAsync(userId, NSubstitute.Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            Read(true, call.Arg<CancellationToken>());
+            return false;
+        });
+        preapprovals.HasAnythingForUserAsync(userId, NSubstitute.Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            Read(false, call.Arg<CancellationToken>());
+            return true;
+        });
+        var context = new AuthorizationHandlerContext([new PreapprovalsAccessRequirement()], Principal(userId), null);
+        var handler = new PreapprovalsPolicyHandler(preapprovals, http);
+        Func<Task> authorize = () => handler.HandleAsync(context);
+        await authorize.Should().ThrowAsync<OperationCanceledException>();
+        observed.Should().Be(request.Token);
+        context.HasSucceeded.Should().BeFalse();
     }
 
     [HumansFact]
@@ -93,15 +132,26 @@ public sealed class AuthorizationHandlerTests : PreapprovalsTestHarness
         (await PolicyAllowedAsync(user, new ManagesPreapprovalsRequirement())).Should().BeFalse();
     }
 
-    [HumansFact]
-    public async Task ProgramManager_HasBoth_AlsoUnderMergedId()
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task ProgramManager_HasBoth_AlsoUnderMergedId(bool archivedCookie)
     {
         var oldId = Guid.NewGuid();
         var manager = SeedUser("Manager", mergedIds: [oldId]);
-        await SeedProgramAsync(acceptsApplications: false, managers: oldId);
-        var user = Principal(manager);
+        var managed = await SeedProgramAsync(acceptsApplications: false, managers: oldId);
+        var unrelated = await SeedProgramAsync(acceptsApplications: false);
+        var snapshot = await Users.GetUserInfoAsync(manager, Ct);
+        Users.GetUserInfoAsync(oldId, Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<Humans.Users.Contracts.UserInfo?>(snapshot));
+        var user = Principal(archivedCookie ? oldId : manager);
         (await PolicyAllowedAsync(user, new ManagesPreapprovalsRequirement())).Should().BeTrue();
         (await PolicyAllowedAsync(user, new PreapprovalsAccessRequirement())).Should().BeTrue();
+        var program = (await NewService().GetProgramAsync(managed.Id, Ct))!;
+        (await ProgramAllowedAsync(user, program, ProgramOperationRequirement.Manage)).Should().BeTrue();
+        (await ProgramAllowedAsync(user, program, ProgramOperationRequirement.Administer)).Should().BeFalse();
+        var other = (await NewService().GetProgramAsync(unrelated.Id, Ct))!;
+        (await ProgramAllowedAsync(user, other, ProgramOperationRequirement.Manage)).Should().BeFalse();
     }
 
     [HumansFact]

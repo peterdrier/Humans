@@ -86,9 +86,9 @@
                         <hr />
                         <small class="text-muted">
                             @Localizer["Teams_TeamDetail_LastUpdated"] @Model.PageContentUpdatedAt.Value.ToDate()
-                            @if (!string.IsNullOrEmpty(Model.PageContentUpdatedByDisplayName))
+                            @if (Model.PageContentUpdatedByUserId is { } editorId)
                             {
-                                @: &mdash; @Model.PageContentUpdatedByDisplayName
+                                <text> &mdash; </text><vc:human user-id="@editorId" link="None" />
                             }
                         </small>
                     }

@@ -19,7 +19,6 @@ internal sealed record CalendarEventInfo(
     string? RecurrenceRule,
     string? RecurrenceTimezone,
     Instant? RecurrenceUntilUtc,
-    Guid CreatedByUserId,
     Instant CreatedAt,
     Instant UpdatedAt,
     IReadOnlyList<CalendarEventExceptionInfo> Exceptions,

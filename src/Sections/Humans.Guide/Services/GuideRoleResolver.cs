@@ -1,12 +1,14 @@
 using System.Security.Claims;
 using Humans.Camps.Contracts;
 using Humans.Teams.Contracts;
+using Humans.Users.Contracts;
 
 namespace Humans.Guide.Services;
 
 internal sealed class GuideRoleResolver(
     ITeamService teamService,
     ICampLeadDirectory campLeadDirectory,
+    IUserService users,
     GuideRolePrivilegeMap privilegeMap) : IGuideRoleResolver
 {
     public async Task<GuideRoleContext> ResolveAsync(ClaimsPrincipal user, CancellationToken cancellationToken = default)
@@ -30,17 +32,18 @@ internal sealed class GuideRoleResolver(
         var userIdClaim = user.FindFirstValue(ClaimTypes.NameIdentifier);
         var isCoordinator = false;
         var isCampLead = false;
-        if (Guid.TryParse(userIdClaim, out var userId))
+        if (Guid.TryParse(userIdClaim, out var userId)
+            && await users.GetUserInfoAsync(userId, cancellationToken) is { } viewer)
         {
             // Camp lead is a per-camp role, not a claim: the guide's unit of visibility is
             // "leads some camp this year", the same way IsTeamCoordinator is "coordinates
             // some team".
-            isCampLead = await campLeadDirectory.IsLeadAnywhereAsync(userId, cancellationToken);
+            isCampLead = await campLeadDirectory.IsLeadAnywhereAsync(viewer.Id, cancellationToken);
 
             // TeamInfo.Members holds only active memberships.
             var teamsById = await teamService.GetTeamsAsync(cancellationToken);
             isCoordinator = teamsById.Values.Any(t =>
-                t.Members.Any(m => m.UserId == userId && m.Role == TeamMemberRole.Coordinator));
+                t.Members.Any(m => m.UserId == viewer.Id && m.Role == TeamMemberRole.Coordinator));
         }
 
         return new GuideRoleContext(

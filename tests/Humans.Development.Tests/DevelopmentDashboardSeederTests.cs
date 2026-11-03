@@ -101,7 +101,7 @@ public class DevelopmentDashboardSeederTests
         });
         await eventSettingsSeeding.Received().CreateActiveEventAsync(
             Arg.Is<EventSettingsInfo>(settings =>
-                settings.BuildStartOffset <= settings.FirstCrewStartOffset),
+                settings.BuildStartOffset == -25),
             Arg.Any<CancellationToken>());
     }
 

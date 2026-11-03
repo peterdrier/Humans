@@ -11,7 +11,7 @@ internal sealed class TeamSendMessageViewModel
     public string TeamReplyToEmail { get; set; } = string.Empty;
 
     public Guid RecipientId { get; set; }
-    public string RecipientDisplayName { get; set; } = string.Empty;
+    public string PageTitle { get; set; } = string.Empty;
 
     // Browsers submit textarea line breaks as \r\n: normalise on bind so the length check agrees with what the sender
     // counted.

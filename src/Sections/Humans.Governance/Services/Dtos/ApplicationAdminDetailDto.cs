@@ -7,8 +7,6 @@ internal sealed record ApplicationAdminDetailDto(
     Guid Id,
     Guid UserId,
     string UserEmail,
-    string UserDisplayName,
-    string? UserProfilePictureUrl,
     ApplicationStatus Status,
     MembershipTier MembershipTier,
     string Motivation,
@@ -18,8 +16,7 @@ internal sealed record ApplicationAdminDetailDto(
     string? Language,
     Instant SubmittedAt,
     Instant? ReviewStartedAt,
-    Instant? ResolvedAt,
-    string? ReviewerName,
+    Guid? ReviewedByUserId,
     string? ReviewNotes,
     IReadOnlyList<ApplicationStateHistoryDto> History)
 {

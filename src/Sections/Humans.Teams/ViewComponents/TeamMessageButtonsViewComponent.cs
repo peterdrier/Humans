@@ -24,6 +24,11 @@ internal sealed class TeamMessageButtonsViewComponent(
             return Content(string.Empty);
 
         var ct = HttpContext.RequestAborted;
+        var viewer = await users.GetUserInfoAsync(viewerId, ct);
+        if (viewer is null || viewer.AllUserIds.Contains(userId))
+            return Content(string.Empty);
+        viewerId = viewer.Id;
+
         if (!await commPrefs.AcceptsFacilitatedMessagesAsync(userId, ct))
             return Content(string.Empty);
 
@@ -33,12 +38,10 @@ internal sealed class TeamMessageButtonsViewComponent(
         if (teams.Count == 0)
             return Content(string.Empty);
 
-        var recipient = await users.GetUserInfoAsync(userId, ct);
-        return View(new TeamMessageButtonsViewModel(userId, recipient?.BurnerName ?? string.Empty, teams));
+        return View(new TeamMessageButtonsViewModel(userId, teams));
     }
 }
 
 internal sealed record TeamMessageButtonsViewModel(
     Guid UserId,
-    string DisplayName,
     IReadOnlyList<TeamMessageOption> Teams);

@@ -48,8 +48,7 @@ Three aggregates and one content proxy, each with a single writer:
   invalidation).
 - **Consent side**: `ConsentRepository` (append-only), `ConsentService` (business rules, GDPR
   contributor), `CachingConsentService` (per-user lazy cache, synchronous refresh on submit).
-- **Member-review side**: `ConsentReviewRepository` + `ConsentReviewService` (verdict rows, legacy
-  profile fallback until the `consent.profile-review` copy retires), `ConsentReminderRepository` +
+- **Member-review side**: `ConsentReviewRepository` + `ConsentReviewService` (verdict rows), `ConsentReminderRepository` +
   `ConsentReminderService` (the reminder cooldown stamp).
 - **Review queue**: `ConsentReviewQueueService` composes the queue from Users, Governance (tiers,
   pending applications) and the membership calculator, and writes through the section's own
@@ -103,8 +102,8 @@ Three aggregates and one content proxy, each with a single writer:
   by the `ConsentCoordinatorBoardOrAdmin` policy on the action, not the markup; add no service-side
   refusal. Flag stays hidden for a cleared human because `Cleared → Flagged` clears `IsApproved`,
   which tier-team eligibility reads. Expose it once one of those two stops.
-- **Retiring the legacy review fallback** waits on the `consent.profile-review` data migration in
-  production; then `LegacyReview` and the profile review columns go.
+- **Legacy review retirement:** production reported `consent.profile-review` done on 2026-11-03.
+  The copy and fallback are retired; frozen profile review columns await a separate drop.
 - `ILegalDocumentSyncService` cannot fold inward while Governance's `MembershipCalculator`
   injects it.
 

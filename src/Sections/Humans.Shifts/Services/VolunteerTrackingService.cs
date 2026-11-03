@@ -158,7 +158,7 @@ internal sealed class VolunteerTrackingService(
                             .ToList())));
 
     private static List<VolunteerHeatmapRow> BuildMainCohortRows(
-        EventSettingsInfo es,
+        BurnSettingsInfo es,
         IReadOnlyDictionary<Guid, Dictionary<int, VolunteerDaySignup>> perUserSignups,
         IReadOnlyDictionary<Guid, ParticipationStatus> statusMap,
         IReadOnlyDictionary<Guid, VolunteerBuildStatus> bsByUser)
@@ -189,7 +189,7 @@ internal sealed class VolunteerTrackingService(
     }
 
     private static MainCohortCells BuildMainCohortCells(
-        EventSettingsInfo es,
+        BurnSettingsInfo es,
         IReadOnlyDictionary<int, VolunteerDaySignup> daySignups,
         VolunteerBuildStatus? bs,
         int firstSignupDay,
@@ -240,7 +240,7 @@ internal sealed class VolunteerTrackingService(
     }
 
     private static List<VolunteerCohortRow> BuildUnbookedCohortRows(
-        EventSettingsInfo es,
+        BurnSettingsInfo es,
         int todayOffset,
         IReadOnlyDictionary<Guid, ParticipationStatus> statusMap,
         IReadOnlyDictionary<Guid, Dictionary<int, VolunteerDaySignup>> perUserSignups,
@@ -283,7 +283,7 @@ internal sealed class VolunteerTrackingService(
     }
 
     private static UnbookedCohortCells BuildUnbookedCohortCells(
-        EventSettingsInfo es,
+        BurnSettingsInfo es,
         IReadOnlySet<int> inBuild,
         int todayOffset,
         int? setupOffset)
@@ -319,7 +319,7 @@ internal sealed class VolunteerTrackingService(
             : VolunteerCellState.NotAvailable;
     }
 
-    private static int? GetSetupOffset(EventSettingsInfo es, VolunteerBuildStatus? buildStatus) =>
+    private static int? GetSetupOffset(BurnSettingsInfo es, VolunteerBuildStatus? buildStatus) =>
         buildStatus?.BarrioSetupStartDate is { } date
             ? OffsetOf(es, date)
             : null;
@@ -549,11 +549,11 @@ internal sealed class VolunteerTrackingService(
         viewInvalidator.InvalidateUser(targetUserId);
     }
 
-    private async Task<EventSettingsInfo> RequireActiveEventAsync(CancellationToken ct) =>
+    private async Task<BurnSettingsInfo> RequireActiveEventAsync(CancellationToken ct) =>
         await calendarResolver.GetActiveAsync(ct).ConfigureAwait(false)
             ?? throw new InvalidOperationException("No active event");
 
-    private static int OffsetOf(EventSettingsInfo es, LocalDate date) =>
+    private static int OffsetOf(BurnSettingsInfo es, LocalDate date) =>
         Period.Between(es.GateOpeningDate, date, PeriodUnits.Days).Days;
 
     private sealed record VolunteerDaySignup(

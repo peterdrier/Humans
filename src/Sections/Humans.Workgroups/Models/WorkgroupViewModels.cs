@@ -11,7 +11,7 @@ using NodaTime;
 
 namespace Humans.Workgroups.Models;
 
-/// <summary>Badges aren't baked in: the views ask <see cref="WorkgroupRhythm"/>, so page and job can't disagree.</summary>
+/// <summary>Badges aren't baked in: the views ask <see cref="WorkgroupInfo"/>, so page and job can't disagree.</summary>
 internal sealed class RegisterViewModel
 {
     public required Instant Now { get; init; }
@@ -22,19 +22,15 @@ internal sealed class RegisterViewModel
 
     public required IReadOnlyList<WorkgroupInfo> Archive { get; init; }
 
-    public required IReadOnlyDictionary<Guid, UserInfo> People { get; init; }
-
     public required Guid CurrentUserId { get; init; }
 
     public static RegisterViewModel Build(
         IReadOnlyList<WorkgroupInfo> register,
-        IReadOnlyDictionary<Guid, UserInfo> people,
         Guid currentUserId,
         Instant now) => new()
         {
             Now = now,
             CurrentUserId = currentUserId,
-            People = people,
             Active = register
                 .Where(w => w.Status == WorkgroupStatus.Active)
                 .OrderBy(w => w.Name, StringComparer.CurrentCultureIgnoreCase)
@@ -340,8 +336,6 @@ internal sealed class DocumentPageViewModel
 
     public required Guid CurrentUserId { get; init; }
 
-    public required IReadOnlyDictionary<Guid, UserInfo> People { get; init; }
-
     public required bool IsMember { get; init; }
 
     public required bool CanAdminister { get; init; }
@@ -352,8 +346,6 @@ internal sealed class DocumentPageViewModel
 
     public bool CanSeeHidden => IsMember || CanAdminister;
 
-    public string DisplayName(Guid? userId) =>
-        userId is { } id && People.TryGetValue(id, out var info) ? info.BurnerName : "—";
 }
 
 internal sealed class AdminQueueViewModel
@@ -361,8 +353,6 @@ internal sealed class AdminQueueViewModel
     public required Instant Now { get; init; }
 
     public required IReadOnlyList<WorkgroupInfo> Register { get; init; }
-
-    public required IReadOnlyDictionary<Guid, UserInfo> People { get; init; }
 
     public required string? RootDriveFolderId { get; init; }
 
@@ -379,8 +369,6 @@ internal sealed class AdminQueueViewModel
             .SelectMany(w => w.AwaitingDisposition().Select(d => (Workgroup: w, Document: d)))
             .OrderBy(x => x.Document.DeliveredAt);
 
-    public string DisplayName(Guid? userId) =>
-        userId is { } id && People.TryGetValue(id, out var info) ? info.BurnerName : "—";
 }
 
 internal sealed class RegisterExistingViewModel

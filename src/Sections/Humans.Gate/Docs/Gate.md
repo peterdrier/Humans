@@ -60,6 +60,8 @@ after the retention window.
   `OverrideByUserId` from the authenticated scanner — a forged
   `childWithAdult`/`overrideEarly` flag alone never admits, and an unset PIN fails closed
   (overrides refused, never a free pass).
+- Claim roster loading carries request cancellation through both the active-event lookup and the Shifts roster read.
+- Claim roster buttons, PIN headings and PIN confirmation labels render through Human by user ID. The roster service preserves its existing name order before returning IDs; view models carry no name copies. Claim eligibility, merged-ID refusal, PIN mode, throttling and server-side session attribution are unchanged.
 - **Personal staff PINs (`gate_staff_pins`)** — _disabled since peterdrier/Humans#1075_: the claim step is
   bypassed (the terminal scans as the shared gate account), though the table, service methods,
   admin page, and views remain in place should per-person claim return. Design retained in git
@@ -156,6 +158,11 @@ unreachable since peterdrier/Humans#1075 — nothing links to them; the Staff PI
 nobodies-collective/Humans#933.)
 
 ## Invariants
+
+- Scan decisions and staff-PIN administration resolve the signed-in account before
+  owner calls. Merged accounts use the survivor as scanner/audit actor; missing
+  accounts receive 401 and cancelled account lookups perform no action. The seeded
+  gate-terminal account retains its stable scanner ID.
 
 - Verdict-card requests reject redirects and display the request-failure card; login or access-denied pages cannot become admission verdicts.
 - Resetting the shared PIN keypad cancels its pending delayed completion. Closing the supervisor override with Cancel cannot submit the PIN afterward; a reopened panel submits only its new entry.

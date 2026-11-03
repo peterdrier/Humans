@@ -278,7 +278,6 @@ internal sealed class TicketQueryService(
             return new CodeDetailDto
             {
                 Code = code ?? "—",
-                RecipientName = g.RecipientName,
                 RecipientUserId = g.UserId,
                 CampaignTitle = g.CampaignTitle,
                 Status = g.RedeemedAt is not null ? "Redeemed" : "Pending",
@@ -494,12 +493,11 @@ internal sealed class TicketQueryService(
             parsedStatus = paymentStatus;
         }
 
-        var (rawRows, totalCount) = await ticketRepository.GetOrdersPageAsync(
+        var (rows, totalCount) = await ticketRepository.GetOrdersPageAsync(
             search, sortBy, sortDesc, page, pageSize,
             parsedStatus, filterTicketType, filterMatched, ct);
 
-        var rows = await HydrateOrderMatchedUserNamesAsync(rawRows, ct);
-        return new OrdersPageResult { Rows = rows, TotalCount = totalCount };
+        return new OrdersPageResult { Rows = rows.ToList(), TotalCount = totalCount };
     }
 
     public async Task<AttendeesPageResult> GetAttendeesPageAsync(
@@ -515,46 +513,11 @@ internal sealed class TicketQueryService(
             parsedStatus = status;
         }
 
-        var (rawRows, totalCount) = await ticketRepository.GetAttendeesPageAsync(
+        var (rows, totalCount) = await ticketRepository.GetAttendeesPageAsync(
             search, sortBy, sortDesc, page, pageSize,
             filterTicketType, parsedStatus, filterMatched, filterOrderId, filterMultipleTickets, ct);
 
-        var rows = await HydrateAttendeeMatchedUserNamesAsync(rawRows, ct);
-        return new AttendeesPageResult { Rows = rows, TotalCount = totalCount };
-    }
-
-    private async Task<List<OrderRow>> HydrateOrderMatchedUserNamesAsync(IReadOnlyList<OrderRow> rows, CancellationToken ct)
-    {
-        var matchedIds = rows
-            .Where(r => r.MatchedUserId is not null)
-            .Select(r => r.MatchedUserId!.Value)
-            .Distinct()
-            .ToList();
-        if (matchedIds.Count == 0)
-            return rows.ToList();
-
-        var users = await userService.GetUserInfosAsync(matchedIds, ct);
-        return rows.Select(row =>
-            row.MatchedUserId is { } userId && users.TryGetValue(userId, out var user)
-                ? row with { MatchedUserName = user.BurnerName }
-                : row).ToList();
-    }
-
-    private async Task<List<AttendeeRow>> HydrateAttendeeMatchedUserNamesAsync(IReadOnlyList<AttendeeRow> rows, CancellationToken ct)
-    {
-        var matchedIds = rows
-            .Where(r => r.MatchedUserId is not null)
-            .Select(r => r.MatchedUserId!.Value)
-            .Distinct()
-            .ToList();
-        if (matchedIds.Count == 0)
-            return rows.ToList();
-
-        var users = await userService.GetUserInfosAsync(matchedIds, ct);
-        return rows.Select(row =>
-            row.MatchedUserId is { } userId && users.TryGetValue(userId, out var user)
-                ? row with { MatchedUserName = user.BurnerName }
-                : row).ToList();
+        return new AttendeesPageResult { Rows = rows.ToList(), TotalCount = totalCount };
     }
 
     public async Task<WhoHasntBoughtResult> GetWhoHasntBoughtAsync(
@@ -656,7 +619,6 @@ internal sealed class TicketQueryService(
             {
                 UserId = r.UserId,
                 HasTicket = r.HasTicket,
-                Name = r.Name,
                 Email = r.Email,
                 Teams = string.Join(", ", r.TeamNames),
                 Tier = r.Tier,

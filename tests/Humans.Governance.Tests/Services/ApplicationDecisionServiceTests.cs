@@ -46,6 +46,15 @@ namespace Humans.Governance.Tests.Services;
 
 public sealed class ApplicationDecisionServiceTests : IDisposable
 {
+    public enum ApplicationMutation
+    {
+        Create,
+        Withdraw,
+        Vote,
+        Approve,
+        Reject
+    }
+
     private const string ValidMotivation = "I want to contribute to the collective and support its members.";
 
     private readonly FakeClock Clock = new(Instant.FromUtc(2026, 3, 1, 12, 0));
@@ -270,6 +279,131 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
 
         result.Success.Should().BeTrue();
         VotingBadgeCached(boardMemberId).Should().BeFalse();
+    }
+
+    [HumansTheory]
+    [InlineData(ApplicationMutation.Create)]
+    [InlineData(ApplicationMutation.Withdraw)]
+    [InlineData(ApplicationMutation.Vote)]
+    [InlineData(ApplicationMutation.Approve)]
+    [InlineData(ApplicationMutation.Reject)]
+    public async Task ApplicationMutations_CancelAccountLookupBeforeChangingRows(ApplicationMutation action)
+    {
+        using var request = new CancellationTokenSource();
+        var actorId = Guid.NewGuid();
+        var create = action == ApplicationMutation.Create;
+        var app = create ? null : await SeedSubmittedApplicationAsync(actorId);
+        _userService.GetUserInfoAsync(actorId, Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+            return new ValueTask<UserInfo?>(UserInfo.Create(new User { Id = actorId }, [], [], null));
+        });
+        var http = new DefaultHttpContext
+        {
+            RequestAborted = request.Token,
+            User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, actorId.ToString())], "test"))
+        };
+        var shared = Substitute.For<IStringLocalizer<SharedResource>>();
+        shared[Arg.Any<string>()].Returns(call => new LocalizedString(call.Arg<string>(), call.Arg<string>()));
+        var localizer = Substitute.For<IStringLocalizer<GovernanceResource>>();
+        localizer[Arg.Any<string>()].Returns(call => new LocalizedString(call.Arg<string>(), call.Arg<string>()));
+        var applications = new GovernanceApplicationsController(_service, _userService, shared,
+            NullLogger<GovernanceApplicationsController>.Instance, Clock)
+        {
+            ControllerContext = new ControllerContext { HttpContext = http },
+            TempData = new TempDataDictionary(http, Substitute.For<ITempDataProvider>()),
+            Url = Substitute.For<IUrlHelper>()
+        };
+        var board = new GovernanceBoardVotingController(_userService, _service,
+            NullLogger<GovernanceBoardVotingController>.Instance, localizer)
+        {
+            ControllerContext = new ControllerContext { HttpContext = http },
+            TempData = applications.TempData,
+            Url = applications.Url
+        };
+        await request.CancelAsync();
+        Func<Task<IActionResult>> run = () => action switch
+        {
+            ApplicationMutation.Create => applications.Create(new ApplicationCreateViewModel
+            {
+                ConfirmAccuracy = true,
+                MembershipTier = MembershipTier.Colaborador,
+                Motivation = ValidMotivation
+            }),
+            ApplicationMutation.Withdraw => applications.Withdraw(app!.Id),
+            ApplicationMutation.Vote => board.Vote(app!.Id, VoteChoice.Yay, null),
+            _ => board.Finalize(new BoardVotingFinalizeModel
+            {
+                ApplicationId = app!.Id,
+                Approved = action == ApplicationMutation.Approve,
+                DecisionNote = "Board decision",
+                BoardMeetingDate = "2026-03-01"
+            })
+        };
+        await run.Should().ThrowAsync<OperationCanceledException>();
+
+        await _userService.Received(1).GetUserInfoAsync(actorId, request.Token);
+        await using var stored = await GovernanceDbFactory.CreateDbContextAsync(TestContext.Current.CancellationToken);
+        var rows = await stored.Applications.ToListAsync(TestContext.Current.CancellationToken);
+        if (create) rows.Should().BeEmpty();
+        else rows.Should().ContainSingle().Which.Status.Should().Be(ApplicationStatus.Submitted);
+        (await stored.BoardVotes.CountAsync(TestContext.Current.CancellationToken)).Should().Be(0);
+        AuditLog.ReceivedCalls().Should().BeEmpty();
+        _emailService.ReceivedCalls().Should().BeEmpty();
+        _syncJob.ReceivedCalls().Should().BeEmpty();
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(AccountScenario.Merged)]
+    [Xunit.InlineData(AccountScenario.Missing)]
+    [Xunit.InlineData(AccountScenario.Cancelled)]
+    public async Task TermExpiryCorrection_ResolvesItsAuditActorBeforeChangingRows(AccountScenario account)
+    {
+        using var request = new CancellationTokenSource();
+        var drifted = await SeedApprovedApplicationAsync(new LocalDate(2029, 12, 31));
+        var cookieId = Guid.NewGuid();
+        var actorId = Guid.NewGuid();
+        _userService.GetUserInfoAsync(cookieId, Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+            return new ValueTask<UserInfo?>(account == AccountScenario.Missing
+                ? null : UserInfo.Create(new User { Id = actorId }, [], [], null));
+        });
+        var http = new DefaultHttpContext
+        {
+            RequestAborted = request.Token,
+            User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, cookieId.ToString())], "test"))
+        };
+        var controller = new GovernanceApplicationsController(_service, _userService,
+            Substitute.For<Microsoft.Extensions.Localization.IStringLocalizer<Humans.Base.SharedResource>>(),
+            NullLogger<GovernanceApplicationsController>.Instance, Clock)
+        {
+            ControllerContext = new ControllerContext { HttpContext = http },
+            TempData = new TempDataDictionary(http, Substitute.For<ITempDataProvider>()),
+            Url = Substitute.For<IUrlHelper>()
+        };
+        if (account == AccountScenario.Cancelled)
+        {
+            await request.CancelAsync();
+            Func<Task> run = async () => await controller.AdminTermExpiryFix();
+            await run.Should().ThrowAsync<OperationCanceledException>();
+        }
+        else
+        {
+            var result = await controller.AdminTermExpiryFix();
+            if (account == AccountScenario.Merged)
+            {
+                result.Should().BeOfType<RedirectToActionResult>();
+                await AuditLog.Received(1).LogAsync(GovernanceAuditActions.TierTermExpiryCorrected,
+                    AuditEntityTypes.Application, drifted.Id, Arg.Any<string>(), actorId);
+            }
+            else result.Should().BeOfType<UnauthorizedResult>();
+        }
+        if (account != AccountScenario.Merged)
+        {
+            AuditLog.ReceivedCalls().Should().BeEmpty();
+            (await _service.GetTermExpiryDriftAsync(TestContext.Current.CancellationToken)).Should().ContainSingle();
+        }
     }
 
     [HumansTheory]
@@ -947,7 +1081,7 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
             PreferredLanguage = "en"
         };
         _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(UserInfo.Create(user, [], [], [], null, []));
+            .Returns(UserInfo.Create(user, [], [], null));
 
         await _service.ApproveAsync(app.Id, Guid.NewGuid(), null, null, TestContext.Current.CancellationToken);
 
@@ -1486,26 +1620,10 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
     }
 
     [HumansFact]
-    public async Task GetUserApplicationDetailAsync_ReturnsStitchedUserDetailDto()
+    public async Task GetUserApplicationDetailAsync_ReturnsReviewerAndHistoryActorIds()
     {
         var userId = Guid.NewGuid();
         var reviewerId = Guid.NewGuid();
-        var reviewer = new User
-        {
-            Id = reviewerId,
-            DisplayName = "Reviewer",
-            // UserInfo.BurnerName reads User.BurnerName, so it is seeded there.
-            BurnerName = "Reviewer",
-            UserName = "r@t.com",
-            Email = "r@t.com"
-        };
-        var users = new Dictionary<Guid, User> { [reviewerId] = reviewer };
-        _userService.GetUserInfosAsync(
-            Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Contains(reviewerId)),
-            Arg.Any<CancellationToken>())
-            .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
-                new Dictionary<Guid, UserInfo> { [reviewerId] = reviewer.ToUserInfo() }));
-
         var app = await SeedSubmittedApplicationAsync(userId);
         app.Approve(reviewerId, "Good", Clock);
         await SaveAllAsync(TestContext.Current.CancellationToken);
@@ -1513,9 +1631,11 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
         var result = await _service.GetUserApplicationDetailAsync(app.Id, userId, TestContext.Current.CancellationToken);
 
         result.Should().NotBeNull();
-        result.ReviewerName.Should().Be("Reviewer");
+        result.ReviewedByUserId.Should().Be(reviewerId);
         result.History.Should().NotBeEmpty();
-        result.History[0].ChangedByDisplayName.Should().Be("Reviewer");
+        result.History[0].ChangedByUserId.Should().Be(reviewerId);
+        await _userService.DidNotReceive().GetUserInfosAsync(
+            Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -1677,7 +1797,7 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
         var (items, _) = await _service.GetFilteredApplicationsAsync(null, null, 1, 10, TestContext.Current.CancellationToken);
 
         items.Should().HaveCount(1);
-        items[0].UserDisplayName.Should().Be("Applicant");
+        items[0].UserId.Should().Be(userId);
         items[0].UserEmail.Should().Be("a@t.com");
     }
 
@@ -1696,26 +1816,8 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
             Email = "a@t.com",
             ProfilePictureUrl = "https://example.com/pic.png"
         };
-        var reviewer = new User
-        {
-            Id = reviewerId,
-            DisplayName = "Admin",
-            // UserInfo.BurnerName reads User.BurnerName, so it is seeded there.
-            BurnerName = "Admin",
-            UserName = "r@t.com",
-            Email = "r@t.com"
-        };
         _userService.GetUserInfoAsync(applicantId, Arg.Any<CancellationToken>())
             .Returns(applicant.ToUserInfo());
-        _userService.GetUserInfosAsync(
-            Arg.Any<IReadOnlyCollection<Guid>>(),
-            Arg.Any<CancellationToken>())
-            .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
-                new Dictionary<Guid, UserInfo>
-                {
-                    [applicantId] = applicant.ToUserInfo(),
-                    [reviewerId] = reviewer.ToUserInfo()
-                }));
 
         var app = await SeedSubmittedApplicationAsync(applicantId);
         app.Approve(reviewerId, "Looks good", Clock);
@@ -1725,10 +1827,8 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
 
         result.Should().NotBeNull();
         result.UserId.Should().Be(applicantId);
-        result.UserDisplayName.Should().Be("Applicant");
         result.UserEmail.Should().Be("a@t.com");
-        result.UserProfilePictureUrl.Should().Be("https://example.com/pic.png");
-        result.ReviewerName.Should().Be("Admin");
+        result.ReviewedByUserId.Should().Be(reviewerId);
         result.History.Should().NotBeEmpty();
     }
 
