@@ -1,3 +1,4 @@
+using Humans.Users.Contracts;
 using System.Security.Claims;
 using Humans.Events.Contracts;
 using Humans.Events.Models;
@@ -17,6 +18,7 @@ namespace Humans.Events.ViewComponents;
 public sealed class EventsCardViewComponent(
     IEventService events,
     IConfiguration configuration,
+    IUserService users,
     ILogger<EventsCardViewComponent> logger) : ViewComponent
 {
     public async Task<IViewComponentResult> InvokeAsync(Guid? campId = null, Guid? userId = null)
@@ -37,6 +39,10 @@ public sealed class EventsCardViewComponent(
             if (!Guid.TryParse(UserClaimsPrincipal.FindFirstValue(ClaimTypes.NameIdentifier), out var viewerId))
                 return Content(string.Empty);
 
+            var viewer = await users.GetUserInfoAsync(viewerId, ct);
+            if (viewer is null)
+                return Content(string.Empty);
+
             var approved = await events.GetApprovedEventsAsync(campId, null, null, null, [], ct);
             if (userId is not null)
                 approved = approved.Where(e => e.SubmitterUserId == userId && e.CampId is null).ToList();
@@ -48,7 +54,7 @@ public sealed class EventsCardViewComponent(
                 ? DateTimeZoneProviders.Tzdb.GetZoneOrNull(settings.TimeZoneId)
                 : null;
 
-            var favouriteIds = await events.GetFavouriteEventIdsAsync(viewerId, ct);
+            var favouriteIds = await events.GetFavouriteEventIdsAsync(viewer.Id, ct);
 
             var rows = approved
                 .OrderBy(e => e.StartAt)

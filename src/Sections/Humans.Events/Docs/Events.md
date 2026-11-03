@@ -184,6 +184,10 @@ Member create, edit, withdrawal and bulk-import preflight reads retain browser c
 
 ## Invariants
 
+- Camp/profile event cards resolve the viewer before loading approved rows and
+  favourite IDs, so merged cookies mark the survivor's favourites. Missing accounts
+  render no card; cancelled account lookup propagates cancellation.
+
 - API favourites, category preferences and personalised public browse exclusions
   resolve the signed-in account before owner calls, so merged cookies use the
   survivor's rows. Missing accounts retain anonymous public browse and receive 401
