@@ -122,7 +122,7 @@ internal sealed class IssueDetailViewModel
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
     public DateTime? ResolvedAt { get; set; }
-    public string? ResolvedByName { get; set; }
+    public Guid? ResolvedByUserId { get; set; }
 
     public bool IsHandler { get; set; }
     public bool IsReporter { get; set; }
@@ -139,7 +139,6 @@ internal sealed class IssueThreadEventViewModel
     public string Type { get; set; } = string.Empty;
     public DateTime At { get; set; }
     public Guid? ActorUserId { get; set; }
-    public string? ActorName { get; set; }
 
     public string? Content { get; set; }
 

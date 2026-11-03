@@ -28,6 +28,63 @@ namespace Humans.Issues.Tests.Controllers;
 public sealed class IssuesControllerTests
 {
     [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Detail_CarriesIdentityIds_WithoutLoadingDisplayUsers(bool partial)
+    {
+        using var services = new ServiceCollection().AddLogging().AddLocalization().BuildServiceProvider();
+        var reporterId = Guid.NewGuid();
+        var resolverId = Guid.NewGuid();
+        var issueId = Guid.NewGuid();
+        var issues = Substitute.For<IIssuesService>();
+        issues.GetIssueByIdAsync(issueId, Arg.Any<IssueViewer>(), Arg.Any<CancellationToken>()).Returns(
+            new IssueDetail(issueId, IssueStatus.Resolved, default, null, "Title", "Details",
+                null, null, null, null, reporterId, Guid.NewGuid(), resolverId, null, null,
+                default, default, default(NodaTime.Instant), 1));
+        issues.GetThreadAsync(issueId, Arg.Any<IssueViewer>(), Arg.Any<CancellationToken>()).Returns(
+            new IssueThreadEvent[]
+            {
+                new IssueCommentEvent(Guid.NewGuid(), default, reporterId, "Reporter", true, "Comment"),
+                new IssueAuditEvent(default, resolverId, "Resolver", "Resolved", "Closed"),
+                new IssueAuditEvent(default, null, null, "System", "Automatic"),
+            });
+        var users = Substitute.For<IUserService>();
+        users.GetUserInfoAsync(reporterId, Arg.Any<CancellationToken>()).Returns(
+            UserInfo.Create(new User { Id = reporterId }, [], [], null));
+        var authorization = Substitute.For<IAuthorizationService>();
+        authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object>(),
+                Arg.Any<IEnumerable<IAuthorizationRequirement>>())
+            .Returns(AuthorizationResult.Failed());
+        var controller = new IssuesController(issues, authorization, users, new IssueSectionRouting([]),
+            services.GetRequiredService<IStringLocalizer<IssuesResource>>(), NullLogger<IssuesController>.Instance)
+        {
+            ControllerContext = new ControllerContext
+            {
+                HttpContext = new DefaultHttpContext
+                {
+                    User = new ClaimsPrincipal(new ClaimsIdentity(
+                        [new Claim(ClaimTypes.NameIdentifier, reporterId.ToString())], "test"))
+                }
+            }
+        };
+
+        var result = await controller.Detail(issueId, partial);
+
+        if (partial)
+        {
+            var model = result.Should().BeOfType<PartialViewResult>().Which.Model
+                .Should().BeOfType<IssueDetailViewModel>().Which;
+            model.ReporterUserId.Should().Be(reporterId);
+            model.ResolvedByUserId.Should().Be(resolverId);
+            model.Thread.Select(e => e.ActorUserId).Should().Equal(reporterId, resolverId, null);
+        }
+        else
+            result.Should().BeOfType<RedirectToActionResult>().Which.ActionName.Should().Be("Index");
+        await users.DidNotReceive().GetUserInfosAsync(
+            Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansTheory]
     [InlineData("en")]
     [InlineData("es")]
     [InlineData("de")]

@@ -214,8 +214,7 @@ internal sealed class IssuesController(
         var isReporter = user.AllUserIds.Contains(issue.ReporterUserId);
 
         var thread = await issues.GetThreadAsync(id, viewer, HttpContext.RequestAborted);
-        var displayUsers = await GetIssueDisplayUsersAsync(issue, HttpContext.RequestAborted);
-        var vm = MapDetailViewModel(issue, thread, displayUsers, isHandler: canHandle, isReporter: isReporter);
+        var vm = MapDetailViewModel(issue, thread, isHandler: canHandle, isReporter: isReporter);
 
         if (canHandle)
         {
@@ -454,7 +453,6 @@ internal sealed class IssuesController(
     private IssueDetailViewModel MapDetailViewModel(
         IssueDetail i,
         IReadOnlyList<IssueThreadEvent> thread,
-        IReadOnlyDictionary<Guid, UserInfo> displayUsers,
         bool isHandler,
         bool isReporter)
     {
@@ -478,9 +476,7 @@ internal sealed class IssuesController(
             CreatedAt = i.CreatedAt.ToDateTimeUtc(),
             UpdatedAt = i.UpdatedAt.ToDateTimeUtc(),
             ResolvedAt = i.ResolvedAt?.ToDateTimeUtc(),
-            ResolvedByName = i.ResolvedByUserId is { } resolvedById
-                ? displayUsers.GetValueOrDefault(resolvedById)?.BurnerName
-                : null,
+            ResolvedByUserId = i.ResolvedByUserId,
             IsHandler = isHandler,
             IsReporter = isReporter,
             Thread = thread.Select(e => e switch
@@ -490,7 +486,6 @@ internal sealed class IssuesController(
                     Type = "comment",
                     At = c.At.ToDateTimeUtc(),
                     ActorUserId = c.ActorUserId,
-                    ActorName = c.ActorDisplayName,
                     Content = c.Content,
                     ActorIsReporter = c.ActorIsReporter
                 },
@@ -499,20 +494,10 @@ internal sealed class IssuesController(
                     Type = "audit",
                     At = a.At.ToDateTimeUtc(),
                     ActorUserId = a.ActorUserId,
-                    ActorName = a.ActorDisplayName,
                     Description = a.Description
                 },
                 _ => throw new NotSupportedException($"Unknown thread event type {e.GetType().Name}")
             }).ToList()
         };
-    }
-
-    private async Task<IReadOnlyDictionary<Guid, UserInfo>> GetIssueDisplayUsersAsync(IssueDetail issue, CancellationToken ct)
-    {
-        var ids = new HashSet<Guid> { issue.ReporterUserId };
-        if (issue.AssigneeUserId is { } assigneeId) ids.Add(assigneeId);
-        if (issue.ResolvedByUserId is { } resolvedById) ids.Add(resolvedById);
-
-        return await UserService.GetUserInfosAsync(ids, ct);
     }
 }
