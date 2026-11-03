@@ -69,6 +69,136 @@ public sealed class ExpensesControllerPreapprovalTests
         };
     }
 
+    [HumansTheory]
+    [Xunit.InlineData(0, false)]
+    [Xunit.InlineData(0, true)]
+    [Xunit.InlineData(1, false)]
+    [Xunit.InlineData(1, true)]
+    [Xunit.InlineData(2, false)]
+    [Xunit.InlineData(2, true)]
+    [Xunit.InlineData(3, false)]
+    [Xunit.InlineData(3, true)]
+    [Xunit.InlineData(4, false)]
+    [Xunit.InlineData(4, true)]
+    [Xunit.InlineData(5, false)]
+    [Xunit.InlineData(5, true)]
+    [Xunit.InlineData(6, false)]
+    [Xunit.InlineData(6, true)]
+    [Xunit.InlineData(7, false)]
+    [Xunit.InlineData(7, true)]
+    [Xunit.InlineData(8, false)]
+    [Xunit.InlineData(8, true)]
+    [Xunit.InlineData(9, false)]
+    [Xunit.InlineData(9, true)]
+    [Xunit.InlineData(10, false)]
+    [Xunit.InlineData(10, true)]
+    [Xunit.InlineData(11, false)]
+    [Xunit.InlineData(11, true)]
+    [Xunit.InlineData(12, false)]
+    [Xunit.InlineData(12, true)]
+    [Xunit.InlineData(13, false)]
+    [Xunit.InlineData(13, true)]
+    [Xunit.InlineData(14, false)]
+    [Xunit.InlineData(14, true)]
+    [Xunit.InlineData(15, false)]
+    [Xunit.InlineData(15, true)]
+    [Xunit.InlineData(16, true)]
+    public async Task Mutation_preflight_observes_request_cancellation(int action, bool actorLookup)
+    {
+        var report = ReviewRow(null) with { Status = ExpenseReportStatus.Draft };
+        using var request = new CancellationTokenSource();
+        _users.GetUserInfoAsync(_actorId, Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            if (actorLookup)
+            {
+                call.Arg<CancellationToken>().Should().Be(request.Token);
+                call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+            }
+            return new ValueTask<UserInfo?>(UserInfo.Create(new User { Id = _actorId }, [], [], null));
+        });
+        _reports.GetAsync(report.Id, Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            if (!actorLookup)
+            {
+                call.Arg<CancellationToken>().Should().Be(request.Token);
+                call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+            }
+            return report;
+        });
+        var controller = Build();
+        controller.HttpContext.RequestAborted = request.Token;
+        await request.CancelAsync();
+        var lineId = Guid.NewGuid();
+        Func<Task<IActionResult>> invoke = action switch
+        {
+            0 => () => controller.Edit(report.Id, new ExpenseEditViewModel()),
+            1 => () => controller.AddLine(report.Id, new AddLineInputModel(), null),
+            2 => () => controller.UpdateLine(report.Id, new EditLineInputModel()),
+            3 => () => controller.RemoveLine(report.Id, lineId),
+            4 => () => controller.AttachFile(report.Id, lineId, null),
+            5 => () => controller.RemoveAttachment(report.Id, lineId),
+            6 => () => controller.Submit(report.Id),
+            7 => () => controller.Withdraw(report.Id),
+            8 => () => controller.Iban(report.Id, new ExpenseIbanViewModel()),
+            9 => () => controller.Endorse(report.Id, new EndorseInputModel()),
+            10 => () => controller.CoordinatorReject(report.Id, new CoordinatorRejectInputModel()),
+            11 => () => controller.DeclineLine(report.Id, lineId, new DeclineLineInputModel()),
+            12 => () => controller.UndoDeclineLine(report.Id, lineId),
+            13 => () => controller.Approve(report.Id, new ApproveInputModel()),
+            14 => () => controller.Reject(report.Id, new FinanceRejectInputModel()),
+            15 => () => controller.HoldedRetry(report.Id),
+            _ => () => controller.New(new ExpenseNewViewModel()),
+        };
+
+        await invoke.Should().ThrowAsync<OperationCanceledException>();
+        _reports.ReceivedCalls().Should().OnlyContain(call => call.GetMethodInfo().Name == nameof(IExpenseReportManagement.GetAsync));
+        _authorization.ReceivedCalls().Should().BeEmpty();
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(0)]
+    [Xunit.InlineData(1)]
+    [Xunit.InlineData(2)]
+    public async Task Invalid_new_form_preflight_observes_request_cancellation(int lookup)
+    {
+        using var request = new CancellationTokenSource();
+        var grantId = Guid.NewGuid();
+        _holdedFinance.ListExpenseAccountsAsync(true, Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            if (lookup == 0)
+            {
+                call.Arg<CancellationToken>().Should().Be(request.Token);
+                call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+            }
+            return Array.Empty<HoldedExpenseAccountOption>();
+        });
+        _preapprovals.ListClaimableForUserAsync(_actorId, Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            if (lookup == 1)
+            {
+                call.Arg<CancellationToken>().Should().Be(request.Token);
+                call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+            }
+            return Array.Empty<GrantOption>();
+        });
+        _preapprovals.GetGrantAsync(grantId, Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            call.Arg<CancellationToken>().Should().Be(request.Token);
+            call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+            return (GrantOption?)null;
+        });
+        var controller = Build();
+        controller.HttpContext.RequestAborted = request.Token;
+        controller.ModelState.AddModelError("Note", "invalid");
+        await request.CancelAsync();
+
+        var load = () => controller.New(new ExpenseNewViewModel { PreapprovalGrantId = grantId });
+
+        await load.Should().ThrowAsync<OperationCanceledException>();
+        _reports.ReceivedCalls().Should().BeEmpty();
+        controller.TempData.Should().BeEmpty();
+    }
+
     private static GrantOption Grant(string program, LocalDate claimBy, GrantStatus status = GrantStatus.Open) =>
         new(Guid.NewGuid(), program, null, 100m, 62900500, "acc-grant", claimBy, status);
 

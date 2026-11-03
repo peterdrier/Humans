@@ -148,6 +148,11 @@ The submitter-facing `/Expenses/{id}` detail view localizes report labels and st
 
 ## Invariants
 
+- Controller mutation preflight honours request cancellation while resolving the
+  actor and report, and while loading an invalid new-report form's account/grant
+  options. These reads finish before mutation handling; writes and post-attempt
+  redisplay retain their independent tokens.
+
 - New, edit and approval-override account choices are ordered by budget-category status first, then label ignoring case, then account number. The controller owns that order; Finance supplies unordered account metadata.
 
 - The member index retains request cancellation through its Budget coordinator-scope lookup.
