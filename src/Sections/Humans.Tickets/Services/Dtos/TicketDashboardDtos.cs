@@ -212,7 +212,6 @@ internal sealed record OrderRow()
     public TicketPaymentStatus PaymentStatus { get; init; }
     public string? VendorDashboardUrl { get; init; }
     public Guid? MatchedUserId { get; init; }
-    public string? MatchedUserName { get; init; }
 }
 
 internal sealed class OrdersPageResult
@@ -231,7 +230,6 @@ internal sealed record AttendeeRow()
     public decimal Price { get; init; }
     public TicketAttendeeStatus Status { get; init; }
     public Guid? MatchedUserId { get; init; }
-    public string? MatchedUserName { get; init; }
     public string VendorOrderId { get; init; } = string.Empty;
 }
 
