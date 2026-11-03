@@ -66,7 +66,6 @@ internal sealed class ContainerController(
             CampSlug = camp.Slug,
             CampName = displayName,
             CurrentYear = currentYear,
-            IsPlacementOpen = isPlacementOpen,
             IsLeadButPhaseClosed = !canPlace && !isPlacementOpen,
             Containers = containers.ToList(),
             PlacementsByContainerId = placementsByContainerId,

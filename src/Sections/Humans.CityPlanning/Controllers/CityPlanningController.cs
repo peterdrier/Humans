@@ -70,11 +70,9 @@ internal sealed class CityPlanningController(
 
         return View(new CityPlanningBarrioMapViewModel
         {
-            Year = settings.Year,
             PlacementState = settings.PlacementState,
             IsMapAdmin = isMapAdmin,
             UserCampSeasonId = userSeasonId?.ToString() ?? string.Empty,
-            CurrentUserId = user.Id,
             SeasonsWithoutCampPolygon = seasonsWithout.ToList(),
             PlacementSchedule = (settings.PlacementOpensOn, settings.PlacementClosesOn, settings.PlacementChangeableUntilOn),
         });
