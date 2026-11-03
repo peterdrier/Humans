@@ -89,7 +89,7 @@ internal sealed class GateController(
             return RedirectToAction(nameof(Claim));
 
         var status = await gate.GetPinStatusAsync(userId, ct);
-        return View("Pin", GatePinViewModel.ForClaim(userId, info.BurnerName, status));
+        return View("Pin", GatePinViewModel.ForClaim(userId, status));
     }
 
     [HttpPost("ClaimPin")]
@@ -104,11 +104,10 @@ internal sealed class GateController(
 
         // Re-derive the mode server-side; never trust a client set/verify hint.
         var status = await gate.GetPinStatusAsync(userId, ct);
-        var name = info.BurnerName;
 
         return status.HasPin
-            ? await VerifyClaimAsync(userId, name, status, pin, ct)
-            : await SetClaimPinAsync(userId, name, status, pin, ct);
+            ? await VerifyClaimAsync(userId, status, pin, ct)
+            : await SetClaimPinAsync(userId, status, pin, ct);
     }
 
     [HttpPost("EndShift")]
@@ -245,16 +244,16 @@ internal sealed class GateController(
     }
 
     private async Task<IActionResult> VerifyClaimAsync(
-        Guid userId, string name, GatePinStatus status, string? pin, CancellationToken ct)
+        Guid userId, GatePinStatus status, string? pin, CancellationToken ct)
     {
         var userKey = UserKey(userId);
         if (ThrottleWait(userKey) is { } wait)
-            return View("Pin", GatePinViewModel.ForClaim(userId, name, status, $"Too many tries — wait {wait}s"));
+            return View("Pin", GatePinViewModel.ForClaim(userId, status, $"Too many tries — wait {wait}s"));
 
         if (!await gate.VerifyPinAsync(userId, pin ?? string.Empty, ct))
         {
             RecordPinFailure(userKey);
-            return View("Pin", GatePinViewModel.ForClaim(userId, name, status, "That PIN didn't match — try again"));
+            return View("Pin", GatePinViewModel.ForClaim(userId, status, "That PIN didn't match — try again"));
         }
 
         ResetPinThrottle(userKey);
@@ -262,12 +261,12 @@ internal sealed class GateController(
     }
 
     private async Task<IActionResult> SetClaimPinAsync(
-        Guid userId, string name, GatePinStatus status, string? pin, CancellationToken ct) =>
+        Guid userId, GatePinStatus status, string? pin, CancellationToken ct) =>
         await gate.SetOwnPinAsync(userId, pin ?? string.Empty, ct) switch
         {
             GatePinSetResult.Ok => StampAndScan(userId),
             _ => View("Pin", GatePinViewModel.ForClaim(
-                userId, name, status, "Pick a less obvious PIN — not 1234, 0000, or repeats")),
+                userId, status, "Pick a less obvious PIN — not 1234, 0000, or repeats")),
         };
 
     private IActionResult StampAndScan(Guid userId)
@@ -287,13 +286,12 @@ internal sealed class GateController(
 
     private void ResetPinThrottle(string userKey) => pinThrottle.Reset(userKey);
 
-    private async Task<IReadOnlyList<GateRosterMember>> BuildRosterAsync(CancellationToken ct)
+    private async Task<IReadOnlyList<Guid>> BuildRosterAsync(CancellationToken ct)
     {
         if (!Guid.TryParse(configuration["Gate:RosterTeamId"], out var teamId))
             return [];
 
-        var roster = await gate.GetShiftRosterAsync(teamId, ct);
-        return roster.Select(r => new GateRosterMember(r.UserId, r.DisplayName)).ToList();
+        return await gate.GetShiftRosterAsync(teamId, ct);
     }
 
 }

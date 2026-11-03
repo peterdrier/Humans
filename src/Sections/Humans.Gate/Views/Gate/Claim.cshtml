@@ -14,10 +14,10 @@
 {
     <h2 class="h5 mt-3">On the gate roster</h2>
     <form method="post" asp-action="Claim" class="gate-roster">
-        @foreach (var member in Model.Roster)
+        @foreach (var userId in Model.Roster)
         {
-            <button type="submit" name="userId" value="@member.UserId" class="gate-roster-pick">
-                @member.DisplayName
+            <button type="submit" name="userId" value="@userId" class="gate-roster-pick">
+                <vc:human user-id="@userId" link="None" />
             </button>
         }
     </form>

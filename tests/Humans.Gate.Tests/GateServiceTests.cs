@@ -730,8 +730,8 @@ public class GateServiceTests
         {
             // Starts at now: Eve is Refused (excluded), Alice + Bob signed up.
             ShiftAt(0, new LocalTime(13, 0),
-                (alice, "Alice", SignupStatus.Confirmed),
                 (bob, "Bob", SignupStatus.Confirmed),
+                (alice, "Alice", SignupStatus.Confirmed),
                 (eve, "Eve", SignupStatus.Refused)),
             // Starts now-1h (in window): Alice again (de-duped), Carol pending (still "signed up").
             ShiftAt(0, new LocalTime(12, 0),
@@ -744,7 +744,7 @@ public class GateServiceTests
 
         var roster = await _svc.GetShiftRosterAsync(teamId);
 
-        roster.Select(r => r.DisplayName).Should().Equal("Alice", "Bob", "Carol");
+        roster.Should().Equal(alice, bob, carol);
     }
 
     [HumansFact]
