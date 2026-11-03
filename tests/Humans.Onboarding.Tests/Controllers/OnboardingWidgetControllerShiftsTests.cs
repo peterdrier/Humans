@@ -126,7 +126,7 @@ public class OnboardingWidgetControllerShiftsTests
     {
         var userId = Guid.NewGuid();
         var shiftId = Guid.NewGuid();
-        _signups.SignUpAsync(userId, shiftId, actorUserId: userId)
+        _signups.SignUpAsync(userId, shiftId)
             .Returns(SignupResult.Ok(Guid.NewGuid(), warning));
         var ctrl = BuildSut(userId);
 
@@ -135,7 +135,7 @@ public class OnboardingWidgetControllerShiftsTests
         var redirect = Assert.IsType<RedirectToActionResult>(result);
         Assert.Equal(nameof(OnboardingWidgetController.Consents), redirect.ActionName);
         Assert.Equal(warning, ctrl.TempData[TempDataKeys.InfoMessage]);
-        await _signups.Received(1).SignUpAsync(userId, shiftId, actorUserId: userId);
+        await _signups.Received(1).SignUpAsync(userId, shiftId);
     }
 
     [HumansFact]
@@ -143,7 +143,7 @@ public class OnboardingWidgetControllerShiftsTests
     {
         var userId = Guid.NewGuid();
         var shiftId = Guid.NewGuid();
-        _signups.SignUpAsync(userId, shiftId, actorUserId: userId)
+        _signups.SignUpAsync(userId, shiftId)
             .Returns(SignupResult.Fail("nope"));
         var ctrl = BuildSut(userId);
 
