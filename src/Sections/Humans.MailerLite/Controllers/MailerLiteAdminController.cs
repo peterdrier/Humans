@@ -251,8 +251,8 @@ internal sealed class MailerLiteAdminController(
             return BadRequest(ModelState);
         }
 
-        var actorUserId = GetCurrentUserId();
-        if (actorUserId is null) return Unauthorized();
+        var (userError, user) = await ResolveCurrentUserOrUnauthorizedAsync(ct);
+        if (userError is not null) return userError;
 
         var fresh = await import.BuildPlanAsync(ct);
 
@@ -268,7 +268,7 @@ internal sealed class MailerLiteAdminController(
 
         // The plan build may be abandoned; the apply writes to MailerLite and must not be torn in half by the
         // admin navigating away.
-        var result = await import.ApplyAsync(fresh, actorUserId.Value, maxPerOutcome, CancellationToken.None);
+        var result = await import.ApplyAsync(fresh, user.Id, maxPerOutcome, CancellationToken.None);
         TempData["Banner"] = result.FormatSummary();
         return RedirectToAction(nameof(Index));
     }

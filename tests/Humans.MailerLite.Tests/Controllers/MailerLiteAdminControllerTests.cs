@@ -33,6 +33,12 @@ public class MailerLiteAdminControllerTests
     private readonly IUserService _userService = Substitute.For<IUserService>();
     private readonly ICommunicationPreferenceService _prefs = Substitute.For<ICommunicationPreferenceService>();
 
+    public MailerLiteAdminControllerTests()
+    {
+        _userService.GetUserInfoAsync(_actorUserId, Arg.Any<CancellationToken>())
+            .Returns(UserInfo.Create(new User { Id = _actorUserId }, [], [], profile: null));
+    }
+
     private MailerLiteAdminController BuildSut(
         ImportPlanCounts? snapshotCounts = null,
         IEnumerable<IMailerLiteAudience>? audiences = null)
@@ -70,6 +76,55 @@ public class MailerLiteAdminControllerTests
             AmbiguousSkipped: 0, UnconfirmedSkipped: 0,
             VanishedBetweenPlanAndApply: 0, DecisionsThrottled: 0,
             Errors: 0, Elapsed: Duration.Zero);
+
+    [HumansTheory]
+    [InlineData("merged")]
+    [InlineData("missing")]
+    [InlineData("cancelled")]
+    public async Task Commit_ResolvesActorBeforePlanningAndApplying(string account)
+    {
+        using var request = new CancellationTokenSource();
+        var survivor = Guid.NewGuid();
+        _userService.GetUserInfoAsync(_actorUserId, Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            if (string.Equals(account, "cancelled", StringComparison.Ordinal))
+            {
+                request.Cancel();
+                call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+            }
+            return string.Equals(account, "missing", StringComparison.Ordinal)
+                ? null : UserInfo.Create(new User { Id = survivor }, [], [], profile: null);
+        });
+        var plan = new ImportPlan([Decision(SubscriberOutcome.CreateNewHuman)], TotalPulled: 1);
+        _importService.BuildPlanAsync(Arg.Any<CancellationToken>()).Returns(plan);
+        _importService.ApplyAsync(Arg.Any<ImportPlan>(), Arg.Any<Guid>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())
+            .Returns(StubResult());
+        var controller = BuildSut();
+        controller.HttpContext.RequestAborted = request.Token;
+
+        if (string.Equals(account, "cancelled", StringComparison.Ordinal))
+        {
+            Func<Task> commit = () => controller.Commit(null, request.Token);
+            await commit.Should().ThrowAsync<OperationCanceledException>();
+            _importService.ReceivedCalls().Should().BeEmpty();
+        }
+        else
+        {
+            var result = await controller.Commit(null, request.Token);
+            if (string.Equals(account, "missing", StringComparison.Ordinal))
+            {
+                result.Should().BeOfType<UnauthorizedResult>();
+                _importService.ReceivedCalls().Should().BeEmpty();
+            }
+            else
+            {
+                result.Should().BeOfType<RedirectToActionResult>();
+                await _importService.Received(1).BuildPlanAsync(request.Token);
+                await _importService.Received(1).ApplyAsync(plan, survivor, null, CancellationToken.None);
+            }
+        }
+        await _userService.Received(1).GetUserInfoAsync(_actorUserId, request.Token);
+    }
 
     [HumansFact]
     public async Task Commit_InvalidLimitBinding_DoesNotBuildOrApplyAnUnlimitedPlan()
