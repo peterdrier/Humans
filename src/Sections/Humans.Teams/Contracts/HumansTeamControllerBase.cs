@@ -18,7 +18,7 @@ public abstract class HumansTeamControllerBase(
 {
     protected IAuthorizationService AuthorizationService => authorizationService;
 
-    protected async Task<(IActionResult? ErrorResult, UserInfo User, TeamInfo Team)> ResolveTeamManagementAsync(string slug)
+    protected async Task<(IActionResult? ErrorResult, UserInfo User, TeamInfo Team)> ResolveTeamManagementAsync(string slug, CancellationToken ct = default)
     {
         return await ResolveTeamAccessAsync(
             slug,
@@ -28,10 +28,10 @@ public abstract class HumansTeamControllerBase(
                 var result = await authorizationService.AuthorizeAsync(
                     User, team, TeamOperationRequirement.ManageCoordinators);
                 return result.Succeeded;
-            });
+            }, ct);
     }
 
-    protected async Task<(IActionResult? ErrorResult, UserInfo User, TeamInfo Team)> ResolveEarlyEntryManagementAsync(string slug)
+    protected async Task<(IActionResult? ErrorResult, UserInfo User, TeamInfo Team)> ResolveEarlyEntryManagementAsync(string slug, CancellationToken ct = default)
     {
         return await ResolveTeamAccessAsync(
             slug,
@@ -41,7 +41,7 @@ public abstract class HumansTeamControllerBase(
                 var result = await authorizationService.AuthorizeAsync(
                     User, team, TeamOperationRequirement.ManageEarlyEntry);
                 return result.Succeeded;
-            });
+            }, ct);
     }
 
     protected Task<(IActionResult? ErrorResult, UserInfo User, TeamInfo Team)> ResolveDepartmentAccessAsync(
