@@ -57,10 +57,11 @@ migration (deletes a registration, its legacy fallback or its obsolete fields), 
 §5 report. A key that is missing or reads anything but `"pending":0,"done":true` makes that
 commit a REVERT. Codex's quoted reading is a claim, not evidence.
 
-Every retirement you keep leaves storage to drop. Its objects go in an open
-`db:Destructive` issue on `peterdrier/Humans`: add them to one that is already open, or file
-one naming each object, its owner context, the migration key, the reading you quoted and the
-retiring commit's sha. These issues are §6's queue and don't count toward the three-issue cap.
+Every retirement you keep leaves storage to drop. File **one `db:Destructive` issue per
+debt PR** on `peterdrier/Humans`. It names the debt PR (squash merges change the sha, so name
+the PR, not a commit) and, for each object, its owner context, its migration key and the
+reading you quoted. Never add objects from another PR to it: they would deploy at a different
+time. These issues are §6's queue and don't count toward the three-issue cap.
 
 Spot-check any REVERT or REPAIR verdict yourself against the code before accepting it.
 A REPAIR you are not certain of is a REVERT. A reverted commit's ledger/doc edits go with
@@ -141,10 +142,11 @@ One PR comment, starting `## Debt review`:
 ## 6. Open the drop PRs that are due
 
 The queue is the open `db:Destructive` issues on `peterdrier/Humans` that came from §2, from
-any night. An issue is **due** when its retiring commit is running on production: read
-`commit` from `https://humans.nobodies.team/api/version`, fetch
-`https://github.com/nobodies-collective/Humans.git main`, and check
-`git merge-base --is-ancestor <retiring sha> <prod commit>`. If the issue names a PR instead of a sha, use that PR's merge commit; an unmerged PR means the issue isn't due. Skip an issue that isn't due, or
+any night. An issue is **due** when the debt PR it names is merged and that merge is running
+on production. Read `commit` from `https://humans.nobodies.team/api/version`, fetch
+`https://github.com/nobodies-collective/Humans.git main`, take the PR's `merge_commit_sha`, and
+check `git merge-base --is-ancestor <merge sha> <prod commit>`. An unmerged PR means the issue
+isn't due. Skip an issue that isn't due, or
 that already has an open PR, and list it in the summary. Open nothing while
 [`event-deploy-freeze`](../../../memory/process/event-deploy-freeze.md) applies.
 
