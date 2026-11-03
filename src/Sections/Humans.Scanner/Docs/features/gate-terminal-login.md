@@ -90,8 +90,8 @@ cannot be opened by the kiosk account.
   policy. Deliberately NOT a `RoleNames` constant: role
   constants flow into the role-assignment UI and dev personas via the
   role catalog. The Gate section's *write* actions sit behind a second policy,
-  `GateAdmit` — same principals today (TicketsAdmin/Board/Admin or the gate account by
-  id), kept separate so the gate's admission writes never ride on the read-only
+  `GateAdmit` — the same principals minus Board (TicketsAdmin/Admin or the gate account by
+  id; Board reads the gate and admits no one), kept separate so the gate's admission writes never ride on the read-only
   `ScannerAccess` gate.
 - **Audit:** every password set/rotate writes `TicketsAuditActions.GateTerminalPasswordSet`
   with the acting admin as actor. Gate sign-ins stamp `LastLoginAt` (surfaced on the

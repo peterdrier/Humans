@@ -70,7 +70,6 @@ public sealed class FeedbackServiceTests
         FeedbackDb = FeedbackDbFactory.CreateDbContext();
 
         var userService = Substitute.For<IUserService>();
-        var userEmailService = Substitute.For<IUserEmailService>();
         var teamService = Substitute.For<ITeamService>();
 
         userService
@@ -84,12 +83,6 @@ public sealed class FeedbackServiceTests
                 .Where(_people.ContainsKey)
                 .ToDictionary(id => id, id => _people[id]));
 
-        userEmailService
-            .GetNotificationTargetEmailsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(call => (IReadOnlyDictionary<Guid, string>)call
-                .ArgAt<IReadOnlyCollection<Guid>>(0)
-                .Where(id => _people.TryGetValue(id, out var p) && !string.IsNullOrEmpty(p.Email))
-                .ToDictionary(id => id, id => _people[id].Email!));
 
         teamService
             .GetTeamAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
@@ -102,7 +95,7 @@ public sealed class FeedbackServiceTests
         _repository = new FeedbackRepository(FeedbackDbFactory);
 
         _delivery = new FeedbackReplyDelivery(
-            _repository, userService, userEmailService, _emailService, _emailMessages,
+            _repository, userService, _emailService, _emailMessages,
             _notificationService, _auditLog, NullLogger<FeedbackReplyDelivery>.Instance);
         _service = new FeedbackServiceImpl(
             _repository, userService, teamService, _delivery,
@@ -751,6 +744,27 @@ public sealed class FeedbackServiceTests
         (await FeedbackDb.FeedbackReports.AsNoTracking().AnyAsync(
             r => r.Id == report.Id, Xunit.TestContext.Current.CancellationToken)).Should().BeFalse();
         await _fileStorage.Received(2).DeleteAsync(key, CancellationToken.None);
+    }
+
+    [HumansFact]
+    public async Task DeleteAllScreenshotsAsync_ListsStoredFiles_ThenDeletesThemAndThePrefix()
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        const string stored = "uploads/feedback/a/shot.png";
+        const string missing = "uploads/feedback/b/shot.png";
+        (await SeedReportAsync(Guid.NewGuid(), "one", "/one")).ScreenshotStoragePath = stored;
+        (await SeedReportAsync(Guid.NewGuid(), "two", "/two")).ScreenshotStoragePath = missing;
+        await SeedReportAsync(Guid.NewGuid(), "none", "/none");
+        await SaveAllAsync(ct);
+        _fileStorage.TryReadAsync(stored, Arg.Any<CancellationToken>()).Returns([1]);
+        _fileStorage.TryReadAsync(missing, Arg.Any<CancellationToken>()).Returns((byte[]?)null);
+
+        (await _service.GetStoredScreenshotKeysAsync(ct)).Should().Equal(stored);
+        (await _service.DeleteAllScreenshotsAsync(ct)).Should().Be(1);
+
+        await _fileStorage.Received(1).DeleteAsync(stored, ct);
+        await _fileStorage.DidNotReceive().DeleteAsync(missing, Arg.Any<CancellationToken>(), Arg.Any<bool>());
+        await _fileStorage.Received(1).DeleteAsync("uploads/feedback", ct, recursiveDirectory: true);
     }
 
     [HumansFact]

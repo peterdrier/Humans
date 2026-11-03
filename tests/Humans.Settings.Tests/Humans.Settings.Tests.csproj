@@ -3,8 +3,6 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\Sections\Humans.Settings\Humans.Settings.csproj" />
     <ProjectReference Include="..\..\src\Humans.Base\Humans.Base.csproj" />
-    <!-- SaveEventSettingsAsync now audits (peterdrier/Humans#1628). -->
-    <ProjectReference Include="..\..\src\Sections\Humans.AuditLog\Humans.AuditLog.csproj" />
   </ItemGroup>
 
   <ItemGroup>

@@ -87,7 +87,7 @@ internal sealed class VolunteerTrackingController(
         {
             ExportForm = new VolunteerTrackingExportFormViewModel
             {
-                Departments = departments,
+                Departments = departments.OrderBy(d => d.TeamName, StringComparer.Ordinal).ToList(),
                 SelectedDepartmentId = null,
                 SelectedPeriod = ShiftPeriod.Event,
                 StartDate = null,

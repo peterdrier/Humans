@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Humans.Base.Extensions;
 using Humans.Base.Helpers;
 using Humans.Stripe.Contracts;
@@ -250,6 +251,20 @@ internal sealed class StripeService(
             logger.LogWarning("Invalid Stripe webhook signature: {Message}", ex.Message);
             return null;
         }
+        catch (Exception ex) when (ex is JsonException or ArgumentException or InvalidOperationException
+            or FormatException or OverflowException)
+        {
+            // Signature verification can succeed before the SDK rejects the payload's shape.
+            logger.LogWarning("Invalid Stripe webhook payload ({ExceptionType}).", ex.GetType().Name);
+            return null;
+        }
+
+        if (stripeEvent is null || string.IsNullOrWhiteSpace(stripeEvent.Id)
+            || string.IsNullOrWhiteSpace(stripeEvent.Type) || stripeEvent.Data is null)
+        {
+            logger.LogWarning("Invalid Stripe webhook payload: event identity, type and data are required.");
+            return null;
+        }
 
         var kind = stripeEvent.Type switch
         {
@@ -265,6 +280,11 @@ internal sealed class StripeService(
         {
             session = MapSession(s);
             if (session is null) return null;
+        }
+        else if (kind != StoreCheckoutEventKind.Other)
+        {
+            logger.LogWarning("Invalid Stripe checkout webhook payload: a Checkout Session is required.");
+            return null;
         }
 
         return new StoreCheckoutWebhookEvent(stripeEvent.Id, kind, session);

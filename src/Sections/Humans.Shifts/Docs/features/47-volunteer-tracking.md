@@ -90,7 +90,7 @@ Summary:
 
 **Table:** `volunteer_build_statuses`. **Unique:** `(UserId, EventSettingsId)`.
 
-Audit actions (`ShiftsAuditActions`): `VolunteerCampSetupSet`, `VolunteerCampSetupCleared`. `EntityType = nameof(VolunteerBuildStatus)`. (`VolunteerDayBlocked`, `VolunteerDayUnblocked` and `VolunteerOwnBlockedDaysSaved` from the removed day-off feature are no longer declared.)
+Audit actions (`ShiftsAuditActions`): `VolunteerCampSetupSet`, `VolunteerCampSetupCleared`, `VolunteerDayOffMarked`, `VolunteerDayOffCleared`. `EntityType = nameof(VolunteerBuildStatus)`.
 
 ## Workflows
 
@@ -136,7 +136,7 @@ An "Export" card above the heatmap (`_ExportCard.cshtml`) lets the coordinator d
 
 | Route | Method | Auth | Purpose |
 |-------|--------|------|---------|
-| `/Shifts/Dashboard/VolunteerTracking` | GET | `ShiftsPolicies.Manage` | Heatmap page |
+| `/Shifts/Dashboard/VolunteerTracking` | GET | `ShiftsPolicies.Read` | Heatmap page |
 | `/Shifts/Dashboard/VolunteerTracking/ExportXlsx` | GET | `ShiftsPolicies.Manage` | Export the tracking data (department/period/date-range filters) as an .xlsx file |
 | `/Shifts/Dashboard/VolunteerTracking/SetCampSetup` | POST | `ShiftsPolicies.ManageVolunteers` | Set `BarrioSetupStartDate` for a volunteer |
 | `/Shifts/Dashboard/VolunteerTracking/ClearCampSetup` | POST | `ShiftsPolicies.ManageVolunteers` | Null `BarrioSetupStartDate` |

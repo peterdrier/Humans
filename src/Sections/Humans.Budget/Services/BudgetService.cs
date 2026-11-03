@@ -510,10 +510,11 @@ internal sealed class BudgetService(
         logger.LogInformation("Deleted line item {LineItemId}", lineItemId);
     }
 
-    public async Task UpdateTicketingProjectionAsync(
+    public async Task<int> UpdateTicketingProjectionAsync(
         Guid budgetGroupId, LocalDate? startDate, LocalDate? eventDate,
         int initialSalesCount, decimal dailySalesRate, decimal averageTicketPrice, int vatRate,
-        decimal stripeFeePercent, decimal stripeFeeFixed, decimal ticketTailorFeePercent, Guid actorUserId)
+        decimal stripeFeePercent, decimal stripeFeeFixed, decimal ticketTailorFeePercent, Guid actorUserId,
+        bool refreshProjections = false, CancellationToken ct = default)
     {
         ValidateVatRate(vatRate);
 
@@ -531,9 +532,11 @@ internal sealed class BudgetService(
             StripeFeeFixed: stripeFeeFixed,
             TicketTailorFeePercent: ticketTailorFeePercent);
 
-        await repository.UpdateTicketingProjectionAsync(update, actorUserId, now);
+        var created = await repository.UpdateTicketingProjectionAsync(
+            update, actorUserId, now, ct, refreshProjections ? now.InUtc().Date : null);
 
         logger.LogInformation("Updated ticketing projection for group {GroupId}", budgetGroupId);
+        return created;
     }
 
     public async Task<IReadOnlyList<BudgetAuditLogSnapshot>> GetAuditLogAsync(Guid? budgetYearId, CancellationToken ct = default)

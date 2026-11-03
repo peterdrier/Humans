@@ -161,7 +161,12 @@ internal sealed class CachingCampService(
                 hits.Add(new CampSearchHit(camp.Id, season.Name, season.Name.NameMatchScore(trimmed)));
         }
 
-        return hits.Take(max).ToList();
+        return hits
+            .OrderByDescending(hit => hit.Score)
+            .ThenBy(hit => hit.Name, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(hit => hit.CampId)
+            .Take(max)
+            .ToList();
     }
 
     public async Task<CampSeasonInfo?> GetCampSeasonByIdAsync(
@@ -295,19 +300,19 @@ internal sealed class CachingCampService(
         });
 
     public Task<CampUpdateResult> AddHistoricalNameAsync(
-        Guid campId, string name, CancellationToken cancellationToken = default) =>
+        Guid campId, string name, Guid actorUserId, CancellationToken cancellationToken = default) =>
         MutateAsync(async () =>
         {
-            var result = await WithInnerAsync(inner => inner.AddHistoricalNameAsync(campId, name, cancellationToken));
+            var result = await WithInnerAsync(inner => inner.AddHistoricalNameAsync(campId, name, actorUserId, cancellationToken));
             await InvalidateCampAsync(campId, cancellationToken);
             return result;
         });
 
     public Task<CampUpdateResult> RemoveHistoricalNameAsync(
-        Guid scopedCampId, Guid historicalNameId, CancellationToken cancellationToken = default) =>
+        Guid scopedCampId, Guid historicalNameId, Guid actorUserId, CancellationToken cancellationToken = default) =>
         MutateAsync(async () =>
         {
-            var result = await WithInnerAsync(inner => inner.RemoveHistoricalNameAsync(scopedCampId, historicalNameId, cancellationToken));
+            var result = await WithInnerAsync(inner => inner.RemoveHistoricalNameAsync(scopedCampId, historicalNameId, actorUserId, cancellationToken));
             await InvalidateCampAsync(scopedCampId, cancellationToken);
             return result;
         });
@@ -334,10 +339,10 @@ internal sealed class CachingCampService(
         });
 
     public Task ReorderImagesAsync(
-        Guid campId, List<Guid> imageIdsInOrder, CancellationToken cancellationToken = default) =>
+        Guid campId, List<Guid> imageIdsInOrder, Guid actorUserId, CancellationToken cancellationToken = default) =>
         MutateAsync(async () =>
         {
-            await WithInnerAsync(inner => inner.ReorderImagesAsync(campId, imageIdsInOrder, cancellationToken));
+            await WithInnerAsync(inner => inner.ReorderImagesAsync(campId, imageIdsInOrder, actorUserId, cancellationToken));
             await InvalidateCampAsync(campId, cancellationToken);
         });
 
@@ -393,15 +398,6 @@ internal sealed class CachingCampService(
             // Touches every season of the event — RefreshAll.
             RefreshAll();
             await InvalidateSettingsAsync(cancellationToken);
-        });
-
-    public Task<CampUpdateResult> ChangeSeasonNameAsync(
-        Guid scopedCampId, Guid seasonId, string newName, Guid actorUserId, CancellationToken cancellationToken = default) =>
-        MutateAsync(async () =>
-        {
-            var result = await WithInnerAsync(inner => inner.ChangeSeasonNameAsync(scopedCampId, seasonId, newName, actorUserId: actorUserId, cancellationToken));
-            await InvalidateBySeasonAsync(seasonId, cancellationToken);
-            return result;
         });
 
     // Membership writes — invalidate the parent camp (EeGrantedCount + MemberCount move).
@@ -567,9 +563,9 @@ internal sealed class CachingCampService(
         WithInnerRolesAsync(inner => inner.BuildPanelAsync(campSeasonId, ct));
 
     Task<AssignCampRoleOutcome> ICampRoleService.AssignAsync(
-        Guid campSeasonId, Guid roleDefinitionId, Guid campMemberId, Guid actorUserId, CancellationToken ct) =>
+        Guid campSeasonId, Guid roleDefinitionId, Guid campMemberId, Guid actorUserId, CancellationToken ct, Guid? addUserId) =>
         MutateRolesAsync(
-            inner => inner.AssignAsync(campSeasonId, roleDefinitionId, campMemberId, actorUserId, ct),
+            inner => inner.AssignAsync(campSeasonId, roleDefinitionId, campMemberId, actorUserId, ct, addUserId),
             outcome => outcome == AssignCampRoleOutcome.Assigned);
 
     Task<CampRoleAssignmentInfo?> ICampRoleService.GetAssignmentByIdAsync(Guid assignmentId, CancellationToken ct) =>
@@ -577,10 +573,6 @@ internal sealed class CachingCampService(
 
     Task<bool> ICampRoleService.UnassignAsync(Guid assignmentId, Guid actorUserId, CancellationToken ct) =>
         MutateRolesAsync(inner => inner.UnassignAsync(assignmentId, actorUserId, ct), deleted => deleted);
-
-    // Also the Leave/Withdraw/Remove cascade: CampService reaches it through this decorator.
-    Task<int> ICampRoleService.RemoveAllForMemberAsync(Guid campMemberId, Guid actorUserId, CancellationToken ct) =>
-        MutateRolesAsync(inner => inner.RemoveAllForMemberAsync(campMemberId, actorUserId, ct), deleted => deleted > 0);
 
     Task<IReadOnlyDictionary<Guid, IReadOnlyList<CampDirectoryRoleSummary>>>
         ICampRoleService.GetDirectoryRoleSummariesAsync(Guid eventSettingsId, CancellationToken ct) =>

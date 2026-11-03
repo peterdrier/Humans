@@ -73,7 +73,6 @@ internal sealed class HoldedTreasuryClient(HoldedTransport transport, ILogger<Ho
                     // Never defaulted: "pending" is the one status the SEPA sweep reads as bookable, so inventing it
                     // could turn a settled line bookable. Any other present value already fails closed.
                     Status = ReadRequiredString(Prop(n, "status"), "status").ToLowerInvariant(),
-                    Origin = Prop(n, "origin")?.GetValue<string>(),
                 });
             }
 

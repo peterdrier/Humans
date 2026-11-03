@@ -46,14 +46,12 @@ internal sealed class CantinaRosterService : ICantinaRosterService
             burn, weekStartOffset ?? CurrentWeekStartOffset(burn), ct).ConfigureAwait(false);
         if (disclosure is not null)
         {
+            // One row per disclosure, never one per member shown: the roster is the kitchen assembling a few hundred
+            // people's allergies, not someone looking up one person's health data.
             var scope = $"week of {roster.WeekStartDate.ToInvariantDate() ?? "no active event"}";
             await _audit.LogAsync(disclosure.Action, "EventSettings", burn?.Id ?? Guid.Empty,
                 $"Weekly Cantina roster {disclosure.Verb}: {roster.People.Count} people rows, {scope}",
                 disclosure.ActorUserId).ConfigureAwait(false);
-            // The weekly page discloses only the free-text entries, so only their authors get a row.
-            await AuditSubjectsAsync(disclosure, burn,
-                roster.People.Where(p => HasText(p.AllergyOtherText) || HasText(p.IntoleranceOtherText)).Select(p => p.UserId),
-                $"weekly roster, {scope}").ConfigureAwait(false);
         }
         return roster;
     }
@@ -183,28 +181,9 @@ internal sealed class CantinaRosterService : ICantinaRosterService
             await _audit.LogAsync(disclosure.Action, "EventSettings", burn?.Id ?? Guid.Empty,
                 $"Daily Cantina roster {disclosure.Verb}: {matrix.People.Count} people rows, {scope}",
                 disclosure.ActorUserId).ConfigureAwait(false);
-            await AuditSubjectsAsync(disclosure, burn,
-                matrix.People.Where(p => p.Allergies.Count > 0 || p.Intolerances.Count > 0
-                    || HasText(p.AllergyOtherText) || HasText(p.IntoleranceOtherText)).Select(p => p.UserId),
-                $"daily roster, {scope}").ConfigureAwait(false);
         }
         return matrix;
     }
-
-    /// <summary>
-    /// A health reveal is recorded against every member whose allergy or intolerance data it showed, so each of them
-    /// sees it on their own dietary page; the scope row above stays for the Board's view. Exports keep the one row.
-    /// </summary>
-    private async Task AuditSubjectsAsync(RosterDisclosure disclosure, EventSettingsInfo? burn, IEnumerable<Guid> subjectIds, string scope)
-    {
-        if (disclosure.Action != CantinaAuditActions.CantinaHealthDetailsRevealed) return;
-        foreach (var userId in subjectIds.Distinct())
-            await _audit.LogAsync(disclosure.Action, "User", userId,
-                $"Allergy and intolerance details revealed on the Cantina {scope}",
-                disclosure.ActorUserId, burn?.Id, "EventSettings").ConfigureAwait(false);
-    }
-
-    private static bool HasText(string? value) => !string.IsNullOrWhiteSpace(value);
 
     private async Task<DailyMatrixDto> BuildDailyRosterAsync(
         EventSettingsInfo? burn, int dayOffset, CancellationToken ct)

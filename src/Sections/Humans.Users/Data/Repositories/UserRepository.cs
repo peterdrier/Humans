@@ -69,6 +69,19 @@ internal sealed partial class UserRepository : IUserRepository
         return true;
     }
 
+    public async Task<bool> SetMarkedFakeAsync(
+        Guid userId, Instant at, CancellationToken ct = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        var user = await ctx.Users.FindAsync([userId], ct);
+        if (user is null || user.MarkedFakeAt is not null)
+            return false;
+
+        user.MarkedFakeAt = at;
+        await ctx.SaveChangesAsync(ct);
+        return true;
+    }
+
     public async Task<bool> SetDeletionPendingAsync(
         Guid userId, Instant requestedAt, Instant scheduledFor, Instant? eligibleAfter,
         CancellationToken ct = default)

@@ -25,6 +25,7 @@ public class SuspendNonCompliantMembersJob(
         try
         {
             await suspension.SuspendNonCompliantAsync(cancellationToken);
+            metrics.RecordJobRun("suspend_noncompliant_members", "success");
         }
         catch (Exception ex)
         {

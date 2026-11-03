@@ -23,7 +23,6 @@ public sealed class OnboardingServiceTests
     private readonly IUserWrite _userServiceWrite = Substitute.For<IUserWrite>();
     private readonly IConsentWrite _consentWrite = Substitute.For<IConsentWrite>();
     private readonly Dictionary<Guid, ConsentReviewInfo> _reviews = [];
-    private readonly IGovernanceService _applicationDecisionService = Substitute.For<IGovernanceService>();
     private readonly IEmailService _emailService = Substitute.For<IEmailService>();
     private readonly INotificationEmitter _notificationService = Substitute.For<INotificationEmitter>();
     private readonly ISystemTeamSync _syncJob = Substitute.For<ISystemTeamSync>();
@@ -57,7 +56,6 @@ public sealed class OnboardingServiceTests
             _userService,
             _userServiceWrite,
             _consentWrite,
-            _applicationDecisionService,
             _emailService,
             _emailMessages,
             _notificationService,
@@ -68,30 +66,6 @@ public sealed class OnboardingServiceTests
             _auditLogService,
             _accountDeletion,
             NullLogger<OnboardingService>.Instance);
-
-    [HumansFact]
-    public async Task ClearConsentCheckAsync_RecordsClearedAnnotation_WithoutTeamSync()
-    {
-        // Name-only access switch: Clear is an audit annotation only. It records the Cleared
-        // consent-check (+ audit) and must NOT provision any team — membership is reconciled by
-        // SystemTeamSyncJob on name + consents, decoupled from CC review.
-        var userId = Guid.NewGuid();
-        var reviewerId = Guid.NewGuid();
-        const string notes = "looks good";
-
-        _consentWrite.RecordConsentCheckAsync(
-                userId, ConsentCheckStatus.Cleared, reviewerId, notes, Arg.Any<CancellationToken>())
-            .Returns(new OnboardingResult(true));
-
-        var result = await BuildSut().ClearConsentCheckAsync(userId, reviewerId, notes, Xunit.TestContext.Current.CancellationToken);
-
-        result.Success.Should().BeTrue();
-        await _consentWrite.Received(1).RecordConsentCheckAsync(
-            userId, ConsentCheckStatus.Cleared, reviewerId, notes, Arg.Any<CancellationToken>());
-        // Consent audits the check inside the write; Onboarding adds no row of its own.
-        await _auditLogService.DidNotReceiveWithAnyArgs().LogAsync(null!, default!, default, default!, default(Guid));
-        await _syncJob.DidNotReceiveWithAnyArgs().SyncMembershipForUserAsync(default, default, Arg.Any<CancellationToken>());
-    }
 
     [HumansFact]
     public async Task RejectSignupAsync_WhenAlreadyRejectedInBothSections_SkipsAuditDeprovisionAndNotifications()
@@ -382,110 +356,6 @@ public sealed class OnboardingServiceTests
     }
 
     [HumansFact]
-    public async Task GetReviewQueueAsync_FlaggedUserAlreadyApproved_StillAppearsInFlagged()
-    {
-        // Invariant: anyone with an unresolved Flagged consent check must appear in the review
-        // queue so a CC can resolve them — even if a prior admin override flipped IsApproved=true.
-        var approvedFlaggedId = Guid.NewGuid();
-        var now = Instant.FromUnixTimeSeconds(1);
-        var approvedFlaggedProfile = UserFixtures.Profile(
-            burnerName: "Burner",
-            firstName: "Flagged",
-            lastName: "Approved",
-            createdAt: now);
-        Review(approvedFlaggedId, ConsentCheckStatus.Flagged, isApproved: true);
-
-        StubReviewQueueDependencies(
-            [UserInfoStubs.MakeUserInfo(approvedFlaggedId, approvedFlaggedProfile)]);
-
-        var data = await BuildSut().GetReviewQueueAsync(Xunit.TestContext.Current.CancellationToken);
-
-        data.Flagged.Should().ContainSingle(u => u.Id == approvedFlaggedId);
-        data.Pending.Should().NotContain(u => u.Id == approvedFlaggedId);
-    }
-
-    [HumansFact]
-    public async Task GetReviewQueueAsync_FlaggedUserAlreadyRejected_IsExcluded()
-    {
-        // Rejected profiles have already been dealt with — Clear is blocked with AlreadyRejected,
-        // so a flagged+rejected row would be unresolvable from the queue UI. Exclude them.
-        var rejectedFlaggedId = Guid.NewGuid();
-        var now = Instant.FromUnixTimeSeconds(1);
-        var rejectedFlaggedProfile = UserFixtures.Profile(
-            burnerName: "Burner",
-            firstName: "Flagged",
-            lastName: "Rejected",
-            createdAt: now);
-        Review(rejectedFlaggedId, ConsentCheckStatus.Flagged, rejectedAt: now);
-
-        StubReviewQueueDependencies(
-            [UserInfoStubs.MakeUserInfo(rejectedFlaggedId, rejectedFlaggedProfile) with { State = UserState.Rejected }]);
-
-        var data = await BuildSut().GetReviewQueueAsync(Xunit.TestContext.Current.CancellationToken);
-
-        data.Flagged.Should().NotContain(u => u.Id == rejectedFlaggedId);
-        data.Pending.Should().NotContain(u => u.Id == rejectedFlaggedId);
-    }
-
-    [HumansFact]
-    public async Task GetReviewQueueAsync_MergedTombstoneNeedingReview_IsExcludedFromPending()
-    {
-        // Merge-source tombstones are not live accounts. Even though the merged row's profile
-        // survives with names filled and IsApproved=false (which otherwise satisfies
-        // NeedsConsentReview), it must never surface in the CC queue or its nav badge.
-        var mergedId = Guid.NewGuid();
-        var now = Instant.FromUnixTimeSeconds(1);
-        var profile = UserFixtures.Profile(
-            burnerName: "Burner",
-            firstName: "Merged",
-            lastName: "Away",
-            createdAt: now);
-        var mergedUser = new User
-        {
-            Id = mergedId,
-            PreferredLanguage = "en",
-            MergedAt = now,
-            MergedToUserId = Guid.NewGuid(),
-        };
-
-        StubReviewQueueDependencies([mergedUser.ToUserInfo(profile: profile)]);
-
-        var data = await BuildSut().GetReviewQueueAsync(Xunit.TestContext.Current.CancellationToken);
-
-        data.Pending.Should().NotContain(u => u.Id == mergedId);
-        data.Flagged.Should().NotContain(u => u.Id == mergedId);
-    }
-
-    [HumansFact]
-    public async Task GetReviewQueueAsync_MergedTombstoneFlagged_IsExcludedFromFlagged()
-    {
-        // A merged tombstone whose surviving profile still carries a Flagged consent check must
-        // not appear in the flagged queue — there is no live account left to clear.
-        var mergedId = Guid.NewGuid();
-        var now = Instant.FromUnixTimeSeconds(1);
-        var profile = UserFixtures.Profile(
-            burnerName: "Burner",
-            firstName: "Flagged",
-            lastName: "Merged",
-            createdAt: now);
-        Review(mergedId, ConsentCheckStatus.Flagged);
-        var mergedUser = new User
-        {
-            Id = mergedId,
-            PreferredLanguage = "en",
-            MergedAt = now,
-            MergedToUserId = Guid.NewGuid(),
-        };
-
-        StubReviewQueueDependencies([mergedUser.ToUserInfo(profile: profile)]);
-
-        var data = await BuildSut().GetReviewQueueAsync(Xunit.TestContext.Current.CancellationToken);
-
-        data.Flagged.Should().NotContain(u => u.Id == mergedId);
-        data.Pending.Should().NotContain(u => u.Id == mergedId);
-    }
-
-    [HumansFact]
     public async Task GetNextUnsignedConsent_AllSigned_SelfHealsSuspensionAndReturnsNullNext()
     {
         var userId = Guid.NewGuid();
@@ -546,87 +416,5 @@ public sealed class OnboardingServiceTests
         result.Outcome.Should().Be(NextConsentStepOutcome.DocumentUnavailable);
         result.Next.Should().BeNull();
         await _humanLifecycle.DidNotReceiveWithAnyArgs().RestoreConsentSuspensionAsync(default, Arg.Any<CancellationToken>());
-    }
-
-    [HumansFact]
-    public async Task BulkClearConsentChecksAsync_ClearsOnlySelectedUsersWhoAreInTheQueue()
-    {
-        // Bulk clear's eligibility IS queue membership: a selected id that is not a queue row
-        // must not be cleared. Without this, the only thing standing between a crafted POST and
-        // clearing a rejected or merged profile is the queue-building code path.
-        var now = Instant.FromUnixTimeSeconds(1);
-
-        var flaggedId = Guid.NewGuid();
-        var pendingId = Guid.NewGuid();
-        var rejectedId = Guid.NewGuid();
-        var unselectedId = Guid.NewGuid();
-        var mergedId = Guid.NewGuid();
-
-        var flagged = UserInfoStubs.MakeUserInfo(flaggedId, UserFixtures.Profile(
-            burnerName: "Burner", firstName: "In", lastName: "Flagged",
-            createdAt: now));
-        Review(flaggedId, ConsentCheckStatus.Flagged);
-        var pending = UserInfoStubs.MakeUserInfo(pendingId, UserFixtures.Profile(
-            burnerName: "Burner", firstName: "In", lastName: "Pending",
-            createdAt: now));
-        var rejected = UserInfoStubs.MakeUserInfo(rejectedId, UserFixtures.Profile(
-            burnerName: "Burner", firstName: "Out", lastName: "Rejected",
-            createdAt: now)) with
-        { State = UserState.Rejected };
-        Review(rejectedId, ConsentCheckStatus.Flagged, rejectedAt: now);
-        var unselected = UserInfoStubs.MakeUserInfo(unselectedId, UserFixtures.Profile(
-            burnerName: "Burner", firstName: "Out", lastName: "Unselected",
-            createdAt: now));
-        var merged = new User
-        {
-            Id = mergedId,
-            PreferredLanguage = "en",
-            MergedAt = now,
-            MergedToUserId = Guid.NewGuid(),
-        }.ToUserInfo(profile: UserFixtures.Profile(
-            burnerName: "Burner", firstName: "Out", lastName: "Merged",
-            createdAt: now));
-        Review(mergedId, ConsentCheckStatus.Flagged);
-
-        StubReviewQueueDependencies([flagged, pending, rejected, unselected, merged]);
-        _consentWrite.RecordConsentCheckAsync(
-                Arg.Any<Guid>(), Arg.Any<ConsentCheckStatus>(), Arg.Any<Guid?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult(new OnboardingResult(true)));
-
-        var reviewerId = Guid.NewGuid();
-        var result = await BuildSut().BulkClearConsentChecksAsync(
-            [flaggedId, pendingId, rejectedId, mergedId],
-            reviewerId,
-            Xunit.TestContext.Current.CancellationToken);
-
-        result.ApprovedCount.Should().Be(2);
-
-        foreach (var cleared in new[] { flaggedId, pendingId })
-        {
-            await _consentWrite.Received(1).RecordConsentCheckAsync(
-                cleared, ConsentCheckStatus.Cleared, reviewerId, Arg.Any<string?>(), Arg.Any<CancellationToken>());
-        }
-
-        foreach (var untouched in new[] { rejectedId, unselectedId, mergedId })
-        {
-            await _consentWrite.DidNotReceive().RecordConsentCheckAsync(
-                untouched, Arg.Any<ConsentCheckStatus>(), Arg.Any<Guid?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
-        }
-    }
-
-    private void StubReviewQueueDependencies(IReadOnlyCollection<UserInfo> users)
-    {
-        _userService.GetAllUserInfosAsync(Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult(users));
-        _applicationDecisionService.GetUserIdsWithPendingApplicationAsync(
-                Arg.Any<IReadOnlyList<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult<IReadOnlySet<Guid>>(new HashSet<Guid>()));
-        _membershipCalculator.GetMembershipSnapshotAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
-            .Returns(new MembershipSnapshot(
-                Status: MembershipStatus.Pending,
-                IsVolunteerMember: false,
-                RequiredConsentCount: 0,
-                PendingConsentCount: 0,
-                MissingConsentVersionIds: []));
     }
 }

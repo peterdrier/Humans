@@ -43,7 +43,6 @@ public sealed class TicketTransferServiceTests
     private readonly ITicketRepository _ticketRepo = Substitute.For<ITicketRepository>();
     private readonly ITicketVendorService _vendor = Substitute.For<ITicketVendorService>();
     private readonly IUserService _userService = Substitute.For<IUserService>();
-    private readonly IUserEmailService _userEmailService = Substitute.For<IUserEmailService>();
     private readonly IEmailService _emailService = Substitute.For<IEmailService>();
     private readonly TicketsEmails _emailMessages = TestTicketsEmails.Create();
     private readonly IAuditLogService _auditLog = Substitute.For<IAuditLogService>();
@@ -60,8 +59,6 @@ public sealed class TicketTransferServiceTests
                 MakeUser(_receiverId, "Alice"),
                 UserFixtures.Profile(
                     burnerName: "Alice", firstName: "Alice", lastName: "Smith")));
-        _userEmailService.GetPrimaryEmailAsync(_receiverId, Arg.Any<CancellationToken>())
-            .Returns("alice@example.com");
 
         // Sender: display name + primary email (for emails).
         _userService.GetUserInfoAsync(_senderId, Arg.Any<CancellationToken>())
@@ -69,8 +66,6 @@ public sealed class TicketTransferServiceTests
                 MakeUser(_senderId, "Bob"),
                 UserFixtures.Profile(
                     burnerName: "Bob", firstName: "Bob", lastName: "Jones")));
-        _userEmailService.GetPrimaryEmailAsync(_senderId, Arg.Any<CancellationToken>())
-            .Returns("bob@example.com");
 
         _transferRepo.GetBySenderAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns([]);
@@ -78,16 +73,27 @@ public sealed class TicketTransferServiceTests
 
     }
 
-    [HumansFact]
-    public async Task GetConfirmation_ReturnsSummary_ForValidPair()
+    [HumansTheory]
+    [Xunit.InlineData(false, false, "alice@example.com")]
+    [Xunit.InlineData(true, false, "contact@example.com")]
+    [Xunit.InlineData(true, true, "contact@example.com")]
+    public async Task GetConfirmation_ReturnsSummary_ForValidPair(
+        bool hasVerifiedEmail, bool isPrimary, string expectedEmail)
     {
+        _userService.GetUserInfoAsync(_receiverId, Arg.Any<CancellationToken>())
+            .Returns(WrapInUserInfo(
+                MakeUser(_receiverId, "Alice"),
+                UserFixtures.Profile(burnerName: "Alice", firstName: "Alice", lastName: "Smith"),
+                hasVerifiedEmail
+                    ? [new UserEmail { UserId = _receiverId, Email = "contact@example.com", IsVerified = true, IsPrimary = isPrimary }]
+                    : []));
         StubAttendee(TicketAttendeeStatus.Valid, _senderId);
 
         var confirm = await _service.GetConfirmationAsync(_attendeeId, _receiverId, _senderId, Xunit.TestContext.Current.CancellationToken);
 
         confirm.Should().NotBeNull();
         confirm.ReceiverLegalName.Should().Be("Alice Smith");
-        confirm.ReceiverEmail.Should().Be("alice@example.com");
+        confirm.ReceiverEmail.Should().Be(expectedEmail);
         confirm.VendorTicketId.Should().Be("tkt_original");
     }
 
@@ -1098,7 +1104,6 @@ public sealed class TicketTransferServiceTests
             Substitute.For<ITicketService>(),
             _vendor,
             _userService,
-            _userEmailService,
             _emailService,
             _emailMessages,
             _auditLog,
@@ -1181,9 +1186,10 @@ public sealed class TicketTransferServiceTests
         NormalizedUserName = $"{displayName.ToLowerInvariant().Replace(" ", "")}@EXAMPLE.COM",
     };
 
-    private static UserInfo WrapInUserInfo(User user, ProfileInfo? profile) => UserInfo.Create(
+    private static UserInfo WrapInUserInfo(
+        User user, ProfileInfo? profile, IReadOnlyList<UserEmail>? emails = null) => UserInfo.Create(
         user: user,
-        userEmails: [],
+        userEmails: emails ?? [],
         eventParticipations: [],
         externalLogins: [],
         profile: profile,

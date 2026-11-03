@@ -10,7 +10,10 @@ public record CampaignCodeTrackingSummary(
     Guid CampaignId,
     string CampaignTitle,
     int TotalGrants,
-    int Redeemed);
+    int Redeemed)
+{
+    public Instant CreatedAt { get; init; }
+}
 
 public record CampaignCodeTrackingGrant(
     Guid GrantId,

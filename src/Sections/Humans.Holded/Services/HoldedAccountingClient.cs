@@ -66,7 +66,7 @@ internal sealed class HoldedAccountingClient(HoldedTransport transport, ILogger<
             var items = await transport.GetPagedAsync("/api/v2/expenses-accounts?limit=200", pageSafetyCap, ct);
             return items.Select(n => new HoldedExpenseAccountDto
             {
-                Id = Prop(n, "id")?.GetValue<string>() ?? "",
+                Id = ReadRequiredString(Prop(n, "id"), "id"),
                 AccountNum = ReadRequiredInt(Prop(n, "account_num"), "account_num"),
                 Name = Prop(n, "name")?.GetValue<string>() ?? "",
             }).ToList();
@@ -128,6 +128,8 @@ internal sealed class HoldedAccountingClient(HoldedTransport transport, ILogger<
                 Credit = ReadRequiredDecimalV2(Prop(n, "credit"), "credit"),
                 Type = Prop(n, "type")?.GetValue<string>(),
                 Description = Prop(n, "description")?.GetValue<string>(),
+                EntryId = Prop(n, "id")?.GetValue<string>(),
+                Checked = Prop(n, "checked")?.GetValue<bool>() ?? false,
             }).ToList();
         }
         catch (Exception ex) when (ex is JsonException or InvalidOperationException
@@ -179,16 +181,10 @@ internal sealed class HoldedAccountingClient(HoldedTransport transport, ILogger<
             // exception so /Holded degrades to "unreachable" instead of a raw 500.
             var node = await JsonNode.ParseAsync(stream, cancellationToken: ct)
                 ?? throw new HoldedTransientException("Holded returned empty body");
-            var secondary = Prop(node, "secondary_usages") as JsonObject;
             return new HoldedUsageDto
             {
                 Period = Prop(node, "period")?.GetValue<string>() ?? "",
                 Usage = Prop(node, "usage")?.GetValue<long>() ?? 0,
-                Limit = Prop(node, "limit")?.GetValue<long>() ?? 0,
-                SecondaryUsages = secondary is null
-                    ? new Dictionary<string, long>(StringComparer.Ordinal)
-                    : secondary.ToDictionary(
-                        kv => kv.Key, kv => kv.Value?.GetValue<long>() ?? 0, StringComparer.Ordinal),
             };
         }
         catch (Exception ex) when (ex is JsonException or InvalidOperationException

@@ -163,8 +163,8 @@ internal interface IWorkgroupService : IApplicationService
     Task<WorkgroupMutationResult<HoldedExpenseAccountRef?>> SetBudgetAsync(
         Guid workgroupId, Guid actorUserId, WorkgroupBudgetSave save, CancellationToken ct = default);
 
-    /// <summary>Empty when Holded is unreachable, so the page still renders.</summary>
-    Task<IReadOnlyList<HoldedExpenseAccountDto>> ListExpenseAccountsAsync(CancellationToken ct = default);
+    /// <summary>Active group-6 accounts from the Holded mirror; empty when the mirror is unavailable.</summary>
+    Task<IReadOnlyList<HoldedChartAccountInfo>> ListExpenseAccountsAsync(CancellationToken ct = default);
 
     /// <summary>The Board's written reply to a delivered document.</summary>
     Task<WorkgroupMutationResult> RecordDispositionAsync(

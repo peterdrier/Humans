@@ -69,8 +69,6 @@ internal sealed partial class LegalDocumentSyncService(
                     lastSyncedAt,
                     d.Versions.Count);
             })
-            .OrderBy(item => item.TeamName, StringComparer.Ordinal)
-            .ThenBy(item => item.Name, StringComparer.Ordinal)
             .ToList();
     }
 
@@ -306,26 +304,33 @@ internal sealed partial class LegalDocumentSyncService(
     private static partial Regex GitHubUrlPattern();
 
     public async Task<IReadOnlyList<LegalDocument>> SyncAllDocumentsAsync(
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default, ICollection<Exception>? failures = null)
     {
         logger.LogInformation("Starting sync of all legal documents");
 
         var updatedDocuments = new List<LegalDocument>();
+        var notificationBatchId = Guid.NewGuid();
         var activeDocuments = await repository.GetActiveDocumentsAsync(cancellationToken);
 
         foreach (var document in activeDocuments)
         {
             try
             {
-                var result = await SyncSingleDocumentAsync(document, actorUserId: null, cancellationToken);
+                var result = await SyncSingleDocumentAsync(document, actorUserId: null, cancellationToken, notificationBatchId);
                 if (result is not null)
                 {
                     updatedDocuments.Add(document);
                 }
             }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                throw;
+            }
             catch (GitHubApiException ex) when (ex.IsTransient)
             {
-                // The next run self-heals. No exception object: it can carry GitHub's HTML error page.
+                // The next run self-heals. Neither logs nor the job's aggregate may carry GitHub's HTML error page.
+                failures?.Add(new InvalidOperationException(
+                    $"GitHub sync failed for legal document {document.Id} (HTTP {(int)ex.StatusCode})."));
                 logger.LogWarning(
                     "Transient GitHub error syncing document {DocumentName} ({DocumentId}): {StatusCode}, will retry next run",
                     document.Name, document.Id, ex.StatusCode);
@@ -333,12 +338,15 @@ internal sealed partial class LegalDocumentSyncService(
             catch (GitHubApiException ex)
             {
                 // Repeats every run until a human acts, so Error; still status code only.
+                failures?.Add(new InvalidOperationException(
+                    $"GitHub sync failed for legal document {document.Id} (HTTP {(int)ex.StatusCode})."));
                 logger.LogError(
                     "GitHub API error syncing document {DocumentName} ({DocumentId}): {StatusCode} — not transient, check GitHub token/config",
                     document.Name, document.Id, ex.StatusCode);
             }
             catch (Exception ex)
             {
+                failures?.Add(ex);
                 logger.LogError(ex, "Error syncing document {DocumentName} ({DocumentId})",
                     document.Name, document.Id);
             }
@@ -403,9 +411,7 @@ internal sealed partial class LegalDocumentSyncService(
 
     private static RequiredDocumentVersionSnapshot? ToLatestRequiredVersionSnapshot(LegalDocument document, Instant now)
     {
-        var version = document.Versions
-            .Where(v => v.EffectiveFrom <= now)
-            .MaxBy(v => v.EffectiveFrom);
+        var version = CurrentVersionAt(document, now);
         return version is null ? null : new(
             version.Id,
             version.LegalDocumentId,
@@ -477,7 +483,8 @@ internal sealed partial class LegalDocumentSyncService(
     private async Task<string?> SyncSingleDocumentAsync(
         LegalDocument document,
         Guid? actorUserId,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        Guid? notificationBatchId = null)
     {
         if (string.IsNullOrEmpty(document.GitHubFolderPath))
         {
@@ -485,13 +492,13 @@ internal sealed partial class LegalDocumentSyncService(
                 $"Document '{document.Name}' has no GitHub Folder Path configured.");
         }
 
-        return await SyncFolderBasedDocumentAsync(document, actorUserId, cancellationToken);
+        return await SyncFolderBasedDocumentAsync(document, actorUserId, cancellationToken, notificationBatchId);
     }
 
     private async Task<string?> SyncFolderBasedDocumentAsync(
         LegalDocument document,
         Guid? actorUserId,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken, Guid? notificationBatchId)
     {
         logger.LogDebug("Syncing document {Name} from folder {Folder}",
             document.Name, document.GitHubFolderPath);
@@ -572,6 +579,7 @@ internal sealed partial class LegalDocumentSyncService(
             Content = content,
             EffectiveFrom = now,
             RequiresReConsent = !isNew,
+            PendingReConsentBatchId = document.IsRequired ? notificationBatchId : null,
             CreatedAt = now,
             ChangesSummary = commitMessage ?? (isNew ? "Initial version" : "Updated from GitHub")
         };
@@ -641,7 +649,15 @@ internal sealed partial class LegalDocumentSyncService(
     {
         try
         {
-            var recipientsByLanguage = (await userService.GetAllUserInfosAsync(cancellationToken).ConfigureAwait(false))
+            var team = await teamService.GetTeamAsync(document.TeamId, cancellationToken).ConfigureAwait(false);
+            if (team is null)
+                return;
+            var memberIds = team.Members.Select(m => m.UserId).Distinct().ToList();
+            if (memberIds.Count == 0)
+                return;
+            var recipientsByLanguage = (await userService.GetUserInfosAsync(memberIds, cancellationToken).ConfigureAwait(false))
+                .Values
+                .DistinctBy(u => u.Id)
                 .Where(u => u.IsActive)
                 .GroupBy(u => u.PreferredLanguage.IsSupportedCultureCode() ? u.PreferredLanguage : "en", StringComparer.Ordinal);
             foreach (var group in recipientsByLanguage)

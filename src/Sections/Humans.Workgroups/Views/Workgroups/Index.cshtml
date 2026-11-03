@@ -6,7 +6,7 @@
         userId is { } id && Model.People.TryGetValue(id, out var info) ? info.BurnerName : "—";
 
     string Coordinators(WorkgroupInfo w) =>
-        string.Join(", ", w.Coordinators().Select(m => DisplayName(m.UserId)));
+        string.Join(", ", w.Coordinators().OrderBy(m => m.JoinedAt).Select(m => DisplayName(m.UserId)));
 }
 
 <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">

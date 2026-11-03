@@ -55,7 +55,9 @@ public sealed class Section : ISection, ISectionAdminNav, ISectionChrome, ISecti
 
         var response = new DataMigrationsStatusResponse(
             AppVersion(),
-            [.. reports.Select(r => new DataMigrationProgress(r.Migration.Key, r.Status.Pending, r.Status.Done))]);
+            [.. reports.OrderBy(r => r.Migration.Section, StringComparer.Ordinal)
+                .ThenBy(r => r.Migration.Key, StringComparer.Ordinal)
+                .Select(r => new DataMigrationProgress(r.Migration.Key, r.Status.Pending, r.Status.Done))]);
 
         await http.Response.WriteAsJsonAsync(response, http.RequestAborted);
     }

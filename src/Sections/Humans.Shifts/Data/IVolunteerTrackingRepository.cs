@@ -6,8 +6,9 @@ namespace Humans.Shifts.Data;
 
 internal interface IVolunteerTrackingRepository : IRepository
 {
+    /// <summary>Null event selects all events; user ids still restrict the result when supplied.</summary>
     Task<IReadOnlyList<VolunteerBuildStatus>> GetBuildStatusesForEventAsync(
-        Guid eventSettingsId,
+        Guid? eventSettingsId,
         IReadOnlyCollection<Guid>? userIds = null,
         CancellationToken ct = default);
 

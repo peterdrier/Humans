@@ -17,7 +17,7 @@ namespace Humans.Governance.Services;
 internal interface IAssemblyVoteService : IApplicationService
 {
     /// <summary>
-    /// Every vote, open first, as seen by <paramref name="userId"/>. Every logged-in member
+    /// Every non-draft vote, without display ordering, as seen by <paramref name="userId"/>. Every logged-in member
     /// sees every vote; roster membership only changes whether they can cast.
     /// </summary>
     Task<IReadOnlyList<AssemblyVoteListItem>> GetVotesForMemberAsync(

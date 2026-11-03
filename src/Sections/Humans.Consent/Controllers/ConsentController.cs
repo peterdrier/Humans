@@ -20,8 +20,6 @@ internal sealed class ConsentController(
     IStringLocalizer<ConsentResource> localizer,
     ILogger<ConsentController> logger) : HumansControllerBase(userService)
 {
-    private readonly IUserService _userService = userService;
-
     public async Task<IActionResult> Index()
     {
         var user = await GetCurrentUserInfoAsync(HttpContext.RequestAborted);
@@ -46,8 +44,8 @@ internal sealed class ConsentController(
         if (user is null)
             return NotFound();
 
-        // A stub profile (no legal name) can't attest to a consent.
-        if (await IsStubProfileAsync(user.Id, HttpContext.RequestAborted))
+        // The same name check SubmitConsentAsync refuses on, so the form never opens for a refused signer.
+        if (!user.HasRequiredNameFields)
             return RedirectToProfileEditForStub();
 
         var viewModel = await BuildConsentReviewViewModelAsync(id, user.Id, HttpContext.RequestAborted);
@@ -73,32 +71,42 @@ internal sealed class ConsentController(
         var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
         var userAgent = Request.Headers.UserAgent.ToString();
 
+        ConsentSubmitResult result;
         try
         {
-            var result = await consentService.SubmitConsentAsync(
+            result = await consentService.SubmitConsentAsync(
                 user.Id, model.DocumentVersionId, model.ExplicitConsent,
                 ipAddress, userAgent);
-
-            if (string.Equals(result.ErrorKey, "StubProfile", StringComparison.Ordinal))
-                return RedirectToProfileEditForStub();
-
-            if (!result.Success)
-            {
-                SetConsentSubmitFailureFlash(result);
-                return RedirectToAction(nameof(Index));
-            }
-
-            // ConsentService doesn't call Onboarding (the arrow is one-way), so the controller reports the signature.
-            await onboardingService.ConsentSignedAsync(user.Id);
-
-            SetConsentSubmitSuccessFlash(result);
         }
         catch (Exception ex)
         {
             logger.LogError(ex, "Failed to submit consent for user {UserId}, document version {DocumentVersionId}",
                 user.Id, model.DocumentVersionId);
             SetError(localizer["Consent_SubmitError"].Value);
+            return RedirectToAction(nameof(Index));
         }
+
+        if (string.Equals(result.ErrorKey, "StubProfile", StringComparison.Ordinal))
+            return RedirectToProfileEditForStub();
+
+        if (!result.Success)
+        {
+            SetConsentSubmitFailureFlash(result);
+            return RedirectToAction(nameof(Index));
+        }
+
+        // ConsentService doesn't call Onboarding (the arrow is one-way), so the controller reports the signature. The
+        // consent is already recorded: a failed report is logged, never shown as a failed signature.
+        try
+        {
+            await onboardingService.ConsentSignedAsync(user.Id);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Consent recorded but the onboarding report failed for user {UserId}", user.Id);
+        }
+
+        SetConsentSubmitSuccessFlash(result);
         return RedirectToAction(nameof(Index));
     }
 
@@ -119,7 +127,7 @@ internal sealed class ConsentController(
         {
             SetInfo(localizer["Consent_AlreadyConsented"].Value);
         }
-        else if (string.Equals(result.ErrorKey, "ContentUnavailable", StringComparison.Ordinal))
+        else
         {
             SetError(localizer["Consent_SubmitError"].Value);
         }
@@ -127,12 +135,6 @@ internal sealed class ConsentController(
 
     private void SetConsentSubmitSuccessFlash(ConsentSubmitResult result) =>
         SetSuccess(string.Format(localizer["Consent_ThankYou"].Value, result.DocumentName));
-
-    private async Task<bool> IsStubProfileAsync(Guid userId, CancellationToken ct = default)
-    {
-        var info = await _userService.GetUserInfoAsync(userId, ct);
-        return info is not null && info.IsStub;
-    }
 
     private IActionResult RedirectToProfileEditForStub()
     {

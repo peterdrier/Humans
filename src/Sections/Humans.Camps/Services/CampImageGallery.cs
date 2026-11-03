@@ -108,7 +108,7 @@ internal sealed class CampImageGallery(
             actorUserId,
             relatedEntityId: result.Value.CampId, relatedEntityType: nameof(Camp));
 
-        // Metadata and audit have committed; file cleanup must finish independently of the request.
+        // Metadata has committed and audit was attempted; cleanup must finish independently of the request.
         try
         {
             await fileStorage.DeleteAsync(result.Value.StoragePath, CancellationToken.None);
@@ -125,8 +125,13 @@ internal sealed class CampImageGallery(
     }
 
     public async Task ReorderImagesAsync(
-        Guid campId, List<Guid> imageIdsInOrder, CancellationToken cancellationToken = default)
+        Guid campId, List<Guid> imageIdsInOrder, Guid actorUserId, CancellationToken cancellationToken = default)
     {
         await repo.ReorderImagesAsync(campId, imageIdsInOrder, cancellationToken);
+
+        await auditLog.LogAsync(
+            CampsAuditActions.CampImagesReordered, nameof(Camp), campId,
+            $"Requested image display order: {string.Join(", ", imageIdsInOrder)}",
+            actorUserId);
     }
 }

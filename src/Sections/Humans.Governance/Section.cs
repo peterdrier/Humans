@@ -54,7 +54,7 @@ public sealed class Section :
 
         services.AddSingleton<IApplicationRepository, ApplicationRepository>();
 
-        services.AddSingleton<IMembershipTierRepository, MembershipTierRepository>();
+        services.AddSingleton<IMembershipTierRepository>(sp => (IMembershipTierRepository)sp.GetRequiredService<IApplicationRepository>());
         services.AddScoped<MembershipTierService>();
         services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<MembershipTierService>());
         // Snapshot legacy tier grants before ApplicationDecisionService moves their applications.
@@ -282,6 +282,7 @@ public sealed class Section :
 
         return votes
             .Where(v => v.Status == AssemblyVoteStatus.Open && v.IsOnRoster)
+            .OrderByDescending(v => v.ClosesAt)
             .Select(v => new ThingsToDoEntry(
                 $"assembly-vote-{v.Id}",
                 localizer["Todo_AssemblyVote_Title"].Value,

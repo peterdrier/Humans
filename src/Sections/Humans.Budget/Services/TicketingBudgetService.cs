@@ -105,7 +105,7 @@ internal sealed class TicketingBudgetService(
             return null;
         }
 
-        await budgetService.UpdateTicketingProjectionAsync(
+        return await budgetService.UpdateTicketingProjectionAsync(
             command.BudgetGroupId,
             command.StartDate,
             command.EventDate,
@@ -116,9 +116,9 @@ internal sealed class TicketingBudgetService(
             command.StripeFeePercent,
             command.StripeFeeFixed,
             command.TicketTailorFeePercent,
-            actorUserId);
-
-        return await RefreshProjectionsAsync(command.BudgetYearId, actorUserId, ct);
+            actorUserId,
+            refreshProjections: true,
+            ct);
     }
 
     private static LocalDate GetIsoMonday(LocalDate date)

@@ -109,7 +109,6 @@ internal sealed class EmailOutboxService(
         var byDay = rows
             .GroupBy(r => r.Date)
             .Select(g => new DailySendCountRow(g.Key, g.Sum(r => r.SentCount), g.Sum(r => r.FailedCount)))
-            .OrderByDescending(r => r.Date)
             .ToList();
 
         var topTemplates = rows

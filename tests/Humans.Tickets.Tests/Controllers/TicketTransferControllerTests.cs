@@ -4,6 +4,7 @@ using AwesomeAssertions;
 using Humans.Base.Constants;
 using Humans.EarlyEntry.Contracts;
 using Humans.Tickets.Controllers;
+using Humans.Tickets.Contracts;
 using Humans.Tickets.Models;
 using Humans.Tickets.Services;
 using Humans.Tickets.Services.Dtos;
@@ -21,6 +22,39 @@ namespace Humans.Tickets.Tests.Controllers;
 
 public class TicketTransferControllerTests
 {
+    [HumansFact]
+    public async Task Index_OrdersTransferableTicketsByNameIgnoringCase()
+    {
+        var userId = Guid.NewGuid();
+        var users = Substitute.For<IUserService>();
+        users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(UserInfo.Create(new User { Id = userId }, [], [], [], null, []));
+        var transfers = Substitute.For<ITicketTransferService>();
+        transfers.GetMyAttendeesAsync(userId, Arg.Any<CancellationToken>()).Returns(
+        [
+            new MyAttendeeRowDto(new(Guid.NewGuid(), "Zoe", null, "z", "GA", TicketAttendeeStatus.Valid), true),
+            new MyAttendeeRowDto(new(Guid.NewGuid(), "alpha", null, "a", "GA", TicketAttendeeStatus.Valid), true)
+        ]);
+        transfers.GetBySenderAsync(userId, Arg.Any<CancellationToken>()).Returns([]);
+        var controller = new TicketTransferController(transfers, Substitute.For<IEarlyEntryService>(),
+            users, NullLogger<TicketTransferController>.Instance, Substitute.For<IStringLocalizer<TicketsResource>>())
+        {
+            ControllerContext = new ControllerContext
+            {
+                HttpContext = new DefaultHttpContext
+                {
+                    User = new ClaimsPrincipal(new ClaimsIdentity(
+                        [new Claim(ClaimTypes.NameIdentifier, userId.ToString())], "Test"))
+                }
+            }
+        };
+
+        var result = await controller.Index(TestContext.Current.CancellationToken);
+
+        result.Should().BeOfType<ViewResult>().Which.Model.Should().BeOfType<TicketTransferWizardViewModel>()
+            .Subject.MyTickets.Select(t => t.Ticket.AttendeeName).Should().Equal("alpha", "Zoe");
+    }
+
     [HumansFact]
     public async Task Index_CancelsAtViewerResolution()
     {

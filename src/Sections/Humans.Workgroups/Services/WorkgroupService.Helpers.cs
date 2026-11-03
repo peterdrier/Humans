@@ -1,4 +1,5 @@
 using Humans.AuditLog.Contracts;
+using Humans.Calendar.Contracts;
 using Humans.Base.Constants;
 using Humans.Base.Extensions;
 using Humans.Base.Helpers;
@@ -31,27 +32,22 @@ internal sealed partial class WorkgroupService
         w.RegisteredAt,
         w.EndedAt,
         w.Members
-            .OrderBy(m => m.Role == WorkgroupMemberRole.Coordinator ? 0 : 1)
-            .ThenBy(m => m.JoinedAt)
             .Select(m => new WorkgroupMemberInfo(m.Id, m.UserId, m.Role, m.JoinedAt, m.LeftAt, m.IsPending == true))
             .ToList(),
         // Soft-deleted meetings are gone outside the repository; the log keeps the history.
         w.Meetings
             .Where(m => m.DeletedAt is null)
-            .OrderBy(m => m.StartUtc)
             .Select(m => new WorkgroupMeetingInfo(
                 m.Id, m.Title, m.StartUtc, m.EndUtc, m.Location, m.LocationUrl, m.IsPublic,
-                m.Minutes, m.CreatedByUserId, m.CreatedAt, m.UpdatedAt))
+                m.Minutes, m.CreatedByUserId, m.CreatedAt, m.UpdatedAt, m.Description,
+                m.RecurrenceRule, m.RecurrenceTimezone))
             .ToList(),
         w.LogEntries
-            .OrderByDescending(e => e.OccurredOn)
-            .ThenByDescending(e => e.CreatedAt)
             .Select(e => new WorkgroupLogEntryInfo(
                 e.Id, e.Kind, e.OccurredOn, e.Title, e.Body, e.AuthorUserId, e.DocumentId,
-                e.SurveyId, e.CreatedAt, e.UpdatedAt))
+                e.SurveyId, e.CreatedAt, e.UpdatedAt, e.MeetingId))
             .ToList(),
         w.Documents
-            .OrderByDescending(d => d.CreatedAt)
             .Select(ToInfo)
             .ToList(),
         w.BudgetAmount,
@@ -79,7 +75,6 @@ internal sealed partial class WorkgroupService
         d.CreatedAt,
         d.UpdatedAt,
         d.Comments
-            .OrderBy(c => c.CreatedAt)
             .Select(c => new WorkgroupCommentInfo(
                 c.Id, c.DocumentId, c.Category, c.AuthorUserId, c.Body, c.CreatedAt,
                 c.Disposition, c.Response, c.RespondedByUserId, c.RespondedAt, c.HiddenAt,
@@ -111,6 +106,19 @@ internal sealed partial class WorkgroupService
             : new(Refusal: new(WorkgroupErrorKeys.NotFound));
     }
 
+    /// <summary>
+    /// The meeting id the entry keeps, or a refusal. Only meeting notes keep a link, and a new link must name one of
+    /// the group's live meetings; an unchanged link survives its meeting's deletion, so old notes stay editable.
+    /// </summary>
+    private async Task<WorkgroupMutationResult<Guid?>> ResolveMeetingLinkAsync(
+        Guid workgroupId, WorkgroupLogEntrySave save, CancellationToken ct, Guid? currentMeetingId = null)
+    {
+        if (save.Kind != WorkgroupLogKind.MeetingNotes || save.MeetingId is not { } meetingId) return new();
+        if (meetingId == currentMeetingId) return new(meetingId);
+        var meeting = await RequireLiveMeetingAsync(meetingId, ct);
+        return meeting.Value?.WorkgroupId == workgroupId ? new(meetingId) : new(Refusal: new(WorkgroupErrorKeys.NotFound));
+    }
+
     /// <summary>Member mutations are frozen before registration and once the group ends.</summary>
     private static WorkgroupRefusal? RequireAcceptsMemberWork(Workgroup w)
     {
@@ -140,7 +148,7 @@ internal sealed partial class WorkgroupService
     private static WorkgroupRefusal? RequireMemberKind(WorkgroupLogKind kind)
     {
         if (kind is not (WorkgroupLogKind.Update or WorkgroupLogKind.Disclosure
-            or WorkgroupLogKind.StatusRequested or WorkgroupLogKind.Note))
+            or WorkgroupLogKind.StatusRequested or WorkgroupLogKind.Note or WorkgroupLogKind.MeetingNotes))
         {
             return new(WorkgroupErrorKeys.SystemLogEntry);
         }
@@ -204,6 +212,14 @@ internal sealed partial class WorkgroupService
             return new(WorkgroupErrorKeys.WindowInvalid);
         if (save.LocationUrl?.Trim().Length > 2000)
             return new(WorkgroupErrorKeys.TextTooLong, 2000);
+        if (save.Description?.Trim().Length > 4000)
+            return new(WorkgroupErrorKeys.TextTooLong, 4000);
+        // The rule and its zone travel together: a rule without a zone can't say which 19:00 it repeats.
+        var hasRule = !string.IsNullOrWhiteSpace(save.RecurrenceRule);
+        if (hasRule != !string.IsNullOrWhiteSpace(save.RecurrenceTimezone)
+            || !CalendarRecurrence.IsValidRule(save.RecurrenceRule)
+            || (hasRule && (CalendarEventForm.TryResolveZone(save.RecurrenceTimezone) is null || RepeatsWithinADay(save.RecurrenceRule!))))
+            return new(WorkgroupErrorKeys.RecurrenceInvalid);
         return null;
     }
 
@@ -228,15 +244,22 @@ internal sealed partial class WorkgroupService
         w.IsSensitive = isSensitive ? true : null;
     }
 
+    // The group page and the daily job expand a series from its start, so a sub-daily rule would
+    // build an occurrence per second or minute; nobody meets that often.
+    private static bool RepeatsWithinADay(string rule) =>
+        rule.Split(';').Any(part => part.Trim().ToUpperInvariant() is "FREQ=SECONDLY" or "FREQ=MINUTELY" or "FREQ=HOURLY");
+
     private static void ApplyMeetingFields(WorkgroupMeeting meeting, WorkgroupMeetingSave save)
     {
         meeting.Title = save.Title.Trim();
         meeting.StartUtc = save.StartUtc;
         meeting.EndUtc = save.EndUtc;
+        meeting.Description = Trimmed(save.Description);
         meeting.Location = Trimmed(save.Location);
         meeting.LocationUrl = Trimmed(save.LocationUrl);
         meeting.IsPublic = save.IsPublic;
-        meeting.Minutes = Trimmed(save.Minutes);
+        meeting.RecurrenceRule = Trimmed(save.RecurrenceRule);
+        meeting.RecurrenceTimezone = meeting.RecurrenceRule is null ? null : save.RecurrenceTimezone!.Trim();
     }
 
     private static WorkgroupMember NewMember(
@@ -268,16 +291,6 @@ internal sealed partial class WorkgroupService
             CreatedAt = now,
             UpdatedAt = now
         };
-
-    private Task AddSystemEntryAsync(
-        Workgroup w,
-        WorkgroupLogKind kind,
-        Instant now,
-        string? body,
-        CancellationToken ct,
-        Guid? authorUserId = null,
-        Guid? documentId = null) =>
-        repository.AddLogEntryAsync(SystemEntry(w.Id, kind, now, body, authorUserId, documentId), ct);
 
     /// <summary>
     /// Suffixed until free. Reserved route segments count as taken, so a group called "Apply" gets <c>apply-2</c>
@@ -417,11 +430,9 @@ internal sealed partial class WorkgroupService
         if (ids.Count == 0)
             return;
 
-        IReadOnlyDictionary<Guid, string> addresses;
         IReadOnlyDictionary<Guid, UserInfo> infos;
         try
         {
-            addresses = await userEmails.GetNotificationTargetEmailsAsync(ids, ct);
             infos = await users.GetUserInfosAsync(ids, ct);
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
@@ -437,7 +448,9 @@ internal sealed partial class WorkgroupService
 
         foreach (var id in ids)
         {
-            if (!addresses.TryGetValue(id, out var address) || string.IsNullOrWhiteSpace(address))
+            infos.TryGetValue(id, out var info);
+            var address = info?.Email;
+            if (string.IsNullOrWhiteSpace(address))
             {
                 logger.LogWarning(
                     "Skipping workgroup {Kind} email for {UserId} on {WorkgroupId}: no effective email",
@@ -445,7 +458,6 @@ internal sealed partial class WorkgroupService
                 continue;
             }
 
-            infos.TryGetValue(id, out var info);
             var language = info?.PreferredLanguage;
             await SendNoticeAsync(new WorkgroupNoticeRequest(
                 id, address, info?.BurnerName, kind, w.Name, w.Slug, detail,
@@ -541,12 +553,11 @@ internal sealed partial class WorkgroupService
     }
 
     /// <summary>A group that stops being Active has nobody left to decide its join requests. Nothing is logged.</summary>
-    private async Task ClosePendingRequestsAsync(Workgroup w, Instant now, CancellationToken ct)
+    private static IReadOnlyList<WorkgroupMember> ClosePendingRequests(Workgroup w, Instant now)
     {
         var pending = w.Members.Where(m => m.LeftAt is null && m.IsPending == true).ToList();
-        if (pending.Count == 0) return;
         foreach (var m in pending) m.LeftAt = now;
-        await repository.UpdateMembersAsync(pending, ct);
+        return pending;
     }
 
     /// <summary>The one place a group ends, whether a member marked it done or the Secretary closed it.</summary>
@@ -563,13 +574,11 @@ internal sealed partial class WorkgroupService
         w.Reasons = Trimmed(reasons) ?? w.Reasons;
         w.EndedAt = now;
         w.UpdatedAt = now;
-        await repository.UpdateWorkgroupAsync(w, ct);
+        await repository.UpdateWorkgroupAsync(w, ct,
+            [SystemEntry(w.Id, WorkgroupLogKind.Ended, now, Trimmed(reasons) ?? reason.ToString(),
+                authorUserId: reason == WorkgroupDormantReason.Quiet ? null : actorUserId)],
+            ClosePendingRequests(w, now));
         ct = CancellationToken.None;
-        await ClosePendingRequestsAsync(w, now, ct);
-
-        await AddSystemEntryAsync(w, WorkgroupLogKind.Ended, now,
-            Trimmed(reasons) ?? reason.ToString(), ct,
-            authorUserId: reason == WorkgroupDormantReason.Quiet ? null : actorUserId);
 
         await AuditAsync(WorkgroupsAuditActions.WorkgroupClosed, w, $"Group ended ({reason})", actorUserId);
 

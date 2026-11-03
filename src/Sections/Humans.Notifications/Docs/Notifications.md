@@ -83,10 +83,14 @@ Inbox selection checkboxes have a localized accessible label in all six supporte
 
 - Section-owned resource keys use the `Notifications_` prefix in all six cultures.
 
-- Known-recipient emission and shared role broadcasts use the same copy normalization: titles at most 200 Unicode characters,
+- Known-recipient emission and shared role broadcasts share one dispatch pipeline in `NotificationEmitter`: preference filtering, copy normalization, recipient construction and persistence. Direct sends create one notification per recipient; role sends group all eligible recipients into one shared notification.
+
+- Both dispatch modes use the same copy normalization: titles at most 200 Unicode characters,
   bodies at most 2,000. Excerpts end in an ellipsis without splitting surrogate pairs; an
   oversized title is retained at the start of the body before the body is excerpted.
   Valid-length copy is preserved unchanged.
+
+- Inbox search matches literal, case-insensitive text in titles and bodies after applying recipient, tab and source filters. Surrounding whitespace is trimmed; fewer than two characters leaves the selected inbox unfiltered. SQL pattern characters have no special meaning.
 
 - Inbox keyboard Enter activates a notification’s action once, cancelling native activation when the row handler clicks it.
 
@@ -191,6 +195,7 @@ All POST routes are `[ValidateAntiForgeryToken]`. Authorization is "must be a re
 The section has no key-authed route of its own. Its machine read surface is `INotificationInboxRead`
 (`Humans.Notifications.Contracts`), served by Backdoor at `GET /api/backdoor/notifications` for the key's owner; see
 [`features/notification-api.md`](features/notification-api.md).
+The read snapshot carries meter priority without sorting either collection. Backdoor owns newest-first row and highest-priority-first meter ordering in its JSON projection.
 
 ### Touch-and-clean guidance
 

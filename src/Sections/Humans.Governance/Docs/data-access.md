@@ -4,8 +4,8 @@
 
 Project: `src/Sections/Humans.Governance`; services under `Services/`,
 repository under `Data/`. **DbContext:**
-`GovernanceDbContext`. `ApplicationRepository`,
-`AssemblyVoteRepository` and `MembershipTierRepository` inject
+`GovernanceDbContext`. `ApplicationRepository`
+and `AssemblyVoteRepository` inject
 `IDbContextFactory<GovernanceDbContext>` directly. Owns
 `Applications`, `MembershipTiers` (`governance_membership_tiers`), `ApplicationStateHistories`, `BoardVotes`,
 `AssemblyVotes`, `AssemblyVoteOptions`, `AssemblyVoteRosterEntries`,
@@ -19,7 +19,7 @@ membership-tier expiry and the section's own members. Readers outside this secti
 `IGovernanceService` — tier reads from Users (popover, human summary, admin detail, duplicate
 accounts), Onboarding, Workgroups, Tickets, Surveys, Agent and Teams. Nothing outside the section
 writes Governance data: the section's own `MembershipTierExpiryJob` calls
-`IGovernanceManagement.ExpireMembershipTiersAsync` and records the `TierDowngraded` audit.
+`IGovernanceManagement.ExpireMembershipTiersAsync`; `MembershipTierService` records each `TierDowngraded` audit after its tier mutation commits.
 
 Cross-section reads inside the section go through the read surfaces
 (`IUserService`, `ITeamService`, `IConsentService`).
@@ -56,7 +56,7 @@ delegate to `MembershipTierService`.
 ### MembershipTierService (Scoped, internal)
 
 Repositories: `IMembershipTierRepository`, plus `IApplicationRepository` (read-only — grant
-and term data for expiry).
+and term data for expiry). Both interfaces resolve to `ApplicationRepository`; its membership-tier partial owns tier access so approvals can commit the tier and application together.
 
 | Table | R/W |
 |-------|-----|

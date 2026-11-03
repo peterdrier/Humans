@@ -270,4 +270,114 @@
     <value>L'annullamento non ripristinerà le Sue precedenti appartenenze ai team. Dovrà riunirsi ai team.</value>
   </data>
   <data name="Consent_AccountStatus_ReasonLabel" xml:space="preserve"><value>Motivo:</value></data>
+  <data name="Consent_Queue_Title" xml:space="preserve">
+    <value>Coda di revisione onboarding</value>
+  </data>
+  <data name="Consent_Queue_NoPending" xml:space="preserve">
+    <value>Nessun human in attesa di revisione.</value>
+  </data>
+  <data name="Consent_Queue_PendingSection" xml:space="preserve">
+    <value>In attesa di revisione</value>
+  </data>
+  <data name="Consent_Queue_FlaggedSection" xml:space="preserve">
+    <value>Segnalato per approfondimento</value>
+  </data>
+  <data name="Consent_Queue_FlaggedBadge" xml:space="preserve">
+    <value>Segnalato</value>
+  </data>
+  <data name="Consent_Queue_NewHumanSummary" xml:space="preserve">
+    <value>Riepilogo del nuovo human</value>
+  </data>
+  <data name="Consent_Queue_LegalName" xml:space="preserve">
+    <value>Nome legale</value>
+  </data>
+  <data name="Consent_Queue_HasApplication" xml:space="preserve">
+    <value>Ha una domanda</value>
+  </data>
+  <data name="Consent_Queue_Signed" xml:space="preserve">
+    <value>firmato/i</value>
+  </data>
+  <data name="Consent_Queue_ApplicationMotivation" xml:space="preserve">
+    <value>Motivazione della domanda</value>
+  </data>
+  <data name="Consent_Queue_PreviousNotes" xml:space="preserve">
+    <value>Note di revisione precedenti</value>
+  </data>
+  <data name="Consent_Queue_Actions" xml:space="preserve">
+    <value>Azioni</value>
+  </data>
+  <data name="Consent_Queue_NotesPlaceholder" xml:space="preserve">
+    <value>Note facoltative...</value>
+  </data>
+  <data name="Consent_Queue_ClearButton" xml:space="preserve">
+    <value>Approva &amp; Conferma</value>
+  </data>
+  <data name="Consent_Queue_ClearHelp" xml:space="preserve">
+    <value>Approva la revisione del profilo. Lo human entrerà nei Volontari quando anche i documenti legali saranno firmati.</value>
+  </data>
+  <data name="Consent_Queue_ClearConfirm" xml:space="preserve">
+    <value>La revisione del profilo di questo human verrà approvata. Continuare?</value>
+  </data>
+  <data name="Consent_Queue_FlagButton" xml:space="preserve">
+    <value>Segnala per revisione</value>
+  </data>
+  <data name="Consent_Queue_FlagReasonPlaceholder" xml:space="preserve">
+    <value>Motivo della segnalazione...</value>
+  </data>
+  <data name="Consent_Queue_FlagConfirm" xml:space="preserve">
+    <value>Questo human verrà segnalato per ulteriore revisione. Continuare?</value>
+  </data>
+  <data name="Consent_Queue_AlreadyCleared" xml:space="preserve">
+    <value>Questo human è già stato approvato.</value>
+  </data>
+  <data name="Consent_Queue_Cleared" xml:space="preserve">
+    <value>Revisione del profilo approvata.</value>
+  </data>
+  <data name="Consent_Queue_BulkClearedNone" xml:space="preserve">
+    <value>Nessun human selezionato è stato approvato.</value>
+  </data>
+  <data name="Consent_Queue_BulkCleared" xml:space="preserve">
+    <value>Approvati {0} humans selezionati.</value>
+  </data>
+  <data name="Consent_Queue_BulkClearedPartial" xml:space="preserve">
+    <value>Approvati {0} di {1} selezionati — gli altri non sono più idonei.</value>
+  </data>
+  <data name="Consent_Queue_BulkClearButton" xml:space="preserve">
+    <value>Approva tutti i selezionati</value>
+  </data>
+  <data name="Consent_Queue_Flagged" xml:space="preserve">
+    <value>Human segnalato per ulteriore revisione.</value>
+  </data>
+  <data name="Consent_Queue_RejectButton" xml:space="preserve">
+    <value>Rifiuta registrazione</value>
+  </data>
+  <data name="Consent_Queue_RejectReasonPlaceholder" xml:space="preserve">
+    <value>Motivo del rifiuto...</value>
+  </data>
+  <data name="Consent_Queue_RejectConfirm" xml:space="preserve">
+    <value>Sei sicuro di voler rifiutare la registrazione di questo human? Questa azione non può essere annullata.</value>
+  </data>
+  <data name="Consent_Queue_RejectHelp" xml:space="preserve">
+    <value>Il rifiuto negherà permanentemente la registrazione di questo human e invierà un'email di notifica.</value>
+  </data>
+  <data name="Consent_Queue_Rejected" xml:space="preserve">
+    <value>La registrazione è stata rifiutata.</value>
+  </data>
+  <data name="Consent_Queue_AlreadyRejected" xml:space="preserve">
+    <value>Questo human è già stato rifiutato.</value>
+  </data>
+  <data name="Consent_Queue_LegalDocuments" xml:space="preserve">
+    <value>Documenti legali</value>
+  </data>
+  <data name="Consent_Queue_DocsComplete" xml:space="preserve">
+    <value>Completo</value>
+  </data>
+  <data name="Consent_Queue_DocsPending" xml:space="preserve">
+    <value>In attesa</value>
+  </data>
+  <data name="Consent_Queue_DocsNote" xml:space="preserve">
+    <value>La revisione del profilo può procedere in modo indipendente. Lo human entrerà nei Volontari quando tutti i documenti saranno firmati.</value>
+  </data>
+  <data name="Consent_Queue_ReviewLink" xml:space="preserve"><value>Rivedi</value></data>
+  <data name="Consent_Queue_SelectRowLabel" xml:space="preserve"><value>Seleziona {0}</value></data>
 </root>

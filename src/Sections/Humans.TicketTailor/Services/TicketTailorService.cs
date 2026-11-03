@@ -97,7 +97,14 @@ internal sealed class TicketTailorService : ITicketVendorService
         var tickets = new List<VendorTicketDto>();
         await foreach (var page in FetchPagesAsync<TtIssuedTicket>(
             "issued_tickets", "updated_at", since, eventId, static ticket => ticket.Id, ct))
-            tickets.AddRange(page.Select(ToVendorTicket));
+        {
+            foreach (var ticket in page)
+            {
+                if (string.IsNullOrWhiteSpace(ticket.Status))
+                    throw new HttpRequestException($"TicketTailor ticket {ticket.Id} is missing required status.");
+                tickets.Add(ToVendorTicket(ticket, ticket.Status));
+            }
+        }
 
         _logger.LogInformation("Fetched {Count} issued tickets from TicketTailor for event {EventId}",
             tickets.Count, eventId);
@@ -178,18 +185,28 @@ internal sealed class TicketTailorService : ITicketVendorService
             response.EnsureSuccessStatusCode();
         }
 
-        var evt = await response.Content.ReadFromJsonAsync<TtEvent>(JsonOptions, ct)
-            ?? throw new HttpRequestException("TicketTailor event response is missing data.");
+        TtEvent evt;
+        try
+        {
+            evt = await response.Content.ReadFromJsonAsync<TtEvent>(JsonOptions, ct)
+                ?? throw new HttpRequestException("TicketTailor event response is missing data.");
+        }
+        catch (JsonException ex)
+        {
+            throw new HttpRequestException("TicketTailor event response could not be read.", ex);
+        }
+        if (string.IsNullOrWhiteSpace(evt.Name))
+            throw new HttpRequestException("TicketTailor event response is missing required name.");
+        if (evt.TotalIssuedTickets is not { } ticketsSold)
+            throw new HttpRequestException("TicketTailor event response is missing required total_issued_tickets.");
 
         // Capacity is per ticket group: waves subdivide one pool, so summing ticket types overcounts.
         var totalCapacity = evt.TicketGroups?.Sum(g => g.MaxQuantity ?? 0) ?? 0;
         if (totalCapacity == 0)
             totalCapacity = evt.TicketTypes?.Sum(tt => tt.QuantityTotal ?? 0) ?? 0;
-        var ticketsSold = evt.TotalIssuedTickets ?? 0;
-
         var summary = new VendorEventSummaryDto(
             EventId: eventId,
-            EventName: evt.Name ?? "Unknown",
+            EventName: evt.Name,
             TotalCapacity: totalCapacity,
             TicketsSold: ticketsSold,
             TicketsRemaining: totalCapacity - ticketsSold);
@@ -345,7 +362,12 @@ internal sealed class TicketTailorService : ITicketVendorService
                     "TicketTailor issue returned 2xx without a ticket id",
                     TicketVendorFailureKind.Transient);
 
-            return ToVendorTicket(body);
+            if (!string.Equals(body.Status, "valid", StringComparison.Ordinal))
+                throw new TicketVendorWriteException(
+                    "TicketTailor issue returned 2xx without a valid ticket status",
+                    TicketVendorFailureKind.Transient);
+
+            return ToVendorTicket(body, body.Status!);
         }
     }
 
@@ -417,14 +439,14 @@ internal sealed class TicketTailorService : ITicketVendorService
         return donationCents > 0 ? donationCents / 100m : 0m;
     }
 
-    private static VendorTicketDto ToVendorTicket(TtIssuedTicket ticket) => new(
+    private static VendorTicketDto ToVendorTicket(TtIssuedTicket ticket, string status) => new(
         VendorTicketId: ticket.Id,
         VendorOrderId: ticket.OrderId,
         AttendeeName: ticket.FullName ?? $"{ticket.FirstName} {ticket.LastName}".Trim(),
         AttendeeEmail: ResolveAttendeeEmail(ticket),
         TicketTypeName: ticket.Description ?? "Unknown",
         Price: (ticket.ListedPrice ?? 0) / 100m,
-        Status: ticket.Status ?? "valid",
+        Status: status,
         Barcode: ticket.Barcode);
 
     // issued_ticket.email is the buyer's, copied onto every ticket. The attendee's comes from a custom

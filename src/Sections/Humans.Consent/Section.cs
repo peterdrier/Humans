@@ -4,6 +4,7 @@ using Humans.Base.Extensions;
 using Humans.Base.Hosting;
 using Humans.Base.Interfaces;
 using Humans.Base.Interfaces.Caching;
+using Humans.Base.Models;
 using Humans.Consent.Contracts;
 using Humans.Consent.Data;
 using Humans.Consent.Jobs;
@@ -17,6 +18,9 @@ using Microsoft.Extensions.Configuration;
 using Humans.Notifications.Contracts;
 using Microsoft.Extensions.DependencyInjection;
 using Humans.AuditLog.Contracts;
+using Humans.Users.Contracts;
+using static Humans.Base.Models.AccessLevel;
+using static Humans.Base.Models.AccessMatrixFeature;
 
 namespace Humans.Consent;
 
@@ -24,8 +28,10 @@ public sealed class Section :
     ISection,
     IIssueQueueOwner,
     ISectionRoles,
+    ISectionAccessMatrix,
     ISectionAdminNav,
     ISectionDataMigrations,
+    ISectionHelp,
     ISectionJobs,
     ISectionPolicies,
     IUserPart
@@ -94,6 +100,7 @@ public sealed class Section :
         services.AddScoped<ConsentReviewService>();
         services.AddScoped<IConsentWrite>(sp => sp.GetRequiredService<ConsentReviewService>());
         services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<ConsentReviewService>());
+        services.AddScoped<IConsentReviewQueueService, ConsentReviewQueueService>();
 
         services.AddSingleton<IConsentReminderRepository, ConsentReminderRepository>();
         services.AddScoped<ConsentReminderService>();
@@ -118,11 +125,47 @@ public sealed class Section :
 
     IReadOnlyList<string> IIssueQueueOwner.OwningRoles => [ConsentRoles.ConsentCoordinator];
 
+    IReadOnlyList<AccessMatrixData> ISectionAccessMatrix.AccessMatrices =>
+    [
+        new()
+        {
+            Key = "ConsentReview",
+            SectionName = "Consent Review",
+            Order = 50,
+            Roles = ["ConsentCoordinator", "ShiftsAdmin", "Board"],
+            Features =
+            [
+                Of("View review queue", ("ConsentCoordinator", Allowed), ("ShiftsAdmin", Allowed), ("Board", Allowed)),
+                Of("Clear consent checks", ("ConsentCoordinator", Allowed), ("ShiftsAdmin", Denied), ("Board", Allowed)),
+                Of("Flag / reject signup", ("ConsentCoordinator", Allowed), ("ShiftsAdmin", Denied), ("Board", Allowed)),
+                Of("Board voting", ("ConsentCoordinator", Denied), ("ShiftsAdmin", Denied), ("Board", Allowed)),
+            ]
+        }
+    ];
+
     IEnumerable<AdminNavGroup> ISectionAdminNav.Groups() =>
     [
         new("Consent", [
+            new("Review queue", "ConsentReviewQueue", "Index", null, null, "fa-solid fa-clipboard-check", PolicyNames.ReviewQueueAccess,
+                PillCount: ReviewQueuePillCountAsync),
             new("Legal documents", "AdminLegalDocuments", "LegalDocuments", null, null, "fa-solid fa-scale-balanced", PolicyNames.BoardOrAdmin)
         ])
+    ];
+
+    private static async ValueTask<int?> ReviewQueuePillCountAsync(IServiceProvider sp)
+    {
+        var users = sp.GetRequiredService<IUserService>();
+        var reviews = await sp.GetRequiredService<IConsentService>().GetConsentReviewsAsync();
+        var count = (await users.GetAllUserInfosAsync()).Count(u =>
+            u.NeedsConsentReview(reviews.GetValueOrDefault(u.Id) ?? ConsentReviewInfo.None(u.Id)));
+        return count > 0 ? count : null;
+    }
+
+    IReadOnlyList<SectionHelpEntry> ISectionHelp.HelpEntries => HelpEntries;
+
+    private static readonly IReadOnlyList<SectionHelpEntry> HelpEntries =
+    [
+        SectionHelpEntry.FromEmbeddedMarkdown(typeof(Section).Assembly, "ConsentReview", 70),
     ];
 
     internal const string ProfileReviewKey = "consent.profile-review";
@@ -152,7 +195,7 @@ public sealed class Section :
 
     IEnumerable<RecurringJobDescriptor> ISectionJobs.Jobs(IServiceProvider services)
     {
-        // 04:00, 30 minutes before Users' SuspendNonCompliantMembersJob.
+        // Both at 04:00, 30 minutes before Users' SuspendNonCompliantMembersJob.
         yield return new RecurringJobDescriptor(
             "consent-reconsent-reminders", typeof(SendReConsentReminderJob), "0 4 * * *");
 

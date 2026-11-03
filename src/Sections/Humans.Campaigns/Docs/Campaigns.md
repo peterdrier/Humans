@@ -91,10 +91,13 @@ Stored as string (`HasConversion<string>()`, max length 20).
 
 | Actor | Capabilities |
 |-------|--------------|
+| Board | View campaign details, read-only |
 | TicketsAdmin, Admin | View campaign details, generate discount codes via the ticket vendor |
 | Admin | Full campaign management: create, edit, activate, complete campaigns. Import codes. Manage grants. Send campaign email waves |
 
 ## Invariants
+
+- Code-tracking summaries carry campaign creation time without display ordering. Tickets owns newest-campaign ordering and its report tie-breakers; grant counts and redemption matching are independent of summary order.
 
 - Create/edit validate trimmed title (200), description (2000), email subject (1000) and Reply-To (320) lengths before persistence. Nonblank Reply-To must be an email address; blank stays optional. Invalid forms redisplay field errors and preserve existing campaign data.
 - Placeholder expansion can make a valid subject template exceed the email queue's 1000-character limit. All campaign sends retain the complete rendered subject as an HTML-encoded leading body paragraph in that case, while shortening the subject header to 1000 Unicode characters including an ellipsis. Shorter subjects and their bodies remain unchanged; codes are preserved even when the authored body omits `{{Code}}`.
@@ -115,6 +118,7 @@ Stored as string (`HasConversion<string>()`, max length 20).
 ## Negative Access Rules
 
 - TicketsAdmin **cannot** create, edit, activate, or complete campaigns. They can only view details and generate codes.
+- Board **cannot** generate codes or take any other campaign action; its access is the read-only detail page.
 - Regular humans and other roles have no access to campaign management.
 - Humans see only their own grants on `/Profile/Me` (the "My Codes" card, `MyCodesViewComponent`, sourced from `ICampaignService.GetActiveOrCompletedGrantsForUserAsync`). The card renders only for the `Self` view mode and only when the signed-in user is the profile's owner, so it is absent on another member's profile for every role. No human can see another human's grants outside the admin card.
 - The "Campaign Codes" card (`CampaignCodesViewComponent`, every grant whatever the campaign's status) renders only in the `Admin` view mode for a viewer passing `UsersPolicies.Read`, the same policy as the host page; any other viewer or audience gets nothing.
@@ -140,11 +144,11 @@ email template is copied into audit. Refused mutations emit no success entry.
 - **Audit actions:** declared on `CampaignsAuditActions` (`src/Sections/Humans.Campaigns/CampaignsAuditActions.cs`), one `AuditActionDefinition` each, written through `IAuditLogService`: `CampaignCreated`, `CampaignUpdated`, `CampaignActivated`, `CampaignCompleted`, `CampaignCodesImported`, `CampaignWaveSent`, `CampaignGrantResent`.
 - **Tickets:** `ITicketDiscountCodes` (`Humans.Tickets.Contracts`) — TicketsAdmin can generate discount codes via the ticket vendor integration; Campaigns asks Tickets for codes through this leaf rather than reaching past it into the Base vendor port. Generation is invoked from the Campaign Detail page, not from the Tickets section.
 - **Email:** transport only. Campaigns owns its one template — `CampaignsEmails` (internal) builds the `EmailMessage` from the campaign's own subject and markdown body (the builder reads no resx), and `CampaignsEmailPreviews` (`IEmailPreviewContributor`, registered in `Section.Register`) lists it at `/Email/EmailPreview` (`memory/architecture/email-templates-live-in-sender.md`). `IEmailService.SendAsync` queues the message through the outbox.
-- **Users:** `IUserEmailService.GetNotificationTargetEmailsAsync(IReadOnlyCollection<Guid>)` — resolves notification targets for grant emails; `IUserService.GetUserInfoAsync` / `GetUserInfosAsync` — recipient `BurnerName` for the email payload and code-tracking display; `IUnsubscribeService` (Email section, `Humans.Email.Services.UnsubscribeService`) processes the public `/Email/Unsubscribe/{token}` endpoint, validating legacy campaign-only tokens (mapped to `MessageCategory.Marketing`) before delegating opt-out to `ICommunicationPreferenceService.UpdatePreferenceAsync` — `CampaignService` itself does not call `ICommunicationPreferenceService`. Called by `IAccountMergeService` (Users section) — `IUserMerge.ReassignAsync` (implemented by `CampaignService`) re-FKs `CampaignGrant` from source to target during account merge fold.
+- **Users:** `IUserService.GetUserInfoAsync` / `GetUserInfosAsync` — canonical recipient email, name and culture from one snapshot for wave and resend messages, plus code-tracking display; `IUnsubscribeService` (Email section, `Humans.Email.Services.UnsubscribeService`) processes the public `/Email/Unsubscribe/{token}` endpoint, validating legacy campaign-only tokens (mapped to `MessageCategory.Marketing`) before delegating opt-out to `ICommunicationPreferenceService.UpdatePreferenceAsync` — `CampaignService` itself does not call `ICommunicationPreferenceService`. Called by `IAccountMergeService` (Users section) — `IUserMerge.ReassignAsync` (implemented by `CampaignService`) re-FKs `CampaignGrant` from source to target during account merge fold.
 - **Gdpr:** `IUserDataContributor` (grant export resolves archived account IDs to the survivor; erasure keeps its per-ID scope) and `IUserMerge` (`Humans.Gdpr.Contracts`), both implemented by `CampaignService`.
 - **AuditLog:** `IAuditLogService.LogAsync` records persisted admin mutations.
 - **Notifications:** `INotificationEmitter.SendAsync` — `CampaignReceived` in-app notifications for wave recipients. Its sources are declared in `CampaignsNotificationSources` (`src/Sections/Humans.Campaigns/CampaignsNotificationSources.cs`), one `NotificationSourceDefinition` each: `CampaignReceived` (informational, to campaign recipients: campaign code granted).
-- **Teams:** `ITeamService.GetTeamsAsync` (Send Wave team picker) and `ITeamService.GetTeamAsync` (team-scoped wave targeting).
+- **Teams:** `ITeamService.GetTeamsAsync` (Send Wave team picker) and `ITeamService.GetTeamAsync` (team-scoped wave targeting). The Send Wave view orders active team options by name with ordinal comparison; the service returns the available options without display ordering.
 
 ## Architecture
 
@@ -164,7 +168,7 @@ email template is copied into audit. Refused mutations emit no success entry.
 - `CampaignService` lives in `Humans.Campaigns.Services` and depends only on Application-layer abstractions.
 - `ICampaignRepository` (interface `src/Sections/Humans.Campaigns/Data/ICampaignRepository.cs`, impl `src/Sections/Humans.Campaigns/Data/CampaignRepository.cs`) is the only file that touches this section's tables via `DbContext`.
 - **Decorator decision — no caching decorator.** Admin-only, low write/read volume.
-- **Cross-section reads** route through `ITeamService.GetTeamsAsync` / `GetTeamAsync` and `IUserEmailService.GetNotificationTargetEmailsAsync`, `IUserService.GetUserInfoAsync` / `GetUserInfosAsync` for display data. Outbound email queueing goes through `IEmailService.SendAsync` with `CampaignsEmails.CampaignCode` (the outbox service owns the email_outbox_messages table and applies opt-out/unsubscribe policy itself — `CampaignService` does not call `ICommunicationPreferenceService`).
+- **Cross-section reads** route through `ITeamService.GetTeamsAsync` / `GetTeamAsync` and `IUserService.GetUserInfoAsync` / `GetUserInfosAsync` for recipient addresses and display data. Outbound email queueing goes through `IEmailService.SendAsync` with `CampaignsEmails.CampaignCode` (the outbox service owns the email_outbox_messages table and applies opt-out/unsubscribe policy itself — `CampaignService` does not call `ICommunicationPreferenceService`).
 - **No cross-domain navs:** `Campaign.CreatedByUserId` and `CampaignGrant.UserId` are bare Guid columns — no nav property, no DB-level FK constraint: the section assembly cannot name `User`, so `CampaignConfiguration` / `CampaignGrantConfiguration` declare no relationship at all. All callers — including `TicketQueryService.GetCodeTrackingDataAsync` via `ICampaignService.GetCodeTrackingAsync` — resolve display names through `IUserService`.
 - **Architecture test** — `tests/Humans.Campaigns.Tests/Architecture/CampaignsArchitectureTests.cs`, alongside the cross-cutting analyzer coverage (`HUM0009`, `HUM0034`).
 

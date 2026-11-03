@@ -15,7 +15,7 @@ public sealed class SectionUserPartsTests
         parts.Select(p => p.Slot).Should().BeEquivalentTo(
         [
             UserPartSlots.BoardVoteApplicant,
-            UserPartSlots.OnboardingReviewApplicant,
+            UserPartSlots.ConsentReviewApplicant,
             UserPartSlots.TicketTransferParty,
         ]);
     }

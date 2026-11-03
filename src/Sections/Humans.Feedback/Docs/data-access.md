@@ -42,7 +42,7 @@ clears the message's pending-email flag after handoff. No cache.
 Implements `IRecurringJob` for the minute retry of owned pending reply emails.
 The request handoff and retry pass use the same pipeline, including its static
 lock and stable Email delivery id. Cross-section calls use `IUserService`,
-`IUserEmailService`, `IEmailService`, `INotificationEmitter`, and `IAuditLogService`;
+`IEmailService`, `INotificationEmitter`, and `IAuditLogService`;
 `FeedbackEmails` builds the section's copy.
 
 ### FeedbackEmails (Scoped, internal)

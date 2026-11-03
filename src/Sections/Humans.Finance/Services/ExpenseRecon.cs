@@ -77,10 +77,8 @@ internal static class ExpenseRecon
         var members = Members(allLines, bindingByUser, balances, transfers, memberName);
 
         bool InYear(LocalDate date) => year is null || date.Year == year;
-        var lines = allLines.Where(l => InYear(l.DocumentDate))
-            .OrderByDescending(l => l.IsProblem).ThenBy(l => l.Status).ThenByDescending(l => l.DocumentDate)
-            .ToList();
-        var orphans = allOrphans.Where(o => InYear(o.Date)).OrderByDescending(o => o.Date).ToList();
+        var lines = allLines.Where(l => InYear(l.DocumentDate)).ToList();
+        var orphans = allOrphans.Where(o => InYear(o.Date)).ToList();
 
         var totals = new ExpenseReconTotals(
             Reports: lines.Select(l => l.ExpenseReportId).Distinct().Count(),
@@ -119,7 +117,7 @@ internal static class ExpenseRecon
             .ToDictionary(g => g.Key, g => g.First().ContactName, StringComparer.Ordinal);
         var byName = nameById.Where(kv => !string.IsNullOrWhiteSpace(kv.Value))
             .ToLookup(kv => kv.Value.Trim(), kv => kv.Key, StringComparer.OrdinalIgnoreCase);
-        var contacts = Service.MemberContacts(
+        var contacts = HoldedDuplicateMatcher.MemberContacts(
             bookings.Select(b => (b.CreditorUserId, b.HoldedContactId)), bindings,
             id => nameById.GetValueOrDefault(id), byName);
 
@@ -171,8 +169,6 @@ internal static class ExpenseRecon
                         .Select(t => new ExpenseReconOpenTransfer(t.TransferId, t.FileName, t.GeneratedAt, t.Amount))
                         .ToList());
             })
-            .OrderByDescending(m => m.IsWarning)
-            .ThenBy(m => m.MemberName, StringComparer.OrdinalIgnoreCase)
             .ToList();
     }
 

@@ -1,3 +1,5 @@
+using CsvHelper;
+using Humans.Base.Csv;
 using Humans.Tickets.Contracts;
 using Humans.Tickets.Models;
 using Humans.Tickets.Services;
@@ -29,6 +31,105 @@ namespace Humans.Tickets.Tests.Controllers;
 /// </summary>
 public class TicketControllerTests
 {
+    [HumansFact]
+    public async Task Reports_OrderSalesBucketsTicketTypesAndCampaignsForDisplay()
+    {
+        var earlier = Instant.FromUtc(2026, 1, 1, 0, 0);
+        var later = earlier.Plus(Duration.FromDays(1));
+        var aggregates = new TicketSalesAggregates
+        {
+            WeeklySales = [
+                new() { WeekStart = new LocalDate(2026, 1, 5), WeekLabel = "Later" },
+                new() { WeekStart = new LocalDate(2025, 12, 29), WeekLabel = "Earlier" },
+            ],
+            QuarterlySales = [
+                new() { Year = 2026, Quarter = 2 },
+                new() { Year = 2025, Quarter = 4 },
+                new() { Year = 2026, Quarter = 1 },
+            ],
+            MonthlySales = [
+                new() { MonthLabel = "2026-02", GrossRevenue = 20m },
+                new() { MonthLabel = "2025-12", GrossRevenue = 5m },
+                new() { MonthLabel = "2026-01", GrossRevenue = 10m },
+            ],
+            ByTicketType =
+            [
+                new() { TicketTypeName = "Early", FaceValue = 80m },
+                new() { TicketTypeName = "VIP", FaceValue = 420m },
+                new() { TicketTypeName = "Full", FaceValue = 200m }
+            ],
+            ByDiscountCampaign =
+            [
+                new() { CampaignTitle = "Vendor", CodesGranted = null, TotalDiscount = 900m },
+                new() { CampaignTitle = "Zeta", CodesGranted = 1, TotalDiscount = 10m },
+                new() { CampaignTitle = "alpha", CodesGranted = 2, TotalDiscount = 10m, CreatedAt = earlier },
+                new() { CampaignTitle = "alpha", CodesGranted = 1, TotalDiscount = 10m, CreatedAt = later },
+                new() { CampaignTitle = "Largest", CodesGranted = 1, TotalDiscount = 80m }
+            ]
+        };
+        var queries = Substitute.For<ITicketManagement>();
+        queries.GetSalesAggregatesAsync(Arg.Any<CancellationToken>()).Returns(aggregates);
+        queries.GetCodeTrackingDataAsync(null, Arg.Any<CancellationToken>()).Returns(new CodeTrackingData
+        {
+            Campaigns =
+            [
+                new() { CampaignTitle = "Older", CreatedAt = earlier },
+                new() { CampaignTitle = "Newest", CreatedAt = later },
+            ]
+        });
+        var dashboard = new TicketDashboardPageBuilder(Substitute.For<ITicketVendorService>(),
+            Options.Create(new TicketVendorSettings()), queries, NullLogger<TicketDashboardPageBuilder>.Instance);
+        var controller = new TicketController(queries, Substitute.For<ITicketSyncService>(),
+            Substitute.For<IUserParticipationBackfillService>(), dashboard, Substitute.For<IUserService>(),
+            NullLogger<TicketController>.Instance)
+        {
+            ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext() }
+        };
+
+        var result = await controller.SalesAggregates();
+
+        var model = result.Should().BeOfType<ViewResult>().Which.Model.Should()
+            .BeOfType<TicketSalesAggregatesViewModel>().Subject;
+        model.WeeklySales.Select(week => week.WeekLabel).Should().Equal("Earlier", "Later");
+        model.QuarterlySales.Select(quarter => (quarter.Year, quarter.Quarter)).Should().Equal((2025, 4), (2026, 1), (2026, 2));
+        model.MonthlySales.Select(month => month.MonthLabel).Should().Equal("2025-12", "2026-01", "2026-02");
+        model.ByTicketType.Select(t => t.TicketTypeName).Should().Equal("VIP", "Full", "Early");
+        model.ByDiscountCampaign.Select(c => c.CampaignTitle).Should().Equal("Largest", "alpha", "alpha", "Zeta", "Vendor");
+        model.ByDiscountCampaign.Where(c => string.Equals(c.CampaignTitle, "alpha", StringComparison.Ordinal))
+            .Select(c => c.CodesGranted).Should().Equal(1, 2);
+
+        var export = (await controller.ExportAccountantReport()).Should().BeOfType<FileContentResult>().Which;
+        using var csv = CsvReader.Create(export.FileContents, HumansCsv.ReadConfig());
+        var months = new List<string?>();
+        while (await csv.ReadAsync()) months.Add(csv.GetString("Month"));
+        months.Should().Equal("2025-12", "2026-01", "2026-02", "Total");
+
+        var codes = await controller.Codes(null);
+        codes.Should().BeOfType<ViewResult>().Which.Model.Should().BeOfType<TicketCodeTrackingViewModel>()
+            .Which.Campaigns.Select(c => c.CampaignTitle).Should().Equal("Newest", "Older");
+    }
+
+    [HumansFact]
+    public async Task WhoHasntBought_OrdersTeamFilterNamesIgnoringCase()
+    {
+        var queries = Substitute.For<ITicketManagement>();
+        queries.GetWhoHasntBoughtAsync(null, null, null, null, 1, 25, Arg.Any<CancellationToken>())
+            .Returns(new WhoHasntBoughtResult { AvailableTeams = ["Zebra", "alpha", "Bravo"] });
+        var dashboard = new TicketDashboardPageBuilder(Substitute.For<ITicketVendorService>(),
+            Options.Create(new TicketVendorSettings()), queries, NullLogger<TicketDashboardPageBuilder>.Instance);
+        var controller = new TicketController(queries, Substitute.For<ITicketSyncService>(),
+            Substitute.For<IUserParticipationBackfillService>(), dashboard, Substitute.For<IUserService>(),
+            NullLogger<TicketController>.Instance)
+        {
+            ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext() }
+        };
+
+        var result = await controller.WhoHasntBought(null);
+
+        result.Should().BeOfType<ViewResult>().Which.Model.Should().BeOfType<WhoHasntBoughtViewModel>()
+            .Subject.AvailableTeams.Should().Equal("alpha", "Bravo", "Zebra");
+    }
+
     [HumansTheory]
     [InlineData("orders")]
     [InlineData("attendees")]

@@ -22,7 +22,6 @@ namespace Humans.Campaigns.Services;
 internal sealed class CampaignService(
     ICampaignRepository repository,
     ITeamService teamService,
-    IUserEmailService userEmailService,
     IUserService userService,
     INotificationEmitter notificationService,
     IEmailService emailService,
@@ -214,8 +213,7 @@ internal sealed class CampaignService(
             return null;
 
         var teams = (await teamService.GetTeamsAsync(ct)).Values
-            .Where(t => t.IsActive)
-            .OrderBy(t => t.Name, StringComparer.Ordinal);
+            .Where(t => t.IsActive);
         var teamOptions = teams
             .Select(t => new CampaignTeamOptionDto(t.Id, t.Name))
             .ToList();
@@ -409,7 +407,6 @@ internal sealed class CampaignService(
             return new CampaignSendWaveResult(true, SentCount: 0);
 
         var users = await userService.GetUserInfosAsync(eligibleUserIds, ct);
-        var notificationEmails = await userEmailService.GetNotificationTargetEmailsAsync(eligibleUserIds, ct);
 
         var availableCodes = await repository.GetAvailableCodesAsync(
             campaignId, eligibleUserIds.Count, ct);
@@ -437,7 +434,7 @@ internal sealed class CampaignService(
                 continue;
             }
 
-            if (!notificationEmails.TryGetValue(userId, out var recipientEmail))
+            if (user.Email is not { Length: > 0 } recipientEmail)
             {
                 logger.LogWarning(
                     "User {UserId} has no notification email for campaign {CampaignId}; skipping",
@@ -535,8 +532,7 @@ internal sealed class CampaignService(
         {
             var user = await userService.GetUserInfoAsync(grant.UserId, ct)
                 ?? throw new InvalidOperationException($"User {grant.UserId} for grant {grantId} not found.");
-            var emails = await userEmailService.GetNotificationTargetEmailsAsync([grant.UserId], ct);
-            if (!emails.TryGetValue(grant.UserId, out var recipientEmail))
+            if (user.Email is not { Length: > 0 } recipientEmail)
                 throw new InvalidOperationException(
                     $"No notification email resolved for user {grant.UserId} when resending grant {grantId}.");
 
@@ -600,14 +596,14 @@ internal sealed class CampaignService(
             .ToDictionary(g => g.Key, g => g.ToList());
 
         var summaries = summaryRows
-            .OrderByDescending(s => s.CreatedAt)
             .Select(s =>
             {
                 grantsByCampaign.TryGetValue(s.CampaignId, out var grants);
                 var total = grants?.Count ?? 0;
                 var redeemed = grants?.Count(g => g.RedeemedAt is not null) ?? 0;
                 return new CampaignCodeTrackingSummary(
-                    s.CampaignId, s.CampaignTitle, total, redeemed);
+                    s.CampaignId, s.CampaignTitle, total, redeemed)
+                { CreatedAt = s.CreatedAt };
             })
             .ToList();
 

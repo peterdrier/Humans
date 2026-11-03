@@ -91,7 +91,7 @@ public class ProfileViewControllerPopoverTests
     }
 
     [HumansFact]
-    public async Task ViewProfile_PreservesCancellationInShiftHistoryReads()
+    public async Task ViewProfile_OrdersNoShowHistoryAndPreservesCancellation()
     {
         using var source = new CancellationTokenSource();
         var targetId = Guid.NewGuid();
@@ -101,8 +101,15 @@ public class ProfileViewControllerPopoverTests
             .Returns(BuildActiveUserInfo(targetId, "Target", "target@example.com"));
         _shiftManagement.GetCoordinatorTeamIdsAsync(_viewerId, Arg.Any<CancellationToken>())
             .Returns(new[] { Guid.NewGuid() });
+        var reviewed = Instant.FromUtc(2026, 3, 1, 12, 0);
         _shiftSignups.GetNoShowHistoryAsync(targetId, Arg.Any<CancellationToken>())
-            .Returns(Array.Empty<NoShowHistoryEntry>());
+            .Returns(new[]
+            {
+                new NoShowHistoryEntry("Undated", Guid.Empty, reviewed, "UTC", null, null),
+                new NoShowHistoryEntry("Older", Guid.Empty, reviewed, "UTC", null, reviewed),
+                new NoShowHistoryEntry("Newest", Guid.Empty, reviewed, "UTC", null, reviewed + Duration.FromHours(1)),
+            });
+        _teamService.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(new Dictionary<Guid, TeamInfo>());
 
         var result = await _controller.ViewProfile(targetId, source.Token);
 
@@ -110,6 +117,7 @@ public class ProfileViewControllerPopoverTests
             .Should().BeOfType<ProfileViewModel>().Subject;
         model.CanViewShiftSignups.Should().BeTrue();
         model.CanViewSentMessages.Should().BeTrue();
+        model.NoShowHistory!.Select(row => row.ShiftLabel).Should().Equal("Newest", "Older", "Undated");
         await _shiftManagement.Received(2).GetCoordinatorTeamIdsAsync(_viewerId, source.Token);
         await _shiftSignups.Received(1).GetNoShowHistoryAsync(targetId, source.Token);
     }

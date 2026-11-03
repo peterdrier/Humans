@@ -7,12 +7,11 @@ namespace Humans.MailerLite.Services;
 
 /// <summary>
 /// Export contributes nothing: subscriber state mirrors what other sections already export. Erasure deletes the
-/// subscriber. A separate class because <c>MailerLiteClient</c> is a Singleton and resolving emails needs the
-/// Scoped <see cref="IUserEmailService"/>.
+/// subscribers under the exact raw account's addresses, never a merge-resolved survivor's.
 /// </summary>
 internal sealed class MailerLiteGdprContributor(
     IMailerLiteService mailerLiteService,
-    IUserEmailService userEmailService) : IApplicationService, IUserDataContributor
+    IUserService userService) : IApplicationService, IUserDataContributor
 {
     /// <summary>Erasure only, so the section has a key to declare; never appears in an export.</summary>
     internal const string MailerLiteSubscriber = "MailerLiteSubscriber";
@@ -35,11 +34,14 @@ internal sealed class MailerLiteGdprContributor(
     /// </summary>
     public async Task EraseForUserAsync(Guid userId, CancellationToken ct)
     {
+        var info = await userService.GetRawUserInfoAsync(userId, ct);
+        if (info is null) return;
         var addresses = new HashSet<string>(
-            await userEmailService.GetVerifiedEmailsForUserAsync(userId, ct),
+            info.UserEmails.Where(email => email.IsVerified).Select(email => email.Email),
             StringComparer.OrdinalIgnoreCase);
 
-        if (await userEmailService.GetPrimaryEmailAsync(userId, ct) is { } primary)
+        // A tombstone's vestigial identity address may now belong to the living survivor.
+        if (!info.IsTombstone && info.Email is { } primary)
             addresses.Add(primary);
 
         // Import matching treats these domains as equivalent, but MailerLite deletion targets an exact address.

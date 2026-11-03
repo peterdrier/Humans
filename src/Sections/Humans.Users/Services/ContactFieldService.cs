@@ -42,7 +42,10 @@ internal sealed class ContactFieldService(
                 cf.FieldType == ContactFieldType.Other && cf.CustomLabel is not null
                     ? cf.CustomLabel : localizer.EnumDisplay(cf.FieldType),
                 cf.Value,
-                cf.Visibility))
+                cf.Visibility)
+            {
+                DisplayOrder = cf.DisplayOrder
+            })
             .ToList();
     }
 

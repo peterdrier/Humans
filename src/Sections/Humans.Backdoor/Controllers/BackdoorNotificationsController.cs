@@ -25,7 +25,7 @@ internal sealed class BackdoorNotificationsController(INotificationInboxRead inb
         var snapshot = await inbox.GetUnreadInboxAsync(User, ct);
         return Ok(new
         {
-            notifications = snapshot.Notifications.Select(n => new
+            notifications = snapshot.Notifications.OrderByDescending(n => n.CreatedAt).Select(n => new
             {
                 date = n.CreatedAt,
                 source = n.Source,
@@ -35,7 +35,7 @@ internal sealed class BackdoorNotificationsController(INotificationInboxRead inb
                 @class = n.Class.ToString().ToLowerInvariant(),
                 unread = n.IsUnread,
             }),
-            meters = snapshot.Meters.Select(m => new
+            meters = snapshot.Meters.OrderByDescending(m => m.Priority).Select(m => new
             {
                 label = m.Title,
                 count = m.Count,

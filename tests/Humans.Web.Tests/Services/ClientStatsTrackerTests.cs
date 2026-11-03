@@ -132,6 +132,23 @@ public class ClientStatsTrackerTests
         entry.UserAgent.Should().HaveLength(150);
     }
 
+    [HumansTheory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void RecordError_TruncatesWithoutSplittingUnicodeCharacters(bool crossesLimit)
+    {
+        var tracker = new ClientStatsTracker();
+        var urlPrefix = new string('u', crossesLimit ? 199 : 198);
+        var agentPrefix = new string('a', crossesLimit ? 149 : 148);
+
+        tracker.RecordError(Error(url: urlPrefix + "😀tail", ua: agentPrefix + "😀tail"));
+
+        var entry = tracker.GetErrorsSnapshot(1).Recent[0];
+        var keptCharacter = crossesLimit ? string.Empty : "😀";
+        entry.Url.Should().Be(urlPrefix + keptCharacter);
+        entry.UserAgent.Should().Be(agentPrefix + keptCharacter);
+    }
+
     [HumansFact]
     public void RecordError_DerivesClientLabel()
     {

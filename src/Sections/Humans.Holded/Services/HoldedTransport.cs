@@ -128,7 +128,7 @@ internal sealed class HoldedTransport
             var retryAfterSeconds = Math.Min(
                 ReadRetryAfterSeconds(resp) ?? DefaultRetryAfterSeconds, MaxRetryAfterSeconds);
             resp.Dispose();
-            await Task.Delay(TimeSpan.FromSeconds(retryAfterSeconds), ct);
+            await Task.Delay(TimeSpan.FromMilliseconds(Math.Ceiling(retryAfterSeconds * 1000)), ct);
             using var retry = CloneForRetry(req);
             resp = await SendOnceAsync(retry, caller, ct);
         }
@@ -194,13 +194,13 @@ internal sealed class HoldedTransport
             rateLimitRemaining, rateLimitWindow));
     }
 
-    private int? ReadRetryAfterSeconds(HttpResponseMessage resp)
+    private double? ReadRetryAfterSeconds(HttpResponseMessage resp)
     {
         var retryAfter = resp.Headers.RetryAfter;
-        if (retryAfter?.Delta is { } delta) return (int)delta.TotalSeconds;
+        if (retryAfter?.Delta is { } delta) return delta.TotalSeconds;
         // Retry-After also has a valid HTTP-date form; a past date clamps to 0 (retry now).
         if (retryAfter?.Date is { } date)
-            return (int)Math.Max(0, (date - _clock.GetCurrentInstant().ToDateTimeOffset()).TotalSeconds);
+            return Math.Max(0, (date - _clock.GetCurrentInstant().ToDateTimeOffset()).TotalSeconds);
         return null;
     }
 

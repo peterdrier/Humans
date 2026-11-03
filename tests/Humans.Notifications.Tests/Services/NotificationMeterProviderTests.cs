@@ -240,7 +240,7 @@ public class NotificationMeterProviderTests : IDisposable
 
         meters.Should().ContainSingle(m =>
             string.Equals(m.Title, "Onboarding profiles pending", StringComparison.Ordinal) &&
-            string.Equals(m.ActionUrl, "/OnboardingReview", StringComparison.Ordinal));
+            string.Equals(m.ActionUrl, "/Consent/ReviewQueue", StringComparison.Ordinal));
     }
 
     [HumansFact]

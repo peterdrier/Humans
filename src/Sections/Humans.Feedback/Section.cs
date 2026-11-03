@@ -21,8 +21,10 @@ public sealed class Section :
     ISectionRoles,
     ISectionAdminNav,
     ISectionAdminTiles,
-    ISectionJobs
+    ISectionJobs,
+    ISectionDataMigrations
 {
+
     IReadOnlyList<RoleDefinition> ISectionRoles.Roles { get; } =
     [
         new(FeedbackRoles.FeedbackAdmin, "Feedback Admin",
@@ -71,6 +73,23 @@ public sealed class Section :
     IEnumerable<RecurringJobDescriptor> ISectionJobs.Jobs(IServiceProvider services)
     {
         yield return new RecurringJobDescriptor("feedback-reply-emails", typeof(FeedbackReplyDelivery), "* * * * *");
+    }
+
+    // Feedback is being removed and its tables dropped; those rows are the only index to these files, so the
+    // screenshots go first: a reporter's screenshots must not outlive the report that pointed to them.
+    IEnumerable<DataMigration> ISectionDataMigrations.Migrations() =>
+    [
+        new("feedback.delete-screenshots", "Feedback",
+            "Delete every Feedback screenshot before the section and its tables are removed",
+            "The Feedback section and its tables",
+            ScreenshotsStatusAsync,
+            (sp, _, ct) => sp.GetRequiredService<FeedbackService>().DeleteAllScreenshotsAsync(ct)),
+    ];
+
+    private static async Task<DataMigrationStatus> ScreenshotsStatusAsync(IServiceProvider sp, CancellationToken ct)
+    {
+        var keys = await sp.GetRequiredService<FeedbackService>().GetStoredScreenshotKeysAsync(ct);
+        return new DataMigrationStatus(["File"], [.. keys.Select(k => (IReadOnlyList<string>)[k])]);
     }
 }
 

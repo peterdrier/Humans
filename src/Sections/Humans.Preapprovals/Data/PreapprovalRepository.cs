@@ -54,31 +54,25 @@ internal sealed class PreapprovalRepository(IDbContextFactory<PreapprovalsDbCont
         await ctx.SaveChangesAsync(ct);
     }
 
-    public async Task UpdateProgramAsync(PreapprovalProgram program, CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        // Scalars only: the detached graph may carry managers and grants that other calls own.
-        var tracked = await ctx.Programs.FirstAsync(p => p.Id == program.Id, ct);
-        ctx.Entry(tracked).CurrentValues.SetValues(program);
-        await ctx.SaveChangesAsync(ct);
-    }
-
-    public async Task SetManagersAsync(
-        Guid programId, IReadOnlyList<ProgramManager> toAdd, IReadOnlyList<Guid> toRemove,
+    public async Task UpdateProgramAsync(
+        PreapprovalProgram program, IReadOnlyList<ProgramManager> toAdd, IReadOnlyList<Guid> toRemove,
         CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
+        // Apply scalar fields and explicit manager deltas without attaching the detached grant graph.
+        var tracked = await ctx.Programs.FirstAsync(p => p.Id == program.Id, ct);
+        ctx.Entry(tracked).CurrentValues.SetValues(program);
         if (toRemove.Count > 0)
         {
             var rows = await ctx.Managers
-                .Where(m => m.ProgramId == programId && toRemove.Contains(m.UserId))
+                .Where(m => m.ProgramId == program.Id && toRemove.Contains(m.UserId))
                 .ToListAsync(ct);
             ctx.Managers.RemoveRange(rows);
         }
         foreach (var manager in toAdd)
             ctx.Managers.Add(new ProgramManager
             {
-                ProgramId = programId,
+                ProgramId = program.Id,
                 UserId = manager.UserId,
                 AddedByUserId = manager.AddedByUserId,
                 AddedAt = manager.AddedAt
@@ -210,7 +204,8 @@ internal sealed class PreapprovalRepository(IDbContextFactory<PreapprovalsDbCont
             dropped.Add(drop.Id);
         }
 
-        // A survivor already managing the same program keeps one row.
+        // A survivor already managing the same program keeps one row. Re-key the new row's actor here:
+        // the actor-column query below reads the store and cannot see this newly added manager.
         var sourceManagers = await ctx.Managers.Where(m => m.UserId == sourceUserId).ToListAsync(ct);
         var targetPrograms = await ctx.Managers.Where(m => m.UserId == targetUserId)
             .Select(m => m.ProgramId).ToListAsync(ct);
@@ -222,7 +217,7 @@ internal sealed class PreapprovalRepository(IDbContextFactory<PreapprovalsDbCont
                 {
                     ProgramId = row.ProgramId,
                     UserId = targetUserId,
-                    AddedByUserId = row.AddedByUserId,
+                    AddedByUserId = row.AddedByUserId == sourceUserId ? targetUserId : row.AddedByUserId,
                     AddedAt = row.AddedAt
                 });
         }

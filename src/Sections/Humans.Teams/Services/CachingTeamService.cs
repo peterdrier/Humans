@@ -131,9 +131,11 @@ internal sealed class CachingTeamService(
         return teamsById.Values
             .Where(t => t.IsActive && !t.IsHidden
                 && t.Name.Contains(trimmed, StringComparison.OrdinalIgnoreCase))
-            .OrderBy(t => t.Name, StringComparer.OrdinalIgnoreCase)
-            .Take(max)
             .Select(t => new TeamSearchHit(t.Id, t.Name, t.Name.NameMatchScore(trimmed)))
+            .OrderByDescending(hit => hit.Score)
+            .ThenBy(hit => hit.Name, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(hit => hit.TeamId)
+            .Take(max)
             .ToList();
     }
 
@@ -280,7 +282,12 @@ internal sealed class CachingTeamService(
         {
             if (!teamsById.TryGetValue(teamId, out var team) || team.RoleDefinitions is null)
                 continue;
-            var mgmt = team.RoleDefinitions.FirstOrDefault(d => d.IsManagement && d.IsPublic);
+            var mgmt = team.RoleDefinitions
+                .Where(d => d.IsManagement && d.IsPublic)
+                // arch:db-sort-ok first authored public management-role selector (FirstOrDefault)
+                .OrderBy(d => d.SortOrder)
+                .ThenBy(d => d.Name, StringComparer.CurrentCulture)
+                .FirstOrDefault();
             if (mgmt is not null)
                 result[teamId] = mgmt.Name;
         }
@@ -378,7 +385,7 @@ internal sealed class CachingTeamService(
         Guid teamId,
         CancellationToken cancellationToken = default)
     {
-        // No activity or system filter; the projection is pre-sorted at warm time.
+        // Role administration includes inactive and system teams.
         var teamsById = await GetTeamsByIdAsync(cancellationToken);
         if (!teamsById.TryGetValue(teamId, out var team) || team.RoleDefinitions is null)
             return [];
@@ -564,10 +571,10 @@ internal sealed class CachingTeamService(
         CancellationToken cancellationToken = default) =>
         WithInnerAsync(inner => inner.GetActiveMembershipsForRoleReconciliationAsync(cancellationToken));
 
-    public Task<int> ApplyMemberRoleChangesAsync(
+    public Task<IReadOnlyList<Guid>> ApplyMemberRoleChangesAsync(
         IReadOnlyCollection<(Guid TeamMemberId, TeamMemberRole Role)> changes,
         CancellationToken cancellationToken = default) =>
-        MutateAsync(inner => inner.ApplyMemberRoleChangesAsync(changes, cancellationToken), static result => result > 0);
+        MutateAsync(inner => inner.ApplyMemberRoleChangesAsync(changes, cancellationToken), static result => result.Count > 0);
 
     public Task<bool> ApplySystemTeamMembershipDeltaAsync(
         Guid teamId,

@@ -1,4 +1,5 @@
 using System.Net;
+using System.Text.Json.Nodes;
 using AwesomeAssertions;
 using Humans.Tickets.Contracts;
 using NodaTime;
@@ -348,6 +349,31 @@ public class TicketTailorServiceWriteTests
         var ex = await act.Should().ThrowAsync<TicketVendorWriteException>();
         ex.Which.Kind.Should().Be(TicketVendorFailureKind.Transient);
         handler.Requests.Should().ContainSingle();
+    }
+
+    [HumansTheory]
+    [InlineData(null)]
+    [InlineData("null")]
+    [InlineData("\"\"")]
+    [InlineData("\" \"")]
+    [InlineData("\"voided\"")]
+    [InlineData("\"unknown\"")]
+    public async Task IssueTicketAsync_RequiresAnExplicitValidStatus(string? jsonStatus)
+    {
+        var document = JsonNode.Parse("""{"id":"it_new"}""")!;
+        if (jsonStatus is not null) document["status"] = JsonNode.Parse(jsonStatus);
+        var handler = new RecordingHttpHandler();
+        var content = handler.EnqueueResponse(HttpStatusCode.Created, document);
+        var service = TicketTailorTestHost.CreateService(handler);
+        var issue = () => service.IssueTicketAsync(new IssueTicketRequest(
+            EventId: null, TicketTypeId: null, HoldId: "hold_1",
+            FullName: "Test User", Email: null, SendEmail: false, ExternalReference: null));
+
+        var failure = await issue.Should().ThrowAsync<TicketVendorWriteException>();
+
+        failure.Which.Kind.Should().Be(TicketVendorFailureKind.Transient);
+        handler.RequestCount.Should().Be(1);
+        content.WasDisposed.Should().BeTrue();
     }
 
     [HumansFact]

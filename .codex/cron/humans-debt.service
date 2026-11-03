@@ -12,7 +12,7 @@ Type=oneshot
 # win over a stale system one on /usr/bin.
 Environment=PATH=%h/.npm-global/bin:%h/.local/bin:%h/.dotnet/tools:/usr/local/bin:/usr/bin:/bin
 Environment=IGNORE_QUOTA_CUTOFF=0
-ExecStart=%h/.humans-debt-runner/clone/.codex/cron/run-daily-debt.sh
+ExecStart=%h/.humans-debt-runner/run-latest-debt.sh
 # Quota may end work earlier; let the current task and final gates finish.
 TimeoutStartSec=infinity
 # Yield to other scheduled work on this box (collections generation, hourly

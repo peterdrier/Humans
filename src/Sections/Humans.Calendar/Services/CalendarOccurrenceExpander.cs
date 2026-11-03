@@ -33,7 +33,7 @@ internal static class CalendarOccurrenceExpander
             results.AddRange(ApplyExceptions(ev, name, recurring, occurrences)
                 .Where(result => OverlapsWindow(result, from, to, fromDate, toDate)));
         }
-        return OrderForDisplay(results, displayZone);
+        return results;
     }
 
     private static IEnumerable<CalendarOccurrence> ApplyExceptions(
@@ -69,15 +69,6 @@ internal static class CalendarOccurrenceExpander
             yield return result;
         }
     }
-
-    /// <summary>
-    /// One viewer-local date order for own and contributed occurrences: all-day Calendar items have no instant.
-    /// </summary>
-    internal static IReadOnlyList<CalendarOccurrence> OrderForDisplay(
-        IEnumerable<CalendarOccurrence> occurrences, DateTimeZone viewerZone) => occurrences
-        .OrderBy(o => o.StartDate ?? o.OccurrenceStartUtc!.Value.InZone(viewerZone).Date)
-        .ThenBy(o => o.OccurrenceStartUtc)
-        .ToList();
 
     private static List<CalendarOccurrence>? BuildOccurrences(
         CalendarEventInfo ev, string name, bool recurring, Instant from, Instant to,

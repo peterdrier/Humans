@@ -16,13 +16,47 @@ PATH = "src/Sections/Humans.Stripe/Contracts/IStripeService.cs"
 
 
 class InterfaceSurfaceTests(unittest.TestCase):
-    def delta(self, before, after):
+    def delta(self, before, after, path=PATH):
         def content(args):
             return before if args[1].startswith("base:") else after
 
-        with patch.object(report, "git_files", return_value=[PATH]), \
+        def files(ref, roots):
+            return [path] if any(path.startswith(root + "/") for root in roots) else []
+
+        with patch.object(report, "git_files", side_effect=files), \
                 patch.object(report, "try_run_git", side_effect=content):
             return report.interface_delta("base", "head")
+
+    def test_base_interfaces_and_added_members_are_reported(self):
+        for path in ("src/Humans.Base/IPlatform.cs", "src/Humans.Base/Interfaces/Metering/IPlatform.cs"):
+            with self.subTest(path=path):
+                before = "public interface IPlatform\n{\n}"
+                after = before.replace("\n}", "\n    void Start();\n    bool IsReady { get; }\n}")
+                self.assertEqual(self.delta("", after, path)["new_interfaces"],
+                                 [f"IPlatform ({path})"])
+                delta = self.delta(before, after, path)
+                self.assertEqual(delta["added_interface_methods"], {"IPlatform": ["void Start()"]})
+                self.assertEqual(delta["added_interface_properties"],
+                                 {"IPlatform": ["bool IsReady { get; }"]})
+                self.assertEqual(self.delta("", after.replace("public interface", "internal interface"), path)[
+                    "new_interfaces"], [])
+
+    def test_internal_contract_interfaces_do_not_add_public_surface(self):
+        for visibility in ("internal ", ""):
+            with self.subTest(visibility=visibility):
+                before = visibility + "interface IStripeService\n{\n}"
+                after = before.replace("\n}", "\n    Task WriteAsync();\n    bool IsConfigured { get; }\n}")
+                delta = self.delta(before, after)
+                self.assertEqual(delta["new_interfaces"], [])
+                self.assertEqual(delta["added_interface_methods"], {})
+                self.assertEqual(delta["added_interface_properties"], {})
+                self.assertEqual(self.delta("", after)["new_interfaces"], [])
+
+    def test_promoting_internal_interface_reports_new_public_surface(self):
+        before = "internal interface IStripeService\n{\n    Task WriteAsync();\n}"
+        after = before.replace("internal interface", "public interface")
+        self.assertEqual(self.delta(before, after)["new_interfaces"],
+                         [f"IStripeService ({PATH})"])
 
     def test_added_property_is_reported_alongside_methods(self):
         before = "public interface IStripeService\n{\n    Task ReadAsync();\n}"

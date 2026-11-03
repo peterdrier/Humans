@@ -100,6 +100,48 @@ public class MailerLiteAudienceDebugSnapshotBuilderTests
         snap.Expected[0].Name.Should().Be("Alice");
     }
 
+    [HumansTheory]
+    [Xunit.InlineData(false, null)]
+    [Xunit.InlineData(true, "legacy@example.com")]
+    public async Task Build_ExpectedWithoutVerifiedPrimary_UsesTheCanonicalVerifiedAddress(
+        bool unverifiedPrimary, string? legacyEmail)
+    {
+        var uid = Guid.NewGuid();
+        var original = MakeUserInfo(uid, "Alice", "unverified@example.com", ["verified@example.com"]);
+        var user = original with
+        {
+            IdentityEmailColumn = legacyEmail,
+            UserEmails = original.UserEmails.Select(email => email with
+            {
+                IsPrimary = unverifiedPrimary && email.IsPrimary,
+                IsVerified = !email.IsPrimary,
+            }).ToList(),
+        };
+        var audience = StubAudience("k", "Humans - k", members: [uid]);
+
+        var snapshot = await MailerLiteAudienceDebugSnapshotBuilder.BuildAsync(
+            audience, StubMl(groups: [], subscribers: []), StubUsers([user]),
+            NullLogger.Instance, Xunit.TestContext.Current.CancellationToken);
+
+        snapshot.Expected.Should().ContainSingle().Which.Email.Should().Be("verified@example.com");
+        snapshot.ToAdd.Should().ContainSingle().Which.Email.Should().Be("verified@example.com");
+    }
+
+    [HumansFact]
+    public async Task Build_EmptyNotificationAddress_IsExcludedLikeTheSync()
+    {
+        var uid = Guid.NewGuid();
+        var audience = StubAudience("k", "Humans - k", members: [uid]);
+        var user = MakeUserInfo(uid, "Alice", primary: string.Empty);
+
+        var snapshot = await MailerLiteAudienceDebugSnapshotBuilder.BuildAsync(
+            audience, StubMl(groups: [], subscribers: []), StubUsers([user]),
+            NullLogger.Instance, Xunit.TestContext.Current.CancellationToken);
+
+        snapshot.Expected.Should().BeEmpty();
+        snapshot.ToAdd.Should().BeEmpty();
+    }
+
     [HumansFact]
     public async Task Build_SuppressedSubscribers_DiffMatchesSync()
     {

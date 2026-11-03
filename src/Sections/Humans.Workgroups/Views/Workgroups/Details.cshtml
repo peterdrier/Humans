@@ -3,20 +3,24 @@
     var w = Model.Workgroup;
     ViewData["Title"] = w.Name;
 
-    var coordinatorIds = w.CoordinatorUserIds();
+    var members = w.CurrentMembers()
+        .OrderBy(m => m.Role == WorkgroupMemberRole.Coordinator ? 0 : 1)
+        .ThenBy(m => m.JoinedAt).ToList();
+    var coordinatorIds = members.Where(m => m.Role == WorkgroupMemberRole.Coordinator)
+        .Select(m => m.UserId).ToList();
     var isDormant = w.Status == WorkgroupStatus.Dormant;
 
     IEnumerable<(LocalDate Date, WorkgroupLogEntryInfo? Log, WorkgroupMeetingInfo? Meeting)> Timeline()
     {
-        foreach (var e in w.LogEntries)
+        foreach (var e in w.LogEntries.OrderByDescending(e => e.OccurredOn).ThenByDescending(e => e.CreatedAt))
         {
             // The allocation is hidden from Volunteers; its History entry carries the figures.
             if (e.Kind == WorkgroupLogKind.BudgetSet && !Model.CanSeeBudget) continue;
             yield return (e.OccurredOn, e, null);
         }
-        foreach (var m in w.Meetings)
+        foreach (var m in w.MeetingOccurrences(Model.Now).OrderBy(m => m.StartUtc))
         {
-            yield return (m.StartUtc.InUtc().Date, null, m);
+            yield return (Model.MeetingDate(m), null, m);
         }
     }
 }
@@ -152,9 +156,9 @@
                 <div class="form-check mb-2"><input class="form-check-input" type="radio" name="AccountMode" id="mode-link" value="link" /><label class="form-check-label" for="mode-link">Link an existing account</label></div>
                 <select class="form-select mb-3" name="ExistingAccountNum" style="max-width: 480px;">
                     <option value="">— choose —</option>
-                    @foreach (var a in Model.ExpenseAccounts.OrderBy(a => a.AccountNum))
+                    @foreach (var a in Model.ExpenseAccounts.OrderBy(a => a.Number))
                     {
-                        <option value="@a.AccountNum">@a.AccountNum — @a.Name</option>
+                        <option value="@a.Number">@a.Number — @a.Name</option>
                     }
                 </select>
                 <button type="submit" class="btn btn-sm btn-primary">Save budget</button>
@@ -205,7 +209,7 @@
                         {
                             <select name="coordinatorUserIds" class="form-select form-select-sm" style="max-width: 240px;">
                                 <option value="">—</option>
-                                @foreach (var member in w.CurrentMembers())
+                                @foreach (var member in members)
                                 {
                                     <option value="@member.UserId" selected="@(coordinatorIds.Count > slot && coordinatorIds[slot] == member.UserId)">@Model.DisplayName(member.UserId)</option>
                                 }
@@ -237,6 +241,10 @@
                 @if (!string.IsNullOrWhiteSpace(nextMeeting.Location)) { <span> · @nextMeeting.Location</span> }
                 @if (nextMeeting.IsPublic) { <span class="badge bg-info text-dark ms-1">@Localizer["Workgroups_PublicMeeting"]</span> }
             </div>
+            @if (!string.IsNullOrWhiteSpace(nextMeeting.Description))
+            {
+                <div class="small mt-1" style="white-space: pre-line;">@nextMeeting.Description</div>
+            }
         </div>
     </div>
 }
@@ -247,7 +255,7 @@
     <div class="col-lg-4">
         <h2 class="h5">@Localizer["Workgroups_Roster"]</h2>
         <ul class="list-group mb-3">
-            @foreach (var m in w.CurrentMembers().OrderByDescending(m => m.Role))
+            @foreach (var m in members)
             {
                 var info = Model.People.TryGetValue(m.UserId, out var i) ? i : null;
                 <li class="list-group-item d-flex justify-content-between align-items-center">
@@ -274,7 +282,9 @@
 
         @if (Model.CanManageMembers)
         {
-            var pending = w.PendingMembers().ToList();
+            var pending = w.PendingMembers()
+                .OrderBy(m => m.Role == WorkgroupMemberRole.Coordinator ? 0 : 1)
+                .ThenBy(m => m.JoinedAt).ToList();
             @if (pending.Count > 0)
             {
                 <h3 class="h6">@Localizer["Workgroups_PendingRequests"] <span class="badge bg-warning text-dark">@pending.Count</span></h3>
@@ -311,7 +321,7 @@
                     <div class="mb-2">
                         <label class="form-label small">@Localizer["Workgroups_Field_ReplacementCoordinator"]</label>
                         <select name="replacementCoordinatorUserId" class="form-select form-select-sm">
-                            @foreach (var member in w.CurrentMembers().Where(m => m.UserId != Model.CurrentUserId))
+                            @foreach (var member in members.Where(m => m.UserId != Model.CurrentUserId))
                             {
                                 <option value="@member.UserId">@Model.DisplayName(member.UserId)</option>
                             }
@@ -332,7 +342,7 @@
                     {
                         <select name="coordinatorUserIds" class="form-select form-select-sm mb-1">
                             <option value="">—</option>
-                            @foreach (var member in w.CurrentMembers())
+                            @foreach (var member in members)
                             {
                                 <option value="@member.UserId" selected="@(c.Count > slot && c[slot] == member.UserId)">@Model.DisplayName(member.UserId)</option>
                             }
@@ -435,7 +445,11 @@
                 @foreach (var entry in timeline)
                 {
                     var isMemberKind = entry.Log is not null && entry.Log.Kind is WorkgroupLogKind.Update
-                        or WorkgroupLogKind.Disclosure or WorkgroupLogKind.Note;
+                        or WorkgroupLogKind.Disclosure or WorkgroupLogKind.Note or WorkgroupLogKind.MeetingNotes;
+                    // Legacy minutes belong to the stored first occurrence, not to every repeat.
+                    var minutes = entry.Meeting is { } occurrence
+                        && w.Meetings.Any(m => m.Id == occurrence.Id && m.StartUtc == occurrence.StartUtc)
+                        ? occurrence.Minutes : null;
                     <li class="list-group-item">
                         <div class="d-flex justify-content-between align-items-start gap-2">
                             <div>
@@ -461,14 +475,27 @@
                             </div>
                             @if (Model.CanDoMemberWork && entry.Meeting is not null)
                             {
-                                <a asp-action="EditMeeting" asp-route-slug="@w.Slug" asp-route-id="@entry.Meeting.Id" class="btn btn-sm btn-link">@SharedLocalizer["Common_Edit"]</a>
+                                <div class="d-flex gap-1 flex-shrink-0">
+                                    @if (entry.Meeting.StartUtc <= Model.Now)
+                                    {
+                                        <a asp-action="AddLogEntry" asp-route-slug="@w.Slug" asp-route-meetingId="@entry.Meeting.Id"
+                                           asp-route-on="@entry.Date.ToInvariantDate()" class="btn btn-sm btn-outline-primary">
+                                            <i class="fa-solid fa-plus me-1"></i>@Localizer["Workgroups_AddMeetingNotes"]
+                                        </a>
+                                    }
+                                    <a asp-action="EditMeeting" asp-route-slug="@w.Slug" asp-route-id="@entry.Meeting.Id" class="btn btn-sm btn-link">@SharedLocalizer["Common_Edit"]</a>
+                                </div>
                             }
                             else if (Model.CanDoMemberWork && isMemberKind && entry.Log is not null)
                             {
                                 <a asp-action="EditLogEntry" asp-route-slug="@w.Slug" asp-route-id="@entry.Log.Id" class="btn btn-sm btn-link">@SharedLocalizer["Common_Edit"]</a>
                             }
                         </div>
-                        @{ var body = entry.Meeting?.Minutes ?? entry.Log?.Body; }
+                        @if (!string.IsNullOrWhiteSpace(entry.Meeting?.Description))
+                        {
+                            <div class="mt-1 small text-muted" style="white-space: pre-line;">@entry.Meeting.Description</div>
+                        }
+                        @{ var body = minutes ?? entry.Log?.Body; }
                         @if (!string.IsNullOrWhiteSpace(body))
                         {
                             <div class="mt-1">@Html.SanitizedMarkdown(body)</div>

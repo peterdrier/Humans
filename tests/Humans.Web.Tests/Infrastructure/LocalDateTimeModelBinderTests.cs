@@ -28,6 +28,19 @@ public class LocalDateTimeModelBinderTests
         context.ModelState.ErrorCount.Should().Be(0);
     }
 
+    [HumansTheory]
+    [InlineData("10:30", 10, 30, 0)]     // browser type="time": no seconds
+    [InlineData("10:30:45", 10, 30, 45)]
+    public async Task Binds_time_wire_formats(string wireValue, int hour, int minute, int second)
+    {
+        var context = CreateContext(typeof(LocalTime?), wireValue);
+
+        await new LocalDateTimeModelBinder().BindModelAsync(context);
+
+        context.Result.Model.Should().Be(new LocalTime(hour, minute, second));
+        context.ModelState.ErrorCount.Should().Be(0);
+    }
+
     [HumansFact]
     public async Task Empty_value_binds_to_null_for_nullable()
     {
@@ -55,7 +68,8 @@ public class LocalDateTimeModelBinderTests
     [HumansTheory]
     [InlineData(typeof(LocalDateTime))]
     [InlineData(typeof(LocalDateTime?))]
-    public void Provider_serves_LocalDateTime_models(Type modelType)
+    [InlineData(typeof(LocalTime?))]
+    public void Provider_serves_LocalDateTime_and_LocalTime_models(Type modelType)
     {
         GetBinderFor(modelType).Should().BeOfType<LocalDateTimeModelBinder>();
     }

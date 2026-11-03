@@ -1,7 +1,7 @@
 ﻿@* A section RCL does NOT inherit the host's Views/_ViewImports.cshtml. Omitting a line
    here ships broken markup with a green build and no runtime error.
-   Two localizers: the section's Consent_* keys, and Nav_Consents in SharedResource because Humans.UI's login
-   partial renders it too. *@
+   Two localizers: the section's Consent_* keys, and SharedResource for Nav_Consents (Humans.UI's login partial
+   renders it too) and the review queue's Admin_* labels. *@
 @using Humans.Base.Extensions
 @using Humans.Consent
 @using Humans.Consent.Contracts
@@ -11,6 +11,9 @@
 @using Humans.Base
 @using Humans.Base.Models
 @using Humans.Base.Models.Tables
+@using Humans.Base.ViewComponents
+@using Humans.Governance.Contracts
+@using Humans.Users.Contracts
 @using Microsoft.Extensions.Localization
 @inject IStringLocalizer<ConsentResource> Localizer
 @inject IStringLocalizer<SharedResource> SharedLocalizer

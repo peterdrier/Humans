@@ -1,4 +1,6 @@
 
+using NodaTime;
+
 namespace Humans.Finance.Contracts;
 
 /// <summary>A cached 400000xx creditor account and its member bindings.</summary>
@@ -35,7 +37,10 @@ public sealed record CreditorContactBinding(
     Guid UserId,
     string HoldedContactId,
     int? SupplierAccountNum,
-    CreditorContactSource Source);
+    CreditorContactSource Source)
+{
+    public Instant CreatedAt { get; init; }
+}
 
 /// <summary>Credit = owed to the member, debit = paid out.</summary>
 /// <remarks>

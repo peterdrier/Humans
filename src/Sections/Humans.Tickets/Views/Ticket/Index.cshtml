@@ -131,7 +131,7 @@
             @<text>@currency @item.TotalApplicationFees.ToString("N2", System.Globalization.CultureInfo.CurrentUICulture)</text>;
         Func<FeeBreakdownByMethod, IHtmlContent> effectiveRateCell =
             @<text>@item.EffectiveRate.ToString(System.Globalization.CultureInfo.CurrentUICulture)%</text>;
-        var feesTable = TableModel.For(Model.FeesByPaymentMethod.ToList())
+        var feesTable = TableModel.For(Model.FeesByPaymentMethod.OrderByDescending(pm => pm.TotalStripeFees).ToList())
             .Column("Payment Method", pm => pm.PaymentMethod)
             .Column("Orders", pm => pm.OrderCount, c => c.Number().End())
             .Template("Gross Amount", grossAmountCell, c => c.End())

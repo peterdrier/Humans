@@ -66,10 +66,10 @@ internal partial interface IShiftManagementRepository
         CancellationToken ct = default);
 
     /// <summary>
-    /// Account-merge fold. A source row for a shift the target already holds is dropped, since no DB constraint
-    /// stops a double signup. Returns rows touched, re-FK'd plus dropped, for the merge audit.
+    /// Account-merge fold of volunteer, enrolled-by and reviewed-by references in one save. A source-owned row for a
+    /// shift the target already holds is dropped. Returns the touched row count and event ids for audit/cache refresh.
     /// </summary>
-    Task<int> ReassignToUserAsync(
+    Task<(int Count, IReadOnlyList<Guid> EventIds)> ReassignToUserAsync(
         Guid sourceUserId,
         Guid targetUserId,
         Instant updatedAt,

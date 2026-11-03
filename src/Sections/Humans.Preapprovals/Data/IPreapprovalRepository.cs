@@ -40,12 +40,9 @@ internal interface IPreapprovalRepository : IRepository
 
     Task AddProgramAsync(PreapprovalProgram program, CancellationToken ct = default);
 
-    /// <summary>Scalar columns only; managers go through <see cref="SetManagersAsync"/>.</summary>
-    Task UpdateProgramAsync(PreapprovalProgram program, CancellationToken ct = default);
-
-    /// <summary>One save.</summary>
-    Task SetManagersAsync(
-        Guid programId, IReadOnlyList<ProgramManager> toAdd, IReadOnlyList<Guid> toRemove,
+    /// <summary>Program fields and manager changes in one save.</summary>
+    Task UpdateProgramAsync(
+        PreapprovalProgram program, IReadOnlyList<ProgramManager> toAdd, IReadOnlyList<Guid> toRemove,
         CancellationToken ct = default);
 
     /// <summary>One save: all or nothing.</summary>

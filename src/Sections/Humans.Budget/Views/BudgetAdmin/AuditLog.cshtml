@@ -24,7 +24,7 @@
                     <label class="form-label">Filter by Year</label>
                     <select name="yearId" class="form-select js-auto-submit">
                         <option value="">All Years</option>
-                        @foreach (var y in years)
+                        @foreach (var y in years.OrderByDescending(y => y.Year, StringComparer.Ordinal))
                         {
                             <option value="@y.Id" selected="@(yearId == y.Id ? "selected" : null)">@y.Name@(y.IsDeleted ? " (Archived)" : "")</option>
                         }

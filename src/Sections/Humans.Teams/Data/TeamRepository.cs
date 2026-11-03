@@ -89,7 +89,6 @@ internal sealed class TeamRepository(IDbContextFactory<TeamsDbContext> factory) 
             .AsNoTracking()
             .Include(d => d.Assignments)
                 .ThenInclude(a => a.TeamMember)
-            .OrderBy(d => d.SortOrder).ThenBy(d => d.Name) // arch:db-sort-ok
             .ToListAsync(ct);
 
         return definitions
@@ -351,12 +350,6 @@ internal sealed class TeamRepository(IDbContextFactory<TeamsDbContext> factory) 
         await db.SaveChangesAsync(ct);
     }
 
-    public Task SaveChangesAsync(CancellationToken ct = default)
-    {
-        // No-op: each repository method commits its own context.
-        return Task.CompletedTask;
-    }
-
     public async Task<TeamJoinRequest?> FindUserPendingRequestAsync(
         Guid teamId, Guid userId, CancellationToken ct = default)
     {
@@ -532,13 +525,6 @@ internal sealed class TeamRepository(IDbContextFactory<TeamsDbContext> factory) 
         await using var db = await factory.CreateDbContextAsync(ct);
         db.Set<TeamRoleDefinition>().Attach(definition);
         db.Set<TeamRoleDefinition>().Remove(definition);
-        await db.SaveChangesAsync(ct);
-    }
-
-    public async Task AddAssignmentAsync(TeamRoleAssignment assignment, CancellationToken ct = default)
-    {
-        await using var db = await factory.CreateDbContextAsync(ct);
-        db.Set<TeamRoleAssignment>().Add(assignment);
         await db.SaveChangesAsync(ct);
     }
 
@@ -1081,12 +1067,12 @@ internal sealed class TeamRepository(IDbContextFactory<TeamsDbContext> factory) 
             .ToListAsync(ct);
     }
 
-    public async Task<int> ApplyMemberRoleChangesAsync(
+    public async Task<IReadOnlyList<Guid>> ApplyMemberRoleChangesAsync(
         IReadOnlyCollection<(Guid TeamMemberId, TeamMemberRole Role)> changes,
         CancellationToken ct = default)
     {
         if (changes.Count == 0)
-            return 0;
+            return [];
 
         await using var db = await factory.CreateDbContextAsync(ct);
         var ids = changes.Select(c => c.TeamMemberId).ToList();
@@ -1096,17 +1082,17 @@ internal sealed class TeamRepository(IDbContextFactory<TeamsDbContext> factory) 
 
         var targetRoleById = changes.ToDictionary(c => c.TeamMemberId, c => c.Role);
 
-        var updated = 0;
+        var updated = new List<Guid>();
         foreach (var member in members)
         {
             if (targetRoleById.TryGetValue(member.Id, out var newRole) && member.Role != newRole)
             {
                 member.Role = newRole;
-                updated++;
+                updated.Add(member.Id);
             }
         }
 
-        if (updated > 0)
+        if (updated.Count > 0)
         {
             await db.SaveChangesAsync(ct);
         }

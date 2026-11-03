@@ -70,6 +70,10 @@ internal sealed class AttendeeContactImportService(
 
         // Re-query so plan/apply are stateless (a sync between plan and apply is tolerated).
         var freshById = await LoadFreshUnmatchedAttendeesByIdAsync(eventId, ct);
+        ct.ThrowIfCancellationRequested();
+        // Provisioning commits in Users before attendee links and participation save here.
+        // Once writes begin, closing the tab must not strand that work or its batch audit.
+        ct = CancellationToken.None;
         var importState = new AttendeeImportApplyState();
 
         foreach (var d in plan.Decisions.Where(d => selectedAttendeeIds.Contains(d.AttendeeId)))
@@ -216,19 +220,17 @@ internal sealed class AttendeeContactImportService(
                 return;
 
             case AttendeeImportOutcome.DeleteUnverifiedThenCreate:
-                var replacement = await provisioning.ReplaceUnverifiedEmailAndProvisionAsync(
-                    decision.UnverifiedRowUserId!.Value, decision.UnverifiedEmailIdToDelete!.Value,
-                    decision.Email!, decision.AttendeeName, ContactSource.TicketTailor, ct);
-                AttachResolvedAttendees(resolved, replacement.UserId, state);
-                if (replacement.Created) state.Created++;
-                state.Replaced++;
-                return;
-
             case AttendeeImportOutcome.CreateNewUser:
-                var createdUser = await provisioning.FindOrCreateUserByEmailAsync(
-                    decision.Email!, decision.AttendeeName, ContactSource.TicketTailor, ct);
-                AttachResolvedAttendees(resolved, createdUser.UserId, state);
-                if (createdUser.Created) state.Created++;
+                var replacing = decision.Outcome == AttendeeImportOutcome.DeleteUnverifiedThenCreate;
+                var provisioned = replacing
+                    ? await provisioning.ReplaceUnverifiedEmailAndProvisionAsync(
+                        decision.UnverifiedRowUserId!.Value, decision.UnverifiedEmailIdToDelete!.Value,
+                        decision.Email!, decision.AttendeeName, ContactSource.TicketTailor, ct)
+                    : await provisioning.FindOrCreateUserByEmailAsync(
+                        decision.Email!, decision.AttendeeName, ContactSource.TicketTailor, ct);
+                AttachResolvedAttendees(resolved, provisioned.UserId, state);
+                if (provisioned.Created) state.Created++;
+                if (replacing) state.Replaced++;
                 return;
         }
     }

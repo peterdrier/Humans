@@ -32,16 +32,14 @@ internal sealed class MailerLiteImportService(
         var plan = await BuildPlanAsync(ct);
 
         int humansOutMlIn = 0;
-        foreach (var d in plan.Decisions.Where(d => d.Outcome
-            is SubscriberOutcome.VerifiedPrefsAlreadyMatch
-            or SubscriberOutcome.VerifiedFlipToOptIn
-            or SubscriberOutcome.VerifiedFlipToOptOut
-            or SubscriberOutcome.VerifiedKeepHumansPref))
-        {
-            if (d.TargetUserId is not Guid uid) continue;
-            if (!string.Equals(d.Status, "active", StringComparison.OrdinalIgnoreCase)) continue;
-            if (await prefs.IsOptedOutAsync(uid, MessageCategory.Marketing, ct)) humansOutMlIn++;
-        }
+        var activeUserIds = plan.Decisions
+            .Where(d => IsVerifiedMatch(d.Outcome)
+                && string.Equals(d.Status, "active", StringComparison.OrdinalIgnoreCase))
+            .Select(d => d.TargetUserId)
+            .OfType<Guid>()
+            .Distinct();
+        foreach (var userId in activeUserIds)
+            if (await prefs.IsOptedOutAsync(userId, MessageCategory.Marketing, ct)) humansOutMlIn++;
 
         return new DriftReport(HumansOptedOutMlActive: humansOutMlIn, HumansOptedInMlAbsent: null);
     }
@@ -248,28 +246,21 @@ internal sealed class MailerLiteImportService(
                         }
 
                     case SubscriberOutcome.ReplaceUnverifiedEmail:
-                        {
-                            // Not grouped with TargetUserId's addresses: replacement provisions a separate contact
-                            // (provUserId), whose preference this write targets.
-                            var (provUserId, provCreated) = await provisioning.ReplaceUnverifiedEmailAndProvisionAsync(
-                                d.TargetUserId!.Value, d.UnverifiedEmailIdToDelete!.Value,
-                                subscriber.Email, displayName: null, ContactSource.MailerLite, ct);
-                            if (provCreated) created++;
-                            var delta = await ApplyMarketingDeltaAsync(provUserId, subscriber, ct);
-                            if (delta == DeltaResult.FlippedToOptIn) flippedIn++;
-                            else if (delta == DeltaResult.FlippedToOptOut) flippedOut++;
-                            replacedUnverified++;
-                            break;
-                        }
-
                     case SubscriberOutcome.CreateNewHuman:
                         {
-                            var (provUserId, provCreated) = await provisioning.FindOrCreateUserByEmailAsync(
-                                subscriber.Email, displayName: null, ContactSource.MailerLite, ct);
+                            var replacing = d.Outcome == SubscriberOutcome.ReplaceUnverifiedEmail;
+                            // A replacement provisions a separate contact, so target its returned id, not TargetUserId.
+                            var (provUserId, provCreated) = replacing
+                                ? await provisioning.ReplaceUnverifiedEmailAndProvisionAsync(
+                                    d.TargetUserId!.Value, d.UnverifiedEmailIdToDelete!.Value,
+                                    subscriber.Email, displayName: null, ContactSource.MailerLite, ct)
+                                : await provisioning.FindOrCreateUserByEmailAsync(
+                                    subscriber.Email, displayName: null, ContactSource.MailerLite, ct);
                             if (provCreated) created++;
                             var delta = await ApplyMarketingDeltaAsync(provUserId, subscriber, ct);
                             if (delta == DeltaResult.FlippedToOptIn) flippedIn++;
                             else if (delta == DeltaResult.FlippedToOptOut) flippedOut++;
+                            if (replacing) replacedUnverified++;
                             break;
                         }
                 }

@@ -35,7 +35,6 @@
     <!-- IIssueQueueOwner: this section declares the issue queue it owns. -->
     <ProjectReference Include="..\Humans.Issues\Humans.Issues.csproj" />
     <ProjectReference Include="..\Humans.Camps.Contracts\Humans.Camps.Contracts.csproj" />
-    <ProjectReference Include="..\Humans.AuditLog\Humans.AuditLog.csproj" />
     <ProjectReference Include="..\Humans.Email.Contracts\Humans.Email.Contracts.csproj" />
     <ProjectReference Include="..\Humans.GoogleIntegration\Humans.GoogleIntegration.csproj" />
     <ProjectReference Include="..\Humans.Notifications.Contracts\Humans.Notifications.Contracts.csproj" />
@@ -60,7 +59,6 @@
       Camps only through Humans.Camps.Contracts.
     -->
     <ProjectReference Include="..\Humans.CityPlanning\Humans.CityPlanning.csproj" />
-    <ProjectReference Include="..\Humans.Gdpr\Humans.Gdpr.csproj" />
     <ProjectReference Include="..\Humans.EarlyEntry\Humans.EarlyEntry.csproj" />
   </ItemGroup>
 

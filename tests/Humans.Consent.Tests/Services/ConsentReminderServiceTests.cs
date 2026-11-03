@@ -72,6 +72,25 @@ public sealed class ConsentReminderServiceTests : IDisposable
         });
     }
 
+    [HumansTheory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(true, true)]
+    public async Task GetLastSent_UsesLatestStampAcrossMergeChain(bool hasSurvivorStamp, bool survivorIsNewest)
+    {
+        var archivedId = Guid.NewGuid();
+        var olderArchivedId = Guid.NewGuid();
+        var member = SeedUser() with { MergedUserIds = [archivedId, olderArchivedId] };
+        await SeedRowAsync(olderArchivedId, Earlier - Duration.FromDays(1));
+        await SeedRowAsync(archivedId, survivorIsNewest ? Earlier : Now);
+        if (hasSurvivorStamp)
+            await SeedRowAsync(member.Id, survivorIsNewest ? Now : Earlier);
+
+        var result = await _sut.GetLastSentAsync([member], Ct);
+
+        result.Should().BeEquivalentTo(new Dictionary<Guid, Instant> { [member.Id] = Now });
+    }
+
     [HumansFact]
     public async Task RecordSent_InsertsThenOverwrites()
     {

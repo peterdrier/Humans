@@ -1,0 +1,110 @@
+@model HoldedAccountsPage
+@using System.Globalization
+@{
+    ViewData["Title"] = "Holded accounts";
+    var f = Model.Filter;
+    string N(int n) => n.ToString("N0", CultureInfo.InvariantCulture);
+}
+
+<h1 class="mb-3">Holded accounts</h1>
+<partial name="_HoldedNav" />
+
+<p class="text-muted">
+    Holded's chart of accounts beside the mirror. <strong>Holded</strong> is Holded's own running
+    balance, <strong>Mirror</strong> is the sum of the mirrored lines; both read in the association's
+    point of view (+ money in, − money out). A ✗ means they disagree, compared before that sign is applied.
+    Groups follow the account number's leading digit.
+</p>
+
+<div class="d-flex flex-wrap gap-2 mb-3 align-items-center">
+    @if (f.Mismatched)
+    {
+        <span class="badge bg-danger">Only accounts where the mirror disagrees</span>
+        <a asp-action="Accounts" class="small">show all</a>
+    }
+    else
+    {
+        <a asp-action="Accounts" asp-route-archived="@(!f.ShowArchived)" asp-route-empty="@f.ShowEmpty"
+           class="btn btn-sm @(f.ShowArchived ? "btn-secondary" : "btn-outline-secondary")">
+            @(f.ShowArchived ? "Hide archived" : $"Show archived ({N(Model.HiddenArchived)})")
+        </a>
+        <a asp-action="Accounts" asp-route-archived="@f.ShowArchived" asp-route-empty="@(!f.ShowEmpty)"
+           class="btn btn-sm @(f.ShowEmpty ? "btn-secondary" : "btn-outline-secondary")">
+            @(f.ShowEmpty ? "Hide empty" : $"Show empty ({N(Model.HiddenEmpty)})")
+        </a>
+        <a asp-action="Accounts" asp-route-mismatched="true" class="btn btn-sm btn-outline-danger">Only mismatches</a>
+    }
+</div>
+
+@if (Model.Groups.Count == 0)
+{
+    <div class="card"><div class="card-body text-muted">No accounts to show@(f.Mismatched ? ": the mirror agrees with Holded everywhere" : " — run a sync")</div></div>
+}
+
+@foreach (var g in Model.Groups)
+{
+    @* A boolean attribute acts on presence, so it is emitted only inside the conditional. *@
+    if (f.Mismatched)
+    {
+        @:<details class="card mb-2" open>
+    }
+    else
+    {
+        @:<details class="card mb-2">
+    }
+        <summary class="card-header d-flex flex-wrap gap-3 align-items-center" style="cursor: pointer;">
+            <span class="fw-semibold me-auto">@g.Digit · @g.Name</span>
+            <span class="small text-muted">@N(g.Accounts.Count) accounts</span>
+            <span class="small">Holded @g.HoldedBalance.ToSignedEuro()</span>
+            <span class="small">Mirror @g.MirrorBalance.ToSignedEuro()</span>
+            <span class="small text-muted">@N(g.LineCount) lines</span>
+            @if (g.Mismatches > 0)
+            {
+                <span class="badge bg-danger">@g.Mismatches ✗</span>
+            }
+            else
+            {
+                <span class="badge bg-success">✓</span>
+            }
+        </summary>
+        <div class="table-responsive">
+            <table class="table table-sm table-striped align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th>Number</th><th>Name (Holded)</th><th>English name</th>
+                        <th class="text-end">Holded balance</th><th class="text-end">Mirror balance</th>
+                        <th class="text-end">Lines</th><th class="text-center">OK</th>
+                    </tr>
+                </thead>
+                <tbody>
+                @foreach (var a in g.Accounts)
+                {
+                    <tr class="@(a.Archived ? "text-muted" : "")">
+                        <td class="text-nowrap"><a asp-action="Account" asp-route-number="@a.Number"><code>@a.Number</code></a></td>
+                        <td>@a.Name @if (a.Archived) { <span class="badge bg-secondary ms-1">archived</span> }</td>
+                        <td class="text-muted">@a.EnglishName</td>
+                        <td class="text-end">@a.HoldedBalance.ToSignedEuro()</td>
+                        <td class="text-end">@(a.LocalBalance is null ? "—" : a.LocalBalance.Value.ToSignedEuro())</td>
+                        <td class="text-end">@N(a.LocalLineCount)</td>
+                        <td class="text-center">
+                            @if (a.Reconciled)
+                            {
+                                <i class="fa-solid fa-check text-success"></i>
+                            }
+                            else
+                            {
+                                <i class="fa-solid fa-xmark text-danger"></i>
+                            }
+                        </td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    @:</details>
+}
+
+<p class="text-muted small mt-3">
+    Empty means no mirrored line, nothing posted at Holded, and no disagreement: an account Holded
+    has posted to stays listed even when the mirror has no line for it.
+</p>

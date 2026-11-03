@@ -10,6 +10,8 @@ using Humans.Base.Constants;
 using Humans.Base.Enums;
 using Humans.Shifts.Data;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
+using Microsoft.EntityFrameworkCore.Infrastructure;
 using NodaTime;
 using NSubstitute;
 using Xunit;
@@ -212,6 +214,56 @@ public sealed class ShiftManagementWriteGuardTests : ShiftsTestHarness
         saved.UpdatedAt.Should().Be(TestNow);
         saved.Tags.Select(t => t.Id).Should().BeEquivalentTo([tag.Id]);
         (await _views.IsRotaCachedAsync(rota.Id)).Should().BeFalse();
+    }
+
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task RotaTagSaveFailure_DoesNotPersistRotaFields(bool create)
+    {
+        var (es, existing, _) = SeedRotaScenario(RotaPeriod.Event);
+        var tag = SeedTag("Heavy lifting");
+        await SaveAllAsync(Ct);
+        var rota = create ? NewRota(es.Id, existing.TeamId) : existing;
+        var originalName = rota.Name;
+        var options = new DbContextOptionsBuilder<ShiftsDbContext>(
+                (DbContextOptions<ShiftsDbContext>)ShiftsDb.GetService<IDbContextOptions>())
+            .AddInterceptors(new FailRotaTagSave())
+            .Options;
+        var service = new ShiftManagementService(
+            new ShiftRepository(new TestDbContextFactory<ShiftsDbContext>(options), ShiftsDb, Clock),
+            AuditLog, AdminAuthorization, new ServiceLocatorBuilder().With(_teamService).Build(),
+            Cache, _views.Cache, NewCalendarResolver(), Clock,
+            Microsoft.Extensions.Logging.Abstractions.NullLogger<ShiftManagementService>.Instance);
+        await _views.PrimeRotaAsync(rota.Id);
+
+        Func<Task> write = () => create
+            ? service.CreateRotaAsync(rota, [tag.Id])
+            : service.UpdateRotaAsync(EditOf(rota, "Renamed", [tag.Id]));
+
+        await write.Should().ThrowAsync<IOException>();
+        await using var db = await ShiftsDbFactory.CreateDbContextAsync(Ct);
+        var saved = await db.Rotas.AsNoTracking().Include(r => r.Tags).SingleOrDefaultAsync(r => r.Id == rota.Id, Ct);
+        if (create) saved.Should().BeNull();
+        else
+        {
+            saved!.Name.Should().Be(originalName);
+            saved.Tags.Should().BeEmpty();
+        }
+        (await _views.IsRotaCachedAsync(rota.Id)).Should().BeFalse();
+    }
+
+    private sealed class FailRotaTagSave : SaveChangesInterceptor
+    {
+        public override ValueTask<InterceptionResult<int>> SavingChangesAsync(
+            DbContextEventData eventData, InterceptionResult<int> result, CancellationToken cancellationToken = default)
+        {
+            if (eventData.Context!.ChangeTracker.Entries().Any(e =>
+                string.Equals(e.Metadata.GetTableName(), "rota_shift_tags", StringComparison.Ordinal)
+                && e.State is EntityState.Added or EntityState.Deleted))
+                throw new IOException("Rota tag persistence failed.");
+            return base.SavingChangesAsync(eventData, result, cancellationToken);
+        }
     }
 
     [HumansFact]

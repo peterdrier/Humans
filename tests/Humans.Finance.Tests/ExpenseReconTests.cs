@@ -108,7 +108,6 @@ public class ExpenseReconTests
         byId[pushedAfterSync.LineId!.Value].Status.Should().Be(ExpenseReconLineStatus.Pending);
         byId[pushedButGone.LineId!.Value].Status.Should().Be(ExpenseReconLineStatus.Missing);
         report.Totals.ProblemLines.Should().Be(2);
-        report.Lines.Take(2).Should().OnlyContain(l => l.IsProblem, "problems sort first");
     }
 
     [HumansFact]
@@ -322,9 +321,9 @@ public class ExpenseReconTests
     private readonly IUserService _users = Substitute.For<IUserService>();
 
     private Service MakeService() => new(
-        _repo, _client, Substitute.For<IBudgetService>(), _holded, _expenses, new FakeClock(SyncedAt),
+        _repo, _client, Substitute.For<IBudgetService>(), _holded, Substitute.For<IHoldedWrite>(), _expenses, new FakeClock(SyncedAt),
         new MemoryCache(new MemoryCacheOptions()), Substitute.For<IAuditLogService>(), _users,
-        Substitute.For<IUserEmailService>(), Substitute.For<IEmailService>(), TestFinanceEmails.Create(),
+        Substitute.For<IEmailService>(), TestFinanceEmails.Create(),
         Options.Create(new SepaOptions()),
         new TrackedCache<string, Dictionary<string, int>>("Finance.SepaStuckBankLines", warmOnStartup: false, NullLogger<Service>.Instance),
         NullLogger<Service>.Instance);

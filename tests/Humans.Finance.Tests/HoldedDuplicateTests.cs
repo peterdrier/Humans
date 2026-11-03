@@ -37,13 +37,14 @@ public class HoldedDuplicateTests
     private readonly IHoldedRepository _repo = Substitute.For<IHoldedRepository>();
     private readonly IHoldedClient _client = Substitute.For<IHoldedClient>();
     private readonly IHoldedService _holded = Substitute.For<IHoldedService>();
+    private readonly IHoldedWrite _write = Substitute.For<IHoldedWrite>();
     private readonly IExpenseHoldedBookingService _expenses = Substitute.For<IExpenseHoldedBookingService>();
     private readonly IAuditLogService _audit = Substitute.For<IAuditLogService>();
 
     private Service MakeService(ILogger<Service>? logger = null) => new(
-        _repo, _client, Substitute.For<IBudgetService>(), _holded, _expenses, new FakeClock(FixedNow),
+        _repo, _client, Substitute.For<IBudgetService>(), _holded, _write, _expenses, new FakeClock(FixedNow),
         new MemoryCache(new MemoryCacheOptions()), _audit, Substitute.For<IUserService>(),
-        Substitute.For<IUserEmailService>(), Substitute.For<IEmailService>(), TestFinanceEmails.Create(),
+        Substitute.For<IEmailService>(), TestFinanceEmails.Create(),
         Options.Create(new SepaOptions()),
         new TrackedCache<string, Dictionary<string, int>>("Finance.SepaStuckBankLines", warmOnStartup: false, NullLogger<Service>.Instance),
         logger ?? NullLogger<Service>.Instance);
@@ -327,7 +328,7 @@ public class HoldedDuplicateTests
 
         var vm = await MakeService().GetHoldedDuplicatesAsync(TestContext.Current.CancellationToken);
 
-        vm.EmptyUnboundContactIds.Should().Equal("41000062 Someone Else (c-empty)");
+        vm.EmptyUnboundContacts.Should().Equal((41000062, "41000062 Someone Else (c-empty)"));
         vm.HasWork.Should().BeFalse();
     }
 

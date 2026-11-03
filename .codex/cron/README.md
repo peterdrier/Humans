@@ -24,6 +24,17 @@ when a code fix warrants them; prefer existing coverage when sufficient.
 Scoped tests validate each change; the wrapper runs the full non-integration
 suite once at the end. Test-only changes do not qualify a run for publication.
 
+## Batching
+
+Repeated simple corrections start with discovery across the owning section and
+shared consumers. The worker states the candidates, exclusions, and shared
+validation plan before editing, then validates and commits the completed batch.
+Known related fixes require a concrete risk/scope reason to split into separate
+rounds; singleton batches state the searched scope. Deferred candidates carry
+forward so subsequent rounds reuse the investigation. Ordering moves still need
+each consumer inspected; transactions, authorization, and migrations retain
+individual scrutiny. The cumulative report lists items and split reasons.
+
 ## Work window and completion
 
 `TIME_BUDGET` defaults to `12h` and cannot exceed 12 hours. The worker finishes
@@ -173,6 +184,7 @@ as that user with that user's environment — a system-wide unit would need a
 separate, more painful auth story for no benefit here.
 
 ```bash
+install -m 755 ~/.humans-debt-runner/clone/.codex/cron/run-latest-debt.sh ~/.humans-debt-runner/run-latest-debt.sh
 mkdir -p ~/.config/systemd/user
 cp ~/.humans-debt-runner/clone/.codex/cron/humans-debt.service ~/.config/systemd/user/
 cp ~/.humans-debt-runner/clone/.codex/cron/humans-debt.timer   ~/.config/systemd/user/
@@ -200,40 +212,33 @@ Check it's armed:
 systemctl --user list-timers humans-debt.timer
 ```
 
-## Pinning a runner release outside the disposable clone
+## Automatic runner updates
 
-The script parses itself before refreshing the clone, so its current invocation
-survives that refresh. However, an `ExecStart` inside the clone uses whatever
-script the previous refresh left behind on the next invocation. To deploy a
-reviewed runner fix before its PR merges, provision an immutable release outside
-`WORK_DIR` and override only `ExecStart`:
+The installed `run-latest-debt.sh` launcher fetches `origin/main` through a
+separate bare repository (`runner-source.git`) before each scheduled run. It
+extracts the cron tools and prompts into `releases/<commit>` and logs the
+selected revision. A run keeps that release throughout; merged runner/prompt
+changes take effect on the next start. Fetch/extraction failures stop startup
+without falling back to an older runner. Completed releases are reusable;
+incomplete extractions remain under `.staging-*` and are never executed.
 
-```bash
-# Run from a checkout containing the reviewed runner commit.
-runner_revision=$(git rev-parse HEAD)
-runner_release="$HOME/.humans-debt-runner/releases/$runner_revision"
-mkdir -p "$runner_release"
-git archive "$runner_revision" .codex/cron .codex/prompts/daily-debt.md | tar -x -C "$runner_release"
-ln -s "$HOME/.humans-debt-runner/clone/.codex/cron/debt-runner.env" \
-  "$runner_release/.codex/cron/debt-runner.env"
-mkdir -p ~/.config/systemd/user/humans-debt.service.d
-cat > ~/.config/systemd/user/humans-debt.service.d/runner-release.conf <<EOF
+The launcher holds its own lock through the run, and the wrapper retains its
+existing work-directory lock. Releases read the existing clone environment file.
+The launcher itself is deliberately small and installed separately; changes to
+it or the systemd unit require reinstallation. Normal worker changes do not.
+
+To migrate an installation with a pinned `runner-release.conf` override, install
+the launcher as above and provision that override with this content:
+
+```ini
 [Service]
 ExecStart=
-ExecStart=$runner_release/.codex/cron/run-daily-debt.sh
-EOF
-systemctl --user daemon-reload
-systemctl --user cat humans-debt.service
+ExecStart=%h/.humans-debt-runner/run-latest-debt.sh
+Environment=IGNORE_QUOTA_CUTOFF=0
 ```
 
-Provision a new release without modifying an existing release or the running
-clone. `daemon-reload` changes future starts; it does not restart an active job.
-Do not restart/stop the service to apply an upgrade during a run. This leaves
-existing resource limits, timer settings, credentials, and the clone's branch intact. Clone
-refreshes cannot overwrite the release. Repeat with a newly reviewed revision
-to upgrade; the override remains pinned until explicitly changed. The pinned
-wrapper still reads the clone's existing environment file. Its goal client and
-daily prompt come from the same release, so a clone refresh cannot mix versions.
+Then run `systemctl --user daemon-reload`. This affects future starts; do not
+restart an active sweep. Existing releases and the active checkout stay intact.
 
 ## Testing a run manually
 

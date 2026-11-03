@@ -53,7 +53,7 @@ Got a lot to enter? Use the **bulk upload** at `/Events/Barrio/{slug}/BulkUpload
 
 ## As a Board member / Admin (Events Admin)
 
-The tasks below need the **Events Admin** or **Admin** role.
+The tasks below need the **Events Admin** or **Admin** role. The Board can open the moderation queue, dashboard, categories, venues and export page read-only, but can't act on events, change settings or download the CSV.
 
 ### Review the moderation queue
 

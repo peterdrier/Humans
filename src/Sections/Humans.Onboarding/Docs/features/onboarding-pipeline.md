@@ -7,11 +7,11 @@
   src/Humans.Web/Controllers/HomeController.cs
   src/Sections/Humans.Users/Controllers/ProfileController.cs
   src/Sections/Humans.Consent/Controllers/ConsentController.cs
-  src/Sections/Humans.Onboarding/Controllers/OnboardingReviewController.cs
+  src/Sections/Humans.Consent/Controllers/ConsentReviewQueueController.cs
   src/Sections/Humans.Onboarding/Controllers/OnboardingWidgetController.cs
   src/Sections/Humans.Governance/Controllers/GovernanceApplicationsController.cs
   src/Humans.Web/Views/Home/**
-  src/Sections/Humans.Onboarding/Views/OnboardingReview/**
+  src/Sections/Humans.Consent/Views/ConsentReviewQueue/**
   src/Sections/Humans.Onboarding/Views/OnboardingWidget/**
   src/Sections/Humans.Onboarding/Views/Shared/Components/OnboardingProgressBanner/**
   src/Sections/Humans.Onboarding/ViewComponents/OnboardingProgressBannerViewComponent.cs
@@ -129,7 +129,7 @@ Two parallel tracks (either order):
 **Trigger:** First Google OAuth login
 **Actions:**
 - User record created
-- Profile record created (empty, MembershipTier = Volunteer)
+- Profile record created (empty); a member with no Governance tier row is a Volunteer
 - Redirected to Profile Setup (onboarding mode)
 
 ### Stage 2: Profile Setup (One-Shot Onboarding)
@@ -162,7 +162,7 @@ The default Volunteer flow uses the **onboarding widget** (Names → Shifts → 
 - Coordinator reviews profile (can proceed regardless of legal document status)
 - Review queue shows legal document progress (X/Y signed) for context
 - **Clear**: ConsentCheckStatus = Cleared, IsApproved = true — annotation only; no team sync, no access change. Volunteers-team admission (name + consents) is reconciled separately by `SystemTeamSyncJob`.
-- **Bulk Clear**: Coordinators can multi-select rows and clear them in one action. The server re-checks each selection against the live queue — eligibility is *membership of that queue* (`Pending` **or** `Flagged`), so a flagged row is bulk-clearable exactly as it is clearable one at a time; anything no longer in the queue (already cleared, profile rejected) is dropped. Each survivor then goes through the single-row `ClearConsentCheckAsync`, whose own refusals are logged and counted as skips. There is **no server-side legal-name check** in this path: the view withholds the checkbox from a nameless row, so the constraint is presentational only. The flash reads "Approved {0} of {1} selected — the others are no longer eligible."
+- **Bulk Clear**: Coordinators can multi-select rows and clear them in one action. The server re-checks each selection against the live queue — eligibility is *membership of that queue* (`Pending` **or** `Flagged`), so a flagged row is bulk-clearable exactly as it is clearable one at a time; anything no longer in the queue (already cleared, profile rejected) is dropped. Each survivor then goes through the single-row clear (`ConsentReviewQueueService.ClearAsync`), whose own refusals are logged and counted as skips. There is **no server-side legal-name check** in this path: the view withholds the checkbox from a nameless row, so the constraint is presentational only. The flash reads "Approved {0} of {1} selected — the others are no longer eligible."
 - **Flag**: ConsentCheckStatus = Flagged with notes — an audit annotation only; it does NOT block app access or Volunteers admission (Reject, which sets `RejectedAt`, is the kick-out lever). Can be resolved later.
 
 `IsApproved = true` is set on clearance even if legal docs are incomplete — it is a CC audit annotation, not an activation signal. App access came earlier at name entry (`UserState == Active`), and Volunteers-team admission is reconciled by `SystemTeamSyncJob` on **name + consents** (`HasRequiredNameFields && !IsSuspended && !review.IsRejected && HasAllRequiredConsents`); `IsApproved` / `ConsentCheckStatus` are not consulted.
@@ -197,7 +197,7 @@ Step selection first resolves the surviving user and checks saved required names
 
 `OnboardingWidgetController.Index` is the canonical entry point. It calls `IOnboardingWidgetState.GetCurrentStepAsync` and redirects to the action for the user's next incomplete step (or `Home/Index` once everything is done). Layouts, the post-signup redirect, and the onboarding banner all link to `Index` rather than to a specific step, so a refresh / direct nav lands on whichever step is current.
 
-The **name gate** backstops the dispatcher app-wide: `NameRequiredFilter` (a global action filter, `src/Humans.Web/Authorization/NameRequiredFilter.cs`) redirects any authenticated user without a real `BurnerName` (a Stub profile, or an Active profile with blank required names) straight to `OnboardingWidget/Names`, so a nameless user can't reach any non-exempt route before naming themselves. It runs after authentication and only redirects — it never blocks sign-in — and keys on the cache-backed `UserInfo.HasRequiredNameFields`, opening on the next request once names are saved. It covers OAuth first sign-in, the magic-link `ExistingUser` branch, and legacy blank-name accounts (nobodies-collective/Humans#812). Exempt: the `Account` and `Language` controllers wholesale, plus `OnboardingWidget/Names`, `Home/Error`, and `Home/Privacy`.
+The **name gate** backstops the dispatcher app-wide: `NameRequiredFilter` (a global action filter, `src/Humans.Web/Authorization/NameRequiredFilter.cs`) redirects any authenticated user without a real `BurnerName` (a Stub profile, or an Active profile with blank required names) straight to `OnboardingWidget/Names`, so a nameless user can't reach any non-exempt route before naming themselves. It runs after authentication and only redirects — it never blocks sign-in — and keys on the cache-backed `UserInfo.HasRequiredNameFields`, opening on the next request once names are saved. It covers OAuth first sign-in, the magic-link `ExistingUser` branch, and legacy blank-name accounts (nobodies-collective/Humans#812). Exempt: the `Account` and `Language` controllers wholesale, plus `OnboardingWidget/Names`, `Home/Error`, and `Home/Privacy`, and any other `[AllowAnonymous]` endpoint (all but `Home/Index`).
 
 ### Persistent banner
 

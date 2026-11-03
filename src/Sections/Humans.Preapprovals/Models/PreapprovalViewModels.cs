@@ -58,7 +58,8 @@ internal sealed class AdminProgramViewModel
     public string NameOf(Guid? userId) =>
         userId is { } id && People.TryGetValue(id, out var info) ? info.BurnerName : "—";
 
-    public IEnumerable<GrantInfo> Applications => Program.Grants.Where(g => g.Status == GrantStatus.Applied);
+    public IEnumerable<GrantInfo> Applications => Program.Grants
+        .Where(g => g.Status == GrantStatus.Applied).OrderBy(g => g.CreatedAt);
     public IEnumerable<GrantInfo> Decided => Program.Grants.Where(g => g.Status != GrantStatus.Applied)
         .OrderBy(g => g.IsTerminal).ThenBy(g => g.CreatedAt);
 }

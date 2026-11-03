@@ -21,7 +21,6 @@ internal sealed class GoogleDriveActivityClient(
     private DirectoryService? _directoryService;
     private string? _serviceAccountEmail;
     private string? _serviceAccountClientId;
-    private bool _serviceAccountEmailResolved;
     private bool _serviceAccountClientIdResolved;
 
     public bool IsConfigured =>
@@ -31,12 +30,12 @@ internal sealed class GoogleDriveActivityClient(
     public async Task<string> GetServiceAccountEmailAsync(CancellationToken ct = default)
     {
         using var _ = logger.TimeOperation();
-        if (_serviceAccountEmailResolved && _serviceAccountEmail is not null)
+        if (_serviceAccountEmail is not null)
         {
             return _serviceAccountEmail;
         }
 
-        var json = await GetServiceAccountJsonAsync(ct);
+        var json = await GoogleCredentialLoader.GetServiceAccountJsonAsync(_settings, ct);
         if (json is not null)
         {
             using var doc = JsonDocument.Parse(json);
@@ -47,7 +46,6 @@ internal sealed class GoogleDriveActivityClient(
         }
 
         _serviceAccountEmail ??= "unknown@serviceaccount.iam.gserviceaccount.com";
-        _serviceAccountEmailResolved = true;
         return _serviceAccountEmail;
     }
 
@@ -59,7 +57,7 @@ internal sealed class GoogleDriveActivityClient(
             return _serviceAccountClientId;
         }
 
-        var json = await GetServiceAccountJsonAsync(ct);
+        var json = await GoogleCredentialLoader.GetServiceAccountJsonAsync(_settings, ct);
         if (json is not null)
         {
             using var doc = JsonDocument.Parse(json);
@@ -225,20 +223,5 @@ internal sealed class GoogleDriveActivityClient(
         });
 
         return _directoryService;
-    }
-
-    private async Task<string?> GetServiceAccountJsonAsync(CancellationToken ct)
-    {
-        if (!string.IsNullOrEmpty(_settings.ServiceAccountKeyJson))
-        {
-            return _settings.ServiceAccountKeyJson;
-        }
-
-        if (!string.IsNullOrEmpty(_settings.ServiceAccountKeyPath))
-        {
-            return await System.IO.File.ReadAllTextAsync(_settings.ServiceAccountKeyPath, ct);
-        }
-
-        return null;
     }
 }

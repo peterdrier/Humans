@@ -87,18 +87,15 @@ internal sealed partial class PreapprovalService
         Change(changes, "status", program.Status, save.Status, v => program.Status = v);
         Change(changes, "kind", program.Kind, save.Kind, v => program.Kind = v);
         program.UpdatedAt = now;
-        await repository.UpdateProgramAsync(program, ct);
-        // The program committed; finish manager changes, audit and deadline notices independently of the browser.
-        ct = CancellationToken.None;
-
         var wanted = save.ManagerUserIds.Distinct().ToList();
         var current = program.Managers.Select(m => m.UserId).ToList();
         var added = wanted.Except(current).ToList();
         var removed = current.Except(wanted).ToList();
-        if (added.Count > 0 || removed.Count > 0)
-            await repository.SetManagersAsync(program.Id,
-                added.Select(id => new ProgramManager { UserId = id, AddedByUserId = actorUserId, AddedAt = now }).ToList(),
-                removed, ct);
+        await repository.UpdateProgramAsync(program,
+            added.Select(id => new ProgramManager { UserId = id, AddedByUserId = actorUserId, AddedAt = now }).ToList(),
+            removed, ct);
+        // The complete edit committed; finish audit and deadline notices independently of the browser.
+        ct = CancellationToken.None;
 
         if (changes.Count > 0)
             await AuditProgramAsync(

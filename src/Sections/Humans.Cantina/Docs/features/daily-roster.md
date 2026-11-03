@@ -23,7 +23,7 @@ The two views split by the job in hand. The weekly view is **overview-only** —
 
 View access to `/Cantina/Roster*`:
 
-- **Access:** `Admin` or the grantable `CantinaAdmin` role, via the `CantinaPolicies.Read` authorization policy — aligned with every other per-area `<Area>AdminOrAdmin` policy. `CantinaAdmin` is granted on the permissions page like any other admin role (no team-name heuristic).
+- **Access:** `Admin`, `Board` or the grantable `CantinaAdmin` role, via the `CantinaPolicies.Read` authorization policy; the CSV downloads need `CantinaPolicies.Manage` (`Admin` or `CantinaAdmin`, never Board). `CantinaAdmin` is granted on the permissions page like any other admin role (no team-name heuristic).
 - **Other authenticated users:** redirected to `/Account/AccessDenied` (cookie authentication's `AccessDeniedPath`) — not a bare 403.
 - **Unauthenticated:** redirected to login per the global `[Authorize]` policy.
 
@@ -31,11 +31,13 @@ Access is role-based only. There is no team-membership-based path.
 
 ## GDPR (special-category data)
 
-`MedicalConditions` (GDPR Art. 9 health data) is **excluded entirely** from this page and from the CSV, regardless of viewer role. The cantina plans around food, not medical history; medical conditions remain visible only via the per-volunteer `_VolunteerProfileBadges` partial with `ShowMedical = true` (existing path, unchanged).
+`MedicalConditions` (GDPR Art. 9 health data) is **excluded entirely** from this page and from the CSV, regardless of viewer role. The cantina plans around food, not medical history; medical conditions remain visible only via the per-volunteer `_VolunteerProfileBadges` partial's audited reveal (`POST /Shifts/Medical/{userId}/Reveal`, Shifts-owned; existing path, unchanged).
 
 This tightens the Art. 9 boundary: cantina coordinators don't need health data and don't get it. The exclusion happens at the DTO boundary (not at query time) so the field can never reach the view layer.
 
 `DietaryPreference`, `Allergies`, `Intolerances`, `AllergyOtherText`, `IntoleranceOtherText` are not special-category data — they're personal data already disclosed to coordinators via the existing badges path, and the roster aggregates them. The roster introduces no retention policy of its own; the answers live in Cantina's `cantina_dietary_profiles` (see [Dietary Nudge](dietary-nudge.md)).
+
+The free-text allergy and intolerance entries (health data) stay hidden on the weekly and daily pages until the viewer presses the audited reveal (`CantinaHealthDetailsRevealed`, which also records a row against each member whose answers the page shows); preference roll-ups and allergy / intolerance counts always show.
 
 > **Retention, as actually implemented:** right-to-erasure deletes the member's `cantina_dietary_profiles` row (`DietaryProfileService.EraseForUserAsync`, a Gdpr erasure contributor), and Users' erasure still nulls the legacy food columns on `profiles` plus `MedicalConditions` (nobodies-collective/Humans#1446). A merge keeps the survivor's answers; the source's move only when the survivor has none. An erased member drops off this page on the next read.
 
@@ -112,15 +114,15 @@ If there is no active event, the service returns an empty DTO with `WeekStartDat
 - `Allergies` / `Intolerances` cells contain the chip values comma-and-space-separated.
 - Filename: `cantina-roster-week-of-<yyyy-MM-dd>.csv` (the Monday of the week, ISO date).
 - No `MedicalConditions` column.
-- Same authorization gate as the HTML route — unauthorized requests are redirected to `/Account/AccessDenied`.
+- Needs `CantinaPolicies.Manage` (`Admin` or `CantinaAdmin`) — the HTML route's gate is broader (adds Board); unauthorized requests are redirected to `/Account/AccessDenied`. Each download is audited (`CantinaRosterExported`).
 
 ### US-36.4: Unauthorized user attempts access
-**As a** regular volunteer (no `CantinaAdmin` or `Admin` role)
+**As a** regular volunteer (no `CantinaAdmin`, `Board` or `Admin` role)
 **I want** the roster URL to refuse my access
 **So that** other volunteers' dietary data isn't broadcast to anyone who guesses the URL
 
 **Acceptance Criteria:**
-- Authenticated user without `Admin` or `CantinaAdmin` is redirected to `/Account/AccessDenied` on the `/Cantina/Roster*` routes (the `CantinaPolicies.Read` policy fails; cookie authentication's `AccessDeniedPath`, not a bare 403).
+- Authenticated user without `Admin`, `Board` or `CantinaAdmin` is redirected to `/Account/AccessDenied` on the `/Cantina/Roster*` routes (the `CantinaPolicies.Read` policy fails; cookie authentication's `AccessDeniedPath`, not a bare 403).
 - Unauthenticated user is redirected to the login page (global `[Authorize]` policy).
 - The access-denied redirect must **not** leak any data (no headcount, no week label) — only the standard redirect.
 
@@ -165,7 +167,7 @@ The roster does NOT use the qualifying-shift gate (6+ hours) from the dietary-me
 
 ## Data Model
 
-The roster adds no tables of its own; it reads Cantina's `cantina_dietary_profiles` through `ICantinaService` (legacy `Profile` columns as fallback until copied). Aggregation is in-memory in `CantinaRosterService`.
+The roster adds no tables of its own; it reads Cantina's `cantina_dietary_profiles` through `ICantinaService`. Aggregation is in-memory in `CantinaRosterService`.
 
 Reads:
 
@@ -237,7 +239,7 @@ This feature lives in the `Cantina/` section and reads **only through section se
 - **Cantina (read, dietary):** `ICantinaService.GetDietaryProfilesAsync` — batched; the DTO has no medical field, so `CantinaRosterService` never sees `MedicalConditions`.
 - **Users/Identity (read, burner names):** `IUserService.GetUserInfosAsync` — batched, cached `UserInfo`. No entity reads, no new surface.
 - **Event settings:** `ISettingsService.GetActiveEventSettingsAsync` for `GateOpeningDate` / `TimeZoneId` (week-boundary computation and per-day calendar labels).
-- **Authorization:** the `CantinaPolicies.Read` policy (Admin or the grantable `CantinaAdmin` role). No team-name heuristic, no bespoke access service.
+- **Authorization:** the `CantinaPolicies.Read` policy (Admin, Board or the grantable `CantinaAdmin` role; CSV downloads: `CantinaPolicies.Manage`, Admin or `CantinaAdmin`). No team-name heuristic, no bespoke access service.
 - **No roster-specific entity or migration** (the dietary table belongs to the [Dietary Nudge](dietary-nudge.md)).
 
 New / updated components:
@@ -252,8 +254,8 @@ New / updated components:
 
 ## Negative access rules
 
-- A user **cannot** see the roster page or CSV unless they hold `Admin` or `CantinaAdmin`. No other path grants access.
-- The roster page and CSV **never** include `MedicalConditions` — `CantinaRosterService` never reads it and the cantina DTOs have no such field. To see medical conditions, viewers use the per-profile badges path with `ShowMedical = true`.
+- A user **cannot** see the roster page unless they hold `Admin`, `Board` or `CantinaAdmin`, and **cannot** download the CSV unless they hold `Admin` or `CantinaAdmin`. No other path grants access.
+- The roster page and CSV **never** include `MedicalConditions` — `CantinaRosterService` never reads it and the cantina DTOs have no such field. To see medical conditions, viewers use the per-profile badges' audited medical reveal.
 - The access-denied redirect **must not** leak any roster data, including the week's headcount or label.
 - `Refused` / `Bailed` / `NoShow` / `Cancelled` signups **must not** contribute to any count or row, even if the volunteer also has a qualifying signup on a different day.
 - The roster reads only the currently active event's signups — no cross-event aggregation.

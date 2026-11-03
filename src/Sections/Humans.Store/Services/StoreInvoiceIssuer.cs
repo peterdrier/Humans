@@ -72,7 +72,7 @@ internal sealed class StoreInvoiceIssuer(
             var (adoptedKind, adoptedDoc) = alreadyIssued;
             // The order stayed Open, so it may have been edited or repriced since that document was created. Divergence
             // is a human's problem, not something to reconcile silently.
-            if (GetRecoveryRefusal(order, adoptedDoc, totals) is { } recoveryRefusal)
+            if (GetDocumentTotalsRefusal(order, adoptedDoc, totals) is { } recoveryRefusal)
                 return Refuse(order, actorUserId, recoveryRefusal);
             if (adoptedDoc.IsDraft == true)
             {
@@ -83,11 +83,9 @@ internal sealed class StoreInvoiceIssuer(
                 await holdedClient.ApproveSalesDocumentAsync(adoptedKind, adoptedDoc.Id, CancellationToken.None);
                 adoptedDoc = await holdedClient.GetSalesDocumentAsync(
                     adoptedKind, adoptedDoc.Id, CancellationToken.None);
-                if (GetRecoveryRefusal(order, adoptedDoc, totals) is { } approvalRefusal)
-                    return Refuse(order, actorUserId, approvalRefusal);
             }
             return await CommitInvoiceAsync(
-                order, adoptedDoc,
+                order, adoptedDoc, totals,
                 JsonSerializer.Serialize(new { kind = adoptedKind.ToString(), adopted = true, tag }),
                 actorUserId,
                 $"Adopted Holded {DocumentKindName(adoptedKind)} {adoptedDoc.DocNumber} "
@@ -155,7 +153,7 @@ internal sealed class StoreInvoiceIssuer(
         var document = await holdedClient.GetSalesDocumentAsync(kind, docId, CancellationToken.None);
 
         return await CommitInvoiceAsync(
-            order, document,
+            order, document, totals,
             JsonSerializer.Serialize(new { kind = kind.ToString(), input }),
             actorUserId,
             $"Issued Holded {DocumentKindName(kind)} {document.DocNumber} "
@@ -171,11 +169,11 @@ internal sealed class StoreInvoiceIssuer(
     }
 
     /// <summary>
-    /// The order stays Open after a failed attempt, so its lines and prices can move before the retry; adopting on the
-    /// tag alone would freeze it against a document that says something else. Correcting an issued document is a
-    /// factura rectificativa, a human decision, so this fails loudly.
+    /// Freezing against different totals would leave the order contradicting its legal invoice. A retry's lines and
+    /// prices may also have changed since creation. Correcting an issued document is a factura rectificativa, a human
+    /// decision, so both new issuance and recovery fail loudly.
     /// </summary>
-    private static string? GetRecoveryRefusal(
+    private static string? GetDocumentTotalsRefusal(
         Order order, HoldedSalesDocumentDto document, BalanceCalculator.Result totals)
     {
         // Deposits are ordinary tax-0 lines on the document, so they land in Holded's subtotal.
@@ -231,11 +229,14 @@ internal sealed class StoreInvoiceIssuer(
     private async Task<AdminMutationResult> CommitInvoiceAsync(
         Order order,
         HoldedSalesDocumentDto document,
+        BalanceCalculator.Result totals,
         string requestPayload,
         Guid actorUserId,
         string auditDetail,
         CancellationToken ct)
     {
+        if (GetDocumentTotalsRefusal(order, document, totals) is { } totalsRefusal)
+            return Refuse(order, actorUserId, totalsRefusal);
         if (document.IsDraft == true || string.IsNullOrWhiteSpace(document.DocNumber))
             return Refuse(order, actorUserId,
                 $"Holded document {document.Id} is still a draft or has no issued document number. "

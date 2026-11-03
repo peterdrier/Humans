@@ -71,6 +71,56 @@ public sealed class GrantTests : PreapprovalsTestHarness
         (await stored.Grants.CountAsync(Ct)).Should().Be(operation is "issue-many" ? 2 : 1);
     }
 
+    [HumansTheory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task Apply_ManagerDeliveryFailure_ContinuesOtherLanguageGroupsAndEmails(bool notificationFails)
+    {
+        var managers = new[]
+        {
+            SeedUser("English manager"),
+            SeedUser("Spanish manager", language: "es"),
+            SeedUser("Second Spanish manager", language: "es")
+        };
+        var program = await SeedProgramAsync(managers: managers);
+        var applicant = SeedUser("Applicant");
+        var failure = new IOException("First manager delivery failed");
+        var notificationAttempts = 0;
+        var emailAttempts = 0;
+        Notifications.SendAsync(Arg.Any<NotificationSourceDefinition>(), Arg.Any<NotificationClass>(),
+                Arg.Any<NotificationPriority>(), Arg.Any<string>(), Arg.Any<IReadOnlyList<Guid>>(),
+                Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(),
+                Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns(_ => notificationFails && ++notificationAttempts == 1
+                ? Task.FromException(failure) : Task.CompletedTask);
+        Email.SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>())
+            .Returns(_ => !notificationFails && ++emailAttempts == 1
+                ? Task.FromException(failure) : Task.CompletedTask);
+
+        var result = await NewService().ApplyAsync(program.Id, applicant, "Saved note", null, Ct);
+
+        result.Refusal.Should().BeNull();
+        await using var stored = OpenContext();
+        var grant = (await stored.Grants.ToListAsync(Ct)).Should().ContainSingle().Subject;
+        grant.Id.Should().Be(result.Value);
+        grant.Status.Should().Be(GrantStatus.Applied);
+        grant.ApplicationNote.Should().Be("Saved note");
+        var notices = Notifications.ReceivedCalls().Select(call => call.GetArguments()).ToList();
+        notices.Should().HaveCount(2);
+        notices.SelectMany(args => (IReadOnlyList<Guid>)args[4]!).Should().BeEquivalentTo(managers);
+        foreach (var notice in notices)
+        {
+            notice[0].Should().Be(PreapprovalsNotificationSources.PreapprovalApplicationReceived);
+            notice[9].Should().Be(PreapprovalService.RequestSourceKey(grant.Id));
+        }
+        var emails = Email.ReceivedCalls().Select(call => (EmailMessage)call.GetArguments()[0]!).ToList();
+        emails.Should().HaveCount(3);
+        emails.Select(message => message.UserId).Should().BeEquivalentTo(managers.Select(id => (Guid?)id));
+        Logger.Entries.Should().ContainSingle(entry => ReferenceEquals(entry.Exception, failure));
+        await AuditLog.Received(1).LogAsync(PreapprovalsAuditActions.PreapprovalGrantApplied, AuditEntityTypes.Grant,
+            grant.Id, Arg.Any<string>(), applicant, Arg.Any<Guid?>(), Arg.Any<string?>());
+    }
+
     [HumansFact]
     public async Task Apply_CancelledBeforeMutation_DoesNotSaveOrDispatch()
     {

@@ -70,17 +70,17 @@ internal sealed class OnsiteRosterService : IOnsiteRosterService
                 x.Roles))
             .ToList();
 
-        var availableCamps = DistinctSortedNames(campNamesByUserId);
-        var availableTeams = DistinctSortedNames(teamNamesByUserId);
-        var availableRoles = DistinctSortedNames(roleNamesByUserId);
+        var availableCamps = DistinctNames(campNamesByUserId);
+        var availableTeams = DistinctNames(teamNamesByUserId);
+        var availableRoles = DistinctNames(roleNamesByUserId);
 
         return new OnsiteRosterResult(rows, availableCamps, availableTeams, availableRoles);
     }
 
-    private async Task<Dictionary<Guid, SortedSet<string>>> BuildCampNamesAsync(
+    private async Task<Dictionary<Guid, HashSet<string>>> BuildCampNamesAsync(
         int year, HashSet<Guid> onsiteIds, CancellationToken ct)
     {
-        var result = new Dictionary<Guid, SortedSet<string>>();
+        var result = new Dictionary<Guid, HashSet<string>>();
         var camps = await _camps.GetCampsForYearAsync(year, ct);
         foreach (var camp in camps)
         {
@@ -97,10 +97,10 @@ internal sealed class OnsiteRosterService : IOnsiteRosterService
         return result;
     }
 
-    private async Task<Dictionary<Guid, SortedSet<string>>> BuildTeamNamesAsync(
+    private async Task<Dictionary<Guid, HashSet<string>>> BuildTeamNamesAsync(
         HashSet<Guid> onsiteIds, CancellationToken ct)
     {
-        var result = new Dictionary<Guid, SortedSet<string>>();
+        var result = new Dictionary<Guid, HashSet<string>>();
         var teamsById = await _teams.GetTeamsAsync(ct);
         foreach (var (_, team) in teamsById)
         {
@@ -115,10 +115,10 @@ internal sealed class OnsiteRosterService : IOnsiteRosterService
         return result;
     }
 
-    private async Task<Dictionary<Guid, SortedSet<string>>> BuildRoleNamesAsync(
+    private async Task<Dictionary<Guid, HashSet<string>>> BuildRoleNamesAsync(
         HashSet<Guid> onsiteIds, CancellationToken ct)
     {
-        var result = new Dictionary<Guid, SortedSet<string>>();
+        var result = new Dictionary<Guid, HashSet<string>>();
         foreach (var userId in onsiteIds)
         {
             var assignments = await _roles.GetActiveForUserAsync(userId, ct);
@@ -128,25 +128,24 @@ internal sealed class OnsiteRosterService : IOnsiteRosterService
         return result;
     }
 
-    private static void Add(Dictionary<Guid, SortedSet<string>> map, Guid userId, string name)
+    private static void Add(Dictionary<Guid, HashSet<string>> map, Guid userId, string name)
     {
         if (!map.TryGetValue(userId, out var set))
         {
-            set = new SortedSet<string>(StringComparer.OrdinalIgnoreCase);
+            set = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             map[userId] = set;
         }
         set.Add(name);
     }
 
     private static IReadOnlyList<string> NamesFor(
-        Dictionary<Guid, SortedSet<string>> map, Guid userId) =>
+        Dictionary<Guid, HashSet<string>> map, Guid userId) =>
         map.TryGetValue(userId, out var set) ? set.ToList() : [];
 
-    private static IReadOnlyList<string> DistinctSortedNames(
-        Dictionary<Guid, SortedSet<string>> map) =>
+    private static IReadOnlyList<string> DistinctNames(
+        Dictionary<Guid, HashSet<string>> map) =>
         map.Values
             .SelectMany(s => s)
             .Distinct(StringComparer.OrdinalIgnoreCase)
-            .OrderBy(s => s, StringComparer.OrdinalIgnoreCase)
             .ToList();
 }

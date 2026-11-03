@@ -8,7 +8,7 @@ using NodaTime;
 namespace Humans.Consent.Services;
 
 /// <summary>
-/// No <c>IUserMerge</c>: the job reads by the resolved survivor id.
+/// Historical stamps stay on their original ids; merge-chain reads preserve cooldowns without relocating them.
 /// </summary>
 internal sealed class ConsentReminderService(
     IConsentReminderRepository repo,
@@ -20,8 +20,20 @@ internal sealed class ConsentReminderService(
     public async Task<IReadOnlyDictionary<Guid, Instant>> GetLastSentAsync(
         IEnumerable<UserInfo> members, CancellationToken ct = default)
     {
-        var ids = members.Select(m => m.Id).Distinct().ToList();
-        return (await repo.GetByUserIdsAsync(ids, ct)).ToDictionary(r => r.UserId, r => r.LastSentAt);
+        var memberList = members.ToList();
+        var ids = memberList.SelectMany(m => m.AllUserIds).Distinct().ToList();
+        var stamps = (await repo.GetByUserIdsAsync(ids, ct)).ToDictionary(r => r.UserId, r => r.LastSentAt);
+        var lastSent = new Dictionary<Guid, Instant>();
+        foreach (var member in memberList)
+        {
+            foreach (var id in member.AllUserIds)
+            {
+                if (stamps.TryGetValue(id, out var stamp)
+                    && (!lastSent.TryGetValue(member.Id, out var previous) || stamp > previous))
+                    lastSent[member.Id] = stamp;
+            }
+        }
+        return lastSent;
     }
 
     public Task RecordSentAsync(Guid userId, Instant sentAt, CancellationToken ct = default) =>

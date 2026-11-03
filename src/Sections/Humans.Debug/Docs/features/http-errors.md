@@ -44,8 +44,8 @@ for a debug aid.
 ## Design Decisions
 
 - **Storage** — ring buffer (capacity 1000) on the existing `ClientStatsTracker`,
-  enqueue-then-trim-under-lock like `InMemoryLogSink`. URL truncated to 200 chars,
-  UA to 150; whole buffer stays under ~1 MB. Client label is derived by the
+  enqueue-then-trim-under-lock like `InMemoryLogSink`. URL capped at 200 UTF-16 units,
+  UA at 150, preserving complete surrogate pairs; whole buffer stays under ~1 MB. Client label is derived by the
   tracker at record time via `UserAgentClassifier`.
 - **Capture point** — `ClientStatsMiddleware` after `await next()`. Four special cases:
   - **Aborted requests record as 499** (nginx convention, matching ASP.NET Core's

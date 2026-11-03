@@ -29,7 +29,7 @@ internal sealed class CampApiController(ICampService campService) : ControllerBa
                 row.Season!.Name,
                 row.Season.BlurbShort,
                 row.Season.BlurbLong,
-                row.Camp.Images.FirstOrDefault()?.Url,
+                row.Camp.Images.MinBy(image => image.SortOrder)?.Url,
                 row.Season.Vibes.Select(vibe => vibe.ToString()).ToList(),
                 row.Season.AcceptingMembers.ToString(),
                 row.Season.KidsWelcome.ToString(),

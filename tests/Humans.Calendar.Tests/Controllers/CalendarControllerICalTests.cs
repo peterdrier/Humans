@@ -85,10 +85,13 @@ public class CalendarControllerICalTests
             ["Title"] = "Updated",
             ["OwningTeamId"] = teamId.ToString(),
             ["IsAllDay"] = "false",
-            ["StartLocal"] = "2026-06-02T10:00:00",
-            ["EndLocal"] = "2026-06-02T11:00:00",
+            ["StartDate"] = "2026-06-02",
+            // Seconds included: the browser's "HH:mm" needs the Shell's binder, which this harness doesn't register.
+            ["StartTime"] = "10:00:00",
+            ["EndDate"] = "2026-06-02",
+            ["EndTime"] = "11:00:00",
             ["RecurrenceRule"] = "FREQ=WEEKLY",
-            ["RecurrenceTimezone"] = "UTC"
+            ["TimeZoneId"] = "UTC"
         };
         if (choice is not null) fields["IsRecurring"] = choice;
         var registrations = new ServiceCollection().AddLogging();
@@ -170,18 +173,29 @@ public class CalendarControllerICalTests
             fields["RecurrenceRule"] = allDay ? "FREQ=DAILY" : "FREQ=WEEKLY";
         }
         else if (spoofAllDay) fields["IsAllDay"] = "true";
-        var prefix = action == 2 ? "Override" : "";
-        if (allDay)
+        // The occurrence override keeps its own field names; the event form uses the shared calendar form's.
+        var zoneField = action == 2 ? "RecurrenceTimezone" : "TimeZoneId";
+        if (action == 2 && allDay)
         {
-            fields[prefix + "StartDateLocal"] = "2026-06-02";
-            fields[prefix + "EndDateLocal"] = "2026-06-02";
+            fields["OverrideStartDateLocal"] = "2026-06-02";
+            fields["OverrideEndDateLocal"] = "2026-06-02";
+        }
+        else if (action == 2)
+        {
+            fields["OverrideStartLocal"] = "2026-06-02T10:00:00";
+            fields["OverrideEndLocal"] = "2026-06-02T11:00:00";
         }
         else
         {
-            fields[prefix + "StartLocal"] = "2026-06-02T10:00:00";
-            fields[prefix + "EndLocal"] = "2026-06-02T11:00:00";
+            fields["StartDate"] = "2026-06-02";
+            fields["EndDate"] = "2026-06-02";
+            if (!allDay)
+            {
+                fields["StartTime"] = "10:00:00";
+                fields["EndTime"] = "11:00:00";
+            }
         }
-        if (postedZone) fields["RecurrenceTimezone"] = "UTC";
+        if (postedZone) fields[zoneField] = "UTC";
         var registrations = new ServiceCollection().AddLogging();
         registrations.AddControllers();
         using var services = registrations.BuildServiceProvider();
@@ -214,7 +228,7 @@ public class CalendarControllerICalTests
         {
             _calendar.ReceivedCalls().Should().BeEmpty();
             result.Should().BeOfType<ViewResult>();
-            controller.ModelState["RecurrenceTimezone"]!.Errors.Should().ContainSingle();
+            controller.ModelState[zoneField]!.Errors.Should().ContainSingle();
         }
         else
         {
@@ -267,9 +281,11 @@ public class CalendarControllerICalTests
         {
             Title = "Updated",
             OwningTeamId = teamId,
-            StartLocal = new DateTime(2026, 6, 2, 10, 0, 0),
-            EndLocal = new DateTime(2026, 6, 2, 11, 0, 0),
-            RecurrenceTimezone = "UTC"
+            StartDate = new LocalDate(2026, 6, 2),
+            StartTime = new LocalTime(10, 0),
+            EndDate = new LocalDate(2026, 6, 2),
+            EndTime = new LocalTime(11, 0),
+            TimeZoneId = "UTC"
         };
         var ct = Xunit.TestContext.Current.CancellationToken;
 
@@ -377,9 +393,9 @@ public class CalendarControllerICalTests
             Title = "Last day",
             OwningTeamId = teamId,
             IsAllDay = true,
-            StartDateLocal = new DateTime(9999, 12, string.Equals(endKind, "blank", StringComparison.Ordinal) ? 31 : 30),
-            EndDateLocal = string.Equals(endKind, "blank", StringComparison.Ordinal) ? null
-                : new DateTime(9999, 12, string.Equals(endKind, "valid", StringComparison.Ordinal) ? 30 : 31)
+            StartDate = new LocalDate(9999, 12, string.Equals(endKind, "blank", StringComparison.Ordinal) ? 31 : 30),
+            EndDate = string.Equals(endKind, "blank", StringComparison.Ordinal) ? null
+                : new LocalDate(9999, 12, string.Equals(endKind, "valid", StringComparison.Ordinal) ? 30 : 31)
         };
         var controller = CreateController();
         var ct = Xunit.TestContext.Current.CancellationToken;
@@ -396,7 +412,7 @@ public class CalendarControllerICalTests
         else
         {
             result.Should().BeOfType<ViewResult>().Which.Model.Should().BeSameAs(form);
-            controller.ModelState[nameof(form.EndDateLocal)]!.Errors.Should().ContainSingle()
+            controller.ModelState[nameof(form.EndDate)]!.Errors.Should().ContainSingle()
                 .Which.ErrorMessage.Should().Be("Calendar_InvalidAllDayEvent");
             _calendar.ReceivedCalls().Should().BeEmpty();
         }
@@ -493,14 +509,54 @@ public class CalendarControllerICalTests
         model.ToUtc.InZone(zone).Date.Should().Be(LocalDate.FromDateTime(date.AddDays(1)));
     }
 
-    [HumansFact]
-    public async Task Index_uses_the_browser_timezone_for_calendar_windows()
+    [HumansTheory]
+    [Xunit.InlineData("America/Los_Angeles", 6, true)]
+    [Xunit.InlineData("Europe/Madrid", 6, false)]
+    [Xunit.InlineData("Pacific/Auckland", 6, false)]
+    [Xunit.InlineData("Europe/Madrid", 5, true)]
+    public async Task Index_orders_mixed_sources_in_the_browser_timezone(
+        string timezone, int contributedDay, bool contributionFirst)
     {
-        _session.SetString(DateTimeDisplayExtensions.SessionKey, "America/Los_Angeles");
+        _session.SetString(DateTimeDisplayExtensions.SessionKey, timezone);
+        var allDay = new CalendarOccurrence(Guid.NewGuid(), null, null, true, "All-day", null, null, null,
+            Guid.NewGuid(), "Team", false, null, new LocalDate(2026, 6, 6), new LocalDate(2026, 6, 7));
+        var start = Instant.FromUtc(2026, 6, contributedDay, 0, 0);
+        var contributed = new CalendarOccurrence(Guid.Empty, start, start.Plus(Duration.FromHours(1)), false,
+            "Contributed", null, null, null, Guid.Empty, "", false, start, Source: "Workgroups");
+        IReadOnlyList<CalendarOccurrence> unordered = contributionFirst ? [allDay, contributed] : [contributed, allDay];
+        _calendarRead.GetOccurrencesInWindowAsync(Arg.Any<Instant>(), Arg.Any<Instant>(),
+            Arg.Any<DateTimeZone>(), Arg.Any<Guid?>(), Arg.Any<CancellationToken>())
+            .Returns(unordered);
 
         var model = await IndexModelAsync();
 
-        model.ViewerTimezoneLabel.Should().Be("America/Los_Angeles");
+        model.ViewerTimezoneLabel.Should().Be(timezone);
+        model.Occurrences.Select(o => o.Title).Should().Equal(contributionFirst
+            ? ["Contributed", "All-day"] : ["All-day", "Contributed"]);
+    }
+
+    [HumansFact]
+    public async Task Event_selects_the_next_five_occurrences_from_unsorted_results()
+    {
+        var id = Guid.NewGuid();
+        var teamId = Guid.NewGuid();
+        _calendarRead.GetEventByIdAsync(id, Arg.Any<CancellationToken>()).Returns(new CalendarEventDetail(
+            id, "Recurring", null, null, null, teamId, _now, _now.Plus(Duration.FromHours(1)),
+            false, "FREQ=DAILY", "UTC", _now, _now));
+        var occurrences = Enumerable.Range(1, 6).Reverse().Select(day =>
+        {
+            var start = _now.Plus(Duration.FromDays(day));
+            return new CalendarOccurrence(id, start, start.Plus(Duration.FromHours(1)), false,
+                "Recurring", null, null, null, teamId, "Team", true, start);
+        }).ToList();
+        _calendarRead.GetOccurrencesInWindowAsync(Arg.Any<Instant>(), Arg.Any<Instant>(),
+            Arg.Any<DateTimeZone>(), teamId, Arg.Any<CancellationToken>()).Returns(occurrences);
+
+        var result = await CreateController().Event(id, Xunit.TestContext.Current.CancellationToken);
+        var model = result.Should().BeOfType<ViewResult>().Which.Model.Should().BeOfType<CalendarEventViewModel>().Subject;
+
+        model.UpcomingOccurrences.Select(o => o.OccurrenceStartUtc).Should()
+            .Equal(Enumerable.Range(1, 5).Select(day => (Instant?)_now.Plus(Duration.FromDays(day))));
     }
 
     [HumansFact]
@@ -520,9 +576,10 @@ public class CalendarControllerICalTests
 
         var model = result.Should().BeOfType<ViewResult>()
             .Which.Model.Should().BeOfType<CalendarEventFormViewModel>().Subject;
-        model.StartLocal.Should().Be(new DateTime(2026, 6, 2, 19, 0, 0));
-        model.EndDateLocal.Should().Be(new DateTime(2026, 6, 2));
-        model.RecurrenceTimezone.Should().Be("Asia/Tokyo");
+        model.StartDate.Should().Be(new LocalDate(2026, 6, 2));
+        model.StartTime.Should().Be(new LocalTime(19, 0));
+        model.EndDate.Should().Be(new LocalDate(2026, 6, 2));
+        model.TimeZoneId.Should().Be("Asia/Tokyo");
     }
 
     [HumansFact]
@@ -539,8 +596,9 @@ public class CalendarControllerICalTests
 
         var model = result.Should().BeOfType<ViewResult>()
             .Which.Model.Should().BeOfType<CalendarEventFormViewModel>().Subject;
-        model.StartLocal.Should().Be(new DateTime(2026, 6, 1, 19, 0, 0));
-        model.RecurrenceTimezone.Should().Be("Asia/Tokyo");
+        model.StartDate.Should().Be(new LocalDate(2026, 6, 1));
+        model.StartTime.Should().Be(new LocalTime(19, 0));
+        model.TimeZoneId.Should().Be("Asia/Tokyo");
     }
 
     [HumansTheory]

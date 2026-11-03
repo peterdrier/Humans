@@ -38,6 +38,8 @@ internal sealed class Repository(IDbContextFactory<HoldedDbContext> factory)
                 cur.Description = r.Description;
                 cur.Debit = r.Debit;
                 cur.Credit = r.Credit;
+                cur.EntryId = r.EntryId;
+                cur.Checked = r.Checked;
                 cur.LastSyncedAt = now;
             }
             else
@@ -55,18 +57,68 @@ internal sealed class Repository(IDbContextFactory<HoldedDbContext> factory)
     }
 
     public async Task<IReadOnlyList<HoldedLedgerLine>> GetLedgerLinesByAccountNumAsync(
-        int accountNum, CancellationToken ct = default)
+        int accountNum, Instant? from = null, Instant? toExclusive = null, string? type = null,
+        CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
+        var q = ctx.HoldedLedgerLines.AsNoTracking().Where(l => l.AccountNum == accountNum);
+        if (from is { } f) q = q.Where(l => l.Date >= f);
+        if (toExclusive is { } t) q = q.Where(l => l.Date < t);
+        if (type is not null) q = q.Where(l => l.Type == type);
+        return await q.ToListAsync(ct);
+    }
+
+    public async Task<IReadOnlyList<HoldedLedgerLine>> GetLedgerLinesByEntryNumbersAsync(
+        IReadOnlyCollection<int> entryNumbers, CancellationToken ct = default)
+    {
+        if (entryNumbers.Count == 0) return [];
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        var numbers = entryNumbers.Distinct().ToList();
         return await ctx.HoldedLedgerLines.AsNoTracking()
-            .Where(l => l.AccountNum == accountNum)
+            .Where(l => numbers.Contains(l.EntryNumber))
             .ToListAsync(ct);
     }
 
-    public async Task<IReadOnlyList<HoldedLedgerLine>> GetAllLedgerLinesAsync(CancellationToken ct = default)
+    public async Task<IReadOnlyList<HoldedAccountTotals>> GetAccountTotalsAsync(CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.HoldedLedgerLines.AsNoTracking().ToListAsync(ct);
+        return await ctx.HoldedLedgerLines.AsNoTracking()
+            .GroupBy(l => l.AccountNum)
+            .Select(g => new HoldedAccountTotals(g.Key, g.Sum(l => l.Debit), g.Sum(l => l.Credit), g.Count()))
+            .ToListAsync(ct);
+    }
+
+    public async Task<IReadOnlyList<HoldedAccountTypeTotals>> GetAccountTypeTotalsAsync(
+        int fromAccount, int toAccount, CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        return await ctx.HoldedLedgerLines.AsNoTracking()
+            .Where(l => l.AccountNum >= fromAccount && l.AccountNum <= toAccount)
+            .GroupBy(l => new { l.AccountNum, l.Type })
+            .Select(g => new HoldedAccountTypeTotals(
+                g.Key.AccountNum, g.Key.Type, g.Sum(l => l.Debit), g.Sum(l => l.Credit)))
+            .ToListAsync(ct);
+    }
+
+    public async Task<IReadOnlyDictionary<int, decimal>> GetSumsByAccountAsync(
+        IReadOnlyCollection<int> accounts, Instant from, Instant toExclusive, CancellationToken ct = default)
+    {
+        if (accounts.Count == 0) return new Dictionary<int, decimal>();
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        var numbers = accounts.Distinct().ToList();
+        return await ctx.HoldedLedgerLines.AsNoTracking()
+            .Where(l => numbers.Contains(l.AccountNum) && l.Date >= from && l.Date < toExclusive)
+            .GroupBy(l => l.AccountNum)
+            .Select(g => new { g.Key, Sum = g.Sum(l => l.Debit) - g.Sum(l => l.Credit) })
+            .ToDictionaryAsync(x => x.Key, x => x.Sum, ct);
+    }
+
+    public async Task<(int Lines, int Entries)> GetMirrorCountsAsync(CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        var lines = await ctx.HoldedLedgerLines.CountAsync(ct);
+        var entries = await ctx.HoldedLedgerLines.Select(l => l.EntryNumber).Distinct().CountAsync(ct);
+        return (lines, entries);
     }
 
     public async Task<bool> HasAnyLedgerLinesAsync(CancellationToken ct = default)

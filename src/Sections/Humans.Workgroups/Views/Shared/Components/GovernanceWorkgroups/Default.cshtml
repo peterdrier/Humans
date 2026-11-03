@@ -16,7 +16,7 @@
                         <div>
                             <a asp-controller="Workgroups" asp-action="Details" asp-route-slug="@w.Slug" class="fw-semibold text-decoration-none">@w.Name</a>
                             <div class="small text-muted">
-                                @Localizer["Workgroups_CoordinatedBy"] @string.Join(", ", w.CoordinatorUserIds().Select(Model.DisplayName))
+                                @Localizer["Workgroups_CoordinatedBy"] @string.Join(", ", w.Coordinators().OrderBy(m => m.JoinedAt).Select(m => Model.DisplayName(m.UserId)))
                             </div>
                         </div>
                         <div class="text-end">

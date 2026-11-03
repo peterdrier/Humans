@@ -1,3 +1,4 @@
+using Humans.Calendar.Contracts;
 using AwesomeAssertions;
 using Humans.Base;
 using Humans.Base.Extensions;
@@ -27,26 +28,26 @@ public sealed class CalendarEventFormViewModelTests
     [InlineData("   ")]
     public void TryResolveZone_ReturnsNull_ForABlankTimezone(string? tz)
     {
-        CalendarEventFormViewModel.TryResolveZone(tz).Should().BeNull();
+        CalendarEventForm.TryResolveZone(tz).Should().BeNull();
     }
 
     [HumansFact]
     public void TryResolveZone_ReturnsNull_ForAnUnknownZone()
     {
-        CalendarEventFormViewModel.TryResolveZone("Mars/Olympus_Mons").Should().BeNull();
+        CalendarEventForm.TryResolveZone("Mars/Olympus_Mons").Should().BeNull();
     }
 
     [HumansFact]
     public void TryResolveZone_ResolvesAKnownZone()
     {
-        CalendarEventFormViewModel.TryResolveZone("Europe/Madrid")!.Id.Should().Be("Europe/Madrid");
+        CalendarEventForm.TryResolveZone("Europe/Madrid")!.Id.Should().Be("Europe/Madrid");
     }
 
     // Both directions have shipped wrong on this branch: mapping null to RecurrenceRule put a
     // Title error under the RRULE input, and then mapping every non-timezone member to the form
     // level took the genuine RRULE error off its own field.
     [HumansTheory]
-    [InlineData(nameof(CreateCalendarEventDto.RecurrenceTimezone), nameof(CalendarEventFormViewModel.RecurrenceTimezone))]
+    [InlineData(nameof(CreateCalendarEventDto.RecurrenceTimezone), nameof(CalendarEventFormViewModel.TimeZoneId))]
     [InlineData(nameof(CreateCalendarEventDto.RecurrenceRule), nameof(CalendarEventFormViewModel.RecurrenceRule))]
     public void ErrorFieldFor_KeepsAServiceNamedMemberOnItsOwnField(string serviceMember, string expected)
     {
@@ -90,7 +91,6 @@ public sealed class CalendarEventFormViewModelTests
         }
 
         AssertError(new(), "Title", "Validation_Required");
-        AssertError(new() { Title = "Meeting", RecurrenceTimezone = null! }, "RecurrenceTimezone", "Validation_Required");
         AssertError(new() { Title = new string('x', 201) }, "Title", "Validation_MaxLength", "", 200);
         AssertError(new() { Description = new string('x', 4001) }, "Description", "Validation_MaxLength", "", 4000);
         AssertError(new() { Location = new string('x', 501) }, "Location", "Validation_MaxLength", "", 500);

@@ -3,7 +3,7 @@
   tests/Humans.Rideshare.Tests/RideshareArchitectureTests.cs
   src/Humans.Base/Constants/RoleNames.cs
   src/Humans.Base/Authorization/PolicyNames.cs
-  src/Sections/Humans.Notifications.Contracts/RideshareNotificationSources.cs
+  src/Sections/Humans.Rideshare/RideshareNotificationSources.cs
   src/Sections/Humans.AuditLog/Contracts/IAuditLogService.cs
   src/Sections/Humans.Settings/Contracts/ISettingsService.cs
   src/Sections/Humans.Notifications.Contracts/INotificationEmitter.cs
@@ -44,7 +44,7 @@ a map board lets people spot each other by eye. No booking, no payment, no autom
 - **SeatsRemaining** is derived, never stored: `SeatsOffered − Σ(Seats of Accepted interests on
   the trip)`. A trip `IsFull` when this is `≤ 0`.
 - **Matched** (on a request) is derived: an `Accepted` interest exists either authored by the
-  request's owner or referencing the request by id, on an active trip going the request's
+  request's owner as a rider (no `RequestId`) or referencing the request by id, on an active trip going the request's
   direction and travelling on its date.
 - **Full** and **Matched** are read-model properties, computed by `RideshareSnapshot`/`TripView`/
   `RequestView` — no stored flags to drift.
@@ -221,8 +221,8 @@ a map board lets people spot each other by eye. No booking, no payment, no autom
 | `/Rideshare/Mine` | GET | `AppAccess` | Own offers, requests, and interests received/sent |
 | `/Rideshare/Interest` | POST | `AppAccess` | Express interest in a trip, optionally answering a request's pin |
 | `/Rideshare/Interest/{id}/Accept`, `/Decline`, `/Withdraw` | POST | `AppAccess` | Interest lifecycle transitions |
-| `/Rideshare/Admin` | GET/POST | `RidesharePolicies.Manage` | Set the active event's destination + travel windows; season statistics |
-| `/Rideshare/Admin/Day?date=` | GET | `RidesharePolicies.Manage` | Operational day roster: every trip happening that day, any status, with its accepted riders |
+| `/Rideshare/Admin` | GET / POST | GET `RidesharePolicies.Read`; POST `RidesharePolicies.Manage` | Set the active event's destination + travel windows (POST); view them and season statistics |
+| `/Rideshare/Admin/Day?date=` | GET | `RidesharePolicies.Read` | Operational day roster: every trip happening that day, any status, with its accepted riders |
 | `/api/rideshare/board?date=&direction=` | GET | `AppAccess` | GeoJSON FeatureCollection of joinable trips, active requests, and the destination |
 
 ## Actors & Roles
@@ -243,10 +243,10 @@ a map board lets people spot each other by eye. No booking, no payment, no autom
 - **Avatar initials are whole graphemes.** A map-popup initial keeps the name's first Unicode grapheme (combining accents, joined emoji); names and initials are HTML-escaped.
 - **Expected refusals log without stacks.** Not-found, forbidden and rule refusals in the member and admin controllers log at Warning with the action (or event) and the reason or rule key, never the exception.
 - **No anonymous postings.** Every trip, request, and interest is bound to a real Humans profile (`UserId`/`FromUserId`).
-- **Members-only board.** Every route requires `AppAccess` or `RidesharePolicies.Manage`; there is no anonymous or public access.
+- **Members-only board.** Every route requires `AppAccess` or `RidesharePolicies.Read`; there is no anonymous or public access.
 - **Interest always anchors to a trip.** `RideshareInterest.TripId` is required on both the rider→offer and driver→request-pin paths; `RequestId` is an optional origin pointer only, never the anchor.
 - **Seats remaining is derived, never stored.** `SeatsRemaining = SeatsOffered − Σ(Seats of Accepted interests on the trip)`; a trip is full when this is `≤ 0`.
-- **A request's Matched state is derived, never stored.** True when an `Accepted` interest exists with `FromUserId == request.UserId` or `RequestId == request.Id`, on an `Active` trip with the request's direction that travels on its desired date; a ride accepted for the other leg or another day does not match it, and cancelling the trip un-matches the request.
+- **A request's Matched state is derived, never stored.** True when an `Accepted` interest exists with `FromUserId == request.UserId` with no `RequestId`, or `RequestId == request.Id`, on an `Active` trip with the request's direction that travels on its desired date; a ride accepted for the other leg or another day does not match it, and cancelling the trip un-matches the request. A driver's accepted answer to another rider's request does not match the driver's own request.
 - **Routing preparation stays section-internal.** `RideshareRouting` resolves member points, reuses or geocodes waypoints, and builds travel-order routes through `IRouteProvider`. `RideshareService` retains authorization, validation, lifecycle transitions and persistence.
 - **Route geometry is computed once at save and frozen.** Recomputed only on create, on an update that changes the member point, waypoints, or direction, or on an update of a trip saved without a route (a retry after a provider outage) — never at view time, and never invalidated by a later settings edit. The straight-line fallback the board draws when the stored route is absent or invalid is not a route: it is rendered at view time through the current destination, so it follows a later destination edit.
 - **Form pins match valid coordinates.** Map clicks wrap longitude into −180…180 before filling fields and placing the marker. Invalid or incomplete initial/manual coordinates remain unpinned; clearing or invalidating either field removes the pin without discarding the entered values. Valid edits restore it. Changing the place label clears the previous coordinates even when the map library or WebGL fails, so saving geocodes the new place.
@@ -261,8 +261,8 @@ a map board lets people spot each other by eye. No booking, no payment, no autom
 - **Admin settings require posted destination coordinates.** Missing latitude or longitude returns the form with field errors before any settings save or audit; an explicitly posted zero is valid. Existing coordinate bounds still apply.
 - **Offer and request forms require posted choices and counts.** Direction, vehicle type, luggage capacity/load, cost sharing, detour willingness, fuel contribution, duration, seats and party size cannot silently fall back to initial values when omitted. Invalid forms show field errors before any save; explicitly posted zero-valued choices and both true and false checkbox values remain valid.
 - **Interest posts reject malformed ids, not a cleared seats box.** An unparseable trip or request id is a 400 before any write. A blank `seats` binds to null and takes the service default (party size for a driver's offer, the seats-≥-1 refusal otherwise).
-- **ExpressInterest requires capacity and consent.** The trip must be `Active` with `SeatsRemaining ≥ seats` (seats ≥ 1); a human cannot express interest in their own trip; when `requestId` is given, the request must be `Active`, the caller must be the trip's owner (driver answering a pin), and the trip must go the request's direction and travel on its `DesiredDate`; a duplicate `Pending` interest by the same user on the same trip+request pair is rejected.
-- **Accept requires ownership, pending state, and capacity.** The actor must be the posting owner (`requestId != null ? request.UserId : trip.UserId`); the interest must be `Pending`; the trip must be `Active` with `SeatsRemaining ≥ interest.Seats`. On a pin answer the pin must still be `Active` and the trip must still go that direction on the pin's date, the same check as ExpressInterest, since either side may have edited in between.
+- **ExpressInterest requires capacity and consent.** The trip must be `Active` with `SeatsRemaining ≥ seats` (seats ≥ 1); a human cannot express interest in their own trip; when `requestId` is given, the request must be `Active` and belong to the same event as the trip (including the documented year-to-event mapping for legacy rows), the caller must be the trip's owner (driver answering a pin), and the trip must go the request's direction and travel on its `DesiredDate`; a duplicate `Pending` interest by the same user on the same trip+request pair is rejected.
+- **Accept requires ownership, pending state, and capacity.** The actor must be the posting owner (`requestId != null ? request.UserId : trip.UserId`); the interest must be `Pending`; the trip must be `Active` with `SeatsRemaining ≥ interest.Seats`. On a pin answer the pin must still be `Active`, belong to the same event as the trip, and the trip must still go that direction on the pin's date, the same check as ExpressInterest, since either side may have edited in between.
 - **Interest and posting mutations are serialized.** Interest creation, acceptance, decline, and withdrawal share a boundary through persistence with offer/request edits and cancellations. Concurrent requests cannot create duplicate pending interests, exceed capacity while reducing seats, overwrite a completed response, or restore a cancelled posting through a stale edit. Notifications run after the boundary.
 - **Interest messages are limited to 1000 characters after trimming.** Longer messages receive a localized refusal before persistence or notification; messages at the limit remain valid.
 - **Withdraw is available to the author or the posting owner**, from `Pending` or `Accepted`.
@@ -276,7 +276,7 @@ a map board lets people spot each other by eye. No booking, no payment, no autom
 - A human **cannot** express interest in their own trip.
 - A human **cannot** accept or decline an interest on a posting they do not own.
 - A human **cannot** withdraw an interest they neither authored nor own the posting for.
-- Non-admins **cannot** set the destination/travel windows, view season statistics, or view the operational day roster.
+- Non-admins **cannot** set the destination/travel windows, view season statistics, or view the operational day roster. Board can read those pages but **cannot** save settings.
 - The public board **cannot** show a `Full` or `Cancelled` trip as joinable — only the admin day view does. The board list, map and current driver’s offer selector share the snapshot’s joinable-trip filter (active, seats available, direction and travel date).
 - The declined party **cannot** see a reason for the decline — none is stored.
 
@@ -328,7 +328,9 @@ a map board lets people spot each other by eye. No booking, no payment, no autom
 
 ## Architecture
 
-**Owning services:** `RideshareService` (inner), `CachingRideshareService` (Singleton decorator)
+**Owning services:** `RideshareService` (inner), `CachingRideshareService` (Singleton decorator).
+The inner service delegates all three post-save interest notices to the internal `RideshareNotices`,
+which owns recipient-culture copy and best-effort delivery without a separate DI registration.
 **Owned tables:** `rideshare_trips`, `rideshare_requests`, `rideshare_interests`, `rideshare_settings`
 **Status:** (A) Migrated — new section, built in this shape from day one.
 

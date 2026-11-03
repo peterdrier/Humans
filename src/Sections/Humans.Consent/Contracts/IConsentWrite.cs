@@ -4,8 +4,8 @@ using Humans.Onboarding.Contracts;
 namespace Humans.Consent.Contracts;
 
 /// <summary>
-/// Audit and logging stay with the caller, which owns the workflow. The rejection state is a separate write,
-/// <c>IUserWrite.SetRejectedAsync</c>.
+/// <see cref="RecordConsentCheckAsync"/> writes its own audit row; the other writes leave audit and logging to the
+/// caller, which owns the workflow. The rejection state is a separate write, <c>IUserWrite.SetRejectedAsync</c>.
 /// </summary>
 public interface IConsentWrite : IApplicationService
 {

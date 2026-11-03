@@ -244,6 +244,23 @@ public class StripeServiceContractTests
     }
 
     [HumansTheory]
+    [InlineData("{")]
+    [InlineData("[]")]
+    [InlineData("{\"object\":\"v2.core.event\"}")]
+    [InlineData("{}")]
+    [InlineData("{\"id\":\"evt_invalid\",\"type\":\"checkout.session.completed\",\"data\":null}")]
+    [InlineData("{\"type\":\"checkout.session.completed\",\"data\":{\"object\":{\"object\":\"checkout.session\",\"id\":\"cs_test\",\"currency\":\"eur\"}}}")]
+    [InlineData("{\"id\":\"evt_invalid\",\"type\":\"checkout.session.completed\",\"data\":{\"object\":{\"object\":\"customer\",\"id\":\"cus_private\"}}}")]
+    public void ParseStoreCheckoutEvent_rejects_signed_malformed_payloads_without_throwing(string payload)
+    {
+        var (svc, log) = Build(s => s.StoreWebhookSecret = TestWebhookSecret);
+
+        svc.ParseStoreCheckoutEvent(payload, Sign(payload, TestWebhookSecret)).Should().BeNull();
+
+        log.Entries.Should().Contain(e => e.Level == LogLevel.Warning);
+    }
+
+    [HumansTheory]
     [InlineData(0)]
     [InlineData(-0.01)]
     [InlineData(-100)]

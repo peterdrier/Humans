@@ -91,7 +91,7 @@ public sealed class ShiftManagementServiceTests : ShiftsTestHarness
     [Xunit.InlineData(true, false)]
     [Xunit.InlineData(false, true)]
     [Xunit.InlineData(false, false)]
-    public async Task RotaWriteFailure_EvictsTheCommittedRota(bool create, bool failureAfterRotaSave)
+    public async Task RotaWriteFailure_EvictsCachedRotaBeforeOrAfterCommit(bool create, bool failureAfterRotaSave)
     {
         var (settings, existing) = SeedRotaScenario(RotaPeriod.Event);
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
@@ -104,19 +104,20 @@ public sealed class ShiftManagementServiceTests : ShiftsTestHarness
             CreatedAt = TestNow,
             UpdatedAt = TestNow,
         } : existing;
+        var originalName = rota.Name;
         rota.Name = "Changed rota";
         var real = new ShiftRepository(ShiftsDbFactory, ShiftsDb, Clock);
         var repo = Substitute.For<IShiftManagementRepository>();
         repo.GetEventSettingsByIdAsync(settings.Id, Arg.Any<CancellationToken>()).Returns(settings);
         var failure = new IOException("Persistence acknowledgement failed");
-        repo.SaveRotaAsync(rota, Arg.Any<EntityMutationMode>(), Arg.Any<CancellationToken>())
+        repo.SaveRotaAsync(rota, Arg.Any<EntityMutationMode>(), Arg.Any<CancellationToken>(), Arg.Any<IReadOnlyList<Guid>?>())
             .Returns(async call =>
             {
-                await real.SaveRotaAsync(rota, call.Arg<EntityMutationMode>(), call.Arg<CancellationToken>());
-                if (failureAfterRotaSave) throw failure;
+                if (!failureAfterRotaSave) throw failure;
+                await real.SaveRotaAsync(rota, call.Arg<EntityMutationMode>(), call.Arg<CancellationToken>(),
+                    call.Arg<IReadOnlyList<Guid>?>());
+                throw failure;
             });
-        repo.SetRotaTagsAsync(rota.Id, Arg.Any<IReadOnlyList<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromException(failure));
         repo.GetRotaAsync(rota.Id, RotaReadShape.None, Arg.Any<CancellationToken>()).Returns(rota);
         var views = new ShiftViewProbe();
         await views.PrimeRotaAsync(rota.Id);
@@ -133,9 +134,9 @@ public sealed class ShiftManagementServiceTests : ShiftsTestHarness
 
         (await mutate.Should().ThrowAsync<IOException>()).Which.Should().BeSameAs(failure);
         (await views.IsRotaCachedAsync(rota.Id)).Should().BeFalse();
-        (await real.GetRotaAsync(
-            rota.Id, RotaReadShape.None, Xunit.TestContext.Current.CancellationToken))!.Name
-            .Should().Be("Changed rota");
+        var saved = await real.GetRotaAsync(rota.Id, RotaReadShape.None, Xunit.TestContext.Current.CancellationToken);
+        if (create && !failureAfterRotaSave) saved.Should().BeNull();
+        else saved!.Name.Should().Be(failureAfterRotaSave ? "Changed rota" : originalName);
     }
 
     [HumansTheory]
@@ -603,28 +604,27 @@ public sealed class ShiftManagementServiceTests : ShiftsTestHarness
     }
 
     [HumansFact]
-    public async Task GetBrowseShifts_IncludeSignups_ConfirmedBeforePending()
+    public async Task BrowseDisplayItem_OrdersConfirmedFirstThenNames()
     {
         var (es, rota) = SeedRotaScenario(RotaPeriod.Event);
         var shift = SeedShift(rota, dayOffset: 1);
         var confirmedUser = SeedUser("Zara");
         var pendingUser = SeedUser("Alice");
 
-        SeedSignup(shift, confirmedUser, SignupStatus.Confirmed);
+        var otherConfirmed = SeedUser("aaron");
         SeedSignup(shift, pendingUser, SignupStatus.Pending);
+        SeedSignup(shift, confirmedUser, SignupStatus.Confirmed);
+        SeedSignup(shift, otherConfirmed, SignupStatus.Confirmed);
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
 
         var results = await _service.GetBrowseShiftsAsync(new ShiftBrowseQuery(
             es.Id,
             Flags: ShiftBrowseQueryFlags.IncludeSignups));
 
-        // Confirmed (Zara) first, then Pending (Alice), regardless of name order.
-        var signups = results[0].Signups;
-        signups.Should().HaveCount(2);
-        signups[0].DisplayName.Should().Be("Zara");
-        signups[0].Status.Should().Be(SignupStatus.Confirmed);
-        signups[1].DisplayName.Should().Be("Alice");
-        signups[1].Status.Should().Be(SignupStatus.Pending);
+        var signups = ShiftBrowseMapper.MapToDisplayItem(results[0]).Signups;
+        signups.Select(s => s.DisplayName).Should().Equal("aaron", "Zara", "Alice");
+        signups.Select(s => s.Status).Should().Equal(
+            SignupStatus.Confirmed, SignupStatus.Confirmed, SignupStatus.Pending);
     }
 
     [HumansFact]
@@ -875,6 +875,25 @@ public sealed class ShiftManagementServiceTests : ShiftsTestHarness
             UpdatedAt = TestNow
         };
         ShiftsDb.ShiftSignups.Add(signup);
+    }
+
+    [HumansFact]
+    public async Task SearchAsync_LimitKeepsTheHighestScoringMatch()
+    {
+        var (settings, _) = SeedRotaScenario(RotaPeriod.Event);
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
+        var exact = new Rota { Id = Guid.NewGuid(), Name = "Kitchen" };
+        var candidates = new[] { new Rota { Id = Guid.NewGuid(), Name = "A Kitchen" }, exact };
+        var repo = Substitute.For<IShiftManagementRepository>();
+        repo.SearchVolunteerVisibleRotasAsync("Kitchen", settings.Id, Arg.Any<CancellationToken>())
+            .Returns(candidates);
+        var service = new ShiftManagementService(repo, AuditLog, AdminAuthorization,
+            new ServiceLocatorBuilder().Build(), Cache, new ShiftViewProbe().Cache, NewCalendarResolver(),
+            Clock, Microsoft.Extensions.Logging.Abstractions.NullLogger<ShiftManagementService>.Instance);
+
+        var results = await service.SearchAsync("Kitchen", 1, Xunit.TestContext.Current.CancellationToken);
+
+        results.Should().ContainSingle().Which.RotaId.Should().Be(exact.Id);
     }
 
     [HumansFact]

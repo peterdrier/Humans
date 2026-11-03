@@ -54,14 +54,14 @@ internal interface ICampManagement : ICampService, IApplicationService, IEarlyEn
     Task<CampUpdateResult> UpdateCampAsync(CampUpdateInput input, Guid actorUserId, CancellationToken cancellationToken = default);
     Task<CampAdminMutationResult> DeleteCampAsync(Guid campId, Guid actorUserId, CancellationToken cancellationToken = default);
 
-    Task<CampUpdateResult> AddHistoricalNameAsync(Guid campId, string name, CancellationToken cancellationToken = default);
+    Task<CampUpdateResult> AddHistoricalNameAsync(Guid campId, string name, Guid actorUserId, CancellationToken cancellationToken = default);
     /// <summary>Returns a refusal if the name does not belong to <paramref name="scopedCampId"/> — the id arrives from a lead-facing form.</summary>
-    Task<CampUpdateResult> RemoveHistoricalNameAsync(Guid scopedCampId, Guid historicalNameId, CancellationToken cancellationToken = default);
+    Task<CampUpdateResult> RemoveHistoricalNameAsync(Guid scopedCampId, Guid historicalNameId, Guid actorUserId, CancellationToken cancellationToken = default);
 
     Task<CampImageUploadResult> UploadImageAsync(Guid campId, Stream fileStream, string fileName, string contentType, long length, Guid actorUserId, CancellationToken cancellationToken = default);
     /// <summary>Returns a refusal if the image does not belong to <paramref name="scopedCampId"/> — the id arrives from a lead-facing form.</summary>
     Task<CampUpdateResult> DeleteImageAsync(Guid scopedCampId, Guid imageId, Guid actorUserId, CancellationToken cancellationToken = default);
-    Task ReorderImagesAsync(Guid campId, List<Guid> imageIdsInOrder, CancellationToken cancellationToken = default);
+    Task ReorderImagesAsync(Guid campId, List<Guid> imageIdsInOrder, Guid actorUserId, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Every non-deleted Settings event, latest gate opening first, with whether camp registration is open for it.
@@ -82,9 +82,6 @@ internal interface ICampManagement : ICampService, IApplicationService, IEarlyEn
     /// </summary>
     Task<int> AssignSeasonEventIdsAsync(CancellationToken cancellationToken = default);
     Task SetNameLockDateAsync(Guid eventSettingsId, LocalDate lockDate, Guid actorUserId, CancellationToken cancellationToken = default);
-
-    /// <summary>Returns a refusal if the season does not belong to <paramref name="scopedCampId"/> — the id arrives from a lead-facing form.</summary>
-    Task<CampUpdateResult> ChangeSeasonNameAsync(Guid scopedCampId, Guid seasonId, string newName, Guid actorUserId, CancellationToken cancellationToken = default);
 
     /// <summary>Idempotent — returns existing row's id with an <c>Already*</c> outcome if one exists.</summary>
     Task<CampMemberRequestResult> RequestCampMembershipAsync(

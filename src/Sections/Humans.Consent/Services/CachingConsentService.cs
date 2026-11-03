@@ -17,6 +17,8 @@ internal sealed class CachingConsentService(
 {
     public const string InnerServiceKey = "consent-inner";
 
+    private readonly ILogger<CachingConsentService> _logger = logger;
+
     public async Task<IReadOnlySet<Guid>> GetConsentedVersionIdsAsync(
         Guid userId, CancellationToken ct = default)
     {
@@ -137,9 +139,19 @@ internal sealed class CachingConsentService(
             // Evict every alias first so a failed reload can't leave the rest serving the pre-submit set.
             foreach (var id in affectedIds)
                 Invalidate(id);
-            // The consent write succeeded; request cancellation must not interrupt its refresh.
-            foreach (var id in affectedIds)
-                await ReplaceAsync(id, CancellationToken.None).ConfigureAwait(false);
+            // The consent write succeeded; request cancellation must not interrupt its refresh, and a failed reload
+            // must not report the recorded signature as failed: the evicted entries reload on their next read.
+            try
+            {
+                foreach (var id in affectedIds)
+                    await ReplaceAsync(id, CancellationToken.None).ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                foreach (var id in affectedIds)
+                    Invalidate(id);
+                _logger.LogError(ex, "Consent recorded for user {UserId} but the cache refresh failed", userId);
+            }
         }
 
         return result;

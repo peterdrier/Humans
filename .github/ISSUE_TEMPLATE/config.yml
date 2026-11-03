@@ -5,7 +5,7 @@ contact_links:
     about: Before filing — check if there's already a project rule covering this.
   - name: Architecture story
     url: https://github.com/peterdrier/Humans/blob/main/docs/architecture/design-rules.md
-    about: The constitution — layers, ownership, caching, auth patterns.
+    about: The regulations behind Peter's hard rules — layers, ownership, caching, auth patterns.
   - name: Section invariants
-    url: https://github.com/peterdrier/Humans/tree/main/docs/sections
-    about: Per-section concepts, actors, invariants, and triggers.
+    url: https://github.com/peterdrier/Humans/tree/main/src/Sections
+    about: Per-section concepts, actors, invariants, and triggers — `Humans.<Section>/Docs/<Section>.md`.

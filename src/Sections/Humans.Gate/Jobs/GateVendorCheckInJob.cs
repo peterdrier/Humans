@@ -16,21 +16,13 @@ namespace Humans.Gate.Jobs;
 [AutomaticRetry(Attempts = 0)]
 public sealed class GateVendorCheckInJob(
     ITicketVendorMirror vendor,
-    IClock clock,
     IConfiguration configuration,
     ILogger<GateVendorCheckInJob> logger)
 {
-    // Hangfire-invoked: the signature is frozen once shipped, so the backfill variant is a separate method.
-    public Task ExecuteAsync(string vendorTicketId, CancellationToken cancellationToken = default) =>
-        ExecuteCoreAsync(vendorTicketId, clock.GetCurrentInstant(), cancellationToken);
-
-    // Keeps the original admit time (unix seconds, a primitive that serializes stably) instead of the admin's click
-    // time. Hangfire-invoked: signature frozen.
-    public Task ExecuteBackfillAsync(string vendorTicketId, long admittedAtUnixSeconds, CancellationToken cancellationToken = default) =>
-        ExecuteCoreAsync(vendorTicketId, Instant.FromUnixTimeSeconds(admittedAtUnixSeconds), cancellationToken);
-
-    private async Task ExecuteCoreAsync(string vendorTicketId, Instant occurredAt, CancellationToken cancellationToken)
+    public async Task ExecuteAsync(
+        string vendorTicketId, long admittedAtUnixSeconds, CancellationToken cancellationToken = default)
     {
+        var occurredAt = Instant.FromUnixTimeSeconds(admittedAtUnixSeconds);
         if (string.IsNullOrWhiteSpace(vendorTicketId))
             return;
 

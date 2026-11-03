@@ -324,17 +324,17 @@ public sealed class WorkgroupsAdminControllerTests : WorkgroupsTestHarness
     }
 
     [HumansFact]
-    public async Task RegisterExisting_Get_OffersTheLiveChartForLinking()
+    public async Task RegisterExisting_Get_OffersTheMirroredChartForLinking()
     {
-        Holded.ListExpenseAccountsAsync(Arg.Any<CancellationToken>())
-            .Returns(_ => Task.FromResult<IReadOnlyList<HoldedExpenseAccountDto>>(
-                [new HoldedExpenseAccountDto { Id = "a1", AccountNum = 62900007, Name = "Sound (legacy)" }]));
+        Holded.GetChartAsync(Arg.Any<CancellationToken>())
+            .Returns(_ => Task.FromResult<IReadOnlyList<HoldedChartAccountInfo>>(
+                [new HoldedChartAccountInfo(62900007, "Sound (legacy)", null, null, false, 0m)]));
         var sut = MakeAdminController(nameof(WorkgroupsAdminController.RegisterExisting));
 
         var result = await sut.RegisterExisting(Ct);
 
         result.Should().BeOfType<ViewResult>().Subject.Model.Should().BeOfType<RegisterExistingViewModel>()
-            .Subject.ExpenseAccounts.Should().ContainSingle().Which.AccountNum.Should().Be(62900007);
+            .Subject.ExpenseAccounts.Should().ContainSingle().Which.Number.Should().Be(62900007);
     }
 
     [HumansFact]

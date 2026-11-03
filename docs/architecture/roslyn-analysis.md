@@ -306,8 +306,10 @@ have the supporting machinery. Each notes the missing piece.
 - **`No new `[Authorize]`-less POST/PUT/DELETE actions in controllers`**
   (`code-review-rules.md` "Authorization Gaps, 8+ historical fixes"). Each
   method is a `MethodDeclarationSyntax` decorated with
-  `[HttpPost]`/`[HttpPut]`/`[HttpDelete]`; the rule is "must also carry
-  `[Authorize]` or have it inherited from the class". **Needs:** baseline
+  `[HttpPost]`/`[HttpPut]`/`[HttpDelete]`. Every endpoint is now authenticated
+  by default (fallback policy; `[Authorize]` on `HumansControllerBase` and
+  `ApiControllerBase`), so "carries `[Authorize]`" always holds; the live form
+  is "carries a policy or makes a resource-based check". **Needs:** baseline
   framework — there are existing controller actions that legitimately use
   alternate auth attributes (`[AllowAnonymous]`, custom policies, the
   attribute on a base class). Without a baseline-aware analyzer the

@@ -191,7 +191,7 @@
                     </tr>
                 </thead>
                 <tbody>
-                    @foreach (var row in report.Refusals7d)
+                    @foreach (var row in report.Refusals7d.OrderByDescending(bucket => bucket.Count))
                     {
                         <tr>
                             <td><code>@row.Reason</code></td>

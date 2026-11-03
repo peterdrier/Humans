@@ -86,8 +86,8 @@ internal sealed class CachingLegalDocumentSyncService(
         WithInnerAsync(inner => inner.GetActiveDocumentsAsync(cancellationToken));
 
     public Task<IReadOnlyList<LegalDocument>> SyncAllDocumentsAsync(
-        CancellationToken cancellationToken = default) =>
-        WithInnerAsync(inner => inner.SyncAllDocumentsAsync(cancellationToken));
+        CancellationToken cancellationToken = default, ICollection<Exception>? failures = null) =>
+        WithInnerAsync(inner => inner.SyncAllDocumentsAsync(cancellationToken, failures));
 
     public Task<string?> SyncDocumentAsync(
         Guid documentId, CancellationToken cancellationToken = default) =>
@@ -118,11 +118,9 @@ internal sealed class CachingLegalDocumentSyncService(
 
         foreach (var info in docs)
         {
-            var cacheInfo = info with { Versions = info.Versions.OrderBy(v => v.EffectiveFrom).ToList() };
-
-            Set(cacheInfo.Id, cacheInfo);
-            foreach (var v in cacheInfo.Versions)
-                versionIndex[v.Id] = cacheInfo.Id;
+            Set(info.Id, info);
+            foreach (var v in info.Versions)
+                versionIndex[v.Id] = info.Id;
         }
 
         _versionToDocument = versionIndex;
@@ -131,9 +129,7 @@ internal sealed class CachingLegalDocumentSyncService(
     private static RequiredDocumentVersionSnapshot? ToLatestRequiredVersionSnapshot(
         ActiveRequiredLegalDocumentSnapshot document, Instant now)
     {
-        var version = document.Versions
-            .Where(v => v.EffectiveFrom <= now)
-            .MaxBy(v => v.EffectiveFrom);
+        var version = document.CurrentVersionAt(now);
         return version is null ? null : new(
             version.Id,
             document.Id,

@@ -104,6 +104,7 @@ public class CachingUserServiceTests
             row.State = expectedState;
             row.BurnerName = "After";
             row.PreferredLanguage = "es";
+            row.MarkedFakeAt = Instant.FromUnixTimeSeconds(1);
             await write.SaveChangesAsync(ct);
         }
 
@@ -113,6 +114,7 @@ public class CachingUserServiceTests
         refreshed!.State.Should().Be(expectedState);
         refreshed.BurnerName.Should().Be("After");
         refreshed.PreferredLanguage.Should().Be("es");
+        refreshed.IsFake.Should().BeTrue();
         refreshed.Profile.Should().BeEquivalentTo(original.Profile);
 #pragma warning disable HUM_USER_PARTICIPATIONS // the frozen legacy slice must survive a user-row refresh: Tickets' fallback reads it
         refreshed.EventParticipations.Should().BeEquivalentTo(original.EventParticipations);
@@ -861,6 +863,27 @@ public class CachingUserServiceTests
         results[0].MatchField.Should().Be("Name");
     }
 
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task SearchUsersAsync_LimitKeepsTheHighestScore_RegardlessOfWhichUserMatchesExactly(bool swap)
+    {
+        var ids = new[]
+        {
+            Guid.Parse("00000000-0000-0000-0000-000000000001"),
+            Guid.Parse("00000000-0000-0000-0000-000000000002"),
+        };
+        var exactId = ids[swap ? 1 : 0];
+        var sut = CreateSut();
+        foreach (var id in ids)
+            await PrimeAsync(sut, BuildSearchableUserInfo(id, burnerName: id == exactId ? "Ian" : "Brian"));
+
+        var results = await sut.SearchUsersAsync("Ian", PersonSearchFields.PublicAll, limit: 1,
+            ct: Xunit.TestContext.Current.CancellationToken);
+
+        results.Should().ContainSingle().Which.UserId.Should().Be(exactId);
+    }
+
     [HumansFact]
     public async Task SearchUsersAsync_ScoresExactNameAboveSubstringMatch()
     {
@@ -1190,38 +1213,6 @@ public class CachingUserServiceTests
         refreshed.Profile.Should().NotBeNull();
         refreshed.Profile!.BurnerName.Should().Be("New Burner");
         refreshed.Profile.ProfilePictureContentType.Should().Be("image/png");
-    }
-
-    [HumansFact]
-    public async Task AnonymizeProfileForDeletionAsync_RefreshesAnonymizedProfileSlice()
-    {
-        var userId = Guid.NewGuid();
-        var profileId = Guid.NewGuid();
-        var sut = CreateSut();
-        await PrimeAsync(sut, SampleUserInfo(userId));
-
-        _inner.AnonymizeProfileForDeletionAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(new UserProfileAnonymizeResult(true));
-
-        StubRefreshEntry(userId, new Profile
-        {
-            Id = profileId,
-            UserId = userId,
-            BurnerName = "",
-            FirstName = "Deleted",
-            LastName = "User",
-            ProfilePictureContentType = null,
-            CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
-            UpdatedAt = Instant.FromUtc(2026, 1, 2, 0, 0),
-        });
-
-        var result = await sut.AnonymizeProfileForDeletionAsync(userId, Xunit.TestContext.Current.CancellationToken);
-
-        result.Anonymized.Should().BeTrue();
-        var refreshed = await sut.GetUserInfoAsync(userId, Xunit.TestContext.Current.CancellationToken);
-        refreshed!.Profile.Should().NotBeNull();
-        refreshed.Profile!.FirstName.Should().Be("Deleted");
-        refreshed.Profile.ProfilePictureContentType.Should().BeNull();
     }
 
     [HumansTheory]

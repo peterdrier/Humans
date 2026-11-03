@@ -31,16 +31,16 @@ public class OnboardingPageRenderTests(HumansTestDatabase database) : Integratio
         var ct = Xunit.TestContext.Current.CancellationToken;
         await Factory.SignInAsFullyOnboardedAsync(Client, DevPersona.Admin);
 
-        var response = await Client.GetAsync("/OnboardingReview", ct);
+        var response = await Client.GetAsync("/Consent/ReviewQueue", ct);
         response.StatusCode.Should().Be(HttpStatusCode.OK);
 
         var html = await response.Content.ReadAsStringAsync(ct);
-        AssertRenderedCleanly(html, "GET /OnboardingReview");
+        AssertRenderedCleanly(html, "GET /Consent/ReviewQueue");
 
-        html.Should().Contain("Onboarding Review Queue");           // Onboarding_ReviewTitle
-        html.Should().Contain("No humans are waiting for review.");  // Onboarding_ReviewNoPending
+        html.Should().Contain("Onboarding Review Queue");           // Consent_Queue_Title
+        html.Should().Contain("No humans are waiting for review.");  // Consent_Queue_NoPending
         // The modal id only the component emits; the bare section key would also match the page title.
-        html.Should().Contain("sectionHelp-OnboardingReview",
+        html.Should().Contain("sectionHelp-ConsentReview",
             "<vc:access-matrix> must bind through @addTagHelper *, Humans.Base");
     }
 
@@ -52,14 +52,14 @@ public class OnboardingPageRenderTests(HumansTestDatabase database) : Integratio
 
         // The detail route doesn't require the user to be queued, so the admin's own page covers <vc:human>, the
         // ProfileCard invocation and the whole label set.
-        var response = await Client.GetAsync($"/OnboardingReview/{adminId}", ct);
+        var response = await Client.GetAsync($"/Consent/ReviewQueue/{adminId}", ct);
         response.StatusCode.Should().Be(HttpStatusCode.OK);
 
         var html = await response.Content.ReadAsStringAsync(ct);
-        AssertRenderedCleanly(html, "GET /OnboardingReview/{id}");
+        AssertRenderedCleanly(html, "GET /Consent/ReviewQueue/{id}");
 
-        html.Should().Contain("Legal Name");        // Onboarding_ReviewLegalName
-        html.Should().Contain("Onboarding Review Queue");  // Onboarding_ReviewTitle, on the breadcrumb
+        html.Should().Contain("Legal Name");        // Consent_Queue_LegalName
+        html.Should().Contain("Onboarding Review Queue");  // Consent_Queue_Title, on the breadcrumb
     }
 
     [HumansFact(Timeout = 120000)]
@@ -173,7 +173,7 @@ public class OnboardingPageRenderTests(HumansTestDatabase database) : Integratio
         var ct = Xunit.TestContext.Current.CancellationToken;
         await Factory.SignInAsFullyOnboardedAsync(Client, DevPersona.Volunteer);
 
-        var response = await Client.GetAsync("/OnboardingReview", ct);
+        var response = await Client.GetAsync("/Consent/ReviewQueue", ct);
         response.StatusCode.Should().Be(HttpStatusCode.Found);
         response.Headers.Location?.AbsolutePath.Should().Be("/Account/AccessDenied",
             because: "the queue must be denied, not sent to sign in");

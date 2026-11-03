@@ -27,19 +27,22 @@ internal sealed class AdminLegalDocumentsController(
         {
             FilterTeamId = teamId,
             Teams = await GetTeamSelectItems(HttpContext.RequestAborted),
-            Documents = documents.Select(d => new LegalDocumentListItemViewModel
-            {
-                Id = d.Id,
-                Name = d.Name,
-                TeamName = d.TeamName,
-                TeamId = d.TeamId,
-                IsRequired = d.IsRequired,
-                IsActive = d.IsActive,
-                GracePeriodDays = d.GracePeriodDays,
-                CurrentVersion = d.CurrentVersion,
-                LastSyncedAt = d.LastSyncedAt?.ToDateTimeUtc(),
-                VersionCount = d.VersionCount
-            }).ToList()
+            Documents = documents
+                .OrderBy(d => d.TeamName, StringComparer.Ordinal)
+                .ThenBy(d => d.Name, StringComparer.Ordinal)
+                .Select(d => new LegalDocumentListItemViewModel
+                {
+                    Id = d.Id,
+                    Name = d.Name,
+                    TeamName = d.TeamName,
+                    TeamId = d.TeamId,
+                    IsRequired = d.IsRequired,
+                    IsActive = d.IsActive,
+                    GracePeriodDays = d.GracePeriodDays,
+                    CurrentVersion = d.CurrentVersion,
+                    LastSyncedAt = d.LastSyncedAt?.ToDateTimeUtc(),
+                    VersionCount = d.VersionCount
+                }).ToList()
         };
 
         return View("~/Views/AdminLegalDocuments/LegalDocuments.cshtml", viewModel);

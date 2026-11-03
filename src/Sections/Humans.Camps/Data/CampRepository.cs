@@ -537,6 +537,15 @@ internal sealed partial class CampRepository : ICampRepository
         Guid campSeasonId, Guid userId, Instant now, Guid confirmedByUserId, CancellationToken ct = default)
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);
+        var result = await PrepareActiveMembershipAsync(ctx, campSeasonId, userId, now, confirmedByUserId, ct);
+        if (result.Outcome != CampMemberInsertOutcome.AlreadyActive)
+            await ctx.SaveChangesAsync(ct);
+        return result;
+    }
+
+    private static async Task<CampMemberInsertResult> PrepareActiveMembershipAsync(
+        CampsDbContext ctx, Guid campSeasonId, Guid userId, Instant now, Guid confirmedByUserId, CancellationToken ct)
+    {
         // Only consider non-Removed rows — the partial unique index permits
         // multiple Removed rows alongside one non-Removed row per (season, user).
         var existing = await ctx.CampMembers.FirstOrDefaultAsync(
@@ -553,7 +562,6 @@ internal sealed partial class CampRepository : ICampRepository
             existing.Status = CampMemberStatus.Active;
             existing.ConfirmedAt = now;
             existing.ConfirmedByUserId = confirmedByUserId;
-            await ctx.SaveChangesAsync(ct);
             return new CampMemberInsertResult(existing.Id, CampMemberInsertOutcome.Created);
         }
 
@@ -568,7 +576,6 @@ internal sealed partial class CampRepository : ICampRepository
             ConfirmedByUserId = confirmedByUserId,
         };
         ctx.CampMembers.Add(newMember);
-        await ctx.SaveChangesAsync(ct);
         return new CampMemberInsertResult(newMember.Id, CampMemberInsertOutcome.Created);
     }
 
@@ -611,7 +618,7 @@ internal sealed partial class CampRepository : ICampRepository
             .ToListAsync(ct);
     }
 
-    public async Task SaveMemberAsync(CampMember member, CancellationToken ct = default)
+    public async Task<int> SaveMemberAsync(CampMember member, CancellationToken ct = default, bool removeRoleAssignments = false)
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);
         ctx.CampMembers.Attach(member);
@@ -620,7 +627,12 @@ internal sealed partial class CampRepository : ICampRepository
         ctx.Entry(member).Property(m => m.CampSeasonId).IsModified = false;
         ctx.Entry(member).Property(m => m.UserId).IsModified = false;
         ctx.Entry(member).Property(m => m.RequestedAt).IsModified = false;
+        var assignments = removeRoleAssignments
+            ? await ctx.CampRoleAssignments.Where(a => a.CampMemberId == member.Id).ToListAsync(ct)
+            : [];
+        ctx.CampRoleAssignments.RemoveRange(assignments);
         await ctx.SaveChangesAsync(ct);
+        return assignments.Count;
     }
 
     public async Task<IReadOnlyList<Guid>> GetPendingRequesterUserIdsForSeasonAsync(

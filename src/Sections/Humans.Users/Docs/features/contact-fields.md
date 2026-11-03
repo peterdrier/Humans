@@ -46,7 +46,7 @@ Members need to share contact information (Signal, Telegram, WhatsApp, Discord, 
   - Coordinators + Board (coordinators and board)
   - My teams (members sharing a team with me)
   - All active members
-- Default visibility is "All active members"
+- There is no default: the member must choose a level for each field, and a save without one is rejected
 
 ### US-10.3: View Contact Fields on Profile
 **As a** member viewing another member's profile

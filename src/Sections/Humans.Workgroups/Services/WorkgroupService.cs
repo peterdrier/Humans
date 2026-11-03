@@ -21,13 +21,12 @@ internal sealed partial class WorkgroupService(
     IWorkgroupRepository repository,
     IUserService users,
     ISurveyAnalysisRead surveys,
-    IUserEmailService userEmails,
     IRoleAssignmentService roles,
     ISettingsService settings,
     IGoogleSyncService googleSync,
     IGoogleSyncWrite googleSyncWrite,
     IHoldedFinanceWrite finance,
-    IHoldedClient holded,
+    IHoldedService holded,
     INotificationService notifications,
     IEmailService email,
     WorkgroupsEmails emailFactory,
@@ -195,10 +194,10 @@ internal sealed partial class WorkgroupService(
         var now = clock.GetCurrentInstant();
         member.IsPending = null;
         member.JoinedAt = now;
-        if (isNew) await repository.AddMemberAsync(member, ct);
-        else await repository.UpdateMembersAsync([member], ct);
+        var entries = new[] { SystemEntry(workgroup.Id, WorkgroupLogKind.MemberJoined, now, name) };
+        if (isNew) await repository.AddMemberAsync(member, ct, entries);
+        else await repository.UpdateMembersAsync([member], ct, entries);
         ct = CancellationToken.None;
-        await AddSystemEntryAsync(workgroup, WorkgroupLogKind.MemberJoined, now, name, ct);
         // Related entity is the person admitted: their GDPR export selects audit rows by that column.
         await auditLog.LogAsync(auditAction, AuditEntityTypes.Workgroup, workgroup.Id,
             $"{name} admitted to the group", actorUserId,
@@ -260,13 +259,16 @@ internal sealed partial class WorkgroupService(
 
         var leavingName = await NameOfAsync(userId, ct);
         var promotedName = promoted is null ? null : await NameOfAsync(promoted.UserId, ct);
-        await repository.UpdateMembersAsync(changed, ct);
+        var entries = new List<WorkgroupLogEntry>
+        {
+            SystemEntry(workgroup.Id, WorkgroupLogKind.MemberLeft, now, leavingName)
+        };
+        if (promoted is not null)
+            entries.Add(SystemEntry(workgroup.Id, WorkgroupLogKind.CoordinatorChanged, now, promotedName));
+        await repository.UpdateMembersAsync(changed, ct, entries);
         ct = CancellationToken.None;
-        await AddSystemEntryAsync(workgroup, WorkgroupLogKind.MemberLeft, now, leavingName, ct);
         if (promoted is not null)
         {
-            await AddSystemEntryAsync(workgroup, WorkgroupLogKind.CoordinatorChanged, now,
-                promotedName, ct);
             await AuditAsync(WorkgroupsAuditActions.WorkgroupCoordinatorsChanged, workgroup,
                 $"Coordination handed to {promotedName} when the last coordinator left",
                 userId);
@@ -330,16 +332,11 @@ internal sealed partial class WorkgroupService(
         ApplyFields(workgroup, edit.Name, edit.Purpose, edit.Deliverable, edit.DeliverableKind,
             edit.Audience, edit.TargetDate, edit.DiscordChannelUrl, edit.IsSensitive);
         workgroup.UpdatedAt = now;
-        await repository.UpdateWorkgroupAsync(workgroup, ct);
-        ct = CancellationToken.None;
-
-        if (scopeChanged)
-        {
-            await AddSystemEntryAsync(workgroup, WorkgroupLogKind.ScopeChanged, now,
+        await repository.UpdateWorkgroupAsync(workgroup, ct, scopeChanged
+            ? [SystemEntry(workgroup.Id, WorkgroupLogKind.ScopeChanged, now,
                 $"By {workgroup.TargetDate?.ToInvariantLongDate() ?? "no date yet"} we will deliver "
-                    + $"{workgroup.Deliverable} to the {workgroup.Audience}.",
-                ct, authorUserId: actorUserId);
-        }
+                    + $"{workgroup.Deliverable} to the {workgroup.Audience}.", authorUserId: actorUserId)]
+            : null);
         return new();
     }
 
@@ -383,10 +380,10 @@ internal sealed partial class WorkgroupService(
             return new();
 
         var names = await NamesOfAsync(wanted, ct);
-        await repository.UpdateMembersAsync(changed, ct);
+        await repository.UpdateMembersAsync(changed, ct,
+            [SystemEntry(workgroup.Id, WorkgroupLogKind.CoordinatorChanged, now,
+                string.Join(", ", names), authorUserId: asAdmin ? null : actorUserId)]);
         ct = CancellationToken.None;
-        await AddSystemEntryAsync(workgroup, WorkgroupLogKind.CoordinatorChanged, now,
-            string.Join(", ", names), ct, authorUserId: asAdmin ? null : actorUserId);
         await AuditAsync(WorkgroupsAuditActions.WorkgroupCoordinatorsChanged, workgroup,
             $"Coordinators set to {string.Join(", ", names)}", actorUserId);
 
@@ -478,6 +475,8 @@ internal sealed partial class WorkgroupService(
             return new(Refusal: new(WorkgroupErrorKeys.BodyRequired));
         if (save.Body.Trim().Length > 16000)
             return new(Refusal: new(WorkgroupErrorKeys.TextTooLong, 16000));
+        var meetingLink = await ResolveMeetingLinkAsync(workgroup.Id, save, ct);
+        if (meetingLink.Refusal is { } meetingRefusal) return new(Refusal: meetingRefusal);
 
         var now = clock.GetCurrentInstant();
         var entry = new WorkgroupLogEntry
@@ -488,6 +487,7 @@ internal sealed partial class WorkgroupService(
             OccurredOn = save.OccurredOn,
             Title = Trimmed(save.Title),
             Body = save.Body.Trim(),
+            MeetingId = meetingLink.Value,
             AuthorUserId = actorUserId,
             CreatedAt = now,
             UpdatedAt = now
@@ -512,8 +512,11 @@ internal sealed partial class WorkgroupService(
             return new(Refusal: new(WorkgroupErrorKeys.BodyRequired));
         if (save.Body.Trim().Length > 16000)
             return new(Refusal: new(WorkgroupErrorKeys.TextTooLong, 16000));
+        var meetingLink = await ResolveMeetingLinkAsync(workgroup.Id, save, ct, entry.MeetingId);
+        if (meetingLink.Refusal is { } meetingRefusal) return new(Refusal: meetingRefusal);
 
         entry.Kind = save.Kind;
+        entry.MeetingId = meetingLink.Value;
         entry.OccurredOn = save.OccurredOn;
         entry.Title = Trimmed(save.Title);
         entry.Body = save.Body.Trim();
@@ -627,21 +630,24 @@ internal sealed partial class WorkgroupService(
             workgroup.HoldedAccountId = account.AccountId;
         }
         workgroup.UpdatedAt = now;
-        await repository.UpdateWorkgroupAsync(workgroup, ct);
-        ct = CancellationToken.None;
-
-        await AddSystemEntryAsync(workgroup, WorkgroupLogKind.BudgetSet, now, BudgetLogBody(workgroup), ct,
-            authorUserId: actorUserId);
+        await repository.UpdateWorkgroupAsync(workgroup, ct,
+            [SystemEntry(workgroup.Id, WorkgroupLogKind.BudgetSet, now, BudgetLogBody(workgroup),
+                authorUserId: actorUserId)]);
         await AuditAsync(WorkgroupsAuditActions.WorkgroupBudgetSet, workgroup, BudgetAuditSummary(workgroup), actorUserId);
         return new(account);
     }
 
-    public async Task<IReadOnlyList<HoldedExpenseAccountDto>> ListExpenseAccountsAsync(CancellationToken ct = default)
+    public async Task<IReadOnlyList<HoldedChartAccountInfo>> ListExpenseAccountsAsync(CancellationToken ct = default)
     {
-        try { return await holded.ListExpenseAccountsAsync(ct); }
+        try
+        {
+            return (await holded.GetChartAsync(ct))
+                .Where(a => a.Number is >= 60000000 and <= 69999999 && !a.Archived)
+                .ToList();
+        }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            logger.LogWarning(ex, "Holded chart unavailable; the link-existing picker is empty");
+            logger.LogWarning(ex, "Holded mirror unavailable; the link-existing picker is empty");
             return [];
         }
     }

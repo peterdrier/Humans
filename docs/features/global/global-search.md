@@ -76,7 +76,7 @@ The feature matches **each entity's own public fields only** — no cross-modal 
 **Acceptance Criteria:**
 - **Humans** match via `IUserService.SearchUsersAsync` with `PersonSearchFields.PublicAll` (`Name | Bio`, per `memory/architecture/person-search.md`) — the resolved display name plus the `Bio` bucket: bio, city, contribution-interests, CV, pronouns, `AllActiveProfiles`-visible ContactFields, and publicly-exposed emails. The bit-flag's existing fields are unchanged — humans inherit the same scope as `/Profile/Search` for non-admin viewers. Emergency-contact data and admin-only fields are never searchable.
 - **Teams** match on `Team.Name` only.
-- **Camps** match on the public-year `CampSeason.Name` only.
+- **Camps** match on the active event's `CampSeason.Name` only.
 - **Shifts** (rotas) match on `Rota.Name` only.
 - Teams, Camps, Shifts, and Humans additionally match by pasting the entity's own id (a `Guid.TryParse` fast-path scored as an exact match). For humans the pasted UserId resolves against the cached snapshot (`CachingUserService`) and is reported as a `User ID` match; rejected profiles are excluded, and `ExactName` queries skip id resolution so a GUID-shaped burner name matches by name, never by id collision.
 - **Events** match on `Event.Title` or `Event.Description` and are filtered to `Status = Approved` only, via `IEventService.SearchAsync` — event copy is short and free-form so description text is often the load-bearing name signal users remember. A Title match scores via the standard exact/prefix/contains rubric; a Description-only match uses the same three tiers halved (50/40/30) so it's still surfaced but always ranks below every Title match, and orders sensibly against other description-only hits instead of tying (nobodies-collective/Humans#1062).
@@ -91,7 +91,7 @@ The feature matches **each entity's own public fields only** — no cross-modal 
 
 **Acceptance Criteria — these govern *text* queries. GUID queries are a sanctioned exception; see US-GS.5.**
 - Hidden teams (`Team.IsHidden = true`) are excluded for everyone.
-- Camps are filtered to the public-status set (`CampSeasonStatus.Active` or `Full`) for the public year — same gate as the public camp directory.
+- Camps are filtered to the public-status set (`CampSeasonStatus.Active` or `Full`) for the active event — same gate as the public camp directory.
 - Rotas are filtered to `IsVisibleToVolunteers = true` for everyone.
 - Events are filtered to `Status = Approved`; submissions in `Draft`, `Pending`, `Rejected`, `ResubmitRequested`, or `Withdrawn` are never returned, matching the public `/Events/Browse` surface.
 - Admin-only profile fields (verified emails, non-public ContactFields) are never returned through `/Search`, regardless of role. Admins use the existing per-section admin pages (`/Teams` admin, `/Camps` admin, `/Users/Admin`) for privileged views.

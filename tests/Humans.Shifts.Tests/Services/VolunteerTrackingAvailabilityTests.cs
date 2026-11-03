@@ -278,6 +278,27 @@ public sealed class VolunteerTrackingAvailabilityTests : ShiftsTestHarness
             Arg.Any<Guid?>(), Arg.Any<string?>());
     }
 
+    [HumansFact]
+    public async Task Reassign_MovesSourceOnlyBuildStatus_AndKeepsSurvivorRowOnCollision()
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var source = Guid.NewGuid();
+        var target = Guid.NewGuid();
+        var sourceOnlyEvent = SeedEventSettings();
+        var sharedEvent = SeedEventSettings();
+        ShiftsDb.VolunteerBuildStatuses.AddRange(
+            new VolunteerBuildStatus { Id = Guid.NewGuid(), UserId = source, EventSettingsId = sourceOnlyEvent, Notes = "source-only" },
+            new VolunteerBuildStatus { Id = Guid.NewGuid(), UserId = source, EventSettingsId = sharedEvent, Notes = "source-shared" },
+            new VolunteerBuildStatus { Id = Guid.NewGuid(), UserId = target, EventSettingsId = sharedEvent, Notes = "survivor" });
+        await ShiftsDb.SaveChangesAsync(ct);
+
+        await _service.ReassignAsync(source, target, Guid.NewGuid(), TestNow, ct);
+
+        var rows = await ShiftsDb.VolunteerBuildStatuses.AsNoTracking().ToListAsync(ct);
+        rows.Should().OnlyContain(r => r.UserId == target);
+        rows.Select(r => r.Notes).Should().BeEquivalentTo(["source-only", "survivor"]);
+    }
+
     private Guid SeedEventSettings()
     {
         var es = new EventSettings

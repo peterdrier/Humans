@@ -5,6 +5,8 @@ using Humans.Workgroups.Domain;
 using Humans.Workgroups.Services;
 using Humans.Workgroups.Tests.Infrastructure;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
+using Microsoft.EntityFrameworkCore.Infrastructure;
 using NSubstitute;
 using NodaTime;
 using Humans.Users.Contracts;
@@ -37,11 +39,13 @@ public sealed class WorkgroupServiceMembershipTests : WorkgroupsTestHarness
         var repository = Substitute.For<IWorkgroupRepository>();
         repository.GetWorkgroupAsync(group.Id, Arg.Any<CancellationToken>())
             .Returns(c => real.GetWorkgroupAsync(group.Id, c.Arg<CancellationToken>()));
-        repository.UpdateWorkgroupAsync(Arg.Any<Workgroup>(), Arg.Any<CancellationToken>())
+        repository.UpdateWorkgroupAsync(Arg.Any<Workgroup>(), Arg.Any<CancellationToken>(),
+                Arg.Any<IReadOnlyList<WorkgroupLogEntry>?>(), Arg.Any<IReadOnlyList<WorkgroupMember>?>())
             .Returns(async c =>
             {
                 c.Arg<CancellationToken>().Should().Be(cancellation.Token);
-                await real.UpdateWorkgroupAsync(c.Arg<Workgroup>(), c.Arg<CancellationToken>());
+                await real.UpdateWorkgroupAsync(c.Arg<Workgroup>(), c.Arg<CancellationToken>(),
+                    c.Arg<IReadOnlyList<WorkgroupLogEntry>?>(), c.Arg<IReadOnlyList<WorkgroupMember>?>());
                 await cancellation.CancelAsync();
             });
         repository.AddLogEntryAsync(Arg.Any<WorkgroupLogEntry>(), Arg.Any<CancellationToken>())
@@ -67,6 +71,57 @@ public sealed class WorkgroupServiceMembershipTests : WorkgroupsTestHarness
     }
 
     [HumansTheory]
+    [InlineData("add")]
+    [InlineData("approve")]
+    [InlineData("leave")]
+    [InlineData("handover")]
+    [InlineData("coordinators")]
+    public async Task Membership_LogSaveFailure_LeavesRosterUnchanged(string action)
+    {
+        var group = await SeedWorkgroupAsync();
+        var coordinator = group.Members.Single().UserId;
+        var member = SeedUser("Member");
+        if (action is "approve" or "leave" or "handover" or "coordinators")
+            await AddMemberAsync(group.Id, member, isPending: string.Equals(action, "approve", StringComparison.Ordinal));
+        await using var beforeDb = OpenContext();
+        var before = await beforeDb.Members.AsNoTracking().Where(m => m.WorkgroupId == group.Id)
+            .Select(m => new { m.Id, m.UserId, m.Role, m.LeftAt, m.IsPending, m.JoinedAt }).ToListAsync(Ct);
+        var options = new DbContextOptionsBuilder<WorkgroupsDbContext>(
+                (DbContextOptions<WorkgroupsDbContext>)Db.GetService<IDbContextOptions>())
+            .AddInterceptors(new FailMembershipLogSave()).Options;
+        var service = NewService(new WorkgroupRepository(new TestDbContextFactory<WorkgroupsDbContext>(options)));
+        Func<Task> mutate = action switch
+        {
+            "add" => () => service.AddMemberAsync(group.Id, coordinator, member, ct: Ct),
+            "approve" => () => service.ApproveMemberAsync(group.Id, coordinator, member, ct: Ct),
+            "leave" => () => service.LeaveAsync(group.Id, member, null, ct: Ct),
+            "handover" => () => service.LeaveAsync(group.Id, coordinator, member, ct: Ct),
+            _ => () => service.SetCoordinatorsAsync(group.Id, coordinator, [member], ct: Ct)
+        };
+
+        await mutate.Should().ThrowAsync<IOException>();
+
+        await using var afterDb = OpenContext();
+        var after = await afterDb.Members.AsNoTracking().Where(m => m.WorkgroupId == group.Id)
+            .Select(m => new { m.Id, m.UserId, m.Role, m.LeftAt, m.IsPending, m.JoinedAt }).ToListAsync(Ct);
+        after.Should().BeEquivalentTo(before);
+        (await afterDb.LogEntries.CountAsync(Ct)).Should().Be(0);
+        AuditLog.ReceivedCalls().Should().BeEmpty();
+        Notifications.ReceivedCalls().Should().BeEmpty();
+    }
+
+    private sealed class FailMembershipLogSave : SaveChangesInterceptor
+    {
+        public override ValueTask<InterceptionResult<int>> SavingChangesAsync(
+            DbContextEventData eventData, InterceptionResult<int> result, CancellationToken cancellationToken = default)
+        {
+            if (eventData.Context!.ChangeTracker.Entries<WorkgroupLogEntry>().Any(e => e.State == EntityState.Added))
+                throw new IOException("Membership log persistence failed.");
+            return base.SavingChangesAsync(eventData, result, cancellationToken);
+        }
+    }
+
+    [HumansTheory]
     [InlineData("join")]
     [InlineData("leave")]
     [InlineData("handover")]
@@ -82,18 +137,20 @@ public sealed class WorkgroupServiceMembershipTests : WorkgroupsTestHarness
         var repository = Substitute.For<IWorkgroupRepository>();
         repository.GetWorkgroupAsync(group.Id, Arg.Any<CancellationToken>())
             .Returns(c => real.GetWorkgroupAsync(group.Id, c.Arg<CancellationToken>()));
-        repository.AddMemberAsync(Arg.Any<WorkgroupMember>(), Arg.Any<CancellationToken>())
+        repository.AddMemberAsync(Arg.Any<WorkgroupMember>(), Arg.Any<CancellationToken>(), Arg.Any<IReadOnlyList<WorkgroupLogEntry>?>())
             .Returns(async c =>
             {
                 c.Arg<CancellationToken>().Should().Be(cancellation.Token);
-                await real.AddMemberAsync(c.Arg<WorkgroupMember>(), c.Arg<CancellationToken>());
+                await real.AddMemberAsync(c.Arg<WorkgroupMember>(), c.Arg<CancellationToken>(),
+                    c.Arg<IReadOnlyList<WorkgroupLogEntry>?>());
                 await cancellation.CancelAsync();
             });
-        repository.UpdateMembersAsync(Arg.Any<IReadOnlyList<WorkgroupMember>>(), Arg.Any<CancellationToken>())
+        repository.UpdateMembersAsync(Arg.Any<IReadOnlyList<WorkgroupMember>>(), Arg.Any<CancellationToken>(), Arg.Any<IReadOnlyList<WorkgroupLogEntry>?>())
             .Returns(async c =>
             {
                 c.Arg<CancellationToken>().Should().Be(cancellation.Token);
-                await real.UpdateMembersAsync(c.Arg<IReadOnlyList<WorkgroupMember>>(), c.Arg<CancellationToken>());
+                await real.UpdateMembersAsync(c.Arg<IReadOnlyList<WorkgroupMember>>(), c.Arg<CancellationToken>(),
+                    c.Arg<IReadOnlyList<WorkgroupLogEntry>?>());
                 await cancellation.CancelAsync();
             });
         repository.AddLogEntryAsync(Arg.Any<WorkgroupLogEntry>(), Arg.Any<CancellationToken>())
@@ -671,12 +728,12 @@ public sealed class WorkgroupServiceMembershipTests : WorkgroupsTestHarness
         var now = Clock.GetCurrentInstant();
         var meetingId = (await NewService().CreateMeetingAsync(
             workgroup.Id, member,
-            new WorkgroupMeetingSave("Sync", now, now.Plus(Duration.FromHours(1)), null, null, false, null), Ct)).Value;
+            new WorkgroupMeetingSave("Sync", now, now.Plus(Duration.FromHours(1)), null, null, false), Ct)).Value;
 
         await NewService().UpdateMeetingAsync(
             meetingId, member,
             new WorkgroupMeetingSave("Sync, moved", now.Plus(Duration.FromDays(1)),
-                now.Plus(Duration.FromDays(1)).Plus(Duration.FromHours(1)), null, null, false, null), Ct);
+                now.Plus(Duration.FromDays(1)).Plus(Duration.FromHours(1)), null, null, false), Ct);
 
         await AuditLog.Received(1).LogAsync(
             WorkgroupsAuditActions.WorkgroupMeetingUpdated, AuditEntityTypes.WorkgroupMeeting, meetingId,
@@ -691,7 +748,7 @@ public sealed class WorkgroupServiceMembershipTests : WorkgroupsTestHarness
         var now = Clock.GetCurrentInstant();
         var meetingId = (await NewService().CreateMeetingAsync(
             workgroup.Id, member,
-            new WorkgroupMeetingSave("Sync", now, now.Plus(Duration.FromHours(1)), null, null, false, null), Ct)).Value;
+            new WorkgroupMeetingSave("Sync", now, now.Plus(Duration.FromHours(1)), null, null, false), Ct)).Value;
 
         await NewService().DeleteMeetingAsync(meetingId, member, Ct);
 
@@ -708,7 +765,7 @@ public sealed class WorkgroupServiceMembershipTests : WorkgroupsTestHarness
         var now = Clock.GetCurrentInstant();
         var meetingId = (await NewService().CreateMeetingAsync(
             workgroup.Id, member,
-            new WorkgroupMeetingSave("Sync", now, now.Plus(Duration.FromHours(1)), null, null, false, null), Ct)).Value;
+            new WorkgroupMeetingSave("Sync", now, now.Plus(Duration.FromHours(1)), null, null, false), Ct)).Value;
         await NewService().DeleteMeetingAsync(meetingId, member, Ct);
 
         // The tombstoned row is still readable, so a replayed delete is refused rather than
@@ -730,14 +787,14 @@ public sealed class WorkgroupServiceMembershipTests : WorkgroupsTestHarness
         var now = Clock.GetCurrentInstant();
         var meetingId = (await NewService().CreateMeetingAsync(
             workgroup.Id, member,
-            new WorkgroupMeetingSave("Sync", now, now.Plus(Duration.FromHours(1)), null, null, false, null), Ct)).Value;
+            new WorkgroupMeetingSave("Sync", now, now.Plus(Duration.FromHours(1)), null, null, false), Ct)).Value;
         await NewService().DeleteMeetingAsync(meetingId, member, Ct);
 
         // Same unfiltered read, same class of bug: a deleted meeting must not be editable either.
         var edit = async () => await NewService().UpdateMeetingAsync(
             meetingId, member,
             new WorkgroupMeetingSave("Back from the dead", now, now.Plus(Duration.FromHours(1)),
-                null, null, false, null), Ct);
+                null, null, false), Ct);
 
         (await edit()).Refusal!.Key
             .Should().Be(WorkgroupErrorKeys.NotFound);
@@ -768,5 +825,58 @@ public sealed class WorkgroupServiceMembershipTests : WorkgroupsTestHarness
         stored.Kind.Should().Be(kind);
         stored.Title.Should().BeNull();
         stored.Body.Should().BeNull();
+    }
+
+    [HumansFact]
+    public async Task MeetingNotes_LinkOnlyToTheGroupsOwnMeeting()
+    {
+        var workgroup = await SeedWorkgroupAsync();
+        var other = await SeedWorkgroupAsync(name: "Other group");
+        var member = workgroup.Members.Single().UserId;
+        var now = Clock.GetCurrentInstant();
+        var own = await AddMeetingAsync(workgroup.Id, now);
+        var foreign = await AddMeetingAsync(other.Id, now);
+        WorkgroupLogEntrySave Notes(Guid meetingId) =>
+            new(WorkgroupLogKind.MeetingNotes, now.InUtc().Date, "Sync", "Agreed the plan", meetingId);
+
+        var linked = await NewService().AddLogEntryAsync(workgroup.Id, member, Notes(own.Id), Ct);
+        var refused = await NewService().AddLogEntryAsync(workgroup.Id, member, Notes(foreign.Id), Ct);
+
+        refused.Refusal!.Key.Should().Be(WorkgroupErrorKeys.NotFound);
+        await using var ctx = OpenContext();
+        (await ctx.LogEntries.SingleAsync(e => e.Id == linked.Value, Ct)).MeetingId.Should().Be(own.Id);
+    }
+
+    [HumansFact]
+    public async Task MeetingNotes_StayEditableAfterTheirMeetingIsDeleted()
+    {
+        var workgroup = await SeedWorkgroupAsync();
+        var member = workgroup.Members.Single().UserId;
+        var now = Clock.GetCurrentInstant();
+        var meeting = await AddMeetingAsync(workgroup.Id, now);
+        var save = new WorkgroupLogEntrySave(WorkgroupLogKind.MeetingNotes, now.InUtc().Date, "Sync", "Draft", meeting.Id);
+        var entryId = (await NewService().AddLogEntryAsync(workgroup.Id, member, save, Ct)).Value;
+        await NewService().DeleteMeetingAsync(meeting.Id, member, Ct);
+
+        var edit = await NewService().UpdateLogEntryAsync(entryId, member, save with { Body = "Final" }, Ct);
+
+        edit.Refusal.Should().BeNull();
+    }
+
+    [HumansTheory]
+    [InlineData("FREQ=WEEKLY", null)]
+    [InlineData("FREQ=WEEKLY", "Mars/Olympus")]
+    [InlineData("FREQ=FORTNIGHTLY", "Europe/Madrid")]
+    [InlineData("FREQ=HOURLY", "Europe/Madrid")]
+    public async Task ARepeatingMeeting_NeedsAValidRuleAndZone(string rule, string? zone)
+    {
+        var workgroup = await SeedWorkgroupAsync();
+        var member = workgroup.Members.Single().UserId;
+        var now = Clock.GetCurrentInstant();
+
+        var result = await NewService().CreateMeetingAsync(workgroup.Id, member,
+            new WorkgroupMeetingSave("Sync", now, now.Plus(Duration.FromHours(1)), null, null, false, null, rule, zone), Ct);
+
+        result.Refusal!.Key.Should().Be(WorkgroupErrorKeys.RecurrenceInvalid);
     }
 }

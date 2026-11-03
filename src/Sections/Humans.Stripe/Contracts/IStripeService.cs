@@ -39,7 +39,7 @@ public interface IStripeService : IApplicationService
 
     /// <summary>
     /// <paramref name="body"/> must be the raw request body. Null when the signing secret is unset, the signature
-    /// is invalid, or a session lacks EUR currency; never throws.
+    /// is invalid, the payload is malformed or incomplete, or a session lacks EUR currency; never throws.
     /// </summary>
     StoreCheckoutWebhookEvent? ParseStoreCheckoutEvent(string body, string signature);
 

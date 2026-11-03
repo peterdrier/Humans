@@ -26,7 +26,7 @@ internal sealed class CampRoleService(
     public async Task<IReadOnlyList<CampRoleDefinitionInfo>> ListDefinitionsAsync(bool includeDeactivated, CancellationToken ct = default)
     {
         var definitions = await repo.ListDefinitionsAsync(includeDeactivated, ct);
-        return OrderDefinitions(definitions).Select(CreateCampRoleDefinitionInfo).ToList();
+        return definitions.Select(CreateCampRoleDefinitionInfo).ToList();
     }
 
     public async Task<CampRoleDefinitionInfo?> GetDefinitionByIdAsync(Guid id, CancellationToken ct = default)
@@ -206,7 +206,7 @@ internal sealed class CampRoleService(
 
     public async Task<CampRolesPanelData> BuildPanelAsync(Guid campSeasonId, CancellationToken ct = default)
     {
-        var definitions = OrderDefinitions(await repo.ListDefinitionsAsync(includeDeactivated: false, ct));
+        var definitions = await repo.ListDefinitionsAsync(includeDeactivated: false, ct);
         var assignments = await repo.GetAssignmentsForSeasonAsync(campSeasonId, ct);
 
         var rows = definitions.Select(def =>
@@ -230,18 +230,33 @@ internal sealed class CampRoleService(
     }
 
     public async Task<AssignCampRoleOutcome> AssignAsync(
-        Guid campSeasonId, Guid roleDefinitionId, Guid campMemberId, Guid actorUserId, CancellationToken ct = default)
+        Guid campSeasonId, Guid roleDefinitionId, Guid campMemberId, Guid actorUserId, CancellationToken ct = default,
+        Guid? addUserId = null)
     {
         var def = await repo.GetDefinitionByIdAsync(roleDefinitionId, ct);
         if (def is null) return AssignCampRoleOutcome.RoleNotFound;
         if (def.DeactivatedAt is not null) return AssignCampRoleOutcome.RoleDeactivated;
 
-        var memberLookup = await campAccess.GetCampMemberStatusAsync(campMemberId, ct);
-        if (memberLookup is null) return AssignCampRoleOutcome.MemberNotFound;
-        if (memberLookup.CampSeasonId != campSeasonId) return AssignCampRoleOutcome.MemberSeasonMismatch;
-        if (memberLookup.Status != CampMemberStatus.Active) return AssignCampRoleOutcome.MemberNotActive;
+        CampMemberLookup? memberLookup;
+        if (addUserId is { } requestedUserId)
+        {
+            var user = await userService.GetUserInfoAsync(requestedUserId, ct);
+            if (user is null || user.IsTombstone) return AssignCampRoleOutcome.MemberNotFound;
+            addUserId = user.Id;
+            var member = (await repo.GetAllMembershipsForUserAsync(user.Id, ct))
+                .FirstOrDefault(m => m.CampSeasonId == campSeasonId && m.Status != CampMemberStatus.Removed);
+            campMemberId = member?.Id ?? Guid.Empty;
+            memberLookup = new CampMemberLookup(campSeasonId, user.Id, CampMemberStatus.Active);
+        }
+        else
+        {
+            memberLookup = await campAccess.GetCampMemberStatusAsync(campMemberId, ct);
+            if (memberLookup is null) return AssignCampRoleOutcome.MemberNotFound;
+            if (memberLookup.CampSeasonId != campSeasonId) return AssignCampRoleOutcome.MemberSeasonMismatch;
+            if (memberLookup.Status != CampMemberStatus.Active) return AssignCampRoleOutcome.MemberNotActive;
+        }
 
-        if (await repo.AssignmentExistsAsync(campSeasonId, roleDefinitionId, campMemberId, ct))
+        if (campMemberId != Guid.Empty && await repo.AssignmentExistsAsync(campSeasonId, roleDefinitionId, campMemberId, ct))
             return AssignCampRoleOutcome.AlreadyHoldsRole;
 
         var existingCount = await repo.CountAssignmentsForSeasonAndDefinitionAsync(campSeasonId, roleDefinitionId, ct);
@@ -259,11 +274,20 @@ internal sealed class CampRoleService(
             AssignedByUserId = actorUserId,
         };
 
-        var inserted = await repo.AddAssignmentAsync(assignment, ct);
+        var (inserted, membership) = await repo.AddAssignmentAsync(assignment, ct, addUserId);
         if (!inserted)
         {
             // Repo translated the unique-index race.
             return AssignCampRoleOutcome.AlreadyHoldsRole;
+        }
+
+        campMemberId = membership?.MemberId ?? campMemberId;
+        if (membership is { Outcome: CampMemberInsertOutcome.Created })
+        {
+            await auditLog.LogAsync(
+                CampsAuditActions.CampMemberAddedByLead, nameof(CampMember), campMemberId,
+                "Lead added human as active camp member.", actorUserId,
+                relatedEntityId: memberLookup.UserId, relatedEntityType: nameof(User));
         }
 
         await auditLog.LogAsync(
@@ -336,24 +360,10 @@ internal sealed class CampRoleService(
         return true;
     }
 
-    public async Task<int> RemoveAllForMemberAsync(Guid campMemberId, Guid actorUserId, CancellationToken ct = default)
-    {
-        var deleted = await repo.DeleteAllForMemberAsync(campMemberId, ct);
-        if (deleted > 0)
-        {
-            await auditLog.LogAsync(
-                CampsAuditActions.CampRoleUnassigned,
-                nameof(CampMember), campMemberId,
-                $"Cascade-removed {deleted} role assignment(s) for camp member.",
-                actorUserId);
-        }
-        return deleted;
-    }
-
     public async Task<IReadOnlyDictionary<Guid, IReadOnlyList<CampDirectoryRoleSummary>>>
         GetDirectoryRoleSummariesAsync(Guid eventSettingsId, CancellationToken ct = default)
     {
-        var definitions = OrderDefinitions(await repo.ListDefinitionsAsync(includeDeactivated: false, ct));
+        var definitions = await repo.ListDefinitionsAsync(includeDeactivated: false, ct);
         var targetEvent = await FindEventAsync(eventSettingsId, ct);
         if (!definitions.Any() || targetEvent is null)
             return new Dictionary<Guid, IReadOnlyList<CampDirectoryRoleSummary>>();
@@ -370,7 +380,8 @@ internal sealed class CampRoleService(
                 .Select(def => new CampDirectoryRoleSummary(
                     def.Name,
                     countLookup[season.CampSeasonId].FirstOrDefault(r => r.DefinitionId == def.Id).Count,
-                    def.SlotCount))
+                    def.SlotCount)
+                { SortOrder = def.SortOrder })
                 .ToList());
     }
 
@@ -379,7 +390,7 @@ internal sealed class CampRoleService(
         var targetEvent = await FindEventAsync(eventSettingsId, ct);
         if (targetEvent is null) return null;
 
-        var definitions = OrderDefinitions(await repo.ListDefinitionsAsync(includeDeactivated: false, ct))
+        var definitions = (await repo.ListDefinitionsAsync(includeDeactivated: false, ct))
             .Select(CreateCampRoleDefinitionInfo)
             .ToList();
 
@@ -607,10 +618,6 @@ internal sealed class CampRoleService(
 
     public string BuildGroupKey(int year, string slug) =>
         $"barrios-{year}-{slug}@{_googleOptions.Domain}";
-
-    private static IOrderedEnumerable<CampRoleDefinition> OrderDefinitions(
-        IEnumerable<CampRoleDefinition> definitions) =>
-        definitions.OrderBy(d => d.SortOrder).ThenBy(d => d.Name, StringComparer.OrdinalIgnoreCase);
 
     // Leaf carve: the camp-role verbs the dev seeders drive (see ICampRoleSeeding).
 

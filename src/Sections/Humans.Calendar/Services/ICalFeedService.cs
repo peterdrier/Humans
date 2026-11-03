@@ -45,7 +45,7 @@ internal sealed class ICalFeedService(
             items.AddRange(contributed);
         }
 
-        return items.OrderBy(i => i.Start).ToList();
+        return items;
     }
 
     public async Task<bool> HasFeedAsync(Guid userId, CancellationToken ct = default) =>
@@ -72,9 +72,10 @@ internal sealed class ICalFeedService(
         var calendar = new Ical.Net.Calendar { ProductId = "-//Nobodies Collective//Humans//EN" };
         calendar.AddProperty("X-WR-CALNAME", "Nobodies");
 
-        foreach (var item in items)
+        var zonesAdded = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var item in items.OrderBy(i => i.Start))
         {
-            calendar.Events.Add(new CalendarEvent
+            var ev = new CalendarEvent
             {
                 Uid = item.Uid,
                 Summary = item.Summary,
@@ -85,7 +86,16 @@ internal sealed class ICalFeedService(
                 DtEnd = new CalDateTime(item.End.ToDateTimeUtc()),
                 Categories = [item.Source],
                 Url = item.Url is null ? null : new Uri(BuildAbsoluteUrl(item.Url)),
-            });
+            };
+            // A rule repeats in local time, so DTSTART carries the zone; a UTC start would drift an hour across DST.
+            if (item.RecurrenceRule is { } rule && CalendarEventForm.TryResolveZone(item.RecurrenceTimezone) is { } zone)
+            {
+                ev.DtStart = new CalDateTime(item.Start.InZone(zone).LocalDateTime.ToDateTimeUnspecified(), zone.Id, hasTime: true);
+                ev.DtEnd = new CalDateTime(item.End.InZone(zone).LocalDateTime.ToDateTimeUnspecified(), zone.Id, hasTime: true);
+                ev.RecurrenceRule = new RecurrencePattern(rule);
+                if (zonesAdded.Add(zone.Id)) calendar.AddTimeZone(zone.Id);
+            }
+            calendar.Events.Add(ev);
         }
 
         return new CalendarSerializer().SerializeToString(calendar);

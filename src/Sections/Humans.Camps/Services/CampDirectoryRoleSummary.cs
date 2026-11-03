@@ -7,4 +7,7 @@ namespace Humans.Camps.Services;
 internal sealed record CampDirectoryRoleSummary(
     string Name,
     int Filled,
-    int SlotCount);
+    int SlotCount)
+{
+    public int SortOrder { get; init; }
+}

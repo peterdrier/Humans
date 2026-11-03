@@ -46,7 +46,7 @@ internal sealed class CalendarService(
         if (teamId is null)
             occurrences.AddRange(await FanOutContributorItemsAsync(from, to, ct));
 
-        return CalendarOccurrenceExpander.OrderForDisplay(occurrences, viewerZone);
+        return occurrences;
     }
 
     /// <summary>
@@ -78,16 +78,22 @@ internal sealed class CalendarService(
                 continue;
             }
 
-            items.AddRange(contributed.Select(ToOccurrence));
+            items.AddRange(contributed.SelectMany(item => ToOccurrences(item, from, to)));
         }
 
         return items;
     }
 
-    private static CalendarOccurrence ToOccurrence(CalendarFeedItem item) => new(
+    private static IEnumerable<CalendarOccurrence> ToOccurrences(CalendarFeedItem item, Instant from, Instant to) =>
+        item.RecurrenceRule is null
+            ? [ToOccurrence(item, item.Start, item.End, recurring: false)]
+            : CalendarRecurrence.Occurrences(item.Start, item.End, item.RecurrenceRule, item.RecurrenceTimezone, from, to)
+                .Select(o => ToOccurrence(item, o.Start, o.End, recurring: true));
+
+    private static CalendarOccurrence ToOccurrence(CalendarFeedItem item, Instant start, Instant end, bool recurring) => new(
         EventId: Guid.Empty,
-        OccurrenceStartUtc: item.Start,
-        OccurrenceEndUtc: item.End,
+        OccurrenceStartUtc: start,
+        OccurrenceEndUtc: end,
         IsAllDay: false,
         Title: item.Summary,
         Description: item.Description,
@@ -95,8 +101,8 @@ internal sealed class CalendarService(
         LocationUrl: null,
         OwningTeamId: Guid.Empty,
         OwningTeamName: string.Empty,
-        IsRecurring: false,
-        OriginalOccurrenceStartUtc: null,
+        IsRecurring: recurring,
+        OriginalOccurrenceStartUtc: recurring ? start : null,
         Source: item.Source,
         Url: item.Url);
 

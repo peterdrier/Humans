@@ -124,4 +124,42 @@
   <data name="Consent_MyData_DeletionAccessRevoked" xml:space="preserve"><value>Your team memberships and role assignments have been revoked.</value></data>
   <data name="Consent_MyData_CancelNoRestore" xml:space="preserve"><value>Cancelling will not restore your previous team memberships. You will need to rejoin teams.</value></data>
   <data name="Consent_AccountStatus_ReasonLabel" xml:space="preserve"><value>Reason:</value></data>
+  <data name="Consent_Queue_Title" xml:space="preserve"><value>Onboarding Review Queue</value></data>
+  <data name="Consent_Queue_NoPending" xml:space="preserve"><value>No humans are waiting for review.</value></data>
+  <data name="Consent_Queue_PendingSection" xml:space="preserve"><value>Pending Review</value></data>
+  <data name="Consent_Queue_FlaggedSection" xml:space="preserve"><value>Flagged for Follow-up</value></data>
+  <data name="Consent_Queue_FlaggedBadge" xml:space="preserve"><value>Flagged</value></data>
+  <data name="Consent_Queue_NewHumanSummary" xml:space="preserve"><value>New Human Summary</value></data>
+  <data name="Consent_Queue_LegalName" xml:space="preserve"><value>Legal Name</value></data>
+  <data name="Consent_Queue_HasApplication" xml:space="preserve"><value>Has Application</value></data>
+  <data name="Consent_Queue_Signed" xml:space="preserve"><value>signed</value></data>
+  <data name="Consent_Queue_ApplicationMotivation" xml:space="preserve"><value>Application Motivation</value></data>
+  <data name="Consent_Queue_PreviousNotes" xml:space="preserve"><value>Previous Review Notes</value></data>
+  <data name="Consent_Queue_Actions" xml:space="preserve"><value>Actions</value></data>
+  <data name="Consent_Queue_NotesPlaceholder" xml:space="preserve"><value>Optional notes...</value></data>
+  <data name="Consent_Queue_ClearButton" xml:space="preserve"><value>Clear &amp; Approve</value></data>
+  <data name="Consent_Queue_ClearHelp" xml:space="preserve"><value>Approves the profile review. Human joins Volunteers once legal documents are also signed.</value></data>
+  <data name="Consent_Queue_ClearConfirm" xml:space="preserve"><value>This will clear the profile review for this human. Continue?</value></data>
+  <data name="Consent_Queue_FlagButton" xml:space="preserve"><value>Flag for Review</value></data>
+  <data name="Consent_Queue_FlagReasonPlaceholder" xml:space="preserve"><value>Reason for flagging...</value></data>
+  <data name="Consent_Queue_FlagConfirm" xml:space="preserve"><value>This will flag this human for further review. Continue?</value></data>
+  <data name="Consent_Queue_AlreadyCleared" xml:space="preserve"><value>This human has already been cleared.</value></data>
+  <data name="Consent_Queue_Cleared" xml:space="preserve"><value>Profile review cleared.</value></data>
+  <data name="Consent_Queue_BulkClearedNone" xml:space="preserve"><value>No selected humans were approved.</value></data>
+  <data name="Consent_Queue_BulkCleared" xml:space="preserve"><value>Approved {0} selected humans.</value></data>
+  <data name="Consent_Queue_BulkClearedPartial" xml:space="preserve"><value>Approved {0} of {1} selected — the others are no longer eligible.</value></data>
+  <data name="Consent_Queue_BulkClearButton" xml:space="preserve"><value>Approve all selected</value></data>
+  <data name="Consent_Queue_Flagged" xml:space="preserve"><value>Human flagged for further review.</value></data>
+  <data name="Consent_Queue_RejectButton" xml:space="preserve"><value>Reject Signup</value></data>
+  <data name="Consent_Queue_RejectReasonPlaceholder" xml:space="preserve"><value>Reason for rejection...</value></data>
+  <data name="Consent_Queue_RejectConfirm" xml:space="preserve"><value>Are you sure you want to reject this human's signup? This cannot be undone.</value></data>
+  <data name="Consent_Queue_RejectHelp" xml:space="preserve"><value>Rejecting will permanently deny this human's signup and send a notification email.</value></data>
+  <data name="Consent_Queue_Rejected" xml:space="preserve"><value>Signup has been rejected.</value></data>
+  <data name="Consent_Queue_AlreadyRejected" xml:space="preserve"><value>This human has already been rejected.</value></data>
+  <data name="Consent_Queue_LegalDocuments" xml:space="preserve"><value>Legal Documents</value></data>
+  <data name="Consent_Queue_DocsComplete" xml:space="preserve"><value>Complete</value></data>
+  <data name="Consent_Queue_DocsPending" xml:space="preserve"><value>Pending</value></data>
+  <data name="Consent_Queue_DocsNote" xml:space="preserve"><value>Profile review can proceed independently. Human will join Volunteers once all documents are signed.</value></data>
+  <data name="Consent_Queue_ReviewLink" xml:space="preserve"><value>Review</value></data>
+  <data name="Consent_Queue_SelectRowLabel" xml:space="preserve"><value>Select {0}</value></data>
 </root>

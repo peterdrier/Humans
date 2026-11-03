@@ -35,10 +35,16 @@ public class BackdoorNotificationsControllerTests
         _inbox.GetUnreadInboxAsync(principal, Arg.Any<CancellationToken>()).Returns(new NotificationInboxSnapshot(
             [
                 new UnreadNotificationDto(
+                    createdAt.AddDays(-1), "TeamUpdate", "Older notification",
+                    null, NotificationPriority.Normal, NotificationClass.Informational, false),
+                new UnreadNotificationDto(
                     createdAt, "ConsentReviewNeeded", "Consent review pending: Alice",
-                    "/OnboardingReview", NotificationPriority.High, NotificationClass.Actionable, true),
+                    "/Consent/ReviewQueue", NotificationPriority.High, NotificationClass.Actionable, true),
             ],
-            [new NotificationMeterDto("Ticket sync error", 1, "/Tickets")]));
+            [
+                new NotificationMeterDto("Lower priority", 2, "/Lower") { Priority = 1 },
+                new NotificationMeterDto("Ticket sync error", 1, "/Tickets") { Priority = 4 },
+            ]));
 
         var result = await _sut.Get(Xunit.TestContext.Current.CancellationToken);
 
@@ -48,14 +54,18 @@ public class BackdoorNotificationsControllerTests
         notification.GetProperty("date").GetDateTime().Should().Be(createdAt);
         notification.GetProperty("source").GetString().Should().Be("ConsentReviewNeeded");
         notification.GetProperty("subject").GetString().Should().Be("Consent review pending: Alice");
-        notification.GetProperty("link").GetString().Should().Be("/OnboardingReview");
+        notification.GetProperty("link").GetString().Should().Be("/Consent/ReviewQueue");
         notification.GetProperty("priority").GetString().Should().Be("high");
         notification.GetProperty("class").GetString().Should().Be("actionable");
         notification.GetProperty("unread").GetBoolean().Should().BeTrue();
+        json.RootElement.GetProperty("notifications").GetArrayLength().Should().Be(2);
+        json.RootElement.GetProperty("notifications")[1].GetProperty("subject").GetString().Should().Be("Older notification");
 
         var meter = json.RootElement.GetProperty("meters")[0];
         meter.GetProperty("label").GetString().Should().Be("Ticket sync error");
         meter.GetProperty("count").GetInt32().Should().Be(1);
         meter.GetProperty("link").GetString().Should().Be("/Tickets");
+        json.RootElement.GetProperty("meters").GetArrayLength().Should().Be(2);
+        json.RootElement.GetProperty("meters")[1].GetProperty("label").GetString().Should().Be("Lower priority");
     }
 }

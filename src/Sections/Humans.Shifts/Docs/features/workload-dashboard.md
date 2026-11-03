@@ -24,7 +24,7 @@ Asked by Peter for the 2026 cycle. Combines **shift-based** workload (Confirmed 
 
 ### US-WL.1: Admin Sees Per-Person Workload
 
-**As an** Admin / ShiftsNoInfo / ShiftsAdmin
+**As an** Admin / Board / ShiftsNoInfo / ShiftsAdmin
 **I want to** see every volunteer with shift signups or role assignments, with their hours split by period and Pending count
 **So that** I can identify volunteers nearing burnout and volunteers who have queued work but no approved work
 
@@ -38,7 +38,7 @@ Asked by Peter for the 2026 cycle. Combines **shift-based** workload (Confirmed 
 
 ### US-WL.2: Admin Sees Per-Rota Coverage
 
-**As an** Admin / ShiftsNoInfo / ShiftsAdmin
+**As an** Admin / Board / ShiftsNoInfo / ShiftsAdmin
 **I want to** see every rota with shifts in the active event, with planned/filled slots and hours, coverage %, and Pending count
 **So that** I can find rotas that still need fills
 
@@ -53,7 +53,7 @@ Asked by Peter for the 2026 cycle. Combines **shift-based** workload (Confirmed 
 
 ### US-WL.3: Admin Sees Per-Department Roll-Up
 
-**As an** Admin / ShiftsNoInfo / ShiftsAdmin
+**As an** Admin / Board / ShiftsNoInfo / ShiftsAdmin
 **I want to** see every department with planned vs filled slots and hours, plus coverage %
 **So that** I can find departments that are under-staffed at the planning level
 
@@ -94,13 +94,13 @@ The admin workload view includes every shift on every rota in the active event �
 
 | Route | Purpose | Auth |
 |---|---|---|
-| `GET /Shifts/Admin/Workload` | Workload dashboard (three tabs) | `ShiftsPolicies.Manage` (Admin / ShiftsNoInfo / ShiftsAdmin) |
+| `GET /Shifts/Admin/Workload` | Workload dashboard (tabbed) | `ShiftsPolicies.Read` (Admin / Board / ShiftsNoInfo / ShiftsAdmin) |
 
 Lives under `/Shifts/Admin/*` per `memory/architecture/no-admin-url-section.md`. Surfaced in the admin sidebar under the "Shifts" group.
 
 ## Authorization
 
-Gated to `ShiftsPolicies.Manage` at the controller — same narrow policy that controls the privileged sub-panels on the existing `/Shifts/Dashboard`. Department coordinators do **not** see this view (they have per-department visibility on `/Shifts/Dashboard` already).
+Gated to `ShiftsPolicies.Read` at the controller — the same policy that controls the privileged sub-panels on the existing `/Shifts/Dashboard`. Department coordinators do **not** see this view (they have per-department visibility on `/Shifts/Dashboard` already).
 
 ## Architecture
 

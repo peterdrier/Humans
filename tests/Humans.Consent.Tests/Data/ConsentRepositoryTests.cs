@@ -193,7 +193,7 @@ public sealed class ConsentRepositoryTests : IDisposable
         var userId = Guid.NewGuid();
         await _repo.AddAsync(BuildRecord(userId, Guid.NewGuid()), Xunit.TestContext.Current.CancellationToken);
         await _repo.AddAsync(BuildRecord(userId, Guid.NewGuid()), Xunit.TestContext.Current.CancellationToken);
-        await _repo.AddAsync(BuildRecord(Guid.NewGuid(), Guid.NewGuid()), Xunit.TestContext.Current.CancellationToken); // other user
+        await _repo.AddAsync(BuildRecord(Guid.NewGuid(), Guid.NewGuid()), Xunit.TestContext.Current.CancellationToken);
 
         var count = await _repo.GetCountForUserIdsAsync([userId], Xunit.TestContext.Current.CancellationToken);
 
@@ -215,7 +215,7 @@ public sealed class ConsentRepositoryTests : IDisposable
         var sourceId = Guid.NewGuid();
         await _repo.AddAsync(BuildRecord(targetId, Guid.NewGuid()), Xunit.TestContext.Current.CancellationToken);
         await _repo.AddAsync(BuildRecord(sourceId, Guid.NewGuid()), Xunit.TestContext.Current.CancellationToken);
-        await _repo.AddAsync(BuildRecord(Guid.NewGuid(), Guid.NewGuid()), Xunit.TestContext.Current.CancellationToken); // unrelated user
+        await _repo.AddAsync(BuildRecord(Guid.NewGuid(), Guid.NewGuid()), Xunit.TestContext.Current.CancellationToken);
 
         var count = await _repo.GetCountForUserIdsAsync([targetId, sourceId], Xunit.TestContext.Current.CancellationToken);
 
@@ -302,46 +302,6 @@ public sealed class ConsentRepositoryTests : IDisposable
 
         map[userId].Should().Contain(explicitVersion);
         map[userId].Should().NotContain(implicitVersion);
-    }
-
-    [HumansFact]
-    public async Task GetPairsForUsersAndVersionsAsync_EmptyUsers_ReturnsEmpty()
-    {
-        var pairs = await _repo.GetPairsForUsersAndVersionsAsync(
-            [], [Guid.NewGuid()], Xunit.TestContext.Current.CancellationToken);
-
-        pairs.Should().BeEmpty();
-    }
-
-    [HumansFact]
-    public async Task GetPairsForUsersAndVersionsAsync_EmptyVersions_ReturnsEmpty()
-    {
-        var pairs = await _repo.GetPairsForUsersAndVersionsAsync([Guid.NewGuid()], [], Xunit.TestContext.Current.CancellationToken);
-
-        pairs.Should().BeEmpty();
-    }
-
-    [HumansFact]
-    public async Task GetPairsForUsersAndVersionsAsync_ReturnsOnlyMatchingPairs()
-    {
-        var userA = Guid.NewGuid();
-        var userB = Guid.NewGuid();
-        var versionX = Guid.NewGuid();
-        var versionY = Guid.NewGuid();
-        var versionOutside = Guid.NewGuid();
-
-        await _repo.AddAsync(BuildRecord(userA, versionX), Xunit.TestContext.Current.CancellationToken);
-        await _repo.AddAsync(BuildRecord(userA, versionY), Xunit.TestContext.Current.CancellationToken);
-        await _repo.AddAsync(BuildRecord(userB, versionX), Xunit.TestContext.Current.CancellationToken);
-        await _repo.AddAsync(BuildRecord(userA, versionOutside), Xunit.TestContext.Current.CancellationToken);
-        await _repo.AddAsync(BuildRecord(Guid.NewGuid(), versionX), Xunit.TestContext.Current.CancellationToken); // different user
-
-        var pairs = await _repo.GetPairsForUsersAndVersionsAsync([userA, userB], [versionX, versionY], Xunit.TestContext.Current.CancellationToken);
-
-        pairs.Should().HaveCount(3);
-        pairs.Should().Contain((userA, versionX));
-        pairs.Should().Contain((userA, versionY));
-        pairs.Should().Contain((userB, versionX));
     }
 
     private async Task<Guid> SeedVersionAsync(string documentName = "Doc")

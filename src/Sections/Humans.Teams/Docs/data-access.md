@@ -62,6 +62,12 @@ registration is wrapped by
 decorator inheriting `TrackedCache<Guid, TeamReadSnapshot>`); it exposes the
 cross-section read surface as `ITeamService`.
 
+### TeamGoogleGroupMemberships (internal, composed by TeamService)
+
+Reads Teams' active team aggregates through `ITeamRepository.GetAllActiveAsync` to
+calculate expected Google Group members. No cross-section reads, writes or DI registration.
+`TeamService.GetExpectedAsync` retains the existing source contract and delegates here.
+
 ### TeamService (Scoped — wrapped by CachingTeamService Singleton decorator)
 
 Repository: `ITeamRepository`.

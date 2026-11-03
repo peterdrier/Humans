@@ -62,6 +62,8 @@ Tickets priced above 315 EUR (the VIP threshold, `TicketConstants.VipThresholdEu
 |--------|:-----------:|:-----:|:-----:|
 | View dashboard/orders/attendees/codes | Yes | Yes | Yes |
 | Trigger sync, CSV exports, generate codes | Yes | Yes | No |
+| View transfer queue, contact-import preview, gate-account page | Yes | Yes | Yes |
+| Decide transfers, apply contact import, set gate password | Yes | Yes | No |
 
 ## Routes
 

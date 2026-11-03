@@ -20,17 +20,10 @@ internal sealed class GoogleAdminService(
 {
     private const string NobodiesTeamDomain = "nobodies.team";
 
-    // Null when the address isn't linked. Same verified > UpdatedAt > UserId tie-break as
-    // GetWorkspaceAccountListAsync, so the audit subject matches /Google/Accounts.
     private async Task<Guid?> TryFindLinkedUserIdAsync(string email, CancellationToken ct)
     {
         var matches = await userEmailService.MatchByEmailsAsync([email], ct);
-        return matches
-            .OrderByDescending(m => m.IsVerified)
-            .ThenByDescending(m => m.UpdatedAt)
-            .ThenBy(m => m.UserId)
-            .Select(m => (Guid?)m.UserId)
-            .FirstOrDefault();
+        return UserEmailMatchOwner.ByEmail(matches).GetValueOrDefault(email)?.UserId;
     }
 
     public async Task<WorkspaceAccountListResult> GetWorkspaceAccountListAsync(
@@ -84,21 +77,17 @@ internal sealed class GoogleAdminService(
                     RecoveryEmail: account.RecoveryEmail));
             }
 
-            var sorted = accountInfos
-                .OrderBy(a => a.PrimaryEmail, StringComparer.OrdinalIgnoreCase)
-                .ToList();
-
-            var linkedCount = sorted.Count(a => a.MatchedUserId.HasValue);
+            var linkedCount = accountInfos.Count(a => a.MatchedUserId.HasValue);
             // Suspended accounts cannot sign in, so their missing 2FA is noise.
-            var missingTwoFactorCount = sorted.Count(a => !a.IsSuspended && !a.IsEnrolledIn2Sv);
+            var missingTwoFactorCount = accountInfos.Count(a => !a.IsSuspended && !a.IsEnrolledIn2Sv);
 
             return new WorkspaceAccountListResult(
-                Accounts: sorted,
-                TotalAccounts: sorted.Count,
-                ActiveAccounts: sorted.Count(a => !a.IsSuspended),
-                SuspendedAccounts: sorted.Count(a => a.IsSuspended),
+                Accounts: accountInfos,
+                TotalAccounts: accountInfos.Count,
+                ActiveAccounts: accountInfos.Count(a => !a.IsSuspended),
+                SuspendedAccounts: accountInfos.Count(a => a.IsSuspended),
                 LinkedAccounts: linkedCount,
-                UnlinkedAccounts: sorted.Count - linkedCount,
+                UnlinkedAccounts: accountInfos.Count - linkedCount,
                 NotPrimaryCount: notPrimaryCount,
                 MissingTwoFactorCount: missingTwoFactorCount);
         }

@@ -422,7 +422,6 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
                 .Select(name => name.Name)
                 .ToList(),
             Images = camp.Images
-                .OrderBy(image => image.SortOrder)
                 .Select(image => new CampImageSummary(image.Id, $"/{image.StoragePath}", image.SortOrder))
                 .ToList()
         };
@@ -535,7 +534,6 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
             season.SoundZone,
             season.ElectricalGrid,
             camp.Images
-                .OrderBy(i => i.SortOrder)
                 .Select(i => new CampImageSummary(i.Id, $"/{i.StoragePath}", i.SortOrder))
                 .ToList(),
             camp.HistoricalNames
@@ -928,7 +926,7 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
             $"Camp {campId} permanently deleted",
             actorUserId);
 
-        // Metadata and audit have committed; file cleanup must finish independently of the request.
+        // Metadata has committed and audit was attempted; cleanup must finish independently of the request.
         foreach (var path in deletedImagePaths)
         {
             try
@@ -947,7 +945,7 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
     }
 
     public async Task<CampUpdateResult> AddHistoricalNameAsync(
-        Guid campId, string name, CancellationToken cancellationToken = default)
+        Guid campId, string name, Guid actorUserId, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(name))
             return CampUpdateResult.Failure("Camps_Flash_NameRequired");
@@ -965,15 +963,20 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
         };
 
         await _repo.AddHistoricalNameAsync(entry, cancellationToken);
+        await _auditLog.LogAsync(
+            CampsAuditActions.CampHistoricalNameAdded, nameof(CampHistoricalName), entry.Id,
+            $"Added historical name '{name}'", actorUserId,
+            relatedEntityId: campId, relatedEntityType: nameof(Camp));
         return CampUpdateResult.Success();
     }
 
     public async Task<CampUpdateResult> RemoveHistoricalNameAsync(
-        Guid scopedCampId, Guid historicalNameId, CancellationToken cancellationToken = default)
+        Guid scopedCampId, Guid historicalNameId, Guid actorUserId, CancellationToken cancellationToken = default)
     {
         var camp = await _repo.GetByIdAsync(scopedCampId, cancellationToken);
         if (camp is null) return CampUpdateResult.Failure("Camps_Flash_CampNotFound");
-        if (camp.HistoricalNames.All(n => n.Id != historicalNameId))
+        var entry = camp.HistoricalNames.FirstOrDefault(n => n.Id == historicalNameId);
+        if (entry is null)
         {
             return CampUpdateResult.Failure("Camps_Flash_HistoricalNameWrongCamp");
         }
@@ -983,6 +986,10 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
         {
             return CampUpdateResult.Failure("Camps_Flash_HistoricalNameNotFound");
         }
+        await _auditLog.LogAsync(
+            CampsAuditActions.CampHistoricalNameRemoved, nameof(CampHistoricalName), historicalNameId,
+            $"Removed historical name '{entry.Name}'", actorUserId,
+            relatedEntityId: scopedCampId, relatedEntityType: nameof(Camp));
         return CampUpdateResult.Success();
 
     }
@@ -1016,8 +1023,8 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
         _imageGallery.DeleteImageAsync(scopedCampId, imageId, actorUserId, cancellationToken);
 
     public Task ReorderImagesAsync(
-        Guid campId, List<Guid> imageIdsInOrder, CancellationToken cancellationToken = default) =>
-        _imageGallery.ReorderImagesAsync(campId, imageIdsInOrder, cancellationToken);
+        Guid campId, List<Guid> imageIdsInOrder, Guid actorUserId, CancellationToken cancellationToken = default) =>
+        _imageGallery.ReorderImagesAsync(campId, imageIdsInOrder, actorUserId, cancellationToken);
 
     public async Task<IReadOnlyList<CampEventRegistration>> GetRegistrationByEventAsync(
         CancellationToken cancellationToken = default)
@@ -1123,7 +1130,7 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
         }
     }
 
-    public async Task<CampUpdateResult> ChangeSeasonNameAsync(
+    internal async Task<CampUpdateResult> ChangeSeasonNameAsync(
         Guid scopedCampId, Guid seasonId, string newName, Guid actorUserId, CancellationToken cancellationToken = default)
     {
         string? refusalKey = null;
@@ -1237,12 +1244,6 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
         bool cascadeRoleAssignments,
         CancellationToken cancellationToken)
     {
-        if (cascadeRoleAssignments)
-        {
-            await _campRoleService.Value.RemoveAllForMemberAsync(
-                member.Id, actorUserId, cancellationToken);
-        }
-
         // A grant whose holder already entered the event is consumed: keep the
         // flag on the Removed row so the slot-cap count still includes it —
         // otherwise removing the member frees the slot for a second entry.
@@ -1254,7 +1255,14 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
         member.RemovedAt = now;
         member.RemovedByUserId = actorUserId;
         member.HasEarlyEntry = retainConsumedEeGrant;
-        await _repo.SaveMemberAsync(member, cancellationToken);
+        var removedAssignments = await _repo.SaveMemberAsync(member, cancellationToken, cascadeRoleAssignments);
+
+        if (removedAssignments > 0)
+        {
+            await _auditLog.LogAsync(
+                CampsAuditActions.CampRoleUnassigned, nameof(CampMember), member.Id,
+                $"Cascade-removed {removedAssignments} role assignment(s) for camp member.", actorUserId);
+        }
 
         await _auditLog.LogAsync(
             auditAction, nameof(CampMember), member.Id,
@@ -1343,7 +1351,7 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
             approvedByUserId,
             relatedEntityId: scopedCampId, relatedEntityType: nameof(Camp));
 
-        await _membershipNotices.NotifyApprovalAsync(scopedCampId, member.CampSeasonId, member.UserId, member.Id);
+        await _membershipNotices.NotifyDecisionAsync(scopedCampId, member.CampSeasonId, member.UserId, member.Id, approved: true);
         return CampMembershipMutationResult.Success();
 
     }
@@ -1368,7 +1376,7 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
             cascadeRoleAssignments: false,
             cancellationToken);
 
-        await _membershipNotices.NotifyRejectionAsync(scopedCampId, seasonId, requesterUserId, member.Id);
+        await _membershipNotices.NotifyDecisionAsync(scopedCampId, seasonId, requesterUserId, member.Id, approved: false);
         return CampMembershipMutationResult.Success();
 
     }
@@ -1454,11 +1462,11 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
         if (openSeason is null)
             return AssignCampRoleOutcome.SeasonNotFound;
 
-        var memberId = await EnsureActiveCampMemberAsync(openSeason.Id, userId, actorUserId, cancellationToken);
-        if (memberId is null)
+        var user = await _userService.GetUserInfoAsync(userId, cancellationToken);
+        if (user is null || user.IsTombstone)
             return AssignCampRoleOutcome.MemberNotFound;
         return await _campRoleService.Value.AssignAsync(
-            openSeason.Id, roleDefinitionId, memberId.Value, actorUserId, cancellationToken);
+            openSeason.Id, roleDefinitionId, Guid.Empty, actorUserId, cancellationToken, addUserId: userId);
     }
 
     public async Task<CampMembershipMutationResult> WithdrawCampMembershipRequestAsync(

@@ -54,7 +54,8 @@ internal sealed class ScannerController(
         if (hit.MatchedUserId is { } userId)
         {
             ee = await earlyEntry.GetForUserAsync(userId, ct);
-            pendingConsents = await consents.GetPendingDocumentNamesAsync(userId, ct);
+            pendingConsents = (await consents.GetPendingDocumentNamesAsync(userId, ct))
+                .Order(StringComparer.Ordinal).ToList();
 
             var burn = await settingsService.GetActiveEventSettingsAsync(ct);
             burnTz = burn is null ? null : DateTimeZoneProviders.Tzdb.GetZoneOrNull(burn.TimeZoneId);

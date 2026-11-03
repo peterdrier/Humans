@@ -47,7 +47,7 @@ else
                     var days = (Model.Now - w.AppliedAt).Days;
                     <tr class="@(w.IsRegistrationOverdue(Model.Now) ? "table-danger" : "")">
                         <td><a asp-controller="Workgroups" asp-action="Details" asp-route-slug="@w.Slug">@w.Name</a></td>
-                        <td>@string.Join(", ", w.CoordinatorUserIds().Select(id => Model.DisplayName(id)))</td>
+                        <td>@string.Join(", ", w.Coordinators().OrderBy(m => m.JoinedAt).Select(m => Model.DisplayName(m.UserId)))</td>
                         <td>@w.AppliedAt.ToDate()</td>
                         <td>@days</td>
                         <td>@w.Status</td>
@@ -124,7 +124,7 @@ else
                 {
                     <tr>
                         <td><a asp-controller="Workgroups" asp-action="Details" asp-route-slug="@w.Slug">@w.Name</a></td>
-                        <td>@string.Join(", ", w.CoordinatorUserIds().Select(id => Model.DisplayName(id)))</td>
+                        <td>@string.Join(", ", w.Coordinators().OrderBy(m => m.JoinedAt).Select(m => Model.DisplayName(m.UserId)))</td>
                         <td>@(w.BudgetAmount is { } budget ? budget.ToEuro() : "—")</td>
                         <td>@(w.HoldedAccountNumber is { } acct ? acct.ToString() : "—")</td>
                         <td>

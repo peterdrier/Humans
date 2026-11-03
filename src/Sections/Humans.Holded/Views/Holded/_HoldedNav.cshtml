@@ -1,0 +1,11 @@
+@* The section's page links, shown on every /Holded page so each page can stay single-purpose. *@
+@{
+    var current = ViewContext.RouteData.Values["action"]?.ToString();
+    string Active(string action) => string.Equals(current, action, StringComparison.Ordinal) ? "active" : "";
+}
+<ul class="nav nav-pills mb-4">
+    <li class="nav-item"><a asp-action="Index" class="nav-link @Active("Index")">Summary</a></li>
+    <li class="nav-item"><a asp-action="Accounts" class="nav-link @Active("Accounts")">Accounts</a></li>
+    <li class="nav-item"><a asp-action="Calls" class="nav-link @Active("Calls")">API calls</a></li>
+    <li class="nav-item"><a href="/Finance/Holded" class="nav-link">Finance</a></li>
+</ul>

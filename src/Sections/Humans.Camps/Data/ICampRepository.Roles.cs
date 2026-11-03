@@ -32,15 +32,13 @@ internal partial interface ICampRepository
     Task<bool> AssignmentExistsAsync(Guid campSeasonId, Guid definitionId, Guid campMemberId, CancellationToken ct = default);
 
     /// <summary>
-    /// False when the unique index fired (race lost). The repo translates the PostgreSQL 23505 so the service needs no
-    /// EF Core.
+    /// Saves an assignment and optional membership activation together. Assigned is false on a duplicate assignment;
+    /// Membership describes the activation when addUserId is supplied.
     /// </summary>
-    Task<bool> AddAssignmentAsync(CampRoleAssignment assignment, CancellationToken ct = default);
+    Task<(bool Assigned, CampMemberInsertResult? Membership)> AddAssignmentAsync(
+        CampRoleAssignment assignment, CancellationToken ct = default, Guid? addUserId = null);
 
     Task<bool> DeleteAssignmentAsync(Guid assignmentId, CancellationToken ct = default);
-
-    /// <summary>Hard delete. Returns the count removed.</summary>
-    Task<int> DeleteAllForMemberAsync(Guid campMemberId, CancellationToken ct = default);
 
     /// <summary>Every assignment ever made for the user, for the GDPR export.</summary>
     Task<IReadOnlyList<CampRoleAssignment>> GetAllAssignmentsForUserAsync(
@@ -67,7 +65,8 @@ internal partial interface ICampRepository
     /// <summary>
     /// A source member is re-pointed unless the target already holds a live membership that season (it would violate
     /// <c>IX_camp_members_active_unique</c>); then its assignments fold onto the target's member, dropped on collision,
-    /// and the source member is deleted. Removed source members never collide and always re-point. Idempotent.
+    /// and the source member is deleted. Both save stages share one transaction. Removed source members never
+    /// collide and always re-point. Idempotent.
     /// <paramref name="updatedAt"/> is unused: these tables carry no <c>UpdatedAt</c>.
     /// </summary>
     Task ReassignMembershipsToUserAsync(

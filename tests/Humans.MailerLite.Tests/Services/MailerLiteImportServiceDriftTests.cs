@@ -6,8 +6,10 @@ namespace Humans.MailerLite.Tests.Services;
 
 public class MailerLiteImportServiceDriftTests
 {
-    [HumansFact]
-    public async Task ComputeDrift_CountsHumansOptedOutButMlActive()
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task ComputeDrift_CountsHumansOptedOutButMlActive(bool includeAlias)
     {
         var optedOutId = Guid.NewGuid();
         var optedInId = Guid.NewGuid();
@@ -17,7 +19,16 @@ public class MailerLiteImportServiceDriftTests
             id, email, "active", "api",
             Instant.FromUtc(2026, 1, 1, 0, 0), null, null, null, null, [ApplyHarness.WebsiteGroupId]);
 
-        harness.MlReturns(Active("ml-out", "out@x.com"), Active("ml-in", "in@x.com"));
+        var subscribers = new List<MailerLiteSubscriber>
+        {
+            Active("ml-out", "out@x.com"), Active("ml-in", "in@x.com")
+        };
+        if (includeAlias)
+        {
+            subscribers.Add(Active("ml-alias", "alias@x.com"));
+            harness.SetVerifiedMatch("alias@x.com", optedOutId);
+        }
+        harness.MlReturns(subscribers.ToArray());
         harness.SetVerifiedMatch("out@x.com", optedOutId);
         harness.SetVerifiedMatch("in@x.com", optedInId);
         harness.SetMarketingOptedOut(optedOutId, optedOut: true);

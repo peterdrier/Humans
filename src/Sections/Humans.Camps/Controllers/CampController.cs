@@ -141,7 +141,7 @@ internal sealed class CampController(
             Slug = camp.Slug,
             Name = season.Name,
             BlurbShort = season.BlurbShort,
-            ImageUrl = camp.Images.FirstOrDefault()?.Url,
+            ImageUrl = camp.Images.MinBy(image => image.SortOrder)?.Url,
             Vibes = [.. season.Vibes],
             AcceptingMembers = season.AcceptingMembers,
             KidsWelcome = season.KidsWelcome,
@@ -149,12 +149,13 @@ internal sealed class CampController(
             Status = season.Status,
             TimesAtNowhere = camp.TimesAtNowhere,
             LeadPositionPills = roleSummaries is not null && roleSummaries.TryGetValue(season.Id, out var summaries)
-            ? summaries.Select(s => new CampLeadPositionPillViewModel
-            {
-                Name = s.Name,
-                FilledCount = s.Filled,
-                SlotCount = s.SlotCount
-            }).ToList()
+            ? summaries.OrderBy(s => s.SortOrder).ThenBy(s => s.Name, StringComparer.OrdinalIgnoreCase)
+                .Select(s => new CampLeadPositionPillViewModel
+                {
+                    Name = s.Name,
+                    FilledCount = s.Filled,
+                    SlotCount = s.SlotCount
+                }).ToList()
             : []
         };
 
@@ -517,21 +518,23 @@ internal sealed class CampController(
             .OrderBy(o => o.DisplayName, StringComparer.OrdinalIgnoreCase)
             .ToList();
 
-        var rows = panelData.Rows.Select(r => new CampRoleRowViewModel
-        {
-            DefinitionId = r.Definition.Id,
-            Name = r.Definition.Name,
-            Description = r.Definition.Description,
-            SlotCount = r.Definition.SlotCount,
-            MinimumRequired = r.Definition.MinimumRequired,
-            FilledSlots = r.FilledSlots
+        var rows = panelData.Rows
+            .OrderBy(r => r.Definition.SortOrder).ThenBy(r => r.Definition.Name, StringComparer.OrdinalIgnoreCase)
+            .Select(r => new CampRoleRowViewModel
+            {
+                DefinitionId = r.Definition.Id,
+                Name = r.Definition.Name,
+                Description = r.Definition.Description,
+                SlotCount = r.Definition.SlotCount,
+                MinimumRequired = r.Definition.MinimumRequired,
+                FilledSlots = r.FilledSlots
                 .Select(s => new CampRoleSlotViewModel(s.AssignmentId, s.CampMemberId, s.UserId))
                 .ToList(),
-            EmptySlotCount = r.EmptySlotCount,
-            OverCapacity = r.OverCapacity,
-            CurrentCount = r.CurrentCount,
-            IsLeadRole = r.Definition.SpecialRole == CampSpecialRole.Lead,
-        }).ToList();
+                EmptySlotCount = r.EmptySlotCount,
+                OverCapacity = r.OverCapacity,
+                CurrentCount = r.CurrentCount,
+                IsLeadRole = r.Definition.SpecialRole == CampSpecialRole.Lead,
+            }).ToList();
 
         return new CampRolesPanelViewModel
         {
@@ -699,11 +702,11 @@ internal sealed class CampController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> AddHistoricalName(string slug, string name)
     {
-        var (errorResult, _, camp) = await ResolveCampManagementAsync(slug);
+        var (errorResult, user, camp) = await ResolveCampManagementAsync(slug);
         if (errorResult is not null)
             return errorResult;
 
-        var result = await _campService.AddHistoricalNameAsync(camp.Id, name);
+        var result = await _campService.AddHistoricalNameAsync(camp.Id, name, actorUserId: user.Id);
         if (result.ErrorKey is { } key)
         {
             logger.LogWarning("Adding a historical name failed for camp {CampId}: {Reason}", camp.Id, key);
@@ -722,11 +725,11 @@ internal sealed class CampController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> RemoveHistoricalName(string slug, Guid nameId)
     {
-        var (errorResult, _, camp) = await ResolveCampManagementAsync(slug);
+        var (errorResult, user, camp) = await ResolveCampManagementAsync(slug);
         if (errorResult is not null)
             return errorResult;
 
-        var result = await _campService.RemoveHistoricalNameAsync(camp.Id, nameId);
+        var result = await _campService.RemoveHistoricalNameAsync(camp.Id, nameId, actorUserId: user.Id);
         if (result.ErrorKey is { } key)
         {
             logger.LogWarning("Removing historical name {NameId} failed for camp {CampId}: {Reason}", nameId, camp.Id, key);
@@ -807,13 +810,13 @@ internal sealed class CampController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> ReorderImages(string slug, List<Guid> imageIds)
     {
-        var (errorResult, _, camp) = await ResolveCampManagementAsync(slug);
+        var (errorResult, user, camp) = await ResolveCampManagementAsync(slug);
         if (errorResult is not null)
         {
             return errorResult;
         }
 
-        await _campService.ReorderImagesAsync(camp.Id, imageIds);
+        await _campService.ReorderImagesAsync(camp.Id, imageIds, actorUserId: user.Id);
         SetSuccess(campsLocalizer["Camps_Flash_ImageOrderUpdated"].Value);
 
         return RedirectToAction(nameof(Edit), new { slug });
@@ -1273,7 +1276,7 @@ internal sealed class CampController(
             HideHistoricalNames = camp.HideHistoricalNames,
             TimesAtNowhere = camp.TimesAtNowhere,
             HistoricalNames = [.. camp.HistoricalNames],
-            ImageUrls = camp.Images.Select(image => image.Url).ToList(),
+            ImageUrls = camp.Images.OrderBy(image => image.SortOrder).Select(image => image.Url).ToList(),
             CurrentSeason = new CampSeasonDetailViewModel
             {
                 Id = season.Id,

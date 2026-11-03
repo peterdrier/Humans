@@ -74,10 +74,6 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
                 Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, string>());
 
-        _userEmailService.GetVerifiedEmailsForUserAsync(
-                Arg.Any<Guid>(), Arg.Any<CancellationToken>())
-            .Returns([]);
-
         _teamService.GetTeamsAsync(Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, TeamInfo>());
 
@@ -380,6 +376,7 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
         result.QuarterlySales.Should().ContainSingle();
 
         var weekly = result.WeeklySales.Single();
+        weekly.WeekStart.Should().Be(new LocalDate(2026, 3, 2));
         weekly.TicketsSold.Should().Be(1);
         weekly.Donations.Should().Be(25m);
         weekly.VipDonations.Should().Be(400m - TicketConstants.VipThresholdEuros);
@@ -440,9 +437,9 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
 
         var result = await _service.GetSalesAggregatesAsync();
 
-        result.MonthlySales.Select(m => m.MonthLabel).Should().Equal("2026-03", "2026-04", "2026-05");
+        result.MonthlySales.Select(m => m.MonthLabel).Should().BeEquivalentTo(new[] { "2026-03", "2026-04", "2026-05" });
 
-        var mar = result.MonthlySales[0];
+        var mar = result.MonthlySales.Single(month => string.Equals(month.MonthLabel, "2026-03", StringComparison.Ordinal));
         mar.OrderCount.Should().Be(1);
         mar.TicketsSold.Should().Be(1);
         mar.GrossRevenue.Should().Be(425m);
@@ -458,14 +455,14 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
         mar.WithheldTax.Should().Be(0.30m);
         mar.RefundedGross.Should().Be(200m);
 
-        var apr = result.MonthlySales[1];
+        var apr = result.MonthlySales.Single(month => string.Equals(month.MonthLabel, "2026-04", StringComparison.Ordinal));
         apr.GrossRevenue.Should().Be(315m);
         apr.TicketIncomeInclVat.Should().Be(315m);
         apr.TicketIncomeExVat.Should().Be(315m - 28.64m);
         apr.StripeFees.Should().Be(3m);
         apr.RefundedGross.Should().Be(0m);
 
-        var may = result.MonthlySales[2];
+        var may = result.MonthlySales.Single(month => string.Equals(month.MonthLabel, "2026-05", StringComparison.Ordinal));
         may.OrderCount.Should().Be(0);
         may.GrossRevenue.Should().Be(0m);
         may.TicketIncomeInclVat.Should().Be(0m);
@@ -606,20 +603,19 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
 
         result.ByTicketType.Should().HaveCount(3);
 
-        // Ordered by face value descending.
-        var vip = result.ByTicketType[0];
+        var vip = result.ByTicketType.Single(t => string.Equals(t.TicketTypeName, "VIP", StringComparison.Ordinal));
         vip.TicketTypeName.Should().Be("VIP");
         vip.Price.Should().Be(420m);
         vip.TicketsSold.Should().Be(1);
         vip.FaceValue.Should().Be(420m);
 
-        var fullWeek = result.ByTicketType[1];
+        var fullWeek = result.ByTicketType.Single(t => string.Equals(t.TicketTypeName, "Full Week", StringComparison.Ordinal) && t.Price == 100m);
         fullWeek.TicketTypeName.Should().Be("Full Week");
         fullWeek.Price.Should().Be(100m);
         fullWeek.TicketsSold.Should().Be(2);
         fullWeek.FaceValue.Should().Be(200m);
 
-        var earlyBird = result.ByTicketType[2];
+        var earlyBird = result.ByTicketType.Single(t => string.Equals(t.TicketTypeName, "Full Week", StringComparison.Ordinal) && t.Price == 80m);
         earlyBird.TicketTypeName.Should().Be("Full Week");
         earlyBird.Price.Should().Be(80m);
         earlyBird.TicketsSold.Should().Be(1);
@@ -694,7 +690,8 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
     public async Task CodeTrackingSearch_IgnoresSurroundingWhitespace(string search, int expectedRows)
     {
         var campaignId = Guid.NewGuid();
-        StubCodeTracking(new CampaignCodeTrackingSummary(campaignId, "Volunteer Comps", TotalGrants: 2, Redeemed: 0),
+        var createdAt = Instant.FromUtc(2026, 1, 1, 0, 0);
+        StubCodeTracking(new CampaignCodeTrackingSummary(campaignId, "Volunteer Comps", TotalGrants: 2, Redeemed: 0) { CreatedAt = createdAt },
             [("VOL1", campaignId), ("VOL2", campaignId)]);
 
         var result = await _service.GetCodeTrackingDataAsync(search);
@@ -703,14 +700,16 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
         result.Codes.Should().Contain(row => string.Equals(row.Code, "VOL1", StringComparison.Ordinal));
         result.TotalCodesSent.Should().Be(2);
         result.Campaigns.Should().ContainSingle();
+        result.Campaigns[0].CreatedAt.Should().Be(createdAt);
     }
 
     [HumansFact]
     public async Task GetSalesAggregatesAsync_ByDiscountCampaign_SplitsGrantedCodesFromVendorCodes()
     {
         var campaignId = Guid.NewGuid();
+        var createdAt = Instant.FromUtc(2026, 1, 1, 0, 0);
         StubCodeTracking(
-            new CampaignCodeTrackingSummary(campaignId, "Volunteer Comps", TotalGrants: 3, Redeemed: 2),
+            new CampaignCodeTrackingSummary(campaignId, "Volunteer Comps", TotalGrants: 3, Redeemed: 2) { CreatedAt = createdAt },
             [("VOL1", campaignId), ("VOL2", campaignId), ("VOL3", campaignId)]);
 
         await TicketsDb.TicketOrders.AddRangeAsync(
@@ -724,15 +723,15 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
 
         result.ByDiscountCampaign.Should().HaveCount(2);
 
-        var campaign = result.ByDiscountCampaign[0];
+        var campaign = result.ByDiscountCampaign.Single(c => c.CodesGranted is not null);
         campaign.CampaignTitle.Should().Be("Volunteer Comps");
+        campaign.CreatedAt.Should().Be(createdAt);
         campaign.CodesGranted.Should().Be(3);
         campaign.CodesUsed.Should().Be(2);
         campaign.AverageDiscount.Should().Be(40m);
         campaign.TotalDiscount.Should().Be(80m);
 
-        // Vendor codes always sort last and have nothing granted.
-        var vendor = result.ByDiscountCampaign[1];
+        var vendor = result.ByDiscountCampaign.Single(c => c.CodesGranted is null);
         vendor.CampaignTitle.Should().Be("No campaign (vendor codes)");
         vendor.CodesGranted.Should().BeNull();
         vendor.CodesUsed.Should().Be(1);

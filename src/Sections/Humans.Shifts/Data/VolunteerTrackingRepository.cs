@@ -8,15 +8,15 @@ namespace Humans.Shifts.Data;
 internal sealed class VolunteerTrackingRepository(ShiftsDbContext db) : IVolunteerTrackingRepository
 {
     public async Task<IReadOnlyList<VolunteerBuildStatus>> GetBuildStatusesForEventAsync(
-        Guid eventSettingsId,
+        Guid? eventSettingsId,
         IReadOnlyCollection<Guid>? userIds = null,
         CancellationToken ct = default)
     {
         if (userIds is { Count: 0 }) return [];
 
-        var query = db.VolunteerBuildStatuses
-            .AsNoTracking()
-            .Where(x => x.EventSettingsId == eventSettingsId);
+        var query = db.VolunteerBuildStatuses.AsNoTracking();
+        if (eventSettingsId is { } eventId)
+            query = query.Where(x => x.EventSettingsId == eventId);
 
         if (userIds is not null)
             query = query.Where(x => userIds.Contains(x.UserId));
@@ -126,6 +126,23 @@ internal sealed class VolunteerTrackingRepository(ShiftsDbContext db) : IVolunte
                 src.UserId = targetUserId;
                 src.UpdatedAt = updatedAt;
             }
+        }
+
+        // Same rule as availability: source-only rows move, the survivor's row wins a collision.
+        var sourceStatuses = await db.VolunteerBuildStatuses
+            .Where(b => b.UserId == sourceUserId)
+            .ToListAsync(ct);
+        var targetStatusEventIds = (await db.VolunteerBuildStatuses
+            .Where(b => b.UserId == targetUserId)
+            .Select(b => b.EventSettingsId)
+            .ToListAsync(ct)).ToHashSet();
+
+        foreach (var src in sourceStatuses)
+        {
+            if (targetStatusEventIds.Contains(src.EventSettingsId))
+                db.VolunteerBuildStatuses.Remove(src);
+            else
+                src.UserId = targetUserId;
         }
 
         await db.SaveChangesAsync(ct);

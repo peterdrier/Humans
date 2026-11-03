@@ -328,6 +328,8 @@ public sealed class ContactFieldServiceTests : ServiceTestHarness
         var result = await _service.GetVisibleContactFieldsAsync(ownerId, ownerId, TestContext.Current.CancellationToken);
 
         result.Should().HaveCount(4);
+        result.ToDictionary(f => f.Id, f => f.DisplayOrder).Should().BeEquivalentTo(
+            Db.ContactFields.Where(f => f.ProfileId == profile.Id).ToDictionary(f => f.Id, f => f.DisplayOrder));
     }
 
     #endregion
@@ -485,7 +487,7 @@ public sealed class ContactFieldServiceTests : ServiceTestHarness
         StubUserInfo(userId, profile);
         var info = await _userService.GetUserInfoAsync(userId);
 
-        var model = Humans.Users.Models.ProfileEditViewModelBuilder.Build(info!, [], isApproved: false, false, _ => null);
+        var model = Humans.Users.Models.ProfileEditViewModelBuilder.Build(info!, [], false, _ => null);
 
         model.EditableContactFields.Should().ContainSingle().Which.Id.Should().Be(signalId);
         model.ContactFields.Should().ContainSingle().Which.Id.Should().Be(legacyId);

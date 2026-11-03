@@ -1,7 +1,5 @@
 using System.Globalization;
 using CsvHelper;
-using CsvHelper.Configuration;
-using CsvHelper.Delegates;
 using Humans.Base.Csv;
 using Humans.Events.Services.Dtos;
 
@@ -17,39 +15,19 @@ internal static class BulkEventCsvParser
     public static BulkCsvParseResult Parse(string csvText)
     {
         var errors = new List<BulkCsvParseError>();
-        var config = HumansCsv.ReadConfig();
-        config.AllowComments = true;
-        config.Comment = '#';
-        // CsvHelper's detection samples the comment banner too, whose comma-rich prose outvotes semicolon data rows.
-        // Sniff the header line instead.
-        config.DetectDelimiter = false;
-        config.DetectDelimiterValues = [",", ";"];
-        config.Delimiter = SniffDelimiter(csvText, config);
-        // Ragged rows read missing trailing cells as empty instead of throwing;
-        // genuinely absent columns are caught by header validation below.
-        config.MissingFieldFound = null;
-        config.HeaderValidated = args =>
-        {
-            if (args.InvalidHeaders.Length == 0) return;
-            var missing = string.Join(", ", args.InvalidHeaders.SelectMany(h => h.Names));
-            errors.Add(new("Events_Upload_MissingRequiredColumns", missing));
-        };
+        var config = HumansCsv.ReadConfig() with { CommentPrefix = '#', TrackLineNumbers = true };
 
         var rows = new List<BulkCsvRow>();
 
-        using var reader = new StringReader(csvText);
-        using var csv = new CsvReader(reader, config);
-        csv.Context.RegisterClassMap<BulkEventCsvRecordMap>();
+        using var csv = CsvReader.FromText(csvText, config);
 
-        if (!csv.Read()) return new(rows, errors);
-        csv.ReadHeader();
-        csv.ValidateHeader<BulkEventCsvRecord>();
-        if (errors.Count > 0) return new([], errors);
+        if (!csv.TryValidateHeader<BulkEventCsvRecord>(out var missing))
+            return new([], [new("Events_Upload_MissingRequiredColumns", string.Join(", ", missing.Select(HeaderName)))]);
 
         while (csv.Read())
         {
             var record = csv.GetRecord<BulkEventCsvRecord>();
-            var fileRow = csv.Parser.RawRow;
+            var fileRow = (int)csv.LineNumber;
 
             Guid? id = null;
             if (!string.IsNullOrWhiteSpace(record.Id))
@@ -84,15 +62,12 @@ internal static class BulkEventCsvParser
         return new(errors.Count == 0 ? rows : [], errors);
     }
 
-    /// <summary>The header line is the first non-comment, non-blank line.</summary>
-    private static string SniffDelimiter(string csvText, CsvConfiguration config)
+    /// <summary>CsvHelper names a missing column as <c>Type.Member ('Header')</c>; uploaders only know the header.</summary>
+    private static string HeaderName(string missingColumn)
     {
-        foreach (var rawLine in csvText.Split('\n'))
-        {
-            var line = rawLine.TrimEnd('\r');
-            if (string.IsNullOrWhiteSpace(line) || line.TrimStart().StartsWith('#')) continue;
-            return config.GetDelimiter(new GetDelimiterArgs(line, config));
-        }
-        return ",";
+        var open = missingColumn.IndexOf("('", StringComparison.Ordinal);
+        return open >= 0 && missingColumn.EndsWith("')", StringComparison.Ordinal)
+            ? missingColumn[(open + 2)..^2]
+            : missingColumn;
     }
 }

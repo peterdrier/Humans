@@ -32,7 +32,6 @@ internal sealed class ApplicationDecisionService(
     IAuditLogService auditLogService,
     IEmailService emailService,
     GovernanceEmails emailMessages,
-    IUserEmailService userEmailService,
     INotificationEmitter notificationService,
     ISystemTeamSync syncJob,
     IHumansMetrics metrics,
@@ -73,8 +72,6 @@ internal sealed class ApplicationDecisionService(
         application.TermExpiresAt = TermExpiryCalculator.ComputeTermExpiry(today);
 
         await FinalizeDecisionAsync(application, reviewerUserId, cancellationToken);
-
-        await membershipTiers.GrantAsync(application, cancellationToken);
 
         if (application.MembershipTier == MembershipTier.Colaborador)
             await syncJob.SyncMembershipForUserAsync(
@@ -173,11 +170,19 @@ internal sealed class ApplicationDecisionService(
     {
         // Resolve the Board before the write so nothing awaitable sits between commit and audit.
         var boardMemberIds = await GetBoardMemberIdsAsync(cancellationToken);
-        await repository.FinalizeAsync(application, cancellationToken);
+        var approved = application.Status == ApplicationStatus.Approved;
+        var tierGrant = approved ? new MembershipTierRecord
+        {
+            UserId = application.UserId,
+            Tier = application.MembershipTier,
+            GrantedAt = clock.GetCurrentInstant(),
+            ExpiresAt = application.TermExpiresAt,
+            GrantedByApplicationId = application.Id,
+        } : null;
+        await repository.FinalizeAsync(application, cancellationToken, tierGrant);
 
         InvalidateVotingBadges(boardMemberIds);
 
-        var approved = application.Status == ApplicationStatus.Approved;
         var decision = approved ? "approved" : "rejected";
         await auditLogService.LogAsync(
             approved ? GovernanceAuditActions.TierApplicationApproved : GovernanceAuditActions.TierApplicationRejected,
@@ -413,8 +418,7 @@ internal sealed class ApplicationDecisionService(
                 continue;
 
             application.TermExpiresAt = row.ExpectedExpiry;
-            await repository.UpdateAsync(application, ct);
-            await membershipTiers.SyncExpiryAsync(application.Id, row.ExpectedExpiry, ct);
+            await repository.UpdateAsync(application, ct, syncTierExpiry: true);
 
             await auditLogService.LogAsync(
                 GovernanceAuditActions.TierTermExpiryCorrected,
@@ -500,7 +504,6 @@ internal sealed class ApplicationDecisionService(
         var boardUsersById = await userService.GetUserInfosAsync(boardMemberIds, ct);
         var boardMembers = boardUsersById.Values
             .Select(u => new BoardMemberInfo(u.Id, u.BurnerName))
-            .OrderBy(m => m.DisplayName, StringComparer.OrdinalIgnoreCase)
             .ToList();
 
         return new BoardVotingDashboardData(rows, boardMembers);
@@ -713,7 +716,6 @@ internal sealed class ApplicationDecisionService(
             : null;
 
         var history = application.StateHistory
-            .OrderByDescending(h => h.ChangedAt)
             .Select(h => new ApplicationStateHistoryDto(
                 Status: h.Status,
                 ChangedAt: h.ChangedAt,
@@ -740,10 +742,8 @@ internal sealed class ApplicationDecisionService(
 
             culture = CultureInfo.GetCultureInfo(user.PreferredLanguage.IsSupportedCultureCode() ? user.PreferredLanguage : "en");
 
-            var notificationEmails = await userEmailService.GetNotificationTargetEmailsAsync(
-                [application.UserId], cancellationToken);
-            if (notificationEmails.TryGetValue(application.UserId, out var recipientEmail)
-                && !string.IsNullOrWhiteSpace(recipientEmail))
+            var recipientEmail = user.Email;
+            if (!string.IsNullOrWhiteSpace(recipientEmail))
             {
                 await emailService.SendAsync(buildMessage(recipientEmail, user, culture.Name));
             }

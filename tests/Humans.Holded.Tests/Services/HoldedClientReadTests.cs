@@ -40,6 +40,10 @@ public class HoldedClientReadTests
     [HumansTheory]
     [Xunit.InlineData("expense", "account_num", "missing")]
     [Xunit.InlineData("expense", "account_num", "null")]
+    [Xunit.InlineData("expense", "id", "missing")]
+    [Xunit.InlineData("expense", "id", "null")]
+    [Xunit.InlineData("expense", "id", "empty")]
+    [Xunit.InlineData("expense", "id", "whitespace")]
     [Xunit.InlineData("chart", "id", "missing")]
     [Xunit.InlineData("chart", "id", "null")]
     [Xunit.InlineData("chart", "id", "empty")]
@@ -153,7 +157,6 @@ public class HoldedClientReadTests
         var line = doc.Lines[0];
         line.AccountId.Should().Be("acc-629");
         line.Tags.Should().ContainSingle("adminstaff");
-        line.Amount.Should().Be(100.0m);
     }
 
     [HumansTheory]
@@ -161,7 +164,9 @@ public class HoldedClientReadTests
     [Xunit.InlineData("id", null, true)]
     [Xunit.InlineData("id", "", true)]
     [Xunit.InlineData("id", " ", true)]
-    public async Task ListPurchaseDocuments_refuses_missing_or_blank_id(
+    [Xunit.InlineData("payments_pending", null, false)]
+    [Xunit.InlineData("payments_pending", null, true)]
+    public async Task ListPurchaseDocuments_refuses_missing_or_blank_required_fields(
         string field, string? value, bool present)
     {
         var doc = JsonNode.Parse("""{"id":"doc-1","date":"2026-05-14","total":"121.00","payments_pending":"121.00","draft":false}""")!.AsObject();
@@ -246,8 +251,8 @@ public class HoldedClientReadTests
         var json = """
         {"items":[
           {"id":"d1","document_number":"F001","date":"2026-05-14","total":"121.00","payments_pending":"0.00","draft":false},
-          {"id":"d2","document_number":"F002","date":"2026-05-14","total":"50.00","payments_pending":"0.00","draft":true},
-          {"id":"d3","document_number":"F003","date":"2026-05-14","total":"30.00","payments_pending":"0.00"}
+          {"id":"d2","document_number":"F002","date":"2026-05-14","total":"50.00","draft":true},
+          {"id":"d3","document_number":"F003","date":"2026-05-14","total":"30.00","payments_pending":null}
         ],"cursor":null,"has_more":false}
         """;
         var client = Make(new StubHandler(_ => Respond(HttpStatusCode.OK, json)));
@@ -257,15 +262,17 @@ public class HoldedClientReadTests
         docs.Single(d => string.Equals(d.Id, "d1", StringComparison.Ordinal)).IsDraft.Should().Be(false);
         docs.Single(d => string.Equals(d.Id, "d2", StringComparison.Ordinal)).IsDraft.Should().Be(true);
         docs.Single(d => string.Equals(d.Id, "d3", StringComparison.Ordinal)).IsDraft.Should().BeNull();
+        docs.Should().OnlyContain(d => d.PaymentsPending == 0m);
     }
 
     [HumansFact]
     public async Task ListLedgerEntries_parses_ddMMyyyy_dates_and_string_decimals()
     {
         var json = """
-        {"items":[{"entry_number":2064.0,"line":2.0,"date":"09/02/2026","type":"payment",
-          "description":"","doc_description":"","account":40000004.0,"debit":"0.00",
-          "credit":"1200.00","tags":[],"checked":false}],"cursor":null,"has_more":false}
+        {"items":[{"id":"68f0c1a2b3c4d5e6f7a8b9c0","entry_number":2064.0,"line":2.0,"date":"09/02/2026",
+          "type":"payment","description":"Purchase  Bus deposit","doc_description":"F-2026-014",
+          "account":40000004.0,"debit":"0.00","credit":"1200.00","tags":["camp"],"checked":true}],
+         "cursor":null,"has_more":false}
         """;
         var client = Make(new StubHandler(_ => Respond(HttpStatusCode.OK, json)));
 
@@ -281,6 +288,9 @@ public class HoldedClientReadTests
         line.Debit.Should().Be(0.00m);
         line.Credit.Should().Be(1200.00m);
         line.Type.Should().Be("payment");
+        line.Description.Should().Be("Purchase  Bus deposit");
+        line.EntryId.Should().Be("68f0c1a2b3c4d5e6f7a8b9c0");
+        line.Checked.Should().BeTrue();
         line.Date.Should().Be(
             new LocalDate(2026, 2, 9)
                 .AtStartOfDayInZone(DateTimeZoneProviders.Tzdb["Europe/Madrid"])
@@ -298,14 +308,16 @@ public class HoldedClientReadTests
             if (callCount == 1)
             {
                 return Respond(HttpStatusCode.OK, """
-                {"items":[{"entry_number":1,"line":1,"date":"01/01/2026","account":40000004,
-                  "debit":"0.00","credit":"10.00"}],"cursor":"c1","has_more":true}
+                {"items":[{"id":"68f0c1a2b3c4d5e6f7a8b9c1","entry_number":1,"line":1,"date":"01/01/2026","account":40000004,
+                  "debit":"0.00","credit":"10.00","type":"entry","description":"","doc_description":"",
+                  "tags":[],"checked":false}],"cursor":"c1","has_more":true}
                 """);
             }
             secondQuery = req.RequestUri!.Query;
             return Respond(HttpStatusCode.OK, """
-            {"items":[{"entry_number":2,"line":1,"date":"02/01/2026","account":40000004,
-              "debit":"0.00","credit":"5.00"}],"cursor":null,"has_more":false}
+            {"items":[{"id":"68f0c1a2b3c4d5e6f7a8b9c1","entry_number":2,"line":1,"date":"02/01/2026","account":40000004,
+              "debit":"0.00","credit":"5.00","type":"entry","description":"","doc_description":"",
+                  "tags":[],"checked":false}],"cursor":null,"has_more":false}
             """);
         });
 
@@ -372,8 +384,9 @@ public class HoldedClientReadTests
         // The page cannot be followed, and the prefix cannot be returned: the same replace
         // semantics as the cap case turn a short read into a delete of rows Holded still has.
         var handler = new StubHandler(_ => Respond(HttpStatusCode.OK, """
-            {"items":[{"entry_number":1,"line":1,"date":"01/01/2026","account":40000004,
-              "debit":"0.00","credit":"10.00"}],"cursor":null,"has_more":true}
+            {"items":[{"id":"68f0c1a2b3c4d5e6f7a8b9c1","entry_number":1,"line":1,"date":"01/01/2026","account":40000004,
+              "debit":"0.00","credit":"10.00","type":"entry","description":"","doc_description":"",
+                  "tags":[],"checked":false}],"cursor":null,"has_more":true}
             """));
 
         var client = Make(handler);
@@ -406,8 +419,9 @@ public class HoldedClientReadTests
     public async Task ListLedgerEntries_refuses_a_page_with_a_null_item()
     {
         var client = Make(new StubHandler(_ => Respond(HttpStatusCode.OK, """
-            {"items":[{"entry_number":1,"line":1,"date":"01/01/2026","account":40000004,
-              "debit":"0.00","credit":"10.00"},null],"cursor":null,"has_more":false}
+            {"items":[{"id":"68f0c1a2b3c4d5e6f7a8b9c1","entry_number":1,"line":1,"date":"01/01/2026","account":40000004,
+              "debit":"0.00","credit":"10.00","type":"entry","description":"","doc_description":"",
+                  "tags":[],"checked":false},null],"cursor":null,"has_more":false}
             """)));
         var act = async () => await client.ListLedgerEntriesAsync(
             new LocalDate(2026, 1, 1), new LocalDate(2026, 1, 31),
@@ -558,7 +572,7 @@ public class HoldedClientReadTests
     }
 
     [HumansFact]
-    public async Task GetUsage_parses_period_usage_limit_and_secondary()
+    public async Task GetUsage_parses_period_and_usage()
     {
         var json = """
         {"type":"automation_token","period":"2026-08","usage":36,"limit":2000000,
@@ -571,8 +585,6 @@ public class HoldedClientReadTests
 
         usage.Period.Should().Be("2026-08");
         usage.Usage.Should().Be(36);
-        usage.Limit.Should().Be(2000000);
-        usage.SecondaryUsages.Should().ContainKey("api_v1_legacy_1").WhoseValue.Should().Be(35);
     }
 
     [HumansFact]

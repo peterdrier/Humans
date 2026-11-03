@@ -27,7 +27,7 @@ The food answers are Cantina's (`cantina_dietary_profiles`, Users decomposition 
 
 - **Dietary form** (`/Cantina/Dietary`, Cantina's `CantinaProfileController`): any authenticated user, own answers only — the controller takes the user from the principal, never from the route.
 - **Medical form** (`/Profile/Me/Medical`, Users' `ProfileController`): any authenticated user, own conditions only.
-- **Reading medical conditions:** owner, `ShiftsNoInfo`, `Admin` (`ShiftsPolicies.MedicalDataViewer`). Shifts' badges keep their `ShowMedical` gate; Cantina never reads or returns medical data.
+- **Reading medical conditions:** owner, `ShiftsNoInfo`, `Admin` (`ShiftsPolicies.MedicalDataViewer`). Shifts' badges show it only through an audited reveal (`POST /Shifts/Medical/{userId}/Reveal`); Cantina never reads or returns medical data.
 - **Reading dietary answers:** any surface that already shows the volunteer's shift profile (coordinators, shift admins, volunteer search) and the `CantinaPolicies.Read` roster, all through `ICantinaService`.
 
 Both forms carry `[AllowBeforeActiveMembership]` so a not-yet-Active member can still answer them.
@@ -41,7 +41,7 @@ Both forms carry `[AllowBeforeActiveMembership]` so a not-yet-Active member can 
 
 ### US-35.1: Things-to-do nudge
 **Acceptance Criteria:**
-- Cantina's `ISectionThingsToDo` contributes a `"dietary"` item while the `ICantinaService.GetDietaryProfileAsync` read shows no dietary preference on file (falling back to the legacy profile columns until copied) and not declined.
+- Cantina's `ISectionThingsToDo` contributes a `"dietary"` item while the `ICantinaService.GetDietaryProfileAsync` read shows no dietary preference on file and not declined.
 - Title `Todo_DietaryMedical_Title`; description `Todo_DietaryMedical_Pending` when `IShiftService.HasQualifyingCantinaSignupAsync` is true, else `Todo_DietaryMedical_NoShift_Pending`; action `Todo_DietaryMedical_Action` → `CantinaProfile/Dietary`; icon `fa-solid fa-utensils`.
 - Any non-empty preference (including Omnivore with no allergies) or "I don't want to answer" removes it.
 - Self-signups and voluntold signups count alike (`Pending`/`Confirmed`, future, qualifying shift). No email or push.
@@ -103,7 +103,7 @@ Dietary answers are read only from `cantina_dietary_profiles`. Users still expor
 ## Cross-section dependencies
 
 - **Shifts** → Cantina: `ICantinaService` for the banner (`GetDietaryProfileAsync`), volunteer search and admin badges. Cantina → Shifts: `IShiftService.HasQualifyingCantinaSignupAsync` (nudge copy).
-- **Users** → Cantina: `ICantinaService.GetDietaryProfileAsync` for the medical prompt's "dietary still open" check. Cantina → Users: `IUserService` for the merge chain and legacy fallback.
+- **Users** → Cantina: `ICantinaService.GetDietaryProfileAsync` for the medical prompt's "dietary still open" check. Cantina → Users: `IUserService` for the merge chain.
 
 ## Negative access rules
 

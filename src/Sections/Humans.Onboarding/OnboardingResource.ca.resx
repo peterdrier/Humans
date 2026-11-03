@@ -40,116 +40,17 @@
   <resheader name="writer">
     <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </resheader>
-  <data name="Onboarding_ReviewTitle" xml:space="preserve">
-    <value>Cua de revisió d'incorporació</value>
-  </data>
-  <data name="Onboarding_ReviewNoPending" xml:space="preserve">
-    <value>Cap persona està esperant revisió.</value>
-  </data>
-  <data name="Onboarding_ReviewPendingSection" xml:space="preserve">
-    <value>Pendents de revisió</value>
-  </data>
-  <data name="Onboarding_ReviewFlaggedSection" xml:space="preserve">
-    <value>Marcats per a seguiment</value>
-  </data>
-  <data name="Onboarding_ReviewFlaggedBadge" xml:space="preserve">
-    <value>Marcat</value>
-  </data>
   <data name="Onboarding_ReviewProfileSummary" xml:space="preserve">
     <value>Resum del perfil</value>
-  </data>
-  <data name="Onboarding_ReviewNewHumanSummary" xml:space="preserve">
-    <value>Resum del nou human</value>
   </data>
   <data name="Onboarding_ReviewLegalName" xml:space="preserve">
     <value>Nom legal</value>
   </data>
-  <data name="Onboarding_ReviewHasApplication" xml:space="preserve">
-    <value>Té sol·licitud</value>
-  </data>
-  <data name="Onboarding_ReviewSigned" xml:space="preserve">
-    <value>signats</value>
-  </data>
   <data name="Onboarding_ReviewApplicationMotivation" xml:space="preserve">
     <value>Motivació de la sol·licitud</value>
   </data>
-  <data name="Onboarding_ReviewPreviousNotes" xml:space="preserve">
-    <value>Notes de revisió anteriors</value>
-  </data>
-  <data name="Onboarding_ReviewActions" xml:space="preserve">
-    <value>Accions</value>
-  </data>
   <data name="Onboarding_ReviewNotesPlaceholder" xml:space="preserve">
     <value>Notes opcionals...</value>
-  </data>
-  <data name="Onboarding_ReviewClearButton" xml:space="preserve">
-    <value>Aprova i activa</value>
-  </data>
-  <data name="Onboarding_ReviewClearHelp" xml:space="preserve">
-    <value>Aprova la revisió del perfil. La persona s’unirà a Voluntaris quan els documents legals també estiguin signats.</value>
-  </data>
-  <data name="Onboarding_ReviewClearConfirm" xml:space="preserve">
-    <value>Això aprovarà la revisió del perfil d’aquesta persona. Vols continuar?</value>
-  </data>
-  <data name="Onboarding_ReviewFlagButton" xml:space="preserve">
-    <value>Marca per a revisió</value>
-  </data>
-  <data name="Onboarding_ReviewFlagReasonPlaceholder" xml:space="preserve">
-    <value>Motiu del marcatge...</value>
-  </data>
-  <data name="Onboarding_ReviewFlagConfirm" xml:space="preserve">
-    <value>Això marcarà aquesta persona per a revisió addicional. Vols continuar?</value>
-  </data>
-  <data name="Onboarding_ReviewAlreadyCleared" xml:space="preserve">
-    <value>Aquesta persona ja ha estat aprovada.</value>
-  </data>
-  <data name="Onboarding_ReviewCleared" xml:space="preserve">
-    <value>Revisió del perfil aprovada.</value>
-  </data>
-  <data name="Onboarding_ReviewBulkClearedNone" xml:space="preserve">
-    <value>No s'ha aprovat cap persona seleccionada.</value>
-  </data>
-  <data name="Onboarding_ReviewBulkCleared" xml:space="preserve">
-    <value>S'han aprovat {0} persones seleccionades.</value>
-  </data>
-  <data name="Onboarding_ReviewBulkClearedPartial" xml:space="preserve">
-    <value>S'han aprovat {0} de {1} seleccionades — les altres ja no són elegibles.</value>
-  </data>
-  <data name="Onboarding_ReviewBulkClearButton" xml:space="preserve">
-    <value>Aprova totes les seleccionades</value>
-  </data>
-  <data name="Onboarding_ReviewFlagged" xml:space="preserve">
-    <value>Persona marcada per a revisió addicional.</value>
-  </data>
-  <data name="Onboarding_ReviewRejectButton" xml:space="preserve">
-    <value>Rebutja el registre</value>
-  </data>
-  <data name="Onboarding_ReviewRejectReasonPlaceholder" xml:space="preserve">
-    <value>Motiu del rebuig...</value>
-  </data>
-  <data name="Onboarding_ReviewRejectConfirm" xml:space="preserve">
-    <value>Segur que vols rebutjar el registre d’aquest human? Aquesta acció no es pot desfer.</value>
-  </data>
-  <data name="Onboarding_ReviewRejectHelp" xml:space="preserve">
-    <value>Rebutjar denegarà permanentment el registre d’aquest human i enviarà un correu de notificació.</value>
-  </data>
-  <data name="Onboarding_ReviewRejected" xml:space="preserve">
-    <value>El registre ha estat rebutjat.</value>
-  </data>
-  <data name="Onboarding_ReviewAlreadyRejected" xml:space="preserve">
-    <value>Aquest human ja ha estat rebutjat.</value>
-  </data>
-  <data name="Onboarding_ReviewLegalDocuments" xml:space="preserve">
-    <value>Documents legals</value>
-  </data>
-  <data name="Onboarding_ReviewDocsComplete" xml:space="preserve">
-    <value>Complet</value>
-  </data>
-  <data name="Onboarding_ReviewDocsPending" xml:space="preserve">
-    <value>Pendent</value>
-  </data>
-  <data name="Onboarding_ReviewDocsNote" xml:space="preserve">
-    <value>La revisió del perfil es pot fer de manera independent. La persona s’unirà a Voluntaris quan tots els documents estiguin signats.</value>
   </data>
   <data name="Onboarding_BannerText" xml:space="preserve">
     <value>Acaba de configurar el teu compte per accedir als torns i a les funcions d'equip.</value>
@@ -296,8 +197,6 @@
   <data name="Onboarding_GuestTeamsDescription" xml:space="preserve">
     <value>Els equips que fan que tot funcioni — so, seguretat, construcció, tot</value>
   </data>
-  <data name="Onboarding_ReviewReviewLink" xml:space="preserve"><value>Revisar</value></data>
-  <data name="Onboarding_ReviewSelectRowLabel" xml:space="preserve"><value>Selecciona {0}</value></data>
   <data name="Onboarding_GuestDeleteAccountConfirm" xml:space="preserve"><value>Segur que vols sol·licitar la supressió del compte? Pots cancel·lar-ho abans de la data de supressió.</value></data>
   <data name="Onboarding_Email_SignupRejected_Subject" xml:space="preserve">
     <value>Sobre el teu registre</value>

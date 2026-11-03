@@ -13,8 +13,9 @@ internal interface ILegalDocumentSyncManagement : ILegalDocumentSyncService
 
     Task<int> GetActiveRequiredCountAsync(CancellationToken cancellationToken = default);
 
-    /// <summary>Returns the documents that changed.</summary>
-    Task<IReadOnlyList<LegalDocument>> SyncAllDocumentsAsync(CancellationToken cancellationToken = default);
+    /// <summary>Returns changed documents; scheduled callers collect failures without stopping successful work.</summary>
+    Task<IReadOnlyList<LegalDocument>> SyncAllDocumentsAsync(
+        CancellationToken cancellationToken = default, ICollection<Exception>? failures = null);
 
     /// <summary>Returns a summary message if updated, or null if already up to date.</summary>
     Task<string?> SyncDocumentAsync(Guid documentId, CancellationToken cancellationToken = default);
@@ -34,7 +35,11 @@ internal sealed record ActiveRequiredLegalDocumentSnapshot(
     Guid TeamId,
     string TeamName,
     Instant LastSyncedAt,
-    IReadOnlyList<LegalDocumentVersionSnapshot> Versions);
+    IReadOnlyList<LegalDocumentVersionSnapshot> Versions)
+{
+    public LegalDocumentVersionSnapshot? CurrentVersionAt(Instant now) =>
+        Versions.Where(version => version.EffectiveFrom <= now).MaxBy(version => version.EffectiveFrom);
+}
 
 internal sealed record LegalDocumentSnapshot(
     Guid Id,

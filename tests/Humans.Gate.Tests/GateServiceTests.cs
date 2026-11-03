@@ -286,15 +286,25 @@ public class GateServiceTests
     [Xunit.InlineData(true)]
     public async Task RecordDecision_Admit_AlwaysEnqueuesTheVendorMirror_ButMarksTheLedgerOnlyWhenTheFlagIsOn(bool mirrorEnabled)
     {
-        StubTicket();
+        StubTicket(matchedUserId: GuestId);
+        StubActiveEvent(year: 2026);
+        _users.When(x => x.RecordParticipationAsync(
+                GuestId, 2026, ParticipationStatus.Attended, Arg.Any<Instant>(), CancellationToken.None))
+            .Do(_ => Clock.Advance(Duration.FromHours(1)));
         _config["Gate:VendorMirrorEnabled"] = mirrorEnabled ? "true" : "false";
 
         (await RecordAsync(idConfirmed: true)).Verdict.Should().Be(GateVerdict.Admitted);
 
+        var admittedAt = (await GateDb.GateScanEvents.AsNoTracking()
+            .SingleAsync(Xunit.TestContext.Current.CancellationToken)).OccurredAt;
+        Clock.GetCurrentInstant().Should().Be(admittedAt.Plus(Duration.FromHours(1)));
+
         // Flag off: the job still no-ops itself, but a ledger mark would hide exactly the row
         // the backfill page exists to recover.
         _jobs.Received(1).Create(
-            Arg.Is<Job>(j => j.Type.Equals(typeof(GateVendorCheckInJob)) && string.Equals((string)j.Args[0], "v1", StringComparison.Ordinal)),
+            Arg.Is<Job>(j => j.Type.Equals(typeof(GateVendorCheckInJob)) && string.Equals((string)j.Args[0], "v1", StringComparison.Ordinal)
+                && Equals(j.Args[1], admittedAt.ToUnixTimeSeconds())
+                && Equals(j.Args[2], CancellationToken.None)),
             Arg.Any<IState>());
         _ledger.WasSent("v1").Should().Be(mirrorEnabled);
     }
@@ -872,10 +882,27 @@ public class GateServiceTests
         jobs.Select(j => (string)j.Args[0]).Should().Equal("vt-A", "vt-B");
         foreach (var job in jobs)
         {
-            job.Method.Name.Should().Be(nameof(GateVendorCheckInJob.ExecuteBackfillAsync));
+            job.Method.Name.Should().Be(nameof(GateVendorCheckInJob.ExecuteAsync));
             job.Args[1].Should().Be(admittedAt.ToUnixTimeSeconds());
             job.Args[2].Should().Be(CancellationToken.None);
         }
+    }
+
+    [HumansFact]
+    public async Task VendorMirror_UsesOriginalAdmitTimeAfterQueueDelay()
+    {
+        var vendor = Substitute.For<ITicketVendorMirror>();
+        _config["Gate:VendorMirrorEnabled"] = "true";
+        var originalAdmit = Clock.GetCurrentInstant() - Duration.FromHours(1);
+        var job = new GateVendorCheckInJob(vendor, _config,
+            NullLogger<GateVendorCheckInJob>.Instance);
+        var ct = Xunit.TestContext.Current.CancellationToken;
+
+        Clock.Advance(Duration.FromHours(1));
+        await job.ExecuteAsync("vt-A", originalAdmit.ToUnixTimeSeconds(), ct);
+
+        await vendor.Received(1).CreateCheckInAsync("vt-A",
+            originalAdmit, ct);
     }
 
     [HumansTheory]

@@ -65,7 +65,6 @@ public sealed class CampaignServiceTests
 
         var repository = new CampaignRepository(CampaignsDbFactory);
         var teamService = Substitute.For<ITeamService>();
-        var userEmailService = Substitute.For<IUserEmailService>();
         var userService = Substitute.For<IUserService>();
         _ticketDiscountCodes = Substitute.For<ITicketDiscountCodes>();
 
@@ -89,17 +88,9 @@ public sealed class CampaignServiceTests
                 .Where(_people.ContainsKey)
                 .ToDictionary(id => id, id => _people[id]));
 
-        userEmailService
-            .GetNotificationTargetEmailsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(call => call
-                .ArgAt<IReadOnlyCollection<Guid>>(0)
-                .Where(id => _people.TryGetValue(id, out var p) && !string.IsNullOrEmpty(p.Email))
-                .ToDictionary(id => id, id => _people[id].Email!));
-
         _service = new CampaignServiceImpl(
             repository,
             teamService,
-            userEmailService,
             userService,
             _notifications,
             _emailService,
@@ -714,7 +705,7 @@ public sealed class CampaignServiceTests
         page.SelectedTeamId.Should().Be(alpha.Id);
         page.Preview.Should().NotBeNull();
         page.Preview!.EligibleCount.Should().Be(1);
-        page.Teams.Select(t => t.Name).Should().ContainInOrder("Alpha Team", "Beta Team");
+        page.Teams.Select(t => t.Name).Should().BeEquivalentTo("Alpha Team", "Beta Team");
         page.CanSendWave.Should().BeTrue();
     }
 
@@ -1176,7 +1167,8 @@ public sealed class CampaignServiceTests
         var tracking = await _service.GetCodeTrackingAsync(Xunit.TestContext.Current.CancellationToken);
 
         tracking.Campaigns.Should().ContainSingle(summary =>
-            summary.CampaignId == campaign.Id && summary.TotalGrants == 1 && summary.Redeemed == 1);
+            summary.CampaignId == campaign.Id && summary.TotalGrants == 1 && summary.Redeemed == 1
+            && summary.CreatedAt == campaign.CreatedAt);
         tracking.Grants.Should().ContainSingle(grant =>
             grant.CampaignId == campaign.Id && grant.RecipientName == "Tracker" &&
             grant.Code == "TRACK-CODE" && grant.RedeemedAt == redeemedAt);

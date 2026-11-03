@@ -120,7 +120,8 @@ internal sealed class GateService(
         var verdict = ResolveVerdict(eval.Outcome, input, overrideAuthorized);
         var admit = IsAdmit(verdict);
 
-        var recorded = await repository.RecordScanAsync(BuildEvent(eval, input, scannedByUserId, verdict, admit, overrideAuthorized), ct);
+        var scan = BuildEvent(eval, input, scannedByUserId, verdict, admit, overrideAuthorized);
+        var recorded = await repository.RecordScanAsync(scan, ct);
 
         if (recorded == GateRecordOutcome.DuplicateAdmitRejected)
         {
@@ -136,7 +137,7 @@ internal sealed class GateService(
         {
             await MarkAttendedAsync(eval.GuestUserId);
             if (eval.VendorTicketId is { Length: > 0 } vendorTicketId)
-                MirrorVendorCheckIn(vendorTicketId);
+                MirrorVendorCheckIn(vendorTicketId, scan.OccurredAt);
         }
 
         return new GateDecisionResult(verdict, eval.GuestName, eval.TicketTypeName,
@@ -173,11 +174,12 @@ internal sealed class GateService(
     /// Fire-and-forget. Marked in the ledger so the backfill page never re-sends a live admit, but only while the
     /// flag is on: with it off the job no-ops, and a mark would hide the rows the backfill exists to recover.
     /// </summary>
-    private void MirrorVendorCheckIn(string vendorTicketId)
+    private void MirrorVendorCheckIn(string vendorTicketId, Instant admittedAt)
     {
         try
         {
-            backgroundJobs.Enqueue<GateVendorCheckInJob>(j => j.ExecuteAsync(vendorTicketId, CancellationToken.None));
+            var admittedAtUnixSeconds = admittedAt.ToUnixTimeSeconds();
+            backgroundJobs.Enqueue<GateVendorCheckInJob>(j => j.ExecuteAsync(vendorTicketId, admittedAtUnixSeconds, CancellationToken.None));
             if (configuration.GetValue<bool>(VendorMirrorEnabledKey))
                 mirrorLedger.TryMarkSent(vendorTicketId);
         }
@@ -307,7 +309,7 @@ internal sealed class GateService(
             var admittedAtUnixSeconds = row.AdmittedAt.ToUnixTimeSeconds();
             // The job keeps the original admit time and runs independently of the admin request.
             backgroundJobs.Enqueue<GateVendorCheckInJob>(j =>
-                j.ExecuteBackfillAsync(row.VendorTicketId!, admittedAtUnixSeconds, CancellationToken.None));
+                j.ExecuteAsync(row.VendorTicketId!, admittedAtUnixSeconds, CancellationToken.None));
             enqueued.Add(row);
         }
 

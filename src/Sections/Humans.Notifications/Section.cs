@@ -26,7 +26,8 @@ public sealed class Section : ISection, ISectionChrome, ISectionJobs
 
         // A separate type from NotificationService so TeamService and RoleAssignmentService can take
         // INotificationEmitter without a DI cycle. Only ValidateOnBuild at startup catches a regression.
-        services.AddScoped<INotificationEmitter, NotificationEmitter>();
+        services.AddScoped<NotificationEmitter>();
+        services.AddScoped<INotificationEmitter>(sp => sp.GetRequiredService<NotificationEmitter>());
         services.AddScoped<NotificationService>();
         services.AddScoped<INotificationService>(sp => sp.GetRequiredService<NotificationService>());
         services.AddScoped<IUserMerge>(sp => sp.GetRequiredService<NotificationService>());

@@ -164,6 +164,7 @@ internal sealed class UserInfoSaveChangesInterceptor(
             ExternalSourceId = user.ExternalSourceId,
             MergedToUserId = user.MergedToUserId,
             MergedAt = user.MergedAt,
+            MarkedFakeAt = user.MarkedFakeAt,
             Email = user.IdentityEmailColumn,
         };
     }

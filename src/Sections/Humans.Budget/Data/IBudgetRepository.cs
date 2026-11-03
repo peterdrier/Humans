@@ -159,13 +159,15 @@ internal interface IBudgetRepository : IRepository
     Task<TicketingProjection?> GetTicketingProjectionAsync(Guid budgetGroupId, CancellationToken ct = default);
 
     /// <summary>
-    /// One audit entry. Throws if the group is not a ticketing group, has no projection row, or its year is closed.
+    /// Updates parameters and, when requested, re-materializes projections in one save with one audit entry.
+    /// Returns the projected line items created or updated. Throws for a non-ticketing group, missing projection or closed year.
     /// </summary>
-    Task<bool> UpdateTicketingProjectionAsync(
+    Task<int> UpdateTicketingProjectionAsync(
         TicketingProjectionUpdate update,
         Guid actorUserId,
         Instant now,
-        CancellationToken ct = default);
+        CancellationToken ct = default,
+        LocalDate? refreshFromDate = null);
 
     /// <summary>
     /// In one save: upserts each completed week's revenue and fee rows, refreshes the learned projection parameters,

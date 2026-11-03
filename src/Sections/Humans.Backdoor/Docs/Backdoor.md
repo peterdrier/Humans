@@ -66,7 +66,7 @@ The machine surface. Every key-authed API an agent talks to lives here, under `/
 | `/api/backdoor/finance/creditor-accounts/{num}/ledger` | read | One account's balance and cached journal lines, contact header included, via `GetCreditorLedgerAsync` |
 | `/api/backdoor/finance/category-map` | read | Every live `holded_category_map` row, via `GetCategoryMapAsync` |
 | `/api/backdoor/finance/sepa-transfers` | read | Every generated SEPA transfer with its booking state, via `GetSepaTransfersAsync` |
-| `/api/backdoor/finance/expense-recon?year=` | read | `/Finance/ExpenseRecon` as JSON — totals, lines, orphans, members with open transfers — via `IHoldedFinanceService.GetExpenseReconAsync`. Finance admins only; carries no IBAN field |
+| `/api/backdoor/finance/expense-recon?year=` | read | `/Finance/ExpenseRecon` as JSON — totals, lines, orphans, members with open transfers — via `IHoldedFinanceService.GetExpenseReconAsync`. Finance admins only; carries no IBAN field. The controller orders lines by problem/status/newest date, orphans newest-first, and members warning-first then ordinal name ignoring case |
 | `/api/backdoor/finance/holded-sync` | read | The purchase-doc sync's state plus the docs it could not match, via `GetDocSyncInfoAsync` + `GetUnmatchedAsync` |
 | `/api/backdoor/notifications` | read | The key owner's unread notifications, newest first, and the live meters their roles unlock, via `INotificationInboxRead`. Polling marks nothing read |
 | `/Backdoor` | Admin UI | Allocate, rotate and revoke keys |
@@ -83,11 +83,17 @@ Authentication is the `X-Api-Key` header on every `/api/backdoor/*` request. The
 
 ## Invariants
 
+- Creditor-account JSON orders each account's bindings and unresolved bindings by creation time ascending. Finance supplies the timestamp metadata; the JSON binding fields remain unchanged.
+
+- The notifications JSON projection orders unread rows newest first and visible meters by priority descending. Notifications supplies the role-filtered data and priority metadata; the JSON meter fields remain label, count and link.
+- The Holded-sync JSON projection orders unmatched documents by document date descending, matching Finance's unmatched queue. Finance supplies date metadata without imposing list order; the JSON document fields remain unchanged.
+
 - Finance response text redaction recognizes valid human-formatted IBANs even when whitespace or hyphens split the country code and check digits.
 
 - API-key timestamps on the operator key page use the shared display formatter in Europe/Madrid time, with date ordering and month names following the UI culture; unused or unbounded timestamps still read "never".
 
 - Surveys response exports pass the authenticated API key owner to the Surveys service for its disclosure audit (survey id and row count); requests without an actor cannot export.
+- Surveys aggregate JSON orders questions by authored page and position, and choice option counts by authored option position, using owner-supplied metadata without adding JSON fields.
 - Surveys response exports preserve the owning section's privacy rules: closed Asociado ballots have no identity or submission timestamps and order by response id. A `since` filter cannot match their suppressed timestamps.
 - Issues list/detail/comments GETs and legacy Feedback list/detail/messages GETs pass request cancellation to their existing read contracts, including issue display-name reads. Write calls retain their existing cancellation boundaries.
 

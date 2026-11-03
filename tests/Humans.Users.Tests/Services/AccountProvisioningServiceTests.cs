@@ -91,6 +91,8 @@ public class AccountProvisioningServiceTests
             throw new NotSupportedException();
         public Task<bool> SetLastLoginAsync(Guid userId, Instant at, CancellationToken ct = default) =>
             throw new NotSupportedException();
+        public Task<bool> SetMarkedFakeAsync(Guid userId, Instant at, CancellationToken ct = default) =>
+            throw new NotSupportedException();
         public Task<bool> SetDeletionPendingAsync(
             Guid userId, Instant requestedAt, Instant scheduledFor, Instant? eligibleAfter,
             CancellationToken ct = default) =>
@@ -208,9 +210,6 @@ public class AccountProvisioningServiceTests
             throw new NotSupportedException();
         public Task<IReadOnlyList<UserEmail>> GetUserEmailsByEmailsAsync(
             IReadOnlyCollection<string> emails, CancellationToken ct = default) =>
-            throw new NotSupportedException();
-        public Task<Dictionary<Guid, string>> GetAllNotificationTargetUserEmailsAsync(
-            CancellationToken ct = default) =>
             throw new NotSupportedException();
         public Task<IReadOnlyList<Guid>> GetUserIdsByUserEmailPrefixAndSuffixAsync(
             string prefix, string suffix, CancellationToken ct = default) =>
@@ -424,8 +423,6 @@ public class AccountProvisioningServiceTests
     [Xunit.InlineData("Identity")]
     [Xunit.InlineData("Email")]
     [Xunit.InlineData("Profile")]
-    [Xunit.InlineData("Audit")]
-    [Xunit.InlineData("DeletionAudit")]
     public async Task ReplaceUnverified_ProvisioningFailureRollsBackEmailAndAccount(string stage)
     {
         var row = SeedPendingReplacement();
@@ -438,14 +435,6 @@ public class AccountProvisioningServiceTests
             case "Profile":
                 _userService.EnsureStubProfileAsync(Arg.Any<Guid>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
                     .ThrowsAsync(new InvalidOperationException("Profile creation failed"));
-                break;
-            case "Audit":
-                _audit.LogAsync(UsersAuditActions.ContactCreated, nameof(User), Arg.Any<Guid>(), Arg.Any<string>(), nameof(AccountProvisioningService),
-                    Arg.Any<Guid?>(), Arg.Any<string?>()).ThrowsAsync(new InvalidOperationException("Audit failed"));
-                break;
-            case "DeletionAudit":
-                _audit.LogAsync(UsersAuditActions.UserEmailDeleted, nameof(UserEmail), row.Id, Arg.Any<string>(), nameof(AccountProvisioningService),
-                    row.UserId, nameof(User)).ThrowsAsync(new InvalidOperationException("Deletion audit failed"));
                 break;
         }
         _userInfoRefresher.RefreshAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>(), Arg.Any<string>(), Arg.Any<string>())
@@ -464,9 +453,27 @@ public class AccountProvisioningServiceTests
     public async Task ReplaceUnverified_SuccessCommitsFreshVerifiedOwnerAndRefreshesBothUsers()
     {
         var row = SeedPendingReplacement();
+        Transaction? transaction = null;
+        _userEmailService.When(service => service.AddProvisionedEmailAsync(
+            Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<CancellationToken>()))
+            .Do(_ => transaction = Transaction.Current?.Clone());
+        var audits = new List<(string Action, bool AfterCommit)>();
+        _audit.LogAsync(Arg.Any<AuditActionDefinition>(), Arg.Any<string>(), Arg.Any<Guid>(),
+            Arg.Any<string>(), nameof(AccountProvisioningService), Arg.Any<Guid?>(), Arg.Any<string?>()).Returns(call =>
+        {
+            audits.Add((call.ArgAt<AuditActionDefinition>(0).Name, Transaction.Current is null
+                && transaction?.TransactionInformation.Status == TransactionStatus.Committed));
+            return Task.CompletedTask;
+        });
         var result = await _service.ReplaceUnverifiedEmailAndProvisionAsync(
             row.UserId, row.Id, row.Email, "Victim", ContactSource.MailerLite, Xunit.TestContext.Current.CancellationToken);
 
+        using (transaction)
+        {
+            audits.Select(audit => audit.Action).Should().Equal(
+                UsersAuditActions.ContactCreated.Name, UsersAuditActions.UserEmailDeleted.Name);
+            audits.Should().OnlyContain(audit => audit.AfterCommit);
+        }
         result.Created.Should().BeTrue();
         result.UserId.Should().NotBe(row.UserId);
         await _audit.Received(1).LogAsync(UsersAuditActions.UserEmailDeleted, nameof(UserEmail), row.Id,
@@ -476,6 +483,31 @@ public class AccountProvisioningServiceTests
         _userEmailFake.All.Single().IsVerified.Should().BeTrue();
         await _userInfoRefresher.Received(1).RefreshAsync(row.UserId, CancellationToken.None, Arg.Any<string>(), Arg.Any<string>());
         await _userInfoRefresher.Received(1).RefreshAsync(result.UserId, CancellationToken.None, Arg.Any<string>(), Arg.Any<string>());
+    }
+
+    [HumansFact]
+    public async Task ReplaceUnverified_CommitRejectionRollsBackWithoutSuccessAudits()
+    {
+        var row = SeedPendingReplacement();
+        _userManager.When(manager => manager.CreateAsync(Arg.Any<User>())).Do(_ =>
+            Transaction.Current!.EnlistVolatile(new RejectCommit(), EnlistmentOptions.None));
+        var act = () => _service.ReplaceUnverifiedEmailAndProvisionAsync(
+            row.UserId, row.Id, row.Email, "Victim", ContactSource.MailerLite, Xunit.TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<TransactionAbortedException>();
+
+        _audit.ReceivedCalls().Should().BeEmpty();
+        _userEmailFake.All.Should().ContainSingle().Which.Should().BeSameAs(row);
+        _userRepo.All.Should().ContainSingle().Which.Id.Should().Be(row.UserId);
+        await _userInfoRefresher.Received(1).RefreshAsync(row.UserId, CancellationToken.None, Arg.Any<string>(), Arg.Any<string>());
+    }
+
+    private sealed class RejectCommit : IEnlistmentNotification
+    {
+        public void Prepare(PreparingEnlistment enlistment) => enlistment.ForceRollback(new IOException("Commit rejected"));
+        public void Commit(Enlistment enlistment) => enlistment.Done();
+        public void Rollback(Enlistment enlistment) => enlistment.Done();
+        public void InDoubt(Enlistment enlistment) => enlistment.Done();
     }
 
     [HumansTheory]

@@ -19,7 +19,6 @@ internal sealed class OnboardingService(
     IUserService userService,
     IUserWrite userWrite,
     IConsentWrite consentWrite,
-    IGovernanceService applicationDecisionService,
     IEmailService emailService,
     OnboardingEmails emailMessages,
     INotificationEmitter notificationService,
@@ -32,130 +31,6 @@ internal sealed class OnboardingService(
     ILogger<OnboardingService> logger) : IOnboardingService
 {
     private static readonly ResourceManager NoticeResources = new(typeof(OnboardingResource));
-
-    public async Task<ReviewQueueData> GetReviewQueueAsync(CancellationToken ct = default)
-    {
-        // An unresolved Flagged check stays in the queue even if an admin override set IsApproved, so a CC can
-        // resolve it. Rejected members are excluded: Clear is blocked on them, so the row couldn't be resolved.
-        var all = await userService.GetAllUserInfosAsync(ct).ConfigureAwait(false);
-        var reviews = await consentService.GetConsentReviewsAsync(ct);
-        var (pending, flagged) = PartitionReviewQueue(all, reviews);
-
-        var allUserIds = flagged.Concat(pending).Select(u => u.Id).ToList();
-        var pendingAppUserIds = await applicationDecisionService
-            .GetUserIdsWithPendingApplicationAsync(allUserIds, ct);
-
-        var consentProgress = new Dictionary<Guid, ConsentProgressInfo>();
-        foreach (var userId in allUserIds)
-        {
-            var snapshot = await membershipCalculator.GetMembershipSnapshotAsync(userId, ct);
-            consentProgress[userId] = new ConsentProgressInfo(
-                snapshot.RequiredConsentCount - snapshot.PendingConsentCount,
-                snapshot.RequiredConsentCount);
-        }
-
-        var pendingAppHashSet = pendingAppUserIds.ToHashSet();
-
-        var tiers = await applicationDecisionService.GetMembershipTiersAsync(ct);
-
-        return new ReviewQueueData(pending, flagged, pendingAppHashSet, consentProgress, tiers, reviews);
-    }
-
-    // Bulk clear's eligibility is defined as "a row in the queue", so it partitions here too and the two can't
-    // drift. Both callers depend on the order.
-    private static (List<UserInfo> Pending, List<UserInfo> Flagged) PartitionReviewQueue(
-        IEnumerable<UserInfo> all, IReadOnlyDictionary<Guid, ConsentReviewInfo> reviews)
-    {
-        ConsentReviewInfo ReviewOf(UserInfo u) => reviews.GetValueOrDefault(u.Id) ?? ConsentReviewInfo.None(u.Id);
-
-        var flagged = all
-            .Where(u => u.IsConsentCheckFlagged(ReviewOf(u)))
-            .OrderBy(u => u.Profile!.CreatedAt)
-            .ToList();
-
-        var pending = all
-            .Where(u => u.NeedsConsentReview(ReviewOf(u)) && !u.IsConsentCheckFlagged(ReviewOf(u)))
-            .OrderBy(u => u.Profile!.CreatedAt)
-            .ToList();
-
-        return (pending, flagged);
-    }
-
-    public async Task<ReviewDetailData> GetReviewDetailAsync(Guid userId, CancellationToken ct = default)
-    {
-        var profile = (await userService.GetUserInfoAsync(userId, ct))?.Profile;
-
-        if (profile is null)
-            return new ReviewDetailData(null, 0, 0, null);
-
-        var review = await consentService.GetConsentReviewAsync(userId, ct);
-
-        var snapshot = await membershipCalculator.GetMembershipSnapshotAsync(userId, ct);
-
-        var pendingApp = await applicationDecisionService
-            .GetSubmittedApplicationForUserAsync(userId, ct);
-        var tier = await applicationDecisionService.GetMembershipTierAsync(userId, ct);
-
-        return new ReviewDetailData(
-            new ReviewProfileDetail(
-                profile.FirstName,
-                profile.LastName,
-                profile.City,
-                profile.CountryCode,
-                tier,
-                review.Status,
-                review.Notes,
-                profile.CreatedAt),
-            snapshot.RequiredConsentCount - snapshot.PendingConsentCount,
-            snapshot.RequiredConsentCount,
-            pendingApp?.Motivation);
-    }
-
-    public Task<OnboardingResult> ClearConsentCheckAsync(
-        Guid userId, Guid reviewerId, string? notes, CancellationToken ct = default) =>
-        RecordConsentCheckAsync(userId, reviewerId, ConsentCheckStatus.Cleared, notes, ct);
-
-    public async Task<BulkOnboardingResult> BulkClearConsentChecksAsync(
-        IReadOnlyCollection<Guid> userIds, Guid reviewerId, CancellationToken ct = default)
-    {
-        if (userIds.Count == 0)
-            return new BulkOnboardingResult(0);
-
-        // Not GetReviewQueueAsync: that builds the page's render payload, all discarded here.
-        var selected = userIds.ToHashSet();
-        var all = await userService.GetAllUserInfosAsync(ct).ConfigureAwait(false);
-        var (pending, flagged) = PartitionReviewQueue(all, await consentService.GetConsentReviewsAsync(ct));
-        var eligibleUserIds = pending
-            .Concat(flagged)
-            .Where(u => selected.Contains(u.Id))
-            .Select(u => u.Id)
-            .ToList();
-
-        var approved = 0;
-        foreach (var userId in eligibleUserIds)
-        {
-            var result = await ClearConsentCheckAsync(userId, reviewerId, notes: null, ct);
-            if (result.Success)
-            {
-                approved++;
-            }
-            else
-            {
-                logger.LogWarning(
-                    "BulkClearConsentChecks: skipped user {UserId}: {ErrorKey}",
-                    userId,
-                    result.ErrorKey);
-            }
-        }
-
-        return new BulkOnboardingResult(approved);
-    }
-
-    // Inert for a Volunteer, not for a Colaborador/Asociado: it clears the review's IsApproved, which gates
-    // their tier team on the next sync (Docs/health.md §4-5).
-    public Task<OnboardingResult> FlagConsentCheckAsync(
-        Guid userId, Guid reviewerId, string? notes, CancellationToken ct = default) =>
-        RecordConsentCheckAsync(userId, reviewerId, ConsentCheckStatus.Flagged, notes, ct);
 
     public async Task<OnboardingResult> RejectSignupAsync(
         Guid userId, Guid reviewerId, string? reason, CancellationToken ct = default)
@@ -310,27 +185,6 @@ internal sealed class OnboardingService(
 
         return new NextConsentStepData(
             NextConsentStepOutcome.Document, detail, rows.Count - unsigned.Count + 1, rows.Count);
-    }
-
-    private async Task<OnboardingResult> RecordConsentCheckAsync(
-        Guid userId,
-        Guid reviewerId,
-        ConsentCheckStatus status,
-        string? notes,
-        CancellationToken ct)
-    {
-        // Consent audits the check itself, inside the write.
-        var result = await consentWrite.RecordConsentCheckAsync(userId, status, reviewerId, notes, ct);
-        if (!result.Success)
-            return result;
-
-        logger.LogInformation(
-            "Consent check {Status} for user {UserId} by {ReviewerId}",
-            status == ConsentCheckStatus.Cleared ? "cleared" : "flagged",
-            userId,
-            reviewerId);
-
-        return result;
     }
 
     private async Task DeprovisionApprovalGatedSystemTeamsAsync(Guid userId)

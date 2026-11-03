@@ -111,7 +111,7 @@ Department coordinators manage the linked Google Group membership and Shared Dri
 
 ### Grant Early Entry (if your team has it enabled)
 
-Some teams can grant **Early Entry** — letting project crews onto site ahead of the gates. If an admin has turned Early Entry on for your team, an **Early Entry** page appears at `/Teams/{slug}/EarlyEntry`. There you grant access by searching for a person by name or ticket barcode, then choosing an entry date and a project name, and you can edit or remove grants later. Coordinators (including the department coordinator above a sub-team) manage Early Entry for their own team; an Early-Entry Team Administrator can do it for any team that has it enabled. Each grant adds the person to the festival's early-entry roster. If Early Entry is later turned off for the team, existing grants are kept but stop counting.
+Some teams can grant **Early Entry** — letting project crews onto site ahead of the gates. If an admin has turned Early Entry on for your team, an **Early Entry** page appears at `/Teams/{slug}/EarlyEntry`. There you grant access by searching for a person by name or ticket barcode, then choosing an entry date and a project name, and you can edit or remove grants later. Coordinators (including the department coordinator above a sub-team) manage Early Entry for their own team; an Early Entry Admin can do it for any team that has it enabled. Each grant adds the person to the festival's early-entry roster. If Early Entry is later turned off for the team, existing grants are kept but stop counting.
 
 ### Volunteer coordination, cross-department (2026)
 
@@ -133,15 +133,15 @@ In many departments it's the sub-team leads — not the top-level coordinator �
 
 ### Create a team
 
-`/Teams/Create` (TeamsAdmin, Board, Admin). Set name, description, approval mode, optional parent department, optional Google Group prefix, and the hidden flag. The slug is auto-generated and can be overridden on edit.
+`/Teams/Create` (TeamsAdmin, Admin). Set name, description, approval mode, optional parent department, optional Google Group prefix, and the hidden flag. The slug is auto-generated and can be overridden on edit.
 
 ### Edit team settings
 
-`/Teams/{id}/Edit` lets you change name, slug, approval mode, parent, Google Group prefix, directory promotion (for sub-teams), `IsHidden`, and the **Enable Early Entry** flag (which turns on the team's Early Entry management page). Making a department into a sub-team re-scopes its coordinators to managers and syncs them out of the Coordinators system team.
+`/Teams/{id}/Edit` (Board can open it read-only; saving is TeamsAdmin and Admin) lets you change name, slug, approval mode, parent, Google Group prefix, directory promotion (for sub-teams), `IsHidden`, and the **Enable Early Entry** flag (which turns on the team's Early Entry management page). Making a department into a sub-team re-scopes its coordinators to managers and syncs them out of the Coordinators system team.
 
 ### Delete a team
 
-**Board** and **Admin** can delete (deactivate) user-created teams. System teams cannot be deleted.
+Only **Admin** can delete (deactivate) user-created teams. System teams cannot be deleted.
 
 ### Hidden teams
 

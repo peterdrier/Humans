@@ -177,6 +177,41 @@ public class EventsApiControllerTests
         }
     }
 
+    [HumansTheory]
+    [InlineData("Events")]
+    [InlineData("Barrios")]
+    [InlineData("Barrio")]
+    public async Task ApprovedLists_OrderByEventStart(string route)
+    {
+        var earlyCamp = Guid.NewGuid();
+        var lateCamp = string.Equals(route, "Barrio", StringComparison.Ordinal) ? earlyCamp : Guid.NewGuid();
+        var early = MakeEvent(earlyCamp, Guid.NewGuid(), null) with
+        { StartAt = Instant.FromUtc(2026, 8, 1, 10, 0) };
+        var late = MakeEvent(lateCamp, Guid.NewGuid(), null);
+        StubApprovedEvents(late, early);
+        var controller = BuildController();
+
+        var result = route switch
+        {
+            "Events" => await controller.GetEvents(null, null, null, null),
+            "Barrios" => await controller.GetBarrios(),
+            "Barrio" => await controller.GetBarrio(earlyCamp),
+            _ => throw new ArgumentOutOfRangeException(nameof(route)),
+        };
+
+        var payload = result.Should().BeOfType<OkObjectResult>().Which.Value;
+        if (string.Equals(route, "Barrios", StringComparison.Ordinal))
+            payload.Should().BeAssignableTo<IEnumerable<GuideCampApiDto>>().Which
+                .Select(c => c.Id).Should().Equal(earlyCamp, lateCamp);
+        else
+        {
+            var events = string.Equals(route, "Barrio", StringComparison.Ordinal)
+                ? payload.Should().BeOfType<GuideCampDetailApiDto>().Which.Events
+                : payload.Should().BeAssignableTo<IEnumerable<GuideEventApiDto>>().Which;
+            events.Select(e => e.Id).Should().Equal(early.Id, late.Id);
+        }
+    }
+
     private void StubApprovedEvents(params ApprovedEventView[] events) =>
         _guide.GetApprovedEventsAsync(
                 Arg.Any<Guid?>(), Arg.Any<Guid?>(), Arg.Any<Guid?>(), Arg.Any<string?>(),
@@ -209,6 +244,18 @@ public class EventsApiControllerTests
         var result = await controller.AddFavourite(eventId, 999);
 
         result.Should().BeOfType(invalidDay ? typeof(BadRequestResult) : typeof(NotFoundResult));
+    }
+
+    [HumansFact]
+    public async Task GetCategories_OrdersByDisplayOrder()
+    {
+        var first = new EventCategoryView(Guid.NewGuid(), "First", "first", false, 1, true);
+        var second = new EventCategoryView(Guid.NewGuid(), "Second", "second", false, 2, true);
+        _guide.GetActiveCategoriesAsync(Arg.Any<CancellationToken>()).Returns([second, first]);
+
+        var result = (await BuildController().GetCategories()).Should().BeOfType<OkObjectResult>().Subject;
+        result.Value.Should().BeAssignableTo<IEnumerable<GuideCategoryApiDto>>().Subject
+            .Select(c => c.Id).Should().Equal(first.Id, second.Id);
     }
 
     private EventsApiController BuildController()

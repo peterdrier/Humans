@@ -114,7 +114,7 @@ public class RepositoryTests
     }
 
     [HumansFact]
-    public async Task GetUnmatched_ReturnsOnlyUnmatchedDocs_NewestFirst()
+    public async Task GetUnmatched_ReturnsOnlyUnmatchedDocs()
     {
         var (repo, _) = Make();
         await repo.ReplaceDocsAsync(
@@ -126,7 +126,7 @@ public class RepositoryTests
 
         var rows = await repo.GetUnmatchedAsync(Ct);
 
-        rows.Select(d => d.HoldedDocId).Should().Equal("new", "old");
+        rows.Select(d => d.HoldedDocId).Should().BeEquivalentTo(["new", "old"]);
     }
 
     [HumansFact]
@@ -447,7 +447,7 @@ public class RepositoryTests
         fresh.IsWithdrawn.Should().BeFalse();
         fresh.WithdrawnAt.Should().BeNull();
 
-        await repo.SaveSepaTransferWithdrawnAsync(transferId, Now, actor, Ct);
+        await repo.SaveSepaTransfersWithdrawnAsync([transferId], Now, actor, Ct);
 
         var row = (await repo.GetSepaPayoutTransferRowsAsync(Ct)).Should().ContainSingle().Subject;
         row.WithdrawnAt.Should().Be(Now);

@@ -18,7 +18,7 @@ Volunteers need to tell coordinators about their skills, work style preferences,
 This is the first of three related features:
 - **33 — Shift Preference Wizard** (this feature): Collect skills, work style, languages
 - **34 — Shift Recommendation Engine**: Fuzzy-match preferences against available shifts (not yet specced)
-- **[35 — Dietary Nudge](../../../Humans.Cantina/Docs/features/dietary-nudge.md)**: Collect dietary/allergy info (Cantina; medical is Users' own form) when a human signs up for a 6+ hour shift where the cantina provides meals (shipped — a full page, not a modal)
+- **[35 — Dietary Nudge](../../../Humans.Cantina/Docs/features/dietary-nudge.md)**: Ask for dietary/allergy info (Cantina; optional and never blocks a signup; medical is Users' own form) once a human has signed up for a 6+ hour shift where the cantina provides meals (shipped — a full page, not a modal)
 
 ## Authorization
 

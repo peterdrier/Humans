@@ -72,7 +72,7 @@ public class IssueSectionInferenceTests
     [InlineData("/Teams/xyz", "Teams")]
     [InlineData("/Shifts", "Shifts")]
     [InlineData("/Vol/something", "Shifts")]
-    [InlineData("/OnboardingReview/queue", "Onboarding")]
+    [InlineData("/Consent/ReviewQueue", "Legal")]
     [InlineData("/Profile", "Profiles")]
     [InlineData("/Humans/1", "Profiles")]
     [InlineData("/Finance", "Budget")]

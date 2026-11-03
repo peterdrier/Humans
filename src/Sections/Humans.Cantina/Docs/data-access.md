@@ -12,6 +12,8 @@ Called only by `DietaryProfileService`.
 
 ### DietaryProfileService (Scoped)
 
+Repository: `IDietaryProfileRepository`.
+
 Implements `ICantinaService` (public reads: `GetDietaryProfileAsync`,
 `GetDietaryProfilesAsync`), `IDietaryProfileManagement` (internal: save,
 decline), `IUserDataContributor` (export slice `DietaryProfile`,

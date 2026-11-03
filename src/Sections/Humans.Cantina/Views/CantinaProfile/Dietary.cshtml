@@ -132,18 +132,6 @@
                 </div>
             </div>
         </form>
-
-        @* A Cantina roster reveal writes CantinaHealthDetailsRevealed against each member whose allergy or intolerance
-           answers it showed; the member sees the same rows the Board sees. AuditLog ships no resource set, so the
-           column headers are passed in. *@
-        <div class="mt-5">
-            <vc:audit-log entity-type="User" entity-id="@Model.UserId"
-                          actions="CantinaHealthDetailsRevealed" limit="50"
-                          layout="table" columns="when,actor"
-                          column-labels="@($"when:{SharedLocalizer["Common_Date"].Value},actor:{Localizer["Cantina_Dietary_RevealedBy"].Value}")"
-                          title="@Localizer["Cantina_Dietary_RevealsTitle"].Value"
-                          empty-text="@Localizer["Cantina_Dietary_RevealsEmpty"].Value" />
-        </div>
     </div>
 </div>
 

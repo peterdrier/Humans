@@ -31,7 +31,11 @@ internal sealed class GovernanceVotesController(
         if (GetCurrentUserId() is not { } userId) return Challenge();
 
         var votes = await voteService.GetVotesForMemberAsync(userId, ct);
-        return View("~/Views/Governance/Votes/Index.cshtml", new AssemblyVoteListViewModel { Votes = votes });
+        return View("~/Views/Governance/Votes/Index.cshtml", new AssemblyVoteListViewModel
+        {
+            Votes = votes.OrderByDescending(v => v.Status == AssemblyVoteStatus.Open)
+                .ThenByDescending(v => v.ClosesAt).ToList()
+        });
     }
 
     [HttpGet("{voteId:guid}")]
@@ -222,12 +226,12 @@ internal sealed class GovernanceVotesController(
         {
             csv.WriteRow(Text("Governance_Votes_CsvVoteLabel"), results.Vote.Title);
             csv.WriteRow(Text("Governance_Votes_MethodLabel"), Text("Governance_Votes_Method_" + results.Result.Method));
-            csv.NextRecord();
+            csv.WriteBlankLine();
 
             WriteAudienceCsv(csv, Text("Governance_Votes_OfficialRosterLabel"), results.Result.Official, OptionLabel, optionKeys);
             if (results.Result.Indicative is { } indicative)
             {
-                csv.NextRecord();
+                csv.WriteBlankLine();
                 WriteAudienceCsv(csv, Text("Governance_Votes_IndicativeRosterLabel"), indicative, OptionLabel, optionKeys);
             }
         });

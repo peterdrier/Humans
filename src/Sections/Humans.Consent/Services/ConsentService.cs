@@ -53,9 +53,7 @@ internal sealed class ConsentService(
 
                 foreach (var doc in g)
                 {
-                    var currentVersion = doc.Versions
-                        .Where(v => v.EffectiveFrom <= now)
-                        .MaxBy(v => v.EffectiveFrom);
+                    var currentVersion = doc.CurrentVersionAt(now);
 
                     if (currentVersion is not null)
                     {
@@ -276,7 +274,15 @@ internal sealed class ConsentService(
 
         var consentedVersionIds = await GetConsentedVersionIdsAsync(userId, ct);
 
-        return RequiredConsentRows.BuildOrdered(documents, consentedVersionIds, clock.GetCurrentInstant());
+        var now = clock.GetCurrentInstant();
+        return documents
+            .Select(doc => (Document: doc, Version: doc.CurrentVersionAt(now)))
+            .Where(item => item.Version is not null)
+            .Select(item => new RequiredConsentRow(
+                item.Version!.Id, item.Document.Name, consentedVersionIds.Contains(item.Version.Id)))
+            .OrderBy(row => row.Signed)
+            .ThenBy(row => row.Title, StringComparer.Ordinal)
+            .ToList();
     }
 
     public async Task<IReadOnlyList<string>> GetPendingDocumentNamesAsync(Guid userId, CancellationToken ct = default)
@@ -295,7 +301,7 @@ internal sealed class ConsentService(
                 names.Add(version.LegalDocumentName);
         }
 
-        return names.OrderBy(n => n, StringComparer.Ordinal).ToList();
+        return names.ToList();
     }
 
     private static string ComputeContentHash(string content)

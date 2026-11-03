@@ -52,17 +52,6 @@ public abstract class PreapprovalsTestHarness : IDisposable
                 return new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(dict);
             });
 
-        UserEmails = Substitute.For<IUserEmailService>();
-        UserEmails.GetNotificationTargetEmailsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(call =>
-            {
-                var ids = (IReadOnlyCollection<Guid>)call.Args()[0]!;
-                IReadOnlyDictionary<Guid, string> dict = ids.Distinct()
-                    .Where(_users.ContainsKey)
-                    .ToDictionary(id => id, id => $"{id}@example.org");
-                return Task.FromResult(dict);
-            });
-
         Finance = Substitute.For<IHoldedFinanceService>();
         Finance.ListExpenseAccountsAsync(Arg.Any<bool>(), Arg.Any<CancellationToken>())
             .Returns(_ => Task.FromResult<IReadOnlyList<HoldedExpenseAccountOption>>(
@@ -83,7 +72,6 @@ public abstract class PreapprovalsTestHarness : IDisposable
     private protected TestDbContextFactory<PreapprovalsDbContext> DbFactory { get; }
     private protected FakeClock Clock { get; }
     private protected IUserService Users { get; }
-    private protected IUserEmailService UserEmails { get; }
     private protected IHoldedFinanceService Finance { get; }
     private protected INotificationEmitter Notifications { get; }
     private protected INotificationAutoResolve NotificationResolve { get; }
@@ -96,7 +84,7 @@ public abstract class PreapprovalsTestHarness : IDisposable
 
     /// <summary>The service over the real repository and the substitutes above.</summary>
     private protected PreapprovalService NewService(PreapprovalsEmails? emailFactory = null) => new(
-        new PreapprovalRepository(DbFactory), Users, UserEmails, Finance, Notifications, NotificationResolve,
+        new PreapprovalRepository(DbFactory), Users, Finance, Notifications, NotificationResolve,
         Email, emailFactory ?? EmailFactory, AuditLog, Clock, Logger);
 
     /// <summary>A fresh context over the same store — what a test reads back through.</summary>
@@ -114,7 +102,7 @@ public abstract class PreapprovalsTestHarness : IDisposable
             null, null, null, null, null, null,
             null, null, null, [], [], [],
             UserFixtures.Profile(burnerName: burnerName), [])
-        { MergedUserIds = mergedIds ?? [] };
+        { IdentityEmailColumn = $"{userId}@example.org", MergedUserIds = mergedIds ?? [] };
         return userId;
     }
 

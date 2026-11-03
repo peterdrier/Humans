@@ -89,6 +89,23 @@ public class FinanceControllerTests
     }
 
     [HumansFact]
+    public async Task HoldedUnmatched_OrdersDocumentsNewestFirst()
+    {
+        _finance.GetUnmatchedAsync(Arg.Any<CancellationToken>()).Returns([
+            new HoldedUnmatchedRow("old", "F1", "Acme", null, 10m, "No account, no tag", "https://holded/old")
+                { Date = new LocalDate(2026, 1, 1) },
+            new HoldedUnmatchedRow("new", "F2", "Acme", null, 20m, "No account, no tag", "https://holded/new")
+                { Date = new LocalDate(2026, 6, 1) },
+        ]);
+
+        var result = await MakeController().HoldedUnmatched();
+
+        var rows = result.Should().BeOfType<ViewResult>().Which.Model.Should()
+            .BeAssignableTo<IReadOnlyList<HoldedUnmatchedRow>>().Which;
+        rows.Select(d => d.HoldedDocId).Should().Equal("new", "old");
+    }
+
+    [HumansFact]
     public async Task CashFlow_NoActiveYear_RedirectsToBudgetOverview()
     {
         var controller = MakeControllerWithHttpContext(Guid.NewGuid());
@@ -368,7 +385,9 @@ public class FinanceControllerTests
     public async Task Creditors_NamesEveryBoundMember_IncludingACollision()
     {
         NameThem((Ana, "Ana"), (Bo, "Bo"));
-        Accounts([Row(40000002, "shared", -1m, Bound(Ana, 40000002), Bound(Bo, 40000002))]);
+        Accounts([Row(40000002, "shared", -1m,
+            Bound(Bo, 40000002) with { CreatedAt = Instant.FromUtc(2026, 2, 1, 0, 0) },
+            Bound(Ana, 40000002) with { CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0) })]);
 
         var page = PageOf(await MakeController().Creditors(sort: null, dir: null));
 
@@ -391,22 +410,30 @@ public class FinanceControllerTests
     [HumansFact]
     public async Task Creditors_CarriesTheUnresolvedBindingsWithTheirNames()
     {
-        NameThem((Bo, "Bo"));
-        Accounts([], [Bound(Bo, null)]);
+        NameThem((Ana, "Ana"), (Bo, "Bo"));
+        Accounts([], [
+            Bound(Bo, null) with { CreatedAt = Instant.FromUtc(2026, 2, 1, 0, 0) },
+            Bound(Ana, null) with { CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0) },
+        ]);
 
         var page = PageOf(await MakeController().Creditors(sort: null, dir: null));
 
         page.Accounts.Should().BeEmpty();
-        page.Unresolved.Should().ContainSingle().Which.MemberName.Should().Be("Bo");
+        page.Unresolved.Select(b => b.MemberName).Should().Equal("Ana", "Bo");
     }
 
     [HumansTheory]
     [InlineData("not-a-number")]
     [InlineData("0")]
     [InlineData("-5.00")]
+    [InlineData("12,34")]
+    [InlineData("1,234.56")]
     public async Task GenerateSepa_UnparseableOrNonPositiveCap_RefusesWithoutCallingTheService(string cap)
     {
         var controller = MakeControllerWithHttpContext(Ana);
+        _connector.GenerateSepaPayoutAsync(
+            Arg.Any<IReadOnlyList<SepaPayoutSelection>>(), Arg.Any<decimal>(), Arg.Any<Guid>(),
+            Arg.Any<CancellationToken>()).Returns(new SepaPayoutResult(null, null, "Refused"));
 
         var result = await controller.GenerateSepa(
             [40000004], new Dictionary<int, string> { [40000004] = "10.00" }, cap,
@@ -456,6 +483,27 @@ public class FinanceControllerTests
         if (hasActor) result.Should().BeOfType<BadRequestObjectResult>();
         else result.Should().BeOfType<ChallengeResult>();
         await _connector.DidNotReceiveWithAnyArgs().GenerateSepaPayoutAsync(default!, default, default);
+    }
+
+    [HumansTheory]
+    [InlineData("12,34")]
+    [InlineData("1,234.56")]
+    public async Task GenerateSepa_GroupedAmount_RemainsInTheBatchAsAnInvalidAmount(string amount)
+    {
+        var controller = MakeControllerWithHttpContext(Ana);
+        _connector.GenerateSepaPayoutAsync(
+            Arg.Any<IReadOnlyList<SepaPayoutSelection>>(), Arg.Any<decimal>(), Arg.Any<Guid>(),
+            Arg.Any<CancellationToken>()).Returns(new SepaPayoutResult(null, null, "Refused"));
+
+        await controller.GenerateSepa(
+            [40000004, 40000005], new Dictionary<int, string> { [40000004] = amount, [40000005] = "10.00" },
+            "10000.00", TestContext.Current.CancellationToken);
+
+        await _connector.Received(1).GenerateSepaPayoutAsync(
+            Arg.Is<IReadOnlyList<SepaPayoutSelection>>(selections => selections.Count == 2
+                && selections[0].SupplierAccountNum == 40000004 && selections[0].Amount == 0m
+                && selections[1].SupplierAccountNum == 40000005 && selections[1].Amount == 10m),
+            10000m, Ana, Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -729,6 +777,22 @@ public class FinanceControllerTests
         redirect.RouteValues!["days"].Should().Be(7);
         var key = succeeded ? Humans.Base.Constants.TempDataKeys.SuccessMessage : Humans.Base.Constants.TempDataKeys.ErrorMessage;
         controller.TempData[key].Should().Be(succeeded ? "Withdrew it." : "It is booked.");
+    }
+
+    [HumansFact]
+    public async Task CancelSepaFile_PassesTheActorThrough_AndReportsTheOutcome()
+    {
+        var fileId = Guid.NewGuid();
+        _connector.CancelSepaFileAsync(fileId, Ana, Arg.Any<CancellationToken>())
+            .Returns(new SepaBookingResult(true, "Cancelled it."));
+        var controller = MakeControllerWithHttpContext(Ana);
+
+        var result = await controller.CancelSepaFile(fileId, days: 7);
+
+        var redirect = result.Should().BeOfType<RedirectToActionResult>().Subject;
+        redirect.ActionName.Should().Be(nameof(FinanceController.Sepa));
+        redirect.RouteValues!["days"].Should().Be(7);
+        controller.TempData[Humans.Base.Constants.TempDataKeys.SuccessMessage].Should().Be("Cancelled it.");
     }
 
     [HumansFact]

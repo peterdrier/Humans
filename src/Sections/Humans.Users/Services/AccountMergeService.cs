@@ -106,6 +106,9 @@ internal sealed class AccountMergeService(
         if (archived.IsMerged)
             return new(Refusal: $"Archived user {archivedUserId} is already tombstoned (merged into {archived.MergedToUserId}).");
 
+        ct.ThrowIfCancellationRequested();
+        // Section writes commit independently: finish the fold even if the admin stops watching.
+        ct = CancellationToken.None;
         var now = clock.GetCurrentInstant();
 
         logger.LogInformation(
@@ -217,14 +220,14 @@ internal sealed class AccountMergeService(
             request.AdminNotes = notes;
             await mergeRepository.UpdateAsync(request, ct);
 
-            await auditLogService.LogAsync(
-                UsersAuditActions.AccountMergeRejected,
-                nameof(AccountMergeRequest), request.Id,
-                $"Rejected merge request for email {request.Email} (target: {request.TargetUserId}, source: {request.SourceUserId})",
-                adminUserId);
-
             scope.Complete();
         }
+
+        await auditLogService.LogAsync(
+            UsersAuditActions.AccountMergeRejected,
+            nameof(AccountMergeRequest), request.Id,
+            $"Rejected merge request for email {request.Email} (target: {request.TargetUserId}, source: {request.SourceUserId})",
+            adminUserId);
 
         // After commit.
         await userInfoRefresher.RefreshAsync(request.TargetUserId, ct);

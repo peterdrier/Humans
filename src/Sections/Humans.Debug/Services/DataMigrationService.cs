@@ -15,12 +15,9 @@ internal sealed class DataMigrationService(
     IAuditLogService audit,
     ILogger<DataMigrationService> logger)
 {
-    /// <summary>Ordered by section, then key.</summary>
+    /// <summary>The sections’ contributed migration definitions.</summary>
     public IReadOnlyList<DataMigration> All() =>
-        [.. contributions
-            .SelectMany(c => c.Migrations())
-            .OrderBy(m => m.Section, StringComparer.Ordinal)
-            .ThenBy(m => m.Key, StringComparer.Ordinal)];
+        [.. contributions.SelectMany(c => c.Migrations())];
 
     public async Task<IReadOnlyList<DataMigrationReport>> GetReportsAsync(CancellationToken ct = default)
     {

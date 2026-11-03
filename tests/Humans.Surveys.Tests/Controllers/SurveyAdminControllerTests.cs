@@ -359,10 +359,16 @@ public sealed class SurveyAdminControllerTests
     public async Task Reject_invalid_note_renders_queue_with_original_text_and_error()
     {
         var surveyId = Guid.NewGuid();
+        var olderId = Guid.NewGuid();
+        var undatedId = Guid.NewGuid();
         var note = new string('x', 4001);
         var surveys = Substitute.For<ISurveyService>();
         surveys.GetPendingApprovalQueueAsync(Arg.Any<CancellationToken>())
-            .Returns([new SurveyPendingApprovalItem(surveyId, "Survey", Guid.NewGuid(), "Author", null)]);
+            .Returns([
+                new SurveyPendingApprovalItem(surveyId, "Survey", Guid.NewGuid(), "Author", Instant.FromUtc(2026, 2, 1, 0, 0)),
+                new SurveyPendingApprovalItem(olderId, "Older", Guid.NewGuid(), "Author", Instant.FromUtc(2026, 1, 1, 0, 0)),
+                new SurveyPendingApprovalItem(undatedId, "Undated", Guid.NewGuid(), "Author", null),
+            ]);
         surveys.RejectAsync(surveyId, Arg.Any<SurveyViewer>(), note, Arg.Any<CancellationToken>())
             .Returns(new SurveyReviewResult(Refusal: "A rejection note must be 4000 characters or fewer."));
         var sut = CreateController(surveys, isBoardOrAdmin: true);
@@ -372,7 +378,7 @@ public sealed class SurveyAdminControllerTests
         var view = result.Should().BeOfType<ViewResult>().Subject;
         view.ViewName.Should().Be(nameof(SurveyAdminController.Queue));
         view.Model.Should().BeOfType<SurveyPendingApprovalViewModel>().Subject.Items
-            .Should().ContainSingle().Which.Id.Should().Be(surveyId);
+            .Select(item => item.Id).Should().Equal(undatedId, olderId, surveyId);
         view.ViewData[$"RejectionNote:{surveyId}"].Should().Be(note);
         sut.ModelState.IsValid.Should().BeFalse();
         sut.ModelState[string.Empty]!.Errors.Should().ContainSingle()

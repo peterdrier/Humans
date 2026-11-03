@@ -39,7 +39,7 @@ public class DevPersonaSeederTests
     private readonly ITeamSeeding _teamSeeding = Substitute.For<ITeamSeeding>();
     private readonly ISystemTeamSync _systemTeamSync = Substitute.For<ISystemTeamSync>();
     private readonly IUserService _users = Substitute.For<IUserService>();
-    private readonly IConsentWrite _consentWrite = Substitute.For<IConsentWrite>();
+    private readonly IUserWrite _userWrite = Substitute.For<IUserWrite>();
     private readonly ICampService _camps = Substitute.For<ICampService>();
     private readonly ICampSeeding _campSeeding = Substitute.For<ICampSeeding>();
     private readonly ICampRoleSeeding _campRoles = Substitute.For<ICampRoleSeeding>();
@@ -67,7 +67,7 @@ public class DevPersonaSeederTests
         _teamSeeding,
         _systemTeamSync,
         _users,
-        _consentWrite,
+        _userWrite,
         _camps,
         _campSeeding,
         _campRoles,
@@ -233,6 +233,21 @@ public class DevPersonaSeederTests
         await _consents.Received(1).SubmitConsentAsync(
             userId, Arg.Any<Guid>(), true, Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
         await _humanLifecycle.Received(1).RestoreConsentSuspensionAsync(userId, Arg.Any<CancellationToken>());
+        await _userWrite.Received(1).MarkFakeAsync(userId, userId, Arg.Any<string>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task EnsurePersonaAsync_ExistingGuest_StaysUnmarked()
+    {
+        // Guests exist to run onboarding end to end, Consent Coordinator review included.
+        var userId = DevPersonaSeeder.PersonaGuid("guest");
+        _userManager.FindByIdAsync(userId.ToString())
+            .Returns(new User { Id = userId, DisplayName = "Dev Guest" });
+
+        await BuildSut().EnsurePersonaAsync("guest", "Guest", userId);
+
+        await _userWrite.DidNotReceive().MarkFakeAsync(
+            Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
     }
 
     [HumansFact]

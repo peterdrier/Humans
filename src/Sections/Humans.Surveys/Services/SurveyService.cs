@@ -1,4 +1,3 @@
-using Humans.Consent.Contracts;
 using Humans.GoogleIntegration.Contracts;
 using Humans.Base.Extensions;
 using Humans.Base.Threading;
@@ -27,10 +26,8 @@ internal sealed class SurveyService(
     ITeamService teamService,
     IUserService userService,
     IGovernanceService governanceService,
-    IConsentService consentService,
     ITicketService ticketService,
     IShiftView shiftView,
-    IUserEmailService userEmailService,
     IEmailService emailService,
     SurveysEmails emailMessages,
     ISurveyInviteTokenProvider tokenProvider,
@@ -38,6 +35,7 @@ internal sealed class SurveyService(
     IFileStorage fileStorage) : ISurveyService, IUserDataContributor, IUserMerge
 {
     private readonly SurveyImageUploads imageUploads = new(fileStorage, logger);
+    private readonly SurveyTranslationFiller translationFiller = new(translation);
 
     private static readonly TrackedLock ResponseFinalizationLock = new("Surveys.ResponseFinalization");
 
@@ -182,24 +180,9 @@ internal sealed class SurveyService(
         var surveyId = Guid.NewGuid();
         var (publicSlug, slugError) = PreparePublicSlugForWrite(input.PublicSlug);
         if (slugError is not null) return new(Error: slugError);
-        var prepared = await imageUploads.PrepareAsync(surveyId, input, existing: null, ct);
-        if (prepared.Error is not null) return new(Error: prepared.Error);
-        List<SurveyQuestion> questions;
-        try
-        {
-            questions = MapQuestions(surveyId, prepared.Input);
-            error = SurveyDefinitionValidation.Validate(questions, input);
-            if (error is not null)
-            {
-                await imageUploads.DeleteBestEffortAsync(prepared.NewStoragePaths, CancellationToken.None);
-                return new(Error: error);
-            }
-        }
-        catch
-        {
-            await imageUploads.DeleteBestEffortAsync(prepared.NewStoragePaths, CancellationToken.None);
-            throw;
-        }
+        var (questions, newStoragePaths, questionError) = await PrepareQuestionsAsync(
+            surveyId, input, existing: null, allowRankedAvailabilityChanges: false, ct);
+        if (questionError is not null) return new(Error: questionError);
 
         var survey = new Survey
         {
@@ -216,7 +199,7 @@ internal sealed class SurveyService(
         }
         catch
         {
-            await CleanupFailedInformationImageUploadAsync(surveyId, prepared.NewStoragePaths);
+            await CleanupFailedInformationImageUploadAsync(surveyId, newStoragePaths);
             throw;
         }
         logger.LogInformation("Survey {SurveyId} created by {UserId}", surveyId, actorUserId);
@@ -265,45 +248,9 @@ internal sealed class SurveyService(
         }
         var (publicSlug, slugError) = PreparePublicSlugForWrite(input.PublicSlug);
         if (slugError is not null) return new(Error: slugError);
-        var prepared = await imageUploads.PrepareAsync(surveyId, input, existing, ct);
-        if (prepared.Error is not null) return new(Error: prepared.Error);
-        List<SurveyQuestion> questions;
-        try
-        {
-            questions = MapQuestions(surveyId, prepared.Input);
-            if (!allowRankedAvailabilityChanges)
-            {
-                var existingById = existing.Questions.ToDictionary(question => question.Id);
-                foreach (var question in questions.Where(question => question.Type == SurveyQuestionType.RankedChoice))
-                {
-                    if (existingById.TryGetValue(question.Id, out var persisted))
-                    {
-                        question.RankedUnavailableOptionValues =
-                            persisted.RankedUnavailableOptionValues?.ToList();
-                    }
-                }
-            }
-            error = SurveyDefinitionValidation.Validate(questions, input);
-            if (error is not null)
-            {
-                await imageUploads.DeleteBestEffortAsync(prepared.NewStoragePaths, CancellationToken.None);
-                return new(Error: error);
-            }
-            if (await repo.HasSavedAnswersAsync(surveyId, ct))
-            {
-                error = SurveyDefinitionValidation.ValidateRankedDefinitionFrozen(existing.Questions, questions);
-                if (error is not null)
-                {
-                    await imageUploads.DeleteBestEffortAsync(prepared.NewStoragePaths, CancellationToken.None);
-                    return new(Error: error);
-                }
-            }
-        }
-        catch
-        {
-            await imageUploads.DeleteBestEffortAsync(prepared.NewStoragePaths, CancellationToken.None);
-            throw;
-        }
+        var (questions, newStoragePaths, questionError) = await PrepareQuestionsAsync(
+            surveyId, input, existing, allowRankedAvailabilityChanges, ct);
+        if (questionError is not null) return new(Error: questionError);
 
         var survey = new Survey { Id = surveyId };
         ApplyEditableFields(survey, input, questions, invitationEmailSubject, invitationEmailMessage, publicSlug, now);
@@ -316,11 +263,47 @@ internal sealed class SurveyService(
         }
         catch
         {
-            await CleanupFailedInformationImageUploadAsync(surveyId, prepared.NewStoragePaths);
+            await CleanupFailedInformationImageUploadAsync(surveyId, newStoragePaths);
             throw;
         }
         await auditLog.LogAsync(SurveysAuditActions.SurveyUpdated, AuditEntityTypes.Survey, surveyId, changeSummary, actorUserId);
         return new(surveyId);
+    }
+
+    private async Task<(List<SurveyQuestion> Questions, IReadOnlyList<string> NewStoragePaths, SurveyAuthoringError? Error)>
+        PrepareQuestionsAsync(
+            Guid surveyId, SurveyEditInput input, Survey? existing, bool allowRankedAvailabilityChanges, CancellationToken ct)
+    {
+        var prepared = await imageUploads.PrepareAsync(surveyId, input, existing, ct);
+        if (prepared.Error is not null) return ([], [], prepared.Error);
+        try
+        {
+            var questions = MapQuestions(surveyId, prepared.Input);
+            if (existing is not null && !allowRankedAvailabilityChanges)
+            {
+                var existingById = existing.Questions.ToDictionary(question => question.Id);
+                foreach (var question in questions.Where(question => question.Type == SurveyQuestionType.RankedChoice))
+                {
+                    if (existingById.TryGetValue(question.Id, out var persisted))
+                    {
+                        question.RankedUnavailableOptionValues =
+                            persisted.RankedUnavailableOptionValues?.ToList();
+                    }
+                }
+            }
+            var error = SurveyDefinitionValidation.Validate(questions, input);
+            if (error is null && existing is not null && await repo.HasSavedAnswersAsync(surveyId, ct))
+                error = SurveyDefinitionValidation.ValidateRankedDefinitionFrozen(existing.Questions, questions);
+            if (error is null) return (questions, prepared.NewStoragePaths, null);
+
+            await imageUploads.DeleteBestEffortAsync(prepared.NewStoragePaths, CancellationToken.None);
+            return ([], [], error);
+        }
+        catch
+        {
+            await imageUploads.DeleteBestEffortAsync(prepared.NewStoragePaths, CancellationToken.None);
+            throw;
+        }
     }
 
     private static void ApplyEditableFields(
@@ -355,99 +338,14 @@ internal sealed class SurveyService(
             throw new InvalidOperationException(
                 "An Asociado vote cannot be edited after it has opened.");
         }
-        var e = detail.Editable;
-        var source = e.DefaultCulture;
-
-        // Mutable copies of every authored LocalizedText, kept alongside what they rebuild into.
-        var title = Copy(e.Title);
-        var intro = Copy(e.Intro);
-        var thankYou = Copy(e.ThankYou);
-        var invitationEmailSubject = Copy(e.InvitationEmailSubject);
-        var invitationEmailMessage = Copy(e.InvitationEmailMessage);
-        var questions = e.Questions.Select(q => new
-        {
-            Question = q,
-            Prompt = Copy(q.Prompt),
-            Help = Copy(q.HelpText),
-            MinLabel = Copy(q.RatingMinLabel),
-            MaxLabel = Copy(q.RatingMaxLabel),
-            Options = q.Options.Select(o => new { Option = o, Label = Copy(o.Label) }).ToList(),
-            GridRows = (q.GridRows ?? []).Select(row => new { Row = row, Label = Copy(row.Label) }).ToList(),
-            InformationImages = (q.InformationImages ?? []).Select(image => new
-            {
-                Image = image,
-                Label = Copy(image.Label),
-                AltText = Copy(image.AltText),
-            }).ToList(),
-        }).ToList();
-
-        var allTexts = new List<Dictionary<string, string>>
-        {
-            title,
-            intro,
-            thankYou,
-            invitationEmailSubject,
-            invitationEmailMessage,
-        };
-        foreach (var q in questions)
-        {
-            allTexts.AddRange([q.Prompt, q.Help, q.MinLabel, q.MaxLabel]);
-            allTexts.AddRange(q.Options.Select(o => o.Label));
-            allTexts.AddRange(q.GridRows.Select(row => row.Label));
-            allTexts.AddRange(q.InformationImages.Select(image => image.Label));
-            allTexts.AddRange(q.InformationImages.Select(image => image.AltText));
-        }
-
-        // One batched call per target culture; only fills blanks — never overwrites authored text.
-        var filled = 0;
-        foreach (var target in targetCultures.Where(t => !string.Equals(t, source, StringComparison.OrdinalIgnoreCase)))
-        {
-            var pending = allTexts.Where(d => HasText(d, source) && !HasText(d, target)).ToList();
-            if (pending.Count == 0) continue;
-
-            var translated = await translation.TranslateAsync(
-                pending.Select(d => d[source]).ToList(), source, target, ct);
-            for (var i = 0; i < pending.Count; i++)
-            {
-                pending[i][target] = translated[i];
-            }
-
-            filled += pending.Count;
-        }
-
+        var (input, filled) = await translationFiller.FillAsync(detail.Editable, targetCultures, ct);
         if (filled == 0) return 0;
-
-        var input = new SurveyEditInput(
-            new LocalizedText(title), new LocalizedText(intro), new LocalizedText(thankYou),
-            new LocalizedText(invitationEmailSubject), new LocalizedText(invitationEmailMessage),
-            e.DefaultCulture, e.AllowAnonymous, e.OpensAt, e.ClosesAt,
-            e.AudienceType, e.AudienceTeamId, e.AudienceLoggedInSince, e.PublicSlug,
-            questions.Select(q => q.Question with
-            {
-                Prompt = new LocalizedText(q.Prompt),
-                HelpText = new LocalizedText(q.Help),
-                RatingMinLabel = new LocalizedText(q.MinLabel),
-                RatingMaxLabel = new LocalizedText(q.MaxLabel),
-                Options = q.Options.Select(o => o.Option with { Label = new LocalizedText(o.Label) }).ToList(),
-                GridRows = q.GridRows.Select(row => row.Row with { Label = new LocalizedText(row.Label) }).ToList(),
-                InformationImages = q.InformationImages.Select(image => image.Image with
-                {
-                    Label = new LocalizedText(image.Label),
-                    AltText = new LocalizedText(image.AltText),
-                }).ToList(),
-            }).ToList(),
-            e.IsAsociadoVote);
 
         (await UpdateAsync(surveyId, input, viewer, ct)).RequireSuccess();
         logger.LogInformation(
-            "Survey {SurveyId}: pre-filled {Count} missing translations from {Source}", surveyId, filled, source);
+            "Survey {SurveyId}: pre-filled {Count} missing translations from {Source}",
+            surveyId, filled, detail.Editable.DefaultCulture);
         return filled;
-
-        static Dictionary<string, string> Copy(LocalizedText text)
-            => new(text.Values, StringComparer.Ordinal);
-
-        static bool HasText(Dictionary<string, string> values, string culture)
-            => values.TryGetValue(culture, out var v) && !string.IsNullOrWhiteSpace(v);
     }
 
     public async Task<SurveyReviewResult> OpenAsync(Guid surveyId, Guid actorUserId, CancellationToken ct = default)
@@ -524,7 +422,6 @@ internal sealed class SurveyService(
         var authors = await userService.GetUserInfosAsync(authorIds, ct);
 
         return pending
-            .OrderBy(s => s.SubmittedAt)
             .Select(s => new SurveyPendingApprovalItem(
                 s.Id,
                 s.Title.Resolve(s.DefaultCulture, s.DefaultCulture),
@@ -659,7 +556,6 @@ internal sealed class SurveyService(
             .ToList();
         var existingParticipation = participationRows.ToDictionary(invitation => invitation.UserId);
 
-        var emails = await userEmailService.GetNotificationTargetEmailsAsync(netNew, ct);
         var users = await userService.GetUserInfosAsync(netNew, ct);
         var invitationsCreated = 0;
         var emailsQueued = 0;
@@ -672,7 +568,7 @@ internal sealed class SurveyService(
 
         foreach (var userId in netNew)
         {
-            if (!emails.TryGetValue(userId, out var email))
+            if (!users.TryGetValue(userId, out var user) || user.Email is not { Length: > 0 } email)
             {
                 logger.LogWarning(
                     "User {UserId} has no notification email for survey {SurveyId}; skipping invitation",
@@ -700,11 +596,11 @@ internal sealed class SurveyService(
 
             try
             {
-                var preferredCulture = users.TryGetValue(userId, out var user) ? user.PreferredLanguage : null;
+                var preferredCulture = user.PreferredLanguage;
                 var culture = preferredCulture.IsSupportedCultureCode()
                     ? preferredCulture!
                     : survey.DefaultCulture;
-                var name = user?.BurnerName ?? string.Empty;
+                var name = user.BurnerName;
                 var title = survey.Title.Resolve(culture, survey.DefaultCulture);
                 var customSubject = survey.InvitationEmailSubject.ResolveOptional(culture, survey.DefaultCulture);
                 var customMessage = survey.InvitationEmailMessage.ResolveOptional(culture, survey.DefaultCulture);
@@ -1354,8 +1250,11 @@ internal sealed class SurveyService(
             ? []
             : survey.Questions
                 .Where(q => q.Type != SurveyQuestionType.Information)
-                .OrderBy(q => q.PageNumber).ThenBy(q => q.Order)
-                .Select(q => SurveyQuestionResults.BuildQuestionAggregate(q, selectedResponses, culture))
+                .Select(q => SurveyQuestionResults.BuildQuestionAggregate(q, selectedResponses, culture) with
+                {
+                    PageNumber = q.PageNumber,
+                    Order = q.Order,
+                })
                 .ToList();
 
         var funnel = new SurveyFunnel(
@@ -1467,10 +1366,7 @@ internal sealed class SurveyService(
                  q.RankedUnavailableOptionValues?.ToList()))
             .ToList();
 
-        var questionsById = survey.Questions.ToDictionary(q => q.Id);
-        var optionLabels = survey.Questions.ToDictionary(
-            q => q.Id,
-            q => q.Options.ToDictionary(o => o.Value, o => o.Label.Resolve(culture, culture), StringComparer.Ordinal));
+        var answerContext = BuildRespondentAnswerContext(survey, culture);
 
         // Identity is resolved only for Identified rows in ordinary surveys. Asociado exports never
         // expose identity, timestamps or submission order, including for legacy Identified rows.
@@ -1504,11 +1400,11 @@ internal sealed class SurveyService(
                     .Select(a => new SurveyExportAnswer(
                         a.QuestionId,
                         a.SelectedOptionValues,
-                        ResolveSelectedLabels(a, optionLabels),
+                        ResolveSelectedLabels(a, answerContext.OptionLabels),
                         a.TextValue,
                         a.RatingValue,
                         CopyGridSelections(a),
-                         questionsById.TryGetValue(a.QuestionId, out var question)
+                         answerContext.QuestionsById.TryGetValue(a.QuestionId, out var question)
                              ? ResolveGridSelections(a, question, culture)
                              : [],
                          CopyRankedBallot(a)))
@@ -1559,16 +1455,7 @@ internal sealed class SurveyService(
                     ? survey?.DefaultCulture ?? "en"
                     : r.Culture;
 
-                var prompts = survey is null
-                    ? new Dictionary<Guid, string>()
-                    : survey.Questions.ToDictionary(q => q.Id, q => q.Prompt.Resolve(culture, culture));
-                var optionLabels = survey is null
-                    ? new Dictionary<Guid, Dictionary<string, string>>()
-                    : survey.Questions.ToDictionary(
-                        q => q.Id,
-                        q => q.Options.ToDictionary(o => o.Value, o => o.Label.Resolve(culture, culture), StringComparer.Ordinal));
-                var questionsById = survey?.Questions.ToDictionary(q => q.Id)
-                    ?? new Dictionary<Guid, SurveyQuestion>();
+                var answerContext = BuildRespondentAnswerContext(survey, culture);
 
                 return new
                 {
@@ -1577,14 +1464,14 @@ internal sealed class SurveyService(
                     Culture = culture,
                     Answers = r.Answers.Select(a => new
                     {
-                        Question = prompts.GetValueOrDefault(a.QuestionId, string.Empty),
-                        SelectedLabels = ResolveSelectedLabels(a, optionLabels),
+                        Question = answerContext.Prompts.GetValueOrDefault(a.QuestionId, string.Empty),
+                        SelectedLabels = ResolveSelectedLabels(a, answerContext.OptionLabels),
                         GridSelections = CopyGridSelections(a),
-                        GridSelectionLabels = questionsById.TryGetValue(a.QuestionId, out var question)
+                        GridSelectionLabels = answerContext.QuestionsById.TryGetValue(a.QuestionId, out var question)
                              ? ResolveGridSelections(a, question, culture)
                              : [],
                         RankedBallot = CopyRankedBallot(a),
-                        RankedBallotLabels = ResolveRankedBallot(a, optionLabels),
+                        RankedBallotLabels = ResolveRankedBallot(a, answerContext.OptionLabels),
                         a.TextValue,
                         a.RatingValue,
                     }).ToList(),
@@ -1688,8 +1575,6 @@ internal sealed class SurveyService(
     {
         var identified = responses
             .Where(r => r.Anonymity == ResponseAnonymity.Identified && r.UserId.HasValue)
-            .OrderBy(r => r.SubmittedAt)
-            .ThenBy(r => r.Id)
             .ToList();
         if (identified.Count == 0) return [];
 
@@ -1704,7 +1589,7 @@ internal sealed class SurveyService(
                 var userId = r.UserId!.Value;
                 var name = users.TryGetValue(userId, out var user) ? user.BurnerName : userId.ToString();
                 var answers = BuildRespondentAnswers(r, answerContext, culture);
-                return new RespondentDetail(userId, name, r.SubmittedAt, answers);
+                return new RespondentDetail(userId, name, r.SubmittedAt, answers) { ResponseId = r.Id };
             })
             .ToList();
     }
@@ -1720,18 +1605,21 @@ internal sealed class SurveyService(
             .ToList();
     }
 
-    private static RespondentAnswerContext BuildRespondentAnswerContext(Survey survey, string culture) =>
-        new(
-            survey.Questions.ToDictionary(
+    private static RespondentAnswerContext BuildRespondentAnswerContext(Survey? survey, string culture)
+    {
+        var questions = survey?.Questions ?? [];
+        return new(
+            questions.ToDictionary(
                 question => question.Id,
                 question => question.Options.ToDictionary(
                     option => option.Value,
                     option => option.Label.Resolve(culture, culture),
                     StringComparer.Ordinal)),
-            survey.Questions.ToDictionary(
+            questions.ToDictionary(
                 question => question.Id,
                 question => question.Prompt.Resolve(culture, culture)),
-            survey.Questions.ToDictionary(question => question.Id));
+            questions.ToDictionary(question => question.Id));
+    }
 
     private static IReadOnlyList<RespondentAnswer> BuildRespondentAnswers(
         SurveyResponse response, RespondentAnswerContext context, string culture) =>
@@ -2046,16 +1934,11 @@ internal sealed class SurveyService(
     private async Task<List<Guid>> ActiveMemberIdsAsync(CancellationToken ct)
     {
         var users = await userService.GetAllUserInfosAsync(ct);
-        var reviews = await consentService.GetConsentReviewsAsync(ct);
         return users
-            .Where(u => IsApproved(reviews, u.Id) && !u.IsDeletionPending)
+            .Where(u => u.State == UserState.Active && !u.IsFake && !u.IsDeletionPending)
             .Select(u => u.Id)
             .ToList();
     }
-
-    /// <summary>Cleared by the Consent Coordinator (Consent's review).</summary>
-    private static bool IsApproved(IReadOnlyDictionary<Guid, ConsentReviewInfo> reviews, Guid userId) =>
-        reviews.TryGetValue(userId, out var review) && review.IsApproved;
 
     /// <summary>The account half of Asociado eligibility; the tier half is Governance's
     /// (<see cref="IGovernanceService.GetMembershipTierAsync"/>). The Consent Coordinator's review

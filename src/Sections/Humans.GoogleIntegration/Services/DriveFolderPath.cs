@@ -15,7 +15,8 @@ internal static class DriveFolderPath
     /// Drive root reads as an anonymous "Drive" folder: its name comes only from <c>drives.get</c>, never a guess.
     /// </summary>
     public static async Task<string?> ResolveAsync(
-        IGoogleDrivePermissionsClient drivePermissions, string fileId, ILogger logger, CancellationToken ct)
+        IGoogleDrivePermissionsClient drivePermissions, string fileId, ILogger logger, CancellationToken ct,
+        DriveFileMetadata? initialFile = null)
     {
         var segments = new List<string>();
         var currentId = fileId;
@@ -25,30 +26,36 @@ internal static class DriveFolderPath
 
         for (var depth = 0; depth < maxDepth; depth++)
         {
-            var fileResult = await drivePermissions.GetFileAsync(currentId, ct);
-            if (fileResult?.File is null)
-            {
-                if (fileResult?.Error?.StatusCode == 404)
-                    logger.LogWarning("Drive folder {GoogleId} not found", currentId);
-                return null;
-            }
-
-            var file = fileResult.File;
-            // Items under a drive all report it; the root may not, so carry it up from the leaf.
-            knownDriveId = !string.IsNullOrEmpty(file.DriveId) ? file.DriveId : knownDriveId;
-            var hasParent = file.Parents is { Count: > 0 };
-
             var isDriveRoot = knownDriveId is not null && string.Equals(currentId, knownDriveId, StringComparison.Ordinal);
             SharedDriveMetadataResult? driveResult = null;
-            if (!isDriveRoot && !hasParent && knownDriveId is null)
+            DriveFileMetadata? file = null;
+            var hasParent = false;
+            if (!isDriveRoot)
             {
-                // Parentless and unlabelled: either the root of a drive that omits its own driveId, or
-                // an orphan. Only drives.get can tell them apart; "not a drive" (400/404) keeps the folder's
-                // own name. A 403 may be a rate limit, so like any other failure it leaves the path unresolved.
-                driveResult = await drivePermissions.GetSharedDriveAsync(currentId, ct);
-                isDriveRoot = driveResult?.Drive is not null;
-                if (!isDriveRoot && driveResult?.Error is { StatusCode: not (400 or 404) })
+                var fileResult = depth == 0 && initialFile is not null
+                    ? new DriveFileMetadataResult(initialFile, null)
+                    : await drivePermissions.GetFileAsync(currentId, ct);
+                if (fileResult?.File is null)
+                {
+                    if (fileResult?.Error?.StatusCode == 404)
+                        logger.LogWarning("Drive folder {GoogleId} not found", currentId);
                     return null;
+                }
+
+                file = fileResult.File;
+                // Items under a drive all report it; the root may not, so carry it up from the leaf.
+                knownDriveId = !string.IsNullOrEmpty(file.DriveId) ? file.DriveId : knownDriveId;
+                hasParent = file.Parents is { Count: > 0 };
+                isDriveRoot = knownDriveId is not null && string.Equals(currentId, knownDriveId, StringComparison.Ordinal);
+                if (!isDriveRoot && !hasParent && knownDriveId is null)
+                {
+                    // Parentless and unlabelled: only drives.get distinguishes a drive root from an orphan.
+                    // A 403 may be a rate limit; only "not a drive" (400/404) keeps the folder's own name.
+                    driveResult = await drivePermissions.GetSharedDriveAsync(currentId, ct);
+                    isDriveRoot = driveResult?.Drive is not null;
+                    if (!isDriveRoot && driveResult?.Error is { StatusCode: not (400 or 404) })
+                        return null;
+                }
             }
 
             if (isDriveRoot)
@@ -67,7 +74,7 @@ internal static class DriveFolderPath
                 break;
             }
 
-            if (file.Name is null)
+            if (file?.Name is null)
                 return null;
             segments.Add(file.Name);
 

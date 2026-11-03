@@ -212,6 +212,9 @@ grep -v TicketRepository tests/Humans.Web.Tests/Architecture/Baselines/DisplaySo
 For each line: find the method's caller(s) — **read the consumer first**,
 don't just delete the sort. A prior PR (peterdrier/Humans#1002) had to revert two premature
 deletions where the view rendered in repo order with no re-sort.
+Collect the eligible moves in the section before editing, inspect every consumer,
+and validate them as one batch under `daily-debt.md`. Do not create one round per
+`OrderBy`; explain splits caused by different semantics or risk.
 
 **Seed check (2026-10-22):** The former `TeamRepository.GetAllRoleDefinitionsAsync`
 seed is resolved: the repository `OrderBy` was removed and `TeamController.Roster`

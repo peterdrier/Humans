@@ -25,8 +25,8 @@ public static class UserPartSlots
     /// <summary>The applicant on a Board tier-application vote (Governance <c>BoardVoting/Detail</c>).</summary>
     public const string BoardVoteApplicant = "board-vote-applicant";
 
-    /// <summary>The applicant on the onboarding review detail page (Onboarding <c>OnboardingReview/Detail</c>).</summary>
-    public const string OnboardingReviewApplicant = "onboarding-review-applicant";
+    /// <summary>The applicant on the consent review detail page (Consent <c>ConsentReviewQueue/Detail</c>).</summary>
+    public const string ConsentReviewApplicant = "consent-review-applicant";
 
     /// <summary>A sender or receiver on the ticket-transfer admin detail (Tickets <c>TicketTransferAdmin/Detail</c>).</summary>
     public const string TicketTransferParty = "ticket-transfer-party";

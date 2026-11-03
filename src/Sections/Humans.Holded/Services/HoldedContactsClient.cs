@@ -113,7 +113,7 @@ internal sealed class HoldedContactsClient(HoldedTransport transport, ILogger<Ho
                 contacts.Add(ParseContact(n));
             }
             catch (Exception ex) when (ex is JsonException or InvalidOperationException
-                or FormatException or OverflowException)
+                or FormatException or OverflowException or HoldedPermanentException)
             {
                 // One bad contact must not cost the others their names: this list is the only source of creditor
                 // names on /Finance/Creditors, and its caller turns a throw into all names blank. Detail is logged
@@ -135,7 +135,7 @@ internal sealed class HoldedContactsClient(HoldedTransport transport, ILogger<Ho
     /// object, so every nested read goes through <see cref="Prop"/>.</summary>
     private static HoldedContactDto ParseContact(JsonNode node, string? fallbackId = null) => new()
     {
-        Id = Prop(node, "id")?.GetValue<string>() ?? fallbackId ?? "",
+        Id = ReadRequiredString(Prop(node, "id") ?? JsonValue.Create(fallbackId), "id"),
         Name = Prop(node, "name")?.GetValue<string>(),
         SupplierAccountNum = ReadInt(Prop(Prop(node, "supplier_record"), "num")),
         TradeName = Prop(node, "trade_name")?.GetValue<string>(),

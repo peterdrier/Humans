@@ -275,11 +275,13 @@ internal sealed class CachingUserService(
                 MatchSnippet: match.Snippet,
                 MatchedEmail: match.MatchedEmail,
                 Score: match.Score));
-
-            if (results.Count >= limit) break;
         }
 
-        return results;
+        return results
+            .OrderByDescending(result => result.Score) // arch:db-sort-ok top-N relevance selection
+            .ThenBy(result => result.UserId)
+            .Take(limit)
+            .ToList();
     }
 
     /// <summary>
@@ -460,6 +462,12 @@ internal sealed class CachingUserService(
         await RefreshEntryAsync(userId);
     }
 
+    public async Task MarkFakeAsync(Guid userId, Guid actorUserId, string reason, CancellationToken ct = default)
+    {
+        await WithInnerAsync(inner => inner.MarkFakeAsync(userId, actorUserId, reason, ct));
+        await RefreshEntryAsync(userId);
+    }
+
     public async Task<bool> SetDeletionPendingAsync(
         Guid userId, Instant requestedAt, Instant scheduledFor, Instant? eligibleAfter,
         CancellationToken ct = default)
@@ -531,16 +539,6 @@ internal sealed class CachingUserService(
             return true;
         });
         await RefreshEntryAsync(userId);
-    }
-
-    public async Task<UserProfileAnonymizeResult> AnonymizeProfileForDeletionAsync(
-        Guid userId,
-        CancellationToken ct = default)
-    {
-        var result = await WithInnerAsync(inner =>
-            inner.AnonymizeProfileForDeletionAsync(userId, ct));
-        if (result.Anonymized) await RefreshEntryAsync(userId);
-        return result;
     }
 
     public async Task<UserProfileLanguagesSaveResult> SaveProfileLanguagesAsync(

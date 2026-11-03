@@ -24,7 +24,7 @@ public class AgentPromptAssemblerTests
                 new TeamMembership("Volunteers", TeamMemberRole.Member),
                 new TeamMembership("Tech", TeamMemberRole.Coordinator)
             ],
-            PendingConsentDocs: ["Privacy Policy"],
+            PendingConsentDocs: ["Privacy Policy", "Code of Conduct"],
             OpenTicketIds: [],
             OpenFeedbackIds: [],
             UpcomingShifts: []);
@@ -35,7 +35,7 @@ public class AgentPromptAssemblerTests
         tail.Should().Contain("Felipe García");
         tail.Should().Contain("Locale: es");
         tail.Should().Contain("TeamsAdmin");
-        tail.Should().Contain("Privacy Policy");
+        tail.Should().Contain("Pending consents: Code of Conduct, Privacy Policy");
     }
 
     [HumansFact]

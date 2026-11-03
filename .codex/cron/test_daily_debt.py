@@ -243,6 +243,87 @@ class GoalFailureTests(unittest.TestCase):
         self.assertIn("unauthorized: Authentication expired", report)
 
 
+class LatestRunnerTests(unittest.TestCase):
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory(prefix="humans-latest-runner-")
+        self.addCleanup(self.temp.cleanup)
+        self.root = Path(self.temp.name)
+        self.seed = self.root / "seed"
+        self.seed.mkdir()
+        self.git(self.seed, "init", "-qb", "main")
+        self.git(self.seed, "config", "user.name", "Runner test")
+        self.git(self.seed, "config", "user.email", "runner@example.invalid")
+        (self.seed / ".codex/cron").mkdir(parents=True)
+        (self.seed / ".codex/prompts").mkdir()
+        self.revision("first")
+        self.home = self.root / "runner"
+        self.home.mkdir()
+        self.git(self.root, "clone", str(self.seed), str(self.home / "clone"))
+        (self.home / "clone/.codex/cron/debt-runner.env").write_text("fixture")
+
+    @staticmethod
+    def git(cwd, *args):
+        return subprocess.run(["git", *args], cwd=cwd, check=True,
+                              capture_output=True, text=True).stdout.strip()
+
+    def revision(self, value):
+        (self.seed / ".codex/prompts/daily-debt.md").write_text(value)
+        (self.seed / ".codex/cron/run-daily-debt.sh").write_text(
+            'set -eu\ncd "$(dirname "$0")"\n'
+            'if flock -n "$DEBT_RUNNER_HOME/.bootstrap.lock" true; then exit 31; fi\n'
+            f'printf "{value}:"\ncat ../prompts/daily-debt.md\n'
+            'printf ":"\ncat debt-runner.env\n')
+        self.git(self.seed, "add", ".")
+        self.git(self.seed, "commit", "-qm", value)
+        return self.git(self.seed, "rev-parse", "HEAD")
+
+    def launch(self):
+        return subprocess.run(["bash", str(SOURCE / "cron/run-latest-debt.sh")],
+                              env=dict(os.environ, DEBT_RUNNER_HOME=str(self.home)),
+                              capture_output=True, text=True, timeout=20)
+
+    def test_fetches_new_main_and_keeps_matching_runner_and_prompt(self):
+        old_head = self.git(self.home / "clone", "rev-parse", "HEAD")
+        first = self.launch()
+        self.assertEqual(first.returncode, 0, first.stderr)
+        self.assertIn("first:first:fixture", first.stdout)
+        new_head = self.revision("second")
+        second = self.launch()
+        self.assertEqual(second.returncode, 0, second.stderr)
+        self.assertIn("revision=" + new_head, second.stdout)
+        self.assertIn("second:second:fixture", second.stdout)
+        self.assertEqual(self.git(self.home / "clone", "rev-parse", "HEAD"), old_head)
+        self.assertEqual((self.home / "releases" / old_head / ".codex/prompts/daily-debt.md").read_text(), "first")
+        self.assertEqual(self.launch().returncode, 0)
+
+    def test_fetch_failure_does_not_execute_previous_release(self):
+        self.assertEqual(self.launch().returncode, 0)
+        self.git(self.home / "clone", "remote", "set-url", "origin", str(self.root / "missing"))
+        result = self.launch()
+        self.assertNotEqual(result.returncode, 0)
+        self.assertNotIn("first:first", result.stdout)
+        self.assertIn("no stale runner fallback", result.stderr)
+
+    def test_incomplete_release_is_never_published_or_executed(self):
+        (self.seed / ".codex/cron/run-daily-debt.sh").unlink()
+        self.git(self.seed, "add", "-u")
+        self.git(self.seed, "commit", "-qm", "missing runner")
+        revision = self.git(self.seed, "rev-parse", "HEAD")
+        result = self.launch()
+        self.assertNotEqual(result.returncode, 0)
+        self.assertFalse((self.home / "releases" / revision).exists())
+        self.assertNotIn("Starting debt runner", result.stdout)
+
+    def test_overlapping_launcher_skips_without_starting_worker(self):
+        import fcntl
+        with (self.home / ".bootstrap.lock").open("w") as lock:
+            fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            result = self.launch()
+        self.assertEqual(result.returncode, 0)
+        self.assertIn("bootstrap lock", result.stdout)
+        self.assertNotIn("first:first", result.stdout)
+
+
 class DailyDebtTests(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory(prefix="humans-debt-test-")

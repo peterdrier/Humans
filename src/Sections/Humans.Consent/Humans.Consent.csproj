@@ -22,7 +22,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\Humans.Base\Humans.Base.csproj" />
-    <ProjectReference Include="..\Humans.AuditLog\Humans.AuditLog.csproj" />
     <!-- IIssueQueueOwner: this section declares the issue queue it owns. -->
     <ProjectReference Include="..\Humans.Issues\Humans.Issues.csproj" />
     <ProjectReference Include="..\Humans.Teams.Contracts\Humans.Teams.Contracts.csproj" />
@@ -32,13 +31,12 @@
       acyclic: ConsentService resolves required teams and completion through
       IMembershipCalculator, and declares its notification sources and emits through
       Humans.Notifications.Contracts. Humans.Governance references Humans.Consent back (for
-      ConsentResource, step 3b), which is fine — Humans.Governance.Contracts names no
+      ConsentResource), which is fine — Humans.Governance.Contracts names no
       Consent type.
     -->
     <ProjectReference Include="..\Humans.Governance.Contracts\Humans.Governance.Contracts.csproj" />
     <ProjectReference Include="..\Humans.Notifications.Contracts\Humans.Notifications.Contracts.csproj" />
     <ProjectReference Include="..\Humans.Email.Contracts\Humans.Email.Contracts.csproj" />
-    <ProjectReference Include="..\Humans.Gdpr\Humans.Gdpr.csproj" />
     <!--
       Onboarding's leaf, for the consent-check threshold ConsentController peer-calls after
       a submit. It is a leaf *project* precisely so this reference is not a cycle:
@@ -64,6 +62,17 @@
   <ItemGroup>
     <!-- The section owns its documentation; keep it visible in Solution Explorer. -->
     <None Include="**\*.md" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!--
+      Section-help markdown (ISectionHelp). Embedded, not fetched: the help modal renders
+      synchronously on the review queue. The logical name is fixed here so
+      SectionHelpEntry.FromEmbeddedMarkdown can address it without probing.
+    -->
+    <None Remove="Docs\help\*.md" />
+    <EmbeddedResource Include="Docs\help\*.md"
+                      LogicalName="$(AssemblyName).Docs.help.%(Filename)%(Extension)" />
   </ItemGroup>
 
 </Project>
