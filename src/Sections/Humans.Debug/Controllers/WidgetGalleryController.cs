@@ -25,7 +25,7 @@ internal sealed class WidgetGalleryController(IUserService userService) : Humans
     [HttpGet("")]
     public async Task<IActionResult> Index()
     {
-        var (error, currentUser) = await RequireCurrentUserAsync();
+        var (error, currentUser) = await RequireCurrentUserAsync(HttpContext.RequestAborted);
         if (error is not null)
             return error;
 
