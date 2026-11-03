@@ -106,13 +106,17 @@ internal sealed partial class WorkgroupService
             : new(Refusal: new(WorkgroupErrorKeys.NotFound));
     }
 
-    /// <summary>No value and no refusal: the entry links no meeting. Only meeting notes keep a link.</summary>
-    private async Task<WorkgroupMutationResult<WorkgroupMeeting>> ResolveMeetingLinkAsync(
-        Guid workgroupId, WorkgroupLogEntrySave save, CancellationToken ct)
+    /// <summary>
+    /// The meeting id the entry keeps, or a refusal. Only meeting notes keep a link, and a new link must name one of
+    /// the group's live meetings; an unchanged link survives its meeting's deletion, so old notes stay editable.
+    /// </summary>
+    private async Task<WorkgroupMutationResult<Guid?>> ResolveMeetingLinkAsync(
+        Guid workgroupId, WorkgroupLogEntrySave save, CancellationToken ct, Guid? currentMeetingId = null)
     {
         if (save.Kind != WorkgroupLogKind.MeetingNotes || save.MeetingId is not { } meetingId) return new();
+        if (meetingId == currentMeetingId) return new(meetingId);
         var meeting = await RequireLiveMeetingAsync(meetingId, ct);
-        return meeting.Value?.WorkgroupId == workgroupId ? meeting : new(Refusal: new(WorkgroupErrorKeys.NotFound));
+        return meeting.Value?.WorkgroupId == workgroupId ? new(meetingId) : new(Refusal: new(WorkgroupErrorKeys.NotFound));
     }
 
     /// <summary>Member mutations are frozen before registration and once the group ends.</summary>
@@ -214,7 +218,7 @@ internal sealed partial class WorkgroupService
         var hasRule = !string.IsNullOrWhiteSpace(save.RecurrenceRule);
         if (hasRule != !string.IsNullOrWhiteSpace(save.RecurrenceTimezone)
             || !CalendarRecurrence.IsValidRule(save.RecurrenceRule)
-            || (hasRule && CalendarEventForm.TryResolveZone(save.RecurrenceTimezone) is null))
+            || (hasRule && (CalendarEventForm.TryResolveZone(save.RecurrenceTimezone) is null || RepeatsWithinADay(save.RecurrenceRule!))))
             return new(WorkgroupErrorKeys.RecurrenceInvalid);
         return null;
     }
@@ -239,6 +243,11 @@ internal sealed partial class WorkgroupService
         w.DiscordChannelUrl = Trimmed(discordChannelUrl);
         w.IsSensitive = isSensitive ? true : null;
     }
+
+    // The group page and the daily job expand a series from its start, so a sub-daily rule would
+    // build an occurrence per second or minute; nobody meets that often.
+    private static bool RepeatsWithinADay(string rule) =>
+        rule.Split(';').Any(part => part.Trim().ToUpperInvariant() is "FREQ=SECONDLY" or "FREQ=MINUTELY" or "FREQ=HOURLY");
 
     private static void ApplyMeetingFields(WorkgroupMeeting meeting, WorkgroupMeetingSave save)
     {

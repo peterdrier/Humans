@@ -202,7 +202,7 @@ public sealed class WorkgroupServiceRhythmTests : WorkgroupsTestHarness
     }
 
     [HumansFact]
-    public async Task AWeeklyMeeting_KeepsTheGroupActive_AndOffersItsNextOccurrence()
+    public async Task AWeeklySeries_OffersItsNextOccurrence_ButScheduledWeeksAreNotActivity()
     {
         var now = Clock.GetCurrentInstant();
         var started = now.Minus(Duration.FromDays(60));
@@ -211,7 +211,7 @@ public sealed class WorkgroupServiceRhythmTests : WorkgroupsTestHarness
 
         var info = (await NewService().GetByIdAsync(group.Id, Ct))!;
 
-        info.IsUpdateDue(now).Should().BeFalse();
+        info.IsUpdateDue(now).Should().BeTrue();
         info.NextMeeting(now)!.StartUtc.Should().Be(started.Plus(Duration.FromDays(63)));
     }
 

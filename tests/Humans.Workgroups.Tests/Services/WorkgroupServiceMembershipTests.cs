@@ -847,10 +847,27 @@ public sealed class WorkgroupServiceMembershipTests : WorkgroupsTestHarness
         (await ctx.LogEntries.SingleAsync(e => e.Id == linked.Value, Ct)).MeetingId.Should().Be(own.Id);
     }
 
+    [HumansFact]
+    public async Task MeetingNotes_StayEditableAfterTheirMeetingIsDeleted()
+    {
+        var workgroup = await SeedWorkgroupAsync();
+        var member = workgroup.Members.Single().UserId;
+        var now = Clock.GetCurrentInstant();
+        var meeting = await AddMeetingAsync(workgroup.Id, now);
+        var save = new WorkgroupLogEntrySave(WorkgroupLogKind.MeetingNotes, now.InUtc().Date, "Sync", "Draft", meeting.Id);
+        var entryId = (await NewService().AddLogEntryAsync(workgroup.Id, member, save, Ct)).Value;
+        await NewService().DeleteMeetingAsync(meeting.Id, member, Ct);
+
+        var edit = await NewService().UpdateLogEntryAsync(entryId, member, save with { Body = "Final" }, Ct);
+
+        edit.Refusal.Should().BeNull();
+    }
+
     [HumansTheory]
     [InlineData("FREQ=WEEKLY", null)]
     [InlineData("FREQ=WEEKLY", "Mars/Olympus")]
     [InlineData("FREQ=FORTNIGHTLY", "Europe/Madrid")]
+    [InlineData("FREQ=HOURLY", "Europe/Madrid")]
     public async Task ARepeatingMeeting_NeedsAValidRuleAndZone(string rule, string? zone)
     {
         var workgroup = await SeedWorkgroupAsync();

@@ -140,7 +140,10 @@ Occurrences are expanded by Calendar's `CalendarRecurrence.Occurrences`, the sam
 the community calendar uses; nothing per occurrence is stored. The group page timeline lists
 every occurrence that has started plus each meeting's next one, each dated in the meeting's
 zone (organisation zone for a one-off); `NextMeeting` is the earliest upcoming occurrence.
-Editing or deleting acts on the whole series. The calendar contributor passes a repeating
+Editing or deleting acts on the whole series. Meetings repeat daily at most: the service
+refuses sub-daily rules, since the page and the daily job expand a series from its start. A
+series' later occurrences are scheduled, not evidence of a meeting, so for the update-due
+rhythm only its stored first occurrence counts; the notes posted for later weeks count instead. The calendar contributor passes a repeating
 meeting as one item carrying its rule, so the personal feed holds one repeating VEVENT and the
 community calendar expands it within its window.
 
@@ -157,7 +160,7 @@ community calendar expands it within its window.
 | AuthorUserId | Guid? | Bare reference; null for system entries and after erasure |
 | DocumentId | Guid? | FK → WorkgroupDocument, SetNull |
 | SurveyId | Guid? | Bare reference to a survey in Surveys |
-| MeetingId | Guid? | FK → WorkgroupMeeting, SetNull. Kept only on MeetingNotes, and only for one of the group's live meetings; `OccurredOn` names the occurrence |
+| MeetingId | Guid? | FK → WorkgroupMeeting, SetNull. Kept only on MeetingNotes, and only for one of the group's live meetings; `OccurredOn` names the occurrence. An unchanged link survives its meeting's deletion, so the notes stay editable |
 | CreatedAt / UpdatedAt | Instant | |
 
 Indexes `(WorkgroupId, OccurredOn)`, `AuthorUserId` filtered non-null, and `MeetingId`.
@@ -449,7 +452,7 @@ anything — every action here is a notice, a flag, or a record; a human still h
 
 | Condition | Action |
 |-----------|--------|
-| Active, no Update, meeting notes or meeting occurrence in 30 days | Notify coordinators, in-app, once per 30-day window |
+| Active, no Update, meeting notes or meeting (a series counts its stored first occurrence only) in 30 days | Notify coordinators, in-app, once per 30-day window |
 | Applied/Referred, ≥ 14 days old | Notify Board once |
 
 Disposition-overdue is a read-time badge computed by `WorkgroupRhythm` against the caller's

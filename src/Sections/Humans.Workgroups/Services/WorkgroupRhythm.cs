@@ -67,16 +67,17 @@ internal static class WorkgroupRhythm
             .OfType<WorkgroupMeetingInfo>()
             .MinBy(m => m.StartUtc);
 
-    /// <summary>An Update, meeting notes, or a meeting occurrence; a Note or Disclosure doesn't count.</summary>
+    /// <summary>
+    /// An Update, meeting notes, or a meeting's stored start; a Note or Disclosure doesn't count. A series' later
+    /// occurrences are only scheduled, not evidence anyone met: the notes posted for them are.
+    /// </summary>
     public static Instant? LastActivityAt(this WorkgroupInfo w, Instant now)
     {
         var lastUpdate = w.LogEntries
             .Where(e => e.Kind is WorkgroupLogKind.Update or WorkgroupLogKind.MeetingNotes)
             .Select(e => (Instant?)e.CreatedAt)
             .Max();
-        var lastMeeting = w.Meetings
-            .Select(m => m.Occurrences(m.StartUtc, now + Duration.Epsilon).LastOrDefault()?.StartUtc)
-            .Max();
+        var lastMeeting = w.Meetings.Where(m => m.StartUtc <= now).Select(m => (Instant?)m.StartUtc).Max();
 
         return (lastUpdate, lastMeeting) switch
         {
