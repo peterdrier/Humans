@@ -216,6 +216,20 @@ public sealed class WorkgroupServiceRhythmTests : WorkgroupsTestHarness
     }
 
     [HumansFact]
+    public async Task AFarOffMeeting_IsStillTheNextOne()
+    {
+        var now = Clock.GetCurrentInstant();
+        var group = await SeedWorkgroupAsync();
+        var farOff = now.Plus(Duration.FromDays(3 * 366));
+        await AddMeetingAsync(group.Id, farOff);
+
+        var info = (await NewService().GetByIdAsync(group.Id, Ct))!;
+
+        info.NextMeeting(now)!.StartUtc.Should().Be(farOff);
+        info.MeetingOccurrences(now).Should().ContainSingle();
+    }
+
+    [HumansFact]
     public async Task MeetingNotes_CountAsActivity()
     {
         var now = Clock.GetCurrentInstant();

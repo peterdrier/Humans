@@ -45,9 +45,6 @@ internal static class WorkgroupRhythm
 
     public static bool AcceptsMemberWork(this WorkgroupInfo w) => w.Status == WorkgroupStatus.Active;
 
-    /// <summary>How far ahead a series' next occurrence is looked for; covers a yearly rule twice.</summary>
-    private static readonly Duration NextOccurrenceHorizon = Duration.FromDays(731);
-
     /// <summary>
     /// Each occurrence of <paramref name="m"/> starting in [<paramref name="from"/>, <paramref name="to"/>), as the
     /// meeting with that occurrence's times. A one-off meeting is its own single occurrence.
@@ -57,13 +54,28 @@ internal static class WorkgroupRhythm
             .Where(o => o.Start >= from)
             .Select(o => m with { StartUtc = o.Start, EndUtc = o.End });
 
+    /// <summary>
+    /// The first occurrence starting at or after <paramref name="now"/>, however far off; null once a series has
+    /// ended. The window doubles from a year, so a dense rule stops at the first and a sparse one is still found.
+    /// </summary>
+    public static WorkgroupMeetingInfo? NextOccurrence(this WorkgroupMeetingInfo m, Instant now)
+    {
+        if (m.StartUtc >= now) return m;
+        if (m.RecurrenceRule is null) return null;
+        for (var days = 366; days <= 366 * 128; days *= 2)
+        {
+            if (m.Occurrences(now, now + Duration.FromDays(days)).FirstOrDefault() is { } next) return next;
+        }
+        return null;
+    }
+
     /// <summary>Every occurrence that has started, plus each meeting's next one: what the timeline shows.</summary>
     public static IEnumerable<WorkgroupMeetingInfo> MeetingOccurrences(this WorkgroupInfo w, Instant now) =>
         w.Meetings.SelectMany(m => m.Occurrences(m.StartUtc, now)
-            .Concat(m.Occurrences(now, now + NextOccurrenceHorizon).Take(1)));
+            .Concat(m.NextOccurrence(now) is { } next ? [next] : []));
 
     public static WorkgroupMeetingInfo? NextMeeting(this WorkgroupInfo w, Instant now) =>
-        w.Meetings.Select(m => m.Occurrences(now, now + NextOccurrenceHorizon).FirstOrDefault())
+        w.Meetings.Select(m => m.NextOccurrence(now))
             .OfType<WorkgroupMeetingInfo>()
             .MinBy(m => m.StartUtc);
 
