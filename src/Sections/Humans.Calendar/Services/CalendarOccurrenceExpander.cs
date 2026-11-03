@@ -250,7 +250,6 @@ internal static class CalendarOccurrenceExpander
             RecurrenceRule: ev.IsAllDay ? DateRule(ev.RecurrenceRule, zone) : ev.RecurrenceRule,
             RecurrenceTimezone: ev.RecurrenceTimezone,
             RecurrenceUntilUtc: ev.IsAllDay ? null : ev.RecurrenceUntilUtc,
-            CreatedByUserId: ev.CreatedByUserId,
             CreatedAt: ev.CreatedAt,
             UpdatedAt: ev.UpdatedAt,
             Exceptions: ev.Exceptions

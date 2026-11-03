@@ -511,7 +511,6 @@ public sealed class CalendarOccurrenceExpanderTests
             RecurrenceRule: recurrenceRule,
             RecurrenceTimezone: recurrenceRule is null ? null : "UTC",
             RecurrenceUntilUtc: null,
-            CreatedByUserId: Guid.NewGuid(),
             CreatedAt: Instant.FromUtc(2026, 5, 1, 0, 0),
             UpdatedAt: Instant.FromUtc(2026, 5, 1, 0, 0),
             Exceptions: exceptions ?? []);

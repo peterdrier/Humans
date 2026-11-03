@@ -183,7 +183,7 @@ internal sealed class CalendarController : HumansControllerBase
         }
 
         var occ = OrderForDisplay(await _calendarRead.GetOccurrencesInWindowAsync(fromUtc, toUtc, zone, teamId, ct), zone);
-        return View(new CalendarAgendaViewModel(fromUtc, toUtc, occ, teamId, zone.Id));
+        return View(new CalendarAgendaViewModel(fromUtc, toUtc, occ, zone.Id));
     }
 
     [HttpGet("Team/{teamId:guid}")]
