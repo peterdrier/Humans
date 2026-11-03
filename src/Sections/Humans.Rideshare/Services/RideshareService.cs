@@ -584,27 +584,27 @@ internal sealed class RideshareService(
             : JsonSerializer.Deserialize<List<Waypoint>>(json, WaypointJsonOptions) ?? [];
 
     private static TripView ToView(RideshareTrip t) => new(
-        t.Id, t.UserId, t.Year, t.Direction, t.MemberPlaceLabel, t.MemberLatitude, t.MemberLongitude,
+        t.Id, t.UserId, t.Direction, t.MemberPlaceLabel, t.MemberLatitude, t.MemberLongitude,
         ParseWaypoints(t.WaypointsJson), t.RouteGeoJson, t.DepartureDate, t.ExpectedDurationDays, t.OvernightPlan,
         t.VehicleType, t.SeatsOffered, SeatsRemaining(t), t.LuggageCapacity, t.CapacityNote, t.Restrictions,
-        t.WillingToDetour, t.CostSharing, t.CostNote, t.LinkedTripId, t.Status, t.CreatedAt, t.UpdatedAt);
+        t.WillingToDetour, t.CostSharing, t.CostNote, t.LinkedTripId, t.Status, t.CreatedAt);
 
     // Matched only by a ride that fits the request: same direction, travelling on its date.
     private static RequestView ToView(
         RideshareRequest r, IReadOnlyList<InterestView> interests, IReadOnlyDictionary<Guid, RideshareTrip> activeTrips) => new(
-        r.Id, r.UserId, r.Year, r.Direction, r.PickupPlaceLabel, r.PickupLatitude, r.PickupLongitude,
+        r.Id, r.UserId, r.Direction, r.PickupPlaceLabel, r.PickupLatitude, r.PickupLongitude,
         r.DesiredDate, r.PartySize, r.LuggageLoad, r.CanContributeToFuel, r.Notes, r.Status,
         IsMatched: interests.Any(i => i.Status == InterestStatus.Accepted
             && (i.RequestId is { } requestId ? requestId == r.Id : i.FromUserId == r.UserId)
             && activeTrips.TryGetValue(i.TripId, out var trip)
             && trip.Direction == r.Direction && TravelsOn(trip, r.DesiredDate)),
-        r.CreatedAt, r.UpdatedAt);
+        r.CreatedAt);
 
     private static InterestView ToView(RideshareInterest i) => new(
-        i.Id, i.FromUserId, i.TripId, i.RequestId, i.Seats, i.Message, i.Status, i.CreatedAt, i.RespondedAt);
+        i.Id, i.FromUserId, i.TripId, i.RequestId, i.Seats, i.Message, i.Status, i.CreatedAt);
 
     private static SettingsView ToView(RideshareSettings s) => new(
-        s.Year, s.DestinationLabel, s.DestinationLatitude, s.DestinationLongitude,
+        s.DestinationLabel, s.DestinationLatitude, s.DestinationLongitude,
         s.InboundWindowStart, s.InboundWindowEnd, s.OutboundWindowStart, s.OutboundWindowEnd);
 
 }

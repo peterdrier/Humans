@@ -37,11 +37,11 @@ public sealed class BoardAndDayViewModelTests
         var rider = Guid.NewGuid();
         var walkUp = Guid.NewGuid();
         var trip = Trip(driver, departure: July3);
-        var request = new RequestView(Guid.NewGuid(), rider, 2026, RideshareDirection.Inbound, "Lyon", 45.76, 4.84, July3,
-            2, LuggageSize.Minimal, true, null, RequestStatus.Active, true, Now, Now);
-        var driverAnswered = new InterestView(Guid.NewGuid(), driver, trip.Id, request.Id, 2, null, InterestStatus.Accepted, Now, Now);
-        var riderAsked = new InterestView(Guid.NewGuid(), walkUp, trip.Id, null, 1, null, InterestStatus.Accepted, Now, Now);
-        var pending = new InterestView(Guid.NewGuid(), Guid.NewGuid(), trip.Id, null, 1, null, InterestStatus.Pending, Now, null);
+        var request = new RequestView(Guid.NewGuid(), rider, RideshareDirection.Inbound, "Lyon", 45.76, 4.84, July3,
+            2, LuggageSize.Minimal, true, null, RequestStatus.Active, true, Now);
+        var driverAnswered = new InterestView(Guid.NewGuid(), driver, trip.Id, request.Id, 2, null, InterestStatus.Accepted, Now);
+        var riderAsked = new InterestView(Guid.NewGuid(), walkUp, trip.Id, null, 1, null, InterestStatus.Accepted, Now);
+        var pending = new InterestView(Guid.NewGuid(), Guid.NewGuid(), trip.Id, null, 1, null, InterestStatus.Pending, Now);
         var snapshot = Snapshot(trips: [trip], requests: [request], interests: [driverAnswered, riderAsked, pending]);
 
         var day = DayViewModel.Build(snapshot, July3);
@@ -63,7 +63,7 @@ public sealed class BoardAndDayViewModelTests
         int durationDays = 1,
         TripStatus status = TripStatus.Active,
         int seatsRemaining = 3) =>
-        new(Guid.NewGuid(), userId, 2026, direction, "Paris", 48.85, 2.35, [], null,
+        new(Guid.NewGuid(), userId, direction, "Paris", 48.85, 2.35, [], null,
             departure, durationDays, null, VehicleType.Car, 3, seatsRemaining,
-            LuggageSize.Minimal, null, null, false, CostSharing.ShareFuel, null, null, status, Now, Now);
+            LuggageSize.Minimal, null, null, false, CostSharing.ShareFuel, null, null, status, Now);
 }
