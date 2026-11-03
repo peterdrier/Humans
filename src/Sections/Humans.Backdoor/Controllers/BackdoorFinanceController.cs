@@ -237,9 +237,9 @@ internal sealed class BackdoorFinanceController(
             {
                 reports = r.Totals.Reports,
                 lines = r.Totals.Lines,
-                holdedDocs = r.Totals.HoldedDocs,
+                ledgerPurchases = r.Totals.LedgerPurchases,
                 problemLines = r.Totals.ProblemLines,
-                duplicateDocs = r.Totals.DuplicateDocs,
+                duplicateLines = r.Totals.DuplicateLines,
                 excessAmount = r.Totals.ExcessAmount,
                 orphans = r.Totals.Orphans,
                 membersOff = r.Totals.MembersOff,
@@ -260,21 +260,19 @@ internal sealed class BackdoorFinanceController(
                     status = l.Status.ToString(),
                     isProblem = l.IsProblem,
                     holdedDocId = l.HoldedDocId,
-                    holdedDocNumber = l.HoldedDocNumber,
-                    holdedTotal = l.HoldedTotal,
-                    holdedContactName = l.HoldedContactName,
-                    duplicateDocIds = l.DuplicateDocIds,
+                    ledgerAccountNum = l.LedgerAccountNum,
+                    ledgerEntryNumber = l.LedgerEntryNumber,
+                    ledgerDate = l.LedgerDate?.ToInvariantDate(),
+                    duplicateEntryNumbers = l.DuplicateEntryNumbers,
                     excessAmount = l.ExcessAmount,
                 }),
             orphans = r.Orphans.OrderByDescending(o => o.Date).Select(o => new
             {
-                holdedDocId = o.HoldedDocId,
-                docNumber = o.DocNumber,
+                accountNum = o.AccountNum,
+                entryNumber = o.EntryNumber,
                 date = o.Date.ToInvariantDate(),
-                contactName = o.ContactName,
                 description = o.Description,
-                notes = o.Notes,
-                total = o.Total,
+                amount = o.Amount,
                 kind = o.Kind.ToString(),
             }),
             members = r.Members.OrderByDescending(m => m.IsWarning)
@@ -284,19 +282,34 @@ internal sealed class BackdoorFinanceController(
                     memberName = m.MemberName,
                     supplierAccountNum = m.SupplierAccountNum,
                     ledgerBalance = m.LedgerBalance,
-                    expectedBalance = m.ExpectedBalance,
-                    difference = m.Difference,
+                    expensePurchases = m.ExpensePurchases,
+                    sepaPaid = m.SepaPaid,
+                    unclaimedPurchases = m.UnclaimedPurchases,
+                    otherTotal = m.OtherTotal,
+                    missingLines = m.MissingLines,
+                    unclaimedPurchaseCount = m.UnclaimedPurchaseCount,
                     status = m.Status.ToString(),
                     isWarning = m.IsWarning,
-                    openTransfers = m.OpenTransfers.Select(t => new
+                    unmatchedTransfers = m.UnmatchedTransfers.Select(Transfer),
+                    otherMovements = m.OtherMovements.Select(o => new
                     {
-                        transferId = t.TransferId,
-                        fileName = t.FileName,
-                        generatedAt = t.GeneratedAt.ToIso8601(),
-                        amount = t.Amount,
+                        date = o.Date.ToInvariantDate(),
+                        entryNumber = o.EntryNumber,
+                        type = o.Type,
+                        description = o.Description,
+                        amount = o.Amount,
                     }),
+                    openTransfers = m.OpenTransfers.Select(Transfer),
                 }),
         });
+
+        static object Transfer(ExpenseReconOpenTransfer t) => new
+        {
+            transferId = t.TransferId,
+            fileName = t.FileName,
+            generatedAt = t.GeneratedAt.ToIso8601(),
+            amount = t.Amount,
+        };
     }
 
     /// <summary>The one place free text is scrubbed: every string in every JSON body, and the attachment's download

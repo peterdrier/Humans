@@ -115,7 +115,7 @@ Steps 1–11 are in production. Since 2026-09-06, on `origin/main`:
   duplicates cannot be paid out until they are gone, and the nightly doc sync logs a warning
   while any remain.
 - **The reconciliation report** (`/Finance/ExpenseRecon`, peterdrier/Humans#2207) compares what
-  Humans approved with what Holded holds, every line and every member balance, from local mirrors
-  only. It runs nightly at 03:30 and logs "Expense recon: 0 problems" or a warning with the
+  Humans approved with what Holded's ledger holds: every line by account, description and amount, and
+  every member's account split into expense purchases, SEPA payments and other movements. It runs nightly at 03:30 and logs "Expense recon: 0 problems" or a warning with the
   counts, and `/Finance/Creditors` shows a red banner while it has problems. The race went
   unnoticed until a payee's amount looked wrong; this makes the next one visible the next morning.

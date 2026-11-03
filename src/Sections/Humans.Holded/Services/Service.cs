@@ -52,6 +52,11 @@ internal sealed class Service(
         return lines.Select(ToInfo).ToList();
     }
 
+    public async Task<Instant?> GetLedgerSyncedAtAsync(CancellationToken ct = default) =>
+        (await repo.GetSyncStatesAsync(ct))
+            .Where(s => s.Kind is HoldedSyncKind.Ledger or HoldedSyncKind.FullSync)
+            .Max(s => s.LastSyncAt);
+
     public async Task<IReadOnlyDictionary<int, decimal>> GetAccountBalancesAsync(
         CancellationToken ct = default) =>
         (await repo.GetAccountTotalsAsync(ct)).ToDictionary(t => t.AccountNum, t => t.Balance);
