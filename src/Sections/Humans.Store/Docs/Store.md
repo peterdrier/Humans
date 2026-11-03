@@ -203,6 +203,8 @@ Stored as **string** via `HasConversion<string>()`. The column carried a `Paid` 
 
 ## Invariants
 
+- Store member and admin mutations forward request cancellation through account lookup before any write. Invoice issuance also forwards it through the read-only order load before authorization. Stripe Checkout and Holded issuance retain `CancellationToken.None`; other mutation tokens are unchanged.
+
 - Authorization’s event-timezone, camp-season, camp-lead and department reads retain HTTP request cancellation; callers without an HTTP context use the non-cancellable default.
 
 - Product creation and updates share one editable-field mapping, including trimmed names, year, pricing, VAT, deposits, revenue account, ordering cutoff and active state. Identity, creation/update timestamps and price-change audit handling remain owned by their respective write paths.
