@@ -51,13 +51,6 @@ internal sealed class TeamPageService(
                     definition.Id,
                     slotIndex + 1,
                     slotPriority.ToString(),
-                    slotPriority switch
-                    {
-                        SlotPriority.Critical => "bg-danger",
-                        SlotPriority.Important => "bg-warning text-dark",
-                        SlotPriority.NiceToHave => "bg-secondary",
-                        _ => "bg-light text-dark"
-                    },
                     definition.Period.ToString(),
                     assignment is not null,
                     assignment?.AssignedUserId,

@@ -322,7 +322,6 @@ internal sealed class TeamController(
                 RoleDefinitionId = slot.RoleDefinitionId,
                 SlotNumber = slot.SlotNumber,
                 Priority = Enum.TryParse<SlotPriority>(slot.Priority, out var sp) ? sp : SlotPriority.None,
-                PriorityBadgeClass = slot.PriorityBadgeClass,
                 Period = Enum.TryParse<RolePeriod>(slot.Period, out var rp) ? rp : RolePeriod.Event,
                 IsFilled = slot.IsFilled,
                 AssignedUserId = slot.AssignedUserId

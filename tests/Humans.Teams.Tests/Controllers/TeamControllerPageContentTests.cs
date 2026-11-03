@@ -39,7 +39,7 @@ public class TeamControllerPageContentTests
         var pages = Substitute.For<ITeamPageService>();
         TeamRosterSlotSummary Slot(string team, string role, int number, SlotPriority priority) =>
             new(team, team.ToLowerInvariant(), role, null, Guid.NewGuid(), number,
-                priority.ToString(), "", nameof(RolePeriod.Event), false, null, IsPublic: true);
+                priority.ToString(), nameof(RolePeriod.Event), false, null, IsPublic: true);
         pages.GetRosterAsync("Important", "Open", "Event", Arg.Any<CancellationToken>()).Returns(new[]
         {
             Slot("Beta", "Lead", 1, SlotPriority.Important),
@@ -254,7 +254,7 @@ public class TeamControllerPageContentTests
             [other.Id] = other
         });
         var publicSlot = new TeamRosterSlotSummary(child.Name, child.Slug, "Public role", null,
-            Guid.NewGuid(), 1, nameof(SlotPriority.Important), "", nameof(RolePeriod.Event), false, null, IsPublic: true);
+            Guid.NewGuid(), 1, nameof(SlotPriority.Important), nameof(RolePeriod.Event), false, null, IsPublic: true);
         var privateSlot = publicSlot with { RoleDefinitionId = Guid.NewGuid(), RoleName = "Private role", IsPublic = false };
         var otherPrivate = privateSlot with { RoleDefinitionId = Guid.NewGuid(), TeamName = other.Name, TeamSlug = other.Slug };
         pages.GetRosterAsync(null, null, null, Arg.Any<CancellationToken>()).Returns(new[] { publicSlot, privateSlot, otherPrivate });
@@ -317,7 +317,7 @@ public class TeamControllerPageContentTests
         teams.GetPendingRequestsForUserAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new[] { hiddenRequest, visibleRequest });
         var hiddenSlot = new TeamRosterSlotSummary(hidden.Name, hidden.Slug, "Lead", null,
-            Guid.NewGuid(), 1, nameof(SlotPriority.Important), "", nameof(RolePeriod.Event), false, null, IsPublic: true);
+            Guid.NewGuid(), 1, nameof(SlotPriority.Important), nameof(RolePeriod.Event), false, null, IsPublic: true);
         var visibleSlot = hiddenSlot with { TeamName = visible.Name, TeamSlug = visible.Slug };
         pages.GetRosterAsync(null, null, null, Arg.Any<CancellationToken>()).Returns(new[] { hiddenSlot, visibleSlot });
         pages.GetMyTeamMembershipsAsync(userId, Arg.Any<CancellationToken>()).Returns(Array.Empty<MyTeamMembershipSummary>());

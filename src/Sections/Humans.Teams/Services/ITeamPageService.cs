@@ -40,7 +40,6 @@ internal sealed record TeamRosterSlotSummary(
     Guid RoleDefinitionId,
     int SlotNumber,
     string Priority,
-    string PriorityBadgeClass,
     string Period,
     bool IsFilled,
     Guid? AssignedUserId,

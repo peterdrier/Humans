@@ -43,6 +43,8 @@ Aggregate-local navs kept: `Team.ParentTeam`, `Team.ChildTeams`, `Team.Members`,
 
 Roster assignees and page-content editors render from their user IDs through `<vc:human>`; Teams does not fetch or carry separate display names for either. Editor attribution stays plain text without a profile link. A filled roster slot without an assigned user stays blank, rather than appearing open.
 
+Roster priority and role-period badge colors live in Teams’ `RoleBadgeExtensions`. Services and view models carry priorities and periods, not CSS classes; roster, team detail and role-admin views share the same mappings.
+
 Call-to-action buttons accept relative URLs and absolute HTTP, HTTPS or mailto links. Other schemes and embedded control characters are refused before a page update; member/public page projections omit unsafe legacy buttons without changing the stored actions.
 
 ### TeamMember

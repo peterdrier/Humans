@@ -348,13 +348,6 @@ internal sealed class TeamRoleDefinitionViewModel
             {
                 SlotIndex = i,
                 Priority = priority,
-                PriorityBadgeClass = priority switch
-                {
-                    SlotPriority.Critical => "bg-danger",
-                    SlotPriority.Important => "bg-warning text-dark",
-                    SlotPriority.NiceToHave => "bg-secondary",
-                    _ => "bg-light text-dark"
-                },
                 IsFilled = assignment is not null,
                 AssignedUserId = assignment?.AssignedUserId,
                 TeamMemberId = assignment?.TeamMemberId
@@ -382,7 +375,6 @@ internal sealed class TeamRoleSlotViewModel
 {
     public int SlotIndex { get; set; }
     public SlotPriority Priority { get; set; }
-    public string PriorityBadgeClass { get; set; } = string.Empty;
     public bool IsFilled { get; set; }
     public Guid? AssignedUserId { get; set; }
     public Guid? TeamMemberId { get; set; }
@@ -468,7 +460,6 @@ internal sealed class RosterSlotViewModel
     public Guid RoleDefinitionId { get; set; }
     public int SlotNumber { get; set; }
     public SlotPriority Priority { get; set; }
-    public string PriorityBadgeClass { get; set; } = string.Empty;
     public RolePeriod Period { get; set; }
     public bool IsFilled { get; set; }
     public Guid? AssignedUserId { get; set; }
@@ -522,3 +513,22 @@ internal sealed record TeamRosterViewModel(
 
 /// <summary>No name field: the burner name renders through <c>&lt;vc:human&gt;</c>.</summary>
 internal sealed record TeamRosterRowViewModel(Guid UserId, string LegalName, Instant JoinedAt);
+
+internal static class RoleBadgeExtensions
+{
+    internal static string GetBadgeClass(this SlotPriority priority) => priority switch
+    {
+        SlotPriority.Critical => "bg-danger",
+        SlotPriority.Important => "bg-warning text-dark",
+        SlotPriority.NiceToHave => "bg-secondary",
+        _ => "bg-light text-dark"
+    };
+
+    internal static string GetBadgeClass(this RolePeriod period) => period switch
+    {
+        RolePeriod.Build => "bg-info",
+        RolePeriod.Event => "bg-success",
+        RolePeriod.Strike => "bg-secondary",
+        _ => "bg-light text-dark"
+    };
+}
