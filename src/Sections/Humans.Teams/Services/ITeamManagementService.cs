@@ -51,7 +51,6 @@ internal sealed record TeamJoinRequestSnapshot(
     string? TeamName,
     Guid UserId,
     string? UserDisplayName,
-    string? UserEmail,
     string? UserProfilePictureUrl,
     TeamJoinRequestStatus Status,
     string? Message,

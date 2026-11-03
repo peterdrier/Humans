@@ -45,7 +45,7 @@ public sealed class CachingCalendarServiceTests
             EndUtc = before.EndUtc,
             CreatedAt = before.CreatedAt,
             UpdatedAt = before.UpdatedAt,
-            CreatedByUserId = before.CreatedByUserId,
+            CreatedByUserId = Guid.NewGuid(),
             RecurrenceRule = "FREQ=DAILY;COUNT=3",
             RecurrenceTimezone = "UTC",
         };
@@ -641,7 +641,6 @@ public sealed class CachingCalendarServiceTests
             RecurrenceRule: null,
             RecurrenceTimezone: null,
             RecurrenceUntilUtc: null,
-            CreatedByUserId: Guid.NewGuid(),
             CreatedAt: Instant.FromUtc(2026, 5, 1, 0, 0),
             UpdatedAt: Instant.FromUtc(2026, 5, 1, 0, 0),
             Exceptions: []);

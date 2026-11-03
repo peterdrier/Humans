@@ -190,7 +190,7 @@
                         @foreach (var peek in results.Peeks)
                         {
                             <tr>
-                                <td>@peek.AdminName</td>
+                                <td><vc:human user-id="@peek.AdminUserId" link="None" /></td>
                                 <td>@peek.PeekedAt.ToDateTime(madridZone)</td>
                             </tr>
                         }
@@ -238,7 +238,16 @@
                         @foreach (var row in disclosed.OrderByDescending(r => r.IsOfficial).ThenBy(r => r.DisplayName, StringComparer.CurrentCulture))
                         {
                             <tr>
-                                <td>@row.DisplayName</td>
+                                <td>
+                                    @if (row.UserId is { } userId)
+                                    {
+                                        <vc:human user-id="@userId" link="None" />
+                                    }
+                                    else
+                                    {
+                                        <text>—</text>
+                                    }
+                                </td>
                                 <td>@(row.IsOfficial ? Localizer["Governance_Votes_AudienceOfficial"] : Localizer["Governance_Votes_AudienceIndicative"])</td>
                                 <td>
                                     @Localizer["Governance_Votes_Choice_" + row.Choice]

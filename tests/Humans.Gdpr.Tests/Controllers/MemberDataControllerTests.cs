@@ -37,6 +37,24 @@ public class MemberDataControllerTests
     }
 
     [HumansFact]
+    public async Task Deletion_stops_before_mutation_when_account_lookup_is_cancelled()
+    {
+        var ctrl = Create();
+        using var request = new CancellationTokenSource();
+        ctrl.HttpContext.RequestAborted = request.Token;
+        _users.GetUserInfoAsync(_userId, Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+            return new ValueTask<UserInfo?>(ControllerTestHost.Info(_userId));
+        });
+        await request.CancelAsync();
+        Func<Task<IActionResult>> act = () => ctrl.RequestDeletion();
+
+        await act.Should().ThrowAsync<OperationCanceledException>();
+        _deletion.ReceivedCalls().Should().BeEmpty();
+    }
+
+    [HumansFact]
     public async Task DownloadData_returns_the_json_export_of_the_signed_in_member_only()
     {
         _gdpr.ExportForUserAsync(_userId, Arg.Any<CancellationToken>())

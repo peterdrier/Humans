@@ -28,7 +28,7 @@ internal sealed class UnsubscribeController(IUnsubscribeService unsubscribeServi
                 new { utoken = token });
         }
 
-        ViewData["DisplayName"] = result.DisplayName;
+        ViewData["UserId"] = result.UserId;
         return View();
     }
 

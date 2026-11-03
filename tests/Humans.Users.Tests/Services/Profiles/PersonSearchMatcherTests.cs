@@ -55,7 +55,7 @@ public class PersonSearchMatcherTests
         string? rejectionReason = null,
         string? emergencyContactName = null,
         string? contactLabel = null,
-        Instant? rejectedAt = null,
+        bool isRejected = false,
         IEnumerable<(string Value, ContactFieldVisibility Vis)>? contactFields = null,
         IEnumerable<(string Email, bool Verified, ContactFieldVisibility? Vis)>? emails = null,
         IEnumerable<(string EventName, string? Description)>? cv = null)
@@ -81,7 +81,6 @@ public class PersonSearchMatcherTests
             ConsentCheckNotes = consentCheckNotes,
             RejectionReason = rejectionReason,
             EmergencyContactName = emergencyContactName,
-            RejectedAt = rejectedAt,
             CreatedAt = At,
             UpdatedAt = At,
         };
@@ -92,6 +91,7 @@ public class PersonSearchMatcherTests
             // Every real Profile save copies BurnerName onto the owning User row.
             BurnerName = burnerName,
             DisplayName = displayName,
+            State = isRejected ? UserState.Rejected : UserState.Active,
             PreferredLanguage = "en",
             CreatedAt = At,
         };
@@ -140,13 +140,11 @@ public class PersonSearchMatcherTests
         return UserInfoFactory.Create(
             user: user,
             userEmails: emailEntities,
-            eventParticipations: [],
             externalLogins: [],
             profile: profile,
             contactFields: contactEntities,
             profileLanguages: [],
-            volunteerHistory: cvEntities,
-            communicationPreferences: []);
+            volunteerHistory: cvEntities);
     }
 
     [HumansFact]
@@ -373,7 +371,7 @@ public class PersonSearchMatcherTests
     [HumansFact]
     public void Rejected_profile_is_never_matched()
     {
-        var human = Human(burnerName: "Sparkle", rejectedAt: At);
+        var human = Human(burnerName: "Sparkle", isRejected: true);
 
         PersonSearchMatcher.Match(human, "sparkle", PersonSearchFields.AdminAll).Should().BeNull();
     }
@@ -383,8 +381,8 @@ public class PersonSearchMatcherTests
     {
         // The single-person lookups (/api/profiles/by-userid, allowEmail) read this same flag.
         Human().IsSearchable.Should().BeTrue();
-        Human(rejectedAt: At).IsSearchable.Should().BeFalse();
-        UserInfo.Create(new User { Id = Guid.NewGuid(), PreferredLanguage = "en" }, [], [], [], profile: null, [])
+        Human(isRejected: true).IsSearchable.Should().BeFalse();
+        UserInfo.Create(new User { Id = Guid.NewGuid(), PreferredLanguage = "en" }, [], [], profile: null)
             .IsSearchable.Should().BeFalse();
     }
 
@@ -417,7 +415,7 @@ public class PersonSearchMatcherTests
     [HumansFact]
     public void ExactName_never_matches_rejected_profile()
     {
-        var human = Human(burnerName: "Sparkle", rejectedAt: At);
+        var human = Human(burnerName: "Sparkle", isRejected: true);
 
         PersonSearchMatcher.Match(human, "sparkle", PersonSearchFields.ExactName).Should().BeNull();
     }

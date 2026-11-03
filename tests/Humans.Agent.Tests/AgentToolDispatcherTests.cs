@@ -264,10 +264,6 @@ public class AgentToolDispatcherTests
         BuildStartOffset: -14,
         EventEndOffset: 6,
         StrikeEndOffset: 9,
-        FirstCrewStartOffset: 0,
-        SetupWeekStartOffset: 0,
-        PreEventWeekStartOffset: 0,
-        FinishingWeekendStartOffset: 0,
         EarlyEntryCapacity: new Dictionary<int, int>(),
         BarriosEarlyEntryAllocation: null,
         EarlyEntryClose: null);

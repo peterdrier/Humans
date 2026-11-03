@@ -103,9 +103,9 @@ public sealed class LegalDocumentSyncServiceTests : ConsentTestHarness
         StubGitHubFolder("privacy/", "Privacy content", "sha-privacy", "Privacy update");
         StubGitHubFolder("code/", "Code content", "sha-code", "Code update");
         var person = UserInfo.Create(new User { Id = Guid.NewGuid(), BurnerName = "Human", Email = "human@example.com" },
-            [], [], [], null, []);
+            [], [], null);
         var reached = UserInfo.Create(new User { Id = Guid.NewGuid(), BurnerName = "Reached", Email = "reached@example.com" },
-            [], [], [], null, []);
+            [], [], null);
         _teamService.GetTeamAsync(_team.Id, Arg.Any<CancellationToken>()).Returns(_team with
         {
             Members = new[] { person, reached }.Select(user => new TeamMemberInfo(
@@ -179,7 +179,7 @@ public sealed class LegalDocumentSyncServiceTests : ConsentTestHarness
         _gitHub.DiscoverLanguageFilesAsync("broken/", Arg.Any<CancellationToken>())
             .Returns(Task.FromException<IReadOnlyDictionary<string, string>>(failure));
         var person = UserInfo.Create(new User { Id = Guid.NewGuid(), BurnerName = "Human", Email = "human@example.com" },
-            [], [], [], null, []);
+            [], [], null);
         _teamService.GetTeamAsync(_team.Id, Arg.Any<CancellationToken>()).Returns(_team with
         {
             Members = [new TeamMemberInfo(Guid.NewGuid(), person.Id, person.BurnerName, person.Email, null, TeamMemberRole.Member, default)]
@@ -385,6 +385,8 @@ public sealed class LegalDocumentSyncServiceTests : ConsentTestHarness
     [Xunit.InlineData(null, true)]
     public async Task AdminDocumentForms_require_explicit_consent_policy_before_editing(string? omitted, bool enabled)
     {
+        _userService.GetUserInfoAsync(_actorUserId, Arg.Any<CancellationToken>())
+            .Returns(UserInfo.Create(new User { Id = _actorUserId }, [], [], null));
         var document = await SeedDocumentAsync("Existing document");
         document.IsRequired = false;
         document.IsActive = false;
@@ -465,6 +467,8 @@ public sealed class LegalDocumentSyncServiceTests : ConsentTestHarness
     [Xunit.InlineData(true, true)]
     public async Task AdminDocumentWrites_reject_missing_teams_before_persistence_or_sync(bool edit, bool empty)
     {
+        _userService.GetUserInfoAsync(_actorUserId, Arg.Any<CancellationToken>())
+            .Returns(UserInfo.Create(new User { Id = _actorUserId }, [], [], null));
         var document = await SeedDocumentAsync("Existing document");
         StubGitHubFolder("privacy/", "Spanish agreement", "new-sha", "Initial version");
         var targetTeamId = empty ? Guid.Empty : Guid.NewGuid();
@@ -808,11 +812,11 @@ public sealed class LegalDocumentSyncServiceTests : ConsentTestHarness
                 PreferredLanguage = spanishIds.Contains(id) || id == inactiveId ? "es" : id == englishIds[0] ? "en" : "unsupported",
                 State = id == inactiveId ? UserState.Rejected : UserState.Active
             },
-            [], [], [], UserFixtures.Profile(), [])).ToList();
+            [], [], UserFixtures.Profile())).ToList();
         var outsiderId = Guid.NewGuid();
         StubTeamRecipients(users, [UserInfo.Create(
             new User { Id = outsiderId, PreferredLanguage = "es", State = UserState.Active },
-            [], [], [], UserFixtures.Profile(), [])]);
+            [], [], UserFixtures.Profile())]);
         var document = await SeedDocumentAsync("Privacy", folderPath: "privacy/", currentCommitSha: "sha-1");
         if (update)
         {
@@ -994,10 +998,8 @@ public sealed class LegalDocumentSyncServiceTests : ConsentTestHarness
                 State = UserFixtures.StateFor(profile),
             },
             userEmails: [],
-            eventParticipations: [],
             externalLogins: [],
-            profile: profile,
-            communicationPreferences: []);
+            profile: profile);
         StubTeamRecipients([user], []);
     }
 

@@ -23,7 +23,7 @@ internal sealed class UnsubscribeService(
             if (info is null || info.IsGdprAnonymized)
                 return UnsubscribeTokenResult.Invalid();
 
-            return UnsubscribeTokenResult.Valid(info.Id, info.BurnerName, result.Category);
+            return UnsubscribeTokenResult.Valid(info.Id, result.Category);
         }
 
         if (result.Status == TokenValidationStatus.Expired)
@@ -55,7 +55,7 @@ internal sealed class UnsubscribeService(
         if (legacyInfo is null || legacyInfo.IsGdprAnonymized)
             return UnsubscribeTokenResult.Invalid();
 
-        return UnsubscribeTokenResult.Valid(legacyInfo.Id, legacyInfo.BurnerName, MessageCategory.Marketing, isLegacy: true);
+        return UnsubscribeTokenResult.Valid(legacyInfo.Id, MessageCategory.Marketing, isLegacy: true);
     }
 
     public async Task<UnsubscribeTokenResult> ConfirmUnsubscribeAsync(string token, string source, CancellationToken ct = default)

@@ -41,8 +41,7 @@ internal sealed class WorkgroupsController(
         if (error is not null) return error;
 
         var register = await workgroups.GetRegisterAsync(ct);
-        var people = await PeopleAsync(register, ct);
-        return View(RegisterViewModel.Build(register, people, user.Id, clock.GetCurrentInstant()));
+        return View(RegisterViewModel.Build(register, user.Id, clock.GetCurrentInstant()));
     }
 
     [HttpGet("Apply")]
@@ -79,7 +78,7 @@ internal sealed class WorkgroupsController(
 
         if (await ResolveAsync(slug, ct) is not { } workgroup) return NotFound();
 
-        var people = await PeopleAsync([workgroup], ct);
+        var people = await PeopleAsync(workgroup, ct);
         var board = await teams.GetTeamAsync(SystemTeamIds.Board, ct);
         var canAdminister = await MayAdministerAsync(workgroup);
         var tiers = await governance.GetMembershipTiersAsync(ct);
@@ -315,7 +314,6 @@ internal sealed class WorkgroupsController(
             Document = document,
             Now = clock.GetCurrentInstant(),
             CurrentUserId = user.Id,
-            People = await PeopleAsync([workgroup], ct),
             IsMember = isMember,
             CanAdminister = canAdminister,
             CanDoMemberWork = await MayDoMemberWorkAsync(workgroup)
@@ -449,21 +447,9 @@ internal sealed class WorkgroupsController(
             .ToList();
 
     private async Task<IReadOnlyDictionary<Guid, UserInfo>> PeopleAsync(
-        IReadOnlyList<WorkgroupInfo> register, CancellationToken ct)
+        WorkgroupInfo workgroup, CancellationToken ct)
     {
-        // Every attribution the pages render, not just memberships: a Board member who writes a document or minutes
-        // a meeting is named there without ever joining.
-        var ids = register
-            .SelectMany(w => w.Members.Select(m => m.UserId)
-                .Concat(w.LogEntries.Select(e => e.AuthorUserId).OfType<Guid>())
-                .Concat(w.Meetings.Select(m => m.CreatedByUserId).OfType<Guid>())
-                .Concat(w.Documents.Select(d => d.CreatedByUserId).OfType<Guid>())
-                .Concat(w.Documents.Select(d => d.UpdatedByUserId).OfType<Guid>())
-                .Concat(w.Documents.Select(d => d.DispositionByUserId).OfType<Guid>())
-                .Concat(w.Documents.SelectMany(d => d.Comments.Select(c => c.AuthorUserId).OfType<Guid>()))
-                .Concat(w.AppliedByUserId is { } applicant ? new[] { applicant } : []))
-            .Distinct()
-            .ToList();
+        var ids = workgroup.Members.Select(m => m.UserId).Distinct().ToList();
 
         return ids.Count == 0
             ? new Dictionary<Guid, UserInfo>()

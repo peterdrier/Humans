@@ -68,19 +68,6 @@ public class OperationTimingRegistryTests
     }
 
     [HumansFact]
-    public void Swallowed_exception_counter_increments_per_key()
-    {
-        var reg = new OperationTimingRegistry();
-        reg.IncrementSwallowed("A.Method");
-        reg.IncrementSwallowed("A.Method");
-        reg.IncrementSwallowed("B.Other");
-
-        var swallowed = reg.GetSwallowed().ToDictionary(s => s.Key, StringComparer.Ordinal);
-        swallowed["A.Method"].Count.Should().Be(2);
-        swallowed["B.Other"].Count.Should().Be(1);
-    }
-
-    [HumansFact]
     public void Concurrent_records_produce_consistent_count()
     {
         var reg = new OperationTimingRegistry();

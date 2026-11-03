@@ -53,10 +53,6 @@ public sealed class RoleCatalog
     public string Canonical(string storedName) =>
         _byStoredName.TryGetValue(storedName, out var role) ? role.Name : storedName;
 
-    /// <summary>True when the stored name is a former name that the data migration has still to rewrite.</summary>
-    public bool IsFormerName(string storedName) =>
-        !_byName.ContainsKey(storedName) && _byStoredName.ContainsKey(storedName);
-
     /// <summary>Every name rows of this role may be stored under: the current name first, then the former ones.</summary>
     public IReadOnlyList<string> StoredNames(string roleName) =>
         _byName.TryGetValue(roleName, out var role) ? [role.Name, .. role.FormerNames] : [roleName];

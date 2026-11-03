@@ -40,13 +40,7 @@
                                         <strong>@role.Name</strong>
                                         @if (role.Period != RolePeriod.YearRound)
                                         {
-                                            var rpBadge = role.Period switch
-                                            {
-                                                RolePeriod.Build => "bg-info",
-                                                RolePeriod.Event => "bg-success",
-                                                RolePeriod.Strike => "bg-secondary",
-                                                _ => "bg-light text-dark"
-                                            };
+                                            var rpBadge = role.Period.GetBadgeClass();
                                             <span class="badge @rpBadge ms-1">@SharedLocalizer[$"Enum_RolePeriod_{role.Period}"]</span>
                                         }
                                         @if (!string.IsNullOrEmpty(role.Description))
@@ -60,7 +54,7 @@
                                     </td>
                                 }
                                 <td>@(slot.SlotIndex + 1)</td>
-                                <td><span class="badge @slot.PriorityBadgeClass">@SharedLocalizer[$"Enum_SlotPriority_{slot.Priority}"]</span></td>
+                                <td><span class="badge @slot.Priority.GetBadgeClass()">@SharedLocalizer[$"Enum_SlotPriority_{slot.Priority}"]</span></td>
                                 <td>
                                     @if (slot.IsFilled && slot.AssignedUserId.HasValue)
                                     {

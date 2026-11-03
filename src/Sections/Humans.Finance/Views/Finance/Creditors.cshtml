@@ -116,7 +116,7 @@
                 @foreach (var b in Model.Unresolved)
                 {
                     <tr>
-                        <td>@b.MemberName</td>
+                        <td><vc:human user-id="@b.UserId" link="None" /></td>
                         <td class="text-muted small">@b.Source</td>
                         <td>
                             <form authorize-policy="@Humans.Finance.Contracts.FinancePolicies.Manage" asp-action="BindCreditor" method="post" class="d-flex gap-2 align-items-center">
@@ -313,7 +313,7 @@ else
                             @foreach (var b in r.Bindings)
                             {
                                 <div class="d-flex align-items-center gap-2 mb-1">
-                                    <span><i class="fa-solid fa-link me-1 text-success"></i>@b.MemberName</span>
+                                    <span><i class="fa-solid fa-link me-1 text-success"></i><vc:human user-id="@b.UserId" link="None" /></span>
                                     <span class="text-muted small">(@b.Source)</span>
                                     <form authorize-policy="@Humans.Finance.Contracts.FinancePolicies.Manage" asp-action="UnbindCreditor" method="post" class="d-inline"
                                           data-confirm="Clear @b.MemberName's creditor account binding? Their next expense push will resolve it again from Holded.">

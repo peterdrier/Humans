@@ -2327,6 +2327,31 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
         (await _shiftMgmt.GetDashboardOverviewAsync(es.Id)).FilledSlots.Should().Be(merging ? 1 : 0);
     }
 
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task OwnershipProbe_PropagatesCancellationToTheRepository(bool block)
+    {
+        using var request = new CancellationTokenSource();
+        var id = Guid.NewGuid();
+        var scope = block ? ShiftSignupTeamProbeScope.SignupBlock : ShiftSignupTeamProbeScope.Signup;
+        var repo = Substitute.For<IShiftManagementRepository>();
+        repo.GetTeamProbeAsync(id, scope, Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+            return Task.FromResult<ShiftSignup?>(null);
+        });
+        var service = new ShiftSignupService(repo, Substitute.For<IVolunteerTrackingRepository>(), _shiftMgmt,
+            NewCalendarResolver(), AuditLog, Notifier, AdminAuthorization, _views.Cache,
+            new ServiceLocatorBuilder().Build(), Clock, NullLogger<ShiftSignupService>.Instance, _users, _localizer);
+        await request.CancelAsync();
+
+        Func<Task> action = async () => await service.GetTeamProbeAsync(id, scope, request.Token);
+
+        await action.Should().ThrowAsync<OperationCanceledException>();
+        await repo.Received(1).GetTeamProbeAsync(id, scope, request.Token);
+    }
+
     [HumansFact]
     public async Task BulkSignupDeletion_InvalidatesAffectedEventDashboards()
     {

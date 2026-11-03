@@ -943,40 +943,6 @@ internal sealed class BudgetRepository(IDbContextFactory<BudgetDbContext> factor
         return lineItemsChanged;
     }
 
-    public async Task<int> RefreshTicketingProjectionsAsync(
-        Guid budgetYearId,
-        LocalDate today,
-        Guid? actorUserId,
-        Instant now,
-        CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-
-        await EnsureYearNotClosedAsync(ctx, budgetYearId, ct);
-
-        var ticketingGroup = await LoadTicketingGroupForMutationAsync(ctx, budgetYearId, ct);
-        if (ticketingGroup is null)
-            return 0;
-
-        var (revenueCategory, feesCategory) = FindTicketingCategories(ticketingGroup);
-
-        if (revenueCategory is null || feesCategory is null)
-            return 0;
-
-        var created = MaterializeProjectedWeeks(
-            ctx, ticketingGroup.TicketingProjection, revenueCategory, feesCategory, today, now);
-
-        if (ctx.ChangeTracker.HasChanges())
-        {
-            AddDescriptionAudit(ctx, budgetYearId, nameof(BudgetGroup), ticketingGroup.Id,
-                $"Ticketing projections refreshed: {created} projected line item(s) materialized",
-                actorUserId, now);
-            await ctx.SaveChangesAsync(ct);
-        }
-
-        return created;
-    }
-
     public async Task<IReadOnlyList<BudgetAuditLog>> GetAuditLogAsync(
         Guid? budgetYearId, CancellationToken ct = default)
     {

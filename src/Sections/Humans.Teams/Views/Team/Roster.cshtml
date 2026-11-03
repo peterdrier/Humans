@@ -89,28 +89,18 @@ else
                         }
                     </td>
                     @{
-                        var periodBadge = slot.Period switch
-                        {
-                            RolePeriod.Build => "bg-info",
-                            RolePeriod.Event => "bg-success",
-                            RolePeriod.Strike => "bg-secondary",
-                            _ => "bg-light text-dark"
-                        };
+                        var periodBadge = slot.Period.GetBadgeClass();
                         var periodLabel = SharedLocalizer.EnumDisplay(slot.Period);
                     }
                     <td><span class="badge @periodBadge">@periodLabel</span></td>
                     <td>@slot.SlotNumber</td>
-                    <td><span class="badge @slot.PriorityBadgeClass">@SharedLocalizer.EnumDisplay(slot.Priority)</span></td>
+                    <td><span class="badge @slot.Priority.GetBadgeClass()">@SharedLocalizer.EnumDisplay(slot.Priority)</span></td>
                     <td>
                         @if (slot.IsFilled && slot.AssignedUserId.HasValue)
                         {
                             <vc:human user-id="@slot.AssignedUserId.Value" />
                         }
-                        else if (slot.IsFilled)
-                        {
-                            @slot.AssignedUserName
-                        }
-                        else
+                        else if (!slot.IsFilled)
                         {
                             <span class="text-muted fst-italic">@Localizer["Teams_Roster_SlotOpen"]</span>
                         }

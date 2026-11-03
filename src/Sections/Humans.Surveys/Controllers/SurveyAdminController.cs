@@ -39,10 +39,10 @@ internal sealed class SurveyAdminController(
     [HttpGet("")]
     public async Task<IActionResult> Index(CancellationToken ct)
     {
-        var userId = GetCurrentUserId();
-        if (userId is null) return Forbid();
+        var user = await GetCurrentUserInfoAsync(ct);
+        if (user is null) return Forbid();
 
-        var viewer = CurrentViewer(userId.Value);
+        var viewer = CurrentViewer(user.Id);
         var summaries = await surveyService.GetAdminSummariesAsync(viewer, ct);
         var ordered = summaries
             .OrderBy(s => s.Status)
@@ -72,10 +72,10 @@ internal sealed class SurveyAdminController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Approve(Guid id, CancellationToken ct)
     {
-        var actorId = GetCurrentUserId();
-        if (actorId is null) return Forbid();
+        var actor = await GetCurrentUserInfoAsync(ct);
+        if (actor is null) return Forbid();
 
-        var viewer = CurrentViewer(actorId.Value);
+        var viewer = CurrentViewer(actor.Id);
         var result = await surveyService.ApproveAndSendAsync(id, viewer, ct);
         if (result.Succeeded)
         {
@@ -94,10 +94,10 @@ internal sealed class SurveyAdminController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Reject(Guid id, string note, CancellationToken ct)
     {
-        var actorId = GetCurrentUserId();
-        if (actorId is null) return Forbid();
+        var actor = await GetCurrentUserInfoAsync(ct);
+        if (actor is null) return Forbid();
 
-        var viewer = CurrentViewer(actorId.Value);
+        var viewer = CurrentViewer(actor.Id);
         var result = await surveyService.RejectAsync(id, viewer, note, ct);
         if (!result.Succeeded)
         {
@@ -114,8 +114,8 @@ internal sealed class SurveyAdminController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Submit(Guid id, CancellationToken ct)
     {
-        var actorId = GetCurrentUserId();
-        if (actorId is null) return Forbid();
+        var actor = await GetCurrentUserInfoAsync(ct);
+        if (actor is null) return Forbid();
 
         var detail = await surveyService.GetForEditAsync(id, ct);
         if (detail is null) return NotFound();
@@ -123,7 +123,7 @@ internal sealed class SurveyAdminController(
         var auth = await authorizationService.AuthorizeAsync(User, detail, new SurveyOperationRequirement(SurveyOperation.Submit));
         if (!auth.Succeeded) return Forbid();
 
-        var result = await surveyService.SubmitForApprovalAsync(id, actorId.Value, ct);
+        var result = await surveyService.SubmitForApprovalAsync(id, actor.Id, ct);
         if (result.Succeeded)
             SetSuccess(localizer["Surveys_Admin_Index_Submitted"]);
         else
@@ -140,10 +140,10 @@ internal sealed class SurveyAdminController(
     [Authorize(Policy = SurveysPolicies.Read)]
     public async Task<IActionResult> Official(Guid id, CancellationToken ct)
     {
-        var userId = GetCurrentUserId();
-        if (userId is null) return Forbid();
+        var user = await GetCurrentUserInfoAsync(ct);
+        if (user is null) return Forbid();
 
-        var link = await surveyService.GetOfficialLinkAsync(id, userId.Value, ct);
+        var link = await surveyService.GetOfficialLinkAsync(id, user.Id, ct);
         if (link?.InvitationToken is { } token)
         {
             return RedirectToAction(nameof(SurveyController.Answer), "Survey", new { t = token });
@@ -274,19 +274,19 @@ internal sealed class SurveyAdminController(
         [FromServices] ISurveyPreviewEmailService previewEmailService,
         CancellationToken ct)
     {
-        var actorId = GetCurrentUserId();
-        if (actorId is null) return Forbid();
+        var actor = await GetCurrentUserInfoAsync(ct);
+        if (actor is null) return Forbid();
 
         var access = await RequirePreviewAsync(id, ct);
         if (access.Error is not null) return access.Error;
 
-        var result = await previewEmailService.SendToUserAsync(id, actorId.Value, ct);
+        var result = await previewEmailService.SendToUserAsync(id, actor.Id, ct);
         if (result.RecipientEmail is not null)
             SetSuccess(localizer["Surveys_PreviewEmailQueued", result.RecipientEmail]);
         else
         {
             logger.LogWarning("Survey preview email rejected for survey {SurveyId}, user {UserId}: {Reason}",
-                id, actorId, result.ErrorKey);
+                id, actor.Id, result.ErrorKey);
             SetError(localizer[result.ErrorKey ?? "Surveys_PreviewQueueFailed"]);
         }
 
@@ -301,17 +301,17 @@ internal sealed class SurveyAdminController(
         [FromServices] ISurveyPreviewEmailService previewEmailService,
         CancellationToken ct)
     {
-        var actorId = GetCurrentUserId();
-        if (actorId is null) return Forbid();
+        var actor = await GetCurrentUserInfoAsync(ct);
+        if (actor is null) return Forbid();
 
         var access = await RequirePreviewAsync(id, ct);
         if (access.Error is not null) return access.Error;
 
-        var result = await previewEmailService.PreviewForUserAsync(id, actorId.Value, ct);
+        var result = await previewEmailService.PreviewForUserAsync(id, actor.Id, ct);
         if (result.Preview is null)
         {
             logger.LogWarning("Survey email preview rejected for survey {SurveyId}, user {UserId}: {Reason}",
-                id, actorId, result.ErrorKey);
+                id, actor.Id, result.ErrorKey);
             SetError(localizer[result.ErrorKey ?? "Surveys_PreviewFailed"]);
             return RedirectToAction(nameof(Edit), new { id });
         }
@@ -330,8 +330,8 @@ internal sealed class SurveyAdminController(
     [RequestSizeLimit(55 * 1024 * 1024)] // Five 10 MB Information images plus multipart overhead; service enforces each image cap.
     public async Task<IActionResult> Save(SurveyBuilderViewModel model, string? submitAction, CancellationToken ct)
     {
-        var actorId = GetCurrentUserId();
-        if (actorId is null) return Forbid();
+        var actor = await GetCurrentUserInfoAsync(ct);
+        if (actor is null) return Forbid();
 
         ValidateAudience(model);
 
@@ -353,8 +353,8 @@ internal sealed class SurveyAdminController(
 
         var input = model.ToEditInput(Zone);
         var result = model.Id is null
-            ? await surveyService.CreateAsync(input, actorId.Value, ct)
-            : await surveyService.UpdateAsync(model.Id.Value, input, CurrentViewer(actorId.Value), ct);
+            ? await surveyService.CreateAsync(input, actor.Id, ct)
+            : await surveyService.UpdateAsync(model.Id.Value, input, CurrentViewer(actor.Id), ct);
         if (!result.Succeeded)
         {
             var error = result.Error;
@@ -371,7 +371,7 @@ internal sealed class SurveyAdminController(
         // would double-create), so it reports and redirects.
         if (string.Equals(submitAction, "save-translate", StringComparison.Ordinal))
         {
-            await ReportTranslationPassAsync(id, CurrentViewer(actorId.Value), ct);
+            await ReportTranslationPassAsync(id, CurrentViewer(actor.Id), ct);
         }
         else
         {
@@ -435,9 +435,9 @@ internal sealed class SurveyAdminController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Open(Guid id, bool continueToSend, CancellationToken ct)
     {
-        var actorId = GetCurrentUserId();
-        if (actorId is null) return Forbid();
-        var opened = await RunStatusTransitionAsync(id, () => surveyService.OpenAsync(id, actorId.Value, ct), "Survey opened.");
+        var actor = await GetCurrentUserInfoAsync(ct);
+        if (actor is null) return Forbid();
+        var opened = await RunStatusTransitionAsync(id, () => surveyService.OpenAsync(id, actor.Id, ct), "Survey opened.");
         return opened && continueToSend
             ? RedirectToAction(nameof(Send), new { id })
             : RedirectToAction(nameof(Edit), new { id });
@@ -448,9 +448,9 @@ internal sealed class SurveyAdminController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Close(Guid id, CancellationToken ct)
     {
-        var actorId = GetCurrentUserId();
-        if (actorId is null) return Forbid();
-        await RunStatusTransitionAsync(id, () => surveyService.CloseAsync(id, actorId.Value, ct), "Survey closed.");
+        var actor = await GetCurrentUserInfoAsync(ct);
+        if (actor is null) return Forbid();
+        await RunStatusTransitionAsync(id, () => surveyService.CloseAsync(id, actor.Id, ct), "Survey closed.");
         return RedirectToAction(nameof(Edit), new { id });
     }
 
@@ -490,10 +490,10 @@ internal sealed class SurveyAdminController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> SendInvites(Guid id, CancellationToken ct)
     {
-        var actorId = GetCurrentUserId();
-        if (actorId is null) return Forbid();
+        var actor = await GetCurrentUserInfoAsync(ct);
+        if (actor is null) return Forbid();
 
-        var result = await surveyService.SendInvitesAsync(id, actorId.Value, ct);
+        var result = await surveyService.SendInvitesAsync(id, actor.Id, ct);
         if (result.Succeeded)
         {
             SetSuccess($"Sent {result.InvitationsCreated} new invitation(s); {result.EmailsQueued} email(s) queued, {result.Failed} failed.");
@@ -532,13 +532,13 @@ internal sealed class SurveyAdminController(
         List<string>? unavailableValues,
         CancellationToken ct)
     {
-        var actorId = GetCurrentUserId();
-        if (actorId is null) return Forbid();
+        var actor = await GetCurrentUserInfoAsync(ct);
+        if (actor is null) return Forbid();
         var result = await surveyService.SetRankedAvailabilityAsync(
             id,
             questionId,
             unavailableValues ?? [],
-            CurrentViewer(actorId.Value),
+            CurrentViewer(actor.Id),
             ct);
         if (result.Succeeded)
         {
@@ -560,8 +560,9 @@ internal sealed class SurveyAdminController(
         var auth = await AuthorizeResultsAsync(id, SurveyOperation.ExportResults, ct);
         if (auth is not null) return auth;
 
-        if (GetCurrentUserId() is not { } actorUserId) return Unauthorized();
-        var export = await surveyService.GetResponseExportAsync(id, actorUserId, ct);
+        var actor = await GetCurrentUserInfoAsync(ct);
+        if (actor is null) return Unauthorized();
+        var export = await surveyService.GetResponseExportAsync(id, actor.Id, ct);
         if (export is null) return NotFound();
 
         var bytes = SurveyCsvExportBuilder.Build(export);
@@ -574,8 +575,9 @@ internal sealed class SurveyAdminController(
         var auth = await AuthorizeResultsAsync(id, SurveyOperation.ExportResults, ct);
         if (auth is not null) return auth;
 
-        if (GetCurrentUserId() is not { } actorUserId) return Unauthorized();
-        var export = await surveyService.GetResponseExportAsync(id, actorUserId, ct);
+        var actor = await GetCurrentUserInfoAsync(ct);
+        if (actor is null) return Unauthorized();
+        var export = await surveyService.GetResponseExportAsync(id, actor.Id, ct);
         if (export is null) return NotFound();
 
         return File(SurveyJsonExportBuilder.Build(export), "application/json", $"survey-{id}.json");

@@ -13,8 +13,7 @@ internal sealed class GrantProgram
     /// <summary>The event's year, kept beside the event for display and sorting.</summary>
     public int Year { get; set; }
     /// <summary>
-    /// The event the program is for. Null on programs from before events were tracked, until the
-    /// <c>grants.event-ids</c> data migration stamps them; until then they belong to the earliest event of their year.
+    /// The event the program is for. Legacy orphan programs may remain unassigned; their year does not infer an event.
     /// </summary>
     public Guid? EventSettingsId { get; set; }
     public GrantIssuer IssuedBy { get; set; }

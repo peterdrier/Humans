@@ -39,7 +39,7 @@ internal sealed class ProfileAdminController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> DeleteOrphanEmail(Guid emailId, CancellationToken ct)
     {
-        var (error, currentUser) = await RequireCurrentUserAsync();
+        var (error, currentUser) = await RequireCurrentUserAsync(ct);
         if (error is not null) return error;
 
         var deleted = await userEmails.DeleteByIdAsync(emailId, ct);

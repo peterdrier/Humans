@@ -330,8 +330,8 @@ public abstract class WorkgroupsTestHarness : IDisposable
         Guid id, string burnerName, ProfileInfo? profile, string language) => new(
         id, burnerName, false, language, null, Instant.FromUtc(2026, 1, 1, 0, 0),
         null, null, null, null, null, null,
-        null, null, $"{id}@example.org", [], [], [],
-        profile ?? UserFixtures.Profile(burnerName: burnerName), []);
+        null, null, $"{id}@example.org", [], [],
+        profile ?? UserFixtures.Profile(burnerName: burnerName));
 
     public void Dispose()
     {

@@ -113,7 +113,6 @@ public class NameRequiredFilterTests
     [InlineData("OnboardingWidget", "SignUpRange")]
     [InlineData("OnboardingWidget", "Skip")]
     [InlineData("OnboardingWidget", "Consents")]
-    [InlineData("OnboardingWidget", "SignConsent")]
     public async Task OnboardingWidgetNonNameRoutes_RedirectNamelessUserToNameForm(
         string controllerName, string actionName)
     {
@@ -156,9 +155,8 @@ public class NameRequiredFilterTests
     private static UserInfo MakeUserInfo(ProfileInfo? profile) =>
         UserInfo.Create(
             new User { Id = UserId, PreferredLanguage = "en", State = UserFixtures.StateFor(profile) },
-            [], [], [],
-            profile: profile,
-            []);
+            [], [],
+            profile: profile);
 
     private static ActionExecutingContext BuildContext(
         string controllerName, string actionName, bool authenticated)

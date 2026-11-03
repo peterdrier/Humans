@@ -51,16 +51,6 @@ internal sealed class ConsentReviewRepository(IDbContextFactory<LegalDbContext> 
         await ctx.SaveChangesAsync(ct);
     }
 
-    public async Task<bool> TryInsertAsync(ConsentReview values, CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        if (await ctx.ConsentReviews.AnyAsync(r => r.UserId == values.UserId, ct))
-            return false;
-        ctx.ConsentReviews.Add(Copy(values));
-        await ctx.SaveChangesAsync(ct);
-        return true;
-    }
-
     public async Task EraseFreeTextAsync(Guid userId, CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);

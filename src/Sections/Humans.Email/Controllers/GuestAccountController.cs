@@ -57,7 +57,7 @@ internal sealed class GuestAccountController(
     {
         try
         {
-            var (userId, _, fromToken) = await ResolveUserIdOrTokenAsync(utoken);
+            var (userId, _, fromToken) = await ResolveUserIdOrTokenAsync(utoken, HttpContext.RequestAborted);
             if (userId is null)
                 return Unauthorized();
             if (!ModelState.IsValid)
@@ -76,7 +76,7 @@ internal sealed class GuestAccountController(
 
             return Ok();
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             logger.LogError(ex, "Failed to save communication preference for {Category}", category);
             return StatusCode(500);

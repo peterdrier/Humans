@@ -108,14 +108,14 @@ public sealed class MineViewModelTests
         new(Guid.NewGuid(), "Test Burn", null, trips ?? [], requests ?? [], interests ?? []);
 
     private static TripView Trip(Guid userId, RideshareDirection direction = RideshareDirection.Inbound, LocalDate? departure = null) =>
-        new(Guid.NewGuid(), userId, 2026, direction, "Paris", 48.85, 2.35, [], null,
+        new(Guid.NewGuid(), userId, direction, "Paris", 48.85, 2.35, [], null,
             departure ?? July3, 1, null, VehicleType.Car, 3, 3,
-            LuggageSize.Minimal, null, null, false, CostSharing.ShareFuel, null, null, TripStatus.Active, Now, Now);
+            LuggageSize.Minimal, null, null, false, CostSharing.ShareFuel, null, null, TripStatus.Active, Now);
 
     private static RequestView Request(Guid userId, RideshareDirection direction = RideshareDirection.Inbound, LocalDate? desired = null) =>
-        new(Guid.NewGuid(), userId, 2026, direction, "Lyon", 45.76, 4.84, desired ?? July3,
-            1, LuggageSize.Minimal, true, null, RequestStatus.Active, false, Now, Now);
+        new(Guid.NewGuid(), userId, direction, "Lyon", 45.76, 4.84, desired ?? July3,
+            1, LuggageSize.Minimal, true, null, RequestStatus.Active, false, Now);
 
     private static InterestView Interest(Guid from, Guid tripId, Guid? requestId = null, Instant? createdAt = null) =>
-        new(Guid.NewGuid(), from, tripId, requestId, 1, null, InterestStatus.Pending, createdAt ?? Now, null);
+        new(Guid.NewGuid(), from, tripId, requestId, 1, null, InterestStatus.Pending, createdAt ?? Now);
 }

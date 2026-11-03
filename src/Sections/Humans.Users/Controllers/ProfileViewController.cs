@@ -80,7 +80,7 @@ internal sealed class ProfileViewController(
         {
             Id = profile.Id,
             UserId = id,
-            DisplayName = profileInfo.BurnerName,
+            PageTitle = profileInfo.BurnerName,
             IsOwnProfile = isOwnProfile,
             NoShowHistory = noShowContext.History,
             CanViewShiftSignups = noShowContext.CanView,
@@ -120,28 +120,16 @@ internal sealed class ProfileViewController(
             .Where(teamsById.ContainsKey)
             .ToDictionary(id => id, id => teamsById[id].Name);
 
-        var reviewerIds = noShows
-            .Where(s => s.ReviewedByUserId.HasValue)
-            .Select(s => s.ReviewedByUserId!.Value)
-            .Distinct()
-            .ToList();
-        var reviewers = reviewerIds.Count == 0
-            ? new Dictionary<Guid, UserInfo>()
-            : await _userService.GetUserInfosAsync(reviewerIds, ct);
-
         return (true, noShows.OrderByDescending(s => s.ReviewedAt).Select(s =>
         {
             var signupTz = DateTimeZoneProviders.Tzdb[s.TimeZoneId];
             var zoned = s.ShiftStart.InZone(signupTz);
-            var reviewer = s.ReviewedByUserId.HasValue
-                ? reviewers.GetValueOrDefault(s.ReviewedByUserId.Value)
-                : null;
             return new NoShowHistoryItem
             {
                 ShiftLabel = s.ShiftLabel,
                 DepartmentName = noShowTeamNames.GetValueOrDefault(s.TeamId, ""),
                 ShiftDateLabel = zoned.ToDateTimeUnspecified().ToMonthDayTime(),
-                MarkedByName = reviewer?.BurnerName,
+                MarkedByUserId = s.ReviewedByUserId,
                 MarkedAtLabel = s.ReviewedAt?.InZone(signupTz).ToDateTimeUnspecified().ToMonthDayTime()
             };
         }).ToList());
@@ -207,7 +195,6 @@ internal sealed class ProfileViewController(
         var vm = new PublicPopoverViewModel
         {
             UserId = info.Id,
-            DisplayName = info.BurnerName,
             RoleLabels = roleLabels
         };
 

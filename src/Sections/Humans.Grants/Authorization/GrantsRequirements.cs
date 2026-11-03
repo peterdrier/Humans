@@ -5,6 +5,7 @@ using Humans.Grants.Contracts;
 using Humans.Grants.Services;
 using Humans.Users.Contracts;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 
 namespace Humans.Grants.Authorization;
 
@@ -17,12 +18,14 @@ internal sealed class ManagesGrantsRequirement : IAuthorizationRequirement, IDes
 /// The role short-circuit avoids a query on the common admin path. A merged-away id sees what the surviving account
 /// sees.
 /// </summary>
-internal sealed class GrantsPolicyHandler(IGrantManagement grants, IUserService users) : AuthorizationHandler<ManagesGrantsRequirement>
+internal sealed class GrantsPolicyHandler(
+    IGrantManagement grants, IUserService users, IHttpContextAccessor httpContextAccessor) : AuthorizationHandler<ManagesGrantsRequirement>
 {
     protected override async Task HandleRequirementAsync(AuthorizationHandlerContext context, ManagesGrantsRequirement requirement)
     {
+        var ct = httpContextAccessor.HttpContext?.RequestAborted ?? CancellationToken.None;
         if (GrantsRoles.ReadsGrants(context.User)
-            || (await ViewerAsync(users, context.User) is { } viewer && await grants.ManagesAnyProgramAsync(viewer.Id)))
+            || (await ViewerAsync(users, context.User, ct) is { } viewer && await grants.ManagesAnyProgramAsync(viewer.Id, ct)))
         {
             context.Succeed(requirement);
         }

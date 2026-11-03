@@ -657,7 +657,7 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
             .Returns((TeamInfo?)null);
 
         _campService.GetCampSeasonByIdAsync(campSeasonId, Arg.Any<CancellationToken>())
-            .Returns(MakeCampSeasonInfo(campSeasonId, campId, 2026, "Camp"));
+            .Returns(MakeCampSeasonInfo(campSeasonId, campId, 2026, "Camp") with { LeadUserIds = [userId] });
         _campService.GetCampsForYearAsync(2026, Arg.Any<CancellationToken>())
             .Returns(new List<CampInfo>
             {
@@ -713,6 +713,29 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
 
         var result = await _sut.CanUserEditAsync(userId, campSeasonId, TestContext.Current.CancellationToken);
         result.Should().BeFalse();
+    }
+
+    [HumansTheory]
+    [InlineData(2025)]
+    [InlineData(2027)]
+    public async Task CanUserEditAsync_LeadOnlyInAnotherSeasonOfTheSameCamp_IsDenied(int otherYear)
+    {
+        var userId = NewUserId();
+        var campId = Guid.NewGuid();
+        var seasonId = Guid.NewGuid();
+        await SeedMapSettingsAsync(year: 2026, placementOpen: true);
+        var current = MakeCampSeasonInfo(seasonId, campId, 2026, "Current camp");
+        var other = MakeCampSeasonInfo(Guid.NewGuid(), campId, otherYear, "Other season") with
+        {
+            LeadUserIds = [userId]
+        };
+        _campService.GetCampSeasonByIdAsync(seasonId, Arg.Any<CancellationToken>()).Returns(current);
+        _campService.GetCampsForYearAsync(2026, Arg.Any<CancellationToken>())
+            .Returns([MakeCampInfo(campId, "camp", [current, other])]);
+
+        var allowed = await _sut.CanUserEditAsync(userId, seasonId, TestContext.Current.CancellationToken);
+
+        allowed.Should().BeFalse();
     }
 
     [HumansFact]
@@ -961,7 +984,7 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
                 // suite needs one of its members, and the helper is built around UsersDbContext.
                 new Dictionary<Guid, UserInfo>
                 {
-                    [userId] = UserInfo.Create(testUser, [], [], [], profile: null, []),
+                    [userId] = UserInfo.Create(testUser, [], [], profile: null),
                 }));
 
         Clock.Advance(Duration.FromSeconds(1));

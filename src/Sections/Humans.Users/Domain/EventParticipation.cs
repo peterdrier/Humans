@@ -1,12 +1,9 @@
 using NodaTime;
 
-namespace Humans.Users.Contracts;
+namespace Humans.Users.Domain;
 
-/// <summary>
-/// The frozen legacy <c>event_participations</c> row: nothing writes it. Read only for Tickets' legacy fallback,
-/// its copy, and Users' export. The table goes once production reports the copy done.
-/// </summary>
-public class EventParticipation
+/// <summary>Frozen legacy storage only; Tickets owns participation. Kept until the separate table drop.</summary>
+internal sealed class EventParticipation
 {
     public Guid Id { get; init; }
 

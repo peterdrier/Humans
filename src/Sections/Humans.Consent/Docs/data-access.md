@@ -148,11 +148,10 @@ Repository: `IConsentReviewRepository` (Singleton, `IDbContextFactory<LegalDbCon
 The Consent Coordinator review (Users decomposition commit 12). Serves
 `IConsentService.GetConsentReviewAsync` / `GetConsentReviewsAsync` (forwarded
 by `ConsentService`, passed through `CachingConsentService` uncached), the
-`IConsentWrite` annotations, the `consent.profile-review` copy, and the
-`ConsentReview` export/erasure slice. Until the copy is done, a member with no
-row reads the legacy `profiles` review columns via `IUserService`; the copy
-also calls `IUserWrite.SetRejectedAsync` for a legacy rejection the stored
-state never recorded. No cache.
+`IConsentWrite` annotations and the `ConsentReview` export/erasure slice.
+Reads and writes use only `consent_reviews`; there is no legacy fallback or copy.
+`IUserService` resolves a merged-away id for reads and checks the raw profile exists
+for writes. No cache.
 
 ### ConsentReviewQueueService (Scoped, internal; implements `IConsentReviewQueueService`)
 

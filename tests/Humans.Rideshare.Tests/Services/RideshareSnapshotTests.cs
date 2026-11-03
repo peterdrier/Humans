@@ -100,18 +100,18 @@ public sealed class RideshareSnapshotTests
         int seatsOffered = 3,
         int? seatsRemaining = null,
         TripStatus status = TripStatus.Active) =>
-        new(Guid.NewGuid(), Guid.NewGuid(), 2026, direction, "Paris", 48.85, 2.35, [], null,
+        new(Guid.NewGuid(), Guid.NewGuid(), direction, "Paris", 48.85, 2.35, [], null,
             departure ?? July3, durationDays, null, VehicleType.Car, seatsOffered, seatsRemaining ?? seatsOffered,
-            LuggageSize.Moderate, null, null, false, CostSharing.ShareFuel, null, null, status, Now, Now);
+            LuggageSize.Moderate, null, null, false, CostSharing.ShareFuel, null, null, status, Now);
 
     private static RequestView Request(
         RideshareDirection direction = RideshareDirection.Inbound,
         LocalDate? desiredDate = null,
         RequestStatus status = RequestStatus.Active,
         bool isMatched = false) =>
-        new(Guid.NewGuid(), Guid.NewGuid(), 2026, direction, "Lyon", 45.76, 4.84, desiredDate ?? July3,
-            1, LuggageSize.Minimal, true, null, status, isMatched, Now, Now);
+        new(Guid.NewGuid(), Guid.NewGuid(), direction, "Lyon", 45.76, 4.84, desiredDate ?? July3,
+            1, LuggageSize.Minimal, true, null, status, isMatched, Now);
 
     private static InterestView Interest(Guid tripId, int seats, InterestStatus status) =>
-        new(Guid.NewGuid(), Guid.NewGuid(), tripId, null, seats, null, status, Now, null);
+        new(Guid.NewGuid(), Guid.NewGuid(), tripId, null, seats, null, status, Now);
 }

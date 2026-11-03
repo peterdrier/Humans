@@ -26,7 +26,7 @@
                 var (css, label) = LineBadge(l.Status);
                 <tr>
                     <td class="text-nowrap">@l.DocumentDate.ToInvariantDate()</td>
-                    <td>@l.MemberName</td>
+                    <td><vc:human user-id="@l.CreditorUserId" link="None" /></td>
                     <td><a href="/Expenses/@l.ExpenseReportId">@l.ExpenseReportId.ToString()[..8]</a></td>
                     <td>@(l.LineId is null ? "(whole report, legacy)" : l.Description)</td>
                     <td class="text-end text-nowrap">@l.ExpectedAmount.ToEuro()</td>

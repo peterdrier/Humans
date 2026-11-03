@@ -130,6 +130,15 @@ Google integration management is consolidated in `GoogleController` (`[Route("Go
 
 ## Invariants
 
+- Team-resource authorization resolves non-privileged viewers before checking their
+  department's resource-management permission. Merged cookies use the surviving
+  account; missing accounts are denied and request cancellation propagates. The
+  TeamsAdmin/Board/Admin bypass and department-only scope remain unchanged.
+
+- Administrative account preflight honours browser cancellation before sync-setting,
+  provisioning, account-management, recovery-credential and sync-queue operations.
+  Once started, those operations retain their independent tokens.
+
 - Cloud Translation returns exactly one non-null translated text per input, in input order. Missing data, missing/null segments or missing/null `translatedText` fail the complete translation call before callers can store incomplete text. Explicit empty strings remain valid.
 
 - Domain-group reads impose no display order. The All Groups view orders linked groups first, then email ignoring case; batch settings remediation explicitly uses that same sequence.
@@ -151,6 +160,8 @@ Google integration management is consolidated in `GoogleController` (`[Route("Go
 - The Workspace accounts controller orders existing `WorkspaceAccountInfo` rows by primary email with ordinal comparison ignoring case. The service supplies account facts and counts without display ordering; status, member-link, 2FA and recovery fields are preserved.
 
 - Sync-dashboard preview loads apply only the latest response or failure for each resource tab. Drive and group previews load independently; sync POSTs keep their existing execution boundaries.
+- Sync preview local-user rows and email-rename diagnostics render identity through `Human`; a blank copied name cannot hide a known user. External sync rows retain supplied names. Rename-table client sorting follows the rendered name.
+- Group-settings checks and email-rename detection forward browser cancellation through their read-only lookups and propagate caller cancellation without publishing partial diagnostic results. Independent dependency failures retain per-account recovery or the existing load error.
 - Preview requests reject redirects and display the load failure; login or access-denied pages cannot become sync previews.
 
 - All Google Drive resources are on Shared Drives. The system does not use regular (My Drive) folders.
@@ -282,7 +293,7 @@ The GDPR sync-log export preserves the viewer fields and resolves resource names
 
 ### Connector clients
 
-Section services depend only on shape-neutral connector interfaces in `Humans.GoogleIntegration.Services.Workspace` (`IGoogleDriveActivityClient` is in the section's `Contracts/` folder, because Monitor consumes it across an assembly boundary) — `IGoogleDirectoryClient`, `IGoogleDrivePermissionsClient`, `IGoogleGroupMembershipClient`, `IGoogleGroupProvisioningClient`, `ITeamResourceGoogleClient`, `IGoogleDriveActivityClient`, `IWorkspaceUserDirectoryClient`, `IGoogleTranslationClient` — so they never import `Google.Apis.*` (design-rules §13). Real Google-backed implementations and dev-mode stubs live beside them in `src/Sections/Humans.GoogleIntegration/Services/Workspace/`. `IGoogleDrivePermissionsClient.CreateFolderAsync` is the one folder-creation capability on that connector — used by `IGoogleSyncWrite.CreateSubfolderAsync`, not by any reconciliation path.
+Section services depend only on shape-neutral connector interfaces in `Humans.GoogleIntegration.Services.Workspace` (`IGoogleDriveActivityClient` is in the section's `Contracts/` folder, because Monitor consumes it across an assembly boundary) — `IGoogleDirectoryClient`, `IGoogleDrivePermissionsClient`, `IGoogleGroupMembershipClient`, `IGoogleGroupProvisioningClient`, `ITeamResourceGoogleClient`, `IGoogleDriveActivityClient`, `IWorkspaceUserDirectoryClient`, `IGoogleTranslationClient` — so they never import `Google.Apis.*` (design-rules §13). Real Google-backed implementations and dev-mode stubs live beside them in `src/Sections/Humans.GoogleIntegration/Services/Workspace/`. `IGoogleDirectoryClient` lists domain groups only and requests only the group-read scope. Workspace account enumeration and lifecycle operations use `IWorkspaceUserDirectoryClient`; there is no parallel primary-email-only listing path. `IGoogleDrivePermissionsClient.CreateFolderAsync` is the one folder-creation capability on that connector — used by `IGoogleSyncWrite.CreateSubfolderAsync`, not by any reconciliation path.
 
 ### Touch-and-clean guidance
 

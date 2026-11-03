@@ -21,9 +21,7 @@ internal sealed class AgentRateLimitHandler(IAgentRateLimitStore rateLimit, IAge
         var settings1 = settings.Current;
         var snapshot = rateLimit.Get(userId, today, hour);
 
-        if (snapshot.MessagesToday >= settings1.DailyMessageCap ||
-            snapshot.TokensToday >= settings1.DailyTokenCap ||
-            snapshot.MessagesThisHour >= settings1.HourlyMessageCap)
+        if (snapshot.IsAtLimit(settings1))
         {
             return Task.CompletedTask; // Fail: don't call Succeed.
         }

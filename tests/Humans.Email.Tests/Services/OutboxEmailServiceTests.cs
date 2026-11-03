@@ -104,7 +104,7 @@ public sealed class OutboxEmailServiceTests : IDisposable
         localizer["Email_ComposerSelfTest_Subject"].Returns(new LocalizedString("subject", "[Test] {0}"));
         var users = Substitute.For<IUserService>();
         users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(UserInfo.Create(new User { Id = userId, Email = "self@example.com" }, [], [], [], null, []));
+            .Returns(UserInfo.Create(new User { Id = userId, Email = "self@example.com" }, [], [], null));
         var selfSend = new ComposerSelfSendService(
             users, _service,
             Substitute.For<Humans.AuditLog.Contracts.IAuditLogService>(), localizer,

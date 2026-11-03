@@ -151,7 +151,7 @@ public class AgentUserSnapshotProviderTests
             .Returns(new ValueTask<UserInfo?>(
                 UserInfo.Create(
                     new User { Id = userId, DisplayName = "T", PreferredLanguage = "es" },
-                    [], [], [], profile: null, [])));
+                    [], [], profile: null)));
         var roles = Substitute.For<IRoleAssignmentService>();
         roles.GetActiveForUserAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns([]);
@@ -219,10 +219,6 @@ public class AgentUserSnapshotProviderTests
         BuildStartOffset: -14,
         EventEndOffset: 6,
         StrikeEndOffset: 9,
-        FirstCrewStartOffset: -25,
-        SetupWeekStartOffset: -16,
-        PreEventWeekStartOffset: -9,
-        FinishingWeekendStartOffset: -4,
         EarlyEntryCapacity: new Dictionary<int, int>(),
         BarriosEarlyEntryAllocation: null,
         EarlyEntryClose: null);

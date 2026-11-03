@@ -2,6 +2,7 @@ using System.Net;
 using AwesomeAssertions.Execution;
 using Humans.Base.Extensions;
 using Humans.Email.Contracts;
+using Humans.Users.Contracts;
 using AwesomeAssertions;
 using Xunit;
 using Humans.AuditLog.Contracts;
@@ -121,6 +122,34 @@ public sealed class GrantTests : PreapprovalsTestHarness
             grant.Id, Arg.Any<string>(), applicant, Arg.Any<Guid?>(), Arg.Any<string?>());
     }
 
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Notices_UseCanonicalEmailRecipient_OncePerMergedPerson(bool managerNotice)
+    {
+        var archived = Guid.NewGuid();
+        var survivor = SeedUser("Ana", language: "ca", mergedIds: [archived]);
+        var person = (await Users.GetUserInfoAsync(survivor, Ct))!;
+        Users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(call => new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
+                call.Arg<IReadOnlyCollection<Guid>>().Distinct()
+                    .Where(id => id == archived || id == survivor).ToDictionary(id => id, _ => person)));
+        var program = await SeedProgramAsync(managers: managerNotice ? [archived, survivor] : []);
+        var service = NewService();
+
+        if (managerNotice)
+            (await service.ApplyAsync(program.Id, SeedUser("Applicant"), null, null, Ct)).Refusal.Should().BeNull();
+        else
+            (await service.IssueAsync(program.Id, archived, null, null, SeedUser("Actor"), Ct)).Refusal.Should().BeNull();
+
+        var messages = Email.ReceivedCalls().Select(call => (EmailMessage)call.GetArguments()[0]!).ToList();
+        var message = messages.Should().ContainSingle().Subject;
+        message.UserId.Should().Be(survivor);
+        message.RecipientEmail.Should().Be(person.Email);
+        message.RecipientName.Should().Be("Ana");
+        message.Culture.Should().Be("ca");
+    }
+
     [HumansFact]
     public async Task Apply_CancelledBeforeMutation_DoesNotSaveOrDispatch()
     {
@@ -212,6 +241,41 @@ public sealed class GrantTests : PreapprovalsTestHarness
 
         result.Refusal!.Key.Should().Be(PreapprovalErrorKeys.CeilingExceeded);
         (await OpenContext().Grants.CountAsync(Ct)).Should().Be(0);
+    }
+
+    [HumansTheory]
+    [InlineData("issue")]
+    [InlineData("batch")]
+    [InlineData("apply")]
+    public async Task NewGrants_ResolveMergedBeneficiariesBeforePersistenceAndBatchCeiling(string operation)
+    {
+        var archived = Guid.NewGuid();
+        var survivor = SeedUser("Survivor", mergedIds: [archived]);
+        var snapshot = await Users.GetUserInfoAsync(survivor, Ct);
+        Users.GetUserInfoAsync(archived, Arg.Any<CancellationToken>()).Returns(new ValueTask<UserInfo?>(snapshot));
+        var program = await SeedProgramAsync(perPerson: 300m, ceiling: 300m);
+        var service = NewService();
+        var actor = SeedUser("Actor");
+
+        switch (operation)
+        {
+            case "issue":
+                (await service.IssueAsync(program.Id, archived, null, null, actor, Ct)).Refusal.Should().BeNull();
+                break;
+            case "batch":
+                var result = await service.IssueManyAsync(program.Id, [archived, survivor, archived], actor, Ct);
+                result.Refusal.Should().BeNull();
+                result.Value.Should().ContainSingle();
+                break;
+            default:
+                (await service.ApplyAsync(program.Id, archived, null, null, Ct)).Refusal.Should().BeNull();
+                break;
+        }
+
+        await using var db = OpenContext();
+        var grant = (await db.Grants.ToListAsync(Ct)).Should().ContainSingle().Subject;
+        grant.BeneficiaryUserId.Should().Be(survivor);
+        grant.MaxAmount.Should().Be(300m);
     }
 
     [HumansFact]

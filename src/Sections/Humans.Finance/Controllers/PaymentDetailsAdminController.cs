@@ -20,7 +20,9 @@ internal sealed class PaymentDetailsAdminController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> RevealIban(Guid id, CancellationToken ct)
     {
-        if (GetCurrentUserId() is not { } actorUserId) return Forbid();
+        var actor = await GetCurrentUserInfoAsync(ct);
+        if (actor is null) return Forbid();
+        var actorUserId = actor.Id;
 
         var iban = await paymentDetails.RevealIbanAsync(id, actorUserId, ct);
         if (iban is null)

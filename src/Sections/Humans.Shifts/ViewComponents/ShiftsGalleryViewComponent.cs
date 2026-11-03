@@ -38,7 +38,7 @@ internal sealed class ShiftsGalleryViewComponent(
             if (depts.Count > 0)
             {
                 sampleDeptId = depts[0].TeamId;
-                var rotas = await shiftMgmt.GetRotasByDepartmentAsync(sampleDeptId.Value, es.Id);
+                var rotas = await shiftMgmt.GetRotasByDepartmentAsync(sampleDeptId.Value, es.Id, HttpContext.RequestAborted);
                 rota = rotas.Select(r => r.Rota).OrderBy(r => r.Name, StringComparer.Ordinal).FirstOrDefault();
             }
 

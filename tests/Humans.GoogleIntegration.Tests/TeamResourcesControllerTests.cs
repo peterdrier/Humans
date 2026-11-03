@@ -43,7 +43,7 @@ public class TeamResourcesControllerTests
     public TeamResourcesControllerTests()
     {
         _users.GetUserInfoAsync(_userId, Arg.Any<CancellationToken>()).Returns(
-            new ValueTask<UserInfo?>(UserInfo.Create(new User { Id = _userId }, [], [], [], null, [])));
+            new ValueTask<UserInfo?>(UserInfo.Create(new User { Id = _userId }, [], [], null)));
         _teams.GetTeamBySlugAsync(_team.Slug, Arg.Any<CancellationToken>()).Returns(_team);
         _resources.GetTeamResourcesAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns([]);
         _resources.GetServiceAccountEmailAsync(Arg.Any<CancellationToken>()).Returns("service@example.com");
@@ -341,7 +341,7 @@ public class TeamResourcesControllerTests
             .AddAuthorizationCore(options => options.AddPolicy(TeamsPolicies.Read,
                 policy => policy.RequireRole(TeamsRoles.TeamsAdmin, RoleNames.Board, RoleNames.Admin)))
             .AddSingleton<IAuthorizationHandler>(new TeamResourceAuthorizationHandler(
-                _resources, new HttpContextAccessor { HttpContext = http }))
+                _resources, _users, new HttpContextAccessor { HttpContext = http }))
             .BuildServiceProvider()
             .GetRequiredService<IAuthorizationService>();
         return new TeamResourcesController(_users, _teams, _resources, authorization, _sync,

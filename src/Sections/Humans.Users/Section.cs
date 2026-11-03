@@ -107,7 +107,6 @@ public sealed class Section :
 
         services.AddHostedService(sp => sp.GetRequiredService<CachingUserService>());
 
-        services.AddSingleton<ICommunicationPreferenceRepository, CommunicationPreferenceRepository>();
 
         services.AddScoped<ContactFieldService>();
         services.AddScoped<IContactFieldService>(sp => sp.GetRequiredService<ContactFieldService>());

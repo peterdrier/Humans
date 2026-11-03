@@ -83,7 +83,7 @@ nobodies-collective/Humans#1630, nobodies-collective/Humans#1631).
 | GateOpeningDate | LocalDate | Day 0 of every offset |
 | BuildStartOffset | int | Negative |
 | EventEndOffset / StrikeEndOffset | int | |
-| FirstCrew/SetupWeek/PreEventWeek/FinishingWeekendStartOffset | int | Shifts owns the build sub-periods now: no form edits these, an update never overwrites them, a new row gets the defaults (-25/-16/-9/-4). Kept only as Shifts' fallback until its `shifts.build-sub-periods` data migration is done |
+| FirstCrew/SetupWeek/PreEventWeek/FinishingWeekendStartOffset | int | Legacy storage only: no runtime DTO, interface, form or mapper reads these four columns. Shifts owns its sub-period values and defaults; production reported `shifts.build-sub-periods` done on 2026-11-03. Schema removal remains separate |
 | EarlyEntryCapacity | JSON `Dictionary<int,int>` | Step function, day offset → capacity; dictionary equality and hashing ignore insertion order |
 | BarriosEarlyEntryAllocation | JSON, nullable | |
 | EarlyEntryClose | Instant, nullable | |
@@ -111,6 +111,10 @@ Own `SettingsDbContext`, migrations under `Data/Migrations/`, history table
 [`authorization.md`](authorization.md)); `/Settings` itself is `[Authorize]` only.
 
 ## Invariants
+
+- Event save, timezone change and event activation resolve the signed-in account
+  before writing and audit the surviving account ID after a merge. Missing accounts
+  are challenged; cancelled account lookups perform no write.
 
 - Event forms require every rendered field to be posted. Missing keys cannot mint a new cycle or reset the calendar, early-entry settings or flags through defaults. An explicitly blank id still starts a new cycle; blank optional early-entry values still clear them. Existing false and zero values remain valid.
 

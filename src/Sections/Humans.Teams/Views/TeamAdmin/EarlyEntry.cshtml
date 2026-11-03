@@ -30,7 +30,7 @@
                     @foreach (var grant in Model.Grants)
                     {
                         <tr>
-                            <td>@grant.HumanName</td>
+                            <td><vc:human user-id="@grant.UserId" /></td>
                             <td colspan="2">
                                 @* The hidden submit enables Enter-to-save and requestSubmit() validation for the auto-save below. *@
                                 <form asp-controller="TeamAdmin" asp-action="EditEarlyEntry" asp-route-slug="@Model.Slug" method="post" class="row g-2 align-items-center ee-edit-form">

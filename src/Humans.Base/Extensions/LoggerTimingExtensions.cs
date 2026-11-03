@@ -22,27 +22,6 @@ public static class LoggerTimingExtensions
         return new OperationTimer(logger, key, detail);
     }
 
-    /// <summary>
-    /// Logs a deliberately-swallowed exception at Error and increments the swallowed-exception
-    /// counter in <see cref="OperationTimingRegistry.Instance"/>.
-    /// </summary>
-    public static void Eat(
-        this ILogger logger,
-        Exception exception,
-        string? detail = null,
-        [CallerMemberName] string operation = "",
-        [CallerFilePath] string filePath = "")
-    {
-        var className = DeriveClassName(filePath);
-        var key = $"{className}.{operation}";
-        OperationTimingRegistry.Instance.IncrementSwallowed(key);
-
-        if (detail is not null)
-            logger.LogError(exception, "Swallowed exception in {Operation} ({Detail})", key, detail);
-        else
-            logger.LogError(exception, "Swallowed exception in {Operation}", key);
-    }
-
     // Visible to tests so the threshold logic can be verified without sleeping.
     internal static LogLevel SelectLogLevel(double elapsedMs) => elapsedMs switch
     {

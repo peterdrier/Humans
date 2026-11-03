@@ -455,7 +455,7 @@ anything — every action here is a notice, a flag, or a record; a human still h
 | Active, no Update, meeting notes or meeting (a series counts its stored first occurrence only) in 30 days | Notify coordinators, in-app, once per 30-day window |
 | Applied/Referred, ≥ 14 days old | Notify Board once |
 
-Disposition-overdue is a read-time badge computed by `WorkgroupRhythm` against the caller's
+Disposition-overdue is a read-time badge computed by `WorkgroupInfo` against the caller's
 clock, not a job action — a cached register can never show a stale badge. "Request a status
 update" is a member action (any signed-in human, as often as they like), not part of the job.
 
@@ -509,7 +509,7 @@ should end is the Board's decision, taken on the register in front of them.
   17(3)(b)). Membership rows are deleted. If the erased person was the last coordinator
   of an Active group, the Board is notified.
 - **Merge** (`ReassignAsync`/`IUserMerge`): folds every user-id column from source to
-  target, collapsing duplicate membership rows the fold creates.
+  target, collapsing duplicate membership rows the fold creates. Member-work authorization, the dashboard and coordinator tasks resolve the signed-in account before checking membership, so merged sessions follow those reassigned rows. Missing accounts are denied member-work access and omitted from dashboard/tasks; identity lookup cancellation propagates. Existing Read/Administer and privileged-member rules, including the dormant-group restriction, remain unchanged.
 - **Consent**: nothing new is gated — joining is the member's own action.
 
 ## Architecture
@@ -522,8 +522,12 @@ should end is the Board's decision, taken on the register in front of them.
 
 `MyWorkgroupsViewComponent` supplies the member-dashboard list and passes
 `HttpContext.RequestAborted` to its owned `GetForMemberAsync` read.
-`GovernanceWorkgroupsViewComponent` does the same for its register and coordinator
-display-name reads.
+`GovernanceWorkgroupsViewComponent` does the same for its register read. Register,
+admin-queue and Governance-card coordinator lists, document editor/comment attribution,
+and activity-history authors render member IDs through the shared Human component
+without profile links. They use its localized missing-member fallback; document editor
+attribution preserves the existing localized sentence and date. Only details-page
+picker labels and roster profile badges load a member dictionary.
 
 ### Cross-section read interface
 
@@ -544,7 +548,7 @@ display-name reads.
   (`Workgroups.Register`), single
   entry for the whole register, cleared on every write. The shared guarded loader prevents
   loads begun before a clear from repopulating it with the old register. Nothing time-derived is cached —
-  `WorkgroupRhythm` computes rhythm badges from the snapshot against the caller's clock.
+  `WorkgroupInfo` computes rhythm badges against the caller's clock; document comment windows are evaluated by `WorkgroupDocumentInfo`.
 - **Member ordering** — views show coordinators before other members, then by join date. Coordinator names and selection slots keep join-date order; the details page reuses one ordered member list for its roster and member selectors.
 - **Document ordering** — views order documents newest first. The document page sorts comments once: populated categories follow their earliest comment, and each thread keeps chronological order.
 - **Meeting ordering** — the details timeline orders meetings by start before combining them with dated log entries. The snapshot does not sort meetings; `NextMeeting` selects the earliest not-yet-started occurrence directly, and Calendar consumers order feed items.

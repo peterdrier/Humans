@@ -135,6 +135,10 @@ Reached from the Roles item of the Users admin sidebar group and the Role Assign
 
 ## Invariants
 
+- Role assignment and ending honour request cancellation during target, assignment
+  and actor lookups, before authorization and mutation. Started role mutations keep
+  their existing independent token.
+
 - Role-assignment paging computes offsets without integer overflow; extreme pages cannot wrap into earlier assignments.
 
 - Role assignments are temporal: a new assignment is always added (never "resurrected" by clearing `ValidTo`). `RevokeAllActiveAsync(userId)` stamps `ValidTo = now` on every currently-active row in one write.

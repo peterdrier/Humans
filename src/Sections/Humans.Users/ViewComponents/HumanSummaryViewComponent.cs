@@ -25,7 +25,6 @@ public sealed class HumanSummaryViewComponent(
             return View("Default", new ProfileSummaryViewModel
             {
                 UserId = userId,
-                DisplayName = "(unknown)",
                 HasProfile = false,
             });
         }
@@ -35,10 +34,8 @@ public sealed class HumanSummaryViewComponent(
             return View("Default", new ProfileSummaryViewModel
             {
                 UserId = userId,
-                DisplayName = info.BurnerName,
                 Email = info.PrimaryEmail
                     ?? info.UserEmails.FirstOrDefault(e => e.IsVerified)?.Email,
-                ProfilePictureUrl = info.ProfilePictureUrl,
                 PreferredLanguage = info.PreferredLanguage,
                 HasProfile = false,
             });

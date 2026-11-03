@@ -134,7 +134,7 @@ internal sealed class StoreController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Pay(Guid id, decimal amountEur, CancellationToken ct)
     {
-        var (errorResult, _) = await RequireCurrentUserAsync();
+        var (errorResult, _) = await RequireCurrentUserAsync(ct);
         if (errorResult is not null) return errorResult;
 
         var order = await storeService.GetOrderAsync(id, ct);
@@ -172,10 +172,10 @@ internal sealed class StoreController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> IssueInvoice(Guid id)
     {
-        var (errorResult, user) = await RequireCurrentUserAsync();
+        var (errorResult, user) = await RequireCurrentUserAsync(HttpContext.RequestAborted);
         if (errorResult is not null) return errorResult;
 
-        var order = await storeService.GetOrderAsync(id);
+        var order = await storeService.GetOrderAsync(id, HttpContext.RequestAborted);
         if (order is null) return NotFound();
 
         var auth = await authService.AuthorizeAsync(User, order, OrderOperationRequirement.IssueInvoice);
@@ -202,7 +202,7 @@ internal sealed class StoreController(
     public async Task<IActionResult> RecordPayment(
         Guid id, PaymentMethod method, decimal amountEur, string? externalRef, string? notes, CancellationToken ct)
     {
-        var (errorResult, user) = await RequireCurrentUserAsync();
+        var (errorResult, user) = await RequireCurrentUserAsync(ct);
         if (errorResult is not null) return errorResult;
 
         var order = await storeService.GetOrderAsync(id, ct);
@@ -224,7 +224,7 @@ internal sealed class StoreController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> DeletePayment(Guid id, Guid paymentId, CancellationToken ct)
     {
-        var (errorResult, user) = await RequireCurrentUserAsync();
+        var (errorResult, user) = await RequireCurrentUserAsync(ct);
         if (errorResult is not null) return errorResult;
 
         var order = await storeService.GetOrderAsync(id, ct);
@@ -243,7 +243,7 @@ internal sealed class StoreController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Create(Guid campSeasonId, CancellationToken ct)
     {
-        var (errorResult, user) = await RequireCurrentUserAsync();
+        var (errorResult, user) = await RequireCurrentUserAsync(ct);
         if (errorResult is not null) return errorResult;
 
         var season = await campService.GetCampSeasonByIdAsync(campSeasonId, ct);
@@ -269,7 +269,7 @@ internal sealed class StoreController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> CreateTeamOrder(Guid teamId, CancellationToken ct)
     {
-        var (errorResult, user) = await RequireCurrentUserAsync();
+        var (errorResult, user) = await RequireCurrentUserAsync(ct);
         if (errorResult is not null) return errorResult;
 
         var auth = await authService.AuthorizeAsync(
@@ -292,7 +292,7 @@ internal sealed class StoreController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
     {
-        var (errorResult, user) = await RequireCurrentUserAsync();
+        var (errorResult, user) = await RequireCurrentUserAsync(ct);
         if (errorResult is not null) return errorResult;
 
         var order = await storeService.GetOrderAsync(id, ct);
@@ -315,7 +315,7 @@ internal sealed class StoreController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> AddLine(Guid id, Guid productId, int qty, CancellationToken ct)
     {
-        var (errorResult, user) = await RequireCurrentUserAsync();
+        var (errorResult, user) = await RequireCurrentUserAsync(ct);
         if (errorResult is not null) return errorResult;
 
         var order = await storeService.GetOrderAsync(id, ct);
@@ -342,7 +342,7 @@ internal sealed class StoreController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> RemoveLine(Guid id, Guid lineId, CancellationToken ct)
     {
-        var (errorResult, user) = await RequireCurrentUserAsync();
+        var (errorResult, user) = await RequireCurrentUserAsync(ct);
         if (errorResult is not null) return errorResult;
 
         var order = await storeService.GetOrderAsync(id, ct);
@@ -371,7 +371,7 @@ internal sealed class StoreController(
         OrderCounterpartyInput input,
         CancellationToken ct)
     {
-        var (errorResult, user) = await RequireCurrentUserAsync();
+        var (errorResult, user) = await RequireCurrentUserAsync(ct);
         if (errorResult is not null) return errorResult;
 
         var order = await storeService.GetOrderAsync(id, ct);

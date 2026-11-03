@@ -5,10 +5,6 @@ using NodaTime;
 
 namespace Humans.Tickets.Data;
 
-/// <summary>
-/// Reads return cleared rows (null <see cref="EventParticipation.Status"/>) too: the service needs them to know
-/// which legacy rows are shadowed. A <c>legacy</c> argument counts as the existing record when the table has none.
-/// </summary>
 internal interface IEventParticipationRepository : IRepository
 {
     Task<IReadOnlyList<EventParticipation>> GetByUserIdAsync(Guid userId, CancellationToken ct = default);
@@ -21,30 +17,25 @@ internal interface IEventParticipationRepository : IRepository
     /// </summary>
     Task<bool> UpsertAsync(
         Guid userId, int year, ParticipationStatus status, ParticipationSource source,
-        Instant? declaredAt, Instant? checkedInAt, EventParticipation? legacy, CancellationToken ct = default);
+        Instant? declaredAt, Instant? checkedInAt, CancellationToken ct = default);
 
     /// <summary>
-    /// Only when the source is <paramref name="requiredSource"/> and not Attended. With a <paramref name="legacy"/> row
-    /// the record is cleared (null status) instead of deleted, so the legacy value stays shadowed.
+    /// Deletes only when the source is <paramref name="requiredSource"/> and not Attended.
     /// </summary>
     Task<bool> ClearAsync(
-        Guid userId, int year, ParticipationSource requiredSource, EventParticipation? legacy,
+        Guid userId, int year, ParticipationSource requiredSource,
         CancellationToken ct = default);
 
     /// <summary>Skips Attended records. Returns the entries that changed a record.</summary>
     Task<IReadOnlyList<(Guid UserId, ParticipationStatus Status)>> BackfillAsync(
         int year, IReadOnlyList<(Guid UserId, ParticipationStatus Status)> entries,
-        IReadOnlyDictionary<Guid, EventParticipation> legacyByUser, CancellationToken ct = default);
-
-    /// <summary>Skips a user and year that already has a row, cleared or not, so the legacy copy is idempotent.</summary>
-    Task<bool> TryInsertAsync(EventParticipation row, CancellationToken ct = default);
+        CancellationToken ct = default);
 
     /// <summary>
     /// Per year the survivor keeps the higher status (Attended &gt; Ticketed &gt; NoShow &gt; NotAttending) and the
-    /// first check-in. The source's record is removed, or cleared where it has a legacy row.
+    /// first check-in. The source's record is removed.
     /// </summary>
     Task ReassignAsync(
         Guid sourceUserId, Guid targetUserId,
-        IReadOnlyList<EventParticipation> legacySource, IReadOnlyList<EventParticipation> legacyTarget,
         CancellationToken ct = default);
 }

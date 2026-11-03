@@ -1,5 +1,4 @@
 using Humans.Email.Contracts;
-using Humans.Users.Controllers;
 using Humans.Users.Models;
 using Humans.Base.Helpers;
 using Humans.Auth.Contracts;
@@ -73,7 +72,6 @@ public sealed class ProfileCardViewComponent(
             .OrderBy(tm => tm.TeamInfo.Name, StringComparer.Ordinal)
             .Select(tm => new TeamMembershipViewModel
             {
-                TeamId = tm.TeamInfo.Id,
                 TeamName = GetDisplayName(tm.TeamInfo, teamsById, viewMode != ProfileCardViewMode.Public),
                 TeamSlug = tm.TeamInfo.Slug,
                 IsCoordinator = tm.Membership!.Role == TeamMemberRole.Coordinator,
@@ -81,19 +79,9 @@ public sealed class ProfileCardViewComponent(
             })
             .ToList();
 
-        var hasCustomPicture = profile?.HasCustomPicture == true;
-        var pictureUrl = hasCustomPicture
-            ? Url.Action(nameof(ProfileViewController.Picture), "ProfileView", new { id = profile!.Id, v = profile.UpdatedAt.ToUnixTimeTicks() })
-            : null;
-
         var model = new ProfileCardViewModel
         {
             UserId = userId,
-            DisplayName = info.BurnerName,
-            ProfilePictureUrl = info.ProfilePictureUrl,
-            HasCustomProfilePicture = hasCustomPicture,
-            CustomProfilePictureUrl = pictureUrl,
-            BurnerName = profile?.BurnerName ?? string.Empty,
             Pronouns = profile?.Pronouns,
             City = profile?.City,
             CountryCode = profile?.CountryCode,

@@ -377,7 +377,6 @@ public class TicketingBudgetServiceTests
             command.InitialSalesCount, command.DailySalesRate, command.AverageTicketPrice, command.VatRate,
             command.StripeFeePercent, command.StripeFeeFixed, command.TicketTailorFeePercent, actorUserId,
             refreshProjections: true, Xunit.TestContext.Current.CancellationToken);
-        await _budgetService.DidNotReceive().RefreshTicketingProjectionsAsync(yearId, actorUserId, Arg.Any<CancellationToken>());
     }
 
     private static TicketOrderInfo BuildOrder(

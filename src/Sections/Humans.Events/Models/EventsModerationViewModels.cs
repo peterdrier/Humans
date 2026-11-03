@@ -22,7 +22,6 @@ internal sealed class ModerationEventRowViewModel
     public Guid Id { get; set; }
     public string Title { get; set; } = string.Empty;
     public string Description { get; set; } = string.Empty;
-    public string SubmitterName { get; set; } = string.Empty;
     public Guid SubmitterUserId { get; set; }
     public string? CampName { get; set; }
     public string? CampSlug { get; set; }
@@ -39,16 +38,7 @@ internal sealed class ModerationEventRowViewModel
     public List<ModerationHistoryItemViewModel> History { get; set; } = [];
     public List<DuplicateCandidateViewModel> DuplicateCandidates { get; set; } = [];
 
-    public string StatusBadgeClass => Status switch
-    {
-        EventStatus.Draft => "bg-secondary",
-        EventStatus.Pending => "bg-warning text-dark",
-        EventStatus.Approved => "bg-success",
-        EventStatus.Rejected => "bg-danger",
-        EventStatus.ResubmitRequested => "bg-info",
-        EventStatus.Withdrawn => "bg-dark",
-        _ => "bg-secondary"
-    };
+    public string StatusBadgeClass => EventStatusPresentation.BadgeClass(Status);
 }
 
 internal sealed class ModerationHistoryItemViewModel
@@ -167,4 +157,18 @@ internal sealed class AdminEventFormViewModel
     public List<VenueOptionViewModel> Venues { get; set; } = [];
     public List<EventDayOptionViewModel> EventDays { get; set; } = [];
     public string? TimeZoneId { get; set; }
+}
+
+internal static class EventStatusPresentation
+{
+    internal static string BadgeClass(EventStatus status) => status switch
+    {
+        EventStatus.Draft => "bg-secondary",
+        EventStatus.Pending => "bg-warning text-dark",
+        EventStatus.Approved => "bg-success",
+        EventStatus.Rejected => "bg-danger",
+        EventStatus.ResubmitRequested => "bg-info",
+        EventStatus.Withdrawn => "bg-dark",
+        _ => "bg-secondary"
+    };
 }

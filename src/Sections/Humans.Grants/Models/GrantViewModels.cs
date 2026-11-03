@@ -2,7 +2,6 @@ using System.ComponentModel.DataAnnotations;
 using Humans.Grants.Domain;
 using Humans.Grants.Services;
 using Humans.Settings.Contracts;
-using Humans.Users.Contracts;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
 using NodaTime;
 
@@ -24,10 +23,7 @@ internal sealed class AdminProgramViewModel
 
     /// <summary>Issue, revoke and resend. False for Board, which reads the page only.</summary>
     public required bool CanManage { get; init; }
-    public required IReadOnlyDictionary<Guid, UserInfo> People { get; init; }
 
-    public string NameOf(Guid? userId) =>
-        userId is { } id && People.TryGetValue(id, out var info) ? info.BurnerName : "—";
 
     public IEnumerable<GrantInfo> Grants => Program.Grants
         .OrderBy(g => g.State(Today)).ThenByDescending(g => g.IssuedAt);
@@ -62,9 +58,6 @@ internal sealed class ProgramFormViewModel
     public GrantProgramStatus Status { get; set; } = GrantProgramStatus.Open;
 
     public List<Guid> ManagerUserIds { get; set; } = [];
-
-    /// <summary>For rendering only; never posted.</summary>
-    public IReadOnlyDictionary<Guid, UserInfo> People { get; set; } = new Dictionary<Guid, UserInfo>();
 
     /// <summary>For rendering only: the events a program can be for, newest first.</summary>
     public IReadOnlyList<EventSettingsInfo> Events { get; set; } = [];

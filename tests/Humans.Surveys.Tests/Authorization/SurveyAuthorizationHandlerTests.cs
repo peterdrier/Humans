@@ -6,6 +6,10 @@ using Humans.Surveys.Contracts;
 using Humans.Surveys.Domain;
 using Humans.Surveys.Services;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.DependencyInjection;
+using Humans.Users.Contracts;
+using NSubstitute;
 
 namespace Humans.Surveys.Tests.Authorization;
 
@@ -16,10 +20,95 @@ namespace Humans.Surveys.Tests.Authorization;
 /// </summary>
 public sealed class SurveyAuthorizationHandlerTests
 {
-    private readonly SurveyAuthorizationHandler _handler = new();
+    public enum OwnershipOperation
+    {
+        Edit,
+        Submit,
+        ViewResults,
+        Preview
+    }
+
+    public enum OwnershipAccount
+    {
+        Merged,
+        Missing,
+        Cancelled,
+        Stranger
+    }
+
+    private readonly SurveyAuthorizationHandler _handler;
+
+    public SurveyAuthorizationHandlerTests()
+    {
+        var users = Substitute.For<IUserService>();
+        users.GetUserInfoAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(call => UserInfo.Create(new User { Id = call.Arg<Guid>() }, [], [], null));
+        _handler = new SurveyAuthorizationHandler(users, new HttpContextAccessor());
+    }
 
     private static readonly Guid AuthorId = Guid.NewGuid();
     private static readonly Guid OtherUserId = Guid.NewGuid();
+
+    [HumansTheory]
+    [Xunit.InlineData(OwnershipOperation.Edit, OwnershipAccount.Merged)]
+    [Xunit.InlineData(OwnershipOperation.Edit, OwnershipAccount.Missing)]
+    [Xunit.InlineData(OwnershipOperation.Edit, OwnershipAccount.Cancelled)]
+    [Xunit.InlineData(OwnershipOperation.Edit, OwnershipAccount.Stranger)]
+    [Xunit.InlineData(OwnershipOperation.Submit, OwnershipAccount.Merged)]
+    [Xunit.InlineData(OwnershipOperation.Submit, OwnershipAccount.Missing)]
+    [Xunit.InlineData(OwnershipOperation.Submit, OwnershipAccount.Cancelled)]
+    [Xunit.InlineData(OwnershipOperation.Submit, OwnershipAccount.Stranger)]
+    [Xunit.InlineData(OwnershipOperation.ViewResults, OwnershipAccount.Merged)]
+    [Xunit.InlineData(OwnershipOperation.ViewResults, OwnershipAccount.Missing)]
+    [Xunit.InlineData(OwnershipOperation.ViewResults, OwnershipAccount.Cancelled)]
+    [Xunit.InlineData(OwnershipOperation.ViewResults, OwnershipAccount.Stranger)]
+    [Xunit.InlineData(OwnershipOperation.Preview, OwnershipAccount.Merged)]
+    [Xunit.InlineData(OwnershipOperation.Preview, OwnershipAccount.Missing)]
+    [Xunit.InlineData(OwnershipOperation.Preview, OwnershipAccount.Cancelled)]
+    [Xunit.InlineData(OwnershipOperation.Preview, OwnershipAccount.Stranger)]
+    public async Task Ownership_ResolvesTheAccountWithoutWideningAccess(OwnershipOperation operation, OwnershipAccount account)
+    {
+        using var request = new CancellationTokenSource();
+        var cookieId = Guid.NewGuid();
+        var survivorId = Guid.NewGuid();
+        var users = Substitute.For<IUserService>();
+        users.GetUserInfoAsync(cookieId, Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+            return new ValueTask<UserInfo?>(account == OwnershipAccount.Missing
+                ? null : UserInfo.Create(new User { Id = survivorId }, [], [], null));
+        });
+        using var services = new ServiceCollection().AddSingleton(users)
+            .AddSingleton<IHttpContextAccessor>(new HttpContextAccessor
+            { HttpContext = new DefaultHttpContext { RequestAborted = request.Token } }).BuildServiceProvider();
+        var handler = ActivatorUtilities.CreateInstance<SurveyAuthorizationHandler>(services);
+        var op = operation switch
+        {
+            OwnershipOperation.Edit => SurveyOperation.Edit,
+            OwnershipOperation.Submit => SurveyOperation.Submit,
+            OwnershipOperation.ViewResults => SurveyOperation.ViewResults,
+            OwnershipOperation.Preview => SurveyOperation.Preview,
+            _ => throw new ArgumentOutOfRangeException(nameof(operation))
+        };
+        var status = op == SurveyOperation.ViewResults ? SurveyStatus.Closed : SurveyStatus.Draft;
+        var ownerId = account == OwnershipAccount.Stranger ? Guid.NewGuid() : survivorId;
+        var requirement = new SurveyOperationRequirement(op);
+        var user = account == OwnershipAccount.Missing
+            ? new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, cookieId.ToString()),
+                new Claim(ClaimTypes.Role, RoleNames.Admin)], "test")) : CreateUser(cookieId);
+        var context = new AuthorizationHandlerContext([requirement], user, Detail(status, ownerId));
+        if (account == OwnershipAccount.Cancelled)
+        {
+            await request.CancelAsync();
+            Func<Task> run = () => handler.HandleAsync(context);
+            await run.Should().ThrowAsync<OperationCanceledException>();
+        }
+        else
+        {
+            await handler.HandleAsync(context);
+            context.HasSucceeded.Should().Be(account == OwnershipAccount.Merged);
+        }
+    }
 
     [HumansFact]
     public async Task Author_can_edit_their_own_draft()

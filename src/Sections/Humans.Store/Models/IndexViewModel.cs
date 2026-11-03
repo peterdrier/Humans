@@ -20,7 +20,6 @@ internal sealed class OrderViewModel
 {
     public OrderDto Order { get; init; } = null!;
     public IReadOnlyList<ProductDto> Catalog { get; init; } = [];
-    public string CounterpartyDisplayName { get; init; } = string.Empty;
     public bool CanEdit { get; init; }
     public bool CanPay { get; init; }
     public bool IsStripeConfigured { get; init; }
@@ -61,7 +60,6 @@ internal sealed class OrderViewModel
             CanDeletePayment = canDeletePayment,
             Order = pageData.Order,
             Catalog = catalog,
-            CounterpartyDisplayName = pageData.CounterpartyDisplayName,
             CanEdit = pageData.CanEdit,
             RemovableLineIds = removableLineIds,
             CanPay = pageData.CanPay,

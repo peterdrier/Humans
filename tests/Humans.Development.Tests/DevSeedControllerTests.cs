@@ -83,6 +83,46 @@ public class DevSeedControllerTests
         ctrl.Index().Should().BeOfType<ViewResult>();
     }
 
+    public enum DevSeedAction
+    {
+        SeedBudget,
+        SeedCampRoles,
+        SeedDashboard,
+        ResetDashboard
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(DevSeedAction.SeedBudget)]
+    [Xunit.InlineData(DevSeedAction.SeedCampRoles)]
+    [Xunit.InlineData(DevSeedAction.SeedDashboard)]
+    [Xunit.InlineData(DevSeedAction.ResetDashboard)]
+    public async Task Seed_preflight_cancellation_stops_before_resolving_a_seeder(DevSeedAction action)
+    {
+        _environment.EnvironmentName.Returns("Development");
+        SetDevAuthEnabled(true);
+        var controller = BuildSut();
+        var userId = Guid.Parse(controller.User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        using var request = new CancellationTokenSource();
+        controller.HttpContext.RequestAborted = request.Token;
+        _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            call.Arg<CancellationToken>().Should().Be(request.Token);
+            call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+            return new ValueTask<UserInfo?>(UserInfo.Create(new User { Id = userId }, [], [], null));
+        });
+        await request.CancelAsync();
+        Func<Task<IActionResult>> invoke = action switch
+        {
+            DevSeedAction.SeedBudget => () => controller.SeedBudget(request.Token),
+            DevSeedAction.SeedCampRoles => () => controller.SeedCampRoles(request.Token),
+            DevSeedAction.SeedDashboard => () => controller.SeedDashboard(request.Token),
+            _ => () => controller.ResetDashboard(request.Token),
+        };
+
+        await invoke.Should().ThrowAsync<OperationCanceledException>();
+        _serviceProvider.ReceivedCalls().Should().BeEmpty();
+    }
+
     private void SetDevAuthEnabled(bool enabled)
     {
         // IConfiguration["DevAuth:Enabled"] is consulted by GetValue<bool>.

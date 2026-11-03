@@ -1,5 +1,7 @@
 using System.Security.Claims;
 using Humans.Preapprovals.Services;
+using Humans.Users.Contracts;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Authorization;
 
 namespace Humans.Preapprovals.Authorization;
@@ -21,18 +23,24 @@ internal sealed class ProgramOperationRequirement : IAuthorizationRequirement
     public string Name { get; }
 }
 
-internal sealed class ProgramAuthorizationHandler : AuthorizationHandler<ProgramOperationRequirement, ProgramInfo>
+internal sealed class ProgramAuthorizationHandler(IUserService users, IHttpContextAccessor httpContextAccessor)
+    : AuthorizationHandler<ProgramOperationRequirement, ProgramInfo>
 {
-    protected override Task HandleRequirementAsync(
+    protected override async Task HandleRequirementAsync(
         AuthorizationHandlerContext context, ProgramOperationRequirement requirement, ProgramInfo resource)
     {
-        var allowed = PreapprovalsPolicyHandler.IsAdministeringRole(context.User)
-            || (requirement == ProgramOperationRequirement.View && PreapprovalsPolicyHandler.IsReadingRole(context.User))
-            || (requirement != ProgramOperationRequirement.Administer
-                && Guid.TryParse(context.User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId)
-                && resource.IsManager(userId));
-        if (allowed)
+        if (PreapprovalsPolicyHandler.IsAdministeringRole(context.User)
+            || (requirement == ProgramOperationRequirement.View && PreapprovalsPolicyHandler.IsReadingRole(context.User)))
+        {
             context.Succeed(requirement);
-        return Task.CompletedTask;
+        }
+        else if (requirement != ProgramOperationRequirement.Administer
+            && Guid.TryParse(context.User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId)
+            && await users.GetUserInfoAsync(userId,
+                httpContextAccessor.HttpContext?.RequestAborted ?? CancellationToken.None) is { } viewer
+            && viewer.AllUserIds.Any(resource.IsManager))
+        {
+            context.Succeed(requirement);
+        }
     }
 }

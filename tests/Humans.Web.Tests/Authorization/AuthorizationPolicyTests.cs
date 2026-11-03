@@ -44,6 +44,7 @@ public class AuthorizationPolicyTests : IDisposable
     {
         var services = new ServiceCollection();
         services.AddLogging();
+        services.AddHttpContextAccessor();
         services.AddScoped(_ => Substitute.For<IBudgetService>());
         services.AddScoped(_ => Substitute.For<ICampService>());
         services.AddScoped(_ => Substitute.For<ICityPlanningService>());

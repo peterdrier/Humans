@@ -76,7 +76,6 @@ public class HumanViewComponentTests
                 CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
             },
             userEmails: [],
-            eventParticipations: [],
             externalLogins: [],
             profile: new Profile
             {
@@ -89,8 +88,7 @@ public class HumanViewComponentTests
             },
             contactFields: [],
             profileLanguages: [],
-            volunteerHistory: [],
-            communicationPreferences: []);
+            volunteerHistory: []);
 
         var userService = Substitute.For<IUserService>();
         userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(info);
@@ -113,6 +111,61 @@ public class HumanViewComponentTests
 
         model.ProfilePictureUrl.Should().StartWith($"/Profile/Picture?id={profileId}");
         model.Href.Should().Be($"/Profile/{userId}");
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task Identity_reads_resolve_by_default_and_preserve_raw_merge_accounts_when_requested(bool raw)
+    {
+        var id = Guid.NewGuid();
+        var users = Substitute.For<IUserService>();
+        users.GetUserInfoAsync(id, Arg.Any<CancellationToken>())
+            .Returns(UserInfo.Create(new User { Id = Guid.NewGuid(), BurnerName = "Survivor" }, [], [], null));
+        users.GetRawUserInfoAsync(id, Arg.Any<CancellationToken>())
+            .Returns(UserInfo.Create(new User { Id = id, BurnerName = "Archived account" }, [], [], null));
+        var component = new HumanViewComponent(users, Substitute.For<IUrlHelperFactory>(),
+            Substitute.For<IStringLocalizer<SharedResource>>())
+        {
+            ViewComponentContext = new ViewComponentContext { ViewContext = new ViewContext { HttpContext = new DefaultHttpContext() } }
+        };
+
+        var result = raw
+            ? await component.InvokeAsync(id, link: HumanLink.None, raw: true)
+            : await component.InvokeAsync(id, link: HumanLink.None);
+        var model = (HumanViewModel)((ViewViewComponentResult)result).ViewData!.Model!;
+
+        model.DisplayName.Should().Be(raw ? "Archived account" : "Survivor");
+        if (raw)
+            await users.DidNotReceive().GetUserInfoAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+        else
+            await users.DidNotReceive().GetRawUserInfoAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task Identity_reads_preserve_request_cancellation(bool raw)
+    {
+        using var aborted = new CancellationTokenSource();
+        await aborted.CancelAsync();
+        var users = Substitute.For<IUserService>();
+        users.GetUserInfoAsync(Arg.Any<Guid>(), aborted.Token)
+            .Returns(_ => ValueTask.FromException<UserInfo?>(new OperationCanceledException(aborted.Token)));
+        users.GetRawUserInfoAsync(Arg.Any<Guid>(), aborted.Token)
+            .Returns(_ => ValueTask.FromException<UserInfo?>(new OperationCanceledException(aborted.Token)));
+        var component = new HumanViewComponent(users, Substitute.For<IUrlHelperFactory>(),
+            Substitute.For<IStringLocalizer<SharedResource>>())
+        {
+            ViewComponentContext = new ViewComponentContext
+            {
+                ViewContext = new ViewContext { HttpContext = new DefaultHttpContext { RequestAborted = aborted.Token } }
+            }
+        };
+
+        var act = () => component.InvokeAsync(Guid.NewGuid(), raw: raw);
+
+        await act.Should().ThrowAsync<OperationCanceledException>();
     }
 
     private static WebApplication BuildUsersRoutedApp()

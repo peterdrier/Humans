@@ -1,8 +1,6 @@
 @model Humans.Finance.Models.HoldedDuplicateApplyResult
 @{
     ViewData["Title"] = "Duplicate Holded Documents — applied";
-    var names = ViewBag.MemberNames as Dictionary<Guid, string> ?? new Dictionary<Guid, string>();
-    string MemberName(Guid id) => names.TryGetValue(id, out var n) ? n : id.ToString();
     // Holded's own sign: a negative creditor balance is money the organisation owes.
     string Owed(decimal? balance) => balance is { } b ? (-b).ToEuro() : "—";
 }
@@ -52,7 +50,7 @@ else
         @foreach (var m in Model.Members)
         {
             <tr>
-                <td>@MemberName(m.UserId) <div class="text-muted small">@m.ContactName</div></td>
+                <td><vc:human user-id="@m.UserId" link="None" /> <div class="text-muted small">@m.ContactName</div></td>
                 <td>
                     @if (m.SupplierAccountNum is { } account)
                     {

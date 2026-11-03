@@ -13,12 +13,6 @@ internal sealed class PaymentDetailsRepository(IDbContextFactory<FinanceDbContex
         return await ctx.PaymentDetails.AsNoTracking().SingleOrDefaultAsync(x => x.UserId == userId, ct);
     }
 
-    public async Task<IReadOnlyList<PaymentDetails>> GetAllAsync(CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.PaymentDetails.AsNoTracking().ToListAsync(ct);
-    }
-
     public async Task UpsertAsync(Guid userId, string? iban, Instant now, CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
@@ -33,15 +27,6 @@ internal sealed class PaymentDetailsRepository(IDbContextFactory<FinanceDbContex
             row.UpdatedAt = now;
         }
         await ctx.SaveChangesAsync(ct);
-    }
-
-    public async Task<bool> TryInsertAsync(Guid userId, string iban, Instant now, CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        if (await ctx.PaymentDetails.AnyAsync(x => x.UserId == userId, ct)) return false;
-        ctx.PaymentDetails.Add(new PaymentDetails { UserId = userId, Iban = iban, UpdatedAt = now });
-        await ctx.SaveChangesAsync(ct);
-        return true;
     }
 
     public async Task<bool> DeleteAsync(Guid userId, CancellationToken ct = default)

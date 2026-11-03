@@ -92,7 +92,7 @@ internal sealed class BackdoorController(
         var eligibleIds = new HashSet<Guid>(await roles.GetActiveUserIdsInRoleAsync(RoleNames.Admin, ct));
         eligibleIds.UnionWith(await roles.GetActiveUserIdsInRoleAsync(RoleNames.Board, ct));
 
-        var infos = await UserService.GetUserInfosAsync([.. eligibleIds.Union(rows.Select(r => r.UserId))], ct);
+        var infos = await UserService.GetUserInfosAsync([.. eligibleIds], ct);
 
         // A role assignment outlives a suspension, so the role sets alone name accounts the service refuses. Narrowing
         // by state gives the same two-part test IBackdoorApiKeyService applies at issue.
@@ -105,7 +105,6 @@ internal sealed class BackdoorController(
             Keys = [.. rows.OrderByDescending(r => r.CreatedAt).Select(r => new BackdoorKeyListItem(
                 r.Id,
                 r.UserId,
-                infos.GetValueOrDefault(r.UserId)?.BurnerName ?? "(unknown)",
                 r.Label,
                 r.DisplayPrefix,
                 r.CreatedAt,

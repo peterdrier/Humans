@@ -29,10 +29,10 @@ internal sealed class EventsExportController(
     [Authorize(Policy = EventsPolicies.Manage)]
     public async Task<IActionResult> DownloadCsv(CancellationToken ct)
     {
-        var actorUserId = GetCurrentUserId();
-        if (actorUserId is null) return Unauthorized();
+        var actor = await GetCurrentUserInfoAsync(ct);
+        if (actor is null) return Unauthorized();
 
-        var bytes = await guide.GetApprovedEventsForExportAsync(actorUserId.Value, ct);
+        var bytes = await guide.GetApprovedEventsForExportAsync(actor.Id, ct);
         return File(bytes, "text/csv", "event-guide-export.csv");
     }
 

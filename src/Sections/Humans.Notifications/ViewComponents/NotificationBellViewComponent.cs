@@ -1,11 +1,12 @@
 using Humans.Notifications.Services;
+using Humans.Users.Contracts;
 using Humans.Notifications.Models;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
 
 namespace Humans.Notifications.ViewComponents;
 
-internal sealed class NotificationBellViewComponent(INotificationInboxService notificationInboxService)
+internal sealed class NotificationBellViewComponent(INotificationInboxService notificationInboxService, IUserService users)
     : ViewComponent
 {
     public async Task<IViewComponentResult> InvokeAsync()
@@ -18,8 +19,12 @@ internal sealed class NotificationBellViewComponent(INotificationInboxService no
         if (userId is null)
             return View(new NotificationBadgeViewModel());
 
+        var user = await users.GetUserInfoAsync(userId.Value, HttpContext.RequestAborted);
+        if (user is null)
+            return View(new NotificationBadgeViewModel());
+
         var (actionableCount, informationalCount) = await notificationInboxService.GetUnreadBadgeCountsAsync(
-            userId.Value, HttpContext.RequestAborted);
+            user.Id, HttpContext.RequestAborted);
 
         return View(new NotificationBadgeViewModel
         {

@@ -54,7 +54,7 @@ internal sealed class FacilitatedMessageController(
         var viewModel = new SendMessageViewModel
         {
             RecipientId = id,
-            RecipientDisplayName = targetInfo.BurnerName,
+            PageTitle = string.Format(localizer["Email_SendMessage_Title"].Value, targetInfo.BurnerName),
             SenderEmail = currentUser.Email ?? string.Empty,
         };
 
@@ -86,7 +86,7 @@ internal sealed class FacilitatedMessageController(
         }
 
         model.RecipientId = id;
-        model.RecipientDisplayName = targetUser.BurnerName;
+        model.PageTitle = string.Format(localizer["Email_SendMessage_Title"].Value, targetUser.BurnerName);
         model.SenderEmail = currentUser.Email ?? string.Empty;
 
         if (!ModelState.IsValid)

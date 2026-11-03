@@ -133,7 +133,7 @@
             </button>
             <span class="d-flex align-items-center gap-3">
                 <span class="text-muted small">
-                    @file.GeneratedAt.ToDateTime(madrid) by @file.GeneratedByName
+                    @file.GeneratedAt.ToDateTime(madrid) by <vc:human user-id="@file.GeneratedByUserId" link="None" />
                 </span>
                 @if (canCancel)
                 {
@@ -234,14 +234,14 @@
                     <td>
                         <a asp-action="CreditorStatement" asp-route-accountNum="@t.Row.SupplierAccountNum">@t.Row.SupplierAccountNum</a>
                     </td>
-                    <td>@t.MemberName<div class="text-muted small">@t.Row.CreditorName</div></td>
+                    <td><vc:human user-id="@t.Row.UserId" link="None" /><div class="text-muted small">@t.Row.CreditorName</div></td>
                     <td class="font-monospace small">@t.Row.IbanMasked</td>
                     <td class="text-end">@t.Row.Amount.ToEuro()</td>
                     <td>
                         @if (t.Row.WithdrawnAt is { } withdrawnAt)
                         {
                             <span class="badge text-bg-dark">Withdrawn</span>
-                            <div class="text-muted small">@withdrawnAt.ToDateTime(madrid) by @t.WithdrawnByName</div>
+                            <div class="text-muted small">@withdrawnAt.ToDateTime(madrid) by <vc:human user-id="@(t.Row.WithdrawnByUserId ?? Guid.Empty)" link="None" /></div>
                         }
                         else if (t.Row.BookedAt is { } bookedAt)
                         {
@@ -254,7 +254,16 @@
                             {
                                 <span class="badge text-bg-warning" title="While Holded reads the line pending, the sweep re-issues the reconcile from the recorded payment ids every two hours and stamps the row once the line reads reconciled. A line that reads partial is a human's to finish in Holded.">Reconcile pending (@t.Row.HoldedBankMovementId)</span>
                             }
-                            <div class="text-muted small">@bookedAt.ToDateTime(madrid) by @t.BookedByName</div>
+                            <div class="text-muted small">@bookedAt.ToDateTime(madrid) by
+                                @if (t.Row.BookedByUserId is { } bookedBy)
+                                {
+                                    <vc:human user-id="@bookedBy" link="None" />
+                                }
+                                else
+                                {
+                                    <text>automatic sweep</text>
+                                }
+                            </div>
                         }
                         else
                         {

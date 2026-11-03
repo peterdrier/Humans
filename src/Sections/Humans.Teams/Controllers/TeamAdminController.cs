@@ -36,7 +36,7 @@ internal sealed class TeamAdminController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> ApproveRequest(string slug, Guid requestId, ApproveRejectRequestModel model)
     {
-        var (teamError, user, team) = await ResolveTeamManagementAsync(slug);
+        var (teamError, user, team) = await ResolveTeamManagementAsync(slug, HttpContext.RequestAborted);
         if (teamError is not null)
         {
             return teamError;
@@ -68,7 +68,7 @@ internal sealed class TeamAdminController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> RejectRequest(string slug, Guid requestId, ApproveRejectRequestModel model)
     {
-        var (teamError, user, team) = await ResolveTeamManagementAsync(slug);
+        var (teamError, user, team) = await ResolveTeamManagementAsync(slug, HttpContext.RequestAborted);
         if (teamError is not null)
         {
             return teamError;
@@ -107,7 +107,7 @@ internal sealed class TeamAdminController(
     {
         if (page < 1) page = 1;
         var pageSize = 20;
-        var (teamError, user, team, canManage) = await ResolveTeamViewAsync(slug);
+        var (teamError, user, team, canManage) = await ResolveTeamViewAsync(slug, HttpContext.RequestAborted);
         if (teamError is not null)
         {
             return teamError;
@@ -124,7 +124,7 @@ internal sealed class TeamAdminController(
             .Take(pageSize)
             .ToList();
 
-        var pagedMemberInfos = await _userService.GetUserInfosAsync(pagedMembers.Select(m => m.UserId).ToList());
+        var pagedMemberInfos = await _userService.GetUserInfosAsync(pagedMembers.Select(m => m.UserId).ToList(), HttpContext.RequestAborted);
 
         var members = pagedMembers
             .Select(m =>
@@ -146,32 +146,26 @@ internal sealed class TeamAdminController(
                 };
             }).ToList();
 
-        var pendingRequests = await _teamService.GetPendingRequestsForTeamAsync(team.Id);
+        var pendingRequests = await _teamService.GetPendingRequestsForTeamAsync(team.Id, HttpContext.RequestAborted);
         var pendingRequestViewModels = pendingRequests
             .Select(r => new TeamJoinRequestViewModel
             {
                 Id = r.Id,
-                TeamId = r.TeamId,
-                TeamName = team.Name,
                 UserId = r.UserId,
-                UserEmail = r.UserEmail ?? "",
-                Status = r.Status,
                 Message = r.Message,
                 RequestedAt = r.RequestedAt.ToDateTimeUtc()
             }).ToList();
 
-        var allTeamResources = await teamResourceService.GetTeamResourcesAsync(team.Id);
+        var allTeamResources = await teamResourceService.GetTeamResourcesAsync(team.Id, HttpContext.RequestAborted);
         var teamResources = allTeamResources.Where(r => r.IsActive).OrderBy(r => r.ResourceType).ThenBy(r => r.Name, StringComparer.Ordinal).ToList();
 
         var parentDepartmentResources = new List<GoogleResourceSnapshot>();
         string? parentDepartmentName = null;
-        string? parentDepartmentSlug = null;
         if (team.ParentTeamId is { } parentTeamId &&
-            await _teamService.GetTeamAsync(parentTeamId) is { } parentTeam)
+            await _teamService.GetTeamAsync(parentTeamId, HttpContext.RequestAborted) is { } parentTeam)
         {
             parentDepartmentName = parentTeam.Name;
-            parentDepartmentSlug = parentTeam.CustomSlug ?? parentTeam.Slug;
-            var allParentResources = await teamResourceService.GetTeamResourcesAsync(parentTeam.Id);
+            var allParentResources = await teamResourceService.GetTeamResourcesAsync(parentTeam.Id, HttpContext.RequestAborted);
             parentDepartmentResources = allParentResources.Where(r => r.IsActive).OrderBy(r => r.ResourceType).ThenBy(r => r.Name, StringComparer.Ordinal).ToList();
         }
 
@@ -193,7 +187,6 @@ internal sealed class TeamAdminController(
             TeamResources = teamResources.Select(MapResourceAccess).ToList(),
             ParentDepartmentResources = parentDepartmentResources.Select(MapResourceAccess).ToList(),
             ParentDepartmentName = parentDepartmentName,
-            ParentDepartmentSlug = parentDepartmentSlug,
             IsSensitive = team.IsSensitive,
             ActorUserId = user.Id
         };
@@ -236,7 +229,7 @@ internal sealed class TeamAdminController(
     [Authorize(Policy = PolicyNames.BoardOrAdmin)]
     public async Task<IActionResult> Roster(string slug, CancellationToken ct)
     {
-        var (teamError, _, team) = await ResolveTeamManagementAsync(slug);
+        var (teamError, _, team) = await ResolveTeamManagementAsync(slug, HttpContext.RequestAborted);
         if (teamError is not null)
         {
             return teamError;
@@ -262,7 +255,7 @@ internal sealed class TeamAdminController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> RemoveMember(string slug, Guid userId)
     {
-        var (teamError, user, team) = await ResolveTeamManagementAsync(slug);
+        var (teamError, user, team) = await ResolveTeamManagementAsync(slug, HttpContext.RequestAborted);
         if (teamError is not null)
         {
             return teamError;
@@ -284,7 +277,7 @@ internal sealed class TeamAdminController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> AddMember(string slug, AddMemberModel model)
     {
-        var (teamError, user, team) = await ResolveTeamManagementAsync(slug);
+        var (teamError, user, team) = await ResolveTeamManagementAsync(slug, HttpContext.RequestAborted);
         if (teamError is not null)
         {
             return teamError;
@@ -313,7 +306,7 @@ internal sealed class TeamAdminController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> ProvisionEmail(string slug, Guid userId, string emailPrefix)
     {
-        var (teamError, user, team) = await ResolveTeamManagementAsync(slug);
+        var (teamError, user, team) = await ResolveTeamManagementAsync(slug, HttpContext.RequestAborted);
         if (teamError is not null)
         {
             return teamError;
@@ -325,7 +318,7 @@ internal sealed class TeamAdminController(
             return RedirectToAction(nameof(Members), new { slug });
         }
 
-        var teamInfo = await _teamService.GetTeamAsync(team.Id);
+        var teamInfo = await _teamService.GetTeamAsync(team.Id, HttpContext.RequestAborted);
         if (teamInfo is null || teamInfo.Members.All(m => m.UserId != userId))
         {
             SetError("That human is not a member of this team.");
@@ -358,7 +351,7 @@ internal sealed class TeamAdminController(
     [HttpGet("Members/Search")]
     public async Task<IActionResult> SearchUsers(string slug, string q)
     {
-        var (teamError, _, team) = await ResolveTeamManagementAsync(slug);
+        var (teamError, _, team) = await ResolveTeamManagementAsync(slug, HttpContext.RequestAborted);
         if (teamError is not null)
         {
             return teamError;
@@ -372,9 +365,9 @@ internal sealed class TeamAdminController(
         // Name-only: team admins aren't global admins, so no contact-data search. Uncapped and relevance-ranked, so the
         // target can't fall outside an arbitrary cap.
         var results = await _userService.SearchUsersAsync(
-            q, PersonSearchFields.Name, limit: int.MaxValue);
+            q, PersonSearchFields.Name, limit: int.MaxValue, ct: HttpContext.RequestAborted);
 
-        var teamInfo = await _teamService.GetTeamAsync(team.Id);
+        var teamInfo = await _teamService.GetTeamAsync(team.Id, HttpContext.RequestAborted);
         var existingMemberIds = teamInfo?.Members.Select(m => m.UserId).ToHashSet() ?? [];
 
         var filtered = results
@@ -389,21 +382,21 @@ internal sealed class TeamAdminController(
     [HttpGet("Roles")]
     public async Task<IActionResult> Roles(string slug)
     {
-        var (teamError, _, team) = await ResolveTeamManagementAsync(slug);
+        var (teamError, _, team) = await ResolveTeamManagementAsync(slug, HttpContext.RequestAborted);
         if (teamError is not null)
         {
             return teamError;
         }
 
-        var definitions = await _teamService.GetRoleDefinitionsAsync(team.Id);
-        var teamInfo = await _teamService.GetTeamAsync(team.Id);
+        var definitions = await _teamService.GetRoleDefinitionsAsync(team.Id, HttpContext.RequestAborted);
+        var teamInfo = await _teamService.GetTeamAsync(team.Id, HttpContext.RequestAborted);
         var members = teamInfo?.Members
             .OrderBy(m => m.Role)
             .ThenBy(m => m.DisplayName, StringComparer.OrdinalIgnoreCase)
             .ToList() ?? [];
 
         var memberUserIds = members.Select(m => m.UserId).ToList();
-        var memberInfos = await _userService.GetUserInfosAsync(memberUserIds);
+        var memberInfos = await _userService.GetUserInfosAsync(memberUserIds, HttpContext.RequestAborted);
 
         var canToggleManagement = (await AuthorizationService.AuthorizeAsync(User, TeamsPolicies.Manage)).Succeeded;
 
@@ -458,7 +451,7 @@ internal sealed class TeamAdminController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> CreateRole(string slug, CreateRoleDefinitionModel model)
     {
-        var (teamError, user, team) = await ResolveTeamManagementAsync(slug);
+        var (teamError, user, team) = await ResolveTeamManagementAsync(slug, HttpContext.RequestAborted);
         if (teamError is not null)
         {
             return teamError;
@@ -497,7 +490,7 @@ internal sealed class TeamAdminController(
     {
         var isAjax = Request.Headers.XRequestedWith == "XMLHttpRequest";
 
-        var (teamError, user, team) = await ResolveTeamManagementAsync(slug);
+        var (teamError, user, team) = await ResolveTeamManagementAsync(slug, HttpContext.RequestAborted);
         if (teamError is not null)
         {
             return isAjax ? Unauthorized() : teamError;
@@ -541,7 +534,7 @@ internal sealed class TeamAdminController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> DeleteRole(string slug, Guid roleId)
     {
-        var (teamError, user, team) = await ResolveTeamManagementAsync(slug);
+        var (teamError, user, team) = await ResolveTeamManagementAsync(slug, HttpContext.RequestAborted);
         if (teamError is not null)
         {
             return teamError;
@@ -566,7 +559,7 @@ internal sealed class TeamAdminController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> ToggleManagement(string slug, Guid roleId)
     {
-        var (teamError, user, team) = await ResolveTeamManagementAsync(slug);
+        var (teamError, user, team) = await ResolveTeamManagementAsync(slug, HttpContext.RequestAborted);
         if (teamError is not null)
         {
             return teamError;
@@ -599,7 +592,7 @@ internal sealed class TeamAdminController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> AssignRole(string slug, Guid roleId, AssignRoleModel model)
     {
-        var (teamError, user, team) = await ResolveTeamManagementAsync(slug);
+        var (teamError, user, team) = await ResolveTeamManagementAsync(slug, HttpContext.RequestAborted);
         if (teamError is not null)
         {
             return teamError;
@@ -623,7 +616,7 @@ internal sealed class TeamAdminController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> UnassignRole(string slug, Guid roleId, Guid memberId)
     {
-        var (teamError, user, team) = await ResolveTeamManagementAsync(slug);
+        var (teamError, user, team) = await ResolveTeamManagementAsync(slug, HttpContext.RequestAborted);
         if (teamError is not null)
         {
             return teamError;
@@ -646,7 +639,7 @@ internal sealed class TeamAdminController(
     [HttpGet("EditPage")]
     public async Task<IActionResult> EditPage(string slug)
     {
-        var (teamError, _, team) = await ResolveTeamManagementAsync(slug);
+        var (teamError, _, team) = await ResolveTeamManagementAsync(slug, HttpContext.RequestAborted);
         if (teamError is not null)
             return teamError;
 
@@ -660,7 +653,7 @@ internal sealed class TeamAdminController(
         {
             TeamId = team.Id,
             Slug = team.Slug,
-            TeamName = await GetTeamDisplayNameAsync(team),
+            TeamName = await GetTeamDisplayNameAsync(team, HttpContext.RequestAborted),
             IsPublicPage = team.IsPublicPage,
             ShowCoordinatorsOnPublicPage = team.ShowCoordinatorsOnPublicPage,
             CanBePublic = team.CanBePublic,
@@ -675,13 +668,13 @@ internal sealed class TeamAdminController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> EditPage(string slug, EditTeamPageViewModel model)
     {
-        var (teamError, user, team) = await ResolveTeamManagementAsync(slug);
+        var (teamError, user, team) = await ResolveTeamManagementAsync(slug, HttpContext.RequestAborted);
         if (teamError is not null)
             return teamError;
 
         if (!ModelState.IsValid)
         {
-            await PopulateEditTeamPageModelAsync(model, team);
+            await PopulateEditTeamPageModelAsync(model, team, HttpContext.RequestAborted);
             return View(model);
         }
 
@@ -709,7 +702,7 @@ internal sealed class TeamAdminController(
     [HttpGet("EarlyEntry")]
     public async Task<IActionResult> EarlyEntry(string slug, CancellationToken ct)
     {
-        var (teamError, _, team) = await ResolveEarlyEntryManagementAsync(slug);
+        var (teamError, _, team) = await ResolveEarlyEntryManagementAsync(slug, HttpContext.RequestAborted);
         if (teamError is not null)
         {
             return teamError;
@@ -728,7 +721,7 @@ internal sealed class TeamAdminController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> AddEarlyEntry(string slug, AddTeamEarlyEntryInput input, CancellationToken ct)
     {
-        var (teamError, user, team) = await ResolveEarlyEntryManagementAsync(slug);
+        var (teamError, user, team) = await ResolveEarlyEntryManagementAsync(slug, HttpContext.RequestAborted);
         if (teamError is not null)
         {
             return teamError;
@@ -768,7 +761,7 @@ internal sealed class TeamAdminController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> EditEarlyEntry(string slug, EditTeamEarlyEntryInput input, CancellationToken ct)
     {
-        var (teamError, user, team) = await ResolveEarlyEntryManagementAsync(slug);
+        var (teamError, user, team) = await ResolveEarlyEntryManagementAsync(slug, HttpContext.RequestAborted);
         if (teamError is not null)
         {
             return teamError;
@@ -808,7 +801,7 @@ internal sealed class TeamAdminController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> RemoveEarlyEntry(string slug, Guid grantId, CancellationToken ct)
     {
-        var (teamError, user, team) = await ResolveEarlyEntryManagementAsync(slug);
+        var (teamError, user, team) = await ResolveEarlyEntryManagementAsync(slug, HttpContext.RequestAborted);
         if (teamError is not null)
         {
             return teamError;
@@ -836,7 +829,7 @@ internal sealed class TeamAdminController(
     [HttpGet("EarlyEntry/LookupTicket")]
     public async Task<IActionResult> LookupTicket(string slug, string? q, CancellationToken ct)
     {
-        var (teamError, _, team) = await ResolveEarlyEntryManagementAsync(slug);
+        var (teamError, _, team) = await ResolveEarlyEntryManagementAsync(slug, HttpContext.RequestAborted);
         if (teamError is not null)
         {
             return teamError;
@@ -860,14 +853,11 @@ internal sealed class TeamAdminController(
     private async Task<TeamEarlyEntryPageViewModel> BuildEarlyEntryPageAsync(TeamInfo team, CancellationToken ct)
     {
         var grants = await _teamService.GetEarlyEntryGrantsForTeamAsync(team.Id, ct);
-        var humans = await _userService.GetUserInfosAsync(
-            grants.Select(g => g.UserId).Distinct().ToList(), ct);
-
         var rows = grants
             .Select(g => new TeamEarlyEntryRowViewModel
             {
                 GrantId = g.Id,
-                HumanName = humans.GetValueOrDefault(g.UserId)?.BurnerName ?? "",
+                UserId = g.UserId,
                 EntryDate = g.EntryDate,
                 ProjectName = g.ProjectName,
             })
@@ -905,7 +895,7 @@ internal sealed class TeamAdminController(
     [HttpGet("Roles/SearchMembers")]
     public async Task<IActionResult> SearchMembersForRole(string slug, string q)
     {
-        var (teamError, _, team) = await ResolveTeamManagementAsync(slug);
+        var (teamError, _, team) = await ResolveTeamManagementAsync(slug, HttpContext.RequestAborted);
         if (teamError is not null)
         {
             return teamError;
@@ -923,7 +913,7 @@ internal sealed class TeamAdminController(
 
         // Name-only (team admins aren't global admins); uncapped, folded and relevance-ranked.
         var allResults = await _userService.SearchUsersAsync(
-            q, PersonSearchFields.Name, limit: int.MaxValue);
+            q, PersonSearchFields.Name, limit: int.MaxValue, ct: HttpContext.RequestAborted);
         var nameMatchIds = allResults.Select(r => r.UserId).ToHashSet();
 
         // Team members first, matched by folded name (profiled members), by DisplayName (legacy members without a
@@ -947,17 +937,17 @@ internal sealed class TeamAdminController(
         return Json(combined);
     }
 
-    private async Task PopulateEditTeamPageModelAsync(EditTeamPageViewModel model, TeamInfo team)
+    private async Task PopulateEditTeamPageModelAsync(EditTeamPageViewModel model, TeamInfo team, CancellationToken ct = default)
     {
         model.Slug = team.Slug;
-        model.TeamName = await GetTeamDisplayNameAsync(team);
+        model.TeamName = await GetTeamDisplayNameAsync(team, ct);
         model.CanBePublic = team.CanBePublic;
     }
 
-    private async Task<string> GetTeamDisplayNameAsync(TeamInfo team)
+    private async Task<string> GetTeamDisplayNameAsync(TeamInfo team, CancellationToken ct)
     {
         var parent = team.ParentTeamId is { } parentId
-            ? await _teamService.GetTeamAsync(parentId, HttpContext.RequestAborted)
+            ? await _teamService.GetTeamAsync(parentId, ct)
             : null;
         return parent is not null ? $"{parent.Name} - {team.Name}" : team.Name;
     }

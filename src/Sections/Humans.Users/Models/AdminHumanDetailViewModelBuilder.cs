@@ -1,7 +1,6 @@
 using Humans.Base.Helpers;
 using Humans.Governance.Contracts;
 using Humans.Users.Contracts;
-using NodaTime;
 
 namespace Humans.Users.Models;
 
@@ -12,8 +11,7 @@ internal static class AdminHumanDetailViewModelBuilder
         IReadOnlyList<UserApplicationSnapshot> applications,
         MembershipTier membershipTier,
         IReadOnlyList<UserEmailRowSnapshot> userEmails,
-        int consentCount,
-        Instant now)
+        int consentCount)
     {
         ArgumentNullException.ThrowIfNull(info);
         ArgumentNullException.ThrowIfNull(applications);
@@ -30,7 +28,6 @@ internal static class AdminHumanDetailViewModelBuilder
             UserId = info.Id,
             Email = effectiveEmail ?? string.Empty,
             DisplayName = info.BurnerName,
-            ProfilePictureUrl = info.ProfilePictureUrl,
             CreatedAt = info.CreatedAt.ToDateTimeUtc(),
             LastLoginAt = info.LastLoginAt?.ToDateTimeUtc(),
             State = info.State,
@@ -57,7 +54,6 @@ internal static class AdminHumanDetailViewModelBuilder
                     LanguageName = LanguageCatalog.GetDisplayName(pl.LanguageCode),
                     Proficiency = pl.Proficiency
                 }).ToList(),
-            OAuthEmail = info.Email,
             UserEmails = userEmails
                 .OrderBy(e => e.Email, StringComparer.OrdinalIgnoreCase)
                 .Select(e => new AdminUserEmailViewModel

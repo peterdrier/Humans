@@ -27,7 +27,7 @@ public class HumanNameLocalizationTests
             Id = userId,
             BurnerName = "Sparkle",
             ProfilePictureUrl = fallbackPictureUrl,
-        }, [], [], [], null, []);
+        }, [], [], null);
         users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(info);
         var component = new HumanViewComponent(users, Substitute.For<IUrlHelperFactory>(),
             Substitute.For<IStringLocalizer<SharedResource>>())
@@ -65,7 +65,7 @@ public class HumanNameLocalizationTests
         };
         var userId = Guid.NewGuid();
         var nameless = UserInfo.Create(new User { Id = userId, BurnerName = "", PreferredLanguage = "en" },
-            [], [], [], null, []);
+            [], [], null);
 
         foreach (var id in new[] { Guid.Empty, userId })
         {

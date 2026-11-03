@@ -54,19 +54,10 @@ internal sealed class IndividualEventRowViewModel
     public bool CanEdit { get; set; }
     public bool CanWithdraw { get; set; }
 
-    public string StatusBadgeClass => Status switch
-    {
-        EventStatus.Draft => "bg-secondary",
-        EventStatus.Pending => "bg-warning text-dark",
-        EventStatus.Approved => "bg-success",
-        EventStatus.Rejected => "bg-danger",
-        EventStatus.ResubmitRequested => "bg-info",
-        EventStatus.Withdrawn => "bg-dark",
-        _ => "bg-secondary"
-    };
+    public string StatusBadgeClass => EventStatusPresentation.BadgeClass(Status);
 }
 
-internal sealed class IndividualEventFormViewModel
+internal abstract class EventProposalFormViewModel
 {
     public Guid? Id { get; set; }
 
@@ -83,10 +74,6 @@ internal sealed class IndividualEventFormViewModel
     public Guid CategoryId { get; set; }
 
     [Required(ErrorMessage = "Validation_Required")]
-    [Display(Name = "Venue")]
-    public Guid VenueId { get; set; }
-
-    [Required(ErrorMessage = "Validation_Required")]
     [Display(Name = "Date")]
     [BindRequired]
     public DateOnly StartDate { get; set; }
@@ -95,16 +82,6 @@ internal sealed class IndividualEventFormViewModel
     [Display(Name = "Start Time")]
     [BindRequired]
     public TimeOnly StartTime { get; set; }
-
-    [Required(ErrorMessage = "Validation_Required")]
-    [Range(15, 1440, ErrorMessage = "Validation_Range")]
-    [Display(Name = "Duration (minutes)")]
-    [BindRequired]
-    public int DurationMinutes { get; set; } = 60;
-
-    [Display(Name = "All day")]
-    [BindRequired]
-    public bool IsAllDay { get; set; }
 
     [MaxLength(120, ErrorMessage = "Validation_MaxLength")]
     [Display(Name = "Location Note")]
@@ -122,11 +99,29 @@ internal sealed class IndividualEventFormViewModel
     public string? RecurrenceDays { get; set; }
 
     public List<CategoryOptionViewModel> Categories { get; set; } = [];
-    public List<VenueOptionViewModel> Venues { get; set; } = [];
     public List<EventDayOptionViewModel> EventDays { get; set; } = [];
     public string? TimeZoneId { get; set; }
 
     public bool IsResubmit { get; set; }
+}
+
+internal sealed class IndividualEventFormViewModel : EventProposalFormViewModel
+{
+    [Required(ErrorMessage = "Validation_Required")]
+    [Display(Name = "Venue")]
+    public Guid VenueId { get; set; }
+
+    [Required(ErrorMessage = "Validation_Required")]
+    [Range(15, 1440, ErrorMessage = "Validation_Range")]
+    [Display(Name = "Duration (minutes)")]
+    [BindRequired]
+    public int DurationMinutes { get; set; } = 60;
+
+    [Display(Name = "All day")]
+    [BindRequired]
+    public bool IsAllDay { get; set; }
+
+    public List<VenueOptionViewModel> Venues { get; set; } = [];
 }
 
 internal sealed class ScheduleViewModel
@@ -205,6 +200,6 @@ internal sealed class BrowseEventItem
     /// <summary>This card's day for recurring events, else null (whole event).</summary>
     public int? FavouriteDayOffset { get; set; }
     public bool IsFavourited { get; set; }
-    public string? SubmitterName { get; set; }
-    public string? DisplayHost { get; set; }
+    public Guid? SubmitterUserId { get; set; }
+    public string? Host { get; set; }
 }

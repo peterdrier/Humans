@@ -71,12 +71,12 @@ public class AcceptAsyncFullFixtureTest(HumansTestDatabase database)
 
             b.WithSourceLanguage($"x-{runTag.Substring(0, 4)}", LanguageProficiency.Native);
 
-            b.WithSourceCommPref(LegacyMessageCategory.VolunteerUpdates, optedOut: true);
+            b.WithSourceCommPref(MessageCategory.VolunteerUpdates, optedOut: true);
 
             // Logins are keyed on (provider, key), so two users never share one.
             b.WithSourceLogin("Google", sourceLoginKey);
 
-            b.WithSourceEventParticipation(2024, LegacyParticipationStatus.Attended);
+            b.WithSourceEventParticipation(2024, ParticipationStatus.Attended);
 
             b.WithSourceApplication();
 

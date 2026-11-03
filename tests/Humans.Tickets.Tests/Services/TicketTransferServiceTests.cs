@@ -1190,10 +1190,8 @@ public sealed class TicketTransferServiceTests
         User user, ProfileInfo? profile, IReadOnlyList<UserEmail>? emails = null) => UserInfo.Create(
         user: user,
         userEmails: emails ?? [],
-        eventParticipations: [],
         externalLogins: [],
-        profile: profile,
-        communicationPreferences: []);
+        profile: profile);
 
     private static TicketAttendee MakeAttendee(
         Guid id, Guid orderId, Guid attendeeMatchedUserId, TicketAttendeeStatus status,

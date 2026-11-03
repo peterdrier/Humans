@@ -377,14 +377,14 @@
             </div>
         }
 
-        @if (Model.VisibleBurnerName is not null || Model.VisibleLegalName is not null)
+        @if (Model.VisibleSubmitterUserId is not null || Model.VisibleLegalName is not null)
         {
             <div class="card mb-3">
                 <div class="card-header"><strong>@Localizer["Expenses_Submitter"]</strong></div>
                 <div class="card-body">
-                    @if (Model.VisibleBurnerName is not null)
+                    @if (Model.VisibleSubmitterUserId is not null)
                     {
-                        <p class="mb-1">@Model.VisibleBurnerName</p>
+                        <p class="mb-1"><vc:human user-id="@Model.VisibleSubmitterUserId.Value" link="None" /></p>
                     }
                     @if (Model.VisibleLegalName is not null)
                     {

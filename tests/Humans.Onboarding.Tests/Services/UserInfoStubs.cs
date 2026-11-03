@@ -17,20 +17,16 @@ internal static class UserInfoStubs
             user,
             userEmails ?? user.UserEmails?.ToList() ?? [],
             [],
-            [],
-            profile: profile,
-            []);
+            profile: profile);
 
     internal static UserInfo MakeUserInfo(Guid userId, ProfileInfo? profile = null, string displayName = "User")
     {
-        var info = profile ?? UserFixtures.Profile(burnerName: displayName, isApproved: true);
+        var info = profile ?? UserFixtures.Profile(burnerName: displayName);
         return UserInfo.Create(
             // UserInfo.BurnerName reads User.BurnerName, so it is seeded there.
             new User { Id = userId, PreferredLanguage = "en", BurnerName = info.BurnerName, State = UserFixtures.StateFor(info) },
             [],
             [],
-            [],
-            profile: info,
-            []);
+            profile: info);
     }
 }

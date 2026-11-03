@@ -136,10 +136,8 @@ public sealed class ConsentServiceTests : ConsentTestHarness
             State = UserFixtures.StateFor(profile),
         },
         userEmails: [],
-        eventParticipations: [],
         externalLogins: [],
-        profile: profile,
-        communicationPreferences: []);
+        profile: profile);
 
     [HumansFact]
     public async Task GetRequiredConsentRowsForUserAsync_PicksLatestEffectiveVersion_AndSkipsFutureOnlyDocuments()

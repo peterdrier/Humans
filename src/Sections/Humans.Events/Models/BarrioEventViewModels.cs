@@ -16,46 +16,14 @@ internal sealed class CampEventRowViewModel
     public bool CanEdit { get; set; }
     public bool CanWithdraw { get; set; }
 
-    public string StatusBadgeClass => Status switch
-    {
-        EventStatus.Draft => "bg-secondary",
-        EventStatus.Pending => "bg-warning text-dark",
-        EventStatus.Approved => "bg-success",
-        EventStatus.Rejected => "bg-danger",
-        EventStatus.ResubmitRequested => "bg-info",
-        EventStatus.Withdrawn => "bg-dark",
-        _ => "bg-secondary"
-    };
+    public string StatusBadgeClass => EventStatusPresentation.BadgeClass(Status);
 }
 
-internal sealed class CampEventFormViewModel
+internal sealed class CampEventFormViewModel : EventProposalFormViewModel
 {
-    public Guid? Id { get; set; }
     public Guid CampId { get; set; }
     public string CampName { get; set; } = string.Empty;
     public string CampSlug { get; set; } = string.Empty;
-
-    [Required(ErrorMessage = "Validation_Required")]
-    [MaxLength(80, ErrorMessage = "Validation_MaxLength")]
-    public string Title { get; set; } = string.Empty;
-
-    [Required(ErrorMessage = "Validation_Required")]
-    [MaxLength(450, ErrorMessage = "Validation_MaxLength")]
-    public string Description { get; set; } = string.Empty;
-
-    [Required(ErrorMessage = "Validation_Required")]
-    [Display(Name = "Category")]
-    public Guid CategoryId { get; set; }
-
-    [Required(ErrorMessage = "Validation_Required")]
-    [Display(Name = "Date")]
-    [BindRequired]
-    public DateOnly StartDate { get; set; }
-
-    [Required(ErrorMessage = "Validation_Required")]
-    [Display(Name = "Start Time")]
-    [BindRequired]
-    public TimeOnly StartTime { get; set; }
 
     [Required(ErrorMessage = "Validation_Required")]
     [Range(15, 480, ErrorMessage = "Validation_Range")]
@@ -63,32 +31,10 @@ internal sealed class CampEventFormViewModel
     [BindRequired]
     public int DurationMinutes { get; set; } = 60;
 
-    [MaxLength(120, ErrorMessage = "Validation_MaxLength")]
-    [Display(Name = "Location Note")]
-    public string? LocationNote { get; set; }
-
-    [MaxLength(40, ErrorMessage = "Validation_MaxLength")]
-    [Display(Name = "Host")]
-    public string? Host { get; set; }
-
-    [Display(Name = "Recurring")]
-    [BindRequired]
-    public bool IsRecurring { get; set; }
-
-    [Display(Name = "Recurrence Days")]
-    public string? RecurrenceDays { get; set; }
-
     [Required(ErrorMessage = "Validation_Required")]
     [Range(1, 100, ErrorMessage = "Validation_Range")]
     [Display(Name = "Priority Rank")]
     public int? PriorityRank { get; set; }
-
-    public List<CategoryOptionViewModel> Categories { get; set; } = [];
-    public List<EventDayOptionViewModel> EventDays { get; set; } = [];
-    public string? TimeZoneId { get; set; }
-
-    /// <summary>Resubmitting a rejected or resubmit-requested event.</summary>
-    public bool IsResubmit { get; set; }
 }
 
 internal sealed class CategoryOptionViewModel

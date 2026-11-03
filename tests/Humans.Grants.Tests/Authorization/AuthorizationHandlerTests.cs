@@ -28,15 +28,58 @@ public sealed class AuthorizationHandlerTests : GrantsTestHarness
     private async Task<bool> ProgramAllowedAsync(ClaimsPrincipal user, ProgramInfo program, ProgramOperationRequirement requirement)
     {
         var context = new AuthorizationHandlerContext([requirement], user, program);
-        await new ProgramAuthorizationHandler(Users).HandleAsync(context);
+        await new ProgramAuthorizationHandler(Users, new Microsoft.AspNetCore.Http.HttpContextAccessor()).HandleAsync(context);
         return context.HasSucceeded;
     }
 
     private async Task<bool> PolicyAllowedAsync(ClaimsPrincipal user)
     {
         var context = new AuthorizationHandlerContext([new ManagesGrantsRequirement()], user, resource: null);
-        await new GrantsPolicyHandler(NewService(), Users).HandleAsync(context);
+        await new GrantsPolicyHandler(NewService(), Users, new Microsoft.AspNetCore.Http.HttpContextAccessor()).HandleAsync(context);
         return context.HasSucceeded;
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData("PolicyViewer")]
+    [Xunit.InlineData("ProgramViewer")]
+    [Xunit.InlineData("Manager")]
+    public async Task AuthorizationReads_PropagateAbandonedRequests(string boundary)
+    {
+        using var request = new CancellationTokenSource();
+        var http = new HttpContextAccessor { HttpContext = new DefaultHttpContext { RequestAborted = request.Token } };
+        var userId = SeedUser("Manager");
+        var viewer = await Users.GetUserInfoAsync(userId, Ct);
+        var program = (await NewService().GetProgramAsync((await SeedProgramAsync(managers: userId)).Id, Ct))!;
+        var grants = Substitute.For<IGrantManagement>();
+        var observed = CancellationToken.None;
+        void Abandon(CancellationToken ct)
+        {
+            observed = ct;
+            request.Cancel();
+            ct.ThrowIfCancellationRequested();
+        }
+        Users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            var ct = call.Arg<CancellationToken>();
+            if (!string.Equals(boundary, "Manager", StringComparison.Ordinal)) Abandon(ct);
+            ct.ThrowIfCancellationRequested();
+            return new ValueTask<Humans.Users.Contracts.UserInfo?>(viewer);
+        });
+        grants.ManagesAnyProgramAsync(userId, Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            Abandon(call.Arg<CancellationToken>());
+            return true;
+        });
+        var context = string.Equals(boundary, "ProgramViewer", StringComparison.Ordinal)
+            ? new AuthorizationHandlerContext([ProgramOperationRequirement.Manage], Principal(userId), program)
+            : new AuthorizationHandlerContext([new ManagesGrantsRequirement()], Principal(userId), null);
+        IAuthorizationHandler handler = string.Equals(boundary, "ProgramViewer", StringComparison.Ordinal)
+            ? new ProgramAuthorizationHandler(Users, http)
+            : new GrantsPolicyHandler(grants, Users, http);
+        Func<Task> authorize = () => handler.HandleAsync(context);
+        await authorize.Should().ThrowAsync<OperationCanceledException>();
+        observed.Should().Be(request.Token);
+        context.HasSucceeded.Should().BeFalse();
     }
 
     [HumansFact]

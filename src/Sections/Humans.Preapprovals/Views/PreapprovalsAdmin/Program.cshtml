@@ -38,7 +38,27 @@
     <dt class="col-sm-2">Applications</dt>
     <dd class="col-sm-10">@(p.AcceptsApplications ? "accepted" : "not accepted")</dd>
     <dt class="col-sm-2">Managers</dt>
-    <dd class="col-sm-10">@(p.ManagerUserIds.Count == 0 ? "none" : string.Join(", ", p.ManagerUserIds.Select(id => Model.NameOf(id))))</dd>
+    <dd class="col-sm-10">
+        @if (p.ManagerUserIds.Count == 0)
+        {
+            <text>none</text>
+        }
+        else
+        {
+            for (var i = 0; i < p.ManagerUserIds.Count; i++)
+            {
+                if (i > 0) { WriteLiteral(", "); }
+                var manager = await Component.InvokeAsync(typeof(HumanViewComponent), new
+                {
+                    userId = p.ManagerUserIds[i],
+                    link = HumanLink.None,
+                });
+                using var writer = new System.IO.StringWriter();
+                manager.WriteTo(writer, System.Text.Encodings.Web.HtmlEncoder.Default);
+                Write(new Microsoft.AspNetCore.Html.HtmlString(writer.ToString().Trim()));
+            }
+        }
+    </dd>
     <dt class="col-sm-2">Not claimed</dt>
     <dd class="col-sm-10">@p.NotClaimed(Model.Today).ToEuro() <span class="text-muted">(revoked, or open past the deadline; never adjusted)</span></dd>
 </dl>
@@ -180,7 +200,7 @@ else
                             }
                         </td>
                         <td>@g.ClaimBy.ToDate()</td>
-                        <td class="small text-muted">@Model.NameOf(g.DecidedByUserId) @g.DecidedAt?.ToDateTime()</td>
+                        <td class="small text-muted"><vc:human user-id="@(g.DecidedByUserId ?? Guid.Empty)" link="None" /> @g.DecidedAt?.ToDateTime()</td>
                         <td class="text-end text-nowrap">
                             @if (mutable)
                             {

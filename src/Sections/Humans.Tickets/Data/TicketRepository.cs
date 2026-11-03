@@ -685,7 +685,6 @@ internal sealed class TicketRepository(IDbContextFactory<TicketsDbContext> facto
                 PaymentStatus = o.PaymentStatus,
                 VendorDashboardUrl = o.VendorDashboardUrl,
                 MatchedUserId = o.MatchedUserId,
-                MatchedUserName = null,
             })
             .ToListAsync(ct);
 
@@ -771,7 +770,6 @@ internal sealed class TicketRepository(IDbContextFactory<TicketsDbContext> facto
                 Price = a.Price,
                 Status = a.Status,
                 MatchedUserId = a.MatchedUserId,
-                MatchedUserName = null,
                 VendorOrderId = a.TicketOrder.VendorOrderId,
             })
             .ToListAsync(ct);

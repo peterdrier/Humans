@@ -298,20 +298,19 @@ public class AcceptAsyncFoldTests(HumansTestDatabase database) : IntegrationTest
         var (sourceId, targetId) = await Factory.SeedMergeFixtureAsync(b =>
         {
             // Source newer: its value is copied onto target.
-            b.WithSourceCommPref(LegacyMessageCategory.VolunteerUpdates, optedOut: true, updatedAt: newer);
-            b.WithTargetCommPref(LegacyMessageCategory.VolunteerUpdates, optedOut: false, updatedAt: older);
+            b.WithSourceCommPref(MessageCategory.VolunteerUpdates, optedOut: true, updatedAt: newer);
+            b.WithTargetCommPref(MessageCategory.VolunteerUpdates, optedOut: false, updatedAt: older);
 
             // Target newer: target stands.
-            b.WithSourceCommPref(LegacyMessageCategory.Marketing, optedOut: false, updatedAt: older);
-            b.WithTargetCommPref(LegacyMessageCategory.Marketing, optedOut: true, updatedAt: newer);
+            b.WithSourceCommPref(MessageCategory.Marketing, optedOut: false, updatedAt: older);
+            b.WithTargetCommPref(MessageCategory.Marketing, optedOut: true, updatedAt: newer);
         });
         var requestId = await Factory.SeedMergeRequestAsync(sourceId, targetId);
 
         var adminId = await SeedAdminUserAsync();
         await AcceptAsync(requestId, adminId);
 
-        // The fold lands in Email's table; the source's legacy rows stay, shadowed by cleared rows so Email's fallback
-        // can't resurrect them.
+        // Email owns the preference fold.
         await using var assertScope = Factory.Services.CreateAsyncScope();
         var db = assertScope.ServiceProvider.GetRequiredService<Humans.Email.Data.EmailDbContext>();
 
@@ -330,7 +329,7 @@ public class AcceptAsyncFoldTests(HumansTestDatabase database) : IntegrationTest
             .AsNoTracking()
             .Where(cp => cp.UserId == sourceId)
             .ToListAsync(TestContext.Current.CancellationToken);
-        sourcePrefs.Should().OnlyContain(cp => cp.OptedOut == null);
+        sourcePrefs.Should().BeEmpty();
     }
 
     [HumansFact(Timeout = 30_000)]
@@ -339,15 +338,15 @@ public class AcceptAsyncFoldTests(HumansTestDatabase database) : IntegrationTest
         var (sourceId, targetId) = await Factory.SeedMergeFixtureAsync(b =>
         {
             // 2024: source Attended (highest precedence) beats target NotAttending.
-            b.WithSourceEventParticipation(2024, LegacyParticipationStatus.Attended);
-            b.WithTargetEventParticipation(2024, LegacyParticipationStatus.NotAttending);
+            b.WithSourceEventParticipation(2024, ParticipationStatus.Attended);
+            b.WithTargetEventParticipation(2024, ParticipationStatus.NotAttending);
 
             // 2025: source NotAttending loses to target Ticketed.
-            b.WithSourceEventParticipation(2025, LegacyParticipationStatus.NotAttending);
-            b.WithTargetEventParticipation(2025, LegacyParticipationStatus.Ticketed);
+            b.WithSourceEventParticipation(2025, ParticipationStatus.NotAttending);
+            b.WithTargetEventParticipation(2025, ParticipationStatus.Ticketed);
 
             // 2023: source-only, re-FKs to target.
-            b.WithSourceEventParticipation(2023, LegacyParticipationStatus.Attended);
+            b.WithSourceEventParticipation(2023, ParticipationStatus.Attended);
         });
         var requestId = await Factory.SeedMergeRequestAsync(sourceId, targetId);
 
@@ -355,7 +354,7 @@ public class AcceptAsyncFoldTests(HumansTestDatabase database) : IntegrationTest
         await AcceptAsync(requestId, adminId);
 
         await using var assertScope = Factory.Services.CreateAsyncScope();
-        // Tickets owns the fold: both users' legacy rows are materialized into tickets_event_participations.
+        // Tickets owns the participation fold.
         var db = assertScope.ServiceProvider.GetRequiredService<TicketsDbContext>();
 
         var targetEvents = await db.EventParticipations
@@ -372,8 +371,7 @@ public class AcceptAsyncFoldTests(HumansTestDatabase database) : IntegrationTest
             .AsNoTracking()
             .Where(ep => ep.UserId == sourceId)
             .ToListAsync(TestContext.Current.CancellationToken);
-        // The source's legacy rows stay frozen in Users; its cleared Tickets rows stop the fallback bringing them back.
-        sourceEvents.Should().OnlyContain(ep => ep.Status == null);
+        sourceEvents.Should().BeEmpty();
     }
 
     [HumansFact(Timeout = 30_000)]

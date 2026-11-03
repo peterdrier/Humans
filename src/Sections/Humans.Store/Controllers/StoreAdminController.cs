@@ -65,7 +65,7 @@ internal sealed class StoreAdminController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> RepairOrderYears(CancellationToken ct)
     {
-        var (errorResult, user) = await RequireCurrentUserAsync();
+        var (errorResult, user) = await RequireCurrentUserAsync(ct);
         if (errorResult is not null) return errorResult;
 
         var repaired = await storeService.RepairOrderYearsAsync(user.Id, ct);
@@ -88,7 +88,7 @@ internal sealed class StoreAdminController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> RepairPaymentMethods(CancellationToken ct)
     {
-        var (errorResult, user) = await RequireCurrentUserAsync();
+        var (errorResult, user) = await RequireCurrentUserAsync(ct);
         if (errorResult is not null) return errorResult;
 
         var repaired = await storeService.RepairPaymentMethodNamesAsync(user.Id, ct);
@@ -104,7 +104,7 @@ internal sealed class StoreAdminController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> RecordMissingPayments(CancellationToken ct)
     {
-        var (errorResult, user) = await RequireCurrentUserAsync();
+        var (errorResult, user) = await RequireCurrentUserAsync(ct);
         if (errorResult is not null) return errorResult;
 
         var result = await storeService.RecordMissingStripePaymentsAsync(user.Id, ct);
@@ -158,7 +158,7 @@ internal sealed class StoreAdminController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Save(ProductInputModel input, CancellationToken ct)
     {
-        var (errorResult, user) = await RequireCurrentUserAsync();
+        var (errorResult, user) = await RequireCurrentUserAsync(ct);
         if (errorResult is not null) return errorResult;
 
         if (!ModelState.IsValid)
@@ -194,7 +194,7 @@ internal sealed class StoreAdminController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Deactivate(Guid id, CancellationToken ct)
     {
-        var (errorResult, user) = await RequireCurrentUserAsync();
+        var (errorResult, user) = await RequireCurrentUserAsync(ct);
         if (errorResult is not null) return errorResult;
 
         var result = await storeService.DeactivateProductAsync(id, user.Id, ct);
