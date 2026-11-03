@@ -533,13 +533,16 @@ internal sealed class EventsController(
         return model;
     }
 
-    private async Task PopulateDropdownsAsync(IndividualEventFormViewModel model, EventSettingsInfo burn, CancellationToken ct = default)
+    private async Task PopulateDropdownsAsync(EventProposalFormViewModel model, EventSettingsInfo burn, CancellationToken ct = default)
     {
         var categories = await guide.GetActiveCategoriesAsync(ct);
-        var venues = await guide.GetActiveVenuesAsync(ct);
+        var venues = model is IndividualEventFormViewModel
+            ? await guide.GetActiveVenuesAsync(ct)
+            : [];
 
         model.Categories = categories.OrderBy(c => c.DisplayOrder).Select(c => new CategoryOptionViewModel { Id = c.Id, Name = c.Name }).ToList();
-        model.Venues = venues.OrderBy(v => v.DisplayOrder).Select(v => new VenueOptionViewModel { Id = v.Id, Name = v.Name }).ToList();
+        if (model is IndividualEventFormViewModel individual)
+            individual.Venues = venues.OrderBy(v => v.DisplayOrder).Select(v => new VenueOptionViewModel { Id = v.Id, Name = v.Name }).ToList();
         model.TimeZoneId = burn.TimeZoneId;
 
         model.EventDays = BuildEventDayOptions(burn);
@@ -590,7 +593,7 @@ internal sealed class EventsController(
             model.CampId = camp.Id;
             model.CampName = ResolveCampDisplayName(camp);
             model.CampSlug = slug;
-            await PopulateBarrioDropdownsAsync(model, eventSettings);
+            await PopulateDropdownsAsync(model, eventSettings);
             return View("BarrioEventForm", model);
         }
 
@@ -627,7 +630,7 @@ internal sealed class EventsController(
             model.CampId = camp.Id;
             model.CampName = ResolveCampDisplayName(camp);
             model.CampSlug = slug;
-            await PopulateBarrioDropdownsAsync(model, eventSettings);
+            await PopulateDropdownsAsync(model, eventSettings);
             return View("BarrioEventForm", model);
         }
         logger.LogInformation("User {UserId} submitted barrio event '{Title}' for camp {CampId}", user.Id, model.Title, camp.Id);
@@ -707,7 +710,7 @@ internal sealed class EventsController(
             model.CampId = camp.Id;
             model.CampName = ResolveCampDisplayName(camp);
             model.CampSlug = slug;
-            await PopulateBarrioDropdownsAsync(model, eventSettings);
+            await PopulateDropdownsAsync(model, eventSettings);
             return View("BarrioEventForm", model);
         }
 
@@ -724,7 +727,7 @@ internal sealed class EventsController(
             model.CampId = camp.Id;
             model.CampName = ResolveCampDisplayName(camp);
             model.CampSlug = slug;
-            await PopulateBarrioDropdownsAsync(model, eventSettings);
+            await PopulateDropdownsAsync(model, eventSettings);
             return View("BarrioEventForm", model);
         }
 
@@ -883,18 +886,7 @@ internal sealed class EventsController(
             CampSlug = slug,
             TimeZoneId = burn.TimeZoneId
         };
-        await PopulateBarrioDropdownsAsync(model, burn, ct);
+        await PopulateDropdownsAsync(model, burn, ct);
         return model;
     }
-
-    private async Task PopulateBarrioDropdownsAsync(CampEventFormViewModel model, EventSettingsInfo burn, CancellationToken ct = default)
-    {
-        var categories = await guide.GetActiveCategoriesAsync(ct);
-        model.Categories = categories.OrderBy(c => c.DisplayOrder).Select(c => new CategoryOptionViewModel { Id = c.Id, Name = c.Name }).ToList();
-        model.TimeZoneId = burn.TimeZoneId;
-
-        model.EventDays = BuildEventDayOptions(burn);
-    }
-
-
 }
