@@ -31,7 +31,6 @@
     <ProjectReference Include="..\Humans.Camps.Contracts\Humans.Camps.Contracts.csproj" />
     <ProjectReference Include="..\Humans.Teams.Contracts\Humans.Teams.Contracts.csproj" />
     <ProjectReference Include="..\Humans.Settings\Humans.Settings.csproj" />
-    <ProjectReference Include="..\Humans.Users.Contracts\Humans.Users.Contracts.csproj" />
     <!-- StoreAdmin/CatalogEdit.cshtml renders <vc:audit-log>, owned by the AuditLog section. -->
     <!--
       Checkout Session creation, webhook signature verification and payment

@@ -3,7 +3,7 @@
   src/Humans.Base/Models/SearchResponseModels.cs
   src/Humans.Base/Views/Shared/Components/HumanSearch/Default.cshtml
   src/Sections/Humans.Users/Services/PersonSearchMatcher.cs
-  src/Sections/Humans.Users.Contracts/HumanSearchResult.cs
+  src/Humans.Base/Users/HumanSearchResult.cs
   src/Sections/Humans.Users/Services/ContactFieldService.cs
   src/Sections/Humans.Users/Services/UserEmailService.cs
 -->

@@ -139,7 +139,7 @@ No other cross-section writes from this section outward. Audit is a sink.
 
 ### Read+render path and the Contracts home
 
-`AuditViewerService` wraps the section's own `IAuditLogReader` raw queries with actor, subject and team name resolution, taken from `IEnumerable<IEntityNameContributor>` (`Humans.Base`). Project references are `Humans.Base` and `Humans.Users.Contracts` (merge-tombstone chain-following).
+`AuditViewerService` wraps the section's own `IAuditLogReader` raw queries with actor, subject and team name resolution, taken from `IEnumerable<IEntityNameContributor>` (`Humans.Base`). Its one project reference is `Humans.Base`, which also carries `IUserService` for merge-tombstone chain-following.
 
 **Two homes, one namespace.** The append path every section calls — `IAuditLogService` (writes only) and `AuditActionDefinition` / `IAuditActionContributor` / `AuditActionContributor` — lives in `src/Humans.Base/AuditLog/`, so writers need no reference to this section. The section's `Contracts/` folder keeps every read: `IAuditViewerService` / `AuditEvent` (Agent, Issues, Expenses, Users, Shifts) and `ILegacyGoogleSyncAuditReader` (GoogleIntegration). Both use namespace `Humans.AuditLog.Contracts`.
 
