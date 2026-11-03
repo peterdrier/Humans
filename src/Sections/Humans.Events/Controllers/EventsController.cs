@@ -137,17 +137,18 @@ internal sealed class EventsController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Create(IndividualEventFormViewModel model)
     {
-        var user = await GetCurrentUserInfoAsync();
+        var ct = HttpContext.RequestAborted;
+        var user = await GetCurrentUserInfoAsync(ct);
         if (user == null) return Challenge();
 
-        var guideSettings = await guide.GetGuideSettingsAsync();
+        var guideSettings = await guide.GetGuideSettingsAsync(ct);
         if (!IsSubmissionOpen(guideSettings))
         {
             SetError(localizer["Events_SubmissionWindowClosed"].Value);
             return RedirectToAction(nameof(MySubmissions));
         }
 
-        var eventSettings = await LoadBurnSettingsAsync(guide, guideSettings)
+        var eventSettings = await LoadBurnSettingsAsync(guide, guideSettings, ct)
             ?? throw new InvalidOperationException("Event settings not configured.");
 
         ValidateRecurrenceDays(model.IsRecurring, model.RecurrenceDays, eventSettings);
@@ -157,7 +158,7 @@ internal sealed class EventsController(
 
         if (!ModelState.IsValid)
         {
-            await PopulateDropdownsAsync(model, eventSettings);
+            await PopulateDropdownsAsync(model, eventSettings, ct);
             return View("IndividualEventForm", model);
         }
 
@@ -250,20 +251,21 @@ internal sealed class EventsController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Update(Guid eventId, IndividualEventFormViewModel model)
     {
-        var user = await GetCurrentUserInfoAsync();
+        var ct = HttpContext.RequestAborted;
+        var user = await GetCurrentUserInfoAsync(ct);
         if (user == null) return Challenge();
 
-        var editable = await RequireEditableIndividualEventAsync(eventId, user.Id);
+        var editable = await RequireEditableIndividualEventAsync(eventId, user.Id, ct);
         if (editable.Error is not null) return editable.Error;
 
-        var guideSettings = await guide.GetGuideSettingsAsync();
+        var guideSettings = await guide.GetGuideSettingsAsync(ct);
         if (guideSettings == null)
         {
             SetError(localizer["Events_GuideSettingsUnavailable"].Value);
             return RedirectToAction(nameof(MySubmissions));
         }
 
-        var eventSettings = await LoadBurnSettingsAsync(guide, guideSettings)
+        var eventSettings = await LoadBurnSettingsAsync(guide, guideSettings, ct)
             ?? throw new InvalidOperationException("Event settings not configured.");
 
         ValidateRecurrenceDays(model.IsRecurring, model.RecurrenceDays, eventSettings);
@@ -274,7 +276,7 @@ internal sealed class EventsController(
         if (!ModelState.IsValid)
         {
             model.Id = eventId;
-            await PopulateDropdownsAsync(model, eventSettings);
+            await PopulateDropdownsAsync(model, eventSettings, ct);
             return View("IndividualEventForm", model);
         }
 
@@ -305,10 +307,11 @@ internal sealed class EventsController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Withdraw(Guid eventId)
     {
-        var user = await GetCurrentUserInfoAsync();
+        var ct = HttpContext.RequestAborted;
+        var user = await GetCurrentUserInfoAsync(ct);
         if (user == null) return Challenge();
 
-        var guideEvent = await guide.GetUserEventAsync(eventId, user.Id);
+        var guideEvent = await guide.GetUserEventAsync(eventId, user.Id, ct);
         if (guideEvent == null) return NotFound();
 
         if (!guideEvent.CanWithdraw)
@@ -572,17 +575,18 @@ internal sealed class EventsController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> BarrioCreate(string slug, CampEventFormViewModel model)
     {
+        var ct = HttpContext.RequestAborted;
         var (error, user, camp) = await ResolveCampEventManagementAsync(slug);
         if (error != null) return error;
 
-        var guideSettings = await guide.GetGuideSettingsAsync();
+        var guideSettings = await guide.GetGuideSettingsAsync(ct);
         if (!IsSubmissionOpen(guideSettings))
         {
             SetError(localizer["Events_SubmissionWindowClosed"].Value);
             return RedirectToAction(nameof(MySubmissions));
         }
 
-        var eventSettings = await LoadBurnSettingsAsync(guide, guideSettings)
+        var eventSettings = await LoadBurnSettingsAsync(guide, guideSettings, ct)
             ?? throw new InvalidOperationException("Event settings not configured.");
 
         ValidateRecurrenceDays(model.IsRecurring, model.RecurrenceDays, eventSettings);
@@ -593,7 +597,7 @@ internal sealed class EventsController(
             model.CampId = camp.Id;
             model.CampName = ResolveCampDisplayName(camp);
             model.CampSlug = slug;
-            await PopulateDropdownsAsync(model, eventSettings);
+            await PopulateDropdownsAsync(model, eventSettings, ct);
             return View("BarrioEventForm", model);
         }
 
@@ -684,10 +688,11 @@ internal sealed class EventsController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> BarrioUpdate(string slug, Guid eventId, CampEventFormViewModel model)
     {
+        var ct = HttpContext.RequestAborted;
         var (error, user, camp) = await ResolveCampEventManagementAsync(slug);
         if (error != null) return error;
 
-        var guideEvent = await guide.GetCampEventAsync(eventId, camp.Id);
+        var guideEvent = await guide.GetCampEventAsync(eventId, camp.Id, ct);
         if (guideEvent == null) return NotFound();
 
         if (!guideEvent.CanEdit)
@@ -696,9 +701,9 @@ internal sealed class EventsController(
             return RedirectToAction(nameof(MySubmissions));
         }
 
-        var guideSettings = await guide.GetGuideSettingsAsync()
+        var guideSettings = await guide.GetGuideSettingsAsync(ct)
             ?? throw new InvalidOperationException("Guide settings not configured.");
-        var eventSettings = await LoadBurnSettingsAsync(guide, guideSettings)
+        var eventSettings = await LoadBurnSettingsAsync(guide, guideSettings, ct)
             ?? throw new InvalidOperationException("Event settings not configured.");
 
         ValidateRecurrenceDays(model.IsRecurring, model.RecurrenceDays, eventSettings);
@@ -710,7 +715,7 @@ internal sealed class EventsController(
             model.CampId = camp.Id;
             model.CampName = ResolveCampDisplayName(camp);
             model.CampSlug = slug;
-            await PopulateDropdownsAsync(model, eventSettings);
+            await PopulateDropdownsAsync(model, eventSettings, ct);
             return View("BarrioEventForm", model);
         }
 
@@ -741,10 +746,11 @@ internal sealed class EventsController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> BarrioWithdraw(string slug, Guid eventId)
     {
+        var ct = HttpContext.RequestAborted;
         var (error, user, camp) = await ResolveCampEventManagementAsync(slug);
         if (error != null) return error;
 
-        var guideEvent = await guide.GetCampEventAsync(eventId, camp.Id);
+        var guideEvent = await guide.GetCampEventAsync(eventId, camp.Id, ct);
         if (guideEvent == null) return NotFound();
 
         if (!guideEvent.CanWithdraw)
@@ -776,10 +782,11 @@ internal sealed class EventsController(
     [RequestSizeLimit(1 * 1024 * 1024)]
     public async Task<IActionResult> BulkUploadImport(string slug, IFormFile? file)
     {
+        var ct = HttpContext.RequestAborted;
         var (error, user, camp) = await ResolveCampEventManagementAsync(slug);
         if (error != null) return error;
 
-        var guideSettings = await guide.GetGuideSettingsAsync();
+        var guideSettings = await guide.GetGuideSettingsAsync(ct);
         if (!IsSubmissionOpen(guideSettings))
         {
             SetError(localizer["Events_SubmissionWindowClosed"].Value);
@@ -792,7 +799,7 @@ internal sealed class EventsController(
             return RedirectToAction(nameof(MySubmissions));
         }
 
-        var eventSettings = await LoadBurnSettingsAsync(guide, guideSettings)
+        var eventSettings = await LoadBurnSettingsAsync(guide, guideSettings, ct)
             ?? throw new InvalidOperationException("Event settings not configured.");
         var tz = GetTimeZone(eventSettings)
             ?? throw new InvalidOperationException("Event timezone not configured.");
