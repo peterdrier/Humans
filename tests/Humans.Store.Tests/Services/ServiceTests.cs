@@ -206,7 +206,7 @@ public class ServiceTests
 
         var result = await _service.GetOrderPageDataAsync(order, canEdit: true, canPayAuthorized: true, ct: TestContext.Current.CancellationToken);
 
-        result.CounterpartyDisplayName.Should().Be("Camp Test");
+        result.Order.Should().BeSameAs(order);
         result.Catalog.Select(p => p.Name).Should().Equal("Tent", "Blanket");
         result.CanEdit.Should().BeTrue();
         result.CanPay.Should().BeTrue();

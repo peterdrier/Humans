@@ -63,7 +63,6 @@ internal sealed class Service(
         return new OrderPageData(
             order,
             catalog,
-            order.CounterpartyDisplayName,
             canEdit,
             canPayAuthorized && order.BalanceEur > 0 && !hasPendingPayment && order.CounterpartyType == OrderCounterpartyType.Camp,
             stripeService.IsStoreCheckoutConfigured);

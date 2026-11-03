@@ -48,10 +48,11 @@ public class StorePricesViewTests
             100, 10.5m, null, now, 100, 10.5m, 0, 110.5m);
         var order = new OrderDto(orderId, Guid.NewGuid(), null, OrderCounterpartyType.Camp, "Camp", 2026,
             OrderState.Open, null, null, null, null, null, null, [line], [], 100, 10.5m, 0, 0, 110.5m, now);
-        var detail = await RenderAsync("Order", new OrderViewModel { Order = order, CounterpartyDisplayName = "Camp" });
+        var detail = await RenderAsync("Order", new OrderViewModel { Order = order });
         using var assertions = new AwesomeAssertions.Execution.AssertionScope();
         index.Should().Contain(HtmlEncoder.Default.Encode($" + {vat}% "));
         detail.Should().Contain(HtmlEncoder.Default.Encode($" + {vat}% "));
+        detail.Should().Contain("class=\"breadcrumb-item\">Camp</li>");
         CultureInfo.CurrentCulture.Name.Should().Be("en");
     }
 
@@ -100,7 +101,7 @@ public class StorePricesViewTests
         var history = new AuditEvent(Guid.NewGuid(), now, new AuditActionDefinition(StoreAuditActions.StoreProductPriceChanged.Name),
             null, null, "Product", productId, null, null, null, null, null, null, null, "Price history fixture");
 
-        var html = await RenderAsync("Order", new OrderViewModel { Order = order, CounterpartyDisplayName = "Camp" }, [history]);
+        var html = await RenderAsync("Order", new OrderViewModel { Order = order }, [history]);
 
         var table = html[html.LastIndexOf("<thead>", StringComparison.Ordinal)..];
         var headers = table[..table.IndexOf("</thead>", StringComparison.Ordinal)];
