@@ -22,6 +22,49 @@ namespace Humans.Tickets.Tests.Controllers;
 
 public class TicketTransferControllerTests
 {
+    [HumansTheory]
+    [InlineData("confirm")]
+    [InlineData("submit")]
+    [InlineData("cancel")]
+    [InlineData("decide")]
+    public async Task TransferActions_CancelActorLookupBeforeAnyOperation(string action)
+    {
+        using var request = new CancellationTokenSource();
+        var id = Guid.NewGuid();
+        var users = Substitute.For<IUserService>();
+        users.GetUserInfoAsync(id, Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+            return new ValueTask<UserInfo?>((UserInfo?)null);
+        });
+        var transfers = Substitute.For<ITicketTransferService>();
+        var http = new DefaultHttpContext
+        {
+            RequestAborted = request.Token,
+            User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, id.ToString())], "test"))
+        };
+        var controller = new TicketTransferController(transfers, Substitute.For<IEarlyEntryService>(), users,
+            NullLogger<TicketTransferController>.Instance, Substitute.For<IStringLocalizer<TicketsResource>>())
+        {
+            ControllerContext = new ControllerContext { HttpContext = http }
+        };
+        var admin = new TicketTransferAdminController(transfers, Substitute.For<ITicketManagement>(), users)
+        {
+            ControllerContext = new ControllerContext { HttpContext = http }
+        };
+        await request.CancelAsync();
+        Func<Task<IActionResult>> run = () => action switch
+        {
+            "confirm" => controller.Confirm(Guid.NewGuid(), Guid.NewGuid(), request.Token),
+            "submit" => controller.Submit(Guid.NewGuid(), Guid.NewGuid(), "reason", request.Token),
+            "cancel" => controller.Cancel(Guid.NewGuid(), request.Token),
+            _ => admin.Decide(Guid.NewGuid(), "process", null, request.Token)
+        };
+
+        await run.Should().ThrowAsync<OperationCanceledException>();
+        transfers.ReceivedCalls().Should().BeEmpty();
+    }
+
     [HumansFact]
     public async Task Index_OrdersTransferableTicketsByNameIgnoringCase()
     {

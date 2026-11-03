@@ -65,7 +65,7 @@ internal sealed class TicketTransferAdminController(
     public async Task<IActionResult> Decide(
         Guid id, string action, string? adminNotes, CancellationToken ct)
     {
-        var (errorResult, user) = await RequireCurrentUserAsync();
+        var (errorResult, user) = await RequireCurrentUserAsync(ct);
         if (errorResult is not null) return errorResult;
 
         TicketTransferMutationResult result;

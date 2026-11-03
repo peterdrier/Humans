@@ -1,3 +1,4 @@
+using Humans.Settings.Contracts;
 using CsvHelper;
 using Humans.Base.Csv;
 using Humans.Tickets.Contracts;
@@ -128,6 +129,53 @@ public class TicketControllerTests
 
         result.Should().BeOfType<ViewResult>().Which.Model.Should().BeOfType<WhoHasntBoughtViewModel>()
             .Subject.AvailableTeams.Should().Equal("alpha", "Bravo", "Zebra");
+    }
+
+    [HumansTheory]
+    [InlineData(false, "viewer")]
+    [InlineData(true, "viewer")]
+    [InlineData(false, "settings")]
+    [InlineData(true, "settings")]
+    public async Task AttendanceDeclaration_CancelsPreflightReadsWithoutFailureFeedback(bool undo, string boundary)
+    {
+        using var request = new CancellationTokenSource();
+        var id = Guid.NewGuid();
+        var users = Substitute.For<IUserService>();
+        users.GetUserInfoAsync(id, Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            if (string.Equals(boundary, "viewer", StringComparison.Ordinal))
+            {
+                call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+                return new ValueTask<UserInfo?>((UserInfo?)null);
+            }
+            return new ValueTask<UserInfo?>(UserInfo.Create(new User { Id = id }, [], [], null));
+        });
+        var settings = Substitute.For<ISettingsService>();
+        settings.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+            return Task.FromResult<EventSettingsInfo?>(null);
+        });
+        var participations = Substitute.For<IEventParticipationManagement>();
+        var localizer = Substitute.For<Microsoft.Extensions.Localization.IStringLocalizer<TicketsResource>>();
+        localizer[Arg.Any<string>()].Returns(call => new Microsoft.Extensions.Localization.LocalizedString(call.Arg<string>(), call.Arg<string>()));
+        var http = new DefaultHttpContext
+        {
+            RequestAborted = request.Token,
+            User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, id.ToString())], "test"))
+        };
+        var controller = new TicketParticipationController(participations, settings, users, localizer,
+            NullLogger<TicketParticipationController>.Instance)
+        {
+            ControllerContext = new ControllerContext { HttpContext = http },
+            TempData = new TempDataDictionary(http, Substitute.For<ITempDataProvider>())
+        };
+        await request.CancelAsync();
+        Func<Task<IActionResult>> run = undo ? controller.UndoNotAttending : controller.DeclareNotAttending;
+
+        await run.Should().ThrowAsync<OperationCanceledException>();
+        controller.TempData.Should().BeEmpty();
+        participations.ReceivedCalls().Should().BeEmpty();
     }
 
     [HumansTheory]
