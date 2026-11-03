@@ -8,8 +8,8 @@
   src/Sections/Humans.GoogleIntegration/Controllers/GoogleController.cs
   src/Sections/Humans.Email/Controllers/EmailController.cs
   src/Sections/Humans.Users/Views/ProfileEmails/Emails.cshtml
-  src/Sections/Humans.Users.Contracts/UserEmail.cs
-  src/Sections/Humans.Users.Contracts/User.cs
+  src/Humans.Base/Users/UserEmail.cs
+  src/Humans.Base/Users/User.cs
 -->
 <!-- freshness:flag-on-change
   UserEmail verification flow, GoogleEmail/notification-target rules, manage-emails routes, and workspace provisioning hooks — review when UserEmailService or workspace user/email services change.

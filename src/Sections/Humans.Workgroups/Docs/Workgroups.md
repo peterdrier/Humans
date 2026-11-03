@@ -1,7 +1,7 @@
 <!-- freshness:triggers
   src/Sections/Humans.Workgroups/**
   tests/Humans.Workgroups.Tests/**
-  src/Sections/Humans.Users.Contracts/IUserService.cs
+  src/Humans.Base/Users/IUserService.cs
   src/Sections/Humans.Auth/Contracts/IRoleAssignmentService.cs
   src/Sections/Humans.Teams.Contracts/ITeamService.cs
   src/Sections/Humans.Finance.Contracts/IHoldedFinanceWrite.cs

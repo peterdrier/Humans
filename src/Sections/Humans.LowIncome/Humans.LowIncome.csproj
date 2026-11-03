@@ -18,7 +18,6 @@
   <ItemGroup>
     <!-- LowIncome owns no tables: no DbContext, no repository, no migrations. Its grants live in Grants. -->
     <ProjectReference Include="..\..\Humans.Base\Humans.Base.csproj" />
-    <ProjectReference Include="..\Humans.Users.Contracts\Humans.Users.Contracts.csproj" />
     <ProjectReference Include="..\Humans.Grants\Humans.Grants.csproj" />
   </ItemGroup>
 

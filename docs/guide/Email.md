@@ -5,7 +5,7 @@
   src/Sections/Humans.GoogleIntegration/Services/EmailProvisioningService.cs
   src/Sections/Humans.GoogleIntegration/Services/GoogleWorkspaceUserService.cs
   src/Sections/Humans.Users/Services/UserEmailService.cs
-  src/Sections/Humans.Users.Contracts/UserEmail.cs
+  src/Humans.Base/Users/UserEmail.cs
   src/Sections/Humans.Users/Data/Configurations/UserEmailConfiguration.cs
 -->
 <!-- freshness:flag-on-change

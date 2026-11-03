@@ -5,7 +5,7 @@
   src/Humans.Base/Authorization/**
   src/Humans.Web/Controllers/AccountController.cs
   src/Sections/Humans.Development/Controllers/DevLoginController.cs
-  src/Sections/Humans.Users.Contracts/User.cs
+  src/Humans.Base/Users/User.cs
   src/Sections/Humans.Auth/Domain/RoleAssignment.cs
   src/Humans.Base/Constants/RoleNames.cs
   src/Humans.Base/Interfaces/ISectionRoles.cs
