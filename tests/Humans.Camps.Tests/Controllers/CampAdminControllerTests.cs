@@ -27,6 +27,57 @@ public class CampAdminControllerTests
     private static readonly Guid ActiveEventId = Guid.NewGuid();
 
     [HumansTheory]
+    [InlineData("Approve")]
+    [InlineData("Reject")]
+    [InlineData("EeSlots")]
+    [InlineData("EditRole")]
+    [InlineData("SeedRoles")]
+    public async Task AdminPreflight_CancelsTheAccountReadBeforeMutation(string action)
+    {
+        using var request = new CancellationTokenSource();
+        var camps = Substitute.For<ICampManagement>();
+        var roles = Substitute.For<ICampRoleService>();
+        var users = Substitute.For<IUserService>();
+        var actorId = Guid.NewGuid();
+        var id = Guid.NewGuid();
+        async ValueTask<UserInfo?> ReadActorAsync(CancellationToken ct)
+        {
+            ct.ThrowIfCancellationRequested();
+            return MakeUser(actorId);
+        }
+        users.GetUserInfoAsync(actorId, Arg.Any<CancellationToken>())
+            .Returns(call => ReadActorAsync(call.Arg<CancellationToken>()));
+        camps.ApproveSeasonAsync(id, actorId, null).Returns(new CampAdminMutationResult(true));
+        camps.RejectSeasonAsync(id, actorId, "Rejected").Returns(new CampAdminMutationResult(true));
+        camps.SetCampSeasonEeSlotCountAsync(id, 3, actorId, Arg.Any<CancellationToken>())
+            .Returns(new CampAdminMutationResult(true));
+        roles.UpdateDefinitionAsync(id, Arg.Any<CampRoleDefinitionInput>(), actorId, Arg.Any<CancellationToken>())
+            .Returns(new UpdateCampRoleDefinitionResult(UpdateCampRoleDefinitionStatus.Updated, "Updated"));
+        var controller = CreateController(camps, roles, users, actorId);
+        controller.HttpContext.RequestAborted = request.Token;
+        Task<IActionResult> InvokeAsync() => action switch
+        {
+            "Approve" => controller.Approve(id, null),
+            "Reject" => controller.Reject(id, "Rejected"),
+            "EeSlots" => controller.SetCampSeasonEeSlotCount(id, 3, request.Token),
+            "EditRole" => controller.EditRole(id, new CampRoleDefinitionFormViewModel { Name = "Role", Slug = "role" }, request.Token),
+            _ => controller.SeedSystemRoles(request.Token),
+        };
+        Assert.IsType<RedirectToActionResult>(await InvokeAsync());
+        var mutation = Assert.Single(camps.ReceivedCalls().Concat(roles.ReceivedCalls()));
+        var mutationToken = Assert.Single(mutation.GetArguments().OfType<CancellationToken>());
+        Assert.Equal(action is "Approve" or "Reject" ? CancellationToken.None : request.Token, mutationToken);
+        camps.ClearReceivedCalls();
+        roles.ClearReceivedCalls();
+        await request.CancelAsync();
+
+        await Assert.ThrowsAsync<OperationCanceledException>(InvokeAsync);
+        Assert.Empty(camps.ReceivedCalls());
+        Assert.Empty(roles.ReceivedCalls());
+        await users.Received(2).GetUserInfoAsync(actorId, request.Token);
+    }
+
+    [HumansTheory]
     [InlineData(false)]
     [InlineData(true)]
     public async Task Export_StopsBeforeReadingContactsWhenTheActorIsMissingOrCancelled(bool cancelled)

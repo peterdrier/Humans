@@ -156,6 +156,76 @@ public class CampControllerTests
     }
 
     [HumansTheory]
+    [InlineData("Contact", false)]
+    [InlineData("Contact", true)]
+    [InlineData("Request", false)]
+    [InlineData("Request", true)]
+    [InlineData("Withdraw", false)]
+    [InlineData("Withdraw", true)]
+    [InlineData("Leave", false)]
+    [InlineData("Leave", true)]
+    public async Task MemberPreflight_CancelsCampAndAccountReadsBeforeMutation(string action, bool cancelAtAccount)
+    {
+        using var request = new CancellationTokenSource();
+        var actorId = Guid.NewGuid();
+        var camp = MakeCamp("alpha", "Alpha", CampSeasonStatus.Active);
+        var abort = false;
+        async Task<CampInfo?> ReadCampAsync(CancellationToken ct)
+        {
+            ct.ThrowIfCancellationRequested();
+            if (abort && cancelAtAccount) await request.CancelAsync();
+            return camp;
+        }
+        async ValueTask<UserInfo?> ReadActorAsync(CancellationToken ct)
+        {
+            ct.ThrowIfCancellationRequested();
+            return MakeUserInfo(actorId);
+        }
+        _camps.GetCampBySlugAsync(camp.Slug, Arg.Any<CancellationToken>())
+            .Returns(call => ReadCampAsync(call.Arg<CancellationToken>()));
+        _users.GetUserInfoAsync(actorId, Arg.Any<CancellationToken>())
+            .Returns(call => ReadActorAsync(call.Arg<CancellationToken>()));
+        _campsLocalizer[Arg.Any<string>()].Returns(call => new LocalizedString(call.Arg<string>(), call.Arg<string>()));
+        _camps.RequestCampMembershipAsync(camp.Id, actorId, Arg.Any<CancellationToken>())
+            .Returns(new CampMemberRequestResult(Guid.NewGuid(), default, "Requested", CampMemberRequestNoticeLevel.Success));
+        var memberId = Guid.NewGuid();
+        _camps.WithdrawCampMembershipRequestAsync(memberId, actorId, Arg.Any<CancellationToken>())
+            .Returns(CampMembershipMutationResult.Success());
+        _camps.LeaveCampAsync(memberId, actorId, Arg.Any<CancellationToken>())
+            .Returns(CampMembershipMutationResult.Success());
+        _contacts.SendFacilitatedMessageAsync(Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<string>(),
+            Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<bool>(),
+            Arg.Any<IReadOnlyList<Guid>>(), Arg.Any<string>()).Returns(new CampContactResult(true, false));
+        var controller = BuildController(actorId);
+        controller.HttpContext.RequestAborted = request.Token;
+        Task<IActionResult> InvokeAsync() => action switch
+        {
+            "Contact" => controller.Contact(camp.Slug, new CampContactViewModel { Message = "Hello" }),
+            "Request" => controller.RequestMembership(camp.Slug),
+            "Withdraw" => controller.WithdrawMembershipRequest(camp.Slug, memberId),
+            _ => controller.LeaveMembership(camp.Slug, memberId),
+        };
+        Assert.IsType<RedirectToActionResult>(await InvokeAsync());
+        var mutation = Assert.Single(_camps.ReceivedCalls()
+            .Where(call => !string.Equals(call.GetMethodInfo().Name, nameof(ICampManagement.GetCampBySlugAsync), StringComparison.Ordinal))
+            .Concat(_contacts.ReceivedCalls()));
+        foreach (var token in mutation.GetArguments().OfType<CancellationToken>())
+            Assert.Equal(CancellationToken.None, token);
+        _camps.ClearReceivedCalls();
+        _contacts.ClearReceivedCalls();
+        _users.ClearReceivedCalls();
+        abort = true;
+        if (!cancelAtAccount) await request.CancelAsync();
+
+        await Assert.ThrowsAsync<OperationCanceledException>(InvokeAsync);
+        Assert.Empty(_contacts.ReceivedCalls());
+        Assert.All(_camps.ReceivedCalls(), call => Assert.Equal(nameof(ICampManagement.GetCampBySlugAsync), call.GetMethodInfo().Name));
+        await _camps.Received(1).GetCampBySlugAsync(camp.Slug, request.Token);
+        if (cancelAtAccount) await _users.Received(1).GetUserInfoAsync(actorId, request.Token);
+        else Assert.Empty(_users.ReceivedCalls());
+    }
+
+    [HumansTheory]
     [InlineData("Edit")]
     [InlineData("OptIn")]
     [InlineData("Withdraw")]

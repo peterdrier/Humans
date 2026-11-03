@@ -285,10 +285,10 @@ internal sealed class CampController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Contact(string slug, CampContactViewModel model)
     {
-        var camp = await GetCampBySlugAsync(slug);
+        var camp = await GetCampBySlugAsync(slug, HttpContext.RequestAborted);
         if (camp is null) return NotFound();
 
-        var currentUser = await GetCurrentUserInfoAsync();
+        var currentUser = await GetCurrentUserInfoAsync(HttpContext.RequestAborted);
         if (currentUser is null) return Unauthorized();
 
         if (!ModelState.IsValid)
@@ -826,10 +826,10 @@ internal sealed class CampController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> RequestMembership(string slug)
     {
-        var camp = await GetCampBySlugAsync(slug);
+        var camp = await GetCampBySlugAsync(slug, HttpContext.RequestAborted);
         if (camp is null) return NotFound();
 
-        var (currentUserError, user) = await ResolveCurrentUserOrUnauthorizedAsync();
+        var (currentUserError, user) = await ResolveCurrentUserOrUnauthorizedAsync(HttpContext.RequestAborted);
         if (currentUserError is not null) return currentUserError;
 
         var result = await _campService.RequestCampMembershipAsync(camp.Id, user.Id);
@@ -854,10 +854,10 @@ internal sealed class CampController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> WithdrawMembershipRequest(string slug, Guid campMemberId)
     {
-        var camp = await GetCampBySlugAsync(slug);
+        var camp = await GetCampBySlugAsync(slug, HttpContext.RequestAborted);
         if (camp is null) return NotFound();
 
-        var (currentUserError, user) = await ResolveCurrentUserOrUnauthorizedAsync();
+        var (currentUserError, user) = await ResolveCurrentUserOrUnauthorizedAsync(HttpContext.RequestAborted);
         if (currentUserError is not null) return currentUserError;
 
         var result = await _campService.WithdrawCampMembershipRequestAsync(campMemberId, user.Id);
@@ -879,10 +879,10 @@ internal sealed class CampController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> LeaveMembership(string slug, Guid campMemberId)
     {
-        var camp = await GetCampBySlugAsync(slug);
+        var camp = await GetCampBySlugAsync(slug, HttpContext.RequestAborted);
         if (camp is null) return NotFound();
 
-        var (currentUserError, user) = await ResolveCurrentUserOrUnauthorizedAsync();
+        var (currentUserError, user) = await ResolveCurrentUserOrUnauthorizedAsync(HttpContext.RequestAborted);
         if (currentUserError is not null) return currentUserError;
 
         var result = await _campService.LeaveCampAsync(campMemberId, user.Id);

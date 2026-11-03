@@ -43,7 +43,7 @@ internal sealed class CampAdminController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Approve(Guid seasonId, string? notes)
     {
-        var user = await GetCurrentUserInfoAsync();
+        var user = await GetCurrentUserInfoAsync(HttpContext.RequestAborted);
         if (user is null) return Unauthorized();
 
         var result = await campService.ApproveSeasonAsync(seasonId, user.Id, notes);
@@ -65,7 +65,7 @@ internal sealed class CampAdminController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Reject(Guid seasonId, string notes)
     {
-        var user = await GetCurrentUserInfoAsync();
+        var user = await GetCurrentUserInfoAsync(HttpContext.RequestAborted);
         if (user is null) return Unauthorized();
 
         if (string.IsNullOrWhiteSpace(notes))
@@ -167,7 +167,7 @@ internal sealed class CampAdminController(
     public async Task<IActionResult> SetCampSeasonEeSlotCount(
         Guid seasonId, [BindRequired] int slotCount, CancellationToken cancellationToken)
     {
-        var user = await GetCurrentUserInfoAsync();
+        var user = await GetCurrentUserInfoAsync(cancellationToken);
         if (user is null) return Unauthorized();
         if (!ModelState.IsValid) return BadRequest(ModelState);
 
@@ -393,7 +393,7 @@ internal sealed class CampAdminController(
         if (!ModelState.IsValid)
             return View("RoleForm", form);
 
-        var user = await GetCurrentUserInfoAsync();
+        var user = await GetCurrentUserInfoAsync(ct);
         if (user is null) return Unauthorized();
 
         try
@@ -490,7 +490,7 @@ internal sealed class CampAdminController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> SeedSystemRoles(CancellationToken ct)
     {
-        var user = await GetCurrentUserInfoAsync();
+        var user = await GetCurrentUserInfoAsync(ct);
         if (user is null) return Unauthorized();
 
         try
