@@ -72,16 +72,16 @@ internal sealed class AdminLegalDocumentsController(
             return View("~/Views/AdminLegalDocuments/CreateLegalDocument.cshtml", model);
         }
 
-        var actorUserId = GetCurrentUserId();
-        if (actorUserId is null) return Unauthorized();
+        var actor = await GetCurrentUserInfoAsync(HttpContext.RequestAborted);
+        if (actor is null) return Unauthorized();
 
         var result = await adminLegalDocumentService.CreateLegalDocumentWithInitialSyncAsync(
-            ToUpsertRequest(model, folderPath), actorUserId.Value);
+            ToUpsertRequest(model, folderPath), actor.Id);
         if (result is null) return NotFound();
         var document = result.Document;
 
         logger.LogInformation("Admin {AdminId} created legal document {DocumentId} ({Name})",
-            actorUserId.Value, document.Id, document.Name);
+            actor.Id, document.Id, document.Name);
 
         if (result.InitialSyncStatus == AdminLegalDocumentInitialSyncStatus.Synced)
         {
@@ -163,19 +163,19 @@ internal sealed class AdminLegalDocumentsController(
             return View("~/Views/AdminLegalDocuments/EditLegalDocument.cshtml", model);
         }
 
-        var actorUserId = GetCurrentUserId();
-        if (actorUserId is null) return Unauthorized();
+        var actor = await GetCurrentUserInfoAsync(HttpContext.RequestAborted);
+        if (actor is null) return Unauthorized();
 
         var document = await adminLegalDocumentService.UpdateLegalDocumentAsync(
             id,
-            ToUpsertRequest(model, folderPath), actorUserId.Value);
+            ToUpsertRequest(model, folderPath), actor.Id);
 
         if (document is null)
         {
             return NotFound();
         }
 
-        logger.LogInformation("Admin {AdminId} updated legal document {DocumentId}", actorUserId.Value, id);
+        logger.LogInformation("Admin {AdminId} updated legal document {DocumentId}", actor.Id, id);
 
         SetSuccess($"Legal document '{document.Name}' updated successfully.");
         return RedirectToAction(nameof(LegalDocuments));
@@ -185,16 +185,16 @@ internal sealed class AdminLegalDocumentsController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> ArchiveLegalDocument(Guid id)
     {
-        var actorUserId = GetCurrentUserId();
-        if (actorUserId is null) return Unauthorized();
+        var actor = await GetCurrentUserInfoAsync(HttpContext.RequestAborted);
+        if (actor is null) return Unauthorized();
 
-        var document = await adminLegalDocumentService.ArchiveLegalDocumentAsync(id, actorUserId.Value);
+        var document = await adminLegalDocumentService.ArchiveLegalDocumentAsync(id, actor.Id);
         if (document is null)
         {
             return NotFound();
         }
 
-        logger.LogInformation("Admin {AdminId} archived legal document {DocumentId}", actorUserId.Value, id);
+        logger.LogInformation("Admin {AdminId} archived legal document {DocumentId}", actor.Id, id);
 
         SetSuccess($"Legal document '{document.Name}' archived.");
         return RedirectToAction(nameof(LegalDocuments));
@@ -204,13 +204,13 @@ internal sealed class AdminLegalDocumentsController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> SyncLegalDocument(Guid id)
     {
-        var actorUserId = GetCurrentUserId();
-        if (actorUserId is null) return Unauthorized();
+        var actor = await GetCurrentUserInfoAsync(HttpContext.RequestAborted);
+        if (actor is null) return Unauthorized();
 
         try
         {
-            var result = await adminLegalDocumentService.SyncLegalDocumentAsync(id, actorUserId.Value);
-            logger.LogInformation("Admin {AdminId} triggered sync for legal document {DocumentId}", actorUserId.Value, id);
+            var result = await adminLegalDocumentService.SyncLegalDocumentAsync(id, actor.Id);
+            logger.LogInformation("Admin {AdminId} triggered sync for legal document {DocumentId}", actor.Id, id);
 
             SetSuccess(result ?? "Document is already up to date.");
         }
@@ -227,10 +227,10 @@ internal sealed class AdminLegalDocumentsController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> UpdateVersionSummary(Guid id, Guid versionId, [FromForm] string? changesSummary)
     {
-        var actorUserId = GetCurrentUserId();
-        if (actorUserId is null) return Unauthorized();
+        var actor = await GetCurrentUserInfoAsync(HttpContext.RequestAborted);
+        if (actor is null) return Unauthorized();
 
-        var updated = await adminLegalDocumentService.UpdateVersionSummaryAsync(id, versionId, changesSummary, actorUserId.Value);
+        var updated = await adminLegalDocumentService.UpdateVersionSummaryAsync(id, versionId, changesSummary, actor.Id);
         if (updated == VersionSummaryUpdateResult.NotFound)
         {
             return NotFound();

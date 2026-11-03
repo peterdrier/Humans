@@ -385,6 +385,8 @@ public sealed class LegalDocumentSyncServiceTests : ConsentTestHarness
     [Xunit.InlineData(null, true)]
     public async Task AdminDocumentForms_require_explicit_consent_policy_before_editing(string? omitted, bool enabled)
     {
+        _userService.GetUserInfoAsync(_actorUserId, Arg.Any<CancellationToken>())
+            .Returns(UserInfo.Create(new User { Id = _actorUserId }, [], [], null));
         var document = await SeedDocumentAsync("Existing document");
         document.IsRequired = false;
         document.IsActive = false;
@@ -465,6 +467,8 @@ public sealed class LegalDocumentSyncServiceTests : ConsentTestHarness
     [Xunit.InlineData(true, true)]
     public async Task AdminDocumentWrites_reject_missing_teams_before_persistence_or_sync(bool edit, bool empty)
     {
+        _userService.GetUserInfoAsync(_actorUserId, Arg.Any<CancellationToken>())
+            .Returns(UserInfo.Create(new User { Id = _actorUserId }, [], [], null));
         var document = await SeedDocumentAsync("Existing document");
         StubGitHubFolder("privacy/", "Spanish agreement", "new-sha", "Initial version");
         var targetTeamId = empty ? Guid.Empty : Guid.NewGuid();

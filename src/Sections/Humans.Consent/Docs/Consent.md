@@ -178,6 +178,8 @@ Document archival uses the shared `data-confirm` handler: each click prompts onc
 - The admin GitHub-folder preview renders pasted URL parts as text. It preserves the full URL until the server validates the configured repository and branch and normalizes the folder path.
 - The admin legal-document controller orders the document list by team name, then document name, using ordinal comparison. The service returns document data without display ordering.
 
+- Legal-document create, edit, archive, manual sync and version-summary actions resolve their actor through Users before mutation. Merged sessions use the surviving account for audit attribution; missing accounts receive Unauthorized. Account lookup uses request cancellation, while document writes and sync retain their non-cancellable mutation boundary.
+
 - Legal-document forms require explicit required/active flags and grace-period days; omission redisplays field errors before any write and cannot reactivate a document, change its consent requirement or reset its grace period. Explicit false flags remain valid.
 
 - Legal-document creation and edits refuse empty or nonexistent owning teams with 404 before persistence, initial sync, cache invalidation or success audit. The service checks the team through `ITeamService`; existing inactive teams remain valid owners.
