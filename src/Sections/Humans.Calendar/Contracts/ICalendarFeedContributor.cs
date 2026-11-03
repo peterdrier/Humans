@@ -13,7 +13,8 @@ public interface ICalendarFeedContributor : IFanout
     Task<IReadOnlyList<CalendarFeedItem>> GetCalendarItemsForUserAsync(Guid userId, CancellationToken ct);
 
     /// <summary>
-    /// Items everyone may see on the community calendar that overlap [<paramref name="from"/>, <paramref name="to"/>].
+    /// Items everyone may see on the community calendar that overlap [<paramref name="from"/>, <paramref name="to"/>];
+    /// a repeating item qualifies when any occurrence may, and Calendar trims its occurrences to the window.
     /// Must be read-only; empty when there is nothing public.
     /// </summary>
     Task<IReadOnlyList<CalendarFeedItem>> GetPublicItemsForWindowAsync(Instant from, Instant to, CancellationToken ct);

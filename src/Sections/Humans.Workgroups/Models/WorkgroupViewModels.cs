@@ -123,6 +123,12 @@ internal sealed class WorkgroupPageViewModel
     /// <summary>Empty unless the viewer can administer.</summary>
     public IReadOnlyList<HoldedChartAccountInfo> ExpenseAccounts { get; init; } = [];
 
+    /// <summary>Dates a one-off meeting falls on; a series uses the zone it repeats in.</summary>
+    public DateTimeZone OrganisationZone { get; init; } = DateTimeZone.Utc;
+
+    public LocalDate MeetingDate(WorkgroupMeetingInfo occurrence) =>
+        occurrence.StartUtc.InZone(CalendarEventForm.TryResolveZone(occurrence.RecurrenceTimezone) ?? OrganisationZone).Date;
+
     public string DisplayName(Guid? userId) =>
         userId is { } id && People.TryGetValue(id, out var info) ? info.BurnerName : "—";
 }
@@ -181,7 +187,7 @@ internal sealed class WorkgroupFormViewModel
         Name, Purpose, Deliverable, DeliverableKind, Audience, TargetDate, DiscordChannelUrl, IsSensitive);
 }
 
-/// <summary>The shared calendar form's fields plus the meeting's own Public flag and Minutes.</summary>
+/// <summary>The shared calendar form's fields plus the meeting's own Public flag. Notes after it are log entries.</summary>
 internal sealed class MeetingFormViewModel : ICalendarEventForm
 {
     public Guid? Id { get; init; }
@@ -212,9 +218,7 @@ internal sealed class MeetingFormViewModel : ICalendarEventForm
 
     public bool IsPublic { get; set; }
 
-    public string? Minutes { get; set; }
-
-    // Meetings are always timed, one-off events.
+    // Meetings are always timed.
     public bool IsAllDay { get; set; }
 
     public bool IsRecurring { get; set; }
@@ -223,7 +227,7 @@ internal sealed class MeetingFormViewModel : ICalendarEventForm
 
     public bool SupportsAllDay => false;
 
-    public bool SupportsRecurrence => false;
+    public bool SupportsRecurrence => true;
 
     public static MeetingFormViewModel New(string slug, Instant start, DateTimeZone zone)
     {
@@ -243,14 +247,17 @@ internal sealed class MeetingFormViewModel : ICalendarEventForm
             Location = m.Location,
             LocationUrl = m.LocationUrl,
             IsPublic = m.IsPublic,
-            Minutes = m.Minutes
+            IsRecurring = m.RecurrenceRule is not null,
+            RecurrenceRule = m.RecurrenceRule
         };
-        CalendarEventForm.SetTimed(form, m.StartUtc, m.EndUtc, zone);
+        // A series is shown in the zone it repeats in, so its wall-clock time reads as entered.
+        CalendarEventForm.SetTimed(form, m.StartUtc, m.EndUtc, CalendarEventForm.TryResolveZone(m.RecurrenceTimezone) ?? zone);
         return form;
     }
 
     public WorkgroupMeetingSave ToSave(CalendarEventTimes times) =>
-        new(Title, times.Start!.Value, times.End!.Value, Location, LocationUrl, IsPublic, Minutes, Description);
+        new(Title, times.Start!.Value, times.End!.Value, Location, LocationUrl, IsPublic, Description,
+            times.RecurrenceRule, times.RecurrenceTimezone);
 }
 
 internal sealed class LogEntryFormViewModel
@@ -259,8 +266,11 @@ internal sealed class LogEntryFormViewModel
 
     public required string Slug { get; init; }
 
-    /// <summary>Update, Disclosure or Note.</summary>
+    /// <summary>Update, Disclosure, Note or MeetingNotes.</summary>
     public WorkgroupLogKind Kind { get; set; } = WorkgroupLogKind.Update;
+
+    /// <summary>The meeting whose occurrence on <see cref="OccurredOn"/> these notes are about.</summary>
+    public Guid? MeetingId { get; set; }
 
     public LocalDate OccurredOn { get; set; }
 
@@ -277,10 +287,20 @@ internal sealed class LogEntryFormViewModel
         Kind = e.Kind,
         OccurredOn = e.OccurredOn,
         Title = e.Title,
-        Body = e.Body ?? string.Empty
+        Body = e.Body ?? string.Empty,
+        MeetingId = e.MeetingId
     };
 
-    public WorkgroupLogEntrySave ToSave() => new(Kind, OccurredOn, Title, Body);
+    public static LogEntryFormViewModel ForMeetingNotes(string slug, WorkgroupMeetingInfo meeting, LocalDate occurredOn) => new()
+    {
+        Slug = slug,
+        Kind = WorkgroupLogKind.MeetingNotes,
+        OccurredOn = occurredOn,
+        Title = meeting.Title,
+        MeetingId = meeting.Id
+    };
+
+    public WorkgroupLogEntrySave ToSave() => new(Kind, OccurredOn, Title, Body, MeetingId);
 }
 
 internal sealed class DocumentFormViewModel

@@ -1,3 +1,4 @@
+using Humans.Calendar.Contracts;
 using Humans.Workgroups.Domain;
 using NodaTime;
 
@@ -44,17 +45,38 @@ internal static class WorkgroupRhythm
 
     public static bool AcceptsMemberWork(this WorkgroupInfo w) => w.Status == WorkgroupStatus.Active;
 
-    public static WorkgroupMeetingInfo? NextMeeting(this WorkgroupInfo w, Instant now) =>
-        w.Meetings.Where(m => m.StartUtc >= now).MinBy(m => m.StartUtc);
+    /// <summary>How far ahead a series' next occurrence is looked for; covers a yearly rule twice.</summary>
+    private static readonly Duration NextOccurrenceHorizon = Duration.FromDays(731);
 
-    /// <summary>An Update entry or a meeting; a Note or Disclosure doesn't count.</summary>
+    /// <summary>
+    /// Each occurrence of <paramref name="m"/> starting in [<paramref name="from"/>, <paramref name="to"/>), as the
+    /// meeting with that occurrence's times. A one-off meeting is its own single occurrence.
+    /// </summary>
+    public static IEnumerable<WorkgroupMeetingInfo> Occurrences(this WorkgroupMeetingInfo m, Instant from, Instant to) =>
+        CalendarRecurrence.Occurrences(m.StartUtc, m.EndUtc, m.RecurrenceRule, m.RecurrenceTimezone, from, to)
+            .Where(o => o.Start >= from)
+            .Select(o => m with { StartUtc = o.Start, EndUtc = o.End });
+
+    /// <summary>Every occurrence that has started, plus each meeting's next one: what the timeline shows.</summary>
+    public static IEnumerable<WorkgroupMeetingInfo> MeetingOccurrences(this WorkgroupInfo w, Instant now) =>
+        w.Meetings.SelectMany(m => m.Occurrences(m.StartUtc, now)
+            .Concat(m.Occurrences(now, now + NextOccurrenceHorizon).Take(1)));
+
+    public static WorkgroupMeetingInfo? NextMeeting(this WorkgroupInfo w, Instant now) =>
+        w.Meetings.Select(m => m.Occurrences(now, now + NextOccurrenceHorizon).FirstOrDefault())
+            .OfType<WorkgroupMeetingInfo>()
+            .MinBy(m => m.StartUtc);
+
+    /// <summary>An Update, meeting notes, or a meeting occurrence; a Note or Disclosure doesn't count.</summary>
     public static Instant? LastActivityAt(this WorkgroupInfo w, Instant now)
     {
         var lastUpdate = w.LogEntries
-            .Where(e => e.Kind == WorkgroupLogKind.Update)
+            .Where(e => e.Kind is WorkgroupLogKind.Update or WorkgroupLogKind.MeetingNotes)
             .Select(e => (Instant?)e.CreatedAt)
             .Max();
-        var lastMeeting = w.Meetings.Where(m => m.StartUtc <= now).Select(m => (Instant?)m.StartUtc).Max();
+        var lastMeeting = w.Meetings
+            .Select(m => m.Occurrences(m.StartUtc, now + Duration.Epsilon).LastOrDefault()?.StartUtc)
+            .Max();
 
         return (lastUpdate, lastMeeting) switch
         {

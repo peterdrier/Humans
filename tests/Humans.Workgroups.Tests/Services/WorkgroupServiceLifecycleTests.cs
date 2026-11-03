@@ -585,7 +585,7 @@ public sealed class WorkgroupServiceLifecycleTests : WorkgroupsTestHarness
 
         var act = () => NewService().CreateMeetingAsync(
             workgroup.Id, member,
-            new WorkgroupMeetingSave("Meeting", now, now.Plus(Duration.FromHours(1)), null, null, false, null),
+            new WorkgroupMeetingSave("Meeting", now, now.Plus(Duration.FromHours(1)), null, null, false),
             Ct);
 
         (await act()).Refusal!.Key

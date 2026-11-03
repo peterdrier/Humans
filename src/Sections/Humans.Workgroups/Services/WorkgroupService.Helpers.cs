@@ -1,4 +1,5 @@
 using Humans.AuditLog.Contracts;
+using Humans.Calendar.Contracts;
 using Humans.Base.Constants;
 using Humans.Base.Extensions;
 using Humans.Base.Helpers;
@@ -38,12 +39,13 @@ internal sealed partial class WorkgroupService
             .Where(m => m.DeletedAt is null)
             .Select(m => new WorkgroupMeetingInfo(
                 m.Id, m.Title, m.StartUtc, m.EndUtc, m.Location, m.LocationUrl, m.IsPublic,
-                m.Minutes, m.CreatedByUserId, m.CreatedAt, m.UpdatedAt, m.Description))
+                m.Minutes, m.CreatedByUserId, m.CreatedAt, m.UpdatedAt, m.Description,
+                m.RecurrenceRule, m.RecurrenceTimezone))
             .ToList(),
         w.LogEntries
             .Select(e => new WorkgroupLogEntryInfo(
                 e.Id, e.Kind, e.OccurredOn, e.Title, e.Body, e.AuthorUserId, e.DocumentId,
-                e.SurveyId, e.CreatedAt, e.UpdatedAt))
+                e.SurveyId, e.CreatedAt, e.UpdatedAt, e.MeetingId))
             .ToList(),
         w.Documents
             .Select(ToInfo)
@@ -104,6 +106,15 @@ internal sealed partial class WorkgroupService
             : new(Refusal: new(WorkgroupErrorKeys.NotFound));
     }
 
+    /// <summary>No value and no refusal: the entry links no meeting. Only meeting notes keep a link.</summary>
+    private async Task<WorkgroupMutationResult<WorkgroupMeeting>> ResolveMeetingLinkAsync(
+        Guid workgroupId, WorkgroupLogEntrySave save, CancellationToken ct)
+    {
+        if (save.Kind != WorkgroupLogKind.MeetingNotes || save.MeetingId is not { } meetingId) return new();
+        var meeting = await RequireLiveMeetingAsync(meetingId, ct);
+        return meeting.Value?.WorkgroupId == workgroupId ? meeting : new(Refusal: new(WorkgroupErrorKeys.NotFound));
+    }
+
     /// <summary>Member mutations are frozen before registration and once the group ends.</summary>
     private static WorkgroupRefusal? RequireAcceptsMemberWork(Workgroup w)
     {
@@ -133,7 +144,7 @@ internal sealed partial class WorkgroupService
     private static WorkgroupRefusal? RequireMemberKind(WorkgroupLogKind kind)
     {
         if (kind is not (WorkgroupLogKind.Update or WorkgroupLogKind.Disclosure
-            or WorkgroupLogKind.StatusRequested or WorkgroupLogKind.Note))
+            or WorkgroupLogKind.StatusRequested or WorkgroupLogKind.Note or WorkgroupLogKind.MeetingNotes))
         {
             return new(WorkgroupErrorKeys.SystemLogEntry);
         }
@@ -199,6 +210,12 @@ internal sealed partial class WorkgroupService
             return new(WorkgroupErrorKeys.TextTooLong, 2000);
         if (save.Description?.Trim().Length > 4000)
             return new(WorkgroupErrorKeys.TextTooLong, 4000);
+        // The rule and its zone travel together: a rule without a zone can't say which 19:00 it repeats.
+        var hasRule = !string.IsNullOrWhiteSpace(save.RecurrenceRule);
+        if (hasRule != !string.IsNullOrWhiteSpace(save.RecurrenceTimezone)
+            || !CalendarRecurrence.IsValidRule(save.RecurrenceRule)
+            || (hasRule && CalendarEventForm.TryResolveZone(save.RecurrenceTimezone) is null))
+            return new(WorkgroupErrorKeys.RecurrenceInvalid);
         return null;
     }
 
@@ -232,7 +249,8 @@ internal sealed partial class WorkgroupService
         meeting.Location = Trimmed(save.Location);
         meeting.LocationUrl = Trimmed(save.LocationUrl);
         meeting.IsPublic = save.IsPublic;
-        meeting.Minutes = Trimmed(save.Minutes);
+        meeting.RecurrenceRule = Trimmed(save.RecurrenceRule);
+        meeting.RecurrenceTimezone = meeting.RecurrenceRule is null ? null : save.RecurrenceTimezone!.Trim();
     }
 
     private static WorkgroupMember NewMember(

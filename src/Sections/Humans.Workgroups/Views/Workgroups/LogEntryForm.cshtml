@@ -1,7 +1,7 @@
 @model LogEntryFormViewModel
 @{
     ViewData["Title"] = Localizer[Model.Id is null ? "Workgroups_LogEntryNewTitle" : "Workgroups_LogEntryEditTitle"];
-    var kinds = new[] { WorkgroupLogKind.Update, WorkgroupLogKind.Disclosure, WorkgroupLogKind.Note };
+    var kinds = new[] { WorkgroupLogKind.Update, WorkgroupLogKind.MeetingNotes, WorkgroupLogKind.Disclosure, WorkgroupLogKind.Note };
 }
 
 <nav aria-label="@Localizer["Workgroups_BreadcrumbNavigation"]">
@@ -19,6 +19,7 @@
         <form method="post" asp-action="SaveLogEntry" asp-route-slug="@Model.Slug">
             <input type="hidden" asp-for="Id" />
             <input type="hidden" asp-for="Slug" />
+            <input type="hidden" asp-for="MeetingId" />
             <div asp-validation-summary="ModelOnly" class="text-danger"></div>
 
             <div class="mb-3">

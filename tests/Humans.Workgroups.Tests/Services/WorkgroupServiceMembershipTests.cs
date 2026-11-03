@@ -728,12 +728,12 @@ public sealed class WorkgroupServiceMembershipTests : WorkgroupsTestHarness
         var now = Clock.GetCurrentInstant();
         var meetingId = (await NewService().CreateMeetingAsync(
             workgroup.Id, member,
-            new WorkgroupMeetingSave("Sync", now, now.Plus(Duration.FromHours(1)), null, null, false, null), Ct)).Value;
+            new WorkgroupMeetingSave("Sync", now, now.Plus(Duration.FromHours(1)), null, null, false), Ct)).Value;
 
         await NewService().UpdateMeetingAsync(
             meetingId, member,
             new WorkgroupMeetingSave("Sync, moved", now.Plus(Duration.FromDays(1)),
-                now.Plus(Duration.FromDays(1)).Plus(Duration.FromHours(1)), null, null, false, null), Ct);
+                now.Plus(Duration.FromDays(1)).Plus(Duration.FromHours(1)), null, null, false), Ct);
 
         await AuditLog.Received(1).LogAsync(
             WorkgroupsAuditActions.WorkgroupMeetingUpdated, AuditEntityTypes.WorkgroupMeeting, meetingId,
@@ -748,7 +748,7 @@ public sealed class WorkgroupServiceMembershipTests : WorkgroupsTestHarness
         var now = Clock.GetCurrentInstant();
         var meetingId = (await NewService().CreateMeetingAsync(
             workgroup.Id, member,
-            new WorkgroupMeetingSave("Sync", now, now.Plus(Duration.FromHours(1)), null, null, false, null), Ct)).Value;
+            new WorkgroupMeetingSave("Sync", now, now.Plus(Duration.FromHours(1)), null, null, false), Ct)).Value;
 
         await NewService().DeleteMeetingAsync(meetingId, member, Ct);
 
@@ -765,7 +765,7 @@ public sealed class WorkgroupServiceMembershipTests : WorkgroupsTestHarness
         var now = Clock.GetCurrentInstant();
         var meetingId = (await NewService().CreateMeetingAsync(
             workgroup.Id, member,
-            new WorkgroupMeetingSave("Sync", now, now.Plus(Duration.FromHours(1)), null, null, false, null), Ct)).Value;
+            new WorkgroupMeetingSave("Sync", now, now.Plus(Duration.FromHours(1)), null, null, false), Ct)).Value;
         await NewService().DeleteMeetingAsync(meetingId, member, Ct);
 
         // The tombstoned row is still readable, so a replayed delete is refused rather than
@@ -787,14 +787,14 @@ public sealed class WorkgroupServiceMembershipTests : WorkgroupsTestHarness
         var now = Clock.GetCurrentInstant();
         var meetingId = (await NewService().CreateMeetingAsync(
             workgroup.Id, member,
-            new WorkgroupMeetingSave("Sync", now, now.Plus(Duration.FromHours(1)), null, null, false, null), Ct)).Value;
+            new WorkgroupMeetingSave("Sync", now, now.Plus(Duration.FromHours(1)), null, null, false), Ct)).Value;
         await NewService().DeleteMeetingAsync(meetingId, member, Ct);
 
         // Same unfiltered read, same class of bug: a deleted meeting must not be editable either.
         var edit = async () => await NewService().UpdateMeetingAsync(
             meetingId, member,
             new WorkgroupMeetingSave("Back from the dead", now, now.Plus(Duration.FromHours(1)),
-                null, null, false, null), Ct);
+                null, null, false), Ct);
 
         (await edit()).Refusal!.Key
             .Should().Be(WorkgroupErrorKeys.NotFound);
@@ -825,5 +825,41 @@ public sealed class WorkgroupServiceMembershipTests : WorkgroupsTestHarness
         stored.Kind.Should().Be(kind);
         stored.Title.Should().BeNull();
         stored.Body.Should().BeNull();
+    }
+
+    [HumansFact]
+    public async Task MeetingNotes_LinkOnlyToTheGroupsOwnMeeting()
+    {
+        var workgroup = await SeedWorkgroupAsync();
+        var other = await SeedWorkgroupAsync(name: "Other group");
+        var member = workgroup.Members.Single().UserId;
+        var now = Clock.GetCurrentInstant();
+        var own = await AddMeetingAsync(workgroup.Id, now);
+        var foreign = await AddMeetingAsync(other.Id, now);
+        WorkgroupLogEntrySave Notes(Guid meetingId) =>
+            new(WorkgroupLogKind.MeetingNotes, now.InUtc().Date, "Sync", "Agreed the plan", meetingId);
+
+        var linked = await NewService().AddLogEntryAsync(workgroup.Id, member, Notes(own.Id), Ct);
+        var refused = await NewService().AddLogEntryAsync(workgroup.Id, member, Notes(foreign.Id), Ct);
+
+        refused.Refusal!.Key.Should().Be(WorkgroupErrorKeys.NotFound);
+        await using var ctx = OpenContext();
+        (await ctx.LogEntries.SingleAsync(e => e.Id == linked.Value, Ct)).MeetingId.Should().Be(own.Id);
+    }
+
+    [HumansTheory]
+    [InlineData("FREQ=WEEKLY", null)]
+    [InlineData("FREQ=WEEKLY", "Mars/Olympus")]
+    [InlineData("FREQ=FORTNIGHTLY", "Europe/Madrid")]
+    public async Task ARepeatingMeeting_NeedsAValidRuleAndZone(string rule, string? zone)
+    {
+        var workgroup = await SeedWorkgroupAsync();
+        var member = workgroup.Members.Single().UserId;
+        var now = Clock.GetCurrentInstant();
+
+        var result = await NewService().CreateMeetingAsync(workgroup.Id, member,
+            new WorkgroupMeetingSave("Sync", now, now.Plus(Duration.FromHours(1)), null, null, false, null, rule, zone), Ct);
+
+        result.Refusal!.Key.Should().Be(WorkgroupErrorKeys.RecurrenceInvalid);
     }
 }
