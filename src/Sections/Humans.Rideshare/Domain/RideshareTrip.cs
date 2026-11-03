@@ -66,4 +66,10 @@ internal sealed class RideshareTrip
     public Instant UpdatedAt { get; set; }
 
     public ICollection<RideshareInterest> Interests { get; set; } = new List<RideshareInterest>();
+
+    internal static LocalDate LastTravelDate(LocalDate departureDate, int expectedDurationDays) =>
+        departureDate.PlusDays(expectedDurationDays - 1);
+
+    internal static bool CoversDate(LocalDate departureDate, int expectedDurationDays, LocalDate date) =>
+        date >= departureDate && date <= LastTravelDate(departureDate, expectedDurationDays);
 }

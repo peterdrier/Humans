@@ -33,9 +33,9 @@ internal sealed record TripView(
     public bool IsFull => SeatsRemaining <= 0;
 
     /// <summary>Last day of travel: departure plus duration minus one.</summary>
-    public LocalDate LastTravelDate => DepartureDate.PlusDays(ExpectedDurationDays - 1);
+    public LocalDate LastTravelDate => RideshareTrip.LastTravelDate(DepartureDate, ExpectedDurationDays);
 
-    public bool CoversDate(LocalDate date) => date >= DepartureDate && date <= LastTravelDate;
+    public bool CoversDate(LocalDate date) => RideshareTrip.CoversDate(DepartureDate, ExpectedDurationDays, date);
 
     public bool IsJoinable => Status == TripStatus.Active && !IsFull;
 }

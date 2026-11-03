@@ -469,10 +469,6 @@ internal sealed class RideshareService(
     public Task ReassignAsync(Guid mergedFromUserId, Guid mergedToUserId, Guid actorUserId, Instant now, CancellationToken ct) =>
         repository.ReassignToUserAsync(mergedFromUserId, mergedToUserId, now, ct);
 
-    /// <summary>Entity twin of <see cref="TripView.CoversDate"/>: departure through departure + duration - 1.</summary>
-    private static bool TravelsOn(RideshareTrip trip, LocalDate date) =>
-        date >= trip.DepartureDate && date <= trip.DepartureDate.PlusDays(trip.ExpectedDurationDays - 1);
-
     /// <summary>
     /// A trip may answer a pin only while the pin is open and the trip still goes that way on that day.
     /// Checked when the driver answers and again when the rider accepts, since either side may have edited in between.
@@ -483,7 +479,7 @@ internal sealed class RideshareService(
             return new("Rideshare_Error_RequestClosed");
         if (trip.EventSettingsId is null || trip.EventSettingsId != request.EventSettingsId)
             return new("Rideshare_Error_RideUnavailable");
-        if (trip.Direction != request.Direction || !TravelsOn(trip, request.DesiredDate))
+        if (trip.Direction != request.Direction || !RideshareTrip.CoversDate(trip.DepartureDate, trip.ExpectedDurationDays, request.DesiredDate))
             return new("Rideshare_Error_RideNotOnRequestDate");
         return null;
     }
@@ -597,7 +593,7 @@ internal sealed class RideshareService(
         IsMatched: interests.Any(i => i.Status == InterestStatus.Accepted
             && (i.RequestId is { } requestId ? requestId == r.Id : i.FromUserId == r.UserId)
             && activeTrips.TryGetValue(i.TripId, out var trip)
-            && trip.Direction == r.Direction && TravelsOn(trip, r.DesiredDate)),
+            && trip.Direction == r.Direction && RideshareTrip.CoversDate(trip.DepartureDate, trip.ExpectedDurationDays, r.DesiredDate)),
         r.CreatedAt);
 
     private static InterestView ToView(RideshareInterest i) => new(
