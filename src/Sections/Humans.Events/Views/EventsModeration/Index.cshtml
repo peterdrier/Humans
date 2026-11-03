@@ -64,7 +64,7 @@ else
                                     }
                                     else
                                     {
-                                        <i class="fa-solid fa-user me-1"></i>@evt.SubmitterName
+                                        <i class="fa-solid fa-user me-1"></i><vc:human user-id="@evt.SubmitterUserId" link="None" />
                                         @if (evt.VenueName != null)
                                         {
                                             <text> &#64; @evt.VenueName</text>

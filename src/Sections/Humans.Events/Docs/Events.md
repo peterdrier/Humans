@@ -180,6 +180,7 @@ Adding a favourite requires a currently approved event. A supplied day on a recu
 
 ## Invariants
 
+- Moderation submitter labels and the browse page’s individual-host fallback render through Human by user ID, without controller name hydration. On browse cards, authored host text takes precedence and camp events have no submitter-name fallback. Missing identities use the shared localized unknown label. API, CSV and email name projections remain separate live text consumers.
 - The guide shows one event: `EventGuideSettings.EventSettingsId`. Submission lists, the barrio CSV's existing rows, approved events (and the approved-event cache), favourites, the moderation queue and counts, camp overlap checks, the dashboard and the guide export only include entries of that event, plus entries with no event id yet (`Event.IsInEvent`). Entries of other events are kept, never deleted, and still reach GDPR export and by-id owner/moderator lookups. Pointing the guide at another event rebuilds the approved cache.
 
 - Data migration `events.event-ids` (`/Debug/DataMigrations`) gives each unassigned entry the non-deleted Settings event whose build-start to strike-end window holds the entry's local start date, else the event with the nearest gate opening (earliest on a tie). It only writes rows still without an event id.

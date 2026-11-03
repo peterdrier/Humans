@@ -246,6 +246,7 @@ public sealed class EventsModerationControllerTests
         var result = await controller.Index(null, request.Token);
 
         var model = result.Should().BeOfType<ViewResult>().Which.Model.Should().BeOfType<ModerationQueueViewModel>().Which;
+        model.Events.Single().SubmitterUserId.Should().Be(submitterId);
         var history = model.Events.Single().History;
         history.Select(h => h.ActorUserId).Should().Equal(laterModeratorId, moderatorId);
         await _guide.Received(1).GetGuideSettingsAsync(request.Token);
@@ -254,7 +255,7 @@ public sealed class EventsModerationControllerTests
         await _guide.Received(1).GetEventsByStatusAsync(EventStatus.Pending, request.Token);
         await _guide.Received(1).GetCampEventsForOverlapAsync(request.Token);
         await _camps.Received(1).GetCampsForYearAsync(2026, request.Token);
-        await _users.Received(1).GetUserInfosAsync(Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Contains(submitterId)), request.Token);
+        await _users.DidNotReceive().GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>());
     }
 
     [HumansTheory]

@@ -205,6 +205,6 @@ internal sealed class BrowseEventItem
     /// <summary>This card's day for recurring events, else null (whole event).</summary>
     public int? FavouriteDayOffset { get; set; }
     public bool IsFavourited { get; set; }
-    public string? SubmitterName { get; set; }
-    public string? DisplayHost { get; set; }
+    public Guid? SubmitterUserId { get; set; }
+    public string? Host { get; set; }
 }

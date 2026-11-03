@@ -40,7 +40,6 @@ internal sealed class EventsModerationController(
             : unsortedEvents.OrderByDescending(e => e.SubmittedAt)).ToList();
 
         var campsById = await LoadCampsByIdAsync(camps, eventSettings?.GateOpeningDate.Year, ct);
-        var submitterInfoById = await LoadSubmittersAsync(UserService, events.Select(e => e.SubmitterUserId).Distinct(), ct);
 
         var model = new ModerationQueueViewModel
         {
@@ -51,7 +50,7 @@ internal sealed class EventsModerationController(
             ResubmitRequestedCount = counts.GetValueOrDefault(EventStatus.ResubmitRequested),
             WithdrawnCount = counts.GetValueOrDefault(EventStatus.Withdrawn),
             TimeZoneId = eventSettings?.TimeZoneId,
-            Events = events.Select(e => BuildRow(e, tz, campsById, submitterInfoById)).ToList()
+            Events = events.Select(e => BuildRow(e, tz, campsById)).ToList()
         };
 
         var campEvents = events.Where(e => e.CampId.HasValue).ToList();
@@ -363,12 +362,8 @@ internal sealed class EventsModerationController(
     private static ModerationEventRowViewModel BuildRow(
         EventInfo e,
         DateTimeZone? tz,
-        IReadOnlyDictionary<Guid, CampInfo> campsById,
-        IReadOnlyDictionary<Guid, UserInfo> submitterInfoById)
+        IReadOnlyDictionary<Guid, CampInfo> campsById)
     {
-        var submitter = submitterInfoById.GetValueOrDefault(e.SubmitterUserId);
-        var submitterName = submitter?.BurnerName ?? submitter?.Email ?? "Unknown";
-
         var camp = e.CampId.HasValue ? campsById.GetValueOrDefault(e.CampId.Value) : null;
         var campName = ResolveCampName(camp);
 
@@ -377,7 +372,6 @@ internal sealed class EventsModerationController(
             Id = e.Id,
             Title = e.Title,
             Description = e.Description,
-            SubmitterName = submitterName,
             SubmitterUserId = e.SubmitterUserId,
             CampName = campName,
             CampSlug = camp?.Slug,

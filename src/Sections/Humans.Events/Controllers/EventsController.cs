@@ -424,8 +424,6 @@ internal sealed class EventsController(
         var events = await guide.GetApprovedEventsAsync(null, venueId, categoryId, q, excludedSlugs, ct);
 
         var campsById = await LoadCampsByIdAsync(CampService, gateOpeningDate?.Year, ct);
-        var individualSubmitterIds = events.Where(e => e.CampId == null).Select(e => e.SubmitterUserId).Distinct();
-        var submitterInfoById = await LoadSubmittersAsync(UserService, individualSubmitterIds, ct);
 
         var occurrences = EventOccurrenceExpander.Expand(
             events, favouriteDaysByEventId, gateOpeningDate, tz, filterDays);
@@ -435,9 +433,6 @@ internal sealed class EventsController(
             var e = o.Event;
             var camp = e.CampId.HasValue ? campsById.GetValueOrDefault(e.CampId.Value) : null;
             var campName = ResolveCampName(camp);
-            var submitterName = e.CampId == null
-                ? submitterInfoById.GetValueOrDefault(e.SubmitterUserId)?.BurnerName
-                : null;
 
             return new BrowseEventItem
             {
@@ -453,10 +448,8 @@ internal sealed class EventsController(
                 DayOffset = o.DayOffset,
                 FavouriteDayOffset = o.FavouriteDayOffset,
                 IsFavourited = o.IsFavourited,
-                SubmitterName = submitterName,
-                DisplayHost = e.CampId == null
-                    ? (e.Host ?? submitterName)
-                    : e.Host
+                SubmitterUserId = e.CampId == null ? e.SubmitterUserId : null,
+                Host = e.Host
             };
         }).ToList();
 

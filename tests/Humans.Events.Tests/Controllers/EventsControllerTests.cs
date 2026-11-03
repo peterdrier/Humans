@@ -560,7 +560,6 @@ public class EventsControllerTests
     [Xunit.InlineData(nameof(EventsController.Browse), "Favourites")]
     [Xunit.InlineData(nameof(EventsController.Browse), "Approved")]
     [Xunit.InlineData(nameof(EventsController.Browse), "Camps")]
-    [Xunit.InlineData(nameof(EventsController.Browse), "Submitter")]
     [Xunit.InlineData(nameof(EventsController.Browse), "Categories")]
     [Xunit.InlineData(nameof(EventsController.Browse), "Venues")]
     [Xunit.InlineData(nameof(EventsController.BarrioSubmit), "Camp")]
@@ -663,6 +662,14 @@ public class EventsControllerTests
             _ => () => controller.Browse(null, null, null, null),
         };
         var loaded = await load();
+        if (string.Equals(route, nameof(EventsController.Browse), StringComparison.Ordinal))
+        {
+            var browse = ((ViewResult)loaded).Model.Should().BeOfType<BrowseViewModel>().Which;
+            var item = browse.DayGroups.SelectMany(g => g.Items).Should().ContainSingle().Which;
+            item.SubmitterUserId.Should().Be(submitterId);
+            item.Host.Should().BeNull();
+            await _users.DidNotReceive().GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>());
+        }
         if (string.Equals(route, nameof(EventsController.BulkUploadTemplate), StringComparison.Ordinal))
             loaded.Should().BeOfType<FileContentResult>();
         else
