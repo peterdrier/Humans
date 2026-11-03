@@ -101,11 +101,12 @@ internal sealed class EventsModerationController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Withdraw(ModerationActionFormModel model)
     {
-        var moderator = await GetCurrentUserInfoAsync();
+        var ct = HttpContext.RequestAborted;
+        var moderator = await GetCurrentUserInfoAsync(ct);
         if (moderator == null) return Challenge();
         if (!ModelState.IsValid) return BadRequest(ModelState);
 
-        var guideEvent = await guide.GetEventForModerationAsync(model.EventId);
+        var guideEvent = await guide.GetEventForModerationAsync(model.EventId, ct);
         if (guideEvent == null)
         {
             SetError("Event not found.");
@@ -178,10 +179,11 @@ internal sealed class EventsModerationController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Update(Guid eventId, AdminEventFormViewModel model)
     {
-        var moderator = await GetCurrentUserInfoAsync();
+        var ct = HttpContext.RequestAborted;
+        var moderator = await GetCurrentUserInfoAsync(ct);
         if (moderator == null) return Challenge();
 
-        var guideEvent = await guide.GetEventForModerationAsync(eventId);
+        var guideEvent = await guide.GetEventForModerationAsync(eventId, ct);
         if (guideEvent == null) return NotFound();
 
         // The event's own CampId — not the posted flag — is the source of truth
@@ -205,7 +207,7 @@ internal sealed class EventsModerationController(
                 ModelState.AddModelError(nameof(model.VenueId), "Venue is required.");
         }
 
-        var (eventSettings, tz) = await LoadEventSettingsAsync();
+        var (eventSettings, tz) = await LoadEventSettingsAsync(ct);
         if (eventSettings == null)
         {
             SetError("Event settings not configured.");
@@ -231,8 +233,8 @@ internal sealed class EventsModerationController(
         if (!ModelState.IsValid)
         {
             if (isCampEvent)
-                model.CampName = await ResolveCampNameAsync(guideEvent.CampId!.Value, eventSettings);
-            await PopulateAdminFormAsync(model, eventSettings);
+                model.CampName = await ResolveCampNameAsync(guideEvent.CampId!.Value, eventSettings, ct);
+            await PopulateAdminFormAsync(model, eventSettings, ct);
             return View("AdminEventForm", model);
         }
 
@@ -306,11 +308,12 @@ internal sealed class EventsModerationController(
 
     private async Task<IActionResult> ProcessActionAsync(Guid eventId, EventModerationActionType actionType, string? reason)
     {
-        var moderator = await GetCurrentUserInfoAsync();
+        var ct = HttpContext.RequestAborted;
+        var moderator = await GetCurrentUserInfoAsync(ct);
         if (moderator == null) return Challenge();
         if (!ModelState.IsValid) return BadRequest(ModelState);
 
-        var guideEvent = await guide.GetEventForModerationAsync(eventId);
+        var guideEvent = await guide.GetEventForModerationAsync(eventId, ct);
         if (guideEvent == null)
         {
             SetError("Event not found.");
@@ -320,8 +323,8 @@ internal sealed class EventsModerationController(
         string? campSlug = null;
         if (guideEvent.CampId.HasValue)
         {
-            var (eventSettings, _) = await LoadEventSettingsAsync();
-            var campsById = await LoadCampsByIdAsync(camps, eventSettings?.GateOpeningDate.Year);
+            var (eventSettings, _) = await LoadEventSettingsAsync(ct);
+            var campsById = await LoadCampsByIdAsync(camps, eventSettings?.GateOpeningDate.Year, ct);
             campSlug = campsById.GetValueOrDefault(guideEvent.CampId.Value)?.Slug;
         }
 

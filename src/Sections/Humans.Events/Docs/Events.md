@@ -169,7 +169,7 @@ Adding a favourite requires a currently approved event. A supplied day on a recu
 | `EventsAdminController` | `/Events/Admin/` | EventsAdmin, Admin (Board read-only) — `Settings` has no GET (only `POST SaveSettings`); the guide-settings form is the `/Settings#event-guide` tab (peterdrier/Humans#1634) |
 | `EventsApiController` | `/api/events/` | Public (CORS) + authenticated same-origin |
 
-Member create, edit, withdrawal and bulk-import preflight reads retain browser cancellation, including invalid-form dropdown preparation. Mutation calls and post-attempt form hydration remain detached so committed work can finish.
+Member create, edit, withdrawal and bulk-import preflight reads retain browser cancellation, including invalid-form dropdown preparation. Mutation calls and post-attempt form hydration remain detached so committed work can finish. Moderator preflight reads also retain browser cancellation through actor, event, settings, camp and invalid-form lookups; moderation, withdrawal and edit mutations remain detached.
 
 ## Actors & Roles
 
