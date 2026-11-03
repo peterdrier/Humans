@@ -144,7 +144,7 @@ The queue is the open `db:Destructive` issues on `peterdrier/Humans` that came f
 any night. An issue is **due** when its retiring commit is running on production: read
 `commit` from `https://humans.nobodies.team/api/version`, fetch
 `https://github.com/nobodies-collective/Humans.git main`, and check
-`git merge-base --is-ancestor <retiring sha> <prod commit>`. Skip an issue that isn't due, or
+`git merge-base --is-ancestor <retiring sha> <prod commit>`. If the issue names a PR instead of a sha, use that PR's merge commit; an unmerged PR means the issue isn't due. Skip an issue that isn't due, or
 that already has an open PR, and list it in the summary. Open nothing while
 [`event-deploy-freeze`](../../../memory/process/event-deploy-freeze.md) applies.
 
