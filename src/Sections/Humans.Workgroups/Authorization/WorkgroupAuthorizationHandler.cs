@@ -2,13 +2,15 @@ using System.Security.Claims;
 using Humans.Base.Constants;
 using Humans.Workgroups.Services;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
+using Humans.Users.Contracts;
 
 namespace Humans.Workgroups.Authorization;
 
-internal sealed class WorkgroupAuthorizationHandler
+internal sealed class WorkgroupAuthorizationHandler(IUserService users, IHttpContextAccessor httpContextAccessor)
     : AuthorizationHandler<WorkgroupOperationRequirement, WorkgroupInfo>
 {
-    protected override Task HandleRequirementAsync(
+    protected override async Task HandleRequirementAsync(
         AuthorizationHandlerContext context,
         WorkgroupOperationRequirement requirement,
         WorkgroupInfo resource)
@@ -19,25 +21,29 @@ internal sealed class WorkgroupAuthorizationHandler
         {
             if (isAdmin)
                 context.Succeed(requirement);
-            return Task.CompletedTask;
+            return;
         }
 
         if (requirement == WorkgroupOperationRequirement.Read)
         {
             if (context.User.Identity?.IsAuthenticated == true)
                 context.Succeed(requirement);
-            return Task.CompletedTask;
+            return;
         }
 
         if (!resource.AcceptsMemberWork())
-            return Task.CompletedTask;
+            return;
 
-        if (isAdmin || (Guid.TryParse(context.User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId)
-            && resource.IsMember(userId)))
+        if (isAdmin)
         {
             context.Succeed(requirement);
+            return;
         }
 
-        return Task.CompletedTask;
+        if (!Guid.TryParse(context.User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId)) return;
+        var user = await users.GetUserInfoAsync(userId,
+            httpContextAccessor.HttpContext?.RequestAborted ?? CancellationToken.None);
+        if (user is not null && resource.IsMember(user.Id))
+            context.Succeed(requirement);
     }
 }

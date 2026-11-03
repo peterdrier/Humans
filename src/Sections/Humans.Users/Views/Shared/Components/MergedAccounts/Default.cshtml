@@ -5,7 +5,7 @@
     <div class="alert alert-warning">
         <i class="fa-solid fa-code-merge me-2"></i>
         This account is a <strong>merge tombstone</strong> — it was folded into
-        <a asp-controller="UsersAdmin" asp-action="AdminDetail" asp-route-id="@Model.MergedInto.UserId">@(Model.MergedInto.DisplayName ?? "another account")</a>
+        <vc:human user-id="@Model.MergedInto.UserId" link="Admin" raw="true" popover="false" />
         @if (Model.MergedAt is DateTime mergedAt)
         {
             <text> on @mergedAt.ToString("g") UTC</text>
@@ -23,7 +23,7 @@
             @foreach (var account in Model.MergedIn)
             {
                 <li>
-                    <a asp-controller="UsersAdmin" asp-action="AdminDetail" asp-route-id="@account.UserId">@(account.DisplayName ?? account.UserId.ToString())</a>
+                    <vc:human user-id="@account.UserId" link="Admin" raw="true" popover="false" />
                     @if (account.MergedAt is DateTime at)
                     {
                         <text> — @at.ToString("g") UTC</text>

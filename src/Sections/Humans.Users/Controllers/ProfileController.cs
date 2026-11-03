@@ -80,7 +80,6 @@ internal sealed class ProfileController(
             HasPendingConsents = pendingConsentCount > 0,
             PendingConsentCount = pendingConsentCount,
             IsOwnProfile = true,
-            DisplayName = info.BurnerName,
         };
 
         if (latestApplication is not null && latestApplication.Status != ApplicationStatus.Withdrawn)
@@ -108,8 +107,7 @@ internal sealed class ProfileController(
         var viewModel = ProfileEditViewModelBuilder.Build(
             info,
             applications,
-            preview,
-            p => Url.Action(nameof(ProfileViewController.Picture), "ProfileView", new { id = p.Id, v = p.UpdatedAt.ToUnixTimeTicks() }));
+            preview);
 
         ViewData["GoogleMapsApiKey"] = configuration.GetRequiredSetting(configRegistry, "GoogleMaps:ApiKey", "Google Maps", isSensitive: true);
         return View(viewModel);
@@ -121,8 +119,10 @@ internal sealed class ProfileController(
     [AllowBeforeActiveMembership]
     public async Task<IActionResult> Edit(ProfileViewModel model)
     {
-        var user = await GetCurrentUserInfoAsync();
+        var user = await GetCurrentUserInfoAsync(HttpContext.RequestAborted);
         if (user is null) return NotFound();
+        model.UserId = user.Id;
+        model.HasCustomProfilePicture = user.Profile?.HasCustomPicture == true;
         model.ContactFields = ProfileEditViewModelBuilder.BuildLegacyContactFields(user.Profile);
         model.IsInitialSetup = user.Profile is null || user.State == UserState.Bare;
 
@@ -330,12 +330,12 @@ internal sealed class ProfileController(
     [AllowBeforeActiveMembership]
     public async Task<IActionResult> Medical([Bind(nameof(MedicalViewModel.MedicalConditions))] MedicalViewModel model)
     {
+        var user = await GetCurrentUserInfoAsync(HttpContext.RequestAborted);
+        if (user is null)
+            return NotFound();
+
         try
         {
-            var user = await GetCurrentUserInfoAsync();
-            if (user is null)
-                return NotFound();
-
             // From the principal, so the reveal list on a re-rendered form is always the member's own.
             model.UserId = user.Id;
             if (!ModelState.IsValid)

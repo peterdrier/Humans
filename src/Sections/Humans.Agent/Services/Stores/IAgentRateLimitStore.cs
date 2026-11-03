@@ -4,7 +4,13 @@ using NodaTime;
 namespace Humans.Agent.Services.Stores;
 
 [StructLayout(LayoutKind.Auto)]
-internal readonly record struct AgentRateLimitSnapshot(int MessagesToday, int TokensToday, int MessagesThisHour);
+internal readonly record struct AgentRateLimitSnapshot(int MessagesToday, int TokensToday, int MessagesThisHour)
+{
+    public bool IsAtLimit(AgentSettingsDto settings) =>
+        MessagesToday >= settings.DailyMessageCap ||
+        TokensToday >= settings.DailyTokenCap ||
+        MessagesThisHour >= settings.HourlyMessageCap;
+}
 
 internal interface IAgentRateLimitStore
 {

@@ -38,16 +38,18 @@ internal sealed class NotificationMeterProvider(
     internal const string CountsCacheKey = "NotificationMeters";
 
     public async Task<IReadOnlyList<NotificationMeter>> GetMetersForUserAsync(
-        ClaimsPrincipal user, CancellationToken cancellationToken = default)
+        ClaimsPrincipal user, CancellationToken cancellationToken = default, Guid? resolvedUserId = null)
     {
         var counts = await GetCachedCountsAsync(cancellationToken);
         var meters = new List<NotificationMeter>();
+        var viewerId = resolvedUserId;
+        if (viewerId is null && Guid.TryParse(user.FindFirstValue(ClaimTypes.NameIdentifier), out var claimedUserId))
+            viewerId = claimedUserId;
 
         var isAdmin = user.IsInRole(RoleNames.Admin);
         var isBoard = user.IsInRole(RoleNames.Board);
         var isShiftsAdmin = user.IsInRole(ShiftsRoles.ShiftsAdmin);
         var isConsentCoordinator = user.IsInRole(ConsentRoles.ConsentCoordinator);
-        var hasUserId = Guid.TryParse(user.FindFirstValue(ClaimTypes.NameIdentifier), out var userId);
 
         if (isConsentCoordinator && counts.ConsentReviewsPending > 0)
         {
@@ -60,10 +62,10 @@ internal sealed class NotificationMeterProvider(
             });
         }
 
-        if (isBoard && hasUserId)
+        if (isBoard && viewerId is { } boardMemberUserId)
         {
             // Governance caches this per user under its own key.
-            var pendingVoteCount = await governanceService.GetUnvotedApplicationCountAsync(userId, cancellationToken);
+            var pendingVoteCount = await governanceService.GetUnvotedApplicationCountAsync(boardMemberUserId, cancellationToken);
             if (pendingVoteCount > 0)
             {
                 meters.Add(new NotificationMeter
@@ -136,7 +138,7 @@ internal sealed class NotificationMeterProvider(
         }
 
         // One counter per lead rather than a stored notification per request.
-        var campLeadRequestsPending = hasUserId ? await GetPerCampLeadPendingCountAsync(userId, cancellationToken) : 0;
+        var campLeadRequestsPending = viewerId is { } leadUserId ? await GetPerCampLeadPendingCountAsync(leadUserId, cancellationToken) : 0;
         if (campLeadRequestsPending > 0)
         {
             meters.Add(new NotificationMeter

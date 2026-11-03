@@ -36,6 +36,7 @@ internal static class WorkgroupErrorKeys
 
     public const string SurveyNotYours = "Workgroups_Error_SurveyNotYours";
     public const string WindowInvalid = "Workgroups_Error_WindowInvalid";
+    public const string RecurrenceInvalid = "Workgroups_Error_RecurrenceInvalid";
     public const string CommentsClosed = "Workgroups_Error_CommentsClosed";
     public const string CommentsStillOpen = "Workgroups_Error_CommentsStillOpen";
     public const string UnknownCategory = "Workgroups_Error_UnknownCategory";

@@ -117,6 +117,8 @@ There is no per-message admin/reporter flag — admin-vs-reporter is derived by 
 
 ## Invariants
 
+- Message, status, assignment and GitHub-link actions use request cancellation for account lookup before mutation. Lookup cancellation propagates outside mutation error handling; saved replies and triage mutations retain their existing tokens and failure handling.
+
 - The queue detail panel accepts only the latest selection request’s response; earlier successes and unavailable responses cannot replace the selected item’s content or wire stale forms.
 
 - Status updates reject undefined enum values before persistence or audit.
@@ -153,7 +155,7 @@ There is no per-message admin/reporter flag — admin-vs-reporter is derived by 
 ## Cross-Section Dependencies
 
 - **Audit actions:** declared on `FeedbackAuditActions` (`src/Sections/Humans.Feedback/FeedbackAuditActions.cs`), one `AuditActionDefinition` each, written through `IAuditLogService`: `FeedbackResponseSent`, `FeedbackStatusChanged`, `FeedbackAssignmentChanged`, `FeedbackGitHubLinked`.
-- **Users/Identity:** `IUserService.GetUserInfosAsync` — batched lookup of the canonical `UserInfo` read model, which already carries `BurnerName`-first display names, resolving reporter, assignee, resolver, and message senders in one call (`memory/architecture/burnername-is-the-display-name.md`).
+- **Users/Identity:** `IUserService.GetUserInfosAsync` — batched lookup of the canonical `UserInfo` read model, which already carries `BurnerName`-first display names, resolving reporter, assignee, resolver, and message senders in one call (`memory/architecture/burnername-is-the-display-name.md`). Browser detail message senders and resolvers carry ids and render through the shared Human component without links; missing identities use its localized unknown label. API/email name projections and the assignee tooltip/picker labels remain available.
 - **Account merging:** `FeedbackService` implements `IUserMerge` and is called by `IAccountMergeService.AcceptAsync` to re-FK feedback rows during account merge fold.
 - **Teams:** `ITeamService.GetTeamsAsync` / `GetTeamAsync` — assigned-team display names.
 - **Email:** transport only. Feedback owns its one template — `FeedbackEmails` (internal) builds the `EmailMessage` from Feedback's own `Feedback_Email_*` keys in `FeedbackResource`, rendered in the recipient's culture via `CultureScope`, and `FeedbackEmailPreviews` (`IEmailPreviewContributor`, registered in `Section.Register`) lists it at `/Email/EmailPreview` (`memory/architecture/email-templates-live-in-sender.md`, peterdrier/Humans#1651). `IEmailService.SendAsync` with `FeedbackEmails.FeedbackResponse` — admin-reply emails (the production binding is `OutboxEmailService`, so the email is queued through the email outbox).

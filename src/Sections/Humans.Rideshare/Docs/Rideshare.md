@@ -37,10 +37,10 @@ a map board lets people spot each other by eye. No booking, no payment, no autom
 - **Settings** (`RideshareSettings`) is a per-event singleton: the burn destination point and the
   inbound/outbound travel windows.
 - **Event scope.** Every settings row, trip and request belongs to an event (`EventSettingsId`); the
-  board, Mine and admin pages show the active event's. A row without an event id (from before events
-  were tracked) belongs to the earliest non-deleted event of its `Year` by gate opening, which is the
-  event the `rideshare.event-ids` data migration (on `/Debug/DataMigrations`) stamps on it. With no
-  active event the pages show "not set up" and posting is refused.
+  board, Mine and admin pages show only rows explicitly assigned to the active event. No year-based
+  inference remains after production reported `rideshare.event-ids` done on 2026-11-03. Unassigned
+  orphan rows remain stored and included in their owner's GDPR paths, but never appear on event
+  boards. With no active event the pages show "not set up" and posting is refused.
 - **SeatsRemaining** is derived, never stored: `SeatsOffered − Σ(Seats of Accepted interests on
   the trip)`. A trip `IsFull` when this is `≤ 0`.
 - **Matched** (on a request) is derived: an `Accepted` interest exists either authored by the
@@ -60,7 +60,7 @@ a map board lets people spot each other by eye. No booking, no payment, no autom
 | Id | Guid | PK |
 | UserId | Guid | index; bare FK (driver) — no navigation |
 | Year | int | index; the event's year at creation |
-| EventSettingsId | Guid? | index; the event; null until `rideshare.event-ids` stamps a legacy row |
+| EventSettingsId | Guid? | index; the event; legacy orphan rows may remain null |
 | Direction | RideshareDirection | string(50) |
 | MemberPlaceLabel | string | max 256, required |
 | MemberLatitude | double | required |
@@ -152,7 +152,7 @@ a map board lets people spot each other by eye. No booking, no payment, no autom
 | OutboundWindowEnd | LocalDate | required |
 | UpdatedAt | Instant | required |
 
-**Indexes / constraints:** non-unique on `Year` and `EventSettingsId`; one row per event is the repository rule, not a constraint. Saving an event's settings stamps its year's legacy row rather than adding a second one.
+**Indexes / constraints:** non-unique on `Year` and `EventSettingsId`; one row per event is the repository rule, not a constraint. Saving an event's settings updates only that event's row; an unassigned legacy row is untouched.
 
 ### RideshareDirection
 
@@ -261,7 +261,7 @@ a map board lets people spot each other by eye. No booking, no payment, no autom
 - **Admin settings require posted destination coordinates.** Missing latitude or longitude returns the form with field errors before any settings save or audit; an explicitly posted zero is valid. Existing coordinate bounds still apply.
 - **Offer and request forms require posted choices and counts.** Direction, vehicle type, luggage capacity/load, cost sharing, detour willingness, fuel contribution, duration, seats and party size cannot silently fall back to initial values when omitted. Invalid forms show field errors before any save; explicitly posted zero-valued choices and both true and false checkbox values remain valid.
 - **Interest posts reject malformed ids, not a cleared seats box.** An unparseable trip or request id is a 400 before any write. A blank `seats` binds to null and takes the service default (party size for a driver's offer, the seats-≥-1 refusal otherwise).
-- **ExpressInterest requires capacity and consent.** The trip must be `Active` with `SeatsRemaining ≥ seats` (seats ≥ 1); a human cannot express interest in their own trip; when `requestId` is given, the request must be `Active` and belong to the same event as the trip (including the documented year-to-event mapping for legacy rows), the caller must be the trip's owner (driver answering a pin), and the trip must go the request's direction and travel on its `DesiredDate`; a duplicate `Pending` interest by the same user on the same trip+request pair is rejected.
+- **ExpressInterest requires capacity and consent.** The trip must be `Active` with `SeatsRemaining ≥ seats` (seats ≥ 1); a human cannot express interest in their own trip; when `requestId` is given, the request must be `Active` and belong to the same event as the trip (both rows must have the same non-null event id), the caller must be the trip's owner (driver answering a pin), and the trip must go the request's direction and travel on its `DesiredDate`; a duplicate `Pending` interest by the same user on the same trip+request pair is rejected.
 - **Accept requires ownership, pending state, and capacity.** The actor must be the posting owner (`requestId != null ? request.UserId : trip.UserId`); the interest must be `Pending`; the trip must be `Active` with `SeatsRemaining ≥ interest.Seats`. On a pin answer the pin must still be `Active`, belong to the same event as the trip, and the trip must still go that direction on the pin's date, the same check as ExpressInterest, since either side may have edited in between.
 - **Interest and posting mutations are serialized.** Interest creation, acceptance, decline, and withdrawal share a boundary through persistence with offer/request edits and cancellations. Concurrent requests cannot create duplicate pending interests, exceed capacity while reducing seats, overwrite a completed response, or restore a cancelled posting through a stale edit. Notifications run after the boundary.
 - **Interest messages are limited to 1000 characters after trimming.** Longer messages receive a localized refusal before persistence or notification; messages at the limit remain valid.
@@ -313,11 +313,10 @@ a map board lets people spot each other by eye. No booking, no payment, no autom
   their own request) and duplicate pending interests on one trip/request (earliest wins).
   Idempotent; the decorator clears the snapshot cache afterwards.
 - **Settings**: `ISettingsService.GetActiveEventSettingsAsync()` — the active event everything anchors to;
-  `GetAllEventSettingsAsync()` — names events and maps a legacy row's year to its event.
-  The decorator implements `IEventSettingsChangeListener` and clears every snapshot when an event changes (a rename,
-  or a gate-opening change that moves a year's legacy rows).
+  `GetAllEventSettingsAsync()` — resolves stored event ids and their names.
+  The decorator implements `IEventSettingsChangeListener` and clears every snapshot when event metadata changes.
 - **Notifications**: `INotificationEmitter.SendAsync` — interest created/accepted/declined Its sources are declared in `RideshareNotificationSources` (`src/Sections/Humans.Rideshare/RideshareNotificationSources.cs`), one `NotificationSourceDefinition` each: `RideshareInterestReceived` (actionable, to the trip/request owner: someone expresses interest in a ride); `RideshareInterestAccepted` (informational, to the interested user: owner accepts the interest); `RideshareInterestDeclined` (informational, to the interested user: owner declines the interest).
-  notifications, localized to each recipient's supported preferred language (English for missing, blank, malformed or unsupported values), including trip dates, action labels and the fallback actor name when no burner name is available, `actionUrl: "/Rideshare/Mine"`.
+  notifications, delivered to the canonical user ID resolved for the recipient (falling back to the supplied ID when unavailable), localized to each recipient's supported preferred language (English for missing, blank, malformed or unsupported values), including trip dates, action labels and the fallback actor name when no burner name is available, `actionUrl: "/Rideshare/Mine"`.
 - **AuditLog**: `IAuditLogService.LogAsync` — settings updates.
 - **Gdpr**: `IUserDataContributor` — exports `RideshareTrips`, `RideshareRequests` and
   `RideshareInterests` for the resolved survivor, including requests under archived account IDs;

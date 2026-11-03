@@ -7,7 +7,6 @@ using Microsoft.EntityFrameworkCore;
 using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
-using Humans.Users.Contracts;
 
 
 namespace Humans.Notifications.Tests.Services;
@@ -17,7 +16,6 @@ public class NotificationInboxServiceTests : IDisposable
     private readonly NotificationsDbContext _dbContext;
     private readonly FakeClock _clock;
     private readonly NotificationRepository _repo;
-    private readonly IUserService _userService = Substitute.For<IUserService>();
     private readonly NotificationInboxService _service;
     private readonly Guid _userId = Guid.NewGuid();
 
@@ -31,11 +29,7 @@ public class NotificationInboxServiceTests : IDisposable
         _clock = new FakeClock(Instant.FromUtc(2026, 4, 1, 12, 0));
         _repo = new NotificationRepository(new TestDbContextFactory<NotificationsDbContext>(options));
 
-        // No test here seeds a user, so an empty display-name lookup is enough.
-        _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(ValueTask.FromResult<IReadOnlyDictionary<Guid, UserInfo>>(new Dictionary<Guid, UserInfo>()));
-
-        _service = new NotificationInboxService(_repo, _userService, TestSources.Registry, _clock);
+        _service = new NotificationInboxService(_repo, TestSources.Registry, _clock);
     }
 
     public void Dispose()
@@ -136,7 +130,7 @@ public class NotificationInboxServiceTests : IDisposable
         var repo = Substitute.For<INotificationRepository>();
         repo.GetUnreadBadgeCountsAsync(_userId, ct)
             .Returns(snapshot.Task, Task.FromResult((Actionable: 0, Informational: 0)));
-        var service = new NotificationInboxService(repo, _userService, TestSources.Registry, _clock);
+        var service = new NotificationInboxService(repo, TestSources.Registry, _clock);
 
         var beforeWrite = service.GetUnreadBadgeCountsAsync(_userId, ct);
         await service.MarkAllReadAsync(_userId, ct);
@@ -185,7 +179,7 @@ public class NotificationInboxServiceTests : IDisposable
             .Returns<Task<int>>(_ =>
                 throw new InvalidOperationException("Retention storage failed."));
         repo.GetUnreadBadgeCountsAsync(_userId, ct).Returns((0, 1), (0, 0));
-        var service = new NotificationInboxService(repo, _userService, TestSources.Registry, _clock);
+        var service = new NotificationInboxService(repo, TestSources.Registry, _clock);
         (await service.GetUnreadBadgeCountsAsync(_userId, ct)).Should().Be((0, 1));
 
         await ((Func<Task>)(async () => await service.PurgeExpiredAsync(ct)))
@@ -255,7 +249,7 @@ public class NotificationInboxServiceTests : IDisposable
     }
 
     [HumansFact]
-    public async Task GetInboxAsync_NamesTheResolver_AndLooksUpNoOtherUser()
+    public async Task GetInboxAsync_CarriesTheResolverId()
     {
         var resolverId = Guid.NewGuid();
         var notification = await CreateNotificationAsync(
@@ -266,24 +260,11 @@ public class NotificationInboxServiceTests : IDisposable
             UserId = Guid.NewGuid(),
         });
         await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
-        _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(ValueTask.FromResult<IReadOnlyDictionary<Guid, UserInfo>>(new Dictionary<Guid, UserInfo>
-            {
-                [resolverId] = new User
-                {
-                    Id = resolverId,
-                    BurnerName = "Resolver",
-                }.ToUserInfo(),
-            }));
-
         var result = await _service.GetInboxAsync(
             _userId, search: null, filter: "resolved", tab: "all",
             ct: Xunit.TestContext.Current.CancellationToken);
 
-        result.Resolved.Should().ContainSingle().Which.ResolvedByName.Should().Be("Resolver");
-        await _userService.Received(1).GetUserInfosAsync(
-            Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Count == 1 && ids.Contains(resolverId)),
-            Arg.Any<CancellationToken>());
+        result.Resolved.Should().ContainSingle().Which.ResolvedByUserId.Should().Be(resolverId);
     }
 
     [HumansFact]

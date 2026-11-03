@@ -45,7 +45,7 @@ public sealed class CachingCalendarServiceTests
             EndUtc = before.EndUtc,
             CreatedAt = before.CreatedAt,
             UpdatedAt = before.UpdatedAt,
-            CreatedByUserId = before.CreatedByUserId,
+            CreatedByUserId = Guid.NewGuid(),
             RecurrenceRule = "FREQ=DAILY;COUNT=3",
             RecurrenceTimezone = "UTC",
         };
@@ -364,6 +364,24 @@ public sealed class CachingCalendarServiceTests
     }
 
     [HumansFact]
+    public async Task GetOccurrencesInWindowAsync_ExpandsARepeatingContributedItemWithinTheWindow()
+    {
+        _inner.GetAllEventInfosAsync(Arg.Any<CancellationToken>()).Returns([]);
+        var contributor = Substitute.For<ICalendarFeedContributor>();
+        var first = Instant.FromUtc(2026, 5, 4, 17, 0);
+        contributor.GetPublicItemsForWindowAsync(Arg.Any<Instant>(), Arg.Any<Instant>(), Arg.Any<CancellationToken>())
+            .Returns([new CalendarFeedItem("wg@humans", "Workgroups", "Sync", null, first, first.Plus(Duration.FromHours(1)),
+                null, null, "FREQ=WEEKLY", "Europe/Madrid")]);
+        var sut = CreateSut(contributor);
+
+        var results = await sut.GetOccurrencesInWindowAsync(Instant.FromUtc(2026, 6, 1, 0, 0), Instant.FromUtc(2026, 6, 15, 0, 0),
+            DateTimeZoneProviders.Tzdb["Europe/Madrid"], ct: TestContext.Current.CancellationToken);
+
+        results.Select(o => o.OccurrenceStartUtc).Should().Equal(
+            Instant.FromUtc(2026, 6, 1, 17, 0), Instant.FromUtc(2026, 6, 8, 17, 0));
+    }
+
+    [HumansFact]
     public async Task GetOccurrencesInWindowAsync_SkipsThrowingContributorAndKeepsOwnEvents()
     {
         var ownEvent = BuildInfo(title: "Own event", start: Instant.FromUtc(2026, 6, 5, 9, 0), end: Instant.FromUtc(2026, 6, 5, 10, 0));
@@ -623,7 +641,6 @@ public sealed class CachingCalendarServiceTests
             RecurrenceRule: null,
             RecurrenceTimezone: null,
             RecurrenceUntilUtc: null,
-            CreatedByUserId: Guid.NewGuid(),
             CreatedAt: Instant.FromUtc(2026, 5, 1, 0, 0),
             UpdatedAt: Instant.FromUtc(2026, 5, 1, 0, 0),
             Exceptions: []);

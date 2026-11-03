@@ -62,7 +62,7 @@ internal sealed record NotificationRowDto
     public bool IsRead { get; init; }
     public bool IsResolved { get; init; }
     public DateTime? ResolvedAt { get; init; }
-    public string? ResolvedByName { get; init; }
+    public Guid? ResolvedByUserId { get; init; }
 }
 
 internal sealed record NotificationInboxResult

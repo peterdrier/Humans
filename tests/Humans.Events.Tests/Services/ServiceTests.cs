@@ -170,6 +170,8 @@ public sealed class EventServiceTests
     {
         var ct = TestContext.Current.CancellationToken;
         var actorId = Guid.NewGuid();
+        _userService.GetUserInfoAsync(actorId, Arg.Any<CancellationToken>())
+            .Returns(UserInfo.Create(new User { Id = actorId }, [], [], null));
         var submitterId = Guid.NewGuid();
         var burn = BurnFixtures.Burn();
         _repo.Settings = new EventGuideSettings { Id = Guid.NewGuid(), EventSettingsId = burn.Id, MaxPrintSlots = 20 };
@@ -178,7 +180,7 @@ public sealed class EventServiceTests
         _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), ct)
             .Returns(new Dictionary<Guid, UserInfo>
             {
-                [submitterId] = UserInfo.Create(new User { Id = submitterId, BurnerName = "Flame" }, [], [], [], null, [])
+                [submitterId] = UserInfo.Create(new User { Id = submitterId, BurnerName = "Flame" }, [], [], null)
             });
         if (expectedRows > 0)
             _repo.Events.Add(new Event
@@ -265,10 +267,6 @@ public sealed class EventServiceTests
             BuildStartOffset: -14,
             EventEndOffset: 7,
             StrikeEndOffset: 10,
-            FirstCrewStartOffset: -25,
-            SetupWeekStartOffset: -16,
-            PreEventWeekStartOffset: -9,
-            FinishingWeekendStartOffset: -4,
             EarlyEntryCapacity: new Dictionary<int, int>(),
             BarriosEarlyEntryAllocation: null,
             EarlyEntryClose: null));
@@ -535,6 +533,8 @@ public sealed class EventServiceTests
         }
         else
         {
+            _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
+                .Returns(UserInfo.Create(new User { Id = userId }, [], [], null));
             var controller = new EventsApiController(cached, Substitute.For<ICampService>(), _userService,
                 NullLogger<EventsApiController>.Instance)
             {
@@ -836,8 +836,7 @@ public sealed class EventServiceTests
         _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
             .Returns(UserInfo.Create(
                 user,
-                [new UserEmail { Id = Guid.NewGuid(), UserId = userId, Email = email, IsVerified = true, IsPrimary = true }],
-                [], [], profile: null, []));
+                [new UserEmail { Id = Guid.NewGuid(), UserId = userId, Email = email, IsVerified = true, IsPrimary = true }], [], profile: null));
         return userId;
     }
 
@@ -1077,10 +1076,6 @@ public sealed class EventServiceTests
         BuildStartOffset: -14,
         EventEndOffset: 6,
         StrikeEndOffset: 10,
-        FirstCrewStartOffset: -25,
-        SetupWeekStartOffset: -16,
-        PreEventWeekStartOffset: -9,
-        FinishingWeekendStartOffset: -4,
         EarlyEntryCapacity: new Dictionary<int, int>(),
         BarriosEarlyEntryAllocation: null,
         EarlyEntryClose: null);
@@ -1324,7 +1319,7 @@ public sealed class EventServiceTests
         var strangerId = Guid.NewGuid();
         var requestedId = archivedId ? sourceId : survivorId;
         _userService.GetUserInfoAsync(requestedId, Arg.Any<CancellationToken>()).Returns(
-            UserInfo.Create(new User { Id = survivorId, BurnerName = "Survivor" }, [], [], [], null, [])
+            UserInfo.Create(new User { Id = survivorId, BurnerName = "Survivor" }, [], [], null)
                 with
             { MergedUserIds = [sourceId] });
         foreach (var id in new[] { survivorId, sourceId, strangerId })

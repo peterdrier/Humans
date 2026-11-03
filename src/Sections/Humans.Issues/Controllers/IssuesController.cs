@@ -138,7 +138,7 @@ internal sealed class IssuesController(
     {
         var isAjax = Request.Headers.XRequestedWith == "XMLHttpRequest";
 
-        var (userMissing, user) = await RequireCurrentUserAsync();
+        var (userMissing, user) = await RequireCurrentUserAsync(HttpContext.RequestAborted);
         if (userMissing is not null)
         {
             return isAjax ? Unauthorized() : userMissing;
@@ -214,8 +214,7 @@ internal sealed class IssuesController(
         var isReporter = user.AllUserIds.Contains(issue.ReporterUserId);
 
         var thread = await issues.GetThreadAsync(id, viewer, HttpContext.RequestAborted);
-        var displayUsers = await GetIssueDisplayUsersAsync(issue, HttpContext.RequestAborted);
-        var vm = MapDetailViewModel(issue, thread, displayUsers, isHandler: canHandle, isReporter: isReporter);
+        var vm = MapDetailViewModel(issue, thread, isHandler: canHandle, isReporter: isReporter);
 
         if (canHandle)
         {
@@ -287,12 +286,12 @@ internal sealed class IssuesController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> PostComment(Guid id, PostIssueCommentModel model)
     {
-        var (userMissing, user) = await RequireCurrentUserAsync();
+        var (userMissing, user) = await RequireCurrentUserAsync(HttpContext.RequestAborted);
         if (userMissing is not null) return userMissing;
 
         var viewer = ViewerFor(user.Id);
         // Null for gone and for out of reach alike: only a handler or the reporter sees an issue.
-        var issue = await issues.GetIssueByIdAsync(id, viewer);
+        var issue = await issues.GetIssueByIdAsync(id, viewer, HttpContext.RequestAborted);
         if (issue is null) return NotFound();
 
         var canHandle = (await authorization.AuthorizeAsync(User, issue, IssuesOperationRequirement.Handle)).Succeeded;
@@ -327,11 +326,11 @@ internal sealed class IssuesController(
 
     private async Task<(IActionResult? Error, IssueViewer? Viewer)> RequireTriageAsync(Guid id)
     {
-        var (userMissing, user) = await RequireCurrentUserAsync();
+        var (userMissing, user) = await RequireCurrentUserAsync(HttpContext.RequestAborted);
         if (userMissing is not null) return (userMissing, null);
 
         var viewer = ViewerFor(user.Id);
-        var issue = await issues.GetIssueByIdAsync(id, viewer);
+        var issue = await issues.GetIssueByIdAsync(id, viewer, HttpContext.RequestAborted);
         if (issue is null) return (NotFound(), null);
         var auth = await authorization.AuthorizeAsync(User, issue, IssuesOperationRequirement.Handle);
         if (!auth.Succeeded) return (Forbid(), null);
@@ -454,7 +453,6 @@ internal sealed class IssuesController(
     private IssueDetailViewModel MapDetailViewModel(
         IssueDetail i,
         IReadOnlyList<IssueThreadEvent> thread,
-        IReadOnlyDictionary<Guid, UserInfo> displayUsers,
         bool isHandler,
         bool isReporter)
     {
@@ -478,9 +476,7 @@ internal sealed class IssuesController(
             CreatedAt = i.CreatedAt.ToDateTimeUtc(),
             UpdatedAt = i.UpdatedAt.ToDateTimeUtc(),
             ResolvedAt = i.ResolvedAt?.ToDateTimeUtc(),
-            ResolvedByName = i.ResolvedByUserId is { } resolvedById
-                ? displayUsers.GetValueOrDefault(resolvedById)?.BurnerName
-                : null,
+            ResolvedByUserId = i.ResolvedByUserId,
             IsHandler = isHandler,
             IsReporter = isReporter,
             Thread = thread.Select(e => e switch
@@ -490,7 +486,6 @@ internal sealed class IssuesController(
                     Type = "comment",
                     At = c.At.ToDateTimeUtc(),
                     ActorUserId = c.ActorUserId,
-                    ActorName = c.ActorDisplayName,
                     Content = c.Content,
                     ActorIsReporter = c.ActorIsReporter
                 },
@@ -499,20 +494,10 @@ internal sealed class IssuesController(
                     Type = "audit",
                     At = a.At.ToDateTimeUtc(),
                     ActorUserId = a.ActorUserId,
-                    ActorName = a.ActorDisplayName,
                     Description = a.Description
                 },
                 _ => throw new NotSupportedException($"Unknown thread event type {e.GetType().Name}")
             }).ToList()
         };
-    }
-
-    private async Task<IReadOnlyDictionary<Guid, UserInfo>> GetIssueDisplayUsersAsync(IssueDetail issue, CancellationToken ct)
-    {
-        var ids = new HashSet<Guid> { issue.ReporterUserId };
-        if (issue.AssigneeUserId is { } assigneeId) ids.Add(assigneeId);
-        if (issue.ResolvedByUserId is { } resolvedById) ids.Add(resolvedById);
-
-        return await UserService.GetUserInfosAsync(ids, ct);
     }
 }

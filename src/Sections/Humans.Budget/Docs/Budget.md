@@ -195,6 +195,10 @@ Stored as string via `HasConversion<string>()`.
 
 ## Invariants
 
+- Member and finance-admin mutation actions forward request cancellation through account lookup before writes. Member line-item actions also cancel line-item and category-authorization reads; the internal line-item read forwards its token to the repository. Financial writes, ticketing projection refreshes and ticketing sync retain their existing non-cancellable mutation boundaries.
+
+- Authorization’s effective-coordinator reads retain HTTP request cancellation; callers without an HTTP context use the non-cancellable default.
+
 - The admin year list and the overview, no-active-year and audit-log year choices order year identifiers descending using ordinal comparison. Repository and service year lists impose no display order.
 
 - Active-year and year-by-id reads accept caller cancellation and forward it to the repository query. After selecting the active ID, the repository reuses its year-by-id hydration path for groups, categories, line items and ticketing projections. Year-by-id retains archived years for historical report labels.
@@ -224,7 +228,7 @@ Stored as string via `HasConversion<string>()`.
 - Projection updates verify that the submitted group belongs to the submitted year before saving parameters or refreshing forecasts. A missing year or mismatched group returns 404 without a write, audit entry or success flash; one year’s parameters cannot be committed before refreshing another year.
 - The ticketing projection parameter editor counts remaining UTC calendar days, matching the controller’s day-count basis. Browser time zones and daylight-saving transitions do not change the rate/target calculation.
 - Ticketing projection previews and persisted projected line items use `TicketingProjection.CalculateWeeks`: the same ISO-week bounds, initial burst, ticket minimum, revenue and fee calculations. Materialization runs after actuals update the projection parameters. Persisted generated week descriptions remain canonical English regardless of the operator’s UI language; preview date labels follow the UI language.
-- Projection refresh upserts generated rows by category and canonical description, preserving their ids and timestamps when unchanged. Only obsolete generated projections are removed; actuals and manual lines remain. An unchanged refresh writes no audit entry.
+- Projection materialization runs only inside parameter updates and actuals sync; there is no standalone refresh mutation. It upserts generated rows by category and canonical description, preserving their ids and timestamps when unchanged. Only obsolete generated projections are removed; actuals and manual lines remain. An actuals sync with no changes writes no audit entry.
 - The ticketing projection includes the event date in its final week, including when that date is a Monday and forms a one-day final week. Once the event date has passed, it emits no projected weeks.
 - Every create, update, or delete on a group, category, or line item generates a `BudgetAuditLog` entry recording old value, new value, actor, and timestamp; the ticketing sync paths write one summary entry per run that changed anything, with a null actor for the nightly job.
 - Audit values and descriptions preserve complete field changes without separate length caps;
@@ -255,7 +259,7 @@ Stored as string via `HasConversion<string>()`.
 ## Cross-Section Dependencies
 
 - **Teams:** `ITeamService.GetTeamsAsync` — team lookups for the department picker and `HasBudget`-filtered budgetable-team lists; `BudgetService.GetEffectiveCoordinatorTeamIdsAsync` delegates scope for departments and active child teams to Teams’ existing `GetEffectiveBudgetCoordinatorTeamIdsAsync` policy.
-- **Tickets:** none inbound. The Tickets→Budget bridge (`TicketingBudgetService`) is Budget's own service — it reads paid orders via `ITicketService` and calls the section's internal `IBudgetManagement` (`SyncTicketingActualsAsync` / `RefreshTicketingProjectionsAsync` / `UpdateTicketingProjectionAsync`). Budget has no code path that reads Tickets tables directly. The internal `ITicketingBudgetService` (`Humans.Budget.Services`) is the nightly `TicketingBudgetSyncJob`'s test seam and carries only `SyncActualsAsync`; `BudgetAdminController` deliberately injects the concrete `TicketingBudgetService` for its sync/projection actions.
+- **Tickets:** none inbound. The Tickets→Budget bridge (`TicketingBudgetService`) is Budget's own service — it reads paid orders via `ITicketService` and calls the section's internal `IBudgetManagement` (`SyncTicketingActualsAsync` / `UpdateTicketingProjectionAsync`). Budget has no code path that reads Tickets tables directly. The internal `ITicketingBudgetService` (`Humans.Budget.Services`) is the nightly `TicketingBudgetSyncJob`'s test seam and carries only `SyncActualsAsync`; `BudgetAdminController` deliberately injects the concrete `TicketingBudgetService` for its sync/projection actions.
 - **Users/Identity:** `IUserService.GetUserInfosAsync`, actor display names for audit log. `IUserService.GetUserInfoAsync`, the returned `UserInfo.AllUserIds` chain-follows merge tombstones on the `BudgetAuditLog` GDPR export so source-attributed entries surface for the fold target.
 - **Finance:** `IHoldedFinanceService.GetActualsForYearAsync` — the year page's per-category Holded figure (`BudgetAdminController`).
 - **Camps:** `ICampService` — the development demo seeder (`Services/DevelopmentBudgetSeeder.cs`) only.

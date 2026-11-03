@@ -84,8 +84,8 @@ public abstract class GrantsTestHarness : IDisposable
         _users[userId] = new UserInfo(
             userId, burnerName, false, language, null, Instant.FromUtc(2026, 1, 1, 0, 0),
             null, null, null, null, null, null,
-            null, null, null, [], [], [],
-            UserFixtures.Profile(burnerName: burnerName), [])
+            null, null, null, [], [],
+            UserFixtures.Profile(burnerName: burnerName))
         { IdentityEmailColumn = $"{userId}@example.org", MergedUserIds = mergedIds ?? [] };
         return userId;
     }
@@ -111,6 +111,7 @@ public abstract class GrantsTestHarness : IDisposable
             Name = name,
             Entitles = "a ticket at the build-crew price",
             Year = 2027,
+            EventSettingsId = Event2027.Id,
             IssuedBy = issuedBy,
             SourceKey = issuedBy == GrantIssuer.Source ? sourceKey ?? "low-income" : null,
             GrantsExpireOn = expiresOn,

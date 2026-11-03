@@ -37,11 +37,9 @@ internal sealed class CityPlanningIndexViewModel
 
 internal sealed class CityPlanningBarrioMapViewModel
 {
-    public int Year { get; set; }
     public BarrioPlacementState PlacementState { get; set; }
     public bool IsMapAdmin { get; set; }
     public string UserCampSeasonId { get; set; } = string.Empty;
-    public Guid CurrentUserId { get; set; }
     public List<Services.CampSeasonSummaryDto> SeasonsWithoutCampPolygon { get; set; } =
         [];
     /// <summary>

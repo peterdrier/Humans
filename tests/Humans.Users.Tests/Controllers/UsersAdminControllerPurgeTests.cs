@@ -37,7 +37,6 @@ public class UsersAdminControllerPurgeTests
     private readonly IOnboardingIntake _onboarding = Substitute.For<IOnboardingIntake>();
     private readonly IUsersAudienceService _audience = Substitute.For<IUsersAudienceService>();
     private readonly IWebHostEnvironment _environment = Substitute.For<IWebHostEnvironment>();
-    private readonly IClock _clock = Substitute.For<IClock>();
     private readonly IStringLocalizer<SharedResource> _localizer = Substitute.For<IStringLocalizer<SharedResource>>();
     private readonly Guid _adminUserId = Guid.NewGuid();
 
@@ -68,7 +67,6 @@ public class UsersAdminControllerPurgeTests
             _deletion,
             Substitute.For<Humans.GoogleIntegration.Contracts.IGoogleIntegrationService>(),
             _environment,
-            _clock,
             NullLogger<UsersAdminController>.Instance,
             _localizer);
 
@@ -91,6 +89,58 @@ public class UsersAdminControllerPurgeTests
         c.TempData = new TempDataDictionary(httpContext, Substitute.For<ITempDataProvider>());
         c.Url = Substitute.For<IUrlHelper>();
         return c;
+    }
+
+    public enum LifecycleAction
+    {
+        SuspendHuman,
+        UnsuspendHuman,
+        RejectSignup,
+        PurgeHuman,
+        PurgeHumanCancelledAtTargetLookup
+    }
+
+    [HumansTheory]
+    [InlineData(LifecycleAction.SuspendHuman)]
+    [InlineData(LifecycleAction.UnsuspendHuman)]
+    [InlineData(LifecycleAction.RejectSignup)]
+    [InlineData(LifecycleAction.PurgeHuman)]
+    [InlineData(LifecycleAction.PurgeHumanCancelledAtTargetLookup)]
+    public async Task Lifecycle_account_preflight_observes_cancellation(LifecycleAction action)
+    {
+        using var request = new CancellationTokenSource();
+        var targetId = Guid.NewGuid();
+        _userService.GetUserInfoAsync(_adminUserId, Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            call.Arg<CancellationToken>().Should().Be(request.Token);
+            call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+            return new ValueTask<UserInfo?>(new User { Id = _adminUserId }.ToUserInfo());
+        });
+        _userService.GetRawUserInfoAsync(targetId, Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            if (action == LifecycleAction.PurgeHumanCancelledAtTargetLookup)
+            {
+                call.Arg<CancellationToken>().Should().Be(request.Token);
+                call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+            }
+            return new ValueTask<UserInfo?>(new User { Id = targetId }.ToUserInfo());
+        });
+        var controller = BuildController();
+        controller.HttpContext.RequestAborted = request.Token;
+        await request.CancelAsync();
+        Func<Task<IActionResult>> invoke = action switch
+        {
+            LifecycleAction.SuspendHuman => () => controller.SuspendHuman(targetId, null),
+            LifecycleAction.UnsuspendHuman => () => controller.UnsuspendHuman(targetId),
+            LifecycleAction.RejectSignup => () => controller.RejectSignup(targetId, null),
+            LifecycleAction.PurgeHuman or LifecycleAction.PurgeHumanCancelledAtTargetLookup => () => controller.PurgeHuman(targetId),
+            _ => throw new ArgumentOutOfRangeException(nameof(action), action, null),
+        };
+
+        await invoke.Should().ThrowAsync<OperationCanceledException>();
+        _lifecycle.ReceivedCalls().Should().BeEmpty();
+        _onboarding.ReceivedCalls().Should().BeEmpty();
+        _deletion.ReceivedCalls().Should().BeEmpty();
     }
 
     [HumansTheory]

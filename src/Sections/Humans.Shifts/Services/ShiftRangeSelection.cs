@@ -16,7 +16,7 @@ internal sealed class ShiftRangeSelection(
     internal RangeSignupCandidateSelection PruneDuplicateRangeShifts(
         List<Shift> shiftsInRange,
         IReadOnlyCollection<ShiftSignup> existingSignups,
-        EventSettingsInfo eventSettings,
+        IEventSettingsInfo eventSettings,
         bool skipConflicts)
     {
         var shiftIdsInRange = shiftsInRange.Select(s => s.Id).ToHashSet();
@@ -50,7 +50,7 @@ internal sealed class ShiftRangeSelection(
     internal async Task<RangeSignupCandidateSelection> PruneConflictingRangeShiftsAsync(
         List<Shift> shiftsInRange,
         IReadOnlyCollection<ShiftSignup> existingSignups,
-        EventSettingsInfo eventSettings,
+        IEventSettingsInfo eventSettings,
         IReadOnlyList<string> existingWarnings,
         bool skipConflicts)
     {
@@ -76,7 +76,7 @@ internal sealed class ShiftRangeSelection(
     internal async Task<List<int>> GetConflictingRangeDaysAsync(
         IReadOnlyList<Shift> shiftsInRange,
         IEnumerable<ShiftSignup> existingSignups,
-        EventSettingsInfo eventSettings)
+        IEventSettingsInfo eventSettings)
     {
         // Range candidates are all-day shifts from one rota, so two on one date overlap even with no bookings.
         var conflictingDays = shiftsInRange.GroupBy(s => s.DayOffset)
@@ -124,7 +124,7 @@ internal sealed class ShiftRangeSelection(
         return new RangeCapacitySelection(availableShifts, fullDays);
     }
 
-    internal static string FormatRangeDayList(EventSettingsInfo eventSettings, IEnumerable<int> dayOffsets)
+    internal static string FormatRangeDayList(IEventSettingsInfo eventSettings, IEnumerable<int> dayOffsets)
         => string.Join(", ", dayOffsets.Select(offset => eventSettings.GateOpeningDate.PlusDays(offset).ToWeekdayDayMonth()));
 
     internal static List<Shift> SelectAllDayRangeShifts(Rota rota, int startDayOffset, int endDayOffset) =>

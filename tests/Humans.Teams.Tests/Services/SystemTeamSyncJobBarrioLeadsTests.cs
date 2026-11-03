@@ -106,22 +106,12 @@ public class SystemTeamSyncJobBarrioLeadsTests
             AdminNotes: null,
             ContributionInterests: null,
             BoardNotes: null,
-            Iban: null,
-            IsApproved: false,
-            ConsentCheckStatus: null,
-            ConsentCheckAt: null,
-            ConsentCheckedByUserId: null,
-            ConsentCheckNotes: null,
-            RejectionReason: null,
-            RejectedAt: null,
-            RejectedByUserId: null,
             NoPriorBurnExperience: false,
             ContactFields: [],
             Languages: [],
             VolunteerHistory: []);
         var user = UserInfo.Create(member,
-            [new UserEmail { Id = Guid.NewGuid(), UserId = member.Id, Email = "member@example.com", IsVerified = true, IsPrimary = true }],
-            [], [], profile, []);
+            [new UserEmail { Id = Guid.NewGuid(), UserId = member.Id, Email = "member@example.com", IsVerified = true, IsPrimary = true }], [], profile);
         var team = new TeamInfo(SystemTeamIds.Volunteers, "Volunteers", null, "volunteers",
             true, true, SystemTeamType.Volunteers, false, false, false, false, default, []);
         _teamService.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(new Dictionary<Guid, TeamInfo> { [team.Id] = team });

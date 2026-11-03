@@ -53,7 +53,7 @@ public sealed class CityPlanningContainerAdminYearTests : CityPlanningTestBase
 
         var testUser = new User { Id = _userId, UserName = "test@test.com", Email = "test@test.com", DisplayName = "Test User", BurnerName = "Test User" };
         _userService.GetUserInfoAsync(_userId, Arg.Any<CancellationToken>())
-            .Returns(new ValueTask<UserInfo?>(UserInfo.Create(testUser, [], [], [], profile: null, [])));
+            .Returns(new ValueTask<UserInfo?>(UserInfo.Create(testUser, [], [], profile: null)));
     }
 
     [HumansFact]

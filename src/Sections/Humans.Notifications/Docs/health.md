@@ -113,8 +113,8 @@ Specified or known, not built; reserved, not ranked:
 - **`NotificationRecipient.UserId` is init-only**, so the account-merge fold is
   remove-then-add rather than an update.
 - **No FK and no navigation on `ResolvedByUserId` or `NotificationRecipient.UserId`**
-  (nobodies-collective/Humans#992, nobodies-collective/Humans#996); names are stitched from
-  `IUserService`.
+  (nobodies-collective/Humans#992, nobodies-collective/Humans#996); names render through the
+  shared Human component from the stored id.
 - **Retired sources stay declared** (`Retired: true` on the owning section's definition): nothing
   emits them, the purge deletes their unresolved rows, and the inbox's approvals filter still
   names them while any remain.

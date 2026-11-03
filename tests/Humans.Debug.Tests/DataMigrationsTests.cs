@@ -191,7 +191,69 @@ public class DataMigrationsTests
             .Single(e => string.Equals(e.RoutePattern.RawText, "/api/data-migrations", StringComparison.Ordinal));
     }
 
-    private DataMigrationsController Controller(Guid? actorId)
+    [HumansTheory]
+    [Xunit.InlineData(AccountScenario.Merged)]
+    [Xunit.InlineData(AccountScenario.Missing)]
+    [Xunit.InlineData(AccountScenario.Cancelled)]
+    public async Task Apply_resolves_account_before_invoking_migration(AccountScenario account)
+    {
+        var users = Substitute.For<IUserService>();
+        var survivor = Guid.NewGuid();
+        using var request = new CancellationTokenSource();
+        users.GetUserInfoAsync(_actorId, Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            call.Arg<CancellationToken>().Should().Be(request.Token);
+            call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+            return new ValueTask<UserInfo?>(account == AccountScenario.Missing ? null :
+                UserInfo.Create(new User { Id = survivor }, [], [], null));
+        });
+        var controller = Controller(_actorId, users);
+        controller.HttpContext.RequestAborted = request.Token;
+        if (account == AccountScenario.Cancelled)
+            await request.CancelAsync();
+        var apply = () => controller.Apply(Key, request.Token);
+
+        if (account == AccountScenario.Cancelled)
+            await apply.Should().ThrowAsync<OperationCanceledException>();
+        else if (account == AccountScenario.Missing)
+            (await apply()).Should().BeOfType<UnauthorizedResult>();
+        else
+        {
+            (await apply()).Should().BeOfType<RedirectToActionResult>();
+            _migrations.LastActor.Should().Be(survivor);
+            await _audit.Received(1).LogAsync(DebugAuditActions.DataMigrationApplied,
+                "DataMigration", Guid.Empty, Arg.Any<string>(), survivor);
+            return;
+        }
+
+        _migrations.ApplyCalls.Should().Be(0);
+        _audit.ReceivedCalls().Should().BeEmpty();
+        _pending.Should().HaveCount(2);
+    }
+
+    [HumansFact]
+    public async Task Widget_gallery_stops_loading_when_account_lookup_is_cancelled()
+    {
+        var users = Substitute.For<IUserService>();
+        using var request = new CancellationTokenSource();
+        users.GetUserInfoAsync(_actorId, Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+            return new ValueTask<UserInfo?>(UserInfo.Create(new User { Id = _actorId }, [], [], null));
+        });
+        var controller = new WidgetGalleryController(users)
+        {
+            ControllerContext = Controller(_actorId).ControllerContext,
+        };
+        controller.HttpContext.RequestAborted = request.Token;
+        await request.CancelAsync();
+
+        var load = () => controller.Index();
+
+        await load.Should().ThrowAsync<OperationCanceledException>();
+    }
+
+    private DataMigrationsController Controller(Guid? actorId, IUserService? users = null)
     {
         var claims = actorId is { } id ? [new Claim(ClaimTypes.NameIdentifier, id.ToString())] : Array.Empty<Claim>();
         var http = new DefaultHttpContext
@@ -199,7 +261,14 @@ public class DataMigrationsTests
             User = new ClaimsPrincipal(new ClaimsIdentity(claims, "Test")),
             RequestServices = _services,
         };
-        return new DataMigrationsController(Substitute.For<IUserService>(), Service)
+        if (users is null)
+        {
+            users = Substitute.For<IUserService>();
+            if (actorId is { } knownId)
+                users.GetUserInfoAsync(knownId, Arg.Any<CancellationToken>())
+                    .Returns(UserInfo.Create(new User { Id = knownId }, [], [], null));
+        }
+        return new DataMigrationsController(users, Service)
         {
             ControllerContext = new ControllerContext { HttpContext = http },
             TempData = new TempDataDictionary(http, Substitute.For<ITempDataProvider>()),

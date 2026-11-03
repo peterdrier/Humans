@@ -27,7 +27,6 @@ internal static class ShiftSignupBucketer
         BurnSettingsInfo? eventSettings,
         IReadOnlyDictionary<Guid, string> teamNames,
         Instant now,
-        bool includeOtherStatusesInPast = true,
         Action<ShiftSignup>? onMissingSignupData = null)
     {
         var upcoming = new List<MySignupItem>();
@@ -62,8 +61,7 @@ internal static class ShiftSignupBucketer
                     pending.Add(item);
                     break;
                 default:
-                    if (includeOtherStatusesInPast || signup.Status is SignupStatus.Confirmed or SignupStatus.NoShow or SignupStatus.Bailed)
-                        past.Add(item);
+                    past.Add(item);
                     break;
             }
         }

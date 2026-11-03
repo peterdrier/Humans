@@ -52,19 +52,20 @@ internal sealed class GateController(
         string barcode, bool? idConfirmed, bool childWithAdult, bool overrideEarly,
         string? supervisorPin, string? laneId, CancellationToken ct)
     {
-        if (GetCurrentUserId() is not { } scanner)
+        var scanner = await GetCurrentUserInfoAsync(ct);
+        if (scanner is null)
             return Unauthorized();
 
         if (!ModelState.IsValid || idConfirmed is not { } confirmed)
         {
-            logger.LogWarning("Rejected gate decision with missing or malformed values from scanner {ScannerId}", scanner);
+            logger.LogWarning("Rejected gate decision with missing or malformed values from scanner {ScannerId}", scanner.Id);
             return BadRequest();
         }
 
         var decision = await gate.RecordDecisionAsync(
             new GateDecisionInput(barcode, confirmed, childWithAdult, laneId,
                 ClientScanAt: null, Note: null, OverrideEarly: overrideEarly, SupervisorPin: supervisorPin),
-            scanner, ct);
+            scanner.Id, ct);
 
         return PartialView("_VerdictCard", GateScanCardViewModel.FromDecision(decision, barcode, childWithAdult));
     }
@@ -89,7 +90,7 @@ internal sealed class GateController(
             return RedirectToAction(nameof(Claim));
 
         var status = await gate.GetPinStatusAsync(userId, ct);
-        return View("Pin", GatePinViewModel.ForClaim(userId, info.BurnerName, status));
+        return View("Pin", GatePinViewModel.ForClaim(userId, status));
     }
 
     [HttpPost("ClaimPin")]
@@ -104,11 +105,10 @@ internal sealed class GateController(
 
         // Re-derive the mode server-side; never trust a client set/verify hint.
         var status = await gate.GetPinStatusAsync(userId, ct);
-        var name = info.BurnerName;
 
         return status.HasPin
-            ? await VerifyClaimAsync(userId, name, status, pin, ct)
-            : await SetClaimPinAsync(userId, name, status, pin, ct);
+            ? await VerifyClaimAsync(userId, status, pin, ct)
+            : await SetClaimPinAsync(userId, status, pin, ct);
     }
 
     [HttpPost("EndShift")]
@@ -214,11 +214,12 @@ internal sealed class GateController(
     [Authorize(Policy = TicketsPolicies.Manage)]
     public async Task<IActionResult> SetStaffPin(Guid userId, string? pin, CancellationToken ct)
     {
-        if (GetCurrentUserId() is not { } actor)
+        var actor = await GetCurrentUserInfoAsync(ct);
+        if (actor is null)
             return Unauthorized();
         if (userId == Guid.Empty)
             SetError("Pick a person before setting a PIN.");
-        else if (await gate.AdminSetPinAsync(userId, pin ?? string.Empty, actor, ct))
+        else if (await gate.AdminSetPinAsync(userId, pin ?? string.Empty, actor.Id, ct))
             SetSuccess("PIN set.");
         else
             SetError("PIN must be 4 digits and not trivially guessable (no 1234, 0000, or repeats).");
@@ -231,13 +232,14 @@ internal sealed class GateController(
     [Authorize(Policy = TicketsPolicies.Manage)]
     public async Task<IActionResult> ResetStaffPin(Guid userId, CancellationToken ct)
     {
-        if (GetCurrentUserId() is not { } actor)
+        var actor = await GetCurrentUserInfoAsync(ct);
+        if (actor is null)
             return Unauthorized();
         if (userId == Guid.Empty)
             SetError("Pick a person before resetting a PIN.");
         else
         {
-            await gate.ClearPinAsync(userId, actor, ct);
+            await gate.ClearPinAsync(userId, actor.Id, ct);
             SetSuccess("PIN reset — they'll set a new one on their next claim.");
         }
 
@@ -245,16 +247,16 @@ internal sealed class GateController(
     }
 
     private async Task<IActionResult> VerifyClaimAsync(
-        Guid userId, string name, GatePinStatus status, string? pin, CancellationToken ct)
+        Guid userId, GatePinStatus status, string? pin, CancellationToken ct)
     {
         var userKey = UserKey(userId);
         if (ThrottleWait(userKey) is { } wait)
-            return View("Pin", GatePinViewModel.ForClaim(userId, name, status, $"Too many tries — wait {wait}s"));
+            return View("Pin", GatePinViewModel.ForClaim(userId, status, $"Too many tries — wait {wait}s"));
 
         if (!await gate.VerifyPinAsync(userId, pin ?? string.Empty, ct))
         {
             RecordPinFailure(userKey);
-            return View("Pin", GatePinViewModel.ForClaim(userId, name, status, "That PIN didn't match — try again"));
+            return View("Pin", GatePinViewModel.ForClaim(userId, status, "That PIN didn't match — try again"));
         }
 
         ResetPinThrottle(userKey);
@@ -262,12 +264,12 @@ internal sealed class GateController(
     }
 
     private async Task<IActionResult> SetClaimPinAsync(
-        Guid userId, string name, GatePinStatus status, string? pin, CancellationToken ct) =>
+        Guid userId, GatePinStatus status, string? pin, CancellationToken ct) =>
         await gate.SetOwnPinAsync(userId, pin ?? string.Empty, ct) switch
         {
             GatePinSetResult.Ok => StampAndScan(userId),
             _ => View("Pin", GatePinViewModel.ForClaim(
-                userId, name, status, "Pick a less obvious PIN — not 1234, 0000, or repeats")),
+                userId, status, "Pick a less obvious PIN — not 1234, 0000, or repeats")),
         };
 
     private IActionResult StampAndScan(Guid userId)
@@ -287,13 +289,12 @@ internal sealed class GateController(
 
     private void ResetPinThrottle(string userKey) => pinThrottle.Reset(userKey);
 
-    private async Task<IReadOnlyList<GateRosterMember>> BuildRosterAsync(CancellationToken ct)
+    private async Task<IReadOnlyList<Guid>> BuildRosterAsync(CancellationToken ct)
     {
         if (!Guid.TryParse(configuration["Gate:RosterTeamId"], out var teamId))
             return [];
 
-        var roster = await gate.GetShiftRosterAsync(teamId, ct);
-        return roster.Select(r => new GateRosterMember(r.UserId, r.DisplayName)).ToList();
+        return await gate.GetShiftRosterAsync(teamId, ct);
     }
 
 }

@@ -14,7 +14,6 @@ using Humans.Base.Authorization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Localization;
-using NodaTime;
 using Humans.Users.Services;
 using Humans.Application.Services.Users.AccountLifecycle;
 
@@ -33,7 +32,6 @@ internal sealed class UsersAdminController(
     IAccountDeletionService accountDeletionService,
     IGoogleIntegrationService googleIdentities,
     IWebHostEnvironment environment,
-    IClock clock,
     ILogger<UsersAdminController> logger,
     IStringLocalizer<SharedResource> localizer) : HumansControllerBase(userService)
 {
@@ -117,8 +115,7 @@ internal sealed class UsersAdminController(
             applications,
             membershipTier,
             userEmails,
-            consentCount,
-            clock.GetCurrentInstant());
+            consentCount);
 
         return View(viewModel);
     }
@@ -128,7 +125,7 @@ internal sealed class UsersAdminController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> SuspendHuman(Guid id, string? notes)
     {
-        var currentUser = await GetCurrentUserInfoAsync();
+        var currentUser = await GetCurrentUserInfoAsync(HttpContext.RequestAborted);
         if (currentUser is null)
             return NotFound();
 
@@ -145,7 +142,7 @@ internal sealed class UsersAdminController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> UnsuspendHuman(Guid id)
     {
-        var currentUser = await GetCurrentUserInfoAsync();
+        var currentUser = await GetCurrentUserInfoAsync(HttpContext.RequestAborted);
         if (currentUser is null)
             return NotFound();
 
@@ -162,7 +159,7 @@ internal sealed class UsersAdminController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> RejectSignup(Guid id, string? reason)
     {
-        var currentUser = await GetCurrentUserInfoAsync();
+        var currentUser = await GetCurrentUserInfoAsync(HttpContext.RequestAborted);
         if (currentUser is null)
             return Unauthorized();
 
@@ -221,8 +218,8 @@ internal sealed class UsersAdminController(
     public async Task<IActionResult> PurgeHuman(Guid id)
     {
         // Before the purge collapses the identity.
-        var displayName = (await _userService.GetRawUserInfoAsync(id))?.BurnerName;
-        var currentUser = await GetCurrentUserInfoAsync();
+        var displayName = (await _userService.GetRawUserInfoAsync(id, HttpContext.RequestAborted))?.BurnerName;
+        var currentUser = await GetCurrentUserInfoAsync(HttpContext.RequestAborted);
 
         // AccountDeletionService.PurgeAsync owns the production and self-purge refusals.
         var result = await accountDeletionService.PurgeAsync(id, currentUser?.Id);

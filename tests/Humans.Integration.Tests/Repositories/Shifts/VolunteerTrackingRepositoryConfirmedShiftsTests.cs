@@ -185,10 +185,6 @@ public sealed class VolunteerTrackingRepositoryConfirmedShiftsTests(HumansTestDa
             BuildStartOffset: es.BuildStartOffset,
             EventEndOffset: es.EventEndOffset,
             StrikeEndOffset: es.StrikeEndOffset,
-            FirstCrewStartOffset: es.FirstCrewStartOffset,
-            SetupWeekStartOffset: es.SetupWeekStartOffset,
-            PreEventWeekStartOffset: es.PreEventWeekStartOffset,
-            FinishingWeekendStartOffset: es.FinishingWeekendStartOffset,
             EarlyEntryCapacity: new Dictionary<int, int>(es.EarlyEntryCapacity),
             BarriosEarlyEntryAllocation: es.BarriosEarlyEntryAllocation is null
                 ? null : new Dictionary<int, int>(es.BarriosEarlyEntryAllocation),

@@ -51,14 +51,17 @@ public sealed class ComposerSelfSendTests
         return controller;
     }
 
-    private void GivenAddress(string? address) =>
+    private void GivenAddress(string? address, Guid? resolvedId = null) =>
         _users.GetUserInfoAsync(UserId, Arg.Any<CancellationToken>())
-            .Returns(UserInfo.Create(new User { Id = UserId, Email = address }, [], [], [], null, []));
+            .Returns(UserInfo.Create(new User { Id = resolvedId ?? UserId, Email = address }, [], [], null));
 
-    [HumansFact]
-    public async Task SendMarkdownToSelf_QueuesOneSystemEmailToTheCallerAndAudits()
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task SendMarkdownToSelf_QueuesOneSystemEmailToTheCallerAndAudits(bool mergedAlias)
     {
-        GivenAddress("me@example.com");
+        var resolvedId = mergedAlias ? Guid.NewGuid() : UserId;
+        GivenAddress("me@example.com", resolvedId);
 
         var result = await BuildController(signedIn: true)
             .SendMarkdownToSelf("Hello", "**Hi** there", CancellationToken.None);
@@ -67,15 +70,56 @@ public sealed class ComposerSelfSendTests
         await _email.Received(1).SendAsync(
             Arg.Is<EmailMessage>(m =>
                 m.RecipientEmail == "me@example.com"
-                && m.UserId == UserId
+                && m.UserId == resolvedId
                 && m.Subject == "[Test] Hello"
                 && m.HtmlBody.Contains("<strong>Hi</strong>")
                 && m.TemplateName == ComposerSelfSendService.TemplateName
                 && m.Category == MessageCategory.System),
             Arg.Any<CancellationToken>());
         await _audit.Received(1).LogAsync(
-            EmailAuditActions.EmailComposerSelfTestSent, Arg.Any<string>(), UserId, Arg.Any<string>(), UserId,
+            EmailAuditActions.EmailComposerSelfTestSent, Arg.Any<string>(), resolvedId, Arg.Any<string>(), resolvedId,
             Arg.Any<Guid?>(), Arg.Any<string?>());
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task SendMarkdownToSelf_CancelsOnlyTheAccountRead(bool abortDuringSend)
+    {
+        using var request = new CancellationTokenSource();
+        async ValueTask<UserInfo?> ReadAccountAsync(CancellationToken ct)
+        {
+            ct.ThrowIfCancellationRequested();
+            return UserInfo.Create(new User { Id = UserId, Email = "me@example.com" }, [], [], null);
+        }
+        _users.GetUserInfoAsync(UserId, Arg.Any<CancellationToken>())
+            .Returns(call => ReadAccountAsync(call.Arg<CancellationToken>()));
+        async Task SendAsync(CancellationToken ct)
+        {
+            await request.CancelAsync();
+            ct.ThrowIfCancellationRequested();
+        }
+        _email.SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>())
+            .Returns(call => SendAsync(call.Arg<CancellationToken>()));
+        var controller = BuildController(signedIn: true);
+        controller.HttpContext.RequestAborted = request.Token;
+        if (abortDuringSend)
+        {
+            (await controller.SendMarkdownToSelf("Hello", "Body", request.Token))
+                .Should().BeOfType<JsonResult>();
+            await _email.Received(1).SendAsync(Arg.Any<EmailMessage>(), CancellationToken.None);
+            await _audit.Received(1).LogAsync(EmailAuditActions.EmailComposerSelfTestSent,
+                "User", UserId, Arg.Any<string>(), UserId, Arg.Any<Guid?>(), Arg.Any<string?>());
+        }
+        else
+        {
+            await request.CancelAsync();
+            var send = () => controller.SendMarkdownToSelf("Hello", "Body", request.Token);
+            await send.Should().ThrowAsync<OperationCanceledException>();
+            _email.ReceivedCalls().Should().BeEmpty();
+            _audit.ReceivedCalls().Should().BeEmpty();
+        }
+        await _users.Received(1).GetUserInfoAsync(UserId, request.Token);
     }
 
     [HumansFact]

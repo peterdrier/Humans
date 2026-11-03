@@ -6,6 +6,7 @@ using Humans.Base.Enums;
 using Humans.GoogleIntegration.Authorization;
 using Humans.GoogleIntegration.Contracts;
 using Humans.GoogleIntegration.Controllers;
+using Humans.GoogleIntegration.Models;
 using Humans.GoogleIntegration.Services;
 using Humans.Teams.Contracts;
 using Humans.Users.Contracts;
@@ -42,7 +43,7 @@ public class TeamResourcesControllerTests
     public TeamResourcesControllerTests()
     {
         _users.GetUserInfoAsync(_userId, Arg.Any<CancellationToken>()).Returns(
-            new ValueTask<UserInfo?>(UserInfo.Create(new User { Id = _userId }, [], [], [], null, [])));
+            new ValueTask<UserInfo?>(UserInfo.Create(new User { Id = _userId }, [], [], null)));
         _teams.GetTeamBySlugAsync(_team.Slug, Arg.Any<CancellationToken>()).Returns(_team);
         _resources.GetTeamResourcesAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns([]);
         _resources.GetServiceAccountEmailAsync(Arg.Any<CancellationToken>()).Returns("service@example.com");
@@ -172,17 +173,30 @@ public class TeamResourcesControllerTests
 
     [HumansTheory]
     [InlineData(RoleNames.Admin)]
-    [InlineData(RoleNames.Board)]
     [InlineData(TeamsRoles.TeamsAdmin)]
-    public async Task TeamsAdminBoardOrAdmin_ManagesAnyTeam_WithoutTheResourceManagerCheck(string role)
+    public async Task TeamsAdminOrAdmin_ManagesAnyTeam_WithoutTheResourceManagerCheck(string role)
     {
         var controller = BuildSut(role);
 
         var result = await controller.Index(_team.Slug);
 
-        result.Should().BeOfType<ViewResult>();
+        result.Should().BeOfType<ViewResult>()
+            .Which.Model.Should().BeOfType<TeamResourcesViewModel>().Which.CanManage.Should().BeTrue();
         await _resources.DidNotReceive().CanManageTeamResourcesAsync(
             Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task Board_ReadsAnyTeamsResources_ButChangesNothing()
+    {
+        _resources.CanManageTeamResourcesAsync(_team.Id, _userId, Arg.Any<CancellationToken>()).Returns(false);
+
+        var index = await BuildSut(RoleNames.Board).Index(_team.Slug);
+        var link = await ActAsync(BuildSut(RoleNames.Board), "linkdrive", _team.Slug);
+
+        index.Should().BeOfType<ViewResult>()
+            .Which.Model.Should().BeOfType<TeamResourcesViewModel>().Which.CanManage.Should().BeFalse();
+        link.Should().BeOfType<ForbidResult>();
     }
 
     [HumansTheory]
@@ -324,9 +338,10 @@ public class TeamResourcesControllerTests
         var http = new DefaultHttpContext { User = new ClaimsPrincipal(new ClaimsIdentity(claims, "test")) };
         var authorization = new ServiceCollection()
             .AddLogging()
-            .AddAuthorizationCore()
+            .AddAuthorizationCore(options => options.AddPolicy(TeamsPolicies.Read,
+                policy => policy.RequireRole(TeamsRoles.TeamsAdmin, RoleNames.Board, RoleNames.Admin)))
             .AddSingleton<IAuthorizationHandler>(new TeamResourceAuthorizationHandler(
-                _resources, new HttpContextAccessor { HttpContext = http }))
+                _resources, _users, new HttpContextAccessor { HttpContext = http }))
             .BuildServiceProvider()
             .GetRequiredService<IAuthorizationService>();
         return new TeamResourcesController(_users, _teams, _resources, authorization, _sync,

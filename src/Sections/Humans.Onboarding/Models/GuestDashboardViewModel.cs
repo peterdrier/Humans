@@ -2,7 +2,7 @@ namespace Humans.Onboarding.Models;
 
 internal sealed class GuestDashboardViewModel
 {
-    public string DisplayName { get; set; } = string.Empty;
+    public Guid UserId { get; set; }
 
     public bool IsDeletionPending { get; set; }
 

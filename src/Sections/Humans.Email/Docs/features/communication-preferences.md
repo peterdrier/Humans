@@ -61,13 +61,13 @@ When a user opts out of Facilitated Messages, the "Send Message" button is hidde
 
 **Entity:** `CommunicationPreference` (table: `email_communication_preferences`, Email's since Users decomposition commit 14)
 - `UserId` + `Category` (unique index) — one row per user per category
-- `OptedOut` (bool?) — true = user does NOT receive email for this category; null = a cleared row (reset, or the merge source) that only shadows a legacy row
+- `OptedOut` (bool?) — true = user does NOT receive email for this category; null = a cleared row (reset, or the merge source), read as the category default
 - `InboxEnabled` (bool) — true = user receives in-app alerts for this category
 - `UpdatedAt` (Instant) — when preference was last changed
 - `UpdateSource` (string) — how it was set: "Profile" (signed-in profile UI), "Guest" (signed-in Guest dashboard, profileless), "MagicLink" (anonymous unsubscribe-token endpoints), "OneClick" (RFC 8058 List-Unsubscribe), "Default" (historical lazy seed), "DataMigration"
 - `SubscribedAt` (Instant, nullable) — earliest known opt-in instant for this category; stamped on first opt-in transition or import from a source with a real subscribe date, preserved across later opt-out/re-opt cycles. An account merge fills a missing survivor timestamp from the source before removing its row, retaining any known survivor timestamp regardless of which account's current preference wins.
 
-Until the legacy table is dropped, a (user, category) with no row here falls back to Users' frozen `communication_preferences` row (read through `UserInfo`); the first write seeds from it, and the `email.communication-preferences` data migration copies the rest.
+Reads and writes use only Email's table. The copy and legacy fallback retired after production reported `email.communication-preferences` with `pending: 0`, `done: true` on 2026-11-03. A missing row or a historical null `OptedOut` uses category defaults; resets delete rows. Users' frozen table awaits a separate drop.
 
 **Enum:** `MessageCategory` (`Humans.Email.Contracts`) — stored as string in DB
 - Active: System, CampaignCodes, FacilitatedMessages, Ticketing, VolunteerUpdates, TeamUpdates, Governance, Marketing

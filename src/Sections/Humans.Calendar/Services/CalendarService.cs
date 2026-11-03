@@ -6,6 +6,7 @@ using Humans.AuditLog.Contracts;
 using Humans.Calendar.Data;
 using Humans.Calendar.Domain;
 using Humans.Teams.Contracts;
+using Ical.Net;
 using Ical.Net.DataTypes;
 using Ical.Net.Evaluation;
 using NodaTime;
@@ -78,16 +79,22 @@ internal sealed class CalendarService(
                 continue;
             }
 
-            items.AddRange(contributed.Select(ToOccurrence));
+            items.AddRange(contributed.SelectMany(item => ToOccurrences(item, from, to)));
         }
 
         return items;
     }
 
-    private static CalendarOccurrence ToOccurrence(CalendarFeedItem item) => new(
+    private static IEnumerable<CalendarOccurrence> ToOccurrences(CalendarFeedItem item, Instant from, Instant to) =>
+        item.RecurrenceRule is null
+            ? [ToOccurrence(item, item.Start, item.End, recurring: false)]
+            : CalendarRecurrence.Occurrences(item.Start, item.End, item.RecurrenceRule, item.RecurrenceTimezone, from, to)
+                .Select(o => ToOccurrence(item, o.Start, o.End, recurring: true));
+
+    private static CalendarOccurrence ToOccurrence(CalendarFeedItem item, Instant start, Instant end, bool recurring) => new(
         EventId: Guid.Empty,
-        OccurrenceStartUtc: item.Start,
-        OccurrenceEndUtc: item.End,
+        OccurrenceStartUtc: start,
+        OccurrenceEndUtc: end,
         IsAllDay: false,
         Title: item.Summary,
         Description: item.Description,
@@ -95,8 +102,8 @@ internal sealed class CalendarService(
         LocationUrl: null,
         OwningTeamId: Guid.Empty,
         OwningTeamName: string.Empty,
-        IsRecurring: false,
-        OriginalOccurrenceStartUtc: null,
+        IsRecurring: recurring,
+        OriginalOccurrenceStartUtc: recurring ? start : null,
         Source: item.Source,
         Url: item.Url);
 
@@ -238,14 +245,36 @@ internal sealed class CalendarService(
         if (string.IsNullOrWhiteSpace(rrule)) return null;
         try
         {
-            var pattern = new RecurrencePattern(rrule);
+            var pattern = CalendarOccurrenceExpander.ParseRecurrenceRule(rrule);
+            var parts = rrule.Split(';', StringSplitOptions.RemoveEmptyEntries);
+            var names = parts.Select(part => part[..part.IndexOf('=')].Trim()).ToArray();
+            if (names.Distinct(StringComparer.OrdinalIgnoreCase).Count() != names.Length)
+                return "Recurrence rule is malformed: rule parts cannot repeat.";
+            // The library silently ignores UNTIL values it cannot parse.
+            if (names.Contains("UNTIL", StringComparer.OrdinalIgnoreCase) && pattern.Until is null)
+                return "Recurrence rule is malformed: UNTIL must be a valid DATE or DATE-TIME.";
             // The library accepts numeric enum values, which also bypass the all-day frequency guard.
-            if (rrule.Split(';').Any(part => part.StartsWith("FREQ=", StringComparison.OrdinalIgnoreCase) &&
-                    part[5..].ToUpperInvariant() is not ("SECONDLY" or "MINUTELY" or "HOURLY" or
+            if (parts.Any(part => part.StartsWith("FREQ=", StringComparison.OrdinalIgnoreCase) &&
+                    part[5..].Trim().ToUpperInvariant() is not ("SECONDLY" or "MINUTELY" or "HOURLY" or
                         "DAILY" or "WEEKLY" or "MONTHLY" or "YEARLY")))
                 return "Recurrence rule is malformed: FREQ must name an RFC 5545 frequency.";
             if (pattern.ByDay.Any(day => day.Offset is < -53 or 0 or > 53))
                 return "Recurrence rule is malformed: BYDAY ordinal offsets must be between -53 and 53, excluding zero.";
+            // The parser accepts these combinations, but RFC 5545 section 3.3.10 forbids them.
+            if (pattern.ByDay.Any(day => day.Offset is not null) &&
+                (pattern.Frequency is not (FrequencyType.Monthly or FrequencyType.Yearly) || pattern.ByWeekNo.Count > 0))
+                return "Recurrence rule is malformed: ordinal BYDAY requires MONTHLY or YEARLY without BYWEEKNO.";
+            if (pattern.ByMonthDay.Count > 0 && pattern.Frequency == FrequencyType.Weekly)
+                return "Recurrence rule is malformed: BYMONTHDAY cannot be used with WEEKLY.";
+            if (pattern.ByYearDay.Count > 0 &&
+                pattern.Frequency is FrequencyType.Daily or FrequencyType.Weekly or FrequencyType.Monthly)
+                return "Recurrence rule is malformed: BYYEARDAY cannot be used with DAILY, WEEKLY or MONTHLY.";
+            if (pattern.ByWeekNo.Count > 0 && pattern.Frequency != FrequencyType.Yearly)
+                return "Recurrence rule is malformed: BYWEEKNO requires YEARLY.";
+            if (pattern.BySetPosition.Count > 0 && !names.Any(name =>
+                    name.StartsWith("BY", StringComparison.OrdinalIgnoreCase) &&
+                    !string.Equals(name, "BYSETPOS", StringComparison.OrdinalIgnoreCase)))
+                return "Recurrence rule is malformed: BYSETPOS requires another BY rule part.";
         }
         catch (Exception ex)
         {
@@ -274,7 +303,7 @@ internal sealed class CalendarService(
             var eq = part.IndexOf('=');
             if (eq <= 0) continue;
             var key = part[..eq];
-            var val = part[(eq + 1)..];
+            var val = part[(eq + 1)..].Trim();
 
             if (string.Equals(key, "UNTIL", StringComparison.OrdinalIgnoreCase))
             {
@@ -320,7 +349,7 @@ internal sealed class CalendarService(
             DtStart = new CalDateTime(dtStartLocal, tz, hasTime: true),
             Duration = Ical.Net.DataTypes.Duration.FromTimeSpanExact(TimeSpan.FromTicks(duration.BclCompatibleTicks)),
         };
-        icalEv.RecurrenceRule = new RecurrencePattern(rrule);
+        icalEv.RecurrenceRule = CalendarOccurrenceExpander.ParseRecurrenceRule(rrule);
 
         var startCalDt = new CalDateTime(dtStartLocal, tz, hasTime: true);
         var last = icalEv.GetOccurrences(startCalDt, new EvaluationOptions())
@@ -336,7 +365,7 @@ internal sealed class CalendarService(
     private static LocalDate? ComputeRecurrenceUntilDate(string? rule, LocalDate? start, LocalDate? end)
     {
         if (string.IsNullOrWhiteSpace(rule) || start is null || end is null) return null;
-        var pattern = new RecurrencePattern(rule);
+        var pattern = CalendarOccurrenceExpander.ParseRecurrenceRule(rule);
         var days = NodaTime.Period.Between(start.Value, end.Value, PeriodUnits.Days).Days;
         if (pattern.Until is not null)
             return LocalDate.FromDateTime(pattern.Until.Value).PlusDays(days);
@@ -353,18 +382,11 @@ internal sealed class CalendarService(
     private static bool IsDateOnlyRecurrence(string? rule)
     {
         if (string.IsNullOrWhiteSpace(rule)) return true;
-        foreach (var part in rule.Split(';'))
-        {
-            if (part.StartsWith("BYHOUR=", StringComparison.OrdinalIgnoreCase) ||
-                part.StartsWith("BYMINUTE=", StringComparison.OrdinalIgnoreCase) ||
-                part.StartsWith("BYSECOND=", StringComparison.OrdinalIgnoreCase) ||
-                part.Equals("FREQ=HOURLY", StringComparison.OrdinalIgnoreCase) ||
-                part.Equals("FREQ=MINUTELY", StringComparison.OrdinalIgnoreCase) ||
-                part.Equals("FREQ=SECONDLY", StringComparison.OrdinalIgnoreCase) ||
-                (part.StartsWith("UNTIL=", StringComparison.OrdinalIgnoreCase) && part.Length != 14))
-                return false;
-        }
-        return true;
+        var pattern = CalendarOccurrenceExpander.ParseRecurrenceRule(rule);
+        return pattern.Frequency is not (FrequencyType.Hourly or FrequencyType.Minutely or FrequencyType.Secondly)
+            && pattern.ByHour.Count == 0 && pattern.ByMinute.Count == 0 && pattern.BySecond.Count == 0
+            && rule.Split(';').All(part => !part.StartsWith("UNTIL=", StringComparison.OrdinalIgnoreCase)
+                || part[6..].Trim().Length == 8);
     }
 
     private async Task<CalendarEventMutationResult> UpdateEventAsync(Guid id, CreateCalendarEventDto dto, Guid updatedByUserId, CancellationToken ct = default)

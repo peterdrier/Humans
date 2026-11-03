@@ -1,4 +1,6 @@
 @model Humans.Feedback.Models.FeedbackDetailViewModel
+@using Humans.Base.ViewComponents
+@inject Microsoft.AspNetCore.Mvc.Localization.IHtmlLocalizer<FeedbackResource> HtmlLocalizer
 @{
     var pagePreview = Model.PageUrl;
     if (pagePreview.Length > 40)
@@ -136,7 +138,7 @@
     var borderClass = msg.IsReporter ? "border-primary" : "border-success";
     <div class="mb-3">
         <div class="text-muted mb-1" style="font-size: 0.75rem;">
-            <strong>@msg.SenderName</strong> · @msg.CreatedAt.ToMonthDayTime()
+            <strong><vc:human user-id="@(msg.SenderUserId ?? Guid.Empty)" link="None" /></strong> · @msg.CreatedAt.ToMonthDayTime()
             @if (msg.EmailEnqueuePending)
             {
                 <span class="text-warning"> · Email waiting to be queued; automatic retry scheduled.</span>
@@ -170,9 +172,18 @@
 {
     <div class="text-muted small mt-3">
         @Html.Raw(string.Format(Localizer["Feedback_ResolvedAt"].Value, Html.Encode(Model.ResolvedAt.Value.ToMonthDayTime())))
-        @if (!string.IsNullOrEmpty(Model.ResolvedByName))
+        @if (Model.ResolvedByUserId is { } resolverId)
         {
-            <text> @Html.Raw(string.Format(Localizer["Feedback_ResolvedBy"].Value, Html.Encode(Model.ResolvedByName)))</text>
+            var resolver = await Component.InvokeAsync(typeof(HumanViewComponent), new
+            {
+                userId = resolverId,
+                link = HumanLink.None,
+            });
+            using var resolverWriter = new System.IO.StringWriter();
+            resolver.WriteTo(resolverWriter, System.Text.Encodings.Web.HtmlEncoder.Default);
+            // Template indentation must not add whitespace to the localized attribution.
+            var resolverHtml = new Microsoft.AspNetCore.Html.HtmlString(resolverWriter.ToString().Trim());
+            <text> @HtmlLocalizer["Feedback_ResolvedBy", resolverHtml]</text>
         }
     </div>
 }

@@ -9,12 +9,10 @@ internal static class ProfileEditViewModelBuilder
     public static ProfileViewModel Build(
         UserInfo info,
         IReadOnlyList<UserApplicationSnapshot> applications,
-        bool preview,
-        Func<ProfileInfo, string?> customPictureUrl)
+        bool preview)
     {
         ArgumentNullException.ThrowIfNull(info);
         ArgumentNullException.ThrowIfNull(applications);
-        ArgumentNullException.ThrowIfNull(customPictureUrl);
 
         var profile = info.Profile;
 
@@ -27,13 +25,7 @@ internal static class ProfileEditViewModelBuilder
         {
             Id = profile?.Id ?? Guid.Empty,
             UserId = info.Id,
-            Email = info.Email ?? string.Empty,
-            DisplayName = info.BurnerName,
-            ProfilePictureUrl = info.ProfilePictureUrl,
             HasCustomProfilePicture = hasCustomPicture,
-            CustomProfilePictureUrl = hasCustomPicture && profile is not null
-                ? customPictureUrl(profile)
-                : null,
             BurnerName = profile?.BurnerName ?? info.BurnerName,
             FirstName = profile?.FirstName ?? string.Empty,
             LastName = profile?.LastName ?? string.Empty,

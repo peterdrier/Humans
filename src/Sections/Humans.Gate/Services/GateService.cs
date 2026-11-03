@@ -316,7 +316,7 @@ internal sealed class GateService(
         return new GateVendorBackfillResult(true, enqueued);
     }
 
-    public async Task<IReadOnlyList<GateRosterEntry>> GetShiftRosterAsync(
+    public async Task<IReadOnlyList<Guid>> GetShiftRosterAsync(
         Guid rosterTeamId, CancellationToken ct = default)
     {
         var activeEvent = await settingsService.GetActiveEventSettingsAsync(ct);
@@ -329,7 +329,7 @@ internal sealed class GateService(
         var openingDate = activeEvent.GateOpeningDate;
 
         var gateShifts = await shifts.GetBrowseShiftsAsync(new ShiftBrowseQuery(
-            activeEvent.Id, DepartmentId: rosterTeamId, Flags: ShiftBrowseQueryFlags.IncludeSignups));
+            activeEvent.Id, DepartmentId: rosterTeamId, Flags: ShiftBrowseQueryFlags.IncludeSignups), ct);
 
         return gateShifts
             .Where(s => StartsWithinWindow(openingDate, s.Shift, zone, now))
@@ -337,7 +337,7 @@ internal sealed class GateService(
             .Where(u => u.Status is SignupStatus.Pending or SignupStatus.Confirmed)
             .DistinctBy(u => u.UserId)
             .OrderBy(u => u.DisplayName, StringComparer.CurrentCultureIgnoreCase)
-            .Select(u => new GateRosterEntry(u.UserId, u.DisplayName))
+            .Select(u => u.UserId)
             .ToList();
     }
 

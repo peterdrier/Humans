@@ -560,7 +560,6 @@ public class EventsControllerTests
     [Xunit.InlineData(nameof(EventsController.Browse), "Favourites")]
     [Xunit.InlineData(nameof(EventsController.Browse), "Approved")]
     [Xunit.InlineData(nameof(EventsController.Browse), "Camps")]
-    [Xunit.InlineData(nameof(EventsController.Browse), "Submitter")]
     [Xunit.InlineData(nameof(EventsController.Browse), "Categories")]
     [Xunit.InlineData(nameof(EventsController.Browse), "Venues")]
     [Xunit.InlineData(nameof(EventsController.BarrioSubmit), "Camp")]
@@ -577,7 +576,30 @@ public class EventsControllerTests
     [Xunit.InlineData(nameof(EventsController.BulkUploadTemplate), "Camp")]
     [Xunit.InlineData(nameof(EventsController.BulkUploadTemplate), "Viewer")]
     [Xunit.InlineData(nameof(EventsController.BulkUploadTemplate), "Template")]
-    public async Task MemberReadPages_StopLoadingAfterRequestCancellation(string route, string boundary)
+    [Xunit.InlineData(nameof(EventsController.Create), "Viewer")]
+    [Xunit.InlineData(nameof(EventsController.Create), "Guide")]
+    [Xunit.InlineData(nameof(EventsController.Create), "Burn")]
+    [Xunit.InlineData(nameof(EventsController.Create), "Categories")]
+    [Xunit.InlineData(nameof(EventsController.Create), "Venues")]
+    [Xunit.InlineData(nameof(EventsController.Update), "Viewer")]
+    [Xunit.InlineData(nameof(EventsController.Update), "Event")]
+    [Xunit.InlineData(nameof(EventsController.Update), "Guide")]
+    [Xunit.InlineData(nameof(EventsController.Update), "Burn")]
+    [Xunit.InlineData(nameof(EventsController.Update), "Categories")]
+    [Xunit.InlineData(nameof(EventsController.Update), "Venues")]
+    [Xunit.InlineData(nameof(EventsController.Withdraw), "Viewer")]
+    [Xunit.InlineData(nameof(EventsController.Withdraw), "Event")]
+    [Xunit.InlineData(nameof(EventsController.BarrioCreate), "Guide")]
+    [Xunit.InlineData(nameof(EventsController.BarrioCreate), "Burn")]
+    [Xunit.InlineData(nameof(EventsController.BarrioCreate), "Categories")]
+    [Xunit.InlineData(nameof(EventsController.BarrioUpdate), "Event")]
+    [Xunit.InlineData(nameof(EventsController.BarrioUpdate), "Guide")]
+    [Xunit.InlineData(nameof(EventsController.BarrioUpdate), "Burn")]
+    [Xunit.InlineData(nameof(EventsController.BarrioUpdate), "Categories")]
+    [Xunit.InlineData(nameof(EventsController.BarrioWithdraw), "Event")]
+    [Xunit.InlineData(nameof(EventsController.BulkUploadImport), "Guide")]
+    [Xunit.InlineData(nameof(EventsController.BulkUploadImport), "Burn")]
+    public async Task MemberReads_StopLoadingAfterRequestCancellation(string route, string boundary)
     {
         using var request = new CancellationTokenSource();
         var userId = Guid.NewGuid();
@@ -588,7 +610,10 @@ public class EventsControllerTests
         async Task<T> ReadAsync<T>(T value, string current, CancellationToken ct)
         {
             if (abandon && string.Equals(current, boundary, StringComparison.Ordinal))
+            {
                 await request.CancelAsync();
+                ct.Should().Be(request.Token);
+            }
             ct.ThrowIfCancellationRequested();
             return value;
         }
@@ -651,8 +676,30 @@ public class EventsControllerTests
             ReadAsync<List<string>>([], "Excluded", call.Arg<CancellationToken>()));
         _guide.GetApprovedEventsAsync(null, null, null, null, Arg.Any<IReadOnlyList<string>>(), Arg.Any<CancellationToken>()).Returns(call =>
             ReadAsync<IReadOnlyList<ApprovedEventView>>([approved], "Approved", call.Arg<CancellationToken>()));
+        var isPost = route is nameof(EventsController.Create) or nameof(EventsController.Update)
+            or nameof(EventsController.Withdraw) or nameof(EventsController.BarrioCreate)
+            or nameof(EventsController.BarrioUpdate) or nameof(EventsController.BarrioWithdraw)
+            or nameof(EventsController.BulkUploadImport);
+        if (isPost) controller.ModelState.AddModelError("Title", "Required");
+        _localizer[Arg.Any<string>()].Returns(call => new LocalizedString(call.Arg<string>(), call.Arg<string>()));
+        _localizer[Arg.Any<string>(), Arg.Any<object[]>()].Returns(call => new LocalizedString(call.ArgAt<string>(0), call.ArgAt<string>(0)));
+        var file = Substitute.For<IFormFile>();
+        file.Length.Returns(6);
+        file.OpenReadStream().Returns(_ =>
+        {
+            return new MemoryStream(System.Text.Encoding.UTF8.GetBytes("Title\n"));
+        });
+        _guide.GetUserEventAsync(guideEvent.Id, userId, Arg.Any<CancellationToken>()).Returns(call =>
+            ReadAsync<EventInfo?>(guideEvent, "Event", call.Arg<CancellationToken>()));
         Func<Task<IActionResult>> load = route switch
         {
+            nameof(EventsController.Create) => () => controller.Create(new IndividualEventFormViewModel()),
+            nameof(EventsController.Update) => () => controller.Update(guideEvent.Id, new IndividualEventFormViewModel()),
+            nameof(EventsController.Withdraw) => () => controller.Withdraw(guideEvent.Id),
+            nameof(EventsController.BarrioCreate) => () => controller.BarrioCreate(camp.Slug, new CampEventFormViewModel()),
+            nameof(EventsController.BarrioUpdate) => () => controller.BarrioUpdate(camp.Slug, campEvent.Id, new CampEventFormViewModel()),
+            nameof(EventsController.BarrioWithdraw) => () => controller.BarrioWithdraw(camp.Slug, campEvent.Id),
+            nameof(EventsController.BulkUploadImport) => () => controller.BulkUploadImport(camp.Slug, file),
             nameof(EventsController.MySubmissions) => controller.MySubmissions,
             nameof(EventsController.Submit) => controller.Submit,
             nameof(EventsController.Edit) => () => controller.Edit(guideEvent.Id),
@@ -663,12 +710,28 @@ public class EventsControllerTests
             _ => () => controller.Browse(null, null, null, null),
         };
         var loaded = await load();
+        if (string.Equals(route, nameof(EventsController.Browse), StringComparison.Ordinal))
+        {
+            var browse = ((ViewResult)loaded).Model.Should().BeOfType<BrowseViewModel>().Which;
+            var item = browse.DayGroups.SelectMany(g => g.Items).Should().ContainSingle().Which;
+            item.SubmitterUserId.Should().Be(submitterId);
+            item.Host.Should().BeNull();
+            await _users.DidNotReceive().GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>());
+        }
         if (string.Equals(route, nameof(EventsController.BulkUploadTemplate), StringComparison.Ordinal))
             loaded.Should().BeOfType<FileContentResult>();
+        else if (route is nameof(EventsController.Withdraw) or nameof(EventsController.BarrioWithdraw) or nameof(EventsController.BulkUploadImport))
+            loaded.Should().BeOfType<RedirectToActionResult>();
         else
             loaded.Should().BeOfType<ViewResult>();
+        _guide.ClearReceivedCalls();
         abandon = true;
         await load.Should().ThrowAsync<OperationCanceledException>();
+        _guide.ReceivedCalls().Select(call => call.GetMethodInfo().Name).Should()
+            .NotContain(nameof(IEventManagement.SubmitEventAsync))
+            .And.NotContain(nameof(IEventManagement.UpdateAndResubmitAsync))
+            .And.NotContain(nameof(IEventManagement.WithdrawEventAsync))
+            .And.NotContain(nameof(IEventManagement.BulkImportAsync));
     }
 
     [HumansTheory]
@@ -1083,10 +1146,6 @@ public class EventsControllerTests
         BuildStartOffset: 0,
         EventEndOffset: 2,
         StrikeEndOffset: 0,
-        FirstCrewStartOffset: 0,
-        SetupWeekStartOffset: 0,
-        PreEventWeekStartOffset: 0,
-        FinishingWeekendStartOffset: 0,
         EarlyEntryCapacity: new Dictionary<int, int>(),
         BarriosEarlyEntryAllocation: null,
         EarlyEntryClose: null);
@@ -1102,8 +1161,7 @@ public class EventsControllerTests
         var profile = UserFixtures.Profile(
             burnerName: burnerName,
             firstName: "Test",
-            lastName: "User",
-            isApproved: true);
+            lastName: "User");
         var user = new User
         {
             Id = userId,
@@ -1114,9 +1172,7 @@ public class EventsControllerTests
         return UserInfo.Create(
             user: user,
             userEmails: [],
-            eventParticipations: [],
             externalLogins: [],
-            profile: profile,
-            communicationPreferences: []);
+            profile: profile);
     }
 }

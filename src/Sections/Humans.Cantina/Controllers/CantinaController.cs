@@ -48,10 +48,10 @@ internal sealed class CantinaController : HumansControllerBase
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> RevealHealth(int? weekStartOffset = null, CancellationToken ct = default)
     {
-        var actorUserId = GetCurrentUserId();
-        if (actorUserId is null) return Unauthorized();
+        var actor = await GetCurrentUserInfoAsync(ct);
+        if (actor is null) return Unauthorized();
 
-        var roster = await _roster.GetWeeklyRosterAsync(weekStartOffset, RosterDisclosure.HealthReveal(actorUserId.Value), ct).ConfigureAwait(false);
+        var roster = await _roster.GetWeeklyRosterAsync(weekStartOffset, RosterDisclosure.HealthReveal(actor.Id), ct).ConfigureAwait(false);
         TempData[HealthRevealedKey] = RevealToken("week", roster.WeekStartOffset);
         return RedirectToAction(nameof(Roster), new { weekStartOffset = roster.WeekStartOffset });
     }
@@ -60,10 +60,10 @@ internal sealed class CantinaController : HumansControllerBase
     [Authorize(Policy = CantinaPolicies.Manage)]
     public async Task<IActionResult> Csv(int? weekStartOffset = null, CancellationToken ct = default)
     {
-        var actorUserId = GetCurrentUserId();
-        if (actorUserId is null) return Unauthorized();
+        var actor = await GetCurrentUserInfoAsync(ct);
+        if (actor is null) return Unauthorized();
 
-        var roster = await _roster.GetWeeklyRosterAsync(weekStartOffset, RosterDisclosure.Export(actorUserId.Value), ct).ConfigureAwait(false);
+        var roster = await _roster.GetWeeklyRosterAsync(weekStartOffset, RosterDisclosure.Export(actor.Id), ct).ConfigureAwait(false);
         roster = CantinaRosterAssembler.WithSortedPeople(roster);
 
         var bytes = CantinaRosterCsvWriter.Write(roster);
@@ -88,10 +88,10 @@ internal sealed class CantinaController : HumansControllerBase
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> RevealDayHealth(int? dayOffset = null, CancellationToken ct = default)
     {
-        var actorUserId = GetCurrentUserId();
-        if (actorUserId is null) return Unauthorized();
+        var actor = await GetCurrentUserInfoAsync(ct);
+        if (actor is null) return Unauthorized();
 
-        var matrix = await _roster.GetDailyRosterAsync(dayOffset, RosterDisclosure.HealthReveal(actorUserId.Value), ct).ConfigureAwait(false);
+        var matrix = await _roster.GetDailyRosterAsync(dayOffset, RosterDisclosure.HealthReveal(actor.Id), ct).ConfigureAwait(false);
         TempData[HealthRevealedKey] = RevealToken("day", matrix.DayOffset);
         return RedirectToAction(nameof(Day), new { dayOffset = matrix.DayOffset });
     }
@@ -100,10 +100,10 @@ internal sealed class CantinaController : HumansControllerBase
     [Authorize(Policy = CantinaPolicies.Manage)]
     public async Task<IActionResult> DayCsv(int? dayOffset = null, CancellationToken ct = default)
     {
-        var actorUserId = GetCurrentUserId();
-        if (actorUserId is null) return Unauthorized();
+        var actor = await GetCurrentUserInfoAsync(ct);
+        if (actor is null) return Unauthorized();
 
-        var matrix = await _roster.GetDailyRosterAsync(dayOffset, RosterDisclosure.Export(actorUserId.Value), ct).ConfigureAwait(false);
+        var matrix = await _roster.GetDailyRosterAsync(dayOffset, RosterDisclosure.Export(actor.Id), ct).ConfigureAwait(false);
         matrix = CantinaRosterAssembler.WithSortedPeople(matrix);
 
         var bytes = CantinaDailyMatrixCsvWriter.Write(matrix);

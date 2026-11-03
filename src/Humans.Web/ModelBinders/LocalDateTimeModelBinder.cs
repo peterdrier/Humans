@@ -6,8 +6,9 @@ using NodaTime.Text;
 namespace Humans.Web.ModelBinders;
 
 /// <summary>
-/// Binds NodaTime <see cref="LocalDateTime"/> from <c>&lt;input type="datetime-local"&gt;</c>. Browsers post it
-/// without seconds (<c>2026-07-14T10:30</c>), and NodaTime's <c>TypeConverter</c> requires them, so every non-empty
+/// Binds NodaTime <see cref="LocalDateTime"/> from <c>&lt;input type="datetime-local"&gt;</c> and
+/// <see cref="LocalTime"/> from <c>&lt;input type="time"&gt;</c>. Browsers post both without seconds
+/// (<c>2026-07-14T10:30</c>, <c>10:30</c>), and NodaTime's <c>TypeConverter</c> requires them, so every non-empty
 /// submit would otherwise fail binding. Accepts both, plus fractions.
 /// </summary>
 public sealed class LocalDateTimeModelBinder : IModelBinder
@@ -43,13 +44,11 @@ public sealed class LocalDateTimeModelBinder : IModelBinder
 
         // No-seconds wire format first (what browsers actually post), then ISO with
         // seconds (and optional fractions) for pickers/browsers that include them.
-        var parsed = DateFormattingExtensions.PlacementDateTimePattern.Parse(value);
-        if (!parsed.Success)
-            parsed = LocalDateTimePattern.ExtendedIso.Parse(value);
+        var parsed = IsTime(bindingContext.ModelType) ? ParseTime(value) : ParseDateTime(value);
 
-        if (parsed.Success)
+        if (parsed is not null)
         {
-            bindingContext.Result = ModelBindingResult.Success(parsed.Value);
+            bindingContext.Result = ModelBindingResult.Success(parsed);
         }
         else
         {
@@ -63,10 +62,28 @@ public sealed class LocalDateTimeModelBinder : IModelBinder
 
         return Task.CompletedTask;
     }
+
+    private static bool IsTime(Type modelType) => (Nullable.GetUnderlyingType(modelType) ?? modelType) == typeof(LocalTime);
+
+    private static object? ParseDateTime(string value)
+    {
+        var parsed = DateFormattingExtensions.PlacementDateTimePattern.Parse(value);
+        if (!parsed.Success)
+            parsed = LocalDateTimePattern.ExtendedIso.Parse(value);
+        return parsed.Success ? parsed.Value : null;
+    }
+
+    private static object? ParseTime(string value)
+    {
+        var parsed = DateFormattingExtensions.TimeOfDayPattern.Parse(value);
+        if (!parsed.Success)
+            parsed = LocalTimePattern.ExtendedIso.Parse(value);
+        return parsed.Success ? parsed.Value : null;
+    }
 }
 
-/// <summary>Serves <see cref="LocalDateTimeModelBinder"/> for <c>LocalDateTime</c> and
-/// <c>LocalDateTime?</c> models. Registered ahead of the default providers in Program.cs.</summary>
+/// <summary>Serves <see cref="LocalDateTimeModelBinder"/> for <c>LocalDateTime</c> and <c>LocalTime</c> models,
+/// nullable or not. Registered ahead of the default providers in Program.cs.</summary>
 public sealed class LocalDateTimeModelBinderProvider : IModelBinderProvider
 {
     public IModelBinder? GetBinder(ModelBinderProviderContext context)
@@ -75,6 +92,6 @@ public sealed class LocalDateTimeModelBinderProvider : IModelBinderProvider
 
         var modelType = context.Metadata.ModelType;
         var underlying = Nullable.GetUnderlyingType(modelType) ?? modelType;
-        return underlying == typeof(LocalDateTime) ? new LocalDateTimeModelBinder() : null;
+        return underlying == typeof(LocalDateTime) || underlying == typeof(LocalTime) ? new LocalDateTimeModelBinder() : null;
     }
 }

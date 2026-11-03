@@ -97,9 +97,8 @@ internal sealed record GateSettingsViewModel(
     [param: System.ComponentModel.DataAnnotations.Range(0, 21,
         ErrorMessage = "Minor age threshold must be between 0 and 21.")] int MinorAgeThresholdYears);
 
-internal sealed record GateClaimViewModel(IReadOnlyList<GateRosterMember> Roster);
+internal sealed record GateClaimViewModel(IReadOnlyList<Guid> Roster);
 
-internal sealed record GateRosterMember(Guid UserId, string DisplayName);
 
 internal enum GatePinMode
 {
@@ -108,9 +107,9 @@ internal enum GatePinMode
     Verify,
 }
 
-internal sealed record GatePinViewModel(Guid UserId, string DisplayName, GatePinMode Mode, string? Error)
+internal sealed record GatePinViewModel(Guid UserId, GatePinMode Mode, string? Error)
 {
     /// <summary>From the server-derived status, never a client hint. A self-set claim PIN attributes scans only.</summary>
-    public static GatePinViewModel ForClaim(Guid userId, string displayName, GatePinStatus status, string? error = null) =>
-        new(userId, displayName, status.HasPin ? GatePinMode.Verify : GatePinMode.Set, error);
+    public static GatePinViewModel ForClaim(Guid userId, GatePinStatus status, string? error = null) =>
+        new(userId, status.HasPin ? GatePinMode.Verify : GatePinMode.Set, error);
 }

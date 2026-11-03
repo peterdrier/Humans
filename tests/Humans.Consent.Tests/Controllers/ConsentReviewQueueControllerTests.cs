@@ -166,6 +166,34 @@ public class ConsentReviewQueueControllerTests
         ctrl.TempData[slot].Should().Be(expectedKey);
     }
 
+    [HumansTheory]
+    [InlineData("clear")]
+    [InlineData("bulk")]
+    [InlineData("flag")]
+    [InlineData("reject")]
+    public async Task ReviewActions_CancelActorLookupBeforeMutation(string action)
+    {
+        using var request = new CancellationTokenSource();
+        var controller = BuildSut();
+        controller.HttpContext.RequestAborted = request.Token;
+        _userService.GetUserInfoAsync(_reviewerId, Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+            return new ValueTask<UserInfo?>(MakeUserInfo(_reviewerId));
+        });
+        await request.CancelAsync();
+        Func<Task<IActionResult>> run = () => action switch
+        {
+            "clear" => controller.Clear(_subjectId, "Notes"),
+            "bulk" => controller.BulkClear([_subjectId], request.Token),
+            "flag" => controller.Flag(_subjectId, "Notes"),
+            _ => controller.Reject(_subjectId, "Reason")
+        };
+        await run.Should().ThrowAsync<OperationCanceledException>();
+        _queue.ReceivedCalls().Should().BeEmpty();
+        _onboarding.ReceivedCalls().Should().BeEmpty();
+    }
+
     [HumansFact]
     public async Task BulkClear_CancelledRequest_PropagatesCancellation()
     {
@@ -227,9 +255,9 @@ public class ConsentReviewQueueControllerTests
 
     private static UserInfo MakeUserInfo(Guid userId)
     {
-        var profile = UserFixtures.Profile(burnerName: "User", isApproved: true);
+        var profile = UserFixtures.Profile(burnerName: "User");
         return UserInfo.Create(
             new User { Id = userId, PreferredLanguage = "en", BurnerName = profile.BurnerName, State = UserFixtures.StateFor(profile) },
-            [], [], [], profile: profile, []);
+            [], [], profile: profile);
     }
 }

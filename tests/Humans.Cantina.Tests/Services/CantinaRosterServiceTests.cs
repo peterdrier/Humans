@@ -154,8 +154,76 @@ public class CantinaRosterServiceTests
         _audit.ReceivedCalls().Should().ContainSingle("exports keep their one scope row");
     }
 
+    public enum CantinaDisclosure
+    {
+        RevealHealth,
+        Csv,
+        RevealDayHealth,
+        DayCsv
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(CantinaDisclosure.RevealHealth, AccountScenario.Merged)]
+    [Xunit.InlineData(CantinaDisclosure.RevealHealth, AccountScenario.Missing)]
+    [Xunit.InlineData(CantinaDisclosure.RevealHealth, AccountScenario.Cancelled)]
+    [Xunit.InlineData(CantinaDisclosure.Csv, AccountScenario.Merged)]
+    [Xunit.InlineData(CantinaDisclosure.Csv, AccountScenario.Missing)]
+    [Xunit.InlineData(CantinaDisclosure.Csv, AccountScenario.Cancelled)]
+    [Xunit.InlineData(CantinaDisclosure.RevealDayHealth, AccountScenario.Merged)]
+    [Xunit.InlineData(CantinaDisclosure.RevealDayHealth, AccountScenario.Missing)]
+    [Xunit.InlineData(CantinaDisclosure.RevealDayHealth, AccountScenario.Cancelled)]
+    [Xunit.InlineData(CantinaDisclosure.DayCsv, AccountScenario.Merged)]
+    [Xunit.InlineData(CantinaDisclosure.DayCsv, AccountScenario.Missing)]
+    [Xunit.InlineData(CantinaDisclosure.DayCsv, AccountScenario.Cancelled)]
+    public async Task Disclosure_resolves_actor_before_loading_personal_rows(CantinaDisclosure action, AccountScenario account)
+    {
+        var archivedId = Guid.NewGuid();
+        var survivorId = Guid.NewGuid();
+        var controller = Controller(archivedId);
+        using var request = new CancellationTokenSource();
+        controller.HttpContext.RequestAborted = request.Token;
+        _userRead.GetUserInfoAsync(archivedId, Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            call.Arg<CancellationToken>().Should().Be(request.Token);
+            call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+            return new ValueTask<UserInfo?>(account == AccountScenario.Missing ? null :
+                UserInfo.Create(new User { Id = survivorId }, [], [], null));
+        });
+        var burn = ActiveEvent();
+        _burnSettings.GetActiveEventSettingsAsync(request.Token).Returns(burn);
+        if (account == AccountScenario.Cancelled)
+            await request.CancelAsync();
+        Func<Task<IActionResult>> invoke = action switch
+        {
+            CantinaDisclosure.RevealHealth => () => controller.RevealHealth(0, request.Token),
+            CantinaDisclosure.Csv => () => controller.Csv(0, request.Token),
+            CantinaDisclosure.RevealDayHealth => () => controller.RevealDayHealth(0, request.Token),
+            _ => () => controller.DayCsv(0, request.Token),
+        };
+
+        if (account == AccountScenario.Cancelled)
+            await invoke.Should().ThrowAsync<OperationCanceledException>();
+        else if (account == AccountScenario.Missing)
+            (await invoke()).Should().BeOfType<UnauthorizedResult>();
+        else
+        {
+            await invoke();
+            var auditAction = action is CantinaDisclosure.RevealHealth or CantinaDisclosure.RevealDayHealth
+                ? CantinaAuditActions.CantinaHealthDetailsRevealed
+                : CantinaAuditActions.CantinaRosterExported;
+            await _audit.Received(1).LogAsync(auditAction, "EventSettings", burn.Id,
+                Arg.Any<string>(), survivorId);
+            return;
+        }
+
+        _burnSettings.ReceivedCalls().Should().BeEmpty();
+        _audit.ReceivedCalls().Should().BeEmpty();
+    }
+
     private CantinaController Controller(Guid actorId)
     {
+        _userRead.GetUserInfoAsync(actorId, Arg.Any<CancellationToken>())
+            .Returns(UserInfo.Create(new User { Id = actorId }, [], [], null));
         var httpContext = new DefaultHttpContext
         {
             User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, actorId.ToString())], "test"))
@@ -191,10 +259,6 @@ public class CantinaRosterServiceTests
         BuildStartOffset: 0,
         EventEndOffset: 0,
         StrikeEndOffset: 0,
-        FirstCrewStartOffset: 0,
-        SetupWeekStartOffset: 0,
-        PreEventWeekStartOffset: 0,
-        FinishingWeekendStartOffset: 0,
         EarlyEntryCapacity: new Dictionary<int, int>(),
         BarriosEarlyEntryAllocation: null,
         EarlyEntryClose: null);
@@ -663,10 +727,8 @@ public class CantinaRosterServiceTests
                 // UserInfo.BurnerName reads User.BurnerName, so it is seeded there.
                 user: new User { Id = p.UserId, DisplayName = p.Profile.BurnerName, BurnerName = p.Profile.BurnerName, PreferredLanguage = "en" },
                 userEmails: [],
-                eventParticipations: [],
                 externalLogins: [],
-                profile: p.Profile,
-                communicationPreferences: []));
+                profile: p.Profile));
         _userRead.GetUserInfosAsync(
                 Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(dict));

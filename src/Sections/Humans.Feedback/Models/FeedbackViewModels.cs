@@ -56,7 +56,7 @@ internal sealed class FeedbackDetailViewModel
     public int? GitHubIssueNumber { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime? ResolvedAt { get; set; }
-    public string? ResolvedByName { get; set; }
+    public Guid? ResolvedByUserId { get; set; }
     public Guid? AssignedToUserId { get; set; }
     public string? AssignedToName { get; set; }
     public Guid? AssignedToTeamId { get; set; }
@@ -69,7 +69,6 @@ internal sealed class FeedbackDetailViewModel
 internal sealed class FeedbackMessageViewModel
 {
     public Guid Id { get; set; }
-    public string SenderName { get; set; } = string.Empty;
     public Guid? SenderUserId { get; set; }
     public string Content { get; set; } = string.Empty;
     public DateTime CreatedAt { get; set; }

@@ -69,6 +69,14 @@ Context: `CantinaDbContext` (history table `__EFMigrationsHistory_Cantina`).
 
 ## Invariants
 
+- Dietary save and decline actions honour request cancellation while resolving the
+  account, before saving. Once started, either mutation finishes independently of
+  the browser request; mutation failures retain the form's existing error handling.
+
+- Roster exports and health reveals resolve the signed-in account before loading
+  personal rows and audit the surviving account ID after a merge. Missing accounts
+  receive 401; cancellation during account lookup stops before roster work.
+
 - The section’s things-to-do contribution forwards caller cancellation through all data reads. Aborted reads propagate instead of being logged or converted into missing prompts.
 
 - **Dietary info is opt-in and never blocks a shift signup** (nobodies-collective/Humans#2104). No signup path — the `/Shifts` day toggle, range signup, onboarding widget, Voluntell — consults Cantina. The roster tolerates humans with empty dietary fields (declined members count as unanswered).
@@ -83,7 +91,7 @@ Context: `CantinaDbContext` (history table `__EFMigrationsHistory_Cantina`).
 - A dietary save is the member's own: the form takes the user from the principal, refuses "Other" without its text, filters chips against `DietaryOptions`, and keeps no medical field. A save clears `DeclinedToAnswer`; a decline clears every food field. Member self-saves and declines are not audited.
 - Merge (`IUserMerge`): the survivor's answers win. When the survivor has no row, the source's row moves. Saved empty answers and declines are preserved. The source's row is removed; retries preserve the result. Reads under an archived id resolve to the survivor.
 - GDPR: export slice `DietaryProfile` (row, including `DeclinedToAnswer`; null when none); erasure deletes the row. Users' erasure still nulls the legacy columns.
-- Burner-name stitching reads `UserInfo.BurnerName` — the value Users already resolved (`User.BurnerName` → `Profile.BurnerName` → legacy display name, nobodies-collective/Humans#1097) — off the cached `UserInfo` from `IUserService`. The `"(unknown)"` fall-through covers a user id the cohort read did not return, not a case the roster is expected to render.
+- The roster reads cached `UserInfo.BurnerName` for culture-aware sorting and CSV snapshots, with `"(unknown)"` when the cohort read did not return a usable name. Daily HTML renders `UserId` through the shared Human component without profile links, using its localized missing-member label. This does not unlock allergy or intolerance columns: their audited reveal gate remains separate.
 
 ## Negative Access Rules
 

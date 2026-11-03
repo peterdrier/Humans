@@ -15,7 +15,7 @@ namespace Humans.Integration.Tests.Controllers;
 /// <remarks>
 /// Failures render as a 200 with degraded content: a mis-bound key renders as its name. Two
 /// <c>ConsentResource</c> call sites live outside the section, and <c>_ConsentReviewBody</c> reads three keys through
-/// a <c>ResourceManager</c> the compiler can't check. Shell's onboarding widget renders that partial by name.
+/// a <c>ResourceManager</c> the compiler can't check. Consent's signing-step component renders it for the onboarding widget.
 /// </remarks>
 public class ConsentPageRenderTests(HumansTestDatabase database) : IntegrationTestBase(database)
 {

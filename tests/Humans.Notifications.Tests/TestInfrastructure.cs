@@ -61,7 +61,7 @@ internal static class NotificationTestFixtures
 
     /// <summary>Minimal <see cref="UserInfo"/> projection — the meter tests only read counts.</summary>
     internal static UserInfo ToUserInfo(this User user) =>
-        UserInfo.Create(user, [], [], [], profile: null, []);
+        UserInfo.Create(user, [], [], profile: null);
 }
 
 /// <summary>Sources these tests own: the section's tests never borrow another section's definitions.</summary>

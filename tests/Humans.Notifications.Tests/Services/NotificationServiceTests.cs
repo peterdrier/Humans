@@ -87,7 +87,7 @@ public class NotificationServiceTests : IDisposable
             NotificationPriority.Normal, "Source notice", [source], cancellationToken: ct);
         await _service.SendAsync(TestSources.TeamUpdate, NotificationClass.Informational,
             NotificationPriority.Normal, "Target notice", [target], cancellationToken: ct);
-        var inbox = new NotificationInboxService(_repo, Substitute.For<IUserService>(), TestSources.Registry, _clock);
+        var inbox = new NotificationInboxService(_repo, TestSources.Registry, _clock);
         (await inbox.GetUnreadBadgeCountsAsync(source, ct)).Should().Be((0, 1));
         (await inbox.GetUnreadBadgeCountsAsync(target, ct)).Should().Be((0, 1));
 

@@ -37,25 +37,6 @@ public sealed record VolunteerHistoryInfo(
     string EventName,
     string? Description);
 
-/// <summary>The frozen legacy <c>communication_preferences</c> row; the live one is Email's.</summary>
-public sealed record LegacyCommunicationPreferenceInfo(
-    Guid Id,
-    LegacyMessageCategory Category,
-    bool OptedOut,
-    bool InboxEnabled,
-    Instant UpdatedAt,
-    string UpdateSource,
-    Instant? SubscribedAt);
-
-/// <summary>The frozen legacy row; the live one is Tickets' <c>EventParticipationInfo</c>.</summary>
-public sealed record LegacyEventParticipationInfo(
-    Guid Id,
-    int Year,
-    LegacyParticipationStatus Status,
-    LegacyParticipationSource Source,
-    Instant? DeclaredAt,
-    Instant? CheckedInAt);
-
 public sealed record UserExternalLoginInfo(
     string Provider,
     string ProviderKey);
@@ -87,24 +68,6 @@ public sealed record ProfileInfo(
     string? AdminNotes,
     string? ContributionInterests,
     string? BoardNotes,
-    [property: Obsolete("Moved to Finance's finance_payment_details (Users decomposition commit 1). Read IFinanceService.GetIbanAsync; the one reader left is Finance's legacy fallback and the finance.iban-to-payment-details copy.", DiagnosticId = "HUM_PROFILE_IBAN")]
-    string? Iban,
-    [property: Obsolete("Moved to Consent's consent_reviews (Users decomposition commit 12). Read IConsentService.GetConsentReviewAsync / GetConsentReviewsAsync, or UserInfo.IsRejected for the rejection state; the readers left are Consent's legacy fallback, the consent.profile-review copy and UserInfo.IsRejected's legacy arm.", DiagnosticId = "HUM_PROFILE_REVIEW")]
-    bool IsApproved,
-    [property: Obsolete("Moved to Consent's consent_reviews (Users decomposition commit 12). Read IConsentService.GetConsentReviewAsync / GetConsentReviewsAsync, or UserInfo.IsRejected for the rejection state; the readers left are Consent's legacy fallback, the consent.profile-review copy and UserInfo.IsRejected's legacy arm.", DiagnosticId = "HUM_PROFILE_REVIEW")]
-    LegacyConsentCheckStatus? ConsentCheckStatus,
-    [property: Obsolete("Moved to Consent's consent_reviews (Users decomposition commit 12). Read IConsentService.GetConsentReviewAsync / GetConsentReviewsAsync, or UserInfo.IsRejected for the rejection state; the readers left are Consent's legacy fallback, the consent.profile-review copy and UserInfo.IsRejected's legacy arm.", DiagnosticId = "HUM_PROFILE_REVIEW")]
-    Instant? ConsentCheckAt,
-    [property: Obsolete("Moved to Consent's consent_reviews (Users decomposition commit 12). Read IConsentService.GetConsentReviewAsync / GetConsentReviewsAsync, or UserInfo.IsRejected for the rejection state; the readers left are Consent's legacy fallback, the consent.profile-review copy and UserInfo.IsRejected's legacy arm.", DiagnosticId = "HUM_PROFILE_REVIEW")]
-    Guid? ConsentCheckedByUserId,
-    [property: Obsolete("Moved to Consent's consent_reviews (Users decomposition commit 12). Read IConsentService.GetConsentReviewAsync / GetConsentReviewsAsync, or UserInfo.IsRejected for the rejection state; the readers left are Consent's legacy fallback, the consent.profile-review copy and UserInfo.IsRejected's legacy arm.", DiagnosticId = "HUM_PROFILE_REVIEW")]
-    string? ConsentCheckNotes,
-    [property: Obsolete("Moved to Consent's consent_reviews (Users decomposition commit 12). Read IConsentService.GetConsentReviewAsync / GetConsentReviewsAsync, or UserInfo.IsRejected for the rejection state; the readers left are Consent's legacy fallback, the consent.profile-review copy and UserInfo.IsRejected's legacy arm.", DiagnosticId = "HUM_PROFILE_REVIEW")]
-    string? RejectionReason,
-    [property: Obsolete("Moved to Consent's consent_reviews (Users decomposition commit 12). Read IConsentService.GetConsentReviewAsync / GetConsentReviewsAsync, or UserInfo.IsRejected for the rejection state; the readers left are Consent's legacy fallback, the consent.profile-review copy and UserInfo.IsRejected's legacy arm.", DiagnosticId = "HUM_PROFILE_REVIEW")]
-    Instant? RejectedAt,
-    [property: Obsolete("Moved to Consent's consent_reviews (Users decomposition commit 12). Read IConsentService.GetConsentReviewAsync / GetConsentReviewsAsync, or UserInfo.IsRejected for the rejection state; the readers left are Consent's legacy fallback, the consent.profile-review copy and UserInfo.IsRejected's legacy arm.", DiagnosticId = "HUM_PROFILE_REVIEW")]
-    Guid? RejectedByUserId,
     bool NoPriorBurnExperience,
     IReadOnlyList<ContactFieldInfo> ContactFields,
     IReadOnlyList<ProfileLanguageInfo> Languages,
@@ -138,12 +101,8 @@ public sealed record UserInfo(
     Instant? MergedAt,
     string? IdentityEmailColumn,
     IReadOnlyList<UserEmailInfo> UserEmails,
-    [property: Obsolete("Moved to Tickets' tickets_event_participations (Users decomposition commit 13). Read ITicketService.GetParticipationsAsync / GetAllParticipationsAsync; the one reader left is Tickets' legacy fallback and the tickets.event-participations copy.", DiagnosticId = "HUM_USER_PARTICIPATIONS")]
-    IReadOnlyList<LegacyEventParticipationInfo> EventParticipations,
     IReadOnlyList<UserExternalLoginInfo> ExternalLogins,
-    ProfileInfo? Profile,
-    [property: Obsolete("Moved to Email's email_communication_preferences (Users decomposition commit 14). Read ICommunicationPreferenceService; the one reader left is Email's legacy fallback and the email.communication-preferences copy.", DiagnosticId = "HUM_USER_COMMPREFS")]
-    IReadOnlyList<LegacyCommunicationPreferenceInfo> CommunicationPreferences)
+    ProfileInfo? Profile)
 {
     /// <summary>The single source of truth for access; only <see cref="UserState.Active"/> has full access.</summary>
     public UserState State { get; init; }
@@ -246,14 +205,10 @@ public sealed record UserInfo(
         State is UserState.Suspended or UserState.AdminSuspended;
 
     /// <summary>
-    /// Stored <see cref="UserState.Rejected"/>, or (until the <c>consent.profile-review</c> copy is done) a legacy
-    /// profile rejection time. A tombstone reads its final state instead; Consent keeps the rejection record.
+    /// Stored <see cref="UserState.Rejected"/>. A tombstone reads its final state instead;
+    /// Consent keeps the rejection record.
     /// </summary>
-    public bool IsRejected =>
-        State == UserState.Rejected
-#pragma warning disable HUM_PROFILE_REVIEW // legacy arm, retired with the consent.profile-review copy
-        || Profile?.RejectedAt is not null;
-#pragma warning restore HUM_PROFILE_REVIEW
+    public bool IsRejected => State == UserState.Rejected;
 
     /// <summary>The population person search and the single-person lookups resolve.</summary>
     public bool IsSearchable => Profile is not null && !IsRejected;
@@ -277,10 +232,8 @@ public sealed record UserInfo(
     public static UserInfo Create(
         User user,
         IReadOnlyList<UserEmail> userEmails,
-        IReadOnlyList<EventParticipation> eventParticipations,
         IReadOnlyList<(string Provider, string ProviderKey)> externalLogins,
-        ProfileInfo? profile,
-        IReadOnlyList<LegacyCommunicationPreferenceInfo> communicationPreferences)
+        ProfileInfo? profile)
     {
         var userEmailInfos = userEmails
             .OrderByDescending(e => e.IsPrimary)
@@ -291,18 +244,8 @@ public sealed record UserInfo(
                 e.CreatedAt, e.UpdatedAt, e.GoogleEmailStatus))
             .ToList();
 
-        var participationInfos = eventParticipations
-            .OrderBy(p => p.Year)
-            .Select(p => new LegacyEventParticipationInfo(
-                p.Id, p.Year, p.Status, p.Source, p.DeclaredAt, p.CheckedInAt))
-            .ToList();
-
         var loginInfos = externalLogins
             .Select(l => new UserExternalLoginInfo(l.Provider, l.ProviderKey))
-            .ToList();
-
-        var communicationPreferenceInfos = communicationPreferences
-            .OrderBy(c => c.Category)
             .ToList();
 
         var isGdprAnonymized = IsGdprTombstone(user);
@@ -328,10 +271,8 @@ public sealed record UserInfo(
             MergedAt: user.MergedAt,
             IdentityEmailColumn: user.IdentityEmailColumn,
             UserEmails: userEmailInfos,
-            EventParticipations: participationInfos,
             ExternalLogins: loginInfos,
-            Profile: profile,
-            CommunicationPreferences: communicationPreferenceInfos)
+            Profile: profile)
         {
             State = user.State,
             IsFake = user.MarkedFakeAt is not null,

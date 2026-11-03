@@ -23,7 +23,7 @@ consumes it. Spec: [`docs/features/global/preapprovals.md`](../../../../docs/fea
 - A **Grant** is one person pre-approved under a program for one amount (`MaxAmount`). A
   grant in `Applied` is a member's request for one; the row is the same.
 - A **Manager** is a person who issues, approves, declines and revokes grants in one
-  program. Named per program by the Board, a finance admin or an admin.
+  program. Named per program by a finance admin or an admin.
 - The **claim deadline** (`ClaimBy`, Europe/Madrid date) is when expense reports against the
   program's grants must be submitted. Checked at submit; nothing runs when it passes.
 - **Kind** decides sizing: `FixedPerPerson` (every grant is the program's amount) or
@@ -116,9 +116,14 @@ Admin pages live under the section's URL space, not `/Admin`; they are localizat
 | Member with a grant | See own grants on `/Preapprovals`; file an expense against an Open one before the deadline. |
 | Any member while a program accepts applications | All of the above. Additionally apply for a pre-approval; a second submit edits the pending one. |
 | Program manager | All of the above. Additionally, on their programs only: issue, issue to many (fixed kind), approve, decline, revoke, change an amount. Sees only their programs on the admin index. In Expenses, does the first review (endorse, reject, decline a line) of reports filed against their programs' grants. |
-| Board, FinanceAdmin, Admin | All of the above on every program. Additionally create and edit programs, set the ceiling, name managers, close a program. |
+| Board | Sees every program and its grants on the admin pages; changes nothing. |
+| FinanceAdmin, Admin | All of the program manager's actions on every program. Additionally create and edit programs, set the ceiling, name managers, close a program. |
 
 ## Invariants
+
+- Authorization’s program-manager and member-access reads retain HTTP request cancellation; callers without an HTTP context use the non-cancellable default. Program-resource authorization and the admin index match manager rows against all of the resolved viewer’s current and merged IDs. A manager still cannot administer programs or manage an unrelated program.
+
+- Admin program pages and edit forms render manager and actor IDs through the shared Human component without profile links. Missing members use its localized fallback. Manager order, comma separators and posted manager IDs are preserved; page models carry no display-name dictionary.
 
 - Admin program grant ordering belongs to the view model: applications oldest-created first, decided grants nonterminal first then oldest-created. Service projections impose no display order.
 
@@ -136,7 +141,7 @@ Admin pages live under the section's URL space, not `/Admin`; they are localizat
 - Fixed kind: every grant is `PerPersonAmount`; an explicit amount is refused on issue and
   ignored on approve and apply. Per-grant kind: an amount is required on issue; an
   application carries `RequestedAmount` and the manager may approve less.
-- Single and batch issuance share persistence and the subsequent per-beneficiary audit/notice pipeline; sizing, ceiling checks and audit wording remain specific to each entry point.
+- Single and batch issuance share persistence and the subsequent per-beneficiary audit/notice pipeline; sizing, ceiling checks and audit wording remain specific to each entry point. New issues and applications store the resolved survivor ID. Batch issuance resolves and deduplicates people before the ceiling check, so merged IDs cannot reserve multiple grants in one batch. Existing pending applications retain their original row identity when edited.
 - Supplied program amounts and ceilings, and grant amounts, must be positive exact-cent values within the existing `decimal(18,2)` storage range. Sub-cent and oversized inputs are refused before writes or notices; trailing zeroes remain valid.
 - Issue, issue-many and approve are refused on a Closed program or after `ClaimBy`.
   Applying needs Open, `AcceptsApplications` and the deadline not passed; a POST that
@@ -179,7 +184,7 @@ Admin pages live under the section's URL space, not `/Admin`; they are localizat
   affected user. Program kind edits before the first grant include the old and new sizing
   rules in the program-edit audit, alongside any per-person amount change. Program fields and manager additions/removals persist in one save; a failed manager write leaves fields and managers unchanged, without success audits or deadline notices.
 - The member program page localizes its breadcrumb navigation label in all six supported cultures.
-- Member notices and emails format amounts and claim deadlines in the recipient’s culture.
+- Member notices and emails format amounts and claim deadlines in the recipient’s culture. Both channels resolve merged recipients to their canonical user IDs and deliver once per person, even when manager rows name both an archived ID and its survivor.
   Amount changes carry both amounts as numbers until rendering; audit amounts remain invariant.
 - Issue / approve: `PreapprovalFileBy` notification (Actionable, source key
   `pre-grant:{id}`) and `preapproval_issued` email to the beneficiary. Claim resolves the

@@ -97,7 +97,6 @@ internal sealed class SurveyController(
             Culture = culture,
             AllowAnonymous = editable.AllowAnonymous,
             ShowAnonymitySelector = editable.AllowAnonymous,
-            HasResumableDraft = ctx.HasResumableDraft,
             IsAsociadoVote = editable.IsAsociadoVote,
         };
         return View("Intro", vm);

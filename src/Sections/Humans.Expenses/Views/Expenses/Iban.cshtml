@@ -1,6 +1,21 @@
 @model Humans.Expenses.Models.ExpenseIbanViewModel
+@using Humans.Base.ViewComponents
+@inject Microsoft.AspNetCore.Mvc.Localization.IHtmlLocalizer<ExpensesResource> HtmlLocalizer
 @{
     ViewData["Title"] = Localizer["Expenses_PaymentIban"].Value;
+    Microsoft.AspNetCore.Html.IHtmlContent? memberHtml = null;
+    if (Model.OnBehalfOfUserId is { } memberId)
+    {
+        var member = await Component.InvokeAsync(typeof(HumanViewComponent), new
+        {
+            userId = memberId,
+            link = HumanLink.None,
+        });
+        using var memberWriter = new System.IO.StringWriter();
+        member.WriteTo(memberWriter, System.Text.Encodings.Web.HtmlEncoder.Default);
+        // Keep template whitespace out of the localized sentence's punctuation.
+        memberHtml = new Microsoft.AspNetCore.Html.HtmlString(memberWriter.ToString().Trim());
+    }
 }
 
 <nav aria-label="@Localizer["Expenses_BreadcrumbNavigation"]" class="mb-3">
@@ -16,10 +31,10 @@
         <h1 class="mb-1">@Localizer["Expenses_PaymentIban"]</h1>
         @* An admin setting this for somebody else is editing that member's profile, not their own —
            say whose account it is before they type an account number into it. *@
-        @if (Model.MemberName is { } member)
+        @if (memberHtml is not null)
         {
             <div class="alert alert-warning mb-4">
-                @Localizer["Expenses_IbanOnBehalf", member]
+                @HtmlLocalizer["Expenses_IbanOnBehalf", memberHtml]
             </div>
         }
         else
@@ -56,11 +71,11 @@
                         @* A report awaiting payment still needs its IBAN, so the service refuses to
                            clear one — don't offer the removal on those. *@
                         <div class="form-text">
-                            @if (Model.MemberName is { } forMember)
+                            @if (memberHtml is not null)
                             {
-                                @Localizer[Model.CanRemoveIban
+                                @HtmlLocalizer[Model.CanRemoveIban
                                     ? "Expenses_IbanEnterForMember"
-                                    : "Expenses_IbanEnterForMemberNoRemove", forMember]
+                                    : "Expenses_IbanEnterForMemberNoRemove", memberHtml]
                             }
                             else if (Model.CanRemoveIban)
                             {
@@ -84,9 +99,9 @@
 
         <div class="mt-3 text-muted small">
             <i class="fa-solid fa-lock me-1"></i>
-            @if (Model.MemberName is { } storedFor)
+            @if (memberHtml is not null)
             {
-                @Localizer["Expenses_IbanStoredForMember", storedFor]
+                @HtmlLocalizer["Expenses_IbanStoredForMember", memberHtml]
             }
             else
             {

@@ -43,12 +43,13 @@ internal sealed class GovernanceVotesAdminController(
     public async Task<IActionResult> Create(
         AssemblyVoteDraftFormViewModel model, string? submitAction, CancellationToken ct)
     {
-        if (GetCurrentUserId() is not { } actorId) return Challenge();
+        var actor = await GetCurrentUserInfoAsync(ct);
+        if (actor is null) return Challenge();
 
         if (!ModelState.IsValid)
             return View("~/Views/Governance/Votes/Admin/Create.cshtml", model);
 
-        var voteId = await voteService.CreateDraftAsync(model.ToDraft(), actorId, ct);
+        var voteId = await voteService.CreateDraftAsync(model.ToDraft(), actor.Id, ct);
         if (voteId is null)
         {
             SetError("That draft was rejected — check the required fields and options.");
@@ -59,7 +60,7 @@ internal sealed class GovernanceVotesAdminController(
         // as unsaved, or a re-submit would create a second draft. It reports and redirects.
         if (IsTranslate(submitAction))
         {
-            await TranslateAsync(voteId.Value, actorId, "Draft created", ct);
+            await TranslateAsync(voteId.Value, actor.Id, "Draft created", ct);
             return RedirectToAction(nameof(Edit), new { voteId = voteId.Value });
         }
 
@@ -81,16 +82,17 @@ internal sealed class GovernanceVotesAdminController(
     public async Task<IActionResult> Edit(
         Guid voteId, AssemblyVoteDraftFormViewModel model, string? submitAction, CancellationToken ct)
     {
-        if (GetCurrentUserId() is not { } actorId) return Challenge();
+        var actor = await GetCurrentUserInfoAsync(ct);
+        if (actor is null) return Challenge();
 
         if (!ModelState.IsValid)
             return RedisplayEdit(voteId, model, "That draft was rejected — check the required fields and options.");
 
-        var result = await voteService.UpdateDraftAsync(voteId, model.ToDraft(), actorId, ct);
+        var result = await voteService.UpdateDraftAsync(voteId, model.ToDraft(), actor.Id, ct);
         if (result == AssemblyVoteActionResult.Ok && IsTranslate(submitAction))
         {
             // Saved already, so a translation failure reports rather than re-rendering.
-            await TranslateAsync(voteId, actorId, "Draft updated", ct);
+            await TranslateAsync(voteId, actor.Id, "Draft updated", ct);
             return RedirectToAction(nameof(Edit), new { voteId });
         }
 
@@ -107,9 +109,10 @@ internal sealed class GovernanceVotesAdminController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Delete(Guid voteId, CancellationToken ct)
     {
-        if (GetCurrentUserId() is not { } actorId) return Challenge();
+        var actor = await GetCurrentUserInfoAsync(ct);
+        if (actor is null) return Challenge();
 
-        var result = await voteService.DeleteDraftAsync(voteId, actorId, ct);
+        var result = await voteService.DeleteDraftAsync(voteId, actor.Id, ct);
         return result switch
         {
             AssemblyVoteActionResult.Ok => Success("Draft deleted.", nameof(Index)),
@@ -124,9 +127,10 @@ internal sealed class GovernanceVotesAdminController(
     [Authorize(Policy = PolicyNames.AdminOnly)]
     public async Task<IActionResult> Open(Guid voteId, CancellationToken ct)
     {
-        if (GetCurrentUserId() is not { } adminId) return Challenge();
+        var actor = await GetCurrentUserInfoAsync(ct);
+        if (actor is null) return Challenge();
 
-        var result = await voteService.OpenAsync(voteId, adminId, ct);
+        var result = await voteService.OpenAsync(voteId, actor.Id, ct);
         return result switch
         {
             AssemblyVoteActionResult.Ok => Success("Vote opened.", nameof(Index)),
@@ -141,9 +145,10 @@ internal sealed class GovernanceVotesAdminController(
     [Authorize(Policy = PolicyNames.AdminOnly)]
     public async Task<IActionResult> Stop(Guid voteId, CancellationToken ct)
     {
-        if (GetCurrentUserId() is not { } adminId) return Challenge();
+        var actor = await GetCurrentUserInfoAsync(ct);
+        if (actor is null) return Challenge();
 
-        var result = await voteService.StopAsync(voteId, adminId, ct);
+        var result = await voteService.StopAsync(voteId, actor.Id, ct);
         return result switch
         {
             AssemblyVoteActionResult.Ok => Success("Vote closed.", nameof(Index)),
@@ -158,9 +163,10 @@ internal sealed class GovernanceVotesAdminController(
     [Authorize(Policy = PolicyNames.AdminOnly)]
     public async Task<IActionResult> Extend(Guid voteId, AssemblyVoteExtendFormModel model, CancellationToken ct)
     {
-        if (GetCurrentUserId() is not { } adminId) return Challenge();
+        var actor = await GetCurrentUserInfoAsync(ct);
+        if (actor is null) return Challenge();
 
-        var result = await voteService.ExtendAsync(voteId, model.ToInstant(), adminId, ct);
+        var result = await voteService.ExtendAsync(voteId, model.ToInstant(), actor.Id, ct);
         return result switch
         {
             AssemblyVoteActionResult.Ok => Success("Closing time extended.", nameof(Index)),
@@ -175,12 +181,13 @@ internal sealed class GovernanceVotesAdminController(
     [Authorize(Policy = PolicyNames.AdminOnly)]
     public async Task<IActionResult> Cancel(Guid voteId, AssemblyVoteCancelFormModel model, CancellationToken ct)
     {
-        if (GetCurrentUserId() is not { } adminId) return Challenge();
+        var actor = await GetCurrentUserInfoAsync(ct);
+        if (actor is null) return Challenge();
 
         if (string.IsNullOrWhiteSpace(model.Reason))
             return Error("A cancellation reason is required.", nameof(Index));
 
-        var result = await voteService.CancelAsync(voteId, model.Reason, adminId, ct);
+        var result = await voteService.CancelAsync(voteId, model.Reason, actor.Id, ct);
         return result switch
         {
             AssemblyVoteActionResult.Ok => Success("Vote cancelled.", nameof(Index)),
@@ -195,9 +202,10 @@ internal sealed class GovernanceVotesAdminController(
     [Authorize(Policy = PolicyNames.AdminOnly)]
     public async Task<IActionResult> Peek(Guid voteId, CancellationToken ct)
     {
-        if (GetCurrentUserId() is not { } adminId) return Challenge();
+        var actor = await GetCurrentUserInfoAsync(ct);
+        if (actor is null) return Challenge();
 
-        var (result, recorded) = await voteService.PeekAsync(voteId, adminId, ct);
+        var (result, recorded) = await voteService.PeekAsync(voteId, actor.Id, ct);
         if (result is null) return NotFound();
 
         // The vote closed before the click landed (or the admin typed the URL). Nothing was
@@ -211,7 +219,7 @@ internal sealed class GovernanceVotesAdminController(
 
         // The member read supplies the option labels; it carries no tally of its own, so it
         // discloses nothing beyond the peek.
-        var vote = await voteService.GetVoteForMemberAsync(voteId, adminId, ct);
+        var vote = await voteService.GetVoteForMemberAsync(voteId, actor.Id, ct);
 
         return View("~/Views/Governance/Votes/Admin/Peek.cshtml", new AssemblyVotePeekViewModel
         {
@@ -224,13 +232,14 @@ internal sealed class GovernanceVotesAdminController(
     [HttpGet("{voteId:guid}/Ballots")]
     public async Task<IActionResult> Ballots(Guid voteId, CancellationToken ct)
     {
-        if (GetCurrentUserId() is not { } actorId) return Challenge();
+        var actor = await GetCurrentUserInfoAsync(ct);
+        if (actor is null) return Challenge();
 
-        var ballots = await voteService.GetBallotsForBoardAsync(voteId, actorId, ct);
+        var ballots = await voteService.GetBallotsForBoardAsync(voteId, actor.Id, ct);
         if (ballots is null) return NotFound();
 
         // Ballots store option keys; the member-facing read supplies the labels.
-        var vote = await voteService.GetVoteForMemberAsync(voteId, actorId, ct);
+        var vote = await voteService.GetVoteForMemberAsync(voteId, actor.Id, ct);
 
         return View("~/Views/Governance/Votes/Admin/Ballots.cshtml", new AssemblyVoteBallotsViewModel
         {

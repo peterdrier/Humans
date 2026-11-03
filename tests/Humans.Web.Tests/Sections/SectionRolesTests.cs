@@ -47,6 +47,8 @@ public class SectionRolesTests
         "EarlyEntryAdmin", "EETeamAdmin",
         "ShiftsAdmin", "VolunteerCoordinator",
         "ShiftsNoInfo", "NoInfoAdmin",
+        "GrantsAdmin",
+        "SurveysAdmin",
     ];
 
     [HumansFact]

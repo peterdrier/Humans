@@ -1,3 +1,4 @@
+using Xunit;
 using System.Security.Claims;
 using AwesomeAssertions;
 using Humans.Base.Enums;
@@ -9,7 +10,6 @@ using Humans.Users.Contracts;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc.ViewComponents;
 using Microsoft.AspNetCore.Mvc.Rendering;
-using NodaTime;
 using NSubstitute;
 
 namespace Humans.Teams.Tests.ViewComponents;
@@ -20,6 +20,14 @@ namespace Humans.Teams.Tests.ViewComponents;
 /// </summary>
 public sealed class TeamMessageButtonsViewComponentTests
 {
+    public enum ViewerAccount
+    {
+        Merged,
+        Missing,
+        Self,
+        Cancelled
+    }
+
     private readonly ITeamMessageOptionsProvider _options = Substitute.For<ITeamMessageOptionsProvider>();
     private readonly ICommunicationPreferenceService _commPrefs = Substitute.For<ICommunicationPreferenceService>();
     private readonly IUserService _users = Substitute.For<IUserService>();
@@ -28,11 +36,49 @@ public sealed class TeamMessageButtonsViewComponentTests
 
     public TeamMessageButtonsViewComponentTests()
     {
+        _users.GetUserInfoAsync(_viewerId, Arg.Any<CancellationToken>())
+            .Returns(UserInfo.Create(new User { Id = _viewerId }, [], [], profile: null));
         _commPrefs.AcceptsFacilitatedMessagesAsync(_targetId, Arg.Any<CancellationToken>()).Returns(true);
-        _users.GetUserInfoAsync(_targetId, Arg.Any<CancellationToken>()).Returns(new UserInfo(
-            _targetId, "Target", false, "en", null, Instant.FromUnixTimeSeconds(0),
-            null, null, null, null, null, null,
-            null, null, null, [], [], [], null, []));
+    }
+
+    [HumansTheory]
+    [InlineData(ViewerAccount.Merged)]
+    [InlineData(ViewerAccount.Missing)]
+    [InlineData(ViewerAccount.Self)]
+    [InlineData(ViewerAccount.Cancelled)]
+    public async Task ViewerResolution_UsesTheSurvivorAndRefusesMissingOrSelf(ViewerAccount account)
+    {
+        using var request = new CancellationTokenSource();
+        var survivorId = account == ViewerAccount.Self ? _targetId : Guid.NewGuid();
+        _users.GetUserInfoAsync(_viewerId, Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+            return new ValueTask<UserInfo?>(account == ViewerAccount.Missing
+                ? null : UserInfo.Create(new User { Id = survivorId }, [], [], profile: null));
+        });
+        var option = new TeamMessageOption(Guid.NewGuid(), "Team", "team@example.com");
+        _options.GetOptionsAsync(_viewerId, Arg.Any<CancellationToken>()).Returns(new[] { option });
+        _options.GetOptionsAsync(survivorId, Arg.Any<CancellationToken>()).Returns(new[] { option });
+        var component = Build(_viewerId);
+        component.HttpContext.RequestAborted = request.Token;
+        if (account == ViewerAccount.Cancelled)
+        {
+            await request.CancelAsync();
+            await Assert.ThrowsAsync<OperationCanceledException>(() => component.InvokeAsync(_targetId, ProfileCardViewMode.Public));
+        }
+        else
+        {
+            var result = await component.InvokeAsync(_targetId, ProfileCardViewMode.Public);
+            if (account == ViewerAccount.Merged)
+            {
+                result.Should().BeOfType<ViewViewComponentResult>();
+                await _options.Received(1).GetOptionsAsync(survivorId, request.Token);
+                await _options.DidNotReceive().GetOptionsAsync(_viewerId, Arg.Any<CancellationToken>());
+            }
+            else AssertEmpty(result);
+        }
+        if (account != ViewerAccount.Merged) _options.ReceivedCalls().Should().BeEmpty();
+        await _users.Received(1).GetUserInfoAsync(_viewerId, request.Token);
     }
 
     [HumansFact]
@@ -56,7 +102,6 @@ public sealed class TeamMessageButtonsViewComponentTests
         var model = result.Should().BeOfType<ViewViewComponentResult>().Which.ViewData!.Model
             .Should().BeOfType<TeamMessageButtonsViewModel>().Subject;
         model.UserId.Should().Be(_targetId);
-        model.DisplayName.Should().Be("Target");
         model.Teams.Should().Equal(a, b);
     }
 

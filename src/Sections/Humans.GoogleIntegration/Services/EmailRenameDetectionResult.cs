@@ -4,7 +4,6 @@ namespace Humans.GoogleIntegration.Services;
 internal sealed class EmailRenameInfo
 {
     public Guid UserId { get; init; }
-    public string DisplayName { get; init; } = string.Empty;
     public string OldEmail { get; init; } = string.Empty;
     public string NewEmail { get; init; } = string.Empty;
     public int AffectedResourceCount { get; init; }

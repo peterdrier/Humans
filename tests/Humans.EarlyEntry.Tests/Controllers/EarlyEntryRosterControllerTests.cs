@@ -122,11 +122,9 @@ public class EarlyEntryRosterControllerTests
         UserInfo.Create(
             user: new User { Id = userId, DisplayName = burner, PreferredLanguage = "en", CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0) },
             userEmails: [],
-            eventParticipations: [],
             externalLogins: [],
             profile: UserFixtures.Profile(
                 burnerName: burner,
                 firstName: first,
-                lastName: last),
-            communicationPreferences: []);
+                lastName: last));
 }

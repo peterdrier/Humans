@@ -33,6 +33,12 @@ public class MailerLiteAdminControllerTests
     private readonly IUserService _userService = Substitute.For<IUserService>();
     private readonly ICommunicationPreferenceService _prefs = Substitute.For<ICommunicationPreferenceService>();
 
+    public MailerLiteAdminControllerTests()
+    {
+        _userService.GetUserInfoAsync(_actorUserId, Arg.Any<CancellationToken>())
+            .Returns(UserInfo.Create(new User { Id = _actorUserId }, [], [], profile: null));
+    }
+
     private MailerLiteAdminController BuildSut(
         ImportPlanCounts? snapshotCounts = null,
         IEnumerable<IMailerLiteAudience>? audiences = null)
@@ -70,6 +76,116 @@ public class MailerLiteAdminControllerTests
             AmbiguousSkipped: 0, UnconfirmedSkipped: 0,
             VanishedBetweenPlanAndApply: 0, DecisionsThrottled: 0,
             Errors: 0, Elapsed: Duration.Zero);
+
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task AudienceSyncActorRead_PropagatesRequestCancellationBeforeWrites(bool all)
+    {
+        using var request = new CancellationTokenSource();
+        var observed = CancellationToken.None;
+        async ValueTask<UserInfo?> CancelActorAsync(CancellationToken ct)
+        {
+            observed = ct;
+            await request.CancelAsync();
+            throw new TaskCanceledException("Actor lookup cancelled", null, observed);
+        }
+        _userService.GetUserInfoAsync(_actorUserId, Arg.Any<CancellationToken>())
+            .Returns(call => CancelActorAsync(call.Arg<CancellationToken>()));
+        var audience = Substitute.For<IMailerLiteAudience>();
+        audience.Key.Returns("test");
+        audience.DisplayName.Returns("Test audience");
+        var controller = BuildSut(audiences: [audience]);
+        controller.HttpContext.RequestAborted = request.Token;
+        Func<Task> sync = () => all ? controller.SyncAll() : controller.SyncAudience("test");
+
+        await sync.Should().ThrowAsync<TaskCanceledException>();
+        observed.Should().Be(request.Token);
+        _audienceSync.ReceivedCalls().Should().BeEmpty();
+        controller.TempData.ContainsKey("Banner").Should().BeFalse();
+    }
+
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task AudienceSyncRemoteTimeout_StillShowsBannerAfterRequestAbandonment(bool all)
+    {
+        using var request = new CancellationTokenSource();
+        var audience = Substitute.For<IMailerLiteAudience>();
+        audience.Key.Returns("test");
+        audience.DisplayName.Returns("Test audience");
+        async Task<T> TimeoutAsync<T>()
+        {
+            await request.CancelAsync();
+            throw new TaskCanceledException("HTTP timeout");
+        }
+        if (all)
+            _audienceSync.SyncAllAsync(_actorUserId, Arg.Any<CancellationToken>())
+                .Returns(_ => TimeoutAsync<IReadOnlyList<AudienceSyncResult>>());
+        else
+            _audienceSync.SyncAsync(audience, _actorUserId, Arg.Any<CancellationToken>())
+                .Returns(_ => TimeoutAsync<AudienceSyncResult>());
+        var controller = BuildSut(audiences: [audience]);
+        controller.HttpContext.RequestAborted = request.Token;
+
+        var result = all ? await controller.SyncAll() : await controller.SyncAudience("test");
+
+        result.Should().BeOfType<RedirectToActionResult>();
+        controller.TempData["Banner"].Should().BeOfType<string>().Which.Should().Contain("timed out");
+        if (all)
+            await _audienceSync.Received(1).SyncAllAsync(_actorUserId, CancellationToken.None);
+        else
+            await _audienceSync.Received(1).SyncAsync(audience, _actorUserId, CancellationToken.None);
+    }
+
+    [HumansTheory]
+    [InlineData(AccountScenario.Merged)]
+    [InlineData(AccountScenario.Missing)]
+    [InlineData(AccountScenario.Cancelled)]
+    public async Task Commit_ResolvesActorBeforePlanningAndApplying(AccountScenario account)
+    {
+        using var request = new CancellationTokenSource();
+        var survivor = Guid.NewGuid();
+        _userService.GetUserInfoAsync(_actorUserId, Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            if (account == AccountScenario.Cancelled)
+            {
+                request.Cancel();
+                call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+            }
+            return account == AccountScenario.Missing
+                ? null : UserInfo.Create(new User { Id = survivor }, [], [], profile: null);
+        });
+        var plan = new ImportPlan([Decision(SubscriberOutcome.CreateNewHuman)], TotalPulled: 1);
+        _importService.BuildPlanAsync(Arg.Any<CancellationToken>()).Returns(plan);
+        _importService.ApplyAsync(Arg.Any<ImportPlan>(), Arg.Any<Guid>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())
+            .Returns(StubResult());
+        var controller = BuildSut();
+        controller.HttpContext.RequestAborted = request.Token;
+
+        if (account == AccountScenario.Cancelled)
+        {
+            Func<Task> commit = () => controller.Commit(null, request.Token);
+            await commit.Should().ThrowAsync<OperationCanceledException>();
+            _importService.ReceivedCalls().Should().BeEmpty();
+        }
+        else
+        {
+            var result = await controller.Commit(null, request.Token);
+            if (account == AccountScenario.Missing)
+            {
+                result.Should().BeOfType<UnauthorizedResult>();
+                _importService.ReceivedCalls().Should().BeEmpty();
+            }
+            else
+            {
+                result.Should().BeOfType<RedirectToActionResult>();
+                await _importService.Received(1).BuildPlanAsync(request.Token);
+                await _importService.Received(1).ApplyAsync(plan, survivor, null, CancellationToken.None);
+            }
+        }
+        await _userService.Received(1).GetUserInfoAsync(_actorUserId, request.Token);
+    }
 
     [HumansFact]
     public async Task Commit_InvalidLimitBinding_DoesNotBuildOrApplyAnUnlimitedPlan()
@@ -330,10 +446,8 @@ public class MailerLiteAdminControllerTests
                 CreatedAt = now,
                 UpdatedAt = now,
             }],
-            eventParticipations: [],
             externalLogins: [],
-            profile: null,
-            communicationPreferences: []);
+            profile: null);
     }
 
     private static async IAsyncEnumerable<MailerLiteSubscriber> EmptyAsync()
@@ -355,9 +469,7 @@ public class MailerLiteAdminControllerTests
                 ContactSource = source,
             },
             userEmails: [],
-            eventParticipations: [],
             externalLogins: [],
-            profile: null,
-            communicationPreferences: []);
+            profile: null);
     }
 }

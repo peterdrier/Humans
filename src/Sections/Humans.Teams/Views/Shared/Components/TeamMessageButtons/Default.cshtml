@@ -1,4 +1,15 @@
+@inject Microsoft.AspNetCore.Mvc.Localization.IHtmlLocalizer<TeamsResource> HtmlLocalizer
 @model Humans.Teams.ViewComponents.TeamMessageButtonsViewModel
+@{
+    var recipient = await Component.InvokeAsync(typeof(HumanViewComponent), new
+    {
+        userId = Model.UserId,
+        link = HumanLink.None,
+    });
+    using var recipientWriter = new System.IO.StringWriter();
+    recipient.WriteTo(recipientWriter, System.Text.Encodings.Web.HtmlEncoder.Default);
+    var recipientHtml = new HtmlString(recipientWriter.ToString().Trim());
+}
 
 <div class="d-flex flex-wrap gap-2 mb-4">
     @foreach (var team in Model.Teams)
@@ -7,7 +18,7 @@
            asp-route-teamId="@team.TeamId" asp-route-id="@Model.UserId"
            class="btn btn-outline-primary">
             <i class="fa-solid fa-envelope me-1"></i>
-            @Localizer["Teams_SendMessage_FromTeam", Model.DisplayName, team.TeamName]
+            @HtmlLocalizer["Teams_SendMessage_FromTeam", recipientHtml, team.TeamName]
         </a>
     }
 </div>

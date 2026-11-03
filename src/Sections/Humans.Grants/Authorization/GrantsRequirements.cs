@@ -1,34 +1,35 @@
 using Humans.Base.Authorization;
 using System.Security.Claims;
 using Humans.Base.Constants;
+using Humans.Grants.Contracts;
 using Humans.Grants.Services;
 using Humans.Users.Contracts;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 
 namespace Humans.Grants.Authorization;
 
 internal sealed class ManagesGrantsRequirement : IAuthorizationRequirement, IDescribedRequirement
 {
-    public IReadOnlyList<string> Admits => [RoleNames.Admin, RoleNames.Board, "Grant program managers"];
+    public IReadOnlyList<string> Admits => [RoleNames.Admin, GrantsRoles.GrantsAdmin, RoleNames.Board, "Grant program managers"];
 }
 
 /// <summary>
 /// The role short-circuit avoids a query on the common admin path. A merged-away id sees what the surviving account
 /// sees.
 /// </summary>
-internal sealed class GrantsPolicyHandler(IGrantManagement grants, IUserService users) : AuthorizationHandler<ManagesGrantsRequirement>
+internal sealed class GrantsPolicyHandler(
+    IGrantManagement grants, IUserService users, IHttpContextAccessor httpContextAccessor) : AuthorizationHandler<ManagesGrantsRequirement>
 {
     protected override async Task HandleRequirementAsync(AuthorizationHandlerContext context, ManagesGrantsRequirement requirement)
     {
-        if (IsAdministering(context.User)
-            || (await ViewerAsync(users, context.User) is { } viewer && await grants.ManagesAnyProgramAsync(viewer.Id)))
+        var ct = httpContextAccessor.HttpContext?.RequestAborted ?? CancellationToken.None;
+        if (GrantsRoles.ReadsGrants(context.User)
+            || (await ViewerAsync(users, context.User, ct) is { } viewer && await grants.ManagesAnyProgramAsync(viewer.Id, ct)))
         {
             context.Succeed(requirement);
         }
     }
-
-    internal static bool IsAdministering(ClaimsPrincipal user) =>
-        user.IsInRole(RoleNames.Admin) || user.IsInRole(RoleNames.Board);
 
     /// <summary>
     /// A cookie issued before an account merge still carries the archived id; this returns the surviving account. The

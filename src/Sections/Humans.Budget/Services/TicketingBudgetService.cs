@@ -78,20 +78,6 @@ internal sealed class TicketingBudgetService(
         }
     }
 
-    public async Task<int> RefreshProjectionsAsync(
-        Guid budgetYearId, Guid? actorUserId, CancellationToken ct = default)
-    {
-        try
-        {
-            return await budgetService.RefreshTicketingProjectionsAsync(budgetYearId, actorUserId, ct);
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "Failed to refresh ticketing projections for budget year {YearId}", budgetYearId);
-            throw;
-        }
-    }
-
     public async Task<int?> UpdateProjectionAndRefreshAsync(
         TicketingProjectionUpdateCommand command,
         Guid actorUserId,

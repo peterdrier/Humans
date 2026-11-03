@@ -1,3 +1,7 @@
+using Humans.Email.Contracts;
+using Humans.Email.Data;
+using Humans.Tickets.Contracts;
+using Humans.Tickets.Data;
 using Humans.Governance.Contracts;
 using Humans.Shifts.Data;
 using Humans.Shifts.Domain;
@@ -53,6 +57,8 @@ public sealed class MergeFixtureBuilder
     private readonly AuditLogDbContext _auditLogDb;
     private readonly ShiftsDbContext _shiftsDb;
     private readonly TeamsDbContext _teamsDb;
+    private readonly TicketsDbContext _ticketsDb;
+    private readonly EmailDbContext _emailDb;
 
     private readonly Instant _now;
     private readonly List<Action<UsersDbContext>> _pending = [];
@@ -66,6 +72,8 @@ public sealed class MergeFixtureBuilder
     private readonly List<Action<AuditLogDbContext>> _pendingAuditLog = [];
     private readonly List<Action<ShiftsDbContext>> _pendingShifts = [];
     private readonly List<Action<TeamsDbContext>> _pendingTeams = [];
+    private readonly List<Action<TicketsDbContext>> _pendingTickets = [];
+    private readonly List<Action<EmailDbContext>> _pendingEmail = [];
 
     public Guid SourceUserId { get; }
     public Guid TargetUserId { get; }
@@ -83,6 +91,8 @@ public sealed class MergeFixtureBuilder
         _auditLogDb = scope.ServiceProvider.GetRequiredService<AuditLogDbContext>();
         _shiftsDb = scope.ServiceProvider.GetRequiredService<ShiftsDbContext>();
         _teamsDb = scope.ServiceProvider.GetRequiredService<TeamsDbContext>();
+        _ticketsDb = scope.ServiceProvider.GetRequiredService<TicketsDbContext>();
+        _emailDb = scope.ServiceProvider.GetRequiredService<EmailDbContext>();
         _now = SystemClock.Instance.GetCurrentInstant();
         SourceUserId = sourceUserId;
         TargetUserId = targetUserId;
@@ -192,16 +202,15 @@ public sealed class MergeFixtureBuilder
         return this;
     }
 
-    // Users' frozen legacy table; Email reads it as a fallback until its own row shadows it.
-    public MergeFixtureBuilder WithSourceCommPref(LegacyMessageCategory category, bool optedOut, Instant? updatedAt = null)
+    public MergeFixtureBuilder WithSourceCommPref(MessageCategory category, bool optedOut, Instant? updatedAt = null)
         => AddCommPref(SourceUserId, category, optedOut, updatedAt);
 
-    public MergeFixtureBuilder WithTargetCommPref(LegacyMessageCategory category, bool optedOut, Instant? updatedAt = null)
+    public MergeFixtureBuilder WithTargetCommPref(MessageCategory category, bool optedOut, Instant? updatedAt = null)
         => AddCommPref(TargetUserId, category, optedOut, updatedAt);
 
-    private MergeFixtureBuilder AddCommPref(Guid userId, LegacyMessageCategory category, bool optedOut, Instant? updatedAt)
+    private MergeFixtureBuilder AddCommPref(Guid userId, MessageCategory category, bool optedOut, Instant? updatedAt)
     {
-        _pending.Add(db => db.CommunicationPreferences.Add(new CommunicationPreference
+        _pendingEmail.Add(db => db.CommunicationPreferences.Add(new Humans.Email.Domain.CommunicationPreference
         {
             Id = Guid.NewGuid(),
             UserId = userId,
@@ -232,23 +241,22 @@ public sealed class MergeFixtureBuilder
         return this;
     }
 
-    // The frozen legacy Users table; Tickets' fold materializes it into tickets_event_participations.
-    public MergeFixtureBuilder WithSourceEventParticipation(int year, LegacyParticipationStatus status)
+    public MergeFixtureBuilder WithSourceEventParticipation(int year, ParticipationStatus status)
         => AddEventParticipation(SourceUserId, year, status);
 
-    public MergeFixtureBuilder WithTargetEventParticipation(int year, LegacyParticipationStatus status)
+    public MergeFixtureBuilder WithTargetEventParticipation(int year, ParticipationStatus status)
         => AddEventParticipation(TargetUserId, year, status);
 
-    private MergeFixtureBuilder AddEventParticipation(Guid userId, int year, LegacyParticipationStatus status)
+    private MergeFixtureBuilder AddEventParticipation(Guid userId, int year, ParticipationStatus status)
     {
-        _pending.Add(db => db.EventParticipations.Add(new EventParticipation
+        _pendingTickets.Add(db => db.EventParticipations.Add(new Humans.Tickets.Domain.EventParticipation
         {
             Id = Guid.NewGuid(),
             UserId = userId,
             Year = year,
             Status = status,
-            Source = LegacyParticipationSource.UserDeclared,
-            DeclaredAt = status == LegacyParticipationStatus.NotAttending ? _now : null,
+            Source = ParticipationSource.UserDeclared,
+            DeclaredAt = status == ParticipationStatus.NotAttending ? _now : null,
         }));
         return this;
     }
@@ -718,5 +726,19 @@ public sealed class MergeFixtureBuilder
         }
         _pendingTeams.Clear();
         await _teamsDb.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+
+        foreach (var apply in _pendingTickets)
+        {
+            apply(_ticketsDb);
+        }
+        _pendingTickets.Clear();
+        await _ticketsDb.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+
+        foreach (var apply in _pendingEmail)
+        {
+            apply(_emailDb);
+        }
+        _pendingEmail.Clear();
+        await _emailDb.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
     }
 }

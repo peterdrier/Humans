@@ -33,7 +33,7 @@ public sealed class GoogleControllerSyncAuditTests
         controller.HttpContext.User = new ClaimsPrincipal(new ClaimsIdentity(
             [new Claim(ClaimTypes.NameIdentifier, actorId.ToString())], "test"));
         _users.GetUserInfoAsync(actorId, Arg.Any<CancellationToken>()).Returns(
-            UserInfo.Create(new User { Id = actorId }, [], [], [], null, []));
+            UserInfo.Create(new User { Id = actorId }, [], [], null));
         controller.TempData = new TempDataDictionary(controller.HttpContext, Substitute.For<ITempDataProvider>());
         const string warning = "Account created; ask an admin to reset the password.";
         _provisioning.ProvisionNobodiesEmailAsync(targetId, "person", actorId)
@@ -98,7 +98,7 @@ public sealed class GoogleControllerSyncAuditTests
         var controller = BuildSut(TestContext.Current.CancellationToken);
         controller.HttpContext.User = new ClaimsPrincipal(new ClaimsIdentity(
             [new Claim(ClaimTypes.NameIdentifier, actorId.ToString())], "test"));
-        var actor = UserInfo.Create(new User { Id = actorId, BurnerName = "Admin" }, [], [], [], null, []);
+        var actor = UserInfo.Create(new User { Id = actorId, BurnerName = "Admin" }, [], [], null);
         _users.GetUserInfoAsync(actorId, Arg.Any<CancellationToken>()).Returns(actor);
         controller.TempData = new TempDataDictionary(controller.HttpContext, Substitute.For<ITempDataProvider>());
         var settings = Substitute.For<ISyncSettingsService>();
@@ -132,8 +132,8 @@ public sealed class GoogleControllerSyncAuditTests
         _users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), token)
             .Returns(new Dictionary<Guid, UserInfo>
             {
-                [first] = UserInfo.Create(new User { Id = first, BurnerName = "aaron" }, [], [], [], null, []),
-                [second] = UserInfo.Create(new User { Id = second, BurnerName = "Zara" }, [], [], [], null, [])
+                [first] = UserInfo.Create(new User { Id = first, BurnerName = "aaron" }, [], [], null),
+                [second] = UserInfo.Create(new User { Id = second, BurnerName = "Zara" }, [], [], null)
             });
 
         var result = (await BuildSut(token).EmailFlagViolations(emails, token))

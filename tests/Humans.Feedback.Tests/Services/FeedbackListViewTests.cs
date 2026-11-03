@@ -1,4 +1,10 @@
+using System.Globalization;
+using System.Net;
+using System.Resources;
 using System.Text.Encodings.Web;
+using System.Text.RegularExpressions;
+using Humans.Base.Extensions;
+using Humans.Users.Contracts;
 using AwesomeAssertions;
 using Humans.Base.ViewComponents;
 using Humans.Feedback.Contracts;
@@ -77,7 +83,47 @@ public class FeedbackListViewTests
         html.Should().Contain("selected=\"selected\"");
     }
 
-    private static async Task<string> RenderAsync(string page, object model)
+    [HumansTheory]
+    [Xunit.InlineData("en")]
+    [Xunit.InlineData("es")]
+    [Xunit.InlineData("de")]
+    [Xunit.InlineData("it")]
+    [Xunit.InlineData("fr")]
+    [Xunit.InlineData("ca")]
+    public async Task Detail_RendersSenderAndResolverIds_WithLocalizedEncodedAttribution(string language)
+    {
+        using var culture = new CultureScope(language);
+        var senderId = Guid.NewGuid();
+        var resolverId = Guid.NewGuid();
+        const string senderName = "Sender <script>&";
+        const string resolverName = "Resolver <script>&";
+        var users = Substitute.For<IUserService>();
+        users.GetUserInfoAsync(senderId, Arg.Any<CancellationToken>())
+            .Returns(UserInfo.Create(new User { Id = senderId, BurnerName = senderName }, [], [], null));
+        users.GetUserInfoAsync(resolverId, Arg.Any<CancellationToken>())
+            .Returns(UserInfo.Create(new User { Id = resolverId, BurnerName = resolverName }, [], [], null));
+        var now = new DateTime(2026, 11, 3, 1, 0, 0, DateTimeKind.Utc);
+        var html = await RenderAsync("_Detail", new FeedbackDetailViewModel
+        {
+            Id = Guid.NewGuid(),
+            PageUrl = "/",
+            CreatedAt = now,
+            ResolvedAt = now,
+            ResolvedByUserId = resolverId,
+            Messages = [new FeedbackMessageViewModel { SenderUserId = senderId, CreatedAt = now, Content = "Message" }],
+        }, users);
+
+        var resources = new ResourceManager(typeof(FeedbackResource));
+        var expected = string.Format(CultureInfo.CurrentCulture,
+            resources.GetString("Feedback_ResolvedBy", CultureInfo.CurrentUICulture)!, resolverName);
+        WebUtility.HtmlDecode(Regex.Replace(html, "<[^>]*>", string.Empty, RegexOptions.NonBacktracking))
+            .Should().Contain(expected);
+        html.Should().Contain(HtmlEncoder.Default.Encode(senderName));
+        html.Should().Contain(HtmlEncoder.Default.Encode(resolverName));
+        html.Should().NotContain(senderName).And.NotContain(resolverName);
+    }
+
+    private static async Task<string> RenderAsync(string page, object model, IUserService? users = null)
     {
         var builder = WebApplication.CreateBuilder(new WebApplicationOptions
         {
@@ -86,10 +132,11 @@ public class FeedbackListViewTests
         });
         builder.Services.AddLocalization();
         builder.Services.AddHttpContextAccessor();
-        builder.Services.AddSingleton(Substitute.For<Humans.Users.Contracts.IUserService>());
+        builder.Services.AddSingleton(users ?? Substitute.For<IUserService>());
         builder.Services.AddControllersWithViews()
             .AddApplicationPart(typeof(FeedbackResource).Assembly)
-            .AddApplicationPart(typeof(HumanViewComponent).Assembly);
+            .AddApplicationPart(typeof(HumanViewComponent).Assembly)
+            .AddViewLocalization();
         var url = Substitute.For<IUrlHelper>();
         url.Action(Arg.Any<UrlActionContext>()).Returns("/");
         var urls = Substitute.For<IUrlHelperFactory>();

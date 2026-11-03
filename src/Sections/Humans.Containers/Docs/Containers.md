@@ -11,6 +11,8 @@
 
 # Containers — Section Invariants
 
+Membership-based authorization resolves the session's account through Users before checking the City Planning team or camp leadership. Merged sessions use the surviving account's memberships; a missing account is denied. Request cancellation applies to this identity lookup and the subsequent authorization reads. Existing admin-role bypasses remain in effect.
+
 Physical shipping containers managed per-barrio or at org level, placed on the City Planning map.
 
 ## Concepts
@@ -89,6 +91,8 @@ Physical shipping containers managed per-barrio or at org level, placed on the C
 
 ## Invariants
 
+- Authorization’s city-planning membership, settings and camp-lead reads retain HTTP request cancellation; callers without an HTTP context use the non-cancellable default.
+
 - A container belongs to its `CampId`; the owning camp's leads and Map Admins (CampsAdmin or city-planning team) may manage it.
 - Placement writes (place / clear / annotate) for barrio leads are gated by `CityPlanningSettings.IsContainerPlacementOpen`; container CRUD is not phase-gated (`ContainerOperation.Manage` vs `.Place`). Map Admins are never gated.
 - `Container` is year-agnostic; `ContainerPlacement` carries the year. There is no `Year` column on `containers`.
@@ -114,7 +118,7 @@ Physical shipping containers managed per-barrio or at org level, placed on the C
 ## Triggers
 
 - Camp container create/edit/delete actions pass request cancellation through the initial current-user lookup, before camp lookup, authorization or mutation begins.
-- Images uploaded during Create/Edit append to the gallery. An upload past the five-image cap rejects the whole write. Uploads are staged before any database write. Creation saves the container and gallery rows together; editing commits metadata, gallery additions/removals and legacy-image clearing together in one repository save. A failed upload leaves the existing container/gallery unchanged and creates no new container. A later upload failure cleans previously staged files without caller cancellation; cleanup faults are logged, all files are attempted, and the original upload failure is preserved. No pre-existing file is removed on upload or metadata failure.
+- Images uploaded during Create/Edit append to the gallery. An upload past the five-image cap rejects the whole write. Uploads are staged before any database write. Creation saves the container and gallery rows together; editing commits metadata, gallery additions/removals and legacy-image clearing together in one repository save. After that save commits, gallery hydration for the returned result completes independently of request cancellation. A failed upload leaves the existing container/gallery unchanged and creates no new container. A later upload failure cleans previously staged files without caller cancellation; cleanup faults are logged, all files are attempted, and the original upload failure is preserved. No pre-existing file is removed on upload or metadata failure.
 - Ticking an image's "Remove" checkbox deletes its file from disk and its `container_images` row — or, for `Guid.Empty`, nulls the three legacy columns on `containers`. File cleanup follows the committed metadata write and best-effort audit attempt, attempts every distinct path without request cancellation, and logs failures without reversing the successful edit.
 - Container deletion commits the container/gallery/placement removal and writes its audit before attempting gallery, legacy and every year's placement-image file cleanup. The repository returns the paths from the rows it deleted only after the database save succeeds. A failed database deletion leaves all files intact. Update and deletion share one post-commit cleanup implementation: every distinct image path is attempted independently without request cancellation; unexpected failures are logged as errors and do not reverse the committed change.
 - Placement save (`SavePlacementAsync(containerId, year, geoJson)`) upserts a `ContainerPlacement` row, preserving any existing notes/image. The service first validates a Polygon Feature with finite numeric center/rotation properties and nonempty, closed rings of at least four numeric positions. Center and vertex latitude must lie between −90 and 90 degrees, and longitude between −180 and 180. Invalid input returns a refusal key before any write or audit; callers cannot bypass validation.

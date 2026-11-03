@@ -14,6 +14,6 @@ public sealed class SectionNavTests
         var item = navigation.Groups().SelectMany(g => g.Items).Single();
         item.Controller.Should().Be(nameof(GrantsAdminController).Replace("Controller", "", StringComparison.Ordinal));
         item.Action.Should().Be(nameof(GrantsAdminController.Index));
-        item.Policy.Should().Be(GrantsPolicies.Manage);
+        item.Policy.Should().Be(GrantProgramsPolicy.Name);
     }
 }

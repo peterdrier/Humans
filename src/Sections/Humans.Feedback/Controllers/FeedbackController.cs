@@ -126,7 +126,7 @@ internal sealed class FeedbackController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> PostMessage(Guid id, PostFeedbackMessageModel model)
     {
-        var (userMissing, user) = await RequireCurrentUserAsync();
+        var (userMissing, user) = await RequireCurrentUserAsync(HttpContext.RequestAborted);
         if (userMissing is not null) return userMissing;
 
         if (!ModelState.IsValid)
@@ -155,11 +155,11 @@ internal sealed class FeedbackController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> UpdateStatus(Guid id, UpdateFeedbackStatusModel model)
     {
+        var (userMissing, user) = await RequireCurrentUserAsync(HttpContext.RequestAborted);
+        if (userMissing is not null) return userMissing;
+
         try
         {
-            var (userMissing, user) = await RequireCurrentUserAsync();
-            if (userMissing is not null) return userMissing;
-
             if (!ModelState.IsValid)
             {
                 SetError("Invalid status.");
@@ -184,11 +184,11 @@ internal sealed class FeedbackController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> UpdateAssignment(Guid id, UpdateFeedbackAssignmentModel model)
     {
+        var (userMissing, user) = await RequireCurrentUserAsync(HttpContext.RequestAborted);
+        if (userMissing is not null) return userMissing;
+
         try
         {
-            var (userMissing, user) = await RequireCurrentUserAsync();
-            if (userMissing is not null) return userMissing;
-
             if (!ModelState.IsValid)
             {
                 SetError("Invalid assignment.");
@@ -213,11 +213,11 @@ internal sealed class FeedbackController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> SetGitHubIssue(Guid id, SetGitHubIssueModel model)
     {
+        var (userMissing, user) = await RequireCurrentUserAsync(HttpContext.RequestAborted);
+        if (userMissing is not null) return userMissing;
+
         try
         {
-            var (userMissing, user) = await RequireCurrentUserAsync();
-            if (userMissing is not null) return userMissing;
-
             if (!ModelState.IsValid)
             {
                 SetError("Invalid issue number.");
@@ -255,7 +255,7 @@ internal sealed class FeedbackController(
             GitHubIssueNumber = report.GitHubIssueNumber,
             CreatedAt = report.CreatedAt.ToDateTimeUtc(),
             ResolvedAt = report.ResolvedAt?.ToDateTimeUtc(),
-            ResolvedByName = report.ResolvedByName,
+            ResolvedByUserId = report.ResolvedByUserId,
             AssignedToUserId = report.AssignedToUserId,
             AssignedToName = report.AssignedToName,
             AssignedToTeamId = report.AssignedToTeamId,
@@ -263,7 +263,6 @@ internal sealed class FeedbackController(
             Messages = report.Messages.Select(m => new FeedbackMessageViewModel
             {
                 Id = m.Id,
-                SenderName = m.SenderName ?? "Unknown",
                 SenderUserId = m.SenderUserId,
                 Content = m.Content,
                 EmailEnqueuePending = m.EmailEnqueuePending,

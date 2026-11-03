@@ -17,7 +17,7 @@ public sealed class BoardFeatureCollectionTests
 {
     private static readonly LocalDate July3 = new(2026, 7, 3);
     private static readonly Instant Now = Instant.FromUtc(2026, 3, 1, 12, 0);
-    private static readonly SettingsView Settings = new(2026, "Elsewhere", 43.2, -2.4,
+    private static readonly SettingsView Settings = new("Elsewhere", 43.2, -2.4,
         new LocalDate(2026, 7, 1), new LocalDate(2026, 7, 10), new LocalDate(2026, 7, 12), new LocalDate(2026, 7, 20));
     private const string StoredRoute = """{"type":"LineString","coordinates":[[2.35,48.85],[-2.4,43.2]]}""";
 
@@ -158,16 +158,16 @@ public sealed class BoardFeatureCollectionTests
         string? route = null,
         IReadOnlyList<Waypoint>? waypoints = null,
         TripStatus status = TripStatus.Active) =>
-        new(Guid.NewGuid(), userId, 2026, direction, "Paris", 48.85, 2.35, waypoints ?? [], route,
+        new(Guid.NewGuid(), userId, direction, "Paris", 48.85, 2.35, waypoints ?? [], route,
             July3, 1, null, VehicleType.Car, 3, 3,
-            LuggageSize.Minimal, null, null, false, CostSharing.ShareFuel, null, null, status, Now, Now);
+            LuggageSize.Minimal, null, null, false, CostSharing.ShareFuel, null, null, status, Now);
 
     private static RequestView Request(Guid userId) =>
-        new(Guid.NewGuid(), userId, 2026, RideshareDirection.Inbound, "Lyon", 45.76, 4.84, July3,
-            1, LuggageSize.Minimal, true, null, RequestStatus.Active, false, Now, Now);
+        new(Guid.NewGuid(), userId, RideshareDirection.Inbound, "Lyon", 45.76, 4.84, July3,
+            1, LuggageSize.Minimal, true, null, RequestStatus.Active, false, Now);
 
     private static UserInfo User(Guid id, string burnerName) => new(
         id, burnerName, false, "en", null, Now,
         null, null, null, null, null, null,
-        null, null, null, [], [], [], null, []);
+        null, null, null, [], [], null);
 }
