@@ -65,6 +65,7 @@ public sealed class Section : ISection, ISectionAdminNav, ISectionConfiguration,
         new("Holded", [
             new("Summary", "Holded", "Index", null, null, "fa-solid fa-book", FinancePolicies.Read),
             new("Accounts", "Holded", "Accounts", null, null, "fa-solid fa-list-ol", FinancePolicies.Read),
+            new("Purchases", "Holded", "Purchases", null, null, "fa-solid fa-file-invoice", FinancePolicies.Read),
             new("API calls", "Holded", "Calls", null, null, "fa-solid fa-tower-broadcast", FinancePolicies.Read)
         ])
     ];

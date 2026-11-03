@@ -46,6 +46,12 @@ internal interface IHoldedMirrorRepository : IRepository
     Task AddApiCallsAsync(IReadOnlyList<HoldedApiCall> rows, CancellationToken ct = default);
     Task<IReadOnlyList<HoldedApiCall>> GetApiCallsAsync(CancellationToken ct = default);
 
+    /// <summary>The fetch is the whole list: documents absent from <paramref name="docs"/> are deleted. A null
+    /// <see cref="HoldedPurchaseDoc.Notes"/> keeps the stored notes.</summary>
+    Task ReplacePurchaseDocsAsync(IReadOnlyList<HoldedPurchaseDoc> docs, Instant now, CancellationToken ct = default);
+
+    Task<IReadOnlyList<HoldedPurchaseDoc>> GetPurchaseDocsAsync(CancellationToken ct = default);
+
     Task<HoldedSyncState> GetOrCreateSyncStateAsync(HoldedSyncKind kind, CancellationToken ct = default);
     Task SaveSyncStateAsync(HoldedSyncState state, CancellationToken ct = default);
     Task<IReadOnlyList<HoldedSyncState>> GetSyncStatesAsync(CancellationToken ct = default);

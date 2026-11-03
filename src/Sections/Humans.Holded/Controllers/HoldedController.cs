@@ -44,6 +44,16 @@ internal sealed class HoldedController(
         });
     }
 
+    [HttpGet("Purchases")]
+    public async Task<IActionResult> Purchases(CancellationToken ct)
+    {
+        var mirror = await holded.GetPurchaseDocumentsAsync(ct);
+        return View(mirror with
+        {
+            Docs = mirror.Docs.OrderByDescending(d => d.Date).ThenBy(d => d.DocNumber, StringComparer.Ordinal).ToList()
+        });
+    }
+
     [HttpGet("Calls")]
     public async Task<IActionResult> Calls(CancellationToken ct) =>
         View((await admin.GetCallsByMonthAsync(ct)).OrderBy(m => m.Year).ThenBy(m => m.Month).ToList());
@@ -73,10 +83,12 @@ internal sealed class HoldedController(
     {
         try
         {
-            if (await holded.SyncLedgerAsync(full: false, ct))
-                SetSuccess("Swept the trailing ledger window.");
+            var docs = await holded.SyncPurchaseDocumentsAsync(ct);
+            var ledger = await holded.SyncLedgerAsync(full: false, ct);
+            if (docs && ledger)
+                SetSuccess("Synced the purchase documents and swept the trailing ledger window.");
             else
-                SetInfo("A ledger sweep was already running, so this one was skipped.");
+                SetInfo("A sync was already running, so part of this one was skipped.");
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {

@@ -42,20 +42,12 @@ public class ExpenseReconTests
         new(report ?? ReportA, Guid.NewGuid(), ExpenseReportStatus.Approved, user ?? Alice, contact, docId, description,
             $"Expense report {report ?? ReportA}", amount, date ?? Submitted, state, settled ?? Submitted);
 
-    private static HoldedExpenseDoc Doc(
+    private static HoldedPurchaseDocInfo Doc(
         string id, decimal total = 100m, string? description = "ER: Train", string? contactId = "c-alice",
-        string contactName = "Alice Example", string? notes = null, Guid? report = null, LocalDate? date = null) => new()
-        {
-            Id = Guid.NewGuid(),
-            HoldedDocId = id,
-            DocNumber = id.ToUpperInvariant(),
-            ContactId = contactId,
-            ContactName = contactName,
-            Description = description,
-            Notes = notes ?? $"Expense report {report ?? ReportA}",
-            Date = date ?? new LocalDate(2026, 10, 10),
-            Total = total,
-        };
+        string contactName = "Alice Example", string? notes = null, Guid? report = null, LocalDate? date = null) =>
+        new(id, id.ToUpperInvariant(), contactName, contactId, description, date ?? new LocalDate(2026, 10, 10),
+            total, 0m, total, "eur", true, notes ?? $"Expense report {report ?? ReportA}", [], null,
+            $"https://app.holded.com/expenses/list#open:purchase-{id}");
 
     private static HoldedCreditorContact Binding(Guid user, string contact, int? account) => new()
     {
@@ -74,7 +66,7 @@ public class ExpenseReconTests
         WithdrawnAt: withdrawn ? Submitted : null);
 
     private static ExpenseReconReport Build(
-        IReadOnlyList<ExpenseHoldedReconLine> lines, IReadOnlyList<HoldedExpenseDoc> docs,
+        IReadOnlyList<ExpenseHoldedReconLine> lines, IReadOnlyList<HoldedPurchaseDocInfo> docs,
         IReadOnlyDictionary<int, decimal>? balances = null, IReadOnlyList<SepaPayoutTransferRow>? transfers = null,
         IReadOnlyList<HoldedCreditorContact>? bindings = null, int? year = null) =>
         ExpenseRecon.Build(year, SyncedAt, lines, docs, bindings ?? Bindings,
@@ -144,8 +136,7 @@ public class ExpenseReconTests
     [HumansFact]
     public void UnfetchedNotes_FallBackToTheListLevelRule()
     {
-        var unfetched = Doc("d2");
-        unfetched.Notes = null;
+        var unfetched = Doc("d2") with { Notes = null };
 
         var report = Build([Line("d1")], [Doc("d1"), unfetched]);
 
@@ -331,10 +322,8 @@ public class ExpenseReconTests
     [HumansFact]
     public async Task GetExpenseRecon_ReadsTheMirrorsOnly_NeverHolded()
     {
-        _repo.GetOrCreateDocSyncStateAsync(Arg.Any<CancellationToken>())
-            .Returns(new HoldedDocSyncState { LastSyncAt = SyncedAt });
+        StubMirror(SyncedAt, Doc("d1"));
         _expenses.GetHoldedReconLinesAsync(Arg.Any<CancellationToken>()).Returns([Line("d1")]);
-        _repo.GetAllDocsAsync(Arg.Any<CancellationToken>()).Returns([Doc("d1")]);
         _repo.GetCreditorContactsAsync(Arg.Any<CancellationToken>()).Returns(Bindings);
         _repo.GetSepaPayoutTransferRowsAsync(Arg.Any<CancellationToken>()).Returns(new List<SepaPayoutTransferRow>());
         _holded.GetAccountBalancesAsync(Arg.Any<CancellationToken>())
@@ -352,7 +341,7 @@ public class ExpenseReconTests
     [HumansFact]
     public async Task GetExpenseRecon_MirrorNeverSynced_IsUnavailable()
     {
-        _repo.GetOrCreateDocSyncStateAsync(Arg.Any<CancellationToken>()).Returns(new HoldedDocSyncState());
+        StubMirror(null);
 
         var report = await MakeService().GetExpenseReconAsync(2026, TestContext.Current.CancellationToken);
 
@@ -360,113 +349,15 @@ public class ExpenseReconTests
         await _expenses.DidNotReceive().GetHoldedReconLinesAsync(Arg.Any<CancellationToken>());
     }
 
-    // --- notes captured at sync ---
-
-    private static HoldedPurchaseDocListItemDto ListDoc(string id, string description = "ER: Train") => new()
-    {
-        Id = id,
-        DocNumber = id,
-        ContactId = "c-alice",
-        ContactName = "Alice Example",
-        Description = description,
-        Date = Submitted,
-        Subtotal = 100m,
-        Tax = 0m,
-        Total = 100m,
-    };
-
-    private static HoldedPurchaseDocumentDto FullDoc(string id, string? notes) => new()
-    {
-        Id = id,
-        DocNumber = id,
-        Subtotal = 100m,
-        Tax = 0m,
-        Total = 100m,
-        PaymentsTotal = 0m,
-        PaymentsPending = 0m,
-        Notes = notes,
-    };
-
-    private void StubSync(IReadOnlyList<HoldedPurchaseDocListItemDto> listed, IReadOnlyList<HoldedExpenseDoc> mirrored)
-    {
-        _repo.GetOrCreateDocSyncStateAsync(Arg.Any<CancellationToken>()).Returns(new HoldedDocSyncState());
-        _repo.GetCategoryMapAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedCategoryMap>());
-        _repo.GetManagedAccountsAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedManagedAccount>());
-        _expenses.GetHoldedBookingsAsync(Arg.Any<CancellationToken>()).Returns(new List<ExpenseHoldedBooking>());
-        _client.ListPurchaseDocumentsAsync(Arg.Any<CancellationToken>()).Returns(listed);
-        _repo.GetAllDocsAsync(Arg.Any<CancellationToken>()).Returns(mirrored);
-    }
-
-    [HumansFact]
-    public async Task Sync_FetchesNotesOncePerNewDocument_AndLeavesKnownOnesToTheUpsert()
-    {
-        StubSync([ListDoc("new"), ListDoc("known")], [Doc("known", notes: "Expense report k")]);
-        _client.GetPurchaseDocumentAsync("new", Arg.Any<CancellationToken>()).Returns(FullDoc("new", "Expense report n"));
-        IReadOnlyList<HoldedExpenseDoc>? written = null;
-        await _repo.ReplaceDocsAsync(Arg.Do<IReadOnlyList<HoldedExpenseDoc>>(d => written = d),
-            Arg.Any<Instant>(), Arg.Any<CancellationToken>());
-
-        await MakeService().SyncAsync(TestContext.Current.CancellationToken);
-
-        await _client.Received(1).GetPurchaseDocumentAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
-        Written(written, "new").Notes.Should().Be("Expense report n");
-        Written(written, "new").ContactId.Should().Be("c-alice");
-        Written(written, "known").Notes.Should().BeNull("the upsert keeps the stored notes");
-    }
-
-    [HumansFact]
-    public async Task Sync_TransientNotesFailure_StopsFetching_AndTheSyncSucceeds()
-    {
-        StubSync([ListDoc("a"), ListDoc("b")], []);
-        _client.GetPurchaseDocumentAsync("a", Arg.Any<CancellationToken>())
-            .ThrowsAsync(new HoldedTransientException("timeout"));
-        IReadOnlyList<HoldedExpenseDoc>? written = null;
-        await _repo.ReplaceDocsAsync(Arg.Do<IReadOnlyList<HoldedExpenseDoc>>(d => written = d),
-            Arg.Any<Instant>(), Arg.Any<CancellationToken>());
-
-        var result = await MakeService().SyncAsync(TestContext.Current.CancellationToken);
-
-        result.DocCount.Should().Be(2);
-        Written(written, "a").Notes.Should().BeNull();
-        Written(written, "b").Notes.Should().BeNull("the run stopped at the transient failure");
-        await _client.Received(1).GetPurchaseDocumentAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
-    }
-
-    [HumansFact]
-    public async Task Sync_FetchesNotesOnlyForPushWrittenDocuments()
-    {
-        StubSync([ListDoc("er"), ListDoc("vendor", "Office chairs")], []);
-        _client.GetPurchaseDocumentAsync("er", Arg.Any<CancellationToken>()).Returns(FullDoc("er", "Expense report e"));
-        IReadOnlyList<HoldedExpenseDoc>? written = null;
-        await _repo.ReplaceDocsAsync(Arg.Do<IReadOnlyList<HoldedExpenseDoc>>(d => written = d),
-            Arg.Any<Instant>(), Arg.Any<CancellationToken>());
-
-        await MakeService().SyncAsync(TestContext.Current.CancellationToken);
-
-        await _client.Received(1).GetPurchaseDocumentAsync("er", Arg.Any<CancellationToken>());
-        await _client.DidNotReceive().GetPurchaseDocumentAsync("vendor", Arg.Any<CancellationToken>());
-        Written(written, "vendor").Notes.Should().BeNull();
-    }
-
-    [HumansFact]
-    public async Task Sync_CapsNotesFetchesPerRun()
-    {
-        StubSync(Enumerable.Range(0, 80).Select(i => ListDoc($"d{i}")).ToList(), []);
-        _client.GetPurchaseDocumentAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
-            .Returns(ci => FullDoc(ci.Arg<string>(), "Expense report x"));
-
-        await MakeService().SyncAsync(TestContext.Current.CancellationToken);
-
-        await _client.Received(50).GetPurchaseDocumentAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
-    }
+    private void StubMirror(Instant? syncedAt, params HoldedPurchaseDocInfo[] docs) =>
+        _holded.GetPurchaseDocumentsAsync(Arg.Any<CancellationToken>())
+            .Returns(new HoldedPurchaseDocMirror(syncedAt, "Idle", null, docs.Length, syncedAt, docs));
 
     [HumansFact]
     public async Task GetExpenseRecon_LedgerMirrorEmpty_IsUnavailable()
     {
-        _repo.GetOrCreateDocSyncStateAsync(Arg.Any<CancellationToken>())
-            .Returns(new HoldedDocSyncState { LastSyncAt = SyncedAt });
+        StubMirror(SyncedAt, Doc("d1"));
         _expenses.GetHoldedReconLinesAsync(Arg.Any<CancellationToken>()).Returns([Line("d1")]);
-        _repo.GetAllDocsAsync(Arg.Any<CancellationToken>()).Returns([Doc("d1")]);
         _repo.GetCreditorContactsAsync(Arg.Any<CancellationToken>()).Returns(Bindings);
         _holded.GetAccountBalancesAsync(Arg.Any<CancellationToken>()).Returns(new Dictionary<int, decimal>());
 
@@ -482,9 +373,6 @@ public class ExpenseReconTests
 
         report.Lines.Single().Status.Should().Be(ExpenseReconLineStatus.WrongContact);
     }
-
-    private static HoldedExpenseDoc Written(IReadOnlyList<HoldedExpenseDoc>? written, string id) =>
-        written!.Single(d => string.Equals(d.HoldedDocId, id, StringComparison.Ordinal));
 
     // --- the nightly job ---
 

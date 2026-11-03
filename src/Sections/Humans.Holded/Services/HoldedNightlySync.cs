@@ -17,8 +17,10 @@ internal sealed class HoldedNightlySync(
             return;
         }
 
-        // The gate is non-blocking: if a sweep is already running this one returns false. Say so, or a skipped
+        // The gates are non-blocking: if a sync is already running this one returns false. Say so, or a skipped
         // night reads as a successful sync in the job history.
+        if (!await holded.SyncPurchaseDocumentsAsync(ct))
+            logger.LogWarning("Nightly Holded purchase-document sync skipped — a sync was already running.");
         if (!await holded.SyncLedgerAsync(full: false, ct))
             logger.LogWarning("Nightly Holded ledger sweep skipped — a sweep was already running.");
     }

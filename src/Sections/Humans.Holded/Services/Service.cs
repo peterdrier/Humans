@@ -43,6 +43,13 @@ internal sealed class Service(
     // in-process gate is enough.
     private static readonly SemaphoreSlim LedgerSyncGate = new(1, 1);
 
+    // Same reasoning, its own gate: the two syncs write different tables.
+    private static readonly SemaphoreSlim PurchaseDocSyncGate = new(1, 1);
+
+    // The plan allows ~2,000 Holded calls a month: 50 a night is at most ~1,500, leaving the rest for the ledger sweep,
+    // the list call and the pushes. A backlog drains over several nights, newest documents first.
+    private const int MaxNotesFetchesPerRun = 50;
+
     public bool IsConfigured => client.IsConfigured;
 
     public async Task<IReadOnlyList<HoldedLedgerLineInfo>> GetLedgerLinesAsync(
@@ -166,6 +173,146 @@ internal sealed class Service(
             LedgerSyncGate.Release();
         }
     }
+
+    public async Task<HoldedPurchaseDocMirror> GetPurchaseDocumentsAsync(CancellationToken ct = default)
+    {
+        var state = (await repo.GetSyncStatesAsync(ct)).FirstOrDefault(s => s.Kind == HoldedSyncKind.PurchaseDocs);
+        var docs = await repo.GetPurchaseDocsAsync(ct);
+        return new HoldedPurchaseDocMirror(
+            state?.LastSyncAt,
+            (state?.SyncStatus ?? HoldedSyncStatus.Idle).ToString(),
+            state?.LastError,
+            state?.LastCount ?? 0,
+            state?.StatusChangedAt,
+            docs.Select(d => new HoldedPurchaseDocInfo(
+                    d.Id, d.DocNumber, d.ContactName, d.ContactId, d.Description, d.Date, d.Subtotal, d.Tax, d.Total,
+                    d.Currency, d.IsApproved, d.Notes, d.Tags, d.BookedAccountId, PurchaseDocUrl(d.Id)))
+                .ToList());
+    }
+
+    public async Task<bool> SyncPurchaseDocumentsAsync(CancellationToken ct = default)
+    {
+        if (!await PurchaseDocSyncGate.WaitAsync(0, ct))
+        {
+            logger.LogInformation("Holded purchase-document sync already in progress — skipping this request.");
+            return false;
+        }
+
+        try
+        {
+            var now = clock.GetCurrentInstant();
+            var state = await repo.GetOrCreateSyncStateAsync(HoldedSyncKind.PurchaseDocs, ct);
+            state.SyncStatus = HoldedSyncStatus.Running;
+            state.StatusChangedAt = now;
+            await repo.SaveSyncStateAsync(state, ct);
+
+            try
+            {
+                var docs = (await client.ListPurchaseDocumentsAsync(ct)).Select(d => ToEntity(d, now)).ToList();
+                await FetchNotesAsync(docs, ct);
+                await repo.ReplacePurchaseDocsAsync(docs, now, ct);
+
+                state.SyncStatus = HoldedSyncStatus.Idle;
+                state.LastSyncAt = now;
+                state.StatusChangedAt = now;
+                state.LastCount = docs.Count;
+                state.LastError = null;
+                await repo.SaveSyncStateAsync(state, ct);
+
+                await DrainCallLogAsync(ct);
+                logger.LogInformation("Holded purchase-document sync cached {Count} documents", docs.Count);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                if (ex is OperationCanceledException && ct.IsCancellationRequested)
+                    logger.LogWarning("Holded purchase-document sync cancelled by the caller");
+                else
+                    logger.LogError(ex, "Holded purchase-document sync failed");
+                try
+                {
+                    state.SyncStatus = HoldedSyncStatus.Error;
+                    state.LastError = TruncateForState(ex.Message);
+                    state.StatusChangedAt = clock.GetCurrentInstant();
+                    await repo.SaveSyncStateAsync(state, CancellationToken.None);
+                }
+                catch (Exception saveEx)
+                {
+                    logger.LogError(saveEx, "Failed to persist purchase-document sync error state");
+                }
+                throw;
+            }
+        }
+        finally
+        {
+            PurchaseDocSyncGate.Release();
+        }
+    }
+
+    /// <summary>
+    /// One GET per document whose notes the mirror lacks, newest first, at most <see cref="MaxNotesFetchesPerRun"/> a
+    /// run; the rest keep theirs through the upsert. A failed GET leaves the notes unknown for the next sync to retry
+    /// and never fails this one; a transient failure ends the run's fetching.
+    /// </summary>
+    private async Task FetchNotesAsync(IReadOnlyList<HoldedPurchaseDoc> docs, CancellationToken ct)
+    {
+        var known = (await repo.GetPurchaseDocsAsync(ct))
+            .Where(d => d.Notes is not null)
+            .Select(d => d.Id)
+            .ToHashSet(StringComparer.Ordinal);
+        var candidates = docs
+            .Where(d => !known.Contains(d.Id))
+            .OrderByDescending(d => d.Date)
+            .Take(MaxNotesFetchesPerRun);
+
+        var failed = 0;
+        foreach (var doc in candidates)
+        {
+            try
+            {
+                doc.Notes = (await client.GetPurchaseDocumentAsync(doc.Id, ct)).Notes?.Trim() ?? "";
+            }
+            catch (HoldedTransientException ex)
+            {
+                failed++;
+                logger.LogDebug(ex, "Holded purchase document {DocId} could not be read for its notes", doc.Id);
+                break;
+            }
+            catch (Exception ex) when (ex is HoldedPermanentException or System.Text.Json.JsonException
+                                           or InvalidOperationException)
+            {
+                failed++;
+                logger.LogDebug(ex, "Holded purchase document {DocId} could not be read for its notes", doc.Id);
+            }
+        }
+
+        if (failed > 0)
+            logger.LogWarning(
+                "Holded purchase-document sync: notes unreadable for {Failed} document(s); the next sync retries them.",
+                failed);
+    }
+
+    private static HoldedPurchaseDoc ToEntity(HoldedPurchaseDocListItemDto doc, Instant now) => new()
+    {
+        Id = doc.Id,
+        DocNumber = doc.DocNumber,
+        ContactName = doc.ContactName,
+        ContactId = string.IsNullOrEmpty(doc.ContactId) ? null : doc.ContactId,
+        Description = string.IsNullOrWhiteSpace(doc.Description) ? null : doc.Description.Trim(),
+        Date = doc.Date.InZone(MadridZone).Date,
+        Subtotal = doc.Subtotal,
+        Tax = doc.Tax,
+        Total = doc.Total,
+        Currency = doc.Currency,
+        // Strict: an absent `draft` is not approved, so a doc never leaks into budget actuals on a guess.
+        IsApproved = doc.IsDraft == false,
+        Tags = [.. doc.Tags, .. doc.Lines.SelectMany(l => l.Tags)],
+        BookedAccountId = doc.Lines.Count > 0 ? doc.Lines[0].AccountId : null,
+        LastSyncedAt = now,
+    };
+
+    // Holded has no stable per-document page; its purchase list opens one from this fragment.
+    private static string PurchaseDocUrl(string id) => $"https://app.holded.com/expenses/list#open:purchase-{id}";
 
     public async Task<HoldedSummary> GetSummaryAsync(CancellationToken ct = default)
     {

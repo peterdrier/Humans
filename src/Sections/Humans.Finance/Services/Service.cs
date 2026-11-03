@@ -52,7 +52,6 @@ internal sealed class Service(
     private static readonly TimeSpan ContactsCacheDuration = TimeSpan.FromMinutes(2);
     private static readonly DateTimeZone MadridZone = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
     private readonly SepaBankBooking booking = new(repo, client, holdedWrite, clock, bookingState, audit, sepa, logger);
-    private readonly HoldedDocumentSync documentSync = new(repo, client, clock, logger);
     private readonly SepaPayoutEmails payoutEmails = new(users, emailService, emails, logger);
 
     public async Task<HoldedProvisioningPlan> GetProvisioningPlanAsync(
@@ -314,27 +313,43 @@ internal sealed class Service(
         return options;
     }
 
-    public Task<HoldedSyncResult> SyncAsync(CancellationToken ct = default) =>
-        documentSync.SyncAsync(LogDuplicateDocumentsAsync, ct);
-
     public async Task<HoldedDocSyncInfo> GetDocSyncInfoAsync(CancellationToken ct = default)
     {
-        var state = await repo.GetOrCreateDocSyncStateAsync(ct);
-        // From the repo, so /Holded never builds the full creditor view (a live contacts walk) just to show a number.
+        var mirror = await holded.GetPurchaseDocumentsAsync(ct);
+        // From the repo, so a caller never builds the full creditor view (a live contacts walk) just to show a number.
         var bindings = await repo.GetCreditorContactsAsync(ct);
         return new HoldedDocSyncInfo(
-            state.LastSyncAt, state.Status, state.LastError, state.LastSyncedDocCount, bindings.Count);
+            mirror.LastSyncAt, mirror.Status, mirror.LastError, mirror.LastCount, bindings.Count);
+    }
+
+    /// <summary>The purchase-document mirror with each document's category attribution: account match over tag
+    /// match, a managed account matches with no category. Computed on read, so a mapping fixed in Holded or added
+    /// here applies on the next page load.</summary>
+    private async Task<(HoldedPurchaseDocMirror Mirror, IReadOnlyList<AttributedDoc> Docs)> AttributedDocsAsync(
+        CancellationToken ct)
+    {
+        var mirror = await holded.GetPurchaseDocumentsAsync(ct);
+        var entries = (await repo.GetCategoryMapAsync(ct))
+            .Where(m => m.IsActive)
+            .Select(m => new HoldedMatchEntry(m.BudgetCategoryId, m.HoldedAccountId, m.Tag))
+            .ToArray();
+        var managedIds = (await repo.GetManagedAccountsAsync(ct))
+            .Select(m => m.HoldedAccountId)
+            .ToHashSet(StringComparer.Ordinal);
+        return (mirror, mirror.Docs
+            .Select(d => new AttributedDoc(d, HoldedMatcher.Match(d.BookedAccountId, d.Tags, entries, managedIds)))
+            .ToList());
     }
 
     /// <summary>Local mirrors only: the expense lines, the document mirror, the ledger mirror and SEPA rows.</summary>
     public async Task<ExpenseReconReport> GetExpenseReconAsync(int? year, CancellationToken ct = default)
     {
-        var state = await repo.GetOrCreateDocSyncStateAsync(ct);
-        if (state.LastSyncAt is not { } syncedAt)
+        var mirror = await holded.GetPurchaseDocumentsAsync(ct);
+        if (mirror.LastSyncAt is not { } syncedAt)
             return ExpenseRecon.Unavailable(year, "The Holded document mirror has never synced.");
 
         var expected = await expenses.GetHoldedReconLinesAsync(ct);
-        var docs = await repo.GetAllDocsAsync(ct);
+        var docs = mirror.Docs;
         var bindings = await repo.GetCreditorContactsAsync(ct);
         var balances = await holded.GetAccountBalancesAsync(ct);
         // IHoldedService exposes no sync state; an empty ledger mirror beside synced documents is the never-synced case,
@@ -353,16 +368,16 @@ internal sealed class Service(
     {
         // Doc-derived, not ledger balances: the budget pages are gross/IVA-inclusive while a 629
         // balance is net, and the ledger carries drafts Holded has not approved.
-        var docs = await repo.GetMatchedForYearAsync(calendarYear, ct);
+        var (_, docs) = await AttributedDocsAsync(ct);
         return docs
-            .Where(d => d.IsApproved == true && d.BudgetCategoryId is not null)
-            .GroupBy(d => d.BudgetCategoryId!.Value)
+            .Where(d => d.Doc.IsApproved && d.Doc.Date.Year == calendarYear && d.Match.CategoryId is not null)
+            .GroupBy(d => d.Match.CategoryId!.Value)
             .Select(g => new HoldedActualRow(
                 g.Key,
-                g.Sum(d => d.Total),
+                g.Sum(d => d.Doc.Total),
                 g.Select(d => new HoldedActualDoc(
-                        d.HoldedDocId, d.DocNumber, d.ContactName, d.Description, d.Date, d.Total,
-                        HoldedDocUrl(d.HoldedDocId)))
+                        d.Doc.Id, d.Doc.DocNumber, d.Doc.ContactName, d.Doc.Description, d.Doc.Date, d.Doc.Total,
+                        d.Doc.HoldedUrl))
                     .ToList()))
             .Where(r => r.Actual != 0m)
             .ToList();
@@ -370,23 +385,20 @@ internal sealed class Service(
 
     public async Task<IReadOnlyList<HoldedUnmatchedRow>> GetUnmatchedAsync(CancellationToken ct = default)
     {
-        var docs = await repo.GetUnmatchedAsync(ct);
+        var (_, docs) = await AttributedDocsAsync(ct);
         return docs
+            .Where(d => d.IsUnmatched)
             .Select(d => new HoldedUnmatchedRow(
-                d.HoldedDocId,
-                d.DocNumber,
-                d.ContactName,
-                d.Description,
-                d.Total,
-                ReasonFor(d),
-                HoldedDocUrl(d.HoldedDocId))
-            { Date = d.Date })
+                d.Doc.Id,
+                d.Doc.DocNumber,
+                d.Doc.ContactName,
+                d.Doc.Description,
+                d.Doc.Total,
+                ReasonFor(d.Doc),
+                d.Doc.HoldedUrl)
+            { Date = d.Doc.Date })
             .ToList();
     }
-
-    // Holded has no stable per-doc page; its purchase list opens a doc from this fragment.
-    private static string HoldedDocUrl(string holdedDocId) =>
-        $"https://app.holded.com/expenses/list#open:purchase-{holdedDocId}";
 
     public async Task<string?> GetHoldedAccountIdForCategoryAsync(
         Guid budgetCategoryId, CancellationToken ct = default)
@@ -426,60 +438,15 @@ internal sealed class Service(
                 .ToDictionary(c => c.Id, c => (c.Name, c.Group));
     }
 
-    public async Task<HoldedConnectorVm> GetConnectorOverviewAsync(CancellationToken ct = default)
-    {
-        var state = await repo.GetOrCreateDocSyncStateAsync(ct);
-        var bindings = await repo.GetCreditorContactsAsync(ct);
-        var categoryMap = await BuildCategoryMapAsync(ct);
-        var managed = await repo.GetManagedAccountsAsync(ct);
-        var docs = await repo.GetAllDocsAsync(ct);
+    public async Task<IReadOnlyList<HoldedManagedAccountVm>> GetManagedAccountsAsync(CancellationToken ct = default) =>
+        (await repo.GetManagedAccountsAsync(ct))
+            .Select(m => new HoldedManagedAccountVm(m.HoldedAccountNumber, m.HoldedAccountId, m.Label, m.IsActive, m.CreatedAt))
+            .ToList();
 
-        // A doc pointing outside the active year keeps a null name rather than a lookup per row.
-        var categories = await ActiveYearCategoriesAsync(ct);
-
-        string? NameOf(Guid? categoryId) =>
-            categoryId is { } id && categories.TryGetValue(id, out var c) ? c.Name : null;
-
-        var now = clock.GetCurrentInstant();
-        var age = state.LastSyncAt is { } last ? now - last : (Duration?)null;
-
-        return new HoldedConnectorVm(
-            new HoldedDocSyncVm(
-                state.LastSyncAt,
-                state.Status,
-                state.LastError,
-                state.LastSyncedDocCount,
-                age,
-                // Never having run is stale too: it leaves the actuals and the unmatched queue just as wrong.
-                IsStale: age is null || age >= HoldedDocSyncVm.StaleAfter,
-                // A failed run moves only this, so it is what dates an Error.
-                state.StatusChangedAt),
-            bindings.Count,
-            categoryMap,
-            managed.Select(m => new HoldedManagedAccountVm(m.HoldedAccountNumber, m.HoldedAccountId, m.Label, m.IsActive, m.CreatedAt))
-                .ToList(),
-            docs.Select(d => new HoldedDocVm(
-                d.HoldedDocId,
-                d.DocNumber,
-                d.ContactName,
-                d.Description,
-                HoldedDocUrl(d.HoldedDocId),
-                d.Date,
-                d.Total,
-                d.IsApproved,
-                d.MatchStatus,
-                d.MatchSource,
-                NameOf(d.BudgetCategoryId),
-                d.BookedAccountId,
-                d.TagsJson,
-                d.LastSyncedAt)).ToList());
-    }
-
-    private static string ReasonFor(HoldedExpenseDoc d)
+    private static string ReasonFor(HoldedPurchaseDocInfo d)
     {
         var hasAccount = !string.IsNullOrEmpty(d.BookedAccountId);
-        // MapDoc always serializes a list, so "[]" is the only empty spelling.
-        var hasTags = !string.Equals(d.TagsJson, "[]", StringComparison.Ordinal);
+        var hasTags = d.Tags.Count > 0;
 
         if (!hasAccount && !hasTags)
             return "No account, no tag";
@@ -1336,32 +1303,6 @@ internal sealed class Service(
 
     /// <summary>The kept expense line: its id is the one Guid in the story; Holded ids go in the text.</summary>
     private const string ExpenseLineEntityType = "ExpenseLine";
-
-    /// <summary>The nightly check: the list-level rule (description and total, no notes GET), logged once. A false
-    /// positive only refuses a payout. Never fails the document sync.</summary>
-    private async Task LogDuplicateDocumentsAsync(IReadOnlyList<HoldedPurchaseDocListItemDto> docs, CancellationToken ct)
-    {
-        try
-        {
-            var matches = await FindDuplicateDocumentsAsync(docs, await ContactsByIdAsync(ct), ct);
-            if (matches.Count == 0)
-            {
-                logger.LogInformation("Holded duplicate check: zero expense lines match more than one purchase document.");
-                return;
-            }
-            logger.LogWarning(
-                "Holded duplicate check: {Lines} expense line(s) match more than one purchase document — "
-                + "{Docs} extra document(s) totalling {Amount} across {Members} member(s). Review them on "
-                + "/Finance/HoldedDuplicates; their creditor accounts are not payable until they are removed.",
-                matches.Count, matches.Sum(m => m.Duplicates.Count),
-                Euros(matches.Sum(m => m.Duplicates.Sum(d => d.Total))),
-                matches.Select(m => m.Booking.CreditorUserId).Distinct().Count());
-        }
-        catch (Exception ex) when (ex is not OperationCanceledException)
-        {
-            logger.LogError(ex, "Holded duplicate check failed; the document sync continues without it.");
-        }
-    }
 
     private async Task<IReadOnlyList<HoldedDuplicateMatcher.Match>> FindDuplicateDocumentsAsync(
         IReadOnlyList<HoldedPurchaseDocListItemDto> docs,

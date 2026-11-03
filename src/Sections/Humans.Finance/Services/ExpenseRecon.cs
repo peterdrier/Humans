@@ -25,13 +25,13 @@ internal static class ExpenseRecon
         int? year,
         Instant mirrorSyncedAt,
         IReadOnlyList<ExpenseHoldedReconLine> expected,
-        IReadOnlyList<HoldedExpenseDoc> docs,
+        IReadOnlyList<HoldedPurchaseDocInfo> docs,
         IReadOnlyList<HoldedCreditorContact> bindings,
         IReadOnlyDictionary<int, decimal> balances,
         IReadOnlyList<SepaPayoutTransferRow> transfers,
         Func<Guid, string> memberName)
     {
-        var docById = docs.GroupBy(d => d.HoldedDocId, StringComparer.Ordinal)
+        var docById = docs.GroupBy(d => d.Id, StringComparer.Ordinal)
             .ToDictionary(g => g.Key, g => g.First(), StringComparer.Ordinal);
         var bindingByUser = bindings.GroupBy(b => b.UserId).ToDictionary(g => g.Key, g => g.First());
         var boundContacts = bindings.Select(b => b.HoldedContactId)
@@ -66,9 +66,9 @@ internal static class ExpenseRecon
         }).ToList();
 
         var allOrphans = docs
-            .Where(d => !claimed.Contains(d.HoldedDocId) && CarriesMarker(d))
+            .Where(d => !claimed.Contains(d.Id) && CarriesMarker(d))
             .Select(d => new ExpenseReconOrphan(
-                d.HoldedDocId, d.DocNumber, d.Date, d.ContactName, d.Description, d.Notes, d.Total,
+                d.Id, d.DocNumber, d.Date, d.ContactName, d.Description, d.Notes, d.Total,
                 d.ContactId is { } c && boundContacts.Contains(c)
                     ? ExpenseReconOrphanKind.NoMatchingLine
                     : ExpenseReconOrphanKind.UnboundContact))
@@ -100,8 +100,8 @@ internal static class ExpenseRecon
     /// <summary>Legacy report-level documents are left out: they predate per-line descriptions and never raced.</summary>
     private static Dictionary<Guid, IReadOnlyList<HoldedPurchaseDocListItemDto>> FindDuplicates(
         IReadOnlyList<ExpenseHoldedReconLine> expected,
-        IReadOnlyList<HoldedExpenseDoc> docs,
-        IReadOnlyDictionary<string, HoldedExpenseDoc> docById,
+        IReadOnlyList<HoldedPurchaseDocInfo> docs,
+        IReadOnlyDictionary<string, HoldedPurchaseDocInfo> docById,
         IReadOnlyList<HoldedCreditorContact> bindings)
     {
         var bookings = expected
@@ -135,7 +135,7 @@ internal static class ExpenseRecon
             ? line.SyncState is ExpenseHoldedSyncState.Queued or ExpenseHoldedSyncState.Retrying
             : line.SyncSettledAt is { } settled && settled > mirrorSyncedAt;
 
-    private static bool CarriesMarker(HoldedExpenseDoc d) =>
+    private static bool CarriesMarker(HoldedPurchaseDocInfo d) =>
         (d.Notes?.StartsWith(NotesMarker, StringComparison.Ordinal) ?? false)
         || (d.Description?.StartsWith(DescriptionMarker, StringComparison.Ordinal) ?? false);
 
@@ -172,9 +172,9 @@ internal static class ExpenseRecon
             .ToList();
     }
 
-    private static HoldedPurchaseDocListItemDto ToListItem(HoldedExpenseDoc d) => new()
+    private static HoldedPurchaseDocListItemDto ToListItem(HoldedPurchaseDocInfo d) => new()
     {
-        Id = d.HoldedDocId,
+        Id = d.Id,
         DocNumber = d.DocNumber,
         ContactId = d.ContactId,
         ContactName = d.ContactName,
