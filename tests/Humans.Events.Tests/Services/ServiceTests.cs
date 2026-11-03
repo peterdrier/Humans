@@ -170,6 +170,8 @@ public sealed class EventServiceTests
     {
         var ct = TestContext.Current.CancellationToken;
         var actorId = Guid.NewGuid();
+        _userService.GetUserInfoAsync(actorId, Arg.Any<CancellationToken>())
+            .Returns(UserInfo.Create(new User { Id = actorId }, [], [], null));
         var submitterId = Guid.NewGuid();
         var burn = BurnFixtures.Burn();
         _repo.Settings = new EventGuideSettings { Id = Guid.NewGuid(), EventSettingsId = burn.Id, MaxPrintSlots = 20 };
@@ -531,6 +533,8 @@ public sealed class EventServiceTests
         }
         else
         {
+            _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
+                .Returns(UserInfo.Create(new User { Id = userId }, [], [], null));
             var controller = new EventsApiController(cached, Substitute.For<ICampService>(), _userService,
                 NullLogger<EventsApiController>.Instance)
             {

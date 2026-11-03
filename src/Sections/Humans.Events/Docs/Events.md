@@ -184,6 +184,12 @@ Member create, edit, withdrawal and bulk-import preflight reads retain browser c
 
 ## Invariants
 
+- API favourites, category preferences and personalised public browse exclusions
+  resolve the signed-in account before owner calls, so merged cookies use the
+  survivor's rows. Missing accounts retain anonymous public browse and receive 401
+  on authenticated operations. CSV exports resolve the same canonical audit actor;
+  account preflight honours browser cancellation while mutation tokens stay unchanged.
+
 - Moderation submitter labels and the browse page’s individual-host fallback render through Human by user ID, without controller name hydration. On browse cards, authored host text takes precedence and camp events have no submitter-name fallback. Missing identities use the shared localized unknown label. API, CSV and email name projections remain separate live text consumers.
 - The guide shows one event: `EventGuideSettings.EventSettingsId`. Submission lists, the barrio CSV's existing rows, approved events (and the approved-event cache), favourites, the moderation queue and counts, camp overlap checks, the dashboard and the guide export only include entries of that event, plus entries with no event id yet (`Event.IsInEvent`). Entries of other events are kept, never deleted, and still reach GDPR export and by-id owner/moderator lookups. Pointing the guide at another event rebuilds the approved cache.
 

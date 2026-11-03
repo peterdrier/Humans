@@ -70,6 +70,8 @@ public class EventsApiControllerTests
         var controller = BuildController();
         controller.HttpContext.RequestAborted = request.Token;
         var userId = Guid.NewGuid();
+        _users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(UserInfo.Create(new User { Id = userId }, [], [], null));
         controller.HttpContext.User = new ClaimsPrincipal(new ClaimsIdentity(
             [new Claim(ClaimTypes.NameIdentifier, userId.ToString())], "test"));
         var burn = BurnFixtures.Burn(year: 2026);
@@ -238,6 +240,8 @@ public class EventsApiControllerTests
     {
         var controller = BuildController();
         var userId = Guid.NewGuid();
+        _users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(UserInfo.Create(new User { Id = userId }, [], [], null));
         var eventId = Guid.NewGuid();
         controller.HttpContext.User = new ClaimsPrincipal(new ClaimsIdentity(
             [new Claim(ClaimTypes.NameIdentifier, userId.ToString())], "test"));
@@ -260,6 +264,97 @@ public class EventsApiControllerTests
         var result = (await BuildController().GetCategories()).Should().BeOfType<OkObjectResult>().Subject;
         result.Value.Should().BeAssignableTo<IEnumerable<GuideCategoryApiDto>>().Subject
             .Select(c => c.Id).Should().Equal(first.Id, second.Id);
+    }
+
+    [HumansTheory]
+    [InlineData(0, 0)]
+    [InlineData(0, 1)]
+    [InlineData(0, 2)]
+    [InlineData(1, 0)]
+    [InlineData(1, 1)]
+    [InlineData(1, 2)]
+    [InlineData(2, 0)]
+    [InlineData(2, 1)]
+    [InlineData(2, 2)]
+    [InlineData(3, 0)]
+    [InlineData(3, 1)]
+    [InlineData(3, 2)]
+    [InlineData(4, 0)]
+    [InlineData(4, 1)]
+    [InlineData(4, 2)]
+    [InlineData(5, 0)]
+    [InlineData(5, 1)]
+    [InlineData(5, 2)]
+    [InlineData(6, 0)]
+    [InlineData(6, 1)]
+    [InlineData(6, 2)]
+    public async Task Member_boundaries_resolve_surviving_identity(int action, int mode)
+    {
+        var cookieId = Guid.NewGuid();
+        var survivorId = Guid.NewGuid();
+        var eventId = Guid.NewGuid();
+        using var request = new CancellationTokenSource();
+        var controller = BuildController();
+        controller.HttpContext.RequestAborted = request.Token;
+        controller.HttpContext.User = new ClaimsPrincipal(new ClaimsIdentity(
+            [new Claim(ClaimTypes.NameIdentifier, cookieId.ToString())], "test"));
+        _users.GetUserInfoAsync(cookieId, Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            call.Arg<CancellationToken>().Should().Be(request.Token);
+            call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+            return new ValueTask<UserInfo?>(mode == 1 ? null :
+                UserInfo.Create(new User { Id = survivorId }, [], [], null));
+        });
+        _guide.GetExcludedCategorySlugsAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns([]);
+        _guide.GetActiveCategoriesAsync(Arg.Any<CancellationToken>()).Returns([]);
+        _guide.GetFavouritesWithEventsAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns([]);
+        _guide.GetApprovedEventsAsync(Arg.Any<Guid?>(), Arg.Any<Guid?>(), Arg.Any<Guid?>(),
+            Arg.Any<string?>(), Arg.Any<IReadOnlyList<string>>(), Arg.Any<CancellationToken>()).Returns([]);
+        _guide.AddFavouriteAsync(Arg.Any<Guid>(), eventId, null, Arg.Any<CancellationToken>()).Returns(true);
+        _guide.RemoveFavouriteAsync(Arg.Any<Guid>(), eventId, null, Arg.Any<CancellationToken>()).Returns(true);
+        _guide.GetApprovedEventsForExportAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(new byte[] { 1 });
+        var export = new EventsExportController(_guide, _camps, _users)
+        {
+            ControllerContext = controller.ControllerContext,
+        };
+        if (mode == 2)
+            await request.CancelAsync();
+        Func<Task<IActionResult>> invoke = action switch
+        {
+            0 => controller.GetPreferences,
+            1 => () => controller.UpdatePreferences(new EventsApiController.UpdatePreferencesRequest()),
+            2 => controller.GetFavourites,
+            3 => () => controller.AddFavourite(eventId, null),
+            4 => () => controller.RemoveFavourite(eventId, null),
+            5 => () => controller.GetEvents(null, null, null, null),
+            _ => () => export.DownloadCsv(request.Token),
+        };
+        var method = action switch
+        {
+            0 or 5 => nameof(IEventManagement.GetExcludedCategorySlugsAsync),
+            1 => nameof(IEventManagement.SavePreferenceAsync),
+            2 => nameof(IEventManagement.GetFavouritesWithEventsAsync),
+            3 => nameof(IEventManagement.AddFavouriteAsync),
+            4 => nameof(IEventManagement.RemoveFavouriteAsync),
+            _ => nameof(IEventManagement.GetApprovedEventsForExportAsync),
+        };
+
+        if (mode == 2)
+            await invoke.Should().ThrowAsync<OperationCanceledException>();
+        else if (mode == 1)
+            (await invoke()).Should().BeOfType(action == 5 ? typeof(OkObjectResult) : typeof(UnauthorizedResult));
+        else
+        {
+            await invoke();
+            var call = _guide.ReceivedCalls().Where(call => string.Equals(call.GetMethodInfo().Name, method, StringComparison.Ordinal))
+                .Should().ContainSingle().Subject;
+            call.GetArguments()[0].Should().Be(survivorId);
+            if (action is 1 or 3 or 4)
+                call.GetArguments()[^1].Should().Be(CancellationToken.None);
+            return;
+        }
+
+        _guide.ReceivedCalls().Should().NotContain(call => string.Equals(call.GetMethodInfo().Name, method, StringComparison.Ordinal));
     }
 
     private EventsApiController BuildController()
