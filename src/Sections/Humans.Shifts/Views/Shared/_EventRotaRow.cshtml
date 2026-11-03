@@ -1,19 +1,5 @@
 @model Humans.Shifts.Models.EventRotaRowViewModel
 
-@functions {
-    string GetPhase(ShiftPeriod period)
-    {
-        return period switch
-        {
-            ShiftPeriod.Build => SharedLocalizer["Shifts_SetUp"].Value,
-            ShiftPeriod.Event => SharedLocalizer["Shifts_Event"].Value,
-            ShiftPeriod.Strike => SharedLocalizer["Shifts_Strike"].Value,
-            _ => ""
-        };
-    }
-
-}
-
 @{
     var item = Model.Item;
     var es = Model.Es;
@@ -24,7 +10,7 @@
 }
 <tr class="@(isFull ? "table-secondary" : "")">
     <td>@(shift.IsAllDay ? Localizer["Shifts_AllDay"].Value : $"{shift.StartTime.ToTime()}–{shift.StartTime.PlusMinutes((int)(shift.DurationHours * 60)).ToTime()}")</td>
-    <td><span class="badge @ShiftDisplayItem.PeriodBadgeClass(item.Period)">@GetPhase(item.Period)</span></td>
+    <td><span class="badge @ShiftDisplayItem.PeriodBadgeClass(item.Period)">@ShiftDisplayItem.PeriodLabel(item.Period, SharedLocalizer)</span></td>
     <td>@es.GateOpeningDate.PlusDays(shift.DayOffset).ToWeekdayDayMonth()</td>
     <td>@item.AbsoluteStart.ToTime(tz)</td>
     <td>@(shift.IsAllDay ? Localizer["Shifts_FullDay"].Value : $"{shift.DurationHours}h")</td>

@@ -1,3 +1,5 @@
+using Humans.Base;
+using Microsoft.Extensions.Localization;
 using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Humans.Shifts.Services;
@@ -240,6 +242,14 @@ internal sealed record DayFilterOption(LocalDate Date, ShiftPeriod Period, Build
 
 internal sealed class ShiftDisplayItem
 {
+    internal static string PeriodLabel(ShiftPeriod period, IStringLocalizer<SharedResource> localizer) => period switch
+    {
+        ShiftPeriod.Build => localizer["Shifts_SetUp"].Value,
+        ShiftPeriod.Event => localizer["Shifts_Event"].Value,
+        ShiftPeriod.Strike => localizer["Shifts_Strike"].Value,
+        _ => string.Empty
+    };
+
     internal static string PeriodBadgeClass(ShiftPeriod period) => period switch
     {
         ShiftPeriod.Build => "bg-info",

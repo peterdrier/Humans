@@ -5,21 +5,6 @@
     var tz = Model.EventSettings != null ? DateTimeZoneProviders.Tzdb[Model.EventSettings.TimeZoneId] : null;
 }
 
-@functions {
-    string GetPhase(Shift shift, BurnSettingsInfo es)
-    {
-        var period = shift.GetShiftPeriod(es);
-        return period switch
-        {
-            ShiftPeriod.Build => SharedLocalizer["Shifts_SetUp"].Value,
-            ShiftPeriod.Event => SharedLocalizer["Shifts_Event"].Value,
-            ShiftPeriod.Strike => SharedLocalizer["Shifts_Strike"].Value,
-            _ => ""
-        };
-    }
-
-}
-
 <div class="container py-4">
     <div class="mb-3">
         <ul class="nav nav-tabs shifts-nav-tabs border-0" role="tablist">
@@ -31,7 +16,6 @@
             </li>
         </ul>
     </div>
-
 
     <vc:dietary-missing-banner user-id="@Model.UserId" />
 
@@ -86,7 +70,7 @@
                             var bailLocked = block.Any(b => b.BailLocked);
                             <div class="d-flex justify-content-between align-items-center border-bottom py-2">
                                 <div>
-                                    <span class="badge @ShiftDisplayItem.PeriodBadgeClass(shift.GetShiftPeriod(es)) me-1">@GetPhase(shift, es)</span>
+                                    <span class="badge @ShiftDisplayItem.PeriodBadgeClass(shift.GetShiftPeriod(es)) me-1">@ShiftDisplayItem.PeriodLabel(shift.GetShiftPeriod(es), SharedLocalizer)</span>
                                     <strong>@shift.Rota.Name</strong> —
                                     @es.GateOpeningDate.PlusDays(first.Signup.Shift.DayOffset).ToWeekdayDayMonth() to @es.GateOpeningDate.PlusDays(last.Signup.Shift.DayOffset).ToWeekdayDayMonth()
                                     <small class="text-muted">(@block.Count() days)</small>
@@ -116,7 +100,7 @@
                     @if (individualItems.Count > 0)
                     {
                         Func<MySignupItem, IHtmlContent> upcomingPhaseCell = @<text>
-                            <span class="badge @ShiftDisplayItem.PeriodBadgeClass(item.Signup.Shift.GetShiftPeriod(es))">@GetPhase(item.Signup.Shift, es)</span>
+                            <span class="badge @ShiftDisplayItem.PeriodBadgeClass(item.Signup.Shift.GetShiftPeriod(es))">@ShiftDisplayItem.PeriodLabel(item.Signup.Shift.GetShiftPeriod(es), SharedLocalizer)</span>
                         </text>;
                         Func<MySignupItem, IHtmlContent> upcomingActionCell = @<text>
                             @if (item.BailLocked)
@@ -165,7 +149,7 @@
                 <div class="card-body">
                     @{
                         Func<MySignupItem, IHtmlContent> pendingPhaseCell = @<text>
-                            <span class="badge @ShiftDisplayItem.PeriodBadgeClass(item.Signup.Shift.GetShiftPeriod(es))">@GetPhase(item.Signup.Shift, es)</span>
+                            <span class="badge @ShiftDisplayItem.PeriodBadgeClass(item.Signup.Shift.GetShiftPeriod(es))">@ShiftDisplayItem.PeriodLabel(item.Signup.Shift.GetShiftPeriod(es), SharedLocalizer)</span>
                         </text>;
                         Func<MySignupItem, IHtmlContent> pendingActionCell = @<text>
                             @if (item.BailLocked)
@@ -214,7 +198,7 @@
                 <div class="card-body">
                     @{
                         Func<MySignupItem, IHtmlContent> pastPhaseCell = @<text>
-                            <span class="badge @ShiftDisplayItem.PeriodBadgeClass(item.Signup.Shift.GetShiftPeriod(es))">@GetPhase(item.Signup.Shift, es)</span>
+                            <span class="badge @ShiftDisplayItem.PeriodBadgeClass(item.Signup.Shift.GetShiftPeriod(es))">@ShiftDisplayItem.PeriodLabel(item.Signup.Shift.GetShiftPeriod(es), SharedLocalizer)</span>
                         </text>;
                         Func<MySignupItem, IHtmlContent> pastStatusCell = @<text>
                             <span class="badge bg-secondary">@Localizer.EnumDisplay(item.Signup.Status)</span>
