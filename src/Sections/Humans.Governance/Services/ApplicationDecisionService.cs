@@ -228,7 +228,6 @@ internal sealed class ApplicationDecisionService(
 
         return new ApplicationUserDetailDto(
             Id: application.Id,
-            UserId: application.UserId,
             Status: application.Status,
             MembershipTier: application.MembershipTier,
             Motivation: application.Motivation,
@@ -454,7 +453,6 @@ internal sealed class ApplicationDecisionService(
             Language: application.Language,
             SubmittedAt: application.SubmittedAt,
             ReviewStartedAt: application.ReviewStartedAt,
-            ResolvedAt: application.ResolvedAt,
             ReviewedByUserId: application.ReviewedByUserId,
             ReviewNotes: application.ReviewNotes,
             History: history);

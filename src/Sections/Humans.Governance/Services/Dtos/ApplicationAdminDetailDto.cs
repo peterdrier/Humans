@@ -16,7 +16,6 @@ internal sealed record ApplicationAdminDetailDto(
     string? Language,
     Instant SubmittedAt,
     Instant? ReviewStartedAt,
-    Instant? ResolvedAt,
     Guid? ReviewedByUserId,
     string? ReviewNotes,
     IReadOnlyList<ApplicationStateHistoryDto> History)

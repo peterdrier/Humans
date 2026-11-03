@@ -5,7 +5,6 @@ namespace Humans.Governance.Services.Dtos;
 
 internal sealed record ApplicationUserDetailDto(
     Guid Id,
-    Guid UserId,
     ApplicationStatus Status,
     MembershipTier MembershipTier,
     string Motivation,
