@@ -50,17 +50,17 @@ internal sealed class ShiftProfileController(
     {
         if (!ModelState.IsValid)
         {
-            await PopulateCatalogAsync(model);
+            await PopulateCatalogAsync(model, HttpContext.RequestAborted);
             return View(model);
         }
 
         try
         {
-            var user = await GetCurrentUserInfoAsync();
+            var user = await GetCurrentUserInfoAsync(HttpContext.RequestAborted);
             if (user is null)
                 return NotFound();
 
-            var existing = await shiftMgmt.GetShiftProfileAsync(user.Id);
+            var existing = await shiftMgmt.GetShiftProfileAsync(user.Id, HttpContext.RequestAborted);
 
             await shiftMgmt.UpdateShiftProfileAsync(new ShiftVolunteerProfileInfo(
                 user.Id,
@@ -75,7 +75,7 @@ internal sealed class ShiftProfileController(
             SetSuccess(localizer["Profile_Updated"].Value);
             return RedirectToAction(nameof(ShiftInfo));
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             logger.LogError(ex, "Failed to save shift info for user");
             SetError(shiftsLocalizer["Shifts_ShiftProfile_SaveFailed"].Value);

@@ -57,6 +57,40 @@ public class VolunteerTrackingControllerTests
             new LocalizedString(ci.Arg<string>(), ci.Arg<string>()));
     }
 
+    [HumansTheory]
+    [InlineData("set-camp")]
+    [InlineData("clear-camp")]
+    [InlineData("set-day-off")]
+    [InlineData("clear-day-off")]
+    [InlineData("set-availability")]
+    [InlineData("clear-availability")]
+    public async Task TrackingMutation_CancelsAccountLookupBeforeWriting(string action)
+    {
+        using var request = new CancellationTokenSource();
+        var current = new User { Id = Guid.NewGuid() };
+        var target = Guid.NewGuid();
+        var controller = BuildSut(current);
+        controller.HttpContext.RequestAborted = request.Token;
+        _burnSettings.GetActiveAsync(Arg.Any<CancellationToken>()).Returns(MakeBurn(Guid.NewGuid()));
+        _userService.GetUserInfoAsync(current.Id, Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+            return new ValueTask<UserInfo?>((UserInfo?)null);
+        });
+        await request.CancelAsync();
+        Func<Task<IActionResult>> write = () => action switch
+        {
+            "set-camp" => controller.SetCampSetup(new SetCampSetupForm { UserId = target, Date = "2026-06-01" }, null, request.Token),
+            "clear-camp" => controller.ClearCampSetup(target, null, request.Token),
+            "set-day-off" => controller.SetDayOff(new SetDayOffForm { UserId = target }, null, request.Token),
+            "clear-day-off" => controller.ClearDayOff(new ClearDayOffForm { UserId = target }, null, request.Token),
+            "set-availability" => controller.SetAvailabilityDay(target, 0, null, request.Token),
+            _ => controller.ClearAvailabilityDay(target, 0, null, request.Token)
+        };
+        await write.Should().ThrowAsync<OperationCanceledException>();
+        _service.ReceivedCalls().Should().BeEmpty();
+    }
+
     private VolunteerTrackingController BuildSut(User? currentUser)
     {
         if (currentUser is not null)

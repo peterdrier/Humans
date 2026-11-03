@@ -107,11 +107,14 @@ public class ShiftProfileControllerTests
     }
 
     [HumansTheory]
-    [InlineData("viewer")]
-    [InlineData("profile")]
-    [InlineData("catalog")]
-    [InlineData("preferences")]
-    public async Task ShiftInfo_Get_PropagatesCancellationFromEveryRead(string boundary)
+    [InlineData("get", "viewer")]
+    [InlineData("get", "profile")]
+    [InlineData("get", "catalog")]
+    [InlineData("get", "preferences")]
+    [InlineData("post", "viewer")]
+    [InlineData("post", "profile")]
+    [InlineData("post", "catalog")]
+    public async Task ShiftInfo_PreflightReads_PropagateCancellation(string method, string boundary)
     {
         using var services = new ServiceCollection().AddLogging().AddLocalization().BuildServiceProvider();
         using var aborted = new CancellationTokenSource();
@@ -152,7 +155,12 @@ public class ShiftProfileControllerTests
             services.GetRequiredService<IStringLocalizer<SharedResource>>(),
             services.GetRequiredService<IStringLocalizer<ShiftsResource>>(), http);
 
-        var load = () => controller.ShiftInfo();
+        var post = string.Equals(method, "post", StringComparison.Ordinal);
+        if (post && string.Equals(boundary, "catalog", StringComparison.Ordinal))
+            controller.ModelState.AddModelError("Skills", "Invalid");
+        Func<Task<IActionResult>> load = post
+            ? () => controller.ShiftInfo(new ShiftInfoViewModel())
+            : () => controller.ShiftInfo();
         await load.Should().ThrowAsync<OperationCanceledException>();
         controller.TempData.Should().BeEmpty();
     }

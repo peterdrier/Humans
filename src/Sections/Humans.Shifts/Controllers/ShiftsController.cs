@@ -151,7 +151,7 @@ internal sealed class ShiftsController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> ToggleDay(Guid shiftId, CancellationToken ct)
     {
-        var (currentUserNotFound, user) = await ResolveCurrentUserOrChallengeAsync();
+        var (currentUserNotFound, user) = await ResolveCurrentUserOrChallengeAsync(HttpContext.RequestAborted);
         if (currentUserNotFound is not null) return currentUserNotFound;
 
         if (RedirectIfNameMissing(user) is not null)
@@ -228,7 +228,7 @@ internal sealed class ShiftsController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> BailRange(Guid signupBlockId)
     {
-        var (currentUserNotFound, user) = await ResolveCurrentUserOrChallengeAsync();
+        var (currentUserNotFound, user) = await ResolveCurrentUserOrChallengeAsync(HttpContext.RequestAborted);
         if (currentUserNotFound is not null)
         {
             return currentUserNotFound;
@@ -252,7 +252,7 @@ internal sealed class ShiftsController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Bail(Guid signupId, string? reason)
     {
-        var (currentUserNotFound, user) = await ResolveCurrentUserOrChallengeAsync();
+        var (currentUserNotFound, user) = await ResolveCurrentUserOrChallengeAsync(HttpContext.RequestAborted);
         if (currentUserNotFound is not null)
         {
             return currentUserNotFound;
@@ -337,7 +337,7 @@ internal sealed class ShiftsController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> SaveAvailability(List<int>? dayOffsets)
     {
-        var (currentUserNotFound, user) = await ResolveCurrentUserOrChallengeAsync();
+        var (currentUserNotFound, user) = await ResolveCurrentUserOrChallengeAsync(HttpContext.RequestAborted);
         if (currentUserNotFound is not null)
         {
             return currentUserNotFound;
@@ -365,7 +365,7 @@ internal sealed class ShiftsController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> SaveTagPreferences([FromForm(Name = "tagIds")] List<Guid>? tagIds)
     {
-        var (currentUserNotFound, user) = await ResolveCurrentUserOrChallengeAsync();
+        var (currentUserNotFound, user) = await ResolveCurrentUserOrChallengeAsync(HttpContext.RequestAborted);
         if (currentUserNotFound is not null)
         {
             return currentUserNotFound;
@@ -399,7 +399,7 @@ internal sealed class ShiftsController(
         if (GetCurrentUserId() is not { } actorId) return Challenge();
 
         // Shifts keeps only its own knobs, created on demand for Settings' active event.
-        var active = await burnSettings.GetActiveAsync();
+        var active = await burnSettings.GetActiveAsync(HttpContext.RequestAborted);
         if (active is null)
         {
             SetError("No active event configured — set one at /Settings#event first.");

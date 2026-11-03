@@ -71,6 +71,25 @@ public sealed class ShiftsControllerSettingsTests
         _builder = new ShiftBrowsePageBuilder(_shiftMgmt, _burnSettings, _teamService);
     }
 
+    [HumansFact]
+    public async Task Settings_CancelsActiveEventLookupBeforeSaving()
+    {
+        using var request = new CancellationTokenSource();
+        var controller = BuildSut();
+        controller.HttpContext.RequestAborted = request.Token;
+        _burnSettings.GetActiveAsync(Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+            return Task.FromResult<BurnSettingsInfo?>(null);
+        });
+        await request.CancelAsync();
+
+        Func<Task> save = async () => await controller.Settings(new EventSettingsViewModel());
+
+        await save.Should().ThrowAsync<OperationCanceledException>();
+        _shiftMgmt.ReceivedCalls().Should().BeEmpty();
+    }
+
     private ShiftsController BuildSut()
     {
         var ctrl = new ShiftsController(

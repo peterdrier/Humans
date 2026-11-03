@@ -191,7 +191,7 @@ internal sealed class VolunteerTrackingController(
         }
         var parsed = parseResult.Value;
 
-        var current = await GetCurrentUserInfoAsync();
+        var current = await GetCurrentUserInfoAsync(ct);
         if (current is null) return Forbid();
 
         if (form.UserId == Guid.Empty)
@@ -222,7 +222,7 @@ internal sealed class VolunteerTrackingController(
             return RedirectBack(returnUrl);
         }
 
-        var current = await GetCurrentUserInfoAsync();
+        var current = await GetCurrentUserInfoAsync(ct);
         if (current is null) return Forbid();
 
         await service.ClearCampSetupAsync(userId, current.Id, ct);
@@ -242,7 +242,7 @@ internal sealed class VolunteerTrackingController(
             return RedirectBack(returnUrl);
         }
 
-        var current = await GetCurrentUserInfoAsync();
+        var current = await GetCurrentUserInfoAsync(ct);
         if (current is null) return Forbid();
 
         if (form.UserId == Guid.Empty)
@@ -278,7 +278,7 @@ internal sealed class VolunteerTrackingController(
             return RedirectBack(returnUrl);
         }
 
-        var current = await GetCurrentUserInfoAsync();
+        var current = await GetCurrentUserInfoAsync(ct);
         if (current is null) return Forbid();
 
         var result = await service.ClearDayOffAsync(
@@ -318,7 +318,7 @@ internal sealed class VolunteerTrackingController(
         var es = await burnSettings.GetActiveAsync(ct);
         if (es is null) { SetError(localizer["Shifts_VolTrack_Err_BadRequest"]); return RedirectBack(returnUrl); }
 
-        var current = await GetCurrentUserInfoAsync();
+        var current = await GetCurrentUserInfoAsync(ct);
         if (current is null) return Forbid();
 
         if (!ModelState.IsValid || userId is not { } targetUserId || dayOffset is not { } offset
