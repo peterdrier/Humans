@@ -159,6 +159,11 @@ nobodies-collective/Humans#933.)
 
 ## Invariants
 
+- Scan decisions and staff-PIN administration resolve the signed-in account before
+  owner calls. Merged accounts use the survivor as scanner/audit actor; missing
+  accounts receive 401 and cancelled account lookups perform no action. The seeded
+  gate-terminal account retains its stable scanner ID.
+
 - Verdict-card requests reject redirects and display the request-failure card; login or access-denied pages cannot become admission verdicts.
 - Resetting the shared PIN keypad cancels its pending delayed completion. Closing the supervisor override with Cancel cannot submit the PIN afterward; a reopened panel submits only its new entry.
 

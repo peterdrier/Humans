@@ -52,19 +52,20 @@ internal sealed class GateController(
         string barcode, bool? idConfirmed, bool childWithAdult, bool overrideEarly,
         string? supervisorPin, string? laneId, CancellationToken ct)
     {
-        if (GetCurrentUserId() is not { } scanner)
+        var scanner = await GetCurrentUserInfoAsync(ct);
+        if (scanner is null)
             return Unauthorized();
 
         if (!ModelState.IsValid || idConfirmed is not { } confirmed)
         {
-            logger.LogWarning("Rejected gate decision with missing or malformed values from scanner {ScannerId}", scanner);
+            logger.LogWarning("Rejected gate decision with missing or malformed values from scanner {ScannerId}", scanner.Id);
             return BadRequest();
         }
 
         var decision = await gate.RecordDecisionAsync(
             new GateDecisionInput(barcode, confirmed, childWithAdult, laneId,
                 ClientScanAt: null, Note: null, OverrideEarly: overrideEarly, SupervisorPin: supervisorPin),
-            scanner, ct);
+            scanner.Id, ct);
 
         return PartialView("_VerdictCard", GateScanCardViewModel.FromDecision(decision, barcode, childWithAdult));
     }
@@ -213,11 +214,12 @@ internal sealed class GateController(
     [Authorize(Policy = TicketsPolicies.Manage)]
     public async Task<IActionResult> SetStaffPin(Guid userId, string? pin, CancellationToken ct)
     {
-        if (GetCurrentUserId() is not { } actor)
+        var actor = await GetCurrentUserInfoAsync(ct);
+        if (actor is null)
             return Unauthorized();
         if (userId == Guid.Empty)
             SetError("Pick a person before setting a PIN.");
-        else if (await gate.AdminSetPinAsync(userId, pin ?? string.Empty, actor, ct))
+        else if (await gate.AdminSetPinAsync(userId, pin ?? string.Empty, actor.Id, ct))
             SetSuccess("PIN set.");
         else
             SetError("PIN must be 4 digits and not trivially guessable (no 1234, 0000, or repeats).");
@@ -230,13 +232,14 @@ internal sealed class GateController(
     [Authorize(Policy = TicketsPolicies.Manage)]
     public async Task<IActionResult> ResetStaffPin(Guid userId, CancellationToken ct)
     {
-        if (GetCurrentUserId() is not { } actor)
+        var actor = await GetCurrentUserInfoAsync(ct);
+        if (actor is null)
             return Unauthorized();
         if (userId == Guid.Empty)
             SetError("Pick a person before resetting a PIN.");
         else
         {
-            await gate.ClearPinAsync(userId, actor, ct);
+            await gate.ClearPinAsync(userId, actor.Id, ct);
             SetSuccess("PIN reset — they'll set a new one on their next claim.");
         }
 

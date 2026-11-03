@@ -31,9 +31,62 @@ public class GateControllerOverridePinTests
 
     public GateControllerOverridePinTests()
     {
+        _users.GetUserInfoAsync(_gateAccount, Arg.Any<CancellationToken>())
+            .Returns(UserInfo.Create(new User { Id = _gateAccount }, [], [], null));
         _gate.RecordDecisionAsync(Arg.Any<GateDecisionInput>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(new GateDecisionResult(GateVerdict.AdmittedEarlyOverride, "Guest", null,
                 IsEarly: true, null, null));
+    }
+
+    [HumansTheory]
+    [InlineData(0, 0)]
+    [InlineData(0, 1)]
+    [InlineData(0, 2)]
+    [InlineData(1, 0)]
+    [InlineData(1, 1)]
+    [InlineData(1, 2)]
+    [InlineData(2, 0)]
+    [InlineData(2, 1)]
+    [InlineData(2, 2)]
+    public async Task Gate_actor_boundaries_resolve_surviving_accounts(int action, int mode)
+    {
+        var controller = BuildController(Pin);
+        var survivor = Guid.NewGuid();
+        var staffId = Guid.NewGuid();
+        using var request = new CancellationTokenSource();
+        controller.HttpContext.RequestAborted = request.Token;
+        _users.GetUserInfoAsync(_gateAccount, Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            call.Arg<CancellationToken>().Should().Be(request.Token);
+            call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+            return new ValueTask<UserInfo?>(mode == 1 ? null :
+                UserInfo.Create(new User { Id = survivor }, [], [], null));
+        });
+        _gate.AdminSetPinAsync(staffId, Pin, Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(true);
+        if (mode == 2)
+            await request.CancelAsync();
+        Func<Task<IActionResult>> invoke = action switch
+        {
+            0 => () => controller.Decision(Barcode, true, false, false, null, null, request.Token),
+            1 => () => controller.SetStaffPin(staffId, Pin, request.Token),
+            _ => () => controller.ResetStaffPin(staffId, request.Token),
+        };
+
+        if (mode == 2)
+            await invoke.Should().ThrowAsync<OperationCanceledException>();
+        else if (mode == 1)
+            (await invoke()).Should().BeOfType<UnauthorizedResult>();
+        else
+        {
+            await invoke();
+            var call = _gate.ReceivedCalls().Should().ContainSingle().Subject;
+            call.GetArguments()[action == 1 ? 2 : 1].Should().Be(survivor);
+            call.GetArguments()[^1].Should().Be(request.Token);
+            return;
+        }
+
+        _gate.ReceivedCalls().Should().BeEmpty();
+        controller.TempData.Should().BeEmpty();
     }
 
     private GateController BuildController(string? configuredPin)
