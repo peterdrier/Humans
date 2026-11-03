@@ -46,8 +46,7 @@ internal sealed class ShiftManagementService(
         [ShiftPriority.Essential] = 6
     };
 
-    private static readonly decimal AllDayShiftHours = (decimal)Duration.FromTicks(
-        Shift.AllDayWindowEnd.TickOfDay - Shift.AllDayWindowStart.TickOfDay).TotalHours;
+    private static readonly decimal AllDayShiftHours = (decimal)Shift.AllDayWindowHours;
 
     // Lazy, to break the DI cycle with TeamService.
     private ITeamService TeamService => serviceProvider.GetRequiredService<ITeamService>();

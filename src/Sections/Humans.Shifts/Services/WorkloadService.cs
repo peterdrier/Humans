@@ -2,7 +2,6 @@ using Humans.Shifts.Services.Dtos;
 using Humans.Shifts.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Shifts.Domain;
-using NodaTime;
 using Humans.Shifts.Data;
 using Humans.Users.Contracts;
 
@@ -16,8 +15,7 @@ internal sealed class WorkloadService(
     IUserService userService,
     EventCalendarResolver calendarResolver) : IWorkloadService
 {
-    private static readonly decimal AllDayShiftHours = (decimal)Duration.FromTicks(
-        Shift.AllDayWindowEnd.TickOfDay - Shift.AllDayWindowStart.TickOfDay).TotalHours;
+    private static readonly decimal AllDayShiftHours = (decimal)Shift.AllDayWindowHours;
 
     public async Task<WorkloadReport?> GetForActiveEventAsync(CancellationToken ct = default)
     {
