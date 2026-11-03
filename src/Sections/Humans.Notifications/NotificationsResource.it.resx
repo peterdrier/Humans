@@ -153,4 +153,10 @@
     <value>Ignora selezionati</value>
   </data>
   <data name="Notifications_Popup_LoadError" xml:space="preserve"><value>Impossibile caricare le notifiche. Riprova.</value></data>
+  <data name="Notifications_SentTo" xml:space="preserve">
+    <value>Per {0}</value>
+  </data>
+  <data name="Notifications_Audience_CampLeads" xml:space="preserve">
+    <value>responsabili di barrio</value>
+  </data>
 </root>

@@ -267,7 +267,7 @@ internal sealed class NotificationRepository(IDbContextFactory<NotificationsDbCo
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
         return await ctx.NotificationRecipients
-            .Where(nr => nr.UserId == userId && nr.Notification.ResolvedAt == null)
+            .Where(nr => nr.UserId == userId && nr.ReadAt == null && nr.Notification.ResolvedAt == null)
             .Include(nr => nr.Notification)
             .AsNoTracking()
             .ToListAsync(ct);

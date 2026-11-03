@@ -69,13 +69,13 @@ Dispatch checks `CommunicationPreference.InboxEnabled` and suppresses informatio
 Three-state badge: no badge / success dot (informational only) / danger count (actionable). `NotificationBellViewComponent` calls `NotificationInboxService.GetUnreadBadgeCountsAsync` with the request-abort token. Each read queries current unread, unresolved recipient counts, so a read begun before a mutation cannot cache stale counts afterward. Shared-resolution, merge and retention changes are visible on the next read.
 
 ### Popup
-340px dropdown from bell, right-aligned. Sections: "Needs your attention" (actionable) then "Recent" (informational). Footer: "Mark all as read" + "See all notifications". Empty state: "You're all caught up."
+340px dropdown from bell, right-aligned. It lists only unread, unresolved items, so opening an item or "Mark all as read" takes it off the bell; the inbox page still holds it until it is resolved, dismissed or purged. Sections: "Needs your attention" (actionable), "Work queues" (meters, each saying which role it is shown for), then "Recent" (informational). Footer: "Mark all as read" + "See all notifications". Empty state: "You're all caught up."
 
 ### Full Inbox Page
 Route: `/Notifications`. Search + filter pills (All, Needs action, Shifts, Approvals, Resolved). Card with dark green header, Unread/All tab toggle. Sections: "Needs attention", "Informational", "Resolved".
 
 ### Notification Row
-Shared between popup and inbox. 3px left border accent by priority/class. Type tags: "Urgent" (danger), "Action" (warning), "Info" (success). Group avatar cluster for group-targeted notifications.
+Shared between popup and inbox. 3px left border accent by priority/class. Title and time, then the body text (the reason), then "For <role>" when it went to a role. The title links through `ClickThrough`, which marks it read.
 
 ## Cleanup
 

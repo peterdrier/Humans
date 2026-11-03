@@ -55,6 +55,7 @@ internal sealed class NotificationMeterProvider(
                 Title = localizer["Notifications_Meter_ConsentReviewsPending"],
                 Count = counts.ConsentReviewsPending,
                 ActionUrl = "/Consent/ReviewQueue",
+                Audience = ConsentRoles.ConsentCoordinator,
                 Priority = 10,
             });
         }
@@ -72,6 +73,7 @@ internal sealed class NotificationMeterProvider(
                         Title = localizer["Notifications_Meter_ApplicationsPendingVote"],
                         Count = pendingVoteCount,
                         ActionUrl = "/Governance/BoardVoting",
+                        Audience = RoleNames.Board,
                         Priority = 9,
                     });
                 }
@@ -85,6 +87,7 @@ internal sealed class NotificationMeterProvider(
                 Title = localizer["Notifications_Meter_PendingAccountDeletions"],
                 Count = counts.PendingDeletions,
                 ActionUrl = "/Users/Admin?filter=deleting&sort=name&dir=asc",
+                Audience = RoleNames.Admin,
                 Priority = 8,
             });
         }
@@ -96,6 +99,7 @@ internal sealed class NotificationMeterProvider(
                 Title = localizer["Notifications_Meter_FailedGoogleSyncEvents"],
                 Count = counts.FailedSyncEvents,
                 ActionUrl = "/Google/SyncOutbox",
+                Audience = RoleNames.Admin,
                 Priority = 7,
             });
         }
@@ -109,6 +113,7 @@ internal sealed class NotificationMeterProvider(
                 Title = localizer["Notifications_Meter_OnboardingProfilesPending"],
                 Count = counts.ConsentReviewsPending,
                 ActionUrl = "/Consent/ReviewQueue",
+                Audience = isBoard ? RoleNames.Board : ShiftsRoles.ShiftsAdmin,
                 Priority = 6,
             });
         }
@@ -122,6 +127,7 @@ internal sealed class NotificationMeterProvider(
                 Title = localizer["Notifications_Meter_TeamJoinRequestsPending"],
                 Count = teamJoinRequestsPending,
                 ActionUrl = "/Teams/Summary",
+                Audience = RoleNames.Admin,
                 Priority = 5,
             });
         }
@@ -133,6 +139,7 @@ internal sealed class NotificationMeterProvider(
                 Title = localizer["Notifications_Meter_TicketSyncError"],
                 Count = 1,
                 ActionUrl = "/Tickets",
+                Audience = RoleNames.Admin,
                 Priority = 4,
             });
         }
@@ -152,6 +159,7 @@ internal sealed class NotificationMeterProvider(
                             : localizer["Notifications_Meter_CampJoinRequests", campLeadRequestsPending],
                         Count = campLeadRequestsPending,
                         ActionUrl = "/Barrios",
+                        Audience = localizer["Notifications_Audience_CampLeads"],
                         Priority = 3,
                     });
                 }

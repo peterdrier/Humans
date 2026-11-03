@@ -153,4 +153,10 @@
     <value>Descartar seleccionats</value>
   </data>
   <data name="Notifications_Popup_LoadError" xml:space="preserve"><value>No s’han pogut carregar les notificacions. Torna-ho a provar.</value></data>
+  <data name="Notifications_SentTo" xml:space="preserve">
+    <value>Per a {0}</value>
+  </data>
+  <data name="Notifications_Audience_CampLeads" xml:space="preserve">
+    <value>responsables de barri</value>
+  </data>
 </root>

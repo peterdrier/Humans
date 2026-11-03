@@ -153,4 +153,10 @@
     <value>Ausgewählte verwerfen</value>
   </data>
   <data name="Notifications_Popup_LoadError" xml:space="preserve"><value>Benachrichtigungen konnten nicht geladen werden. Bitte versuche es erneut.</value></data>
+  <data name="Notifications_SentTo" xml:space="preserve">
+    <value>Für {0}</value>
+  </data>
+  <data name="Notifications_Audience_CampLeads" xml:space="preserve">
+    <value>Barrio-Leitung</value>
+  </data>
 </root>

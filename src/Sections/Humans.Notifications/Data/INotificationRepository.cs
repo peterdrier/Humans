@@ -62,7 +62,7 @@ internal interface INotificationRepository : IRepository
         Instant resolvedCutoff,
         CancellationToken ct = default);
 
-    /// <summary>Unordered: callers sort.</summary>
+    /// <summary>Unread and unresolved only, so opening an item takes it off the bell. Unordered: callers sort.</summary>
     Task<IReadOnlyList<NotificationRecipient>> GetPopupAsync(
         Guid userId, CancellationToken ct = default);
 

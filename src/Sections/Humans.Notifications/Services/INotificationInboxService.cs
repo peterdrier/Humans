@@ -53,6 +53,8 @@ internal sealed record NotificationRowDto
 {
     public Guid Id { get; init; }
     public string Title { get; init; } = string.Empty;
+    public string? Body { get; init; }
+    public string? TargetGroupName { get; init; }
     public string? ActionUrl { get; init; }
     public NotificationPriority Priority { get; init; }
     public string Source { get; init; } = string.Empty;

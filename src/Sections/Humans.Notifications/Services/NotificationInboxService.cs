@@ -270,6 +270,8 @@ internal sealed class NotificationInboxService(
         {
             Id = n.Id,
             Title = n.Title,
+            Body = n.Body,
+            TargetGroupName = n.TargetGroupName,
             ActionUrl = n.ActionUrl,
             Priority = n.Priority,
             Source = n.Source,
