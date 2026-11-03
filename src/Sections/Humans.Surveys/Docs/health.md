@@ -6,12 +6,12 @@ Derived fresh each section-doctor run, before any scan. The section's invariants
 ## 1. What the section does
 
 Someone writes a questionnaire in as many languages as they care to, decides who should answer it,
-and hands it to the Board to send. The Board reads it, and either sends it — each of those people
-gets their own link — or hands it back with a reason. People answer it, from that link or from a
+and hands it to a Surveys Admin to send. The Surveys Admin reads it, and either sends it — each of
+those people gets their own link — or hands it back with a reason. People answer it, from that link or from a
 public address the survey can be given, and choose how much of themselves the answer carries:
-their name, only the fact that they took part, or nothing at all. The Board then reads what came
-back, in the app or as a downloaded file, and sees who has not answered yet so a single reminder
-can go out. A person's own answers, and the surveys they wrote, follow them out of the system when
+their name, only the fact that they took part, or nothing at all. The Surveys Admin then reads what
+came back, in the app or as a downloaded file, and sees who has not answered yet so a single
+reminder can go out. The Board reads all of it in the app and changes none of it. A person's own answers, and the surveys they wrote, follow them out of the system when
 they ask to be forgotten; the questionnaires and the answers stay, the person does not.
 
 The same machinery also runs a binding vote of the association's voting members: only current
@@ -29,7 +29,7 @@ These question-shapes cover every route, contract method and job in the section.
 |---|---|---|
 | **Author** | "What am I asking, and in which languages?" | builder GET/POST, machine translation pre-fill |
 | **Rehearse** | "What will this look like before anyone sees it?" | preview intro/page/thank-you, email preview, preview-email-to-self |
-| **Approve** | "May this go out, and who said so?" | submit-for-approval, the Board queue, approve-and-send, reject with a reason |
+| **Approve** | "May this go out, and who said so?" | submit-for-approval, the approval queue, approve-and-send, reject with a reason |
 | **Lifecycle** | "Is this survey taking answers?" | Open, Close, the open/close window, the official link |
 | **Reach** | "Who gets asked, has it gone out, who is still silent?" | audience resolution, send, per-invite status, the daily reminder sweep |
 | **Answer** | "How do I fill this in, and how much of me does it carry?" | invited wizard, public wizard, anonymity choice, draft resume |
@@ -52,17 +52,18 @@ Written fresh, not as today's layout with fixes.
   returns DTOs.
 - **One repository over all of `survey_*`.** Those tables are touched nowhere else, and
   `ISurveyRepository` is internal so that cannot be arranged by accident.
-- **Controllers split by audience, not by verb** — `SurveyAdmin` (anyone who may author, plus the
-  Board) and `Survey` (respondent), and no others. Preview is authoring's rehearsal and approval
+- **Controllers split by audience, not by verb** — `SurveyAdmin` (anyone who may author, plus
+  Surveys Admin and the Board) and `Survey` (respondent), and no others. Preview is authoring's rehearsal and approval
   is authoring's gate, so both live on the admin controller; preview renders the respondent views
   rather than copies of them.
 - **Authoring is open, sending is not.** The admin controller's class policy is app access, and
-  the Board-only verbs carry their own policy; the index is scoped to what the viewer authored.
+  the Surveys Admin verbs carry `SurveysPolicies.Manage` and the Board's read pages
+  `SurveysPolicies.Read`; the index is scoped to what the viewer authored.
   The service, not the view, decides who sees which surveys.
 - **A resource handler holds the per-survey rules, and the service holds them again.** The handler
   is the browser's copy — it decides whether to render a button; the service is the enforcing copy
   and refuses regardless. Neither is redundant: one is a view concern, one is the invariant. Submit
-  checks the author, Approve and Reject check Board/Admin, the admin list scopes itself, and every
+  checks the author, Approve and Reject check Surveys Admin/Admin, the admin list scopes itself, and every
   edit path — `UpdateCoreAsync`, translation pre-fill, ranked availability — takes a `SurveyViewer`
   and compares it to `CreatedByUserId`, so an edit the handler refuses the service refuses too.
 - **One page flow.** Both entry paths differ only in how the session is keyed and where the
@@ -117,18 +118,18 @@ the line that enforces it.
   (`src/Sections/Humans.Surveys/Services/SurveyService.cs:609`); once pending it can be reached by
   neither of the two status verbs that would walk it back out — Open refuses it (`:533`) and Close
   refuses it (`:556`), so the `PendingApproval → Closed → Open` route to an unapproved Open survey
-  does not exist. Board/Admin keep the pre-existing direct Draft → Open path, which the gate does
+  does not exist. Surveys Admin/Admin keep the pre-existing direct Draft → Open path, which the gate does
   not touch.
 - **Approval cannot open a survey that has nobody to invite.** Approve-and-send checks the audience
   *configuration* and then resolves it to real recipients, both before the approval is persisted, so
-  a Team audience whose team has been deleted fails while the survey is still in the queue where the
-  Board can reject it back to its author. It records who approved and sends in the same step:
+  a Team audience whose team has been deleted fails while the survey is still in the queue where a
+  Surveys Admin can reject it back to its author. It records who approved and sends in the same step:
   `src/Sections/Humans.Surveys/Services/SurveyService.cs:632` checks the configuration, `:638`
   resolves it to recipients, and `:644` persists the approval.
 - **A rejection carries a reason.** An empty note is refused, the note is trimmed and bounded, and
   the rejection is audited against the author:
   `src/Sections/Humans.Surveys/Services/SurveyService.cs:660`, `:668`–`:670` and `:674`.
-- **An author sees only what they wrote; the Board sees everything.** The scoping is in the
+- **An author sees only what they wrote; Surveys Admin and the Board see everything.** The scoping is in the
   service, not the view: `src/Sections/Humans.Surveys/Services/SurveyService.cs:565`, with the
   browser-side copy of the same state machine at
   `src/Sections/Humans.Surveys/Authorization/SurveyAuthorizationHandler.cs:30`.
@@ -244,7 +245,7 @@ Settled decisions that look wrong until you know why. Do not re-litigate these.
   carries the same value, so "erased author" and "never had one" are deliberately the same state.
 - **`ApproveAndSendAsync` validates the audience *configuration* before it persists the approval,**
   and then sends with `CancellationToken.None`. A misconfigured audience fails while the survey is
-  still pending, where the Board can reject it back to the author; a half-sent batch is worse than
+  still pending, where a Surveys Admin can reject it back to the author; a half-sent batch is worse than
   a slow request. Configuration is all that is checked — recipients are resolved later, inside
   `SendInvitesAsync`, so an audience that is well-formed but resolves to nobody still approves and
   opens.

@@ -15,6 +15,11 @@ It also holds the **shared create/edit form** every calendar-item editor uses
 interface, adds its extras around the partial, and resolves the posted local fields with
 `CalendarEventForm.Resolve`. Implementers: Calendar's `CalendarEventFormViewModel` and
 Workgroups' `MeetingFormViewModel`. The Events guide keeps its own day-of-event form.
+`Resolve` also validates a recurrence rule, so every host refuses the same rules.
+
+`CalendarRecurrence` is Calendar's RRULE handling for sections that store their own repeating
+timed items (Workgroups' meetings): `IsValidRule` and `Occurrences`, which runs the community
+calendar's own expander, so a weekly 19:00 repeats identically everywhere.
 
 What this folder also holds is the **personal iCal feed** (`ICalFeedService` and its contributor
 fan-out):
@@ -22,7 +27,7 @@ fan-out):
 | Type | Who consumes it |
 |---|---|
 | `ICalendarFeedContributor` | implemented by `Humans.Shifts` (`ShiftSignupService`), `Humans.Events` (`EventService`) and `Humans.Workgroups` (`WorkgroupCalendarContributor`) |
-| `CalendarFeedItem` | the item every contributor returns; `Humans.Scanner` renders it on the ticket card |
+| `CalendarFeedItem` | the item every contributor returns; `Humans.Scanner` renders it on the ticket card. Optional `RecurrenceRule` + `RecurrenceTimezone` make it a series: the personal feed writes one repeating VEVENT with a zoned `DTSTART`, the community calendar expands it within the window |
 | `IICalFeedService` | `Humans.Scanner`'s ticket card; the section's own `ICalFeedApiController` |
 | `UserCalendarViewComponent` / `UserCalendarViewModel` | `<vc:user-calendar>` in Debug's widget gallery; the `IUserPart` seam (`SectionUserParts`) in Users' admin detail |
 

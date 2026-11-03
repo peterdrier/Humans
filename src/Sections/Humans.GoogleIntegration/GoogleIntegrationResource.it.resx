@@ -144,6 +144,8 @@
   <data name="GoogleIntegration_TeamResources_LinkedResources" xml:space="preserve"><value>Risorse collegate</value></data>
   <data name="GoogleIntegration_TeamResources_LastSynced" xml:space="preserve"><value>Ultima sincronizzazione</value></data>
   <data name="GoogleIntegration_TeamResources_NoResources" xml:space="preserve"><value>Nessuna risorsa collegata a questo team. Utilizzi i moduli sottostanti per collegare una cartella Google Drive o un Google Group.</value></data>
+  <data name="GoogleIntegration_TeamResources_Restricted" xml:space="preserve"><value>Limitata</value></data>
+  <data name="GoogleIntegration_TeamResources_Inherited" xml:space="preserve"><value>Ereditata</value></data>
   <data name="GoogleIntegration_TeamResources_InvalidDriveUrl" xml:space="preserve"><value>Inserisca un URL valido di una cartella Google Drive.</value></data>
   <data name="GoogleIntegration_TeamResources_InvalidGroupEmail" xml:space="preserve"><value>Inserisca un indirizzo email valido di Google Group.</value></data>
   <data name="GoogleIntegration_TeamResources_GroupLinked" xml:space="preserve"><value>Google Group "{0}" collegato con successo.</value><comment>{0} = group name</comment></data>

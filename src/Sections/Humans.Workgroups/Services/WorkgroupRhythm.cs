@@ -1,3 +1,4 @@
+using Humans.Calendar.Contracts;
 using Humans.Workgroups.Domain;
 using NodaTime;
 
@@ -44,14 +45,48 @@ internal static class WorkgroupRhythm
 
     public static bool AcceptsMemberWork(this WorkgroupInfo w) => w.Status == WorkgroupStatus.Active;
 
-    public static WorkgroupMeetingInfo? NextMeeting(this WorkgroupInfo w, Instant now) =>
-        w.Meetings.Where(m => m.StartUtc >= now).MinBy(m => m.StartUtc);
+    /// <summary>
+    /// Each occurrence of <paramref name="m"/> starting in [<paramref name="from"/>, <paramref name="to"/>), as the
+    /// meeting with that occurrence's times. A one-off meeting is its own single occurrence.
+    /// </summary>
+    public static IEnumerable<WorkgroupMeetingInfo> Occurrences(this WorkgroupMeetingInfo m, Instant from, Instant to) =>
+        CalendarRecurrence.Occurrences(m.StartUtc, m.EndUtc, m.RecurrenceRule, m.RecurrenceTimezone, from, to)
+            .Where(o => o.Start >= from)
+            .Select(o => m with { StartUtc = o.Start, EndUtc = o.End });
 
-    /// <summary>An Update entry or a meeting; a Note or Disclosure doesn't count.</summary>
+    /// <summary>
+    /// The first occurrence starting at or after <paramref name="now"/>, however far off; null once a series has
+    /// ended. The window doubles from a year, so a dense rule stops at the first and a sparse one is still found.
+    /// </summary>
+    public static WorkgroupMeetingInfo? NextOccurrence(this WorkgroupMeetingInfo m, Instant now)
+    {
+        if (m.StartUtc >= now) return m;
+        if (m.RecurrenceRule is null) return null;
+        for (var days = 366; days <= 366 * 128; days *= 2)
+        {
+            if (m.Occurrences(now, now + Duration.FromDays(days)).FirstOrDefault() is { } next) return next;
+        }
+        return null;
+    }
+
+    /// <summary>Every occurrence that has started, plus each meeting's next one: what the timeline shows.</summary>
+    public static IEnumerable<WorkgroupMeetingInfo> MeetingOccurrences(this WorkgroupInfo w, Instant now) =>
+        w.Meetings.SelectMany(m => m.Occurrences(m.StartUtc, now)
+            .Concat(m.NextOccurrence(now) is { } next ? [next] : []));
+
+    public static WorkgroupMeetingInfo? NextMeeting(this WorkgroupInfo w, Instant now) =>
+        w.Meetings.Select(m => m.NextOccurrence(now))
+            .OfType<WorkgroupMeetingInfo>()
+            .MinBy(m => m.StartUtc);
+
+    /// <summary>
+    /// An Update, meeting notes, or a meeting's stored start; a Note or Disclosure doesn't count. A series' later
+    /// occurrences are only scheduled, not evidence anyone met: the notes posted for them are.
+    /// </summary>
     public static Instant? LastActivityAt(this WorkgroupInfo w, Instant now)
     {
         var lastUpdate = w.LogEntries
-            .Where(e => e.Kind == WorkgroupLogKind.Update)
+            .Where(e => e.Kind is WorkgroupLogKind.Update or WorkgroupLogKind.MeetingNotes)
             .Select(e => (Instant?)e.CreatedAt)
             .Max();
         var lastMeeting = w.Meetings.Where(m => m.StartUtc <= now).Select(m => (Instant?)m.StartUtc).Max();

@@ -9,6 +9,7 @@
 | `ShiftsController.OrphanSignups` | Action | `Admin` | `PolicyNames.AdminOnly` |
 | `ShiftsController.RevealMedical` (POST `Medical/{userId}/Reveal`) | Action | `Admin, Board, ShiftsNoInfo` | `ShiftsPolicies.MedicalDataViewer` — returns the medical-conditions text as JSON and writes a `MedicalConditionsRevealed` audit entry per call, which is what admits Board |
 | `ShiftAdminController` | Class | `[Authorize]` (authenticated) | Coordinator checks at runtime via `HumansTeamControllerBase` |
+| `ShiftAdminController.Index` | In-method | Department managers and approvers, or `ShiftsPolicies.Read` (Board) read-only | `ShiftsPolicies.Read` as a read-only fallback |
 | `ShiftAdminController.MoveRota` | Action | `Admin, ShiftsAdmin` | `ShiftsPolicies.ManageVolunteers` |
 | `ShiftDashboardController` | Class | `Admin, Board, ShiftsNoInfo, ShiftsAdmin` OR any team manager/coordinator (custom handler) | `ShiftsPolicies.DepartmentRead` |
 | `ShiftDashboardController.PostEventStats` | Action | `Admin, Board, ShiftsNoInfo, ShiftsAdmin` | `ShiftsPolicies.Read` |

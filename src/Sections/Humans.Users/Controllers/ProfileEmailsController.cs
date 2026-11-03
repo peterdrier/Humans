@@ -465,7 +465,7 @@ internal sealed class ProfileEmailsController(
     [HttpGet("{id:guid}/Admin/Emails")]
     public async Task<IActionResult> AdminEmails(Guid id, CancellationToken ct)
     {
-        var authz = await authorizationService.AuthorizeAsync(User, id, UserEmailOperations.Edit);
+        var authz = await authorizationService.AuthorizeAsync(User, id, UserEmailOperations.View);
         if (!authz.Succeeded)
             return Forbid();
 

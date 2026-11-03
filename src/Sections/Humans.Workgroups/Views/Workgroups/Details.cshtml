@@ -18,9 +18,9 @@
             if (e.Kind == WorkgroupLogKind.BudgetSet && !Model.CanSeeBudget) continue;
             yield return (e.OccurredOn, e, null);
         }
-        foreach (var m in w.Meetings.OrderBy(m => m.StartUtc))
+        foreach (var m in w.MeetingOccurrences(Model.Now).OrderBy(m => m.StartUtc))
         {
-            yield return (m.StartUtc.InUtc().Date, null, m);
+            yield return (Model.MeetingDate(m), null, m);
         }
     }
 }
@@ -445,7 +445,11 @@
                 @foreach (var entry in timeline)
                 {
                     var isMemberKind = entry.Log is not null && entry.Log.Kind is WorkgroupLogKind.Update
-                        or WorkgroupLogKind.Disclosure or WorkgroupLogKind.Note;
+                        or WorkgroupLogKind.Disclosure or WorkgroupLogKind.Note or WorkgroupLogKind.MeetingNotes;
+                    // Legacy minutes belong to the stored first occurrence, not to every repeat.
+                    var minutes = entry.Meeting is { } occurrence
+                        && w.Meetings.Any(m => m.Id == occurrence.Id && m.StartUtc == occurrence.StartUtc)
+                        ? occurrence.Minutes : null;
                     <li class="list-group-item">
                         <div class="d-flex justify-content-between align-items-start gap-2">
                             <div>
@@ -471,7 +475,16 @@
                             </div>
                             @if (Model.CanDoMemberWork && entry.Meeting is not null)
                             {
-                                <a asp-action="EditMeeting" asp-route-slug="@w.Slug" asp-route-id="@entry.Meeting.Id" class="btn btn-sm btn-link">@SharedLocalizer["Common_Edit"]</a>
+                                <div class="d-flex gap-1 flex-shrink-0">
+                                    @if (entry.Meeting.StartUtc <= Model.Now)
+                                    {
+                                        <a asp-action="AddLogEntry" asp-route-slug="@w.Slug" asp-route-meetingId="@entry.Meeting.Id"
+                                           asp-route-on="@entry.Date.ToInvariantDate()" class="btn btn-sm btn-outline-primary">
+                                            <i class="fa-solid fa-plus me-1"></i>@Localizer["Workgroups_AddMeetingNotes"]
+                                        </a>
+                                    }
+                                    <a asp-action="EditMeeting" asp-route-slug="@w.Slug" asp-route-id="@entry.Meeting.Id" class="btn btn-sm btn-link">@SharedLocalizer["Common_Edit"]</a>
+                                </div>
                             }
                             else if (Model.CanDoMemberWork && isMemberKind && entry.Log is not null)
                             {
@@ -482,7 +495,7 @@
                         {
                             <div class="mt-1 small text-muted" style="white-space: pre-line;">@entry.Meeting.Description</div>
                         }
-                        @{ var body = entry.Meeting?.Minutes ?? entry.Log?.Body; }
+                        @{ var body = minutes ?? entry.Log?.Body; }
                         @if (!string.IsNullOrWhiteSpace(body))
                         {
                             <div class="mt-1">@Html.SanitizedMarkdown(body)</div>

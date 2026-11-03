@@ -80,6 +80,20 @@ public sealed class CalendarEventFormTests
         times.RecurrenceTimezone.Should().Be(zone);
     }
 
+    [HumansFact]
+    public void An_invalid_rule_is_a_field_error()
+    {
+        var form = Timed("UTC", new LocalTime(10, 0), new LocalTime(11, 0));
+        form.IsRecurring = true;
+        form.RecurrenceRule = "FREQ=FORTNIGHTLY";
+        var modelState = new ModelStateDictionary();
+
+        CalendarEventForm.Resolve(form, modelState, Localizer).Should().BeNull();
+
+        modelState[nameof(ICalendarEventForm.RecurrenceRule)]!.Errors.Should().ContainSingle()
+            .Which.ErrorMessage.Should().Be("Calendar_InvalidTimedRecurrence");
+    }
+
     private static Form Timed(string zone, LocalTime start, LocalTime end) => new()
     {
         StartDate = new LocalDate(2026, 6, 2),

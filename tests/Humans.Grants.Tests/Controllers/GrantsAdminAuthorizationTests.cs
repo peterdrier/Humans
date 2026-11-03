@@ -1,6 +1,6 @@
 using System.Reflection;
 using AwesomeAssertions;
-using Humans.Base.Authorization;
+using Humans.Grants.Contracts;
 using Humans.Grants.Authorization;
 using Humans.Grants.Controllers;
 using Microsoft.AspNetCore.Authorization;
@@ -9,9 +9,9 @@ using Microsoft.AspNetCore.Mvc;
 namespace Humans.Grants.Tests.Controllers;
 
 /// <summary>
-/// Pins each data-modifying admin action to its own policy: program administration is Board or
-/// Admin (a program manager is denied by the attribute, not by a body check), grant actions name
-/// the manage policy and keep the per-program resource check.
+/// Pins each data-modifying admin action to its own policy: program administration is Grants Admin or
+/// Admin (a program manager and Board are denied by the attribute, not by a body check), grant actions
+/// name the program-pages policy and keep the per-program resource check.
 /// </summary>
 public sealed class GrantsAdminAuthorizationTests
 {
@@ -32,18 +32,18 @@ public sealed class GrantsAdminAuthorizationTests
     }
 
     [HumansFact]
-    public void ProgramAdministration_RequiresBoardOrAdmin()
+    public void ProgramAdministration_RequiresGrantsManage()
     {
-        AssertPolicy(nameof(GrantsAdminController.New), PolicyNames.BoardOrAdmin, overloads: 2);
-        AssertPolicy(nameof(GrantsAdminController.Edit), PolicyNames.BoardOrAdmin, overloads: 2);
+        AssertPolicy(nameof(GrantsAdminController.New), GrantsPolicies.Manage, overloads: 2);
+        AssertPolicy(nameof(GrantsAdminController.Edit), GrantsPolicies.Manage, overloads: 2);
     }
 
     [HumansFact]
-    public void GrantActions_RequireTheManagePolicy()
+    public void GrantActions_RequireTheProgramPagesPolicy()
     {
-        AssertPolicy(nameof(GrantsAdminController.Issue), GrantsPolicies.Manage, overloads: 1);
-        AssertPolicy(nameof(GrantsAdminController.Revoke), GrantsPolicies.Manage, overloads: 1);
-        AssertPolicy(nameof(GrantsAdminController.Resend), GrantsPolicies.Manage, overloads: 1);
+        AssertPolicy(nameof(GrantsAdminController.Issue), GrantProgramsPolicy.Name, overloads: 1);
+        AssertPolicy(nameof(GrantsAdminController.Revoke), GrantProgramsPolicy.Name, overloads: 1);
+        AssertPolicy(nameof(GrantsAdminController.Resend), GrantProgramsPolicy.Name, overloads: 1);
     }
 
     [HumansFact]

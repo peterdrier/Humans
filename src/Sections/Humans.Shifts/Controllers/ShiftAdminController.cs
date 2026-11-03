@@ -41,7 +41,9 @@ internal sealed class ShiftAdminController(
             slug,
             async (resolvedTeam, resolvedUser) =>
                 await CanManageDepartmentAsync(resolvedUser, resolvedTeam, ct)
-                || await CanApproveDepartmentAsync(resolvedUser, resolvedTeam, ct), ct);
+                || await CanApproveDepartmentAsync(resolvedUser, resolvedTeam, ct)
+                // Board reads every department's rotas with both flags off.
+                || (await AuthorizationService.AuthorizeAsync(User, ShiftsPolicies.Read)).Succeeded, ct);
         if (teamError is not null) return teamError;
 
         var canManage = await CanManageDepartmentAsync(user, team, ct);

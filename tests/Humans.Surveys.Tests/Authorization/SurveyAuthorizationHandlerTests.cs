@@ -12,7 +12,7 @@ namespace Humans.Surveys.Tests.Authorization;
 /// <summary>
 /// Unit tests for <see cref="SurveyAuthorizationHandler"/> — the self-service approval gate's
 /// per-survey ownership check. Direct GET/POST-by-id denial for a
-/// non-owner, non-Board/Admin Human is the load-bearing case here.
+/// non-owner without a survey-wide role is the load-bearing case here.
 /// </summary>
 public sealed class SurveyAuthorizationHandlerTests
 {
@@ -42,12 +42,15 @@ public sealed class SurveyAuthorizationHandlerTests
         result.Should().BeFalse();
     }
 
-    [HumansFact]
-    public async Task BoardOrAdmin_can_edit_any_survey_regardless_of_status()
+    [HumansTheory]
+    [Xunit.InlineData(SurveysRoles.SurveysAdmin, true)]
+    [Xunit.InlineData(RoleNames.Admin, true)]
+    [Xunit.InlineData(RoleNames.Board, false)]
+    public async Task Surveys_admins_edit_any_survey_regardless_of_status_and_Board_does_not(string role, bool expected)
     {
         var result = await EvaluateAsync(
-            CreateUserWithRole(RoleNames.Board), Detail(SurveyStatus.PendingApproval, AuthorId), SurveyOperation.Edit);
-        result.Should().BeTrue();
+            CreateUserWithRole(role), Detail(SurveyStatus.PendingApproval, AuthorId), SurveyOperation.Edit);
+        result.Should().Be(expected);
     }
 
     [HumansFact]
@@ -65,9 +68,9 @@ public sealed class SurveyAuthorizationHandlerTests
     }
 
     [HumansFact]
-    public async Task BoardOrAdmin_cannot_submit_someone_elses_draft()
+    public async Task Admin_cannot_submit_someone_elses_draft()
     {
-        // Submit is author-only, regardless of any Board/Admin role also held.
+        // Submit is author-only, regardless of any role also held.
         var result = await EvaluateAsync(
             CreateUserWithRole(RoleNames.Admin), Detail(SurveyStatus.Draft, AuthorId), SurveyOperation.Submit);
         result.Should().BeFalse();
@@ -101,12 +104,35 @@ public sealed class SurveyAuthorizationHandlerTests
         result.Should().BeFalse();
     }
 
-    [HumansFact]
-    public async Task BoardOrAdmin_can_view_results_for_any_survey_at_any_status()
+    [HumansTheory]
+    [Xunit.InlineData(SurveysRoles.SurveysAdmin)]
+    [Xunit.InlineData(RoleNames.Admin)]
+    [Xunit.InlineData(RoleNames.Board)]
+    public async Task Readers_view_results_for_any_survey_at_any_status(string role)
     {
         var result = await EvaluateAsync(
-            CreateUserWithRole(RoleNames.Admin), Detail(SurveyStatus.Open, AuthorId), SurveyOperation.ViewResults);
+            CreateUserWithRole(role), Detail(SurveyStatus.Open, AuthorId), SurveyOperation.ViewResults);
         result.Should().BeTrue();
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(SurveysRoles.SurveysAdmin, true)]
+    [Xunit.InlineData(RoleNames.Admin, true)]
+    [Xunit.InlineData(RoleNames.Board, false)]
+    public async Task Only_surveys_admins_download_someone_elses_results(string role, bool expected)
+    {
+        var result = await EvaluateAsync(
+            CreateUserWithRole(role), Detail(SurveyStatus.Closed, AuthorId), SurveyOperation.ExportResults);
+        result.Should().Be(expected);
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(SurveyStatus.Closed, true)]
+    [Xunit.InlineData(SurveyStatus.Open, false)]
+    public async Task Author_downloads_their_own_results_once_closed(SurveyStatus status, bool expected)
+    {
+        var result = await EvaluateAsync(CreateUser(AuthorId), Detail(status, AuthorId), SurveyOperation.ExportResults);
+        result.Should().Be(expected);
     }
 
     [HumansFact]
@@ -124,7 +150,7 @@ public sealed class SurveyAuthorizationHandlerTests
     }
 
     [HumansFact]
-    public async Task BoardOrAdmin_can_preview_any_survey()
+    public async Task Board_can_preview_any_survey()
     {
         var result = await EvaluateAsync(
             CreateUserWithRole(RoleNames.Board), Detail(SurveyStatus.Draft, AuthorId), SurveyOperation.Preview);

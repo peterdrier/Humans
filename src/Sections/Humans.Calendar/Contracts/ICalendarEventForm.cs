@@ -101,7 +101,14 @@ public static class CalendarEventForm
 
         var rule = form.SupportsRecurrence && form.IsRecurring && !string.IsNullOrWhiteSpace(form.RecurrenceRule)
             ? form.RecurrenceRule.Trim() : null;
-        return form.SupportsAllDay && form.IsAllDay
+        var allDay = form.SupportsAllDay && form.IsAllDay;
+        if (!CalendarRecurrence.IsValidRule(rule))
+        {
+            modelState.AddModelError(nameof(ICalendarEventForm.RecurrenceRule),
+                localizer[allDay ? "Calendar_InvalidAllDayRecurrence" : "Calendar_InvalidTimedRecurrence"]);
+            return null;
+        }
+        return allDay && form.IsAllDay
             ? ResolveAllDay(form, modelState, localizer, rule)
             : ResolveTimed(form, modelState, localizer, rule);
     }

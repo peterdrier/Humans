@@ -8,6 +8,9 @@
     // Manual verify is AdminOnly server-side; hide it from HumanAdmin/Board rather than 403.
     var canManuallyVerify = Model.IsAdminContext
         && (await AuthService.AuthorizeAsync(User, PolicyNames.AdminOnly)).Succeeded;
+    // Board reads another member's emails but changes nothing.
+    var canEdit = !Model.IsAdminContext
+        || (await AuthService.AuthorizeAsync(User, Humans.Users.Contracts.UsersPolicies.Manage)).Succeeded;
 }
 
 <div class="row">
@@ -160,7 +163,7 @@
                                     {
                                         <span class="d-inline-flex align-items-center">
                                             <i class="fa-solid fa-circle-check text-success me-1" aria-label="@Localizer["Users_EmailGrid_Primary"]"></i>
-                                            @if (showClearPrimary)
+                                            @if (showClearPrimary && canEdit)
                                             {
                                                 <form asp-action="@(Model.IsAdminContext ? "AdminClearPrimary" : "ClearPrimary")"
                                                       asp-route-id="@(Model.IsAdminContext ? Model.TargetUserId : (Guid?)null)"
@@ -175,6 +178,10 @@
                                                 </form>
                                             }
                                         </span>
+                                    }
+                                    else if (!primaryDisabled && !canEdit)
+                                    {
+                                        <span class="text-muted small">—</span>
                                     }
                                     else if (!primaryDisabled)
                                     {
@@ -209,7 +216,8 @@
                                               method="post" class="d-inline">
                                             @Html.AntiForgeryToken()
                                             <input type="hidden" name="emailId" value="@row.Id" />
-                                            <select name="visibility" class="form-select form-select-sm js-auto-submit" style="width: auto; display: inline-block;">
+                                            <select name="visibility" class="form-select form-select-sm js-auto-submit" style="width: auto; display: inline-block;"
+                                                    disabled="@(canEdit ? null : "disabled")">
                                                 <option value="" selected="@(row.Visibility == null ? "selected" : null)">@Localizer["Users_Emails_Visibility_Hidden"]</option>
                                                 <option value="AllActiveProfiles" selected="@(row.Visibility == ContactFieldVisibility.AllActiveProfiles ? "selected" : null)">@Localizer["Users_Emails_Visibility_AllHumans"]</option>
                                                 <option value="MyTeams" selected="@(row.Visibility == ContactFieldVisibility.MyTeams ? "selected" : null)">@Localizer["Users_Emails_Visibility_MyTeams"]</option>
@@ -238,7 +246,7 @@
                                         </form>
                                     }
                                     @* No destructive action on the last remaining email row *@
-                                    @if (Model.Emails.Count > 1)
+                                    @if (Model.Emails.Count > 1 && canEdit)
                                     {
                                         @if (!string.IsNullOrEmpty(row.Provider))
                                         {
@@ -454,83 +462,89 @@
             </div>
 
             @* Admin recovery: insert verified UserEmail without verification email *@
-            <div class="card mb-4 border-danger" id="admin-add-verified">
-                <div class="card-header bg-danger text-white">
-                    <h5 class="mb-0"><i class="fa-solid fa-user-shield me-1"></i>Add verified email directly <small class="ms-2 opacity-75">(Admin only)</small></h5>
-                    <small class="text-white-50">Inserts a verified <code>user_emails</code> row with no verification flow. Use to restore a row deleted in error.</small>
+            @if (canManuallyVerify)
+            {
+                <div class="card mb-4 border-danger" id="admin-add-verified">
+                    <div class="card-header bg-danger text-white">
+                        <h5 class="mb-0"><i class="fa-solid fa-user-shield me-1"></i>Add verified email directly <small class="ms-2 opacity-75">(Admin only)</small></h5>
+                        <small class="text-white-50">Inserts a verified <code>user_emails</code> row with no verification flow. Use to restore a row deleted in error.</small>
+                    </div>
+                    <div class="card-body">
+                        <form asp-action="AdminAddVerifiedEmail"
+                              asp-route-id="@Model.TargetUserId"
+                              method="post"
+                              data-confirm="Insert a verified user_emails row for this address? No verification email will be sent.">
+                            @Html.AntiForgeryToken()
+                            <div class="mb-3">
+                                <label class="form-label" for="admin-add-verified-email-input">Email address</label>
+                                <input id="admin-add-verified-email-input" class="form-control" type="email" name="email"
+                                       placeholder="you@example.com" required />
+                            </div>
+                            <button type="submit" class="btn btn-danger" @(Model.CanAddEmail ? "" : "disabled")>
+                                <i class="fa-solid fa-plus me-1"></i>Insert verified row
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            }
+        }
+
+        @if (canEdit)
+        {
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">@Localizer["Users_Emails_AddNew"]</h5>
                 </div>
                 <div class="card-body">
-                    <form asp-action="AdminAddVerifiedEmail"
-                          asp-route-id="@Model.TargetUserId"
-                          method="post"
-                          data-confirm="Insert a verified user_emails row for this address? No verification email will be sent.">
-                        @Html.AntiForgeryToken()
-                        <div class="mb-3">
-                            <label class="form-label" for="admin-add-verified-email-input">Email address</label>
-                            <input id="admin-add-verified-email-input" class="form-control" type="email" name="email"
-                                   placeholder="you@example.com" required />
+                    @if (!Model.IsAdminContext)
+                    {
+                        <div class="alert alert-info d-flex align-items-start mb-3">
+                            <i class="fa-solid fa-circle-info me-2 fs-4"></i>
+                            <div>
+                                <strong>@Localizer["Users_Emails_MergeWarningTitle"]</strong>
+                                <div>@Localizer["Users_Emails_MergeWarningBody"]</div>
+                            </div>
                         </div>
-                        <button type="submit" class="btn btn-danger" @(Model.CanAddEmail ? "" : "disabled")>
-                            <i class="fa-solid fa-plus me-1"></i>Insert verified row
+                    }
+                    <form asp-action="@(Model.IsAdminContext ? "AdminAddEmail" : "AddEmail")"
+                          asp-route-id="@(Model.IsAdminContext ? Model.TargetUserId : (Guid?)null)"
+                          method="post">
+                        <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+
+                        <div class="mb-3">
+                            <label asp-for="NewEmail" class="form-label"></label>
+                            @if (Model.IsAdminContext)
+                            {
+                                <input class="form-control" type="email" name="email"
+                                       placeholder="you@example.com" required />
+                            }
+                            else
+                            {
+                                <input asp-for="NewEmail" class="form-control" type="email"
+                                       placeholder="you@example.com" />
+                                <span asp-validation-for="NewEmail" class="text-danger"></span>
+                            }
+                            <div class="form-text">
+                                @Localizer["Users_Emails_VerificationWillBeSent"]
+                            </div>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary"
+                                @(Model.CanAddEmail ? "" : "disabled")>
+                            <i class="fa-solid fa-paper-plane me-1"></i>
+                            @Localizer["Users_Emails_SendVerification"]
                         </button>
+
+                        @if (!Model.IsAdminContext && !Model.CanAddEmail)
+                        {
+                            <small class="text-muted ms-2">
+                                @string.Format(Localizer["Users_Emails_ResendCooldown"].Value, Model.MinutesUntilResend)
+                            </small>
+                        }
                     </form>
                 </div>
             </div>
         }
-
-        <div class="card mb-4">
-            <div class="card-header">
-                <h5 class="mb-0">@Localizer["Users_Emails_AddNew"]</h5>
-            </div>
-            <div class="card-body">
-                @if (!Model.IsAdminContext)
-                {
-                    <div class="alert alert-info d-flex align-items-start mb-3">
-                        <i class="fa-solid fa-circle-info me-2 fs-4"></i>
-                        <div>
-                            <strong>@Localizer["Users_Emails_MergeWarningTitle"]</strong>
-                            <div>@Localizer["Users_Emails_MergeWarningBody"]</div>
-                        </div>
-                    </div>
-                }
-                <form asp-action="@(Model.IsAdminContext ? "AdminAddEmail" : "AddEmail")"
-                      asp-route-id="@(Model.IsAdminContext ? Model.TargetUserId : (Guid?)null)"
-                      method="post">
-                    <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
-
-                    <div class="mb-3">
-                        <label asp-for="NewEmail" class="form-label"></label>
-                        @if (Model.IsAdminContext)
-                        {
-                            <input class="form-control" type="email" name="email"
-                                   placeholder="you@example.com" required />
-                        }
-                        else
-                        {
-                            <input asp-for="NewEmail" class="form-control" type="email"
-                                   placeholder="you@example.com" />
-                            <span asp-validation-for="NewEmail" class="text-danger"></span>
-                        }
-                        <div class="form-text">
-                            @Localizer["Users_Emails_VerificationWillBeSent"]
-                        </div>
-                    </div>
-
-                    <button type="submit" class="btn btn-primary"
-                            @(Model.CanAddEmail ? "" : "disabled")>
-                        <i class="fa-solid fa-paper-plane me-1"></i>
-                        @Localizer["Users_Emails_SendVerification"]
-                    </button>
-
-                    @if (!Model.IsAdminContext && !Model.CanAddEmail)
-                    {
-                        <small class="text-muted ms-2">
-                            @string.Format(Localizer["Users_Emails_ResendCooldown"].Value, Model.MinutesUntilResend)
-                        </small>
-                    }
-                </form>
-            </div>
-        </div>
 
         @if (!Model.IsAdminContext)
         {

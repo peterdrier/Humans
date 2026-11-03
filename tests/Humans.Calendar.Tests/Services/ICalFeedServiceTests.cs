@@ -219,6 +219,23 @@ public class ICalFeedServiceTests
     }
 
     [HumansFact]
+    public async Task GetFeedIcsAsync_RepeatingItem_IsOneSeriesInItsOwnZone()
+    {
+        var userId = Guid.NewGuid();
+        var token = Guid.NewGuid();
+        StubUser(userId, icalToken: token);
+        var start = Instant.FromUtc(2026, 6, 2, 17, 0);
+        var item = MakeItem("wg@humans.nobodies.team", "Workgroups", start) with { RecurrenceRule = "FREQ=WEEKLY;COUNT=3", RecurrenceTimezone = "Europe/Madrid" };
+        var service = CreateService(new FakeContributor(item));
+
+        var ics = await service.GetFeedIcsAsync(userId, token, TestContext.Current.CancellationToken);
+
+        ics.Should().Contain("DTSTART;TZID=Europe/Madrid:20260602T190000");
+        ics.Should().Contain("RRULE:FREQ=WEEKLY;COUNT=3");
+        Ical.Net.Calendar.Load(ics)!.Events.Should().ContainSingle();
+    }
+
+    [HumansFact]
     public async Task GetFeedIcsAsync_NoItems_StillValidCalendar()
     {
         var userId = Guid.NewGuid();
