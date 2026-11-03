@@ -47,9 +47,9 @@ public sealed class ProgramViewTests
         var now = Instant.FromUtc(2027, 3, 1, 12, 0);
         var programId = Guid.NewGuid();
         var grant = new GrantInfo(Guid.NewGuid(), programId, "Program", "Entitlement", 2027,
-            Guid.NewGuid(), null, null, null, now, issuer, null, now, revoker, "Reason");
+            Guid.NewGuid(), null, null, now, issuer, null, now, revoker, "Reason");
         var program = new ProgramInfo(programId, "Program", "Entitlement", null, 2027, Guid.NewGuid(), "Event",
-            GrantIssuer.Managers, null, null, GrantProgramStatus.Open, issuer, now, now,
+            GrantIssuer.Managers, null, null, GrantProgramStatus.Open,
             [first, second, missing], [grant]);
         object model = form ? ProgramFormViewModel.From(program) : new AdminProgramViewModel
         {

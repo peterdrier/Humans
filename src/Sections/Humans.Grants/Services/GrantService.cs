@@ -55,7 +55,7 @@ internal sealed partial class GrantService(
             p.Id, p.Name, p.Entitles, p.Description, evt?.Year ?? p.Year, evt?.Id ?? p.EventSettingsId,
             evt?.EventName ?? p.Year.ToString(CultureInfo.InvariantCulture),
             p.IssuedBy, p.SourceKey, p.GrantsExpireOn,
-            p.Status, p.CreatedByUserId, p.CreatedAt, p.UpdatedAt,
+            p.Status,
             p.Managers.Select(m => m.UserId).ToList(),
             p.Grants.Select(g => ToInfo(g, p, evt)).ToList());
     }
@@ -65,7 +65,7 @@ internal sealed partial class GrantService(
 
     /// <summary>The year comes from the event, which a gate-opening change can move to another year.</summary>
     private static GrantInfo ToInfo(Grant g, GrantProgram p, EventSettingsInfo? evt) => new(
-        g.Id, g.ProgramId, p.Name, p.Entitles, evt?.Year ?? p.Year, g.UserId, g.SourceRef, g.ExpiresOn,
+        g.Id, g.ProgramId, p.Name, p.Entitles, evt?.Year ?? p.Year, g.UserId, g.SourceRef,
         g.ExpiresOn ?? p.GrantsExpireOn, g.IssuedAt, g.IssuedByUserId, g.NotifiedAt, g.RevokedAt,
         g.RevokedByUserId, g.RevokeReason);
 

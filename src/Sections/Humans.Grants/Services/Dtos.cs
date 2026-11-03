@@ -27,9 +27,6 @@ internal sealed record ProgramInfo(
     string? SourceKey,
     LocalDate? GrantsExpireOn,
     GrantProgramStatus Status,
-    Guid CreatedByUserId,
-    Instant CreatedAt,
-    Instant UpdatedAt,
     IReadOnlyList<Guid> ManagerUserIds,
     IReadOnlyList<GrantInfo> Grants)
 {
@@ -46,7 +43,6 @@ internal sealed record GrantInfo(
     int Year,
     Guid UserId,
     string? SourceRef,
-    LocalDate? OwnExpiresOn,
     LocalDate? ExpiresOn,
     Instant IssuedAt,
     Guid IssuedByUserId,
