@@ -273,6 +273,75 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
     }
 
     [HumansTheory]
+    [InlineData("create")]
+    [InlineData("withdraw")]
+    [InlineData("vote")]
+    [InlineData("approve")]
+    [InlineData("reject")]
+    public async Task ApplicationMutations_CancelAccountLookupBeforeChangingRows(string action)
+    {
+        using var request = new CancellationTokenSource();
+        var actorId = Guid.NewGuid();
+        var create = string.Equals(action, "create", StringComparison.Ordinal);
+        var app = create ? null : await SeedSubmittedApplicationAsync(actorId);
+        _userService.GetUserInfoAsync(actorId, Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+            return new ValueTask<UserInfo?>(UserInfo.Create(new User { Id = actorId }, [], [], null));
+        });
+        var http = new DefaultHttpContext
+        {
+            RequestAborted = request.Token,
+            User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, actorId.ToString())], "test"))
+        };
+        var shared = Substitute.For<IStringLocalizer<SharedResource>>();
+        shared[Arg.Any<string>()].Returns(call => new LocalizedString(call.Arg<string>(), call.Arg<string>()));
+        var localizer = Substitute.For<IStringLocalizer<GovernanceResource>>();
+        localizer[Arg.Any<string>()].Returns(call => new LocalizedString(call.Arg<string>(), call.Arg<string>()));
+        var applications = new GovernanceApplicationsController(_service, _userService, shared,
+            NullLogger<GovernanceApplicationsController>.Instance, Clock)
+        {
+            ControllerContext = new ControllerContext { HttpContext = http },
+            TempData = new TempDataDictionary(http, Substitute.For<ITempDataProvider>()),
+            Url = Substitute.For<IUrlHelper>()
+        };
+        var board = new GovernanceBoardVotingController(_userService, _service,
+            NullLogger<GovernanceBoardVotingController>.Instance, localizer)
+        {
+            ControllerContext = new ControllerContext { HttpContext = http },
+            TempData = applications.TempData,
+            Url = applications.Url
+        };
+        await request.CancelAsync();
+        Func<Task<IActionResult>> run = () => action switch
+        {
+            "create" => applications.Create(new ApplicationCreateViewModel
+            {
+                ConfirmAccuracy = true, MembershipTier = MembershipTier.Colaborador,
+                Motivation = ValidMotivation
+            }),
+            "withdraw" => applications.Withdraw(app!.Id),
+            "vote" => board.Vote(app!.Id, VoteChoice.Yay, null),
+            _ => board.Finalize(new BoardVotingFinalizeModel
+            {
+                ApplicationId = app!.Id, Approved = string.Equals(action, "approve", StringComparison.Ordinal),
+                DecisionNote = "Board decision", BoardMeetingDate = "2026-03-01"
+            })
+        };
+        await run.Should().ThrowAsync<OperationCanceledException>();
+
+        await _userService.Received(1).GetUserInfoAsync(actorId, request.Token);
+        await using var stored = await GovernanceDbFactory.CreateDbContextAsync(TestContext.Current.CancellationToken);
+        var rows = await stored.Applications.ToListAsync(TestContext.Current.CancellationToken);
+        if (create) rows.Should().BeEmpty();
+        else rows.Should().ContainSingle().Which.Status.Should().Be(ApplicationStatus.Submitted);
+        (await stored.BoardVotes.CountAsync(TestContext.Current.CancellationToken)).Should().Be(0);
+        AuditLog.ReceivedCalls().Should().BeEmpty();
+        _emailService.ReceivedCalls().Should().BeEmpty();
+        _syncJob.ReceivedCalls().Should().BeEmpty();
+    }
+
+    [HumansTheory]
     [Xunit.InlineData("merged")]
     [Xunit.InlineData("missing")]
     [Xunit.InlineData("cancelled")]

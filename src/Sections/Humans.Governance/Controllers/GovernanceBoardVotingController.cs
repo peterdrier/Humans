@@ -113,7 +113,7 @@ internal sealed class GovernanceBoardVotingController(
     [Authorize(Policy = PolicyNames.BoardOnly)]
     public async Task<IActionResult> Vote(Guid applicationId, [BindRequired] VoteChoice vote, string? note)
     {
-        var currentUser = await GetCurrentUserInfoAsync();
+        var currentUser = await GetCurrentUserInfoAsync(HttpContext.RequestAborted);
         if (currentUser is null)
             return NotFound();
         if (!ModelState.IsValid)
@@ -156,7 +156,7 @@ internal sealed class GovernanceBoardVotingController(
     [Authorize(Policy = PolicyNames.AdminOnly)]
     public async Task<IActionResult> Finalize(BoardVotingFinalizeModel model)
     {
-        var currentUser = await GetCurrentUserInfoAsync();
+        var currentUser = await GetCurrentUserInfoAsync(HttpContext.RequestAborted);
         if (currentUser is null)
             return NotFound();
         if (!ModelState.IsValid)

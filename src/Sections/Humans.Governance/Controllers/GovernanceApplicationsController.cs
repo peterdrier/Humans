@@ -101,7 +101,7 @@ internal sealed class GovernanceApplicationsController(
             return View("~/Views/Governance/Applications/Create.cshtml", model);
         }
 
-        var user = await GetCurrentUserInfoAsync();
+        var user = await GetCurrentUserInfoAsync(HttpContext.RequestAborted);
         if (user is null)
             return NotFound();
 
@@ -201,7 +201,7 @@ internal sealed class GovernanceApplicationsController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Withdraw(Guid id)
     {
-        var user = await GetCurrentUserInfoAsync();
+        var user = await GetCurrentUserInfoAsync(HttpContext.RequestAborted);
         if (user is null)
             return NotFound();
 
