@@ -14,6 +14,9 @@ internal sealed class WorkgroupMeeting
 
     public Instant EndUtc { get; set; }
 
+    /// <summary>What the meeting is for, written before it; <see cref="Minutes"/> are the notes after.</summary>
+    public string? Description { get; set; }
+
     public string? Location { get; set; }
 
     public string? LocationUrl { get; set; }

@@ -18,47 +18,9 @@
         <form method="post" asp-action="SaveMeeting" asp-route-slug="@Model.Slug" id="meeting-form">
             <input type="hidden" asp-for="Id" />
             <input type="hidden" asp-for="Slug" />
-            <input type="hidden" asp-for="StartUtc" id="StartUtc" />
-            <input type="hidden" asp-for="EndUtc" id="EndUtc" />
             <div asp-validation-summary="ModelOnly" class="text-danger"></div>
 
-            <div class="mb-3">
-                <label asp-for="Title" class="form-label">@Localizer["Workgroups_Field_MeetingTitle"]</label>
-                <input asp-for="Title" class="form-control" maxlength="200" />
-                <span asp-validation-for="Title" class="text-danger"></span>
-            </div>
-
-            <div class="row g-3 mb-3">
-                <div class="col-6 col-md-3">
-                    <label class="form-label">@Localizer["Workgroups_Field_StartDate"]</label>
-                    <input type="date" class="form-control" id="startDate" value="@Model.StartUtc.ToDateTimeUtc().ToInvariantDate()" required />
-                </div>
-                <div class="col-6 col-md-3">
-                    <label class="form-label">@Localizer["Workgroups_Field_StartTime"]</label>
-                    <input type="time" class="form-control" id="startTime" value="@Model.StartUtc.ToDateTimeUtc().ToInvariantTime()" required />
-                </div>
-                <div class="col-6 col-md-3">
-                    <label class="form-label">@Localizer["Workgroups_Field_EndDate"]</label>
-                    <input type="date" class="form-control" id="endDate" value="@Model.EndUtc.ToDateTimeUtc().ToInvariantDate()" required />
-                </div>
-                <div class="col-6 col-md-3">
-                    <label class="form-label">@Localizer["Workgroups_Field_EndTime"]</label>
-                    <input type="time" class="form-control" id="endTime" value="@Model.EndUtc.ToDateTimeUtc().ToInvariantTime()" required />
-                </div>
-            </div>
-            <div class="form-text mb-3">@Localizer["Workgroups_Field_TimesAreUtc"]</div>
-
-            <div class="row g-3 mb-3">
-                <div class="col-md-6">
-                    <label asp-for="Location" class="form-label">@Localizer["Workgroups_Field_Location"]</label>
-                    <input asp-for="Location" class="form-control" maxlength="200" />
-                </div>
-                <div class="col-md-6">
-                    <label asp-for="LocationUrl" class="form-label">@Localizer["Workgroups_Field_LocationUrl"]</label>
-                    <input asp-for="LocationUrl" class="form-control" maxlength="2000" placeholder="https://…" />
-                    <span asp-validation-for="LocationUrl" class="text-danger"></span>
-                </div>
-            </div>
+            <partial name="_CalendarEventForm" model="Model" />
 
             <div class="form-check mb-3">
                 <input asp-for="IsPublic" class="form-check-input" />
@@ -84,17 +46,3 @@
         }
     </div>
 </div>
-
-@section Scripts {
-    <script>
-        (function () {
-            var form = document.getElementById('meeting-form');
-            form.addEventListener('submit', function () {
-                var start = document.getElementById('startDate').value + 'T' + document.getElementById('startTime').value + ':00Z';
-                var end = document.getElementById('endDate').value + 'T' + document.getElementById('endTime').value + ':00Z';
-                document.getElementById('StartUtc').value = start;
-                document.getElementById('EndUtc').value = end;
-            });
-        })();
-    </script>
-}

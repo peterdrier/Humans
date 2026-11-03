@@ -238,14 +238,7 @@
   <!-- Meeting form -->
   <data name="Workgroups_MeetingNewTitle" xml:space="preserve"><value>Nouvelle réunion</value></data>
   <data name="Workgroups_MeetingEditTitle" xml:space="preserve"><value>Modifier la réunion</value></data>
-  <data name="Workgroups_Field_MeetingTitle" xml:space="preserve"><value>Titre</value></data>
-  <data name="Workgroups_Field_StartDate" xml:space="preserve"><value>Date de début</value></data>
-  <data name="Workgroups_Field_StartTime" xml:space="preserve"><value>Heure de début</value></data>
-  <data name="Workgroups_Field_EndDate" xml:space="preserve"><value>Date de fin</value></data>
-  <data name="Workgroups_Field_EndTime" xml:space="preserve"><value>Heure de fin</value></data>
   <data name="Workgroups_Field_TimesAreUtc" xml:space="preserve"><value>Les heures sont en UTC.</value></data>
-  <data name="Workgroups_Field_Location" xml:space="preserve"><value>Lieu</value></data>
-  <data name="Workgroups_Field_LocationUrl" xml:space="preserve"><value>URL du lieu</value></data>
   <data name="Workgroups_Field_IsPublic" xml:space="preserve"><value>Afficher dans le calendrier communautaire</value></data>
   <data name="Workgroups_Field_IsPublicHelp" xml:space="preserve"><value>Toute personne ayant accès à l'application peut consulter la réunion et son compte rendu sur la page du groupe. Cette option affiche aussi la réunion dans le calendrier communautaire.</value></data>
   <data name="Workgroups_Field_Minutes" xml:space="preserve"><value>Compte rendu</value></data>

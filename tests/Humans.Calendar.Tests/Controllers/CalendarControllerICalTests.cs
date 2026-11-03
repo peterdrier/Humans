@@ -85,10 +85,12 @@ public class CalendarControllerICalTests
             ["Title"] = "Updated",
             ["OwningTeamId"] = teamId.ToString(),
             ["IsAllDay"] = "false",
-            ["StartLocal"] = "2026-06-02T10:00:00",
-            ["EndLocal"] = "2026-06-02T11:00:00",
+            ["StartDate"] = "2026-06-02",
+            ["StartTime"] = "10:00",
+            ["EndDate"] = "2026-06-02",
+            ["EndTime"] = "11:00",
             ["RecurrenceRule"] = "FREQ=WEEKLY",
-            ["RecurrenceTimezone"] = "UTC"
+            ["TimeZoneId"] = "UTC"
         };
         if (choice is not null) fields["IsRecurring"] = choice;
         var registrations = new ServiceCollection().AddLogging();
@@ -170,18 +172,29 @@ public class CalendarControllerICalTests
             fields["RecurrenceRule"] = allDay ? "FREQ=DAILY" : "FREQ=WEEKLY";
         }
         else if (spoofAllDay) fields["IsAllDay"] = "true";
-        var prefix = action == 2 ? "Override" : "";
-        if (allDay)
+        // The occurrence override keeps its own field names; the event form uses the shared calendar form's.
+        var zoneField = action == 2 ? "RecurrenceTimezone" : "TimeZoneId";
+        if (action == 2 && allDay)
         {
-            fields[prefix + "StartDateLocal"] = "2026-06-02";
-            fields[prefix + "EndDateLocal"] = "2026-06-02";
+            fields["OverrideStartDateLocal"] = "2026-06-02";
+            fields["OverrideEndDateLocal"] = "2026-06-02";
+        }
+        else if (action == 2)
+        {
+            fields["OverrideStartLocal"] = "2026-06-02T10:00:00";
+            fields["OverrideEndLocal"] = "2026-06-02T11:00:00";
         }
         else
         {
-            fields[prefix + "StartLocal"] = "2026-06-02T10:00:00";
-            fields[prefix + "EndLocal"] = "2026-06-02T11:00:00";
+            fields["StartDate"] = "2026-06-02";
+            fields["EndDate"] = "2026-06-02";
+            if (!allDay)
+            {
+                fields["StartTime"] = "10:00";
+                fields["EndTime"] = "11:00";
+            }
         }
-        if (postedZone) fields["RecurrenceTimezone"] = "UTC";
+        if (postedZone) fields[zoneField] = "UTC";
         var registrations = new ServiceCollection().AddLogging();
         registrations.AddControllers();
         using var services = registrations.BuildServiceProvider();
@@ -214,7 +227,7 @@ public class CalendarControllerICalTests
         {
             _calendar.ReceivedCalls().Should().BeEmpty();
             result.Should().BeOfType<ViewResult>();
-            controller.ModelState["RecurrenceTimezone"]!.Errors.Should().ContainSingle();
+            controller.ModelState[zoneField]!.Errors.Should().ContainSingle();
         }
         else
         {
@@ -267,9 +280,11 @@ public class CalendarControllerICalTests
         {
             Title = "Updated",
             OwningTeamId = teamId,
-            StartLocal = new DateTime(2026, 6, 2, 10, 0, 0),
-            EndLocal = new DateTime(2026, 6, 2, 11, 0, 0),
-            RecurrenceTimezone = "UTC"
+            StartDate = new DateOnly(2026, 6, 2),
+            StartTime = new TimeOnly(10, 0),
+            EndDate = new DateOnly(2026, 6, 2),
+            EndTime = new TimeOnly(11, 0),
+            TimeZoneId = "UTC"
         };
         var ct = Xunit.TestContext.Current.CancellationToken;
 
@@ -377,9 +392,9 @@ public class CalendarControllerICalTests
             Title = "Last day",
             OwningTeamId = teamId,
             IsAllDay = true,
-            StartDateLocal = new DateTime(9999, 12, string.Equals(endKind, "blank", StringComparison.Ordinal) ? 31 : 30),
-            EndDateLocal = string.Equals(endKind, "blank", StringComparison.Ordinal) ? null
-                : new DateTime(9999, 12, string.Equals(endKind, "valid", StringComparison.Ordinal) ? 30 : 31)
+            StartDate = new DateOnly(9999, 12, string.Equals(endKind, "blank", StringComparison.Ordinal) ? 31 : 30),
+            EndDate = string.Equals(endKind, "blank", StringComparison.Ordinal) ? null
+                : new DateOnly(9999, 12, string.Equals(endKind, "valid", StringComparison.Ordinal) ? 30 : 31)
         };
         var controller = CreateController();
         var ct = Xunit.TestContext.Current.CancellationToken;
@@ -396,7 +411,7 @@ public class CalendarControllerICalTests
         else
         {
             result.Should().BeOfType<ViewResult>().Which.Model.Should().BeSameAs(form);
-            controller.ModelState[nameof(form.EndDateLocal)]!.Errors.Should().ContainSingle()
+            controller.ModelState[nameof(form.EndDate)]!.Errors.Should().ContainSingle()
                 .Which.ErrorMessage.Should().Be("Calendar_InvalidAllDayEvent");
             _calendar.ReceivedCalls().Should().BeEmpty();
         }
@@ -560,9 +575,10 @@ public class CalendarControllerICalTests
 
         var model = result.Should().BeOfType<ViewResult>()
             .Which.Model.Should().BeOfType<CalendarEventFormViewModel>().Subject;
-        model.StartLocal.Should().Be(new DateTime(2026, 6, 2, 19, 0, 0));
-        model.EndDateLocal.Should().Be(new DateTime(2026, 6, 2));
-        model.RecurrenceTimezone.Should().Be("Asia/Tokyo");
+        model.StartDate.Should().Be(new DateOnly(2026, 6, 2));
+        model.StartTime.Should().Be(new TimeOnly(19, 0));
+        model.EndDate.Should().Be(new DateOnly(2026, 6, 2));
+        model.TimeZoneId.Should().Be("Asia/Tokyo");
     }
 
     [HumansFact]
@@ -579,8 +595,9 @@ public class CalendarControllerICalTests
 
         var model = result.Should().BeOfType<ViewResult>()
             .Which.Model.Should().BeOfType<CalendarEventFormViewModel>().Subject;
-        model.StartLocal.Should().Be(new DateTime(2026, 6, 1, 19, 0, 0));
-        model.RecurrenceTimezone.Should().Be("Asia/Tokyo");
+        model.StartDate.Should().Be(new DateOnly(2026, 6, 1));
+        model.StartTime.Should().Be(new TimeOnly(19, 0));
+        model.TimeZoneId.Should().Be("Asia/Tokyo");
     }
 
     [HumansTheory]

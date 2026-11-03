@@ -58,7 +58,8 @@ internal sealed record WorkgroupMeetingInfo(
     string? Minutes,
     Guid? CreatedByUserId,
     Instant CreatedAt,
-    Instant UpdatedAt);
+    Instant UpdatedAt,
+    string? Description = null);
 
 internal sealed record WorkgroupLogEntryInfo(
     Guid Id,
@@ -137,7 +138,8 @@ internal sealed record WorkgroupMeetingSave(
     string? Location,
     string? LocationUrl,
     bool IsPublic,
-    string? Minutes);
+    string? Minutes,
+    string? Description = null);
 
 /// <summary><paramref name="Kind"/> must be a member kind: Update, Disclosure, StatusRequested or Note.</summary>
 internal sealed record WorkgroupLogEntrySave(
