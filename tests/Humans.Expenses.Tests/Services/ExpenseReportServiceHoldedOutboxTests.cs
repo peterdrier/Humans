@@ -84,7 +84,7 @@ public class ExpenseReportServiceHoldedOutboxTests
                 Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<Instant>(), Arg.Any<CancellationToken>())
             .Returns(true);
 
-        _budgetService.GetCategoryByIdAsync(CategoryId)
+        _budgetService.GetCategoryByIdAsync(CategoryId, Arg.Any<CancellationToken>())
             .Returns(_category);
 
         var submitter = new User { Id = SubmitterId, DisplayName = "Alice Smith" };

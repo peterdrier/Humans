@@ -2184,7 +2184,7 @@ public sealed partial class ExpenseReportServiceTests
         var oldYearId = Guid.NewGuid();
         var oldCategoryId = Guid.NewGuid();
         const int oldAccountNumber = 62900102;
-        _budgetService.GetCategoryByIdAsync(oldCategoryId)
+        _budgetService.GetCategoryByIdAsync(oldCategoryId, Arg.Any<CancellationToken>())
             .Returns(MakeCategorySnapshot(oldCategoryId, null, "Last Year Category", null, oldYearId));
         StubExpenseAccounts((oldCategoryId, oldAccountNumber, "acc-old"));
         await SeedReportWithStatusAsync(reportId, member, oldCategoryId, oldYearId,
@@ -2592,7 +2592,7 @@ public sealed partial class ExpenseReportServiceTests
             ExpenseReportStatus.Submitted);
 
         var nonCoordinator = Guid.NewGuid();
-        _budgetService.GetCategoryByIdAsync(category.Id).Returns(category);
+        _budgetService.GetCategoryByIdAsync(category.Id, Arg.Any<CancellationToken>()).Returns(category);
         _teamService.IsUserCoordinatorOfTeamAsync(category.TeamId!.Value, nonCoordinator,
             Arg.Any<CancellationToken>()).Returns(false);
 
@@ -2685,7 +2685,7 @@ public sealed partial class ExpenseReportServiceTests
         await SeedReportWithStatusAsync(reportId, Guid.NewGuid(), category.Id, Guid.NewGuid(),
             ExpenseReportStatus.Submitted);
         var nonCoordinator = Guid.NewGuid();
-        _budgetService.GetCategoryByIdAsync(category.Id).Returns(category);
+        _budgetService.GetCategoryByIdAsync(category.Id, Arg.Any<CancellationToken>()).Returns(category);
         _teamService.IsUserCoordinatorOfTeamAsync(category.TeamId!.Value, nonCoordinator,
             Arg.Any<CancellationToken>()).Returns(false);
 
@@ -2745,7 +2745,7 @@ public sealed partial class ExpenseReportServiceTests
         await SeedReportWithStatusAsync(reportId, Guid.NewGuid(), category.Id, Guid.NewGuid(),
             ExpenseReportStatus.Submitted);
         var nonCoordinator = Guid.NewGuid();
-        _budgetService.GetCategoryByIdAsync(category.Id).Returns(category);
+        _budgetService.GetCategoryByIdAsync(category.Id, Arg.Any<CancellationToken>()).Returns(category);
         _teamService.IsUserCoordinatorOfTeamAsync(category.TeamId!.Value, nonCoordinator,
             Arg.Any<CancellationToken>()).Returns(false);
 
@@ -3186,6 +3186,53 @@ public sealed partial class ExpenseReportServiceTests
             : () => _sut.GetCoordinatorQueueAsync(userId, request.Token);
 
         await read.Should().ThrowAsync<OperationCanceledException>();
+    }
+
+    [HumansTheory]
+    [InlineData("Draft")]
+    [InlineData("PinnedYear")]
+    [InlineData("Reviewer")]
+    public async Task BudgetValidation_StopsAtTheReadWhenCancelled(string boundary)
+    {
+        var (year, category) = SetupActiveYear();
+        var actor = Guid.NewGuid();
+        var reportId = Guid.NewGuid();
+        await SeedReportWithStatusAsync(reportId, actor, category.Id, year.Id,
+            ExpenseReportStatus.Submitted);
+        using var request = new CancellationTokenSource();
+        var observed = CancellationToken.None;
+        void Abandon(CancellationToken ct)
+        {
+            observed = ct;
+            request.Cancel();
+            ct.ThrowIfCancellationRequested();
+        }
+        if (string.Equals(boundary, "Draft", StringComparison.Ordinal))
+            _budgetService.GetActiveYearAsync(Arg.Any<CancellationToken>()).Returns(call =>
+            {
+                Abandon(call.Arg<CancellationToken>());
+                return year;
+            });
+        else
+            _budgetService.GetCategoryByIdAsync(category.Id, Arg.Any<CancellationToken>()).Returns(call =>
+            {
+                Abandon(call.Arg<CancellationToken>());
+                return category;
+            });
+
+        Func<Task> mutate = boundary switch
+        {
+            "Draft" => () => _sut.CreateDraftAsync(actor, actor, CategoryAccountNumber, null, ct: request.Token),
+            "PinnedYear" => () => _sut.UpdateDraftWithResultAsync(reportId, actor, true,
+                CategoryAccountNumber, "changed", ct: request.Token),
+            _ => () => _sut.CoordinatorEndorseWithResultAsync(reportId, actor, false, null, request.Token),
+        };
+        await mutate.Should().ThrowAsync<OperationCanceledException>();
+        observed.Should().Be(request.Token);
+        var unchanged = await _sut.GetAsync(reportId, TestContext.Current.CancellationToken);
+        unchanged!.Status.Should().Be(ExpenseReportStatus.Submitted);
+        unchanged.Note.Should().NotBe("changed");
+        AuditLog.ReceivedCalls().Should().BeEmpty();
     }
 
     [HumansFact]
@@ -3779,7 +3826,7 @@ public sealed partial class ExpenseReportServiceTests
             .Returns(WrapInUserInfo(userId, UserFixtures.Profile(
                 burnerName: "Meri", firstName: "Maria", lastName: "Garcia")));
         _finance.GetIbanAsync(userId, Arg.Any<CancellationToken>()).Returns("ES9121000418450200051332");
-        _budgetService.GetCategoryByIdAsync(category.Id).Returns(
+        _budgetService.GetCategoryByIdAsync(category.Id, Arg.Any<CancellationToken>()).Returns(
             MakeCategorySnapshot(category.Id, teamId: null, "Test Category"));
         _holdedFinanceWrite.EnsureCreditorContactAsync(
                 Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<string?>(),
@@ -3844,7 +3891,7 @@ public sealed partial class ExpenseReportServiceTests
                 firstName: "Maria",
                 lastName: "Garcia")));
         _finance.GetIbanAsync(userId, Arg.Any<CancellationToken>()).Returns("ES9121000418450200051332");
-        _budgetService.GetCategoryByIdAsync(category.Id).Returns(
+        _budgetService.GetCategoryByIdAsync(category.Id, Arg.Any<CancellationToken>()).Returns(
             MakeCategorySnapshot(category.Id, teamId: null, "Test Category"));
         _holdedFinanceWrite.EnsureCreditorContactAsync(
                 Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<string?>(),
@@ -3922,7 +3969,7 @@ public sealed partial class ExpenseReportServiceTests
                 ExpenseReportService.AttachmentKey(line.Attachment!.Id, line.Attachment.Extension),
                 Arg.Any<CancellationToken>())
             .Returns(new byte[] { 1, 2, 3 });
-        _budgetService.GetCategoryByIdAsync(category.Id).Returns(
+        _budgetService.GetCategoryByIdAsync(category.Id, Arg.Any<CancellationToken>()).Returns(
             MakeCategorySnapshot(category.Id, teamId: null, "Test Category"));
 
         await _backgroundProcessor.DrainHoldedOutboxAsync(100, TestContext.Current.CancellationToken);
@@ -3989,7 +4036,7 @@ public sealed partial class ExpenseReportServiceTests
             .Returns(new byte[] { 1, 2, 3 });
 
         // Also set up category for DrainHoldedOutboxAsync (it re-fetches)
-        _budgetService.GetCategoryByIdAsync(category.Id).Returns(
+        _budgetService.GetCategoryByIdAsync(category.Id, Arg.Any<CancellationToken>()).Returns(
             MakeCategorySnapshot(category.Id, teamId: null, "Test Category"));
 
         await _backgroundProcessor.DrainHoldedOutboxAsync(100, TestContext.Current.CancellationToken);
@@ -4079,7 +4126,7 @@ public sealed partial class ExpenseReportServiceTests
 
         _budgetService.GetActiveYearAsync(Arg.Any<CancellationToken>()).Returns(yearDetail);
         _budgetService.GetYearByIdAsync(yearId).Returns(yearDetail);
-        _budgetService.GetCategoryByIdAsync(categoryId).Returns(category);
+        _budgetService.GetCategoryByIdAsync(categoryId, Arg.Any<CancellationToken>()).Returns(category);
         StubExpenseAccounts((categoryId, CategoryAccountNumber, CategoryAccountId));
 
         return (yearDetail, category);
@@ -4166,7 +4213,7 @@ public sealed partial class ExpenseReportServiceTests
 
     private void SetupCoordinatorAuthz(Guid categoryId, Guid teamId, Guid coordinatorUserId)
     {
-        _budgetService.GetCategoryByIdAsync(categoryId)
+        _budgetService.GetCategoryByIdAsync(categoryId, Arg.Any<CancellationToken>())
             .Returns(MakeCategorySnapshot(categoryId, teamId));
         _teamService.IsUserCoordinatorOfTeamAsync(teamId, coordinatorUserId,
             Arg.Any<CancellationToken>()).Returns(true);

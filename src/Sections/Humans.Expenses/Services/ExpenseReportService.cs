@@ -1561,7 +1561,7 @@ internal sealed class ExpenseReportService(
 
         if (pinnedYearId is { } pinned)
         {
-            var snapshot = await budgetService.GetCategoryByIdAsync(mapRow.BudgetCategoryId);
+            var snapshot = await budgetService.GetCategoryByIdAsync(mapRow.BudgetCategoryId, ct);
             if (snapshot is null)
                 return (null, ExpenseMutationResult.Failure("Expenses_Validation_CategoryNotFound"));
             if (snapshot.BudgetGroup?.BudgetYearId != pinned)
@@ -1569,7 +1569,7 @@ internal sealed class ExpenseReportService(
             return (new ExpenseBooking(account.AccountNum, account.AccountId, snapshot.Id, pinned), null);
         }
 
-        var activeYear = await budgetService.GetActiveYearAsync()
+        var activeYear = await budgetService.GetActiveYearAsync(ct)
             ?? throw new InvalidOperationException("No active budget year.");
         var inActiveYear = activeYear.Groups.SelectMany(g => g.Categories).Any(c => c.Id == mapRow.BudgetCategoryId);
         if (!inActiveYear)
@@ -1597,7 +1597,7 @@ internal sealed class ExpenseReportService(
         var categoryId = report.BudgetCategoryId;
         if (categoryId is null)
             return ExpenseMutationResult.OperatorFailure("Report is not booked to a budget category; there is no coordinator to endorse it.");
-        var category = await budgetService.GetCategoryByIdAsync(categoryId.Value);
+        var category = await budgetService.GetCategoryByIdAsync(categoryId.Value, ct);
         if (category is null)
             throw new InvalidOperationException("Budget category not found.");
         if (!category.TeamId.HasValue)
