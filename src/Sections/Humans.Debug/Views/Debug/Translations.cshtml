@@ -9,18 +9,9 @@
     </a>
 </page-header>
 
-<div class="alert alert-info">
-    <i class="fa-solid fa-circle-info me-1"></i>
-    Every key of every resource set (<code>SharedResource</code> and each section's own
-    <code>&lt;Section&gt;Resource</code>) in every supported culture, enumerated through the real
-    localizer — a new key can't hide from this audit. A <span class="badge bg-warning text-dark">—</span>
-    cell means the key is missing from that language file (the app falls back to English there).
-    Coordinator/admin-only key families are intentionally untranslated.
-</div>
-
 <div class="d-flex flex-wrap gap-3 align-items-center mb-3">
     <strong>@Model.TotalKeys keys in @Model.Sets.Count resource sets</strong>
-    @foreach (var lang in Model.Sets[0].Gallery.Languages)
+    @foreach (var lang in Model.Languages)
     {
         var missing = Model.Sets.Sum(s => s.Gallery.MissingByLanguage[lang]);
         <span>
@@ -37,159 +28,92 @@
     }
 </div>
 
-<div class="d-flex flex-wrap gap-2 align-items-center mb-3">
-    <input type="search" id="loc-filter" class="form-control form-control-sm" style="max-width: 320px"
-           placeholder="Filter by key or text…" autocomplete="off" />
+<form method="get" class="d-flex flex-wrap gap-2 align-items-center mb-3">
+    <input type="search" name="q" value="@Model.Query" class="form-control form-control-sm" style="max-width: 320px"
+           placeholder="Search every set by key or text…" autocomplete="off" />
+    <select name="set" class="form-select form-select-sm" style="max-width: 260px" aria-label="Resource set"
+            onchange="this.form.q.value = ''; this.form.submit()">
+        @foreach (var set in Model.Sets)
+        {
+            var setMissing = set.Gallery.MissingByLanguage.Values.Sum();
+            <option value="@set.Name" selected="@string.Equals(set.Name, Model.SelectedSet, StringComparison.Ordinal)">
+                @set.Name (@set.Gallery.TotalKeys)@(setMissing > 0 ? $" · {setMissing} missing" : "")
+            </option>
+        }
+    </select>
     <div class="form-check form-check-inline mb-0">
-        <input class="form-check-input" type="checkbox" id="loc-missing-only" />
-        <label class="form-check-label" for="loc-missing-only">Only rows with missing translations</label>
+        <input class="form-check-input" type="checkbox" name="missing" value="true" id="loc-missing-only"
+               checked="@Model.MissingOnly" onchange="this.form.submit()" />
+        <label class="form-check-label" for="loc-missing-only">Only missing</label>
     </div>
-</div>
-
-<nav class="d-flex flex-wrap gap-1 mb-4" aria-label="Resource sets">
-    @foreach (var set in Model.Sets)
+    <button type="submit" class="btn btn-primary btn-sm">Search</button>
+    @if (Model.IsSearch)
     {
-        var setMissing = set.Gallery.MissingByLanguage.Values.Sum();
-        <a class="btn btn-outline-primary btn-sm" href="#loc-set-@set.Name">
-            @set.Name <span class="text-muted">(@set.Gallery.TotalKeys)</span>
-            @if (setMissing > 0)
-            {
-                <span class="badge bg-warning text-dark ms-1">@setMissing</span>
-            }
-        </a>
+        <a asp-action="Translations" asp-route-set="@Model.SelectedSet" class="btn btn-link btn-sm">Clear search</a>
     }
-</nav>
+</form>
 
-@foreach (var set in Model.Sets)
+<h2 class="h5 mb-2">
+    @(Model.IsSearch ? $"Results for “{Model.Query}”" : Model.SelectedSet)
+    <small class="text-muted">— @Model.Rows.Count @(Model.Rows.Count == 1 ? "key" : "keys")</small>
+</h2>
+
+@if (!Model.IsSearch && Model.Selected.Gallery.OrphanKeysByLanguage.Any(kv => kv.Value.Count > 0))
 {
-    var gallery = set.Gallery;
-    <section class="loc-set mt-5" id="loc-set-@set.Name">
-        <h2 class="h4 border-bottom pb-1">
-            @set.Name
-            <small class="text-muted">— @gallery.TotalKeys @(gallery.TotalKeys == 1 ? "key" : "keys")</small>
-        </h2>
-
-        <div class="d-flex flex-wrap gap-3 align-items-center mb-2">
-            @foreach (var lang in gallery.Languages)
+    <div class="alert alert-warning">
+        <strong>Orphan keys</strong> — present in a language file but no longer in the English resx; safe to delete:
+        <ul class="mb-0">
+            @foreach (var (lang, keys) in Model.Selected.Gallery.OrphanKeysByLanguage.Where(kv => kv.Value.Count > 0))
             {
-                var missing = gallery.MissingByLanguage[lang];
-                <span>
-                    <code>@lang</code>
-                    @if (missing == 0)
-                    {
-                        <span class="badge bg-success">complete</span>
-                    }
-                    else
-                    {
-                        <span class="badge bg-warning text-dark">@missing missing</span>
-                    }
-                </span>
+                <li><code>@lang</code>: @string.Join(", ", keys)</li>
             }
-        </div>
-
-        <nav class="d-flex flex-wrap gap-1 mb-3" aria-label="@set.Name key prefix groups">
-            @foreach (var group in gallery.Groups)
-            {
-                var groupMissing = group.MissingByLanguage.Values.Sum();
-                <a class="btn btn-outline-secondary btn-sm" href="#loc-group-@set.Name-@group.Prefix">
-                    @group.Prefix <span class="text-muted">(@group.Rows.Count)</span>
-                    @if (groupMissing > 0)
-                    {
-                        <span class="badge bg-warning text-dark ms-1">@groupMissing</span>
-                    }
-                </a>
-            }
-        </nav>
-
-        @if (gallery.OrphanKeysByLanguage.Any(kv => kv.Value.Count > 0))
-        {
-            <div class="alert alert-warning">
-                <strong>Orphan keys</strong> — present in a language file but no longer in the English resx; safe to delete:
-                <ul class="mb-0">
-                    @foreach (var (lang, keys) in gallery.OrphanKeysByLanguage.Where(kv => kv.Value.Count > 0))
-                    {
-                        <li><code>@lang</code>: @string.Join(", ", keys)</li>
-                    }
-                </ul>
-            </div>
-        }
-
-        @foreach (var group in gallery.Groups)
-        {
-            <h3 class="h6 mt-4" id="loc-group-@set.Name-@group.Prefix">
-                @group.Prefix
-                <small class="text-muted">— @group.Rows.Count @(group.Rows.Count == 1 ? "key" : "keys")</small>
-            </h3>
-            <div class="table-responsive">
-                <table class="table table-sm table-striped align-middle small loc-table">
-                    <thead>
-                        <tr>
-                            <th style="min-width: 16rem">Key</th>
-                            <th>en</th>
-                            @foreach (var lang in gallery.Languages)
-                            {
-                                <th>@lang</th>
-                            }
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach (var row in group.Rows)
-                        {
-                            var hasMissing = row.Values.Values.Any(v => v is null);
-                            <tr data-loc-missing="@(hasMissing ? "1" : "0")">
-                                <td><code>@row.Key</code></td>
-                                <td>@row.English</td>
-                                @foreach (var lang in gallery.Languages)
-                                {
-                                    var value = row.Values[lang];
-                                    @if (value is null)
-                                    {
-                                        <td class="table-warning text-center">—</td>
-                                    }
-                                    else
-                                    {
-                                        <td>@value</td>
-                                    }
-                                }
-                            </tr>
-                        }
-                    </tbody>
-                </table>
-            </div>
-        }
-    </section>
+        </ul>
+    </div>
 }
 
-@section Scripts {
-    <script>
-        (function () {
-            const filter = document.getElementById('loc-filter');
-            const missingOnly = document.getElementById('loc-missing-only');
-            const rows = Array.from(document.querySelectorAll('.loc-table tbody tr'));
-
-            function apply() {
-                const needle = filter.value.trim().toLowerCase();
-                const onlyMissing = missingOnly.checked;
-                for (const row of rows) {
-                    const matchesText = needle === '' || row.textContent.toLowerCase().includes(needle);
-                    const matchesMissing = !onlyMissing || row.dataset.locMissing === '1';
-                    row.classList.toggle('d-none', !(matchesText && matchesMissing));
+@if (Model.Rows.Count > 0)
+{
+    <div class="table-responsive">
+        <table class="table table-sm table-striped align-middle small">
+            <thead>
+                <tr>
+                    @if (Model.IsSearch)
+                    {
+                        <th>Set</th>
+                    }
+                    <th style="min-width: 16rem">Key</th>
+                    <th>en</th>
+                    @foreach (var lang in Model.Languages)
+                    {
+                        <th>@lang</th>
+                    }
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var hit in Model.Rows)
+                {
+                    <tr>
+                        @if (Model.IsSearch)
+                        {
+                            <td><a asp-action="Translations" asp-route-set="@hit.Set">@hit.Set</a></td>
+                        }
+                        <td><code>@hit.Row.Key</code></td>
+                        <td>@hit.Row.English</td>
+                        @foreach (var lang in Model.Languages)
+                        {
+                            var value = hit.Row.Values[lang];
+                            @if (value is null)
+                            {
+                                <td class="table-warning text-center" title="Missing: falls back to English">—</td>
+                            }
+                            else
+                            {
+                                <td>@value</td>
+                            }
+                        }
+                    </tr>
                 }
-                for (const table of document.querySelectorAll('.loc-table')) {
-                    const wrapper = table.closest('.table-responsive');
-                    const heading = wrapper.previousElementSibling;
-                    const anyVisible = Array.from(table.tBodies[0].rows).some(r => !r.classList.contains('d-none'));
-                    wrapper.classList.toggle('d-none', !anyVisible);
-                    heading.classList.toggle('d-none', !anyVisible);
-                }
-                for (const set of document.querySelectorAll('.loc-set')) {
-                    const anyVisible = Array.from(set.querySelectorAll('.loc-table tbody tr')).some(r => !r.classList.contains('d-none'));
-                    set.classList.toggle('d-none', !anyVisible);
-                }
-            }
-
-            filter.addEventListener('input', apply);
-            missingOnly.addEventListener('change', apply);
-        })();
-    </script>
+            </tbody>
+        </table>
+    </div>
 }

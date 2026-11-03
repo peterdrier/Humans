@@ -20,11 +20,19 @@ public class TranslationsPageModelBuilderTests
     private static readonly IStringLocalizerFactory Factory = new ResourceManagerStringLocalizerFactory(
         Options.Create(new LocalizationOptions()), NullLoggerFactory.Instance);
 
-    private static TranslationsPageViewModel Build(params SectionInfo[] sections)
+    private static readonly SectionInfo[] CampsAndShifts =
+    [
+        new("Camps", IsActive: true) { ResourceType = typeof(CampsResource) },
+        new("Shifts", IsActive: true) { ResourceType = typeof(ShiftsResource) },
+    ];
+
+    private static TranslationsPageViewModel Build(params SectionInfo[] sections) => Build(sections, null, null);
+
+    private static TranslationsPageViewModel Build(SectionInfo[] sections, string? set, string? query)
     {
         var catalog = Substitute.For<ISectionCatalog>();
         catalog.Sections.Returns(sections);
-        return TranslationsPageModelBuilder.Build(Factory.Create(typeof(SharedResource)), Factory, catalog);
+        return TranslationsPageModelBuilder.Build(Factory.Create(typeof(SharedResource)), Factory, catalog, set, query);
     }
 
     [HumansFact]
@@ -49,5 +57,26 @@ public class TranslationsPageModelBuilderTests
 
         model.TotalKeys.Should().Be(model.Sets.Sum(s => s.Gallery.TotalKeys));
         model.TotalKeys.Should().BeGreaterThan(model.Sets[0].Gallery.TotalKeys);
+    }
+
+    [HumansFact]
+    public void Without_a_search_only_the_chosen_set_is_listed_and_an_unknown_set_falls_back_to_Shared()
+    {
+        var camps = Build(CampsAndShifts, "camps", null);
+        camps.SelectedSet.Should().Be("Camps");
+        camps.Rows.Should().HaveCount(camps.Selected.Gallery.TotalKeys).And.OnlyContain(h => string.Equals(h.Set, "Camps", StringComparison.Ordinal));
+
+        Build(CampsAndShifts, "NoSuchSet", null).SelectedSet.Should().Be(TranslationsPageModelBuilder.SharedName);
+    }
+
+    [HumansFact]
+    public void A_search_spans_every_set_whatever_set_is_chosen()
+    {
+        var shiftsKey = Build(CampsAndShifts).Sets.Single(s => string.Equals(s.Name, "Shifts", StringComparison.Ordinal)).Gallery.Groups[0].Rows[0].Key;
+
+        var model = Build(CampsAndShifts, "Camps", shiftsKey.ToLowerInvariant());
+
+        model.IsSearch.Should().BeTrue();
+        model.Rows.Should().Contain(h => string.Equals(h.Set, "Shifts", StringComparison.Ordinal) && string.Equals(h.Row.Key, shiftsKey, StringComparison.Ordinal));
     }
 }
