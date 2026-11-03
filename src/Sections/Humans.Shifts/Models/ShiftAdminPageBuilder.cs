@@ -54,7 +54,6 @@ internal sealed class ShiftAdminPageBuilder(
             CanApproveSignups = request.CanApprove,
             VolunteerProfiles = profileDict,
             Users = userLookup,
-            CanViewMedical = request.CanViewMedical,
             StaffingData = staffingSnapshot.StaffingData.ToList(),
             StaffingHours = staffingSnapshot.StaffingHours.ToList(),
             Now = request.Now,

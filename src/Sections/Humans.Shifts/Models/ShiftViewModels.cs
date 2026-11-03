@@ -168,7 +168,6 @@ internal sealed class ShiftBrowseViewModel
     /// <summary>Independent of the current filters, so the option list stays stable as the viewer filters.</summary>
     public List<DayFilterOption> DayOptions { get; set; } = [];
 
-    public bool ShowFullShifts { get; set; }
     public Guid UserId { get; set; }
     public HashSet<Guid> UserSignupShiftIds { get; set; } = [];
     public Dictionary<Guid, SignupStatus> UserSignupStatuses { get; set; } = new();
@@ -300,7 +299,6 @@ internal sealed class ShiftAdminViewModel
     /// <summary>Keyed by UserId for every signup on the page; views read this, never <c>ShiftSignup.User</c>.</summary>
     public IReadOnlyDictionary<Guid, UserInfo> Users { get; set; } = new Dictionary<Guid, UserInfo>();
 
-    public bool CanViewMedical { get; set; }
     public List<DailyStaffingData> StaffingData { get; set; } = [];
     public List<DailyStaffingHours> StaffingHours { get; set; } = [];
     public Instant Now { get; set; }

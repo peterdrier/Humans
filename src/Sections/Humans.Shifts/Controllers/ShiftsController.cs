@@ -39,7 +39,7 @@ internal sealed class ShiftsController(
     private readonly IUserService _userService = userService;
 
     [HttpGet("")]
-    public async Task<IActionResult> Index(Guid? departmentId, string? fromDate, string? toDate, string? period, string? day = null, bool showFull = false, [FromQuery(Name = "tags")] List<Guid>? tagIds = null, string? sort = null, [FromQuery(Name = "periods")] List<string>? periods = null)
+    public async Task<IActionResult> Index(Guid? departmentId, string? fromDate, string? toDate, string? period, string? day = null, [FromQuery(Name = "tags")] List<Guid>? tagIds = null, string? sort = null, [FromQuery(Name = "periods")] List<string>? periods = null)
     {
         var (currentUserNotFound, user) = await ResolveCurrentUserOrChallengeAsync(HttpContext.RequestAborted);
         if (currentUserNotFound is not null)
@@ -74,7 +74,6 @@ internal sealed class ShiftsController(
             toDate,
             period,
             day,
-            showFull,
             tagIds,
             sort,
             periods,
