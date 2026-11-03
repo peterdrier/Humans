@@ -7,12 +7,14 @@ using Humans.Preapprovals.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Users.Contracts;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 
 namespace Humans.Expenses.Authorization;
 
 /// <summary>Deny by default: only explicit Succeed paths grant access.</summary>
 internal sealed class ExpenseReportAuthorizationHandler(
-    IBudgetService budgetService, ITeamService teamService, IUserService userService, IPreapprovalService preapprovals)
+    IBudgetService budgetService, ITeamService teamService, IUserService userService, IPreapprovalService preapprovals,
+    IHttpContextAccessor httpContextAccessor)
     : AuthorizationHandler<ExpenseReportOperationRequirement, ExpenseReportDto>
 {
     protected override async Task HandleRequirementAsync(
@@ -53,8 +55,9 @@ internal sealed class ExpenseReportAuthorizationHandler(
             return;
         }
 
+        var ct = httpContextAccessor.HttpContext?.RequestAborted ?? CancellationToken.None;
         var isSubmitter = resource.SubmitterUserId == userId
-            || (await userService.GetUserInfoAsync(userId))?.AllUserIds.Contains(resource.SubmitterUserId) == true;
+            || (await userService.GetUserInfoAsync(userId, ct))?.AllUserIds.Contains(resource.SubmitterUserId) == true;
         if (isSubmitter)
         {
             if (op == ExpenseReportOperation.View)
@@ -93,7 +96,7 @@ internal sealed class ExpenseReportAuthorizationHandler(
                 or ExpenseReportOperation.DeclineLine
                 or ExpenseReportOperation.View)
             && (op == ExpenseReportOperation.View || resource.Status == ExpenseReportStatus.Submitted)
-            && await IsFirstReviewerAsync(userId, resource))
+            && await IsFirstReviewerAsync(userId, resource, ct))
         {
             context.Succeed(requirement);
         }
@@ -103,17 +106,17 @@ internal sealed class ExpenseReportAuthorizationHandler(
     /// The category's coordinator, or for a pre-approved report (which has no category) a manager of the grant's
     /// program.
     /// </summary>
-    private async Task<bool> IsFirstReviewerAsync(Guid userId, ExpenseReportDto report)
+    private async Task<bool> IsFirstReviewerAsync(Guid userId, ExpenseReportDto report, CancellationToken ct)
     {
         if (report.PreapprovalGrantId is { } grantId)
-            return (await preapprovals.ListManagedGrantIdsAsync(userId, CancellationToken.None)).Contains(grantId);
+            return (await preapprovals.ListManagedGrantIdsAsync(userId, ct)).Contains(grantId);
 
         // No budget category (an account outside the budget) means no coordinator route at all.
         if (report.BudgetCategoryId is not { } categoryId) return false;
-        var category = await budgetService.GetCategoryByIdAsync(categoryId);
+        var category = await budgetService.GetCategoryByIdAsync(categoryId, ct);
         if (category?.TeamId is null)
             return false;
 
-        return await teamService.IsUserCoordinatorOfTeamAsync(category.TeamId.Value, userId);
+        return await teamService.IsUserCoordinatorOfTeamAsync(category.TeamId.Value, userId, ct);
     }
 }
