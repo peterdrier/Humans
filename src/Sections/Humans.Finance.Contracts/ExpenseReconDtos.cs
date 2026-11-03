@@ -7,7 +7,7 @@ namespace Humans.Finance.Contracts;
 /// member's creditor account explained line by line. Built from local data only; <see cref="Year"/> narrows lines and
 /// orphans, never members, whose ledgers are all-time.
 /// </summary>
-/// <remarks><paramref name="UnavailableReason"/> is set, and the lists are empty, when a mirror has never synced, so
+/// <remarks><paramref name="UnavailableReason"/> is set, and the lists are empty, when the ledger mirror has never synced, so
 /// nothing can be judged.</remarks>
 public sealed record ExpenseReconReport(
     int? Year,
@@ -46,7 +46,7 @@ public enum ExpenseReconLineStatus
     /// <summary>A purchase line on the member's account carries the line's description and amount.</summary>
     Booked,
     /// <summary>No ledger line yet and nothing has gone wrong: the push is queued or retrying, or it landed after
-    /// the mirror's last sync. Not a problem.</summary>
+    /// the ledger mirror's last sweep. Not a problem.</summary>
     Pending,
     /// <summary>Approved, but no purchase line on the member's account carries it: see
     /// <see cref="ExpenseReconLine.PushState"/>.</summary>

@@ -327,19 +327,15 @@ internal sealed class Service(
     }
 
     /// <summary>The expense lines against the ledger mirror, with SEPA rows. The one non-mirror read is the cached
-    /// contact list, which says which account each bound contact is on, as on /Finance/Creditors.</summary>
+    /// contact list, which says which account each bound contact is on, as on /Finance/Creditors. The document mirror
+    /// is not read.</summary>
     public async Task<ExpenseReconReport> GetExpenseReconAsync(int? year, CancellationToken ct = default)
     {
-        // The document mirror's last sync stands in for "Holded last looked": a push settled after it is Pending.
-        var state = await repo.GetOrCreateDocSyncStateAsync(ct);
-        if (state.LastSyncAt is not { } syncedAt)
-            return ExpenseRecon.Unavailable(year, "The Holded document mirror has never synced.");
+        // A push settled after the last good sweep is Pending, not Missing.
+        if (await holded.GetLedgerSyncedAtAsync(ct) is not { } syncedAt)
+            return ExpenseRecon.Unavailable(year, "The Holded ledger mirror has never synced.");
 
         var balances = await holded.GetAccountBalancesAsync(ct);
-        // IHoldedService exposes no sync state; an empty ledger mirror is the never-synced case, and would show every
-        // line Missing.
-        if (balances.Count == 0)
-            return ExpenseRecon.Unavailable(year, "The Holded ledger mirror has never synced.");
 
         var expected = await expenses.GetHoldedReconLinesAsync(ct);
         var contacts = await ContactsByIdAsync(ct);
@@ -915,12 +911,7 @@ internal sealed class Service(
 
         // A refused seed cannot collide, so anything left is a pre-existing overlap on the member's own binding: not
         // this push's doing, but reported.
-        // The seed's number is its own contact's: paired with a different bound contact it records an account that
-        // contact is not on.
-        var accountNum = binding?.SupplierAccountNum
-                         ?? (seedContactId is null || string.Equals(contactId, seedContactId, StringComparison.Ordinal)
-                             ? seedAccountNum
-                             : null);
+        var accountNum = binding?.SupplierAccountNum ?? seedAccountNum;
         var conflict = FindConflictingBinding(allBindings, userId, accountNum, contactId);
         if (conflict is not null)
             LogBindingCollision(

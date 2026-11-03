@@ -119,10 +119,9 @@ existing `PayPurchaseDocumentAsync` / `ListPurchaseDocumentsAsync`. Journal rema
 through `IExpenseHoldedBookingService.GetHoldedBookingsAsync` (Expenses, DTOs only) and
 deletes through `IHoldedClient.DeletePurchaseDocumentAsync` / `DeleteContactAsync`.
 `GetExpenseReconAsync` (public, `IHoldedFinanceService`; `/Finance/ExpenseRecon`, the
-`/Finance/Creditors` banner, `ExpenseReconJob` and Backdoor) reads `HoldedDocSyncStates` (last
-sync time only), `HoldedCreditorContacts` and `SepaPayoutTransfers`, plus
-`IExpenseHoldedBookingService.GetHoldedReconLinesAsync`, `IHoldedService.GetAccountBalancesAsync` and
-`GetLedgerLinesAsync` (every creditor-range account), the cached `IHoldedClient.ListContactsAsync`
+`/Finance/Creditors` banner, `ExpenseReconJob` and Backdoor) reads `HoldedCreditorContacts` and `SepaPayoutTransfers`, plus
+`IExpenseHoldedBookingService.GetHoldedReconLinesAsync`, `IHoldedService.GetLedgerSyncedAtAsync`,
+`GetAccountBalancesAsync` and `GetLedgerLinesAsync` (every creditor-range account), the cached `IHoldedClient.ListContactsAsync`
 that `/Finance/Creditors` also reads (which account each bound contact is on), and
 `IUserService.GetUserInfosAsync`. **No write.**
 

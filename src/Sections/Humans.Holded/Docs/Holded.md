@@ -178,8 +178,11 @@ Audit entries stay with the calling section, which knows why it wrote.
 - Sweeps are serialized by a non-blocking in-process gate; a second caller is skipped and told
   so, never queued (single-server deployment).
 - Reads (`IHoldedService`: lines, balances, entry, purchase lines, open document amounts, sums by account,
-  chart) never call Holded, and nothing loads the whole ledger table: balances and sums are grouped
+  chart, last ledger sync) never call Holded, and nothing loads the whole ledger table: balances and sums are grouped
   in the database, statements load only their own entries. Amounts are Holded's raw sign.
+- `GetLedgerSyncedAtAsync` is the later `LastSyncAt` of the `Ledger` and `FullSync` states, stamped only
+  on success, so a failed sweep leaves the last good one. Finance's expense recon uses it to tell a push
+  the ledger has not swept yet (Pending) from one that is absent (Missing).
 - `GetOpenDocumentAmountsAsync` is Σ (credit − debit) over `purchase`, `purchaserefund` and `payment`
   lines per account: what documents leave open, not the balance (hand-booked entries and collections
   are left out).

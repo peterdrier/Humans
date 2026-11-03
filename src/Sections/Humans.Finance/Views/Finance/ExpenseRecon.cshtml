@@ -52,7 +52,7 @@
 {
     <div class="alert alert-warning">
         <i class="fa-solid fa-triangle-exclamation me-1"></i>@Model.UnavailableReason
-        Run the document sync from the <a asp-action="Holded" class="alert-link">Holded connector</a>.
+        Run the ledger sync from the <a href="/Holded" class="alert-link">Holded page</a>.
     </div>
     return;
 }
@@ -65,7 +65,7 @@
         <a asp-action="ExpenseRecon" asp-route-year="@y"
            class="btn btn-sm @(Model.Year == y ? "btn-secondary" : "btn-outline-secondary")">@y</a>
     }
-    <span class="ms-auto text-muted small">Document mirror synced @Model.MirrorSyncedAt?.ToInvariantTimestamp()</span>
+    <span class="ms-auto text-muted small">Ledger synced @Model.MirrorSyncedAt?.ToInvariantTimestamp()</span>
 </div>
 
 <div class="card mb-4">

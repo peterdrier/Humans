@@ -267,8 +267,7 @@ public class ExpenseReconTests
     {
         const int stored = 41000066;
         const int contacts = 41000065;
-        _repo.GetOrCreateDocSyncStateAsync(Arg.Any<CancellationToken>())
-            .Returns(new HoldedDocSyncState { LastSyncAt = SyncedAt });
+        _holded.GetLedgerSyncedAtAsync(Arg.Any<CancellationToken>()).Returns(SyncedAt);
         _expenses.GetHoldedReconLinesAsync(Arg.Any<CancellationToken>()).Returns([Line()]);
         _repo.GetCreditorContactsAsync(Arg.Any<CancellationToken>()).Returns(
             [new HoldedCreditorContact { UserId = Alice, HoldedContactId = "c-alice", SupplierAccountNum = stored }]);
@@ -289,9 +288,9 @@ public class ExpenseReconTests
     }
 
     [HumansFact]
-    public async Task GetExpenseRecon_MirrorNeverSynced_IsUnavailable()
+    public async Task GetExpenseRecon_LedgerNeverSynced_IsUnavailable()
     {
-        _repo.GetOrCreateDocSyncStateAsync(Arg.Any<CancellationToken>()).Returns(new HoldedDocSyncState());
+        _holded.GetLedgerSyncedAtAsync(Arg.Any<CancellationToken>()).Returns((Instant?)null);
 
         var report = await MakeService().GetExpenseReconAsync(2026, TestContext.Current.CancellationToken);
 
@@ -410,18 +409,6 @@ public class ExpenseReconTests
         await MakeService().SyncAsync(TestContext.Current.CancellationToken);
 
         await _client.Received(50).GetPurchaseDocumentAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
-    }
-
-    [HumansFact]
-    public async Task GetExpenseRecon_LedgerMirrorEmpty_IsUnavailable()
-    {
-        _repo.GetOrCreateDocSyncStateAsync(Arg.Any<CancellationToken>())
-            .Returns(new HoldedDocSyncState { LastSyncAt = SyncedAt });
-        _holded.GetAccountBalancesAsync(Arg.Any<CancellationToken>()).Returns(new Dictionary<int, decimal>());
-
-        var report = await MakeService().GetExpenseReconAsync(null, TestContext.Current.CancellationToken);
-
-        report.IsAvailable.Should().BeFalse();
     }
 
     private static HoldedExpenseDoc Written(IReadOnlyList<HoldedExpenseDoc>? written, string id) =>
