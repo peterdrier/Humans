@@ -104,18 +104,18 @@ public class ProfileTests
         profile.RejectedByUserId.Should().Be(adminId);
     }
 
-    [HumansTheory]
-    [InlineData(0)]
-    [InlineData(1)]
-    [InlineData(2)]
-    public void Profile_CanSetMembershipTier(int value)
+    [HumansFact]
+    public void Profile_CanSetMembershipTier()
     {
-        var profile = CreateProfile();
+        // A fact, not a theory: the enum is internal, so it can't be a public test parameter.
+        foreach (var tier in Enum.GetValues<LegacyMembershipTier>())
+        {
+            var profile = CreateProfile();
 
-        var tier = (LegacyMembershipTier)value;
-        profile.MembershipTier = tier;
+            profile.MembershipTier = tier;
 
-        profile.MembershipTier.Should().Be(tier);
+            profile.MembershipTier.Should().Be(tier);
+        }
     }
 
     private static Profile CreateProfile()

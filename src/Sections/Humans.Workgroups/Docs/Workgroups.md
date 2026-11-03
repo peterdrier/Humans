@@ -113,6 +113,7 @@ Unique filtered `(WorkgroupId, UserId)` where `LeftAt IS NULL`.
 | WorkgroupId | Guid | FK, Cascade |
 | Title | string(200) | |
 | StartUtc / EndUtc | Instant | |
+| Description | string(4000)? | What the meeting is for, written beforehand; shown on the group page and as the calendar entry's description (falls back to the deliverable) |
 | Location / LocationUrl | string(500)? / string(2000)? | |
 | IsPublic | bool | Adds the meeting to the community calendar; register visibility stays AppAccess |
 | Minutes | text? | Markdown, filled in afterwards |
@@ -125,8 +126,11 @@ predicate reads that column.
 
 Meeting URLs accept up to 2000 characters. The service validates the limit for creates
 and edits; form failures preserve the entered values and show a localized error.
-Meeting date/time inputs use the shared invariant formatters and remain UTC, with
-ISO dates and 24-hour times regardless of request culture.
+Meetings are created and edited through Calendar's shared form (`_CalendarEventForm`,
+`ICalendarEventForm`): date and time inputs plus a time zone chooser that defaults to the
+organisation zone (`ISettingsService.GetTimeZoneIdAsync`, Settings' `Event:TimeZoneId`). Times
+are read in the chosen zone and stored as UTC instants; the zone itself is not stored, so an
+edit reopens in the organisation zone. Meetings hide the form's all-day and recurrence parts.
 
 ### WorkgroupLogEntry — `workgroup_log_entries`
 

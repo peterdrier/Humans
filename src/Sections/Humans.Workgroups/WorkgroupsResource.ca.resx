@@ -238,14 +238,7 @@
   <!-- Meeting form -->
   <data name="Workgroups_MeetingNewTitle" xml:space="preserve"><value>Nova reunió</value></data>
   <data name="Workgroups_MeetingEditTitle" xml:space="preserve"><value>Edita la reunió</value></data>
-  <data name="Workgroups_Field_MeetingTitle" xml:space="preserve"><value>Títol</value></data>
-  <data name="Workgroups_Field_StartDate" xml:space="preserve"><value>Data d'inici</value></data>
-  <data name="Workgroups_Field_StartTime" xml:space="preserve"><value>Hora d'inici</value></data>
-  <data name="Workgroups_Field_EndDate" xml:space="preserve"><value>Data de fi</value></data>
-  <data name="Workgroups_Field_EndTime" xml:space="preserve"><value>Hora de fi</value></data>
   <data name="Workgroups_Field_TimesAreUtc" xml:space="preserve"><value>Les hores són en UTC.</value></data>
-  <data name="Workgroups_Field_Location" xml:space="preserve"><value>Ubicació</value></data>
-  <data name="Workgroups_Field_LocationUrl" xml:space="preserve"><value>URL de la ubicació</value></data>
   <data name="Workgroups_Field_IsPublic" xml:space="preserve"><value>Mostra al calendari comunitari</value></data>
   <data name="Workgroups_Field_IsPublicHelp" xml:space="preserve"><value>Qualsevol persona amb accés a l'aplicació pot consultar la reunió i l'acta a la pàgina del grup. Aquesta opció també mostra la reunió al calendari comunitari.</value></data>
   <data name="Workgroups_Field_Minutes" xml:space="preserve"><value>Acta</value></data>

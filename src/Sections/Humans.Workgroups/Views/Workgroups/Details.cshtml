@@ -241,6 +241,10 @@
                 @if (!string.IsNullOrWhiteSpace(nextMeeting.Location)) { <span> · @nextMeeting.Location</span> }
                 @if (nextMeeting.IsPublic) { <span class="badge bg-info text-dark ms-1">@Localizer["Workgroups_PublicMeeting"]</span> }
             </div>
+            @if (!string.IsNullOrWhiteSpace(nextMeeting.Description))
+            {
+                <div class="small mt-1" style="white-space: pre-line;">@nextMeeting.Description</div>
+            }
         </div>
     </div>
 }
@@ -474,6 +478,10 @@
                                 <a asp-action="EditLogEntry" asp-route-slug="@w.Slug" asp-route-id="@entry.Log.Id" class="btn btn-sm btn-link">@SharedLocalizer["Common_Edit"]</a>
                             }
                         </div>
+                        @if (!string.IsNullOrWhiteSpace(entry.Meeting?.Description))
+                        {
+                            <div class="mt-1 small text-muted" style="white-space: pre-line;">@entry.Meeting.Description</div>
+                        }
                         @{ var body = entry.Meeting?.Minutes ?? entry.Log?.Body; }
                         @if (!string.IsNullOrWhiteSpace(body))
                         {

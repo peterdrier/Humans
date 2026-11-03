@@ -38,7 +38,7 @@ internal sealed partial class WorkgroupService
             .Where(m => m.DeletedAt is null)
             .Select(m => new WorkgroupMeetingInfo(
                 m.Id, m.Title, m.StartUtc, m.EndUtc, m.Location, m.LocationUrl, m.IsPublic,
-                m.Minutes, m.CreatedByUserId, m.CreatedAt, m.UpdatedAt))
+                m.Minutes, m.CreatedByUserId, m.CreatedAt, m.UpdatedAt, m.Description))
             .ToList(),
         w.LogEntries
             .Select(e => new WorkgroupLogEntryInfo(
@@ -197,6 +197,8 @@ internal sealed partial class WorkgroupService
             return new(WorkgroupErrorKeys.WindowInvalid);
         if (save.LocationUrl?.Trim().Length > 2000)
             return new(WorkgroupErrorKeys.TextTooLong, 2000);
+        if (save.Description?.Trim().Length > 4000)
+            return new(WorkgroupErrorKeys.TextTooLong, 4000);
         return null;
     }
 
@@ -226,6 +228,7 @@ internal sealed partial class WorkgroupService
         meeting.Title = save.Title.Trim();
         meeting.StartUtc = save.StartUtc;
         meeting.EndUtc = save.EndUtc;
+        meeting.Description = Trimmed(save.Description);
         meeting.Location = Trimmed(save.Location);
         meeting.LocationUrl = Trimmed(save.LocationUrl);
         meeting.IsPublic = save.IsPublic;

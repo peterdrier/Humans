@@ -79,7 +79,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Humans.AuditLog\Humans.AuditLog.csproj" />
     <ProjectReference Include="..\Humans.Auth\Humans.Auth.csproj" />
   </ItemGroup>
 

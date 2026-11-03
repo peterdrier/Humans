@@ -1,3 +1,4 @@
+using Humans.Calendar.Contracts;
 using Humans.Governance.Contracts;
 using System.ComponentModel.DataAnnotations;
 using System.Globalization;
@@ -176,7 +177,8 @@ internal sealed class WorkgroupFormViewModel
         Name, Purpose, Deliverable, DeliverableKind, Audience, TargetDate, DiscordChannelUrl, IsSensitive);
 }
 
-internal sealed class MeetingFormViewModel
+/// <summary>The shared calendar form's fields plus the meeting's own Public flag and Minutes.</summary>
+internal sealed class MeetingFormViewModel : ICalendarEventForm
 {
     public Guid? Id { get; init; }
 
@@ -186,9 +188,18 @@ internal sealed class MeetingFormViewModel
     [StringLength(200, ErrorMessage = "Validation_MaxLength")]
     public string Title { get; set; } = string.Empty;
 
-    public Instant StartUtc { get; set; }
+    [StringLength(4000, ErrorMessage = "Validation_MaxLength")]
+    public string? Description { get; set; }
 
-    public Instant EndUtc { get; set; }
+    public LocalDate? StartDate { get; set; }
+
+    public LocalTime? StartTime { get; set; }
+
+    public LocalDate? EndDate { get; set; }
+
+    public LocalTime? EndTime { get; set; }
+
+    public string TimeZoneId { get; set; } = string.Empty;
 
     [StringLength(200, ErrorMessage = "Validation_MaxLength")]
     public string? Location { get; set; }
@@ -199,21 +210,43 @@ internal sealed class MeetingFormViewModel
 
     public string? Minutes { get; set; }
 
-    public static MeetingFormViewModel FromMeeting(string slug, WorkgroupMeetingInfo m) => new()
-    {
-        Id = m.Id,
-        Slug = slug,
-        Title = m.Title,
-        StartUtc = m.StartUtc,
-        EndUtc = m.EndUtc,
-        Location = m.Location,
-        LocationUrl = m.LocationUrl,
-        IsPublic = m.IsPublic,
-        Minutes = m.Minutes
-    };
+    // Meetings are always timed, one-off events.
+    public bool IsAllDay { get; set; }
 
-    public WorkgroupMeetingSave ToSave() =>
-        new(Title, StartUtc, EndUtc, Location, LocationUrl, IsPublic, Minutes);
+    public bool IsRecurring { get; set; }
+
+    public string? RecurrenceRule { get; set; }
+
+    public bool SupportsAllDay => false;
+
+    public bool SupportsRecurrence => false;
+
+    public static MeetingFormViewModel New(string slug, Instant start, DateTimeZone zone)
+    {
+        var form = new MeetingFormViewModel { Slug = slug };
+        CalendarEventForm.SetTimed(form, start, start + Duration.FromHours(1), zone);
+        return form;
+    }
+
+    public static MeetingFormViewModel FromMeeting(string slug, WorkgroupMeetingInfo m, DateTimeZone zone)
+    {
+        var form = new MeetingFormViewModel
+        {
+            Id = m.Id,
+            Slug = slug,
+            Title = m.Title,
+            Description = m.Description,
+            Location = m.Location,
+            LocationUrl = m.LocationUrl,
+            IsPublic = m.IsPublic,
+            Minutes = m.Minutes
+        };
+        CalendarEventForm.SetTimed(form, m.StartUtc, m.EndUtc, zone);
+        return form;
+    }
+
+    public WorkgroupMeetingSave ToSave(CalendarEventTimes times) =>
+        new(Title, times.Start!.Value, times.End!.Value, Location, LocationUrl, IsPublic, Minutes, Description);
 }
 
 internal sealed class LogEntryFormViewModel

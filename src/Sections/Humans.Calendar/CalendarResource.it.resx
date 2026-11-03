@@ -168,4 +168,7 @@
   <data name="Calendar_IcalCreate" xml:space="preserve"><value>Crea il mio URL del feed</value></data>
   <data name="Calendar_OwningTeamUnavailable" xml:space="preserve"><value>Scegli un team attivo come responsabile di questo evento.</value></data>
   <data name="Calendar_Source_Workgroups" xml:space="preserve"><value>Gruppi di lavoro</value></data>
+  <data name="Calendar_StartTime" xml:space="preserve"><value>Ora di inizio</value></data>
+  <data name="Calendar_EndTime" xml:space="preserve"><value>Ora di fine</value></data>
+  <data name="Calendar_EndRequired" xml:space="preserve"><value>La fine è obbligatoria.</value></data>
 </root>

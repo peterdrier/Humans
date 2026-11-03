@@ -3,9 +3,9 @@
 ## AuditLog
 
 Project: `src/Sections/Humans.AuditLog` — services under `Services/`,
-repository under `Data/`, plus a `src/Sections/Humans.AuditLog/Contracts`
-folder carrying `IAuditLogService` and `AuditLogEntrySnapshot` (read by most
-sections). `AuditLog` is a **horizontal section**.
+repository under `Data/`. `IAuditLogService` and `AuditLogEntrySnapshot` (used
+by most sections) live in `src/Humans.Base/AuditLog/`; the section's `Contracts/`
+folder keeps `IAuditViewerService`, `AuditEvent` and `ILegacyGoogleSyncAuditReader`. `AuditLog` is a **horizontal section**.
 **DbContext:** `AuditLogDbContext`.
 `AuditLogRepository` injects
 `IDbContextFactory<AuditLogDbContext>` directly. Owns

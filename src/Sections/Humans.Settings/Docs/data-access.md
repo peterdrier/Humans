@@ -35,7 +35,7 @@ table, not a new table this section owns.
 
 | Table | R/W |
 |-------|-----|
-| `system_settings` | R/W (`GetValueAsync` / `SetValueAsync`, by key; `GetTimeZoneIdAsync` / `SaveTimeZoneAsync` on `ISettingsWriteService` for `Event:TimeZoneId`) |
+| `system_settings` | R/W (`GetValueAsync` / `SetValueAsync`, by key; `GetTimeZoneIdAsync` on the cross-section interface and `SaveTimeZoneAsync` on `ISettingsWriteService` for `Event:TimeZoneId`) |
 | `settings_event` | R/W (`GetActiveEventSettingsAsync` / `GetEventSettingsByIdAsync` / `GetAllEventSettingsAsync` on the cross-section interface; `SaveEventSettingsAsync`, `ActivateEventSettingsAsync` on `ISettingsWriteService`) |
 
 `SaveEventSettingsAsync` holds the table's two service-enforced invariants —

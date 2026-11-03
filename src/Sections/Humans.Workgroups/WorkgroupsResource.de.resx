@@ -238,14 +238,7 @@
   <!-- Meeting form -->
   <data name="Workgroups_MeetingNewTitle" xml:space="preserve"><value>Neues Treffen</value></data>
   <data name="Workgroups_MeetingEditTitle" xml:space="preserve"><value>Treffen bearbeiten</value></data>
-  <data name="Workgroups_Field_MeetingTitle" xml:space="preserve"><value>Titel</value></data>
-  <data name="Workgroups_Field_StartDate" xml:space="preserve"><value>Startdatum</value></data>
-  <data name="Workgroups_Field_StartTime" xml:space="preserve"><value>Startzeit</value></data>
-  <data name="Workgroups_Field_EndDate" xml:space="preserve"><value>Enddatum</value></data>
-  <data name="Workgroups_Field_EndTime" xml:space="preserve"><value>Endzeit</value></data>
   <data name="Workgroups_Field_TimesAreUtc" xml:space="preserve"><value>Zeiten sind UTC.</value></data>
-  <data name="Workgroups_Field_Location" xml:space="preserve"><value>Ort</value></data>
-  <data name="Workgroups_Field_LocationUrl" xml:space="preserve"><value>Orts-URL</value></data>
   <data name="Workgroups_Field_IsPublic" xml:space="preserve"><value>Im Community-Kalender anzeigen</value></data>
   <data name="Workgroups_Field_IsPublicHelp" xml:space="preserve"><value>Alle mit Zugang zur App können das Treffen und das Protokoll auf der Gruppenseite lesen. Diese Option zeigt das Treffen zusätzlich im Community-Kalender.</value></data>
   <data name="Workgroups_Field_Minutes" xml:space="preserve"><value>Protokoll</value></data>

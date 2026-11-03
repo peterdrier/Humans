@@ -71,6 +71,7 @@ internal sealed partial class WorkgroupService
                 {
                     Workgroup = NameOf(m.WorkgroupId),
                     m.Title,
+                    m.Description,
                     StartUtc = m.StartUtc.ToIso8601(),
                     EndUtc = m.EndUtc.ToIso8601(),
                     m.Location,
