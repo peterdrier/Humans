@@ -44,7 +44,8 @@ The layout the shapes imply:
 - **Propose** shares `EventProposalFormViewModel` field metadata, one edit-field mapping and one dropdown-population
   method. Individual and barrio models retain their own duration limits and audience-specific
   fields. Submission actions remain separate; moderation uses `AdminEventFormViewModel` with
-  different validation messages and nullable venue handling.
+  different validation messages and nullable venue handling. Bulk import and camp form edits
+  share the domain’s camp-field mutation method; CSV recurrence comparison retains authored offsets.
 - **Decide** and **Configure** are correct as built.
 - Cross-section reads (camp names, submitter names, the edition's dates and zone) go through the
   helpers in `EventsLookupHelpers`; the edition row is Settings' and is read only through

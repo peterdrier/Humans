@@ -73,19 +73,13 @@ internal sealed class EventBulkImporter(
                 if (!changed) continue;
             }
 
-            target.Title = row.Title;
-            target.Description = row.Description;
-            target.CategoryId = category.Id;
-            target.StartAt = startAt;
-            target.DurationMinutes = row.DurationMinutes;
-            target.LocationNote = string.IsNullOrEmpty(row.LocationNote) ? null : row.LocationNote;
-            target.Host = string.IsNullOrEmpty(row.Host) ? null : row.Host;
-            target.IsRecurring = row.IsRecurring;
             // Unchanged weekday labels cannot express a subset of repeated weekdays.
             // Preserve existing authored offsets when another field is edited.
-            if (recurrenceChanged || !row.IsRecurring)
-                target.RecurrenceDays = row.IsRecurring ? recurrenceOffsets : null;
-            target.PriorityRank = row.PriorityRank;
+            target.ApplyBarrioEdit(
+                category.Id, row.Title, row.Description, startAt, row.DurationMinutes,
+                string.IsNullOrEmpty(row.LocationNote) ? null : row.LocationNote,
+                string.IsNullOrEmpty(row.Host) ? null : row.Host,
+                row.IsRecurring, recurrenceChanged ? recurrenceOffsets : target.RecurrenceDays, row.PriorityRank);
 
             if (row.Id.HasValue)
             {
