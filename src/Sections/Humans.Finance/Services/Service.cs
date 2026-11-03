@@ -1184,8 +1184,12 @@ internal sealed class Service(
 
     /// <summary>The row is kept and flagged; nothing pairs, books or counts it again. Only an unbooked row with no
     /// Holded posting can be withdrawn.</summary>
-    public async Task<SepaBookingResult> WithdrawSepaTransferAsync(
-        Guid transferId, Guid actorUserId, CancellationToken ct = default)
+    public Task<SepaBookingResult> WithdrawSepaTransferAsync(
+        Guid transferId, Guid actorUserId, CancellationToken ct = default) =>
+        booking.UnderBookingGateAsync(() => WithdrawSepaTransferGatedAsync(transferId, actorUserId, ct));
+
+    private async Task<SepaBookingResult> WithdrawSepaTransferGatedAsync(
+        Guid transferId, Guid actorUserId, CancellationToken ct)
     {
         var transfer = await repo.GetSepaTransferAsync(transferId, ct);
         if (transfer is null)
@@ -1213,7 +1217,10 @@ internal sealed class Service(
     /// <summary>For a file the bank rejected whole: withdraws every transfer still live in it, in one save, so it is
     /// cancelled. All or nothing: refused if any live transfer could not be withdrawn on its own. No member email,
     /// unlike a single withdrawal: the file is usually reissued at once, and that sends the payout email again.</summary>
-    public async Task<SepaBookingResult> CancelSepaFileAsync(Guid fileId, Guid actorUserId, CancellationToken ct = default)
+    public Task<SepaBookingResult> CancelSepaFileAsync(Guid fileId, Guid actorUserId, CancellationToken ct = default) =>
+        booking.UnderBookingGateAsync(() => CancelSepaFileGatedAsync(fileId, actorUserId, ct));
+
+    private async Task<SepaBookingResult> CancelSepaFileGatedAsync(Guid fileId, Guid actorUserId, CancellationToken ct)
     {
         var rows = (await repo.GetSepaPayoutTransferRowsAsync(ct)).Where(r => r.FileId == fileId).ToList();
         if (rows.Count == 0)

@@ -491,10 +491,17 @@ internal sealed class SepaBankBooking(
 
         // The "already booked?" read and the stamp sit either side of several Holded round-trips, so two callers (a Book
         // click during the sweep, a double submit) would both post the whole amount. Serialize both entry points.
+        return await UnderBookingGateAsync(booking);
+    }
+
+    /// <summary>For a write that must not interleave with a booking, such as a withdrawal: otherwise a row checked as
+    /// unbooked could be withdrawn while a booking posts its payments, and end up booked and withdrawn at once.</summary>
+    internal async Task<T> UnderBookingGateAsync<T>(Func<Task<T>> work)
+    {
         await BookingGate.WaitAsync(CancellationToken.None);
         try
         {
-            return await booking();
+            return await work();
         }
         finally
         {
