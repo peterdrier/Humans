@@ -530,7 +530,6 @@ internal sealed class ShiftSignupsViewModel
     public BurnSettingsInfo? EventSettings { get; set; }
     public ShiftSignupsViewMode ViewMode { get; set; }
     public Guid UserId { get; set; }
-    public string? DisplayName { get; set; }
 }
 
 internal sealed record ShiftSignupsRow(ShiftSignupSummary Signup, string DepartmentName);

@@ -80,7 +80,6 @@ internal sealed class ProfileController(
             HasPendingConsents = pendingConsentCount > 0,
             PendingConsentCount = pendingConsentCount,
             IsOwnProfile = true,
-            DisplayName = info.BurnerName,
         };
 
         if (latestApplication is not null && latestApplication.Status != ApplicationStatus.Withdrawn)

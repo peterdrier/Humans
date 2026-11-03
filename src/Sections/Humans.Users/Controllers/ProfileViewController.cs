@@ -80,7 +80,7 @@ internal sealed class ProfileViewController(
         {
             Id = profile.Id,
             UserId = id,
-            DisplayName = profileInfo.BurnerName,
+            PageTitle = profileInfo.BurnerName,
             IsOwnProfile = isOwnProfile,
             NoShowHistory = noShowContext.History,
             CanViewShiftSignups = noShowContext.CanView,

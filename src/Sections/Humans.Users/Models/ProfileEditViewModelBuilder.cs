@@ -25,7 +25,6 @@ internal static class ProfileEditViewModelBuilder
         {
             Id = profile?.Id ?? Guid.Empty,
             UserId = info.Id,
-            DisplayName = info.BurnerName,
             HasCustomProfilePicture = hasCustomPicture,
             BurnerName = profile?.BurnerName ?? info.BurnerName,
             FirstName = profile?.FirstName ?? string.Empty,

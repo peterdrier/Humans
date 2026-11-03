@@ -115,6 +115,7 @@ public class ProfileViewControllerPopoverTests
 
         var model = result.Should().BeOfType<ViewResult>().Subject.Model
             .Should().BeOfType<ProfileViewModel>().Subject;
+        model.PageTitle.Should().Be("Target");
         model.CanViewShiftSignups.Should().BeTrue();
         model.CanViewSentMessages.Should().BeTrue();
         model.NoShowHistory!.Select(row => row.ShiftLabel).Should().Equal("Newest", "Older", "Undated");
@@ -286,7 +287,7 @@ public class ProfileViewControllerPopoverTests
 
     private static UserInfo BuildActiveUserInfo(Guid id, string displayName, string email)
     {
-        var user = new User { Id = id, DisplayName = displayName, State = UserState.Active, PreferredLanguage = "en" };
+        var user = new User { Id = id, BurnerName = displayName, DisplayName = displayName, State = UserState.Active, PreferredLanguage = "en" };
         var profile = new Profile
         {
             Id = Guid.NewGuid(),
