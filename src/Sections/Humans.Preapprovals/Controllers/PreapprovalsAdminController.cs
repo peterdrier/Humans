@@ -38,7 +38,7 @@ internal sealed class PreapprovalsAdminController(
         var canAdminister = PreapprovalsPolicyHandler.IsManagingRole(User);
         var programs = await preapprovals.GetProgramsAsync(ct);
         if (!canAdminister)
-            programs = programs.Where(p => p.IsManager(user.Id)).ToList();
+            programs = programs.Where(p => user.AllUserIds.Any(p.IsManager)).ToList();
         return View(new AdminIndexViewModel
         {
             Today = Today,

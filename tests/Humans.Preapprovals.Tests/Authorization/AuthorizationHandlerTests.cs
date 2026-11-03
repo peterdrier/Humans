@@ -20,10 +20,10 @@ public sealed class AuthorizationHandlerTests : PreapprovalsTestHarness
             roles.Select(r => new Claim(ClaimTypes.Role, r)).Prepend(new Claim(ClaimTypes.NameIdentifier, userId.ToString())),
             authenticationType: "test"));
 
-    private static async Task<bool> ProgramAllowedAsync(ClaimsPrincipal user, ProgramInfo program, ProgramOperationRequirement requirement)
+    private async Task<bool> ProgramAllowedAsync(ClaimsPrincipal user, ProgramInfo program, ProgramOperationRequirement requirement)
     {
         var context = new AuthorizationHandlerContext([requirement], user, program);
-        await new ProgramAuthorizationHandler().HandleAsync(context);
+        await new ProgramAuthorizationHandler(Users, new HttpContextAccessor()).HandleAsync(context);
         return context.HasSucceeded;
     }
 
@@ -119,15 +119,26 @@ public sealed class AuthorizationHandlerTests : PreapprovalsTestHarness
         (await PolicyAllowedAsync(user, new ManagesPreapprovalsRequirement())).Should().BeFalse();
     }
 
-    [HumansFact]
-    public async Task ProgramManager_HasBoth_AlsoUnderMergedId()
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task ProgramManager_HasBoth_AlsoUnderMergedId(bool archivedCookie)
     {
         var oldId = Guid.NewGuid();
         var manager = SeedUser("Manager", mergedIds: [oldId]);
-        await SeedProgramAsync(acceptsApplications: false, managers: oldId);
-        var user = Principal(manager);
+        var managed = await SeedProgramAsync(acceptsApplications: false, managers: oldId);
+        var unrelated = await SeedProgramAsync(acceptsApplications: false);
+        var snapshot = await Users.GetUserInfoAsync(manager, Ct);
+        Users.GetUserInfoAsync(oldId, Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<Humans.Users.Contracts.UserInfo?>(snapshot));
+        var user = Principal(archivedCookie ? oldId : manager);
         (await PolicyAllowedAsync(user, new ManagesPreapprovalsRequirement())).Should().BeTrue();
         (await PolicyAllowedAsync(user, new PreapprovalsAccessRequirement())).Should().BeTrue();
+        var program = (await NewService().GetProgramAsync(managed.Id, Ct))!;
+        (await ProgramAllowedAsync(user, program, ProgramOperationRequirement.Manage)).Should().BeTrue();
+        (await ProgramAllowedAsync(user, program, ProgramOperationRequirement.Administer)).Should().BeFalse();
+        var other = (await NewService().GetProgramAsync(unrelated.Id, Ct))!;
+        (await ProgramAllowedAsync(user, other, ProgramOperationRequirement.Manage)).Should().BeFalse();
     }
 
     [HumansFact]
