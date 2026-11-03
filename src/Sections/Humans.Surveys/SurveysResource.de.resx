@@ -47,7 +47,6 @@
   <data name="Surveys_AsociadoIneligible_Heading" xml:space="preserve"><value>Du bist nicht stimmberechtigt</value></data>
   <data name="Surveys_AsociadoIneligible_Body" xml:space="preserve"><value>Diese verbindliche Abstimmung ist Personen vorbehalten, die derzeit aktive, bestätigte Asociados sind. Wenn du glaubst, dass dein Mitgliedsstatus falsch erfasst ist, wende dich bitte vor Ende des Abstimmungszeitraums an den Vorstand.</value></data>
   <data name="Surveys_TitleFallback" xml:space="preserve"><value>Umfrage</value></data>
-  <data name="Surveys_ResumeNotice" xml:space="preserve"><value>Du hast Antworten in Bearbeitung — mach dort weiter, wo du aufgehört hast.</value></data>
   <data name="Surveys_Language" xml:space="preserve"><value>Sprache</value></data>
   <data name="Surveys_AnonymityLegend" xml:space="preserve"><value>Wie möchtest du antworten?</value></data>
   <data name="Surveys_Anonymity_Identified" xml:space="preserve"><value>Identifiziert</value></data>
@@ -58,7 +57,6 @@
   <data name="Surveys_Anonymity_AnonymousHelp" xml:space="preserve"><value>keinerlei Verknüpfung mit dir.</value></data>
   <data name="Surveys_AnonymityFootnote" xml:space="preserve"><value>Anonyme und teilnahme-erfasste Antworten können nicht fortgesetzt werden, und du erhältst eventuell trotzdem eine Erinnerung. Nur eine identifizierte Antwort kann pausiert und später fortgesetzt werden.</value></data>
   <data name="Surveys_Start" xml:space="preserve"><value>Starten</value></data>
-  <data name="Surveys_Continue" xml:space="preserve"><value>Fortsetzen</value></data>
   <data name="Surveys_PageOf" xml:space="preserve"><value>Seite {0} von {1}</value></data>
   <data name="Surveys_QuestionRequired" xml:space="preserve"><value>Diese Frage ist erforderlich.</value></data>
   <data name="Surveys_ValidationAlert" xml:space="preserve"><value>Bitte überprüfe die markierten Antworten, bevor du fortfährst.</value></data>

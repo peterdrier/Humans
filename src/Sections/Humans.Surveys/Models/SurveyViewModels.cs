@@ -55,9 +55,6 @@ internal sealed class SurveyIntroViewModel
 
     public string Slug { get; init; } = string.Empty;
 
-    /// <summary>Identified resume.</summary>
-    public bool HasResumableDraft { get; init; }
-
     public bool IsAsociadoVote { get; init; }
 
     public bool IsPreview { get; init; }
