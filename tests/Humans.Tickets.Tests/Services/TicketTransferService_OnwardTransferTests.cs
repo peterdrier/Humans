@@ -153,7 +153,6 @@ public sealed class TicketTransferService_OnwardTransferTests
             .Returns(UserInfo.Create(
                 user: carol,
                 userEmails: [],
-                eventParticipations: [],
                 externalLogins: [],
                 profile: carolProfile,
                 communicationPreferences: []));

@@ -126,7 +126,6 @@ public class GateControllerClaimTests
             new User { Id = userId, PreferredLanguage = "en" },
             [],
             [],
-            [],
             profile: UserFixtures.Profile(
                 burnerName: displayName),
             []);

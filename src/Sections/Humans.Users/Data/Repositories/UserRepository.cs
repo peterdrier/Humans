@@ -384,33 +384,4 @@ internal sealed partial class UserRepository : IUserRepository
         return new ExpiredDeletionAnonymizationResult(
             originalEmail, originalBurnerName, preferredLanguage);
     }
-
-    public async Task<IReadOnlyList<EventParticipation>> GetEventParticipationsByUserIdAsync(
-        Guid userId, CancellationToken ct = default)
-    {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-        return await ctx.EventParticipations
-            .AsNoTracking()
-            .Where(ep => ep.UserId == userId)
-            .ToListAsync(ct);
-    }
-
-    public async Task<IReadOnlyDictionary<Guid, IReadOnlyList<EventParticipation>>>
-        GetEventParticipationsByUserIdsAsync(
-            IReadOnlyCollection<Guid> userIds, CancellationToken ct = default)
-    {
-        if (userIds.Count == 0)
-            return new Dictionary<Guid, IReadOnlyList<EventParticipation>>();
-
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-        var idList = userIds is IList<Guid> list ? list : userIds.ToList();
-        var rows = await ctx.EventParticipations
-            .AsNoTracking()
-            .Where(ep => idList.Contains(ep.UserId))
-            .ToListAsync(ct);
-
-        return rows
-            .GroupBy(ep => ep.UserId)
-            .ToDictionary(g => g.Key, g => (IReadOnlyList<EventParticipation>)g.ToList());
-    }
 }

@@ -30,7 +30,7 @@ public sealed class AdminAgentControllerTests
         var users = Substitute.For<IUserService>();
         if (actorExists)
             users.GetUserInfoAsync(actorId, ct).Returns(UserInfo.Create(
-                new User { Id = actorId, BurnerName = "Admin" }, [], [], [], null, []));
+                new User { Id = actorId, BurnerName = "Admin" }, [], [], null, []));
         var settings = Substitute.For<IAgentSettingsService>();
         var context = new DefaultHttpContext
         {
@@ -73,7 +73,7 @@ public sealed class AdminAgentControllerTests
         var ct = Xunit.TestContext.Current.CancellationToken;
         var actor = Guid.NewGuid();
         var users = Substitute.For<IUserService>();
-        users.GetUserInfoAsync(actor, ct).Returns(UserInfo.Create(new User { Id = actor }, [], [], [], null, []));
+        users.GetUserInfoAsync(actor, ct).Returns(UserInfo.Create(new User { Id = actor }, [], [], null, []));
         var settings = Substitute.For<IAgentSettingsService>();
         var saved = new AgentSettings();
         settings.UpdateAsync(Arg.Do<Action<AgentSettings>>(update => update(saved)), actor, ct).Returns(Task.CompletedTask);

@@ -132,7 +132,7 @@ public class TeamControllerPageContentTests
         var users = Substitute.For<IUserService>();
         if (!actorMissing)
             users.GetUserInfoAsync(actor, Arg.Any<CancellationToken>())
-                .Returns(UserInfo.Create(new User { Id = actor, DisplayName = "Admin" }, [], [], [], null, []));
+                .Returns(UserInfo.Create(new User { Id = actor, DisplayName = "Admin" }, [], [], null, []));
         var http = new DefaultHttpContext
         {
             RequestServices = services,
@@ -293,7 +293,7 @@ public class TeamControllerPageContentTests
         var userId = Guid.NewGuid();
         var users = Substitute.For<IUserService>();
         users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(new ValueTask<UserInfo?>(UserInfo.Create(new User { Id = userId }, [], [], [], null, [])));
+            .Returns(new ValueTask<UserInfo?>(UserInfo.Create(new User { Id = userId }, [], [], null, [])));
         var teams = Substitute.For<ITeamManagementService>();
         var pages = Substitute.For<ITeamPageService>();
         var hidden = new TeamInfo(Guid.NewGuid(), "Private", null, "private", true, false,
@@ -370,7 +370,7 @@ public class TeamControllerPageContentTests
         users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(call =>
         {
             CheckCancellation("viewer", call.Arg<CancellationToken>());
-            return new ValueTask<UserInfo?>(UserInfo.Create(new User { Id = userId }, [], [], [], null, []));
+            return new ValueTask<UserInfo?>(UserInfo.Create(new User { Id = userId }, [], [], null, []));
         });
         teams.GetTeamBySlugAsync(team.Slug, Arg.Any<CancellationToken>()).Returns(call =>
         {
@@ -457,7 +457,7 @@ public class TeamControllerPageContentTests
             var userId = Guid.NewGuid();
             var users = Substitute.For<IUserService>();
             users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
-                .Returns(UserInfo.Create(new User { Id = userId }, [], [], [], null, []));
+                .Returns(UserInfo.Create(new User { Id = userId }, [], [], null, []));
             var team = new TeamInfo(Guid.NewGuid(), "Alpha", null, "alpha", true, false, SystemTeamType.None,
                 false, false, false, false, Instant.MinValue, []);
             var teams = Substitute.For<ITeamManagementService>();
@@ -544,7 +544,7 @@ public class TeamControllerPageContentTests
         var userId = Guid.NewGuid();
         var users = Substitute.For<IUserService>();
         users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(UserInfo.Create(new User { Id = userId }, [], [], [], null, []));
+            .Returns(UserInfo.Create(new User { Id = userId }, [], [], null, []));
         var team = new TeamInfo(Guid.NewGuid(), "Alpha", null, "alpha", true, false, SystemTeamType.None,
             true, false, false, false, Instant.MinValue, []);
         var teams = Substitute.For<ITeamManagementService>();

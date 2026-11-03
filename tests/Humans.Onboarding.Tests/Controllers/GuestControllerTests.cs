@@ -27,7 +27,6 @@ public class GuestControllerTests
                 user,
                 [],
                 [],
-                [],
                 profile: null,
                 [])));
 
@@ -74,7 +73,7 @@ public class GuestControllerTests
         _userService.GetUserInfoAsync(user.Id, Arg.Any<CancellationToken>()).Returns(call =>
         {
             call.Arg<CancellationToken>().ThrowIfCancellationRequested();
-            return new ValueTask<UserInfo?>(UserInfo.Create(user, [], [], [], null, []));
+            return new ValueTask<UserInfo?>(UserInfo.Create(user, [], [], null, []));
         });
         _widgetState.GetCurrentStepAsync(user.Id, Arg.Any<CancellationToken>()).Returns(OnboardingWidgetStep.Complete);
 

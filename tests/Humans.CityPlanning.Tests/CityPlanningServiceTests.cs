@@ -961,7 +961,7 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
                 // suite needs one of its members, and the helper is built around UsersDbContext.
                 new Dictionary<Guid, UserInfo>
                 {
-                    [userId] = UserInfo.Create(testUser, [], [], [], profile: null, []),
+                    [userId] = UserInfo.Create(testUser, [], [], profile: null, []),
                 }));
 
         Clock.Advance(Duration.FromSeconds(1));

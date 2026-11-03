@@ -31,7 +31,6 @@ internal sealed class UserService(
     internal const string VolunteerHistory = "VolunteerHistory";
     internal const string Languages = "Languages";
     internal const string LegacyCommunicationPreferences = "LegacyCommunicationPreferences";
-    internal const string LegacyEventParticipations = "LegacyEventParticipations";
 
     private static readonly TrackedLock EmailAdditionLock = new("UserService.EmailAddition");
 
@@ -60,7 +59,6 @@ internal sealed class UserService(
         if (user is null) return null;
 
         var userEmails = await repo.GetUserEmailsByUserIdReadOnlyAsync(userId, ct);
-        var participations = await repo.GetEventParticipationsByUserIdAsync(userId, ct);
         var externalLoginsMap = await repo.GetExternalLoginsByUserIdsAsync([userId], ct);
         var externalLogins = externalLoginsMap.TryGetValue(userId, out var logins)
             ? logins
@@ -81,7 +79,7 @@ internal sealed class UserService(
             .GetByUserIdReadOnlyAsync(userId, ct);
 
         var info = UserInfoFactory.Create(
-            user, userEmails, participations, externalLogins,
+            user, userEmails, externalLogins,
             profile, contactFields, languages, volunteerHistory,
             communicationPreferences);
 
@@ -110,8 +108,6 @@ internal sealed class UserService(
             .GroupBy(c => c.ProfileId)
             .ToDictionary(g => g.Key, g => (IReadOnlyList<ContactField>)g.ToList());
 
-        var participationsByUser = await repo.GetEventParticipationsByUserIdsAsync(userIds, ct);
-
         var allPreferences = await communicationPreferenceRepo.GetAllAsync(ct);
         var preferencesByUser = allPreferences
             .GroupBy(p => p.UserId)
@@ -122,10 +118,6 @@ internal sealed class UserService(
         {
             var emails = emailsByUser.TryGetValue(user.Id, out var es) ? es : [];
             var logins = loginsByUser.TryGetValue(user.Id, out var ls) ? ls : [];
-            var participations = participationsByUser.TryGetValue(user.Id, out var ps)
-                ? ps
-                : (IReadOnlyList<EventParticipation>)[];
-
             profileByUser.TryGetValue(user.Id, out var profile);
             IReadOnlyList<ContactField> contactFields = [];
             IReadOnlyList<ProfileLanguage> languages = [];
@@ -140,7 +132,7 @@ internal sealed class UserService(
             var preferences = preferencesByUser.TryGetValue(user.Id, out var pp) ? pp : [];
 
             var info = UserInfoFactory.Create(
-                user, emails, participations, logins,
+                user, emails, logins,
                 profile, contactFields, languages, volunteerHistory,
                 preferences);
             result.Add(info);
@@ -783,22 +775,6 @@ internal sealed class UserService(
         }
         mergedIds.Remove(userId);
 
-        // Frozen legacy table (Tickets exports live participation); rows stay on archived ids
-        // because merges stopped folding it.
-        var participationsByUser = await repo.GetEventParticipationsByUserIdsAsync([userId, .. mergedIds], ct);
-        var participationsShaped = participationsByUser.Values
-            .SelectMany(rows => rows)
-            .OrderBy(ep => ep.Year)
-            .Select(ep => new
-            {
-                ep.UserId,
-                ep.Year,
-                Status = ep.Status.ToString(),
-                Source = ep.Source.ToString(),
-                DeclaredAt = ep.DeclaredAt.ToIso8601(),
-                CheckedInAt = ep.CheckedInAt.ToIso8601()
-            })
-            .ToList();
         var mergedProfiles = mergedIds.Count == 0 ? [] : await repo.GetAllProfilesAsync(ct);
         var mergedProfileSlice = new UserDataSlice(MergedProfiles, mergedProfiles
             .Where(p => mergedIds.Contains(p.UserId))
@@ -859,7 +835,6 @@ internal sealed class UserService(
         return
         [
             new UserDataSlice(Account, shaped),
-            new UserDataSlice(LegacyEventParticipations, participationsShaped),
             profileSlice,
             mergedProfileSlice,
             contactFieldSlice,
@@ -917,10 +892,6 @@ internal sealed class UserService(
                 "section's user-id reference stays resolvable and the erasure itself remains " +
                 "provable — GDPR Art. 5(2) accountability. Every identity field on it is " +
                 "overwritten and the account is locked out permanently.",
-            [LegacyEventParticipations] =
-                "Retained: the year and status of each participation, keyed to the tombstoned " +
-                "user id, is the association's register of who was a member in which year — " +
-                "Ley Orgánica 1/2002 Art. 14, GDPR Art. 17(3)(b). It carries no identity fields.",
             [Profile] = null,
             [MergedProfiles] = null,
             [ContactFields] = null,

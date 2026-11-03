@@ -17,7 +17,6 @@ internal static class UserInfoStubs
             user,
             userEmails ?? user.UserEmails?.ToList() ?? [],
             [],
-            [],
             profile: profile,
             []);
 
@@ -27,7 +26,6 @@ internal static class UserInfoStubs
         return UserInfo.Create(
             // UserInfo.BurnerName reads User.BurnerName, so it is seeded there.
             new User { Id = userId, PreferredLanguage = "en", BurnerName = info.BurnerName, State = UserFixtures.StateFor(info) },
-            [],
             [],
             [],
             profile: info,

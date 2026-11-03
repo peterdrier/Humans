@@ -47,15 +47,6 @@ public sealed record LegacyCommunicationPreferenceInfo(
     string UpdateSource,
     Instant? SubscribedAt);
 
-/// <summary>The frozen legacy row; the live one is Tickets' <c>EventParticipationInfo</c>.</summary>
-public sealed record LegacyEventParticipationInfo(
-    Guid Id,
-    int Year,
-    LegacyParticipationStatus Status,
-    LegacyParticipationSource Source,
-    Instant? DeclaredAt,
-    Instant? CheckedInAt);
-
 public sealed record UserExternalLoginInfo(
     string Provider,
     string ProviderKey);
@@ -120,8 +111,6 @@ public sealed record UserInfo(
     Instant? MergedAt,
     string? IdentityEmailColumn,
     IReadOnlyList<UserEmailInfo> UserEmails,
-    [property: Obsolete("Moved to Tickets' tickets_event_participations (Users decomposition commit 13). Read ITicketService.GetParticipationsAsync / GetAllParticipationsAsync; the one reader left is Tickets' legacy fallback and the tickets.event-participations copy.", DiagnosticId = "HUM_USER_PARTICIPATIONS")]
-    IReadOnlyList<LegacyEventParticipationInfo> EventParticipations,
     IReadOnlyList<UserExternalLoginInfo> ExternalLogins,
     ProfileInfo? Profile,
     [property: Obsolete("Moved to Email's email_communication_preferences (Users decomposition commit 14). Read ICommunicationPreferenceService; the one reader left is Email's legacy fallback and the email.communication-preferences copy.", DiagnosticId = "HUM_USER_COMMPREFS")]
@@ -255,7 +244,6 @@ public sealed record UserInfo(
     public static UserInfo Create(
         User user,
         IReadOnlyList<UserEmail> userEmails,
-        IReadOnlyList<EventParticipation> eventParticipations,
         IReadOnlyList<(string Provider, string ProviderKey)> externalLogins,
         ProfileInfo? profile,
         IReadOnlyList<LegacyCommunicationPreferenceInfo> communicationPreferences)
@@ -267,12 +255,6 @@ public sealed record UserInfo(
                 e.Id, e.Email, e.IsVerified, e.IsPrimary, e.IsGoogle,
                 e.Provider, e.ProviderKey, e.Visibility, e.VerificationSentAt,
                 e.CreatedAt, e.UpdatedAt, e.GoogleEmailStatus))
-            .ToList();
-
-        var participationInfos = eventParticipations
-            .OrderBy(p => p.Year)
-            .Select(p => new LegacyEventParticipationInfo(
-                p.Id, p.Year, p.Status, p.Source, p.DeclaredAt, p.CheckedInAt))
             .ToList();
 
         var loginInfos = externalLogins
@@ -306,7 +288,6 @@ public sealed record UserInfo(
             MergedAt: user.MergedAt,
             IdentityEmailColumn: user.IdentityEmailColumn,
             UserEmails: userEmailInfos,
-            EventParticipations: participationInfos,
             ExternalLogins: loginInfos,
             Profile: profile,
             CommunicationPreferences: communicationPreferenceInfos)

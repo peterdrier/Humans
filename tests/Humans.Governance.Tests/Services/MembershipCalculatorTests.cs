@@ -833,7 +833,6 @@ public class MembershipCalculatorTests
             State = state,
         },
         userEmails: [],
-        eventParticipations: [],
         externalLogins: [],
         profile: profile,
         communicationPreferences: []);

@@ -32,7 +32,7 @@ internal sealed class EventParticipationConfiguration : IEntityTypeConfiguration
             .IsUnique();
 
         builder.HasOne<User>()
-            .WithMany(u => u.EventParticipations)
+            .WithMany()
             .HasForeignKey(ep => ep.UserId)
             .OnDelete(DeleteBehavior.Cascade);
     }

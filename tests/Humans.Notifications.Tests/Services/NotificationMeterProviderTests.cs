@@ -474,7 +474,6 @@ public class NotificationMeterProviderTests : IDisposable
                     CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
                 },
                 userEmails: [],
-                eventParticipations: [],
                 externalLogins: [],
                 profile: UserFixtures.Profile(
                     burnerName: "B",

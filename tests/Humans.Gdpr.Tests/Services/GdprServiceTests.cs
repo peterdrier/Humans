@@ -61,7 +61,6 @@ public class GdprServiceTests
         MergedAt: null,
         IdentityEmailColumn: null,
         UserEmails: [],
-        EventParticipations: [],
         ExternalLogins: [],
         Profile: null,
         CommunicationPreferences: []);

@@ -94,7 +94,6 @@ public class ProfileApiControllerTests
         UserInfoFactory.Create(
             user: user,
             userEmails: [],
-            eventParticipations: [],
             externalLogins: [],
             profile: null,
             contactFields: [],
@@ -131,7 +130,6 @@ public class ProfileApiControllerTests
         return UserInfoFactory.Create(
             user: user,
             userEmails: [],
-            eventParticipations: [],
             externalLogins: [],
             profile: profile,
             contactFields: [],

@@ -20,7 +20,6 @@ internal static class UserInfoStubHelpers
             user,
             userEmails ?? user.UserEmails?.ToList() ?? [],
             [],
-            [],
             profile: profile,
             [],
             [],
@@ -30,7 +29,6 @@ internal static class UserInfoStubHelpers
     public static UserInfo MakeUserInfo(Guid userId, Profile? profile = null, string displayName = "User")
         => UserInfoFactory.Create(
             new User { Id = userId, PreferredLanguage = "en" },
-            [],
             [],
             [],
             profile: profile ?? new Profile

@@ -1469,7 +1469,6 @@ public class CampControllerTests
             new User { Id = userId, PreferredLanguage = "en" },
             [],
             [],
-            [],
             UserFixtures.Profile(
                 burnerName: "Lead Human"),
             []);

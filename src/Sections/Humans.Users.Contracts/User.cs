@@ -125,8 +125,6 @@ public class User : IdentityUser<Guid>
     /// <summary>For example the MailerLite subscriber id.</summary>
     public string? ExternalSourceId { get; set; }
 
-    public ICollection<EventParticipation> EventParticipations { get; } = new List<EventParticipation>();
-
     /// <summary>Set when this row is a merge tombstone. Cannot sign in.</summary>
     public Guid? MergedToUserId { get; set; }
 

@@ -14,21 +14,11 @@
     the assembly level in both directions (see
     memory/architecture/section-project-cycle-fix.md).
 
-    It holds exactly what lives outside the section: the UserInfo read model and the eight
-    projections it nests, the cross-section read interface and its result shapes, the
-    service interfaces something outside the section injects, and — the three additions
-    PR B forced, each because a *Base* consumer names it and Base cannot reference a
-    section:
-
-      User / UserEmail / EventParticipation.  48
-      files across Shell, CityPlanning, Development and twenty test projects
-      spell UserManager<User> / SignInManager<User> / AddIdentity<User, …>. ASP.NET
-      Identity's generic surface cannot be hidden, so User is public here rather than
-      internal in the section, and its two nav collections drag UserEmail and
-      EventParticipation with it (CS0053 otherwise). The other six entities — Profile,
-      ContactField, ProfileLanguage, VolunteerHistoryEntry, CommunicationPreference,
-      AccountMergeRequest — are internal in Humans.Users/Domain/ as the Camps precedent
-      wants.
+    It holds the UserInfo read model, nested projections and cross-section service contracts.
+    User and UserEmail stay here because ASP.NET Identity's generic surface names User
+    from Base consumers, and User.UserEmails needs a public element type. The other
+    persistence entities, including the frozen EventParticipation, are internal in
+    Humans.Users/Domain/.
 
       The three Users/Profiles enums (UserState, ContactFieldType,
       ContactFieldVisibility), which PR A could not take because Humans.Domain's entities

@@ -20,7 +20,7 @@ DB access; its one write is the `DuplicateAccountFlagged` audit entry through
 
 Per-user persistence is a single `IUserRepository`, which owns `Users`,
 `Profiles`, `UserEmails`, `ContactFields`, `ProfileLanguages`,
-`VolunteerHistoryEntries`, the frozen legacy `EventParticipations` (read-only; Tickets owns participation since Users decomposition commit 13), and the ASP.NET-Identity
+`VolunteerHistoryEntries` and the ASP.NET-Identity
 `IdentityUserLogins` bridge. `ProfileService` exposes only
 `IProfilePictureService`; the unified User+Profile read-model lives behind
 `IUserService.GetUserInfoAsync`. Repositories are **Singletons**
@@ -155,7 +155,7 @@ Folder: `src/Sections/Humans.Users/Services/`; repository under
 `Data/Repositories/`. **DbContext:** `UsersDbContext` — the merged
 Users+Profiles context (`Users` is the Identity-backed `users` table via
 `IdentityDbContext<User, …>`, which the context carries directly). Owns
-`Users`, `UserEmails` cross-bridge (read-through), the frozen legacy `EventParticipations` (read-only),
+`Users`, `UserEmails` cross-bridge (read-through),
 ASP.NET `IdentityUserLogins`, and `AccountMergeRequests` — the
 account-merge surface (`AccountMergeService`, `DuplicateAccountService`,
 `AccountMergeRepository`) lives here. The inner `IUserService` registration is wrapped
@@ -178,7 +178,7 @@ Repositories: `IUserRepository`, `ICommunicationPreferenceRepository`.
 |-------|-----|------|
 | Users | R/W | IUserRepository |
 | UserEmails | R | IUserRepository |
-| EventParticipations | R (frozen legacy rows: `UserInfo.EventParticipations` for Tickets' fallback, and the `LegacyEventParticipations` export slice) | IUserRepository |
+| EventParticipations | No live access; frozen storage mapping retained until the separate table drop | — |
 | IdentityUserLogins | R | IUserRepository |
 | Profiles | R/W | IUserRepository |
 | ContactFields | R | IUserRepository |

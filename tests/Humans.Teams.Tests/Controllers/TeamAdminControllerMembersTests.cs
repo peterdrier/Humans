@@ -45,7 +45,7 @@ public class TeamAdminControllerMembersTests
         var teams = Substitute.For<ITeamManagementService>();
         var users = Substitute.For<IUserService>();
         users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(UserInfo.Create(new User { Id = userId }, [], [], [], null, []));
+            .Returns(UserInfo.Create(new User { Id = userId }, [], [], null, []));
         var team = new TeamInfo(Guid.NewGuid(), "Team", null, "team", true, false, SystemTeamType.None,
             false, false, false, false, Instant.MinValue, []);
         teams.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(new Dictionary<Guid, TeamInfo> { [team.Id] = team });
@@ -104,7 +104,7 @@ public class TeamAdminControllerMembersTests
         var teams = Substitute.For<ITeamManagementService>();
         var users = Substitute.For<IUserService>();
         users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(UserInfo.Create(new User { Id = userId }, [], [], [], null, []));
+            .Returns(UserInfo.Create(new User { Id = userId }, [], [], null, []));
         var team = new TeamInfo(Guid.NewGuid(), "Team", null, "team", true, false, SystemTeamType.None,
             false, false, false, false, Instant.MinValue, []);
         teams.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(new Dictionary<Guid, TeamInfo> { [team.Id] = team });
@@ -169,7 +169,7 @@ public class TeamAdminControllerMembersTests
         var teams = Substitute.For<ITeamManagementService>();
         var users = Substitute.For<IUserService>();
         users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(UserInfo.Create(new User { Id = userId }, [], [], [], null, []));
+            .Returns(UserInfo.Create(new User { Id = userId }, [], [], null, []));
         users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(new Dictionary<Guid, UserInfo>()));
         var team = new TeamInfo(Guid.NewGuid(), "Team", null, "team", true, false, SystemTeamType.None,
@@ -249,7 +249,7 @@ public class TeamAdminControllerMembersTests
         var teams = Substitute.For<ITeamManagementService>();
         var users = Substitute.For<IUserService>();
         users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(UserInfo.Create(new User { Id = userId }, [], [], [], null, []));
+            .Returns(UserInfo.Create(new User { Id = userId }, [], [], null, []));
         var team = new TeamInfo(Guid.NewGuid(), "Team", null, "team", true, false, SystemTeamType.None,
             false, false, false, false, Instant.MinValue, []);
         teams.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(new Dictionary<Guid, TeamInfo> { [team.Id] = team });
@@ -341,7 +341,7 @@ public class TeamAdminControllerMembersTests
         var teams = Substitute.For<ITeamManagementService>();
         var users = Substitute.For<IUserService>();
         users.GetUserInfoAsync(actorId, Arg.Any<CancellationToken>()).Returns(
-            UserInfo.Create(new User { Id = actorId }, [], [], [], null, []));
+            UserInfo.Create(new User { Id = actorId }, [], [], null, []));
         var team = new TeamInfo(Guid.NewGuid(), "Team", null, "team", true, false, SystemTeamType.None,
             false, false, false, false, Instant.MinValue,
             [new TeamMemberInfo(Guid.NewGuid(), targetId, "Person", null, null, TeamMemberRole.Member, Instant.MinValue)]);
@@ -395,7 +395,7 @@ public class TeamAdminControllerMembersTests
         var teams = Substitute.For<ITeamManagementService>();
         var users = Substitute.For<IUserService>();
         users.GetUserInfoAsync(actorId, Arg.Any<CancellationToken>())
-            .Returns(new ValueTask<UserInfo?>(UserInfo.Create(new User { Id = actorId }, [], [], [], null, [])));
+            .Returns(new ValueTask<UserInfo?>(UserInfo.Create(new User { Id = actorId }, [], [], null, [])));
         teams.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(new Dictionary<Guid, TeamInfo> { [team.Id] = team });
         const string reason = "The requested membership change is not permitted";
         Exception failure = unexpected
@@ -474,7 +474,7 @@ public class TeamAdminControllerMembersTests
         teams.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(new Dictionary<Guid, TeamInfo> { [team.Id] = team });
         teams.GetPendingRequestsForTeamAsync(team.Id).Returns([]);
         users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(new ValueTask<UserInfo?>(UserInfo.Create(new User { Id = userId }, [], [], [], null, [])));
+            .Returns(new ValueTask<UserInfo?>(UserInfo.Create(new User { Id = userId }, [], [], null, [])));
         users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(new Dictionary<Guid, UserInfo>()));
         var authorization = Substitute.For<IAuthorizationService>();

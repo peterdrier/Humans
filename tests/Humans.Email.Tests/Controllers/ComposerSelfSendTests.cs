@@ -53,7 +53,7 @@ public sealed class ComposerSelfSendTests
 
     private void GivenAddress(string? address) =>
         _users.GetUserInfoAsync(UserId, Arg.Any<CancellationToken>())
-            .Returns(UserInfo.Create(new User { Id = UserId, Email = address }, [], [], [], null, []));
+            .Returns(UserInfo.Create(new User { Id = UserId, Email = address }, [], [], null, []));
 
     [HumansFact]
     public async Task SendMarkdownToSelf_QueuesOneSystemEmailToTheCallerAndAudits()

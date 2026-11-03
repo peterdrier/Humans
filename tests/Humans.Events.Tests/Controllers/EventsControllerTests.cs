@@ -1113,7 +1113,6 @@ public class EventsControllerTests
         return UserInfo.Create(
             user: user,
             userEmails: [],
-            eventParticipations: [],
             externalLogins: [],
             profile: profile,
             communicationPreferences: []);

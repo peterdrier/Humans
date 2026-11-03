@@ -122,7 +122,6 @@ public class ShiftsControllerToggleDayTests
                     : UserState.Active,
             },
             userEmails: [],
-            eventParticipations: [],
             externalLogins: [],
             profile: profile,
             contactFields: [],

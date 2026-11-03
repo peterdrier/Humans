@@ -11,7 +11,6 @@ internal static class UserInfoFactory
     public static UserInfo Create(
         User user,
         IReadOnlyList<UserEmail> userEmails,
-        IReadOnlyList<EventParticipation> eventParticipations,
         IReadOnlyList<(string Provider, string ProviderKey)> externalLogins,
         Profile? profile,
         IReadOnlyList<ContactField> contactFields,
@@ -21,7 +20,6 @@ internal static class UserInfoFactory
         UserInfo.Create(
             user,
             userEmails,
-            eventParticipations,
             externalLogins,
             ToProfileInfo(profile, contactFields, profileLanguages, volunteerHistory),
             communicationPreferences

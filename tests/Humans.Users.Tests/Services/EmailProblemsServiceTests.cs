@@ -82,7 +82,6 @@ public sealed class EmailProblemsServiceTests : ServiceTestHarness
         return UserInfoFactory.Create(
             user: user,
             userEmails: emails,
-            eventParticipations: [],
             externalLogins: [],
             profile: profile,
             contactFields: [],

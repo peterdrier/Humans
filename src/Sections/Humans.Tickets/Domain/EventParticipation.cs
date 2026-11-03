@@ -13,8 +13,7 @@ internal sealed class EventParticipation
     public int Year { get; set; }
 
     /// <summary>
-    /// Null marks a cleared row: kept only while a legacy Users row exists for the same user and year, so that value
-    /// can't come back through the read fallback or the copy. Reads treat it as no record.
+    /// Historical cleared rows have null status and read as unknown. New removals delete the row.
     /// </summary>
     public ParticipationStatus? Status { get; set; }
 

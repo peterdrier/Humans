@@ -35,7 +35,7 @@ public class AdminHumanListAssemblerTests
             IsApproved = true,
         };
 
-        return UserInfoFactory.Create(user, [], [], [], profile, [], [], [], []);
+        return UserInfoFactory.Create(user, [], [], profile, [], [], [], []);
     }
 
     private static UserState StateOf(UserInfo u) =>

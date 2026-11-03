@@ -140,7 +140,6 @@ public class PersonSearchMatcherTests
         return UserInfoFactory.Create(
             user: user,
             userEmails: emailEntities,
-            eventParticipations: [],
             externalLogins: [],
             profile: profile,
             contactFields: contactEntities,
@@ -384,7 +383,7 @@ public class PersonSearchMatcherTests
         // The single-person lookups (/api/profiles/by-userid, allowEmail) read this same flag.
         Human().IsSearchable.Should().BeTrue();
         Human(isRejected: true).IsSearchable.Should().BeFalse();
-        UserInfo.Create(new User { Id = Guid.NewGuid(), PreferredLanguage = "en" }, [], [], [], profile: null, [])
+        UserInfo.Create(new User { Id = Guid.NewGuid(), PreferredLanguage = "en" }, [], [], profile: null, [])
             .IsSearchable.Should().BeFalse();
     }
 

@@ -314,7 +314,6 @@ public class EventsApiControllerTests
         return UserInfo.Create(
             user: user,
             userEmails: [],
-            eventParticipations: [],
             externalLogins: [],
             profile: profile,
             communicationPreferences: []);

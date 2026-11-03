@@ -306,7 +306,6 @@ public class ProfileViewControllerPopoverTests
         UserInfoFactory.Create(
             user: user,
             userEmails: userEmails ?? [],
-            eventParticipations: [],
             externalLogins: [],
             profile: profile,
             contactFields: [],

@@ -1186,7 +1186,6 @@ public sealed class ShiftDashboardMetricsTests : ShiftsTestHarness
             IReadOnlyCollection<UserInfo> result = users.Select(u => UserInfoFactory.Create(
                 u,
                 userEmails: [],
-                eventParticipations: [],
                 externalLogins: [],
                 profile: null,
                 contactFields: [],

@@ -230,9 +230,7 @@ Implements the internal `IEventParticipationManagement` (and so `ITicketWrite`),
 `IUserDataContributor` (slice `EventParticipations`, retained on erasure) and
 `IUserMerge`. `TicketQueryService` forwards `ITicketService.GetParticipationsAsync` /
 `GetAllParticipationsAsync` to it. Cross-section calls via `IUserService`
-(`GetUserInfoAsync` to forward-resolve a merged id; `GetRawUserInfoAsync` /
-`GetAllRawUserInfosAsync` for the frozen legacy rows — the one suppressed
-`HUM_USER_PARTICIPATIONS` reader, `LegacyRows`) and `IAuditLogService`
+(`GetUserInfoAsync` to forward-resolve a merged id) and `IAuditLogService`
 (`ParticipationBackfilled`). No cache.
 
 ### UserParticipationBackfillService (Scoped)

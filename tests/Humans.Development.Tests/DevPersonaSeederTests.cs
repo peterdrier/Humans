@@ -86,7 +86,7 @@ public class DevPersonaSeederTests
     private static UserInfo NamedUserInfo(Guid userId, UserState state) =>
         UserInfo.Create(
             new User { Id = userId, DisplayName = "Dev Board", State = state },
-            [], [], [],
+            [], [],
             profile: UserFixtures.Profile(
                 burnerName: "Dev Board",
                 firstName: "Dev",
@@ -199,7 +199,7 @@ public class DevPersonaSeederTests
         _users.GetUserInfoAsync(profileless, Arg.Any<CancellationToken>())
             .Returns(new ValueTask<UserInfo?>(UserInfo.Create(
                 new User { Id = profileless, DisplayName = "Dev Guest" },
-                [], [], [], profile: null, [])));
+                [], [], profile: null, [])));
 
         await BuildSut().EnsureActiveAsync(profileless);
 

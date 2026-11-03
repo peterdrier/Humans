@@ -42,7 +42,7 @@ public class ShiftProfileControllerTests
         var users = Substitute.For<IUserService>();
         var userId = Guid.NewGuid();
         users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(new ValueTask<UserInfo?>(UserInfo.Create(new User { Id = userId }, [], [], [], null, [])));
+            .Returns(new ValueTask<UserInfo?>(UserInfo.Create(new User { Id = userId }, [], [], null, [])));
         ShiftVolunteerProfileInfo? saved = null;
         await shifts.UpdateShiftProfileAsync(Arg.Do<ShiftVolunteerProfileInfo>(p => { saved = p; }));
         var http = new DefaultHttpContext
@@ -88,7 +88,7 @@ public class ShiftProfileControllerTests
         var users = Substitute.For<IUserService>();
         var userId = Guid.NewGuid();
         users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(new ValueTask<UserInfo?>(UserInfo.Create(new User { Id = userId }, [], [], [], null, [])));
+            .Returns(new ValueTask<UserInfo?>(UserInfo.Create(new User { Id = userId }, [], [], null, [])));
         var http = new DefaultHttpContext
         {
             RequestServices = services,
@@ -121,7 +121,7 @@ public class ShiftProfileControllerTests
         var view = Substitute.For<IShiftView>();
         var users = Substitute.For<IUserService>();
         var userId = Guid.NewGuid();
-        var user = UserInfo.Create(new User { Id = userId }, [], [], [], null, []);
+        var user = UserInfo.Create(new User { Id = userId }, [], [], null, []);
         users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(call =>
         {
             if (string.Equals(boundary, "viewer", StringComparison.Ordinal)) call.Arg<CancellationToken>().ThrowIfCancellationRequested();

@@ -333,7 +333,7 @@ internal sealed class ClassifierHarness
                 while (MergedToTargets.TryGetValue(userId, out var targetId))
                     userId = targetId;
                 return new ValueTask<UserInfo?>(UserInfo.Create(
-                    new User { Id = userId }, [], [], [], null, []));
+                    new User { Id = userId }, [], [], null, []));
             });
 
         // Default: no pref row for any user. SetMarketingPref overrides per-user.

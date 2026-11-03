@@ -56,7 +56,7 @@ public class SepaWithdrawTests
                     DeletionEligibleAfter: null,
                     ContactSource: null,
                     ExternalSourceId: null, MergedToUserId: null, MergedAt: null, IdentityEmailColumn: "paul@example.org",
-                    UserEmails: [], EventParticipations: [], ExternalLogins: [], Profile: null,
+                    UserEmails: [], ExternalLogins: [], Profile: null,
                     CommunicationPreferences: []),
             });
     }

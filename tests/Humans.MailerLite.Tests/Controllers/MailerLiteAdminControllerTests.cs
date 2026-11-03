@@ -330,7 +330,6 @@ public class MailerLiteAdminControllerTests
                 CreatedAt = now,
                 UpdatedAt = now,
             }],
-            eventParticipations: [],
             externalLogins: [],
             profile: null,
             communicationPreferences: []);
@@ -355,7 +354,6 @@ public class MailerLiteAdminControllerTests
                 ContactSource = source,
             },
             userEmails: [],
-            eventParticipations: [],
             externalLogins: [],
             profile: null,
             communicationPreferences: []);

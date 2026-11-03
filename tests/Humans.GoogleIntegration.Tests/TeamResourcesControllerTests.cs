@@ -42,7 +42,7 @@ public class TeamResourcesControllerTests
     public TeamResourcesControllerTests()
     {
         _users.GetUserInfoAsync(_userId, Arg.Any<CancellationToken>()).Returns(
-            new ValueTask<UserInfo?>(UserInfo.Create(new User { Id = _userId }, [], [], [], null, [])));
+            new ValueTask<UserInfo?>(UserInfo.Create(new User { Id = _userId }, [], [], null, [])));
         _teams.GetTeamBySlugAsync(_team.Slug, Arg.Any<CancellationToken>()).Returns(_team);
         _resources.GetTeamResourcesAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns([]);
         _resources.GetServiceAccountEmailAsync(Arg.Any<CancellationToken>()).Returns("service@example.com");

@@ -96,7 +96,6 @@ public sealed class VolunteerTrackingExportServiceTests
                 CreatedAt = TestNow,
             },
             userEmails: [],
-            eventParticipations: [],
             externalLogins: [],
             profile: null,
             contactFields: [],

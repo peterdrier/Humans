@@ -5,8 +5,7 @@ using Humans.Base.Interfaces.Repositories;
 namespace Humans.Users.Data.Repositories;
 
 /// <summary>
-/// Repository for <c>AspNetUsers</c> and <c>event_participations</c>. Reads are AsNoTracking;
-/// event-participation writes are load-then-save so <c>UserService</c> applies its rules first.
+/// Repository for <c>users</c>. Read-only queries use AsNoTracking.
 /// </summary>
 internal partial interface IUserRepository : IRepository
 {
@@ -91,15 +90,4 @@ internal partial interface IUserRepository : IRepository
     /// </summary>
     Task<ExpiredDeletionAnonymizationResult?> ApplyExpiredDeletionAnonymizationAsync(
         Guid userId, CancellationToken ct = default);
-
-    // Frozen legacy event participations: Tickets owns participation and reads these through UserInfo.
-
-    /// <summary>All years, ordered by year, read-only.</summary>
-    Task<IReadOnlyList<EventParticipation>> GetEventParticipationsByUserIdAsync(
-        Guid userId, CancellationToken ct = default);
-
-    /// <summary>Grouped by <c>UserId</c>; users with none are absent.</summary>
-    Task<IReadOnlyDictionary<Guid, IReadOnlyList<EventParticipation>>>
-        GetEventParticipationsByUserIdsAsync(
-            IReadOnlyCollection<Guid> userIds, CancellationToken ct = default);
 }

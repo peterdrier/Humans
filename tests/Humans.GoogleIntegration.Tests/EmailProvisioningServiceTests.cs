@@ -173,7 +173,6 @@ public class EmailProvisioningServiceTests
             CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
         },
         userEmails: [],
-        eventParticipations: [],
         externalLogins: [],
         profile: profile,
         communicationPreferences: []);
@@ -497,7 +496,6 @@ public class EmailProvisioningServiceTests
                 CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
             },
             userEmails: [],
-            eventParticipations: [],
             externalLogins: [],
             profile: UserFixtures.Profile(firstName: "Merged", lastName: "User"),
             communicationPreferences: []);

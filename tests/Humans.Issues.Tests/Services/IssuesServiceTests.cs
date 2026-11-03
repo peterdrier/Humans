@@ -148,7 +148,6 @@ public sealed class IssuesServiceTests
             : UserInfo.Create(
                 user: user,
                 userEmails: [],
-                eventParticipations: [],
                 externalLogins: [],
                 profile: UserFixtures.Profile(burnerName: user.BurnerName ?? "", firstName: "Test", lastName: "User"),
                 communicationPreferences: []);

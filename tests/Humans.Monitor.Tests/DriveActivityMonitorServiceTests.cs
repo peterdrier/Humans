@@ -549,7 +549,6 @@ public class DriveActivityMonitorServiceTests
             MergedAt: null,
             IdentityEmailColumn: email,
             UserEmails: [],
-            EventParticipations: [],
             ExternalLogins: externalLogins,
             Profile: null,
             CommunicationPreferences: []);
@@ -572,7 +571,6 @@ public class DriveActivityMonitorServiceTests
             MergedAt: null,
             IdentityEmailColumn: null,
             UserEmails: [],
-            EventParticipations: [],
             ExternalLogins: externalLogins,
             Profile: null,
             CommunicationPreferences: []);

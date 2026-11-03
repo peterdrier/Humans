@@ -21,7 +21,7 @@ public class HumanSearchViewComponentTests
         var requestedId = archivedId ? Guid.NewGuid() : userId;
         var users = Substitute.For<IUserService>();
         var info = UserInfo.Create(
-            new User { Id = userId, BurnerName = "Member", State = UserState.Active }, [], [], [],
+            new User { Id = userId, BurnerName = "Member", State = UserState.Active }, [], [],
             UserFixtures.Profile(burnerName: "Member"), []);
         users.GetUserInfoAsync(requestedId, Arg.Any<CancellationToken>()).Returns(info);
         var component = new HumanSearchViewComponent(users)

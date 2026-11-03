@@ -156,22 +156,12 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
         accountUser.DeletionRequestedAt = hasDeletionHold ? arrival : null;
         accountUser.DeletionScheduledFor = hasDeletionHold ? arrival + NodaTime.Duration.FromDays(30) : null;
         accountUser.DeletionEligibleAfter = hasDeletionHold ? arrival + NodaTime.Duration.FromDays(60) : null;
-        Db.EventParticipations.Add(new EventParticipation
-        {
-            Id = Guid.NewGuid(),
-            UserId = userId,
-            Year = 2026,
-            Status = LegacyParticipationStatus.Attended,
-            Source = LegacyParticipationSource.TicketSync,
-            CheckedInAt = arrival,
-        });
         await Db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var slices = await _service.ContributeForUserAsync(userId, TestContext.Current.CancellationToken);
 
         slices.Select(s => s.SectionName).Should().Contain([
             UserService.Account,
-            UserService.LegacyEventParticipations,
             UserService.Profile,
             UserService.ContactFields,
             UserService.UserEmails,
@@ -200,12 +190,7 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
         accountData.RootElement.GetProperty("DeletionScheduledFor").GetString()
             .Should().Be(accountUser.DeletionScheduledFor.ToIso8601());
 
-        var participationSlice = slices.Single(s =>
-            string.Equals(s.SectionName, UserService.LegacyEventParticipations, StringComparison.Ordinal));
-        using var participationJson = System.Text.Json.JsonDocument.Parse(
-            System.Text.Json.JsonSerializer.Serialize(participationSlice.Data));
-        participationJson.RootElement.EnumerateArray().Single().GetProperty("CheckedInAt")
-            .GetString().Should().Be(arrival.ToIso8601());
+
     }
 
     [HumansTheory]
@@ -621,7 +606,7 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
 
         var user = await Db.Users.AsNoTracking().SingleAsync(u => u.Id == userId, TestContext.Current.CancellationToken);
         user.MarkedFakeAt.Should().Be(Clock.GetCurrentInstant());
-        UserInfo.Create(user, [], [], [], profile: null, []).IsFake.Should().BeTrue();
+        UserInfo.Create(user, [], [], profile: null, []).IsFake.Should().BeTrue();
         await AuditLog.Received(1).LogAsync(UsersAuditActions.AccountMarkedFake, nameof(User), userId, "gate", actorId);
         AuditLog.ReceivedCalls().Should().HaveCount(1);
     }

@@ -78,7 +78,7 @@ public class AcceptAsyncFullFixtureTest(HumansTestDatabase database)
             // Logins are keyed on (provider, key), so two users never share one.
             b.WithSourceLogin("Google", sourceLoginKey);
 
-            b.WithSourceEventParticipation(2024, LegacyParticipationStatus.Attended);
+            b.WithSourceEventParticipation(2024, ParticipationStatus.Attended);
 
             b.WithSourceApplication();
 

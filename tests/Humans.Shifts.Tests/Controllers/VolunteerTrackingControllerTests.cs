@@ -67,7 +67,6 @@ public class VolunteerTrackingControllerTests
                     currentUser,
                     [],
                     [],
-                    [],
                     profile: null,
                     [],
                     [],
@@ -722,7 +721,6 @@ public class VolunteerTrackingControllerTests
         return UserInfoFactory.Create(
             user: user,
             userEmails: [],
-            eventParticipations: [],
             externalLogins: [],
             profile: profile,
             contactFields: [],

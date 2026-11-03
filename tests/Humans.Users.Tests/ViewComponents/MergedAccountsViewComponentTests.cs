@@ -119,7 +119,7 @@ public class MergedAccountsViewComponentTests
             MergedToUserId = mergedTo,
             MergedAt = mergedAt,
         };
-        var info = UserInfo.Create(user, [], [], [], null, []);
+        var info = UserInfo.Create(user, [], [], null, []);
         return mergedUserIds is null ? info : info with { MergedUserIds = mergedUserIds };
     }
 
