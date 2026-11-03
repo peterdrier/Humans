@@ -709,19 +709,6 @@ internal sealed class BudgetService(
         return changed;
     }
 
-    public async Task<int> RefreshTicketingProjectionsAsync(
-        Guid budgetYearId, Guid? actorUserId, CancellationToken ct = default)
-    {
-        var now = clock.GetCurrentInstant();
-        var today = now.InUtc().Date;
-
-        var created = await repository.RefreshTicketingProjectionsAsync(
-            budgetYearId, today, actorUserId, now, ct);
-
-        logger.LogInformation("Ticketing projections refreshed: {Count} line items", created);
-        return created;
-    }
-
     public async Task<IReadOnlyList<TicketingWeekProjection>> GetTicketingProjectionEntriesAsync(
         Guid budgetGroupId, CancellationToken ct = default)
     {

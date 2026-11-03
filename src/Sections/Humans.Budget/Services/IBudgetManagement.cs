@@ -34,10 +34,6 @@ internal interface IBudgetManagement : IBudgetService, IApplicationService
         Guid? actorUserId,
         CancellationToken ct = default);
 
-    /// <summary>No actuals sync; for after projection parameters change. Returns projected line items created.</summary>
-    Task<int> RefreshTicketingProjectionsAsync(
-        Guid budgetYearId, Guid? actorUserId, CancellationToken ct = default);
-
     /// <summary>Virtual (not persisted) weeks, for the break-even forecasts.</summary>
     Task<IReadOnlyList<TicketingWeekProjection>> GetTicketingProjectionEntriesAsync(
         Guid budgetGroupId, CancellationToken ct = default);

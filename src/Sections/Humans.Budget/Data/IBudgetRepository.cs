@@ -186,17 +186,6 @@ internal interface IBudgetRepository : IRepository
         Instant now,
         CancellationToken ct = default);
 
-    /// <summary>
-    /// No actuals sync, one save. Returns projected line items created. <paramref name="today"/> sets the ISO-week
-    /// cut-over, passed in so the repository stays <c>IClock</c>-free.
-    /// </summary>
-    Task<int> RefreshTicketingProjectionsAsync(
-        Guid budgetYearId,
-        LocalDate today,
-        Guid? actorUserId,
-        Instant now,
-        CancellationToken ct = default);
-
     /// <summary>The most recent 500.</summary>
     Task<IReadOnlyList<BudgetAuditLog>> GetAuditLogAsync(
         Guid? budgetYearId, CancellationToken ct = default);
