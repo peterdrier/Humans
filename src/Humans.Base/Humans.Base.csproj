@@ -85,6 +85,9 @@
     again (Humans.Infrastructure.Configuration), so no call site moved. Everything else went to
     Humans.Web — including InfrastructureServiceCollectionExtensions, whose two anchor rules
     were self-retiring and went with the assembly.
+
+    Gdpr/ is the GDPR export/erase fan-out seam every data-owning section implements.
+    AuditLog/ is the audit append path every writing section calls.
   -->
 
   <!--

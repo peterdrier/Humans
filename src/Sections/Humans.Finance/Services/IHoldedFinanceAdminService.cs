@@ -79,6 +79,10 @@ internal interface IHoldedFinanceAdminService : IApplicationService
     /// Audits and tells the member.</summary>
     Task<SepaBookingResult> WithdrawSepaTransferAsync(Guid transferId, Guid actorUserId, CancellationToken ct = default);
 
+    /// <summary>Withdraws every live transfer of a file the bank rejected whole. Refused if any of them could not be
+    /// withdrawn alone. Audits each transfer; emails nobody.</summary>
+    Task<SepaBookingResult> CancelSepaFileAsync(Guid fileId, Guid actorUserId, CancellationToken ct = default);
+
     Task<HoldedDuplicatesVm> GetHoldedDuplicatesAsync(CancellationToken ct = default);
 
     /// <summary>Recomputed when it runs: documents first, then contacts left empty, one audit entry per id, then a

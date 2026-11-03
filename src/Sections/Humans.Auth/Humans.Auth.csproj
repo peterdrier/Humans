@@ -27,8 +27,6 @@
     <ProjectReference Include="..\..\Humans.Base\Humans.Base.csproj" />
     <!--
       One reason per reference:
-      AuditLog      — RoleAssignmentService writes an audit row per assign/end.
-      Gdpr          — role assignments are an Article 15 export slice.
       Notifications.Contracts — best-effort in-app notice to the human whose role changed.
       Users.Contracts — IUserService for assignee/creator display stitching;
                         MagicLinkService adds UserManager<User> and IUserEmailService.
@@ -38,9 +36,7 @@
                         the Board system team.
       No Onboarding.Contracts reference.
     -->
-    <ProjectReference Include="..\Humans.AuditLog\Humans.AuditLog.csproj" />
     <ProjectReference Include="..\Humans.Email.Contracts\Humans.Email.Contracts.csproj" />
-    <ProjectReference Include="..\Humans.Gdpr\Humans.Gdpr.csproj" />
     <ProjectReference Include="..\Humans.Notifications.Contracts\Humans.Notifications.Contracts.csproj" />
     <ProjectReference Include="..\Humans.Teams.Contracts\Humans.Teams.Contracts.csproj" />
     <ProjectReference Include="..\Humans.Users.Contracts\Humans.Users.Contracts.csproj" />

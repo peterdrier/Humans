@@ -32,15 +32,14 @@
   <ItemGroup>
     <!--
       The users debug page and the dashboard card read Shifts, Tickets and Consent through their
-      contracts; DataMigrationService audits through AuditLog's contracts. Consent and AuditLog keep
-      their public surface in a Contracts/ folder, so the main project is the reference. The widget
+      contracts; DataMigrationService audits through IAuditLogService in Base. Consent keeps
+      its public surface in a Contracts/ folder, so the main project is the reference. The widget
       gallery itself references no section: every section-owned card arrives through the
       ChromeSlots.WidgetGallery slot.
     -->
     <ProjectReference Include="..\Humans.Shifts.Contracts\Humans.Shifts.Contracts.csproj" />
     <ProjectReference Include="..\Humans.Tickets.Contracts\Humans.Tickets.Contracts.csproj" />
     <ProjectReference Include="..\Humans.Consent\Humans.Consent.csproj" />
-    <ProjectReference Include="..\Humans.AuditLog\Humans.AuditLog.csproj" />
   </ItemGroup>
 
   <ItemGroup>
