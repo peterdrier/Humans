@@ -58,6 +58,7 @@ public sealed class Section : ISection, ISectionAdminNav, ISectionConfiguration,
         services.AddScoped<Services.IHoldedNightlySync, Services.HoldedNightlySync>();
 
         services.AddScoped<HoldedSyncJob>();
+        services.AddHostedService<HoldedMirrorCatchUp>();
     }
 
     IEnumerable<AdminNavGroup> ISectionAdminNav.Groups() =>
