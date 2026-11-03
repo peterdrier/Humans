@@ -476,8 +476,15 @@ internal sealed class EventService(
 
     public async Task<IReadOnlyList<EventFavouriteInfo>> GetFavouritesWithEventsAsync(Guid userId, CancellationToken ct = default)
     {
-        var guideEventId = await GetGuideEventIdAsync(ct);
+        var guideSettings = await repo.GetGuideSettingsAsync(ct);
+        var guideEventId = guideSettings?.EventSettingsId;
         var favourites = await repo.GetFavouritesWithEventsAsync(userId, ct);
+        if (favourites.Count == 0) return [];
+
+        var eventSettings = guideSettings is null
+            ? null
+            : await settingsService.GetEventSettingsByIdAsync(guideSettings.EventSettingsId, ct);
+        var canExpand = GetTimeZone(eventSettings) is not null;
         return favourites.Where(f => f.Event.IsInEvent(guideEventId)).Select(f => new EventFavouriteInfo(
                 f.Id, f.UserId, f.GuideEventId, f.DayOffset, f.CreatedAt, ToEventInfo(f.Event)))
             .GroupBy(f => f.GuideEventId)
@@ -485,7 +492,8 @@ internal sealed class EventService(
             {
                 // A recurrence edit can leave several day bookmarks for one single event.
                 // Project a whole-event target so the existing remove path clears them all.
-                var wholeEvent = group.FirstOrDefault(f => !f.Event.IsRecurring || f.DayOffset is null);
+                var wholeEvent = group.FirstOrDefault(f => !canExpand || !f.Event.IsRecurring
+                    || string.IsNullOrWhiteSpace(f.Event.RecurrenceDays) || f.DayOffset is null);
                 return wholeEvent is null ? group.ToArray() : [wholeEvent with { DayOffset = null }];
             }).ToList();
     }
