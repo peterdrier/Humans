@@ -68,18 +68,20 @@ section answers.
 
 - Only `NotificationRepository` touches the section's tables — `src/Humans.Analyzers/Internal/Rules/TableOwnershipRule.cs` (HUM0025).
 - An `Informational` emit skips a recipient whose inbox preference for the source's category is
-  off; an `Actionable` emit never does — `src/Sections/Humans.Notifications/Services/NotificationEmitter.cs:57`, `src/Sections/Humans.Notifications/Services/NotificationService.cs:83`.
-- An emit whose recipients are all filtered out writes nothing and logs why — `src/Sections/Humans.Notifications/Services/NotificationEmitter.cs:89`, `src/Sections/Humans.Notifications/Services/NotificationService.cs:95`.
+  off; an `Actionable` emit never reads the preference — `src/Sections/Humans.Notifications/Services/NotificationEmitter.cs:67`.
+- An emit with no recipients, or whose recipients are all filtered out, writes nothing and logs
+  why — `src/Sections/Humans.Notifications/Services/NotificationEmitter.cs:57`, `src/Sections/Humans.Notifications/Services/NotificationEmitter.cs:73`.
 - Resolution is stored on the notification, so resolving clears it for every recipient; read
-  state is stored on the recipient row — `src/Sections/Humans.Notifications/Data/NotificationRepository.cs:62`, `src/Sections/Humans.Notifications/Data/NotificationRepository.cs:110`.
-- An `Actionable` notification cannot be dismissed, singly or in bulk — `src/Sections/Humans.Notifications/Data/NotificationRepository.cs:83`, `src/Sections/Humans.Notifications/Data/NotificationRepository.cs:176`.
-- Only a recipient can resolve, dismiss, mark read or click through a notification — `src/Sections/Humans.Notifications/Data/NotificationRepository.cs:54`, `src/Sections/Humans.Notifications/Data/NotificationRepository.cs:80`, `src/Sections/Humans.Notifications/Data/NotificationRepository.cs:103`, `src/Sections/Humans.Notifications/Data/NotificationRepository.cs:152`, `src/Sections/Humans.Notifications/Data/NotificationRepository.cs:205`.
-- Every page route acts on the signed-in human's own pile and nobody else's — `src/Sections/Humans.Notifications/Controllers/NotificationsController.cs:21`.
-- Badge counts are counted from committed recipient rows on every read, never cached — `src/Sections/Humans.Notifications/Data/NotificationRepository.cs:276`.
+  state is stored on the recipient row — `src/Sections/Humans.Notifications/Data/NotificationRepository.cs:151`, `src/Sections/Humans.Notifications/Data/NotificationRepository.cs:55`.
+- A resolve or dismiss acts only on the class it names, so an `Actionable` notification cannot
+  be dismissed, singly or in bulk — `src/Sections/Humans.Notifications/Data/NotificationRepository.cs:32`, `src/Sections/Humans.Notifications/Data/NotificationRepository.cs:87`.
+- Only a recipient can resolve, dismiss, mark read or click through a notification — `src/Sections/Humans.Notifications/Data/NotificationRepository.cs:29`, `src/Sections/Humans.Notifications/Data/NotificationRepository.cs:48`, `src/Sections/Humans.Notifications/Data/NotificationRepository.cs:89`, `src/Sections/Humans.Notifications/Data/NotificationRepository.cs:101`, `src/Sections/Humans.Notifications/Data/NotificationRepository.cs:123`.
+- Every page route acts on the signed-in human's own pile and nobody else's — `src/Sections/Humans.Notifications/Controllers/NotificationsController.cs:24`.
+- Badge counts are counted from committed recipient rows on every read, never cached — `src/Sections/Humans.Notifications/Data/NotificationRepository.cs:281`.
 - The purge deletes resolved rows past 7 days, unresolved informational rows past 30 days and
-  unresolved rows of retired sources, and nothing else — `src/Sections/Humans.Notifications/Services/NotificationInboxService.cs:214`.
-- Meters are computed on read and never stored — `src/Sections/Humans.Notifications/Services/NotificationMeterProvider.cs:230`.
-- The machine read never mutates: it calls only the inbox's read and the meter provider — `src/Sections/Humans.Notifications/Services/NotificationInboxRead.cs:22`.
+  unresolved rows of retired sources, and nothing else — `src/Sections/Humans.Notifications/Services/NotificationInboxService.cs:163`.
+- Meter counts live only in a two-minute memory cache, never in a table — `src/Sections/Humans.Notifications/Services/NotificationMeterProvider.cs:196`.
+- The machine read never mutates: it calls only the inbox's read and the meter provider — `src/Sections/Humans.Notifications/Services/NotificationInboxRead.cs:16`.
 
 ## 5. Seams
 
@@ -124,3 +126,4 @@ Specified or known, not built; reserved, not ranked:
 |-----|------|----------|----|
 | 1 | 2026-08-26 | DI-cycle story corrected; doc names brought in line with the code | peterdrier/Humans#1527 |
 | 2 | 2026-09-30 | One row shape; inbox reads stop loading co-recipients | peterdrier/Humans#1866 |
+| 3 | 2026-11-03 | One outcome shape per transition; docs stop listing other sections' sources | pending |
