@@ -4,6 +4,7 @@ using Humans.Events.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
 using NodaTime;
+using static Humans.Events.Helpers.EventsTimeHelpers;
 
 namespace Humans.Events.ViewComponents;
 
@@ -57,7 +58,7 @@ public sealed class EventsCardViewComponent(
                     Title = e.Title,
                     CategoryName = e.CategoryName,
                     Description = e.Description,
-                    StartAt = tz is null ? e.StartAt.ToDateTimeUtc() : e.StartAt.InZone(tz).ToDateTimeUnspecified(),
+                    StartAt = ToLocalDateTime(e.StartAt, tz),
                     DurationMinutes = e.DurationMinutes,
                     VenueName = e.VenueName,
                     LocationNote = e.LocationNote,

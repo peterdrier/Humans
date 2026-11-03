@@ -5,6 +5,7 @@ using Humans.Base.Extensions;
 using Humans.Events.Contracts;
 using Humans.Events.Services.Dtos;
 using NodaTime;
+using static Humans.Events.Helpers.EventsTimeHelpers;
 
 namespace Humans.Events.Services;
 
@@ -105,7 +106,4 @@ internal static class EventBulkUploadTemplateBuilder
             // re-upload, dirtying untouched rows.
             config => config with { Injection = CsvInjection.None, CommentPrefix = '#' });
     }
-
-    private static DateTime ToLocalDateTime(Instant instant, DateTimeZone? timeZone) =>
-        timeZone is null ? instant.ToDateTimeUtc() : instant.InZone(timeZone).ToDateTimeUnspecified();
 }

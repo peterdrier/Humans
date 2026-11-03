@@ -344,14 +344,7 @@ internal sealed class EventsController(
             {
                 var localStart = ToLocalDateTime(startInstant, tz);
 
-                var dayOffset = 0;
-                if (gateOpeningDate != null)
-                {
-                    LocalDate eventDate = tz != null
-                        ? startInstant.InZone(tz).Date
-                        : LocalDate.FromDateTime(startInstant.ToDateTimeUtc());
-                    dayOffset = Period.Between(gateOpeningDate.Value, eventDate, PeriodUnits.Days).Days;
-                }
+                var dayOffset = ComputeDayOffset(startInstant, gateOpeningDate, tz);
 
                 return new ScheduleItemViewModel
                 {
