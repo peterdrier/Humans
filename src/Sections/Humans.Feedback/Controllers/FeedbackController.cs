@@ -255,7 +255,7 @@ internal sealed class FeedbackController(
             GitHubIssueNumber = report.GitHubIssueNumber,
             CreatedAt = report.CreatedAt.ToDateTimeUtc(),
             ResolvedAt = report.ResolvedAt?.ToDateTimeUtc(),
-            ResolvedByName = report.ResolvedByName,
+            ResolvedByUserId = report.ResolvedByUserId,
             AssignedToUserId = report.AssignedToUserId,
             AssignedToName = report.AssignedToName,
             AssignedToTeamId = report.AssignedToTeamId,
@@ -263,7 +263,6 @@ internal sealed class FeedbackController(
             Messages = report.Messages.Select(m => new FeedbackMessageViewModel
             {
                 Id = m.Id,
-                SenderName = m.SenderName ?? "Unknown",
                 SenderUserId = m.SenderUserId,
                 Content = m.Content,
                 EmailEnqueuePending = m.EmailEnqueuePending,
