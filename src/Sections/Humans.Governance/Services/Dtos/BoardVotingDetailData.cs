@@ -6,11 +6,8 @@ namespace Humans.Governance.Services.Dtos;
 internal sealed record BoardVotingDetailData(
     Guid ApplicationId,
     Guid UserId,
-    string Email,
     string FirstName,
     string LastName,
-    string? City,
-    string? CountryCode,
     MembershipTier MembershipTier,
     ApplicationStatus Status,
     string Motivation,

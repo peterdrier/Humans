@@ -36,11 +36,8 @@ internal sealed class BoardVotingDetailViewModel
 {
     public Guid ApplicationId { get; set; }
     public Guid UserId { get; set; }
-    public string Email { get; set; } = string.Empty;
     public string FirstName { get; set; } = string.Empty;
     public string LastName { get; set; } = string.Empty;
-    public string? City { get; set; }
-    public string? CountryCode { get; set; }
     public MembershipTier MembershipTier { get; set; }
     public ApplicationStatus Status { get; set; }
     public string ApplicationMotivation { get; set; } = string.Empty;

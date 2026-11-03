@@ -81,11 +81,8 @@ internal sealed class GovernanceBoardVotingController(
         {
             ApplicationId = application.ApplicationId,
             UserId = application.UserId,
-            Email = application.Email,
             FirstName = application.FirstName,
             LastName = application.LastName,
-            City = application.City,
-            CountryCode = application.CountryCode,
             MembershipTier = application.MembershipTier,
             Status = application.Status,
             ApplicationMotivation = application.Motivation,

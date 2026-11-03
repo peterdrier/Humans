@@ -527,11 +527,8 @@ internal sealed class ApplicationDecisionService(
         return new BoardVotingDetailData(
             ApplicationId: application.Id,
             UserId: application.UserId,
-            Email: applicantInfo?.Email ?? string.Empty,
             FirstName: profile?.FirstName ?? string.Empty,
             LastName: profile?.LastName ?? string.Empty,
-            City: profile?.City,
-            CountryCode: profile?.CountryCode,
             MembershipTier: application.MembershipTier,
             Status: application.Status,
             Motivation: application.Motivation,
