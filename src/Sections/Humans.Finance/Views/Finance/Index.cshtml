@@ -1,0 +1,28 @@
+@{
+    ViewData["Title"] = "Finance";
+}
+
+<h1 class="mb-3">Finance</h1>
+
+<div class="list-group">
+    <a asp-action="CashFlow" class="list-group-item list-group-item-action">
+        <div class="fw-semibold"><i class="fa-solid fa-chart-line me-2"></i>Cash flow</div>
+        <div class="small text-muted">When the active budget year's money moves, and when funds run out.</div>
+    </a>
+    <a asp-action="Creditors" class="list-group-item list-group-item-action">
+        <div class="fw-semibold"><i class="fa-solid fa-users me-2"></i>Creditors</div>
+        <div class="small text-muted">What the association owes each member, and which member each creditor account belongs to.</div>
+    </a>
+    <a asp-action="Sepa" class="list-group-item list-group-item-action">
+        <div class="fw-semibold"><i class="fa-solid fa-money-bill-transfer me-2"></i>SEPA payouts</div>
+        <div class="small text-muted">Payout files sent to the bank, and booking each transfer against its bank line.</div>
+    </a>
+    <a asp-action="ExpenseRecon" class="list-group-item list-group-item-action">
+        <div class="fw-semibold"><i class="fa-solid fa-scale-balanced me-2"></i>Expense recon</div>
+        <div class="small text-muted">Approved expense lines against their Holded documents and creditor balances.</div>
+    </a>
+    <a asp-action="Holded" class="list-group-item list-group-item-action">
+        <div class="fw-semibold"><i class="fa-solid fa-plug me-2"></i>Holded connector</div>
+        <div class="small text-muted">Purchase-document sync, the budget category map, and every pulled document.</div>
+    </a>
+</div>

@@ -18,19 +18,19 @@ move, and do we run out?", including the VAT the association will settle each qu
 
 | Question | Surface |
 |---|---|
-| What does the plan look like, for what I'm allowed to see? | `/Budget`, `/Budget/Summary`, `/Budget/Category/{id}`; `/Finance`, `/Finance/Years/{id}`, `/Finance/Categories/{id}` |
+| What does the plan look like, for what I'm allowed to see? | `/Budget`, `/Budget/Summary`, `/Budget/Category/{id}`; `/Budget/Admin`, `/Budget/Admin/Years/{id}`, `/Budget/Admin/Categories/{id}` |
 | Change my department's line items (coordinator) | `/Budget/LineItems/*` |
-| Manage the plan tree (admin: year lifecycle, groups, categories, line items) | `/Finance/Years/*`, `/Finance/Groups/*`, `/Finance/Categories/*`, `/Finance/LineItems/*`, `/Finance/Admin` |
-| Feed ticket actuals in / re-forecast | `/Finance/TicketingBudget/{yearId}/Sync`, `/Finance/TicketingProjection/{groupId}/Update`, `/Finance/Years/{id}/EnsureTicketingGroup`, nightly `budget-ticketing-sync` job |
+| Manage the plan tree (admin: year lifecycle, groups, categories, line items) | `/Budget/Admin/Years/*`, `/Budget/Admin/Groups/*`, `/Budget/Admin/Categories/*`, `/Budget/Admin/LineItems/*`, `/Budget/Admin/Years` |
+| Feed ticket actuals in / re-forecast | `/Budget/Admin/TicketingBudget/{yearId}/Sync`, `/Budget/Admin/TicketingProjection/{groupId}/Update`, `/Budget/Admin/Years/{id}/EnsureTicketingGroup`, nightly `budget-ticketing-sync` job |
 | When does money move? | `/Finance/CashFlow` — served by Finance ([`Finance.md`](../../Humans.Finance/Docs/Finance.md)) |
-| Who changed what? | `/Finance/AuditLog/{yearId?}` |
+| Who changed what? | `/Budget/Admin/AuditLog/{yearId?}` |
 | Cross-section reads (Expenses, Finance, Tickets, Backdoor; Development's demo seed) | `IBudgetService`, `IBudgetDemoSeeder` (`Contracts/` folder) |
 
 ## Structure
 
 The shapes imply the layered split that exists:
 
-- Two thin controllers — member-facing (`/Budget`) and admin (`/Finance` prefix) — that
+- Two thin controllers — member-facing (`/Budget`) and admin (`/Budget/Admin` prefix) — that
   parse, call `IBudgetManagement`, and redirect with a flash message; VAT/summary
   *computation* belongs to the service. Cash flow is Finance's (`CashFlowService`).
 - One `BudgetService`: the tree CRUD pass-through to atomic repository ops, the coordinator
@@ -97,9 +97,6 @@ The shapes imply the layered split that exists:
 - **Generated line items are keyed by description**: the sync matches an existing row by
   its exact English description, so descriptions are written under an English
   `CultureScope` whatever the operator's UI language.
-- **`BudgetAdminController` answers `[Route("Finance")]`** — the URL predates the
-  Budget/Finance split (#866) and stayed put; action templates are disjoint with
-  `Humans.Finance`'s `FinanceController` on the same prefix.
 - **`TicketingBudgetSyncJob` is public with an internal constructor**: Shell names the type
   for Hangfire, HUM0034 forbids other public types, so DI registration is a factory in
   `Section.Register` (ruling 43).

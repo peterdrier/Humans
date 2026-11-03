@@ -89,6 +89,7 @@ public sealed class Section :
     IEnumerable<AdminNavGroup> ISectionAdminNav.Groups() =>
     [
         new("Finance", [
+            new("Overview", "Finance", "Index", null, null, "fa-solid fa-landmark", FinancePolicies.Read),
             new("Cash flow", "Finance", "CashFlow", null, null, "fa-solid fa-chart-line", FinancePolicies.Read),
             new("Creditors", "Finance", "Creditors", null, null, "fa-solid fa-users", FinancePolicies.Read),
             new("SEPA payouts", "Finance", "Sepa", null, null, "fa-solid fa-money-bill-transfer", FinancePolicies.Read),
