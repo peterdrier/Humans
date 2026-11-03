@@ -10,6 +10,7 @@ using Humans.Base.Helpers;
 using Humans.Budget.Contracts;
 using Humans.Expenses.Contracts;
 using Humans.Finance.Contracts;
+using Humans.Holded.Contracts;
 using Humans.Users.Contracts;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Builder;
@@ -29,7 +30,7 @@ namespace Humans.Backdoor.Tests.Controllers;
 
 /// <summary>
 /// The authorization and formatting the machine finance API does on top of
-/// <see cref="IExpenseReportService"/> and <see cref="IHoldedFinanceService"/>
+/// <see cref="IExpenseReportService"/> and <see cref="IFinanceService"/>
 /// — everything below is controller work: the services are substitutes
 /// throughout, and <see cref="IAuthorizationService"/> is a substitute too — the actor matrix
 /// itself is <c>ExpenseReportAuthorizationHandlerTests</c>' job.
@@ -37,7 +38,8 @@ namespace Humans.Backdoor.Tests.Controllers;
 public class BackdoorFinanceControllerTests
 {
     private readonly IExpenseReportService _expenses = Substitute.For<IExpenseReportService>();
-    private readonly IHoldedFinanceService _finance = Substitute.For<IHoldedFinanceService>();
+    private readonly IFinanceService _finance = Substitute.For<IFinanceService>();
+    private readonly IHoldedService _holded = Substitute.For<IHoldedService>();
     private readonly IBudgetService _budget = Substitute.For<IBudgetService>();
     private readonly IAuthorizationService _auth = Substitute.For<IAuthorizationService>();
     private readonly IUserService _users = Substitute.For<IUserService>();
@@ -49,7 +51,7 @@ public class BackdoorFinanceControllerTests
         // tests override when the resolved name itself matters.
         _users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(new Dictionary<Guid, UserInfo>()));
-        _sut = new BackdoorFinanceController(_expenses, _finance, _budget, _auth, _users);
+        _sut = new BackdoorFinanceController(_expenses, _finance, _holded, _budget, _auth, _users);
     }
 
     /// <summary>Read-only surface, GET only — no <c>[Http{Post,Put,Patch,Delete}]</c> action anywhere
@@ -619,8 +621,8 @@ public class BackdoorFinanceControllerTests
     {
         SetPrincipal(Guid.NewGuid());
         SetFinanceAdmin(true);
-        _finance.GetDocSyncInfoAsync(Arg.Any<CancellationToken>()).Returns(
-            new HoldedDocSyncInfo(Instant.FromUtc(2026, 6, 1, 3, 0), "Idle", null, 12, 4));
+        _holded.GetPurchaseDocumentsAsync(Arg.Any<CancellationToken>()).Returns(
+            new HoldedPurchaseDocMirror(Instant.FromUtc(2026, 6, 1, 3, 0), "Idle", null, 12, null, []));
         _finance.GetUnmatchedAsync(Arg.Any<CancellationToken>()).Returns([
             new HoldedUnmatchedRow("d0", "F250001", "Acme", "Old supplies", 20m, "No account, no tag", "https://holded/d0")
                 { Date = new LocalDate(2026, 1, 1) },
@@ -632,7 +634,7 @@ public class BackdoorFinanceControllerTests
 
         var json = Emitted(result);
         json.Should().Contain(@"""status"":""Idle""");
-        json.Should().Contain(@"""creditorBindingCount"":4");
+        json.Should().Contain(@"""lastSyncedDocCount"":12");
         json.Should().Contain(@"""docNumber"":""F260001""");
         using var payload = JsonDocument.Parse(json);
         payload.RootElement.GetProperty("unmatched").EnumerateArray()
@@ -782,8 +784,8 @@ public class BackdoorFinanceControllerTests
                     null, null, Tainted, null, Tainted, Tainted, Tainted),
             ],
             (string?)Tainted));
-        _finance.GetDocSyncInfoAsync(Arg.Any<CancellationToken>()).Returns(
-            new HoldedDocSyncInfo(Instant.FromUtc(2026, 6, 1, 3, 0), Tainted, Tainted, 12, 4));
+        _holded.GetPurchaseDocumentsAsync(Arg.Any<CancellationToken>()).Returns(
+            new HoldedPurchaseDocMirror(Instant.FromUtc(2026, 6, 1, 3, 0), Tainted, Tainted, 12, null, []));
         _finance.GetUnmatchedAsync(Arg.Any<CancellationToken>()).Returns([
             new HoldedUnmatchedRow(Tainted, Tainted, Tainted, Tainted, 30m, Tainted, Tainted),
         ]);
@@ -850,7 +852,7 @@ public class BackdoorFinanceControllerTests
                 apm.FeatureProviders.Add(new FinanceControllerOnly());
             });
         builder.Services.AddSingleton(keys).AddScoped<BackdoorApiKeyAuthFilter>()
-            .AddSingleton(_expenses).AddSingleton(_finance).AddSingleton(_budget).AddSingleton(_auth)
+            .AddSingleton(_expenses).AddSingleton(_finance).AddSingleton(_holded).AddSingleton(_budget).AddSingleton(_auth)
             .AddSingleton(_users);
         await using var app = builder.Build();
         app.MapControllers();

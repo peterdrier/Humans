@@ -8,6 +8,7 @@ using Humans.Base.Helpers;
 using Humans.Budget.Contracts;
 using Humans.Expenses.Contracts;
 using Humans.Finance.Contracts;
+using Humans.Holded.Contracts;
 using Humans.Users.Contracts;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -29,7 +30,8 @@ namespace Humans.Backdoor.Controllers;
 [AllowAnonymous]
 internal sealed class BackdoorFinanceController(
     IExpenseReportService expenses,
-    IHoldedFinanceService finance,
+    IFinanceService finance,
+    IHoldedService holded,
     IBudgetService budget,
     IAuthorizationService authService,
     IUserService users) : ApiControllerBase(users), IResultFilter
@@ -190,22 +192,21 @@ internal sealed class BackdoorFinanceController(
         });
     }
 
-    /// <summary>The purchase-doc sync's state plus the docs it could not match.</summary>
+    /// <summary>Holded's purchase-document sync state plus the docs Finance could not attribute.</summary>
     [HttpGet("holded-sync")]
     public async Task<IActionResult> HoldedSync(CancellationToken ct)
     {
         if (!await IsFinanceAdminAsync()) return StatusCode(StatusCodes.Status403Forbidden);
 
-        var syncInfo = await finance.GetDocSyncInfoAsync(ct);
+        var mirror = await holded.GetPurchaseDocumentsAsync(ct);
         var unmatched = await finance.GetUnmatchedAsync(ct);
 
         return Ok(new
         {
-            lastSyncAt = syncInfo.LastSyncAt?.ToIso8601(),
-            status = syncInfo.Status,
-            lastError = syncInfo.LastError,
-            lastSyncedDocCount = syncInfo.LastSyncedDocCount,
-            creditorBindingCount = syncInfo.CreditorBindingCount,
+            lastSyncAt = mirror.LastSyncAt?.ToIso8601(),
+            status = mirror.Status,
+            lastError = mirror.LastError,
+            lastSyncedDocCount = mirror.LastCount,
             unmatched = unmatched.OrderByDescending(u => u.Date).Select(u => new
             {
                 holdedDocId = u.HoldedDocId,

@@ -38,8 +38,15 @@ internal sealed class Service(
     FinanceEmails emails,
     IOptions<SepaOptions> sepa,
     TrackedCache<string, Dictionary<string, int>> bookingState,
-    ILogger<Service> logger) : IHoldedFinanceManagement, IHoldedFinanceAdminService, ISepaBankBooking, IUserDataContributor
+    IPaymentDetailsManagement paymentDetails,
+    ILogger<Service> logger) : IFinanceService, IFinanceWrite, IFinanceAdminService, ISepaBankBooking, IUserDataContributor
 {
+    public Task<string?> GetIbanAsync(Guid userId, CancellationToken ct = default) =>
+        paymentDetails.GetIbanAsync(userId, ct);
+
+    public Task<bool> SetIbanAsync(Guid userId, string? iban, CancellationToken ct = default) =>
+        paymentDetails.SetIbanAsync(userId, iban, ct);
+
     internal const string HoldedCreditorAccount = "HoldedCreditorAccount";
     internal const string AdditionalHoldedCreditorAccounts = "AdditionalHoldedCreditorAccounts";
     internal const string SepaPayouts = "SepaPayouts";
@@ -311,15 +318,6 @@ internal sealed class Service(
                     IsBudgetCategory: false, IsActive: m.IsActive)))
             .ToList();
         return options;
-    }
-
-    public async Task<HoldedDocSyncInfo> GetDocSyncInfoAsync(CancellationToken ct = default)
-    {
-        var mirror = await holded.GetPurchaseDocumentsAsync(ct);
-        // From the repo, so a caller never builds the full creditor view (a live contacts walk) just to show a number.
-        var bindings = await repo.GetCreditorContactsAsync(ct);
-        return new HoldedDocSyncInfo(
-            mirror.LastSyncAt, mirror.Status, mirror.LastError, mirror.LastCount, bindings.Count);
     }
 
     /// <summary>The purchase-document mirror with each document's category attribution: account match over tag
@@ -1282,24 +1280,24 @@ internal sealed class Service(
 
     public Task<(IReadOnlyList<SepaPayoutTransferRow> Rows, string? UnavailableReason,
         IReadOnlyList<SepaBankMovementVm> UnmatchedMovements, string? BankFeedError)>
-        GetSepaPayoutsAsync(int toleranceDays = IHoldedFinanceAdminService.DefaultSepaMatchToleranceDays,
+        GetSepaPayoutsAsync(int toleranceDays = IFinanceAdminService.DefaultSepaMatchToleranceDays,
             CancellationToken ct = default) => booking.GetSepaPayoutsAsync(toleranceDays, ct);
 
     public Task RunAsync(CancellationToken ct = default) => booking.RunAsync(ct);
 
     public Task<SepaBookingResult> BookSepaTransferAsync(
         Guid transferId, string bankMovementId, Guid? actorUserId,
-        int toleranceDays = IHoldedFinanceAdminService.DefaultSepaMatchToleranceDays) =>
+        int toleranceDays = IFinanceAdminService.DefaultSepaMatchToleranceDays) =>
         booking.BookSepaTransferAsync(transferId, bankMovementId, actorUserId, toleranceDays);
 
     public Task<SepaBookingResult> BookSepaFileAsync(
         Guid fileId, string bankMovementId, Guid actorUserId,
-        int toleranceDays = IHoldedFinanceAdminService.DefaultSepaMatchToleranceDays) =>
+        int toleranceDays = IFinanceAdminService.DefaultSepaMatchToleranceDays) =>
         booking.BookSepaFileAsync(fileId, bankMovementId, actorUserId, toleranceDays);
 
     public Task<SepaBookingResult> BookSepaFileMatchesAsync(
         Guid fileId, Guid actorUserId,
-        int toleranceDays = IHoldedFinanceAdminService.DefaultSepaMatchToleranceDays) =>
+        int toleranceDays = IFinanceAdminService.DefaultSepaMatchToleranceDays) =>
         booking.BookSepaFileMatchesAsync(fileId, actorUserId, toleranceDays);
 
     /// <summary>Safe in a download filename.</summary>

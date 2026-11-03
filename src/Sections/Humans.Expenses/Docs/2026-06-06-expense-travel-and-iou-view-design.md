@@ -47,7 +47,7 @@ Two gaps in the Expenses section:
   Humans never writes debt-reassignment journal entries (existing HARD boundary, `Finance.md`).
 - **Reconciling the ledger to the balance** — the IOU legitimately includes external items;
   the view states this rather than forcing the math to tie out.
-- **`IHoldedFinanceServiceRead` read-split** — the Expenses→Finance dependency is existing
+- **`IFinanceServiceRead` read-split** — the Expenses→Finance dependency is existing
   acknowledged tech debt; this work does not add a new cross-section method, so the split
   stays separate future work.
 
@@ -179,7 +179,7 @@ Surface the rows without adding an interface method:
 ### Cross-section integrity
 
 The controller calls only `IExpenseReportService` (own section). The Expenses *service*
-calls `IHoldedFinanceService.GetCreditorStatusAsync` — a dependency that **already exists**
+calls `IFinanceService.GetCreditorStatusAsync` — a dependency that **already exists**
 (documented tech debt in `Expenses.md` / `Finance.md`). No new cross-section call is added;
 only the returned DTO grows. Holded boundary unchanged (read-only cache).
 

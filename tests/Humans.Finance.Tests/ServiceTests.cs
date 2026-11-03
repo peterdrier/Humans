@@ -129,12 +129,13 @@ public class HoldedFinanceServiceTests
         _emailService,
         emailTemplates ?? TestFinanceEmails.Create(),
         Options.Create(_sepa), _bookingState,
-        NullLogger<Service>.Instance);
+        Substitute.For<IPaymentDetailsManagement>(), NullLogger<Service>.Instance);
 
     /// <summary>Same service, with a logger the test can read back.</summary>
     private Service MakeService(ILogger<Service> logger) => new(
         _repo, _client, _budget, _holded, _write, _expenses, _clock, _cache, _audit,
-        _users, _emailService, TestFinanceEmails.Create(), Options.Create(_sepa), _bookingState, logger);
+        _users, _emailService, TestFinanceEmails.Create(), Options.Create(_sepa), _bookingState,
+        Substitute.For<IPaymentDetailsManagement>(), logger);
 
     /// <summary>Ledger-line stub for the mirror reads (positional: entry, line, account, date, type, description, debit, credit).</summary>
     private static HoldedLedgerLineInfo Line(int entry, int line, int account, Instant date,
@@ -2191,28 +2192,6 @@ public class HoldedFinanceServiceTests
         svc.ErasureDeclaration.Should().ContainKey(Service.CreditorLedger)
             .WhoseValue.Should().StartWith("Retained").And.Contain("Art. 17(3)(b)",
                 "financial records are never erased for GDPR reasons");
-    }
-
-    [HumansFact]
-    public async Task GetDocSyncInfo_ReportsTheMirrorStateAndTheBindingCount()
-    {
-        // The binding count rides along on this DTO so a caller can show a number without building
-        // the whole creditor view, which would cost a live Holded contacts walk.
-        _holded.GetPurchaseDocumentsAsync(Arg.Any<CancellationToken>())
-            .Returns(new HoldedPurchaseDocMirror(FixedNow, "Error", "holded said no", 42, FixedNow, []));
-        _repo.GetCreditorContactsAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedCreditorContact>
-        {
-            new() { Id = Guid.NewGuid(), UserId = Guid.NewGuid(), HoldedContactId = "c1" },
-            new() { Id = Guid.NewGuid(), UserId = Guid.NewGuid(), HoldedContactId = "c2" },
-        });
-
-        var info = await MakeService().GetDocSyncInfoAsync(TestContext.Current.CancellationToken);
-
-        info.LastSyncAt.Should().Be(FixedNow);
-        info.Status.Should().Be("Error");
-        info.LastError.Should().Be("holded said no");
-        info.LastSyncedDocCount.Should().Be(42);
-        info.CreditorBindingCount.Should().Be(2);
     }
 
     /// <summary>Seeds the active year with one group holding the given categories.</summary>

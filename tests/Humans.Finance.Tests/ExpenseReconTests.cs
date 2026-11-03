@@ -260,7 +260,7 @@ public class ExpenseReconTests
         Substitute.For<IEmailService>(), TestFinanceEmails.Create(),
         Options.Create(new SepaOptions()),
         new TrackedCache<string, Dictionary<string, int>>("Finance.SepaStuckBankLines", warmOnStartup: false, NullLogger<Service>.Instance),
-        NullLogger<Service>.Instance);
+        Substitute.For<IPaymentDetailsManagement>(), NullLogger<Service>.Instance);
 
     [HumansFact]
     public async Task GetExpenseRecon_ReadsTheAccountTheBoundContactIsOn_NotTheStoredNumber()
@@ -306,7 +306,7 @@ public class ExpenseReconTests
     [InlineData(0, 3, LogLevel.Warning)]
     public async Task Job_LogsOneSummaryLine(int orphans, int membersOff, LogLevel level)
     {
-        var finance = Substitute.For<IHoldedFinanceService>();
+        var finance = Substitute.For<IFinanceService>();
         finance.GetExpenseReconAsync(null, Arg.Any<CancellationToken>()).Returns(new ExpenseReconReport(
             null, SyncedAt, null, [], [], [], [], new ExpenseReconTotals(1, 1, 1, 0, 0, 0m, orphans, membersOff)));
         var logger = new CapturingLogger<ExpenseReconJob>();

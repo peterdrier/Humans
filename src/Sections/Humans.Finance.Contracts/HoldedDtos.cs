@@ -19,11 +19,6 @@ public sealed record HoldedUnmatchedRow(
 }
 
 
-/// <summary><c>Status</c> is "Idle", "Running" or "Error".</summary>
-public sealed record HoldedDocSyncInfo(
-    Instant? LastSyncAt, string Status, string? LastError, int LastSyncedDocCount,
-    int CreditorBindingCount);
-
 /// <summary><c>Created</c> is true when this call created the account.</summary>
 public sealed record HoldedExpenseAccountRef(int AccountNum, string AccountId, string Name, bool Created);
 

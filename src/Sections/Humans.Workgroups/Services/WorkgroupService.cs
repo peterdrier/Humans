@@ -25,7 +25,7 @@ internal sealed partial class WorkgroupService(
     ISettingsService settings,
     IGoogleSyncService googleSync,
     IGoogleSyncWrite googleSyncWrite,
-    IHoldedFinanceWrite finance,
+    IFinanceWrite finance,
     IHoldedService holded,
     INotificationService notifications,
     IEmailService email,

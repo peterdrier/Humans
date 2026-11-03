@@ -291,7 +291,7 @@ Sabadell's live behaviour: one outgoing line per transfer, dated the execution d
 remittance text echoed. `GetSepaPayoutsAsync` pairs such a line with the one unbooked transfer of
 exactly its amount whose file date is within the **tolerance** of the line's date, inside the feed
 window. The tolerance is days either side of the file's generation date, default
-`IHoldedFinanceAdminService.DefaultSepaMatchToleranceDays` (2), editable at the top of
+`IFinanceAdminService.DefaultSepaMatchToleranceDays` (2), editable at the top of
 `/Finance/Sepa` (`?days=N`, clamped to 0..90) for a bank that executed a file late; the value posts
 back with every booking from that view, so the booking re-validates under the window the page
 paired with. A line whose text names the account is bound only from below (no earlier than the

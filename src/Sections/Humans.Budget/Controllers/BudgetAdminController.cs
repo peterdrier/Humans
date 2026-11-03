@@ -23,7 +23,7 @@ internal sealed class BudgetAdminController(
     TicketingBudgetService ticketingBudgetService,
     IClock clock,
     IUserService userService,
-    IHoldedFinanceService holdedFinance,
+    IFinanceService finance,
     ILogger<BudgetAdminController> logger) : HumansControllerBase(userService)
 {
     [HttpGet("")]
@@ -638,7 +638,7 @@ internal sealed class BudgetAdminController(
         if (int.TryParse(year.Year, System.Globalization.NumberStyles.None,
                 System.Globalization.CultureInfo.InvariantCulture, out var calendarYear))
         {
-            var actuals = await holdedFinance.GetActualsForYearAsync(calendarYear, ct);
+            var actuals = await finance.GetActualsForYearAsync(calendarYear, ct);
             holdedActuals = actuals.ToDictionary(r => r.BudgetCategoryId);
         }
 
