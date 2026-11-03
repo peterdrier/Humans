@@ -1111,7 +1111,7 @@ internal sealed class Service(
             return (null, "No creditor account was selected — nothing to generate.");
 
         if (selections.GroupBy(s => s.SupplierAccountNum).FirstOrDefault(g => g.Count() > 1) is { } duplicate)
-            return (null, 
+            return (null,
                 $"Creditor account {duplicate.Key} was selected twice — a payout pays each account once.");
 
         var (rows, _) = await ListCreditorAccountsAsync(ct);
@@ -1128,7 +1128,7 @@ internal sealed class Service(
         foreach (var s in selections)
         {
             if (!byAccount.TryGetValue(s.SupplierAccountNum, out var row))
-                return (null, 
+                return (null,
                     $"Creditor account {s.SupplierAccountNum} is no longer listed — reload the page and try again.");
 
             if (row.Bindings.Count != 1)
@@ -1138,21 +1138,21 @@ internal sealed class Service(
                       + "unbind all but the one who owns it first.");
 
             if (s.Amount > row.OwedToMember)
-                return (null, 
+                return (null,
                     $"Creditor account {s.SupplierAccountNum}: {Euros(s.Amount)} is more than the "
                     + $"{Euros(row.OwedToMember)} owed.");
 
             // Re-derived here because the posted selection is never trusted.
             if (row.HasDuplicateDocuments is null)
-                return (null, 
+                return (null,
                     $"Creditor account {s.SupplierAccountNum}: Holded's document list could not be read, so "
                     + "duplicate documents cannot be ruled out — try again later.");
             if (row.HasDuplicateDocuments == true)
-                return (null, 
+                return (null,
                     $"Creditor account {s.SupplierAccountNum} has duplicate documents in Holded — remove them "
                     + "on /Finance/HoldedDuplicates first.");
             if (row.PendingPayoutFileName is { } pendingFile)
-                return (null, 
+                return (null,
                     $"Creditor account {s.SupplierAccountNum} is already in payout file {pendingFile}, which is "
                     + "not booked yet — book it or withdraw the transfer first.");
 
@@ -1160,7 +1160,7 @@ internal sealed class Service(
             // account.
             if (!contactById.TryGetValue(row.Bindings[0].HoldedContactId, out var contact)
                 || string.IsNullOrWhiteSpace(contact.Iban))
-                return (null, 
+                return (null,
                     $"Creditor account {s.SupplierAccountNum} has no IBAN on the Holded contact it is bound to.");
 
             transfers.Add(new SepaPayoutTransfer
