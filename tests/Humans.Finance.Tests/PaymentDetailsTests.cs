@@ -331,6 +331,7 @@ public class PaymentDetailsTests
 
     private PaymentDetailsAdminController BuildController(Guid actorId)
     {
+        SeedUser(actorId);
         var http = new DefaultHttpContext
         {
             User = new ClaimsPrincipal(new ClaimsIdentity(
