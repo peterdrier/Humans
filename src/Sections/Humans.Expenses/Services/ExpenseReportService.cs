@@ -30,6 +30,7 @@ internal sealed class ExpenseReportService(
     IEmailService emailService,
     ExpensesEmails emails,
     IAuditLogService auditLogService,
+    IAuditViewerService auditViewer,
     IHoldedService holded,
     IHoldedFinanceService holdedFinance,
     IFinanceService finance,
@@ -1646,9 +1647,11 @@ internal sealed class ExpenseReportService(
             ExpensesAuditActions.IbanSet,
             ExpensesAuditActions.IbanRemove,
             FinanceAuditActions.IbanReveal,
-        };
+        }.Select(a => a.Name).ToList();
 
-        var auditEntries = (await auditLogService.GetFilteredEntriesAsync(
+        var auditEntries = (await auditViewer.GetFilteredAsync(
+            entityType: null,
+            entityId: null,
             userId: userId,
             actions: expenseActions,
             limit: 10_000,
@@ -1657,9 +1660,10 @@ internal sealed class ExpenseReportService(
         // Decisions others took on the member's claims name the claim, not the member.
         foreach (var report in allReports)
         {
-            auditEntries.AddRange(await auditLogService.GetFilteredEntriesAsync(
+            auditEntries.AddRange(await auditViewer.GetFilteredAsync(
                 entityType: AuditEntityTypes.Report,
                 entityId: report.Id,
+                userId: null,
                 actions: expenseActions,
                 limit: 10_000,
                 ct: ct));
@@ -1711,7 +1715,7 @@ internal sealed class ExpenseReportService(
         var shapedAudit = auditEntries
             .Select(e => new
             {
-                e.Action,
+                Action = e.Action.Name,
                 e.EntityType,
                 e.EntityId,
                 e.Description,

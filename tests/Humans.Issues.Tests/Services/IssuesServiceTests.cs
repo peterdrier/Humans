@@ -51,6 +51,7 @@ public sealed class IssuesServiceTests
 
     private readonly FakeClock Clock = new(Instant.FromUtc(2026, 4, 29, 12, 0));
     private readonly IAuditLogService AuditLog = Substitute.For<IAuditLogService>();
+    private readonly IAuditViewerService AuditViewer = Substitute.For<IAuditViewerService>();
     private readonly InMemoryFileStorage FileStorage = new();
 
     /// <summary>
@@ -87,11 +88,11 @@ public sealed class IssuesServiceTests
         });
         _emailService = Substitute.For<IEmailService>();
         _emailMessages = TestIssuesEmails.Create(culture => _renderedEmailCultures.Add(culture));
-        AuditLog
-            .GetFilteredEntriesAsync(
-                Arg.Any<IReadOnlyList<AuditActionDefinition>>(), Arg.Any<string?>(), Arg.Any<Guid?>(), Arg.Any<Guid?>(),
+        AuditViewer
+            .GetFilteredAsync(
+                Arg.Any<string?>(), Arg.Any<Guid?>(), Arg.Any<Guid?>(), Arg.Any<IReadOnlyList<string>?>(),
                 Arg.Any<int>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult<IReadOnlyList<AuditLogEntrySnapshot>>([]));
+            .Returns(Task.FromResult<IReadOnlyList<AuditEvent>>([]));
 
 
         _userService = NewRegistryBackedUserService();
@@ -110,7 +111,7 @@ public sealed class IssuesServiceTests
 
         _service = new IssuesApplicationService(
             _repository, _userService, _roleService,
-            _emailService, _emailMessages, _notificationService, _notificationInbox, AuditLog,
+            _emailService, _emailMessages, _notificationService, _notificationInbox, AuditLog, AuditViewer,
             Clock, FileStorage, SectionCatalog, Domain.TestIssueQueues.Shipped(),
             _logger);
     }
@@ -290,9 +291,9 @@ public sealed class IssuesServiceTests
 
         await _service.GetThreadAsync(issueId, Admin, TestContext.Current.CancellationToken);
 
-        await AuditLog.Received().GetFilteredEntriesAsync(
-            Arg.Is<IReadOnlyList<AuditActionDefinition>>(a => a.Contains(IssuesAuditActions.IssueCreated)),
+        await AuditViewer.Received().GetFilteredAsync(
             Arg.Any<string?>(), issueId, Arg.Any<Guid?>(),
+            Arg.Is<IReadOnlyList<string>?>(a => a != null && a.Contains(IssuesAuditActions.IssueCreated.Name)),
             Arg.Any<int>(), Arg.Any<CancellationToken>());
     }
 
@@ -305,12 +306,12 @@ public sealed class IssuesServiceTests
         await Db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var auditAt = Clock.GetCurrentInstant() + Duration.FromMinutes(1);
-        AuditLog.GetFilteredEntriesAsync(
-                Arg.Any<IReadOnlyList<AuditActionDefinition>>(), Arg.Any<string?>(), issueId, Arg.Any<Guid?>(),
+        AuditViewer.GetFilteredAsync(
+                Arg.Any<string?>(), issueId, Arg.Any<Guid?>(), Arg.Any<IReadOnlyList<string>?>(),
                 Arg.Any<int>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult<IReadOnlyList<AuditLogEntrySnapshot>>(
-            [new(Guid.NewGuid(), IssuesAuditActions.IssueGitHubLinked.Name, nameof(Issue), issueId,
-                "GitHub link: 123", auditAt, null, null, null)]));
+            .Returns(Task.FromResult<IReadOnlyList<AuditEvent>>(
+            [new(Guid.NewGuid(), auditAt, IssuesAuditActions.IssueGitHubLinked, null, null, nameof(Issue), issueId,
+                null, null, null, null, null, null, null, "GitHub link: 123")]));
 
         await _service.PostCommentAsync(
             issueId, Admin, commenterId, "A comment", ct: TestContext.Current.CancellationToken);
@@ -423,7 +424,7 @@ public sealed class IssuesServiceTests
             repo.AddIssueAsync(Arg.Any<Issue>(), Arg.Any<CancellationToken>()).Returns(Task.FromException(failure));
             var service = new IssuesApplicationService(
                 repo, _userService, _roleService,
-                _emailService, _emailMessages, _notificationService, _notificationInbox, AuditLog,
+                _emailService, _emailMessages, _notificationService, _notificationInbox, AuditLog, AuditViewer,
                 Clock, _fileStorage, SectionCatalog, Domain.TestIssueQueues.Shipped(), _logger);
             using var content = new MemoryStream([1, 2, 3]);
             var screenshot = new FormFile(content, 0, content.Length, "Screenshot", "shot.png")
@@ -471,7 +472,7 @@ public sealed class IssuesServiceTests
                 : _repository.GetByIdAsync(call.ArgAt<Guid>(0), CancellationToken.None));
         var service = new IssuesApplicationService(
             repo, _userService, _roleService,
-            _emailService, _emailMessages, _notificationService, _notificationInbox, AuditLog,
+            _emailService, _emailMessages, _notificationService, _notificationInbox, AuditLog, AuditViewer,
             Clock, FileStorage, SectionCatalog, Domain.TestIssueQueues.Shipped(), _logger);
         var screenshot = PngUpload([1, 2, 3]);
 
@@ -985,7 +986,7 @@ public sealed class IssuesServiceTests
             ? new IssuesApplicationService(
                 _repository, _userService, _roleService, _emailService,
                 TestIssuesEmails.Create(_ => throw error), _notificationService, _notificationInbox,
-                AuditLog, Clock, FileStorage, SectionCatalog, Domain.TestIssueQueues.Shipped(), _logger)
+                AuditLog, AuditViewer, Clock, FileStorage, SectionCatalog, Domain.TestIssueQueues.Shipped(), _logger)
             : _service;
         var result = await service.PostCommentAsync(issueId, Admin, Admin.UserId, "Fixed this",
             resolveOnPost: true, ct: TestContext.Current.CancellationToken);
@@ -1213,7 +1214,7 @@ public sealed class IssuesServiceTests
         repo.SaveTrackedIssueAsync(issue, Arg.Any<CancellationToken>()).Returns(Task.FromException(failure));
         var service = new IssuesApplicationService(
             repo, _userService, _roleService,
-            _emailService, _emailMessages, _notificationService, _notificationInbox, AuditLog,
+            _emailService, _emailMessages, _notificationService, _notificationInbox, AuditLog, AuditViewer,
             Clock, FileStorage, SectionCatalog, Domain.TestIssueQueues.Shipped(), _logger);
         var ct = TestContext.Current.CancellationToken;
         var assignee = SeedUser();
@@ -1248,7 +1249,7 @@ public sealed class IssuesServiceTests
         repo.CountActionableAsync(null, null, ct).Returns(snapshot.Task, Task.FromResult(0));
         var service = new IssuesApplicationService(
             repo, _userService, _roleService,
-            _emailService, _emailMessages, _notificationService, _notificationInbox, AuditLog,
+            _emailService, _emailMessages, _notificationService, _notificationInbox, AuditLog, AuditViewer,
             Clock, FileStorage, SectionCatalog, Domain.TestIssueQueues.Shipped(), _logger);
 
         var beforeWrite = service.GetActionableCountForViewerAsync(Admin, ct);
@@ -1310,7 +1311,7 @@ public sealed class IssuesServiceTests
         (await _service.GetActionableCountForViewerAsync(reporter, ct)).Should().Be(1);
         var service = new IssuesApplicationService(
             repo, _userService, _roleService,
-            _emailService, _emailMessages, _notificationService, _notificationInbox, AuditLog,
+            _emailService, _emailMessages, _notificationService, _notificationInbox, AuditLog, AuditViewer,
             Clock, FileStorage, SectionCatalog, Domain.TestIssueQueues.Shipped(), _logger);
 
         switch (operation)
@@ -2384,7 +2385,7 @@ public sealed class IssuesServiceTests
             ++attempts == 1 ? Task.FromException(new IOException("Storage unavailable")) : Task.CompletedTask);
         var service = new IssuesApplicationService(
             _repository, _userService, _roleService,
-            _emailService, _emailMessages, _notificationService, _notificationInbox, AuditLog,
+            _emailService, _emailMessages, _notificationService, _notificationInbox, AuditLog, AuditViewer,
             Clock, _fileStorage, SectionCatalog, Domain.TestIssueQueues.Shipped(), _logger);
 
         var erase = () => service.EraseForUserAsync(reporterId, Ct);
@@ -2413,7 +2414,7 @@ public sealed class IssuesServiceTests
         });
         var service = new IssuesApplicationService(
             _repository, _userService, _roleService,
-            _emailService, _emailMessages, _notificationService, _notificationInbox, AuditLog,
+            _emailService, _emailMessages, _notificationService, _notificationInbox, AuditLog, AuditViewer,
             Clock, _fileStorage, SectionCatalog, Domain.TestIssueQueues.Shipped(), _logger);
 
         (await service.PurgeExpiredAsync(Ct)).Should().Be(1);

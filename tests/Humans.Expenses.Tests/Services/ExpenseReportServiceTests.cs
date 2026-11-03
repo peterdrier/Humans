@@ -110,7 +110,7 @@ public sealed partial class ExpenseReportServiceTests
             _userService,
             _emailService,
             TestExpensesEmails.Create(),
-            AuditLog,
+            AuditLog, Substitute.For<IAuditViewerService>(),
             _holdedService,
             _holdedFinance,
             _finance,
@@ -896,7 +896,7 @@ public sealed partial class ExpenseReportServiceTests
         var sut = new ExpenseReportService(
             _expenseRepo, _fileStorage, _budgetService, _teamService, _userService,
             _emailService, TestExpensesEmails.Create(),
-            AuditLog, _holdedService, _holdedFinance, _finance, _financeWrite, _preapprovals, _preapprovalWrites, Clock, logger,
+            AuditLog, Substitute.For<IAuditViewerService>(), _holdedService, _holdedFinance, _finance, _financeWrite, _preapprovals, _preapprovalWrites, Clock, logger,
             Options.Create(new TravelReimbursementConfig()));
 
         var (_, category) = SetupActiveYear();
@@ -1017,7 +1017,7 @@ public sealed partial class ExpenseReportServiceTests
         var sut = new ExpenseReportService(
             failingRepo, _fileStorage, _budgetService, _teamService, _userService,
             _emailService, TestExpensesEmails.Create(),
-            AuditLog, _holdedService, _holdedFinance, _finance, _financeWrite, _preapprovals, _preapprovalWrites, Clock, logger,
+            AuditLog, Substitute.For<IAuditViewerService>(), _holdedService, _holdedFinance, _finance, _financeWrite, _preapprovals, _preapprovalWrites, Clock, logger,
             Options.Create(new TravelReimbursementConfig()));
 
         var (_, category) = SetupActiveYear();
@@ -1138,7 +1138,7 @@ public sealed partial class ExpenseReportServiceTests
         var factory = new TestDbContextFactory<ExpensesDbContext>(options);
         var repo = new ExpenseRepository(factory);
         var service = new ExpenseReportService(repo, _fileStorage, _budgetService, _teamService,
-            _userService, _emailService, TestExpensesEmails.Create(), AuditLog,
+            _userService, _emailService, TestExpensesEmails.Create(), AuditLog, Substitute.For<IAuditViewerService>(),
             _holdedService, _holdedFinance, _finance, _financeWrite, _preapprovals, _preapprovalWrites, Clock, NullLogger<ExpenseReportService>.Instance,
             Options.Create(new TravelReimbursementConfig()));
         var ct = TestContext.Current.CancellationToken;
@@ -1450,7 +1450,7 @@ public sealed partial class ExpenseReportServiceTests
             .AddInterceptors(interceptor).Options;
         var repo = new ExpenseRepository(new TestDbContextFactory<ExpensesDbContext>(options));
         var service = new ExpenseReportService(repo, _fileStorage, _budgetService, _teamService,
-            _userService, _emailService, TestExpensesEmails.Create(), AuditLog,
+            _userService, _emailService, TestExpensesEmails.Create(), AuditLog, Substitute.For<IAuditViewerService>(),
             _holdedService, _holdedFinance, _finance, _financeWrite, _preapprovals, _preapprovalWrites, Clock, NullLogger<ExpenseReportService>.Instance,
             Options.Create(new TravelReimbursementConfig()));
         string? newKey = null;
@@ -1859,7 +1859,7 @@ public sealed partial class ExpenseReportServiceTests
         var sut = new ExpenseReportService(
             _expenseRepo, _fileStorage, _budgetService, _teamService, _userService,
             _emailService, TestExpensesEmails.Create(),
-            AuditLog, _holdedService, _holdedFinance, _finance, _financeWrite, _preapprovals, _preapprovalWrites, Clock, logger,
+            AuditLog, Substitute.For<IAuditViewerService>(), _holdedService, _holdedFinance, _finance, _financeWrite, _preapprovals, _preapprovalWrites, Clock, logger,
             Options.Create(new TravelReimbursementConfig()));
 
         var (_, category) = SetupActiveYear();
@@ -1888,7 +1888,7 @@ public sealed partial class ExpenseReportServiceTests
         var sut = new ExpenseReportService(
             _expenseRepo, _fileStorage, _budgetService, _teamService, _userService,
             _emailService, TestExpensesEmails.Create(),
-            AuditLog, _holdedService, _holdedFinance, _finance, _financeWrite, _preapprovals, _preapprovalWrites, Clock, logger,
+            AuditLog, Substitute.For<IAuditViewerService>(), _holdedService, _holdedFinance, _finance, _financeWrite, _preapprovals, _preapprovalWrites, Clock, logger,
             Options.Create(new TravelReimbursementConfig()));
 
         var (_, category) = SetupActiveYear();
@@ -1927,7 +1927,7 @@ public sealed partial class ExpenseReportServiceTests
         var sut = new ExpenseReportService(
             _expenseRepo, _fileStorage, _budgetService, _teamService, _userService,
             _emailService, TestExpensesEmails.Create(),
-            AuditLog, _holdedService, _holdedFinance, _finance, _financeWrite, _preapprovals, _preapprovalWrites, Clock, logger,
+            AuditLog, Substitute.For<IAuditViewerService>(), _holdedService, _holdedFinance, _finance, _financeWrite, _preapprovals, _preapprovalWrites, Clock, logger,
             Options.Create(new TravelReimbursementConfig()));
         var (_, category) = SetupActiveYear();
         var submitter = Guid.NewGuid();
@@ -3764,7 +3764,7 @@ public sealed partial class ExpenseReportServiceTests
             .AddInterceptors(new FailReceiptReacceptance()).Options;
         var repo = new ExpenseRepository(new TestDbContextFactory<ExpensesDbContext>(options));
         var service = new ExpenseReportService(repo, _fileStorage, _budgetService, _teamService,
-            _userService, _emailService, TestExpensesEmails.Create(), AuditLog,
+            _userService, _emailService, TestExpensesEmails.Create(), AuditLog, Substitute.For<IAuditViewerService>(),
             _holdedService, _holdedFinance, _finance, _financeWrite, _preapprovals, _preapprovalWrites, Clock, NullLogger<ExpenseReportService>.Instance,
             Options.Create(new TravelReimbursementConfig()));
         string? newKey = null;

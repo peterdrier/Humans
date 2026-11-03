@@ -132,7 +132,7 @@ public sealed class ShiftsControllerRevealMedicalTests
         var ctrl = new ShiftsController(
             shiftMgmt, burnSettings, Substitute.For<IShiftSignupService>(),
             Substitute.For<IVolunteerTrackingManagement>(), Substitute.For<IShiftRowView>(), teamService,
-            _audit, _userService, Substitute.For<IStringLocalizer<ShiftsResource>>(),
+            _audit, Substitute.For<IAuditViewerService>(), _userService, Substitute.For<IStringLocalizer<ShiftsResource>>(),
             Substitute.For<IStringLocalizer<OnboardingResource>>(), Substitute.For<IClock>(),
             new ShiftBrowsePageBuilder(shiftMgmt, burnSettings, teamService), NullLogger<ShiftsController>.Instance);
         ctrl.ControllerContext = new ControllerContext

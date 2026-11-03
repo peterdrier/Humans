@@ -246,9 +246,6 @@ public class MailerLiteAudienceSyncServiceTests
         var after = await service.ComputeAllStatsAsync(ct);
         after.Single().LastSyncAt.Should().Be(SyncedAt);
         after.Single().LastSyncSummary.Should().Be("0 created, 1 newly assigned, 0 unassigned, 0 errors.");
-        await _audit.DidNotReceive().GetFilteredEntriesAsync(
-            Arg.Any<IReadOnlyList<AuditActionDefinition>>(), Arg.Any<string?>(), Arg.Any<Guid?>(), Arg.Any<Guid?>(),
-            Arg.Any<int>(), Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
