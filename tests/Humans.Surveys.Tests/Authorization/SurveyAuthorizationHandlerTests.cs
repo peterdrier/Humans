@@ -6,6 +6,10 @@ using Humans.Surveys.Contracts;
 using Humans.Surveys.Domain;
 using Humans.Surveys.Services;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.DependencyInjection;
+using Humans.Users.Contracts;
+using NSubstitute;
 
 namespace Humans.Surveys.Tests.Authorization;
 
@@ -16,10 +20,72 @@ namespace Humans.Surveys.Tests.Authorization;
 /// </summary>
 public sealed class SurveyAuthorizationHandlerTests
 {
-    private readonly SurveyAuthorizationHandler _handler = new();
+    private readonly SurveyAuthorizationHandler _handler;
+
+    public SurveyAuthorizationHandlerTests()
+    {
+        var users = Substitute.For<IUserService>();
+        users.GetUserInfoAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(call => UserInfo.Create(new User { Id = call.Arg<Guid>() }, [], [], null));
+        _handler = new SurveyAuthorizationHandler(users, new HttpContextAccessor());
+    }
 
     private static readonly Guid AuthorId = Guid.NewGuid();
     private static readonly Guid OtherUserId = Guid.NewGuid();
+
+    [HumansTheory]
+    [Xunit.InlineData((int)SurveyOperation.Edit, "merged")]
+    [Xunit.InlineData((int)SurveyOperation.Edit, "missing")]
+    [Xunit.InlineData((int)SurveyOperation.Edit, "cancelled")]
+    [Xunit.InlineData((int)SurveyOperation.Edit, "stranger")]
+    [Xunit.InlineData((int)SurveyOperation.Submit, "merged")]
+    [Xunit.InlineData((int)SurveyOperation.Submit, "missing")]
+    [Xunit.InlineData((int)SurveyOperation.Submit, "cancelled")]
+    [Xunit.InlineData((int)SurveyOperation.Submit, "stranger")]
+    [Xunit.InlineData((int)SurveyOperation.ViewResults, "merged")]
+    [Xunit.InlineData((int)SurveyOperation.ViewResults, "missing")]
+    [Xunit.InlineData((int)SurveyOperation.ViewResults, "cancelled")]
+    [Xunit.InlineData((int)SurveyOperation.ViewResults, "stranger")]
+    [Xunit.InlineData((int)SurveyOperation.Preview, "merged")]
+    [Xunit.InlineData((int)SurveyOperation.Preview, "missing")]
+    [Xunit.InlineData((int)SurveyOperation.Preview, "cancelled")]
+    [Xunit.InlineData((int)SurveyOperation.Preview, "stranger")]
+    public async Task Ownership_ResolvesTheAccountWithoutWideningAccess(int operation, string account)
+    {
+        using var request = new CancellationTokenSource();
+        var cookieId = Guid.NewGuid();
+        var survivorId = Guid.NewGuid();
+        var users = Substitute.For<IUserService>();
+        users.GetUserInfoAsync(cookieId, Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+            return new ValueTask<UserInfo?>(string.Equals(account, "missing", StringComparison.Ordinal)
+                ? null : UserInfo.Create(new User { Id = survivorId }, [], [], null));
+        });
+        using var services = new ServiceCollection().AddSingleton(users)
+            .AddSingleton<IHttpContextAccessor>(new HttpContextAccessor
+                { HttpContext = new DefaultHttpContext { RequestAborted = request.Token } }).BuildServiceProvider();
+        var handler = ActivatorUtilities.CreateInstance<SurveyAuthorizationHandler>(services);
+        var op = (SurveyOperation)operation;
+        var status = op == SurveyOperation.ViewResults ? SurveyStatus.Closed : SurveyStatus.Draft;
+        var ownerId = string.Equals(account, "stranger", StringComparison.Ordinal) ? Guid.NewGuid() : survivorId;
+        var requirement = new SurveyOperationRequirement(op);
+        var user = string.Equals(account, "missing", StringComparison.Ordinal)
+            ? new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, cookieId.ToString()),
+                new Claim(ClaimTypes.Role, RoleNames.Admin)], "test")) : CreateUser(cookieId);
+        var context = new AuthorizationHandlerContext([requirement], user, Detail(status, ownerId));
+        if (string.Equals(account, "cancelled", StringComparison.Ordinal))
+        {
+            await request.CancelAsync();
+            Func<Task> run = () => handler.HandleAsync(context);
+            await run.Should().ThrowAsync<OperationCanceledException>();
+        }
+        else
+        {
+            await handler.HandleAsync(context);
+            context.HasSucceeded.Should().Be(string.Equals(account, "merged", StringComparison.Ordinal));
+        }
+    }
 
     [HumansFact]
     public async Task Author_can_edit_their_own_draft()

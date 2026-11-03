@@ -180,6 +180,8 @@ First-party, GDPR-compliant surveys: author typed/branching multi-language surve
 
 ## Invariants
 
+- Survey authoring actions and resource authorization resolve signed-in accounts through Users. Merged sessions use the survivor for ownership, authoring, official links, previews and export audit actors. Missing accounts are refused; identity-read cancellation propagates before mutation. Author-only submission, draft-only editing, closed-only author results and Board/Admin permissions retain their existing rules. Public-answer wizard identity and anonymity checks are unchanged.
+
 - Question aggregates carry authored page and position metadata without display sorting. The results builder and Backdoor aggregate projection order questions by page, then position. Choice option counts likewise carry authored positions for these consumers to order; grid columns remain aligned with their cells.
 - Identified response data includes submission time and response-id metadata without display ordering. The results builder orders respondents by submission time, then response id. Anonymous/unattributed ballot ordering and identity-disclosure gates are unchanged.
 

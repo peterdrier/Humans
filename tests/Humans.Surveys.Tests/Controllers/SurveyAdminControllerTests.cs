@@ -28,6 +28,146 @@ namespace Humans.Surveys.Tests.Controllers;
 public sealed class SurveyAdminControllerTests
 {
     [HumansTheory]
+    [Xunit.InlineData("index", "merged")]
+    [Xunit.InlineData("index", "missing")]
+    [Xunit.InlineData("index", "cancelled")]
+    [Xunit.InlineData("approve", "merged")]
+    [Xunit.InlineData("approve", "missing")]
+    [Xunit.InlineData("approve", "cancelled")]
+    [Xunit.InlineData("reject", "merged")]
+    [Xunit.InlineData("reject", "missing")]
+    [Xunit.InlineData("reject", "cancelled")]
+    [Xunit.InlineData("submit", "merged")]
+    [Xunit.InlineData("submit", "missing")]
+    [Xunit.InlineData("submit", "cancelled")]
+    [Xunit.InlineData("official", "merged")]
+    [Xunit.InlineData("official", "missing")]
+    [Xunit.InlineData("official", "cancelled")]
+    [Xunit.InlineData("send-preview", "merged")]
+    [Xunit.InlineData("send-preview", "missing")]
+    [Xunit.InlineData("send-preview", "cancelled")]
+    [Xunit.InlineData("preview-email", "merged")]
+    [Xunit.InlineData("preview-email", "missing")]
+    [Xunit.InlineData("preview-email", "cancelled")]
+    [Xunit.InlineData("create", "merged")]
+    [Xunit.InlineData("create", "missing")]
+    [Xunit.InlineData("create", "cancelled")]
+    [Xunit.InlineData("update", "merged")]
+    [Xunit.InlineData("update", "missing")]
+    [Xunit.InlineData("update", "cancelled")]
+    [Xunit.InlineData("open", "merged")]
+    [Xunit.InlineData("open", "missing")]
+    [Xunit.InlineData("open", "cancelled")]
+    [Xunit.InlineData("close", "merged")]
+    [Xunit.InlineData("close", "missing")]
+    [Xunit.InlineData("close", "cancelled")]
+    [Xunit.InlineData("send", "merged")]
+    [Xunit.InlineData("send", "missing")]
+    [Xunit.InlineData("send", "cancelled")]
+    [Xunit.InlineData("ranked", "merged")]
+    [Xunit.InlineData("ranked", "missing")]
+    [Xunit.InlineData("ranked", "cancelled")]
+    [Xunit.InlineData("csv", "merged")]
+    [Xunit.InlineData("csv", "missing")]
+    [Xunit.InlineData("csv", "cancelled")]
+    [Xunit.InlineData("json", "merged")]
+    [Xunit.InlineData("json", "missing")]
+    [Xunit.InlineData("json", "cancelled")]
+    public async Task AuthoringActions_ResolveTheActorBeforeServiceOperations(string action, string account)
+    {
+        using var request = new CancellationTokenSource();
+        var cookieId = Guid.NewGuid();
+        var actorId = Guid.NewGuid();
+        var id = Guid.NewGuid();
+        var users = Substitute.For<IUserService>();
+        users.GetUserInfoAsync(cookieId, Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+            return new ValueTask<UserInfo?>(string.Equals(account, "missing", StringComparison.Ordinal)
+                ? null : UserInfo.Create(new User { Id = actorId }, [], [], null));
+        });
+        var surveys = Substitute.For<ISurveyService>();
+        surveys.GetForEditAsync(id, Arg.Any<CancellationToken>()).Returns(new SurveyDetail(id, SurveyStatus.Draft, Editable("Mine"), actorId));
+        surveys.GetAdminSummariesAsync(Arg.Any<SurveyViewer>(), Arg.Any<CancellationToken>()).Returns(Array.Empty<SurveyAdminSummary>());
+        surveys.ApproveAndSendAsync(id, Arg.Any<SurveyViewer>(), Arg.Any<CancellationToken>()).Returns(new SurveyReviewResult(new SendResult(0, 0, 0)));
+        surveys.RejectAsync(id, Arg.Any<SurveyViewer>(), Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(new SurveyReviewResult());
+        surveys.SubmitForApprovalAsync(id, Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(new SurveySubmitResult(true));
+        surveys.GetOfficialLinkAsync(id, Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns((SurveyOfficialLink?)null);
+        surveys.CreateAsync(Arg.Any<SurveyEditInput>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(new SurveySaveResult(id));
+        surveys.UpdateAsync(id, Arg.Any<SurveyEditInput>(), Arg.Any<SurveyViewer>(), Arg.Any<CancellationToken>()).Returns(new SurveySaveResult(id));
+        surveys.OpenAsync(id, Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(new SurveyReviewResult());
+        surveys.CloseAsync(id, Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(new SurveyReviewResult());
+        surveys.SendInvitesAsync(id, Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(new SendResult(0, 0, 0));
+        surveys.SetRankedAvailabilityAsync(id, Arg.Any<Guid>(), Arg.Any<IReadOnlyList<string>>(), Arg.Any<SurveyViewer>(), Arg.Any<CancellationToken>())
+            .Returns(new SurveySaveResult(id));
+        surveys.GetResponseExportAsync(id, Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns((SurveyResponseExport?)null);
+        var previews = Substitute.For<ISurveyPreviewEmailService>();
+        previews.SendToUserAsync(id, Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(new SurveyPreviewEmailSendResult("actor@example.com"));
+        previews.PreviewForUserAsync(id, Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(new SurveyEmailPreviewResult(ErrorKey: "Missing"));
+        var authorization = Substitute.For<IAuthorizationService>();
+        authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object>(), Arg.Any<IEnumerable<IAuthorizationRequirement>>())
+            .Returns(AuthorizationResult.Success());
+        var localizer = Substitute.For<IStringLocalizer<SurveysResource>>();
+        localizer[Arg.Any<string>()].Returns(call => new LocalizedString(call.Arg<string>(), call.Arg<string>()));
+        localizer[Arg.Any<string>(), Arg.Any<object[]>()].Returns(call => new LocalizedString(call.Arg<string>(), call.Arg<string>()));
+        var http = new DefaultHttpContext
+        {
+            RequestAborted = request.Token,
+            User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, cookieId.ToString()),
+                new Claim(ClaimTypes.Role, RoleNames.Board)], "test"))
+        };
+        var controller = new SurveyAdminController(surveys, Substitute.For<ITeamService>(), users, authorization,
+            localizer, NullLogger<SurveyAdminController>.Instance)
+        {
+            ControllerContext = new ControllerContext { HttpContext = http },
+            TempData = new TempDataDictionary(http, Substitute.For<ITempDataProvider>()),
+            Url = Substitute.For<IUrlHelper>()
+        };
+        Func<Task<IActionResult>> run = () => action switch
+        {
+            "index" => controller.Index(request.Token),
+            "approve" => controller.Approve(id, request.Token),
+            "reject" => controller.Reject(id, "Reason", request.Token),
+            "submit" => controller.Submit(id, request.Token),
+            "official" => controller.Official(id, request.Token),
+            "send-preview" => controller.SendPreviewEmail(id, previews, request.Token),
+            "preview-email" => controller.PreviewEmail(id, previews, request.Token),
+            "create" or "update" => controller.Save(new SurveyBuilderViewModel
+                { Id = string.Equals(action, "update", StringComparison.Ordinal) ? id : null }, null, request.Token),
+            "open" => controller.Open(id, false, request.Token),
+            "close" => controller.Close(id, request.Token),
+            "send" => controller.SendInvites(id, request.Token),
+            "ranked" => controller.RankedAvailability(id, Guid.NewGuid(), [], request.Token),
+            "csv" => controller.ExportCsv(id, request.Token),
+            _ => controller.ExportJson(id, request.Token)
+        };
+        if (string.Equals(account, "cancelled", StringComparison.Ordinal))
+        {
+            await request.CancelAsync();
+            await run.Should().ThrowAsync<OperationCanceledException>();
+        }
+        else
+        {
+            var result = await run();
+            if (string.Equals(account, "missing", StringComparison.Ordinal))
+            {
+                if (action is "csv" or "json") result.Should().BeOfType<UnauthorizedResult>();
+                else result.Should().BeOfType<ForbidResult>();
+            }
+        }
+        var operations = surveys.ReceivedCalls().Where(call =>
+            !string.Equals(call.GetMethodInfo().Name, nameof(ISurveyService.GetForEditAsync), StringComparison.Ordinal))
+            .Concat(previews.ReceivedCalls()).ToList();
+        if (string.Equals(account, "merged", StringComparison.Ordinal))
+        {
+            var args = operations.Should().ContainSingle().Which.GetArguments();
+            var viewers = args.OfType<SurveyViewer>().ToArray();
+            (viewers.Length == 1 ? viewers[0].UserId : args.OfType<Guid>().Last()).Should().Be(actorId);
+        }
+        else operations.Should().BeEmpty();
+    }
+
+    [HumansTheory]
     [Xunit.InlineData(false, true)]
     [Xunit.InlineData(true, true)]
     [Xunit.InlineData(false, false)]
@@ -546,10 +686,13 @@ public sealed class SurveyAdminControllerTests
                 [new Claim(ClaimTypes.NameIdentifier, actorId.ToString())],
                 "test")),
         };
+        var users = Substitute.For<IUserService>();
+        users.GetUserInfoAsync(actorId, Arg.Any<CancellationToken>())
+            .Returns(UserInfo.Create(new User { Id = actorId }, [], [], null));
         var sut = new SurveyAdminController(
             surveys,
             Substitute.For<ITeamService>(),
-            Substitute.For<IUserService>(),
+            users,
             Substitute.For<IAuthorizationService>(),
             Substitute.For<IStringLocalizer<SurveysResource>>(),
             logger)
@@ -660,13 +803,17 @@ public sealed class SurveyAdminControllerTests
         bool isBoardOrAdmin = false,
         IStringLocalizer<SurveysResource>? localizer = null)
     {
-        var claims = new List<Claim> { new(ClaimTypes.NameIdentifier, (userId ?? Guid.NewGuid()).ToString()) };
+        var actorId = userId ?? Guid.NewGuid();
+        var users = Substitute.For<IUserService>();
+        users.GetUserInfoAsync(actorId, Arg.Any<CancellationToken>())
+            .Returns(UserInfo.Create(new User { Id = actorId }, [], [], null));
+        var claims = new List<Claim> { new(ClaimTypes.NameIdentifier, actorId.ToString()) };
         if (isBoardOrAdmin) claims.Add(new Claim(ClaimTypes.Role, RoleNames.Board));
         var http = new DefaultHttpContext { User = new ClaimsPrincipal(new ClaimsIdentity(claims, "test")) };
         return new(
             surveys,
             teams ?? Substitute.For<ITeamService>(),
-            Substitute.For<IUserService>(),
+            users,
             authorizationService ?? Substitute.For<IAuthorizationService>(),
             localizer ?? Substitute.For<IStringLocalizer<SurveysResource>>(),
             NullLogger<SurveyAdminController>.Instance)
@@ -999,7 +1146,15 @@ public sealed class SurveyAdminControllerTests
 
     private sealed class FakeSurveyAuthorizationService : IAuthorizationService
     {
-        private readonly SurveyAuthorizationHandler _handler = new();
+        private readonly SurveyAuthorizationHandler _handler;
+
+        public FakeSurveyAuthorizationService()
+        {
+            var users = Substitute.For<IUserService>();
+            users.GetUserInfoAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+                .Returns(call => UserInfo.Create(new User { Id = call.Arg<Guid>() }, [], [], null));
+            _handler = new SurveyAuthorizationHandler(users, new HttpContextAccessor());
+        }
 
         public async Task<AuthorizationResult> AuthorizeAsync(
             ClaimsPrincipal user, object? resource, IEnumerable<IAuthorizationRequirement> requirements)

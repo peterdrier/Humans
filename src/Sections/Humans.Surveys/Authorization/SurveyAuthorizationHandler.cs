@@ -3,6 +3,8 @@ using Humans.Base.Authorization;
 using Humans.Surveys.Contracts;
 using Humans.Surveys.Services;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
+using Humans.Users.Contracts;
 
 namespace Humans.Surveys.Authorization;
 
@@ -10,18 +12,22 @@ namespace Humans.Surveys.Authorization;
 /// The browser's copy of the rule <see cref="SurveyService"/> also enforces: it shapes the page and answers 403 before
 /// the service would throw.
 /// </summary>
-internal sealed class SurveyAuthorizationHandler : AuthorizationHandler<SurveyOperationRequirement, SurveyDetail>
+internal sealed class SurveyAuthorizationHandler(IUserService users, IHttpContextAccessor httpContextAccessor) : AuthorizationHandler<SurveyOperationRequirement, SurveyDetail>
 {
-    protected override Task HandleRequirementAsync(
+    protected override async Task HandleRequirementAsync(
         AuthorizationHandlerContext context,
         SurveyOperationRequirement requirement,
         SurveyDetail resource)
     {
         if (!Guid.TryParse(context.User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
-            return Task.CompletedTask;
+            return;
+
+        var user = await users.GetUserInfoAsync(userId,
+            httpContextAccessor.HttpContext?.RequestAborted ?? CancellationToken.None);
+        if (user is null) return;
 
         var isBoardOrAdmin = RoleChecks.IsAdminOrBoard(context.User);
-        var isOwner = resource.CreatedByUserId == userId;
+        var isOwner = resource.CreatedByUserId == user.Id;
 
         var allowed = requirement.Operation switch
         {
@@ -37,6 +43,5 @@ internal sealed class SurveyAuthorizationHandler : AuthorizationHandler<SurveyOp
             context.Succeed(requirement);
         }
 
-        return Task.CompletedTask;
     }
 }
