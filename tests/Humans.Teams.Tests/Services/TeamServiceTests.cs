@@ -3551,10 +3551,6 @@ public sealed class TeamServiceTests : TeamsTestHarness
         BuildStartOffset: src.BuildStartOffset,
         EventEndOffset: src.EventEndOffset,
         StrikeEndOffset: src.StrikeEndOffset,
-        FirstCrewStartOffset: src.FirstCrewStartOffset,
-        SetupWeekStartOffset: src.SetupWeekStartOffset,
-        PreEventWeekStartOffset: src.PreEventWeekStartOffset,
-        FinishingWeekendStartOffset: src.FinishingWeekendStartOffset,
         EarlyEntryCapacity: new Dictionary<int, int>(src.EarlyEntryCapacity),
         BarriosEarlyEntryAllocation: src.BarriosEarlyEntryAllocation is null
             ? null : new Dictionary<int, int>(src.BarriosEarlyEntryAllocation),

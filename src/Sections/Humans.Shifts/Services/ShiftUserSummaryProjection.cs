@@ -26,7 +26,7 @@ internal static class ShiftUserSummaryProjection
         rows.ToDictionary(kv => kv.Key, kv => kv.Value.ToSummary());
 
     /// <summary>Needs <c>Shift.Rota</c> loaded.</summary>
-    internal static ShiftSignupSummary ToSummary(ShiftSignup signup, EventSettingsInfo settings)
+    internal static ShiftSignupSummary ToSummary(ShiftSignup signup, BurnSettingsInfo settings)
     {
         var shift = signup.Shift;
         var rota = shift.Rota;

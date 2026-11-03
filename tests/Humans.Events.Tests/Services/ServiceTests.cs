@@ -265,10 +265,6 @@ public sealed class EventServiceTests
             BuildStartOffset: -14,
             EventEndOffset: 7,
             StrikeEndOffset: 10,
-            FirstCrewStartOffset: -25,
-            SetupWeekStartOffset: -16,
-            PreEventWeekStartOffset: -9,
-            FinishingWeekendStartOffset: -4,
             EarlyEntryCapacity: new Dictionary<int, int>(),
             BarriosEarlyEntryAllocation: null,
             EarlyEntryClose: null));
@@ -1076,10 +1072,6 @@ public sealed class EventServiceTests
         BuildStartOffset: -14,
         EventEndOffset: 6,
         StrikeEndOffset: 10,
-        FirstCrewStartOffset: -25,
-        SetupWeekStartOffset: -16,
-        PreEventWeekStartOffset: -9,
-        FinishingWeekendStartOffset: -4,
         EarlyEntryCapacity: new Dictionary<int, int>(),
         BarriosEarlyEntryAllocation: null,
         EarlyEntryClose: null);

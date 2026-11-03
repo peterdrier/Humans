@@ -1,10 +1,11 @@
+using Humans.Shifts.Contracts;
 using Humans.Settings.Contracts;
 
 namespace Humans.Shifts.Services;
 
 internal static class EarlyEntryCapacityCalculator
 {
-    internal static int GetAvailableEeSlots(EventSettingsInfo settings, int dayOffset)
+    internal static int GetAvailableEeSlots(BurnSettingsInfo settings, int dayOffset)
     {
         var totalCapacity = settings.GetEarlyEntryCapacityForDay(dayOffset);
         if (totalCapacity == 0) return 0;

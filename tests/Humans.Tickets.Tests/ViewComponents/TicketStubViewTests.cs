@@ -26,7 +26,7 @@ public class TicketStubViewTests
         var settings = Substitute.For<ISettingsService>();
         var activeEvent = eventName is null ? null : new EventSettingsInfo(
             Guid.NewGuid(), eventName, 2027, "Europe/Madrid", new LocalDate(2027, 7, 1),
-            -14, 7, 10, -14, -7, -7, -2, new Dictionary<int, int>(), null, null);
+            -14, 7, 10, new Dictionary<int, int>(), null, null);
         settings.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns(activeEvent);
         using var services = new ServiceCollection().AddLogging().AddLocalization().BuildServiceProvider();
         var localizer = services.GetRequiredService<IStringLocalizer<TicketsResource>>();

@@ -8,7 +8,7 @@ internal static class EventSettingsFormMapper
 {
     /// <summary>
     /// No knobs row is created until the form is saved. The sub-periods come from <paramref name="burn"/>, which
-    /// already falls back to Settings' values where Shifts has none.
+    /// already supplies Shifts' defaults where no local value has been saved.
     /// </summary>
     internal static EventSettingsViewModel ToViewModel(ShiftEventKnobs? knobs, BurnSettingsInfo burn)
     {

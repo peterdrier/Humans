@@ -191,10 +191,6 @@ public class CantinaRosterServiceTests
         BuildStartOffset: 0,
         EventEndOffset: 0,
         StrikeEndOffset: 0,
-        FirstCrewStartOffset: 0,
-        SetupWeekStartOffset: 0,
-        PreEventWeekStartOffset: 0,
-        FinishingWeekendStartOffset: 0,
         EarlyEntryCapacity: new Dictionary<int, int>(),
         BarriosEarlyEntryAllocation: null,
         EarlyEntryClose: null);

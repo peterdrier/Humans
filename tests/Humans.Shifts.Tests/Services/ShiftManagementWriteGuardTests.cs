@@ -173,8 +173,7 @@ public sealed class ShiftManagementWriteGuardTests : ShiftsTestHarness
             .Returns(new EventSettingsInfo(
                 Id: eventId, EventName: "Nowhere 2026", Year: 2026, TimeZoneId: "Europe/Madrid",
                 GateOpeningDate: new LocalDate(2026, 7, 1), BuildStartOffset: -14, EventEndOffset: 6,
-                StrikeEndOffset: 9, FirstCrewStartOffset: -25, SetupWeekStartOffset: -16,
-                PreEventWeekStartOffset: -9, FinishingWeekendStartOffset: -4,
+                StrikeEndOffset: 9,
                 EarlyEntryCapacity: new Dictionary<int, int>(), BarriosEarlyEntryAllocation: null,
                 EarlyEntryClose: null));
         var team = SeedDepartment("Gate");

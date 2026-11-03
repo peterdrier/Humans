@@ -1,12 +1,11 @@
 using Humans.Shifts.Contracts;
-using Humans.Settings.Contracts;
 
 namespace Humans.Shifts.Services;
 
 /// <summary>Null outside the build window, and before the FirstCrew boundary.</summary>
 internal static class BuildSubPeriodClassifier
 {
-    internal static BuildSubPeriod? Classify(int dayOffset, IEventSettingsInfo settings)
+    internal static BuildSubPeriod? Classify(int dayOffset, IBurnSettingsInfo settings)
     {
         if (dayOffset >= 0)
             return null;
@@ -28,7 +27,7 @@ internal static class BuildSubPeriodClassifier
 
     /// <summary>FinishingWeekend ends at 0, when the event begins.</summary>
     internal static (int StartInclusive, int EndExclusive) BoundsFor(
-        BuildSubPeriod subPeriod, IEventSettingsInfo settings) => subPeriod switch
+        BuildSubPeriod subPeriod, IBurnSettingsInfo settings) => subPeriod switch
         {
             BuildSubPeriod.FirstCrew => (settings.FirstCrewStartOffset, settings.SetupWeekStartOffset),
             BuildSubPeriod.SetupWeek => (settings.SetupWeekStartOffset, settings.PreEventWeekStartOffset),

@@ -94,10 +94,6 @@ internal sealed class DevelopmentDashboardSeeder(
             BuildStartOffset: -25,
             EventEndOffset: 6,
             StrikeEndOffset: 9,
-            FirstCrewStartOffset: -25,
-            SetupWeekStartOffset: -16,
-            PreEventWeekStartOffset: -9,
-            FinishingWeekendStartOffset: -4,
             EarlyEntryCapacity: new Dictionary<int, int>(),
             BarriosEarlyEntryAllocation: null,
             EarlyEntryClose: null), cancellationToken);

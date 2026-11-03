@@ -36,8 +36,7 @@ public class ShiftViewServiceTests
     private static EventSettingsInfo Calendar(Guid id) => new(
         Id: id, EventName: "Nowhere 2026", Year: 2026, TimeZoneId: "Europe/Madrid",
         GateOpeningDate: new NodaTime.LocalDate(2026, 7, 1), BuildStartOffset: -14, EventEndOffset: 6,
-        StrikeEndOffset: 9, FirstCrewStartOffset: -25, SetupWeekStartOffset: -16,
-        PreEventWeekStartOffset: -9, FinishingWeekendStartOffset: -4,
+        StrikeEndOffset: 9,
         EarlyEntryCapacity: new Dictionary<int, int>(), BarriosEarlyEntryAllocation: null,
         EarlyEntryClose: null);
 

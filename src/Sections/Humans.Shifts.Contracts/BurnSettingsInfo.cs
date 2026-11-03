@@ -5,7 +5,7 @@ using Humans.Settings.Contracts;
 namespace Humans.Shifts.Contracts;
 
 /// <summary>
-/// The calendar from Settings plus the Shifts browsing switch. "Burn" names an event cycle, to keep clear of the
+/// The calendar from Settings plus Shifts' own build sub-periods and browsing switch. "Burn" names an event cycle, to keep clear of the
 /// unrelated Events section. Shifts' tuning knobs stay internal.
 /// </summary>
 public sealed record BurnSettingsInfo(

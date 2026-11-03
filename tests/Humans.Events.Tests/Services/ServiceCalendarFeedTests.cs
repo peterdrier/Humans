@@ -103,10 +103,6 @@ public class EventServiceCalendarFeedTests
                 BuildStartOffset: -14,
                 EventEndOffset: 6,
                 StrikeEndOffset: 9,
-                FirstCrewStartOffset: -14,
-                SetupWeekStartOffset: -7,
-                PreEventWeekStartOffset: -3,
-                FinishingWeekendStartOffset: -2,
                 EarlyEntryCapacity: new Dictionary<int, int>(),
                 BarriosEarlyEntryAllocation: null,
                 EarlyEntryClose: null));

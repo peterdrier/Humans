@@ -38,9 +38,8 @@ internal sealed class EventSettings : IBurnSettingsInfo
 
     public Instant? EarlyEntryClose { get; set; }
 
-    // Shifts' own build sub-period starts (day offsets from gate opening). Null until set here or copied from
-    // Settings by the shifts.build-sub-periods data migration; while null, reads fall back to Settings' values.
-    // The int offsets above are the old, dead copies.
+    // Shifts' own build sub-period starts (day offsets from gate opening). New rows use Shifts' defaults;
+    // nullable historical fields also resolve to those defaults. The int offsets above are dead copies.
 
     public int? SubPeriodFirstCrewStart { get; set; }
 

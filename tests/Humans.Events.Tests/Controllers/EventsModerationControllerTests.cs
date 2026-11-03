@@ -69,7 +69,7 @@ public sealed class EventsModerationControllerTests
             "Europe/Madrid", Instant.MinValue, Instant.MinValue));
         _guide.GetEventSettingsByIdAsync(settingsId, Arg.Any<CancellationToken>()).Returns(new EventSettingsInfo(
             settingsId, "Burn", 2026, "Europe/Madrid", new LocalDate(2026, 8, 1),
-            0, 2, 2, 0, 0, 0, 0, new Dictionary<int, int>(), null, null));
+            0, 2, 2, new Dictionary<int, int>(), null, null));
         _users.GetUserInfoAsync(moderatorId, Arg.Any<CancellationToken>())
             .Returns(new ValueTask<UserInfo?>(UserInfoFor(moderatorId)));
         var controller = BuildController(moderatorId, guideEvent.Id);

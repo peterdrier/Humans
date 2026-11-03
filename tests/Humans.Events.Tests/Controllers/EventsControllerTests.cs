@@ -1083,10 +1083,6 @@ public class EventsControllerTests
         BuildStartOffset: 0,
         EventEndOffset: 2,
         StrikeEndOffset: 0,
-        FirstCrewStartOffset: 0,
-        SetupWeekStartOffset: 0,
-        PreEventWeekStartOffset: 0,
-        FinishingWeekendStartOffset: 0,
         EarlyEntryCapacity: new Dictionary<int, int>(),
         BarriosEarlyEntryAllocation: null,
         EarlyEntryClose: null);

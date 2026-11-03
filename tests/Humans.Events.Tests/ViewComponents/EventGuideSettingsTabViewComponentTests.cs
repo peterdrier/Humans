@@ -74,8 +74,7 @@ public sealed class EventGuideSettingsTabViewComponentTests
         _guide.GetEventSettingsByIdAsync(settingsId, Arg.Any<CancellationToken>()).Returns(new EventSettingsInfo(
             Id: settingsId, EventName: "Test Burn", Year: 2026, TimeZoneId: "Europe/Madrid",
             GateOpeningDate: new LocalDate(2026, 7, 9), BuildStartOffset: -25, EventEndOffset: 6,
-            StrikeEndOffset: 9, FirstCrewStartOffset: -25, SetupWeekStartOffset: -16,
-            PreEventWeekStartOffset: -9, FinishingWeekendStartOffset: -4,
+            StrikeEndOffset: 9,
             EarlyEntryCapacity: new Dictionary<int, int>(), BarriosEarlyEntryAllocation: null,
             EarlyEntryClose: null, Status: EventSettingsStatus.Active));
         _guide.GetEventSettingsOptionsAsync(Arg.Any<CancellationToken>()).Returns([]);

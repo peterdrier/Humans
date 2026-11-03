@@ -72,10 +72,6 @@ public sealed class ServiceTests
         dto.BuildStartOffset.Should().Be(-25);
         dto.EventEndOffset.Should().Be(6);
         dto.StrikeEndOffset.Should().Be(9);
-        dto.FirstCrewStartOffset.Should().Be(-25);
-        dto.SetupWeekStartOffset.Should().Be(-16);
-        dto.PreEventWeekStartOffset.Should().Be(-9);
-        dto.FinishingWeekendStartOffset.Should().Be(-4);
         dto.EarlyEntryCapacity.Should().Equal(new Dictionary<int, int> { [-14] = 50, [-7] = 100 });
         dto.BarriosEarlyEntryAllocation.Should().Equal(new Dictionary<int, int> { [-7] = 20 });
         dto.EarlyEntryClose.Should().Be(Instant.FromUtc(2026, 7, 4, 12, 0));
@@ -158,10 +154,6 @@ public sealed class ServiceTests
             BuildStartOffset: -20,
             EventEndOffset: 5,
             StrikeEndOffset: 8,
-            FirstCrewStartOffset: -20,
-            SetupWeekStartOffset: -14,
-            PreEventWeekStartOffset: -8,
-            FinishingWeekendStartOffset: -3,
             EarlyEntryCapacity: new Dictionary<int, int> { [-12] = 40 },
             BarriosEarlyEntryAllocation: null,
             EarlyEntryClose: null,
@@ -180,10 +172,6 @@ public sealed class ServiceTests
                 && e.BuildStartOffset == -20
                 && e.EventEndOffset == 5
                 && e.StrikeEndOffset == 8
-                && e.FirstCrewStartOffset == -20
-                && e.SetupWeekStartOffset == -14
-                && e.PreEventWeekStartOffset == -8
-                && e.FinishingWeekendStartOffset == -3
                 && e.EarlyEntryCapacity[-12] == 40
                 && e.BarriosEarlyEntryAllocation == null
                 && e.EarlyEntryClose == null
@@ -205,10 +193,6 @@ public sealed class ServiceTests
             BuildStartOffset: -20,
             EventEndOffset: 5,
             StrikeEndOffset: 8,
-            FirstCrewStartOffset: -20,
-            SetupWeekStartOffset: -14,
-            PreEventWeekStartOffset: -8,
-            FinishingWeekendStartOffset: -3,
             EarlyEntryCapacity: new Dictionary<int, int>(),
             BarriosEarlyEntryAllocation: null,
             EarlyEntryClose: null,
@@ -233,10 +217,6 @@ public sealed class ServiceTests
         BuildStartOffset: -25,
         EventEndOffset: 6,
         StrikeEndOffset: 9,
-        FirstCrewStartOffset: -25,
-        SetupWeekStartOffset: -16,
-        PreEventWeekStartOffset: -9,
-        FinishingWeekendStartOffset: -4,
         EarlyEntryCapacity: new Dictionary<int, int>(),
         BarriosEarlyEntryAllocation: null,
         EarlyEntryClose: null,
@@ -255,7 +235,6 @@ public sealed class ServiceTests
         var settings = MakeDto(Guid.NewGuid(), EventSettingsStatus.Inactive) with
         {
             BuildStartOffset = endOverflow ? -25 : int.MinValue,
-            FirstCrewStartOffset = endOverflow ? -25 : int.MinValue,
             StrikeEndOffset = endOverflow ? int.MaxValue : 9,
         };
         var sut = BuildSut();

@@ -1,3 +1,4 @@
+using Humans.Shifts.Contracts;
 using Humans.Shifts.Domain;
 using Humans.Settings.Contracts;
 namespace Humans.Shifts.Services.Dtos;
@@ -13,4 +14,4 @@ internal sealed record ShiftUserView(
     VolunteerBuildStatus? BuildStatus,
     IReadOnlyList<VolunteerTagPreference> TagPreferences,
     IReadOnlyList<ShiftSignup> Signups,
-    EventSettingsInfo? Calendar = null);
+    BurnSettingsInfo? Calendar = null);

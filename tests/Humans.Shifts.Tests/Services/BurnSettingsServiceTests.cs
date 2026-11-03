@@ -20,7 +20,7 @@ public sealed class BurnSettingsServiceTests
 
     public BurnSettingsServiceTests()
     {
-        _service = new BurnSettingsService(_repo, new EventCalendarResolver(_settingsService, _repo));
+        _service = new BurnSettingsService(new EventCalendarResolver(_settingsService, _repo));
     }
 
     private void StubActiveCalendar(EventSettingsInfo info) =>
@@ -47,7 +47,7 @@ public sealed class BurnSettingsServiceTests
     }
 
     [HumansFact]
-    public async Task GetByIdAsync_ShiftsOwnSubPeriodsWin_UnsetOnesFallBackToSettings()
+    public async Task GetByIdAsync_ShiftsOwnSubPeriodsWin_UnsetOnesUseShiftsDefaults()
     {
         var id = Guid.NewGuid();
         var calendar = NewCalendar(id);
@@ -62,8 +62,8 @@ public sealed class BurnSettingsServiceTests
         var result = await _service.GetByIdAsync(id, Xunit.TestContext.Current.CancellationToken);
 
         result!.FirstCrewStartOffset.Should().Be(-30);
-        result.SetupWeekStartOffset.Should().Be(calendar.SetupWeekStartOffset);
-        result.PreEventWeekStartOffset.Should().Be(calendar.PreEventWeekStartOffset);
+        result.SetupWeekStartOffset.Should().Be(-16);
+        result.PreEventWeekStartOffset.Should().Be(-9);
         result.FinishingWeekendStartOffset.Should().Be(-2);
     }
 
@@ -95,6 +95,10 @@ public sealed class BurnSettingsServiceTests
         result.Should().NotBeNull();
         result.Id.Should().Be(calendar.Id);
         result.IsShiftBrowsingOpen.Should().BeFalse();
+        result.FirstCrewStartOffset.Should().Be(-25);
+        result.SetupWeekStartOffset.Should().Be(-16);
+        result.PreEventWeekStartOffset.Should().Be(-9);
+        result.FinishingWeekendStartOffset.Should().Be(-4);
     }
 
     [HumansFact]
@@ -139,10 +143,6 @@ public sealed class BurnSettingsServiceTests
         BuildStartOffset: -14,
         EventEndOffset: 6,
         StrikeEndOffset: 9,
-        FirstCrewStartOffset: -25,
-        SetupWeekStartOffset: -16,
-        PreEventWeekStartOffset: -9,
-        FinishingWeekendStartOffset: -4,
         EarlyEntryCapacity: new Dictionary<int, int>(),
         BarriosEarlyEntryAllocation: null,
         EarlyEntryClose: null);

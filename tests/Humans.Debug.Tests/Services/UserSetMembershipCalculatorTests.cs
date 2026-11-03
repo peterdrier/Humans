@@ -127,10 +127,6 @@ public class UserSetMembershipCalculatorTests
         BuildStartOffset: -7,
         EventEndOffset: 5,
         StrikeEndOffset: 8,
-        FirstCrewStartOffset: -10,
-        SetupWeekStartOffset: -7,
-        PreEventWeekStartOffset: -3,
-        FinishingWeekendStartOffset: 6,
         EarlyEntryCapacity: new Dictionary<int, int>(),
         BarriosEarlyEntryAllocation: null,
         EarlyEntryClose: null);

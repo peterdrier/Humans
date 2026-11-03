@@ -17,18 +17,6 @@ public interface IEventSettingsInfo
     /// <summary>Offset for the last event day (inclusive). Strike starts at EventEndOffset + 1.</summary>
     int EventEndOffset { get; }
 
-    /// <summary>Inclusive start day of the "First crew" build sub-period.</summary>
-    int FirstCrewStartOffset { get; }
-
-    /// <summary>Inclusive start day of the "Set-up week" build sub-period.</summary>
-    int SetupWeekStartOffset { get; }
-
-    /// <summary>Inclusive start day of the "Pre-event week" build sub-period.</summary>
-    int PreEventWeekStartOffset { get; }
-
-    /// <summary>Inclusive start day of the "Finishing weekend" build sub-period.</summary>
-    int FinishingWeekendStartOffset { get; }
-
     /// <summary>After this instant, non-privileged users cannot sign up for or bail build shifts.</summary>
     Instant? EarlyEntryClose { get; }
 

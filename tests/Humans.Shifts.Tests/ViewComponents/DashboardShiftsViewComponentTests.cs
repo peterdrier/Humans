@@ -41,7 +41,7 @@ public sealed class DashboardShiftsViewComponentTests
 
     private static EventSettingsInfo Event(bool isOffSeason) => new(
         Guid.NewGuid(), "Test Event", 2026, "UTC", new LocalDate(2026, 7, 1),
-        -14, 6, 9, -14, -10, -7, -3, new Dictionary<int, int>(), null, null,
+        -14, 6, 9, new Dictionary<int, int>(), null, null,
         IsOffSeason: isOffSeason);
 
     private DashboardShiftsViewComponent BuildSut()
