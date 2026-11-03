@@ -928,9 +928,9 @@ internal sealed class ShiftSignupService(
         return result;
     }
 
-    public async Task<ShiftSignupTeamProbe?> GetTeamProbeAsync(Guid id, ShiftSignupTeamProbeScope scope)
+    public async Task<ShiftSignupTeamProbe?> GetTeamProbeAsync(Guid id, ShiftSignupTeamProbeScope scope, CancellationToken ct = default)
     {
-        var signup = await repo.GetTeamProbeAsync(id, scope);
+        var signup = await repo.GetTeamProbeAsync(id, scope, ct);
         return signup is null
             ? null
             : new ShiftSignupTeamProbe(signup.Id, signup.ShiftId, signup.Shift.Rota.TeamId);

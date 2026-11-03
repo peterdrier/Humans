@@ -70,7 +70,7 @@ internal sealed class ShiftAdminController(
 
     private async Task<IActionResult> RenderInvalidEditAsync(string slug)
     {
-        var result = await Index(slug);
+        var result = await Index(slug, ct: HttpContext.RequestAborted);
         if (result is ViewResult view)
             view.ViewName = nameof(Index);
         return result;
@@ -80,7 +80,7 @@ internal sealed class ShiftAdminController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> CreateRota(string slug, CreateRotaModel model)
     {
-        var (teamError, _, team) = await ResolveDepartmentManagementAsync(slug);
+        var (teamError, _, team) = await ResolveDepartmentManagementAsync(slug, HttpContext.RequestAborted);
         if (teamError is not null) return teamError;
 
         var es = await burnSettings.GetActiveAsync(HttpContext.RequestAborted);
@@ -116,10 +116,10 @@ internal sealed class ShiftAdminController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> EditRota(string slug, Guid rotaId, EditRotaModel model)
     {
-        var (teamError, _, team) = await ResolveDepartmentManagementAsync(slug);
+        var (teamError, _, team) = await ResolveDepartmentManagementAsync(slug, HttpContext.RequestAborted);
         if (teamError is not null) return teamError;
 
-        var rota = await GetRotaForTeamAsync(rotaId, team.Id);
+        var rota = await GetRotaForTeamAsync(rotaId, team.Id, HttpContext.RequestAborted);
         if (rota is null) return NotFound();
 
         if (!ModelState.IsValid)
@@ -150,7 +150,7 @@ internal sealed class ShiftAdminController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> ConfigureStaffing(string slug, Guid rotaId, StaffingGridModel model)
     {
-        var (teamError, _, team) = await ResolveDepartmentManagementAsync(slug);
+        var (teamError, _, team) = await ResolveDepartmentManagementAsync(slug, HttpContext.RequestAborted);
         if (teamError is not null) return teamError;
         if (!ModelState.IsValid) return BadRequest(ModelState);
 
@@ -175,7 +175,7 @@ internal sealed class ShiftAdminController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> GenerateShifts(string slug, Guid rotaId, GenerateEventShiftsModel model)
     {
-        var (teamError, _, team) = await ResolveDepartmentManagementAsync(slug);
+        var (teamError, _, team) = await ResolveDepartmentManagementAsync(slug, HttpContext.RequestAborted);
         if (teamError is not null) return teamError;
         if (!ModelState.IsValid) return BadRequest(ModelState);
 
@@ -214,7 +214,7 @@ internal sealed class ShiftAdminController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> CreateShift(string slug, CreateShiftModel model)
     {
-        var (teamError, _, team) = await ResolveDepartmentManagementAsync(slug);
+        var (teamError, _, team) = await ResolveDepartmentManagementAsync(slug, HttpContext.RequestAborted);
         if (teamError is not null) return teamError;
 
         if (!ModelState.IsValid)
@@ -255,10 +255,10 @@ internal sealed class ShiftAdminController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> EditShift(string slug, Guid shiftId, EditShiftModel model)
     {
-        var (teamError, _, team) = await ResolveDepartmentManagementAsync(slug);
+        var (teamError, _, team) = await ResolveDepartmentManagementAsync(slug, HttpContext.RequestAborted);
         if (teamError is not null) return teamError;
 
-        var shift = await GetShiftForTeamAsync(shiftId, team.Id);
+        var shift = await GetShiftForTeamAsync(shiftId, team.Id, HttpContext.RequestAborted);
         if (shift is null) return NotFound();
 
         if (!model.StartTime.TryParseInvariantLocalTime(out var parsedTime))
@@ -294,10 +294,10 @@ internal sealed class ShiftAdminController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> ToggleVisibility(string slug, Guid rotaId)
     {
-        var (teamError, _, team) = await ResolveDepartmentManagementAsync(slug);
+        var (teamError, _, team) = await ResolveDepartmentManagementAsync(slug, HttpContext.RequestAborted);
         if (teamError is not null) return teamError;
 
-        var rota = await GetRotaForTeamAsync(rotaId, team.Id);
+        var rota = await GetRotaForTeamAsync(rotaId, team.Id, HttpContext.RequestAborted);
         if (rota is null) return NotFound();
 
         var isVisible = !rota.IsVisibleToVolunteers;
@@ -323,7 +323,7 @@ internal sealed class ShiftAdminController(
     [Authorize(Policy = ShiftsPolicies.ManageVolunteers)]
     public async Task<IActionResult> MoveRota(string slug, Guid rotaId, MoveRotaModel model)
     {
-        var (teamError, user, team) = await ResolveDepartmentManagementAsync(slug);
+        var (teamError, user, team) = await ResolveDepartmentManagementAsync(slug, HttpContext.RequestAborted);
         if (teamError is not null) return teamError;
 
         var result = await shiftMgmt.MoveRotaToTeamAsync(new MoveRotaInput(
@@ -370,14 +370,14 @@ internal sealed class ShiftAdminController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> EmailRota(string slug, Guid rotaId, EmailRotaViewModel model)
     {
-        var (teamError, user, team) = await ResolveDepartmentManagementAsync(slug);
+        var (teamError, user, team) = await ResolveDepartmentManagementAsync(slug, HttpContext.RequestAborted);
         if (teamError is not null) return teamError;
 
-        var rota = await GetRotaForTeamAsync(rotaId, team.Id);
+        var rota = await GetRotaForTeamAsync(rotaId, team.Id, HttpContext.RequestAborted);
         if (rota is null) return NotFound();
 
         // Before any return-with-error path.
-        var recipientNames = await GetRotaRecipientNamesAsync(rota.Id);
+        var recipientNames = await GetRotaRecipientNamesAsync(rota.Id, HttpContext.RequestAborted);
         model.RotaId = rota.Id;
         model.RotaName = rota.Name;
         model.TeamSlug = slug;
@@ -445,11 +445,11 @@ internal sealed class ShiftAdminController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> EmailTeamRotas(string slug, EmailTeamRotasViewModel model, string? intent = null)
     {
-        var (teamError, user, team) = await ResolveDepartmentManagementAsync(slug);
+        var (teamError, user, team) = await ResolveDepartmentManagementAsync(slug, HttpContext.RequestAborted);
         if (teamError is not null) return teamError;
 
         // Before any error return, against the audience currently selected, so the re-rendered form shows its list.
-        var preview = await rotaMessenger.GetTeamRotasRecipientPreviewAsync(team.Id, model.Filter);
+        var preview = await rotaMessenger.GetTeamRotasRecipientPreviewAsync(team.Id, model.Filter, HttpContext.RequestAborted);
         var previewWasShown = string.Equals(
             model.PreviewedAudience, model.Filter.Key, StringComparison.Ordinal);
         model.TeamSlug = slug;
@@ -497,10 +497,10 @@ internal sealed class ShiftAdminController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> DeleteRota(string slug, Guid rotaId)
     {
-        var (teamError, user, team) = await ResolveDepartmentManagementAsync(slug);
+        var (teamError, user, team) = await ResolveDepartmentManagementAsync(slug, HttpContext.RequestAborted);
         if (teamError is not null) return teamError;
 
-        var rota = await GetRotaForTeamAsync(rotaId, team.Id);
+        var rota = await GetRotaForTeamAsync(rotaId, team.Id, HttpContext.RequestAborted);
         if (rota is null) return NotFound();
 
         var result = await shiftMgmt.DeleteRotaAsync(rotaId, user.Id);
@@ -519,10 +519,10 @@ internal sealed class ShiftAdminController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> DeleteShift(string slug, Guid shiftId)
     {
-        var (teamError, user, team) = await ResolveDepartmentManagementAsync(slug);
+        var (teamError, user, team) = await ResolveDepartmentManagementAsync(slug, HttpContext.RequestAborted);
         if (teamError is not null) return teamError;
 
-        var shift = await GetShiftForTeamAsync(shiftId, team.Id);
+        var shift = await GetShiftForTeamAsync(shiftId, team.Id, HttpContext.RequestAborted);
         if (shift is null) return NotFound();
 
         var result = await shiftMgmt.DeleteShiftAsync(shiftId, user.Id);
@@ -541,7 +541,7 @@ internal sealed class ShiftAdminController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> BailRange(string slug, Guid signupBlockId, string? reason)
     {
-        var (teamError, user, _) = await ResolveDepartmentApprovalAsync(slug);
+        var (teamError, user, _) = await ResolveDepartmentApprovalAsync(slug, HttpContext.RequestAborted);
         if (teamError is not null) return teamError;
 
         var result = await signupService.BailRangeAsync(signupBlockId, user.Id, reason);
@@ -562,10 +562,10 @@ internal sealed class ShiftAdminController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> ApproveRange(string slug, Guid signupBlockId)
     {
-        var (teamError, user, team) = await ResolveDepartmentApprovalAsync(slug);
+        var (teamError, user, team) = await ResolveDepartmentApprovalAsync(slug, HttpContext.RequestAborted);
         if (teamError is not null) return teamError;
 
-        var probe = await GetSignupBlockForTeamAsync(signupBlockId, team.Id);
+        var probe = await GetSignupBlockForTeamAsync(signupBlockId, team.Id, HttpContext.RequestAborted);
         if (probe is null) return NotFound();
 
         var result = await signupService.ApproveRangeAsync(signupBlockId, user.Id);
@@ -581,10 +581,10 @@ internal sealed class ShiftAdminController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> RefuseRange(string slug, Guid signupBlockId, string? reason)
     {
-        var (teamError, user, team) = await ResolveDepartmentApprovalAsync(slug);
+        var (teamError, user, team) = await ResolveDepartmentApprovalAsync(slug, HttpContext.RequestAborted);
         if (teamError is not null) return teamError;
 
-        var probe = await GetSignupBlockForTeamAsync(signupBlockId, team.Id);
+        var probe = await GetSignupBlockForTeamAsync(signupBlockId, team.Id, HttpContext.RequestAborted);
         if (probe is null) return NotFound();
 
         var result = await signupService.RefuseRangeAsync(signupBlockId, user.Id, reason);
@@ -600,10 +600,10 @@ internal sealed class ShiftAdminController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> ApproveSignup(string slug, Guid signupId)
     {
-        var (teamError, user, team) = await ResolveDepartmentApprovalAsync(slug);
+        var (teamError, user, team) = await ResolveDepartmentApprovalAsync(slug, HttpContext.RequestAborted);
         if (teamError is not null) return teamError;
 
-        var signup = await GetSignupForTeamAsync(signupId, team.Id);
+        var signup = await GetSignupForTeamAsync(signupId, team.Id, HttpContext.RequestAborted);
         if (signup is null) return NotFound();
 
         var result = await signupService.ApproveAsync(signupId, user.Id);
@@ -623,10 +623,10 @@ internal sealed class ShiftAdminController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> RefuseSignup(string slug, Guid signupId, string? reason)
     {
-        var (teamError, user, team) = await ResolveDepartmentApprovalAsync(slug);
+        var (teamError, user, team) = await ResolveDepartmentApprovalAsync(slug, HttpContext.RequestAborted);
         if (teamError is not null) return teamError;
 
-        var signup = await GetSignupForTeamAsync(signupId, team.Id);
+        var signup = await GetSignupForTeamAsync(signupId, team.Id, HttpContext.RequestAborted);
         if (signup is null) return NotFound();
 
         var result = await signupService.RefuseAsync(signupId, user.Id, reason);
@@ -646,10 +646,10 @@ internal sealed class ShiftAdminController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> MarkNoShow(string slug, Guid signupId)
     {
-        var (teamError, user, team) = await ResolveDepartmentApprovalAsync(slug);
+        var (teamError, user, team) = await ResolveDepartmentApprovalAsync(slug, HttpContext.RequestAborted);
         if (teamError is not null) return teamError;
 
-        var signupCheck = await GetSignupForTeamAsync(signupId, team.Id);
+        var signupCheck = await GetSignupForTeamAsync(signupId, team.Id, HttpContext.RequestAborted);
         if (signupCheck is null) return NotFound();
 
         var result = await signupService.MarkNoShowAsync(signupId, user.Id);
@@ -669,10 +669,10 @@ internal sealed class ShiftAdminController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> RemoveSignup(string slug, Guid signupId, string? reason)
     {
-        var (teamError, user, team) = await ResolveDepartmentApprovalAsync(slug);
+        var (teamError, user, team) = await ResolveDepartmentApprovalAsync(slug, HttpContext.RequestAborted);
         if (teamError is not null) return teamError;
 
-        var signupCheck = await GetSignupForTeamAsync(signupId, team.Id);
+        var signupCheck = await GetSignupForTeamAsync(signupId, team.Id, HttpContext.RequestAborted);
         if (signupCheck is null) return NotFound();
 
         var result = await signupService.RemoveSignupAsync(signupId, user.Id, reason);
@@ -718,10 +718,10 @@ internal sealed class ShiftAdminController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Voluntell(string slug, Guid shiftId, Guid userId)
     {
-        var (teamError, currentUser, team) = await ResolveDepartmentApprovalAsync(slug);
+        var (teamError, currentUser, team) = await ResolveDepartmentApprovalAsync(slug, HttpContext.RequestAborted);
         if (teamError is not null) return teamError;
 
-        var shift = await GetShiftForTeamAsync(shiftId, team.Id);
+        var shift = await GetShiftForTeamAsync(shiftId, team.Id, HttpContext.RequestAborted);
         if (shift is null) return NotFound();
 
         var result = await signupService.VoluntellAsync(userId, shiftId, currentUser.Id);
@@ -741,10 +741,10 @@ internal sealed class ShiftAdminController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> VoluntellRange(string slug, Guid rotaId, [BindRequired] int startDayOffset, [BindRequired] int endDayOffset, Guid userId)
     {
-        var (teamError, currentUser, team) = await ResolveDepartmentApprovalAsync(slug);
+        var (teamError, currentUser, team) = await ResolveDepartmentApprovalAsync(slug, HttpContext.RequestAborted);
         if (teamError is not null) return teamError;
 
-        var rota = await GetRotaForTeamAsync(rotaId, team.Id);
+        var rota = await GetRotaForTeamAsync(rotaId, team.Id, HttpContext.RequestAborted);
         if (rota is null) return NotFound();
 
         if (!ModelState.IsValid)
@@ -793,7 +793,7 @@ internal sealed class ShiftAdminController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> CreateTag(string slug, string name)
     {
-        var (teamError, _, _) = await ResolveDepartmentManagementAsync(slug);
+        var (teamError, _, _) = await ResolveDepartmentManagementAsync(slug, HttpContext.RequestAborted);
         if (teamError is not null) return Forbid();
 
         if (string.IsNullOrWhiteSpace(name) || name.Length > 100)
@@ -822,15 +822,15 @@ internal sealed class ShiftAdminController(
         return shift is not null && shift.Rota.TeamId == teamId ? shift : null;
     }
 
-    private async Task<ShiftSignupTeamProbe?> GetSignupForTeamAsync(Guid signupId, Guid teamId)
+    private async Task<ShiftSignupTeamProbe?> GetSignupForTeamAsync(Guid signupId, Guid teamId, CancellationToken ct)
     {
-        var signup = await signupService.GetTeamProbeAsync(signupId, ShiftSignupTeamProbeScope.Signup);
+        var signup = await signupService.GetTeamProbeAsync(signupId, ShiftSignupTeamProbeScope.Signup, ct);
         return signup is not null && signup.TeamId == teamId ? signup : null;
     }
 
-    private async Task<ShiftSignupTeamProbe?> GetSignupBlockForTeamAsync(Guid signupBlockId, Guid teamId)
+    private async Task<ShiftSignupTeamProbe?> GetSignupBlockForTeamAsync(Guid signupBlockId, Guid teamId, CancellationToken ct)
     {
-        var signup = await signupService.GetTeamProbeAsync(signupBlockId, ShiftSignupTeamProbeScope.SignupBlock);
+        var signup = await signupService.GetTeamProbeAsync(signupBlockId, ShiftSignupTeamProbeScope.SignupBlock, ct);
         return signup is not null && signup.TeamId == teamId ? signup : null;
     }
 

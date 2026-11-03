@@ -94,6 +94,120 @@ public class ShiftAdminControllerTests
         _shiftMgmt.GetRotasByDepartmentAsync(TeamId, Event.Id).Returns([]);
     }
 
+    [HumansTheory]
+    [InlineData("tag", "viewer")]
+    [InlineData("tag", "teams")]
+    [InlineData("tag", "coordinator")]
+    [InlineData("approve", "viewer")]
+    [InlineData("approve", "teams")]
+    [InlineData("approve", "coordinator")]
+    [InlineData("edit-rota", "rota")]
+    [InlineData("edit-shift", "shift")]
+    [InlineData("invalid-rota", "settings")]
+    [InlineData("invalid-shift", "settings")]
+    [InlineData("email-rota", "view")]
+    [InlineData("email-rota", "profiles")]
+    [InlineData("email-team", "preview")]
+    public async Task MutationPreflightReads_PropagateCancellationBeforeAnyWrite(string action, string boundary)
+    {
+        using var request = new CancellationTokenSource();
+        var controller = BuildSut();
+        controller.HttpContext.RequestAborted = request.Token;
+        var rota = MakeRota(TeamId);
+        var shift = MakeShift(rota);
+        void Check(string read, CancellationToken ct)
+        {
+            if (string.Equals(boundary, read, StringComparison.Ordinal)) ct.ThrowIfCancellationRequested();
+        }
+        _userService.GetUserInfoAsync(UserId, Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            Check("viewer", call.Arg<CancellationToken>());
+            return new ValueTask<UserInfo?>(MakeUserInfo(UserId));
+        });
+        _teamService.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            Check("teams", call.Arg<CancellationToken>());
+            return Task.FromResult<IReadOnlyDictionary<Guid, TeamInfo>>(new Dictionary<Guid, TeamInfo> { [TeamId] = MakeTeam(TeamId, Slug) });
+        });
+        _shiftMgmt.IsDeptCoordinatorAsync(UserId, TeamId, Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            Check("coordinator", call.Arg<CancellationToken>());
+            return Task.FromResult(true);
+        });
+        _shiftMgmt.GetRotaAsync(rota.Id, Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            Check("rota", call.Arg<CancellationToken>());
+            return Task.FromResult<RotaInfo?>(ToInfo(rota));
+        });
+        _shiftMgmt.GetShiftByIdAsync(shift.Id, Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            Check("shift", call.Arg<CancellationToken>());
+            return Task.FromResult<ShiftWithRota?>(ToInfo(shift));
+        });
+        _burnSettings.GetActiveAsync(Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            Check("settings", call.Arg<CancellationToken>());
+            return Task.FromResult<BurnSettingsInfo?>(Event);
+        });
+        _shiftView.GetRotaAsync(rota.Id, Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            Check("view", call.Arg<CancellationToken>());
+            return new ValueTask<ShiftRotaView>(new ShiftRotaView(rota.Id, rota, [], [],
+                [new ShiftSignup { UserId = UserId, Status = SignupStatus.Confirmed }]));
+        });
+        _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            Check("profiles", call.Arg<CancellationToken>());
+            return new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(new Dictionary<Guid, UserInfo> { [UserId] = MakeUserInfo(UserId) });
+        });
+        _rotaMessenger.GetTeamRotasRecipientPreviewAsync(TeamId, Arg.Any<TeamRotasAudienceFilter>(), Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            Check("preview", call.Arg<CancellationToken>());
+            return Task.FromResult(new TeamRotasRecipientPreview(1, ["Coordinator"]));
+        });
+        controller.ModelState.AddModelError("Message", "Invalid");
+        await request.CancelAsync();
+        Func<Task<IActionResult>> read = () => action switch
+        {
+            "tag" => controller.CreateTag(Slug, ""),
+            "approve" => controller.ApproveSignup(Slug, Guid.NewGuid()),
+            "edit-rota" or "invalid-rota" => controller.EditRota(Slug, rota.Id, new EditRotaModel()),
+            "edit-shift" or "invalid-shift" => controller.EditShift(Slug, shift.Id, new EditShiftModel()),
+            "email-rota" => controller.EmailRota(Slug, rota.Id, new EmailRotaViewModel()),
+            _ => controller.EmailTeamRotas(Slug, new EmailTeamRotasViewModel())
+        };
+        await read.Should().ThrowAsync<OperationCanceledException>();
+        _shiftMgmt.ReceivedCalls().Should().OnlyContain(call => call.GetMethodInfo().Name.StartsWith("Get", StringComparison.Ordinal)
+            || call.GetMethodInfo().Name == "IsDeptCoordinatorAsync");
+        _signupService.ReceivedCalls().Should().OnlyContain(call => call.GetMethodInfo().Name == "GetTeamProbeAsync");
+        _rotaMessenger.ReceivedCalls().Should().OnlyContain(call => call.GetMethodInfo().Name == "GetTeamRotasRecipientPreviewAsync");
+    }
+
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task SignupOwnershipProbe_CancelsBeforeApproval(bool block)
+    {
+        using var request = new CancellationTokenSource();
+        var id = Guid.NewGuid();
+        var scope = block ? ShiftSignupTeamProbeScope.SignupBlock : ShiftSignupTeamProbeScope.Signup;
+        _shiftMgmt.IsDeptCoordinatorAsync(UserId, TeamId, Arg.Any<CancellationToken>()).Returns(true);
+        _signupService.GetTeamProbeAsync(id, scope, Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+            return Task.FromResult<ShiftSignupTeamProbe?>(null);
+        });
+        var controller = BuildSut();
+        controller.HttpContext.RequestAborted = request.Token;
+        await request.CancelAsync();
+        Func<Task<IActionResult>> action = block
+            ? () => controller.ApproveRange(Slug, id)
+            : () => controller.ApproveSignup(Slug, id);
+
+        await action.Should().ThrowAsync<OperationCanceledException>();
+        _signupService.ReceivedCalls().Should().OnlyContain(call => call.GetMethodInfo().Name == "GetTeamProbeAsync");
+    }
+
     [HumansFact]
     public async Task Index_PreservesRequestCancellationThroughAuthorizationAndPageReads()
     {
