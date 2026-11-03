@@ -310,6 +310,5 @@ public class ProfileViewControllerPopoverTests
             profile: profile,
             contactFields: [],
             profileLanguages: [],
-            volunteerHistory: [],
-            communicationPreferences: []);
+            volunteerHistory: []);
 }

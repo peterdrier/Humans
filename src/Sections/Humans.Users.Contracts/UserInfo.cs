@@ -37,16 +37,6 @@ public sealed record VolunteerHistoryInfo(
     string EventName,
     string? Description);
 
-/// <summary>The frozen legacy <c>communication_preferences</c> row; the live one is Email's.</summary>
-public sealed record LegacyCommunicationPreferenceInfo(
-    Guid Id,
-    LegacyMessageCategory Category,
-    bool OptedOut,
-    bool InboxEnabled,
-    Instant UpdatedAt,
-    string UpdateSource,
-    Instant? SubscribedAt);
-
 public sealed record UserExternalLoginInfo(
     string Provider,
     string ProviderKey);
@@ -112,9 +102,7 @@ public sealed record UserInfo(
     string? IdentityEmailColumn,
     IReadOnlyList<UserEmailInfo> UserEmails,
     IReadOnlyList<UserExternalLoginInfo> ExternalLogins,
-    ProfileInfo? Profile,
-    [property: Obsolete("Moved to Email's email_communication_preferences (Users decomposition commit 14). Read ICommunicationPreferenceService; the one reader left is Email's legacy fallback and the email.communication-preferences copy.", DiagnosticId = "HUM_USER_COMMPREFS")]
-    IReadOnlyList<LegacyCommunicationPreferenceInfo> CommunicationPreferences)
+    ProfileInfo? Profile)
 {
     /// <summary>The single source of truth for access; only <see cref="UserState.Active"/> has full access.</summary>
     public UserState State { get; init; }
@@ -245,8 +233,7 @@ public sealed record UserInfo(
         User user,
         IReadOnlyList<UserEmail> userEmails,
         IReadOnlyList<(string Provider, string ProviderKey)> externalLogins,
-        ProfileInfo? profile,
-        IReadOnlyList<LegacyCommunicationPreferenceInfo> communicationPreferences)
+        ProfileInfo? profile)
     {
         var userEmailInfos = userEmails
             .OrderByDescending(e => e.IsPrimary)
@@ -259,10 +246,6 @@ public sealed record UserInfo(
 
         var loginInfos = externalLogins
             .Select(l => new UserExternalLoginInfo(l.Provider, l.ProviderKey))
-            .ToList();
-
-        var communicationPreferenceInfos = communicationPreferences
-            .OrderBy(c => c.Category)
             .ToList();
 
         var isGdprAnonymized = IsGdprTombstone(user);
@@ -289,8 +272,7 @@ public sealed record UserInfo(
             IdentityEmailColumn: user.IdentityEmailColumn,
             UserEmails: userEmailInfos,
             ExternalLogins: loginInfos,
-            Profile: profile,
-            CommunicationPreferences: communicationPreferenceInfos)
+            Profile: profile)
         {
             State = user.State,
             IsFake = user.MarkedFakeAt is not null,

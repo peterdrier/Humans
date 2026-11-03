@@ -46,8 +46,7 @@ public class RoleAssignmentClaimsTransformationTests
             },
             userEmails: [],
             externalLogins: [],
-            profile: null,
-            communicationPreferences: []);
+            profile: null);
 
     [HumansTheory]
     [InlineData(UserState.Active)]

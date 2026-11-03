@@ -1,14 +1,9 @@
 using NodaTime;
 
-using Humans.Users.Contracts;
 
 namespace Humans.Users.Domain;
 
-/// <summary>
-/// The frozen legacy <c>communication_preferences</c> row; Email owns the live preferences. Written
-/// only by erasure, read into the obsolete <see cref="UserInfo.CommunicationPreferences"/>, and
-/// dropped once <c>email.communication-preferences</c> reports done.
-/// </summary>
+/// <summary>Frozen storage only; Email owns preferences. Kept until the separate table drop.</summary>
 internal sealed class CommunicationPreference
 {
     public Guid Id { get; init; }

@@ -101,7 +101,7 @@ public abstract class PreapprovalsTestHarness : IDisposable
             userId, burnerName, false, language, null, Instant.FromUtc(2026, 1, 1, 0, 0),
             null, null, null, null, null, null,
             null, null, null, [], [],
-            UserFixtures.Profile(burnerName: burnerName), [])
+            UserFixtures.Profile(burnerName: burnerName))
         { IdentityEmailColumn = $"{userId}@example.org", MergedUserIds = mergedIds ?? [] };
         return userId;
     }

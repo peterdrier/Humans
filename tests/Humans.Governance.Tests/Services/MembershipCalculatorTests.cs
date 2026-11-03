@@ -834,6 +834,5 @@ public class MembershipCalculatorTests
         },
         userEmails: [],
         externalLogins: [],
-        profile: profile,
-        communicationPreferences: []);
+        profile: profile);
 }

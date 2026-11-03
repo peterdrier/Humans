@@ -4,7 +4,6 @@ using System.Threading.RateLimiting;
 using Humans.Base.Authorization;
 using Humans.Base.Configuration;
 using Humans.Base.Constants;
-using Humans.Base.Extensions;
 using Humans.Base.Hosting;
 using Humans.Base.Interfaces;
 using Humans.Email.Contracts;
@@ -32,7 +31,6 @@ public sealed class Section :
     ISectionAdminTiles,
     ISectionChrome,
     ISectionConfiguration,
-    ISectionDataMigrations,
     ISectionHealthChecks,
     ISectionJobs,
     ISectionSettings,
@@ -136,31 +134,6 @@ public sealed class Section :
         configuration.GetOptionalSetting(registry, "Email:DpoAddress", "Email",
             importance: ConfigurationImportance.Recommended);
     }
-
-    internal const string CommunicationPreferencesKey = "email.communication-preferences";
-
-    IEnumerable<DataMigration> ISectionDataMigrations.Migrations() =>
-    [
-        new(CommunicationPreferencesKey, "Email",
-            "Copy every communication-preference row from Users' communication_preferences into email_communication_preferences",
-            "CommunicationPreferenceService's legacy fallback, its cleared rows, UserInfo.CommunicationPreferences and LegacyMessageCategory; then a drop PR for communication_preferences",
-            StatusAsync, ApplyAsync),
-    ];
-
-    private static async Task<DataMigrationStatus> StatusAsync(IServiceProvider sp, CancellationToken ct) =>
-        new(["User", "Category", "Opted out", "Inbox", "Source", "Updated at", "Subscribed at"],
-            [.. (await sp.GetRequiredService<ICommunicationPreferenceManagement>().GetUncopiedLegacyPreferencesAsync(ct))
-                .Select(u => (IReadOnlyList<string>)
-                [
-                    u.UserId.ToString(), u.Preference.Category.ToString(),
-                    u.Preference.OptedOut ? "yes" : "no", u.Preference.InboxEnabled ? "on" : "off",
-                    u.Preference.UpdateSource,
-                    u.Preference.UpdatedAt.ToIso8601(),
-                    u.Preference.SubscribedAt.ToIso8601() ?? string.Empty,
-                ])]);
-
-    private static Task<int> ApplyAsync(IServiceProvider sp, Guid actorUserId, CancellationToken ct) =>
-        sp.GetRequiredService<ICommunicationPreferenceManagement>().CopyLegacyPreferencesAsync(ct);
 
     void ISectionHealthChecks.AddHealthChecks(IHealthChecksBuilder builder, IConfiguration configuration)
     {

@@ -59,7 +59,7 @@ public sealed class EventParticipationServiceTests : IDisposable
     {
         var userId = Guid.NewGuid();
         var info = UserInfo.Create(
-            new User { Id = userId, BurnerName = "Ana", CreatedAt = Now }, [], [], null, []);
+            new User { Id = userId, BurnerName = "Ana", CreatedAt = Now }, [], [], null);
         _users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(info);
         _db.EventParticipations.AddRange(rows.Select(r => new TicketRow
         {

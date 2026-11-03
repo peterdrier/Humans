@@ -35,15 +35,8 @@ public sealed class AccountDeletionServiceRealContributorTests : ServiceTestHarn
 
     public AccountDeletionServiceRealContributorTests()
     {
-        var communicationPreferenceRepo = Substitute.For<ICommunicationPreferenceRepository>();
-        communicationPreferenceRepo.GetByUserIdReadOnlyAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult<IReadOnlyList<CommunicationPreference>>([]));
-        communicationPreferenceRepo.GetAllAsync(Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult<IReadOnlyList<CommunicationPreference>>([]));
-
         _userService = new UserService(
             new UserRepository(DbFactory, Clock),
-            communicationPreferenceRepo,
             AdminAuthorization,
             Substitute.For<IFileStorage>(),
             Clock,

@@ -16,7 +16,6 @@ namespace Humans.Users.Services;
 
 internal sealed class UserService(
     IUserRepository repo,
-    ICommunicationPreferenceRepository communicationPreferenceRepo,
     IAdminAuthorizationService adminAuthorization,
     IFileStorage fileStorage,
     IClock clock,
@@ -30,7 +29,6 @@ internal sealed class UserService(
     internal const string UserEmails = "UserEmails";
     internal const string VolunteerHistory = "VolunteerHistory";
     internal const string Languages = "Languages";
-    internal const string LegacyCommunicationPreferences = "LegacyCommunicationPreferences";
 
     private static readonly TrackedLock EmailAdditionLock = new("UserService.EmailAddition");
 
@@ -75,13 +73,9 @@ internal sealed class UserService(
             volunteerHistory = profile.VolunteerHistory.ToList();
         }
 
-        var communicationPreferences = await communicationPreferenceRepo
-            .GetByUserIdReadOnlyAsync(userId, ct);
-
         var info = UserInfoFactory.Create(
             user, userEmails, externalLogins,
-            profile, contactFields, languages, volunteerHistory,
-            communicationPreferences);
+            profile, contactFields, languages, volunteerHistory);
 
         return info;
     }
@@ -108,11 +102,6 @@ internal sealed class UserService(
             .GroupBy(c => c.ProfileId)
             .ToDictionary(g => g.Key, g => (IReadOnlyList<ContactField>)g.ToList());
 
-        var allPreferences = await communicationPreferenceRepo.GetAllAsync(ct);
-        var preferencesByUser = allPreferences
-            .GroupBy(p => p.UserId)
-            .ToDictionary(g => g.Key, g => (IReadOnlyList<CommunicationPreference>)g.ToList());
-
         var result = new List<UserInfo>(users.Count);
         foreach (var user in users)
         {
@@ -129,12 +118,9 @@ internal sealed class UserService(
                 volunteerHistory = profile.VolunteerHistory.ToList();
             }
 
-            var preferences = preferencesByUser.TryGetValue(user.Id, out var pp) ? pp : [];
-
             var info = UserInfoFactory.Create(
                 user, emails, logins,
-                profile, contactFields, languages, volunteerHistory,
-                preferences);
+                profile, contactFields, languages, volunteerHistory);
             result.Add(info);
         }
 
@@ -751,9 +737,6 @@ internal sealed class UserService(
             ? await repo.GetLanguagesAsync(profile.Id, ct)
             : [];
 
-        var communicationPreferences = await communicationPreferenceRepo
-            .GetByUserIdReadOnlyAsync(userId, ct);
-
         var profileSlice = profile is null
             ? new UserDataSlice(Profile, null)
             : new UserDataSlice(Profile, ShapeProfileForExport(profile,
@@ -822,16 +805,6 @@ internal sealed class UserService(
             pl.Proficiency
         }).ToList());
 
-        var commPrefsSlice = new UserDataSlice(LegacyCommunicationPreferences, communicationPreferences.Select(cp => new
-        {
-            cp.Category,
-            cp.OptedOut,
-            cp.InboxEnabled,
-            SubscribedAt = cp.SubscribedAt.ToIso8601(),
-            UpdatedAt = cp.UpdatedAt.ToIso8601(),
-            cp.UpdateSource
-        }).ToList());
-
         return
         [
             new UserDataSlice(Account, shaped),
@@ -840,8 +813,7 @@ internal sealed class UserService(
             contactFieldSlice,
             userEmailsSlice,
             volunteerHistorySlice,
-            languagesSlice,
-            commPrefsSlice
+            languagesSlice
         ];
     }
 
@@ -897,8 +869,7 @@ internal sealed class UserService(
             [ContactFields] = null,
             [UserEmails] = null,
             [VolunteerHistory] = null,
-            [Languages] = null,
-            [LegacyCommunicationPreferences] = null
+            [Languages] = null
         };
 
     public IReadOnlyDictionary<string, string?> ErasureDeclaration => Erasure;
@@ -918,7 +889,6 @@ internal sealed class UserService(
 
         await AnonymizeProfileForDeletionAsync(userId, ct);
         await repo.EraseProfileExtrasForUserAsync(userId, ct);
-        await communicationPreferenceRepo.DeleteAllForUserAsync(userId, ct);
         await ApplyExpiredDeletionAnonymizationAsync(userId, ct);
     }
 

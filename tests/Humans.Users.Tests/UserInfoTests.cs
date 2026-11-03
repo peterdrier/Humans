@@ -16,56 +16,6 @@ public class UserInfoTests
         CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
     };
 
-    [HumansFact]
-    public void Create_carries_legacy_communication_preferences_projection()
-    {
-        var userId = Guid.NewGuid();
-        var prefs = new[]
-        {
-            new CommunicationPreference
-            {
-                Id = Guid.NewGuid(),
-                UserId = userId,
-                Category = LegacyMessageCategory.Marketing,
-                OptedOut = false,
-                InboxEnabled = true,
-                UpdatedAt = Instant.FromUtc(2026, 4, 1, 0, 0),
-                UpdateSource = "Profile",
-                SubscribedAt = Instant.FromUtc(2026, 4, 1, 0, 0),
-            },
-            new CommunicationPreference
-            {
-                Id = Guid.NewGuid(),
-                UserId = userId,
-                Category = LegacyMessageCategory.Governance,
-                OptedOut = true,
-                InboxEnabled = false,
-                UpdatedAt = Instant.FromUtc(2026, 4, 2, 0, 0),
-                UpdateSource = "MagicLink",
-                SubscribedAt = null,
-            },
-        };
-
-        var info = UserInfoFactory.Create(
-            user: MinimalUser(userId),
-            userEmails: [],
-            externalLogins: [],
-            profile: null,
-            contactFields: [],
-            profileLanguages: [],
-            volunteerHistory: [],
-            communicationPreferences: prefs);
-
-        // Marketing (3) sorts before Governance (4) by enum value ascending.
-#pragma warning disable HUM_USER_COMMPREFS // pins the frozen legacy slice Email's fallback and copy read
-        info.CommunicationPreferences.Should().HaveCount(2);
-        info.CommunicationPreferences.Select(c => c.Category)
-            .Should().Equal(LegacyMessageCategory.Marketing, LegacyMessageCategory.Governance);
-        info.CommunicationPreferences[0].OptedOut.Should().BeFalse();
-        info.CommunicationPreferences[0].UpdateSource.Should().Be("Profile");
-#pragma warning restore HUM_USER_COMMPREFS
-    }
-
     // User.BurnerName is the sole source: no Profile.BurnerName or legacy-DisplayName fallback.
 
     [HumansFact]
@@ -76,7 +26,7 @@ public class UserInfoTests
         user.BurnerName = "From User";
 
         var info = UserInfoFactory.Create(
-            user, [], [], NamedProfile(userId, "From Profile"), [], [], [], []);
+            user, [], [], NamedProfile(userId, "From Profile"), [], [], []);
 
         info.BurnerName.Should().Be("From User");
     }
@@ -92,7 +42,7 @@ public class UserInfoTests
         user.BurnerName = userBurnerName;
 
         var info = UserInfoFactory.Create(
-            user, [], [], NamedProfile(userId, "From Profile"), [], [], [], []);
+            user, [], [], NamedProfile(userId, "From Profile"), [], [], []);
 
         info.BurnerName.Should().BeEmpty();
     }
@@ -109,7 +59,7 @@ public class UserInfoTests
         user.BurnerName = null;
 
         var info = UserInfoFactory.Create(
-            user, [], [], profile: null, [], [], [], []);
+            user, [], [], profile: null, [], [], []);
 
         info.BurnerName.Should().BeEmpty();
     }
@@ -125,7 +75,7 @@ public class UserInfoTests
         user.DisplayName = UserInfo.GdprAnonymizedBurnerName;
 
         var info = UserInfoFactory.Create(
-            user, [], [], profile: null, [], [], [], []);
+            user, [], [], profile: null, [], [], []);
 
         info.BurnerName.Should().Be(UserInfo.GdprAnonymizedBurnerName);
     }
@@ -138,7 +88,7 @@ public class UserInfoTests
         user.MergedAt = Instant.FromUtc(2026, 1, 1, 0, 0);
 
         var info = UserInfoFactory.Create(
-            user, [], [], NamedProfile(userId, "Merged"), [], [], [], []);
+            user, [], [], NamedProfile(userId, "Merged"), [], [], []);
 
         info.IsActive.Should().BeFalse();
     }
@@ -154,7 +104,7 @@ public class UserInfoTests
         user.Email = $"deleted-{userId:N}@deleted.local";
 
         var info = UserInfoFactory.Create(
-            user, [], [], NamedProfile(userId, "Deleted User"), [], [], [], []);
+            user, [], [], NamedProfile(userId, "Deleted User"), [], [], []);
 
         info.IsActive.Should().BeFalse();
     }
@@ -167,7 +117,7 @@ public class UserInfoTests
         user.Email = "someone@merged.local";
 
         var info = UserInfoFactory.Create(
-            user, [], [], NamedProfile(userId, "Merged"), [], [], [], []);
+            user, [], [], NamedProfile(userId, "Merged"), [], [], []);
 
         info.IsActive.Should().BeFalse();
     }
@@ -187,7 +137,7 @@ public class UserInfoTests
         user.Email = "alice@example.com";
 
         var info = UserInfoFactory.Create(
-            user, [], [], NamedProfile(userId, "Deleted User"), [], [], [], []);
+            user, [], [], NamedProfile(userId, "Deleted User"), [], [], []);
 
         info.IsGdprAnonymized.Should().BeFalse();
         info.IsTombstone.Should().BeFalse();
@@ -202,7 +152,7 @@ public class UserInfoTests
         user.Email = $"deleted-{userId:N}@deleted.local";
 
         var info = UserInfoFactory.Create(
-            user, [], [], profile: null, [], [], [], []);
+            user, [], [], profile: null, [], [], []);
 
         info.IsGdprAnonymized.Should().BeTrue();
         info.IsTombstone.Should().BeTrue();
@@ -222,7 +172,7 @@ public class UserInfoTests
         user.Email = "legacy-erased@example.com"; // ordinary email — pre-scrub shape
 
         var info = UserInfoFactory.Create(
-            user, [], [], profile: null, [], [], [], []);
+            user, [], [], profile: null, [], [], []);
 
         info.IsGdprAnonymized.Should().BeFalse();
         info.IsTombstone.Should().BeFalse();
@@ -243,7 +193,7 @@ public class UserInfoTests
         user.Email = "real.member@example.com";
 
         var info = UserInfoFactory.Create(
-            user, [], [], NamedProfile(userId, "Deleted User"), [], [], [], []);
+            user, [], [], NamedProfile(userId, "Deleted User"), [], [], []);
 
         info.IsGdprAnonymized.Should().BeFalse();
         info.IsTombstone.Should().BeFalse();
@@ -255,7 +205,7 @@ public class UserInfoTests
         var user = MinimalUser();
         user.State = UserState.Merged;
 
-        var info = UserInfoFactory.Create(user, [], [], profile: null, [], [], [], []);
+        var info = UserInfoFactory.Create(user, [], [], profile: null, [], [], []);
 
         info.IsTombstone.Should().BeTrue();
     }
@@ -269,7 +219,7 @@ public class UserInfoTests
         user.Email = $"{userId:N}@merged.local";
         var row = new UserEmail { Id = Guid.NewGuid(), UserId = userId, Email = "real@x.com", IsVerified = true, IsPrimary = true };
 
-        var info = UserInfoFactory.Create(user, [row], [], profile: null, [], [], [], []);
+        var info = UserInfoFactory.Create(user, [row], [], profile: null, [], [], []);
 
         info.IsTombstone.Should().BeTrue();
     }
@@ -281,7 +231,7 @@ public class UserInfoTests
         var user = MinimalUser(userId);
 
         var info = UserInfoFactory.Create(
-            user, [], [], NamedProfile(userId, "Test"), [], [], [], []);
+            user, [], [], NamedProfile(userId, "Test"), [], [], []);
 
         info.IsActive.Should().BeTrue();
     }
@@ -294,7 +244,7 @@ public class UserInfoTests
         user.State = UserState.Rejected;
 
         var info = UserInfoFactory.Create(
-            user, [], [], NamedProfile(userId, "Test"), [], [], [], []);
+            user, [], [], NamedProfile(userId, "Test"), [], [], []);
 
         info.IsActive.Should().BeFalse();
     }

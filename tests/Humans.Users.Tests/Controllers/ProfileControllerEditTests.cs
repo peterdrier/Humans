@@ -248,7 +248,7 @@ public class ProfileControllerEditTests
             Visibility = ContactFieldVisibility.BoardOnly
         };
         var info = UserInfoFactory.Create(new User { Id = _userId, PreferredLanguage = "en" }, [], [],
-            new Profile { Id = _profileId, UserId = _userId, FirstName = "First", LastName = "Last" }, [legacy], [], [], []);
+            new Profile { Id = _profileId, UserId = _userId, FirstName = "First", LastName = "Last" }, [legacy], [], []);
         _userService.GetUserInfoAsync(_userId, Arg.Any<CancellationToken>()).Returns(new ValueTask<UserInfo?>(info));
         var model = MakeValidModel();
         model.ContactFields = [new() { Id = Guid.NewGuid(), Value = "untrusted@example.org" }];
@@ -544,6 +544,5 @@ public class ProfileControllerEditTests
         profile: profile,
         contactFields: [],
         profileLanguages: [],
-        volunteerHistory: [],
-        communicationPreferences: []);
+        volunteerHistory: []);
 }

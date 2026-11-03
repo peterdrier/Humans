@@ -7,8 +7,7 @@ subfolder; `ProfileEditorService`, `ProfileService`, and
 `ContactFieldService` sit alongside the Users services listed under
 [Users](#users) below. Owns `Profiles`, `ContactFields`,
 `ProfileLanguages`, `VolunteerHistoryEntries`, `UserEmails`, and the
-frozen legacy `CommunicationPreferences` (Email owns preferences since
-Users decomposition commit 14). **DbContext:** `UsersDbContext` — the merged
+frozen legacy `CommunicationPreferences` storage mapping (no live access; Email owns preferences). **DbContext:** `UsersDbContext` — the merged
 Users+Profiles context.
 
 The account-merge surface (`AccountMergeService`, `DuplicateAccountService`,
@@ -172,7 +171,7 @@ the section-only half of the write funnel (profile saves, deletion fields,
 
 ### UserService (Scoped — wrapped by CachingUserService Singleton decorator)
 
-Repositories: `IUserRepository`, `ICommunicationPreferenceRepository`.
+Repository: `IUserRepository`.
 
 | Table | R/W | Repo |
 |-------|-----|------|
@@ -182,12 +181,11 @@ Repositories: `IUserRepository`, `ICommunicationPreferenceRepository`.
 | IdentityUserLogins | R | IUserRepository |
 | Profiles | R/W | IUserRepository |
 | ContactFields | R | IUserRepository |
-| CommunicationPreferences | R/D (frozen legacy rows: `UserInfo.CommunicationPreferences` for Email's fallback, the `LegacyCommunicationPreferences` export slice, and erasure) | ICommunicationPreferenceRepository |
+| CommunicationPreferences | No live access; frozen storage mapping retained until the separate table drop | — |
 | ProfileLanguages | R/W | IUserRepository |
 | VolunteerHistoryEntries | R | IUserRepository |
 
-The consolidated `IUserRepository` plus the comms-prefs repo
-together compose the `UserInfo` projection inside `CachingUserService` —
+The consolidated `IUserRepository` composes the `UserInfo` projection inside `CachingUserService` —
 a single cached read-model fanning out over the User + Profile section's
 unified persistence layer. Implements `IUserDataContributor`,
 `IUserMerge`.

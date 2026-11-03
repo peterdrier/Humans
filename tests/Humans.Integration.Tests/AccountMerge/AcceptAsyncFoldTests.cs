@@ -299,20 +299,19 @@ public class AcceptAsyncFoldTests(HumansTestDatabase database) : IntegrationTest
         var (sourceId, targetId) = await Factory.SeedMergeFixtureAsync(b =>
         {
             // Source newer: its value is copied onto target.
-            b.WithSourceCommPref(LegacyMessageCategory.VolunteerUpdates, optedOut: true, updatedAt: newer);
-            b.WithTargetCommPref(LegacyMessageCategory.VolunteerUpdates, optedOut: false, updatedAt: older);
+            b.WithSourceCommPref(MessageCategory.VolunteerUpdates, optedOut: true, updatedAt: newer);
+            b.WithTargetCommPref(MessageCategory.VolunteerUpdates, optedOut: false, updatedAt: older);
 
             // Target newer: target stands.
-            b.WithSourceCommPref(LegacyMessageCategory.Marketing, optedOut: false, updatedAt: older);
-            b.WithTargetCommPref(LegacyMessageCategory.Marketing, optedOut: true, updatedAt: newer);
+            b.WithSourceCommPref(MessageCategory.Marketing, optedOut: false, updatedAt: older);
+            b.WithTargetCommPref(MessageCategory.Marketing, optedOut: true, updatedAt: newer);
         });
         var requestId = await Factory.SeedMergeRequestAsync(sourceId, targetId);
 
         var adminId = await SeedAdminUserAsync();
         await AcceptAsync(requestId, adminId);
 
-        // The fold lands in Email's table; the source's legacy rows stay, shadowed by cleared rows so Email's fallback
-        // can't resurrect them.
+        // Email owns the preference fold.
         await using var assertScope = Factory.Services.CreateAsyncScope();
         var db = assertScope.ServiceProvider.GetRequiredService<Humans.Email.Data.EmailDbContext>();
 
@@ -331,7 +330,7 @@ public class AcceptAsyncFoldTests(HumansTestDatabase database) : IntegrationTest
             .AsNoTracking()
             .Where(cp => cp.UserId == sourceId)
             .ToListAsync(TestContext.Current.CancellationToken);
-        sourcePrefs.Should().OnlyContain(cp => cp.OptedOut == null);
+        sourcePrefs.Should().BeEmpty();
     }
 
     [HumansFact(Timeout = 30_000)]

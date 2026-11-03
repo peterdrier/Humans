@@ -1333,7 +1333,7 @@ public class SurveyServiceTests
     private static UserInfo UserWithLastLogin(Guid id, Instant? lastLogin, UserState state = UserState.Active) =>
         UserInfo.Create(
             new User { Id = id, PreferredLanguage = "en", LastLoginAt = lastLogin, State = state },
-            [], [], null, []);
+            [], [], null);
 
     private UserInfo Asociado(Guid id, MembershipTier tier = MembershipTier.Asociado)
     {
@@ -1360,8 +1360,7 @@ public class SurveyServiceTests
             IdentityEmailColumn: null,
             UserEmails: [],
             ExternalLogins: [],
-            Profile: profile,
-            CommunicationPreferences: [])
+            Profile: profile)
         {
             State = UserState.Active,
         };
@@ -2261,7 +2260,7 @@ public class SurveyServiceTests
     private static UserInfo UserInfoWithName(Guid id, string burnerName, string culture = "en") => new(
         id, burnerName, false, culture, null, Instant.MinValue, null, null, null, null,
         null, null, null, null, null,
-        [], [], null, []);
+        [], [], null);
 
     private static SurveyInvitation InvitationFor(Guid surveyId, Guid userId) => new()
     {

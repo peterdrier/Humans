@@ -365,6 +365,5 @@ public class ShiftsControllerUserActiveSignupsTests
             },
             contactFields: [],
             profileLanguages: [],
-            volunteerHistory: [],
-            communicationPreferences: []);
+            volunteerHistory: []);
 }

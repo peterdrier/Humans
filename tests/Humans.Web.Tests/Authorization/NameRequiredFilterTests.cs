@@ -157,8 +157,7 @@ public class NameRequiredFilterTests
         UserInfo.Create(
             new User { Id = UserId, PreferredLanguage = "en", State = UserFixtures.StateFor(profile) },
             [], [],
-            profile: profile,
-            []);
+            profile: profile);
 
     private static ActionExecutingContext BuildContext(
         string controllerName, string actionName, bool authenticated)

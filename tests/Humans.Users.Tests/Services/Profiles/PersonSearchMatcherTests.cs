@@ -144,8 +144,7 @@ public class PersonSearchMatcherTests
             profile: profile,
             contactFields: contactEntities,
             profileLanguages: [],
-            volunteerHistory: cvEntities,
-            communicationPreferences: []);
+            volunteerHistory: cvEntities);
     }
 
     [HumansFact]
@@ -383,7 +382,7 @@ public class PersonSearchMatcherTests
         // The single-person lookups (/api/profiles/by-userid, allowEmail) read this same flag.
         Human().IsSearchable.Should().BeTrue();
         Human(isRejected: true).IsSearchable.Should().BeFalse();
-        UserInfo.Create(new User { Id = Guid.NewGuid(), PreferredLanguage = "en" }, [], [], profile: null, [])
+        UserInfo.Create(new User { Id = Guid.NewGuid(), PreferredLanguage = "en" }, [], [], profile: null)
             .IsSearchable.Should().BeFalse();
     }
 

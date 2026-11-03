@@ -81,7 +81,7 @@ public class OnboardingWidgetControllerShiftsTests
         var shiftId = Guid.NewGuid();
         _userService.GetUserInfoAsync(inputId, Arg.Any<CancellationToken>())
             .Returns(UserInfo.Create(new User { Id = userId, State = UserState.Active }, [], [],
-                UserFixtures.Profile(burnerName: "Burner", firstName: "First", lastName: "Last"), []));
+                UserFixtures.Profile(burnerName: "Burner", firstName: "First", lastName: "Last")));
         _burnSettings.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>())
             .Returns(BurnFixtures.Burn());
         _shiftMgmt.GetBrowseShiftsAsync(Arg.Any<ShiftBrowseQuery>(), Arg.Any<CancellationToken>())

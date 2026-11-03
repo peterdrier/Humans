@@ -375,7 +375,6 @@ public class MailerLiteAudienceDebugSnapshotBuilderTests
             },
             userEmails: emails,
             externalLogins: [],
-            profile: null,
-            communicationPreferences: []);
+            profile: null);
     }
 }

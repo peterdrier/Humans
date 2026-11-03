@@ -17,8 +17,7 @@ internal static class UserInfoStubs
             user,
             userEmails ?? user.UserEmails?.ToList() ?? [],
             [],
-            profile: profile,
-            []);
+            profile: profile);
 
     internal static UserInfo MakeUserInfo(Guid userId, ProfileInfo? profile = null, string displayName = "User")
     {
@@ -28,7 +27,6 @@ internal static class UserInfoStubs
             new User { Id = userId, PreferredLanguage = "en", BurnerName = info.BurnerName, State = UserFixtures.StateFor(info) },
             [],
             [],
-            profile: info,
-            []);
+            profile: info);
     }
 }

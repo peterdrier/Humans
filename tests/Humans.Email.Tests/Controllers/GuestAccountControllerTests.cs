@@ -38,7 +38,7 @@ public class GuestAccountControllerTests
             Arg.Any<bool>(), Arg.Any<string>(), Arg.Any<Guid?>(), Arg.Any<CancellationToken>()).Returns(true);
 
         _userService.GetUserInfoAsync(user.Id, Arg.Any<CancellationToken>())
-            .Returns(new ValueTask<UserInfo?>(UserInfo.Create(user, [], [], profile: null, [])));
+            .Returns(new ValueTask<UserInfo?>(UserInfo.Create(user, [], [], profile: null)));
 
         var ctrl = new GuestAccountController(
             _userService,
@@ -239,7 +239,7 @@ public class GuestAccountControllerTests
             ct.ThrowIfCancellationRequested();
             if (abandon && string.Equals(boundary, "Preferences", StringComparison.Ordinal))
                 await request.CancelAsync();
-            return UserInfo.Create(user, [], [], null, []);
+            return UserInfo.Create(user, [], [], null);
         }
         _userService.GetUserInfoAsync(user.Id, Arg.Any<CancellationToken>())
             .Returns(call => ReadUserAsync(call.Arg<CancellationToken>()));

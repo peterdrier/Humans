@@ -17,14 +17,8 @@ public sealed class UserServiceGetByEmailOrAlternateTests : ServiceTestHarness
 
     public UserServiceGetByEmailOrAlternateTests()
     {
-        var communicationPreferenceRepository = Substitute.For<ICommunicationPreferenceRepository>();
-        communicationPreferenceRepository
-            .GetByUserIdReadOnlyAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult<IReadOnlyList<CommunicationPreference>>([]));
-
         _service = new UserService(
             _repo,
-            communicationPreferenceRepository,
             AdminAuthorization,
             Substitute.For<IFileStorage>(),
             Clock,

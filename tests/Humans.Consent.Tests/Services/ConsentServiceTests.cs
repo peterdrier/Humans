@@ -137,8 +137,7 @@ public sealed class ConsentServiceTests : ConsentTestHarness
         },
         userEmails: [],
         externalLogins: [],
-        profile: profile,
-        communicationPreferences: []);
+        profile: profile);
 
     [HumansFact]
     public async Task GetRequiredConsentRowsForUserAsync_PicksLatestEffectiveVersion_AndSkipsFutureOnlyDocuments()

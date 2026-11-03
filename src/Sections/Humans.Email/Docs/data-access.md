@@ -67,11 +67,10 @@ Repository: `ICommunicationPreferenceRepository` (Singleton, `IDbContextFactory<
 | Table | R/W |
 |-------|-----|
 | CommunicationPreferences | R/W |
-| Users' `communication_preferences` (frozen legacy) | R only via `IUserService` (`UserInfo.CommunicationPreferences`) — never the table |
 
 Implements `ICommunicationPreferenceService`, `ICommunicationPreferenceWrite`,
 the internal `ICommunicationPreferenceManagement`, `IUserDataContributor` and
-`IUserMerge`. Cross-section calls via `IUserService`, every registered `ICommunicationPreferenceLock` (Tickets locks
+`IUserMerge`. Cross-section calls via `IUserService` (merge resolution for reads), every registered `ICommunicationPreferenceLock` (Tickets locks
 the Ticketing preference for ticket holders), `IAuditLogService`;
 `IUnsubscribeTokenProvider` is section-internal. No cache.
 

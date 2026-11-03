@@ -47,8 +47,7 @@ public class CachingUserServiceTests
             profile: SampleProfile(userId, displayName),
             contactFields: [],
             profileLanguages: [],
-            volunteerHistory: [],
-            communicationPreferences: []);
+            volunteerHistory: []);
 
     private static Profile SampleProfile(Guid userId, string burnerName) => new()
     {
@@ -70,7 +69,7 @@ public class CachingUserServiceTests
         user.BurnerName = "Before";
         user.State = suspend ? UserState.Active : UserState.Suspended;
         var profile = SampleProfile(user.Id, "Before");
-        var original = UserInfoFactory.Create(user, [], [], profile, [], [], [], []);
+        var original = UserInfoFactory.Create(user, [], [], profile, [], [], []);
         var options = new DbContextOptionsBuilder<UsersDbContext>()
             .UseInMemoryDatabase(Guid.NewGuid().ToString(), new InMemoryDatabaseRoot()).Options;
         await using (var seed = new UsersDbContext(options))
@@ -153,70 +152,6 @@ public class CachingUserServiceTests
 
         await _inner.Received(1).EnsureStubProfileAsync(userId, null, null, null, ct, actorId);
         (await sut.GetUserInfoAsync(userId, ct))!.Profile.Should().NotBeNull();
-    }
-
-    [HumansFact]
-    public async Task CommittedLegacyPreferenceErasure_FinishesCacheRefreshDespiteRequestCancellation()
-    {
-        // Email owns the live preferences; the frozen legacy rows are deleted only by erasure,
-        // and the cached legacy slice must follow that delete.
-        var testCt = Xunit.TestContext.Current.CancellationToken;
-        var userId = Guid.NewGuid();
-        var preference = new CommunicationPreference
-        {
-            Id = Guid.NewGuid(),
-            UserId = userId,
-            Category = LegacyMessageCategory.Marketing,
-            OptedOut = false,
-            UpdatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
-            UpdateSource = "Profile"
-        };
-        var options = new DbContextOptionsBuilder<UsersDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString(), new InMemoryDatabaseRoot()).Options;
-        await using (var seed = new UsersDbContext(options))
-        {
-            seed.CommunicationPreferences.Add(preference);
-            await seed.SaveChangesAsync(testCt);
-        }
-#pragma warning disable HUM_USER_COMMPREFS // pins the cache's handling of the frozen legacy slice
-        var original = SampleUserInfo(userId) with
-        {
-            CommunicationPreferences =
-            [new LegacyCommunicationPreferenceInfo(preference.Id, preference.Category, false, true,
-                preference.UpdatedAt, preference.UpdateSource, null)]
-        };
-        var cached = CreateSut();
-        await PrimeAsync(cached, original);
-        using var cancellation = CancellationTokenSource.CreateLinkedTokenSource(testCt);
-        _inner.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(call => new ValueTask<UserInfo?>(ReloadAsync(call.ArgAt<CancellationToken>(1))));
-        async Task<UserInfo?> ReloadAsync(CancellationToken readCt)
-        {
-            // This reload runs only after the delete has committed.
-            await cancellation.CancelAsync();
-            readCt.ThrowIfCancellationRequested();
-            await using var read = new UsersDbContext(options);
-            var saved = await read.CommunicationPreferences.AsNoTracking().ToListAsync(readCt);
-            return original with
-            {
-                CommunicationPreferences =
-                [.. saved.Select(p => new LegacyCommunicationPreferenceInfo(p.Id, p.Category, p.OptedOut, p.InboxEnabled,
-                    p.UpdatedAt, p.UpdateSource, p.SubscribedAt))]
-            };
-        }
-        var services = new ServiceCollection();
-        services.AddSingleton<IUserInfoSliceRefresher>(cached);
-        await using var provider = services.BuildServiceProvider();
-        var interceptor = new UserInfoSaveChangesInterceptor(provider, NullLogger<UserInfoSaveChangesInterceptor>.Instance);
-        var interceptedOptions = new DbContextOptionsBuilder<UsersDbContext>(options).AddInterceptors(interceptor).Options;
-        var repository = new CommunicationPreferenceRepository(new TestDbContextFactory(interceptedOptions));
-
-        (await repository.DeleteAllForUserAsync(userId, cancellation.Token)).Should().Be(1);
-
-        var refreshed = await cached.GetUserInfoAsync(userId, testCt);
-        refreshed!.CommunicationPreferences.Should().BeEmpty();
-        original.CommunicationPreferences.Should().ContainSingle();
-#pragma warning restore HUM_USER_COMMPREFS
     }
 
     [HumansTheory]
@@ -572,8 +507,7 @@ public class CachingUserServiceTests
             externalLogins,
             profile, [contactField],
             profile.Languages.ToList(),
-            profile.VolunteerHistory.ToList(),
-            []);
+            profile.VolunteerHistory.ToList());
 
         _inner.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new ValueTask<UserInfo?>(fullInfo));
@@ -805,8 +739,7 @@ public class CachingUserServiceTests
             externalLogins: [],
             hasProfile ? profile : null, cfRows,
             profileLanguages: [],
-            volunteerHistory: vhRows,
-            communicationPreferences: []);
+            volunteerHistory: vhRows);
     }
 
     private async Task PrimeAsync(CachingUserService sut, UserInfo info)
@@ -1092,8 +1025,7 @@ public class CachingUserServiceTests
             profile: profile,
             contactFields: [],
             profileLanguages: profile?.Languages.ToList() ?? [],
-            volunteerHistory: profile?.VolunteerHistory.ToList() ?? [],
-            communicationPreferences: []);
+            volunteerHistory: profile?.VolunteerHistory.ToList() ?? []);
 
     private static UserInfo UserInfoWithEmail(Guid userId, string email) =>
         UserInfoFactory.Create(
@@ -1115,8 +1047,7 @@ public class CachingUserServiceTests
             profile: SampleProfile(userId, "Alice"),
             contactFields: [],
             profileLanguages: [],
-            volunteerHistory: [],
-            communicationPreferences: []);
+            volunteerHistory: []);
 
     private void StubRefreshEntry(Guid userId, Profile? profile) =>
         _inner.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
@@ -1395,7 +1326,7 @@ public class CachingUserServiceTests
             },
             userEmails: [], externalLogins: [],
             profile: null, contactFields: [], profileLanguages: [],
-            volunteerHistory: [], communicationPreferences: []);
+            volunteerHistory: []);
 
     /// <summary>A→B→C chain plus an unrelated GDPR-erased row D.</summary>
     private (Guid A, Guid B, Guid C, Guid D) SeedChain()
@@ -1514,7 +1445,7 @@ public class CachingUserServiceTests
         var info = UserInfoFactory.Create(
             user, userEmails: [], externalLogins: [],
             profile: SampleProfile(userId, "Deleted User"), contactFields: [],
-            profileLanguages: [], volunteerHistory: [], communicationPreferences: []);
+            profileLanguages: [], volunteerHistory: []);
         _inner.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new ValueTask<UserInfo?>(info));
         var sut = CreateSut();

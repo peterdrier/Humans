@@ -178,6 +178,5 @@ public class ShiftsControllerSummaryTests
             },
             contactFields: [],
             profileLanguages: [],
-            volunteerHistory: [],
-            communicationPreferences: []);
+            volunteerHistory: []);
 }

@@ -62,8 +62,7 @@ public class GdprServiceTests
         IdentityEmailColumn: null,
         UserEmails: [],
         ExternalLogins: [],
-        Profile: null,
-        CommunicationPreferences: []);
+        Profile: null);
 
     [HumansFact]
     public async Task ExportForUserAsync_StampsExportedAtFromClock()

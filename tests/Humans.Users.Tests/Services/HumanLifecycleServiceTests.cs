@@ -369,6 +369,5 @@ public class HumanLifecycleServiceTests
             profile: null,
             contactFields: [],
             profileLanguages: [],
-            volunteerHistory: [],
-            communicationPreferences: []);
+            volunteerHistory: []);
 }

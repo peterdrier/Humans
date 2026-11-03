@@ -1470,6 +1470,5 @@ public class CampControllerTests
             [],
             [],
             UserFixtures.Profile(
-                burnerName: "Lead Human"),
-            []);
+                burnerName: "Lead Human"));
 }

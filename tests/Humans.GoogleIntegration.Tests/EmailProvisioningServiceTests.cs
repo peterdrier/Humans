@@ -174,8 +174,7 @@ public class EmailProvisioningServiceTests
         },
         userEmails: [],
         externalLogins: [],
-        profile: profile,
-        communicationPreferences: []);
+        profile: profile);
 
     private static void StubTargetUser(ProvisioningFixture f, Guid userId)
     {
@@ -497,8 +496,7 @@ public class EmailProvisioningServiceTests
             },
             userEmails: [],
             externalLogins: [],
-            profile: UserFixtures.Profile(firstName: "Merged", lastName: "User"),
-            communicationPreferences: []);
+            profile: UserFixtures.Profile(firstName: "Merged", lastName: "User"));
         f.UserService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
             .Returns(tombstone);
 

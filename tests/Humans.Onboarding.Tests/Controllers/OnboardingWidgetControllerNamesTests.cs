@@ -242,8 +242,7 @@ public class OnboardingWidgetControllerNamesTests
                 firstName: first,
                 lastName: last,
                 city: city,
-                bio: bio),
-            communicationPreferences: []);
+                bio: bio));
 
     [HumansTheory]
     [InlineData(false)]

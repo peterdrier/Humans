@@ -86,8 +86,7 @@ public sealed class EmailProblemsServiceTests : ServiceTestHarness
             profile: profile,
             contactFields: [],
             profileLanguages: [],
-            volunteerHistory: [],
-            communicationPreferences: []);
+            volunteerHistory: []);
     }
 
     private void AddInfo(UserInfo info)

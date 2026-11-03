@@ -91,6 +91,5 @@ public class PreferredLanguageCalculatorTests
         profile: null,
         contactFields: [],
         profileLanguages: [],
-        volunteerHistory: [],
-        communicationPreferences: []);
+        volunteerHistory: []);
 }

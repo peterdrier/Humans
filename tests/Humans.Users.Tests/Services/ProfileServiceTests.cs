@@ -23,7 +23,6 @@ public sealed class ProfileServiceTests : ServiceTestHarness
     private readonly ProfileEditorService _editor;
     private readonly IUserRepository _userRepository;
     private readonly IUserManagement _userService = Substitute.For<IUserManagement>();
-    private readonly ICommunicationPreferenceRepository _communicationPreferenceRepository = Substitute.For<ICommunicationPreferenceRepository>();
     private readonly UserService _storageUserService;
     private readonly InMemoryFileStorage _fileStorage = new();
     private readonly IFileStorage _pictureStorage = Substitute.For<IFileStorage>();
@@ -47,7 +46,6 @@ public sealed class ProfileServiceTests : ServiceTestHarness
         _userRepository = new UserRepository(DbFactory, Clock);
         _storageUserService = new UserService(
             _userRepository,
-            _communicationPreferenceRepository,
             AdminAuthorization,
             _pictureStorage,
             Clock,
@@ -280,8 +278,7 @@ public sealed class ProfileServiceTests : ServiceTestHarness
         var options = new DbContextOptionsBuilder<UsersDbContext>(DbOptions)
             .AddInterceptors(new LoseProfileSaveAcknowledgement()).Options;
         var service = new UserService(
-            new UserRepository(new TestDbContextFactory(options), Clock),
-            _communicationPreferenceRepository, AdminAuthorization,
+            new UserRepository(new TestDbContextFactory(options), Clock), AdminAuthorization,
             _pictureStorage, Clock, NullLogger<UserService>.Instance, AuditLog);
         var command = new UserProfileSaveCommand(
             "TestBurner", "Test", "User", null, null, null, null, null, null, null, null, null,
@@ -320,7 +317,7 @@ public sealed class ProfileServiceTests : ServiceTestHarness
         repo.GetProfilePictureLocationAsync(profileId, Arg.Any<CancellationToken>())
             .ThrowsAsync(new IOException("Could not verify the committed picture"));
         var service = new UserService(
-            repo, _communicationPreferenceRepository, AdminAuthorization,
+            repo, AdminAuthorization,
             _pictureStorage, Clock, NullLogger<UserService>.Instance, AuditLog);
         var command = new UserProfileSaveCommand(
             "TestBurner", "Test", "User", null, null, null, null, null, null, null, null, null,
@@ -347,7 +344,6 @@ public sealed class ProfileServiceTests : ServiceTestHarness
             .ThrowsAsync(new InvalidOperationException("Database unavailable"));
         var sut = new UserService(
             failingRepo,
-            _communicationPreferenceRepository,
             AdminAuthorization,
             _pictureStorage,
             Clock,
@@ -375,8 +371,7 @@ public sealed class ProfileServiceTests : ServiceTestHarness
         var options = new DbContextOptionsBuilder<UsersDbContext>(DbOptions)
             .AddInterceptors(new RejectUserNameSave()).Options;
         var sut = new UserService(
-            new UserRepository(new TestDbContextFactory(options), Clock),
-            _communicationPreferenceRepository, AdminAuthorization,
+            new UserRepository(new TestDbContextFactory(options), Clock), AdminAuthorization,
             _pictureStorage, Clock, NullLogger<UserService>.Instance, AuditLog);
         var command = new UserProfileSaveCommand(
             "TestBurner", "Test", "User", null, null, null, null, null, null, null, null, null,
@@ -486,7 +481,6 @@ public sealed class ProfileServiceTests : ServiceTestHarness
         retained.ProfilePictureContentType.Should().Be("image/png");
         retained.ProfilePictureStorageKey.Should().Be(versioned ? key : null);
         _fileStorage.Files.Should().ContainKey(key);
-        await _communicationPreferenceRepository.DidNotReceive().DeleteAllForUserAsync(userId, Arg.Any<CancellationToken>());
 
         await erase();
 
@@ -622,7 +616,7 @@ public sealed class ProfileServiceTests : ServiceTestHarness
                 c.Arg<IReadOnlyList<ProfileLanguage>>(), c.Arg<CancellationToken>()));
         repository.GetOwnerUserIdAsync(profileId, Arg.Any<CancellationToken>())
             .ThrowsAsync(new InvalidOperationException("Owner lookup failed"));
-        var service = new UserService(repository, _communicationPreferenceRepository, AdminAuthorization, _pictureStorage,
+        var service = new UserService(repository, AdminAuthorization, _pictureStorage,
             Clock, NullLogger<UserService>.Instance, AuditLog);
 
         var act = () => service.SaveProfileLanguagesAsync(profileId,
@@ -634,7 +628,6 @@ public sealed class ProfileServiceTests : ServiceTestHarness
 
     private UserService BuildUserServiceWith(IUserRepository userRepository) => new(
         userRepository,
-        _communicationPreferenceRepository,
         AdminAuthorization,
         Substitute.For<IFileStorage>(),
         Clock,

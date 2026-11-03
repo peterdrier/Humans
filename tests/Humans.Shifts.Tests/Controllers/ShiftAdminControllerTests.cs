@@ -1050,6 +1050,5 @@ public class ShiftAdminControllerTests
         profile: new Profile { UserId = userId, BurnerName = "Coord" },
         contactFields: [],
         profileLanguages: [],
-        volunteerHistory: [],
-        communicationPreferences: []);
+        volunteerHistory: []);
 }
