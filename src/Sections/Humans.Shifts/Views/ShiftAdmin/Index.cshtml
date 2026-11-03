@@ -417,12 +417,7 @@
                                             var shiftDate = Model.EventSettings.GateOpeningDate.PlusDays(shift.DayOffset);
                                             var shiftDateLabel = shiftDate.ToWeekdayDayMonth();
                                             var phase = shift.GetShiftPeriod(Model.EventSettings);
-                                            var phaseBadge = phase switch
-                                            {
-                                                ShiftPeriod.Build => "bg-info",
-                                                ShiftPeriod.Event => "bg-success",
-                                                _ => "bg-secondary"
-                                            };
+                                            var phaseBadge = ShiftDisplayItem.PeriodBadgeClass(phase);
                                             var phaseLabel = phase switch
                                             {
                                                 ShiftPeriod.Build => "Set-up",
