@@ -69,7 +69,7 @@ internal sealed class LinkedOAuthAccountViewModel
     public string ProviderKey { get; init; } = string.Empty;
     public string? ProviderDisplayName { get; init; }
 
-    /// <summary>First 8 hex chars of SHA-256(ProviderKey), so a screenshot never leaks the OIDC <c>sub</c>.</summary>
+    /// <summary>First 8 bytes of SHA-256(ProviderKey), encoded as hexadecimal, so a screenshot never leaks the OIDC <c>sub</c>.</summary>
     public string ProviderKeyHash { get; init; } = string.Empty;
 
     public string? Email { get; init; }

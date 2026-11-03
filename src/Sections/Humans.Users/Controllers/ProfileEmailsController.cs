@@ -842,7 +842,7 @@ internal sealed class ProfileEmailsController(
             ExternalLogins = userLogins.Select(l => new ExternalLoginRowViewModel
             {
                 LoginProvider = l.Provider,
-                ProviderKeyHash = HashForDisplay(l.ProviderKey),
+                ProviderKeyHash = UserEmailService.ShortProviderKeyHash(l.ProviderKey),
                 ProviderDisplayName = null,
                 HasOrphanLogin = LoginHasOrphanRow(l.Provider, l.ProviderKey),
             }).ToList(),
@@ -938,7 +938,7 @@ internal sealed class ProfileEmailsController(
                 Provider = l.LoginProvider,
                 ProviderKey = l.ProviderKey,
                 ProviderDisplayName = l.ProviderDisplayName,
-                ProviderKeyHash = HashForDisplay(l.ProviderKey),
+                ProviderKeyHash = UserEmailService.ShortProviderKeyHash(l.ProviderKey),
                 Email = row?.Email,
                 LinkedAt = row?.CreatedAt,
                 CanUnlink = canUnlink,
@@ -957,13 +957,6 @@ internal sealed class ProfileEmailsController(
                 .Where(a => a.MatchedUserId == userId && !string.IsNullOrWhiteSpace(a.AttendeeEmail))
                 .Select(a => a.AttendeeEmail!))
             .ToList();
-    }
-
-    private static string HashForDisplay(string s)
-    {
-        var bytes = System.Security.Cryptography.SHA256.HashData(
-            System.Text.Encoding.UTF8.GetBytes(s));
-        return Convert.ToHexString(bytes.AsSpan(0, 8));
     }
 
 }
