@@ -13,6 +13,11 @@ public interface IHoldedService : IApplicationService
 
     Task<IReadOnlyList<HoldedLedgerLineInfo>> GetLedgerLinesAsync(int accountNum, CancellationToken ct = default);
 
+    /// <summary>When the ledger mirror last finished a sweep, trailing or full; null when none has ever succeeded.
+    /// A failed sweep leaves it at the last good one, so a ledger-based judgement can tell "not swept yet" from
+    /// "absent".</summary>
+    Task<Instant?> GetLedgerSyncedAtAsync(CancellationToken ct = default);
+
     /// <summary>Σdebit − Σcredit over the whole mirror, for every account with cached lines. Raw bookkeeping sign,
     /// before any display flip.</summary>
     Task<IReadOnlyDictionary<int, decimal>> GetAccountBalancesAsync(CancellationToken ct = default);

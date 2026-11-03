@@ -8,8 +8,8 @@
   src/Humans.Web/Controllers/AccountController.cs
   src/Humans.Web/Views/Account/**
   src/Sections/Humans.Users/Services/UserEmailService.cs
-  src/Sections/Humans.Users.Contracts/User.cs
-  src/Sections/Humans.Users.Contracts/UserEmail.cs
+  src/Humans.Base/Users/User.cs
+  src/Humans.Base/Users/UserEmail.cs
 -->
 <!-- freshness:flag-on-change
   Magic link token strategy (Identity vs DataProtection), email-lookup order, single-use enforcement, account-linking on OAuth, or rate limiting may have changed.

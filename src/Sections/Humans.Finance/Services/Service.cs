@@ -341,25 +341,35 @@ internal sealed class Service(
             .ToList());
     }
 
-    /// <summary>Local mirrors only: the expense lines, the document mirror, the ledger mirror and SEPA rows.</summary>
+    /// <summary>The expense lines against the ledger mirror, with SEPA rows. The one non-mirror read is the cached
+    /// contact list, which says which account each bound contact is on, as on /Finance/Creditors. The document mirror
+    /// is not read.</summary>
     public async Task<ExpenseReconReport> GetExpenseReconAsync(int? year, CancellationToken ct = default)
     {
-        var mirror = await holded.GetPurchaseDocumentsAsync(ct);
-        if (mirror.LastSyncAt is not { } syncedAt)
-            return ExpenseRecon.Unavailable(year, "The Holded document mirror has never synced.");
+        // A push settled after the last good sweep is Pending, not Missing.
+        if (await holded.GetLedgerSyncedAtAsync(ct) is not { } syncedAt)
+            return ExpenseRecon.Unavailable(year, "The Holded ledger mirror has never synced.");
+
+        var balances = await holded.GetAccountBalancesAsync(ct);
 
         var expected = await expenses.GetHoldedReconLinesAsync(ct);
-        var docs = mirror.Docs;
-        var bindings = await repo.GetCreditorContactsAsync(ct);
-        var balances = await holded.GetAccountBalancesAsync(ct);
-        // IHoldedService exposes no sync state; an empty ledger mirror beside synced documents is the never-synced case,
-        // and would show every member Off.
-        if (balances.Count == 0)
-            return ExpenseRecon.Unavailable(year, "The Holded ledger mirror has never synced.");
+        var contacts = await ContactsByIdAsync(ct);
+        var accountByUser = (await repo.GetCreditorContactsAsync(ct))
+            .Select(b => (b.UserId, Account: ResolveCreditorAccount(b, contacts)))
+            .Where(x => x.Account is not null)
+            .GroupBy(x => x.UserId)
+            .ToDictionary(g => g.Key, g => g.First().Account!.Value);
+
+        var ledger = new Dictionary<int, IReadOnlyList<HoldedLedgerLineInfo>>();
+        foreach (var account in balances.Keys
+                     .Where(n => n is >= CreditorAccountMin and <= CreditorAccountMax)
+                     .Union(accountByUser.Values))
+            ledger[account] = await holded.GetLedgerLinesAsync(account, ct);
+
         var transfers = await repo.GetSepaPayoutTransferRowsAsync(ct);
         var members = await users.GetUserInfosAsync(expected.Select(l => l.CreditorUserId).ToHashSet(), ct);
         return ExpenseRecon.Build(
-            year, syncedAt, expected, docs, bindings, balances, transfers,
+            year, syncedAt, expected, accountByUser, ledger, transfers,
             id => members.GetValueOrDefault(id)?.BurnerName ?? id.ToString());
     }
 

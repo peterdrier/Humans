@@ -19,12 +19,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <!--
-      Base for QueryStatistics and InMemoryLogSink; Users.Contracts for the dashboard card's
-      UserInfo.
-    -->
+    <!-- Base for QueryStatistics, InMemoryLogSink and the dashboard card's UserInfo. -->
     <ProjectReference Include="..\..\Humans.Base\Humans.Base.csproj" />
-    <ProjectReference Include="..\Humans.Users.Contracts\Humans.Users.Contracts.csproj" />
     <!-- The user grid's Marketing column reads ICommunicationPreferenceService (Users decomposition commit 14). -->
     <ProjectReference Include="..\Humans.Email.Contracts\Humans.Email.Contracts.csproj" />
   </ItemGroup>
