@@ -2,7 +2,6 @@ using Humans.Base.Authorization;
 using Humans.Base.Caching;
 using Humans.Base.Configuration;
 using Humans.Base.Constants;
-using Humans.Base.Helpers;
 using Humans.Base.Hosting;
 using Humans.Base.Interfaces;
 using Humans.Base.Interfaces.Caching;
@@ -26,7 +25,6 @@ public sealed class Section :
     ISectionRoles,
     ISectionAdminNav,
     ISectionConfiguration,
-    ISectionDataMigrations,
     ISectionJobs,
     ISectionPolicies,
     IUserPart
@@ -117,26 +115,6 @@ public sealed class Section :
         // Wins over the Sepa:CreditorIban appsetting.
         registry.RegisterEnvironmentVariable("SEPA_CREDITOR_IBAN", "SEPA", isSensitive: true);
     }
-
-    internal const string IbanToPaymentDetailsKey = "finance.iban-to-payment-details";
-
-    IEnumerable<DataMigration> ISectionDataMigrations.Migrations() =>
-    [
-        new(IbanToPaymentDetailsKey, "Finance",
-            "Copy each member's IBAN from profiles.Iban into finance_payment_details",
-            "PaymentDetailsService's legacy fallback and ProfileInfo.Iban; then a drop PR for profiles.Iban",
-            IbanStatusAsync, ApplyIbanAsync),
-    ];
-
-    // Masked: this screen lists every member at once; an unmasked IBAN is shown one member at a time, behind the
-    // audited reveal.
-    private static async Task<DataMigrationStatus> IbanStatusAsync(IServiceProvider sp, CancellationToken ct) =>
-        new(["User", "Burner name", "IBAN"],
-            [.. (await sp.GetRequiredService<IPaymentDetailsManagement>().GetUncopiedLegacyIbansAsync(ct))
-                .Select(r => (IReadOnlyList<string>)[r.UserId.ToString(), r.BurnerName, IbanFormatter.Mask(r.Iban)])]);
-
-    private static Task<int> ApplyIbanAsync(IServiceProvider sp, Guid actorUserId, CancellationToken ct) =>
-        sp.GetRequiredService<IPaymentDetailsManagement>().CopyLegacyIbansAsync(ct);
 
     IEnumerable<RecurringJobDescriptor> ISectionJobs.Jobs(IServiceProvider services)
     {

@@ -152,7 +152,7 @@ internal sealed partial class UserRepository
             profile.ConsentCheckNotes = null;
             profile.RejectionReason = null;
 
-            // Deletion-only too: the merge fold keeps the source IBAN so the survivor can still be paid.
+            // Erase the legacy column until its separate drop; Finance owns live payment details.
             profile.Iban = null;
 
             var languages = await ctx.ProfileLanguages

@@ -77,7 +77,6 @@ internal static class UserInfoFactory
             AdminNotes: profile.AdminNotes,
             ContributionInterests: profile.ContributionInterests,
             BoardNotes: profile.BoardNotes,
-            Iban: profile.Iban,
             IsApproved: profile.IsApproved,
             ConsentCheckStatus: profile.ConsentCheckStatus,
             ConsentCheckAt: profile.ConsentCheckAt,

@@ -402,7 +402,7 @@ A contact is identified by `ContactSource != null && LastLoginAt == null`. When 
 | ContributionInterests | string? | null | Skills / availability statement (publicly visible on profile). |
 | BoardNotes | string? | null | Notes from the human intended for the Board (self + Board only). |
 | AdminNotes | string? (4000) | null | Admin-only notes (not visible to the human). |
-| Iban | string? (34) | null | **Legacy, no longer written.** The member's IBAN moved to Finance's `finance_payment_details` (Users decomposition commit 1). Carried on `ProfileInfo.Iban` as `[Obsolete]` (`HUM_PROFILE_IBAN`) for Finance's read fallback and the `finance.iban-to-payment-details` copy only; still erased by `EraseProfileExtrasForUserAsync` until the column is dropped. |
+| Iban | string? (34) | null | **Legacy, no longer read or written except for erasure.** Finance owns `finance_payment_details`. Production reported `finance.iban-to-payment-details` with `pending: 0`, `done: true` on 2026-11-03; its copy, fallback and `ProfileInfo.Iban` projection are retired. Still erased by `EraseProfileExtrasForUserAsync` until the separate column drop. |
 | IsApproved | bool | false | **Legacy, no longer written.** Moved to Consent's `consent_reviews` (Users decomposition commit 12). Carried on `ProfileInfo` as `[Obsolete]` (`HUM_PROFILE_REVIEW`) for Consent's read fallback and the `consent.profile-review` copy only; still exported and erased here until the column is dropped. |
 | MembershipTier | LegacyMembershipTier | Volunteer | **Legacy, no longer written.** Governance's `governance_membership_tiers` owns the live tier. No longer exposed on `ProfileInfo`; the internal storage enum and legacy GDPR export remain until a separate schema drop. |
 | ConsentCheckStatus | LegacyConsentCheckStatus? | null | Legacy, as `IsApproved`. |
@@ -559,11 +559,11 @@ Sub-aggregate of Profile — no separate service. Records languages spoken with 
 
 ### Frozen legacy (awaiting drop)
 
-Nothing here is written. Users retains these objects for GDPR export/erase. Owners with a still-registered migration also read them through `[Obsolete]` fields on `UserInfo`/`ProfileInfo` until fallback retirement. Schema drops follow separately. The production `done` reading of the migration at `GET /api/data-migrations` is the drop's approval (`memory/architecture/no-drops-until-prod-verified.md`). Ledger rows: retirement in `docs/architecture/debt-ledger.yml` (CENTRAL-89 and CENTRAL-92 to CENTRAL-95), schema drops are separate feature work under policy D9, outside the debt ledger.
+Nothing here is written. Users retains these objects for GDPR export/erase. Owners with a still-registered migration also read them through `[Obsolete]` fields on `UserInfo`/`ProfileInfo` until fallback retirement. Schema drops follow separately. The production `done` reading of the migration at `GET /api/data-migrations` is the drop's approval (`memory/architecture/no-drops-until-prod-verified.md`). Ledger rows: retirement in `docs/architecture/debt-ledger.yml` (CENTRAL-92 to CENTRAL-95), schema drops are separate feature work under policy D9, outside the debt ledger.
 
 | Legacy object | Replaced by | Migration key |
 |---|---|---|
-| `profiles.Iban` | Finance `finance_payment_details` | `finance.iban-to-payment-details` |
+| `profiles.Iban` | Finance `finance_payment_details` | `finance.iban-to-payment-details` — retired 2026-11-03; column awaiting separate drop |
 | `profiles` food columns (`DietaryPreference`, `Allergies`, `AllergyOtherText`, `Intolerances`, `IntoleranceOtherText`) | Cantina `cantina_dietary_profiles` | `cantina.profile-dietary` |
 | `profiles.MembershipTier` | Governance `governance_membership_tiers` | `governance.profile-tier` |
 | `profiles` review columns (`ConsentCheck*`, `RejectionReason`, `RejectedAt`, `RejectedByUserId`, `IsApproved`) and the `ConsentCheckStatus` index | Consent `consent_reviews` | `consent.profile-review` |

@@ -106,7 +106,6 @@ public class SystemTeamSyncJobBarrioLeadsTests
             AdminNotes: null,
             ContributionInterests: null,
             BoardNotes: null,
-            Iban: null,
             IsApproved: false,
             ConsentCheckStatus: null,
             ConsentCheckAt: null,
