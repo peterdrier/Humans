@@ -327,8 +327,9 @@ internal sealed class Service(
     }
 
     /// <summary>The expense lines against the ledger mirror, with SEPA rows. The one non-mirror read is the cached
-    /// contact list, which says which account each bound contact is on, as on /Finance/Creditors. The document mirror
-    /// is not read.</summary>
+    /// contact list, which says which account each bound contact is on. Unreadable, the report is unavailable: the
+    /// binding's stored number may be wrong, and judging against it is worse than not judging. The document mirror is
+    /// not read.</summary>
     public async Task<ExpenseReconReport> GetExpenseReconAsync(int? year, CancellationToken ct = default)
     {
         // A push settled after the last good sweep is Pending, not Missing.
@@ -337,11 +338,14 @@ internal sealed class Service(
 
         var balances = await holded.GetAccountBalancesAsync(ct);
 
-        var expected = await expenses.GetHoldedReconLinesAsync(ct);
         var contacts = await ContactsByIdAsync(ct);
+        if (contacts.Count == 0)
+            return ExpenseRecon.Unavailable(year, "The Holded contact list could not be read, so no member's account is known.");
+
+        var expected = await expenses.GetHoldedReconLinesAsync(ct);
         var accountByUser = (await repo.GetCreditorContactsAsync(ct))
-            .Select(b => (b.UserId, Account: ResolveCreditorAccount(b, contacts)))
-            .Where(x => x.Account is not null)
+            .Select(b => (b.UserId, Account: contacts.GetValueOrDefault(b.HoldedContactId)?.SupplierAccountNum))
+            .Where(x => x.Account is >= CreditorAccountMin and <= CreditorAccountMax)
             .GroupBy(x => x.UserId)
             .ToDictionary(g => g.Key, g => g.First().Account!.Value);
 

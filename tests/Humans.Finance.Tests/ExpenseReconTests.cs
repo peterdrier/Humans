@@ -288,6 +288,20 @@ public class ExpenseReconTests
     }
 
     [HumansFact]
+    public async Task GetExpenseRecon_ContactListUnreadable_IsUnavailable_NeverTheStoredNumber()
+    {
+        _holded.GetLedgerSyncedAtAsync(Arg.Any<CancellationToken>()).Returns(SyncedAt);
+        _holded.GetAccountBalancesAsync(Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<int, decimal> { [AliceAccount] = -100m });
+        _client.ListContactsAsync(Arg.Any<CancellationToken>()).ThrowsAsync(new HoldedTransientException("timeout"));
+
+        var report = await MakeService().GetExpenseReconAsync(null, TestContext.Current.CancellationToken);
+
+        report.IsAvailable.Should().BeFalse();
+        await _holded.DidNotReceive().GetLedgerLinesAsync(Arg.Any<int>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
     public async Task GetExpenseRecon_LedgerNeverSynced_IsUnavailable()
     {
         _holded.GetLedgerSyncedAtAsync(Arg.Any<CancellationToken>()).Returns((Instant?)null);
