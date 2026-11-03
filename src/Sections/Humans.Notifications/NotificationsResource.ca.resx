@@ -121,9 +121,6 @@
   <data name="Notifications_Inbox_Title" xml:space="preserve">
     <value>Notificacions</value>
   </data>
-  <data name="Notifications_Dismiss" xml:space="preserve">
-    <value>Descartar</value>
-  </data>
   <data name="Notifications_HandledBy" xml:space="preserve">
     <value>Gestionat per {0}, {1}</value>
   </data>

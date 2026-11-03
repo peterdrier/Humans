@@ -68,7 +68,6 @@
   <data name="Notifications_Tab_Unread" xml:space="preserve"><value>Unread</value></data>
   <data name="Notifications_Tab_All" xml:space="preserve"><value>All</value></data>
   <data name="Notifications_Inbox_Title" xml:space="preserve"><value>Notifications</value></data>
-  <data name="Notifications_Dismiss" xml:space="preserve"><value>Dismiss</value></data>
   <data name="Notifications_HandledBy" xml:space="preserve"><value>Handled by {0}, {1}</value></data>
   <data name="Notifications_DefaultActionLabel" xml:space="preserve"><value>View →</value></data>
   <data name="Notifications_TimeAgo_JustNow" xml:space="preserve"><value>just now</value></data>
