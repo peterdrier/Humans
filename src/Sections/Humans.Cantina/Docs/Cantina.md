@@ -69,6 +69,10 @@ Context: `CantinaDbContext` (history table `__EFMigrationsHistory_Cantina`).
 
 ## Invariants
 
+- Roster exports and health reveals resolve the signed-in account before loading
+  personal rows and audit the surviving account ID after a merge. Missing accounts
+  receive 401; cancellation during account lookup stops before roster work.
+
 - The section’s things-to-do contribution forwards caller cancellation through all data reads. Aborted reads propagate instead of being logged or converted into missing prompts.
 
 - **Dietary info is opt-in and never blocks a shift signup** (nobodies-collective/Humans#2104). No signup path — the `/Shifts` day toggle, range signup, onboarding widget, Voluntell — consults Cantina. The roster tolerates humans with empty dietary fields (declined members count as unanswered).

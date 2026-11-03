@@ -154,8 +154,68 @@ public class CantinaRosterServiceTests
         _audit.ReceivedCalls().Should().ContainSingle("exports keep their one scope row");
     }
 
+    [HumansTheory]
+    [Xunit.InlineData(0, 0)]
+    [Xunit.InlineData(0, 1)]
+    [Xunit.InlineData(0, 2)]
+    [Xunit.InlineData(1, 0)]
+    [Xunit.InlineData(1, 1)]
+    [Xunit.InlineData(1, 2)]
+    [Xunit.InlineData(2, 0)]
+    [Xunit.InlineData(2, 1)]
+    [Xunit.InlineData(2, 2)]
+    [Xunit.InlineData(3, 0)]
+    [Xunit.InlineData(3, 1)]
+    [Xunit.InlineData(3, 2)]
+    public async Task Disclosure_resolves_actor_before_loading_personal_rows(int action, int mode)
+    {
+        var archivedId = Guid.NewGuid();
+        var survivorId = Guid.NewGuid();
+        var controller = Controller(archivedId);
+        using var request = new CancellationTokenSource();
+        controller.HttpContext.RequestAborted = request.Token;
+        _userRead.GetUserInfoAsync(archivedId, Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            call.Arg<CancellationToken>().Should().Be(request.Token);
+            call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+            return new ValueTask<UserInfo?>(mode == 1 ? null :
+                UserInfo.Create(new User { Id = survivorId }, [], [], null));
+        });
+        var burn = ActiveEvent();
+        _burnSettings.GetActiveEventSettingsAsync(request.Token).Returns(burn);
+        if (mode == 2)
+            await request.CancelAsync();
+        Func<Task<IActionResult>> invoke = action switch
+        {
+            0 => () => controller.RevealHealth(0, request.Token),
+            1 => () => controller.Csv(0, request.Token),
+            2 => () => controller.RevealDayHealth(0, request.Token),
+            _ => () => controller.DayCsv(0, request.Token),
+        };
+
+        if (mode == 2)
+            await invoke.Should().ThrowAsync<OperationCanceledException>();
+        else if (mode == 1)
+            (await invoke()).Should().BeOfType<UnauthorizedResult>();
+        else
+        {
+            await invoke();
+            var auditAction = action is 0 or 2
+                ? CantinaAuditActions.CantinaHealthDetailsRevealed
+                : CantinaAuditActions.CantinaRosterExported;
+            await _audit.Received(1).LogAsync(auditAction, "EventSettings", burn.Id,
+                Arg.Any<string>(), survivorId);
+            return;
+        }
+
+        _burnSettings.ReceivedCalls().Should().BeEmpty();
+        _audit.ReceivedCalls().Should().BeEmpty();
+    }
+
     private CantinaController Controller(Guid actorId)
     {
+        _userRead.GetUserInfoAsync(actorId, Arg.Any<CancellationToken>())
+            .Returns(UserInfo.Create(new User { Id = actorId }, [], [], null));
         var httpContext = new DefaultHttpContext
         {
             User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, actorId.ToString())], "test"))
