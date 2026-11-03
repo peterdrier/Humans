@@ -275,11 +275,13 @@ internal sealed class CachingUserService(
                 MatchSnippet: match.Snippet,
                 MatchedEmail: match.MatchedEmail,
                 Score: match.Score));
-
-            if (results.Count >= limit) break;
         }
 
-        return results;
+        return results
+            .OrderByDescending(result => result.Score) // arch:db-sort-ok top-N relevance selection
+            .ThenBy(result => result.UserId)
+            .Take(limit)
+            .ToList();
     }
 
     /// <summary>

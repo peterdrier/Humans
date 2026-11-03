@@ -426,9 +426,14 @@ public class FinanceControllerTests
     [InlineData("not-a-number")]
     [InlineData("0")]
     [InlineData("-5.00")]
+    [InlineData("12,34")]
+    [InlineData("1,234.56")]
     public async Task GenerateSepa_UnparseableOrNonPositiveCap_RefusesWithoutCallingTheService(string cap)
     {
         var controller = MakeControllerWithHttpContext(Ana);
+        _connector.GenerateSepaPayoutAsync(
+            Arg.Any<IReadOnlyList<SepaPayoutSelection>>(), Arg.Any<decimal>(), Arg.Any<Guid>(),
+            Arg.Any<CancellationToken>()).Returns(new SepaPayoutResult(null, null, "Refused"));
 
         var result = await controller.GenerateSepa(
             [40000004], new Dictionary<int, string> { [40000004] = "10.00" }, cap,
@@ -478,6 +483,27 @@ public class FinanceControllerTests
         if (hasActor) result.Should().BeOfType<BadRequestObjectResult>();
         else result.Should().BeOfType<ChallengeResult>();
         await _connector.DidNotReceiveWithAnyArgs().GenerateSepaPayoutAsync(default!, default, default);
+    }
+
+    [HumansTheory]
+    [InlineData("12,34")]
+    [InlineData("1,234.56")]
+    public async Task GenerateSepa_GroupedAmount_RemainsInTheBatchAsAnInvalidAmount(string amount)
+    {
+        var controller = MakeControllerWithHttpContext(Ana);
+        _connector.GenerateSepaPayoutAsync(
+            Arg.Any<IReadOnlyList<SepaPayoutSelection>>(), Arg.Any<decimal>(), Arg.Any<Guid>(),
+            Arg.Any<CancellationToken>()).Returns(new SepaPayoutResult(null, null, "Refused"));
+
+        await controller.GenerateSepa(
+            [40000004, 40000005], new Dictionary<int, string> { [40000004] = amount, [40000005] = "10.00" },
+            "10000.00", TestContext.Current.CancellationToken);
+
+        await _connector.Received(1).GenerateSepaPayoutAsync(
+            Arg.Is<IReadOnlyList<SepaPayoutSelection>>(selections => selections.Count == 2
+                && selections[0].SupplierAccountNum == 40000004 && selections[0].Amount == 0m
+                && selections[1].SupplierAccountNum == 40000005 && selections[1].Amount == 10m),
+            10000m, Ana, Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -751,6 +777,22 @@ public class FinanceControllerTests
         redirect.RouteValues!["days"].Should().Be(7);
         var key = succeeded ? Humans.Base.Constants.TempDataKeys.SuccessMessage : Humans.Base.Constants.TempDataKeys.ErrorMessage;
         controller.TempData[key].Should().Be(succeeded ? "Withdrew it." : "It is booked.");
+    }
+
+    [HumansFact]
+    public async Task CancelSepaFile_PassesTheActorThrough_AndReportsTheOutcome()
+    {
+        var fileId = Guid.NewGuid();
+        _connector.CancelSepaFileAsync(fileId, Ana, Arg.Any<CancellationToken>())
+            .Returns(new SepaBookingResult(true, "Cancelled it."));
+        var controller = MakeControllerWithHttpContext(Ana);
+
+        var result = await controller.CancelSepaFile(fileId, days: 7);
+
+        var redirect = result.Should().BeOfType<RedirectToActionResult>().Subject;
+        redirect.ActionName.Should().Be(nameof(FinanceController.Sepa));
+        redirect.RouteValues!["days"].Should().Be(7);
+        controller.TempData[Humans.Base.Constants.TempDataKeys.SuccessMessage].Should().Be("Cancelled it.");
     }
 
     [HumansFact]

@@ -252,6 +252,9 @@ public sealed class ShiftDashboardMetricsTests : ShiftsTestHarness
         await SeedTicketOrderAsync(disengagedTicketHolder.Id, TicketPaymentStatus.Paid);
         await SeedTicketOrderAsync(refundedUser.Id, TicketPaymentStatus.Refunded);
         await SeedTicketOrderAsync(cancelledOnlyTicketHolder.Id, TicketPaymentStatus.Paid);
+        await SeedTicketOrderAsync(nonTicketSignupUser.Id, TicketPaymentStatus.Paid, isCurrentEvent: false);
+        var historicalOnlyBuyer = await SeedUserAsync("Historical buyer");
+        await SeedTicketOrderAsync(historicalOnlyBuyer.Id, TicketPaymentStatus.Paid, isCurrentEvent: false);
 
         await SeedOneSignupAsync(shift, engagedTicketHolder.Id, SignupStatus.Confirmed);
         await SeedOneSignupAsync(shift, nonTicketSignupUser.Id, SignupStatus.Pending);
@@ -701,6 +704,22 @@ public sealed class ShiftDashboardMetricsTests : ShiftsTestHarness
     }
 
     [HumansFact]
+    public async Task GetDashboardTrends_TicketSalesRequireCurrentEventAndPaidOrderWithinWindow()
+    {
+        var es = await SeedEventAsync();
+        var buyer = Guid.NewGuid();
+        await SeedTicketOrderAsync(buyer, TicketPaymentStatus.Paid, purchasedAt: TestNow);
+        await SeedTicketOrderAsync(buyer, TicketPaymentStatus.Paid, isCurrentEvent: false, purchasedAt: TestNow);
+        await SeedTicketOrderAsync(buyer, TicketPaymentStatus.Refunded, purchasedAt: TestNow);
+        await SeedTicketOrderAsync(buyer, TicketPaymentStatus.Paid, purchasedAt: TestNow.Minus(Duration.FromDays(7)));
+
+        var result = await _service.GetDashboardTrendsAsync(es.Id, TrendWindow.Last7Days);
+
+        result[^1].NewTicketSales.Should().Be(1);
+        result.Sum(point => point.NewTicketSales).Should().Be(1);
+    }
+
+    [HumansFact]
     public async Task GetDailyDepartmentStaffing_EventPeriod_ReturnsEmpty()
     {
         // Event day-over-day mix is deliberately omitted by design — the planning
@@ -1098,7 +1117,8 @@ public sealed class ShiftDashboardMetricsTests : ShiftsTestHarness
     // entity is internal to Humans.Tickets.
     private readonly List<TicketOrderInfo> _ticketOrders = [];
 
-    private Task SeedTicketOrderAsync(Guid userId, TicketPaymentStatus status)
+    private Task SeedTicketOrderAsync(
+        Guid userId, TicketPaymentStatus status, bool isCurrentEvent = true, Instant? purchasedAt = null)
     {
         _ticketOrders.Add(new TicketOrderInfo(
             Id: Guid.NewGuid(),
@@ -1109,10 +1129,10 @@ public sealed class ShiftDashboardMetricsTests : ShiftsTestHarness
             Currency: "EUR",
             DiscountCode: null,
             PaymentStatus: status,
-            VendorEventId: "v1",
-            PurchasedAt: TestNow.Minus(Duration.FromDays(10)),
+            VendorEventId: isCurrentEvent ? "v1" : "historical",
+            PurchasedAt: purchasedAt ?? TestNow.Minus(Duration.FromDays(10)),
             MatchedUserId: userId,
-            IsCurrentEvent: true,
+            IsCurrentEvent: isCurrentEvent,
             Attendees: []));
         return Task.CompletedTask;
     }

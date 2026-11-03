@@ -66,7 +66,6 @@ public sealed partial class ExpenseReportServiceTests
     private readonly IUserService _userService;
     private readonly IFinanceService _finance = Substitute.For<IFinanceService>();
     private readonly IFinanceWrite _financeWrite = Substitute.For<IFinanceWrite>();
-    private readonly IUserEmailService _userEmailService = Substitute.For<IUserEmailService>();
     private readonly IEmailService _emailService = Substitute.For<IEmailService>();
     private readonly IHoldedService _holdedService = Substitute.For<IHoldedService>();
     private readonly IHoldedClient _holdedClient = Substitute.For<IHoldedClient>();
@@ -89,8 +88,8 @@ public sealed partial class ExpenseReportServiceTests
 
     public ExpenseReportServiceTests()
     {
-        _preapprovalWrites.ReleaseAsync(default, default, default, default).ReturnsForAnyArgs(new PreapprovalWriteResult());
-        _preapprovalWrites.ConsumeAsync(default, default, default, default).ReturnsForAnyArgs(new PreapprovalWriteResult());
+        _preapprovalWrites.ReleaseAsync(default, default, default, default, Arg.Any<Action<Func<CancellationToken, Task>>?>()).ReturnsForAnyArgs(new PreapprovalWriteResult());
+        _preapprovalWrites.ConsumeAsync(default, default, default, default, Arg.Any<Action<Func<CancellationToken, Task>>?>()).ReturnsForAnyArgs(new PreapprovalWriteResult());
         _expenseRepo = new ExpenseRepository(new TestDbContextFactory<ExpensesDbContext>(_expensesOptions));
 
         // DrainHoldedOutboxAsync returns early unless IHoldedClient.IsConfigured, so the
@@ -109,7 +108,6 @@ public sealed partial class ExpenseReportServiceTests
             _budgetService,
             _teamService,
             _userService,
-            _userEmailService,
             _emailService,
             TestExpensesEmails.Create(),
             AuditLog,
@@ -904,7 +902,7 @@ public sealed partial class ExpenseReportServiceTests
         var logger = new CapturingLogger<ExpenseReportService>();
         var sut = new ExpenseReportService(
             _expenseRepo, _fileStorage, _budgetService, _teamService, _userService,
-            _userEmailService, _emailService, TestExpensesEmails.Create(),
+            _emailService, TestExpensesEmails.Create(),
             AuditLog, _holdedService, _holdedFinance, _finance, _financeWrite, _preapprovals, _preapprovalWrites, Clock, logger,
             Options.Create(new TravelReimbursementConfig()));
 
@@ -1025,7 +1023,7 @@ public sealed partial class ExpenseReportServiceTests
 
         var sut = new ExpenseReportService(
             failingRepo, _fileStorage, _budgetService, _teamService, _userService,
-            _userEmailService, _emailService, TestExpensesEmails.Create(),
+            _emailService, TestExpensesEmails.Create(),
             AuditLog, _holdedService, _holdedFinance, _finance, _financeWrite, _preapprovals, _preapprovalWrites, Clock, logger,
             Options.Create(new TravelReimbursementConfig()));
 
@@ -1147,7 +1145,7 @@ public sealed partial class ExpenseReportServiceTests
         var factory = new TestDbContextFactory<ExpensesDbContext>(options);
         var repo = new ExpenseRepository(factory);
         var service = new ExpenseReportService(repo, _fileStorage, _budgetService, _teamService,
-            _userService, _userEmailService, _emailService, TestExpensesEmails.Create(), AuditLog,
+            _userService, _emailService, TestExpensesEmails.Create(), AuditLog,
             _holdedService, _holdedFinance, _finance, _financeWrite, _preapprovals, _preapprovalWrites, Clock, NullLogger<ExpenseReportService>.Instance,
             Options.Create(new TravelReimbursementConfig()));
         var ct = TestContext.Current.CancellationToken;
@@ -1459,7 +1457,7 @@ public sealed partial class ExpenseReportServiceTests
             .AddInterceptors(interceptor).Options;
         var repo = new ExpenseRepository(new TestDbContextFactory<ExpensesDbContext>(options));
         var service = new ExpenseReportService(repo, _fileStorage, _budgetService, _teamService,
-            _userService, _userEmailService, _emailService, TestExpensesEmails.Create(), AuditLog,
+            _userService, _emailService, TestExpensesEmails.Create(), AuditLog,
             _holdedService, _holdedFinance, _finance, _financeWrite, _preapprovals, _preapprovalWrites, Clock, NullLogger<ExpenseReportService>.Instance,
             Options.Create(new TravelReimbursementConfig()));
         string? newKey = null;
@@ -1867,7 +1865,7 @@ public sealed partial class ExpenseReportServiceTests
         var logger = new CapturingLogger<ExpenseReportService>();
         var sut = new ExpenseReportService(
             _expenseRepo, _fileStorage, _budgetService, _teamService, _userService,
-            _userEmailService, _emailService, TestExpensesEmails.Create(),
+            _emailService, TestExpensesEmails.Create(),
             AuditLog, _holdedService, _holdedFinance, _finance, _financeWrite, _preapprovals, _preapprovalWrites, Clock, logger,
             Options.Create(new TravelReimbursementConfig()));
 
@@ -1896,7 +1894,7 @@ public sealed partial class ExpenseReportServiceTests
         var logger = new CapturingLogger<ExpenseReportService>();
         var sut = new ExpenseReportService(
             _expenseRepo, _fileStorage, _budgetService, _teamService, _userService,
-            _userEmailService, _emailService, TestExpensesEmails.Create(),
+            _emailService, TestExpensesEmails.Create(),
             AuditLog, _holdedService, _holdedFinance, _finance, _financeWrite, _preapprovals, _preapprovalWrites, Clock, logger,
             Options.Create(new TravelReimbursementConfig()));
 
@@ -1935,7 +1933,7 @@ public sealed partial class ExpenseReportServiceTests
         var logger = new CapturingLogger<ExpenseReportService>();
         var sut = new ExpenseReportService(
             _expenseRepo, _fileStorage, _budgetService, _teamService, _userService,
-            _userEmailService, _emailService, TestExpensesEmails.Create(),
+            _emailService, TestExpensesEmails.Create(),
             AuditLog, _holdedService, _holdedFinance, _finance, _financeWrite, _preapprovals, _preapprovalWrites, Clock, logger,
             Options.Create(new TravelReimbursementConfig()));
         var (_, category) = SetupActiveYear();
@@ -2878,10 +2876,7 @@ public sealed partial class ExpenseReportServiceTests
         var reportId = Guid.NewGuid();
         await SeedReportWithStatusAsync(reportId, submitter, category.Id, Guid.NewGuid(),
             ExpenseReportStatus.Submitted);
-        StubSubmitter(submitter, "Ana", "ana@example.com", "es");
-        _userEmailService.GetNotificationTargetEmailsAsync(
-                Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(new Dictionary<Guid, string>());
+        StubSubmitter(submitter, "Ana", null, "es");
 
         var ok = (await _sut.ApproveWithResultAsync(reportId, Guid.NewGuid(), null, null, TestContext.Current.CancellationToken)).Succeeded;
 
@@ -2926,16 +2921,13 @@ public sealed partial class ExpenseReportServiceTests
         await _emailService.DidNotReceive().SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>());
     }
 
-    private void StubSubmitter(Guid userId, string burnerName, string email, string language)
+    private void StubSubmitter(Guid userId, string burnerName, string? email, string language)
     {
         _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
             .Returns(UserInfo.Create(
-                user: new User { Id = userId, DisplayName = burnerName, BurnerName = burnerName, PreferredLanguage = language, CreatedAt = FakeNow },
+                user: new User { Id = userId, DisplayName = burnerName, BurnerName = burnerName, Email = email, PreferredLanguage = language, CreatedAt = FakeNow },
                 userEmails: [], eventParticipations: [], externalLogins: [],
                 profile: null, communicationPreferences: []));
-        _userEmailService.GetNotificationTargetEmailsAsync(
-                Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Contains(userId)), Arg.Any<CancellationToken>())
-            .Returns(new Dictionary<Guid, string> { [userId] = email });
     }
 
     [HumansFact]
@@ -3732,7 +3724,7 @@ public sealed partial class ExpenseReportServiceTests
             .AddInterceptors(new FailReceiptReacceptance()).Options;
         var repo = new ExpenseRepository(new TestDbContextFactory<ExpensesDbContext>(options));
         var service = new ExpenseReportService(repo, _fileStorage, _budgetService, _teamService,
-            _userService, _userEmailService, _emailService, TestExpensesEmails.Create(), AuditLog,
+            _userService, _emailService, TestExpensesEmails.Create(), AuditLog,
             _holdedService, _holdedFinance, _finance, _financeWrite, _preapprovals, _preapprovalWrites, Clock, NullLogger<ExpenseReportService>.Instance,
             Options.Create(new TravelReimbursementConfig()));
         string? newKey = null;

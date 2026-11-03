@@ -1,4 +1,6 @@
+using System.Transactions;
 using AwesomeAssertions;
+using Humans.AuditLog.Contracts;
 using Humans.Governance.Contracts;
 using Humans.Governance.Data;
 using Humans.Governance.Domain;
@@ -19,6 +21,7 @@ public sealed class MembershipTierServiceTests : IDisposable
     private static readonly LocalDate Today = new(2026, 10, 21);
 
     private readonly FakeClock _clock = new(Now);
+    private readonly IAuditLogService _audit = Substitute.For<IAuditLogService>();
     private readonly IUserService _users = Substitute.For<IUserService>();
     private readonly GovernanceDbContext _db;
     private readonly MembershipTierService _sut;
@@ -29,7 +32,7 @@ public sealed class MembershipTierServiceTests : IDisposable
             new DbContextOptionsBuilder<GovernanceDbContext>().UseInMemoryDatabase(Guid.NewGuid().ToString()).Options);
         _db = factory.CreateDbContext();
         _sut = new MembershipTierService(
-            new ApplicationRepository(factory), new ApplicationRepository(factory), _users, _clock);
+            new ApplicationRepository(factory), new ApplicationRepository(factory), _users, _audit, _clock);
     }
 
     public void Dispose() => _db.Dispose();
@@ -147,6 +150,49 @@ public sealed class MembershipTierServiceTests : IDisposable
         fallback.GrantedByApplicationId.Should().Be(colaborador.Id);
         fallback.ExpiresAt.Should().Be(Today.PlusDays(400));
         (await _sut.GetTierAsync(lapsed, Ct)).Should().Be(MembershipTier.Volunteer);
+        foreach (var (id, tier) in downgrades)
+            await _audit.Received(1).LogAsync(GovernanceAuditActions.TierDowngraded, "Profile", id,
+                $"Membership tier changed to {tier} for Ana due to Asociado term expiry",
+                "MembershipTierExpiryJob", id, nameof(User));
+        await _audit.DidNotReceive().LogAsync(GovernanceAuditActions.TierDowngraded, "Profile", inTerm,
+            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<Guid?>(), Arg.Any<string?>());
+    }
+
+    [HumansFact]
+    public async Task Expire_NameLookupFailure_LeavesTierEligibleForRetry()
+    {
+        var userId = SeedUser();
+        await SeedRowAsync(userId, MembershipTier.Asociado);
+        _users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<UserInfo?>(Task.FromException<UserInfo?>(new InvalidOperationException("User lookup unavailable"))));
+
+        var act = () => _sut.ExpireAsync(MembershipTier.Asociado, Today, Ct);
+
+        await act.Should().ThrowAsync<InvalidOperationException>();
+        (await RowAsync(userId))!.Tier.Should().Be(MembershipTier.Asociado);
+        _audit.ReceivedCalls().Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task Expire_AuditsAfterTheTierWriteCommits()
+    {
+        var userId = SeedUser();
+        await SeedRowAsync(userId, MembershipTier.Asociado);
+        var auditInsideTransaction = false;
+        MembershipTier? tierWhenAudited = null;
+        _audit.LogAsync(GovernanceAuditActions.TierDowngraded, "Profile", userId,
+                Arg.Any<string>(), "MembershipTierExpiryJob", userId, nameof(User))
+            .Returns(async _ =>
+            {
+                auditInsideTransaction = Transaction.Current is not null;
+                tierWhenAudited = (await RowAsync(userId))!.Tier;
+            });
+
+        var result = await _sut.ExpireAsync(MembershipTier.Asociado, Today, Ct);
+
+        result.Should().ContainSingle().Which.Should().Be((userId, MembershipTier.Volunteer));
+        tierWhenAudited.Should().Be(MembershipTier.Volunteer);
+        auditInsideTransaction.Should().BeFalse();
     }
 
     [HumansFact]

@@ -29,7 +29,7 @@ Five questions. Everything in the section is one of these.
 | # | Question | Answered by | Reached from |
 |---|---|---|---|
 | 1 | Where is this person in the funnel? | `IOnboardingWidgetState.GetCurrentStepAsync` | the widget dispatcher, the Guest dashboard, the layout banner |
-| 2 | Record this step's answer and move them on | `Names` POST, `SignUp`, `SignUpRange`, `Skip`, `SignConsent` | the three step pages |
+| 2 | Record this step's answer and move them on | `Names` POST, `SignUp`, `SignUpRange`, `Skip`; Consent's `/Consent/Submit` for step 3 | the three step pages |
 | 3 | Did that write push them over the review threshold? | `IOnboardingIntake.ProfileSavedAsync` / `ConsentSignedAsync` | reported by three controllers after a profile or consent write |
 | 4 | What is left for them to sign? | `GetNextUnsignedConsentAsync` | the widget's consent step |
 | 5 | This person is out | `IOnboardingIntake.RejectSignupAsync` | Consent's review detail page and Users' admin screen |
@@ -42,8 +42,8 @@ Notes the table hides:
   widget. That is deliberate — `UserState.Active` is the access gate and the banner picks them
   up on arrival — but it means "where is this person" has one authority for access and another
   for the funnel, and the two must not be conflated.
-- **Shape 2's steps hand forward directly (Names → Shifts → Consents).** Only `SignConsent`
-  returns to the dispatcher. The dispatcher remains shape 1's sole answer and the only thing
+- **Shape 2's steps hand forward directly (Names → Shifts → Consents).** Only the consent step
+  returns to the dispatcher (Consent's `Submit` lands on its return URL). The dispatcher remains shape 1's sole answer and the only thing
   that resolves a step from data.
 - **Only shapes 3 and 5 are asked from outside the section.** Shape 1's answer is asked from
   inside this section and nowhere else; shape 4 has no outside caller at all. That is
@@ -98,8 +98,8 @@ Presentation the section does *not* own: the rota tables on the shifts step are 
   computation loops a bare account on the Names form forever.
   (`Controllers/OnboardingWidgetController.cs:87`.)
 - **The dispatcher is the canonical entry point and the only thing that resolves a step from
-  data; step pages hand forward to the next page directly.** Only `SignConsent` returns to it.
-  (`Controllers/OnboardingWidgetController.cs:99`, `:158`, `:172`, `:180`, `:257`.)
+  data; step pages hand forward to the next page directly.** Only the consent step returns to it,
+  through Consent's `Submit` return URL. (`Controllers/OnboardingWidgetController.cs`.)
 - **No leaf-to-director callback.** `ProfileService` and `ConsentService` do not depend on
   Onboarding; the threshold check is a peer call from the controller after the leaf write.
   (`Humans.Users/Controllers/ProfileController.cs:453`;

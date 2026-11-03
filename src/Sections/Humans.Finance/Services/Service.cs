@@ -28,12 +28,12 @@ internal sealed class Service(
     IHoldedClient client,
     IBudgetService budget,
     IHoldedService holded,
+    IHoldedWrite holdedWrite,
     IExpenseHoldedBookingService expenses,
     IClock clock,
     IMemoryCache cache,
     IAuditLogService audit,
     IUserService users,
-    IUserEmailService userEmails,
     IEmailService emailService,
     FinanceEmails emails,
     IOptions<SepaOptions> sepa,
@@ -51,9 +51,9 @@ internal sealed class Service(
 
     private static readonly TimeSpan ContactsCacheDuration = TimeSpan.FromMinutes(2);
     private static readonly DateTimeZone MadridZone = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
-    private readonly SepaBankBooking booking = new(repo, client, clock, bookingState, audit, sepa, logger);
+    private readonly SepaBankBooking booking = new(repo, client, holdedWrite, clock, bookingState, audit, sepa, logger);
     private readonly HoldedDocumentSync documentSync = new(repo, client, clock, logger);
-    private readonly SepaPayoutEmails payoutEmails = new(users, userEmails, emailService, emails, logger);
+    private readonly SepaPayoutEmails payoutEmails = new(users, emailService, emails, logger);
 
     public async Task<HoldedProvisioningPlan> GetProvisioningPlanAsync(
         int blockStart, CancellationToken ct = default)
@@ -249,9 +249,9 @@ internal sealed class Service(
             throw;
         }
 
-        await RegisterManagedAsync(next, id, name, managed, now, ct);
         await audit.LogAsync(FinanceAuditActions.HoldedExpenseAccountCreated, HoldedExpenseAccount, Guid.Empty,
             $"Created Holded expense account {next} '{name}'", "Finance");
+        await RegisterManagedAsync(next, id, name, managed, now, ct);
         return new HoldedExpenseAccountRef(next, id, name, Created: true);
     }
 
@@ -1184,8 +1184,12 @@ internal sealed class Service(
 
     /// <summary>The row is kept and flagged; nothing pairs, books or counts it again. Only an unbooked row with no
     /// Holded posting can be withdrawn.</summary>
-    public async Task<SepaBookingResult> WithdrawSepaTransferAsync(
-        Guid transferId, Guid actorUserId, CancellationToken ct = default)
+    public Task<SepaBookingResult> WithdrawSepaTransferAsync(
+        Guid transferId, Guid actorUserId, CancellationToken ct = default) =>
+        booking.UnderBookingGateAsync(() => WithdrawSepaTransferGatedAsync(transferId, actorUserId, ct));
+
+    private async Task<SepaBookingResult> WithdrawSepaTransferGatedAsync(
+        Guid transferId, Guid actorUserId, CancellationToken ct)
     {
         var transfer = await repo.GetSepaTransferAsync(transferId, ct);
         if (transfer is null)
@@ -1195,7 +1199,7 @@ internal sealed class Service(
 
         var row = (await repo.GetSepaPayoutTransferRowsAsync(ct)).First(r => r.TransferId == transferId);
         var now = clock.GetCurrentInstant();
-        await repo.SaveSepaTransferWithdrawnAsync(transferId, now, actorUserId, ct);
+        await repo.SaveSepaTransfersWithdrawnAsync([transferId], now, actorUserId, ct);
 
         await audit.LogAsync(
             FinanceAuditActions.SepaPayoutTransferWithdrawn, SepaTransferEntityType, transferId,
@@ -1208,6 +1212,47 @@ internal sealed class Service(
         return new SepaBookingResult(true,
             $"Withdrew the {Euros(transfer.Amount)} transfer to {transfer.IbanMasked} from {row.FileName}; "
             + "the member has been told and the account is payable again.");
+    }
+
+    /// <summary>For a file the bank rejected whole: withdraws every transfer still live in it, in one save, so it is
+    /// cancelled. All or nothing: refused if any live transfer could not be withdrawn on its own. No member email,
+    /// unlike a single withdrawal: the file is usually reissued at once, and that sends the payout email again.</summary>
+    public Task<SepaBookingResult> CancelSepaFileAsync(Guid fileId, Guid actorUserId, CancellationToken ct = default) =>
+        booking.UnderBookingGateAsync(() => CancelSepaFileGatedAsync(fileId, actorUserId, ct));
+
+    private async Task<SepaBookingResult> CancelSepaFileGatedAsync(Guid fileId, Guid actorUserId, CancellationToken ct)
+    {
+        var rows = (await repo.GetSepaPayoutTransferRowsAsync(ct)).Where(r => r.FileId == fileId).ToList();
+        if (rows.Count == 0)
+            return new SepaBookingResult(false, "That file no longer exists — reload the page.");
+        if (CancelFileRefusal(rows) is { } refusal)
+            return new SepaBookingResult(false, refusal);
+
+        var live = rows.Where(r => !r.IsWithdrawn).ToList();
+        var fileName = rows[0].FileName;
+        await repo.SaveSepaTransfersWithdrawnAsync(live.Select(r => r.TransferId).ToList(),
+            clock.GetCurrentInstant(), actorUserId, ct);
+
+        foreach (var r in live)
+            await audit.LogAsync(
+                FinanceAuditActions.SepaPayoutTransferWithdrawn, SepaTransferEntityType, r.TransferId,
+                $"WITHDRAWN the SEPA payout {Euros(r.Amount)} to {r.IbanMasked} on creditor account "
+                + $"{r.SupplierAccountNum}: file {fileName} was cancelled whole, the bank never executed it.",
+                actorUserId, r.UserId, nameof(User));
+
+        return new SepaBookingResult(true,
+            $"Cancelled {fileName}: {live.Count} transfers, {Euros(live.Sum(r => r.Amount))}. "
+            + "Their accounts are payable again; no member was emailed.");
+    }
+
+    /// <summary>The same rule decides whether <c>/Finance/Sepa</c> offers Cancel file.</summary>
+    internal static string? CancelFileRefusal(IReadOnlyCollection<SepaPayoutTransferRow> fileRows)
+    {
+        var live = fileRows.Where(r => !r.IsWithdrawn).ToList();
+        if (live.Count == 0) return "This file is already cancelled.";
+        return live.Select(r => WithdrawRefusal(r)).FirstOrDefault(r => r is not null) is { } refusal
+            ? $"Cannot cancel the file: {refusal}"
+            : null;
     }
 
     /// <summary>The same rule shows the reason on <c>/Finance/Sepa</c> in place of the button.</summary>

@@ -48,7 +48,7 @@ else if (!byHand)
 {
     <div class="alert alert-info">Filled by another section (@p.SourceKey). Managers can revoke or resend, not issue.</div>
 }
-else
+else if (Model.CanManage)
 {
     <div class="card mb-4" style="max-width: 760px;">
         <div class="card-body">
@@ -99,7 +99,7 @@ else
                             }
                         </td>
                         <td class="text-end text-nowrap">
-                            @if (g.RevokedAt is null)
+                            @if (g.RevokedAt is null && Model.CanManage)
                             {
                                 <form method="post" asp-action="Resend" asp-route-programId="@p.Id" asp-route-grantId="@g.Id" class="d-inline">
                                     <button type="submit" class="btn btn-sm btn-outline-secondary">Resend notice</button>

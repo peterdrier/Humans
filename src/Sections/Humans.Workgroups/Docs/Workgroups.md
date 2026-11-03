@@ -2,7 +2,6 @@
   src/Sections/Humans.Workgroups/**
   tests/Humans.Workgroups.Tests/**
   src/Sections/Humans.Users.Contracts/IUserService.cs
-  src/Sections/Humans.Users.Contracts/IUserEmailService.cs
   src/Sections/Humans.Auth/Contracts/IRoleAssignmentService.cs
   src/Sections/Humans.Teams.Contracts/ITeamService.cs
   src/Sections/Humans.Finance.Contracts/IHoldedFinanceWrite.cs
@@ -46,11 +45,12 @@ administrative recognition, and every decision is a human's.
   Board/Admin. Name, status, purpose, the deliverable sentence and the coordinators stay on
   the register: the coordinators are the group's public contact (the people the resolution
   names), and asking to join needs someone to ask.
-- A **Meeting** is a dated session the group owns, optionally listed in the community
-  calendar, with minutes filled in afterwards. Everyone with app access can read
-  meetings and minutes on the group page; calendar listing does not change that access.
+- A **Meeting** is a dated session the group owns, one-off or repeating, optionally listed
+  in the community calendar. Notes taken at or after an occurrence are **Meeting notes** log
+  entries, not part of the meeting. Everyone with app access can read meetings and notes on
+  the group page; calendar listing does not change that access.
 - A **Log entry** is one dated line in the group's history. System kinds record lifecycle
-  steps and never change; member kinds (Update, Disclosure, StatusRequested, Note) are
+  steps and never change; member kinds (Update, Disclosure, StatusRequested, Note, MeetingNotes) are
   written, edited and deleted by members.
 - A **Document** is a Markdown artefact: Draft → Published → Delivered, an optional
   comment period, and, once Delivered, the Board's disposition.
@@ -113,10 +113,13 @@ Unique filtered `(WorkgroupId, UserId)` where `LeftAt IS NULL`.
 | Id | Guid | PK |
 | WorkgroupId | Guid | FK, Cascade |
 | Title | string(200) | |
-| StartUtc / EndUtc | Instant | |
+| StartUtc / EndUtc | Instant | The first occurrence of a repeating meeting |
+| RecurrenceRule | string(500)? | RFC 5545 RRULE; null for a one-off. Validated with Calendar's `CalendarRecurrence.IsValidRule` |
+| RecurrenceTimezone | string(100)? | IANA zone the rule repeats in, so 19:00 stays 19:00 across DST; set exactly when the rule is |
+| Description | string(4000)? | What the meeting is for, written beforehand; shown on the group page and as the calendar entry's description (falls back to the deliverable) |
 | Location / LocationUrl | string(500)? / string(2000)? | |
 | IsPublic | bool | Adds the meeting to the community calendar; register visibility stays AppAccess |
-| Minutes | text? | Markdown, filled in afterwards |
+| Minutes | text? | Legacy single minutes box: no longer editable, still shown on the meeting's first occurrence. New notes are MeetingNotes log entries |
 | CreatedByUserId | Guid? | Bare reference; nulled on erasure |
 | CreatedAt / UpdatedAt | Instant | |
 | DeletedAt | Instant? | Soft delete; excluded everywhere outside the repository |
@@ -126,8 +129,23 @@ predicate reads that column.
 
 Meeting URLs accept up to 2000 characters. The service validates the limit for creates
 and edits; form failures preserve the entered values and show a localized error.
-Meeting date/time inputs use the shared invariant formatters and remain UTC, with
-ISO dates and 24-hour times regardless of request culture.
+Meetings are created and edited through Calendar's shared form (`_CalendarEventForm`,
+`ICalendarEventForm`): date and time inputs plus a time zone chooser that defaults to the
+organisation zone (`ISettingsService.GetTimeZoneIdAsync`, Settings' `Event:TimeZoneId`). Times
+are read in the chosen zone and stored as UTC instants. A one-off meeting doesn't store its
+zone, so its edit reopens in the organisation zone; a repeating meeting stores it and reopens
+in it. Meetings hide the form's all-day part and use its recurrence picker.
+
+Occurrences are expanded by Calendar's `CalendarRecurrence.Occurrences`, the same expansion
+the community calendar uses; nothing per occurrence is stored. The group page timeline lists
+every occurrence that has started plus each meeting's next one, each dated in the meeting's
+zone (organisation zone for a one-off); `NextMeeting` is the earliest upcoming occurrence.
+Editing or deleting acts on the whole series. Meetings repeat daily at most: the service
+refuses sub-daily rules, since the page and the daily job expand a series from its start. A
+series' later occurrences are scheduled, not evidence of a meeting, so for the update-due
+rhythm only its stored first occurrence counts; the notes posted for later weeks count instead. The calendar contributor passes a repeating
+meeting as one item carrying its rule, so the personal feed holds one repeating VEVENT and the
+community calendar expands it within its window.
 
 ### WorkgroupLogEntry — `workgroup_log_entries`
 
@@ -142,9 +160,16 @@ ISO dates and 24-hour times regardless of request culture.
 | AuthorUserId | Guid? | Bare reference; null for system entries and after erasure |
 | DocumentId | Guid? | FK → WorkgroupDocument, SetNull |
 | SurveyId | Guid? | Bare reference to a survey in Surveys |
+| MeetingId | Guid? | FK → WorkgroupMeeting, SetNull. Kept only on MeetingNotes, and only for one of the group's live meetings; `OccurredOn` names the occurrence. An unchanged link survives its meeting's deletion, so the notes stay editable |
 | CreatedAt / UpdatedAt | Instant | |
 
-Indexes `(WorkgroupId, OccurredOn)` and `AuthorUserId` filtered non-null.
+Indexes `(WorkgroupId, OccurredOn)`, `AuthorUserId` filtered non-null, and `MeetingId`.
+
+Meeting notes are posted from the **Add notes** button beside each started occurrence on the
+timeline, which prefills the kind, the occurrence date, the meeting title and the link; a
+member may also post them from the plain log form with no meeting. Any number of notes can
+attach to one occurrence. Bodies are Markdown, written in the shared Markdown editor and
+rendered with `SanitizedMarkdown`.
 
 Not §12 append-only by design: the log is a working record; the audit trail is the
 immutable one. Member entries are editable and hard-deletable by any member (audited).
@@ -261,7 +286,7 @@ Settings and Register an existing group on first setup or after clearing the que
 | Actor | Capabilities |
 |-------|--------------|
 | Any signed-in human with an approved profile | Browse the register and every group page; read Published/Delivered documents, meetings and the log of a non-sensitive group; ask to join, withdraw the request, or leave; comment during an open window (non-sensitive groups); request a status update; apply to form a group |
-| Workgroup member | Additionally: read Draft documents; everything on a sensitive group's page; edit register fields (including the sensitive flag); create/edit meetings and minutes; post Update, Disclosure and Note entries; create/edit/publish/deliver documents; open/close comment periods; respond to and dispose of comments; hide a comment with a reason; link an authored survey; mark the group done |
+| Workgroup member | Additionally: read Draft documents; everything on a sensitive group's page; edit register fields (including the sensitive flag); create/edit meetings; post Update, Meeting notes, Disclosure and Note entries; create/edit/publish/deliver documents; open/close comment periods; respond to and dispose of comments; hide a comment with a reason; link an authored survey; mark the group done |
 | Coordinator | Everything a member can, plus the membership decision: approve or decline join requests and add people directly. Named on the register; addressee of notifications and join requests; may hand coordination to another member |
 | Board, Admin (`BoardOrAdmin`) | Register, refer, refuse, withdraw, close, reactivate; set coordinators (override); approve, decline and add members on any group; register on behalf (bootstrapping); record a document's disposition; view the admin queue; edit any group; read sensitive groups; set the root Drive folder; set the budget and its Holded account |
 
@@ -275,7 +300,7 @@ Settings and Register an existing group on first setup or after clearing the que
 
 - Opt-outable email builders capture the recipient/template culture on `EmailMessage` before restoring their rendering scope; Email renders the shared unsubscribe footer in that culture.
 
-- The visible workgroup budget card uses the shared euro formatter in the selected UI culture.
+- The visible workgroup budget card uses the shared euro formatter in the selected UI culture. Registration and budget-edit forms parse posted amounts as invariant dot decimals without grouping separators, so comma-formatted values fail validation rather than becoming larger budgets.
 
 - Budget preparation remains cancellable. Account creation or linking runs independently of browser cancellation through Finance, then saves the budget/binding and system log together before auditing. Amount-only saves retain cancellation until their combined save succeeds; audit finishes independently.
 
@@ -427,7 +452,7 @@ anything — every action here is a notice, a flag, or a record; a human still h
 
 | Condition | Action |
 |-----------|--------|
-| Active, no Update/meeting in 30 days | Notify coordinators, in-app, once per 30-day window |
+| Active, no Update, meeting notes or meeting (a series counts its stored first occurrence only) in 30 days | Notify coordinators, in-app, once per 30-day window |
 | Applied/Referred, ≥ 14 days old | Notify Board once |
 
 Disposition-overdue is a read-time badge computed by `WorkgroupRhythm` against the caller's
@@ -444,8 +469,7 @@ should end is the Board's decision, taken on the register in front of them.
 
 - **Audit actions:** declared on `WorkgroupsAuditActions` (`src/Sections/Humans.Workgroups/WorkgroupsAuditActions.cs`), one `AuditActionDefinition` each, written through `IAuditLogService`: `WorkgroupRegistered`, `WorkgroupReferred`, `WorkgroupRefused`, `WorkgroupWithdrawn`, `WorkgroupClosed`, `WorkgroupReactivated`, `WorkgroupCoordinatorsChanged`, `WorkgroupDispositionRecorded`, `WorkgroupRegisteredExisting`, `WorkgroupBudgetSet`, `WorkgroupApplicationOverdue`, `WorkgroupUpdateDueNotified`, `WorkgroupLogEntryDeleted`, `WorkgroupLogEntryUpdated`, `WorkgroupMeetingUpdated`, `WorkgroupMeetingDeleted`, `WorkgroupCommentHidden`, `WorkgroupsRootFolderUpdated`, `WorkgroupMembershipApproved`, `WorkgroupMembershipDeclined`, `WorkgroupMemberAdded`.
 - **Notifications:** `INotificationEmitter` (and `INotificationAutoResolve` where a source resolves). Its sources are declared in `WorkgroupsNotificationSources` (`src/Sections/Humans.Workgroups/WorkgroupsNotificationSources.cs`), one `NotificationSourceDefinition` each: `WorkgroupRegistrationPending` (actionable, to board role: a working group applies, or its application goes overdue); `WorkgroupRegistrationDecided` (informational, to the group's coordinators: registration decided (registered, refused, withdrawn, ended, reactivated)); `WorkgroupReportingDue` (informational, to the group's coordinators: thirty days without an update or meeting); `WorkgroupDocumentActivity` (informational (actionable to board when a document is delivered for disposition), to group members, comment authors, or Board role: document published, comment opened/answered, or delivered for disposition); `WorkgroupDispositionRecorded` (informational, to the group's current members: board records its written disposition on a delivered document); `WorkgroupMembershipRequested` (informational, to the group's coordinators: someone asks to join a working group); `WorkgroupMembershipDecided` (informational, to the requester or added person: join request approved or declined, or a coordinator adds the person directly).
-- **Users**: `IUserService` — names, approved-profile check;
-  `IUserEmailService` — notification target addresses for lifecycle emails.
+- **Users**: `IUserService` — names, approved-profile check, and canonical `UserInfo.Email` for lifecycle notices from the same recipient snapshot as name and language.
 - **Governance**: `IGovernanceService.GetMembershipTiersAsync` — roster tier badges and the budget-visibility tier check.
 - **Auth**: `IRoleAssignmentService` — active holders of the Board role, the recipients of Board emails.
 - **Teams**: `ITeamService` — `SystemTeamIds.Board` membership for badges (controller) and the root Drive readers (Drive source).
@@ -523,10 +547,10 @@ display-name reads.
   `WorkgroupRhythm` computes rhythm badges from the snapshot against the caller's clock.
 - **Member ordering** — views show coordinators before other members, then by join date. Coordinator names and selection slots keep join-date order; the details page reuses one ordered member list for its roster and member selectors.
 - **Document ordering** — views order documents newest first. The document page sorts comments once: populated categories follow their earliest comment, and each thread keeps chronological order.
-- **Meeting ordering** — the details timeline orders meetings by start before combining them with dated log entries. The snapshot does not sort meetings; `NextMeeting` selects the earliest not-yet-started meeting directly, and Calendar consumers order feed items.
+- **Meeting ordering** — the details timeline orders meetings by start before combining them with dated log entries. The snapshot does not sort meetings; `NextMeeting` selects the earliest not-yet-started occurrence directly, and Calendar consumers order feed items.
 - **Log ordering** — the details timeline orders log entries by occurrence date, then creation time, both descending. The snapshot does not impose log display order; rhythm calculations select their latest qualifying activity explicitly.
 - **Display stitching** — `IUserService.GetUserInfosAsync` for burner names; `IGovernanceService.GetMembershipTiersAsync` (in `WorkgroupsController`) for tiers.
-- **Cross-section calls** — `IUserService`, `IUserEmailService`,
+- **Cross-section calls** — `IUserService`,
   `IRoleAssignmentService`, `ISettingsService`, `IGoogleSyncService`, `IGoogleSyncWrite`,
   `INotificationService`, `IEmailService`, `IAuditLogService`,
   `ISurveyAnalysisRead`, `IClock`, `IHoldedFinanceWrite`, `IHoldedService`.

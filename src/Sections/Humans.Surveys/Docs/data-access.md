@@ -42,13 +42,12 @@ Repository: `ISurveyRepository`.
 
 Cross-section calls via `ITeamService` (audience resolution — team
 members for `SurveyAudienceType.Team`), `IUserService` (active-member
-enumeration, display-name stitching in results / export), `ITicketService`
+enumeration, canonical notification addresses, display-name stitching in results / export), `ITicketService`
 (audience resolution — current-event ticket holders for
 `SurveyAudienceType.TicketHolders`), `IShiftView` (audience resolution —
 shift participants for `SurveyAudienceType.ShiftParticipants`),
-`IGovernanceService` / `IConsentService` (audience resolution — `SurveyAudienceType.Asociados`,
-and Asociado eligibility: membership tier plus an approved consent review),
-`IUserEmailService` (notification email per invitee), `IEmailService` (outbox
+`IGovernanceService` (Asociado audience and eligibility: current membership tier plus active account state; the Consent Coordinator review does not gate access),
+`IEmailService` (outbox
 enqueue), the section's own `SurveysEmails` builder (invitation templates),
 `ISurveyInviteTokenProvider` (section-local, data-protection invite tokens),
 `IGoogleTranslationService` (Cloud Translation pre-fill for admin translation
@@ -72,16 +71,16 @@ column) resolves from the cached `UserInfo.LastLoginAt` via the existing
 
 Owns the daily reminder batch through the existing job contract. Reads `surveys` and
 `survey_invitations` through `ISurveyRepository`, then stamps `ReminderSentAt` after
-Email outbox acceptance. Uses `IUserService`, `IUserEmailService`, `SurveysEmails`,
+Email outbox acceptance. Uses `IUserService` (canonical name, culture and email together), `SurveysEmails`,
 `ISurveyInviteTokenProvider`, `IEmailService`, `IAuditLogService` and `IClock`.
 
 ### SurveyPreviewEmailService (Scoped, `Humans.Surveys.Services`)
 
 No repository, no `IMemoryCache`. Orchestrator (`IOrchestrator`) — sends a
-side-effect-free survey invitation preview to the requesting Board/Admin
+side-effect-free survey invitation preview to the requesting
 user, reusing the production invitation template/transport but creating no
 invitation, response, or funnel row. Calls `ISurveyService` (own section,
-for the survey content), `IUserEmailService` / `IUserService` (Users),
+for the survey content), `IUserService` (Users: canonical name, culture and email),
 `IEmailService` / `IEmailPreviewService` (Email — both via public service
 interfaces) plus the section's own `SurveysEmails`, and `SurveyPreviewTokenProvider`
 (local, HMAC preview tokens).

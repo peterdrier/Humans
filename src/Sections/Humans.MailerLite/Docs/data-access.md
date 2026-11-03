@@ -32,8 +32,8 @@ No repository. `MailerLiteClient` is the MailerLite HTTP port, built over
 No repository, no cache. Implements `IUserDataContributor` — the section owns
 no user-scoped tables, so `ContributeForUserAsync` (Article 15) always
 returns empty; `EraseForUserAsync` (Article 17) deletes the MailerLite
-subscriber under every verified address plus the primary via `IMailerLiteService`. Depends on
-`IMailerLiteService`, `IUserEmailService`.
+subscriber under the raw account's verified addresses plus the live account's email fallback via
+`IMailerLiteService`. Reads `IUserService.GetRawUserInfoAsync`; archived ids never resolve to the survivor.
 
 ### MailerLiteAudienceSyncService (Scoped)
 

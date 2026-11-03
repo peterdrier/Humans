@@ -4,7 +4,7 @@ using NodaTime;
 namespace Humans.AuditLog.Contracts;
 
 /// <summary>
-/// Call after the business save. Each <c>LogAsync</c> saves at once and is best-effort: a failure is logged,
+/// Call after the business transaction commits. Each <c>LogAsync</c> saves at once and is best-effort: a failure is logged,
 /// never thrown, so audit never breaks the operation.
 /// </summary>
 public interface IAuditLogService : IApplicationService
@@ -33,7 +33,7 @@ public interface IAuditLogService : IApplicationService
         CancellationToken ct = default);
 }
 
-/// <summary><c>Action</c> is the stored name; <see cref="IAuditViewerService"/> resolves it to its definition.</summary>
+/// <summary><c>Action</c> is the stored name; <c>IAuditViewerService</c> resolves it to its definition.</summary>
 public sealed record AuditLogEntrySnapshot(
     Guid Id,
     string Action,

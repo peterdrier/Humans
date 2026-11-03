@@ -1,5 +1,5 @@
 using System.Globalization;
-using CsvHelper.Configuration;
+using CsvHelper;
 using Humans.Base.Csv;
 using Humans.Base.Extensions;
 using Humans.Events.Contracts;
@@ -95,17 +95,15 @@ internal static class EventBulkUploadTemplateBuilder
         return HumansCsv.WriteBytes(
             csv =>
             {
-                csv.Context.RegisterClassMap<BulkEventCsvRecordMap>();
                 foreach (var line in banner)
                 {
                     csv.WriteComment(line);
-                    csv.NextRecord();
                 }
                 csv.WriteRecords(records);
             },
             // A round-trip data file: injection escaping would prepend apostrophes that come back as data on
             // re-upload, dirtying untouched rows.
-            config => config.InjectionOptions = InjectionOptions.None);
+            config => config with { Injection = CsvInjection.None, CommentPrefix = '#' });
     }
 
     private static DateTime ToLocalDateTime(Instant instant, DateTimeZone? timeZone) =>

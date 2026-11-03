@@ -795,6 +795,19 @@ public sealed class CachingTeamServiceTests : TeamsTestHarness
     }
 
     [HumansFact]
+    public async Task SearchAsync_LimitKeepsTheHighestScoringMatch()
+    {
+        SeedTeam("A Kitchen");
+        SeedTeam("Kitchen Crew");
+        var exact = SeedTeam("Kitchen");
+        await SaveAllAsync(TestContext.Current.CancellationToken);
+
+        var results = await _service.SearchAsync("Kitchen", 1, TestContext.Current.CancellationToken);
+
+        results.Should().ContainSingle().Which.TeamId.Should().Be(exact.Id);
+    }
+
+    [HumansFact]
     public async Task SearchAsync_ScoresItsOwnHits_ExactThenPrefixThenContains()
     {
         // Scoring belongs to the section, not the global-search orchestrator.

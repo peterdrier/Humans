@@ -17,7 +17,6 @@ internal interface ISurveyPreviewEmailService : IOrchestrator
 /// </summary>
 internal sealed class SurveyPreviewEmailService(
     ISurveyService surveyService,
-    IUserEmailService userEmailService,
     IUserService userService,
     IEmailService emailService,
     SurveysEmails emailMessages,
@@ -74,11 +73,10 @@ internal sealed class SurveyPreviewEmailService(
         if (detail is null)
             return (null, "Surveys_PreviewNotFound");
         var survey = detail.Editable;
-        var emails = await userEmailService.GetNotificationTargetEmailsAsync([userId], ct);
-        if (!emails.TryGetValue(userId, out var email))
+        var user = await userService.GetUserInfoAsync(userId, ct);
+        if (user?.Email is not { Length: > 0 } email)
             return (null, "Surveys_PreviewNoEmail");
 
-        var user = await userService.GetUserInfoAsync(userId, ct);
         var name = user?.BurnerName ?? string.Empty;
         var culture = user?.PreferredLanguage.IsSupportedCultureCode() == true
             ? user.PreferredLanguage

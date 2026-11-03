@@ -676,7 +676,6 @@ graph LR
     Survey --> Email
     Survey --> GTrans
     Survey --> AppDec
-    Survey --> Consent
     SurveyPrevEmail --> UEmail
     SurveyPrevEmail --> User
     SurveyPrevEmail --> Email

@@ -1,9 +1,10 @@
 <!-- freshness:triggers
   src/Sections/Humans.Gdpr/**
   src/Sections/Humans.Gdpr/Contracts/**
+  src/Humans.Base/Gdpr/**
 -->
 <!-- freshness:flag-on-change
-  The fan-out contract (IUserDataContributor / UserDataSlice) and the failure rules the orchestrator enforces — never swallow a contributor exception, never accept a duplicate export section name, log an error for an exported section with no erasure declaration, never leave an erasure section behind silently — review whenever the Contracts/ folder or GdprService changes.
+  The fan-out contract (IUserDataContributor / UserDataSlice) and the failure rules the orchestrator enforces — never swallow a contributor exception, never accept a duplicate export section name, log an error for an exported section with no erasure declaration, never leave an erasure section behind silently — review whenever the Contracts/ folder, src/Humans.Base/Gdpr/ or GdprService changes.
 -->
 
 # Gdpr — Section Invariants
@@ -20,7 +21,9 @@
   account-status landing pages — and compute nothing: the export is `IGdprService`,
   the deletion work is Users' `IAccountDeletionService`.
 - **`IUserDataContributor`** is the fan-out contract (an `IFanout`, per
-  `memory/architecture/orchestrator-marker.md`). Every service that owns
+  `memory/architecture/orchestrator-marker.md`). It and `UserDataSlice` live in
+  `src/Humans.Base/Gdpr/` (namespace still `Humans.Gdpr.Contracts`) so contributors
+  need no reference to this section; Gdpr still owns them. Every service that owns
   user-scoped tables implements it and returns the personal data it — and only
   it — owns.
 - **`UserDataSlice`** is one contributor's answer: a section name the
@@ -61,7 +64,7 @@ email links `/Gdpr/Deletion`.
 | `GET /Gdpr/Deletion` | `UserController.Deletion` | Pending-deletion landing; redirects home when nothing is pending |
 | `POST /Gdpr/Deletion/Cancel` | `UserController.CancelDeletion` | `IAccountDeletionService.CancelDeletionAsync` |
 
-The views' copy lives in `GdprResource` (six cultures; keys `Gdpr_AccountStatus_*`, `Gdpr_AccountDeletion_*`, `Gdpr_Deletion_*`, and the guest deletion flashes `Gdpr_Guest_*`). For a Rejected account the wall renders the `UserPartSlots.AccountStatus` slot (Base), where Consent contributes the rejection reason — Gdpr cannot reference Consent, which owns the record. Users keeps its own copies of the suspension keys its notification text reads.
+The views' copy lives in `GdprResource` (six cultures; keys `Gdpr_AccountStatus_*`, `Gdpr_AccountDeletion_*`, `Gdpr_Deletion_*`, and the guest deletion flashes `Gdpr_Guest_*`). For a Rejected account the wall renders the `UserPartSlots.AccountStatus` slot (Base), where Consent contributes the rejection reason — Gdpr cannot reference Consent, which owns the record. Users keeps its own copies of the suspension keys its notification text reads. The pending-deletion date uses the shared display formatter and follows the request's UI culture in all six languages, independently of the fixed parsing culture.
 
 The `/Consent/MyData` page itself is Consent's (`MyDataController`) and links to the two
 `MemberData` actions. The `User` controller and the two `MemberData` actions carry
@@ -175,10 +178,9 @@ the controllers' base class `HumansControllerBase` also takes
 `users` behind `IUserWrite`); the download controllers (`GuestDataController`,
 `MemberDataController`) also inject `IGdprService`.
 
-**Inbound:** wide, and all of it through the public `Contracts/` folder. Every section owning
-user-scoped tables references `Humans.Gdpr` to implement
-`IUserDataContributor`; Users also references it for `AccountDeletionService` (the erasure caller).
-`Humans.Web` references Gdpr only to compose sections.
+**Inbound:** narrow. Every section owning user-scoped tables implements `IUserDataContributor`
+from Base and does not reference `Humans.Gdpr`. Only Users references it, for
+`AccountDeletionService` (the erasure caller), and `Humans.Web` to compose sections.
 
 ## Architecture
 
@@ -192,10 +194,11 @@ sealed`) behind the public `IGdprService` in `Contracts/`, exposing both
   layer, `Section.cs`, this doc. No `Data/`, no migrations, no
   `Humans.Infrastructure` reference and no `Humans.UI` reference: nothing to
   persist.
-- `src/Sections/Humans.Gdpr/Contracts` — the whole outward surface (namespace
-  `Humans.Gdpr.Contracts`). Every section owning user-scoped tables implements
-  `IUserDataContributor` from it, so each references `Humans.Gdpr`; the
+- `src/Sections/Humans.Gdpr/Contracts` — the orchestrator's surface (`IGdprService`,
+  `GdprExport`, `GdprExportSerializer`; namespace `Humans.Gdpr.Contracts`). The
   orchestrator and controllers stay `internal`.
+- `src/Humans.Base/Gdpr` — the fan-out seam (`IUserDataContributor`, `UserDataSlice`),
+  same namespace. It sits in Base because every data-owning section implements it.
 - `GdprResource` (section root, six cultures) holds the section's page copy and
   flash messages; its controllers take `IStringLocalizer<GdprResource>`.
 - The contributor forwarding factories deliberately do **not** live in

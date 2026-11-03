@@ -1,7 +1,5 @@
-using Humans.Email.Contracts;
 using Humans.Auth.Contracts;
 using Humans.Notifications.Data;
-using Humans.Notifications.Domain;
 using Humans.Notifications.Contracts;
 using NodaTime;
 using Humans.Users.Contracts;
@@ -9,11 +7,9 @@ using Humans.Users.Contracts;
 namespace Humans.Notifications.Services;
 
 internal sealed class NotificationService(
-    INotificationEmitter emitter,
+    NotificationEmitter emitter,
     INotificationRepository repo,
     IRoleAssignmentService roleAssignmentService,
-    ICommunicationPreferenceService preferenceService,
-    IClock clock,
     ILogger<NotificationService> logger) : INotificationService, IUserMerge
 {
     public Task SendAsync(
@@ -43,8 +39,6 @@ internal sealed class NotificationService(
         string? actionLabel = null,
         CancellationToken cancellationToken = default)
     {
-        var now = clock.GetCurrentInstant();
-
         var roleUserIds = await roleAssignmentService.GetActiveUserIdsInRoleAsync(roleName, cancellationToken);
         if (roleUserIds.Count == 0)
         {
@@ -52,53 +46,9 @@ internal sealed class NotificationService(
             return;
         }
 
-        var category = source.Category;
-        var inboxDisabled = notificationClass == NotificationClass.Informational
-            ? await preferenceService.GetUsersWithInboxDisabledAsync(roleUserIds, category, cancellationToken)
-            : null;
-
-        (title, body) = NotificationEmitter.FitCopyToStorage(title, body);
-
-        var notification = new Notification
-        {
-            Id = Guid.NewGuid(),
-            Title = title,
-            Body = body,
-            ActionUrl = actionUrl,
-            ActionLabel = actionLabel,
-            Priority = priority,
-            Source = source.Name,
-            Class = notificationClass,
-            TargetGroupName = roleName,
-            CreatedAt = now,
-        };
-
-        foreach (var userId in roleUserIds)
-        {
-            if (inboxDisabled?.Contains(userId) == true)
-            {
-                continue;
-            }
-
-            notification.Recipients.Add(new NotificationRecipient
-            {
-                NotificationId = notification.Id,
-                UserId = userId,
-            });
-        }
-
-        if (notification.Recipients.Count == 0)
-        {
-            logger.LogInformation(
-                "SendToRoleAsync: all recipients suppressed notification for role '{RoleName}'", roleName);
-            return;
-        }
-
-        await repo.AddAsync(notification, cancellationToken);
-
-        logger.LogInformation(
-            "Dispatched {Source} notification '{Title}' to role '{RoleName}' ({Count} recipients)",
-            source, title, roleName, notification.Recipients.Count);
+        await emitter.SendAsync(
+            source, notificationClass, priority, title, roleUserIds, body, actionUrl, actionLabel,
+            targetGroupName: roleName, sourceKey: null, sharedAcrossRecipients: true, cancellationToken);
     }
 
     public Task ReassignAsync(Guid sourceUserId, Guid targetUserId, Guid actorUserId, Instant updatedAt,

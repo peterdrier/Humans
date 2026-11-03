@@ -266,15 +266,16 @@ internal sealed class Repository(IDbContextFactory<FinanceDbContext> factory)
         await ctx.SaveChangesAsync(ct);
     }
 
-    public async Task SaveSepaTransferWithdrawnAsync(
-        Guid transferId, Instant withdrawnAt, Guid withdrawnByUserId, CancellationToken ct = default)
+    public async Task SaveSepaTransfersWithdrawnAsync(
+        IReadOnlyCollection<Guid> transferIds, Instant withdrawnAt, Guid withdrawnByUserId, CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
-        var existing = await ctx.SepaPayoutTransfers.FirstOrDefaultAsync(t => t.Id == transferId, ct);
-        if (existing is null) return;
-
-        existing.WithdrawnAt = withdrawnAt;
-        existing.WithdrawnByUserId = withdrawnByUserId;
+        var existing = await ctx.SepaPayoutTransfers.Where(t => transferIds.Contains(t.Id)).ToListAsync(ct);
+        foreach (var t in existing)
+        {
+            t.WithdrawnAt = withdrawnAt;
+            t.WithdrawnByUserId = withdrawnByUserId;
+        }
         await ctx.SaveChangesAsync(ct);
     }
 

@@ -103,11 +103,6 @@ public interface IUserEmailService
         bool verifiedOnly,
         CancellationToken cancellationToken = default);
 
-    /// <summary>Null if none.</summary>
-    Task<string?> GetNobodiesTeamEmailAsync(
-        Guid userId,
-        CancellationToken cancellationToken = default);
-
     /// <summary>
     /// The verified primary row, else <c>User.Email</c>; users with neither are absent. Keyed by the requested id,
     /// with the resolved human's address: a merged-away id gets the survivor's.
@@ -119,13 +114,6 @@ public interface IUserEmailService
     Task<IReadOnlyList<Guid>> GetUserIdsByEmailPrefixAndSuffixAsync(
         string prefix,
         string suffix,
-        CancellationToken cancellationToken = default);
-
-    /// <summary>The verified primary row, else <c>User.Email</c>; null when neither exists.</summary>
-    Task<string?> GetPrimaryEmailAsync(Guid userId, CancellationToken ct = default);
-
-    Task<IReadOnlyList<string>> GetVerifiedEmailsForUserAsync(
-        Guid userId,
         CancellationToken cancellationToken = default);
 
     /// <summary>Empty when the user has no emails.</summary>

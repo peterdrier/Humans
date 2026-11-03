@@ -11,7 +11,7 @@
             @if (Model.ScheduledFor is { } scheduledFor)
             {
                 <p class="text-muted">
-                    @string.Format(Localizer["Gdpr_AccountDeletion_ScheduledFor"].Value, scheduledFor.ToString("D"))
+                    @string.Format(Localizer["Gdpr_AccountDeletion_ScheduledFor"].Value, scheduledFor.ToDate())
                 </p>
             }
             else

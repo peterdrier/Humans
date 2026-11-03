@@ -3,8 +3,11 @@ using Humans.Workgroups.Authorization;
 using Humans.Base.Authorization;
 using Humans.Base.Constants;
 using Humans.Base.Controllers;
+using Humans.Calendar;
+using Humans.Calendar.Contracts;
 using Humans.Governance.Contracts;
 using Humans.Holded.Contracts;
+using Humans.Settings.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Users.Contracts;
 using Humans.Workgroups.Domain;
@@ -25,6 +28,8 @@ internal sealed class WorkgroupsController(
     ITeamService teams,
     IGovernanceService governance,
     IStringLocalizer<WorkgroupsResource> localizer,
+    IStringLocalizer<CalendarResource> calendarLocalizer,
+    ISettingsService settings,
     IClock clock,
     IAuthorizationService authorization,
     ILogger<WorkgroupsController> logger) : HumansControllerBase(users)
@@ -98,7 +103,8 @@ internal sealed class WorkgroupsController(
             CanAdminister = canAdminister,
             CanDoMemberWork = await MayDoMemberWorkAsync(workgroup),
             CanSeeBudget = canSeeBudget,
-            ExpenseAccounts = accounts
+            ExpenseAccounts = accounts,
+            OrganisationZone = await OrganisationZoneAsync(ct)
         });
     }
 
@@ -184,19 +190,23 @@ internal sealed class WorkgroupsController(
             "Workgroups_CoordinatorsSaved", ct);
 
     [HttpGet("{slug}/Meetings/Create")]
-    public Task<IActionResult> CreateMeeting(string slug, CancellationToken ct) =>
-        MemberFormAsync(slug, ct, w => new MeetingFormViewModel
-        {
-            Slug = w.Slug,
-            StartUtc = clock.GetCurrentInstant(),
-            EndUtc = clock.GetCurrentInstant() + Duration.FromHours(1)
-        }, MeetingForm);
+    public async Task<IActionResult> CreateMeeting(string slug, CancellationToken ct)
+    {
+        var zone = await OrganisationZoneAsync(ct);
+        // The next whole hour, so the default never starts in the past.
+        var now = clock.GetCurrentInstant().InZone(zone).LocalDateTime;
+        var start = now.Date.At(new LocalTime(now.Hour, 0)).PlusHours(1).InZoneLeniently(zone).ToInstant();
+        return await MemberFormAsync(slug, ct, w => MeetingFormViewModel.New(w.Slug, start, zone), MeetingForm);
+    }
 
     [HttpGet("{slug}/Meetings/{id:guid}/Edit")]
-    public Task<IActionResult> EditMeeting(string slug, Guid id, CancellationToken ct) =>
-        MemberFormAsync(slug, ct, w => w.Meetings.FirstOrDefault(m => m.Id == id) is { } meeting
-            ? MeetingFormViewModel.FromMeeting(w.Slug, meeting)
+    public async Task<IActionResult> EditMeeting(string slug, Guid id, CancellationToken ct)
+    {
+        var zone = await OrganisationZoneAsync(ct);
+        return await MemberFormAsync(slug, ct, w => w.Meetings.FirstOrDefault(m => m.Id == id) is { } meeting
+            ? MeetingFormViewModel.FromMeeting(w.Slug, meeting, zone)
             : null, MeetingForm);
+    }
 
     [HttpPost("{slug}/Meetings/Save")]
     [ValidateAntiForgeryToken]
@@ -207,15 +217,16 @@ internal sealed class WorkgroupsController(
         if (await ResolveAsync(slug, ct) is not { } workgroup) return NotFound();
         if (!await MayDoMemberWorkAsync(workgroup)) return Forbid();
         if (model.Id is { } editing && !workgroup.Meetings.Any(m => m.Id == editing)) return NotFound();
-        if (!ModelState.IsValid) return View(MeetingForm, model);
+        var times = CalendarEventForm.Resolve(model, ModelState, calendarLocalizer);
+        if (times is null || !ModelState.IsValid) return View(MeetingForm, model);
 
         return await FormAsync(model, async () =>
         {
             WorkgroupMutationResult mutation;
             if (model.Id is { } id)
-                mutation = await workgroups.UpdateMeetingAsync(id, user.Id, model.ToSave(), ct);
+                mutation = await workgroups.UpdateMeetingAsync(id, user.Id, model.ToSave(times), ct);
             else
-                mutation = await workgroups.CreateMeetingAsync(workgroup.Id, user.Id, model.ToSave(), ct);
+                mutation = await workgroups.CreateMeetingAsync(workgroup.Id, user.Id, model.ToSave(times), ct);
             return (mutation, RedirectToAction(nameof(Details), new { slug = workgroup.Slug }));
         }, "Workgroups_MeetingSaved", MeetingForm);
     }
@@ -226,12 +237,16 @@ internal sealed class WorkgroupsController(
         ActAsync(slug, (_, userId) => workgroups.DeleteMeetingAsync(id, userId, ct),
             "Workgroups_MeetingDeleted", ct, owns: w => w.Meetings.Any(m => m.Id == id));
 
+    /// <summary>With <paramref name="meetingId"/>, starts meeting notes for its occurrence on <paramref name="on"/>.</summary>
     [HttpGet("{slug}/Log/Add")]
-    public Task<IActionResult> AddLogEntry(string slug, CancellationToken ct) =>
-        MemberFormAsync(slug, ct, w => new LogEntryFormViewModel
+    public Task<IActionResult> AddLogEntry(string slug, Guid? meetingId, LocalDate? on, CancellationToken ct) =>
+        MemberFormAsync(slug, ct, w =>
         {
-            Slug = w.Slug,
-            OccurredOn = clock.GetCurrentInstant().InUtc().Date
+            var today = clock.GetCurrentInstant().InUtc().Date;
+            if (meetingId is null) return new LogEntryFormViewModel { Slug = w.Slug, OccurredOn = today };
+            return w.Meetings.FirstOrDefault(m => m.Id == meetingId) is { } meeting
+                ? LogEntryFormViewModel.ForMeetingNotes(w.Slug, meeting, on ?? today)
+                : null;
         }, LogEntryForm);
 
     [HttpGet("{slug}/Log/{id:guid}/Edit")]
@@ -540,6 +555,9 @@ internal sealed class WorkgroupsController(
     }
 
     private string? ActionName() => ControllerContext.ActionDescriptor.ActionName;
+
+    private async Task<DateTimeZone> OrganisationZoneAsync(CancellationToken ct) =>
+        CalendarEventForm.TryResolveZone(await settings.GetTimeZoneIdAsync(ct)) ?? DateTimeZone.Utc;
 
     private const string MeetingForm = "MeetingForm";
     private const string LogEntryForm = "LogEntryForm";

@@ -176,9 +176,9 @@ internal sealed partial class ShiftRepository : IShiftManagementRepository
     }
 
     public async Task<IReadOnlyList<Rota>> SearchVolunteerVisibleRotasAsync(
-        string query, Guid eventSettingsId, int max, CancellationToken ct = default)
+        string query, Guid eventSettingsId, CancellationToken ct = default)
     {
-        if (string.IsNullOrWhiteSpace(query) || max <= 0)
+        if (string.IsNullOrWhiteSpace(query))
             return [];
 
         var pattern = "%" + EscapeLikePattern(query.Trim()) + "%";
@@ -190,11 +190,7 @@ internal sealed partial class ShiftRepository : IShiftManagementRepository
                 && r.IsVisibleToVolunteers
                 && EF.Functions.ILike(r.Name, pattern, "\\"));
 
-        return await q
-            // Deterministic Take(max) for global search; controller re-ranks by score before display.
-            .OrderBy(r => r.Name) // arch:db-sort-ok
-            .Take(max)
-            .ToListAsync(ct);
+        return await q.ToListAsync(ct);
     }
 
     private static string EscapeLikePattern(string value)
@@ -525,20 +521,17 @@ internal sealed partial class ShiftRepository : IShiftManagementRepository
     public async Task<IReadOnlyList<ShiftTag>> GetTagsAsync(string? query = null, CancellationToken ct = default)
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);
-        var tags = ctx.ShiftTags.AsNoTracking();
-
-        if (!string.IsNullOrWhiteSpace(query))
-            tags = tags.Where(t => EF.Functions.ILike(t.Name, $"%{query}%"));
-
-        return await tags.ToListAsync(ct);
+        var tags = await ctx.ShiftTags.AsNoTracking().ToListAsync(ct);
+        return string.IsNullOrWhiteSpace(query)
+            ? tags
+            : tags.Where(t => t.Name.Contains(query, StringComparison.OrdinalIgnoreCase)).ToList();
     }
 
     public async Task<ShiftTag> GetOrCreateTagAsync(string name, CancellationToken ct = default)
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);
-        var existing = await ctx.ShiftTags
-            .AsNoTracking()
-            .FirstOrDefaultAsync(t => EF.Functions.ILike(t.Name, name), ct);
+        var tags = await ctx.ShiftTags.AsNoTracking().ToListAsync(ct);
+        var existing = tags.FirstOrDefault(t => string.Equals(t.Name, name, StringComparison.OrdinalIgnoreCase));
         if (existing is not null) return existing;
 
         var tag = new ShiftTag

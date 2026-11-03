@@ -1,3 +1,6 @@
+using System.Globalization;
+using System.Security.Cryptography;
+using System.Text;
 using Humans.Base.Extensions;
 using Hangfire;
 using Microsoft.Extensions.Options;
@@ -62,7 +65,8 @@ internal sealed class SendReConsentReminderJob(
                     continue;
                 }
 
-                if (lastSent.TryGetValue(user.Id, out var sentAt) && now - sentAt < cooldown)
+                var previouslySent = lastSent.TryGetValue(user.Id, out var sentAt);
+                if (previouslySent && now - sentAt < cooldown)
                 {
                     continue;
                 }
@@ -73,14 +77,19 @@ internal sealed class SendReConsentReminderJob(
                     try
                     {
                         var language = user.PreferredLanguage;
-                        await emailService.SendAsync(emailMessages.ReConsentReminder(
+                        var message = emailMessages.ReConsentReminder(
                             user.Id,
                             effectiveEmail,
                             user.BurnerName,
                             requiredDocNames,
                             daysBeforeSuspension,
-                            language.IsSupportedCultureCode() ? language : CultureCatalog.DefaultCultureCode),
-                            cancellationToken);
+                            language.IsSupportedCultureCode() ? language : CultureCatalog.DefaultCultureCode);
+                        // Only a successful stamp advances the delivery cycle; retrying keeps its prior anchor.
+                        var previousTicks = previouslySent ? sentAt.ToUnixTimeTicks() : (long?)null;
+                        var deliveryKey = string.Create(CultureInfo.InvariantCulture,
+                            $"{message.TemplateName}:{user.Id:N}:{previousTicks}");
+                        var deliveryId = new Guid(SHA256.HashData(Encoding.UTF8.GetBytes(deliveryKey)).AsSpan(0, 16));
+                        await emailService.SendAsync(message with { DeliveryId = deliveryId }, cancellationToken);
 
                         await reminders.RecordSentAsync(user.Id, now, cancellationToken);
                         sentCount++;

@@ -64,7 +64,6 @@ public class ExpenseReportServiceGdprTests
             Substitute.For<IBudgetService>(),
             Substitute.For<ITeamService>(),
             _userService,
-            Substitute.For<IUserEmailService>(),
             Substitute.For<IEmailService>(),
             TestExpensesEmails.Create(),
             _auditLogService,

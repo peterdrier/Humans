@@ -811,7 +811,7 @@ internal sealed class EventsController(
         {
             throw;
         }
-        catch (CsvHelper.BadDataException ex)
+        catch (CsvHelper.CsvFormatException ex)
         {
             logger.LogWarning("Bulk CSV parse failed for camp slug {Slug}: {Message}", slug, ex.Message);
             SetError(localizer["Events_Upload_ParseFailed"].Value);

@@ -159,7 +159,7 @@ public sealed class GdprTests : GrantsTestHarness
             .AddInterceptors(probe).Options;
         var service = new GrantService(
             new GrantRepository(new TestDbContextFactory<GrantsDbContext>(options)),
-            Users, UserEmails, Notifications, Email, EmailFactory, AuditLog, Settings, Clock, Logger);
+            Users, Notifications, Email, EmailFactory, AuditLog, Settings, Clock, Logger);
 
         if (failSecondSave)
         {

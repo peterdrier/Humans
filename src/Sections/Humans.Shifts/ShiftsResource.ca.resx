@@ -1277,4 +1277,20 @@
   <data name="Shifts_Bail_NotActive" xml:space="preserve"><value>Aquesta inscripció ja no està activa i no es pot cancel·lar.</value></data>
   <data name="Shifts_Medical_RevealTitle" xml:space="preserve"><value>Mostra les dades mèdiques (cada consulta queda registrada al registre d'auditoria)</value></data>
   <data name="Shifts_Medical_RevealFailed" xml:space="preserve"><value>No s'han pogut carregar les dades mèdiques.</value></data>
+  <data name="Shifts_Notification_CoverageGapTitle" xml:space="preserve"><value>Falta de cobertura: {0} dia {1}</value></data>
+  <data name="Shifts_Notification_CoverageGapBody" xml:space="preserve"><value>Només {0}/{1} humans confirmats.</value></data>
+  <data name="Shifts_Notification_FindCover" xml:space="preserve"><value>Cerca cobertura →</value></data>
+  <data name="Shifts_Notification_SignupChangeTitle" xml:space="preserve"><value>Canvi d’inscripció a un torn: {0}</value></data>
+  <data name="Shifts_Notification_View" xml:space="preserve"><value>Mostra →</value></data>
+  <data name="Shifts_Notification_ChangeConfirmed" xml:space="preserve"><value>Nova inscripció confirmada per a '{0}' el dia {1}.</value></data>
+  <data name="Shifts_Notification_ChangeApproved" xml:space="preserve"><value>Inscripció aprovada per a '{0}' el dia {1}.</value></data>
+  <data name="Shifts_Notification_ChangeRefused" xml:space="preserve"><value>Inscripció rebutjada per a '{0}' el dia {1}.</value></data>
+  <data name="Shifts_Notification_ChangeBailed" xml:space="preserve"><value>Un human ha cancel·lat la inscripció a '{0}' el dia {1}.</value></data>
+  <data name="Shifts_Notification_ChangeAssigned" xml:space="preserve"><value>Assignació a '{0}' el dia {1}.</value></data>
+  <data name="Shifts_Notification_ChangeRemoved" xml:space="preserve"><value>Inscripció eliminada de '{0}' el dia {1}.</value></data>
+  <data name="Shifts_Notification_ChangeAssignedRange" xml:space="preserve"><value>Assignació a '{0}' ({1} torns).</value></data>
+  <data name="Shifts_Notification_ChangeConfirmedRange" xml:space="preserve"><value>Inscripció a diversos torns de '{0}' ({1} torns, confirmats).</value></data>
+  <data name="Shifts_Notification_ChangeApprovedRange" xml:space="preserve"><value>Inscripció a diversos torns de '{0}' aprovada ({1} torns).</value></data>
+  <data name="Shifts_Notification_ChangeRefusedRange" xml:space="preserve"><value>Inscripció a diversos torns de '{0}' rebutjada ({1} torns).</value></data>
+  <data name="Shifts_Notification_ChangeBailedRange" xml:space="preserve"><value>Cancel·lació de diversos torns de '{0}' ({1} torns).</value></data>
 </root>

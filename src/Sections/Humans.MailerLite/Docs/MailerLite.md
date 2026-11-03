@@ -58,6 +58,8 @@ All routes are `AdminOnly`.
 
 - Shared table currency and number cells use the selected UI culture; numeric sort values stay invariant.
 
+- Audience debug expected/to-add rows use canonical `UserInfo.Email`, including verified-secondary fallback when no verified primary exists, and exclude empty addresses like the actual sync.
+
 - Audience debug tables normalize the requested page and allowed page size once before slicing. Rows and pager state use the same available page, including the last page for oversized requests and page one for empty tables.
 
 - `IMailerLiteService` exposes reads + five narrow outbound writes: `CreateGroupAsync`, `AssignSubscriberToGroupAsync`, `UnassignSubscriberFromGroupAsync`, `BulkImportSubscribersToGroupAsync`, and `DeleteSubscriberAsync` (GDPR Article 17 erasure, nobodies-collective/Humans#853). The set of allowed write methods is pinned by `MailerLiteArchitectureTests.IMailerLiteService_OnlyAllowsAudienceWrites`.
@@ -74,6 +76,7 @@ All routes are `AdminOnly`.
 - `ApplyAsync` is idempotent: a second run against unchanged ML+Humans state writes zero per-row entries and exactly one `MailerLiteReconciliationCompleted` summary entry.
 - The drift report counts distinct verified humans opted out in Humans who have at least one active Website subscriber address; multiple active addresses for one human count once.
 - One human, one Marketing decision: when several of a human's verified addresses sit in the `Website` group, the import resolves them to one governing subscriber before classifying or applying — any opt-out status (`unsubscribed`, `bounced`, `junk`) beats `active`, bounce/junk beat `unsubscribed`, then the most recent ML action, then email. An active address never overrides an opt-out, and the result does not depend on enumeration order. The preview lists each address under its human's resolved outcome; apply writes once per human, resolving across the human's addresses in the whole plan (throttled ones included). Pinned by `MailerLiteImportServiceSameHumanTests`.
+- The scheduled audience sync attempts every audience, then fails the job if any registered audience has no result or any result contains subscriber-operation errors. Hangfire can retry the incomplete run; the admin Push All action keeps its partial-result banner and counts.
 - `SyncAsync` is idempotent: a second run against unchanged audience+ML state writes zero ML mutations and exactly one `MailerLiteAudienceSyncCompleted` summary entry whose counts are all zero.
 - Bounced/junk subscribers always set `OptedOut = true` regardless of any Humans-side timestamp. Delivery facts override preferences.
 - For non-bounce subscribers, Humans state wins only when the prior write's `UpdateSource ∈ {Profile, Guest, MagicLink, OneClick}` AND `UpdatedAt > mlActionAt`.
@@ -108,11 +111,10 @@ communication-preference interfaces live in `Humans.Email.Contracts` (Users deco
 
 - **Audit actions:** declared on `MailerLiteAuditActions` (`src/Sections/Humans.MailerLite/MailerLiteAuditActions.cs`), one `AuditActionDefinition` each, written through `IAuditLogService`: `MailerLiteReconciliationCompleted`, `MailerLiteAudienceSyncCompleted`.
 - **Users — people**: `IUserService.GetAllUserInfosAsync` and `GetUserInfoAsync` over the
-  cached `UserInfo` set. `MarketingAudience` / `MarketingNoTicketAudience` enumerate it
+  cached `UserInfo` set. GDPR erasure reads `GetRawUserInfoAsync` for the exact account id. `MarketingAudience` / `MarketingNoTicketAudience` enumerate it
   and keep the explicit opt-ins; the debug screen reads it for names and addresses.
 - **Users — email**: `IUserEmailService.GetNotificationTargetEmailsAsync` (the sync's
-  user-id → address resolution), `GetPrimaryEmailAsync` and `GetVerifiedEmailsForUserAsync`
-  (GDPR erasure), `FindByAddressAsync` (import matching: the verified-only pass counts
+  user-id → address resolution), `FindByAddressAsync` (import matching: the verified-only pass counts
   distinct owners, the unverified pass picks the row to replace).
 - **Email — preferences**: `ICommunicationPreferenceService.IsOptedOutAsync`,
   `GetPreferenceOrNullAsync`, `GetPreferencesForCategoryAsync` (the bulk Marketing map every
@@ -130,7 +132,7 @@ communication-preference interfaces live in `Humans.Email.Contracts` (Users deco
   predicate they apply to `ShiftUserSummary` (`HasShift`, or `HasShiftInPeriod` for Build /
   Event / Strike; Setup = Build). `TicketNoShiftsAudience` reads the same view directly.
 - **AuditLog**: writes via `IAuditLogService.LogAsync` (job overload).
-- **GDPR**: `MailerLiteGdprContributor` implements `IUserDataContributor` — Article 15 export contributes nothing (the subscriber list mirrors state already exported by the sections that generate it); Article 17 erasure deletes the MailerLite subscriber under every verified + primary email, including both Gmail/Googlemail domain spellings recognized by import matching, via `IMailerLiteService.DeleteSubscriberAsync`.
+- **GDPR**: `MailerLiteGdprContributor` implements `IUserDataContributor` — Article 15 export contributes nothing (the subscriber list mirrors state already exported by the sections that generate it); Article 17 erasure reads the exact raw account and deletes subscribers under its owned verified addresses plus a live account’s canonical/legacy email fallback, including both Gmail/Googlemail domain spellings recognized by import matching, via `IMailerLiteService.DeleteSubscriberAsync`. An archived id never resolves forward to the survivor; tombstone identity-column fallbacks are excluded because that address may now belong to the living survivor. Verified rows still owned by the archived id remain erasable.
 
 ## Architecture
 

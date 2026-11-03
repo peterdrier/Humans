@@ -261,6 +261,32 @@ public sealed class GrantTests : GrantsTestHarness
     }
 
     [HumansFact]
+    public async Task Resend_RecipientLookupFailure_StillResolvesEmailIndependently()
+    {
+        var person = SeedUser();
+        var actor = SeedUser("Manager");
+        var program = await SeedProgramAsync();
+        var grant = await SeedGrantAsync(program, person);
+        var snapshot = await Users.GetUserInfoAsync(person, Ct);
+        var failure = new IOException("recipient lookup unavailable");
+        var lookups = 0;
+        Users.GetUserInfoAsync(person, Arg.Any<CancellationToken>()).Returns(_ =>
+        {
+            if (++lookups == 1) throw failure;
+            return new ValueTask<Humans.Users.Contracts.UserInfo?>(snapshot);
+        });
+
+        var result = await NewService().ResendNoticeAsync(grant.Id, actor, Ct);
+
+        result.Refusal.Should().BeNull();
+        (await ReadGrantAsync(grant.Id)).NotifiedAt.Should().Be(Clock.GetCurrentInstant());
+        Logger.Entries.Should().Contain(e => e.Exception == failure);
+        await ReceivedNoticeAsync(GrantsNotificationSources.GrantReceived, person);
+        await Email.Received(1).SendAsync(
+            Arg.Is<EmailMessage>(m => m.RecipientEmail == $"{person}@example.org"), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
     public async Task SourceIssue_FindsTheOpenProgramByKey_IsIdempotentPerPerson()
     {
         var person = SeedUser();

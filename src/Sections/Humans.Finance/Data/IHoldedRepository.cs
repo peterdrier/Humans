@@ -63,9 +63,10 @@ internal interface IHoldedRepository : IRepository
     Task SaveSepaTransferPaymentRefsAsync(
         Guid transferId, string holdedPaymentRefs, CancellationToken ct = default);
 
-    /// <summary>The service has already checked the row is unbooked.</summary>
-    Task SaveSepaTransferWithdrawnAsync(
-        Guid transferId, Instant withdrawnAt, Guid withdrawnByUserId, CancellationToken ct = default);
+    /// <summary>One save for all of them, so a cancelled file is never left half withdrawn. The service has already
+    /// checked every row is unbooked.</summary>
+    Task SaveSepaTransfersWithdrawnAsync(
+        IReadOnlyCollection<Guid> transferIds, Instant withdrawnAt, Guid withdrawnByUserId, CancellationToken ct = default);
 
     /// <summary>A reconcile that succeeded on a later pass; the booking is untouched.</summary>
     Task MarkSepaTransferReconciledAsync(

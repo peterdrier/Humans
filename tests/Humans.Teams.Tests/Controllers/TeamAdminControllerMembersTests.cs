@@ -504,6 +504,46 @@ public class TeamAdminControllerMembersTests
         result.TotalCount.Should().Be(1);
     }
 
+    [HumansFact]
+    public async Task Board_reads_the_members_page_without_any_management_controls()
+    {
+        var userId = Guid.NewGuid();
+        var teams = Substitute.For<ITeamManagementService>();
+        var users = Substitute.For<IUserService>();
+        users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(UserInfo.Create(new User { Id = userId }, [], [], [], null, []));
+        var team = new TeamInfo(Guid.NewGuid(), "Team", null, "team", true, false, SystemTeamType.None,
+            false, false, false, false, Instant.MinValue, []);
+        teams.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(new Dictionary<Guid, TeamInfo> { [team.Id] = team });
+        var authorization = Substitute.For<IAuthorizationService>();
+        authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), team, Arg.Any<IEnumerable<IAuthorizationRequirement>>())
+            .Returns(AuthorizationResult.Failed());
+        authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(), TeamsPolicies.Read)
+            .Returns(AuthorizationResult.Success());
+        var http = new DefaultHttpContext
+        {
+            User = new ClaimsPrincipal(new ClaimsIdentity(
+                [new Claim(ClaimTypes.NameIdentifier, userId.ToString()), new Claim(ClaimTypes.Role, RoleNames.Board)], "test"))
+        };
+        var controller = new TeamAdminController(teams, Substitute.For<ITeamResourceService>(), users,
+            Substitute.For<IEmailProvisioningService>(), authorization, NullLogger<TeamAdminController>.Instance,
+            Substitute.For<IStringLocalizer<TeamsResource>>(), Substitute.For<ITicketService>())
+        {
+            ControllerContext = new ControllerContext { HttpContext = http },
+            TempData = new TempDataDictionary(http, Substitute.For<ITempDataProvider>()),
+            Url = Substitute.For<IUrlHelper>()
+        };
+
+        var members = await controller.Members(team.Slug);
+        var add = await controller.AddMember(team.Slug, new AddMemberModel { UserId = Guid.NewGuid() });
+
+        var model = members.Should().BeOfType<ViewResult>().Which.Model.Should().BeOfType<TeamMembersViewModel>().Subject;
+        model.CanManage.Should().BeFalse();
+        model.CanManageRoles.Should().BeFalse();
+        model.CanProvisionEmails.Should().BeFalse();
+        add.Should().BeOfType<ForbidResult>();
+    }
+
     // The role-management toggle asks the TeamsAdminOrAdmin policy; answer it from the principal's role claims.
     private static void StubTeamsAdminOrAdminPolicy(IAuthorizationService authorization) =>
         authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(), TeamsPolicies.Manage)

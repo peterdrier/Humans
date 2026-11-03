@@ -112,6 +112,8 @@ public sealed class WorkgroupInputValidationTests : WorkgroupsTestHarness
     [InlineData(true, "100", "link", 62900170, true)]
     [InlineData(true, "100", "create", null, true)]
     [InlineData(true, "abc", "create", null, false)]
+    [InlineData(true, "12,34", "create", null, false)]
+    [InlineData(true, "1,234.56", "link", 62900170, false)]
     [InlineData(true, "-1", "create", null, false)]
     [InlineData(false, null, "link", null, true)]
     public void BudgetForm_RequiresAmountAndLinkedAccountWhenBudgeted(
@@ -286,7 +288,7 @@ public sealed class WorkgroupInputValidationTests : WorkgroupsTestHarness
         var now = Clock.GetCurrentInstant();
         var actor = group.Members.Single().UserId;
         var url = "https://example.org/".PadRight(2000, 'x');
-        var save = new WorkgroupMeetingSave("Meeting", now, now.Plus(Duration.FromHours(1)), null, url, false, null);
+        var save = new WorkgroupMeetingSave("Meeting", now, now.Plus(Duration.FromHours(1)), null, url, false);
         var meetingId = (await service.CreateMeetingAsync(group.Id, actor, save, Ct)).Value;
         Func<Task<WorkgroupMutationResult>> act = async () =>
         {

@@ -35,13 +35,12 @@ public class SepaWithdrawTests
     private readonly IHoldedRepository _repo = Substitute.For<IHoldedRepository>();
     private readonly IAuditLogService _audit = Substitute.For<IAuditLogService>();
     private readonly IUserService _users = Substitute.For<IUserService>();
-    private readonly IUserEmailService _userEmails = Substitute.For<IUserEmailService>();
     private readonly IEmailService _emailService = Substitute.For<IEmailService>();
 
     private Service MakeService() => new(
-        _repo, Substitute.For<IHoldedClient>(), Substitute.For<IBudgetService>(), Substitute.For<IHoldedService>(),
+        _repo, Substitute.For<IHoldedClient>(), Substitute.For<IBudgetService>(), Substitute.For<IHoldedService>(), Substitute.For<IHoldedWrite>(),
         Substitute.For<IExpenseHoldedBookingService>(), new FakeClock(FixedNow), new MemoryCache(new MemoryCacheOptions()),
-        _audit, _users, _userEmails, _emailService, TestFinanceEmails.Create(), Options.Create(new SepaOptions()),
+        _audit, _users, _emailService, TestFinanceEmails.Create(), Options.Create(new SepaOptions()),
         new TrackedCache<string, Dictionary<string, int>>("Finance.SepaStuckBankLines", warmOnStartup: false, NullLogger<Service>.Instance),
         NullLogger<Service>.Instance);
 
@@ -56,12 +55,10 @@ public class SepaWithdrawTests
                     DeletionRequestedAt: null, DeletionScheduledFor: null,
                     DeletionEligibleAfter: null,
                     ContactSource: null,
-                    ExternalSourceId: null, MergedToUserId: null, MergedAt: null, IdentityEmailColumn: null,
+                    ExternalSourceId: null, MergedToUserId: null, MergedAt: null, IdentityEmailColumn: "paul@example.org",
                     UserEmails: [], EventParticipations: [], ExternalLogins: [], Profile: null,
                     CommunicationPreferences: []),
             });
-        _userEmails.GetNotificationTargetEmailsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(new Dictionary<Guid, string> { [UserId] = "paul@example.org" });
     }
 
     private void Seed(
@@ -100,7 +97,7 @@ public class SepaWithdrawTests
 
         result.Succeeded.Should().BeTrue(result.Message);
         result.Message.Should().Contain("4800.00 EUR").And.Contain("payable again");
-        await _repo.Received(1).SaveSepaTransferWithdrawnAsync(TransferId, FixedNow, Actor, Arg.Any<CancellationToken>());
+        await _repo.Received(1).SaveSepaTransfersWithdrawnAsync(Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Single() == TransferId), FixedNow, Actor, Arg.Any<CancellationToken>());
         await _audit.Received(1).LogAsync(
             FinanceAuditActions.SepaPayoutTransferWithdrawn, nameof(SepaPayoutTransfer), TransferId,
             Arg.Is<string>(d => d.Contains("WITHDRAWN", StringComparison.Ordinal)
@@ -141,7 +138,7 @@ public class SepaWithdrawTests
             "payments" => "already posted Holded payment(s) pay-1",
             _ => "already withdrawn",
         });
-        await _repo.DidNotReceiveWithAnyArgs().SaveSepaTransferWithdrawnAsync(default, default, default);
+        await _repo.DidNotReceiveWithAnyArgs().SaveSepaTransfersWithdrawnAsync(default!, default, default);
         _audit.ReceivedCalls().Should().BeEmpty();
         _emailService.ReceivedCalls().Should().BeEmpty();
     }
@@ -159,14 +156,62 @@ public class SepaWithdrawTests
     public async Task Withdraw_MemberWithoutAnEmail_StillWithdraws()
     {
         Seed();
-        _userEmails.GetNotificationTargetEmailsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(new Dictionary<Guid, string>());
+        var members = await _users.GetUserInfosAsync([UserId], TestContext.Current.CancellationToken);
+        _users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, UserInfo> { [UserId] = members[UserId] with { IdentityEmailColumn = null } });
 
         var result = await MakeService().WithdrawSepaTransferAsync(TransferId, Actor, TestContext.Current.CancellationToken);
 
         result.Succeeded.Should().BeTrue();
-        await _repo.Received(1).SaveSepaTransferWithdrawnAsync(TransferId, FixedNow, Actor, Arg.Any<CancellationToken>());
+        await _repo.Received(1).SaveSepaTransfersWithdrawnAsync(Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Single() == TransferId), FixedNow, Actor, Arg.Any<CancellationToken>());
         _emailService.ReceivedCalls().Should().BeEmpty();
+    }
+
+    private static SepaPayoutTransferRow FileRow(Guid fileId, decimal amount, Instant? bookedAt = null, Instant? withdrawnAt = null) =>
+        new(Guid.NewGuid(), fileId, "nobodies-20261103.xml", GeneratedAt, Actor, UserId, 41000060, "c1", "Paul Vivien",
+            "ES79****789", amount, bookedAt, null, null, null, null, null, null, WithdrawnAt: withdrawnAt);
+
+    [HumansFact]
+    public async Task CancelFile_WithdrawsEveryLiveTransferInOneSave_AuditsEach_AndEmailsNobody()
+    {
+        var fileId = Guid.NewGuid();
+        var a = FileRow(fileId, 1000m);
+        var b = FileRow(fileId, 250m);
+        var alreadyOut = FileRow(fileId, 99m, withdrawnAt: GeneratedAt);
+        _repo.GetSepaPayoutTransferRowsAsync(Arg.Any<CancellationToken>())
+            .Returns(new List<SepaPayoutTransferRow> { a, b, alreadyOut, FileRow(Guid.NewGuid(), 7m) });
+
+        var result = await MakeService().CancelSepaFileAsync(fileId, Actor, TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeTrue(result.Message);
+        result.Message.Should().Contain("2 transfers").And.Contain("1250.00 EUR");
+        await _repo.Received(1).SaveSepaTransfersWithdrawnAsync(
+            Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Count == 2 && ids.Contains(a.TransferId) && ids.Contains(b.TransferId)),
+            FixedNow, Actor, Arg.Any<CancellationToken>());
+        await _audit.Received(2).LogAsync(
+            FinanceAuditActions.SepaPayoutTransferWithdrawn, nameof(SepaPayoutTransfer), Arg.Any<Guid>(),
+            Arg.Is<string>(d => d.Contains("cancelled whole", StringComparison.Ordinal)), Actor, UserId, nameof(User));
+        _emailService.ReceivedCalls().Should().BeEmpty();
+    }
+
+    [HumansTheory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task CancelFile_IsRefused_WhenAnyTransferIsBooked_OrTheFileIsAlreadyCancelled(bool booked)
+    {
+        var fileId = Guid.NewGuid();
+        _repo.GetSepaPayoutTransferRowsAsync(Arg.Any<CancellationToken>()).Returns(new List<SepaPayoutTransferRow>
+        {
+            FileRow(fileId, 1000m, withdrawnAt: booked ? null : GeneratedAt),
+            FileRow(fileId, 250m, bookedAt: booked ? FixedNow : null, withdrawnAt: booked ? null : GeneratedAt),
+        });
+
+        var result = await MakeService().CancelSepaFileAsync(fileId, Actor, TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeFalse();
+        result.Message.Should().Contain(booked ? "is booked in Holded" : "already cancelled");
+        await _repo.DidNotReceiveWithAnyArgs().SaveSepaTransfersWithdrawnAsync(default!, default, default);
+        _audit.ReceivedCalls().Should().BeEmpty();
     }
 
     [HumansFact]

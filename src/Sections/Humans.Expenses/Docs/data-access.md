@@ -22,7 +22,7 @@ Repository: `IExpenseRepository`.
 
 Cross-section calls via `IFileStorage`, `IBudgetService`, `ITeamService`,
 `IUserService`, `IFinanceService` / `IFinanceWrite` (Finance section — `GetIbanAsync` /
-`SetIbanAsync`: the submitter's IBAN is read and written through its owner), `IUserEmailService`, `IEmailService`, `IAuditLogService`,
+`SetIbanAsync`: the submitter's IBAN is read and written through its owner), `IEmailService`, `IAuditLogService`,
 `IHoldedService.IsConfigured`, `IHoldedFinanceService` (Finance section — creditor balance exposure to
 expense submitters; `ListExpenseAccountsAsync` / `GetCategoryMapAsync` resolve the
 account a report books to and the budget category it maps to), `IPreapprovalService`

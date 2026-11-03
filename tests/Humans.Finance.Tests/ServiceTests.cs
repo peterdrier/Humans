@@ -39,6 +39,7 @@ public class HoldedFinanceServiceTests
     private readonly IHoldedClient _client = Substitute.For<IHoldedClient>();
     private readonly IBudgetService _budget = Substitute.For<IBudgetService>();
     private readonly IHoldedService _holded = Substitute.For<IHoldedService>();
+    private readonly IHoldedWrite _write = Substitute.For<IHoldedWrite>();
     private readonly FakeClock _clock = new(FixedNow);
     private readonly IMemoryCache _cache = new MemoryCache(new MemoryCacheOptions());
     private readonly TrackedCache<string, Dictionary<string, int>> _bookingState = new(
@@ -46,7 +47,6 @@ public class HoldedFinanceServiceTests
     private readonly IAuditLogService _audit = Substitute.For<IAuditLogService>();
     private static readonly Guid Admin = Guid.NewGuid();
     private readonly IUserService _users = NoUsers();
-    private readonly IUserEmailService _userEmails = Substitute.For<IUserEmailService>();
     private readonly IEmailService _emailService = Substitute.For<IEmailService>();
     private readonly IExpenseHoldedBookingService _expenses = NoBookings();
     private readonly SepaOptions _sepa = new();
@@ -92,26 +92,26 @@ public class HoldedFinanceServiceTests
         return users;
     }
 
-    private Service MakeService() => new(
+    private Service MakeService(FinanceEmails? emailTemplates = null) => new(
         _repo,
         _client,
         _budget,
         _holded,
+        _write,
         _expenses,
         _clock,
         _cache,
         _audit,
         _users,
-        _userEmails,
         _emailService,
-        TestFinanceEmails.Create(),
+        emailTemplates ?? TestFinanceEmails.Create(),
         Options.Create(_sepa), _bookingState,
         NullLogger<Service>.Instance);
 
     /// <summary>Same service, with a logger the test can read back.</summary>
     private Service MakeService(ILogger<Service> logger) => new(
-        _repo, _client, _budget, _holded, _expenses, _clock, _cache, _audit,
-        _users, _userEmails, _emailService, TestFinanceEmails.Create(), Options.Create(_sepa), _bookingState, logger);
+        _repo, _client, _budget, _holded, _write, _expenses, _clock, _cache, _audit,
+        _users, _emailService, TestFinanceEmails.Create(), Options.Create(_sepa), _bookingState, logger);
 
     /// <summary>Ledger-line stub for the mirror reads (positional: entry, line, account, date, type, description, debit, credit).</summary>
     private static HoldedLedgerLineInfo Line(int entry, int line, int account, Instant date,
@@ -2809,7 +2809,7 @@ public class HoldedFinanceServiceTests
         var members = new Dictionary<Guid, UserInfo>
         {
             [userId] = UserInfo.Create(
-                new User { Id = userId, BurnerName = "Ana", PreferredLanguage = "es", CreatedAt = FixedNow },
+                new User { Id = userId, BurnerName = "Ana", Email = "ana@example.com", PreferredLanguage = "es", CreatedAt = FixedNow },
                 [], [], [], null, []),
         };
         _users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
@@ -2817,12 +2817,6 @@ public class HoldedFinanceServiceTests
             {
                 call.Arg<CancellationToken>().ThrowIfCancellationRequested();
                 return members;
-            });
-        _userEmails.GetNotificationTargetEmailsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(call =>
-            {
-                call.Arg<CancellationToken>().ThrowIfCancellationRequested();
-                return new Dictionary<Guid, string> { [userId] = "ana@example.com" };
             });
         _emailService.SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>())
             .Returns(call =>
@@ -2849,13 +2843,13 @@ public class HoldedFinanceServiceTests
             Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<string>(), Admin, userId, Arg.Any<string>());
         await _emailService.Received(1).SendAsync(
             Arg.Is<EmailMessage>(m => m.RecipientEmail == "ana@example.com"), CancellationToken.None);
-        await _userEmails.Received(1).GetNotificationTargetEmailsAsync(
+        await _users.Received(1).GetUserInfosAsync(
             Arg.Any<IReadOnlyCollection<Guid>>(), CancellationToken.None);
     }
 
     [HumansTheory]
     [InlineData("member")]
-    [InlineData("address")]
+    [InlineData("template")]
     [InlineData("send")]
     public async Task GenerateSepaPayout_EmailFailureStillReturnsTheSavedFile(string failure)
     {
@@ -2866,14 +2860,14 @@ public class HoldedFinanceServiceTests
         if (string.Equals(failure, "member", StringComparison.Ordinal))
             _users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
                 .Returns(ValueTask.FromException<IReadOnlyDictionary<Guid, UserInfo>>(unavailable));
-        else if (string.Equals(failure, "address", StringComparison.Ordinal))
-            _userEmails.GetNotificationTargetEmailsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-                .Returns(Task.FromException<IReadOnlyDictionary<Guid, string>>(unavailable));
-        else
+        else if (string.Equals(failure, "send", StringComparison.Ordinal))
             _emailService.SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>())
                 .Returns(Task.FromException(unavailable));
 
-        var result = await MakeService().GenerateSepaPayoutAsync(
+        var templates = string.Equals(failure, "template", StringComparison.Ordinal)
+            ? TestFinanceEmails.Create(_ => throw unavailable)
+            : TestFinanceEmails.Create();
+        var result = await MakeService(templates).GenerateSepaPayoutAsync(
             [new SepaPayoutSelection(40000004, 12.34m)], 50m, Guid.NewGuid(),
             TestContext.Current.CancellationToken);
 
@@ -2908,17 +2902,11 @@ public class HoldedFinanceServiceTests
             .Returns(new Dictionary<Guid, UserInfo>
             {
                 [firstUserId] = UserInfo.Create(
-                    new User { Id = firstUserId, BurnerName = "Ana", CreatedAt = FixedNow },
+                    new User { Id = firstUserId, BurnerName = "Ana", Email = "ana@example.com", CreatedAt = FixedNow },
                     [], [], [], null, []),
                 [secondUserId] = UserInfo.Create(
-                    new User { Id = secondUserId, BurnerName = "Dani", CreatedAt = FixedNow },
+                    new User { Id = secondUserId, BurnerName = "Dani", Email = "dani@example.com", CreatedAt = FixedNow },
                     [], [], [], null, []),
-            });
-        _userEmails.GetNotificationTargetEmailsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(new Dictionary<Guid, string>
-            {
-                [firstUserId] = "ana@example.com",
-                [secondUserId] = "dani@example.com",
             });
         _emailService.SendAsync(Arg.Is<EmailMessage>(m => m.RecipientEmail == "ana@example.com"), Arg.Any<CancellationToken>())
             .Returns(Task.FromException(new InvalidOperationException("Outbox temporarily unavailable")));
@@ -2953,12 +2941,10 @@ public class HoldedFinanceServiceTests
             .Returns(new Dictionary<Guid, UserInfo>
             {
                 [userId] = UserInfo.Create(
-                    user: new User { Id = userId, DisplayName = burnerName, BurnerName = burnerName, PreferredLanguage = language, CreatedAt = FixedNow },
+                    user: new User { Id = userId, DisplayName = burnerName, BurnerName = burnerName, Email = email, PreferredLanguage = language, CreatedAt = FixedNow },
                     userEmails: [], eventParticipations: [], externalLogins: [],
                     profile: null, communicationPreferences: []),
             });
-        _userEmails.GetNotificationTargetEmailsAsync(Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Contains(userId)), Arg.Any<CancellationToken>())
-            .Returns(new Dictionary<Guid, string> { [userId] = email });
     }
 
     [HumansFact]
@@ -3336,11 +3322,11 @@ public class HoldedFinanceServiceTests
             });
     }
 
-    private void SeedEntryId(string id) =>
-        _client.PostLedgerEntryAsync(
+    private void SeedJournalEntry() =>
+        _write.PostJournalEntryAsync(
                 Arg.Any<LocalDate>(), Arg.Any<int>(), Arg.Any<int>(), Arg.Any<decimal>(),
                 Arg.Any<string>(), Arg.Any<CancellationToken>())
-            .Returns(id);
+            .Returns(new HoldedJournalEntryOutcome(true));
 
     [HumansFact]
     public async Task BookSepaTransfer_AlreadyBooked_PaysNothing()
@@ -3437,7 +3423,7 @@ public class HoldedFinanceServiceTests
         SeedBookableTransfer(holdedContactId: null);
         SeedBankLine();
         SeedOpenDocs();
-        SeedEntryId("e-1");
+        SeedJournalEntry();
 
         var result = await MakeService().BookSepaTransferAsync(BookableTransferId, BookableMovementId, Guid.NewGuid());
 
@@ -3492,7 +3478,7 @@ public class HoldedFinanceServiceTests
         SeedBankLine();
         SeedOpenDocs(Doc("d1", 10m, 1), Doc("d2", 100m, 2, draft: true), Doc("d3", 100m, 3, contactId: "c9"));
         SeedPaymentIds("pay-a");
-        SeedEntryId("e-1");
+        SeedJournalEntry();
         var actor = Guid.NewGuid();
 
         var result = await MakeService().BookSepaTransferAsync(BookableTransferId, BookableMovementId, actor);
@@ -3501,7 +3487,7 @@ public class HoldedFinanceServiceTests
         result.Message.Should().Contain("and a journal entry for 20.00 EUR");
         await _client.Received(1).PayPurchaseDocumentAsync("d1", 10m, "treasury-1", Arg.Any<LocalDate>(),
             "SEPA payout E11111111111111111111111111111111", Arg.Any<CancellationToken>());
-        await _client.Received(1).PostLedgerEntryAsync(
+        await _write.Received(1).PostJournalEntryAsync(
             BankLineDate, 40000004, 57200001, 20m,
             "SEPA payout E11111111111111111111111111111111", Arg.Any<CancellationToken>());
         await _repo.Received(1).SaveSepaTransferBookingAsync(
@@ -3509,8 +3495,7 @@ public class HoldedFinanceServiceTests
             Arg.Any<CancellationToken>());
         await _audit.Received(1).LogAsync(
             FinanceAuditActions.SepaPayoutTransferBooked, Arg.Any<string>(), BookableTransferId,
-            Arg.Is<string>(d => d.Contains("journal entry for 20.00 EUR", StringComparison.Ordinal)
-                                && d.Contains("e-1", StringComparison.Ordinal)),
+            Arg.Is<string>(d => d.Contains("journal entry for 20.00 EUR (confirmed)", StringComparison.Ordinal)),
             actor, userId, Arg.Any<string>());
     }
 
@@ -3522,14 +3507,14 @@ public class HoldedFinanceServiceTests
         SeedBookableTransfer();
         SeedBankLine();
         SeedOpenDocs();
-        SeedEntryId("e-1");
+        SeedJournalEntry();
 
         var result = await MakeService().BookSepaTransferAsync(BookableTransferId, BookableMovementId, Guid.NewGuid());
 
         result.Succeeded.Should().BeTrue();
         await _client.DidNotReceiveWithAnyArgs().PayPurchaseDocumentAsync(
             default!, default, default, default, default);
-        await _client.Received(1).PostLedgerEntryAsync(
+        await _write.Received(1).PostJournalEntryAsync(
             Arg.Any<LocalDate>(), 40000004, 57200001, 30m, Arg.Any<string>(), Arg.Any<CancellationToken>());
         await _repo.Received(1).SaveSepaTransferBookingAsync(
             BookableTransferId, FixedNow, Arg.Any<Guid?>(), Arg.Any<string>(), Arg.Any<Instant?>(), Arg.Any<string?>(),
@@ -3544,7 +3529,7 @@ public class HoldedFinanceServiceTests
         SeedBankLine();
         SeedOpenDocs(Doc("d1", 10m, 1));
         SeedPaymentIds("pay-a");
-        _client.PostLedgerEntryAsync(
+        _write.PostJournalEntryAsync(
                 Arg.Any<LocalDate>(), Arg.Any<int>(), Arg.Any<int>(), Arg.Any<decimal>(),
                 Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Throws(new HoldedPermanentException("Holded 400"));
@@ -3588,7 +3573,7 @@ public class HoldedFinanceServiceTests
             "newest", Arg.Any<decimal>(), Arg.Any<string>(), Arg.Any<LocalDate>(),
             Arg.Any<string>(), Arg.Any<CancellationToken>());
         // Fully covered by documents: nothing is left for a journal entry.
-        await _client.DidNotReceiveWithAnyArgs().PostLedgerEntryAsync(
+        await _write.DidNotReceiveWithAnyArgs().PostJournalEntryAsync(
             default, default, default, default, default!);
     }
 
@@ -3848,6 +3833,29 @@ public class HoldedFinanceServiceTests
             Arg.Any<CancellationToken>());
         await _audit.Received(1).LogAsync(FinanceAuditActions.HoldedExpenseAccountCreated, Arg.Any<string>(), Arg.Any<Guid>(),
             Arg.Is<string>(d => d.Contains("62900102")), Arg.Any<string>(), Arg.Any<Guid?>(), Arg.Any<string?>());
+    }
+
+    [HumansFact]
+    public async Task CreateOrLink_RegistrySaveFailsAfterHoldedCreation_StillAuditsTheAccount()
+    {
+        NoManagedAccounts();
+        NoCategoryMap();
+        LiveChart();
+        _client.CreateExpenseAccountAsync(62900100, "Workgroups / New", Arg.Any<CancellationToken>())
+            .Returns("new-account");
+        _repo.UpsertManagedAccountAsync(Arg.Any<HoldedManagedAccount>(), Arg.Any<CancellationToken>())
+            .ThrowsAsync(new InvalidOperationException("Registry unavailable"));
+
+        var act = () => MakeService().CreateOrLinkExpenseAccountAsync(
+            "Workgroups / New", null, TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("Registry unavailable");
+        await _client.Received(1).CreateExpenseAccountAsync(
+            62900100, "Workgroups / New", Arg.Any<CancellationToken>());
+        await _audit.Received(1).LogAsync(
+            FinanceAuditActions.HoldedExpenseAccountCreated, Service.HoldedExpenseAccount, Guid.Empty,
+            Arg.Is<string>(description => description.Contains("62900100") && description.Contains("Workgroups / New")),
+            "Finance", null, null);
     }
 
     [HumansFact]

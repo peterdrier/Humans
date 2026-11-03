@@ -65,7 +65,6 @@ public sealed class CampaignServiceTests
 
         var repository = new CampaignRepository(CampaignsDbFactory);
         var teamService = Substitute.For<ITeamService>();
-        var userEmailService = Substitute.For<IUserEmailService>();
         var userService = Substitute.For<IUserService>();
         _ticketDiscountCodes = Substitute.For<ITicketDiscountCodes>();
 
@@ -89,17 +88,9 @@ public sealed class CampaignServiceTests
                 .Where(_people.ContainsKey)
                 .ToDictionary(id => id, id => _people[id]));
 
-        userEmailService
-            .GetNotificationTargetEmailsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(call => call
-                .ArgAt<IReadOnlyCollection<Guid>>(0)
-                .Where(id => _people.TryGetValue(id, out var p) && !string.IsNullOrEmpty(p.Email))
-                .ToDictionary(id => id, id => _people[id].Email!));
-
         _service = new CampaignServiceImpl(
             repository,
             teamService,
-            userEmailService,
             userService,
             _notifications,
             _emailService,

@@ -107,7 +107,7 @@ internal sealed class TeamAdminController(
     {
         if (page < 1) page = 1;
         var pageSize = 20;
-        var (teamError, user, team) = await ResolveTeamManagementAsync(slug);
+        var (teamError, user, team, canManage) = await ResolveTeamViewAsync(slug);
         if (teamError is not null)
         {
             return teamError;
@@ -181,8 +181,9 @@ internal sealed class TeamAdminController(
             TeamName = team.Name,
             TeamSlug = team.Slug,
             IsSystemTeam = team.IsSystemTeam,
-            CanManageRoles = !team.IsSystemTeam,
-            CanProvisionEmails = true,
+            CanManage = canManage,
+            CanManageRoles = canManage && !team.IsSystemTeam,
+            CanProvisionEmails = canManage,
             Members = members,
             AllMemberUserIds = allMembers.Select(m => m.UserId).ToList(),
             PendingRequests = pendingRequestViewModels,

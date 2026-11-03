@@ -42,12 +42,25 @@ public sealed class AuthorizationHandlerTests : PreapprovalsTestHarness
 
         (await ProgramAllowedAsync(user, a, ProgramOperationRequirement.Manage)).Should().BeTrue();
         (await ProgramAllowedAsync(user, b, ProgramOperationRequirement.Manage)).Should().BeFalse();
+        (await ProgramAllowedAsync(user, a, ProgramOperationRequirement.View)).Should().BeTrue();
+        (await ProgramAllowedAsync(user, b, ProgramOperationRequirement.View)).Should().BeFalse();
         (await ProgramAllowedAsync(user, a, ProgramOperationRequirement.Administer)).Should().BeFalse();
+    }
+
+    [HumansFact]
+    public async Task Board_ViewsEveryProgram_ButNeitherManagesNorAdministers()
+    {
+        var program = (await NewService().GetProgramAsync((await SeedProgramAsync()).Id, Ct))!;
+        var user = Principal(SeedUser("Board member"), RoleNames.Board);
+
+        (await ProgramAllowedAsync(user, program, ProgramOperationRequirement.View)).Should().BeTrue();
+        (await ProgramAllowedAsync(user, program, ProgramOperationRequirement.Manage)).Should().BeFalse();
+        (await ProgramAllowedAsync(user, program, ProgramOperationRequirement.Administer)).Should().BeFalse();
+        (await PolicyAllowedAsync(user, new ManagesPreapprovalsRequirement())).Should().BeTrue();
     }
 
     [HumansTheory]
     [Xunit.InlineData(RoleNames.Admin)]
-    [Xunit.InlineData(RoleNames.Board)]
     [Xunit.InlineData(FinanceRoles.FinanceAdmin)]
     public async Task ManagingRoles_ManageAndAdministerEveryProgram(string role)
     {

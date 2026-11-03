@@ -1278,4 +1278,20 @@
   <data name="Shifts_Bail_NotActive" xml:space="preserve"><value>Esta inscripción ya no está activa y no se puede cancelar.</value></data>
   <data name="Shifts_Medical_RevealTitle" xml:space="preserve"><value>Mostrar datos médicos (cada consulta queda registrada en el registro de auditoría)</value></data>
   <data name="Shifts_Medical_RevealFailed" xml:space="preserve"><value>No se pudieron cargar los datos médicos.</value></data>
+  <data name="Shifts_Notification_CoverageGapTitle" xml:space="preserve"><value>Falta de cobertura: {0} día {1}</value></data>
+  <data name="Shifts_Notification_CoverageGapBody" xml:space="preserve"><value>Solo {0}/{1} humans confirmados.</value></data>
+  <data name="Shifts_Notification_FindCover" xml:space="preserve"><value>Buscar cobertura →</value></data>
+  <data name="Shifts_Notification_SignupChangeTitle" xml:space="preserve"><value>Cambio de inscripción a un turno: {0}</value></data>
+  <data name="Shifts_Notification_View" xml:space="preserve"><value>Ver →</value></data>
+  <data name="Shifts_Notification_ChangeConfirmed" xml:space="preserve"><value>Nueva inscripción confirmada para '{0}' el día {1}.</value></data>
+  <data name="Shifts_Notification_ChangeApproved" xml:space="preserve"><value>Inscripción aprobada para '{0}' el día {1}.</value></data>
+  <data name="Shifts_Notification_ChangeRefused" xml:space="preserve"><value>Inscripción rechazada para '{0}' el día {1}.</value></data>
+  <data name="Shifts_Notification_ChangeBailed" xml:space="preserve"><value>Un human ha cancelado su inscripción a '{0}' el día {1}.</value></data>
+  <data name="Shifts_Notification_ChangeAssigned" xml:space="preserve"><value>Asignación a '{0}' el día {1}.</value></data>
+  <data name="Shifts_Notification_ChangeRemoved" xml:space="preserve"><value>Inscripción eliminada de '{0}' el día {1}.</value></data>
+  <data name="Shifts_Notification_ChangeAssignedRange" xml:space="preserve"><value>Asignación a '{0}' ({1} turnos).</value></data>
+  <data name="Shifts_Notification_ChangeConfirmedRange" xml:space="preserve"><value>Inscripción a varios turnos de '{0}' ({1} turnos, confirmados).</value></data>
+  <data name="Shifts_Notification_ChangeApprovedRange" xml:space="preserve"><value>Inscripción a varios turnos de '{0}' aprobada ({1} turnos).</value></data>
+  <data name="Shifts_Notification_ChangeRefusedRange" xml:space="preserve"><value>Inscripción a varios turnos de '{0}' rechazada ({1} turnos).</value></data>
+  <data name="Shifts_Notification_ChangeBailedRange" xml:space="preserve"><value>Cancelación de varios turnos de '{0}' ({1} turnos).</value></data>
 </root>

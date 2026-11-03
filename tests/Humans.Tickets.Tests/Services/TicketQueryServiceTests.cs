@@ -74,10 +74,6 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
                 Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, string>());
 
-        _userEmailService.GetVerifiedEmailsForUserAsync(
-                Arg.Any<Guid>(), Arg.Any<CancellationToken>())
-            .Returns([]);
-
         _teamService.GetTeamsAsync(Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, TeamInfo>());
 

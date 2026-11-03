@@ -23,7 +23,7 @@ consumes it. Spec: [`docs/features/global/preapprovals.md`](../../../../docs/fea
 - A **Grant** is one person pre-approved under a program for one amount (`MaxAmount`). A
   grant in `Applied` is a member's request for one; the row is the same.
 - A **Manager** is a person who issues, approves, declines and revokes grants in one
-  program. Named per program by the Board, a finance admin or an admin.
+  program. Named per program by a finance admin or an admin.
 - The **claim deadline** (`ClaimBy`, Europe/Madrid date) is when expense reports against the
   program's grants must be submitted. Checked at submit; nothing runs when it passes.
 - **Kind** decides sizing: `FixedPerPerson` (every grant is the program's amount) or
@@ -116,7 +116,8 @@ Admin pages live under the section's URL space, not `/Admin`; they are localizat
 | Member with a grant | See own grants on `/Preapprovals`; file an expense against an Open one before the deadline. |
 | Any member while a program accepts applications | All of the above. Additionally apply for a pre-approval; a second submit edits the pending one. |
 | Program manager | All of the above. Additionally, on their programs only: issue, issue to many (fixed kind), approve, decline, revoke, change an amount. Sees only their programs on the admin index. In Expenses, does the first review (endorse, reject, decline a line) of reports filed against their programs' grants. |
-| Board, FinanceAdmin, Admin | All of the above on every program. Additionally create and edit programs, set the ceiling, name managers, close a program. |
+| Board | Sees every program and its grants on the admin pages; changes nothing. |
+| FinanceAdmin, Admin | All of the program manager's actions on every program. Additionally create and edit programs, set the ceiling, name managers, close a program. |
 
 ## Invariants
 
@@ -145,7 +146,7 @@ Admin pages live under the section's URL space, not `/Admin`; they are localizat
 - One pending application per person per program across every id they have held; a second
   submit edits it.
 - Claim is idempotent for the report already holding the grant and skips the deadline check
-  for it (a rejected report resubmitting). Release and consume need the holding report. All three transitions return `PreapprovalWriteResult`: expected state/deadline/missing-grant refusals leave the grant unchanged; successful claims carry a booking stamp. Dependency failures propagate to the caller, and request cancellation remains attached to the ambient Expenses transaction.
+  for it (a rejected report resubmitting). Release and consume need the holding report. All three transitions return `PreapprovalWriteResult`: expected state/deadline/missing-grant refusals leave the grant unchanged; successful claims carry a booking stamp. Metadata dependency failures propagate to the caller, and request cancellation remains attached to the ambient Expenses transaction. Grant writes return before their completion effects: Expenses collects the owning section’s audit and inbox actions, runs them only after its transaction commits with `CancellationToken.None`, and discards them on refusal or rollback. Completion failures are logged without reversing the committed report/grant.
 - Withdrawal retains the historical expense-report id. Revocation notices link to a report and require action only when the grant was Claimed at revocation; revocation and amount-change audits describe a report as holding the grant only while Claimed.
 - Grant-level admin routes 404 for a grant of another program, so a manager of A never acts
   on B's grants (`PreapprovalsAdminController.ManageAsync`, `ControllerTests`).
@@ -153,7 +154,7 @@ Admin pages live under the section's URL space, not `/Admin`; they are localizat
   and grant ownership checks. Malformed amounts never fall back to a program/request amount,
   and malformed bulk selections never issue grants to only the valid subset.
 - The reminder job sends and writes `pre_reminders_sent` rows keyed `(GrantId, Kind,
-  ClaimBy)`; it never touches a grant. A moved deadline reminds again (`ReminderTests`).
+  ClaimBy)`; it never touches a grant. The marker transaction commits before the independently persisted, best-effort reminder audit is attempted. A moved deadline reminds again (`ReminderTests`).
 - Table names start with `pre_`. The section's migrations are immutable once shipped.
 
 ## Negative Access Rules
@@ -188,13 +189,15 @@ Admin pages live under the section's URL space, not `/Admin`; they are localizat
   plus email; approve, decline and a merge-drop resolve it. Applicant-name enrichment
   belongs to each best-effort channel: a lookup or delivery fault is logged after the audited
   save, leaves the successful application successful, and does not skip the other channel.
+  Best-effort manager notices isolate each notification language group and each email recipient, so one preparation
+  or handoff failure does not skip later groups or managers. Required reminder deliveries still propagate failures.
   Initial reads and the first persistence call retain request cancellation. Once a grant or complete program edit commits, audit, notification resolution and notice/email handoffs finish independently of browser cancellation; this includes each beneficiary of a batch issue.
 - Decline, revoke, amount change: `PreapprovalGrantDecided` notification and the matching
   email. A revoke on a Claimed grant links the holding expense report.
 - Deadline moved: the stale file-by prompt is resolved, a new High-priority one and an email
   go to every Open holder; reminders run again for the new date.
 - Nightly `preapprovals-reminders` (05:00): 14-day and 3-day reminders to Open holders,
-  once per `(grant, kind, deadline)`, audited under job name `PreapprovalRemindersJob`.
+  once per `(grant, kind, deadline)`, audited under job name `PreapprovalRemindersJob`. Notification or email handoff failures leave no sent marker. The pass attempts the remaining grants, then fails for retry; successful markers prevent repeat delivery. Other grant-change notices remain best effort after their committed mutation.
 - GDPR: export slices `Preapprovals` (own grants, always a list) and `PreapprovalDecisions`
   (created, managed, decided; null when empty). Export follows the resolved identity chain,
   so archived IDs return the same grants and decisions. Erasure deletes Applied and
@@ -207,7 +210,7 @@ Admin pages live under the section's URL space, not `/Admin`; they are localizat
 
 - **Audit actions:** declared on `PreapprovalsAuditActions` (`src/Sections/Humans.Preapprovals/PreapprovalsAuditActions.cs`), one `AuditActionDefinition` each, written through `IAuditLogService`: `PreapprovalProgramCreated`, `PreapprovalProgramEdited`, `PreapprovalProgramClosed`, `PreapprovalProgramManagerAdded`, `PreapprovalProgramManagerRemoved`, `PreapprovalGrantIssued`, `PreapprovalGrantApplied`, `PreapprovalGrantApproved`, `PreapprovalGrantDeclined`, `PreapprovalGrantRevoked`, `PreapprovalGrantClaimed`, `PreapprovalGrantReleased`, `PreapprovalGrantConsumed`, `PreapprovalGrantAmountChanged`, `PreapprovalReminderSent`, `PreapprovalMergeDroppedApplication`.
 - **Users**: `IUserService.GetUserInfoAsync` / `GetUserInfosAsync` (merged ids, language,
-  display); `IUserEmailService.GetNotificationTargetEmailsAsync`; implements `IUserMerge`.
+  display and canonical email from the same recipient snapshot); implements `IUserMerge`.
 - **Finance**: `IHoldedFinanceService.ListExpenseAccountsAsync` to resolve the program's
   account id at save.
 - **Notifications**: `INotificationEmitter.SendAsync`, `INotificationAutoResolve.ResolveBySourceKeyAsync`. Its sources are declared in `PreapprovalsNotificationSources` (`src/Sections/Humans.Preapprovals/PreapprovalsNotificationSources.cs`), one `NotificationSourceDefinition` each: `PreapprovalFileBy` (actionable, to the beneficiary: pre-approval issued, released, reminded, or its deadline moved; resolved when the grant leaves Open); `PreapprovalApplicationReceived` (actionable, to the program's managers: someone applies to a pre-approval program; resolved on approve or decline); `PreapprovalGrantDecided` (informational (actionable when a grant is revoked while Claimed by an expense report), to the beneficiary: pre-approval declined, revoked, or its amount changed).
@@ -246,7 +249,7 @@ A `Contracts/` folder in the section (no leaf project: nothing Preapprovals refe
   read by their holders and managers; every read is one query.
 - **Display stitching** — `IUserService.GetUserInfosAsync` for names on the admin pages;
   `<vc:human>` and `<vc:human-search>` for people.
-- **Cross-section calls** — `IUserService`, `IUserEmailService`,
+- **Cross-section calls** — `IUserService`,
   `IHoldedFinanceService`, `INotificationEmitter`, `INotificationAutoResolve`,
   `IEmailService`, `IAuditLogService`.
 - **Architecture enforcement** — analyzers HUM0030/32/34/36; `SectionResourceParityTests`

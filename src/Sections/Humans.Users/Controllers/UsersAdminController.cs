@@ -196,7 +196,7 @@ internal sealed class UsersAdminController(
                 WithProfile = segmentation.WithProfile,
                 WithBoth = segmentation.WithBoth,
                 WithNeither = segmentation.WithNeither,
-                AvailableYears = segmentation.AvailableYears.ToList(),
+                AvailableYears = segmentation.AvailableYears.OrderByDescending(availableYear => availableYear).ToList(),
                 SelectedYear = segmentation.SelectedYear,
             };
 

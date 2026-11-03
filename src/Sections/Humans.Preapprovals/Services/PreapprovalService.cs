@@ -20,7 +20,6 @@ namespace Humans.Preapprovals.Services;
 internal sealed partial class PreapprovalService(
     IPreapprovalRepository repository,
     IUserService users,
-    IUserEmailService userEmails,
     IHoldedFinanceService finance,
     INotificationEmitter notifications,
     INotificationAutoResolve notificationResolve,
@@ -77,7 +76,7 @@ internal sealed partial class PreapprovalService(
     public async Task<bool> ManagesAnyProgramAsync(Guid userId, CancellationToken ct = default) =>
         await repository.ManagesAnyProgramAsync(await AllIdsAsync(userId, ct), ct);
 
-    public async Task<PreapprovalWriteResult> ClaimAsync(Guid grantId, Guid expenseReportId, Guid actorUserId, CancellationToken ct)
+    public async Task<PreapprovalWriteResult> ClaimAsync(Guid grantId, Guid expenseReportId, Guid actorUserId, CancellationToken ct, Action<Func<CancellationToken, Task>>? afterCommit = null)
     {
         var grant = await repository.GetGrantAsync(grantId, ct);
         if (grant is null)
@@ -86,9 +85,9 @@ internal sealed partial class PreapprovalService(
         if (grant.Status == GrantStatus.Claimed && grant.ExpenseReportId == expenseReportId)
         {
             // The holding report resubmitting after a rejection: filed in time, so no deadline check, but a fresh stamp.
-            await AuditGrantAsync(PreapprovalsAuditActions.PreapprovalGrantClaimed, grant,
+            await CompleteWriteAsync(grant.Id, _ => AuditGrantAsync(PreapprovalsAuditActions.PreapprovalGrantClaimed, grant,
                 $"Re-stamped for expense report {expenseReportId} (resubmit): cap {Euros(grant.MaxAmount)}, account {grant.Program.HoldedAccountNumber}.",
-                actorUserId, expenseReportId);
+                actorUserId, expenseReportId), ct, afterCommit);
             return new(Stamp: Stamp(grant));
         }
 
@@ -110,14 +109,17 @@ internal sealed partial class PreapprovalService(
         grant.UpdatedAt = clock.GetCurrentInstant();
         await repository.UpdateGrantAsync(grant, ct);
 
-        await ResolveFileByAsync(grant.Id, actorUserId, ct);
-        await AuditGrantAsync(PreapprovalsAuditActions.PreapprovalGrantClaimed, grant,
-            $"Claimed by expense report {expenseReportId}: cap {Euros(grant.MaxAmount)}, account {grant.Program.HoldedAccountNumber}.",
-            actorUserId, expenseReportId);
+        await CompleteWriteAsync(grant.Id, async completionToken =>
+        {
+            await AuditGrantAsync(PreapprovalsAuditActions.PreapprovalGrantClaimed, grant,
+                $"Claimed by expense report {expenseReportId}: cap {Euros(grant.MaxAmount)}, account {grant.Program.HoldedAccountNumber}.",
+                actorUserId, expenseReportId);
+            await ResolveFileByAsync(grant.Id, actorUserId, completionToken);
+        }, ct, afterCommit);
         return new(Stamp: Stamp(grant));
     }
 
-    public async Task<PreapprovalWriteResult> ReleaseAsync(Guid grantId, Guid expenseReportId, Guid actorUserId, CancellationToken ct)
+    public async Task<PreapprovalWriteResult> ReleaseAsync(Guid grantId, Guid expenseReportId, Guid actorUserId, CancellationToken ct, Action<Func<CancellationToken, Task>>? afterCommit = null)
     {
         var (grant, refusal) = await HeldByAsync(grantId, expenseReportId, ct);
         if (grant is null) return new(Refusal: refusal);
@@ -126,14 +128,17 @@ internal sealed partial class PreapprovalService(
         grant.UpdatedAt = clock.GetCurrentInstant();
         await repository.UpdateGrantAsync(grant, ct);
 
-        await AuditGrantAsync(PreapprovalsAuditActions.PreapprovalGrantReleased, grant,
-            $"Released by withdrawal of expense report {expenseReportId}; open again until {grant.Program.ClaimBy.ToInvariantDate()}.",
-            actorUserId, expenseReportId);
-        await NotifyFileByAsync(ToInfo(grant), "Preapprovals_Notice_Released", NotificationPriority.Normal, ct);
+        await CompleteWriteAsync(grant.Id, async completionToken =>
+        {
+            await AuditGrantAsync(PreapprovalsAuditActions.PreapprovalGrantReleased, grant,
+                $"Released by withdrawal of expense report {expenseReportId}; open again until {grant.Program.ClaimBy.ToInvariantDate()}.",
+                actorUserId, expenseReportId);
+            await NotifyFileByAsync(ToInfo(grant), "Preapprovals_Notice_Released", NotificationPriority.Normal, completionToken);
+        }, ct, afterCommit);
         return new();
     }
 
-    public async Task<PreapprovalWriteResult> ConsumeAsync(Guid grantId, Guid expenseReportId, Guid actorUserId, CancellationToken ct)
+    public async Task<PreapprovalWriteResult> ConsumeAsync(Guid grantId, Guid expenseReportId, Guid actorUserId, CancellationToken ct, Action<Func<CancellationToken, Task>>? afterCommit = null)
     {
         var (grant, refusal) = await HeldByAsync(grantId, expenseReportId, ct);
         if (grant is null) return new(Refusal: refusal);
@@ -142,10 +147,26 @@ internal sealed partial class PreapprovalService(
         grant.UpdatedAt = clock.GetCurrentInstant();
         await repository.UpdateGrantAsync(grant, ct);
 
-        await AuditGrantAsync(PreapprovalsAuditActions.PreapprovalGrantConsumed, grant,
+        await CompleteWriteAsync(grant.Id, _ => AuditGrantAsync(PreapprovalsAuditActions.PreapprovalGrantConsumed, grant,
             $"Consumed by approval of expense report {expenseReportId}: {Euros(grant.MaxAmount)}.",
-            actorUserId, expenseReportId);
+            actorUserId, expenseReportId), ct, afterCommit);
         return new();
+    }
+
+    private async Task CompleteWriteAsync(Guid grantId, Func<CancellationToken, Task> completion,
+        CancellationToken ct, Action<Func<CancellationToken, Task>>? afterCommit)
+    {
+        async Task CompleteAsync(CancellationToken token)
+        {
+            try { await completion(token); }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Failed to finish notices for committed pre-approval {GrantId}", grantId);
+            }
+        }
+
+        if (afterCommit is null) await CompleteAsync(ct);
+        else afterCommit(CompleteAsync);
     }
 
     private async Task<(PreapprovalGrant? Grant, string? Refusal)> HeldByAsync(Guid grantId, Guid expenseReportId, CancellationToken ct)

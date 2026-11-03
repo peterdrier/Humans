@@ -19,7 +19,6 @@ namespace Humans.Issues.Services;
 internal sealed class IssuesService(
     IIssuesRepository repo,
     IUserService users,
-    IUserEmailService userEmails,
     IRoleAssignmentService roles,
     IEmailService email,
     IssuesEmails emailMessages,
@@ -842,18 +841,15 @@ internal sealed class IssuesService(
             await SendCommentEmailAsync(issue, comment, ct);
         }
 
-        var targets = await ResolveRecipientsAsync(recipients, comment.SenderUserId, ct);
-        if (targets.Count == 0) return;
-
         try
         {
             await SendLocalizedNotificationAsync(
                 IssuesNotificationSources.IssueComment,
                 NotificationClass.Informational,
                 NotificationPriority.Normal,
-                targets,
+                recipients.ToList(),
                 culture => (Notice(culture, "Issue_Notice_CommentTitle", issue.Title), comment.Content),
-                link, ct);
+                link, comment.SenderUserId, ct);
         }
         catch (Exception ex)
         {
@@ -868,11 +864,9 @@ internal sealed class IssuesService(
         try
         {
             var reporter = await users.GetUserInfoAsync(issue.ReporterUserId, ct);
-            var emails = await userEmails.GetNotificationTargetEmailsAsync(
-                [issue.ReporterUserId], ct);
+            var to = reporter?.Email;
 
             if (reporter is not null &&
-                emails.TryGetValue(issue.ReporterUserId, out var to) &&
                 !string.IsNullOrWhiteSpace(to))
             {
                 var language = reporter.PreferredLanguage;
@@ -908,22 +902,19 @@ internal sealed class IssuesService(
         var recipients = new HashSet<Guid>();
         if (issue.ReporterUserId != actorUserId) recipients.Add(issue.ReporterUserId);
         if (issue.AssigneeUserId is { } aid && aid != actorUserId) recipients.Add(aid);
-        var targets = await ResolveRecipientsAsync(recipients, actorUserId, ct);
-        if (targets.Count == 0) return;
-
         try
         {
             await SendLocalizedNotificationAsync(
                 IssuesNotificationSources.IssueStatusChanged,
                 NotificationClass.Informational,
                 NotificationPriority.Normal,
-                targets,
+                recipients.ToList(),
                 culture => (
                     Notice(culture, "Issue_Notice_StatusChangedTitle", issue.Title),
                     Notice(culture, "Issue_Notice_StatusChangedBody",
                         Notice(culture, $"Enum_IssueStatus_{oldStatus}"),
                         Notice(culture, $"Enum_IssueStatus_{newStatus}"))),
-                $"/Issues/{issue.Id}", ct);
+                $"/Issues/{issue.Id}", actorUserId, ct);
         }
         catch (Exception ex)
         {
@@ -940,7 +931,17 @@ internal sealed class IssuesService(
         IEnumerable<string> notified = queueRoles.Count > 0 ? queueRoles : [RoleNames.Admin];
         var ids = new HashSet<Guid>();
         foreach (var role in notified)
-            ids.UnionWith(await roles.GetActiveUserIdsInRoleAsync(role, ct));
+        {
+            try
+            {
+                ids.UnionWith(await roles.GetActiveUserIdsInRoleAsync(role, ct));
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Failed to resolve issue notice recipients for queue {Section} role {Role}",
+                    section ?? "(Admin)", role);
+            }
+        }
         return ids;
     }
 
@@ -959,7 +960,7 @@ internal sealed class IssuesService(
                 NotificationPriority.Normal,
                 recipients.ToList(),
                 culture => (Notice(culture, "Issue_Notice_SubmittedTitle", issue.Title), issue.Description),
-                $"/Issues/{issue.Id}", ct, issue.Id.ToString());
+                $"/Issues/{issue.Id}", issue.ReporterUserId, ct, issue.Id.ToString());
         }
         catch (Exception ex)
         {
@@ -985,23 +986,6 @@ internal sealed class IssuesService(
         }
     }
 
-    /// <summary>
-    /// A stored reporter or assignee id since merged away is delivered to its survivor, and self-exclusion is judged on
-    /// the resolved id.
-    /// </summary>
-    private async Task<List<Guid>> ResolveRecipientsAsync(
-        IEnumerable<Guid> userIds, Guid? exclude, CancellationToken ct)
-    {
-        var ids = userIds.Distinct().ToList();
-        if (ids.Count == 0) return [];
-        var infos = await users.GetUserInfosAsync(ids, ct);
-        return ids
-            .Select(id => infos.TryGetValue(id, out var info) ? info.Id : id)
-            .Where(id => id != exclude)
-            .Distinct()
-            .ToList();
-    }
-
     private async Task DispatchAssignedNotificationAsync(
         Issue issue, Guid newAssigneeUserId, Guid? actorUserId, CancellationToken ct)
     {
@@ -1015,7 +999,7 @@ internal sealed class IssuesService(
                 NotificationPriority.Normal,
                 [newAssigneeUserId],
                 culture => (Notice(culture, "Issue_Notice_AssignedTitle", issue.Title), issue.Description),
-                $"/Issues/{issue.Id}", ct);
+                $"/Issues/{issue.Id}", actorUserId, ct);
         }
         catch (Exception ex)
         {
@@ -1035,16 +1019,26 @@ internal sealed class IssuesService(
         IReadOnlyList<Guid> recipients,
         Func<CultureInfo, (string Title, string? Body)> content,
         string actionUrl,
+        Guid? excludeUserId,
         CancellationToken ct,
         string? sourceKey = null)
     {
-        var people = await users.GetUserInfosAsync(recipients, ct);
-        foreach (var group in recipients.GroupBy(
-                     id =>
-                     {
-                         var language = people.GetValueOrDefault(id)?.PreferredLanguage;
-                         return language.IsSupportedCultureCode() ? language! : "en";
-                     },
+        if (recipients.Count == 0) return;
+        var lookupIds = recipients.ToHashSet();
+        if (excludeUserId is { } actorId) lookupIds.Add(actorId);
+        var people = await users.GetUserInfosAsync(lookupIds.ToList(), ct);
+        var excludedId = excludeUserId is { } excluded
+            ? people.GetValueOrDefault(excluded)?.Id ?? excluded
+            : (Guid?)null;
+        var targets = recipients.Select(id =>
+            {
+                var info = people.GetValueOrDefault(id);
+                return (Id: info?.Id ?? id, Language: info?.PreferredLanguage);
+            })
+            .Where(target => target.Id != excludedId)
+            .DistinctBy(target => target.Id);
+        foreach (var group in targets.GroupBy(
+                     target => target.Language.IsSupportedCultureCode() ? target.Language! : "en",
                      StringComparer.OrdinalIgnoreCase))
         {
             try
@@ -1052,7 +1046,7 @@ internal sealed class IssuesService(
                 var culture = CultureInfo.GetCultureInfo(group.Key);
                 var (title, body) = content(culture);
                 await notifications.SendAsync(
-                    source, notificationClass, priority, title, group.ToList(), body,
+                    source, notificationClass, priority, title, group.Select(target => target.Id).ToList(), body,
                     actionUrl: actionUrl,
                     actionLabel: Notice(culture, "Issue_Notice_Open"),
                     sourceKey: sourceKey,

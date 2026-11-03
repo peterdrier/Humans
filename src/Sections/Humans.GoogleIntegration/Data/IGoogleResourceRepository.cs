@@ -23,8 +23,6 @@ internal interface IGoogleResourceRepository : IRepository
 
     Task<IReadOnlyDictionary<Guid, int>> GetActiveResourceCountsByTeamAsync(CancellationToken ct = default);
 
-    Task<IReadOnlyList<GoogleResource>> GetActiveDriveFoldersAsync(CancellationToken ct = default);
-
     Task<IReadOnlyList<GoogleResource>> GetActiveByResourceTypeAsync(
         GoogleResourceType resourceType,
         CancellationToken ct = default);

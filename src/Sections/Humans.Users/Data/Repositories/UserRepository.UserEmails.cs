@@ -199,22 +199,6 @@ internal sealed partial class UserRepository
         return [.. exact, .. aliases];
     }
 
-    public async Task<Dictionary<Guid, string>> GetAllNotificationTargetUserEmailsAsync(
-        CancellationToken ct = default)
-    {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-        return await ctx.UserEmails
-            .AsNoTracking()
-            .Where(e => e.IsVerified && e.IsPrimary)
-            .GroupBy(e => e.UserId)
-            .Select(g => new
-            {
-                UserId = g.Key,
-                Email = g.Select(e => e.Email).First()
-            })
-            .ToDictionaryAsync(x => x.UserId, x => x.Email, ct);
-    }
-
     public async Task<IReadOnlyList<Guid>> GetUserIdsByUserEmailPrefixAndSuffixAsync(
         string prefix,
         string suffix,

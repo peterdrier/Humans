@@ -19,7 +19,7 @@ public interface IEventService : IApplicationService
 
     /// <summary>
     /// Case-insensitive Title or Description match, scored per <see cref="EventSearchHit"/>. Capped at
-    /// <paramref name="max"/>, in unspecified order: the caller ranks.
+    /// <paramref name="max"/> highest-scoring matches; the caller controls presentation order.
     /// </summary>
     Task<IReadOnlyList<EventSearchHit>> SearchAsync(
         string query, int max, CancellationToken ct = default);

@@ -863,6 +863,27 @@ public class CachingUserServiceTests
         results[0].MatchField.Should().Be("Name");
     }
 
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task SearchUsersAsync_LimitKeepsTheHighestScore_RegardlessOfWhichUserMatchesExactly(bool swap)
+    {
+        var ids = new[]
+        {
+            Guid.Parse("00000000-0000-0000-0000-000000000001"),
+            Guid.Parse("00000000-0000-0000-0000-000000000002"),
+        };
+        var exactId = ids[swap ? 1 : 0];
+        var sut = CreateSut();
+        foreach (var id in ids)
+            await PrimeAsync(sut, BuildSearchableUserInfo(id, burnerName: id == exactId ? "Ian" : "Brian"));
+
+        var results = await sut.SearchUsersAsync("Ian", PersonSearchFields.PublicAll, limit: 1,
+            ct: Xunit.TestContext.Current.CancellationToken);
+
+        results.Should().ContainSingle().Which.UserId.Should().Be(exactId);
+    }
+
     [HumansFact]
     public async Task SearchUsersAsync_ScoresExactNameAboveSubstringMatch()
     {

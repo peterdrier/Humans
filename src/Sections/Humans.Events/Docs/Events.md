@@ -284,3 +284,5 @@ Adding a favourite requires a currently approved event. A supplied day on a recu
 
 - Guide settings require explicitly posted submission dates, publication date and print limit; missing fields cannot replace dates with year one or reset the limit to 100. Explicit zero still means unlimited. The form displays each missing-field error.
 - Guide settings save returns a refusal if the selected event edition disappears between lookup and write, warning without an exception and performing no write. The operator form keeps the selected-edition field error; dependency faults propagate instead of exposing their messages as validation errors. Successful saves refresh the settings cache.
+
+- Global text search selects the highest-scoring matches before applying its result limit, with ordinal case-insensitive name and ID tie-breakers. Existing visibility and event-scope rules still apply; GUID queries retain direct lookup.

@@ -32,7 +32,6 @@ internal sealed class ApplicationDecisionService(
     IAuditLogService auditLogService,
     IEmailService emailService,
     GovernanceEmails emailMessages,
-    IUserEmailService userEmailService,
     INotificationEmitter notificationService,
     ISystemTeamSync syncJob,
     IHumansMetrics metrics,
@@ -743,10 +742,8 @@ internal sealed class ApplicationDecisionService(
 
             culture = CultureInfo.GetCultureInfo(user.PreferredLanguage.IsSupportedCultureCode() ? user.PreferredLanguage : "en");
 
-            var notificationEmails = await userEmailService.GetNotificationTargetEmailsAsync(
-                [application.UserId], cancellationToken);
-            if (notificationEmails.TryGetValue(application.UserId, out var recipientEmail)
-                && !string.IsNullOrWhiteSpace(recipientEmail))
+            var recipientEmail = user.Email;
+            if (!string.IsNullOrWhiteSpace(recipientEmail))
             {
                 await emailService.SendAsync(buildMessage(recipientEmail, user, culture.Name));
             }

@@ -17,7 +17,7 @@ public sealed class UserEmailAuthorizationHandlerTests
         { null, true },
         { RoleNames.Admin, true },
         { UsersRoles.UsersAdmin, true },
-        { RoleNames.Board, true },
+        { RoleNames.Board, false },
         { "SomeOtherRole", false },
     };
 
@@ -38,9 +38,23 @@ public sealed class UserEmailAuthorizationHandlerTests
         result.Should().Be(expected);
     }
 
-    private async Task<bool> EvaluateAsync(ClaimsPrincipal user, Guid targetUserId)
+    [HumansTheory]
+    [InlineData(RoleNames.Board, true)]
+    [InlineData(UsersRoles.UsersAdmin, true)]
+    [InlineData("SomeOtherRole", false)]
+    public async Task Board_views_another_members_emails_but_never_edits_them(string actorRole, bool expected)
     {
-        var requirement = UserEmailOperations.Edit;
+        var user = CreateUser(Guid.NewGuid(), actorRole);
+
+        var result = await EvaluateAsync(user, Guid.NewGuid(), UserEmailOperations.View);
+
+        result.Should().Be(expected);
+    }
+
+    private async Task<bool> EvaluateAsync(
+        ClaimsPrincipal user, Guid targetUserId, UserEmailOperationRequirement? requirement = null)
+    {
+        requirement ??= UserEmailOperations.Edit;
         var context = new AuthorizationHandlerContext([requirement], user, targetUserId);
 
         await _handler.HandleAsync(context);

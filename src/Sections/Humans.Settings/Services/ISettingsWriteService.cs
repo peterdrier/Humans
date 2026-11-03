@@ -15,9 +15,6 @@ internal interface ISettingsWriteService : ISettingsService
     Task<EventSettingsSaveResult> SaveEventSettingsAsync(
         EventSettingsInfo settings, Guid actorUserId, CancellationToken cancellationToken = default);
 
-    /// <summary>The global timezone every event is read in.</summary>
-    Task<string> GetTimeZoneIdAsync(CancellationToken cancellationToken = default);
-
     /// <summary>Sets the global timezone and audits it, naming <paramref name="actorUserId"/>.</summary>
     /// <returns>An expected refusal when <paramref name="timeZoneId"/> is not an IANA id.</returns>
     Task<EventSettingsSaveResult> SaveTimeZoneAsync(

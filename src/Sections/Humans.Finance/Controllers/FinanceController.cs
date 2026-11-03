@@ -153,8 +153,8 @@ internal sealed class FinanceController(
         }
 
         // Parsed invariantly like the amounts below. The posted value is authoritative; Sepa:MaxPayoutPerTransfer is
-        // only the prefill.
-        if (!decimal.TryParse(maxPerTransfer, NumberStyles.Number, CultureInfo.InvariantCulture, out var cap)
+        // only the prefill. Grouping is forbidden so a comma decimal cannot silently become a larger amount.
+        if (!decimal.TryParse(maxPerTransfer, NumberStyles.Number & ~NumberStyles.AllowThousands, CultureInfo.InvariantCulture, out var cap)
             || cap <= 0m)
         {
             SetError("The per-transfer cap must be a positive amount.");
@@ -168,7 +168,7 @@ internal sealed class FinanceController(
             .Select(num => new SepaPayoutSelection(
                 num,
                 amounts.TryGetValue(num, out var raw)
-                && decimal.TryParse(raw, NumberStyles.Number, CultureInfo.InvariantCulture, out var amount)
+                && decimal.TryParse(raw, NumberStyles.Number & ~NumberStyles.AllowThousands, CultureInfo.InvariantCulture, out var amount)
                     ? amount
                     : 0m))
             .ToList();
@@ -247,6 +247,21 @@ internal sealed class FinanceController(
         if (GetCurrentUserId() is not { } actorUserId) return Challenge();
 
         var result = await holdedConnector.WithdrawSepaTransferAsync(transferId, actorUserId, HttpContext.RequestAborted);
+        if (result.Succeeded) SetSuccess(result.Message); else SetError(result.Message);
+
+        return RedirectToAction(nameof(Sepa), new { days });
+    }
+
+    /// <summary>For a file the bank rejected whole.</summary>
+    [HttpPost("Sepa/CancelFile")]
+    [Authorize(Policy = FinancePolicies.Manage)]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> CancelSepaFile(
+        Guid fileId, int days = IHoldedFinanceAdminService.DefaultSepaMatchToleranceDays)
+    {
+        if (GetCurrentUserId() is not { } actorUserId) return Challenge();
+
+        var result = await holdedConnector.CancelSepaFileAsync(fileId, actorUserId, HttpContext.RequestAborted);
         if (result.Succeeded) SetSuccess(result.Message); else SetError(result.Message);
 
         return RedirectToAction(nameof(Sepa), new { days });

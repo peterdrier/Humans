@@ -114,7 +114,6 @@ public class ExpenseReportServiceHoldedOutboxTests
             _budgetService,
             Substitute.For<ITeamService>(),
             _userService,
-            Substitute.For<IUserEmailService>(),
             Substitute.For<IEmailService>(),
             TestExpensesEmails.Create(),
             _auditLog,

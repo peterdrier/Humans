@@ -21,7 +21,6 @@ internal sealed partial class WorkgroupService(
     IWorkgroupRepository repository,
     IUserService users,
     ISurveyAnalysisRead surveys,
-    IUserEmailService userEmails,
     IRoleAssignmentService roles,
     ISettingsService settings,
     IGoogleSyncService googleSync,
@@ -476,6 +475,8 @@ internal sealed partial class WorkgroupService(
             return new(Refusal: new(WorkgroupErrorKeys.BodyRequired));
         if (save.Body.Trim().Length > 16000)
             return new(Refusal: new(WorkgroupErrorKeys.TextTooLong, 16000));
+        var meetingLink = await ResolveMeetingLinkAsync(workgroup.Id, save, ct);
+        if (meetingLink.Refusal is { } meetingRefusal) return new(Refusal: meetingRefusal);
 
         var now = clock.GetCurrentInstant();
         var entry = new WorkgroupLogEntry
@@ -486,6 +487,7 @@ internal sealed partial class WorkgroupService(
             OccurredOn = save.OccurredOn,
             Title = Trimmed(save.Title),
             Body = save.Body.Trim(),
+            MeetingId = meetingLink.Value,
             AuthorUserId = actorUserId,
             CreatedAt = now,
             UpdatedAt = now
@@ -510,8 +512,11 @@ internal sealed partial class WorkgroupService(
             return new(Refusal: new(WorkgroupErrorKeys.BodyRequired));
         if (save.Body.Trim().Length > 16000)
             return new(Refusal: new(WorkgroupErrorKeys.TextTooLong, 16000));
+        var meetingLink = await ResolveMeetingLinkAsync(workgroup.Id, save, ct, entry.MeetingId);
+        if (meetingLink.Refusal is { } meetingRefusal) return new(Refusal: meetingRefusal);
 
         entry.Kind = save.Kind;
+        entry.MeetingId = meetingLink.Value;
         entry.OccurredOn = save.OccurredOn;
         entry.Title = Trimmed(save.Title);
         entry.Body = save.Body.Trim();

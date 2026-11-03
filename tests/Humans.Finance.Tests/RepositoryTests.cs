@@ -447,7 +447,7 @@ public class RepositoryTests
         fresh.IsWithdrawn.Should().BeFalse();
         fresh.WithdrawnAt.Should().BeNull();
 
-        await repo.SaveSepaTransferWithdrawnAsync(transferId, Now, actor, Ct);
+        await repo.SaveSepaTransfersWithdrawnAsync([transferId], Now, actor, Ct);
 
         var row = (await repo.GetSepaPayoutTransferRowsAsync(Ct)).Should().ContainSingle().Subject;
         row.WithdrawnAt.Should().Be(Now);

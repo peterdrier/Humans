@@ -113,7 +113,6 @@ public class NameRequiredFilterTests
     [InlineData("OnboardingWidget", "SignUpRange")]
     [InlineData("OnboardingWidget", "Skip")]
     [InlineData("OnboardingWidget", "Consents")]
-    [InlineData("OnboardingWidget", "SignConsent")]
     public async Task OnboardingWidgetNonNameRoutes_RedirectNamelessUserToNameForm(
         string controllerName, string actionName)
     {

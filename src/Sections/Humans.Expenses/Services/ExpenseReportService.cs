@@ -27,7 +27,6 @@ internal sealed class ExpenseReportService(
     IBudgetService budgetService,
     ITeamService teamService,
     IUserService userService,
-    IUserEmailService userEmailService,
     IEmailService emailService,
     ExpensesEmails emails,
     IAuditLogService auditLogService,
@@ -414,18 +413,22 @@ internal sealed class ExpenseReportService(
                 : (Guid?)null;
             if (released is { } releasedId)
             {
-                using var scope = new TransactionScope(
+                var afterCommit = new List<Func<CancellationToken, Task>>();
+                using (var scope = new TransactionScope(
                     TransactionScopeOption.Required,
                     new TransactionOptions { IsolationLevel = IsolationLevel.ReadCommitted },
-                    TransactionScopeAsyncFlowOption.Enabled);
-                var release = await preapprovalWrites.ReleaseAsync(releasedId, reportId, actorUserId, ct);
-                if (release.Refusal is { } releaseRefusal)
+                    TransactionScopeAsyncFlowOption.Enabled))
                 {
-                    logger.LogWarning("Pre-approval {GrantId} refused release by report {ReportId}: {Reason}", releasedId, reportId, releaseRefusal);
-                    return ExpenseMutationResult.Failure("Expenses_Validation_PreapprovalUnavailable");
+                    var release = await preapprovalWrites.ReleaseAsync(releasedId, reportId, actorUserId, ct, afterCommit.Add);
+                    if (release.Refusal is { } releaseRefusal)
+                    {
+                        logger.LogWarning("Pre-approval {GrantId} refused release by report {ReportId}: {Reason}", releasedId, reportId, releaseRefusal);
+                        return ExpenseMutationResult.Failure("Expenses_Validation_PreapprovalUnavailable");
+                    }
+                    await repo.UpdateDraftAsync(updated, ct);
+                    scope.Complete();
                 }
-                await repo.UpdateDraftAsync(updated, ct);
-                scope.Complete();
+                foreach (var complete in afterCommit) await complete(CancellationToken.None);
             }
             else
             {
@@ -918,24 +921,28 @@ internal sealed class ExpenseReportService(
                 var grantRefusal = await GetGrantClaimRefusalAsync(grantId, reportId, ct);
                 if (grantRefusal is not null) return grantRefusal;
 
-                using var scope = new TransactionScope(
+                var afterCommit = new List<Func<CancellationToken, Task>>();
+                using (var scope = new TransactionScope(
                     TransactionScopeOption.Required,
                     new TransactionOptions { IsolationLevel = IsolationLevel.ReadCommitted },
-                    TransactionScopeAsyncFlowOption.Enabled);
-                var claim = await preapprovalWrites.ClaimAsync(grantId, reportId, actorUserId, ct);
-                if (claim.Refusal is { } refusal)
+                    TransactionScopeAsyncFlowOption.Enabled))
                 {
-                    logger.LogWarning("Pre-approval {GrantId} refused the claim by report {ReportId}: {Reason}", grantId, reportId, refusal);
-                    return ExpenseMutationResult.Failure("Expenses_Validation_PreapprovalUnavailable");
+                    var claim = await preapprovalWrites.ClaimAsync(grantId, reportId, actorUserId, ct, afterCommit.Add);
+                    if (claim.Refusal is { } refusal)
+                    {
+                        logger.LogWarning("Pre-approval {GrantId} refused the claim by report {ReportId}: {Reason}", grantId, reportId, refusal);
+                        return ExpenseMutationResult.Failure("Expenses_Validation_PreapprovalUnavailable");
+                    }
+                    var stamp = claim.Stamp!;
+                    var ok = await repo.SubmitAsync(
+                        reportId, legalName, payeeIban, now,
+                        grantStamp: new ExpenseBooking(stamp.HoldedAccountNumber, stamp.HoldedAccountId, null, null),
+                        grantMaxAmount: stamp.MaxAmount,
+                        ct: ct);
+                    if (!ok) return ExpenseMutationResult.Failure("Expenses_Validation_CouldNotSubmitReport");
+                    scope.Complete();
                 }
-                var stamp = claim.Stamp!;
-                var ok = await repo.SubmitAsync(
-                    reportId, legalName, payeeIban, now,
-                    grantStamp: new ExpenseBooking(stamp.HoldedAccountNumber, stamp.HoldedAccountId, null, null),
-                    grantMaxAmount: stamp.MaxAmount,
-                    ct: ct);
-                if (!ok) return ExpenseMutationResult.Failure("Expenses_Validation_CouldNotSubmitReport");
-                scope.Complete();
+                foreach (var complete in afterCommit) await complete(CancellationToken.None);
             }
 
             await auditLogService.LogAsync(
@@ -1005,19 +1012,23 @@ internal sealed class ExpenseReportService(
             }
             else
             {
-                using var scope = new TransactionScope(
+                var afterCommit = new List<Func<CancellationToken, Task>>();
+                using (var scope = new TransactionScope(
                     TransactionScopeOption.Required,
                     new TransactionOptions { IsolationLevel = IsolationLevel.ReadCommitted },
-                    TransactionScopeAsyncFlowOption.Enabled);
-                var release = await preapprovalWrites.ReleaseAsync(report.PreapprovalGrantId!.Value, reportId, submitterUserId, ct);
-                if (release.Refusal is { } releaseRefusal)
+                    TransactionScopeAsyncFlowOption.Enabled))
                 {
-                    logger.LogWarning("Pre-approval {GrantId} refused release by report {ReportId}: {Reason}", report.PreapprovalGrantId, reportId, releaseRefusal);
-                    return ExpenseMutationResult.Failure("Expenses_Flash_WithdrawFailed");
+                    var release = await preapprovalWrites.ReleaseAsync(report.PreapprovalGrantId!.Value, reportId, submitterUserId, ct, afterCommit.Add);
+                    if (release.Refusal is { } releaseRefusal)
+                    {
+                        logger.LogWarning("Pre-approval {GrantId} refused release by report {ReportId}: {Reason}", report.PreapprovalGrantId, reportId, releaseRefusal);
+                        return ExpenseMutationResult.Failure("Expenses_Flash_WithdrawFailed");
+                    }
+                    var ok = await repo.WithdrawAsync(reportId, now, ct);
+                    if (!ok) return ExpenseMutationResult.Failure("Expenses_Flash_WithdrawFailed");
+                    scope.Complete();
                 }
-                var ok = await repo.WithdrawAsync(reportId, now, ct);
-                if (!ok) return ExpenseMutationResult.Failure("Expenses_Flash_WithdrawFailed");
-                scope.Complete();
+                foreach (var complete in afterCommit) await complete(CancellationToken.None);
             }
 
             await auditLogService.LogAsync(
@@ -1350,9 +1361,8 @@ internal sealed class ExpenseReportService(
         if (approved is null) return;
 
         var submitter = await userService.GetUserInfoAsync(approved.SubmitterUserId, ct);
-        var targets = await userEmailService.GetNotificationTargetEmailsAsync([approved.SubmitterUserId], ct);
-        if (submitter is null || !targets.TryGetValue(approved.SubmitterUserId, out var recipient)
-            || string.IsNullOrWhiteSpace(recipient))
+        var recipient = submitter?.Email;
+        if (submitter is null || string.IsNullOrWhiteSpace(recipient))
         {
             logger.LogWarning(
                 "Skipping expense-approved email for report {ReportId}: submitter {UserId} has no notification email",
@@ -1402,19 +1412,24 @@ internal sealed class ExpenseReportService(
             }
             else
             {
-                using var scope = new TransactionScope(
+                var afterCommit = new List<Func<CancellationToken, Task>>();
+                using (var scope = new TransactionScope(
                     TransactionScopeOption.Required,
                     new TransactionOptions { IsolationLevel = IsolationLevel.ReadCommitted },
-                    TransactionScopeAsyncFlowOption.Enabled);
-                var consumption = await preapprovalWrites.ConsumeAsync(consumedGrantId, reportId, actorUserId, ct);
-                if (consumption.Refusal is { } refusal)
+                    TransactionScopeAsyncFlowOption.Enabled))
                 {
-                    logger.LogWarning("Pre-approval {GrantId} refused consumption by report {ReportId}: {Reason}", consumedGrantId, reportId, refusal);
-                    return ExpenseMutationResult.OperatorFailure("The report's pre-approval was revoked or is no longer held by it; reject the report.");
+                    var consumption = await preapprovalWrites.ConsumeAsync(consumedGrantId, reportId, actorUserId, ct, afterCommit.Add);
+                    if (consumption.Refusal is { } refusal)
+                    {
+                        logger.LogWarning("Pre-approval {GrantId} refused consumption by report {ReportId}: {Reason}", consumedGrantId, reportId, refusal);
+                        return ExpenseMutationResult.OperatorFailure("The report's pre-approval was revoked or is no longer held by it; reject the report.");
+                    }
+                    ok = await repo.ApproveAsync(
+                        reportId, actorUserId, overrideBooking, maxAmount, now, outboxEventId, ct);
+                    if (ok) scope.Complete();
                 }
-                ok = await repo.ApproveAsync(
-                    reportId, actorUserId, overrideBooking, maxAmount, now, outboxEventId, ct);
-                if (ok) scope.Complete();
+                if (ok)
+                    foreach (var complete in afterCommit) await complete(CancellationToken.None);
             }
             if (!ok) return ExpenseMutationResult.OperatorFailure("Could not approve the report. It may not be in an approvable status.");
 

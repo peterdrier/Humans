@@ -333,10 +333,11 @@ internal sealed class CachingEventService(
 
         return _eventCache.Values
             .Where(e => MatchesQuery(e, trimmed))
-            // Deterministic Take(max); the caller re-ranks by score.
-            .OrderBy(e => e.Title, StringComparer.OrdinalIgnoreCase)
-            .Take(max)
             .Select(e => new EventSearchHit(e.Id, e.Title, ScoreEventMatch(e, trimmed)))
+            .OrderByDescending(hit => hit.Score)
+            .ThenBy(hit => hit.Title, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(hit => hit.EventId)
+            .Take(max)
             .ToList();
     }
 

@@ -70,7 +70,6 @@ public sealed class FeedbackServiceTests
         FeedbackDb = FeedbackDbFactory.CreateDbContext();
 
         var userService = Substitute.For<IUserService>();
-        var userEmailService = Substitute.For<IUserEmailService>();
         var teamService = Substitute.For<ITeamService>();
 
         userService
@@ -84,12 +83,6 @@ public sealed class FeedbackServiceTests
                 .Where(_people.ContainsKey)
                 .ToDictionary(id => id, id => _people[id]));
 
-        userEmailService
-            .GetNotificationTargetEmailsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(call => (IReadOnlyDictionary<Guid, string>)call
-                .ArgAt<IReadOnlyCollection<Guid>>(0)
-                .Where(id => _people.TryGetValue(id, out var p) && !string.IsNullOrEmpty(p.Email))
-                .ToDictionary(id => id, id => _people[id].Email!));
 
         teamService
             .GetTeamAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
@@ -102,7 +95,7 @@ public sealed class FeedbackServiceTests
         _repository = new FeedbackRepository(FeedbackDbFactory);
 
         _delivery = new FeedbackReplyDelivery(
-            _repository, userService, userEmailService, _emailService, _emailMessages,
+            _repository, userService, _emailService, _emailMessages,
             _notificationService, _auditLog, NullLogger<FeedbackReplyDelivery>.Instance);
         _service = new FeedbackServiceImpl(
             _repository, userService, teamService, _delivery,

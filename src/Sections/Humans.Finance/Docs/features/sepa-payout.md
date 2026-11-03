@@ -154,8 +154,8 @@ same `Service.BookSepaTransferAsync(transferId, bankMovementId, actorUserId)`
    reconcile in Holded.
    If the save itself fails after Holded accepted the postings, the money that moved is audited
    (`PARTIAL`) and the row stays unbooked — the next attempt posts only what is still missing.
-9. One `FinanceAuditActions.SepaPayoutTransferBooked` entry follows, naming every Holded id, whether the run
-   resumed, and whether the reconcile landed.
+9. One `FinanceAuditActions.SepaPayoutTransferBooked` entry follows, naming document payment references, the journal amount and
+   confirmed/unconfirmed outcome, whether the run resumed, and whether the reconcile landed.
 
 Open means **approved** (`draft: false`) and `payments_pending > 0`. A draft books nothing to the
 ledger, so paying one would post against a document that does not exist for accounting. An approved document
@@ -217,6 +217,23 @@ account's payability on `/Finance/Creditors`. The file card counts it separately
 `FinanceAuditActions.SepaPayoutTransferWithdrawn` entry, one `sepa_payout_withdrawn` email to the member in
 their language saying the transfer announced on the file's date was cancelled before execution,
 and the Article 15 slice shows `WithdrawnAt`.
+
+### Cancelling a file
+
+When the bank rejects a whole file (2026-11-03: Sabadell refused a 51-transfer file), **Cancel file**
+in the file card's header (`POST /Finance/Sepa/CancelFile`, `FinancePolicies.Manage`, antiforgery,
+"are you sure" dialog naming file, count and total) withdraws every live transfer in it in one save.
+It is all or nothing: offered and allowed only while every live transfer could be withdrawn on its
+own. Each transfer gets its own `SepaPayoutTransferWithdrawn` audit entry naming the file. No member
+is emailed: the members were already told at generation, and the reissued file tells them again. A
+file whose every transfer is withdrawn renders as `Cancelled`. Reissuing is by hand: the accounts
+are payable again on `/Finance/Creditors`.
+
+### File cards
+
+Each file card's header shows its transfer count and total (what it still pays; a cancelled file,
+what it held) and toggles the card. Files with nothing left to book (booked, or cancelled) start
+collapsed.
 | The transfer's file is older than the 90-day feed window | the reason, in place of the button |
 | The live balance owes less than the transfer | booked in full; the account goes into credit and the audit entry says `OVERPAID` |
 | The bank line is already reconciled or partly reconciled in Holded, or already booked to another transfer | refused; nothing posted |

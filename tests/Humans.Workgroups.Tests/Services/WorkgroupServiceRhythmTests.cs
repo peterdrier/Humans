@@ -200,4 +200,46 @@ public sealed class WorkgroupServiceRhythmTests : WorkgroupsTestHarness
             WorkgroupsAuditActions.WorkgroupUpdateDueNotified, AuditEntityTypes.Workgroup, alsoQuiet.Id,
             Arg.Any<string>(), WorkgroupService.WorkgroupRhythmJobName);
     }
+
+    [HumansFact]
+    public async Task AWeeklySeries_OffersItsNextOccurrence_ButScheduledWeeksAreNotActivity()
+    {
+        var now = Clock.GetCurrentInstant();
+        var started = now.Minus(Duration.FromDays(60));
+        var group = await SeedWorkgroupAsync(registeredAt: started);
+        await AddMeetingAsync(group.Id, started, weeklyIn: "UTC");
+
+        var info = (await NewService().GetByIdAsync(group.Id, Ct))!;
+
+        info.IsUpdateDue(now).Should().BeTrue();
+        info.NextMeeting(now)!.StartUtc.Should().Be(started.Plus(Duration.FromDays(63)));
+    }
+
+    [HumansFact]
+    public async Task AFarOffMeeting_IsStillTheNextOne()
+    {
+        var now = Clock.GetCurrentInstant();
+        var group = await SeedWorkgroupAsync();
+        var farOff = now.Plus(Duration.FromDays(3 * 366));
+        await AddMeetingAsync(group.Id, farOff);
+
+        var info = (await NewService().GetByIdAsync(group.Id, Ct))!;
+
+        info.NextMeeting(now)!.StartUtc.Should().Be(farOff);
+        info.MeetingOccurrences(now).Should().ContainSingle();
+    }
+
+    [HumansFact]
+    public async Task MeetingNotes_CountAsActivity()
+    {
+        var now = Clock.GetCurrentInstant();
+        var group = await SeedWorkgroupAsync(registeredAt: now.Minus(Duration.FromDays(60)));
+        var member = group.Members.Single().UserId;
+        await NewService().AddLogEntryAsync(group.Id, member,
+            new WorkgroupLogEntrySave(WorkgroupLogKind.MeetingNotes, now.InUtc().Date, null, "Decided things"), Ct);
+
+        var info = (await NewService().GetByIdAsync(group.Id, Ct))!;
+
+        info.IsUpdateDue(now).Should().BeFalse();
+    }
 }

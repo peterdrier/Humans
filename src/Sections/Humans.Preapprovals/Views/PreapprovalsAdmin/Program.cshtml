@@ -48,7 +48,7 @@
     <p>@p.Description</p>
 }
 
-@if (canCommit)
+@if (canCommit && Model.CanManage)
 {
     <div class="row g-3 mb-4">
         <div class="col-lg-6">
@@ -95,7 +95,7 @@
         }
     </div>
 }
-else
+else if (!canCommit)
 {
     <div class="alert alert-secondary">Closed or past its claim deadline: nothing more can be issued or approved. Existing grants stay as they are.</div>
 }
@@ -115,7 +115,7 @@ else
                         <td class="small">@g.ApplicationNote</td>
                         <td class="small text-muted">@g.CreatedAt.ToDateTime()</td>
                         <td class="text-end">
-                            @if (canCommit)
+                            @if (canCommit && Model.CanManage)
                             {
                                 <form method="post" asp-action="Approve" asp-route-programId="@p.Id" asp-route-grantId="@g.Id" class="d-inline-flex gap-1 align-items-center">
                                     @if (!fixedKind)
@@ -125,10 +125,13 @@ else
                                     <button type="submit" class="btn btn-sm btn-success">Approve</button>
                                 </form>
                             }
-                            <form method="post" asp-action="Decline" asp-route-programId="@p.Id" asp-route-grantId="@g.Id" class="d-inline-flex gap-1 align-items-center ms-1">
-                                <input type="text" name="note" class="form-control form-control-sm" style="width: 180px;" placeholder="Reason (optional)" maxlength="2000" />
-                                <button type="submit" class="btn btn-sm btn-outline-danger">Decline</button>
-                            </form>
+                            @if (Model.CanManage)
+                            {
+                                <form method="post" asp-action="Decline" asp-route-programId="@p.Id" asp-route-grantId="@g.Id" class="d-inline-flex gap-1 align-items-center ms-1">
+                                    <input type="text" name="note" class="form-control form-control-sm" style="width: 180px;" placeholder="Reason (optional)" maxlength="2000" />
+                                    <button type="submit" class="btn btn-sm btn-outline-danger">Decline</button>
+                                </form>
+                            }
                         </td>
                     </tr>
                 }
@@ -160,7 +163,7 @@ else
             <tbody>
                 @foreach (var g in Model.Decided)
                 {
-                    var mutable = g.Status is GrantStatus.Open or GrantStatus.Claimed;
+                    var mutable = Model.CanManage && (g.Status is GrantStatus.Open or GrantStatus.Claimed);
                     <tr data-status="@g.Status">
                         <td><vc:human user-id="@g.BeneficiaryUserId" layout="AvatarName" size="28" /></td>
                         <td>@g.Label</td>

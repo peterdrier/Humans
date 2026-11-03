@@ -878,6 +878,25 @@ public sealed class ShiftManagementServiceTests : ShiftsTestHarness
     }
 
     [HumansFact]
+    public async Task SearchAsync_LimitKeepsTheHighestScoringMatch()
+    {
+        var (settings, _) = SeedRotaScenario(RotaPeriod.Event);
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
+        var exact = new Rota { Id = Guid.NewGuid(), Name = "Kitchen" };
+        var candidates = new[] { new Rota { Id = Guid.NewGuid(), Name = "A Kitchen" }, exact };
+        var repo = Substitute.For<IShiftManagementRepository>();
+        repo.SearchVolunteerVisibleRotasAsync("Kitchen", settings.Id, Arg.Any<CancellationToken>())
+            .Returns(candidates);
+        var service = new ShiftManagementService(repo, AuditLog, AdminAuthorization,
+            new ServiceLocatorBuilder().Build(), Cache, new ShiftViewProbe().Cache, NewCalendarResolver(),
+            Clock, Microsoft.Extensions.Logging.Abstractions.NullLogger<ShiftManagementService>.Instance);
+
+        var results = await service.SearchAsync("Kitchen", 1, Xunit.TestContext.Current.CancellationToken);
+
+        results.Should().ContainSingle().Which.RotaId.Should().Be(exact.Id);
+    }
+
+    [HumansFact]
     public async Task SearchAsync_GuidQuery_ResolvesARotaHiddenFromVolunteers()
     {
         // A GUID-query hit skips the visibility filter on purpose: the destination

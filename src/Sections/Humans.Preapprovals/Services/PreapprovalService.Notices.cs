@@ -8,7 +8,7 @@ using Humans.Users.Contracts;
 
 namespace Humans.Preapprovals.Services;
 
-/// <summary>Email and notification failures never fail the write: the row and the audit entry are the record.</summary>
+/// <summary>Committed grant changes keep best-effort notices; reminder delivery must succeed before it is stamped.</summary>
 internal sealed partial class PreapprovalService
 {
     private static readonly System.Resources.ResourceManager NoticeResources = new(typeof(PreapprovalsResource));
@@ -45,10 +45,11 @@ internal sealed partial class PreapprovalService
             "resolve application-received", grantId);
 
     /// <summary>Keyed by the grant, so one resolve clears every variant (issued, released, reminder, deadline moved).</summary>
-    private Task NotifyFileByAsync(GrantInfo info, string titleKey, NotificationPriority priority, CancellationToken ct) =>
+    private Task NotifyFileByAsync(GrantInfo info, string titleKey, NotificationPriority priority, CancellationToken ct,
+        bool propagateFailures = false) =>
         NotifyAsync([info.BeneficiaryUserId], PreapprovalsNotificationSources.PreapprovalFileBy, NotificationClass.Actionable,
             priority, titleKey, info, "Preapprovals_Notice_FileBy_Body", MemberUrl(info.ProgramId),
-            FileBySourceKey(info.Id), ct);
+            FileBySourceKey(info.Id), ct, propagateFailures: propagateFailures);
 
     /// <summary>Informational unless revocation affects a holding report; no source key.</summary>
     private Task NotifyDecidedAsync(GrantInfo info, string titleKey, string? detail, CancellationToken ct,
@@ -76,7 +77,8 @@ internal sealed partial class PreapprovalService
     private async Task NotifyAsync(
         IReadOnlyList<Guid> recipientUserIds, NotificationSourceDefinition source, NotificationClass notificationClass,
         NotificationPriority priority, string titleKey, GrantInfo info, string bodyKey, string actionUrl,
-        string? sourceKey, CancellationToken ct, string? detail = null, decimal? previousAmount = null)
+        string? sourceKey, CancellationToken ct, string? detail = null, decimal? previousAmount = null,
+        bool propagateFailures = false)
     {
         if (recipientUserIds.Count == 0) return;
         try
@@ -91,30 +93,42 @@ internal sealed partial class PreapprovalService
             }).DistinctBy(person => person.Id);
             foreach (var group in recipients.GroupBy(person => person.Language, StringComparer.OrdinalIgnoreCase))
             {
-                var culture = CultureInfo.GetCultureInfo(group.Key);
-                using var cultureScope = new CultureScope(culture.Name, logger);
-                var title = $"{NoticeResources.GetString(titleKey, culture)}: {info.ProgramName}";
-                var body = string.Format(culture, NoticeResources.GetString(bodyKey, culture) ?? bodyKey,
-                    info.ProgramName, info.Label ?? "", info.MaxAmount.ToEuro(), info.ClaimBy.ToDate(),
-                    previousAmount?.ToEuro() ?? detail ?? "");
-                await notifications.SendAsync(source, notificationClass, priority, title,
-                    group.Select(person => person.Id).ToList(), body.Trim(),
-                    actionUrl: actionUrl, sourceKey: sourceKey, cancellationToken: ct);
+                try
+                {
+                    var culture = CultureInfo.GetCultureInfo(group.Key);
+                    using var cultureScope = new CultureScope(culture.Name, logger);
+                    var title = $"{NoticeResources.GetString(titleKey, culture)}: {info.ProgramName}";
+                    var body = string.Format(culture, NoticeResources.GetString(bodyKey, culture) ?? bodyKey,
+                        info.ProgramName, info.Label ?? "", info.MaxAmount.ToEuro(), info.ClaimBy.ToDate(),
+                        previousAmount?.ToEuro() ?? detail ?? "");
+                    await notifications.SendAsync(source, notificationClass, priority, title,
+                        group.Select(person => person.Id).ToList(), body.Trim(),
+                        actionUrl: actionUrl, sourceKey: sourceKey, cancellationToken: ct);
+                }
+                catch (OperationCanceledException) when (ct.IsCancellationRequested)
+                {
+                    throw;
+                }
+                catch (Exception ex) when (!propagateFailures)
+                {
+                    logger.LogError(ex, "Failed to send the pre-approval {Title} notice for grant {GrantId} in {Language}",
+                        titleKey, info.Id, group.Key);
+                }
             }
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {
             throw;
         }
-        catch (Exception ex)
+        catch (Exception ex) when (!propagateFailures)
         {
             logger.LogError(ex, "Failed to send the pre-approval {Title} notice for grant {GrantId}", titleKey, info.Id);
         }
     }
 
     private Task EmailAsync(GrantInfo info, PreapprovalNoticeKind kind, string? detail, CancellationToken ct,
-        decimal? previousAmount = null) =>
-        EmailAsync([info.BeneficiaryUserId], info, kind, detail, MemberUrl(info.ProgramId), ct, previousAmount);
+        decimal? previousAmount = null, bool propagateFailures = false) =>
+        EmailAsync([info.BeneficiaryUserId], info, kind, detail, MemberUrl(info.ProgramId), ct, previousAmount, propagateFailures);
 
     /// <summary>One email per manager: who applied and for what.</summary>
     private async Task EmailManagersAsync(ProgramInfo program, GrantInfo info, CancellationToken ct)
@@ -128,34 +142,46 @@ internal sealed partial class PreapprovalService
 
     private async Task EmailAsync(
         IReadOnlyList<Guid> recipientUserIds, GrantInfo info, PreapprovalNoticeKind kind, string? detail,
-        string url, CancellationToken ct, decimal? previousAmount = null)
+        string url, CancellationToken ct, decimal? previousAmount = null, bool propagateFailures = false)
     {
         var ids = recipientUserIds.Distinct().ToList();
         if (ids.Count == 0) return;
         try
         {
-            var addresses = await userEmails.GetNotificationTargetEmailsAsync(ids, ct);
             var infos = await users.GetUserInfosAsync(ids, ct);
             foreach (var id in ids)
             {
-                if (!addresses.TryGetValue(id, out var address) || string.IsNullOrWhiteSpace(address))
+                try
                 {
-                    logger.LogWarning("Skipping pre-approval {Kind} email for {UserId} on grant {GrantId}: no effective email",
-                        kind, id, info.Id);
-                    continue;
+                    infos.TryGetValue(id, out var person);
+                    var address = person?.Email;
+                    if (string.IsNullOrWhiteSpace(address))
+                    {
+                        logger.LogWarning("Skipping pre-approval {Kind} email for {UserId} on grant {GrantId}: no effective email",
+                            kind, id, info.Id);
+                        continue;
+                    }
+                    var language = person?.PreferredLanguage;
+                    await email.SendAsync(emailFactory.Notice(new PreapprovalNoticeRequest(
+                        id, address, person?.BurnerName, kind, info.ProgramName, info.Label, info.MaxAmount, info.ClaimBy,
+                        url, detail, language.IsSupportedCultureCode() ? language : CultureCatalog.DefaultCultureCode, previousAmount)), ct);
                 }
-                infos.TryGetValue(id, out var person);
-                var language = person?.PreferredLanguage;
-                await email.SendAsync(emailFactory.Notice(new PreapprovalNoticeRequest(
-                    id, address, person?.BurnerName, kind, info.ProgramName, info.Label, info.MaxAmount, info.ClaimBy,
-                    url, detail, language.IsSupportedCultureCode() ? language : CultureCatalog.DefaultCultureCode, previousAmount)), ct);
+                catch (OperationCanceledException) when (ct.IsCancellationRequested)
+                {
+                    throw;
+                }
+                catch (Exception ex) when (!propagateFailures)
+                {
+                    logger.LogError(ex, "Failed to queue the pre-approval {Kind} email for grant {GrantId} recipient {UserId}",
+                        kind, info.Id, id);
+                }
             }
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {
             throw;
         }
-        catch (Exception ex)
+        catch (Exception ex) when (!propagateFailures)
         {
             logger.LogError(ex, "Failed to queue the pre-approval {Kind} email for grant {GrantId}", kind, info.Id);
         }

@@ -30,6 +30,12 @@ internal sealed class WorkgroupLogEntryConfiguration : IEntityTypeConfiguration<
             .HasForeignKey(e => e.DocumentId)
             .OnDelete(DeleteBehavior.SetNull);
 
+        // Meetings are soft-deleted, so this fires only when the workgroup's own cascade does.
+        b.HasOne(e => e.Meeting)
+            .WithMany()
+            .HasForeignKey(e => e.MeetingId)
+            .OnDelete(DeleteBehavior.SetNull);
+
         b.HasIndex(e => new { e.WorkgroupId, e.OccurredOn });
         b.HasIndex(e => e.AuthorUserId).HasFilter("\"AuthorUserId\" IS NOT NULL");
     }

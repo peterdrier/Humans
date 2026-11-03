@@ -13,6 +13,9 @@ public interface ISettingsService : IApplicationService
 
     Task SetValueAsync(string key, string value, CancellationToken cancellationToken = default);
 
+    /// <summary>The organisation's IANA timezone, which every event is read in; Europe/Madrid until an admin sets one.</summary>
+    Task<string> GetTimeZoneIdAsync(CancellationToken cancellationToken = default);
+
     /// <summary>Null when no event is active.</summary>
     Task<EventSettingsInfo?> GetActiveEventSettingsAsync(CancellationToken cancellationToken = default);
 
