@@ -75,6 +75,6 @@ internal sealed partial class GrantService : IUserDataContributor, IUserMerge
         foreach (var grantId in revoked)
             await auditLog.LogAsync(GrantsAuditActions.GrantRevoked, AuditEntityTypes.Grant, grantId,
                 $"Duplicate grant revoked on merge of {mergedFromUserId} into {mergedToUserId}.",
-                actorUserId, relatedEntityId: mergedToUserId, relatedEntityType: AuditEntityTypes.User);
+                actorUserId, relatedEntityId: mergedToUserId, relatedEntityType: AuditSubjectTypes.User);
     }
 }

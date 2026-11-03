@@ -39,7 +39,7 @@ public sealed class ProgramTests : GrantsTestHarness
         await AuditLog.Received(1).LogAsync(GrantsAuditActions.GrantProgramCreated, AuditEntityTypes.Program, program.Id,
             Arg.Any<string>(), actor, Arg.Any<Guid?>(), Arg.Any<string?>());
         await AuditLog.Received(1).LogAsync(GrantsAuditActions.GrantProgramManagerAdded, AuditEntityTypes.Program, program.Id,
-            Arg.Any<string>(), actor, manager, AuditEntityTypes.User);
+            Arg.Any<string>(), actor, manager, AuditSubjectTypes.User);
     }
 
     [HumansTheory]
@@ -101,9 +101,9 @@ public sealed class ProgramTests : GrantsTestHarness
         await AuditLog.Received(1).LogAsync(GrantsAuditActions.GrantProgramEdited, AuditEntityTypes.Program, program.Id,
             Arg.Is<string>(s => s.Contains("Renamed")), actor, Arg.Any<Guid?>(), Arg.Any<string?>());
         await AuditLog.Received(1).LogAsync(GrantsAuditActions.GrantProgramManagerAdded, AuditEntityTypes.Program, program.Id,
-            Arg.Any<string>(), actor, newManager, AuditEntityTypes.User);
+            Arg.Any<string>(), actor, newManager, AuditSubjectTypes.User);
         await AuditLog.Received(1).LogAsync(GrantsAuditActions.GrantProgramManagerRemoved, AuditEntityTypes.Program, program.Id,
-            Arg.Any<string>(), actor, oldManager, AuditEntityTypes.User);
+            Arg.Any<string>(), actor, oldManager, AuditSubjectTypes.User);
     }
 
     [HumansFact]

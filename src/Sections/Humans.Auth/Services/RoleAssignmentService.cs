@@ -129,7 +129,7 @@ internal sealed class RoleAssignmentService(
         rowCache.Clear();
 
         await auditLogService.LogAsync(
-            AuthAuditActions.RoleAssigned, nameof(User), userId,
+            AuthAuditActions.RoleAssigned, AuditSubjectTypes.User, userId,
             $"'{roleName}'",
             assignerId);
 
@@ -175,7 +175,7 @@ internal sealed class RoleAssignmentService(
         rowCache.Clear();
 
         await auditLogService.LogAsync(
-            AuthAuditActions.RoleEnded, nameof(User), roleAssignment.UserId,
+            AuthAuditActions.RoleEnded, AuditSubjectTypes.User, roleAssignment.UserId,
             $"'{roleAssignment.RoleName}'",
             enderId);
 

@@ -41,13 +41,13 @@ public class UserEntityConsumerRatchetAnalyzerTests
     public async Task Owners_and_baselined_consumers_are_silent()
     {
         (await RunAsync("Humans.Users", Consumer)).Should().BeEmpty();
-        (await RunAsync("Humans.Teams", Consumer)).Should().BeEmpty();
+        (await RunAsync("Humans.Web", Consumer)).Should().BeEmpty();
     }
 
     [HumansFact]
     public async Task A_baselined_assembly_that_no_longer_names_an_entity_is_stale()
     {
-        var diagnostics = await RunAsync("Humans.Teams", "namespace Demo { public class Clean { } }");
+        var diagnostics = await RunAsync("Humans.Web", "namespace Demo { public class Clean { } }");
 
         diagnostics.Should().ContainSingle()
             .Which.Id.Should().Be(UserEntityConsumerRatchetAnalyzer.StaleBaselineDiagnosticId);

@@ -1418,7 +1418,7 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
                 nameof(CampMember), result.MemberId,
                 "Lead added human as active camp member.",
                 actorUserId,
-                relatedEntityId: userId, relatedEntityType: nameof(User));
+                relatedEntityId: userId, relatedEntityType: AuditSubjectTypes.User);
         }
 
         return result.MemberId;

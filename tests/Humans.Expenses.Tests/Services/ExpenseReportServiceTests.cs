@@ -829,7 +829,7 @@ public sealed partial class ExpenseReportServiceTests
             Arg.Any<string>(),
             submitter,
             submitter,
-            AuditEntityTypes.User);
+            AuditSubjectTypes.User);
     }
 
     [HumansFact]
@@ -1121,7 +1121,7 @@ public sealed partial class ExpenseReportServiceTests
                 Arg.Any<string>(),
                 submitter,
                 submitter,
-                AuditEntityTypes.User);
+                AuditSubjectTypes.User);
             _ = _fileStorage.DeleteAsync(
                 $"uploads/expense-attachments/{attach.Id}{attach.Extension}",
                 CancellationToken.None);
@@ -1157,7 +1157,7 @@ public sealed partial class ExpenseReportServiceTests
         (await db.ExpenseLines.AsNoTracking().SingleAsync(l => l.Id == lineId, ct)).AttachmentId.Should().BeNull();
         (await db.ExpenseAttachments.AsNoTracking().AnyAsync(a => a.Id == attachment.Id, ct)).Should().BeFalse();
         await AuditLog.Received(1).LogAsync(ExpensesAuditActions.ExpenseAttachmentRemoved,
-            "ExpenseReport", id, Arg.Any<string>(), actor, actor, AuditEntityTypes.User);
+            "ExpenseReport", id, Arg.Any<string>(), actor, actor, AuditSubjectTypes.User);
         await _fileStorage.Received(1).DeleteAsync(
             ExpenseReportService.AttachmentKey(attachment.Id, attachment.Extension), CancellationToken.None);
     }
@@ -1242,7 +1242,7 @@ public sealed partial class ExpenseReportServiceTests
             Arg.Is<string>(description => description.StartsWith("Added line")),
             admin,
             member,
-            AuditEntityTypes.User);
+            AuditSubjectTypes.User);
     }
 
     [HumansFact]
@@ -1332,7 +1332,7 @@ public sealed partial class ExpenseReportServiceTests
         await AuditLog.Received(1).LogAsync(
             ExpensesAuditActions.ExpenseEditedOnBehalf, AuditEntityTypes.Report, id,
             Arg.Is<string>(description => description.Contains(member.ToString())),
-            admin, member, AuditEntityTypes.User);
+            admin, member, AuditSubjectTypes.User);
     }
 
     [HumansFact]
@@ -1358,7 +1358,7 @@ public sealed partial class ExpenseReportServiceTests
         await AuditLog.Received(1).LogAsync(
             ExpensesAuditActions.ExpenseEditedOnBehalf, AuditEntityTypes.Report, id,
             Arg.Is<string>(description => description.Contains(member.ToString())),
-            admin, member, AuditEntityTypes.User);
+            admin, member, AuditSubjectTypes.User);
         await _fileStorage.Received(1).DeleteAsync(
             ExpenseReportService.AttachmentKey(attachment.Id, attachment.Extension), CancellationToken.None);
     }
@@ -1418,7 +1418,7 @@ public sealed partial class ExpenseReportServiceTests
             await using var db = new ExpensesDbContext(_expensesOptions);
             (await db.ExpenseAttachments.AnyAsync(a => a.Id == previous.Id, ct)).Should().BeFalse();
             await AuditLog.Received(1).LogAsync(ExpensesAuditActions.ExpenseAttachmentUploaded,
-                "ExpenseReport", id, Arg.Any<string>(), submitter, submitter, AuditEntityTypes.User);
+                "ExpenseReport", id, Arg.Any<string>(), submitter, submitter, AuditSubjectTypes.User);
             if (cleanupFails) throw new IOException("file cleanup unavailable");
         });
 
@@ -1772,7 +1772,7 @@ public sealed partial class ExpenseReportServiceTests
             Arg.Any<string>(),
             submitter,
             submitter,
-            AuditEntityTypes.User);
+            AuditSubjectTypes.User);
     }
 
     [HumansFact]
@@ -2105,7 +2105,7 @@ public sealed partial class ExpenseReportServiceTests
             "IBAN set",
             submitter,
             submitter,
-            AuditEntityTypes.User);
+            AuditSubjectTypes.User);
     }
 
     [HumansTheory]
@@ -2150,7 +2150,7 @@ public sealed partial class ExpenseReportServiceTests
             Arg.Is<string>(d => d.Contains("Dani Member")),
             admin,
             member,
-            AuditEntityTypes.User);
+            AuditSubjectTypes.User);
     }
 
     [HumansFact]
@@ -2257,7 +2257,7 @@ public sealed partial class ExpenseReportServiceTests
             Arg.Is<string>(d => d.Contains("Dani Member")),
             admin,
             member,
-            AuditEntityTypes.User);
+            AuditSubjectTypes.User);
     }
 
     [HumansTheory]
@@ -2284,7 +2284,7 @@ public sealed partial class ExpenseReportServiceTests
             Arg.Is<string>(d => d.StartsWith(expectedOpener)),
             admin,
             member,
-            AuditEntityTypes.User);
+            AuditSubjectTypes.User);
     }
 
     [HumansFact]
@@ -2364,7 +2364,7 @@ public sealed partial class ExpenseReportServiceTests
             Arg.Any<string>(),
             admin,
             member,
-            AuditEntityTypes.User);
+            AuditSubjectTypes.User);
     }
 
     [HumansFact]
@@ -2395,7 +2395,7 @@ public sealed partial class ExpenseReportServiceTests
             "IBAN set for Dani Member to ES9121000418450200051332",
             admin,
             member,
-            AuditEntityTypes.User);
+            AuditSubjectTypes.User);
     }
 
     [HumansFact]
@@ -2419,7 +2419,7 @@ public sealed partial class ExpenseReportServiceTests
             Arg.Any<string>(),
             admin,
             member,
-            AuditEntityTypes.User);
+            AuditSubjectTypes.User);
     }
 
     [HumansFact]
@@ -2448,7 +2448,7 @@ public sealed partial class ExpenseReportServiceTests
             "Payee IBAN updated for Dani Member to ES9121000418450200051332.",
             admin,
             member,
-            AuditEntityTypes.User);
+            AuditSubjectTypes.User);
     }
 
     [HumansFact]
@@ -3733,7 +3733,7 @@ public sealed partial class ExpenseReportServiceTests
 
         ExpenseReportDto? atAudit = null;
         AuditLog.LogAsync(ExpensesAuditActions.ExpenseAttachmentUploaded,
-                Arg.Any<string>(), reportId, Arg.Any<string>(), submitter, submitter, AuditEntityTypes.User)
+                Arg.Any<string>(), reportId, Arg.Any<string>(), submitter, submitter, AuditSubjectTypes.User)
             .Returns(async _ => { atAudit = await _sut.GetAsync(reportId, TestContext.Current.CancellationToken); });
 
         await using var stream = new MemoryStream([1, 2, 3]);
@@ -3788,7 +3788,7 @@ public sealed partial class ExpenseReportServiceTests
             ExpenseReportService.AttachmentKey(previous.Id, previous.Extension), Arg.Any<CancellationToken>());
         await _fileStorage.Received(1).DeleteAsync(newKey!, CancellationToken.None);
         await AuditLog.DidNotReceive().LogAsync(ExpensesAuditActions.ExpenseAttachmentUploaded,
-            Arg.Any<string>(), reportId, Arg.Any<string>(), submitter, submitter, AuditEntityTypes.User);
+            Arg.Any<string>(), reportId, Arg.Any<string>(), submitter, submitter, AuditSubjectTypes.User);
     }
 
     [HumansFact]

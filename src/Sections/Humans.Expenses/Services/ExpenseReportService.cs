@@ -287,7 +287,7 @@ internal sealed class ExpenseReportService(
                     + DescribeGrant(preapprovalGrantId),
                     actorUserId,
                     relatedEntityId: submitterUserId,
-                    relatedEntityType: AuditEntityTypes.User);
+                    relatedEntityType: AuditSubjectTypes.User);
             }
 
             return ExpenseMutationResult.Success;
@@ -345,7 +345,7 @@ internal sealed class ExpenseReportService(
             $"{whatChanged} on behalf of {await DescribeMemberAsync(report.SubmitterUserId, ct)}.",
             actorUserId,
             relatedEntityId: report.SubmitterUserId,
-            relatedEntityType: AuditEntityTypes.User);
+            relatedEntityType: AuditSubjectTypes.User);
     }
 
     private static string DescribeNote(string? note) =>
@@ -762,7 +762,7 @@ internal sealed class ExpenseReportService(
                 $"Attachment uploaded to line {lineId}.",
                 actorUserId,
                 relatedEntityId: report.SubmitterUserId,
-                relatedEntityType: AuditEntityTypes.User);
+                relatedEntityType: AuditSubjectTypes.User);
         }
         catch
         {
@@ -855,7 +855,7 @@ internal sealed class ExpenseReportService(
                 $"Attachment removed from line {lineId}.",
                 actorUserId,
                 relatedEntityId: report.SubmitterUserId,
-                relatedEntityType: AuditEntityTypes.User);
+                relatedEntityType: AuditSubjectTypes.User);
 
             // Post-commit cleanup: metadata and audit are written, so request cancellation
             // must not strand the file.
@@ -955,7 +955,7 @@ internal sealed class ExpenseReportService(
                 + DescribeGrant(report.PreapprovalGrantId),
                 actorUserId,
                 relatedEntityId: report.SubmitterUserId,
-                relatedEntityType: AuditEntityTypes.User);
+                relatedEntityType: AuditSubjectTypes.User);
 
             return ExpenseMutationResult.Success;
 
@@ -1088,7 +1088,7 @@ internal sealed class ExpenseReportService(
                 await DescribeIbanChangeAsync(submitterUserId, actorUserId, normalized, ct),
                 actorUserId,
                 relatedEntityId: submitterUserId,
-                relatedEntityType: AuditEntityTypes.User);
+                relatedEntityType: AuditSubjectTypes.User);
 
             logger.LogInformation(
                 "IBAN {Action} for user {UserId}",
@@ -1139,7 +1139,7 @@ internal sealed class ExpenseReportService(
             $"{description}.",
             actorUserId,
             relatedEntityId: report.SubmitterUserId,
-            relatedEntityType: AuditEntityTypes.User);
+            relatedEntityType: AuditSubjectTypes.User);
     }
 
     /// <summary>
