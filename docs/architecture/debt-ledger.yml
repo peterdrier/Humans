@@ -168,5 +168,5 @@ inbox:
     review: panel
   - added: 2026-11-03
     id: CENTRAL-106
-    what: "The User and UserEmail EF entities are public in Humans.Base (src/Humans.Base/Users/), moved there with UserInfo so Base has no project references. Entities should not cross a section boundary. About ten sections outside Users (Auth, GoogleIntegration, Governance, Tickets, CityPlanning, Gate, Development, Web, ...) still name User directly: move them onto UserInfo / IUserService, then narrow what stays public (UserManager<User> callers need the type)."
+    what: "The User and UserEmail EF entities are public in Humans.Base (src/Humans.Base/Users/), moved there with UserInfo so Base has no project references. Entities should not cross a section boundary. HUM0039 holds the eleven assemblies that still name either entity (Auth, Camps, CityPlanning, Development, Finance, GoogleIntegration, Governance, Shifts, Teams, Tickets, Web) as a shrink-only baseline: move each onto UserInfo / IUserService and delete its entry, then narrow what stays public (UserManager<User> callers need the type)."
     review: panel
