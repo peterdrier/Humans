@@ -1,0 +1,26 @@
+@* The wg-* classes are the gallery page's (Debug's /Debug/WidgetGallery); this renders inside its
+   ChromeSlots.WidgetGallery slot, so the section owns its own cards and Debug names nothing here.
+   Admin-only page: no localization keys (memory/code/localization-admin-exempt.md). *@
+
+<div class="wg-card">
+    <div class="wg-card-header">
+        <div>
+            <span class="wg-card-name">ConsentSigningStepViewComponent</span>
+            <span class="wg-card-kind kind-vc">ViewComponent</span>
+        </div>
+        <span class="wg-card-path">src/Sections/Humans.Consent/ViewComponents/ConsentSigningStepViewComponent.cs</span>
+    </div>
+    <div class="wg-card-note">
+        Consent's "sign this document" step for a host page that walks a member through several documents:
+        progress line, document header, tabbed content and the explicit-consent form, all in Consent's own strings.
+        The form posts to <code>/Consent/Submit</code>, which lands back on <code>returnUrl</code>.
+        Not rendered here: it needs a live unsigned document version, and submitting records a real signature.
+        See it in the onboarding widget's Consents step (<code>/OnboardingWidget/Consents</code>).
+    </div>
+    <dl class="wg-params">
+        <dt>document</dt><dd><code>ConsentReviewDetail</code> — the unsigned document version to show</dd>
+        <dt>currentIndex</dt><dd><code>int</code> — 1-based position in the host's sequence</dd>
+        <dt>totalRequired</dt><dd><code>int</code> — length of the host's sequence</dd>
+        <dt>returnUrl</dt><dd><code>string</code> — local URL to return to after submitting</dd>
+    </dl>
+</div>

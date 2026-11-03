@@ -38,7 +38,7 @@ triggers), `consent_reviews`, `consent_reminders`. Cross-section calls out: Team
 members), Users (info, merge chains, rejected state for the legacy copy), Governance (required
 teams, completion), Notifications (fan-out), Email (two templates), AuditLog, HumanLifecycle
 (suspension restore). Calls in: Onboarding (review writes, queue reads), Governance (required
-versions), Shell's onboarding widget (submit), the Tickets and Development seeders. Config read:
+versions), Onboarding's widget (embeds the signing step), the Tickets and Development seeders. Config read:
 `GitHubSettings`, `EmailSettings` (reminder windows), `Email:DpoAddress`.
 
 ## Structure
@@ -118,8 +118,9 @@ Three aggregates and one content proxy, each with a single writer:
 - **Keyed-Scoped inner + Singleton decorator** DI for both caches; the inner sync service
   implements two interfaces and `IAdminLegalDocumentService` resolves to the same keyed instance
   so admin and sync writes share one writer (nobodies-collective/Humans#751).
-- **`ConsentReviewFormViewModel` sits on the contracts** so Shell's onboarding widget can build it
-  and render the section's `_ConsentReviewBody` partial.
+- **`ConsentSigningStepViewComponent` is public** so the onboarding widget can embed the signing
+  step; the form model and `_ConsentReviewBody` stay internal, and the form always posts to
+  `/Consent/Submit`.
 - **`_ConsentReviewBody` uses `ResourceManager` directly** to hand per-language checkbox strings to
   inline JS that re-localises when the reader switches language tabs.
 - **The post-submit onboarding report is a controller call** (`ConsentController.Submit` to
