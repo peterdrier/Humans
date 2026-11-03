@@ -229,20 +229,10 @@ internal sealed class EventsController(
         var localStart = ToLocalDateTime(guideEvent.StartAt, tz);
 
         var model = await BuildFormAsync(eventSettings, ct);
-        model.Id = guideEvent.Id;
-        model.Title = guideEvent.Title;
-        model.Description = guideEvent.Description;
-        model.CategoryId = guideEvent.CategoryId;
+        PopulateProposalForm(model, guideEvent, localStart);
         model.VenueId = guideEvent.GuideSharedVenueId ?? Guid.Empty;
-        model.StartDate = DateOnly.FromDateTime(localStart);
-        model.StartTime = TimeOnly.FromDateTime(localStart);
         model.IsAllDay = guideEvent.IsAllDay;
         model.DurationMinutes = guideEvent.DurationMinutes;
-        model.LocationNote = guideEvent.LocationNote;
-        model.Host = guideEvent.Host;
-        model.IsRecurring = guideEvent.IsRecurring;
-        model.RecurrenceDays = guideEvent.RecurrenceDays;
-        model.IsResubmit = guideEvent.IsResubmission;
 
         return View("IndividualEventForm", model);
     }
@@ -526,6 +516,21 @@ internal sealed class EventsController(
             localizer["Events_RecurrenceDaysInvalid"].Value);
     }
 
+    private static void PopulateProposalForm(EventProposalFormViewModel model, EventInfo guideEvent, DateTime localStart)
+    {
+        model.Id = guideEvent.Id;
+        model.Title = guideEvent.Title;
+        model.Description = guideEvent.Description;
+        model.CategoryId = guideEvent.CategoryId;
+        model.StartDate = DateOnly.FromDateTime(localStart);
+        model.StartTime = TimeOnly.FromDateTime(localStart);
+        model.LocationNote = guideEvent.LocationNote;
+        model.Host = guideEvent.Host;
+        model.IsRecurring = guideEvent.IsRecurring;
+        model.RecurrenceDays = guideEvent.RecurrenceDays;
+        model.IsResubmit = guideEvent.IsResubmission;
+    }
+
     private async Task<IndividualEventFormViewModel> BuildFormAsync(EventSettingsInfo burn, CancellationToken ct = default)
     {
         var model = new IndividualEventFormViewModel
@@ -667,19 +672,9 @@ internal sealed class EventsController(
         var localStart = ToLocalDateTime(guideEvent.StartAt, tz);
 
         var model = await BuildBarrioFormAsync(slug, camp, eventSettings, ct);
-        model.Id = guideEvent.Id;
-        model.Title = guideEvent.Title;
-        model.Description = guideEvent.Description;
-        model.CategoryId = guideEvent.CategoryId;
-        model.StartDate = DateOnly.FromDateTime(localStart);
-        model.StartTime = TimeOnly.FromDateTime(localStart);
+        PopulateProposalForm(model, guideEvent, localStart);
         model.DurationMinutes = guideEvent.DurationMinutes;
-        model.LocationNote = guideEvent.LocationNote;
-        model.Host = guideEvent.Host;
-        model.IsRecurring = guideEvent.IsRecurring;
-        model.RecurrenceDays = guideEvent.RecurrenceDays;
         model.PriorityRank = guideEvent.PriorityRank;
-        model.IsResubmit = guideEvent.IsResubmission;
 
         return View("BarrioEventForm", model);
     }

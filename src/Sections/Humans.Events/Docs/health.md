@@ -29,7 +29,7 @@ Collapse pressure this grouping exposes: **Programme** is answered by every rout
 one cached snapshot. Occurrence expansion itself is now one helper
 (`EventRecurrenceDays.GetOccurrenceInstants`), but each caller still writes out the
 "gate date and zone known, else the single start" guard and its own camp-name and submitter-name
-fallback. **Propose** shares common form fields and dropdown preparation; individual and barrio
+fallback. **Propose** shares common form fields, edit-field mapping and dropdown preparation; individual and barrio
 submission actions retain their distinct venue, all-day, duration and priority rules.
 
 ## 3. Structure
@@ -41,7 +41,7 @@ The layout the shapes imply:
 - **Programme** wants one occurrence-and-naming projection, used by Browse, Schedule, the API, the
   export and the print guide alike. The expansion and its guard are shared (`EVENTS-1`,
   closed by peterdrier/Humans#1945); the naming is not.
-- **Propose** shares `EventProposalFormViewModel` field metadata and one dropdown-population
+- **Propose** shares `EventProposalFormViewModel` field metadata, one edit-field mapping and one dropdown-population
   method. Individual and barrio models retain their own duration limits and audience-specific
   fields. Submission actions remain separate; moderation uses `AdminEventFormViewModel` with
   different validation messages and nullable venue handling.
