@@ -11,13 +11,10 @@ internal sealed class ProfileViewModel
 {
     public Guid Id { get; set; }
     public Guid UserId { get; set; }
-    public string Email { get; set; } = string.Empty;
     public string DisplayName { get; set; } = string.Empty;
-    public string? ProfilePictureUrl { get; set; }
 
     public bool HasCustomProfilePicture { get; set; }
 
-    public string? CustomProfilePictureUrl { get; set; }
 
     [Required(ErrorMessage = "Validation_Required")]
     [StringLength(100, ErrorMessage = "Validation_MaxLength")]
@@ -143,10 +140,6 @@ internal sealed class ProfileViewModel
     /// tier card shows a note instead of the link to <c>/Governance/Applications/Create</c>.
     /// </summary>
     public bool IsTierLocked { get; set; }
-
-    public string? EffectiveProfilePictureUrl => HasCustomProfilePicture
-        ? CustomProfilePictureUrl
-        : ProfilePictureUrl;
 
     public string? FormattedBirthday
     {

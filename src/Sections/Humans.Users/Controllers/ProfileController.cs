@@ -108,8 +108,7 @@ internal sealed class ProfileController(
         var viewModel = ProfileEditViewModelBuilder.Build(
             info,
             applications,
-            preview,
-            p => Url.Action(nameof(ProfileViewController.Picture), "ProfileView", new { id = p.Id, v = p.UpdatedAt.ToUnixTimeTicks() }));
+            preview);
 
         ViewData["GoogleMapsApiKey"] = configuration.GetRequiredSetting(configRegistry, "GoogleMaps:ApiKey", "Google Maps", isSensitive: true);
         return View(viewModel);
@@ -123,6 +122,8 @@ internal sealed class ProfileController(
     {
         var user = await GetCurrentUserInfoAsync();
         if (user is null) return NotFound();
+        model.UserId = user.Id;
+        model.HasCustomProfilePicture = user.Profile?.HasCustomPicture == true;
         model.ContactFields = ProfileEditViewModelBuilder.BuildLegacyContactFields(user.Profile);
         model.IsInitialSetup = user.Profile is null || user.State == UserState.Bare;
 

@@ -408,13 +408,17 @@ public class ProfileControllerEditTests
     }
 
     [HumansTheory]
-    [InlineData(UserState.Active, false)]
-    [InlineData(UserState.Active, true)]
-    [InlineData(UserState.Bare, false)]
-    [InlineData(UserState.Bare, true)]
-    public async Task Edit_Post_RedisplayUsesAccountSetupMode(UserState state, bool serviceRefusal)
+    [InlineData(UserState.Active, false, false)]
+    [InlineData(UserState.Active, false, true)]
+    [InlineData(UserState.Active, true, false)]
+    [InlineData(UserState.Active, true, true)]
+    [InlineData(UserState.Bare, false, false)]
+    [InlineData(UserState.Bare, false, true)]
+    [InlineData(UserState.Bare, true, false)]
+    [InlineData(UserState.Bare, true, true)]
+    public async Task Edit_Post_RedisplayRestoresTrustedPresentationAndSetupMode(UserState state, bool serviceRefusal, bool hasPicture)
     {
-        var info = BuildUserInfo(new Profile { UserId = _userId, BurnerName = "Burner" }) with { State = state };
+        var info = BuildUserInfo(new Profile { UserId = _userId, BurnerName = "Burner", ProfilePictureContentType = hasPicture ? "image/png" : null }) with { State = state };
         _userService.GetUserInfoAsync(_userId, Arg.Any<CancellationToken>()).Returns(info);
         if (serviceRefusal)
             _profileEditorService.SaveProfileAsync(Arg.Any<Guid>(), Arg.Any<ProfileSaveRequest>(), Arg.Any<CancellationToken>())
@@ -423,11 +427,17 @@ public class ProfileControllerEditTests
             _controller.ModelState.AddModelError(nameof(ProfileViewModel.BurnerName), "Invalid");
         var model = MakeValidModel();
         model.IsInitialSetup = state != UserState.Bare;
+        model.UserId = Guid.NewGuid();
+        model.HasCustomProfilePicture = !hasPicture;
+        model.BurnerName = "Unsaved edited name";
 
         var result = await _controller.Edit(model);
 
         result.Should().BeOfType<ViewResult>().Which.Model.Should().BeSameAs(model);
         model.IsInitialSetup.Should().Be(state == UserState.Bare);
+        model.UserId.Should().Be(_userId);
+        model.HasCustomProfilePicture.Should().Be(hasPicture);
+        model.BurnerName.Should().Be("Unsaved edited name");
     }
 
     [HumansFact]

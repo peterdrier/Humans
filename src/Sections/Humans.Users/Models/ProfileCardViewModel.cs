@@ -21,7 +21,6 @@ internal sealed class ProfileCardViewModel
     public string? EmergencyContactName { get; set; }
     public string? EmergencyContactPhone { get; set; }
     public string? EmergencyContactRelationship { get; set; }
-    public bool HasNobodiesTeamEmail { get; set; }
     public ProfileCardViewMode ViewMode { get; set; }
     public bool CanViewLegalName { get; set; }
     public string? PreferredLanguage { get; set; }
