@@ -396,7 +396,8 @@ internal sealed class ShiftsController(
             return Redirect("/Settings#shifts");
         }
 
-        if (GetCurrentUserId() is not { } actorId) return Challenge();
+        var actor = await GetCurrentUserInfoAsync(HttpContext.RequestAborted);
+        if (actor is null) return Challenge();
 
         // Shifts keeps only its own knobs, created on demand for Settings' active event.
         var active = await burnSettings.GetActiveAsync(HttpContext.RequestAborted);
@@ -410,7 +411,7 @@ internal sealed class ShiftsController(
             active.Id, model.IsShiftBrowsingOpen, model.GlobalVolunteerCap, model.ReminderLeadTimeHours,
             new BuildSubPeriodStarts(model.FirstCrewStartOffset, model.SetupWeekStartOffset,
                 model.PreEventWeekStartOffset, model.FinishingWeekendStartOffset),
-            actorId);
+            actor.Id);
 
         SetSuccess("Event settings saved.");
         return Redirect("/Settings#shifts");
@@ -522,7 +523,8 @@ internal sealed class ShiftsController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> RevealMedical(Guid userId, CancellationToken ct)
     {
-        if (GetCurrentUserId() is not { } actorUserId) return Forbid();
+        var actor = await GetCurrentUserInfoAsync(ct);
+        if (actor is null) return Forbid();
 
         var info = await _userService.GetUserInfoAsync(userId, ct);
         var text = info?.Profile?.MedicalConditions;
@@ -531,7 +533,7 @@ internal sealed class ShiftsController(
         // Entity "User" + the subject's id is what the member's own medical page lists.
         await auditLogService.LogAsync(
             ShiftsAuditActions.MedicalConditionsRevealed, "User", info.Id,
-            $"Medical conditions revealed for user {info.Id}", actorUserId);
+            $"Medical conditions revealed for user {info.Id}", actor.Id);
         return Json(new { text });
     }
 }

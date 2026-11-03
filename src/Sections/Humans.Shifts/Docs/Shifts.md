@@ -384,6 +384,7 @@ Invalid rota and shift edits redisplay the team shift page without saving. Only 
 - Department coordinators **cannot** view volunteer medical data.
 - ShiftsNoInfo **cannot** create or edit rotas or shifts (management gates to Admin/ShiftsAdmin + dept coordinators). They can manage signups (approve, refuse, bail, voluntell, mark no-show, remove) and reveal medical data.
 - ShiftsAdmin **cannot** view volunteer medical data.
+- Settings saves and medical reveals resolve the current account through Users before event or health-data reads. Merged sessions audit the surviving account; missing accounts receive Challenge for settings and Forbid for a reveal. Actor lookup cancellation propagates before any write, audit or medical lookup.
 - Nobody **can** read medical conditions without an audit entry: the text is absent from page HTML and search JSON and comes back only from the reveal POST, which audits first (`ShiftsControllerRevealMedicalTests`).
 
 ## Triggers

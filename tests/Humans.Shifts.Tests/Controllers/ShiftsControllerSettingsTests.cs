@@ -1,3 +1,5 @@
+using Humans.Shifts.Tests.Infrastructure;
+using Xunit;
 using System.Security.Claims;
 using System.Globalization;
 using Humans.Base.Constants;
@@ -90,15 +92,59 @@ public sealed class ShiftsControllerSettingsTests
         _shiftMgmt.ReceivedCalls().Should().BeEmpty();
     }
 
+    [HumansTheory]
+    [InlineData("merged")]
+    [InlineData("missing")]
+    [InlineData("cancelled")]
+    public async Task Settings_ResolvesItsAuditActorBeforeReadingOrSaving(string account)
+    {
+        using var request = new CancellationTokenSource();
+        var controller = BuildSut();
+        controller.HttpContext.RequestAborted = request.Token;
+        var cookieId = Guid.Parse(controller.User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        var actorId = Guid.NewGuid();
+        _userService.GetUserInfoAsync(cookieId, Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+            return new ValueTask<UserInfo?>(string.Equals(account, "missing", StringComparison.Ordinal)
+                ? null : UserInfoStubHelpers.MakeUserInfo(actorId));
+        });
+        _burnSettings.GetActiveAsync(Arg.Any<CancellationToken>()).Returns(ActiveEvent);
+        if (string.Equals(account, "cancelled", StringComparison.Ordinal))
+        {
+            await request.CancelAsync();
+            await Assert.ThrowsAnyAsync<OperationCanceledException>(() => controller.Settings(new EventSettingsViewModel()));
+        }
+        else
+        {
+            var result = await controller.Settings(new EventSettingsViewModel());
+            if (string.Equals(account, "merged", StringComparison.Ordinal))
+            {
+                result.Should().BeOfType<RedirectResult>();
+                await _shiftMgmt.Received(1).SaveKnobsAsync(ActiveEvent.Id, Arg.Any<bool>(), Arg.Any<int?>(),
+                    Arg.Any<int>(), Arg.Any<BuildSubPeriodStarts>(), actorId);
+            }
+            else result.Should().BeOfType<ChallengeResult>();
+        }
+        if (!string.Equals(account, "merged", StringComparison.Ordinal))
+        {
+            _burnSettings.ReceivedCalls().Should().BeEmpty();
+            _shiftMgmt.ReceivedCalls().Should().BeEmpty();
+        }
+    }
+
     private ShiftsController BuildSut()
     {
         var ctrl = new ShiftsController(
             _shiftMgmt, _burnSettings, _signupService, _volunteerTrackingService, _shiftView, _teamService,
             _auditLogService, _userService, _localizer, _onboardingLocalizer, _clock, _builder, _logger);
+        var actorId = Guid.NewGuid();
+        _userService.GetUserInfoAsync(actorId, Arg.Any<CancellationToken>())
+            .Returns(UserInfoStubHelpers.MakeUserInfo(actorId));
         var http = new DefaultHttpContext
         {
             User = new ClaimsPrincipal(new ClaimsIdentity(
-            [new Claim(ClaimTypes.NameIdentifier, Guid.NewGuid().ToString())], "test")),
+            [new Claim(ClaimTypes.NameIdentifier, actorId.ToString())], "test")),
         };
         var services = new ServiceCollection();
         services.AddSingleton<ILoggerFactory>(NullLoggerFactory.Instance);
