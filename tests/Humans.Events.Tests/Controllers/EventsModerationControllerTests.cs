@@ -412,7 +412,9 @@ public sealed class EventsModerationControllerTests
             "Withdraw" => controller.Withdraw(form),
             _ => controller.Update(guideEvent.Id, new AdminEventFormViewModel
             {
-                CategoryId = categoryId, VenueId = venueId, StartDate = new DateOnly(2026, 8, 1)
+                CategoryId = categoryId,
+                VenueId = venueId,
+                StartDate = new DateOnly(2026, 8, 1)
             })
         };
 

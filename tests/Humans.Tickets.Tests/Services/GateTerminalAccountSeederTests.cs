@@ -61,10 +61,10 @@ public sealed class GateTerminalAccountSeederTests : TicketsTestHarness
     }
 
     [HumansTheory]
-    [InlineData("merged")]
-    [InlineData("missing")]
-    [InlineData("cancelled")]
-    public async Task PasswordController_ResolvesItsActorBeforeTouchingCredentials(string account)
+    [InlineData(AccountScenario.Merged)]
+    [InlineData(AccountScenario.Missing)]
+    [InlineData(AccountScenario.Cancelled)]
+    public async Task PasswordController_ResolvesItsActorBeforeTouchingCredentials(AccountScenario account)
     {
         using var request = new CancellationTokenSource();
         _storedUser = new User { Id = SystemUserIds.GateTerminal, PasswordHash = "existing" };
@@ -74,7 +74,7 @@ public sealed class GateTerminalAccountSeederTests : TicketsTestHarness
         users.GetUserInfoAsync(cookieId, Arg.Any<CancellationToken>()).Returns(call =>
         {
             call.Arg<CancellationToken>().ThrowIfCancellationRequested();
-            return new ValueTask<UserInfo?>(string.Equals(account, "missing", StringComparison.Ordinal)
+            return new ValueTask<UserInfo?>(account == AccountScenario.Missing
                 ? null : UserInfo.Create(new User { Id = actorId }, [], [], null));
         });
         var http = new DefaultHttpContext
@@ -88,7 +88,7 @@ public sealed class GateTerminalAccountSeederTests : TicketsTestHarness
             TempData = new TempDataDictionary(http, Substitute.For<ITempDataProvider>()),
             Url = Substitute.For<IUrlHelper>()
         };
-        if (string.Equals(account, "cancelled", StringComparison.Ordinal))
+        if (account == AccountScenario.Cancelled)
         {
             await request.CancelAsync();
             await Assert.ThrowsAnyAsync<OperationCanceledException>(() => controller.SetPassword("password"));
@@ -96,7 +96,7 @@ public sealed class GateTerminalAccountSeederTests : TicketsTestHarness
         else
         {
             var result = await controller.SetPassword("password");
-            if (string.Equals(account, "merged", StringComparison.Ordinal))
+            if (account == AccountScenario.Merged)
             {
                 Assert.IsType<RedirectToActionResult>(result);
                 await _userWrite.Received(1).MarkFakeAsync(SystemUserIds.GateTerminal, actorId, Arg.Any<string>(), Arg.Any<CancellationToken>());
@@ -105,7 +105,7 @@ public sealed class GateTerminalAccountSeederTests : TicketsTestHarness
             }
             else Assert.IsType<ChallengeResult>(result);
         }
-        if (!string.Equals(account, "merged", StringComparison.Ordinal))
+        if (account != AccountScenario.Merged)
         {
             Assert.Empty(_users.ReceivedCalls());
             Assert.Empty(_credentialUsers.ReceivedCalls());

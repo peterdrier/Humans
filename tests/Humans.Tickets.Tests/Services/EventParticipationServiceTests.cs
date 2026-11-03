@@ -63,7 +63,11 @@ public sealed class EventParticipationServiceTests : IDisposable
         _users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(info);
         _db.EventParticipations.AddRange(rows.Select(r => new TicketRow
         {
-            Id = Guid.NewGuid(), UserId = userId, Year = r.Year, Status = r.Status, Source = r.Source,
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            Year = r.Year,
+            Status = r.Status,
+            Source = r.Source,
             DeclaredAt = r.Status == ParticipationStatus.NotAttending ? Earlier : null,
             CheckedInAt = r.Status == ParticipationStatus.Attended ? Earlier : null,
         }));
@@ -126,7 +130,10 @@ public sealed class EventParticipationServiceTests : IDisposable
         var user = SeedUser();
         _db.EventParticipations.Add(new TicketRow
         {
-            Id = Guid.NewGuid(), UserId = user.Id, Year = 2026, Source = ParticipationSource.UserDeclared,
+            Id = Guid.NewGuid(),
+            UserId = user.Id,
+            Year = 2026,
+            Source = ParticipationSource.UserDeclared,
         });
         await _db.SaveChangesAsync(Ct);
         _db.ChangeTracker.Clear();

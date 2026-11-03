@@ -93,10 +93,10 @@ public sealed class ShiftsControllerSettingsTests
     }
 
     [HumansTheory]
-    [InlineData("merged")]
-    [InlineData("missing")]
-    [InlineData("cancelled")]
-    public async Task Settings_ResolvesItsAuditActorBeforeReadingOrSaving(string account)
+    [InlineData(AccountScenario.Merged)]
+    [InlineData(AccountScenario.Missing)]
+    [InlineData(AccountScenario.Cancelled)]
+    public async Task Settings_ResolvesItsAuditActorBeforeReadingOrSaving(AccountScenario account)
     {
         using var request = new CancellationTokenSource();
         var controller = BuildSut();
@@ -106,11 +106,11 @@ public sealed class ShiftsControllerSettingsTests
         _userService.GetUserInfoAsync(cookieId, Arg.Any<CancellationToken>()).Returns(call =>
         {
             call.Arg<CancellationToken>().ThrowIfCancellationRequested();
-            return new ValueTask<UserInfo?>(string.Equals(account, "missing", StringComparison.Ordinal)
+            return new ValueTask<UserInfo?>(account == AccountScenario.Missing
                 ? null : UserInfoStubHelpers.MakeUserInfo(actorId));
         });
         _burnSettings.GetActiveAsync(Arg.Any<CancellationToken>()).Returns(ActiveEvent);
-        if (string.Equals(account, "cancelled", StringComparison.Ordinal))
+        if (account == AccountScenario.Cancelled)
         {
             await request.CancelAsync();
             await Assert.ThrowsAnyAsync<OperationCanceledException>(() => controller.Settings(new EventSettingsViewModel()));
@@ -118,7 +118,7 @@ public sealed class ShiftsControllerSettingsTests
         else
         {
             var result = await controller.Settings(new EventSettingsViewModel());
-            if (string.Equals(account, "merged", StringComparison.Ordinal))
+            if (account == AccountScenario.Merged)
             {
                 result.Should().BeOfType<RedirectResult>();
                 await _shiftMgmt.Received(1).SaveKnobsAsync(ActiveEvent.Id, Arg.Any<bool>(), Arg.Any<int?>(),
@@ -126,7 +126,7 @@ public sealed class ShiftsControllerSettingsTests
             }
             else result.Should().BeOfType<ChallengeResult>();
         }
-        if (!string.Equals(account, "merged", StringComparison.Ordinal))
+        if (account != AccountScenario.Merged)
         {
             _burnSettings.ReceivedCalls().Should().BeEmpty();
             _shiftMgmt.ReceivedCalls().Should().BeEmpty();

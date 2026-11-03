@@ -3,7 +3,7 @@
   src/Sections/Humans.Email.Contracts/**
 -->
 <!-- freshness:flag-on-change
-  Outbox queue/retry semantics, pause flag ownership, SDK-free composer/processor split, communication-preference rules (legacy fallback, cleared rows, merge fold) and unsubscribe token rules — review when Email service/repository/entity change.
+  Outbox queue/retry semantics, pause flag ownership, SDK-free composer/processor split, communication-preference rules (cleared rows, merge fold) and unsubscribe token rules — review when Email service/repository/entity change.
 -->
 
 # Email — Section Invariants
@@ -90,7 +90,7 @@ spikes seen in Google Postmaster, since `email_outbox_messages` is pruned after
 | Id | Guid | PK |
 | UserId | Guid | Bare column, no FK or nav |
 | Category | MessageCategory | Stored as string (max 50) |
-| OptedOut | bool? | true = no email for this category; **null = cleared row** (a reset, or a merge source) that shadows the legacy row so the fallback cannot resurrect it |
+| OptedOut | bool? | true = no email for this category; **null = cleared row** (a reset, or a merge source); reads treat it as the category default |
 | InboxEnabled | bool | true = informational in-app notifications for this category show (actionable ones always do) |
 | UpdatedAt | Instant | Last change |
 | UpdateSource | string (100) | Who changed it — see [`update-source-attribution`](../../../../memory/code/update-source-attribution.md) |
@@ -98,7 +98,7 @@ spikes seen in Google Postmaster, since `email_outbox_messages` is pruned after
 
 **Unique index:** `(UserId, Category)`.
 
-**Preference ownership:** reads, writes, resets, merges and GDPR paths use only `email_communication_preferences`. Production `GET https://humans.nobodies.team/api/data-migrations` reported `{"key":"email.communication-preferences","pending":0,"done":true}` on 2026-11-03. The copy, fallback and Users projections/export/erasure are retired; Users retains only its frozen table mapping until the separate drop. Historical null `OptedOut` rows read as category defaults. New resets delete the row. Single-user reads still resolve merged-away ids forward; writes use the raw id.
+**Preference ownership:** reads, writes, resets, merges and GDPR paths use only `email_communication_preferences`. Production `GET https://humans.nobodies.team/api/data-migrations` reported `{"key":"email.communication-preferences","pending":0,"done":true}` on 2026-11-03. The copy, fallback and Users projections/export are retired; Users retains its frozen table mapping, and erasure still deletes the user's rows there, until the separate drop. Historical null `OptedOut` rows read as category defaults. New resets delete the row. Single-user reads still resolve merged-away ids forward; writes use the raw id.
 
 ### MessageCategory
 
@@ -176,7 +176,7 @@ The communication-preference routes moved from Users in decomposition commit 14 
 
 - A queued personal facilitated message retains its success redirect if auditing fails afterward. The failure logs Critical with sender, recipient and contact-sharing details for reconciliation; queueing failures still propagate.
 
-- Missing or empty unsubscribe tokens are invalid before Data Protection or user reads, including the new-category validator and legacy fallback. The anonymous one-click path refuses a missing token rather than surfacing a token-decoding exception.
+- Missing or empty unsubscribe tokens are invalid before Data Protection or user reads, including the new-category validator. The anonymous one-click path refuses a missing token rather than surfacing a token-decoding exception.
 
 - An absent, empty or whitespace-only `Email:SmtpHost` selects the logging stub outside production. Production always selects SMTP and still boots: a missing host fails at send time with an `Email:SmtpHost` diagnostic, so persisted messages follow normal outbox failure/retry handling rather than being marked sent by the stub. The health check reports SMTP as unconfigured. A nonblank host selects SMTP in every environment.
 

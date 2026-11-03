@@ -154,20 +154,28 @@ public class CantinaRosterServiceTests
         _audit.ReceivedCalls().Should().ContainSingle("exports keep their one scope row");
     }
 
+    public enum CantinaDisclosure
+    {
+        RevealHealth,
+        Csv,
+        RevealDayHealth,
+        DayCsv
+    }
+
     [HumansTheory]
-    [Xunit.InlineData(0, 0)]
-    [Xunit.InlineData(0, 1)]
-    [Xunit.InlineData(0, 2)]
-    [Xunit.InlineData(1, 0)]
-    [Xunit.InlineData(1, 1)]
-    [Xunit.InlineData(1, 2)]
-    [Xunit.InlineData(2, 0)]
-    [Xunit.InlineData(2, 1)]
-    [Xunit.InlineData(2, 2)]
-    [Xunit.InlineData(3, 0)]
-    [Xunit.InlineData(3, 1)]
-    [Xunit.InlineData(3, 2)]
-    public async Task Disclosure_resolves_actor_before_loading_personal_rows(int action, int mode)
+    [Xunit.InlineData(CantinaDisclosure.RevealHealth, AccountScenario.Merged)]
+    [Xunit.InlineData(CantinaDisclosure.RevealHealth, AccountScenario.Missing)]
+    [Xunit.InlineData(CantinaDisclosure.RevealHealth, AccountScenario.Cancelled)]
+    [Xunit.InlineData(CantinaDisclosure.Csv, AccountScenario.Merged)]
+    [Xunit.InlineData(CantinaDisclosure.Csv, AccountScenario.Missing)]
+    [Xunit.InlineData(CantinaDisclosure.Csv, AccountScenario.Cancelled)]
+    [Xunit.InlineData(CantinaDisclosure.RevealDayHealth, AccountScenario.Merged)]
+    [Xunit.InlineData(CantinaDisclosure.RevealDayHealth, AccountScenario.Missing)]
+    [Xunit.InlineData(CantinaDisclosure.RevealDayHealth, AccountScenario.Cancelled)]
+    [Xunit.InlineData(CantinaDisclosure.DayCsv, AccountScenario.Merged)]
+    [Xunit.InlineData(CantinaDisclosure.DayCsv, AccountScenario.Missing)]
+    [Xunit.InlineData(CantinaDisclosure.DayCsv, AccountScenario.Cancelled)]
+    public async Task Disclosure_resolves_actor_before_loading_personal_rows(CantinaDisclosure action, AccountScenario account)
     {
         var archivedId = Guid.NewGuid();
         var survivorId = Guid.NewGuid();
@@ -178,29 +186,29 @@ public class CantinaRosterServiceTests
         {
             call.Arg<CancellationToken>().Should().Be(request.Token);
             call.Arg<CancellationToken>().ThrowIfCancellationRequested();
-            return new ValueTask<UserInfo?>(mode == 1 ? null :
+            return new ValueTask<UserInfo?>(account == AccountScenario.Missing ? null :
                 UserInfo.Create(new User { Id = survivorId }, [], [], null));
         });
         var burn = ActiveEvent();
         _burnSettings.GetActiveEventSettingsAsync(request.Token).Returns(burn);
-        if (mode == 2)
+        if (account == AccountScenario.Cancelled)
             await request.CancelAsync();
         Func<Task<IActionResult>> invoke = action switch
         {
-            0 => () => controller.RevealHealth(0, request.Token),
-            1 => () => controller.Csv(0, request.Token),
-            2 => () => controller.RevealDayHealth(0, request.Token),
+            CantinaDisclosure.RevealHealth => () => controller.RevealHealth(0, request.Token),
+            CantinaDisclosure.Csv => () => controller.Csv(0, request.Token),
+            CantinaDisclosure.RevealDayHealth => () => controller.RevealDayHealth(0, request.Token),
             _ => () => controller.DayCsv(0, request.Token),
         };
 
-        if (mode == 2)
+        if (account == AccountScenario.Cancelled)
             await invoke.Should().ThrowAsync<OperationCanceledException>();
-        else if (mode == 1)
+        else if (account == AccountScenario.Missing)
             (await invoke()).Should().BeOfType<UnauthorizedResult>();
         else
         {
             await invoke();
-            var auditAction = action is 0 or 2
+            var auditAction = action is CantinaDisclosure.RevealHealth or CantinaDisclosure.RevealDayHealth
                 ? CantinaAuditActions.CantinaHealthDetailsRevealed
                 : CantinaAuditActions.CantinaRosterExported;
             await _audit.Received(1).LogAsync(auditAction, "EventSettings", burn.Id,

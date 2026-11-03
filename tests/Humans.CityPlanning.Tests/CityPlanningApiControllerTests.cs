@@ -149,11 +149,18 @@ public sealed class CityPlanningApiControllerTests : CityPlanningTestBase
         await _users.Received().GetUserInfoAsync(_userId, ct);
     }
 
+    public enum ContainerPlacementWrite
+    {
+        SavePlacement,
+        UpdatePlacementNotes,
+        ClearPlacement
+    }
+
     [HumansTheory]
-    [InlineData(0)]
-    [InlineData(1)]
-    [InlineData(2)]
-    public async Task ContainerWrites_UseResolvedAccountForActor(int operation)
+    [InlineData(ContainerPlacementWrite.SavePlacement)]
+    [InlineData(ContainerPlacementWrite.UpdatePlacementNotes)]
+    [InlineData(ContainerPlacementWrite.ClearPlacement)]
+    public async Task ContainerWrites_UseResolvedAccountForActor(ContainerPlacementWrite operation)
     {
         var survivorId = Guid.NewGuid();
         _users.GetUserInfoAsync(_userId, Arg.Any<CancellationToken>())
@@ -172,12 +179,12 @@ public sealed class CityPlanningApiControllerTests : CityPlanningTestBase
         var ct = TestContext.Current.CancellationToken;
         var controller = CreateController();
 
-        if (operation == 0)
+        if (operation == ContainerPlacementWrite.SavePlacement)
         {
             await controller.SaveContainerPlacement(id, 2026, new SaveContainerPlacementRequest("{}"), ct);
             await _containers.Received(1).SavePlacementAsync(id, 2026, "{}", survivorId, ct);
         }
-        else if (operation == 1)
+        else if (operation == ContainerPlacementWrite.UpdatePlacementNotes)
         {
             await controller.UpdateContainerPlacementNotes(id, 2026, new UpdateContainerPlacementNotesRequest(), ct);
             await _containers.Received(1).UpdatePlacementNotesAsync(id, 2026, null, null, false, survivorId, ct);
@@ -198,7 +205,8 @@ public sealed class CityPlanningApiControllerTests : CityPlanningTestBase
         var campId = Guid.NewGuid();
         var season = new CampSeasonInfo(_campSeasonId, campId, "camp", 2026, null, "Camp", "", "",
             [], CampSeasonStatus.Pending, YesNoMaybe.No, YesNoMaybe.No, AdultPlayspacePolicy.No,
-            0, null, null, null, 0, null, null) { LeadUserIds = [survivorId] };
+            0, null, null, null, 0, null, null)
+        { LeadUserIds = [survivorId] };
         _campService.GetCampsForYearAsync(2026, Arg.Any<CancellationToken>())
             .Returns([new CampInfo(campId, "camp", "", "", false, 0, [season])]);
         _containers.GetAllAsync(Arg.Any<CancellationToken>()).Returns([]);

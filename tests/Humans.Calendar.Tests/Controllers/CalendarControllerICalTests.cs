@@ -63,18 +63,27 @@ public class CalendarControllerICalTests
             .Returns(new Dictionary<Guid, TeamInfo>());
     }
 
+    public enum CalendarEventMutation
+    {
+        Create,
+        Edit,
+        Delete,
+        CancelOccurrence,
+        EditOccurrence
+    }
+
     [HumansTheory]
-    [Xunit.InlineData(0, true)]
-    [Xunit.InlineData(1, true)]
-    [Xunit.InlineData(2, true)]
-    [Xunit.InlineData(3, true)]
-    [Xunit.InlineData(4, true)]
-    [Xunit.InlineData(0, false)]
-    [Xunit.InlineData(1, false)]
-    [Xunit.InlineData(2, false)]
-    [Xunit.InlineData(3, false)]
-    [Xunit.InlineData(4, false)]
-    public async Task EventMutations_ResolveTheAuditActorBeforeWriting(int operation, bool accountExists)
+    [Xunit.InlineData(CalendarEventMutation.Create, true)]
+    [Xunit.InlineData(CalendarEventMutation.Edit, true)]
+    [Xunit.InlineData(CalendarEventMutation.Delete, true)]
+    [Xunit.InlineData(CalendarEventMutation.CancelOccurrence, true)]
+    [Xunit.InlineData(CalendarEventMutation.EditOccurrence, true)]
+    [Xunit.InlineData(CalendarEventMutation.Create, false)]
+    [Xunit.InlineData(CalendarEventMutation.Edit, false)]
+    [Xunit.InlineData(CalendarEventMutation.Delete, false)]
+    [Xunit.InlineData(CalendarEventMutation.CancelOccurrence, false)]
+    [Xunit.InlineData(CalendarEventMutation.EditOccurrence, false)]
+    public async Task EventMutations_ResolveTheAuditActorBeforeWriting(CalendarEventMutation operation, bool accountExists)
     {
         var survivor = Guid.NewGuid();
         _users.GetUserInfoAsync(_viewer, Arg.Any<CancellationToken>())
@@ -94,8 +103,10 @@ public class CalendarControllerICalTests
             .Returns(CalendarEventMutationResult.Success(new CalendarEvent { Id = id }));
         var form = new CalendarEventFormViewModel
         {
-            Title = "Changed", OwningTeamId = teamId,
-            StartLocal = new DateTime(2026, 6, 2, 10, 0, 0), RecurrenceTimezone = "UTC",
+            Title = "Changed",
+            OwningTeamId = teamId,
+            StartLocal = new DateTime(2026, 6, 2, 10, 0, 0),
+            RecurrenceTimezone = "UTC",
         };
         var controller = CreateController();
         using var request = new CancellationTokenSource();
@@ -104,10 +115,10 @@ public class CalendarControllerICalTests
 
         var result = operation switch
         {
-            0 => await controller.Create(form, ct),
-            1 => await controller.Edit(id, form, ct),
-            2 => await controller.Delete(id, ct),
-            3 => await controller.CancelOccurrence(id, original, ct),
+            CalendarEventMutation.Create => await controller.Create(form, ct),
+            CalendarEventMutation.Edit => await controller.Edit(id, form, ct),
+            CalendarEventMutation.Delete => await controller.Delete(id, ct),
+            CalendarEventMutation.CancelOccurrence => await controller.CancelOccurrence(id, original, ct),
             _ => await controller.EditOccurrence(id, original,
                 new OccurrenceOverrideFormViewModel { OverrideTitle = "Changed", RecurrenceTimezone = "UTC" }, ct),
         };
@@ -122,16 +133,16 @@ public class CalendarControllerICalTests
             result.Should().BeOfType<RedirectToActionResult>();
             switch (operation)
             {
-                case 0:
+                case CalendarEventMutation.Create:
                     await _calendar.Received(1).CreateEventWithResultAsync(Arg.Any<CreateCalendarEventDto>(), survivor, ct);
                     break;
-                case 1:
+                case CalendarEventMutation.Edit:
                     await _calendar.Received(1).UpdateEventWithResultAsync(id, Arg.Any<CreateCalendarEventDto>(), survivor, ct);
                     break;
-                case 2:
+                case CalendarEventMutation.Delete:
                     await _calendar.Received(1).DeleteEventAsync(id, survivor, ct);
                     break;
-                case 3:
+                case CalendarEventMutation.CancelOccurrence:
                     await _calendar.Received(1).CancelOccurrenceAsync(id, start, survivor, ct, null);
                     break;
                 default:

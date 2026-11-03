@@ -1005,7 +1005,9 @@ public sealed class RideshareServiceTests : RideshareTestHarness
         var trip = await SeedTripAsync(archived);
         var interest = new RideshareInterest
         {
-            Id = Guid.NewGuid(), TripId = trip.Id, Trip = trip,
+            Id = Guid.NewGuid(),
+            TripId = trip.Id,
+            Trip = trip,
             FromUserId = string.Equals(action, "received", StringComparison.Ordinal) ? actor : archived,
             Seats = 1
         };

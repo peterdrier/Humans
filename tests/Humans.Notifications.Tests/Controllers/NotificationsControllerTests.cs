@@ -23,35 +23,37 @@ namespace Humans.Notifications.Tests.Controllers;
 
 public sealed class NotificationsControllerTests
 {
+    public enum InboxAction { Index, Popup, Resolve, Dismiss, MarkRead, MarkAllRead, BulkResolve, BulkDismiss, ClickThrough }
+
     [HumansTheory]
-    [Xunit.InlineData("index", "merged")]
-    [Xunit.InlineData("index", "missing")]
-    [Xunit.InlineData("index", "cancelled")]
-    [Xunit.InlineData("popup", "merged")]
-    [Xunit.InlineData("popup", "missing")]
-    [Xunit.InlineData("popup", "cancelled")]
-    [Xunit.InlineData("resolve", "merged")]
-    [Xunit.InlineData("resolve", "missing")]
-    [Xunit.InlineData("resolve", "cancelled")]
-    [Xunit.InlineData("dismiss", "merged")]
-    [Xunit.InlineData("dismiss", "missing")]
-    [Xunit.InlineData("dismiss", "cancelled")]
-    [Xunit.InlineData("read", "merged")]
-    [Xunit.InlineData("read", "missing")]
-    [Xunit.InlineData("read", "cancelled")]
-    [Xunit.InlineData("read-all", "merged")]
-    [Xunit.InlineData("read-all", "missing")]
-    [Xunit.InlineData("read-all", "cancelled")]
-    [Xunit.InlineData("bulk-resolve", "merged")]
-    [Xunit.InlineData("bulk-resolve", "missing")]
-    [Xunit.InlineData("bulk-resolve", "cancelled")]
-    [Xunit.InlineData("bulk-dismiss", "merged")]
-    [Xunit.InlineData("bulk-dismiss", "missing")]
-    [Xunit.InlineData("bulk-dismiss", "cancelled")]
-    [Xunit.InlineData("click", "merged")]
-    [Xunit.InlineData("click", "missing")]
-    [Xunit.InlineData("click", "cancelled")]
-    public async Task InboxActions_ResolveTheAccountBeforeReadingOrMutating(string action, string account)
+    [Xunit.InlineData(InboxAction.Index, AccountScenario.Merged)]
+    [Xunit.InlineData(InboxAction.Index, AccountScenario.Missing)]
+    [Xunit.InlineData(InboxAction.Index, AccountScenario.Cancelled)]
+    [Xunit.InlineData(InboxAction.Popup, AccountScenario.Merged)]
+    [Xunit.InlineData(InboxAction.Popup, AccountScenario.Missing)]
+    [Xunit.InlineData(InboxAction.Popup, AccountScenario.Cancelled)]
+    [Xunit.InlineData(InboxAction.Resolve, AccountScenario.Merged)]
+    [Xunit.InlineData(InboxAction.Resolve, AccountScenario.Missing)]
+    [Xunit.InlineData(InboxAction.Resolve, AccountScenario.Cancelled)]
+    [Xunit.InlineData(InboxAction.Dismiss, AccountScenario.Merged)]
+    [Xunit.InlineData(InboxAction.Dismiss, AccountScenario.Missing)]
+    [Xunit.InlineData(InboxAction.Dismiss, AccountScenario.Cancelled)]
+    [Xunit.InlineData(InboxAction.MarkRead, AccountScenario.Merged)]
+    [Xunit.InlineData(InboxAction.MarkRead, AccountScenario.Missing)]
+    [Xunit.InlineData(InboxAction.MarkRead, AccountScenario.Cancelled)]
+    [Xunit.InlineData(InboxAction.MarkAllRead, AccountScenario.Merged)]
+    [Xunit.InlineData(InboxAction.MarkAllRead, AccountScenario.Missing)]
+    [Xunit.InlineData(InboxAction.MarkAllRead, AccountScenario.Cancelled)]
+    [Xunit.InlineData(InboxAction.BulkResolve, AccountScenario.Merged)]
+    [Xunit.InlineData(InboxAction.BulkResolve, AccountScenario.Missing)]
+    [Xunit.InlineData(InboxAction.BulkResolve, AccountScenario.Cancelled)]
+    [Xunit.InlineData(InboxAction.BulkDismiss, AccountScenario.Merged)]
+    [Xunit.InlineData(InboxAction.BulkDismiss, AccountScenario.Missing)]
+    [Xunit.InlineData(InboxAction.BulkDismiss, AccountScenario.Cancelled)]
+    [Xunit.InlineData(InboxAction.ClickThrough, AccountScenario.Merged)]
+    [Xunit.InlineData(InboxAction.ClickThrough, AccountScenario.Missing)]
+    [Xunit.InlineData(InboxAction.ClickThrough, AccountScenario.Cancelled)]
+    public async Task InboxActions_ResolveTheAccountBeforeReadingOrMutating(InboxAction action, AccountScenario account)
     {
         using var request = new CancellationTokenSource();
         var cookieId = Guid.NewGuid();
@@ -60,7 +62,7 @@ public sealed class NotificationsControllerTests
         users.GetUserInfoAsync(cookieId, Arg.Any<CancellationToken>()).Returns(call =>
         {
             call.Arg<CancellationToken>().ThrowIfCancellationRequested();
-            return new ValueTask<UserInfo?>(string.Equals(account, "missing", StringComparison.Ordinal)
+            return new ValueTask<UserInfo?>(account == AccountScenario.Missing
                 ? null : UserInfo.Create(new User { Id = actorId }, [], [], null));
         });
         users.GetAllUserInfosAsync(Arg.Any<CancellationToken>()).Returns(Array.Empty<UserInfo>());
@@ -97,17 +99,18 @@ public sealed class NotificationsControllerTests
         var id = Guid.NewGuid();
         Func<Task<IActionResult>> run = () => action switch
         {
-            "index" => controller.Index(null),
-            "popup" => controller.GetPopup(),
-            "resolve" => controller.Resolve(id),
-            "dismiss" => controller.Dismiss(id),
-            "read" => controller.MarkRead(id),
-            "read-all" => controller.MarkAllRead(),
-            "bulk-resolve" => controller.BulkResolve([id]),
-            "bulk-dismiss" => controller.BulkDismiss([id]),
-            _ => controller.ClickThrough(id)
+            InboxAction.Index => controller.Index(null),
+            InboxAction.Popup => controller.GetPopup(),
+            InboxAction.Resolve => controller.Resolve(id),
+            InboxAction.Dismiss => controller.Dismiss(id),
+            InboxAction.MarkRead => controller.MarkRead(id),
+            InboxAction.MarkAllRead => controller.MarkAllRead(),
+            InboxAction.BulkResolve => controller.BulkResolve([id]),
+            InboxAction.BulkDismiss => controller.BulkDismiss([id]),
+            InboxAction.ClickThrough => controller.ClickThrough(id),
+            _ => throw new ArgumentOutOfRangeException(nameof(action), action, null)
         };
-        if (string.Equals(account, "cancelled", StringComparison.Ordinal))
+        if (account == AccountScenario.Cancelled)
         {
             await request.CancelAsync();
             await run.Should().ThrowAsync<OperationCanceledException>();
@@ -115,14 +118,14 @@ public sealed class NotificationsControllerTests
         else
         {
             var result = await run();
-            if (string.Equals(account, "missing", StringComparison.Ordinal)) result.Should().BeOfType<UnauthorizedResult>();
+            if (account == AccountScenario.Missing) result.Should().BeOfType<UnauthorizedResult>();
             else
             {
                 var args = inbox.ReceivedCalls().Should().ContainSingle().Which.GetArguments();
                 args.OfType<Guid>().Last().Should().Be(actorId);
                 args.OfType<CancellationToken>().Should().ContainSingle().Which.Should().Be(
-                    action is "index" or "popup" ? request.Token : CancellationToken.None);
-                if (action is "index" or "popup")
+                    action is InboxAction.Index or InboxAction.Popup ? request.Token : CancellationToken.None);
+                if (action is InboxAction.Index or InboxAction.Popup)
                 {
                     var model = result is ViewResult view ? view.Model : ((PartialViewResult)result).Model;
                     var rows = model is NotificationInboxViewModel list ? list.Meters : ((NotificationPopupViewModel)model!).Meters;
@@ -130,7 +133,7 @@ public sealed class NotificationsControllerTests
                 }
             }
         }
-        if (!string.Equals(account, "merged", StringComparison.Ordinal)) inbox.ReceivedCalls().Should().BeEmpty();
+        if (account != AccountScenario.Merged) inbox.ReceivedCalls().Should().BeEmpty();
     }
 
     [HumansFact]

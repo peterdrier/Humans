@@ -20,6 +20,14 @@ namespace Humans.Teams.Tests.ViewComponents;
 /// </summary>
 public sealed class TeamMessageButtonsViewComponentTests
 {
+    public enum ViewerAccount
+    {
+        Merged,
+        Missing,
+        Self,
+        Cancelled
+    }
+
     private readonly ITeamMessageOptionsProvider _options = Substitute.For<ITeamMessageOptionsProvider>();
     private readonly ICommunicationPreferenceService _commPrefs = Substitute.For<ICommunicationPreferenceService>();
     private readonly IUserService _users = Substitute.For<IUserService>();
@@ -34,18 +42,18 @@ public sealed class TeamMessageButtonsViewComponentTests
     }
 
     [HumansTheory]
-    [InlineData("merged")]
-    [InlineData("missing")]
-    [InlineData("self")]
-    [InlineData("cancelled")]
-    public async Task ViewerResolution_UsesTheSurvivorAndRefusesMissingOrSelf(string account)
+    [InlineData(ViewerAccount.Merged)]
+    [InlineData(ViewerAccount.Missing)]
+    [InlineData(ViewerAccount.Self)]
+    [InlineData(ViewerAccount.Cancelled)]
+    public async Task ViewerResolution_UsesTheSurvivorAndRefusesMissingOrSelf(ViewerAccount account)
     {
         using var request = new CancellationTokenSource();
-        var survivorId = string.Equals(account, "self", StringComparison.Ordinal) ? _targetId : Guid.NewGuid();
+        var survivorId = account == ViewerAccount.Self ? _targetId : Guid.NewGuid();
         _users.GetUserInfoAsync(_viewerId, Arg.Any<CancellationToken>()).Returns(call =>
         {
             call.Arg<CancellationToken>().ThrowIfCancellationRequested();
-            return new ValueTask<UserInfo?>(string.Equals(account, "missing", StringComparison.Ordinal)
+            return new ValueTask<UserInfo?>(account == ViewerAccount.Missing
                 ? null : UserInfo.Create(new User { Id = survivorId }, [], [], profile: null));
         });
         var option = new TeamMessageOption(Guid.NewGuid(), "Team", "team@example.com");
@@ -53,7 +61,7 @@ public sealed class TeamMessageButtonsViewComponentTests
         _options.GetOptionsAsync(survivorId, Arg.Any<CancellationToken>()).Returns(new[] { option });
         var component = Build(_viewerId);
         component.HttpContext.RequestAborted = request.Token;
-        if (string.Equals(account, "cancelled", StringComparison.Ordinal))
+        if (account == ViewerAccount.Cancelled)
         {
             await request.CancelAsync();
             await Assert.ThrowsAsync<OperationCanceledException>(() => component.InvokeAsync(_targetId, ProfileCardViewMode.Public));
@@ -61,7 +69,7 @@ public sealed class TeamMessageButtonsViewComponentTests
         else
         {
             var result = await component.InvokeAsync(_targetId, ProfileCardViewMode.Public);
-            if (string.Equals(account, "merged", StringComparison.Ordinal))
+            if (account == ViewerAccount.Merged)
             {
                 result.Should().BeOfType<ViewViewComponentResult>();
                 await _options.Received(1).GetOptionsAsync(survivorId, request.Token);
@@ -69,7 +77,7 @@ public sealed class TeamMessageButtonsViewComponentTests
             }
             else AssertEmpty(result);
         }
-        if (!string.Equals(account, "merged", StringComparison.Ordinal)) _options.ReceivedCalls().Should().BeEmpty();
+        if (account != ViewerAccount.Merged) _options.ReceivedCalls().Should().BeEmpty();
         await _users.Received(1).GetUserInfoAsync(_viewerId, request.Token);
     }
 

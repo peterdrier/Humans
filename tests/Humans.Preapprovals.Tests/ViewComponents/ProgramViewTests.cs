@@ -55,7 +55,9 @@ public sealed class ProgramViewTests
             [first, second, missing], [grant]);
         object model = form ? ProgramFormViewModel.From(program) : new AdminProgramViewModel
         {
-            Program = program, Today = new LocalDate(2027, 3, 1), CanAdminister = true,
+            Program = program,
+            Today = new LocalDate(2027, 3, 1),
+            CanAdminister = true,
         };
 
         var html = await RenderAsync(form ? "Form" : "Program", model, users);

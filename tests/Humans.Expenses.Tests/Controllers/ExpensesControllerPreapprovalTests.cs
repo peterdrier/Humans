@@ -69,41 +69,69 @@ public sealed class ExpensesControllerPreapprovalTests
         };
     }
 
+    public enum ExpenseMutation
+    {
+        Edit,
+        AddLine,
+        UpdateLine,
+        RemoveLine,
+        AttachFile,
+        RemoveAttachment,
+        Submit,
+        Withdraw,
+        Iban,
+        Endorse,
+        CoordinatorReject,
+        DeclineLine,
+        UndoDeclineLine,
+        Approve,
+        Reject,
+        HoldedRetry,
+        New
+    }
+
+    public enum NewFormLookup
+    {
+        ExpenseAccounts,
+        ClaimableGrants,
+        PreapprovalGrant
+    }
+
     [HumansTheory]
-    [Xunit.InlineData(0, false)]
-    [Xunit.InlineData(0, true)]
-    [Xunit.InlineData(1, false)]
-    [Xunit.InlineData(1, true)]
-    [Xunit.InlineData(2, false)]
-    [Xunit.InlineData(2, true)]
-    [Xunit.InlineData(3, false)]
-    [Xunit.InlineData(3, true)]
-    [Xunit.InlineData(4, false)]
-    [Xunit.InlineData(4, true)]
-    [Xunit.InlineData(5, false)]
-    [Xunit.InlineData(5, true)]
-    [Xunit.InlineData(6, false)]
-    [Xunit.InlineData(6, true)]
-    [Xunit.InlineData(7, false)]
-    [Xunit.InlineData(7, true)]
-    [Xunit.InlineData(8, false)]
-    [Xunit.InlineData(8, true)]
-    [Xunit.InlineData(9, false)]
-    [Xunit.InlineData(9, true)]
-    [Xunit.InlineData(10, false)]
-    [Xunit.InlineData(10, true)]
-    [Xunit.InlineData(11, false)]
-    [Xunit.InlineData(11, true)]
-    [Xunit.InlineData(12, false)]
-    [Xunit.InlineData(12, true)]
-    [Xunit.InlineData(13, false)]
-    [Xunit.InlineData(13, true)]
-    [Xunit.InlineData(14, false)]
-    [Xunit.InlineData(14, true)]
-    [Xunit.InlineData(15, false)]
-    [Xunit.InlineData(15, true)]
-    [Xunit.InlineData(16, true)]
-    public async Task Mutation_preflight_observes_request_cancellation(int action, bool actorLookup)
+    [Xunit.InlineData(ExpenseMutation.Edit, false)]
+    [Xunit.InlineData(ExpenseMutation.Edit, true)]
+    [Xunit.InlineData(ExpenseMutation.AddLine, false)]
+    [Xunit.InlineData(ExpenseMutation.AddLine, true)]
+    [Xunit.InlineData(ExpenseMutation.UpdateLine, false)]
+    [Xunit.InlineData(ExpenseMutation.UpdateLine, true)]
+    [Xunit.InlineData(ExpenseMutation.RemoveLine, false)]
+    [Xunit.InlineData(ExpenseMutation.RemoveLine, true)]
+    [Xunit.InlineData(ExpenseMutation.AttachFile, false)]
+    [Xunit.InlineData(ExpenseMutation.AttachFile, true)]
+    [Xunit.InlineData(ExpenseMutation.RemoveAttachment, false)]
+    [Xunit.InlineData(ExpenseMutation.RemoveAttachment, true)]
+    [Xunit.InlineData(ExpenseMutation.Submit, false)]
+    [Xunit.InlineData(ExpenseMutation.Submit, true)]
+    [Xunit.InlineData(ExpenseMutation.Withdraw, false)]
+    [Xunit.InlineData(ExpenseMutation.Withdraw, true)]
+    [Xunit.InlineData(ExpenseMutation.Iban, false)]
+    [Xunit.InlineData(ExpenseMutation.Iban, true)]
+    [Xunit.InlineData(ExpenseMutation.Endorse, false)]
+    [Xunit.InlineData(ExpenseMutation.Endorse, true)]
+    [Xunit.InlineData(ExpenseMutation.CoordinatorReject, false)]
+    [Xunit.InlineData(ExpenseMutation.CoordinatorReject, true)]
+    [Xunit.InlineData(ExpenseMutation.DeclineLine, false)]
+    [Xunit.InlineData(ExpenseMutation.DeclineLine, true)]
+    [Xunit.InlineData(ExpenseMutation.UndoDeclineLine, false)]
+    [Xunit.InlineData(ExpenseMutation.UndoDeclineLine, true)]
+    [Xunit.InlineData(ExpenseMutation.Approve, false)]
+    [Xunit.InlineData(ExpenseMutation.Approve, true)]
+    [Xunit.InlineData(ExpenseMutation.Reject, false)]
+    [Xunit.InlineData(ExpenseMutation.Reject, true)]
+    [Xunit.InlineData(ExpenseMutation.HoldedRetry, false)]
+    [Xunit.InlineData(ExpenseMutation.HoldedRetry, true)]
+    [Xunit.InlineData(ExpenseMutation.New, true)]
+    public async Task Mutation_preflight_observes_request_cancellation(ExpenseMutation action, bool actorLookup)
     {
         var report = ReviewRow(null) with { Status = ExpenseReportStatus.Draft };
         using var request = new CancellationTokenSource();
@@ -131,22 +159,22 @@ public sealed class ExpensesControllerPreapprovalTests
         var lineId = Guid.NewGuid();
         Func<Task<IActionResult>> invoke = action switch
         {
-            0 => () => controller.Edit(report.Id, new ExpenseEditViewModel()),
-            1 => () => controller.AddLine(report.Id, new AddLineInputModel(), null),
-            2 => () => controller.UpdateLine(report.Id, new EditLineInputModel()),
-            3 => () => controller.RemoveLine(report.Id, lineId),
-            4 => () => controller.AttachFile(report.Id, lineId, null),
-            5 => () => controller.RemoveAttachment(report.Id, lineId),
-            6 => () => controller.Submit(report.Id),
-            7 => () => controller.Withdraw(report.Id),
-            8 => () => controller.Iban(report.Id, new ExpenseIbanViewModel()),
-            9 => () => controller.Endorse(report.Id, new EndorseInputModel()),
-            10 => () => controller.CoordinatorReject(report.Id, new CoordinatorRejectInputModel()),
-            11 => () => controller.DeclineLine(report.Id, lineId, new DeclineLineInputModel()),
-            12 => () => controller.UndoDeclineLine(report.Id, lineId),
-            13 => () => controller.Approve(report.Id, new ApproveInputModel()),
-            14 => () => controller.Reject(report.Id, new FinanceRejectInputModel()),
-            15 => () => controller.HoldedRetry(report.Id),
+            ExpenseMutation.Edit => () => controller.Edit(report.Id, new ExpenseEditViewModel()),
+            ExpenseMutation.AddLine => () => controller.AddLine(report.Id, new AddLineInputModel(), null),
+            ExpenseMutation.UpdateLine => () => controller.UpdateLine(report.Id, new EditLineInputModel()),
+            ExpenseMutation.RemoveLine => () => controller.RemoveLine(report.Id, lineId),
+            ExpenseMutation.AttachFile => () => controller.AttachFile(report.Id, lineId, null),
+            ExpenseMutation.RemoveAttachment => () => controller.RemoveAttachment(report.Id, lineId),
+            ExpenseMutation.Submit => () => controller.Submit(report.Id),
+            ExpenseMutation.Withdraw => () => controller.Withdraw(report.Id),
+            ExpenseMutation.Iban => () => controller.Iban(report.Id, new ExpenseIbanViewModel()),
+            ExpenseMutation.Endorse => () => controller.Endorse(report.Id, new EndorseInputModel()),
+            ExpenseMutation.CoordinatorReject => () => controller.CoordinatorReject(report.Id, new CoordinatorRejectInputModel()),
+            ExpenseMutation.DeclineLine => () => controller.DeclineLine(report.Id, lineId, new DeclineLineInputModel()),
+            ExpenseMutation.UndoDeclineLine => () => controller.UndoDeclineLine(report.Id, lineId),
+            ExpenseMutation.Approve => () => controller.Approve(report.Id, new ApproveInputModel()),
+            ExpenseMutation.Reject => () => controller.Reject(report.Id, new FinanceRejectInputModel()),
+            ExpenseMutation.HoldedRetry => () => controller.HoldedRetry(report.Id),
             _ => () => controller.New(new ExpenseNewViewModel()),
         };
 
@@ -156,16 +184,16 @@ public sealed class ExpensesControllerPreapprovalTests
     }
 
     [HumansTheory]
-    [Xunit.InlineData(0)]
-    [Xunit.InlineData(1)]
-    [Xunit.InlineData(2)]
-    public async Task Invalid_new_form_preflight_observes_request_cancellation(int lookup)
+    [Xunit.InlineData(NewFormLookup.ExpenseAccounts)]
+    [Xunit.InlineData(NewFormLookup.ClaimableGrants)]
+    [Xunit.InlineData(NewFormLookup.PreapprovalGrant)]
+    public async Task Invalid_new_form_preflight_observes_request_cancellation(NewFormLookup lookup)
     {
         using var request = new CancellationTokenSource();
         var grantId = Guid.NewGuid();
         _holdedFinance.ListExpenseAccountsAsync(true, Arg.Any<CancellationToken>()).Returns(call =>
         {
-            if (lookup == 0)
+            if (lookup == NewFormLookup.ExpenseAccounts)
             {
                 call.Arg<CancellationToken>().Should().Be(request.Token);
                 call.Arg<CancellationToken>().ThrowIfCancellationRequested();
@@ -174,7 +202,7 @@ public sealed class ExpensesControllerPreapprovalTests
         });
         _preapprovals.ListClaimableForUserAsync(_actorId, Arg.Any<CancellationToken>()).Returns(call =>
         {
-            if (lookup == 1)
+            if (lookup == NewFormLookup.ClaimableGrants)
             {
                 call.Arg<CancellationToken>().Should().Be(request.Token);
                 call.Arg<CancellationToken>().ThrowIfCancellationRequested();

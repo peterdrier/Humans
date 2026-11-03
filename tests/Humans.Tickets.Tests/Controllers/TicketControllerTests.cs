@@ -32,6 +32,20 @@ namespace Humans.Tickets.Tests.Controllers;
 /// </summary>
 public class TicketControllerTests
 {
+    public enum PreflightRead
+    {
+        Viewer,
+        Settings
+    }
+
+    public enum AuditedAction
+    {
+        ParticipationBackfill,
+        ExportAttendees,
+        ExportOrders,
+        ExportDonations
+    }
+
     [HumansFact]
     public async Task Reports_OrderSalesBucketsTicketTypesAndCampaignsForDisplay()
     {
@@ -132,18 +146,18 @@ public class TicketControllerTests
     }
 
     [HumansTheory]
-    [InlineData(false, "viewer")]
-    [InlineData(true, "viewer")]
-    [InlineData(false, "settings")]
-    [InlineData(true, "settings")]
-    public async Task AttendanceDeclaration_CancelsPreflightReadsWithoutFailureFeedback(bool undo, string boundary)
+    [InlineData(false, PreflightRead.Viewer)]
+    [InlineData(true, PreflightRead.Viewer)]
+    [InlineData(false, PreflightRead.Settings)]
+    [InlineData(true, PreflightRead.Settings)]
+    public async Task AttendanceDeclaration_CancelsPreflightReadsWithoutFailureFeedback(bool undo, PreflightRead boundary)
     {
         using var request = new CancellationTokenSource();
         var id = Guid.NewGuid();
         var users = Substitute.For<IUserService>();
         users.GetUserInfoAsync(id, Arg.Any<CancellationToken>()).Returns(call =>
         {
-            if (string.Equals(boundary, "viewer", StringComparison.Ordinal))
+            if (boundary == PreflightRead.Viewer)
             {
                 call.Arg<CancellationToken>().ThrowIfCancellationRequested();
                 return new ValueTask<UserInfo?>((UserInfo?)null);
@@ -236,19 +250,19 @@ public class TicketControllerTests
     }
 
     [HumansTheory]
-    [InlineData("participation", "merged")]
-    [InlineData("participation", "missing")]
-    [InlineData("participation", "cancelled")]
-    [InlineData("attendees", "merged")]
-    [InlineData("attendees", "missing")]
-    [InlineData("attendees", "cancelled")]
-    [InlineData("orders", "merged")]
-    [InlineData("orders", "missing")]
-    [InlineData("orders", "cancelled")]
-    [InlineData("donations", "merged")]
-    [InlineData("donations", "missing")]
-    [InlineData("donations", "cancelled")]
-    public async Task AuditedOperations_ResolveTheActorBeforeReadingOrWriting(string action, string account)
+    [InlineData(AuditedAction.ParticipationBackfill, AccountScenario.Merged)]
+    [InlineData(AuditedAction.ParticipationBackfill, AccountScenario.Missing)]
+    [InlineData(AuditedAction.ParticipationBackfill, AccountScenario.Cancelled)]
+    [InlineData(AuditedAction.ExportAttendees, AccountScenario.Merged)]
+    [InlineData(AuditedAction.ExportAttendees, AccountScenario.Missing)]
+    [InlineData(AuditedAction.ExportAttendees, AccountScenario.Cancelled)]
+    [InlineData(AuditedAction.ExportOrders, AccountScenario.Merged)]
+    [InlineData(AuditedAction.ExportOrders, AccountScenario.Missing)]
+    [InlineData(AuditedAction.ExportOrders, AccountScenario.Cancelled)]
+    [InlineData(AuditedAction.ExportDonations, AccountScenario.Merged)]
+    [InlineData(AuditedAction.ExportDonations, AccountScenario.Missing)]
+    [InlineData(AuditedAction.ExportDonations, AccountScenario.Cancelled)]
+    public async Task AuditedOperations_ResolveTheActorBeforeReadingOrWriting(AuditedAction action, AccountScenario account)
     {
         using var request = new CancellationTokenSource();
         var cookieId = Guid.NewGuid();
@@ -257,7 +271,7 @@ public class TicketControllerTests
         users.GetUserInfoAsync(cookieId, Arg.Any<CancellationToken>()).Returns(call =>
         {
             call.Arg<CancellationToken>().ThrowIfCancellationRequested();
-            return new ValueTask<UserInfo?>(string.Equals(account, "missing", StringComparison.Ordinal)
+            return new ValueTask<UserInfo?>(account == AccountScenario.Missing
                 ? null : UserInfo.Create(new User { Id = actorId }, [], [], null));
         });
         var queries = Substitute.For<ITicketManagement>();
@@ -283,12 +297,13 @@ public class TicketControllerTests
         };
         Func<Task<IActionResult>> run = () => action switch
         {
-            "participation" => controller.ParticipationBackfill(new ParticipationBackfillViewModel { Year = 2026, CsvData = "input" }),
-            "attendees" => controller.ExportAttendees(),
-            "orders" => controller.ExportOrders(),
-            _ => controller.ExportDonations()
+            AuditedAction.ParticipationBackfill => controller.ParticipationBackfill(new ParticipationBackfillViewModel { Year = 2026, CsvData = "input" }),
+            AuditedAction.ExportAttendees => controller.ExportAttendees(),
+            AuditedAction.ExportOrders => controller.ExportOrders(),
+            AuditedAction.ExportDonations => controller.ExportDonations(),
+            _ => throw new ArgumentOutOfRangeException(nameof(action))
         };
-        if (string.Equals(account, "cancelled", StringComparison.Ordinal))
+        if (account == AccountScenario.Cancelled)
         {
             await request.CancelAsync();
             await run.Should().ThrowAsync<OperationCanceledException>();
@@ -296,21 +311,21 @@ public class TicketControllerTests
         else
         {
             var result = await run();
-            if (string.Equals(account, "missing", StringComparison.Ordinal)) result.Should().BeOfType<ForbidResult>();
+            if (account == AccountScenario.Missing) result.Should().BeOfType<ForbidResult>();
             else
             {
                 switch (action)
                 {
-                    case "participation":
+                    case AuditedAction.ParticipationBackfill:
                         await backfill.Received(1).BackfillFromCsvAsync(2026, "input", actorId, CancellationToken.None, false);
                         break;
-                    case "attendees": await queries.Received(1).GetAttendeeExportDataAsync(actorId, request.Token); break;
-                    case "orders": await queries.Received(1).GetOrderExportDataAsync(actorId, request.Token); break;
-                    default: await queries.Received(1).GetDonationExportDataAsync(actorId, request.Token); break;
+                    case AuditedAction.ExportAttendees: await queries.Received(1).GetAttendeeExportDataAsync(actorId, request.Token); break;
+                    case AuditedAction.ExportOrders: await queries.Received(1).GetOrderExportDataAsync(actorId, request.Token); break;
+                    case AuditedAction.ExportDonations: await queries.Received(1).GetDonationExportDataAsync(actorId, request.Token); break;
                 }
             }
         }
-        if (!string.Equals(account, "merged", StringComparison.Ordinal))
+        if (account != AccountScenario.Merged)
         {
             queries.ReceivedCalls().Should().BeEmpty();
             backfill.ReceivedCalls().Should().BeEmpty();

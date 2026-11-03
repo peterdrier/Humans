@@ -16,10 +16,10 @@ namespace Humans.Notifications.Tests.ViewComponents;
 public sealed class NotificationBellViewComponentTests
 {
     [HumansTheory]
-    [Xunit.InlineData("merged")]
-    [Xunit.InlineData("missing")]
-    [Xunit.InlineData("cancelled")]
-    public async Task Bell_ResolvesTheAccountBeforeCountingUnreadRows(string account)
+    [Xunit.InlineData(AccountScenario.Merged)]
+    [Xunit.InlineData(AccountScenario.Missing)]
+    [Xunit.InlineData(AccountScenario.Cancelled)]
+    public async Task Bell_ResolvesTheAccountBeforeCountingUnreadRows(AccountScenario account)
     {
         using var request = new CancellationTokenSource();
         var cookieId = Guid.NewGuid();
@@ -28,7 +28,7 @@ public sealed class NotificationBellViewComponentTests
         users.GetUserInfoAsync(cookieId, Arg.Any<CancellationToken>()).Returns(call =>
         {
             call.Arg<CancellationToken>().ThrowIfCancellationRequested();
-            return new ValueTask<UserInfo?>(string.Equals(account, "missing", StringComparison.Ordinal)
+            return new ValueTask<UserInfo?>(account == AccountScenario.Missing
                 ? null : UserInfo.Create(new User { Id = survivorId }, [], [], null));
         });
         var inbox = Substitute.For<INotificationInboxService>();
@@ -46,7 +46,7 @@ public sealed class NotificationBellViewComponentTests
                 }
             }
         };
-        if (string.Equals(account, "cancelled", StringComparison.Ordinal))
+        if (account == AccountScenario.Cancelled)
         {
             await request.CancelAsync();
             Func<Task<IViewComponentResult>> run = component.InvokeAsync;
@@ -56,10 +56,10 @@ public sealed class NotificationBellViewComponentTests
         {
             var result = (await component.InvokeAsync()).Should().BeOfType<ViewViewComponentResult>().Subject;
             var badge = result.ViewData!.Model.Should().BeOfType<NotificationBadgeViewModel>().Subject;
-            badge.ActionableUnreadCount.Should().Be(string.Equals(account, "merged", StringComparison.Ordinal) ? 2 : 0);
-            badge.InformationalUnreadCount.Should().Be(string.Equals(account, "merged", StringComparison.Ordinal) ? 3 : 0);
+            badge.ActionableUnreadCount.Should().Be(account == AccountScenario.Merged ? 2 : 0);
+            badge.InformationalUnreadCount.Should().Be(account == AccountScenario.Merged ? 3 : 0);
         }
-        if (!string.Equals(account, "merged", StringComparison.Ordinal)) inbox.ReceivedCalls().Should().BeEmpty();
+        if (account != AccountScenario.Merged) inbox.ReceivedCalls().Should().BeEmpty();
     }
 
     [HumansFact]

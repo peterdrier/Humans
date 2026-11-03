@@ -21,6 +21,21 @@ namespace Humans.GoogleIntegration.Tests;
 /// </summary>
 public class GoogleControllerSyncCancellationTests
 {
+    public enum AdminMutation
+    {
+        UpdateSyncSetting,
+        ProvisionEmail,
+        ProvisionAccount,
+        SuspendAccount,
+        ReactivateAccount,
+        ResetPassword,
+        ResetPasswordAndGenerate2Fa,
+        LinkAccount,
+        RequeueOutboxEvent,
+        RequeueAllFailedOutboxEvents,
+        RerunGoogleSync
+    }
+
     private readonly ILogger<GoogleController> _logger = Substitute.For<ILogger<GoogleController>>();
     private readonly IUserService _users = Substitute.For<IUserService>();
     private readonly ITeamResourceManagement _resources = Substitute.For<ITeamResourceManagement>();
@@ -239,18 +254,18 @@ public class GoogleControllerSyncCancellationTests
     }
 
     [HumansTheory]
-    [Xunit.InlineData(0)]
-    [Xunit.InlineData(1)]
-    [Xunit.InlineData(2)]
-    [Xunit.InlineData(3)]
-    [Xunit.InlineData(4)]
-    [Xunit.InlineData(5)]
-    [Xunit.InlineData(6)]
-    [Xunit.InlineData(7)]
-    [Xunit.InlineData(8)]
-    [Xunit.InlineData(9)]
-    [Xunit.InlineData(10)]
-    public async Task Account_preflight_cancellation_prevents_admin_mutations(int action)
+    [Xunit.InlineData(AdminMutation.UpdateSyncSetting)]
+    [Xunit.InlineData(AdminMutation.ProvisionEmail)]
+    [Xunit.InlineData(AdminMutation.ProvisionAccount)]
+    [Xunit.InlineData(AdminMutation.SuspendAccount)]
+    [Xunit.InlineData(AdminMutation.ReactivateAccount)]
+    [Xunit.InlineData(AdminMutation.ResetPassword)]
+    [Xunit.InlineData(AdminMutation.ResetPasswordAndGenerate2Fa)]
+    [Xunit.InlineData(AdminMutation.LinkAccount)]
+    [Xunit.InlineData(AdminMutation.RequeueOutboxEvent)]
+    [Xunit.InlineData(AdminMutation.RequeueAllFailedOutboxEvents)]
+    [Xunit.InlineData(AdminMutation.RerunGoogleSync)]
+    public async Task Account_preflight_cancellation_prevents_admin_mutations(AdminMutation action)
     {
         var actorId = Guid.NewGuid();
         var controller = BuildSut(alreadyAbortedRequest: true);
@@ -266,17 +281,18 @@ public class GoogleControllerSyncCancellationTests
         var targetId = Guid.NewGuid();
         Func<Task<IActionResult>> invoke = action switch
         {
-            0 => () => controller.UpdateSyncSetting(settings, SyncServiceType.GoogleDrive, SyncMode.None),
-            1 => () => controller.ProvisionEmail(targetId, "member"),
-            2 => () => controller.ProvisionAccount(new ProvisionWorkspaceAccountModel { EmailPrefix = "member" }),
-            3 => () => controller.SuspendAccount("member@example.org"),
-            4 => () => controller.ReactivateAccount("member@example.org"),
-            5 => () => controller.ResetPassword("member@example.org"),
-            6 => () => controller.ResetPasswordAndGenerate2Fa("member@example.org"),
-            7 => () => controller.LinkAccount("member@example.org", targetId),
-            8 => () => controller.RequeueOutboxEvent(targetId),
-            9 => () => controller.RequeueAllFailedOutboxEvents(),
-            _ => () => controller.RerunGoogleSync(targetId),
+            AdminMutation.UpdateSyncSetting => () => controller.UpdateSyncSetting(settings, SyncServiceType.GoogleDrive, SyncMode.None),
+            AdminMutation.ProvisionEmail => () => controller.ProvisionEmail(targetId, "member"),
+            AdminMutation.ProvisionAccount => () => controller.ProvisionAccount(new ProvisionWorkspaceAccountModel { EmailPrefix = "member" }),
+            AdminMutation.SuspendAccount => () => controller.SuspendAccount("member@example.org"),
+            AdminMutation.ReactivateAccount => () => controller.ReactivateAccount("member@example.org"),
+            AdminMutation.ResetPassword => () => controller.ResetPassword("member@example.org"),
+            AdminMutation.ResetPasswordAndGenerate2Fa => () => controller.ResetPasswordAndGenerate2Fa("member@example.org"),
+            AdminMutation.LinkAccount => () => controller.LinkAccount("member@example.org", targetId),
+            AdminMutation.RequeueOutboxEvent => () => controller.RequeueOutboxEvent(targetId),
+            AdminMutation.RequeueAllFailedOutboxEvents => () => controller.RequeueAllFailedOutboxEvents(),
+            AdminMutation.RerunGoogleSync => () => controller.RerunGoogleSync(targetId),
+            _ => throw new ArgumentOutOfRangeException(nameof(action)),
         };
 
         await invoke.Should().ThrowAsync<OperationCanceledException>();

@@ -44,8 +44,8 @@ public sealed class SurveyIdentityViewTests
         var at = Instant.FromUtc(2026, 1, 1, 12, 0);
         var scoped = new SurveyScopedResults(new SurveyResultsView(Guid.NewGuid(), "Results", SurveyStatus.Closed,
             2, 2, 1, new SurveyFunnel(2, 2, 0, 0), [], [
-                new RespondentDetail(known, "Stale known", at, []),
-                new RespondentDetail(missing, "Stale missing", at, []),
+                new RespondentDetail(known, at, []),
+                new RespondentDetail(missing, at, []),
             ]), 2, SurveyResultsScope.Combined);
         var results = SurveyResultsBuilder.Build(scoped);
         var send = new SurveySendViewModel

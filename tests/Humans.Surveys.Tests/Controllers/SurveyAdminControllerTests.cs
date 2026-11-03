@@ -27,53 +27,72 @@ namespace Humans.Surveys.Tests.Controllers;
 
 public sealed class SurveyAdminControllerTests
 {
+    public enum AuthoringAction
+    {
+        Index,
+        Approve,
+        Reject,
+        Submit,
+        Official,
+        SendPreviewEmail,
+        PreviewEmail,
+        Create,
+        Update,
+        Open,
+        Close,
+        SendInvites,
+        RankedAvailability,
+        ExportCsv,
+        ExportJson
+    }
+
     [HumansTheory]
-    [Xunit.InlineData("index", "merged")]
-    [Xunit.InlineData("index", "missing")]
-    [Xunit.InlineData("index", "cancelled")]
-    [Xunit.InlineData("approve", "merged")]
-    [Xunit.InlineData("approve", "missing")]
-    [Xunit.InlineData("approve", "cancelled")]
-    [Xunit.InlineData("reject", "merged")]
-    [Xunit.InlineData("reject", "missing")]
-    [Xunit.InlineData("reject", "cancelled")]
-    [Xunit.InlineData("submit", "merged")]
-    [Xunit.InlineData("submit", "missing")]
-    [Xunit.InlineData("submit", "cancelled")]
-    [Xunit.InlineData("official", "merged")]
-    [Xunit.InlineData("official", "missing")]
-    [Xunit.InlineData("official", "cancelled")]
-    [Xunit.InlineData("send-preview", "merged")]
-    [Xunit.InlineData("send-preview", "missing")]
-    [Xunit.InlineData("send-preview", "cancelled")]
-    [Xunit.InlineData("preview-email", "merged")]
-    [Xunit.InlineData("preview-email", "missing")]
-    [Xunit.InlineData("preview-email", "cancelled")]
-    [Xunit.InlineData("create", "merged")]
-    [Xunit.InlineData("create", "missing")]
-    [Xunit.InlineData("create", "cancelled")]
-    [Xunit.InlineData("update", "merged")]
-    [Xunit.InlineData("update", "missing")]
-    [Xunit.InlineData("update", "cancelled")]
-    [Xunit.InlineData("open", "merged")]
-    [Xunit.InlineData("open", "missing")]
-    [Xunit.InlineData("open", "cancelled")]
-    [Xunit.InlineData("close", "merged")]
-    [Xunit.InlineData("close", "missing")]
-    [Xunit.InlineData("close", "cancelled")]
-    [Xunit.InlineData("send", "merged")]
-    [Xunit.InlineData("send", "missing")]
-    [Xunit.InlineData("send", "cancelled")]
-    [Xunit.InlineData("ranked", "merged")]
-    [Xunit.InlineData("ranked", "missing")]
-    [Xunit.InlineData("ranked", "cancelled")]
-    [Xunit.InlineData("csv", "merged")]
-    [Xunit.InlineData("csv", "missing")]
-    [Xunit.InlineData("csv", "cancelled")]
-    [Xunit.InlineData("json", "merged")]
-    [Xunit.InlineData("json", "missing")]
-    [Xunit.InlineData("json", "cancelled")]
-    public async Task AuthoringActions_ResolveTheActorBeforeServiceOperations(string action, string account)
+    [Xunit.InlineData(AuthoringAction.Index, AccountScenario.Merged)]
+    [Xunit.InlineData(AuthoringAction.Index, AccountScenario.Missing)]
+    [Xunit.InlineData(AuthoringAction.Index, AccountScenario.Cancelled)]
+    [Xunit.InlineData(AuthoringAction.Approve, AccountScenario.Merged)]
+    [Xunit.InlineData(AuthoringAction.Approve, AccountScenario.Missing)]
+    [Xunit.InlineData(AuthoringAction.Approve, AccountScenario.Cancelled)]
+    [Xunit.InlineData(AuthoringAction.Reject, AccountScenario.Merged)]
+    [Xunit.InlineData(AuthoringAction.Reject, AccountScenario.Missing)]
+    [Xunit.InlineData(AuthoringAction.Reject, AccountScenario.Cancelled)]
+    [Xunit.InlineData(AuthoringAction.Submit, AccountScenario.Merged)]
+    [Xunit.InlineData(AuthoringAction.Submit, AccountScenario.Missing)]
+    [Xunit.InlineData(AuthoringAction.Submit, AccountScenario.Cancelled)]
+    [Xunit.InlineData(AuthoringAction.Official, AccountScenario.Merged)]
+    [Xunit.InlineData(AuthoringAction.Official, AccountScenario.Missing)]
+    [Xunit.InlineData(AuthoringAction.Official, AccountScenario.Cancelled)]
+    [Xunit.InlineData(AuthoringAction.SendPreviewEmail, AccountScenario.Merged)]
+    [Xunit.InlineData(AuthoringAction.SendPreviewEmail, AccountScenario.Missing)]
+    [Xunit.InlineData(AuthoringAction.SendPreviewEmail, AccountScenario.Cancelled)]
+    [Xunit.InlineData(AuthoringAction.PreviewEmail, AccountScenario.Merged)]
+    [Xunit.InlineData(AuthoringAction.PreviewEmail, AccountScenario.Missing)]
+    [Xunit.InlineData(AuthoringAction.PreviewEmail, AccountScenario.Cancelled)]
+    [Xunit.InlineData(AuthoringAction.Create, AccountScenario.Merged)]
+    [Xunit.InlineData(AuthoringAction.Create, AccountScenario.Missing)]
+    [Xunit.InlineData(AuthoringAction.Create, AccountScenario.Cancelled)]
+    [Xunit.InlineData(AuthoringAction.Update, AccountScenario.Merged)]
+    [Xunit.InlineData(AuthoringAction.Update, AccountScenario.Missing)]
+    [Xunit.InlineData(AuthoringAction.Update, AccountScenario.Cancelled)]
+    [Xunit.InlineData(AuthoringAction.Open, AccountScenario.Merged)]
+    [Xunit.InlineData(AuthoringAction.Open, AccountScenario.Missing)]
+    [Xunit.InlineData(AuthoringAction.Open, AccountScenario.Cancelled)]
+    [Xunit.InlineData(AuthoringAction.Close, AccountScenario.Merged)]
+    [Xunit.InlineData(AuthoringAction.Close, AccountScenario.Missing)]
+    [Xunit.InlineData(AuthoringAction.Close, AccountScenario.Cancelled)]
+    [Xunit.InlineData(AuthoringAction.SendInvites, AccountScenario.Merged)]
+    [Xunit.InlineData(AuthoringAction.SendInvites, AccountScenario.Missing)]
+    [Xunit.InlineData(AuthoringAction.SendInvites, AccountScenario.Cancelled)]
+    [Xunit.InlineData(AuthoringAction.RankedAvailability, AccountScenario.Merged)]
+    [Xunit.InlineData(AuthoringAction.RankedAvailability, AccountScenario.Missing)]
+    [Xunit.InlineData(AuthoringAction.RankedAvailability, AccountScenario.Cancelled)]
+    [Xunit.InlineData(AuthoringAction.ExportCsv, AccountScenario.Merged)]
+    [Xunit.InlineData(AuthoringAction.ExportCsv, AccountScenario.Missing)]
+    [Xunit.InlineData(AuthoringAction.ExportCsv, AccountScenario.Cancelled)]
+    [Xunit.InlineData(AuthoringAction.ExportJson, AccountScenario.Merged)]
+    [Xunit.InlineData(AuthoringAction.ExportJson, AccountScenario.Missing)]
+    [Xunit.InlineData(AuthoringAction.ExportJson, AccountScenario.Cancelled)]
+    public async Task AuthoringActions_ResolveTheActorBeforeServiceOperations(AuthoringAction action, AccountScenario account)
     {
         using var request = new CancellationTokenSource();
         var cookieId = Guid.NewGuid();
@@ -83,7 +102,7 @@ public sealed class SurveyAdminControllerTests
         users.GetUserInfoAsync(cookieId, Arg.Any<CancellationToken>()).Returns(call =>
         {
             call.Arg<CancellationToken>().ThrowIfCancellationRequested();
-            return new ValueTask<UserInfo?>(string.Equals(account, "missing", StringComparison.Ordinal)
+            return new ValueTask<UserInfo?>(account == AccountScenario.Missing
                 ? null : UserInfo.Create(new User { Id = actorId }, [], [], null));
         });
         var surveys = Substitute.For<ISurveyService>();
@@ -125,23 +144,24 @@ public sealed class SurveyAdminControllerTests
         };
         Func<Task<IActionResult>> run = () => action switch
         {
-            "index" => controller.Index(request.Token),
-            "approve" => controller.Approve(id, request.Token),
-            "reject" => controller.Reject(id, "Reason", request.Token),
-            "submit" => controller.Submit(id, request.Token),
-            "official" => controller.Official(id, request.Token),
-            "send-preview" => controller.SendPreviewEmail(id, previews, request.Token),
-            "preview-email" => controller.PreviewEmail(id, previews, request.Token),
-            "create" or "update" => controller.Save(new SurveyBuilderViewModel
-                { Id = string.Equals(action, "update", StringComparison.Ordinal) ? id : null }, null, request.Token),
-            "open" => controller.Open(id, false, request.Token),
-            "close" => controller.Close(id, request.Token),
-            "send" => controller.SendInvites(id, request.Token),
-            "ranked" => controller.RankedAvailability(id, Guid.NewGuid(), [], request.Token),
-            "csv" => controller.ExportCsv(id, request.Token),
-            _ => controller.ExportJson(id, request.Token)
+            AuthoringAction.Index => controller.Index(request.Token),
+            AuthoringAction.Approve => controller.Approve(id, request.Token),
+            AuthoringAction.Reject => controller.Reject(id, "Reason", request.Token),
+            AuthoringAction.Submit => controller.Submit(id, request.Token),
+            AuthoringAction.Official => controller.Official(id, request.Token),
+            AuthoringAction.SendPreviewEmail => controller.SendPreviewEmail(id, previews, request.Token),
+            AuthoringAction.PreviewEmail => controller.PreviewEmail(id, previews, request.Token),
+            AuthoringAction.Create or AuthoringAction.Update => controller.Save(new SurveyBuilderViewModel
+            { Id = action == AuthoringAction.Update ? id : null }, null, request.Token),
+            AuthoringAction.Open => controller.Open(id, false, request.Token),
+            AuthoringAction.Close => controller.Close(id, request.Token),
+            AuthoringAction.SendInvites => controller.SendInvites(id, request.Token),
+            AuthoringAction.RankedAvailability => controller.RankedAvailability(id, Guid.NewGuid(), [], request.Token),
+            AuthoringAction.ExportCsv => controller.ExportCsv(id, request.Token),
+            AuthoringAction.ExportJson => controller.ExportJson(id, request.Token),
+            _ => throw new ArgumentOutOfRangeException(nameof(action))
         };
-        if (string.Equals(account, "cancelled", StringComparison.Ordinal))
+        if (account == AccountScenario.Cancelled)
         {
             await request.CancelAsync();
             await run.Should().ThrowAsync<OperationCanceledException>();
@@ -149,16 +169,16 @@ public sealed class SurveyAdminControllerTests
         else
         {
             var result = await run();
-            if (string.Equals(account, "missing", StringComparison.Ordinal))
+            if (account == AccountScenario.Missing)
             {
-                if (action is "csv" or "json") result.Should().BeOfType<UnauthorizedResult>();
+                if (action is AuthoringAction.ExportCsv or AuthoringAction.ExportJson) result.Should().BeOfType<UnauthorizedResult>();
                 else result.Should().BeOfType<ForbidResult>();
             }
         }
         var operations = surveys.ReceivedCalls().Where(call =>
             !string.Equals(call.GetMethodInfo().Name, nameof(ISurveyService.GetForEditAsync), StringComparison.Ordinal))
             .Concat(previews.ReceivedCalls()).ToList();
-        if (string.Equals(account, "merged", StringComparison.Ordinal))
+        if (account == AccountScenario.Merged)
         {
             var args = operations.Should().ContainSingle().Which.GetArguments();
             var viewers = args.OfType<SurveyViewer>().ToArray();

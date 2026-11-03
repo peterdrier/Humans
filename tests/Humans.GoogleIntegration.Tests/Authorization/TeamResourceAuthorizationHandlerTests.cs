@@ -83,10 +83,10 @@ public sealed class TeamResourceAuthorizationHandlerTests
     }
 
     [HumansTheory]
-    [InlineData(0)]
-    [InlineData(1)]
-    [InlineData(2)]
-    public async Task Coordinator_check_resolves_surviving_account(int mode)
+    [InlineData(AccountScenario.Merged)]
+    [InlineData(AccountScenario.Missing)]
+    [InlineData(AccountScenario.Cancelled)]
+    public async Task Coordinator_check_resolves_surviving_account(AccountScenario account)
     {
         using var request = new CancellationTokenSource();
         var survivor = Guid.NewGuid();
@@ -95,20 +95,20 @@ public sealed class TeamResourceAuthorizationHandlerTests
         {
             call.Arg<CancellationToken>().Should().Be(request.Token);
             call.Arg<CancellationToken>().ThrowIfCancellationRequested();
-            return new ValueTask<UserInfo?>(mode == 1 ? null :
+            return new ValueTask<UserInfo?>(account == AccountScenario.Missing ? null :
                 UserInfo.Create(new User { Id = survivor }, [], [], null));
         });
         _resources.CanManageTeamResourcesAsync(team.Id, survivor, request.Token).Returns(true);
-        _resources.CanManageTeamResourcesAsync(team.Id, _userId, Arg.Any<CancellationToken>()).Returns(mode == 1);
-        if (mode == 2)
+        _resources.CanManageTeamResourcesAsync(team.Id, _userId, Arg.Any<CancellationToken>()).Returns(account == AccountScenario.Missing);
+        if (account == AccountScenario.Cancelled)
             await request.CancelAsync();
         var check = () => EvaluateAsync(Principal(_userId), team, request.Token);
 
-        if (mode == 2)
+        if (account == AccountScenario.Cancelled)
             await check.Should().ThrowAsync<OperationCanceledException>();
         else
-            (await check()).Should().Be(mode == 0);
-        if (mode != 0)
+            (await check()).Should().Be(account == AccountScenario.Merged);
+        if (account != AccountScenario.Merged)
             _resources.ReceivedCalls().Should().BeEmpty();
     }
 

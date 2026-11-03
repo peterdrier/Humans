@@ -70,7 +70,7 @@ surviving account on a merge.
 Inside, a send runs **send service** (opt-out, headers, wrap, log row) → **processor**
 (transport, retry, tally). The **body composer** (wrapper plus inline-style
 pass), the **transport** (SMTP or a logging stub) and the **relay factory** hang off it.
-The preference lane is **preference service** (rows here, legacy fallback, the locks other sections report)
+The preference lane is **preference service** (rows here, the locks other sections report)
 → **token provider**, with the **unsubscribe service** reading tokens on its behalf.
 
 ## 3. Structure

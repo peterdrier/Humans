@@ -75,7 +75,11 @@ public sealed class ConsentReviewServiceTests : IDisposable
         var user = SeedUser();
         await SeedRowAsync(new ConsentReview
         {
-            UserId = user.Id, Status = ConsentCheckStatus.Cleared, IsApproved = true, Notes = "ok", UpdatedAt = Now,
+            UserId = user.Id,
+            Status = ConsentCheckStatus.Cleared,
+            IsApproved = true,
+            Notes = "ok",
+            UpdatedAt = Now,
         });
 
         var review = await _sut.GetReviewAsync(user.Id, Ct);
@@ -119,8 +123,11 @@ public sealed class ConsentReviewServiceTests : IDisposable
         var user = SeedUser(state: UserState.Rejected);
         await SeedRowAsync(new ConsentReview
         {
-            UserId = user.Id, Status = ConsentCheckStatus.Flagged, RejectedAt = Earlier,
-            RejectionReason = "dup", UpdatedAt = Now,
+            UserId = user.Id,
+            Status = ConsentCheckStatus.Flagged,
+            RejectedAt = Earlier,
+            RejectionReason = "dup",
+            UpdatedAt = Now,
         });
 
         user.IsRejected.Should().BeTrue();
@@ -162,7 +169,10 @@ public sealed class ConsentReviewServiceTests : IDisposable
         var user = SeedUser();
         await SeedRowAsync(new ConsentReview
         {
-            UserId = user.Id, Status = ConsentCheckStatus.Cleared, IsApproved = true, UpdatedAt = Now,
+            UserId = user.Id,
+            Status = ConsentCheckStatus.Cleared,
+            IsApproved = true,
+            UpdatedAt = Now,
         });
 
         var reviewer = Guid.NewGuid();
@@ -207,7 +217,10 @@ public sealed class ConsentReviewServiceTests : IDisposable
         var user = SeedUser();
         await SeedRowAsync(new ConsentReview
         {
-            UserId = user.Id, Status = ConsentCheckStatus.Cleared, IsApproved = true, UpdatedAt = Now,
+            UserId = user.Id,
+            Status = ConsentCheckStatus.Cleared,
+            IsApproved = true,
+            UpdatedAt = Now,
         });
         var reviewer = Guid.NewGuid();
 

@@ -27,6 +27,8 @@ namespace Humans.Settings.Tests;
 /// </summary>
 public sealed class SettingsAdminControllerTests
 {
+    public enum SettingsMutation { SaveForm, SetTimeZone, Activate }
+
     private readonly ISettingsWriteService _settings = Substitute.For<ISettingsWriteService>();
     private readonly IUserService _users = Substitute.For<IUserService>();
 
@@ -53,16 +55,16 @@ public sealed class SettingsAdminControllerTests
     }
 
     [HumansTheory]
-    [Xunit.InlineData(0, 0)]
-    [Xunit.InlineData(0, 1)]
-    [Xunit.InlineData(0, 2)]
-    [Xunit.InlineData(1, 0)]
-    [Xunit.InlineData(1, 1)]
-    [Xunit.InlineData(1, 2)]
-    [Xunit.InlineData(2, 0)]
-    [Xunit.InlineData(2, 1)]
-    [Xunit.InlineData(2, 2)]
-    public async Task Settings_mutation_resolves_account_before_writing(int action, int mode)
+    [Xunit.InlineData(SettingsMutation.SaveForm, AccountScenario.Merged)]
+    [Xunit.InlineData(SettingsMutation.SaveForm, AccountScenario.Missing)]
+    [Xunit.InlineData(SettingsMutation.SaveForm, AccountScenario.Cancelled)]
+    [Xunit.InlineData(SettingsMutation.SetTimeZone, AccountScenario.Merged)]
+    [Xunit.InlineData(SettingsMutation.SetTimeZone, AccountScenario.Missing)]
+    [Xunit.InlineData(SettingsMutation.SetTimeZone, AccountScenario.Cancelled)]
+    [Xunit.InlineData(SettingsMutation.Activate, AccountScenario.Merged)]
+    [Xunit.InlineData(SettingsMutation.Activate, AccountScenario.Missing)]
+    [Xunit.InlineData(SettingsMutation.Activate, AccountScenario.Cancelled)]
+    public async Task Settings_mutation_resolves_account_before_writing(SettingsMutation action, AccountScenario account)
     {
         var controller = BuildSut();
         var cookieId = Guid.Parse(controller.User.FindFirstValue(ClaimTypes.NameIdentifier)!);
@@ -73,26 +75,27 @@ public sealed class SettingsAdminControllerTests
         {
             call.Arg<CancellationToken>().Should().Be(request.Token);
             call.Arg<CancellationToken>().ThrowIfCancellationRequested();
-            return new ValueTask<UserInfo?>(mode == 1 ? null :
+            return new ValueTask<UserInfo?>(account == AccountScenario.Missing ? null :
                 UserInfo.Create(new User { Id = survivorId }, [], [], null));
         });
         _settings.SaveTimeZoneAsync(Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(new EventSettingsSaveResult(true));
         _settings.ActivateEventSettingsAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(new EventSettingsSaveResult(true));
-        if (mode == 2)
+        if (account == AccountScenario.Cancelled)
             await request.CancelAsync();
         var eventId = Guid.NewGuid();
         Func<Task<IActionResult>> invoke = action switch
         {
-            0 => () => controller.Index(MakeForm(eventId, false), request.Token),
-            1 => () => controller.TimeZone("Europe/Madrid", request.Token),
-            _ => () => controller.Activate(eventId, request.Token),
+            SettingsMutation.SaveForm => () => controller.Index(MakeForm(eventId, false), request.Token),
+            SettingsMutation.SetTimeZone => () => controller.TimeZone("Europe/Madrid", request.Token),
+            SettingsMutation.Activate => () => controller.Activate(eventId, request.Token),
+            _ => throw new ArgumentOutOfRangeException(nameof(action), action, null),
         };
 
-        if (mode == 2)
+        if (account == AccountScenario.Cancelled)
             await invoke.Should().ThrowAsync<OperationCanceledException>();
-        else if (mode == 1)
+        else if (account == AccountScenario.Missing)
             (await invoke()).Should().BeOfType<ChallengeResult>();
         else
         {

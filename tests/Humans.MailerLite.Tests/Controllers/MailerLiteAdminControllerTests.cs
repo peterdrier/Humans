@@ -139,21 +139,21 @@ public class MailerLiteAdminControllerTests
     }
 
     [HumansTheory]
-    [InlineData("merged")]
-    [InlineData("missing")]
-    [InlineData("cancelled")]
-    public async Task Commit_ResolvesActorBeforePlanningAndApplying(string account)
+    [InlineData(AccountScenario.Merged)]
+    [InlineData(AccountScenario.Missing)]
+    [InlineData(AccountScenario.Cancelled)]
+    public async Task Commit_ResolvesActorBeforePlanningAndApplying(AccountScenario account)
     {
         using var request = new CancellationTokenSource();
         var survivor = Guid.NewGuid();
         _userService.GetUserInfoAsync(_actorUserId, Arg.Any<CancellationToken>()).Returns(call =>
         {
-            if (string.Equals(account, "cancelled", StringComparison.Ordinal))
+            if (account == AccountScenario.Cancelled)
             {
                 request.Cancel();
                 call.Arg<CancellationToken>().ThrowIfCancellationRequested();
             }
-            return string.Equals(account, "missing", StringComparison.Ordinal)
+            return account == AccountScenario.Missing
                 ? null : UserInfo.Create(new User { Id = survivor }, [], [], profile: null);
         });
         var plan = new ImportPlan([Decision(SubscriberOutcome.CreateNewHuman)], TotalPulled: 1);
@@ -163,7 +163,7 @@ public class MailerLiteAdminControllerTests
         var controller = BuildSut();
         controller.HttpContext.RequestAborted = request.Token;
 
-        if (string.Equals(account, "cancelled", StringComparison.Ordinal))
+        if (account == AccountScenario.Cancelled)
         {
             Func<Task> commit = () => controller.Commit(null, request.Token);
             await commit.Should().ThrowAsync<OperationCanceledException>();
@@ -172,7 +172,7 @@ public class MailerLiteAdminControllerTests
         else
         {
             var result = await controller.Commit(null, request.Token);
-            if (string.Equals(account, "missing", StringComparison.Ordinal))
+            if (account == AccountScenario.Missing)
             {
                 result.Should().BeOfType<UnauthorizedResult>();
                 _importService.ReceivedCalls().Should().BeEmpty();

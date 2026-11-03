@@ -15,6 +15,13 @@ namespace Humans.Guide.Tests.Services;
 
 public class GuideRoleResolverTests
 {
+    public enum MembershipCase
+    {
+        SurvivorCoordinates,
+        SurvivorLeadsCamp,
+        AccountMissing
+    }
+
     private readonly FakeClock _clock = new(Instant.FromUtc(2026, 4, 21, 12, 0));
     private readonly ITeamService _teamService = Substitute.For<ITeamService>();
     private readonly IUserService _users = Substitute.For<IUserService>();
@@ -83,20 +90,20 @@ public class GuideRoleResolverTests
     }
 
     [HumansTheory]
-    [InlineData("coordinator")]
-    [InlineData("lead")]
-    [InlineData("missing")]
-    public async Task Resolve_MembershipRolesUseTheResolvedAccount(string kind)
+    [InlineData(MembershipCase.SurvivorCoordinates)]
+    [InlineData(MembershipCase.SurvivorLeadsCamp)]
+    [InlineData(MembershipCase.AccountMissing)]
+    public async Task Resolve_MembershipRolesUseTheResolvedAccount(MembershipCase kind)
     {
         var cookieId = Guid.NewGuid();
         var survivorId = Guid.NewGuid();
-        var missing = string.Equals(kind, "missing", StringComparison.Ordinal);
+        var missing = kind == MembershipCase.AccountMissing;
         _users.GetUserInfoAsync(cookieId, Arg.Any<CancellationToken>())
             .Returns(missing ? null : UserInfo.Create(new User { Id = survivorId }, [], [], profile: null));
         var membershipId = missing ? cookieId : survivorId;
-        if (!string.Equals(kind, "lead", StringComparison.Ordinal))
+        if (kind != MembershipCase.SurvivorLeadsCamp)
             StubTeams(BuildTeam(Guid.NewGuid(), Member(membershipId, TeamMemberRole.Coordinator)));
-        if (!string.Equals(kind, "coordinator", StringComparison.Ordinal))
+        if (kind != MembershipCase.SurvivorCoordinates)
             _campLeads.IsLeadAnywhereAsync(membershipId, Arg.Any<CancellationToken>()).Returns(true);
         var ct = TestContext.Current.CancellationToken;
 
@@ -104,8 +111,8 @@ public class GuideRoleResolverTests
 
         result.IsAuthenticated.Should().BeTrue();
         result.SystemRoles.Should().Contain(RoleNames.Board);
-        result.IsTeamCoordinator.Should().Be(string.Equals(kind, "coordinator", StringComparison.Ordinal));
-        result.IsCampLead.Should().Be(string.Equals(kind, "lead", StringComparison.Ordinal));
+        result.IsTeamCoordinator.Should().Be(kind == MembershipCase.SurvivorCoordinates);
+        result.IsCampLead.Should().Be(kind == MembershipCase.SurvivorLeadsCamp);
         await _users.Received(1).GetUserInfoAsync(cookieId, ct);
         if (missing)
         {

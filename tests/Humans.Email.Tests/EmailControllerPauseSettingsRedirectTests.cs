@@ -43,34 +43,43 @@ public sealed class EmailControllerPauseSettingsRedirectTests
         return controller;
     }
 
+    public enum EmailOperation
+    {
+        BackfillDailyCounts,
+        PauseSending,
+        ResumeSending,
+        RetryOutboxMessage,
+        DiscardOutboxMessage
+    }
+
     [HumansTheory]
-    [Xunit.InlineData(0, "merged")]
-    [Xunit.InlineData(0, "missing")]
-    [Xunit.InlineData(0, "cancelled")]
-    [Xunit.InlineData(1, "merged")]
-    [Xunit.InlineData(1, "missing")]
-    [Xunit.InlineData(1, "cancelled")]
-    [Xunit.InlineData(2, "merged")]
-    [Xunit.InlineData(2, "missing")]
-    [Xunit.InlineData(2, "cancelled")]
-    [Xunit.InlineData(3, "merged")]
-    [Xunit.InlineData(3, "missing")]
-    [Xunit.InlineData(3, "cancelled")]
-    [Xunit.InlineData(4, "merged")]
-    [Xunit.InlineData(4, "missing")]
-    [Xunit.InlineData(4, "cancelled")]
-    public async Task AdminMutations_ResolveTheActorBeforeWriting(int operation, string account)
+    [Xunit.InlineData(EmailOperation.BackfillDailyCounts, AccountScenario.Merged)]
+    [Xunit.InlineData(EmailOperation.BackfillDailyCounts, AccountScenario.Missing)]
+    [Xunit.InlineData(EmailOperation.BackfillDailyCounts, AccountScenario.Cancelled)]
+    [Xunit.InlineData(EmailOperation.PauseSending, AccountScenario.Merged)]
+    [Xunit.InlineData(EmailOperation.PauseSending, AccountScenario.Missing)]
+    [Xunit.InlineData(EmailOperation.PauseSending, AccountScenario.Cancelled)]
+    [Xunit.InlineData(EmailOperation.ResumeSending, AccountScenario.Merged)]
+    [Xunit.InlineData(EmailOperation.ResumeSending, AccountScenario.Missing)]
+    [Xunit.InlineData(EmailOperation.ResumeSending, AccountScenario.Cancelled)]
+    [Xunit.InlineData(EmailOperation.RetryOutboxMessage, AccountScenario.Merged)]
+    [Xunit.InlineData(EmailOperation.RetryOutboxMessage, AccountScenario.Missing)]
+    [Xunit.InlineData(EmailOperation.RetryOutboxMessage, AccountScenario.Cancelled)]
+    [Xunit.InlineData(EmailOperation.DiscardOutboxMessage, AccountScenario.Merged)]
+    [Xunit.InlineData(EmailOperation.DiscardOutboxMessage, AccountScenario.Missing)]
+    [Xunit.InlineData(EmailOperation.DiscardOutboxMessage, AccountScenario.Cancelled)]
+    public async Task AdminMutations_ResolveTheActorBeforeWriting(EmailOperation operation, AccountScenario account)
     {
         using var request = new CancellationTokenSource();
         var survivorId = Guid.NewGuid();
         async ValueTask<UserInfo?> ReadAccountAsync(CancellationToken ct)
         {
-            if (string.Equals(account, "cancelled", StringComparison.Ordinal))
+            if (account == AccountScenario.Cancelled)
             {
                 await request.CancelAsync();
                 ct.ThrowIfCancellationRequested();
             }
-            return string.Equals(account, "missing", StringComparison.Ordinal)
+            return account == AccountScenario.Missing
                 ? null : UserInfo.Create(new User { Id = survivorId }, [], [], profile: null);
         }
         _users.GetUserInfoAsync(_actorId, Arg.Any<CancellationToken>())
@@ -82,20 +91,20 @@ public sealed class EmailControllerPauseSettingsRedirectTests
         controller.HttpContext.RequestAborted = request.Token;
         Task<IActionResult> MutateAsync() => operation switch
         {
-            0 => controller.BackfillDailyCounts(),
-            1 => controller.PauseEmailSending(),
-            2 => controller.ResumeEmailSending(),
-            3 => controller.RetryEmailOutboxMessage(id),
+            EmailOperation.BackfillDailyCounts => controller.BackfillDailyCounts(),
+            EmailOperation.PauseSending => controller.PauseEmailSending(),
+            EmailOperation.ResumeSending => controller.ResumeEmailSending(),
+            EmailOperation.RetryOutboxMessage => controller.RetryEmailOutboxMessage(id),
             _ => controller.DiscardEmailOutboxMessage(id),
         };
 
-        if (string.Equals(account, "cancelled", StringComparison.Ordinal))
+        if (account == AccountScenario.Cancelled)
         {
             Func<Task> mutation = MutateAsync;
             await mutation.Should().ThrowAsync<OperationCanceledException>();
             _outbox.ReceivedCalls().Should().BeEmpty();
         }
-        else if (string.Equals(account, "missing", StringComparison.Ordinal))
+        else if (account == AccountScenario.Missing)
         {
             (await MutateAsync()).Should().BeOfType<UnauthorizedResult>();
             _outbox.ReceivedCalls().Should().BeEmpty();
@@ -103,20 +112,20 @@ public sealed class EmailControllerPauseSettingsRedirectTests
         else
         {
             var result = await MutateAsync();
-            if (operation is 1 or 2)
+            if (operation is EmailOperation.PauseSending or EmailOperation.ResumeSending)
                 result.Should().BeOfType<RedirectResult>().Which.Url.Should().Be("/Settings#email");
             else
                 result.Should().BeOfType<RedirectToActionResult>().Which.ActionName.Should().Be(nameof(EmailController.EmailOutbox));
             switch (operation)
             {
-                case 0:
+                case EmailOperation.BackfillDailyCounts:
                     await _outbox.Received(1).BackfillDailySendCountsAsync(survivorId, CancellationToken.None);
                     break;
-                case 1:
-                case 2:
-                    await _outbox.Received(1).SetEmailPausedAsync(operation == 1, survivorId, CancellationToken.None);
+                case EmailOperation.PauseSending:
+                case EmailOperation.ResumeSending:
+                    await _outbox.Received(1).SetEmailPausedAsync(operation == EmailOperation.PauseSending, survivorId, CancellationToken.None);
                     break;
-                case 3:
+                case EmailOperation.RetryOutboxMessage:
                     await _outbox.Received(1).RetryMessageAsync(id, survivorId, CancellationToken.None);
                     break;
                 default:

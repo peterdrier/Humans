@@ -157,7 +157,8 @@ public class ExpenseReportViewTests
                 UserInfo.Create(new User { Id = memberId, BurnerName = memberName }, [], [], null));
         var model = new ExpenseIbanViewModel
         {
-            ReportId = Guid.NewGuid(), OnBehalfOfUserId = memberId,
+            ReportId = Guid.NewGuid(),
+            OnBehalfOfUserId = memberId,
             ReportStatus = missingMember ? ExpenseReportStatus.Submitted : ExpenseReportStatus.Draft,
         };
 
@@ -184,9 +185,11 @@ public class ExpenseReportViewTests
             UserInfo.Create(new User { Id = report.SubmitterUserId, BurnerName = name }, [], [], null));
         var html = await RenderAsync("Review", new ExpenseReviewViewModel
         {
-            Reports = [report], BookingLabels = new Dictionary<Guid, string>(),
+            Reports = [report],
+            BookingLabels = new Dictionary<Guid, string>(),
             FailedHoldedPushReportIds = new HashSet<Guid> { report.Id },
-            Grants = new Dictionary<Guid, Humans.Preapprovals.Contracts.GrantOption>(), IsFinanceAdmin = true,
+            Grants = new Dictionary<Guid, Humans.Preapprovals.Contracts.GrantOption>(),
+            IsFinanceAdmin = true,
         }, users);
         var text = WebUtility.HtmlDecode(Regex.Replace(html, "<[^>]*>", string.Empty, RegexOptions.NonBacktracking));
 
@@ -206,7 +209,9 @@ public class ExpenseReportViewTests
             UserInfo.Create(new User { Id = report.SubmitterUserId, BurnerName = name }, [], [], null));
         var html = await RenderAsync("Detail", new ExpenseDetailViewModel
         {
-            Report = report, BookingLabel = "Ops", CanSeeNames = canSeeNames,
+            Report = report,
+            BookingLabel = "Ops",
+            CanSeeNames = canSeeNames,
             SubmitterLegalName = "Frozen legal name",
         }, users);
 

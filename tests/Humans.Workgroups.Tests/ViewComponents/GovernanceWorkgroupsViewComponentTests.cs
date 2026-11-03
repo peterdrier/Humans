@@ -166,8 +166,13 @@ public sealed class GovernanceWorkgroupsViewComponentTests
                 WorkgroupCommentDisposition.Pending, null, null, null, null, null, null)]);
         var model = new DocumentPageViewModel
         {
-            Workgroup = group, Document = document, Now = now, CurrentUserId = Guid.NewGuid(),
-            IsMember = false, CanAdminister = false, CanDoMemberWork = false,
+            Workgroup = group,
+            Document = document,
+            Now = now,
+            CurrentUserId = Guid.NewGuid(),
+            IsMember = false,
+            CanAdminister = false,
+            CanDoMemberWork = false,
         };
 
         var html = await RenderAsync("/Views/Workgroups/Document.cshtml", model, users);

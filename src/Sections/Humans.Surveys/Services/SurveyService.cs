@@ -1265,7 +1265,7 @@ internal sealed class SurveyService(
 
         var identified = embargoed || survey.IsAsociadoVote == true
             ? []
-            : await BuildIdentifiedRespondentsAsync(survey, responses, culture, ct);
+            : BuildIdentifiedRespondents(survey, responses, culture);
         var unattributedBallots = !embargoed && survey.IsAsociadoVote == true
             ? BuildUnattributedBallots(survey, selectedResponses, culture)
             : [];
@@ -1569,27 +1569,22 @@ internal sealed class SurveyService(
         Guid mergedFromUserId, Guid mergedToUserId, Guid actorUserId, Instant now, CancellationToken ct)
         => repo.ReassignAuthorshipAsync(mergedFromUserId, mergedToUserId, now, ct);
 
-    /// <summary>Builds the Identified-only drill-down, stitching display names via <c>IUserService</c>. Other tiers never appear (no identity exposure).</summary>
-    private async Task<IReadOnlyList<RespondentDetail>> BuildIdentifiedRespondentsAsync(
-        Survey survey, IReadOnlyList<SurveyResponse> responses, string culture, CancellationToken ct)
+    /// <summary>Builds the Identified-only drill-down; views render identities by user ID. Other tiers never appear (no identity exposure).</summary>
+    private static IReadOnlyList<RespondentDetail> BuildIdentifiedRespondents(
+        Survey survey, IReadOnlyList<SurveyResponse> responses, string culture)
     {
         var identified = responses
             .Where(r => r.Anonymity == ResponseAnonymity.Identified && r.UserId.HasValue)
             .ToList();
         if (identified.Count == 0) return [];
 
-        var userIds = identified.Select(r => r.UserId!.Value).Distinct().ToList();
-        var users = await userService.GetUserInfosAsync(userIds, ct);
-
         var answerContext = BuildRespondentAnswerContext(survey, culture);
 
         return identified
             .Select(r =>
             {
-                var userId = r.UserId!.Value;
-                var name = users.TryGetValue(userId, out var user) ? user.BurnerName : userId.ToString();
                 var answers = BuildRespondentAnswers(r, answerContext, culture);
-                return new RespondentDetail(userId, name, r.SubmittedAt, answers) { ResponseId = r.Id };
+                return new RespondentDetail(r.UserId!.Value, r.SubmittedAt, answers) { ResponseId = r.Id };
             })
             .ToList();
     }

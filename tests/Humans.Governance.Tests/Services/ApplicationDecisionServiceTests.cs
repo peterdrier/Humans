@@ -46,6 +46,15 @@ namespace Humans.Governance.Tests.Services;
 
 public sealed class ApplicationDecisionServiceTests : IDisposable
 {
+    public enum ApplicationMutation
+    {
+        Create,
+        Withdraw,
+        Vote,
+        Approve,
+        Reject
+    }
+
     private const string ValidMotivation = "I want to contribute to the collective and support its members.";
 
     private readonly FakeClock Clock = new(Instant.FromUtc(2026, 3, 1, 12, 0));
@@ -273,16 +282,16 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
     }
 
     [HumansTheory]
-    [InlineData("create")]
-    [InlineData("withdraw")]
-    [InlineData("vote")]
-    [InlineData("approve")]
-    [InlineData("reject")]
-    public async Task ApplicationMutations_CancelAccountLookupBeforeChangingRows(string action)
+    [InlineData(ApplicationMutation.Create)]
+    [InlineData(ApplicationMutation.Withdraw)]
+    [InlineData(ApplicationMutation.Vote)]
+    [InlineData(ApplicationMutation.Approve)]
+    [InlineData(ApplicationMutation.Reject)]
+    public async Task ApplicationMutations_CancelAccountLookupBeforeChangingRows(ApplicationMutation action)
     {
         using var request = new CancellationTokenSource();
         var actorId = Guid.NewGuid();
-        var create = string.Equals(action, "create", StringComparison.Ordinal);
+        var create = action == ApplicationMutation.Create;
         var app = create ? null : await SeedSubmittedApplicationAsync(actorId);
         _userService.GetUserInfoAsync(actorId, Arg.Any<CancellationToken>()).Returns(call =>
         {
@@ -315,17 +324,20 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
         await request.CancelAsync();
         Func<Task<IActionResult>> run = () => action switch
         {
-            "create" => applications.Create(new ApplicationCreateViewModel
+            ApplicationMutation.Create => applications.Create(new ApplicationCreateViewModel
             {
-                ConfirmAccuracy = true, MembershipTier = MembershipTier.Colaborador,
+                ConfirmAccuracy = true,
+                MembershipTier = MembershipTier.Colaborador,
                 Motivation = ValidMotivation
             }),
-            "withdraw" => applications.Withdraw(app!.Id),
-            "vote" => board.Vote(app!.Id, VoteChoice.Yay, null),
+            ApplicationMutation.Withdraw => applications.Withdraw(app!.Id),
+            ApplicationMutation.Vote => board.Vote(app!.Id, VoteChoice.Yay, null),
             _ => board.Finalize(new BoardVotingFinalizeModel
             {
-                ApplicationId = app!.Id, Approved = string.Equals(action, "approve", StringComparison.Ordinal),
-                DecisionNote = "Board decision", BoardMeetingDate = "2026-03-01"
+                ApplicationId = app!.Id,
+                Approved = action == ApplicationMutation.Approve,
+                DecisionNote = "Board decision",
+                BoardMeetingDate = "2026-03-01"
             })
         };
         await run.Should().ThrowAsync<OperationCanceledException>();
@@ -342,10 +354,10 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
     }
 
     [HumansTheory]
-    [Xunit.InlineData("merged")]
-    [Xunit.InlineData("missing")]
-    [Xunit.InlineData("cancelled")]
-    public async Task TermExpiryCorrection_ResolvesItsAuditActorBeforeChangingRows(string account)
+    [Xunit.InlineData(AccountScenario.Merged)]
+    [Xunit.InlineData(AccountScenario.Missing)]
+    [Xunit.InlineData(AccountScenario.Cancelled)]
+    public async Task TermExpiryCorrection_ResolvesItsAuditActorBeforeChangingRows(AccountScenario account)
     {
         using var request = new CancellationTokenSource();
         var drifted = await SeedApprovedApplicationAsync(new LocalDate(2029, 12, 31));
@@ -354,7 +366,7 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
         _userService.GetUserInfoAsync(cookieId, Arg.Any<CancellationToken>()).Returns(call =>
         {
             call.Arg<CancellationToken>().ThrowIfCancellationRequested();
-            return new ValueTask<UserInfo?>(string.Equals(account, "missing", StringComparison.Ordinal)
+            return new ValueTask<UserInfo?>(account == AccountScenario.Missing
                 ? null : UserInfo.Create(new User { Id = actorId }, [], [], null));
         });
         var http = new DefaultHttpContext
@@ -370,7 +382,7 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
             TempData = new TempDataDictionary(http, Substitute.For<ITempDataProvider>()),
             Url = Substitute.For<IUrlHelper>()
         };
-        if (string.Equals(account, "cancelled", StringComparison.Ordinal))
+        if (account == AccountScenario.Cancelled)
         {
             await request.CancelAsync();
             Func<Task> run = async () => await controller.AdminTermExpiryFix();
@@ -379,7 +391,7 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
         else
         {
             var result = await controller.AdminTermExpiryFix();
-            if (string.Equals(account, "merged", StringComparison.Ordinal))
+            if (account == AccountScenario.Merged)
             {
                 result.Should().BeOfType<RedirectToActionResult>();
                 await AuditLog.Received(1).LogAsync(GovernanceAuditActions.TierTermExpiryCorrected,
@@ -387,7 +399,7 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
             }
             else result.Should().BeOfType<UnauthorizedResult>();
         }
-        if (!string.Equals(account, "merged", StringComparison.Ordinal))
+        if (account != AccountScenario.Merged)
         {
             AuditLog.ReceivedCalls().Should().BeEmpty();
             (await _service.GetTermExpiryDriftAsync(TestContext.Current.CancellationToken)).Should().ContainSingle();

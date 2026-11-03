@@ -18,14 +18,20 @@ namespace Humans.Workgroups.Tests.ViewComponents;
 
 public sealed class MyWorkgroupsViewComponentTests
 {
+    public enum MemberSurface
+    {
+        Dashboard,
+        Tasks
+    }
+
     [HumansTheory]
-    [Xunit.InlineData("dashboard", "merged")]
-    [Xunit.InlineData("dashboard", "missing")]
-    [Xunit.InlineData("dashboard", "cancelled")]
-    [Xunit.InlineData("tasks", "merged")]
-    [Xunit.InlineData("tasks", "missing")]
-    [Xunit.InlineData("tasks", "cancelled")]
-    public async Task MemberSurfaces_ResolveTheAccountBeforeLoadingWorkgroups(string surface, string account)
+    [Xunit.InlineData(MemberSurface.Dashboard, AccountScenario.Merged)]
+    [Xunit.InlineData(MemberSurface.Dashboard, AccountScenario.Missing)]
+    [Xunit.InlineData(MemberSurface.Dashboard, AccountScenario.Cancelled)]
+    [Xunit.InlineData(MemberSurface.Tasks, AccountScenario.Merged)]
+    [Xunit.InlineData(MemberSurface.Tasks, AccountScenario.Missing)]
+    [Xunit.InlineData(MemberSurface.Tasks, AccountScenario.Cancelled)]
+    public async Task MemberSurfaces_ResolveTheAccountBeforeLoadingWorkgroups(MemberSurface surface, AccountScenario account)
     {
         using var request = new CancellationTokenSource();
         var cookieId = Guid.NewGuid();
@@ -34,7 +40,7 @@ public sealed class MyWorkgroupsViewComponentTests
         users.GetUserInfoAsync(cookieId, Arg.Any<CancellationToken>()).Returns(call =>
         {
             call.Arg<CancellationToken>().ThrowIfCancellationRequested();
-            return new ValueTask<UserInfo?>(string.Equals(account, "missing", StringComparison.Ordinal)
+            return new ValueTask<UserInfo?>(account == AccountScenario.Missing
                 ? null : UserInfo.Create(new User { Id = survivorId }, [], [], null));
         });
         var joined = Instant.FromUtc(2026, 1, 1, 0, 0);
@@ -53,10 +59,10 @@ public sealed class MyWorkgroupsViewComponentTests
         var principal = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, cookieId.ToString())], "test"));
         async Task ReadAsync()
         {
-            if (string.Equals(surface, "tasks", StringComparison.Ordinal))
+            if (surface == MemberSurface.Tasks)
             {
                 var tasks = (await ((ISectionThingsToDo)new Section()).EntriesAsync(services, principal, request.Token)).ToList();
-                if (string.Equals(account, "merged", StringComparison.Ordinal))
+                if (account == AccountScenario.Merged)
                     tasks.Should().Contain(entry => entry.Key == $"workgroup-requests-{group.Id}");
                 else tasks.Should().BeEmpty();
             }
@@ -68,7 +74,7 @@ public sealed class MyWorkgroupsViewComponentTests
                     ViewContext = new ViewContext { HttpContext = new DefaultHttpContext { User = principal, RequestAborted = request.Token } }
                 };
                 var result = await component.InvokeAsync();
-                if (string.Equals(account, "merged", StringComparison.Ordinal))
+                if (account == AccountScenario.Merged)
                 {
                     var model = result.Should().BeOfType<ViewViewComponentResult>().Subject.ViewData!.Model
                         .Should().BeOfType<MyWorkgroupsViewModel>().Subject;
@@ -77,14 +83,14 @@ public sealed class MyWorkgroupsViewComponentTests
                 else result.Should().BeOfType<ContentViewComponentResult>().Which.Content.Should().BeEmpty();
             }
         }
-        if (string.Equals(account, "cancelled", StringComparison.Ordinal))
+        if (account == AccountScenario.Cancelled)
         {
             await request.CancelAsync();
             Func<Task> run = ReadAsync;
             await run.Should().ThrowAsync<OperationCanceledException>();
         }
         else await ReadAsync();
-        if (!string.Equals(account, "merged", StringComparison.Ordinal)) workgroups.ReceivedCalls().Should().BeEmpty();
+        if (account != AccountScenario.Merged) workgroups.ReceivedCalls().Should().BeEmpty();
     }
 
     [HumansFact]

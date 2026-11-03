@@ -70,10 +70,10 @@ public sealed class ShiftsControllerRevealMedicalTests
     }
 
     [HumansTheory]
-    [InlineData("merged")]
-    [InlineData("missing")]
-    [InlineData("cancelled")]
-    public async Task RevealMedical_ResolvesItsAuditActorBeforeReadingHealthData(string account)
+    [InlineData(AccountScenario.Merged)]
+    [InlineData(AccountScenario.Missing)]
+    [InlineData(AccountScenario.Cancelled)]
+    public async Task RevealMedical_ResolvesItsAuditActorBeforeReadingHealthData(AccountScenario account)
     {
         using var request = new CancellationTokenSource();
         StubSubject("Epilepsy");
@@ -83,10 +83,10 @@ public sealed class ShiftsControllerRevealMedicalTests
         _userService.GetUserInfoAsync(_actorId, Arg.Any<CancellationToken>()).Returns(call =>
         {
             call.Arg<CancellationToken>().ThrowIfCancellationRequested();
-            return new ValueTask<UserInfo?>(string.Equals(account, "missing", StringComparison.Ordinal)
+            return new ValueTask<UserInfo?>(account == AccountScenario.Missing
                 ? null : UserInfoStubHelpers.MakeUserInfo(actorId));
         });
-        if (string.Equals(account, "cancelled", StringComparison.Ordinal))
+        if (account == AccountScenario.Cancelled)
         {
             await request.CancelAsync();
             await Assert.ThrowsAnyAsync<OperationCanceledException>(() => controller.RevealMedical(_subjectId, request.Token));
@@ -94,7 +94,7 @@ public sealed class ShiftsControllerRevealMedicalTests
         else
         {
             var result = await controller.RevealMedical(_subjectId, request.Token);
-            if (string.Equals(account, "merged", StringComparison.Ordinal))
+            if (account == AccountScenario.Merged)
             {
                 result.Should().BeOfType<JsonResult>();
                 await _audit.Received(1).LogAsync(ShiftsAuditActions.MedicalConditionsRevealed, "User", _subjectId,
@@ -102,7 +102,7 @@ public sealed class ShiftsControllerRevealMedicalTests
             }
             else result.Should().BeOfType<ForbidResult>();
         }
-        if (!string.Equals(account, "merged", StringComparison.Ordinal))
+        if (account != AccountScenario.Merged)
         {
             await _userService.DidNotReceive().GetUserInfoAsync(_subjectId, Arg.Any<CancellationToken>());
             _audit.ReceivedCalls().Should().BeEmpty();

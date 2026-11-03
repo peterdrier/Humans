@@ -56,18 +56,18 @@ public class ProfileTests
         profile.ConsentCheckStatus.Should().BeNull();
     }
 
-    [HumansTheory]
-    [InlineData(0)]
-    [InlineData(1)]
-    [InlineData(2)]
-    public void Profile_CanSetConsentCheckStatus(int value)
+    [HumansFact]
+    public void Profile_CanSetConsentCheckStatus()
     {
-        var profile = CreateProfile();
+        // A fact, not a theory: the enum is internal, so it can't be a public test parameter.
+        foreach (var status in Enum.GetValues<LegacyConsentCheckStatus>())
+        {
+            var profile = CreateProfile();
 
-        var status = (LegacyConsentCheckStatus)value;
-        profile.ConsentCheckStatus = status;
+            profile.ConsentCheckStatus = status;
 
-        profile.ConsentCheckStatus.Should().Be(status);
+            profile.ConsentCheckStatus.Should().Be(status);
+        }
     }
 
     [HumansFact]

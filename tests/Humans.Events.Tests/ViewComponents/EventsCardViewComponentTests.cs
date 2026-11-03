@@ -48,10 +48,10 @@ public class EventsCardViewComponentTests
     }
 
     [HumansTheory]
-    [Xunit.InlineData(0)]
-    [Xunit.InlineData(1)]
-    [Xunit.InlineData(2)]
-    public async Task Favourite_viewer_resolves_before_loading_the_card(int mode)
+    [Xunit.InlineData(AccountScenario.Merged)]
+    [Xunit.InlineData(AccountScenario.Missing)]
+    [Xunit.InlineData(AccountScenario.Cancelled)]
+    public async Task Favourite_viewer_resolves_before_loading_the_card(AccountScenario account)
     {
         var cookieId = Guid.NewGuid();
         var survivor = Guid.NewGuid();
@@ -62,20 +62,20 @@ public class EventsCardViewComponentTests
         {
             call.Arg<CancellationToken>().Should().Be(request.Token);
             call.Arg<CancellationToken>().ThrowIfCancellationRequested();
-            return new ValueTask<UserInfo?>(mode == 1 ? null :
+            return new ValueTask<UserInfo?>(account == AccountScenario.Missing ? null :
                 UserInfo.Create(new User { Id = survivor }, [], [], null));
         });
         var ev = Approved(Guid.NewGuid(), "Event", Instant.FromUtc(2026, 8, 1, 10, 0));
         _events.GetApprovedEventsAsync(campId, null, null, null, Arg.Any<IReadOnlyList<string>>(), Arg.Any<CancellationToken>())
             .Returns([ev]);
         _events.GetFavouriteEventIdsAsync(survivor, request.Token).Returns(new HashSet<Guid> { ev.Id });
-        if (mode == 2)
+        if (account == AccountScenario.Cancelled)
             await request.CancelAsync();
         var invoke = () => component.InvokeAsync(campId: campId);
 
-        if (mode == 2)
+        if (account == AccountScenario.Cancelled)
             await invoke.Should().ThrowAsync<OperationCanceledException>();
-        else if (mode == 1)
+        else if (account == AccountScenario.Missing)
             (await invoke()).Should().BeOfType<ContentViewComponentResult>().Which.Content.Should().BeEmpty();
         else
         {

@@ -242,8 +242,6 @@ The cross-source Early Entry roster (`/Shifts/Admin/EarlyEntry`) is `EarlyEntryR
 
 ## Invariants
 
-- Entity and flattened shift timing share the internal rules on `ShiftInfo`: lenient event-zone resolution, the 08:00–18:00 all-day window and Build/Event/Strike boundaries. Only the Shifts implementation can access these contracts-assembly internals; no cross-section timing API is exposed.
-
 - The section’s things-to-do contribution forwards caller cancellation through all data reads. Aborted reads propagate instead of being logged or converted into missing prompts.
 
 - Browse-page phase filters accept only defined Build/Event/Strike values, case-insensitively and without duplicates. Invalid values, including undefined numbers, are ignored; an empty multi-phase selection may use the valid single-phase fallback.

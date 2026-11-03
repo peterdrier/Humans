@@ -20,6 +20,22 @@ namespace Humans.Surveys.Tests.Authorization;
 /// </summary>
 public sealed class SurveyAuthorizationHandlerTests
 {
+    public enum OwnershipOperation
+    {
+        Edit,
+        Submit,
+        ViewResults,
+        Preview
+    }
+
+    public enum OwnershipAccount
+    {
+        Merged,
+        Missing,
+        Cancelled,
+        Stranger
+    }
+
     private readonly SurveyAuthorizationHandler _handler;
 
     public SurveyAuthorizationHandlerTests()
@@ -34,23 +50,23 @@ public sealed class SurveyAuthorizationHandlerTests
     private static readonly Guid OtherUserId = Guid.NewGuid();
 
     [HumansTheory]
-    [Xunit.InlineData((int)SurveyOperation.Edit, "merged")]
-    [Xunit.InlineData((int)SurveyOperation.Edit, "missing")]
-    [Xunit.InlineData((int)SurveyOperation.Edit, "cancelled")]
-    [Xunit.InlineData((int)SurveyOperation.Edit, "stranger")]
-    [Xunit.InlineData((int)SurveyOperation.Submit, "merged")]
-    [Xunit.InlineData((int)SurveyOperation.Submit, "missing")]
-    [Xunit.InlineData((int)SurveyOperation.Submit, "cancelled")]
-    [Xunit.InlineData((int)SurveyOperation.Submit, "stranger")]
-    [Xunit.InlineData((int)SurveyOperation.ViewResults, "merged")]
-    [Xunit.InlineData((int)SurveyOperation.ViewResults, "missing")]
-    [Xunit.InlineData((int)SurveyOperation.ViewResults, "cancelled")]
-    [Xunit.InlineData((int)SurveyOperation.ViewResults, "stranger")]
-    [Xunit.InlineData((int)SurveyOperation.Preview, "merged")]
-    [Xunit.InlineData((int)SurveyOperation.Preview, "missing")]
-    [Xunit.InlineData((int)SurveyOperation.Preview, "cancelled")]
-    [Xunit.InlineData((int)SurveyOperation.Preview, "stranger")]
-    public async Task Ownership_ResolvesTheAccountWithoutWideningAccess(int operation, string account)
+    [Xunit.InlineData(OwnershipOperation.Edit, OwnershipAccount.Merged)]
+    [Xunit.InlineData(OwnershipOperation.Edit, OwnershipAccount.Missing)]
+    [Xunit.InlineData(OwnershipOperation.Edit, OwnershipAccount.Cancelled)]
+    [Xunit.InlineData(OwnershipOperation.Edit, OwnershipAccount.Stranger)]
+    [Xunit.InlineData(OwnershipOperation.Submit, OwnershipAccount.Merged)]
+    [Xunit.InlineData(OwnershipOperation.Submit, OwnershipAccount.Missing)]
+    [Xunit.InlineData(OwnershipOperation.Submit, OwnershipAccount.Cancelled)]
+    [Xunit.InlineData(OwnershipOperation.Submit, OwnershipAccount.Stranger)]
+    [Xunit.InlineData(OwnershipOperation.ViewResults, OwnershipAccount.Merged)]
+    [Xunit.InlineData(OwnershipOperation.ViewResults, OwnershipAccount.Missing)]
+    [Xunit.InlineData(OwnershipOperation.ViewResults, OwnershipAccount.Cancelled)]
+    [Xunit.InlineData(OwnershipOperation.ViewResults, OwnershipAccount.Stranger)]
+    [Xunit.InlineData(OwnershipOperation.Preview, OwnershipAccount.Merged)]
+    [Xunit.InlineData(OwnershipOperation.Preview, OwnershipAccount.Missing)]
+    [Xunit.InlineData(OwnershipOperation.Preview, OwnershipAccount.Cancelled)]
+    [Xunit.InlineData(OwnershipOperation.Preview, OwnershipAccount.Stranger)]
+    public async Task Ownership_ResolvesTheAccountWithoutWideningAccess(OwnershipOperation operation, OwnershipAccount account)
     {
         using var request = new CancellationTokenSource();
         var cookieId = Guid.NewGuid();
@@ -59,22 +75,29 @@ public sealed class SurveyAuthorizationHandlerTests
         users.GetUserInfoAsync(cookieId, Arg.Any<CancellationToken>()).Returns(call =>
         {
             call.Arg<CancellationToken>().ThrowIfCancellationRequested();
-            return new ValueTask<UserInfo?>(string.Equals(account, "missing", StringComparison.Ordinal)
+            return new ValueTask<UserInfo?>(account == OwnershipAccount.Missing
                 ? null : UserInfo.Create(new User { Id = survivorId }, [], [], null));
         });
         using var services = new ServiceCollection().AddSingleton(users)
             .AddSingleton<IHttpContextAccessor>(new HttpContextAccessor
-                { HttpContext = new DefaultHttpContext { RequestAborted = request.Token } }).BuildServiceProvider();
+            { HttpContext = new DefaultHttpContext { RequestAborted = request.Token } }).BuildServiceProvider();
         var handler = ActivatorUtilities.CreateInstance<SurveyAuthorizationHandler>(services);
-        var op = (SurveyOperation)operation;
+        var op = operation switch
+        {
+            OwnershipOperation.Edit => SurveyOperation.Edit,
+            OwnershipOperation.Submit => SurveyOperation.Submit,
+            OwnershipOperation.ViewResults => SurveyOperation.ViewResults,
+            OwnershipOperation.Preview => SurveyOperation.Preview,
+            _ => throw new ArgumentOutOfRangeException(nameof(operation))
+        };
         var status = op == SurveyOperation.ViewResults ? SurveyStatus.Closed : SurveyStatus.Draft;
-        var ownerId = string.Equals(account, "stranger", StringComparison.Ordinal) ? Guid.NewGuid() : survivorId;
+        var ownerId = account == OwnershipAccount.Stranger ? Guid.NewGuid() : survivorId;
         var requirement = new SurveyOperationRequirement(op);
-        var user = string.Equals(account, "missing", StringComparison.Ordinal)
+        var user = account == OwnershipAccount.Missing
             ? new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, cookieId.ToString()),
                 new Claim(ClaimTypes.Role, RoleNames.Admin)], "test")) : CreateUser(cookieId);
         var context = new AuthorizationHandlerContext([requirement], user, Detail(status, ownerId));
-        if (string.Equals(account, "cancelled", StringComparison.Ordinal))
+        if (account == OwnershipAccount.Cancelled)
         {
             await request.CancelAsync();
             Func<Task> run = () => handler.HandleAsync(context);
@@ -83,7 +106,7 @@ public sealed class SurveyAuthorizationHandlerTests
         else
         {
             await handler.HandleAsync(context);
-            context.HasSucceeded.Should().Be(string.Equals(account, "merged", StringComparison.Ordinal));
+            context.HasSucceeded.Should().Be(account == OwnershipAccount.Merged);
         }
     }
 

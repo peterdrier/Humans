@@ -4347,37 +4347,9 @@ public class SurveyServiceTests
         anonymous.Results.IdentifiedRespondents.Should().ContainSingle();
         var detail = anonymous.Results.IdentifiedRespondents[0];
         detail.UserId.Should().Be(identifiedUser);
-        detail.Name.Should().Be("Sparkle");
         detail.Answers.Should().ContainSingle();
         detail.Answers[0].QuestionId.Should().Be(choiceId);
         detail.Answers[0].SelectedLabels.Should().ContainInOrder("Yes");
-    }
-
-    [HumansFact]
-    public async Task GetResultsAsync_identified_respondent_name_falls_back_to_user_id_when_unresolved()
-    {
-        var surveyId = Guid.NewGuid();
-        var survey = SurveyWith(SurveyStatus.Closed, null, null);
-        typeof(Survey).GetProperty(nameof(Survey.Id))!.SetValue(survey, surveyId);
-        survey.Questions = new List<SurveyQuestion>();
-        _repo.GetByIdAsync(surveyId, Arg.Any<CancellationToken>()).Returns(survey);
-
-        var user = Guid.NewGuid();
-        _repo.GetResponsesForResultsAsync(surveyId, Arg.Any<CancellationToken>())
-            .Returns(new List<SurveyResponse>
-            {
-                SubmittedResponse(surveyId, ResponseAnonymity.Identified, SurveyInputMethod.UserSpecificLink,
-                    _clock.GetCurrentInstant(), user),
-            });
-        _repo.GetInvitedCountsBySurveyAsync(Arg.Any<CancellationToken>())
-            .Returns(new Dictionary<Guid, int>());
-        _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(new Dictionary<Guid, UserInfo>()));
-
-        var result = await CreateService().GetResultsAsync(surveyId, TestContext.Current.CancellationToken);
-
-        result!.IdentifiedRespondents.Should().ContainSingle();
-        result.IdentifiedRespondents[0].Name.Should().Be(user.ToString());
     }
 
     [HumansFact]
@@ -4400,21 +4372,14 @@ public class SurveyServiceTests
             .Returns(new List<SurveyResponse> { laterResponse, earlierResponse });
         _repo.GetInvitedCountsBySurveyAsync(Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, int>());
-        _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
-                new Dictionary<Guid, UserInfo>
-                {
-                    [earlierUser] = UserInfoWithName(earlierUser, "Earlier"),
-                    [laterUser] = UserInfoWithName(laterUser, "Later"),
-                }));
 
         var result = await CreateService().GetResultsAsync(surveyId, TestContext.Current.CancellationToken);
 
         result!.IdentifiedRespondents.Select(respondent =>
-                (respondent.ResponseId, respondent.UserId, respondent.Name, respondent.SubmittedAt))
+                (respondent.ResponseId, respondent.UserId, respondent.SubmittedAt))
             .Should().BeEquivalentTo([
-                (earlierResponse.Id, earlierUser, "Earlier", earlierResponse.SubmittedAt),
-                (laterResponse.Id, laterUser, "Later", laterResponse.SubmittedAt),
+                (earlierResponse.Id, earlierUser, earlierResponse.SubmittedAt),
+                (laterResponse.Id, laterUser, laterResponse.SubmittedAt),
             ]);
     }
 

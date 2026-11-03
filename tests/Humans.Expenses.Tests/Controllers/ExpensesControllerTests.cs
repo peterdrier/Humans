@@ -338,10 +338,18 @@ public sealed class ExpensesControllerTests
         var reports = Substitute.For<IExpenseReportManagement>();
         reports.GetAsync(reportId, Arg.Any<CancellationToken>()).Returns(new ExpenseReportDto
         {
-            Id = reportId, SubmitterUserId = memberId, HoldedAccountNumber = 0,
-            BudgetCategoryId = null, BudgetYearId = null,
-            Status = ExpenseReportStatus.Draft, PayeeName = "", PayeeIban = "", Total = 0,
-            CreatedAt = default, UpdatedAt = default, Lines = [],
+            Id = reportId,
+            SubmitterUserId = memberId,
+            HoldedAccountNumber = 0,
+            BudgetCategoryId = null,
+            BudgetYearId = null,
+            Status = ExpenseReportStatus.Draft,
+            PayeeName = "",
+            PayeeIban = "",
+            Total = 0,
+            CreatedAt = default,
+            UpdatedAt = default,
+            Lines = [],
         });
         const string messageKey = "Expenses_Iban_InvalidFormat";
         reports.SaveSubmitterIbanWithResultAsync(reportId, actorId, Arg.Any<string?>())

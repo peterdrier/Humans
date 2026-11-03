@@ -105,8 +105,11 @@ public class FeedbackListViewTests
         var now = new DateTime(2026, 11, 3, 1, 0, 0, DateTimeKind.Utc);
         var html = await RenderAsync("_Detail", new FeedbackDetailViewModel
         {
-            Id = Guid.NewGuid(), PageUrl = "/", CreatedAt = now,
-            ResolvedAt = now, ResolvedByUserId = resolverId,
+            Id = Guid.NewGuid(),
+            PageUrl = "/",
+            CreatedAt = now,
+            ResolvedAt = now,
+            ResolvedByUserId = resolverId,
             Messages = [new FeedbackMessageViewModel { SenderUserId = senderId, CreatedAt = now, Content = "Message" }],
         }, users);
 

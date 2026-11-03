@@ -181,7 +181,7 @@ Repository: `IUserRepository`.
 | IdentityUserLogins | R | IUserRepository |
 | Profiles | R/W | IUserRepository |
 | ContactFields | R | IUserRepository |
-| CommunicationPreferences | No live access; frozen storage mapping retained until the separate table drop | — |
+| CommunicationPreferences | Frozen storage; only GDPR erasure deletes a user's rows (`EraseProfileExtrasForUserAsync`) until the separate table drop | — |
 | ProfileLanguages | R/W | IUserRepository |
 | VolunteerHistoryEntries | R | IUserRepository |
 

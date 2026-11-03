@@ -2006,7 +2006,6 @@ internal sealed class TeamService(
         request.Team?.Name,
         request.UserId,
         UserDisplayName: null,
-        UserEmail: null,
         UserProfilePictureUrl: null,
         request.Status,
         request.Message,
@@ -2023,7 +2022,6 @@ internal sealed class TeamService(
         return ToJoinRequestSnapshot(request) with
         {
             UserDisplayName = user?.BurnerName,
-            UserEmail = user?.Email,
             UserProfilePictureUrl = user?.ProfilePictureUrl
         };
     }

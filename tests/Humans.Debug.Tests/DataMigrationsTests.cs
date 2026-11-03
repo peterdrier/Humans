@@ -192,10 +192,10 @@ public class DataMigrationsTests
     }
 
     [HumansTheory]
-    [Xunit.InlineData(0)]
-    [Xunit.InlineData(1)]
-    [Xunit.InlineData(2)]
-    public async Task Apply_resolves_account_before_invoking_migration(int mode)
+    [Xunit.InlineData(AccountScenario.Merged)]
+    [Xunit.InlineData(AccountScenario.Missing)]
+    [Xunit.InlineData(AccountScenario.Cancelled)]
+    public async Task Apply_resolves_account_before_invoking_migration(AccountScenario account)
     {
         var users = Substitute.For<IUserService>();
         var survivor = Guid.NewGuid();
@@ -204,18 +204,18 @@ public class DataMigrationsTests
         {
             call.Arg<CancellationToken>().Should().Be(request.Token);
             call.Arg<CancellationToken>().ThrowIfCancellationRequested();
-            return new ValueTask<UserInfo?>(mode == 1 ? null :
+            return new ValueTask<UserInfo?>(account == AccountScenario.Missing ? null :
                 UserInfo.Create(new User { Id = survivor }, [], [], null));
         });
         var controller = Controller(_actorId, users);
         controller.HttpContext.RequestAborted = request.Token;
-        if (mode == 2)
+        if (account == AccountScenario.Cancelled)
             await request.CancelAsync();
         var apply = () => controller.Apply(Key, request.Token);
 
-        if (mode == 2)
+        if (account == AccountScenario.Cancelled)
             await apply.Should().ThrowAsync<OperationCanceledException>();
-        else if (mode == 1)
+        else if (account == AccountScenario.Missing)
             (await apply()).Should().BeOfType<UnauthorizedResult>();
         else
         {

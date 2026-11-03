@@ -40,13 +40,13 @@ public sealed class ProfileCardViewComponentTests
     {
         var prefix = new string('a', fits ? 78 : 79);
         var html = await RenderAsync(new ProfileCardViewModel
-            {
-                ViewMode = ProfileCardViewMode.Public,
-                VolunteerHistory = [new VolunteerHistoryEntryViewModel
+        {
+            ViewMode = ProfileCardViewMode.Public,
+            VolunteerHistory = [new VolunteerHistoryEntryViewModel
                 {
                     EventName = "Example", Date = new LocalDate(2026, 7, 1), Description = prefix + "😀tail",
                 }],
-            }, Substitute.For<IUserService>());
+        }, Substitute.For<IUserService>());
 
         html.Should().Contain(HtmlEncoder.Default.Encode(prefix + (fits ? "😀" : "") + "..."));
     }
@@ -123,12 +123,11 @@ public sealed class ProfileCardViewComponentTests
         await act.Should().ThrowAsync<OperationCanceledException>();
     }
     [HumansTheory]
-    [Xunit.InlineData("Public")]
-    [Xunit.InlineData("Self")]
-    [Xunit.InlineData("Admin")]
-    public async Task Identity_UsesTheCanonicalUserName_WhilePreservingPrivateProfileFields(string mode)
+    [Xunit.InlineData(ProfileCardViewMode.Public)]
+    [Xunit.InlineData(ProfileCardViewMode.Self)]
+    [Xunit.InlineData(ProfileCardViewMode.Admin)]
+    public async Task Identity_UsesTheCanonicalUserName_WhilePreservingPrivateProfileFields(ProfileCardViewMode viewMode)
     {
-        var viewMode = Enum.Parse<ProfileCardViewMode>(mode);
         var userId = Guid.NewGuid();
         const string name = "Canonical <script>&";
         var profile = UserFixtures.Profile(burnerName: "Stale profile name", firstName: "Legal first",

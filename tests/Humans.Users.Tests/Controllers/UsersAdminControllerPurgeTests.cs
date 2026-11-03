@@ -91,13 +91,22 @@ public class UsersAdminControllerPurgeTests
         return c;
     }
 
+    public enum LifecycleAction
+    {
+        SuspendHuman,
+        UnsuspendHuman,
+        RejectSignup,
+        PurgeHuman,
+        PurgeHumanCancelledAtTargetLookup
+    }
+
     [HumansTheory]
-    [InlineData(0)]
-    [InlineData(1)]
-    [InlineData(2)]
-    [InlineData(3)]
-    [InlineData(4)]
-    public async Task Lifecycle_account_preflight_observes_cancellation(int action)
+    [InlineData(LifecycleAction.SuspendHuman)]
+    [InlineData(LifecycleAction.UnsuspendHuman)]
+    [InlineData(LifecycleAction.RejectSignup)]
+    [InlineData(LifecycleAction.PurgeHuman)]
+    [InlineData(LifecycleAction.PurgeHumanCancelledAtTargetLookup)]
+    public async Task Lifecycle_account_preflight_observes_cancellation(LifecycleAction action)
     {
         using var request = new CancellationTokenSource();
         var targetId = Guid.NewGuid();
@@ -109,7 +118,7 @@ public class UsersAdminControllerPurgeTests
         });
         _userService.GetRawUserInfoAsync(targetId, Arg.Any<CancellationToken>()).Returns(call =>
         {
-            if (action == 4)
+            if (action == LifecycleAction.PurgeHumanCancelledAtTargetLookup)
             {
                 call.Arg<CancellationToken>().Should().Be(request.Token);
                 call.Arg<CancellationToken>().ThrowIfCancellationRequested();
@@ -121,10 +130,11 @@ public class UsersAdminControllerPurgeTests
         await request.CancelAsync();
         Func<Task<IActionResult>> invoke = action switch
         {
-            0 => () => controller.SuspendHuman(targetId, null),
-            1 => () => controller.UnsuspendHuman(targetId),
-            2 => () => controller.RejectSignup(targetId, null),
-            _ => () => controller.PurgeHuman(targetId),
+            LifecycleAction.SuspendHuman => () => controller.SuspendHuman(targetId, null),
+            LifecycleAction.UnsuspendHuman => () => controller.UnsuspendHuman(targetId),
+            LifecycleAction.RejectSignup => () => controller.RejectSignup(targetId, null),
+            LifecycleAction.PurgeHuman or LifecycleAction.PurgeHumanCancelledAtTargetLookup => () => controller.PurgeHuman(targetId),
+            _ => throw new ArgumentOutOfRangeException(nameof(action), action, null),
         };
 
         await invoke.Should().ThrowAsync<OperationCanceledException>();

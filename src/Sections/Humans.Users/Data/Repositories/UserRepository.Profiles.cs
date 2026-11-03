@@ -150,14 +150,20 @@ internal sealed partial class UserRepository
             profile.IntoleranceOtherText = null;
             profile.MedicalConditions = null;
 
-            // Erase the legacy column until its separate drop; Finance owns live payment details.
+            // Erase legacy storage until its separate drop: Finance owns live payment details,
+            // Consent the live review, Email the live communication preferences.
             profile.Iban = null;
+            profile.ConsentCheckNotes = null;
+            profile.RejectionReason = null;
 
             var languages = await ctx.ProfileLanguages
                 .Where(pl => pl.ProfileId == profile.Id)
                 .ToListAsync(ct);
             ctx.ProfileLanguages.RemoveRange(languages);
         }
+
+        ctx.CommunicationPreferences.RemoveRange(
+            await ctx.CommunicationPreferences.Where(cp => cp.UserId == userId).ToListAsync(ct));
 
         return await ctx.SaveChangesAsync(ct);
     }

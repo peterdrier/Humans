@@ -31,6 +31,33 @@ namespace Humans.Teams.Tests.Controllers;
 
 public class TeamControllerPageContentTests
 {
+    public enum RosterViewer
+    {
+        Member,
+        ChildCoordinator,
+        ParentCoordinator,
+        Admin,
+        Board,
+        TeamsAdmin
+    }
+
+    public enum MutationAction
+    {
+        Join,
+        Leave,
+        Withdraw,
+        Delete,
+        Create,
+        Edit
+    }
+
+    public enum ReadBoundary
+    {
+        Viewer,
+        Team,
+        Parents
+    }
+
     [HumansFact]
     public async Task Roster_OrdersUnsortedOwnerDataByPriorityTeamRoleAndSlot()
     {
@@ -222,43 +249,50 @@ public class TeamControllerPageContentTests
     }
 
     [HumansTheory]
-    [InlineData(null, "current")]
-    [InlineData("coordinator", "current")]
-    [InlineData("parent", "current")]
-    [InlineData(RoleNames.Admin, "current")]
-    [InlineData(RoleNames.Board, "current")]
-    [InlineData(TeamsRoles.TeamsAdmin, "current")]
-    [InlineData("coordinator", "merged")]
-    [InlineData("parent", "merged")]
-    [InlineData("coordinator", "missing")]
-    [InlineData("parent", "missing")]
-    [InlineData("coordinator", "cancelled")]
-    [InlineData(RoleNames.Admin, "missing")]
-    [InlineData(null, "merged")]
-    public async Task Roster_PrivateRoles_RequireTeamManagementAccess(string? role, string account)
+    [InlineData(RosterViewer.Member, AccountScenario.Current)]
+    [InlineData(RosterViewer.ChildCoordinator, AccountScenario.Current)]
+    [InlineData(RosterViewer.ParentCoordinator, AccountScenario.Current)]
+    [InlineData(RosterViewer.Admin, AccountScenario.Current)]
+    [InlineData(RosterViewer.Board, AccountScenario.Current)]
+    [InlineData(RosterViewer.TeamsAdmin, AccountScenario.Current)]
+    [InlineData(RosterViewer.ChildCoordinator, AccountScenario.Merged)]
+    [InlineData(RosterViewer.ParentCoordinator, AccountScenario.Merged)]
+    [InlineData(RosterViewer.ChildCoordinator, AccountScenario.Missing)]
+    [InlineData(RosterViewer.ParentCoordinator, AccountScenario.Missing)]
+    [InlineData(RosterViewer.ChildCoordinator, AccountScenario.Cancelled)]
+    [InlineData(RosterViewer.Admin, AccountScenario.Missing)]
+    [InlineData(RosterViewer.Member, AccountScenario.Merged)]
+    public async Task Roster_PrivateRoles_RequireTeamManagementAccess(RosterViewer viewerKind, AccountScenario account)
     {
         using var request = new CancellationTokenSource();
         var viewer = Guid.NewGuid();
-        var cookieId = string.Equals(account, "merged", StringComparison.Ordinal) ? Guid.NewGuid() : viewer;
+        var role = viewerKind switch
+        {
+            RosterViewer.Admin => RoleNames.Admin,
+            RosterViewer.Board => RoleNames.Board,
+            RosterViewer.TeamsAdmin => TeamsRoles.TeamsAdmin,
+            _ => null
+        };
+        var cookieId = account == AccountScenario.Merged ? Guid.NewGuid() : viewer;
         var users = Substitute.For<IUserService>();
         users.GetUserInfoAsync(cookieId, Arg.Any<CancellationToken>()).Returns(call =>
         {
             call.Arg<CancellationToken>().ThrowIfCancellationRequested();
-            return new ValueTask<UserInfo?>(string.Equals(account, "missing", StringComparison.Ordinal)
+            return new ValueTask<UserInfo?>(account == AccountScenario.Missing
                 ? null : UserInfo.Create(new User { Id = viewer }, [], [], profile: null));
         });
         var now = Instant.FromUtc(2026, 1, 1, 0, 0);
         var coordinator = new TeamMemberInfo(Guid.NewGuid(), viewer, "Coordinator", null, null, TeamMemberRole.Coordinator, now);
         var parent = new TeamInfo(Guid.NewGuid(), "Parent", null, "parent", true, false,
             SystemTeamType.None, false, false, false, false, now,
-            string.Equals(role, "parent", StringComparison.Ordinal) ? [coordinator] : []);
+            viewerKind == RosterViewer.ParentCoordinator ? [coordinator] : []);
         var child = parent with
         {
             Id = Guid.NewGuid(),
             Name = "Child",
             Slug = "child",
             ParentTeamId = parent.Id,
-            Members = string.Equals(role, "coordinator", StringComparison.Ordinal) ? [coordinator] : []
+            Members = viewerKind == RosterViewer.ChildCoordinator ? [coordinator] : []
         };
         var other = child with { Id = Guid.NewGuid(), Name = "Other", Slug = "other", ParentTeamId = null, Members = [] };
         var teams = Substitute.For<ITeamManagementService>();
@@ -288,7 +322,7 @@ public class TeamControllerPageContentTests
             }
         };
 
-        if (string.Equals(account, "cancelled", StringComparison.Ordinal))
+        if (account == AccountScenario.Cancelled)
         {
             await request.CancelAsync();
             await Assert.ThrowsAsync<OperationCanceledException>(() => controller.Roster(null, null, null, request.Token));
@@ -299,7 +333,7 @@ public class TeamControllerPageContentTests
         var slots = result.Should().BeOfType<ViewResult>().Which.Model.Should().BeOfType<RosterSummaryViewModel>().Which.Slots;
         var expected = role is RoleNames.Admin or RoleNames.Board or TeamsRoles.TeamsAdmin
             ? new[] { publicSlot.RoleDefinitionId, privateSlot.RoleDefinitionId, otherPrivate.RoleDefinitionId }
-            : (role is "coordinator" or "parent") && !string.Equals(account, "missing", StringComparison.Ordinal)
+            : (viewerKind is RosterViewer.ChildCoordinator or RosterViewer.ParentCoordinator) && account != AccountScenario.Missing
                 ? new[] { publicSlot.RoleDefinitionId, privateSlot.RoleDefinitionId }
                 : new[] { publicSlot.RoleDefinitionId };
         slots.Select(slot => slot.RoleDefinitionId).Should().BeEquivalentTo(expected);
@@ -327,7 +361,7 @@ public class TeamControllerPageContentTests
             [visible.Id] = visible
         });
         var hiddenRequest = new TeamJoinRequestSnapshot(Guid.NewGuid(), hidden.Id, hidden.Name,
-            userId, null, null, null, TeamJoinRequestStatus.Pending, null,
+            userId, null, null, TeamJoinRequestStatus.Pending, null,
             Instant.FromUtc(2026, 10, 1, 0, 0), null, null, hidden.Slug);
         var visibleRequest = hiddenRequest with
         {
@@ -413,7 +447,7 @@ public class TeamControllerPageContentTests
         var pages = Substitute.For<ITeamPageService>();
         pages.GetMyTeamMembershipsAsync(userId, Arg.Any<CancellationToken>()).Returns(Array.Empty<MyTeamMembershipSummary>());
         var pendingRequest = new TeamJoinRequestSnapshot(Guid.NewGuid(), team.Id, team.Name,
-            userId, null, null, null, TeamJoinRequestStatus.Pending, null,
+            userId, null, null, TeamJoinRequestStatus.Pending, null,
             Instant.FromUtc(2026, 10, 1, 0, 0), null, null, team.Slug);
         teams.GetPendingRequestsForUserAsync(userId, Arg.Any<CancellationToken>()).Returns(call =>
         {
@@ -463,15 +497,15 @@ public class TeamControllerPageContentTests
     }
 
     [HumansTheory]
-    [InlineData("join", "viewer")]
-    [InlineData("join", "team")]
-    [InlineData("leave", "viewer")]
-    [InlineData("leave", "team")]
-    [InlineData("withdraw", "viewer")]
-    [InlineData("delete", "viewer")]
-    [InlineData("create", "parents")]
-    [InlineData("edit", "parents")]
-    public async Task Mutations_StopAtCancelledPreflightReads(string action, string boundary)
+    [InlineData(MutationAction.Join, ReadBoundary.Viewer)]
+    [InlineData(MutationAction.Join, ReadBoundary.Team)]
+    [InlineData(MutationAction.Leave, ReadBoundary.Viewer)]
+    [InlineData(MutationAction.Leave, ReadBoundary.Team)]
+    [InlineData(MutationAction.Withdraw, ReadBoundary.Viewer)]
+    [InlineData(MutationAction.Delete, ReadBoundary.Viewer)]
+    [InlineData(MutationAction.Create, ReadBoundary.Parents)]
+    [InlineData(MutationAction.Edit, ReadBoundary.Parents)]
+    public async Task Mutations_StopAtCancelledPreflightReads(MutationAction action, ReadBoundary boundary)
     {
         using var services = new ServiceCollection().AddLogging().AddLocalization().BuildServiceProvider();
         using var request = new CancellationTokenSource();
@@ -482,13 +516,13 @@ public class TeamControllerPageContentTests
             false, false, false, false, Instant.MinValue, []);
         users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(call =>
         {
-            if (string.Equals(boundary, "viewer", StringComparison.Ordinal))
+            if (boundary == ReadBoundary.Viewer)
                 call.Arg<CancellationToken>().ThrowIfCancellationRequested();
             return new ValueTask<UserInfo?>(UserInfo.Create(new User { Id = userId }, [], [], null));
         });
         teams.GetTeamBySlugAsync(team.Slug, Arg.Any<CancellationToken>()).Returns(call =>
         {
-            if (string.Equals(boundary, "team", StringComparison.Ordinal))
+            if (boundary == ReadBoundary.Team)
                 call.Arg<CancellationToken>().ThrowIfCancellationRequested();
             return Task.FromResult<TeamInfo?>(team);
         });
@@ -523,16 +557,17 @@ public class TeamControllerPageContentTests
             TempData = new TempDataDictionary(http, Substitute.For<ITempDataProvider>()),
             Url = Substitute.For<IUrlHelper>()
         };
-        if (action is "create" or "edit")
+        if (action is MutationAction.Create or MutationAction.Edit)
             controller.ModelState.AddModelError("Name", "Required");
         Func<Task> abandonedAction = async () => await (action switch
         {
-            "join" => controller.Join(team.Slug, new JoinTeamViewModel { TeamId = team.Id }),
-            "leave" => controller.Leave(team.Slug),
-            "withdraw" => controller.WithdrawRequest(Guid.NewGuid()),
-            "delete" => controller.DeleteTeam(team.Id),
-            "create" => controller.CreateTeam(new CreateTeamViewModel()),
-            _ => controller.EditTeam(team.Id, new EditTeamViewModel { Id = team.Id })
+            MutationAction.Join => controller.Join(team.Slug, new JoinTeamViewModel { TeamId = team.Id }),
+            MutationAction.Leave => controller.Leave(team.Slug),
+            MutationAction.Withdraw => controller.WithdrawRequest(Guid.NewGuid()),
+            MutationAction.Delete => controller.DeleteTeam(team.Id),
+            MutationAction.Create => controller.CreateTeam(new CreateTeamViewModel()),
+            MutationAction.Edit => controller.EditTeam(team.Id, new EditTeamViewModel { Id = team.Id }),
+            _ => throw new ArgumentOutOfRangeException(nameof(action))
         });
         await abandonedAction();
         teams.ReceivedCalls().Where(call => call.GetMethodInfo().Name is

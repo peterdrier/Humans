@@ -125,11 +125,18 @@ public class ProfileEmailsControllerGridTests
             .Returns(AuthorizationResult.Success());
     }
 
+    public enum EmailMutation
+    {
+        SetEmailVisibility,
+        DeleteEmail,
+        LinkGoogle
+    }
+
     [HumansTheory]
-    [Xunit.InlineData(0)]
-    [Xunit.InlineData(1)]
-    [Xunit.InlineData(2)]
-    public async Task Email_mutation_account_preflight_observes_cancellation(int action)
+    [Xunit.InlineData(EmailMutation.SetEmailVisibility)]
+    [Xunit.InlineData(EmailMutation.DeleteEmail)]
+    [Xunit.InlineData(EmailMutation.LinkGoogle)]
+    public async Task Email_mutation_account_preflight_observes_cancellation(EmailMutation action)
     {
         using var request = new CancellationTokenSource();
         _controller.HttpContext.RequestAborted = request.Token;
@@ -143,9 +150,10 @@ public class ProfileEmailsControllerGridTests
         var emailId = Guid.NewGuid();
         Func<Task<IActionResult>> invoke = action switch
         {
-            0 => () => _controller.SetEmailVisibility(emailId, null),
-            1 => () => _controller.DeleteEmail(emailId),
-            _ => () => _controller.Link("Google"),
+            EmailMutation.SetEmailVisibility => () => _controller.SetEmailVisibility(emailId, null),
+            EmailMutation.DeleteEmail => () => _controller.DeleteEmail(emailId),
+            EmailMutation.LinkGoogle => () => _controller.Link("Google"),
+            _ => throw new ArgumentOutOfRangeException(nameof(action), action, null),
         };
 
         await invoke.Should().ThrowAsync<OperationCanceledException>();

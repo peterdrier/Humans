@@ -61,8 +61,11 @@ public class NotificationBellViewTests
         var html = await RenderAsync("/Views/Notifications/_NotificationRow.cshtml",
             new NotificationRowDto
             {
-                Id = Guid.NewGuid(), Title = "Resolved", IsResolved = true,
-                CreatedAt = now.ToDateTimeUtc(), ResolvedAt = now.ToDateTimeUtc(),
+                Id = Guid.NewGuid(),
+                Title = "Resolved",
+                IsResolved = true,
+                CreatedAt = now.ToDateTimeUtc(),
+                ResolvedAt = now.ToDateTimeUtc(),
                 ResolvedByUserId = resolverId,
             }, services =>
             {

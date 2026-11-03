@@ -36,39 +36,61 @@ namespace Humans.Governance.Tests.Services;
 /// </summary>
 public sealed class AssemblyVoteServiceTests : IDisposable
 {
+    public enum AdminOperation
+    {
+        Create,
+        Edit,
+        Delete,
+        Open,
+        Stop,
+        Extend,
+        Cancel,
+        Peek,
+        Ballots
+    }
+
+    public enum MemberOperation
+    {
+        Index,
+        Details,
+        Ballot,
+        Results,
+        ResultsCsv
+    }
+
     private readonly AssemblyVoteServiceFixture _fx = new();
 
     public void Dispose() => _fx.Dispose();
 
     [HumansTheory]
-    [InlineData("create", "merged")]
-    [InlineData("create", "missing")]
-    [InlineData("create", "cancelled")]
-    [InlineData("edit", "merged")]
-    [InlineData("edit", "missing")]
-    [InlineData("edit", "cancelled")]
-    [InlineData("delete", "merged")]
-    [InlineData("delete", "missing")]
-    [InlineData("delete", "cancelled")]
-    [InlineData("open", "merged")]
-    [InlineData("open", "missing")]
-    [InlineData("open", "cancelled")]
-    [InlineData("stop", "merged")]
-    [InlineData("stop", "missing")]
-    [InlineData("stop", "cancelled")]
-    [InlineData("extend", "merged")]
-    [InlineData("extend", "missing")]
-    [InlineData("extend", "cancelled")]
-    [InlineData("cancel", "merged")]
-    [InlineData("cancel", "missing")]
-    [InlineData("cancel", "cancelled")]
-    [InlineData("peek", "merged")]
-    [InlineData("peek", "missing")]
-    [InlineData("peek", "cancelled")]
-    [InlineData("ballots", "merged")]
-    [InlineData("ballots", "missing")]
-    [InlineData("ballots", "cancelled")]
-    public async Task AdminOperations_ResolveTheActorBeforeCallingTheVoteService(string action, string account)
+    [InlineData(AdminOperation.Create, AccountScenario.Merged)]
+    [InlineData(AdminOperation.Create, AccountScenario.Missing)]
+    [InlineData(AdminOperation.Create, AccountScenario.Cancelled)]
+    [InlineData(AdminOperation.Edit, AccountScenario.Merged)]
+    [InlineData(AdminOperation.Edit, AccountScenario.Missing)]
+    [InlineData(AdminOperation.Edit, AccountScenario.Cancelled)]
+    [InlineData(AdminOperation.Delete, AccountScenario.Merged)]
+    [InlineData(AdminOperation.Delete, AccountScenario.Missing)]
+    [InlineData(AdminOperation.Delete, AccountScenario.Cancelled)]
+    [InlineData(AdminOperation.Open, AccountScenario.Merged)]
+    [InlineData(AdminOperation.Open, AccountScenario.Missing)]
+    [InlineData(AdminOperation.Open, AccountScenario.Cancelled)]
+    [InlineData(AdminOperation.Stop, AccountScenario.Merged)]
+    [InlineData(AdminOperation.Stop, AccountScenario.Missing)]
+    [InlineData(AdminOperation.Stop, AccountScenario.Cancelled)]
+    [InlineData(AdminOperation.Extend, AccountScenario.Merged)]
+    [InlineData(AdminOperation.Extend, AccountScenario.Missing)]
+    [InlineData(AdminOperation.Extend, AccountScenario.Cancelled)]
+    [InlineData(AdminOperation.Cancel, AccountScenario.Merged)]
+    [InlineData(AdminOperation.Cancel, AccountScenario.Missing)]
+    [InlineData(AdminOperation.Cancel, AccountScenario.Cancelled)]
+    [InlineData(AdminOperation.Peek, AccountScenario.Merged)]
+    [InlineData(AdminOperation.Peek, AccountScenario.Missing)]
+    [InlineData(AdminOperation.Peek, AccountScenario.Cancelled)]
+    [InlineData(AdminOperation.Ballots, AccountScenario.Merged)]
+    [InlineData(AdminOperation.Ballots, AccountScenario.Missing)]
+    [InlineData(AdminOperation.Ballots, AccountScenario.Cancelled)]
+    public async Task AdminOperations_ResolveTheActorBeforeCallingTheVoteService(AdminOperation action, AccountScenario account)
     {
         using var request = new CancellationTokenSource();
         var cookieId = Guid.NewGuid();
@@ -77,7 +99,7 @@ public sealed class AssemblyVoteServiceTests : IDisposable
         users.GetUserInfoAsync(cookieId, Arg.Any<CancellationToken>()).Returns(call =>
         {
             call.Arg<CancellationToken>().ThrowIfCancellationRequested();
-            return new ValueTask<UserInfo?>(string.Equals(account, "missing", StringComparison.Ordinal)
+            return new ValueTask<UserInfo?>(account == AccountScenario.Missing
                 ? null : UserInfo.Create(new User { Id = actorId }, [], [], null));
         });
         var votes = Substitute.For<IAssemblyVoteService>();
@@ -99,17 +121,18 @@ public sealed class AssemblyVoteServiceTests : IDisposable
         var draft = new AssemblyVoteDraftFormViewModel { ClosesAt = new DateTime(2026, 12, 1) };
         Func<Task<IActionResult>> run = () => action switch
         {
-            "create" => controller.Create(draft, null, request.Token),
-            "edit" => controller.Edit(voteId, draft, null, request.Token),
-            "delete" => controller.Delete(voteId, request.Token),
-            "open" => controller.Open(voteId, request.Token),
-            "stop" => controller.Stop(voteId, request.Token),
-            "extend" => controller.Extend(voteId, new AssemblyVoteExtendFormModel { NewClosesAt = new DateTime(2026, 12, 2) }, request.Token),
-            "cancel" => controller.Cancel(voteId, new AssemblyVoteCancelFormModel { Reason = "reason" }, request.Token),
-            "peek" => controller.Peek(voteId, request.Token),
-            _ => controller.Ballots(voteId, request.Token)
+            AdminOperation.Create => controller.Create(draft, null, request.Token),
+            AdminOperation.Edit => controller.Edit(voteId, draft, null, request.Token),
+            AdminOperation.Delete => controller.Delete(voteId, request.Token),
+            AdminOperation.Open => controller.Open(voteId, request.Token),
+            AdminOperation.Stop => controller.Stop(voteId, request.Token),
+            AdminOperation.Extend => controller.Extend(voteId, new AssemblyVoteExtendFormModel { NewClosesAt = new DateTime(2026, 12, 2) }, request.Token),
+            AdminOperation.Cancel => controller.Cancel(voteId, new AssemblyVoteCancelFormModel { Reason = "reason" }, request.Token),
+            AdminOperation.Peek => controller.Peek(voteId, request.Token),
+            AdminOperation.Ballots => controller.Ballots(voteId, request.Token),
+            _ => throw new ArgumentOutOfRangeException(nameof(action))
         };
-        if (string.Equals(account, "cancelled", StringComparison.Ordinal))
+        if (account == AccountScenario.Cancelled)
         {
             await request.CancelAsync();
             await run.Should().ThrowAsync<OperationCanceledException>();
@@ -117,29 +140,29 @@ public sealed class AssemblyVoteServiceTests : IDisposable
         else
         {
             var result = await run();
-            if (string.Equals(account, "missing", StringComparison.Ordinal)) result.Should().BeOfType<ChallengeResult>();
+            if (account == AccountScenario.Missing) result.Should().BeOfType<ChallengeResult>();
             else votes.ReceivedCalls().Should().ContainSingle().Which.GetArguments().OfType<Guid>().Last().Should().Be(actorId);
         }
-        if (!string.Equals(account, "merged", StringComparison.Ordinal)) votes.ReceivedCalls().Should().BeEmpty();
+        if (account != AccountScenario.Merged) votes.ReceivedCalls().Should().BeEmpty();
     }
 
     [HumansTheory]
-    [InlineData("index", "merged")]
-    [InlineData("index", "missing")]
-    [InlineData("index", "cancelled")]
-    [InlineData("details", "merged")]
-    [InlineData("details", "missing")]
-    [InlineData("details", "cancelled")]
-    [InlineData("ballot", "merged")]
-    [InlineData("ballot", "missing")]
-    [InlineData("ballot", "cancelled")]
-    [InlineData("results", "merged")]
-    [InlineData("results", "missing")]
-    [InlineData("results", "cancelled")]
-    [InlineData("csv", "merged")]
-    [InlineData("csv", "missing")]
-    [InlineData("csv", "cancelled")]
-    public async Task MemberOperations_ResolveTheAccountBeforeCallingTheVoteService(string action, string account)
+    [InlineData(MemberOperation.Index, AccountScenario.Merged)]
+    [InlineData(MemberOperation.Index, AccountScenario.Missing)]
+    [InlineData(MemberOperation.Index, AccountScenario.Cancelled)]
+    [InlineData(MemberOperation.Details, AccountScenario.Merged)]
+    [InlineData(MemberOperation.Details, AccountScenario.Missing)]
+    [InlineData(MemberOperation.Details, AccountScenario.Cancelled)]
+    [InlineData(MemberOperation.Ballot, AccountScenario.Merged)]
+    [InlineData(MemberOperation.Ballot, AccountScenario.Missing)]
+    [InlineData(MemberOperation.Ballot, AccountScenario.Cancelled)]
+    [InlineData(MemberOperation.Results, AccountScenario.Merged)]
+    [InlineData(MemberOperation.Results, AccountScenario.Missing)]
+    [InlineData(MemberOperation.Results, AccountScenario.Cancelled)]
+    [InlineData(MemberOperation.ResultsCsv, AccountScenario.Merged)]
+    [InlineData(MemberOperation.ResultsCsv, AccountScenario.Missing)]
+    [InlineData(MemberOperation.ResultsCsv, AccountScenario.Cancelled)]
+    public async Task MemberOperations_ResolveTheAccountBeforeCallingTheVoteService(MemberOperation action, AccountScenario account)
     {
         using var request = new CancellationTokenSource();
         var cookieId = Guid.NewGuid();
@@ -148,7 +171,7 @@ public sealed class AssemblyVoteServiceTests : IDisposable
         users.GetUserInfoAsync(cookieId, Arg.Any<CancellationToken>()).Returns(call =>
         {
             call.Arg<CancellationToken>().ThrowIfCancellationRequested();
-            return new ValueTask<UserInfo?>(string.Equals(account, "missing", StringComparison.Ordinal)
+            return new ValueTask<UserInfo?>(account == AccountScenario.Missing
                 ? null : UserInfo.Create(new User { Id = memberId }, [], [], null));
         });
         var votes = Substitute.For<IAssemblyVoteService>();
@@ -166,14 +189,15 @@ public sealed class AssemblyVoteServiceTests : IDisposable
         var voteId = Guid.NewGuid();
         Func<Task<IActionResult>> run = () => action switch
         {
-            "index" => controller.Index(request.Token),
-            "details" => controller.Details(voteId, request.Token),
-            "ballot" => controller.Ballot(voteId, new AssemblyBallotFormViewModel
-                { VoteId = voteId, Choice = AssemblyBallotChoice.Yes }, request.Token),
-            "results" => controller.Results(voteId, request.Token),
-            _ => controller.ResultsCsv(voteId, request.Token)
+            MemberOperation.Index => controller.Index(request.Token),
+            MemberOperation.Details => controller.Details(voteId, request.Token),
+            MemberOperation.Ballot => controller.Ballot(voteId, new AssemblyBallotFormViewModel
+            { VoteId = voteId, Choice = AssemblyBallotChoice.Yes }, request.Token),
+            MemberOperation.Results => controller.Results(voteId, request.Token),
+            MemberOperation.ResultsCsv => controller.ResultsCsv(voteId, request.Token),
+            _ => throw new ArgumentOutOfRangeException(nameof(action))
         };
-        if (string.Equals(account, "cancelled", StringComparison.Ordinal))
+        if (account == AccountScenario.Cancelled)
         {
             await request.CancelAsync();
             await run.Should().ThrowAsync<OperationCanceledException>();
@@ -181,10 +205,10 @@ public sealed class AssemblyVoteServiceTests : IDisposable
         else
         {
             var result = await run();
-            if (string.Equals(account, "missing", StringComparison.Ordinal)) result.Should().BeOfType<ChallengeResult>();
+            if (account == AccountScenario.Missing) result.Should().BeOfType<ChallengeResult>();
             else votes.ReceivedCalls().Should().ContainSingle().Which.GetArguments().OfType<Guid>().Last().Should().Be(memberId);
         }
-        if (!string.Equals(account, "merged", StringComparison.Ordinal)) votes.ReceivedCalls().Should().BeEmpty();
+        if (account != AccountScenario.Merged) votes.ReceivedCalls().Should().BeEmpty();
     }
 
     [HumansTheory]
@@ -2150,7 +2174,7 @@ public sealed class AssemblyVoteServiceTests : IDisposable
                 Url = Substitute.For<IUrlHelper>()
             };
             (await controller.Ballot(vote.Id, new AssemblyBallotFormViewModel
-                { VoteId = vote.Id, Choice = AssemblyBallotChoice.No }, TestContext.Current.CancellationToken))
+            { VoteId = vote.Id, Choice = AssemblyBallotChoice.No }, TestContext.Current.CancellationToken))
                 .Should().BeOfType<RedirectToActionResult>();
         }
         else

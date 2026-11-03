@@ -16,23 +16,32 @@ namespace Humans.Consent.Tests.Controllers;
 
 public sealed class AdminLegalDocumentsControllerTests
 {
+    public enum LegalDocumentMutation
+    {
+        Create,
+        Edit,
+        Archive,
+        Sync,
+        UpdateVersionSummary
+    }
+
     [HumansTheory]
-    [InlineData("create", "merged")]
-    [InlineData("create", "missing")]
-    [InlineData("create", "cancelled")]
-    [InlineData("edit", "merged")]
-    [InlineData("edit", "missing")]
-    [InlineData("edit", "cancelled")]
-    [InlineData("archive", "merged")]
-    [InlineData("archive", "missing")]
-    [InlineData("archive", "cancelled")]
-    [InlineData("sync", "merged")]
-    [InlineData("sync", "missing")]
-    [InlineData("sync", "cancelled")]
-    [InlineData("summary", "merged")]
-    [InlineData("summary", "missing")]
-    [InlineData("summary", "cancelled")]
-    public async Task DocumentMutations_ResolveTheActorBeforeCallingTheService(string action, string account)
+    [InlineData(LegalDocumentMutation.Create, AccountScenario.Merged)]
+    [InlineData(LegalDocumentMutation.Create, AccountScenario.Missing)]
+    [InlineData(LegalDocumentMutation.Create, AccountScenario.Cancelled)]
+    [InlineData(LegalDocumentMutation.Edit, AccountScenario.Merged)]
+    [InlineData(LegalDocumentMutation.Edit, AccountScenario.Missing)]
+    [InlineData(LegalDocumentMutation.Edit, AccountScenario.Cancelled)]
+    [InlineData(LegalDocumentMutation.Archive, AccountScenario.Merged)]
+    [InlineData(LegalDocumentMutation.Archive, AccountScenario.Missing)]
+    [InlineData(LegalDocumentMutation.Archive, AccountScenario.Cancelled)]
+    [InlineData(LegalDocumentMutation.Sync, AccountScenario.Merged)]
+    [InlineData(LegalDocumentMutation.Sync, AccountScenario.Missing)]
+    [InlineData(LegalDocumentMutation.Sync, AccountScenario.Cancelled)]
+    [InlineData(LegalDocumentMutation.UpdateVersionSummary, AccountScenario.Merged)]
+    [InlineData(LegalDocumentMutation.UpdateVersionSummary, AccountScenario.Missing)]
+    [InlineData(LegalDocumentMutation.UpdateVersionSummary, AccountScenario.Cancelled)]
+    public async Task DocumentMutations_ResolveTheActorBeforeCallingTheService(LegalDocumentMutation action, AccountScenario account)
     {
         using var request = new CancellationTokenSource();
         var cookieId = Guid.NewGuid();
@@ -41,7 +50,7 @@ public sealed class AdminLegalDocumentsControllerTests
         users.GetUserInfoAsync(cookieId, Arg.Any<CancellationToken>()).Returns(call =>
         {
             call.Arg<CancellationToken>().ThrowIfCancellationRequested();
-            return new ValueTask<UserInfo?>(string.Equals(account, "missing", StringComparison.Ordinal)
+            return new ValueTask<UserInfo?>(account == AccountScenario.Missing
                 ? null : UserInfo.Create(new User { Id = actorId }, [], [], null));
         });
         var documents = Substitute.For<IAdminLegalDocumentService>();
@@ -63,13 +72,13 @@ public sealed class AdminLegalDocumentsControllerTests
         var model = new Humans.Consent.Models.LegalDocumentEditViewModel { Id = documentId, Name = "Conduct" };
         Func<Task<IActionResult>> run = () => action switch
         {
-            "create" => controller.CreateLegalDocument(model),
-            "edit" => controller.EditLegalDocument(documentId, model),
-            "archive" => controller.ArchiveLegalDocument(documentId),
-            "sync" => controller.SyncLegalDocument(documentId),
+            LegalDocumentMutation.Create => controller.CreateLegalDocument(model),
+            LegalDocumentMutation.Edit => controller.EditLegalDocument(documentId, model),
+            LegalDocumentMutation.Archive => controller.ArchiveLegalDocument(documentId),
+            LegalDocumentMutation.Sync => controller.SyncLegalDocument(documentId),
             _ => controller.UpdateVersionSummary(documentId, Guid.NewGuid(), "Summary")
         };
-        if (string.Equals(account, "cancelled", StringComparison.Ordinal))
+        if (account == AccountScenario.Cancelled)
         {
             await request.CancelAsync();
             await run.Should().ThrowAsync<OperationCanceledException>();
@@ -77,11 +86,11 @@ public sealed class AdminLegalDocumentsControllerTests
         else
         {
             var result = await run();
-            if (string.Equals(account, "missing", StringComparison.Ordinal)) result.Should().BeOfType<UnauthorizedResult>();
+            if (account == AccountScenario.Missing) result.Should().BeOfType<UnauthorizedResult>();
         }
         var writes = documents.ReceivedCalls().Where(call =>
             !string.Equals(call.GetMethodInfo().Name, nameof(IAdminLegalDocumentService.NormalizeGitHubFolderPath), StringComparison.Ordinal));
-        if (string.Equals(account, "merged", StringComparison.Ordinal))
+        if (account == AccountScenario.Merged)
         {
             var arguments = writes.Should().ContainSingle().Which.GetArguments();
             arguments.OfType<Guid>().Last().Should().Be(actorId);
