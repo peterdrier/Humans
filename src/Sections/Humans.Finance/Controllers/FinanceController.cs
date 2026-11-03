@@ -252,6 +252,21 @@ internal sealed class FinanceController(
         return RedirectToAction(nameof(Sepa), new { days });
     }
 
+    /// <summary>For a file the bank rejected whole.</summary>
+    [HttpPost("Sepa/CancelFile")]
+    [Authorize(Policy = FinancePolicies.Manage)]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> CancelSepaFile(
+        Guid fileId, int days = IHoldedFinanceAdminService.DefaultSepaMatchToleranceDays)
+    {
+        if (GetCurrentUserId() is not { } actorUserId) return Challenge();
+
+        var result = await holdedConnector.CancelSepaFileAsync(fileId, actorUserId, HttpContext.RequestAborted);
+        if (result.Succeeded) SetSuccess(result.Message); else SetError(result.Message);
+
+        return RedirectToAction(nameof(Sepa), new { days });
+    }
+
     /// <summary>Dry run from live Holded reads; nothing is written.</summary>
     [HttpGet("HoldedDuplicates")]
     public async Task<IActionResult> HoldedDuplicates(CancellationToken ct)
