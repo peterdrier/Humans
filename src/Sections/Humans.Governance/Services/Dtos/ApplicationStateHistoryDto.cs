@@ -7,5 +7,4 @@ internal sealed record ApplicationStateHistoryDto(
     ApplicationStatus Status,
     Instant ChangedAt,
     Guid ChangedByUserId,
-    string? ChangedByDisplayName,
     string? Notes);

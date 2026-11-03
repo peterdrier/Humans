@@ -38,10 +38,13 @@ internal sealed class NotificationMeterProvider(
     internal const string CountsCacheKey = "NotificationMeters";
 
     public async Task<IReadOnlyList<NotificationMeter>> GetMetersForUserAsync(
-        ClaimsPrincipal user, CancellationToken cancellationToken = default)
+        ClaimsPrincipal user, CancellationToken cancellationToken = default, Guid? resolvedUserId = null)
     {
         var counts = await GetCachedCountsAsync(cancellationToken);
         var meters = new List<NotificationMeter>();
+        var viewerId = resolvedUserId;
+        if (viewerId is null && Guid.TryParse(user.FindFirstValue(ClaimTypes.NameIdentifier), out var claimedUserId))
+            viewerId = claimedUserId;
 
         var isAdmin = user.IsInRole(RoleNames.Admin);
         var isBoard = user.IsInRole(RoleNames.Board);
@@ -62,8 +65,7 @@ internal sealed class NotificationMeterProvider(
 
         if (isBoard)
         {
-            var userIdClaim = user.FindFirstValue(ClaimTypes.NameIdentifier);
-            if (Guid.TryParse(userIdClaim, out var boardMemberUserId))
+            if (viewerId is { } boardMemberUserId)
             {
                 var pendingVoteCount = await GetPerUserVotingCountAsync(boardMemberUserId, cancellationToken);
                 if (pendingVoteCount > 0)
@@ -146,8 +148,7 @@ internal sealed class NotificationMeterProvider(
 
         // One counter per lead rather than a stored notification per request.
         {
-            var userIdClaim = user.FindFirstValue(ClaimTypes.NameIdentifier);
-            if (Guid.TryParse(userIdClaim, out var leadUserId))
+            if (viewerId is { } leadUserId)
             {
                 var campLeadRequestsPending = await GetPerCampLeadPendingCountAsync(leadUserId, cancellationToken);
                 if (campLeadRequestsPending > 0)

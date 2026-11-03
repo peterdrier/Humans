@@ -627,17 +627,17 @@ internal sealed class UserEmailService(
         await auditLogService.LogAsync(
             UsersAuditActions.UserEmailUnlinked,
             nameof(User), userId,
-            $"Unlinked {provider} (key {ShortHash(providerKey)}) from {email}",
+            $"Unlinked {provider} (key {ShortProviderKeyHash(providerKey)}) from {email}",
             actorUserId,
             relatedEntityId: row.Id, relatedEntityType: nameof(UserEmail));
 
         return new(true);
     }
 
-    private static string ShortHash(string s)
+    internal static string ShortProviderKeyHash(string providerKey)
     {
         var bytes = System.Security.Cryptography.SHA256.HashData(
-            System.Text.Encoding.UTF8.GetBytes(s));
+            System.Text.Encoding.UTF8.GetBytes(providerKey));
         return Convert.ToHexString(bytes.AsSpan(0, 8));
     }
 

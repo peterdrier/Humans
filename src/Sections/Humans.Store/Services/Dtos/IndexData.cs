@@ -17,7 +17,6 @@ internal sealed record CounterpartyOrders(
 internal sealed record OrderPageData(
     OrderDto Order,
     IReadOnlyList<ProductDto> Catalog,
-    string CounterpartyDisplayName,
     bool CanEdit,
     bool CanPay,
     bool IsStripeConfigured);

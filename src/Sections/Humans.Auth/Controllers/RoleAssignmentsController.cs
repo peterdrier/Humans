@@ -83,7 +83,7 @@ internal sealed class RoleAssignmentsController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> AddRole(Guid id, CreateRoleAssignmentViewModel model)
     {
-        if (await UserService.GetRawUserInfoAsync(id) is null)
+        if (await UserService.GetRawUserInfoAsync(id, HttpContext.RequestAborted) is null)
             return NotFound();
 
         if (string.IsNullOrWhiteSpace(model.RoleName))
@@ -94,7 +94,7 @@ internal sealed class RoleAssignmentsController(
             return View(model);
         }
 
-        var currentUser = await GetCurrentUserInfoAsync();
+        var currentUser = await GetCurrentUserInfoAsync(HttpContext.RequestAborted);
         if (currentUser is null)
         {
             return Unauthorized();
@@ -126,14 +126,14 @@ internal sealed class RoleAssignmentsController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> EndRole(Guid id, Guid roleId, string? notes)
     {
-        var roleAssignment = await roleAssignmentService.GetByIdAsync(roleId);
+        var roleAssignment = await roleAssignmentService.GetByIdAsync(roleId, HttpContext.RequestAborted);
 
         if (roleAssignment is null)
         {
             return NotFound();
         }
 
-        var currentUser = await GetCurrentUserInfoAsync();
+        var currentUser = await GetCurrentUserInfoAsync(HttpContext.RequestAborted);
         if (currentUser is null)
         {
             return Unauthorized();

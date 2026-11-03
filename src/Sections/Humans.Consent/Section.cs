@@ -1,6 +1,5 @@
 using Humans.Base.Authorization;
 using Humans.Base.Constants;
-using Humans.Base.Extensions;
 using Humans.Base.Hosting;
 using Humans.Base.Interfaces;
 using Humans.Base.Interfaces.Caching;
@@ -30,11 +29,11 @@ public sealed class Section :
     ISectionRoles,
     ISectionAccessMatrix,
     ISectionAdminNav,
-    ISectionDataMigrations,
     ISectionHelp,
     ISectionJobs,
     ISectionPolicies,
-    IUserPart
+    IUserPart,
+    ISectionChrome
 {
     IReadOnlyList<RoleDefinition> ISectionRoles.Roles { get; } =
     [
@@ -168,31 +167,6 @@ public sealed class Section :
         SectionHelpEntry.FromEmbeddedMarkdown(typeof(Section).Assembly, "ConsentReview", 70),
     ];
 
-    internal const string ProfileReviewKey = "consent.profile-review";
-
-    IEnumerable<DataMigration> ISectionDataMigrations.Migrations() =>
-    [
-        new(ProfileReviewKey, "Consent",
-            "Copy each Consent Coordinator review (consent check, approval, rejection) from profiles into consent_reviews, and record a legacy rejection as users.State = Rejected where the state never did",
-            "ConsentReviewService's legacy fallback, UserInfo.IsRejected's legacy arm, the review fields on ProfileInfo and LegacyConsentCheckStatus; then a drop PR for the profiles review columns",
-            StatusAsync, ApplyAsync),
-    ];
-
-    private static async Task<DataMigrationStatus> StatusAsync(IServiceProvider sp, CancellationToken ct) =>
-        new(["User", "Copy row", "Set Rejected state", "Status", "Approved", "Checked", "Rejected"],
-            [.. (await sp.GetRequiredService<ConsentReviewService>().GetUncopiedLegacyReviewsAsync(ct))
-                .Select(p => (IReadOnlyList<string>)[
-                    p.Review.UserId.ToString(),
-                    p.CopyRow ? "yes" : "no",
-                    p.SetRejectedState ? "yes" : "no",
-                    p.Review.Status?.ToString() ?? string.Empty,
-                    p.Review.IsApproved ? "yes" : "no",
-                    p.Review.CheckedAt.ToIso8601() ?? string.Empty,
-                    p.Review.RejectedAt.ToIso8601() ?? string.Empty])]);
-
-    private static Task<int> ApplyAsync(IServiceProvider sp, Guid actorUserId, CancellationToken ct) =>
-        sp.GetRequiredService<ConsentReviewService>().CopyLegacyReviewsAsync(ct);
-
     IEnumerable<RecurringJobDescriptor> ISectionJobs.Jobs(IServiceProvider services)
     {
         // Both at 04:00, 30 minutes before Users' SuspendNonCompliantMembersJob.
@@ -214,4 +188,7 @@ public sealed class Section :
         new(UserPartSlots.AdminDetail, typeof(ConsentReviewCardViewComponent)),
         new(UserPartSlots.AccountStatus, typeof(RejectionReasonViewComponent)),
     ];
+
+    IEnumerable<ChromeComponent> ISectionChrome.Components() =>
+        [new(ChromeSlots.WidgetGallery, typeof(ConsentGalleryViewComponent))];
 }

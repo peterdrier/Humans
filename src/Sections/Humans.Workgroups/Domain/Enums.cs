@@ -92,7 +92,8 @@ internal enum WorkgroupLogKind
     Update,
     Disclosure,
     StatusRequested,
-    Note
+    Note,
+    MeetingNotes
 }
 
 /// <summary>What a document is. An <see cref="AnnualReport"/> published in a year satisfies clause 5.</summary>

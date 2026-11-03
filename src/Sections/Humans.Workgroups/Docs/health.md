@@ -40,7 +40,7 @@ initiative: it writes notes, raises flags, and waits for a human.
 | **What did it produce** | What is the group handing over, and what did people say about it? | `GET /Workgroups/{slug}/Documents/{id}`, `/Documents/Save`, `/Publish`, `/OpenComments`, `/CloseComments`, `/Deliver`, `/Comments`, `/Comments/RespondCategory`, `/Comments/{id}/Respond`, `/Comments/{id}/Hide` |
 | **The Board's reply** | What did the Board decide about what it received? | `POST /Workgroups/Admin/Documents/{id}/Disposition` |
 | **What may it spend** | How much is allocated, and against which account? | `POST /Workgroups/Admin/{id}/Budget` |
-| **Nudge the humans** | Who is behind, and who needs telling? | `RunDailyRhythmAsync` through `WorkgroupRhythmJob`, plus the read-time badges in `WorkgroupRhythm` |
+| **Nudge the humans** | Who is behind, and who needs telling? | `RunDailyRhythmAsync` through `WorkgroupRhythmJob`, plus the read-time badges on `WorkgroupInfo` |
 | **Where do the files live** | Which Drive folder is this group's, and who may open it? | `GET/POST /Workgroups/Admin/Settings`, `WorkgroupDriveAccessSource`, `WorkgroupCalendarContributor` |
 | **What do we hold on this person** | Export, erasure, account merge. | `ContributeForUserAsync`, `EraseForUserAsync`, `ReassignAsync` |
 

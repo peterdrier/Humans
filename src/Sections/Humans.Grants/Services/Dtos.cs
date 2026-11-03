@@ -12,8 +12,8 @@ internal enum GrantState
 }
 
 /// <summary>
-/// <see cref="EventSettingsId"/> is the program's event, or for a program not yet stamped the one
-/// <c>grants.event-ids</c> would give it; null when its year has none, and then <see cref="EventName"/> is the year.
+/// <see cref="EventSettingsId"/> is the program's stored event id. When that event is unavailable,
+/// <see cref="EventName"/> falls back to the stored year without inferring an event.
 /// </summary>
 internal sealed record ProgramInfo(
     Guid Id,
@@ -27,9 +27,6 @@ internal sealed record ProgramInfo(
     string? SourceKey,
     LocalDate? GrantsExpireOn,
     GrantProgramStatus Status,
-    Guid CreatedByUserId,
-    Instant CreatedAt,
-    Instant UpdatedAt,
     IReadOnlyList<Guid> ManagerUserIds,
     IReadOnlyList<GrantInfo> Grants)
 {
@@ -46,7 +43,6 @@ internal sealed record GrantInfo(
     int Year,
     Guid UserId,
     string? SourceRef,
-    LocalDate? OwnExpiresOn,
     LocalDate? ExpiresOn,
     Instant IssuedAt,
     Guid IssuedByUserId,

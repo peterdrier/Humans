@@ -251,7 +251,7 @@ public abstract class WorkgroupsTestHarness : IDisposable
     }
 
     private protected async Task<WorkgroupMeeting> AddMeetingAsync(
-        Guid workgroupId, Instant startUtc, bool isPublic = false, Instant? deletedAt = null)
+        Guid workgroupId, Instant startUtc, bool isPublic = false, Instant? deletedAt = null, string? weeklyIn = null)
     {
         var meeting = new WorkgroupMeeting
         {
@@ -261,6 +261,8 @@ public abstract class WorkgroupsTestHarness : IDisposable
             StartUtc = startUtc,
             EndUtc = startUtc.Plus(Duration.FromHours(1)),
             IsPublic = isPublic,
+            RecurrenceRule = weeklyIn is null ? null : "FREQ=WEEKLY",
+            RecurrenceTimezone = weeklyIn,
             DeletedAt = deletedAt,
             CreatedAt = startUtc,
             UpdatedAt = startUtc
@@ -328,8 +330,8 @@ public abstract class WorkgroupsTestHarness : IDisposable
         Guid id, string burnerName, ProfileInfo? profile, string language) => new(
         id, burnerName, false, language, null, Instant.FromUtc(2026, 1, 1, 0, 0),
         null, null, null, null, null, null,
-        null, null, $"{id}@example.org", [], [], [],
-        profile ?? UserFixtures.Profile(burnerName: burnerName), []);
+        null, null, $"{id}@example.org", [], [],
+        profile ?? UserFixtures.Profile(burnerName: burnerName));
 
     public void Dispose()
     {

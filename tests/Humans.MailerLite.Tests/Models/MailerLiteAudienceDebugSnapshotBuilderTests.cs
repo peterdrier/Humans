@@ -374,9 +374,7 @@ public class MailerLiteAudienceDebugSnapshotBuilderTests
                 CreatedAt = now,
             },
             userEmails: emails,
-            eventParticipations: [],
             externalLogins: [],
-            profile: null,
-            communicationPreferences: []);
+            profile: null);
     }
 }

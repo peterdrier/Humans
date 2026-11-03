@@ -25,7 +25,7 @@ public class GuideRendererTests
     {
         const string markdown = "See [Profiles](Profiles.md) for details.";
 
-        var html = CreateRenderer().Render(markdown, "Teams");
+        var html = CreateRenderer().Render(markdown);
 
         html.Should().Contain("/Guide/Profiles");
     }
@@ -35,7 +35,7 @@ public class GuideRendererTests
     {
         const string markdown = "![x](img/screenshot.png)";
 
-        var html = CreateRenderer().Render(markdown, "Profiles");
+        var html = CreateRenderer().Render(markdown);
 
         html.Should().Contain("raw.githubusercontent.com/nobodies-collective/Humans/main/docs/guide/img/screenshot.png");
     }
@@ -45,7 +45,7 @@ public class GuideRendererTests
     {
         const string markdown = "[ex](https://example.com)";
 
-        var html = CreateRenderer().Render(markdown, "Profiles");
+        var html = CreateRenderer().Render(markdown);
 
         html.Should().Contain("target=\"_blank\"");
     }
@@ -55,7 +55,7 @@ public class GuideRendererTests
     {
         const string markdown = "[Edit](/Profile/Me/Edit)";
 
-        var html = CreateRenderer().Render(markdown, "Profiles");
+        var html = CreateRenderer().Render(markdown);
 
         html.Should().Contain("/Profile/Me/Edit");
         html.Should().NotContain("target=\"_blank\"");
@@ -66,7 +66,7 @@ public class GuideRendererTests
     [InlineData("<pre><code>/Profile/Me</code></pre>", "<pre><code>")]
     public void Render_AppPathInLinkOrCodeBlock_IsNotAutolinked(string markdown, string expected)
     {
-        var html = CreateRenderer().Render(markdown, "Profiles");
+        var html = CreateRenderer().Render(markdown);
 
         html.Should().Contain(expected);
         html.Should().Contain("/Profile/Me");
@@ -84,7 +84,7 @@ public class GuideRendererTests
             Coordinator stuff.
             """;
 
-        var html = CreateRenderer().Render(markdown, "Profiles");
+        var html = CreateRenderer().Render(markdown);
 
         html.Should().NotContain("data-guide-role");
         html.Should().NotContain("data-guide-roles");

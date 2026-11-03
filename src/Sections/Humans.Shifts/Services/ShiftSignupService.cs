@@ -624,7 +624,7 @@ internal sealed class ShiftSignupService(
     private async Task<string?> AppendEarlyEntryRangeWarningAsync(
         string? warning,
         IReadOnlyList<Shift> availableShifts,
-        EventSettingsInfo eventSettings)
+        BurnSettingsInfo eventSettings)
     {
         var fullEeDays = new List<int>();
         foreach (var dayOffset in availableShifts
@@ -649,7 +649,7 @@ internal sealed class ShiftSignupService(
         => warning is null ? nextWarning : $"{warning} {nextWarning}";
 
     // Audit and notice text is persisted English; keep its dates out of the actor's UI culture.
-    private static string FormatAuditDay(EventSettingsInfo eventSettings, int dayOffset)
+    private static string FormatAuditDay(BurnSettingsInfo eventSettings, int dayOffset)
     {
         using var culture = new CultureScope("en");
         return eventSettings.GateOpeningDate.PlusDays(dayOffset).ToWeekdayDayMonth();
@@ -701,7 +701,7 @@ internal sealed class ShiftSignupService(
         Guid userId,
         Guid actorUserId,
         Rota rota,
-        EventSettingsInfo eventSettings,
+        BurnSettingsInfo eventSettings,
         IEnumerable<(ShiftSignup Signup, int DayOffset)> rangeSignupsForAudit,
         bool autoConfirm)
     {
@@ -928,9 +928,9 @@ internal sealed class ShiftSignupService(
         return result;
     }
 
-    public async Task<ShiftSignupTeamProbe?> GetTeamProbeAsync(Guid id, ShiftSignupTeamProbeScope scope)
+    public async Task<ShiftSignupTeamProbe?> GetTeamProbeAsync(Guid id, ShiftSignupTeamProbeScope scope, CancellationToken ct = default)
     {
-        var signup = await repo.GetTeamProbeAsync(id, scope);
+        var signup = await repo.GetTeamProbeAsync(id, scope, ct);
         return signup is null
             ? null
             : new ShiftSignupTeamProbe(signup.Id, signup.ShiftId, signup.Shift.Rota.TeamId);
@@ -942,7 +942,7 @@ internal sealed class ShiftSignupService(
             .Where(s => s.Status == SignupStatus.NoShow)
             .ToList();
 
-        var calendarsById = new Dictionary<Guid, EventSettingsInfo>();
+        var calendarsById = new Dictionary<Guid, BurnSettingsInfo>();
         foreach (var id in signups.Select(s => s.Shift.Rota.EventSettingsId).Distinct())
         {
             var calendar = await calendarResolver.GetAsync(id, ct);
@@ -973,7 +973,7 @@ internal sealed class ShiftSignupService(
             .ToList();
     }
 
-    private async Task<string?> CheckOverlapAsync(Guid userId, Shift targetShift, EventSettingsInfo es)
+    private async Task<string?> CheckOverlapAsync(Guid userId, Shift targetShift, BurnSettingsInfo es)
     {
         var targetStart = targetShift.GetAbsoluteStart(es);
         var targetEnd = targetShift.GetAbsoluteEnd(es);
@@ -1015,7 +1015,7 @@ internal sealed class ShiftSignupService(
         return null;
     }
 
-    private async Task<string?> CheckEeCapAsync(EventSettingsInfo es, int dayOffset)
+    private async Task<string?> CheckEeCapAsync(BurnSettingsInfo es, int dayOffset)
     {
         var availableSlots = EarlyEntryCapacityCalculator.GetAvailableEeSlots(es, dayOffset);
         if (availableSlots <= 0)
@@ -1188,7 +1188,7 @@ internal sealed class ShiftSignupService(
 
         var teamsById = await TeamService.GetTeamsAsync(ct);
 
-        var calendarsById = new Dictionary<Guid, EventSettingsInfo>();
+        var calendarsById = new Dictionary<Guid, BurnSettingsInfo>();
         foreach (var id in signups.Select(ss => ss.Shift.Rota.EventSettingsId).Distinct())
         {
             var calendar = await calendarResolver.GetAsync(id, ct);
@@ -1261,7 +1261,7 @@ internal sealed class ShiftSignupService(
     {
         var signups = await repo.GetAllForOrphanScanAsync(ct);
 
-        var calendarsById = new Dictionary<Guid, EventSettingsInfo>();
+        var calendarsById = new Dictionary<Guid, BurnSettingsInfo>();
         foreach (var id in signups.Select(s => s.Shift.Rota.EventSettingsId).Distinct())
         {
             var calendar = await calendarResolver.GetAsync(id, ct);

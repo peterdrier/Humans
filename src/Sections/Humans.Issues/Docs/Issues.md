@@ -121,6 +121,8 @@ Known area labels in the member submission form, issue list and detail view use 
 
 ## Invariants
 
+- Submission, comment and triage actions forward request cancellation through account and issue-visibility reads before mutation. The shared triage guard applies this to status, assignee, section and GitHub-link actions. Mutation calls keep their existing non-cancellable boundaries.
+
 - The queue detail panel accepts only the latest selection request’s response; earlier successes and unavailable responses cannot replace the selected item’s content or wire stale forms.
 
 - Browser mutation result wrappers distinguish known missing/inaccessible issues and section-rule rejections from unexpected failures. Known rejections log Warning without exception stacks; unexpected failures retain Error logs and their exceptions and return generic failure text, never persistence diagnostics or false missing results. Every browser triage action returns 404 if the issue disappears after preflight.
@@ -179,7 +181,7 @@ Known area labels in the member submission form, issue list and detail view use 
 ## Cross-Section Dependencies
 
 - **Audit actions:** declared on `IssuesAuditActions` (`src/Sections/Humans.Issues/IssuesAuditActions.cs`), one `AuditActionDefinition` each, written through `IAuditLogService`: `IssueStatusChanged`, `IssueAssigneeChanged`, `IssueSectionChanged`, `IssueGitHubLinked`, `IssueCreated`.
-- **Users/Identity:** `IUserService.GetUserInfosAsync` — reporter / assignee / resolver / comment-sender display names (cross-domain navs are stripped per `design-rules.md §6c`).
+- **Users/Identity:** Browser detail rows carry reporter, assignee, resolver and thread-actor ids and render names through the shared Human component. Resolver and thread attribution has no profile links; reporter and assignee links retain their existing destinations. Null audit actors retain the localized System label; missing human identities use the shared localized unknown label. The controller does not bulk-load display users. `IUserService.GetUserInfosAsync` still supplies machine-API names, email data, audit descriptions and assignee-picker labels (cross-domain navs are stripped per `design-rules.md §6c`).
 - Reporter comment emails use the same `UserInfo` snapshot for canonical email, name and supported culture; no second email-only lookup.
 - **Auth:** `IRoleAssignmentService` — used by the section-routing logic to fan out notifications to the set of users who currently hold a role mapped to the issue's `Section`.
 - **Email:** transport only. Issues owns its one template — `IssuesEmails` (internal) builds the `EmailMessage` from Issues' own `Issues_Email_*` keys in `IssuesResource`, rendered in the recipient's culture via `CultureScope`, and `IssuesEmailPreviews` (`IEmailPreviewContributor`, registered in `Section.Register`) lists it at `/Email/EmailPreview` (`memory/architecture/email-templates-live-in-sender.md`, peterdrier/Humans#1651). `IEmailService.SendAsync` with `IssuesEmails.IssueComment` — comment-thread emails (queued through the outbox in production).

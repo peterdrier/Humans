@@ -138,7 +138,7 @@ internal sealed class TeamController(
             PageContentHtml = pageContentHtml,
             CallsToAction = team.CallsToAction,
             PageContentUpdatedAt = team.PageContentUpdatedAt?.ToDateTimeUtc(),
-            PageContentUpdatedByDisplayName = teamPage.PageContentUpdatedByDisplayName,
+            PageContentUpdatedByUserId = team.PageContentUpdatedByUserId,
             IsAuthenticated = teamPage.IsAuthenticated,
             CanEditPageContent = teamPage.CanCurrentUserManage,
             RoleDefinitions = teamPage.RoleDefinitions
@@ -279,8 +279,6 @@ internal sealed class TeamController(
             {
                 UserId = p.UserId,
                 DayOfMonth = p.Day,
-                Month = p.Month,
-                MonthName = monthName,
                 TeamNames = teamsByUser.GetValueOrDefault(p.UserId, [])
             }).ToList()
         };
@@ -295,7 +293,7 @@ internal sealed class TeamController(
         var canSeeHiddenTeams = TeamsRoles.IsTeamsAdminBoardOrAdmin(User);
         var teamsById = await teamService.GetTeamsAsync(ct);
         var teamsBySlug = teamsById.Values.ToDictionary(team => team.Slug, StringComparer.OrdinalIgnoreCase);
-        var viewerId = GetCurrentUserId();
+        var viewerId = canSeeHiddenTeams ? null : (await GetCurrentUserInfoAsync(ct))?.Id;
 
         var slots = roster
             .Where(slot => canSeeHiddenTeams
@@ -322,11 +320,9 @@ internal sealed class TeamController(
                 RoleDefinitionId = slot.RoleDefinitionId,
                 SlotNumber = slot.SlotNumber,
                 Priority = Enum.TryParse<SlotPriority>(slot.Priority, out var sp) ? sp : SlotPriority.None,
-                PriorityBadgeClass = slot.PriorityBadgeClass,
                 Period = Enum.TryParse<RolePeriod>(slot.Period, out var rp) ? rp : RolePeriod.Event,
                 IsFilled = slot.IsFilled,
-                AssignedUserId = slot.AssignedUserId,
-                AssignedUserName = slot.AssignedUserName
+                AssignedUserId = slot.AssignedUserId
             }).ToList();
 
         return View(new RosterSummaryViewModel { Slots = slots, PriorityFilter = priority, StatusFilter = status, PeriodFilter = period });
@@ -467,13 +463,13 @@ internal sealed class TeamController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Join(string slug, JoinTeamViewModel model)
     {
-        var (currentUserError, user) = await ResolveCurrentUserOrUnauthorizedAsync();
+        var (currentUserError, user) = await ResolveCurrentUserOrUnauthorizedAsync(HttpContext.RequestAborted);
         if (currentUserError is not null)
         {
             return currentUserError;
         }
 
-        var team = await teamService.GetTeamBySlugAsync(slug);
+        var team = await teamService.GetTeamBySlugAsync(slug, HttpContext.RequestAborted);
         if (team is null || !team.IsActive)
         {
             return NotFound();
@@ -521,13 +517,13 @@ internal sealed class TeamController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Leave(string slug)
     {
-        var (currentUserError, user) = await ResolveCurrentUserOrUnauthorizedAsync();
+        var (currentUserError, user) = await ResolveCurrentUserOrUnauthorizedAsync(HttpContext.RequestAborted);
         if (currentUserError is not null)
         {
             return currentUserError;
         }
 
-        var team = await teamService.GetTeamBySlugAsync(slug);
+        var team = await teamService.GetTeamBySlugAsync(slug, HttpContext.RequestAborted);
         if (team is null)
         {
             return NotFound();
@@ -548,7 +544,7 @@ internal sealed class TeamController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> WithdrawRequest(Guid id)
     {
-        var (currentUserError, user) = await ResolveCurrentUserOrUnauthorizedAsync();
+        var (currentUserError, user) = await ResolveCurrentUserOrUnauthorizedAsync(HttpContext.RequestAborted);
         if (currentUserError is not null)
         {
             return currentUserError;
@@ -640,7 +636,7 @@ internal sealed class TeamController(
     {
         if (!ModelState.IsValid)
         {
-            await PopulateEligibleParentsAsync(model, excludeTeamId: null);
+            await PopulateEligibleParentsAsync(model, excludeTeamId: null, HttpContext.RequestAborted);
             return View(model);
         }
 
@@ -724,7 +720,7 @@ internal sealed class TeamController(
 
         if (!ModelState.IsValid)
         {
-            await PopulateEligibleParentsAsync(model, id);
+            await PopulateEligibleParentsAsync(model, id, HttpContext.RequestAborted);
             return View(model);
         }
 
@@ -764,7 +760,7 @@ internal sealed class TeamController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> DeleteTeam(Guid id)
     {
-        var (currentUserError, currentUser) = await ResolveCurrentUserOrUnauthorizedAsync();
+        var (currentUserError, currentUser) = await ResolveCurrentUserOrUnauthorizedAsync(HttpContext.RequestAborted);
         if (currentUserError is not null)
         {
             return currentUserError;
@@ -818,9 +814,9 @@ internal sealed class TeamController(
             .ToList();
     }
 
-    private async Task PopulateEligibleParentsAsync(TeamFormViewModelBase model, Guid? excludeTeamId)
+    private async Task PopulateEligibleParentsAsync(TeamFormViewModelBase model, Guid? excludeTeamId, CancellationToken ct = default)
     {
-        model.EligibleParents = await GetEligibleParentTeamsAsync(excludeTeamId, CancellationToken.None);
+        model.EligibleParents = await GetEligibleParentTeamsAsync(excludeTeamId, ct);
     }
 
     // Birthdays and the map list members the Consent Coordinator cleared.

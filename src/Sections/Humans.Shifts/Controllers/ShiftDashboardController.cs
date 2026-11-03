@@ -134,7 +134,7 @@ internal sealed class ShiftDashboardController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Voluntell(Guid shiftId, Guid userId)
     {
-        var (currentUserNotFound, currentUser) = await ResolveCurrentUserOrUnauthorizedAsync();
+        var (currentUserNotFound, currentUser) = await ResolveCurrentUserOrUnauthorizedAsync(HttpContext.RequestAborted);
         if (currentUserNotFound is not null)
         {
             return currentUserNotFound;

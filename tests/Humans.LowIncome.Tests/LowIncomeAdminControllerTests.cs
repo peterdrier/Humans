@@ -31,8 +31,8 @@ public sealed class LowIncomeAdminControllerTests
         _users.GetUserInfoAsync(_actor, Arg.Any<CancellationToken>()).Returns(new ValueTask<UserInfo?>(new UserInfo(
             _actor, "Admin", false, "en", null, Instant.FromUtc(2026, 1, 1, 0, 0),
             null, null, null, null, null, null,
-            null, null, null, [], [], [],
-            UserFixtures.Profile(burnerName: "Admin"), [])));
+            null, null, null, [], [],
+            UserFixtures.Profile(burnerName: "Admin"))));
         var http = new DefaultHttpContext
         {
             User = new ClaimsPrincipal(new ClaimsIdentity(

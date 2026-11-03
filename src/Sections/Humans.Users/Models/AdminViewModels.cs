@@ -23,26 +23,14 @@ internal sealed class AdminHumanDetailViewModel
     public Guid UserId { get; set; }
     public string Email { get; set; } = string.Empty;
     public string DisplayName { get; set; } = string.Empty;
-    public string? ProfilePictureUrl { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime? LastLoginAt { get; set; }
 
-    public string? FirstName { get; set; }
-    public string? LastName { get; set; }
-    public string? City { get; set; }
-    public string? CountryCode { get; set; }
     public UserState State { get; set; }
 
     public string? AdminNotes { get; set; }
     public MembershipTier MembershipTier { get; set; }
-    public string? EmergencyContactName { get; set; }
-    public string? EmergencyContactPhone { get; set; }
-    public string? EmergencyContactRelationship { get; set; }
     public string? PreferredLanguage { get; set; }
-
-    public string? NobodiesTeamEmail { get; set; }
-
-    public string? OAuthEmail { get; set; }
     public List<AdminUserEmailViewModel> UserEmails { get; set; } = [];
 
     public int ApplicationCount { get; set; }

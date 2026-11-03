@@ -188,15 +188,18 @@ public sealed class CalendarOccurrenceExpanderTests
 
         results.Should().HaveCount(5);
         foreach (var occurrence in results)
-            Humans.Calendar.Models.CalendarOccurrenceViewExtensions.EndLocalDate(occurrence, zone)
-                .Should().Be(Humans.Calendar.Models.CalendarOccurrenceViewExtensions.StartLocalDate(occurrence, zone));
+            occurrence.EndLocalDate(zone)
+                .Should().Be(occurrence.StartLocalDate(zone));
     }
 
     [HumansTheory]
-    [Xunit.InlineData("FREQ=DAILY;UNTIL=20260602T230000Z")]
-    [Xunit.InlineData("freq=daily;until=20260602t230000z")]
-    [Xunit.InlineData("FREQ=DAILY;UNTIL=20260603t000000")]
-    public void Expand_LegacyAllDayUntil_AcceptsValidatedRuleCasing(string rule)
+    [Xunit.InlineData("FREQ=DAILY;UNTIL=20260602T230000Z", "FREQ=DAILY;UNTIL=20260603")]
+    [Xunit.InlineData("freq=daily;until=20260602t230000z", "freq=daily;UNTIL=20260603")]
+    [Xunit.InlineData("FREQ=DAILY;UNTIL=20260603t000000", "FREQ=DAILY;UNTIL=20260603")]
+    [Xunit.InlineData("FREQ=DAILY;UNTIL= 20260602T230000Z ", "FREQ=DAILY;UNTIL=20260603")]
+    [Xunit.InlineData("FREQ=DAILY;UNTIL= 20260603t000000 ", "FREQ=DAILY;UNTIL=20260603")]
+    [Xunit.InlineData("FREQ=DAILY;UNTIL= 20260603 ", "FREQ=DAILY;UNTIL= 20260603 ")]
+    public void Expand_LegacyAllDayUntil_AcceptsValidatedRuleValues(string rule, string projectedRule)
     {
         CalendarService.RecurrenceRuleRefusal(rule).Should().BeNull();
         var zone = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
@@ -212,7 +215,7 @@ public sealed class CalendarOccurrenceExpanderTests
             RecurrenceTimezone = zone.Id,
         });
 
-        info.RecurrenceRule.Should().EndWith("UNTIL=20260603");
+        info.RecurrenceRule.Should().Be(projectedRule);
         var results = CalendarOccurrenceExpander.Expand([info],
             day.AtStartOfDayInZone(zone).ToInstant(),
             day.PlusDays(5).AtStartOfDayInZone(zone).ToInstant(),
@@ -247,7 +250,7 @@ public sealed class CalendarOccurrenceExpanderTests
             occurrence.EndDateExclusive.Should().Be(first.PlusDays(n + 2));
             occurrence.OccurrenceStartUtc.Should().BeNull();
             occurrence.OccurrenceEndUtc.Should().BeNull();
-            Humans.Calendar.Models.CalendarOccurrenceViewExtensions.StartLocalDate(occurrence, DateTimeZoneProviders.Tzdb["America/Los_Angeles"])
+            occurrence.StartLocalDate(DateTimeZoneProviders.Tzdb["America/Los_Angeles"])
                 .Should().Be(first.PlusDays(n));
         }
     }
@@ -508,7 +511,6 @@ public sealed class CalendarOccurrenceExpanderTests
             RecurrenceRule: recurrenceRule,
             RecurrenceTimezone: recurrenceRule is null ? null : "UTC",
             RecurrenceUntilUtc: null,
-            CreatedByUserId: Guid.NewGuid(),
             CreatedAt: Instant.FromUtc(2026, 5, 1, 0, 0),
             UpdatedAt: Instant.FromUtc(2026, 5, 1, 0, 0),
             Exceptions: exceptions ?? []);

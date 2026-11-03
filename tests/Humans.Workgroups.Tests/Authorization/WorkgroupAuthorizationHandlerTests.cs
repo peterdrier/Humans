@@ -5,6 +5,10 @@ using Humans.Workgroups.Authorization;
 using Humans.Workgroups.Domain;
 using Humans.Workgroups.Services;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.DependencyInjection;
+using Humans.Users.Contracts;
+using NSubstitute;
 using NodaTime;
 
 namespace Humans.Workgroups.Tests.Authorization;
@@ -16,9 +20,60 @@ namespace Humans.Workgroups.Tests.Authorization;
 /// </summary>
 public sealed class WorkgroupAuthorizationHandlerTests
 {
-    private readonly WorkgroupAuthorizationHandler _handler = new();
+    private readonly WorkgroupAuthorizationHandler _handler;
+
+    public WorkgroupAuthorizationHandlerTests()
+    {
+        var users = Substitute.For<IUserService>();
+        users.GetUserInfoAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(call => UserInfo.Create(new User { Id = call.Arg<Guid>() }, [], [], null));
+        _handler = new WorkgroupAuthorizationHandler(users, new HttpContextAccessor());
+    }
     private static readonly Guid MemberId = Guid.NewGuid();
     private static readonly Guid StrangerId = Guid.NewGuid();
+
+    public enum MemberAccount
+    {
+        Merged,
+        Missing,
+        Cancelled,
+        Stranger
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(MemberAccount.Merged)]
+    [Xunit.InlineData(MemberAccount.Missing)]
+    [Xunit.InlineData(MemberAccount.Cancelled)]
+    [Xunit.InlineData(MemberAccount.Stranger)]
+    public async Task Member_ResolvesTheAccountBeforeCheckingMembership(MemberAccount account)
+    {
+        using var request = new CancellationTokenSource();
+        var cookieId = Guid.NewGuid();
+        var users = Substitute.For<IUserService>();
+        users.GetUserInfoAsync(cookieId, Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+            var id = account == MemberAccount.Stranger ? StrangerId : MemberId;
+            return new ValueTask<UserInfo?>(account == MemberAccount.Missing
+                ? null : UserInfo.Create(new User { Id = id }, [], [], null));
+        });
+        using var services = new ServiceCollection().AddSingleton(users)
+            .AddSingleton<IHttpContextAccessor>(new HttpContextAccessor
+            { HttpContext = new DefaultHttpContext { RequestAborted = request.Token } }).BuildServiceProvider();
+        var handler = ActivatorUtilities.CreateInstance<WorkgroupAuthorizationHandler>(services);
+        var context = new AuthorizationHandlerContext([WorkgroupOperationRequirement.Member], SignedInAs(cookieId), ActiveWorkgroup());
+        if (account == MemberAccount.Cancelled)
+        {
+            await request.CancelAsync();
+            Func<Task> run = () => handler.HandleAsync(context);
+            await run.Should().ThrowAsync<OperationCanceledException>();
+        }
+        else
+        {
+            await handler.HandleAsync(context);
+            context.HasSucceeded.Should().Be(account == MemberAccount.Merged);
+        }
+    }
 
     [HumansTheory]
     [Xunit.InlineData(RoleNames.Board)]

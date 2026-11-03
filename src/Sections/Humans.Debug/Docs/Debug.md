@@ -61,6 +61,8 @@ One controller per audience: `DebugController` (`/Debug/*`, diagnostics and the 
 
 ## Invariants
 
+- Operation timing rows measure instrumented `TimeOperation` scopes and snapshot in-process aggregates since startup.
+
 - Shared table currency and number cells use the selected UI culture; numeric sort values stay invariant.
 
 - Every page requires `PolicyNames.BoardOrAdmin` (class-level `[Authorize]` on every controller in the section) and every POST carries its own `PolicyNames.AdminOnly`, so Board sees everything and changes nothing; the forms hide behind `authorize-policy="AdminOnly"`. The deliberate anonymous surfaces: `/Debug/DbVersion`, which returns only migration names and counts, `/api/data-migrations`, which returns only data-migration keys, counts and done flags, and `/ColorPalette`, which renders static markup. Pinned by `DebugArchitectureTests`, which discovers the controllers from the assembly rather than listing them, and by `DataMigrationsTests` for the minimal-API endpoint.
@@ -90,10 +92,14 @@ The single screen and status endpoint for every section's legacy → new copy, a
 - **Seam:** a section implements `ISectionDataMigrations` (`Humans.Base.Interfaces`) at its project root (`ISectionDataMigrations`) and returns `DataMigration` records: a stable section-first `Key` (`finance.iban-to-payment-details`), `Section`, `Title`, `Retires` (what the retirement PR deletes), a `Status` delegate returning `DataMigrationStatus` (column headings plus **every** pending row — no sampling, no paging) and an `Apply` delegate taking the actor and returning rows written. The delegates resolve the owning section's own services from the request scope, so the copy stays inside the owner; Debug only calls the interface. Discovered like every other contribution seam.
 - **Host:** `DataMigrationService` (scoped, the one registration in `Section.Register`) collects the migrations, reads their status, and applies one by key — then writes `DebugAuditActions.DataMigrationApplied` (entity type `DataMigration`, description naming key, section and rows written, the acting admin as actor). An unknown key writes and audits nothing (404 on the screen).
 - **Ordering:** the screen controller and status endpoint each order reports by ordinal section, then key. Status collection does not impose presentation ordering.
+- Migration Apply resolves the signed-in account before invoking an owner delegate
+  and records the surviving account as actor after a merge. Missing accounts receive
+  401; cancelled account lookups invoke no migration. Widget-gallery account loading
+  also honours request cancellation.
 - **Screen:** `/Debug/DataMigrations` (`DataMigrationsController`, `BoardOrAdmin` to read, `AdminOnly` to apply, linked from the Debug admin group) shows each migration with its pending rows and an **Apply (N)** button (`data-confirm`, `[ValidateAntiForgeryToken]`). Every migration is idempotent: a second apply finds nothing pending, and a done migration shows a Done badge instead of the button.
 - **Endpoint:** `GET /api/data-migrations` (`SectionEndpoints : ISectionEndpoints`, `AllowAnonymous`) returns `{ "version": "...", "migrations": [ { "key": "...", "pending": 0, "done": true } ] }` — the `version` is `/api/version`'s. A development session polls production's endpoint to learn when a migration is done; that reading is the approval for its retirement and drop PRs (`memory/architecture/no-drops-until-prod-verified.md`).
 - **Why the counts are safe to publish:** they are membership-shaped aggregates (how many profiles still hold a legacy value) with no row data — no id, name, address or value — and say nothing about any one member. Row data stays behind `BoardOrAdmin` on the screen.
-- **Lifecycle:** a move commit adds its migration; QA and production operators apply it from the screen; once production reports `done`, a retirement PR deletes the migration (and its fallback and obsolete fields), then a drop PR removes the legacy columns. Today's registrations: Users (`users.legacy-identity-emails`) — see `Users.md` — and Finance's `finance.iban-to-payment-details` (`profiles.Iban` → `finance_payment_details`; its rows show the IBAN masked) — see `Finance.md`.
+- **Lifecycle:** a move commit adds its migration; QA and production operators apply it from the screen; once production reports `done`, a retirement PR deletes the migration (and its fallback and obsolete fields), then a drop PR removes the legacy columns. Finance’s `finance.iban-to-payment-details` copy and fallback were retired after production reported `pending: 0`, `done: true` on 2026-11-03; see `Finance.md`. Live registrations come from each section’s `ISectionDataMigrations` contribution.
 
 ## Cross-Section Dependencies
 

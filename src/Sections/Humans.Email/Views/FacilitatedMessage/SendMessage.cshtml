@@ -1,16 +1,25 @@
+@inject Microsoft.AspNetCore.Mvc.Localization.IHtmlLocalizer<EmailResource> HtmlLocalizer
 @model Humans.Email.Models.SendMessageViewModel
 @{
-    ViewData["Title"] = string.Format(Localizer["Email_SendMessage_Title"].Value, Model.RecipientDisplayName);
+    ViewData["Title"] = Model.PageTitle;
+    var recipient = await Component.InvokeAsync(typeof(Humans.Base.ViewComponents.HumanViewComponent), new
+    {
+        userId = Model.RecipientId,
+        link = Humans.Base.ViewComponents.HumanLink.None,
+    });
+    using var recipientWriter = new System.IO.StringWriter();
+    recipient.WriteTo(recipientWriter, System.Text.Encodings.Web.HtmlEncoder.Default);
+    var recipientHtml = new Microsoft.AspNetCore.Html.HtmlString(recipientWriter.ToString().Trim());
 }
 
 <nav aria-label="@Localizer["Email_BreadcrumbNavigation"]">
     <ol class="breadcrumb">
-        <li class="breadcrumb-item"><a asp-controller="ProfileView" asp-action="ViewProfile" asp-route-id="@Model.RecipientId">@Model.RecipientDisplayName</a></li>
+        <li class="breadcrumb-item"><vc:human user-id="@Model.RecipientId" /></li>
         <li class="breadcrumb-item active" aria-current="page">@Localizer["Email_SendMessage_Breadcrumb"]</li>
     </ol>
 </nav>
 
-<h1>@string.Format(Localizer["Email_SendMessage_Heading"].Value, Model.RecipientDisplayName)</h1>
+<h1>@HtmlLocalizer["Email_SendMessage_Heading", recipientHtml]</h1>
 
 
 <div class="card">
@@ -18,7 +27,6 @@
         <form asp-controller="FacilitatedMessage" asp-action="SendMessage" asp-route-id="@Model.RecipientId" method="post">
             @Html.AntiForgeryToken()
             <input type="hidden" asp-for="RecipientId" />
-            <input type="hidden" asp-for="RecipientDisplayName" />
 
             <div asp-validation-summary="ModelOnly" class="alert alert-danger"></div>
 

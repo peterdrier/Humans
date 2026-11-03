@@ -120,4 +120,5 @@
   <data name="Onboarding_Notification_ProfileRejectedWithReason" xml:space="preserve"><value>Your signup could not be approved: {0}</value></data>
   <data name="Onboarding_Notification_ViewProfile" xml:space="preserve"><value>View profile</value></data>
   <data name="Onboarding_ProfileSaveFailed" xml:space="preserve"><value>Your profile could not be saved. Please try again.</value></data>
+  <data name="Onboarding_StubProfile_AddName" xml:space="preserve"><value>Add your legal name before signing consents.</value></data>
 </root>

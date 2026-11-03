@@ -37,31 +37,68 @@ public class EventsApiControllerTests
             .Returns((EventGuideSettingsView?)null);
     }
 
+    public enum EventsRoute
+    {
+        Events,
+        Event,
+        Barrios,
+        Barrio,
+        Categories,
+        Preferences,
+        UpdatePreferences,
+        Favourites
+    }
+
+    public enum ReadBoundary
+    {
+        Guide,
+        Burn,
+        Excluded,
+        Approved,
+        Event,
+        Camps,
+        Submitter,
+        Categories,
+        Favourites
+    }
+
+    public enum MemberAction
+    {
+        GetPreferences,
+        UpdatePreferences,
+        GetFavourites,
+        AddFavourite,
+        RemoveFavourite,
+        GetEvents,
+        DownloadCsv
+    }
+
     [HumansTheory]
-    [InlineData("Events", "Guide")]
-    [InlineData("Events", "Burn")]
-    [InlineData("Events", "Excluded")]
-    [InlineData("Events", "Approved")]
-    [InlineData("Events", "Camps")]
-    [InlineData("Events", "Submitter")]
-    [InlineData("Event", "Guide")]
-    [InlineData("Event", "Event")]
-    [InlineData("Event", "Submitter")]
-    [InlineData("Barrios", "Guide")]
-    [InlineData("Barrios", "Approved")]
-    [InlineData("Barrio", "Guide")]
-    [InlineData("Barrio", "Approved")]
-    [InlineData("Categories", "Categories")]
-    [InlineData("Preferences", "Excluded")]
-    [InlineData("Favourites", "Guide")]
-    [InlineData("Favourites", "Favourites")]
-    [InlineData("Favourites", "Camps")]
-    public async Task Read_AbandonedRequest_CancelsAtLookup(string route, string boundary)
+    [InlineData(EventsRoute.Events, ReadBoundary.Guide)]
+    [InlineData(EventsRoute.Events, ReadBoundary.Burn)]
+    [InlineData(EventsRoute.Events, ReadBoundary.Excluded)]
+    [InlineData(EventsRoute.Events, ReadBoundary.Approved)]
+    [InlineData(EventsRoute.Events, ReadBoundary.Camps)]
+    [InlineData(EventsRoute.Events, ReadBoundary.Submitter)]
+    [InlineData(EventsRoute.Event, ReadBoundary.Guide)]
+    [InlineData(EventsRoute.Event, ReadBoundary.Event)]
+    [InlineData(EventsRoute.Event, ReadBoundary.Submitter)]
+    [InlineData(EventsRoute.Barrios, ReadBoundary.Guide)]
+    [InlineData(EventsRoute.Barrios, ReadBoundary.Approved)]
+    [InlineData(EventsRoute.Barrio, ReadBoundary.Guide)]
+    [InlineData(EventsRoute.Barrio, ReadBoundary.Approved)]
+    [InlineData(EventsRoute.Categories, ReadBoundary.Categories)]
+    [InlineData(EventsRoute.Preferences, ReadBoundary.Excluded)]
+    [InlineData(EventsRoute.UpdatePreferences, ReadBoundary.Categories)]
+    [InlineData(EventsRoute.Favourites, ReadBoundary.Guide)]
+    [InlineData(EventsRoute.Favourites, ReadBoundary.Favourites)]
+    [InlineData(EventsRoute.Favourites, ReadBoundary.Camps)]
+    public async Task ReadPreflight_AbandonedRequest_CancelsAtLookup(EventsRoute route, ReadBoundary boundary)
     {
         using var request = new CancellationTokenSource();
-        async Task<T> ReadAsync<T>(T value, string current, CancellationToken ct)
+        async Task<T> ReadAsync<T>(T value, ReadBoundary current, CancellationToken ct)
         {
-            if (string.Equals(current, boundary, StringComparison.Ordinal))
+            if (current == boundary)
                 await request.CancelAsync();
             ct.ThrowIfCancellationRequested();
             return value;
@@ -69,6 +106,8 @@ public class EventsApiControllerTests
         var controller = BuildController();
         controller.HttpContext.RequestAborted = request.Token;
         var userId = Guid.NewGuid();
+        _users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(UserInfo.Create(new User { Id = userId }, [], [], null));
         controller.HttpContext.User = new ClaimsPrincipal(new ClaimsIdentity(
             [new Claim(ClaimTypes.NameIdentifier, userId.ToString())], "test"));
         var burn = BurnFixtures.Burn(year: 2026);
@@ -76,42 +115,45 @@ public class EventsApiControllerTests
             Instant.MaxValue, Instant.MaxValue, 100, "Europe/Madrid", Instant.MinValue, Instant.MinValue);
         var approved = MakeEvent(null, Guid.NewGuid(), null);
         _guide.GetGuideSettingsAsync(Arg.Any<CancellationToken>()).Returns(call =>
-            ReadAsync<EventGuideSettingsView?>(settings, "Guide", call.Arg<CancellationToken>()));
+            ReadAsync<EventGuideSettingsView?>(settings, ReadBoundary.Guide, call.Arg<CancellationToken>()));
         _guide.GetEventSettingsByIdAsync(burn.Id, Arg.Any<CancellationToken>()).Returns(call =>
-            ReadAsync<EventSettingsInfo?>(burn, "Burn", call.Arg<CancellationToken>()));
+            ReadAsync<EventSettingsInfo?>(burn, ReadBoundary.Burn, call.Arg<CancellationToken>()));
         _guide.GetExcludedCategorySlugsAsync(userId, Arg.Any<CancellationToken>()).Returns(call =>
-            ReadAsync<List<string>>([], "Excluded", call.Arg<CancellationToken>()));
+            ReadAsync<List<string>>([], ReadBoundary.Excluded, call.Arg<CancellationToken>()));
         _guide.GetApprovedEventsAsync(Arg.Any<Guid?>(), Arg.Any<Guid?>(), Arg.Any<Guid?>(),
             Arg.Any<string?>(), Arg.Any<IReadOnlyList<string>>(), Arg.Any<CancellationToken>()).Returns(call =>
-            ReadAsync<IReadOnlyList<ApprovedEventView>>([approved], "Approved", call.Arg<CancellationToken>()));
+            ReadAsync<IReadOnlyList<ApprovedEventView>>([approved], ReadBoundary.Approved, call.Arg<CancellationToken>()));
         _guide.GetApprovedEventByIdAsync(approved.Id, Arg.Any<CancellationToken>()).Returns(call =>
-            ReadAsync<ApprovedEventView?>(approved, "Event", call.Arg<CancellationToken>()));
+            ReadAsync<ApprovedEventView?>(approved, ReadBoundary.Event, call.Arg<CancellationToken>()));
         _camps.GetCampsForYearAsync(burn.GateOpeningDate.Year, Arg.Any<CancellationToken>()).Returns(call =>
-            ReadAsync<IReadOnlyList<CampInfo>>([], "Camps", call.Arg<CancellationToken>()));
+            ReadAsync<IReadOnlyList<CampInfo>>([], ReadBoundary.Camps, call.Arg<CancellationToken>()));
         _users.GetUserInfoAsync(approved.SubmitterUserId, Arg.Any<CancellationToken>()).Returns(call =>
             new ValueTask<UserInfo?>(ReadAsync<UserInfo?>(MakeUserInfo(approved.SubmitterUserId, "Host"),
-                "Submitter", call.Arg<CancellationToken>())));
+                ReadBoundary.Submitter, call.Arg<CancellationToken>())));
         _users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>()).Returns(call =>
             new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(ReadAsync<IReadOnlyDictionary<Guid, UserInfo>>(
                 new Dictionary<Guid, UserInfo> { [approved.SubmitterUserId] = MakeUserInfo(approved.SubmitterUserId, "Host") },
-                "Submitter", call.Arg<CancellationToken>())));
+                ReadBoundary.Submitter, call.Arg<CancellationToken>())));
         _guide.GetActiveCategoriesAsync(Arg.Any<CancellationToken>()).Returns(call =>
-            ReadAsync<IReadOnlyList<EventCategoryView>>([], "Categories", call.Arg<CancellationToken>()));
+            ReadAsync<IReadOnlyList<EventCategoryView>>([], ReadBoundary.Categories, call.Arg<CancellationToken>()));
         _guide.GetFavouritesWithEventsAsync(userId, Arg.Any<CancellationToken>()).Returns(call =>
-            ReadAsync<IReadOnlyList<EventFavouriteInfo>>([], "Favourites", call.Arg<CancellationToken>()));
+            ReadAsync<IReadOnlyList<EventFavouriteInfo>>([], ReadBoundary.Favourites, call.Arg<CancellationToken>()));
         Func<Task<IActionResult>> act = route switch
         {
-            "Events" => () => controller.GetEvents(null, null, null, null),
-            "Event" => () => controller.GetEvent(approved.Id),
-            "Barrios" => controller.GetBarrios,
-            "Barrio" => () => controller.GetBarrio(Guid.NewGuid()),
-            "Categories" => controller.GetCategories,
-            "Preferences" => controller.GetPreferences,
-            "Favourites" => controller.GetFavourites,
+            EventsRoute.Events => () => controller.GetEvents(null, null, null, null),
+            EventsRoute.Event => () => controller.GetEvent(approved.Id),
+            EventsRoute.Barrios => controller.GetBarrios,
+            EventsRoute.Barrio => () => controller.GetBarrio(Guid.NewGuid()),
+            EventsRoute.Categories => controller.GetCategories,
+            EventsRoute.Preferences => controller.GetPreferences,
+            EventsRoute.UpdatePreferences => () => controller.UpdatePreferences(new EventsApiController.UpdatePreferencesRequest()),
+            EventsRoute.Favourites => controller.GetFavourites,
             _ => throw new ArgumentOutOfRangeException(nameof(route)),
         };
 
         await act.Should().ThrowAsync<OperationCanceledException>();
+        await _guide.DidNotReceive().SavePreferenceAsync(
+            Arg.Any<Guid>(), Arg.Any<List<string>>(), Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -234,6 +276,8 @@ public class EventsApiControllerTests
     {
         var controller = BuildController();
         var userId = Guid.NewGuid();
+        _users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(UserInfo.Create(new User { Id = userId }, [], [], null));
         var eventId = Guid.NewGuid();
         controller.HttpContext.User = new ClaimsPrincipal(new ClaimsIdentity(
             [new Claim(ClaimTypes.NameIdentifier, userId.ToString())], "test"));
@@ -256,6 +300,97 @@ public class EventsApiControllerTests
         var result = (await BuildController().GetCategories()).Should().BeOfType<OkObjectResult>().Subject;
         result.Value.Should().BeAssignableTo<IEnumerable<GuideCategoryApiDto>>().Subject
             .Select(c => c.Id).Should().Equal(first.Id, second.Id);
+    }
+
+    [HumansTheory]
+    [InlineData(MemberAction.GetPreferences, AccountScenario.Merged)]
+    [InlineData(MemberAction.GetPreferences, AccountScenario.Missing)]
+    [InlineData(MemberAction.GetPreferences, AccountScenario.Cancelled)]
+    [InlineData(MemberAction.UpdatePreferences, AccountScenario.Merged)]
+    [InlineData(MemberAction.UpdatePreferences, AccountScenario.Missing)]
+    [InlineData(MemberAction.UpdatePreferences, AccountScenario.Cancelled)]
+    [InlineData(MemberAction.GetFavourites, AccountScenario.Merged)]
+    [InlineData(MemberAction.GetFavourites, AccountScenario.Missing)]
+    [InlineData(MemberAction.GetFavourites, AccountScenario.Cancelled)]
+    [InlineData(MemberAction.AddFavourite, AccountScenario.Merged)]
+    [InlineData(MemberAction.AddFavourite, AccountScenario.Missing)]
+    [InlineData(MemberAction.AddFavourite, AccountScenario.Cancelled)]
+    [InlineData(MemberAction.RemoveFavourite, AccountScenario.Merged)]
+    [InlineData(MemberAction.RemoveFavourite, AccountScenario.Missing)]
+    [InlineData(MemberAction.RemoveFavourite, AccountScenario.Cancelled)]
+    [InlineData(MemberAction.GetEvents, AccountScenario.Merged)]
+    [InlineData(MemberAction.GetEvents, AccountScenario.Missing)]
+    [InlineData(MemberAction.GetEvents, AccountScenario.Cancelled)]
+    [InlineData(MemberAction.DownloadCsv, AccountScenario.Merged)]
+    [InlineData(MemberAction.DownloadCsv, AccountScenario.Missing)]
+    [InlineData(MemberAction.DownloadCsv, AccountScenario.Cancelled)]
+    public async Task Member_boundaries_resolve_surviving_identity(MemberAction action, AccountScenario account)
+    {
+        var cookieId = Guid.NewGuid();
+        var survivorId = Guid.NewGuid();
+        var eventId = Guid.NewGuid();
+        using var request = new CancellationTokenSource();
+        var controller = BuildController();
+        controller.HttpContext.RequestAborted = request.Token;
+        controller.HttpContext.User = new ClaimsPrincipal(new ClaimsIdentity(
+            [new Claim(ClaimTypes.NameIdentifier, cookieId.ToString())], "test"));
+        _users.GetUserInfoAsync(cookieId, Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            call.Arg<CancellationToken>().Should().Be(request.Token);
+            call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+            return new ValueTask<UserInfo?>(account == AccountScenario.Missing ? null :
+                UserInfo.Create(new User { Id = survivorId }, [], [], null));
+        });
+        _guide.GetExcludedCategorySlugsAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns([]);
+        _guide.GetActiveCategoriesAsync(Arg.Any<CancellationToken>()).Returns([]);
+        _guide.GetFavouritesWithEventsAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns([]);
+        _guide.GetApprovedEventsAsync(Arg.Any<Guid?>(), Arg.Any<Guid?>(), Arg.Any<Guid?>(),
+            Arg.Any<string?>(), Arg.Any<IReadOnlyList<string>>(), Arg.Any<CancellationToken>()).Returns([]);
+        _guide.AddFavouriteAsync(Arg.Any<Guid>(), eventId, null, Arg.Any<CancellationToken>()).Returns(true);
+        _guide.RemoveFavouriteAsync(Arg.Any<Guid>(), eventId, null, Arg.Any<CancellationToken>()).Returns(true);
+        _guide.GetApprovedEventsForExportAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(new byte[] { 1 });
+        var export = new EventsExportController(_guide, _camps, _users)
+        {
+            ControllerContext = controller.ControllerContext,
+        };
+        if (account == AccountScenario.Cancelled)
+            await request.CancelAsync();
+        Func<Task<IActionResult>> invoke = action switch
+        {
+            MemberAction.GetPreferences => controller.GetPreferences,
+            MemberAction.UpdatePreferences => () => controller.UpdatePreferences(new EventsApiController.UpdatePreferencesRequest()),
+            MemberAction.GetFavourites => controller.GetFavourites,
+            MemberAction.AddFavourite => () => controller.AddFavourite(eventId, null),
+            MemberAction.RemoveFavourite => () => controller.RemoveFavourite(eventId, null),
+            MemberAction.GetEvents => () => controller.GetEvents(null, null, null, null),
+            _ => () => export.DownloadCsv(request.Token),
+        };
+        var method = action switch
+        {
+            MemberAction.GetPreferences or MemberAction.GetEvents => nameof(IEventManagement.GetExcludedCategorySlugsAsync),
+            MemberAction.UpdatePreferences => nameof(IEventManagement.SavePreferenceAsync),
+            MemberAction.GetFavourites => nameof(IEventManagement.GetFavouritesWithEventsAsync),
+            MemberAction.AddFavourite => nameof(IEventManagement.AddFavouriteAsync),
+            MemberAction.RemoveFavourite => nameof(IEventManagement.RemoveFavouriteAsync),
+            _ => nameof(IEventManagement.GetApprovedEventsForExportAsync),
+        };
+
+        if (account == AccountScenario.Cancelled)
+            await invoke.Should().ThrowAsync<OperationCanceledException>();
+        else if (account == AccountScenario.Missing)
+            (await invoke()).Should().BeOfType(action == MemberAction.GetEvents ? typeof(OkObjectResult) : typeof(UnauthorizedResult));
+        else
+        {
+            await invoke();
+            var call = _guide.ReceivedCalls().Where(call => string.Equals(call.GetMethodInfo().Name, method, StringComparison.Ordinal))
+                .Should().ContainSingle().Subject;
+            call.GetArguments()[0].Should().Be(survivorId);
+            if (action is MemberAction.UpdatePreferences or MemberAction.AddFavourite or MemberAction.RemoveFavourite)
+                call.GetArguments()[^1].Should().Be(CancellationToken.None);
+            return;
+        }
+
+        _guide.ReceivedCalls().Should().NotContain(call => string.Equals(call.GetMethodInfo().Name, method, StringComparison.Ordinal));
     }
 
     private EventsApiController BuildController()
@@ -301,8 +436,7 @@ public class EventsApiControllerTests
         var profile = UserFixtures.Profile(
             burnerName: burnerName,
             firstName: "Test",
-            lastName: "Submitter",
-            isApproved: true);
+            lastName: "Submitter");
         var user = new User
         {
             Id = userId,
@@ -315,9 +449,7 @@ public class EventsApiControllerTests
         return UserInfo.Create(
             user: user,
             userEmails: [],
-            eventParticipations: [],
             externalLogins: [],
-            profile: profile,
-            communicationPreferences: []);
+            profile: profile);
     }
 }

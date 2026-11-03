@@ -35,6 +35,24 @@ public class UserControllerTests
     private void Stub(UserInfo? info) =>
         _users.GetUserInfoAsync(_userId, Arg.Any<CancellationToken>()).Returns(info);
 
+    [HumansFact]
+    public async Task Deletion_stops_before_mutation_when_account_lookup_is_cancelled()
+    {
+        var ctrl = Create(UserState.DeletePending);
+        using var request = new CancellationTokenSource();
+        ctrl.HttpContext.RequestAborted = request.Token;
+        _users.GetUserInfoAsync(_userId, Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+            return new ValueTask<UserInfo?>(ControllerTestHost.Info(_userId));
+        });
+        await request.CancelAsync();
+        Func<Task<IActionResult>> act = () => ctrl.CancelDeletion();
+
+        await act.Should().ThrowAsync<OperationCanceledException>();
+        _deletion.ReceivedCalls().Should().BeEmpty();
+    }
+
     [HumansTheory]
     [InlineData(UserState.Active)]
     [InlineData(UserState.Bare)]

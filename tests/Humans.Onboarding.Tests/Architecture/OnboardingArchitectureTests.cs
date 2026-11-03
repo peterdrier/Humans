@@ -10,14 +10,14 @@ public class OnboardingArchitectureTests
     private static Assembly SectionAssembly => typeof(OnboardingResource).Assembly;
 
     /// <summary>
-    /// Every localizer the section injects names one of the three sets it is allowed to render
+    /// Every localizer the section injects names one of the two sets it is allowed to render
     /// from. A key looked up against the wrong set renders as its own name with a green build —
     /// <c>OnboardingLocalizerBindingTests</c> is the per-key half of the same guard.
     /// </summary>
     [HumansFact]
-    public void EveryLocalizerNamesOneOfTheSectionsThreeResourceSets()
+    public void EveryLocalizerNamesOneOfTheSectionsTwoResourceSets()
     {
-        string[] allowed = ["OnboardingResource", "SharedResource", "ConsentResource"];
+        string[] allowed = ["OnboardingResource", "SharedResource"];
 
         var offenders = SectionTypes()
             .SelectMany(t => t.GetConstructors().Select(c => (Type: t, Ctor: c)))
@@ -31,7 +31,7 @@ public class OnboardingArchitectureTests
             .ToList();
 
         offenders.Should().BeEmpty(
-            because: "the section renders its own copy, the shared copy and Consent's copy — nothing else");
+            because: "the section renders its own copy and the shared copy; Consent's copy renders inside Consent's own components");
     }
 
     /// <summary>

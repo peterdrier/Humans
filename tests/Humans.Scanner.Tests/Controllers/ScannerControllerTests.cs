@@ -77,10 +77,6 @@ public class ScannerControllerTests
         BuildStartOffset: -10,
         EventEndOffset: 5,
         StrikeEndOffset: 10,
-        FirstCrewStartOffset: -14,
-        SetupWeekStartOffset: -7,
-        PreEventWeekStartOffset: -3,
-        FinishingWeekendStartOffset: 3,
         EarlyEntryCapacity: new Dictionary<int, int>(),
         BarriosEarlyEntryAllocation: null,
         EarlyEntryClose: null);

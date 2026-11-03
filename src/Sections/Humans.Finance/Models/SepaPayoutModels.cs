@@ -53,8 +53,8 @@ internal sealed record SepaBankMovementVm(
     string Status,
     string Reason);
 
-internal sealed record SepaTransferVm(
-    SepaPayoutTransferRow Row, string MemberName, string? BookedByName, string? WithdrawnByName = null);
+/// <summary>MemberName supplies native confirmation prompts; browser attribution renders Row's user IDs.</summary>
+internal sealed record SepaTransferVm(SepaPayoutTransferRow Row, string MemberName);
 
 /// <summary><paramref name="BatchLine"/> is the single bank line that debited the whole file, when there is
 /// one.</summary>
@@ -62,7 +62,7 @@ internal sealed record SepaPayoutFileVm(
     Guid FileId,
     string FileName,
     Instant GeneratedAt,
-    string GeneratedByName,
+    Guid GeneratedByUserId,
     IReadOnlyList<SepaTransferVm> Transfers,
     SepaBatchLineVm? BatchLine);
 

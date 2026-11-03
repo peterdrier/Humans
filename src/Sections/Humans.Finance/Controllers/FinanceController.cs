@@ -60,7 +60,9 @@ internal sealed class FinanceController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> ProvisionHoldedAccounts([BindRequired] int blockStart, [BindRequired] bool addAll)
     {
-        if (GetCurrentUserId() is not { } actorUserId) return Challenge();
+        var actor = await GetCurrentUserInfoAsync(HttpContext.RequestAborted);
+        if (actor is null) return Challenge();
+        var actorUserId = actor.Id;
         if (!ModelState.IsValid)
         {
             logger.LogWarning("Rejected malformed Holded provisioning form for actor {ActorUserId}", actorUserId);
@@ -145,7 +147,9 @@ internal sealed class FinanceController(
     public async Task<IActionResult> GenerateSepa(
         int[] selected, Dictionary<int, string> amounts, string maxPerTransfer, CancellationToken ct)
     {
-        if (GetCurrentUserId() is not { } actorUserId) return Challenge();
+        var actor = await GetCurrentUserInfoAsync(HttpContext.RequestAborted);
+        if (actor is null) return Challenge();
+        var actorUserId = actor.Id;
         if (!ModelState.IsValid)
         {
             logger.LogWarning("Rejected malformed SEPA payout selection for actor {ActorUserId}", actorUserId);
@@ -191,10 +195,7 @@ internal sealed class FinanceController(
         var (rows, unavailable, unmatched, bankFeedError) = await holdedConnector.GetSepaPayoutsAsync(days, ct);
 
         var names = new Dictionary<Guid, string>();
-        var ids = rows.SelectMany(r => new[] { r.UserId, r.GeneratedByUserId })
-            .Concat(rows.Where(r => r.BookedByUserId is not null).Select(r => r.BookedByUserId!.Value))
-            .Concat(rows.Where(r => r.WithdrawnByUserId is not null).Select(r => r.WithdrawnByUserId!.Value))
-            .Distinct().ToList();
+        var ids = rows.Select(r => r.UserId).Distinct().ToList();
         if (ids.Count > 0)
             foreach (var kv in await UserService.GetUserInfosAsync(ids, ct))
                 names[kv.Key] = kv.Value.BurnerName;
@@ -208,10 +209,9 @@ internal sealed class FinanceController(
                 g.Key,
                 g.First().FileName,
                 g.First().GeneratedAt,
-                Name(g.First().GeneratedByUserId),
+                g.First().GeneratedByUserId,
                 g.OrderBy(r => r.SupplierAccountNum)
-                 .Select(r => new SepaTransferVm(r, Name(r.UserId), r.BookedByUserId is null ? null : Name(r.BookedByUserId),
-                     r.WithdrawnByUserId is null ? null : Name(r.WithdrawnByUserId)))
+                 .Select(r => new SepaTransferVm(r, Name(r.UserId)))
                  .ToList(),
                 g.First().BatchLine))
             .OrderByDescending(f => f.GeneratedAt)
@@ -229,7 +229,9 @@ internal sealed class FinanceController(
         Guid transferId, string bankMovementId,
         int days = IHoldedFinanceAdminService.DefaultSepaMatchToleranceDays)
     {
-        if (GetCurrentUserId() is not { } actorUserId) return Challenge();
+        var actor = await GetCurrentUserInfoAsync(HttpContext.RequestAborted);
+        if (actor is null) return Challenge();
+        var actorUserId = actor.Id;
 
         var result = await holdedConnector.BookSepaTransferAsync(transferId, bankMovementId, actorUserId, days);
         if (result.Succeeded) SetSuccess(result.Message); else SetError(result.Message);
@@ -244,9 +246,26 @@ internal sealed class FinanceController(
     public async Task<IActionResult> WithdrawSepaTransfer(
         Guid transferId, int days = IHoldedFinanceAdminService.DefaultSepaMatchToleranceDays)
     {
-        if (GetCurrentUserId() is not { } actorUserId) return Challenge();
+        var actor = await GetCurrentUserInfoAsync(HttpContext.RequestAborted);
+        if (actor is null) return Challenge();
+        var actorUserId = actor.Id;
 
         var result = await holdedConnector.WithdrawSepaTransferAsync(transferId, actorUserId, HttpContext.RequestAborted);
+        if (result.Succeeded) SetSuccess(result.Message); else SetError(result.Message);
+
+        return RedirectToAction(nameof(Sepa), new { days });
+    }
+
+    /// <summary>For a file the bank rejected whole.</summary>
+    [HttpPost("Sepa/CancelFile")]
+    [Authorize(Policy = FinancePolicies.Manage)]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> CancelSepaFile(
+        Guid fileId, int days = IHoldedFinanceAdminService.DefaultSepaMatchToleranceDays)
+    {
+        if (GetCurrentUserId() is not { } actorUserId) return Challenge();
+
+        var result = await holdedConnector.CancelSepaFileAsync(fileId, actorUserId, HttpContext.RequestAborted);
         if (result.Succeeded) SetSuccess(result.Message); else SetError(result.Message);
 
         return RedirectToAction(nameof(Sepa), new { days });
@@ -257,7 +276,6 @@ internal sealed class FinanceController(
     public async Task<IActionResult> HoldedDuplicates(CancellationToken ct)
     {
         var plan = await holdedConnector.GetHoldedDuplicatesAsync(ct);
-        ViewBag.MemberNames = await MemberNamesAsync(plan.Members.Select(m => m.UserId), ct);
         return View(plan);
     }
 
@@ -267,21 +285,12 @@ internal sealed class FinanceController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> ApplyHoldedDuplicates()
     {
-        if (GetCurrentUserId() is not { } actorUserId) return Challenge();
+        var actor = await GetCurrentUserInfoAsync(HttpContext.RequestAborted);
+        if (actor is null) return Challenge();
+        var actorUserId = actor.Id;
 
         var result = await holdedConnector.RemoveHoldedDuplicatesAsync(actorUserId);
-        ViewBag.MemberNames = await MemberNamesAsync(result.Members.Select(m => m.UserId), HttpContext.RequestAborted);
         return View("HoldedDuplicatesApplied", result);
-    }
-
-    private async Task<Dictionary<Guid, string>> MemberNamesAsync(IEnumerable<Guid> userIds, CancellationToken ct)
-    {
-        var ids = userIds.Distinct().ToList();
-        var names = new Dictionary<Guid, string>();
-        if (ids.Count > 0)
-            foreach (var kv in await UserService.GetUserInfosAsync(ids, ct))
-                names[kv.Key] = kv.Value.BurnerName;
-        return names;
     }
 
     /// <summary>Books a whole file against the one Sabadell line the bank debited it as. No
@@ -293,7 +302,9 @@ internal sealed class FinanceController(
         Guid fileId, string bankMovementId,
         int days = IHoldedFinanceAdminService.DefaultSepaMatchToleranceDays)
     {
-        if (GetCurrentUserId() is not { } actorUserId) return Challenge();
+        var actor = await GetCurrentUserInfoAsync(HttpContext.RequestAborted);
+        if (actor is null) return Challenge();
+        var actorUserId = actor.Id;
 
         var result = await holdedConnector.BookSepaFileAsync(fileId, bankMovementId, actorUserId, days);
         if (result.Succeeded) SetSuccess(result.Message); else SetError(result.Message);
@@ -309,7 +320,9 @@ internal sealed class FinanceController(
     public async Task<IActionResult> BookSepaFileMatches(
         Guid fileId, int days = IHoldedFinanceAdminService.DefaultSepaMatchToleranceDays)
     {
-        if (GetCurrentUserId() is not { } actorUserId) return Challenge();
+        var actor = await GetCurrentUserInfoAsync(HttpContext.RequestAborted);
+        if (actor is null) return Challenge();
+        var actorUserId = actor.Id;
 
         var result = await holdedConnector.BookSepaFileMatchesAsync(fileId, actorUserId, days);
         if (result.Succeeded) SetSuccess(result.Message); else SetError(result.Message);
@@ -353,7 +366,7 @@ internal sealed class FinanceController(
         // The running balance is the service's; the page shows newest activity first.
         var memberName = string.IsNullOrWhiteSpace(ledger.Contact?.Name) ? "member" : ledger.Contact.Name;
         var lines = ledger.Lines
-            .Select(l => new CreditorStatementLineVm(l, l.RunningBalance, StatementDescription(l, memberName)))
+            .Select(l => new CreditorStatementLineVm(l, StatementDescription(l, memberName)))
             .OrderByDescending(r => r.Line.Date)
             .ThenByDescending(r => r.Line.EntryNumber)
             .ThenBy(r => r.Line.Line)
@@ -377,7 +390,9 @@ internal sealed class FinanceController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> BindCreditor(Guid userId, int supplierAccountNum, string? returnUrl)
     {
-        if (GetCurrentUserId() is not { } actorUserId) return Challenge();
+        var actor = await GetCurrentUserInfoAsync(HttpContext.RequestAborted);
+        if (actor is null) return Challenge();
+        var actorUserId = actor.Id;
         try
         {
             var result = await holdedConnector.SetCreditorContactAsync(userId, supplierAccountNum, actorUserId);
@@ -402,7 +417,9 @@ internal sealed class FinanceController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> UnbindCreditor(Guid userId, string? returnUrl)
     {
-        if (GetCurrentUserId() is not { } actorUserId) return Challenge();
+        var actor = await GetCurrentUserInfoAsync(HttpContext.RequestAborted);
+        if (actor is null) return Challenge();
+        var actorUserId = actor.Id;
         try
         {
             if (await holdedConnector.ClearCreditorContactAsync(userId, actorUserId))

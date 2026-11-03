@@ -86,6 +86,10 @@ calls `EraseForUserAsync` per merge-chain id from the deletion paths.
 
 ## Invariants
 
+- Deletion request and cancellation actions honour request cancellation during the
+  account lookup, before calling the deletion service. Once started, the deletion
+  lifecycle keeps its independent cancellation token.
+
 - **Export resolves the subject before fan-out.** Every contributor receives the
   surviving account ID, matching the envelope, so moved rows remain visible when
   the request names an archived account. Contributors with retained history still

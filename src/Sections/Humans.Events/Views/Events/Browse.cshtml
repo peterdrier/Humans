@@ -129,9 +129,13 @@ else
                         {
                             <text> &middot; @item.LocationNote</text>
                         }
-                        @if (item.DisplayHost != null)
+                        @if (item.Host != null)
                         {
-                            <text> &middot; <i class="fa-solid fa-user me-1"></i>@item.DisplayHost</text>
+                            <text> &middot; <i class="fa-solid fa-user me-1"></i>@item.Host</text>
+                        }
+                        else if (item.SubmitterUserId is { } submitterId)
+                        {
+                            <text> &middot; <i class="fa-solid fa-user me-1"></i></text><vc:human user-id="@submitterId" link="None" />
                         }
                     </div>
                     @if (!string.IsNullOrEmpty(item.Description))

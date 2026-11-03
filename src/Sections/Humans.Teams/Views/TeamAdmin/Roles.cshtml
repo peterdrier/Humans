@@ -26,13 +26,7 @@
                     <h5 class="mb-0 d-inline">@role.Name</h5>
                     @if (role.Period != RolePeriod.YearRound)
                     {
-                        var rpBadge = role.Period switch
-                        {
-                            RolePeriod.Build => "bg-info",
-                            RolePeriod.Event => "bg-success",
-                            RolePeriod.Strike => "bg-secondary",
-                            _ => "bg-light text-dark"
-                        };
+                        var rpBadge = role.Period.GetBadgeClass();
                         <span class="badge @rpBadge ms-2">@role.Period</span>
                     }
                     @if (!role.IsPublic)
@@ -176,7 +170,7 @@
                         {
                             <tr>
                                 <td>@(slot.SlotIndex + 1)</td>
-                                <td><span class="badge @slot.PriorityBadgeClass">@(slot.Priority == SlotPriority.NiceToHave ? "Nice to Have" : slot.Priority.ToString())</span></td>
+                                <td><span class="badge @slot.Priority.GetBadgeClass()">@(slot.Priority == SlotPriority.NiceToHave ? "Nice to Have" : slot.Priority.ToString())</span></td>
                                 <td>
                                     @if (slot.IsFilled && slot.AssignedUserId.HasValue)
                                     {

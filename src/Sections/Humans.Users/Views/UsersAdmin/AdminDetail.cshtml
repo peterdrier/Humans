@@ -1,8 +1,6 @@
-@inject IAuthorizationService AuthService
 @model Humans.Users.Models.AdminHumanDetailViewModel
 @{
     ViewData["Title"] = string.Format(Localizer["Users_AdminHumanDetail_Title"].Value, Model.DisplayName);
-    var isAdmin = (await AuthService.AuthorizeAsync(User, PolicyNames.AdminOnly)).Succeeded;
     var stateLabel = Model.State == UserState.DeletePending ? "Delete Pending" : Model.State.ToString();
     var stateBadgeClass = StatusBadgeExtensions.GetMembershipStatusBadgeClass(stateLabel);
 }
@@ -27,7 +25,7 @@
                                   link="None" />
                     </div>
                     <div class="col-md-10">
-                        <h4>@Model.DisplayName</h4>
+                        <h4><vc:human user-id="@Model.UserId" link="None" /></h4>
                         <p class="text-muted mb-1">@Model.Email</p>
                         <span class="badge @stateBadgeClass">@stateLabel</span>
                     </div>
@@ -106,7 +104,7 @@
             </div>
         }
 
-        <vc:shift-signups user-id="@Model.UserId" view-mode="@ShiftSignupsViewMode.Admin" display-name="@Model.DisplayName" />
+        <vc:shift-signups user-id="@Model.UserId" view-mode="@ShiftSignupsViewMode.Admin" />
 
         <vc:user-parts slot="@Humans.Base.Interfaces.UserPartSlots.AdminDetail" user-id="@Model.UserId" view-mode="@ProfileCardViewMode.Admin" />
 
@@ -132,14 +130,10 @@
         <div class="card mb-4">
             <div class="card-header d-flex justify-content-between align-items-center">
                 <span><i class="fa-solid fa-at me-1"></i> Emails</span>
-                @* AdminEmails is self-or-Admin only; gate to avoid a 403. *@
-                @if (isAdmin)
-                {
-                    <a asp-controller="ProfileEmails" asp-action="AdminEmails" asp-route-id="@Model.UserId"
-                       class="btn btn-sm btn-outline-secondary">
-                        @Localizer["Users_AdminDetail_ManageEmails"]
-                    </a>
-                }
+                <a asp-controller="ProfileEmails" asp-action="AdminEmails" asp-route-id="@Model.UserId"
+                   class="btn btn-sm btn-outline-secondary">
+                    @Localizer["Users_AdminDetail_ManageEmails"]
+                </a>
             </div>
             <div class="card-body p-0">
                 @if (Model.UserEmails.Count > 0)

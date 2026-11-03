@@ -101,7 +101,7 @@ internal sealed class GovernanceApplicationsController(
             return View("~/Views/Governance/Applications/Create.cshtml", model);
         }
 
-        var user = await GetCurrentUserInfoAsync();
+        var user = await GetCurrentUserInfoAsync(HttpContext.RequestAborted);
         if (user is null)
             return NotFound();
 
@@ -180,7 +180,7 @@ internal sealed class GovernanceApplicationsController(
             SubmittedAt = application.SubmittedAt.ToDateTimeUtc(),
             ReviewStartedAt = application.ReviewStartedAt?.ToDateTimeUtc(),
             ResolvedAt = application.ResolvedAt?.ToDateTimeUtc(),
-            ReviewerName = application.ReviewerName,
+            ReviewedByUserId = application.ReviewedByUserId,
             ReviewNotes = application.ReviewNotes,
             CanWithdraw = application.CanWithdraw,
             History = application.History
@@ -189,7 +189,7 @@ internal sealed class GovernanceApplicationsController(
                 {
                     Status = h.Status,
                     ChangedAt = h.ChangedAt.ToDateTimeUtc(),
-                    ChangedBy = h.ChangedByDisplayName ?? string.Empty,
+                    ChangedByUserId = h.ChangedByUserId,
                     Notes = h.Notes
                 }).ToList()
         };
@@ -201,7 +201,7 @@ internal sealed class GovernanceApplicationsController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Withdraw(Guid id)
     {
-        var user = await GetCurrentUserInfoAsync();
+        var user = await GetCurrentUserInfoAsync(HttpContext.RequestAborted);
         if (user is null)
             return NotFound();
 
@@ -276,11 +276,11 @@ internal sealed class GovernanceApplicationsController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> AdminTermExpiryFix()
     {
-        var userId = GetCurrentUserId();
-        if (userId is null)
+        var actor = await GetCurrentUserInfoAsync(HttpContext.RequestAborted);
+        if (actor is null)
             return Unauthorized();
 
-        var count = await applicationDecisionService.FixTermExpiryDriftAsync(userId.Value);
+        var count = await applicationDecisionService.FixTermExpiryDriftAsync(actor.Id);
         SetSuccess($"Corrected {count} term expir{(count == 1 ? "y" : "ies")}.");
         return RedirectToAction(nameof(AdminTermExpiry));
     }
@@ -310,7 +310,7 @@ internal sealed class GovernanceApplicationsController(
             Language = application.Language,
             SubmittedAt = application.SubmittedAt.ToDateTimeUtc(),
             ReviewStartedAt = application.ReviewStartedAt?.ToDateTimeUtc(),
-            ReviewerName = application.ReviewerName,
+            ReviewedByUserId = application.ReviewedByUserId,
             ReviewNotes = application.ReviewNotes,
             CanApproveReject = application.CanApproveReject,
             History = application.History
@@ -319,7 +319,7 @@ internal sealed class GovernanceApplicationsController(
                 {
                     Status = h.Status,
                     ChangedAt = h.ChangedAt.ToDateTimeUtc(),
-                    ChangedBy = h.ChangedByDisplayName ?? string.Empty,
+                    ChangedByUserId = h.ChangedByUserId,
                     Notes = h.Notes
                 }).ToList()
         };

@@ -18,7 +18,7 @@ namespace Humans.Workgroups.Data.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "10.0.10")
+                .HasAnnotation("ProductVersion", "10.0.13")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
@@ -289,6 +289,9 @@ namespace Humans.Workgroups.Data.Migrations
                         .HasMaxLength(50)
                         .HasColumnType("character varying(50)");
 
+                    b.Property<Guid?>("MeetingId")
+                        .HasColumnType("uuid");
+
                     b.Property<LocalDate>("OccurredOn")
                         .HasColumnType("date");
 
@@ -312,6 +315,8 @@ namespace Humans.Workgroups.Data.Migrations
 
                     b.HasIndex("DocumentId");
 
+                    b.HasIndex("MeetingId");
+
                     b.HasIndex("WorkgroupId", "OccurredOn");
 
                     b.ToTable("workgroup_log_entries", (string)null);
@@ -332,6 +337,10 @@ namespace Humans.Workgroups.Data.Migrations
                     b.Property<Instant?>("DeletedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<string>("Description")
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)");
+
                     b.Property<Instant>("EndUtc")
                         .HasColumnType("timestamp with time zone");
 
@@ -348,6 +357,14 @@ namespace Humans.Workgroups.Data.Migrations
 
                     b.Property<string>("Minutes")
                         .HasColumnType("text");
+
+                    b.Property<string>("RecurrenceRule")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<string>("RecurrenceTimezone")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
 
                     b.Property<Instant>("StartUtc")
                         .HasColumnType("timestamp with time zone");
@@ -454,6 +471,11 @@ namespace Humans.Workgroups.Data.Migrations
                         .HasForeignKey("DocumentId")
                         .OnDelete(DeleteBehavior.SetNull);
 
+                    b.HasOne("Humans.Workgroups.Domain.WorkgroupMeeting", "Meeting")
+                        .WithMany()
+                        .HasForeignKey("MeetingId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.HasOne("Humans.Workgroups.Domain.Workgroup", "Workgroup")
                         .WithMany("LogEntries")
                         .HasForeignKey("WorkgroupId")
@@ -461,6 +483,8 @@ namespace Humans.Workgroups.Data.Migrations
                         .IsRequired();
 
                     b.Navigation("Document");
+
+                    b.Navigation("Meeting");
 
                     b.Navigation("Workgroup");
                 });

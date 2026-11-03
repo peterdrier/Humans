@@ -74,7 +74,7 @@ public sealed class RoleAssignmentsControllerTests
     private static ValueTask<UserInfo?> UserAsync(Guid id) => new(new UserInfo(
         id, "Member", false, "en", null, Instant.FromUnixTimeSeconds(0),
         null, null, null, null, null, null,
-        null, null, null, [], [], [], null, []));
+        null, null, null, [], [], null));
 
     private void GivenAuthorization(string roleName, bool succeeds) =>
         _authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), roleName, PolicyNames.RoleAssignmentManage)
@@ -208,6 +208,52 @@ public sealed class RoleAssignmentsControllerTests
         result.Should().BeOfType<NotFoundResult>();
         await _write.DidNotReceive().EndRoleAsync(
             Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(false, false)]
+    [Xunit.InlineData(false, true)]
+    [Xunit.InlineData(true, false)]
+    [Xunit.InlineData(true, true)]
+    public async Task Mutation_preflight_stops_at_cancelled_lookup(bool endRole, bool actorLookup)
+    {
+        GivenKnownUsers();
+        using var request = new CancellationTokenSource();
+        var roleId = Guid.NewGuid();
+        _roles.GetByIdAsync(roleId, Arg.Any<CancellationToken>())
+            .Returns(call =>
+            {
+                if (endRole && !actorLookup)
+                    call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+                return new RoleAssignmentDetailSnapshot(TargetId, RoleNames.Board, "Member");
+            });
+        _users.GetRawUserInfoAsync(TargetId, Arg.Any<CancellationToken>())
+            .Returns(call =>
+            {
+                if (!endRole && !actorLookup)
+                    call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+                return UserAsync(TargetId);
+            });
+        _users.GetUserInfoAsync(ActorId, Arg.Any<CancellationToken>())
+            .Returns(call =>
+            {
+                if (actorLookup)
+                    call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+                return UserAsync(ActorId);
+            });
+        _write.AssignRoleAsync(TargetId, RoleNames.Board, ActorId, null, Arg.Any<CancellationToken>())
+            .Returns(new RoleAssignmentResult(true));
+        _write.EndRoleAsync(roleId, ActorId, null, Arg.Any<CancellationToken>())
+            .Returns(new RoleAssignmentResult(true));
+        var controller = BuildController(request.Token);
+        await request.CancelAsync();
+        Func<Task<IActionResult>> invoke = endRole
+            ? () => controller.EndRole(TargetId, roleId, null)
+            : () => controller.AddRole(TargetId, new CreateRoleAssignmentViewModel { RoleName = RoleNames.Board });
+
+        await invoke.Should().ThrowAsync<OperationCanceledException>();
+        _write.ReceivedCalls().Should().BeEmpty();
+        _authorization.ReceivedCalls().Should().BeEmpty();
     }
 
     [HumansFact]

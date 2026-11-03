@@ -4,6 +4,7 @@ using System.Security.Claims;
 using AwesomeAssertions;
 using Humans.Base.Constants;
 using Humans.Grants.Authorization;
+using Humans.Grants.Contracts;
 using Humans.Grants.Services;
 using Humans.Grants.Controllers;
 using Humans.Grants.Models;
@@ -27,15 +28,58 @@ public sealed class AuthorizationHandlerTests : GrantsTestHarness
     private async Task<bool> ProgramAllowedAsync(ClaimsPrincipal user, ProgramInfo program, ProgramOperationRequirement requirement)
     {
         var context = new AuthorizationHandlerContext([requirement], user, program);
-        await new ProgramAuthorizationHandler(Users).HandleAsync(context);
+        await new ProgramAuthorizationHandler(Users, new Microsoft.AspNetCore.Http.HttpContextAccessor()).HandleAsync(context);
         return context.HasSucceeded;
     }
 
     private async Task<bool> PolicyAllowedAsync(ClaimsPrincipal user)
     {
         var context = new AuthorizationHandlerContext([new ManagesGrantsRequirement()], user, resource: null);
-        await new GrantsPolicyHandler(NewService(), Users).HandleAsync(context);
+        await new GrantsPolicyHandler(NewService(), Users, new Microsoft.AspNetCore.Http.HttpContextAccessor()).HandleAsync(context);
         return context.HasSucceeded;
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData("PolicyViewer")]
+    [Xunit.InlineData("ProgramViewer")]
+    [Xunit.InlineData("Manager")]
+    public async Task AuthorizationReads_PropagateAbandonedRequests(string boundary)
+    {
+        using var request = new CancellationTokenSource();
+        var http = new HttpContextAccessor { HttpContext = new DefaultHttpContext { RequestAborted = request.Token } };
+        var userId = SeedUser("Manager");
+        var viewer = await Users.GetUserInfoAsync(userId, Ct);
+        var program = (await NewService().GetProgramAsync((await SeedProgramAsync(managers: userId)).Id, Ct))!;
+        var grants = Substitute.For<IGrantManagement>();
+        var observed = CancellationToken.None;
+        void Abandon(CancellationToken ct)
+        {
+            observed = ct;
+            request.Cancel();
+            ct.ThrowIfCancellationRequested();
+        }
+        Users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            var ct = call.Arg<CancellationToken>();
+            if (!string.Equals(boundary, "Manager", StringComparison.Ordinal)) Abandon(ct);
+            ct.ThrowIfCancellationRequested();
+            return new ValueTask<Humans.Users.Contracts.UserInfo?>(viewer);
+        });
+        grants.ManagesAnyProgramAsync(userId, Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            Abandon(call.Arg<CancellationToken>());
+            return true;
+        });
+        var context = string.Equals(boundary, "ProgramViewer", StringComparison.Ordinal)
+            ? new AuthorizationHandlerContext([ProgramOperationRequirement.Manage], Principal(userId), program)
+            : new AuthorizationHandlerContext([new ManagesGrantsRequirement()], Principal(userId), null);
+        IAuthorizationHandler handler = string.Equals(boundary, "ProgramViewer", StringComparison.Ordinal)
+            ? new ProgramAuthorizationHandler(Users, http)
+            : new GrantsPolicyHandler(grants, Users, http);
+        Func<Task> authorize = () => handler.HandleAsync(context);
+        await authorize.Should().ThrowAsync<OperationCanceledException>();
+        observed.Should().Be(request.Token);
+        context.HasSucceeded.Should().BeFalse();
     }
 
     [HumansFact]
@@ -46,7 +90,9 @@ public sealed class AuthorizationHandlerTests : GrantsTestHarness
         var b = (await NewService().GetProgramAsync((await SeedProgramAsync(name: "B")).Id, Ct))!;
         var user = Principal(manager);
 
+        (await ProgramAllowedAsync(user, a, ProgramOperationRequirement.View)).Should().BeTrue();
         (await ProgramAllowedAsync(user, a, ProgramOperationRequirement.Manage)).Should().BeTrue();
+        (await ProgramAllowedAsync(user, b, ProgramOperationRequirement.View)).Should().BeFalse();
         (await ProgramAllowedAsync(user, b, ProgramOperationRequirement.Manage)).Should().BeFalse();
         (await ProgramAllowedAsync(user, a, ProgramOperationRequirement.Administer)).Should().BeFalse();
         (await PolicyAllowedAsync(user)).Should().BeTrue();
@@ -54,15 +100,28 @@ public sealed class AuthorizationHandlerTests : GrantsTestHarness
 
     [HumansTheory]
     [Xunit.InlineData(RoleNames.Admin)]
-    [Xunit.InlineData(RoleNames.Board)]
-    public async Task AdminAndBoard_ManageAndAdministerEveryProgram(string role)
+    [Xunit.InlineData(GrantsRoles.GrantsAdmin)]
+    public async Task AdminAndGrantsAdmin_ManageAndAdministerEveryProgram(string role)
     {
         var program = (await NewService().GetProgramAsync((await SeedProgramAsync()).Id, Ct))!;
         var user = Principal(SeedUser("Role holder"), role);
 
+        (await ProgramAllowedAsync(user, program, ProgramOperationRequirement.View)).Should().BeTrue();
         (await ProgramAllowedAsync(user, program, ProgramOperationRequirement.Manage)).Should().BeTrue();
         (await ProgramAllowedAsync(user, program, ProgramOperationRequirement.Administer)).Should().BeTrue();
         (await PolicyAllowedAsync(user)).Should().BeTrue();
+    }
+
+    [HumansFact]
+    public async Task Board_ViewsEveryProgram_ButNeitherManagesNorAdministers()
+    {
+        var program = (await NewService().GetProgramAsync((await SeedProgramAsync()).Id, Ct))!;
+        var user = Principal(SeedUser("Board member"), RoleNames.Board);
+
+        (await PolicyAllowedAsync(user)).Should().BeTrue();
+        (await ProgramAllowedAsync(user, program, ProgramOperationRequirement.View)).Should().BeTrue();
+        (await ProgramAllowedAsync(user, program, ProgramOperationRequirement.Manage)).Should().BeFalse();
+        (await ProgramAllowedAsync(user, program, ProgramOperationRequirement.Administer)).Should().BeFalse();
     }
 
     [HumansTheory]
@@ -78,6 +137,7 @@ public sealed class AuthorizationHandlerTests : GrantsTestHarness
         var user = role is null ? Principal(person) : Principal(person, role);
 
         (await PolicyAllowedAsync(user)).Should().BeFalse();
+        (await ProgramAllowedAsync(user, info, ProgramOperationRequirement.View)).Should().BeFalse();
         (await ProgramAllowedAsync(user, info, ProgramOperationRequirement.Manage)).Should().BeFalse();
     }
 
@@ -97,7 +157,10 @@ public sealed class AuthorizationHandlerTests : GrantsTestHarness
         var program = (await service.GetProgramAsync(throughAlias.Id, Ct))!;
         (await PolicyAllowedAsync(viewer)).Should().BeTrue();
         (await ProgramAllowedAsync(viewer, program, ProgramOperationRequirement.Manage)).Should().BeTrue();
-        var controller = new GrantsAdminController(service, Users, Substitute.For<IAuthorizationService>(), Settings,
+        var authorization = Substitute.For<IAuthorizationService>();
+        authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(), Arg.Any<string>())
+            .Returns(AuthorizationResult.Failed());
+        var controller = new GrantsAdminController(service, Users, authorization, Settings,
             NullLogger<GrantsAdminController>.Instance)
         {
             ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext { User = viewer } }

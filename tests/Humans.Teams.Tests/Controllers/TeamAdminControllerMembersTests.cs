@@ -33,6 +33,133 @@ namespace Humans.Teams.Tests.Controllers;
 public class TeamAdminControllerMembersTests
 {
     [HumansTheory]
+    [InlineData("members", "viewer")]
+    [InlineData("members", "teams")]
+    [InlineData("members", "profiles")]
+    [InlineData("members", "pending")]
+    [InlineData("members", "resources")]
+    [InlineData("members", "parent")]
+    [InlineData("members", "parent-resources")]
+    [InlineData("early", "viewer")]
+    [InlineData("early", "teams")]
+    [InlineData("remove", "viewer")]
+    [InlineData("remove", "teams")]
+    [InlineData("roles", "definitions")]
+    [InlineData("roles", "team")]
+    [InlineData("roles", "profiles")]
+    [InlineData("search", "search")]
+    [InlineData("search", "team")]
+    [InlineData("role-search", "search")]
+    [InlineData("provision", "team")]
+    [InlineData("edit-invalid", "parent")]
+    [InlineData("edit-failed", "parent")]
+    public async Task ManagementReads_CancelBeforeWritesAndFinishAfterAnEditAttempt(string action, string boundary)
+    {
+        using var request = new CancellationTokenSource();
+        var userId = Guid.NewGuid();
+        var users = Substitute.For<IUserService>();
+        var teams = Substitute.For<ITeamManagementService>();
+        var resources = Substitute.For<ITeamResourceService>();
+        var parent = new TeamInfo(Guid.NewGuid(), "Parent", null, "parent", true, false, SystemTeamType.None,
+            false, false, false, false, Instant.MinValue, []);
+        var team = parent with { Id = Guid.NewGuid(), Name = "Team", Slug = "team", ParentTeamId = parent.Id, EarlyEntryEnabled = true };
+        void Check(string read, CancellationToken ct)
+        {
+            if (string.Equals(boundary, read, StringComparison.Ordinal)) ct.ThrowIfCancellationRequested();
+        }
+        users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            Check("viewer", call.Arg<CancellationToken>());
+            return new ValueTask<UserInfo?>(UserInfo.Create(new User { Id = userId }, [], [], null));
+        });
+        users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            Check("profiles", call.Arg<CancellationToken>());
+            return new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(new Dictionary<Guid, UserInfo>());
+        });
+        users.SearchUsersAsync(Arg.Any<string>(), Arg.Any<PersonSearchFields>(), Arg.Any<int>(), Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            Check("search", call.Arg<CancellationToken>());
+            return Task.FromResult<IReadOnlyList<HumanSearchResult>>([]);
+        });
+        teams.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            Check("teams", call.Arg<CancellationToken>());
+            return Task.FromResult<IReadOnlyDictionary<Guid, TeamInfo>>(new Dictionary<Guid, TeamInfo> { [team.Id] = team, [parent.Id] = parent });
+        });
+        teams.GetTeamAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            var isParent = call.Arg<Guid>() == parent.Id;
+            Check(isParent ? "parent" : "team", call.Arg<CancellationToken>());
+            return Task.FromResult<TeamInfo?>(isParent ? parent : team);
+        });
+        teams.GetPendingRequestsForTeamAsync(team.Id, Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            Check("pending", call.Arg<CancellationToken>());
+            return Task.FromResult<IReadOnlyList<TeamJoinRequestSnapshot>>([]);
+        });
+        resources.GetTeamResourcesAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            Check(call.Arg<Guid>() == parent.Id ? "parent-resources" : "resources", call.Arg<CancellationToken>());
+            return Task.FromResult<IReadOnlyList<GoogleResourceSnapshot>>([]);
+        });
+        teams.GetRoleDefinitionsAsync(team.Id, Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            Check("definitions", call.Arg<CancellationToken>());
+            return Task.FromResult<IReadOnlyList<TeamRoleDefinitionSnapshot>>([]);
+        });
+        teams.UpdateTeamPageContentAsync(default, default, default!, default, default, default, default)
+            .ReturnsForAnyArgs(async call =>
+            {
+                call.Arg<CancellationToken>().Should().Be(CancellationToken.None);
+                await request.CancelAsync();
+                return TeamPageUpdateResult.Failed("Cannot update");
+            });
+        var auth = Substitute.For<IAuthorizationService>();
+        auth.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(), Arg.Any<IEnumerable<IAuthorizationRequirement>>())
+            .Returns(AuthorizationResult.Success());
+        auth.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(), Arg.Any<string>())
+            .Returns(AuthorizationResult.Success());
+        teams.RemoveMemberAsync(team.Id, Arg.Any<Guid>(), userId, Arg.Any<CancellationToken>())
+            .Returns(new TeamMemberRemovalResult("Teams_NotMember"));
+        var http = new DefaultHttpContext
+        {
+            RequestAborted = request.Token,
+            User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, userId.ToString())], "test"))
+        };
+        var controller = new TeamAdminController(teams, resources, users, Substitute.For<IEmailProvisioningService>(),
+            auth, NullLogger<TeamAdminController>.Instance, Substitute.For<IStringLocalizer<TeamsResource>>(), Substitute.For<ITicketService>())
+        {
+            ControllerContext = new ControllerContext { HttpContext = http },
+            TempData = new TempDataDictionary(http, Substitute.For<ITempDataProvider>()),
+            Url = Substitute.For<IUrlHelper>()
+        };
+        if (string.Equals(action, "edit-invalid", StringComparison.Ordinal)) controller.ModelState.AddModelError("PageContent", "Invalid");
+        Func<Task<IActionResult>> read = () => action switch
+        {
+            "members" => controller.Members(team.Slug),
+            "early" => controller.EarlyEntry(team.Slug, request.Token),
+            "remove" => controller.RemoveMember(team.Slug, Guid.NewGuid()),
+            "roles" => controller.Roles(team.Slug),
+            "search" => controller.SearchUsers(team.Slug, "alpha"),
+            "role-search" => controller.SearchMembersForRole(team.Slug, "alpha"),
+            "provision" => controller.ProvisionEmail(team.Slug, Guid.NewGuid(), "alpha"),
+            _ => controller.EditPage(team.Slug, new EditTeamPageViewModel())
+        };
+        if (string.Equals(action, "edit-failed", StringComparison.Ordinal))
+        {
+            (await read()).Should().BeOfType<ViewResult>();
+            await teams.Received(1).GetTeamAsync(parent.Id, CancellationToken.None);
+        }
+        else
+        {
+            await request.CancelAsync();
+            await read.Should().ThrowAsync<OperationCanceledException>();
+            teams.ReceivedCalls().Should().OnlyContain(call => call.GetMethodInfo().Name.StartsWith("Get", StringComparison.Ordinal));
+        }
+    }
+
+    [HumansTheory]
     [InlineData(0, false)]
     [InlineData(1, false)]
     [InlineData(1, true)]
@@ -45,7 +172,7 @@ public class TeamAdminControllerMembersTests
         var teams = Substitute.For<ITeamManagementService>();
         var users = Substitute.For<IUserService>();
         users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(UserInfo.Create(new User { Id = userId }, [], [], [], null, []));
+            .Returns(UserInfo.Create(new User { Id = userId }, [], [], null));
         var team = new TeamInfo(Guid.NewGuid(), "Team", null, "team", true, false, SystemTeamType.None,
             false, false, false, false, Instant.MinValue, []);
         teams.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(new Dictionary<Guid, TeamInfo> { [team.Id] = team });
@@ -104,7 +231,7 @@ public class TeamAdminControllerMembersTests
         var teams = Substitute.For<ITeamManagementService>();
         var users = Substitute.For<IUserService>();
         users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(UserInfo.Create(new User { Id = userId }, [], [], [], null, []));
+            .Returns(UserInfo.Create(new User { Id = userId }, [], [], null));
         var team = new TeamInfo(Guid.NewGuid(), "Team", null, "team", true, false, SystemTeamType.None,
             false, false, false, false, Instant.MinValue, []);
         teams.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(new Dictionary<Guid, TeamInfo> { [team.Id] = team });
@@ -169,7 +296,7 @@ public class TeamAdminControllerMembersTests
         var teams = Substitute.For<ITeamManagementService>();
         var users = Substitute.For<IUserService>();
         users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(UserInfo.Create(new User { Id = userId }, [], [], [], null, []));
+            .Returns(UserInfo.Create(new User { Id = userId }, [], [], null));
         users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(new Dictionary<Guid, UserInfo>()));
         var team = new TeamInfo(Guid.NewGuid(), "Team", null, "team", true, false, SystemTeamType.None,
@@ -249,7 +376,7 @@ public class TeamAdminControllerMembersTests
         var teams = Substitute.For<ITeamManagementService>();
         var users = Substitute.For<IUserService>();
         users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(UserInfo.Create(new User { Id = userId }, [], [], [], null, []));
+            .Returns(UserInfo.Create(new User { Id = userId }, [], [], null));
         var team = new TeamInfo(Guid.NewGuid(), "Team", null, "team", true, false, SystemTeamType.None,
             false, false, false, false, Instant.MinValue, []);
         teams.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(new Dictionary<Guid, TeamInfo> { [team.Id] = team });
@@ -341,7 +468,7 @@ public class TeamAdminControllerMembersTests
         var teams = Substitute.For<ITeamManagementService>();
         var users = Substitute.For<IUserService>();
         users.GetUserInfoAsync(actorId, Arg.Any<CancellationToken>()).Returns(
-            UserInfo.Create(new User { Id = actorId }, [], [], [], null, []));
+            UserInfo.Create(new User { Id = actorId }, [], [], null));
         var team = new TeamInfo(Guid.NewGuid(), "Team", null, "team", true, false, SystemTeamType.None,
             false, false, false, false, Instant.MinValue,
             [new TeamMemberInfo(Guid.NewGuid(), targetId, "Person", null, null, TeamMemberRole.Member, Instant.MinValue)]);
@@ -395,7 +522,7 @@ public class TeamAdminControllerMembersTests
         var teams = Substitute.For<ITeamManagementService>();
         var users = Substitute.For<IUserService>();
         users.GetUserInfoAsync(actorId, Arg.Any<CancellationToken>())
-            .Returns(new ValueTask<UserInfo?>(UserInfo.Create(new User { Id = actorId }, [], [], [], null, [])));
+            .Returns(new ValueTask<UserInfo?>(UserInfo.Create(new User { Id = actorId }, [], [], null)));
         teams.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(new Dictionary<Guid, TeamInfo> { [team.Id] = team });
         const string reason = "The requested membership change is not permitted";
         Exception failure = unexpected
@@ -474,7 +601,7 @@ public class TeamAdminControllerMembersTests
         teams.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(new Dictionary<Guid, TeamInfo> { [team.Id] = team });
         teams.GetPendingRequestsForTeamAsync(team.Id).Returns([]);
         users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(new ValueTask<UserInfo?>(UserInfo.Create(new User { Id = userId }, [], [], [], null, [])));
+            .Returns(new ValueTask<UserInfo?>(UserInfo.Create(new User { Id = userId }, [], [], null)));
         users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(new Dictionary<Guid, UserInfo>()));
         var authorization = Substitute.For<IAuthorizationService>();
@@ -502,6 +629,46 @@ public class TeamAdminControllerMembersTests
         result.Members.Should().HaveCount(expectedCount);
         result.PageNumber.Should().Be(expectedPage);
         result.TotalCount.Should().Be(1);
+    }
+
+    [HumansFact]
+    public async Task Board_reads_the_members_page_without_any_management_controls()
+    {
+        var userId = Guid.NewGuid();
+        var teams = Substitute.For<ITeamManagementService>();
+        var users = Substitute.For<IUserService>();
+        users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(UserInfo.Create(new User { Id = userId }, [], [], null));
+        var team = new TeamInfo(Guid.NewGuid(), "Team", null, "team", true, false, SystemTeamType.None,
+            false, false, false, false, Instant.MinValue, []);
+        teams.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(new Dictionary<Guid, TeamInfo> { [team.Id] = team });
+        var authorization = Substitute.For<IAuthorizationService>();
+        authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), team, Arg.Any<IEnumerable<IAuthorizationRequirement>>())
+            .Returns(AuthorizationResult.Failed());
+        authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(), TeamsPolicies.Read)
+            .Returns(AuthorizationResult.Success());
+        var http = new DefaultHttpContext
+        {
+            User = new ClaimsPrincipal(new ClaimsIdentity(
+                [new Claim(ClaimTypes.NameIdentifier, userId.ToString()), new Claim(ClaimTypes.Role, RoleNames.Board)], "test"))
+        };
+        var controller = new TeamAdminController(teams, Substitute.For<ITeamResourceService>(), users,
+            Substitute.For<IEmailProvisioningService>(), authorization, NullLogger<TeamAdminController>.Instance,
+            Substitute.For<IStringLocalizer<TeamsResource>>(), Substitute.For<ITicketService>())
+        {
+            ControllerContext = new ControllerContext { HttpContext = http },
+            TempData = new TempDataDictionary(http, Substitute.For<ITempDataProvider>()),
+            Url = Substitute.For<IUrlHelper>()
+        };
+
+        var members = await controller.Members(team.Slug);
+        var add = await controller.AddMember(team.Slug, new AddMemberModel { UserId = Guid.NewGuid() });
+
+        var model = members.Should().BeOfType<ViewResult>().Which.Model.Should().BeOfType<TeamMembersViewModel>().Subject;
+        model.CanManage.Should().BeFalse();
+        model.CanManageRoles.Should().BeFalse();
+        model.CanProvisionEmails.Should().BeFalse();
+        add.Should().BeOfType<ForbidResult>();
     }
 
     // The role-management toggle asks the TeamsAdminOrAdmin policy; answer it from the principal's role claims.

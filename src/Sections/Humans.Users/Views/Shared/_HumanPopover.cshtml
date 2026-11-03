@@ -13,7 +13,7 @@
     <vc:human user-id="@Model.UserId" layout="Avatar" size="72" css-class="me-2" link="None" />
     <div>
         <div class="fw-semibold">
-            @Model.DisplayName
+            <vc:human user-id="@Model.UserId" link="None" />
             @if ((await AuthService.AuthorizeAsync(User, UsersPolicies.Read)).Succeeded
                 && !string.IsNullOrEmpty(Model.PreferredLanguage?.ToFlagClass()))
             {

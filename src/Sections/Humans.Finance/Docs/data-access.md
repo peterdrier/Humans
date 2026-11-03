@@ -70,7 +70,7 @@ Repository: `IHoldedRepository`.
 | HoldedCreditorContacts | R/W (creditor-contact bindings per user) |
 | HoldedDocSyncStates | R/W |
 | SepaPayoutFiles | R/W (append-only writes; read joined for the Article 15 export and for `/Finance/Sepa`) |
-| SepaPayoutTransfers | R/W (appended at generation, `HoldedContactId` captured from the binding at that point; the booking columns are updated only by the composed `SepaBankBooking` owner — `SaveSepaTransferBookingAsync` (`BookedAt`/`BookedByUserId`/`HoldedBankMovementId`/`ReconciledAt`/`HoldedPaymentRefs`), `SaveSepaTransferPaymentRefsAsync` (`HoldedPaymentRefs` only, a run that posted and then stopped), `MarkSepaTransferReconciledAsync` (`ReconciledAt` only, a later reconcile pass); the one other update is `SaveSepaTransferWithdrawnAsync` (`WithdrawnAt`/`WithdrawnByUserId` only, a transfer the bank cancelled, written by the facade's `WithdrawSepaTransferAsync`). Read per user for the Article 15 export and flattened with the file for `/Finance/Sepa`) |
+| SepaPayoutTransfers | R/W (appended at generation, `HoldedContactId` captured from the binding at that point; the booking columns are updated only by the composed `SepaBankBooking` owner — `SaveSepaTransferBookingAsync` (`BookedAt`/`BookedByUserId`/`HoldedBankMovementId`/`ReconciledAt`/`HoldedPaymentRefs`), `SaveSepaTransferPaymentRefsAsync` (`HoldedPaymentRefs` only, a run that posted and then stopped), `MarkSepaTransferReconciledAsync` (`ReconciledAt` only, a later reconcile pass); the one other update is `SaveSepaTransfersWithdrawnAsync` (`WithdrawnAt`/`WithdrawnByUserId` only, a transfer the bank cancelled or a whole rejected file, written by the facade's `WithdrawSepaTransferAsync` and `CancelSepaFileAsync`). Read per user for the Article 15 export and flattened with the file for `/Finance/Sepa`) |
 
 Cross-section calls via `IBudgetService` (`budget` in the ctor), `IHoldedService` (the Holded section's
 ledger-mirror read surface — `holded` in the ctor; ledger-line /
@@ -113,8 +113,8 @@ match the bank line), `ListAccountingAccountsAsync` (live balance),
 `ReconcileBankMovementAsync` (nobodies-collective/Humans#1185), alongside the
 existing `PayPurchaseDocumentAsync` / `ListPurchaseDocumentsAsync`. Journal remainders use
 `IHoldedWrite.PostJournalEntryAsync`, returning a confirmation outcome rather than a connector reference.
-`WithdrawSepaTransferAsync`, `GetHoldedDuplicatesAsync` and `RemoveHoldedDuplicatesAsync`
-(`[ExternalWrite]`, no token) serve `POST /Finance/Sepa/Withdraw` and
+`WithdrawSepaTransferAsync`, `CancelSepaFileAsync`, `GetHoldedDuplicatesAsync` and `RemoveHoldedDuplicatesAsync`
+(`[ExternalWrite]`, no token) serve `POST /Finance/Sepa/Withdraw`, `/Finance/Sepa/CancelFile` and
 `/Finance/HoldedDuplicates`; the duplicate check reads the linked expense lines
 through `IExpenseHoldedBookingService.GetHoldedBookingsAsync` (Expenses, DTOs only) and
 deletes through `IHoldedClient.DeletePurchaseDocumentAsync` / `DeleteContactAsync`.
@@ -142,11 +142,9 @@ Repository: `IPaymentDetailsRepository`.
 
 Implements the public `IFinanceService` (`GetIbanAsync`) and `IFinanceWrite` (`SetIbanAsync`), both
 called by Expenses; the internal `IPaymentDetailsManagement` (`RevealIbanAsync` for
-`PaymentDetailsAdminController`, and the `finance.iban-to-payment-details` copy for
-`ISectionDataMigrations`); `IUserDataContributor` (slice `PaymentDetails`, masked IBAN; erasure
+`PaymentDetailsAdminController`); `IUserDataContributor` (slice `PaymentDetails`, masked IBAN; erasure
 deletes the row) and `IUserMerge` (the survivor's IBAN wins, else the source's row moves).
-Cross-section calls: `IUserService` (merge-chain resolution, the user-exists check, and the
-`[Obsolete]` `ProfileInfo.Iban` read fallback until the copy is done in production) and
+Cross-section calls: `IUserService` (merge-chain resolution and the user-exists check) and
 `IAuditLogService` (`IbanReveal`). Uncached: each read is one keyed row.
 
 `PaymentDetailsViewComponent` (the Payment Details card, contributed to `/Users/Admin/{id}` by

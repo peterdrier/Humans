@@ -143,11 +143,9 @@ public class ThingsToDoMedicalPromptTests
     private static UserInfo UserInfoWith(Guid userId, string? medical) => UserInfoFactory.Create(
         user: new User { Id = userId, DisplayName = "Test", PreferredLanguage = "en" },
         userEmails: [],
-        eventParticipations: [],
         externalLogins: [],
         profile: new Profile { UserId = userId, BurnerName = "Test", MedicalConditions = medical },
         contactFields: [],
         profileLanguages: [],
-        volunteerHistory: [],
-        communicationPreferences: []);
+        volunteerHistory: []);
 }

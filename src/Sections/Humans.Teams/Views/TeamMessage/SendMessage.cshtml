@@ -1,17 +1,26 @@
+@inject Microsoft.AspNetCore.Mvc.Localization.IHtmlLocalizer<TeamsResource> HtmlLocalizer
 @model TeamSendMessageViewModel
 @{
-    ViewData["Title"] = string.Format(Localizer["Teams_SendMessage_FromTeam"].Value, Model.RecipientDisplayName, Model.TeamName);
+    ViewData["Title"] = Model.PageTitle;
+    var recipient = await Component.InvokeAsync(typeof(HumanViewComponent), new
+    {
+        userId = Model.RecipientId,
+        link = HumanLink.None,
+    });
+    using var recipientWriter = new System.IO.StringWriter();
+    recipient.WriteTo(recipientWriter, System.Text.Encodings.Web.HtmlEncoder.Default);
+    var recipientHtml = new HtmlString(recipientWriter.ToString().Trim());
 }
 
 <nav aria-label="@Localizer["Teams_BreadcrumbNavigation"]">
     <ol class="breadcrumb">
         <li class="breadcrumb-item"><a asp-controller="Team" asp-action="Index">@SharedLocalizer["Teams_Title"]</a></li>
-        <li class="breadcrumb-item"><a asp-controller="ProfileView" asp-action="ViewProfile" asp-route-id="@Model.RecipientId">@Model.RecipientDisplayName</a></li>
+        <li class="breadcrumb-item"><vc:human user-id="@Model.RecipientId" /></li>
         <li class="breadcrumb-item active" aria-current="page">@Localizer["Teams_SendMessage_Breadcrumb"]</li>
     </ol>
 </nav>
 
-<h1>@string.Format(Localizer["Teams_SendMessage_FromTeam"].Value, Model.RecipientDisplayName, Model.TeamName)</h1>
+<h1>@HtmlLocalizer["Teams_SendMessage_FromTeam", recipientHtml, Model.TeamName]</h1>
 
 <div class="card">
     <div class="card-body">

@@ -5,23 +5,24 @@ const { resolve } = require('node:path');
 const vm = require('node:vm');
 
 const view = readFileSync(resolve(__dirname,
-    '../../../src/Sections/Humans.Calendar/Views/Calendar/_CalendarEventFormFields.cshtml'), 'utf8');
+    '../../../src/Sections/Humans.Calendar/Views/Shared/_CalendarEventForm.cshtml'), 'utf8');
 const script = view.match(/<script[^>]*>([\s\S]*?)<\/script>/)[1];
 
 function picker() {
     const fields = {};
     for (const id of ['rec-freq', 'rec-interval', 'rec-until', 'rec-count', 'rec-month-nth',
         'rec-month-day', 'rec-ends-on', 'rec-ends-after', 'rec-ends-never', 'RecurrenceRule',
-        'calendar-event-isallday', 'StartLocal', 'StartDateLocal', 'rec-month-day-label', 'rec-month-nth-label']) {
+        'StartDate', 'rec-month-day-label', 'rec-month-nth-label']) {
         fields[id] = { value: '', checked: false, disabled: false,
             addEventListener() {} };
     }
     fields['rec-interval'].value = '1';
     fields['rec-count'].value = '10';
-    fields.StartLocal.value = '2026-06-01T19:00';
+    fields.StartDate.value = '2026-06-01';
+    const allDay = { checked: false };
     const recurring = { value: 'false' };
     const hidden = { classList: { toggle() {} } };
-    const form = { querySelector: () => recurring,
+    const form = { querySelector: sel => sel === '[data-calendar-allday]' ? allDay : recurring,
         addEventListener(event, handler) { this[event] = handler; } };
     const root = { closest: () => form, contains: () => true,
         querySelectorAll: () => [], querySelector: () => hidden,

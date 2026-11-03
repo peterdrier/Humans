@@ -31,9 +31,69 @@ public class GateControllerOverridePinTests
 
     public GateControllerOverridePinTests()
     {
+        _users.GetUserInfoAsync(_gateAccount, Arg.Any<CancellationToken>())
+            .Returns(UserInfo.Create(new User { Id = _gateAccount }, [], [], null));
         _gate.RecordDecisionAsync(Arg.Any<GateDecisionInput>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(new GateDecisionResult(GateVerdict.AdmittedEarlyOverride, "Guest", null,
                 IsEarly: true, null, null));
+    }
+
+    public enum GateAction
+    {
+        Decision,
+        SetStaffPin,
+        ResetStaffPin
+    }
+
+    [HumansTheory]
+    [InlineData(GateAction.Decision, AccountScenario.Merged)]
+    [InlineData(GateAction.Decision, AccountScenario.Missing)]
+    [InlineData(GateAction.Decision, AccountScenario.Cancelled)]
+    [InlineData(GateAction.SetStaffPin, AccountScenario.Merged)]
+    [InlineData(GateAction.SetStaffPin, AccountScenario.Missing)]
+    [InlineData(GateAction.SetStaffPin, AccountScenario.Cancelled)]
+    [InlineData(GateAction.ResetStaffPin, AccountScenario.Merged)]
+    [InlineData(GateAction.ResetStaffPin, AccountScenario.Missing)]
+    [InlineData(GateAction.ResetStaffPin, AccountScenario.Cancelled)]
+    public async Task Gate_actor_boundaries_resolve_surviving_accounts(GateAction action, AccountScenario account)
+    {
+        var controller = BuildController(Pin);
+        var survivor = Guid.NewGuid();
+        var staffId = Guid.NewGuid();
+        using var request = new CancellationTokenSource();
+        controller.HttpContext.RequestAborted = request.Token;
+        _users.GetUserInfoAsync(_gateAccount, Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            call.Arg<CancellationToken>().Should().Be(request.Token);
+            call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+            return new ValueTask<UserInfo?>(account == AccountScenario.Missing ? null :
+                UserInfo.Create(new User { Id = survivor }, [], [], null));
+        });
+        _gate.AdminSetPinAsync(staffId, Pin, Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(true);
+        if (account == AccountScenario.Cancelled)
+            await request.CancelAsync();
+        Func<Task<IActionResult>> invoke = action switch
+        {
+            GateAction.Decision => () => controller.Decision(Barcode, true, false, false, null, null, request.Token),
+            GateAction.SetStaffPin => () => controller.SetStaffPin(staffId, Pin, request.Token),
+            _ => () => controller.ResetStaffPin(staffId, request.Token),
+        };
+
+        if (account == AccountScenario.Cancelled)
+            await invoke.Should().ThrowAsync<OperationCanceledException>();
+        else if (account == AccountScenario.Missing)
+            (await invoke()).Should().BeOfType<UnauthorizedResult>();
+        else
+        {
+            await invoke();
+            var call = _gate.ReceivedCalls().Should().ContainSingle().Subject;
+            call.GetArguments()[action == GateAction.SetStaffPin ? 2 : 1].Should().Be(survivor);
+            call.GetArguments()[^1].Should().Be(request.Token);
+            return;
+        }
+
+        _gate.ReceivedCalls().Should().BeEmpty();
+        controller.TempData.Should().BeEmpty();
     }
 
     private GateController BuildController(string? configuredPin)

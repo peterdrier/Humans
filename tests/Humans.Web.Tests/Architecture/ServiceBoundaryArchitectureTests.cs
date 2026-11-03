@@ -81,7 +81,6 @@ public class ServiceBoundaryArchitectureTests
     [
         typeof(Users.Contracts.User),
         typeof(Users.Contracts.UserEmail),
-        typeof(Users.Contracts.EventParticipation),
         typeof(GoogleIntegration.Contracts.GoogleResource),
         typeof(GoogleIntegration.Contracts.GoogleSyncOutboxEvent),
         typeof(GoogleIntegration.Contracts.SyncServiceSettings),

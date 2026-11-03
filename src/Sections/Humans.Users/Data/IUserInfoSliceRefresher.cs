@@ -39,10 +39,4 @@ internal interface IUserInfoSliceRefresher
         CancellationToken ct = default,
         [CallerMemberName] string memberName = "",
         [CallerFilePath] string filePath = "");
-
-    Task RefreshCommunicationPreferencesAsync(
-        Guid userId,
-        CancellationToken ct = default,
-        [CallerMemberName] string memberName = "",
-        [CallerFilePath] string filePath = "");
 }

@@ -97,7 +97,9 @@ All routes are `AdminOnly`.
 
 ## Triggers
 
-- When an admin commits an import → one `MailerLiteReconciliationCompleted` audit entry attributed to that admin, with counts (no PII), after the section’s sync state is saved.
+- Manual audience-sync actor lookups observe request cancellation before entering the remote-sync timeout handlers. Once sync begins it uses `CancellationToken.None`; an HTTP timeout still produces the timeout banner even if the request has since been abandoned.
+- Import Commit resolves the actor through Users before building the plan. A merged session uses the surviving account ID; a missing account returns 401. The lookup and plan build observe request cancellation, while remote apply uses `CancellationToken.None`.
+- When an admin commits an import → one `MailerLiteReconciliationCompleted` audit entry attributed to that resolved admin, with counts (no PII), after the section’s sync state is saved.
 - When `ApplyAsync` flips `Marketing.OptedOut` → existing `CommunicationPreferenceChanged` audit fires through `CommunicationPreferenceService`.
 - When `ApplyAsync` creates a contact → existing `ContactCreated` audit through `AccountProvisioningService`.
 - When `MailerLiteAudienceSyncService.SyncAsync` runs (via the opt-in Hangfire job — `MailerLite:AudienceSyncCron`, unset by default — or the on-demand admin button) → one `MailerLiteAudienceSyncCompleted` audit entry with counts (no PII). Per-row ML mutations are not separately audited.

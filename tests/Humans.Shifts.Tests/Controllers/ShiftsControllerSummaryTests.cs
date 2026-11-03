@@ -166,7 +166,6 @@ public class ShiftsControllerSummaryTests
                 State = UserState.Active,
             },
             userEmails: [],
-            eventParticipations: [],
             externalLogins: [],
             profile: new Profile
             {
@@ -179,6 +178,5 @@ public class ShiftsControllerSummaryTests
             },
             contactFields: [],
             profileLanguages: [],
-            volunteerHistory: [],
-            communicationPreferences: []);
+            volunteerHistory: []);
 }

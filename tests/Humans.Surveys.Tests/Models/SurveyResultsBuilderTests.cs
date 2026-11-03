@@ -19,15 +19,17 @@ public sealed class SurveyResultsBuilderTests
         var secondId = Guid.Parse("00000000-0000-0000-0000-000000000002");
         var results = new SurveyResultsView(Guid.NewGuid(), "Results", SurveyStatus.Closed, 4, 4, 1,
             new SurveyFunnel(4, 4, 0, 0), [], [
-                new RespondentDetail(Guid.NewGuid(), "Later", time + Duration.FromHours(1), []) { ResponseId = Guid.NewGuid() },
-                new RespondentDetail(Guid.NewGuid(), "Second", time, []) { ResponseId = secondId },
-                new RespondentDetail(Guid.NewGuid(), "First", time, []) { ResponseId = firstId },
-                new RespondentDetail(Guid.NewGuid(), "Undated", null, []) { ResponseId = Guid.NewGuid() },
+                new RespondentDetail(Guid.NewGuid(), time + Duration.FromHours(1), []) { ResponseId = Guid.NewGuid() },
+                new RespondentDetail(Guid.NewGuid(), time, []) { ResponseId = secondId },
+                new RespondentDetail(Guid.NewGuid(), time, []) { ResponseId = firstId },
+                new RespondentDetail(Guid.NewGuid(), null, []) { ResponseId = Guid.NewGuid() },
             ]);
 
         var model = SurveyResultsBuilder.Build(new SurveyScopedResults(results, 4, SurveyResultsScope.Combined));
 
-        model.Respondents.Select(respondent => respondent.Name).Should().Equal("Undated", "First", "Second", "Later");
+        model.Respondents.Select(respondent => respondent.UserId).Should().Equal(
+            results.IdentifiedRespondents[3].UserId, results.IdentifiedRespondents[2].UserId,
+            results.IdentifiedRespondents[1].UserId, results.IdentifiedRespondents[0].UserId);
     }
 
     [HumansTheory]

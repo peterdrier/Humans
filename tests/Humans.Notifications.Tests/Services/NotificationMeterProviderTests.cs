@@ -131,6 +131,8 @@ public class NotificationMeterProviderTests : IDisposable
             });
         _campService.GetSettingsAsync(Arg.Any<CancellationToken>()).Returns(new CampSettingsInfo(2026, [2026]));
         _campService.GetCampsForYearAsync(2026, Arg.Any<CancellationToken>()).Returns(Array.Empty<CampInfo>());
+        _userService.GetUserInfoAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(call => UserInfo.Create(new User { Id = call.Arg<Guid>() }, [], [], null));
         var controller = new NotificationsController(inbox, _userService, _provider, NullLogger<NotificationsController>.Instance)
         {
             ControllerContext = new()
@@ -476,14 +478,11 @@ public class NotificationMeterProviderTests : IDisposable
                     CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
                 },
                 userEmails: [],
-                eventParticipations: [],
                 externalLogins: [],
                 profile: UserFixtures.Profile(
                     burnerName: "B",
                     firstName: "F",
-                    lastName: "L",
-                    isApproved: false),
-                communicationPreferences: []);
+                    lastName: "L"));
         }).ToList();
 
     private static CampInfo MakeCampInfoWithPendingRequest(Guid leadUserId, int year = 2026)

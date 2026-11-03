@@ -24,12 +24,12 @@ internal sealed class TicketParticipationController(
     [AllowBeforeActiveMembership]
     public async Task<IActionResult> DeclareNotAttending()
     {
-        var (errorResult, user) = await RequireCurrentUserAsync();
+        var (errorResult, user) = await RequireCurrentUserAsync(HttpContext.RequestAborted);
         if (errorResult is not null) return errorResult;
 
         try
         {
-            var eventYear = await GetActiveEventYearOrSetErrorAsync();
+            var eventYear = await GetActiveEventYearOrSetErrorAsync(HttpContext.RequestAborted);
             if (eventYear is null)
             {
                 return Redirect("/");
@@ -38,7 +38,7 @@ internal sealed class TicketParticipationController(
             await participations.DeclareNotAttendingAsync(user.Id, eventYear.Value);
             SetSuccess(localizer["Tickets_NotAttending_Declared"].Value);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             logger.LogError(ex, "Failed to declare not attending for user {UserId}", user.Id);
             SetError(localizer["Tickets_NotAttending_Failed"].Value);
@@ -52,12 +52,12 @@ internal sealed class TicketParticipationController(
     [AllowBeforeActiveMembership]
     public async Task<IActionResult> UndoNotAttending()
     {
-        var (errorResult, user) = await RequireCurrentUserAsync();
+        var (errorResult, user) = await RequireCurrentUserAsync(HttpContext.RequestAborted);
         if (errorResult is not null) return errorResult;
 
         try
         {
-            var eventYear = await GetActiveEventYearOrSetErrorAsync();
+            var eventYear = await GetActiveEventYearOrSetErrorAsync(HttpContext.RequestAborted);
             if (eventYear is null)
             {
                 return Redirect("/");
@@ -68,7 +68,7 @@ internal sealed class TicketParticipationController(
             else
                 SetError(localizer["Tickets_NotAttending_UndoFailed"].Value);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             logger.LogError(ex, "Failed to undo not attending for user {UserId}", user.Id);
             SetError(localizer["Tickets_NotAttending_Failed"].Value);
@@ -77,9 +77,9 @@ internal sealed class TicketParticipationController(
         return Redirect("/");
     }
 
-    private async Task<int?> GetActiveEventYearOrSetErrorAsync()
+    private async Task<int?> GetActiveEventYearOrSetErrorAsync(CancellationToken ct)
     {
-        var activeEvent = await settingsService.GetActiveEventSettingsAsync();
+        var activeEvent = await settingsService.GetActiveEventSettingsAsync(ct);
         if (activeEvent is not null && activeEvent.Year > 0)
         {
             return activeEvent.Year;
