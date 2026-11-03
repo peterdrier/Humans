@@ -9,6 +9,7 @@ using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
 using Xunit;
+using Humans.Users.Contracts;
 
 namespace Humans.Guide.Tests.Services;
 
@@ -16,10 +17,13 @@ public class GuideRoleResolverTests
 {
     private readonly FakeClock _clock = new(Instant.FromUtc(2026, 4, 21, 12, 0));
     private readonly ITeamService _teamService = Substitute.For<ITeamService>();
+    private readonly IUserService _users = Substitute.For<IUserService>();
     private readonly ICampLeadDirectory _campLeads = Substitute.For<ICampLeadDirectory>();
 
     public GuideRoleResolverTests()
     {
+        _users.GetUserInfoAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(call => UserInfo.Create(new User { Id = call.Arg<Guid>() }, [], [], profile: null));
         // Default: empty team cache, leads no camp.
         _teamService
             .GetTeamsAsync(Arg.Any<CancellationToken>())
@@ -44,7 +48,7 @@ public class GuideRoleResolverTests
         return new ClaimsPrincipal(identity);
     }
 
-    private GuideRoleResolver CreateResolver() => new(_teamService, _campLeads, GuideTestRoles.Map);
+    private GuideRoleResolver CreateResolver() => new(_teamService, _campLeads, _users, GuideTestRoles.Map);
 
     private TeamInfo BuildTeam(Guid teamId, params TeamMemberInfo[] members) => new(
         Id: teamId,
@@ -76,6 +80,59 @@ public class GuideRoleResolverTests
         _teamService
             .GetTeamsAsync(Arg.Any<CancellationToken>())
             .Returns(byId);
+    }
+
+    [HumansTheory]
+    [InlineData("coordinator")]
+    [InlineData("lead")]
+    [InlineData("missing")]
+    public async Task Resolve_MembershipRolesUseTheResolvedAccount(string kind)
+    {
+        var cookieId = Guid.NewGuid();
+        var survivorId = Guid.NewGuid();
+        var missing = string.Equals(kind, "missing", StringComparison.Ordinal);
+        _users.GetUserInfoAsync(cookieId, Arg.Any<CancellationToken>())
+            .Returns(missing ? null : UserInfo.Create(new User { Id = survivorId }, [], [], profile: null));
+        var membershipId = missing ? cookieId : survivorId;
+        if (!string.Equals(kind, "lead", StringComparison.Ordinal))
+            StubTeams(BuildTeam(Guid.NewGuid(), Member(membershipId, TeamMemberRole.Coordinator)));
+        if (!string.Equals(kind, "coordinator", StringComparison.Ordinal))
+            _campLeads.IsLeadAnywhereAsync(membershipId, Arg.Any<CancellationToken>()).Returns(true);
+        var ct = TestContext.Current.CancellationToken;
+
+        var result = await CreateResolver().ResolveAsync(PrincipalWithRoles(cookieId, RoleNames.Board), ct);
+
+        result.IsAuthenticated.Should().BeTrue();
+        result.SystemRoles.Should().Contain(RoleNames.Board);
+        result.IsTeamCoordinator.Should().Be(string.Equals(kind, "coordinator", StringComparison.Ordinal));
+        result.IsCampLead.Should().Be(string.Equals(kind, "lead", StringComparison.Ordinal));
+        await _users.Received(1).GetUserInfoAsync(cookieId, ct);
+        if (missing)
+        {
+            _teamService.ReceivedCalls().Should().BeEmpty();
+            _campLeads.ReceivedCalls().Should().BeEmpty();
+        }
+    }
+
+    [HumansFact]
+    public async Task Resolve_AccountReadObservesCancellationBeforeMembershipReads()
+    {
+        var userId = Guid.NewGuid();
+        using var request = new CancellationTokenSource();
+        var observed = CancellationToken.None;
+        _users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            observed = call.Arg<CancellationToken>();
+            request.Cancel();
+            observed.ThrowIfCancellationRequested();
+            return UserInfo.Create(new User { Id = userId }, [], [], profile: null);
+        });
+        Func<Task> resolve = () => CreateResolver().ResolveAsync(PrincipalWithRoles(userId), request.Token);
+
+        await resolve.Should().ThrowAsync<OperationCanceledException>();
+        observed.Should().Be(request.Token);
+        _teamService.ReceivedCalls().Should().BeEmpty();
+        _campLeads.ReceivedCalls().Should().BeEmpty();
     }
 
     [HumansFact]
