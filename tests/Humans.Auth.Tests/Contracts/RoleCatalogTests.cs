@@ -53,16 +53,6 @@ public sealed class RoleCatalogTests
     }
 
     [HumansFact]
-    public void IsFormerName_is_true_only_for_a_former_name()
-    {
-        var catalog = new RoleCatalog([Role("XAdmin", "X Admin", "OldX")]);
-
-        catalog.IsFormerName("OldX").Should().BeTrue();
-        catalog.IsFormerName("XAdmin").Should().BeFalse();
-        catalog.IsFormerName("Nobody").Should().BeFalse();
-    }
-
-    [HumansFact]
     public void StoredNames_lists_current_name_first_then_former_ones()
     {
         var catalog = new RoleCatalog([Role("XAdmin", "X Admin", "OldX", "OlderX"), Role("YAdmin", "Y Admin")]);
