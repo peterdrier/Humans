@@ -102,9 +102,7 @@ internal sealed class AgentService : IAgentService, IAgentConversationRetention
         var today = nowZoned.Date;
         var hour = nowZoned.Hour;
         var usage = _rateLimit.Get(request.UserId, today, hour);
-        if (usage.MessagesToday >= settings.DailyMessageCap ||
-            usage.TokensToday >= settings.DailyTokenCap ||
-            usage.MessagesThisHour >= settings.HourlyMessageCap)
+        if (usage.IsAtLimit(settings))
         {
             // Invariant 6 (Agent.md): every refused turn writes an AgentMessage with RefusalReason.
             await PersistRefusalAsync(request, existing, "rate_limited", cancellationToken);
