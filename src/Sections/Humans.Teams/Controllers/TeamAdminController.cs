@@ -852,14 +852,11 @@ internal sealed class TeamAdminController(
     private async Task<TeamEarlyEntryPageViewModel> BuildEarlyEntryPageAsync(TeamInfo team, CancellationToken ct)
     {
         var grants = await _teamService.GetEarlyEntryGrantsForTeamAsync(team.Id, ct);
-        var humans = await _userService.GetUserInfosAsync(
-            grants.Select(g => g.UserId).Distinct().ToList(), ct);
-
         var rows = grants
             .Select(g => new TeamEarlyEntryRowViewModel
             {
                 GrantId = g.Id,
-                HumanName = humans.GetValueOrDefault(g.UserId)?.BurnerName ?? "",
+                UserId = g.UserId,
                 EntryDate = g.EntryDate,
                 ProjectName = g.ProjectName,
             })
