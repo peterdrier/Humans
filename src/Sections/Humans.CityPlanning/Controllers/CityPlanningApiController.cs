@@ -8,7 +8,7 @@ using Humans.CityPlanning.Services;
 using Humans.Containers.Contracts;
 using Humans.Base.Extensions;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Identity;
+using Humans.Base.Controllers;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
 using Humans.Users.Contracts;
@@ -25,16 +25,9 @@ internal sealed class CityPlanningApiController(
     IStringLocalizer<ContainersResource> containersLocalizer,
     IAuthorizationService authorizationService,
     IHubContext<CityPlanningHub> hubContext,
-    UserManager<User> userManager,
-    ILogger<CityPlanningApiController> logger) : ControllerBase
+    IUserService userService,
+    ILogger<CityPlanningApiController> logger) : ApiControllerBase(userService)
 {
-    private Guid CurrentUserId()
-    {
-        var id = userManager.GetUserId(User)
-                 ?? throw new InvalidOperationException("Authenticated user has no ID claim.");
-        return Guid.Parse(id);
-    }
-
     private async Task<bool> IsMapAdminAsync() =>
         (await authorizationService.AuthorizeAsync(User, PolicyNames.CityPlanningMapAdmin)).Succeeded;
 
@@ -89,7 +82,9 @@ internal sealed class CityPlanningApiController(
         [FromBody] SaveCampPolygonRequest request,
         CancellationToken cancellationToken)
     {
-        var userId = CurrentUserId();
+        var (userError, user) = await ResolveCurrentUserOrUnauthorizedAsync(cancellationToken);
+        if (userError is not null) return userError;
+        var userId = user.Id;
         if (!CampsRoles.IsCampsAdmin(User) &&
             !await cityPlanningService.CanUserEditAsync(userId, campSeasonId, cancellationToken))
         {
@@ -117,7 +112,9 @@ internal sealed class CityPlanningApiController(
         Guid historyId,
         CancellationToken cancellationToken)
     {
-        var userId = CurrentUserId();
+        var (userError, user) = await ResolveCurrentUserOrUnauthorizedAsync(cancellationToken);
+        if (userError is not null) return userError;
+        var userId = user.Id;
         if (!await IsMapAdminAsync())
         {
             return Forbid();
@@ -211,7 +208,9 @@ internal sealed class CityPlanningApiController(
     [HttpGet("containers/{year:int}/export.geojson")]
     public async Task<IActionResult> ExportContainersGeoJson(int year, CancellationToken cancellationToken)
     {
-        var userId = CurrentUserId();
+        var (userError, user) = await ResolveCurrentUserOrUnauthorizedAsync(cancellationToken);
+        if (userError is not null) return userError;
+        var userId = user.Id;
         var isMapAdmin = await IsMapAdminAsync();
         var userCampId = await FindUserLeadCampIdAsync(userId, year, cancellationToken);
 
@@ -272,10 +271,13 @@ internal sealed class CityPlanningApiController(
         [FromBody] SaveContainerPlacementRequest request,
         CancellationToken cancellationToken)
     {
+        var (userError, user) = await ResolveCurrentUserOrUnauthorizedAsync(cancellationToken);
+        if (userError is not null) return userError;
+
         var error = await RequireContainerPlacementAsync(id, year, cancellationToken);
         if (error is not null) return error;
 
-        var result = await containerService.SavePlacementAsync(id, year, request.GeoJson, CurrentUserId(), cancellationToken);
+        var result = await containerService.SavePlacementAsync(id, year, request.GeoJson, user.Id, cancellationToken);
         if (result.ErrorKey is { } key)
         {
             logger.LogWarning("Container placement refused for {ContainerId}, year {Year}: {ErrorKey}", id, year, key);
@@ -294,6 +296,9 @@ internal sealed class CityPlanningApiController(
         [FromForm] UpdateContainerPlacementNotesRequest request,
         CancellationToken cancellationToken)
     {
+        var (userError, user) = await ResolveCurrentUserOrUnauthorizedAsync(cancellationToken);
+        if (userError is not null) return userError;
+
         var error = await RequireContainerPlacementAsync(id, year, cancellationToken);
         if (error is not null) return error;
 
@@ -305,7 +310,7 @@ internal sealed class CityPlanningApiController(
 
         var result = await containerService.UpdatePlacementNotesAsync(
             id, year, request.PlacementNotes, imageUpload, request.RemovePlacementImage,
-            CurrentUserId(), cancellationToken);
+            user.Id, cancellationToken);
         if (result.ErrorKey is { } key)
         {
             logger.LogWarning("Container placement notes refused for {ContainerId}, year {Year}: {ErrorKey}", id, year, key);
@@ -326,10 +331,13 @@ internal sealed class CityPlanningApiController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> ClearContainerPlacement(Guid id, int year, CancellationToken cancellationToken)
     {
+        var (userError, user) = await ResolveCurrentUserOrUnauthorizedAsync(cancellationToken);
+        if (userError is not null) return userError;
+
         var error = await RequireContainerPlacementAsync(id, year, cancellationToken);
         if (error is not null) return error;
 
-        await containerService.ClearPlacementAsync(id, year, CurrentUserId(), cancellationToken);
+        await containerService.ClearPlacementAsync(id, year, user.Id, cancellationToken);
         return NoContent();
     }
 }
