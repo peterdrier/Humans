@@ -568,8 +568,6 @@ internal sealed class CampController(
         {
             CampMemberId = member.Id,
             UserId = member.UserId,
-            RequestedAt = member.RequestedAt,
-            ConfirmedAt = member.ConfirmedAt,
             HasEarlyEntry = member.HasEarlyEntry,
             Status = member.Status
         };

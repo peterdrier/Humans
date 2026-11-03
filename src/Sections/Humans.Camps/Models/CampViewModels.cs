@@ -206,8 +206,6 @@ internal sealed class CampMemberRowViewModel
 {
     public Guid CampMemberId { get; set; }
     public Guid UserId { get; set; }
-    public NodaTime.Instant RequestedAt { get; set; }
-    public NodaTime.Instant? ConfirmedAt { get; set; }
     public bool HasEarlyEntry { get; set; }
     public int EventShiftSignupCount { get; set; }
     public CampMemberStatus Status { get; set; }
