@@ -293,7 +293,7 @@ internal sealed class TeamController(
         var canSeeHiddenTeams = TeamsRoles.IsTeamsAdminBoardOrAdmin(User);
         var teamsById = await teamService.GetTeamsAsync(ct);
         var teamsBySlug = teamsById.Values.ToDictionary(team => team.Slug, StringComparer.OrdinalIgnoreCase);
-        var viewerId = GetCurrentUserId();
+        var viewerId = canSeeHiddenTeams ? null : (await GetCurrentUserInfoAsync(ct))?.Id;
 
         var slots = roster
             .Where(slot => canSeeHiddenTeams

@@ -24,6 +24,11 @@ internal sealed class TeamMessageButtonsViewComponent(
             return Content(string.Empty);
 
         var ct = HttpContext.RequestAborted;
+        var viewer = await users.GetUserInfoAsync(viewerId, ct);
+        if (viewer is null || viewer.AllUserIds.Contains(userId))
+            return Content(string.Empty);
+        viewerId = viewer.Id;
+
         if (!await commPrefs.AcceptsFacilitatedMessagesAsync(userId, ct))
             return Content(string.Empty);
 

@@ -1,3 +1,4 @@
+using Humans.Users.Contracts;
 using Humans.EarlyEntry.Contracts;
 using Humans.Base.Authorization;
 using System.Security.Claims;
@@ -12,7 +13,7 @@ namespace Humans.Teams.Authorization;
 /// Admin, TeamsAdmin and Board: any team, any requirement. EETeamAdmin: any team, ManageEarlyEntry only. A coordinator
 /// of the team or its parent department: that team, both requirements. Everyone else: deny.
 /// </summary>
-internal sealed class TeamAuthorizationHandler(ITeamService teamService, IHttpContextAccessor httpContextAccessor)
+internal sealed class TeamAuthorizationHandler(ITeamService teamService, IUserService users, IHttpContextAccessor httpContextAccessor)
     : AuthorizationHandler<TeamOperationRequirement, TeamInfo>
 {
     protected override async Task HandleRequirementAsync(
@@ -37,8 +38,12 @@ internal sealed class TeamAuthorizationHandler(ITeamService teamService, IHttpCo
         if (userIdClaim is null || !Guid.TryParse(userIdClaim.Value, out var userId))
             return;
 
-        var teamsById = await teamService.GetTeamsAsync(httpContextAccessor.HttpContext?.RequestAborted ?? CancellationToken.None);
-        if (TeamCoordinatorAccess.IsCoordinatorOfActiveTeam(teamsById, resource.Id, userId))
+        var ct = httpContextAccessor.HttpContext?.RequestAborted ?? CancellationToken.None;
+        var user = await users.GetUserInfoAsync(userId, ct);
+        if (user is null) return;
+
+        var teamsById = await teamService.GetTeamsAsync(ct);
+        if (TeamCoordinatorAccess.IsCoordinatorOfActiveTeam(teamsById, resource.Id, user.Id))
         {
             context.Succeed(requirement);
         }

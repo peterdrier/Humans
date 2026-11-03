@@ -1,3 +1,4 @@
+using Humans.Users.Contracts;
 using Humans.EarlyEntry.Contracts;
 using System.Security.Claims;
 using AwesomeAssertions;
@@ -16,6 +17,7 @@ namespace Humans.Teams.Tests.Authorization;
 public sealed class TeamAuthorizationHandlerTests
 {
     private readonly ITeamService _teamService = Substitute.For<ITeamService>();
+    private readonly IUserService _users = Substitute.For<IUserService>();
     private readonly TeamAuthorizationHandler _handler;
 
     private static readonly Guid ParentTeamId = Guid.NewGuid();
@@ -26,8 +28,48 @@ public sealed class TeamAuthorizationHandlerTests
 
     public TeamAuthorizationHandlerTests()
     {
-        _handler = new TeamAuthorizationHandler(_teamService, new Microsoft.AspNetCore.Http.HttpContextAccessor());
+        _users.GetUserInfoAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(call => new ValueTask<UserInfo?>(UserInfo.Create(new User { Id = call.Arg<Guid>() }, [], [], profile: null)));
+        _handler = new TeamAuthorizationHandler(_teamService, _users, new Microsoft.AspNetCore.Http.HttpContextAccessor());
         _teamService.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(CreateTeamMap());
+    }
+
+    [HumansTheory]
+    [InlineData("coordinator", true, true)]
+    [InlineData("child", true, true)]
+    [InlineData("other", true, false)]
+    [InlineData("coordinator", false, false)]
+    [InlineData("child", false, false)]
+    public async Task CoordinatorAccess_ResolvesMergedAndMissingAccounts(string team, bool merged, bool expected)
+    {
+        var cookieId = merged ? Guid.NewGuid() : UserId;
+        _users.GetUserInfoAsync(cookieId, Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<UserInfo?>(merged
+                ? UserInfo.Create(new User { Id = UserId }, [], [], profile: null) : null));
+
+        var allowed = await EvaluateAsync(CreateUserWithId(cookieId), CreateTeam(team), TeamOperationRequirement.ManageCoordinators);
+
+        allowed.Should().Be(expected);
+        if (!merged) _teamService.ReceivedCalls().Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task CoordinatorAccess_CancelsAccountResolutionBeforeTeamReads()
+    {
+        using var request = new CancellationTokenSource();
+        await request.CancelAsync();
+        _users.GetUserInfoAsync(UserId, Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+            return new ValueTask<UserInfo?>(UserInfo.Create(new User { Id = UserId }, [], [], profile: null));
+        });
+        var http = new HttpContextAccessor { HttpContext = new DefaultHttpContext { RequestAborted = request.Token } };
+        var handler = new TeamAuthorizationHandler(_teamService, _users, http);
+        var context = new AuthorizationHandlerContext([TeamOperationRequirement.ManageCoordinators],
+            CreateUserWithId(UserId), CreateTeam("coordinator"));
+
+        await Assert.ThrowsAsync<OperationCanceledException>(() => handler.HandleAsync(context));
+        _teamService.ReceivedCalls().Should().BeEmpty();
     }
 
     [HumansFact]
@@ -43,7 +85,7 @@ public sealed class TeamAuthorizationHandlerTests
             observed.ThrowIfCancellationRequested();
             return CreateTeamMap();
         });
-        var handler = new TeamAuthorizationHandler(_teamService, http);
+        var handler = new TeamAuthorizationHandler(_teamService, _users, http);
         var context = new AuthorizationHandlerContext([TeamOperationRequirement.ManageCoordinators],
             CreateUser("coordinator", Guid.NewGuid()), CreateTeam("coordinator"));
         Func<Task> authorize = () => handler.HandleAsync(context);

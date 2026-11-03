@@ -1,3 +1,4 @@
+using Xunit;
 using System.Security.Claims;
 using AwesomeAssertions;
 using Humans.Base.Enums;
@@ -28,11 +29,53 @@ public sealed class TeamMessageButtonsViewComponentTests
 
     public TeamMessageButtonsViewComponentTests()
     {
+        _users.GetUserInfoAsync(_viewerId, Arg.Any<CancellationToken>())
+            .Returns(UserInfo.Create(new User { Id = _viewerId }, [], [], profile: null));
         _commPrefs.AcceptsFacilitatedMessagesAsync(_targetId, Arg.Any<CancellationToken>()).Returns(true);
         _users.GetUserInfoAsync(_targetId, Arg.Any<CancellationToken>()).Returns(new UserInfo(
             _targetId, "Target", false, "en", null, Instant.FromUnixTimeSeconds(0),
             null, null, null, null, null, null,
             null, null, null, [], [], null));
+    }
+
+    [HumansTheory]
+    [InlineData("merged")]
+    [InlineData("missing")]
+    [InlineData("self")]
+    [InlineData("cancelled")]
+    public async Task ViewerResolution_UsesTheSurvivorAndRefusesMissingOrSelf(string account)
+    {
+        using var request = new CancellationTokenSource();
+        var survivorId = string.Equals(account, "self", StringComparison.Ordinal) ? _targetId : Guid.NewGuid();
+        _users.GetUserInfoAsync(_viewerId, Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+            return new ValueTask<UserInfo?>(string.Equals(account, "missing", StringComparison.Ordinal)
+                ? null : UserInfo.Create(new User { Id = survivorId }, [], [], profile: null));
+        });
+        var option = new TeamMessageOption(Guid.NewGuid(), "Team", "team@example.com");
+        _options.GetOptionsAsync(_viewerId, Arg.Any<CancellationToken>()).Returns(new[] { option });
+        _options.GetOptionsAsync(survivorId, Arg.Any<CancellationToken>()).Returns(new[] { option });
+        var component = Build(_viewerId);
+        component.HttpContext.RequestAborted = request.Token;
+        if (string.Equals(account, "cancelled", StringComparison.Ordinal))
+        {
+            await request.CancelAsync();
+            await Assert.ThrowsAsync<OperationCanceledException>(() => component.InvokeAsync(_targetId, ProfileCardViewMode.Public));
+        }
+        else
+        {
+            var result = await component.InvokeAsync(_targetId, ProfileCardViewMode.Public);
+            if (string.Equals(account, "merged", StringComparison.Ordinal))
+            {
+                result.Should().BeOfType<ViewViewComponentResult>();
+                await _options.Received(1).GetOptionsAsync(survivorId, request.Token);
+                await _options.DidNotReceive().GetOptionsAsync(_viewerId, Arg.Any<CancellationToken>());
+            }
+            else AssertEmpty(result);
+        }
+        if (!string.Equals(account, "merged", StringComparison.Ordinal)) _options.ReceivedCalls().Should().BeEmpty();
+        await _users.Received(1).GetUserInfoAsync(_viewerId, request.Token);
     }
 
     [HumansFact]

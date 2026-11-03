@@ -222,15 +222,31 @@ public class TeamControllerPageContentTests
     }
 
     [HumansTheory]
-    [InlineData(null)]
-    [InlineData("coordinator")]
-    [InlineData("parent")]
-    [InlineData(RoleNames.Admin)]
-    [InlineData(RoleNames.Board)]
-    [InlineData(TeamsRoles.TeamsAdmin)]
-    public async Task Roster_PrivateRoles_RequireTeamManagementAccess(string? role)
+    [InlineData(null, "current")]
+    [InlineData("coordinator", "current")]
+    [InlineData("parent", "current")]
+    [InlineData(RoleNames.Admin, "current")]
+    [InlineData(RoleNames.Board, "current")]
+    [InlineData(TeamsRoles.TeamsAdmin, "current")]
+    [InlineData("coordinator", "merged")]
+    [InlineData("parent", "merged")]
+    [InlineData("coordinator", "missing")]
+    [InlineData("parent", "missing")]
+    [InlineData("coordinator", "cancelled")]
+    [InlineData(RoleNames.Admin, "missing")]
+    [InlineData(null, "merged")]
+    public async Task Roster_PrivateRoles_RequireTeamManagementAccess(string? role, string account)
     {
+        using var request = new CancellationTokenSource();
         var viewer = Guid.NewGuid();
+        var cookieId = string.Equals(account, "merged", StringComparison.Ordinal) ? Guid.NewGuid() : viewer;
+        var users = Substitute.For<IUserService>();
+        users.GetUserInfoAsync(cookieId, Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+            return new ValueTask<UserInfo?>(string.Equals(account, "missing", StringComparison.Ordinal)
+                ? null : UserInfo.Create(new User { Id = viewer }, [], [], profile: null));
+        });
         var now = Instant.FromUtc(2026, 1, 1, 0, 0);
         var coordinator = new TeamMemberInfo(Guid.NewGuid(), viewer, "Coordinator", null, null, TeamMemberRole.Coordinator, now);
         var parent = new TeamInfo(Guid.NewGuid(), "Parent", null, "parent", true, false,
@@ -258,26 +274,32 @@ public class TeamControllerPageContentTests
         var privateSlot = publicSlot with { RoleDefinitionId = Guid.NewGuid(), RoleName = "Private role", IsPublic = false };
         var otherPrivate = privateSlot with { RoleDefinitionId = Guid.NewGuid(), TeamName = other.Name, TeamSlug = other.Slug };
         pages.GetRosterAsync(null, null, null, Arg.Any<CancellationToken>()).Returns(new[] { publicSlot, privateSlot, otherPrivate });
-        var claims = new List<Claim> { new(ClaimTypes.NameIdentifier, viewer.ToString()) };
+        var claims = new List<Claim> { new(ClaimTypes.NameIdentifier, cookieId.ToString()) };
         if (role is not null) claims.Add(new Claim(ClaimTypes.Role, role));
         var controller = new TeamController(
-            teams, pages, Substitute.For<IUserService>(), Substitute.For<IConsentService>(), Substitute.For<ITeamResourceService>(),
+            teams, pages, users, Substitute.For<IConsentService>(), Substitute.For<ITeamResourceService>(),
             Substitute.For<IStringLocalizer<TeamsResource>>(), Substitute.For<IStringLocalizer<SharedResource>>(),
             new ConfigurationBuilder().Build(), new ConfigurationRegistry(), SystemClock.Instance,
             Substitute.For<IAuthorizationService>(), NullLogger<TeamController>.Instance)
         {
             ControllerContext = new ControllerContext
             {
-                HttpContext = new DefaultHttpContext { User = new ClaimsPrincipal(new ClaimsIdentity(claims, "test")) }
+                HttpContext = new DefaultHttpContext { User = new ClaimsPrincipal(new ClaimsIdentity(claims, "test")), RequestAborted = request.Token }
             }
         };
 
-        var result = await controller.Roster(null, null, null, TestContext.Current.CancellationToken);
+        if (string.Equals(account, "cancelled", StringComparison.Ordinal))
+        {
+            await request.CancelAsync();
+            await Assert.ThrowsAsync<OperationCanceledException>(() => controller.Roster(null, null, null, request.Token));
+            return;
+        }
+        var result = await controller.Roster(null, null, null, request.Token);
 
         var slots = result.Should().BeOfType<ViewResult>().Which.Model.Should().BeOfType<RosterSummaryViewModel>().Which.Slots;
         var expected = role is RoleNames.Admin or RoleNames.Board or TeamsRoles.TeamsAdmin
             ? new[] { publicSlot.RoleDefinitionId, privateSlot.RoleDefinitionId, otherPrivate.RoleDefinitionId }
-            : role is "coordinator" or "parent"
+            : (role is "coordinator" or "parent") && !string.Equals(account, "missing", StringComparison.Ordinal)
                 ? new[] { publicSlot.RoleDefinitionId, privateSlot.RoleDefinitionId }
                 : new[] { publicSlot.RoleDefinitionId };
         slots.Select(slot => slot.RoleDefinitionId).Should().BeEquivalentTo(expected);

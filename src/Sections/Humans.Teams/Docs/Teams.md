@@ -194,6 +194,8 @@ This section's controllers. `TeamController` (`[Route("Teams")]`) handles both a
 
 ## Invariants
 
+- Coordinator authorization, private-role roster filtering and team-message buttons resolve session identities through Users before checking current memberships. Merged sessions use the surviving account; missing accounts gain no coordinator access or messaging options. Privileged-role bypasses remain unchanged. Account reads observe request cancellation, with a non-cancellable fallback for authorization outside HTTP. Team-message buttons also hide for any identity in the viewer's own account chain.
+
 - Authorization’s team-coordinator reads retain HTTP request cancellation; callers without an HTTP context use the non-cancellable default.
 
 - Team detail and role-management pages build role view models from `TeamRoleDefinitionSnapshot` plus resolved member view models; there is no entity-navigation mapper in the presentation model.
