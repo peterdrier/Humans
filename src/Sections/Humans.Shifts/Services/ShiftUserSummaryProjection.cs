@@ -11,16 +11,6 @@ namespace Humans.Shifts.Services;
 /// </summary>
 internal static class ShiftUserSummaryProjection
 {
-    internal static ShiftUserSummary ToSummary(this ShiftUserView rows) => new(
-        rows.UserId,
-        [.. rows.TagPreferences.Select(p =>
-            new ShiftTagPreferenceInfo(p.ShiftTagId, p.ShiftTag?.Name ?? string.Empty))],
-        rows.Calendar is null
-            ? []
-            : [.. rows.Signups
-                .Where(s => s.Shift?.Rota is not null)
-                .Select(s => ToSummary(s, rows.Calendar))]);
-
     internal static IReadOnlyDictionary<Guid, ShiftUserSummary> ToSummaries(
         this IReadOnlyDictionary<Guid, ShiftUserView> rows) =>
         rows.ToDictionary(kv => kv.Key, kv => kv.Value.ToSummary());

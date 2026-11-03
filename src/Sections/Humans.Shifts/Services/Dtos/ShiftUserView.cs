@@ -14,4 +14,15 @@ internal sealed record ShiftUserView(
     VolunteerBuildStatus? BuildStatus,
     IReadOnlyList<VolunteerTagPreference> TagPreferences,
     IReadOnlyList<ShiftSignup> Signups,
-    BurnSettingsInfo? Calendar = null);
+    BurnSettingsInfo? Calendar = null)
+{
+    internal ShiftUserSummary ToSummary() => new(
+        UserId,
+        [.. TagPreferences.Select(p =>
+            new ShiftTagPreferenceInfo(p.ShiftTagId, p.ShiftTag?.Name ?? string.Empty))],
+        Calendar is null
+            ? []
+            : [.. Signups
+                .Where(s => s.Shift?.Rota is not null)
+                .Select(s => ShiftUserSummaryProjection.ToSummary(s, Calendar))]);
+}
