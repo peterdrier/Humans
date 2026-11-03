@@ -53,10 +53,11 @@ public class EventsApiControllerTests
     [InlineData("Barrio", "Approved")]
     [InlineData("Categories", "Categories")]
     [InlineData("Preferences", "Excluded")]
+    [InlineData("UpdatePreferences", "Categories")]
     [InlineData("Favourites", "Guide")]
     [InlineData("Favourites", "Favourites")]
     [InlineData("Favourites", "Camps")]
-    public async Task Read_AbandonedRequest_CancelsAtLookup(string route, string boundary)
+    public async Task ReadPreflight_AbandonedRequest_CancelsAtLookup(string route, string boundary)
     {
         using var request = new CancellationTokenSource();
         async Task<T> ReadAsync<T>(T value, string current, CancellationToken ct)
@@ -107,11 +108,14 @@ public class EventsApiControllerTests
             "Barrio" => () => controller.GetBarrio(Guid.NewGuid()),
             "Categories" => controller.GetCategories,
             "Preferences" => controller.GetPreferences,
+            "UpdatePreferences" => () => controller.UpdatePreferences(new EventsApiController.UpdatePreferencesRequest()),
             "Favourites" => controller.GetFavourites,
             _ => throw new ArgumentOutOfRangeException(nameof(route)),
         };
 
         await act.Should().ThrowAsync<OperationCanceledException>();
+        await _guide.DidNotReceive().SavePreferenceAsync(
+            Arg.Any<Guid>(), Arg.Any<List<string>>(), Arg.Any<CancellationToken>());
     }
 
     [HumansFact]

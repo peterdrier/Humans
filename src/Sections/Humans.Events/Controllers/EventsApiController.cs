@@ -181,7 +181,7 @@ internal sealed class EventsApiController(
         var userId = GetCurrentUserId();
         if (userId == null) return Unauthorized();
 
-        var activeCategories = await guide.GetActiveCategoriesAsync();
+        var activeCategories = await guide.GetActiveCategoriesAsync(HttpContext.RequestAborted);
         var activeSlugs = activeCategories.Select(c => c.Slug).ToList();
         var invalidSlugs = request.ExcludedCategorySlugs
             .Where(s => !activeSlugs.Contains(s, StringComparer.OrdinalIgnoreCase))
