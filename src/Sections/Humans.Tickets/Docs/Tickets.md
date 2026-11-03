@@ -49,6 +49,8 @@ Individual ticket holder (issued ticket, multiple per order). Vendor-agnostic id
 Cross-domain nav `TicketAttendee.MatchedUser` stripped (FK `MatchedUserId` retained; nav property removed). No FK-join in `ITicketRepository`; the order and attendee grids carry only `MatchedUserId` and render the current name through `<vc:human>`, without a service-side name lookup.
 Aggregate-local: `TicketAttendee.TicketOrder`.
 
+The Codes and Humans & Tickets display rows carry recipient/user IDs for `<vc:human>`, without copied member names. Name search runs against the upstream campaign facts or private report rows before projecting the display rows.
+
 **Barcode lookup:** `ITicketService.FindCurrentEventAttendeeByBarcodeAsync` owns the shared Teams/Scanner lookup: trim input, reject blank codes, restrict to current-event orders and compare ordinally. It returns the first matching attendee regardless of status (including void transfer cards). The caching decorator uses its existing order snapshot; the inner service applies the same rule to its projection.
 
 **`TicketAttendeeInfo` read projection** (part of `TicketOrderInfo`): carries `Barcode` and `CheckedInAt` plus, for `Void` attendees, `TransferredToName` and `TransferredAt` sourced from the Approved `TicketTransferRequest` for the attendee (read via `ITicketTransferRepository` in `TicketQueryService.GetTicketOrdersAsync`). These fields are used by the Scanner ticket-lookup card (`/Scanner/Tickets`).

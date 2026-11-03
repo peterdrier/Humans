@@ -278,7 +278,6 @@ internal sealed class TicketQueryService(
             return new CodeDetailDto
             {
                 Code = code ?? "—",
-                RecipientName = g.RecipientName,
                 RecipientUserId = g.UserId,
                 CampaignTitle = g.CampaignTitle,
                 Status = g.RedeemedAt is not null ? "Redeemed" : "Pending",
@@ -620,7 +619,6 @@ internal sealed class TicketQueryService(
             {
                 UserId = r.UserId,
                 HasTicket = r.HasTicket,
-                Name = r.Name,
                 Email = r.Email,
                 Teams = string.Join(", ", r.TeamNames),
                 Tier = r.Tier,

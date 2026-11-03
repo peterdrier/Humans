@@ -173,7 +173,6 @@ internal sealed class CampaignCodeSummaryDto
 internal sealed class CodeDetailDto
 {
     public string Code { get; init; } = string.Empty;
-    public string RecipientName { get; init; } = string.Empty;
     public Guid RecipientUserId { get; init; }
     public string CampaignTitle { get; init; } = string.Empty;
     public string Status { get; init; } = string.Empty;
@@ -243,7 +242,6 @@ internal sealed class WhoHasntBoughtRowDto
 {
     public Guid UserId { get; init; }
     public bool HasTicket { get; init; }
-    public string Name { get; init; } = string.Empty;
     public string Email { get; init; } = string.Empty;
     public string Teams { get; init; } = string.Empty;
     public MembershipTier Tier { get; init; }
