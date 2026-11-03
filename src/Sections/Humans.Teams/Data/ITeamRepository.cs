@@ -175,12 +175,8 @@ internal interface ITeamRepository : IRepository
     Task<IReadOnlyList<TeamRoleDefinition>> GetRoleDefinitionsAsync(
         Guid teamId, CancellationToken ct = default);
 
-    /// <summary>Tracked, with Team, Assignments and Assignments.TeamMember.</summary>
+    /// <summary>With Team, Assignments and Assignments.TeamMember; detached when the context is disposed.</summary>
     Task<TeamRoleDefinition?> FindRoleDefinitionForMutationAsync(
-        Guid roleDefinitionId, CancellationToken ct = default);
-
-    /// <summary>Tracked, with Team, Assignments and Assignments.TeamMember.</summary>
-    Task<TeamRoleDefinition?> FindRoleDefinitionWithMembersForMutationAsync(
         Guid roleDefinitionId, CancellationToken ct = default);
 
     /// <summary>Matches on the lowercased name.</summary>
