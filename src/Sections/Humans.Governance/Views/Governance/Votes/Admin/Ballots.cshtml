@@ -31,7 +31,16 @@
                     @foreach (var ballot in Model.Ballots.OrderByDescending(b => b.IsOfficial).ThenBy(b => b.DisplayName, StringComparer.CurrentCulture))
                     {
                         <tr>
-                            <td>@ballot.DisplayName</td>
+                            <td>
+                                @if (ballot.UserId is { } userId)
+                                {
+                                    <vc:human user-id="@userId" link="None" />
+                                }
+                                else
+                                {
+                                    <text>—</text>
+                                }
+                            </td>
                             <td>
                                 @if (ballot.IsOfficial)
                                 {
