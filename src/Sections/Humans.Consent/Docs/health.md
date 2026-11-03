@@ -11,13 +11,10 @@ team publishes a change (multi-language, Spanish legally binding), shows each me
 still owe, records each agreement as a permanent tamper-proof entry, and reminds the people
 affected when a document changes. Admins manage the document set from a GUI. Anyone, signed in
 or not, can read the association's statutes. It also keeps the Consent Coordinator's verdict on
-each new member (cleared, flagged, rejected with a reason) and shows the member their rejection
-reason, while the review queue itself lives in Onboarding.
-
-It also runs the Consent Coordinator's desk: the queue of new humans waiting to be looked at,
-and clear, bulk clear and flag, which write the coordinator's verdict to `consent_reviews`.
-Those are notes for the record. Reject is the one verb with consequences (account state,
-teams, the person's notice), so the desk hands it to `IOnboardingIntake.RejectSignupAsync`.
+each new member (cleared, flagged, rejected with a reason), shows the member their rejection
+reason, and runs the Coordinator's review queue: clear, bulk clear and flag are its own writes,
+while reject hands off to `IOnboardingIntake.RejectSignupAsync` because it also changes the
+account state, the teams and the member's mail.
 
 ## The shapes
 
@@ -29,16 +26,16 @@ teams, the person's notice), so the desk hands it to `IOnboardingIntake.RejectSi
 | Required-document set | "What is required, per team, right now?" | `ILegalDocumentSyncService` + internal reads, all views over one cached active+required set |
 | Keep documents current | "Has the source changed? Pull it." | the internal sync surface, the sync runner, the sync and reminder Hangfire jobs at 04:00 |
 | Admin CRUD | "Create/edit/archive/sync a document" | `IAdminLegalDocumentService`, the routes under `/Legal/Admin/Documents` |
-| Coordinator review | "Who is waiting for a coordinator, and what do I do about them?" | `IConsentReviewQueueService` (internal), `/Consent/ReviewQueue` and `/Consent/ReviewQueue/{userId}`; reject goes to `IOnboardingIntake.RejectSignupAsync` |
 | Public statutes | "Show the published statutes/terms" | `ILegalDocumentService`, `/Legal/{slug?}`, GitHub-direct, no DB |
+| Coordinator review | "Who is waiting for a coordinator, and what do I do about them?" | `IConsentReviewQueueService` (internal), `/Consent/ReviewQueue` and `/Consent/ReviewQueue/{userId}`; reject goes to `IOnboardingIntake.RejectSignupAsync` |
 | Coordinator verdict | "Was this member cleared, flagged or rejected, and why?" | `IConsentService.GetConsentReviewAsync`/`GetConsentReviewsAsync`, `IConsentWrite`, two user-part view components |
 
 Owned tables: `legal_documents`, `document_versions`, `consent_records` (append-only, DB
 triggers), `consent_reviews`, `consent_reminders`. Cross-section calls out: Teams (names,
 members), Users (info, merge chains, rejected state for the legacy copy), Governance (required
 teams, completion), Notifications (fan-out), Email (two templates), AuditLog, HumanLifecycle
-(suspension restore). Calls in: Onboarding (review writes, queue reads), Governance (required
-versions), Onboarding's widget (embeds the signing step), the Tickets and Development seeders. Config read:
+(suspension restore). Calls in: Onboarding (reject record, `Pending` threshold), Governance (required
+versions), Onboarding's widget (embeds the signing step). Config read:
 `GitHubSettings`, `EmailSettings` (reminder windows), `Email:DpoAddress`.
 
 ## Structure
@@ -53,10 +50,10 @@ Three aggregates and one content proxy, each with a single writer:
   contributor), `CachingConsentService` (per-user lazy cache, synchronous refresh on submit).
 - **Member-review side**: `ConsentReviewRepository` + `ConsentReviewService` (verdict rows), `ConsentReminderRepository` +
   `ConsentReminderService` (the reminder cooldown stamp).
-- **Statutes proxy**: `LegalDocumentService`, GitHub to IMemoryCache, no DB.
 - **Review queue**: `ConsentReviewQueueService` composes the queue from Users, Governance (tiers,
   pending applications) and the membership calculator, and writes through the section's own
   `IConsentWrite`. It owns no repository.
+- **Statutes proxy**: `LegalDocumentService`, GitHub to IMemoryCache, no DB.
 - Controllers translate only; jobs are schedule + metric + failure boundary over the sync runner
   and the reminder pass. Both jobs are internal: the section registers and schedules them itself.
 
@@ -80,20 +77,31 @@ Three aggregates and one content proxy, each with a single writer:
   entry before returning (`Services/CachingConsentService.cs:142`).
 - A cleared verdict is refused for a rejected member, and a second rejection is refused
   (`Services/ConsentReviewService.cs:61`, `Services/ConsentReviewService.cs:93`).
+- Clear and Flag change nothing but the record for a Volunteer. For a Colaborador/Asociado,
+  `RecordConsentCheckAsync` sets `IsApproved = (status == Cleared)` and `SystemTeamSyncJob` gates
+  the tier teams on it, so `Cleared → Flagged` drops a tier member from their tier team.
+- A flagged, unresolved person stays in the review queue even if an override set `IsApproved`; a
+  rejected person and a merged tombstone never appear; bulk clear clears only selected ids that
+  are queue rows (`Services/ConsentReviewQueueService.cs`).
 - A reminder is not sent to a member stamped within the cooldown
   (`Jobs/SendReConsentReminderJob.cs:65`).
 - Auth: `/Consent` any signed-in human (`Controllers/ConsentController.cs:14`); `/Legal`
   anonymous (`Controllers/LegalController.cs:13`); `/Legal/Admin/*` Board or Admin only
   (`Controllers/AdminLegalDocumentsController.cs:13`), so a Consent Coordinator cannot manage
-  documents.
+  documents; `/Consent/ReviewQueue` readable by ConsentCoordinator, ShiftsAdmin, Board, Admin, its
+  writes by ConsentCoordinator, Board, Admin only (`Controllers/ConsentReviewQueueController.cs`).
 
 ## Seams
 
 - **The Consent Coordinator review queue** lives here (`/Consent/ReviewQueue`), next to the
-  `consent_reviews` table it writes. Reject is Onboarding's orchestration
-  (`IOnboardingIntake.RejectSignupAsync`); Onboarding also sets the `Pending` status at the
-  review threshold through `IConsentWrite`. Fake accounts (Users' `UserInfo.IsFake`) never
-  count, through `ConsentReviewPredicates`.
+  verdicts it writes. Reject is Onboarding's orchestration (`IOnboardingIntake.RejectSignupAsync`),
+  shared with Users' admin screen; Onboarding also sets `Pending` at the review threshold.
+  Fake accounts (Users' `UserInfo.IsFake`) never count, through `ConsentReviewPredicates`.
+- **A cleared human can still be rejected; Flag stays withheld until a cross-section fix.**
+  Settled by Peter on 2026-08-23: cause can surface after the fact, so Reject stays available, gated
+  by the `ConsentCoordinatorBoardOrAdmin` policy on the action, not the markup; add no service-side
+  refusal. Flag stays hidden for a cleared human because `Cleared → Flagged` clears `IsApproved`,
+  which tier-team eligibility reads. Expose it once one of those two stops.
 - **Legacy review retirement:** production reported `consent.profile-review` done on 2026-11-03.
   The copy and fallback are retired; frozen profile review columns await a separate drop.
 - `ILegalDocumentSyncService` cannot fold inward while Governance's `MembershipCalculator`
