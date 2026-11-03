@@ -1844,6 +1844,23 @@ public class HoldedFinanceServiceTests
     }
 
     [HumansFact]
+    public async Task EnsureCreditorContact_BoundContactWithoutANumber_DoesNotTakeTheSeedContactsNumber()
+    {
+        var userId = Guid.NewGuid();
+        var binding = new HoldedCreditorContact { UserId = userId, HoldedContactId = "c-bound", Source = CreditorContactSource.Auto };
+        _repo.GetCreditorContactByUserAsync(userId, Arg.Any<CancellationToken>()).Returns(binding);
+        _repo.GetCreditorContactsAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedCreditorContact> { binding });
+
+        await MakeService().EnsureCreditorContactAsync(
+            userId, "Ana Ruiz", null, null, seedContactId: "c-twin", seedAccountNum: 41000066, "TestJob",
+            TestContext.Current.CancellationToken);
+
+        await _repo.DidNotReceive().UpsertCreditorContactAsync(
+            Arg.Is<HoldedCreditorContact>(c => c.SupplierAccountNum == 41000066),
+            Arg.Any<Instant>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
     public async Task ClearCreditorContact_RemovesTheBinding()
     {
         var userId = Guid.NewGuid();

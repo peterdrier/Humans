@@ -658,17 +658,19 @@ public class BackdoorFinanceControllerTests
         SetFinanceAdmin(true);
         var member = Guid.NewGuid();
         var line = new ExpenseReconLine(Guid.NewGuid(), Guid.NewGuid(), member, "Ana", "ER: Train", 100m,
-            new LocalDate(2026, 10, 10), "Pushed", ExpenseReconLineStatus.Duplicated, "d1", "F1", 100m, "Ana T",
-            ["d2"], 100m);
-        var orphan = new ExpenseReconOrphan("d9", "F9", new LocalDate(2026, 10, 11), "Nobody", "ER: X", null, 5m,
+            new LocalDate(2026, 10, 10), "Pushed", ExpenseReconLineStatus.Duplicated, "d1", 41000001, 7, null,
+            [8], 100m);
+        var orphan = new ExpenseReconOrphan(41000009, 9, new LocalDate(2026, 10, 11), "ER: X", 5m,
             ExpenseReconOrphanKind.UnboundContact);
-        var warning = new ExpenseReconMember(member, "Ana", 41000001, -200m, -100m, ExpenseReconMemberStatus.Off,
+        var warning = new ExpenseReconMember(member, "Ana", 41000001, -100m, -200m, 0m, -100m, 0, 1, [],
+            [new ExpenseReconMovement(new LocalDate(2026, 10, 12), 12, "payment", "Compra  Hand", 200m)],
+            ExpenseReconMemberStatus.Off,
             [new ExpenseReconOpenTransfer(Guid.NewGuid(), "batch.xml", Instant.FromUtc(2026, 10, 18, 9, 0), 200m)]);
         _finance.GetExpenseReconAsync(2026, Arg.Any<CancellationToken>()).Returns(new ExpenseReconReport(
             2026, Instant.FromUtc(2026, 10, 29, 2, 45), null, [2026],
             [line with { ExpenseReportId = Guid.NewGuid(), LineId = Guid.NewGuid(), Status = ExpenseReconLineStatus.Booked,
-                HoldedDocId = "booked", DuplicateDocIds = [], ExcessAmount = 0m }, line],
-            [orphan with { HoldedDocId = "older", Date = orphan.Date.PlusDays(-1) }, orphan],
+                HoldedDocId = "booked", DuplicateEntryNumbers = [], ExcessAmount = 0m }, line],
+            [orphan with { EntryNumber = 3, Date = orphan.Date.PlusDays(-1) }, orphan],
             [warning with { UserId = Guid.NewGuid(), MemberName = "Aardvark", LedgerBalance = -100m, Status = ExpenseReconMemberStatus.Balanced },
                 warning with { UserId = Guid.NewGuid(), MemberName = "Zed" }, warning],
             new ExpenseReconTotals(2, 2, 5, 1, 1, 100m, 2, 2)));
@@ -679,15 +681,15 @@ public class BackdoorFinanceControllerTests
         json.Should().Contain(@"""status"":""Duplicated""");
         json.Should().Contain(@"""documentDate"":""2026-10-10""");
         json.Should().Contain(@"""kind"":""UnboundContact""");
-        json.Should().Contain(@"""difference"":-100");
+        json.Should().Contain(@"""otherTotal"":200");
         json.Should().Contain(@"""problems"":3");
         json.Should().Contain(@"""warnings"":2");
         json.Should().NotContainEquivalentOf("iban");
         using var body = JsonDocument.Parse(json);
         body.RootElement.GetProperty("lines").EnumerateArray().Select(l => l.GetProperty("holdedDocId").GetString())
             .Should().Equal("d1", "booked");
-        body.RootElement.GetProperty("orphans").EnumerateArray().Select(o => o.GetProperty("holdedDocId").GetString())
-            .Should().Equal("d9", "older");
+        body.RootElement.GetProperty("orphans").EnumerateArray().Select(o => o.GetProperty("entryNumber").GetInt32())
+            .Should().Equal(9, 3);
         body.RootElement.GetProperty("members").EnumerateArray().Select(m => m.GetProperty("memberName").GetString())
             .Should().Equal("Ana", "Zed", "Aardvark");
     }
@@ -789,11 +791,14 @@ public class BackdoorFinanceControllerTests
             null, null, null, [],
             [
                 new ExpenseReconLine(Guid.NewGuid(), null, userId, Tainted, Tainted, 1m, new LocalDate(2026, 1, 1),
-                    Tainted, ExpenseReconLineStatus.Missing, Tainted, Tainted, null, Tainted, [Tainted], 0m),
+                    Tainted, ExpenseReconLineStatus.Missing, Tainted, null, null, null, [], 0m),
             ],
-            [new ExpenseReconOrphan(Tainted, Tainted, new LocalDate(2026, 1, 1), Tainted, Tainted, Tainted, 1m,
+            [new ExpenseReconOrphan(41000001, 1, new LocalDate(2026, 1, 1), Tainted, 1m,
                 ExpenseReconOrphanKind.NoMatchingLine)],
-            [new ExpenseReconMember(userId, Tainted, null, 0m, 0m, ExpenseReconMemberStatus.NoAccount,
+            [new ExpenseReconMember(userId, Tainted, null, 0m, 0m, 0m, 0m, 0, 0,
+                [new ExpenseReconOpenTransfer(Guid.NewGuid(), Tainted, Instant.FromUtc(2026, 1, 1, 0, 0), 1m)],
+                [new ExpenseReconMovement(new LocalDate(2026, 1, 1), 1, Tainted, Tainted, 1m)],
+                ExpenseReconMemberStatus.NoAccount,
                 [new ExpenseReconOpenTransfer(Guid.NewGuid(), Tainted, Instant.FromUtc(2026, 1, 1, 0, 0), 1m)])],
             new ExpenseReconTotals(0, 0, 0, 0, 0, 0m, 0, 0)));
 

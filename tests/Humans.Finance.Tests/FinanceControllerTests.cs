@@ -1149,7 +1149,7 @@ public class FinanceControllerTests
     [InlineData("it")]
     [InlineData("fr")]
     [InlineData("ca")]
-    public async Task ExpenseRecon_RendersCurrentHumansForMembersAndLinesWhileKeepingLegalContacts(string language)
+    public async Task ExpenseRecon_RendersCurrentHumansForMembersAndLines_WithTheirLedgerEntry(string language)
     {
         using var culture = new CultureScope(language);
         const string name = "Current member <script>&";
@@ -1158,20 +1158,20 @@ public class FinanceControllerTests
             [
                 new(Guid.NewGuid(), Guid.NewGuid(), Ana, "Stored member A", "Train", 12m,
                     new LocalDate(2026, 10, 10), "Pushed", ExpenseReconLineStatus.Booked,
-                    "doc", "F1", 12m, "Legal contact", [], 0m),
+                    "doc", 40000002, 4711, new LocalDate(2026, 10, 10), [], 0m),
                 new(Guid.NewGuid(), Guid.NewGuid(), Bo, "Stored member B", "Bus", 7m,
                     new LocalDate(2026, 10, 11), "Failed", ExpenseReconLineStatus.Missing,
                     null, null, null, null, [], 0m),
             ], [],
             [
-                new(Ana, "Stored member A", 40000002, -12m, -12m, ExpenseReconMemberStatus.Balanced, []),
-                new(Bo, "Stored member B", 40000003, -7m, 0m, ExpenseReconMemberStatus.Off, []),
+                new(Ana, "Stored member A", 40000002, -12m, -12m, 0m, 0m, 0, 0, [], [], ExpenseReconMemberStatus.Balanced, []),
+                new(Bo, "Stored member B", 40000003, 0m, 0m, 0m, 0m, 1, 0, [], [], ExpenseReconMemberStatus.Off, []),
             ], new(2, 2, 1, 1, 0, 0m, 0, 1));
 
         var html = await RenderAsync("ExpenseRecon", report);
 
         html.Should().Contain(HtmlEncoder.Default.Encode(name), Exactly.Twice())
-            .And.Contain("Legal contact").And.NotContain("Stored member A").And.NotContain("Stored member B")
+            .And.Contain("#4711").And.NotContain("Stored member A").And.NotContain("Stored member B")
             .And.NotContain(name);
         html.Should().Contain(HtmlEncoder.Default.Encode(new ResourceManager(typeof(SharedResource))
             .GetString("Common_Unknown", CultureInfo.CurrentUICulture)!), Exactly.Twice());

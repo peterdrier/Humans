@@ -13,9 +13,16 @@
     private static (string Css, string Label) MemberBadge(ExpenseReconMember member) => member.Status switch
     {
         ExpenseReconMemberStatus.Balanced => ("bg-success", "Balanced"),
-        ExpenseReconMemberStatus.Off => ("bg-warning text-dark", "Off by " + Math.Abs(member.Difference).ToEuro()),
+        ExpenseReconMemberStatus.Off => ("bg-warning text-dark", OffReasons(member)),
         _ => member.IsWarning ? ("bg-warning text-dark", "No creditor account") : ("bg-secondary", "No creditor account"),
     };
+
+    private static string OffReasons(ExpenseReconMember m) => string.Join(" · ", new[]
+    {
+        m.MissingLines > 0 ? $"{m.MissingLines} missing" : null,
+        m.UnclaimedPurchaseCount > 0 ? $"{m.UnclaimedPurchaseCount} unclaimed" : null,
+        m.UnmatchedTransfers.Count > 0 ? $"{m.UnmatchedTransfers.Count} SEPA not in ledger" : null,
+    }.Where(r => r is not null));
 }
 
 <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
@@ -34,12 +41,11 @@
 </div>
 
 <p class="text-muted">
-    Read only, from local data: each approved expense line (after the authorised-maximum allocation) against the
-    Holded document mirror, and each member's creditor balance in the ledger mirror against what their lines and
-    booked SEPA transfers say it should be. A line expects one purchase document described <code>ER: …</code>, with
-    notes <code>Expense report …</code> and the booked amount, on the member's bound contact. The year filters lines
-    and stray documents by document date; member balances are always all-time, as the ledger's are. Fixes live on the
-    pages linked above.
+    Read only, from the Holded ledger mirror: each approved expense line (after the authorised-maximum allocation)
+    expects one purchase line on the account its member's bound contact is on, with the same description
+    (<code>ER: …</code>) and amount, counted one for one. Each member's account is then split into those purchases,
+    booked SEPA payments and other movements. The year filters lines and stray purchases by date; member accounts are
+    always all-time, as the ledger's are. Fixes live on the pages linked above.
 </p>
 
 @if (!Model.IsAvailable)
@@ -67,8 +73,8 @@
         <div>
             <span class="badge bg-light text-dark">@totals.Reports reports</span>
             <span class="badge bg-light text-dark">@totals.Lines lines</span>
-            <span class="badge bg-light text-dark">@totals.HoldedDocs Holded docs</span>
-            <span class="badge @(totals.DuplicateDocs > 0 ? "bg-danger" : "bg-light text-dark")">@totals.DuplicateDocs duplicates · @totals.ExcessAmount.ToEuro() excess</span>
+            <span class="badge bg-light text-dark">@totals.LedgerPurchases ledger purchases</span>
+            <span class="badge @(totals.DuplicateLines > 0 ? "bg-danger" : "bg-light text-dark")">@totals.DuplicateLines duplicates · @totals.ExcessAmount.ToEuro() excess</span>
             <span class="badge @(totals.Orphans > 0 ? "bg-danger" : "bg-light text-dark")">@totals.Orphans orphans</span>
             <span class="badge @(totals.MembersOff > 0 ? "bg-warning text-dark" : "bg-light text-dark")">@totals.MembersOff members off (warning)</span>
         </div>
@@ -99,23 +105,22 @@
 
 @if (Model.Orphans.Count > 0)
 {
-    <h2 class="h4">Orphan documents</h2>
-    <p class="text-muted">Holded documents carrying the expense push's marker that no line keeps or counts as its duplicate.</p>
+    <h2 class="h4">Orphan purchases</h2>
+    <p class="text-muted">Ledger purchase lines carrying the expense push's marker that no line claims or counts as its duplicate.</p>
     <div class="table-responsive mb-4">
         <table class="table table-sm align-middle">
             <thead>
-                <tr><th>Date</th><th>Doc</th><th>Contact</th><th>Description</th><th>Notes</th><th class="text-end">Total</th><th>Kind</th></tr>
+                <tr><th>Date</th><th>Account</th><th>Entry</th><th>Description</th><th class="text-end">Amount</th><th>Kind</th></tr>
             </thead>
             <tbody>
                 @foreach (var o in Model.Orphans.OrderByDescending(o => o.Date))
                 {
                     <tr>
                         <td class="text-nowrap">@o.Date.ToInvariantDate()</td>
-                        <td><span title="@o.HoldedDocId">@o.DocNumber</span></td>
-                        <td>@o.ContactName</td>
+                        <td><a asp-action="CreditorStatement" asp-route-accountNum="@o.AccountNum">@o.AccountNum</a></td>
+                        <td>@o.EntryNumber</td>
                         <td>@o.Description</td>
-                        <td>@o.Notes</td>
-                        <td class="text-end text-nowrap">@o.Total.ToEuro()</td>
+                        <td class="text-end text-nowrap">@o.Amount.ToEuro()</td>
                         <td>
                             <span class="badge bg-danger">@(o.Kind == ExpenseReconOrphanKind.UnboundContact ? "Unbound contact" : "No matching line")</span>
                         </td>
@@ -128,14 +133,19 @@
 
 <h2 class="h4">Members</h2>
 <p class="text-muted">
-    Shown from the member's side: positive is owed to them. <strong>Expected</strong> is the booked amount of every
-    line whose document is in Holded, less every booked SEPA transfer. An open transfer is generated but not booked:
-    if the bank has paid it and Holded already shows the payment, it is the difference.
+    Shown from the member's side: positive is owed to them. The ledger balance is the sum of the four columns before
+    it. A warning means a real mismatch: a missing line, a marked purchase no line claims, or a booked SEPA transfer
+    with no payment on its day. <strong>Other</strong> (unmarked purchases, journal entries such as a loan, payments
+    made by hand) is information, not a warning. An open transfer is generated but not booked yet.
 </p>
 <div class="table-responsive mb-4">
     <table class="table table-sm align-middle">
         <thead>
-            <tr><th>Member</th><th>Account</th><th class="text-end">Ledger</th><th class="text-end">Expected</th><th>Status</th><th>Open SEPA transfers</th></tr>
+            <tr>
+                <th>Member</th><th>Account</th><th class="text-end">Expenses</th><th class="text-end">SEPA paid</th>
+                <th class="text-end">Unclaimed</th><th class="text-end">Other</th><th class="text-end">Ledger</th>
+                <th>Status</th><th>Open SEPA transfers</th>
+            </tr>
         </thead>
         <tbody>
             @foreach (var m in members)
@@ -153,9 +163,33 @@
                             <span class="text-muted">—</span>
                         }
                     </td>
+                    <td class="text-end text-nowrap">@((-m.ExpensePurchases).ToEuro())</td>
+                    <td class="text-end text-nowrap">@((-m.SepaPaid).ToEuro())</td>
+                    <td class="text-end text-nowrap">@((-m.UnclaimedPurchases).ToEuro())</td>
+                    <td class="text-end text-nowrap">
+                        @if (m.OtherMovements.Count == 0)
+                        {
+                            @((-m.OtherTotal).ToEuro())
+                        }
+                        else
+                        {
+                            <details>
+                                <summary>@((-m.OtherTotal).ToEuro())</summary>
+                                @foreach (var o in m.OtherMovements)
+                                {
+                                    <div class="small text-start">@o.Date.ToInvariantDate() · @o.Type · @o.Description · @((-o.Amount).ToEuro())</div>
+                                }
+                            </details>
+                        }
+                    </td>
                     <td class="text-end text-nowrap">@((-m.LedgerBalance).ToEuro())</td>
-                    <td class="text-end text-nowrap">@((-m.ExpectedBalance).ToEuro())</td>
-                    <td><span class="badge @css">@label</span></td>
+                    <td>
+                        <span class="badge @css">@label</span>
+                        @foreach (var t in m.UnmatchedTransfers)
+                        {
+                            <div class="small"><a asp-action="Sepa">@t.FileName</a> · @t.Amount.ToEuro() not in ledger</div>
+                        }
+                    </td>
                     <td>
                         @foreach (var t in m.OpenTransfers)
                         {
