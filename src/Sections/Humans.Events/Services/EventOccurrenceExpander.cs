@@ -33,7 +33,8 @@ internal static class EventOccurrenceExpander
 
                 // Hearts on recurring-event cards favourite that day's occurrence;
                 // non-recurring cards (and unexpanded ones) favourite the whole event.
-                var favouriteDayOffset = e.IsRecurring && gateOpeningDate.HasValue && timeZone != null
+                var favouriteDayOffset = e.IsRecurring && !string.IsNullOrWhiteSpace(e.RecurrenceDays)
+                    && gateOpeningDate.HasValue && timeZone != null
                     ? dayOffset
                     : (int?)null;
 
@@ -42,7 +43,7 @@ internal static class EventOccurrenceExpander
                     StartAt: startInstant,
                     DayOffset: dayOffset,
                     FavouriteDayOffset: favouriteDayOffset,
-                    IsFavourited: favouriteDaysByEventId[e.Id].Any(d => d == null || d == favouriteDayOffset)));
+                    IsFavourited: favouriteDaysByEventId[e.Id].Any(d => favouriteDayOffset == null || d == null || d == favouriteDayOffset)));
             }
         }
 

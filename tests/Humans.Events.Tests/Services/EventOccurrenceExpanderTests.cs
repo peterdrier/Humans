@@ -85,6 +85,29 @@ public sealed class EventOccurrenceExpanderTests
         result[0].FavouriteDayOffset.Should().BeNull();
     }
 
+    [HumansTheory]
+    [Xunit.InlineData(true, null, true, true)]
+    [Xunit.InlineData(true, "", true, true)]
+    [Xunit.InlineData(true, " ", true, true)]
+    [Xunit.InlineData(true, "0,1", false, true)]
+    [Xunit.InlineData(true, "0,1", true, false)]
+    [Xunit.InlineData(false, null, true, true)]
+    public void UnexpandedEvent_UsesWholeEventTargetAndRecognizesExistingDayFavourite(
+        bool isRecurring, string? recurrenceDays, bool hasGateDate, bool hasTimeZone)
+    {
+        var startAt = new LocalDateTime(2026, 7, 12, 18, 30).InZoneStrictly(Tz).ToInstant();
+        var e = Approved(startAt, isRecurring, recurrenceDays);
+        var favourites = new[] { (e.Id, (int?)2) }.ToLookup(f => f.Item1, f => f.Item2);
+
+        var result = EventOccurrenceExpander.Expand(
+            [e], favourites, hasGateDate ? GateDate : null, hasTimeZone ? Tz : null, filterDays: null);
+
+        result.Should().ContainSingle();
+        result[0].StartAt.Should().Be(startAt);
+        result[0].FavouriteDayOffset.Should().BeNull();
+        result[0].IsFavourited.Should().BeTrue();
+    }
+
     [HumansFact]
     public void IsFavourited_WholeEventFavourite_MatchesEveryOccurrence()
     {
