@@ -83,6 +83,38 @@ public class DevSeedControllerTests
         ctrl.Index().Should().BeOfType<ViewResult>();
     }
 
+    [HumansTheory]
+    [Xunit.InlineData(0)]
+    [Xunit.InlineData(1)]
+    [Xunit.InlineData(2)]
+    [Xunit.InlineData(3)]
+    public async Task Seed_preflight_cancellation_stops_before_resolving_a_seeder(int action)
+    {
+        _environment.EnvironmentName.Returns("Development");
+        SetDevAuthEnabled(true);
+        var controller = BuildSut();
+        var userId = Guid.Parse(controller.User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        using var request = new CancellationTokenSource();
+        controller.HttpContext.RequestAborted = request.Token;
+        _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            call.Arg<CancellationToken>().Should().Be(request.Token);
+            call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+            return new ValueTask<UserInfo?>(UserInfo.Create(new User { Id = userId }, [], [], null));
+        });
+        await request.CancelAsync();
+        Func<Task<IActionResult>> invoke = action switch
+        {
+            0 => () => controller.SeedBudget(request.Token),
+            1 => () => controller.SeedCampRoles(request.Token),
+            2 => () => controller.SeedDashboard(request.Token),
+            _ => () => controller.ResetDashboard(request.Token),
+        };
+
+        await invoke.Should().ThrowAsync<OperationCanceledException>();
+        _serviceProvider.ReceivedCalls().Should().BeEmpty();
+    }
+
     private void SetDevAuthEnabled(bool enabled)
     {
         // IConfiguration["DevAuth:Enabled"] is consulted by GetValue<bool>.
