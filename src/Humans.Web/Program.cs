@@ -125,15 +125,7 @@ builder.Services.AddDataProtection()
     .PersistKeysToSystemDbContext()
     .SetApplicationName("Humans.Web");
 
-builder.Services.AddIdentity<User, IdentityRole<Guid>>(options =>
-    {
-        // UserEmail table owns email uniqueness; User.Email is null on new users.
-        options.User.RequireUniqueEmail = false;
-        options.SignIn.RequireConfirmedEmail = false;
-    })
-    .AddHumansEntityFrameworkStores()
-    .AddDefaultTokenProviders()
-    .AddClaimsPrincipalFactory<HumansUserClaimsPrincipalFactory>();
+builder.Services.AddHumansIdentity();
 
 // TLS terminated by Coolify/reverse proxy.
 builder.Services.ConfigureApplicationCookie(options =>

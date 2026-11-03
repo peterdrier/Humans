@@ -1,4 +1,3 @@
-using Microsoft.AspNetCore.Identity;
 using NodaTime;
 using Humans.Auth.Contracts;
 using Humans.Email.Contracts;
@@ -6,9 +5,7 @@ using Humans.Users.Contracts;
 
 namespace Humans.Auth.Services;
 
-/// <summary><see cref="UserManager{TUser}"/> is for lookup only: this service writes no table.</summary>
 internal sealed class MagicLinkService(
-    UserManager<User> userManager,
     IUserEmailService userEmailService,
     IUserService userService,
     IEmailService emailService,
@@ -27,12 +24,9 @@ internal sealed class MagicLinkService(
             .FirstOrDefault();
         if (userEmail is not null)
         {
-            var ownerUser = await userManager.FindByIdAsync(userEmail.UserId.ToString());
-            if (ownerUser is not null)
-            {
-                await SendLoginLinkAsync(ownerUser, userEmail.Email, returnUrl, ct);
-                return;
-            }
+            // The row's foreign key guarantees the owner exists.
+            await SendLoginLinkAsync(userEmail.UserId, userEmail.Email, returnUrl, ct);
+            return;
         }
 
         await SendSignupLinkAsync(email, returnUrl, ct);
@@ -40,8 +34,7 @@ internal sealed class MagicLinkService(
 
     public async Task<bool> VerifyLoginTokenAsync(Guid userId, string token, CancellationToken ct = default)
     {
-        var user = await userManager.FindByIdAsync(userId.ToString());
-        if (user is null)
+        if (await userService.GetUserInfoAsync(userId, ct) is null)
         {
             logger.LogWarning("Magic link login: user {UserId} not found", userId);
             return false;
@@ -100,31 +93,31 @@ internal sealed class MagicLinkService(
 
     public void ReleaseSignupToken(string token) => rateLimiter.ReleaseTokenReservation(token);
 
-    private async Task SendLoginLinkAsync(User user, string sendToEmail, string? returnUrl, CancellationToken ct)
+    private async Task SendLoginLinkAsync(Guid userId, string sendToEmail, string? returnUrl, CancellationToken ct)
     {
-        if (!await rateLimiter.TryReserveUserSendAsync(user.Id, RateLimitCooldown.ToTimeSpan()))
+        if (!await rateLimiter.TryReserveUserSendAsync(userId, RateLimitCooldown.ToTimeSpan()))
         {
-            logger.LogDebug("Magic link rate-limited for user {UserId}", user.Id);
+            logger.LogDebug("Magic link rate-limited for user {UserId}", userId);
             return; // Same "check your email" message either way: no enumeration.
         }
 
         try
         {
-            var magicLinkUrl = urlBuilder.BuildLoginUrl(user.Id, returnUrl);
-            var userInfo = await userService.GetUserInfoAsync(user.Id, ct);
+            var magicLinkUrl = urlBuilder.BuildLoginUrl(userId, returnUrl);
+            var userInfo = await userService.GetUserInfoAsync(userId, ct);
             var displayName = string.IsNullOrWhiteSpace(userInfo?.BurnerName) ? sendToEmail : userInfo.BurnerName;
 
             await emailService.SendAsync(
-                emailMessages.MagicLinkLogin(user.Id, sendToEmail, displayName, magicLinkUrl, userInfo?.PreferredLanguage), ct);
+                emailMessages.MagicLinkLogin(userId, sendToEmail, displayName, magicLinkUrl, userInfo?.PreferredLanguage), ct);
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Failed to send magic link login for user {UserId}", user.Id);
-            rateLimiter.ReleaseUserSendReservation(user.Id);
+            logger.LogError(ex, "Failed to send magic link login for user {UserId}", userId);
+            rateLimiter.ReleaseUserSendReservation(userId);
             throw;
         }
 
-        logger.LogInformation("Magic link login sent to {Email} for user {UserId}", sendToEmail, user.Id);
+        logger.LogInformation("Magic link login sent to {Email} for user {UserId}", sendToEmail, userId);
     }
 
     private async Task SendSignupLinkAsync(string email, string? returnUrl, CancellationToken ct)

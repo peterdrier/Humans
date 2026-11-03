@@ -17,10 +17,9 @@ namespace Humans.Web.Controllers;
 // Sign-in flows run before there is a principal.
 [AllowAnonymous]
 public class AccountController(
-    SignInManager<User> signInManager,
+    IUserSignInService signIn,
     IUserService userService,
     IUserWrite userWrite,
-    UserManager<User> userManager,
     IClock clock,
     ILogger<AccountController> logger,
     IExternalLoginService externalLoginService,
@@ -55,7 +54,7 @@ public class AccountController(
     public IActionResult ExternalLogin(string provider, string? returnUrl = null)
     {
         var redirectUrl = Url.Action(nameof(ExternalLoginCallback), "Account", new { returnUrl });
-        var properties = signInManager.ConfigureExternalAuthenticationProperties(provider, redirectUrl);
+        var properties = signIn.ConfigureExternalAuthenticationProperties(provider, redirectUrl);
         return Challenge(properties, provider);
     }
 
@@ -70,18 +69,14 @@ public class AccountController(
             return RedirectToAction(nameof(Login), new { returnUrl, error = "oauth" });
         }
 
-        var info = await signInManager.GetExternalLoginInfoAsync();
+        var info = await signIn.GetExternalLoginInfoAsync();
         if (info is null)
         {
             logger.LogWarning("Could not get external login info");
             return RedirectToAction(nameof(Login), new { returnUrl, error = "oauth" });
         }
 
-        var result = await signInManager.ExternalLoginSignInAsync(
-            info.LoginProvider,
-            info.ProviderKey,
-            isPersistent: true,
-            bypassTwoFactor: true);
+        var result = await signIn.ExternalLoginSignInAsync(info);
 
         // Already signed in means this callback links a Google account, not a sign-in.
         var wasAuthenticated = IsAuthenticated();
@@ -96,8 +91,8 @@ public class AccountController(
                 result.IsLockedOut,
                 wasAuthenticated ? GetCurrentUserId() : null));
 
-        if (completion.SignInUser is not null)
-            await signInManager.SignInAsync(completion.SignInUser, isPersistent: true);
+        if (completion.SignInUserId is { } signInUserId)
+            await signIn.SignInAsync(signInUserId);
 
         switch (completion.Outcome)
         {
@@ -201,19 +196,20 @@ public class AccountController(
     {
         returnUrl ??= Url.Content("~/");
 
-        var user = await magicLinkService.VerifyLoginTokenAsync(userId, token)
-            ? await FindIdentityUserAsync(userId)
-            : null;
-        if (user is null)
+        if (!await magicLinkService.VerifyLoginTokenAsync(userId, token))
         {
             return View("MagicLinkError");
         }
 
-        await userWrite.RecordLoginAsync(user.Id);
+        await userWrite.RecordLoginAsync(userId);
 
-        await signInManager.SignInAsync(user, isPersistent: true);
+        if (!await signIn.SignInAsync(userId))
+        {
+            return View("MagicLinkError");
+        }
+
         loginMethods.RecordMagicLink();
-        logger.LogInformation("User {UserId} logged in via magic link", user.Id);
+        logger.LogInformation("User {UserId} logged in via magic link", userId);
 
         return RedirectToLocal(returnUrl);
     }
@@ -328,8 +324,7 @@ public class AccountController(
             throw;
         }
 
-        var user = await FindIdentityUserAsync(result.UserId);
-        if (user is null)
+        if (!await TrySignInAsync(result.UserId))
         {
             // Provisioning failed and rolled itself back, so the redemption
             // accomplished nothing. Hand the link back rather than making the
@@ -338,15 +333,13 @@ public class AccountController(
             return View("MagicLinkError");
         }
 
-        await signInManager.SignInAsync(user, isPersistent: true);
         loginMethods.RecordMagicLink();
 
         return RedirectToLocal(returnUrl);
     }
 
-    // Auth and Users contracts hand back ids; the Identity entity SignInManager needs is loaded here.
-    private async Task<User?> FindIdentityUserAsync(Guid? userId) =>
-        userId is { } id ? await userManager.FindByIdAsync(id.ToString()) : null;
+    private async Task<bool> TrySignInAsync(Guid? userId) =>
+        userId is { } id && await signIn.SignInAsync(id);
 
     /// <summary>
     /// Shared gate-terminal sign-in for the laptop at gate (see
@@ -373,20 +366,17 @@ public class AccountController(
             return View();
         }
 
-        var user = string.Equals(username?.Trim(), SystemUserIds.GateTerminalLoginName,
-                StringComparison.OrdinalIgnoreCase)
-            ? await userManager.FindByIdAsync(SystemUserIds.GateTerminal.ToString())
-            : null;
+        var isGateUser = string.Equals(username?.Trim(), SystemUserIds.GateTerminalLoginName,
+            StringComparison.OrdinalIgnoreCase);
 
-        if (user is null || string.IsNullOrEmpty(password))
+        if (!isGateUser || string.IsNullOrEmpty(password))
         {
             gateThrottle.RecordFailure(source);
             ModelState.AddModelError(string.Empty, localizer["GateLogin_Invalid"]);
             return View();
         }
 
-        var result = await signInManager.CheckPasswordSignInAsync(user, password, lockoutOnFailure: false);
-        if (!result.Succeeded)
+        if (!await signIn.CheckPasswordAsync(SystemUserIds.GateTerminal, password))
         {
             gateThrottle.RecordFailure(source);
             logger.LogWarning("Gate terminal sign-in failed (wrong password) from {Source}", source);
@@ -396,9 +386,9 @@ public class AccountController(
 
         gateThrottle.Reset(source);
 
-        await userWrite.RecordLoginAsync(user.Id);
+        await userWrite.RecordLoginAsync(SystemUserIds.GateTerminal);
 
-        await signInManager.SignInAsync(user, isPersistent: true);
+        await signIn.SignInAsync(SystemUserIds.GateTerminal);
         logger.LogInformation("Gate terminal signed in");
 
         // GateController is internal to Humans.Gate, so the action is a literal. AdminNavTreeRoutingTests' sibling
@@ -410,7 +400,7 @@ public class AccountController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Logout()
     {
-        await signInManager.SignOutAsync();
+        await signIn.SignOutAsync();
         logger.LogInformation("User logged out");
         return RedirectToAction(nameof(HomeController.Index), "Home");
     }

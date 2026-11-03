@@ -67,7 +67,7 @@ Each service is the exclusive gateway to its data. No component — controller, 
 
 Controllers call services. Controllers never inject `DbContext`, never write EF queries, never instantiate repositories or stores directly, never access `IMemoryCache` for domain data. Their job is: receive HTTP request → authorize → call service(s) → return response.
 
-**Exception:** `UserManager<User>` / `SignInManager<User>` for ASP.NET Identity operations (login, password, claims) are allowed in controllers since Identity is a framework concern, not a domain service.
+ASP.NET Identity's `UserManager<User>` / `SignInManager<User>` are Users-internal. Controllers sign in and manage passwords by user id through `IUserSignInService` (HUM0039 keeps the `User` entity out of every other section).
 
 ### 2b. Services Live in `Services/`, Not `Data/`
 

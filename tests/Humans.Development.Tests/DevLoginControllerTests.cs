@@ -33,15 +33,8 @@ namespace Humans.Development.Tests;
 /// </summary>
 public class DevLoginControllerTests
 {
-    private readonly UserManager<User> _userManager = Substitute.For<UserManager<User>>(
-        Substitute.For<IUserStore<User>>(), null, null, null, null, null, null, null, null);
-
-    private readonly SignInManager<User> _signInManager = Substitute.For<SignInManager<User>>(
-        Substitute.For<UserManager<User>>(
-            Substitute.For<IUserStore<User>>(), null, null, null, null, null, null, null, null),
-        Substitute.For<IHttpContextAccessor>(),
-        Substitute.For<IUserClaimsPrincipalFactory<User>>(),
-        null, null, null, null);
+    private readonly IUserSignInService _signIn = Substitute.For<IUserSignInService>();
+    private readonly IAccountProvisioningService _provisioning = Substitute.For<IAccountProvisioningService>();
 
     private readonly IUserEmailService _userEmails = Substitute.For<IUserEmailService>();
     private readonly IRoleAssignmentService _roleAssignments = Substitute.For<IRoleAssignmentService>();
@@ -55,6 +48,7 @@ public class DevLoginControllerTests
         // QA and Production leave the opt-in unset. The substitute answers "" rather than null
         // for an unstubbed section, which no IConfiguration does, so state the off case.
         SetAllowAdmin(false);
+        _signIn.SignInAsync(Arg.Any<Guid>()).Returns(true);
     }
 
     [HumansFact]
@@ -68,8 +62,8 @@ public class DevLoginControllerTests
         var result = await BuildSut().SignIn("admin");
 
         result.Should().BeOfType<NotFoundResult>();
-        await _userManager.DidNotReceive().FindByIdAsync(Arg.Any<string>());
-        await _signInManager.DidNotReceive().SignInAsync(Arg.Any<User>(), Arg.Any<bool>());
+        _ = _users.DidNotReceiveWithAnyArgs().GetUserInfoAsync(default, default);
+        await _signIn.DidNotReceiveWithAnyArgs().SignInAsync(default);
     }
 
     [HumansFact]
@@ -82,7 +76,7 @@ public class DevLoginControllerTests
         var result = await BuildSut().SignIn("admin");
 
         result.Should().BeOfType<RedirectToActionResult>();
-        await _signInManager.Received(1).SignInAsync(Arg.Any<User>(), true);
+        await _signIn.Received(1).SignInAsync(Arg.Any<Guid>());
     }
 
     [HumansFact]
@@ -96,7 +90,7 @@ public class DevLoginControllerTests
         var result = await BuildSut().SignIn("volunteer");
 
         result.Should().BeOfType<RedirectToActionResult>();
-        await _signInManager.Received(1).SignInAsync(Arg.Any<User>(), true);
+        await _signIn.Received(1).SignInAsync(Arg.Any<Guid>());
     }
 
     [HumansFact]
@@ -112,7 +106,7 @@ public class DevLoginControllerTests
         var result = await BuildSut().SignIn("admin");
 
         result.Should().BeOfType<RedirectToActionResult>();
-        await _signInManager.Received(1).SignInAsync(Arg.Any<User>(), true);
+        await _signIn.Received(1).SignInAsync(Arg.Any<Guid>());
     }
 
     [HumansFact]
@@ -123,14 +117,12 @@ public class DevLoginControllerTests
         SetDevAuthEnabled(true);
         SetAllowAdmin(true);
         var id = Guid.NewGuid();
-        var user = new User { Id = id };
-        _userManager.FindByIdAsync(id.ToString()).Returns(user);
         _roleAssignments.IsUserAdminAsync(id, Arg.Any<CancellationToken>()).Returns(true);
 
         var result = await BuildSut().SignInAsUser(id);
 
         result.Should().BeOfType<RedirectToActionResult>();
-        await _signInManager.Received(1).SignInAsync(user, true);
+        await _signIn.Received(1).SignInAsync(id);
     }
 
     [HumansFact]
@@ -140,13 +132,12 @@ public class DevLoginControllerTests
         _environment.EnvironmentName.Returns("Staging");
         SetDevAuthEnabled(true);
         var id = Guid.NewGuid();
-        _userManager.FindByIdAsync(id.ToString()).Returns(new User { Id = id });
         _roleAssignments.IsUserAdminAsync(id, Arg.Any<CancellationToken>()).Returns(true);
 
         var result = await BuildSut().SignInAsUser(id);
 
         result.Should().BeOfType<NotFoundResult>();
-        await _signInManager.DidNotReceive().SignInAsync(Arg.Any<User>(), Arg.Any<bool>());
+        await _signIn.DidNotReceiveWithAnyArgs().SignInAsync(default);
     }
 
     [HumansFact]
@@ -155,14 +146,12 @@ public class DevLoginControllerTests
         _environment.EnvironmentName.Returns("Staging");
         SetDevAuthEnabled(true);
         var id = Guid.NewGuid();
-        var user = new User { Id = id };
-        _userManager.FindByIdAsync(id.ToString()).Returns(user);
         _roleAssignments.IsUserAdminAsync(id, Arg.Any<CancellationToken>()).Returns(false);
 
         var result = await BuildSut().SignInAsUser(id);
 
         result.Should().BeOfType<RedirectToActionResult>();
-        await _signInManager.Received(1).SignInAsync(user, true);
+        await _signIn.Received(1).SignInAsync(id);
     }
 
     [HumansFact]
@@ -187,7 +176,8 @@ public class DevLoginControllerTests
     private void SeedExistingPersona(string slug)
     {
         var id = DevPersonaSeeder.PersonaGuid(slug);
-        _userManager.FindByIdAsync(id.ToString()).Returns(new User { Id = id });
+        _users.GetUserInfoAsync(id, Arg.Any<CancellationToken>())
+            .Returns(UserInfo.Create(new User { Id = id }, [], [], null));
     }
 
     private void SetDevAuthEnabled(bool enabled) => SetFlag("DevAuth:Enabled", "Enabled", enabled);
@@ -208,8 +198,7 @@ public class DevLoginControllerTests
     private DevLoginController BuildSut()
     {
         var ctrl = new DevLoginController(
-            _userManager,
-            _signInManager,
+            _signIn,
             _userEmails,
             BuildSeeder(),
             _roleAssignments,
@@ -234,7 +223,7 @@ public class DevLoginControllerTests
         });
 
     private DevPersonaSeeder BuildSeeder() => new(
-        _userManager,
+        _provisioning,
         Substitute.For<IProfileEditorService>(),
         _userEmails,
         Substitute.For<IContactFieldService>(),
