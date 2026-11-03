@@ -31,6 +31,9 @@ pages and data.
 
 ## Invariants
 
+- The manual check honours request cancellation during the account lookup before
+  scanning. Once started, the scan runs independently of the browser request.
+
 - Monitor owns no tables, repository, migrations, resource set, or views.
 - `DriveActivityMonitorService` calls other sections only through
   `IGoogleDriveActivityClient`, `ITeamResourceService`, `ISettingsService`,
