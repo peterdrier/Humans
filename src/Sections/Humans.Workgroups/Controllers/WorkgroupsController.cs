@@ -121,6 +121,7 @@ internal sealed class WorkgroupsController(
             "Workgroups_Left", ct, memberOnly: false);
 
     [HttpPost("{slug}/RequestStatus")]
+    [Authorize(Policy = PolicyNames.BoardOrAdmin)]
     [ValidateAntiForgeryToken]
     public Task<IActionResult> RequestStatus(string slug, string? question, CancellationToken ct) =>
         ActAsync(slug, (id, userId) => workgroups.RequestStatusAsync(id, userId, question, ct),

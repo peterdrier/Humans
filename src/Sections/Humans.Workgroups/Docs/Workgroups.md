@@ -266,7 +266,8 @@ a clear error while unset.
 | `/Workgroups` | Register: Active, Pending (Applied/Referred), Archive |
 | `/Workgroups/Apply` | Clause 1 application form |
 | `/Workgroups/{slug}` | Group page. Slug routes also resolve by the group's id, so a pre-rename link still lands |
-| `/Workgroups/{slug}/Join`, `/Leave`, `/RequestStatus` | Member actions. Join is a request; Leave while pending withdraws it |
+| `/Workgroups/{slug}/Join`, `/Leave` | Member actions. Join is a request; Leave while pending withdraws it |
+| `/Workgroups/{slug}/RequestStatus` | Board/Admin only; the form is hidden from everyone else |
 | `/Workgroups/{slug}/Members/{userId}/Approve`, `/Decline`, `/Members/Add` | Membership decisions: a coordinator of an Active group, or Board/Admin |
 | `/Workgroups/{slug}/Edit`, `/Coordinators` | Register fields, coordinator handover |
 | `/Workgroups/{slug}/Meetings/*`, `/Log/*` | Meetings and log entries |
@@ -285,10 +286,10 @@ Settings and Register an existing group on first setup or after clearing the que
 
 | Actor | Capabilities |
 |-------|--------------|
-| Any signed-in human with an approved profile | Browse the register and every group page; read Published/Delivered documents, meetings and the log of a non-sensitive group; ask to join, withdraw the request, or leave; comment during an open window (non-sensitive groups); request a status update; apply to form a group |
+| Any signed-in human with an approved profile | Browse the register and every group page; read Published/Delivered documents, meetings and the log of a non-sensitive group; ask to join, withdraw the request, or leave; comment during an open window (non-sensitive groups); apply to form a group |
 | Workgroup member | Additionally: read Draft documents; everything on a sensitive group's page; edit register fields (including the sensitive flag); create/edit meetings; post Update, Meeting notes, Disclosure and Note entries; create/edit/publish/deliver documents; open/close comment periods; respond to and dispose of comments; hide a comment with a reason; link an authored survey; mark the group done |
 | Coordinator | Everything a member can, plus the membership decision: approve or decline join requests and add people directly. Named on the register; addressee of notifications and join requests; may hand coordination to another member |
-| Board, Admin (`BoardOrAdmin`) | Register, refer, refuse, withdraw, close, reactivate; set coordinators (override); approve, decline and add members on any group; register on behalf (bootstrapping); record a document's disposition; view the admin queue; edit any group; read sensitive groups; set the root Drive folder; set the budget and its Holded account |
+| Board, Admin (`BoardOrAdmin`) | Register, refer, refuse, withdraw, close, reactivate; set coordinators (override); approve, decline and add members on any group; register on behalf (bootstrapping); record a document's disposition; view the admin queue; request a status update; edit any group; read sensitive groups; set the root Drive folder; set the budget and its Holded account |
 
 ## Invariants
 
@@ -332,7 +333,7 @@ Settings and Register an existing group on first setup or after clearing the que
   public meetings (the members' own feed keeps them) and the Governance card shows its
   register entry without next meeting, comment or update-due badge; the register and the page header
   show its open-for-comment and update-due badges to members only (Board/Admin on the
-  page). The register listing itself, the join request and the status request are unchanged.
+  page). The register listing itself and the join request are unchanged.
 - **One or two coordinators at all times on an Active group.** The last coordinator
   leaving must name a replacement (`LeaveAsync`); a `BoardOrAdmin` caller may override and
   leave the group coordinatorless on purpose so the Secretary can appoint someone.
@@ -457,7 +458,7 @@ anything — every action here is a notice, a flag, or a record; a human still h
 
 Disposition-overdue is a read-time badge computed by `WorkgroupInfo` against the caller's
 clock, not a job action — a cached register can never show a stale badge. "Request a status
-update" is a member action (any signed-in human, as often as they like), not part of the job.
+update" is a Board/Admin action (as often as they like), not part of the job.
 
 The job reads how long a group has been quiet — that is how the 30-day nudge knows whether
 its window has come round again — but it never persists a judgement about it: no flag, no
