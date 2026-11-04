@@ -1387,7 +1387,9 @@ internal sealed class Service(
     private async Task<HoldedDuplicatesVm> BuildDuplicatePlanAsync(CancellationToken ct)
     {
         var docs = await client.ListPurchaseDocumentsAsync(ct);
-        var contactById = await ContactsByIdAsync(ct) ?? new Dictionary<string, HoldedContactDto>(StringComparer.Ordinal);
+        // Without it the same-named sibling contacts go unseen, so the plan would look complete while missing them.
+        if (await ContactsByIdAsync(ct) is not { } contactById)
+            return new HoldedDuplicatesVm([], [], ContactListUnavailable);
         var bindings = await repo.GetCreditorContactsAsync(ct);
         var bookings = await expenses.GetHoldedBookingsAsync(ct);
         var contactsByUser = MemberContacts(bookings, bindings, contactById);
@@ -1448,7 +1450,7 @@ internal sealed class Service(
                     g.Key,
                     contact?.Name ?? g.First().Kept.ContactName,
                     binding?.HoldedContactId,
-                    contact?.SupplierAccountNum ?? binding?.SupplierAccountNum,
+                    contact?.SupplierAccountNum,
                     lines, orphans);
             })
             .ToList();
@@ -1489,6 +1491,8 @@ internal sealed class Service(
             logger.LogWarning("Holded could not be read; no duplicate was deleted. {Reason}", ex.Message);
             return new HoldedDuplicateApplyResult([], "Holded could not be read — nothing was deleted: " + ex.Message, null);
         }
+        if (plan.Error is { } planError)
+            return new HoldedDuplicateApplyResult([], "Nothing was deleted: " + planError, null);
         if (!plan.HasWork)
             return new HoldedDuplicateApplyResult([], "No duplicate document was found — nothing was deleted.", null);
 
