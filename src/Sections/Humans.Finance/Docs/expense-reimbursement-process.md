@@ -102,9 +102,9 @@ robbed, automation everywhere else.**
   Holded's own payment API, plus one journal entry for whatever no open document covers, so the
   accountant sees a normal ledger.
 
-## Status (2026-10-29)
+## Status
 
-Steps 1–11 are in production. Since 2026-09-06, on `origin/main`:
+Steps 1–11 are in production, plus:
 
 - **Booking runs itself.** The two-hourly sweep (`sepa-bank-booking`) books each transfer once
   its Sabadell line appears; `/Finance/Sepa` keeps the manual Book, Book file and Process

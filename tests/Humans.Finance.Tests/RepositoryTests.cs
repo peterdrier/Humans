@@ -169,7 +169,7 @@ public class RepositoryTests
         landed.HoldedPaymentRefs.Should().Be("pay-1");
         landed.PostedButNotBooked.Should().BeTrue();
 
-        // Well past the 512 characters the column used to hold.
+        // Well past 512 characters: the column must hold every ref the run posted.
         var refs = string.Join(",", Enumerable.Range(1, 30).Select(i => $"68f2a7c1e5b3d4a9f0c1b2{i:D2}"));
         await repo.SaveSepaTransferBookingAsync(transferId, Now, actor, "mv-1", null, refs, Ct);
 

@@ -84,6 +84,7 @@ internal sealed class HoldedSalesClient(HoldedTransport transport, ILogger<Holde
         {
             var node = JsonNode.Parse(body)
                 ?? throw new HoldedTransientException("Holded returned empty body");
+            WarnIfNotEuro(logger, node, kind.ToString());
             return new HoldedSalesDocumentDto
             {
                 Id = ReadRequiredString(Prop(node, "id") ?? JsonValue.Create(documentId), "id"),

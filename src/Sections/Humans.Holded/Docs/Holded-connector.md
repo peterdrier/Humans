@@ -91,7 +91,7 @@ section** it belongs to (ledger mirror, sync, `/Holded` admin screen) has its ow
   and logged, except a **pending outgoing** one: it could be a SEPA rival, so it fails the read with
   a `HoldedPermanentException` whose `BankMovementId` names it, unless the caller passes that id in
   `skipUnreadableDateIds` (Finance does so after three stuck sweep runs, peterdrier/Humans#1946).
-- Currency is EUR-only. Multi-currency is out of scope.
+- Currency is EUR-only. Multi-currency is out of scope: a purchase or sales document read with a currency set to anything but EUR logs a warning (document id and currency) and is read unchanged, amounts as euros; an absent currency is EUR (peterdrier/Humans#2040).
 - Line taxes are Holded **tax keys**, scoped by direction: `s_iva_21` / `s_iva_0` on sales
   documents, `p_iva_21` on purchases. The decimal separator is dropped, not rounded —
   7.5% is `s_iva_75`.
