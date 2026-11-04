@@ -76,6 +76,7 @@ The member history page uses localized labels, including the link to each transc
 ## Invariants
 
 - The admin status view orders refusal buckets by count descending. The status service supplies bucket counts without display sorting; its top-ten document/user selectors and latency calculation remain ordered for selection and statistics.
+- Top fetched documents combine case variants and resolve section-guide aliases to the canonical section before counting. The report applies this to existing transcript slugs without rewriting them; tool prefixes and handoff markers remain distinct.
 
 - Enabled Anthropic DNS health probes propagate requested timeout/abort cancellation instead of reporting a DNS failure; disabled probes still skip DNS.
 
