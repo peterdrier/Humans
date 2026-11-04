@@ -86,6 +86,25 @@ jobs:
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
           set -euo pipefail
+          # The issue exists only while there is something to fix: opened or updated while public pages carry
+          # hard-coded text, closed when that count reaches zero.
+          COUNT="$(sed -n 's/^- Public pages with hard-coded text: \([0-9][0-9]*\)$/\1/p' localization-sweep-report.md)"
+          if [ -z "$COUNT" ]; then
+            echo "Report has no public-page count; leaving the tracking issue alone."
+            exit 0
+          fi
+
+          NUM="$(gh issue list --repo "$REPO" --state open --search 'Localization coverage sweep in:title' \
+            --json number,title --jq 'first(.[] | select(.title | startswith("Localization coverage sweep")) | .number) // empty')"
+
+          if [ "$COUNT" -eq 0 ]; then
+            if [ -n "$NUM" ]; then
+              gh issue close "$NUM" --repo "$REPO" --reason completed \
+                --comment "No public pages with hard-coded text in the latest sweep ([run]($RUN_URL)). Closing; the sweep reopens a tracking issue if any return."
+            fi
+            exit 0
+          fi
+
           {
             sed -n '/^## Summary/,/^## Public pages/p' localization-sweep-report.md | sed '$d'
             echo ""
@@ -96,8 +115,6 @@ jobs:
             echo "Report-only — a maintenance signal, not a gate."
           } > issue-body.md
 
-          NUM="$(gh issue list --repo "$REPO" --state open --search 'Localization coverage sweep in:title' \
-            --json number,title --jq 'first(.[] | select(.title | startswith("Localization coverage sweep")) | .number) // empty')"
           if [ -n "$NUM" ]; then
             gh issue edit "$NUM" --repo "$REPO" --body-file issue-body.md
           else
