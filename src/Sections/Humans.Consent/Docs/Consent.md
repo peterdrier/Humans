@@ -262,6 +262,7 @@ GitHub document discovery, metadata/raw content, commit-summary and prefix-conte
 - Legal document names in notices may outgrow the 200-character title limit. Consent sends full copy to Notifications, which bounds stored previews by Unicode character, preserving the full title and existing detail in the body; short notice copy is unchanged.
 
 - Successful document create, settings edit, archive, and version-summary edit write audit events attributed to the Board/Admin actor, after persistence. A created document remains audited if initial GitHub sync fails.
+- Re-consent batches skip missing or whitespace-only notification addresses with a Warning; required-document selection and signature checks are unchanged.
 - Every persisted new document version writes a publication audit linked to its version ID, before notification fan-out: manual and initial sync name the initiating administrator; scheduled sync names `LegalDocumentSyncService`. Missing rows, failed publication and unchanged-content sync touches do not emit publication events. Signed consent records remain immutable and separate.
 
 ## Cross-Section Dependencies

@@ -229,7 +229,7 @@ internal sealed class EventService(
         try
         {
             var submitter = await userService.GetUserInfoAsync(guideEvent.SubmitterUserId, CancellationToken.None);
-            if (submitter?.Email is null)
+            if (string.IsNullOrWhiteSpace(submitter?.Email))
             {
                 logger.LogWarning(
                     "Skipping lifecycle email for event {EventId}: submitter {SubmitterId} has no notification email",
