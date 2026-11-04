@@ -30,8 +30,9 @@ public class StorePayActionTests(HumansTestDatabase database) : IntegrationTestB
                 Arg.Any<Guid>(), Arg.Any<decimal>(),
                 Arg.Any<string>(), Arg.Any<string>(),
                 Arg.Any<string?>(), Arg.Any<string>(),
-                Arg.Any<CancellationToken>())
-            .Returns(sessionUrl);
+                Arg.Any<CancellationToken>(),
+                Arg.Any<Guid?>(), Arg.Any<string?>())
+            .Returns(new StoreCheckoutSessionData("cs_test_pay_redirect", null, null, null, Status: "open", Url: sessionUrl));
 
         var (token, cookie) = await GetAntiforgeryAsync($"/Store/Order/{orderId}");
 
@@ -51,7 +52,8 @@ public class StorePayActionTests(HumansTestDatabase database) : IntegrationTestB
             orderId, balance,
             Arg.Any<string>(), Arg.Any<string>(),
             Arg.Any<string?>(), Arg.Any<string>(),
-            Arg.Any<CancellationToken>());
+            Arg.Any<CancellationToken>(),
+            Arg.Any<Guid?>(), Arg.Any<string?>());
     }
 
     [HumansFact]
@@ -79,7 +81,8 @@ public class StorePayActionTests(HumansTestDatabase database) : IntegrationTestB
             Arg.Any<Guid>(), Arg.Any<decimal>(),
             Arg.Any<string>(), Arg.Any<string>(),
             Arg.Any<string?>(), Arg.Any<string>(),
-            Arg.Any<CancellationToken>());
+            Arg.Any<CancellationToken>(),
+            Arg.Any<Guid?>(), Arg.Any<string?>());
     }
 
     private async Task<(Guid OrderId, decimal BalanceEur)> SeedOrderWithLineAsync()

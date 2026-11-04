@@ -29,6 +29,14 @@ internal sealed class Order
 
     public Guid? IssuedInvoiceId { get; set; }
 
+    /// <summary>
+    /// The order's one open Stripe checkout attempt: its idempotency id, session and amount. All three are set together
+    /// and cleared together, when the session completes or expires.
+    /// </summary>
+    public Guid? CheckoutAttemptId { get; set; }
+    public string? CheckoutSessionId { get; set; }
+    public decimal? CheckoutAmountEur { get; set; }
+
     public Instant CreatedAt { get; set; }
     public Instant UpdatedAt { get; set; }
 

@@ -418,6 +418,28 @@ public class StripeServiceContractTests
     }
 
     [HumansFact]
+    public async Task CreateCheckoutSession_opens_no_replacement_when_the_superseded_session_already_completed()
+    {
+        var http = Substitute.For<IHttpClient>();
+        using var headers = new HttpResponseMessage();
+        http.MakeRequestAsync(Arg.Any<StripeRequest>(), Arg.Any<CancellationToken>()).Returns(
+            new StripeResponse(HttpStatusCode.BadRequest, headers.Headers,
+                """{"error":{"type":"invalid_request_error","message":"Only open sessions can be expired."}}"""),
+            new StripeResponse(HttpStatusCode.OK, headers.Headers,
+                """{"id":"cs_paid","object":"checkout.session","status":"complete","currency":"eur","amount_total":2000,"created":1750000000}"""));
+        var svc = new StripeService(Options.Create(new StripeSettings { StoreKey = "rk_test_s" }),
+            new CapturingLogger<StripeService>(), http);
+
+        var result = await svc.CreateCheckoutSessionAsync(Guid.NewGuid(), 30m, "https://x/ok", "https://x/no", null,
+            "Order", TestContext.Current.CancellationToken, Guid.NewGuid(), "cs_paid");
+
+        result.SessionId.Should().Be("cs_paid");
+        result.Status.Should().Be("complete");
+        result.Url.Should().BeNull();
+        await http.Received(2).MakeRequestAsync(Arg.Any<StripeRequest>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
     public async Task PaymentDetails_returns_null_when_the_intent_has_no_charge()
     {
         var svc = Answering(new StripeSettings { TicketsKey = "rk_test_t" }, HttpStatusCode.OK,

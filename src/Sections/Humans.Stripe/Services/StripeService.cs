@@ -60,20 +60,30 @@ internal sealed class StripeService(
 
     public static decimal FromStripeMinorUnits(long cents) => cents / 100m;
 
-    public async Task<string> CreateCheckoutSessionAsync(
+    public async Task<StoreCheckoutSessionData> CreateCheckoutSessionAsync(
         Guid storeOrderId,
         decimal amountEur,
         string successUrl,
         string cancelUrl,
         string? customerEmail,
         string lineItemDescription,
-        CancellationToken ct = default)
+        CancellationToken ct = default,
+        Guid? checkoutAttemptId = null,
+        string? supersededSessionId = null)
     {
         using var _ = logger.TimeOperation();
         if (amountEur <= 0)
             throw new ArgumentOutOfRangeException(nameof(amountEur), "Checkout amount must be positive.");
         if (!_settings.IsStoreCheckoutConfigured)
             throw new InvalidOperationException("Stripe Store key is not configured.");
+
+        if (supersededSessionId is not null)
+        {
+            var superseded = await ExpireCheckoutSessionAsync(supersededSessionId, ct);
+            // Already completed: a replacement would be a second payable checkout for the same balance.
+            if (string.Equals(superseded.Status, "complete", StringComparison.Ordinal))
+                return superseded;
+        }
 
         var client = new StripeClient(_settings.StoreKey, httpClient: httpClient);
         var sessions = new SessionService(client);
@@ -117,8 +127,12 @@ internal sealed class StripeService(
 
         try
         {
-            var session = await sessions.CreateAsync(options, cancellationToken: ct);
-            return session.Url;
+            var requestOptions = checkoutAttemptId is { } attemptId
+                ? new RequestOptions { IdempotencyKey = $"humans_store_checkout_{attemptId}" }
+                : null;
+            var session = await sessions.CreateAsync(options, requestOptions, ct);
+            return MapSession(session) ?? throw new InvalidOperationException(
+                $"Stripe created Checkout Session {session.Id} without EUR currency.");
         }
         catch (StripeException ex) when (StripeStartupSmokeService.IsPermissionError(ex))
         {
@@ -127,6 +141,30 @@ internal sealed class StripeService(
                 storeOrderId, ex.Message);
             throw;
         }
+    }
+
+    public async Task<StoreCheckoutSessionData> ExpireCheckoutSessionAsync(string sessionId, CancellationToken ct = default)
+    {
+        using var _ = logger.TimeOperation();
+        if (!_settings.IsStoreCheckoutConfigured)
+            throw new InvalidOperationException("Stripe Store key is not configured.");
+
+        var sessions = new SessionService(new StripeClient(_settings.StoreKey, httpClient: httpClient));
+        Session session;
+        try
+        {
+            session = await sessions.ExpireAsync(sessionId, cancellationToken: ct);
+        }
+        catch (StripeException ex) when (!StripeStartupSmokeService.IsPermissionError(ex))
+        {
+            // Stripe refuses to expire a session that is no longer open; its current state is the answer.
+            session = await sessions.GetAsync(sessionId, cancellationToken: ct);
+            if (string.Equals(session.Status, "open", StringComparison.Ordinal))
+                throw;
+        }
+
+        return MapSession(session) ?? throw new InvalidOperationException(
+            $"Stripe Checkout Session {session.Id} has no EUR currency.");
     }
 
     public async Task<StripePaymentDetails?> GetPaymentDetailsAsync(
@@ -347,6 +385,8 @@ internal sealed class StripeService(
             PaymentIntentId: string.IsNullOrEmpty(s.PaymentIntentId) ? null : s.PaymentIntentId,
             AmountEur: s.AmountTotal.HasValue ? FromStripeMinorUnits(s.AmountTotal.Value) : null,
             PaymentStatus: s.PaymentStatus,
-            CreatedAt: Instant.FromDateTimeUtc(DateTime.SpecifyKind(s.Created, DateTimeKind.Utc)));
+            CreatedAt: Instant.FromDateTimeUtc(DateTime.SpecifyKind(s.Created, DateTimeKind.Utc)),
+            Status: s.Status,
+            Url: string.IsNullOrEmpty(s.Url) ? null : s.Url);
     }
 }

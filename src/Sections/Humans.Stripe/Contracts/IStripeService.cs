@@ -23,19 +23,31 @@ public interface IStripeService : IApplicationService
     Task<StripePaymentDetails?> GetPaymentDetailsAsync(string paymentIntentId, CancellationToken ct = default);
 
     /// <summary>
-    /// Returns the hosted-checkout URL. <paramref name="storeOrderId"/> round-trips in the
-    /// <c>humans_store_order_id</c> metadata. Throws on Stripe failure; a null <paramref name="customerEmail"/>
-    /// lets Stripe collect it.
+    /// Creates a hosted-checkout session; <paramref name="storeOrderId"/> round-trips in the
+    /// <c>humans_store_order_id</c> metadata. A non-null <paramref name="checkoutAttemptId"/> is the Stripe idempotency
+    /// key, so repeating an attempt with identical arguments replays its original session. A non-null
+    /// <paramref name="supersededSessionId"/> is expired first; when that session has already completed, no new session
+    /// is created and the completed one is returned (Status <c>complete</c>, no Url). Throws on Stripe failure; a null
+    /// <paramref name="customerEmail"/> lets Stripe collect it.
     /// </summary>
     [ExternalWrite]
-    Task<string> CreateCheckoutSessionAsync(
+    Task<StoreCheckoutSessionData> CreateCheckoutSessionAsync(
         Guid storeOrderId,
         decimal amountEur,
         string successUrl,
         string cancelUrl,
         string? customerEmail,
         string lineItemDescription,
-        CancellationToken ct = default);
+        CancellationToken ct = default,
+        Guid? checkoutAttemptId = null,
+        string? supersededSessionId = null);
+
+    /// <summary>
+    /// Expires an open Store-account session and returns it. A session that is no longer open is returned as Stripe holds
+    /// it (Status <c>complete</c> or <c>expired</c>). Throws on Stripe failure.
+    /// </summary>
+    [ExternalWrite]
+    Task<StoreCheckoutSessionData> ExpireCheckoutSessionAsync(string sessionId, CancellationToken ct = default);
 
     /// <summary>
     /// <paramref name="body"/> must be the raw request body. Null when the signing secret is unset, the signature
@@ -85,7 +97,8 @@ public sealed record StoreCheckoutWebhookEvent(
 /// <summary>
 /// Optional fields are null when Stripe omitted them or they failed to parse; the caller decides which it needs.
 /// <paramref name="OrderId"/> comes from the <c>humans_store_order_id</c> metadata. <paramref name="AmountEur"/> is
-/// already converted from minor units.
+/// already converted from minor units. <paramref name="Status"/> is Stripe's session status (<c>open</c>, <c>complete</c>,
+/// <c>expired</c>); <paramref name="Url"/> is the hosted-checkout URL, set only while the session is open.
 /// </summary>
 public sealed record StoreCheckoutSessionData(
     string SessionId,
@@ -93,4 +106,6 @@ public sealed record StoreCheckoutSessionData(
     string? PaymentIntentId,
     decimal? AmountEur,
     string? PaymentStatus = null,
-    Instant? CreatedAt = null);
+    Instant? CreatedAt = null,
+    string? Status = null,
+    string? Url = null);
