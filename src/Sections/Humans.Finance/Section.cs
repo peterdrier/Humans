@@ -80,6 +80,7 @@ public sealed class Section :
 
         services.AddScoped<CashFlowService>();
         services.AddScoped<CreditorMatchService>();
+        services.AddScoped<FinanceOverviewService>();
     }
 
     IEnumerable<AdminNavGroup> ISectionAdminNav.Groups() =>
