@@ -49,14 +49,15 @@ internal sealed class RegisterViewModel
 
 internal sealed class WorkgroupBudgetFormViewModel : IValidatableObject
 {
+    [BindRequired]
     public bool HasBudget { get; set; }
 
     /// <summary>Parsed invariantly by <see cref="ParsedAmount"/>, not model-bound as a decimal: the number input always
     /// posts "12.34", which a comma-decimal request culture would read as 1234.</summary>
     public string? Amount { get; set; }
 
-    /// <summary>"create" (default) or "link".</summary>
-    public string AccountMode { get; set; } = "create";
+    /// <summary>"create" or "link"; required only when a budget is enabled.</summary>
+    public string? AccountMode { get; set; }
 
     public int? ExistingAccountNum { get; set; }
 
@@ -74,6 +75,8 @@ internal sealed class WorkgroupBudgetFormViewModel : IValidatableObject
     public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
     {
         if (!HasBudget) yield break;
+        if (AccountMode is not ("create" or "link"))
+            yield return new ValidationResult("Choose whether to create or link the Holded account.", [nameof(AccountMode)]);
         if (string.IsNullOrWhiteSpace(Amount))
             yield return new ValidationResult("Enter the budget amount.", [nameof(Amount)]);
         else if (ParsedAmount is not (>= 0m and <= 99_999_999m))
@@ -385,6 +388,7 @@ internal sealed class RegisterExistingViewModel
     [BindRequired]
     public LocalDate RegisteredOn { get; set; }
 
+    [BindRequired]
     public WorkgroupBudgetFormViewModel Budget { get; set; } = new();
 
     [BindNever]

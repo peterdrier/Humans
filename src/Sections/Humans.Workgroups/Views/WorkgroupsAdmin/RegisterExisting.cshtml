@@ -80,6 +80,7 @@
                 <div class="form-check mb-2">
                     <input asp-for="Budget.HasBudget" class="form-check-input" />
                     <label asp-for="Budget.HasBudget" class="form-check-label">This workgroup has a budget</label>
+                    <span asp-validation-for="Budget.HasBudget" class="text-danger"></span>
                 </div>
                 <div class="mb-2" style="max-width: 240px;">
                     <label asp-for="Budget.Amount" class="form-label">Amount (EUR)</label>
@@ -88,6 +89,7 @@
                 </div>
                 <div class="form-check"><input class="form-check-input" type="radio" asp-for="Budget.AccountMode" id="mode-create" value="create" /><label class="form-check-label" for="mode-create">Create <code>Workgroups / {name}</code> in Holded (linked instead if one of that name already exists)</label></div>
                 <div class="form-check mb-2"><input class="form-check-input" type="radio" asp-for="Budget.AccountMode" id="mode-link" value="link" /><label class="form-check-label" for="mode-link">Link an existing account</label></div>
+                <span asp-validation-for="Budget.AccountMode" class="text-danger"></span>
                 <select asp-for="Budget.ExistingAccountNum" class="form-select" style="max-width: 480px;">
                     <option value="">— choose —</option>
                     @foreach (var a in Model.ExpenseAccounts.OrderBy(a => a.Number))

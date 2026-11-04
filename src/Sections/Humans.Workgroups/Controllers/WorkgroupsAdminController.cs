@@ -73,7 +73,11 @@ internal sealed class WorkgroupsAdminController(
 
     [HttpGet("RegisterExisting")]
     public Task<IActionResult> RegisterExisting(CancellationToken ct) =>
-        RegisterExistingViewAsync(new RegisterExistingViewModel { RegisteredOn = clock.GetCurrentInstant().InUtc().Date }, ct);
+        RegisterExistingViewAsync(new RegisterExistingViewModel
+        {
+            RegisteredOn = clock.GetCurrentInstant().InUtc().Date,
+            Budget = new WorkgroupBudgetFormViewModel { AccountMode = "create" }
+        }, ct);
 
     [HttpPost("RegisterExisting")]
     [ValidateAntiForgeryToken]
@@ -121,6 +125,7 @@ internal sealed class WorkgroupsAdminController(
 
         if (!ModelState.IsValid)
         {
+            logger.LogWarning("Workgroups admin Budget: rule InvalidForm");
             SetError("Check the budget amount and account.");
             return RedirectToAction("Details", "Workgroups", new { slug = id });
         }

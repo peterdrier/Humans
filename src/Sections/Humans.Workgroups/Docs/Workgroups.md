@@ -382,6 +382,7 @@ Settings and Register an existing group on first setup or after clearing the que
 - Comment/log/document responses stay possible after the comment window closes but not
   after the group leaves Active (`RequireAcceptsMemberWork` on the responding calls too).
 - A group's Slug never collides with a reserved route segment (`apply`, `admin`).
+- Both Board/Admin budget forms require an explicit budget checkbox value. Enabling a budget also requires a valid create/link account choice; omissions and unknown choices cannot clear a budget or create a Holded account. Clearing a budget needs no account choice. The initial registration form selects create; rejected submissions retain their choices.
 - Budget: amount ≥ 0 or null and must be whole cents (at most two decimal places; trailing zeroes are valid). Updates and existing-group registration refuse fractional cents before Finance, Drive creation or persistence, using literal feedback on the Board/Admin-only forms. Refused/Withdrawn rejected; Finance is called before
   anything is written, so a failed create or an unknown account number changes nothing;
   the first account bound is created as "Workgroups / {Name}" or linked to an existing
