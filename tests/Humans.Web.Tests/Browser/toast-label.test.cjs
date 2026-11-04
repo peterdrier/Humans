@@ -1,15 +1,18 @@
 const assert = require('node:assert/strict');
 const { test } = require('node:test');
-const { readFileSync } = require('node:fs');
+const { readFileSync, readdirSync } = require('node:fs');
 const { resolve } = require('node:path');
 const vm = require('node:vm');
 
 const site = readFileSync(resolve(__dirname, '../../../src/Humans.Web/wwwroot/js/site.js'), 'utf8');
 const script = site.slice(site.indexOf('function showToast('), site.indexOf('// Initialize Bootstrap tooltips'));
-for (const culture of ['', 'es', 'de', 'it', 'fr', 'ca', 'nl']) {
+const resources = resolve(__dirname, '../../../src/Humans.Base/Resources');
+const cultures = readdirSync(resources)
+    .map(file => file.match(/^SharedResource(?:\.([a-z]{2,3}(?:-[A-Za-z]+)?))?\.resx$/))
+    .filter(Boolean).map(match => match[1] ?? '');
+for (const culture of cultures) {
     test(`dynamic toast close button uses the rendered label (${culture || 'en'})`, () => {
-        const resx = readFileSync(resolve(__dirname,
-            `../../../src/Humans.Base/Resources/SharedResource${culture ? '.' + culture : ''}.resx`), 'utf8');
+        const resx = readFileSync(resolve(resources, `SharedResource${culture ? '.' + culture : ''}.resx`), 'utf8');
         const label = resx.match(/<data name="Common_Close"[^>]*>\s*<value>([^<]*)<\/value>/)[1];
         function element() {
             return { attributes: {}, children: [],

@@ -2347,13 +2347,16 @@ public class HoldedFinanceServiceTests
     }
 
     [HumansTheory]
-    [InlineData("es", "es", "12,34 €")]
-    [InlineData("", "en", "12.34 €")]
-    [InlineData(" ", "en", "12.34 €")]
-    [InlineData("not-a-culture", "en", "12.34 €")]
-    [InlineData("pt", "en", "12.34 €")]
-    public async Task GenerateSepaPayout_EmailsThePaidMember_InTheirLanguage_WithAMaskedIban(string language, string expectedCulture, string amount)
+    [InlineData("es", "es")]
+    [InlineData("", "en")]
+    [InlineData(" ", "en")]
+    [InlineData("not-a-culture", "en")]
+    [InlineData("pt", "en")]
+    public async Task GenerateSepaPayout_EmailsThePaidMember_InTheirLanguage_WithAMaskedIban(string language, string expectedCulture)
     {
+        string amount;
+        using (new CultureScope(expectedCulture))
+            amount = 12.34m.ToEuro();
         using var actorCulture = new CultureScope("fr");
         // Generation is when the treasurer hands the file to the bank, so it is when the member
         // is told the money is on its way.

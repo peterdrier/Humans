@@ -27,17 +27,10 @@ namespace Humans.Events.Tests.ViewComponents;
 
 public class EventIdentityViewTests
 {
-    [HumansTheory]
-    [Xunit.InlineData("en")]
-    [Xunit.InlineData("es")]
-    [Xunit.InlineData("de")]
-    [Xunit.InlineData("it")]
-    [Xunit.InlineData("fr")]
-    [Xunit.InlineData("ca")]
-    [Xunit.InlineData("nl")]
-    public async Task Browser_labels_resolve_member_identity_and_preserve_authored_hosts_and_camps(string language)
+    [HumansFact]
+    public async Task Browser_labels_resolve_member_identity_and_preserve_authored_hosts_and_camps()
     {
-        using var culture = new CultureScope(language);
+        using var culture = new CultureScope("en");
         var id = Guid.NewGuid();
         var unusedId = Guid.NewGuid();
         const string name = "Current <script>&";

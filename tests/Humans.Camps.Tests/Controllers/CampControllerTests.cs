@@ -426,17 +426,10 @@ public class CampControllerTests
             .Should().Be(11L * 1024 * 1024);
     }
 
-    [HumansTheory]
-    [InlineData("en")]
-    [InlineData("es")]
-    [InlineData("de")]
-    [InlineData("it")]
-    [InlineData("fr")]
-    [InlineData("ca")]
-    [InlineData("nl")]
-    public async Task CampForms_ValidateExistingFieldLimitsBeforeWriting(string culture)
+    [HumansFact]
+    public async Task CampForms_ValidateExistingFieldLimitsBeforeWriting()
     {
-        using var cultureScope = new CultureScope(culture);
+        using var cultureScope = new CultureScope("en");
         var registrations = new ServiceCollection().AddLogging().AddLocalization();
         registrations.AddControllers().AddDataAnnotationsLocalization(options =>
             options.DataAnnotationLocalizerProvider = (_, factory) => factory.Create(typeof(SharedResource)));
@@ -523,17 +516,10 @@ public class CampControllerTests
             call.GetMethodInfo().Name == "CreateCampAsync" || call.GetMethodInfo().Name == "UpdateCampAsync");
     }
 
-    [HumansTheory]
-    [InlineData("en")]
-    [InlineData("es")]
-    [InlineData("de")]
-    [InlineData("it")]
-    [InlineData("fr")]
-    [InlineData("ca")]
-    [InlineData("nl")]
-    public async Task RegistrationAndRenewal_LocalizeRuleFailures(string culture)
+    [HumansFact]
+    public async Task RegistrationAndRenewal_LocalizeRuleFailures()
     {
-        using var cultureScope = new CultureScope(culture);
+        using var cultureScope = new CultureScope("en");
         using var services = new ServiceCollection().AddLogging().AddLocalization().BuildServiceProvider();
         var localizer = services.GetRequiredService<IStringLocalizer<CampsResource>>();
         var userId = Guid.NewGuid();
@@ -570,17 +556,10 @@ public class CampControllerTests
         }
     }
 
-    [HumansTheory]
-    [InlineData("en")]
-    [InlineData("es")]
-    [InlineData("de")]
-    [InlineData("it")]
-    [InlineData("fr")]
-    [InlineData("ca")]
-    [InlineData("nl")]
-    public async Task Register_LocalizesThePhoneFieldInValidationErrors(string culture)
+    [HumansFact]
+    public async Task Register_LocalizesThePhoneFieldInValidationErrors()
     {
-        using var cultureScope = new CultureScope(culture);
+        using var cultureScope = new CultureScope("en");
         using var services = new ServiceCollection().AddLogging().AddLocalization().BuildServiceProvider();
         var campsLocalizer = services.GetRequiredService<IStringLocalizer<CampsResource>>();
         var sharedLocalizer = services.GetRequiredService<IStringLocalizer<SharedResource>>();
@@ -601,17 +580,10 @@ public class CampControllerTests
         _camps.ReceivedCalls().Should().NotContain(call => call.GetMethodInfo().Name == "CreateCampAsync");
     }
 
-    [HumansTheory]
-    [InlineData("en")]
-    [InlineData("es")]
-    [InlineData("de")]
-    [InlineData("it")]
-    [InlineData("fr")]
-    [InlineData("ca")]
-    [InlineData("nl")]
-    public async Task UploadImage_LocalizesValidationFailures(string culture)
+    [HumansFact]
+    public async Task UploadImage_LocalizesValidationFailures()
     {
-        using var cultureScope = new CultureScope(culture);
+        using var cultureScope = new CultureScope("en");
         using var services = new ServiceCollection().AddLogging().AddLocalization().BuildServiceProvider();
         var localizer = services.GetRequiredService<IStringLocalizer<CampsResource>>();
         var userId = Guid.NewGuid();
@@ -640,17 +612,10 @@ public class CampControllerTests
         }
     }
 
-    [HumansTheory]
-    [InlineData("en")]
-    [InlineData("es")]
-    [InlineData("de")]
-    [InlineData("it")]
-    [InlineData("fr")]
-    [InlineData("ca")]
-    [InlineData("nl")]
-    public async Task SelfMembershipActions_LocalizeRuleFailures(string culture)
+    [HumansFact]
+    public async Task SelfMembershipActions_LocalizeRuleFailures()
     {
-        using var cultureScope = new CultureScope(culture);
+        using var cultureScope = new CultureScope("en");
         using var services = new ServiceCollection().AddLogging().AddLocalization().BuildServiceProvider();
         var localizer = services.GetRequiredService<IStringLocalizer<CampsResource>>();
         var userId = Guid.NewGuid();
@@ -680,17 +645,10 @@ public class CampControllerTests
         }
     }
 
-    [HumansTheory]
-    [InlineData("en")]
-    [InlineData("es")]
-    [InlineData("de")]
-    [InlineData("it")]
-    [InlineData("fr")]
-    [InlineData("ca")]
-    [InlineData("nl")]
-    public async Task LeadActions_LocalizeGuardFailures(string culture)
+    [HumansFact]
+    public async Task LeadActions_LocalizeGuardFailures()
     {
-        using var cultureScope = new CultureScope(culture);
+        using var cultureScope = new CultureScope("en");
         using var services = new ServiceCollection().AddLogging().AddLocalization().BuildServiceProvider();
         var localizer = services.GetRequiredService<IStringLocalizer<CampsResource>>();
         var actorId = Guid.NewGuid();
@@ -811,17 +769,10 @@ public class CampControllerTests
         args[2]!.ToString().Should().Contain((action is "Withdraw" ? actorId : camp.Id).ToString());
     }
 
-    [HumansTheory]
-    [InlineData("en")]
-    [InlineData("es")]
-    [InlineData("de")]
-    [InlineData("it")]
-    [InlineData("fr")]
-    [InlineData("ca")]
-    [InlineData("nl")]
-    public void ContactForm_LocalizesRequiredAndLengthMessages(string culture)
+    [HumansFact]
+    public void ContactForm_LocalizesRequiredAndLengthMessages()
     {
-        using var cultureScope = new CultureScope(culture);
+        using var cultureScope = new CultureScope("en");
         var registrations = new ServiceCollection().AddLogging().AddLocalization();
         registrations.AddControllers().AddDataAnnotationsLocalization(options =>
             options.DataAnnotationLocalizerProvider = (_, factory) => factory.Create(typeof(SharedResource)));

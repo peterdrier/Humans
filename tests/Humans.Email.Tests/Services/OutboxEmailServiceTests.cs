@@ -19,6 +19,7 @@ using Xunit;
 using System.Net;
 using Microsoft.Extensions.Localization;
 using Humans.Base.Helpers;
+using Humans.Base.Extensions;
 
 namespace Humans.Email.Tests.Services;
 
@@ -212,20 +213,25 @@ public sealed class OutboxEmailServiceTests : IDisposable
         queued.HtmlBody.Should().Contain("https://humans.example/verify?t=A%2FB&amp;email=a%40example.com");
     }
 
-    [HumansTheory]
-    [InlineData("en", "Unsubscribe from these emails")]
-    [InlineData("es", "Dejar de recibir estos correos")]
-    [InlineData("de", "Diese E-Mails abbestellen")]
-    [InlineData("it", "Annulla l’iscrizione a queste email")]
-    [InlineData("fr", "Se désabonner de ces e-mails")]
-    [InlineData("ca", "Deixar de rebre aquests correus")]
-    [InlineData("nl", "Afmelden voor deze e-mails")]
-    [InlineData(null, "Unsubscribe from these emails")]
-    [InlineData("es-ES", "Dejar de recibir estos correos")]
-    [InlineData("nl-NL", "Afmelden voor deze e-mails")]
-    [InlineData("unknown", "Unsubscribe from these emails")]
-    public async Task SendAsync_RendersTheUnsubscribeFooterInTheMessagesCulture(string? culture, string expected)
+    public static TheoryData<string?, string> FooterCultures()
     {
+        var data = new TheoryData<string?, string>
+        {
+            { null, CultureCatalog.DefaultCultureCode },
+            { "unknown", CultureCatalog.DefaultCultureCode },
+            { "nl-NL", "nl" },
+        };
+        foreach (var code in CultureCatalog.SupportedCultureCodes)
+            data.Add(code, code);
+        return data;
+    }
+
+    [HumansTheory]
+    [MemberData(nameof(FooterCultures))]
+    public async Task SendAsync_RendersTheUnsubscribeFooterInTheMessagesCulture(string? culture, string expectedCulture)
+    {
+        var expected = new System.Resources.ResourceManager(typeof(EmailResource))
+            .GetString("Email_UnsubscribeFooter", System.Globalization.CultureInfo.GetCultureInfo(expectedCulture))!;
         using var ambientCulture = new Humans.Base.Extensions.CultureScope("de");
         var environment = Substitute.For<IHostEnvironment>();
         environment.EnvironmentName.Returns(Environments.Production);

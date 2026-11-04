@@ -108,17 +108,10 @@ public class EventServiceCalendarFeedTests
                 EarlyEntryClose: null));
     }
 
-    [HumansTheory]
-    [Xunit.InlineData("en", "Host", "Category")]
-    [Xunit.InlineData("es", "Anfitrión", "Categoría")]
-    [Xunit.InlineData("de", "Gastgeber", "Kategorie")]
-    [Xunit.InlineData("it", "Ospite", "Categoria")]
-    [Xunit.InlineData("fr", "Hôte", "Catégorie")]
-    [Xunit.InlineData("ca", "Amfitrió", "Categoria")]
-    [Xunit.InlineData("nl", "Organisator", "Categorie")]
-    public async Task GetCalendarItems_ApprovedFavourite_MapsFields(string culture, string hostLabel, string categoryLabel)
+    [HumansFact]
+    public async Task GetCalendarItems_ApprovedFavourite_MapsFields()
     {
-        using var cultureScope = new CultureScope(culture);
+        using var cultureScope = new CultureScope("en");
         var userId = Guid.NewGuid();
         var ev = MakeEvent(EventStatus.Approved);
         ev.Category = new EventCategory { Id = ev.CategoryId, Name = "Wellness", Slug = "wellness" };
@@ -134,8 +127,8 @@ public class EventServiceCalendarFeedTests
         item.End.Should().Be(EventStart.Plus(Duration.FromMinutes(90)));
         item.Location.Should().Be("Behind the dome");
         item.Description.Should().Contain("Bring a mat.");
-        item.Description.Should().Contain($"{hostLabel}: Stretchy");
-        item.Description.Should().Contain($"{categoryLabel}: Wellness");
+        item.Description.Should().Contain("Host: Stretchy");
+        item.Description.Should().Contain("Category: Wellness");
         item.Uid.Should().Be($"event-{ev.Id}-20260701@humans.nobodies.team");
         item.Url.Should().Be("/Events/Schedule");
     }

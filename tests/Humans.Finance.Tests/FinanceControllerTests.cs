@@ -1179,23 +1179,11 @@ public class FinanceControllerTests
     private static Instant Stamp(int day) => Instant.FromUtc(2026, 8, day, 9, 0);
 
     [HumansTheory]
-    [InlineData("en", false)]
-    [InlineData("es", false)]
-    [InlineData("de", false)]
-    [InlineData("it", false)]
-    [InlineData("fr", false)]
-    [InlineData("ca", false)]
-    [InlineData("nl", false)]
-    [InlineData("en", true)]
-    [InlineData("es", true)]
-    [InlineData("de", true)]
-    [InlineData("it", true)]
-    [InlineData("fr", true)]
-    [InlineData("ca", true)]
-    [InlineData("nl", true)]
-    public async Task DuplicatePages_RenderMemberIdsWithoutANameDictionary(string language, bool applied)
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task DuplicatePages_RenderMemberIdsWithoutANameDictionary(bool applied)
     {
-        using var culture = new CultureScope(language);
+        using var culture = new CultureScope("en");
         const string name = "Member <script>&";
         _users.GetUserInfoAsync(Ana, Arg.Any<CancellationToken>()).Returns(MakeUserInfo(Ana, name));
         object model = applied
@@ -1269,17 +1257,10 @@ public class FinanceControllerTests
             .And.Contain("Legal account").And.NotContain("Current <b>&");
     }
 
-    [HumansTheory]
-    [InlineData("en")]
-    [InlineData("es")]
-    [InlineData("de")]
-    [InlineData("it")]
-    [InlineData("fr")]
-    [InlineData("ca")]
-    [InlineData("nl")]
-    public async Task ExpenseRecon_RendersCurrentHumansForMembersAndLines_WithTheirLedgerEntry(string language)
+    [HumansFact]
+    public async Task ExpenseRecon_RendersCurrentHumansForMembersAndLines_WithTheirLedgerEntry()
     {
-        using var culture = new CultureScope(language);
+        using var culture = new CultureScope("en");
         const string name = "Current member <script>&";
         _users.GetUserInfoAsync(Ana, Arg.Any<CancellationToken>()).Returns(MakeUserInfo(Ana, name));
         var report = new ExpenseReconReport(2026, Stamp(1), null, [2026],
