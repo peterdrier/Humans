@@ -32,10 +32,13 @@ public interface IFinanceService : IApplicationService
     Task<CreditorStatus?> GetCreditorStatusAsync(
         int? supplierAccountNum, CancellationToken ct = default);
 
-    /// <summary>Every 400000xx creditor account. Names are blank when Holded is unreachable.</summary>
-    /// <returns><c>Unresolved</c> is the bindings with no 400000xx, which no account row can carry. Nothing retries
-    /// their resolution, so returning them here is what keeps them bindable.</returns>
-    Task<(IReadOnlyList<CreditorAccountRow> Accounts, IReadOnlyList<CreditorContactBinding> Unresolved)>
+    /// <summary>Every 400000xx creditor account, each binding placed by the account its Holded contact is on.</summary>
+    /// <returns><c>Unresolved</c> is the bindings whose contact Holded's list lacks or carries no 400000xx, which no
+    /// account row can carry. Nothing retries their resolution, so returning them here is what keeps them bindable.
+    /// <c>UnavailableReason</c> is set, and both lists empty, when Holded's contact list is unreadable: no binding can
+    /// be placed, and a binding's stored number is never used instead.</returns>
+    Task<(IReadOnlyList<CreditorAccountRow> Accounts, IReadOnlyList<CreditorContactBinding> Unresolved,
+            string? UnavailableReason)>
         ListCreditorAccountsAsync(CancellationToken ct = default);
 
     Task<CreditorContactBinding?> GetCreditorContactByUserAsync(Guid userId, CancellationToken ct = default);

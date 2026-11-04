@@ -39,7 +39,7 @@ internal sealed class Service(
     IOptions<SepaOptions> sepa,
     TrackedCache<string, Dictionary<string, int>> bookingState,
     IPaymentDetailsManagement paymentDetails,
-    ILogger<Service> logger) : IFinanceService, IFinanceWrite, IFinanceAdminService, ISepaBankBooking, IUserDataContributor
+    ILogger<Service> logger) : IFinanceService, IFinanceWrite, IFinanceAdminService, IUserDataContributor
 {
     public Task<string?> GetIbanAsync(Guid userId, CancellationToken ct = default) =>
         paymentDetails.GetIbanAsync(userId, ct);
@@ -57,6 +57,10 @@ internal sealed class Service(
     internal const string HoldedExpenseAccount = "HoldedExpenseAccount";
 
     private static readonly TimeSpan ContactsCacheDuration = TimeSpan.FromMinutes(2);
+
+    internal const string ContactListUnavailable =
+        "Holded's contact list could not be read, so no member's creditor account is known. It is retried after "
+        + "two minutes; if this persists, check the Holded connection.";
     private static readonly DateTimeZone MadridZone = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
     private readonly SepaBankBooking booking = new(repo, client, holdedWrite, clock, bookingState, audit, sepa, logger);
     private readonly SepaPayoutEmails payoutEmails = new(users, emailService, emails, logger);
@@ -64,17 +68,12 @@ internal sealed class Service(
     public async Task<HoldedProvisioningPlan> GetProvisioningPlanAsync(
         int blockStart, CancellationToken ct = default)
     {
-        var year = await budget.GetActiveYearAsync(ct);
-        var categories = year is null
-            ? Array.Empty<(Guid Id, string Name, string Group)>()
-            : year.Groups
-                  .SelectMany(g => g.Categories.Select(c => (c.Id, c.Name, Group: g.Name)))
-                  .ToArray();
+        var categories = (await ActiveYearCategoriesAsync(ct))
+            .Select(c => (Id: c.Key, c.Value.Name, c.Value.Group))
+            .ToArray();
 
         var map = await repo.GetCategoryMapAsync(ct);
-        var activeByCat = map
-            .Where(m => m.IsActive)
-            .ToDictionary(m => m.BudgetCategoryId);
+        var activeByCat = map.ToDictionary(m => m.BudgetCategoryId);
 
         // Avoid numbers in BOTH the local map and the live chart, so one taken remotely but missing locally (a failed
         // map write, or an account made directly in Holded) is never re-proposed.
@@ -85,8 +84,8 @@ internal sealed class Service(
 
         var rows = new List<HoldedProvisioningRow>();
         // Seeded up front, not as the walk meets them: otherwise a ToAdd category sorting before a mapped one could be
-        // handed its tag, and two active rows sharing a tag make attribution arbitrary.
-        var usedTags = map.Where(m => m.IsActive).Select(m => m.Tag).ToHashSet(StringComparer.Ordinal);
+        // handed its tag, and two rows sharing a tag make attribution arbitrary.
+        var usedTags = map.Select(m => m.Tag).ToHashSet(StringComparer.Ordinal);
         var currentActiveCatIds = categories.Select(c => c.Id).ToHashSet();
 
         int nextFree = blockStart;
@@ -175,7 +174,6 @@ internal sealed class Service(
                     HoldedAccountNumber = row.ProposedAccountNum.Value,
                     HoldedAccountId = id,
                     Tag = row.Tag,
-                    IsActive = true,
                     CreatedAt = now,
                     UpdatedAt = now,
                 }, ct);
@@ -296,16 +294,12 @@ internal sealed class Service(
     {
         var map = await repo.GetCategoryMapAsync(ct);
         var managed = await repo.GetManagedAccountsAsync(ct);
-        var year = await budget.GetActiveYearAsync(ct);
-        var labels = year?.Groups
-            .SelectMany(g => g.Categories.Select(c => (c.Id, Label: $"{g.Name} / {c.Name}")))
-            .ToDictionary(x => x.Id, x => x.Label)
-            ?? new Dictionary<Guid, string>();
+        var labels = (await ActiveYearCategoriesAsync(ct))
+            .ToDictionary(c => c.Key, c => $"{c.Value.Group} / {c.Value.Name}");
 
         // A map row whose category is not in the active year still labels old reports but takes no new booking, so it
         // is inactive here and dropped with activeOnly.
         var options = map
-            .Where(m => m.IsActive)
             .Select(m => new ExpenseAccountOption(
                 m.HoldedAccountNumber, m.HoldedAccountId,
                 labels.GetValueOrDefault(m.BudgetCategoryId, $"Category {m.HoldedAccountNumber}"),
@@ -328,7 +322,6 @@ internal sealed class Service(
     {
         var mirror = await holded.GetPurchaseDocumentsAsync(ct);
         var entries = (await repo.GetCategoryMapAsync(ct))
-            .Where(m => m.IsActive)
             .Select(m => new HoldedMatchEntry(m.BudgetCategoryId, m.HoldedAccountId, m.Tag))
             .ToArray();
         var managedIds = (await repo.GetManagedAccountsAsync(ct))
@@ -351,9 +344,8 @@ internal sealed class Service(
 
         var balances = await holded.GetAccountBalancesAsync(ct);
 
-        var contacts = await ContactsByIdAsync(ct);
-        if (contacts.Count == 0)
-            return ExpenseRecon.Unavailable(year, "The Holded contact list could not be read, so no member's account is known.");
+        if (await ContactsByIdAsync(ct) is not { } contacts)
+            return ExpenseRecon.Unavailable(year, ContactListUnavailable);
 
         // The list skips a contact it cannot parse, so a non-empty list can still be missing a bound member's account.
         var bindings = await repo.GetCreditorContactsAsync(ct);
@@ -365,13 +357,13 @@ internal sealed class Service(
         var expected = await expenses.GetHoldedReconLinesAsync(ct);
         var accountByUser = bindings
             .Select(b => (b.UserId, Account: contacts.GetValueOrDefault(b.HoldedContactId)?.SupplierAccountNum))
-            .Where(x => x.Account is >= CreditorAccountMin and <= CreditorAccountMax)
+            .Where(x => IsMemberCreditorAccount(x.Account))
             .GroupBy(x => x.UserId)
             .ToDictionary(g => g.Key, g => g.First().Account!.Value);
 
         var ledger = new Dictionary<int, IReadOnlyList<HoldedLedgerLineInfo>>();
         foreach (var account in balances.Keys
-                     .Where(n => n is >= CreditorAccountMin and <= CreditorAccountMax)
+                     .Where(n => IsMemberCreditorAccount(n))
                      .Union(accountByUser.Values))
             ledger[account] = await holded.GetLedgerLinesAsync(account, ct);
 
@@ -423,7 +415,7 @@ internal sealed class Service(
         Guid budgetCategoryId, CancellationToken ct = default)
     {
         var map = await repo.GetCategoryMapAsync(ct);
-        return map.FirstOrDefault(m => m.IsActive && m.BudgetCategoryId == budgetCategoryId)?.HoldedAccountId;
+        return map.FirstOrDefault(m => m.BudgetCategoryId == budgetCategoryId)?.HoldedAccountId;
     }
 
     /// <summary>Category and group names resolved from the active budget year.</summary>
@@ -439,7 +431,6 @@ internal sealed class Service(
             m.HoldedAccountNumber,
             m.HoldedAccountId,
             m.Tag,
-            m.IsActive,
             m.UpdatedAt)).ToList();
     }
 
@@ -482,6 +473,9 @@ internal sealed class Service(
     private const int CreditorAccountMin = 40000000;
     private const int CreditorAccountMax = 41999999;
 
+    private static bool IsMemberCreditorAccount(int? accountNum) =>
+        accountNum is >= CreditorAccountMin and <= CreditorAccountMax;
+
     public async Task<CreditorStatus?> GetCreditorStatusAsync(
         int? supplierAccountNum, CancellationToken ct = default)
     {
@@ -510,24 +504,25 @@ internal sealed class Service(
         lines.Sum(l => l.Debit) - lines.Sum(l => l.Credit);
 
     public async Task<(IReadOnlyList<CreditorAccountRow> Accounts,
-                       IReadOnlyList<CreditorContactBinding> Unresolved)> ListCreditorAccountsAsync(
+                       IReadOnlyList<CreditorContactBinding> Unresolved,
+                       string? UnavailableReason)> ListCreditorAccountsAsync(
         CancellationToken ct = default)
     {
-        var byAccount = await holded.GetAccountBalancesAsync(ct: ct);
-
         // Not range-filtered: the range decides which accounts are creditor accounts, not which contact a binding names.
-        var contactById = await ContactsByIdAsync(ct);
+        if (await ContactsByIdAsync(ct) is not { } contactById)
+            return ([], [], ContactListUnavailable);
+
+        var byAccount = await holded.GetAccountBalancesAsync(ct: ct);
 
         // The range filter is load-bearing: Holded numbers every supplier contact, so unfiltered an org vendor becomes
         // bindable. Group-by-first so a duplicate number cannot throw.
         var contacts = contactById.Values
-            .Where(c => c.SupplierAccountNum is >= CreditorAccountMin and <= CreditorAccountMax)
+            .Where(c => IsMemberCreditorAccount(c.SupplierAccountNum))
             .GroupBy(c => c.SupplierAccountNum!.Value)
             .ToDictionary(g => g.Key, g => g.First());
 
-        // Holded's contact, not the binding's cached number, decides the row (the stored number is the fallback), so an
-        // unresolved binding still reaches its account and two bindings on one contact show as a collision. One
-        // partition of one snapshot, so no binding is both on a row and on the unresolved card.
+        // Holded's contact, never the binding's stored number, decides the row, so two bindings on one contact show as a
+        // collision. One partition of one snapshot, so no binding is both on a row and on the unresolved card.
         var resolved = (await repo.GetCreditorContactsAsync(ct))
             .Select(b => (Account: ResolveCreditorAccount(b, contactById), Binding: b))
             .ToList();
@@ -543,8 +538,8 @@ internal sealed class Service(
                     .Select(x => ToBinding(x.Binding))
                     .ToList());
 
-        // No number of our own and none on Holded's contact. Nothing retries these, so they are returned, not
-        // dropped: unreturned is unbindable.
+        // The contact is missing from Holded's list or has no creditor number. Nothing retries these, so they are
+        // returned, not dropped: unreturned is unbindable.
         var unresolved = resolved
             .Where(x => x.Account is null)
             .Select(x => ToBinding(x.Binding))
@@ -581,7 +576,7 @@ internal sealed class Service(
         // Plus bound accounts with no lines yet and every Holded creditor contact: a first-time submitter's account
         // exists before any activity. The mirror spans the whole chart, so balances are range-filtered here.
         var rows = byAccount.Keys
-            .Where(num => num is >= CreditorAccountMin and <= CreditorAccountMax)
+            .Where(num => IsMemberCreditorAccount(num))
             .Union(bindings.Keys).Union(contacts.Keys)
             .Select(num =>
             {
@@ -619,26 +614,28 @@ internal sealed class Service(
                 "None of the {Count} creditor accounts resolved a Holded contact name; the bind card and " +
                 "/Finance/Creditors will show bare account numbers.", rows.Count);
 
-        return (rows, unresolved);
+        return (rows, unresolved, null);
     }
 
+    /// <summary>The account Holded's contact is on. Never the binding's stored number: it can be stale, and a stale
+    /// number pays, names or exports the wrong account.</summary>
     private static int? ResolveCreditorAccount(
         HoldedCreditorContact binding, IReadOnlyDictionary<string, HoldedContactDto> contacts)
     {
         var account = contacts.GetValueOrDefault(binding.HoldedContactId)?.SupplierAccountNum;
-        return account is >= CreditorAccountMin and <= CreditorAccountMax ? account : binding.SupplierAccountNum;
+        return IsMemberCreditorAccount(account) ? account : null;
     }
 
     /// <summary>Keyed by contact id, the identity a binding stores. The rows and the payout both resolve through this
-    /// one map, so a row's name and IBAN cannot disagree with the file's.</summary>
-    private async Task<Dictionary<string, HoldedContactDto>> ContactsByIdAsync(CancellationToken ct) =>
-        (await ListContactsOrEmptyAsync(ct))
+    /// one map, so a row's name and IBAN cannot disagree with the file's. Null when Holded's list is unreadable.</summary>
+    private async Task<Dictionary<string, HoldedContactDto>?> ContactsByIdAsync(CancellationToken ct) =>
+        (await ListContactsOrNullAsync(ct))?
         .GroupBy(c => c.Id, StringComparer.Ordinal)
         .ToDictionary(g => g.Key, g => g.First(), StringComparer.Ordinal);
 
-    /// <summary>Cached because every /Finance/Creditors and /Expenses/{id} load reads the same list. A vendor failure
-    /// costs the names, not the page; anything else is a bug and throws.</summary>
-    private async Task<IReadOnlyList<HoldedContactDto>> ListContactsOrEmptyAsync(CancellationToken ct) =>
+    /// <summary>Cached because every /Finance/Creditors and /Expenses/{id} load reads the same list; a failure is
+    /// cached too, as null, so a down Holded is not hammered. Anything but a vendor failure is a bug and throws.</summary>
+    private async Task<IReadOnlyList<HoldedContactDto>?> ListContactsOrNullAsync(CancellationToken ct) =>
         await cache.GetOrCreateAsync(CacheKeys.HoldedContacts, async entry =>
         {
             entry.AbsoluteExpirationRelativeToNow = ContactsCacheDuration;
@@ -648,23 +645,23 @@ internal sealed class Service(
             }
             catch (HoldedTransientException ex)
             {
-                logger.LogWarning("Holded contact list unavailable; creditor account names will be blank. {Reason}", ex.Message);
-                return (IReadOnlyList<HoldedContactDto>)[];
+                logger.LogWarning("Holded contact list unavailable; creditor accounts cannot be resolved. {Reason}", ex.Message);
+                return null;
             }
             catch (HoldedPermanentException ex)
             {
                 // A rejected key or a removed endpoint blanks every name until someone acts — Error, not Warning.
-                logger.LogError(ex, "Holded rejected the contact list; creditor account names will be blank.");
-                return (IReadOnlyList<HoldedContactDto>)[];
+                logger.LogError(ex, "Holded rejected the contact list; creditor accounts cannot be resolved.");
+                return null;
             }
             catch (Exception ex) when (ex is JsonException or InvalidOperationException)
             {
                 // Malformed body, or a 200 carrying Holded's {"status":0,...} error object where the
                 // contact array should be. Still a vendor failure — it must not take the page down.
-                logger.LogError(ex, "Holded returned an unreadable contact list; creditor account names will be blank.");
-                return (IReadOnlyList<HoldedContactDto>)[];
+                logger.LogError(ex, "Holded returned an unreadable contact list; creditor accounts cannot be resolved.");
+                return null;
             }
-        }) ?? [];
+        });
 
     public async Task<CreditorContactBinding?> GetCreditorContactByUserAsync(
         Guid userId, CancellationToken ct = default)
@@ -734,7 +731,7 @@ internal sealed class Service(
     {
         // The dropdown is filtered, but the number arrives on a POST. Holded numbers every supplier contact, so without
         // this an org vendor's account is bindable.
-        if (supplierAccountNum is < CreditorAccountMin or > CreditorAccountMax)
+        if (!IsMemberCreditorAccount(supplierAccountNum))
             return CreditorBindResult.Failure(
                 $"Account {supplierAccountNum} is outside the member creditor block " +
                 $"({CreditorAccountMin}–{CreditorAccountMax}) — that is not a member's account.");
@@ -788,7 +785,10 @@ internal sealed class Service(
         if (lines.Count == 0)
             return null;
 
-        var contacts = await ContactsByIdAsync(ct);
+        // Unreadable, the member on the account is unknown: the statement says so rather than guess from a stored number.
+        if (await ContactsByIdAsync(ct) is not { } contacts)
+            return Ledger(supplierAccountNum, lines, null, ContactListUnavailable);
+
         var bindings = (await repo.GetCreditorContactsAsync(ct))
             .Where(b => ResolveCreditorAccount(b, contacts) == supplierAccountNum)
             .ToList();
@@ -803,6 +803,13 @@ internal sealed class Service(
             if (candidates.Count == 1) contact = candidates[0];
         }
 
+        return Ledger(supplierAccountNum, lines, contact, null);
+    }
+
+    private static CreditorLedger Ledger(
+        int supplierAccountNum, IReadOnlyList<HoldedLedgerLineInfo> lines, HoldedContactDto? contact,
+        string? contactUnavailableReason)
+    {
         var balance = LedgerBalance(lines);
         // Accumulates oldest first from the account's first line (credit = owed to the member); the lines keep the
         // mirror's order.
@@ -833,7 +840,8 @@ internal sealed class Service(
                 ? null
                 : new CreditorContactInfo(
                     contact.Name, contact.TradeName, contact.Email, contact.Phone,
-                    contact.Mobile, contact.Iban, contact.TaxCode, contact.Address));
+                    contact.Mobile, contact.Iban, contact.TaxCode, contact.Address),
+            ContactUnavailableReason: contactUnavailableReason);
     }
 
     public async Task<string> EnsureCreditorContactAsync(
@@ -1100,12 +1108,15 @@ internal sealed class Service(
             return (null,
                 $"Creditor account {duplicate.Key} was selected twice — a payout pays each account once.");
 
-        var (rows, _) = await ListCreditorAccountsAsync(ct);
+        var (rows, _, contactsUnavailable) = await ListCreditorAccountsAsync(ct);
+        if (contactsUnavailable is not null)
+            return (null, contactsUnavailable);
         var byAccount = rows.ToDictionary(r => r.SupplierAccountNum);
 
         // The unmasked IBAN goes nowhere but the file and the payout record. Keyed by contact id, not account number:
         // two contacts can share one 400000xx, and only the bound one is the member's.
-        var contactById = await ContactsByIdAsync(ct);
+        if (await ContactsByIdAsync(ct) is not { } contactById)
+            return (null, ContactListUnavailable);
 
         var fileId = Guid.NewGuid();
         var transfers = new List<SepaPayoutTransfer>(selections.Count);
@@ -1294,7 +1305,7 @@ internal sealed class Service(
         GetSepaPayoutsAsync(int toleranceDays = IFinanceAdminService.DefaultSepaMatchToleranceDays,
             CancellationToken ct = default) => booking.GetSepaPayoutsAsync(toleranceDays, ct);
 
-    public Task RunAsync(CancellationToken ct = default) => booking.RunAsync(ct);
+    public Task RunSepaBookingSweepAsync(CancellationToken ct = default) => booking.RunAsync(ct);
 
     public Task<SepaBookingResult> BookSepaTransferAsync(
         Guid transferId, string bankMovementId, Guid? actorUserId,
@@ -1342,7 +1353,7 @@ internal sealed class Service(
             bookings.Select(b => (b.CreditorUserId, b.HoldedContactId)), bindings,
             id => contactById.GetValueOrDefault(id)?.Name,
             contactById.Values
-                .Where(c => c.SupplierAccountNum is >= CreditorAccountMin and <= CreditorAccountMax
+                .Where(c => IsMemberCreditorAccount(c.SupplierAccountNum)
                             && !string.IsNullOrWhiteSpace(c.Name))
                 .ToLookup(c => c.Name!.Trim(), c => c.Id, StringComparer.OrdinalIgnoreCase));
 
@@ -1367,7 +1378,9 @@ internal sealed class Service(
     private async Task<HoldedDuplicatesVm> BuildDuplicatePlanAsync(CancellationToken ct)
     {
         var docs = await client.ListPurchaseDocumentsAsync(ct);
-        var contactById = await ContactsByIdAsync(ct);
+        // Without it the same-named sibling contacts go unseen, so the plan would look complete while missing them.
+        if (await ContactsByIdAsync(ct) is not { } contactById)
+            return new HoldedDuplicatesVm([], [], ContactListUnavailable);
         var bindings = await repo.GetCreditorContactsAsync(ct);
         var bookings = await expenses.GetHoldedBookingsAsync(ct);
         var contactsByUser = MemberContacts(bookings, bindings, contactById);
@@ -1428,7 +1441,7 @@ internal sealed class Service(
                     g.Key,
                     contact?.Name ?? g.First().Kept.ContactName,
                     binding?.HoldedContactId,
-                    contact?.SupplierAccountNum ?? binding?.SupplierAccountNum,
+                    contact?.SupplierAccountNum,
                     lines, orphans);
             })
             .ToList();
@@ -1436,7 +1449,7 @@ internal sealed class Service(
         // Holded has no archive call, so an empty unbound contact is listed, not touched.
         var boundContacts = bindings.Select(b => b.HoldedContactId).ToHashSet(StringComparer.Ordinal);
         var empty = contactById.Values
-            .Where(c => c.SupplierAccountNum is >= CreditorAccountMin and <= CreditorAccountMax
+            .Where(c => IsMemberCreditorAccount(c.SupplierAccountNum)
                         && !boundContacts.Contains(c.Id) && !docsByContact[c.Id].Any())
             .Select(c => (AccountNum: c.SupplierAccountNum!.Value, Summary: $"{c.SupplierAccountNum} {c.Name} ({c.Id})"))
             .ToList();
@@ -1469,6 +1482,8 @@ internal sealed class Service(
             logger.LogWarning("Holded could not be read; no duplicate was deleted. {Reason}", ex.Message);
             return new HoldedDuplicateApplyResult([], "Holded could not be read — nothing was deleted: " + ex.Message, null);
         }
+        if (plan.Error is { } planError)
+            return new HoldedDuplicateApplyResult([], "Nothing was deleted: " + planError, null);
         if (!plan.HasWork)
             return new HoldedDuplicateApplyResult([], "No duplicate document was found — nothing was deleted.", null);
 
@@ -1555,7 +1570,7 @@ internal sealed class Service(
         try
         {
             return (await client.ListAccountingAccountsAsync(ct))
-                .Where(a => a.Number is >= CreditorAccountMin and <= CreditorAccountMax)
+                .Where(a => IsMemberCreditorAccount(a.Number))
                 .GroupBy(a => a.Number)
                 .ToDictionary(g => g.Key, g => g.First().Balance);
         }
@@ -1578,12 +1593,21 @@ internal sealed class Service(
             payouts.AddRange(await repo.GetSepaPayoutsForUserAsync(id, ct));
         }
         // Free-text descriptions included: they are the member's data too.
-        var contacts = bindings.Count == 0
-            ? new Dictionary<string, HoldedContactDto>(StringComparer.Ordinal)
-            : await ContactsByIdAsync(ct);
         var ledgerLines = new List<CreditorLedgerLine>();
         if (bindings.Count > 0)
         {
+            // Without the contact list no binding resolves to an account, and an export missing the member's ledger
+            // is wrong, not partial: stop, and let the retry pick it up.
+            var contacts = await ContactsByIdAsync(ct)
+                ?? throw new InvalidOperationException(
+                    $"GDPR export for member {userId} stopped: {ContactListUnavailable}");
+            // A contact with no creditor number yet has no ledger to export; a contact Holded's list lacks might.
+            if (bindings.FirstOrDefault(b => !contacts.ContainsKey(b.HoldedContactId)) is { } missing)
+                throw new InvalidOperationException(
+                    $"GDPR export for member {userId} stopped: their Holded contact {missing.HoldedContactId} is "
+                    + "missing from Holded's contact list, so their ledger cannot be found. Rebind or unbind them on "
+                    + "/Finance/Creditors.");
+
             // Ledger lines carry no user id, so an account another member is also bound to would leak their lines.
             // Withheld until an admin resolves the collision.
             var ownIds = bindings.Select(b => b.UserId).ToHashSet();

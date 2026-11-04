@@ -29,8 +29,6 @@ public class NotificationServiceTests : IDisposable
 
     public NotificationServiceTests()
     {
-        // notifications/notification_recipients live in NotificationsDbContext;
-        // communication_preferences rows are seeded into a PreferenceRegistry stand-in.
         var notificationsOptions = new DbContextOptionsBuilder<NotificationsDbContext>()
             .UseInMemoryDatabase(Guid.NewGuid().ToString())
             .Options;
@@ -39,7 +37,6 @@ public class NotificationServiceTests : IDisposable
         _clock = new FakeClock(Instant.FromUtc(2026, 4, 1, 12, 0));
         _repo = new NotificationRepository(new TestDbContextFactory<NotificationsDbContext>(notificationsOptions));
 
-        // Delegate to in-memory DB so seeded preferences are respected.
         _preferenceService.StubInboxDisabledFrom(_dbContext);
 
         var emitter = new NotificationEmitter(
@@ -58,11 +55,7 @@ public class NotificationServiceTests : IDisposable
     [HumansFact]
     public async Task SendAsync_DelegatesToTheEmitter()
     {
-        // NotificationService.SendAsync is a pass-through to INotificationEmitter.
-        // What SendAsync *does* — per-recipient rows, preference suppression,
-        // field persistence, badge freshness — is the emitter's behaviour and
-        // is covered once, in NotificationEmitterTests. This asserts only that the
-        // delegation is live, so the pass-through cannot silently become a no-op.
+        // A pass-through; NotificationEmitterTests covers the behaviour. This proves only that the delegation is live.
         var user = Guid.NewGuid();
 
         await _service.SendAsync(

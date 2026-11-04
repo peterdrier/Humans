@@ -43,9 +43,6 @@ namespace Humans.Finance.Data.Migrations
                     b.Property<int>("HoldedAccountNumber")
                         .HasColumnType("integer");
 
-                    b.Property<bool>("IsActive")
-                        .HasColumnType("boolean");
-
                     b.Property<string>("Tag")
                         .IsRequired()
                         .HasMaxLength(128)

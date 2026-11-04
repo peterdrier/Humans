@@ -132,6 +132,8 @@ internal sealed class ExpenseDetailViewModel
     /// <summary>With or without a 400000xx yet. False means the push will create one, the normal new-member state.</summary>
     public bool HasCreditorContact { get; init; }
     public IReadOnlyList<CreditorAccountRow> CreditorAccounts { get; init; } = [];
+    /// <summary>Set when Holded's contact list is unreadable: no account is known, so none can be bound.</summary>
+    public string? CreditorAccountsUnavailable { get; init; }
 
     public bool CanApprove { get; init; }
     /// <summary>Returns the report to the submitter as a draft.</summary>

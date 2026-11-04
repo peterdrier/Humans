@@ -1,3 +1,5 @@
+using NodaTime;
+
 namespace Humans.Base.Interfaces;
 
 /// <summary>
@@ -39,4 +41,14 @@ public interface IFileStorage
     /// for GDPR deletion paths that need to log on failure.
     /// </summary>
     Task DeleteAsync(string key, CancellationToken ct = default, bool recursiveDirectory = false);
+
+    /// <summary>
+    /// Every stored file whose key starts with the directory <paramref name="prefix"/>, with its
+    /// size and last write time. A missing directory yields an empty list. In-flight temp files
+    /// from <see cref="SaveAsync(string, Stream, CancellationToken)"/> are not listed.
+    /// </summary>
+    Task<IReadOnlyList<StoredFileInfo>> ListAsync(string prefix, CancellationToken ct = default);
 }
+
+/// <summary>One stored file: its key, size in bytes, and when it was last written.</summary>
+public sealed record StoredFileInfo(string Key, long Bytes, Instant LastWrittenAt);
