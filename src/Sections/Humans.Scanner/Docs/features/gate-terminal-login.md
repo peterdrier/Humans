@@ -103,7 +103,7 @@ cannot be opened by the kiosk account.
 
 - `SystemUserIds` constants + GUID block `0004` reservation.
 - `ScannerAccess` policy on `ScannerController` and `TicketsOnsiteAdminController`.
-- `/Account/GateLogin` (localized, all six locales).
+- `/Account/GateLogin` (localized, all supported locales).
 - `/Tickets/Admin/Gate` admin card (status + set/rotate password) + admin-nav entry.
 - `GateTerminalAccountSeeder` (`src/Sections/Humans.Tickets/Services/`, registered by the
   Tickets section in every environment).

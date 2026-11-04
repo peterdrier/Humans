@@ -219,8 +219,10 @@ public sealed class OutboxEmailServiceTests : IDisposable
     [InlineData("it", "Annulla l’iscrizione a queste email")]
     [InlineData("fr", "Se désabonner de ces e-mails")]
     [InlineData("ca", "Deixar de rebre aquests correus")]
+    [InlineData("nl", "Afmelden voor deze e-mails")]
     [InlineData(null, "Unsubscribe from these emails")]
     [InlineData("es-ES", "Dejar de recibir estos correos")]
+    [InlineData("nl-NL", "Afmelden voor deze e-mails")]
     [InlineData("unknown", "Unsubscribe from these emails")]
     public async Task SendAsync_RendersTheUnsubscribeFooterInTheMessagesCulture(string? culture, string expected)
     {

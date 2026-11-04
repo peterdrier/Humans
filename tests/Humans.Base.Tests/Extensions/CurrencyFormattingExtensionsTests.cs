@@ -13,6 +13,7 @@ public sealed class CurrencyFormattingExtensionsTests
     [Xunit.InlineData("it", "1.234,56 €", "1.235 €")]
     [Xunit.InlineData("fr", "1\u202f234,56 €", "1\u202f235 €")]
     [Xunit.InlineData("ca", "1.234,56 €", "1.235 €")]
+    [Xunit.InlineData("nl", "1.234,56 €", "1.235 €")]
     public void Euro_display_uses_ui_culture_while_parsing_stays_english(
         string culture, string expected, string expectedWhole)
     {

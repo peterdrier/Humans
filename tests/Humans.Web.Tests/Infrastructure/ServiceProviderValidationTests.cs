@@ -67,6 +67,7 @@ public sealed class ServiceProviderValidationTests
     [InlineData("it")]
     [InlineData("fr")]
     [InlineData("ca")]
+    [InlineData("nl")]
     public async Task FormBindingErrors_UseTheCurrentRequestCulture(string culture)
     {
         var originalCulture = CultureInfo.CurrentUICulture;

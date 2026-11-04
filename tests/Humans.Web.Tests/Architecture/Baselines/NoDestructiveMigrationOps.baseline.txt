@@ -229,6 +229,23 @@ src/Sections/Humans.Feedback/Data/Migrations/20261101144113_DropFeedbackTables.c
 # Approval: Peter, 2026-11-04, per-drop approval in project thread ("Approve all but #2296" for the listed drops in this PR; peterdrier/Humans#2156).
 src/Sections/Humans.CityPlanning/Data/Migrations/20261104165348_DropCityPlanningPlacementDates.cs:DropColumn(name=PlacementClosesAt,table=city_planning_settings)#1
 src/Sections/Humans.CityPlanning/Data/Migrations/20261104165348_DropCityPlanningPlacementDates.cs:DropColumn(name=PlacementOpensAt,table=city_planning_settings)#1
+# settings_event build sub-period offsets FirstCrewStartOffset, SetupWeekStartOffset,
+# PreEventWeekStartOffset, FinishingWeekendStartOffset — Settings' copies of the four build
+# sub-period starts, replaced by Shifts' own event_settings.SubPeriod*Start columns.
+# Evidence: git log -S 'FirstCrewStartOffset =' over full history of the Settings paths: written by
+# the settings save and carry screen from peterdrier/Humans#1447 (2026-08-23); the save writer was
+# removed by peterdrier/Humans#2192 (2026-10-29), and the last reader, the DTO mapper, with the
+# shifts.build-sub-periods copy and fallback by peterdrier/Humans#2258 (2026-11-03). Nothing reads
+# or writes them now.
+# Approval: production GET https://humans.nobodies.team/api/data-migrations read 2026-11-03, quoted
+# in peterdrier/Humans#2261: {"key":"shifts.build-sub-periods","pending":0,"done":true}, the
+# standing approval in no-drops-until-prod-verified; and Peter, 2026-11-04, project thread
+# ("fix A-E"). Down() re-adds the four as integer NOT NULL DEFAULT 0, so rollback runs but the
+# values come back as 0.
+src/Sections/Humans.Settings/Data/Migrations/20261104163039_DropSettingsEventSubPeriodOffsets.cs:DropColumn(name=FinishingWeekendStartOffset,table=settings_event)#1
+src/Sections/Humans.Settings/Data/Migrations/20261104163039_DropSettingsEventSubPeriodOffsets.cs:DropColumn(name=FirstCrewStartOffset,table=settings_event)#1
+src/Sections/Humans.Settings/Data/Migrations/20261104163039_DropSettingsEventSubPeriodOffsets.cs:DropColumn(name=PreEventWeekStartOffset,table=settings_event)#1
+src/Sections/Humans.Settings/Data/Migrations/20261104163039_DropSettingsEventSubPeriodOffsets.cs:DropColumn(name=SetupWeekStartOffset,table=settings_event)#1
 # Users legacy storage left by the Users decomposition data migrations (peterdrier/Humans#2261,
 # peterdrier/Humans#2156). Each group below was replaced through a registered data migration whose
 # copy, fallback and registration are already deleted, so no reader is left.

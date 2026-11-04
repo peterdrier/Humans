@@ -306,6 +306,7 @@ public sealed class GrantTests : GrantsTestHarness
     [Xunit.InlineData("it", "it")]
     [Xunit.InlineData("fr", "fr")]
     [Xunit.InlineData("ca", "ca")]
+    [Xunit.InlineData("nl", "nl")]
     [Xunit.InlineData("unsupported", "en")]
     [Xunit.InlineData("", "en")]
     public async Task Resend_RecipientLookupFailure_UsesRecoveredRecipientMetadata(string language, string expectedCulture)

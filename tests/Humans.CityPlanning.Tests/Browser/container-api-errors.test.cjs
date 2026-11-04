@@ -27,6 +27,7 @@ for (const [culture, saveFailed, clearFailed] of [
     ['it', 'Salvataggio non riuscito', 'Rimozione non riuscita'],
     ['fr', 'Échec de l’enregistrement', 'Échec de la suppression'],
     ['ca', 'Error en desar', 'Error en esborrar'],
+    ['nl', 'Opslaan mislukt', 'Wissen mislukt'],
 ]) {
     for (const operation of ['save', 'notes', 'clear']) {
         test(`${culture} ${operation} errors retain status and server detail with a translated prefix`, async () => {

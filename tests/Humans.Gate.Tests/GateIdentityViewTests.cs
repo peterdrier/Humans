@@ -35,6 +35,7 @@ public class GateIdentityViewTests
     [Xunit.InlineData("it")]
     [Xunit.InlineData("fr")]
     [Xunit.InlineData("ca")]
+    [Xunit.InlineData("nl")]
     public async Task Claim_and_PIN_labels_resolve_names_without_changing_roster_ids_or_PIN_mode(string language)
     {
         using var culture = new CultureScope(language);

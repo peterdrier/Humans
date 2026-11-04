@@ -32,6 +32,7 @@ public sealed class BackdoorIdentityViewTests
     [Xunit.InlineData("it")]
     [Xunit.InlineData("fr")]
     [Xunit.InlineData("ca")]
+    [Xunit.InlineData("nl")]
     public async Task KeyOwners_RenderCanonicalIdentity_AndPreserveKeyStatus(string language)
     {
         using var culture = new CultureScope(language);

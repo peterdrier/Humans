@@ -1,0 +1,309 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="metadata">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" />
+              </xsd:sequence>
+              <xsd:attribute name="name" use="required" type="xsd:string" />
+              <xsd:attribute name="type" type="xsd:string" />
+              <xsd:attribute name="mimetype" type="xsd:string" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="assembly">
+            <xsd:complexType>
+              <xsd:attribute name="alias" type="xsd:string" />
+              <xsd:attribute name="name" type="xsd:string" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="1" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" msdata:Ordinal="1" />
+              <xsd:attribute name="type" type="xsd:string" msdata:Ordinal="3" />
+              <xsd:attribute name="mimetype" type="xsd:string" msdata:Ordinal="4" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="resheader">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="Enum_ExpenseReportStatus_Approved" xml:space="preserve"><value>Goedgekeurd</value></data>
+  <data name="Enum_ExpenseReportStatus_CoordinatorEndorsed" xml:space="preserve"><value>Onderschreven door coördinator</value></data>
+  <data name="Enum_ExpenseReportStatus_Draft" xml:space="preserve"><value>Concept</value></data>
+  <data name="Enum_ExpenseReportStatus_Submitted" xml:space="preserve"><value>Ingediend</value></data>
+  <data name="Enum_ExpenseReportStatus_Withdrawn" xml:space="preserve"><value>Ingetrokken</value></data>
+  <data name="Expenses_ColDepartment" xml:space="preserve"><value>Afdeling</value></data>
+  <data name="Expenses_ColPayable" xml:space="preserve"><value>Uit te betalen</value></data>
+  <data name="Expenses_ColReport" xml:space="preserve"><value>Declaratie</value></data>
+  <data name="Expenses_ColRequested" xml:space="preserve"><value>Aangevraagd</value></data>
+  <data name="Expenses_ColSubject" xml:space="preserve"><value>Onderwerp</value></data>
+  <data name="Expenses_ColSubmitted" xml:space="preserve"><value>Ingediend</value></data>
+  <data name="Expenses_ColSubmittedBy" xml:space="preserve"><value>Ingediend door</value></data>
+  <data name="Expenses_CoordinatorDecision" xml:space="preserve"><value>Besluit coördinator</value></data>
+  <data name="Expenses_Endorse" xml:space="preserve"><value>Onderschrijven</value></data>
+  <data name="Expenses_EndorseConfirm" xml:space="preserve"><value>Deze declaratie onderschrijven?</value></data>
+  <data name="Expenses_FileFirst" xml:space="preserve"><value>Dien je eerste declaratie in</value></data>
+  <data name="Expenses_FinanceAdminDecision" xml:space="preserve"><value>Besluit financieel beheerder</value></data>
+  <data name="Expenses_ForMember" xml:space="preserve"><value>Voor lid</value></data>
+  <data name="Expenses_ForMemberHelp" xml:space="preserve"><value>Laat dit op jezelf staan om je eigen declaratie in te dienen. Kies je iemand anders, dan is de declaratie van die persoon — het bedrag wordt overgemaakt naar diens IBAN en verschijnt op diens declaratiepagina.</value></data>
+  <data name="Expenses_IbanEnterForMember" xml:space="preserve"><value>Voer het volledige IBAN van {0} in zonder spaties. Laat leeg om te verwijderen.</value></data>
+  <data name="Expenses_IbanEnterForMemberNoRemove" xml:space="preserve"><value>Voer het volledige IBAN van {0} in zonder spaties.</value></data>
+  <data name="Expenses_IbanOnBehalf" xml:space="preserve"><value>Je stelt het betaal-IBAN van {0} in. Dit wijzigt diens profiel, niet dat van jou, en deze declaratie wordt uitbetaald op de rekening die je hier invoert.</value></data>
+  <data name="Expenses_IbanStoredForMember" xml:space="preserve"><value>Het IBAN wordt veilig opgeslagen en is alleen toegankelijk voor FinanceAdmin in het kader van de declaraties van {0}.</value></data>
+  <data name="Expenses_IouHeader" xml:space="preserve"><value>Wat het collectief je verschuldigd is</value></data>
+  <data name="Expenses_IouOwed" xml:space="preserve"><value>Aan jou verschuldigd (Holded-saldo)</value></data>
+  <data name="Expenses_LedgerColItem" xml:space="preserve"><value>Post</value></data>
+  <data name="Expenses_LineBooksOf" xml:space="preserve"><value>Boekt {0} van {1} — toegestaan maximum</value></data>
+  <data name="Expenses_LineNotBooked" xml:space="preserve"><value>Niet geboekt — toegestaan maximum bereikt</value></data>
+  <data name="Expenses_Line_Declined" xml:space="preserve"><value>Afgewezen</value></data>
+  <data name="Expenses_Line_DeclinedReason" xml:space="preserve"><value>Reden: {0}</value></data>
+  <data name="Expenses_Line_DeclinedBanner" xml:space="preserve"><value>Een beoordelaar heeft deze regel afgewezen. Reden: {0}. Deze telt niet mee voor je totaal. Vervang het bestand of verwijder de regel om de afwijzing op te heffen.</value></data>
+  <data name="Expenses_MaxAmount" xml:space="preserve"><value>Maximumbedrag</value></data>
+  <data name="Expenses_MyReportsTitle" xml:space="preserve"><value>Mijn declaraties</value></data>
+  <data name="Expenses_NewReport" xml:space="preserve"><value>Nieuwe declaratie</value></data>
+  <data name="Expenses_NoActiveYear" xml:space="preserve"><value>Er is momenteel geen actief budgetjaar. Declaraties kunnen pas worden ingediend als er een budgetjaar is geactiveerd.</value></data>
+  <data name="Expenses_CreditorAccountNoActivity" xml:space="preserve"><value>Je Holded-crediteurenrekening ({0}) is gekoppeld, maar er is nog niets op geboekt. Je overzicht verschijnt zodra je eerste declaratie is geregistreerd.</value></data>
+  <data name="Expenses_StatementPendingFirstReport" xml:space="preserve"><value>Je declaratieoverzicht verschijnt hier zodra je eerste declaratie in Holded is geregistreerd.</value></data>
+  <data name="Expenses_NoCreditorAccount" xml:space="preserve"><value>Je Holded-crediteurenrekening is nog niet gekoppeld, dus je overzicht kan niet worden getoond. Vraag een financieel beheerder om deze te koppelen.</value></data>
+  <data name="Expenses_NoIban" xml:space="preserve"><value>Je hebt je betaal-IBAN nog niet ingesteld. Je wordt gevraagd dit in te stellen wanneer je een declaratie indient.</value></data>
+  <data name="Expenses_NoReports" xml:space="preserve"><value>Nog geen declaraties.</value></data>
+  <data name="Expenses_NoReportsAwaiting" xml:space="preserve"><value>Geen declaraties om te beoordelen.</value></data>
+  <data name="Expenses_Reject" xml:space="preserve"><value>Afwijzen</value></data>
+  <data name="Expenses_RejectModalBody" xml:space="preserve"><value>De indiener ziet deze reden. Leg duidelijk uit waarom de declaratie wordt afgewezen.</value></data>
+  <data name="Expenses_RejectModalTitle" xml:space="preserve"><value>Declaratie afwijzen</value></data>
+  <data name="Expenses_RejectReasonLabel" xml:space="preserve"><value>Reden van afwijzing</value></data>
+  <data name="Expenses_RejectReasonPlaceholder" xml:space="preserve"><value>bijv. Bonnen ontbreken voor regel 2</value></data>
+  <data name="Expenses_ReviewQueue" xml:space="preserve"><value>Declaraties beoordelen</value></data>
+  <data name="Expenses_ReviewQueueTitle" xml:space="preserve"><value>Declaraties — beoordeling</value></data>
+  <data name="Expenses_Email_Approved_Body" xml:space="preserve"><value>&lt;h2&gt;Declaratie goedgekeurd&lt;/h2&gt;
+&lt;p&gt;Beste {0},&lt;/p&gt;
+&lt;p&gt;Financiën heeft je declaratie goedgekeurd. Het terug te betalen bedrag is &lt;strong&gt;{1}&lt;/strong&gt;.&lt;/p&gt;
+&lt;p&gt;De betaling volgt per bankoverschrijving naar de rekening eindigend op {2}. We laten je weten wanneer de overschrijving is verstuurd.&lt;/p&gt;
+&lt;p&gt;&lt;a href="{3}"&gt;Bekijk je declaratie&lt;/a&gt;&lt;/p&gt;</value></data>
+  <data name="Expenses_Email_Approved_Subject" xml:space="preserve"><value>Je declaratie is goedgekeurd</value></data>
+  <data name="Expenses_Flash_LoadIndexFailed" xml:space="preserve"><value>Declaraties laden mislukt.</value></data>
+  <data name="Expenses_Flash_NoActiveYearCategories" xml:space="preserve"><value>Er is geen actief budgetjaar met categorieën. Neem contact op met een financieel beheerder.</value></data>
+  <data name="Expenses_Flash_LoadFormFailed" xml:space="preserve"><value>Formulier laden mislukt.</value></data>
+  <data name="Expenses_Flash_DraftCreated" xml:space="preserve"><value>Concept aangemaakt.</value></data>
+  <data name="Expenses_Flash_CreateFailed" xml:space="preserve"><value>Concept aanmaken mislukt.</value></data>
+  <data name="Expenses_Flash_LoadReportFailed" xml:space="preserve"><value>Declaratie laden mislukt.</value></data>
+  <data name="Expenses_Flash_NotEditable" xml:space="preserve"><value>Deze declaratie kan niet meer worden bewerkt.</value></data>
+  <data name="Expenses_Flash_LoadEditFailed" xml:space="preserve"><value>Het bewerkingsformulier laden mislukt.</value></data>
+  <data name="Expenses_Flash_ReportUpdated" xml:space="preserve"><value>Declaratie bijgewerkt.</value></data>
+  <data name="Expenses_Flash_ReportUpdateFailed" xml:space="preserve"><value>Declaratie bijwerken mislukt.</value></data>
+  <data name="Expenses_Flash_LineUpdated" xml:space="preserve"><value>Regel bijgewerkt.</value></data>
+  <data name="Expenses_Flash_UpdateLineFailed" xml:space="preserve"><value>Regel bijwerken mislukt</value></data>
+  <data name="Expenses_Flash_LineRemoved" xml:space="preserve"><value>Regel verwijderd.</value></data>
+  <data name="Expenses_Flash_RemoveLineFailed" xml:space="preserve"><value>Regel verwijderen mislukt</value></data>
+  <data name="Expenses_Flash_AttachmentUploaded" xml:space="preserve"><value>Bijlage geüpload.</value></data>
+  <data name="Expenses_Flash_UploadAttachmentFailed" xml:space="preserve"><value>Bijlage uploaden mislukt.</value></data>
+  <data name="Expenses_Flash_ReportSubmitted" xml:space="preserve"><value>Declaratie ingediend.</value></data>
+  <data name="Expenses_Flash_SubmitFailed" xml:space="preserve"><value>Kan de declaratie niet indienen.</value></data>
+  <data name="Expenses_Flash_ReportWithdrawn" xml:space="preserve"><value>Declaratie ingetrokken.</value></data>
+  <data name="Expenses_Flash_WithdrawFailed" xml:space="preserve"><value>Kan deze declaratie niet intrekken.</value></data>
+  <data name="Expenses_Flash_ReportEndorsed" xml:space="preserve"><value>Declaratie onderschreven.</value></data>
+  <data name="Expenses_Flash_EndorseFailed" xml:space="preserve"><value>De declaratie kon niet worden onderschreven.</value></data>
+  <data name="Expenses_Flash_ReportRejected" xml:space="preserve"><value>Declaratie afgewezen.</value></data>
+  <data name="Expenses_Flash_RejectFailed" xml:space="preserve"><value>Kan de declaratie niet afwijzen.</value></data>
+  <data name="Expenses_Flash_InvalidLineData" xml:space="preserve"><value>Ongeldige regelgegevens.</value></data>
+  <data name="Expenses_Flash_ReceiptAdded" xml:space="preserve"><value>Bon toegevoegd.</value></data>
+  <data name="Expenses_Flash_InvoiceAdded" xml:space="preserve"><value>Factuur toegevoegd. Voeg nu de bijbehorende bonnen toe.</value></data>
+  <data name="Expenses_Flash_LineAdded" xml:space="preserve"><value>Regel toegevoegd.</value></data>
+  <data name="Expenses_Flash_SelectFile" xml:space="preserve"><value>Kies een bestand.</value></data>
+  <data name="Expenses_Flash_AttachmentRemoved" xml:space="preserve"><value>Bijlage verwijderd.</value></data>
+  <data name="Expenses_Flash_LoadIbanFailed" xml:space="preserve"><value>IBAN-formulier laden mislukt.</value></data>
+  <data name="Expenses_Flash_InvalidMaximum" xml:space="preserve"><value>Ongeldig maximumbedrag.</value></data>
+  <data name="Expenses_Flash_RejectionReasonRequired" xml:space="preserve"><value>Een reden voor afwijzing is verplicht.</value></data>
+  <data name="Expenses_Flash_LoadReviewQueueFailed" xml:space="preserve"><value>Beoordelingswachtrij laden mislukt.</value></data>
+  <data name="Expenses_Flash_InvalidApprovalInput" xml:space="preserve"><value>Ongeldige invoer voor goedkeuring.</value></data>
+  <!-- Submitter expense-edit page -->
+  <data name="Expenses_EditReport" xml:space="preserve"><value>Declaratie bewerken</value></data>
+  <data name="Expenses_BreadcrumbNavigation" xml:space="preserve"><value>Kruimelpad</value></data>
+  <data name="Expenses_Edit" xml:space="preserve"><value>Bewerken</value></data>
+  <data name="Expenses_ReportHeader" xml:space="preserve"><value>Declaratiegegevens</value></data>
+  <data name="Expenses_BudgetCategory" xml:space="preserve"><value>Budgetcategorie</value></data>
+  <data name="Expenses_CategoryChangeWarning" xml:space="preserve"><value>Om de categorie na indiening te wijzigen, moet je de declaratie intrekken en opnieuw indienen.</value></data>
+  <data name="Expenses_Optional" xml:space="preserve"><value>(optioneel)</value></data>
+  <data name="Expenses_SaveHeader" xml:space="preserve"><value>Declaratiegegevens opslaan</value></data>
+  <data name="Expenses_ExpenseLines" xml:space="preserve"><value>Declaratieregels</value></data>
+  <data name="Expenses_NoLinesYet" xml:space="preserve"><value>Nog geen regels. Voeg hieronder je eerste bon of factuur toe.</value></data>
+  <data name="Expenses_Mileage" xml:space="preserve"><value>Kilometervergoeding</value></data>
+  <data name="Expenses_PerDiem" xml:space="preserve"><value>Dagvergoeding</value></data>
+  <data name="Expenses_Invoice" xml:space="preserve"><value>Factuur</value></data>
+  <data name="Expenses_ProofCountSingular" xml:space="preserve"><value>1 onderliggende bon</value></data>
+  <data name="Expenses_ProofCountPlural" xml:space="preserve"><value>{0} onderliggende bonnen</value></data>
+  <data name="Expenses_ReceiptAttached" xml:space="preserve"><value>Bon bijgevoegd</value></data>
+  <data name="Expenses_NeedsReceipt" xml:space="preserve"><value>Bon nodig</value></data>
+  <data name="Expenses_Total" xml:space="preserve"><value>Totaal</value></data>
+  <data name="Expenses_AddLine" xml:space="preserve"><value>Regel toevoegen</value></data>
+  <data name="Expenses_BackToReport" xml:space="preserve"><value>Terug naar declaratie</value></data>
+  <data name="Expenses_WhatAreYouAdding" xml:space="preserve"><value>Wat voeg je toe?</value></data>
+  <data name="Expenses_Preferred" xml:space="preserve"><value>aanbevolen</value></data>
+  <data name="Expenses_Receipt" xml:space="preserve"><value>Bon</value></data>
+  <data name="Expenses_InvoiceChoiceDescription" xml:space="preserve"><value>Een bedrijf (zzp / autónomo) factureert de vereniging voor het werk of de goederen. De factuur moet op naam van de NCA staan. Sterk aanbevolen — de vereniging kan de btw terugvragen en zo 21% besparen. Je voegt eerst de factuur toe en daarna de onderliggende bonnen voor de beoordelaar.</value></data>
+  <data name="Expenses_ReceiptChoiceDescription" xml:space="preserve"><value>Je hebt zelf iets betaald en wilt dit terugbetaald krijgen. Bonnen worden alleen in bepaalde gevallen goedgekeurd — meestal als een factuur niet mogelijk was of het om een klein bedrag gaat.</value></data>
+  <data name="Expenses_Cancel" xml:space="preserve"><value>Annuleren</value></data>
+  <data name="Expenses_AddInvoice" xml:space="preserve"><value>Factuur toevoegen</value></data>
+  <data name="Expenses_AddReceipt" xml:space="preserve"><value>Bon toevoegen</value></data>
+  <data name="Expenses_InvoiceAddDescription" xml:space="preserve"><value>De factuur van het bedrijf, op naam van de NCA. Na het opslaan voeg je de onderliggende bonnen toe, zodat de beoordelaar kan zien wat het gefactureerde bedrag dekt.</value></data>
+  <data name="Expenses_ReceiptAddDescription" xml:space="preserve"><value>Iets wat je zelf hebt betaald en terugbetaald wilt krijgen. Beschrijf het, vul het bedrag in en voeg een foto of pdf van de bon toe.</value></data>
+  <data name="Expenses_InvoicePurpose" xml:space="preserve"><value>Waarvoor is de factuur?</value></data>
+  <data name="Expenses_ReceiptPurpose" xml:space="preserve"><value>Wat heb je gekocht?</value></data>
+  <data name="Expenses_InvoicePlaceholder" xml:space="preserve"><value>bijv. Werk van de opbouwploeg, factuur 2026-042</value></data>
+  <data name="Expenses_ReceiptPlaceholder" xml:space="preserve"><value>bijv. Hout voor de schaduwconstructie</value></data>
+  <data name="Expenses_AmountEur" xml:space="preserve"><value>Bedrag (EUR)</value></data>
+  <data name="Expenses_InvoiceFile" xml:space="preserve"><value>De factuur (pdf of foto)</value></data>
+  <data name="Expenses_ReceiptFile" xml:space="preserve"><value>De bon (foto of pdf)</value></data>
+  <data name="Expenses_SaveAndAddReceipts" xml:space="preserve"><value>Opslaan en bonnen toevoegen</value></data>
+  <data name="Expenses_SaveReceipt" xml:space="preserve"><value>Bon opslaan</value></data>
+  <data name="Expenses_NotAnInvoice" xml:space="preserve"><value>Geen factuur?</value></data>
+  <data name="Expenses_NotAReceipt" xml:space="preserve"><value>Geen bon?</value></data>
+  <data name="Expenses_ChangeType" xml:space="preserve"><value>Type wijzigen</value></data>
+  <data name="Expenses_ReceiptsBehindInvoice" xml:space="preserve"><value>Onderliggende bonnen van de factuur</value></data>
+  <data name="Expenses_ReceiptsBehindIt" xml:space="preserve"><value>Onderliggende bonnen</value></data>
+  <data name="Expenses_ProofAmountOf" xml:space="preserve"><value>{0} van {1}</value></data>
+  <data name="Expenses_NoProofsYet" xml:space="preserve"><value>Nog geen. Voeg de bonnen toe die laten zien wat het gefactureerde bedrag dekt — ze worden met de declaratie gecontroleerd, maar niet naar het systeem van de boekhouder gestuurd.</value></data>
+  <data name="Expenses_AddReceiptFile" xml:space="preserve"><value>het bonbestand toevoegen</value></data>
+  <data name="Expenses_RemoveReceiptConfirm" xml:space="preserve"><value>Deze bon verwijderen?</value></data>
+  <data name="Expenses_Remove" xml:space="preserve"><value>Verwijderen</value></data>
+  <data name="Expenses_ReceiptPurposePast" xml:space="preserve"><value>Wat was het?</value></data>
+  <data name="Expenses_ProofPlaceholder" xml:space="preserve"><value>bijv. Materialen van de bouwmarkt</value></data>
+  <data name="Expenses_Done" xml:space="preserve"><value>Klaar</value></data>
+  <data name="Expenses_NewExpenseReport" xml:space="preserve"><value>Nieuwe declaratie</value></data>
+  <data name="Expenses_SelectCategory" xml:space="preserve"><value>— Kies een categorie —</value></data>
+  <data name="Expenses_HoldedAccount" xml:space="preserve"><value>Rekening</value></data>
+  <data name="Expenses_SelectAccount" xml:space="preserve"><value>— Kies een rekening —</value></data>
+  <data name="Expenses_AccountGroupBudgetCategories" xml:space="preserve"><value>Budgetcategorieën</value></data>
+  <data name="Expenses_AccountGroupOther" xml:space="preserve"><value>Overige rekeningen</value></data>
+  <data name="Expenses_Validation_AccountNotFound" xml:space="preserve"><value>Rekening niet gevonden of niet meer beschikbaar.</value></data>
+  <data name="Expenses_OptionalMaxChars" xml:space="preserve"><value>(optioneel, max. 500 tekens)</value></data>
+  <data name="Expenses_SubjectPlaceholder" xml:space="preserve"><value>Beschrijf de declaratie…</value></data>
+  <data name="Expenses_CreateDraft" xml:space="preserve"><value>Concept aanmaken</value></data>
+  <data name="Expenses_HowItWorks" xml:space="preserve"><value>Zo werkt het</value></data>
+  <data name="Expenses_HowItWorksStep1" xml:space="preserve"><value>Maak een concept aan en voeg declaratieregels met bedragen toe.</value></data>
+  <data name="Expenses_HowItWorksStep2" xml:space="preserve"><value>Voeg aan elke regel een bon of factuur toe.</value></data>
+  <data name="Expenses_HowItWorksStep3" xml:space="preserve"><value>Stel je betaal-IBAN in als je dat nog niet hebt gedaan.</value></data>
+  <data name="Expenses_HowItWorksStep4" xml:space="preserve"><value>Dien de declaratie in ter beoordeling door de coördinator / FinanceAdmin.</value></data>
+  <data name="Expenses_HowItWorksStep5" xml:space="preserve"><value>Na goedkeuring ontvang je een SEPA-bankoverschrijving.</value></data>
+  <data name="Expenses_BackToInvoiceReceipts" xml:space="preserve"><value>Terug naar de bonnen van de factuur</value></data><data name="Expenses_Description" xml:space="preserve"><value>Beschrijving</value></data><data name="Expenses_EditLine" xml:space="preserve"><value>Regel bewerken</value></data><data name="Expenses_FileRequiredBeforeSubmit" xml:space="preserve"><value>Verplicht voordat de declaratie kan worden ingediend.</value></data><data name="Expenses_Line" xml:space="preserve"><value>Regel</value></data><data name="Expenses_NoFileAttached" xml:space="preserve"><value>Geen bestand bijgevoegd.</value></data><data name="Expenses_ReceiptsBehindThisInvoice" xml:space="preserve"><value>Onderliggende bonnen van deze factuur</value></data><data name="Expenses_RemoveFile" xml:space="preserve"><value>Bestand verwijderen</value></data><data name="Expenses_RemoveFileConfirm" xml:space="preserve"><value>Dit bestand verwijderen? Je moet een ander bestand uploaden voordat je kunt indienen.</value></data><data name="Expenses_RemoveInvoiceConfirm" xml:space="preserve"><value>Deze factuur en alle onderliggende bonnen verwijderen?</value></data><data name="Expenses_RemoveLine" xml:space="preserve"><value>Regel verwijderen</value></data><data name="Expenses_RemoveLineConfirm" xml:space="preserve"><value>Deze regel en het bijbehorende bestand verwijderen?</value></data><data name="Expenses_TravelLineReadOnly" xml:space="preserve"><value>Reiskostenregels worden berekend op basis van de ingevoerde gegevens en kunnen niet worden bewerkt. Verwijder de regel uit de declaratie en voeg deze opnieuw toe om wijzigingen aan te brengen.</value></data><data name="Expenses_Upload" xml:space="preserve"><value>Uploaden</value></data>
+  <data name="Expenses_CurrentIban" xml:space="preserve"><value>Huidig IBAN</value></data><data name="Expenses_Iban" xml:space="preserve"><value>IBAN</value></data><data name="Expenses_IbanEnter" xml:space="preserve"><value>Voer je volledige IBAN in zonder spaties.</value></data><data name="Expenses_IbanEnterOrRemove" xml:space="preserve"><value>Voer je volledige IBAN in zonder spaties. Laat leeg om te verwijderen.</value></data><data name="Expenses_IbanPrivacy" xml:space="preserve"><value>Je IBAN wordt gebruikt om terugbetalingen via SEPA te verwerken. Het wordt nooit aan andere Humans getoond.</value></data><data name="Expenses_IbanStored" xml:space="preserve"><value>Je IBAN wordt veilig opgeslagen en is alleen toegankelijk voor FinanceAdmin in het kader van je declaraties.</value></data><data name="Expenses_NewIban" xml:space="preserve"><value>Nieuw IBAN</value></data><data name="Expenses_NewIbanOrRemove" xml:space="preserve"><value>Nieuw IBAN (of laat leeg om te verwijderen)</value></data><data name="Expenses_PaymentIban" xml:space="preserve"><value>IBAN voor uitbetaling</value></data>
+  <data name="Expenses_Flash_AddLineFailed" xml:space="preserve"><value>Regel toevoegen mislukt.</value></data>
+  <data name="Expenses_Flash_RemoveAttachmentFailed" xml:space="preserve"><value>Bijlage verwijderen mislukt.</value></data>
+  <data name="Expenses_Save" xml:space="preserve"><value>Opslaan</value></data>
+  <data name="Expenses_ReceiptBehindInvoice" xml:space="preserve"><value>Onderliggende bon van de factuur</value></data>
+  <data name="Expenses_Iban_ReportNotFound" xml:space="preserve"><value>Declaratie niet gevonden.</value></data>
+  <data name="Expenses_Iban_InvalidFormat" xml:space="preserve"><value>Ongeldige IBAN-notatie.</value></data>
+  <data name="Expenses_Iban_RequiredForPendingReport" xml:space="preserve"><value>Deze declaratie wacht op betaling en heeft een IBAN nodig. Vervang het in plaats van het te verwijderen.</value></data>
+  <data name="Expenses_Iban_SaveFailed" xml:space="preserve"><value>IBAN opslaan mislukt.</value></data>
+  <data name="Expenses_Iban_Removed" xml:space="preserve"><value>IBAN verwijderd.</value></data>
+  <data name="Expenses_Iban_Saved" xml:space="preserve"><value>IBAN opgeslagen.</value></data>
+  <data name="Expenses_Validation_CategoryNotFound" xml:space="preserve"><value>Categorie niet gevonden.</value></data>
+  <data name="Expenses_Validation_CategoryDifferentBudgetYear" xml:space="preserve"><value>Die categorie hoort bij een ander budgetjaar dan deze declaratie.</value></data>
+  <data name="Expenses_Validation_ProofRowsMustBeReceipts" xml:space="preserve"><value>Bewijsregels moeten bonregels zijn.</value></data>
+  <data name="Expenses_Validation_ParentLineNotFound" xml:space="preserve"><value>Bovenliggende regel niet gevonden in deze declaratie.</value></data>
+  <data name="Expenses_Validation_ProofRowsRequireInvoice" xml:space="preserve"><value>Bewijsregels kunnen alleen aan een factuurregel worden toegevoegd.</value></data>
+  <data name="Expenses_Validation_OnlyReceiptAndInvoiceLines" xml:space="preserve"><value>Alleen bon- en factuurregels kunnen worden toegevoegd.</value></data>
+  <data name="Expenses_Validation_LineNotOnReport" xml:space="preserve"><value>Regel hoort niet bij de opgegeven declaratie.</value></data>
+  <data name="Expenses_Validation_TravelLinesComputedCannotEdit" xml:space="preserve"><value>Reiskostenregels worden berekend op basis van de ingevoerde gegevens en kunnen niet worden bewerkt. Verwijder de regel en voeg deze opnieuw toe om wijzigingen aan te brengen.</value></data>
+  <data name="Expenses_Validation_FileTooLarge" xml:space="preserve"><value>Bestand te groot. De maximale grootte is {0} MB.</value></data>
+  <data name="Expenses_Validation_FilenameTooLong" xml:space="preserve"><value>Bestandsnaam mag maximaal {0} tekens bevatten.</value></data>
+  <data name="Expenses_Validation_UnsupportedFileType" xml:space="preserve"><value>Niet-ondersteund bestandstype. Upload een PDF, JPEG, PNG of HEIC.</value></data>
+  <data name="Expenses_Validation_OnlySubmitterCanSubmit" xml:space="preserve"><value>Alleen de indiener kan de declaratie indienen.</value></data>
+  <data name="Expenses_Validation_ReportNeedsLine" xml:space="preserve"><value>De declaratie moet minstens één regel bevatten.</value></data>
+  <data name="Expenses_Validation_ReceiptInvoiceNeedAttachment" xml:space="preserve"><value>Bon- en factuurregels moeten een bijlage hebben voordat je kunt indienen.</value></data>
+  <data name="Expenses_Validation_SubmitterNeedsIban" xml:space="preserve"><value>De indiener moet een IBAN in het profiel hebben ingesteld.</value></data>
+  <data name="Expenses_Validation_SubmitterNeedsFirstAndLastName" xml:space="preserve"><value>De indiener moet een voor- en achternaam in het profiel hebben ingesteld.</value></data>
+  <data name="Expenses_Validation_CouldNotSubmitReport" xml:space="preserve"><value>Kan de declaratie niet indienen. Mogelijk is het geen concept meer.</value></data>
+  <data name="Expenses_Validation_OnlySubmitterCanWithdraw" xml:space="preserve"><value>Alleen de indiener kan intrekken.</value></data>
+  <data name="Expenses_Validation_OnlySubmitterCanEdit" xml:space="preserve"><value>Alleen de indiener kan deze declaratie bewerken.</value></data>
+  <data name="Expenses_Validation_ReportCannotBeEditedInStatus" xml:space="preserve"><value>Deze declaratie kan niet worden bewerkt met de status {0}.</value></data>
+  <data name="Expenses_ReportTitle" xml:space="preserve"><value>Declaratie</value></data>
+  <data name="Expenses_Withdraw" xml:space="preserve"><value>Intrekken</value></data>
+  <data name="Expenses_Detail_WithdrawConfirm" xml:space="preserve"><value>Deze declaratie intrekken? Dit kan niet ongedaan worden gemaakt.</value></data>
+  <data name="Expenses_Detail_ReturnedForRevision" xml:space="preserve"><value>Teruggestuurd voor aanpassing:</value></data>
+  <data name="Expenses_Details" xml:space="preserve"><value>Details</value></data>
+  <data name="Expenses_Detail_ReceiptsTotal" xml:space="preserve"><value>Totaal bonnen</value></data>
+  <data name="Expenses_Detail_NoLines" xml:space="preserve"><value>Nog geen regels.</value></data>
+  <data name="Expenses_Attachment" xml:space="preserve"><value>Bijlage</value></data>
+  <data name="Expenses_Download" xml:space="preserve"><value>Downloaden</value></data>
+  <data name="Expenses_Detail_ProofOfExpenses" xml:space="preserve"><value>Bewijs van uitgaven:</value></data>
+  <data name="Expenses_Detail_InvoicedProofAmount" xml:space="preserve"><value>{0} van {1} gefactureerd</value></data>
+  <data name="Expenses_Detail_ProofsReviewedOnly" xml:space="preserve"><value>alleen beoordeeld, niet naar Holded gestuurd.</value></data>
+  <data name="Expenses_Payee" xml:space="preserve"><value>Begunstigde</value></data>
+  <data name="Expenses_ChangeIban" xml:space="preserve"><value>IBAN wijzigen</value></data>
+  <data name="Expenses_Detail_IbanRequired" xml:space="preserve"><value>Geen IBAN ingesteld. Verplicht vóór indiening.</value></data>
+  <data name="Expenses_SetIban" xml:space="preserve"><value>IBAN instellen</value></data>
+  <data name="Expenses_PaymentStatus" xml:space="preserve"><value>Betaalstatus</value></data>
+  <data name="Expenses_Detail_SubmittedApproved" xml:space="preserve"><value>Ingediend en goedgekeurd</value></data>
+  <data name="Expenses_Detail_RegisteredInHolded" xml:space="preserve"><value>Geregistreerd in Holded</value></data>
+  <data name="Expenses_Detail_OwedToYou" xml:space="preserve"><value>Je hebt nog {0} tegoed</value></data>
+  <data name="Expenses_Detail_OtherAmount" xml:space="preserve"><value>Inclusief {0} overig (voorgeschoten / correcties in Holded)</value></data>
+  <data name="Expenses_Detail_Paid" xml:space="preserve"><value>{0} betaald — saldo €0</value></data>
+  <data name="Expenses_Detail_PaidOn" xml:space="preserve"><value>{0} betaald op {1} — saldo €0</value></data>
+  <data name="Expenses_Detail_AwaitingPayment" xml:space="preserve"><value>In afwachting van betaling</value></data>
+  <data name="Expenses_Detail_ReadyToSubmit" xml:space="preserve"><value>Klaar om in te dienen?</value></data>
+  <data name="Expenses_Detail_SubmitGuidance" xml:space="preserve"><value>Zorg dat alle regels een bijlage hebben en dat je IBAN is ingesteld.</value></data>
+  <data name="Expenses_SubmitReport" xml:space="preserve"><value>Declaratie indienen</value></data>
+  <data name="Expenses_Detail_History" xml:space="preserve"><value>Geschiedenis</value></data>
+  <data name="Expenses_Detail_NoHistory" xml:space="preserve"><value>Nog niets vastgelegd.</value></data>
+  <data name="Expenses_Detail_UnknownCategory" xml:space="preserve"><value>(onbekende categorie)</value></data>
+  <data name="Expenses_IbanPlaceholder" xml:space="preserve"><value>bijv. ES7921000813610123456789</value></data>
+  <data name="Expenses_Preapprovals_OpenTitle" xml:space="preserve"><value>Openstaande voorafgaande goedkeuringen</value></data>
+  <data name="Expenses_Preapprovals_FileExpense" xml:space="preserve"><value>Declaratie indienen</value></data>
+  <data name="Expenses_Preapprovals_ClaimBy" xml:space="preserve"><value>Uiterlijk {0} indienen</value></data>
+  <data name="Expenses_Preapprovals_UpTo" xml:space="preserve"><value>tot {0}</value></data>
+  <data name="Expenses_Preapprovals_FileAgainst" xml:space="preserve"><value>Indienen op basis van een voorafgaande goedkeuring</value></data>
+  <data name="Expenses_Preapprovals_None" xml:space="preserve"><value>Geen voorafgaande goedkeuring</value></data>
+  <data name="Expenses_Preapprovals_AccountLocked" xml:space="preserve"><value>Een voorafgaande goedkeuring bepaalt de rekening en het maximum; de rekening hieronder wordt daaruit overgenomen.</value></data>
+  <data name="Expenses_Preapprovals_Banner" xml:space="preserve"><value>Vooraf goedgekeurd: {0}</value></data>
+  <data name="Expenses_Preapprovals_DaysLeft" xml:space="preserve"><value>Nog {0} dagen om in te dienen (uiterlijk {1}).</value></data>
+  <data name="Expenses_Preapprovals_DueToday" xml:space="preserve"><value>Dien vandaag in: de uiterste indiendatum is {0}.</value></data>
+  <data name="Expenses_Preapprovals_DeadlinePassed" xml:space="preserve"><value>De indieningsdeadline {0} is verstreken; deze declaratie kan niet meer op basis van de voorafgaande goedkeuring worden ingediend.</value></data>
+  <data name="Expenses_Preapprovals_FiledInTime" xml:space="preserve"><value>Op tijd ingediend: de indieningsdeadline geldt niet meer. Dien opnieuw in wanneer je klaar bent.</value></data>
+  <data name="Expenses_Preapprovals_Revoked" xml:space="preserve"><value>Deze voorafgaande goedkeuring is ingetrokken. De declaratie kan niet op basis hiervan worden goedgekeurd: na afwijzing kan de voorafgaande goedkeuring in het concept worden verwijderd of vervangen.</value></data>
+  <data name="Expenses_Preapprovals_Column" xml:space="preserve"><value>Voorafgaande goedkeuring</value></data>
+  <data name="Expenses_Preapprovals_RevokedBadge" xml:space="preserve"><value>ingetrokken</value></data>
+  <data name="Expenses_Validation_PreapprovalNotClaimable" xml:space="preserve"><value>Er kan niet op basis van die voorafgaande goedkeuring worden ingediend: deze is niet van het lid, staat niet open of de indieningstermijn is verstreken.</value></data>
+  <data name="Expenses_Validation_PreapprovalLocked" xml:space="preserve"><value>De voorafgaande goedkeuring en rekening van een ingediende declaratie kunnen niet worden gewijzigd.</value></data>
+  <data name="Expenses_Validation_PreapprovalRevoked" xml:space="preserve"><value>De voorafgaande goedkeuring is ingetrokken; deze declaratie kan niet op basis hiervan worden ingediend.</value></data>
+  <data name="Expenses_Validation_PreapprovalDeadlinePassed" xml:space="preserve"><value>De indieningsdeadline {0} is verstreken; deze declaratie kan niet meer op basis van de voorafgaande goedkeuring worden ingediend.</value></data>
+  <data name="Expenses_Validation_PreapprovalUnavailable" xml:space="preserve"><value>De voorafgaande goedkeuring is niet meer beschikbaar: deze is aan een andere declaratie gekoppeld of al gebruikt.</value></data>
+  <data name="Expenses_Detail_RejectedGuidance" xml:space="preserve"><value>Je kunt deze declaratie aanpassen zonder opnieuw te beginnen: open een regel hieronder om deze te bewerken, de bon te vervangen of de regel te verwijderen, en dien de declaratie daarna opnieuw in.</value></data>
+  <data name="Expenses_Detail_RejectedGuidanceLink" xml:space="preserve"><value>Naar de regels</value></data>
+  <data name="Expenses_Submitter" xml:space="preserve"><value>Indiener</value></data>
+  <data name="Expenses_LegalName" xml:space="preserve"><value>Officiële naam</value></data>
+  <data name="Expenses_SubjectHelp" xml:space="preserve"><value>Verplicht. Vul de naam in van het project waarvoor deze declaratie is, bijv. de naam van je kunstproject.</value></data>
+  <data name="Expenses_Validation_SubjectRequired" xml:space="preserve"><value>Voeg een onderwerp (de projectnaam) toe voordat je indient.</value></data>
+  <data name="Expenses_Validation_AmountPrecision" xml:space="preserve"><value>Voer een bedrag in met maximaal twee decimalen.</value></data>
+</root>

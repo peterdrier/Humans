@@ -72,7 +72,7 @@ Notes the table hides:
 - **`Models/`** — view models and the one builder that keeps the shifts action thin.
 - **`Views/` + `ViewComponents/`** — the three step pages, the guest and welcome pages, and the
   site-wide progress banner.
-- **`OnboardingResource.*`** — the section's own copy, six languages.
+- **`OnboardingResource.*`** — the section's own copy, every supported language.
 - Root: `Section.cs` (DI, issue queue, chrome) and the two declaration lists stored rows depend
   on, `OnboardingAuditActions` and `OnboardingNotificationSources`.
 
@@ -114,7 +114,7 @@ Base's.
   registers services only; `Humans.Onboarding.csproj` has no data-access reference.)
 - **Every rendered key resolves in the resource set the call site is bound to.** A section RCL
   binds `SharedResource` and `OnboardingResource`; a key rendered against the wrong one is
-  silently its own name, in all six languages.
+  silently its own name, in all supported languages.
   (`tests/Humans.Onboarding.Tests/Architecture/OnboardingLocalizerBindingTests.cs`.)
 
 ## 5. Seams

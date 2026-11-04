@@ -22,6 +22,7 @@ public sealed class TeamsEmailsTests
     [InlineData("it")]
     [InlineData("fr")]
     [InlineData("ca")]
+    [InlineData("nl")]
     public void AddedToTeam_StampsTeamUpdates(string culture)
     {
         var msg = Create().AddedToTeam(Guid.NewGuid(), "a@x.com", "Alice", "Alpha", "alpha", [], culture);

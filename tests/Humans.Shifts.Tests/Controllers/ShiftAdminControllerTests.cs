@@ -1090,12 +1090,14 @@ public class ShiftAdminControllerTests
     [InlineData("it", false)]
     [InlineData("fr", false)]
     [InlineData("ca", false)]
+    [InlineData("nl", false)]
     [InlineData("en", true)]
     [InlineData("es", true)]
     [InlineData("de", true)]
     [InlineData("it", true)]
     [InlineData("fr", true)]
     [InlineData("ca", true)]
+    [InlineData("nl", true)]
     public async Task Delete_ConfirmedSignupRefusalIsLocalizedForCoordinators(string culture, bool deleteShift)
     {
         using var scope = new CultureScope(culture);

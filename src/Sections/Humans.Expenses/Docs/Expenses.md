@@ -134,7 +134,7 @@ Append-on-approve, drained by `HoldedExpenseOutboxJob`. Fields: `EventType` (Cre
 
 The submitter-facing `/Expenses/{id}/Edit` and `/Expenses/{id}/Lines/New` views use `ExpensesResource` for every label, status, action, confirmation, explanatory message, and accessibility label in all supported cultures.
 The submitter-facing `/Expenses/New` form uses `ExpensesResource` for all labels, actions, placeholder text, guidance, and accessibility labels in all supported cultures.
-The submitter-facing `/Expenses/{id}` detail view localizes report labels and status, attachments, payment status, submission guidance, withdrawal confirmation, and history headings in all supported cultures, reusing shared labels where appropriate. The submitter-facing IBAN form also localizes its example placeholder. Member form annotations use shared required, length, and numeric-range messages in all six cultures; their validation limits are unchanged. Finance/coordinator-only controls retain their operator exemption.
+The submitter-facing `/Expenses/{id}` detail view localizes report labels and status, attachments, payment status, submission guidance, withdrawal confirmation, and history headings in all supported cultures, reusing shared labels where appropriate. The submitter-facing IBAN form also localizes its example placeholder. Member form annotations use shared required, length, and numeric-range messages in all supported cultures; their validation limits are unchanged. Finance/coordinator-only controls retain their operator exemption.
 
 ## Actors & Roles
 
@@ -167,13 +167,13 @@ The submitter-facing `/Expenses/{id}` detail view localizes report labels and st
 - Successful Holded push audit summaries are bounded to 3500 UTF-16 units without splitting surrogate pairs, so Unicode receipt descriptions remain valid for database encoding.
 - Holded outbox retries and write-offs bound saved error summaries to 2000 UTF-16 units without splitting surrogate pairs. Permanent-failure audits use the same bounded summary; logs retain the full exception.
 
-- Member report-list status badges reuse the section’s existing labels in all six cultures and the shared badge-color registry; stored status values and workflow rules are unchanged.
+- Member report-list status badges reuse the section’s existing labels in all supported cultures and the shared badge-color registry; stored status values and workflow rules are unchanged.
 
 - Report-subject previews retain their 60-character member-list and 80-character review-queue limits without splitting UTF-16 surrogate pairs; full notes remain unchanged.
 
 - Shared table currency and number cells use the selected UI culture; numeric sort values stay invariant.
 
-- Review queues retain reports whose submitter is missing or has no usable name. Their name cells use the view’s shared localized Unknown label; server name projections contain only actual nonblank burner names. The member-accessible queue uses the section's six-culture breadcrumb navigation label and the shared table's localized department-filter label and all-options caption.
+- Review queues retain reports whose submitter is missing or has no usable name. Their name cells use the view’s shared localized Unknown label; server name projections contain only actual nonblank burner names. The member-accessible queue uses the section's localized breadcrumb navigation label and the shared table's localized department-filter label and all-options caption.
 - Report detail/edit, new-line, line/proof, IBAN, and review GETs propagate request cancellation through existing token-capable report, profile, timeline, creditor, account-option, name, and failed-push reads. Edit-form account and grant lookups retain request cancellation on initial load and redisplay. Shared report/IBAN helpers keep non-cancellable defaults for mutation callers.
 - New-report form user resolution and attachment download/inline reads honor request cancellation. Abandoned reads do not become error flashes or 404s; ordinary failures and attachment denial responses retain their existing behavior.
 
@@ -298,7 +298,7 @@ The submitter-facing `/Expenses/{id}` detail view localizes report labels and st
 - **Badge colours** — `Models/StatusBadgeExtensions.GetBadgeClass` is the single source; `Section.Register` projects it into `EnumBadgeMap` for the table-column half of the same page.
 - **Cross-domain navs** — none declared. All cross-section linkage is scalar FK only.
 - **Cross-section calls** route through `IBudgetService`, `ITeamService`, `IUserService`, `IFinanceService` / `IFinanceWrite` (IBAN), `IEmailService`, `IAuditLogService`, `IFileStorage`, `IHoldedClient`, `IFinanceService`, `IFinanceWrite` (Finance, Feature 2), and `IPreapprovalService` / `IPreapprovalWrite` (Preapprovals).
-- **Member mutation messages** — controller-owned header/line/file/submit/withdraw text and every IBAN mutation outcome use the section resources in all six cultures. `ExpenseIbanSaveResult.MessageKey` carries a resource key resolved by the controller for success toasts, field validation, and failure toasts. Every member mutation carries an `ExpenseError` resource key and format arguments, resolved by the controller; gated coordinator/finance actions retain their English operator feedback. Expected refusals return results and log at Warning; dependency faults log their exception and return a generic failure.
+- **Member mutation messages** — controller-owned header/line/file/submit/withdraw text and every IBAN mutation outcome use the section resources in all supported cultures. `ExpenseIbanSaveResult.MessageKey` carries a resource key resolved by the controller for success toasts, field validation, and failure toasts. Every member mutation carries an `ExpenseError` resource key and format arguments, resolved by the controller; gated coordinator/finance actions retain their English operator feedback. Expected refusals return results and log at Warning; dependency faults log their exception and return a generic failure.
 - **Report action preamble** — one private controller helper resolves the current user, loads the report and optionally checks the existing operation requirement. Missing users/reports return 404; operation denial returns 403. Line-read, IBAN, withdrawal and non-editable-page rules remain action-specific.
 - **Architecture test** — `tests/Humans.Expenses.Tests/ExpensesArchitectureTests.cs` pins the shape.
 

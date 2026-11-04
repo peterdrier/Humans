@@ -31,6 +31,7 @@ public class CalendarLabelsViewTests
     [Xunit.InlineData("it", "luglio")]
     [Xunit.InlineData("fr", "juillet")]
     [Xunit.InlineData("ca", "juliol")]
+    [Xunit.InlineData("nl", "juli")]
     public async Task MonthHeadings_UseUiLanguageWithEnglishInputCulture(string language, string month)
     {
         using var inputCulture = new CultureScope("en");
@@ -52,6 +53,7 @@ public class CalendarLabelsViewTests
     [Xunit.InlineData("it", "lun", "lunedì")]
     [Xunit.InlineData("fr", "lun.", "lundi")]
     [Xunit.InlineData("ca", "dl.", "dilluns")]
+    [Xunit.InlineData("nl", "ma", "maandag")]
     public async Task WeekdayLabels_UseUiLanguageAndPreserveRecurrenceCodes(
         string language, string abbreviated, string monday)
     {

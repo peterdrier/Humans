@@ -33,6 +33,7 @@ public class AvailabilityCalendarViewTests
     [Xunit.InlineData("it")]
     [Xunit.InlineData("fr")]
     [Xunit.InlineData("ca")]
+    [Xunit.InlineData("nl")]
     public async Task Selected_days_label_preserves_the_member_language(string language)
     {
         using var culture = new CultureScope(language);

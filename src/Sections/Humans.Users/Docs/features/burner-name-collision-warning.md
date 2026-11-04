@@ -98,7 +98,7 @@ too short for another lookup.
 
 Localization keys `Users_ProfileEdit_BurnerNameCollisionOne` /
 `Users_ProfileEdit_BurnerNameCollisionMany` are defined in `UsersResource.resx` and the
-five locale siblings (es/ca/fr/de/it).
+locale siblings (es/ca/fr/de/it/nl).
 
 ## Related
 

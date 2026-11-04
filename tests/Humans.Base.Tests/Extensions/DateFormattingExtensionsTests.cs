@@ -14,6 +14,7 @@ public sealed class DateFormattingExtensionsTests
     [Xunit.InlineData("it", true)]
     [Xunit.InlineData("fr", true)]
     [Xunit.InlineData("ca", true)]
+    [Xunit.InlineData("nl", true)]
     public void Display_uses_ui_culture_without_changing_parsing_or_machine_formats(
         string culture, bool dayFirst)
     {

@@ -34,6 +34,7 @@ public class StorePricesViewTests
     [Xunit.InlineData("it", "10,5")]
     [Xunit.InlineData("fr", "10,5")]
     [Xunit.InlineData("ca", "10,5")]
+    [Xunit.InlineData("nl", "10,5")]
     public async Task VatBreakdowns_UseUiDecimalSeparator(string language, string vat)
     {
         using var inputCulture = new CultureScope("en");
@@ -63,6 +64,7 @@ public class StorePricesViewTests
     [Xunit.InlineData("it", OrderState.Open, "Aperto")]
     [Xunit.InlineData("fr", OrderState.Open, "Ouverte")]
     [Xunit.InlineData("ca", OrderState.Open, "Oberta")]
+    [Xunit.InlineData("nl", OrderState.Open, "Open")]
     [Xunit.InlineData("en", OrderState.InvoiceIssued, "Invoice issued")]
     [Xunit.InlineData("es", OrderState.InvoiceIssued, "Factura emitida")]
     public async Task MemberOrderList_UsesExistingStateLabels(string language, OrderState state, string label)

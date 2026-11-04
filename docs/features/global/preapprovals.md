@@ -248,7 +248,7 @@ Builds on Phase 2's `ExpenseReport.HoldedAccountNumber` / nullable category.
 
 ## Preapprovals UI
 
-### Member side (localized, six cultures)
+### Member side (localized, all supported cultures)
 
 | Route | Who | What |
 |-------|-----|------|
@@ -293,7 +293,7 @@ Negative cases to verify:
 ## Notifications and email
 
 Through `INotificationEmitter` (in-app) and `IEmailService` (email), both to the beneficiary.
-Every message below is member-facing: resx in all six cultures, rendered in the recipient's
+Every message below is member-facing: resx in all supported cultures, rendered in the recipient's
 preferred culture (the English here is the key's meaning, not the copy):
 
 | Event | Priority | Content |

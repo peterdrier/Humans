@@ -45,7 +45,7 @@ commit shas, their PR-body lines, and this brief:
 > `docs/architecture/code-review-rules.md`, and every `memory/INDEX.md` atom whose trigger
 > matches the files (read the atom). Specifically: behaviour actually preserved or
 > actually fixed; no other section's tables; no new public surface without a defensible
-> reason; user-facing strings in all six cultures with section-prefixed keys; invariant
+> reason; user-facing strings in all supported cultures with section-prefixed keys; invariant
 > doc updated for behaviour changes; tests not weakened; no dead code left behind
 > (orphaned constants, unused overloads); not bookkeeping dressed as a fix. Default to
 > GOOD for a plain, correct change — style is not a defect. Return a table

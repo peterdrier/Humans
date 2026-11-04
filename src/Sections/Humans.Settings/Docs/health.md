@@ -76,8 +76,6 @@ The shapes imply exactly today's layout:
 - **`EarlyEntryStartOffset`, when set, lies in `[BuildStartOffset, 0)`.** Enforced twice
   on purpose — `Services/Service.cs:50` is the invariant, `Models/EventSettingsViewModel.cs:88`
   is the field-level message the operator sees.
-- **The build window partitions.** `BuildStartOffset ≤ FirstCrew < SetupWeek < PreEvent <
-  FinishingWeekend < 0`, at `Models/EventSettingsViewModel.cs:65` and `:74`.
 - **Every event-settings save is audited with its actor.**
   `Services/Service.cs:65`; the actor comes from the signed-in principal, and a request
   without one is challenged rather than saved (`Controllers/SettingsAdminController.cs:42`).

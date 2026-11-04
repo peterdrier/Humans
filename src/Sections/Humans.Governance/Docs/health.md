@@ -22,7 +22,7 @@ them by email and in-app, and leaves an audit entry. Ninety days before a term r
 person is reminded to re-apply. Individual Board positions are destroyed the moment the
 decision is made; only the Board's collective note and the meeting date survive.
 
-**Binding votes of the association.** The Board writes a motion in the six languages, with
+**Binding votes of the association.** The Board writes a motion in every supported language, with
 either a yes/no/abstain answer or a ranked list of options, and a time it closes. An Admin
 opens it; at that instant the list of who may vote is frozen — the current Asociados and Board
 members vote for the record, and, if the motion says so, Colaboradores or every volunteer may

@@ -433,6 +433,7 @@ public class CampControllerTests
     [InlineData("it")]
     [InlineData("fr")]
     [InlineData("ca")]
+    [InlineData("nl")]
     public async Task CampForms_ValidateExistingFieldLimitsBeforeWriting(string culture)
     {
         using var cultureScope = new CultureScope(culture);
@@ -529,6 +530,7 @@ public class CampControllerTests
     [InlineData("it")]
     [InlineData("fr")]
     [InlineData("ca")]
+    [InlineData("nl")]
     public async Task RegistrationAndRenewal_LocalizeRuleFailures(string culture)
     {
         using var cultureScope = new CultureScope(culture);
@@ -575,6 +577,7 @@ public class CampControllerTests
     [InlineData("it")]
     [InlineData("fr")]
     [InlineData("ca")]
+    [InlineData("nl")]
     public async Task Register_LocalizesThePhoneFieldInValidationErrors(string culture)
     {
         using var cultureScope = new CultureScope(culture);
@@ -605,6 +608,7 @@ public class CampControllerTests
     [InlineData("it")]
     [InlineData("fr")]
     [InlineData("ca")]
+    [InlineData("nl")]
     public async Task UploadImage_LocalizesValidationFailures(string culture)
     {
         using var cultureScope = new CultureScope(culture);
@@ -643,6 +647,7 @@ public class CampControllerTests
     [InlineData("it")]
     [InlineData("fr")]
     [InlineData("ca")]
+    [InlineData("nl")]
     public async Task SelfMembershipActions_LocalizeRuleFailures(string culture)
     {
         using var cultureScope = new CultureScope(culture);
@@ -682,6 +687,7 @@ public class CampControllerTests
     [InlineData("it")]
     [InlineData("fr")]
     [InlineData("ca")]
+    [InlineData("nl")]
     public async Task LeadActions_LocalizeGuardFailures(string culture)
     {
         using var cultureScope = new CultureScope(culture);
@@ -812,6 +818,7 @@ public class CampControllerTests
     [InlineData("it")]
     [InlineData("fr")]
     [InlineData("ca")]
+    [InlineData("nl")]
     public void ContactForm_LocalizesRequiredAndLengthMessages(string culture)
     {
         using var cultureScope = new CultureScope(culture);

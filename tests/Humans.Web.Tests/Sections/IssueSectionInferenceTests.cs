@@ -48,6 +48,7 @@ public class IssueSectionInferenceTests
     [InlineData("it", "Turni e volontariato", "Generale")]
     [InlineData("fr", "Quarts et bénévolat", "Général")]
     [InlineData("ca", "Torns i voluntariat", "General")]
+    [InlineData("nl", "Diensten & vrijwilligerswerk", "Algemeen")]
     public void AreaLabels_UseViewerCultureAndPreserveUnknownRoutingKeys(string culture, string shifts, string general)
     {
         var originalCulture = CultureInfo.CurrentUICulture;

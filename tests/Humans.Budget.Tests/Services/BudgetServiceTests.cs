@@ -1939,6 +1939,7 @@ public sealed class BudgetServiceTests
     [InlineData("it")]
     [InlineData("fr")]
     [InlineData("ca")]
+    [InlineData("nl")]
     public async Task SyncTicketingActualsAsync_materializes_projected_weeks_when_projection_is_valid(string culture)
     {
         using var scope = new Humans.Base.Extensions.CultureScope(culture);
@@ -2235,6 +2236,7 @@ public sealed class BudgetServiceTests
     [InlineData("it", "Credito IVA", "IVA a debito", "Riserve di liquidità (90%)", "Imposte spagnole (10%)", "Margine di Main")]
     [InlineData("fr", "Crédit de TVA", "TVA due", "Réserves de trésorerie (90%)", "Impôts espagnols (10%)", "Marge de Main")]
     [InlineData("ca", "IVA a compensar", "IVA a pagar", "Reserves d'efectiu (90%)", "Impostos espanyols (10%)", "Marge de Main")]
+    [InlineData("nl", "Te vorderen btw", "Te betalen btw", "Kasreserves (90%)", "Spaanse belastingen (10%)", "Buffer voor Main")]
     public void ComputeBudgetSummaryWithBuffers_localizes_generated_labels(
         string culture, string credit, string liability, string reserves, string taxes, string buffer)
     {

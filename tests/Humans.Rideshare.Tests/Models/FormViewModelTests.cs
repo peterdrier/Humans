@@ -27,6 +27,7 @@ public sealed class FormViewModelTests
     [InlineData("it")]
     [InlineData("fr")]
     [InlineData("ca")]
+    [InlineData("nl")]
     public void MemberForms_LocalizeValidationMessages(string culture)
     {
         using var cultureScope = new CultureScope(culture);

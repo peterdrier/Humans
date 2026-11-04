@@ -16,6 +16,7 @@ public class PersonSearchMatcherTests
     [InlineData("it", "Nome", "Città", "Altro", "Nome legale")]
     [InlineData("fr", "Nom", "Ville", "Autre", "Nom légal")]
     [InlineData("ca", "Nom", "Ciutat", "Altres", "Nom legal")]
+    [InlineData("nl", "Naam", "Stad", "Overig", "Officiële naam")]
     public void Built_in_match_labels_use_ui_culture_and_custom_labels_stay_verbatim(
         string culture, string name, string city, string other, string legalName)
     {

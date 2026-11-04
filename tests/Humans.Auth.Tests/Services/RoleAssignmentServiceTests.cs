@@ -238,6 +238,7 @@ public sealed class RoleAssignmentServiceTests : AuthTestHarness
     [InlineData("it", "Ti è stato assegnato il ruolo Board", "La tua assegnazione al ruolo Board è terminata")]
     [InlineData("fr", "Le rôle Board t’a été attribué", "Ton attribution au rôle Board a pris fin")]
     [InlineData("ca", "Se t'ha assignat el rol Board", "La teva assignació al rol Board ha finalitzat")]
+    [InlineData("nl", "Je hebt de rol Board gekregen", "Je toewijzing voor de rol Board is beëindigd")]
     [InlineData("", "You were assigned the Board role", "Your Board role assignment has ended")]
     [InlineData("not-a-culture", "You were assigned the Board role", "Your Board role assignment has ended")]
     [InlineData("pt", "You were assigned the Board role", "Your Board role assignment has ended")]

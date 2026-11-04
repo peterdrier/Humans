@@ -54,6 +54,7 @@ public class AuditLogUiLocalizationTests
     [InlineData("it", "Sistema", "ha assegnato un ruolo")]
     [InlineData("fr", "Système", "a attribué un rôle")]
     [InlineData("ca", "Sistema", "ha assignat un rol")]
+    [InlineData("nl", "Systeem", "wees een rol toe")]
     public async Task MemberLine_RendersLocalizedActorAndVerb_WithoutChangingStoredDescription(
         string cultureName, string systemLabel, string subjectlessVerb)
     {

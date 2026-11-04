@@ -1032,6 +1032,7 @@ public sealed class RideshareServiceTests : RideshareTestHarness
     [InlineData("it", "Un human è interessato al tuo viaggio")]
     [InlineData("fr", "Un human est intéressé par votre trajet")]
     [InlineData("ca", "Un human està interessat en el teu viatge")]
+    [InlineData("nl", "Een human heeft interesse in je rit")]
     public async Task InterestNotification_MissingActorName_UsesRecipientLanguage(string language, string title)
     {
         var driver = SeedUser("Ada");

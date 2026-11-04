@@ -339,6 +339,7 @@ public class EmailProvisioningServiceTests
     [InlineData("it", "Il tuo account @nobodies.team è pronto", "Visualizza profilo", "it")]
     [InlineData("fr", "Ton compte @nobodies.team est prêt", "Voir le profil", "fr")]
     [InlineData("ca", "El teu compte @nobodies.team està llest", "Mostra el perfil", "ca")]
+    [InlineData("nl", "Je @nobodies.team-account is klaar", "Profiel bekijken", "nl")]
     [InlineData("xx", "Your @nobodies.team account is ready", "View profile", "en")]
     [InlineData("", "Your @nobodies.team account is ready", "View profile", "en")]
     [InlineData(" ", "Your @nobodies.team account is ready", "View profile", "en")]

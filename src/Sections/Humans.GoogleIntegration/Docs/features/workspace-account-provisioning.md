@@ -47,7 +47,7 @@ Nobodies Collective uses Google Workspace for organizational email (@nobodies.te
 - Email sent to the human's personal (recovery) email, NOT the new @nobodies.team address
 - Contains: username, temporary password, link to https://mail.google.com/
 - Mentions that 2FA setup is required on first login
-- Localized in all supported languages (en/es/de/fr/it/ca)
+- Localized in all supported languages (en/es/de/fr/it/ca/nl)
 - Sent through `IEmailService.SendAsync`, which writes the email outbox row
 - When there is no recovery address, or the hand-off to `IEmailService` throws, provisioning still succeeds (the account is created and linked) and the admin sees an info message to reset the password if credentials do not arrive; the in-app `WorkspaceCredentialsReady` notice then tells the person to contact an administrator for credentials
 

@@ -22,7 +22,7 @@ of reader it is. The two are **not** the same:
 | Reader | Why | Remedy |
 |---|---|---|
 | **Persisted** — the name is a value in a column, matched later by equality | Rows already in the database carry the old string and cannot be re-emitted. It is a contract with existing data | **Pin it.** Declare a `const string` holding the existing value; never regenerate it from `nameof` / `typeof(T).Name` |
-| **Key-forming** — the name builds a lookup key into an asset you ship (`Enum_{typeof(TEnum).Name}_{value}` in the resx set) | The keys are source, not data. They can change atomically with the type, and `EnumDisplay` deliberately derives them | **Rename together.** Rename the keys in all six language files in the same commit as the type. Do *not* pin the type name |
+| **Key-forming** — the name builds a lookup key into an asset you ship (`Enum_{typeof(TEnum).Name}_{value}` in the resx set) | The keys are source, not data. They can change atomically with the type, and `EnumDisplay` deliberately derives them | **Rename together.** Rename the keys in every culture's language file in the same commit as the type. Do *not* pin the type name |
 
 Pinning a resource key would freeze the resx set to a name the code no longer uses, which is worse
 than the rename. Pinning a persisted discriminator is the only correct answer, because the database
@@ -47,7 +47,7 @@ the type is now `Product`. Point the tests at the constants so they pin the cont
 following the next rename. Never write a backfill to "fix" old rows; the old rows were never wrong
 ([`no-data-backfills`](../process/no-data-backfills.md)).
 
-**Key-forming hit** → rename the keys alongside the type, in all six language files, in the same
+**Key-forming hit** → rename the keys alongside the type, in every culture's language file, in the same
 commit. Nothing gets pinned; the resx set stays derived from the live type name, which is what
 `EnumDisplay` expects.
 

@@ -61,7 +61,7 @@ The shapes imply these and no more:
   the membership filter redirects to (status wall, pending deletion with its cancel). The
   deletion work is Users' `IAccountDeletionService`; the controllers map its result to a
   flash and a redirect.
-- **Two views and one resource set** (`GdprResource`, six cultures) for the landings and
+- **Two views and one resource set** (`GdprResource`, all supported cultures) for the landings and
   the flashes.
 - **One `Section.cs`** registering exactly the orchestrator.
 

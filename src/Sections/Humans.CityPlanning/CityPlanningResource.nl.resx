@@ -1,0 +1,391 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" msdata:Ordinal="0" />
+              <xsd:attribute name="type" type="xsd:string" />
+              <xsd:attribute name="mimetype" type="xsd:string" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="resheader">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>1.3</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+
+  <data name="CityPlanning_BarrioMapTitle" xml:space="preserve">
+    <value>Plaatsingskaart voor barrio's</value>
+  </data>
+  <data name="CityPlanning_PlacementPhase" xml:space="preserve">
+    <value>Plaatsingsfase</value>
+  </data>
+  <data name="CityPlanning_StatusOpen" xml:space="preserve">
+    <value>Open</value>
+  </data>
+  <data name="CityPlanning_StatusClosed" xml:space="preserve">
+    <value>Gesloten</value>
+  </data>
+  <data name="CityPlanning_StatusChangeable" xml:space="preserve">
+    <value>Alleen aanpassingen</value>
+  </data>
+  <data name="CityPlanning_HelpButton" xml:space="preserve">
+    <value>Help</value>
+  </data>
+  <data name="CityPlanning_AddMyBarrioButton" xml:space="preserve">
+    <value>Mijn barrio op de kaart toevoegen</value>
+  </data>
+  <data name="CityPlanning_AddABarrioOption" xml:space="preserve">
+    <value>Barrio toevoegen…</value>
+  </data>
+  <data name="CityPlanning_SaveButton" xml:space="preserve">
+    <value>Opslaan</value>
+  </data>
+  <data name="CityPlanning_HistoryButton" xml:space="preserve">
+    <value>Geschiedenis</value>
+  </data>
+  <data name="CityPlanning_MeasureButton" xml:space="preserve">
+    <value>Meten</value>
+  </data>
+  <data name="CityPlanning_ClearMeasurementsButton" xml:space="preserve">
+    <value>Alle metingen wissen</value>
+  </data>
+  <data name="CityPlanning_BarrioZones" xml:space="preserve">
+    <value>Barriozones</value>
+  </data>
+  <data name="CityPlanning_Layers" xml:space="preserve">
+    <value>Lagen</value>
+  </data>
+  <data name="CityPlanning_AdminLink" xml:space="preserve">
+    <value>Beheer</value>
+  </data>
+  <data name="CityPlanning_GoToPlacementMap" xml:space="preserve">
+    <value>Naar barrioplaatsing</value>
+  </data>
+  <data name="CityPlanning_GoToContainerMap" xml:space="preserve">
+    <value>Naar containerplaatsing</value>
+  </data>
+  <data name="CityPlanning_PlacementPhaseInfo" xml:space="preserve">
+    <value>Info over de plaatsingsfase</value>
+  </data>
+  <data name="CityPlanning_Admin_Title" xml:space="preserve">
+    <value>Beheer barriokaart</value>
+  </data>
+  <data name="CityPlanning_Admin_ViewMap" xml:space="preserve">
+    <value>Kaart bekijken</value>
+  </data>
+  <data name="CityPlanning_Admin_SettingsMoved" xml:space="preserve">
+    <value>Plaatsingsperiodes, geplande tijden en registratie-informatie zijn verplaatst naar</value>
+  </data>
+  <data name="CityPlanning_Admin_PlacementPhaseCard" xml:space="preserve">
+    <value>Plaatsingsfase</value>
+  </data>
+  <data name="CityPlanning_Admin_Status" xml:space="preserve">
+    <value>Status:</value>
+  </data>
+  <data name="CityPlanning_Admin_OpenedAt" xml:space="preserve">
+    <value>Geopend op {0}</value>
+  </data>
+  <data name="CityPlanning_Admin_ClosedAt" xml:space="preserve">
+    <value>Gesloten op {0}</value>
+  </data>
+  <data name="CityPlanning_Admin_LimitZoneCard" xml:space="preserve">
+    <value>Grenszone barrio's</value>
+  </data>
+  <data name="CityPlanning_Admin_LimitZoneUploaded" xml:space="preserve">
+    <value>Grenszone geüpload</value>
+  </data>
+  <data name="CityPlanning_Admin_LimitZoneDeleteConfirm" xml:space="preserve">
+    <value>Grenszone verwijderen?</value>
+  </data>
+  <data name="CityPlanning_Admin_LimitZoneEmpty" xml:space="preserve">
+    <value>Nog geen grenszone geüpload.</value>
+  </data>
+  <data name="CityPlanning_Admin_LimitZoneHint" xml:space="preserve">
+    <value>Features kunnen een optionele eigenschap SoundZone bevatten. Geldige waarden: blue, green, yellow, orange, red, of twee daarvan gecombineerd met een underscore (bijv. yellow_orange).</value>
+  </data>
+  <data name="CityPlanning_Admin_OfficialZonesCard" xml:space="preserve">
+    <value>Officiële zones</value>
+  </data>
+  <data name="CityPlanning_Admin_OfficialZonesUploaded" xml:space="preserve">
+    <value>Officiële zones geüpload</value>
+  </data>
+  <data name="CityPlanning_Admin_OfficialZonesDeleteConfirm" xml:space="preserve">
+    <value>De officiële zones verwijderen?</value>
+  </data>
+  <data name="CityPlanning_Admin_OfficialZonesEmpty" xml:space="preserve">
+    <value>Nog geen officiële zones geüpload.</value>
+  </data>
+  <data name="CityPlanning_Admin_OfficialZonesHint" xml:space="preserve">
+    <value>Het label van elke feature wordt uit de eigenschap Name gelezen, indien aanwezig.</value>
+  </data>
+  <data name="CityPlanning_Admin_UploadGeoJson" xml:space="preserve">
+    <value>GeoJSON-bestand uploaden</value>
+  </data>
+  <data name="CityPlanning_Admin_Upload" xml:space="preserve">
+    <value>Uploaden</value>
+  </data>
+  <data name="CityPlanning_Admin_Download" xml:space="preserve">
+    <value>Downloaden</value>
+  </data>
+  <data name="CityPlanning_Admin_Remove" xml:space="preserve">
+    <value>Verwijderen</value>
+  </data>
+  <data name="CityPlanning_Admin_ExportCard" xml:space="preserve">
+    <value>Exporteren</value>
+  </data>
+  <data name="CityPlanning_Admin_ExportDescription" xml:space="preserve">
+    <value>Download alle kamppolygonen voor {0} als een GeoJSON FeatureCollection.</value>
+  </data>
+  <data name="CityPlanning_Admin_DownloadGeoJson" xml:space="preserve">
+    <value>GeoJSON downloaden ({0})</value>
+  </data>
+  <data name="CityPlanning_Admin_ContainersCard" xml:space="preserve">
+    <value>Containers ({0})</value>
+  </data>
+  <data name="CityPlanning_Admin_ContainersDesc" xml:space="preserve">
+    <value>Beheer alle containers — van de organisatie en van barrio's.</value>
+  </data>
+  <data name="CityPlanning_Admin_ManageContainers" xml:space="preserve">
+    <value>Containers beheren</value>
+  </data>
+  <data name="CityPlanning_Admin_ContainerPlacement" xml:space="preserve">
+    <value>Containerplaatsing</value>
+  </data>
+  <data name="CityPlanning_Admin_OpenContainerPlacement" xml:space="preserve">
+    <value>Openen</value>
+  </data>
+  <data name="CityPlanning_Admin_CloseContainerPlacement" xml:space="preserve">
+    <value>Sluiten</value>
+  </data>
+  <data name="CityPlanning_Admin_BarrioContainersEmpty" xml:space="preserve">
+    <value>Nog geen containers voor {0}.</value>
+  </data>
+  <data name="CityPlanning_Admin_AddBarrioContainer" xml:space="preserve">
+    <value>Container toevoegen — {0}</value>
+  </data>
+  <data name="CityPlanning_Admin_ImportCard" xml:space="preserve">
+    <value>Polygonen importeren</value>
+  </data>
+  <data name="CityPlanning_Admin_ImportDescription" xml:space="preserve">
+    <value>Upload een GeoJSON FeatureCollection om kamppolygonen voor {0} in bulk bij te werken. Features worden gekoppeld op basis van de eigenschap campName of campSlug.</value>
+  </data>
+  <data name="CityPlanning_Admin_ImportFileLabel" xml:space="preserve">
+    <value>GeoJSON-bestand</value>
+  </data>
+  <data name="CityPlanning_Admin_ImportPreviewBtn" xml:space="preserve">
+    <value>Importvoorbeeld bekijken</value>
+  </data>
+  <data name="CityPlanning_Admin_ImportModalTitle" xml:space="preserve">
+    <value>Importvoorbeeld</value>
+  </data>
+  <data name="CityPlanning_Admin_ImportWillBeUpdated" xml:space="preserve">
+    <value>Wordt bijgewerkt</value>
+  </data>
+  <data name="CityPlanning_Admin_ImportCampHeader" xml:space="preserve">
+    <value>Kamp</value>
+  </data>
+  <data name="CityPlanning_Admin_ImportPreviousArea" xml:space="preserve">
+    <value>Vorige oppervlakte</value>
+  </data>
+  <data name="CityPlanning_Admin_ImportNewArea" xml:space="preserve">
+    <value>Nieuwe oppervlakte</value>
+  </data>
+  <data name="CityPlanning_Admin_ImportUnrecognized" xml:space="preserve">
+    <value>Niet-herkende features (worden overgeslagen)</value>
+  </data>
+  <data name="CityPlanning_Admin_ImportConfirmBtn" xml:space="preserve">
+    <value>Import bevestigen</value>
+  </data>
+  <data name="CityPlanning_Admin_ImportSelectFileError" xml:space="preserve">
+    <value>Selecteer een GeoJSON-bestand.</value>
+  </data>
+  <data name="CityPlanning_Admin_ImportInvalidJsonError" xml:space="preserve">
+    <value>Ongeldig bestand — geen geldige JSON.</value>
+  </data>
+  <data name="CityPlanning_Admin_ImportNotFeatureCollectionError" xml:space="preserve">
+    <value>Het bestand moet een GeoJSON FeatureCollection zijn.</value>
+  </data>
+  <data name="CityPlanning_Admin_ImportFetchStateError" xml:space="preserve">
+    <value>Kon de kampenlijst niet laden. Probeer het opnieuw.</value>
+  </data>
+  <data name="CityPlanning_Admin_ImportNoCampsMatched" xml:space="preserve">
+    <value>Geen overeenkomende kampen gevonden.</value>
+  </data>
+  <data name="CityPlanning_Admin_ImportTokenMissingError" xml:space="preserve">
+    <value>Beveiligingstoken ontbreekt. Vernieuw de pagina.</value>
+  </data>
+  <data name="CityPlanning_Admin_ImportFileTooLargeError" xml:space="preserve">
+    <value>Bestand is te groot (max. 10 MB).</value>
+  </data>
+  <data name="CityPlanning_Admin_ImportNotPolygonSuffix" xml:space="preserve">
+    <value>(geen polygoon)</value>
+  </data>
+  <data name="CityPlanning_Admin_ImportUpdating" xml:space="preserve">
+    <value>{0} polygoon/polygonen bijwerken…</value>
+  </data>
+  <data name="CityPlanning_Admin_ImportSuccess" xml:space="preserve">
+    <value>{0} polygoon/polygonen bijgewerkt.</value>
+  </data>
+  <data name="CityPlanning_Admin_ImportPartialFailure" xml:space="preserve">
+    <value>{0} bijgewerkt, {1} mislukt: {2}.</value>
+  </data>
+  <data name="CityPlanning_HistoryTitle" xml:space="preserve">
+    <value>Polygoongeschiedenis</value>
+  </data>
+  <data name="CityPlanning_Loading" xml:space="preserve">
+    <value>Laden…</value>
+  </data>
+  <data name="CityPlanning_Help_WhenIsIt" xml:space="preserve">
+    <value>Wanneer is het?</value>
+  </data>
+  <data name="CityPlanning_Help_Opens" xml:space="preserve">
+    <value>Opent:</value>
+  </data>
+  <data name="CityPlanning_Help_LastDayToPlace" xml:space="preserve">
+    <value>Laatste dag om je barrio te plaatsen:</value>
+  </data>
+  <data name="CityPlanning_Help_ChangeableUntil" xml:space="preserve">
+    <value>Al geplaatste barrio's kunnen worden aangepast tot:</value>
+  </data>
+  <data name="CityPlanning_Help_WhenPlaceholder" xml:space="preserve">
+    <value>De plaatsingsfase duurt een beperkte tijd — de exacte datums verschijnen hier binnenkort. Plaats je barrio voordat de fase sluit!</value>
+  </data>
+  <data name="CityPlanning_Help_PlacingTitle" xml:space="preserve">
+    <value>Je barrio plaatsen</value>
+  </data>
+  <data name="CityPlanning_Help_PlacingBody" xml:space="preserve">
+    <value>Klik op {0} om te beginnen met tekenen. Klik daarna op de kaart om punten te plaatsen die je ruimte afbakenen — elke klik voegt een hoekpunt toe. Sluit de vorm door weer op het eerste punt te klikken.</value>
+  </data>
+  <data name="CityPlanning_Help_AdjustingTitle" xml:space="preserve">
+    <value>De vorm aanpassen</value>
+  </data>
+  <data name="CityPlanning_Help_Adjusting_VertexMove" xml:space="preserve">
+    <value>Versleep een hoekpunt om het te verplaatsen</value>
+  </data>
+  <data name="CityPlanning_Help_Adjusting_Reposition" xml:space="preserve">
+    <value>Versleep de hele vorm om deze te verplaatsen</value>
+  </data>
+  <data name="CityPlanning_Help_Adjusting_AddVertex" xml:space="preserve">
+    <value>Klik op het middelpunt van een zijde (waar de lengte in meters staat) om een nieuw hoekpunt toe te voegen</value>
+  </data>
+  <data name="CityPlanning_Help_Adjusting_DeleteVertex" xml:space="preserve">
+    <value>Klik op een punt om het te selecteren (het wordt oranje) en druk dan op Delete of Backspace om het te verwijderen</value>
+  </data>
+  <data name="CityPlanning_Help_Adjusting_MultiSelect" xml:space="preserve">
+    <value>Houd Shift ingedrukt en klik op punten om er meerdere tegelijk te selecteren, of klik en sleep op een lege plek om een selectierechthoek te tekenen</value>
+  </data>
+  <data name="CityPlanning_Help_Adjusting_Area" xml:space="preserve">
+    <value>De oppervlakte in m² staat in het midden en wordt bijgewerkt terwijl je bewerkt</value>
+  </data>
+  <data name="CityPlanning_Help_SavingTitle" xml:space="preserve">
+    <value>Opslaan en later bewerken</value>
+  </data>
+  <data name="CityPlanning_Help_SavingBody" xml:space="preserve">
+    <value>Tevreden? Klik op Opslaan. Klik daarna op je barrio op de kaart om de grootte te zien en vervolgens op Bewerken om terug te gaan naar de bewerkingsmodus. Elke keer dat je opslaat wordt er een versie in de geschiedenis aangemaakt — gebruik de knop Geschiedenis om eerdere versies te bekijken en te herstellen: klik op de voorbeeldknop om de versie te tonen en sla vervolgens de versie op die je wilt herstellen. Geen stress, je kunt niets kapotmaken!</value>
+  </data>
+  <data name="CityPlanning_Help_ZonesTitle" xml:space="preserve">
+    <value>Blijf binnen de gestippelde zones</value>
+  </data>
+  <data name="CityPlanning_Help_ZonesBody" xml:space="preserve">
+    <value>De gestippelde gebieden markeren de veilige kampeerzones, beschermd door bliksemafleiders. De kleur van de stippellijn geeft het geluidsniveau van de zone aan — van blauw (rustiger) tot rood (luider). Kamperen daarbuiten is niet toegestaan, dus houd je barrio binnen die grenzen.</value>
+  </data>
+  <data name="CityPlanning_Help_OverlapsTitle" xml:space="preserve">
+    <value>Overlap? Praat het uit!</value>
+  </data>
+  <data name="CityPlanning_Help_OverlapsBody" xml:space="preserve">
+    <value>Als je barrio overlapt met een andere, neem dan contact op via {0} en los het samen op. Zijn er aan het einde van de fase nog onopgeloste conflicten, dan lost het stadsplanningsteam die op.</value>
+  </data>
+  <data name="CityPlanning_Help_OverlapsDiscordChannel" xml:space="preserve">
+    <value>Discord #city-planning</value>
+  </data>
+  <data name="CityPlanning_Help_ColorsTitle" xml:space="preserve">
+    <value>Kleuren en geluidszones</value>
+  </data>
+  <data name="CityPlanning_Help_ColorsBody" xml:space="preserve">
+    <value>Elke barrio krijgt de kleur van de gewenste geluidszone (aan te passen op de pagina van je barrio).</value>
+  </data>
+  <data name="CityPlanning_Help_PlacingImageAlt" xml:space="preserve">
+    <value>Schermafbeelding: de omtrek van een barrio tekenen op de kaart</value>
+  </data>
+  <data name="CityPlanning_Help_AdjustingImageAlt" xml:space="preserve">
+    <value>Schermafbeelding: een hoekpunt verslepen om de vorm van een barrio aan te passen</value>
+  </data>
+  <data name="CityPlanning_Help_SavingImageAlt" xml:space="preserve">
+    <value>Schermafbeelding: de versiegeschiedenis van een barrio</value>
+  </data>
+  <data name="CityPlanning_Help_ZonesImageAlt" xml:space="preserve">
+    <value>Schermafbeelding: een barrio getekend buiten de gestippelde kampeerzones</value>
+  </data>
+  <data name="CityPlanning_Help_OverlapsImageAlt" xml:space="preserve">
+    <value>Schermafbeelding: twee overlappende barrio's op de kaart</value>
+  </data>
+  <data name="CityPlanning_Help_ColorsImageAlt" xml:space="preserve">
+    <value>Schermafbeelding: barrio's gekleurd per geluidszone</value>
+  </data>
+  <data name="CityPlanning_OverviewTitle" xml:space="preserve">
+    <value>Stadsplanning</value>
+  </data>
+  <data name="CityPlanning_PolygonSaveFailed" xml:space="preserve">
+    <value>Kon polygoon niet opslaan. Probeer het opnieuw.</value>
+  </data>
+  <data name="CityPlanning_DiscardChangesConfirm" xml:space="preserve">
+    <value>Niet-opgeslagen wijzigingen verwerpen?</value>
+  </data>
+  <data name="CityPlanning_HistoryForCamp" xml:space="preserve">
+    <comment>{0} = camp name</comment>
+    <value>Historial de {0}</value>
+  </data>
+  <data name="CityPlanning_HistoryLoadFailed" xml:space="preserve">
+    <value>Kon geschiedenis niet laden.</value>
+  </data>
+  <data name="CityPlanning_HistoryEmpty" xml:space="preserve">
+    <value>Nog geen geschiedenis.</value>
+  </data>
+  <data name="CityPlanning_OutsideLimits" xml:space="preserve">
+    <value>Buiten de grenzen</value>
+  </data>
+  <data name="CityPlanning_OverlapsBarrio" xml:space="preserve">
+    <value>Overlapt met een andere barrio</value>
+  </data>
+  <data name="CityPlanning_AreaLargerRequested" xml:space="preserve">
+    <comment>{0} = requested area in square meters</comment>
+    <value>Área mayor de la solicitada ({0} m²)</value>
+  </data>
+  <data name="CityPlanning_AreaSmallerRequested" xml:space="preserve">
+    <comment>{0} = requested area in square meters</comment>
+    <value>Área menor de la solicitada ({0} m²)</value>
+  </data>
+  <data name="CityPlanning_AreaMuchLargerRequested" xml:space="preserve">
+    <comment>{0} = requested area in square meters</comment>
+    <value>Área mucho mayor de la solicitada ({0} m²)</value>
+  </data>
+  <data name="CityPlanning_AreaMuchSmallerRequested" xml:space="preserve">
+    <comment>{0} = requested area in square meters</comment>
+    <value>Área mucho menor de la solicitada ({0} m²)</value>
+  </data>
+  <data name="CityPlanning_SoundZoneMismatch" xml:space="preserve">
+    <value>Geluidszone past niet bij dit gebied</value>
+  </data>
+  <data name="CityPlanning_GenericCamp" xml:space="preserve">
+    <value>Kamp</value>
+  </data>
+</root>

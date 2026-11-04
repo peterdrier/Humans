@@ -71,6 +71,7 @@ public sealed class CalendarEventFormViewModelTests
     [InlineData("it")]
     [InlineData("fr")]
     [InlineData("ca")]
+    [InlineData("nl")]
     public void EventForm_LocalizesRequiredLengthAndUrlErrors(string culture)
     {
         using var cultureScope = new CultureScope(culture);
