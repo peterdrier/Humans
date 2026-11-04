@@ -16,7 +16,7 @@ internal static class OnboardingShiftsStepBuilder
         HashSet<Guid> userSignupShiftIds,
         Dictionary<Guid, SignupStatus> userSignupStatuses,
         string selectedPriority,
-        bool earlyEntrySignupsClosed = false)
+        bool earlyEntrySignupsClosed)
     {
         var normalizedPriority = NormalizePriority(selectedPriority);
         var stats = ComputeStats(allShifts);
