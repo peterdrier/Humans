@@ -492,7 +492,8 @@ public class BackdoorFinanceControllerTests
                     { CreatedAt = Instant.FromUtc(2026, 2, 1, 0, 0) },
                 new CreditorContactBinding(orphan, "c-orphan", null, CreditorContactSource.Auto)
                     { CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0) },
-            ]));
+            ],
+            (string?)null));
 
         var result = await _sut.CreditorAccounts(Xunit.TestContext.Current.CancellationToken);
 
@@ -754,7 +755,8 @@ public class BackdoorFinanceControllerTests
             (IReadOnlyList<CreditorContactBinding>)
             [
                 new CreditorContactBinding(userId, Tainted, null, CreditorContactSource.Auto),
-            ]));
+            ],
+            (string?)null));
         _finance.GetCreditorLedgerAsync(40000060, Arg.Any<CancellationToken>()).Returns(new CreditorLedger(
             40000060, -50m, 50m,
             [
