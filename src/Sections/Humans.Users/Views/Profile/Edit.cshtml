@@ -56,7 +56,7 @@
                     <hr />
 
                     <div class="mb-3">
-                        <label asp-for="BurnerName" class="form-label"></label>
+                        <label asp-for="BurnerName" class="form-label">@SharedLocalizer["Onboarding_BurnerNameLabel"]</label>
                         <input asp-for="BurnerName" class="form-control" placeholder="@Localizer["Users_ProfileEdit_BurnerNamePlaceholder"].Value" />
                         <span asp-validation-for="BurnerName" class="text-danger"></span>
                         <div id="burnerNameWarning" class="alert alert-danger mt-2 d-none" role="alert">
@@ -73,7 +73,7 @@
                     </div>
 
                     <div class="mb-3">
-                        <label asp-for="Pronouns" class="form-label"></label>
+                        <label asp-for="Pronouns" class="form-label">@Localizer["Users_Search_Pronouns"]</label>
                         <input asp-for="Pronouns" class="form-control" placeholder="@Localizer["Users_ProfileEdit_PronounsPlaceholder"].Value" />
                         <span asp-validation-for="Pronouns" class="text-danger"></span>
                     </div>
@@ -255,7 +255,7 @@
                     <hr />
 
                     <div class="mb-3">
-                        <label asp-for="Bio" class="form-label"></label>
+                        <label asp-for="Bio" class="form-label">@Localizer["Users_Profile_Bio"]</label>
                         <markdown-editor asp-for="Bio" rows="4" />
                         <span asp-validation-for="Bio" class="text-danger"></span>
                         <div class="form-text">@Localizer["Users_ProfileEdit_BioHelp"]</div>

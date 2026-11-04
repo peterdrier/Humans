@@ -97,12 +97,6 @@ public class User : IdentityUser<Guid>
         set => base.NormalizedUserName = value;
     }
 
-    /// <summary>
-    /// Frozen: the stamp lives in Consent's <c>consent_reminders</c>. Written only to clear it on GDPR erasure;
-    /// the column goes with its separate drop migration.
-    /// </summary>
-    public Instant? LastConsentReminderSentAt { get; set; }
-
     public Instant? DeletionRequestedAt { get; set; }
 
     /// <summary>DeletionRequestedAt + 30 days.</summary>

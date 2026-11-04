@@ -362,9 +362,6 @@ internal sealed partial class UserRepository : IUserRepository
         user.PhoneNumber = null;
         user.PhoneNumberConfirmed = false;
 
-        // The frozen re-consent stamp goes too.
-        user.LastConsentReminderSentAt = null;
-
         // External logins go too, or the erased account could still sign in.
         var logins = await ctx.Set<IdentityUserLogin<Guid>>()
             .Where(l => l.UserId == userId)
