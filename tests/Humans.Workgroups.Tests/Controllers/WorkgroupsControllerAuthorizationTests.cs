@@ -1,3 +1,5 @@
+using Humans.Calendar.Contracts;
+using Humans.Calendar;
 using Humans.Governance.Contracts;
 using System.Globalization;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
@@ -32,8 +34,8 @@ namespace Humans.Workgroups.Tests.Controllers;
 
 /// <summary>
 /// The deny paths design §5 requires of the member pages: a non-member reaching a
-/// member-only mutation route gets Forbid, while Join, Leave, RequestStatus and commenting
-/// stay open to any signed-in human. Every member-only POST goes through one private helper
+/// member-only mutation route gets Forbid, while Join, Leave and commenting stay open to any
+/// signed-in human. RequestStatus is Board/Admin only. Every member-only POST goes through one private helper
 /// (<c>ActAsync</c>), so a representative sample of routes covers the guard.
 /// </summary>
 public sealed class WorkgroupsControllerAuthorizationTests : WorkgroupsTestHarness
@@ -61,8 +63,7 @@ public sealed class WorkgroupsControllerAuthorizationTests : WorkgroupsTestHarne
         var controller = BuildController(actor, isBoard: false, service);
         var now = Clock.GetCurrentInstant();
         Func<Task<IActionResult>> act = form
-            ? () => controller.SaveMeeting(workgroup.Slug, new MeetingFormViewModel
-            { Slug = workgroup.Slug, Title = "Meeting", StartUtc = now, EndUtc = now + Duration.FromHours(1) }, Ct)
+            ? () => controller.SaveMeeting(workgroup.Slug, Meeting(workgroup.Slug, now, now + Duration.FromHours(1)), Ct)
             : () => controller.Done(workgroup.Slug, WorkgroupDormantReason.Delivered, Ct);
 
         (await act.Should().ThrowAsync<Exception>()).Which.Should().BeSameAs(failure);
@@ -95,13 +96,7 @@ public sealed class WorkgroupsControllerAuthorizationTests : WorkgroupsTestHarne
         if (form)
         {
             var now = Clock.GetCurrentInstant();
-            var model = new MeetingFormViewModel
-            {
-                Slug = workgroup.Slug,
-                Title = "Meeting",
-                StartUtc = now,
-                EndUtc = now
-            };
+            var model = Meeting(workgroup.Slug, now, now);
             result = await controller.SaveMeeting(workgroup.Slug, model, Ct);
             result.Should().BeOfType<ViewResult>().Which.Model.Should().BeSameAs(model);
             controller.ModelState.IsValid.Should().BeFalse();
@@ -166,6 +161,26 @@ public sealed class WorkgroupsControllerAuthorizationTests : WorkgroupsTestHarne
         AssertError(new LogEntryFormViewModel { Slug = "group", Title = new string('x', 201) }, "Title", "Validation_MaxLength", "", 200);
         AssertError(new DocumentFormViewModel { Slug = "group" }, "Title", "Validation_Required");
         AssertError(new DocumentFormViewModel { Slug = "group", Title = new string('x', 201) }, "Title", "Validation_MaxLength", "", 200);
+    }
+
+    [HumansFact]
+    public async Task Meeting_times_default_to_and_are_read_in_the_organisation_zone()
+    {
+        Settings.GetTimeZoneIdAsync(Arg.Any<CancellationToken>()).Returns("America/New_York");
+        var (controller, workgroup) = await BuildAsync(asMember: true);
+
+        var created = await controller.CreateMeeting(workgroup.Slug, Ct);
+        var model = created.Should().BeOfType<ViewResult>().Which.Model.Should().BeOfType<MeetingFormViewModel>().Subject;
+        model.TimeZoneId.Should().Be("America/New_York");
+
+        model.Title = "Sync";
+        model.StartDate = model.EndDate = new LocalDate(2026, 6, 2);
+        model.StartTime = new LocalTime(10, 0);
+        model.EndTime = new LocalTime(11, 0);
+        (await controller.SaveMeeting(workgroup.Slug, model, Ct)).Should().BeOfType<RedirectToActionResult>();
+
+        // June in New York is UTC-4.
+        (await OpenContext().Meetings.SingleAsync(Ct)).StartUtc.Should().Be(Instant.FromUtc(2026, 6, 2, 14, 0));
     }
 
     [HumansFact]
@@ -401,13 +416,11 @@ public sealed class WorkgroupsControllerAuthorizationTests : WorkgroupsTestHarne
     }
 
     [HumansFact]
-    public async Task NonMember_RequestingAStatusUpdate_IsAllowed()
+    public void RequestStatus_IsGatedByBoardOrAdmin()
     {
-        var (controller, workgroup) = await BuildAsync(asMember: false);
-
-        var result = await controller.RequestStatus(workgroup.Slug, "Where is the report?", Ct);
-
-        result.Should().BeOfType<RedirectToActionResult>();
+        typeof(WorkgroupsController).GetMethod(nameof(WorkgroupsController.RequestStatus))!
+            .GetCustomAttributes(typeof(AuthorizeAttribute), true)
+            .Cast<AuthorizeAttribute>().Should().Contain(a => a.Policy == PolicyNames.BoardOrAdmin);
     }
 
     [HumansFact]
@@ -500,6 +513,20 @@ public sealed class WorkgroupsControllerAuthorizationTests : WorkgroupsTestHarne
         return (BuildController(actorId, isBoard), workgroup);
     }
 
+    private static MeetingFormViewModel Meeting(string slug, Instant start, Instant end)
+    {
+        var model = new MeetingFormViewModel { Slug = slug, Title = "Meeting" };
+        CalendarEventForm.SetTimed(model, start, end, DateTimeZone.Utc);
+        return model;
+    }
+
+    private static IStringLocalizer<CalendarResource> CalendarLocalizer()
+    {
+        var localizer = Substitute.For<IStringLocalizer<CalendarResource>>();
+        localizer[Arg.Any<string>()].Returns(c => new LocalizedString((string)c[0], (string)c[0]));
+        return localizer;
+    }
+
     /// <summary>A <see cref="WorkgroupsController"/> for <paramref name="actorId"/>, Board-flagged
     /// or not, wired to the real <see cref="WorkgroupAuthorizationHandler"/>.</summary>
     private WorkgroupsController BuildController(Guid actorId, bool isBoard, IWorkgroupService? service = null)
@@ -507,6 +534,8 @@ public sealed class WorkgroupsControllerAuthorizationTests : WorkgroupsTestHarne
         var services = new ServiceCollection();
         services.AddLogging();
         services.AddAuthorization();
+        services.AddSingleton(Users);
+        services.AddHttpContextAccessor();
         services.AddScoped<IAuthorizationHandler, WorkgroupAuthorizationHandler>();
         var provider = services.BuildServiceProvider();
         _localizer[Arg.Any<string>(), Arg.Any<object[]>()]
@@ -514,6 +543,8 @@ public sealed class WorkgroupsControllerAuthorizationTests : WorkgroupsTestHarne
         var controller = new WorkgroupsController(
             service ?? NewService(), Users, Teams, Governance,
             _localizer,
+            CalendarLocalizer(),
+            Settings,
             Clock,
             provider.GetRequiredService<IAuthorizationService>(),
             _logger);

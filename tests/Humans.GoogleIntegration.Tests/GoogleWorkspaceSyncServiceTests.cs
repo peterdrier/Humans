@@ -146,9 +146,7 @@ public sealed class GoogleWorkspaceSyncServiceTests
             RequiresApproval: false, IsPublicPage: false, IsHidden: false,
             IsPromotedToDirectory: false, CreatedAt: Instant.MinValue, Members: []);
         _syncSettingsService.GetModeAsync(SyncServiceType.GoogleGroups, ct).Returns(SyncMode.AddOnly);
-        _resourceRepository.GetActiveResourceCountsByTeamAsync(ct).Returns(new Dictionary<Guid, int> { [TestTeamId] = 1 });
-        _resourceRepository.GetActiveByTeamIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), ct)
-            .Returns(new Dictionary<Guid, IReadOnlyList<GoogleResource>> { [TestTeamId] = [resource] });
+        _resourceRepository.GetActiveByResourceTypeAsync(GoogleResourceType.Group, ct).Returns([resource]);
         _teamService.GetTeamsAsync(ct).Returns(new Dictionary<Guid, TeamInfo> { [TestTeamId] = team });
         _groupProvisioning.GetGroupSettingsAsync(Arg.Any<string>(), ct)
             .Returns(new GroupSettingsGetResult(null, new GoogleClientError(404, "Group unavailable.")));
@@ -1175,7 +1173,7 @@ public sealed class GoogleWorkspaceSyncServiceTests
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
         var resource = MakeDriveFolderResource(TestDriveFolderResourceId, TestTeamId, "folder-0");
-        _resourceRepository.GetActiveDriveFoldersAsync(ct).Returns([resource]);
+        _resourceRepository.GetActiveByResourceTypeAsync(GoogleResourceType.DriveFolder, ct).Returns([resource]);
         _teamService.GetTeamsAsync(ct).Returns(ExpectedMemberTeam());
         _drivePermissions.GetFileAsync("folder-0", ct).Returns(new DriveFileMetadataResult(
             new DriveFileMetadata("folder-0", "Child", ["folder-1"], null, null), null));
@@ -1239,8 +1237,7 @@ public sealed class GoogleWorkspaceSyncServiceTests
                 Email = email
             },
             [new UserEmail { Id = Guid.NewGuid(), UserId = userId, Email = email,
-                IsVerified = true, IsGoogle = true, GoogleEmailStatus = (LegacyGoogleEmailStatus)status }],
-            [], [], null, []);
+                IsVerified = true, IsGoogle = true, GoogleEmailStatus = (LegacyGoogleEmailStatus)status }], [], null);
 
     // Admin retries: the service writes the audit entry.
 

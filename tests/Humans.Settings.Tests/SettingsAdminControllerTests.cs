@@ -27,6 +27,8 @@ namespace Humans.Settings.Tests;
 /// </summary>
 public sealed class SettingsAdminControllerTests
 {
+    public enum SettingsMutation { SaveForm, SetTimeZone, Activate }
+
     private readonly ISettingsWriteService _settings = Substitute.For<ISettingsWriteService>();
     private readonly IUserService _users = Substitute.For<IUserService>();
 
@@ -39,14 +41,73 @@ public sealed class SettingsAdminControllerTests
     private SettingsAdminController BuildSut()
     {
         var controller = new SettingsAdminController(_settings, _users);
+        var actorId = Guid.NewGuid();
+        _users.GetUserInfoAsync(actorId, Arg.Any<CancellationToken>())
+            .Returns(UserInfo.Create(new User { Id = actorId }, [], [], null));
         var http = new DefaultHttpContext
         {
             User = new ClaimsPrincipal(new ClaimsIdentity(
-                [new Claim(ClaimTypes.NameIdentifier, Guid.NewGuid().ToString())], "test")),
+                [new Claim(ClaimTypes.NameIdentifier, actorId.ToString())], "test")),
         };
         controller.ControllerContext = new ControllerContext { HttpContext = http };
         controller.TempData = new TempDataDictionary(http, Substitute.For<ITempDataProvider>());
         return controller;
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(SettingsMutation.SaveForm, AccountScenario.Merged)]
+    [Xunit.InlineData(SettingsMutation.SaveForm, AccountScenario.Missing)]
+    [Xunit.InlineData(SettingsMutation.SaveForm, AccountScenario.Cancelled)]
+    [Xunit.InlineData(SettingsMutation.SetTimeZone, AccountScenario.Merged)]
+    [Xunit.InlineData(SettingsMutation.SetTimeZone, AccountScenario.Missing)]
+    [Xunit.InlineData(SettingsMutation.SetTimeZone, AccountScenario.Cancelled)]
+    [Xunit.InlineData(SettingsMutation.Activate, AccountScenario.Merged)]
+    [Xunit.InlineData(SettingsMutation.Activate, AccountScenario.Missing)]
+    [Xunit.InlineData(SettingsMutation.Activate, AccountScenario.Cancelled)]
+    public async Task Settings_mutation_resolves_account_before_writing(SettingsMutation action, AccountScenario account)
+    {
+        var controller = BuildSut();
+        var cookieId = Guid.Parse(controller.User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        var survivorId = Guid.NewGuid();
+        using var request = new CancellationTokenSource();
+        controller.HttpContext.RequestAborted = request.Token;
+        _users.GetUserInfoAsync(cookieId, Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            call.Arg<CancellationToken>().Should().Be(request.Token);
+            call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+            return new ValueTask<UserInfo?>(account == AccountScenario.Missing ? null :
+                UserInfo.Create(new User { Id = survivorId }, [], [], null));
+        });
+        _settings.SaveTimeZoneAsync(Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(new EventSettingsSaveResult(true));
+        _settings.ActivateEventSettingsAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(new EventSettingsSaveResult(true));
+        if (account == AccountScenario.Cancelled)
+            await request.CancelAsync();
+        var eventId = Guid.NewGuid();
+        Func<Task<IActionResult>> invoke = action switch
+        {
+            SettingsMutation.SaveForm => () => controller.Index(MakeForm(eventId, false), request.Token),
+            SettingsMutation.SetTimeZone => () => controller.TimeZone("Europe/Madrid", request.Token),
+            SettingsMutation.Activate => () => controller.Activate(eventId, request.Token),
+            _ => throw new ArgumentOutOfRangeException(nameof(action), action, null),
+        };
+
+        if (account == AccountScenario.Cancelled)
+            await invoke.Should().ThrowAsync<OperationCanceledException>();
+        else if (account == AccountScenario.Missing)
+            (await invoke()).Should().BeOfType<ChallengeResult>();
+        else
+        {
+            (await invoke()).Should().BeOfType<RedirectResult>();
+            var write = _settings.ReceivedCalls().Should().ContainSingle().Subject;
+            write.GetArguments()[1].Should().Be(survivorId);
+            write.GetArguments()[2].Should().Be(request.Token);
+            return;
+        }
+
+        _settings.ReceivedCalls().Should().BeEmpty();
+        controller.TempData.Should().BeEmpty();
     }
 
     private static EventSettingsViewModel MakeForm(Guid? id, bool isActive) => new()
@@ -227,7 +288,6 @@ public sealed class SettingsAdminControllerTests
     [HumansFact]
     public async Task Index_Post_SavesWithTheAuthenticatedActor()
     {
-        // The controller resolves the actor from the claims principal, with no Users lookup.
         var sut = BuildSut();
         var actorId = Guid.Parse(((ClaimsIdentity)sut.HttpContext.User.Identity!)
             .FindFirst(ClaimTypes.NameIdentifier)!.Value);

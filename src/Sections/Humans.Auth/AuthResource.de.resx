@@ -109,4 +109,6 @@
   <data name="Auth_AddRole_NotesPlaceholder" xml:space="preserve">
     <value>Grund der Zuweisung</value>
   </data>
+  <data name="Auth_Notification_RoleAssigned" xml:space="preserve"><value>Dir wurde die Rolle {0} zugewiesen</value><comment>{0}=role name</comment></data>
+  <data name="Auth_Notification_RoleEnded" xml:space="preserve"><value>Deine Zuweisung zur Rolle {0} ist beendet</value><comment>{0}=role name</comment></data>
 </root>

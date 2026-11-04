@@ -29,8 +29,8 @@ Collapse pressure this grouping exposes: **Programme** is answered by every rout
 one cached snapshot. Occurrence expansion itself is now one helper
 (`EventRecurrenceDays.GetOccurrenceInstants`), but each caller still writes out the
 "gate date and zone known, else the single start" guard and its own camp-name and submitter-name
-fallback; **Propose** has near-identical form pipelines (individual, barrio) that differ only in
-which fields apply.
+fallback. **Propose** shares common form fields, edit-field mapping and dropdown preparation; individual and barrio
+submission actions retain their distinct venue, all-day, duration and priority rules.
 
 ## 3. Structure
 
@@ -41,10 +41,11 @@ The layout the shapes imply:
 - **Programme** wants one occurrence-and-naming projection, used by Browse, Schedule, the API, the
   export and the print guide alike. The expansion and its guard are shared (`EVENTS-1`,
   closed by peterdrier/Humans#1945); the naming is not.
-- **Propose** wants one form pipeline parameterised by `isCampEvent`, not two view models and two
-  dropdown-population methods. `EventsModerationController` already runs the single-pipeline
-  version (`AdminEventFormViewModel` + `ApplyFormToEvent` branch on `isCampEvent`) — that is the
-  target form; the submitter side is the outlier.
+- **Propose** shares `EventProposalFormViewModel` field metadata, one edit-field mapping and one dropdown-population
+  method. Individual and barrio models retain their own duration limits and audience-specific
+  fields. Submission actions remain separate; moderation uses `AdminEventFormViewModel` with
+  different validation messages and nullable venue handling. Bulk import and camp form edits
+  share the domain’s camp-field mutation method; CSV recurrence comparison retains authored offsets.
 - **Decide** and **Configure** are correct as built.
 - Cross-section reads (camp names, submitter names, the edition's dates and zone) go through the
   helpers in `EventsLookupHelpers`; the edition row is Settings' and is read only through

@@ -1,10 +1,8 @@
 using Hangfire;
 using NodaTime;
-using Humans.AuditLog.Contracts;
 using Humans.Base.Interfaces;
 using Humans.Governance.Contracts;
 using Humans.Governance.Services;
-using Humans.Users.Contracts;
 
 namespace Humans.Governance.Jobs;
 
@@ -15,8 +13,6 @@ namespace Humans.Governance.Jobs;
 [DisableConcurrentExecution(timeoutInSeconds: 300)]
 internal sealed class MembershipTierExpiryJob(
     IGovernanceManagement governance,
-    IUserService userService,
-    IAuditLogService auditLogService,
     IHumansMetrics metrics,
     ILogger<MembershipTierExpiryJob> logger,
     IClock clock) : IRecurringJob
@@ -30,7 +26,7 @@ internal sealed class MembershipTierExpiryJob(
             var today = clock.GetCurrentInstant().InUtc().Date;
             var total = 0;
             foreach (var tier in ExpiringTiers)
-                total += await ExpireTierAsync(tier, today, cancellationToken);
+                total += (await governance.ExpireMembershipTiersAsync(tier, today, cancellationToken)).Count;
 
             metrics.RecordJobRun("membership_tier_expiry", "success");
             logger.LogInformation("Membership tier expiry finished; downgraded {Count} member(s)", total);
@@ -41,24 +37,5 @@ internal sealed class MembershipTierExpiryJob(
             logger.LogError(ex, "Error during membership tier expiry");
             throw;
         }
-    }
-
-    private async Task<int> ExpireTierAsync(MembershipTier tier, LocalDate today, CancellationToken ct)
-    {
-        var downgrades = await governance.ExpireMembershipTiersAsync(tier, today, ct);
-        if (downgrades.Count == 0)
-            return 0;
-
-        var usersById = await userService.GetUserInfosAsync(downgrades.Select(d => d.UserId).ToList(), ct);
-        foreach (var (userId, newTier) in downgrades)
-        {
-            var displayName = usersById.TryGetValue(userId, out var u) ? u.BurnerName : "Unknown";
-            await auditLogService.LogAsync(
-                GovernanceAuditActions.TierDowngraded, "Profile", userId,
-                $"Membership tier changed to {newTier} for {displayName} due to {tier} term expiry",
-                nameof(MembershipTierExpiryJob),
-                relatedEntityId: userId, relatedEntityType: nameof(User));
-        }
-        return downgrades.Count;
     }
 }

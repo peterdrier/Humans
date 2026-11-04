@@ -7,5 +7,4 @@ internal sealed record CalendarAgendaViewModel(
     Instant FromUtc,
     Instant ToUtc,
     IReadOnlyList<CalendarOccurrence> Occurrences,
-    Guid? FilterTeamId,
     string ViewerTimezoneLabel);

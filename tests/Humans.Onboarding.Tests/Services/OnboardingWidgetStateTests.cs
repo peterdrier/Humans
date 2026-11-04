@@ -53,10 +53,8 @@ public class OnboardingWidgetStateTests
             State = UserFixtures.StateFor(profile),
         },
         userEmails: [],
-        eventParticipations: [],
         externalLogins: [],
-        profile: profile,
-        communicationPreferences: []);
+        profile: profile);
 
     [HumansFact]
     public async Task GetCurrentStep_CancelsTheActiveEventReadWhenTheRequestIsAbandoned()

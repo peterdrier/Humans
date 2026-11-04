@@ -4,10 +4,9 @@
 }
 
 <h1 class="mb-3">Holded API calls</h1>
-<partial name="_HoldedNav" />
 
 <p class="text-muted">
-    Every call Humans made to Holded, by Madrid month and endpoint. Holded's own usage figure
+    Every call Humans made to Holded, by endpoint and Madrid month. Holded's own usage figure
     (on the summary) stays the authoritative count.
 </p>
 
@@ -18,27 +17,48 @@
     }
     else
     {
+        var endpoints = Model
+            .SelectMany(m => m.ByEndpoint)
+            .GroupBy(e => e.Key, StringComparer.Ordinal)
+            .Select(g => (Endpoint: g.Key, Total: g.Sum(e => e.Value)))
+            .OrderByDescending(e => e.Total)
+            .ThenBy(e => e.Endpoint, StringComparer.Ordinal)
+            .ToList();
         <div class="table-responsive">
-            <table class="table table-sm align-middle mb-0">
-                <thead><tr><th>Month</th><th>Endpoint</th><th class="text-end">Calls</th></tr></thead>
-                @foreach (var m in Model)
-                {
-                    <tbody>
-                        <tr class="table-light">
-                            <th>@(new DateTime(m.Year, m.Month, 1).ToMonthYear())</th>
-                            <th class="text-muted small fw-normal">all endpoints</th>
-                            <th class="text-end">@m.Total</th>
-                        </tr>
-                        @foreach (var e in m.ByEndpoint.OrderByDescending(e => e.Value).ThenBy(e => e.Key, StringComparer.Ordinal))
+            <table class="table table-sm table-striped align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th>Endpoint</th>
+                        @foreach (var m in Model)
                         {
-                            <tr>
-                                <td></td>
-                                <td><code>@e.Key</code></td>
-                                <td class="text-end">@e.Value</td>
-                            </tr>
+                            <th class="text-end text-nowrap">@(new DateTime(m.Year, m.Month, 1).ToMonthYear())</th>
                         }
-                    </tbody>
-                }
+                        <th class="text-end">Total</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var e in endpoints)
+                    {
+                        <tr>
+                            <td><code>@e.Endpoint</code></td>
+                            @foreach (var m in Model)
+                            {
+                                <td class="text-end">@(m.ByEndpoint.TryGetValue(e.Endpoint, out var n) ? n : "")</td>
+                            }
+                            <th class="text-end">@e.Total</th>
+                        </tr>
+                    }
+                </tbody>
+                <tfoot>
+                    <tr class="table-light">
+                        <th>All endpoints</th>
+                        @foreach (var m in Model)
+                        {
+                            <th class="text-end">@m.Total</th>
+                        }
+                        <th class="text-end">@Model.Sum(m => m.Total)</th>
+                    </tr>
+                </tfoot>
             </table>
         </div>
     }

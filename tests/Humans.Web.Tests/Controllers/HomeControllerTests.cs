@@ -58,7 +58,7 @@ public class HomeControllerTests
         var user = new User { Id = userId, DisplayName = "Test" };
         _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new ValueTask<UserInfo?>(UserInfo.Create(
-                user, [], [], [], profile, [])));
+                user, [], [], profile)));
         _consentService.GetConsentReviewAsync(userId, Arg.Any<CancellationToken>())
             .Returns(review ?? ConsentReviewInfo.None(userId));
     }

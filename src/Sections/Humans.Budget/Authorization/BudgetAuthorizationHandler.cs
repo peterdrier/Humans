@@ -3,10 +3,11 @@ using Humans.Base.Authorization;
 using System.Security.Claims;
 using Humans.Budget.Contracts;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 
 namespace Humans.Budget.Authorization;
 
-internal sealed class BudgetAuthorizationHandler(IBudgetService budgetService)
+internal sealed class BudgetAuthorizationHandler(IBudgetService budgetService, IHttpContextAccessor httpContextAccessor)
     : AuthorizationHandler<BudgetOperationRequirement, BudgetCategorySnapshot>
 {
     protected override async Task HandleRequirementAsync(
@@ -35,7 +36,8 @@ internal sealed class BudgetAuthorizationHandler(IBudgetService budgetService)
         if (!Guid.TryParse(context.User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
             return;
 
-        var coordinatorTeamIds = await budgetService.GetEffectiveCoordinatorTeamIdsAsync(userId);
+        var coordinatorTeamIds = await budgetService.GetEffectiveCoordinatorTeamIdsAsync(
+            userId, httpContextAccessor.HttpContext?.RequestAborted ?? CancellationToken.None);
         if (coordinatorTeamIds.Contains(resource.TeamId.Value))
         {
             context.Succeed(requirement);

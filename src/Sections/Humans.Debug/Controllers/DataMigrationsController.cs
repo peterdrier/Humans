@@ -26,11 +26,11 @@ internal sealed class DataMigrationsController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Apply(string key, CancellationToken ct)
     {
-        var actorId = GetCurrentUserId();
-        if (actorId is null)
+        var actor = await GetCurrentUserInfoAsync(ct);
+        if (actor is null)
             return Unauthorized();
 
-        var rows = await dataMigrations.ApplyAsync(key, actorId.Value, ct);
+        var rows = await dataMigrations.ApplyAsync(key, actor.Id, ct);
         if (rows is null)
             return NotFound();
 

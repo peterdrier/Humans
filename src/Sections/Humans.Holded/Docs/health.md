@@ -147,11 +147,6 @@ callers are shaped by them.
   care about the ledger at all. Splitting it would leave `Humans.Holded` a genuinely small
   mirror. Nothing has decided this; the cost is a project split plus a rename across every
   calling section.
-- **The `/Holded` and `/Finance/Holded` pair.** Both screens cover one integration, split by table
-  ownership rather than by what an admin is trying to find out
-  (nobodies-collective/Humans#1000). `/Finance/Holded` links to `/Holded`; `/Holded` links to
-  Finance's creditor pages but not back to `/Finance/Holded`. Whether one page with two sections
-  is the honest shape is undecided.
 - **A bank-movement mirror.** If a reconciliation panel ever needs the bank feed without a live
   call, a bank-movements mirror table would land here (design record).
 

@@ -32,12 +32,12 @@ internal sealed class UserGrantsViewComponent(
     private async Task<IReadOnlySet<Guid>> LinkableProgramsAsync(IReadOnlyList<GrantInfo> all)
     {
         var linkable = new HashSet<Guid>();
-        if (!(await authorization.AuthorizeAsync(UserClaimsPrincipal, GrantsPolicies.Manage)).Succeeded) return linkable;
+        if (!(await authorization.AuthorizeAsync(UserClaimsPrincipal, GrantProgramsPolicy.Name)).Succeeded) return linkable;
 
         var shown = all.Select(g => g.ProgramId).ToHashSet();
         foreach (var program in (await grants.GetProgramsAsync(HttpContext.RequestAborted)).Where(p => shown.Contains(p.Id)))
         {
-            if ((await authorization.AuthorizeAsync(UserClaimsPrincipal, program, ProgramOperationRequirement.Manage)).Succeeded)
+            if ((await authorization.AuthorizeAsync(UserClaimsPrincipal, program, ProgramOperationRequirement.View)).Succeeded)
                 linkable.Add(program.Id);
         }
         return linkable;

@@ -33,9 +33,10 @@ internal sealed class HumanLifecycleService(
             $"Suspended{(string.IsNullOrWhiteSpace(notes) ? "" : $": {notes}")}",
             adminId);
 
+        // The state write committed; finish its inbox changes independently of the caller.
         try
         {
-            var language = (await userService.GetUserInfoAsync(userId, ct))?.PreferredLanguage;
+            var language = (await userService.GetUserInfoAsync(userId, CancellationToken.None))?.PreferredLanguage;
             var culture = CultureInfo.GetCultureInfo(language.IsSupportedCultureCode() ? language! : "en");
             var body = string.IsNullOrWhiteSpace(notes)
                 ? NoticeResources.GetString("Users_AccountStatus_HeadingAdminSuspended", culture)!
@@ -50,7 +51,7 @@ internal sealed class HumanLifecycleService(
                 body: body,
                 actionUrl: "/Profile",
                 actionLabel: NoticeResources.GetString("Users_Notification_ViewProfile", culture)!,
-                cancellationToken: ct);
+                cancellationToken: CancellationToken.None);
         }
         catch (Exception ex)
         {
@@ -76,9 +77,10 @@ internal sealed class HumanLifecycleService(
             "Unsuspended",
             adminId);
 
+        // The state write committed; finish its inbox changes independently of the caller.
         try
         {
-            await notificationAutoResolve.ResolveBySourceAsync(userId, UsersNotificationSources.AccessSuspended, ct);
+            await notificationAutoResolve.ResolveBySourceAsync(userId, UsersNotificationSources.AccessSuspended, CancellationToken.None);
         }
         catch (Exception ex)
         {
@@ -107,9 +109,10 @@ internal sealed class HumanLifecycleService(
             "Unsuspended after completing required consents",
             nameof(RestoreConsentSuspensionAsync));
 
+        // The state write committed; finish its inbox changes independently of the caller.
         try
         {
-            await notificationAutoResolve.ResolveBySourceAsync(userId, UsersNotificationSources.AccessSuspended, ct);
+            await notificationAutoResolve.ResolveBySourceAsync(userId, UsersNotificationSources.AccessSuspended, CancellationToken.None);
         }
         catch (Exception ex)
         {

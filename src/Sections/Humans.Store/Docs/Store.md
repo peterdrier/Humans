@@ -203,6 +203,10 @@ Stored as **string** via `HasConversion<string>()`. The column carried a `Paid` 
 
 ## Invariants
 
+- Store member and admin mutations forward request cancellation through account lookup before any write. Invoice issuance also forwards it through the read-only order load before authorization. Stripe Checkout and Holded issuance retain `CancellationToken.None`; other mutation tokens are unchanged.
+
+- Authorization’s event-timezone, camp-season, camp-lead and department reads retain HTTP request cancellation; callers without an HTTP context use the non-cancellable default.
+
 - Product creation and updates share one editable-field mapping, including trimmed names, year, pricing, VAT, deposits, revenue account, ordering cutoff and active state. Identity, creation/update timestamps and price-change audit handling remain owned by their respective write paths.
 
 - Add/remove line operations forward caller cancellation to the read-only event-timezone lookup before changing line rows or writing their audit entries.
@@ -347,7 +351,7 @@ Acountax's call and change without a deploy:
 
 Implementation status: catalog CRUD (create, update, deactivate), order create, add/remove line, counterparty edit, Stripe payment recording, deposit-return / refund recording, and Holded invoice issuance are live. Bank-transfer / cash entry, treasury sync, and the Orders admin view are unbuilt — no code for them exists. See [`Store-feature.md`](features/Store-feature.md).
 
-- The internal `StoreStripePayments` owns Stripe payment ingestion and webhook state transitions under one shared ingestion lock. The service retains reconciliation reads and existing entry points; payment persistence, idempotency, audit wording and event-order handling are unchanged. No DI registration or public contract is added.
+- The internal `StoreStripePayments` owns Stripe payment ingestion, missing-payment recovery and webhook state transitions through the same idempotent recording path and shared ingestion lock. The service retains reconciliation report reads and existing entry points; payment persistence, idempotency, audit wording and event-order handling are unchanged. No DI registration or public contract is added.
 - Line and counterparty mutations return resource-key refusals for invalid quantity, missing records, wrong-order lines, frozen line edits, unavailable products, catalog-year mismatch, and non-billable orders. Controllers localize these in all six cultures; expected refusals log a warning without an exception and perform no mutation (apart from the existing audited legacy-year repair). Dependency faults and cancellation propagate rather than becoming business feedback.
 
 - Checkout returns resource-key refusals for unavailable configuration, non-positive or excessive amounts, and a pending settlement. The controller localizes the outstanding balance and logs actual Stripe failures at Error with generic localized feedback; a dependency InvalidOperationException cannot become a business refusal. Stripe writes remain detached from request cancellation.

@@ -97,17 +97,11 @@ internal sealed class AccountMergeRepository(IDbContextFactory<UsersDbContext> f
         Guid targetUserId, string normalizedEmail, string? alternateEmail,
         CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return alternateEmail is null
-            ? await ctx.AccountMergeRequests.AnyAsync(
-                r => r.TargetUserId == targetUserId
-                    && EF.Functions.ILike(r.Email, normalizedEmail)
-                    && r.Status == AccountMergeRequestStatus.Pending, ct)
-            : await ctx.AccountMergeRequests.AnyAsync(
-                r => r.TargetUserId == targetUserId
-                    && (EF.Functions.ILike(r.Email, normalizedEmail) ||
-                        EF.Functions.ILike(r.Email, alternateEmail))
-                    && r.Status == AccountMergeRequestStatus.Pending, ct);
+        return (await GetPendingAsync(ct)).Any(r =>
+            r.TargetUserId == targetUserId
+            && (string.Equals(r.Email, normalizedEmail, StringComparison.OrdinalIgnoreCase)
+                || (alternateEmail is not null
+                    && string.Equals(r.Email, alternateEmail, StringComparison.OrdinalIgnoreCase))));
     }
 
     public async Task<bool> HasPendingForEmailIdAsync(Guid pendingEmailId, CancellationToken ct = default)

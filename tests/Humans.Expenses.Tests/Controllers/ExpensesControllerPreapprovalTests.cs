@@ -40,7 +40,7 @@ public sealed class ExpensesControllerPreapprovalTests
     public ExpensesControllerPreapprovalTests()
     {
         _users.GetUserInfoAsync(_actorId, Arg.Any<CancellationToken>()).Returns(
-            UserInfo.Create(new User { Id = _actorId }, [], [], [], null, []));
+            UserInfo.Create(new User { Id = _actorId }, [], [], null));
         _reports.GetForSubmitterAsync(_actorId, Arg.Any<CancellationToken>()).Returns([]);
         _reports.GetCoordinatorQueueAsync(_actorId, Arg.Any<CancellationToken>()).Returns([]);
         _budget.GetEffectiveCoordinatorTeamIdsAsync(_actorId, Arg.Any<CancellationToken>()).Returns(new HashSet<Guid>());
@@ -67,6 +67,164 @@ public sealed class ExpensesControllerPreapprovalTests
             ControllerContext = new ControllerContext { HttpContext = http },
             TempData = new TempDataDictionary(http, Substitute.For<ITempDataProvider>())
         };
+    }
+
+    public enum ExpenseMutation
+    {
+        Edit,
+        AddLine,
+        UpdateLine,
+        RemoveLine,
+        AttachFile,
+        RemoveAttachment,
+        Submit,
+        Withdraw,
+        Iban,
+        Endorse,
+        CoordinatorReject,
+        DeclineLine,
+        UndoDeclineLine,
+        Approve,
+        Reject,
+        HoldedRetry,
+        New
+    }
+
+    public enum NewFormLookup
+    {
+        ExpenseAccounts,
+        ClaimableGrants,
+        PreapprovalGrant
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(ExpenseMutation.Edit, false)]
+    [Xunit.InlineData(ExpenseMutation.Edit, true)]
+    [Xunit.InlineData(ExpenseMutation.AddLine, false)]
+    [Xunit.InlineData(ExpenseMutation.AddLine, true)]
+    [Xunit.InlineData(ExpenseMutation.UpdateLine, false)]
+    [Xunit.InlineData(ExpenseMutation.UpdateLine, true)]
+    [Xunit.InlineData(ExpenseMutation.RemoveLine, false)]
+    [Xunit.InlineData(ExpenseMutation.RemoveLine, true)]
+    [Xunit.InlineData(ExpenseMutation.AttachFile, false)]
+    [Xunit.InlineData(ExpenseMutation.AttachFile, true)]
+    [Xunit.InlineData(ExpenseMutation.RemoveAttachment, false)]
+    [Xunit.InlineData(ExpenseMutation.RemoveAttachment, true)]
+    [Xunit.InlineData(ExpenseMutation.Submit, false)]
+    [Xunit.InlineData(ExpenseMutation.Submit, true)]
+    [Xunit.InlineData(ExpenseMutation.Withdraw, false)]
+    [Xunit.InlineData(ExpenseMutation.Withdraw, true)]
+    [Xunit.InlineData(ExpenseMutation.Iban, false)]
+    [Xunit.InlineData(ExpenseMutation.Iban, true)]
+    [Xunit.InlineData(ExpenseMutation.Endorse, false)]
+    [Xunit.InlineData(ExpenseMutation.Endorse, true)]
+    [Xunit.InlineData(ExpenseMutation.CoordinatorReject, false)]
+    [Xunit.InlineData(ExpenseMutation.CoordinatorReject, true)]
+    [Xunit.InlineData(ExpenseMutation.DeclineLine, false)]
+    [Xunit.InlineData(ExpenseMutation.DeclineLine, true)]
+    [Xunit.InlineData(ExpenseMutation.UndoDeclineLine, false)]
+    [Xunit.InlineData(ExpenseMutation.UndoDeclineLine, true)]
+    [Xunit.InlineData(ExpenseMutation.Approve, false)]
+    [Xunit.InlineData(ExpenseMutation.Approve, true)]
+    [Xunit.InlineData(ExpenseMutation.Reject, false)]
+    [Xunit.InlineData(ExpenseMutation.Reject, true)]
+    [Xunit.InlineData(ExpenseMutation.HoldedRetry, false)]
+    [Xunit.InlineData(ExpenseMutation.HoldedRetry, true)]
+    [Xunit.InlineData(ExpenseMutation.New, true)]
+    public async Task Mutation_preflight_observes_request_cancellation(ExpenseMutation action, bool actorLookup)
+    {
+        var report = ReviewRow(null) with { Status = ExpenseReportStatus.Draft };
+        using var request = new CancellationTokenSource();
+        _users.GetUserInfoAsync(_actorId, Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            if (actorLookup)
+            {
+                call.Arg<CancellationToken>().Should().Be(request.Token);
+                call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+            }
+            return new ValueTask<UserInfo?>(UserInfo.Create(new User { Id = _actorId }, [], [], null));
+        });
+        _reports.GetAsync(report.Id, Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            if (!actorLookup)
+            {
+                call.Arg<CancellationToken>().Should().Be(request.Token);
+                call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+            }
+            return report;
+        });
+        var controller = Build();
+        controller.HttpContext.RequestAborted = request.Token;
+        await request.CancelAsync();
+        var lineId = Guid.NewGuid();
+        Func<Task<IActionResult>> invoke = action switch
+        {
+            ExpenseMutation.Edit => () => controller.Edit(report.Id, new ExpenseEditViewModel()),
+            ExpenseMutation.AddLine => () => controller.AddLine(report.Id, new AddLineInputModel(), null),
+            ExpenseMutation.UpdateLine => () => controller.UpdateLine(report.Id, new EditLineInputModel()),
+            ExpenseMutation.RemoveLine => () => controller.RemoveLine(report.Id, lineId),
+            ExpenseMutation.AttachFile => () => controller.AttachFile(report.Id, lineId, null),
+            ExpenseMutation.RemoveAttachment => () => controller.RemoveAttachment(report.Id, lineId),
+            ExpenseMutation.Submit => () => controller.Submit(report.Id),
+            ExpenseMutation.Withdraw => () => controller.Withdraw(report.Id),
+            ExpenseMutation.Iban => () => controller.Iban(report.Id, new ExpenseIbanViewModel()),
+            ExpenseMutation.Endorse => () => controller.Endorse(report.Id, new EndorseInputModel()),
+            ExpenseMutation.CoordinatorReject => () => controller.CoordinatorReject(report.Id, new CoordinatorRejectInputModel()),
+            ExpenseMutation.DeclineLine => () => controller.DeclineLine(report.Id, lineId, new DeclineLineInputModel()),
+            ExpenseMutation.UndoDeclineLine => () => controller.UndoDeclineLine(report.Id, lineId),
+            ExpenseMutation.Approve => () => controller.Approve(report.Id, new ApproveInputModel()),
+            ExpenseMutation.Reject => () => controller.Reject(report.Id, new FinanceRejectInputModel()),
+            ExpenseMutation.HoldedRetry => () => controller.HoldedRetry(report.Id),
+            _ => () => controller.New(new ExpenseNewViewModel()),
+        };
+
+        await invoke.Should().ThrowAsync<OperationCanceledException>();
+        _reports.ReceivedCalls().Should().OnlyContain(call => call.GetMethodInfo().Name == nameof(IExpenseReportManagement.GetAsync));
+        _authorization.ReceivedCalls().Should().BeEmpty();
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(NewFormLookup.ExpenseAccounts)]
+    [Xunit.InlineData(NewFormLookup.ClaimableGrants)]
+    [Xunit.InlineData(NewFormLookup.PreapprovalGrant)]
+    public async Task Invalid_new_form_preflight_observes_request_cancellation(NewFormLookup lookup)
+    {
+        using var request = new CancellationTokenSource();
+        var grantId = Guid.NewGuid();
+        _holdedFinance.ListExpenseAccountsAsync(true, Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            if (lookup == NewFormLookup.ExpenseAccounts)
+            {
+                call.Arg<CancellationToken>().Should().Be(request.Token);
+                call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+            }
+            return Array.Empty<HoldedExpenseAccountOption>();
+        });
+        _preapprovals.ListClaimableForUserAsync(_actorId, Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            if (lookup == NewFormLookup.ClaimableGrants)
+            {
+                call.Arg<CancellationToken>().Should().Be(request.Token);
+                call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+            }
+            return Array.Empty<GrantOption>();
+        });
+        _preapprovals.GetGrantAsync(grantId, Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            call.Arg<CancellationToken>().Should().Be(request.Token);
+            call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+            return (GrantOption?)null;
+        });
+        var controller = Build();
+        controller.HttpContext.RequestAborted = request.Token;
+        controller.ModelState.AddModelError("Note", "invalid");
+        await request.CancelAsync();
+
+        var load = () => controller.New(new ExpenseNewViewModel { PreapprovalGrantId = grantId });
+
+        await load.Should().ThrowAsync<OperationCanceledException>();
+        _reports.ReceivedCalls().Should().BeEmpty();
+        controller.TempData.Should().BeEmpty();
     }
 
     private static GrantOption Grant(string program, LocalDate claimBy, GrantStatus status = GrantStatus.Open) =>

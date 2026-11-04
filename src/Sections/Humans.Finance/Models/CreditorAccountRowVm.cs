@@ -25,6 +25,7 @@ internal sealed record CreditorAccountRowVm(
     CreditorMatchVm? Match = null)
 {
     public const string DuplicateDocumentsReason = "duplicate documents in Holded";
+    public const string InFlightReason = "payment in flight";
 
     /// <summary>Needs an admin to unbind all but the owner.</summary>
     public bool HasCollision => Bindings.Count > 1;
@@ -36,7 +37,7 @@ internal sealed record CreditorAccountRowVm(
         > 1 => "collision",
         _ when HasDuplicateDocuments is null => "duplicate check unavailable — Holded's document list could not be read",
         _ when HasDuplicateDocuments == true => DuplicateDocumentsReason,
-        _ when PendingPayoutFileName is { } file => $"in payout file {file}, not booked yet",
+        _ when PendingPayoutFileName is not null => InFlightReason,
         _ when Balance is not > 0m => "nothing owed",
         _ when IbanMasked is null => "no IBAN in Holded",
         _ => null,
@@ -50,6 +51,7 @@ internal sealed record CreditorAccountRowVm(
         : string.Join(", ", Bindings.Select(b => b.MemberName)).ToUpperInvariant();
 }
 
+/// <summary>MemberName supports server-side sorting and native confirmation prompts; visible names render UserId.</summary>
 internal sealed record CreditorBindingVm(Guid UserId, string MemberName, string Source);
 
 /// <summary>

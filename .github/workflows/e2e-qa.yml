@@ -3,17 +3,22 @@ name: E2E Tests (QA)
 on:
   push:
     branches: [main]
+  # Manual runs test whatever main is deployed on QA, so a branch can prove a spec change
+  # before it merges; the deploy wait only applies to pushes.
+  workflow_dispatch:
 
-# QA only ever runs the newest main deploy, so an e2e run against a superseded
-# sha is testing an environment that no longer exists — cancel it.
+# QA only ever runs the newest main deploy, so a push run against a superseded
+# sha is testing an environment that no longer exists — cancel it. A manual run
+# queues behind whatever is running instead of cancelling it.
 concurrency:
   group: e2e-qa
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'push' }}
 
 jobs:
   e2e:
     if: github.repository == 'peterdrier/Humans'
-    runs-on: self-hosted
+    # devbox only: Playwright's --with-deps does not recognise nuc-runner's OS.
+    runs-on: [self-hosted, devbox]
     defaults:
       run:
         working-directory: tests/e2e
@@ -26,6 +31,7 @@ jobs:
           node-version: 22
 
       - name: Wait for QA deploy
+        if: github.event_name == 'push'
         working-directory: .
         run: |
           FULL_SHA="${{ github.sha }}"
@@ -33,7 +39,8 @@ jobs:
           URL="https://humans.n.burn.camp/api/version"
           echo "Waiting for $SHORT_SHA to deploy..."
 
-          for i in $(seq 1 60); do
+          # A QA deploy normally lands 3 to 4.5 minutes after the push.
+          for i in $(seq 1 180); do
             DEPLOYED=$(curl -sf "$URL" | jq -r '.commit // empty' 2>/dev/null || true)
             if [ "$DEPLOYED" = "$SHORT_SHA" ] || [ "$DEPLOYED" = "$FULL_SHA" ]; then
               echo "Deploy confirmed after ~$((i * 5))s"
@@ -45,7 +52,7 @@ jobs:
 
           # A superseded run is cancelled by the concurrency group above, so reaching here means
           # the deploy itself is late or broken. Fail: a run that tested nothing must not show green.
-          echo "::error::Build $SHORT_SHA not deployed to QA within 5 minutes (deployed=$DEPLOYED)"
+          echo "::error::Build $SHORT_SHA not deployed to QA within 15 minutes (deployed=$DEPLOYED)"
           exit 1
 
       - name: Install dependencies

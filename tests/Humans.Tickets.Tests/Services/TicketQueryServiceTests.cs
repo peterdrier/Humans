@@ -74,10 +74,6 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
                 Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, string>());
 
-        _userEmailService.GetVerifiedEmailsForUserAsync(
-                Arg.Any<Guid>(), Arg.Any<CancellationToken>())
-            .Returns([]);
-
         _teamService.GetTeamsAsync(Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, TeamInfo>());
 
@@ -210,6 +206,8 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
     public async Task Csv_export_reads_honor_browser_cancellation_and_preserve_completed_read_audits(string export, bool cancelled, bool hasActor)
     {
         var actor = Guid.NewGuid();
+        _userService.GetUserInfoAsync(actor, Arg.Any<CancellationToken>())
+            .Returns(UserInfo.Create(new User { Id = actor }, [], [], null));
         using var aborted = new CancellationTokenSource();
         if (cancelled) await aborted.CancelAsync();
         var dashboard = new TicketDashboardPageBuilder(Substitute.For<ITicketVendorService>(),
@@ -855,12 +853,12 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
         result.TotalCount.Should().Be(5);
         result.Rows.Should().HaveCount(2);
         result.Rows[0].VendorOrderId.Should().Be("ord_4");
-        result.Rows[0].MatchedUserName.Should().Be("Buyer Human");
+        result.Rows[0].MatchedUserId.Should().Be(buyer.Id);
         result.Rows[0].TotalAmount.Should().Be(100m);
         result.Rows[0].VatAmount.Should().Be(9.09m);
-        result.Rows[1].MatchedUserName.Should().BeNull();
-        await _userService.Received(1).GetUserInfosAsync(
-            Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Contains(buyer.Id)), TestContext.Current.CancellationToken);
+        result.Rows[1].MatchedUserId.Should().BeNull();
+        await _userService.DidNotReceive().GetUserInfosAsync(
+            Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>());
     }
 
     [HumansFact(Timeout = 10000)]
@@ -958,8 +956,10 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
 
         result.TotalCount.Should().Be(3);
         result.Rows.Should().HaveCount(2);
-        result.Rows.Should().OnlyContain(row => string.Equals(row.MatchedUserName, "Attendee Human", StringComparison.Ordinal)
+        result.Rows.Should().OnlyContain(row => row.MatchedUserId == human.Id
             && string.Equals(row.TicketTypeName, "Full Week", StringComparison.Ordinal) && row.Price == TicketConstants.VipThresholdEuros);
+        await _userService.DidNotReceive().GetUserInfosAsync(
+            Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>());
     }
 
     [HumansFact]

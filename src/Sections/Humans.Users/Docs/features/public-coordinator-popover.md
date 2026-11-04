@@ -62,8 +62,7 @@ No schema changes. The public-coordinator gate filters the existing `ITeamServic
 
 | Field | Type | Notes |
 |---|---|---|
-| `UserId` | `Guid` | Target user |
-| `DisplayName` | `string` | BurnerName |
+| `UserId` | `Guid` | Resolved target; Human renders its name and avatar |
 | `RoleLabels` | `IReadOnlyList<string>` | One entry per active public coordinator role, localized coordinator label + `" · {TeamName}"` |
 
 ## View Component Wiring

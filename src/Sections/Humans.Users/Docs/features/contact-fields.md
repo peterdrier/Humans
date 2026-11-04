@@ -4,7 +4,7 @@
   src/Sections/Humans.Users/Controllers/ProfileController.cs
   src/Sections/Humans.Users/Views/ProfileEmails/Emails.cshtml
   src/Sections/Humans.Users/Domain/ContactField.cs
-  src/Sections/Humans.Users.Contracts/UserEmail.cs
+  src/Humans.Base/Users/UserEmail.cs
   src/Sections/Humans.Users/Data/Configurations/**
 -->
 <!-- freshness:flag-on-change

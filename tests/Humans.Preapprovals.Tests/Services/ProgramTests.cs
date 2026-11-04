@@ -147,7 +147,7 @@ public sealed class ProgramTests : PreapprovalsTestHarness
             .Options;
         var service = new PreapprovalService(
             new PreapprovalRepository(new TestDbContextFactory<PreapprovalsDbContext>(options)),
-            Users, UserEmails, Finance, Notifications, NotificationResolve,
+            Users, Finance, Notifications, NotificationResolve,
             Email, EmailFactory, AuditLog, Clock, Logger);
 
         Func<Task> update = () => service.UpdateProgramAsync(program.Id,

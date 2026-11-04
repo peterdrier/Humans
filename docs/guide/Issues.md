@@ -14,7 +14,7 @@
 
 # Issues
 
-Issues is how you tell us something is wrong, ask for something new, or ask a question. It replaced Feedback: everything filed from here on lives here.
+Issues is how you tell us something is wrong, ask for something new, or ask a question. It replaced the old Feedback page, which has since been removed.
 
 ## What this section is for
 
@@ -103,6 +103,5 @@ A comment posted through the API counts the same as one in the browser: if the k
 
 ## Related sections
 
-- [Feedback](Feedback.md) — the retired predecessor; its archive is still there for admins
 - [The in-app AI helper](AiHelper.md) — try it first for a question; it can file an issue for you
 - [Admin](Admin.md) — roles are assigned on the admin role pages; API keys are allocated at `/Backdoor`

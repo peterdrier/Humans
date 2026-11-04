@@ -84,7 +84,7 @@ public class ExpenseReportServiceHoldedOutboxTests
                 Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<Instant>(), Arg.Any<CancellationToken>())
             .Returns(true);
 
-        _budgetService.GetCategoryByIdAsync(CategoryId)
+        _budgetService.GetCategoryByIdAsync(CategoryId, Arg.Any<CancellationToken>())
             .Returns(_category);
 
         var submitter = new User { Id = SubmitterId, DisplayName = "Alice Smith" };
@@ -114,10 +114,9 @@ public class ExpenseReportServiceHoldedOutboxTests
             _budgetService,
             Substitute.For<ITeamService>(),
             _userService,
-            Substitute.For<IUserEmailService>(),
             Substitute.For<IEmailService>(),
             TestExpensesEmails.Create(),
-            _auditLog,
+            _auditLog, Substitute.For<IAuditViewerService>(),
             _holdedService,
             _holdedFinance,
             _finance,
@@ -323,7 +322,7 @@ public class ExpenseReportServiceHoldedOutboxTests
     // Built directly: the shared UserInfoStubHelpers read through a UsersDbContext this
     // test project cannot see.
     private static UserInfo MinimalUserInfo(User user) =>
-        UserInfo.Create(user, [], [], [], profile: null, []);
+        UserInfo.Create(user, [], [], profile: null);
 
     private static HoldedPurchaseDocumentDto MakePurchaseDoc(Instant? approvedAt = null) => new()
     {

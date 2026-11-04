@@ -5,7 +5,7 @@
   src/Sections/Humans.GoogleIntegration/Services/TeamResourceService.cs
   src/Sections/Humans.Teams/Controllers/TeamAdminController.cs
   src/Sections/Humans.GoogleIntegration/Controllers/GoogleController.cs
-  src/Sections/Humans.Users.Contracts/UserEmail.cs
+  src/Humans.Base/Users/UserEmail.cs
 -->
 <!-- freshness:flag-on-change
   Who gets a mailbox, coordinator-created accounts, first-sign-in flow (temporary password + required 2FA), and shared team group addresses. Review when workspace-account provisioning or group membership sync change.

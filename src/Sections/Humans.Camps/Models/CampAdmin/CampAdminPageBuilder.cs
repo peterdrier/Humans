@@ -60,7 +60,6 @@ internal sealed class CampAdminPageBuilder(
         foreach (var c in campsWithLeads)
         {
             var season = c.Seasons.FirstOrDefault();
-            var leadUserIds = season?.LeadUserIds ?? [];
             rows.Add(new CampSummaryRowViewModel
             {
                 Name = season?.Name ?? c.Slug,
@@ -74,12 +73,7 @@ internal sealed class CampAdminPageBuilder(
                 EeSlotCount = season?.EeSlotCount ?? 0,
                 EeGrantedCount = season?.EeGrantedCount ?? 0,
                 JoinedMemberCount = season?.JoinedMemberCount ?? 0,
-                Leads = leadUserIds
-                    .Select(id => new CampLeadViewModel
-                    {
-                        LeadId = Guid.Empty,
-                        UserId = id
-                    }).ToList()
+                LeadUserIds = (season?.LeadUserIds ?? []).ToList()
             });
         }
         return rows

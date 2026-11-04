@@ -98,7 +98,7 @@ public class CampContactServiceTests : IDisposable
         _users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, UserInfo>
             {
-                [leadId] = UserInfo.Create(new User { Id = leadId, PreferredLanguage = language }, [], [], [], null, [])
+                [leadId] = UserInfo.Create(new User { Id = leadId, PreferredLanguage = language }, [], [], null)
             });
 
         await _service.SendFacilitatedMessageAsync(
@@ -138,7 +138,7 @@ public class CampContactServiceTests : IDisposable
         _users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, UserInfo>
             {
-                [spanishLead] = UserInfo.Create(new User { Id = spanishLead, PreferredLanguage = "es" }, [], [], [], null, [])
+                [spanishLead] = UserInfo.Create(new User { Id = spanishLead, PreferredLanguage = "es" }, [], [], null)
             });
         _notificationEmitter.SendAsync(Arg.Any<NotificationSourceDefinition>(), Arg.Any<NotificationClass>(),
             Arg.Any<NotificationPriority>(), Arg.Any<string>(),

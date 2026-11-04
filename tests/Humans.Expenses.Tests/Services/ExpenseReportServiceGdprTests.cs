@@ -36,6 +36,7 @@ public class ExpenseReportServiceGdprTests
     private readonly IExpenseRepository _repo;
     private readonly IUserService _userService;
     private readonly IAuditLogService _auditLogService;
+    private readonly IAuditViewerService _auditViewer = Substitute.For<IAuditViewerService>();
     private readonly IFinanceService _finance = Substitute.For<IFinanceService>();
     private readonly IHoldedFinanceService _holdedFinance = Substitute.For<IHoldedFinanceService>();
     private readonly IUserDataContributor _sut;
@@ -49,11 +50,11 @@ public class ExpenseReportServiceGdprTests
         // Nothing merged into anybody by default: GetUserInfoAsync returns null and the
         // export reads the single id.
 
-        _auditLogService.GetFilteredEntriesAsync(
-                actions: Arg.Any<IReadOnlyList<AuditActionDefinition>>(),
-                entityType: Arg.Any<string>(),
+        _auditViewer.GetFilteredAsync(
+                entityType: Arg.Any<string?>(),
                 entityId: Arg.Any<Guid?>(),
                 userId: Arg.Any<Guid?>(),
+                actions: Arg.Any<IReadOnlyList<string>?>(),
                 limit: Arg.Any<int>(),
                 ct: Arg.Any<CancellationToken>())
             .Returns([]);
@@ -64,10 +65,9 @@ public class ExpenseReportServiceGdprTests
             Substitute.For<IBudgetService>(),
             Substitute.For<ITeamService>(),
             _userService,
-            Substitute.For<IUserEmailService>(),
             Substitute.For<IEmailService>(),
             TestExpensesEmails.Create(),
-            _auditLogService,
+            _auditLogService, _auditViewer,
             Substitute.For<IHoldedService>(),
             _holdedFinance,
             _finance,
@@ -88,10 +88,8 @@ public class ExpenseReportServiceGdprTests
             CreatedAt = FakeNow,
         },
         userEmails: [],
-        eventParticipations: [],
         externalLogins: [],
-        profile: profile,
-        communicationPreferences: []);
+        profile: profile);
 
     private static ExpenseReportDto MakeReport(Guid submitterId) => new()
     {
@@ -136,7 +134,7 @@ public class ExpenseReportServiceGdprTests
             .Returns([report]);
 
         _userService.GetUserInfoAsync(UserId, Arg.Any<CancellationToken>())
-            .Returns(WrapInUserInfo(UserId, UserFixtures.Profile(iban: "ES1234567890123456789012")));
+            .Returns(WrapInUserInfo(UserId, UserFixtures.Profile()));
 
         var slices = await _sut.ContributeForUserAsync(UserId, Xunit.TestContext.Current.CancellationToken);
 
@@ -194,22 +192,13 @@ public class ExpenseReportServiceGdprTests
         _userService.GetUserInfoAsync(UserId, Arg.Any<CancellationToken>())
             .Returns((UserInfo?)null);
 
-        var entry = new AuditLogEntrySnapshot(
-            Guid.NewGuid(),
-            ExpensesAuditActions.ExpenseSubmit.Name,
-            "ExpenseReport",
-            Guid.NewGuid(),
-            "Submitted",
-            FakeNow,
-            ActorUserId: null,
-            RelatedEntityId: null,
-            RelatedEntityType: null);
+        var entry = Event(ExpensesAuditActions.ExpenseSubmit, Guid.NewGuid(), "Submitted", actorUserId: null);
 
-        _auditLogService.GetFilteredEntriesAsync(
-                actions: Arg.Any<IReadOnlyList<AuditActionDefinition>>(),
-                entityType: Arg.Any<string>(),
+        _auditViewer.GetFilteredAsync(
+                entityType: Arg.Any<string?>(),
                 entityId: Arg.Any<Guid?>(),
                 userId: Arg.Any<Guid?>(),
+                actions: Arg.Any<IReadOnlyList<string>?>(),
                 limit: Arg.Any<int>(),
                 ct: Arg.Any<CancellationToken>())
             .Returns([entry]);
@@ -255,15 +244,13 @@ public class ExpenseReportServiceGdprTests
         };
         _repo.GetForSubmitterAsync(UserId, Arg.Any<CancellationToken>()).Returns([report]);
 
-        var approval = new AuditLogEntrySnapshot(
-            Guid.NewGuid(), ExpensesAuditActions.ExpenseApprove.Name, "ExpenseReport", report.Id,
-            "Finance approved expense report.", FakeNow,
-            ActorUserId: Guid.NewGuid(), RelatedEntityId: null, RelatedEntityType: null);
-        _auditLogService.GetFilteredEntriesAsync(
-                actions: Arg.Any<IReadOnlyList<AuditActionDefinition>>(),
+        var approval = Event(ExpensesAuditActions.ExpenseApprove, report.Id, "Finance approved expense report.",
+            actorUserId: Guid.NewGuid());
+        _auditViewer.GetFilteredAsync(
                 entityType: "ExpenseReport",
                 entityId: report.Id,
                 userId: Arg.Any<Guid?>(),
+                actions: Arg.Any<IReadOnlyList<string>?>(),
                 limit: Arg.Any<int>(),
                 ct: Arg.Any<CancellationToken>())
             .Returns([approval]);
@@ -279,7 +266,11 @@ public class ExpenseReportServiceGdprTests
     /// <summary>A record listing the given ids as accounts merged into <paramref name="userId"/>.</summary>
     private static UserInfo WithMergedIds(Guid userId, params Guid[] mergedUserIds)
     {
-        var info = UserInfo.Create(new User { Id = userId, PreferredLanguage = "en" }, [], [], [], null, []);
+        var info = UserInfo.Create(new User { Id = userId, PreferredLanguage = "en" }, [], [], null);
         return info with { MergedUserIds = mergedUserIds };
     }
+
+    private static AuditEvent Event(AuditActionDefinition action, Guid reportId, string description, Guid? actorUserId) =>
+        new(Guid.NewGuid(), FakeNow, action, actorUserId, null, "ExpenseReport", reportId,
+            null, null, null, null, null, null, null, description);
 }

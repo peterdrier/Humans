@@ -18,21 +18,12 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
 {
     private readonly UserService _service;
     private readonly IFileStorage _fileStorage = Substitute.For<IFileStorage>();
-    private readonly ICommunicationPreferenceRepository _communicationPreferenceRepository =
-        Substitute.For<ICommunicationPreferenceRepository>();
 
     public UserServiceProfileOnboardingMutationTests()
     {
         var userRepository = new UserRepository(DbFactory, Clock);
-        _communicationPreferenceRepository.GetByUserIdReadOnlyAsync(
-                Arg.Any<Guid>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult<IReadOnlyList<CommunicationPreference>>([]));
-        _communicationPreferenceRepository.GetAllAsync(Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult<IReadOnlyList<CommunicationPreference>>([]));
-
         _service = new UserService(
             userRepository,
-            _communicationPreferenceRepository,
             AdminAuthorization,
             _fileStorage,
             Clock,
@@ -54,7 +45,7 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
             .Returns(string.Equals(kind, "duplicate", StringComparison.Ordinal)
                 ? [new UserEmail { Id = Guid.NewGuid(), UserId = userId, Email = "held@example.com" }]
                 : []);
-        var service = new UserService(repository, _communicationPreferenceRepository,
+        var service = new UserService(repository,
             AdminAuthorization, _fileStorage, Clock, NullLogger<UserService>.Instance, AuditLog);
 
         var email = kind switch
@@ -156,28 +147,17 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
         accountUser.DeletionRequestedAt = hasDeletionHold ? arrival : null;
         accountUser.DeletionScheduledFor = hasDeletionHold ? arrival + NodaTime.Duration.FromDays(30) : null;
         accountUser.DeletionEligibleAfter = hasDeletionHold ? arrival + NodaTime.Duration.FromDays(60) : null;
-        Db.EventParticipations.Add(new EventParticipation
-        {
-            Id = Guid.NewGuid(),
-            UserId = userId,
-            Year = 2026,
-            Status = LegacyParticipationStatus.Attended,
-            Source = LegacyParticipationSource.TicketSync,
-            CheckedInAt = arrival,
-        });
         await Db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var slices = await _service.ContributeForUserAsync(userId, TestContext.Current.CancellationToken);
 
         slices.Select(s => s.SectionName).Should().Contain([
             UserService.Account,
-            UserService.LegacyEventParticipations,
             UserService.Profile,
             UserService.ContactFields,
             UserService.UserEmails,
             UserService.VolunteerHistory,
-            UserService.Languages,
-            UserService.LegacyCommunicationPreferences
+            UserService.Languages
         ]);
         System.Text.Json.JsonSerializer.Serialize(slices.Single(s =>
             string.Equals(s.SectionName, UserService.MergedProfiles, StringComparison.Ordinal)).Data)
@@ -200,12 +180,7 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
         accountData.RootElement.GetProperty("DeletionScheduledFor").GetString()
             .Should().Be(accountUser.DeletionScheduledFor.ToIso8601());
 
-        var participationSlice = slices.Single(s =>
-            string.Equals(s.SectionName, UserService.LegacyEventParticipations, StringComparison.Ordinal));
-        using var participationJson = System.Text.Json.JsonDocument.Parse(
-            System.Text.Json.JsonSerializer.Serialize(participationSlice.Data));
-        participationJson.RootElement.EnumerateArray().Single().GetProperty("CheckedInAt")
-            .GetString().Should().Be(arrival.ToIso8601());
+
     }
 
     [HumansTheory]
@@ -297,38 +272,6 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
         manual.GetProperty("IsGoogle").GetBoolean().Should().BeFalse();
         manual.GetProperty("GoogleEmailStatus").GetString().Should().Be("Unknown");
         manual.GetProperty("VerificationSentAt").GetString().Should().BeNull();
-    }
-
-    [HumansTheory]
-    [InlineData(true)]
-    [InlineData(false)]
-    public async Task ContributeForUserAsync_ExportsKnownOrUnknownSubscriptionTimestamp(bool hasSubscribedAt)
-    {
-        var userId = Guid.NewGuid();
-        SeedUser(userId);
-        await Db.SaveChangesAsync(TestContext.Current.CancellationToken);
-        var subscribedAt = hasSubscribedAt ? Clock.GetCurrentInstant() : (NodaTime.Instant?)null;
-        _communicationPreferenceRepository.GetByUserIdReadOnlyAsync(
-                userId, TestContext.Current.CancellationToken)
-            .Returns(Task.FromResult<IReadOnlyList<CommunicationPreference>>([
-                new CommunicationPreference
-                {
-                    UserId = userId,
-                    Category = LegacyMessageCategory.Marketing,
-                    SubscribedAt = subscribedAt,
-                    UpdatedAt = Clock.GetCurrentInstant(),
-                    UpdateSource = "Profile",
-                }
-            ]));
-
-        var slices = await _service.ContributeForUserAsync(userId, TestContext.Current.CancellationToken);
-
-        var slice = slices.Single(s => string.Equals(s.SectionName, UserService.LegacyCommunicationPreferences, StringComparison.Ordinal));
-        using var json = System.Text.Json.JsonDocument.Parse(System.Text.Json.JsonSerializer.Serialize(slice.Data));
-        var preference = json.RootElement[0];
-        preference.GetProperty("SubscribedAt").GetString().Should().Be(
-            hasSubscribedAt ? "2026-03-01T12:00:00Z" : null);
-        preference.GetProperty("UpdateSource").GetString().Should().Be("Profile");
     }
 
     [HumansFact]
@@ -443,10 +386,9 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
     }
 
     [HumansFact]
-    public async Task LegacyRejectedProfile_WithNonRejectedState_StillReadsAndClassifiesRejected()
+    public async Task RetiredLegacyRejection_DoesNotOverrideTheStoredState()
     {
-        // A legacy rejected profile (profiles.RejectedAt set) whose users.State never
-        // recorded Rejected: it reads as rejected, and the next transition stores Rejected.
+        // Migration completion makes users.State authoritative even if a frozen column differs.
         var userId = Guid.NewGuid();
         var profileId = await SeedUserWithProfileAsync(userId);
         var profile = await Db.Profiles.FirstAsync(p => p.Id == profileId, TestContext.Current.CancellationToken);
@@ -457,11 +399,11 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
             .State.Should().NotBe(UserState.Rejected);
 
         var info = await _service.GetRawUserInfoAsync(userId, TestContext.Current.CancellationToken);
-        info!.IsRejected.Should().BeTrue();
+        info!.IsRejected.Should().BeFalse();
 
         await _service.SetSuspensionAsync(userId, suspended: false, ct: TestContext.Current.CancellationToken);
         var user = await Db.Users.AsNoTracking().FirstAsync(u => u.Id == userId, TestContext.Current.CancellationToken);
-        user.State.Should().Be(UserState.Rejected);
+        user.State.Should().Be(UserState.Active);
     }
 
     [HumansFact]
@@ -622,7 +564,7 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
 
         var user = await Db.Users.AsNoTracking().SingleAsync(u => u.Id == userId, TestContext.Current.CancellationToken);
         user.MarkedFakeAt.Should().Be(Clock.GetCurrentInstant());
-        UserInfo.Create(user, [], [], [], profile: null, []).IsFake.Should().BeTrue();
+        UserInfo.Create(user, [], [], profile: null).IsFake.Should().BeTrue();
         await AuditLog.Received(1).LogAsync(UsersAuditActions.AccountMarkedFake, nameof(User), userId, "gate", actorId);
         AuditLog.ReceivedCalls().Should().HaveCount(1);
     }
@@ -1001,7 +943,6 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
     private UserService BuildWithUserRepository(IUserRepository userRepository) =>
         new(
             userRepository,
-            Substitute.For<ICommunicationPreferenceRepository>(),
             AdminAuthorization,
             Substitute.For<IFileStorage>(),
             Clock,

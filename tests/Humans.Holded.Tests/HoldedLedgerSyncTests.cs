@@ -80,8 +80,10 @@ public sealed class HoldedLedgerSyncTests
         StubWindowFetch(
             Dto(1, 1, 40000004, FixedNow, credit: 23m),
             Dto(1, 2, 62900140, FixedNow, debit: 23m));   // NOT creditor-block — cached anyway (full mirror)
+        (await _service.GetLedgerSyncedAtAsync(ct)).Should().BeNull();
 
         (await _service.SyncLedgerAsync(full: false, ct)).Should().BeTrue();
+        (await _service.GetLedgerSyncedAtAsync(ct)).Should().Be(FixedNow);
 
         var calls = LedgerCalls();
         calls.Should().ContainSingle();

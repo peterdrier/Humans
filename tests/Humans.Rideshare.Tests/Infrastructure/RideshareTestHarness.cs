@@ -115,6 +115,7 @@ public abstract class RideshareTestHarness : IDisposable
         {
             Id = Guid.NewGuid(),
             Year = year,
+            EventSettingsId = year == Year ? EventId : null,
             DestinationLabel = "Elsewhere",
             DestinationLatitude = 43.2,
             DestinationLongitude = -2.4,
@@ -144,6 +145,7 @@ public abstract class RideshareTestHarness : IDisposable
             Id = Guid.NewGuid(),
             UserId = userId,
             Year = year,
+            EventSettingsId = year == Year ? EventId : null,
             Direction = direction,
             MemberPlaceLabel = "Paris",
             MemberLatitude = DefaultPoint.Latitude,
@@ -178,6 +180,7 @@ public abstract class RideshareTestHarness : IDisposable
             Id = Guid.NewGuid(),
             UserId = userId,
             Year = year,
+            EventSettingsId = year == Year ? EventId : null,
             Direction = direction,
             PickupPlaceLabel = "Lyon",
             PickupLatitude = 45.76,
@@ -256,7 +259,7 @@ public abstract class RideshareTestHarness : IDisposable
     private static UserInfo UserInfoFor(Guid id, string burnerName) => new(
         id, burnerName, false, "en", null, Instant.FromUtc(2026, 1, 1, 0, 0),
         null, null, null, null, null, null,
-        null, null, null, [], [], [], null, []);
+        null, null, null, [], [], null);
 
     public void Dispose()
     {

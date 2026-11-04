@@ -6,6 +6,10 @@
     var madrid = NodaTime.DateTimeZoneProviders.Tzdb["Europe/Madrid"];
 }
 
+<style>
+    .collapsed > .fa-chevron-down { transform: rotate(-90deg); }
+</style>
+
 <div class="d-flex justify-content-between align-items-center mb-4">
     <h1 class="mb-0">SEPA Transfers</h1>
     <a asp-action="Creditors" class="btn btn-outline-secondary">
@@ -25,7 +29,9 @@
     unbooked transfers of one amount, or two lines for one transfer, are flagged below and settled by
     hand. <strong>Withdraw</strong> takes a transfer the bank cancelled by hand out of its file: the
     row stays for the record, no bank line is paired with it, the member is told, and their account
-    is payable again.
+    is payable again. <strong>Cancel file</strong> is for a file the bank rejected whole: every transfer in it
+    is withdrawn at once, without emailing anyone, so the accounts can go into a new file. Booked and cancelled
+    files start collapsed; click a file's name to open it.
 </p>
 
 <form method="get" asp-action="Sepa" class="d-flex align-items-center gap-2 mb-3">
@@ -94,27 +100,56 @@
     <div class="card mb-4">
         @{
             var withdrawn = file.Transfers.Count(t => t.Row.IsWithdrawn);
+            var cancelled = withdrawn == file.Transfers.Count;
             var unbooked = file.Transfers.Where(t => !t.Row.IsBooked && !t.Row.IsWithdrawn).ToList();
             var matched = unbooked.Count(t => t.Row.CanBook);
             var allMatched = unbooked.Count > 0 && matched == unbooked.Count
                              && Model.UnavailableReason is null;
+            // A cancelled file summarises what it held; any other file what it still pays.
+            var summarised = cancelled ? file.Transfers : file.Transfers.Where(t => !t.Row.IsWithdrawn).ToList();
+            var summaryTotal = summarised.Sum(t => t.Row.Amount).ToEuro();
+            var collapseId = $"sepa-file-{file.FileId:N}";
+            var expanded = unbooked.Count > 0;
+            var canCancel = Humans.Finance.Services.Service.CancelFileRefusal(file.Transfers.Select(t => t.Row).ToList()) is null;
         }
-        <div class="card-header d-flex justify-content-between align-items-center">
-            <span>
+        <div class="card-header d-flex justify-content-between align-items-center gap-3">
+            <button type="button" class="btn btn-link text-reset text-decoration-none p-0 text-start @(expanded ? "" : "collapsed")"
+                    data-bs-toggle="collapse" data-bs-target="#@collapseId" aria-expanded="@(expanded ? "true" : "false")" aria-controls="@collapseId">
+                <i class="fa-solid fa-chevron-down fa-fw me-1 small"></i>
                 <span class="font-monospace">@file.FileName</span>
-                @if (unbooked.Count == 0)
+                @if (cancelled)
+                {
+                    <span class="badge text-bg-dark ms-2" title="Cancelled whole: every transfer was withdrawn and the bank never executed it.">Cancelled</span>
+                }
+                else if (unbooked.Count == 0)
                 {
                     <span class="badge text-bg-success ms-2">Done</span>
                 }
-                @if (withdrawn > 0)
+                @if (withdrawn > 0 && !cancelled)
                 {
                     <span class="badge text-bg-dark ms-2" title="Cancelled at the bank before execution and withdrawn from this file; not counted toward booking it.">@withdrawn withdrawn</span>
                 }
-            </span>
-            <span class="text-muted small">
-                @file.GeneratedAt.ToDateTime(madrid) by @file.GeneratedByName
+                <span class="ms-2">@summarised.Count transfers · <strong>@summaryTotal</strong></span>
+            </button>
+            <span class="d-flex align-items-center gap-3">
+                <span class="text-muted small">
+                    @file.GeneratedAt.ToDateTime(madrid) by <vc:human user-id="@file.GeneratedByUserId" link="None" />
+                </span>
+                @if (canCancel)
+                {
+                    <form authorize-policy="@Humans.Finance.Contracts.FinancePolicies.Manage" asp-action="CancelSepaFile" method="post"
+                          data-confirm="Are you sure? Cancel the whole file @file.FileName (@summarised.Count transfers, @summaryTotal)? Only do this once the bank has rejected the file. Every transfer in it is marked withdrawn, their accounts become payable again, and no member is emailed. This cannot be undone.">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="fileId" value="@file.FileId" />
+                        <input type="hidden" name="days" value="@Model.ToleranceDays" />
+                        <button type="submit" class="btn btn-sm btn-outline-danger text-nowrap">
+                            <i class="fa-solid fa-ban me-1"></i>Cancel file
+                        </button>
+                    </form>
+                }
             </span>
         </div>
+        <div class="collapse @(expanded ? "show" : "")" id="@collapseId">
         @if (allMatched)
         {
             <div class="card-body border-bottom d-flex justify-content-between align-items-center gap-3">
@@ -199,14 +234,14 @@
                     <td>
                         <a asp-action="CreditorStatement" asp-route-accountNum="@t.Row.SupplierAccountNum">@t.Row.SupplierAccountNum</a>
                     </td>
-                    <td>@t.MemberName<div class="text-muted small">@t.Row.CreditorName</div></td>
+                    <td><vc:human user-id="@t.Row.UserId" link="None" /><div class="text-muted small">@t.Row.CreditorName</div></td>
                     <td class="font-monospace small">@t.Row.IbanMasked</td>
                     <td class="text-end">@t.Row.Amount.ToEuro()</td>
                     <td>
                         @if (t.Row.WithdrawnAt is { } withdrawnAt)
                         {
                             <span class="badge text-bg-dark">Withdrawn</span>
-                            <div class="text-muted small">@withdrawnAt.ToDateTime(madrid) by @t.WithdrawnByName</div>
+                            <div class="text-muted small">@withdrawnAt.ToDateTime(madrid) by <vc:human user-id="@(t.Row.WithdrawnByUserId ?? Guid.Empty)" link="None" /></div>
                         }
                         else if (t.Row.BookedAt is { } bookedAt)
                         {
@@ -219,7 +254,16 @@
                             {
                                 <span class="badge text-bg-warning" title="While Holded reads the line pending, the sweep re-issues the reconcile from the recorded payment ids every two hours and stamps the row once the line reads reconciled. A line that reads partial is a human's to finish in Holded.">Reconcile pending (@t.Row.HoldedBankMovementId)</span>
                             }
-                            <div class="text-muted small">@bookedAt.ToDateTime(madrid) by @t.BookedByName</div>
+                            <div class="text-muted small">@bookedAt.ToDateTime(madrid) by
+                                @if (t.Row.BookedByUserId is { } bookedBy)
+                                {
+                                    <vc:human user-id="@bookedBy" link="None" />
+                                }
+                                else
+                                {
+                                    <text>automatic sweep</text>
+                                }
+                            </div>
                         }
                         else
                         {
@@ -307,5 +351,6 @@
             }
             </tbody>
         </table>
+        </div>
     </div>
 }

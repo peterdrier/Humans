@@ -201,8 +201,6 @@
   <data name="LinkPreview_Events_Description" xml:space="preserve"><value>Nobodies events: what's on and who's going.</value></data>
   <data name="LinkPreview_Expenses_Title" xml:space="preserve"><value>Expenses</value></data>
   <data name="LinkPreview_Expenses_Description" xml:space="preserve"><value>Expense claims and reimbursements.</value></data>
-  <data name="LinkPreview_Feedback_Title" xml:space="preserve"><value>Feedback</value></data>
-  <data name="LinkPreview_Feedback_Description" xml:space="preserve"><value>Send feedback about Humans.</value></data>
   <data name="LinkPreview_Finance_Title" xml:space="preserve"><value>Finance</value></data>
   <data name="LinkPreview_Finance_Description" xml:space="preserve"><value>The association's accounts and transactions.</value></data>
   <data name="LinkPreview_Gate_Title" xml:space="preserve"><value>Gate</value></data>

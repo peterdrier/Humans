@@ -33,7 +33,7 @@ internal sealed class Service(
     private static readonly ResourceManager Resources = new(typeof(StoreResource));
 
     private readonly StoreOrderReader orderReader = new(repo, campService, teamService, clock, settingsService);
-    private readonly StoreStripePayments stripePayments = new(repo, audit, clock, logger);
+    private readonly StoreStripePayments stripePayments = new(repo, audit, stripeService, clock, logger);
 
     public Task<IndexData> GetIndexDataAsync(Guid userId, CancellationToken ct = default) =>
         orderReader.GetIndexDataAsync(userId, ct);
@@ -63,7 +63,6 @@ internal sealed class Service(
         return new OrderPageData(
             order,
             catalog,
-            order.CounterpartyDisplayName,
             canEdit,
             canPayAuthorized && order.BalanceEur > 0 && !hasPendingPayment && order.CounterpartyType == OrderCounterpartyType.Camp,
             stripeService.IsStoreCheckoutConfigured);
@@ -754,40 +753,9 @@ internal sealed class Service(
         return StripeReconciliationStatus.Missing;
     }
 
-    public async Task<StripeReconciliationResult> RecordMissingStripePaymentsAsync(
-        Guid actorUserId, CancellationToken ct = default)
-    {
-        var sessions = await stripeService.ListStoreCheckoutSessionsAsync(ct) ?? [];
-        var recorded = await repo.GetRecordedStripePaymentsAsync(ct);
-        var recordedPis = recorded.Select(p => p.PaymentIntentId).ToHashSet(StringComparer.Ordinal);
-
-        var count = 0;
-        var total = 0m;
-        foreach (var s in sessions)
-        {
-            if (!string.Equals(s.PaymentStatus, "paid", StringComparison.Ordinal)) continue;
-            if (s.OrderId is not { } orderId || s.PaymentIntentId is not { } pi || s.AmountEur is not { } amount) continue;
-            if (amount <= 0 || recordedPis.Contains(pi)) continue;
-
-            // Never fabricate a payment on an unmatched or non-billable (Team) order.
-            var order = await repo.GetOrderByIdAsync(orderId, ct);
-            if (order is null || order.TeamId is not null) continue;
-
-            await RecordStripePaymentAsync(orderId, pi, amount, ct: ct); // idempotent on PI id
-            count++;
-            total += amount;
-        }
-
-        if (count > 0)
-        {
-            await audit.LogAsync(
-                StoreAuditActions.StorePaymentsReconciled, "Store", Guid.Empty,
-                $"Reconciled {count} Stripe payment(s) totalling EUR {total:0.00} from the Store Stripe account",
-                actorUserId);
-        }
-
-        return new StripeReconciliationResult(count, total);
-    }
+    public Task<StripeReconciliationResult> RecordMissingStripePaymentsAsync(
+        Guid actorUserId, CancellationToken ct = default) =>
+        stripePayments.RecordMissingStripePaymentsAsync(actorUserId, ct);
 
     public Task HandleStripeCheckoutWebhookEventAsync(StoreCheckoutWebhookEvent evt, CancellationToken ct = default) =>
         stripePayments.HandleStripeCheckoutWebhookEventAsync(evt, ct);

@@ -206,8 +206,8 @@ internal sealed class TicketController(
     [Authorize(Policy = PolicyNames.AdminOnly)]
     public async Task<IActionResult> ParticipationBackfill(ParticipationBackfillViewModel model)
     {
-        var actorId = GetCurrentUserId();
-        if (actorId is null) return Forbid();
+        var actor = await GetCurrentUserInfoAsync(HttpContext.RequestAborted);
+        if (actor is null) return Forbid();
 
         if (!ModelState.IsValid)
         {
@@ -217,7 +217,7 @@ internal sealed class TicketController(
 
         try
         {
-            var result = await participationBackfillService.BackfillFromCsvAsync(model.Year, model.CsvData, actorId.Value,
+            var result = await participationBackfillService.BackfillFromCsvAsync(model.Year, model.CsvData, actor.Id,
                 apply: model.Confirmed);
             if (!result.Succeeded)
             {
@@ -250,11 +250,11 @@ internal sealed class TicketController(
     [Authorize(Policy = TicketsPolicies.Manage)]
     public async Task<IActionResult> ExportAttendees()
     {
-        var actorId = GetCurrentUserId();
-        if (actorId is null)
+        var actor = await GetCurrentUserInfoAsync(HttpContext.RequestAborted);
+        if (actor is null)
             return Forbid();
 
-        var rows = await ticketQueryService.GetAttendeeExportDataAsync(actorId.Value, HttpContext.RequestAborted);
+        var rows = await ticketQueryService.GetAttendeeExportDataAsync(actor.Id, HttpContext.RequestAborted);
 
         var bytes = HumansCsv.WriteBytes(csv =>
         {
@@ -271,11 +271,11 @@ internal sealed class TicketController(
     [Authorize(Policy = TicketsPolicies.Manage)]
     public async Task<IActionResult> ExportOrders()
     {
-        var actorId = GetCurrentUserId();
-        if (actorId is null)
+        var actor = await GetCurrentUserInfoAsync(HttpContext.RequestAborted);
+        if (actor is null)
             return Forbid();
 
-        var rows = await ticketQueryService.GetOrderExportDataAsync(actorId.Value, HttpContext.RequestAborted);
+        var rows = await ticketQueryService.GetOrderExportDataAsync(actor.Id, HttpContext.RequestAborted);
 
         var bytes = HumansCsv.WriteBytes(csv =>
         {
@@ -336,11 +336,11 @@ internal sealed class TicketController(
     [Authorize(Policy = PolicyNames.AdminOnly)]
     public async Task<IActionResult> ExportDonations()
     {
-        var actorId = GetCurrentUserId();
-        if (actorId is null)
+        var actor = await GetCurrentUserInfoAsync(HttpContext.RequestAborted);
+        if (actor is null)
             return Forbid();
 
-        var rows = await ticketQueryService.GetDonationExportDataAsync(actorId.Value, HttpContext.RequestAborted);
+        var rows = await ticketQueryService.GetDonationExportDataAsync(actor.Id, HttpContext.RequestAborted);
 
         var bytes = HumansCsv.WriteBytes(csv =>
         {

@@ -9,7 +9,7 @@
 
 <div class="gate-pin-screen">
     <div class="gate-pin-head">
-        <div class="gate-pin-name">@Model.DisplayName</div>
+        <div class="gate-pin-name"><vc:human user-id="@Model.UserId" link="None" /></div>
         <div class="gate-pin-prompt" data-gate-prompt>@(Model.Mode == GatePinMode.Set ? "Set a 4-digit PIN" : "Enter your PIN")</div>
         @if (Model.Mode == GatePinMode.Set)
         {
@@ -27,7 +27,7 @@
     {
         <div class="gate-pin-confirm" data-gate-confirm>
             <div class="gate-pin-confirm-q">Is this you?</div>
-            <p class="gate-pin-confirm-note">Every ticket you scan will be recorded as <strong>@Model.DisplayName</strong>.</p>
+            <p class="gate-pin-confirm-note">Every ticket you scan will be recorded as <strong><vc:human user-id="@Model.UserId" link="None" /></strong>.</p>
             <button type="button" class="gate-pin-confirm-yes" data-gate-confirm-yes>Yes — that's me</button>
         </div>
     }

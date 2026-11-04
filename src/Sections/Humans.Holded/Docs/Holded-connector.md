@@ -126,7 +126,7 @@ options. They add no interfaces or DI registrations, and the public contract sta
 **Consumers outside the section** (each to move onto `IHoldedService` / `IHoldedWrite`, ledger debt
 `CENTRAL-105`; `IHoldedClient` goes internal when none remain): Expenses (`ExpenseHoldedPublisher` and
 `ExpenseReportBackgroundProcessor` for the push, `ExpenseReportService` via
-`IHoldedClient.IsConfigured`), Finance (`Service`, `HoldedDocumentSync`, `SepaBankBooking`), Workgroups (`WorkgroupService`) and Store
+`IHoldedClient.IsConfigured`), Finance (`Service`, `SepaBankBooking`), this section's own purchase-document sync, Workgroups (`WorkgroupService`) and Store
 (`Service`, `StoreInvoiceIssuer`) reach it through the public `Contracts/` folder.
 
 **The jobs live with their sections.** `HoldedSyncJob` is in `Humans.Holded/Jobs/`, a shim over

@@ -1,6 +1,5 @@
 using Humans.Base.Interfaces;
 using Humans.Gdpr.Contracts;
-using Humans.Settings.Contracts;
 using NodaTime;
 
 namespace Humans.Rideshare.Services;
@@ -39,19 +38,12 @@ internal interface IRideshareService : IApplicationService
 
     Task<RideshareMutationResult> SaveSettingsAsync(Guid? eventSettingsId, SettingsSave save, Guid actorUserId, CancellationToken ct = default);
 
-    /// <summary>Every unstamped row and the event <c>rideshare.event-ids</c> would give it (null: its year has none).</summary>
-    Task<IReadOnlyList<RideshareEventIdPlanRow>> GetEventIdPlanAsync(CancellationToken ct = default);
-
-    /// <summary>Applies <see cref="GetEventIdPlanAsync"/>; returns the rows written. Idempotent.</summary>
-    Task<int> AssignEventIdsAsync(CancellationToken ct = default);
-
     // On the interface so the caching decorator, which carries these, reaches the inner service.
     Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct);
     Task EraseForUserAsync(Guid userId, CancellationToken ct);
     Task ReassignAsync(Guid mergedFromUserId, Guid mergedToUserId, Guid actorUserId, Instant now, CancellationToken ct);
 }
 
-internal sealed record RideshareEventIdPlanRow(string Table, Guid Id, int Year, EventSettingsInfo? Event);
 
 /// <summary>A mutation success (optionally with a created id) or an untranslated refusal.</summary>
 internal sealed record RideshareMutationResult(Guid? Id = null, RideshareRefusal? Refusal = null);

@@ -116,15 +116,18 @@
             }
         </text>;
         Func<TeamJoinRequestViewModel, IHtmlContent> pendingActionsCell = @<text>
-            <div class="d-flex gap-1">
-                <form asp-action="ApproveRequest" asp-route-slug="@Model.TeamSlug" asp-route-requestId="@item.Id" method="post" class="d-inline">
-                    @Html.AntiForgeryToken()
-                    <button type="submit" class="btn btn-sm btn-success" data-confirm="@Localizer["Teams_TeamAdmin_ApproveConfirm"].Value">@Localizer["Teams_TeamAdmin_Approve"]</button>
-                </form>
-                <button type="button" class="btn btn-sm btn-danger" data-bs-toggle="modal" data-bs-target="#rejectModal-@item.Id">
-                    @Localizer["Teams_TeamAdmin_Reject"]
-                </button>
-            </div>
+            @if (Model.CanManage)
+            {
+                <div class="d-flex gap-1">
+                    <form asp-action="ApproveRequest" asp-route-slug="@Model.TeamSlug" asp-route-requestId="@item.Id" method="post" class="d-inline">
+                        @Html.AntiForgeryToken()
+                        <button type="submit" class="btn btn-sm btn-success" data-confirm="@Localizer["Teams_TeamAdmin_ApproveConfirm"].Value">@Localizer["Teams_TeamAdmin_Approve"]</button>
+                    </form>
+                    <button type="button" class="btn btn-sm btn-danger" data-bs-toggle="modal" data-bs-target="#rejectModal-@item.Id">
+                        @Localizer["Teams_TeamAdmin_Reject"]
+                    </button>
+                </div>
+            }
         </text>;
             var pendingTable = TableModel.For(Model.PendingRequests)
                 .Template(SharedLocalizer["AdminApp_Applicant"].Value, pendingApplicantCell)
@@ -136,7 +139,7 @@
         <partial name="_Table" model="pendingTable" />
     </div>
 
-    @foreach (var request in Model.PendingRequests)
+    @foreach (var request in Model.CanManage ? Model.PendingRequests : [])
     {
         <div class="modal fade" id="rejectModal-@request.Id" tabindex="-1" aria-labelledby="rejectModalLabel-@request.Id" aria-hidden="true">
             <div class="modal-dialog">

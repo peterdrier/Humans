@@ -7,7 +7,6 @@ using Humans.Teams.Data;
 using Humans.Notifications.Data;
 using Humans.Budget.Data;
 using Humans.Campaigns.Data;
-using Humans.Feedback.Data;
 using Humans.Governance.Data;
 using Humans.Tickets.Contracts;
 using Humans.Tickets.Data;
@@ -299,20 +298,19 @@ public class AcceptAsyncFoldTests(HumansTestDatabase database) : IntegrationTest
         var (sourceId, targetId) = await Factory.SeedMergeFixtureAsync(b =>
         {
             // Source newer: its value is copied onto target.
-            b.WithSourceCommPref(LegacyMessageCategory.VolunteerUpdates, optedOut: true, updatedAt: newer);
-            b.WithTargetCommPref(LegacyMessageCategory.VolunteerUpdates, optedOut: false, updatedAt: older);
+            b.WithSourceCommPref(MessageCategory.VolunteerUpdates, optedOut: true, updatedAt: newer);
+            b.WithTargetCommPref(MessageCategory.VolunteerUpdates, optedOut: false, updatedAt: older);
 
             // Target newer: target stands.
-            b.WithSourceCommPref(LegacyMessageCategory.Marketing, optedOut: false, updatedAt: older);
-            b.WithTargetCommPref(LegacyMessageCategory.Marketing, optedOut: true, updatedAt: newer);
+            b.WithSourceCommPref(MessageCategory.Marketing, optedOut: false, updatedAt: older);
+            b.WithTargetCommPref(MessageCategory.Marketing, optedOut: true, updatedAt: newer);
         });
         var requestId = await Factory.SeedMergeRequestAsync(sourceId, targetId);
 
         var adminId = await SeedAdminUserAsync();
         await AcceptAsync(requestId, adminId);
 
-        // The fold lands in Email's table; the source's legacy rows stay, shadowed by cleared rows so Email's fallback
-        // can't resurrect them.
+        // Email owns the preference fold.
         await using var assertScope = Factory.Services.CreateAsyncScope();
         var db = assertScope.ServiceProvider.GetRequiredService<Humans.Email.Data.EmailDbContext>();
 
@@ -331,7 +329,7 @@ public class AcceptAsyncFoldTests(HumansTestDatabase database) : IntegrationTest
             .AsNoTracking()
             .Where(cp => cp.UserId == sourceId)
             .ToListAsync(TestContext.Current.CancellationToken);
-        sourcePrefs.Should().OnlyContain(cp => cp.OptedOut == null);
+        sourcePrefs.Should().BeEmpty();
     }
 
     [HumansFact(Timeout = 30_000)]
@@ -340,15 +338,15 @@ public class AcceptAsyncFoldTests(HumansTestDatabase database) : IntegrationTest
         var (sourceId, targetId) = await Factory.SeedMergeFixtureAsync(b =>
         {
             // 2024: source Attended (highest precedence) beats target NotAttending.
-            b.WithSourceEventParticipation(2024, LegacyParticipationStatus.Attended);
-            b.WithTargetEventParticipation(2024, LegacyParticipationStatus.NotAttending);
+            b.WithSourceEventParticipation(2024, ParticipationStatus.Attended);
+            b.WithTargetEventParticipation(2024, ParticipationStatus.NotAttending);
 
             // 2025: source NotAttending loses to target Ticketed.
-            b.WithSourceEventParticipation(2025, LegacyParticipationStatus.NotAttending);
-            b.WithTargetEventParticipation(2025, LegacyParticipationStatus.Ticketed);
+            b.WithSourceEventParticipation(2025, ParticipationStatus.NotAttending);
+            b.WithTargetEventParticipation(2025, ParticipationStatus.Ticketed);
 
             // 2023: source-only, re-FKs to target.
-            b.WithSourceEventParticipation(2023, LegacyParticipationStatus.Attended);
+            b.WithSourceEventParticipation(2023, ParticipationStatus.Attended);
         });
         var requestId = await Factory.SeedMergeRequestAsync(sourceId, targetId);
 
@@ -356,7 +354,7 @@ public class AcceptAsyncFoldTests(HumansTestDatabase database) : IntegrationTest
         await AcceptAsync(requestId, adminId);
 
         await using var assertScope = Factory.Services.CreateAsyncScope();
-        // Tickets owns the fold: both users' legacy rows are materialized into tickets_event_participations.
+        // Tickets owns the participation fold.
         var db = assertScope.ServiceProvider.GetRequiredService<TicketsDbContext>();
 
         var targetEvents = await db.EventParticipations
@@ -373,8 +371,7 @@ public class AcceptAsyncFoldTests(HumansTestDatabase database) : IntegrationTest
             .AsNoTracking()
             .Where(ep => ep.UserId == sourceId)
             .ToListAsync(TestContext.Current.CancellationToken);
-        // The source's legacy rows stay frozen in Users; its cleared Tickets rows stop the fallback bringing them back.
-        sourceEvents.Should().OnlyContain(ep => ep.Status == null);
+        sourceEvents.Should().BeEmpty();
     }
 
     [HumansFact(Timeout = 30_000)]
@@ -406,39 +403,6 @@ public class AcceptAsyncFoldTests(HumansTestDatabase database) : IntegrationTest
             .Where(a => a.UserId == sourceId)
             .ToListAsync(TestContext.Current.CancellationToken);
         sourceApps.Should().BeEmpty();
-    }
-
-    [HumansFact(Timeout = 30_000)]
-    public async Task AcceptAsync_FeedbackReportsAndMessages_Move()
-    {
-        var (sourceId, targetId) = await Factory.SeedMergeFixtureAsync(b =>
-        {
-            b.WithSourceFeedbackReport("Source bug A");
-            b.WithSourceFeedbackReport("Source bug B");
-            b.WithTargetFeedbackReport("Target bug C");
-        });
-        var requestId = await Factory.SeedMergeRequestAsync(sourceId, targetId);
-
-        var adminId = await SeedAdminUserAsync();
-        await AcceptAsync(requestId, adminId);
-
-        await using var assertScope = Factory.Services.CreateAsyncScope();
-        var feedbackDb = assertScope.ServiceProvider.GetRequiredService<FeedbackDbContext>();
-
-        var targetReports = await feedbackDb.FeedbackReports
-            .AsNoTracking()
-            .Where(r => r.UserId == targetId)
-            .ToListAsync(TestContext.Current.CancellationToken);
-        targetReports.Should().HaveCount(3);
-        targetReports.Should().ContainSingle(r => r.Description == "Source bug A");
-        targetReports.Should().ContainSingle(r => r.Description == "Source bug B");
-        targetReports.Should().ContainSingle(r => r.Description == "Target bug C");
-
-        var sourceReports = await feedbackDb.FeedbackReports
-            .AsNoTracking()
-            .Where(r => r.UserId == sourceId)
-            .ToListAsync(TestContext.Current.CancellationToken);
-        sourceReports.Should().BeEmpty();
     }
 
     [HumansFact(Timeout = 30_000)]
@@ -772,49 +736,6 @@ public class AcceptAsyncFoldTests(HumansTestDatabase database) : IntegrationTest
                 && (g.CampaignId == contestedCampaignId || g.CampaignId == sourceOnlyCampaignId))
             .ToListAsync(TestContext.Current.CancellationToken);
         sourceGrants.Should().BeEmpty();
-    }
-
-    [HumansFact(Timeout = 30_000)]
-    public async Task AcceptAsync_FeedbackMessages_Move()
-    {
-        Guid reportId;
-        var sourceContent = $"source-msg-{Guid.NewGuid():N}";
-        var targetContent = $"target-msg-{Guid.NewGuid():N}";
-
-        var (sourceId, targetId) = await Factory.SeedMergeFixtureAsync();
-
-        await using (var scope = Factory.Services.CreateAsyncScope())
-        {
-            var builder = new MergeFixtureBuilder(scope, sourceId, targetId);
-            // The target's report, so only the message's SenderUserId moves.
-            reportId = builder.SeedFeedbackReportNow(targetId, $"report-{Guid.NewGuid():N}");
-
-            builder
-                .WithSourceFeedbackMessage(reportId, sourceContent)
-                .WithTargetFeedbackMessage(reportId, targetContent);
-
-            await builder.SaveAllAsync();
-        }
-        var requestId = await Factory.SeedMergeRequestAsync(sourceId, targetId);
-
-        var adminId = await SeedAdminUserAsync();
-        await AcceptAsync(requestId, adminId);
-
-        await using var assertScope = Factory.Services.CreateAsyncScope();
-        var feedbackDb = assertScope.ServiceProvider.GetRequiredService<FeedbackDbContext>();
-
-        var targetMessages = await feedbackDb.FeedbackMessages
-            .AsNoTracking()
-            .Where(m => m.SenderUserId == targetId
-                && (m.Content == sourceContent || m.Content == targetContent))
-            .ToListAsync(TestContext.Current.CancellationToken);
-        targetMessages.Should().HaveCount(2);
-
-        var sourceMessages = await feedbackDb.FeedbackMessages
-            .AsNoTracking()
-            .Where(m => m.SenderUserId == sourceId)
-            .ToListAsync(TestContext.Current.CancellationToken);
-        sourceMessages.Should().BeEmpty();
     }
 
     [HumansFact(Timeout = 30_000)]

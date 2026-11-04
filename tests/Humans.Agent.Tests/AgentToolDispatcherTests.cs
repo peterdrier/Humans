@@ -264,10 +264,6 @@ public class AgentToolDispatcherTests
         BuildStartOffset: -14,
         EventEndOffset: 6,
         StrikeEndOffset: 9,
-        FirstCrewStartOffset: 0,
-        SetupWeekStartOffset: 0,
-        PreEventWeekStartOffset: 0,
-        FinishingWeekendStartOffset: 0,
         EarlyEntryCapacity: new Dictionary<int, int>(),
         BarriosEarlyEntryAllocation: null,
         EarlyEntryClose: null);
@@ -635,6 +631,7 @@ public class AgentToolDispatcherTests
             return Task.FromResult(Events);
         }
         public Task<IReadOnlyList<Humans.AuditLog.Contracts.AuditEvent>> GetFilteredAsync(string? entityType, Guid? entityId, Guid? userId, IReadOnlyList<string>? actions, int limit, CancellationToken ct = default) => Task.FromResult(Events);
+        public Task<IReadOnlySet<Guid>> GetEntityIdsForEntityTypeActionsAsync(string entityType, IReadOnlyList<Humans.AuditLog.Contracts.AuditActionDefinition> actions, CancellationToken ct = default) => Task.FromResult<IReadOnlySet<Guid>>(new HashSet<Guid>());
     }
 
 }

@@ -1,3 +1,4 @@
+using Xunit;
 using System.Reflection;
 using System.Security.Claims;
 using AwesomeAssertions;
@@ -68,6 +69,46 @@ public sealed class ShiftsControllerRevealMedicalTests
         _audit.ReceivedCalls().Should().BeEmpty();
     }
 
+    [HumansTheory]
+    [InlineData(AccountScenario.Merged)]
+    [InlineData(AccountScenario.Missing)]
+    [InlineData(AccountScenario.Cancelled)]
+    public async Task RevealMedical_ResolvesItsAuditActorBeforeReadingHealthData(AccountScenario account)
+    {
+        using var request = new CancellationTokenSource();
+        StubSubject("Epilepsy");
+        var controller = BuildSut();
+        controller.HttpContext.RequestAborted = request.Token;
+        var actorId = Guid.NewGuid();
+        _userService.GetUserInfoAsync(_actorId, Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+            return new ValueTask<UserInfo?>(account == AccountScenario.Missing
+                ? null : UserInfoStubHelpers.MakeUserInfo(actorId));
+        });
+        if (account == AccountScenario.Cancelled)
+        {
+            await request.CancelAsync();
+            await Assert.ThrowsAnyAsync<OperationCanceledException>(() => controller.RevealMedical(_subjectId, request.Token));
+        }
+        else
+        {
+            var result = await controller.RevealMedical(_subjectId, request.Token);
+            if (account == AccountScenario.Merged)
+            {
+                result.Should().BeOfType<JsonResult>();
+                await _audit.Received(1).LogAsync(ShiftsAuditActions.MedicalConditionsRevealed, "User", _subjectId,
+                    Arg.Is<string>(d => !d.Contains("Epilepsy", StringComparison.Ordinal)), actorId);
+            }
+            else result.Should().BeOfType<ForbidResult>();
+        }
+        if (account != AccountScenario.Merged)
+        {
+            await _userService.DidNotReceive().GetUserInfoAsync(_subjectId, Arg.Any<CancellationToken>());
+            _audit.ReceivedCalls().Should().BeEmpty();
+        }
+    }
+
     private void StubSubject(string? medicalConditions) =>
         _userService.GetUserInfoAsync(_subjectId, Arg.Any<CancellationToken>())
             .Returns(UserInfoStubHelpers.MakeUserInfo(_subjectId, profile: new Profile
@@ -83,13 +124,15 @@ public sealed class ShiftsControllerRevealMedicalTests
 
     private ShiftsController BuildSut()
     {
+        _userService.GetUserInfoAsync(_actorId, Arg.Any<CancellationToken>())
+            .Returns(UserInfoStubHelpers.MakeUserInfo(_actorId));
         var shiftMgmt = Substitute.For<IShiftManagement>();
         var burnSettings = Substitute.For<IBurnSettingsService>();
         var teamService = Substitute.For<ITeamService>();
         var ctrl = new ShiftsController(
             shiftMgmt, burnSettings, Substitute.For<IShiftSignupService>(),
             Substitute.For<IVolunteerTrackingManagement>(), Substitute.For<IShiftRowView>(), teamService,
-            _audit, _userService, Substitute.For<IStringLocalizer<ShiftsResource>>(),
+            _audit, Substitute.For<IAuditViewerService>(), _userService, Substitute.For<IStringLocalizer<ShiftsResource>>(),
             Substitute.For<IStringLocalizer<OnboardingResource>>(), Substitute.For<IClock>(),
             new ShiftBrowsePageBuilder(shiftMgmt, burnSettings, teamService), NullLogger<ShiftsController>.Instance);
         ctrl.ControllerContext = new ControllerContext

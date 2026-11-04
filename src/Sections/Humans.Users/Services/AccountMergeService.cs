@@ -166,13 +166,11 @@ internal sealed class AccountMergeService(
         {
             return new(
                 user.Id,
-                user.BurnerName,
                 user.Email,
-                user.ProfilePictureUrl,
                 user.PreferredLanguage,
                 user.LastLoginAt);
         }
-        return new(userId, "(unknown user)", null, null, null, null);
+        return new(userId, null, null, null);
     }
 
     // Filters GetPendingAsync in memory rather than adding a pair-scoped query; the set is tiny.
@@ -220,14 +218,14 @@ internal sealed class AccountMergeService(
             request.AdminNotes = notes;
             await mergeRepository.UpdateAsync(request, ct);
 
-            await auditLogService.LogAsync(
-                UsersAuditActions.AccountMergeRejected,
-                nameof(AccountMergeRequest), request.Id,
-                $"Rejected merge request for email {request.Email} (target: {request.TargetUserId}, source: {request.SourceUserId})",
-                adminUserId);
-
             scope.Complete();
         }
+
+        await auditLogService.LogAsync(
+            UsersAuditActions.AccountMergeRejected,
+            nameof(AccountMergeRequest), request.Id,
+            $"Rejected merge request for email {request.Email} (target: {request.TargetUserId}, source: {request.SourceUserId})",
+            adminUserId);
 
         // After commit.
         await userInfoRefresher.RefreshAsync(request.TargetUserId, ct);

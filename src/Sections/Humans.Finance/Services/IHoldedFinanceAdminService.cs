@@ -24,11 +24,16 @@ internal interface IHoldedFinanceAdminService : IApplicationService
     /// The next push re-resolves. False when nothing was bound.</summary>
     Task<bool> ClearCreditorContactAsync(Guid userId, Guid actorUserId, CancellationToken ct = default);
 
-    /// <summary>Local cache only, so the page cannot inherit the connector's timeout.</summary>
-    Task<HoldedConnectorVm> GetConnectorOverviewAsync(CancellationToken ct = default);
+    /// <summary>Expense accounts created outside the budget map. Unordered.</summary>
+    Task<IReadOnlyList<HoldedManagedAccountVm>> GetManagedAccountsAsync(CancellationToken ct = default);
 
     /// <summary>Read on every /Finance/Creditors load so the page says why payout is unavailable.</summary>
     SepaPayoutSettings GetSepaPayoutSettings();
+
+    /// <summary>Runs every refusal <see cref="GenerateSepaPayoutAsync"/> would and writes nothing: the confirmation
+    /// page before a file is generated.</summary>
+    Task<SepaPayoutPreview> PreviewSepaPayoutAsync(
+        IReadOnlyList<SepaPayoutSelection> selections, decimal maxPerTransfer, CancellationToken ct = default);
 
     /// <summary>All-or-nothing: any bad row refuses the whole generation. Nothing is stamped on a report or member:
     /// settlement closes through Holded and the next ledger sync. The caller has validated
@@ -78,6 +83,10 @@ internal interface IHoldedFinanceAdminService : IApplicationService
     /// <summary>Flagged, never deleted. Refused once the row is booked, tied to a bank line or has posted a payment.
     /// Audits and tells the member.</summary>
     Task<SepaBookingResult> WithdrawSepaTransferAsync(Guid transferId, Guid actorUserId, CancellationToken ct = default);
+
+    /// <summary>Withdraws every live transfer of a file the bank rejected whole. Refused if any of them could not be
+    /// withdrawn alone. Audits each transfer; emails nobody.</summary>
+    Task<SepaBookingResult> CancelSepaFileAsync(Guid fileId, Guid actorUserId, CancellationToken ct = default);
 
     Task<HoldedDuplicatesVm> GetHoldedDuplicatesAsync(CancellationToken ct = default);
 

@@ -28,9 +28,10 @@ internal sealed class GovernanceVotesController(
     [HttpGet("")]
     public async Task<IActionResult> Index(CancellationToken ct)
     {
-        if (GetCurrentUserId() is not { } userId) return Challenge();
+        var user = await GetCurrentUserInfoAsync(ct);
+        if (user is null) return Challenge();
 
-        var votes = await voteService.GetVotesForMemberAsync(userId, ct);
+        var votes = await voteService.GetVotesForMemberAsync(user.Id, ct);
         return View("~/Views/Governance/Votes/Index.cshtml", new AssemblyVoteListViewModel
         {
             Votes = votes.OrderByDescending(v => v.Status == AssemblyVoteStatus.Open)
@@ -41,9 +42,10 @@ internal sealed class GovernanceVotesController(
     [HttpGet("{voteId:guid}")]
     public async Task<IActionResult> Details(Guid voteId, CancellationToken ct)
     {
-        if (GetCurrentUserId() is not { } userId) return Challenge();
+        var user = await GetCurrentUserInfoAsync(ct);
+        if (user is null) return Challenge();
 
-        var vote = await voteService.GetVoteForMemberAsync(voteId, userId, ct);
+        var vote = await voteService.GetVoteForMemberAsync(voteId, user.Id, ct);
         if (vote is null) return NotFound();
 
         var rankedOptions = vote.Kind == AssemblyVoteKind.RankedChoice
@@ -65,14 +67,15 @@ internal sealed class GovernanceVotesController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Ballot(Guid voteId, AssemblyBallotFormViewModel model, CancellationToken ct)
     {
-        if (GetCurrentUserId() is not { } userId) return Challenge();
+        var user = await GetCurrentUserInfoAsync(ct);
+        if (user is null) return Challenge();
         if (voteId != model.VoteId) return NotFound();
 
         if (model.Choice == AssemblyBallotChoice.Ranked && !ModelState.IsValid)
         {
-            logger.LogWarning("Rejected malformed ballot form for vote {VoteId} by {UserId}", voteId, userId);
+            logger.LogWarning("Rejected malformed ballot form for vote {VoteId} by {UserId}", voteId, user.Id);
             SetError(localizer["Governance_Votes_BallotInvalid"].Value);
-            return await RedisplayBallotAsync(voteId, userId, model, ct);
+            return await RedisplayBallotAsync(voteId, user.Id, model, ct);
         }
 
         // Two options at the same rank is an ambiguous ballot, and it stops here: projecting
@@ -80,7 +83,7 @@ internal sealed class GovernanceVotesController(
         if (model.HasDuplicateRanks())
         {
             SetError(localizer["Governance_Votes_BallotDuplicateRanks"].Value);
-            return await RedisplayBallotAsync(voteId, userId, model, ct);
+            return await RedisplayBallotAsync(voteId, user.Id, model, ct);
         }
 
         // No choice posted at all is an empty ballot, not an affirmative one.
@@ -90,7 +93,7 @@ internal sealed class GovernanceVotesController(
             return RedirectToAction(nameof(Details), new { voteId });
         }
 
-        var outcome = await voteService.CastBallotAsync(voteId, userId, choice, model.ToRanking(), ct);
+        var outcome = await voteService.CastBallotAsync(voteId, user.Id, choice, model.ToRanking(), ct);
 
         switch (outcome)
         {
@@ -118,9 +121,10 @@ internal sealed class GovernanceVotesController(
     [HttpGet("{voteId:guid}/Results")]
     public async Task<IActionResult> Results(Guid voteId, CancellationToken ct)
     {
-        if (GetCurrentUserId() is not { } userId) return Challenge();
+        var user = await GetCurrentUserInfoAsync(ct);
+        if (user is null) return Challenge();
 
-        var results = await voteService.GetResultsAsync(voteId, userId, IsViewerBoardOrAdmin(), ct);
+        var results = await voteService.GetResultsAsync(voteId, user.Id, IsViewerBoardOrAdmin(), ct);
         if (results is null) return NotFound();
 
         return View("~/Views/Governance/Votes/Results.cshtml", new AssemblyVoteResultsViewModel { Results = results });
@@ -135,9 +139,10 @@ internal sealed class GovernanceVotesController(
     [HttpGet("{voteId:guid}/Results.csv")]
     public async Task<IActionResult> ResultsCsv(Guid voteId, CancellationToken ct)
     {
-        if (GetCurrentUserId() is not { } userId) return Challenge();
+        var user = await GetCurrentUserInfoAsync(ct);
+        if (user is null) return Challenge();
 
-        var results = await voteService.GetResultsAsync(voteId, userId, viewerIsBoardOrAdmin: false, ct);
+        var results = await voteService.GetResultsAsync(voteId, user.Id, viewerIsBoardOrAdmin: false, ct);
         if (results is null) return NotFound();
 
         var bytes = WriteResultsCsv(results);
@@ -226,12 +231,12 @@ internal sealed class GovernanceVotesController(
         {
             csv.WriteRow(Text("Governance_Votes_CsvVoteLabel"), results.Vote.Title);
             csv.WriteRow(Text("Governance_Votes_MethodLabel"), Text("Governance_Votes_Method_" + results.Result.Method));
-            csv.NextRecord();
+            csv.WriteBlankLine();
 
             WriteAudienceCsv(csv, Text("Governance_Votes_OfficialRosterLabel"), results.Result.Official, OptionLabel, optionKeys);
             if (results.Result.Indicative is { } indicative)
             {
-                csv.NextRecord();
+                csv.WriteBlankLine();
                 WriteAudienceCsv(csv, Text("Governance_Votes_IndicativeRosterLabel"), indicative, OptionLabel, optionKeys);
             }
         });

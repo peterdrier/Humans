@@ -2,7 +2,6 @@ using Humans.Governance.Contracts;
 using Humans.Auth.Contracts;
 using AwesomeAssertions;
 using Humans.Consent.Contracts;
-using Humans.Feedback.Contracts;
 using Humans.Settings.Contracts;
 using Humans.Shifts.Contracts;
 using Humans.Teams.Contracts;
@@ -152,7 +151,7 @@ public class AgentUserSnapshotProviderTests
             .Returns(new ValueTask<UserInfo?>(
                 UserInfo.Create(
                     new User { Id = userId, DisplayName = "T", PreferredLanguage = "es" },
-                    [], [], [], profile: null, [])));
+                    [], [], profile: null)));
         var roles = Substitute.For<IRoleAssignmentService>();
         roles.GetActiveForUserAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns([]);
@@ -185,10 +184,6 @@ public class AgentUserSnapshotProviderTests
         consents.GetPendingDocumentNamesAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns([]);
 
-        var feedback = Substitute.For<IFeedbackService>();
-        feedback.GetOpenFeedbackIdsForUserAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
-            .Returns([]);
-
         var tickets = Substitute.For<ITicketService>();
         tickets.GetUserTicketHoldingsAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(new UserTicketHoldings(0, [])
@@ -211,7 +206,7 @@ public class AgentUserSnapshotProviderTests
         var clock = new FakeClock(Instant.FromUtc(2026, 6, 1, 0, 0));
 
         return new AgentUserSnapshotProvider(
-            users, roles, teams, Substitute.For<IGovernanceService>(), consents, feedback, tickets,
+            users, roles, teams, Substitute.For<IGovernanceService>(), consents, tickets,
             shiftView, burnSettings, clock);
     }
 
@@ -224,10 +219,6 @@ public class AgentUserSnapshotProviderTests
         BuildStartOffset: -14,
         EventEndOffset: 6,
         StrikeEndOffset: 9,
-        FirstCrewStartOffset: -25,
-        SetupWeekStartOffset: -16,
-        PreEventWeekStartOffset: -9,
-        FinishingWeekendStartOffset: -4,
         EarlyEntryCapacity: new Dictionary<int, int>(),
         BarriosEarlyEntryAllocation: null,
         EarlyEntryClose: null);

@@ -1,5 +1,9 @@
+using System.Globalization;
+using System.Security.Cryptography;
+using System.Text;
 using Humans.Base.Extensions;
 using Humans.Teams.Contracts;
+using Humans.Consent.Contracts;
 using Humans.Consent.Data;
 using Humans.Consent.Domain;
 using Humans.Email.Contracts;
@@ -13,115 +17,116 @@ internal sealed class LegalDocumentSyncRunner(
     ConsentEmails emailMessages,
     ITeamService teamService,
     IUserService userService,
-    IConsentRepository consentRepository,
+    IConsentService consents,
+    ILegalDocumentRepository documents,
     ILogger<LegalDocumentSyncRunner> logger) : ILegalDocumentSyncRunner
 {
     public async Task SyncAndNotifyAsync(CancellationToken cancellationToken = default)
     {
-        var updatedDocs = await syncService.SyncAllDocumentsAsync(cancellationToken);
+        var failures = new List<Exception>();
+        var updatedDocs = await syncService.SyncAllDocumentsAsync(cancellationToken, failures);
+        logger.LogInformation("Synced {Count} updated legal documents", updatedDocs.Count);
 
-        if (updatedDocs.Count == 0)
+        // The version and its marker commit together, so a crash or a later unchanged sync cannot lose this work.
+        var pending = (await documents.GetDocumentsAsync(null, cancellationToken))
+            .SelectMany(document => document.Versions
+                .Where(version => version.PendingReConsentBatchId is not null)
+                .Select(version => (Document: document, Version: version)))
+            .GroupBy(change => change.Version.PendingReConsentBatchId!.Value);
+        foreach (var batch in pending)
         {
-            logger.LogInformation("No legal document updates found");
-            return;
+            try
+            {
+                var currentChanges = batch.Where(change => change.Document.IsActive && change.Document.IsRequired
+                    && change.Document.CurrentVersion?.Id == change.Version.Id).ToList();
+                var batchFailures = await SendReConsentNotificationsAsync(batch.Key, currentChanges, cancellationToken);
+                failures.AddRange(batchFailures);
+                if (batchFailures.Count == 0)
+                    await documents.CompleteReConsentBatchAsync(batch.Key, cancellationToken);
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                failures.Add(ex);
+                logger.LogError(ex, "Failed to complete legal document notification batch {BatchId}", batch.Key);
+            }
         }
-
-        logger.LogInformation(
-            "Synced {Count} updated legal documents: {Documents}",
-            updatedDocs.Count,
-            string.Join(", ", updatedDocs.Select(d => d.Name)));
-
-        await SendReConsentNotificationsAsync(updatedDocs, cancellationToken);
+        if (failures.Count > 0)
+            throw new AggregateException("Failed to complete legal document sync or notification batches.", failures);
     }
 
-    /// <summary>Only members of the teams the updated documents belong to.</summary>
-    private async Task SendReConsentNotificationsAsync(
-        IReadOnlyList<LegalDocument> updatedDocs,
+    private async Task<IReadOnlyList<Exception>> SendReConsentNotificationsAsync(
+        Guid batchId, IReadOnlyList<(LegalDocument Document, DocumentVersion Version)> changes,
         CancellationToken cancellationToken)
     {
-        var requiredDocs = updatedDocs.Where(d => d.IsRequired).ToList();
-        var userDocuments = new Dictionary<Guid, List<LegalDocument>>();
-        foreach (var teamDocuments in requiredDocs.GroupBy(d => d.TeamId))
+        var failures = new List<Exception>();
+        var userDocuments = new Dictionary<Guid, List<(LegalDocument Document, DocumentVersion Version)>>();
+        foreach (var teamDocuments in changes.GroupBy(change => change.Document.TeamId))
         {
-            var team = await teamService.GetTeamAsync(teamDocuments.Key, cancellationToken);
-            if (team is null)
-                continue;
-
-            foreach (var userId in team.Members.Select(m => m.UserId).Distinct())
+            try
             {
-                if (!userDocuments.TryGetValue(userId, out var documents))
+                var team = await teamService.GetTeamAsync(teamDocuments.Key, cancellationToken);
+                if (team is null) continue;
+                foreach (var userId in team.Members.Select(member => member.UserId).Distinct())
                 {
-                    documents = [];
-                    userDocuments.Add(userId, documents);
+                    if (!userDocuments.TryGetValue(userId, out var required))
+                        userDocuments.Add(userId, required = []);
+                    required.AddRange(teamDocuments);
                 }
-                documents.AddRange(teamDocuments);
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                failures.Add(ex);
+                logger.LogError(ex, "Failed to resolve team {TeamId} for legal document notification batch {BatchId}",
+                    teamDocuments.Key, batchId);
             }
         }
-
         if (userDocuments.Count == 0)
         {
-            logger.LogInformation("No team members to notify for re-consent");
-            return;
+            logger.LogInformation("No team members to notify for legal document batch {BatchId}", batchId);
+            return failures;
         }
 
-        // Checked against the latest version of each updated document.
-        var updatedDocVersionIds = requiredDocs
-            .Select(d => d.Versions.OrderByDescending(v => v.EffectiveFrom).First().Id)
-            .ToList();
-
-        var activeUserIdList = userDocuments.Keys.ToList();
-        var consentPairs = await consentRepository.GetPairsForUsersAndVersionsAsync(
-            activeUserIdList, updatedDocVersionIds, cancellationToken);
-
-        var userConsents = consentPairs
-            .GroupBy(c => c.UserId)
-            .ToDictionary(g => g.Key, g => g.Select(c => c.DocumentVersionId).ToHashSet());
-
-        var outstandingDocuments = userDocuments.ToDictionary(
-            entry => entry.Key,
-            entry => entry.Value.Where(d =>
-                !userConsents.TryGetValue(entry.Key, out var consented) ||
-                !consented.Contains(d.CurrentVersion!.Id)).ToList());
-        var usersToNotify = outstandingDocuments.Where(entry => entry.Value.Count > 0)
-            .Select(entry => entry.Key).ToList();
-
-        if (usersToNotify.Count == 0)
-        {
-            logger.LogInformation("No users require notifications for these updates");
-            return;
-        }
-
-        var users = await userService.GetUserInfosAsync(usersToNotify, cancellationToken);
-
+        var users = await userService.GetUserInfosAsync(userDocuments.Keys.ToList(), cancellationToken);
+        var recipients = userDocuments.Keys.Where(users.ContainsKey).GroupBy(id => users[id].Id).ToList();
+        var consented = await consents.GetConsentMapForUsersAsync(recipients.Select(group => group.Key).ToList(), cancellationToken);
         var notificationCount = 0;
-
-        foreach (var userId in usersToNotify)
+        foreach (var recipient in recipients)
         {
-            if (!users.TryGetValue(userId, out var user))
+            var user = users[recipient.First()];
+            var outstanding = recipient.SelectMany(id => userDocuments[id])
+                .Where(change => !consented.TryGetValue(user.Id, out var versions) || !versions.Contains(change.Version.Id))
+                .Select(change => change.Document.Name).Distinct(StringComparer.Ordinal).ToList();
+            if (outstanding.Count == 0 || user.Email is null) continue;
+            try
             {
-                continue;
+                var language = user.PreferredLanguage;
+                var message = emailMessages.ReConsentsRequired(user.Id, user.Email, user.BurnerName, outstanding,
+                    language.IsSupportedCultureCode() ? language : CultureCatalog.DefaultCultureCode);
+                var deliveryKey = string.Create(CultureInfo.InvariantCulture, $"{message.TemplateName}:{batchId:N}:{user.Id:N}");
+                var deliveryId = new Guid(SHA256.HashData(Encoding.UTF8.GetBytes(deliveryKey)).AsSpan(0, 16));
+                await emailService.SendAsync(message with { DeliveryId = deliveryId }, cancellationToken);
+                notificationCount++;
             }
-
-            var effectiveEmail = user.Email;
-            if (effectiveEmail is null)
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
             {
-                continue;
+                throw;
             }
-
-            var language = user.PreferredLanguage;
-            await emailService.SendAsync(emailMessages.ReConsentsRequired(
-                user.Id,
-                effectiveEmail,
-                user.BurnerName,
-                outstandingDocuments[userId].Select(d => d.Name).ToList(),
-                language.IsSupportedCultureCode() ? language : CultureCatalog.DefaultCultureCode),
-                cancellationToken);
-
-            notificationCount++;
+            catch (Exception ex)
+            {
+                failures.Add(ex);
+                logger.LogError(ex, "Failed to enqueue legal document notification batch {BatchId} for user {UserId}", batchId, user.Id);
+            }
         }
-
-        logger.LogInformation(
-            "Sent consolidated re-consent notifications to {Count} users for documents: {Documents}",
-            notificationCount, string.Join(", ", requiredDocs.Select(d => d.Name)));
+        logger.LogInformation("Enqueued legal document batch {BatchId} for {Count} human(s), with {FailureCount} recipient/team failure(s)",
+            batchId, notificationCount, failures.Count);
+        return failures;
     }
 }

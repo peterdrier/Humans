@@ -169,7 +169,7 @@ Repositories: `ITicketRepository`, `ITicketTransferRepository`.
 | TicketAttendees | R/W |
 | TicketTransferRequests | R/W |
 
-Cross-section calls via `IUserService`, `IUserEmailService`,
+Cross-section calls via `IUserService` (including canonical contact email),
 `IEmailService`, the section's own `TicketsEmails` builder,
 `IAuditLogService`, plus
 `ITicketVendorService` (`ProcessTransferAsync` / `RetryReissueAsync` run the
@@ -224,15 +224,13 @@ Repository: `IEventParticipationRepository` (Singleton, `IDbContextFactory<Ticke
 
 | Table | R/W |
 |-------|-----|
-| EventParticipations (`tickets_event_participations`) | R/W (W: member declaration, ticket sync, Gate admit via `ITicketWrite`, admin backfill, merge fold, `tickets.event-participations` copy; a `null` `Status` is a cleared record) |
+| EventParticipations (`tickets_event_participations`) | R/W (W: member declaration, ticket sync, Gate admit via `ITicketWrite`, admin backfill, merge fold; a `null` `Status` is a cleared record) |
 
 Implements the internal `IEventParticipationManagement` (and so `ITicketWrite`),
 `IUserDataContributor` (slice `EventParticipations`, retained on erasure) and
 `IUserMerge`. `TicketQueryService` forwards `ITicketService.GetParticipationsAsync` /
 `GetAllParticipationsAsync` to it. Cross-section calls via `IUserService`
-(`GetUserInfoAsync` to forward-resolve a merged id; `GetRawUserInfoAsync` /
-`GetAllRawUserInfosAsync` for the frozen legacy rows — the one suppressed
-`HUM_USER_PARTICIPATIONS` reader, `LegacyRows`) and `IAuditLogService`
+(`GetUserInfoAsync` to forward-resolve a merged id) and `IAuditLogService`
 (`ParticipationBackfilled`). No cache.
 
 ### UserParticipationBackfillService (Scoped)

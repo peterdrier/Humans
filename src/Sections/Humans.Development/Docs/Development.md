@@ -48,6 +48,10 @@ Every route 404s when the dev-auth gate is closed. `/dev/login/*` additionally d
 
 ## Invariants
 
+- Seed/reset account preflight honours the action's cancellation token before any
+  seeder is resolved or invoked. The environment gates and seed/reset tokens remain
+  the same.
+
 - Persona and dashboard seeders abort when Users refuses a verified-email addition, before subsequent profile setup or reporting that user as seeded. An already-present address without a refusal remains an idempotent no-op.
 
 - **Nothing in this section is reachable in Production.** Three independent mechanisms, deliberately not one: the seeders are not registered (`Section.Register` returns early), `DevLoginController` is removed from MVC's controller feature by Shell's `DevLoginControllerExclusionProvider`, and both controllers' own `IsDevAuthEnabled()` / `IsDevSeedEnabled()` guards return `NotFound()`.

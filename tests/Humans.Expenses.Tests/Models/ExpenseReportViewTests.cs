@@ -1,3 +1,9 @@
+using System.Globalization;
+using System.Net;
+using System.Resources;
+using System.Text.RegularExpressions;
+using Humans.Base;
+using Humans.Users.Contracts;
 using System.Text.Encodings.Web;
 using AwesomeAssertions;
 using Humans.Base.ViewComponents;
@@ -33,7 +39,6 @@ public class ExpenseReportViewTests
         object model = review ? new ExpenseReviewViewModel
         {
             Reports = [report],
-            SubmitterNames = new Dictionary<Guid, string>(),
             BookingLabels = new Dictionary<Guid, string>(),
             FailedHoldedPushReportIds = new HashSet<Guid>(),
             Grants = new Dictionary<Guid, Humans.Preapprovals.Contracts.GrantOption>(),
@@ -128,6 +133,94 @@ public class ExpenseReportViewTests
         html.Contains("Awaiting payment", StringComparison.Ordinal).Should().Be(isSubmitter || isFinanceAdmin);
     }
 
+    [HumansTheory]
+    [Xunit.InlineData("en", false)]
+    [Xunit.InlineData("es", false)]
+    [Xunit.InlineData("de", false)]
+    [Xunit.InlineData("it", false)]
+    [Xunit.InlineData("fr", false)]
+    [Xunit.InlineData("ca", false)]
+    [Xunit.InlineData("en", true)]
+    [Xunit.InlineData("es", true)]
+    [Xunit.InlineData("de", true)]
+    [Xunit.InlineData("it", true)]
+    [Xunit.InlineData("fr", true)]
+    [Xunit.InlineData("ca", true)]
+    public async Task Iban_OnBehalfGuidanceUsesTheHumanEvenWhenTheMemberIsMissing(string language, bool missingMember)
+    {
+        using var culture = new CultureScope(language);
+        var memberId = Guid.NewGuid();
+        const string memberName = "Member <script>&";
+        var users = Substitute.For<IUserService>();
+        if (!missingMember)
+            users.GetUserInfoAsync(memberId, Arg.Any<CancellationToken>()).Returns(
+                UserInfo.Create(new User { Id = memberId, BurnerName = memberName }, [], [], null));
+        var model = new ExpenseIbanViewModel
+        {
+            ReportId = Guid.NewGuid(),
+            OnBehalfOfUserId = memberId,
+            ReportStatus = missingMember ? ExpenseReportStatus.Submitted : ExpenseReportStatus.Draft,
+        };
+
+        var html = await RenderAsync("Iban", model, users);
+        var name = missingMember ? new ResourceManager(typeof(SharedResource))
+            .GetString("Common_Unknown", CultureInfo.CurrentUICulture)! : memberName;
+        var resources = new ResourceManager(typeof(ExpensesResource));
+        var text = WebUtility.HtmlDecode(Regex.Replace(html, "<[^>]*>", string.Empty, RegexOptions.NonBacktracking));
+        foreach (var key in new[] { "Expenses_IbanOnBehalf", "Expenses_IbanStoredForMember",
+                     missingMember ? "Expenses_IbanEnterForMemberNoRemove" : "Expenses_IbanEnterForMember" })
+            text.Should().Contain(string.Format(CultureInfo.CurrentCulture,
+                resources.GetString(key, CultureInfo.CurrentUICulture)!, name));
+        text.Should().NotContain(resources.GetString("Expenses_IbanPrivacy", CultureInfo.CurrentUICulture)!);
+        html.Should().Contain(HtmlEncoder.Default.Encode(name)).And.NotContain("<script>");
+    }
+
+    [HumansFact]
+    public async Task Review_RendersTheSubmitterInBothGridAndFailedBannerWithoutAddingSpaceBeforeTheComma()
+    {
+        var report = Report(ExpenseReportStatus.Approved);
+        const string name = "Member <script>&";
+        var users = Substitute.For<IUserService>();
+        users.GetUserInfoAsync(report.SubmitterUserId, Arg.Any<CancellationToken>()).Returns(
+            UserInfo.Create(new User { Id = report.SubmitterUserId, BurnerName = name }, [], [], null));
+        var html = await RenderAsync("Review", new ExpenseReviewViewModel
+        {
+            Reports = [report],
+            BookingLabels = new Dictionary<Guid, string>(),
+            FailedHoldedPushReportIds = new HashSet<Guid> { report.Id },
+            Grants = new Dictionary<Guid, Humans.Preapprovals.Contracts.GrantOption>(),
+            IsFinanceAdmin = true,
+        }, users);
+        var text = WebUtility.HtmlDecode(Regex.Replace(html, "<[^>]*>", string.Empty, RegexOptions.NonBacktracking));
+
+        Regex.Replace(text, @"\s+", " ", RegexOptions.NonBacktracking).Should().Contain(name + ",");
+        html.Should().Contain(HtmlEncoder.Default.Encode(name), Exactly.Twice()).And.NotContain("<script>");
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task Detail_SubmitterIdentityRespectsTheExistingVisibilityGate(bool canSeeNames)
+    {
+        var report = Report(ExpenseReportStatus.Submitted);
+        const string name = "Submitter <b>&";
+        var users = Substitute.For<IUserService>();
+        users.GetUserInfoAsync(report.SubmitterUserId, Arg.Any<CancellationToken>()).Returns(
+            UserInfo.Create(new User { Id = report.SubmitterUserId, BurnerName = name }, [], [], null));
+        var html = await RenderAsync("Detail", new ExpenseDetailViewModel
+        {
+            Report = report,
+            BookingLabel = "Ops",
+            CanSeeNames = canSeeNames,
+            SubmitterLegalName = "Frozen legal name",
+        }, users);
+
+        html.Contains(HtmlEncoder.Default.Encode(name), StringComparison.Ordinal).Should().Be(canSeeNames);
+        html.Contains("Frozen legal name", StringComparison.Ordinal).Should().Be(canSeeNames);
+        if (!canSeeNames)
+            await users.DidNotReceive().GetUserInfoAsync(report.SubmitterUserId, Arg.Any<CancellationToken>());
+    }
+
     private static ExpenseReportDto Report(ExpenseReportStatus status, string? note = null) => new()
     {
         Id = Guid.NewGuid(),
@@ -145,7 +238,7 @@ public class ExpenseReportViewTests
         Note = note,
     };
 
-    private static async Task<string> RenderAsync(string page, object model)
+    private static async Task<string> RenderAsync(string page, object model, IUserService? users = null)
     {
         var builder = WebApplication.CreateBuilder(new WebApplicationOptions
         {
@@ -156,7 +249,9 @@ public class ExpenseReportViewTests
         builder.Services.AddControllersWithViews()
             .AddApplicationPart(typeof(ExpensesResource).Assembly)
             .AddApplicationPart(typeof(HumanViewComponent).Assembly)
-            .AddApplicationPart(typeof(Humans.AuditLog.ViewComponents.AuditLogViewComponent).Assembly);
+            .AddApplicationPart(typeof(Humans.AuditLog.ViewComponents.AuditLogViewComponent).Assembly)
+            .AddViewLocalization();
+        builder.Services.AddSingleton(users ?? Substitute.For<IUserService>());
         builder.Services.AddSingleton(Substitute.For<Humans.AuditLog.Contracts.IAuditViewerService>());
         builder.Services.AddHttpContextAccessor();
         var url = Substitute.For<IUrlHelper>();

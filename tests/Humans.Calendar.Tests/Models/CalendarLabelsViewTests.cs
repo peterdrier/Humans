@@ -109,7 +109,7 @@ public class CalendarLabelsViewTests
         foreach (var page in new[] { "Index", "List", "Team", "Agenda" })
         {
             object model = string.Equals(page, "Agenda", StringComparison.Ordinal)
-                ? new CalendarAgendaViewModel(start, start + Duration.FromDays(4), items, null, "Europe/Madrid")
+                ? new CalendarAgendaViewModel(start, start + Duration.FromDays(4), items, "Europe/Madrid")
                 : month;
             var html = System.Net.WebUtility.HtmlDecode(await RenderAsync(page, model));
             html.Should().Contain($"— {sourceLabel}", page);

@@ -156,6 +156,76 @@ public class CampControllerTests
     }
 
     [HumansTheory]
+    [InlineData("Contact", false)]
+    [InlineData("Contact", true)]
+    [InlineData("Request", false)]
+    [InlineData("Request", true)]
+    [InlineData("Withdraw", false)]
+    [InlineData("Withdraw", true)]
+    [InlineData("Leave", false)]
+    [InlineData("Leave", true)]
+    public async Task MemberPreflight_CancelsCampAndAccountReadsBeforeMutation(string action, bool cancelAtAccount)
+    {
+        using var request = new CancellationTokenSource();
+        var actorId = Guid.NewGuid();
+        var camp = MakeCamp("alpha", "Alpha", CampSeasonStatus.Active);
+        var abort = false;
+        async Task<CampInfo?> ReadCampAsync(CancellationToken ct)
+        {
+            ct.ThrowIfCancellationRequested();
+            if (abort && cancelAtAccount) await request.CancelAsync();
+            return camp;
+        }
+        async ValueTask<UserInfo?> ReadActorAsync(CancellationToken ct)
+        {
+            ct.ThrowIfCancellationRequested();
+            return MakeUserInfo(actorId);
+        }
+        _camps.GetCampBySlugAsync(camp.Slug, Arg.Any<CancellationToken>())
+            .Returns(call => ReadCampAsync(call.Arg<CancellationToken>()));
+        _users.GetUserInfoAsync(actorId, Arg.Any<CancellationToken>())
+            .Returns(call => ReadActorAsync(call.Arg<CancellationToken>()));
+        _campsLocalizer[Arg.Any<string>()].Returns(call => new LocalizedString(call.Arg<string>(), call.Arg<string>()));
+        _camps.RequestCampMembershipAsync(camp.Id, actorId, Arg.Any<CancellationToken>())
+            .Returns(new CampMemberRequestResult(Guid.NewGuid(), default, "Requested", CampMemberRequestNoticeLevel.Success));
+        var memberId = Guid.NewGuid();
+        _camps.WithdrawCampMembershipRequestAsync(memberId, actorId, Arg.Any<CancellationToken>())
+            .Returns(CampMembershipMutationResult.Success());
+        _camps.LeaveCampAsync(memberId, actorId, Arg.Any<CancellationToken>())
+            .Returns(CampMembershipMutationResult.Success());
+        _contacts.SendFacilitatedMessageAsync(Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<string>(),
+            Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<bool>(),
+            Arg.Any<IReadOnlyList<Guid>>(), Arg.Any<string>()).Returns(new CampContactResult(true, false));
+        var controller = BuildController(actorId);
+        controller.HttpContext.RequestAborted = request.Token;
+        Task<IActionResult> InvokeAsync() => action switch
+        {
+            "Contact" => controller.Contact(camp.Slug, new CampContactViewModel { Message = "Hello" }),
+            "Request" => controller.RequestMembership(camp.Slug),
+            "Withdraw" => controller.WithdrawMembershipRequest(camp.Slug, memberId),
+            _ => controller.LeaveMembership(camp.Slug, memberId),
+        };
+        Assert.IsType<RedirectToActionResult>(await InvokeAsync());
+        var mutation = Assert.Single(_camps.ReceivedCalls()
+            .Where(call => !string.Equals(call.GetMethodInfo().Name, nameof(ICampManagement.GetCampBySlugAsync), StringComparison.Ordinal))
+            .Concat(_contacts.ReceivedCalls()));
+        foreach (var token in mutation.GetArguments().OfType<CancellationToken>())
+            Assert.Equal(CancellationToken.None, token);
+        _camps.ClearReceivedCalls();
+        _contacts.ClearReceivedCalls();
+        _users.ClearReceivedCalls();
+        abort = true;
+        if (!cancelAtAccount) await request.CancelAsync();
+
+        await Assert.ThrowsAsync<OperationCanceledException>(InvokeAsync);
+        Assert.Empty(_contacts.ReceivedCalls());
+        Assert.All(_camps.ReceivedCalls(), call => Assert.Equal(nameof(ICampManagement.GetCampBySlugAsync), call.GetMethodInfo().Name));
+        await _camps.Received(1).GetCampBySlugAsync(camp.Slug, request.Token);
+        if (cancelAtAccount) await _users.Received(1).GetUserInfoAsync(actorId, request.Token);
+        else Assert.Empty(_users.ReceivedCalls());
+    }
+
+    [HumansTheory]
     [InlineData("Edit")]
     [InlineData("OptIn")]
     [InlineData("Withdraw")]
@@ -215,9 +285,11 @@ public class CampControllerTests
     }
 
     [HumansTheory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public async Task Register_stops_loading_when_the_request_is_abandoned(bool cancelAfterSettings)
+    [InlineData(false, false)]
+    [InlineData(false, true)]
+    [InlineData(true, false)]
+    [InlineData(true, true)]
+    public async Task Register_stops_loading_when_the_request_is_abandoned(bool cancelAfterSettings, bool invalidPost)
     {
         using var request = new CancellationTokenSource();
         var abandon = false;
@@ -234,14 +306,57 @@ public class CampControllerTests
         });
         var controller = BuildController(Guid.NewGuid());
         controller.HttpContext.RequestAborted = request.Token;
-        (await controller.Register()).Should().BeOfType<ViewResult>();
+        if (invalidPost) controller.ModelState.AddModelError("Name", "Required");
+        Func<Task<IActionResult>> load = invalidPost
+            ? () => controller.Register(new CampRegisterViewModel())
+            : controller.Register;
+        (await load()).Should().BeOfType<ViewResult>();
         controller.ViewData["SeasonYear"].Should().Be(2026);
         controller.ViewData["RegistrationInfo"].Should().Be("Registration instructions");
 
         abandon = true;
         if (!cancelAfterSettings) await request.CancelAsync();
-        Func<Task> load = async () => await controller.Register();
         await load.Should().ThrowAsync<OperationCanceledException>();
+    }
+
+    [HumansTheory]
+    [InlineData("Register", "Viewer")]
+    [InlineData("Register", "Settings")]
+    [InlineData("OptIn", "Settings")]
+    public async Task RegistrationPreflight_CancelsBeforeAnyWrite(string route, string boundary)
+    {
+        using var request = new CancellationTokenSource();
+        await request.CancelAsync();
+        var userId = Guid.NewGuid();
+        var camp = MakeCamp("alpha", "Alpha", CampSeasonStatus.Active, userId);
+        _camps.GetCampBySlugAsync(camp.Slug, Arg.Any<CancellationToken>()).Returns(camp);
+        _authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), camp, Arg.Any<IEnumerable<IAuthorizationRequirement>>())
+            .Returns(AuthorizationResult.Success());
+        _users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            if (string.Equals(boundary, "Viewer", StringComparison.Ordinal)) call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+            return new ValueTask<UserInfo?>(MakeUserInfo(userId));
+        });
+        _camps.GetSettingsAsync(Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+            return Settings2026();
+        });
+        _campsLocalizer[Arg.Any<string>(), Arg.Any<object[]>()].Returns(new LocalizedString("Refused", "Refused"));
+        _camps.CreateCampAsync(default, default!, default!, default!, null, null, false, 0, default!, null, Guid.Empty)
+            .ReturnsForAnyArgs(new CampWriteResult<Camp>(null, "Refused"));
+        _camps.OptInToSeasonAsync(camp.Id, Event2027.EventSettingsId, userId)
+            .Returns(new CampWriteResult<CampSeason>(null, "Refused"));
+        var controller = BuildController(userId);
+        controller.HttpContext.RequestAborted = request.Token;
+        Func<Task<IActionResult>> action = string.Equals(route, "Register", StringComparison.Ordinal)
+            ? () => controller.Register(new CampRegisterViewModel { Name = "New camp" })
+            : () => controller.OptIn(camp.Slug, Event2027.EventSettingsId);
+
+        await action.Should().ThrowAsync<OperationCanceledException>();
+
+        _camps.ReceivedCalls().Select(call => call.GetMethodInfo().Name).Should()
+            .NotContain(nameof(ICampManagement.CreateCampAsync)).And.NotContain(nameof(ICampManagement.OptInToSeasonAsync));
     }
 
     [HumansTheory]
@@ -1469,9 +1584,6 @@ public class CampControllerTests
             new User { Id = userId, PreferredLanguage = "en" },
             [],
             [],
-            [],
             UserFixtures.Profile(
-                burnerName: "Lead Human",
-                isApproved: true),
-            []);
+                burnerName: "Lead Human"));
 }

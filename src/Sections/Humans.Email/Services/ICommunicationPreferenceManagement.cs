@@ -20,12 +20,4 @@ internal interface ICommunicationPreferenceManagement
     Dictionary<string, string> GenerateUnsubscribeHeaders(Guid userId, MessageCategory category);
 
     string GenerateBrowserUnsubscribeUrl(Guid userId, MessageCategory category);
-
-    /// <summary>Every legacy Users row with no row here yet for its user and category.</summary>
-    Task<IReadOnlyList<UncopiedPreference>> GetUncopiedLegacyPreferencesAsync(CancellationToken ct = default);
-
-    /// <summary>Idempotent. Returns rows written.</summary>
-    Task<int> CopyLegacyPreferencesAsync(CancellationToken ct = default);
 }
-
-internal sealed record UncopiedPreference(Guid UserId, CommunicationPreferenceSnapshot Preference);

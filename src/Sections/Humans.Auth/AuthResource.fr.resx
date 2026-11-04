@@ -109,4 +109,6 @@
   <data name="Auth_AddRole_NotesPlaceholder" xml:space="preserve">
     <value>Motif de l'attribution</value>
   </data>
+  <data name="Auth_Notification_RoleAssigned" xml:space="preserve"><value>Le rôle {0} t’a été attribué</value><comment>{0}=role name</comment></data>
+  <data name="Auth_Notification_RoleEnded" xml:space="preserve"><value>Ton attribution au rôle {0} a pris fin</value><comment>{0}=role name</comment></data>
 </root>

@@ -19,12 +19,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <!--
-      Base for QueryStatistics and InMemoryLogSink; Users.Contracts for the dashboard card's
-      UserInfo.
-    -->
+    <!-- Base for QueryStatistics, InMemoryLogSink and the dashboard card's UserInfo. -->
     <ProjectReference Include="..\..\Humans.Base\Humans.Base.csproj" />
-    <ProjectReference Include="..\Humans.Users.Contracts\Humans.Users.Contracts.csproj" />
     <!-- The user grid's Marketing column reads ICommunicationPreferenceService (Users decomposition commit 14). -->
     <ProjectReference Include="..\Humans.Email.Contracts\Humans.Email.Contracts.csproj" />
   </ItemGroup>
@@ -32,15 +28,14 @@
   <ItemGroup>
     <!--
       The users debug page and the dashboard card read Shifts, Tickets and Consent through their
-      contracts; DataMigrationService audits through AuditLog's contracts. Consent and AuditLog keep
-      their public surface in a Contracts/ folder, so the main project is the reference. The widget
+      contracts; DataMigrationService audits through IAuditLogService in Base. Consent keeps
+      its public surface in a Contracts/ folder, so the main project is the reference. The widget
       gallery itself references no section: every section-owned card arrives through the
       ChromeSlots.WidgetGallery slot.
     -->
     <ProjectReference Include="..\Humans.Shifts.Contracts\Humans.Shifts.Contracts.csproj" />
     <ProjectReference Include="..\Humans.Tickets.Contracts\Humans.Tickets.Contracts.csproj" />
     <ProjectReference Include="..\Humans.Consent\Humans.Consent.csproj" />
-    <ProjectReference Include="..\Humans.AuditLog\Humans.AuditLog.csproj" />
   </ItemGroup>
 
   <ItemGroup>

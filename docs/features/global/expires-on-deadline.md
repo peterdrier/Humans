@@ -73,9 +73,8 @@ None currently applied in the codebase.
 
 `User.NormalizedEmail` carried `[ExpiresOn("2026-09-01", ...)]` for #635 until
 G5 lane 3b (nobodies-collective/Humans#866) dropped it: the attribute lives in
-`Humans.Base`, and the leaf that declares `NormalizedEmail`
-(`Humans.Users.Contracts`) is referenced by Base, so it cannot reference Base
-back and the dated escalation couldn't come along. The member still
-carries a plain `[Obsolete]` with the issue link — only the HUM0010/HUM0011
-escalation is gone. Restore `[ExpiresOn]` once that leaf can reference
-`Humans.Base` again, or delete `NormalizedEmail` outright per #635.
+`Humans.Base`, and the leaf that then declared `User` was referenced by Base, so the
+dated escalation couldn't come along. The member still carries a plain `[Obsolete]`
+with the issue link — only the HUM0010/HUM0011 escalation is gone. `User` now lives in
+`Humans.Base` itself, so `[ExpiresOn]` can be restored, or `NormalizedEmail` deleted
+outright per #635.

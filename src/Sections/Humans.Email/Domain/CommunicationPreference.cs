@@ -12,8 +12,7 @@ internal sealed class CommunicationPreference
     public MessageCategory Category { get; init; }
 
     /// <summary>
-    /// Null only for a reset that shadows a legacy Users row, so the read fallback can't bring the old value
-    /// back. A reset with no legacy row deletes the row instead.
+    /// Historical cleared rows have null here and read as defaults. New resets delete the row.
     /// </summary>
     public bool? OptedOut { get; set; }
 

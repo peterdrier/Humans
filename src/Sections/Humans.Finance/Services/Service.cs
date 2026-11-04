@@ -28,12 +28,12 @@ internal sealed class Service(
     IHoldedClient client,
     IBudgetService budget,
     IHoldedService holded,
+    IHoldedWrite holdedWrite,
     IExpenseHoldedBookingService expenses,
     IClock clock,
     IMemoryCache cache,
     IAuditLogService audit,
     IUserService users,
-    IUserEmailService userEmails,
     IEmailService emailService,
     FinanceEmails emails,
     IOptions<SepaOptions> sepa,
@@ -51,9 +51,8 @@ internal sealed class Service(
 
     private static readonly TimeSpan ContactsCacheDuration = TimeSpan.FromMinutes(2);
     private static readonly DateTimeZone MadridZone = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
-    private readonly SepaBankBooking booking = new(repo, client, clock, bookingState, audit, sepa, logger);
-    private readonly HoldedDocumentSync documentSync = new(repo, client, clock, logger);
-    private readonly SepaPayoutEmails payoutEmails = new(users, userEmails, emailService, emails, logger);
+    private readonly SepaBankBooking booking = new(repo, client, holdedWrite, clock, bookingState, audit, sepa, logger);
+    private readonly SepaPayoutEmails payoutEmails = new(users, emailService, emails, logger);
 
     public async Task<HoldedProvisioningPlan> GetProvisioningPlanAsync(
         int blockStart, CancellationToken ct = default)
@@ -249,9 +248,9 @@ internal sealed class Service(
             throw;
         }
 
-        await RegisterManagedAsync(next, id, name, managed, now, ct);
         await audit.LogAsync(FinanceAuditActions.HoldedExpenseAccountCreated, HoldedExpenseAccount, Guid.Empty,
             $"Created Holded expense account {next} '{name}'", "Finance");
+        await RegisterManagedAsync(next, id, name, managed, now, ct);
         return new HoldedExpenseAccountRef(next, id, name, Created: true);
     }
 
@@ -314,37 +313,63 @@ internal sealed class Service(
         return options;
     }
 
-    public Task<HoldedSyncResult> SyncAsync(CancellationToken ct = default) =>
-        documentSync.SyncAsync(LogDuplicateDocumentsAsync, ct);
-
     public async Task<HoldedDocSyncInfo> GetDocSyncInfoAsync(CancellationToken ct = default)
     {
-        var state = await repo.GetOrCreateDocSyncStateAsync(ct);
-        // From the repo, so /Holded never builds the full creditor view (a live contacts walk) just to show a number.
+        var mirror = await holded.GetPurchaseDocumentsAsync(ct);
+        // From the repo, so a caller never builds the full creditor view (a live contacts walk) just to show a number.
         var bindings = await repo.GetCreditorContactsAsync(ct);
         return new HoldedDocSyncInfo(
-            state.LastSyncAt, state.Status, state.LastError, state.LastSyncedDocCount, bindings.Count);
+            mirror.LastSyncAt, mirror.Status, mirror.LastError, mirror.LastCount, bindings.Count);
     }
 
-    /// <summary>Local mirrors only: the expense lines, the document mirror, the ledger mirror and SEPA rows.</summary>
+    /// <summary>The purchase-document mirror with each document's category attribution: account match over tag
+    /// match, a managed account matches with no category. Computed on read, so a mapping fixed in Holded or added
+    /// here applies on the next page load.</summary>
+    private async Task<(HoldedPurchaseDocMirror Mirror, IReadOnlyList<AttributedDoc> Docs)> AttributedDocsAsync(
+        CancellationToken ct)
+    {
+        var mirror = await holded.GetPurchaseDocumentsAsync(ct);
+        var entries = (await repo.GetCategoryMapAsync(ct))
+            .Where(m => m.IsActive)
+            .Select(m => new HoldedMatchEntry(m.BudgetCategoryId, m.HoldedAccountId, m.Tag))
+            .ToArray();
+        var managedIds = (await repo.GetManagedAccountsAsync(ct))
+            .Select(m => m.HoldedAccountId)
+            .ToHashSet(StringComparer.Ordinal);
+        return (mirror, mirror.Docs
+            .Select(d => new AttributedDoc(d, HoldedMatcher.Match(d.BookedAccountId, d.Tags, entries, managedIds)))
+            .ToList());
+    }
+
+    /// <summary>The expense lines against the ledger mirror, with SEPA rows. The one non-mirror read is the cached
+    /// contact list, which says which account each bound contact is on, as on /Finance/Creditors. The document mirror
+    /// is not read.</summary>
     public async Task<ExpenseReconReport> GetExpenseReconAsync(int? year, CancellationToken ct = default)
     {
-        var state = await repo.GetOrCreateDocSyncStateAsync(ct);
-        if (state.LastSyncAt is not { } syncedAt)
-            return ExpenseRecon.Unavailable(year, "The Holded document mirror has never synced.");
+        // A push settled after the last good sweep is Pending, not Missing.
+        if (await holded.GetLedgerSyncedAtAsync(ct) is not { } syncedAt)
+            return ExpenseRecon.Unavailable(year, "The Holded ledger mirror has never synced.");
+
+        var balances = await holded.GetAccountBalancesAsync(ct);
 
         var expected = await expenses.GetHoldedReconLinesAsync(ct);
-        var docs = await repo.GetAllDocsAsync(ct);
-        var bindings = await repo.GetCreditorContactsAsync(ct);
-        var balances = await holded.GetAccountBalancesAsync(ct);
-        // IHoldedService exposes no sync state; an empty ledger mirror beside synced documents is the never-synced case,
-        // and would show every member Off.
-        if (balances.Count == 0)
-            return ExpenseRecon.Unavailable(year, "The Holded ledger mirror has never synced.");
+        var contacts = await ContactsByIdAsync(ct);
+        var accountByUser = (await repo.GetCreditorContactsAsync(ct))
+            .Select(b => (b.UserId, Account: ResolveCreditorAccount(b, contacts)))
+            .Where(x => x.Account is not null)
+            .GroupBy(x => x.UserId)
+            .ToDictionary(g => g.Key, g => g.First().Account!.Value);
+
+        var ledger = new Dictionary<int, IReadOnlyList<HoldedLedgerLineInfo>>();
+        foreach (var account in balances.Keys
+                     .Where(n => n is >= CreditorAccountMin and <= CreditorAccountMax)
+                     .Union(accountByUser.Values))
+            ledger[account] = await holded.GetLedgerLinesAsync(account, ct);
+
         var transfers = await repo.GetSepaPayoutTransferRowsAsync(ct);
         var members = await users.GetUserInfosAsync(expected.Select(l => l.CreditorUserId).ToHashSet(), ct);
         return ExpenseRecon.Build(
-            year, syncedAt, expected, docs, bindings, balances, transfers,
+            year, syncedAt, expected, accountByUser, ledger, transfers,
             id => members.GetValueOrDefault(id)?.BurnerName ?? id.ToString());
     }
 
@@ -353,16 +378,16 @@ internal sealed class Service(
     {
         // Doc-derived, not ledger balances: the budget pages are gross/IVA-inclusive while a 629
         // balance is net, and the ledger carries drafts Holded has not approved.
-        var docs = await repo.GetMatchedForYearAsync(calendarYear, ct);
+        var (_, docs) = await AttributedDocsAsync(ct);
         return docs
-            .Where(d => d.IsApproved == true && d.BudgetCategoryId is not null)
-            .GroupBy(d => d.BudgetCategoryId!.Value)
+            .Where(d => d.Doc.IsApproved && d.Doc.Date.Year == calendarYear && d.Match.CategoryId is not null)
+            .GroupBy(d => d.Match.CategoryId!.Value)
             .Select(g => new HoldedActualRow(
                 g.Key,
-                g.Sum(d => d.Total),
+                g.Sum(d => d.Doc.Total),
                 g.Select(d => new HoldedActualDoc(
-                        d.HoldedDocId, d.DocNumber, d.ContactName, d.Description, d.Date, d.Total,
-                        HoldedDocUrl(d.HoldedDocId)))
+                        d.Doc.Id, d.Doc.DocNumber, d.Doc.ContactName, d.Doc.Description, d.Doc.Date, d.Doc.Total,
+                        d.Doc.HoldedUrl))
                     .ToList()))
             .Where(r => r.Actual != 0m)
             .ToList();
@@ -370,23 +395,20 @@ internal sealed class Service(
 
     public async Task<IReadOnlyList<HoldedUnmatchedRow>> GetUnmatchedAsync(CancellationToken ct = default)
     {
-        var docs = await repo.GetUnmatchedAsync(ct);
+        var (_, docs) = await AttributedDocsAsync(ct);
         return docs
+            .Where(d => d.IsUnmatched)
             .Select(d => new HoldedUnmatchedRow(
-                d.HoldedDocId,
-                d.DocNumber,
-                d.ContactName,
-                d.Description,
-                d.Total,
-                ReasonFor(d),
-                HoldedDocUrl(d.HoldedDocId))
-            { Date = d.Date })
+                d.Doc.Id,
+                d.Doc.DocNumber,
+                d.Doc.ContactName,
+                d.Doc.Description,
+                d.Doc.Total,
+                ReasonFor(d.Doc),
+                d.Doc.HoldedUrl)
+            { Date = d.Doc.Date })
             .ToList();
     }
-
-    // Holded has no stable per-doc page; its purchase list opens a doc from this fragment.
-    private static string HoldedDocUrl(string holdedDocId) =>
-        $"https://app.holded.com/expenses/list#open:purchase-{holdedDocId}";
 
     public async Task<string?> GetHoldedAccountIdForCategoryAsync(
         Guid budgetCategoryId, CancellationToken ct = default)
@@ -426,60 +448,15 @@ internal sealed class Service(
                 .ToDictionary(c => c.Id, c => (c.Name, c.Group));
     }
 
-    public async Task<HoldedConnectorVm> GetConnectorOverviewAsync(CancellationToken ct = default)
-    {
-        var state = await repo.GetOrCreateDocSyncStateAsync(ct);
-        var bindings = await repo.GetCreditorContactsAsync(ct);
-        var categoryMap = await BuildCategoryMapAsync(ct);
-        var managed = await repo.GetManagedAccountsAsync(ct);
-        var docs = await repo.GetAllDocsAsync(ct);
+    public async Task<IReadOnlyList<HoldedManagedAccountVm>> GetManagedAccountsAsync(CancellationToken ct = default) =>
+        (await repo.GetManagedAccountsAsync(ct))
+            .Select(m => new HoldedManagedAccountVm(m.HoldedAccountNumber, m.HoldedAccountId, m.Label, m.IsActive, m.CreatedAt))
+            .ToList();
 
-        // A doc pointing outside the active year keeps a null name rather than a lookup per row.
-        var categories = await ActiveYearCategoriesAsync(ct);
-
-        string? NameOf(Guid? categoryId) =>
-            categoryId is { } id && categories.TryGetValue(id, out var c) ? c.Name : null;
-
-        var now = clock.GetCurrentInstant();
-        var age = state.LastSyncAt is { } last ? now - last : (Duration?)null;
-
-        return new HoldedConnectorVm(
-            new HoldedDocSyncVm(
-                state.LastSyncAt,
-                state.Status,
-                state.LastError,
-                state.LastSyncedDocCount,
-                age,
-                // Never having run is stale too: it leaves the actuals and the unmatched queue just as wrong.
-                IsStale: age is null || age >= HoldedDocSyncVm.StaleAfter,
-                // A failed run moves only this, so it is what dates an Error.
-                state.StatusChangedAt),
-            bindings.Count,
-            categoryMap,
-            managed.Select(m => new HoldedManagedAccountVm(m.HoldedAccountNumber, m.HoldedAccountId, m.Label, m.IsActive, m.CreatedAt))
-                .ToList(),
-            docs.Select(d => new HoldedDocVm(
-                d.HoldedDocId,
-                d.DocNumber,
-                d.ContactName,
-                d.Description,
-                HoldedDocUrl(d.HoldedDocId),
-                d.Date,
-                d.Total,
-                d.IsApproved,
-                d.MatchStatus,
-                d.MatchSource,
-                NameOf(d.BudgetCategoryId),
-                d.BookedAccountId,
-                d.TagsJson,
-                d.LastSyncedAt)).ToList());
-    }
-
-    private static string ReasonFor(HoldedExpenseDoc d)
+    private static string ReasonFor(HoldedPurchaseDocInfo d)
     {
         var hasAccount = !string.IsNullOrEmpty(d.BookedAccountId);
-        // MapDoc always serializes a list, so "[]" is the only empty spelling.
-        var hasTags = !string.Equals(d.TagsJson, "[]", StringComparison.Ordinal);
+        var hasTags = d.Tags.Count > 0;
 
         if (!hasAccount && !hasTags)
             return "No account, no tag";
@@ -1050,107 +1027,20 @@ internal sealed class Service(
 
     public SepaPayoutSettings GetSepaPayoutSettings() => sepa.Value.GetPayoutSettings();
 
+    public async Task<SepaPayoutPreview> PreviewSepaPayoutAsync(
+        IReadOnlyList<SepaPayoutSelection> selections, decimal maxPerTransfer, CancellationToken ct = default)
+    {
+        var (plan, error) = await PlanSepaPayoutAsync(selections, maxPerTransfer, ct);
+        return plan is null ? SepaPayoutPreview.Failure(error!) : new SepaPayoutPreview(plan.Lines, null);
+    }
+
     public async Task<SepaPayoutResult> GenerateSepaPayoutAsync(
         IReadOnlyList<SepaPayoutSelection> selections, decimal maxPerTransfer, Guid actorUserId,
         CancellationToken ct = default)
     {
-        var settings = GetSepaPayoutSettings();
-        if (settings.UnavailableReason is { } unavailable)
-            return SepaPayoutResult.Failure(unavailable);
-
-        if (selections.Count == 0)
-            return SepaPayoutResult.Failure("No creditor account was selected — nothing to generate.");
-
-        if (selections.GroupBy(s => s.SupplierAccountNum).FirstOrDefault(g => g.Count() > 1) is { } duplicate)
-            return SepaPayoutResult.Failure(
-                $"Creditor account {duplicate.Key} was selected twice — a payout pays each account once.");
-
-        var (rows, _) = await ListCreditorAccountsAsync(ct);
-        var byAccount = rows.ToDictionary(r => r.SupplierAccountNum);
-
-        // The unmasked IBAN goes nowhere but the file and the payout record. Keyed by contact id, not account number:
-        // two contacts can share one 400000xx, and only the bound one is the member's.
-        var contactById = await ContactsByIdAsync(ct);
-
-        var fileId = Guid.NewGuid();
-        var transfers = new List<SepaPayoutTransfer>(selections.Count);
-
-        foreach (var s in selections)
-        {
-            if (!byAccount.TryGetValue(s.SupplierAccountNum, out var row))
-                return SepaPayoutResult.Failure(
-                    $"Creditor account {s.SupplierAccountNum} is no longer listed — reload the page and try again.");
-
-            if (row.Bindings.Count != 1)
-                return SepaPayoutResult.Failure(row.Bindings.Count == 0
-                    ? $"Creditor account {s.SupplierAccountNum} is not bound to a member — bind it first."
-                    : $"Creditor account {s.SupplierAccountNum} is bound to {row.Bindings.Count} members — "
-                      + "unbind all but the one who owns it first.");
-
-            if (s.Amount > row.OwedToMember)
-                return SepaPayoutResult.Failure(
-                    $"Creditor account {s.SupplierAccountNum}: {Euros(s.Amount)} is more than the "
-                    + $"{Euros(row.OwedToMember)} owed.");
-
-            // Re-derived here because the posted selection is never trusted.
-            if (row.HasDuplicateDocuments is null)
-                return SepaPayoutResult.Failure(
-                    $"Creditor account {s.SupplierAccountNum}: Holded's document list could not be read, so "
-                    + "duplicate documents cannot be ruled out — try again later.");
-            if (row.HasDuplicateDocuments == true)
-                return SepaPayoutResult.Failure(
-                    $"Creditor account {s.SupplierAccountNum} has duplicate documents in Holded — remove them "
-                    + "on /Finance/HoldedDuplicates first.");
-            if (row.PendingPayoutFileName is { } pendingFile)
-                return SepaPayoutResult.Failure(
-                    $"Creditor account {s.SupplierAccountNum} is already in payout file {pendingFile}, which is "
-                    + "not booked yet — book it or withdraw the transfer first.");
-
-            // Name and IBAN both come off the bound contact, so no transfer pairs one person's name with another's
-            // account.
-            if (!contactById.TryGetValue(row.Bindings[0].HoldedContactId, out var contact)
-                || string.IsNullOrWhiteSpace(contact.Iban))
-                return SepaPayoutResult.Failure(
-                    $"Creditor account {s.SupplierAccountNum} has no IBAN on the Holded contact it is bound to.");
-
-            transfers.Add(new SepaPayoutTransfer
-            {
-                Id = Guid.NewGuid(),
-                FileId = fileId,
-                UserId = row.Bindings[0].UserId,
-                SupplierAccountNum = s.SupplierAccountNum,
-                HoldedContactId = row.Bindings[0].HoldedContactId,
-                CreditorName = SepaText.Normalize(contact.Name, SepaPaymentFileBuilder.MaxNameLength),
-                Iban = IbanValidator.Normalize(contact.Iban),
-                IbanMasked = IbanFormatter.Mask(contact.Iban),
-                Amount = s.Amount,
-            });
-        }
-
-        var now = clock.GetCurrentInstant();
-        var request = new SepaPaymentFileRequest(
-            MsgId: "M" + fileId.ToString("N"),
-            CreatedAt: now,
-            RequestedExecutionDate: now.InZone(MadridZone).Date,
-            Debtor: new SepaDebtor(
-                sepa.Value.CreditorName!, sepa.Value.CreditorIban!,
-                sepa.Value.CreditorBic, sepa.Value.CreditorIdentifier!),
-            MaxAmountPerTransfer: maxPerTransfer,
-            Transfers: transfers
-                .Select(t => new SepaTransfer(t.CreditorName, t.Iban, t.Amount, t.SupplierAccountNum))
-                .ToList());
-
-        string xml;
-        try
-        {
-            xml = SepaPaymentFileBuilder.Build(request);
-        }
-        catch (SepaPaymentFileException ex)
-        {
-            // The builder masks any IBAN it names, so the message is safe to log and to show.
-            logger.LogWarning("SEPA payout generation refused: {Reason}", ex.Message);
-            return SepaPayoutResult.Failure(ex.Message);
-        }
+        var (plan, error) = await PlanSepaPayoutAsync(selections, maxPerTransfer, ct);
+        if (plan is null) return SepaPayoutResult.Failure(error!);
+        var (fileId, now, transfers, _, xml) = plan;
 
         // The stamp is minute-resolution, and the name is what ties a file on the treasurer's disk to its row, so the
         // file id's first 8 hex characters keep two batches in one minute apart.
@@ -1182,10 +1072,127 @@ internal sealed class Service(
         return new SepaPayoutResult(fileName, xml, null);
     }
 
+    private sealed record SepaPayoutPlan(
+        Guid FileId, Instant Now, IReadOnlyList<SepaPayoutTransfer> Transfers,
+        IReadOnlyList<SepaPayoutPreviewLine> Lines, string Xml);
+
+    /// <summary>Everything but the write, so the confirmation page refuses exactly what generation would.</summary>
+    private async Task<(SepaPayoutPlan? Plan, string? Error)> PlanSepaPayoutAsync(
+        IReadOnlyList<SepaPayoutSelection> selections, decimal maxPerTransfer, CancellationToken ct)
+    {
+        var settings = GetSepaPayoutSettings();
+        if (settings.UnavailableReason is { } unavailable)
+            return (null, unavailable);
+
+        if (selections.Count == 0)
+            return (null, "No creditor account was selected — nothing to generate.");
+
+        if (selections.GroupBy(s => s.SupplierAccountNum).FirstOrDefault(g => g.Count() > 1) is { } duplicate)
+            return (null,
+                $"Creditor account {duplicate.Key} was selected twice — a payout pays each account once.");
+
+        var (rows, _) = await ListCreditorAccountsAsync(ct);
+        var byAccount = rows.ToDictionary(r => r.SupplierAccountNum);
+
+        // The unmasked IBAN goes nowhere but the file and the payout record. Keyed by contact id, not account number:
+        // two contacts can share one 400000xx, and only the bound one is the member's.
+        var contactById = await ContactsByIdAsync(ct);
+
+        var fileId = Guid.NewGuid();
+        var transfers = new List<SepaPayoutTransfer>(selections.Count);
+        var lines = new List<SepaPayoutPreviewLine>(selections.Count);
+
+        foreach (var s in selections)
+        {
+            if (!byAccount.TryGetValue(s.SupplierAccountNum, out var row))
+                return (null,
+                    $"Creditor account {s.SupplierAccountNum} is no longer listed — reload the page and try again.");
+
+            if (row.Bindings.Count != 1)
+                return (null, row.Bindings.Count == 0
+                    ? $"Creditor account {s.SupplierAccountNum} is not bound to a member — bind it first."
+                    : $"Creditor account {s.SupplierAccountNum} is bound to {row.Bindings.Count} members — "
+                      + "unbind all but the one who owns it first.");
+
+            if (s.Amount > row.OwedToMember)
+                return (null,
+                    $"Creditor account {s.SupplierAccountNum}: {Euros(s.Amount)} is more than the "
+                    + $"{Euros(row.OwedToMember)} owed.");
+
+            // Re-derived here because the posted selection is never trusted.
+            if (row.HasDuplicateDocuments is null)
+                return (null,
+                    $"Creditor account {s.SupplierAccountNum}: Holded's document list could not be read, so "
+                    + "duplicate documents cannot be ruled out — try again later.");
+            if (row.HasDuplicateDocuments == true)
+                return (null,
+                    $"Creditor account {s.SupplierAccountNum} has duplicate documents in Holded — remove them "
+                    + "on /Finance/HoldedDuplicates first.");
+            if (row.PendingPayoutFileName is { } pendingFile)
+                return (null,
+                    $"Creditor account {s.SupplierAccountNum} is already in payout file {pendingFile}, which is "
+                    + "not booked yet — book it or withdraw the transfer first.");
+
+            // Name and IBAN both come off the bound contact, so no transfer pairs one person's name with another's
+            // account.
+            if (!contactById.TryGetValue(row.Bindings[0].HoldedContactId, out var contact)
+                || string.IsNullOrWhiteSpace(contact.Iban))
+                return (null,
+                    $"Creditor account {s.SupplierAccountNum} has no IBAN on the Holded contact it is bound to.");
+
+            transfers.Add(new SepaPayoutTransfer
+            {
+                Id = Guid.NewGuid(),
+                FileId = fileId,
+                UserId = row.Bindings[0].UserId,
+                SupplierAccountNum = s.SupplierAccountNum,
+                HoldedContactId = row.Bindings[0].HoldedContactId,
+                CreditorName = SepaText.Normalize(contact.Name, SepaPaymentFileBuilder.MaxNameLength),
+                Iban = IbanValidator.Normalize(contact.Iban),
+                IbanMasked = IbanFormatter.Mask(contact.Iban),
+                Amount = s.Amount,
+            });
+            lines.Add(new SepaPayoutPreviewLine(
+                s.SupplierAccountNum, row.Bindings[0].UserId, transfers[^1].CreditorName, transfers[^1].IbanMasked,
+                row.OwedToMember, s.Amount));
+        }
+
+        var now = clock.GetCurrentInstant();
+        var request = new SepaPaymentFileRequest(
+            MsgId: "M" + fileId.ToString("N"),
+            CreatedAt: now,
+            RequestedExecutionDate: now.InZone(MadridZone).Date,
+            Debtor: new SepaDebtor(
+                sepa.Value.CreditorName!, sepa.Value.CreditorIban!,
+                sepa.Value.CreditorBic, sepa.Value.CreditorIdentifier!),
+            MaxAmountPerTransfer: maxPerTransfer,
+            Transfers: transfers
+                .Select(t => new SepaTransfer(t.CreditorName, t.Iban, t.Amount, t.SupplierAccountNum))
+                .ToList());
+
+        string xml;
+        try
+        {
+            xml = SepaPaymentFileBuilder.Build(request);
+        }
+        catch (SepaPaymentFileException ex)
+        {
+            // The builder masks any IBAN it names, so the message is safe to log and to show.
+            logger.LogWarning("SEPA payout generation refused: {Reason}", ex.Message);
+            return (null, ex.Message);
+        }
+
+        return (new SepaPayoutPlan(fileId, now, transfers, lines, xml), null);
+    }
+
     /// <summary>The row is kept and flagged; nothing pairs, books or counts it again. Only an unbooked row with no
     /// Holded posting can be withdrawn.</summary>
-    public async Task<SepaBookingResult> WithdrawSepaTransferAsync(
-        Guid transferId, Guid actorUserId, CancellationToken ct = default)
+    public Task<SepaBookingResult> WithdrawSepaTransferAsync(
+        Guid transferId, Guid actorUserId, CancellationToken ct = default) =>
+        booking.UnderBookingGateAsync(() => WithdrawSepaTransferGatedAsync(transferId, actorUserId, ct));
+
+    private async Task<SepaBookingResult> WithdrawSepaTransferGatedAsync(
+        Guid transferId, Guid actorUserId, CancellationToken ct)
     {
         var transfer = await repo.GetSepaTransferAsync(transferId, ct);
         if (transfer is null)
@@ -1195,7 +1202,7 @@ internal sealed class Service(
 
         var row = (await repo.GetSepaPayoutTransferRowsAsync(ct)).First(r => r.TransferId == transferId);
         var now = clock.GetCurrentInstant();
-        await repo.SaveSepaTransferWithdrawnAsync(transferId, now, actorUserId, ct);
+        await repo.SaveSepaTransfersWithdrawnAsync([transferId], now, actorUserId, ct);
 
         await audit.LogAsync(
             FinanceAuditActions.SepaPayoutTransferWithdrawn, SepaTransferEntityType, transferId,
@@ -1208,6 +1215,47 @@ internal sealed class Service(
         return new SepaBookingResult(true,
             $"Withdrew the {Euros(transfer.Amount)} transfer to {transfer.IbanMasked} from {row.FileName}; "
             + "the member has been told and the account is payable again.");
+    }
+
+    /// <summary>For a file the bank rejected whole: withdraws every transfer still live in it, in one save, so it is
+    /// cancelled. All or nothing: refused if any live transfer could not be withdrawn on its own. No member email,
+    /// unlike a single withdrawal: the file is usually reissued at once, and that sends the payout email again.</summary>
+    public Task<SepaBookingResult> CancelSepaFileAsync(Guid fileId, Guid actorUserId, CancellationToken ct = default) =>
+        booking.UnderBookingGateAsync(() => CancelSepaFileGatedAsync(fileId, actorUserId, ct));
+
+    private async Task<SepaBookingResult> CancelSepaFileGatedAsync(Guid fileId, Guid actorUserId, CancellationToken ct)
+    {
+        var rows = (await repo.GetSepaPayoutTransferRowsAsync(ct)).Where(r => r.FileId == fileId).ToList();
+        if (rows.Count == 0)
+            return new SepaBookingResult(false, "That file no longer exists — reload the page.");
+        if (CancelFileRefusal(rows) is { } refusal)
+            return new SepaBookingResult(false, refusal);
+
+        var live = rows.Where(r => !r.IsWithdrawn).ToList();
+        var fileName = rows[0].FileName;
+        await repo.SaveSepaTransfersWithdrawnAsync(live.Select(r => r.TransferId).ToList(),
+            clock.GetCurrentInstant(), actorUserId, ct);
+
+        foreach (var r in live)
+            await audit.LogAsync(
+                FinanceAuditActions.SepaPayoutTransferWithdrawn, SepaTransferEntityType, r.TransferId,
+                $"WITHDRAWN the SEPA payout {Euros(r.Amount)} to {r.IbanMasked} on creditor account "
+                + $"{r.SupplierAccountNum}: file {fileName} was cancelled whole, the bank never executed it.",
+                actorUserId, r.UserId, nameof(User));
+
+        return new SepaBookingResult(true,
+            $"Cancelled {fileName}: {live.Count} transfers, {Euros(live.Sum(r => r.Amount))}. "
+            + "Their accounts are payable again; no member was emailed.");
+    }
+
+    /// <summary>The same rule decides whether <c>/Finance/Sepa</c> offers Cancel file.</summary>
+    internal static string? CancelFileRefusal(IReadOnlyCollection<SepaPayoutTransferRow> fileRows)
+    {
+        var live = fileRows.Where(r => !r.IsWithdrawn).ToList();
+        if (live.Count == 0) return "This file is already cancelled.";
+        return live.Select(r => WithdrawRefusal(r)).FirstOrDefault(r => r is not null) is { } refusal
+            ? $"Cannot cancel the file: {refusal}"
+            : null;
     }
 
     /// <summary>The same rule shows the reason on <c>/Finance/Sepa</c> in place of the button.</summary>
@@ -1265,32 +1313,6 @@ internal sealed class Service(
 
     /// <summary>The kept expense line: its id is the one Guid in the story; Holded ids go in the text.</summary>
     private const string ExpenseLineEntityType = "ExpenseLine";
-
-    /// <summary>The nightly check: the list-level rule (description and total, no notes GET), logged once. A false
-    /// positive only refuses a payout. Never fails the document sync.</summary>
-    private async Task LogDuplicateDocumentsAsync(IReadOnlyList<HoldedPurchaseDocListItemDto> docs, CancellationToken ct)
-    {
-        try
-        {
-            var matches = await FindDuplicateDocumentsAsync(docs, await ContactsByIdAsync(ct), ct);
-            if (matches.Count == 0)
-            {
-                logger.LogInformation("Holded duplicate check: zero expense lines match more than one purchase document.");
-                return;
-            }
-            logger.LogWarning(
-                "Holded duplicate check: {Lines} expense line(s) match more than one purchase document — "
-                + "{Docs} extra document(s) totalling {Amount} across {Members} member(s). Review them on "
-                + "/Finance/HoldedDuplicates; their creditor accounts are not payable until they are removed.",
-                matches.Count, matches.Sum(m => m.Duplicates.Count),
-                Euros(matches.Sum(m => m.Duplicates.Sum(d => d.Total))),
-                matches.Select(m => m.Booking.CreditorUserId).Distinct().Count());
-        }
-        catch (Exception ex) when (ex is not OperationCanceledException)
-        {
-            logger.LogError(ex, "Holded duplicate check failed; the document sync continues without it.");
-        }
-    }
 
     private async Task<IReadOnlyList<HoldedDuplicateMatcher.Match>> FindDuplicateDocumentsAsync(
         IReadOnlyList<HoldedPurchaseDocListItemDto> docs,

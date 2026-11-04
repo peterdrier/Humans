@@ -1,4 +1,3 @@
-using Humans.Base.Interfaces;
 using AwesomeAssertions;
 using Humans.AuditLog.Contracts;
 using Humans.Base.Configuration;
@@ -25,7 +24,6 @@ public sealed class CommunicationPreferenceServiceTests : IDisposable
     private readonly IAuditLogService _audit = Substitute.For<IAuditLogService>();
     private readonly IUserService _users = Substitute.For<IUserService>();
     private readonly ICommunicationPreferenceLock _lock = Substitute.For<ICommunicationPreferenceLock>();
-    private readonly Dictionary<Guid, List<LegacyCommunicationPreferenceInfo>> _legacy = [];
     private readonly Dictionary<Guid, Guid> _mergedTo = [];
     private readonly IDataProtectionProvider _dataProtection = DataProtectionProvider.Create("TestApp");
     private readonly CommunicationPreferenceService _service;
@@ -37,18 +35,12 @@ public sealed class CommunicationPreferenceServiceTests : IDisposable
             .Options;
         _db = new EmailDbContext(options);
 
-        // Raw reads answer by id; the resolving read follows a merge to its survivor.
-        _users.GetRawUserInfoAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
-            .Returns(ci => new ValueTask<UserInfo?>(Info(ci.Arg<Guid>())));
         _users.GetUserInfoAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(ci =>
             {
                 var id = ci.Arg<Guid>();
                 return new ValueTask<UserInfo?>(Info(_mergedTo.GetValueOrDefault(id, id)));
             });
-        _users.GetAllRawUserInfosAsync(Arg.Any<CancellationToken>())
-            .Returns(_ => Task.FromResult<IReadOnlyCollection<UserInfo>>([.. _legacy.Keys.Select(Info)]));
-
         _lock.GetLockedCategoriesAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyCollection<MessageCategory>>([]));
 
@@ -65,18 +57,9 @@ public sealed class CommunicationPreferenceServiceTests : IDisposable
 
     private static CancellationToken Ct => TestContext.Current.CancellationToken;
 
-    private UserInfo Info(Guid id) => UserInfo.Create(
+    private static UserInfo Info(Guid id) => UserInfo.Create(
         new User { Id = id, DisplayName = "", PreferredLanguage = "en", CreatedAt = Instant.MinValue },
-        [], [], [], profile: null, _legacy.GetValueOrDefault(id) ?? []);
-
-    private void SeedLegacy(Guid userId, LegacyMessageCategory category, bool optedOut,
-        bool inboxEnabled = true, Instant? updatedAt = null, string source = "Profile", Instant? subscribedAt = null)
-    {
-        if (!_legacy.TryGetValue(userId, out var rows))
-            _legacy[userId] = rows = [];
-        rows.Add(new LegacyCommunicationPreferenceInfo(Guid.NewGuid(), category, optedOut, inboxEnabled,
-            updatedAt ?? _clock.GetCurrentInstant(), source, subscribedAt));
-    }
+        [], [], profile: null);
 
     private async Task SeedRowAsync(Guid userId, MessageCategory category, bool? optedOut,
         bool inboxEnabled = true, Instant? updatedAt = null, string source = "Profile", Instant? subscribedAt = null)
@@ -253,14 +236,13 @@ public sealed class CommunicationPreferenceServiceTests : IDisposable
     }
 
     [HumansFact]
-    public async Task CountByCategoryAndState_CountsRowsAndUnshadowedLegacyRows()
+    public async Task CountByCategoryAndState_CountsRecordedRows_AndIgnoresHistoricalClears()
     {
         for (var i = 0; i < 3; i++)
             await SeedRowAsync(Guid.NewGuid(), MessageCategory.Marketing, optedOut: false);
         await SeedRowAsync(Guid.NewGuid(), MessageCategory.Marketing, optedOut: true);
-        SeedLegacy(Guid.NewGuid(), LegacyMessageCategory.Marketing, optedOut: true);
+        await SeedRowAsync(Guid.NewGuid(), MessageCategory.Marketing, optedOut: true);
         var shadowed = Guid.NewGuid();
-        SeedLegacy(shadowed, LegacyMessageCategory.Marketing, optedOut: true);
         await SeedRowAsync(shadowed, MessageCategory.Marketing, optedOut: null);
 
         (await _service.GetCountByCategoryAndStateAsync(MessageCategory.Marketing, optedOut: false, Ct)).Should().Be(3);
@@ -311,11 +293,11 @@ public sealed class CommunicationPreferenceServiceTests : IDisposable
     }
 
     [HumansFact]
-    public async Task Reads_FallBackToTheLegacyRow_UntilARowShadowsIt()
+    public async Task Reads_UseEmailRows_ForEachCategory()
     {
         var userId = Guid.NewGuid();
-        SeedLegacy(userId, LegacyMessageCategory.Marketing, optedOut: false, inboxEnabled: false, source: "MailerLiteSync");
-        SeedLegacy(userId, LegacyMessageCategory.VolunteerUpdates, optedOut: true);
+        await SeedRowAsync(userId, MessageCategory.Marketing, optedOut: false, inboxEnabled: false, source: "MailerLiteSync");
+        await SeedRowAsync(userId, MessageCategory.VolunteerUpdates, optedOut: true);
 
         (await _service.IsOptedOutAsync(userId, MessageCategory.Marketing, Ct)).Should().BeFalse();
         (await _service.GetPreferenceOrNullAsync(userId, MessageCategory.Marketing, Ct))!.UpdateSource.Should().Be("MailerLiteSync");
@@ -324,7 +306,8 @@ public sealed class CommunicationPreferenceServiceTests : IDisposable
         (await _service.GetUsersWithInboxDisabledAsync([userId], MessageCategory.Marketing, Ct)).Should().Contain(userId);
         (await _service.GetPreferencesForCategoryAsync(MessageCategory.Marketing, Ct))[userId].OptedOut.Should().BeFalse();
 
-        await SeedRowAsync(userId, MessageCategory.Marketing, optedOut: true);
+        await _service.UpdatePreferenceAsync(userId, MessageCategory.Marketing, optedOut: true,
+            inboxEnabled: true, source: "Profile", cancellationToken: Ct);
 
         (await _service.IsOptedOutAsync(userId, MessageCategory.Marketing, Ct)).Should().BeTrue();
         (await _service.GetUsersWithInboxDisabledAsync([userId], MessageCategory.Marketing, Ct)).Should().BeEmpty();
@@ -342,15 +325,15 @@ public sealed class CommunicationPreferenceServiceTests : IDisposable
     }
 
     [HumansFact]
-    public async Task Write_SeedsFromTheLegacyRow()
+    public async Task Write_PreservesStoredInboxAndSubscriptionMetadata()
     {
         var userId = Guid.NewGuid();
         var subscribed = _clock.GetCurrentInstant() - Duration.FromDays(30);
-        SeedLegacy(userId, LegacyMessageCategory.Marketing, optedOut: false, inboxEnabled: false, subscribedAt: subscribed);
+        await SeedRowAsync(userId, MessageCategory.Marketing, optedOut: false, inboxEnabled: false, subscribedAt: subscribed);
 
-        // Same value as the legacy row: nothing written, nothing audited.
+        // An unchanged preference keeps its metadata and produces no audit.
         await _service.UpdatePreferenceAsync(userId, MessageCategory.Marketing, optedOut: false, source: "MailerLiteSync", cancellationToken: Ct);
-        (await RowsAsync(userId)).Should().BeEmpty();
+        (await RowsAsync(userId)).Should().ContainSingle();
         _audit.ReceivedCalls().Should().BeEmpty();
 
         await _service.UpdatePreferenceAsync(userId, MessageCategory.Marketing, optedOut: true, source: "OneClick", cancellationToken: Ct);
@@ -363,27 +346,46 @@ public sealed class CommunicationPreferenceServiceTests : IDisposable
     }
 
     [HumansFact]
-    public async Task Reset_OverALegacyRow_LeavesAClearedRowThatShadowsIt()
+    public async Task Reset_DeletesThePreference_AndUsesTheCategoryDefault()
     {
         var userId = Guid.NewGuid();
-        SeedLegacy(userId, LegacyMessageCategory.Marketing, optedOut: false, source: "MailerLiteSync");
+        await SeedRowAsync(userId, MessageCategory.Marketing, optedOut: false, source: "MailerLiteSync");
 
         await _service.ResetPreferenceAsync(userId, MessageCategory.Marketing, "MailerLiteSyncReset", Ct);
 
-        (await RowsAsync(userId)).Should().ContainSingle().Which.OptedOut.Should().BeNull();
+        (await RowsAsync(userId)).Should().BeEmpty();
         (await _service.GetPreferenceOrNullAsync(userId, MessageCategory.Marketing, Ct)).Should().BeNull();
         (await _service.GetPreferencesForCategoryAsync(MessageCategory.Marketing, Ct)).Should().NotContainKey(userId);
         (await _service.IsOptedOutAsync(userId, MessageCategory.Marketing, Ct)).Should().BeTrue();
-        (await _service.GetUncopiedLegacyPreferencesAsync(Ct)).Should().BeEmpty();
         _audit.ReceivedCalls().Should().ContainSingle();
 
-        // Opting in again replaces the cleared row with a fresh preference.
+        // Opting in again records a fresh preference.
         await _service.UpdatePreferenceAsync(userId, MessageCategory.Marketing, optedOut: false, source: "Profile", cancellationToken: Ct);
         (await RowsAsync(userId)).Should().ContainSingle().Which.OptedOut.Should().BeFalse();
     }
 
     [HumansFact]
-    public async Task Reset_WithoutALegacyRow_DeletesTheRow_AndIsANoOpWhenNothingIsRecorded()
+    public async Task HistoricalClearedRows_UseDefaults_AndDoNotDisableInbox()
+    {
+        var userId = Guid.NewGuid();
+        await SeedRowAsync(userId, MessageCategory.Marketing, optedOut: null, inboxEnabled: false);
+
+        (await _service.GetPreferencesReadOnlyAsync(userId, Ct)).Should().BeEmpty();
+        (await _service.GetPreferencesForCategoryAsync(MessageCategory.Marketing, Ct)).Should().BeEmpty();
+        (await _service.GetUsersWithInboxDisabledAsync([userId], MessageCategory.Marketing, Ct)).Should().BeEmpty();
+        (await _service.IsOptedOutAsync(userId, MessageCategory.Marketing, Ct)).Should().BeTrue();
+
+        await _service.UpdatePreferenceAsync(userId, MessageCategory.Marketing, optedOut: false,
+            source: "Profile", cancellationToken: Ct);
+
+        var row = (await RowsAsync(userId)).Should().ContainSingle().Subject;
+        row.OptedOut.Should().BeFalse();
+        row.InboxEnabled.Should().BeTrue();
+        row.SubscribedAt.Should().Be(_clock.GetCurrentInstant());
+    }
+
+    [HumansFact]
+    public async Task Reset_IsANoOpWhenNothingIsRecorded_AndDeletesAnExistingRow()
     {
         var userId = Guid.NewGuid();
         await _service.ResetPreferenceAsync(userId, MessageCategory.Marketing, "Reset", Ct);
@@ -397,45 +399,15 @@ public sealed class CommunicationPreferenceServiceTests : IDisposable
     }
 
     [HumansFact]
-    public async Task Copy_WritesEveryUnshadowedLegacyRow_Once_AndNeverOverwritesALaterRow()
-    {
-        var copied = Guid.NewGuid();
-        var subscribed = _clock.GetCurrentInstant() - Duration.FromDays(3);
-        SeedLegacy(copied, LegacyMessageCategory.Marketing, optedOut: false, inboxEnabled: false, source: "MailerLiteSync", subscribedAt: subscribed);
-        var written = Guid.NewGuid();
-        SeedLegacy(written, LegacyMessageCategory.Marketing, optedOut: false);
-        await SeedRowAsync(written, MessageCategory.Marketing, optedOut: true, source: "OneClick");
-
-        var pending = await _service.GetUncopiedLegacyPreferencesAsync(Ct);
-        pending.Should().ContainSingle().Which.UserId.Should().Be(copied);
-
-        (await _service.CopyLegacyPreferencesAsync(Ct)).Should().Be(1);
-        (await _service.CopyLegacyPreferencesAsync(Ct)).Should().Be(0);
-        (await _service.GetUncopiedLegacyPreferencesAsync(Ct)).Should().BeEmpty();
-
-        var row = (await RowsAsync(copied)).Single();
-        (row.Category, row.OptedOut, row.InboxEnabled, row.UpdateSource, row.SubscribedAt)
-            .Should().Be((MessageCategory.Marketing, false, false, "MailerLiteSync", subscribed));
-        (await RowsAsync(written)).Single().UpdateSource.Should().Be("OneClick");
-    }
-
-    [HumansFact]
-    public void DataMigration_IsRegisteredUnderItsKey() =>
-        ((ISectionDataMigrations)new Section()).Migrations().Select(m => m.Key)
-            .Should().ContainSingle().Which.Should().Be("email.communication-preferences");
-
-    [HumansFact]
-    public async Task Merge_LaterPreferenceWins_SourceOnlyMoves_AndSourceLegacyIsShadowed()
+    public async Task Merge_LaterPreferenceWins_SourceOnlyMoves_AndSourceIsDeleted()
     {
         var source = Guid.NewGuid();
         var target = Guid.NewGuid();
         var early = _clock.GetCurrentInstant() - Duration.FromDays(2);
         var late = _clock.GetCurrentInstant() - Duration.FromDays(1);
-        // Marketing: target's legacy row is older than the source's live row → source wins.
-        SeedLegacy(target, LegacyMessageCategory.Marketing, optedOut: true, updatedAt: early);
+        await SeedRowAsync(target, MessageCategory.Marketing, optedOut: true, updatedAt: early);
         await SeedRowAsync(source, MessageCategory.Marketing, optedOut: false, updatedAt: late, source: "Profile");
-        // TeamUpdates: only the source has it, through its legacy row → moves to target.
-        SeedLegacy(source, LegacyMessageCategory.TeamUpdates, optedOut: true, inboxEnabled: false);
+        await SeedRowAsync(source, MessageCategory.TeamUpdates, optedOut: true, inboxEnabled: false);
         var now = _clock.GetCurrentInstant();
 
         await _service.ReassignAsync(source, target, Guid.NewGuid(), now, Ct);
@@ -445,9 +417,7 @@ public sealed class CommunicationPreferenceServiceTests : IDisposable
         targetRows[MessageCategory.Marketing].UpdatedAt.Should().Be(now);
         targetRows[MessageCategory.TeamUpdates].OptedOut.Should().BeTrue();
         targetRows[MessageCategory.TeamUpdates].InboxEnabled.Should().BeFalse();
-        (await RowsAsync(source)).Should().ContainSingle()
-            .Which.Should().Match<CommunicationPreference>(r => r.Category == MessageCategory.TeamUpdates && r.OptedOut == null);
-        (await _service.GetUncopiedLegacyPreferencesAsync(Ct)).Select(u => u.UserId).Should().OnlyContain(id => id == target);
+        (await RowsAsync(source)).Should().BeEmpty();
     }
 
     [HumansFact]
@@ -488,16 +458,22 @@ public sealed class CommunicationPreferenceServiceTests : IDisposable
         row.OptedOut.Should().Be(sourceIsNewer);
     }
 
-    [HumansFact]
-    public async Task Export_CoversRowsAndLegacy_AndEraseDeletesTheRows()
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Export_CoversEmailRows_AndEraseDeletesTheRows(bool hasSubscribedAt)
     {
         var userId = Guid.NewGuid();
-        await SeedRowAsync(userId, MessageCategory.Marketing, optedOut: false);
-        SeedLegacy(userId, LegacyMessageCategory.TeamUpdates, optedOut: true);
+        var subscribed = hasSubscribedAt ? _clock.GetCurrentInstant() : (Instant?)null;
+        await SeedRowAsync(userId, MessageCategory.Marketing, optedOut: false, subscribedAt: subscribed);
+        await SeedRowAsync(userId, MessageCategory.TeamUpdates, optedOut: true);
 
         var slice = (await _service.ContributeForUserAsync(userId, Ct)).Should().ContainSingle().Subject;
         slice.SectionName.Should().Be("CommunicationPreferences");
         ((System.Collections.IList)slice.Data!).Count.Should().Be(2);
+        using var json = System.Text.Json.JsonDocument.Parse(System.Text.Json.JsonSerializer.Serialize(slice.Data));
+        json.RootElement[0].GetProperty("SubscribedAt").GetString()
+            .Should().Be(hasSubscribedAt ? "2026-04-01T12:00:00Z" : null);
         _service.ErasureDeclaration.Should().ContainKey("CommunicationPreferences").WhoseValue.Should().BeNull();
 
         await _service.EraseForUserAsync(userId, Ct);

@@ -79,7 +79,7 @@ public class EventServiceCalendarFeedTests
             .Returns(favourites);
     }
 
-    private void StubBurnSettings()
+    private void StubBurnSettings(string timeZoneId = "Europe/Madrid")
     {
         var guideSettings = new EventGuideSettings
         {
@@ -98,15 +98,11 @@ public class EventServiceCalendarFeedTests
                 Id: guideSettings.EventSettingsId,
                 EventName: "Test Event 2026",
                 Year: 2026,
-                TimeZoneId: "Europe/Madrid",
+                TimeZoneId: timeZoneId,
                 GateOpeningDate: new LocalDate(2026, 7, 1),
                 BuildStartOffset: -14,
                 EventEndOffset: 6,
                 StrikeEndOffset: 9,
-                FirstCrewStartOffset: -14,
-                SetupWeekStartOffset: -7,
-                PreEventWeekStartOffset: -3,
-                FinishingWeekendStartOffset: -2,
                 EarlyEntryCapacity: new Dictionary<int, int>(),
                 BarriosEarlyEntryAllocation: null,
                 EarlyEntryClose: null));
@@ -159,12 +155,18 @@ public class EventServiceCalendarFeedTests
     }
 
     [HumansTheory]
-    [Xunit.InlineData(false, 1)]
-    [Xunit.InlineData(true, 2)]
-    public async Task GetCalendarItems_PreviouslyDaySpecificFavourites_FollowCurrentRecurrence(bool stillRecurring, int expectedCount)
+    [Xunit.InlineData(false, "0,2", "Europe/Madrid", 1)]
+    [Xunit.InlineData(true, "0,2", "Europe/Madrid", 2)]
+    [Xunit.InlineData(true, null, "Europe/Madrid", 1)]
+    [Xunit.InlineData(true, "", "Europe/Madrid", 1)]
+    [Xunit.InlineData(true, " ", "Europe/Madrid", 1)]
+    [Xunit.InlineData(true, "0,2", null, 1)]
+    [Xunit.InlineData(true, "0,2", "Invalid/Zone", 1)]
+    public async Task GetCalendarItems_PreviouslyDaySpecificFavourites_FollowCurrentRecurrence(
+        bool stillRecurring, string? recurrenceDays, string? timeZoneId, int expectedCount)
     {
         var userId = Guid.NewGuid();
-        StubBurnSettings();
+        if (timeZoneId is not null) StubBurnSettings(timeZoneId);
         var ev = MakeEvent(EventStatus.Approved, isRecurring: true, recurrenceDays: "0,2");
         var favourites = new[] { 0, 2 }.Select(day => new EventFavourite
         {
@@ -178,6 +180,7 @@ public class EventServiceCalendarFeedTests
         _repo.GetFavouritesWithEventsAsync(userId, Arg.Any<CancellationToken>()).Returns(favourites);
         // In-place moderator edits retain approval and the member's existing bookmarks.
         ev.IsRecurring = stillRecurring;
+        ev.RecurrenceDays = recurrenceDays;
 
         var items = await _service.GetCalendarItemsForUserAsync(userId, Xunit.TestContext.Current.CancellationToken);
 
@@ -186,7 +189,7 @@ public class EventServiceCalendarFeedTests
         items[0].Start.Should().Be(EventStart);
         var projected = await _service.GetFavouritesWithEventsAsync(userId, Xunit.TestContext.Current.CancellationToken);
         projected.Should().HaveCount(expectedCount);
-        if (stillRecurring)
+        if (expectedCount == 2)
             projected.Select(f => f.DayOffset).Should().Equal(0, 2);
         else
             projected.Single().DayOffset.Should().BeNull("the existing whole-event removal path clears all retained day bookmarks");

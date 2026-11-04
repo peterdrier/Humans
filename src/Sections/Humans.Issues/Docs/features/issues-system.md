@@ -13,7 +13,7 @@
 
 The Issues section is the in-app issue tracker — bugs, feature requests, and questions raised by humans against any section of the app. Submissions are routed by `Issue.Section` to the role-holders who own that section (e.g. an issue tagged `Tickets` lands in the queue of every `TicketsAdmin`), so triage is decentralised: each section's coordinators see only the issues that concern them, while Admin sees everything. A reporter can have a back-and-forth conversation with handlers right inside the issue detail; "ball-in-court" is derived from the latest comment so the system never lies about whose move it is. Claude Code agents have programmatic read/write access via an API key for automated triage and follow-up.
 
-Issues is the only in-app reporting path. Feedback (`src/Sections/Humans.Feedback/Docs/features/feedback-system.md`), the single global queue it replaced, accepts no new reports and is Admin-only.
+Issues is the only in-app reporting path. It replaced Feedback, the single global queue, which has since been removed.
 
 ## User Stories
 
@@ -75,7 +75,7 @@ Issues is the only in-app reporting path. Feedback (`src/Sections/Humans.Feedbac
 - When an issue is assigned, the new assignee is notified
 - Emails are queued via the email outbox (`OutboxEmailService`) and localized in the recipient's preferred language (en/es/de/fr/it/ca)
 - Once a submission, comment, status or assignment change is saved, its notifications, email and submitted-alert resolution finish even if the browser disconnects. Reads and persistence before that save retain request cancellation. Actionable badge counts query current rows on each read, including after routing changes, retention or erasure.
-- Effective notification email is resolved through `IUserEmailService.GetNotificationTargetEmailsAsync` so verified-email and forwarding rules apply
+- Effective notification email comes from the resolved reporter’s `UserInfo.Email`, alongside the same snapshot’s name and culture, so verified-email and forwarding rules apply
 
 ### US-28.5: Conversation Thread
 
@@ -180,7 +180,6 @@ The Issues API is the read/write surface Claude Code agents use to triage and fo
 
 ## Related Features
 
-- `src/Sections/Humans.Feedback/Docs/features/feedback-system.md` — the retired global feedback queue Issues replaced: closed to new reports, Admin-only, kept as a historical archive.
 - Email outbox (`EmailOutboxMessage`) — used for comment notification emails.
 - Notifications (`src/Sections/Humans.Notifications/Docs/features/notification-inbox.md`) — `IssuesNotificationSources.IssueSubmitted`, `IssuesNotificationSources.IssueComment`, `IssuesNotificationSources.IssueStatusChanged`, `IssuesNotificationSources.IssueAssigned`.
 - Audit log — every issue mutation is recorded.

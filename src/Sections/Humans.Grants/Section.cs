@@ -1,4 +1,4 @@
-using System.Globalization;
+using Humans.Base.Constants;
 using Humans.Base.Hosting;
 using Humans.Base.Interfaces;
 using Humans.Base.Models.Tables;
@@ -19,13 +19,20 @@ using Humans.AuditLog.Contracts;
 
 namespace Humans.Grants;
 
-public sealed class Section : ISection, ISectionAdminNav, ISectionPolicies, IUserPart, ISectionDataMigrations
+public sealed class Section : ISection, ISectionRoles, ISectionAdminNav, ISectionPolicies, IUserPart
 {
+    IReadOnlyList<RoleDefinition> ISectionRoles.Roles { get; } =
+    [
+        new(GrantsRoles.GrantsAdmin, "Grants Admin",
+            "Grant program owners. They create grant programs, name each program's managers, and issue, revoke and resend grants on any program.",
+            "fa-solid fa-gift"),
+    ];
+
     IEnumerable<AdminNavGroup> ISectionAdminNav.Groups() =>
     [
         new("Grants", [
             new("Programs", "GrantsAdmin", "Index", null, null,
-                "fa-solid fa-gift", GrantsPolicies.Manage)
+                "fa-solid fa-gift", GrantProgramsPolicy.Name)
         ])
     ];
 
@@ -59,35 +66,18 @@ public sealed class Section : ISection, ISectionAdminNav, ISectionPolicies, IUse
         });
     }
 
-    void ISectionPolicies.AddPolicies(AuthorizationOptions options) =>
-        options.AddPolicy(GrantsPolicies.Manage, policy => policy.AddRequirements(new ManagesGrantsRequirement()));
+    void ISectionPolicies.AddPolicies(AuthorizationOptions options)
+    {
+        options.AddPolicy(GrantProgramsPolicy.Name, policy => policy.AddRequirements(new ManagesGrantsRequirement()));
+        options.AddPolicy(GrantsPolicies.Read, policy =>
+            policy.RequireRole(GrantsRoles.GrantsAdmin, RoleNames.Board, RoleNames.Admin));
+        options.AddPolicy(GrantsPolicies.Manage, policy =>
+            policy.RequireRole(GrantsRoles.GrantsAdmin, RoleNames.Admin));
+    }
 
     IEnumerable<UserPart> IUserPart.Parts() =>
     [
         new(UserPartSlots.Profile, typeof(MyGrantsViewComponent), Weight: 95),
         new(UserPartSlots.AdminDetail, typeof(UserGrantsViewComponent), Weight: 95),
     ];
-
-    internal const string EventIdsKey = "grants.event-ids";
-
-    IEnumerable<DataMigration> ISectionDataMigrations.Migrations() =>
-    [
-        new(EventIdsKey, "Grants",
-            "Give every grant program the event of its year",
-            "Programs without an event id, and the year fallback that reads them",
-            StatusAsync, ApplyAsync),
-    ];
-
-    private static async Task<DataMigrationStatus> StatusAsync(IServiceProvider sp, CancellationToken ct)
-    {
-        var plan = await sp.GetRequiredService<IGrantManagement>().GetEventIdPlanAsync(ct);
-        return new(["Program", "Name", "Year", "Event"],
-            [
-                .. plan.Select(p => (IReadOnlyList<string>)[
-                    p.ProgramId.ToString(), p.ProgramName, p.Year.ToString(CultureInfo.InvariantCulture), p.Event.EventName]),
-            ]);
-    }
-
-    private static Task<int> ApplyAsync(IServiceProvider sp, Guid actorUserId, CancellationToken ct) =>
-        sp.GetRequiredService<IGrantManagement>().AssignProgramEventIdsAsync(ct);
 }

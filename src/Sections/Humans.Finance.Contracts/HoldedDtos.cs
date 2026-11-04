@@ -18,7 +18,6 @@ public sealed record HoldedUnmatchedRow(
     public LocalDate Date { get; init; }
 }
 
-public sealed record HoldedSyncResult(int DocCount, int Matched, int Unmatched);
 
 /// <summary><c>Status</c> is "Idle", "Running" or "Error".</summary>
 public sealed record HoldedDocSyncInfo(

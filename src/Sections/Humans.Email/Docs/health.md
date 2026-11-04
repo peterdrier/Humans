@@ -70,7 +70,7 @@ surviving account on a merge.
 Inside, a send runs **send service** (opt-out, headers, wrap, log row) → **processor**
 (transport, retry, tally). The **body composer** (wrapper plus inline-style
 pass), the **transport** (SMTP or a logging stub) and the **relay factory** hang off it.
-The preference lane is **preference service** (rows here, legacy fallback, the locks other sections report)
+The preference lane is **preference service** (rows here, the locks other sections report)
 → **token provider**, with the **unsubscribe service** reading tokens on its behalf.
 
 ## 3. Structure
@@ -153,8 +153,8 @@ no-login page adds the inbox column and the highlighted row.
 - An unchanged preference write writes nothing and audits nothing
   (`src/Sections/Humans.Email/Services/CommunicationPreferenceService.cs:167`); every
   change is audited (`src/Sections/Humans.Email/Services/CommunicationPreferenceService.cs:187`).
-- A cleared row shadows the legacy row and reads as nothing recorded
-  (`src/Sections/Humans.Email/Services/CommunicationPreferenceService.cs:98`).
+- Historical cleared rows read as defaults; new resets delete the preference
+  (`CommunicationPreferenceService.Recorded` / `ResetPreferenceAsync`).
 - Unsubscribe tokens keep their purpose, payload and lifetime
   (`src/Sections/Humans.Email/Services/UnsubscribeTokenProvider.cs:15`,
   `src/Sections/Humans.Email/Services/UnsubscribeTokenProvider.cs:23`), and a token for an
@@ -166,8 +166,8 @@ no-login page adds the inbox column and the highlighted row.
   its status (`src/Sections/Humans.Email/Services/EmailOutboxService.cs:230`); erasure
   deletes every preference row too
   (`src/Sections/Humans.Email/Services/CommunicationPreferenceService.cs:416`).
-- A merge leaves the source with only cleared rows where a legacy row backs it
-  (`src/Sections/Humans.Email/Services/CommunicationPreferenceService.cs:375`).
+- A merge deletes the source's rows after folding the recorded preferences
+  (`CommunicationPreferenceService.ReassignAsync`).
 - One row per person and category
   (`src/Sections/Humans.Email/Data/CommunicationPreferenceConfiguration.cs:30`).
 - Every string in this section's resource set is present in all six cultures, enforced by
@@ -179,8 +179,8 @@ no-login page adds the inbox column and the highlighted row.
   delivery outcomes need a new inbound seam, not a new status value.
 - **A failure day in the tally.** Backfilled rows carry no failure count; reconstructing
   them needs a per-attempt record that does not exist.
-- **Retiring the legacy fallback.** Once the copy has run in production, the fallback, the
-  cleared rows and Users' frozen table go in one PR.
+- **Legacy retirement.** Production reported the copy done on 2026-11-03. The copy and
+  fallback are retired; Users' frozen table awaits its separate drop.
 
 ## 6. Deliberately not done
 

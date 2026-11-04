@@ -29,6 +29,61 @@ public class HumanLifecycleServiceTests
             NullLogger<HumanLifecycleService>.Instance);
 
     [HumansTheory]
+    [Xunit.InlineData("suspend")]
+    [Xunit.InlineData("unsuspend")]
+    [Xunit.InlineData("restore")]
+    public async Task StateChange_CompletesNoticeWorkAfterCallerCancellation(string operation)
+    {
+        var userId = Guid.NewGuid();
+        using var cancellation = new CancellationTokenSource();
+        var info = MakeUserInfo(userId, UserState.Suspended);
+        _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(call =>
+            {
+                call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+                return new ValueTask<UserInfo?>(info);
+            });
+        _userService.SetSuspensionAsync(userId, Arg.Any<bool>(), Arg.Any<bool>(), cancellation.Token)
+            .Returns(async _ =>
+            {
+                await cancellation.CancelAsync();
+                return new OnboardingResult(true);
+            });
+        var completed = 0;
+        _notificationService.SendAsync(Arg.Any<NotificationSourceDefinition>(), Arg.Any<NotificationClass>(),
+                Arg.Any<NotificationPriority>(), Arg.Any<string>(), Arg.Any<IReadOnlyList<Guid>>(),
+                Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(),
+                Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns(call =>
+            {
+                call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+                completed++;
+                return Task.CompletedTask;
+            });
+        _notificationInboxService.ResolveBySourceAsync(userId, UsersNotificationSources.AccessSuspended,
+                Arg.Any<CancellationToken>())
+            .Returns(call =>
+            {
+                call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+                completed++;
+                return Task.CompletedTask;
+            });
+        var sut = BuildSut();
+
+        var result = operation switch
+        {
+            "suspend" => await sut.SuspendAsync(userId, Guid.NewGuid(), null, cancellation.Token),
+            "unsuspend" => await sut.UnsuspendAsync(userId, Guid.NewGuid(), cancellation.Token),
+            _ => await sut.RestoreConsentSuspensionAsync(userId, cancellation.Token),
+        };
+
+        result.Success.Should().BeTrue();
+        completed.Should().Be(1);
+        var suspended = string.Equals(operation, "suspend", StringComparison.Ordinal);
+        await _userService.Received(1).SetSuspensionAsync(userId, suspended, suspended, cancellation.Token);
+    }
+
+    [HumansTheory]
     [Xunit.InlineData(null, "Tu cuenta ha sido suspendida por un administrador")]
     [Xunit.InlineData("Review needed", "Tu acceso ha sido suspendido: Review needed")]
     public async Task SuspendAsync_LocalizesNoticeForMemberRatherThanAdmin(string? notes, string expectedBody)
@@ -310,11 +365,9 @@ public class HumanLifecycleServiceTests
                 CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
             },
             userEmails: [],
-            eventParticipations: [],
             externalLogins: [],
             profile: null,
             contactFields: [],
             profileLanguages: [],
-            volunteerHistory: [],
-            communicationPreferences: []);
+            volunteerHistory: []);
 }

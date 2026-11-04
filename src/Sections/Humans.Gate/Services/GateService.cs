@@ -120,7 +120,8 @@ internal sealed class GateService(
         var verdict = ResolveVerdict(eval.Outcome, input, overrideAuthorized);
         var admit = IsAdmit(verdict);
 
-        var recorded = await repository.RecordScanAsync(BuildEvent(eval, input, scannedByUserId, verdict, admit, overrideAuthorized), ct);
+        var scan = BuildEvent(eval, input, scannedByUserId, verdict, admit, overrideAuthorized);
+        var recorded = await repository.RecordScanAsync(scan, ct);
 
         if (recorded == GateRecordOutcome.DuplicateAdmitRejected)
         {
@@ -136,7 +137,7 @@ internal sealed class GateService(
         {
             await MarkAttendedAsync(eval.GuestUserId);
             if (eval.VendorTicketId is { Length: > 0 } vendorTicketId)
-                MirrorVendorCheckIn(vendorTicketId);
+                MirrorVendorCheckIn(vendorTicketId, scan.OccurredAt);
         }
 
         return new GateDecisionResult(verdict, eval.GuestName, eval.TicketTypeName,
@@ -173,11 +174,12 @@ internal sealed class GateService(
     /// Fire-and-forget. Marked in the ledger so the backfill page never re-sends a live admit, but only while the
     /// flag is on: with it off the job no-ops, and a mark would hide the rows the backfill exists to recover.
     /// </summary>
-    private void MirrorVendorCheckIn(string vendorTicketId)
+    private void MirrorVendorCheckIn(string vendorTicketId, Instant admittedAt)
     {
         try
         {
-            backgroundJobs.Enqueue<GateVendorCheckInJob>(j => j.ExecuteAsync(vendorTicketId, null, CancellationToken.None));
+            var admittedAtUnixSeconds = admittedAt.ToUnixTimeSeconds();
+            backgroundJobs.Enqueue<GateVendorCheckInJob>(j => j.ExecuteAsync(vendorTicketId, admittedAtUnixSeconds, CancellationToken.None));
             if (configuration.GetValue<bool>(VendorMirrorEnabledKey))
                 mirrorLedger.TryMarkSent(vendorTicketId);
         }
@@ -314,7 +316,7 @@ internal sealed class GateService(
         return new GateVendorBackfillResult(true, enqueued);
     }
 
-    public async Task<IReadOnlyList<GateRosterEntry>> GetShiftRosterAsync(
+    public async Task<IReadOnlyList<Guid>> GetShiftRosterAsync(
         Guid rosterTeamId, CancellationToken ct = default)
     {
         var activeEvent = await settingsService.GetActiveEventSettingsAsync(ct);
@@ -327,7 +329,7 @@ internal sealed class GateService(
         var openingDate = activeEvent.GateOpeningDate;
 
         var gateShifts = await shifts.GetBrowseShiftsAsync(new ShiftBrowseQuery(
-            activeEvent.Id, DepartmentId: rosterTeamId, Flags: ShiftBrowseQueryFlags.IncludeSignups));
+            activeEvent.Id, DepartmentId: rosterTeamId, Flags: ShiftBrowseQueryFlags.IncludeSignups), ct);
 
         return gateShifts
             .Where(s => StartsWithinWindow(openingDate, s.Shift, zone, now))
@@ -335,7 +337,7 @@ internal sealed class GateService(
             .Where(u => u.Status is SignupStatus.Pending or SignupStatus.Confirmed)
             .DistinctBy(u => u.UserId)
             .OrderBy(u => u.DisplayName, StringComparer.CurrentCultureIgnoreCase)
-            .Select(u => new GateRosterEntry(u.UserId, u.DisplayName))
+            .Select(u => u.UserId)
             .ToList();
     }
 

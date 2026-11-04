@@ -320,18 +320,6 @@ internal sealed class UserEmailService(
         return result;
     }
 
-    public async Task<string?> GetNobodiesTeamEmailAsync(
-        Guid userId, CancellationToken cancellationToken = default)
-    {
-        // Raw: the sole consumer is GDPR erasure, which asks about tombstones. A tombstone owns no
-        // addresses, and resolving forward would suspend the living survivor's mailbox.
-        var info = await userService.GetRawUserInfoAsync(userId, cancellationToken);
-        return info?.UserEmails
-            .FirstOrDefault(e => e.IsVerified
-                && e.Email.EndsWith("@nobodies.team", StringComparison.OrdinalIgnoreCase))
-            ?.Email;
-    }
-
     public async Task<IReadOnlyDictionary<Guid, string>> GetNotificationTargetEmailsAsync(
         IReadOnlyCollection<Guid> userIds, CancellationToken cancellationToken = default)
     {
@@ -341,7 +329,6 @@ internal sealed class UserEmailService(
         // Resolve first: a tombstone's own address is a sentinel that bounces, and its
         // notification rows moved to the survivor. The key stays the requested id.
         var resolved = await userService.GetUserInfosAsync(userIds, cancellationToken);
-        var allNotificationTargets = await repository.GetAllNotificationTargetUserEmailsAsync(cancellationToken);
 
         var result = new Dictionary<Guid, string>(userIds.Count);
         foreach (var userId in userIds)
@@ -349,9 +336,7 @@ internal sealed class UserEmailService(
             if (!resolved.TryGetValue(userId, out var user))
                 continue;
 
-            if (allNotificationTargets.TryGetValue(user.Id, out var email))
-                result[userId] = email;
-            else if (!string.IsNullOrEmpty(user.Email))
+            if (!string.IsNullOrEmpty(user.Email))
                 result[userId] = user.Email;
         }
 
@@ -380,29 +365,6 @@ internal sealed class UserEmailService(
         string suffix,
         CancellationToken cancellationToken = default) =>
         repository.GetUserIdsByUserEmailPrefixAndSuffixAsync(prefix, suffix, cancellationToken);
-
-    public async Task<string?> GetPrimaryEmailAsync(Guid userId, CancellationToken ct = default)
-    {
-        var info = await userService.GetUserInfoAsync(userId, ct);
-        if (info is null) return null;
-        var primary = info.UserEmails.FirstOrDefault(e => e.IsVerified && e.IsPrimary);
-        if (primary is not null) return primary.Email;
-        var anyVerified = info.UserEmails.FirstOrDefault(e => e.IsVerified);
-        if (anyVerified is not null) return anyVerified.Email;
-        return info.IdentityEmailColumn;
-    }
-
-
-    public async Task<IReadOnlyList<string>> GetVerifiedEmailsForUserAsync(
-        Guid userId, CancellationToken cancellationToken = default)
-    {
-        var info = await userService.GetUserInfoAsync(userId, cancellationToken);
-        if (info is null) return [];
-        return info.UserEmails
-            .Where(e => e.IsVerified)
-            .Select(e => e.Email)
-            .ToList();
-    }
 
     public async Task<IReadOnlyList<UserEmailRowSnapshot>> GetEntitiesByUserIdAsync(
         Guid userId, CancellationToken cancellationToken = default)
@@ -434,10 +396,11 @@ internal sealed class UserEmailService(
         if (userIds.Count == 0)
             return new Dictionary<Guid, string>();
 
-        var all = await repository.GetAllNotificationTargetUserEmailsAsync(cancellationToken);
-        return all
-            .Where(kv => userIds.Contains(kv.Key))
-            .ToDictionary(kv => kv.Key, kv => kv.Value);
+        var requestedIds = userIds.ToHashSet();
+        var users = await userService.GetAllRawUserInfosAsync(cancellationToken);
+        return users
+            .Where(user => requestedIds.Contains(user.Id) && user.PrimaryEmail != null)
+            .ToDictionary(user => user.Id, user => user.PrimaryEmail!);
     }
 
     public async Task<IReadOnlyList<UserEmailMatch>> MatchByEmailsAsync(
@@ -664,17 +627,17 @@ internal sealed class UserEmailService(
         await auditLogService.LogAsync(
             UsersAuditActions.UserEmailUnlinked,
             nameof(User), userId,
-            $"Unlinked {provider} (key {ShortHash(providerKey)}) from {email}",
+            $"Unlinked {provider} (key {ShortProviderKeyHash(providerKey)}) from {email}",
             actorUserId,
             relatedEntityId: row.Id, relatedEntityType: nameof(UserEmail));
 
         return new(true);
     }
 
-    private static string ShortHash(string s)
+    internal static string ShortProviderKeyHash(string providerKey)
     {
         var bytes = System.Security.Cryptography.SHA256.HashData(
-            System.Text.Encoding.UTF8.GetBytes(s));
+            System.Text.Encoding.UTF8.GetBytes(providerKey));
         return Convert.ToHexString(bytes.AsSpan(0, 8));
     }
 

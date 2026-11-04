@@ -53,10 +53,6 @@ public class ShiftUrgencyTests
         BuildStartOffset: -25,
         EventEndOffset: eventEndOffset,
         StrikeEndOffset: strikeEndOffset,
-        FirstCrewStartOffset: -25,
-        SetupWeekStartOffset: -16,
-        PreEventWeekStartOffset: -9,
-        FinishingWeekendStartOffset: -4,
         EarlyEntryCapacity: new Dictionary<int, int>(),
         BarriosEarlyEntryAllocation: null,
         EarlyEntryClose: null);

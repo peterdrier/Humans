@@ -36,139 +36,6 @@ public class RepositoryTests
     private static CancellationToken Ct => TestContext.Current.CancellationToken;
 
     [HumansFact]
-    public async Task ReplaceDocs_ReSyncingADoc_RewritesTheFactsAndKeepsCreatedAt()
-    {
-        var (repo, factory) = Make();
-        await repo.ReplaceDocsAsync([Doc("h-1", total: 100m, category: null,
-            status: HoldedMatchStatus.Unmatched)], Created, Ct);
-
-        var categoryId = Guid.NewGuid();
-        await repo.ReplaceDocsAsync([Doc("h-1", total: 250m, category: categoryId,
-            status: HoldedMatchStatus.Matched, isApproved: true)], Now, Ct);
-
-        await using var ctx = await factory.CreateDbContextAsync(Ct);
-        var stored = await ctx.HoldedExpenseDocs.SingleAsync(Xunit.TestContext.Current.CancellationToken);
-        stored.Total.Should().Be(250m);
-        stored.BudgetCategoryId.Should().Be(categoryId);
-        stored.MatchStatus.Should().Be(HoldedMatchStatus.Matched);
-        stored.IsApproved.Should().BeTrue();
-        stored.LastSyncedAt.Should().Be(Now);
-        stored.UpdatedAt.Should().Be(Now);
-        stored.CreatedAt.Should().Be(Created); // the row's own history, never restamped
-    }
-
-    [HumansFact]
-    public async Task ReplaceDocs_KeyedOnTheHoldedIdNotOurGuid_SoAReSyncDoesNotDuplicate()
-    {
-        var (repo, factory) = Make();
-        await repo.ReplaceDocsAsync([Doc("h-1")], Created, Ct);
-        await repo.ReplaceDocsAsync([Doc("h-1"), Doc("h-2")], Now, Ct);
-
-        await using var ctx = await factory.CreateDbContextAsync(Ct);
-        ctx.HoldedExpenseDocs.Select(d => d.HoldedDocId).Should().BeEquivalentTo(["h-1", "h-2"]);
-    }
-
-    [HumansFact]
-    public async Task ReplaceDocs_UnfetchedNotes_KeepTheStoredOnes_ContactIdFollowsHolded()
-    {
-        var (repo, factory) = Make();
-        var first = Doc("h-1");
-        first.Notes = "Expense report 1";
-        first.ContactId = "c-old";
-        await repo.ReplaceDocsAsync([first], Created, Ct);
-
-        var resync = Doc("h-1");
-        resync.ContactId = "c-new";
-        await repo.ReplaceDocsAsync([resync], Now, Ct);
-
-        await using var ctx = await factory.CreateDbContextAsync(Ct);
-        var stored = await ctx.HoldedExpenseDocs.SingleAsync(Ct);
-        stored.Notes.Should().Be("Expense report 1");
-        stored.ContactId.Should().Be("c-new");
-    }
-
-    [HumansTheory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public async Task ReplaceDocs_RemovesDocumentsMissingFromTheCompleteSnapshot(bool emptySnapshot)
-    {
-        var (repo, _) = Make();
-        var categoryId = Guid.NewGuid();
-        await repo.ReplaceDocsAsync(
-        [
-            Doc("keep", total: 100m, category: categoryId, status: HoldedMatchStatus.Matched, isApproved: true),
-            Doc("deleted-matched", total: 200m, category: categoryId, status: HoldedMatchStatus.Matched, isApproved: true),
-            Doc("deleted-unmatched"),
-        ], Created, Ct);
-        IReadOnlyList<HoldedExpenseDoc> snapshot = emptySnapshot
-            ? []
-            : [Doc("keep", total: 100m, category: categoryId, status: HoldedMatchStatus.Matched, isApproved: true)];
-
-        await repo.ReplaceDocsAsync(snapshot, Now, Ct);
-
-        var all = await repo.GetAllDocsAsync(Ct);
-        all.Select(d => d.HoldedDocId).Should().BeEquivalentTo(snapshot.Select(d => d.HoldedDocId));
-        var actuals = await repo.GetMatchedForYearAsync(2026, Ct);
-        actuals.Sum(d => d.Total).Should().Be(emptySnapshot ? 0m : 100m);
-        (await repo.GetUnmatchedAsync(Ct)).Should().BeEmpty();
-    }
-
-    [HumansFact]
-    public async Task GetUnmatched_ReturnsOnlyUnmatchedDocs()
-    {
-        var (repo, _) = Make();
-        await repo.ReplaceDocsAsync(
-        [
-            Doc("old", date: new LocalDate(2026, 1, 1)),
-            Doc("new", date: new LocalDate(2026, 6, 1)),
-            Doc("matched", status: HoldedMatchStatus.Matched, category: Guid.NewGuid()),
-        ], Now, Ct);
-
-        var rows = await repo.GetUnmatchedAsync(Ct);
-
-        rows.Select(d => d.HoldedDocId).Should().BeEquivalentTo(["new", "old"]);
-    }
-
-    [HumansFact]
-    public async Task GetMatchedForYear_IsKeyedOnTheDocsOwnCalendarYear()
-    {
-        var (repo, _) = Make();
-        await repo.ReplaceDocsAsync(
-        [
-            Doc("in", status: HoldedMatchStatus.Matched, category: Guid.NewGuid(),
-                date: new LocalDate(2026, 12, 31)),
-            Doc("out", status: HoldedMatchStatus.Matched, category: Guid.NewGuid(),
-                date: new LocalDate(2027, 1, 1)),
-            Doc("unmatched", date: new LocalDate(2026, 5, 1)),
-        ], Now, Ct);
-
-        var rows = await repo.GetMatchedForYearAsync(2026, Ct);
-
-        rows.Select(d => d.HoldedDocId).Should().Equal("in");
-    }
-
-    [HumansFact]
-    public async Task GetAllDocs_ReturnsBothSlices_WhichNeitherOtherReadCovers()
-    {
-        // /Finance/Holded browses every doc. The unmatched read filters to one status and the
-        // matched read to one year, so neither composes into this.
-        var (repo, _) = Make();
-        await repo.ReplaceDocsAsync(
-        [
-            Doc("matched-2026", status: HoldedMatchStatus.Matched, category: Guid.NewGuid(),
-                date: new LocalDate(2026, 5, 1)),
-            Doc("matched-2027", status: HoldedMatchStatus.Matched, category: Guid.NewGuid(),
-                date: new LocalDate(2027, 1, 1)),
-            Doc("unmatched", date: new LocalDate(2026, 6, 1)),
-        ], Now, Ct);
-
-        var rows = await repo.GetAllDocsAsync(Ct);
-
-        rows.Select(d => d.HoldedDocId).Should()
-            .BeEquivalentTo(["matched-2026", "matched-2027", "unmatched"]);
-    }
-
-    [HumansFact]
     public async Task UpsertCreditorContact_ANullAccountNumberDoesNotEraseAResolvedOne()
     {
         // A push that has not resolved the 400000xx yet still writes the contact id. It must not
@@ -247,29 +114,6 @@ public class RepositoryTests
 
         await using var ctx = await factory.CreateDbContextAsync(Ct);
         (await ctx.HoldedCreditorContacts.SingleAsync(Xunit.TestContext.Current.CancellationToken)).UserId.Should().Be(bo);
-    }
-
-    [HumansFact]
-    public async Task DocSyncState_ReadsArePure_AndExplicitSaveCreatesSingleton()
-    {
-        var (repo, factory) = Make();
-
-        var first = await repo.GetOrCreateDocSyncStateAsync(Ct);
-        first.Id.Should().Be(1);
-        first.Status.Should().Be("Idle");
-        await using (var freshRead = await factory.CreateDbContextAsync(Ct))
-            freshRead.HoldedDocSyncStates.Should().BeEmpty();
-
-        first.Status = "Running";
-        first.LastSyncedDocCount = 7;
-        await repo.SaveDocSyncStateAsync(first, Ct);
-
-        var second = await repo.GetOrCreateDocSyncStateAsync(Ct);
-        second.Status.Should().Be("Running");
-        second.LastSyncedDocCount.Should().Be(7);
-
-        await using var ctx = await factory.CreateDbContextAsync(Ct);
-        ctx.HoldedDocSyncStates.Should().ContainSingle();
     }
 
     [HumansFact]
@@ -447,7 +291,7 @@ public class RepositoryTests
         fresh.IsWithdrawn.Should().BeFalse();
         fresh.WithdrawnAt.Should().BeNull();
 
-        await repo.SaveSepaTransferWithdrawnAsync(transferId, Now, actor, Ct);
+        await repo.SaveSepaTransfersWithdrawnAsync([transferId], Now, actor, Ct);
 
         var row = (await repo.GetSepaPayoutTransferRowsAsync(Ct)).Should().ContainSingle().Subject;
         row.WithdrawnAt.Should().Be(Now);
@@ -497,29 +341,6 @@ public class RepositoryTests
         row.UpdatedAt.Should().Be(t1);
         row.IsActive.Should().BeFalse();
     }
-
-    private static HoldedExpenseDoc Doc(
-        string holdedDocId,
-        decimal total = 10m,
-        Guid? category = null,
-        HoldedMatchStatus status = HoldedMatchStatus.Unmatched,
-        bool? isApproved = null,
-        LocalDate? date = null) => new()
-        {
-            Id = Guid.NewGuid(),
-            HoldedDocId = holdedDocId,
-            DocNumber = holdedDocId.ToUpperInvariant(),
-            ContactName = "Vendor",
-            Date = date ?? new LocalDate(2026, 4, 1),
-            Total = total,
-            Currency = "eur",
-            IsApproved = isApproved,
-            BudgetCategoryId = category,
-            MatchStatus = status,
-            MatchSource = category is null ? HoldedMatchSource.None : HoldedMatchSource.Account,
-            CreatedAt = Created,
-            UpdatedAt = Created,
-        };
 
     private static HoldedCreditorContact Binding(
         Guid userId, string contactId, int? accountNum,

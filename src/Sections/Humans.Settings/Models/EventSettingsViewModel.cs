@@ -80,8 +80,6 @@ internal sealed record EventSettingsParseResult(
 /// <summary>The controller never touches the EF entity: the DTO is the section's own write surface too.</summary>
 internal static class EventSettingsFormMapper
 {
-    private static readonly Domain.EventSettings SubPeriodDefaults = new();
-
     internal static EventSettingsViewModel ToViewModel(EventSettingsInfo src) => new()
     {
         Id = src.Id,
@@ -168,12 +166,6 @@ internal static class EventSettingsFormMapper
                 BuildStartOffset: model.BuildStartOffset,
                 EventEndOffset: model.EventEndOffset,
                 StrikeEndOffset: model.StrikeEndOffset,
-                // Shifts owns the build sub-periods now; a new row gets Settings' defaults as Shifts' fallback,
-                // and an update never overwrites the stored ones.
-                FirstCrewStartOffset: SubPeriodDefaults.FirstCrewStartOffset,
-                SetupWeekStartOffset: SubPeriodDefaults.SetupWeekStartOffset,
-                PreEventWeekStartOffset: SubPeriodDefaults.PreEventWeekStartOffset,
-                FinishingWeekendStartOffset: SubPeriodDefaults.FinishingWeekendStartOffset,
                 EarlyEntryCapacity: earlyEntryCapacity,
                 BarriosEarlyEntryAllocation: barriosAllocation,
                 EarlyEntryClose: earlyEntryClose,

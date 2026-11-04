@@ -51,14 +51,14 @@ Each section lists the actions it declares in its own `Docs/<Section>.md`; this 
 
 The section splits into a write side and a read+render side:
 
-**`IAuditLogService` (write)** provides two `LogAsync` overloads, each taking an `AuditActionDefinition`, plus two narrow cross-section reads, `GetFilteredEntriesAsync` and `GetEntityIdsForEntityTypeActionsAsync`:
+**`IAuditLogService` (write)** provides two `LogAsync` overloads, each taking an `AuditActionDefinition`, and nothing else; every read is on `IAuditViewerService`:
 
 1. **Job overload** — no human actor, accepts job name (prefixed to description)
 2. **Human overload** — accepts actor user ID
 
 Each call is self-persisting via `IAuditLogRepository.AddAsync`, which opens a fresh `DbContext` via `IDbContextFactory<AuditLogDbContext>` and saves immediately (design-rules §7a). Callers do not need to flush audit, and audit does not roll back if a later business step fails.
 
-**`IAuditViewerService` (read+render)** owns the read path. It returns resolved `AuditEvent` records — actor/subject/target-team display names are batch-resolved inside the section via `Humans.Base`'s `IEntityNameContributor` fan-out (no per-call-site `GetUserDisplayNamesAsync` / `GetTeamNamesAsync` dance, and neither method exists any more). Overloads cover the global `/AuditLog` page, per-entity history (Profile/Team/Calendar/etc.), per-user history (MemberDetail), and the agent's `get_audit_history` tool. Verbs and the description-tail flag live on each action's `AuditActionDefinition`, which backs both `AuditEvent.RenderPlainText` (agent tool output, with viewer-GUID → "You" substitution) and `RenderStructured` (the view-component HTML composition path).
+**`IAuditViewerService` (read+render)** owns the read path. It returns resolved `AuditEvent` records — actor/subject/target-team display names are batch-resolved inside the section via `Humans.Base`'s `IEntityNameContributor` fan-out (no per-call-site `GetUserDisplayNamesAsync` / `GetTeamNamesAsync` dance, and neither method exists any more). Overloads cover the global `/AuditLog` page, per-entity history (Profile/Team/Calendar/etc.), per-user history (MemberDetail), and the agent's `get_audit_history` tool, plus `GetEntityIdsForEntityTypeActionsAsync` for Shifts' orphan-signup screen. Verbs and the description-tail flag live on each action's `AuditActionDefinition`, which backs both `AuditEvent.RenderPlainText` (agent tool output, with viewer-GUID → "You" substitution) and `RenderStructured` (the view-component HTML composition path).
 
 `IAuditLogService` exposes no display-name lookups to controllers — name resolution lives entirely behind `IAuditViewerService`.
 

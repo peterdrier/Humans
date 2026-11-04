@@ -33,9 +33,17 @@ internal sealed record HoldedAccountsPage(
     int HiddenArchived,
     int HiddenEmpty);
 
-/// <summary>One PGC group (leading digit). Totals are over the listed accounts, in the association's POV.</summary>
+/// <summary>One PGC group (leading digit), split into its subgroups (first two digits). Totals are over the listed
+/// accounts, in the association's POV.</summary>
 internal sealed record HoldedAccountGroup(
     int Digit, string Name, IReadOnlyList<HoldedAccountRow> Accounts,
+    decimal HoldedBalance, decimal MirrorBalance, int LineCount, int Mismatches,
+    IReadOnlyList<HoldedAccountSubgroup> Subgroups);
+
+/// <summary>One PGC subgroup (first two digits, e.g. 40 suppliers, 47 public administrations). <paramref name="Name"/>
+/// is null for a subgroup the PGC does not name.</summary>
+internal sealed record HoldedAccountSubgroup(
+    int Number, string? Name, IReadOnlyList<HoldedAccountRow> Accounts,
     decimal HoldedBalance, decimal MirrorBalance, int LineCount, int Mismatches);
 
 /// <summary>

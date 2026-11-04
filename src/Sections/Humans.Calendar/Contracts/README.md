@@ -1,22 +1,33 @@
-# Contracts — the personal iCal feed, and nothing else
+# Contracts — the personal iCal feed and the shared event form
 
 Everything in this folder is `public`; outside it only two types are — `Section` and
 `CalendarResource`, the latter because the boot localization diagnostic discovers resource
 markers via `GetExportedTypes()`. Everything else is `internal`.
 
-The calendar *events* half of the section has no cross-section surface at all. Its whole
-fan-in is `CalendarController` and the view models, both inside the section;
-no other section and nothing in Base reads a calendar event (G5-SECTION-TEMPLATE.md step 5b). `ICalendarQueries` is `internal` and inside
+The calendar *events* half of the section exposes no data: no other section and nothing in
+Base reads a calendar event — the shared form below is UI and parsing only (G5-SECTION-TEMPLATE.md step 5b). `ICalendarQueries` is `internal` and inside
 `Services/`: the split it draws is between the section's cached read path and its write path,
 not between sections.
 
-What this folder holds is the **personal iCal feed** (`ICalFeedService` and its contributor
+It also holds the **shared create/edit form** every calendar-item editor uses
+(`ICalendarEventForm`, `CalendarEventForm`, `CalendarEventTimes`, rendered by
+`Views/Shared/_CalendarEventForm.cshtml`). A section's own form view model implements the
+interface, adds its extras around the partial, and resolves the posted local fields with
+`CalendarEventForm.Resolve`. Implementers: Calendar's `CalendarEventFormViewModel` and
+Workgroups' `MeetingFormViewModel`. The Events guide keeps its own day-of-event form.
+`Resolve` also validates a recurrence rule, so every host refuses the same rules.
+
+`CalendarRecurrence` is Calendar's RRULE handling for sections that store their own repeating
+timed items (Workgroups' meetings): `IsValidRule` and `Occurrences`, which runs the community
+calendar's own expander, so a weekly 19:00 repeats identically everywhere.
+
+What this folder also holds is the **personal iCal feed** (`ICalFeedService` and its contributor
 fan-out):
 
 | Type | Who consumes it |
 |---|---|
 | `ICalendarFeedContributor` | implemented by `Humans.Shifts` (`ShiftSignupService`), `Humans.Events` (`EventService`) and `Humans.Workgroups` (`WorkgroupCalendarContributor`) |
-| `CalendarFeedItem` | the item every contributor returns; `Humans.Scanner` renders it on the ticket card |
+| `CalendarFeedItem` | the item every contributor returns; `Humans.Scanner` renders it on the ticket card. Optional `RecurrenceRule` + `RecurrenceTimezone` make it a series: the personal feed writes one repeating VEVENT with a zoned `DTSTART`, the community calendar expands it within the window |
 | `IICalFeedService` | `Humans.Scanner`'s ticket card; the section's own `ICalFeedApiController` |
 | `UserCalendarViewComponent` / `UserCalendarViewModel` | `<vc:user-calendar>` in Debug's widget gallery; the `IUserPart` seam (`SectionUserParts`) in Users' admin detail |
 

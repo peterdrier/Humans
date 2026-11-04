@@ -22,8 +22,7 @@ One partial class (`PreapprovalService.*.cs`) registered once and resolved as
 | pre_grants | R/W (pending applications deleted on erasure; merge re-points) |
 | pre_reminders_sent | R/W (reminder dedupe ledger) |
 
-Cross-section calls via `IUserService` (display names), `IUserEmailService`
-(notification targets), `IHoldedFinanceService` (`ListExpenseAccountsAsync` — the expense
+Cross-section calls via `IUserService` (recipient names, cultures and canonical email together), `IHoldedFinanceService` (`ListExpenseAccountsAsync` — the expense
 account a program books to), `INotificationEmitter`, `INotificationAutoResolve`
 (`ResolveBySourceKeyAsync` — clears a decided application's inbox item), `IEmailService`,
 `IAuditLogService`, plus the section's own `PreapprovalsEmails` builder and `IClock`. No

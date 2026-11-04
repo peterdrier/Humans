@@ -4,6 +4,7 @@ using Humans.Base.Threading;
 using Humans.Store.Contracts;
 using Humans.Store.Data;
 using Humans.Store.Domain;
+using Humans.Store.Services.Dtos;
 using Humans.Stripe.Contracts;
 using NodaTime;
 
@@ -12,10 +13,46 @@ namespace Humans.Store.Services;
 internal sealed class StoreStripePayments(
     IStoreRepository repo,
     IAuditLogService audit,
+    IStripeService stripeService,
     IClock clock,
     ILogger logger) : IApplicationService
 {
     private static readonly TrackedLock StripePaymentLock = new("Store.StripePayments");
+
+    public async Task<StripeReconciliationResult> RecordMissingStripePaymentsAsync(
+        Guid actorUserId, CancellationToken ct = default)
+    {
+        var sessions = await stripeService.ListStoreCheckoutSessionsAsync(ct) ?? [];
+        var recorded = await repo.GetRecordedStripePaymentsAsync(ct);
+        var recordedPis = recorded.Select(p => p.PaymentIntentId).ToHashSet(StringComparer.Ordinal);
+
+        var count = 0;
+        var total = 0m;
+        foreach (var s in sessions)
+        {
+            if (!string.Equals(s.PaymentStatus, "paid", StringComparison.Ordinal)) continue;
+            if (s.OrderId is not { } orderId || s.PaymentIntentId is not { } pi || s.AmountEur is not { } amount) continue;
+            if (amount <= 0 || recordedPis.Contains(pi)) continue;
+
+            // Never fabricate a payment on an unmatched or non-billable (Team) order.
+            var order = await repo.GetOrderByIdAsync(orderId, ct);
+            if (order is null || order.TeamId is not null) continue;
+
+            await RecordStripePaymentAsync(orderId, pi, amount, ct: ct); // idempotent on PI id
+            count++;
+            total += amount;
+        }
+
+        if (count > 0)
+        {
+            await audit.LogAsync(
+                StoreAuditActions.StorePaymentsReconciled, "Store", Guid.Empty,
+                $"Reconciled {count} Stripe payment(s) totalling EUR {total:0.00} from the Store Stripe account",
+                actorUserId);
+        }
+
+        return new StripeReconciliationResult(count, total);
+    }
 
     public async Task RecordStripePaymentAsync(
         Guid orderId,

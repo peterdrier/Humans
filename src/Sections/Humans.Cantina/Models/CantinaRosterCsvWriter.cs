@@ -37,7 +37,7 @@ internal static class CantinaRosterCsvWriter
                 csv.WriteRow(dateCol, d.TotalOnSite, d.UnansweredOnDay);
             }
 
-            csv.NextRecord();
+            csv.WriteBlankLine();
 
             csv.WriteRow("Name", "ArrivesOn", "NoShift", "Dietary", "Allergies", "AllergyOther", "Intolerances", "IntoleranceOther");
             foreach (var p in roster.People)

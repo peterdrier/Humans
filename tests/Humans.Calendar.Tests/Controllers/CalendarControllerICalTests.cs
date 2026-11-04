@@ -50,6 +50,7 @@ public class CalendarControllerICalTests
 
     public CalendarControllerICalTests()
     {
+        StubViewer();
         _calendar.CancelOccurrenceAsync(Arg.Any<Guid>(), Arg.Any<Instant?>(), Arg.Any<Guid>(),
             Arg.Any<CancellationToken>(), Arg.Any<LocalDate?>()).Returns(true);
         _calendar.OverrideOccurrenceAsync(Arg.Any<Guid>(), Arg.Any<Instant?>(), Arg.Any<OverrideOccurrenceDto>(),
@@ -60,6 +61,99 @@ public class CalendarControllerICalTests
             .Returns(Array.Empty<CalendarOccurrence>());
         _teams.GetTeamsAsync(Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, TeamInfo>());
+    }
+
+    public enum CalendarEventMutation
+    {
+        Create,
+        Edit,
+        Delete,
+        CancelOccurrence,
+        EditOccurrence
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(CalendarEventMutation.Create, true)]
+    [Xunit.InlineData(CalendarEventMutation.Edit, true)]
+    [Xunit.InlineData(CalendarEventMutation.Delete, true)]
+    [Xunit.InlineData(CalendarEventMutation.CancelOccurrence, true)]
+    [Xunit.InlineData(CalendarEventMutation.EditOccurrence, true)]
+    [Xunit.InlineData(CalendarEventMutation.Create, false)]
+    [Xunit.InlineData(CalendarEventMutation.Edit, false)]
+    [Xunit.InlineData(CalendarEventMutation.Delete, false)]
+    [Xunit.InlineData(CalendarEventMutation.CancelOccurrence, false)]
+    [Xunit.InlineData(CalendarEventMutation.EditOccurrence, false)]
+    public async Task EventMutations_ResolveTheAuditActorBeforeWriting(CalendarEventMutation operation, bool accountExists)
+    {
+        var survivor = Guid.NewGuid();
+        _users.GetUserInfoAsync(_viewer, Arg.Any<CancellationToken>())
+            .Returns(accountExists ? UserInfo.Create(new User { Id = survivor }, [], [], profile: null) : null);
+        var id = Guid.NewGuid();
+        var teamId = Guid.NewGuid();
+        var start = Instant.FromUtc(2026, 6, 2, 10, 0);
+        _calendarRead.GetEventByIdAsync(id, Arg.Any<CancellationToken>()).Returns(new CalendarEventDetail(
+            id, "Existing", null, null, null, teamId, start, start.Plus(Duration.FromHours(1)),
+            IsAllDay: false, RecurrenceRule: "FREQ=DAILY", RecurrenceTimezone: "UTC", _now, _now));
+        _teams.GetTeamAsync(teamId, Arg.Any<CancellationToken>()).Returns(
+            new TeamInfo(teamId, "Team", null, "team", true, false, SystemTeamType.None,
+                false, false, false, false, _now, []));
+        _calendar.CreateEventWithResultAsync(Arg.Any<CreateCalendarEventDto>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(CalendarEventMutationResult.Success(new CalendarEvent { Id = id }));
+        _calendar.UpdateEventWithResultAsync(id, Arg.Any<CreateCalendarEventDto>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(CalendarEventMutationResult.Success(new CalendarEvent { Id = id }));
+        var form = new CalendarEventFormViewModel
+        {
+            Title = "Changed",
+            OwningTeamId = teamId,
+            StartDate = new LocalDate(2026, 6, 2),
+            StartTime = new LocalTime(10, 0),
+            EndDate = new LocalDate(2026, 6, 2),
+            EndTime = new LocalTime(11, 0),
+            TimeZoneId = "UTC",
+        };
+        var controller = CreateController();
+        using var request = new CancellationTokenSource();
+        var ct = request.Token;
+        const string original = "2026-06-02T10:00:00Z";
+
+        var result = operation switch
+        {
+            CalendarEventMutation.Create => await controller.Create(form, ct),
+            CalendarEventMutation.Edit => await controller.Edit(id, form, ct),
+            CalendarEventMutation.Delete => await controller.Delete(id, ct),
+            CalendarEventMutation.CancelOccurrence => await controller.CancelOccurrence(id, original, ct),
+            _ => await controller.EditOccurrence(id, original,
+                new OccurrenceOverrideFormViewModel { OverrideTitle = "Changed", RecurrenceTimezone = "UTC" }, ct),
+        };
+
+        if (!accountExists)
+        {
+            result.Should().BeOfType<NotFoundResult>();
+            _calendar.ReceivedCalls().Should().BeEmpty();
+        }
+        else
+        {
+            result.Should().BeOfType<RedirectToActionResult>();
+            switch (operation)
+            {
+                case CalendarEventMutation.Create:
+                    await _calendar.Received(1).CreateEventWithResultAsync(Arg.Any<CreateCalendarEventDto>(), survivor, ct);
+                    break;
+                case CalendarEventMutation.Edit:
+                    await _calendar.Received(1).UpdateEventWithResultAsync(id, Arg.Any<CreateCalendarEventDto>(), survivor, ct);
+                    break;
+                case CalendarEventMutation.Delete:
+                    await _calendar.Received(1).DeleteEventAsync(id, survivor, ct);
+                    break;
+                case CalendarEventMutation.CancelOccurrence:
+                    await _calendar.Received(1).CancelOccurrenceAsync(id, start, survivor, ct, null);
+                    break;
+                default:
+                    await _calendar.Received(1).OverrideOccurrenceAsync(id, start, Arg.Any<OverrideOccurrenceDto>(), survivor, ct, null);
+                    break;
+            }
+        }
+        await _users.Received(1).GetUserInfoAsync(_viewer, ct);
     }
 
     [HumansTheory]
@@ -85,10 +179,13 @@ public class CalendarControllerICalTests
             ["Title"] = "Updated",
             ["OwningTeamId"] = teamId.ToString(),
             ["IsAllDay"] = "false",
-            ["StartLocal"] = "2026-06-02T10:00:00",
-            ["EndLocal"] = "2026-06-02T11:00:00",
+            ["StartDate"] = "2026-06-02",
+            // Seconds included: the browser's "HH:mm" needs the Shell's binder, which this harness doesn't register.
+            ["StartTime"] = "10:00:00",
+            ["EndDate"] = "2026-06-02",
+            ["EndTime"] = "11:00:00",
             ["RecurrenceRule"] = "FREQ=WEEKLY",
-            ["RecurrenceTimezone"] = "UTC"
+            ["TimeZoneId"] = "UTC"
         };
         if (choice is not null) fields["IsRecurring"] = choice;
         var registrations = new ServiceCollection().AddLogging();
@@ -170,18 +267,29 @@ public class CalendarControllerICalTests
             fields["RecurrenceRule"] = allDay ? "FREQ=DAILY" : "FREQ=WEEKLY";
         }
         else if (spoofAllDay) fields["IsAllDay"] = "true";
-        var prefix = action == 2 ? "Override" : "";
-        if (allDay)
+        // The occurrence override keeps its own field names; the event form uses the shared calendar form's.
+        var zoneField = action == 2 ? "RecurrenceTimezone" : "TimeZoneId";
+        if (action == 2 && allDay)
         {
-            fields[prefix + "StartDateLocal"] = "2026-06-02";
-            fields[prefix + "EndDateLocal"] = "2026-06-02";
+            fields["OverrideStartDateLocal"] = "2026-06-02";
+            fields["OverrideEndDateLocal"] = "2026-06-02";
+        }
+        else if (action == 2)
+        {
+            fields["OverrideStartLocal"] = "2026-06-02T10:00:00";
+            fields["OverrideEndLocal"] = "2026-06-02T11:00:00";
         }
         else
         {
-            fields[prefix + "StartLocal"] = "2026-06-02T10:00:00";
-            fields[prefix + "EndLocal"] = "2026-06-02T11:00:00";
+            fields["StartDate"] = "2026-06-02";
+            fields["EndDate"] = "2026-06-02";
+            if (!allDay)
+            {
+                fields["StartTime"] = "10:00:00";
+                fields["EndTime"] = "11:00:00";
+            }
         }
-        if (postedZone) fields["RecurrenceTimezone"] = "UTC";
+        if (postedZone) fields[zoneField] = "UTC";
         var registrations = new ServiceCollection().AddLogging();
         registrations.AddControllers();
         using var services = registrations.BuildServiceProvider();
@@ -214,7 +322,7 @@ public class CalendarControllerICalTests
         {
             _calendar.ReceivedCalls().Should().BeEmpty();
             result.Should().BeOfType<ViewResult>();
-            controller.ModelState["RecurrenceTimezone"]!.Errors.Should().ContainSingle();
+            controller.ModelState[zoneField]!.Errors.Should().ContainSingle();
         }
         else
         {
@@ -267,9 +375,11 @@ public class CalendarControllerICalTests
         {
             Title = "Updated",
             OwningTeamId = teamId,
-            StartLocal = new DateTime(2026, 6, 2, 10, 0, 0),
-            EndLocal = new DateTime(2026, 6, 2, 11, 0, 0),
-            RecurrenceTimezone = "UTC"
+            StartDate = new LocalDate(2026, 6, 2),
+            StartTime = new LocalTime(10, 0),
+            EndDate = new LocalDate(2026, 6, 2),
+            EndTime = new LocalTime(11, 0),
+            TimeZoneId = "UTC"
         };
         var ct = Xunit.TestContext.Current.CancellationToken;
 
@@ -377,9 +487,9 @@ public class CalendarControllerICalTests
             Title = "Last day",
             OwningTeamId = teamId,
             IsAllDay = true,
-            StartDateLocal = new DateTime(9999, 12, string.Equals(endKind, "blank", StringComparison.Ordinal) ? 31 : 30),
-            EndDateLocal = string.Equals(endKind, "blank", StringComparison.Ordinal) ? null
-                : new DateTime(9999, 12, string.Equals(endKind, "valid", StringComparison.Ordinal) ? 30 : 31)
+            StartDate = new LocalDate(9999, 12, string.Equals(endKind, "blank", StringComparison.Ordinal) ? 31 : 30),
+            EndDate = string.Equals(endKind, "blank", StringComparison.Ordinal) ? null
+                : new LocalDate(9999, 12, string.Equals(endKind, "valid", StringComparison.Ordinal) ? 30 : 31)
         };
         var controller = CreateController();
         var ct = Xunit.TestContext.Current.CancellationToken;
@@ -396,7 +506,7 @@ public class CalendarControllerICalTests
         else
         {
             result.Should().BeOfType<ViewResult>().Which.Model.Should().BeSameAs(form);
-            controller.ModelState[nameof(form.EndDateLocal)]!.Errors.Should().ContainSingle()
+            controller.ModelState[nameof(form.EndDate)]!.Errors.Should().ContainSingle()
                 .Which.ErrorMessage.Should().Be("Calendar_InvalidAllDayEvent");
             _calendar.ReceivedCalls().Should().BeEmpty();
         }
@@ -560,9 +670,10 @@ public class CalendarControllerICalTests
 
         var model = result.Should().BeOfType<ViewResult>()
             .Which.Model.Should().BeOfType<CalendarEventFormViewModel>().Subject;
-        model.StartLocal.Should().Be(new DateTime(2026, 6, 2, 19, 0, 0));
-        model.EndDateLocal.Should().Be(new DateTime(2026, 6, 2));
-        model.RecurrenceTimezone.Should().Be("Asia/Tokyo");
+        model.StartDate.Should().Be(new LocalDate(2026, 6, 2));
+        model.StartTime.Should().Be(new LocalTime(19, 0));
+        model.EndDate.Should().Be(new LocalDate(2026, 6, 2));
+        model.TimeZoneId.Should().Be("Asia/Tokyo");
     }
 
     [HumansFact]
@@ -579,8 +690,9 @@ public class CalendarControllerICalTests
 
         var model = result.Should().BeOfType<ViewResult>()
             .Which.Model.Should().BeOfType<CalendarEventFormViewModel>().Subject;
-        model.StartLocal.Should().Be(new DateTime(2026, 6, 1, 19, 0, 0));
-        model.RecurrenceTimezone.Should().Be("Asia/Tokyo");
+        model.StartDate.Should().Be(new LocalDate(2026, 6, 1));
+        model.StartTime.Should().Be(new LocalTime(19, 0));
+        model.TimeZoneId.Should().Be("Asia/Tokyo");
     }
 
     [HumansTheory]
@@ -817,7 +929,7 @@ public class CalendarControllerICalTests
         _users.GetUserInfoAsync(_viewer, Arg.Any<CancellationToken>())
             .Returns(new ValueTask<UserInfo?>(UserInfo.Create(
                 new User { Id = _viewer, State = UserState.Active, PreferredLanguage = "en" },
-                [], [], [], profile: null, [])));
+                [], [], profile: null)));
 
     private async Task<CalendarMonthViewModel> IndexModelAsync()
     {

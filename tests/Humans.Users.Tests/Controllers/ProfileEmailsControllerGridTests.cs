@@ -125,6 +125,43 @@ public class ProfileEmailsControllerGridTests
             .Returns(AuthorizationResult.Success());
     }
 
+    public enum EmailMutation
+    {
+        SetEmailVisibility,
+        DeleteEmail,
+        LinkGoogle
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(EmailMutation.SetEmailVisibility)]
+    [Xunit.InlineData(EmailMutation.DeleteEmail)]
+    [Xunit.InlineData(EmailMutation.LinkGoogle)]
+    public async Task Email_mutation_account_preflight_observes_cancellation(EmailMutation action)
+    {
+        using var request = new CancellationTokenSource();
+        _controller.HttpContext.RequestAborted = request.Token;
+        _userService.GetUserInfoAsync(_userId, Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            call.Arg<CancellationToken>().Should().Be(request.Token);
+            call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+            return new ValueTask<UserInfo?>(new User { Id = _userId }.ToUserInfo());
+        });
+        await request.CancelAsync();
+        var emailId = Guid.NewGuid();
+        Func<Task<IActionResult>> invoke = action switch
+        {
+            EmailMutation.SetEmailVisibility => () => _controller.SetEmailVisibility(emailId, null),
+            EmailMutation.DeleteEmail => () => _controller.DeleteEmail(emailId),
+            EmailMutation.LinkGoogle => () => _controller.Link("Google"),
+            _ => throw new ArgumentOutOfRangeException(nameof(action), action, null),
+        };
+
+        await invoke.Should().ThrowAsync<OperationCanceledException>();
+        _authorizationService.ReceivedCalls().Should().BeEmpty();
+        _userEmailService.ReceivedCalls().Should().BeEmpty();
+        _auditLogService.ReceivedCalls().Should().BeEmpty();
+    }
+
     [HumansFact]
     public async Task Emails_RequestAborted_CancelsEmailGridReads()
     {

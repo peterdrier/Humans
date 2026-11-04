@@ -60,6 +60,8 @@ after the retention window.
   `OverrideByUserId` from the authenticated scanner — a forged
   `childWithAdult`/`overrideEarly` flag alone never admits, and an unset PIN fails closed
   (overrides refused, never a free pass).
+- Claim roster loading carries request cancellation through both the active-event lookup and the Shifts roster read.
+- Claim roster buttons, PIN headings and PIN confirmation labels render through Human by user ID. The roster service preserves its existing name order before returning IDs; view models carry no name copies. Claim eligibility, merged-ID refusal, PIN mode, throttling and server-side session attribution are unchanged.
 - **Personal staff PINs (`gate_staff_pins`)** — _disabled since peterdrier/Humans#1075_: the claim step is
   bypassed (the terminal scans as the shared gate account), though the table, service methods,
   admin page, and views remain in place should per-person claim return. Design retained in git
@@ -88,7 +90,7 @@ after the retention window.
   `POST /v1/check_ins`, reached through Tickets rather than the vendor port directly — Tickets is
   the application's only door to ticketing). Best-effort only; `gate_scan_events` remains the dedupe authority. Enqueue
   failures are logged without failing the already-recorded admit response; the mirror ledger is
-  marked only after enqueue succeeds.
+  marked only after enqueue succeeds. Live jobs carry the persisted scan's original admit time, so attendance work and queue delays cannot change the vendor timestamp.
   **Gated behind `Gate:VendorMirrorEnabled` (default off).** Payload **verified live (2026-06-30)**
   with a real POST → 201: the endpoint is **form-encoded** (not JSON), **requires `issued_ticket_id`
   AND `quantity`**, accepts `check_in_at` (unix s), and `event_id` is optional (derived from the
@@ -103,7 +105,7 @@ after the retention window.
   (`/Gate/Admin/VendorCheckInBackfill`, `AdminOnly`, temp — remove after use) recovers admits from
   the last 30 days (`GateService.GetVendorCheckInBackfillAsync`) that never mirrored: it diffs
   local admits against the vendor's check-in status, supports a single test send before the bulk
-  run, sends each check-in with its ORIGINAL admit time (`GateVendorCheckInJob.ExecuteAsync` with its optional admit timestamp,
+  run, sends each check-in with its ORIGINAL admit time (`GateVendorCheckInJob.ExecuteAsync` with its required admit timestamp,
   unix seconds), and skips anything the ledger already claimed until the ticket sync confirms it.
   `GateService` owns the pending/sent split and `EnqueueVendorCheckInBackfillAsync` rechecks the
   current diff, refuses sends while mirroring is disabled, and atomically claims each ticket
@@ -156,6 +158,11 @@ unreachable since peterdrier/Humans#1075 — nothing links to them; the Staff PI
 nobodies-collective/Humans#933.)
 
 ## Invariants
+
+- Scan decisions and staff-PIN administration resolve the signed-in account before
+  owner calls. Merged accounts use the survivor as scanner/audit actor; missing
+  accounts receive 401 and cancelled account lookups perform no action. The seeded
+  gate-terminal account retains its stable scanner ID.
 
 - Verdict-card requests reject redirects and display the request-failure card; login or access-denied pages cannot become admission verdicts.
 - Resetting the shared PIN keypad cancels its pending delayed completion. Closing the supervisor override with Cancel cannot submit the PIN afterward; a reopened panel submits only its new entry.

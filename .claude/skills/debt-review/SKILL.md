@@ -1,6 +1,6 @@
 ---
 name: debt-review
-description: "Review, repair and steward the nightly Codex debt-sweep PR (branch codex/daily-debt/<date>). Judges every commit GOOD / REPAIR / REVERT, triages the bot review findings through /fix, lands one round-1 commit, files follow-up issues, then stewards the PR itself with a 3-round ceiling. Run by the 08:00 UTC cloud routine; also '/debt-review', '/debt-review 1789'."
+description: "Review, repair and steward the nightly Codex debt-sweep PR (branch codex/daily-debt/<date>). Judges every commit GOOD / REPAIR / REVERT, triages the bot review findings through /fix, lands one round-1 commit, files follow-up issues, then stewards the PR itself with a 3-round ceiling. Also opens at most one flagged ⚠️ DESTRUCTIVE drop PR a night for a retirement already on production; Peter merges it. Run by the 08:00 UTC cloud routine; also '/debt-review', '/debt-review 1789'."
 argument-hint: "(none — today's codex/daily-debt PR) | 1789"
 ---
 
@@ -28,7 +28,7 @@ gh pr list --repo peterdrier/Humans --state open --limit 200 --json number,headR
 Stop with one line, touching nothing, when: no PR; it is not open; or it already has a
 commit carrying a `Review-round:` trailer or a comment starting `## Debt review` (a
 previous run owns it). Otherwise `subscribe_pr_activity` for it now, before any review
-work, so no bot event between here and §6 is lost. In a cloud run (`CLAUDE_CODE_REMOTE=true`) check out the head
+work, so no bot event between here and §7 is lost. In a cloud run (`CLAUDE_CODE_REMOTE=true`) check out the head
 branch in the repo root; locally use a worktree under `.claude/worktrees/`. Push by URL
 ([`push-by-url-in-cloud`](../../../memory/process/push-by-url-in-cloud.md)).
 
@@ -56,6 +56,12 @@ migration (deletes a registration, its legacy fallback or its obsolete fields), 
 `https://humans.nobodies.team/api/data-migrations` yourself and quote the live reading in the
 §5 report. A key that is missing or reads anything but `"pending":0,"done":true` makes that
 commit a REVERT. Codex's quoted reading is a claim, not evidence.
+
+Every retirement you keep leaves storage to drop. File **one `db:Destructive` issue per
+debt PR** on `peterdrier/Humans`. It names the debt PR (squash merges change the sha, so name
+the PR, not a commit) and, for each object, its owner context, its migration key and the
+reading you quoted. Never add objects from another PR to it: they would deploy at a different
+time. These issues are §6's queue and don't count toward the three-issue cap.
 
 Spot-check any REVERT or REPAIR verdict yourself against the code before accepting it.
 A REPAIR you are not certain of is a REVERT. A reverted commit's ledger/doc edits go with
@@ -127,13 +133,57 @@ One PR comment, starting `## Debt review`:
 - the commit verdict table (all commits, one row each)
 - the live production reading for each retired data migration, fetched this run
 - the /fix triage table
-- issues filed, owner-qualified, and the rows they replaced
+- issues filed, owner-qualified, and the rows they replaced; the `db:Destructive` issue each kept retirement went to
 - the ledger line: open rows before → after this review
 - `Rounds spent: 1 of 3` and the pushed sha
 - a one-line recommendation: **merge**, **merge after steward rounds**, or **close**
   (more than half the substantive commits reverted)
 
-## 6. Steward it yourself
+## 6. Open the drop PRs that are due
+
+The queue is the open `db:Destructive` issues on `peterdrier/Humans` that came from §2, from
+any night. An issue is **due** when the debt PR it names is merged and that merge is running
+on production. Read `commit` from `https://humans.nobodies.team/api/version`, fetch
+`https://github.com/nobodies-collective/Humans.git main`, take the PR's `merge_commit_sha`, and
+check `git merge-base --is-ancestor <merge sha> <prod commit>`. An unmerged PR means the issue
+isn't due. Skip an issue that isn't due, or
+that already has an open PR, and list it in the summary. Open nothing while
+[`event-deploy-freeze`](../../../memory/process/event-deploy-freeze.md) applies.
+
+Open **at most one drop PR a night**, for the oldest due issue, following the standing-approval
+path in [`no-drops-until-prod-verified`](../../../memory/architecture/no-drops-until-prod-verified.md):
+
+- Branch `db-drop/<issue>` off `origin/main`, separate from the debt PR.
+- Delete what the issue lists: the frozen properties and mappings, the `Legacy*` enums, the
+  erasure lines, and the doc rows.
+- Run a full build, then `dotnet ef migrations add` in the owner context. Read the `Down()`.
+- Add the baseline entries. `Approval:` cites the production reading in the issue and the atom.
+  `Evidence:` cites the retiring PR and the production commit that contains it.
+- Gate on the §4 build and tests, then run the
+  [`ef-migration-reviewer`](../../agents/ef-migration-reviewer.md) agent. If either fails, don't
+  open the PR: comment on the issue saying why.
+
+**The PR has to say it is dangerous**, in the title, the label and the body's first lines:
+
+- Title: `⚠️ DESTRUCTIVE: drop <objects> (<context>)`. Label: `db:Destructive`. Open it ready
+  for review, with `Closes #<issue>` in the body.
+- The body opens with this block, ahead of everything else:
+
+  > [!CAUTION]
+  > **This PR permanently deletes production data.** Deploying it runs `DROP` against
+  > production. Reverting the code doesn't bring the data back; the only way back is
+  > [`docs/database-restore-runbook.md`](../../../docs/database-restore-runbook.md).
+  > Opened automatically by debt-review. Only Peter merges it.
+
+- Then one row per dropped object: table and column, what it held, and what replaced it.
+  After that, the production reading and its date, the deployed-commit check, and any
+  caveat about `Down()` not running.
+- Never merge it, never enable auto-merge, and never add `ready-to-merge`. The standing
+  approval covers opening this PR, not merging it.
+
+Subscribe to the drop PR and steward it under §7 with its own `Ceiling: 3`.
+
+## 7. Steward it yourself
 
 No hand-off: this session is the steward (subscribed since §1). End the
 turn with the summary below, and on every wake follow the `pd:steward` skill's
@@ -142,4 +192,5 @@ workers are `pd:orch-opus-medium` via Task, per the round-worker brief with `Cei
 when the PR is merged or closed, `unsubscribe_pr_activity` and stop.
 
 Summary: PR URL, verdict counts (good / repaired / reverted), findings
-fixed / declined / filed, issues filed, pushed sha.
+fixed / declined / filed, issues filed, pushed sha, and the drop PR opened (⚠️, with its URL)
+or why none was due.

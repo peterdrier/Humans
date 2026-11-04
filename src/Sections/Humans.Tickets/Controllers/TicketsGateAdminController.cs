@@ -27,8 +27,8 @@ internal sealed class TicketsGateAdminController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> SetPassword(string? password)
     {
-        var actorId = GetCurrentUserId();
-        if (actorId is null)
+        var actor = await GetCurrentUserInfoAsync(HttpContext.RequestAborted);
+        if (actor is null)
             return Challenge();
 
         if (string.IsNullOrWhiteSpace(password))
@@ -37,7 +37,7 @@ internal sealed class TicketsGateAdminController(
             return RedirectToAction(nameof(Index));
         }
 
-        var result = await gateAccount.SetPasswordAsync(password, actorId.Value);
+        var result = await gateAccount.SetPasswordAsync(password, actor.Id);
         if (!result.Succeeded)
         {
             SetError(string.Join(" ", result.Errors.Select(e => e.Description)));

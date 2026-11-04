@@ -193,7 +193,6 @@ Each active section implementing `ISectionAdminTiles` contributes `AdminTile`s (
 | `users.profiles` | Active (has profile) | Users | — | Snapshot count where `IsActive` |
 | `users.tickets` | Ticket holders | Users | — | Snapshot count with a ticket for the active event year; 0 with no active event |
 | `shifts.coverage` | Shifts staffed | Shifts | — | `IShiftManagement.GetOverallCoverageAsync` (section-internal) |
-| `feedback.open` | Open feedback | Feedback | AdminOnly | `FeedbackService.GetActionableCountAsync` (section-internal) — Board/domain admins don't see it (nobodies-collective/Humans#977) |
 | `shell.online.now` | Online now | Shell | — | `IUserActivityTracker`, 5-minute window |
 | `shell.online.hour` | Active (1h) | Shell | — | `IUserActivityTracker`, 1-hour window |
 | `shell.online.day` | Active (24h) | Shell | — | `IUserActivityTracker`, 24-hour window |
@@ -353,11 +352,12 @@ A user can hold both roles simultaneously. Admin is a superset for role assignme
 | **TicketsAdmin** | Manage ticket vendor integration, trigger syncs, generate discount codes, export ticket data. |
 | **ShiftsNoInfo** | Approve/voluntell shift signups (cannot create/edit shifts). Access to volunteer event profile medical data. |
 | **EventsAdmin** | Event Guide dashboard, moderation, settings, categories, venues, and export. |
-| **FeedbackAdmin** | None since nobodies-collective/Humans#977 — Feedback is retired and every screen is `AdminOnly`. The role stays assignable (Staff page, Guide, `AnyAdminRole`) but grants no feedback access. |
 | **FinanceAdmin** | Manage budgets, budget years, groups, categories, and line items. Full Finance section access. |
 | **StoreAdmin** | Store catalog, summary, and payments. |
 | **CantinaAdmin** | Cantina weekly roster. |
 | **RideshareAdmin** | Rideshare settings (year's destination, travel windows), season statistics, and the day roster. |
+| **GrantsAdmin** | Grant programs: create and edit them, name their managers, issue, revoke and resend grants. |
+| **SurveysAdmin** | Surveys: approve or reject submissions, edit any survey, open, close, send invitations and download results. |
 | **ConsentCoordinator** | Safety checks on new humans during onboarding. Can clear or flag consent checks. |
 | **ShiftsAdmin** | Onboarding review queue plus system-wide shift management (volunteer tracking, workload, post-event stats). |
 | **EarlyEntryAdmin** | Cross-team Early-Entry administrator — grant/edit/revoke early-entry grants on any team that has early entry enabled. Confers nothing else; team coordinators manage EE on their own team without this role. |

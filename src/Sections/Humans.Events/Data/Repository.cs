@@ -339,11 +339,7 @@ internal sealed class EventRepository(IDbContextFactory<EventGuideDbContext> fac
     public async Task<IReadOnlyList<Event>> GetEventsByStatusAsync(EventStatus status, CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
-        var query = ctx.Events
-            .AsNoTracking()
-            .Include(e => e.Category)
-            .Include(e => e.EventVenue)
-            .Include(e => e.EventModerationActions)
+        var query = WithDetails(ctx.Events.AsNoTracking())
             .Where(e => e.Status == status);
 
         return await query.ToListAsync(ct);

@@ -61,7 +61,7 @@ internal sealed class EmailsViewModel
 
 /// <summary>
 /// One linked OAuth provider, keyed off <c>AspNetUserLogins</c>; the matching <c>UserEmail</c> row,
-/// when present, supplies the linked-on time and the unlink row id.
+/// when present, supplies the linked-on time and email address.
 /// </summary>
 internal sealed class LinkedOAuthAccountViewModel
 {
@@ -69,14 +69,8 @@ internal sealed class LinkedOAuthAccountViewModel
     public string ProviderKey { get; init; } = string.Empty;
     public string? ProviderDisplayName { get; init; }
 
-    /// <summary>First 8 hex chars of SHA-256(ProviderKey), so a screenshot never leaks the OIDC <c>sub</c>.</summary>
+    /// <summary>First 8 bytes of SHA-256(ProviderKey), encoded as hexadecimal, so a screenshot never leaks the OIDC <c>sub</c>.</summary>
     public string ProviderKeyHash { get; init; } = string.Empty;
-
-    /// <summary>
-    /// The <c>UserEmail</c> row tagged with this login; null for an orphan login. Unlink goes
-    /// through it so <c>UserEmailService.UnlinkAsync</c> keeps both stores in sync.
-    /// </summary>
-    public Guid? MatchingUserEmailId { get; init; }
 
     public string? Email { get; init; }
 
@@ -114,7 +108,6 @@ internal sealed class EmailRowViewModel
     public ContactFieldVisibility? Visibility { get; set; }
     public bool IsPendingVerification { get; set; }
     public bool IsMergePending { get; set; }
-    public bool IsNobodiesTeamDomain { get; set; }
 
     /// <summary>
     /// Linked to the user's event ticket: the grid hides Delete and the service re-validates.

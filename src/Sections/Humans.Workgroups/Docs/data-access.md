@@ -1,8 +1,7 @@
 <!-- freshness:triggers
   src/Sections/Humans.Workgroups/**
   tests/Humans.Workgroups.Tests/**
-  src/Sections/Humans.Users.Contracts/IUserService.cs
-  src/Sections/Humans.Users.Contracts/IUserEmailService.cs
+  src/Humans.Base/Users/IUserService.cs
   src/Sections/Humans.Auth/Contracts/IRoleAssignmentService.cs
   src/Sections/Humans.Settings/Contracts/ISettingsService.cs
   src/Sections/Humans.GoogleIntegration/Contracts/IGoogleSyncService.cs
@@ -50,7 +49,7 @@ Repository: `IWorkgroupRepository`.
 | workgroup_document_comments | R/W |
 | workgroups_settings | R/W |
 
-Cross-section calls: `IUserService`, `IUserEmailService`, `IRoleAssignmentService`,
+Cross-section calls: `IUserService`, `IRoleAssignmentService`,
 `ISettingsService` (legacy root read only), `IGoogleSyncService`, `IGoogleSyncWrite`, `IHoldedFinanceWrite`,
 `IHoldedService`, `INotificationService`, `IEmailService`, the section's own
 `WorkgroupsEmails` builder, `IAuditLogService`, `ISurveyAnalysisRead`, `IClock` (NodaTime).

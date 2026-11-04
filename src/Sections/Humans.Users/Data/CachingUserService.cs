@@ -275,11 +275,13 @@ internal sealed class CachingUserService(
                 MatchSnippet: match.Snippet,
                 MatchedEmail: match.MatchedEmail,
                 Score: match.Score));
-
-            if (results.Count >= limit) break;
         }
 
-        return results;
+        return results
+            .OrderByDescending(result => result.Score) // arch:db-sort-ok top-N relevance selection
+            .ThenBy(result => result.UserId)
+            .Take(limit)
+            .ToList();
     }
 
     /// <summary>
@@ -338,10 +340,8 @@ internal sealed class CachingUserService(
         Set(user.Id, UserInfo.Create(
             user,
             user.UserEmails.ToList(),
-            user.EventParticipations.ToList(),
             externalLogins: [],
-            profile: null,
-            communicationPreferences: []));
+            profile: null));
     }
 
     public Task RemoveAsync(
@@ -383,27 +383,10 @@ internal sealed class CachingUserService(
         await ReplaceAsync(userId, ct).ConfigureAwait(false);
     }
 
-    public async Task RefreshCommunicationPreferencesAsync(
-        Guid userId,
-        CancellationToken ct = default,
-        [CallerMemberName] string memberName = "",
-        [CallerFilePath] string filePath = "")
-    {
-        logger.LogDebug(
-            "UserInfo refresh communication-preferences userId={UserId} caller={CallerMember} file={CallerFile}",
-            userId, memberName, Path.GetFileName(filePath));
-
-        await ReplaceAsync(userId, ct).ConfigureAwait(false);
-    }
-
     private static UserInfo WithUserFields(UserInfo current, User user) =>
-        UserInfo.Create(user, [], [], [], current.Profile, []) with
+        UserInfo.Create(user, [], [], current.Profile) with
         {
             UserEmails = current.UserEmails,
-#pragma warning disable HUM_USER_PARTICIPATIONS, HUM_USER_COMMPREFS // carrying the frozen legacy slices across a user-row refresh, not reading them
-            EventParticipations = current.EventParticipations,
-            CommunicationPreferences = current.CommunicationPreferences,
-#pragma warning restore HUM_USER_PARTICIPATIONS, HUM_USER_COMMPREFS
             ExternalLogins = current.ExternalLogins,
             MergedUserIds = current.MergedUserIds,
         };

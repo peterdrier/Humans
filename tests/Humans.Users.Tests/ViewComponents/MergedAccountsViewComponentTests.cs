@@ -48,7 +48,6 @@ public class MergedAccountsViewComponentTests
 
         model.MergedInto.Should().NotBeNull();
         model.MergedInto!.UserId.Should().Be(survivor);
-        model.MergedInto.DisplayName.Should().Be("Survivor");
         model.MergedAt.Should().Be(Now.ToDateTimeUtc());
         model.MergedIn.Should().BeEmpty();
     }
@@ -70,7 +69,6 @@ public class MergedAccountsViewComponentTests
 
         model.MergedInto.Should().BeNull();
         model.MergedIn.Select(r => r.UserId).Should().Equal([first, second]);
-        model.MergedIn.Select(r => r.DisplayName).Should().Equal(["First", "Second"]);
         model.MergedIn[0].MergedAt.Should().Be(firstMergedAt.ToDateTimeUtc());
     }
 
@@ -86,7 +84,6 @@ public class MergedAccountsViewComponentTests
 
         model.MergedIn.Should().ContainSingle();
         model.MergedIn[0].UserId.Should().Be(erased);
-        model.MergedIn[0].DisplayName.Should().BeNull();
     }
 
     [HumansFact]
@@ -119,7 +116,7 @@ public class MergedAccountsViewComponentTests
             MergedToUserId = mergedTo,
             MergedAt = mergedAt,
         };
-        var info = UserInfo.Create(user, [], [], [], null, []);
+        var info = UserInfo.Create(user, [], [], null);
         return mergedUserIds is null ? info : info with { MergedUserIds = mergedUserIds };
     }
 

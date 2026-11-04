@@ -83,7 +83,7 @@ nobodies-collective/Humans#1630, nobodies-collective/Humans#1631).
 | GateOpeningDate | LocalDate | Day 0 of every offset |
 | BuildStartOffset | int | Negative |
 | EventEndOffset / StrikeEndOffset | int | |
-| FirstCrew/SetupWeek/PreEventWeek/FinishingWeekendStartOffset | int | Shifts owns the build sub-periods now: no form edits these, an update never overwrites them, a new row gets the defaults (-25/-16/-9/-4). Kept only as Shifts' fallback until its `shifts.build-sub-periods` data migration is done |
+| FirstCrew/SetupWeek/PreEventWeek/FinishingWeekendStartOffset | int | Legacy storage only: no runtime DTO, interface, form or mapper reads these four columns. Shifts owns its sub-period values and defaults; production reported `shifts.build-sub-periods` done on 2026-11-03. Schema removal remains separate |
 | EarlyEntryCapacity | JSON `Dictionary<int,int>` | Step function, day offset → capacity; dictionary equality and hashing ignore insertion order |
 | BarriosEarlyEntryAllocation | JSON, nullable | |
 | EarlyEntryClose | Instant, nullable | |
@@ -111,6 +111,10 @@ Own `SettingsDbContext`, migrations under `Data/Migrations/`, history table
 [`authorization.md`](authorization.md)); `/Settings` itself is `[Authorize]` only.
 
 ## Invariants
+
+- Event save, timezone change and event activation resolve the signed-in account
+  before writing and audit the surviving account ID after a merge. Missing accounts
+  are challenged; cancelled account lookups perform no write.
 
 - Event forms require every rendered field to be posted. Missing keys cannot mint a new cycle or reset the calendar, early-entry settings or flags through defaults. An explicitly blank id still starts a new cycle; blank optional early-entry values still clear them. Existing false and zero values remain valid.
 
@@ -191,7 +195,7 @@ keep in step by hand. Derive it from the call sites, not from here.
 | out | Users | `IUserService` (platform base-controller dependency, reached through Base) |
 | in | every section that renders a date, a phase or an early-entry window | `ISettingsService.GetActiveEventSettingsAsync` / `GetEventSettingsByIdAsync`. Not enumerated — see above |
 | in | Development | `IEventSettingsSeeding`, from the dashboard seeder |
-| in | Workgroups | `ISettingsService.GetValueAsync` — legacy root fallback until its admin saves section-owned `workgroups_settings`; no new writes |
+| in | Workgroups | `ISettingsService.GetValueAsync` — legacy root fallback until its admin saves section-owned `workgroups_settings`; no new writes. `ISettingsService.GetTimeZoneIdAsync` — the default zone of the meeting form |
 | out | every `IEventSettingsChangeListener` | fanned out after every successful event-settings mutation, the admin save and both `IEventSettingsSeeding` paths (seeded upsert, delete of a row that existed) alike — the gate date, the offsets and the active-event flip move derived dates for every member at once. The notification carries the event settings id. Subscribers today: Shifts' `CachingShiftViewService` (flushes every `ShiftUserView`, and forwards the change through its keyed inner to `IShiftManagement.InvalidateDashboardCaches` for that event's coordinator-dashboard aggregates), Events' `CachingEventService` (its `EventGuideSettingsView` carries the Settings-owned `TimeZoneId`), Camps' `CachingCampService` (open seasons derive from Settings' events), and Rideshare's `CachingRideshareService` (clears its cache). Settings names no consumer and references no consuming section |
 | in | Email | `ISettingsService` (`IsEmailSendingPaused`) |
 | in | Monitor | `ISettingsService` (`DriveActivityMonitor:LastRunAt`) |

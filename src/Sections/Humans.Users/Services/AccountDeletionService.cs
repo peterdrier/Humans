@@ -1,3 +1,4 @@
+using System.Transactions;
 using Humans.Base.Extensions;
 using Humans.Users.Services;
 using Humans.Auth.Contracts;
@@ -61,12 +62,37 @@ internal sealed class AccountDeletionService(
         var effectiveDeletionDate = eligibleAfter is { } holdDate && holdDate > deletionDate
             ? holdDate : deletionDate;
 
-        await userService.SetDeletionPendingAsync(userId, now, deletionDate, eligibleAfter, ct);
+        int endedMemberships;
+        int endedRoles;
+        try
+        {
+            // A partial revocation must not leave an AlreadyPending request that cannot retry.
+            using var scope = new TransactionScope(TransactionScopeOption.Required,
+                new TransactionOptions { IsolationLevel = IsolationLevel.ReadCommitted },
+                TransactionScopeAsyncFlowOption.Enabled);
+            if (!await userService.SetDeletionPendingAsync(userId, now, deletionDate, eligibleAfter, ct))
+                return new DeletionRequestResult(false, "NotFound");
 
-        // Access ends during the grace period.
-        var endedMemberships = await teamService.RevokeAllMembershipsAsync(userId, ct);
+            // Access ends during the grace period.
+            endedMemberships = await teamService.RevokeAllMembershipsAsync(userId, ct);
+            endedRoles = await roleAssignmentService.RevokeAllActiveAsync(userId, ct);
 
-        var endedRoles = await roleAssignmentService.RevokeAllActiveAsync(userId, ct);
+            scope.Complete();
+        }
+        catch
+        {
+            // The decorator may have published the pending state inside the rolled-back transaction.
+            // Refresh after disposal; its failure path evicts the stale entry for a later reload.
+            try
+            {
+                await userInfoRefresher.RefreshAsync(userId, CancellationToken.None);
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Failed to refresh user {UserId} after deletion-request rollback", userId);
+            }
+            throw;
+        }
 
         await auditLogService.LogAsync(
             UsersAuditActions.MembershipsRevokedOnDeletionRequest, nameof(User), userId,
@@ -78,18 +104,26 @@ internal sealed class AccountDeletionService(
             "Revoked {MembershipCount} memberships and {RoleCount} roles immediately",
             userId, deletionDate, eligibleAfter, endedMemberships, endedRoles);
 
-        var notificationEmails = await userEmailService.GetNotificationTargetEmailsAsync([userId], ct);
-        var notificationEmail = notificationEmails.GetValueOrDefault(userId) ?? user.Email;
-        if (notificationEmail is not null)
+        // The request and access revocations are committed; confirmation cannot undo them.
+        try
         {
-            await emailService.SendAsync(emailMessages.AccountDeletionRequested(
-                userId,
-                notificationEmail,
-                user.BurnerName,
-                effectiveDeletionDate,
-                user.PreferredLanguage.IsSupportedCultureCode()
-                    ? user.PreferredLanguage : CultureCatalog.DefaultCultureCode),
-                ct);
+            var notificationEmails = await userEmailService.GetNotificationTargetEmailsAsync([userId], CancellationToken.None);
+            var notificationEmail = notificationEmails.GetValueOrDefault(userId) ?? user.Email;
+            if (notificationEmail is not null)
+            {
+                await emailService.SendAsync(emailMessages.AccountDeletionRequested(
+                    userId,
+                    notificationEmail,
+                    user.BurnerName,
+                    effectiveDeletionDate,
+                    user.PreferredLanguage.IsSupportedCultureCode()
+                        ? user.PreferredLanguage : CultureCatalog.DefaultCultureCode),
+                    CancellationToken.None);
+            }
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Account deletion requested for user {UserId} but its confirmation email failed", userId);
         }
 
         return new DeletionRequestResult(

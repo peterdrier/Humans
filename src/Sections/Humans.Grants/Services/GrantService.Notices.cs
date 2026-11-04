@@ -35,16 +35,19 @@ internal sealed partial class GrantService
 
         await BestEffortAsync("email", kind, grant.Id, async () =>
         {
-            var addresses = await userEmails.GetNotificationTargetEmailsAsync([grant.UserId], ct);
-            if (!addresses.TryGetValue(grant.UserId, out var address) || string.IsNullOrWhiteSpace(address))
+            // Reuse a successful lookup; email still gets its independent attempt after a lookup failure.
+            var recipient = person ?? await users.GetUserInfoAsync(grant.UserId, ct);
+            if (recipient is null || string.IsNullOrWhiteSpace(recipient.Email))
             {
                 logger.LogWarning("Skipping grant {Kind} email for {UserId} on grant {GrantId}: no effective email",
                     kind, grant.UserId, grant.Id);
                 return;
             }
+            var emailLanguage = recipient.PreferredLanguage;
+            var emailCulture = emailLanguage.IsSupportedCultureCode() ? emailLanguage! : CultureCatalog.DefaultCultureCode;
             await email.SendAsync(emailFactory.Notice(new GrantNoticeRequest(
-                person?.Id ?? grant.UserId, address, person?.BurnerName, kind, program.Name, program.Entitles, expiresOn, ProfileUrl,
-                grant.RevokeReason, culture)), ct);
+                recipient.Id, recipient.Email, recipient.BurnerName, kind, program.Name, program.Entitles, expiresOn, ProfileUrl,
+                grant.RevokeReason, emailCulture)), ct);
         }, ct);
     }
 
