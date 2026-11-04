@@ -731,6 +731,16 @@ internal sealed class SurveyService(
         SurveyInputMethod inputMethod,
         string culture,
         CancellationToken ct = default)
+        => (await GetOrCreateIdentifiedDraftAsync(
+            surveyId, participationId, userId, inputMethod, culture, ct)).Id;
+
+    private async Task<SurveyResponse> GetOrCreateIdentifiedDraftAsync(
+        Guid surveyId,
+        Guid participationId,
+        Guid userId,
+        SurveyInputMethod inputMethod,
+        string culture,
+        CancellationToken ct)
     {
         var survey = await repo.GetByIdAsync(surveyId, ct);
         if (survey?.IsAsociadoVote == true && !await IsEligibleAsociadoAsync(userId, ct))
@@ -743,7 +753,7 @@ internal sealed class SurveyService(
         var existing = await repo.GetDraftResponseAsync(surveyId, userId, ct);
         if (existing is not null)
         {
-            return existing.Id;
+            return existing;
         }
 
         var response = new SurveyResponse
@@ -761,7 +771,7 @@ internal sealed class SurveyService(
 
         // No audit log for individual response activity (privacy).
         await repo.AddResponseAsync(response, ct);
-        return response.Id;
+        return response;
     }
 
     public async Task<SurveyPublicStart?> StartPublicTrackedResponseAsync(
@@ -788,16 +798,14 @@ internal sealed class SurveyService(
             return null;
         }
 
-        var existingDraft = await repo.GetDraftResponseAsync(surveyId, userId, ct);
-        Guid? draftResponseId = null;
-        IReadOnlyList<SurveyDraftAnswer> draftAnswers =
-            existingDraft is null ? [] : MapDraftAnswers(existingDraft);
-        if (anonymity == ResponseAnonymity.Identified)
-        {
-            draftResponseId = await StartIdentifiedDraftAsync(
-                surveyId, participation.Id, userId, SurveyInputMethod.Slug, culture, ct);
-        }
-        return new SurveyPublicStart(participation.Id, draftResponseId, draftAnswers);
+        var draft = anonymity == ResponseAnonymity.Identified
+            ? await GetOrCreateIdentifiedDraftAsync(
+                surveyId, participation.Id, userId, SurveyInputMethod.Slug, culture, ct)
+            : await repo.GetDraftResponseAsync(surveyId, userId, ct);
+        return new SurveyPublicStart(
+            participation.Id,
+            anonymity == ResponseAnonymity.Identified ? draft!.Id : null,
+            draft is null ? [] : MapDraftAnswers(draft));
     }
 
     public Task MarkInvitationStartedAsync(Guid invitationId, CancellationToken ct = default)

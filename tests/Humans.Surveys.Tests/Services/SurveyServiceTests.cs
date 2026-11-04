@@ -2567,6 +2567,8 @@ public class SurveyServiceTests
             surveyId, userId, ResponseAnonymity.Identified, "en",
             TestContext.Current.CancellationToken);
 
+        await _repo.Received(1).GetDraftResponseAsync(
+            surveyId, userId, TestContext.Current.CancellationToken);
         result.Should().NotBeNull();
         result.ParticipationId.Should().Be(participation.Id);
         result.DraftResponseId.Should().Be(capturedDraft!.Id);
@@ -2684,6 +2686,8 @@ public class SurveyServiceTests
             surveyId, userId, ResponseAnonymity.Identified, "en",
             TestContext.Current.CancellationToken);
 
+        await _repo.Received(1).GetDraftResponseAsync(
+            surveyId, userId, TestContext.Current.CancellationToken);
         result.Should().NotBeNull();
         result.DraftResponseId.Should().Be(draft.Id);
         result.DraftAnswers.Should().ContainSingle()
