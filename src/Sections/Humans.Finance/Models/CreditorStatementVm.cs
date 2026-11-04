@@ -6,7 +6,7 @@ namespace Humans.Finance.Models;
 /// <summary>Flipped from Holded's sign: positive means the organisation owes the member. <see cref="ExpenseReports"/>
 /// are the reports booked to this account, to check the ledger against.</summary>
 internal sealed record CreditorStatementVm(
-    HoldedCreditorLedger Ledger,
+    CreditorLedger Ledger,
     IReadOnlyList<CreditorStatementLineVm> Lines,
     IReadOnlyList<ExpenseReportDto> ExpenseReports,
     CreditorMatchVm Match)

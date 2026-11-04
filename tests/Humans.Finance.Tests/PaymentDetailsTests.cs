@@ -350,7 +350,11 @@ public class PaymentDetailsTests
         authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(), PolicyNames.AdminOnly)
             .Returns(isAdmin ? AuthorizationResult.Success() : AuthorizationResult.Failed());
         var http = new DefaultHttpContext();
-        return new PaymentDetailsViewComponent(_sut, authorization)
+        // In the app IFinanceService.GetIbanAsync is the Finance facade delegating to this owner.
+        var finance = Substitute.For<IFinanceService>();
+        finance.GetIbanAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(ci => _sut.GetIbanAsync(ci.Arg<Guid>(), ci.Arg<CancellationToken>()));
+        return new PaymentDetailsViewComponent(finance, authorization)
         {
             ViewComponentContext = new ViewComponentContext
             {

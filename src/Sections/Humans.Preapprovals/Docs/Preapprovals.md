@@ -215,7 +215,7 @@ Admin pages live under the section's URL space, not `/Admin`; they are localizat
 - **Audit actions:** declared on `PreapprovalsAuditActions` (`src/Sections/Humans.Preapprovals/PreapprovalsAuditActions.cs`), one `AuditActionDefinition` each, written through `IAuditLogService`: `PreapprovalProgramCreated`, `PreapprovalProgramEdited`, `PreapprovalProgramClosed`, `PreapprovalProgramManagerAdded`, `PreapprovalProgramManagerRemoved`, `PreapprovalGrantIssued`, `PreapprovalGrantApplied`, `PreapprovalGrantApproved`, `PreapprovalGrantDeclined`, `PreapprovalGrantRevoked`, `PreapprovalGrantClaimed`, `PreapprovalGrantReleased`, `PreapprovalGrantConsumed`, `PreapprovalGrantAmountChanged`, `PreapprovalReminderSent`, `PreapprovalMergeDroppedApplication`.
 - **Users**: `IUserService.GetUserInfoAsync` / `GetUserInfosAsync` (merged ids, language,
   display and canonical email from the same recipient snapshot); implements `IUserMerge`.
-- **Finance**: `IHoldedFinanceService.ListExpenseAccountsAsync` to resolve the program's
+- **Finance**: `IFinanceService.ListExpenseAccountsAsync` to resolve the program's
   account id at save.
 - **Notifications**: `INotificationEmitter.SendAsync`, `INotificationAutoResolve.ResolveBySourceKeyAsync`. Its sources are declared in `PreapprovalsNotificationSources` (`src/Sections/Humans.Preapprovals/PreapprovalsNotificationSources.cs`), one `NotificationSourceDefinition` each: `PreapprovalFileBy` (actionable, to the beneficiary: pre-approval issued, released, reminded, or its deadline moved; resolved when the grant leaves Open); `PreapprovalApplicationReceived` (actionable, to the program's managers: someone applies to a pre-approval program; resolved on approve or decline); `PreapprovalGrantDecided` (informational (actionable when a grant is revoked while Claimed by an expense report), to the beneficiary: pre-approval declined, revoked, or its amount changed).
 - **Email**: `IEmailService.SendAsync`; `IEmailPreviewContributor` for the seven templates.
@@ -254,7 +254,7 @@ A `Contracts/` folder in the section (no leaf project: nothing Preapprovals refe
 - **Display stitching** — `IUserService.GetUserInfosAsync` for names on the admin pages;
   `<vc:human>` and `<vc:human-search>` for people.
 - **Cross-section calls** — `IUserService`,
-  `IHoldedFinanceService`, `INotificationEmitter`, `INotificationAutoResolve`,
+  `IFinanceService`, `INotificationEmitter`, `INotificationAutoResolve`,
   `IEmailService`, `IAuditLogService`.
 - **Architecture enforcement** — analyzers HUM0030/32/34/36; `SectionResourceParityTests`
   for the six cultures; `GdprExportDependencyInjectionTests` for the contributor.
