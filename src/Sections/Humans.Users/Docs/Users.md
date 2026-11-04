@@ -36,8 +36,8 @@ The User aggregate and its identity surface. Profile-adjacent User properties (G
 
 - A **User** is the ASP.NET Core Identity aggregate for every human in the system. Authenticates via Google OAuth or magic link. The entity extends `IdentityUser<Guid>`.
 - **Account Provisioning** creates new `User` rows from an OAuth login (`ExternalLoginService.CompleteExternalLoginAsync`, dispatched from `AccountController.ExternalLoginCallback`), a magic-link signup (`AccountController.CompleteSignup`), or an import (`AccountProvisioningService.FindOrCreateUserByEmailAsync` for ticket / MailerLite contacts). All three paths look up an existing user across `UserEmail` records and `User.Email` (with gmail/googlemail equivalence) before creating a new row. Magic-link completion validates trimmed burner, first and last names against their 256-character limit before any user/email/profile mutation, including interrupted-signup recovery. The Shell validates before redeeming the token and redisplays field errors with all entered values; the form carries matching maxlength limits.
-- **Communication preferences and unsubscribe** moved to Email (`email_communication_preferences`, Users decomposition commit 14): `ICommunicationPreferenceService`, the unsubscribe tokens, `/Email/Unsubscribe/*`, `/Email/Guest/CommunicationPreferences*` and `/Email/CommunicationPreferences*` are Email's. Users keeps only the frozen `communication_preferences` storage mapping until its separate drop; its copy, fallback and public projection are retired.
-- **Event Participation** moved to Tickets (`tickets_event_participations`, Users decomposition commit 13). Users keeps the frozen legacy `event_participations` storage mapping until its separate table drop; its copy, readers and public projections are retired.
+- **Communication preferences and unsubscribe** moved to Email (`email_communication_preferences`, Users decomposition commit 14): `ICommunicationPreferenceService`, the unsubscribe tokens, `/Email/Unsubscribe/*`, `/Email/Guest/CommunicationPreferences*` and `/Email/CommunicationPreferences*` are Email's. The legacy `communication_preferences` table is dropped.
+- **Event Participation** moved to Tickets (`tickets_event_participations`, Users decomposition commit 13). The legacy `event_participations` table is dropped.
 - **Account deletion** is a 30-day grace period: `User.DeletionRequestedAt` + `DeletionScheduledFor` are stamped when a user requests deletion (with optional `DeletionEligibleAfter` for ticket-holder event holds). `ProcessAccountDeletionsJob` runs daily and calls `IAccountDeletionService.AnonymizeExpiredAccountAsync` for each due user. That job and `SuspendNonCompliantMembersJob` live in `Humans.Users/Jobs/` and are registered and scheduled by concrete type from Users' own `Section.cs` through the Shell's Hangfire scheduler. Those call sites are inside the section, so `ProcessAccountDeletionsJob` is `internal sealed`; `SuspendNonCompliantMembersJob` is still `public` and has no caller outside Users either.
 - Identity sub-tables (renamed to `users`, `user_claims`, `user_logins`, `user_tokens`, `roles`, `user_roles` per Postgres convention in `UsersDbContext.OnModelCreating`) are managed by ASP.NET Identity's `UserManager<User>` / `SignInManager<User>`. Only Users injects those framework services; other sections use `IUserSignInService`.
 
@@ -61,10 +61,8 @@ Extends `IdentityUser<Guid>` with project-specific columns.
 | ProfilePictureUrl | string? | Google profile picture URL (max 2048) |
 | CreatedAt | Instant | Set on insert; immutable (`init`) |
 | LastLoginAt | Instant? | Most recent login timestamp — distinguishes imported contacts (`null`) from active users |
-| LastConsentReminderSentAt | Instant? | **Legacy, no longer written** (GDPR erasure clears it). The re-consent reminder cooldown stamp moved to Consent's `consent_reminders`. The copy and legacy read were retired after production reported `consent.reminder-stamps` done on 2026-10-22; no longer projected on `UserInfo`. Column kept until its drop PR (peterdrier/Humans#2156). |
 | SuppressScheduleChangeEmails | bool | **Dead.** No reader or writer (readers removed in Users decomposition commit 16, except the Art. 15 export); `[Obsolete]`, column kept until its drop PR (peterdrier/Humans#2156). |
 | UnsubscribedFromCampaigns | bool | **Dead.** Email's per-category preferences are the source of truth; no reader or writer (readers removed in commit 16, except the Art. 15 export); `[Obsolete]`, column kept until its drop PR (peterdrier/Humans#2156). |
-| GoogleEmailStatus | LegacyGoogleEmailStatus | **Dead.** Google sync status lives on GoogleIntegration's `google_workspace_identities` (commit 15); no reader or writer; shadow column with no CLR property, kept until its drop PR (peterdrier/Humans#2156). |
 | ContactSource | ContactSource? | Where imported from (`Manual`, `MailerLite`, `TicketTailor`); null for self-registered users. |
 | ExternalSourceId | string? (256) | ID in the external source system (e.g., MailerLite subscriber ID). |
 | DeletionRequestedAt | Instant? | When the user requested account deletion |
@@ -81,7 +79,7 @@ Extends `IdentityUser<Guid>` with project-specific columns.
 
 Computed: `IsDeletionPending => DeletionRequestedAt.HasValue`.
 
-User-suspension state lives on `User.State` (`UserState.Suspended` / `AdminSuspended`); `UserInfo.IsSuspended` is the canonical predicate. Single-user writes go through the internal `IUserManagement.SetSuspensionAsync` (called by `HumanLifecycleService`), which delegates to `IUserRepository.SetSuspensionAsync` — that call writes `users.State` and nothing else. The suspension **reason** is not stored on the row: `HumanLifecycleService.SuspendAsync` puts it in the audit log (`UsersAuditActions.MemberSuspended`) and in the `AccessSuspended` notification body. `Profile.AdminNotes` is a general-purpose admin field and is never written by the suspension path. The nightly consent-expiry sweep prepares user details and one team-membership snapshot before changing state, so lookup failures leave suspension retryable; downstream cleanup and audits process only the IDs the write actually changes. The bulk path is `IUserManagement.SuspendProfilesForMissingConsentAsync` → `IUserRepository.SuspendManyAsync`, which returns only the users whose state actually moved — a row already `Rejected`/`Merged`/`Deleted` outranks `Suspended` and is left alone. Unsuspending re-classifies from the remaining fields, so a rejected or deletion-pending row does not come back as `Active`. Rejection is written by `IUserWrite.SetRejectedAsync` (Onboarding's reject, after Consent records the rejection in `consent_reviews`; Users decomposition commit 12) and carried forward from the stored `UserState.Rejected` by every later classification. `UserInfo.IsRejected` reads only that stored state; the frozen `profiles.RejectedAt` no longer participates. The User entity has no `IsArchived` / `SuspendedAt` / `SuspensionReason` columns; "archive" / "lockout" semantics are achieved by anonymizing identity fields and removing OAuth logins through `IAccountDeletionService.PurgeAsync` / `AnonymizeExpiredAccountAsync`.
+User-suspension state lives on `User.State` (`UserState.Suspended` / `AdminSuspended`); `UserInfo.IsSuspended` is the canonical predicate. Single-user writes go through the internal `IUserManagement.SetSuspensionAsync` (called by `HumanLifecycleService`), which delegates to `IUserRepository.SetSuspensionAsync` — that call writes `users.State` and nothing else. The suspension **reason** is not stored on the row: `HumanLifecycleService.SuspendAsync` puts it in the audit log (`UsersAuditActions.MemberSuspended`) and in the `AccessSuspended` notification body. `Profile.AdminNotes` is a general-purpose admin field and is never written by the suspension path. The nightly consent-expiry sweep prepares user details and one team-membership snapshot before changing state, so lookup failures leave suspension retryable; downstream cleanup and audits process only the IDs the write actually changes. The bulk path is `IUserManagement.SuspendProfilesForMissingConsentAsync` → `IUserRepository.SuspendManyAsync`, which returns only the users whose state actually moved — a row already `Rejected`/`Merged`/`Deleted` outranks `Suspended` and is left alone. Unsuspending re-classifies from the remaining fields, so a rejected or deletion-pending row does not come back as `Active`. Rejection is written by `IUserWrite.SetRejectedAsync` (Onboarding's reject, after Consent records the rejection in `consent_reviews`; Users decomposition commit 12) and carried forward from the stored `UserState.Rejected` by every later classification. `UserInfo.IsRejected` reads only that stored state. The User entity has no `IsArchived` / `SuspendedAt` / `SuspensionReason` columns; "archive" / "lockout" semantics are achieved by anonymizing identity fields and removing OAuth logins through `IAccountDeletionService.PurgeAsync` / `AnonymizeExpiredAccountAsync`.
 
 `UserStateEvaluator.Classify`'s `isGdprDeleted` (→ `UserState.Deleted`) is keyed on the minted tombstone email (`deleted-<id>@deleted.local`, written by `ApplyExpiredDeletionAnonymizationAsync`), never on a user-editable name field — `DisplayName`/`BurnerName` are things a member can type, and a burner name of "Deleted User" must not read as erasure (nobodies-collective/Humans#1742). The legacy name-shape recognition, BurnerName sentinel fallback and `users.legacy-gdpr-tombstones` registration are retired: production `GET https://humans.nobodies.team/api/data-migrations` reported `{"key":"users.legacy-gdpr-tombstones","pending":0,"done":true}` on 2026-10-22. Names alone never identify erasure, and `UserInfo.BurnerName` reads only the User column (a blank one on a minted-email tombstone resolves to the erasure sentinel). The legacy `DisplayName` column remains scrubbed/exported until its separate approved drop.
 
@@ -92,24 +90,6 @@ User-suspension state lives on `User.State` (`UserState.Suspended` / `AdminSuspe
 `User.Email` is overridden on the entity to compute from `UserEmails` (first verified, primary-preferred) — application code reads `user.Email` and gets the canonical address without touching the underlying Identity column (or `UserInfo.PrimaryEmail` for canonical reads on a singly-loaded User without `UserEmails` hydrated). `User.NormalizedEmail` is `[Obsolete]` (diagnostic id `HUM_USER_NORMALIZEDEMAIL`); applications must use `user.Email` or `IUserEmailRepository` for canonical lookups. `User.EmailConfirmed` is also overridden (true when any `UserEmail` is verified). Identity's email-lookup APIs (`UserManager.FindByEmailAsync` / `FindByNameAsync`) are forbidden by analyzer `HUM0003` — application code routes through `IUserEmailService.FindByAddressAsync` instead. Identity itself does not call these internally, so no custom `UserStore` is needed.
 
 Every newly created User has a corresponding Profile row materialized inline at the User-creation call site (see [Stub Profile invariant](#part-2--profiles)); until the names are filled the user is `UserState.Bare`. The completed `users.stub-profiles` registration is retired: production `GET https://humans.nobodies.team/api/data-migrations` reported `{"key":"users.stub-profiles","pending":0,"done":true}` on 2026-10-22.
-
-### EventParticipation (legacy, frozen)
-
-**Frozen storage only.** Tickets owns `tickets_event_participations`. Production `GET https://humans.nobodies.team/api/data-migrations` reported `{"key":"tickets.event-participations","pending":0,"done":true}` on 2026-11-03. The copy, fallback, public projection and Users export slice are retired; the table stays until its separate drop PR. Its entity and enums are internal to Users; the table mapping and cascade FK remain unchanged.
-
-**Table:** `event_participations` (EF configuration: `Data/Configurations/EventParticipationConfiguration.cs`.)
-
-| Property | Type | Purpose |
-|----------|------|---------|
-| Id | Guid | PK (`init`) |
-| UserId | Guid | FK → User. The cascade FK is retained without navigation properties. |
-| Year | int | Year of the event |
-| Status | LegacyParticipationStatus | `NotAttending` (0), `Ticketed` (1), `Attended` (2), `NoShow` (3). Stored as string. |
-| Source | LegacyParticipationSource | `UserDeclared` (0), `TicketSync` (1), `AdminBackfill` (2). Stored as string. |
-| DeclaredAt | Instant? | Set when the user self-declared (Source = `UserDeclared`); null otherwise. |
-| CheckedInAt | Instant? | First recorded gate arrival. |
-
-**Indexes:** unique on `(UserId, Year)`.
 
 Users no longer loads, caches, exports or folds these rows. Tickets reads and merges only its own participation records.
 
@@ -233,9 +213,7 @@ Authentication routes are served by `AccountController`, which lives in `Humans.
 
 - OAuth login (`ExternalLoginService.CompleteExternalLoginAsync`, dispatched from `AccountController.ExternalLoginCallback`) matches existing accounts through verified `UserEmails` before creating a new account. Selecting an account by email also requires the provider's `email_verified` claim; false, missing or malformed claims cannot link to or sign in that account. The locked-out branch may re-link a stale OAuth login from a merged source to the email-matched target only with the same provider-verification proof, before removing any login. Known provider-key sign-ins and intentional links from an authenticated account retain their existing paths.
 - Only Users injects `UserManager<User>` / `SignInManager<User>`. Callers elsewhere sign in, sign out and manage passwords by user id through `IUserSignInService`, and create accounts through `IAccountProvisioningService.CreateAccountAsync`. Analyzer HUM0039 keeps the `User` / `UserEmail` entities out of every project but Base, Users and Users.Contracts.
-- Users never writes `event_participations` (frozen since Users decomposition commit 13); the participation lifecycle rules live in Tickets.
 - **The Google Workspace identity is GoogleIntegration's** (`google_workspace_identities`, Users decomposition commit 15). `UserEmail.IsGoogle` and `UserEmail.GoogleEmailStatus` are frozen: Users never writes them (new rows keep the defaults; the merge re-FK still clears `IsGoogle` on rows it moves), and their only reader is GoogleIntegration's legacy fallback and `google.workspace-identities` copy through the `[Obsolete(HUM_USER_GOOGLE_IDENTITY)]` `UserEmailInfo` properties. `EnsureGoogleInvariantAsync`, `SetGoogleAsync`/`ClearGoogleAsync` and `TrySetGoogleEmailStatusFromSyncAsync` are gone. Every path that removes or renames an address away from an account — `DeleteEmailAsync`, `DeleteByIdAsync`, `UnlinkAsync`, an OAuth tag-move or rename, and a cross-user displacement — calls `IGoogleIntegrationWrite.ClearIfAddressAsync` after it commits.
-- Users writes `communication_preferences` only to delete a user's rows on erasure (frozen since Users decomposition commit 14); the preference and unsubscribe rules live in Email.
 - `UserService` implements `IUserDataContributor` (design-rules §8) and contributes the User-account slice under `UserService.Account` plus the Profiles-half slices `Profile`, `ContactFields`, `UserEmails`, `VolunteerHistory`, `Languages`. Email owns communication-preference export/erasure; Tickets owns participation export and retention. See [Part 2 — Profiles](#part-2--profiles).
 - **The cross-section reads resolve merge chains forward, and Users is the only thing that walks one.** `GetUserInfoAsync`, `GetUserInfosAsync` and `GetAllUserInfosAsync` answer a merge-tombstone id with the surviving row (transitively, so A→B→C resolves to C), and drop tombstones from the load-all read entirely, one entry per living human. Every row they return is stamped with `MergedUserIds`, and `UserInfo.AllUserIds` is that row's own id followed by them: the list a chain-following read queries over, seeded from the record returned and never from the id the caller asked with. `SearchUsersAsync` omits tombstones, including exact-id queries, and answers a merged-away id with its live survivor. A chain ending at an erased or unresolved merged row returns no search result. A cycle or a chain pointing at a row that is no longer there is logged at Warning and resolves to the last row reached, so a bad graph degrades rather than spins.
 - **A resolving read hands the caller a different id, and the caller acts on that one.** Whatever a caller does after `GetUserInfoAsync` / `GetUserInfosAsync`, write, look up by id, notify, audit, redirect, it does with `UserInfo.Id` (or `AllUserIds`), not with the id it asked for. A path that must not act for anyone but the id it was handed (the Gate claim, an Asociado ballot stored under an id) compares `info.Id` to the requested id and fails closed. Raw per-id row reads that stamp the owner id (`GetEntitiesByUserIdAsync`, the email-problems page) stay on the raw reads so rows and the id labelling them come from one row.
@@ -278,7 +256,7 @@ The operator-only user directory renders its sort-control label directly, withou
 - **On account-deletion request (user-initiated):** `IAccountDeletionService.RequestDeletionAsync` orchestrates the user-initiated path. Internally calls `IUserManagement.SetDeletionPendingAsync` to stamp `DeletionRequestedAt` + `DeletionScheduledFor` on the User row, revokes team memberships and governance roles immediately so the user loses access during the 30-day grace period, and sends a confirmation email. After commit, recipient lookup and confirmation enqueueing finish independently of caller cancellation; failures are logged without changing the successful deletion-request result. Its cancellation link opens Gdpr's `/Gdpr/Deletion` status page, which only shows the signed-in user’s pending request.
 - **On scheduled deletion expiry:** `ProcessAccountDeletionsJob` calls `IAccountDeletionService.AnonymizeExpiredAccountAsync` per due user. It captures the identity slice the caller needs for the confirmation email, resolves the merge chain, and calls `IGdprService.EraseForUserAsync` per id — the erasure fan-out lives in Gdpr beside the export one, so the loop over `IUserDataContributor`s and the `UserService.Account`-last ordering are Gdpr's concern. A contributor that throws aborts that account’s cascade with its deletion markers still set. The job attempts the other due accounts, then fails if any account failed so incomplete cascades can retry. Completed anonymizations stay excluded by their cleared deletion schedules; confirmation-email failures remain terminal and do not fail the run. Each archived id's `UserInfo` cache entry is dropped as its erasure completes (interleaved, so a mid-chain failure still invalidates the ids already erased); then the cross-cutting caches (Teams active-teams + member, role-assignment claims, shift authorization, shift view) — the survivor's `UserInfo` entry refreshes automatically as part of the `IUserService` write path. The job writes the `UsersAuditActions.AccountAnonymized` audit entry and sends the confirmation email. Missing or whitespace-only original addresses skip confirmation with a Warning naming only the user ID; anonymization remains successful and audited.
 - **On admin purge (non-Production only):** `UsersAdminController.PurgeHuman` (`POST /Users/Admin/{id}/Purge`) calls `IAccountDeletionService.PurgeAsync`, which runs the same Article 17 fan-out as the scheduled expiry path — `IGdprService.EraseForUserAsync` per merge-chain id, survivor last — so an admin purge never erases less than the scheduled job does; the Account contributor inside that fan-out owns the identity collapse (tombstone name/address, external logins, permanent lockout). The orchestrator then drops the Teams active-teams cache, refreshes the cached `UserInfo` entry, and invalidates the per-user role-assignment cache (Shifts' own erasure contributor evicts its view cache).
-- **On account merge accept:** `IAccountMergeService.AcceptAsync` (Users section) resolves the request and delegates to the one merge engine, `MergeAsync(survivor, archived, …)` — the admin picks the survivor, so the request's stored direction can be flipped. `MergeAsync` fans out its `IUserMerge` implementations to re-FK source → target (Users' own `IUserMerge.ReassignAsync` calls `IUserRepository.ReassignLoginsToUserAsync` for `AspNetUserLogins`; event participation is Tickets' `IUserMerge`, and the frozen `event_participations` rows stay under their ids), then `AnonymizeForMergeAsync` to tombstone the source row by setting `MergedToUserId` + `MergedAt` and bumping `LockoutEnd` far-future so the source can no longer sign in. The source `User` row stays in place as a redirect — it is NOT deleted — so append-only history written under the source id (audit log, consent records, budget audit log) remains attributable.
+- **On account merge accept:** `IAccountMergeService.AcceptAsync` (Users section) resolves the request and delegates to the one merge engine, `MergeAsync(survivor, archived, …)` — the admin picks the survivor, so the request's stored direction can be flipped. `MergeAsync` fans out its `IUserMerge` implementations to re-FK source → target (Users' own `IUserMerge.ReassignAsync` calls `IUserRepository.ReassignLoginsToUserAsync` for `AspNetUserLogins`; event participation is Tickets' `IUserMerge`), then `AnonymizeForMergeAsync` to tombstone the source row by setting `MergedToUserId` + `MergedAt` and bumping `LockoutEnd` far-future so the source can no longer sign in. The source `User` row stays in place as a redirect — it is NOT deleted — so append-only history written under the source id (audit log, consent records, budget audit log) remains attributable.
 - **On per-user reads of a target after merge:** every `UserInfo` the cross-section reads hand out carries `MergedUserIds`, every id whose `MergedToUserId` chain reaches this row, transitively, sorted. Append-only sections (`IAuditLogService`, `IConsentManagement`, `IBudgetManagement.ContributeForUserAsync`, `IExpenseService.ContributeForUserAsync`) query over `AllUserIds` of the record they got back, so source-tombstoned rows surface for the target and a read through a source id sees the target's own rows. Nobody outside Users walks `MergedToUserId`.
 
 ## Cross-Section Dependencies
@@ -297,7 +275,7 @@ The deletion cascade is `AccountDeletionService` (`Humans.Users/Services/`), the
 - **Teams:** `ITeamWrite.RevokeAllMembershipsAsync` (same grace-period revoke); Teams evicts its own team graph on revoke and erasure. Teams resolves member display data live through `IUserService`, including archived ids after the merge tombstone; Users sends no Teams cache flush.
 - **Shifts:** nothing direct. Its GDPR contributor erases the Shifts data and evicts Shifts' own view cache.
 
-Communication preferences are Email's. Users no longer loads, exports, erases or refreshes these rows; the frozen storage mapping awaits its separate table drop.
+Communication preferences are Email's. Users holds no preference data.
 
 Inbound (other sections → Users) — the typical direction:
 
@@ -314,10 +292,10 @@ Identity store registration stays in the section entry point. Shell calls the co
 A lazy per-key cache miss cannot republish its old result after an intervening cache eviction or refresh.
 
 **Owning services:** `UserService`, `AccountProvisioningService`, `AccountDeletionService`, `AccountMergeService` + `DuplicateAccountService` (the one ordered merge engine and the stateless duplicate detector; `AccountMergeService` is backed by `IAccountMergeRepository` for `account_merge_requests` and contributes the `AccountMergeRequests` GDPR slice), `ExternalLoginService` (the OAuth-callback decision ladder, kept out of `AccountController` per HUM0031; sole caller of `IUserEmailService.ReconcileOAuthIdentityAsync`) — all in `Humans.Users/Services/`.
-**Owned tables:** `users`, `user_claims`, `user_logins`, `user_tokens`, `roles` (legacy), `user_roles` (legacy), `role_claims` (legacy), `event_participations` (legacy, frozen — Tickets owns participation), `account_merge_requests`.
+**Owned tables:** `users`, `user_claims`, `user_logins`, `user_tokens`, `roles` (legacy), `user_roles` (legacy), `role_claims` (legacy), `account_merge_requests`.
 
 - `UserService`, `AccountProvisioningService` live in `Humans.Users/Services/` and never import `Microsoft.EntityFrameworkCore`. `AccountProvisioningService` does inject `UserManager<User>` per the §2a exception (Identity owns the password hash / security stamp surface).
-- `IUserRepository` (impl `Humans.Users/Data/Repositories/UserRepository.cs`) owns the SQL surface for `users` plus reads of the frozen `event_participations`. Its `IUserRepository.UserEmails.cs` partial is the surface for `UserEmail` (the Profiles half's table, read/written from the Users half for lookup + OAuth-email lock-step).
+- `IUserRepository` (impl `Humans.Users/Data/Repositories/UserRepository.cs`) owns the SQL surface for `users`. Its `IUserRepository.UserEmails.cs` partial is the surface for `UserEmail` (the Profiles half's table, read/written from the Users half for lookup + OAuth-email lock-step).
 - **Caching decorator.** `CachingUserService` (Singleton, `Humans.Users/Data/`) owns a `ConcurrentDictionary<Guid, UserInfo>` of the unified read-model spanning the contributing tables (`users`, `user_emails`, AspNet `user_logins`, `profiles`, `contact_fields`, `profile_languages`, `volunteer_history_entries`). Dict hits are served synchronously; a cache miss refills via the inner Scoped `UserService` (keyed `"user-inner"`); writes through `IUserService` refresh the affected entry (sign-in `LastLoginAt` flows through `IUserWrite.RecordLoginAsync`, whose decorator refreshes the entry directly); Identity-machinery writes that bypass the service surface (`UserManager.UpdateAsync`, OAuth `UserEmail` row creation) are caught by `UserInfoSaveChangesInterceptor` (EF `SaveChangesInterceptor`, registered on both the scoped and factory contexts) and routed through the section-internal `IUserInfoSliceRefresher`. Every contributing table is Users-owned, so no other section signals the cache. `CachingUserService` itself implements `IHostedService` (via `TrackedCache`) and populates the dict at startup; load-all reads call `EnsureWarmed` / `EnsureWarmedAsync` and recover transparently if startup warmup hasn't completed. `UserInfo` is the single cache — there is no separate profile cache (`Docs/health.md`).
 - **Read/write interface split.** **Public contract.** `IUserService` (`GetUserInfoAsync`, `GetUserInfosAsync`, `GetAllUserInfosAsync`, `SearchUsersAsync`, `GetByEmailOrAlternateAsync`, `GetRawUserInfoAsync`, `GetAllRawUserInfosAsync`) in `Humans.Base` (`Users/`, namespace `Humans.Users.Contracts`) is the cross-section read surface — only `UserInfo` / `HumanSearchResult` projections plus Guid primitives, no EF entities. `IUserWrite` (on the `Humans.Users.Contracts` leaf) carries only the writes another section calls (onboarding mutations, language, IBAN, login stamp, Google email status, user deletion). The internal `IUserManagement : IUserService, IUserWrite, IUserMerge` in `Humans.Users.Services` adds the section-only half of the write funnel — profile saves, deletion fields, `UserEmail` storage commands, the merge tombstone, the email-problems reads, the accounts-due-for-anonymization read; all three faces resolve to the same `CachingUserService` singleton. Neither interface carries the `IApplicationService` marker; analyzers key on the implementing class. See [`memory/architecture/section-public-contract.md`](../../../../memory/architecture/section-public-contract.md).
 - The UserInfo interceptor completes its post-commit cache refresh without request cancellation, so an aborted request cannot turn a committed save into cancellation and skip its following audit.
@@ -334,7 +312,7 @@ A lazy per-key cache miss cannot republish its old result after an intervening c
 
 - `User` has no `Profile` / `TeamMemberships` / `RoleAssignments` / `Applications` / `ConsentRecords` / `CommunicationPreferences` navs and no `GetEffectiveEmail()` — readers route through `IUserService` / `ITeamService` / `IRoleAssignmentService` / etc. or use `user.Email` (which overrides via the `UserEmails` collection). When touching `TeamService` / `GoogleWorkspaceSyncService` / `ProfileEmailsController` and the notification jobs, prefer `IUserEmailRepository.GetByUserIdReadOnlyAsync` / `IUserService.GetUserInfosAsync` over reaching into the `UserEmails` nav directly.
 - Do **not** inject a DbContext into any service under `Humans.Users/Services/`. Use `IUserRepository`.
-- Event-participation writes belong to Tickets (`ITicketWrite`, and Tickets' internal `IEventParticipationManagement`); nothing writes the frozen `event_participations`.
+- Event-participation writes belong to Tickets (`ITicketWrite`, and Tickets' internal `IEventParticipationManagement`).
 
 ---
 
@@ -343,14 +321,14 @@ A lazy per-key cache miss cannot republish its old result after an intervening c
 
 Per-human personal data that Users keeps: the profile core (names, location, bio, pronouns, birthday, picture, emergency contact, languages, burner CV, medical conditions), contact fields, email addresses, account merge and duplicate detection.
 
-Everything else that once sat on `User`, `Profile` and `UserEmail` has moved to the section that owns it (Users decomposition, commits 1 to 15): IBAN to Finance, dietary answers to Cantina, membership tier to Governance, consent review to Consent, event participation to Tickets, communication preferences to Email, Google Workspace identity to GoogleIntegration. The old columns and tables stay on disk as frozen legacy until each replacement's data migration reports done in production; see [Frozen legacy](#frozen-legacy-awaiting-drop).
+Everything else that once sat on `User`, `Profile` and `UserEmail` has moved to the section that owns it (Users decomposition, commits 1 to 15): IBAN to Finance, dietary answers to Cantina, membership tier to Governance, consent review to Consent, event participation to Tickets, communication preferences to Email, Google Workspace identity to GoogleIntegration. Each old column or table stays on disk as frozen legacy until its replacement's data migration reports done in production and its drop PR merges; see [Frozen legacy](#frozen-legacy-awaiting-drop).
 
 ## Concepts
 
 - A **Profile** holds a human's personal information: name, city, country, birthday (month and day only — never year), profile picture, and admin notes.
 - **Contact Fields** are per-field contact details (phone, Signal, Telegram, WhatsApp, Discord, custom) with per-field visibility controls.
 - **Visibility Levels** determine who can see each contact field: BoardOnly (most restrictive), CoordinatorsAndBoard, MyTeams (shared team members), or AllActiveProfiles (least restrictive).
-- **Membership Tier** (Volunteer, Colaborador, Asociado) is Governance's; Users reads it through `IGovernanceService.GetMembershipTierAsync` / `GetMembershipTiersAsync` (popover, human summary, admin detail, duplicate accounts). **Communication Preferences** are Email's (see `Humans.Email/Docs/Email.md`). The profile and preference columns are frozen legacy.
+- **Membership Tier** (Volunteer, Colaborador, Asociado) is Governance's; Users reads it through `IGovernanceService.GetMembershipTierAsync` / `GetMembershipTiersAsync` (popover, human summary, admin detail, duplicate accounts). **Communication Preferences** are Email's (see `Humans.Email/Docs/Email.md`).
 - **UserEmail** is a per-user email address record. A user has one "login" email plus zero-or-more verified additional addresses; one of them may be flagged as the notification target.
 - **CV Entries** (sub-aggregate of Profile, table `volunteer_history_entries`) record volunteer involvement history.
 - **Profile Languages** (sub-aggregate of Profile, table `profile_languages`) record self-assessed proficiency in ISO 639-1 language codes. Profile cards, summaries and both initial and dynamically added language options display language names in the viewer's UI culture across all six supported cultures; stored ISO codes and proficiency values stay unchanged.
@@ -368,7 +346,7 @@ User is owned by the **Users/Identity** section; the properties below are the pr
 
 `User` has no `GoogleEmail` property; the `users.GoogleEmail` column is an EF shadow property (`UserConfiguration.cs`) kept pending a deferred column-drop PR per `memory/architecture/no-drops-until-prod-verified.md`. `UserInfo.GoogleEmail` is gone (Users decomposition commit 15): the Google Workspace address is `IGoogleIntegrationService.GetWorkspaceIdentityAsync`; `UserInfo.PrimaryEmail` is the contact address.
 
-Google sync status is GoogleIntegration's (`google_workspace_identities.Status`, Users decomposition commit 15). The per-address `UserEmail.GoogleEmailStatus` (`LegacyGoogleEmailStatus`) column is frozen until the `google.workspace-identities` drop PR; the user-level `User.GoogleEmailStatus` column is dead (drop tracked in peterdrier/Humans#2156). Neither has a live writer.
+Google sync status is GoogleIntegration's (`google_workspace_identities.Status`, Users decomposition commit 15). The per-address `UserEmail.GoogleEmailStatus` (`LegacyGoogleEmailStatus`) column is frozen until the `google.workspace-identities` drop PR. It has no live writer.
 
 #### Contact-import properties
 
@@ -381,7 +359,7 @@ A contact is identified by `ContactSource != null && LastLoginAt == null`. When 
 
 #### Dead columns
 
-`UnsubscribedFromCampaigns`, `SuppressScheduleChangeEmails` and `GoogleEmailStatus` (see the Part 1 field table) have no writer and no reader beyond the Art. 15 export, which keeps the first two flags while the columns exist; `UserInfo` and the cache interceptor do not carry them. `GoogleEmailStatus` has no reader at all. EF still maps them (`GoogleEmailStatus` as a shadow column, so no code can reach it; `[Obsolete]` guards the other two), and peterdrier/Humans#2156 tracks their drop.
+`UnsubscribedFromCampaigns` and `SuppressScheduleChangeEmails` (see the Part 1 field table) have no writer and no reader beyond the Art. 15 export, which keeps them while the columns exist; `UserInfo` and the cache interceptor do not carry them. `[Obsolete]` guards both, and peterdrier/Humans#2156 tracks their drop, pending Peter's call on whether the opt-outs they hold need carrying into Email's preferences first.
 
 ### Profile
 
@@ -405,29 +383,17 @@ A contact is identified by `ContactSource != null && LastLoginAt == null`. When 
 | EmergencyContactName | string? (256) | null | Private — self + Board. |
 | EmergencyContactPhone | string? (50) | null | Private — self + Board. |
 | EmergencyContactRelationship | string? (100) | null | Private — self + Board. |
-| DietaryPreference | string? (200) | null | **Legacy, no longer written.** Food answers belong to Cantina's `cantina_dietary_profiles` and are no longer exposed on `ProfileInfo`. These legacy columns are still exported and erased here until a separate schema change drops them. |
-| Allergies / Intolerances | List&lt;string&gt; (jsonb) | [] | Food allergies / intolerances (+ `AllergyOtherText` / `IntoleranceOtherText` for free-text "Other"). **Legacy, no longer written** — same as `DietaryPreference`. |
 | MedicalConditions | string? (4000) | null | **GDPR Art. 9** health data. On the cached `UserInfo`; shown to others only through Shifts' audited reveal (`ShiftsPolicies.MedicalDataViewer`: Admin, Board, ShiftsNoInfo), which records `MedicalConditionsRevealed` against the member. Owner edits their own on `/Profile/Me/Medical` and sees the reveal history there. |
 | ProfilePictureContentType | string? (100) | null | MIME type of the stored picture. Doubles as the "has custom picture?" predicate (`HasCustomProfilePicture`) and supplies the file extension — the picture bytes themselves live on the filesystem. |
 | ProfilePictureStorageKey | string? (300) | null | Versioned `IFileStorage` key of the current picture (`uploads/profile-pictures/{profileId}-{guid}{.ext}`). Null for pictures still at the legacy deterministic key `{profileId}{.ext}`; readers fall back to it. Cleared with the content type on removal, merge and anonymization. |
 | ContributionInterests | string? | null | Skills / availability statement (publicly visible on profile). |
 | BoardNotes | string? | null | Notes from the human intended for the Board (self + Board only). |
 | AdminNotes | string? (4000) | null | Admin-only notes (not visible to the human). |
-| Iban | string? (34) | null | **Legacy, no longer read or written except for erasure.** Finance owns `finance_payment_details`. Production reported `finance.iban-to-payment-details` with `pending: 0`, `done: true` on 2026-11-03; its copy, fallback and `ProfileInfo.Iban` projection are retired. Still erased by `EraseProfileExtrasForUserAsync` until the separate column drop. |
-| IsApproved | bool | false | **Frozen storage only.** Consent owns `consent_reviews`. Production reported `consent.profile-review` with `pending: 0`, `done: true` on 2026-11-03. Its copy, fallback, shared review projections and Users export of these columns are retired; erasure still nulls the free-text `ConsentCheckNotes` and `RejectionReason` until the columns' separate drop. |
-| MembershipTier | LegacyMembershipTier | Volunteer | **Legacy, no longer written.** Governance's `governance_membership_tiers` owns the live tier. No longer exposed on `ProfileInfo`; the internal storage enum and legacy GDPR export remain until a separate schema drop. |
-| ConsentCheckStatus | LegacyConsentCheckStatus? | null | Legacy, as `IsApproved`. |
-| ConsentCheckAt | Instant? | null | When consent check was performed. Legacy, as `IsApproved`. |
-| ConsentCheckedByUserId | Guid? | null | Consent Coordinator who performed the check. Legacy, as `IsApproved`. |
-| ConsentCheckNotes | string? (4000) | null | Notes from the Consent Coordinator. Legacy, as `IsApproved`. |
-| RejectionReason | string? (4000) | null | Reason for rejection (when Admin rejects a flagged check). Legacy, as `IsApproved`. |
-| RejectedAt | Instant? | null | Legacy, as `IsApproved`. Still read by the state classifier and `UserInfo.IsRejected` (legacy arm) until the retirement PR. |
-| RejectedByUserId | Guid? | null | Admin who rejected the profile. Legacy, as `IsApproved`. |
 | NoPriorBurnExperience | bool | false | When true, CV entries are not required during onboarding. |
 | CreatedAt | Instant | — | Set on insert. |
 | UpdatedAt | Instant | — | Maintained by services. |
 
-**Indexes:** unique on `UserId`; non-unique on `ConsentCheckStatus`.
+**Indexes:** unique on `UserId`.
 
 `Profile` has no `User` nav. Consumers resolve User data via `IUserService.GetUserInfosAsync`. Aggregate-local navs `ContactFields`, `VolunteerHistory`, and `Languages` are kept.
 
@@ -515,29 +481,6 @@ OAuth reconciliation translates only a collision on `IX_user_emails_Email` into 
 
 No shadow columns (`IsOAuth` and `DisplayOrder` are gone from the table; `HUM0001` rejects references to either). Display sorting is alphabetical on `Email`.
 
-### CommunicationPreference (legacy, frozen)
-
-**Table:** `communication_preferences`
-
-**Frozen storage only.** Email owns `email_communication_preferences`. Production reported `email.communication-preferences` with `pending: 0`, `done: true` on 2026-11-03. The copy, fallback and Users projection/export paths are retired; erasure still deletes the user's rows (`EraseProfileExtrasForUserAsync`) until the table's separate drop.
-
-| Field | Type | Notes |
-|-------|------|-------|
-| Id | Guid | PK |
-| UserId | Guid | FK → User (Cascade) — **FK only**, no nav |
-| Category | LegacyMessageCategory | Frozen copy of Email's `MessageCategory` (same names and values). Stored as string (max 50) |
-| OptedOut | bool | true = opted out of email for this category |
-| InboxEnabled | bool | Default true |
-| UpdatedAt | Instant | Last change |
-| UpdateSource | string (100) | Last writer |
-| SubscribedAt | Instant? | First opt-in |
-
-Users has no live reader or writer for this table. Email owns the preference reads, writes, merge, export and erasure paths.
-
-**Unique constraint:** `(UserId, Category)`. **Indexes:** `UserId`.
-
-Reads do not create preference rows. Missing categories use their natural defaults: opted-in (`OptedOut = false`) except Marketing, which defaults to opted-out. Explicit updates create rows as needed; historical `Default` rows remain readable. System and CampaignCodes are always on (cannot be opted out).
-
 ### VolunteerHistoryEntry (CV Entry)
 
 **Table:** `volunteer_history_entries`
@@ -572,37 +515,14 @@ Sub-aggregate of Profile — no separate service. Records languages spoken with 
 
 ### Frozen legacy (awaiting drop)
 
-These columns and tables await separate schema drops. Users retains the export/erasure paths noted above; the retired review columns are storage only. Owners with a still-registered migration also read them through `[Obsolete]` fields on `UserInfo`/`ProfileInfo` until fallback retirement. Schema drops follow separately. The production `done` reading of the migration at `GET /api/data-migrations` is the drop's approval (`memory/architecture/no-drops-until-prod-verified.md`). Ledger rows: retirement in `docs/architecture/debt-ledger.yml` (CENTRAL-95), schema drops are separate feature work under policy D9, outside the debt ledger.
+These columns await a separate schema drop. A still-registered migration reads its columns through `[Obsolete]` fields on `UserInfo` until fallback retirement. The production `done` reading of the migration at `GET /api/data-migrations` is the drop's approval (`memory/architecture/no-drops-until-prod-verified.md`). Ledger rows: retirement in `docs/architecture/debt-ledger.yml` (CENTRAL-95), schema drops are separate feature work under policy D9, outside the debt ledger.
 
 | Legacy object | Replaced by | Migration key |
 |---|---|---|
-| `profiles.Iban` | Finance `finance_payment_details` | `finance.iban-to-payment-details` — retired 2026-11-03; column awaiting separate drop |
-| `profiles` food columns (`DietaryPreference`, `Allergies`, `AllergyOtherText`, `Intolerances`, `IntoleranceOtherText`) | Cantina `cantina_dietary_profiles` | `cantina.profile-dietary` |
-| `profiles.MembershipTier` | Governance `governance_membership_tiers` | `governance.profile-tier` |
-| `profiles` review columns (`ConsentCheck*`, `RejectionReason`, `RejectedAt`, `RejectedByUserId`, `IsApproved`) and the `ConsentCheckStatus` index | Consent `consent_reviews` | `consent.profile-review` — retired 2026-11-03; columns awaiting separate drop |
-| `event_participations` table | Tickets `tickets_event_participations` | `tickets.event-participations` — retired 2026-11-03; table awaiting separate drop |
-| `communication_preferences` table | Email `email_communication_preferences` | `email.communication-preferences` — retired 2026-11-03; table awaiting separate drop |
 | `user_emails.IsGoogle`, `user_emails.GoogleEmailStatus` | GoogleIntegration `google_workspace_identities` | `google.workspace-identities` |
-| `users.LastConsentReminderSentAt` | Consent `consent_reminders` | `consent.reminder-stamps` |
-| `users.UnsubscribedFromCampaigns`, `users.SuppressScheduleChangeEmails`, `users.GoogleEmailStatus` | none (dead, no migration) | none |
+| `users.UnsubscribedFromCampaigns`, `users.SuppressScheduleChangeEmails` | none (dead, no migration) | none |
 
-`LegacyGoogleEmailStatus` remains in the contracts until the `google.workspace-identities` retirement. The other legacy enums below are internal storage types.
-
-### LegacyMembershipTier
-
-Internal Users storage enum (`Volunteer` 0, `Colaborador` 1, `Asociado` 2) typing the frozen `profiles.MembershipTier` column, stored as string via `HasConversion<string>()`. It preserves the legacy GDPR export until the column is dropped. The public tier and its meaning live in Governance.Contracts.
-
-### LegacyParticipationStatus, LegacyParticipationSource
-
-Internal Users storage enums for the frozen `event_participations` table: status (`NotAttending` 0, `Ticketed` 1, `Attended` 2, `NoShow` 3) and source (`UserDeclared` 0, `TicketSync` 1, `AdminBackfill` 2), stored as strings. They preserve the storage mapping until the separate table drop; no public contract or live reader uses them.
-
-### LegacyConsentCheckStatus
-
-Internal Users storage enum (`Pending` 0, `Cleared` 1, `Flagged` 2) typing the frozen `profiles.ConsentCheckStatus` column, stored as string via `HasConversion<string>()`. No shared contract or live reader uses it after the copy and fallback retirement. It remains only to map the column until its separate drop; the live enum and its meaning live in Consent.Contracts.
-
-### LegacyMessageCategory
-
-Internal Users storage enum preserving the names and values of the frozen `communication_preferences.Category` column until its separate drop. No public contract or live reader uses it; the live enum is Email's `MessageCategory`.
+`LegacyGoogleEmailStatus` remains in the contracts until the `google.workspace-identities` retirement.
 
 ## Routing
 
@@ -775,7 +695,7 @@ Email Problems remediation buttons use the shared `data-confirm` handler: each c
 - **Teams:** `ITeamService` — active membership equals membership in the Volunteers system team. Profile activation triggers addition.
 - **Onboarding:** none (one-directional — `OnboardingService` consumes `IUserService`, never the reverse). The consent-check threshold (Consent's review `Status → Pending`; no notification, the queue shows in the admin sidebar's Review pill) is director-level work and lives in Onboarding; `ProfileController.Edit` reports the save with `IOnboardingIntake.ProfileSavedAsync` after `IProfileEditorService.SaveProfileAsync`, and Onboarding also cancels a pending deletion for a not-yet-approved member.
 - **Cantina:** `ICantinaService` (project reference; acyclic — Cantina reaches only `Users.Contracts`) for the medical things-to-do. Cantina owns the food answers, their form and nudge, and its own export/erase/merge.
-- **Finance:** none at compile time. The admin detail page's Payment Details card and its reveal (`/Finance/Admin/Members/{id}/RevealIban`) are Finance's, contributed to the `AdminDetailSidebar` user-part slot; Users only keeps the legacy `profiles.Iban` column (see Profile).
+- **Finance:** none at compile time. The admin detail page's Payment Details card and its reveal (`/Finance/Admin/Members/{id}/RevealIban`) are Finance's, contributed to the `AdminDetailSidebar` user-part slot.
 - **Google Integration:** owns the member's Google Workspace identity (`google_workspace_identities`, Users decomposition commit 15) — `IGoogleIntegrationService.GetWorkspaceIdentityAsync` is the address Google Groups and Drive sync target. Users reports addresses leaving an account via `IGoogleIntegrationWrite.ClearIfAddressAsync`; the Emails grid's Google column, the sync-rejected banner, the admin detail's Google Sync / @nobodies.team cards and the @nobodies.team badge are GoogleIntegration view components.
 - **Users/Identity:** `IUserService.GetUserInfosAsync` — display data for cross-domain nav stitching. `IUserManagement.AnonymizeForMergeAsync` — invoked by `AccountMergeService.AcceptAsync` to tombstone the source User during fold; AspNetUserLogins re-FK is handled by the Users section's own `IUserMerge` implementation (`IUserRepository.ReassignLoginsToUserAsync`); event participation by Tickets' `IUserMerge`.
 - **Account merge fold fan-out:** `IAccountMergeService.AcceptAsync` fans out across every registered `IUserMerge` implementation (`ReassignAsync`), each committing independently and evicting its own affected caches before returning. Preflight reads honor request cancellation; once the section-write phase starts, the remaining fold, pending-email verification, tombstone, audit and merge-request closure finish independently of browser cancellation. Dependency failures still propagate for the existing retry path. Each owning section — Tickets, Teams, Shifts, Governance, Campaigns, Camps, Notifications, Email, Role assignments, and the Profiles sub-aggregates (Profile / UserEmail / ContactField) — registers its own `IUserMerge` impl and re-FKs its user-scoped rows source→target, rather than the orchestrator naming each service.
@@ -783,7 +703,7 @@ Email Problems remediation buttons use the shared `data-confirm` handler: each c
 ## Architecture
 
 **Owning services:** `ProfileService` (`IProfilePictureService` — read-only pictures and migration snapshots), `ProfileEditorService` (`IProfileEditorService` — validates and orchestrates profile-edit saves, delegating the actual persist to `IUserService`), `ContactFieldService`, `UserEmailService`, `EmailProblemsService`. Account merge and duplicate detection are Part 1's (`AccountMergeService`, `DuplicateAccountService`).
-**Owned tables:** `profiles`, `contact_fields`, `user_emails`, `communication_preferences` (legacy, frozen — Email owns preferences), `volunteer_history_entries`, `profile_languages`
+**Owned tables:** `profiles`, `contact_fields`, `user_emails`, `volunteer_history_entries`, `profile_languages`
 `IUserRepository` owns the live persistence paths via `DbContext`. The retired preference repository is removed. Repositories are Singleton, using `IDbContextFactory<UsersDbContext>` and short-lived contexts per method.
 - **Caching.** Profile field storage (save, medical conditions, volunteer history, anonymize) is on `UserService`; readers get the single unified `UserInfo` projection served by `CachingUserService` (Singleton, `Humans.Users/Data/`) — see Part 1's caching-decorator bullet. There is no separate profile-only cache or warmup service (`Docs/health.md`).
 - **`UserInfo` is canonical.** Cross-section email projections use the resolved snapshot for living humans or the exact raw snapshot for per-account erasure. Derived properties `PrimaryEmail` and `AllVerifiedEmails` are the email read sites (the Google Workspace address is GoogleIntegration's `IGoogleIntegrationService`); `CachingUserService` populates them from already-loaded `UserEmail` rows (no new repo lookups). The lifecycle marker is the stored `User.State`, surfaced as the non-nullable `UserInfo.State`; `ProfileInfo` carries no state at all.
@@ -806,7 +726,7 @@ Email Problems remediation buttons use the shared `data-confirm` handler: each c
 - **Unlink and Delete operate on disjoint row sets.** `UserEmailService.DeleteEmailAsync` returns an unsuccessful result for Provider-attached rows (guards non-UI callers; the grid never routes one there), and `UnlinkAsync` operates only on rows with `Provider`+`ProviderKey`: it removes the `AspNetUserLogins` entry via `UserManager.RemoveLoginAsync` **before** deleting the email row, and hard-fails (no email-row deletion) if login removal fails. After Identity removal succeeds, email-row deletion, invariant repair, cache refresh and the actor audit finish independently of request cancellation, keeping the two records synchronized across browser disconnects. Earlier guard reads remain cancellable. `UnlinkAsync` returns `UnlinkEmailResult` with a localized refusal key if no *other* verified email would remain — the guard runs even when the row being unlinked is itself unverified, because an unverified row can still carry the user's only OAuth login (issue nobodies-collective/Humans#731). Member unlink routes localize that result; expected unlink refusals log Warning with row/user/actor identifiers, while unexpected member/admin unlink dependency failures propagate to normal error handling. Admin mirror routes exist for both (`/Profile/{id}/Admin/Emails/Unlink/{emailId}`, `/Delete`).
 - **Inner service** is `Humans.Users.Services.UserService`, registered as `AddKeyedScoped` under `CachingUserService.InnerServiceKey` (`"user-inner"`) — the same decorator/inner pair Part 1 describes for the User aggregate; profile writes go through it too since `UserService` absorbed `ProfileService`'s storage-mutation methods. The decorator resolves it per-call via `IServiceScopeFactory`.
 - **No cross-section cache signal.** Every `UserInfo` table is Users-owned: other sections write through Users' services, whose decorator pass-through and `UserInfoSaveChangesInterceptor` refresh the entry. Users' own services that write past the decorator use the section-internal `IUserInfoSliceRefresher`, aliased to the same Singleton.
-- **No cross-domain navs:** `Profile`, `UserEmail` and `CommunicationPreference` carry no `User` nav. Display stitching routes through `IUserService.GetUserInfosAsync`.
+- **No cross-domain navs:** `Profile` and `UserEmail` carry no `User` nav. Display stitching routes through `IUserService.GetUserInfosAsync`.
 - **GDPR:** `AccountMergeService` implements `IUserDataContributor` (design-rules §8a) and emits the `AccountMergeRequests` slice, including each request involving any account in the subject’s resolved merge chain once. Requests under archived IDs use that same chain; unrelated requests are excluded. The `Profile`, `MergedProfiles`, `ContactFields`, `UserEmails`, `VolunteerHistory` and `Languages` slices are emitted by `UserService` — `ProfileService` implements no contributor interface. Each contributor declares its own export keys as constants on its class (`AccountMergeService`, `UserService`). `tests/Humans.Web.Tests/Services/Gdpr/GdprExportDependencyInjectionTests.cs` discovers contributors by reflection — nothing to register in a list.
 - **Architecture tests** — `tests/Humans.Web.Tests/Services/Gdpr/GdprExportDependencyInjectionTests.cs` (the DI wiring; the orchestrator's own tests are in `tests/Humans.Gdpr.Tests/`).
 
@@ -818,7 +738,7 @@ Deletion requests invalidate the user's shift authorization and view caches afte
 
 ### Touch-and-clean guidance
 
-- Cross-section reads for `Profile.User` / `UserEmail.User` / `CommunicationPreference.User` must go through `IUserService.GetUserInfosAsync` — do not re-add nav properties to the entities.
+- Cross-section reads for `Profile.User` / `UserEmail.User` must go through `IUserService.GetUserInfosAsync` — do not re-add nav properties to the entities.
 - The token "OAuth" is banned from `IUserEmailService` / `IUserRepository` user-email method, parameter, and property names — provider operations are parameterized (`LinkAsync(provider, providerKey, …)`) so new providers add data, not methods. This is documentation, not a pinned test — a test asserting a method-name token is absent is forbidden by [`no-tests-for-absences`](../../../../memory/architecture/no-tests-for-absences.md). The single allowed exception is `ReconcileOAuthIdentityAsync`, where "OAuth" is categorical (the OAuth-callback write channel, distinct from user-driven email management).
 
 ## Issue queue

@@ -222,8 +222,6 @@ public class ProfileViewControllerPopoverTests
         {
             Id = Guid.NewGuid(),
             UserId = id,
-            MembershipTier = LegacyMembershipTier.Volunteer,
-            IsApproved = true,
             City = "Madrid",
             CountryCode = "ES",
         };
@@ -257,8 +255,6 @@ public class ProfileViewControllerPopoverTests
         {
             Id = Guid.NewGuid(),
             UserId = id,
-            MembershipTier = LegacyMembershipTier.Volunteer,
-            IsApproved = true,
         };
         _userService.GetUserInfoAsync(id, Arg.Any<CancellationToken>())
             .Returns(BuildUserInfo(user, profile, userEmails: null));
@@ -290,7 +286,6 @@ public class ProfileViewControllerPopoverTests
         {
             Id = Guid.NewGuid(),
             UserId = id,
-            MembershipTier = LegacyMembershipTier.Volunteer,
             City = "Madrid",
             CountryCode = "ES",
         };
@@ -310,7 +305,7 @@ public class ProfileViewControllerPopoverTests
     {
         var id = Guid.NewGuid();
         var user = new User { Id = id, DisplayName = "Suspended Human", State = UserState.Suspended };
-        var profile = new Profile { Id = Guid.NewGuid(), UserId = id, MembershipTier = LegacyMembershipTier.Volunteer, IsApproved = true };
+        var profile = new Profile { Id = Guid.NewGuid(), UserId = id };
         _userService.GetUserInfoAsync(id, Arg.Any<CancellationToken>())
             .Returns(BuildUserInfo(user, profile, userEmails: null));
 
@@ -327,8 +322,6 @@ public class ProfileViewControllerPopoverTests
             Id = Guid.NewGuid(),
             UserId = id,
             BurnerName = displayName,
-            MembershipTier = LegacyMembershipTier.Volunteer,
-            IsApproved = true
         };
         var emails = new List<UserEmail>
         {

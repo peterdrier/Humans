@@ -834,21 +834,12 @@ internal sealed class UserService(
             profile.Pronouns,
             profile.ContributionInterests,
             profile.BoardNotes,
-            // Frozen legacy column; Governance exports the live tier.
-            profile.MembershipTier,
             // JSON key pinned: GDPR export stability.
             IsSuspended = isSuspended,
             profile.NoPriorBurnExperience,
             profile.EmergencyContactName,
             profile.EmergencyContactPhone,
             profile.EmergencyContactRelationship,
-            // Legacy food columns (incl. archived merge rows) stay in the export until their drop;
-            // Cantina exports the live answers.
-            profile.DietaryPreference,
-            profile.Allergies,
-            profile.AllergyOtherText,
-            profile.Intolerances,
-            profile.IntoleranceOtherText,
             profile.MedicalConditions,
             profile.HasCustomProfilePicture,
             CreatedAt = profile.CreatedAt.ToIso8601(),

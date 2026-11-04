@@ -56,7 +56,6 @@ public class CachingUserServiceTests
         BurnerName = burnerName,
         CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
         UpdatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
-        IsApproved = true,
     };
 
     [HumansTheory]
@@ -468,8 +467,6 @@ public class CachingUserServiceTests
             FirstName = "Eight",
             LastName = "Tables",
             DateOfBirth = new LocalDate(1990, 7, 4),
-            IsApproved = true,
-            MembershipTier = LegacyMembershipTier.Asociado,
             CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
             UpdatedAt = Instant.FromUtc(2026, 1, 2, 0, 0),
         };
@@ -663,7 +660,6 @@ public class CachingUserServiceTests
         string? bio = null,
         string? pronouns = null,
         string? contributionInterests = null,
-        bool isApproved = true,
         bool isSuspended = false,
         bool isRejected = false,
         bool hasProfile = true,
@@ -705,10 +701,8 @@ public class CachingUserServiceTests
             Bio = bio,
             Pronouns = pronouns,
             ContributionInterests = contributionInterests,
-            IsApproved = isApproved,
             CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
             UpdatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
-            RejectedAt = isRejected ? Instant.FromUtc(2026, 1, 1, 0, 0) : null,
         };
 
         var cfRows = (contactFields ?? [])
@@ -835,17 +829,6 @@ public class CachingUserServiceTests
     {
         var sut = CreateSut();
         await PrimeAsync(sut, BuildSearchableUserInfo(Guid.NewGuid(), city: "Madrid", isSuspended: true));
-
-        var results = await sut.SearchUsersAsync("Madrid", PersonSearchFields.PublicAll, ct: Xunit.TestContext.Current.CancellationToken);
-
-        results.Should().HaveCount(1);
-    }
-
-    [HumansFact]
-    public async Task SearchUsersAsync_PublicAll_IncludesUnapproved()
-    {
-        var sut = CreateSut();
-        await PrimeAsync(sut, BuildSearchableUserInfo(Guid.NewGuid(), city: "Madrid", isApproved: false));
 
         var results = await sut.SearchUsersAsync("Madrid", PersonSearchFields.PublicAll, ct: Xunit.TestContext.Current.CancellationToken);
 

@@ -197,7 +197,6 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
             await SeedUserWithProfileAsync(id);
             var profile = await Db.Profiles.SingleAsync(p => p.UserId == id, TestContext.Current.CancellationToken);
             profile.MedicalConditions = $"Health {id}";
-            profile.DietaryPreference = $"Diet {id}";
         }
         await Db.SaveChangesAsync(TestContext.Current.CancellationToken);
         foreach (var (source, target) in new[] { (oldestId, archivedId), (archivedId, survivorId) })
@@ -220,7 +219,6 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
         foreach (var id in new[] { oldestId, archivedId })
         {
             profiles[id].GetProperty("MedicalConditions").GetString().Should().Be($"Health {id}");
-            profiles[id].GetProperty("DietaryPreference").GetString().Should().Be($"Diet {id}");
         }
         using var currentJson = System.Text.Json.JsonDocument.Parse(System.Text.Json.JsonSerializer.Serialize(
             slices.Single(s => string.Equals(s.SectionName, UserService.Profile, StringComparison.Ordinal)).Data));
@@ -383,27 +381,6 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
 
         var user = await Db.Users.AsNoTracking().FirstAsync(u => u.Id == userId, TestContext.Current.CancellationToken);
         user.State.Should().Be(UserState.Rejected);
-    }
-
-    [HumansFact]
-    public async Task RetiredLegacyRejection_DoesNotOverrideTheStoredState()
-    {
-        // Migration completion makes users.State authoritative even if a frozen column differs.
-        var userId = Guid.NewGuid();
-        var profileId = await SeedUserWithProfileAsync(userId);
-        var profile = await Db.Profiles.FirstAsync(p => p.Id == profileId, TestContext.Current.CancellationToken);
-        profile.RejectedAt = Clock.GetCurrentInstant();
-        await Db.SaveChangesAsync(TestContext.Current.CancellationToken);
-        Db.ChangeTracker.Clear();
-        (await Db.Users.AsNoTracking().FirstAsync(u => u.Id == userId, TestContext.Current.CancellationToken))
-            .State.Should().NotBe(UserState.Rejected);
-
-        var info = await _service.GetRawUserInfoAsync(userId, TestContext.Current.CancellationToken);
-        info!.IsRejected.Should().BeFalse();
-
-        await _service.SetSuspensionAsync(userId, suspended: false, ct: TestContext.Current.CancellationToken);
-        var user = await Db.Users.AsNoTracking().FirstAsync(u => u.Id == userId, TestContext.Current.CancellationToken);
-        user.State.Should().Be(UserState.Active);
     }
 
     [HumansFact]
@@ -917,10 +894,7 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
         fresh.LastName.Should().Be("User");
     }
 
-    private async Task<Guid> SeedUserWithProfileAsync(
-        Guid userId,
-        LegacyMembershipTier tier = LegacyMembershipTier.Volunteer,
-        bool isApproved = false)
+    private async Task<Guid> SeedUserWithProfileAsync(Guid userId)
     {
         SeedUser(userId);
         var profile = new Profile
@@ -930,8 +904,6 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
             BurnerName = "Test",
             FirstName = "First",
             LastName = "Last",
-            MembershipTier = tier,
-            IsApproved = isApproved,
             CreatedAt = Clock.GetCurrentInstant(),
             UpdatedAt = Clock.GetCurrentInstant(),
         };
