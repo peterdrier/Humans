@@ -294,6 +294,8 @@ Settings and Register an existing group on first setup or after clearing the que
 
 ## Invariants
 
+- Register edits, member forms and member mutations share one controller resolver: resolve the actor, find the group, then check member-work permission before nested IDs or submitted values. Join, leave, status requests and commenting retain their existing exceptions to the member-work check and their route policies.
+
 - Roster membership-tier badges use localized enum labels in all six cultures.
 
 - The section’s things-to-do contribution forwards caller cancellation through all data reads. Aborted reads propagate instead of being logged or converted into missing prompts.

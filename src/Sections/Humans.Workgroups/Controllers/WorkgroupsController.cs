@@ -153,11 +153,8 @@ internal sealed class WorkgroupsController(
     [HttpGet("{slug}/Edit")]
     public async Task<IActionResult> Edit(string slug, CancellationToken ct)
     {
-        var (error, _) = await ResolveCurrentUserOrChallengeAsync(ct);
+        var (error, _, workgroup) = await ResolveMemberWorkAsync(slug, ct);
         if (error is not null) return error;
-
-        if (await ResolveAsync(slug, ct) is not { } workgroup) return NotFound();
-        if (!await MayDoMemberWorkAsync(workgroup)) return Forbid();
 
         return View(WorkgroupFormViewModel.FromWorkgroup(workgroup));
     }
@@ -166,10 +163,8 @@ internal sealed class WorkgroupsController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Edit(string slug, WorkgroupFormViewModel model, CancellationToken ct)
     {
-        var (error, user) = await ResolveCurrentUserOrChallengeAsync(ct);
+        var (error, user, workgroup) = await ResolveMemberWorkAsync(slug, ct);
         if (error is not null) return error;
-        if (await ResolveAsync(slug, ct) is not { } workgroup) return NotFound();
-        if (!await MayDoMemberWorkAsync(workgroup)) return Forbid();
         if (!ModelState.IsValid) return View(model);
 
         return await FormAsync(model, async () =>
@@ -212,10 +207,8 @@ internal sealed class WorkgroupsController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> SaveMeeting(string slug, MeetingFormViewModel model, CancellationToken ct)
     {
-        var (error, user) = await ResolveCurrentUserOrChallengeAsync(ct);
+        var (error, user, workgroup) = await ResolveMemberWorkAsync(slug, ct);
         if (error is not null) return error;
-        if (await ResolveAsync(slug, ct) is not { } workgroup) return NotFound();
-        if (!await MayDoMemberWorkAsync(workgroup)) return Forbid();
         if (model.Id is { } editing && !workgroup.Meetings.Any(m => m.Id == editing)) return NotFound();
         var times = CalendarEventForm.Resolve(model, ModelState, calendarLocalizer);
         if (times is null || !ModelState.IsValid) return View(MeetingForm, model);
@@ -259,10 +252,8 @@ internal sealed class WorkgroupsController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> SaveLogEntry(string slug, LogEntryFormViewModel model, CancellationToken ct)
     {
-        var (error, user) = await ResolveCurrentUserOrChallengeAsync(ct);
+        var (error, user, workgroup) = await ResolveMemberWorkAsync(slug, ct);
         if (error is not null) return error;
-        if (await ResolveAsync(slug, ct) is not { } workgroup) return NotFound();
-        if (!await MayDoMemberWorkAsync(workgroup)) return Forbid();
         if (model.Id is { } editing && !workgroup.LogEntries.Any(e => e.Id == editing)) return NotFound();
         if (!ModelState.IsValid) return View(LogEntryForm, model);
 
@@ -335,10 +326,8 @@ internal sealed class WorkgroupsController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> SaveDocument(string slug, DocumentFormViewModel model, CancellationToken ct)
     {
-        var (error, user) = await ResolveCurrentUserOrChallengeAsync(ct);
+        var (error, user, workgroup) = await ResolveMemberWorkAsync(slug, ct);
         if (error is not null) return error;
-        if (await ResolveAsync(slug, ct) is not { } workgroup) return NotFound();
-        if (!await MayDoMemberWorkAsync(workgroup)) return Forbid();
         if (model.Id is { } editing && !workgroup.Documents.Any(d => d.Id == editing)) return NotFound();
         if (!ModelState.IsValid) return View(DocumentForm, model);
 
@@ -429,6 +418,17 @@ internal sealed class WorkgroupsController(
             ? await workgroups.GetByIdAsync(id, ct)
             : await workgroups.GetBySlugAsync(slug, ct);
 
+    private async Task<(IActionResult? Error, UserInfo User, WorkgroupInfo Workgroup)> ResolveMemberWorkAsync(
+        string slug, CancellationToken ct, bool memberOnly = true)
+    {
+        var (error, user) = await ResolveCurrentUserOrChallengeAsync(ct);
+        if (error is not null) return (error, null!, null!);
+        var workgroup = await ResolveAsync(slug, ct);
+        if (workgroup is null) return (NotFound(), null!, null!);
+        if (memberOnly && !await MayDoMemberWorkAsync(workgroup)) return (Forbid(), null!, null!);
+        return (null, user, workgroup);
+    }
+
     private async Task<bool> MayAdministerAsync(WorkgroupInfo workgroup) =>
         (await authorization.AuthorizeAsync(User, workgroup, WorkgroupOperationRequirement.Administer)).Succeeded;
 
@@ -461,10 +461,8 @@ internal sealed class WorkgroupsController(
         string slug, CancellationToken ct, Func<WorkgroupInfo, TModel?> build, string viewName)
         where TModel : class
     {
-        var (error, _) = await ResolveCurrentUserOrChallengeAsync(ct);
+        var (error, _, workgroup) = await ResolveMemberWorkAsync(slug, ct);
         if (error is not null) return error;
-        if (await ResolveAsync(slug, ct) is not { } workgroup) return NotFound();
-        if (!await MayDoMemberWorkAsync(workgroup)) return Forbid();
 
         return build(workgroup) is { } model ? View(viewName, model) : NotFound();
     }
@@ -478,10 +476,8 @@ internal sealed class WorkgroupsController(
         bool memberOnly = true,
         Func<WorkgroupInfo, bool>? owns = null) where T : WorkgroupMutationResult
     {
-        var (error, user) = await ResolveCurrentUserOrChallengeAsync(ct);
+        var (error, user, workgroup) = await ResolveMemberWorkAsync(slug, ct, memberOnly);
         if (error is not null) return error;
-        if (await ResolveAsync(slug, ct) is not { } workgroup) return NotFound();
-        if (memberOnly && !await MayDoMemberWorkAsync(workgroup)) return Forbid();
         if (owns is not null && !owns(workgroup)) return NotFound();
 
         if (!ModelState.IsValid)
