@@ -131,6 +131,8 @@ Event participation (`tickets_event_participations`) is owned by Tickets — see
 - `shift_tags` — read/written by `ShiftManagementService` via `IShiftManagementRepository`. Many-to-many with rotas via the `rota_shift_tags` join table. Seeded with 8 initial values in `ShiftTagConfiguration`. Name column is unique (`IX_shift_tags_name_unique`).
 - `volunteer_tag_preferences` — read/written by `ShiftManagementService` via `IShiftManagementRepository`. Unique on `(UserId, ShiftTagId)`. Cross-domain `UserId` is a bare Guid column with no FK constraint (nobodies-collective/Humans#992); section-local FK to `ShiftTag`.
 
+New-rota and rota-edit tag pickers disable their creation controls while saving. A refused, redirected or failed save shows operator feedback and retains the typed tag name and prior selection for retry; only a successful response selects the returned tag and clears the draft.
+
 Both tables are listed under Shifts in `design-rules.md §8`.
 
 ### RotaPeriod
