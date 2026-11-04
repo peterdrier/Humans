@@ -41,7 +41,7 @@ internal sealed class SurveyController(
         var ctx = await surveyService.ResolveAnswerContextAsync(t, ct);
         if (ctx is null)
         {
-            logger.LogInformation("Survey answer link could not be resolved (invalid or expired token).");
+            logger.LogWarning("Survey answer link could not be resolved (invalid or expired token).");
             return View("Closed", new SurveyClosedViewModel { Reason = "invalid" });
         }
 

@@ -313,7 +313,7 @@ public class AccountController(
             // The reservation must still be released: no account may have been created, and a
             // retry either completes signup or finds the account this request already created.
             magicLinkService.ReleaseSignupToken(token);
-            logger.LogDebug("Magic link signup request was cancelled for {Email}; " +
+            logger.LogWarning("Magic link signup request was cancelled for {Email}; " +
                 "the signup token reservation was released", redeemedEmail);
             throw;
         }

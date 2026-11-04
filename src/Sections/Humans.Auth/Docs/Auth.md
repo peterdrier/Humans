@@ -135,7 +135,7 @@ Reached from the Roles item of the Users admin sidebar group and the Role Assign
 
 ## Invariants
 
-- Invalid, expired or replayed magic-link tokens and throttled login/signup sends log at Warning without exception stacks, making these expected refusals visible in the production log viewer. Successful sends retain their informational logs.
+- Invalid, expired or replayed magic-link tokens and throttled login/signup sends log at Warning without exception stacks, making these expected refusals visible in the production log viewer. Successful sends retain their informational logs. Request-cancelled magic-link signup also logs Warning without a stack after releasing the token reservation, then propagates cancellation.
 
 - Role assignment and ending honour request cancellation during target, assignment
   and actor lookups, before authorization and mutation. Started role mutations keep
