@@ -79,12 +79,12 @@ Written fresh from the shapes above, not from today's tree.
   inner service and never the repository; the row set it holds is the *only* thing it needs, so
   the warm path should ask for rows and nothing else — not for a display-stitched admin page it
   discards.
-- **Sign-in is nearly an orchestrator.** `MagicLinkService` owns no table. Token minting and URL
+- **Sign-in has no persisted state.** `MagicLinkService` owns no table. Token minting and URL
   shape sit behind one collaborator; replay and cooldown state behind another. It names no
   `DbContext`, no `IDataProtectionProvider`, no `IMemoryCache`, and since 2026-10-20 it writes
   nothing: the `users.MagicLinkSentAt` stamp that used to persist the cooldown through
   `UserManager.UpdateAsync` is gone, column included (AUTH-2, Peter chose to drop restart
-  survival), so `UserManager<User>` is lookup-only here.
+  survival). Identity checks now use `IUserService.GetRawUserInfoAsync`; Auth never loads a Users entity.
 - **The section ships no controller and no view.** Its only resx is `AuthResource`, the copy of
   the two sign-in emails it sends. `AccountController` and
   `src/Humans.Web/Views/Account/*` stay in Shell because the controller is the app's sign-in surface: it drives
