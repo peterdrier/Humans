@@ -1,3 +1,4 @@
+using Humans.Camps.Contracts;
 using Humans.Camps.Data;
 using Humans.Store.Data;
 using System.Net;
@@ -101,7 +102,7 @@ public class StoreAdminControllerTests(HumansTestDatabase database) : Integratio
     {
         using var scope = Factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<CampsDbContext>();
-        return (await db.CampSettings.FirstAsync(Xunit.TestContext.Current.CancellationToken)).PublicYear;
+        return (await scope.ServiceProvider.GetRequiredService<ICampService>().GetSettingsAsync(Xunit.TestContext.Current.CancellationToken)).PublicYear;
     }
 
     private async Task<Guid> GetProductIdByNameAsync(string name)

@@ -20,13 +20,10 @@ internal sealed class CampSettingsConfiguration : IEntityTypeConfiguration<CampS
                     v => v.Aggregate(0, HashCode.Combine),
                     v => v.ToList()));
 
-        builder.Property(s => s.EeStartDate);
-
         // Reserved GUID block: 0010. See docs/guid-reservations.md.
         builder.HasData(new CampSettings
         {
             Id = Guid.Parse("00000000-0000-0000-0010-000000000001"),
-            PublicYear = 2026,
             OpenSeasons = [2026]
         });
     }

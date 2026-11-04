@@ -638,7 +638,7 @@ public sealed class ShiftDashboardMetricsTests : ShiftsTestHarness
             .Should().Be((1, 2, 0.5d));
 
         var staffing = await _service.GetDailyDepartmentStaffingAsync(es.Id, ShiftPeriod.Build);
-        staffing.Single(d => d.Date == es.GateOpeningDate.PlusDays(-3))
+        staffing.Single(d => d.Date == Calendars[es.Id].GateOpeningDate.PlusDays(-3))
             .Departments.Single().ConfirmedCount.Should().Be(1);
 
         var heatmapCell = (await _service.GetCoverageHeatmapAsync(es.Id, ShiftPeriod.Build))
@@ -763,7 +763,7 @@ public sealed class ShiftDashboardMetricsTests : ShiftsTestHarness
 
         var result = await _service.GetDailyDepartmentStaffingAsync(es.Id, ShiftPeriod.Build);
 
-        var dayRow = result.SingleOrDefault(r => r.Date == es.GateOpeningDate.PlusDays(-3));
+        var dayRow = result.SingleOrDefault(r => r.Date == Calendars[es.Id].GateOpeningDate.PlusDays(-3));
         dayRow.Should().NotBeNull();
         dayRow.Departments.Should().ContainSingle(d => string.Equals(d.DepartmentName, "Build", StringComparison.Ordinal))
             .Which.ConfirmedCount.Should().Be(2);
@@ -783,7 +783,7 @@ public sealed class ShiftDashboardMetricsTests : ShiftsTestHarness
 
         var result = await _service.GetDailyDepartmentStaffingAsync(es.Id, ShiftPeriod.Build);
 
-        var dayRow = result.Single(r => r.Date == es.GateOpeningDate.PlusDays(-2));
+        var dayRow = result.Single(r => r.Date == Calendars[es.Id].GateOpeningDate.PlusDays(-2));
         dayRow.Departments.Should().ContainSingle();
         dayRow.Departments[0].DepartmentName.Should().Be("Infrastructure");
         dayRow.Departments[0].ConfirmedCount.Should().Be(3);
@@ -913,8 +913,8 @@ public sealed class ShiftDashboardMetricsTests : ShiftsTestHarness
         var result = await _service.GetCoverageHeatmapAsync(es.Id, period: null);
 
         result.Days.Should().Contain(d => d.DayOffset < 0 && d.Period == ShiftPeriod.Build);
-        result.Days.Should().Contain(d => d.DayOffset >= 0 && d.DayOffset <= es.EventEndOffset && d.Period == ShiftPeriod.Event);
-        result.Days.Should().Contain(d => d.DayOffset > es.EventEndOffset && d.Period == ShiftPeriod.Strike);
+        result.Days.Should().Contain(d => d.DayOffset >= 0 && d.DayOffset <= Calendars[es.Id].EventEndOffset && d.Period == ShiftPeriod.Event);
+        result.Days.Should().Contain(d => d.DayOffset > Calendars[es.Id].EventEndOffset && d.Period == ShiftPeriod.Strike);
     }
 
     [HumansFact]
@@ -950,6 +950,12 @@ public sealed class ShiftDashboardMetricsTests : ShiftsTestHarness
         var es = new EventSettings
         {
             Id = Guid.NewGuid(),
+            CreatedAt = TestNow.Minus(Duration.FromDays(60)),
+            UpdatedAt = TestNow,
+        };
+        Calendars[es.Id] = new TestEventCalendar
+        {
+            Id = es.Id,
             EventName = "Test Event",
             Year = 2026,
             TimeZoneId = "UTC",
@@ -958,8 +964,6 @@ public sealed class ShiftDashboardMetricsTests : ShiftsTestHarness
             EventEndOffset = 6,
             StrikeEndOffset = 9,
             IsActive = true,
-            CreatedAt = TestNow.Minus(Duration.FromDays(60)),
-            UpdatedAt = TestNow,
         };
         ShiftsDb.EventSettings.Add(es);
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);

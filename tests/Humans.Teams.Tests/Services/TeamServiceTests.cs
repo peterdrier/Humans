@@ -105,7 +105,7 @@ public sealed class TeamServiceTests : TeamsTestHarness
             serviceProvider,
             Cache,
             new CachingShiftViewService(Substitute.For<Microsoft.Extensions.DependencyInjection.IServiceScopeFactory>(), Microsoft.Extensions.Logging.Abstractions.NullLogger<CachingShiftViewService>.Instance),
-            new EventCalendarResolver(NewSettingsServiceBackedByShiftsDb(), Substitute.For<Humans.Shifts.Data.IShiftManagementRepository>()),
+            new EventCalendarResolver(NewFakeSettingsService(), Substitute.For<Humans.Shifts.Data.IShiftManagementRepository>()),
             Clock,
             NullLogger<ShiftManagementService>.Instance);
 
@@ -120,7 +120,7 @@ public sealed class TeamServiceTests : TeamsTestHarness
             NullLogger<TeamService>.Instance);
         _pages = new TeamPageService(
             _service, _teamResourceService, shiftManagementService,
-            NewSettingsServiceBackedByShiftsDb(), _roleAssignmentService);
+            NewFakeSettingsService(), _roleAssignmentService);
     }
 
     [HumansTheory]
@@ -3550,42 +3550,28 @@ public sealed class TeamServiceTests : TeamsTestHarness
         TeamsDb.TeamRoleAssignments.Add(assignment);
     }
 
-    /// <summary>
-    /// A fake <see cref="ISettingsService"/> resolving "the active event" off this test's ShiftsDb-seeded
-    /// rows, like <c>ShiftsTestHarness.NewCalendarResolver</c>, which this class cannot reach.
-    /// </summary>
-    private ISettingsService NewSettingsServiceBackedByShiftsDb()
+    // Settings' calendars, by event id, for the events this test seeds.
+    private readonly Dictionary<Guid, TestEventCalendar> _calendars = [];
+
+    private ISettingsService NewFakeSettingsService()
     {
         var settingsService = Substitute.For<ISettingsService>();
         settingsService.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>())
-            .Returns(async ci =>
-            {
-                var active = ShiftsDb.EventSettings.Local.FirstOrDefault(e => e.IsActive)
-                    ?? await ShiftsDb.EventSettings.FirstOrDefaultAsync(e => e.IsActive, ci.Arg<CancellationToken>());
-                return active is null ? null : ToEventSettingsInfo(active);
-            });
+            .Returns(_ => Task.FromResult(_calendars.Values.FirstOrDefault(c => c.IsActive)?.ToInfo()));
         return settingsService;
     }
-
-    private static EventSettingsInfo ToEventSettingsInfo(EventSettings src) => new(
-        Id: src.Id,
-        EventName: src.EventName,
-        Year: src.Year,
-        TimeZoneId: src.TimeZoneId,
-        GateOpeningDate: src.GateOpeningDate,
-        BuildStartOffset: src.BuildStartOffset,
-        EventEndOffset: src.EventEndOffset,
-        StrikeEndOffset: src.StrikeEndOffset,
-        EarlyEntryCapacity: new Dictionary<int, int>(src.EarlyEntryCapacity),
-        BarriosEarlyEntryAllocation: src.BarriosEarlyEntryAllocation is null
-            ? null : new Dictionary<int, int>(src.BarriosEarlyEntryAllocation),
-        EarlyEntryClose: src.EarlyEntryClose);
 
     private EventSettings SeedEventSettings(string name, bool isActive)
     {
         var es = new EventSettings
         {
             Id = Guid.NewGuid(),
+            CreatedAt = Clock.GetCurrentInstant(),
+            UpdatedAt = Clock.GetCurrentInstant()
+        };
+        _calendars[es.Id] = new TestEventCalendar
+        {
+            Id = es.Id,
             EventName = name,
             TimeZoneId = "Europe/Madrid",
             GateOpeningDate = new LocalDate(2026, 7, 1),
@@ -3593,8 +3579,6 @@ public sealed class TeamServiceTests : TeamsTestHarness
             EventEndOffset = 5,
             StrikeEndOffset = 7,
             IsActive = isActive,
-            CreatedAt = Clock.GetCurrentInstant(),
-            UpdatedAt = Clock.GetCurrentInstant()
         };
         ShiftsDb.EventSettings.Add(es);
         return es;

@@ -973,16 +973,20 @@ public sealed class ShiftManagementServiceTests : ShiftsTestHarness
         var es = new EventSettings
         {
             Id = Guid.NewGuid(),
+            IsShiftBrowsingOpen = true,
+            CreatedAt = TestNow,
+            UpdatedAt = TestNow,
+        };
+        Calendars[es.Id] = new TestEventCalendar
+        {
+            Id = es.Id,
             EventName = "Test Event 2026",
             TimeZoneId = "Europe/Madrid",
             GateOpeningDate = new LocalDate(2026, 7, 1),
             BuildStartOffset = -14,
             EventEndOffset = 6,
             StrikeEndOffset = 9,
-            IsShiftBrowsingOpen = true,
             IsActive = true,
-            CreatedAt = TestNow,
-            UpdatedAt = TestNow
         };
         ShiftsDb.EventSettings.Add(es);
 
@@ -1258,7 +1262,7 @@ public sealed class ShiftManagementServiceTests : ShiftsTestHarness
             Id = Guid.NewGuid(),
             IsShiftBrowsingOpen = false,
             CreatedAt = TestNow,
-            UpdatedAt = TestNow
+            UpdatedAt = TestNow,
         };
         ShiftsDb.EventSettings.Add(existing);
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
@@ -1410,6 +1414,12 @@ public sealed class ShiftManagementServiceTests : ShiftsTestHarness
         var es = new EventSettings
         {
             Id = Guid.NewGuid(),
+            CreatedAt = TestNow,
+            UpdatedAt = TestNow,
+        };
+        Calendars[es.Id] = new TestEventCalendar
+        {
+            Id = es.Id,
             EventName = "Active 2026",
             TimeZoneId = "Europe/Madrid",
             GateOpeningDate = new LocalDate(2026, 7, 1),
@@ -1417,8 +1427,6 @@ public sealed class ShiftManagementServiceTests : ShiftsTestHarness
             EventEndOffset = 6,
             StrikeEndOffset = 9,
             IsActive = true,
-            CreatedAt = TestNow,
-            UpdatedAt = TestNow
         };
         ShiftsDb.EventSettings.Add(es);
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);

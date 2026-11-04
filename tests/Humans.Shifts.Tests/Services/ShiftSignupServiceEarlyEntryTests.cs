@@ -84,7 +84,7 @@ public sealed class ShiftSignupServiceEarlyEntryTests : ShiftsTestHarness
     public async Task SignUpAsync_IgnoresCapacityUsageFromDifferentEarlyEntryDay()
     {
         var (eventSettings, rota) = SeedBuildScenario();
-        eventSettings.EarlyEntryCapacity = new Dictionary<int, int>
+        Calendars[eventSettings.Id].EarlyEntryCapacity = new Dictionary<int, int>
         {
             [-3] = 2,
             [-2] = 1
@@ -105,7 +105,7 @@ public sealed class ShiftSignupServiceEarlyEntryTests : ShiftsTestHarness
     public async Task SignUpRangeAsync_WarnsWhenLaterEarlyEntryDayIsFull()
     {
         var (eventSettings, rota) = SeedBuildScenario();
-        eventSettings.EarlyEntryCapacity = new Dictionary<int, int>
+        Calendars[eventSettings.Id].EarlyEntryCapacity = new Dictionary<int, int>
         {
             [-3] = 2,
             [-2] = 2,
@@ -129,16 +129,20 @@ public sealed class ShiftSignupServiceEarlyEntryTests : ShiftsTestHarness
         var eventSettings = new EventSettings
         {
             Id = Guid.NewGuid(),
+            IsShiftBrowsingOpen = true,
+            CreatedAt = TestNow,
+            UpdatedAt = TestNow,
+        };
+        Calendars[eventSettings.Id] = new TestEventCalendar
+        {
+            Id = eventSettings.Id,
             EventName = "Test Event 2026",
             TimeZoneId = "Europe/Madrid",
             GateOpeningDate = new LocalDate(2026, 7, 1),
             BuildStartOffset = -14,
             EventEndOffset = 6,
             StrikeEndOffset = 9,
-            IsShiftBrowsingOpen = true,
             IsActive = true,
-            CreatedAt = TestNow,
-            UpdatedAt = TestNow
         };
         ShiftsDb.EventSettings.Add(eventSettings);
 

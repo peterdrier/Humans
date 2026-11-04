@@ -139,48 +139,26 @@ public abstract class ShiftsTestHarness : IDisposable
         GC.SuppressFinalize(this);
     }
 
+    /// <summary>Settings' calendars, by event id, that <see cref="NewCalendarResolver"/> serves.</summary>
+    private protected Dictionary<Guid, TestEventCalendar> Calendars { get; } = [];
+
     /// <summary>
-    /// A resolver whose fake <see cref="ISettingsService"/> serves the <see cref="EventSettings"/>
-    /// rows seeded in <see cref="ShiftsDb"/> at call time (their legacy offset columns play Settings' values), and
-    /// whose Shifts overlay reads the same database.
+    /// A resolver whose fake <see cref="ISettingsService"/> serves <see cref="Calendars"/> at call time, and whose
+    /// Shifts overlay reads <see cref="ShiftsDb"/>.
     /// </summary>
     private protected EventCalendarResolver NewCalendarResolver()
     {
         var settingsService = Substitute.For<ISettingsService>();
 
         settingsService.GetEventSettingsByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
-            .Returns(async ci =>
-            {
-                var id = ci.Arg<Guid>();
-                var local = ShiftsDb.EventSettings.Local.FirstOrDefault(e => e.Id == id)
-                    ?? await ShiftsDb.EventSettings.FirstOrDefaultAsync(e => e.Id == id, ci.Arg<CancellationToken>());
-                return local is null ? null : ToEventSettingsInfo(local);
-            });
+            .Returns(ci => Task.FromResult(
+                Calendars.TryGetValue(ci.Arg<Guid>(), out var cal) ? cal.ToInfo() : null));
 
         settingsService.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>())
-            .Returns(async ci =>
-            {
-                var local = ShiftsDb.EventSettings.Local.FirstOrDefault(e => e.IsActive)
-                    ?? await ShiftsDb.EventSettings.FirstOrDefaultAsync(e => e.IsActive, ci.Arg<CancellationToken>());
-                return local is null ? null : ToEventSettingsInfo(local);
-            });
+            .Returns(_ => Task.FromResult(Calendars.Values.FirstOrDefault(c => c.IsActive)?.ToInfo()));
 
         return new EventCalendarResolver(settingsService, new Humans.Shifts.Data.ShiftRepository(ShiftsDbFactory, ShiftsDb, Clock));
     }
-
-    private static EventSettingsInfo ToEventSettingsInfo(EventSettings src) => new(
-        Id: src.Id,
-        EventName: src.EventName,
-        Year: src.Year,
-        TimeZoneId: src.TimeZoneId,
-        GateOpeningDate: src.GateOpeningDate,
-        BuildStartOffset: src.BuildStartOffset,
-        EventEndOffset: src.EventEndOffset,
-        StrikeEndOffset: src.StrikeEndOffset,
-        EarlyEntryCapacity: new Dictionary<int, int>(src.EarlyEntryCapacity),
-        BarriosEarlyEntryAllocation: src.BarriosEarlyEntryAllocation is null
-            ? null : new Dictionary<int, int>(src.BarriosEarlyEntryAllocation),
-        EarlyEntryClose: src.EarlyEntryClose);
 
     /// <summary>An <see cref="IUserService"/> whose batch read projects this harness's in-memory users.</summary>
     private protected IUserService NewDbBackedUserService()

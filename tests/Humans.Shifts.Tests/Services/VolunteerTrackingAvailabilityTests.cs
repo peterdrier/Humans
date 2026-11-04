@@ -304,6 +304,12 @@ public sealed class VolunteerTrackingAvailabilityTests : ShiftsTestHarness
         var es = new EventSettings
         {
             Id = Guid.NewGuid(),
+            CreatedAt = TestNow,
+            UpdatedAt = TestNow,
+        };
+        Calendars[es.Id] = new TestEventCalendar
+        {
+            Id = es.Id,
             EventName = "Test Event",
             TimeZoneId = "Europe/Madrid",
             GateOpeningDate = new LocalDate(2026, 7, 1),
@@ -311,8 +317,6 @@ public sealed class VolunteerTrackingAvailabilityTests : ShiftsTestHarness
             EventEndOffset = 6,
             StrikeEndOffset = 9,
             IsActive = true,
-            CreatedAt = TestNow,
-            UpdatedAt = TestNow
         };
         ShiftsDb.EventSettings.Add(es);
         return es.Id;

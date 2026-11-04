@@ -70,14 +70,6 @@ public class ShiftRepositoryRotaSearchTests(HumansTestDatabase database)
         var es = new EventSettings
         {
             Id = Guid.NewGuid(),
-            EventName = $"RotaSearch-{Guid.NewGuid():N}",
-            Year = 2026,
-            TimeZoneId = "Europe/Madrid",
-            GateOpeningDate = new LocalDate(2026, 7, 1),
-            BuildStartOffset = -10,
-            EventEndOffset = 6,
-            StrikeEndOffset = 8,
-            IsActive = true,
             CreatedAt = now,
             UpdatedAt = now,
         };

@@ -1,3 +1,4 @@
+using Humans.Camps.Contracts;
 using Humans.Camps.Data;
 using Humans.Camps.Domain;
 using Humans.AuditLog.Contracts;
@@ -151,7 +152,7 @@ public class StoreControllerTests(HumansTestDatabase database) : IntegrationTest
         using var scope = Factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<CampsDbContext>();
         var storeDb = scope.ServiceProvider.GetRequiredService<StoreDbContext>();
-        var year = (await db.CampSettings.FirstAsync(Xunit.TestContext.Current.CancellationToken)).PublicYear;
+        var year = (await scope.ServiceProvider.GetRequiredService<ICampService>().GetSettingsAsync(Xunit.TestContext.Current.CancellationToken)).PublicYear;
 
         if (await storeDb.Products.AnyAsync(p => p.Year == year && p.Name == name, Xunit.TestContext.Current.CancellationToken))
             return year;
@@ -178,7 +179,7 @@ public class StoreControllerTests(HumansTestDatabase database) : IntegrationTest
     {
         using var scope = Factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<CampsDbContext>();
-        var year = (await db.CampSettings.FirstAsync(Xunit.TestContext.Current.CancellationToken)).PublicYear;
+        var year = (await scope.ServiceProvider.GetRequiredService<ICampService>().GetSettingsAsync(Xunit.TestContext.Current.CancellationToken)).PublicYear;
         var season = await db.Set<CampSeason>()
             .AsNoTracking()
             .FirstOrDefaultAsync(s => s.Year == year && s.Camp.Slug == "barrio-1", Xunit.TestContext.Current.CancellationToken);

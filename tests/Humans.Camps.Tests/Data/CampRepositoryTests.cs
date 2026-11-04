@@ -247,7 +247,6 @@ public sealed class CampRepositoryTests : IDisposable
         _dbContext.CampSettings.Add(new CampSettings
         {
             Id = Guid.NewGuid(),
-            PublicYear = 2026,
             OpenSeasons = [2026]
         });
         await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
@@ -255,7 +254,7 @@ public sealed class CampRepositoryTests : IDisposable
         var settings = await _repo.GetSettingsReadOnlyAsync(Xunit.TestContext.Current.CancellationToken);
 
         settings.Should().NotBeNull();
-        settings.PublicYear.Should().Be(2026);
+        settings.OpenSeasons.Should().Equal(2026);
     }
 
     [HumansFact]
@@ -538,7 +537,6 @@ public sealed class CampRepositoryTests : IDisposable
         _dbContext.CampSettings.Add(new CampSettings
         {
             Id = Guid.NewGuid(),
-            PublicYear = 2026,
             OpenSeasons = [2026]
         });
         await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);

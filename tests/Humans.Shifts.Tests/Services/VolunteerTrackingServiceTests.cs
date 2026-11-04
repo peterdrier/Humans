@@ -835,7 +835,7 @@ public class VolunteerTrackingServiceTests
         => new(userId, year, status, ParticipationSource.UserDeclared, null, null);
 
     private static VolunteerTrackingService BuildSut(
-        EventSettings? activeEvent,
+        TestEventCalendar? activeEvent,
         IReadOnlyList<EligibleBuildSignup>? signups = null,
         IReadOnlyList<VolunteerBuildStatus>? buildStatuses = null,
         IReadOnlyList<EventParticipationInfo>? participations = null,
@@ -851,7 +851,7 @@ public class VolunteerTrackingServiceTests
             .Returns(signups ?? []);
 
         var settingsService = Substitute.For<ISettingsService>();
-        var calendar = activeEvent is null ? null : ToEventSettingsInfo(activeEvent);
+        var calendar = activeEvent?.ToInfo();
         settingsService.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns(calendar);
         settingsService.GetEventSettingsByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(ci => calendar is not null && calendar.Id == ci.Arg<Guid>() ? calendar : null);
@@ -894,21 +894,7 @@ public class VolunteerTrackingServiceTests
             audit ?? Substitute.For<IAuditLogService>());
     }
 
-    private static EventSettingsInfo ToEventSettingsInfo(EventSettings src) => new(
-        Id: src.Id,
-        EventName: src.EventName,
-        Year: src.Year,
-        TimeZoneId: src.TimeZoneId,
-        GateOpeningDate: src.GateOpeningDate,
-        BuildStartOffset: src.BuildStartOffset,
-        EventEndOffset: src.EventEndOffset,
-        StrikeEndOffset: src.StrikeEndOffset,
-        EarlyEntryCapacity: new Dictionary<int, int>(src.EarlyEntryCapacity),
-        BarriosEarlyEntryAllocation: src.BarriosEarlyEntryAllocation is null
-            ? null : new Dictionary<int, int>(src.BarriosEarlyEntryAllocation),
-        EarlyEntryClose: src.EarlyEntryClose);
-
-    private static EventSettings MakeEvent(int buildStartOffset = -5, LocalDate? gateOpening = null)
+    private static TestEventCalendar MakeEvent(int buildStartOffset = -5, LocalDate? gateOpening = null)
         => new()
         {
             Id = Guid.NewGuid(),
@@ -920,8 +906,6 @@ public class VolunteerTrackingServiceTests
             EventEndOffset = 6,
             StrikeEndOffset = 9,
             IsActive = true,
-            CreatedAt = TestNow,
-            UpdatedAt = TestNow,
         };
 
     private sealed class FakeVolunteerTrackingRepository(

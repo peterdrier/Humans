@@ -65,7 +65,7 @@ The shapes imply:
 - `MaxVolunteers` is a hard ceiling on every confirming path (sign-up, approve, voluntell,
   approve-range). `MinVolunteers ≤ MaxVolunteers` on every create/update/generate path.
 - A block (`SignupBlockId`) is bailed / approved / refused as one.
-- Exactly one active `EventSettings`; rotas are created only against it and only on non-system
+- Rotas are created only against an event Settings knows about, and only on non-system
   teams; a rota moves only to a top-level non-system department.
 - Regular volunteers see only visible rotas and non-`AdminOnly` shifts; after
   `EarlyEntryClose` they cannot touch Build-period signups; when browsing is closed they see
