@@ -48,8 +48,11 @@ internal sealed record CreditorAccountRowVm(
     /// <summary>The masked IBAN keeps its first four characters, so the country survives masking.</summary>
     public string? IbanCountry => IbanMasked is { Length: >= 2 } iban ? iban[..2] : null;
 
-    /// <summary>Null for a country outside the IBAN registry. Non-euro transfers cost a bank fee.</summary>
+    /// <summary>The country's domestic currency, informational only: the SEPA file always sends EUR.</summary>
     public string? IbanCurrency => Humans.Base.Helpers.IbanValidator.CurrencyOf(IbanMasked);
+
+    /// <summary>Outside the EEA (or unknown), EU fee rules don't apply and the bank charges per transfer.</summary>
+    public bool IbanOutsideEea => IbanCountry is not null && Humans.Base.Helpers.IbanValidator.IsEea(IbanMasked) != true;
 
     /// <summary>Unbound rows sort last: an admin sorting by member is looking for people, not gaps.</summary>
     public string MemberSortKey => Bindings.Count == 0

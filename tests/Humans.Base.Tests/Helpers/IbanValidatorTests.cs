@@ -69,4 +69,13 @@ public class IbanValidatorTests
     {
         IbanValidator.CurrencyOf(iban).Should().Be(expected);
     }
+
+    [HumansTheory]
+    [InlineData("SE45****000", true)]
+    [InlineData("GB29****819", false)]
+    [InlineData("XX00****000", null)]
+    public void IsEea_ReadsTheCountryEvenWhenMasked(string iban, bool? expected)
+    {
+        IbanValidator.IsEea(iban).Should().Be(expected);
+    }
 }
