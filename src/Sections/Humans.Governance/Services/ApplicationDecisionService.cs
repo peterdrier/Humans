@@ -486,13 +486,7 @@ internal sealed class ApplicationDecisionService(
             ApplicationMotivation: a.Motivation,
             SubmittedAt: a.SubmittedAt,
             Status: a.Status,
-            Votes: a.BoardVotes
-                .Select(v => new BoardVoteRow(
-                    BoardMemberUserId: v.BoardMemberUserId,
-                    Vote: v.Vote,
-                    Note: v.Note,
-                    VotedAt: v.VotedAt))
-                .ToList())).ToList();
+            Votes: ProjectBoardVotes(a))).ToList();
 
         var boardMemberIds = await roleAssignmentService.GetActiveUserIdsInRoleAsync(
             RoleNames.Board, ct);
@@ -514,14 +508,6 @@ internal sealed class ApplicationDecisionService(
         var applicantInfo = await userService.GetUserInfoAsync(application.UserId, ct);
         var profile = applicantInfo?.Profile;
 
-        var voteRows = application.BoardVotes
-            .Select(v => new BoardVoteRow(
-                BoardMemberUserId: v.BoardMemberUserId,
-                Vote: v.Vote,
-                Note: v.Note,
-                VotedAt: v.VotedAt))
-            .ToList();
-
         return new BoardVotingDetailData(
             ApplicationId: application.Id,
             UserId: application.UserId,
@@ -534,7 +520,7 @@ internal sealed class ApplicationDecisionService(
             SignificantContribution: application.SignificantContribution,
             RoleUnderstanding: application.RoleUnderstanding,
             SubmittedAt: application.SubmittedAt,
-            Votes: voteRows);
+            Votes: ProjectBoardVotes(application));
     }
 
     public async Task<ApplicationDecisionResult> CastBoardVoteAsync(
@@ -687,6 +673,15 @@ internal sealed class ApplicationDecisionService(
 
     public Task EraseForUserAsync(Guid userId, CancellationToken ct) =>
         repository.ScrubFreeTextForUserAsync(userId, clock.GetCurrentInstant(), ct);
+
+    private static IReadOnlyList<BoardVoteRow> ProjectBoardVotes(MemberApplication application) =>
+        application.BoardVotes
+            .Select(vote => new BoardVoteRow(
+                BoardMemberUserId: vote.BoardMemberUserId,
+                Vote: vote.Vote,
+                Note: vote.Note,
+                VotedAt: vote.VotedAt))
+            .ToList();
 
     private static IReadOnlyList<ApplicationStateHistoryDto> ProjectHistory(MemberApplication application) =>
         application.StateHistory

@@ -277,7 +277,7 @@ public sealed class MagicLinkServiceTests
     }
 
     [HumansFact]
-    public async Task SendLoginLink_Sends_KeepsReservationAndWritesNothingToUsers()
+    public async Task SendLoginLink_Sends_KeepsReservation()
     {
         var userId = Guid.NewGuid();
         var user = new User
@@ -323,7 +323,7 @@ public sealed class MagicLinkServiceTests
     [HumansFact]
     public async Task VerifyLoginTokenAsync_NonexistentUser_ReturnsFalse()
     {
-        _userService.GetUserInfoAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns((UserInfo?)null);
+        _userService.GetRawUserInfoAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns((UserInfo?)null);
 
         var result = await _service.VerifyLoginTokenAsync(Guid.NewGuid(), "some-token", Xunit.TestContext.Current.CancellationToken);
 
@@ -335,7 +335,7 @@ public sealed class MagicLinkServiceTests
     {
         var userId = Guid.NewGuid();
         var user = new User { Id = userId, UserName = "test@test.com" };
-        _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(CreateUserInfo(user));
+        _userService.GetRawUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(CreateUserInfo(user));
         _urlBuilder.UnprotectLoginToken("bad-token").Returns((string?)null);
 
         var result = await _service.VerifyLoginTokenAsync(userId, "bad-token", Xunit.TestContext.Current.CancellationToken);
@@ -348,7 +348,7 @@ public sealed class MagicLinkServiceTests
     {
         var userId = Guid.NewGuid();
         var user = new User { Id = userId, UserName = "test@test.com" };
-        _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(CreateUserInfo(user));
+        _userService.GetRawUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(CreateUserInfo(user));
         _urlBuilder.UnprotectLoginToken("good-token").Returns(userId.ToString());
         _rateLimiter.TryConsumeTokenAsync("good-token", Arg.Any<TimeSpan>()).Returns(false);
 
@@ -362,12 +362,67 @@ public sealed class MagicLinkServiceTests
     {
         var userId = Guid.NewGuid();
         var user = new User { Id = userId, UserName = "test@test.com" };
-        _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(CreateUserInfo(user));
+        _userService.GetRawUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(CreateUserInfo(user));
         _urlBuilder.UnprotectLoginToken("good-token").Returns(userId.ToString());
 
         var result = await _service.VerifyLoginTokenAsync(userId, "good-token", Xunit.TestContext.Current.CancellationToken);
 
         result.Should().BeTrue();
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task VerifyLoginTokenAsync_MergedIdentity_KeepsOriginalTokenBinding(bool survivorPayload)
+    {
+        var userId = Guid.NewGuid();
+        var survivorId = Guid.NewGuid();
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        _userService.GetRawUserInfoAsync(userId, ct).Returns(CreateUserInfo(
+            new User { Id = userId, State = UserState.Merged, MergedToUserId = survivorId }));
+        _urlBuilder.UnprotectLoginToken("merged-token")
+            .Returns((survivorPayload ? survivorId : userId).ToString());
+
+        var result = await _service.VerifyLoginTokenAsync(userId, "merged-token", ct);
+
+        result.Should().Be(!survivorPayload);
+        await _userService.Received(1).GetRawUserInfoAsync(userId, ct);
+        if (survivorPayload)
+            await _rateLimiter.DidNotReceiveWithAnyArgs().TryConsumeTokenAsync(default!, default);
+    }
+
+    [HumansFact]
+    public async Task SendMagicLinkAsync_MergedIdentity_BindsLinkToOriginalIdAndResolvesDisplayData()
+    {
+        var userId = Guid.NewGuid();
+        var survivorId = Guid.NewGuid();
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        _userEmailService.FindByAddressAsync("source@example.com", true, true, ct)
+            .Returns([UserEmailFixtures.Row(userId, "source@example.com")]);
+        _userService.GetUserInfoAsync(userId, ct).Returns(CreateUserInfo(
+            new User { Id = survivorId, BurnerName = "Survivor" }));
+
+        await _service.SendMagicLinkAsync("source@example.com", null, ct);
+
+        _urlBuilder.Received(1).BuildLoginUrl(userId, null);
+        await _emailService.Received(1).SendAsync(
+            Arg.Is<EmailMessage>(m => m.UserId == userId && m.RecipientName == "Survivor"), ct);
+    }
+
+    [HumansFact]
+    public async Task VerifyLoginTokenAsync_IdentityReadCancellation_StopsBeforeTokenReservation()
+    {
+        using var cancellation = new CancellationTokenSource();
+        await cancellation.CancelAsync();
+        var ct = cancellation.Token;
+        var userId = Guid.NewGuid();
+        _userService.GetRawUserInfoAsync(userId, ct)
+            .Returns(ValueTask.FromCanceled<UserInfo?>(ct));
+
+        var act = async () => { _ = await _service.VerifyLoginTokenAsync(userId, "token", ct); };
+
+        await act.Should().ThrowAsync<OperationCanceledException>();
+        _rateLimiter.ReceivedCalls().Should().BeEmpty();
     }
 
     [HumansFact]

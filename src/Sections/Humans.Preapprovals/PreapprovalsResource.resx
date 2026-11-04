@@ -112,4 +112,5 @@
   <data name="Preapprovals_BreadcrumbNavigation" xml:space="preserve"><value>Breadcrumb</value></data>
   <data name="Preapprovals_Error_AmountPrecision" xml:space="preserve"><value>Amounts must have at most two decimal places.</value></data>
   <data name="Preapprovals_Error_AmountTooLarge" xml:space="preserve"><value>The amount is too large.</value></data>
+  <data name="Preapprovals_Error_PersonUnavailable" xml:space="preserve"><value>This member account is no longer available.</value></data>
 </root>

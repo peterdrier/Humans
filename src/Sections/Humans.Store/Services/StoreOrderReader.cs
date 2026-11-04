@@ -32,7 +32,9 @@ internal sealed class StoreOrderReader(
         CancellationToken ct)
     {
         var year = await GetCurrentEventYearAsync(ct);
-        var catalog = await GetActiveCatalogAsync(year, ct);
+        var products = await repo.GetAllProductsForYearAsync(year, ct);
+        var catalog = products.Where(product => product.IsActive).Select(MapProduct).ToList();
+        var currentPrices = ToPrices(products);
 
         var counterparties = new List<CounterpartyOrders>();
 
@@ -66,7 +68,6 @@ internal sealed class StoreOrderReader(
         var productIds = campOrders.Concat(teamOrders)
             .SelectMany(o => o.Lines).Select(l => l.ProductId).Distinct().ToList();
         var productNames = await LoadProductNamesAsync(productIds, ct);
-        var currentPrices = await LoadCurrentPricesAsync(ct);
         var campOrdersBySeason = campOrders.ToLookup(o => o.CampSeasonId);
         var teamOrdersByTeam = teamOrders.ToLookup(o => o.TeamId);
 
@@ -146,12 +147,14 @@ internal sealed class StoreOrderReader(
         CancellationToken ct)
     {
         var catalogYear = await GetCurrentEventYearAsync(ct);
-        var prices = new Dictionary<Guid, BalanceCalculator.ProductPrice>();
-        foreach (var product in await repo.GetAllProductsForYearAsync(catalogYear, ct))
-            prices[product.Id] = new BalanceCalculator.ProductPrice(
-                product.UnitPriceEur, product.VatRatePercent, product.DepositAmountEur);
-        return prices;
+        return ToPrices(await repo.GetAllProductsForYearAsync(catalogYear, ct));
     }
+
+    private static IReadOnlyDictionary<Guid, BalanceCalculator.ProductPrice> ToPrices(IEnumerable<Product> products) =>
+        products.ToDictionary(
+            product => product.Id,
+            product => new BalanceCalculator.ProductPrice(
+                product.UnitPriceEur, product.VatRatePercent, product.DepositAmountEur));
 
     public async Task<IReadOnlyDictionary<Guid, string>> LoadProductNamesAsync(
         IReadOnlyCollection<Guid> productIds, CancellationToken ct) =>
@@ -249,9 +252,7 @@ internal sealed class StoreOrderReader(
 
         // Reprice Open orders like the order page does, but from the requested year's products: a historical summary
         // must not reprice against a later year's prices.
-        var currentPrices = products.ToDictionary(
-            p => p.Id,
-            p => new BalanceCalculator.ProductPrice(p.UnitPriceEur, p.VatRatePercent, p.DepositAmountEur));
+        var currentPrices = ToPrices(products);
 
         return new YearContext(seasonsForYear, products, departmentIds, teamNames, currentPrices);
     }

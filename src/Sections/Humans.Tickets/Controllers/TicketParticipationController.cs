@@ -35,8 +35,10 @@ internal sealed class TicketParticipationController(
                 return Redirect("/");
             }
 
-            await participations.DeclareNotAttendingAsync(user.Id, eventYear.Value);
-            SetSuccess(localizer["Tickets_NotAttending_Declared"].Value);
+            if (await participations.DeclareNotAttendingAsync(user.Id, eventYear.Value))
+                SetSuccess(localizer["Tickets_NotAttending_Declared"].Value);
+            else
+                SetError(localizer["Tickets_NotAttending_AlreadyAttended"].Value);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {

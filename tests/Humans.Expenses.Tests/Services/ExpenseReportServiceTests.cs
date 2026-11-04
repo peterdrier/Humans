@@ -2557,11 +2557,67 @@ public sealed partial class ExpenseReportServiceTests
         (await _sut.GetAsync(reportId, TestContext.Current.CancellationToken))!.Status.Should().Be(ExpenseReportStatus.Submitted);
     }
 
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ReviewerQueueAccountRead_PropagatesCancellation(bool coordinatorQueue)
+    {
+        var userId = Guid.NewGuid();
+        using var request = new CancellationTokenSource();
+        var observed = CancellationToken.None;
+        _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            observed = call.Arg<CancellationToken>();
+            request.Cancel();
+            observed.ThrowIfCancellationRequested();
+            return UserInfo.Create(new User { Id = userId }, [], [], null);
+        });
+        Func<Task> read = coordinatorQueue
+            ? () => _sut.GetCoordinatorQueueAsync(userId, request.Token)
+            : () => _sut.GetReviewQueueAsync(userId, false, request.Token);
+
+        await read.Should().ThrowAsync<OperationCanceledException>();
+        observed.Should().Be(request.Token);
+    }
+
+    [HumansTheory]
+    [InlineData(false, true, true)]
+    [InlineData(true, true, true)]
+    [InlineData(false, true, false)]
+    [InlineData(true, true, false)]
+    [InlineData(false, false, false)]
+    [InlineData(true, false, false)]
+    public async Task ReviewerQueueIdentityResolution_UsesSurvivorAndDeniesMissingAccounts(
+        bool coordinatorQueue, bool accountExists, bool survivorCoordinates)
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var (year, category) = SetupActiveYear();
+        var coordinatorId = Guid.NewGuid();
+        var cookieId = survivorCoordinates ? Guid.NewGuid() : coordinatorId;
+        var survivorId = survivorCoordinates ? coordinatorId : Guid.NewGuid();
+        _userService.GetUserInfoAsync(cookieId, Arg.Any<CancellationToken>()).Returns(accountExists
+            ? UserInfo.Create(new User { Id = survivorId }, [], [], null) with { MergedUserIds = [cookieId] }
+            : null);
+        _teamService.IsUserCoordinatorOfTeamAsync(category.TeamId!.Value, coordinatorId, Arg.Any<CancellationToken>())
+            .Returns(true);
+        var reportId = Guid.NewGuid();
+        await SeedReportWithStatusAsync(reportId, Guid.NewGuid(), category.Id, year.Id, ExpenseReportStatus.Submitted);
+
+        var reports = coordinatorQueue
+            ? await _sut.GetCoordinatorQueueAsync(cookieId, ct)
+            : await _sut.GetReviewQueueAsync(cookieId, isFinanceAdmin: false, ct);
+
+        reports.Select(r => r.Id).Should().BeEquivalentTo(
+            accountExists && survivorCoordinates ? new[] { reportId } : []);
+    }
+
     [HumansFact]
     public async Task GetReviewQueueAsync_ForACoordinator_SkipsReportsOutsideTheBudget()
     {
         var (year, category) = SetupActiveYear();
         var coordinator = Guid.NewGuid();
+        _userService.GetUserInfoAsync(coordinator, Arg.Any<CancellationToken>())
+            .Returns(UserInfo.Create(new User { Id = coordinator }, [], [], null));
         var submitter = Guid.NewGuid();
         _teamService.IsUserCoordinatorOfTeamAsync(category.TeamId!.Value, coordinator, Arg.Any<CancellationToken>())
             .Returns(true);
@@ -3107,6 +3163,8 @@ public sealed partial class ExpenseReportServiceTests
         // A coordinator sees their own reports plus their categories' reports, and nothing else.
         var (_, category) = SetupActiveYear();
         var coordinatorUserId = Guid.NewGuid();
+        _userService.GetUserInfoAsync(coordinatorUserId, Arg.Any<CancellationToken>())
+            .Returns(UserInfo.Create(new User { Id = coordinatorUserId }, [], [], null));
         var yearId = Guid.NewGuid();
 
         var ownId = Guid.NewGuid();
@@ -3133,6 +3191,8 @@ public sealed partial class ExpenseReportServiceTests
     {
         var (_, category) = SetupActiveYear();
         var memberUserId = Guid.NewGuid();
+        _userService.GetUserInfoAsync(memberUserId, Arg.Any<CancellationToken>())
+            .Returns(UserInfo.Create(new User { Id = memberUserId }, [], [], null));
         var yearId = Guid.NewGuid();
 
         var ownId = Guid.NewGuid();
@@ -3237,7 +3297,10 @@ public sealed partial class ExpenseReportServiceTests
     {
         SetupActiveYear();
 
-        var result = await _sut.GetCoordinatorQueueAsync(Guid.NewGuid(), TestContext.Current.CancellationToken);
+        var userId = Guid.NewGuid();
+        _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(UserInfo.Create(new User { Id = userId }, [], [], null));
+        var result = await _sut.GetCoordinatorQueueAsync(userId, TestContext.Current.CancellationToken);
         result.Should().BeEmpty();
     }
 
@@ -3246,6 +3309,8 @@ public sealed partial class ExpenseReportServiceTests
     {
         var (_, category) = SetupActiveYear();
         var coordinatorUserId = Guid.NewGuid();
+        _userService.GetUserInfoAsync(coordinatorUserId, Arg.Any<CancellationToken>())
+            .Returns(UserInfo.Create(new User { Id = coordinatorUserId }, [], [], null));
         var teamId = category.TeamId!.Value;
         var yearId = Guid.NewGuid();
 
@@ -4142,7 +4207,7 @@ public sealed partial class ExpenseReportServiceTests
             .ToList();
         _finance.ListExpenseAccountsAsync(Arg.Any<bool>(), Arg.Any<CancellationToken>()).Returns(options);
         _finance.GetCategoryMapAsync(Arg.Any<CancellationToken>()).Returns(categoryAccounts
-            .Select(a => new CategoryAccountRow(a.CategoryId, null, null, a.AccountNumber, a.AccountId, $"tag-{a.AccountNumber}", true, FakeNow))
+            .Select(a => new CategoryAccountRow(a.CategoryId, null, null, a.AccountNumber, a.AccountId, $"tag-{a.AccountNumber}", FakeNow))
             .ToList());
     }
 

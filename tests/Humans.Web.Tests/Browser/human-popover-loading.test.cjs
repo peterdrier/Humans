@@ -7,24 +7,26 @@ const vm = require('node:vm');
 const source = readFileSync(resolve(__dirname, '../../../src/Humans.Web/wwwroot/js/site.js'), 'utf8');
 const script = source.slice(source.indexOf('// Human profile popover'), source.indexOf('// Admin sidebar'));
 
-function page(responses) {
-    let hover;
+function page(responses, isPublic = false) {
+    const handlers = {};
     let requests = 0;
+    const urls = [];
     const popovers = [];
     const element = {
         closest() { return this; },
         getAttribute() { return 'human-id'; },
-        hasAttribute: name => name === 'data-human-popover',
+        hasAttribute: name => name === (isPublic ? 'data-human-popover-public' : 'data-human-popover'),
     };
     const context = {
-        document: { addEventListener: (_, handler) => { hover = handler; } },
+        document: { addEventListener: (event, handler) => { handlers[event] = handler; } },
         bootstrap: { Popover: class {
             constructor() { this.disposed = false; popovers.push(this); }
             show() {}
             dispose() { this.disposed = true; }
             setContent(content) { this.content = content['.popover-body']; }
         } },
-        fetch: async (_, options) => {
+        fetch: async (url, options) => {
+            urls.push(url);
             const response = responses[requests++];
             if (response instanceof Error) throw response;
             if (response === 'login redirect') {
@@ -37,13 +39,31 @@ function page(responses) {
     vm.createContext(context);
     vm.runInContext(script, context);
     return {
-        element, popovers,
+        element, popovers, urls,
         requests: () => requests,
         hover: async () => {
-            hover({ target: element });
+            handlers.mouseenter({ target: element });
+            await new Promise(resolveDone => setImmediate(resolveDone));
+        },
+        focus: async () => {
+            handlers.focusin?.({ target: element });
             await new Promise(resolveDone => setImmediate(resolveDone));
         },
     };
+}
+
+for (const isPublic of [false, true]) {
+    test(`keyboard focus loads the ${isPublic ? 'public' : 'authenticated'} profile once across focus and hover`, async () => {
+        const ui = page([200], isPublic);
+        await ui.focus();
+        assert.equal(ui.popovers.length, 1);
+        assert.equal(ui.popovers[0].content, '<p>Profile</p>');
+        assert.deepEqual(ui.urls, [isPublic ? '/Profile/human-id/PublicPopover' : '/Profile/human-id/Popover']);
+        await ui.hover();
+        await ui.focus();
+        assert.equal(ui.requests(), 1);
+        assert.equal(ui.popovers.length, 1);
+    });
 }
 
 for (const failure of [503, new Error('offline')]) {

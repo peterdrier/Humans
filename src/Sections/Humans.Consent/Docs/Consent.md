@@ -173,6 +173,10 @@ Document archival uses the shared `data-confirm` handler: each click prompts onc
 
 ## Invariants
 
+- Commit-summary fetch failures remain a null fallback: GitHub API failures log Warning with status only, without raw error bodies or exception stacks; unexpected failures log Error with diagnostics. Caller cancellation still propagates.
+
+- Consent review detail and submission each resolve the person once: profile/name checks and prior-signature lookup use that same snapshot’s complete current/merged ID chain. Other consent-chain reads retain their standalone resolution.
+
 - `ConsentService.GetRequiredConsentRowsForUserAsync` owns required-document row shaping; the cache delegates to it. It selects each document's latest effective version, omits future-only documents, and returns unsigned rows first, then ordinal title order.
 
 - The admin GitHub-folder preview renders pasted URL parts as text. It preserves the full URL until the server validates the configured repository and branch and normalizes the folder path.
@@ -258,6 +262,7 @@ GitHub document discovery, metadata/raw content, commit-summary and prefix-conte
 - Legal document names in notices may outgrow the 200-character title limit. Consent sends full copy to Notifications, which bounds stored previews by Unicode character, preserving the full title and existing detail in the body; short notice copy is unchanged.
 
 - Successful document create, settings edit, archive, and version-summary edit write audit events attributed to the Board/Admin actor, after persistence. A created document remains audited if initial GitHub sync fails.
+- Re-consent batches skip missing or whitespace-only notification addresses with a Warning; required-document selection and signature checks are unchanged.
 - Every persisted new document version writes a publication audit linked to its version ID, before notification fan-out: manual and initial sync name the initiating administrator; scheduled sync names `LegalDocumentSyncService`. Missing rows, failed publication and unchanged-content sync touches do not emit publication events. Signed consent records remain immutable and separate.
 
 ## Cross-Section Dependencies

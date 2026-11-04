@@ -1449,7 +1449,7 @@ internal sealed class AssemblyVoteService(
 
         return roster
             .Where(r => r.UserId is not null
-                && infos.TryGetValue(r.UserId.Value, out var info) && !string.IsNullOrEmpty(info.Email))
+                && infos.TryGetValue(r.UserId.Value, out var info) && !string.IsNullOrWhiteSpace(info.Email))
             .GroupBy(r => infos[r.UserId!.Value].Id)
             .Select(g =>
             {

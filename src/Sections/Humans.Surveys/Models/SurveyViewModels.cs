@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Humans.Surveys.Contracts;
 using Humans.Base.Attributes;
 using Humans.Base.Extensions;
@@ -69,6 +70,7 @@ internal sealed class SurveyIntroViewModel
 internal sealed class SurveyStartViewModel
 {
     public string Token { get; set; } = string.Empty;
+    [BindRequired]
     public ResponseAnonymity Anonymity { get; set; } = ResponseAnonymity.Identified;
     public string Culture { get; set; } = CultureCatalog.DefaultCultureCode;
 }
@@ -149,7 +151,9 @@ internal sealed class SurveyBuilderViewModel
     public Dictionary<string, string> InvitationEmailMessage { get; set; } = new(StringComparer.Ordinal);
 
     public string DefaultCulture { get; set; } = CultureCatalog.DefaultCultureCode;
+    [BindRequired]
     public bool AllowAnonymous { get; set; }
+    [BindRequired]
     public bool IsAsociadoVote { get; set; }
     public LocalDateTime? OpensAt { get; set; }
     public LocalDateTime? ClosesAt { get; set; }

@@ -158,12 +158,12 @@ internal sealed partial class GitHubLegalDocumentConnector : IGitHubLegalDocumen
         catch (ApiException ex)
         {
             // Status code only — ApiException.Message can carry GitHub's raw HTML error body.
-            _logger.LogDebug("GitHub API error fetching commit message for {Sha}: {StatusCode}", sha, ex.StatusCode);
+            _logger.LogWarning("GitHub API error fetching commit message for {Sha}: {StatusCode}", sha, ex.StatusCode);
             return null;
         }
         catch (Exception ex) when (!ct.IsCancellationRequested)
         {
-            _logger.LogDebug(ex, "Could not fetch commit message for {Sha}", sha);
+            _logger.LogError(ex, "Could not fetch commit message for {Sha}", sha);
             return null;
         }
     }

@@ -246,7 +246,7 @@ collapsed.
 
 ### When Holded accepts one posting and refuses the next
 
-The state is **no longer terminal**. On a Holded failure mid-allocation, the ids already accepted
+The state is **retryable, not terminal**. On a Holded failure mid-allocation, the ids already accepted
 are logged and audited (`SepaPayoutTransferBooked`, prefixed `PARTIAL`), but **nothing is written to
 the transfer row** — the row stays unbooked and is retryable. The next attempt re-reads what is
 already posted under the transfer's tag (step 4 above) and continues from there, so nothing is ever
@@ -284,6 +284,8 @@ bound drops to the oldest pending row's first payable day with no feed floor, so
 never ages out of its own re-check. The floor (90 days plus the 2-day generation slack) still bounds
 *matching*, which takes no row generated outside the feed window anyway. A booking the sweep refuses
 is logged at Warning. One bad line or one Holded exception never aborts the rest of the run.
+
+SEPA mutation forms require their transfer/file and bank movement identifiers. Missing identifiers or malformed values return HTTP 400 before booking, withdrawal or cancellation; a malformed tolerance cannot silently become a default booking window.
 
 ## One line per transfer, no text — Book file
 

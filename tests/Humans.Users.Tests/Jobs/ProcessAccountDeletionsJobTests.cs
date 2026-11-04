@@ -155,19 +155,30 @@ public class ProcessAccountDeletionsJobTests : IDisposable
             Arg.Is<EmailMessage>(m => m.RecipientName == "Test User"), Arg.Any<CancellationToken>());
     }
 
-    [HumansFact]
-    public async Task ExecuteAsync_SkipsEmailWhenOriginalEmailIsNull()
+    [HumansTheory]
+    [Xunit.InlineData(null)]
+    [Xunit.InlineData("")]
+    [Xunit.InlineData(" \t ")]
+    public async Task ExecuteAsync_BlankOriginalEmail_SkipsMailButCompletesAnonymization(string? originalEmail)
     {
         var userId = Guid.NewGuid();
         _userService.GetAccountsDueForAnonymizationAsync(Now, Arg.Any<CancellationToken>())
             .Returns([userId]);
         _accountDeletionService.AnonymizeExpiredAccountAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new AnonymizedAccountSummary(
-                OriginalEmail: null,
+                OriginalEmail: originalEmail,
                 OriginalBurnerName: "Orphan User",
                 PreferredLanguage: "en"));
 
-        await _job.ExecuteAsync(Xunit.TestContext.Current.CancellationToken);
+        var metrics = Substitute.For<IHumansMetrics>();
+        var job = new ProcessAccountDeletionsJob(
+            _userService, _accountDeletionService, _emailService, _emailMessages, _auditLogService, metrics, _logger, _clock);
+
+        await job.ExecuteAsync(Xunit.TestContext.Current.CancellationToken);
+
+        metrics.Received(1).RecordJobRun("process_account_deletions", "success");
+        metrics.DidNotReceive().RecordJobRun("process_account_deletions", "failure");
+        await _accountDeletionService.Received(1).AnonymizeExpiredAccountAsync(userId, Arg.Any<CancellationToken>());
 
         await _emailService.DidNotReceiveWithAnyArgs().SendAsync(default!);
 

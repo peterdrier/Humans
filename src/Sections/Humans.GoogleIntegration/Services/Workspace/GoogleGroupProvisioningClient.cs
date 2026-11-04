@@ -95,6 +95,11 @@ internal sealed class GoogleGroupProvisioningClient(
                 GroupNumericId: null,
                 Error: new GoogleClientError(ex.Error?.Code ?? 0, ex.Error?.Message));
         }
+        catch (Exception ex) when (GoogleClientError.IsTransportError(ex))
+        {
+            logger.LogWarning(ex, "Transport error creating group {Email}", groupEmail);
+            return new GroupCreateResult(GroupNumericId: null, Error: new GoogleClientError(0, ex.Message));
+        }
     }
 
     public async Task<GroupLookupIdResult> LookupGroupIdAsync(
@@ -120,6 +125,11 @@ internal sealed class GoogleGroupProvisioningClient(
                 GroupNumericId: null,
                 Error: new GoogleClientError(ex.Error?.Code ?? 0, ex.Error?.Message));
         }
+        catch (Exception ex) when (GoogleClientError.IsTransportError(ex))
+        {
+            logger.LogWarning(ex, "Transport error looking up group {Email}", groupEmail);
+            return new GroupLookupIdResult(GroupNumericId: null, Error: new GoogleClientError(0, ex.Message));
+        }
     }
 
     public async Task<GroupSettingsGetResult> GetGroupSettingsAsync(
@@ -144,6 +154,11 @@ internal sealed class GoogleGroupProvisioningClient(
                 Settings: null,
                 Error: new GoogleClientError(ex.Error?.Code ?? 0, ex.Error?.Message));
         }
+        catch (Exception ex) when (GoogleClientError.IsTransportError(ex))
+        {
+            logger.LogWarning(ex, "Transport error reading settings for group {Email}", groupEmail);
+            return new GroupSettingsGetResult(Settings: null, Error: new GoogleClientError(0, ex.Message));
+        }
     }
 
     public async Task<GoogleClientError?> UpdateGroupSettingsAsync(
@@ -166,6 +181,11 @@ internal sealed class GoogleGroupProvisioningClient(
                 "Google API error updating settings for group {Email}: Code={Code} Message={Message}",
                 groupEmail, ex.Error?.Code, ex.Error?.Message);
             return new GoogleClientError(ex.Error?.Code ?? 0, ex.Error?.Message);
+        }
+        catch (Exception ex) when (GoogleClientError.IsTransportError(ex))
+        {
+            logger.LogWarning(ex, "Transport error updating settings for group {Email}", groupEmail);
+            return new GoogleClientError(0, ex.Message);
         }
     }
 

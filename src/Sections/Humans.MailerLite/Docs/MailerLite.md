@@ -54,11 +54,13 @@ All routes are `AdminOnly`.
 
 ## Invariants
 
+- Expected audience-preview HTTP failures and timeouts remain visible at Warning without exception stacks. Unexpected subscriber assignment/removal exceptions log at Error with exception details; the sync still counts the failed operation and continues.
+
 - Import commits reject binding errors with HTTP 400 and a Warning before rebuilding or applying a plan, so a malformed numeric limit cannot become an unlimited import. A valid blank limit still applies the whole plan; positive limits retain their existing per-outcome throttle.
 
 - Shared table currency and number cells use the selected UI culture; numeric sort values stay invariant.
 
-- Audience debug expected/to-add rows use canonical `UserInfo.Email`, including verified-secondary fallback when no verified primary exists, and exclude empty addresses like the actual sync.
+- Audience debug expected/to-add rows use canonical `UserInfo.Email`, including verified-secondary fallback when no verified primary exists, and exclude missing or whitespace-only addresses like the actual sync.
 
 - Audience debug tables normalize the requested page and allowed page size once before slicing. Rows and pager state use the same available page, including the last page for oversized requests and page one for empty tables.
 
@@ -77,6 +79,7 @@ All routes are `AdminOnly`.
 - The drift report counts distinct verified humans opted out in Humans who have at least one active Website subscriber address; multiple active addresses for one human count once.
 - One human, one Marketing decision: when several of a human's verified addresses sit in the `Website` group, the import resolves them to one governing subscriber before classifying or applying — any opt-out status (`unsubscribed`, `bounced`, `junk`) beats `active`, bounce/junk beat `unsubscribed`, then the most recent ML action, then email. An active address never overrides an opt-out, and the result does not depend on enumeration order. The preview lists each address under its human's resolved outcome; apply writes once per human, resolving across the human's addresses in the whole plan (throttled ones included). Pinned by `MailerLiteImportServiceSameHumanTests`.
 - The scheduled audience sync attempts every audience, then fails the job if any registered audience has no result or any result contains subscriber-operation errors. Hangfire can retry the incomplete run; the admin Push All action keeps its partial-result banner and counts.
+- Audience sync queues one import per address under the existing trim/case normalization and one group assignment per subscriber ID, even when several candidate IDs resolve to the same destination. Successful-operation and failure counts reflect those unique writes; candidate, suppression and already-assigned accounting retain their per-candidate meaning.
 - `SyncAsync` is idempotent: a second run against unchanged audience+ML state writes zero ML mutations and exactly one `MailerLiteAudienceSyncCompleted` summary entry whose counts are all zero.
 - Bounced/junk subscribers always set `OptedOut = true` regardless of any Humans-side timestamp. Delivery facts override preferences.
 - For non-bounce subscribers, Humans state wins only when the prior write's `UpdateSource ∈ {Profile, Guest, MagicLink, OneClick}` AND `UpdatedAt > mlActionAt`.

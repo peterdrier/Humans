@@ -36,8 +36,8 @@ public class User : IdentityUser<Guid>
 
     public Instant? LastLoginAt { get; set; }
 
-    /// <summary>The only cross-domain nav on User; the Email override needs it.</summary>
-    public ICollection<UserEmail> UserEmails { get; } = new List<UserEmail>();
+    /// <summary>Owned by Users; the Email override needs this navigation.</summary>
+    internal ICollection<UserEmail> UserEmails { get; } = new List<UserEmail>();
 
     /// <summary>
     /// First verified row, primary first; falls back to base.Email when UserEmails isn't loaded, so always

@@ -228,6 +228,7 @@ public class NotificationMeterProviderTests : IDisposable
         var onboardingMeter = meters.Single(m =>
             string.Equals(m.Title, "Onboarding profiles pending", StringComparison.Ordinal));
         onboardingMeter.Count.Should().Be(1);
+        onboardingMeter.Audience.Should().Be("the Board");
     }
 
     [HumansFact]
@@ -242,7 +243,8 @@ public class NotificationMeterProviderTests : IDisposable
 
         meters.Should().ContainSingle(m =>
             string.Equals(m.Title, "Onboarding profiles pending", StringComparison.Ordinal) &&
-            string.Equals(m.ActionUrl, "/Consent/ReviewQueue", StringComparison.Ordinal));
+            string.Equals(m.ActionUrl, "/Consent/ReviewQueue", StringComparison.Ordinal) &&
+            string.Equals(m.Audience, "Shifts Admins", StringComparison.Ordinal));
     }
 
     [HumansFact]
@@ -266,15 +268,17 @@ public class NotificationMeterProviderTests : IDisposable
             m.Count == 2);
     }
 
-    [HumansFact]
-    public async Task GetMetersForUserAsync_ConsentCoordinator_SeesConsentReviewsPending()
+    [HumansTheory]
+    [InlineData(ConsentRoles.ConsentCoordinator)]
+    [InlineData(RoleNames.Admin)]
+    public async Task GetMetersForUserAsync_ConsentReviewer_SeesConsentReviewsPending(string role)
     {
         _userService.GetAllUserInfosAsync(Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(MakeNeedsConsentReview(3)));
         _googleSyncService.GetFailedSyncEventCountAsync(Arg.Any<CancellationToken>()).Returns(0);
         _ticketSyncService.IsInErrorStateAsync(Arg.Any<CancellationToken>()).Returns(false);
 
-        var meters = await _provider.GetMetersForUserAsync(CreatePrincipal(ConsentRoles.ConsentCoordinator), TestContext.Current.CancellationToken);
+        var meters = await _provider.GetMetersForUserAsync(CreatePrincipal(role), TestContext.Current.CancellationToken);
 
         meters.Should().ContainSingle(m =>
             string.Equals(m.Title, "Consent reviews pending", StringComparison.Ordinal) &&

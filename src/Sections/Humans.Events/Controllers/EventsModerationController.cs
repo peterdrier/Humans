@@ -63,12 +63,8 @@ internal sealed class EventsModerationController(
                 var evt = campEvents.FirstOrDefault(e => e.Id == row.Id);
                 if (evt?.CampId == null) continue;
 
-                row.DuplicateCandidates = allCampEvents
-                    .Where(other => other.Id != evt.Id
-                                 && other.CampId == evt.CampId
-                                 && EventConflictDetector.Overlaps(
-                                     other.StartAt, other.DurationMinutes,
-                                     evt.StartAt, evt.DurationMinutes))
+                row.DuplicateCandidates = EventConflictDetector.FindCampDuplicateCandidates(
+                        evt, allCampEvents, eventSettings?.GateOpeningDate, tz)
                     .Select(other => new DuplicateCandidateViewModel
                     {
                         Id = other.Id,

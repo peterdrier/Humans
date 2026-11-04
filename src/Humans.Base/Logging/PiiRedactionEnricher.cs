@@ -107,7 +107,8 @@ public sealed class PiiRedactionEnricher : ILogEventEnricher
         if (string.IsNullOrEmpty(stringValue))
             return stringValue;
 
-        // Email-like properties: retain up to 2 UTF-16 units + ***@domain
+        // Email-like properties: retain up to 2 UTF-16 units + ***, then any +tag and @domain. A hidden tag made
+        // plus-address failures read as plain-address ones.
         if (propertyName.Contains("email", StringComparison.OrdinalIgnoreCase) ||
             propertyName.Equals("To", StringComparison.OrdinalIgnoreCase) ||
             propertyName.Equals("Recipient", StringComparison.OrdinalIgnoreCase) ||
@@ -116,9 +117,9 @@ public sealed class PiiRedactionEnricher : ILogEventEnricher
             var atIndex = stringValue.IndexOf("@", StringComparison.Ordinal);
             if (atIndex > 0)
             {
-                var prefix = RetainedPrefix(stringValue, Math.Min(2, atIndex));
-                var domain = stringValue[(atIndex + 1)..];
-                return $"{prefix}***@{domain}";
+                var plusIndex = stringValue.IndexOf('+', 0, atIndex);
+                var end = plusIndex > 0 ? plusIndex : atIndex;
+                return $"{RetainedPrefix(stringValue, Math.Min(2, end))}***{stringValue[end..]}";
             }
         }
 
