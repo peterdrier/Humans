@@ -817,6 +817,44 @@ public sealed class TicketTransferServiceTests
         req.VendorHoldId.Should().BeNull();
     }
 
+    [HumansTheory]
+    [Xunit.InlineData(false, "")]
+    [Xunit.InlineData(false, " \t ")]
+    [Xunit.InlineData(true, "")]
+    [Xunit.InlineData(true, " \t ")]
+    public async Task AutomatedProcessing_BlankStoredReceiverEmail_DoesNotCallVendorOrChangeState(bool retry, string address)
+    {
+        var request = MakePending(Guid.NewGuid(), address);
+        if (retry)
+        {
+            request.VendorResult = TicketTransferVendorResult.VoidSucceededIssueFailed;
+            request.VendorHoldId = "hold_123";
+        }
+        var originalResult = request.VendorResult;
+        var originalHold = request.VendorHoldId;
+        _transferRepo.GetByIdAsync(request.Id, Arg.Any<CancellationToken>()).Returns(request);
+        _ticketRepo.GetAttendeeByIdAsync(_attendeeId, Arg.Any<CancellationToken>())
+            .Returns(MakeAttendee(_attendeeId, _orderId, _senderId, retry ? TicketAttendeeStatus.Void : TicketAttendeeStatus.Valid));
+        _vendor.VoidIssuedTicketAsync("tkt_original", true, Arg.Any<CancellationToken>())
+            .Returns(new VoidIssuedTicketResult("tkt_original", "hold_123"));
+        _vendor.IssueTicketAsync(Arg.Any<IssueTicketRequest>(), Arg.Any<CancellationToken>())
+            .Returns(new VendorTicketDto("tt_new", null, "Alice Smith", address, "Full Week", 0m, "valid"));
+
+        var result = retry
+            ? await _service.RetryReissueAsync(request.Id, _adminId, null, Xunit.TestContext.Current.CancellationToken)
+            : await _service.ProcessTransferAsync(request.Id, _adminId, null, Xunit.TestContext.Current.CancellationToken);
+
+        _vendor.ReceivedCalls().Should().BeEmpty();
+        result.Succeeded.Should().BeFalse();
+        result.OperatorRefusal.Should().Contain("Receiver email");
+        request.Status.Should().Be(TicketTransferStatus.Pending);
+        request.VendorResult.Should().Be(originalResult);
+        request.VendorHoldId.Should().Be(originalHold);
+        await _transferRepo.DidNotReceive().UpdateAsync(Arg.Any<TicketTransferRequest>(), Arg.Any<CancellationToken>());
+        _auditLog.ReceivedCalls().Should().BeEmpty();
+        _emailService.ReceivedCalls().Should().BeEmpty();
+    }
+
     [HumansFact]
     public async Task RetryReissue_StillFails_StaysPartial_KeepsHold_NoEmails()
     {
@@ -1256,7 +1294,7 @@ public sealed class TicketTransferServiceTests
         };
     }
 
-    private static TicketTransferRequest MakePending(Guid id) =>
+    private static TicketTransferRequest MakePending(Guid id, string receiverEmail = "alice@example.com") =>
         new()
         {
             Id = id,
@@ -1264,7 +1302,7 @@ public sealed class TicketTransferServiceTests
             SenderUserId = _senderId,
             ReceiverUserId = _receiverId,
             ReceiverLegalName = "Alice Smith",
-            ReceiverEmail = "alice@example.com",
+            ReceiverEmail = receiverEmail,
             SenderReason = "Going abroad",
             Status = TicketTransferStatus.Pending,
             RequestedAt = _now,

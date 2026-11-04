@@ -258,6 +258,8 @@ Inbound (who injects `Humans.Tickets.Contracts`):
 
 Transfer confirmation, request creation and sender notifications use the canonical `Email` on their existing `UserInfo` read, preserving verified-primary, verified-secondary and identity fallback selection. Confirmation and request creation both reject missing or whitespace-only receiver emails before persistence or side effects, using the existing invalid-selection feedback. Recipient validation still rejects a merged-away receiver ID.
 
+Automated processing and reissue retry also refuse a missing or whitespace-only stored receiver email before any vendor call or local state change. Invalid legacy requests retain their pending/partial state and any held seat; operators receive manual-completion guidance. Manual “Mark successful” remains available for work completed in TicketTailor.
+
 Transfer creation holds the existing in-process gate by attendee ID from validation through persistence, so concurrent requests cannot create two Pending transfers for one ticket; the loser receives the existing already-pending refusal. Decisions continue to use the request ID.
 
 **Authorization note:** transfer authorization is **service-level** — `TicketTransferService` validates ownership and state (e.g. requester owns the attendee, attendee is `Valid`, one pending at a time) in `CreateRequestAsync`, `CancelAsync`, etc. No dedicated `AuthorizationHandler` was added: the controller surface is small and the service guards are sufficient. If a non-controller surface (CLI, internal API) is added in a future PR, a `TicketTransferAuthorizationHandler` should be introduced then.

@@ -25,6 +25,7 @@ internal sealed class TicketTransferService(
 {
     private const int MaxTransferTextLength = 1000;
     private const string AdminNotesTooLong = "Notes cannot exceed 1,000 characters.";
+    private const string ReceiverEmailMissing = "Receiver email is missing. Finish the transfer manually in TicketTailor and use “Mark successful”.";
 
     // Fixed stripes coordinate instances: attendee id for creation, request id for decisions. Processing makes two
     // 90s vendor calls, so the five-minute acquisition timeout must outlast them.
@@ -220,6 +221,8 @@ internal sealed class TicketTransferService(
             return RefuseAdmin(transferRequestId, adminUserId, "Original ticket has already been checked in and cannot be transferred.");
         if (attendee.Status != TicketAttendeeStatus.Valid)
             return RefuseAdmin(transferRequestId, adminUserId, "Original ticket is no longer valid and cannot be transferred.");
+        if (string.IsNullOrWhiteSpace(request.ReceiverEmail))
+            return RefuseAdmin(transferRequestId, adminUserId, ReceiverEmailMissing);
         await WriteToVendorAsync(request, attendee, ct);
 
         // A committed vendor void is irreversible: its outcome must persist even if the admin's request aborted.
@@ -279,6 +282,9 @@ internal sealed class TicketTransferService(
 
         var attendee = await ticketRepo.GetAttendeeByIdAsync(request.OriginalTicketAttendeeId, ct);
         if (attendee is null) return RefuseAdmin(transferRequestId, adminUserId, "Original attendee missing.");
+
+        if (string.IsNullOrWhiteSpace(request.ReceiverEmail))
+            return RefuseAdmin(transferRequestId, adminUserId, ReceiverEmailMissing);
 
         // Everything here follows a committed void, so an aborted admin request must not cancel the reissue and
         // strand the held seat.
