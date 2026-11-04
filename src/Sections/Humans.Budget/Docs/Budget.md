@@ -195,6 +195,8 @@ Stored as string via `HasConversion<string>()`.
 
 ## Invariants
 
+- Category authorization resolves the cookie identity through `IUserService` and queries coordinator scope for the surviving account. Missing accounts and coordinator roles held only by a stale alias grant no coordinator-based access. Both reads retain request cancellation; FinanceAdmin/Admin bypasses and deleted-year, restricted-group and ticketing-group exclusions are unchanged.
+
 - Member and finance-admin mutation actions forward request cancellation through account lookup before writes. Member line-item actions also cancel line-item and category-authorization reads; the internal line-item read forwards its token to the repository. Financial writes, ticketing projection refreshes and ticketing sync retain their existing non-cancellable mutation boundaries.
 
 - Authorization’s effective-coordinator reads retain HTTP request cancellation; callers without an HTTP context use the non-cancellable default.

@@ -200,6 +200,8 @@ Admin pages live under `/Camps/Admin/*` — never `/Admin/Camps/*` (per `docs/ar
 
 ## Invariants
 
+- Camp management, event submission and coordinator-based compliance access resolve the cookie identity through `IUserService` before checking the surviving account's roles. Missing accounts and roles held only by a stale alias grant no membership-based access. Reads retain request cancellation; existing administrator and Board bypasses are unchanged.
+
 - Section-owned resource keys use `Camps_` in all six cultures. Reflection-resolved enum keys retain their names; shared `Camp_Plural` stays in `SharedResource`.
 
 - Admin camp CSV downloads record `CampsExported` with the resolved authenticated actor, public year and emitted data-row count, including empty/repeated downloads. Merged sessions use the surviving account ID; missing accounts return 401 before export data is read, and account resolution observes request cancellation. Camps without a season produce no row and are not counted; existing contact/lead columns and CampsAdmin/Admin access are preserved.

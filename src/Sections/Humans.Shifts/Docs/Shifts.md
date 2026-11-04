@@ -242,6 +242,8 @@ The cross-source Early Entry roster (`/Shifts/Admin/EarlyEntry`) is `EarlyEntryR
 
 ## Invariants
 
+- `IsAnyTeamManagerOrCoordinatorHandler` resolves the cookie identity through `IUserService` before querying the surviving account's coordinated teams. Missing accounts and coordinator roles held only by a stale alias grant no coordinator-based access. Both reads retain request cancellation; existing privileged-role bypasses are unchanged.
+
 - The section’s things-to-do contribution forwards caller cancellation through all data reads. Aborted reads propagate instead of being logged or converted into missing prompts.
 
 - Browse-page phase filters accept only defined Build/Event/Strike values, case-insensitively and without duplicates. Invalid values, including undefined numbers, are ignored; an empty multi-phase selection may use the valid single-phase fallback.
