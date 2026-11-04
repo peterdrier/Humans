@@ -83,7 +83,7 @@ spikes seen in Google Postmaster, since `email_outbox_messages` is pruned after
 
 ### CommunicationPreference
 
-**Table:** `email_communication_preferences` (Users decomposition commit 14; replaces Users' frozen `communication_preferences`)
+**Table:** `email_communication_preferences` (Users decomposition commit 14; replaces Users' dropped `communication_preferences`)
 
 | Property | Type | Purpose |
 |----------|------|---------|
@@ -98,7 +98,7 @@ spikes seen in Google Postmaster, since `email_outbox_messages` is pruned after
 
 **Unique index:** `(UserId, Category)`.
 
-**Preference ownership:** reads, writes, resets, merges and GDPR paths use only `email_communication_preferences`. Production `GET https://humans.nobodies.team/api/data-migrations` reported `{"key":"email.communication-preferences","pending":0,"done":true}` on 2026-11-03. The copy, fallback and Users projections/export are retired; Users retains its frozen table mapping, and erasure still deletes the user's rows there, until the separate drop. Historical null `OptedOut` rows read as category defaults. New resets delete the row. Single-user reads still resolve merged-away ids forward; writes use the raw id.
+**Preference ownership:** reads, writes, resets, merges and GDPR paths use only `email_communication_preferences`. Production `GET https://humans.nobodies.team/api/data-migrations` reported `{"key":"email.communication-preferences","pending":0,"done":true}` on 2026-11-03. The copy, fallback and Users projections/export are retired; Users' legacy table is dropped. Historical null `OptedOut` rows read as category defaults. New resets delete the row. Single-user reads still resolve merged-away ids forward; writes use the raw id.
 
 ### MessageCategory
 

@@ -235,6 +235,94 @@ src/Sections/Humans.Settings/Data/Migrations/20261104163039_DropSettingsEventSub
 src/Sections/Humans.Settings/Data/Migrations/20261104163039_DropSettingsEventSubPeriodOffsets.cs:DropColumn(name=FirstCrewStartOffset,table=settings_event)#1
 src/Sections/Humans.Settings/Data/Migrations/20261104163039_DropSettingsEventSubPeriodOffsets.cs:DropColumn(name=PreEventWeekStartOffset,table=settings_event)#1
 src/Sections/Humans.Settings/Data/Migrations/20261104163039_DropSettingsEventSubPeriodOffsets.cs:DropColumn(name=SetupWeekStartOffset,table=settings_event)#1
+# Users legacy storage left by the Users decomposition data migrations (peterdrier/Humans#2261,
+# peterdrier/Humans#2156). Each group below was replaced through a registered data migration whose
+# copy, fallback and registration are already deleted, so no reader is left.
+#
+# profiles.Iban — the member's reimbursement IBAN, replaced by Finance's finance_payment_details.
+# Evidence: retirement merged in peterdrier/Humans#2258 (CENTRAL-89); since then the only reference
+# was the erasure line that nulled it, deleted in this PR.
+# Approval: production GET https://humans.nobodies.team/api/data-migrations read 2026-11-03, quoted
+# in peterdrier/Humans#2261: {"key":"finance.iban-to-payment-details","pending":0,"done":true},
+# the standing approval in no-drops-until-prod-verified; and Peter, 2026-11-04, project thread
+# ("fix A-E").
+src/Sections/Humans.Users/Data/Migrations/20261104164406_DropUsersLegacyStorage.cs:DropColumn(name=Iban,table=profiles)#1
+
+# profiles review columns IsApproved, ConsentCheckStatus, ConsentCheckAt, ConsentCheckedByUserId,
+# ConsentCheckNotes, RejectionReason, RejectedAt, RejectedByUserId and the index
+# IX_profiles_ConsentCheckStatus — the Consent Coordinator's legacy review, replaced by Consent's
+# consent_reviews.
+# Evidence: retirement merged in peterdrier/Humans#2258 (CENTRAL-92); the only references left were
+# the erasure lines nulling ConsentCheckNotes and RejectionReason, deleted in this PR.
+# Approval: production reading 2026-11-03, quoted in peterdrier/Humans#2261:
+# {"key":"consent.profile-review","pending":0,"done":true}; and Peter, 2026-11-04, project thread.
+src/Sections/Humans.Users/Data/Migrations/20261104164406_DropUsersLegacyStorage.cs:DropIndex(name=IX_profiles_ConsentCheckStatus,table=profiles)#1
+src/Sections/Humans.Users/Data/Migrations/20261104164406_DropUsersLegacyStorage.cs:DropColumn(name=ConsentCheckAt,table=profiles)#1
+src/Sections/Humans.Users/Data/Migrations/20261104164406_DropUsersLegacyStorage.cs:DropColumn(name=ConsentCheckNotes,table=profiles)#1
+src/Sections/Humans.Users/Data/Migrations/20261104164406_DropUsersLegacyStorage.cs:DropColumn(name=ConsentCheckStatus,table=profiles)#1
+src/Sections/Humans.Users/Data/Migrations/20261104164406_DropUsersLegacyStorage.cs:DropColumn(name=ConsentCheckedByUserId,table=profiles)#1
+src/Sections/Humans.Users/Data/Migrations/20261104164406_DropUsersLegacyStorage.cs:DropColumn(name=IsApproved,table=profiles)#1
+src/Sections/Humans.Users/Data/Migrations/20261104164406_DropUsersLegacyStorage.cs:DropColumn(name=RejectedAt,table=profiles)#1
+src/Sections/Humans.Users/Data/Migrations/20261104164406_DropUsersLegacyStorage.cs:DropColumn(name=RejectedByUserId,table=profiles)#1
+src/Sections/Humans.Users/Data/Migrations/20261104164406_DropUsersLegacyStorage.cs:DropColumn(name=RejectionReason,table=profiles)#1
+
+# event_participations table — per-user, per-year event attendance, replaced by Tickets'
+# tickets_event_participations.
+# Evidence: retirement merged in peterdrier/Humans#2258 (CENTRAL-93); nothing read or wrote the
+# table since, only its EF mapping remained.
+# Approval: production reading 2026-11-03, quoted in peterdrier/Humans#2261:
+# {"key":"tickets.event-participations","pending":0,"done":true}; and Peter, 2026-11-04, project
+# thread.
+src/Sections/Humans.Users/Data/Migrations/20261104164406_DropUsersLegacyStorage.cs:DropTable(name=event_participations)#1
+
+# communication_preferences table — per-category email opt-outs, replaced by Email's
+# email_communication_preferences.
+# Evidence: retirement merged in peterdrier/Humans#2258 (CENTRAL-94); the only reference left was
+# the erasure delete, removed in this PR.
+# Approval: production reading 2026-11-03, quoted in peterdrier/Humans#2261:
+# {"key":"email.communication-preferences","pending":0,"done":true}; and Peter, 2026-11-04,
+# project thread.
+src/Sections/Humans.Users/Data/Migrations/20261104164406_DropUsersLegacyStorage.cs:DropTable(name=communication_preferences)#1
+
+# profiles food columns DietaryPreference, Allergies, AllergyOtherText, Intolerances,
+# IntoleranceOtherText — the member's food answers, replaced by Cantina's cantina_dietary_profiles
+# (USERS-16 in peterdrier/Humans#2156). MedicalConditions stays.
+# Evidence: retirement merged in peterdrier/Humans#2217 (CENTRAL-90); since then only the Users
+# Art. 15 export and the erasure lines touched them, both removed in this PR (Cantina exports and
+# erases the live answers).
+# Approval: production reading quoted in peterdrier/Humans#2217's commit, 2026-10-30:
+# cantina.profile-dietary pending: 0, done: true; and Peter, 2026-11-04, project thread.
+# Down() caveat: EF re-adds Allergies and Intolerances as jsonb NOT NULL DEFAULT '', which Postgres
+# rejects, so a rollback re-adds those two by hand (accepted shape, peterdrier/Humans#1379).
+src/Sections/Humans.Users/Data/Migrations/20261104164406_DropUsersLegacyStorage.cs:DropColumn(name=Allergies,table=profiles)#1
+src/Sections/Humans.Users/Data/Migrations/20261104164406_DropUsersLegacyStorage.cs:DropColumn(name=AllergyOtherText,table=profiles)#1
+src/Sections/Humans.Users/Data/Migrations/20261104164406_DropUsersLegacyStorage.cs:DropColumn(name=DietaryPreference,table=profiles)#1
+src/Sections/Humans.Users/Data/Migrations/20261104164406_DropUsersLegacyStorage.cs:DropColumn(name=IntoleranceOtherText,table=profiles)#1
+src/Sections/Humans.Users/Data/Migrations/20261104164406_DropUsersLegacyStorage.cs:DropColumn(name=Intolerances,table=profiles)#1
+
+# profiles.MembershipTier — the legacy tier, replaced by Governance's governance_membership_tiers
+# (USERS-17 in peterdrier/Humans#2156).
+# Evidence: retirement merged in peterdrier/Humans#2217 (CENTRAL-91); since then only the Users
+# Art. 15 export read it, removed in this PR (Governance exports the live tier).
+# Approval: production reading quoted in peterdrier/Humans#2217's commit, 2026-10-30:
+# governance.profile-tier pending: 0, done: true; and Peter, 2026-11-04, project thread.
+src/Sections/Humans.Users/Data/Migrations/20261104164406_DropUsersLegacyStorage.cs:DropColumn(name=MembershipTier,table=profiles)#1
+
+# users.LastConsentReminderSentAt — the re-consent reminder cooldown stamp, replaced by Consent's
+# consent_reminders (USERS-22 in peterdrier/Humans#2156).
+# Evidence: retirement merged in peterdrier/Humans#2140 (CENTRAL-97); since then the only writer
+# was the erasure line clearing it, removed in this PR.
+# Approval: production reading 2026-10-22 recorded in Users.md (consent.reminder-stamps done) and
+# listed as done in peterdrier/Humans#2156; and Peter, 2026-11-04, project thread.
+src/Sections/Humans.Users/Data/Migrations/20261104164406_DropUsersLegacyStorage.cs:DropColumn(name=LastConsentReminderSentAt,table=users)#1
+
+# users.GoogleEmailStatus — the user-level Google sync status (USERS-14 in peterdrier/Humans#2156).
+# No data migration behind it.
+# Evidence: pickaxe (log -S) over full history. Its writers moved to user_emails in 316b7860c
+# (2026-06-15); its last write, an anonymization reset, went in 7aeb5b6bc (2026-08-25), and it has
+# had no reader since.
+# Approval: Peter, 2026-11-04, per-drop approval in project thread ("Approve all but #2296" for the listed drops in this PR; peterdrier/Humans#2156).
+src/Sections/Humans.Users/Data/Migrations/20261104164406_DropUsersLegacyStorage.cs:DropColumn(name=GoogleEmailStatus,table=users)#1
 
 # holded_category_map.IsActive — a retirement flag on each budget-category to Holded-account mapping
 # (peterdrier/Humans#1923). Every row holds true.

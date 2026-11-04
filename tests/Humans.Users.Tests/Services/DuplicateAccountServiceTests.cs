@@ -51,7 +51,6 @@ public sealed class DuplicateAccountServiceTests
             BurnerName = "Test",
             FirstName = "Test",
             LastName = "User",
-            IsApproved = true,
             CreatedAt = Now,
             UpdatedAt = Now,
         };

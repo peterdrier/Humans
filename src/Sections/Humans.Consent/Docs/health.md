@@ -103,7 +103,7 @@ Three aggregates and one content proxy, each with a single writer:
   refusal. Flag stays hidden for a cleared human because `Cleared → Flagged` clears `IsApproved`,
   which tier-team eligibility reads. Expose it once one of those two stops.
 - **Legacy review retirement:** production reported `consent.profile-review` done on 2026-11-03.
-  The copy and fallback are retired; frozen profile review columns await a separate drop.
+  The copy and fallback are retired and the legacy profile review columns are dropped.
 - `ILegalDocumentSyncService` cannot fold inward while Governance's `MembershipCalculator`
   injects it.
 

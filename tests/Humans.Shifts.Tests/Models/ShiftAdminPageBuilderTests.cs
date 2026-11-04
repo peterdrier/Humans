@@ -215,7 +215,6 @@ public sealed class ShiftAdminPageBuilderTests
                     MedicalConditions = "Epilepsy",
                     CreatedAt = TestNow,
                     UpdatedAt = TestNow,
-                    IsApproved = true,
                 }),
             });
         var builder = new ShiftAdminPageBuilder(_shiftManagement, _membership, _userService, _cantina, _teamService);

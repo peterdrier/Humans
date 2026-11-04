@@ -364,6 +364,9 @@
   <data name="Users_Emails_AddNew" xml:space="preserve">
     <value>E-Mail-Adresse hinzufügen</value>
   </data>
+  <data name="Users_Emails_NewEmailLabel" xml:space="preserve">
+    <value>Neue E-Mail-Adresse</value>
+  </data>
   <data name="Users_Emails_MergeWarningTitle" xml:space="preserve">
     <value>Konten zusammenführen?</value>
   </data>
@@ -747,6 +750,9 @@
   <data name="Users_Notification_ConsentSuspensionReason" xml:space="preserve"><value>Erforderliche Einwilligung fehlt (Nachfrist abgelaufen)</value></data>
   <data name="Users_Profile_EmailAlreadyAdded" xml:space="preserve">
     <value>Diese E-Mail-Adresse ist bereits in deinem Konto.</value>
+  </data>
+  <data name="Users_Profile_EmailVerifiedOnAnotherAccount" xml:space="preserve">
+    <value>Diese E-Mail-Adresse ist bereits in einem anderen Konto bestätigt.</value>
   </data>
   <data name="Users_Profile_EmailMergePending" xml:space="preserve">
     <value>Für diese E-Mail-Adresse ist bereits eine Anfrage zur Zusammenführung offen.</value>
