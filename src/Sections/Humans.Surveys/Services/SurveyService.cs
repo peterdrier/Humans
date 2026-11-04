@@ -522,8 +522,9 @@ internal sealed class SurveyService(
         var recipients = await ResolveRecipientIdsAsync(
             audienceType, survey.AudienceTeamId, survey.AudienceLoggedInSince, ct);
         if (recipients.Count == 0) return 0;
-        var alreadyInvited = await InvitedUserIdsResolvedAsync(surveyId, ct);
-        var completedPublicParticipants = (await repo.GetInvitationsAsync(surveyId, ct))
+        var participationRows = await repo.GetInvitationsAsync(surveyId, ct);
+        var alreadyInvited = await InvitedUserIdsResolvedAsync(participationRows, ct);
+        var completedPublicParticipants = participationRows
             .Where(invitation => invitation.SentAt is null && invitation.Completed)
             .Select(invitation => invitation.UserId);
         return recipients.Except(alreadyInvited).Except(completedPublicParticipants).Count();
@@ -545,8 +546,8 @@ internal sealed class SurveyService(
         var now = clock.GetCurrentInstant();
         var target = await ResolveRecipientIdsAsync(
             audienceType, survey.AudienceTeamId, survey.AudienceLoggedInSince, ct);
-        var alreadyInvited = await InvitedUserIdsResolvedAsync(surveyId, ct);
         var participationRows = await repo.GetInvitationsAsync(surveyId, ct);
+        var alreadyInvited = await InvitedUserIdsResolvedAsync(participationRows, ct);
         var completedPublicParticipants = participationRows
             .Where(invitation => invitation.SentAt is null && invitation.Completed)
             .Select(invitation => invitation.UserId);
@@ -635,9 +636,11 @@ internal sealed class SurveyService(
     /// never re-pointed on merge, so the audience (live ids) is compared against both, or the
     /// survivor is invited a second time to a survey their archived id already holds.
     /// </summary>
-    private async Task<HashSet<Guid>> InvitedUserIdsResolvedAsync(Guid surveyId, CancellationToken ct)
+    private async Task<HashSet<Guid>> InvitedUserIdsResolvedAsync(
+        IReadOnlyList<SurveyInvitation> invitations, CancellationToken ct)
     {
-        var invited = (await repo.GetInvitedUserIdsAsync(surveyId, ct)).ToHashSet();
+        var invited = invitations.Where(invitation => invitation.SentAt is not null)
+            .Select(invitation => invitation.UserId).ToHashSet();
         if (invited.Count == 0) return invited;
         foreach (var info in (await userService.GetUserInfosAsync(invited.ToList(), ct)).Values)
             invited.Add(info.Id);
