@@ -121,7 +121,7 @@ internal sealed class BackdoorFinanceController(
     {
         if (!await IsFinanceAdminAsync()) return StatusCode(StatusCodes.Status403Forbidden);
 
-        var (accounts, unresolved) = await finance.ListCreditorAccountsAsync(ct);
+        var (accounts, unresolved, unavailable) = await finance.ListCreditorAccountsAsync(ct);
         var names = await ResolveNamesAsync(
             accounts.SelectMany(a => a.Bindings).Select(b => b.UserId)
                 .Concat(unresolved.Select(b => b.UserId))
@@ -131,6 +131,7 @@ internal sealed class BackdoorFinanceController(
         {
             accounts = accounts.Select(a => ProjectCreditorAccount(a, names)),
             unresolved = unresolved.OrderBy(b => b.CreatedAt).Select(b => ProjectBinding(b, names)),
+            unavailableReason = unavailable,
         });
     }
 
@@ -150,6 +151,7 @@ internal sealed class BackdoorFinanceController(
             owedToMember = ledger.OwedToMember,
             lines = ledger.Lines.Select(ProjectLedgerLine),
             contact = ProjectContact(ledger.Contact),
+            contactUnavailableReason = ledger.ContactUnavailableReason,
         });
     }
 

@@ -243,4 +243,21 @@ public class FileSystemFileStorageTests : IDisposable
         var bytes = await _store.TryReadAsync("uploads/camps/x/a.jpg", Xunit.TestContext.Current.CancellationToken);
         bytes.Should().BeEquivalentTo(new byte[] { 1 });
     }
+
+    [HumansFact]
+    public async Task ListAsync_ReturnsSlashKeysSizesAndWriteTimes_SkipsTempFiles_AndEmptyForMissingPrefix()
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        await _store.SaveAsync("uploads/camps/x/a.jpg", [1, 2, 3], ct);
+        await _store.SaveAsync("uploads/issues/b.png", [1], ct);
+        var written = new DateTime(2026, 3, 1, 12, 0, 0, DateTimeKind.Utc);
+        File.SetLastWriteTimeUtc(Path.Combine(_wwwroot, "uploads", "camps", "x", "a.jpg"), written);
+        await File.WriteAllBytesAsync(Path.Combine(_wwwroot, "uploads", "issues", "b.png.abc.tmp"), [9], ct);
+
+        var files = await _store.ListAsync("uploads", ct);
+
+        files.Select(f => (f.Key, f.Bytes)).Should().BeEquivalentTo([("uploads/camps/x/a.jpg", 3L), ("uploads/issues/b.png", 1L)]);
+        files.Single(f => string.Equals(f.Key, "uploads/camps/x/a.jpg", StringComparison.Ordinal)).LastWrittenAt.Should().Be(NodaTime.Instant.FromDateTimeUtc(written));
+        (await _store.ListAsync("uploads/none", ct)).Should().BeEmpty();
+    }
 }

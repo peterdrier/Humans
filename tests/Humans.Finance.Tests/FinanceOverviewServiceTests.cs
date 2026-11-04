@@ -92,6 +92,7 @@ public class FinanceOverviewServiceTests
         var owed = FinanceOverviewService.BuildOwed(rows, taxesOwed: 9m);
         owed.Should().Be(new FinanceOwedVm(4, 110m, 30m, 1, 70m, 9m));
         owed.Total.Should().Be(189m);
+        (owed with { Unavailable = "contacts unreadable" }).Total.Should().BeNull("an unknown creditor total is not zero");
 
         var recon = new ExpenseReconReport(null, null, null, [], [], [], [], new ExpenseReconTotals(0, 0, 0, 2, 0, 0m, 1, 0));
         var work = FinanceOverviewService.BuildWork([], rows, recon);

@@ -36,7 +36,7 @@ internal sealed class FinanceOverviewService(
             ledger = BuildLedgerCards(chart, balances, filings);
         }
 
-        var (creditors, _) = await finance.ListCreditorAccountsAsync(ct);
+        var (creditors, _, creditorsUnavailable) = await finance.ListCreditorAccountsAsync(ct);
         var recon = await finance.GetExpenseReconAsync(null, ct);
         var queue = await expenseReports.GetReviewQueueAsync(viewerUserId, isFinanceAdmin: true, ct);
 
@@ -57,8 +57,8 @@ internal sealed class FinanceOverviewService(
         return new FinanceOverviewVm(
             syncedAt,
             ledger,
-            BuildOwed(creditors, ledger?.TaxesOwed),
-            BuildWork(queue, creditors, recon),
+            BuildOwed(creditors, ledger?.TaxesOwed) with { Unavailable = creditorsUnavailable },
+            BuildWork(queue, creditors, recon) with { CreditorsUnavailable = creditorsUnavailable },
             budgetVm,
             runway,
             income);

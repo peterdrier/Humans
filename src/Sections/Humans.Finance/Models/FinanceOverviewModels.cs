@@ -39,16 +39,18 @@ internal sealed record FinanceTaxFilingVm(string Model, string Name, int Year, i
     decimal Amount, bool IsComplete);
 
 /// <summary>Creditor accounts (40000000-41999999) plus the 475 tax accounts. <see cref="Total"/> is null when the ledger
-/// mirror never synced, since the tax part is then unknown.</summary>
+/// mirror never synced, since the tax part is then unknown, or when <see cref="Unavailable"/> says the creditor accounts
+/// could not be listed.</summary>
 internal sealed record FinanceOwedVm(
     int MemberAccounts,
     decimal Members,
     decimal InSepaFiles,
     int SupplierAccounts,
     decimal Suppliers,
-    decimal? Taxes)
+    decimal? Taxes,
+    string? Unavailable = null)
 {
-    public decimal? Total => Taxes is { } t ? Members + Suppliers + t : null;
+    public decimal? Total => Unavailable is null && Taxes is { } t ? Members + Suppliers + t : null;
 }
 
 /// <summary><see cref="Problems"/> is null when the expense recon is unavailable.</summary>
@@ -62,7 +64,8 @@ internal sealed record FinanceWorkVm(
     int AwaitingBooking,
     int? Problems,
     int DuplicateAccounts,
-    int? ReconProblems);
+    int? ReconProblems,
+    string? CreditorsUnavailable = null);
 
 /// <summary>Expense categories of the active year only; actuals are the attributed Holded documents.</summary>
 internal sealed record FinanceBudgetVm(

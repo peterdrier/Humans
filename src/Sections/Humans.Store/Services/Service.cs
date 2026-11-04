@@ -568,14 +568,10 @@ internal sealed class Service(
 
         var name = order.CounterpartyName ?? Resources.GetString("Store_CheckoutCampOrder", CultureInfo.CurrentUICulture)!;
         var description = $"Nobodies Collective - {name}";
-        var sessionUrl = await stripeService.CreateCheckoutSessionAsync(
-            storeOrderId: order.Id,
-            amountEur: amountEur,
-            successUrl: returnUrl,
-            cancelUrl: returnUrl,
-            customerEmail: order.CounterpartyEmail,
-            lineItemDescription: description,
-            ct: ct);
+        var sessionUrl = await stripePayments.OpenCheckoutSessionAsync(
+            order.Id, amountEur, returnUrl, order.CounterpartyEmail, description, ct);
+        if (sessionUrl is null)
+            return new CheckoutSessionResult(null, "Store_PaymentPending");
         return new CheckoutSessionResult(sessionUrl, null);
     }
 

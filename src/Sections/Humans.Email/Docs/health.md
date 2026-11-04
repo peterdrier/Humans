@@ -180,7 +180,7 @@ no-login page adds the inbox column and the highlighted row.
 - **A failure day in the tally.** Backfilled rows carry no failure count; reconstructing
   them needs a per-attempt record that does not exist.
 - **Legacy retirement.** Production reported the copy done on 2026-11-03. The copy and
-  fallback are retired; Users' frozen table awaits its separate drop.
+  fallback are retired; Users' legacy table is dropped.
 
 ## 6. Deliberately not done
 
