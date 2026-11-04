@@ -523,7 +523,7 @@ internal sealed class GoogleDriveAccessSyncService(
         {
             if (errorOf(result) is not { IsTransient: true } error)
                 break;
-            logger.LogInformation("Transient Google Drive error (HTTP {StatusCode}), retrying in {Backoff}: {Error}",
+            logger.LogWarning("Transient Google Drive error (HTTP {StatusCode}), retrying in {Backoff}: {Error}",
                 error.StatusCode, backoff, error.RawMessage);
             await Delay(backoff, ct);
             result = await call();
