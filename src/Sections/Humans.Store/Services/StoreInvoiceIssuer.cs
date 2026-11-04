@@ -72,7 +72,8 @@ internal sealed class StoreInvoiceIssuer(
             var (adoptedKind, adoptedDoc) = alreadyIssued;
             // The order stayed Open, so it may have been edited or repriced since that document was created. Divergence
             // is a human's problem, not something to reconcile silently.
-            if (GetDocumentMismatchRefusal(order, adoptedDoc, totals) is { } recoveryRefusal)
+            if ((GetDocumentTotalsRefusal(order, adoptedDoc, totals)
+                 ?? GetRecoveredLinesRefusal(order, adoptedDoc, totals)) is { } recoveryRefusal)
                 return Refuse(order, actorUserId, recoveryRefusal);
             if (adoptedDoc.IsDraft == true)
             {
@@ -169,39 +170,50 @@ internal sealed class StoreInvoiceIssuer(
     }
 
     /// <summary>
-    /// Freezing against different totals or lines would leave the order contradicting its legal invoice. A retry's lines
-    /// and prices may also have changed since creation, and two lines can trade amounts with every total unchanged, so
-    /// the line set (quantity, unit price, VAT) is compared too; names are not, since a renamed product is the same sale.
-    /// Correcting an issued document is a factura rectificativa, a human decision, so both new issuance and recovery
-    /// fail loudly.
+    /// Freezing against different totals would leave the order contradicting its legal invoice. A retry's lines and
+    /// prices may also have changed since creation. Correcting an issued document is a factura rectificativa, a human
+    /// decision, so both new issuance and recovery fail loudly.
     /// </summary>
-    private static string? GetDocumentMismatchRefusal(
+    private static string? GetDocumentTotalsRefusal(
         Order order, HoldedSalesDocumentDto document, BalanceCalculator.Result totals)
     {
         // Deposits are ordinary tax-0 lines on the document, so they land in Holded's subtotal.
         var expectedSubtotal = decimal.Round(totals.LinesSubtotalEur + totals.DepositTotalEur, 2);
         var expectedTax = decimal.Round(totals.VatTotalEur, 2);
         var expectedTotal = decimal.Round(expectedSubtotal + expectedTax, 2);
-        var name = string.IsNullOrEmpty(document.DocNumber) ? document.Id : document.DocNumber;
         if (decimal.Round(document.Subtotal, 2) == expectedSubtotal
             && decimal.Round(document.Tax, 2) == expectedTax
             && decimal.Round(document.Total, 2) == expectedTotal)
-        {
-            if (ExpectedLineSet(order, totals).SequenceEqual(
-                    LineSet(document.Lines.Select(l => new SalesLine(l.Units, l.Price, l.TaxPercent)))))
-                return null;
-            return $"Holded already holds document {name} for order {order.Id}, but its lines no longer match the "
-                + "order's quantities, unit prices or VAT rates, though the totals agree. Resolve it by hand — "
-                + "correcting an issued document is a factura rectificativa, and no second document will be issued "
-                + "in the meantime.";
-        }
+            return null;
 
-        return $"Holded already holds document {name} for order {order.Id}, but it no longer matches "
+        return $"Holded already holds document {DocumentName(document)} for order {order.Id}, but it no longer matches "
             + $"the order: the document reads EUR {document.Subtotal:0.00} + {document.Tax:0.00} VAT "
             + $"= {document.Total:0.00}, while the order now totals EUR {expectedSubtotal:0.00} + "
             + $"{expectedTax:0.00} VAT = {expectedTotal:0.00}. Resolve it by hand — correcting an issued document is a factura "
             + "rectificativa, and no second document will be issued in the meantime.";
     }
+
+    /// <summary>
+    /// Two lines can trade amounts with every total unchanged, so a recovered document's line set (quantity, unit price,
+    /// VAT rate) must match too; names are not compared, since a renamed product is the same sale. Recovery only, before
+    /// any approval: the line read-back is unverified against a live v2 document, and once this attempt has approved a
+    /// document a wrong refusal would leave a legal factura behind an order that can never freeze.
+    /// </summary>
+    private static string? GetRecoveredLinesRefusal(
+        Order order, HoldedSalesDocumentDto document, BalanceCalculator.Result totals)
+    {
+        if (ExpectedLineSet(order, totals).SequenceEqual(
+                LineSet(document.Lines.Select(l => new SalesLine(l.Units, l.Price, l.TaxPercent)))))
+            return null;
+
+        return $"Holded already holds document {DocumentName(document)} for order {order.Id}, but its lines "
+            + (document.Lines.Count == 0 ? "could not be read" : "no longer match the order's quantities, unit prices or VAT rates")
+            + ", though the totals agree. Resolve it by hand — correcting an issued document is a factura rectificativa, "
+            + "and no second document will be issued in the meantime.";
+    }
+
+    private static string DocumentName(HoldedSalesDocumentDto document) =>
+        string.IsNullOrEmpty(document.DocNumber) ? document.Id : document.DocNumber;
 
     /// <summary>The lines <see cref="BuildInvoiceLinesAsync"/> sends: each order line, plus a tax-0 deposit line when
     /// it carries a deposit.</summary>
@@ -268,7 +280,7 @@ internal sealed class StoreInvoiceIssuer(
         string auditDetail,
         CancellationToken ct)
     {
-        if (GetDocumentMismatchRefusal(order, document, totals) is { } totalsRefusal)
+        if (GetDocumentTotalsRefusal(order, document, totals) is { } totalsRefusal)
             return Refuse(order, actorUserId, totalsRefusal);
         if (document.IsDraft == true || string.IsNullOrWhiteSpace(document.DocNumber))
             return Refuse(order, actorUserId,

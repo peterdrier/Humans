@@ -163,26 +163,43 @@ public class HoldedClientSalesDocumentTests
     }
 
     [HumansFact]
-    public async Task GetSalesDocumentAsync_ParsesLinesAndRefusesOneWithoutAPrice()
+    public async Task GetSalesDocumentAsync_ParsesLinesWithTheLineTaxAsAPercent()
     {
-        // v2 returns `lines` (not v1's `products`), every number a string.
+        // v2 returns `lines` (not v1's `products`), every number a string. 10 x EUR 5 at 21% keeps the line's
+        // rate (21) apart from the document's tax amount (10.50).
         const string json = """
-        {"id":"doc-9","total":"181.00","lines":[
-          {"name":"Ice","units":"20","price":"5.00","tax":"21","taxes":["s_iva_21"]},
-          {"name":"Ice — refundable deposit","units":"20","price":"3.00","tax":"0"}]}
+        {"id":"doc-9","subtotal":"80.00","tax":"10.50","total":"90.50","lines":[
+          {"name":"Ice","units":"10","price":"5.00","tax":"21","taxes":["s_iva_21"]},
+          {"name":"Ice — refundable deposit","units":"10","price":"3.00","tax":"0","taxes":["s_iva_0"]}]}
         """;
 
         var doc = await Make(new StubHandler(_ => Respond(HttpStatusCode.OK, json))).GetSalesDocumentAsync(
             HoldedSalesDocumentKind.Invoice, "doc-9", TestContext.Current.CancellationToken);
 
+        doc.Tax.Should().Be(10.50m);
         doc.Lines.Should().Equal(
-            new HoldedSalesDocumentLineDto("Ice", 20m, 5m, 21m),
-            new HoldedSalesDocumentLineDto("Ice — refundable deposit", 20m, 3m, 0m));
+            new HoldedSalesDocumentLineDto("Ice", 10m, 5m, 21m),
+            new HoldedSalesDocumentLineDto("Ice — refundable deposit", 10m, 3m, 0m));
+    }
 
-        var act = async () => await Make(new StubHandler(_ => Respond(HttpStatusCode.OK,
-                """{"id":"doc-9","total":"6.05","lines":[{"name":"Ice","units":"1","tax":"21"}]}""")))
-            .GetSalesDocumentAsync(HoldedSalesDocumentKind.Invoice, "doc-9", TestContext.Current.CancellationToken);
-        await act.Should().ThrowAsync<HoldedPermanentException>().WithMessage("*lines[].price*");
+    [HumansFact]
+    public async Task GetSalesDocumentAsync_ReadsAnUnreadableLineAsNoLinesWithoutFailing()
+    {
+        // This read follows an approval; failing it would strand an approved factura.
+        var logger = new CapturingLogger<HoldedClient>();
+        var client = new HoldedClient(
+            new HttpClient(new StubHandler(_ => Respond(HttpStatusCode.OK,
+                """{"id":"doc-9","total":"6.05","lines":[{"name":"Ice","units":"1","price":"5.00","taxes":["s_iva_21"]}]}""")))
+            { BaseAddress = new Uri("https://api.holded.com") },
+            Options.Create(new HoldedClientOptions { ApiKey = "test-key" }),
+            logger, new HoldedCallLog(), new FakeClock(Instant.FromUtc(2026, 9, 1, 12, 0)));
+
+        var doc = await client.GetSalesDocumentAsync(
+            HoldedSalesDocumentKind.Invoice, "doc-9", TestContext.Current.CancellationToken);
+
+        doc.Total.Should().Be(6.05m);
+        doc.Lines.Should().BeEmpty();
+        logger.Entries.Should().ContainSingle(e => e.Level == Microsoft.Extensions.Logging.LogLevel.Warning);
     }
 
     [HumansTheory]

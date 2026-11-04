@@ -55,7 +55,8 @@ public sealed record HoldedSalesDocumentDto
     /// <summary>A draft books no revenue and has no number until <see cref="IHoldedClient.ApproveSalesDocumentAsync"/>.
     /// Null when Holded doesn't report the field.</summary>
     public bool? IsDraft { get; init; }
-    /// <summary>The document's lines as Holded holds them, in its order. Empty when Holded reports none.</summary>
+    /// <summary>The document's lines as Holded holds them, in its order. Empty when Holded reports none, or when one
+    /// of them has no readable units, price or tax (logged).</summary>
     public required IReadOnlyList<HoldedSalesDocumentLineDto> Lines { get; init; }
     /// <summary>The verbatim response body, kept for the audited payload on <c>store_invoices</c>.</summary>
     public required string RawJson { get; init; }
