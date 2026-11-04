@@ -218,6 +218,17 @@ src/Sections/Humans.Camps/Data/Migrations/20261029213715_AddCampEventIds.cs:Drop
 src/Sections/Humans.Feedback/Data/Migrations/20261101144113_DropFeedbackTables.cs:DropTable(name=feedback_messages)#1
 src/Sections/Humans.Feedback/Data/Migrations/20261101144113_DropFeedbackTables.cs:DropTable(name=feedback_reports)#1
 
+# city_planning_settings.PlacementOpensAt / PlacementClosesAt — admin-entered, display-only barrio
+# placement dates (CITYPLANNING-8 in peterdrier/Humans#2156). They never gated placement.
+# Evidence: pickaxe (log -S 'PlacementOpensAt =' / 'PlacementClosesAt =') over full history. Written
+# only by the City Planning admin settings form (1cfa91afc, 2026-04-06; reworked 2ffa92f62) and read
+# only for display on the barrio page and map popup (6d1004260). peterdrier/Humans#2116 (251a9d369,
+# 2026-10-21) replaced them with gate-opening day offsets and removed every reader and writer;
+# no migration or raw SQL ever wrote them. The rows hold the last 2026 display dates, which nothing
+# shows.
+# Approval: Peter, 2026-11-04, per-drop approval in project thread ("Approve all but #2296" for the listed drops in this PR; peterdrier/Humans#2156).
+src/Sections/Humans.CityPlanning/Data/Migrations/20261104165348_DropCityPlanningPlacementDates.cs:DropColumn(name=PlacementClosesAt,table=city_planning_settings)#1
+src/Sections/Humans.CityPlanning/Data/Migrations/20261104165348_DropCityPlanningPlacementDates.cs:DropColumn(name=PlacementOpensAt,table=city_planning_settings)#1
 # settings_event build sub-period offsets FirstCrewStartOffset, SetupWeekStartOffset,
 # PreEventWeekStartOffset, FinishingWeekendStartOffset — Settings' copies of the four build
 # sub-period starts, replaced by Shifts' own event_settings.SubPeriod*Start columns.

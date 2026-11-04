@@ -103,7 +103,6 @@ CityPlanningSettings
 ├── PlacementOpensOffset: int? (first open day, days from gate opening)
 ├── PlacementClosesOffset: int? (last open day)
 ├── PlacementChangeableUntilOffset: int? (last day a lead may adjust an existing polygon)
-├── PlacementOpensAt / PlacementClosesAt: LocalDateTime? (retired by #2102; [Obsolete], unread, column drop pending approval)
 ├── IsContainerPlacementOpen: bool
 ├── ContainerPlacementOpenedAt: Instant?
 ├── ContainerPlacementClosedAt: Instant?
