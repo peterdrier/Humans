@@ -1,13 +1,11 @@
-using Hangfire;
 using Humans.Base.Interfaces;
 using Humans.Finance.Contracts;
 
 namespace Humans.Finance.Jobs;
 
-/// <summary>After the ledger sweep, so the mirror is fresh. The contact list is cold at 03:30, so the job takes the
-/// shared "holded-api" lock: a sweep that runs long never shares the rate-limited API with it. No API-key gate: a
-/// preview without Holded reports an unavailable mirror.</summary>
-[DisableConcurrentExecution("holded-api", 300)]
+/// <summary>After the ledger sweep, so the mirror is fresh. No "holded-api" lock: its one live call, the contact list,
+/// is a single GET the transport retries on 429; if it still fails the report is unavailable and this logs a warning.
+/// No API-key gate: a preview without Holded reports an unavailable mirror.</summary>
 internal sealed class ExpenseReconJob(
     IFinanceService finance,
     ILogger<ExpenseReconJob> logger) : IRecurringJob
