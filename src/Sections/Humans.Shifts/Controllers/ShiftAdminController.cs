@@ -32,7 +32,6 @@ internal sealed class ShiftAdminController(
     ILogger<ShiftAdminController> logger,
     IStringLocalizer<ShiftsResource> localizer) : HumansTeamControllerBase(userService, teamService, authorizationService)
 {
-    private readonly ITeamService _teamService = teamService;
 
     [HttpGet("")]
     public async Task<IActionResult> Index(string slug, bool incompleteOnboarding = false, CancellationToken ct = default)
@@ -55,11 +54,8 @@ internal sealed class ShiftAdminController(
             return RedirectToAction("Details", "Team", new { slug });
         }
 
-        var teamEntity = await _teamService.GetTeamAsync(team.Id, ct);
-        if (teamEntity is null) return NotFound();
-
         var model = await pageBuilder.BuildAsync(new ShiftAdminPageRequest(
-            teamEntity,
+            team,
             es,
             canManage,
             canApprove,

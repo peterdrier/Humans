@@ -226,7 +226,7 @@ public class ShiftAdminControllerTests
         await _userService.Received(1).GetUserInfoAsync(UserId, cancellation.Token);
         await _teamService.Received().GetTeamsAsync(cancellation.Token);
         await _shiftMgmt.Received().IsDeptCoordinatorAsync(UserId, TeamId, cancellation.Token);
-        await _teamService.Received(1).GetTeamAsync(TeamId, cancellation.Token);
+        await _teamService.DidNotReceiveWithAnyArgs().GetTeamAsync(default, default);
         await _shiftMgmt.Received(1).GetRotasByDepartmentAsync(TeamId, Event.Id, cancellation.Token);
     }
 

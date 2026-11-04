@@ -194,6 +194,8 @@ This section's controllers. `TeamController` (`[Route("Teams")]`) handles both a
 
 ## Invariants
 
+- Team-admin member search, role management and email-provisioning membership checks reuse the complete team snapshot returned by authorization; they do not reload that team by id.
+
 - Coordinator authorization, private-role roster filtering and team-message buttons resolve session identities through Users before checking current memberships. Merged sessions use the surviving account; missing accounts gain no coordinator access or messaging options. Privileged-role bypasses remain unchanged. Account reads observe request cancellation, with a non-cancellable fallback for authorization outside HTTP. Team-message buttons also hide for any identity in the viewer's own account chain.
 
 - Authorization’s team-coordinator reads retain HTTP request cancellation; callers without an HTTP context use the non-cancellable default.
