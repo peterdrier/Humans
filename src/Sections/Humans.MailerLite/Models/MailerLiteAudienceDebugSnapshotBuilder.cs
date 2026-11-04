@@ -67,7 +67,7 @@ internal static class MailerLiteAudienceDebugSnapshotBuilder
         {
             if (!byUserId.TryGetValue(uid, out var u)) continue;
             var email = u.Email;
-            if (string.IsNullOrEmpty(email)) continue;
+            if (string.IsNullOrWhiteSpace(email)) continue;
             expected.Add(new DebugExpectedRow(uid, u.BurnerName, email));
         }
 

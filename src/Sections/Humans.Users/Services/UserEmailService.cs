@@ -336,7 +336,7 @@ internal sealed class UserEmailService(
             if (!resolved.TryGetValue(userId, out var user))
                 continue;
 
-            if (!string.IsNullOrEmpty(user.Email))
+            if (!string.IsNullOrWhiteSpace(user.Email))
                 result[userId] = user.Email;
         }
 

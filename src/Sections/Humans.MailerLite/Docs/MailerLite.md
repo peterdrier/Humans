@@ -58,7 +58,7 @@ All routes are `AdminOnly`.
 
 - Shared table currency and number cells use the selected UI culture; numeric sort values stay invariant.
 
-- Audience debug expected/to-add rows use canonical `UserInfo.Email`, including verified-secondary fallback when no verified primary exists, and exclude empty addresses like the actual sync.
+- Audience debug expected/to-add rows use canonical `UserInfo.Email`, including verified-secondary fallback when no verified primary exists, and exclude missing or whitespace-only addresses like the actual sync.
 
 - Audience debug tables normalize the requested page and allowed page size once before slicing. Rows and pager state use the same available page, including the last page for oversized requests and page one for empty tables.
 
