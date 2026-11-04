@@ -256,7 +256,7 @@ Inbound (who injects `Humans.Tickets.Contracts`):
 
 **Owned tables:** `ticket_orders`, `ticket_attendees`, `ticket_sync_state`, `ticket_transfer_requests`, `tickets_event_participations`
 
-Transfer confirmation, request creation and sender notifications use the canonical `Email` on their existing `UserInfo` read, preserving verified-primary, verified-secondary and identity fallback selection. Recipient validation still rejects a merged-away receiver ID.
+Transfer confirmation, request creation and sender notifications use the canonical `Email` on their existing `UserInfo` read, preserving verified-primary, verified-secondary and identity fallback selection. Confirmation and request creation both reject missing or whitespace-only receiver emails before persistence or side effects, using the existing invalid-selection feedback. Recipient validation still rejects a merged-away receiver ID.
 
 Transfer creation holds the existing in-process gate by attendee ID from validation through persistence, so concurrent requests cannot create two Pending transfers for one ticket; the loser receives the existing already-pending refusal. Decisions continue to use the request ID.
 

@@ -163,6 +163,31 @@ public sealed class TicketTransferServiceTests
     }
 
     [HumansTheory]
+    [Xunit.InlineData(null)]
+    [Xunit.InlineData("")]
+    [Xunit.InlineData(" \t ")]
+    public async Task ReceiverSelection_BlankEmail_RefusesConfirmationAndCreation(string? address)
+    {
+        StubAttendee(TicketAttendeeStatus.Valid, _senderId);
+        var receiver = MakeUser(_receiverId, "Alice");
+        receiver.Email = address;
+        _userService.GetUserInfoAsync(_receiverId, Arg.Any<CancellationToken>())
+            .Returns(WrapInUserInfo(receiver,
+                UserFixtures.Profile(burnerName: "Alice", firstName: "Alice", lastName: "Smith")));
+
+        (await _service.GetConfirmationAsync(_attendeeId, _receiverId, _senderId,
+            Xunit.TestContext.Current.CancellationToken)).Should().BeNull();
+        var result = await _service.CreateRequestAsync(new TicketTransferRequestDto(_attendeeId, _receiverId, "Reason"),
+            _senderId, Xunit.TestContext.Current.CancellationToken);
+
+        result.RefusalKey.Should().Be("Tickets_TicketTransfer_InvalidSelection");
+        await _transferRepo.DidNotReceive().AddAsync(Arg.Any<TicketTransferRequest>(), Arg.Any<CancellationToken>());
+        _auditLog.ReceivedCalls().Should().BeEmpty();
+        _emailService.ReceivedCalls().Should().BeEmpty();
+        _vendor.ReceivedCalls().Should().BeEmpty();
+    }
+
+    [HumansTheory]
     [Xunit.InlineData("es", "Solicitud de transferencia de entrada")]
     [Xunit.InlineData("", "Ticket transfer requested")]
     [Xunit.InlineData(" ", "Ticket transfer requested")]

@@ -119,7 +119,7 @@ internal sealed class TicketTransferService(
 
         var receiverLegalName = receiverProfile.FullName;
         var receiverEmail = receiverInfo.Email;
-        if (receiverEmail is null)
+        if (string.IsNullOrWhiteSpace(receiverEmail))
             return TicketTransferMutationResult.Refused("Tickets_TicketTransfer_InvalidSelection");
 
         var now = clock.GetCurrentInstant();
