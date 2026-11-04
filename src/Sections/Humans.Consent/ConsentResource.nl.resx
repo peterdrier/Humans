@@ -1,0 +1,383 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<!-- ReSharper disable MarkupTextTypo -->
+<root xmlns:ns1="urn:schemas-microsoft-com:xml-msdata" xmlns:xs="http://www.w3.org/2001/XMLSchema">
+  <xs:schema id="root">
+    <xs:element name="root" ns1:IsDataSet="true">
+      <xs:complexType>
+        <xs:choice maxOccurs="unbounded">
+          <xs:element name="data">
+            <xs:complexType>
+              <xs:sequence>
+                <xs:element name="value" type="xsd:string" minOccurs="0" ns1:Ordinal="1" />
+                <xs:element name="comment" type="xsd:string" minOccurs="0" ns1:Ordinal="2" />
+              </xs:sequence>
+              <xs:attribute name="name" type="xsd:string" ns1:Ordinal="0" />
+              <xs:attribute name="type" type="xsd:string" />
+              <xs:attribute name="mimetype" type="xsd:string" />
+            </xs:complexType>
+          </xs:element>
+          <xs:element name="resheader">
+            <xs:complexType>
+              <xs:sequence>
+                <xs:element name="value" type="xsd:string" minOccurs="0" ns1:Ordinal="1" />
+              </xs:sequence>
+              <xs:attribute name="name" type="xsd:string" use="required" />
+            </xs:complexType>
+          </xs:element>
+        </xs:choice>
+      </xs:complexType>
+    </xs:element>
+  </xs:schema>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>1.3</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="Consent_Index_Title" xml:space="preserve">
+    <value>Overeenkomsten</value>
+  </data>
+  <data name="Consent_BreadcrumbNavigation" xml:space="preserve"><value>Kruimelpad</value></data>
+  <data name="Consent_Review_Title" xml:space="preserve">
+    <value>Bekijken: {0}</value>
+    <comment>{0} = document name</comment>
+  </data>
+  <data name="Consent_Review_Progress" xml:space="preserve">
+    <value>Document {0} van {1}</value>
+    <comment>{0} = current document index, {1} = total required documents</comment>
+  </data>
+  <data name="Consent_NoDocumentsRequired" xml:space="preserve">
+    <value>Er zijn op dit moment geen documenten waarvoor toestemming nodig is.</value>
+  </data>
+  <data name="Consent_Version" xml:space="preserve">
+    <value>Versie</value>
+  </data>
+  <data name="Consent_EffectiveFrom" xml:space="preserve">
+    <value>Geldig vanaf</value>
+  </data>
+  <data name="Consent_Consented" xml:space="preserve">
+    <value>Toestemming gegeven</value>
+  </data>
+  <data name="Consent_ReviewAndConsent" xml:space="preserve">
+    <value>Bekijken en toestemming geven</value>
+  </data>
+  <data name="Consent_PendingCount" xml:space="preserve">
+    <value>{0} document(en) vereisen je toestemming. Bekijk ze en geef toestemming om je actieve lidmaatschap te behouden.</value>
+    <comment>{0} = pending document count</comment>
+  </data>
+  <data name="Consent_AllConsented" xml:space="preserve">
+    <value>Je hebt toestemming gegeven voor alle verplichte documenten.</value>
+  </data>
+  <data name="Consent_ActionRequired" xml:space="preserve">
+    <value>Actie vereist</value>
+  </data>
+  <data name="Consent_LastUpdated" xml:space="preserve">
+    <value>Laatst bijgewerkt</value>
+  </data>
+  <data name="Consent_History" xml:space="preserve">
+    <value>Toestemmingsgeschiedenis</value>
+  </data>
+  <data name="Consent_NoRecords" xml:space="preserve">
+    <value>Nog geen toestemmingen vastgelegd.</value>
+  </data>
+  <data name="Consent_AboutTitle" xml:space="preserve">
+    <value>Over toestemming</value>
+  </data>
+  <data name="Consent_AboutDescription" xml:space="preserve">
+    <value>Door toestemming te geven voor deze documenten, ga je ermee akkoord gebonden te zijn aan de voorwaarden ervan. De Spaanse versie is de juridisch bindende tekst. Vertalingen zijn alleen voor het gemak.</value>
+  </data>
+  <data name="Consent_Review_AlreadyConsented" xml:space="preserve">
+    <value>Al toestemming gegeven</value>
+  </data>
+  <data name="Consent_Review_ChangesInVersion" xml:space="preserve">
+    <value>Wijzigingen in deze versie:</value>
+  </data>
+  <data name="Consent_Review_ContentNotAvailable" xml:space="preserve">
+    <value>Inhoud niet beschikbaar.</value>
+  </data>
+  <data name="Consent_Review_ConsentCheckbox" xml:space="preserve">
+    <value>Ik heb dit document gelezen en begrepen en ga ermee akkoord dat ik aan de voorwaarden gebonden ben.</value>
+  </data>
+  <data name="Consent_Review_SpanishLegalNote" xml:space="preserve">
+    <value>Ik begrijp dat de Spaanse versie de juridisch bindende tekst is.</value>
+  </data>
+  <data name="Consent_Review_BackToList" xml:space="preserve">
+    <value>Terug naar de lijst</value>
+  </data>
+  <data name="Consent_Review_GiveConsent" xml:space="preserve">
+    <value>Toestemming geven</value>
+  </data>
+  <data name="Consent_Review_CheckboxRequired" xml:space="preserve">
+    <value>Vink dit vakje aan om te bevestigen dat je de voorwaarden hebt gelezen en ermee akkoord gaat.</value>
+  </data>
+  <data name="Consent_MustCheck" xml:space="preserve">
+    <value>Je moet het toestemmingsvakje aanvinken om door te gaan.</value>
+  </data>
+  <data name="Consent_AlreadyConsented" xml:space="preserve">
+    <value>Je hebt al toestemming gegeven voor dit document.</value>
+  </data>
+  <data name="Consent_ThankYou" xml:space="preserve">
+    <value>Bedankt voor je toestemming voor {0}.</value>
+    <comment>{0} = document name</comment>
+  </data>
+  <data name="Consent_SubmitError" xml:space="preserve">
+    <value>Er is iets misgegaan bij het vastleggen van je toestemming. Probeer het opnieuw.</value>
+  </data>
+  <data name="Consent_StubProfile_AddName" xml:space="preserve">
+    <value>Voeg je officiële naam toe voordat je toestemmingen ondertekent.</value>
+  </data>
+  <data name="Consent_AgreedToBy" xml:space="preserve">
+    <value>Akkoord gegeven door &lt;strong&gt;{0}&lt;/strong&gt; op {1} om {2} UTC</value>
+  </data>
+  <data name="Consent_Email_ReConsentRequired_Subject_Single" xml:space="preserve">
+    <value>Actie vereist: {0} bijgewerkt</value>
+    <comment>{0} = document name</comment>
+  </data>
+  <data name="Consent_Email_ReConsentRequired_Subject_Multiple" xml:space="preserve">
+    <value>Actie vereist: meerdere juridische documenten bijgewerkt</value>
+  </data>
+  <data name="Consent_Email_ReConsentsRequired_Body" xml:space="preserve">
+    <value>&lt;h2&gt;Update van juridische documenten&lt;/h2&gt;
+&lt;p&gt;Beste {0},&lt;/p&gt;
+&lt;p&gt;We hebben de volgende verplichte documenten bijgewerkt:&lt;/p&gt;
+&lt;ul&gt;
+    {1}
+&lt;/ul&gt;
+&lt;p&gt;Als human moet je deze bijgewerkte documenten bekijken en accepteren om je actieve status te behouden.&lt;/p&gt;
+&lt;p&gt;&lt;a href="{2}/Consent"&gt;Bekijken en accepteren&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;Heb je vragen over de wijzigingen? Neem dan contact met ons op.&lt;/p&gt;
+&lt;p&gt;Bedankt,&lt;br/&gt;Het Humans-team&lt;/p&gt;</value>
+    <comment>{0} = user name, {1} = document list items HTML, {2} = base URL</comment>
+  </data>
+  <data name="Consent_Email_ReConsentReminder_Subject" xml:space="preserve">
+    <value>Herinnering: nog {0} dagen om bijgewerkte documenten te bekijken</value>
+    <comment>{0} = days remaining</comment>
+  </data>
+  <data name="Consent_Email_ReConsentReminder_Body" xml:space="preserve">
+    <value>&lt;h2&gt;Herinnering toestemming&lt;/h2&gt;
+&lt;p&gt;Beste {0},&lt;/p&gt;
+&lt;p&gt;Dit is een herinnering dat je nog &lt;strong&gt;{1} dagen&lt;/strong&gt; hebt om de volgende bijgewerkte documenten te bekijken en te accepteren:&lt;/p&gt;
+&lt;ul&gt;
+    {2}
+&lt;/ul&gt;
+&lt;p&gt;Als je deze documenten niet vóór de deadline accepteert, kan je toegang tijdelijk worden geschorst.&lt;/p&gt;
+&lt;p&gt;&lt;a href="{3}/Consent"&gt;Documenten nu bekijken&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;Bedankt,&lt;br/&gt;Het Humans-team&lt;/p&gt;</value>
+    <comment>{0} = user name, {1} = days remaining, {2} = document list items HTML, {3} = base URL</comment>
+  </data>
+  <data name="Consent_Notification_Published" xml:space="preserve"><value>Nieuw juridisch document gepubliceerd: {0}</value></data>
+  <data name="Consent_Notification_PublishedBody" xml:space="preserve"><value>Er is een nieuw verplicht juridisch document gepubliceerd. Bekijk en onderteken het.</value></data>
+  <data name="Consent_Notification_ReConsentRequired" xml:space="preserve"><value>{0} is bijgewerkt — opnieuw toestemming vereist</value></data>
+  <data name="Consent_Notification_ReConsentRequiredBody" xml:space="preserve"><value>Een verplicht juridisch document is bijgewerkt. Bekijk en onderteken de nieuwe versie.</value></data>
+  <data name="Consent_MyData_Title" xml:space="preserve">
+    <value>Mijn gegevens</value>
+  </data>
+  <data name="Consent_MyData_Lead" xml:space="preserve">
+    <value>Beheer je persoonsgegevens en privacyinstellingen.</value>
+  </data>
+  <data name="Consent_MyData_ExportTitle" xml:space="preserve">
+    <value>Je gegevens exporteren</value>
+  </data>
+  <data name="Consent_MyData_ExportDescription" xml:space="preserve">
+    <value>Download een kopie van al je persoonsgegevens in JSON-formaat. Dit omvat:</value>
+  </data>
+  <data name="Consent_MyData_ExportAccountInfo" xml:space="preserve">
+    <value>Accountgegevens</value>
+  </data>
+  <data name="Consent_MyData_ExportProfileDetails" xml:space="preserve">
+    <value>Profielgegevens</value>
+  </data>
+  <data name="Consent_MyData_ExportContactFields" xml:space="preserve">
+    <value>Contactvelden</value>
+  </data>
+  <data name="Consent_MyData_ExportApplications" xml:space="preserve">
+    <value>Lidmaatschapsaanvragen</value>
+  </data>
+  <data name="Consent_MyData_ExportConsents" xml:space="preserve">
+    <value>Toestemmingsregistraties</value>
+  </data>
+  <data name="Consent_MyData_ExportTeams" xml:space="preserve">
+    <value>Teamlidmaatschappen</value>
+  </data>
+  <data name="Consent_MyData_ExportRoles" xml:space="preserve">
+    <value>Roltoewijzingen</value>
+  </data>
+  <data name="Consent_MyData_DownloadMyData" xml:space="preserve">
+    <value>Mijn gegevens downloaden</value>
+  </data>
+  <data name="Consent_MyData_DeleteTitle" xml:space="preserve">
+    <value>Je account verwijderen</value>
+  </data>
+  <data name="Consent_MyData_DeleteDescription" xml:space="preserve">
+    <value>Vraag verwijdering van je account en persoonsgegevens aan.</value>
+  </data>
+  <data name="Consent_MyData_DeleteImmediateRevocation" xml:space="preserve">
+    <value>Je teamlidmaatschappen, roltoewijzingen en toegang tot gedeelde bronnen (Google Drive, Groups) worden onmiddellijk ingetrokken</value>
+  </data>
+  <data name="Consent_MyData_DeleteGracePeriod" xml:space="preserve">
+    <value>Je hebt een bedenktijd van 30 dagen om het verzoek te annuleren</value>
+  </data>
+  <data name="Consent_MyData_DeleteAnonymized" xml:space="preserve">
+    <value>Na 30 dagen worden je persoonsgegevens geanonimiseerd en wordt de toegang definitief geblokkeerd</value>
+  </data>
+  <data name="Consent_MyData_DeleteRetained" xml:space="preserve">
+    <value>Geanonimiseerde gegevens worden bewaard voor wettelijke verplichtingen en audits, maar kunnen niet aan je identiteit worden gekoppeld</value>
+  </data>
+  <data name="Consent_MyData_RequestDeletion" xml:space="preserve">
+    <value>Accountverwijdering aanvragen</value>
+  </data>
+  <data name="Consent_MyData_DeletionPending" xml:space="preserve">
+    <value>Verwijdering in afwachting</value>
+  </data>
+  <data name="Consent_MyData_DeletionScheduledFor" xml:space="preserve">
+    <value>Je account staat gepland voor verwijdering op {0}.</value>
+    <comment>{0} = deletion date</comment>
+  </data>
+  <data name="Consent_MyData_DeletionCancelInfo" xml:space="preserve">
+    <value>Je kunt dit verzoek vóór de verwijderingsdatum annuleren als je van gedachten verandert.</value>
+  </data>
+  <data name="Consent_MyData_CancelDeletion" xml:space="preserve">
+    <value>Verwijderingsverzoek annuleren</value>
+  </data>
+  <data name="Consent_MyData_DPOContact" xml:space="preserve">
+    <value>Neem voor vragen over je gegevens of privacyrechten contact op met onze functionaris voor gegevensbescherming:</value>
+  </data>
+  <data name="Consent_MyData_Email" xml:space="preserve">
+    <value>E-mail:</value>
+  </data>
+  <data name="Consent_MyData_ViewFullPolicy" xml:space="preserve">
+    <value>Volledig privacybeleid bekijken</value>
+  </data>
+  <data name="Consent_MyData_ConfirmDeletion" xml:space="preserve">
+    <value>Accountverwijdering bevestigen</value>
+  </data>
+  <data name="Consent_MyData_ConfirmDeletionQuestion" xml:space="preserve">
+    <value>Weet je zeker dat je verwijdering van je account wilt aanvragen?</value>
+  </data>
+  <data name="Consent_MyData_YesDeleteMyAccount" xml:space="preserve">
+    <value>Ja, mijn account verwijderen</value>
+  </data>
+  <data name="Consent_MyData_DeletionAccessRevoked" xml:space="preserve">
+    <value>Je teamlidmaatschappen en roltoewijzingen zijn ingetrokken.</value>
+  </data>
+  <data name="Consent_MyData_CancelNoRestore" xml:space="preserve">
+    <value>Annuleren herstelt je eerdere teamlidmaatschappen niet. Je moet je opnieuw bij teams aansluiten.</value>
+  </data>
+  <data name="Consent_AccountStatus_ReasonLabel" xml:space="preserve"><value>Reden:</value></data>
+  <data name="Consent_Queue_Title" xml:space="preserve">
+    <value>Beoordelingswachtrij onboarding</value>
+  </data>
+  <data name="Consent_Queue_NoPending" xml:space="preserve">
+    <value>Er wachten geen humans op beoordeling.</value>
+  </data>
+  <data name="Consent_Queue_PendingSection" xml:space="preserve">
+    <value>In afwachting van beoordeling</value>
+  </data>
+  <data name="Consent_Queue_FlaggedSection" xml:space="preserve">
+    <value>Gemarkeerd voor opvolging</value>
+  </data>
+  <data name="Consent_Queue_FlaggedBadge" xml:space="preserve">
+    <value>Gemarkeerd</value>
+  </data>
+  <data name="Consent_Queue_NewHumanSummary" xml:space="preserve">
+    <value>Overzicht nieuwe human</value>
+  </data>
+  <data name="Consent_Queue_LegalName" xml:space="preserve">
+    <value>Officiële naam</value>
+  </data>
+  <data name="Consent_Queue_HasApplication" xml:space="preserve">
+    <value>Heeft aanvraag</value>
+  </data>
+  <data name="Consent_Queue_Signed" xml:space="preserve">
+    <value>ondertekend</value>
+  </data>
+  <data name="Consent_Queue_ApplicationMotivation" xml:space="preserve">
+    <value>Motivatie bij aanvraag</value>
+  </data>
+  <data name="Consent_Queue_PreviousNotes" xml:space="preserve">
+    <value>Eerdere beoordelingsnotities</value>
+  </data>
+  <data name="Consent_Queue_Actions" xml:space="preserve">
+    <value>Acties</value>
+  </data>
+  <data name="Consent_Queue_NotesPlaceholder" xml:space="preserve">
+    <value>Optionele notities...</value>
+  </data>
+  <data name="Consent_Queue_ClearButton" xml:space="preserve">
+    <value>Vrijgeven &amp; goedkeuren</value>
+  </data>
+  <data name="Consent_Queue_ClearHelp" xml:space="preserve">
+    <value>Keurt de profielbeoordeling goed. De Human wordt lid van Vrijwilligers zodra ook de juridische documenten zijn ondertekend.</value>
+  </data>
+  <data name="Consent_Queue_ClearConfirm" xml:space="preserve">
+    <value>Hiermee keur je de profielbeoordeling van deze human goed. Doorgaan?</value>
+  </data>
+  <data name="Consent_Queue_FlagButton" xml:space="preserve">
+    <value>Markeren voor beoordeling</value>
+  </data>
+  <data name="Consent_Queue_FlagReasonPlaceholder" xml:space="preserve">
+    <value>Reden voor markering...</value>
+  </data>
+  <data name="Consent_Queue_FlagConfirm" xml:space="preserve">
+    <value>Hiermee markeer je deze human voor nadere beoordeling. Doorgaan?</value>
+  </data>
+  <data name="Consent_Queue_AlreadyCleared" xml:space="preserve">
+    <value>Deze human is al goedgekeurd.</value>
+  </data>
+  <data name="Consent_Queue_Cleared" xml:space="preserve">
+    <value>Profielbeoordeling vrijgegeven.</value>
+  </data>
+  <data name="Consent_Queue_BulkClearedNone" xml:space="preserve">
+    <value>Geen van de geselecteerde humans is goedgekeurd.</value>
+  </data>
+  <data name="Consent_Queue_BulkCleared" xml:space="preserve">
+    <value>{0} geselecteerde humans goedgekeurd.</value>
+  </data>
+  <data name="Consent_Queue_BulkClearedPartial" xml:space="preserve">
+    <value>{0} van {1} geselecteerde Humans goedgekeurd — de anderen komen niet meer in aanmerking.</value>
+  </data>
+  <data name="Consent_Queue_BulkClearButton" xml:space="preserve">
+    <value>Alle geselecteerde goedkeuren</value>
+  </data>
+  <data name="Consent_Queue_Flagged" xml:space="preserve">
+    <value>Human gemarkeerd voor verdere beoordeling.</value>
+  </data>
+  <data name="Consent_Queue_RejectButton" xml:space="preserve">
+    <value>Aanmelding afwijzen</value>
+  </data>
+  <data name="Consent_Queue_RejectReasonPlaceholder" xml:space="preserve">
+    <value>Reden voor afwijzing...</value>
+  </data>
+  <data name="Consent_Queue_RejectConfirm" xml:space="preserve">
+    <value>Weet je zeker dat je de aanmelding van deze human wilt afwijzen? Dit kan niet ongedaan worden gemaakt.</value>
+  </data>
+  <data name="Consent_Queue_RejectHelp" xml:space="preserve">
+    <value>Afwijzen weigert de aanmelding van deze human definitief en stuurt hierover een e-mail.</value>
+  </data>
+  <data name="Consent_Queue_Rejected" xml:space="preserve">
+    <value>Aanmelding is afgewezen.</value>
+  </data>
+  <data name="Consent_Queue_AlreadyRejected" xml:space="preserve">
+    <value>Deze human is al afgewezen.</value>
+  </data>
+  <data name="Consent_Queue_LegalDocuments" xml:space="preserve">
+    <value>Juridische documenten</value>
+  </data>
+  <data name="Consent_Queue_DocsComplete" xml:space="preserve">
+    <value>Volledig</value>
+  </data>
+  <data name="Consent_Queue_DocsPending" xml:space="preserve">
+    <value>In afwachting</value>
+  </data>
+  <data name="Consent_Queue_DocsNote" xml:space="preserve">
+    <value>De profielbeoordeling kan onafhankelijk doorgaan. De Human wordt lid van Vrijwilligers zodra alle documenten zijn ondertekend.</value>
+  </data>
+  <data name="Consent_Queue_ReviewLink" xml:space="preserve"><value>Beoordelen</value></data>
+  <data name="Consent_Queue_SelectRowLabel" xml:space="preserve"><value>{0} selecteren</value></data>
+</root>

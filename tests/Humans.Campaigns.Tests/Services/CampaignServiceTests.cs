@@ -931,8 +931,9 @@ public sealed class CampaignServiceTests
             ("it", "Hai ricevuto un codice dalla campagna: Test Campaign", "Il tuo codice della campagna è disponibile in I miei codici nel tuo profilo.", "I miei codici"),
             ("fr", "Tu as reçu un code de la campagne : Test Campaign", "Ton code de campagne est disponible dans Mes codes sur ton profil.", "Mes codes"),
             ("ca", "Has rebut un codi de la campanya: Test Campaign", "El teu codi de campanya està disponible a Els meus codis del teu perfil.", "Els meus codis"),
+            ("nl", "Je hebt een code ontvangen van campagne: Test Campaign", "Je campagnecode staat onder Mijn codes in je profiel.", "Mijn codes"),
         };
-        var campaign = await SeedActiveCampaignWithCodesAsync(Enumerable.Range(0, 7).Select(i => $"CODE-{i}").ToArray());
+        var campaign = await SeedActiveCampaignWithCodesAsync(Enumerable.Range(0, 8).Select(i => $"CODE-{i}").ToArray());
         var team = SeedTeam("Translated Notices");
         var recipients = copy.Select(x => SeedUser(preferredLanguage: x.Item1)).ToArray();
         var fallback = SeedUser(preferredLanguage: "unsupported");
@@ -947,9 +948,9 @@ public sealed class CampaignServiceTests
 
         var result = await _service.SendWaveAsync(_actorId, campaign.Id, team.Id, ct);
 
-        result.SentCount.Should().Be(7);
+        result.SentCount.Should().Be(8);
         var calls = _notifications.ReceivedCalls().ToList();
-        calls.Should().HaveCount(6, "one failed language must not prevent the others from being attempted");
+        calls.Should().HaveCount(7, "one failed language must not prevent the others from being attempted");
         for (var index = 0; index < recipients.Length; index++)
         {
             var user = recipients[index];

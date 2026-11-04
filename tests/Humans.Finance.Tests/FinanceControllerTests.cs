@@ -1185,12 +1185,14 @@ public class FinanceControllerTests
     [InlineData("it", false)]
     [InlineData("fr", false)]
     [InlineData("ca", false)]
+    [InlineData("nl", false)]
     [InlineData("en", true)]
     [InlineData("es", true)]
     [InlineData("de", true)]
     [InlineData("it", true)]
     [InlineData("fr", true)]
     [InlineData("ca", true)]
+    [InlineData("nl", true)]
     public async Task DuplicatePages_RenderMemberIdsWithoutANameDictionary(string language, bool applied)
     {
         using var culture = new CultureScope(language);
@@ -1274,6 +1276,7 @@ public class FinanceControllerTests
     [InlineData("it")]
     [InlineData("fr")]
     [InlineData("ca")]
+    [InlineData("nl")]
     public async Task ExpenseRecon_RendersCurrentHumansForMembersAndLines_WithTheirLedgerEntry(string language)
     {
         using var culture = new CultureScope(language);

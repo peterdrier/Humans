@@ -20,6 +20,7 @@ public sealed class ExpenseFormValidationTests
     [InlineData("it")]
     [InlineData("fr")]
     [InlineData("ca")]
+    [InlineData("nl")]
     public void MemberForms_RenderLocalizedAnnotationErrors(string culture)
     {
         using var cultureScope = new CultureScope(culture);

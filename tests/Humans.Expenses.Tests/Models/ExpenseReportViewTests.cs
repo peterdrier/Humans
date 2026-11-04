@@ -56,6 +56,7 @@ public class ExpenseReportViewTests
     [Xunit.InlineData("it", ExpenseReportStatus.Draft, "Bozza")]
     [Xunit.InlineData("fr", ExpenseReportStatus.Draft, "Brouillon")]
     [Xunit.InlineData("ca", ExpenseReportStatus.Draft, "Esborrany")]
+    [Xunit.InlineData("nl", ExpenseReportStatus.Draft, "Concept")]
     [Xunit.InlineData("en", ExpenseReportStatus.CoordinatorEndorsed, "Coordinator endorsed")]
     [Xunit.InlineData("es", ExpenseReportStatus.Approved, "Aprobado")]
     [Xunit.InlineData("fr", ExpenseReportStatus.Withdrawn, "Retirée")]
@@ -140,12 +141,14 @@ public class ExpenseReportViewTests
     [Xunit.InlineData("it", false)]
     [Xunit.InlineData("fr", false)]
     [Xunit.InlineData("ca", false)]
+    [Xunit.InlineData("nl", false)]
     [Xunit.InlineData("en", true)]
     [Xunit.InlineData("es", true)]
     [Xunit.InlineData("de", true)]
     [Xunit.InlineData("it", true)]
     [Xunit.InlineData("fr", true)]
     [Xunit.InlineData("ca", true)]
+    [Xunit.InlineData("nl", true)]
     public async Task Iban_OnBehalfGuidanceUsesTheHumanEvenWhenTheMemberIsMissing(string language, bool missingMember)
     {
         using var culture = new CultureScope(language);

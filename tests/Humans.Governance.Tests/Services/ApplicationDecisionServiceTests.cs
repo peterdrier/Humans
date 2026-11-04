@@ -447,6 +447,8 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
     [InlineData("fr", "short", "Application_MotivationLength")]
     [InlineData("ca", null, "Profile_MotivationRequired")]
     [InlineData("ca", "short", "Application_MotivationLength")]
+    [InlineData("nl", null, "Profile_MotivationRequired")]
+    [InlineData("nl", "short", "Application_MotivationLength")]
     public async Task Create_invalid_motivation_reaches_localized_service_validation(string culture, string? motivation, string resourceKey)
     {
         using var cultureScope = new CultureScope(culture);

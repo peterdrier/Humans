@@ -1748,6 +1748,7 @@ public sealed class TeamServiceTests : TeamsTestHarness
     [InlineData("it", "Nuova richiesta di adesione a Alpha", "Requester ora fa parte di Alpha", "Requester ha chiesto di unirsi a Alpha.", "Requester ora fa parte di Alpha.", "Esamina richiesta", "Visualizza membri")]
     [InlineData("fr", "Nouvelle demande pour rejoindre Alpha", "Requester a rejoint Alpha", "Requester a demandé à rejoindre Alpha.", "Requester a rejoint Alpha.", "Examiner la demande", "Voir les membres")]
     [InlineData("ca", "Nova sol·licitud per unir-se a Alpha", "Requester s’ha unit a Alpha", "Requester ha sol·licitat unir-se a Alpha.", "Requester s’ha unit a Alpha.", "Revisa la sol·licitud", "Mostra els membres")]
+    [InlineData("nl", "Nieuw verzoek om lid te worden van Alpha", "Requester is lid geworden van Alpha", "Requester heeft gevraagd om lid te worden van Alpha.", "Requester is lid geworden van Alpha.", "Verzoek beoordelen", "Leden bekijken")]
     public async Task CoordinatorMembershipNotices_UseEachRecipientsLanguage(
         string language, string requestTitle, string joinedTitle, string requestBody, string joinedBody,
         string reviewLabel, string membersLabel)

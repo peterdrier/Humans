@@ -26,6 +26,7 @@ public class VolunteerSearchScriptTests
     [Xunit.InlineData("it")]
     [Xunit.InlineData("fr")]
     [Xunit.InlineData("ca")]
+    [Xunit.InlineData("nl")]
     public async Task Search_labels_round_trip_through_rendered_script_literals(string language)
     {
         var resources = new ResourceManager(typeof(ShiftsResource));

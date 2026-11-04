@@ -239,6 +239,7 @@ public class ShiftsControllerUserActiveSignupsTests
     [InlineData("it")]
     [InlineData("fr")]
     [InlineData("ca")]
+    [InlineData("nl")]
     public async Task BailRange_LocalizesRefusalKeysInTheMembersCulture(string culture)
     {
         const string key = "Shifts_BailRange_NotAuthorized";

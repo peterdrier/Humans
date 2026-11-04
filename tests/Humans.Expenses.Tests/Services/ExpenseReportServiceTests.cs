@@ -924,6 +924,7 @@ public sealed partial class ExpenseReportServiceTests
     [InlineData("it", "Seleziona un file.")]
     [InlineData("fr", "Veuillez sélectionner un fichier.")]
     [InlineData("ca", "Selecciona un fitxer.")]
+    [InlineData("nl", "Kies een bestand.")]
     public async Task AddLineWithResultAsync_ReturnsUploadKey_WhichTheControllerLocalizes_BeforeCreatingLine(
         string culture, string expectedMessage)
     {

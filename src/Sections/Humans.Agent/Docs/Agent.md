@@ -62,7 +62,7 @@ Single-row table (PK `Id = 1`, enforced by `ck_agent_settings_singleton`) holdin
 
 Per-user message and token counters live in the Singleton `IAgentRateLimitStore`. Phase 1 has no persisted `agent_rate_limits` table — counters reset whenever the process restarts. Phase 2 revisits persistence if abuse traffic warrants it. Turns for the same user are serialized within the process, across request scopes: each waits before reading current settings, conversation history and quotas, and releases only after normal or failed/disconnected-turn usage is recorded. Waiting honours request cancellation and times out after five minutes; cancellation while waiting writes nothing. Different users can stream independently.
 
-The member history page uses localized labels, including the link to each transcript, in all six supported cultures.
+The member history page uses localized labels, including the link to each transcript, in all supported cultures.
 
 ## Actors & Roles
 
@@ -97,7 +97,7 @@ Conversation list and transcript GETs propagate request cancellation through vie
    <!-- wheat: docs/superpowers/specs/2026-07-30-faq-proposals-production.md §How this run differed -->
    `RefusalReason` is written only for `rate_limited`, abuse-flag and `error` turns. An answer that fails to help ("I don't know") is an ordinary assistant message, so refusal counts are not a knowledge-gap signal; KB triage reads transcripts.
    Refusal and silent-turn replies come from Agent resources in the member/conversation locale
-   (all six supported cultures, English fallback). Stored handoff text reuses the widget’s
+   (all supported cultures, English fallback). Stored handoff text reuses the widget’s
    `Agent_IssueProposed` key so the live reply and transcript cannot drift.
    The issue widget displays localized server upload refusals from JSON error responses, falling back to its localized validation message for other response shapes.
    The widget’s browser error/status messages and Close label are localized too; its

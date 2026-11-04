@@ -57,7 +57,7 @@ prune or delete path, by design (Art. 30 / Art. 17(3)(b)).
   HTML entry partial.
 - **UI:** one controller action (`AuditLogController.Index`), one public `<vc:audit-log>`
   component with a view per layout. No admin dashboard card.
-- **Resources:** `AuditLogResource` in all six cultures for the member-facing entry views
+- **Resources:** `AuditLogResource` in all supported cultures for the member-facing entry views
   (`_Entry`, `Table`); the `/AuditLog` page is admin-only English.
 
 ## 4. Invariants

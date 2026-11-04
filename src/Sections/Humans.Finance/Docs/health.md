@@ -129,7 +129,7 @@ Humans.Finance/
   Domain/                      the entities and their enums
   Data/                        two repositories over one context, the tables
   Resources/                   the pain.001.001.09 schema the file is validated against
-  FinanceResource*.resx        the payout emails' strings, six cultures
+  FinanceResource*.resx        the payout emails' strings, every culture
 ```
 
 What the shapes say about the inside:

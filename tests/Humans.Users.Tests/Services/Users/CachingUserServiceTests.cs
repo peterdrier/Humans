@@ -903,6 +903,7 @@ public class CachingUserServiceTests
     [InlineData("it", "ID utente")]
     [InlineData("fr", "ID utilisateur")]
     [InlineData("ca", "ID d'usuari")]
+    [InlineData("nl", "Gebruikers-ID")]
     public async Task SearchUsersAsync_AdminBit_ExactUserIdLookup(string culture, string label)
     {
         using var scope = new CultureScope(culture);

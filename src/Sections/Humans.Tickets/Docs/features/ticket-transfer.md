@@ -64,7 +64,7 @@ A receiver selected before an account merge must be selected again: confirmation
 - On submit a `Pending` request is created; the Sender sees a pending stamp on the ticket and a Cancel
   control on the homepage.
 
-Member request and cancellation errors are localized in all six cultures. Unknown failure text is logged and replaced by a translated fallback.
+Member request and cancellation errors are localized in all supported cultures. Unknown failure text is logged and replaced by a translated fallback.
 
 ### US-42.2: Sender cancels a pending transfer
 - A Cancel control appears on the Sender's pending-transfer ticket on the homepage.

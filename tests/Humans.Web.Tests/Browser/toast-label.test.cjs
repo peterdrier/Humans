@@ -6,7 +6,7 @@ const vm = require('node:vm');
 
 const site = readFileSync(resolve(__dirname, '../../../src/Humans.Web/wwwroot/js/site.js'), 'utf8');
 const script = site.slice(site.indexOf('function showToast('), site.indexOf('// Initialize Bootstrap tooltips'));
-for (const culture of ['', 'es', 'de', 'it', 'fr', 'ca']) {
+for (const culture of ['', 'es', 'de', 'it', 'fr', 'ca', 'nl']) {
     test(`dynamic toast close button uses the rendered label (${culture || 'en'})`, () => {
         const resx = readFileSync(resolve(__dirname,
             `../../../src/Humans.Base/Resources/SharedResource${culture ? '.' + culture : ''}.resx`), 'utf8');

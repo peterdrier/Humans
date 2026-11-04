@@ -166,11 +166,11 @@ Stored as **string** via `HasConversion<string>()`. The column carried a `Paid` 
 
 ## Routing
 
-- `/Store` — Camp Lead and department-coordinator order browse + create + line edit. Each counterparty (camp-you-lead or department-you-coordinate) is rendered as its own card; when there are none, the page renders its localized read-only catalog alert. Catalog unit-price/VAT breakdowns use the same six-culture label as order lines. A privileged reader (StoreAdmin/FinanceAdmin/Admin **or** TeamsAdmin) sees every camp season and department for the year, not just the ones they lead/coordinate; per-row Create/Delete affordances are resolved against `OrderAuthorizationHandler` rather than a blanket admin flag.
+- `/Store` — Camp Lead and department-coordinator order browse + create + line edit. Each counterparty (camp-you-lead or department-you-coordinate) is rendered as its own card; when there are none, the page renders its localized read-only catalog alert. Catalog unit-price/VAT breakdowns use the same localized label as order lines. A privileged reader (StoreAdmin/FinanceAdmin/Admin **or** TeamsAdmin) sees every camp season and department for the year, not just the ones they lead/coordinate; per-row Create/Delete affordances are resolved against `OrderAuthorizationHandler` rather than a blanket admin flag.
 - `/Store/Order/{id}` — Order detail. Lines display the **effective** unit price (live catalog price for an Open order, frozen snapshot once InvoiceIssued — nobodies-collective/Humans#816). Camp orders show summary cards (lines subtotal, VAT, deposits, deposits returned, total cleared payments, and a last box that reads "Balance owed" at a zero or positive balance and "Refund amount" — the positive amount the org owes the camp — at a negative one; the balance and total exclude `Pending`/`Failed`, and deposit returns count as payments), a "price changes since this order started" table (rendered by `<vc:audit-log layout="table">` over the order's product ids — Store does not read audit), the recorded-payments list (date, method, **status** Paid/Pending/Failed, Stripe/external reference, amount) with a "€X pending settlement" banner when async mandates are uncleared, the Pay button, and a collapsed-by-default counterparty section. Team orders show only lines + add-line form + a "non-billable" footer (no counterparty form, no Pay, no payments list).
 - `/Store/Order/Create/{campSeasonId}` — POST: creates the camp season's order (authorized as `Create` against the season; refusals redirect to `/Store` with localized feedback).
 - `/Store/Team/{teamId}/Create` — POST: department coordinator creates their team's order for the active event year.
-- `/Store/Order/{id}/Pay` — POST: starts a Stripe Checkout session for the camp order and redirects to Stripe. Checkout refuses fractional-cent amounts with feedback in all six cultures before calling Stripe; trailing zeroes remain valid and accepted amounts pass through exactly.
+- `/Store/Order/{id}/Pay` — POST: starts a Stripe Checkout session for the camp order and redirects to Stripe. Checkout refuses fractional-cent amounts with feedback in all supported cultures before calling Stripe; trailing zeroes remain valid and accepted amounts pass through exactly.
 - `/Store/Order/{id}/Delete` — POST: deletes an order (`Delete` requirement) while Open, at zero balance and with no payment rows; redirects to `/Store`.
 - `/Store/Order/{id}/AddLine` — POST: adds a product line (`productId`, `qty`); authorized against an `OrderLineContext` carrying the product's deadline.
 - `/Store/Order/{id}/RemoveLine` — POST: removes a line (`lineId`); gated like AddLine.
@@ -219,14 +219,14 @@ Stored as **string** via `HasConversion<string>()`. The column carried a `Paid` 
 
 - Member order price-history tables supply localized date/action/description headers through the shared audit component’s keyed labels, preserving product predicates, column order and audit entries.
 
-- Member order-list status badges reuse the same six-culture order-state labels as the detail page, keeping their badge colors and stored state values unchanged.
+- Member order-list status badges reuse the same localized order-state labels as the detail page, keeping their badge colors and stored state values unchanged.
 
 - Member catalog and camp-order VAT percentage labels use the selected UI culture’s decimal separator. VAT calculation, rounding, price snapshots and invariant payment-input values are unchanged.
 
 - Shared table currency and number cells use the selected UI culture; numeric sort values stay invariant.
 
-- Member-facing order pages localize their breadcrumb navigation label in all six supported cultures.
-- Order projections use the current UI culture for missing-product and missing-counterparty labels in all six supported cultures; stored names remain unchanged.
+- Member-facing order pages localize their breadcrumb navigation label in all supported cultures.
+- Order projections use the current UI culture for missing-product and missing-counterparty labels in all supported cultures; stored names remain unchanged.
 - Stripe checkout localizes its camp-order fallback label in the current UI culture when no billing name is supplied; supplied names and the merchant prefix remain unchanged.
 
 - The Store index resolves the active year once and loads its catalog once: active products populate the visible catalog, while all products supply live prices, including deactivated products already on orders. Selected camp and department orders load in batches and share product-name and live-price snapshots across cards. Price mapping is shared with individual-order reads and historical summaries, which retain their own year selection. Camp cards retain the highest-balance legacy order, and team cards retain the first matching order; viewer scoping is unchanged.
@@ -354,7 +354,7 @@ Acountax's call and change without a deploy:
 Implementation status: catalog CRUD (create, update, deactivate), order create, add/remove line, counterparty edit, Stripe payment recording, deposit-return / refund recording, and Holded invoice issuance are live. Bank-transfer / cash entry, treasury sync, and the Orders admin view are unbuilt — no code for them exists. See [`Store-feature.md`](features/Store-feature.md).
 
 - The internal `StoreStripePayments` owns Stripe payment ingestion, missing-payment recovery and webhook state transitions through the same idempotent recording path and shared ingestion lock. The service retains reconciliation report reads and existing entry points; payment persistence, idempotency, audit wording and event-order handling are unchanged. No DI registration or public contract is added.
-- Line and counterparty mutations return resource-key refusals for invalid quantity, missing records, wrong-order lines, frozen line edits, unavailable products, catalog-year mismatch, and non-billable orders. Controllers localize these in all six cultures; expected refusals log a warning without an exception and perform no mutation (apart from the existing audited legacy-year repair). Dependency faults and cancellation propagate rather than becoming business feedback.
+- Line and counterparty mutations return resource-key refusals for invalid quantity, missing records, wrong-order lines, frozen line edits, unavailable products, catalog-year mismatch, and non-billable orders. Controllers localize these in all supported cultures; expected refusals log a warning without an exception and perform no mutation (apart from the existing audited legacy-year repair). Dependency faults and cancellation propagate rather than becoming business feedback.
 
 - Checkout returns resource-key refusals for unavailable configuration, non-positive or excessive amounts, and a pending settlement. The controller localizes the outstanding balance and logs actual Stripe failures at Error with generic localized feedback; a dependency InvalidOperationException cannot become a business refusal. Stripe writes remain detached from request cancellation.
 

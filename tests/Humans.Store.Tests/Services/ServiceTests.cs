@@ -1687,6 +1687,7 @@ public class ServiceTests
     [InlineData("it")]
     [InlineData("fr")]
     [InlineData("ca")]
+    [InlineData("nl")]
     public async Task Pay_localizes_refusals_and_hides_Stripe_diagnostics_with_detached_write_token(string culture)
     {
         using var scope = new CultureScope(culture);

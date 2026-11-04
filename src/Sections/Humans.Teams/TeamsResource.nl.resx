@@ -1,0 +1,556 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<!-- ReSharper disable MarkupTextTypo -->
+<root xmlns:ns1="urn:schemas-microsoft-com:xml-msdata" xmlns:xs="http://www.w3.org/2001/XMLSchema">
+  <xs:schema id="root">
+    <xs:element name="root" ns1:IsDataSet="true">
+      <xs:complexType>
+        <xs:choice maxOccurs="unbounded">
+          <xs:element name="data">
+            <xs:complexType>
+              <xs:sequence>
+                <xs:element name="value" type="xsd:string" minOccurs="0" ns1:Ordinal="1" />
+                <xs:element name="comment" type="xsd:string" minOccurs="0" ns1:Ordinal="2" />
+              </xs:sequence>
+              <xs:attribute name="name" type="xsd:string" ns1:Ordinal="0" />
+              <xs:attribute name="type" type="xsd:string" />
+              <xs:attribute name="mimetype" type="xsd:string" />
+            </xs:complexType>
+          </xs:element>
+          <xs:element name="resheader">
+            <xs:complexType>
+              <xs:sequence>
+                <xs:element name="value" type="xsd:string" minOccurs="0" ns1:Ordinal="1" />
+              </xs:sequence>
+              <xs:attribute name="name" type="xsd:string" use="required" />
+            </xs:complexType>
+          </xs:element>
+        </xs:choice>
+      </xs:complexType>
+    </xs:element>
+  </xs:schema>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>1.3</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+    <data name="Teams_MyTeams_Title" xml:space="preserve">
+    <value>Mijn teams</value>
+  </data>
+  <data name="Teams_BreadcrumbNavigation" xml:space="preserve"><value>Kruimelpad</value></data>
+  <data name="Teams_JoinTeam_Title" xml:space="preserve">
+    <value>Lid worden van {0}</value>
+    <comment>{0} = team name</comment>
+  </data>
+  <data name="Teams_CreateTeam" xml:space="preserve">
+    <value>Team aanmaken</value>
+  </data>
+  <data name="Teams_MemberCount" xml:space="preserve">
+    <value>{0} human(s)</value>
+    <comment>{0} = member count</comment>
+  </data>
+  <data name="Teams_RequiresApproval" xml:space="preserve">
+    <value>Goedkeuring vereist</value>
+  </data>
+  <data name="Teams_ViewDetails" xml:space="preserve">
+    <value>Details bekijken</value>
+  </data>
+  <data name="Teams_Manage" xml:space="preserve">
+    <value>Beheren</value>
+  </data>
+  <data name="Teams_NoTeams" xml:space="preserve">
+    <value>Er zijn nog geen teams aangemaakt.</value>
+  </data>
+  <data name="Teams_MyTeamsSection" xml:space="preserve">
+    <value>Mijn teams</value>
+  </data>
+  <data name="Teams_NotOnAnyTeam" xml:space="preserve">
+    <value>Je bent nog geen lid van een team.</value>
+  </data>
+  <data name="Teams_System" xml:space="preserve">
+    <value>Systeem</value>
+  </data>
+  <data name="Teams_TeamDetail_NoDescription" xml:space="preserve">
+    <value>Geen beschrijving opgegeven.</value>
+  </data>
+  <data name="Teams_TeamDetail_SystemTeamInfo" xml:space="preserve">
+    <value>Dit is een door het systeem beheerd team. Het lidmaatschap wordt automatisch gesynchroniseerd op basis van {0}-criteria.</value>
+    <comment>{0} = system team type</comment>
+  </data>
+  <data name="Teams_TeamDetail_Members" xml:space="preserve">
+    <value>Leden ({0})</value>
+    <comment>{0} = count</comment>
+  </data>
+  <data name="Teams_TeamDetail_ManageMembers" xml:space="preserve">
+    <value>Leden beheren</value>
+  </data>
+  <data name="Teams_TeamDetail_NoMembers" xml:space="preserve">
+    <value>Nog geen humans.</value>
+  </data>
+  <data name="Teams_TeamDetail_RequestToJoin" xml:space="preserve">
+    <value>Verzoek om lid te worden</value>
+  </data>
+  <data name="Teams_TeamDetail_JoinTeam" xml:space="preserve">
+    <value>Lid worden van team</value>
+  </data>
+  <data name="Teams_TeamDetail_PendingApproval" xml:space="preserve">
+    <value>Je verzoek om lid te worden is in afwachting van goedkeuring.</value>
+  </data>
+  <data name="Teams_TeamDetail_WithdrawRequest" xml:space="preserve">
+    <value>Verzoek intrekken</value>
+  </data>
+  <data name="Teams_TeamDetail_LeaveTeam" xml:space="preserve">
+    <value>Team verlaten</value>
+  </data>
+  <data name="Teams_TeamDetail_SystemMembership" xml:space="preserve">
+    <value>Het lidmaatschap van systeemteams wordt automatisch beheerd.</value>
+  </data>
+  <data name="Teams_TeamDetail_TeamManagement" xml:space="preserve">
+    <value>Teambeheer</value>
+  </data>
+  <data name="Teams_TeamDetail_EditTeam" xml:space="preserve">
+    <value>Team bewerken</value>
+  </data>
+  <data name="Teams_TeamDetail_PendingRequests" xml:space="preserve">
+    <value>Verzoeken in afwachting</value>
+  </data>
+  <data name="Teams_TeamDetail_ManageResources" xml:space="preserve">
+    <value>Bronnen beheren</value>
+  </data>
+  <data name="Teams_TeamDetail_Resources" xml:space="preserve">
+    <value>Bronnen</value>
+  </data>
+  <data name="Teams_TeamDetail_ManageConsents" xml:space="preserve">
+    <value>Juridische documenten</value>
+  </data>
+  <data name="Teams_MyTeams_TeamMemberships" xml:space="preserve">
+    <value>Teamlidmaatschappen</value>
+  </data>
+  <data name="Teams_MyTeams_Team" xml:space="preserve">
+    <value>Team</value>
+  </data>
+  <data name="Teams_MyTeams_Joined" xml:space="preserve">
+    <value>Lid sinds</value>
+  </data>
+  <data name="Teams_MyTeams_Actions" xml:space="preserve">
+    <value>Acties</value>
+  </data>
+  <data name="Teams_MyTeams_Leave" xml:space="preserve">
+    <value>Verlaten</value>
+  </data>
+  <data name="Teams_MyTeams_NoTeams" xml:space="preserve">
+    <value>Je maakt nog geen deel uit van een team.</value>
+  </data>
+  <data name="Teams_MyTeams_BrowseTeams" xml:space="preserve">
+    <value>Teams bekijken</value>
+  </data>
+  <data name="Teams_MyTeams_PendingRequests" xml:space="preserve">
+    <value>Verzoeken in afwachting</value>
+  </data>
+  <data name="Teams_MyTeams_Status" xml:space="preserve">
+    <value>Status</value>
+  </data>
+  <data name="Teams_MyTeams_Requested" xml:space="preserve">
+    <value>Aangevraagd</value>
+  </data>
+  <data name="Teams_MyTeams_Withdraw" xml:space="preserve">
+    <value>Intrekken</value>
+  </data>
+  <data name="Teams_JoinTeam_RequiresApproval" xml:space="preserve">
+    <value>Voor dit team is goedkeuring nodig om lid te worden. Je verzoek wordt beoordeeld door de teamleiders of bestuursleden.</value>
+  </data>
+  <data name="Teams_JoinTeam_MessageLabel" xml:space="preserve">
+    <value>Bericht (optioneel)</value>
+  </data>
+  <data name="Teams_JoinTeam_MessagePlaceholder" xml:space="preserve">
+    <value>Vertel het team waarom je lid wilt worden...</value>
+  </data>
+  <data name="Teams_JoinTeam_SubmitRequest" xml:space="preserve">
+    <value>Verzoek indienen</value>
+  </data>
+  <data name="Teams_JoinTeam_NoApprovalNeeded" xml:space="preserve">
+    <value>Je kunt direct lid worden van dit team, zonder goedkeuring.</value>
+  </data>
+  <data name="Teams_JoinTeam_JoinTeamButton" xml:space="preserve">
+    <value>Lid worden van team</value>
+  </data>
+  <data name="Teams_Team_CannotJoinSystem" xml:space="preserve">
+    <value>Je kunt niet rechtstreeks lid worden van systeemteams.</value>
+  </data>
+  <data name="Teams_Team_AlreadyMember" xml:space="preserve">
+    <value>Je maakt al deel uit van dit team.</value>
+  </data>
+  <data name="Teams_Team_AlreadyPendingRequest" xml:space="preserve">
+    <value>Je hebt al een verzoek in afwachting voor dit team.</value>
+  </data>
+  <data name="Teams_Team_JoinRequestSubmitted" xml:space="preserve">
+    <value>Je verzoek om lid te worden is ingediend en is in afwachting van goedkeuring.</value>
+  </data>
+  <data name="Teams_Team_Joined" xml:space="preserve">
+    <value>Je bent nu lid van het team!</value>
+  </data>
+  <data name="Teams_Team_Left" xml:space="preserve">
+    <value>Je hebt het team verlaten.</value>
+  </data>
+  <data name="Teams_Team_RequestWithdrawn" xml:space="preserve">
+    <value>Je verzoek is ingetrokken.</value>
+  </data>
+  <data name="Teams_NotFound" xml:space="preserve">
+    <value>Team niet gevonden.</value>
+  </data>
+  <data name="Teams_CannotJoinHidden" xml:space="preserve">
+    <value>Je kunt niet rechtstreeks lid worden van een verborgen team.</value>
+  </data>
+  <data name="Teams_JoinPolicyChanged" xml:space="preserve">
+    <value>De toelatingsvoorwaarden van het team zijn gewijzigd. Probeer het opnieuw.</value>
+  </data>
+  <data name="Teams_CannotLeaveSystem" xml:space="preserve">
+    <value>Je kunt een door het systeem beheerd team niet rechtstreeks verlaten.</value>
+  </data>
+  <data name="Teams_NotMember" xml:space="preserve">
+    <value>Je bent geen lid van dit team.</value>
+  </data>
+  <data name="Teams_RequestUnavailable" xml:space="preserve">
+    <value>Dit verzoek om lid te worden is niet beschikbaar of niet meer in afwachting.</value>
+  </data>
+  <data name="Teams_ActionFailed" xml:space="preserve">
+    <value>Deze teamactie kon niet worden voltooid. Probeer het opnieuw.</value>
+  </data>
+  <data name="Teams_TeamAdmin_RequestApproved" xml:space="preserve">
+    <value>Verzoek goedgekeurd. De human maakt nu deel uit van het team.</value>
+  </data>
+  <data name="Teams_TeamAdmin_ProvideRejectionReason" xml:space="preserve">
+    <value>Geef een reden voor de afwijzing op.</value>
+  </data>
+  <data name="Teams_TeamAdmin_RequestRejected" xml:space="preserve">
+    <value>Verzoek afgewezen.</value>
+  </data>
+  <data name="Teams_TeamAdmin_MemberRemoved" xml:space="preserve">
+    <value>Lid verwijderd uit het team.</value>
+  </data>
+  <data name="Teams_AdminTeams_Title" xml:space="preserve">
+    <value>Teambeheer</value>
+  </data>
+  <data name="Teams_AdminCreateTeam_Title" xml:space="preserve">
+    <value>Team aanmaken</value>
+  </data>
+  <data name="Teams_AdminEditTeam_Title" xml:space="preserve">
+    <value>Team bewerken</value>
+  </data>
+  <data name="Teams_MyTeams_LeaveConfirm" xml:space="preserve">
+    <value>Weet je zeker dat je {0} wilt verlaten?</value>
+    <comment>{0} = team name</comment>
+  </data>
+  <data name="Teams_MyTeams_WithdrawConfirm" xml:space="preserve">
+    <value>Weet je zeker dat je dit verzoek wilt intrekken?</value>
+  </data>
+  <data name="Teams_JoinTeam_Join" xml:space="preserve">
+    <value>Lid worden</value>
+  </data>
+  <data name="Teams_TeamDetail_Created" xml:space="preserve">
+    <value>Aangemaakt</value>
+  </data>
+  <data name="Teams_TeamDetail_WithdrawConfirm" xml:space="preserve">
+    <value>Weet je zeker dat je je verzoek wilt intrekken?</value>
+  </data>
+  <data name="Teams_TeamDetail_LeaveConfirm" xml:space="preserve">
+    <value>Weet je zeker dat je dit team wilt verlaten?</value>
+  </data>
+  <data name="Teams_AdminTeams_Name" xml:space="preserve">
+    <value>Naam</value>
+  </data>
+  <data name="Teams_AdminTeams_Type" xml:space="preserve">
+    <value>Type</value>
+  </data>
+  <data name="Teams_AdminTeams_Members" xml:space="preserve">
+    <value>Leden</value>
+  </data>
+  <data name="Teams_AdminTeams_PendingJoins" xml:space="preserve">
+    <value>Verzoeken in afwachting</value>
+  </data>
+  <data name="Teams_AdminTeams_PendingShifts" xml:space="preserve">
+    <value>Diensten in afwachting</value>
+  </data>
+  <data name="Teams_AdminTeams_MailGroup" xml:space="preserve">
+    <value>Mailgroep</value>
+  </data>
+  <data name="Teams_AdminTeams_DriveResources" xml:space="preserve">
+    <value>Drive</value>
+  </data>
+  <data name="Teams_AdminTeams_Created" xml:space="preserve">
+    <value>Aangemaakt</value>
+  </data>
+  <data name="Teams_AdminTeams_Open" xml:space="preserve">
+    <value>Open</value>
+  </data>
+  <data name="Teams_AdminTeams_Inactive" xml:space="preserve">
+    <value>Inactief</value>
+  </data>
+  <data name="Teams_AdminTeams_DeactivateConfirm" xml:space="preserve">
+    <value>Dit team deactiveren?</value>
+  </data>
+  <data name="Teams_AdminTeams_Deactivate" xml:space="preserve">
+    <value>Deactiveren</value>
+  </data>
+  <data name="Teams_AdminTeams_SystemManaged" xml:space="preserve">
+    <value>Beheerd door het systeem</value>
+  </data>
+  <data name="Teams_AdminTeams_TeamName" xml:space="preserve">
+    <value>Teamnaam</value>
+  </data>
+  <data name="Teams_AdminTeams_DescriptionOptional" xml:space="preserve">
+    <value>Beschrijving (optioneel)</value>
+  </data>
+  <data name="Teams_AdminTeams_RequireApproval" xml:space="preserve">
+    <value>Goedkeuring vereisen om lid te worden</value>
+  </data>
+  <data name="Teams_AdminTeams_RequireApprovalHelp" xml:space="preserve">
+    <value>Als dit is ingeschakeld, moeten nieuwe leden worden goedgekeurd door een teamleider of bestuurslid.</value>
+  </data>
+  <data name="Teams_AdminEditTeam_TeamIsActive" xml:space="preserve">
+    <value>Team is actief</value>
+  </data>
+  <data name="Teams_TeamAdmin_ManageMembers" xml:space="preserve">
+    <value>Leden beheren</value>
+  </data>
+  <data name="Teams_TeamAdmin_ManageResources" xml:space="preserve">
+    <value>Bronnen beheren</value>
+  </data>
+  <data name="Teams_TeamAdmin_SystemTeam" xml:space="preserve">
+    <value>Systeemteam</value>
+  </data>
+  <data name="Teams_TeamAdmin_SystemTeamRolesInfo" xml:space="preserve">
+    <value>Dit is een door het systeem beheerd team. Rollen van leden kunnen niet handmatig worden gewijzigd.</value>
+  </data>
+  <data name="Teams_TeamAdmin_RemoveConfirm" xml:space="preserve">
+    <value>Deze human uit het team verwijderen?</value>
+  </data>
+  <data name="Teams_TeamAdmin_Remove" xml:space="preserve">
+    <value>Verwijderen</value>
+  </data>
+  <data name="Teams_TeamAdmin_NoMembers" xml:space="preserve">
+    <value>Nog geen humans in dit team.</value>
+  </data>
+  <data name="Teams_TeamAdmin_BackToTeam" xml:space="preserve">
+    <value>Terug naar team</value>
+  </data>
+  <data name="Teams_TeamAdmin_Message" xml:space="preserve">
+    <value>Bericht</value>
+  </data>
+  <data name="Teams_TeamAdmin_NoMessage" xml:space="preserve">
+    <value>Geen bericht</value>
+  </data>
+  <data name="Teams_TeamAdmin_ApproveConfirm" xml:space="preserve">
+    <value>Dit verzoek goedkeuren?</value>
+  </data>
+  <data name="Teams_TeamAdmin_Approve" xml:space="preserve">
+    <value>Goedkeuren</value>
+  </data>
+  <data name="Teams_TeamAdmin_Reject" xml:space="preserve">
+    <value>Afwijzen</value>
+  </data>
+  <data name="Teams_TeamAdmin_RejectRequest" xml:space="preserve">
+    <value>Verzoek afwijzen</value>
+  </data>
+  <data name="Teams_TeamAdmin_RejectionReason" xml:space="preserve">
+    <value>Reden voor afwijzing (verplicht)</value>
+  </data>
+  <data name="Teams_TeamDetail_TeamCoordinators" xml:space="preserve">
+    <value>Coördinatoren</value>
+  </data>
+  <data name="Teams_Detail_SubteamLeads" xml:space="preserve"><value>Subteamleiders ({0})</value></data>
+  <data name="Teams_TeamDetail_AboutTeam" xml:space="preserve">
+    <value>Over</value>
+  </data>
+  <data name="Teams_TeamDetail_EditPage" xml:space="preserve">
+    <value>Pagina bewerken</value>
+  </data>
+  <data name="Teams_TeamDetail_LastUpdated" xml:space="preserve">
+    <value>Laatst bijgewerkt</value>
+  </data>
+  <data name="Teams_TeamDetail_NoPageContent" xml:space="preserve">
+    <value>Dit team heeft nog geen pagina. Voeg inhoud toe om humans te vertellen waar jullie voor staan.</value>
+  </data>
+  <data name="Teams_TeamDetail_AddPageContent" xml:space="preserve">
+    <value>Pagina-inhoud toevoegen</value>
+  </data>
+  <data name="Teams_TeamDetail_ChildTeamMembers" xml:space="preserve">
+    <value>Humans via subteams ({0})</value>
+    <comment>{0} = count</comment>
+  </data>
+  <data name="Teams_TeamDetail_ManageRoles" xml:space="preserve">
+    <value>Rollen beheren</value>
+  </data>
+  <data name="Teams_TeamDetail_SubTeams" xml:space="preserve">
+    <value>Subteams</value>
+  </data>
+  <data name="Teams_PublicDirectory" xml:space="preserve">
+    <value>Teams</value>
+  </data>
+  <data name="Teams_PublicDirectorySubtitle" xml:space="preserve">
+    <value>Ontdek de teams die het allemaal mogelijk maken.</value>
+  </data>
+  <data name="Teams_LearnMore" xml:space="preserve">
+    <value>Meer informatie</value>
+  </data>
+  <data name="Teams_NoPublicTeams" xml:space="preserve">
+    <value>Er zijn nog geen openbare teampagina's beschikbaar.</value>
+  </data>
+  <data name="Teams_EditTeamPage_Saved" xml:space="preserve">
+    <value>Teampagina bijgewerkt.</value>
+  </data>
+  <data name="Teams_Birthdays_Title" xml:space="preserve">
+    <value>Verjaardagskalender</value>
+  </data>
+  <data name="Teams_Birthdays_Count" xml:space="preserve">
+    <value>{0} verjaardagen in {1}</value>
+  </data>
+  <data name="Teams_Birthdays_Count_One" xml:space="preserve">
+    <value>{0} verjaardag in {1}</value>
+  </data>
+  <data name="Teams_Birthdays_None" xml:space="preserve">
+    <value>Geen verjaardagen in {0}.</value>
+  </data>
+  <data name="Teams_Birthdays_Privacy" xml:space="preserve">
+    <value>Alleen humans die hun verjaardag hebben ingevuld worden getoond.</value>
+  </data>
+  <data name="Teams_Map_Title" xml:space="preserve">
+    <value>Humans-kaart</value>
+  </data>
+  <data name="Teams_Map_Count" xml:space="preserve">
+    <value>{0} humans met locatie</value>
+  </data>
+  <data name="Teams_Map_None" xml:space="preserve">
+    <value>Nog geen enkele human heeft een locatie ingesteld.</value>
+  </data>
+  <data name="Teams_Map_Privacy" xml:space="preserve">
+    <value>Alleen humans die hun locatie hebben ingevuld worden getoond. De locatie is bij benadering en gebaseerd op de stad.</value>
+  </data>
+  <data name="Teams_TeamAdmin_AddMember" xml:space="preserve">
+    <value>Lid toevoegen</value>
+  </data>
+  <data name="Teams_TeamAdmin_SearchHumans" xml:space="preserve">
+    <value>Humans zoeken</value>
+  </data>
+  <data name="Teams_TeamAdmin_SearchPlaceholder" xml:space="preserve">
+    <value>Typ een naam of e-mailadres...</value>
+  </data>
+  <data name="Teams_TeamAdmin_MemberAdded" xml:space="preserve">
+    <value>Lid toegevoegd.</value>
+  </data>
+  <data name="Teams_TeamAdmin_Add" xml:space="preserve">
+    <value>Toevoegen</value>
+  </data>
+  <data name="Teams_TeamAdmin_TicketLabel" xml:space="preserve">
+    <value>Ticket #{0}</value>
+    <comment>{0} = ticket barcode; shown as the detail line on a ticket-resolved person-picker result</comment>
+  </data>
+  <data name="Teams_Roster_All" xml:space="preserve"><value>Alle</value></data>
+  <data name="Teams_Roster_ColAssignedTo" xml:space="preserve"><value>Toegewezen aan</value></data>
+  <data name="Teams_Roster_ColPeriod" xml:space="preserve"><value>Periode</value></data>
+  <data name="Teams_Roster_ColPriority" xml:space="preserve"><value>Prioriteit</value></data>
+  <data name="Teams_Roster_ColRole" xml:space="preserve"><value>Rol</value></data>
+  <data name="Teams_Roster_ColSlot" xml:space="preserve"><value>Plek</value></data>
+  <data name="Teams_Roster_ColTeam" xml:space="preserve"><value>Team</value></data>
+  <data name="Teams_Roster_NoSlots" xml:space="preserve"><value>Er zijn bij geen enkel team rolplekken gedefinieerd.</value></data>
+  <data name="Teams_Roster_PeriodFilter" xml:space="preserve"><value>Periode: {0}</value></data>
+  <data name="Teams_Roster_PriorityFilter" xml:space="preserve"><value>Prioriteit: {0}</value></data>
+  <data name="Teams_Roster_SlotOpen" xml:space="preserve"><value>Open</value></data>
+  <data name="Teams_Roster_StatusFilled" xml:space="preserve"><value>Bezet</value></data>
+  <data name="Teams_Roster_StatusFilter" xml:space="preserve"><value>Status: {0}</value></data>
+  <data name="Teams_Roster_StatusOpen" xml:space="preserve"><value>Open</value></data>
+  <data name="Teams_Roster_Title" xml:space="preserve"><value>Teamrooster</value></data>
+  <data name="Teams_Departments" xml:space="preserve"><value>Afdelingen</value></data>
+  <data name="Teams_HiddenTeams" xml:space="preserve"><value>Verborgen teams</value></data>
+  <data name="Teams_HiddenTeamsNote" xml:space="preserve"><value>(alleen zichtbaar voor beheerders)</value></data>
+  <data name="Teams_Summary" xml:space="preserve"><value>Overzicht</value></data>
+  <data name="Teams_Tree_Title" xml:space="preserve"><value>Teamstructuur</value></data>
+  <data name="Teams_Tree_Subtitle" xml:space="preserve"><value>Elke afdeling en de bijbehorende teams.</value></data>
+  <data name="Teams_SyncStatus" xml:space="preserve"><value>Synchronisatiestatus</value></data>
+  <data name="Teams_SystemTeams" xml:space="preserve"><value>Systeemteams</value></data>
+  <data name="Teams_TeamAdminMembers_Title" xml:space="preserve">
+    <value>Leden beheren - {0}</value>
+    <comment>{0} = team name</comment>
+  </data>
+  <data name="Teams_Email_AddedToTeam_Subject" xml:space="preserve">
+    <value>Je bent toegevoegd aan {0}</value>
+    <comment>{0} = team name</comment>
+  </data>
+  <data name="Teams_Email_AddedToTeam_Body" xml:space="preserve">
+    <value>&lt;h2&gt;Welkom bij {1}!&lt;/h2&gt;
+&lt;p&gt;Beste {0},&lt;/p&gt;
+&lt;p&gt;Je bent toegevoegd aan het team &lt;strong&gt;{1}&lt;/strong&gt;.&lt;/p&gt;
+{2}
+&lt;p&gt;&lt;a href="{3}"&gt;Teampagina bekijken&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;Het Humans-team&lt;/p&gt;</value>
+    <comment>{0} = user name, {1} = team name, {2} = resources HTML (or empty), {3} = team URL</comment>
+  </data>
+  <data name="Teams_Email_ResourcesSection" xml:space="preserve">
+    <value>&lt;p&gt;Je team heeft de volgende bronnen:&lt;/p&gt;&lt;ul&gt;{0}&lt;/ul&gt;</value>
+    <comment>{0} = resource list items HTML</comment>
+  </data>
+  <data name="Teams_EditTeam_SystemManagedHelp" xml:space="preserve"><value>Dit is een door het systeem beheerd team. Je kunt de beschrijving en het voorvoegsel van de Google-groep bewerken.</value></data>
+  <data name="Teams_EditTeam_AutoSlug" xml:space="preserve"><value>Automatisch gegenereerde slug:</value></data>
+  <data name="Teams_EditTeam_AutoSlugHelp" xml:space="preserve"><value>wordt automatisch bijgewerkt als de naam verandert.</value></data>
+  <data name="Teams_EditTeam_CustomSlug" xml:space="preserve"><value>Aangepaste slug</value></data>
+  <data name="Teams_EditTeam_CustomSlugPlaceholder" xml:space="preserve"><value>bijv. comms</value></data>
+  <data name="Teams_EditTeam_CustomSlugHelp" xml:space="preserve"><value>Optioneel. Als je deze slug instelt, wordt die gebruikt voor de URL van het team in plaats van de automatisch gegenereerde slug.</value></data>
+  <data name="Teams_EditTeam_CustomSlugFormatHelp" xml:space="preserve"><value>Beide slugs verwijzen naar dit team. Alleen kleine letters, cijfers en koppeltekens.</value></data>
+  <data name="Teams_EditTeam_IncludeInBudget" xml:space="preserve"><value>Opnemen in budgetplanning</value></data>
+  <data name="Teams_EditTeam_IncludeInBudgetHelp" xml:space="preserve"><value>Als dit is ingeschakeld, krijgt dit team een budgetcategorie onder de groep Afdelingen wanneer een nieuw budgetjaar wordt aangemaakt.</value></data>
+  <data name="Teams_EditTeam_ShowInDirectory" xml:space="preserve"><value>Tonen op de pagina Teams</value></data>
+  <data name="Teams_EditTeam_ShowInDirectoryHelp" xml:space="preserve"><value>Wanneer ingeschakeld, verschijnt dit subteam ook op de hoofdpagina met het teamoverzicht.</value></data>
+  <data name="Teams_EditTeam_Sensitive" xml:space="preserve"><value>Gevoelig team</value></data>
+  <data name="Teams_EditTeam_SensitiveHelp" xml:space="preserve"><value>Als dit is ingeschakeld, verschijnt bij het toevoegen of goedkeuren van Humans een bevestigingsvenster met de auditlogvermelding die wordt aangemaakt. Deze instelling is alleen zichtbaar voor beheerders.</value></data>
+  <data name="Teams_EditTeam_EnableEarlyEntry" xml:space="preserve"><value>Vroege toegang inschakelen</value></data>
+  <data name="Teams_EditTeam_EnableEarlyEntryHelp" xml:space="preserve"><value>Als dit is ingeschakeld, kunnen coördinatoren van dit team (en teambeheerders voor vroege toegang) vroege toegang verlenen voor de projecten van dit team.</value></data>
+  <data name="Teams_TeamDetail_Roles" xml:space="preserve"><value>Rollen</value></data>
+  <data name="Teams_Notification_JoinApproved" xml:space="preserve"><value>Je verzoek om lid te worden van {0} is goedgekeurd</value></data>
+  <data name="Teams_Notification_Welcome" xml:space="preserve"><value>Welkom bij {0}!</value></data>
+  <data name="Teams_Notification_ViewTeam" xml:space="preserve"><value>Team bekijken</value></data>
+  <data name="Teams_Notification_JoinRejected" xml:space="preserve"><value>Je verzoek om lid te worden van {0} is niet goedgekeurd</value></data>
+  <data name="Teams_Notification_MemberRemoved" xml:space="preserve"><value>Je bent verwijderd uit {0}</value></data>
+  <data name="Teams_TeamDetail_Calendar" xml:space="preserve"><value>Teamkalender</value></data>
+  <data name="Teams_RemoveMember_TeamMissing" xml:space="preserve"><value>Team niet gevonden.</value></data>
+  <data name="Teams_RemoveMember_SystemTeam" xml:space="preserve"><value>Leden van een door het systeem beheerd team kunnen niet handmatig worden verwijderd.</value></data>
+  <data name="Teams_RemoveMember_Permission" xml:space="preserve"><value>Je hebt geen toestemming om leden uit dit team te verwijderen.</value></data>
+  <data name="Teams_RemoveMember_NotMember" xml:space="preserve"><value>Deze persoon is geen lid van dit team.</value></data>
+  <data name="Teams_SendMessage_FromTeam" xml:space="preserve">
+    <value>Stuur {0} een bericht namens {1}</value>
+  </data>
+  <data name="Teams_SendMessage_FromTeamNotice" xml:space="preserve">
+    <value>Je verstuurt dit namens {0}. Antwoorden gaan naar {1}.</value>
+  </data>
+  <data name="Teams_SendMessage_Breadcrumb" xml:space="preserve">
+    <value>Bericht versturen</value>
+  </data>
+  <data name="Teams_SendMessage_MessageLabel" xml:space="preserve">
+    <value>Bericht</value>
+  </data>
+  <data name="Teams_SendMessage_IncludeContactInfo" xml:space="preserve">
+    <value>Mijn contactgegevens meesturen</value>
+  </data>
+  <data name="Teams_SendMessage_IncludeContactInfoHelp" xml:space="preserve">
+    <value>Je naam en e-mailadres worden meegestuurd, zodat de ontvanger je rechtstreeks kan antwoorden.</value>
+  </data>
+  <data name="Teams_SendMessage_Send" xml:space="preserve">
+    <value>Bericht versturen</value>
+  </data>
+  <data name="Teams_SendMessage_Success" xml:space="preserve">
+    <value>Je bericht is verstuurd naar {0}.</value>
+  </data>
+  <data name="Teams_SendMessage_OptedOut" xml:space="preserve"><value>Deze Human heeft aangegeven geen berichten te willen ontvangen.</value></data>
+  <data name="Teams_Notification_JoinRequestSubmitted" xml:space="preserve"><value>Nieuw verzoek om lid te worden van {0}</value></data>
+  <data name="Teams_Notification_MemberJoined" xml:space="preserve"><value>{0} is lid geworden van {1}</value></data>
+  <data name="Teams_Notification_JoinRequestSubmittedBody" xml:space="preserve"><value>{0} heeft gevraagd om lid te worden van {1}.</value></data>
+  <data name="Teams_Notification_MemberJoinedBody" xml:space="preserve"><value>{0} is lid geworden van {1}.</value></data>
+  <data name="Teams_Notification_ReviewRequest" xml:space="preserve"><value>Verzoek beoordelen</value></data>
+  <data name="Teams_Notification_ViewMembers" xml:space="preserve"><value>Leden bekijken</value></data>
+  <data name="Teams_Notification_Someone" xml:space="preserve"><value>Iemand</value></data>
+</root>

@@ -164,6 +164,7 @@ public class NotificationMeterProviderTests : IDisposable
     [InlineData("it")]
     [InlineData("fr")]
     [InlineData("ca")]
+    [InlineData("nl")]
     public async Task MeterTitles_FollowRequestCultureIncludingCampRequestCounts(string culture)
     {
         using var initialCulture = new CultureScope("en");

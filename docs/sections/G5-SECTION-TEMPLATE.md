@@ -303,7 +303,7 @@ Git Bash.)
    any `T` (`GateArchitectureTests.SectionTypesTakeNoStringLocalizer`), so the day someone adds
    copy the build tells them to carve a resource set first. Skip the rest of this step.
    Otherwise: carve the section's `.resx` — the `<Section>_*` and `Enum_<Section>*` keys move out of
-   `Humans.UI`'s set into `<Section>Resource.{resx,es,ca,de,fr,it}` at the project root beside a
+   `Humans.UI`'s set into `<Section>Resource.{resx,es,ca,de,fr,it,nl}` at the project root beside a
    `<Section>Resource.cs` in the section's namespace (root, not a `Resources/` folder — folder and
    namespace must agree, PR peterdrier/Humans#1365). The `.cs` and `.resx` must sit in the same
    folder, and the `.cs` namespace determines the manifest prefix — get it wrong and
@@ -313,7 +313,7 @@ Git Bash.)
    - **A key you *write* is prefixed with the section name; a key you *move* keeps its name.**
      New keys are `<Section>_…` — `Users_`, `Tickets_`, `CityPlanning_`
      (`memory/code/resource-key-prefix-matches-section.md`). A carve is a move, not a rename:
-     renaming in flight touches six language files and every call site, and a missed one renders
+     renaming in flight touches every culture's language file and every call site, and a missed one renders
      raw with no error. Carry the old prefixes over and let the backlog show up in
      `/section-doctor`'s conformance thread (`resource-key-prefix`), which reports it per section
      and never backfills as a side effect.
@@ -340,7 +340,7 @@ Git Bash.)
      but keys still read by one of Email's remaining renderer methods (e.g. `FacilitatedMessage`)
      stay in Email until that template moves too. Grep each candidate key's call sites before
      moving it, exactly as with `Enum_*` (proven: Feedback).
-   - If step 5 renames an enum, rename its `Enum_{TypeName}_*` keys in all six languages in the
+   - If step 5 renames an enum, rename its `Enum_{TypeName}_*` keys in all supported languages in the
      same commit — the key is the **live CLR type name** (proven the hard way: Store).
    - **…and the fourth direction: move the *markup* instead of the key.** "Carve by renderer"
      (above) leaves a key in Base because the renderer cannot see a section set. The other way
@@ -402,7 +402,7 @@ Git Bash.)
    - **A section can have a resource set and no localized page copy.** Email's two admin views
      carry zero `Localizer[…]` calls, so the step-12 resx assertion has nothing to hang on in
      the section's own HTML. The probe was the template-gallery page (`/Email/EmailPreview`),
-     which renders 20 templates in all six cultures in one response — a single GET proving the
+     which renders 20 templates in all supported cultures in one response — a single GET proving the
      neutral set *and* the satellite assemblies, with no `/Language/SetLanguage` round trip.
      Look for a page that renders the copy before assuming the language-switcher dance
      (proven: Email).

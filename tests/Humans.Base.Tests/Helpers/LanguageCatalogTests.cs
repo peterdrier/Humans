@@ -14,6 +14,7 @@ public sealed class LanguageCatalogTests
     [InlineData("it", "tedesco")]
     [InlineData("fr", "allemand")]
     [InlineData("ca", "alemany")]
+    [InlineData("nl", "Duits")]
     public void GetDisplayName_UsesTheViewersCulture(string culture, string expected)
     {
         using var scope = new CultureScope(culture);

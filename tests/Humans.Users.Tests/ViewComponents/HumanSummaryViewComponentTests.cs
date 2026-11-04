@@ -122,6 +122,7 @@ public sealed class HumanSummaryViewComponentTests
     [Xunit.InlineData("it")]
     [Xunit.InlineData("fr")]
     [Xunit.InlineData("ca")]
+    [Xunit.InlineData("nl")]
     public async Task Popovers_resolve_names_and_localize_missing_identity_without_exposing_admin_fields(string language)
     {
         using var culture = new CultureScope(language);

@@ -77,6 +77,7 @@ public sealed class EmailMessageFactoryTests
     [InlineData("it")]
     [InlineData("fr")]
     [InlineData("ca")]
+    [InlineData("nl")]
     public void FacilitatedMessage_CapturesCultureBeforeRestoringTheCaller(string culture)
     {
         using var callerCulture = new Humans.Base.Extensions.CultureScope("en");

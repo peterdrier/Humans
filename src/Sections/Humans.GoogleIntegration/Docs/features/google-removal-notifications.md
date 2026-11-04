@@ -55,7 +55,7 @@ Tracked in: peterdrier/Humans#639. Initial implementation: peterdrier/Humans#404
 **So that** the message is actionable without translation
 
 **Acceptance Criteria:**
-- Templates exist in all six supported cultures (`en`, `es`, `de`, `it`, `fr`, `ca`)
+- Templates exist in all supported cultures (`en`, `es`, `de`, `it`, `fr`, `ca`, `nl`)
 - Recipient's `User.PreferredLanguage` selects the culture; missing, blank or unsupported falls back to `en`
 
 ### US-41.4: Suppression for known non-events

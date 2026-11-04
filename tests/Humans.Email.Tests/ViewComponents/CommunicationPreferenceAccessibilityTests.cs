@@ -31,18 +31,21 @@ public class CommunicationPreferenceAccessibilityTests
     [InlineData("it", "Member")]
     [InlineData("fr", "Member")]
     [InlineData("ca", "Member")]
+    [InlineData("nl", "Member")]
     [InlineData("en", "Admin")]
     [InlineData("es", "Admin")]
     [InlineData("de", "Admin")]
     [InlineData("it", "Admin")]
     [InlineData("fr", "Admin")]
     [InlineData("ca", "Admin")]
+    [InlineData("nl", "Admin")]
     [InlineData("en", "Guest")]
     [InlineData("es", "Guest")]
     [InlineData("de", "Guest")]
     [InlineData("it", "Guest")]
     [InlineData("fr", "Guest")]
     [InlineData("ca", "Guest")]
+    [InlineData("nl", "Guest")]
     public async Task PreferenceCheckboxes_HaveLocalizedChannelAndCategoryNames(string culture, string surface)
     {
         using var cultureScope = new CultureScope(culture);

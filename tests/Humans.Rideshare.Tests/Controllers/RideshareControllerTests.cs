@@ -344,6 +344,7 @@ public sealed class RideshareControllerTests
     [InlineData("it")]
     [InlineData("fr")]
     [InlineData("ca")]
+    [InlineData("nl")]
     public async Task OfferPost_ARule_RerendersTheFormWithAModelError(string culture)
     {
         using var scope = new Humans.Base.Extensions.CultureScope(culture);

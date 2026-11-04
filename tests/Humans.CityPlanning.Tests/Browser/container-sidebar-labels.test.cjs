@@ -32,6 +32,7 @@ for (const [culture, center, notes] of [
     ['it', 'Centra la mappa su questo container', 'Note di posizionamento'],
     ['fr', 'Centrer la carte sur ce conteneur', 'Notes de placement'],
     ['ca', 'Centra el mapa en aquest contenidor', "Notes d’ubicació"],
+    ['nl', 'Kaart centreren op deze container', 'Plaatsingsnotities'],
 ]) {
     test(`${culture} sidebar buttons use translated titles and accessible names`, () => {
         const html = renderLabels(center, notes);

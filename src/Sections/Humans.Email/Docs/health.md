@@ -87,7 +87,7 @@ The preference lane is **preference service** (rows here, the locks other sectio
 - **`Controllers/` + `Views/` + `Models/` + `ViewComponents/`**: the admin pages, the member
   and guest preference pages, the unsubscribe pages, the member outbox, the relay composer,
   the preview endpoints, the settings tab and the admin-detail cards.
-- **`EmailResource.resx`** and its five language variants: the copy of the relay, the footer,
+- **`EmailResource.resx`** and its culture variants: the copy of the relay, the footer,
   the self-test subject, every member-facing page, and the preference panel's read-only
   columns on the admin-detail card. The section's own admin pages carry none.
 - **`Docs/`**: invariants, authorization, data access, two feature specs, this file.
@@ -170,7 +170,7 @@ no-login page adds the inbox column and the highlighted row.
   (`CommunicationPreferenceService.ReassignAsync`).
 - One row per person and category
   (`src/Sections/Humans.Email/Data/CommunicationPreferenceConfiguration.cs:30`).
-- Every string in this section's resource set is present in all six cultures, enforced by
+- Every string in this section's resource set is present in all supported cultures, enforced by
   `tests/Humans.Web.Tests/Resources/SectionResourceParityTests.cs:1`.
 
 ## 5. Seams

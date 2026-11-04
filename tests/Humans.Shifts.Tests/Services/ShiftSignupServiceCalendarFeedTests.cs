@@ -192,6 +192,7 @@ public sealed class ShiftSignupServiceCalendarFeedTests : ShiftsTestHarness
     [InlineData("it")]
     [InlineData("fr")]
     [InlineData("ca")]
+    [InlineData("nl")]
     public async Task GetCalendarItems_PendingSignup_MarkedPendingInSummary(string language)
     {
         using var culture = new CultureScope(language);

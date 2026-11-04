@@ -134,6 +134,7 @@ public sealed class ServicePlacementTests
     [InlineData("it", "GeoJSON di posizionamento del container non valido.")]
     [InlineData("fr", "Le GeoJSON de placement du conteneur est invalide.")]
     [InlineData("ca", "El GeoJSON d’ubicació del contenidor no és vàlid.")]
+    [InlineData("nl", "Ongeldige GeoJSON voor containerplaatsing.")]
     public async Task SavePlacementAsync_RejectsInvalidGeometryInTheCallersCulture(string culture, string expected)
     {
         using var cultureScope = new Humans.Base.Extensions.CultureScope(culture);

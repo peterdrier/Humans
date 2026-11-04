@@ -131,6 +131,7 @@ public class TicketDashboardViewTests
     [InlineData("it", "1.234,50 USD")]
     [InlineData("fr", "1\u202f234,50 USD")]
     [InlineData("ca", "1.234,50 USD")]
+    [InlineData("nl", "1.234,50 USD")]
     public async Task GuestOrders_RenderAmountInUiCultureAndKeepCurrencyCode(string culture, string expected)
     {
         var orders = new List<UserTicketOrderSummary>
@@ -151,6 +152,7 @@ public class TicketDashboardViewTests
     [InlineData("it", "1.234", "1.234,50", "315,00", "919,50", "12,5%")]
     [InlineData("fr", "1\u202f234", "1\u202f234,50", "315,00", "919,50", "12,5%")]
     [InlineData("ca", "1.234", "1.234,50", "315,00", "919,50", "12,5%")]
+    [InlineData("nl", "1.234", "1.234,50", "315,00", "919,50", "12,5%")]
     public async Task DashboardNumbers_UseUiCultureAcrossCardsRowsAndTotals(
         string language, string count, string amount, string taxable, string vip, string rate)
     {

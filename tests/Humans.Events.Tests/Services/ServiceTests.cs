@@ -1409,6 +1409,7 @@ public sealed class EventServiceTests
     [InlineData("it", "Il campo Title è obbligatorio.")]
     [InlineData("fr", "Le champ Title est obligatoire.")]
     [InlineData("ca", "El camp Title és obligatori.")]
+    [InlineData("nl", "Het veld Title is verplicht.")]
     public async Task BulkImportAsync_InvalidRow_ReturnsErrorsAndWritesNothing_UsesUploaderCulture(string culture, string expectedError)
     {
         OpenSubmissionWindow();

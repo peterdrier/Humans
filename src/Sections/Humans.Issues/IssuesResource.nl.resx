@@ -1,0 +1,309 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- ReSharper disable MarkupTextTypo -->
+<root xmlns:ns1="urn:schemas-microsoft-com:xml-msdata" xmlns:xs="http://www.w3.org/2001/XMLSchema">
+  <xs:schema id="root">
+    <xs:element name="root" ns1:IsDataSet="true">
+      <xs:complexType>
+        <xs:choice maxOccurs="unbounded">
+          <xs:element name="data">
+            <xs:complexType>
+              <xs:sequence>
+                <xs:element name="value" type="xsd:string" minOccurs="0" ns1:Ordinal="1" />
+                <xs:element name="comment" type="xsd:string" minOccurs="0" ns1:Ordinal="2" />
+              </xs:sequence>
+              <xs:attribute name="name" type="xsd:string" ns1:Ordinal="0" />
+              <xs:attribute name="type" type="xsd:string" />
+              <xs:attribute name="mimetype" type="xsd:string" />
+            </xs:complexType>
+          </xs:element>
+          <xs:element name="resheader">
+            <xs:complexType>
+              <xs:sequence>
+                <xs:element name="value" type="xsd:string" minOccurs="0" ns1:Ordinal="1" />
+              </xs:sequence>
+              <xs:attribute name="name" type="xsd:string" use="required" />
+            </xs:complexType>
+          </xs:element>
+        </xs:choice>
+      </xs:complexType>
+    </xs:element>
+  </xs:schema>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>1.3</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="Issue_Unavailable" xml:space="preserve">
+    <value>Die melding is niet beschikbaar — mogelijk is deze verwijderd of heb je er geen toegang toe.</value>
+  </data>
+  <data name="Issue_PageTitle" xml:space="preserve">
+    <value>Meldingen</value>
+  </data>
+  <data name="Issue_NavLabel" xml:space="preserve">
+    <value>Meldingen</value>
+  </data>
+  <data name="Issue_New" xml:space="preserve">
+    <value>Nieuwe melding</value>
+  </data>
+  <data name="Issue_New_Title" xml:space="preserve">
+    <value>Nieuwe melding indienen</value>
+  </data>
+  <data name="Issue_BackToList" xml:space="preserve">
+    <value>Terug naar de lijst</value>
+  </data>
+  <data name="Issue_All" xml:space="preserve">
+    <value>Alle</value>
+  </data>
+  <data name="Issue_Open" xml:space="preserve">
+    <value>Open</value>
+  </data>
+  <data name="Issue_Mine" xml:space="preserve">
+    <value>Van mij</value>
+  </data>
+  <data name="Issue_Closed" xml:space="preserve">
+    <value>Gesloten</value>
+  </data>
+  <data name="Issue_AllCategories" xml:space="preserve">
+    <value>Alle typen</value>
+  </data>
+  <data name="Issue_AllAreas" xml:space="preserve">
+    <value>Alle onderdelen</value>
+  </data>
+  <data name="Issue_AllReporters" xml:space="preserve">
+    <value>Alle melders</value>
+  </data>
+  <data name="Issue_SearchPlaceholder" xml:space="preserve">
+    <value>Zoek op titel of beschrijving…</value>
+  </data>
+  <data name="Issue_Apply" xml:space="preserve">
+    <value>Toepassen</value>
+  </data>
+  <data name="Issue_Clear" xml:space="preserve">
+    <value>Wissen</value>
+  </data>
+  <data name="Issue_NoneFound" xml:space="preserve">
+    <value>Geen meldingen gevonden met de huidige filters.</value>
+  </data>
+  <data name="Issue_AssignedTo" xml:space="preserve">
+    <value>toegewezen aan</value>
+  </data>
+  <data name="Issue_SelectOne" xml:space="preserve">
+    <value>Selecteer een melding in de lijst om de details te bekijken.</value>
+  </data>
+  <data name="Issue_Detail_Heading" xml:space="preserve">
+    <value>Melding</value>
+  </data>
+  <data name="Issue_OpenedBy" xml:space="preserve">
+    <value>Geopend door</value>
+  </data>
+  <data name="Issue_Screenshot" xml:space="preserve">
+    <value>Schermafbeelding</value>
+  </data>
+  <data name="Issue_Thread" xml:space="preserve">
+    <value>Gesprek</value>
+  </data>
+  <data name="Issue_NoActivity" xml:space="preserve">
+    <value>Nog geen activiteit.</value>
+  </data>
+  <data name="Issue_Reporter" xml:space="preserve">
+    <value>Melder</value>
+  </data>
+  <data name="Issue_ComposerPlaceholder" xml:space="preserve">
+    <value>Reactie toevoegen…</value>
+  </data>
+  <data name="Issue_Comment" xml:space="preserve">
+    <value>Reageren</value>
+  </data>
+  <data name="Issue_CommentAndResolve" xml:space="preserve">
+    <value>Reageren &amp; als opgelost markeren</value>
+  </data>
+  <data name="Issue_ReopenByCommenting" xml:space="preserve">
+    <value>Als je een reactie plaatst, wordt deze melding heropend.</value>
+  </data>
+  <data name="Issue_Details" xml:space="preserve">
+    <value>Details</value>
+  </data>
+  <data name="Issue_Status" xml:space="preserve">
+    <value>Status</value>
+  </data>
+  <data name="Issue_Type" xml:space="preserve">
+    <value>Type</value>
+  </data>
+  <data name="Issue_Area" xml:space="preserve">
+    <value>Onderdeel</value>
+  </data>
+  <data name="Issue_Unspecified" xml:space="preserve">
+    <value>Niet opgegeven</value>
+  </data>
+  <data name="Issue_Assignee" xml:space="preserve">
+    <value>Toegewezen aan</value>
+  </data>
+  <data name="Issue_Unassigned" xml:space="preserve">
+    <value>Niet toegewezen</value>
+  </data>
+  <data name="Issue_GitHub" xml:space="preserve">
+    <value>GitHub</value>
+  </data>
+  <data name="Issue_Opened" xml:space="preserve">
+    <value>Geopend</value>
+  </data>
+  <data name="Issue_LastUpdate" xml:space="preserve">
+    <value>Laatste update</value>
+  </data>
+  <data name="Issue_Due" xml:space="preserve">
+    <value>Deadline</value>
+  </data>
+  <data name="Issue_Resolved" xml:space="preserve">
+    <value>Opgelost</value>
+  </data>
+  <data name="Issue_ResolvedBy" xml:space="preserve">
+    <value>door</value>
+  </data>
+  <data name="Issue_Title" xml:space="preserve">
+    <value>Titel</value>
+  </data>
+  <data name="Issue_Area_Auto" xml:space="preserve">
+    <value>Automatisch detecteren</value>
+  </data>
+  <data name="Issue_Area_Hint" xml:space="preserve">
+    <value>Laat leeg om automatisch te detecteren op basis van de huidige pagina.</value>
+  </data>
+  <data name="Issues_Area_Camps" xml:space="preserve"><value>Barrios</value></data>
+  <data name="Issues_Area_Budget" xml:space="preserve"><value>Budget</value></data>
+  <data name="Issues_Area_CityPlanning" xml:space="preserve"><value>Stadsplanning</value></data>
+  <data name="Issues_Area_Legal" xml:space="preserve"><value>Juridisch &amp; toestemming</value></data>
+  <data name="Issues_Area_Onboarding" xml:space="preserve"><value>Onboarding</value></data>
+  <data name="Issues_Area_Profiles" xml:space="preserve"><value>Profiel &amp; onboarding</value></data>
+  <data name="Issues_Area_Scanner" xml:space="preserve"><value>Scanner</value></data>
+  <data name="Issues_Area_Shifts" xml:space="preserve"><value>Diensten &amp; vrijwilligerswerk</value></data>
+  <data name="Issues_Area_Teams" xml:space="preserve"><value>Teams</value></data>
+  <data name="Issues_Area_Tickets" xml:space="preserve"><value>Tickets</value></data>
+  <data name="Issues_Area_Governance" xml:space="preserve"><value>Stemmingen &amp; governance</value></data>
+  <data name="Issues_Area_General" xml:space="preserve"><value>Algemeen</value></data>
+  <data name="Issue_Description" xml:space="preserve">
+    <value>Beschrijving</value>
+  </data>
+  <data name="Issue_Description_Placeholder" xml:space="preserve">
+    <value>Wat is er gebeurd? Wat had je verwacht?</value>
+  </data>
+  <data name="Issue_Attachment" xml:space="preserve">
+    <value>Schermafbeelding (optioneel)</value>
+  </data>
+  <data name="Issue_Attachment_Hint" xml:space="preserve">
+    <value>PNG, JPEG of WebP, max. 10 MB.</value>
+  </data>
+  <data name="Issue_FileIssue" xml:space="preserve">
+    <value>Melding indienen</value>
+  </data>
+  <data name="Issue_FileAnIssue" xml:space="preserve">
+    <value>Een melding indienen</value>
+  </data>
+  <data name="Issue_Cancel" xml:space="preserve">
+    <value>Annuleren</value>
+  </data>
+  <data name="Issue_Widget_ToastSuccess" xml:space="preserve">
+    <value>Bedankt! Melding geregistreerd. Bekijk deze hier: {0}</value>
+    <comment>{0} = absolute URL path of the new issue</comment>
+  </data>
+  <data name="Issue_ValidationFailed" xml:space="preserve">
+    <value>Kon de melding niet indienen. Controleer de verplichte velden en probeer het opnieuw.</value>
+  </data>
+  <data name="Issue_Widget_ToastNetworkError" xml:space="preserve">
+    <value>Er is iets misgegaan. Probeer het opnieuw.</value>
+  </data>
+  <data name="Issue_Tips_Title" xml:space="preserve">
+    <value>Tips voor een goede melding</value>
+  </data>
+  <data name="Issue_Tips_Bullet1" xml:space="preserve">
+    <value>Beschrijf wat je probeerde te doen.</value>
+  </data>
+  <data name="Issue_Tips_Bullet2" xml:space="preserve">
+    <value>Beschrijf wat er gebeurde en wat je had verwacht.</value>
+  </data>
+  <data name="Issue_Tips_Bullet3" xml:space="preserve">
+    <value>Voeg een schermafbeelding toe als dat helpt bij de uitleg.</value>
+  </data>
+  <data name="Issue_Tips_Bullet4" xml:space="preserve">
+    <value>Eén probleem per melding — maak voor elk afzonderlijk probleem een aparte melding.</value>
+  </data>
+  <data name="Issue_NotEmail_Notice" xml:space="preserve">
+    <value>Dit is geen e-mail — reacties verschijnen hier, in het gesprek bij de melding.</value>
+  </data>
+  <data name="Issue_Submitted" xml:space="preserve">
+    <value>Melding ingediend. Bedankt!</value>
+  </data>
+  <data name="Issue_Error" xml:space="preserve">
+    <value>Er is iets misgegaan. Probeer het opnieuw.</value>
+  </data>
+  <data name="Issue_Comment_Posted" xml:space="preserve">
+    <value>Reactie geplaatst.</value>
+  </data>
+  <data name="Issue_Comment_PostFailed" xml:space="preserve">
+    <value>Kon de reactie niet plaatsen.</value>
+  </data>
+  <data name="Issue_Status_Updated" xml:space="preserve">
+    <value>Status bijgewerkt.</value>
+  </data>
+  <data name="Issue_Assignee_Updated" xml:space="preserve">
+    <value>Toewijzing bijgewerkt.</value>
+  </data>
+  <data name="Issue_Section_Updated" xml:space="preserve">
+    <value>Onderdeel bijgewerkt.</value>
+  </data>
+  <data name="Issue_GitHub_Linked" xml:space="preserve">
+    <value>Gekoppeld aan GitHub.</value>
+  </data>
+  <data name="Enum_IssueCategory_Bug" xml:space="preserve"><value>Bug</value></data>
+  <data name="Enum_IssueCategory_Feature" xml:space="preserve"><value>Functie</value></data>
+  <data name="Enum_IssueCategory_Question" xml:space="preserve"><value>Vraag</value></data>
+  <data name="Enum_IssueStatus_Triage" xml:space="preserve"><value>Triage</value></data>
+  <data name="Enum_IssueStatus_Open" xml:space="preserve"><value>Open</value></data>
+  <data name="Enum_IssueStatus_InProgress" xml:space="preserve"><value>In behandeling</value></data>
+  <data name="Enum_IssueStatus_Resolved" xml:space="preserve"><value>Opgelost</value></data>
+  <data name="Enum_IssueStatus_WontFix" xml:space="preserve"><value>Wordt niet opgelost</value></data>
+  <data name="Enum_IssueStatus_Duplicate" xml:space="preserve"><value>Duplicaat</value></data>
+  <data name="Issues_QuickFilters" xml:space="preserve"><value>Snelfilters</value></data>
+  <data name="Issues_Close" xml:space="preserve"><value>Sluiten</value></data>
+  <data name="Issues_SystemActor" xml:space="preserve"><value>Systeem</value></data>
+  <data name="Issue_ColStatus" xml:space="preserve"><value>Status</value></data>
+  <data name="Issue_ColTitle" xml:space="preserve"><value>Titel</value></data>
+  <data name="Issue_ColUpdated" xml:space="preserve"><value>Bijgewerkt</value></data>
+  <data name="Issue_CountSummary" xml:space="preserve"><value>{0} open · {1} totaal</value></data>
+  <data name="Issues_Email_IssueComment_Subject" xml:space="preserve">
+    <value>Nieuwe reactie op je melding: {0}</value>
+  </data>
+  <data name="Issues_Email_IssueComment_Body" xml:space="preserve">
+    <value>&lt;h2&gt;Nieuwe reactie op je melding&lt;/h2&gt;
+&lt;p&gt;Hoi {0},&lt;/p&gt;
+&lt;p&gt;Er is een nieuwe reactie op je melding:&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;Melding:&lt;/strong&gt; {1}&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;Reactie:&lt;/strong&gt;&lt;/p&gt;
+&lt;blockquote style="border-left: 3px solid #ccc; padding-left: 12px; color: #666;"&gt;{2}&lt;/blockquote&gt;
+&lt;p&gt;&lt;a href="{3}"&gt;Melding openen&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;— Het Humans-team&lt;/p&gt;</value>
+    <comment>{0} = display name, {1} = issue title, {2} = comment HTML, {3} = issue URL</comment>
+  </data>
+  <data name="Issue_ComposerRecipientsHandlers" xml:space="preserve"><value>De behandelaars van deze melding (melding in de app)</value></data>
+  <data name="Issue_Notice_CommentTitle" xml:space="preserve"><value>Nieuwe reactie op melding: {0}</value></data>
+  <data name="Issue_Notice_StatusChangedTitle" xml:space="preserve"><value>Status van melding gewijzigd: {0}</value></data>
+  <data name="Issue_Notice_StatusChangedBody" xml:space="preserve"><value>Status: {0} → {1}</value></data>
+  <data name="Issue_Notice_SubmittedTitle" xml:space="preserve"><value>Nieuwe melding ingediend: {0}</value></data>
+  <data name="Issue_Notice_AssignedTitle" xml:space="preserve"><value>Er is een melding aan je toegewezen: {0}</value></data>
+  <data name="Issue_Notice_Open" xml:space="preserve"><value>Melding bekijken</value></data>
+  <data name="Issue_Section_TooLong" xml:space="preserve">
+    <value>Het onderdeel mag maximaal {0} tekens bevatten.</value>
+  </data>
+  <data name="Issue_Section_Terminal" xml:space="preserve">
+    <value>Het onderdeel van een gesloten melding kan niet worden gewijzigd.</value>
+  </data>
+  <data name="Issue_ScreenshotTooLarge" xml:space="preserve"><value>Schermafbeeldingen mogen maximaal 10 MB groot zijn.</value></data>
+  <data name="Issue_ScreenshotTypeInvalid" xml:space="preserve"><value>Schermafbeeldingen moeten PNG-, JPEG- of WebP-afbeeldingen zijn.</value></data>
+  <data name="Issue_ScreenshotFileNameTooLong" xml:space="preserve"><value>De bestandsnaam van de schermafbeelding mag maximaal 256 tekens bevatten.</value></data>
+</root>

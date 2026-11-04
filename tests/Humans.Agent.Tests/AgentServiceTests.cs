@@ -91,6 +91,7 @@ public class AgentServiceTests
     [Xunit.InlineData("it")]
     [Xunit.InlineData("fr")]
     [Xunit.InlineData("ca")]
+    [Xunit.InlineData("nl")]
     public async Task Ask_localizes_the_abuse_refusal_in_the_requested_culture(string locale)
     {
         var (svc, _) = await BuildServiceAsync(s => s.Enabled = true);

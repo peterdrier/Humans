@@ -31,6 +31,7 @@ public class ShiftSignupsViewTests
     [Xunit.InlineData("it")]
     [Xunit.InlineData("fr")]
     [Xunit.InlineData("ca")]
+    [Xunit.InlineData("nl")]
     public async Task Header_resolves_the_subject_only_for_admin_mode(string language)
     {
         using var culture = new CultureScope(language);
