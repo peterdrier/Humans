@@ -192,6 +192,44 @@ public class MembershipCalculatorTests
 
     [HumansTheory]
     [Xunit.InlineData(false, false)]
+    [Xunit.InlineData(false, true)]
+    [Xunit.InlineData(true, false)]
+    [Xunit.InlineData(true, true)]
+    public async Task GetMembershipSnapshotAsync_UsesOneConsentState(bool changeRequirements, bool initiallyPresent)
+    {
+        var userId = Guid.NewGuid();
+        var versionId = Guid.NewGuid();
+        SeedProfile(userId, isApproved: true, isSuspended: false);
+        SeedVolunteersTeamMember(userId);
+        SeedRequiredVersion(SystemTeamIds.Volunteers, versionId, gracePeriodDays: 0,
+            effectiveFrom: _clock.GetCurrentInstant() - Duration.FromDays(1));
+
+        if (changeRequirements)
+        {
+            IReadOnlyList<RequiredDocumentVersionSnapshot> required = _requiredVersionsByTeam[SystemTeamIds.Volunteers];
+            _legalDocumentSyncService.GetRequiredDocumentVersionsForTeamAsync(
+                    SystemTeamIds.Volunteers, Arg.Any<CancellationToken>())
+                .Returns(initiallyPresent ? required : [], initiallyPresent ? [] : required);
+        }
+        else
+        {
+            IReadOnlySet<Guid> signed = new HashSet<Guid> { versionId };
+            IReadOnlySet<Guid> unsigned = new HashSet<Guid>();
+            _consentService.GetConsentedVersionIdsAsync(userId, Arg.Any<CancellationToken>())
+                .Returns(initiallyPresent ? signed : unsigned, initiallyPresent ? unsigned : signed);
+        }
+
+        var snapshot = await _service.GetMembershipSnapshotAsync(userId, Xunit.TestContext.Current.CancellationToken);
+
+        var hasMissingConsent = changeRequirements ? initiallyPresent : !initiallyPresent;
+        snapshot.RequiredConsentCount.Should().Be(changeRequirements && !initiallyPresent ? 0 : 1);
+        snapshot.PendingConsentCount.Should().Be(hasMissingConsent ? 1 : 0);
+        snapshot.MissingConsentVersionIds.Should().BeEquivalentTo(hasMissingConsent ? new[] { versionId } : []);
+        snapshot.Status.Should().Be(hasMissingConsent ? MembershipStatus.Inactive : MembershipStatus.Active);
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(false, false)]
     [Xunit.InlineData(true, false)]
     [Xunit.InlineData(false, true)]
     [Xunit.InlineData(true, true)]

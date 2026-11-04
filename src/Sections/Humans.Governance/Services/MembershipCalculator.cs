@@ -30,10 +30,16 @@ internal sealed class MembershipCalculator(
         CancellationToken cancellationToken = default)
     {
         var info = await userService.GetUserInfoAsync(userId, cancellationToken);
-        return await ComputeStatusAsync(info, cancellationToken);
+        var status = await ComputeStatusBeforeConsentCheckAsync(info, cancellationToken);
+        if (status != MembershipStatus.Active)
+            return status;
+
+        return await HasAnyExpiredConsentsForTeamAsync(info!.Id, SystemTeamIds.Volunteers, cancellationToken)
+            ? MembershipStatus.Inactive
+            : MembershipStatus.Active;
     }
 
-    private async Task<MembershipStatus> ComputeStatusAsync(
+    private async Task<MembershipStatus> ComputeStatusBeforeConsentCheckAsync(
         UserInfo? info,
         CancellationToken cancellationToken,
         bool? volunteerMembership = null)
@@ -64,12 +70,6 @@ internal sealed class MembershipCalculator(
             return MembershipStatus.None;
         }
 
-        var hasExpiredConsents = await HasAnyExpiredConsentsForTeamAsync(userId, SystemTeamIds.Volunteers, cancellationToken);
-        if (hasExpiredConsents)
-        {
-            return MembershipStatus.Inactive;
-        }
-
         return MembershipStatus.Active;
     }
 
@@ -87,15 +87,19 @@ internal sealed class MembershipCalculator(
 
         var isVolunteerMember = await membershipQuery.IsUserMemberOfTeamAsync(
             SystemTeamIds.Volunteers, userId, cancellationToken);
-        var status = await ComputeStatusAsync(info, cancellationToken, isVolunteerMember);
+        var status = await ComputeStatusBeforeConsentCheckAsync(info, cancellationToken, isVolunteerMember);
 
         var eligibleTeamIds = await GetRequiredTeamIdsForResolvedUserAsync(userId, cancellationToken);
         var allRequiredVersionIds = new List<Guid>();
+        IReadOnlyList<RequiredDocumentVersionSnapshot> volunteerRequiredVersions = [];
+        var now = clock.GetCurrentInstant();
 
         foreach (var teamId in eligibleTeamIds)
         {
             var versions = await legalDocumentSyncService.GetRequiredDocumentVersionsForTeamAsync(teamId, cancellationToken);
             allRequiredVersionIds.AddRange(versions.Select(v => v.Id));
+            if (teamId == SystemTeamIds.Volunteers)
+                volunteerRequiredVersions = versions;
         }
 
         var requiredVersionIds = allRequiredVersionIds.Distinct().ToList();
@@ -104,6 +108,9 @@ internal sealed class MembershipCalculator(
         var missingVersionIds = requiredVersionIds
             .Where(id => !consentedVersionIds.Contains(id))
             .ToList();
+
+        if (status == MembershipStatus.Active && HasExpiredConsents(volunteerRequiredVersions, consentedVersionIds, now))
+            status = MembershipStatus.Inactive;
 
         var snapshot = new MembershipSnapshot(
             status,
@@ -144,10 +151,16 @@ internal sealed class MembershipCalculator(
         var requiredVersions = await legalDocumentSyncService.GetRequiredDocumentVersionsForTeamAsync(teamId, ct);
         var consentedVersionIds = await ConsentService.GetConsentedVersionIdsAsync(userId, ct);
 
-        return requiredVersions.Any(v =>
+        return HasExpiredConsents(requiredVersions, consentedVersionIds, now);
+    }
+
+    private static bool HasExpiredConsents(
+        IReadOnlyList<RequiredDocumentVersionSnapshot> requiredVersions,
+        IReadOnlySet<Guid> consentedVersionIds,
+        Instant now) =>
+        requiredVersions.Any(v =>
             !consentedVersionIds.Contains(v.Id) &&
             v.EffectiveFrom + Duration.FromDays(v.LegalDocumentGracePeriodDays) <= now);
-    }
 
     public async Task<IReadOnlyList<Guid>> GetMissingConsentVersionsAsync(
         Guid userId,
