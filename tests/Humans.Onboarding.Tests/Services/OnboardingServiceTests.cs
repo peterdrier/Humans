@@ -287,7 +287,7 @@ public sealed class OnboardingServiceTests
     [HumansTheory]
     [Xunit.InlineData(false)]
     [Xunit.InlineData(true)]
-    public async Task SetConsentCheckPendingIfEligibleAsync_WhenEligible_UsesResolvedUserMutation(bool archivedId)
+    public async Task ConsentSignedAsync_WhenEligible_SetsPendingOnTheResolvedUser(bool archivedId)
     {
         var userId = Guid.NewGuid();
         var requestedId = archivedId ? Guid.NewGuid() : userId;
@@ -307,9 +307,8 @@ public sealed class OnboardingServiceTests
         _consentWrite.SetConsentCheckPendingAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new OnboardingResult(true));
 
-        var set = await BuildSut().SetConsentCheckPendingIfEligibleAsync(requestedId, Xunit.TestContext.Current.CancellationToken);
+        await BuildSut().ConsentSignedAsync(requestedId, Xunit.TestContext.Current.CancellationToken);
 
-        set.Should().BeTrue();
         await _consentWrite.Received(1).SetConsentCheckPendingAsync(userId, Arg.Any<CancellationToken>());
     }
 
