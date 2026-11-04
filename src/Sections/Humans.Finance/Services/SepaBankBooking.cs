@@ -1044,14 +1044,14 @@ internal sealed class SepaBankBooking(
         catch (HoldedPermanentException ex) when (docs.Count > ReconcileChunkSize)
         {
             // A refusal moved no money and linked nothing, so the same ids can go again in chunks.
-            logger.LogWarning(ex,
+            logger.LogWarning(
                 "Holded refused the {Count}-payment reconcile of bank movement {MovementId} in one call; "
-                + "re-sending it in chunks of {Chunk}.", docs.Count, movementId, ReconcileChunkSize);
+                + "re-sending it in chunks of {Chunk}. {Reason}", docs.Count, movementId, ReconcileChunkSize, ex.Message);
             chunked = true;
         }
         catch (Exception ex) when (ex is HoldedTransientException or HoldedPermanentException)
         {
-            logger.LogWarning(ex, "Holded refused to reconcile bank movement {MovementId}.", movementId);
+            logger.LogWarning("Holded refused to reconcile bank movement {MovementId}. {Reason}", movementId, ex.Message);
             return null;
         }
 
@@ -1069,9 +1069,9 @@ internal sealed class SepaBankBooking(
                 }
                 catch (Exception ex) when (ex is HoldedTransientException or HoldedPermanentException)
                 {
-                    logger.LogWarning(ex,
+                    logger.LogWarning(
                         "Holded refused chunk {Chunk} ({Size} payment(s)) of the reconcile of bank movement "
-                        + "{MovementId}.", number, chunk.Length, movementId);
+                        + "{MovementId}. {Reason}", number, chunk.Length, movementId, ex.Message);
                     refused.AddRange(chunk);
                 }
             }
@@ -1117,9 +1117,9 @@ internal sealed class SepaBankBooking(
         }
         catch (Exception ex) when (ex is HoldedTransientException or HoldedPermanentException)
         {
-            logger.LogWarning(ex,
+            logger.LogWarning(
                 "Could not re-read bank movement {MovementId} after reconciling it; the transfer stays "
-                + "reconcile pending.", movementId);
+                + "reconcile pending. {Reason}", movementId, ex.Message);
             return null;
         }
 
