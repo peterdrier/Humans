@@ -227,9 +227,9 @@ public sealed record UserInfo(
 
     /// <summary>
     /// Snapshots and orders here, so the cached payload is immutable. Takes projections because the Profile-side
-    /// entities are internal to <c>Humans.Users</c>; public because the section test projects build UserInfo with it.
+    /// entities are internal to <c>Humans.Users</c>. Only the owner and test fixtures build snapshots from entities.
     /// </summary>
-    public static UserInfo Create(
+    internal static UserInfo Create(
         User user,
         IReadOnlyList<UserEmail> userEmails,
         IReadOnlyList<(string Provider, string ProviderKey)> externalLogins,
