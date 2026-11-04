@@ -229,5 +229,6 @@ src/Sections/Humans.Feedback/Data/Migrations/20261101144113_DropFeedbackTables.c
 # Backdoor category-map JSON.
 # Approval: Peter, 2026-11-04, per-drop approval in project thread ("Approve all but #2296" for the listed drops in this PR; peterdrier/Humans#1923).
 # Down() caveat: EF re-adds the column as boolean NOT NULL DEFAULT false, so after a rollback every
-# row reads inactive to the old code; a rollback must also set it true by hand.
+# row reads inactive to the old code. Don't roll back without Peter's guidance; the recovery is a
+# forward fix in code, never a hand edit of the data.
 src/Sections/Humans.Finance/Data/Migrations/20261104170024_DropHoldedCategoryMapIsActive.cs:DropColumn(name=IsActive,table=holded_category_map)#1
