@@ -751,6 +751,9 @@
   <data name="Users_Profile_EmailAlreadyAdded" xml:space="preserve">
     <value>Aquesta adreça de correu ja és al teu compte.</value>
   </data>
+  <data name="Users_Profile_EmailVerifiedOnAnotherAccount" xml:space="preserve">
+    <value>Aquesta adreça de correu ja està verificada en un altre compte.</value>
+  </data>
   <data name="Users_Profile_EmailMergePending" xml:space="preserve">
     <value>Ja hi ha una sol·licitud de fusió pendent per a aquesta adreça de correu.</value>
   </data>

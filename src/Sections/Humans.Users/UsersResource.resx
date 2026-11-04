@@ -380,6 +380,9 @@
   <data name="Users_Profile_EmailAlreadyAdded" xml:space="preserve">
     <value>This email address is already in your account.</value>
   </data>
+  <data name="Users_Profile_EmailVerifiedOnAnotherAccount" xml:space="preserve">
+    <value>This email address is already verified on another account.</value>
+  </data>
   <data name="Users_Profile_EmailMergePending" xml:space="preserve">
     <value>A merge request is already pending for this email address.</value>
   </data>

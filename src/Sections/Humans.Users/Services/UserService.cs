@@ -522,6 +522,9 @@ internal sealed class UserService(
         }
 
         var isConflict = rows.Any(e => e.UserId != userId && e.IsVerified);
+        // A verified insert has no merge flow to hand the conflict to.
+        if (isConflict && command.IsVerified)
+            return Refuse("Users_Profile_EmailVerifiedOnAnotherAccount");
 
         var user = await repo.GetByIdAsync(userId, ct);
         if (user is null || UserStateEvaluator.IsTombstone(user))
