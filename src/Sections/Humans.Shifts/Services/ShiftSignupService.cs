@@ -72,7 +72,8 @@ internal sealed class ShiftSignupService(
         var calendar = await calendarResolver.GetAsync(shift.Rota.EventSettingsId);
         if (calendar is null) return SignupResult.Fail(localizer["Shifts_EventCalendarNotConfigured"]);
         var now = clock.GetCurrentInstant();
-        isPrivileged = await IsPrivilegedAsync(userId, shift.Rota.TeamId, isPrivileged);
+        bool? canApprove = isPrivileged ? null : await IsPrivilegedAsync(userId, shift.Rota.TeamId);
+        isPrivileged = isPrivileged || canApprove == true;
 
         if (!localEs.IsShiftBrowsingOpen && !isPrivileged)
             return SignupResult.Fail(localizer["Shifts_Signup_BrowsingClosed"]);
@@ -99,10 +100,9 @@ internal sealed class ShiftSignupService(
                 warning = warning is null ? eeWarning : $"{warning} {eeWarning}";
         }
 
-        var canApprove = await shiftMgmt.CanApproveSignupsAsync(userId, shift.Rota.TeamId);
-
         // Public rotas auto-confirm whatever the admission or consent status; only RequireApproval parks as Pending.
-        var autoConfirm = shift.Rota.Policy == SignupPolicy.Public || canApprove;
+        var autoConfirm = shift.Rota.Policy == SignupPolicy.Public
+            || (canApprove ?? await IsPrivilegedAsync(userId, shift.Rota.TeamId));
 
         var signup = NewSignup(userId, shiftId, actorUserId, now, autoConfirm);
 
@@ -492,7 +492,8 @@ internal sealed class ShiftSignupService(
         var calendar = await calendarResolver.GetAsync(rota.EventSettingsId);
         if (calendar is null) return SignupResult.Fail(localizer["Shifts_EventCalendarNotConfigured"]);
         var now = clock.GetCurrentInstant();
-        isPrivileged = await IsPrivilegedAsync(userId, rota.TeamId, isPrivileged);
+        bool? canApprove = isPrivileged ? null : await IsPrivilegedAsync(userId, rota.TeamId);
+        isPrivileged = isPrivileged || canApprove == true;
 
         if (!localEs.IsShiftBrowsingOpen && !isPrivileged)
             return SignupResult.Fail(localizer["Shifts_Signup_BrowsingClosed"]);
@@ -553,8 +554,8 @@ internal sealed class ShiftSignupService(
 
         var blockId = Guid.NewGuid();
 
-        var autoConfirm = rota.Policy == SignupPolicy.Public ||
-                           await shiftMgmt.CanApproveSignupsAsync(userId, rota.TeamId);
+        var autoConfirm = rota.Policy == SignupPolicy.Public
+            || (canApprove ?? await IsPrivilegedAsync(userId, rota.TeamId));
         var createdSignups = StageRangeSignups(userId, actorUserId, blockId, now, availableShifts, autoConfirm);
 
         await repo.SaveChangesAsync();
@@ -620,10 +621,8 @@ internal sealed class ShiftSignupService(
         return eventSettings.GateOpeningDate.PlusDays(dayOffset).ToWeekdayDayMonth();
     }
 
-    private Task<bool> IsPrivilegedAsync(Guid userId, Guid teamId, bool alreadyPrivileged = false) =>
-        alreadyPrivileged
-            ? Task.FromResult(true)
-            : shiftMgmt.CanApproveSignupsAsync(userId, teamId);
+    private Task<bool> IsPrivilegedAsync(Guid userId, Guid teamId) =>
+        shiftMgmt.CanApproveSignupsAsync(userId, teamId);
 
     private static ShiftSignup NewSignup(
         Guid userId, Guid shiftId, Guid? actorUserId, Instant now, bool autoConfirm, Guid? blockId = null) => new()

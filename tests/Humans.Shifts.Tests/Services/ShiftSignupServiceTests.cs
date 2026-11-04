@@ -446,20 +446,34 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
         Saved(result).ReviewedByUserId.Should().Be(userId);
     }
 
-    [HumansFact]
-    public async Task SignUp_RequireApprovalPolicy_CreatesPending()
+    [HumansTheory]
+    [InlineData(false, false)]
+    [InlineData(false, true)]
+    [InlineData(true, false)]
+    [InlineData(true, true)]
+    public async Task SignUp_RequireApprovalPolicy_CreatesPending(bool range, bool privileged)
     {
-        var (_, _, shift) = SeedShiftScenario(SignupPolicy.RequireApproval);
+        var (_, rota, shift) = SeedShiftScenario(SignupPolicy.RequireApproval);
+        if (range)
+        {
+            rota.Period = RotaPeriod.Strike;
+            shift = SeedAllDayShift(rota, 1);
+        }
         var userId = Guid.NewGuid();
+        var flags = privileged ? ShiftSignupRequestFlags.Privileged : ShiftSignupRequestFlags.None;
         await SaveAllAsync(TestContext.Current.CancellationToken);
 
-        var result = await _service.SignUpAsync(userId, shift.Id);
+        var result = range
+            ? await _service.SignUpRangeAsync(userId, rota.Id, 1, 1, flags: flags)
+            : await _service.SignUpAsync(userId, shift.Id, flags: flags);
 
         result.Success.Should().BeTrue();
         Saved(result).Status.Should().Be(SignupStatus.Pending);
         Saved(result).ReviewedByUserId.Should().BeNull();
         Saved(result).ReviewedAt.Should().BeNull();
-        Saved(result).SignupBlockId.Should().BeNull();
+        if (range) Saved(result).SignupBlockId.Should().NotBeNull();
+        else Saved(result).SignupBlockId.Should().BeNull();
+        await _teamService.Received(1).GetUserCoordinatedTeamIdsAsync(userId, Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -639,6 +653,8 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
 
         result.Success.Should().BeTrue();
         (await ShiftsDb.ShiftSignups.CountAsync(TestContext.Current.CancellationToken)).Should().Be(1);
+        await _teamService.Received(departmentCoordinator ? 1 : 0)
+            .GetUserCoordinatedTeamIdsAsync(userId, Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
