@@ -19,7 +19,7 @@ public sealed class CampPartsViewComponent(
             }
             catch (Exception ex)
             {
-                logger.LogWarning(ex, "Failed to load camp parts from {Contributor}", contributor.GetType().Name);
+                logger.LogError(ex, "Failed to load camp parts from {Contributor}", contributor.GetType().Name);
             }
         }
 
