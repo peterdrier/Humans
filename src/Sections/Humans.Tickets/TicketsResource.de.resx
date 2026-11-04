@@ -93,6 +93,7 @@
   <data name="Tickets_Onsite_Since" xml:space="preserve"><value>Vor Ort seit {0}</value></data>
   <data name="Tickets_Onsite_Title" xml:space="preserve"><value>Am Tor eingecheckt</value></data>
   <data name="Tickets_NotAttending_Declared" xml:space="preserve"><value>Du wurdest für dieses Jahr als nicht teilnehmend markiert.</value></data>
+  <data name="Tickets_NotAttending_AlreadyAttended" xml:space="preserve"><value>Deine Teilnahme wurde bereits erfasst. Du kannst dich daher nicht mehr als nicht teilnehmend markieren.</value></data>
   <data name="Tickets_NotAttending_Failed" xml:space="preserve"><value>Etwas ist schiefgelaufen. Bitte versuche es erneut.</value></data>
   <data name="Tickets_NotAttending_NoActiveEvent" xml:space="preserve"><value>Es ist keine aktive Veranstaltung konfiguriert.</value></data>
   <data name="Tickets_NotAttending_Undone" xml:space="preserve"><value>Deine Erklärung wurde entfernt.</value></data>

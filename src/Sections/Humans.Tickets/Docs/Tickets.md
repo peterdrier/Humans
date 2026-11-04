@@ -145,7 +145,7 @@ Lifecycle: `Attended` is permanent (only a missing `CheckedInAt` may be filled);
 ## Negative Access Rules
 
 - Board **cannot** trigger any sync (incremental or full), export CSV, or open the participation backfill page.
-- A member **cannot** declare or withdraw `NotAttending` for anyone but themselves: both endpoints act on the signed-in user only, need the antiforgery token, and refuse when no active event year is set. A declaration never overrides an `Attended` record, and a withdrawal only clears the member's own `UserDeclared` `NotAttending`.
+- A member **cannot** declare or withdraw `NotAttending` for anyone but themselves: both endpoints act on the signed-in user only, need the antiforgery token, and refuse when no active event year is set. A declaration never overrides an `Attended` record, and a withdrawal only clears the member's own `UserDeclared` `NotAttending`. A refused declaration displays the six-culture already-attended error; success feedback is shown only when the write succeeds.
 - A non-admin viewer of someone else's profile **cannot** see the onsite chip (only Self or `TicketsPolicies.Read`).
 - Board **cannot** approve or reject transfer requests — transfer review is gated by `TicketsPolicies.Manage`. Board can view ticket data but the transfer side-effects (vendor void+reissue, local attendee mutation) are admin-only.
 - Board **cannot** trigger attendee contact import — same `TicketsPolicies.Manage` gate as the sync.
