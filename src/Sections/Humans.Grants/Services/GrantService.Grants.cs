@@ -26,7 +26,11 @@ internal sealed partial class GrantService
 
         var recipients = new List<IReadOnlyList<Guid>>();
         foreach (var id in ids)
-            recipients.Add(await AllIdsAsync(id, ct));
+        {
+            var personIds = await ResolveRecipientIdsAsync(id, ct);
+            if (personIds is null) return new(Refusal: "One or more selected people are no longer available.");
+            recipients.Add(personIds);
+        }
         var holding = program.Grants.Where(g => g.RevokedAt is null).Select(g => g.UserId).ToHashSet();
         var now = clock.GetCurrentInstant();
         var grants = recipients.DistinctBy(personIds => personIds[0])
@@ -77,7 +81,8 @@ internal sealed partial class GrantService
         var program = await SourceProgramAsync(sourceKey, ct);
         if (program is null) return new(Guid.Empty, GrantWriteRefusal.NoOpenProgram);
 
-        var personIds = await AllIdsAsync(userId, ct);
+        var personIds = await ResolveRecipientIdsAsync(userId, ct);
+        if (personIds is null) return new(Guid.Empty, GrantWriteRefusal.RecipientUnavailable);
         var live = program.Grants.FirstOrDefault(g => personIds.Contains(g.UserId) && g.RevokedAt is null);
         if (live is not null) return new(live.Id);
 
@@ -86,6 +91,15 @@ internal sealed partial class GrantService
             (issued, year) => $"Issued under \"{program.Name}\" ({year}) by source {program.SourceKey}" +
                 $"{(sourceRef is null ? "" : $", ref {sourceRef}")}{ExpirySuffix(issued, program)}.", ct);
         return new(grant.Id);
+    }
+
+    private async Task<IReadOnlyList<Guid>?> ResolveRecipientIdsAsync(Guid userId, CancellationToken ct)
+    {
+        var person = await users.GetUserInfoAsync(userId, ct);
+        if (person is not null && !person.IsTombstone) return person.AllUserIds;
+
+        logger.LogWarning("Grant issuance refused for unavailable recipient {UserId}", userId);
+        return null;
     }
 
     private async Task PersistIssuedGrantsAsync(

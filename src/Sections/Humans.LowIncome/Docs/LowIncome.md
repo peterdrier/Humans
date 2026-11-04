@@ -27,7 +27,7 @@ A stub for the future Low Income process. Today it is one Admin-only page that g
 
 - The section owns no tables, no services and no migrations.
 - Every action goes through `IGrantWrite` with source key `low-income`; Grants writes the row, the audit entry and the notice.
-- A refusal from Grants (no open Low Income program, a reason that is too long) is shown on the page as an error and logged as a Warning without a stack trace; it is never thrown.
+- A refusal from Grants (no open Low Income program, an unavailable recipient, a reason that is too long) is shown on the page as an error and logged as a Warning without a stack trace; it is never thrown.
 - Any other failure in Grants propagates as an exception; the page never reports it as a refusal.
 
 ## Negative Access Rules
