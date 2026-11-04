@@ -48,7 +48,7 @@ internal sealed class MagicLinkService(
         var payload = urlBuilder.UnprotectLoginToken(token);
         if (payload is null)
         {
-            logger.LogInformation("Magic link login: invalid or expired token for user {UserId}", userId);
+            logger.LogWarning("Magic link login: invalid or expired token for user {UserId}", userId);
             return false;
         }
 
@@ -60,7 +60,7 @@ internal sealed class MagicLinkService(
 
         if (!await rateLimiter.TryConsumeTokenAsync(token, TokenLifetime))
         {
-            logger.LogInformation("Magic link login: token already used for user {UserId}", userId);
+            logger.LogWarning("Magic link login: token already used for user {UserId}", userId);
             return false;
         }
 
@@ -72,7 +72,7 @@ internal sealed class MagicLinkService(
         var payload = urlBuilder.UnprotectSignupToken(token);
         if (payload is null)
         {
-            logger.LogInformation("Magic link signup: invalid or expired token for email {Email}",
+            logger.LogWarning("Magic link signup: invalid or expired token for email {Email}",
                 expectedEmail ?? "unknown");
         }
 
@@ -88,7 +88,7 @@ internal sealed class MagicLinkService(
 
         if (!await rateLimiter.TryConsumeTokenAsync(token, TokenLifetime))
         {
-            logger.LogInformation("Magic link signup: token already used for email {Email}",
+            logger.LogWarning("Magic link signup: token already used for email {Email}",
                 expectedEmail ?? "unknown");
             return null;
         }
@@ -102,7 +102,7 @@ internal sealed class MagicLinkService(
     {
         if (!await rateLimiter.TryReserveUserSendAsync(userId, RateLimitCooldown.ToTimeSpan()))
         {
-            logger.LogDebug("Magic link rate-limited for user {UserId}", userId);
+            logger.LogWarning("Magic link rate-limited for user {UserId}", userId);
             return; // Same "check your email" message either way: no enumeration.
         }
 
@@ -129,7 +129,7 @@ internal sealed class MagicLinkService(
     {
         if (!await rateLimiter.TryReserveSignupSendAsync(email, SignupCooldown))
         {
-            logger.LogDebug("Magic link signup rate-limited for {Email}", email);
+            logger.LogWarning("Magic link signup rate-limited for {Email}", email);
             return;
         }
 
