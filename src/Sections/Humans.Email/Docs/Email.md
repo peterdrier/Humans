@@ -3,7 +3,7 @@
   src/Sections/Humans.Email.Contracts/**
 -->
 <!-- freshness:flag-on-change
-  Outbox queue/retry semantics, pause flag ownership, SDK-free composer/processor split, communication-preference rules (legacy fallback, cleared rows, merge fold) and unsubscribe token rules — review when Email service/repository/entity change.
+  Outbox queue/retry semantics, pause flag ownership, SDK-free composer/processor split, communication-preference rules (cleared rows, merge fold) and unsubscribe token rules — review when Email service/repository/entity change.
 -->
 
 # Email — Section Invariants
@@ -90,7 +90,7 @@ spikes seen in Google Postmaster, since `email_outbox_messages` is pruned after
 | Id | Guid | PK |
 | UserId | Guid | Bare column, no FK or nav |
 | Category | MessageCategory | Stored as string (max 50) |
-| OptedOut | bool? | true = no email for this category; **null = cleared row** (a reset, or a merge source) that shadows the legacy row so the fallback cannot resurrect it |
+| OptedOut | bool? | true = no email for this category; **null = cleared row** (a reset, or a merge source); reads treat it as the category default |
 | InboxEnabled | bool | true = informational in-app notifications for this category show (actionable ones always do) |
 | UpdatedAt | Instant | Last change |
 | UpdateSource | string (100) | Who changed it — see [`update-source-attribution`](../../../../memory/code/update-source-attribution.md) |
@@ -98,7 +98,7 @@ spikes seen in Google Postmaster, since `email_outbox_messages` is pruned after
 
 **Unique index:** `(UserId, Category)`.
 
-**Legacy fallback (until the retirement PR):** a (user, category) with no row here reads Users' frozen row from `UserInfo.CommunicationPreferences` (`[Obsolete(HUM_USER_COMMPREFS)]`, read only by `CommunicationPreferenceService.LegacyRows`). Single-user reads go through `GetUserInfoAsync` (merge chains resolved forward); writes and the copy use the raw id. A write seeds its untouched fields from the legacy row; a reset with a legacy row writes a cleared row, otherwise deletes. The data migration `email.communication-preferences` (Email's `ISectionDataMigrations`, run from `/Debug/DataMigrations`) copies every legacy row without a row here; cleared rows count as present.
+**Preference ownership:** reads, writes, resets, merges and GDPR paths use only `email_communication_preferences`. Production `GET https://humans.nobodies.team/api/data-migrations` reported `{"key":"email.communication-preferences","pending":0,"done":true}` on 2026-11-03. The copy, fallback and Users projections/export are retired; Users retains its frozen table mapping, and erasure still deletes the user's rows there, until the separate drop. Historical null `OptedOut` rows read as category defaults. New resets delete the row. Single-user reads still resolve merged-away ids forward; writes use the raw id.
 
 ### MessageCategory
 
@@ -146,7 +146,7 @@ Per design-rules §8, each `system_settings` key is owned by its consuming secti
 | `POST /Email/EmailOutbox/Discard/{id}` | `AdminOnly` | `EmailController.DiscardEmailOutboxMessage` |
 | `GET /Email/EmailPreview` | `AdminOnly` | `EmailController.EmailPreview` — rendered template gallery |
 | `POST /Email/PreviewMarkdown` | Any authenticated human | `EmailPreviewController.PreviewMarkdown` — renders the caller's own typed subject/Markdown through the section-internal `IEmailPreviewManagement.RenderMarkdown`, for the `_EmailComposer` "Preview" button. Separate controller from `EmailController` because that one is `AdminOnly` at the class level and every compose form (not just admin ones) needs this. |
-| `POST /Email/SendMarkdownToSelf` | Any authenticated human, rate-limited 5/min per human (`EmailComposerSelfSend` policy, registered in `Section.cs`) | `EmailPreviewController.SendMarkdownToSelf` — the `_EmailComposer` "Send to me" button. Queues one email to canonical `UserInfo.Email` from the same snapshot as the caller's display name; takes no recipient. A post-send audit failure retains the successful response and logs Critical with the user ID; queue failures still propagate. 401 when signed out, 422 when the caller has no notification address. |
+| `POST /Email/SendMarkdownToSelf` | Any authenticated human, rate-limited 5/min per human (`EmailComposerSelfSend` policy, registered in `Section.cs`) | `EmailPreviewController.SendMarkdownToSelf` — the `_EmailComposer` "Send to me" button. Queues one email to canonical `UserInfo.Email` from the same snapshot as the caller's name and surviving account ID. That resolved ID owns the outbox row and identifies both the audit subject and actor; takes no recipient. A post-send audit failure retains the successful response and logs Critical with the user ID; queue failures still propagate. 401 when signed out, 422 when the caller has no notification address. |
 | `GET /Email/EmailOutbox/BackfillDailyCounts` | `AdminOnly` | `EmailController.BackfillDailyCountsPreview` — backfill review step (never-overwrite preview) |
 | `POST /Email/EmailOutbox/BackfillDailyCounts` | `AdminOnly` | `EmailController.BackfillDailyCounts` — backfill confirm step |
 | `GET /Email/Outbox` | authenticated | `MemberOutboxController.MyOutbox` — own outbox history; takes no user id. Carries `[AllowBeforeActiveMembership]`, like the rest of own-profile maintenance. |
@@ -176,7 +176,7 @@ The communication-preference routes moved from Users in decomposition commit 14 
 
 - A queued personal facilitated message retains its success redirect if auditing fails afterward. The failure logs Critical with sender, recipient and contact-sharing details for reconciliation; queueing failures still propagate.
 
-- Missing or empty unsubscribe tokens are invalid before Data Protection or user reads, including the new-category validator and legacy fallback. The anonymous one-click path refuses a missing token rather than surfacing a token-decoding exception.
+- Missing or empty unsubscribe tokens are invalid before Data Protection or user reads, including the new-category validator. The anonymous one-click path refuses a missing token rather than surfacing a token-decoding exception.
 
 - An absent, empty or whitespace-only `Email:SmtpHost` selects the logging stub outside production. Production always selects SMTP and still boots: a missing host fails at send time with an `Email:SmtpHost` diagnostic, so persisted messages follow normal outbox failure/retry handling rather than being marked sent by the stub. The health check reports SMTP as unconfigured. A nonblank host selects SMTP in every environment.
 
@@ -185,6 +185,7 @@ The communication-preference routes moved from Users in decomposition commit 14 
 - Preference labels and descriptions come from the localized Email resources; `ActiveCategories` is the UI roster. Retired enum names remain for stored preference and token compatibility, without separate unused display or deprecation helpers.
 
 - Guest and shared-panel preference rows use one section-internal projection for category defaults, channel values and editability. The panel adds update attribution; guest token highlighting and authorization remain controller-owned.
+- Guest preference toggles and the highlighted unsubscribe button share one request encoder and HTTP-status check. Both include antiforgery and, when present, the unsubscribe token; each retains its own success and failure feedback.
 - Preference reads and merges do not sort effective rows. The shared UI projection chooses active-category display order; the GDPR export projection retains ascending category order.
 
 - The template gallery requests samples for `CultureCatalog.SupportedCultureCodes`; it owns sample personas, not a second supported-language roster.
@@ -213,8 +214,16 @@ The communication-preference routes moved from Users in decomposition commit 14 
 - **Daily send counts (nobodies-collective/Humans#1195):** `EmailOutboxProcessor` increments `email_daily_send_counts` at `(now.InUtc().Date, TemplateName)` once per send attempt — `SentCount` on success, `FailedCount` on failure — right after the matching `MarkSentAsync`/`MarkFailedAsync` call, so it inherits the same test-address exclusion (the `continue` for `@localhost`/`@ticketstub.local` fires before either). That increment is wrapped in its own try/catch (`EmailOutboxProcessor.TryIncrementDailySendCountAsync`): a tally write failure is logged and swallowed without interrupting the batch or changing its delivery outcome. The increment runs in its own `DbContext`/`SaveChangesAsync`, separate from `MarkSentAsync`/`MarkFailedAsync` — a crash between the two calls can silently drop one message's contribution to that day's count. Accepted as a documented, narrow-window risk rather than folded into one transaction, consistent with the same swallow-on-failure trade-off. The table is never purged; `CleanupEmailOutboxJob` only ever deletes from `email_outbox_messages`.
 - **Daily send-count display:** the outbox controller orders UTC day totals newest-first. The service aggregates days without display ordering and still selects the ten highest-volume templates.
 - **Daily send counts backfill:** the admin-triggered backfill (`EmailOutboxService.BackfillDailySendCountsAsync`, behind a review step per `memory/process/no-data-backfills.md`, audited via `EmailAuditActions.EmailDailySendCountsBackfilled`) aggregates retained `Sent` outbox rows by `SentAt`'s UTC date into `SentCount`. Per the issue nobodies-collective/Humans#1195 spec, **failures are never backfilled** — the outbox keeps only a message's final state, not the day (or count) of each attempt, so a failed row's actual failure day can't be reconstructed; `FailedCount` stays `0` for every backfilled row, and a template that only ever failed produces no row at all. It also drops today's UTC date entirely — not just existing (Date, TemplateName) keys for it — so a day the live processor has already started counting is never merged with a historical partial count (which would otherwise permanently undercount that day). Past that, it inserts only (Date, TemplateName) combinations that have no row yet — it never overwrites processor-written or previously-backfilled data, so re-running it is a no-op past the first pass.
-- **Communication preferences.** An unchanged write is a no-op (no row, no audit). Every change audits `CommunicationPreferenceChanged` on the user, with the signed-in actor where there is one. Erasure deletes every row and invalidates current and legacy unsubscribe tokens even inside their lifetime; the guest page refuses an erased account. Tokens for a merged-away account resolve to the survivor.
-- `CommunicationPreferenceService` is also an `IUserDataContributor` (`CommunicationPreferences` slice: the effective rows, legacy included) and an `IUserMerge`: per category the later `UpdatedAt` wins (target keeps a known `SubscribedAt`, else takes the source's), a source-only category moves over, and the source gets cleared rows for its legacy categories.
+- Composer self-send account lookup observes request cancellation. Once sending starts, the send and its success audit finish independently of the browser request.
+
+- Legacy unsubscribe confirmation renders the token-resolved user through Human with no profile link or popover. The internal token result carries identity and category, without a copied display name; invalid, expired, category-aware and erased-account handling remain token-validator-owned.
+
+- The facilitated-message composer renders its recipient breadcrumb and localized heading through Human using the recipient ID. Its model carries only a plain-text page title, and the form does not post a copied recipient name; delivery still resolves names and addresses from Users.
+
+- Member and guest preference updates observe request cancellation while resolving the account or unsubscribe token. Cancellation propagates before any preference write; channel updates retain their detached mutation token.
+
+- **Communication preferences.** New and existing preference writes share one field mapping, preserving the first known subscription timestamp; merge categories share one mapping after winner selection. An unchanged write is a no-op (no row, no audit). Every change audits `CommunicationPreferenceChanged` on the user, with the signed-in actor where there is one. Erasure deletes every row and invalidates current and legacy unsubscribe tokens even inside their lifetime; the guest page refuses an erased account. Tokens for a merged-away account resolve to the survivor.
+- `CommunicationPreferenceService` is also an `IUserDataContributor` (`CommunicationPreferences` slice: the effective rows, legacy included) and an `IUserMerge`: per category the later `UpdatedAt` wins (target keeps a known `SubscribedAt`, else takes the source's), a source-only category moves over, and the source's rows are deleted.
 - `EmailOutboxService` is the section's `IUserDataContributor`. Article 15 exports the human's own outbox history under the `EmailOutbox` key — the same rows `/Email/Outbox` already shows them. Rows still keyed to an archived account merged into them (merges before peterdrier/Humans#1999 left them behind; newer merges move them) export under `EmailOutboxMergedAccounts`, read from the identity chain Gdpr passes to `ContributeForIdentityChainAsync` — Email never calls Users for it. Article 17 deletes **every** row with a matching `UserId`, whatever its status: the retention sweep only reaches `Sent` rows past the cutoff, so failed and queued rows would otherwise outlive the erasure. The deletion-confirmation mail that follows the cascade leaves no row to delete (`DoNotPersist`): it names the erased user, but writes nothing.
 - On account merge, `EmailOutboxService` participates in Users' `IUserMerge` fan-out and its repository reassigns every outbox row's `UserId` from archived source to survivor in one save, regardless of delivery status. It changes no delivery/content fields and is safe to retry; the source account is tombstoned only after the fan-out completes.
 
@@ -228,6 +237,8 @@ The communication-preference routes moved from Users in decomposition commit 14 
 - Outbox rows **cannot** be deleted except by `CleanupEmailOutboxJob` (retention-based), admin discard, or `EmailOutboxService.EraseForUserAsync` (GDPR Article 17). No service clears rows as a side-effect.
 
 ## Triggers
+
+- Admin outbox backfill confirmation, pause, resume, retry and discard resolve the actor through Users before mutation. Merged sessions use the surviving account ID; missing accounts return 401 without a write. Account reads observe request cancellation, while mutation calls retain their existing detached tokens.
 
 - **On enqueue (`OutboxEmailService`):** row inserted with `Status = Queued`, `CreatedAt = now`, `RetryCount = 0`, `NextRetryAt = null`, `PickedUpAt = null`. Every message gets a `Feedback-ID` header (`<templateName>:<campaignId-or-none>:<category-or-none>:humans-nobodies`) serialised into `ExtraHeaders`, so Google Postmaster's spam-rate feedback loop can be attributed per template/category/campaign. For categories that are opt-outable and a message that names its user, the row is suppressed entirely if the recipient has opted out; otherwise unsubscribe headers (`List-Unsubscribe`, `List-Unsubscribe-Post`) join `Feedback-ID` in `ExtraHeaders` and a footer link is wrapped into the body. `DoNotPersist` messages get the same `Feedback-ID` on the direct-to-transport path (no outbox row).
 - **On enqueue of an `EmailMessage.Urgent` message:** after the row is added (with `Urgent = true`), `IImmediateOutboxProcessor.TriggerImmediate()` is called to run the processor without waiting for the next minute tick. A trigger failure is logged without failing the successfully queued send; the recurring drain still delivers that row, and callers retain their send cooldowns. The one flag drives both the immediate run and the batch-priority ordering, so the two cannot drift. See the batch-ordering bullet above.
@@ -245,12 +256,11 @@ The communication-preference routes moved from Users in decomposition commit 14 
 ## Cross-Section Dependencies
 
 - **Audit actions:** declared on `EmailAuditActions` (`src/Sections/Humans.Email.Contracts/EmailAuditActions.cs`), one `AuditActionDefinition` each, written through `IAuditLogService`: `FacilitatedMessageSent`, `CommunicationPreferenceChanged`, `EmailDailySendCountsBackfilled`, `EmailComposerSelfTestSent`, `EmailOutboxRetried`, `EmailOutboxDiscarded`, `EmailSendingPaused`, `EmailSendingResumed`. The class is public in `Humans.Email.Contracts` because Camps and Teams audit the facilitated messages they send with `FacilitatedMessageSent`.
-- **Users:** no address lookup — every sender names the recipient's `UserId` on `EmailMessage` (nobodies-collective/Humans#1245). `IUserService.GetUserInfoAsync` / `GetRawUserInfoAsync` / `GetAllRawUserInfosAsync` for the frozen legacy preference rows. Users' merge orchestrator fans out to Email's two `IUserMerge` implementations; Email only mutates its own rows.
+- **Users:** no address lookup — every sender names the recipient's `UserId` on `EmailMessage` (nobodies-collective/Humans#1245). `IUserService.GetUserInfoAsync` resolves a merged-away preference read to its survivor. Users' merge orchestrator fans out to Email's two `IUserMerge` implementations; Email only mutates its own rows.
 - **Tickets:** implements `ICommunicationPreferenceLock` (`TicketingPreferenceLock`), locking Ticketing for a matched ticket holder; the preference pages and `CommunicationPreferenceService`'s toggle write read every registered lock. Email names no Tickets type.
 - **Consumers of `ICommunicationPreferenceService`:** Notifications (inbox switch), MailerLite (audience opt-outs and the import's `ICommunicationPreferenceWrite`), Debug (marketing set), Users (profile card's facilitated-message button), Teams (send as team: its profile buttons and composer refuse an opted-out recipient), and the views that name `MessageCategory`.
 - **Campaigns:** queues campaign wave messages via this section, passing `CampaignId` for the Feedback-ID header. Email calls nothing back: delivery status is not mirrored onto grants (nobodies-collective/Humans#1243), and Email has no project reference to Campaigns.
 - **Shifts:** `IShiftSignupService` sends approve/refuse/voluntell emails through this section.
-- **Feedback:** `IFeedbackService` sends admin-reply emails through this section.
 - **Onboarding:** `IOnboardingService` sends welcome emails through this section on Volunteer activation.
 - **AuditLog:** `IAuditLogService` records persisted admin outbox controls with the acting admin, without recipient or message content.
 - **Settings:** `ISettingsService` — `EmailOutboxService` reads / writes the `IsEmailSendingPaused` key in `system_settings` through this service (the Settings section owns the table).
@@ -267,7 +277,7 @@ The communication-preference routes moved from Users in decomposition commit 14 
 - **Decorator decision — no caching decorator.** Outbox is a sequential queue drain, not a hot-path read shape.
 - **Cross-domain navs stripped:** `EmailOutboxMessage` carries no navigation properties at all — `UserId` and the retained `CampaignGrantId` are bare Guid columns in `EmailOutboxMessageConfiguration` with no FK constraint and no nav. A stale id is an accepted orphan on this append-only send log, pruned on age by `DeleteSentOlderThanAsync`. User display data resolves via `IUserService`.
 - **`Humans.Email.Contracts` — everything consumed from outside the section:**
-  - `IEmailService` + `EmailMessage` — the one transport entry point, consumed from the other section projects that send mail (Auth, Camps, Campaigns, Consent, Events, Feedback, GoogleIntegration, Governance, Issues, Onboarding, Shifts, Surveys, Teams, Tickets, Users) plus the `Humans.Web` shell.
+  - `IEmailService` + `EmailMessage` — the one transport entry point, consumed from the other section projects that send mail (Auth, Camps, Campaigns, Consent, Events, GoogleIntegration, Governance, Issues, Onboarding, Shifts, Surveys, Teams, Tickets, Users) plus the `Humans.Web` shell.
   - `IEmailMessageFactory` — one method, `FacilitatedMessage`: the volunteer-to-volunteer relay, the
     single template with no section vocabulary in it, consumed by Email itself, Camps and Teams (send
     as team, with the team's group address as the optional `replyTo`). Nothing else is

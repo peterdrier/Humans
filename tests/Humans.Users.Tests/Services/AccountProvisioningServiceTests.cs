@@ -24,29 +24,6 @@ file sealed class StubAuditLog : IAuditLogService
     public Task LogAsync(AuditActionDefinition action, string entityType, Guid entityId,
         string description, Guid actorUserId,
         Guid? relatedEntityId = null, string? relatedEntityType = null) => Task.CompletedTask;
-
-    public Task<IReadOnlyList<AuditLogEntrySnapshot>> GetRecentAsync(int count, CancellationToken ct = default) =>
-        Task.FromResult<IReadOnlyList<AuditLogEntrySnapshot>>([]);
-
-    public Task<(IReadOnlyList<AuditLogEntrySnapshot> Items, int TotalCount, int AnomalyCount)> GetFilteredAsync(
-        string? actionFilter, int page, int pageSize, CancellationToken ct = default) =>
-        Task.FromResult<(IReadOnlyList<AuditLogEntrySnapshot>, int, int)>(([], 0, 0));
-
-    public Task<IReadOnlyList<AuditLogEntrySnapshot>> GetByUserAsync(Guid userId, int count, CancellationToken ct = default) =>
-        Task.FromResult<IReadOnlyList<AuditLogEntrySnapshot>>([]);
-
-    public Task<IReadOnlyList<AuditLogEntrySnapshot>> GetFilteredEntriesAsync(
-        IReadOnlyList<AuditActionDefinition> actions,
-        string? entityType = null,
-        Guid? entityId = null,
-        Guid? userId = null,
-        int limit = 20,
-        CancellationToken ct = default) =>
-        Task.FromResult<IReadOnlyList<AuditLogEntrySnapshot>>([]);
-
-    public Task<IReadOnlySet<Guid>> GetEntityIdsForEntityTypeActionsAsync(
-        string entityType, IReadOnlyList<AuditActionDefinition> actions, CancellationToken ct = default) =>
-        Task.FromResult((IReadOnlySet<Guid>)new HashSet<Guid>());
 }
 
 /// <summary>
@@ -98,13 +75,6 @@ public class AccountProvisioningServiceTests
             CancellationToken ct = default) =>
             throw new NotSupportedException();
         public Task<bool> ClearDeletionAsync(Guid userId, CancellationToken ct = default) =>
-            throw new NotSupportedException();
-        public Task<IReadOnlyList<EventParticipation>> GetEventParticipationsByUserIdAsync(
-            Guid userId, CancellationToken ct = default) =>
-            throw new NotSupportedException();
-        public Task<IReadOnlyDictionary<Guid, IReadOnlyList<EventParticipation>>>
-            GetEventParticipationsByUserIdsAsync(
-                IReadOnlyCollection<Guid> userIds, CancellationToken ct = default) =>
             throw new NotSupportedException();
         public Task<bool> AnonymizeForMergeAsync(
             Guid sourceUserId, Guid targetUserId, Instant now, CancellationToken ct = default) =>

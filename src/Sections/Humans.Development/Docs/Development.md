@@ -48,6 +48,10 @@ Every route 404s when the dev-auth gate is closed. `/dev/login/*` additionally d
 
 ## Invariants
 
+- Seed/reset account preflight honours the action's cancellation token before any
+  seeder is resolved or invoked. The environment gates and seed/reset tokens remain
+  the same.
+
 - Persona and dashboard seeders abort when Users refuses a verified-email addition, before subsequent profile setup or reporting that user as seeded. An already-present address without a refusal remains an idempotent no-op.
 
 - **Nothing in this section is reachable in Production.** Three independent mechanisms, deliberately not one: the seeders are not registered (`Section.Register` returns early), `DevLoginController` is removed from MVC's controller feature by Shell's `DevLoginControllerExclusionProvider`, and both controllers' own `IsDevAuthEnabled()` / `IsDevSeedEnabled()` guards return `NotFound()`.
@@ -82,7 +86,7 @@ Development is a pure consumer and depends on more sections than any other:
 
 | Section | Surface used |
 |---------|--------------|
-| Users / Profiles | `UserManager<User>` and `SignInManager<User>` (the §2a Identity exception, see [`Users.md`](../../Humans.Users/Docs/Users.md)), `IUserService`, `IUserWrite`, `IUserEmailService`, `IProfileEditorService`, `IContactFieldService`, `IHumanLifecycleService` |
+| Users / Profiles | `IUserSignInService`, `IAccountProvisioningService.CreateAccountAsync`, `IUserService`, `IUserWrite`, `IUserEmailService`, `IProfileEditorService`, `IContactFieldService`, `IHumanLifecycleService` |
 | Auth | `IRoleAssignmentService` for login eligibility; `IRoleAssignmentWrite` for persona role seeding; `RoleCatalog` for the persona list |
 | Teams | `ITeamService`, `ITeamWrite`, `ITeamSeeding`, `ISystemTeamSync` |
 | Camps | `ICampService`, `ICampSeeding`, `ICampRoleSeeding` |
@@ -102,10 +106,10 @@ Nothing depends on Development in the other direction. Shell reaches it twice an
 **Status:** Own project at `src/Sections/Humans.Development`. The section owns no tables, so there is no `DbContext`, no history table and no baseline.
 
 - `DevLoginController` and `DevSeedController` are `internal sealed` in `Humans.Development.Controllers`, routed by Shell's `SectionControllerFeatureProvider`.
-- No `Humans.Infrastructure` reference (Scanner's and Cantina's shape, not Debug's): every write goes through a `Humans.Application` interface or a contracts leaf, and `UserManager<User>` is Identity's, not Infrastructure's.
+- No `Humans.Infrastructure` reference (Scanner's and Cantina's shape, not Debug's): every write goes through a `Humans.Application` interface or a contracts leaf.
 - `Contracts/` is an empty folder. Folder-vs-project is decided by where the consumer lives, and there is no compile-time consumer at all.
 - `DevPersonaSeeder` takes no `IMemoryCache`: every role and team write goes through the owning section's service, which evicts its own caches.
-- **Known deviation, carried from the G0 audit (gap #5):** `DevPersonaSeeder` and `DevelopmentDashboardSeeder` create Identity accounts through `UserManager<User>` rather than `IUserService`. This is the §2a framework exception applied to a dev fixture; it is invisible to the analyzers because `UserManager` is neither a repository nor a `DbContext`. Sanctioned here rather than left implicit.
+- **Gap #5 from the G0 audit is closed.** `DevPersonaSeeder` and `DevelopmentDashboardSeeder` create accounts through Users' `IAccountProvisioningService.CreateAccountAsync`; the section never names the `User` entity (HUM0039).
 - **Gap #6 from the G0 audit is closed.** Shifts, Teams and Settings carried out their read-splits: `DevelopmentDashboardSeeder` creates/deletes the seeded event through `IEventSettingsSeeding.CreateActiveEventAsync`/`DeleteEventAsync` (input records, not a mutated `EventSettings` entity), opens shift browsing via `IShiftSeeding.SetShiftBrowsingOpenAsync`, resolves the event via `ISettingsService.GetEventSettingsByIdAsync`, and resolves teams via `ITeamService.GetTeamBySlugAsync` (`TeamInfo`, not the `Team` entity). No baselined entity-returning read remains in this section.
 - **Known deviation, carried from the G0 audit (gap #4):** the Production exclusion covers `DevLoginController` only. `DevSeedController` stays in the MVC graph in Production behind its action-level guards. Generalising the provider to the whole section's controller surface is behavioural.
 - **No renames.** `DevelopmentCampRoleSeeder` and `DevelopmentDashboardSeeder` duplicate the section name, but `DevPersonaSeeder`, `DevLoginController` and `DevSeedController` all use the shorter `Dev` prefix, so stripping half of them would leave the section inconsistently named. `nameof(DevPersonaSeeder)` is also written to `consent_records.user_agent` on every seeded consent, which makes that one a persisted string.

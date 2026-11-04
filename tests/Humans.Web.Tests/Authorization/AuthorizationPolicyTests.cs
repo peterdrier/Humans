@@ -2,7 +2,6 @@ using Humans.Tickets.Contracts;
 using Humans.Finance.Contracts;
 using Humans.Consent.Contracts;
 using Humans.Events.Contracts;
-using Humans.Feedback.Contracts;
 using Humans.Cantina.Contracts;
 using Humans.Rideshare.Contracts;
 using System.Reflection;
@@ -45,6 +44,12 @@ public class AuthorizationPolicyTests : IDisposable
     {
         var services = new ServiceCollection();
         services.AddLogging();
+        services.AddHttpContextAccessor();
+        var users = Substitute.For<IUserService>();
+        users.GetUserInfoAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(call =>
+            new ValueTask<UserInfo?>(UserInfo.Create(
+                new User { Id = call.Arg<Guid>(), State = UserState.Active }, [], [], profile: null)));
+        services.AddSingleton(users);
         services.AddScoped(_ => Substitute.For<IBudgetService>());
         services.AddScoped(_ => Substitute.For<ICampService>());
         services.AddScoped(_ => Substitute.For<ICityPlanningService>());
@@ -96,7 +101,6 @@ public class AuthorizationPolicyTests : IDisposable
         { PolicyNames.AnyAdminRole, TeamsRoles.TeamsAdmin, true },
         { PolicyNames.AnyAdminRole, CampsRoles.CampsAdmin, true },
         { PolicyNames.AnyAdminRole, TicketsRoles.TicketsAdmin, true },
-        { PolicyNames.AnyAdminRole, FeedbackRoles.FeedbackAdmin, true },
         { PolicyNames.AnyAdminRole, RideshareRoles.RideshareAdmin, true },
         { PolicyNames.AnyAdminRole, FinanceRoles.FinanceAdmin, true },
         { PolicyNames.AnyAdminRole, ShiftsRoles.ShiftsNoInfo, true },
@@ -256,7 +260,6 @@ public class AuthorizationPolicyTests : IDisposable
     [InlineData(CampsRoles.CampsAdmin, true)]
     [InlineData(TicketsRoles.TicketsAdmin, true)]
     [InlineData(EventsRoles.EventsAdmin, true)]
-    [InlineData(FeedbackRoles.FeedbackAdmin, true)]
     [InlineData(FinanceRoles.FinanceAdmin, true)]
     [InlineData(ShiftsRoles.ShiftsNoInfo, true)]
     [InlineData(ShiftsRoles.ShiftsAdmin, true)]
@@ -412,46 +415,6 @@ public class AuthorizationPolicyTests : IDisposable
         var result = await _authorizationService.AuthorizeAsync(user, PolicyNames.GateAdmit);
         result.Succeeded.Should().BeFalse();
     }
-
-    // Feedback is retired and Admin-only. These read the policy off FeedbackController itself, so loosening the
-    // attribute fails here.
-
-    [HumansFact]
-    public async Task FeedbackController_DeniesAuthenticatedUserWithNoRoles()
-    {
-        var result = await _authorizationService.AuthorizeAsync(
-            CreateAuthenticatedUser(), FeedbackControllerPolicy);
-        result.Succeeded.Should().BeFalse();
-    }
-
-    [HumansFact]
-    public async Task FeedbackController_DeniesFeedbackAdminWithoutAdmin()
-    {
-        var result = await _authorizationService.AuthorizeAsync(
-            CreateUserWithRoles(FeedbackRoles.FeedbackAdmin), FeedbackControllerPolicy);
-        result.Succeeded.Should().BeFalse();
-    }
-
-    [HumansFact]
-    public async Task FeedbackController_AllowsAdmin()
-    {
-        var result = await _authorizationService.AuthorizeAsync(
-            CreateUserWithRoles(RoleNames.Admin), FeedbackControllerPolicy);
-        result.Succeeded.Should().BeTrue();
-    }
-
-    [HumansFact]
-    public async Task FeedbackController_DeniesUnauthenticated()
-    {
-        var result = await AuthorizeAnonymousAsync(FeedbackControllerPolicy);
-        result.Succeeded.Should().BeFalse();
-    }
-
-    private static string FeedbackControllerPolicy =>
-        SectionType("Humans.Feedback.Controllers.FeedbackController")
-            .GetCustomAttribute<AuthorizeAttribute>(inherit: false)?.Policy
-        ?? throw new InvalidOperationException(
-            "FeedbackController must carry a policy-bearing [Authorize] attribute.");
 
     /// <summary>Section controllers are internal; throws on a miss so a rename can't drop a row silently.</summary>
     private static Type SectionType(string fullName) =>

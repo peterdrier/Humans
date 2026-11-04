@@ -24,21 +24,22 @@ namespace Humans.Consent.Tests.Services;
 public sealed class LegalDocumentSyncRunnerTests
 {
     [HumansTheory]
-    [InlineData(false, "es", "es")]
-    [InlineData(false, null, "en")]
-    [InlineData(false, "", "en")]
-    [InlineData(false, "pt", "en")]
-    [InlineData(false, "fr-FR", "en")]
-    [InlineData(false, "not a culture!", "en")]
-    [InlineData(true, "en", "en")]
+    [InlineData(false, "es", "es", "member@example.com")]
+    [InlineData(false, null, "en", "member@example.com")]
+    [InlineData(false, "", "en", "member@example.com")]
+    [InlineData(false, "pt", "en", "member@example.com")]
+    [InlineData(false, "fr-FR", "en", "member@example.com")]
+    [InlineData(false, "not a culture!", "en", "member@example.com")]
+    [InlineData(true, "en", "en", "member@example.com")]
+    [InlineData(false, "es", "es", "")]
+    [InlineData(false, "es", "es", " \t ")]
     public async Task Sync_NotifiesOnlyForOutstandingRequiredDocumentsInMembersTeams(
-        bool alreadyConsented, string? language, string expectedLanguage)
+        bool alreadyConsented, string? language, string expectedLanguage, string recipientEmail)
     {
         using var culture = new CultureScope("fr");
         var member = new User { Id = Guid.NewGuid(), BurnerName = "Member", PreferredLanguage = language! };
         var user = UserInfo.Create(member,
-            [new UserEmail { Id = Guid.NewGuid(), UserId = member.Id, Email = "member@example.com", IsVerified = true, IsPrimary = true }],
-            [], [], null, []);
+            [new UserEmail { Id = Guid.NewGuid(), UserId = member.Id, Email = recipientEmail, IsVerified = true, IsPrimary = true }], [], null);
         var own = MakeDocument("Own required", true);
         var other = MakeDocument("Other required", true);
         var optional = MakeDocument("Own optional", false);
@@ -71,7 +72,7 @@ public sealed class LegalDocumentSyncRunnerTests
 
         var messages = email.ReceivedCalls().Where(c => string.Equals(c.GetMethodInfo().Name, nameof(IEmailService.SendAsync), StringComparison.Ordinal))
             .Select(c => (EmailMessage)c.GetArguments()[0]!).ToList();
-        if (alreadyConsented)
+        if (alreadyConsented || string.IsNullOrWhiteSpace(recipientEmail))
             messages.Should().BeEmpty();
         else
         {

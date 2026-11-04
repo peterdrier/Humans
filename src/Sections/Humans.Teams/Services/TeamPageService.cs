@@ -4,7 +4,6 @@ using Humans.Settings.Contracts;
 using Humans.Shifts.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Base.Enums;
-using Humans.Users.Contracts;
 
 namespace Humans.Teams.Services;
 
@@ -13,7 +12,6 @@ internal sealed class TeamPageService(
     ITeamResourceService teamResourceService,
     IShiftService shiftManagementService,
     ISettingsService settingsService,
-    IUserService userService,
     IRoleAssignmentService roleAssignmentService) : ITeamPageService
 {
     public async Task<TeamDirectoryResult> GetTeamDirectoryAsync(
@@ -35,17 +33,6 @@ internal sealed class TeamPageService(
             .Where(team => team.IsActive && team.SystemTeamType == SystemTeamType.None)
             .SelectMany(team => team.RoleDefinitions ?? [])
             .ToList();
-        var assignedUserIds = definitions
-            .SelectMany(d => d.Assignments)
-            .Select(a => a.AssignedUserId)
-            .Where(id => id.HasValue)
-            .Select(id => id!.Value)
-            .Distinct()
-            .ToList();
-        var usersById = assignedUserIds.Count == 0
-            ? new Dictionary<Guid, UserInfo>()
-            : await userService.GetUserInfosAsync(assignedUserIds, cancellationToken);
-
         var slots = new List<TeamRosterSlotSummary>();
         foreach (var definition in definitions)
         {
@@ -64,19 +51,9 @@ internal sealed class TeamPageService(
                     definition.Id,
                     slotIndex + 1,
                     slotPriority.ToString(),
-                    slotPriority switch
-                    {
-                        SlotPriority.Critical => "bg-danger",
-                        SlotPriority.Important => "bg-warning text-dark",
-                        SlotPriority.NiceToHave => "bg-secondary",
-                        _ => "bg-light text-dark"
-                    },
                     definition.Period.ToString(),
                     assignment is not null,
                     assignment?.AssignedUserId,
-                    assignment?.AssignedUserId is Guid assignedUserId
-                        ? usersById.GetValueOrDefault(assignedUserId)?.BurnerName
-                        : null,
                     definition.IsPublic));
             }
         }
@@ -125,10 +102,6 @@ internal sealed class TeamPageService(
                 detail.IsAuthenticated ? member.JoinedAt : null))
             .ToList();
 
-        var pageContentUpdatedBy = detail.Team.PageContentUpdatedByUserId.HasValue
-            ? await userService.GetUserInfoAsync(detail.Team.PageContentUpdatedByUserId.Value, cancellationToken)
-            : null;
-
         var resources = detail.IsAuthenticated
             ? (await teamResourceService.GetTeamResourcesAsync(detail.Team.Id, cancellationToken))
                 .Select(resource => new TeamPageResourceSummary(
@@ -166,7 +139,6 @@ internal sealed class TeamPageService(
             detail.CanCurrentUserEditTeam,
             detail.CurrentUserPendingRequestId,
             detail.PendingRequestCount,
-            pageContentUpdatedBy?.BurnerName,
             shiftsSummary,
             subteamLeads,
             subteamMembers);
@@ -295,13 +267,14 @@ internal sealed class TeamPageService(
         var isAdmin = await roleAssignmentService.IsUserAdminAsync(currentUserId, cancellationToken);
         var isTeamsAdmin = await roleAssignmentService.IsUserTeamsAdminAsync(currentUserId, cancellationToken);
         var canSeeHiddenTeams = isBoardMember || isAdmin || isTeamsAdmin;
-        var canManage = isCurrentUserCoordinator || canSeeHiddenTeams;
+        // Board reads every team's admin pages and changes nothing.
+        var canManage = isCurrentUserCoordinator || isAdmin || isTeamsAdmin;
 
         if (team.IsHidden && !canSeeHiddenTeams)
             return null;
 
         var pendingRequest = await teamService.GetUserPendingRequestAsync(team.Id, currentUserId, cancellationToken);
-        var pendingRequestCount = canManage
+        var pendingRequestCount = canManage || isBoardMember
             ? (await teamService.GetPendingRequestsForTeamAsync(team.Id, cancellationToken)).Count
             : 0;
 

@@ -240,6 +240,28 @@ public class AccountDeletionServiceTests
     }
 
     [HumansTheory]
+    [Xunit.InlineData("")]
+    [Xunit.InlineData(" \t ")]
+    public async Task RequestDeletionAsync_BlankFallbackEmail_SkipsConfirmationAfterCommitting(string address)
+    {
+        var userId = Guid.NewGuid();
+        _userService.GetRawUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(MakeUser(userId, email: address));
+        _userEmailService.GetNotificationTargetEmailsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, string>());
+
+        var result = await _service.RequestDeletionAsync(userId, Xunit.TestContext.Current.CancellationToken);
+
+        result.Success.Should().BeTrue();
+        await _userService.Received(1).SetDeletionPendingAsync(userId, Arg.Any<Instant>(), Arg.Any<Instant>(),
+            Arg.Any<Instant?>(), Arg.Any<CancellationToken>());
+        await _teamService.Received(1).RevokeAllMembershipsAsync(userId, Arg.Any<CancellationToken>());
+        await _roleAssignmentService.Received(1).RevokeAllActiveAsync(userId, Arg.Any<CancellationToken>());
+        await _auditLogService.Received(1).LogAsync(UsersAuditActions.MembershipsRevokedOnDeletionRequest,
+            nameof(User), userId, Arg.Any<string>(), userId, Arg.Any<Guid?>(), Arg.Any<string?>());
+        await _emailService.DidNotReceiveWithAnyArgs().SendAsync(default!);
+    }
+
+    [HumansTheory]
     [Xunit.InlineData(false)]
     [Xunit.InlineData(true)]
     public async Task RequestDeletionAsync_ConfirmationFailureStillReportsTheCommittedRequest(bool lookupFails)
@@ -623,7 +645,7 @@ public class AccountDeletionServiceTests
             user.DeletionRequestedAt = now;
             user.DeletionScheduledFor = now.Plus(Duration.FromDays(30));
         }
-        return UserInfoFactory.Create(user, [], [], [], null, [], [], [], []);
+        return UserInfoFactory.Create(user, [], [], null, [], [], []);
     }
 
 }

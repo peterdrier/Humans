@@ -97,11 +97,6 @@ public sealed record CampInfo(
             .Select(season => (Guid?)season.Id)
             .FirstOrDefault();
 
-    public Guid? GetLeadSeasonIdForEvent(Guid userId, Guid eventSettingsId) =>
-        Seasons
-            .Where(season => season.EventSettingsId == eventSettingsId && season.IsLead(userId))
-            .Select(season => (Guid?)season.Id)
-            .FirstOrDefault();
 }
 
 public sealed record CampSeasonInfo(

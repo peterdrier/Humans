@@ -94,7 +94,7 @@ public class NotificationServiceTests : IDisposable
             NotificationPriority.Normal, "Source notice", [source], cancellationToken: ct);
         await _service.SendAsync(TestSources.TeamUpdate, NotificationClass.Informational,
             NotificationPriority.Normal, "Target notice", [target], cancellationToken: ct);
-        var inbox = new NotificationInboxService(_repo, Substitute.For<IUserService>(), TestSources.Registry, _clock);
+        var inbox = new NotificationInboxService(_repo, TestSources.Registry, _clock);
         (await inbox.GetUnreadBadgeCountsAsync(source, ct)).Should().Be((0, 1));
         (await inbox.GetUnreadBadgeCountsAsync(target, ct)).Should().Be((0, 1));
 
@@ -123,14 +123,16 @@ public class NotificationServiceTests : IDisposable
         (await act.Should().ThrowAsync<IOException>()).Which.Should().BeSameAs(failure);
     }
 
-    [HumansFact]
-    public async Task SendToRoleAsync_CreatesSharedNotificationForRoleHolders()
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task SendToRoleAsync_CreatesSharedNotificationForRoleHolders(bool duplicateRecipients)
     {
         var user1 = Guid.NewGuid();
         var user2 = Guid.NewGuid();
 
         _roleAssignmentService.GetActiveUserIdsInRoleAsync("Board", Arg.Any<CancellationToken>())
-            .Returns([user1, user2]);
+            .Returns(duplicateRecipients ? [user1, user2, user1, user2] : [user1, user2]);
 
         await _service.SendToRoleAsync(
             TestSources.Approval,

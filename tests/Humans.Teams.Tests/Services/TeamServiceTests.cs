@@ -26,6 +26,7 @@ using Humans.Shifts.Data;
 using Humans.Shifts.Domain;
 using Humans.Shifts.Services;
 using Humans.Teams.Contracts;
+using Humans.Teams.Models;
 using Humans.Teams.Data;
 using Humans.Teams.Domain;
 using Humans.Teams.Services;
@@ -119,7 +120,7 @@ public sealed class TeamServiceTests : TeamsTestHarness
             NullLogger<TeamService>.Instance);
         _pages = new TeamPageService(
             _service, _teamResourceService, shiftManagementService,
-            NewSettingsServiceBackedByShiftsDb(), _userService, _roleAssignmentService);
+            NewSettingsServiceBackedByShiftsDb(), _roleAssignmentService);
     }
 
     [HumansTheory]
@@ -1669,6 +1670,31 @@ public sealed class TeamServiceTests : TeamsTestHarness
     }
 
     [HumansTheory]
+    [InlineData("")]
+    [InlineData(" \t ")]
+    public async Task AddedMemberNotice_BlankEmail_StillDeliversInboxNotice(string address)
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var coordinator = SeedUser(displayName: "Coordinator");
+        var requester = SeedUser(displayName: "Requester");
+        requester.Email = address;
+        requester.PreferredLanguage = "es";
+        var team = SeedTeam("Alpha", requiresApproval: true);
+        SeedTeamMember(team.Id, coordinator.Id, TeamMemberRole.Coordinator);
+        var request = SeedJoinRequest(team.Id, requester.Id);
+        await SaveAllAsync(ct);
+
+        (await _service.ApproveJoinRequestAsync(request.Id, coordinator.Id, null, ct)).Succeeded.Should().BeTrue();
+
+        await _emailService.DidNotReceiveWithAnyArgs().SendAsync(default!);
+        await _teamResourceService.DidNotReceiveWithAnyArgs().GetTeamResourcesAsync(default);
+        Notifier.ReceivedCalls().Where(call =>
+            call.GetArguments()[0] is NotificationSourceDefinition source && source == TeamsNotificationSources.TeamMemberAdded
+            && ((IReadOnlyList<Guid>)call.GetArguments()[4]!).Contains(requester.Id)
+            && string.Equals((string)call.GetArguments()[3]!, "Se le ha añadido al equipo Alpha", StringComparison.Ordinal)).Should().ContainSingle();
+    }
+
+    [HumansTheory]
     [InlineData("normal", "es", "es")]
     [InlineData("email-prep-failure", "es", "es")]
     [InlineData("profile-lookup-failure", "es", "en")]
@@ -2979,7 +3005,7 @@ public sealed class TeamServiceTests : TeamsTestHarness
         if (alreadyMember) SeedTeamMember(team.Id, target.Id);
         await SaveAllAsync(TestContext.Current.CancellationToken);
         _userService.GetUserInfoAsync(sourceId, Arg.Any<CancellationToken>()).Returns(new ValueTask<UserInfo?>(
-            UserInfo.Create(target, [], [], [], null, [])));
+            UserInfo.Create(target, [], [], null)));
 
         if (alreadyMember)
         {
@@ -3014,7 +3040,7 @@ public sealed class TeamServiceTests : TeamsTestHarness
         await SaveAllAsync(TestContext.Current.CancellationToken);
         var sourceId = Guid.NewGuid();
         _userService.GetUserInfoAsync(sourceId, Arg.Any<CancellationToken>()).Returns(new ValueTask<UserInfo?>(
-            UserInfo.Create(target, [], [], [], null, [])));
+            UserInfo.Create(target, [], [], null)));
 
         var assignment = await _service.AssignToRoleAsync(definition.Id, sourceId, actor.Id,
             TestContext.Current.CancellationToken);
@@ -3236,12 +3262,12 @@ public sealed class TeamServiceTests : TeamsTestHarness
         critical.IsPublic.Should().BeTrue();
         result.Where(slot => slot.RoleDefinitionId == alphaDefinition.Id).Should().OnlyContain(slot => !slot.IsPublic);
         critical.Priority.Should().Be(nameof(SlotPriority.Critical));
-        critical.PriorityBadgeClass.Should().Be("bg-danger");
+        SlotPriority.Critical.GetBadgeClass().Should().Be("bg-danger");
         result.Single(slot => string.Equals(slot.TeamName, "Alpha", StringComparison.Ordinal) && slot.SlotNumber == 1)
-            .AssignedUserName.Should().Be("Assigned Human");
+            .AssignedUserId.Should().Be(alphaMember.Id);
         var unprioritized = result.Single(slot => string.Equals(slot.TeamName, "Alpha", StringComparison.Ordinal) && slot.SlotNumber == 2);
         unprioritized.Priority.Should().Be(nameof(SlotPriority.None));
-        unprioritized.PriorityBadgeClass.Should().Be("bg-light text-dark");
+        SlotPriority.None.GetBadgeClass().Should().Be("bg-light text-dark");
     }
 
     [HumansFact]
@@ -3550,10 +3576,6 @@ public sealed class TeamServiceTests : TeamsTestHarness
         BuildStartOffset: src.BuildStartOffset,
         EventEndOffset: src.EventEndOffset,
         StrikeEndOffset: src.StrikeEndOffset,
-        FirstCrewStartOffset: src.FirstCrewStartOffset,
-        SetupWeekStartOffset: src.SetupWeekStartOffset,
-        PreEventWeekStartOffset: src.PreEventWeekStartOffset,
-        FinishingWeekendStartOffset: src.FinishingWeekendStartOffset,
         EarlyEntryCapacity: new Dictionary<int, int>(src.EarlyEntryCapacity),
         BarriosEarlyEntryAllocation: src.BarriosEarlyEntryAllocation is null
             ? null : new Dictionary<int, int>(src.BarriosEarlyEntryAllocation),

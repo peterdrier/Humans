@@ -69,12 +69,12 @@ internal sealed class WorkspaceIdentityService(
         var previous = current is not null && !Same(current.Email, target.Email) ? current.Email : null;
         await audit.LogAsync(
             GoogleIntegrationAuditActions.UserEmailGoogleSet,
-            nameof(User), userId,
+            AuditSubjectTypes.User, userId,
             previous is null
                 ? $"Set Google identity to {target.Email}"
                 : $"Set Google identity to {target.Email} (was {previous})",
             actorUserId,
-            relatedEntityId: target.Id, relatedEntityType: nameof(UserEmail));
+            relatedEntityId: target.Id, relatedEntityType: AuditSubjectTypes.UserEmail);
         return true;
     }
 

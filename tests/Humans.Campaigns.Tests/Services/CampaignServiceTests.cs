@@ -9,6 +9,7 @@ using System.Security.Claims;
 using Humans.AuditLog.Contracts;
 using AwesomeAssertions;
 using Humans.Campaigns.Controllers;
+using Humans.Campaigns.Models;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
@@ -99,6 +100,79 @@ public sealed class CampaignServiceTests
             Clock,
             _audit,
             NullLogger<CampaignServiceImpl>.Instance);
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData("Create")]
+    [Xunit.InlineData("Edit")]
+    [Xunit.InlineData("Import")]
+    [Xunit.InlineData("Generate")]
+    [Xunit.InlineData("Activate")]
+    [Xunit.InlineData("Complete")]
+    [Xunit.InlineData("Wave")]
+    [Xunit.InlineData("Resend")]
+    [Xunit.InlineData("ResendGrant")]
+    public async Task MutationPreflightReads_StopAbandonedRequestsBeforeWrites(string operation)
+    {
+        using var request = new CancellationTokenSource();
+        var users = Substitute.For<IUserService>();
+        var repository = Substitute.For<ICampaignRepository>();
+        var observed = CancellationToken.None;
+        void Read(CancellationToken ct)
+        {
+            observed = ct;
+            request.Cancel();
+            ct.ThrowIfCancellationRequested();
+        }
+        users.GetUserInfoAsync(_actorId, Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            if (!string.Equals(operation, "ResendGrant", StringComparison.Ordinal)) Read(call.Arg<CancellationToken>());
+            return SeedUser(_actorId);
+        });
+        repository.GetCampaignIdForGrantAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            Read(call.Arg<CancellationToken>());
+            return (Guid?)Guid.NewGuid();
+        });
+        var service = new CampaignServiceImpl(repository, Substitute.For<ITeamService>(), users,
+            _notifications, _emailService, _emailMessages, _ticketDiscountCodes, Clock, _audit,
+            NullLogger<CampaignServiceImpl>.Instance);
+        var controller = new CampaignController(service, users, NullLogger<CampaignController>.Instance)
+        {
+            ControllerContext = new ControllerContext
+            {
+                HttpContext = new DefaultHttpContext
+                {
+                    RequestAborted = request.Token,
+                    User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, _actorId.ToString())], "test")),
+                },
+            },
+        };
+        var id = Guid.NewGuid();
+        Func<Task> run = async () =>
+        {
+            _ = operation switch
+            {
+                "Create" => await controller.Create("Title", null, "Subject", "Body", null),
+                "Edit" => await controller.Edit(id, "Title", null, "Subject", "Body", null),
+                "Import" => await controller.ImportCodes(id, null),
+                "Generate" => await controller.GenerateCodes(id, 1, "percentage", 10),
+                "Activate" => await controller.Activate(id),
+                "Complete" => await controller.Complete(id),
+                "Wave" => await controller.SendWave(id, Guid.NewGuid()),
+                _ => await controller.Resend(id),
+            };
+        };
+
+        await run.Should().ThrowAsync<OperationCanceledException>();
+        observed.Should().Be(request.Token);
+        if (string.Equals(operation, "ResendGrant", StringComparison.Ordinal))
+            repository.ReceivedCalls().Should().ContainSingle();
+        else
+            repository.ReceivedCalls().Should().BeEmpty();
+        _ticketDiscountCodes.ReceivedCalls().Should().BeEmpty();
+        _emailService.ReceivedCalls().Should().BeEmpty();
+        _notifications.ReceivedCalls().Should().BeEmpty();
     }
 
     [HumansFact]
@@ -434,20 +508,40 @@ public sealed class CampaignServiceTests
         (await create.Create(title, description, subject, "Changed body", replyTo)).Should().BeOfType<ViewResult>();
         create.ModelState.ContainsKey(field).Should().BeTrue();
         create.ModelState[field]!.Errors.Should().ContainSingle().Which.ErrorMessage.Should().NotBeNullOrWhiteSpace();
-        ((string)create.ViewBag.Title2).Should().Be(title);
-        ((string)create.ViewBag.ReplyToAddress).Should().Be(replyTo);
+        var submitted = new CampaignFormValues(title, description, subject, "Changed body", replyTo);
+        create.ViewData[nameof(CampaignFormValues)].Should().Be(submitted);
         (await CampaignsDb.Campaigns.CountAsync(Xunit.TestContext.Current.CancellationToken)).Should().Be(1);
 
         var edit = Controller();
         (await edit.Edit(existing.Id, title, description, subject, "Changed body", replyTo)).Should().BeOfType<ViewResult>();
         edit.ModelState.ContainsKey(field).Should().BeTrue();
         edit.ModelState[field]!.Errors.Should().ContainSingle().Which.ErrorMessage.Should().NotBeNullOrWhiteSpace();
+        edit.ViewData[nameof(CampaignFormValues)].Should().Be(submitted);
         var stored = await _service.GetByIdAsync(existing.Id, Xunit.TestContext.Current.CancellationToken);
         stored!.Title.Should().Be(existing.Title);
         stored.Description.Should().Be(existing.Description);
         stored.EmailSubject.Should().Be(existing.EmailSubject);
         stored.EmailBodyTemplate.Should().Be(existing.EmailBodyTemplate);
         stored.ReplyToAddress.Should().Be(existing.ReplyToAddress);
+    }
+
+    [HumansFact]
+    public async Task EditForm_InvalidSubmission_PreservesClearedFieldsAlongsideStoredIdentity()
+    {
+        var created = await _service.CreateAsync("Existing title", "Existing description", "Existing subject",
+            "Existing body", "before@example.com", _actorId, Xunit.TestContext.Current.CancellationToken);
+        var controller = CreateImportController();
+
+        var result = (await controller.Edit(created.Campaign!.Id, null!, null, null!, null!, null))
+            .Should().BeOfType<ViewResult>().Which;
+
+        var persisted = result.Model.Should().BeOfType<CampaignEditSnapshot>().Which;
+        persisted.Id.Should().Be(created.Campaign.Id);
+        persisted.Title.Should().Be("Existing title");
+        persisted.Description.Should().Be("Existing description");
+        persisted.ReplyToAddress.Should().Be("before@example.com");
+        result.ViewData[nameof(CampaignFormValues)].Should().Be(new CampaignFormValues(null, null, null, null, null));
+        controller.ModelState["title"]!.Errors.Should().ContainSingle();
     }
 
     [HumansFact]
@@ -1305,10 +1399,8 @@ public sealed class CampaignServiceTests
         var info = UserInfo.Create(
             user: user,
             userEmails: [],
-            eventParticipations: [],
             externalLogins: [],
-            profile: null,
-            communicationPreferences: []);
+            profile: null);
         _people[userId] = info;
         return info;
     }

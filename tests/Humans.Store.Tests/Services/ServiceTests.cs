@@ -72,7 +72,7 @@ public class ServiceTests
         var act = () => _service.GetIndexDataAsync(Guid.NewGuid(), cancellation.Token);
 
         await act.Should().ThrowAsync<OperationCanceledException>();
-        await _repo.DidNotReceive().GetActiveProductsForYearAsync(Arg.Any<int>(), Arg.Any<CancellationToken>());
+        await _repo.DidNotReceive().GetAllProductsForYearAsync(Arg.Any<int>(), Arg.Any<CancellationToken>());
     }
 
     [HumansTheory]
@@ -108,9 +108,12 @@ public class ServiceTests
     [HumansFact]
     public async Task GetIndexDataAsync_returns_active_year_catalog_and_empty_lead_sections()
     {
-        _repo.GetActiveProductsForYearAsync(2026, Arg.Any<CancellationToken>())
+        var inactive = MakeProduct(name: "Retired tent");
+        inactive.IsActive = false;
+        _repo.GetAllProductsForYearAsync(2026, Arg.Any<CancellationToken>())
             .Returns([
                 MakeProduct(name: "Tent"),
+                inactive,
                 MakeProduct(name: "Blanket")
             ]);
 
@@ -206,7 +209,7 @@ public class ServiceTests
 
         var result = await _service.GetOrderPageDataAsync(order, canEdit: true, canPayAuthorized: true, ct: TestContext.Current.CancellationToken);
 
-        result.CounterpartyDisplayName.Should().Be("Camp Test");
+        result.Order.Should().BeSameAs(order);
         result.Catalog.Select(p => p.Name).Should().Equal("Tent", "Blanket");
         result.CanEdit.Should().BeTrue();
         result.CanPay.Should().BeTrue();
@@ -1430,7 +1433,7 @@ public class ServiceTests
         var users = Substitute.For<IUserService>();
         users.GetUserInfoAsync(actor, Arg.Any<CancellationToken>()).Returns(new UserInfo(
             actor, "Tester", false, "en", null, _clock.GetCurrentInstant(), null, null, null, null,
-            null, null, null, null, null, [], [], [], null, []));
+            null, null, null, null, null, [], [], null));
         var http = new DefaultHttpContext
         {
             User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, actor.ToString())], "test"))
@@ -1462,7 +1465,7 @@ public class ServiceTests
         var actor = Guid.NewGuid();
         var users = Substitute.For<IUserService>();
         users.GetUserInfoAsync(actor, Arg.Any<CancellationToken>()).Returns(
-            UserInfo.Create(new User { Id = actor }, [], [], [], null, []));
+            UserInfo.Create(new User { Id = actor }, [], [], null));
         var registrations = new ServiceCollection().AddLogging();
         registrations.AddControllers();
         using var services = registrations.BuildServiceProvider();
@@ -1707,7 +1710,7 @@ public class ServiceTests
             .Returns(Task.FromException<string>(failure));
         var users = Substitute.For<IUserService>();
         users.GetUserInfoAsync(actor, Arg.Any<CancellationToken>()).Returns(
-            UserInfo.Create(new User { Id = actor }, [], [], [], null, []));
+            UserInfo.Create(new User { Id = actor }, [], [], null));
         var authorization = Substitute.For<IAuthorizationService>();
         authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object>(), Arg.Any<IEnumerable<IAuthorizationRequirement>>())
             .Returns(AuthorizationResult.Success());

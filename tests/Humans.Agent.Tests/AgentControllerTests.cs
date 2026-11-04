@@ -31,15 +31,18 @@ public class AgentControllerTests
         agent.DidNotReceiveWithAnyArgs().AskAsync(default!, default);
     }
 
-    [HumansFact]
-    public async Task Ask_rejects_a_null_message_with_400()
+    [HumansTheory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData(" \t\r\n")]
+    [InlineData("\u00a0")]
+    public async Task Ask_rejects_a_blank_message_with_400_before_turn_setup(string? message)
     {
-        // STJ binds {"message":null} despite the non-nullable declaration.
         var agent = Substitute.For<IAgentService>();
-        var controller = MakeController(agent, enabled: true);
+        var controller = MakeController(agent, enabled: false);
 
         await controller.Ask(
-            new AgentAskRequest { Message = null! },
+            new AgentAskRequest { Message = message! },
             TestContext.Current.CancellationToken);
 
         controller.Response.StatusCode.Should().Be(StatusCodes.Status400BadRequest);
@@ -166,7 +169,7 @@ public class AgentControllerTests
                 call.Arg<CancellationToken>().ThrowIfCancellationRequested();
                 return new ValueTask<UserInfo?>(UserInfo.Create(
                     new User { Id = userId, DisplayName = "T", PreferredLanguage = "en" },
-                    [], [], [], profile: null, []));
+                    [], [], profile: null));
             });
 
         users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())

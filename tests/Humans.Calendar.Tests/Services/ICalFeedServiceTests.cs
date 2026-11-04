@@ -56,10 +56,8 @@ public class ICalFeedServiceTests
         var info = UserInfo.Create(
             user: user,
             userEmails: [],
-            eventParticipations: [],
             externalLogins: [],
-            profile: null,
-            communicationPreferences: []);
+            profile: null);
         _users.GetUserInfoAsync(requestedId, Arg.Any<CancellationToken>())
             .Returns(new ValueTask<UserInfo?>(info));
     }

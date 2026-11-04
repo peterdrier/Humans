@@ -68,7 +68,8 @@ internal sealed class RideshareNotices(
         try
         {
             var name = (await users.GetUserInfoAsync(actorUserId, CancellationToken.None))?.BurnerName;
-            var preferredLanguage = (await users.GetUserInfoAsync(recipientUserId, CancellationToken.None))?.PreferredLanguage;
+            var recipient = await users.GetUserInfoAsync(recipientUserId, CancellationToken.None);
+            var preferredLanguage = recipient?.PreferredLanguage;
             var language = preferredLanguage.IsSupportedCultureCode()
                 ? preferredLanguage!
                 : CultureCatalog.DefaultCultureCode;
@@ -84,7 +85,7 @@ internal sealed class RideshareNotices(
             }
 
             await notifications.SendAsync(
-                source, notificationClass, NotificationPriority.Normal, title, [recipientUserId],
+                source, notificationClass, NotificationPriority.Normal, title, [recipient?.Id ?? recipientUserId],
                 body: body, actionUrl: MineUrl,
                 actionLabel: actionLabel, cancellationToken: CancellationToken.None);
         }

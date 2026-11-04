@@ -1,12 +1,12 @@
 <!-- freshness:triggers
   src/Sections/Humans.Workgroups/**
   tests/Humans.Workgroups.Tests/**
-  src/Sections/Humans.Users.Contracts/IUserService.cs
+  src/Humans.Base/Users/IUserService.cs
   src/Sections/Humans.Auth/Contracts/IRoleAssignmentService.cs
   src/Sections/Humans.Settings/Contracts/ISettingsService.cs
   src/Sections/Humans.GoogleIntegration/Contracts/IGoogleSyncService.cs
   src/Sections/Humans.Surveys/Contracts/ISurveyAnalysisRead.cs
-  src/Sections/Humans.Finance.Contracts/IHoldedFinanceWrite.cs
+  src/Sections/Humans.Finance.Contracts/IFinanceWrite.cs
   src/Sections/Humans.Holded/Contracts/IHoldedService.cs
 -->
 
@@ -50,7 +50,7 @@ Repository: `IWorkgroupRepository`.
 | workgroups_settings | R/W |
 
 Cross-section calls: `IUserService`, `IRoleAssignmentService`,
-`ISettingsService` (legacy root read only), `IGoogleSyncService`, `IGoogleSyncWrite`, `IHoldedFinanceWrite`,
+`ISettingsService` (legacy root read only), `IGoogleSyncService`, `IGoogleSyncWrite`, `IFinanceWrite`,
 `IHoldedService`, `INotificationService`, `IEmailService`, the section's own
 `WorkgroupsEmails` builder, `IAuditLogService`, `ISurveyAnalysisRead`, `IClock` (NodaTime).
 The inner service has no `IMemoryCache`. `ITeamService` is used by

@@ -166,13 +166,11 @@ internal sealed class AccountMergeService(
         {
             return new(
                 user.Id,
-                user.BurnerName,
                 user.Email,
-                user.ProfilePictureUrl,
                 user.PreferredLanguage,
                 user.LastLoginAt);
         }
-        return new(userId, "(unknown user)", null, null, null, null);
+        return new(userId, null, null, null);
     }
 
     // Filters GetPendingAsync in memory rather than adding a pair-scoped query; the set is tiny.

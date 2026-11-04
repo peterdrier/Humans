@@ -102,9 +102,7 @@ internal sealed class AgentService : IAgentService, IAgentConversationRetention
         var today = nowZoned.Date;
         var hour = nowZoned.Hour;
         var usage = _rateLimit.Get(request.UserId, today, hour);
-        if (usage.MessagesToday >= settings.DailyMessageCap ||
-            usage.TokensToday >= settings.DailyTokenCap ||
-            usage.MessagesThisHour >= settings.HourlyMessageCap)
+        if (usage.IsAtLimit(settings))
         {
             // Invariant 6 (Agent.md): every refused turn writes an AgentMessage with RefusalReason.
             await PersistRefusalAsync(request, existing, "rate_limited", cancellationToken);
@@ -125,12 +123,7 @@ internal sealed class AgentService : IAgentService, IAgentConversationRetention
             ?? await _repo.CreateConversationAsync(request.UserId, request.Locale, cancellationToken);
 
         // Replay user/assistant text turns only — tool-call internals are dropped (model re-derives via fetch_section_guide).
-        var priorTurns = conversation.Messages
-            .Where(m => (m.Role == AgentRole.User || m.Role == AgentRole.Assistant)
-                        && !string.IsNullOrEmpty(m.Content))
-            .OrderBy(m => m.CreatedAt)
-            .TakeLast(HistoryReplayLimit)
-            .ToList();
+        var priorTurns = conversation.GetReplayableMessages();
 
         await _repo.AppendMessageAsync(new AgentMessage
         {
@@ -455,6 +448,7 @@ internal sealed class AgentService : IAgentService, IAgentConversationRetention
             Model = settings.Model,
             DurationMs = durationMs,
             FetchedDocs = fetchedDocs.ToArray(),
+            RefusalReason = string.Equals(finalFinalizer?.StopReason, "error", StringComparison.Ordinal) ? "error" : null,
             HandedOffToFeedbackId = null
         };
         await _repo.AppendMessageAsync(message, cancellationToken);
@@ -475,9 +469,6 @@ internal sealed class AgentService : IAgentService, IAgentConversationRetention
             CacheCreationTokens = usage.CacheCreationTokens
         });
     }
-
-    /// <summary>How many prior user/assistant turns to replay (bounded for context budget).</summary>
-    private const int HistoryReplayLimit = 20;
 
     /// <summary>A turn also emits tool-call JSON, and a tighter cap truncated it mid-JSON often enough to
     /// matter.</summary>
@@ -592,11 +583,7 @@ internal sealed class AgentService : IAgentService, IAgentConversationRetention
 
         // Mirror AskAsync's history replay rules so the preview matches what
         // would actually be sent on the next turn.
-        var replayed = conversation.Messages
-            .Where(m => (m.Role == AgentRole.User || m.Role == AgentRole.Assistant)
-                        && !string.IsNullOrEmpty(m.Content))
-            .OrderBy(m => m.CreatedAt)
-            .TakeLast(HistoryReplayLimit)
+        var replayed = conversation.GetReplayableMessages()
             .Select(m => new AgentPromptHistoryTurn(
                 Role: m.Role == AgentRole.User ? "user" : "assistant",
                 Text: m.Content))

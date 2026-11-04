@@ -34,10 +34,6 @@ internal interface IBudgetManagement : IBudgetService, IApplicationService
         Guid? actorUserId,
         CancellationToken ct = default);
 
-    /// <summary>No actuals sync; for after projection parameters change. Returns projected line items created.</summary>
-    Task<int> RefreshTicketingProjectionsAsync(
-        Guid budgetYearId, Guid? actorUserId, CancellationToken ct = default);
-
     /// <summary>Virtual (not persisted) weeks, for the break-even forecasts.</summary>
     Task<IReadOnlyList<TicketingWeekProjection>> GetTicketingProjectionEntriesAsync(
         Guid budgetGroupId, CancellationToken ct = default);
@@ -54,7 +50,7 @@ internal interface IBudgetManagement : IBudgetService, IApplicationService
     Task<BudgetSaveResult<BudgetCategoryDetail>> UpdateCategoryAsync(Guid categoryId, string name, decimal allocatedAmount, ExpenditureType expenditureType, Guid actorUserId);
     Task DeleteCategoryAsync(Guid categoryId, Guid actorUserId);
 
-    Task<BudgetLineItemSnapshot?> GetLineItemByIdAsync(Guid id);
+    Task<BudgetLineItemSnapshot?> GetLineItemByIdAsync(Guid id, CancellationToken ct = default);
     Task<BudgetSaveResult<BudgetLineItemSnapshot>> CreateLineItemAsync(Guid budgetCategoryId, string description, decimal amount, Guid? responsibleTeamId, string? notes, LocalDate? expectedDate, int vatRate, Guid actorUserId);
     Task<BudgetSaveResult<BudgetLineItemSnapshot>> UpdateLineItemAsync(Guid lineItemId, string description, decimal amount, Guid? responsibleTeamId, string? notes, LocalDate? expectedDate, int vatRate, Guid actorUserId);
     Task DeleteLineItemAsync(Guid lineItemId, Guid actorUserId);

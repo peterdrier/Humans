@@ -12,6 +12,10 @@
 
 # City Planning — Section Invariants
 
+Membership-based authorization resolves the session's account through Users before checking the City Planning team or camp leadership. Merged sessions use the surviving account's memberships; a missing account is denied. Request cancellation applies to this identity lookup and the subsequent authorization reads. Existing admin-role bypasses remain in effect.
+
+API polygon and container writes, and lead-scoped container exports, resolve the current account through Users before checking access or recording an actor. A merged session uses the surviving account ID; an unresolved account returns 401 before any write.
+
 Interactive map surface: a read-only overview, barrio polygon editing, and container placement. Owns placement phase control and append-only polygon history. Barrio map popup and drawing warnings, history browsing, save failures and discard confirmations use the viewer’s language in all six supported cultures; map-admin-only restore controls remain operator copy. Polygon saves cannot overlap; draw updates keep Save disabled until the request finishes. A successful save closes editing only when the active camp and polygon still match its captured snapshot, preserving subsequent edits. Restores cannot overlap and close their history panel and draft only if both still match the state at request start. Failed save/restore requests retain the current edit and show their error message; failed history requests or JSON decoding show the history failure panel. A history load started during the panel’s close transition waits for cleanup before fetching and reopening; only the latest waiting load resumes.
 
 ## Concepts
@@ -159,11 +163,13 @@ Broadcasts `CampPolygonUpdated(campSeasonId, geoJson, areaSqm, soundZone, campNa
 
 ## Invariants
 
+- Authorization’s city-planning membership reads retain HTTP request cancellation; callers without an HTTP context use the non-cancellable default.
+
 - Only one CampPolygon per CampSeason (unique constraint on `CampSeasonId`).
 - Barrio history displays only the latest requested camp season. Switching barrios clears prior preview/restore controls immediately; late success or failure cannot overwrite a newer request or reopen a dismissed panel. One panel-close handler clears history previews while preserving active edits.
 - CampPolygonHistory is append-only — edits and restores always create a new history entry (design-rules §12).
 - Barrio placement has one effective state, computed on every read by `CityPlanningService` (peterdrier/Humans#2102): the manual override when set (true = Open, false = Closed); otherwise the schedule, by today's date in the active event's time zone (`EventSettingsInfo.TimeZoneId`) against `GateOpeningDate` + offset — **Open** from the opening day through the closing day, **Changeable** through the changeable-until day, then **Closed**. No opening day, no active event, or a row for another year than the active event's means Closed unless forced open. No job flips anything: the date decides at read time.
-- Camp leads can create or edit their own camp's polygon only while placement is Open, and only edit one that already exists while it is Changeable. City-planning team members and CampsAdmin are exempt.
+- Camp leads can create or edit their own camp's polygon only while placement is Open, and only edit one that already exists while it is Changeable. City-planning team members and CampsAdmin are exempt. Lead authority comes from the specific camp season being edited; leadership in another season of the same camp grants no access.
 - The schedule's days must run open ≤ close ≤ changeable-until, within 366 days of gate opening, and a changeable-until day needs a closing day; anything else is refused without a write or an audit entry.
 - Camp leads can only add/edit/delete their camp's containers when container placement is open. City-planning team members and CampsAdmin are exempt.
 - City planning's current year is the active event's year. With no active event there is no current year: the map pages (index, barrio map, container map), the admin page and the state API answer 404, the `/Settings#city-planning` tab says so in place of the placement cards — the registration-info card stays while a season is open, since that copy is keyed to the open season — the Camps details page shows placement as closed, and a settings write throws.
@@ -191,9 +197,11 @@ Broadcasts `CampPolygonUpdated(campSeasonId, geoJson, areaSqm, soundZone, campNa
 
 ## Triggers
 
+- Polygon-save notes are limited to 512 characters; MVC returns the shared maximum-length validation message in the viewer’s culture.
 - Saving a polygon creates a CampPolygonHistory entry with note `"Saved"`, or the note the client supplied — the bulk import sends `"Imported {timestamp}"`.
 - Restoring a historical version overwrites the current polygon with the restored version and appends a history entry for it (note: `"Restored from {timestamp}"`).
 - SignalR broadcasts `CampPolygonUpdated` to all connected clients after every save. Broadcast preparation (including camp detail lookup) and delivery failures are logged while returning the saved polygon; an aborted request instead propagates cancellation.
+- Cursor presence reads the connection's name-identifier claim and resolves its burner name through `IUserService`, including merged identities. Missing or malformed identifiers skip the lookup and use the session name (or `Unknown`); they do not fail connection setup.
 
 ## Cross-Section Dependencies
 

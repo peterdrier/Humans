@@ -20,14 +20,12 @@ using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.AspNetCore.Mvc.ViewComponents;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
 using Xunit;
-using LegacyRow = Humans.Users.Contracts.EventParticipation;
 using TicketRow = Humans.Tickets.Domain.EventParticipation;
 
 namespace Humans.Tickets.Tests.Services;
@@ -40,7 +38,6 @@ public sealed class EventParticipationServiceTests : IDisposable
     private readonly FakeClock _clock = new(Now);
     private readonly IUserService _users = Substitute.For<IUserService>();
     private readonly IAuditLogService _audit = Substitute.For<IAuditLogService>();
-    private readonly List<UserInfo> _all = [];
     private readonly TicketsDbContext _db;
     private readonly EventParticipationService _sut;
 
@@ -52,34 +49,30 @@ public sealed class EventParticipationServiceTests : IDisposable
         _sut = new EventParticipationService(
             new EventParticipationRepository(new TestDbContextFactory<TicketsDbContext>(options)),
             _users, _audit, _clock, NullLogger<EventParticipationService>.Instance);
-        _users.GetAllRawUserInfosAsync(Arg.Any<CancellationToken>()).Returns(_ => _all.ToList());
     }
 
     public void Dispose() => _db.Dispose();
 
     private static CancellationToken Ct => TestContext.Current.CancellationToken;
 
-    /// <summary>A member whose frozen Users participation rows are <paramref name="legacy"/>.</summary>
-    private UserInfo SeedUser(params (int Year, LegacyParticipationStatus Status, LegacyParticipationSource Source)[] legacy)
+    private UserInfo SeedUser(params (int Year, ParticipationStatus Status, ParticipationSource Source)[] rows)
     {
         var userId = Guid.NewGuid();
         var info = UserInfo.Create(
-            new User { Id = userId, BurnerName = "Ana", CreatedAt = Now },
-            [],
-            [.. legacy.Select(l => new LegacyRow
-            {
-                Id = Guid.NewGuid(),
-                UserId = userId,
-                Year = l.Year,
-                Status = l.Status,
-                Source = l.Source,
-                DeclaredAt = l.Status == LegacyParticipationStatus.NotAttending ? Earlier : null,
-                CheckedInAt = l.Status == LegacyParticipationStatus.Attended ? Earlier : null,
-            })],
-            [], null, []);
+            new User { Id = userId, BurnerName = "Ana", CreatedAt = Now }, [], [], null);
         _users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(info);
-        _users.GetRawUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(info);
-        _all.Add(info);
+        _db.EventParticipations.AddRange(rows.Select(r => new TicketRow
+        {
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            Year = r.Year,
+            Status = r.Status,
+            Source = r.Source,
+            DeclaredAt = r.Status == ParticipationStatus.NotAttending ? Earlier : null,
+            CheckedInAt = r.Status == ParticipationStatus.Attended ? Earlier : null,
+        }));
+        _db.SaveChanges();
+        _db.ChangeTracker.Clear();
         return info;
     }
 
@@ -87,11 +80,11 @@ public sealed class EventParticipationServiceTests : IDisposable
         _db.EventParticipations.AsNoTracking().Where(r => r.UserId == userId).ToListAsync(Ct);
 
     [HumansFact]
-    public async Task Read_FallsBackToTheLegacyRow_UntilARowExistsForThatYear()
+    public async Task Read_UsesTicketsRows_ForEachYear()
     {
         var user = SeedUser(
-            (2025, LegacyParticipationStatus.Attended, LegacyParticipationSource.TicketSync),
-            (2026, LegacyParticipationStatus.Ticketed, LegacyParticipationSource.TicketSync));
+            (2025, ParticipationStatus.Attended, ParticipationSource.TicketSync),
+            (2026, ParticipationStatus.Ticketed, ParticipationSource.TicketSync));
 
         (await _sut.GetParticipationsAsync(user.Id, Ct)).Should().BeEquivalentTo(
         [
@@ -110,7 +103,7 @@ public sealed class EventParticipationServiceTests : IDisposable
     [HumansFact]
     public async Task Read_AMergedAwayId_ResolvesToTheSurvivorsParticipations()
     {
-        var survivor = SeedUser((2026, LegacyParticipationStatus.Ticketed, LegacyParticipationSource.TicketSync));
+        var survivor = SeedUser((2026, ParticipationStatus.Ticketed, ParticipationSource.TicketSync));
         var archivedId = Guid.NewGuid();
         _users.GetUserInfoAsync(archivedId, Arg.Any<CancellationToken>()).Returns(survivor);
 
@@ -119,23 +112,46 @@ public sealed class EventParticipationServiceTests : IDisposable
     }
 
     [HumansFact]
-    public async Task Undo_OfALegacyDeclaration_LeavesAClearedRow_SoTheLegacyValueNeverComesBack()
+    public async Task Undo_OfAnExistingDeclaration_DeletesTheRow()
     {
-        var user = SeedUser((2026, LegacyParticipationStatus.NotAttending, LegacyParticipationSource.UserDeclared));
+        var user = SeedUser((2026, ParticipationStatus.NotAttending, ParticipationSource.UserDeclared));
 
         (await _sut.UndoNotAttendingAsync(user.Id, 2026, Ct)).Should().BeTrue();
 
         (await _sut.GetParticipationsAsync(user.Id, Ct)).Should().BeEmpty();
         (await _sut.GetAllParticipationsAsync(Ct)).Should().BeEmpty();
-        (await RowsAsync(user.Id)).Should().ContainSingle().Which.Status.Should().BeNull();
-        (await _sut.GetUncopiedLegacyParticipationsAsync(Ct)).Should().BeEmpty();
+        (await RowsAsync(user.Id)).Should().BeEmpty();
         (await _sut.UndoNotAttendingAsync(user.Id, 2026, Ct)).Should().BeFalse();
     }
 
     [HumansFact]
-    public async Task Writes_StartFromTheLegacyRow_SoALegacyAttendanceIsNeverDowngraded()
+    public async Task Read_HistoricalClearedRowsAreUnknown_AndCanBeRecordedAgain()
     {
-        var user = SeedUser((2026, LegacyParticipationStatus.Attended, LegacyParticipationSource.TicketSync));
+        var user = SeedUser();
+        _db.EventParticipations.Add(new TicketRow
+        {
+            Id = Guid.NewGuid(),
+            UserId = user.Id,
+            Year = 2026,
+            Source = ParticipationSource.UserDeclared,
+        });
+        await _db.SaveChangesAsync(Ct);
+        _db.ChangeTracker.Clear();
+
+        (await _sut.GetParticipationsAsync(user.Id, Ct)).Should().BeEmpty();
+        (await _sut.GetAllParticipationsAsync(Ct)).Should().BeEmpty();
+        (await _sut.UndoNotAttendingAsync(user.Id, 2026, Ct)).Should().BeFalse();
+
+        await _sut.RecordParticipationAsync(user.Id, 2026, ParticipationStatus.Ticketed, null, Ct);
+
+        (await _sut.GetParticipationsAsync(user.Id, Ct)).Should().ContainSingle()
+            .Which.Status.Should().Be(ParticipationStatus.Ticketed);
+    }
+
+    [HumansFact]
+    public async Task Writes_NeverDowngradeRecordedAttendance()
+    {
+        var user = SeedUser((2026, ParticipationStatus.Attended, ParticipationSource.TicketSync));
 
         (await _sut.DeclareNotAttendingAsync(user.Id, 2026, Ct)).Should().BeFalse();
         await _sut.RemoveTicketSyncParticipationAsync(user.Id, 2026, Ct);
@@ -147,7 +163,7 @@ public sealed class EventParticipationServiceTests : IDisposable
     }
 
     [HumansFact]
-    public async Task Declare_ThenUndo_WithNoLegacyRow_LeavesNothing()
+    public async Task Declare_ThenUndo_LeavesNothing()
     {
         var user = SeedUser();
 
@@ -164,7 +180,7 @@ public sealed class EventParticipationServiceTests : IDisposable
     public async Task Backfill_AuditsOnlyCommittedFinalChanges_AndNoOpsOnRepeat()
     {
         var user = SeedUser();
-        var attended = SeedUser((2025, LegacyParticipationStatus.Attended, LegacyParticipationSource.TicketSync));
+        var attended = SeedUser((2025, ParticipationStatus.Attended, ParticipationSource.TicketSync));
         var actorId = Guid.NewGuid();
         List<(Guid UserId, ParticipationStatus Status)> entries =
         [
@@ -185,61 +201,15 @@ public sealed class EventParticipationServiceTests : IDisposable
     }
 
     [HumansFact]
-    public async Task Copy_ListsEveryUncopiedLegacyRow_ThenIsIdempotent()
-    {
-        var a = SeedUser(
-            (2025, LegacyParticipationStatus.Attended, LegacyParticipationSource.TicketSync),
-            (2026, LegacyParticipationStatus.NotAttending, LegacyParticipationSource.UserDeclared));
-        var b = SeedUser((2026, LegacyParticipationStatus.NoShow, LegacyParticipationSource.AdminBackfill));
-        SeedUser();
-
-        (await _sut.GetUncopiedLegacyParticipationsAsync(Ct)).Select(p => (p.UserId, p.Year))
-            .Should().BeEquivalentTo([(a.Id, 2025), (a.Id, 2026), (b.Id, 2026)]);
-
-        (await _sut.CopyLegacyParticipationsAsync(Ct)).Should().Be(3);
-        (await _sut.CopyLegacyParticipationsAsync(Ct)).Should().Be(0);
-        (await _sut.GetUncopiedLegacyParticipationsAsync(Ct)).Should().BeEmpty();
-        (await RowsAsync(a.Id)).Should().BeEquivalentTo(
-        [
-            new { Year = 2025, Status = (ParticipationStatus?)ParticipationStatus.Attended, Source = ParticipationSource.TicketSync, CheckedInAt = (Instant?)Earlier },
-            new { Year = 2026, Status = (ParticipationStatus?)ParticipationStatus.NotAttending, Source = ParticipationSource.UserDeclared, CheckedInAt = (Instant?)null },
-        ], o => o.ExcludingMissingMembers());
-        (await RowsAsync(b.Id)).Single().Source.Should().Be(ParticipationSource.AdminBackfill);
-    }
-
-    [HumansFact]
-    public async Task Copy_NeverOverwritesARowWrittenSinceTheDeploy()
-    {
-        var user = SeedUser((2026, LegacyParticipationStatus.Ticketed, LegacyParticipationSource.TicketSync));
-        await _sut.RecordParticipationAsync(user.Id, 2026, ParticipationStatus.Attended, Now, Ct);
-
-        (await _sut.CopyLegacyParticipationsAsync(Ct)).Should().Be(0);
-        (await RowsAsync(user.Id)).Single().Status.Should().Be(ParticipationStatus.Attended);
-    }
-
-    [HumansFact]
-    public async Task DataMigration_IsRegistered_AndRunsTheCopy()
-    {
-        SeedUser((2026, LegacyParticipationStatus.Ticketed, LegacyParticipationSource.TicketSync));
-        var services = new ServiceCollection().AddSingleton<IEventParticipationManagement>(_sut).BuildServiceProvider();
-        var migration = ((ISectionDataMigrations)new Section()).Migrations().Should().ContainSingle().Subject;
-
-        migration.Key.Should().Be("tickets.event-participations");
-        (await migration.Status(services, Ct)).Pending.Should().Be(1);
-        (await migration.Apply(services, Guid.NewGuid(), Ct)).Should().Be(1);
-        (await migration.Status(services, Ct)).Pending.Should().Be(0);
-    }
-
-    [HumansFact]
-    public async Task Merge_FoldsBothUsersLegacyRows_ByPrecedence_AndClearsTheSource()
+    public async Task Merge_FoldsBothUsersRows_ByPrecedence_AndDeletesTheSource()
     {
         var source = SeedUser(
-            (2024, LegacyParticipationStatus.Attended, LegacyParticipationSource.TicketSync),
-            (2025, LegacyParticipationStatus.NotAttending, LegacyParticipationSource.UserDeclared),
-            (2023, LegacyParticipationStatus.Attended, LegacyParticipationSource.TicketSync));
+            (2024, ParticipationStatus.Attended, ParticipationSource.TicketSync),
+            (2025, ParticipationStatus.NotAttending, ParticipationSource.UserDeclared),
+            (2023, ParticipationStatus.Attended, ParticipationSource.TicketSync));
         var target = SeedUser(
-            (2024, LegacyParticipationStatus.NotAttending, LegacyParticipationSource.UserDeclared),
-            (2025, LegacyParticipationStatus.Ticketed, LegacyParticipationSource.TicketSync));
+            (2024, ParticipationStatus.NotAttending, ParticipationSource.UserDeclared),
+            (2025, ParticipationStatus.Ticketed, ParticipationSource.TicketSync));
 
         await _sut.ReassignAsync(source.Id, target.Id, Guid.NewGuid(), Now, Ct);
 
@@ -250,13 +220,13 @@ public sealed class EventParticipationServiceTests : IDisposable
             (2025, ParticipationStatus.Ticketed),
         ]);
         (await _sut.GetParticipationsAsync(source.Id, Ct)).Should().BeEmpty();
-        (await RowsAsync(source.Id)).Should().OnlyContain(r => r.Status == null);
+        (await RowsAsync(source.Id)).Should().BeEmpty();
     }
 
     [HumansFact]
-    public async Task Export_CarriesTheEffectiveRows_AsAList()
+    public async Task Export_CarriesTicketsRows_AsAList()
     {
-        var user = SeedUser((2025, LegacyParticipationStatus.Attended, LegacyParticipationSource.TicketSync));
+        var user = SeedUser((2025, ParticipationStatus.Attended, ParticipationSource.TicketSync));
         var none = SeedUser();
 
         var slice = (await _sut.ContributeForUserAsync(user.Id, Ct)).Should().ContainSingle().Subject;
@@ -347,17 +317,23 @@ public sealed class EventParticipationServiceTests : IDisposable
             .Should().Be(template);
     }
 
-    [HumansFact]
-    public async Task Declaration_ActsOnTheSignedInMember_ForTheActiveYear()
+    [HumansTheory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task Declaration_ActsOnTheSignedInMember_ForTheActiveYear(bool declared)
     {
         var user = SeedUser();
         var participations = Substitute.For<IEventParticipationManagement>();
+        participations.DeclareNotAttendingAsync(user.Id, 2026, Arg.Any<CancellationToken>()).Returns(declared);
         participations.UndoNotAttendingAsync(user.Id, 2026, Arg.Any<CancellationToken>()).Returns(false);
         var controller = NewController(user.Id, participations, activeYear: 2026);
 
         (await controller.DeclareNotAttending()).Should().BeOfType<RedirectResult>().Which.Url.Should().Be("/");
         await participations.Received(1).DeclareNotAttendingAsync(user.Id, 2026, Arg.Any<CancellationToken>());
-        controller.TempData[TempDataKeys.SuccessMessage].Should().Be("Tickets_NotAttending_Declared");
+        controller.TempData[declared ? TempDataKeys.SuccessMessage : TempDataKeys.ErrorMessage]
+            .Should().Be(declared ? "Tickets_NotAttending_Declared" : "Tickets_NotAttending_AlreadyAttended");
+        controller.TempData.ContainsKey(declared ? TempDataKeys.ErrorMessage : TempDataKeys.SuccessMessage)
+            .Should().BeFalse();
 
         await controller.UndoNotAttending();
         controller.TempData[TempDataKeys.ErrorMessage].Should().Be("Tickets_NotAttending_UndoFailed");

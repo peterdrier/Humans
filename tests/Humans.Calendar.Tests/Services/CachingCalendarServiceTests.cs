@@ -45,7 +45,7 @@ public sealed class CachingCalendarServiceTests
             EndUtc = before.EndUtc,
             CreatedAt = before.CreatedAt,
             UpdatedAt = before.UpdatedAt,
-            CreatedByUserId = before.CreatedByUserId,
+            CreatedByUserId = Guid.NewGuid(),
             RecurrenceRule = "FREQ=DAILY;COUNT=3",
             RecurrenceTimezone = "UTC",
         };
@@ -396,9 +396,39 @@ public sealed class CachingCalendarServiceTests
         results.Should().ContainSingle();
         results[0].EventId.Should().Be(ownEvent.Id);
         _compositionLogger.Received(1).Log(
-            LogLevel.Warning,
+            LogLevel.Error,
             Arg.Any<EventId>(),
             Arg.Is<object>(o => o.ToString()!.Contains("FakeContributor")),
+            Arg.Any<Exception?>(),
+            Arg.Any<Func<object, Exception?, string>>());
+    }
+
+    [HumansFact]
+    public async Task GetOccurrencesInWindowAsync_DiscardsContributorBatchWhenRecurrenceExpansionFails()
+    {
+        var start = Instant.FromUtc(2026, 6, 5, 9, 0);
+        var ownEvent = BuildInfo(title: "Own event", start: start, end: start.Plus(Duration.FromHours(1)));
+        _inner.GetAllEventInfosAsync(Arg.Any<CancellationToken>()).Returns([ownEvent]);
+        _teamService.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(new Dictionary<Guid, TeamInfo>());
+        var broken = MakeItem("Broken", start) with
+        {
+            RecurrenceRule = "FREQ=WEEKLY;INTERVAL=oops",
+            RecurrenceTimezone = "Europe/Madrid",
+        };
+        var sut = CreateSut(
+            new FakeContributor(MakeItem("Before", start)),
+            new FakeContributor(MakeItem("Partial", start), broken),
+            new FakeContributor(MakeItem("After", start)));
+
+        var results = await sut.GetOccurrencesInWindowAsync(
+            Instant.FromUtc(2026, 6, 1, 0, 0), Instant.FromUtc(2026, 6, 30, 0, 0), DateTimeZoneProviders.Tzdb["Europe/Madrid"],
+            ct: TestContext.Current.CancellationToken);
+
+        results.Select(item => item.Title).Should().BeEquivalentTo("Own event", "Before meeting", "After meeting");
+        _compositionLogger.Received(1).Log(
+            LogLevel.Error,
+            Arg.Any<EventId>(),
+            Arg.Is<object>(state => state.ToString()!.Contains("FakeContributor")),
             Arg.Any<Exception?>(),
             Arg.Any<Func<object, Exception?, string>>());
     }
@@ -641,7 +671,6 @@ public sealed class CachingCalendarServiceTests
             RecurrenceRule: null,
             RecurrenceTimezone: null,
             RecurrenceUntilUtc: null,
-            CreatedByUserId: Guid.NewGuid(),
             CreatedAt: Instant.FromUtc(2026, 5, 1, 0, 0),
             UpdatedAt: Instant.FromUtc(2026, 5, 1, 0, 0),
             Exceptions: []);

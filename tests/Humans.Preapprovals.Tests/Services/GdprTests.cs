@@ -129,7 +129,7 @@ public sealed class GdprTests : PreapprovalsTestHarness
         await NotificationResolve.Received(1).ResolveBySourceKeyAsync(PreapprovalsNotificationSources.PreapprovalApplicationReceived,
             PreapprovalService.RequestSourceKey(newerApplication.Id), actor, Arg.Any<CancellationToken>());
         await AuditLog.Received(1).LogAsync(PreapprovalsAuditActions.PreapprovalMergeDroppedApplication, AuditEntityTypes.Grant, newerApplication.Id,
-            Arg.Any<string>(), actor, to, AuditEntityTypes.User);
+            Arg.Any<string>(), actor, to, AuditSubjectTypes.User);
     }
 
     [HumansFact]

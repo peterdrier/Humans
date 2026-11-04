@@ -79,9 +79,32 @@ public class HoldedFinanceServiceTests
                 PaymentsTotal = 0m,
                 PaymentsPending = 0m,
             });
-        // The mirror never synced, so /Finance/Creditors' reconciliation banner reads unavailable.
-        _repo.GetOrCreateDocSyncStateAsync(Arg.Any<CancellationToken>()).Returns(new HoldedDocSyncState());
+        // The document mirror never synced and holds nothing.
+        _holded.GetPurchaseDocumentsAsync(Arg.Any<CancellationToken>())
+            .Returns(new HoldedPurchaseDocMirror(null, "Idle", null, 0, null, []));
     }
+
+    /// <summary>A mirrored purchase document; the defaults are an approved, untagged, unbooked 2026 document.</summary>
+    private static HoldedPurchaseDocInfo PDoc(
+        string id, decimal total = 10m, bool approved = true, string? account = null, IReadOnlyList<string>? tags = null,
+        LocalDate? date = null, string docNumber = "", string contactName = "", string? description = null) =>
+        new(id, docNumber, contactName, null, description, date ?? new LocalDate(2026, 4, 15), total, 0m, total, "eur",
+            approved, null, tags ?? [], account, $"https://app.holded.com/expenses/list#open:purchase-{id}");
+
+    private void StubDocs(params HoldedPurchaseDocInfo[] docs) =>
+        _holded.GetPurchaseDocumentsAsync(Arg.Any<CancellationToken>())
+            .Returns(new HoldedPurchaseDocMirror(FixedNow, "Idle", null, docs.Length, FixedNow, docs));
+
+    /// <summary>One active map row: <paramref name="category"/> on account <c>acc-1</c>, tag <c>comms</c>.</summary>
+    private void MapCategory(Guid category) =>
+        _repo.GetCategoryMapAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedCategoryMap>
+        {
+            new()
+            {
+                Id = Guid.NewGuid(), BudgetCategoryId = category, HoldedAccountNumber = 6290001,
+                HoldedAccountId = "acc-1", Tag = "comms", IsActive = true, CreatedAt = FixedNow, UpdatedAt = FixedNow,
+            },
+        });
 
     /// <summary>An unstubbed <c>ValueTask&lt;IReadOnlyDictionary&gt;</c> substitute yields null, not an empty map.</summary>
     private static IUserService NoUsers()
@@ -106,12 +129,13 @@ public class HoldedFinanceServiceTests
         _emailService,
         emailTemplates ?? TestFinanceEmails.Create(),
         Options.Create(_sepa), _bookingState,
-        NullLogger<Service>.Instance);
+        Substitute.For<IPaymentDetailsManagement>(), NullLogger<Service>.Instance);
 
     /// <summary>Same service, with a logger the test can read back.</summary>
     private Service MakeService(ILogger<Service> logger) => new(
         _repo, _client, _budget, _holded, _write, _expenses, _clock, _cache, _audit,
-        _users, _emailService, TestFinanceEmails.Create(), Options.Create(_sepa), _bookingState, logger);
+        _users, _emailService, TestFinanceEmails.Create(), Options.Create(_sepa), _bookingState,
+        Substitute.For<IPaymentDetailsManagement>(), logger);
 
     /// <summary>Ledger-line stub for the mirror reads (positional: entry, line, account, date, type, description, debit, credit).</summary>
     private static HoldedLedgerLineInfo Line(int entry, int line, int account, Instant date,
@@ -133,10 +157,10 @@ public class HoldedFinanceServiceTests
             call.Arg<CancellationToken>().ThrowIfCancellationRequested();
             return Array.Empty<HoldedExpenseAccountDto>();
         });
-        _repo.GetUnmatchedAsync(Arg.Any<CancellationToken>()).Returns(call =>
+        _holded.GetPurchaseDocumentsAsync(Arg.Any<CancellationToken>()).Returns(call =>
         {
             call.Arg<CancellationToken>().ThrowIfCancellationRequested();
-            return Array.Empty<HoldedExpenseDoc>();
+            return new HoldedPurchaseDocMirror(null, "Idle", null, 0, null, []);
         });
         _holded.GetAccountBalancesAsync(Arg.Any<CancellationToken>()).Returns(call =>
         {
@@ -149,7 +173,7 @@ public class HoldedFinanceServiceTests
             return Array.Empty<HoldedLedgerLineInfo>();
         });
         var service = MakeService();
-        var controller = new FinanceController(_users, service, service,
+        var controller = new FinanceController(_users, service, service, _holded,
             Substitute.For<Humans.Expenses.Contracts.IExpenseReportService>(),
             new CashFlowService(_budget, Substitute.For<Humans.Tickets.Contracts.ITicketService>()),
             new CreditorMatchService(_holded, Substitute.For<Humans.Expenses.Contracts.IExpenseReportService>()),
@@ -186,15 +210,14 @@ public class HoldedFinanceServiceTests
     public async Task GetActualsForYear_SumsGrossDocTotals_ApprovedOnly()
     {
         var cat = Guid.NewGuid();
-        _repo.GetMatchedForYearAsync(2026, Arg.Any<CancellationToken>()).Returns(new List<HoldedExpenseDoc>
-        {
+        MapCategory(cat);
+        StubDocs(
             // The budget pages are gross/IVA-inclusive, so the actual is Total, not Subtotal.
-            new() { HoldedDocId = "d1", BudgetCategoryId = cat, Subtotal = 100m, Total = 121m, IsApproved = true },
-            new() { HoldedDocId = "d2", BudgetCategoryId = cat, Subtotal = 50m, Total = 60.50m, IsApproved = true },
-            new() { HoldedDocId = "d3", BudgetCategoryId = cat, Total = 999m, IsApproved = false },  // draft
-            new() { HoldedDocId = "d4", BudgetCategoryId = cat, Total = 500m, IsApproved = null },   // pre-v2 row
-            new() { HoldedDocId = "d5", BudgetCategoryId = null, Total = 77m, IsApproved = true },
-        });
+            PDoc("d1", 121m, account: "acc-1") with { Subtotal = 100m },
+            PDoc("d2", 60.50m, tags: ["Comms"]) with { Subtotal = 50m },
+            PDoc("d3", 999m, approved: false, account: "acc-1"),
+            PDoc("d4", 500m, account: "acc-1", date: new LocalDate(2025, 12, 31)),
+            PDoc("d5", 77m, account: "acc-other"));
 
         var rows = await MakeService().GetActualsForYearAsync(2026, TestContext.Current.CancellationToken);
 
@@ -207,15 +230,13 @@ public class HoldedFinanceServiceTests
     public async Task GetActualsForYear_CarriesTheApprovedDocsBehindTheTotal()
     {
         var cat = Guid.NewGuid();
-        _repo.GetMatchedForYearAsync(2026, Arg.Any<CancellationToken>()).Returns(new List<HoldedExpenseDoc>
-        {
-            new() { HoldedDocId = "d1", DocNumber = "PUR-1", ContactName = "Acme",
-                    Date = new LocalDate(2026, 3, 1), Total = 121m, IsApproved = true },
-            new() { HoldedDocId = "d2", DocNumber = "PUR-2", ContactName = "Beta", Description = "ER: Tent pegs",
-                    Date = new LocalDate(2026, 5, 1), Total = 60.50m, IsApproved = true },
-            new() { HoldedDocId = "d3", DocNumber = "PUR-3", ContactName = "Draft Co",
-                    Date = new LocalDate(2026, 6, 1), Total = 999m, IsApproved = false },
-        }.Select(d => { d.BudgetCategoryId = cat; return d; }).ToList());
+        MapCategory(cat);
+        StubDocs(
+            PDoc("d1", 121m, account: "acc-1", date: new LocalDate(2026, 3, 1), docNumber: "PUR-1", contactName: "Acme"),
+            PDoc("d2", 60.50m, account: "acc-1", date: new LocalDate(2026, 5, 1), docNumber: "PUR-2",
+                contactName: "Beta", description: "ER: Tent pegs"),
+            PDoc("d3", 999m, approved: false, account: "acc-1", date: new LocalDate(2026, 6, 1), docNumber: "PUR-3",
+                contactName: "Draft Co"));
 
         var row = (await MakeService().GetActualsForYearAsync(2026, TestContext.Current.CancellationToken))
             .Should().ContainSingle().Which;
@@ -234,10 +255,9 @@ public class HoldedFinanceServiceTests
     [InlineData("provisioning")]
     [InlineData("expense-accounts")]
     [InlineData("category-map")]
-    [InlineData("overview")]
     public async Task BudgetEnrichedReads_PropagateRequestCancellation(string read)
     {
-        SeedConnector();
+        _repo.GetCategoryMapAsync(Arg.Any<CancellationToken>()).Returns([]);
         using var request = new CancellationTokenSource();
         await request.CancelAsync();
         _budget.GetActiveYearAsync(Arg.Any<CancellationToken>()).Returns(call =>
@@ -251,7 +271,6 @@ public class HoldedFinanceServiceTests
             "provisioning" => () => service.GetProvisioningPlanAsync(62900100, request.Token),
             "expense-accounts" => () => service.ListExpenseAccountsAsync(true, request.Token),
             "category-map" => () => service.GetCategoryMapAsync(request.Token),
-            "overview" => () => service.GetConnectorOverviewAsync(request.Token),
             _ => throw new ArgumentOutOfRangeException(nameof(read))
         };
 
@@ -365,244 +384,29 @@ public class HoldedFinanceServiceTests
     }
 
     [HumansFact]
-    public async Task Sync_attributes_by_account_then_tag_and_counts()
+    public async Task Attribution_is_account_then_tag_then_managed_and_computed_on_read()
     {
         var catId = Guid.NewGuid();
-
-        // One active map entry: account "acc-1", tag "comms".
-        _repo.GetCategoryMapAsync(Arg.Any<CancellationToken>()).ReturnsForAnyArgs(
-            new List<HoldedCategoryMap>
-            {
-                new()
-                {
-                    Id = Guid.NewGuid(), BudgetCategoryId = catId,
-                    HoldedAccountNumber = 6290001, HoldedAccountId = "acc-1",
-                    Tag = "comms", IsActive = true,
-                    CreatedAt = FixedNow, UpdatedAt = FixedNow,
-                }
-            });
-
-        _repo.GetOrCreateDocSyncStateAsync(Arg.Any<CancellationToken>())
-            .ReturnsForAnyArgs(new HoldedDocSyncState());
-
-        var docDate = Instant.FromUtc(2026, 4, 15, 10, 0);
-
-        // 3 docs: account match, tag match, unmatched. d1 is approved; d2 is still a draft.
-        var docs1 = new List<HoldedPurchaseDocListItemDto>
-        {
-            new()
-            {
-                Id = "d1", DocNumber = "F001", ContactName = "Alice", Date = docDate,
-                Subtotal = 100, Tax = 21, Total = 121, Currency = "eur", IsDraft = false,
-                Lines = [new HoldedPurchaseLineDto { AccountId = "acc-1", Tags = [] }],
-                Tags = [],
-            },
-            new()
-            {
-                Id = "d2", DocNumber = "F002", ContactName = "Bob", Date = docDate,
-                Subtotal = 50, Tax = 0, Total = 50, Currency = "eur", IsDraft = true,
-                Lines = [new HoldedPurchaseLineDto { AccountId = "acc-generic", Tags = [] }],
-                Tags = ["comms"],   // tag match
-            },
-            new()
-            {
-                Id = "d3", DocNumber = "F003", ContactName = "Carol", Date = docDate,
-                Subtotal = 30, Tax = 0, Total = 30, Currency = "eur",
-                Lines = [new HoldedPurchaseLineDto { AccountId = "acc-generic", Tags = [] }],
-                Tags = ["nope"],    // no match
-            },
-        };
-
-        _client.ListPurchaseDocumentsAsync(Arg.Any<CancellationToken>())
-            .ReturnsForAnyArgs(docs1);
-
-        IReadOnlyList<HoldedExpenseDoc>? capturedDocs = null;
-        await _repo.ReplaceDocsAsync(
-            Arg.Do<IReadOnlyList<HoldedExpenseDoc>>(d => capturedDocs = d),
-            Arg.Any<Instant>(),
-            Arg.Any<CancellationToken>());
-
-        var svc = MakeService();
-        var result = await svc.SyncAsync(TestContext.Current.CancellationToken);
-
-        result.DocCount.Should().Be(3);
-        result.Matched.Should().Be(2);
-        result.Unmatched.Should().Be(1);
-
-        capturedDocs.Should().NotBeNull();
-        capturedDocs!.Should().HaveCount(3);
-
-        var d1 = capturedDocs.Single(d => string.Equals(d.HoldedDocId, "d1", StringComparison.Ordinal));
-        d1.MatchStatus.Should().Be(HoldedMatchStatus.Matched);
-        d1.MatchSource.Should().Be(HoldedMatchSource.Account);
-        d1.BudgetCategoryId.Should().Be(catId);
-        d1.IsApproved.Should().BeTrue();
-
-        var d2 = capturedDocs.Single(d => string.Equals(d.HoldedDocId, "d2", StringComparison.Ordinal));
-        d2.MatchStatus.Should().Be(HoldedMatchStatus.Matched);
-        d2.MatchSource.Should().Be(HoldedMatchSource.Tag);
-        d2.BudgetCategoryId.Should().Be(catId);
-        d2.IsApproved.Should().BeFalse();
-
-        var d3 = capturedDocs.Single(d => string.Equals(d.HoldedDocId, "d3", StringComparison.Ordinal));
-        d3.MatchStatus.Should().Be(HoldedMatchStatus.Unmatched);
-        d3.MatchSource.Should().Be(HoldedMatchSource.None);
-        d3.BudgetCategoryId.Should().BeNull();
-    }
-
-    [HumansFact]
-    public async Task Sync_DocWithNoDraftFlag_IsStoredAsNotApproved()
-    {
-        // Holded's list item may omit `draft` entirely. Absent is not "approved": only an explicit
-        // `draft: false` counts toward actuals (HoldedDocumentSync.MapDoc, strict equality).
-        _repo.GetCategoryMapAsync(Arg.Any<CancellationToken>()).ReturnsForAnyArgs(new List<HoldedCategoryMap>());
-        _repo.GetOrCreateDocSyncStateAsync(Arg.Any<CancellationToken>()).ReturnsForAnyArgs(new HoldedDocSyncState());
-        _client.ListPurchaseDocumentsAsync(Arg.Any<CancellationToken>()).ReturnsForAnyArgs(
-
-            [
-                new()
-                {
-                    Id = "d-null", DocNumber = "F010", ContactName = "Dan", Date = Instant.FromUtc(2026, 4, 15, 10, 0),
-                    Subtotal = 10, Tax = 0, Total = 10, Currency = "eur", IsDraft = null,
-                    Lines = [new HoldedPurchaseLineDto { AccountId = "acc-x", Tags = [] }],
-                    Tags = [],
-                },
-            ]);
-        IReadOnlyList<HoldedExpenseDoc>? capturedDocs = null;
-        await _repo.ReplaceDocsAsync(
-            Arg.Do<IReadOnlyList<HoldedExpenseDoc>>(d => capturedDocs = d),
-            Arg.Any<Instant>(), Arg.Any<CancellationToken>());
-
-        await MakeService().SyncAsync(TestContext.Current.CancellationToken);
-
-        capturedDocs.Should().ContainSingle().Which.IsApproved.Should().BeFalse();
-    }
-
-    [HumansFact]
-    public async Task Sync_DocBookedToManagedAccount_IsMatchedWithNoCategory()
-    {
-        NoCategoryMap();
+        MapCategory(catId);
         _repo.GetManagedAccountsAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedManagedAccount>
         {
-            new() { Id = Guid.NewGuid(), HoldedAccountNumber = 62900150, HoldedAccountId = "m-1", Label = "Workgroups / ALM 2027", IsActive = true },
+            new() { Id = Guid.NewGuid(), HoldedAccountNumber = 62900150, HoldedAccountId = "m-1", Label = "Workgroups", IsActive = true },
         });
-        _repo.GetOrCreateDocSyncStateAsync(Arg.Any<CancellationToken>()).Returns(new HoldedDocSyncState { Id = 1, Status = "Idle" });
-        _client.ListPurchaseDocumentsAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedPurchaseDocListItemDto>
-        {
-            new()
-            {
-                Id = "doc-1", DocNumber = "F1", ContactName = "Vendor", Date = FixedNow, Subtotal = 10m, Tax = 2.1m, Total = 12.1m,
-                IsDraft = false, Lines = [new HoldedPurchaseLineDto { AccountId = "m-1" }],
-            },
-        });
-        List<HoldedExpenseDoc>? saved = null;
-        await _repo.ReplaceDocsAsync(Arg.Do<IReadOnlyList<HoldedExpenseDoc>>(d => saved = d.ToList()), Arg.Any<Instant>(), Arg.Any<CancellationToken>());
+        StubDocs(
+            PDoc("by-account", 121m, account: "acc-1"),
+            PDoc("by-tag", 50m, account: "acc-generic", tags: ["Comms!"]),
+            PDoc("managed", 12m, account: "m-1"),
+            PDoc("none", 30m, account: "acc-generic", tags: ["nope"]),
+            PDoc("bare", 5m));
+        var service = MakeService();
 
-        var result = await MakeService().SyncAsync(TestContext.Current.CancellationToken);
+        var unmatched = await service.GetUnmatchedAsync(TestContext.Current.CancellationToken);
+        var actuals = await service.GetActualsForYearAsync(2026, TestContext.Current.CancellationToken);
 
-        result.Matched.Should().Be(1);
-        result.Unmatched.Should().Be(0);
-        var doc = saved.Should().ContainSingle().Which;
-        doc.MatchStatus.Should().Be(HoldedMatchStatus.Matched);
-        doc.MatchSource.Should().Be(HoldedMatchSource.Account);
-        doc.BudgetCategoryId.Should().BeNull();
-    }
-
-    [HumansFact]
-    public async Task Sync_StoresTheInternalDescription_BlankAsNull()
-    {
-        _repo.GetCategoryMapAsync(Arg.Any<CancellationToken>()).ReturnsForAnyArgs(new List<HoldedCategoryMap>());
-        _repo.GetOrCreateDocSyncStateAsync(Arg.Any<CancellationToken>()).ReturnsForAnyArgs(new HoldedDocSyncState());
-        _client.ListPurchaseDocumentsAsync(Arg.Any<CancellationToken>()).ReturnsForAnyArgs(
-
-            [
-                Doc("d-desc", " ER: Tent pegs "),
-                Doc("d-blank", "  "),
-            ]);
-        IReadOnlyList<HoldedExpenseDoc>? capturedDocs = null;
-        await _repo.ReplaceDocsAsync(
-            Arg.Do<IReadOnlyList<HoldedExpenseDoc>>(d => capturedDocs = d),
-            Arg.Any<Instant>(), Arg.Any<CancellationToken>());
-
-        await MakeService().SyncAsync(TestContext.Current.CancellationToken);
-
-        capturedDocs!.Select(d => d.Description).Should().Equal("ER: Tent pegs", null);
-
-        static HoldedPurchaseDocListItemDto Doc(string id, string description) => new()
-        {
-            Id = id,
-            DocNumber = id,
-            ContactName = "Dan",
-            Description = description,
-            Date = Instant.FromUtc(2026, 4, 15, 10, 0),
-            Subtotal = 10,
-            Tax = 0,
-            Total = 10,
-        };
-    }
-
-    [HumansTheory]
-    [InlineData(true)]
-    [InlineData(false)]
-    public async Task Sync_distinguishes_request_abort_from_dependency_failure(bool requestAborted)
-    {
-        using var cancellation = new CancellationTokenSource();
-        _repo.GetOrCreateDocSyncStateAsync(Arg.Any<CancellationToken>()).Returns(new HoldedDocSyncState());
-        _repo.GetCategoryMapAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedCategoryMap>());
-        _repo.GetManagedAccountsAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedManagedAccount>());
-        _client.ListPurchaseDocumentsAsync(Arg.Any<CancellationToken>())
-            .Returns<IReadOnlyList<HoldedPurchaseDocListItemDto>>(_ =>
-            {
-                if (requestAborted) cancellation.Cancel();
-                throw new OperationCanceledException("doc fetch cancelled");
-            });
-        var logger = new CapturingLogger<Service>();
-        var service = MakeService(logger);
-
-        var act = () => service.SyncAsync(cancellation.Token);
-        await act.Should().ThrowAsync<OperationCanceledException>();
-
-        var entry = logger.Entries.Should().ContainSingle().Subject;
-        entry.Level.Should().Be(requestAborted ? LogLevel.Warning : LogLevel.Error);
-        if (requestAborted) entry.Exception.Should().BeNull();
-        else entry.Exception.Should().BeOfType<OperationCanceledException>();
-        await _repo.Received(1).SaveDocSyncStateAsync(
-            Arg.Is<HoldedDocSyncState>(s => string.Equals(s.Status, "Error", StringComparison.Ordinal) && string.Equals(s.LastError, "doc fetch cancelled", StringComparison.Ordinal)),
-            CancellationToken.None);
-    }
-
-    [HumansTheory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public async Task Sync_sets_error_state_on_exception(bool longError)
-    {
-        _repo.GetCategoryMapAsync(Arg.Any<CancellationToken>()).ReturnsForAnyArgs(new List<HoldedCategoryMap>());
-
-        _repo.GetOrCreateDocSyncStateAsync(Arg.Any<CancellationToken>())
-            .ReturnsForAnyArgs(new HoldedDocSyncState());
-
-        _client.ListPurchaseDocumentsAsync(Arg.Any<CancellationToken>())
-            .Throws(new InvalidOperationException(longError
-                ? new string('e', 1999) + "😀" + new string('e', 2000)
-                : "Holded API unavailable"));
-
-        HoldedDocSyncState? savedState = null;
-        await _repo.SaveDocSyncStateAsync(
-            Arg.Do<HoldedDocSyncState>(s => savedState = s),
-            Arg.Any<CancellationToken>());
-
-        var svc = MakeService();
-        var act = () => svc.SyncAsync(TestContext.Current.CancellationToken);
-
-        await act.Should().ThrowAsync<InvalidOperationException>();
-        await _repo.DidNotReceive().ReplaceDocsAsync(
-            Arg.Any<IReadOnlyList<HoldedExpenseDoc>>(), Arg.Any<Instant>(), Arg.Any<CancellationToken>());
-
-        savedState.Should().NotBeNull();
-        savedState!.Status.Should().Be("Error");
-        savedState.LastError.Should().NotBeNullOrEmpty();
-        savedState.LastError!.Length.Should().BeLessThanOrEqualTo(2000);
-        char.IsHighSurrogate(savedState.LastError[^1]).Should().BeFalse();
+        unmatched.Select(u => (u.HoldedDocId, u.Reason)).Should().BeEquivalentTo(
+            [("none", "Account and tags not mapped"), ("bare", "No account, no tag")]);
+        actuals.Should().ContainSingle().Which.Docs.Select(d => d.HoldedDocId)
+            .Should().BeEquivalentTo("by-account", "by-tag");
     }
 
     [HumansFact]
@@ -1880,13 +1684,13 @@ public class HoldedFinanceServiceTests
     public async Task GetUnmatched_TellsTheTreasurerWhichHalfOfTheChainMissed()
     {
         // The reason text is the whole point of the worklist: it says where to go fix the mapping.
-        _repo.GetUnmatchedAsync(Arg.Any<CancellationToken>()).Returns(
-        [
-            UnmatchedDoc("neither", account: null, tagsJson: "[]"),
-            UnmatchedDoc("both", account: "acc-9", tagsJson: """["ops"]"""),
-            UnmatchedDoc("account-only", account: "acc-9", tagsJson: "[]"),
-            UnmatchedDoc("tags-only", account: null, tagsJson: """["ops"]"""),
-        ]);
+        MapCategory(Guid.NewGuid());
+        StubDocs(
+            PDoc("neither", docNumber: "neither"),
+            PDoc("both", account: "acc-9", tags: ["ops"], docNumber: "both"),
+            PDoc("account-only", account: "acc-9", docNumber: "account-only"),
+            PDoc("tags-only", tags: ["ops"], docNumber: "tags-only"),
+            PDoc("matched", account: "acc-1", docNumber: "matched"));
 
         var rows = await MakeService().GetUnmatchedAsync(TestContext.Current.CancellationToken);
 
@@ -1895,26 +1699,8 @@ public class HoldedFinanceServiceTests
             ("both", "Account and tags not mapped"),
             ("account-only", "Account not mapped"),
             ("tags-only", "Tags not matched"));
-        rows[0].HoldedUrl.Should().Be("https://app.holded.com/expenses/list#open:purchase-doc-neither");
-        rows.Should().OnlyContain(r => r.Date == new LocalDate(2026, 4, 1));
+        rows[0].HoldedUrl.Should().Be("https://app.holded.com/expenses/list#open:purchase-neither");
     }
-
-    private static HoldedExpenseDoc UnmatchedDoc(string docNumber, string? account, string tagsJson) => new()
-    {
-        Id = Guid.NewGuid(),
-        HoldedDocId = $"doc-{docNumber}",
-        DocNumber = docNumber,
-        ContactName = "Vendor",
-        Date = new LocalDate(2026, 4, 1),
-        Total = 10m,
-        Currency = "eur",
-        TagsJson = tagsJson,
-        BookedAccountId = account,
-        MatchStatus = HoldedMatchStatus.Unmatched,
-        MatchSource = HoldedMatchSource.None,
-        CreatedAt = FixedNow,
-        UpdatedAt = FixedNow,
-    };
 
     [HumansFact]
     public async Task GetProvisioningPlan_TagTakenByAMappedRowFurtherDownTheWalk_IsStillDisambiguated()
@@ -2207,7 +1993,7 @@ public class HoldedFinanceServiceTests
         var requestedId = archivedId ? sourceId : survivorId;
         var info = UserInfo.Create(
             new User { Id = survivorId, BurnerName = "Survivor", CreatedAt = FixedNow },
-            [], [], [], null, []) with
+            [], [], null) with
         { MergedUserIds = [sourceId] };
         _users.GetUserInfoAsync(requestedId, Arg.Any<CancellationToken>()).Returns(info);
         foreach (var (id, contact) in new[] { (survivorId, "survivor-contact"), (sourceId, "source-contact") })
@@ -2243,7 +2029,7 @@ public class HoldedFinanceServiceTests
         var survivorId = Guid.NewGuid();
         var sourceId = Guid.NewGuid();
         _users.GetUserInfoAsync(survivorId, Arg.Any<CancellationToken>()).Returns(
-            UserInfo.Create(new User { Id = survivorId }, [], [], [], null, []) with { MergedUserIds = [sourceId] });
+            UserInfo.Create(new User { Id = survivorId }, [], [], null) with { MergedUserIds = [sourceId] });
         _repo.GetCreditorContactByUserAsync(sourceId, Arg.Any<CancellationToken>()).Returns(
             new HoldedCreditorContact { UserId = sourceId, HoldedContactId = "source-only", SupplierAccountNum = 40000004 });
 
@@ -2408,49 +2194,6 @@ public class HoldedFinanceServiceTests
                 "financial records are never erased for GDPR reasons");
     }
 
-    [HumansFact]
-    public async Task GetDocSyncInfo_ReportsTheStoredStateAndTheBindingCount()
-    {
-        // The binding count rides along on this DTO so /Holded can show a number without building
-        // the whole creditor view, which would cost a live Holded contacts walk.
-        _repo.GetOrCreateDocSyncStateAsync(Arg.Any<CancellationToken>()).Returns(
-            new HoldedDocSyncState
-            {
-                LastSyncAt = FixedNow,
-                Status = "Error",
-                LastError = "holded said no",
-                LastSyncedDocCount = 42,
-            });
-        _repo.GetCreditorContactsAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedCreditorContact>
-        {
-            new() { Id = Guid.NewGuid(), UserId = Guid.NewGuid(), HoldedContactId = "c1" },
-            new() { Id = Guid.NewGuid(), UserId = Guid.NewGuid(), HoldedContactId = "c2" },
-        });
-
-        var info = await MakeService().GetDocSyncInfoAsync(TestContext.Current.CancellationToken);
-
-        info.LastSyncAt.Should().Be(FixedNow);
-        info.Status.Should().Be("Error");
-        info.LastError.Should().Be("holded said no");
-        info.LastSyncedDocCount.Should().Be(42);
-        info.CreditorBindingCount.Should().Be(2);
-    }
-
-    [HumansFact]
-    public async Task GetDocSyncInfo_NeverSynced_ReadsAsIdleWithNothingRecorded()
-    {
-        _repo.GetOrCreateDocSyncStateAsync(Arg.Any<CancellationToken>()).Returns(new HoldedDocSyncState());
-        _repo.GetCreditorContactsAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedCreditorContact>());
-
-        var info = await MakeService().GetDocSyncInfoAsync(TestContext.Current.CancellationToken);
-
-        info.Status.Should().Be("Idle");
-        info.LastSyncAt.Should().BeNull();
-        info.LastError.Should().BeNull();
-        info.LastSyncedDocCount.Should().Be(0);
-        info.CreditorBindingCount.Should().Be(0);
-    }
-
     /// <summary>Seeds the active year with one group holding the given categories.</summary>
     private void ActiveYearWith(params (Guid Id, string Name)[] categories) =>
         _budget.GetActiveYearAsync(Arg.Any<CancellationToken>()).Returns(new BudgetYearDetail(
@@ -2476,137 +2219,12 @@ public class HoldedFinanceServiceTests
                         .ToList())
             ]));
 
-    private void SeedConnector(
-        HoldedDocSyncState? state = null,
-        IReadOnlyList<HoldedCategoryMap>? map = null,
-        IReadOnlyList<HoldedExpenseDoc>? docs = null,
-        IReadOnlyList<HoldedCreditorContact>? bindings = null)
-    {
-        _repo.GetOrCreateDocSyncStateAsync(Arg.Any<CancellationToken>())
-            .Returns(state ?? new HoldedDocSyncState());
-        _repo.GetCategoryMapAsync(Arg.Any<CancellationToken>())
-            .Returns(map ?? []);
-        _repo.GetAllDocsAsync(Arg.Any<CancellationToken>())
-            .Returns(docs ?? []);
-        _repo.GetCreditorContactsAsync(Arg.Any<CancellationToken>())
-            .Returns(bindings ?? []);
-    }
-
-    [HumansFact]
-    public async Task GetConnectorOverview_MakesNoHoldedApiCall()
-    {
-        // The point of the page: /Finance/Creditors pays a live ListContactsAsync on every load
-        // behind a 30 s timeout, and the index must not inherit that latency or that failure mode.
-        ActiveYearWith();
-        SeedConnector();
-
-        await MakeService().GetConnectorOverviewAsync(TestContext.Current.CancellationToken);
-
-        Assert.Empty(_client.ReceivedCalls());
-    }
-
-    [HumansFact]
-    public async Task GetConnectorOverview_SyncWithinTheWindow_IsNotStale()
-    {
-        ActiveYearWith();
-        SeedConnector(new HoldedDocSyncState
-        {
-            LastSyncAt = FixedNow - Duration.FromHours(5),
-            Status = "Idle",
-            LastSyncedDocCount = 7,
-        });
-
-        var vm = await MakeService().GetConnectorOverviewAsync(TestContext.Current.CancellationToken);
-
-        vm.DocSync.IsStale.Should().BeFalse();
-        vm.DocSync.SinceLastSync.Should().Be(Duration.FromHours(5));
-        vm.DocSync.LastSyncedDocCount.Should().Be(7);
-    }
-
-    [HumansFact]
-    public async Task GetConnectorOverview_SyncOlderThanTheWindow_IsStale()
-    {
-        ActiveYearWith();
-        SeedConnector(new HoldedDocSyncState { LastSyncAt = FixedNow - Duration.FromHours(40) });
-
-        var vm = await MakeService().GetConnectorOverviewAsync(TestContext.Current.CancellationToken);
-
-        vm.DocSync.IsStale.Should().BeTrue();
-    }
-
-    [HumansFact]
-    public async Task GetConnectorOverview_NeverSynced_IsStaleWithNoAge()
-    {
-        // Never having run leaves the actuals and the unmatched queue as wrong as a stalled sync
-        // does, so it raises the same alarm rather than rendering a reassuring blank.
-        ActiveYearWith();
-        SeedConnector(new HoldedDocSyncState());
-
-        var vm = await MakeService().GetConnectorOverviewAsync(TestContext.Current.CancellationToken);
-
-        vm.DocSync.IsStale.Should().BeTrue();
-        vm.DocSync.SinceLastSync.Should().BeNull();
-        vm.DocSync.LastSyncAt.Should().BeNull();
-    }
-
-    [HumansFact]
-    public async Task GetConnectorOverview_AFailedRun_KeepsTheSuccessTimeAndCarriesTheAttemptTime()
-    {
-        // SyncAsync stamps StatusChangedAt on failure and deliberately leaves LastSyncAt on the
-        // older success. Dropping StatusChangedAt made an Error row read as "nothing has run since
-        // the success" — the opposite of the truth, on the page that exists to say what is running.
-        var succeeded = FixedNow - Duration.FromHours(50);
-        var failed = FixedNow - Duration.FromHours(2);
-        ActiveYearWith();
-        SeedConnector(new HoldedDocSyncState
-        {
-            LastSyncAt = succeeded,
-            Status = "Error",
-            LastError = "holded said no",
-            StatusChangedAt = failed,
-            LastSyncedDocCount = 12,
-        });
-
-        var vm = await MakeService().GetConnectorOverviewAsync(TestContext.Current.CancellationToken);
-
-        vm.DocSync.LastSyncAt.Should().Be(succeeded);
-        vm.DocSync.StatusChangedAt.Should().Be(failed);
-        // Staleness keys on the success, not the attempt: a run that failed refreshed nothing.
-        vm.DocSync.SinceLastSync.Should().Be(Duration.FromHours(50));
-        vm.DocSync.IsStale.Should().BeTrue();
-    }
-
-    [HumansFact]
-    public async Task GetConnectorOverview_ListsActiveAndArchivedMappings_WithCategoryNames()
-    {
-        var live = Guid.NewGuid();
-        var gone = Guid.NewGuid();
-        ActiveYearWith((live, "Staff"));
-        SeedConnector(map:
-        [
-            new() { BudgetCategoryId = live, HoldedAccountNumber = 62900101, Tag = "staff", IsActive = true },
-            new() { BudgetCategoryId = gone, HoldedAccountNumber = 62900102, Tag = "gone", IsActive = false },
-        ]);
-
-        var vm = await MakeService().GetConnectorOverviewAsync(TestContext.Current.CancellationToken);
-
-        vm.CategoryMap.Should().HaveCount(2);
-        vm.ActiveMappings.Should().Be(1);
-        vm.ArchivedMappings.Should().Be(1);
-        vm.CategoryMap.Single(m => m.BudgetCategoryId == live).CategoryName.Should().Be("Staff");
-        vm.CategoryMap.Single(m => m.BudgetCategoryId == live).GroupName.Should().Be("Operations");
-        // A row whose category left the active year keeps its row and loses only its name.
-        vm.CategoryMap.Single(m => m.BudgetCategoryId == gone).CategoryName.Should().BeNull();
-    }
-
-    /// <summary>Backdoor's <c>category-map</c> route reads this directly: the same rows the
-    /// connector page renders, not a second projection to drift from it.</summary>
     [HumansFact]
     public async Task GetCategoryMap_ProjectsCategoryAndGroupNames()
     {
         var live = Guid.NewGuid();
         ActiveYearWith((live, "Staff"));
-        SeedConnector(map:
+        _repo.GetCategoryMapAsync(Arg.Any<CancellationToken>()).Returns(
         [
             new() { BudgetCategoryId = live, HoldedAccountNumber = 62900101, Tag = "staff", IsActive = true },
         ]);
@@ -2619,69 +2237,6 @@ public class HoldedFinanceServiceTests
         row.GroupName.Should().Be("Operations");
         row.HoldedAccountNumber.Should().Be(62900101);
         row.IsActive.Should().BeTrue();
-    }
-
-    [HumansFact]
-    public async Task GetConnectorOverview_ListsEveryDoc_MatchedAndUnmatched()
-    {
-        var cat = Guid.NewGuid();
-        ActiveYearWith((cat, "Staff"));
-        SeedConnector(docs:
-        [
-            new()
-            {
-                HoldedDocId = "d1", DocNumber = "F260001", BudgetCategoryId = cat, Total = 121m,
-                MatchStatus = HoldedMatchStatus.Matched, MatchSource = HoldedMatchSource.Account,
-                BookedAccountId = "acc-1", TagsJson = "[\"staff\"]", IsApproved = true,
-            },
-            new()
-            {
-                HoldedDocId = "d2", DocNumber = "F260002", Total = 50m,
-                MatchStatus = HoldedMatchStatus.Unmatched, MatchSource = HoldedMatchSource.None,
-                TagsJson = "[]",
-            },
-        ]);
-
-        var vm = await MakeService().GetConnectorOverviewAsync(TestContext.Current.CancellationToken);
-
-        vm.Docs.Should().HaveCount(2);
-        vm.MatchedDocs.Should().Be(1);
-        vm.UnmatchedDocs.Should().Be(1);
-
-        var matched = vm.Docs.Single(d => string.Equals(d.HoldedDocId, "d1", StringComparison.Ordinal));
-        matched.CategoryName.Should().Be("Staff");
-        matched.MatchSource.Should().Be(HoldedMatchSource.Account);
-        matched.BookedAccountId.Should().Be("acc-1");
-        matched.TagsJson.Should().Be("[\"staff\"]");
-
-        vm.Docs.Single(d => string.Equals(d.HoldedDocId, "d2", StringComparison.Ordinal)).CategoryName.Should().BeNull();
-    }
-
-    [HumansFact]
-    public async Task GetConnectorOverview_NoActiveBudgetYear_StillRenders()
-    {
-        // The page is the connector's health, not the budget's — it must not go blank between years.
-        _budget.GetActiveYearAsync(Arg.Any<CancellationToken>()).Returns((BudgetYearDetail?)null);
-        SeedConnector(map: [new() { BudgetCategoryId = Guid.NewGuid(), HoldedAccountNumber = 62900101, IsActive = true }]);
-
-        var vm = await MakeService().GetConnectorOverviewAsync(TestContext.Current.CancellationToken);
-
-        vm.CategoryMap.Should().ContainSingle().Which.CategoryName.Should().BeNull();
-    }
-
-    [HumansFact]
-    public async Task GetConnectorOverview_CountsCreditorBindings()
-    {
-        ActiveYearWith();
-        SeedConnector(bindings:
-        [
-            new() { UserId = Guid.NewGuid(), HoldedContactId = "c1" },
-            new() { UserId = Guid.NewGuid(), HoldedContactId = "c2" },
-        ]);
-
-        var vm = await MakeService().GetConnectorOverviewAsync(TestContext.Current.CancellationToken);
-
-        vm.CreditorBindingCount.Should().Be(2);
     }
 
     private const string AnaIban = "ES7921000813610123456789";
@@ -2736,6 +2291,27 @@ public class HoldedFinanceServiceTests
         result.Xml.Should().BeNull();
         await _repo.DidNotReceive().AddSepaPayoutAsync(
             Arg.Any<SepaPayoutFile>(), Arg.Any<IReadOnlyList<SepaPayoutTransfer>>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task PreviewSepaPayout_ShowsTheBatchAndWritesNothing()
+    {
+        ConfigureSepa();
+        var userId = SeedPayableCreditor();
+
+        var preview = await MakeService().PreviewSepaPayoutAsync(
+            [new SepaPayoutSelection(40000004, 12.34m)], 50m, TestContext.Current.CancellationToken);
+
+        preview.Succeeded.Should().BeTrue();
+        var line = preview.Lines.Should().ContainSingle().Subject;
+        line.UserId.Should().Be(userId);
+        line.IbanMasked.Should().Be("ES79****789");
+        line.Amount.Should().Be(12.34m);
+        line.OwedAfter.Should().Be(line.Owed - 12.34m);
+        await _repo.DidNotReceive().AddSepaPayoutAsync(
+            Arg.Any<SepaPayoutFile>(), Arg.Any<IReadOnlyList<SepaPayoutTransfer>>(), Arg.Any<CancellationToken>());
+        await _audit.DidNotReceiveWithAnyArgs().LogAsync(
+            default!, default!, default, default!, default(Guid), default, default);
     }
 
     [HumansFact]
@@ -2810,7 +2386,7 @@ public class HoldedFinanceServiceTests
         {
             [userId] = UserInfo.Create(
                 new User { Id = userId, BurnerName = "Ana", Email = "ana@example.com", PreferredLanguage = "es", CreatedAt = FixedNow },
-                [], [], [], null, []),
+                [], [], null),
         };
         _users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(call =>
@@ -2903,10 +2479,10 @@ public class HoldedFinanceServiceTests
             {
                 [firstUserId] = UserInfo.Create(
                     new User { Id = firstUserId, BurnerName = "Ana", Email = "ana@example.com", CreatedAt = FixedNow },
-                    [], [], [], null, []),
+                    [], [], null),
                 [secondUserId] = UserInfo.Create(
                     new User { Id = secondUserId, BurnerName = "Dani", Email = "dani@example.com", CreatedAt = FixedNow },
-                    [], [], [], null, []),
+                    [], [], null),
             });
         _emailService.SendAsync(Arg.Is<EmailMessage>(m => m.RecipientEmail == "ana@example.com"), Arg.Any<CancellationToken>())
             .Returns(Task.FromException(new InvalidOperationException("Outbox temporarily unavailable")));
@@ -2942,8 +2518,8 @@ public class HoldedFinanceServiceTests
             {
                 [userId] = UserInfo.Create(
                     user: new User { Id = userId, DisplayName = burnerName, BurnerName = burnerName, Email = email, PreferredLanguage = language, CreatedAt = FixedNow },
-                    userEmails: [], eventParticipations: [], externalLogins: [],
-                    profile: null, communicationPreferences: []),
+                    userEmails: [], externalLogins: [],
+                    profile: null),
             });
     }
 
@@ -3826,7 +3402,7 @@ public class HoldedFinanceServiceTests
 
         var result = await MakeService().CreateOrLinkExpenseAccountAsync("Workgroups / ALM 2027", null, TestContext.Current.CancellationToken);
 
-        result.Should().Be(new HoldedExpenseAccountRef(62900102, "new-1", "Workgroups / ALM 2027", Created: true));
+        result.Should().Be(new ExpenseAccountRef(62900102, "new-1", "Workgroups / ALM 2027", Created: true));
         await _repo.Received(1).UpsertManagedAccountAsync(
             Arg.Is<HoldedManagedAccount>(a => a.HoldedAccountNumber == 62900102 && a.HoldedAccountId == "new-1"
                 && a.Label == "Workgroups / ALM 2027" && a.IsActive && a.CreatedAt == FixedNow),
@@ -3867,7 +3443,7 @@ public class HoldedFinanceServiceTests
 
         var result = await MakeService().CreateOrLinkExpenseAccountAsync("Workgroups / ALM 2027", null, TestContext.Current.CancellationToken);
 
-        result.Should().Be(new HoldedExpenseAccountRef(62900150, "acc-150", "workgroups /  alm 2027", Created: false));
+        result.Should().Be(new ExpenseAccountRef(62900150, "acc-150", "workgroups /  alm 2027", Created: false));
         await _client.DidNotReceive().CreateExpenseAccountAsync(Arg.Any<int>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
         await _repo.Received(1).UpsertManagedAccountAsync(
             Arg.Is<HoldedManagedAccount>(a => a.HoldedAccountNumber == 62900150 && a.Label == "workgroups /  alm 2027"),
@@ -3885,7 +3461,7 @@ public class HoldedFinanceServiceTests
 
         var result = await MakeService().CreateOrLinkExpenseAccountAsync("Workgroups / ALM 2027", 62900151, TestContext.Current.CancellationToken);
 
-        result.Should().Be(new HoldedExpenseAccountRef(62900151, "acc-151", "Other", Created: false));
+        result.Should().Be(new ExpenseAccountRef(62900151, "acc-151", "Other", Created: false));
         await _client.DidNotReceive().CreateExpenseAccountAsync(Arg.Any<int>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
     }
 

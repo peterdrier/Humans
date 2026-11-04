@@ -26,6 +26,12 @@ internal sealed class AuditViewerService(
         return await ResolveAsync(entries, ct);
     }
 
+    public Task<IReadOnlySet<Guid>> GetEntityIdsForEntityTypeActionsAsync(
+        string entityType,
+        IReadOnlyList<AuditActionDefinition> actions,
+        CancellationToken ct = default) =>
+        auditLog.GetEntityIdsForEntityTypeActionsAsync(entityType, actions, ct);
+
     /// <summary><paramref name="actionFilter"/> is a case-insensitive match on a declared action name.</summary>
     public async Task<AuditEventPage> GetPageAsync(string? actionFilter, int page, int pageSize, CancellationToken ct = default)
     {
@@ -116,9 +122,9 @@ internal sealed class AuditViewerService(
     private static Guid? ResolveSubjectId(AuditLogEntrySnapshot e)
     {
         // Guid.Empty is an unmatched address (e.g. WorkspaceAccount): no subject.
-        Guid? subject = e.EntityType is "User" or "Profile" or "WorkspaceAccount"
+        Guid? subject = e.EntityType is AuditSubjectTypes.User or "Profile" or "WorkspaceAccount"
             ? e.EntityId
-            : string.Equals(e.RelatedEntityType, "User", StringComparison.Ordinal)
+            : string.Equals(e.RelatedEntityType, AuditSubjectTypes.User, StringComparison.Ordinal)
                 ? e.RelatedEntityId
                 : null;
         return subject == Guid.Empty ? null : subject;

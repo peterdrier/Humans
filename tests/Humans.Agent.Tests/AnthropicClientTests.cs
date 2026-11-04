@@ -13,10 +13,12 @@ namespace Humans.Agent.Tests;
 public sealed class AnthropicClientTests
 {
     [HumansTheory]
-    [Xunit.InlineData(false, false)]
-    [Xunit.InlineData(true, false)]
-    [Xunit.InlineData(true, true)]
-    public async Task StreamAsync_PreservesKnownUsage_WhenTheResponseEnds(bool hasMessageStop, bool abandon)
+    [Xunit.InlineData(false, false, false)]
+    [Xunit.InlineData(true, false, false)]
+    [Xunit.InlineData(true, true, false)]
+    [Xunit.InlineData(false, false, true)]
+    [Xunit.InlineData(true, false, true)]
+    public async Task StreamAsync_PreservesKnownUsage_WhenTheResponseEnds(bool hasMessageStop, bool abandon, bool updatesInputUsage)
     {
         var body = """
             event: message_start
@@ -35,6 +37,13 @@ public sealed class AnthropicClientTests
             data: {"type":"message_delta","delta":{"stop_reason":"end_turn","stop_sequence":null},"usage":{"output_tokens":11}}
 
             """ + "\n\n";
+        if (updatesInputUsage)
+        {
+            body = body.Replace("\"usage\":{\"output_tokens\":11}",
+                "\"usage\":{\"input_tokens\":150,\"output_tokens\":11}", StringComparison.Ordinal);
+            // Later deltas may omit input usage; they must retain the updated count.
+            body += "event: message_delta\ndata: {\"type\":\"message_delta\",\"delta\":{\"stop_reason\":\"end_turn\",\"stop_sequence\":null},\"usage\":{\"output_tokens\":11}}\n\n";
+        }
         if (hasMessageStop)
             body += "event: message_stop\ndata: {\"type\":\"message_stop\"}\n\n";
         using var http = new HttpClient(new StreamResponseHandler(body));
@@ -69,7 +78,8 @@ public sealed class AnthropicClientTests
         string.Concat(tokens.Select(token => token.TextDelta)).Should().Be("Partial answer.");
         var finalizer = tokens.Where(token => token.Finalizer is not null).Should().ContainSingle().Which.Finalizer!;
         finalizer.StopReason.Should().Be(hasMessageStop ? "end_turn" : "error");
-        finalizer.InputTokens.Should().Be(100);
+        finalizer.InputTokens.Should().Be(updatesInputUsage ? 150 : 100);
+        tokens.Last(token => token.Usage is not null).Usage!.InputTokens.Should().Be(finalizer.InputTokens);
         finalizer.OutputTokens.Should().Be(11);
         finalizer.CacheReadTokens.Should().Be(20);
         finalizer.CacheCreationTokens.Should().Be(10);

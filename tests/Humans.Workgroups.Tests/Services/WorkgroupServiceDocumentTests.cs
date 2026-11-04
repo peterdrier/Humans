@@ -400,10 +400,12 @@ public sealed class WorkgroupServiceDocumentTests : WorkgroupsTestHarness
             .Should().Be(WorkgroupErrorKeys.NotDelivered);
     }
 
-    [HumansFact]
-    public async Task RecordDisposition_OnADeliveredDocument_Succeeds()
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task RecordDisposition_OnADeliveredDocument_Succeeds(bool dormant)
     {
-        var workgroup = await SeedWorkgroupAsync();
+        var workgroup = await SeedWorkgroupAsync(status: dormant ? WorkgroupStatus.Dormant : WorkgroupStatus.Active);
         var document = await AddDocumentAsync(
             workgroup.Id, WorkgroupDocumentStatus.Delivered, deliveredAt: Clock.GetCurrentInstant());
 

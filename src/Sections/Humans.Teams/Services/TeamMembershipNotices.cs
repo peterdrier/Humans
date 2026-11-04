@@ -178,7 +178,7 @@ internal sealed class TeamMembershipNotices(
             culture = CultureInfo.GetCultureInfo(user.PreferredLanguage.IsSupportedCultureCode() ? user.PreferredLanguage : "en");
 
             var email = user.Email;
-            if (string.IsNullOrEmpty(email))
+            if (string.IsNullOrWhiteSpace(email))
             {
                 logger.LogWarning(
                     "Skipping added-to-team email for user {UserId}: no notification-target email",

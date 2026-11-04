@@ -15,6 +15,7 @@ public class HumanViewComponent(
     IUrlHelperFactory urlHelperFactory,
     IStringLocalizer<SharedResource> localizer) : ViewComponent
 {
+    /// <summary>Renders resolved identity, or the exact account when <paramref name="raw"/> is true for admin merge displays.</summary>
     public async Task<IViewComponentResult> InvokeAsync(
         Guid userId,
         HumanLayout layout = HumanLayout.Text,
@@ -23,14 +24,17 @@ public class HumanViewComponent(
         bool popoverPublic = false,
         int size = 40,
         string? cssClass = null,
-        string bgColor = "bg-secondary")
+        string bgColor = "bg-secondary",
+        bool raw = false)
     {
         string? displayName = null;
         string? profilePictureUrl = null;
 
         if (userId != Guid.Empty)
         {
-            var info = await userService.GetUserInfoAsync(userId, HttpContext.RequestAborted);
+            var info = raw
+                ? await userService.GetRawUserInfoAsync(userId, HttpContext.RequestAborted)
+                : await userService.GetUserInfoAsync(userId, HttpContext.RequestAborted);
             if (info is not null)
             {
                 displayName = info.BurnerName;

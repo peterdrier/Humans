@@ -63,8 +63,6 @@ internal sealed class ConsentReviewQueueController(
             Email = detailUser.Email ?? string.Empty,
             FirstName = profile.FirstName,
             LastName = profile.LastName,
-            City = profile.City,
-            CountryCode = profile.CountryCode,
             MembershipTier = profile.MembershipTier,
             ConsentCheckStatus = profile.ConsentCheckStatus,
             ConsentCheckNotes = profile.ConsentCheckNotes,
@@ -83,7 +81,7 @@ internal sealed class ConsentReviewQueueController(
     [Authorize(Policy = PolicyNames.ConsentCoordinatorBoardOrAdmin)]
     public async Task<IActionResult> Clear(Guid userId, string? notes)
     {
-        var currentUser = await GetCurrentUserInfoAsync();
+        var currentUser = await GetCurrentUserInfoAsync(HttpContext.RequestAborted);
         if (currentUser is null)
             return NotFound();
 
@@ -117,7 +115,7 @@ internal sealed class ConsentReviewQueueController(
     [Authorize(Policy = PolicyNames.ConsentCoordinatorBoardOrAdmin)]
     public async Task<IActionResult> BulkClear([FromForm] List<Guid> selectedUserIds, CancellationToken ct)
     {
-        var currentUser = await GetCurrentUserInfoAsync();
+        var currentUser = await GetCurrentUserInfoAsync(ct);
         if (currentUser is null)
             return NotFound();
 
@@ -164,7 +162,7 @@ internal sealed class ConsentReviewQueueController(
     [Authorize(Policy = PolicyNames.ConsentCoordinatorBoardOrAdmin)]
     public async Task<IActionResult> Flag(Guid userId, string? notes)
     {
-        var currentUser = await GetCurrentUserInfoAsync();
+        var currentUser = await GetCurrentUserInfoAsync(HttpContext.RequestAborted);
         if (currentUser is null)
             return NotFound();
 
@@ -194,7 +192,7 @@ internal sealed class ConsentReviewQueueController(
     [Authorize(Policy = PolicyNames.ConsentCoordinatorBoardOrAdmin)]
     public async Task<IActionResult> Reject(Guid userId, string? reason)
     {
-        var currentUser = await GetCurrentUserInfoAsync();
+        var currentUser = await GetCurrentUserInfoAsync(HttpContext.RequestAborted);
         if (currentUser is null)
             return NotFound();
 

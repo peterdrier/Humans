@@ -9,7 +9,6 @@ public class ContainerIndexViewModel
     public List<ContainerDto> Containers { get; set; } = [];
     public Dictionary<Guid, ContainerPlacementDto> PlacementsByContainerId { get; set; } = new();
     public int CurrentYear { get; set; }
-    public bool IsPlacementOpen { get; set; }
     public bool IsLeadButPhaseClosed { get; set; }
 }
 

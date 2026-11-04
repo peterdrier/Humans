@@ -72,6 +72,27 @@ public class ProfileAdminControllerTests
     }
 
     [HumansFact]
+    public async Task Orphan_email_account_preflight_observes_cancellation()
+    {
+        using var request = new CancellationTokenSource();
+        _users.GetUserInfoAsync(_adminUserId, Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            call.Arg<CancellationToken>().Should().Be(request.Token);
+            call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+            return new ValueTask<UserInfo?>(new User { Id = _adminUserId }.ToUserInfo());
+        });
+        var controller = BuildController();
+        controller.HttpContext.RequestAborted = request.Token;
+        await request.CancelAsync();
+
+        var invoke = () => controller.DeleteOrphanEmail(Guid.NewGuid(), request.Token);
+
+        await invoke.Should().ThrowAsync<OperationCanceledException>();
+        _userEmails.ReceivedCalls().Should().BeEmpty();
+        _audit.ReceivedCalls().Should().BeEmpty();
+    }
+
+    [HumansFact]
     public void Controller_HasAdminOnlyPolicyAttribute()
     {
         var attr = typeof(ProfileAdminController)

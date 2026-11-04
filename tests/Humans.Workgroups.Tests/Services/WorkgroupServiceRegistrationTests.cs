@@ -285,7 +285,7 @@ public sealed class WorkgroupServiceRegistrationTests : WorkgroupsTestHarness
     public async Task RegisterExisting_FinanceFails_RegistersNothing()
     {
         Finance.CreateOrLinkExpenseAccountAsync(Arg.Any<string>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())
-            .Returns<HoldedExpenseAccountRef>(_ => throw new InvalidOperationException("Holded is down."));
+            .Returns<ExpenseAccountRef>(_ => throw new InvalidOperationException("Holded is down."));
         var bootstrap = new WorkgroupBootstrap(
             new WorkgroupApplication("ALM 2027", "Purpose", "A report", WorkgroupDeliverableKind.Report,
                 WorkgroupAudience.Board, null, null, null),

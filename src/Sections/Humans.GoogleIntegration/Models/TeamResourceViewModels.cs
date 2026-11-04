@@ -8,6 +8,7 @@ internal sealed class TeamResourcesViewModel
     public Guid TeamId { get; set; }
     public string TeamName { get; set; } = string.Empty;
     public string TeamSlug { get; set; } = string.Empty;
+    public bool CanManage { get; set; }
     public string ServiceAccountEmail { get; set; } = string.Empty;
     public List<GoogleResourceViewModel> Resources { get; set; } = [];
 }

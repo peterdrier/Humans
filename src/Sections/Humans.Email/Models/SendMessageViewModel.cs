@@ -7,7 +7,7 @@ internal sealed class SendMessageViewModel
     private string _message = string.Empty;
 
     public Guid RecipientId { get; set; }
-    public string RecipientDisplayName { get; set; } = string.Empty;
+    public string PageTitle { get; set; } = string.Empty;
 
     // Browsers submit line breaks as \r\n, which would push the bound string past what the member counted.
     // Normalising on bind keeps the length check and the relayed message in line with what they see.

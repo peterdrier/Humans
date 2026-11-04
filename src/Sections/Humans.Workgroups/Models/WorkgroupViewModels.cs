@@ -11,7 +11,7 @@ using NodaTime;
 
 namespace Humans.Workgroups.Models;
 
-/// <summary>Badges aren't baked in: the views ask <see cref="WorkgroupRhythm"/>, so page and job can't disagree.</summary>
+/// <summary>Badges aren't baked in: the views ask <see cref="WorkgroupInfo"/>, so page and job can't disagree.</summary>
 internal sealed class RegisterViewModel
 {
     public required Instant Now { get; init; }
@@ -22,19 +22,15 @@ internal sealed class RegisterViewModel
 
     public required IReadOnlyList<WorkgroupInfo> Archive { get; init; }
 
-    public required IReadOnlyDictionary<Guid, UserInfo> People { get; init; }
-
     public required Guid CurrentUserId { get; init; }
 
     public static RegisterViewModel Build(
         IReadOnlyList<WorkgroupInfo> register,
-        IReadOnlyDictionary<Guid, UserInfo> people,
         Guid currentUserId,
         Instant now) => new()
         {
             Now = now,
             CurrentUserId = currentUserId,
-            People = people,
             Active = register
                 .Where(w => w.Status == WorkgroupStatus.Active)
                 .OrderBy(w => w.Name, StringComparer.CurrentCultureIgnoreCase)
@@ -53,14 +49,15 @@ internal sealed class RegisterViewModel
 
 internal sealed class WorkgroupBudgetFormViewModel : IValidatableObject
 {
+    [BindRequired]
     public bool HasBudget { get; set; }
 
     /// <summary>Parsed invariantly by <see cref="ParsedAmount"/>, not model-bound as a decimal: the number input always
     /// posts "12.34", which a comma-decimal request culture would read as 1234.</summary>
     public string? Amount { get; set; }
 
-    /// <summary>"create" (default) or "link".</summary>
-    public string AccountMode { get; set; } = "create";
+    /// <summary>"create" or "link"; required only when a budget is enabled.</summary>
+    public string? AccountMode { get; set; }
 
     public int? ExistingAccountNum { get; set; }
 
@@ -78,6 +75,8 @@ internal sealed class WorkgroupBudgetFormViewModel : IValidatableObject
     public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
     {
         if (!HasBudget) yield break;
+        if (AccountMode is not ("create" or "link"))
+            yield return new ValidationResult("Choose whether to create or link the Holded account.", [nameof(AccountMode)]);
         if (string.IsNullOrWhiteSpace(Amount))
             yield return new ValidationResult("Enter the budget amount.", [nameof(Amount)]);
         else if (ParsedAmount is not (>= 0m and <= 99_999_999m))
@@ -152,8 +151,10 @@ internal sealed class WorkgroupFormViewModel
     [StringLength(500, ErrorMessage = "Validation_MaxLength")]
     public string Deliverable { get; set; } = string.Empty;
 
+    [BindRequired]
     public WorkgroupDeliverableKind DeliverableKind { get; set; }
 
+    [BindRequired]
     public WorkgroupAudience Audience { get; set; }
 
     public LocalDate? TargetDate { get; set; }
@@ -161,6 +162,7 @@ internal sealed class WorkgroupFormViewModel
     [StringLength(500, ErrorMessage = "Validation_MaxLength")]
     public string? DiscordChannelUrl { get; set; }
 
+    [BindRequired]
     public bool IsSensitive { get; set; }
 
     public Guid? SecondCoordinatorUserId { get; set; }
@@ -216,11 +218,13 @@ internal sealed class MeetingFormViewModel : ICalendarEventForm
 
     public string? LocationUrl { get; set; }
 
+    [BindRequired]
     public bool IsPublic { get; set; }
 
     // Meetings are always timed.
     public bool IsAllDay { get; set; }
 
+    [BindRequired]
     public bool IsRecurring { get; set; }
 
     public string? RecurrenceRule { get; set; }
@@ -340,8 +344,6 @@ internal sealed class DocumentPageViewModel
 
     public required Guid CurrentUserId { get; init; }
 
-    public required IReadOnlyDictionary<Guid, UserInfo> People { get; init; }
-
     public required bool IsMember { get; init; }
 
     public required bool CanAdminister { get; init; }
@@ -352,8 +354,6 @@ internal sealed class DocumentPageViewModel
 
     public bool CanSeeHidden => IsMember || CanAdminister;
 
-    public string DisplayName(Guid? userId) =>
-        userId is { } id && People.TryGetValue(id, out var info) ? info.BurnerName : "—";
 }
 
 internal sealed class AdminQueueViewModel
@@ -361,8 +361,6 @@ internal sealed class AdminQueueViewModel
     public required Instant Now { get; init; }
 
     public required IReadOnlyList<WorkgroupInfo> Register { get; init; }
-
-    public required IReadOnlyDictionary<Guid, UserInfo> People { get; init; }
 
     public required string? RootDriveFolderId { get; init; }
 
@@ -379,8 +377,6 @@ internal sealed class AdminQueueViewModel
             .SelectMany(w => w.AwaitingDisposition().Select(d => (Workgroup: w, Document: d)))
             .OrderBy(x => x.Document.DeliveredAt);
 
-    public string DisplayName(Guid? userId) =>
-        userId is { } id && People.TryGetValue(id, out var info) ? info.BurnerName : "—";
 }
 
 internal sealed class RegisterExistingViewModel
@@ -394,6 +390,7 @@ internal sealed class RegisterExistingViewModel
     [BindRequired]
     public LocalDate RegisteredOn { get; set; }
 
+    [BindRequired]
     public WorkgroupBudgetFormViewModel Budget { get; set; } = new();
 
     [BindNever]

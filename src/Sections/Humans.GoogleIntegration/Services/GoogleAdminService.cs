@@ -599,7 +599,6 @@ internal sealed class GoogleAdminService(
                 .Select(u => new
                 {
                     u.Id,
-                    DisplayName = u.BurnerName,
                     GoogleEmail = identities.TryGetValue(u.Id, out var identity) ? identity.Email : null,
                 })
                 .Where(x => x.GoogleEmail is not null &&
@@ -643,14 +642,13 @@ internal sealed class GoogleAdminService(
                         renames.Add(new EmailRenameInfo
                         {
                             UserId = user.Id,
-                            DisplayName = user.DisplayName,
                             OldEmail = user.GoogleEmail!,
                             NewEmail = account.PrimaryEmail,
                             AffectedResourceCount = affectedResources
                         });
                     }
                 }
-                catch (Exception ex)
+                catch (Exception ex) when (ex is not OperationCanceledException || !ct.IsCancellationRequested)
                 {
                     logger.LogWarning(ex,
                         "Failed to check email rename for user {UserId} ({Email})",
@@ -663,6 +661,11 @@ internal sealed class GoogleAdminService(
                 Renames = renames,
                 TotalUsersChecked = nobodiesUsers.Count
             };
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            logger.LogWarning("Email rename detection cancelled by caller");
+            throw;
         }
         catch (Exception ex)
         {

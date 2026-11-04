@@ -1,115 +1,23 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
-  <!-- Stays a leaf: folding into Humans.Users would close a project cycle: Humans.Users -> Humans.Auth -> Humans.Users, and Humans.Base references Humans.Users.Contracts. -->
-
   <!--
-    Users + Profiles' cross-section surface. Carved ahead of the section move; a later change
-    added the three entities and the write interface Base still names.
+    Users' cross-section contracts that are not part of the core every section reads. The core
+    (User, UserEmail, UserInfo, IUserService, IUserEmailService and the enums they name) lives in
+    Humans.Base/Users/ under this same namespace, so most sections need no reference here.
 
-    A Contracts/ *folder* inside Humans.Users was never an option here. UserInfo is the
-    canonical "everything-about-a-person" read model and IUserService is injected by
-    HumansControllerBase, so between them they are named by more than twenty section
-    projects, by Humans.UI, and — decisively — by Humans.Application and
-    Humans.Infrastructure, which the section itself references. A folder would cycle at
-    the assembly level in both directions (see
-    memory/architecture/section-project-cycle-fix.md).
+    Stays a leaf rather than a Contracts/ folder: Humans.Users -> Humans.Auth -> this project
+    would cycle if these types lived in Humans.Users.
 
-    It holds exactly what lives outside the section: the UserInfo read model and the eight
-    projections it nests, the cross-section read interface and its result shapes, the
-    service interfaces something outside the section injects, and — the three additions
-    PR B forced, each because a *Base* consumer names it and Base cannot reference a
-    section:
-
-      User / UserEmail / EventParticipation.  48
-      files across Shell, CityPlanning, Development and twenty test projects
-      spell UserManager<User> / SignInManager<User> / AddIdentity<User, …>. ASP.NET
-      Identity's generic surface cannot be hidden, so User is public here rather than
-      internal in the section, and its two nav collections drag UserEmail and
-      EventParticipation with it (CS0053 otherwise). The other six entities — Profile,
-      ContactField, ProfileLanguage, VolunteerHistoryEntry, CommunicationPreference,
-      AccountMergeRequest — are internal in Humans.Users/Domain/ as the Camps precedent
-      wants.
-
-      The three Users/Profiles enums (UserState, ContactFieldType,
-      ContactFieldVisibility), which PR A could not take because Humans.Domain's entities
-      declared columns of those types. The entities are here now, so the cycle is gone.
-
-      IUserService and its command/result records.  Peter's ruling was "public on
-      Humans.Users, not in the leaf", with the eleven write-calling section projects
-      taking a project reference on the section. That is unreachable alongside the §I
-      ruling that AccountDeletionService, ExternalLoginService and
-      UserParticipationBackfillService stay in Humans.Application as orchestrators: those
-      three plus HumanLifecycleService and three Humans.Infrastructure jobs inject
-      IUserService from *Base*, and Humans.Users references both Base projects. The
-      approved surface is unchanged — IUserService is public either way — only the
-      assembly moved, which is the rule that a consumer in Base forces
-      Humans.<Section>.Contracts. It also means no consumer needed a new
-      project reference at all.
-
-    IAccountDeletionService joined later (Users decomposition, commit 0) so Gdpr's deletion
-    screens can inject it; it dropped IOrchestrator for the same reason, and
-    AccountDeletionService carries the marker instead.
-
-    Still NOT here, and staying internal to the section: IAccountMergeService,
-    IDuplicateAccountService, IUnsubscribeService, IUnsubscribeTokenProvider,
-    IEmailProblemsService, IProfilePictureService and
-    the six repository interfaces.
-
-    UserInfo.Create stays here: it takes the eight EF entities, six of which are now
-    internal to the section, so the section owns an internal factory
-    (Humans.Users.Services.UserInfoFactory) and the record keeps a primitive-only
-    Create for Base and the test projects.
-
-    ONE project reference, AND IT MUST NEVER GROW. Base (Humans.Interfaces, becoming
-    Humans.Base at 4b-iv) references THIS project, because HumansControllerBase injects
-    IUserService and Humans.UI names the User entity. So anything reachable from here is
-    reachable from Base, and a reference added here to any project that has references of its
-    own is a cycle the moment 4b-iii moves HumansControllerBase/ApiControllerBase into Base.
-    That cycle is not live today — Humans.Interfaces still has zero project references of its
-    own — so a green build proves nothing about this rule. The invariant is textual, not a
-    build outcome.
-
-    THE RULE: this project may reference only a leaf that itself has zero project references.
-    Such a chain terminates, so it cannot cycle no matter what Base does. The single surviving
-    reference, Humans.Onboarding.Contracts, satisfies it: that leaf has zero project references
-    and its csproj now says in terms that it must stay that way. Base -> Users.Contracts ->
-    Onboarding.Contracts -> nothing.
-
-    Why OnboardingResult was not moved to close it out. It is the onboarding funnel's own
-    result vocabulary, returned by IOnboardingIntake.RejectSignupAsync,
-    IAccountDeletionService's two methods, IHumanLifecycleService's three and
-    IUserService.ApplyProfileOnboardingMutationAsync. Pulling it here would force
-    Humans.Onboarding.Contracts to reference this project to keep its own signature — trading
-    one acyclic edge for a worse one and taking the zero-reference property off the leaf that
-    is load-bearing for it. Duplicating it (Humans.Auth.RoleAssignmentResult's
-    shape) would put a third copy of a two-property record in the graph and grow this
-    project's public surface, which needs Peter. Neither is worth it: the edge is provably
-    harmless and the flat "zero references" phrasing is the thing
-    that is imprecise, not this csproj. State the rule above, not the count.
-
-    Also gone: Humans.Interfaces, which owned the IApplicationService / IOrchestrator /
-    IInvalidator marker interfaces and the [Grandfathered] / [ExpiresOn] attributes — none of
-    this project's interfaces carry them now, and analyzers key on the implementing classes
-    instead (MarkdownContentAttribute is a deliberate internal twin here, not a move, because
-    eight section projects apply the original). And Humans.Domain, whose last enums —
-    ConsentCheckStatus, GoogleEmailStatus, MembershipTier, MessageCategory — moved here; no
-    member was renamed, so nothing persisted moved.
-
-    THREE leaves gain an edge to this project as a consequence, all acyclic under the same
-    rule — this project is itself terminal-but-one and none of them is reachable from it:
-    Humans.Governance.Contracts (MembershipTier), Humans.Teams.Contracts (GoogleEmailStatus)
-    and Humans.Email.Contracts (MembershipTier + MessageCategory). The phase-3 recon
-    predicted only the first two; the third was found by the compiler. Same shape, same
-    reasoning — an enum's consumers follow it to its owner.
+    Onboarding.Contracts: IUserWrite, IHumanLifecycleService and IAccountDeletionService return
+    OnboardingResult. That edge keeps Onboarding out of Base; it must never come the other way.
   -->
 
   <ItemGroup>
+    <ProjectReference Include="..\..\Humans.Base\Humans.Base.csproj" />
     <ProjectReference Include="..\Humans.Onboarding.Contracts\Humans.Onboarding.Contracts.csproj" />
   </ItemGroup>
 
   <ItemGroup>
-    <!-- User : IdentityUser<Guid> — the ASP.NET Identity principal type. -->
-    <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" />
     <PackageReference Include="NodaTime" />
   </ItemGroup>
 

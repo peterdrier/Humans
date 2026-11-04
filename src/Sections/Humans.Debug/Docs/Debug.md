@@ -38,7 +38,7 @@ One controller per audience: `DebugController` (`/Debug/*`, diagnostics and the 
 | `/Debug/CacheStats/Reset` | POST | Admin | Reset cache statistics |
 | `/Debug/ClientStats` | GET | Board, Admin | Browser/device/status-code telemetry |
 | `/Debug/FormatGallery` | GET | Board, Admin | Date/time formatting reference |
-| `/Debug/Translations` | GET | Board, Admin | Translation coverage for every resource set: `SharedResource` first, then each section's `<Section>Resource` by name (from `ISectionCatalog`, so Debug references no section for it); grand key total, jump list, and per set its missing-by-language counts and orphan keys |
+| `/Debug/Translations` | GET | Board, Admin | Translation coverage for every resource set: `SharedResource` first, then each section's `<Section>Resource` by name (from `ISectionCatalog`, so Debug references no section for it); grand key total and per-language coverage up top; the body shows one set (`?set=`, default Shared, with its orphan keys), narrowed by a search (`?q=`); `?set=All` searches every set and lists nothing without a search; optionally only rows with missing translations (`?missing=true`) |
 | `/Debug/Maintenance` | GET | Board, Admin | Maintenance operations |
 | `/Debug/Maintenance/ClearHangfireLocks` | POST | Admin | Clear stale Hangfire locks |
 | `/Debug/Users` | GET | Board, Admin | All-users debug grid (`UsersDebugController`): flat paginated/sortable table of every user incl. tombstones, every column from the cached `UserInfo` snapshot via `IUserService.GetAllRawUserInfosAsync`; page size clamped 10-200, offsets past the end give an empty page |
@@ -60,6 +60,8 @@ One controller per audience: `DebugController` (`/Debug/*`, diagnostics and the 
 | All other roles | Nothing else - an authenticated user who is neither Board nor Admin gets `302 -> /Account/AccessDenied` on every admin-gated page (cookie authentication's `AccessDeniedPath`, app-wide) |
 
 ## Invariants
+
+- Operation timing rows measure instrumented `TimeOperation` scopes and snapshot in-process aggregates since startup.
 
 - Shared table currency and number cells use the selected UI culture; numeric sort values stay invariant.
 
@@ -90,10 +92,14 @@ The single screen and status endpoint for every section's legacy → new copy, a
 - **Seam:** a section implements `ISectionDataMigrations` (`Humans.Base.Interfaces`) at its project root (`ISectionDataMigrations`) and returns `DataMigration` records: a stable section-first `Key` (`finance.iban-to-payment-details`), `Section`, `Title`, `Retires` (what the retirement PR deletes), a `Status` delegate returning `DataMigrationStatus` (column headings plus **every** pending row — no sampling, no paging) and an `Apply` delegate taking the actor and returning rows written. The delegates resolve the owning section's own services from the request scope, so the copy stays inside the owner; Debug only calls the interface. Discovered like every other contribution seam.
 - **Host:** `DataMigrationService` (scoped, the one registration in `Section.Register`) collects the migrations, reads their status, and applies one by key — then writes `DebugAuditActions.DataMigrationApplied` (entity type `DataMigration`, description naming key, section and rows written, the acting admin as actor). An unknown key writes and audits nothing (404 on the screen).
 - **Ordering:** the screen controller and status endpoint each order reports by ordinal section, then key. Status collection does not impose presentation ordering.
+- Migration Apply resolves the signed-in account before invoking an owner delegate
+  and records the surviving account as actor after a merge. Missing accounts receive
+  401; cancelled account lookups invoke no migration. Widget-gallery account loading
+  also honours request cancellation.
 - **Screen:** `/Debug/DataMigrations` (`DataMigrationsController`, `BoardOrAdmin` to read, `AdminOnly` to apply, linked from the Debug admin group) shows each migration with its pending rows and an **Apply (N)** button (`data-confirm`, `[ValidateAntiForgeryToken]`). Every migration is idempotent: a second apply finds nothing pending, and a done migration shows a Done badge instead of the button.
 - **Endpoint:** `GET /api/data-migrations` (`SectionEndpoints : ISectionEndpoints`, `AllowAnonymous`) returns `{ "version": "...", "migrations": [ { "key": "...", "pending": 0, "done": true } ] }` — the `version` is `/api/version`'s. A development session polls production's endpoint to learn when a migration is done; that reading is the approval for its retirement and drop PRs (`memory/architecture/no-drops-until-prod-verified.md`).
 - **Why the counts are safe to publish:** they are membership-shaped aggregates (how many profiles still hold a legacy value) with no row data — no id, name, address or value — and say nothing about any one member. Row data stays behind `BoardOrAdmin` on the screen.
-- **Lifecycle:** a move commit adds its migration; QA and production operators apply it from the screen; once production reports `done`, a retirement PR deletes the migration (and its fallback and obsolete fields), then a drop PR removes the legacy columns. Today's registrations: Users (`users.legacy-identity-emails`) — see `Users.md` — and Finance's `finance.iban-to-payment-details` (`profiles.Iban` → `finance_payment_details`; its rows show the IBAN masked) — see `Finance.md`.
+- **Lifecycle:** a move commit adds its migration; QA and production operators apply it from the screen; once production reports `done`, a retirement PR deletes the migration (and its fallback and obsolete fields), then a drop PR removes the legacy columns. Finance’s `finance.iban-to-payment-details` copy and fallback were retired after production reported `pending: 0`, `done: true` on 2026-11-03; see `Finance.md`. Live registrations come from each section’s `ISectionDataMigrations` contribution.
 
 ## Cross-Section Dependencies
 

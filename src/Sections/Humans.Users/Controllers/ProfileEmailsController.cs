@@ -209,7 +209,7 @@ internal sealed class ProfileEmailsController(
     [AllowBeforeActiveMembership]
     public async Task<IActionResult> SetEmailVisibility(Guid emailId, string? visibility)
     {
-        var user = await GetCurrentUserInfoAsync();
+        var user = await GetCurrentUserInfoAsync(HttpContext.RequestAborted);
         if (user is null)
             return NotFound();
 
@@ -255,7 +255,7 @@ internal sealed class ProfileEmailsController(
     [AllowBeforeActiveMembership]
     public async Task<IActionResult> DeleteEmail(Guid emailId)
     {
-        var user = await GetCurrentUserInfoAsync();
+        var user = await GetCurrentUserInfoAsync(HttpContext.RequestAborted);
         if (user is null)
             return NotFound();
 
@@ -323,7 +323,7 @@ internal sealed class ProfileEmailsController(
     [AllowBeforeActiveMembership]
     public async Task<IActionResult> Link(string provider, string? returnUrl = null)
     {
-        var user = await GetCurrentUserInfoAsync();
+        var user = await GetCurrentUserInfoAsync(HttpContext.RequestAborted);
         if (user is null)
             return NotFound();
 
@@ -465,7 +465,7 @@ internal sealed class ProfileEmailsController(
     [HttpGet("{id:guid}/Admin/Emails")]
     public async Task<IActionResult> AdminEmails(Guid id, CancellationToken ct)
     {
-        var authz = await authorizationService.AuthorizeAsync(User, id, UserEmailOperations.Edit);
+        var authz = await authorizationService.AuthorizeAsync(User, id, UserEmailOperations.View);
         if (!authz.Succeeded)
             return Forbid();
 
@@ -835,7 +835,6 @@ internal sealed class ProfileEmailsController(
                 Visibility = e.Visibility,
                 IsPendingVerification = e.IsPendingVerification,
                 IsMergePending = e.IsMergePending,
-                IsNobodiesTeamDomain = e.Email.EndsWith("@nobodies.team", StringComparison.OrdinalIgnoreCase),
                 Provider = e.Provider,
                 HasOrphanProviderTag = RowHasOrphanProviderTag(e.Provider, e.ProviderKey),
                 IsTicketLinked = RowIsTicketLinked(e.Email),
@@ -843,7 +842,7 @@ internal sealed class ProfileEmailsController(
             ExternalLogins = userLogins.Select(l => new ExternalLoginRowViewModel
             {
                 LoginProvider = l.Provider,
-                ProviderKeyHash = HashForDisplay(l.ProviderKey),
+                ProviderKeyHash = UserEmailService.ShortProviderKeyHash(l.ProviderKey),
                 ProviderDisplayName = null,
                 HasOrphanLogin = LoginHasOrphanRow(l.Provider, l.ProviderKey),
             }).ToList(),
@@ -939,8 +938,7 @@ internal sealed class ProfileEmailsController(
                 Provider = l.LoginProvider,
                 ProviderKey = l.ProviderKey,
                 ProviderDisplayName = l.ProviderDisplayName,
-                ProviderKeyHash = HashForDisplay(l.ProviderKey),
-                MatchingUserEmailId = row?.Id,
+                ProviderKeyHash = UserEmailService.ShortProviderKeyHash(l.ProviderKey),
                 Email = row?.Email,
                 LinkedAt = row?.CreatedAt,
                 CanUnlink = canUnlink,
@@ -959,13 +957,6 @@ internal sealed class ProfileEmailsController(
                 .Where(a => a.MatchedUserId == userId && !string.IsNullOrWhiteSpace(a.AttendeeEmail))
                 .Select(a => a.AttendeeEmail!))
             .ToList();
-    }
-
-    private static string HashForDisplay(string s)
-    {
-        var bytes = System.Security.Cryptography.SHA256.HashData(
-            System.Text.Encoding.UTF8.GetBytes(s));
-        return Convert.ToHexString(bytes.AsSpan(0, 8));
     }
 
 }

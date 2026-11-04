@@ -5,9 +5,11 @@ using System.Security.Claims;
 using Humans.Camps.Contracts;
 using Humans.Settings.Contracts;
 using Humans.Teams.Contracts;
+using Humans.Users.Contracts;
 using Humans.Store.Services;
 using Humans.Store.Services.Dtos;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using NodaTime;
 
 namespace Humans.Store.Authorization;
@@ -20,8 +22,10 @@ namespace Humans.Store.Authorization;
 internal sealed class OrderAuthorizationHandler(
     ICampService campService,
     ITeamService teamService,
+    IUserService users,
     ISettingsService settingsService,
-    IClock clock) : IAuthorizationHandler
+    IClock clock,
+    IHttpContextAccessor httpContextAccessor) : IAuthorizationHandler
 {
     public async Task HandleAsync(AuthorizationHandlerContext context)
     {
@@ -49,9 +53,10 @@ internal sealed class OrderAuthorizationHandler(
             return;
         }
 
+        var ct = httpContextAccessor.HttpContext?.RequestAborted ?? CancellationToken.None;
         var pastDeadline = resource.ProductOrderableUntil is { } until
             && pending.Any(IsLineEdit)
-            && await settingsService.TodayInEventZoneAsync(clock) > until;
+            && await settingsService.TodayInEventZoneAsync(clock, ct) > until;
 
         // Additive: fall through so a TeamsAdmin who is also a camp lead picks up camp rights below.
         if (TeamsRoles.IsTeamsAdmin(context.User))
@@ -71,16 +76,19 @@ internal sealed class OrderAuthorizationHandler(
         }
 
         var userIdClaim = context.User.FindFirst(ClaimTypes.NameIdentifier);
-        if (userIdClaim is null || !Guid.TryParse(userIdClaim.Value, out var userId))
+        if (userIdClaim is null || !Guid.TryParse(userIdClaim.Value, out var claimUserId))
             return;
+        var viewer = await users.GetUserInfoAsync(claimUserId, ct);
+        if (viewer is null) return;
+        var userId = viewer.Id;
 
         bool authorized = false;
         if (resource.CampSeasonId is { } sid)
         {
-            var season = await campService.GetCampSeasonByIdAsync(sid);
+            var season = await campService.GetCampSeasonByIdAsync(sid, ct);
             if (season is not null)
             {
-                var camp = (await campService.GetCampsForYearAsync(season.Year))
+                var camp = (await campService.GetCampsForYearAsync(season.Year, ct))
                     .FirstOrDefault(c => c.Id == season.CampId);
                 if (camp?.IsLead(userId) == true)
                 {
@@ -90,7 +98,7 @@ internal sealed class OrderAuthorizationHandler(
         }
         else if (resource.TeamId is { } tid)
         {
-            var team = await teamService.GetTeamAsync(tid);
+            var team = await teamService.GetTeamAsync(tid, ct);
             if (team is not null
                 && team.ParentTeamId is null
                 && team.ManagementRoleHolderUserIds is not null

@@ -160,7 +160,7 @@ internal interface IWorkgroupService : IApplicationService
 
     /// <summary>Refused and Withdrawn groups are rejected. Returns the Holded account when one was created or
     /// linked by this call, else null.</summary>
-    Task<WorkgroupMutationResult<HoldedExpenseAccountRef?>> SetBudgetAsync(
+    Task<WorkgroupMutationResult<ExpenseAccountRef?>> SetBudgetAsync(
         Guid workgroupId, Guid actorUserId, WorkgroupBudgetSave save, CancellationToken ct = default);
 
     /// <summary>Active group-6 accounts from the Holded mirror; empty when the mirror is unavailable.</summary>

@@ -46,7 +46,7 @@ public class BackdoorApiKeyServiceTests
         _users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new ValueTask<UserInfo?>(UserInfo.Create(
                 new User { Id = userId, State = state, PreferredLanguage = "en" },
-                [], [], [], profile: null, [])));
+                [], [], profile: null)));
     }
 
     [HumansFact]
@@ -146,7 +146,7 @@ public class BackdoorApiKeyServiceTests
             Arg.Is<string>(d => d.Contains("triage agent")),
             _actor,
             relatedEntityId: _owner,
-            relatedEntityType: AuditEntityTypes.User);
+            relatedEntityType: AuditSubjectTypes.User);
     }
 
     [HumansFact]
@@ -171,7 +171,7 @@ public class BackdoorApiKeyServiceTests
 
         await _audit.Received(1).LogAsync(
             BackdoorAuditActions.BackdoorApiKeyRevoked, AuditEntityTypes.BackdoorApiKey, key.Id,
-            Arg.Any<string>(), _actor, key.UserId, AuditEntityTypes.User);
+            Arg.Any<string>(), _actor, key.UserId, AuditSubjectTypes.User);
     }
 
     [HumansFact]
@@ -227,10 +227,10 @@ public class BackdoorApiKeyServiceTests
         {
             _ = _audit.LogAsync(
                 BackdoorAuditActions.BackdoorApiKeyRevoked, AuditEntityTypes.BackdoorApiKey, key.Id,
-                Arg.Any<string>(), _actor, key.UserId, AuditEntityTypes.User);
+                Arg.Any<string>(), _actor, key.UserId, AuditSubjectTypes.User);
             _ = _audit.LogAsync(
                 BackdoorAuditActions.BackdoorApiKeyIssued, AuditEntityTypes.BackdoorApiKey, Arg.Any<Guid>(),
-                Arg.Any<string>(), _actor, key.UserId, AuditEntityTypes.User);
+                Arg.Any<string>(), _actor, key.UserId, AuditSubjectTypes.User);
         });
     }
 

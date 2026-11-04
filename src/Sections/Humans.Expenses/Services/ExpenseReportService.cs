@@ -30,8 +30,8 @@ internal sealed class ExpenseReportService(
     IEmailService emailService,
     ExpensesEmails emails,
     IAuditLogService auditLogService,
+    IAuditViewerService auditViewer,
     IHoldedService holded,
-    IHoldedFinanceService holdedFinance,
     IFinanceService finance,
     IFinanceWrite financeWrite,
     IPreapprovalService preapprovals,
@@ -81,7 +81,7 @@ internal sealed class ExpenseReportService(
         // no ledger to read. The push half below still has something to say about why.
         if (!string.IsNullOrEmpty(report.HoldedContactId))
         {
-            var status = await holdedFinance.GetCreditorStatusAsync(
+            var status = await finance.GetCreditorStatusAsync(
                 report.HoldedSupplierAccountNum, ct);
 
             // The creditor contact covers every id the human has held, so the total does too.
@@ -167,10 +167,11 @@ internal sealed class ExpenseReportService(
 
         // Filtering the whole queue in memory beats a per-audience query at this scale.
         // Drafts and withdrawals are excluded upstream for everyone.
-        var categoryIds = await GetCoordinatorCategoryIdsAsync(viewerUserId, ct);
-        var managedGrantIds = await preapprovals.ListManagedGrantIdsAsync(viewerUserId, ct);
         var viewer = await userService.GetUserInfoAsync(viewerUserId, ct);
-        var ownIds = viewer?.AllUserIds ?? [viewerUserId];
+        if (viewer is null) return [];
+        var categoryIds = await GetCoordinatorCategoryIdsAsync(viewer.Id, ct);
+        var managedGrantIds = await preapprovals.ListManagedGrantIdsAsync(viewer.Id, ct);
+        var ownIds = viewer.AllUserIds;
         return queue
             .Where(r => ownIds.Contains(r.SubmitterUserId)
                         || (r.BudgetCategoryId is { } categoryId && categoryIds.Contains(categoryId))
@@ -206,8 +207,10 @@ internal sealed class ExpenseReportService(
     public async Task<IReadOnlyList<ExpenseReportDto>> GetCoordinatorQueueAsync(
         Guid coordinatorUserId, CancellationToken ct = default)
     {
-        var categoryIds = await GetCoordinatorCategoryIdsAsync(coordinatorUserId, ct);
-        var managedGrantIds = await preapprovals.ListManagedGrantIdsAsync(coordinatorUserId, ct);
+        var coordinator = await userService.GetUserInfoAsync(coordinatorUserId, ct);
+        if (coordinator is null) return [];
+        var categoryIds = await GetCoordinatorCategoryIdsAsync(coordinator.Id, ct);
+        var managedGrantIds = await preapprovals.ListManagedGrantIdsAsync(coordinator.Id, ct);
 
         var queue = categoryIds.Count == 0
             ? []
@@ -286,7 +289,7 @@ internal sealed class ExpenseReportService(
                     + DescribeGrant(preapprovalGrantId),
                     actorUserId,
                     relatedEntityId: submitterUserId,
-                    relatedEntityType: AuditEntityTypes.User);
+                    relatedEntityType: AuditSubjectTypes.User);
             }
 
             return ExpenseMutationResult.Success;
@@ -321,12 +324,16 @@ internal sealed class ExpenseReportService(
         {
             return (await userService.GetUserInfoAsync(userId, ct))?.BurnerName ?? userId.ToString();
         }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            logger.LogWarning("Audit display-name lookup cancelled for member {UserId}; using member ID", userId);
+        }
         catch (Exception ex)
         {
             // Name enrichment must not skip the audit or fail an edit that already committed.
-            logger.LogWarning(ex, "Could not resolve audit display name for member {UserId}", userId);
-            return userId.ToString();
+            logger.LogError(ex, "Could not resolve audit display name for member {UserId}; using member ID", userId);
         }
+        return userId.ToString();
     }
 
     /// <summary>
@@ -344,7 +351,7 @@ internal sealed class ExpenseReportService(
             $"{whatChanged} on behalf of {await DescribeMemberAsync(report.SubmitterUserId, ct)}.",
             actorUserId,
             relatedEntityId: report.SubmitterUserId,
-            relatedEntityType: AuditEntityTypes.User);
+            relatedEntityType: AuditSubjectTypes.User);
     }
 
     private static string DescribeNote(string? note) =>
@@ -638,7 +645,7 @@ internal sealed class ExpenseReportService(
             var removed = report.Lines.FirstOrDefault(l => l.Id == lineId);
 
             // One atomic save removes the line, its proof rows and their attachment rows; files go only after the
-            // commit (an orphan file is a warning, an orphan row is a bug).
+            // commit; cleanup failures cannot reverse the metadata deletion.
             var removedAttachments = await repo.RemoveLineAsync(reportId, lineId, ct)
                 ?? throw new InvalidOperationException("Failed to remove line.");
 
@@ -657,7 +664,7 @@ internal sealed class ExpenseReportService(
                 }
                 catch (Exception ex)
                 {
-                    logger.LogWarning(ex,
+                    logger.LogError(ex,
                         "Could not delete attachment file {AttachmentId} while removing line {LineId}",
                         attachment.Id, lineId);
                 }
@@ -749,7 +756,7 @@ internal sealed class ExpenseReportService(
                 }
                 catch (Exception ex)
                 {
-                    logger.LogWarning(ex, "Could not delete unlinked attachment file {AttachmentId}", attachmentId);
+                    logger.LogError(ex, "Could not delete unlinked attachment file {AttachmentId}", attachmentId);
                 }
                 return new("Expenses_Validation_LineNotOnReport", []);
             }
@@ -761,7 +768,7 @@ internal sealed class ExpenseReportService(
                 $"Attachment uploaded to line {lineId}.",
                 actorUserId,
                 relatedEntityId: report.SubmitterUserId,
-                relatedEntityType: AuditEntityTypes.User);
+                relatedEntityType: AuditSubjectTypes.User);
         }
         catch
         {
@@ -794,7 +801,7 @@ internal sealed class ExpenseReportService(
                 }
                 catch (Exception ex)
                 {
-                    logger.LogWarning(ex,
+                    logger.LogError(ex,
                         "Could not delete attachment file {AttachmentId} after upload rollback",
                         attachmentId);
                 }
@@ -812,7 +819,7 @@ internal sealed class ExpenseReportService(
             }
             catch (Exception ex)
             {
-                logger.LogWarning(ex, "Could not delete superseded attachment file {AttachmentId}", replacedAttachment.Id);
+                logger.LogError(ex, "Could not delete superseded attachment file {AttachmentId}", replacedAttachment.Id);
             }
         }
 
@@ -854,7 +861,7 @@ internal sealed class ExpenseReportService(
                 $"Attachment removed from line {lineId}.",
                 actorUserId,
                 relatedEntityId: report.SubmitterUserId,
-                relatedEntityType: AuditEntityTypes.User);
+                relatedEntityType: AuditSubjectTypes.User);
 
             // Post-commit cleanup: metadata and audit are written, so request cancellation
             // must not strand the file.
@@ -865,7 +872,7 @@ internal sealed class ExpenseReportService(
             }
             catch (Exception ex)
             {
-                logger.LogWarning(ex,
+                logger.LogError(ex,
                     "Could not delete attachment file {AttachmentId} for line {LineId}",
                     removed.Id, lineId);
             }
@@ -954,7 +961,7 @@ internal sealed class ExpenseReportService(
                 + DescribeGrant(report.PreapprovalGrantId),
                 actorUserId,
                 relatedEntityId: report.SubmitterUserId,
-                relatedEntityType: AuditEntityTypes.User);
+                relatedEntityType: AuditSubjectTypes.User);
 
             return ExpenseMutationResult.Success;
 
@@ -1087,7 +1094,7 @@ internal sealed class ExpenseReportService(
                 await DescribeIbanChangeAsync(submitterUserId, actorUserId, normalized, ct),
                 actorUserId,
                 relatedEntityId: submitterUserId,
-                relatedEntityType: AuditEntityTypes.User);
+                relatedEntityType: AuditSubjectTypes.User);
 
             logger.LogInformation(
                 "IBAN {Action} for user {UserId}",
@@ -1138,7 +1145,7 @@ internal sealed class ExpenseReportService(
             $"{description}.",
             actorUserId,
             relatedEntityId: report.SubmitterUserId,
-            relatedEntityType: AuditEntityTypes.User);
+            relatedEntityType: AuditSubjectTypes.User);
     }
 
     /// <summary>
@@ -1545,7 +1552,7 @@ internal sealed class ExpenseReportService(
     private async Task<(ExpenseBooking? Booking, ExpenseMutationResult? Refusal)> ResolveBookingAsync(
         int holdedAccountNumber, Guid? pinnedYearId, CancellationToken ct)
     {
-        var account = (await holdedFinance.ListExpenseAccountsAsync(activeOnly: true, ct))
+        var account = (await finance.ListExpenseAccountsAsync(activeOnly: true, ct))
             .FirstOrDefault(a => a.AccountNum == holdedAccountNumber);
         if (account is null)
             return (null, ExpenseMutationResult.Failure("Expenses_Validation_AccountNotFound"));
@@ -1554,14 +1561,14 @@ internal sealed class ExpenseReportService(
 
         // The option list said this account is a budget category, so the map row exists; the
         // category behind it may still be gone or belong to another year.
-        var mapRow = (await holdedFinance.GetCategoryMapAsync(ct))
+        var mapRow = (await finance.GetCategoryMapAsync(ct))
             .FirstOrDefault(m => m.IsActive && m.HoldedAccountNumber == holdedAccountNumber);
         if (mapRow is null)
             return (null, ExpenseMutationResult.Failure("Expenses_Validation_CategoryNotFound"));
 
         if (pinnedYearId is { } pinned)
         {
-            var snapshot = await budgetService.GetCategoryByIdAsync(mapRow.BudgetCategoryId);
+            var snapshot = await budgetService.GetCategoryByIdAsync(mapRow.BudgetCategoryId, ct);
             if (snapshot is null)
                 return (null, ExpenseMutationResult.Failure("Expenses_Validation_CategoryNotFound"));
             if (snapshot.BudgetGroup?.BudgetYearId != pinned)
@@ -1569,7 +1576,7 @@ internal sealed class ExpenseReportService(
             return (new ExpenseBooking(account.AccountNum, account.AccountId, snapshot.Id, pinned), null);
         }
 
-        var activeYear = await budgetService.GetActiveYearAsync()
+        var activeYear = await budgetService.GetActiveYearAsync(ct)
             ?? throw new InvalidOperationException("No active budget year.");
         var inActiveYear = activeYear.Groups.SelectMany(g => g.Categories).Any(c => c.Id == mapRow.BudgetCategoryId);
         if (!inActiveYear)
@@ -1597,7 +1604,7 @@ internal sealed class ExpenseReportService(
         var categoryId = report.BudgetCategoryId;
         if (categoryId is null)
             return ExpenseMutationResult.OperatorFailure("Report is not booked to a budget category; there is no coordinator to endorse it.");
-        var category = await budgetService.GetCategoryByIdAsync(categoryId.Value);
+        var category = await budgetService.GetCategoryByIdAsync(categoryId.Value, ct);
         if (category is null)
             throw new InvalidOperationException("Budget category not found.");
         if (!category.TeamId.HasValue)
@@ -1646,9 +1653,11 @@ internal sealed class ExpenseReportService(
             ExpensesAuditActions.IbanSet,
             ExpensesAuditActions.IbanRemove,
             FinanceAuditActions.IbanReveal,
-        };
+        }.Select(a => a.Name).ToList();
 
-        var auditEntries = (await auditLogService.GetFilteredEntriesAsync(
+        var auditEntries = (await auditViewer.GetFilteredAsync(
+            entityType: null,
+            entityId: null,
             userId: userId,
             actions: expenseActions,
             limit: 10_000,
@@ -1657,9 +1666,10 @@ internal sealed class ExpenseReportService(
         // Decisions others took on the member's claims name the claim, not the member.
         foreach (var report in allReports)
         {
-            auditEntries.AddRange(await auditLogService.GetFilteredEntriesAsync(
+            auditEntries.AddRange(await auditViewer.GetFilteredAsync(
                 entityType: AuditEntityTypes.Report,
                 entityId: report.Id,
+                userId: null,
                 actions: expenseActions,
                 limit: 10_000,
                 ct: ct));
@@ -1711,7 +1721,7 @@ internal sealed class ExpenseReportService(
         var shapedAudit = auditEntries
             .Select(e => new
             {
-                e.Action,
+                Action = e.Action.Name,
                 e.EntityType,
                 e.EntityId,
                 e.Description,

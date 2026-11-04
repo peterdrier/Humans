@@ -10,6 +10,7 @@ using Microsoft.Extensions.Options;
 using System.Security.Claims;
 using AwesomeAssertions;
 using Humans.Base.Enums;
+using Humans.Base.Constants;
 using Humans.Governance.Contracts;
 using Humans.Shifts.Contracts;
 using Humans.Shifts.Controllers;
@@ -94,6 +95,120 @@ public class ShiftAdminControllerTests
         _shiftMgmt.GetRotasByDepartmentAsync(TeamId, Event.Id).Returns([]);
     }
 
+    [HumansTheory]
+    [InlineData("tag", "viewer")]
+    [InlineData("tag", "teams")]
+    [InlineData("tag", "coordinator")]
+    [InlineData("approve", "viewer")]
+    [InlineData("approve", "teams")]
+    [InlineData("approve", "coordinator")]
+    [InlineData("edit-rota", "rota")]
+    [InlineData("edit-shift", "shift")]
+    [InlineData("invalid-rota", "settings")]
+    [InlineData("invalid-shift", "settings")]
+    [InlineData("email-rota", "view")]
+    [InlineData("email-rota", "profiles")]
+    [InlineData("email-team", "preview")]
+    public async Task MutationPreflightReads_PropagateCancellationBeforeAnyWrite(string action, string boundary)
+    {
+        using var request = new CancellationTokenSource();
+        var controller = BuildSut();
+        controller.HttpContext.RequestAborted = request.Token;
+        var rota = MakeRota(TeamId);
+        var shift = MakeShift(rota);
+        void Check(string read, CancellationToken ct)
+        {
+            if (string.Equals(boundary, read, StringComparison.Ordinal)) ct.ThrowIfCancellationRequested();
+        }
+        _userService.GetUserInfoAsync(UserId, Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            Check("viewer", call.Arg<CancellationToken>());
+            return new ValueTask<UserInfo?>(MakeUserInfo(UserId));
+        });
+        _teamService.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            Check("teams", call.Arg<CancellationToken>());
+            return Task.FromResult<IReadOnlyDictionary<Guid, TeamInfo>>(new Dictionary<Guid, TeamInfo> { [TeamId] = MakeTeam(TeamId, Slug) });
+        });
+        _shiftMgmt.IsDeptCoordinatorAsync(UserId, TeamId, Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            Check("coordinator", call.Arg<CancellationToken>());
+            return Task.FromResult(true);
+        });
+        _shiftMgmt.GetRotaAsync(rota.Id, Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            Check("rota", call.Arg<CancellationToken>());
+            return Task.FromResult<RotaInfo?>(ToInfo(rota));
+        });
+        _shiftMgmt.GetShiftByIdAsync(shift.Id, Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            Check("shift", call.Arg<CancellationToken>());
+            return Task.FromResult<ShiftWithRota?>(ToInfo(shift));
+        });
+        _burnSettings.GetActiveAsync(Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            Check("settings", call.Arg<CancellationToken>());
+            return Task.FromResult<BurnSettingsInfo?>(Event);
+        });
+        _shiftView.GetRotaAsync(rota.Id, Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            Check("view", call.Arg<CancellationToken>());
+            return new ValueTask<ShiftRotaView>(new ShiftRotaView(rota.Id, rota, [], [],
+                [new ShiftSignup { UserId = UserId, Status = SignupStatus.Confirmed }]));
+        });
+        _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            Check("profiles", call.Arg<CancellationToken>());
+            return new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(new Dictionary<Guid, UserInfo> { [UserId] = MakeUserInfo(UserId) });
+        });
+        _rotaMessenger.GetTeamRotasRecipientPreviewAsync(TeamId, Arg.Any<TeamRotasAudienceFilter>(), Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            Check("preview", call.Arg<CancellationToken>());
+            return Task.FromResult(new TeamRotasRecipientPreview(1, ["Coordinator"]));
+        });
+        controller.ModelState.AddModelError("Message", "Invalid");
+        await request.CancelAsync();
+        Func<Task<IActionResult>> read = () => action switch
+        {
+            "tag" => controller.CreateTag(Slug, ""),
+            "approve" => controller.ApproveSignup(Slug, Guid.NewGuid()),
+            "edit-rota" or "invalid-rota" => controller.EditRota(Slug, rota.Id, new EditRotaModel()),
+            "edit-shift" or "invalid-shift" => controller.EditShift(Slug, shift.Id, new EditShiftModel()),
+            "email-rota" => controller.EmailRota(Slug, rota.Id, new EmailRotaViewModel()),
+            _ => controller.EmailTeamRotas(Slug, new EmailTeamRotasViewModel())
+        };
+        await read.Should().ThrowAsync<OperationCanceledException>();
+        _shiftMgmt.ReceivedCalls().Should().OnlyContain(call => call.GetMethodInfo().Name.StartsWith("Get", StringComparison.Ordinal)
+            || call.GetMethodInfo().Name == "IsDeptCoordinatorAsync");
+        _signupService.ReceivedCalls().Should().OnlyContain(call => call.GetMethodInfo().Name == "GetTeamProbeAsync");
+        _rotaMessenger.ReceivedCalls().Should().OnlyContain(call => call.GetMethodInfo().Name == "GetTeamRotasRecipientPreviewAsync");
+    }
+
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task SignupOwnershipProbe_CancelsBeforeApproval(bool block)
+    {
+        using var request = new CancellationTokenSource();
+        var id = Guid.NewGuid();
+        var scope = block ? ShiftSignupTeamProbeScope.SignupBlock : ShiftSignupTeamProbeScope.Signup;
+        _shiftMgmt.IsDeptCoordinatorAsync(UserId, TeamId, Arg.Any<CancellationToken>()).Returns(true);
+        _signupService.GetTeamProbeAsync(id, scope, Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+            return Task.FromResult<ShiftSignupTeamProbe?>(null);
+        });
+        var controller = BuildSut();
+        controller.HttpContext.RequestAborted = request.Token;
+        await request.CancelAsync();
+        Func<Task<IActionResult>> action = block
+            ? () => controller.ApproveRange(Slug, id)
+            : () => controller.ApproveSignup(Slug, id);
+
+        await action.Should().ThrowAsync<OperationCanceledException>();
+        _signupService.ReceivedCalls().Should().OnlyContain(call => call.GetMethodInfo().Name == "GetTeamProbeAsync");
+    }
+
     [HumansFact]
     public async Task Index_PreservesRequestCancellationThroughAuthorizationAndPageReads()
     {
@@ -112,8 +227,39 @@ public class ShiftAdminControllerTests
         await _userService.Received(1).GetUserInfoAsync(UserId, cancellation.Token);
         await _teamService.Received().GetTeamsAsync(cancellation.Token);
         await _shiftMgmt.Received().IsDeptCoordinatorAsync(UserId, TeamId, cancellation.Token);
-        await _teamService.Received(1).GetTeamAsync(TeamId, cancellation.Token);
+        await _teamService.DidNotReceiveWithAnyArgs().GetTeamAsync(default, default);
         await _shiftMgmt.Received(1).GetRotasByDepartmentAsync(TeamId, Event.Id, cancellation.Token);
+    }
+
+    [HumansTheory]
+    [InlineData(null, false, true, false, false, 1)]
+    [InlineData(null, true, false, true, true, 1)]
+    [InlineData(null, false, false, null, null, 1)]
+    [InlineData(ShiftsRoles.ShiftsNoInfo, false, false, false, true, 1)]
+    [InlineData(ShiftsRoles.ShiftsAdmin, false, false, true, true, 0)]
+    [InlineData(RoleNames.Admin, false, false, true, true, 0)]
+    public async Task Index_ReusesOneCoordinatorDecisionForAccessAndControls(
+        string? role, bool coordinates, bool canRead, bool? canManage, bool? canApprove, int coordinatorReads)
+    {
+        _shiftMgmt.IsDeptCoordinatorAsync(UserId, TeamId, Arg.Any<CancellationToken>()).Returns(coordinates);
+        var authorization = Substitute.For<IAuthorizationService>();
+        authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(), ShiftsPolicies.Read)
+            .Returns(canRead ? AuthorizationResult.Success() : AuthorizationResult.Failed());
+        var controller = BuildSut(authorization: authorization);
+        if (role is not null)
+            ((ClaimsIdentity)controller.User.Identity!).AddClaim(new Claim(ClaimTypes.Role, role));
+
+        var result = await controller.Index(Slug);
+
+        if (canManage is null)
+            result.Should().BeOfType<ForbidResult>();
+        else
+        {
+            var model = result.Should().BeOfType<ViewResult>().Which.Model.Should().BeOfType<ShiftAdminViewModel>().Subject;
+            model.CanManageShifts.Should().Be(canManage.Value);
+            model.CanApproveSignups.Should().Be(canApprove!.Value);
+        }
+        await _shiftMgmt.Received(coordinatorReads).IsDeptCoordinatorAsync(UserId, TeamId, Arg.Any<CancellationToken>());
     }
 
     [HumansTheory]
@@ -970,7 +1116,8 @@ public class ShiftAdminControllerTests
         controller.TempData["ErrorMessage"].Should().BeOfType<string>().Which.Should().Contain("3").And.NotContain("{0}");
     }
 
-    private ShiftAdminController BuildSut(IStringLocalizer<ShiftsResource>? localizer = null)
+    private ShiftAdminController BuildSut(
+        IStringLocalizer<ShiftsResource>? localizer = null, IAuthorizationService? authorization = null)
     {
         var ctrl = new ShiftAdminController(
             _teamService,
@@ -979,7 +1126,7 @@ public class ShiftAdminControllerTests
             _signupService,
             _shiftView,
             _userService,
-            Substitute.For<IAuthorizationService>(),
+            authorization ?? Substitute.For<IAuthorizationService>(),
             Substitute.For<IClock>(),
             new ShiftAdminPageBuilder(_shiftMgmt, Substitute.For<IMembershipCalculator>(), _userService, Substitute.For<ICantinaService>(), _teamService),
             new ShiftVolunteerSearchBuilder(_burnSettings, _userService, Substitute.For<ICantinaService>(), _shiftView, _signupService, _tracking),
@@ -1046,11 +1193,9 @@ public class ShiftAdminControllerTests
     private static UserInfo MakeUserInfo(Guid userId) => UserInfoFactory.Create(
         user: new User { Id = userId, DisplayName = "Coord", PreferredLanguage = "en" },
         userEmails: [],
-        eventParticipations: [],
         externalLogins: [],
         profile: new Profile { UserId = userId, BurnerName = "Coord" },
         contactFields: [],
         profileLanguages: [],
-        volunteerHistory: [],
-        communicationPreferences: []);
+        volunteerHistory: []);
 }

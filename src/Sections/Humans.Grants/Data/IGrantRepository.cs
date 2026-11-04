@@ -35,9 +35,6 @@ internal interface IGrantRepository : IRepository
         GrantProgram program, IReadOnlyList<GrantProgramManager> toAdd, IReadOnlyList<Guid> toRemove,
         CancellationToken ct = default);
 
-    /// <summary>Stamps each listed program that has no event id yet; returns the rows written.</summary>
-    Task<int> AssignEventIdsAsync(IReadOnlyDictionary<Guid, Guid> eventByProgram, CancellationToken ct = default);
-
     /// <summary>One save: all or nothing.</summary>
     Task AddGrantsAsync(IReadOnlyList<Grant> grants, CancellationToken ct = default);
 

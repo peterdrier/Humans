@@ -15,6 +15,8 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using NodaTime;
 using NodaTime.Testing;
+using Humans.Users.Services;
+using Microsoft.Extensions.DependencyInjection;
 using NSubstitute;
 using Humans.Users.Contracts;
 
@@ -62,10 +64,9 @@ public class AccountControllerGateLoginTests
             new MemoryCache(new MemoryCacheOptions()), _clock);
 
         _controller = new AccountController(
-            _signInManager,
+            new UserSignInService(_signInManager, _userManager, Substitute.For<IServiceScopeFactory>()),
             Substitute.For<IUserService>(),
             _userService,
-            _userManager,
             _clock,
             NullLogger<AccountController>.Instance,
             Substitute.For<IExternalLoginService>(),

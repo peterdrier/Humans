@@ -26,7 +26,7 @@ Its admin summary delegates to `StoreOrderReader`; accounting consumers resolve 
 
 Cross-section calls via `IAuditLogService`, `ICampService`,
 `ITeamService` (team-order counterparty surface),
-`ISettingsService`, `IUserService` (current-user resolution in the controllers), `IStripeService` (the `Humans.Stripe` connector
+`ISettingsService`, `IUserService` (current-user resolution in controllers and order authorization), `IStripeService` (the `Humans.Stripe` connector
 section — creates Checkout sessions, lists sessions for reconciliation, handles
 webhook events including SEPA async-payment transitions), `IHoldedClient` (the
 `Humans.Holded` connector section — contact upsert, sales-document create/approve/read

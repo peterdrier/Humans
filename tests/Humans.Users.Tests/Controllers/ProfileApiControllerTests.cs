@@ -94,13 +94,11 @@ public class ProfileApiControllerTests
         UserInfoFactory.Create(
             user: user,
             userEmails: [],
-            eventParticipations: [],
             externalLogins: [],
             profile: null,
             contactFields: [],
             profileLanguages: [],
-            volunteerHistory: [],
-            communicationPreferences: []);
+            volunteerHistory: []);
 
     private static UserInfo MakeUserInfo(
         Guid userId,
@@ -118,26 +116,24 @@ public class ProfileApiControllerTests
             IsApproved = true,
             CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
             UpdatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
-            RejectedAt = isRejected ? Instant.FromUtc(2026, 2, 1, 0, 0) : null,
         };
         var user = new User
         {
             Id = userId,
             BurnerName = burnerName,
             DisplayName = "Target Display",
+            State = isRejected ? UserState.Rejected : UserState.Active,
             PreferredLanguage = "en",
             CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
         };
         return UserInfoFactory.Create(
             user: user,
             userEmails: [],
-            eventParticipations: [],
             externalLogins: [],
             profile: profile,
             contactFields: [],
             profileLanguages: [],
-            volunteerHistory: [],
-            communicationPreferences: []);
+            volunteerHistory: []);
     }
 
     [HumansTheory]
@@ -364,23 +360,27 @@ public class ProfileApiControllerTests
         rows.Select(r => r.DisplayName).Should().Equal("Ian", "Adrian", "Brian");
     }
 
-    [HumansFact]
-    public async Task Search_allowEmail_resolves_exact_email_to_single_row()
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Search_allowEmail_resolves_exact_email_to_single_row(bool mergedOwner)
     {
         var viewer = MakeUser(Guid.NewGuid());
         var targetUserId = Guid.NewGuid();
+        var resolvedUserId = mergedOwner ? Guid.NewGuid() : targetUserId;
         var targetProfileId = Guid.NewGuid();
 
         _userEmailService.FindByAddressAsync("Friend@Example.com", false, true, Arg.Any<CancellationToken>())
             .Returns([UserEmailFixtures.Row(targetUserId, "friend@example.com")]);
         _userService.GetUserInfoAsync(targetUserId, Arg.Any<CancellationToken>())
-            .Returns(new ValueTask<UserInfo?>(MakeUserInfo(targetUserId, targetProfileId, burnerName: "Friend")));
-        _contactFieldService.GetViewerAccessLevelAsync(targetUserId, viewer.Id, Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<UserInfo?>(MakeUserInfo(resolvedUserId, targetProfileId, burnerName: "Friend")));
+        _contactFieldService.GetViewerAccessLevelAsync(resolvedUserId, viewer.Id, Arg.Any<CancellationToken>())
             .Returns(ContactFieldVisibility.AllActiveProfiles);
-        _userEmailService.GetVisibleEmailsAsync(targetUserId, Arg.Any<ContactFieldVisibility>(), Arg.Any<CancellationToken>())
+        _userEmailService.GetVisibleEmailsAsync(resolvedUserId, Arg.Any<ContactFieldVisibility>(), Arg.Any<CancellationToken>())
             .Returns([]);
-        _contactFieldService.GetVisibleContactFieldsAsync(targetUserId, viewer.Id, Arg.Any<CancellationToken>())
-            .Returns([]);
+        _contactFieldService.GetVisibleContactFieldsAsync(resolvedUserId, viewer.Id, Arg.Any<CancellationToken>())
+            .Returns([new ContactFieldDto(Guid.NewGuid(), ContactFieldType.Signal, "Signal", "@friend",
+                ContactFieldVisibility.AllActiveProfiles)]);
 
         var sut = BuildSut(viewer);
 
@@ -388,7 +388,10 @@ public class ProfileApiControllerTests
 
         var row = result.Should().BeOfType<OkObjectResult>().Subject.Value
             .Should().BeAssignableTo<IEnumerable<HumanLookupSearchResult>>().Subject.Single();
-        row.UserId.Should().Be(targetUserId);
+        row.UserId.Should().Be(resolvedUserId);
+        row.Detail.Should().Be("Signal @friend");
+        await _contactFieldService.Received(1).GetViewerAccessLevelAsync(
+            resolvedUserId, viewer.Id, TestContext.Current.CancellationToken);
         // Exact-email path must NOT fan out to the name search.
         await _userService.DidNotReceive().SearchUsersAsync(
             Arg.Any<string>(), Arg.Any<PersonSearchFields>(), Arg.Any<int>(), Arg.Any<CancellationToken>());

@@ -55,40 +55,17 @@ internal sealed partial class GrantService(
             p.Id, p.Name, p.Entitles, p.Description, evt?.Year ?? p.Year, evt?.Id ?? p.EventSettingsId,
             evt?.EventName ?? p.Year.ToString(CultureInfo.InvariantCulture),
             p.IssuedBy, p.SourceKey, p.GrantsExpireOn,
-            p.Status, p.CreatedByUserId, p.CreatedAt, p.UpdatedAt,
+            p.Status,
             p.Managers.Select(m => m.UserId).ToList(),
             p.Grants.Select(g => ToInfo(g, p, evt)).ToList());
     }
 
-    /// <summary>The program's own event, else the one <c>grants.event-ids</c> would give it.</summary>
     private static EventSettingsInfo? EventOf(GrantProgram p, IReadOnlyList<EventSettingsInfo> events) =>
-        p.EventSettingsId is { } id ? events.FirstOrDefault(e => e.Id == id) : PickEventForYear(events, p.Year);
-
-    /// <summary>The earliest non-deleted event of <paramref name="year"/> by gate opening; null when it has none.</summary>
-    internal static EventSettingsInfo? PickEventForYear(IReadOnlyList<EventSettingsInfo> events, int year) =>
-        events
-            .Where(e => e.Year == year && e.Status != EventSettingsStatus.Deleted)
-            .OrderBy(e => e.GateOpeningDate)
-            .FirstOrDefault();
-
-    public async Task<IReadOnlyList<(Guid ProgramId, string ProgramName, int Year, EventSettingsInfo Event)>> GetEventIdPlanAsync(
-        CancellationToken ct = default)
-    {
-        var events = await settingsService.GetAllEventSettingsAsync(ct);
-        return [.. (await repository.GetProgramsAsync(ct))
-            .Where(p => p.EventSettingsId is null)
-            .Select(p => (p, Event: PickEventForYear(events, p.Year)))
-            .Where(x => x.Event is not null)
-            .Select(x => (x.p.Id, x.p.Name, x.p.Year, x.Event!))];
-    }
-
-    public async Task<int> AssignProgramEventIdsAsync(CancellationToken ct = default) =>
-        await repository.AssignEventIdsAsync(
-            (await GetEventIdPlanAsync(ct)).ToDictionary(p => p.ProgramId, p => p.Event.Id), ct);
+        p.EventSettingsId is { } id ? events.FirstOrDefault(e => e.Id == id) : null;
 
     /// <summary>The year comes from the event, which a gate-opening change can move to another year.</summary>
     private static GrantInfo ToInfo(Grant g, GrantProgram p, EventSettingsInfo? evt) => new(
-        g.Id, g.ProgramId, p.Name, p.Entitles, evt?.Year ?? p.Year, g.UserId, g.SourceRef, g.ExpiresOn,
+        g.Id, g.ProgramId, p.Name, p.Entitles, evt?.Year ?? p.Year, g.UserId, g.SourceRef,
         g.ExpiresOn ?? p.GrantsExpireOn, g.IssuedAt, g.IssuedByUserId, g.NotifiedAt, g.RevokedAt,
         g.RevokedByUserId, g.RevokeReason);
 
@@ -99,16 +76,25 @@ internal sealed partial class GrantService(
         return info is null ? [userId] : info.AllUserIds;
     }
 
+    private async Task<IReadOnlyList<Guid>?> ResolveAvailablePersonIdsAsync(Guid userId, CancellationToken ct)
+    {
+        var person = await users.GetUserInfoAsync(userId, ct);
+        if (person is not null && !person.IsTombstone) return person.AllUserIds;
+
+        logger.LogWarning("Grant write refused for unavailable person {UserId}", userId);
+        return null;
+    }
+
     private static string? Trimmed(string? text) =>
         string.IsNullOrWhiteSpace(text) ? null : text.Trim();
 
     private Task AuditGrantAsync(AuditActionDefinition action, Grant grant, string description, Guid actorUserId) =>
         auditLog.LogAsync(action, AuditEntityTypes.Grant, grant.Id, description, actorUserId,
-            relatedEntityId: grant.UserId, relatedEntityType: AuditEntityTypes.User);
+            relatedEntityId: grant.UserId, relatedEntityType: AuditSubjectTypes.User);
 
     private Task AuditProgramAsync(
         AuditActionDefinition action, GrantProgram program, string description, Guid actorUserId, Guid? relatedUserId = null) =>
         auditLog.LogAsync(action, AuditEntityTypes.Program, program.Id, description, actorUserId,
             relatedEntityId: relatedUserId,
-            relatedEntityType: relatedUserId is null ? null : AuditEntityTypes.User);
+            relatedEntityType: relatedUserId is null ? null : AuditSubjectTypes.User);
 }

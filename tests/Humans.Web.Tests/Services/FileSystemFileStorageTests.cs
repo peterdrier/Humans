@@ -61,7 +61,7 @@ public class FileSystemFileStorageTests : IDisposable
         (await _store.TryReadAsync(key, Xunit.TestContext.Current.CancellationToken)).Should().Equal([4, 5, 6]);
         var cleanup = _logger.ReceivedCalls().Should().ContainSingle(c =>
             c.GetArguments()[2]!.ToString()!.Contains("Failed to clean up temp file", StringComparison.Ordinal)).Subject.GetArguments();
-        cleanup[0].Should().Be(LogLevel.Warning);
+        cleanup[0].Should().Be(LogLevel.Error);
         cleanup[3].Should().BeOfType<UnauthorizedAccessException>();
     }
 

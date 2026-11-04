@@ -79,15 +79,27 @@ test.describe('Profile (02-profiles)', () => {
     expect([302, 403]).toContain(response.status());
   });
 
-  test('US-9.2: board can view human detail with admin actions', async ({ page }) => {
-    await loginAs(page, 'board');
+  // The list always has rows: the dev personas themselves are humans on every host.
+  const openFirstHuman = async (page: import('@playwright/test').Page) => {
     await page.goto('/Users/Admin');
-
     await expect(page.locator('h1, h2').first()).toBeVisible();
-
-    // The list always has rows: the dev personas themselves are humans on every host.
     const viewLink = page.locator('.list-group-item a.btn').filter({ hasText: /^\s*View\s*$/ }).first();
     await page.goto((await viewLink.getAttribute('href'))!);
-    await expect(page.getByRole('button', { name: /Suspend Human|Unsuspend Human/ })).toBeVisible();
+    await expect(page).toHaveTitle(/Member:/);
+  };
+  const suspendButton = (page: import('@playwright/test').Page) =>
+    page.getByRole('button', { name: /Suspend Human|Unsuspend Human/ });
+
+  test('US-9.2: users admin can view human detail with admin actions', async ({ page }) => {
+    await loginAs(page, 'users-admin');
+    await openFirstHuman(page);
+    await expect(suspendButton(page)).toBeVisible();
+  });
+
+  test('US-9.2: board reads human detail without the suspend action', async ({ page }) => {
+    // Board reads every section admin page and writes only its own decisions.
+    await loginAs(page, 'board');
+    await openFirstHuman(page);
+    await expect(suspendButton(page)).toHaveCount(0);
   });
 });

@@ -10,6 +10,7 @@ using NodaTime.Testing;
 using Microsoft.Extensions.DependencyInjection;
 using Humans.Settings.Contracts;
 using NSubstitute;
+using Humans.Users.Contracts;
 
 namespace Humans.CityPlanning.Tests;
 
@@ -59,7 +60,10 @@ public abstract class CityPlanningTestBase : IDisposable
         var services = new ServiceCollection();
         services.AddLogging();
         services.AddAuthorizationCore(((ISectionPolicies)new Section()).AddPolicies);
-        services.AddSingleton<IAuthorizationHandler>(new CityPlanningMapAdminHandler(cityPlanning));
+        var users = Substitute.For<IUserService>();
+        users.GetUserInfoAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(call => UserInfo.Create(new User { Id = call.Arg<Guid>() }, [], [], profile: null));
+        services.AddSingleton<IAuthorizationHandler>(new CityPlanningMapAdminHandler(cityPlanning, users, new Microsoft.AspNetCore.Http.HttpContextAccessor()));
         return services.BuildServiceProvider().GetRequiredService<IAuthorizationService>();
     }
 

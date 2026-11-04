@@ -46,15 +46,11 @@ internal sealed class CampaignService(
         var campaign = new Campaign
         {
             Id = Guid.NewGuid(),
-            Title = title.Trim(),
-            Description = string.IsNullOrWhiteSpace(description) ? null : description.Trim(),
-            EmailSubject = emailSubject.Trim(),
-            EmailBodyTemplate = emailBodyTemplate.Trim(),
-            ReplyToAddress = string.IsNullOrWhiteSpace(replyToAddress) ? null : replyToAddress.Trim(),
             Status = CampaignStatus.Draft,
             CreatedAt = clock.GetCurrentInstant(),
             CreatedByUserId = createdByUserId
         };
+        ApplyCampaignFields(campaign, title, description, emailSubject, emailBodyTemplate, replyToAddress);
 
         await repository.AddCampaignAsync(campaign, ct);
         await audit.LogAsync(CampaignsAuditActions.CampaignCreated, "Campaign", campaign.Id,
@@ -62,6 +58,16 @@ internal sealed class CampaignService(
 
         logger.LogInformation("Campaign {CampaignId} created: {Title}", campaign.Id, title);
         return new CampaignCreateResult(true, campaign);
+    }
+
+    private static void ApplyCampaignFields(Campaign campaign, string title, string? description,
+        string emailSubject, string emailBodyTemplate, string? replyToAddress)
+    {
+        campaign.Title = title.Trim();
+        campaign.Description = string.IsNullOrWhiteSpace(description) ? null : description.Trim();
+        campaign.EmailSubject = emailSubject.Trim();
+        campaign.EmailBodyTemplate = emailBodyTemplate.Trim();
+        campaign.ReplyToAddress = string.IsNullOrWhiteSpace(replyToAddress) ? null : replyToAddress.Trim();
     }
 
     private static string? ValidateCampaignInput(string title, string? description,
@@ -149,11 +155,7 @@ internal sealed class CampaignService(
         if (campaign is null)
             return new CampaignUpdateResult(false, "NotFound");
 
-        campaign.Title = title.Trim();
-        campaign.Description = string.IsNullOrWhiteSpace(description) ? null : description.Trim();
-        campaign.EmailSubject = emailSubject.Trim();
-        campaign.EmailBodyTemplate = emailBodyTemplate.Trim();
-        campaign.ReplyToAddress = string.IsNullOrWhiteSpace(replyToAddress) ? null : replyToAddress.Trim();
+        ApplyCampaignFields(campaign, title, description, emailSubject, emailBodyTemplate, replyToAddress);
 
         await repository.UpdateCampaignAsync(campaign, ct);
 
@@ -453,7 +455,7 @@ internal sealed class CampaignService(
             await repository.AddGrantAndSaveAsync(grant, ct);
             await audit.LogAsync(CampaignsAuditActions.CampaignWaveSent, "Campaign", campaignId,
                 $"Assigned grant {grant.Id} in wave to team {teamId}.", actorUserId,
-                relatedEntityId: userId, relatedEntityType: "User");
+                relatedEntityId: userId, relatedEntityType: AuditSubjectTypes.User);
             grantedUserIds.Add(userId);
 
             try
@@ -526,7 +528,7 @@ internal sealed class CampaignService(
 
         await audit.LogAsync(CampaignsAuditActions.CampaignGrantResent, "CampaignGrant", grantId,
             $"Started resend for campaign {grant.CampaignId}.", actorUserId,
-            relatedEntityId: grant.UserId, relatedEntityType: "User");
+            relatedEntityId: grant.UserId, relatedEntityType: AuditSubjectTypes.User);
 
         try
         {

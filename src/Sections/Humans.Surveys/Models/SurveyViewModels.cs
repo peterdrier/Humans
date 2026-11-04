@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Humans.Surveys.Contracts;
 using Humans.Base.Attributes;
 using Humans.Base.Extensions;
@@ -12,7 +13,8 @@ namespace Humans.Surveys.Models;
 internal sealed class SurveyAdminIndexViewModel
 {
     public IReadOnlyList<SurveyAdminSummary> Surveys { get; init; } = [];
-    public bool IsBoardOrAdmin { get; init; }
+    public bool SeesEverySurvey { get; init; }
+    public bool ManagesEverySurvey { get; init; }
 }
 
 internal sealed class SurveyPendingApprovalViewModel
@@ -55,9 +57,6 @@ internal sealed class SurveyIntroViewModel
 
     public string Slug { get; init; } = string.Empty;
 
-    /// <summary>Identified resume.</summary>
-    public bool HasResumableDraft { get; init; }
-
     public bool IsAsociadoVote { get; init; }
 
     public bool IsPreview { get; init; }
@@ -71,6 +70,7 @@ internal sealed class SurveyIntroViewModel
 internal sealed class SurveyStartViewModel
 {
     public string Token { get; set; } = string.Empty;
+    [BindRequired]
     public ResponseAnonymity Anonymity { get; set; } = ResponseAnonymity.Identified;
     public string Culture { get; set; } = CultureCatalog.DefaultCultureCode;
 }
@@ -93,6 +93,9 @@ internal sealed class SurveySendViewModel
     public int NewRecipientCount { get; init; }
     public IReadOnlyList<SurveyInviteStatus> Invitations { get; init; } = [];
     public bool IsAsociadoVote { get; init; }
+
+    /// <summary>False for Board: it reviews the recipients but opens and sends nothing.</summary>
+    public bool CanManage { get; init; }
 
     public bool CanSend => Status == SurveyStatus.Open && AudienceType is not null && NewRecipientCount > 0;
 }
@@ -148,7 +151,9 @@ internal sealed class SurveyBuilderViewModel
     public Dictionary<string, string> InvitationEmailMessage { get; set; } = new(StringComparer.Ordinal);
 
     public string DefaultCulture { get; set; } = CultureCatalog.DefaultCultureCode;
+    [BindRequired]
     public bool AllowAnonymous { get; set; }
+    [BindRequired]
     public bool IsAsociadoVote { get; set; }
     public LocalDateTime? OpensAt { get; set; }
     public LocalDateTime? ClosesAt { get; set; }
@@ -165,10 +170,10 @@ internal sealed class SurveyBuilderViewModel
     public bool HasSavedAnswers { get; set; }
 
     /// <summary>
-    /// Opening, closing, previewing and reviewing recipients are <c>BoardOrAdmin</c> actions, though any approved human
-    /// may author: showing an author a button that ends in 403 is a bug.
+    /// Opening, closing and reviewing recipients are Surveys Admin actions, though any approved human may author:
+    /// showing an author a button that ends in 403 is a bug.
     /// </summary>
-    public bool IsBoardOrAdmin { get; set; }
+    public bool ManagesEverySurvey { get; set; }
 
     /// <summary>Computed from the stored survey and its Submit authorization on every render.</summary>
     [Microsoft.AspNetCore.Mvc.ModelBinding.BindNever]

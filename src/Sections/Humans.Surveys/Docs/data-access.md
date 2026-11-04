@@ -77,7 +77,7 @@ Email outbox acceptance. Uses `IUserService` (canonical name, culture and email 
 ### SurveyPreviewEmailService (Scoped, `Humans.Surveys.Services`)
 
 No repository, no `IMemoryCache`. Orchestrator (`IOrchestrator`) — sends a
-side-effect-free survey invitation preview to the requesting Board/Admin
+side-effect-free survey invitation preview to the requesting
 user, reusing the production invitation template/transport but creating no
 invitation, response, or funnel row. Calls `ISurveyService` (own section,
 for the survey content), `IUserService` (Users: canonical name, culture and email),

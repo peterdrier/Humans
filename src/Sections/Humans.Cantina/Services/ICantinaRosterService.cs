@@ -13,14 +13,16 @@ internal interface ICantinaRosterService : IApplicationService
     /// <summary>
     /// A null offset means the week containing today in the event's timezone (zero without an active event). With no
     /// event or nobody on site the DTO is still fully populated, with zero counts and empty lists.
+    /// Returns null when the offset cannot represent the requested week or its offset arithmetic.
     /// </summary>
     // Disclosing callers (CSV download, allergy reveal) say who, so the service records the personal-data disclosure.
-    Task<WeeklyRosterDto> GetWeeklyRosterAsync(int? weekStartOffset = null, RosterDisclosure? disclosure = null, CancellationToken ct = default);
+    Task<WeeklyRosterDto?> GetWeeklyRosterAsync(int? weekStartOffset = null, RosterDisclosure? disclosure = null, CancellationToken ct = default);
 
     /// <summary>
     /// A null offset means today in the event's timezone (zero without an active event). People are unsorted.
+    /// Returns null when the offset cannot represent the requested day or its offset arithmetic.
     /// </summary>
-    Task<DailyMatrixDto> GetDailyRosterAsync(int? dayOffset = null, RosterDisclosure? disclosure = null, CancellationToken ct = default);
+    Task<DailyMatrixDto?> GetDailyRosterAsync(int? dayOffset = null, RosterDisclosure? disclosure = null, CancellationToken ct = default);
 }
 
 /// <summary>

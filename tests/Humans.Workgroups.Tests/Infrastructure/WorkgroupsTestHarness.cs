@@ -91,9 +91,9 @@ public abstract class WorkgroupsTestHarness : IDisposable
             .Returns(_ => $"folder-{Guid.NewGuid()}");
         GoogleSyncRead.IsFolderReachableAsync(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(true);
 
-        Finance = Substitute.For<IHoldedFinanceWrite>();
+        Finance = Substitute.For<IFinanceWrite>();
         Finance.CreateOrLinkExpenseAccountAsync(Arg.Any<string>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())
-            .Returns(call => new HoldedExpenseAccountRef(
+            .Returns(call => new ExpenseAccountRef(
                 call.Arg<int?>() ?? 62900150, $"acc-{call.Arg<int?>() ?? 62900150}", call.Arg<string>(),
                 Created: call.Arg<int?>() is null));
 
@@ -123,7 +123,7 @@ public abstract class WorkgroupsTestHarness : IDisposable
     private protected ISettingsService Settings { get; }
     private protected IGoogleSyncService GoogleSyncRead { get; }
     private protected IGoogleSyncWrite GoogleSync { get; }
-    private protected IHoldedFinanceWrite Finance { get; }
+    private protected IFinanceWrite Finance { get; }
     private protected IHoldedService Holded { get; }
     private protected INotificationService Notifications { get; }
     private protected IEmailService Email { get; }
@@ -330,8 +330,8 @@ public abstract class WorkgroupsTestHarness : IDisposable
         Guid id, string burnerName, ProfileInfo? profile, string language) => new(
         id, burnerName, false, language, null, Instant.FromUtc(2026, 1, 1, 0, 0),
         null, null, null, null, null, null,
-        null, null, $"{id}@example.org", [], [], [],
-        profile ?? UserFixtures.Profile(burnerName: burnerName), []);
+        null, null, $"{id}@example.org", [], [],
+        profile ?? UserFixtures.Profile(burnerName: burnerName));
 
     public void Dispose()
     {

@@ -1,7 +1,6 @@
 using Humans.Auth.Contracts;
 using Humans.Base.Extensions;
 using Humans.Consent.Contracts;
-using Humans.Feedback.Contracts;
 using Humans.Governance.Contracts;
 using Humans.Settings.Contracts;
 using Humans.Shifts.Contracts;
@@ -20,7 +19,6 @@ internal sealed class AgentUserSnapshotProvider(
     ITeamService teams,
     IGovernanceService governance,
     IConsentService consents,
-    IFeedbackService feedback,
     ITicketService tickets,
     IShiftView shiftView,
     ISettingsService settingsService,
@@ -40,7 +38,6 @@ internal sealed class AgentUserSnapshotProvider(
             .Select(x => new TeamMembership(x.TeamInfo.Name, x.Membership!.Role) { IsHidden = x.TeamInfo.IsHidden })
             .ToList();
         var pendingDocs = await consents.GetPendingDocumentNamesAsync(userId, cancellationToken);
-        var openFeedback = await feedback.GetOpenFeedbackIdsForUserAsync(userId, cancellationToken);
         var ticketHoldings = await tickets.GetUserTicketHoldingsAsync(userId, cancellationToken);
         var openTickets = ticketHoldings.OpenTicketOrderIds;
         var upcomingShifts = await LoadUpcomingShiftsAsync(userId, cancellationToken);
@@ -61,7 +58,6 @@ internal sealed class AgentUserSnapshotProvider(
             Teams: teamMemberships,
             PendingConsentDocs: pendingDocs,
             OpenTicketIds: openTickets,
-            OpenFeedbackIds: openFeedback,
             UpcomingShifts: upcomingShifts);
     }
 

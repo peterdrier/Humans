@@ -26,7 +26,11 @@ internal sealed partial class GrantService
 
         var recipients = new List<IReadOnlyList<Guid>>();
         foreach (var id in ids)
-            recipients.Add(await AllIdsAsync(id, ct));
+        {
+            var personIds = await ResolveAvailablePersonIdsAsync(id, ct);
+            if (personIds is null) return new(Refusal: "One or more selected people are no longer available.");
+            recipients.Add(personIds);
+        }
         var holding = program.Grants.Where(g => g.RevokedAt is null).Select(g => g.UserId).ToHashSet();
         var now = clock.GetCurrentInstant();
         var grants = recipients.DistinctBy(personIds => personIds[0])
@@ -77,7 +81,8 @@ internal sealed partial class GrantService
         var program = await SourceProgramAsync(sourceKey, ct);
         if (program is null) return new(Guid.Empty, GrantWriteRefusal.NoOpenProgram);
 
-        var personIds = await AllIdsAsync(userId, ct);
+        var personIds = await ResolveAvailablePersonIdsAsync(userId, ct);
+        if (personIds is null) return new(Guid.Empty, GrantWriteRefusal.RecipientUnavailable);
         var live = program.Grants.FirstOrDefault(g => personIds.Contains(g.UserId) && g.RevokedAt is null);
         if (live is not null) return new(live.Id);
 

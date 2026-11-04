@@ -116,7 +116,7 @@ Stated so a violation is recognisable; each names the line that enforces it.
 8. **The connector never clears a Holded field it was not asked to clear** — every payload omits
    its nulls. `HoldedJson.OmitNulls`
 9. **Only `Repository` touches `HoldedDbContext`**, and this section reads no other section's
-   tables — Finance's doc-sync row arrives through `IHoldedFinanceService`, in the controller.
+   tables — Finance's doc-sync row arrives through `IFinanceService`, in the controller.
    `src/Humans.Analyzers/Internal/Rules/DbContextOwnershipRule.cs:8`
 
 ### Negative access
@@ -147,11 +147,6 @@ callers are shaped by them.
   care about the ledger at all. Splitting it would leave `Humans.Holded` a genuinely small
   mirror. Nothing has decided this; the cost is a project split plus a rename across every
   calling section.
-- **The `/Holded` and `/Finance/Holded` pair.** Both screens cover one integration, split by table
-  ownership rather than by what an admin is trying to find out
-  (nobodies-collective/Humans#1000). `/Finance/Holded` links to `/Holded`; `/Holded` links to
-  Finance's creditor pages but not back to `/Finance/Holded`. Whether one page with two sections
-  is the honest shape is undecided.
 - **A bank-movement mirror.** If a reconciliation panel ever needs the bank feed without a live
   call, a bank-movements mirror table would land here (design record).
 

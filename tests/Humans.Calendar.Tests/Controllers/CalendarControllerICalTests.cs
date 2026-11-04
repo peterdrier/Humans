@@ -50,6 +50,7 @@ public class CalendarControllerICalTests
 
     public CalendarControllerICalTests()
     {
+        StubViewer();
         _calendar.CancelOccurrenceAsync(Arg.Any<Guid>(), Arg.Any<Instant?>(), Arg.Any<Guid>(),
             Arg.Any<CancellationToken>(), Arg.Any<LocalDate?>()).Returns(true);
         _calendar.OverrideOccurrenceAsync(Arg.Any<Guid>(), Arg.Any<Instant?>(), Arg.Any<OverrideOccurrenceDto>(),
@@ -62,12 +63,109 @@ public class CalendarControllerICalTests
             .Returns(new Dictionary<Guid, TeamInfo>());
     }
 
+    public enum CalendarEventMutation
+    {
+        Create,
+        Edit,
+        Delete,
+        CancelOccurrence,
+        EditOccurrence
+    }
+
     [HumansTheory]
-    [Xunit.InlineData(null)]
-    [Xunit.InlineData("not-a-bool")]
-    [Xunit.InlineData("false")]
-    [Xunit.InlineData("true")]
-    public async Task Edit_requires_an_explicit_recurrence_choice(string? choice)
+    [Xunit.InlineData(CalendarEventMutation.Create, true)]
+    [Xunit.InlineData(CalendarEventMutation.Edit, true)]
+    [Xunit.InlineData(CalendarEventMutation.Delete, true)]
+    [Xunit.InlineData(CalendarEventMutation.CancelOccurrence, true)]
+    [Xunit.InlineData(CalendarEventMutation.EditOccurrence, true)]
+    [Xunit.InlineData(CalendarEventMutation.Create, false)]
+    [Xunit.InlineData(CalendarEventMutation.Edit, false)]
+    [Xunit.InlineData(CalendarEventMutation.Delete, false)]
+    [Xunit.InlineData(CalendarEventMutation.CancelOccurrence, false)]
+    [Xunit.InlineData(CalendarEventMutation.EditOccurrence, false)]
+    public async Task EventMutations_ResolveTheAuditActorBeforeWriting(CalendarEventMutation operation, bool accountExists)
+    {
+        var survivor = Guid.NewGuid();
+        _users.GetUserInfoAsync(_viewer, Arg.Any<CancellationToken>())
+            .Returns(accountExists ? UserInfo.Create(new User { Id = survivor }, [], [], profile: null) : null);
+        var id = Guid.NewGuid();
+        var teamId = Guid.NewGuid();
+        var start = Instant.FromUtc(2026, 6, 2, 10, 0);
+        _calendarRead.GetEventByIdAsync(id, Arg.Any<CancellationToken>()).Returns(new CalendarEventDetail(
+            id, "Existing", null, null, null, teamId, start, start.Plus(Duration.FromHours(1)),
+            IsAllDay: false, RecurrenceRule: "FREQ=DAILY", RecurrenceTimezone: "UTC", _now, _now));
+        _teams.GetTeamAsync(teamId, Arg.Any<CancellationToken>()).Returns(
+            new TeamInfo(teamId, "Team", null, "team", true, false, SystemTeamType.None,
+                false, false, false, false, _now, []));
+        _calendar.CreateEventWithResultAsync(Arg.Any<CreateCalendarEventDto>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(CalendarEventMutationResult.Success(new CalendarEvent { Id = id }));
+        _calendar.UpdateEventWithResultAsync(id, Arg.Any<CreateCalendarEventDto>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(CalendarEventMutationResult.Success(new CalendarEvent { Id = id }));
+        var form = new CalendarEventFormViewModel
+        {
+            Title = "Changed",
+            OwningTeamId = teamId,
+            StartDate = new LocalDate(2026, 6, 2),
+            StartTime = new LocalTime(10, 0),
+            EndDate = new LocalDate(2026, 6, 2),
+            EndTime = new LocalTime(11, 0),
+            TimeZoneId = "UTC",
+        };
+        var controller = CreateController();
+        using var request = new CancellationTokenSource();
+        var ct = request.Token;
+        const string original = "2026-06-02T10:00:00Z";
+
+        var result = operation switch
+        {
+            CalendarEventMutation.Create => await controller.Create(form, ct),
+            CalendarEventMutation.Edit => await controller.Edit(id, form, ct),
+            CalendarEventMutation.Delete => await controller.Delete(id, ct),
+            CalendarEventMutation.CancelOccurrence => await controller.CancelOccurrence(id, original, ct),
+            _ => await controller.EditOccurrence(id, original,
+                new OccurrenceOverrideFormViewModel { OverrideTitle = "Changed", RecurrenceTimezone = "UTC" }, ct),
+        };
+
+        if (!accountExists)
+        {
+            result.Should().BeOfType<NotFoundResult>();
+            _calendar.ReceivedCalls().Should().BeEmpty();
+        }
+        else
+        {
+            result.Should().BeOfType<RedirectToActionResult>();
+            switch (operation)
+            {
+                case CalendarEventMutation.Create:
+                    await _calendar.Received(1).CreateEventWithResultAsync(Arg.Any<CreateCalendarEventDto>(), survivor, ct);
+                    break;
+                case CalendarEventMutation.Edit:
+                    await _calendar.Received(1).UpdateEventWithResultAsync(id, Arg.Any<CreateCalendarEventDto>(), survivor, ct);
+                    break;
+                case CalendarEventMutation.Delete:
+                    await _calendar.Received(1).DeleteEventAsync(id, survivor, ct);
+                    break;
+                case CalendarEventMutation.CancelOccurrence:
+                    await _calendar.Received(1).CancelOccurrenceAsync(id, start, survivor, ct, null);
+                    break;
+                default:
+                    await _calendar.Received(1).OverrideOccurrenceAsync(id, start, Arg.Any<OverrideOccurrenceDto>(), survivor, ct, null);
+                    break;
+            }
+        }
+        await _users.Received(1).GetUserInfoAsync(_viewer, ct);
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData("IsRecurring", null)]
+    [Xunit.InlineData("IsRecurring", "not-a-bool")]
+    [Xunit.InlineData("IsRecurring", "false")]
+    [Xunit.InlineData("IsRecurring", "true")]
+    [Xunit.InlineData("IsAllDay", null)]
+    [Xunit.InlineData("IsAllDay", "not-a-bool")]
+    [Xunit.InlineData("IsAllDay", "false")]
+    [Xunit.InlineData("IsAllDay", "true")]
+    public async Task Edit_requires_explicit_calendar_mode_choices(string fieldName, string? choice)
     {
         var id = Guid.NewGuid();
         var teamId = Guid.NewGuid();
@@ -85,6 +183,7 @@ public class CalendarControllerICalTests
             ["Title"] = "Updated",
             ["OwningTeamId"] = teamId.ToString(),
             ["IsAllDay"] = "false",
+            ["IsRecurring"] = "true",
             ["StartDate"] = "2026-06-02",
             // Seconds included: the browser's "HH:mm" needs the Shell's binder, which this harness doesn't register.
             ["StartTime"] = "10:00:00",
@@ -93,7 +192,8 @@ public class CalendarControllerICalTests
             ["RecurrenceRule"] = "FREQ=WEEKLY",
             ["TimeZoneId"] = "UTC"
         };
-        if (choice is not null) fields["IsRecurring"] = choice;
+        if (choice is not null) fields[fieldName] = choice;
+        else fields.Remove(fieldName);
         var registrations = new ServiceCollection().AddLogging();
         registrations.AddControllers();
         using var services = registrations.BuildServiceProvider();
@@ -122,17 +222,19 @@ public class CalendarControllerICalTests
         if (choice is null || string.Equals(choice, "not-a-bool", StringComparison.Ordinal))
         {
             result.Should().BeOfType<ViewResult>().Which.Model.Should().BeSameAs(form);
-            controller.ModelState.ContainsKey(nameof(form.IsRecurring)).Should().BeTrue(errors);
+            controller.ModelState.ContainsKey(fieldName).Should().BeTrue(errors);
             // A malformed required property reports both conversion failure and the missing bound value.
-            controller.ModelState[nameof(form.IsRecurring)]!.Errors.Should().HaveCount(choice is null ? 1 : 2);
+            controller.ModelState[fieldName]!.Errors.Should().HaveCount(choice is null ? 1 : 2);
             _calendar.ReceivedCalls().Should().BeEmpty();
         }
         else
         {
             result.Should().BeOfType<RedirectToActionResult>(errors);
-            var expectedRule = string.Equals(choice, "true", StringComparison.Ordinal) ? "FREQ=WEEKLY" : null;
+            var changingRecurrence = string.Equals(fieldName, nameof(form.IsRecurring), StringComparison.Ordinal);
+            var expectedRule = changingRecurrence && string.Equals(choice, "false", StringComparison.Ordinal) ? null : "FREQ=WEEKLY";
+            var expectedAllDay = !changingRecurrence && string.Equals(choice, "true", StringComparison.Ordinal);
             await _calendar.Received(1).UpdateEventWithResultAsync(id,
-                Arg.Is<CreateCalendarEventDto>(d => d.RecurrenceRule == expectedRule), _viewer, ct);
+                Arg.Is<CreateCalendarEventDto>(d => d.RecurrenceRule == expectedRule && d.IsAllDay == expectedAllDay), _viewer, ct);
         }
     }
 
@@ -835,7 +937,7 @@ public class CalendarControllerICalTests
         _users.GetUserInfoAsync(_viewer, Arg.Any<CancellationToken>())
             .Returns(new ValueTask<UserInfo?>(UserInfo.Create(
                 new User { Id = _viewer, State = UserState.Active, PreferredLanguage = "en" },
-                [], [], [], profile: null, [])));
+                [], [], profile: null)));
 
     private async Task<CalendarMonthViewModel> IndexModelAsync()
     {

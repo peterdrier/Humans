@@ -80,23 +80,6 @@
     </div>
 }
 
-<p class="text-muted">
-    Holded creditor accounts (40000000–41999999). <strong>Balance</strong> is shown from the member's
-    side: a positive figure is money the organisation owes them, a negative one is money they owe it.
-    Holded's own view of the same account, debit and credit as posted, is linked from each statement.
-    Bind a member to an account from their expense report, and unbind here. An account should carry
-    exactly one member — a row showing two is flagged and needs one of them cleared.
-</p>
-
-<p class="text-muted">
-    <strong>Pay out</strong> ticks the accounts to include in a SEPA credit-transfer file for the
-    bank's "Enviar ficheros". Only single-bound accounts with a positive balance and an IBAN on their
-    Holded contact can be paid; the amount defaults to the full balance and a partial payout leaves
-    the remainder owed. Nothing here marks a report or a member as paid — the balance clears when the
-    payment is booked in Holded and the next ledger sync picks it up. Book it from
-    <a asp-action="Sepa">SEPA transfers</a> once the file is with the bank.
-</p>
-
 @if (Model.Unresolved.Count > 0)
 {
     <div class="card mb-4 border-warning">
@@ -116,7 +99,7 @@
                 @foreach (var b in Model.Unresolved)
                 {
                     <tr>
-                        <td>@b.MemberName</td>
+                        <td><vc:human user-id="@b.UserId" link="None" /></td>
                         <td class="text-muted small">@b.Source</td>
                         <td>
                             <form authorize-policy="@Humans.Finance.Contracts.FinancePolicies.Manage" asp-action="BindCreditor" method="post" class="d-flex gap-2 align-items-center">
@@ -149,7 +132,7 @@ else
 {
     @* Standalone, not wrapped around the table: each row already carries an Unbind form, and HTML
        forbids nesting one form in another. The payout inputs join this one by id instead. *@
-    <form authorize-policy="@Humans.Finance.Contracts.FinancePolicies.Manage" id="sepaForm" asp-action="GenerateSepa" method="post"
+    <form authorize-policy="@Humans.Finance.Contracts.FinancePolicies.Manage" id="sepaForm" asp-action="ReviewSepa" method="post"
           class="d-flex justify-content-end align-items-center gap-2 mb-3">
         @Html.AntiForgeryToken()
         @if (Model.Sepa.IsAvailable)
@@ -159,7 +142,7 @@ else
                    class="form-control form-control-sm" style="max-width: 7rem"
                    step="0.01" min="0.01" required value="@Amount(Model.Sepa.MaxPerTransfer)" />
             <button type="submit" class="btn btn-primary">
-                <i class="fa-solid fa-file-arrow-down me-1"></i>Generate SEPA file
+                <i class="fa-solid fa-file-arrow-down me-1"></i>Review SEPA file
             </button>
         }
         else
@@ -233,6 +216,14 @@ else
                                            aria-label="Amount to pay account @r.SupplierAccountNum" />
                                 </div>
                             </div>
+                        }
+                        else if (r.NotPayableReason == Humans.Finance.Models.CreditorAccountRowVm.InFlightReason)
+                        {
+                            <a asp-action="Sepa" class="badge rounded-pill text-bg-warning text-decoration-none"
+                               data-bs-toggle="tooltip"
+                               title="In payout file @r.PendingPayoutFileName, not booked yet. Don't pay again until it is booked or withdrawn.">
+                                <i class="fa-solid fa-paper-plane me-1"></i>in flight
+                            </a>
                         }
                         else if (r.HasDuplicateDocuments == true)
                         {
@@ -313,7 +304,7 @@ else
                             @foreach (var b in r.Bindings)
                             {
                                 <div class="d-flex align-items-center gap-2 mb-1">
-                                    <span><i class="fa-solid fa-link me-1 text-success"></i>@b.MemberName</span>
+                                    <span><i class="fa-solid fa-link me-1 text-success"></i><vc:human user-id="@b.UserId" link="None" /></span>
                                     <span class="text-muted small">(@b.Source)</span>
                                     <form authorize-policy="@Humans.Finance.Contracts.FinancePolicies.Manage" asp-action="UnbindCreditor" method="post" class="d-inline"
                                           data-confirm="Clear @b.MemberName's creditor account binding? Their next expense push will resolve it again from Holded.">
@@ -332,15 +323,6 @@ else
     </div>
 
     <script>
-        // Idempotency guard: success answers with a download, so the page never navigates and a second click would
-        // write a second payout file. A reload re-enables it, and the balances are stale by then anyway.
-        document.getElementById('sepaForm')?.addEventListener('submit', function (e) {
-            var btn = e.target.querySelector('button[type="submit"]');
-            if (!btn) return;
-            btn.disabled = true;
-            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>Generating…';
-        });
-
         // Display only: the selection posts from #sepaForm, and only payable rows carry a checkbox.
         (function () {
             var owedOnly = document.getElementById('owedOnly');
@@ -355,3 +337,23 @@ else
         })();
     </script>
 }
+
+<div class="text-muted small mt-4">
+    <p>
+        Holded creditor accounts (40000000–41999999). <strong>Balance</strong> is shown from the member's
+        side: a positive figure is money the organisation owes them, a negative one is money they owe it.
+        Holded's own view of the same account, debit and credit as posted, is linked from each statement.
+        Bind a member to an account from their expense report, and unbind here. An account should carry
+        exactly one member; a row showing two is flagged and needs one of them cleared.
+    </p>
+    <p class="mb-0">
+        <strong>Pay out</strong> ticks the accounts to include in a SEPA credit-transfer file for the
+        bank's "Enviar ficheros"; you confirm the batch before the file is generated. Only single-bound
+        accounts with a positive balance and an IBAN on their Holded contact can be paid; the amount
+        defaults to the full balance and a partial payout leaves the remainder owed.
+        <span class="badge rounded-pill text-bg-warning"><i class="fa-solid fa-paper-plane me-1"></i>in flight</span>
+        means a transfer to that account is in a file not yet booked, so don't pay it again. The balance
+        clears when the payment is booked in Holded and the next ledger sync picks it up. Book it from
+        <a asp-action="Sepa">SEPA transfers</a> once the file is with the bank.
+    </p>
+</div>

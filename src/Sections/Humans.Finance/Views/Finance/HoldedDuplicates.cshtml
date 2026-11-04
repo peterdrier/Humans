@@ -1,8 +1,7 @@
 @model Humans.Finance.Models.HoldedDuplicatesVm
 @{
     ViewData["Title"] = "Duplicate Holded Documents";
-    var names = ViewBag.MemberNames as Dictionary<Guid, string> ?? new Dictionary<Guid, string>();
-    string MemberName(Guid id) => names.TryGetValue(id, out var n) ? n : id.ToString();
+    ViewData[Humans.Base.ViewComponents.AdminNavComposition.ParentKey] = "Creditors";
 }
 
 <div class="d-flex justify-content-between align-items-center mb-4">
@@ -11,7 +10,6 @@
         <a asp-action="Creditors" class="btn btn-outline-secondary">
             <i class="fa-solid fa-arrow-left me-1"></i>Back to Creditor Accounts
         </a>
-        <a asp-action="Holded" class="btn btn-outline-secondary">Holded connector</a>
     </div>
 </div>
 
@@ -68,7 +66,7 @@ else
     <div class="card mb-4">
         <div class="card-header d-flex justify-content-between align-items-center">
             <span>
-                <strong>@MemberName(member.UserId)</strong>
+                <strong><vc:human user-id="@member.UserId" link="None" /></strong>
                 <span class="text-muted">@member.ContactName</span>
                 @if (member.SupplierAccountNum is { } account)
                 {

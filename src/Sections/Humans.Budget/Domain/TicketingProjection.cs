@@ -53,10 +53,8 @@ internal sealed class TicketingProjection
 
         while (weekStart <= EventDate.Value)
         {
-            var weekEnd = weekStart.PlusDays(6);
-            if (weekEnd > EventDate.Value) weekEnd = EventDate.Value;
-
-            var days = Period.Between(weekStart, weekEnd.PlusDays(1), PeriodUnits.Days).Days;
+            var days = Math.Min(7, Period.Between(weekStart, EventDate.Value, PeriodUnits.Days).Days + 1);
+            var weekEnd = weekStart.PlusDays(days - 1);
             var tickets = (int)Math.Round(DailySalesRate * days);
             if (isFirstWeek && weekStart <= StartDate.Value)
                 tickets += InitialSalesCount;
@@ -68,6 +66,7 @@ internal sealed class TicketingProjection
                 revenue * StripeFeePercent / 100m + tickets * StripeFeeFixed,
                 revenue * TicketTailorFeePercent / 100m);
 
+            if (weekEnd == EventDate.Value) yield break;
             weekStart = weekEnd.PlusDays(1);
         }
     }

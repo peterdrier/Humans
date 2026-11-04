@@ -29,7 +29,6 @@ internal sealed class WorkgroupsAdminController(
         {
             Now = clock.GetCurrentInstant(),
             Register = register,
-            People = await PeopleAsync(register, ct),
             RootDriveFolderId = await workgroups.GetRootDriveFolderIdAsync(ct)
         });
     }
@@ -74,7 +73,11 @@ internal sealed class WorkgroupsAdminController(
 
     [HttpGet("RegisterExisting")]
     public Task<IActionResult> RegisterExisting(CancellationToken ct) =>
-        RegisterExistingViewAsync(new RegisterExistingViewModel { RegisteredOn = clock.GetCurrentInstant().InUtc().Date }, ct);
+        RegisterExistingViewAsync(new RegisterExistingViewModel
+        {
+            RegisteredOn = clock.GetCurrentInstant().InUtc().Date,
+            Budget = new WorkgroupBudgetFormViewModel { AccountMode = "create" }
+        }, ct);
 
     [HttpPost("RegisterExisting")]
     [ValidateAntiForgeryToken]
@@ -82,7 +85,11 @@ internal sealed class WorkgroupsAdminController(
     {
         var (error, user) = await ResolveCurrentUserOrChallengeAsync(ct);
         if (error is not null) return error;
-        if (!ModelState.IsValid) return await RegisterExistingViewAsync(model, ct);
+        if (!ModelState.IsValid)
+        {
+            logger.LogWarning("Rejected invalid Workgroup registration form for user {UserId}", user.Id);
+            return await RegisterExistingViewAsync(model, ct);
+        }
 
         // Midnight UTC is precise enough for a backdated start.
         var registeredAt = model.RegisteredOn.AtMidnight().InUtc().ToInstant();
@@ -118,6 +125,7 @@ internal sealed class WorkgroupsAdminController(
 
         if (!ModelState.IsValid)
         {
+            logger.LogWarning("Workgroups admin Budget: rule InvalidForm");
             SetError("Check the budget amount and account.");
             return RedirectToAction("Details", "Workgroups", new { slug = id });
         }
@@ -209,16 +217,4 @@ internal sealed class WorkgroupsAdminController(
             : RedirectToAction("Details", "Workgroups", new { slug = id });
     }
 
-    private async Task<IReadOnlyDictionary<Guid, UserInfo>> PeopleAsync(
-        IReadOnlyList<WorkgroupInfo> register, CancellationToken ct)
-    {
-        var ids = register
-            .SelectMany(w => w.Members.Select(m => m.UserId))
-            .Distinct()
-            .ToList();
-
-        return ids.Count == 0
-            ? new Dictionary<Guid, UserInfo>()
-            : await UserService.GetUserInfosAsync(ids, ct);
-    }
 }

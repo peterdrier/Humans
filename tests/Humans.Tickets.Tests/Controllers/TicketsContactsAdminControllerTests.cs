@@ -18,18 +18,16 @@ namespace Humans.Tickets.Tests.Controllers;
 public class TicketsContactsAdminControllerTests
 {
     private static (TicketsContactsAdminController Ctrl, User CurrentUser)
-        NewController(IAttendeeContactImportService import)
+        NewController(IAttendeeContactImportService import, IUserService? suppliedUsers = null)
     {
-        var users = Substitute.For<IUserService>();
+        var users = suppliedUsers ?? Substitute.For<IUserService>();
         var currentUser = new User { Id = Guid.NewGuid() };
         users.GetUserInfoAsync(currentUser.Id, Arg.Any<CancellationToken>())
             .Returns(new ValueTask<UserInfo?>(UserInfo.Create(
                 currentUser,
                 [],
                 [],
-                [],
-                profile: null,
-                [])));
+                profile: null)));
 
         var ctrl = new TicketsContactsAdminController(import, users);
 
@@ -53,6 +51,27 @@ public class TicketsContactsAdminControllerTests
         ctrl.TempData = new TempDataDictionary(http, Substitute.For<ITempDataProvider>());
         ctrl.Url = Substitute.For<IUrlHelper>();
         return (ctrl, currentUser);
+    }
+
+    [HumansFact]
+    public async Task Apply_CancelsActorLookupBeforeBuildingOrApplyingThePlan()
+    {
+        using var request = new CancellationTokenSource();
+        var import = Substitute.For<IAttendeeContactImportService>();
+        var users = Substitute.For<IUserService>();
+        var (controller, actor) = NewController(import, users);
+        controller.HttpContext.RequestAborted = request.Token;
+        users.GetUserInfoAsync(actor.Id, Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+            return new ValueTask<UserInfo?>((UserInfo?)null);
+        });
+        await request.CancelAsync();
+
+        Func<Task> apply = async () => await controller.Apply([Guid.NewGuid()], request.Token);
+
+        await apply.Should().ThrowAsync<OperationCanceledException>();
+        import.ReceivedCalls().Should().BeEmpty();
     }
 
     [HumansFact]

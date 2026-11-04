@@ -65,7 +65,7 @@ internal sealed class TeamMessageController(
             TeamName = team.TeamName,
             TeamReplyToEmail = team.GoogleGroupEmail,
             RecipientId = id,
-            RecipientDisplayName = targetInfo.BurnerName,
+            PageTitle = string.Format(localizer["Teams_SendMessage_FromTeam"].Value, targetInfo.BurnerName, team.TeamName),
             SenderEmail = currentUser.Email ?? string.Empty,
         });
     }
@@ -103,7 +103,7 @@ internal sealed class TeamMessageController(
         model.TeamName = team.TeamName;
         model.TeamReplyToEmail = team.GoogleGroupEmail;
         model.RecipientId = id;
-        model.RecipientDisplayName = targetUser.BurnerName;
+        model.PageTitle = string.Format(localizer["Teams_SendMessage_FromTeam"].Value, targetUser.BurnerName, team.TeamName);
         model.SenderEmail = currentUser.Email ?? string.Empty;
 
         if (!ModelState.IsValid)
@@ -137,7 +137,7 @@ internal sealed class TeamMessageController(
         {
             await auditLogService.LogAsync(
                 EmailAuditActions.FacilitatedMessageSent,
-                "User", targetUser.Id,
+                AuditSubjectTypes.User, targetUser.Id,
                 $"Message sent to {targetUser.BurnerName} from team {team.TeamName} (contact info shared: {contactInfo})",
                 currentUser.Id,
                 relatedEntityId: team.TeamId,

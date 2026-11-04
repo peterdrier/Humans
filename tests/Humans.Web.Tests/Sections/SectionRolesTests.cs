@@ -39,7 +39,6 @@ public class SectionRolesTests
         "TicketsAdmin", "TicketAdmin",
         "ConsentCoordinator",
         "EventsAdmin",
-        "FeedbackAdmin",
         "FinanceAdmin",
         "StoreAdmin",
         "CantinaAdmin",
@@ -47,6 +46,8 @@ public class SectionRolesTests
         "EarlyEntryAdmin", "EETeamAdmin",
         "ShiftsAdmin", "VolunteerCoordinator",
         "ShiftsNoInfo", "NoInfoAdmin",
+        "GrantsAdmin",
+        "SurveysAdmin",
     ];
 
     [HumansFact]

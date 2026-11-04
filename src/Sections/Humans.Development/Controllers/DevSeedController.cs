@@ -48,7 +48,7 @@ internal sealed class DevSeedController(
             return NotFound();
         }
 
-        var (errorResult, user) = await RequireCurrentUserAsync();
+        var (errorResult, user) = await RequireCurrentUserAsync(cancellationToken);
         if (errorResult is not null)
         {
             return errorResult;
@@ -78,7 +78,7 @@ internal sealed class DevSeedController(
             return NotFound();
         }
 
-        var (errorResult, user) = await RequireCurrentUserAsync();
+        var (errorResult, user) = await RequireCurrentUserAsync(cancellationToken);
         if (errorResult is not null)
         {
             return errorResult;
@@ -135,7 +135,7 @@ internal sealed class DevSeedController(
             return NotFound();
         }
 
-        var (errorResult, _) = await RequireCurrentUserAsync();
+        var (errorResult, _) = await RequireCurrentUserAsync(cancellationToken);
         if (errorResult is not null)
         {
             return errorResult;

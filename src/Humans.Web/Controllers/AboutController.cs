@@ -36,7 +36,7 @@ public class AboutController(
             }
             catch (System.Text.Json.JsonException ex)
             {
-                logger.LogWarning(ex, "Failed to parse dev-stats.json");
+                logger.LogError(ex, "Failed to parse dev-stats.json");
                 stats = null;
             }
 

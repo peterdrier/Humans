@@ -28,6 +28,7 @@ internal sealed class ShiftsController(
     IShiftRowView shiftView,
     ITeamService teamService,
     IAuditLogService auditLogService,
+    IAuditViewerService auditViewer,
     IUserService userService,
     IStringLocalizer<ShiftsResource> localizer,
     // The name-gate message is Onboarding's copy, rendered from here.
@@ -39,7 +40,7 @@ internal sealed class ShiftsController(
     private readonly IUserService _userService = userService;
 
     [HttpGet("")]
-    public async Task<IActionResult> Index(Guid? departmentId, string? fromDate, string? toDate, string? period, string? day = null, bool showFull = false, [FromQuery(Name = "tags")] List<Guid>? tagIds = null, string? sort = null, [FromQuery(Name = "periods")] List<string>? periods = null)
+    public async Task<IActionResult> Index(Guid? departmentId, string? fromDate, string? toDate, string? period, string? day = null, [FromQuery(Name = "tags")] List<Guid>? tagIds = null, string? sort = null, [FromQuery(Name = "periods")] List<string>? periods = null)
     {
         var (currentUserNotFound, user) = await ResolveCurrentUserOrChallengeAsync(HttpContext.RequestAborted);
         if (currentUserNotFound is not null)
@@ -74,7 +75,6 @@ internal sealed class ShiftsController(
             toDate,
             period,
             day,
-            showFull,
             tagIds,
             sort,
             periods,
@@ -152,7 +152,7 @@ internal sealed class ShiftsController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> ToggleDay(Guid shiftId, CancellationToken ct)
     {
-        var (currentUserNotFound, user) = await ResolveCurrentUserOrChallengeAsync();
+        var (currentUserNotFound, user) = await ResolveCurrentUserOrChallengeAsync(HttpContext.RequestAborted);
         if (currentUserNotFound is not null) return currentUserNotFound;
 
         if (RedirectIfNameMissing(user) is not null)
@@ -229,7 +229,7 @@ internal sealed class ShiftsController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> BailRange(Guid signupBlockId)
     {
-        var (currentUserNotFound, user) = await ResolveCurrentUserOrChallengeAsync();
+        var (currentUserNotFound, user) = await ResolveCurrentUserOrChallengeAsync(HttpContext.RequestAborted);
         if (currentUserNotFound is not null)
         {
             return currentUserNotFound;
@@ -253,7 +253,7 @@ internal sealed class ShiftsController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Bail(Guid signupId, string? reason)
     {
-        var (currentUserNotFound, user) = await ResolveCurrentUserOrChallengeAsync();
+        var (currentUserNotFound, user) = await ResolveCurrentUserOrChallengeAsync(HttpContext.RequestAborted);
         if (currentUserNotFound is not null)
         {
             return currentUserNotFound;
@@ -338,7 +338,7 @@ internal sealed class ShiftsController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> SaveAvailability(List<int>? dayOffsets)
     {
-        var (currentUserNotFound, user) = await ResolveCurrentUserOrChallengeAsync();
+        var (currentUserNotFound, user) = await ResolveCurrentUserOrChallengeAsync(HttpContext.RequestAborted);
         if (currentUserNotFound is not null)
         {
             return currentUserNotFound;
@@ -366,7 +366,7 @@ internal sealed class ShiftsController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> SaveTagPreferences([FromForm(Name = "tagIds")] List<Guid>? tagIds)
     {
-        var (currentUserNotFound, user) = await ResolveCurrentUserOrChallengeAsync();
+        var (currentUserNotFound, user) = await ResolveCurrentUserOrChallengeAsync(HttpContext.RequestAborted);
         if (currentUserNotFound is not null)
         {
             return currentUserNotFound;
@@ -397,10 +397,11 @@ internal sealed class ShiftsController(
             return Redirect("/Settings#shifts");
         }
 
-        if (GetCurrentUserId() is not { } actorId) return Challenge();
+        var actor = await GetCurrentUserInfoAsync(HttpContext.RequestAborted);
+        if (actor is null) return Challenge();
 
         // Shifts keeps only its own knobs, created on demand for Settings' active event.
-        var active = await burnSettings.GetActiveAsync();
+        var active = await burnSettings.GetActiveAsync(HttpContext.RequestAborted);
         if (active is null)
         {
             SetError("No active event configured — set one at /Settings#event first.");
@@ -411,7 +412,7 @@ internal sealed class ShiftsController(
             active.Id, model.IsShiftBrowsingOpen, model.GlobalVolunteerCap, model.ReminderLeadTimeHours,
             new BuildSubPeriodStarts(model.FirstCrewStartOffset, model.SetupWeekStartOffset,
                 model.PreEventWeekStartOffset, model.FinishingWeekendStartOffset),
-            actorId);
+            actor.Id);
 
         SetSuccess("Event settings saved.");
         return Redirect("/Settings#shifts");
@@ -463,7 +464,7 @@ internal sealed class ShiftsController(
     public async Task<IActionResult> OrphanSignups(CancellationToken ct)
     {
         var allSignups = await signupService.GetAllForOrphanScanAsync(ct);
-        var auditedIds = await auditLogService.GetEntityIdsForEntityTypeActionsAsync(
+        var auditedIds = await auditViewer.GetEntityIdsForEntityTypeActionsAsync(
             nameof(ShiftSignup),
             [ShiftsAuditActions.ShiftSignupCreated, ShiftsAuditActions.ShiftSignupVoluntold, ShiftsAuditActions.ShiftSignupConfirmed],
             ct);
@@ -523,7 +524,8 @@ internal sealed class ShiftsController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> RevealMedical(Guid userId, CancellationToken ct)
     {
-        if (GetCurrentUserId() is not { } actorUserId) return Forbid();
+        var actor = await GetCurrentUserInfoAsync(ct);
+        if (actor is null) return Forbid();
 
         var info = await _userService.GetUserInfoAsync(userId, ct);
         var text = info?.Profile?.MedicalConditions;
@@ -531,8 +533,8 @@ internal sealed class ShiftsController(
 
         // Entity "User" + the subject's id is what the member's own medical page lists.
         await auditLogService.LogAsync(
-            ShiftsAuditActions.MedicalConditionsRevealed, "User", info.Id,
-            $"Medical conditions revealed for user {info.Id}", actorUserId);
+            ShiftsAuditActions.MedicalConditionsRevealed, AuditSubjectTypes.User, info.Id,
+            $"Medical conditions revealed for user {info.Id}", actor.Id);
         return Json(new { text });
     }
 }

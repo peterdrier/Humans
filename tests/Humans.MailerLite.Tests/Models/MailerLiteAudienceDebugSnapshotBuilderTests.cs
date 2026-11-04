@@ -127,12 +127,14 @@ public class MailerLiteAudienceDebugSnapshotBuilderTests
         snapshot.ToAdd.Should().ContainSingle().Which.Email.Should().Be("verified@example.com");
     }
 
-    [HumansFact]
-    public async Task Build_EmptyNotificationAddress_IsExcludedLikeTheSync()
+    [HumansTheory]
+    [Xunit.InlineData("")]
+    [Xunit.InlineData(" \t ")]
+    public async Task Build_BlankNotificationAddress_IsExcludedLikeTheSync(string address)
     {
         var uid = Guid.NewGuid();
         var audience = StubAudience("k", "Humans - k", members: [uid]);
-        var user = MakeUserInfo(uid, "Alice", primary: string.Empty);
+        var user = MakeUserInfo(uid, "Alice", primary: address);
 
         var snapshot = await MailerLiteAudienceDebugSnapshotBuilder.BuildAsync(
             audience, StubMl(groups: [], subscribers: []), StubUsers([user]),
@@ -374,9 +376,7 @@ public class MailerLiteAudienceDebugSnapshotBuilderTests
                 CreatedAt = now,
             },
             userEmails: emails,
-            eventParticipations: [],
             externalLogins: [],
-            profile: null,
-            communicationPreferences: []);
+            profile: null);
     }
 }

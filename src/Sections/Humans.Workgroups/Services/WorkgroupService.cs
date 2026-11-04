@@ -25,7 +25,7 @@ internal sealed partial class WorkgroupService(
     ISettingsService settings,
     IGoogleSyncService googleSync,
     IGoogleSyncWrite googleSyncWrite,
-    IHoldedFinanceWrite finance,
+    IFinanceWrite finance,
     IHoldedService holded,
     INotificationService notifications,
     IEmailService email,
@@ -128,10 +128,9 @@ internal sealed partial class WorkgroupService(
     public async Task<WorkgroupMutationResult> ApproveMemberAsync(
         Guid workgroupId, Guid actorUserId, Guid userId, bool asAdmin = false, CancellationToken ct = default)
     {
-        var workgroupResult = await RequireActiveAsync(workgroupId, ct);
+        var workgroupResult = await RequireMembershipManagerAsync(workgroupId, actorUserId, asAdmin, ct);
         if (workgroupResult.Refusal is { } workgroupRefusal) return new(Refusal: workgroupRefusal);
         var workgroup = workgroupResult.Value!;
-        if (RequireCoordinator(workgroup, actorUserId, asAdmin) is { } roleRefusal) return new(Refusal: roleRefusal);
 
         var pending = workgroup.Members.FirstOrDefault(m => m.UserId == userId && m.LeftAt is null && m.IsPending == true);
         if (pending is null) return new(Refusal: new(WorkgroupErrorKeys.NoPendingRequest));
@@ -143,10 +142,9 @@ internal sealed partial class WorkgroupService(
     public async Task<WorkgroupMutationResult> DeclineMemberAsync(
         Guid workgroupId, Guid actorUserId, Guid userId, bool asAdmin = false, CancellationToken ct = default)
     {
-        var workgroupResult = await RequireActiveAsync(workgroupId, ct);
+        var workgroupResult = await RequireMembershipManagerAsync(workgroupId, actorUserId, asAdmin, ct);
         if (workgroupResult.Refusal is { } workgroupRefusal) return new(Refusal: workgroupRefusal);
         var workgroup = workgroupResult.Value!;
-        if (RequireCoordinator(workgroup, actorUserId, asAdmin) is { } roleRefusal) return new(Refusal: roleRefusal);
 
         var pending = workgroup.Members.FirstOrDefault(m => m.UserId == userId && m.LeftAt is null && m.IsPending == true);
         if (pending is null) return new(Refusal: new(WorkgroupErrorKeys.NoPendingRequest));
@@ -157,7 +155,7 @@ internal sealed partial class WorkgroupService(
         ct = CancellationToken.None;
         await auditLog.LogAsync(WorkgroupsAuditActions.WorkgroupMembershipDeclined, AuditEntityTypes.Workgroup, workgroup.Id,
             $"Declined the join request of {name}", actorUserId,
-            relatedEntityId: userId, relatedEntityType: AuditEntityTypes.User);
+            relatedEntityId: userId, relatedEntityType: AuditSubjectTypes.User);
         await NotifyAsync([userId], WorkgroupsNotificationSources.WorkgroupMembershipDecided,
             "Workgroups_Notice_MembershipDeclined", ToInfo(workgroup), body: null, ct);
         return new();
@@ -166,10 +164,9 @@ internal sealed partial class WorkgroupService(
     public async Task<WorkgroupMutationResult> AddMemberAsync(
         Guid workgroupId, Guid actorUserId, Guid userId, bool asAdmin = false, CancellationToken ct = default)
     {
-        var workgroupResult = await RequireActiveAsync(workgroupId, ct);
+        var workgroupResult = await RequireMembershipManagerAsync(workgroupId, actorUserId, asAdmin, ct);
         if (workgroupResult.Refusal is { } workgroupRefusal) return new(Refusal: workgroupRefusal);
         var workgroup = workgroupResult.Value!;
-        if (RequireCoordinator(workgroup, actorUserId, asAdmin) is { } roleRefusal) return new(Refusal: roleRefusal);
         var target = await ResolveMemberTargetAsync(userId, ct);
         if (target is null)
             return new(Refusal: new(WorkgroupErrorKeys.NotFound));
@@ -201,7 +198,7 @@ internal sealed partial class WorkgroupService(
         // Related entity is the person admitted: their GDPR export selects audit rows by that column.
         await auditLog.LogAsync(auditAction, AuditEntityTypes.Workgroup, workgroup.Id,
             $"{name} admitted to the group", actorUserId,
-            relatedEntityId: member.UserId, relatedEntityType: AuditEntityTypes.User);
+            relatedEntityId: member.UserId, relatedEntityType: AuditSubjectTypes.User);
         await NotifyAsync([member.UserId], WorkgroupsNotificationSources.WorkgroupMembershipDecided,
             noticeKey, ToInfo(workgroup), body: null, ct);
         await RequestDriveSyncAsync(workgroup, ct);
@@ -595,7 +592,7 @@ internal sealed partial class WorkgroupService(
         return new();
     }
 
-    public async Task<WorkgroupMutationResult<HoldedExpenseAccountRef?>> SetBudgetAsync(
+    public async Task<WorkgroupMutationResult<ExpenseAccountRef?>> SetBudgetAsync(
         Guid workgroupId, Guid actorUserId, WorkgroupBudgetSave save, CancellationToken ct = default)
     {
         ArgumentNullException.ThrowIfNull(save);
@@ -609,7 +606,7 @@ internal sealed partial class WorkgroupService(
             WorkgroupStatus.Active, WorkgroupStatus.Dormant) is { } statusRefusal) return new(Refusal: statusRefusal);
 
         // Finance first, before any write: a failed create or unknown account leaves the row as it was.
-        HoldedExpenseAccountRef? account = null;
+        ExpenseAccountRef? account = null;
         var needsAccount = save.Amount is not null
             && (workgroup.HoldedAccountNumber is null
                 || (save.ExistingAccountNum is { } wanted && wanted != workgroup.HoldedAccountNumber));
@@ -647,13 +644,13 @@ internal sealed partial class WorkgroupService(
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            logger.LogWarning(ex, "Holded mirror unavailable; the link-existing picker is empty");
+            logger.LogError(ex, "Holded mirror unavailable; the link-existing picker is empty");
             return [];
         }
     }
 
     /// <summary>Finance faults log and return retry guidance; cancellation propagates.</summary>
-    private async Task<WorkgroupMutationResult<HoldedExpenseAccountRef>> ResolveBudgetAccountAsync(
+    private async Task<WorkgroupMutationResult<ExpenseAccountRef>> ResolveBudgetAccountAsync(
         Workgroup workgroup, int? existingAccountNum, CancellationToken ct)
     {
         try

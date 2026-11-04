@@ -112,14 +112,14 @@ internal sealed class OnboardingService(
 
     public async Task ProfileSavedAsync(Guid userId, CancellationToken ct = default)
     {
-        await SetConsentCheckPendingIfEligibleAsync(userId, ct);
+        var info = await userService.GetUserInfoAsync(userId, ct);
+        if (info is null) return;
+        var review = await consentService.GetConsentReviewAsync(info.Id, ct);
+        await SetConsentCheckPendingIfEligibleAsync(info, review, ct);
 
         // Finishing setup is a change of mind: before approval, saving the profile withdraws a pending
         // deletion request.
-        var info = await userService.GetUserInfoAsync(userId, ct);
-        if (info is not { IsDeletionPending: true })
-            return;
-        if ((await consentService.GetConsentReviewAsync(info.Id, ct)).IsApproved)
+        if (!info.IsDeletionPending || review.IsApproved)
             return;
 
         await accountDeletionService.CancelDeletionAsync(info.Id, ct);
@@ -130,31 +130,34 @@ internal sealed class OnboardingService(
     public Task ConsentSignedAsync(Guid userId, CancellationToken ct = default) =>
         SetConsentCheckPendingIfEligibleAsync(userId, ct);
 
-    /// <summary>Returns true if the status was set. Raises no notification: the queue shows in the sidebar's Review pill.</summary>
-    public async Task<bool> SetConsentCheckPendingIfEligibleAsync(
-        Guid userId, CancellationToken ct = default)
+    /// <summary>Raises no notification: the queue shows in the sidebar's Review pill.</summary>
+    private async Task SetConsentCheckPendingIfEligibleAsync(Guid userId, CancellationToken ct)
     {
         var info = await userService.GetUserInfoAsync(userId, ct);
         if (info is null)
-            return false;
+            return;
         var review = await consentService.GetConsentReviewAsync(info.Id, ct);
+        await SetConsentCheckPendingIfEligibleAsync(info, review, ct);
+    }
+
+    private async Task SetConsentCheckPendingIfEligibleAsync(
+        UserInfo info, ConsentReviewInfo review, CancellationToken ct)
+    {
         if (!info.NeedsConsentReview(review) || review.Status is not null)
-            return false;
-        userId = info.Id;
+            return;
+        var userId = info.Id;
 
         var hasAllConsents = await membershipCalculator.HasAllRequiredConsentsForTeamAsync(
             userId, SystemTeamIds.Volunteers, ct);
         if (!hasAllConsents)
-            return false;
+            return;
 
         var result = await consentWrite.SetConsentCheckPendingAsync(userId, ct);
         if (!result.Success)
-            return false;
+            return;
 
         logger.LogInformation(
             "User {UserId} has all consents signed, consent check set to Pending", userId);
-
-        return true;
     }
 
     public async Task<NextConsentStepData> GetNextUnsignedConsentAsync(

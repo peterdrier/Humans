@@ -6,9 +6,7 @@
         ExpenseReconLineStatus.Booked => ("bg-success", "Booked"),
         ExpenseReconLineStatus.Pending => ("bg-secondary", "Pending"),
         ExpenseReconLineStatus.Missing => ("bg-danger", "Missing"),
-        ExpenseReconLineStatus.Duplicated => ("bg-danger", "Duplicated"),
-        ExpenseReconLineStatus.AmountMismatch => ("bg-warning text-dark", "Amount mismatch"),
-        _ => ("bg-warning text-dark", "Wrong contact"),
+        _ => ("bg-danger", "Duplicated"),
     };
 }
 
@@ -17,7 +15,7 @@
         <thead>
             <tr>
                 <th>Date</th><th>Member</th><th>Report</th><th>Line</th><th class="text-end">Expected</th>
-                <th>Holded doc</th><th class="text-end">Holded total</th><th>Status</th>
+                <th>Ledger entry</th><th>Status</th>
             </tr>
         </thead>
         <tbody>
@@ -26,34 +24,31 @@
                 var (css, label) = LineBadge(l.Status);
                 <tr>
                     <td class="text-nowrap">@l.DocumentDate.ToInvariantDate()</td>
-                    <td>@l.MemberName</td>
+                    <td><vc:human user-id="@l.CreditorUserId" link="None" /></td>
                     <td><a href="/Expenses/@l.ExpenseReportId">@l.ExpenseReportId.ToString()[..8]</a></td>
                     <td>@(l.LineId is null ? "(whole report, legacy)" : l.Description)</td>
                     <td class="text-end text-nowrap">@l.ExpectedAmount.ToEuro()</td>
                     <td>
-                        @if (l.HoldedDocId is not null)
+                        @if (l.LedgerEntryNumber is { } entry)
                         {
-                            <span title="@l.HoldedDocId">@(l.HoldedDocNumber ?? l.HoldedDocId)</span>
-                            @if (l.HoldedContactName is { } contact)
-                            {
-                                <div class="small text-muted">@contact</div>
-                            }
+                            <a asp-action="CreditorStatement" asp-route-accountNum="@l.LedgerAccountNum">@l.LedgerAccountNum</a>
+                            <span>#@entry</span>
+                            <div class="small text-muted">@l.LedgerDate?.ToInvariantDate()</div>
                         }
                         else
                         {
                             <span class="text-muted">—</span>
                         }
                     </td>
-                    <td class="text-end text-nowrap">@(l.HoldedTotal is { } total ? total.ToEuro() : "—")</td>
                     <td>
                         <span class="badge @css">@label</span>
                         @if (l.Status is ExpenseReconLineStatus.Missing or ExpenseReconLineStatus.Pending)
                         {
                             <div class="small text-muted">push: @l.PushState</div>
                         }
-                        @if (l.DuplicateDocIds.Count > 0)
+                        @if (l.DuplicateEntryNumbers.Count > 0)
                         {
-                            <div class="small">@l.DuplicateDocIds.Count extra · @l.ExcessAmount.ToEuro()</div>
+                            <div class="small">@l.DuplicateEntryNumbers.Count extra · @l.ExcessAmount.ToEuro()</div>
                         }
                     </td>
                 </tr>

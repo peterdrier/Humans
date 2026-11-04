@@ -339,11 +339,7 @@ internal sealed class EventRepository(IDbContextFactory<EventGuideDbContext> fac
     public async Task<IReadOnlyList<Event>> GetEventsByStatusAsync(EventStatus status, CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
-        var query = ctx.Events
-            .AsNoTracking()
-            .Include(e => e.Category)
-            .Include(e => e.EventVenue)
-            .Include(e => e.EventModerationActions)
+        var query = WithDetails(ctx.Events.AsNoTracking())
             .Where(e => e.Status == status);
 
         return await query.ToListAsync(ct);
@@ -375,10 +371,10 @@ internal sealed class EventRepository(IDbContextFactory<EventGuideDbContext> fac
             .Where(e => e.CampId != null &&
                         (e.Status == EventStatus.Pending || e.Status == EventStatus.Approved))
             .Where(e => eventSettingsId == null || e.EventSettingsId == null || e.EventSettingsId == eventSettingsId)
-            .Select(e => new { e.Id, e.CampId, e.Title, e.StartAt, e.DurationMinutes, e.Status })
+            .Select(e => new { e.Id, e.CampId, e.Title, e.StartAt, e.DurationMinutes, e.Status, e.IsRecurring, e.RecurrenceDays })
             .ToListAsync(ct);
 
-        return rows.Select(r => new CampEventOverlap(r.Id, r.CampId, r.Title, r.StartAt, r.DurationMinutes, r.Status))
+        return rows.Select(r => new CampEventOverlap(r.Id, r.CampId, r.Title, r.StartAt, r.DurationMinutes, r.Status, r.IsRecurring, r.RecurrenceDays))
                    .ToList();
     }
 

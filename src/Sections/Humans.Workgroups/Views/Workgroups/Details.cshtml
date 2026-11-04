@@ -138,6 +138,7 @@
             <form method="post" asp-controller="WorkgroupsAdmin" asp-action="Budget" asp-route-id="@w.Id" asp-route-slug="@w.Slug">
                 <div class="form-check mb-2">
                     <input class="form-check-input" type="checkbox" id="budget-has" name="HasBudget" value="true" @(w.HasBudget ? "checked" : "") />
+                    <input type="hidden" name="HasBudget" value="false" />
                     <label class="form-check-label" for="budget-has">This workgroup has a budget</label>
                 </div>
                 <div class="mb-3" style="max-width: 240px;">
@@ -353,11 +354,14 @@
             </form>
         }
 
-        <h3 class="h6">@Localizer["Workgroups_RequestStatus"]</h3>
-        <form method="post" asp-action="RequestStatus" asp-route-slug="@w.Slug" class="mb-3">
-            <input type="text" name="question" class="form-control form-control-sm mb-2" maxlength="500" placeholder="@Localizer["Workgroups_RequestStatusPlaceholder"]" />
-            <button type="submit" class="btn btn-sm btn-outline-secondary">@Localizer["Workgroups_RequestStatus"]</button>
-        </form>
+        @if (Model.CanAdminister)
+        {
+            <h3 class="h6">@Localizer["Workgroups_RequestStatus"]</h3>
+            <form method="post" asp-action="RequestStatus" asp-route-slug="@w.Slug" class="mb-3">
+                <input type="text" name="question" class="form-control form-control-sm mb-2" maxlength="500" placeholder="@Localizer["Workgroups_RequestStatusPlaceholder"]" />
+                <button type="submit" class="btn btn-sm btn-outline-secondary">@Localizer["Workgroups_RequestStatus"]</button>
+            </form>
+        }
 
         @if (Model.CanDoMemberWork)
         {
@@ -470,7 +474,7 @@
                                 @{ var authorId = entry.Meeting?.CreatedByUserId ?? entry.Log?.AuthorUserId; }
                                 @if (authorId is { } id)
                                 {
-                                    <span class="text-muted small ms-1">— @Model.DisplayName(id)</span>
+                                    <span class="text-muted small ms-1">— <vc:human user-id="@id" link="None" /></span>
                                 }
                             </div>
                             @if (Model.CanDoMemberWork && entry.Meeting is not null)
@@ -506,12 +510,4 @@
         }
     </div>
 </div>
-}
-else
-{
-    <h3 class="h6">@Localizer["Workgroups_RequestStatus"]</h3>
-    <form method="post" asp-action="RequestStatus" asp-route-slug="@w.Slug" class="mb-3" style="max-width: 480px;">
-        <input type="text" name="question" class="form-control form-control-sm mb-2" maxlength="500" placeholder="@Localizer["Workgroups_RequestStatusPlaceholder"]" />
-        <button type="submit" class="btn btn-sm btn-outline-secondary">@Localizer["Workgroups_RequestStatus"]</button>
-    </form>
 }

@@ -1,7 +1,6 @@
 using System.Collections.Concurrent;
 using Humans.Base.Authorization;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.SignalR;
 using Humans.Users.Contracts;
 
@@ -13,16 +12,16 @@ namespace Humans.CityPlanning.Services;
 /// </summary>
 [Authorize]
 [Authorize(Policy = PolicyNames.AppAccess)]
-internal sealed class CityPlanningHub(IUserService userService, UserManager<User> userManager) : Hub
+internal sealed class CityPlanningHub(IUserService userService) : Hub
 {
     private static readonly ConcurrentDictionary<string, string> _displayNames = new(StringComparer.Ordinal);
 
     public override async Task OnConnectedAsync()
     {
-        var userId = userManager.GetUserId(Context.User!);
-        if (userId != null)
+        // SignalR's default IUserIdProvider reads the NameIdentifier claim, the same one Identity's GetUserId reads.
+        if (Guid.TryParse(Context.UserIdentifier, out var userId))
         {
-            var burnerName = (await userService.GetUserInfoAsync(Guid.Parse(userId)))?.BurnerName;
+            var burnerName = (await userService.GetUserInfoAsync(userId))?.BurnerName;
             _displayNames[Context.ConnectionId] = !string.IsNullOrWhiteSpace(burnerName)
                 ? burnerName
                 : Context.User?.Identity?.Name ?? "Unknown";

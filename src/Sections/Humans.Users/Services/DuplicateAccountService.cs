@@ -13,7 +13,8 @@ internal sealed class DuplicateAccountService(
     ITeamService teamService,
     IRoleAssignmentService roleAssignmentService,
     IGovernanceService governanceService,
-    IAuditLogService auditLogService) : IDuplicateAccountService
+    IAuditLogService auditLogService,
+    IAuditViewerService auditViewer) : IDuplicateAccountService
 {
     /// <summary>
     /// Job name on the flagging audit entries: the scan runs for whoever opens the admin
@@ -141,9 +142,9 @@ internal sealed class DuplicateAccountService(
             var ids = group.Accounts.Select(a => a.UserId).OrderBy(id => id.ToString(), StringComparer.Ordinal).ToList();
             var low = ids[0];
             var high = ids[1];
-            var flagged = await auditLogService.GetFilteredEntriesAsync(
-                entityType: nameof(User), entityId: low,
-                actions: [UsersAuditActions.DuplicateAccountFlagged], limit: 100, ct: ct);
+            var flagged = await auditViewer.GetFilteredAsync(
+                entityType: nameof(User), entityId: low, userId: null,
+                actions: [UsersAuditActions.DuplicateAccountFlagged.Name], limit: 100, ct: ct);
             if (flagged.Any(e => e.RelatedEntityId == high))
                 continue;
 
@@ -182,9 +183,7 @@ internal sealed class DuplicateAccountService(
         return new DuplicateAccountInfo
         {
             UserId = userId,
-            DisplayName = info?.BurnerName ?? "Unknown",
             Email = info?.Email,
-            ProfilePictureUrl = info?.ProfilePictureUrl,
             MembershipTier = membershipTier,
             MembershipStatus = membershipStatus,
             LastLogin = info?.LastLoginAt?.ToDateTimeUtc(),

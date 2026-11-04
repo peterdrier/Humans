@@ -92,7 +92,7 @@ internal sealed class Service(
             $"Created container '{created.Name}'",
             actorUserId,
             relatedEntityId: created.CampId, relatedEntityType: AuditEntityTypes.Camp);
-        return new(ToDto(created, await repo.GetImagesAsync([id], ct)));
+        return new(ToDto(created, await repo.GetImagesAsync([id], CancellationToken.None)));
     }
 
     public async Task<ContainerMutationResult<ContainerDto>> UpdateAsync(Guid id, ContainerData data, Guid actorUserId, CancellationToken ct = default)
@@ -150,7 +150,7 @@ internal sealed class Service(
             actorUserId,
             relatedEntityId: updated.CampId, relatedEntityType: AuditEntityTypes.Camp);
         await DeleteFilesAsync(obsoletePaths, id, "an update");
-        return new(ToDto(updated, await repo.GetImagesAsync([id], ct)));
+        return new(ToDto(updated, await repo.GetImagesAsync([id], CancellationToken.None)));
     }
 
     public async Task DeleteAsync(Guid id, Guid actorUserId, CancellationToken ct = default)

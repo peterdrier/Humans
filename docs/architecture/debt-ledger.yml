@@ -23,7 +23,7 @@
 # citing its id in the PR. Shape, `status:` values and `root:` linking:
 # memory/process/debt-ledger-additions.md.
 version: 1
-next_id: 106
+next_id: 108
 recent_sections: [Campaigns, Feedback, Governance]
 themes:
   - id: grandfathered-hum0028-invalidators
@@ -62,7 +62,7 @@ themes:
     detect: "build:HUM_USER_DISPLAYNAME"
     review: light
     last_swept: 2026-10-22
-    remaining: 3
+    remaining: 2
     notes: >-
       Production reported users.legacy-gdpr-tombstones pending: 0, done: true
       on 2026-10-22. Retired its data-migration registration, name-shape
@@ -77,7 +77,7 @@ themes:
     detect: "grep -rl --include='*.cs' 'pragma warning disable CS0618' src | wc -l"
     review: light
     last_swept: 2026-10-21
-    remaining: 3
+    remaining: 2
     notes: >-
       Swept 2026-10-21: the cross-section nav reads are gone, and 6 pragmas
       (CurrentUserEnricher, HttpCurrentUserContext, AccountController,
@@ -152,38 +152,21 @@ themes:
     title: One-off inbox items
     detect: "cat docs/architecture/debt-ledger.yml src/Sections/*/Docs/debt.yml 2>/dev/null | grep -c '^  - added:'"
     review: per-item
-    last_swept: 2026-11-02
-    remaining: 6
+    last_swept: 2026-11-04
+    remaining: 3
     notes: >-
       Each inbox entry carries its own review tier and a stable `id`; an item is
       closed by deleting its row and citing the id in the PR — ids are never
       recycled. Shape, id format and `status:` values:
-      memory/process/debt-ledger-additions.md. Count re-measured 2026-11-02
+      memory/process/debt-ledger-additions.md. Count re-measured 2026-11-04
       across the central ledger plus every src/Sections/*/Docs/debt.yml.
 inbox:
   # Seeded from the open items in docs/architecture/tech-debt-2026-04-23.md.
-  - added: 2026-10-30
-    id: CENTRAL-105
-    status: partial
-    what: "IHoldedClient is still public because sections call the Holded connector directly instead of through IHoldedService / IHoldedWrite (the single-mirror refactor, phase 1 built that face). Remaining callers: Finance (Service, HoldedDocumentSync, SepaBankBooking), Expenses (ExpenseHoldedPublisher, ExpenseReportBackgroundProcessor), Store (Service, StoreInvoiceIssuer). Workgroups now reads active expense accounts through IHoldedService.GetChartAsync; Expenses report and reconciliation readers use IHoldedService.IsConfigured. Finance journal remainders now post through IHoldedWrite.PostJournalEntryAsync; SepaBankBooking still uses the connector for live balance/tag checks, purchase payments and bank reconciliation. Each later phase moves one section's callers onto IHoldedService/IHoldedWrite and deletes its own Holded copies; when none remain, IHoldedClient goes internal. Design: the single-mirror section-flow records (holded-, pleo-, expenses-, finance-section.html, 2026-10-30)."
-    review: panel
-  - added: 2026-10-21
-    id: CENTRAL-89
-    what: "Retirement PR for data migration finance.iban-to-payment-details (Users decomposition, Finance): once GET /api/data-migrations reports it done on production, delete the migration and these legacy readers: PaymentDetailsService's legacy fallback (LegacyIban) and ProfileInfo.Iban with its HUM_PROFILE_IBAN obsolete; Users' erase line that nulls Profile.Iban stays until the USERS drop row. Quote the production reading and date in the PR; it is the standing approval for the matching USERS drop row (memory/architecture/no-drops-until-prod-verified.md)."
-    review: panel
-  - added: 2026-10-21
-    id: CENTRAL-92
-    what: "Retirement PR for data migration consent.profile-review (Users decomposition, Consent): once GET /api/data-migrations reports it done on production, delete the migration and these legacy readers: ConsentReviewService's LegacyReview fallback, UserInfo.IsRejected's legacy arm and the UserStateClassifier profile.RejectedAt arm, the obsolete ProfileInfo review fields (HUM_PROFILE_REVIEW), LegacyConsentCheckStatus, the UserFixtures.StateFor pragma, and Users' export/erase of the legacy review columns. Quote the production reading and date in the PR; it is the standing approval for the matching USERS drop row (memory/architecture/no-drops-until-prod-verified.md)."
-    review: panel
-  - added: 2026-10-21
-    id: CENTRAL-93
-    what: "Retirement PR for data migration tickets.event-participations (Users decomposition, Tickets): once GET /api/data-migrations reports it done on production, delete the migration and these legacy readers: EventParticipationService's LegacyRows, fallback, write seed and cleared-row handling, UserInfo.EventParticipations and its pragmas (HUM_USER_PARTICIPATIONS), LegacyEventParticipationInfo, the Legacy* participation enums and the Users LegacyEventParticipations export slice. Quote the production reading and date in the PR; it is the standing approval for the matching USERS drop row (memory/architecture/no-drops-until-prod-verified.md)."
-    review: panel
-  - added: 2026-10-21
-    id: CENTRAL-94
-    what: "Retirement PR for data migration email.communication-preferences (Users decomposition, Email): once GET /api/data-migrations reports it done on production, delete the migration and these legacy readers: CommunicationPreferenceService's legacy fallback and cleared-row semantics, UserInfo.CommunicationPreferences (HUM_USER_COMMPREFS), LegacyMessageCategory, and Users' LegacyCommunicationPreferences export slice and erase. Quote the production reading and date in the PR; it is the standing approval for the matching USERS drop row (memory/architecture/no-drops-until-prod-verified.md)."
-    review: panel
   - added: 2026-10-21
     id: CENTRAL-95
     what: "Retirement PR for data migration google.workspace-identities (Users decomposition, GoogleIntegration): once GET /api/data-migrations reports it done on production, delete the migration and these legacy readers: WorkspaceIdentityService's legacy fallback, UserEmailInfo.IsGoogle/GoogleEmailStatus (HUM_USER_GOOGLE_IDENTITY), LegacyGoogleEmailStatus, the merge re-FK's IsGoogle = false, and the Users export keys IsGoogle/GoogleEmailStatus. Quote the production reading and date in the PR; it is the standing approval for the matching USERS drop row (memory/architecture/no-drops-until-prod-verified.md)."
     review: panel
+  - added: 2026-11-04
+    id: CENTRAL-107
+    what: "OnboardingWidgetController.Shifts decides the viewer's early-entry privilege itself (\"onboarding viewers are never privileged\") before asking EventSettingsInfo.IsEarlyEntryClosed; the effective lock is a Shifts fact. Fix: Shifts' read for the step carries the viewer's effective early-entry lock, which is new Shifts surface and needs Peter. Found by section-doctor's controller-intent thread on Onboarding."
+    review: light

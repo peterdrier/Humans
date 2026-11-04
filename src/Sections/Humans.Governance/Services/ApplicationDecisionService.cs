@@ -224,11 +224,10 @@ internal sealed class ApplicationDecisionService(
         if (application is null || application.UserId != userId)
             return null;
 
-        var (reviewerName, historyDtos) = await StitchHistoryAsync(application, ct);
+        var historyDtos = ProjectHistory(application);
 
         return new ApplicationUserDetailDto(
             Id: application.Id,
-            UserId: application.UserId,
             Status: application.Status,
             MembershipTier: application.MembershipTier,
             Motivation: application.Motivation,
@@ -238,7 +237,7 @@ internal sealed class ApplicationDecisionService(
             SubmittedAt: application.SubmittedAt,
             ReviewStartedAt: application.ReviewStartedAt,
             ResolvedAt: application.ResolvedAt,
-            ReviewerName: reviewerName,
+            ReviewedByUserId: application.ReviewedByUserId,
             ReviewNotes: application.ReviewNotes,
             History: historyDtos);
     }
@@ -376,7 +375,6 @@ internal sealed class ApplicationDecisionService(
                 Id: a.Id,
                 UserId: a.UserId,
                 UserEmail: user?.Email ?? string.Empty,
-                UserDisplayName: user?.BurnerName ?? string.Empty,
                 Status: a.Status,
                 MembershipTier: a.MembershipTier,
                 SubmittedAt: a.SubmittedAt,
@@ -440,14 +438,12 @@ internal sealed class ApplicationDecisionService(
             return null;
 
         var applicant = await userService.GetUserInfoAsync(application.UserId, ct);
-        var (reviewerName, history) = await StitchHistoryAsync(application, ct);
+        var history = ProjectHistory(application);
 
         return new ApplicationAdminDetailDto(
             Id: application.Id,
             UserId: application.UserId,
             UserEmail: applicant?.Email ?? string.Empty,
-            UserDisplayName: applicant?.BurnerName ?? string.Empty,
-            UserProfilePictureUrl: applicant?.ProfilePictureUrl,
             Status: application.Status,
             MembershipTier: application.MembershipTier,
             Motivation: application.Motivation,
@@ -457,8 +453,7 @@ internal sealed class ApplicationDecisionService(
             Language: application.Language,
             SubmittedAt: application.SubmittedAt,
             ReviewStartedAt: application.ReviewStartedAt,
-            ResolvedAt: application.ResolvedAt,
-            ReviewerName: reviewerName,
+            ReviewedByUserId: application.ReviewedByUserId,
             ReviewNotes: application.ReviewNotes,
             History: history);
     }
@@ -491,13 +486,7 @@ internal sealed class ApplicationDecisionService(
             ApplicationMotivation: a.Motivation,
             SubmittedAt: a.SubmittedAt,
             Status: a.Status,
-            Votes: a.BoardVotes
-                .Select(v => new BoardVoteRow(
-                    BoardMemberUserId: v.BoardMemberUserId,
-                    Vote: v.Vote,
-                    Note: v.Note,
-                    VotedAt: v.VotedAt))
-                .ToList())).ToList();
+            Votes: ProjectBoardVotes(a))).ToList();
 
         var boardMemberIds = await roleAssignmentService.GetActiveUserIdsInRoleAsync(
             RoleNames.Board, ct);
@@ -519,24 +508,11 @@ internal sealed class ApplicationDecisionService(
         var applicantInfo = await userService.GetUserInfoAsync(application.UserId, ct);
         var profile = applicantInfo?.Profile;
 
-        var voteRows = application.BoardVotes
-            .Select(v => new BoardVoteRow(
-                BoardMemberUserId: v.BoardMemberUserId,
-                Vote: v.Vote,
-                Note: v.Note,
-                VotedAt: v.VotedAt))
-            .ToList();
-
         return new BoardVotingDetailData(
             ApplicationId: application.Id,
             UserId: application.UserId,
-            DisplayName: applicantInfo?.BurnerName ?? string.Empty,
-            ProfilePictureUrl: applicantInfo?.ProfilePictureUrl,
-            Email: applicantInfo?.Email ?? string.Empty,
             FirstName: profile?.FirstName ?? string.Empty,
             LastName: profile?.LastName ?? string.Empty,
-            City: profile?.City,
-            CountryCode: profile?.CountryCode,
             MembershipTier: application.MembershipTier,
             Status: application.Status,
             Motivation: application.Motivation,
@@ -544,7 +520,7 @@ internal sealed class ApplicationDecisionService(
             SignificantContribution: application.SignificantContribution,
             RoleUnderstanding: application.RoleUnderstanding,
             SubmittedAt: application.SubmittedAt,
-            Votes: voteRows);
+            Votes: ProjectBoardVotes(application));
     }
 
     public async Task<ApplicationDecisionResult> CastBoardVoteAsync(
@@ -698,34 +674,23 @@ internal sealed class ApplicationDecisionService(
     public Task EraseForUserAsync(Guid userId, CancellationToken ct) =>
         repository.ScrubFreeTextForUserAsync(userId, clock.GetCurrentInstant(), ct);
 
-    private async Task<(string? ReviewerName, IReadOnlyList<ApplicationStateHistoryDto> History)> StitchHistoryAsync(
-        MemberApplication application, CancellationToken ct)
-    {
-        var userIds = new HashSet<Guid>();
-        if (application.ReviewedByUserId is { } reviewerId)
-            userIds.Add(reviewerId);
-        foreach (var row in application.StateHistory)
-            userIds.Add(row.ChangedByUserId);
+    private static IReadOnlyList<BoardVoteRow> ProjectBoardVotes(MemberApplication application) =>
+        application.BoardVotes
+            .Select(vote => new BoardVoteRow(
+                BoardMemberUserId: vote.BoardMemberUserId,
+                Vote: vote.Vote,
+                Note: vote.Note,
+                VotedAt: vote.VotedAt))
+            .ToList();
 
-        IReadOnlyDictionary<Guid, UserInfo> users = userIds.Count == 0
-            ? new Dictionary<Guid, UserInfo>()
-            : await userService.GetUserInfosAsync(userIds, ct);
-
-        var reviewerName = application.ReviewedByUserId is { } rid
-            ? users.GetValueOrDefault(rid)?.BurnerName
-            : null;
-
-        var history = application.StateHistory
+    private static IReadOnlyList<ApplicationStateHistoryDto> ProjectHistory(MemberApplication application) =>
+        application.StateHistory
             .Select(h => new ApplicationStateHistoryDto(
                 Status: h.Status,
                 ChangedAt: h.ChangedAt,
                 ChangedByUserId: h.ChangedByUserId,
-                ChangedByDisplayName: users.GetValueOrDefault(h.ChangedByUserId)?.BurnerName,
                 Notes: h.Notes))
             .ToList();
-
-        return (reviewerName, history);
-    }
 
     private async Task<CultureInfo> SendDecisionEmailAsync(
         MemberApplication application,

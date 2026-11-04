@@ -37,6 +37,30 @@ internal sealed record SepaPayoutResult(string? FileName, string? Xml, string? E
     public bool Succeeded => ErrorMessage is null;
 }
 
+/// <summary>One transfer as the file would carry it. <paramref name="CreditorName"/> is the name the bank receives;
+/// <paramref name="Owed"/> is the balance before this payment.</summary>
+internal sealed record SepaPayoutPreviewLine(
+    int SupplierAccountNum, Guid UserId, string CreditorName, string IbanMasked, decimal Owed, decimal Amount)
+{
+    public decimal OwedAfter => Owed - Amount;
+}
+
+internal sealed record SepaPayoutPreview(IReadOnlyList<SepaPayoutPreviewLine> Lines, string? ErrorMessage)
+{
+    public static SepaPayoutPreview Failure(string message) => new([], message);
+
+    public bool Succeeded => ErrorMessage is null;
+}
+
+/// <summary><paramref name="Matches"/> is keyed by account and missing where no check applies.</summary>
+internal sealed record SepaReviewVm(
+    IReadOnlyList<SepaPayoutPreviewLine> Lines,
+    IReadOnlyDictionary<int, CreditorMatchVm> Matches,
+    decimal MaxPerTransfer)
+{
+    public decimal Total => Lines.Sum(l => l.Amount);
+}
+
 /// <summary><paramref name="UnavailableReason"/> is null when configured, otherwise what the admin must set.</summary>
 internal sealed record SepaPayoutSettings(decimal MaxPerTransfer, string? UnavailableReason)
 {
@@ -53,8 +77,8 @@ internal sealed record SepaBankMovementVm(
     string Status,
     string Reason);
 
-internal sealed record SepaTransferVm(
-    SepaPayoutTransferRow Row, string MemberName, string? BookedByName, string? WithdrawnByName = null);
+/// <summary>MemberName supplies native confirmation prompts; browser attribution renders Row's user IDs.</summary>
+internal sealed record SepaTransferVm(SepaPayoutTransferRow Row, string MemberName);
 
 /// <summary><paramref name="BatchLine"/> is the single bank line that debited the whole file, when there is
 /// one.</summary>
@@ -62,7 +86,7 @@ internal sealed record SepaPayoutFileVm(
     Guid FileId,
     string FileName,
     Instant GeneratedAt,
-    string GeneratedByName,
+    Guid GeneratedByUserId,
     IReadOnlyList<SepaTransferVm> Transfers,
     SepaBatchLineVm? BatchLine);
 

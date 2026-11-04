@@ -1,16 +1,7 @@
 @model Humans.Events.Models.AdminEventFormViewModel
 @{
     ViewData["Title"] = "Edit Event";
-    var statusClass = Model.Status switch
-    {
-        EventStatus.Draft => "bg-secondary",
-        EventStatus.Pending => "bg-warning text-dark",
-        EventStatus.Approved => "bg-success",
-        EventStatus.Rejected => "bg-danger",
-        EventStatus.ResubmitRequested => "bg-info",
-        EventStatus.Withdrawn => "bg-dark",
-        _ => "bg-secondary"
-    };
+    var statusClass = EventStatusPresentation.BadgeClass(Model.Status);
 }
 
 <nav aria-label="breadcrumb">

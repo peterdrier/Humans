@@ -56,7 +56,7 @@ The section's methods, grouped by the question each one answers.
 | Shape | The question | Methods | Asked by |
 |---|---|---|---|
 | **A — Accounts to spend against** | Which accounts exist for spending, and make the missing ones | `GetProvisioningPlanAsync`, `ProvisionAsync`, `GetHoldedAccountIdForCategoryAsync`, `GetCategoryMapAsync`, `CreateOrLinkExpenseAccountAsync`, `SetExpenseAccountActiveAsync`, `ListExpenseAccountsAsync` | Finance's own page; Expenses, to book a line; Workgroups; Backdoor |
-| **B — What was spent** | Pull the invoices; the per-category total, what didn't attribute, how the pull went | `SyncAsync`, `GetActualsForYearAsync`, `GetUnmatchedAsync`, `GetDocSyncInfoAsync`, `GetConnectorOverviewAsync` | Finance's own nightly job and Unmatched page (the sync); Holded's page (the sync row); Budget's year page; Finance's own pages; Backdoor |
+| **B — What was spent** | The per-category total over Holded's purchase mirror, what didn't attribute, how the pull went | `GetActualsForYearAsync`, `GetUnmatchedAsync` | Budget's year page; Finance's own pages; Backdoor |
 | **C — Whose account is this** | Which Holded creditor account is this member's — set it, correct it, clear it | `GetCreditorContactByUserAsync`, `EnsureCreditorContactAsync`, `SetCreditorAccountNumAsync`, `SetCreditorContactAsync`, `ClearCreditorContactAsync` | Expenses' push path and views; Finance's own page |
 | **D — What is owed** | What does the org owe this member, and the journal behind it | `GetCreditorStatusAsync`, `GetCreditorLedgerAsync`, `ListCreditorAccountsAsync` | Expenses; Finance's own pages; Backdoor |
 | **E — Paying it** | Is payout configured; make the bank file; what files exist | `GetSepaPayoutSettings`, `GenerateSepaPayoutAsync`, `GetSepaPayoutsAsync`, `GetSepaTransfersAsync` | Finance's own pages; Backdoor |
@@ -80,8 +80,6 @@ What the grouping shows:
 - **A and C each have a half only Finance's own pages call.** The provisioning plan and apply, the
   manual bind and the unbind live on the internal admin interface beside E and F, not on the public
   cross-section one; their result records live in `Models/`, not the contracts leaf.
-- **B's `GetDocSyncInfoAsync` carries a C fact.** Its result includes a count of creditor bindings,
-  which is not sync state. Holded's page reads it.
 
 ## 3. Structure
 
@@ -98,7 +96,7 @@ Humans.Finance/
     HoldedMatcher.cs           pure attribution, no dependencies
     SepaPaymentFileBuilder.cs  pure pain.001 XML from a batch, no dependencies
     SepaSchema.cs, SepaText.cs the schema and the character rules that builder obeys
-    IHoldedFinanceAdminService.cs  Finance's own pages' interface
+    IFinanceAdminService.cs  Finance's own pages' interface
     FinanceEmails.cs, FinanceEmailPreviews.cs  the payout email and its preview sample
   Jobs/                        the sweep's Hangfire shim
   Domain/                      the entities and their enums
@@ -206,7 +204,7 @@ Specified, not built. Not ranked, not struck.
   admin-only ([`localization-admin-exempt`](../../../../memory/code/localization-admin-exempt.md)).
 - **No per-report paid state.** A SEPA payout pays a balance, not a report.
 - **No nullable `Balance` on the creditor DTOs.** Both reads return null wholesale when an account has
-  no cached lines. `HoldedCreditorAccountRow` keeps its `decimal?` — the admin list carries accounts
+  no cached lines. `CreditorAccountRow` keeps its `decimal?` — the admin list carries accounts
   with no lines yet.
 - **No split of `Service.cs` into per-shape services.** The shapes share the repository, the clock
   and the contact cache; the pure parts (matcher, file builder) are already out.

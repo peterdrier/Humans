@@ -23,9 +23,11 @@ independently enforce lifecycle and document rules; they do not authorize the ca
   That flag controls listing in the community calendar, not privacy on the register.
 - Nested meeting, log, document and comment IDs must belong to the route's group.
   A mismatch returns 404 before mutation, including form submissions.
-- Join, leave, status requests and posting comments do not require the Member operation.
+- Join, leave and posting comments do not require the Member operation.
   Their service rules enforce Active status, membership when leaving, the last-coordinator
-  replacement and the comment window. A status request is rate-limited by nothing.
+  replacement and the comment window.
+- Requesting a status update requires the `BoardOrAdmin` policy; anyone else gets 403 and
+  the page hides the form. It is rate-limited by nothing.
 - Join is a request. Approve, Decline and Add (`ManageMembersAsync`) require a current
   coordinator of an Active group or Board/Admin; the service re-checks the coordinator role
   unless the controller passed `asAdmin`. A plain member gets 403.

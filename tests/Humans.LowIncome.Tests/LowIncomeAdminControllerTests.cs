@@ -31,8 +31,8 @@ public sealed class LowIncomeAdminControllerTests
         _users.GetUserInfoAsync(_actor, Arg.Any<CancellationToken>()).Returns(new ValueTask<UserInfo?>(new UserInfo(
             _actor, "Admin", false, "en", null, Instant.FromUtc(2026, 1, 1, 0, 0),
             null, null, null, null, null, null,
-            null, null, null, [], [], [],
-            UserFixtures.Profile(burnerName: "Admin"), [])));
+            null, null, null, [], [],
+            UserFixtures.Profile(burnerName: "Admin"))));
         var http = new DefaultHttpContext
         {
             User = new ClaimsPrincipal(new ClaimsIdentity(
@@ -119,6 +119,20 @@ public sealed class LowIncomeAdminControllerTests
         else await controller.Grant(Guid.NewGuid(), CancellationToken.None);
 
         Message(controller, TempDataKeys.ErrorMessage).Should().Contain("no open Grants program");
+    }
+
+    [HumansFact]
+    public async Task UnavailableRecipient_IsShownAsAnError_AndLogged()
+    {
+        _grants.IssueAsync(Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<string?>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(new GrantIssueResult(Guid.Empty, GrantWriteRefusal.RecipientUnavailable));
+        var controller = NewController();
+
+        var result = await controller.Grant(Guid.NewGuid(), CancellationToken.None);
+
+        result.Should().BeOfType<RedirectToActionResult>();
+        Message(controller, TempDataKeys.ErrorMessage).Should().Contain("no longer available");
+        _logger.Warnings.Should().ContainSingle().Which.Should().BeNull();
     }
 
     [HumansFact]

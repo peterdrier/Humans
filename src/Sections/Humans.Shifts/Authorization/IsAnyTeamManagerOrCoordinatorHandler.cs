@@ -1,8 +1,10 @@
+using Humans.Users.Contracts;
 using System.Security.Claims;
 using Humans.Shifts.Contracts;
 using Humans.Base.Constants;
 using Humans.Base.Authorization;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 
 namespace Humans.Shifts.Authorization;
 
@@ -10,7 +12,8 @@ namespace Humans.Shifts.Authorization;
 /// A privileged dashboard role OR coordinator of any team, in one handler because a policy's requirements AND.
 /// Coordinator team ids come from Teams' in-RAM model, so no request hits the DB.
 /// </summary>
-internal sealed class IsAnyTeamManagerOrCoordinatorHandler(IShiftService shiftManagement)
+internal sealed class IsAnyTeamManagerOrCoordinatorHandler(
+    IShiftService shiftManagement, IUserService users, IHttpContextAccessor httpContextAccessor)
     : AuthorizationHandler<IsAnyTeamManagerOrCoordinatorRequirement>
 {
     protected override async Task HandleRequirementAsync(
@@ -33,7 +36,10 @@ internal sealed class IsAnyTeamManagerOrCoordinatorHandler(IShiftService shiftMa
         if (userIdClaim is null || !Guid.TryParse(userIdClaim.Value, out var userId))
             return;
 
-        var coordinatedTeamIds = await shiftManagement.GetCoordinatorTeamIdsAsync(userId);
+        var ct = httpContextAccessor.HttpContext?.RequestAborted ?? CancellationToken.None;
+        var viewer = await users.GetUserInfoAsync(userId, ct);
+        if (viewer is null) return;
+        var coordinatedTeamIds = await shiftManagement.GetCoordinatorTeamIdsAsync(viewer.Id, ct);
         if (coordinatedTeamIds.Count > 0)
             context.Succeed(requirement);
     }

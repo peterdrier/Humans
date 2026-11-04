@@ -1,17 +1,20 @@
+using Humans.Users.Contracts;
 using Humans.EarlyEntry.Contracts;
 using Humans.Base.Authorization;
 using System.Security.Claims;
 using Humans.Teams.Contracts;
 using Humans.Base.Constants;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 
 namespace Humans.Teams.Authorization;
 
 /// <summary>
-/// Admin, TeamsAdmin and Board: any team, any requirement. EETeamAdmin: any team, ManageEarlyEntry only. A coordinator
-/// of the team or its parent department: that team, both requirements. Everyone else: deny.
+/// Admin and TeamsAdmin: any team, any requirement. EarlyEntryAdmin: any team, ManageEarlyEntry only. A coordinator
+/// of the team or its parent department: that team, both requirements. Everyone else, Board included: deny. Board
+/// reads the per-team admin pages through Teams' Read policy.
 /// </summary>
-internal sealed class TeamAuthorizationHandler(ITeamService teamService)
+internal sealed class TeamAuthorizationHandler(ITeamService teamService, IUserService users, IHttpContextAccessor httpContextAccessor)
     : AuthorizationHandler<TeamOperationRequirement, TeamInfo>
 {
     protected override async Task HandleRequirementAsync(
@@ -19,7 +22,7 @@ internal sealed class TeamAuthorizationHandler(ITeamService teamService)
         TeamOperationRequirement requirement,
         TeamInfo resource)
     {
-        if (TeamsRoles.IsTeamsAdminBoardOrAdmin(context.User))
+        if (TeamsRoles.IsTeamsAdmin(context.User) || RoleChecks.IsAdmin(context.User))
         {
             context.Succeed(requirement);
             return;
@@ -36,8 +39,12 @@ internal sealed class TeamAuthorizationHandler(ITeamService teamService)
         if (userIdClaim is null || !Guid.TryParse(userIdClaim.Value, out var userId))
             return;
 
-        var teamsById = await teamService.GetTeamsAsync();
-        if (TeamCoordinatorAccess.IsCoordinatorOfActiveTeam(teamsById, resource.Id, userId))
+        var ct = httpContextAccessor.HttpContext?.RequestAborted ?? CancellationToken.None;
+        var user = await users.GetUserInfoAsync(userId, ct);
+        if (user is null) return;
+
+        var teamsById = await teamService.GetTeamsAsync(ct);
+        if (TeamCoordinatorAccess.IsCoordinatorOfActiveTeam(teamsById, resource.Id, user.Id))
         {
             context.Succeed(requirement);
         }

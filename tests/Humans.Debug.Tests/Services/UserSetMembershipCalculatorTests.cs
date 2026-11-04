@@ -127,10 +127,6 @@ public class UserSetMembershipCalculatorTests
         BuildStartOffset: -7,
         EventEndOffset: 5,
         StrikeEndOffset: 8,
-        FirstCrewStartOffset: -10,
-        SetupWeekStartOffset: -7,
-        PreEventWeekStartOffset: -3,
-        FinishingWeekendStartOffset: 6,
         EarlyEntryCapacity: new Dictionary<int, int>(),
         BarriosEarlyEntryAllocation: null,
         EarlyEntryClose: null);
@@ -167,9 +163,7 @@ public class UserSetMembershipCalculatorTests
                 CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
             },
             userEmails: [],
-            eventParticipations: [],
             externalLogins: [],
-            profile: profile,
-            communicationPreferences: []);
+            profile: profile);
     }
 }

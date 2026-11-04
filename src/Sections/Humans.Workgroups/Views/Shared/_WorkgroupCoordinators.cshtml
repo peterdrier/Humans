@@ -1,0 +1,16 @@
+@model WorkgroupInfo
+@{
+    var coordinators = Model.Coordinators().OrderBy(m => m.JoinedAt).ToList();
+    for (var i = 0; i < coordinators.Count; i++)
+    {
+        if (i > 0) { WriteLiteral(", "); }
+        var human = await Component.InvokeAsync(typeof(HumanViewComponent), new
+        {
+            userId = coordinators[i].UserId,
+            link = HumanLink.None,
+        });
+        using var writer = new System.IO.StringWriter();
+        human.WriteTo(writer, System.Text.Encodings.Web.HtmlEncoder.Default);
+        Write(new Microsoft.AspNetCore.Html.HtmlString(writer.ToString().Trim()));
+    }
+}

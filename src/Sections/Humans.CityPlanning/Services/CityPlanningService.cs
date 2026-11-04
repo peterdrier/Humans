@@ -393,9 +393,7 @@ internal sealed class CityPlanningService(
         if (season is null) return false;
         if (season.Year != settings.Year) return false;
 
-        var camp = (await campService.GetCampsForYearAsync(settings.Year, cancellationToken))
-            .FirstOrDefault(c => c.Id == season.CampId);
-        if (camp?.IsLead(userId) != true) return false;
+        if (!season.IsLead(userId)) return false;
 
         // After the open window a lead may still adjust the polygon they placed, never create one.
         return settings.PlacementState == BarrioPlacementState.Open

@@ -55,7 +55,6 @@ internal static class SurveyResultsBuilder
     private static SurveyResultsRespondentViewModel BuildRespondent(RespondentDetail r) => new()
     {
         UserId = r.UserId,
-        Name = r.Name,
         SubmittedAt = FormatInstant(r.SubmittedAt),
         Answers = r.Answers,
     };
@@ -67,6 +66,9 @@ internal static class SurveyResultsBuilder
 internal sealed class SurveyResultsViewModel
 {
     public Guid SurveyId { get; init; }
+
+    /// <summary>The downloads: Surveys Admin and Admin, or the author once closed. Board reads the page only.</summary>
+    public bool CanExport { get; set; }
     public string Title { get; init; } = string.Empty;
     public SurveyStatus Status { get; init; }
     public int InvitedCount { get; init; }
@@ -104,7 +106,6 @@ internal sealed class SurveyResultsQuestionViewModel
 internal sealed class SurveyResultsRespondentViewModel
 {
     public Guid UserId { get; init; }
-    public string Name { get; init; } = string.Empty;
     public string SubmittedAt { get; init; } = "—";
     public IReadOnlyList<RespondentAnswer> Answers { get; init; } = [];
 }

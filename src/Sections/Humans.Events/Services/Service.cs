@@ -229,7 +229,7 @@ internal sealed class EventService(
         try
         {
             var submitter = await userService.GetUserInfoAsync(guideEvent.SubmitterUserId, CancellationToken.None);
-            if (submitter?.Email is null)
+            if (string.IsNullOrWhiteSpace(submitter?.Email))
             {
                 logger.LogWarning(
                     "Skipping lifecycle email for event {EventId}: submitter {SubmitterId} has no notification email",
@@ -474,20 +474,33 @@ internal sealed class EventService(
     public Task<HashSet<Guid>> GetFavouriteEventIdsAsync(Guid userId, CancellationToken ct = default)
         => repo.GetFavouriteEventIdsAsync(userId, ct);
 
-    public async Task<IReadOnlyList<EventFavouriteInfo>> GetFavouritesWithEventsAsync(Guid userId, CancellationToken ct = default)
+    public async Task<IReadOnlyList<EventFavouriteInfo>> GetFavouritesWithEventsAsync(Guid userId, CancellationToken ct = default) =>
+        (await LoadFavouritesWithCalendarAsync(userId, ct)).Favourites;
+
+    private async Task<(IReadOnlyList<EventFavouriteInfo> Favourites, EventSettingsInfo? Calendar)> LoadFavouritesWithCalendarAsync(
+        Guid userId, CancellationToken ct)
     {
-        var guideEventId = await GetGuideEventIdAsync(ct);
+        var guideSettings = await repo.GetGuideSettingsAsync(ct);
+        var guideEventId = guideSettings?.EventSettingsId;
         var favourites = await repo.GetFavouritesWithEventsAsync(userId, ct);
-        return favourites.Where(f => f.Event.IsInEvent(guideEventId)).Select(f => new EventFavouriteInfo(
+        if (favourites.Count == 0) return ([], null);
+
+        var eventSettings = guideSettings is null
+            ? null
+            : await settingsService.GetEventSettingsByIdAsync(guideSettings.EventSettingsId, ct);
+        var canExpand = GetTimeZone(eventSettings) is not null;
+        var projected = favourites.Where(f => f.Event.IsInEvent(guideEventId)).Select(f => new EventFavouriteInfo(
                 f.Id, f.UserId, f.GuideEventId, f.DayOffset, f.CreatedAt, ToEventInfo(f.Event)))
             .GroupBy(f => f.GuideEventId)
             .SelectMany(group =>
             {
                 // A recurrence edit can leave several day bookmarks for one single event.
                 // Project a whole-event target so the existing remove path clears them all.
-                var wholeEvent = group.FirstOrDefault(f => !f.Event.IsRecurring || f.DayOffset is null);
+                var wholeEvent = group.FirstOrDefault(f => !canExpand || !f.Event.IsRecurring
+                    || string.IsNullOrWhiteSpace(f.Event.RecurrenceDays) || f.DayOffset is null);
                 return wholeEvent is null ? group.ToArray() : [wholeEvent with { DayOffset = null }];
             }).ToList();
+        return (projected, eventSettings);
     }
 
     public async Task<bool> AddFavouriteAsync(Guid userId, Guid eventId, int? dayOffset, CancellationToken ct = default)
@@ -733,12 +746,10 @@ internal sealed class EventService(
     public async Task<IReadOnlyList<CalendarFeedItem>> GetCalendarItemsForUserAsync(Guid userId, CancellationToken ct)
     {
         // Moderation can drop an event out of the feed without touching the favourite row.
-        var favourites = await GetFavouritesWithEventsAsync(userId, ct);
+        var (favourites, burn) = await LoadFavouritesWithCalendarAsync(userId, ct);
         var approved = favourites.Where(f => f.Event.Status == EventStatus.Approved).ToList();
         if (approved.Count == 0) return [];
 
-        var guideSettings = await repo.GetGuideSettingsAsync(ct);
-        var burn = guideSettings is null ? null : await settingsService.GetEventSettingsByIdAsync(guideSettings.EventSettingsId, ct);
         var tz = burn is null ? null : DateTimeZoneProviders.Tzdb.GetZoneOrNull(burn.TimeZoneId);
         if (burn is not null && tz is null)
         {

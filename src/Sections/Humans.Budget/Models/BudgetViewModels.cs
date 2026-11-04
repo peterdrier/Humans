@@ -20,8 +20,8 @@ internal sealed class FinanceOverviewViewModel
     public required IReadOnlyList<BudgetSliceResult> ExpenseSlices { get; init; }
 
     /// <summary>Keyed by BudgetCategoryId.</summary>
-    public IReadOnlyDictionary<Guid, HoldedActualRow> HoldedActualsByCategory { get; init; } =
-        new Dictionary<Guid, HoldedActualRow>();
+    public IReadOnlyDictionary<Guid, CategoryActualRow> HoldedActualsByCategory { get; init; } =
+        new Dictionary<Guid, CategoryActualRow>();
 }
 
 internal sealed class TicketingProjectionUpdateForm
@@ -66,7 +66,6 @@ internal sealed class BudgetSummaryViewModel
     public decimal TotalIncome { get; init; }
     public decimal TotalExpenses { get; init; }
     public decimal NetBalance { get; init; }
-    public decimal TotalLineItems { get; init; }
     public required IReadOnlyList<BudgetSliceResult> IncomeSlices { get; init; }
     public required IReadOnlyList<BudgetSliceResult> ExpenseSlices { get; init; }
     public bool IsCoordinator { get; init; }

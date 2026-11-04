@@ -26,12 +26,13 @@ internal sealed partial class PreapprovalService
         if (sized.Refusal is not null) return new(Refusal: sized.Refusal);
         if (CeilingCheck(program, sized.Value) is { } over) return new(Refusal: over);
 
+        var beneficiary = await ResolveAvailablePersonAsync(beneficiaryUserId, ct);
+        if (beneficiary is null) return new(Refusal: new PreapprovalRefusal(PreapprovalErrorKeys.PersonUnavailable));
+        var beneficiaryId = beneficiary.Id;
         var now = clock.GetCurrentInstant();
-        var grant = NewGrant(program, beneficiaryUserId, sized.Value, Trimmed(label), GrantStatus.Open, now);
-        grant.DecidedByUserId = actorUserId;
-        grant.DecidedAt = now;
+        var grant = NewGrant(program, beneficiaryId, sized.Value, Trimmed(label), GrantStatus.Open, now);
         await PersistIssuedGrantsAsync(program, [grant], actorUserId,
-            issued => $"Issued {Euros(issued.MaxAmount)} under \"{program.Name}\"{LabelSuffix(issued)} to {beneficiaryUserId}; claim by {program.ClaimBy.ToInvariantDate()}.", ct);
+            issued => $"Issued {Euros(issued.MaxAmount)} under \"{program.Name}\"{LabelSuffix(issued)} to {beneficiaryId}; claim by {program.ClaimBy.ToInvariantDate()}.", ct);
         return new(grant.Id);
     }
 
@@ -45,7 +46,14 @@ internal sealed partial class PreapprovalService
             return new(Refusal: new PreapprovalRefusal(PreapprovalErrorKeys.IssueManyFixedOnly));
         if (CanCommit(program) is { } closed) return new(Refusal: closed);
 
-        var ids = beneficiaryUserIds.Distinct().ToList();
+        var recipients = new List<Guid>();
+        foreach (var id in beneficiaryUserIds.Distinct())
+        {
+            var beneficiary = await ResolveAvailablePersonAsync(id, ct);
+            if (beneficiary is null) return new(Refusal: new PreapprovalRefusal(PreapprovalErrorKeys.PersonUnavailable));
+            recipients.Add(beneficiary.Id);
+        }
+        var ids = recipients.Distinct().ToList();
         if (ids.Count == 0) return new(Refusal: new PreapprovalRefusal(PreapprovalErrorKeys.NoBeneficiaries));
 
         var each = program.PerPersonAmount!.Value;
@@ -53,13 +61,7 @@ internal sealed partial class PreapprovalService
         if (CeilingCheck(program, each * ids.Count) is { } over) return new(Refusal: over);
 
         var now = clock.GetCurrentInstant();
-        var grants = ids.Select(id =>
-        {
-            var g = NewGrant(program, id, each, null, GrantStatus.Open, now);
-            g.DecidedByUserId = actorUserId;
-            g.DecidedAt = now;
-            return g;
-        }).ToList();
+        var grants = ids.Select(id => NewGrant(program, id, each, null, GrantStatus.Open, now)).ToList();
         await PersistIssuedGrantsAsync(program, grants, actorUserId,
             grant => $"Issued {Euros(grant.MaxAmount)} under \"{program.Name}\" to {grant.BeneficiaryUserId} (batch of {grants.Count}); claim by {program.ClaimBy.ToInvariantDate()}.", ct);
         return new(grants.Select(g => g.Id).ToList());
@@ -69,6 +71,11 @@ internal sealed partial class PreapprovalService
         PreapprovalProgram program, IReadOnlyList<PreapprovalGrant> grants, Guid actorUserId,
         Func<PreapprovalGrant, string> describe, CancellationToken ct)
     {
+        foreach (var grant in grants)
+        {
+            grant.DecidedByUserId = actorUserId;
+            grant.DecidedAt = grant.CreatedAt;
+        }
         await repository.AddGrantsAsync(grants, ct);
         // The grants committed; finish their audit and notices after the browser disconnects.
         foreach (var grant in grants)
@@ -105,7 +112,9 @@ internal sealed partial class PreapprovalService
         }
         if (MoneyRefusal(amount) is { } amountRefusal) return new(Refusal: amountRefusal);
 
-        var ids = await AllIdsAsync(applicantUserId, ct);
+        var applicant = await ResolveAvailablePersonAsync(applicantUserId, ct);
+        if (applicant is null) return new(Refusal: new PreapprovalRefusal(PreapprovalErrorKeys.PersonUnavailable));
+        var ids = applicant.AllUserIds;
         var now = clock.GetCurrentInstant();
         var pending = program.Grants.FirstOrDefault(g => g.Status == GrantStatus.Applied && ids.Contains(g.BeneficiaryUserId));
         if (pending is not null)
@@ -126,7 +135,7 @@ internal sealed partial class PreapprovalService
             return new(pending.Id);
         }
 
-        var grant = NewGrant(program, applicantUserId, amount, null, GrantStatus.Applied, now);
+        var grant = NewGrant(program, ids[0], amount, null, GrantStatus.Applied, now);
         grant.ApplicationNote = Trimmed(note);
         grant.RequestedAmount = requestedAmount;
         await repository.AddGrantsAsync([grant], ct);
@@ -282,7 +291,7 @@ internal sealed partial class PreapprovalService
     {
         if (program.TotalCeiling is not { } ceiling) return null;
         var granted = program.Grants
-            .Where(g => g.Status is GrantStatus.Open or GrantStatus.Claimed or GrantStatus.Consumed)
+            .Where(g => PreapprovalGrant.CountsAgainstCeiling(g.Status))
             .Sum(g => g.MaxAmount);
         return granted + delta > ceiling ? new(PreapprovalErrorKeys.CeilingExceeded, Euros(ceiling - granted)) : null;
     }

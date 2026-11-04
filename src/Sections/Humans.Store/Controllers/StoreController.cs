@@ -65,11 +65,8 @@ internal sealed class StoreController(
     [HttpGet("Order/{id:guid}")]
     public async Task<IActionResult> Order(Guid id, CancellationToken ct)
     {
-        var (errorResult, _) = await RequireCurrentUserAsync(ct);
+        var (errorResult, _, order) = await RequireOrderAsync(id, ct);
         if (errorResult is not null) return errorResult;
-
-        var order = await storeService.GetOrderAsync(id, ct);
-        if (order is null) return NotFound();
 
         var view = await authService.AuthorizeAsync(User, order, OrderOperationRequirement.View);
         if (!view.Succeeded) return Forbid();
@@ -93,6 +90,15 @@ internal sealed class StoreController(
             canDeletePayment,
             catalog.OrderBy(p => p.Name, StringComparer.Ordinal).ToList(),
             removableLineIds));
+    }
+
+    private async Task<(IActionResult? Error, UserInfo User, OrderDto Order)> RequireOrderAsync(
+        Guid id, CancellationToken ct)
+    {
+        var (error, user) = await RequireCurrentUserAsync(ct);
+        if (error is not null) return (error, null!, null!);
+        var order = await storeService.GetOrderAsync(id, ct);
+        return order is null ? (NotFound(), null!, null!) : (null, user, order);
     }
 
     /// <summary>Past a product's deadline only Store admins may add or remove its lines.</summary>
@@ -134,11 +140,8 @@ internal sealed class StoreController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Pay(Guid id, decimal amountEur, CancellationToken ct)
     {
-        var (errorResult, _) = await RequireCurrentUserAsync();
+        var (errorResult, _, order) = await RequireOrderAsync(id, ct);
         if (errorResult is not null) return errorResult;
-
-        var order = await storeService.GetOrderAsync(id, ct);
-        if (order is null) return NotFound();
 
         var auth = await authService.AuthorizeAsync(User, order, OrderOperationRequirement.Pay);
         if (!auth.Succeeded) return Forbid();
@@ -172,11 +175,8 @@ internal sealed class StoreController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> IssueInvoice(Guid id)
     {
-        var (errorResult, user) = await RequireCurrentUserAsync();
+        var (errorResult, user, order) = await RequireOrderAsync(id, HttpContext.RequestAborted);
         if (errorResult is not null) return errorResult;
-
-        var order = await storeService.GetOrderAsync(id);
-        if (order is null) return NotFound();
 
         var auth = await authService.AuthorizeAsync(User, order, OrderOperationRequirement.IssueInvoice);
         if (!auth.Succeeded) return Forbid();
@@ -202,11 +202,8 @@ internal sealed class StoreController(
     public async Task<IActionResult> RecordPayment(
         Guid id, PaymentMethod method, decimal amountEur, string? externalRef, string? notes, CancellationToken ct)
     {
-        var (errorResult, user) = await RequireCurrentUserAsync();
+        var (errorResult, user, order) = await RequireOrderAsync(id, ct);
         if (errorResult is not null) return errorResult;
-
-        var order = await storeService.GetOrderAsync(id, ct);
-        if (order is null) return NotFound();
 
         var auth = await authService.AuthorizeAsync(User, order, OrderOperationRequirement.RecordPayment);
         if (!auth.Succeeded) return Forbid();
@@ -224,11 +221,8 @@ internal sealed class StoreController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> DeletePayment(Guid id, Guid paymentId, CancellationToken ct)
     {
-        var (errorResult, user) = await RequireCurrentUserAsync();
+        var (errorResult, user, order) = await RequireOrderAsync(id, ct);
         if (errorResult is not null) return errorResult;
-
-        var order = await storeService.GetOrderAsync(id, ct);
-        if (order is null) return NotFound();
 
         var auth = await authService.AuthorizeAsync(User, order, OrderOperationRequirement.DeletePayment);
         if (!auth.Succeeded) return Forbid();
@@ -243,7 +237,7 @@ internal sealed class StoreController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Create(Guid campSeasonId, CancellationToken ct)
     {
-        var (errorResult, user) = await RequireCurrentUserAsync();
+        var (errorResult, user) = await RequireCurrentUserAsync(ct);
         if (errorResult is not null) return errorResult;
 
         var season = await campService.GetCampSeasonByIdAsync(campSeasonId, ct);
@@ -269,7 +263,7 @@ internal sealed class StoreController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> CreateTeamOrder(Guid teamId, CancellationToken ct)
     {
-        var (errorResult, user) = await RequireCurrentUserAsync();
+        var (errorResult, user) = await RequireCurrentUserAsync(ct);
         if (errorResult is not null) return errorResult;
 
         var auth = await authService.AuthorizeAsync(
@@ -292,11 +286,8 @@ internal sealed class StoreController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
     {
-        var (errorResult, user) = await RequireCurrentUserAsync();
+        var (errorResult, user, order) = await RequireOrderAsync(id, ct);
         if (errorResult is not null) return errorResult;
-
-        var order = await storeService.GetOrderAsync(id, ct);
-        if (order is null) return NotFound();
 
         var auth = await authService.AuthorizeAsync(User, order, OrderOperationRequirement.Delete);
         if (!auth.Succeeded) return Forbid();
@@ -315,11 +306,8 @@ internal sealed class StoreController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> AddLine(Guid id, Guid productId, int qty, CancellationToken ct)
     {
-        var (errorResult, user) = await RequireCurrentUserAsync();
+        var (errorResult, user, order) = await RequireOrderAsync(id, ct);
         if (errorResult is not null) return errorResult;
-
-        var order = await storeService.GetOrderAsync(id, ct);
-        if (order is null) return NotFound();
 
         // Unknown product: fall back to the plain order resource; the service rejects it as not found.
         var product = await storeService.GetProductAsync(productId, ct);
@@ -342,11 +330,8 @@ internal sealed class StoreController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> RemoveLine(Guid id, Guid lineId, CancellationToken ct)
     {
-        var (errorResult, user) = await RequireCurrentUserAsync();
+        var (errorResult, user, order) = await RequireOrderAsync(id, ct);
         if (errorResult is not null) return errorResult;
-
-        var order = await storeService.GetOrderAsync(id, ct);
-        if (order is null) return NotFound();
 
         // Unknown line or product: fall back to the plain order resource; the service rejects it.
         var lineProductId = order.Lines.FirstOrDefault(l => l.Id == lineId)?.ProductId;
@@ -371,11 +356,8 @@ internal sealed class StoreController(
         OrderCounterpartyInput input,
         CancellationToken ct)
     {
-        var (errorResult, user) = await RequireCurrentUserAsync();
+        var (errorResult, user, order) = await RequireOrderAsync(id, ct);
         if (errorResult is not null) return errorResult;
-
-        var order = await storeService.GetOrderAsync(id, ct);
-        if (order is null) return NotFound();
 
         var auth = await authService.AuthorizeAsync(User, order, OrderOperationRequirement.EditCounterparty);
         if (!auth.Succeeded) return Forbid();

@@ -55,6 +55,10 @@ Context: `CantinaDbContext` (history table `__EFMigrationsHistory_Cantina`).
 
 `weekStartOffset` is the day-offset of the week's Monday relative to `EventSettingsInfo.GateOpeningDate`. When omitted, the service resolves the week containing today in the event's timezone, off the active event it has already loaded. With no active event the offset is `0` and the page renders its empty state. `/Cantina/Roster/Day` resolves `dayOffset` the same way.
 
+All six roster, reveal and CSV actions reject malformed offset binding with HTTP 400 and a Warning before loading a roster, recording a disclosure or setting a reveal token. Omitted offsets still select the current period. Reveal and CSV actions retain their account preflight before this validation, so missing actors remain Unauthorized.
+
+Numeric offsets must also fit the requested day or full seven-day window within the supported ISO calendar, and leave room for integer navigation and arrival arithmetic even without an active event. The roster service returns no roster for an invalid window before cohort or dietary reads and before disclosure audit; all six actions map that refusal to HTTP 400. Valid empty windows, negative build offsets and current-period defaults retain their existing behavior.
+
 ## Actors & Roles
 
 | Actor | Capabilities |
@@ -69,7 +73,15 @@ Context: `CantinaDbContext` (history table `__EFMigrationsHistory_Cantina`).
 
 ## Invariants
 
-- The section’s things-to-do contribution forwards caller cancellation through all data reads. Aborted reads propagate instead of being logged or converted into missing prompts.
+- Dietary save and decline actions honour request cancellation while resolving the
+  account, before saving. Once started, either mutation finishes independently of
+  the browser request; mutation failures retain the form's existing error handling.
+
+- Roster exports and health reveals resolve the signed-in account before loading
+  personal rows and audit the surviving account ID after a merge. Missing accounts
+  receive 401; cancellation during account lookup stops before roster work.
+
+- The section’s things-to-do contribution forwards caller cancellation through all data reads. Aborted reads propagate instead of being logged or converted into missing prompts. The shared collector materializes each contributor's entries before appending, so an enumeration failure drops that contributor's whole batch while retaining healthy contributors; request cancellation still propagates.
 
 - **Dietary info is opt-in and never blocks a shift signup** (nobodies-collective/Humans#2104). No signup path — the `/Shifts` day toggle, range signup, onboarding widget, Voluntell — consults Cantina. The roster tolerates humans with empty dietary fields (declined members count as unanswered).
 - **Cantina reports facts; callers decide whether to ask.** `ICantinaService` exposes only the profile (`HasPreference`, `DeclinedToAnswer`); it has no "should prompt" read. Each prompt (Cantina's dashboard nudge, Users' medical prompt, the Shifts `/Shifts` banner) composes its own gate from those facts plus what it owns: today all three hide on a preference or a decline. See [`dietary-nudge`](features/dietary-nudge.md).
@@ -83,7 +95,7 @@ Context: `CantinaDbContext` (history table `__EFMigrationsHistory_Cantina`).
 - A dietary save is the member's own: the form takes the user from the principal, refuses "Other" without its text, filters chips against `DietaryOptions`, and keeps no medical field. A save clears `DeclinedToAnswer`; a decline clears every food field. Member self-saves and declines are not audited.
 - Merge (`IUserMerge`): the survivor's answers win. When the survivor has no row, the source's row moves. Saved empty answers and declines are preserved. The source's row is removed; retries preserve the result. Reads under an archived id resolve to the survivor.
 - GDPR: export slice `DietaryProfile` (row, including `DeclinedToAnswer`; null when none); erasure deletes the row. Users' erasure still nulls the legacy columns.
-- Burner-name stitching reads `UserInfo.BurnerName` — the value Users already resolved (`User.BurnerName` → `Profile.BurnerName` → legacy display name, nobodies-collective/Humans#1097) — off the cached `UserInfo` from `IUserService`. The `"(unknown)"` fall-through covers a user id the cohort read did not return, not a case the roster is expected to render.
+- The roster reads cached `UserInfo.BurnerName` for culture-aware sorting and CSV snapshots, with `"(unknown)"` when the cohort read did not return a usable name. Daily HTML renders `UserId` through the shared Human component without profile links, using its localized missing-member label. This does not unlock allergy or intolerance columns: their audited reveal gate remains separate.
 
 ## Negative Access Rules
 

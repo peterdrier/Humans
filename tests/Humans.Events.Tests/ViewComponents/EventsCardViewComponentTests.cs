@@ -1,3 +1,4 @@
+using Humans.Users.Contracts;
 using System.Security.Claims;
 using AwesomeAssertions;
 using Humans.Events.Contracts;
@@ -22,10 +23,14 @@ namespace Humans.Events.Tests.ViewComponents;
 public class EventsCardViewComponentTests
 {
     private readonly IEventService _events = Substitute.For<IEventService>();
+    private readonly IUserService _users = Substitute.For<IUserService>();
 
     private EventsCardViewComponent BuildSut(
         Guid? viewerId, bool eventsEnabled = true, CancellationToken requestAborted = default)
     {
+        if (viewerId is { } knownViewer)
+            _users.GetUserInfoAsync(knownViewer, Arg.Any<CancellationToken>())
+                .Returns(UserInfo.Create(new User { Id = knownViewer }, [], [], null));
         var identity = viewerId is null
             ? new ClaimsIdentity()
             : new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, viewerId.Value.ToString())], "Test");
@@ -33,13 +38,54 @@ public class EventsCardViewComponentTests
         var config = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>(StringComparer.Ordinal) { ["Features:Events"] = eventsEnabled ? "true" : "false" })
             .Build();
-        return new EventsCardViewComponent(_events, config, NullLogger<EventsCardViewComponent>.Instance)
+        return new EventsCardViewComponent(_events, config, _users, NullLogger<EventsCardViewComponent>.Instance)
         {
             ViewComponentContext = new ViewComponentContext
             {
                 ViewContext = new ViewContext { HttpContext = http },
             },
         };
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(AccountScenario.Merged)]
+    [Xunit.InlineData(AccountScenario.Missing)]
+    [Xunit.InlineData(AccountScenario.Cancelled)]
+    public async Task Favourite_viewer_resolves_before_loading_the_card(AccountScenario account)
+    {
+        var cookieId = Guid.NewGuid();
+        var survivor = Guid.NewGuid();
+        var campId = Guid.NewGuid();
+        using var request = new CancellationTokenSource();
+        var component = BuildSut(cookieId, requestAborted: request.Token);
+        _users.GetUserInfoAsync(cookieId, Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            call.Arg<CancellationToken>().Should().Be(request.Token);
+            call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+            return new ValueTask<UserInfo?>(account == AccountScenario.Missing ? null :
+                UserInfo.Create(new User { Id = survivor }, [], [], null));
+        });
+        var ev = Approved(Guid.NewGuid(), "Event", Instant.FromUtc(2026, 8, 1, 10, 0));
+        _events.GetApprovedEventsAsync(campId, null, null, null, Arg.Any<IReadOnlyList<string>>(), Arg.Any<CancellationToken>())
+            .Returns([ev]);
+        _events.GetFavouriteEventIdsAsync(survivor, request.Token).Returns(new HashSet<Guid> { ev.Id });
+        if (account == AccountScenario.Cancelled)
+            await request.CancelAsync();
+        var invoke = () => component.InvokeAsync(campId: campId);
+
+        if (account == AccountScenario.Cancelled)
+            await invoke.Should().ThrowAsync<OperationCanceledException>();
+        else if (account == AccountScenario.Missing)
+            (await invoke()).Should().BeOfType<ContentViewComponentResult>().Which.Content.Should().BeEmpty();
+        else
+        {
+            var model = (await invoke()).Should().BeOfType<ViewViewComponentResult>().Which.ViewData!.Model
+                .Should().BeOfType<EventsCardViewModel>().Subject;
+            model.Rows.Should().ContainSingle().Which.IsFavourited.Should().BeTrue();
+            await _events.Received(1).GetFavouriteEventIdsAsync(survivor, request.Token);
+            return;
+        }
+        _events.ReceivedCalls().Should().BeEmpty();
     }
 
     private static ApprovedEventView Approved(Guid id, string title, Instant startAt, string description = "", Guid? submitterUserId = null, bool isPersonal = false) => new(

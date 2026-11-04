@@ -137,7 +137,7 @@ internal sealed class CalendarController : HumansControllerBase
         }
         catch (Exception ex) when (ex is ArgumentOutOfRangeException or OverflowException or InvalidOperationException)
         {
-            _logger.LogWarning(ex, "Rejected calendar month query year={Year} month={Month}", year, month);
+            _logger.LogWarning("Rejected calendar month query year={Year} month={Month}: {Reason}", year, month, ex.Message);
             return null;
         }
     }
@@ -179,12 +179,12 @@ internal sealed class CalendarController : HumansControllerBase
         }
         catch (Exception ex) when (ex is ArgumentOutOfRangeException or OverflowException or InvalidOperationException)
         {
-            _logger.LogWarning(ex, "Rejected unrepresentable calendar agenda range from {From} to {To}", from, to);
+            _logger.LogWarning("Rejected unrepresentable calendar agenda range from {From} to {To}: {Reason}", from, to, ex.Message);
             return BadRequest();
         }
 
         var occ = OrderForDisplay(await _calendarRead.GetOccurrencesInWindowAsync(fromUtc, toUtc, zone, teamId, ct), zone);
-        return View(new CalendarAgendaViewModel(fromUtc, toUtc, occ, teamId, zone.Id));
+        return View(new CalendarAgendaViewModel(fromUtc, toUtc, occ, zone.Id));
     }
 
     [HttpGet("Team/{teamId:guid}")]
@@ -256,18 +256,22 @@ internal sealed class CalendarController : HumansControllerBase
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Create(CalendarEventFormViewModel form, CancellationToken ct)
     {
+        var (userError, user) = await RequireCurrentUserAsync(ct);
+        if (userError is not null) return userError;
+
         var team = await _teams.GetTeamAsync(form.OwningTeamId, ct);
         if (team is null) return NotFound();
 
         var times = CalendarEventForm.Resolve(form, ModelState, _localizer);
         if (times is null || !ModelState.IsValid)
         {
+            _logger.LogWarning("Rejected invalid calendar creation form for user {UserId}", user.Id);
             form.TeamOptions = await GetSelectableTeamsAsync(ct);
             return View(form);
         }
 
         var result = await _calendar.CreateEventWithResultAsync(ToDto(form, times),
-            createdByUserId: RequireCurrentUserId(), ct);
+            createdByUserId: user.Id, ct);
 
         if (result.Succeeded && result.Event is not null)
         {
@@ -316,6 +320,9 @@ internal sealed class CalendarController : HumansControllerBase
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Edit(Guid id, CalendarEventFormViewModel form, CancellationToken ct)
     {
+        var (userError, user) = await RequireCurrentUserAsync(ct);
+        if (userError is not null) return userError;
+
         var ev = await _calendarRead.GetEventByIdAsync(id, ct);
         if (ev is null) return NotFound();
         if (await _teams.GetTeamAsync(form.OwningTeamId, ct) is null) return NotFound();
@@ -323,12 +330,13 @@ internal sealed class CalendarController : HumansControllerBase
         var times = CalendarEventForm.Resolve(form, ModelState, _localizer);
         if (times is null || !ModelState.IsValid)
         {
+            _logger.LogWarning("Rejected invalid calendar edit form for user {UserId}", user.Id);
             form.TeamOptions = await GetSelectableTeamsAsync(ct);
             return View(form);
         }
 
         var result = await _calendar.UpdateEventWithResultAsync(id, ToDto(form, times),
-            updatedByUserId: RequireCurrentUserId(), ct);
+            updatedByUserId: user.Id, ct);
 
         if (result.NotFound) return NotFound();
         if (result.Succeeded) return RedirectToAction(nameof(Event), new { id });
@@ -347,10 +355,13 @@ internal sealed class CalendarController : HumansControllerBase
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
     {
+        var (userError, user) = await RequireCurrentUserAsync(ct);
+        if (userError is not null) return userError;
+
         var ev = await _calendarRead.GetEventByIdAsync(id, ct);
         if (ev is null) return NotFound();
 
-        await _calendar.DeleteEventAsync(id, deletedByUserId: RequireCurrentUserId(), ct);
+        await _calendar.DeleteEventAsync(id, deletedByUserId: user.Id, ct);
         return RedirectToAction(nameof(Index));
     }
 
@@ -358,6 +369,9 @@ internal sealed class CalendarController : HumansControllerBase
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> CancelOccurrence(Guid id, string originalStartUtc, CancellationToken ct)
     {
+        var (userError, user) = await RequireCurrentUserAsync(ct);
+        if (userError is not null) return userError;
+
         var ev = await _calendarRead.GetEventByIdAsync(id, ct);
         if (ev is null) return NotFound();
 
@@ -365,7 +379,7 @@ internal sealed class CalendarController : HumansControllerBase
         var originalDate = ev.IsAllDay ? OccurrenceOverrideFormViewModel.TryParseOriginalDate(originalStartUtc) : null;
         if (original is null && originalDate is null) return NotFound();
 
-        if (!await _calendar.CancelOccurrenceAsync(id, original, RequireCurrentUserId(), ct, originalDate))
+        if (!await _calendar.CancelOccurrenceAsync(id, original, user.Id, ct, originalDate))
             SetError(_localizer["Calendar_InvalidOccurrenceOverride"]);
         return RedirectToAction(nameof(Event), new { id });
     }
@@ -391,6 +405,9 @@ internal sealed class CalendarController : HumansControllerBase
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> EditOccurrence(Guid id, string originalStartUtc, OccurrenceOverrideFormViewModel form, CancellationToken ct)
     {
+        var (userError, user) = await RequireCurrentUserAsync(ct);
+        if (userError is not null) return userError;
+
         var ev = await _calendarRead.GetEventByIdAsync(id, ct);
         if (ev is null) return NotFound();
         var original = ev.IsAllDay ? null : OccurrenceOverrideFormViewModel.TryParseOriginal(originalStartUtc);
@@ -410,7 +427,7 @@ internal sealed class CalendarController : HumansControllerBase
             return View("OccurrenceEdit", form);
         }
         if (!await _calendar.OverrideOccurrenceAsync(id, original,
-                dto, RequireCurrentUserId(), ct, originalDate))
+                dto, user.Id, ct, originalDate))
         {
             _logger.LogWarning("Rejected calendar occurrence override for event {EventId}", id);
             ModelState.AddModelError(string.Empty, _localizer["Calendar_InvalidOccurrenceOverride"]);
@@ -429,9 +446,6 @@ internal sealed class CalendarController : HumansControllerBase
             .OrderBy(t => t.Name, StringComparer.CurrentCulture)
             .ToList();
     }
-
-    private Guid RequireCurrentUserId() =>
-        GetCurrentUserId() ?? throw new InvalidOperationException("Current user has no valid ID claim.");
 
     // A null member name means a form-level error: it belongs in the validation summary, not under a field.
     private void AddCalendarEventMutationError(

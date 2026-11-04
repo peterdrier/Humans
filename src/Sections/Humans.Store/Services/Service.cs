@@ -63,7 +63,6 @@ internal sealed class Service(
         return new OrderPageData(
             order,
             catalog,
-            order.CounterpartyDisplayName,
             canEdit,
             canPayAuthorized && order.BalanceEur > 0 && !hasPendingPayment && order.CounterpartyType == OrderCounterpartyType.Camp,
             stripeService.IsStoreCheckoutConfigured);
@@ -336,23 +335,14 @@ internal sealed class Service(
         if (existing.Count > 0)
             return RefuseCreation("Store_CampOrderExists", "camp season", campSeasonId, actorUserId);
 
-        var now = clock.GetCurrentInstant();
         var order = new Order
         {
-            Id = Guid.NewGuid(),
             CampSeasonId = campSeasonId,
             TeamId = null,
-            Year = season.Year,
-            State = OrderState.Open,
-            CreatedAt = now,
-            UpdatedAt = now
+            Year = season.Year
         };
-        await repo.AddOrderAsync(order, ct);
-        await audit.LogAsync(
-            StoreAuditActions.StoreOrderCreated, AuditEntityTypes.Order, order.Id,
-            $"Created store order for camp season {campSeasonId}",
-            actorUserId);
-        return new MutationResult(true, null, order.Id);
+        return await SaveNewOrderAsync(order, actorUserId,
+            $"Created store order for camp season {campSeasonId}", ct);
     }
 
     public async Task<AdminMutationResult> DeleteOrderAsync(Guid orderId, Guid actorUserId, CancellationToken ct = default)
@@ -400,22 +390,28 @@ internal sealed class Service(
         if (existing is not null)
             return RefuseCreation("Store_TeamOrderExists", "team", teamId, actorUserId);
 
-        var now = clock.GetCurrentInstant();
         var order = new Order
         {
-            Id = Guid.NewGuid(),
             CampSeasonId = null,
             TeamId = teamId,
-            Year = year,
-            State = OrderState.Open,
-            CreatedAt = now,
-            UpdatedAt = now,
+            Year = year
         };
+        return await SaveNewOrderAsync(order, actorUserId,
+            $"Created store order for team '{team.Name}' ({year})", ct);
+    }
+
+    private async Task<MutationResult> SaveNewOrderAsync(
+        Order order, Guid actorUserId, string description, CancellationToken ct)
+    {
+        var now = clock.GetCurrentInstant();
+        order.Id = Guid.NewGuid();
+        order.State = OrderState.Open;
+        order.CreatedAt = now;
+        order.UpdatedAt = now;
         await repo.AddOrderAsync(order, ct);
         await audit.LogAsync(
             StoreAuditActions.StoreOrderCreated, AuditEntityTypes.Order, order.Id,
-            $"Created store order for team '{team.Name}' ({year})",
-            actorUserId);
+            description, actorUserId);
         return new MutationResult(true, null, order.Id);
     }
 

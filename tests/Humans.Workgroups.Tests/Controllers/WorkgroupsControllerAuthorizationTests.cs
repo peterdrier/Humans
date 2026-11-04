@@ -34,14 +34,134 @@ namespace Humans.Workgroups.Tests.Controllers;
 
 /// <summary>
 /// The deny paths design §5 requires of the member pages: a non-member reaching a
-/// member-only mutation route gets Forbid, while Join, Leave, RequestStatus and commenting
-/// stay open to any signed-in human. Every member-only POST goes through one private helper
+/// member-only mutation route gets Forbid, while Join, Leave and commenting stay open to any
+/// signed-in human. RequestStatus is Board/Admin only. Every member-only POST goes through one private helper
 /// (<c>ActAsync</c>), so a representative sample of routes covers the guard.
 /// </summary>
 public sealed class WorkgroupsControllerAuthorizationTests : WorkgroupsTestHarness
 {
     private readonly IStringLocalizer<WorkgroupsResource> _localizer = Substitute.For<IStringLocalizer<WorkgroupsResource>>();
     private readonly ILogger<WorkgroupsController> _logger = Substitute.For<ILogger<WorkgroupsController>>();
+
+    [HumansTheory]
+    [InlineData("IsRecurring")]
+    [InlineData("IsPublic")]
+    [InlineData(null)]
+    public async Task MeetingForm_RequiresExplicitRecurrenceAndVisibilityChoices(string? missingField)
+    {
+        var group = await SeedWorkgroupAsync();
+        var actor = group.Members.Single().UserId;
+        var service = Substitute.For<IWorkgroupService>();
+        service.GetBySlugAsync(group.Slug, Ct).Returns(await NewService().GetBySlugAsync(group.Slug, Ct));
+        service.CreateMeetingAsync(group.Id, actor, Arg.Any<WorkgroupMeetingSave>(), Ct)
+            .Returns(new WorkgroupMutationResult<Guid>(Guid.NewGuid()));
+        var controller = BuildController(actor, isBoard: false, service);
+        using var services = new ServiceCollection().AddLogging().AddControllers().Services.BuildServiceProvider();
+        controller.HttpContext.RequestServices = services;
+        var fields = new Dictionary<string, StringValues>(StringComparer.Ordinal)
+        {
+            ["Slug"] = group.Slug,
+            ["Title"] = "Meeting",
+            ["StartDate"] = "2026-06-02",
+            ["EndDate"] = "2026-06-02",
+            ["StartTime"] = "10:00:00",
+            ["EndTime"] = "11:00:00",
+            ["TimeZoneId"] = "UTC",
+            ["IsRecurring"] = "false",
+            ["RecurrenceRule"] = "FREQ=WEEKLY",
+            ["IsPublic"] = "false"
+        };
+        if (missingField is not null) fields.Remove(missingField);
+        var metadata = services.GetRequiredService<IModelMetadataProvider>().GetMetadataForType(typeof(MeetingFormViewModel));
+        var binder = services.GetRequiredService<IModelBinderFactory>().CreateBinder(new ModelBinderFactoryContext { Metadata = metadata });
+        var binding = DefaultModelBindingContext.CreateBindingContext(controller.ControllerContext,
+            new FormValueProvider(BindingSource.Form, new FormCollection(fields), CultureInfo.InvariantCulture),
+            metadata, bindingInfo: null, modelName: "");
+        await binder.BindModelAsync(binding);
+        var model = (MeetingFormViewModel)binding.Result.Model!;
+        services.GetRequiredService<IObjectModelValidator>().Validate(controller.ControllerContext, null, "", model);
+
+        var result = await controller.SaveMeeting(group.Slug, model, Ct);
+
+        if (missingField is not null)
+        {
+            controller.ModelState[missingField]!.Errors.Should().NotBeEmpty();
+            result.Should().BeOfType<ViewResult>().Which.Model.Should().BeSameAs(model);
+            await service.DidNotReceiveWithAnyArgs().CreateMeetingAsync(default, default, default!);
+            await service.DidNotReceiveWithAnyArgs().UpdateMeetingAsync(default, default, default!);
+        }
+        else
+        {
+            controller.ModelState.IsValid.Should().BeTrue();
+            result.Should().BeOfType<RedirectToActionResult>();
+            await service.Received(1).CreateMeetingAsync(group.Id, actor,
+                Arg.Is<WorkgroupMeetingSave>(save => !save.IsPublic && save.RecurrenceRule == null), Ct);
+        }
+    }
+
+    [HumansTheory]
+    [InlineData(false, "DeliverableKind")]
+    [InlineData(false, "Audience")]
+    [InlineData(false, "IsSensitive")]
+    [InlineData(false, null)]
+    [InlineData(true, "DeliverableKind")]
+    [InlineData(true, "Audience")]
+    [InlineData(true, "IsSensitive")]
+    [InlineData(true, null)]
+    public async Task RegisterForms_RequireExplicitChoicesBeforeApplyingOrEditing(bool editing, string? missingField)
+    {
+        var group = await SeedWorkgroupAsync(isSensitive: true);
+        var actor = group.Members.Single().UserId;
+        var service = Substitute.For<IWorkgroupService>();
+        service.GetBySlugAsync(group.Slug, Ct).Returns(await NewService().GetBySlugAsync(group.Slug, Ct));
+        service.ApplyAsync(actor, Arg.Any<WorkgroupApplication>(), Ct)
+            .Returns(new WorkgroupMutationResult<Guid>(Guid.NewGuid()));
+        service.EditRegisterAsync(group.Id, actor, Arg.Any<WorkgroupRegisterEdit>(), Ct)
+            .Returns(new WorkgroupMutationResult());
+        var controller = BuildController(actor, isBoard: false, service);
+        using var services = new ServiceCollection().AddLogging().AddControllers().Services.BuildServiceProvider();
+        controller.HttpContext.RequestServices = services;
+        var fields = new Dictionary<string, StringValues>(StringComparer.Ordinal)
+        {
+            ["Name"] = group.Name,
+            ["Purpose"] = "Updated purpose",
+            ["Deliverable"] = "Report",
+            ["DeliverableKind"] = "0",
+            ["Audience"] = "0",
+            ["IsSensitive"] = "false"
+        };
+        if (missingField is not null) fields.Remove(missingField);
+        var metadata = services.GetRequiredService<IModelMetadataProvider>().GetMetadataForType(typeof(WorkgroupFormViewModel));
+        var binder = services.GetRequiredService<IModelBinderFactory>().CreateBinder(new ModelBinderFactoryContext { Metadata = metadata });
+        var binding = DefaultModelBindingContext.CreateBindingContext(controller.ControllerContext,
+            new FormValueProvider(BindingSource.Form, new FormCollection(fields), CultureInfo.InvariantCulture),
+            metadata, bindingInfo: null, modelName: "");
+        await binder.BindModelAsync(binding);
+        var model = (WorkgroupFormViewModel)binding.Result.Model!;
+        services.GetRequiredService<IObjectModelValidator>().Validate(controller.ControllerContext, null, "", model);
+
+        var result = editing ? await controller.Edit(group.Slug, model, Ct) : await controller.Apply(model, Ct);
+
+        if (missingField is not null)
+        {
+            controller.ModelState.Should().ContainKey(missingField);
+            controller.ModelState[missingField]!.Errors.Should().NotBeEmpty();
+            result.Should().BeOfType<ViewResult>().Which.Model.Should().BeSameAs(model);
+            await service.DidNotReceiveWithAnyArgs().ApplyAsync(default, default!);
+            await service.DidNotReceiveWithAnyArgs().EditRegisterAsync(default, default, default!);
+        }
+        else
+        {
+            controller.ModelState.IsValid.Should().BeTrue();
+            result.Should().BeOfType<RedirectToActionResult>();
+            if (editing)
+                await service.Received(1).EditRegisterAsync(group.Id, actor,
+                    Arg.Is<WorkgroupRegisterEdit>(save => !save.IsSensitive && save.DeliverableKind == WorkgroupDeliverableKind.Recommendation && save.Audience == WorkgroupAudience.Board), Ct);
+            else
+                await service.Received(1).ApplyAsync(actor,
+                    Arg.Is<WorkgroupApplication>(save => !save.IsSensitive && save.DeliverableKind == WorkgroupDeliverableKind.Recommendation && save.Audience == WorkgroupAudience.Board), Ct);
+        }
+    }
 
     [HumansTheory]
     [InlineData(false, false)]
@@ -416,13 +536,11 @@ public sealed class WorkgroupsControllerAuthorizationTests : WorkgroupsTestHarne
     }
 
     [HumansFact]
-    public async Task NonMember_RequestingAStatusUpdate_IsAllowed()
+    public void RequestStatus_IsGatedByBoardOrAdmin()
     {
-        var (controller, workgroup) = await BuildAsync(asMember: false);
-
-        var result = await controller.RequestStatus(workgroup.Slug, "Where is the report?", Ct);
-
-        result.Should().BeOfType<RedirectToActionResult>();
+        typeof(WorkgroupsController).GetMethod(nameof(WorkgroupsController.RequestStatus))!
+            .GetCustomAttributes(typeof(AuthorizeAttribute), true)
+            .Cast<AuthorizeAttribute>().Should().Contain(a => a.Policy == PolicyNames.BoardOrAdmin);
     }
 
     [HumansFact]
@@ -536,6 +654,8 @@ public sealed class WorkgroupsControllerAuthorizationTests : WorkgroupsTestHarne
         var services = new ServiceCollection();
         services.AddLogging();
         services.AddAuthorization();
+        services.AddSingleton(Users);
+        services.AddHttpContextAccessor();
         services.AddScoped<IAuthorizationHandler, WorkgroupAuthorizationHandler>();
         var provider = services.BuildServiceProvider();
         _localizer[Arg.Any<string>(), Arg.Any<object[]>()]

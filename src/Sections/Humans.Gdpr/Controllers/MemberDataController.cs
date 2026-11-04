@@ -27,7 +27,7 @@ internal sealed class MemberDataController(
     [AllowBeforeActiveMembership]
     public async Task<IActionResult> RequestDeletion()
     {
-        var user = await GetCurrentUserInfoAsync();
+        var user = await GetCurrentUserInfoAsync(HttpContext.RequestAborted);
         if (user is null)
             return NotFound();
 
