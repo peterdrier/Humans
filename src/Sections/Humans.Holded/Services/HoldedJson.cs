@@ -65,4 +65,17 @@ internal static class HoldedJson
             ? throw new HoldedPermanentException(
                 $"Holded item is missing required field '{field}' — refusing the page.")
             : ReadDecimalV2(node);
+
+    /// <summary>Humans books in euros and reads every amount as one, so a document in another currency is logged
+    /// and read unchanged. An absent currency is EUR and passes silently.</summary>
+    internal static void WarnIfNotEuro(ILogger logger, JsonNode? document, string kind)
+    {
+        if (Prop(document, "currency") is not JsonValue value || !value.TryGetValue<string>(out var currency)
+            || string.IsNullOrWhiteSpace(currency) || string.Equals(currency, "eur", StringComparison.OrdinalIgnoreCase))
+            return;
+        var id = Prop(document, "id") is JsonValue idValue && idValue.TryGetValue<string>(out var s) ? s : null;
+        logger.LogWarning(
+            "Holded {Kind} document {DocumentId} is in {Currency}, not EUR; Humans reads its amounts as euros",
+            kind, id, currency);
+    }
 }

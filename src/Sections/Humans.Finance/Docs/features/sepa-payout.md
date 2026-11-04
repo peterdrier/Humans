@@ -246,7 +246,7 @@ collapsed.
 
 ### When Holded accepts one posting and refuses the next
 
-The state is **no longer terminal**. On a Holded failure mid-allocation, the ids already accepted
+The state is **retryable, not terminal**. On a Holded failure mid-allocation, the ids already accepted
 are logged and audited (`SepaPayoutTransferBooked`, prefixed `PARTIAL`), but **nothing is written to
 the transfer row** — the row stays unbooked and is retryable. The next attempt re-reads what is
 already posted under the transfer's tag (step 4 above) and continues from there, so nothing is ever
