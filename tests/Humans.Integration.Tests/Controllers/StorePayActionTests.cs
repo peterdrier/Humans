@@ -3,6 +3,7 @@ using Humans.Camps.Domain;
 using Humans.Store.Contracts;
 using Humans.Store.Data;
 using Humans.Store.Domain;
+using Humans.Stripe.Contracts;
 using System.Net;
 using System.Text.RegularExpressions;
 using AwesomeAssertions;
