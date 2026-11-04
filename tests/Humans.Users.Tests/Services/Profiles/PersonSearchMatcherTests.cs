@@ -51,9 +51,6 @@ public class PersonSearchMatcherTests
         string? medicalConditions = null,
         string? adminNotes = null,
         string? boardNotes = null,
-        string? iban = null,
-        string? consentCheckNotes = null,
-        string? rejectionReason = null,
         string? emergencyContactName = null,
         string? contactLabel = null,
         bool isRejected = false,
@@ -78,9 +75,6 @@ public class PersonSearchMatcherTests
             MedicalConditions = medicalConditions,
             AdminNotes = adminNotes,
             BoardNotes = boardNotes,
-            Iban = iban,
-            ConsentCheckNotes = consentCheckNotes,
-            RejectionReason = rejectionReason,
             EmergencyContactName = emergencyContactName,
             CreatedAt = At,
             UpdatedAt = At,
@@ -349,9 +343,6 @@ public class PersonSearchMatcherTests
     [HumansTheory]
     [InlineData("adminnote")]
     [InlineData("boardnote")]
-    [InlineData("consentnote")]
-    [InlineData("rejectreason")]
-    [InlineData("ES9121")]      // IBAN fragment
     [InlineData("penicillin")]  // medical
     [InlineData("janedoe")]     // emergency contact name
     public void Board_private_and_health_fields_never_match_even_under_AdminAll(string query)
@@ -360,9 +351,6 @@ public class PersonSearchMatcherTests
             burnerName: "Sparkle",
             adminNotes: "adminnote",
             boardNotes: "boardnote",
-            consentCheckNotes: "consentnote",
-            rejectionReason: "rejectreason",
-            iban: "ES9121000418450200051332",
             medicalConditions: "penicillin allergy",
             emergencyContactName: "Jane Doe");
 

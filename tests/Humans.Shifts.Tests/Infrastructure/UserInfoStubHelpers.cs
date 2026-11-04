@@ -35,7 +35,6 @@ internal static class UserInfoStubHelpers
             BurnerName = displayName,
             CreatedAt = NodaTime.SystemClock.Instance.GetCurrentInstant(),
             UpdatedAt = NodaTime.SystemClock.Instance.GetCurrentInstant(),
-            IsApproved = true
         };
         return UserInfoFactory.Create(
             // UserInfo.BurnerName reads User.BurnerName, so it is seeded there.

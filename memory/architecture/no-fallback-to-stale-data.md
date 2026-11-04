@@ -10,5 +10,6 @@ When the source of truth for a value can't be read, the process stops (or the re
 **How to apply:**
 
 - A read that fails, or returns the "unavailable" sentinel (e.g. an empty list from a `...OrEmpty` helper), ends the operation with an explicit unavailable/error state and a log line.
+- The stop always carries its reason to whoever hits it: a banner on the page, the refusal text of the action, or the exception message of a background run. A silent empty page is not a stop.
 - Don't write `primary ?? storedCopy` for data that has an authority elsewhere. A stored copy may be shown as "last known", labelled as such, but never used to decide anything.
 - Don't add a fallback to quiet a reviewer or make a red light go away; that is the [`peters-working-rules`](../../docs/architecture/peters-working-rules.md) "fix at the source" rule.

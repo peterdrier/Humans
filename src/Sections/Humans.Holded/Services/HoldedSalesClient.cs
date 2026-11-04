@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Net.Http.Json;
 using System.Text.Json;
 using System.Text.Json.Nodes;
@@ -92,6 +93,7 @@ internal sealed class HoldedSalesClient(HoldedTransport transport, ILogger<Holde
                 Tax = ReadDecimalV2(Prop(node, "tax")),
                 Total = ReadRequiredDecimalV2(Prop(node, "total"), "total"),
                 IsDraft = Prop(node, "draft")?.GetValue<bool>(),
+                Lines = ReadLines(node, kind, documentId),
                 RawJson = body,
             };
         }
@@ -103,6 +105,36 @@ internal sealed class HoldedSalesClient(HoldedTransport transport, ILogger<Holde
                 $"Holded {SalesSegment(kind)} document {documentId} could not be read.", ex);
         }
     }
+
+    /// <summary>v2's line <c>tax</c> is the line's primary tax percent (the document-level <c>tax</c> is an amount).
+    /// This read runs right after an approval, so a line it cannot read never fails it, which would strand an approved
+    /// factura: the document reads as having no lines and is logged, and Store refuses to adopt it.</summary>
+    private IReadOnlyList<HoldedSalesDocumentLineDto> ReadLines(
+        JsonNode node, HoldedSalesDocumentKind kind, string documentId)
+    {
+        var lines = new List<HoldedSalesDocumentLineDto>();
+        foreach (var l in Arr(Prop(node, "lines")))
+        {
+            if (ReadOptionalDecimal(Prop(l, "units")) is not { } units
+                || ReadOptionalDecimal(Prop(l, "price")) is not { } price
+                || ReadOptionalDecimal(Prop(l, "tax")) is not { } taxPercent)
+            {
+                logger.LogWarning(
+                    "Holded {Kind} document {DocumentId} has a line without a readable units, price or tax; " +
+                    "its lines read as none", kind, documentId);
+                return [];
+            }
+            var name = Prop(l, "name") is JsonValue v && v.TryGetValue<string>(out var n) ? n : "";
+            lines.Add(new HoldedSalesDocumentLineDto(name, units, price, taxPercent));
+        }
+        return lines;
+    }
+
+    private static decimal? ReadOptionalDecimal(JsonNode? node) =>
+        node is JsonValue v && v.TryGetValue<string>(out var s)
+            && decimal.TryParse(s, NumberStyles.Number, CultureInfo.InvariantCulture, out var d)
+            ? d
+            : null;
 
     private static object BuildSalesDocumentPayload(HoldedSalesDocumentInput input) => new
     {

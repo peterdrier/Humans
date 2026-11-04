@@ -327,30 +327,19 @@ public sealed class UserRepositoryProfileTests : IDisposable
     }
 
     [HumansFact]
-    public async Task EraseProfileExtrasForUserAsync_ErasesFrozenLegacyPersonalData()
+    public async Task EraseProfileExtrasForUserAsync_ErasesMedicalConditions()
     {
         var user = await SeedUserAsync(UserState.Active);
-        var other = await SeedUserAsync(UserState.Active);
         var profile = NewProfile(user.Id, "Burner", "First", "Last");
-        profile.Iban = "ES9121000418450200051332";
-        profile.ConsentCheckNotes = "Coordinator notes";
-        profile.RejectionReason = "Rejection reason";
+        profile.MedicalConditions = "Epilepsy";
         _dbContext.Profiles.Add(profile);
-        _dbContext.CommunicationPreferences.AddRange(
-            new CommunicationPreference { Id = Guid.NewGuid(), UserId = user.Id, Category = LegacyMessageCategory.System },
-            new CommunicationPreference { Id = Guid.NewGuid(), UserId = other.Id, Category = LegacyMessageCategory.System });
         await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
         _dbContext.ChangeTracker.Clear();
 
         await _repo.EraseProfileExtrasForUserAsync(user.Id, Xunit.TestContext.Current.CancellationToken);
 
         var erased = await _dbContext.Profiles.AsNoTracking().SingleAsync(p => p.Id == profile.Id, Xunit.TestContext.Current.CancellationToken);
-        erased.Iban.Should().BeNull();
-        erased.ConsentCheckNotes.Should().BeNull();
-        erased.RejectionReason.Should().BeNull();
-        var remaining = await _dbContext.CommunicationPreferences.AsNoTracking().Select(cp => cp.UserId)
-            .ToListAsync(Xunit.TestContext.Current.CancellationToken);
-        remaining.Should().Equal(other.Id);
+        erased.MedicalConditions.Should().BeNull();
     }
 
     private async Task<User> SeedUserAsync(UserState state = UserState.Bare)

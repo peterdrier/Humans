@@ -461,6 +461,19 @@ public class HoldedDuplicateTests
     }
 
     [HumansFact]
+    public async Task Apply_WhenTheContactListCannotBeRead_DeletesNothingAndSaysWhy()
+    {
+        _expenses.GetHoldedBookingsAsync(Arg.Any<CancellationToken>()).Returns([Booking("doc-a")]);
+        _client.ListPurchaseDocumentsAsync(Arg.Any<CancellationToken>()).Returns([Doc("doc-a"), Doc("doc-b")]);
+        _client.ListContactsAsync(Arg.Any<CancellationToken>()).Throws(new HoldedTransientException("timeout"));
+
+        var result = await MakeService().RemoveHoldedDuplicatesAsync(Actor);
+
+        result.Error.Should().Be("Nothing was deleted: " + Service.ContactListUnavailable);
+        await _client.DidNotReceive().DeletePurchaseDocumentAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
     public async Task Apply_WithNothingToDelete_DeletesNothing()
     {
         _expenses.GetHoldedBookingsAsync(Arg.Any<CancellationToken>()).Returns([Booking("doc-a")]);

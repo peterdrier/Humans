@@ -364,6 +364,9 @@
   <data name="Users_Emails_AddNew" xml:space="preserve">
     <value>E-mailadres toevoegen</value>
   </data>
+  <data name="Users_Emails_NewEmailLabel" xml:space="preserve">
+    <value>Nieuw e-mailadres</value>
+  </data>
   <data name="Users_Emails_MergeWarningTitle" xml:space="preserve">
     <value>Accounts samenvoegen?</value>
   </data>
@@ -755,6 +758,9 @@
   <data name="Users_Notification_ConsentSuspensionReason" xml:space="preserve"><value>Ontbrekende toestemming voor vereiste documenten (respijtperiode verstreken)</value></data>
   <data name="Users_Profile_EmailAlreadyAdded" xml:space="preserve">
     <value>Dit e-mailadres staat al in je account.</value>
+  </data>
+  <data name="Users_Profile_EmailVerifiedOnAnotherAccount" xml:space="preserve">
+    <value>Dit e-mailadres is al geverifieerd bij een ander account.</value>
   </data>
   <data name="Users_Profile_EmailMergePending" xml:space="preserve">
     <value>Er is al een samenvoegverzoek in afwachting voor dit e-mailadres.</value>
