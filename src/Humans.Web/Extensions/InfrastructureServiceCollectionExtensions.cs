@@ -48,6 +48,7 @@ public static class InfrastructureServiceCollectionExtensions
         // profile pictures, and any future file-bearing section share this
         // mount (production: Coolify volume at /app/wwwroot/uploads/).
         services.AddSingleton<IFileStorage, FileSystemFileStorage>();
+        services.AddSingleton<FileStatsService>();
 
         services.AddAuthSection();
         services.AddAdminSection();

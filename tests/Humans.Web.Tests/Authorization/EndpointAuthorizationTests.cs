@@ -231,6 +231,7 @@ public class EndpointAuthorizationTests
             "AccountController",
             "LanguageController",
             "TimezoneApiController",
+            "FileStatsApiController",
             "DevLoginController",
             "UnsubscribeController",
             "TourController",

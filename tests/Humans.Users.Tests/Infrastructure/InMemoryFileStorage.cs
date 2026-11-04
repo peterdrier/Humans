@@ -35,4 +35,13 @@ public sealed class InMemoryFileStorage : IFileStorage
         else Files.TryRemove(key, out _);
         return Task.CompletedTask;
     }
+
+    public Task<IReadOnlyList<StoredFileInfo>> ListAsync(string prefix, CancellationToken ct = default)
+    {
+        var directory = prefix.TrimEnd('/') + "/";
+        return Task.FromResult<IReadOnlyList<StoredFileInfo>>(Files
+            .Where(f => f.Key.StartsWith(directory, StringComparison.Ordinal))
+            .Select(f => new StoredFileInfo(f.Key, f.Value.Length, NodaTime.Instant.MinValue))
+            .ToList());
+    }
 }
