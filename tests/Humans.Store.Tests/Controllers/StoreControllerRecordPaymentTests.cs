@@ -198,10 +198,12 @@ public sealed class StoreControllerRecordPaymentTests
     public async Task StorePages_SortTheCatalogForDisplay(bool detail)
     {
         var controller = BuildController(RoleNames.Admin);
-        _repo.GetActiveProductsForYearAsync(2026, Arg.Any<CancellationToken>()).Returns([
+        Product[] products = [
             new Product { Id = Guid.NewGuid(), Year = 2026, Name = "Tent" },
             new Product { Id = Guid.NewGuid(), Year = 2026, Name = "Blanket" }
-        ]);
+        ];
+        _repo.GetActiveProductsForYearAsync(2026, Arg.Any<CancellationToken>()).Returns(products);
+        _repo.GetAllProductsForYearAsync(2026, Arg.Any<CancellationToken>()).Returns(products);
 
         var result = detail
             ? await controller.Order(_order.Id, TestContext.Current.CancellationToken)
