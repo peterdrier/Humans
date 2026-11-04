@@ -123,39 +123,21 @@ internal sealed class CommunicationPreferenceService(
 
         var now = clock.GetCurrentInstant();
         var current = await CurrentAsync(userId, category, cancellationToken);
-        CommunicationPreference next;
-        if (current is null)
-        {
-            next = new CommunicationPreference
-            {
-                Id = Guid.NewGuid(),
-                UserId = userId,
-                Category = category,
-                OptedOut = optedOut,
-                InboxEnabled = inboxEnabled ?? true,
-                UpdatedAt = now,
-                UpdateSource = source,
-                SubscribedAt = optedOut ? null : now,
-            };
-        }
-        else
-        {
-            var nextInbox = inboxEnabled ?? current.InboxEnabled;
-            if (current.OptedOut == optedOut && current.InboxEnabled == nextInbox)
-                return;
+        var nextInbox = inboxEnabled ?? current?.InboxEnabled ?? true;
+        if (current is not null && current.OptedOut == optedOut && current.InboxEnabled == nextInbox)
+            return;
 
-            next = new CommunicationPreference
-            {
-                Id = Guid.NewGuid(),
-                UserId = userId,
-                Category = category,
-                OptedOut = optedOut,
-                InboxEnabled = nextInbox,
-                UpdatedAt = now,
-                UpdateSource = source,
-                SubscribedAt = !optedOut && current.SubscribedAt is null ? now : current.SubscribedAt,
-            };
-        }
+        var next = new CommunicationPreference
+        {
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            Category = category,
+            OptedOut = optedOut,
+            InboxEnabled = nextInbox,
+            UpdatedAt = now,
+            UpdateSource = source,
+            SubscribedAt = current?.SubscribedAt ?? (optedOut ? null : now),
+        };
         await repository.UpsertAsync(next, cancellationToken);
 
         var description = inboxEnabled.HasValue
@@ -237,35 +219,19 @@ internal sealed class CommunicationPreferenceService(
         var target = Recorded(targetRows).ToDictionary(r => r.Category);
         foreach (var src in Recorded(sourceRows))
         {
-            if (target.TryGetValue(src.Category, out var tgt))
+            target.TryGetValue(src.Category, out var tgt);
+            var winner = tgt is not null && tgt.UpdatedAt >= src.UpdatedAt ? tgt : src;
+            target[src.Category] = new CommunicationPreference
             {
-                var winner = src.UpdatedAt > tgt.UpdatedAt ? src : tgt;
-                target[src.Category] = new CommunicationPreference
-                {
-                    Id = Guid.NewGuid(),
-                    UserId = targetUserId,
-                    Category = src.Category,
-                    OptedOut = winner.OptedOut,
-                    InboxEnabled = winner.InboxEnabled,
-                    UpdateSource = winner.UpdateSource,
-                    SubscribedAt = tgt.SubscribedAt ?? src.SubscribedAt,
-                    UpdatedAt = updatedAt,
-                };
-            }
-            else
-            {
-                target[src.Category] = new CommunicationPreference
-                {
-                    Id = Guid.NewGuid(),
-                    UserId = targetUserId,
-                    Category = src.Category,
-                    OptedOut = src.OptedOut,
-                    InboxEnabled = src.InboxEnabled,
-                    UpdateSource = src.UpdateSource,
-                    SubscribedAt = src.SubscribedAt,
-                    UpdatedAt = updatedAt,
-                };
-            }
+                Id = Guid.NewGuid(),
+                UserId = targetUserId,
+                Category = src.Category,
+                OptedOut = winner.OptedOut,
+                InboxEnabled = winner.InboxEnabled,
+                UpdateSource = winner.UpdateSource,
+                SubscribedAt = tgt?.SubscribedAt ?? src.SubscribedAt,
+                UpdatedAt = updatedAt,
+            };
         }
 
         await repository.ReplaceForUsersAsync(
