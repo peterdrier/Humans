@@ -168,7 +168,6 @@ internal sealed class BackdoorFinanceController(
             holdedAccountNumber = m.HoldedAccountNumber,
             holdedAccountId = m.HoldedAccountId,
             tag = m.Tag,
-            isActive = m.IsActive,
             updatedAt = m.UpdatedAt.ToIso8601(),
         }));
     }

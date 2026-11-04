@@ -260,3 +260,18 @@ src/Sections/Humans.Shifts/Data/Migrations/20261104172244_DropShiftsEventSetting
 # Down() caveat: PublicYear re-adds as NOT NULL DEFAULT 0 (the seed row gets 2026 back).
 src/Sections/Humans.Camps/Data/Migrations/20261104172247_DropCampSettingsDeadColumns.cs:DropColumn(name=EeStartDate,table=camp_settings)#1
 src/Sections/Humans.Camps/Data/Migrations/20261104172247_DropCampSettingsDeadColumns.cs:DropColumn(name=PublicYear,table=camp_settings)#1
+
+# holded_category_map.IsActive — a retirement flag on each budget-category to Holded-account mapping
+# (peterdrier/Humans#1923). Every row holds true.
+# Evidence: pickaxe (log -G 'IsActive = (false|isActive|!)') over full history of the Finance and
+# Holded paths: the only false assignments to a category-map row are test fixtures. The one writer
+# that flips IsActive, 813c611e8's SetExpenseAccountActiveAsync, writes holded_managed_accounts, not
+# this table. The planned archive writer was cut in #783's own review (see the ArchivedAt entry
+# above), and the "Archived mappings" view went in peterdrier/Humans#2273. Readers only filtered on it,
+# a no-op; they are removed in this PR, with the field on the CategoryAccountRow DTO and the
+# Backdoor category-map JSON.
+# Approval: Peter, 2026-11-04, per-drop approval in project thread ("Approve all but #2296" for the listed drops in this PR; peterdrier/Humans#1923).
+# Down() caveat: EF re-adds the column as boolean NOT NULL DEFAULT false, so after a rollback every
+# row reads inactive to the old code. Don't roll back without Peter's guidance; the recovery is a
+# forward fix in code, never a hand edit of the data.
+src/Sections/Humans.Finance/Data/Migrations/20261104170024_DropHoldedCategoryMapIsActive.cs:DropColumn(name=IsActive,table=holded_category_map)#1

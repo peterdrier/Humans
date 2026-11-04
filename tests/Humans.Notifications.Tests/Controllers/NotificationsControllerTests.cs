@@ -1,6 +1,7 @@
 using Humans.Consent.Contracts;
 using Humans.Base.Constants;
 using Humans.Notifications.Models;
+using Humans.Notifications.Data;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Localization;
 using System.Security.Claims;
@@ -70,9 +71,9 @@ public sealed class NotificationsControllerTests
         inbox.GetInboxAsync(Arg.Any<Guid>(), Arg.Any<string?>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(new NotificationInboxResult());
         inbox.GetPopupAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(new NotificationPopupResult());
-        inbox.ResolveAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(new NotificationActionResult(true));
-        inbox.DismissAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(new NotificationActionResult(true));
-        inbox.MarkReadAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(new NotificationActionResult(true));
+        inbox.ResolveAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(new NotificationMutationOutcome(true, false, false));
+        inbox.DismissAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(new NotificationMutationOutcome(true, false, false));
+        inbox.MarkReadAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(new NotificationMutationOutcome(true, false, false));
         inbox.ClickThroughAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns((string?)null);
         var consent = Substitute.For<IConsentService>();
         consent.GetConsentReviewsAsync(Arg.Any<CancellationToken>()).Returns(new Dictionary<Guid, ConsentReviewInfo>());

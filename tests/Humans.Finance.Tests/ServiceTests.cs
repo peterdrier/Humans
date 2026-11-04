@@ -102,7 +102,7 @@ public class HoldedFinanceServiceTests
             new()
             {
                 Id = Guid.NewGuid(), BudgetCategoryId = category, HoldedAccountNumber = 6290001,
-                HoldedAccountId = "acc-1", Tag = "comms", IsActive = true, CreatedAt = FixedNow, UpdatedAt = FixedNow,
+                HoldedAccountId = "acc-1", Tag = "comms", CreatedAt = FixedNow, UpdatedAt = FixedNow,
             },
         });
 
@@ -177,6 +177,9 @@ public class HoldedFinanceServiceTests
             Substitute.For<Humans.Expenses.Contracts.IExpenseReportService>(),
             new CashFlowService(_budget, Substitute.For<Humans.Tickets.Contracts.ITicketService>()),
             new CreditorMatchService(_holded, Substitute.For<Humans.Expenses.Contracts.IExpenseReportService>()),
+            new FinanceOverviewService(_holded, service, Substitute.For<Humans.Expenses.Contracts.IExpenseReportService>(),
+                _budget, new CashFlowService(_budget, Substitute.For<Humans.Tickets.Contracts.ITicketService>()),
+                SystemClock.Instance),
             NullLogger<FinanceController>.Instance)
         {
             ControllerContext = new()
@@ -316,7 +319,7 @@ public class HoldedFinanceServiceTests
                 {
                     Id = Guid.NewGuid(), BudgetCategoryId = catIdA,
                     HoldedAccountNumber = 6290001, HoldedAccountId = "acc-1",
-                    Tag = "operationsstaff", IsActive = true,
+                    Tag = "operationsstaff",
                     CreatedAt = FixedNow, UpdatedAt = FixedNow,
                 }
             });
@@ -508,8 +511,7 @@ public class HoldedFinanceServiceTests
     public async Task ListCreditorAccounts_BindingsSharingAContact_CollideOnOneRowDespiteDifferentNumbers()
     {
         // HoldedContactId and SupplierAccountNum are independent columns, so two members on one Holded
-        // contact can carry numbers that disagree — the legacy state the previously-unguarded seed path
-        // could leave behind. Grouped on the stored number they would be two innocent single-member
+        // contact can carry numbers that disagree. Grouped on the stored number they would be two innocent single-member
         // rows, hiding the contact-id half of the invariant FindConflictingBinding enforces on writes.
         var first = Guid.NewGuid();
         var second = Guid.NewGuid();
@@ -1107,9 +1109,8 @@ public class HoldedFinanceServiceTests
     [Xunit.InlineData(null, "(unresolved)")]
     public async Task SetCreditorAccountNum_ChangedNumber_IsAuditedUnderTheCallingJob(int? before, string beforeText)
     {
-        // 2026-09-21: Holded reset the contact's supplier_record and this write moved the member from
-        // 40000004 to 40000060 with only a log line. A change of the account a member is paid from is
-        // audited, naming the job, the member and both numbers.
+        // Holded can reset a contact's supplier_record, moving the member's account. Every change of the
+        // account a member is paid from is audited, naming the job, the member and both numbers.
         var userId = Guid.NewGuid();
         _repo.GetCreditorContactByUserAsync(userId, Arg.Any<CancellationToken>()).Returns(
             new HoldedCreditorContact
@@ -1732,7 +1733,7 @@ public class HoldedFinanceServiceTests
                 {
                     Id = Guid.NewGuid(), BudgetCategoryId = mappedCat,
                     HoldedAccountNumber = 6290001, HoldedAccountId = "acc-1",
-                    Tag = "operationsstaff", IsActive = true,
+                    Tag = "operationsstaff",
                     CreatedAt = FixedNow, UpdatedAt = FixedNow,
                 }
             });
@@ -1766,7 +1767,6 @@ public class HoldedFinanceServiceTests
         row.BudgetCategoryId.Should().Be(catA);          // "Alpha" sorts first
         row.HoldedAccountNumber.Should().Be(6290010);
         row.HoldedAccountId.Should().Be("acc-6290010");
-        row.IsActive.Should().BeTrue();
         row.Tag.Should().NotBeNullOrEmpty();
         catB.Should().NotBe(catA);
         await _audit.Received(1).LogAsync(FinanceAuditActions.HoldedCategoryAccountProvisioned, Arg.Any<string>(), catA,
@@ -1923,10 +1923,10 @@ public class HoldedFinanceServiceTests
     }
 
     [HumansFact]
-    public async Task GetHoldedAccountIdForCategory_UsesTheActiveMapping_AndIgnoresAnArchivedOne()
+    public async Task GetHoldedAccountIdForCategory_UsesTheCategorysMapping()
     {
-        // Expenses calls this to book a purchase line straight onto the category's account. An
-        // archived row for the same category must never win, and an unmapped category yields null.
+        // Expenses calls this to book a purchase line straight onto the category's account; an
+        // unmapped category yields null.
         var mapped = Guid.NewGuid();
         var unmapped = Guid.NewGuid();
         _repo.GetCategoryMapAsync(Arg.Any<CancellationToken>()).ReturnsForAnyArgs(
@@ -1934,14 +1934,8 @@ public class HoldedFinanceServiceTests
             {
                 new()
                 {
-                    Id = Guid.NewGuid(), BudgetCategoryId = mapped, HoldedAccountNumber = 6290001,
-                    HoldedAccountId = "acc-old", Tag = "a", IsActive = false,
-                    CreatedAt = FixedNow, UpdatedAt = FixedNow,
-                },
-                new()
-                {
                     Id = Guid.NewGuid(), BudgetCategoryId = mapped, HoldedAccountNumber = 6290002,
-                    HoldedAccountId = "acc-live", Tag = "b", IsActive = true,
+                    HoldedAccountId = "acc-live", Tag = "b",
                     CreatedAt = FixedNow, UpdatedAt = FixedNow,
                 },
             });
@@ -2226,7 +2220,7 @@ public class HoldedFinanceServiceTests
         ActiveYearWith((live, "Staff"));
         _repo.GetCategoryMapAsync(Arg.Any<CancellationToken>()).Returns(
         [
-            new() { BudgetCategoryId = live, HoldedAccountNumber = 62900101, Tag = "staff", IsActive = true },
+            new() { BudgetCategoryId = live, HoldedAccountNumber = 62900101, Tag = "staff" },
         ]);
 
         var rows = await MakeService().GetCategoryMapAsync(TestContext.Current.CancellationToken);
@@ -2236,7 +2230,6 @@ public class HoldedFinanceServiceTests
         row.CategoryName.Should().Be("Staff");
         row.GroupName.Should().Be("Operations");
         row.HoldedAccountNumber.Should().Be(62900101);
-        row.IsActive.Should().BeTrue();
     }
 
     private const string AnaIban = "ES7921000813610123456789";

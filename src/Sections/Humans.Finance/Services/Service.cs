@@ -39,7 +39,7 @@ internal sealed class Service(
     IOptions<SepaOptions> sepa,
     TrackedCache<string, Dictionary<string, int>> bookingState,
     IPaymentDetailsManagement paymentDetails,
-    ILogger<Service> logger) : IFinanceService, IFinanceWrite, IFinanceAdminService, ISepaBankBooking, IUserDataContributor
+    ILogger<Service> logger) : IFinanceService, IFinanceWrite, IFinanceAdminService, IUserDataContributor
 {
     public Task<string?> GetIbanAsync(Guid userId, CancellationToken ct = default) =>
         paymentDetails.GetIbanAsync(userId, ct);
@@ -64,17 +64,12 @@ internal sealed class Service(
     public async Task<HoldedProvisioningPlan> GetProvisioningPlanAsync(
         int blockStart, CancellationToken ct = default)
     {
-        var year = await budget.GetActiveYearAsync(ct);
-        var categories = year is null
-            ? Array.Empty<(Guid Id, string Name, string Group)>()
-            : year.Groups
-                  .SelectMany(g => g.Categories.Select(c => (c.Id, c.Name, Group: g.Name)))
-                  .ToArray();
+        var categories = (await ActiveYearCategoriesAsync(ct))
+            .Select(c => (Id: c.Key, c.Value.Name, c.Value.Group))
+            .ToArray();
 
         var map = await repo.GetCategoryMapAsync(ct);
-        var activeByCat = map
-            .Where(m => m.IsActive)
-            .ToDictionary(m => m.BudgetCategoryId);
+        var activeByCat = map.ToDictionary(m => m.BudgetCategoryId);
 
         // Avoid numbers in BOTH the local map and the live chart, so one taken remotely but missing locally (a failed
         // map write, or an account made directly in Holded) is never re-proposed.
@@ -85,8 +80,8 @@ internal sealed class Service(
 
         var rows = new List<HoldedProvisioningRow>();
         // Seeded up front, not as the walk meets them: otherwise a ToAdd category sorting before a mapped one could be
-        // handed its tag, and two active rows sharing a tag make attribution arbitrary.
-        var usedTags = map.Where(m => m.IsActive).Select(m => m.Tag).ToHashSet(StringComparer.Ordinal);
+        // handed its tag, and two rows sharing a tag make attribution arbitrary.
+        var usedTags = map.Select(m => m.Tag).ToHashSet(StringComparer.Ordinal);
         var currentActiveCatIds = categories.Select(c => c.Id).ToHashSet();
 
         int nextFree = blockStart;
@@ -175,7 +170,6 @@ internal sealed class Service(
                     HoldedAccountNumber = row.ProposedAccountNum.Value,
                     HoldedAccountId = id,
                     Tag = row.Tag,
-                    IsActive = true,
                     CreatedAt = now,
                     UpdatedAt = now,
                 }, ct);
@@ -296,16 +290,12 @@ internal sealed class Service(
     {
         var map = await repo.GetCategoryMapAsync(ct);
         var managed = await repo.GetManagedAccountsAsync(ct);
-        var year = await budget.GetActiveYearAsync(ct);
-        var labels = year?.Groups
-            .SelectMany(g => g.Categories.Select(c => (c.Id, Label: $"{g.Name} / {c.Name}")))
-            .ToDictionary(x => x.Id, x => x.Label)
-            ?? new Dictionary<Guid, string>();
+        var labels = (await ActiveYearCategoriesAsync(ct))
+            .ToDictionary(c => c.Key, c => $"{c.Value.Group} / {c.Value.Name}");
 
         // A map row whose category is not in the active year still labels old reports but takes no new booking, so it
         // is inactive here and dropped with activeOnly.
         var options = map
-            .Where(m => m.IsActive)
             .Select(m => new ExpenseAccountOption(
                 m.HoldedAccountNumber, m.HoldedAccountId,
                 labels.GetValueOrDefault(m.BudgetCategoryId, $"Category {m.HoldedAccountNumber}"),
@@ -328,7 +318,6 @@ internal sealed class Service(
     {
         var mirror = await holded.GetPurchaseDocumentsAsync(ct);
         var entries = (await repo.GetCategoryMapAsync(ct))
-            .Where(m => m.IsActive)
             .Select(m => new HoldedMatchEntry(m.BudgetCategoryId, m.HoldedAccountId, m.Tag))
             .ToArray();
         var managedIds = (await repo.GetManagedAccountsAsync(ct))
@@ -365,13 +354,13 @@ internal sealed class Service(
         var expected = await expenses.GetHoldedReconLinesAsync(ct);
         var accountByUser = bindings
             .Select(b => (b.UserId, Account: contacts.GetValueOrDefault(b.HoldedContactId)?.SupplierAccountNum))
-            .Where(x => x.Account is >= CreditorAccountMin and <= CreditorAccountMax)
+            .Where(x => IsMemberCreditorAccount(x.Account))
             .GroupBy(x => x.UserId)
             .ToDictionary(g => g.Key, g => g.First().Account!.Value);
 
         var ledger = new Dictionary<int, IReadOnlyList<HoldedLedgerLineInfo>>();
         foreach (var account in balances.Keys
-                     .Where(n => n is >= CreditorAccountMin and <= CreditorAccountMax)
+                     .Where(n => IsMemberCreditorAccount(n))
                      .Union(accountByUser.Values))
             ledger[account] = await holded.GetLedgerLinesAsync(account, ct);
 
@@ -423,7 +412,7 @@ internal sealed class Service(
         Guid budgetCategoryId, CancellationToken ct = default)
     {
         var map = await repo.GetCategoryMapAsync(ct);
-        return map.FirstOrDefault(m => m.IsActive && m.BudgetCategoryId == budgetCategoryId)?.HoldedAccountId;
+        return map.FirstOrDefault(m => m.BudgetCategoryId == budgetCategoryId)?.HoldedAccountId;
     }
 
     /// <summary>Category and group names resolved from the active budget year.</summary>
@@ -439,7 +428,6 @@ internal sealed class Service(
             m.HoldedAccountNumber,
             m.HoldedAccountId,
             m.Tag,
-            m.IsActive,
             m.UpdatedAt)).ToList();
     }
 
@@ -482,6 +470,9 @@ internal sealed class Service(
     private const int CreditorAccountMin = 40000000;
     private const int CreditorAccountMax = 41999999;
 
+    private static bool IsMemberCreditorAccount(int? accountNum) =>
+        accountNum is >= CreditorAccountMin and <= CreditorAccountMax;
+
     public async Task<CreditorStatus?> GetCreditorStatusAsync(
         int? supplierAccountNum, CancellationToken ct = default)
     {
@@ -521,7 +512,7 @@ internal sealed class Service(
         // The range filter is load-bearing: Holded numbers every supplier contact, so unfiltered an org vendor becomes
         // bindable. Group-by-first so a duplicate number cannot throw.
         var contacts = contactById.Values
-            .Where(c => c.SupplierAccountNum is >= CreditorAccountMin and <= CreditorAccountMax)
+            .Where(c => IsMemberCreditorAccount(c.SupplierAccountNum))
             .GroupBy(c => c.SupplierAccountNum!.Value)
             .ToDictionary(g => g.Key, g => g.First());
 
@@ -581,7 +572,7 @@ internal sealed class Service(
         // Plus bound accounts with no lines yet and every Holded creditor contact: a first-time submitter's account
         // exists before any activity. The mirror spans the whole chart, so balances are range-filtered here.
         var rows = byAccount.Keys
-            .Where(num => num is >= CreditorAccountMin and <= CreditorAccountMax)
+            .Where(num => IsMemberCreditorAccount(num))
             .Union(bindings.Keys).Union(contacts.Keys)
             .Select(num =>
             {
@@ -626,7 +617,7 @@ internal sealed class Service(
         HoldedCreditorContact binding, IReadOnlyDictionary<string, HoldedContactDto> contacts)
     {
         var account = contacts.GetValueOrDefault(binding.HoldedContactId)?.SupplierAccountNum;
-        return account is >= CreditorAccountMin and <= CreditorAccountMax ? account : binding.SupplierAccountNum;
+        return IsMemberCreditorAccount(account) ? account : binding.SupplierAccountNum;
     }
 
     /// <summary>Keyed by contact id, the identity a binding stores. The rows and the payout both resolve through this
@@ -734,7 +725,7 @@ internal sealed class Service(
     {
         // The dropdown is filtered, but the number arrives on a POST. Holded numbers every supplier contact, so without
         // this an org vendor's account is bindable.
-        if (supplierAccountNum is < CreditorAccountMin or > CreditorAccountMax)
+        if (!IsMemberCreditorAccount(supplierAccountNum))
             return CreditorBindResult.Failure(
                 $"Account {supplierAccountNum} is outside the member creditor block " +
                 $"({CreditorAccountMin}–{CreditorAccountMax}) — that is not a member's account.");
@@ -1294,7 +1285,7 @@ internal sealed class Service(
         GetSepaPayoutsAsync(int toleranceDays = IFinanceAdminService.DefaultSepaMatchToleranceDays,
             CancellationToken ct = default) => booking.GetSepaPayoutsAsync(toleranceDays, ct);
 
-    public Task RunAsync(CancellationToken ct = default) => booking.RunAsync(ct);
+    public Task RunSepaBookingSweepAsync(CancellationToken ct = default) => booking.RunAsync(ct);
 
     public Task<SepaBookingResult> BookSepaTransferAsync(
         Guid transferId, string bankMovementId, Guid? actorUserId,
@@ -1342,7 +1333,7 @@ internal sealed class Service(
             bookings.Select(b => (b.CreditorUserId, b.HoldedContactId)), bindings,
             id => contactById.GetValueOrDefault(id)?.Name,
             contactById.Values
-                .Where(c => c.SupplierAccountNum is >= CreditorAccountMin and <= CreditorAccountMax
+                .Where(c => IsMemberCreditorAccount(c.SupplierAccountNum)
                             && !string.IsNullOrWhiteSpace(c.Name))
                 .ToLookup(c => c.Name!.Trim(), c => c.Id, StringComparer.OrdinalIgnoreCase));
 
@@ -1436,7 +1427,7 @@ internal sealed class Service(
         // Holded has no archive call, so an empty unbound contact is listed, not touched.
         var boundContacts = bindings.Select(b => b.HoldedContactId).ToHashSet(StringComparer.Ordinal);
         var empty = contactById.Values
-            .Where(c => c.SupplierAccountNum is >= CreditorAccountMin and <= CreditorAccountMax
+            .Where(c => IsMemberCreditorAccount(c.SupplierAccountNum)
                         && !boundContacts.Contains(c.Id) && !docsByContact[c.Id].Any())
             .Select(c => (AccountNum: c.SupplierAccountNum!.Value, Summary: $"{c.SupplierAccountNum} {c.Name} ({c.Id})"))
             .ToList();
@@ -1555,7 +1546,7 @@ internal sealed class Service(
         try
         {
             return (await client.ListAccountingAccountsAsync(ct))
-                .Where(a => a.Number is >= CreditorAccountMin and <= CreditorAccountMax)
+                .Where(a => IsMemberCreditorAccount(a.Number))
                 .GroupBy(a => a.Number)
                 .ToDictionary(g => g.Key, g => g.First().Balance);
         }

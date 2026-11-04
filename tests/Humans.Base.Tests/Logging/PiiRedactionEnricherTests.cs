@@ -62,6 +62,7 @@ public class PiiRedactionEnricherTests
     [Xunit.InlineData("Name", "😀x", "😀***")]
     [Xunit.InlineData("UserName", "x😀", "x***")]
     [Xunit.InlineData("Email", "ab@example.com", "ab***@example.com")]
+    [Xunit.InlineData("Email", "happy+1234@peterplant.net", "ha***+1234@peterplant.net")]
     [Xunit.InlineData("Email", "x😀@example.com", "x***@example.com")]
     [Xunit.InlineData("To", "x😀@example.com", "x***@example.com")]
     [Xunit.InlineData("Recipient", "alice@example.com", "al***@example.com")]

@@ -69,6 +69,30 @@ public class NotificationInboxServiceTests : IDisposable
         return notification;
     }
 
+    [HumansFact]
+    public async Task ContributeForUserAsync_ExportsOnlyTheUsersOwnRows_WithoutTheActionLabel()
+    {
+        var own = await CreateNotificationAsync();
+        var other = new Notification
+        {
+            Id = Guid.NewGuid(),
+            Title = "Someone else's notification",
+            ActionLabel = "Open it",
+            Source = TestSources.TeamUpdate.Name,
+            CreatedAt = _clock.GetCurrentInstant(),
+        };
+        other.Recipients.Add(new NotificationRecipient { NotificationId = other.Id, UserId = Guid.NewGuid() });
+        _dbContext.Notifications.Add(other);
+        await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+
+        var slices = await _service.ContributeForUserAsync(_userId, Xunit.TestContext.Current.CancellationToken);
+
+        var slice = slices.Should().ContainSingle().Subject;
+        slice.SectionName.Should().Be(NotificationInboxService.Notifications);
+        var json = System.Text.Json.JsonSerializer.Serialize(slice.Data);
+        json.Should().Contain(own.Title).And.NotContain(other.Title).And.NotContain("ActionLabel");
+    }
+
     [HumansTheory]
     [Xunit.InlineData(null)]
     [Xunit.InlineData("suspension")]
@@ -196,9 +220,7 @@ public class NotificationInboxServiceTests : IDisposable
     [HumansFact]
     public async Task ResolveAsync_LeavesReadAtAlone_ButStillClearsTheUnreadCount()
     {
-        // Resolving deliberately does not touch the recipient's ReadAt. It doesn't
-        // have to: every unread query also filters ResolvedAt == null, so a resolved
-        // notification drops out of the badge whether or not it was ever read.
+        // Resolve leaves ReadAt alone: unread queries also filter ResolvedAt == null.
         var notification = await CreateNotificationAsync(NotificationClass.Actionable);
 
         await _service.ResolveAsync(notification.Id, _userId, Xunit.TestContext.Current.CancellationToken);
@@ -216,9 +238,6 @@ public class NotificationInboxServiceTests : IDisposable
     [HumansFact]
     public async Task GetInboxAsync_ResolvedFilter_ReportsTheAllTab_NotTheOneAskedFor()
     {
-        // Resolved rows are never unread, so the resolved filter forces the tab to
-        // "all". The service reports the tab it actually queried so the view's tab
-        // pill cannot disagree with the rows underneath it.
         await CreateNotificationAsync(resolvedAt: _clock.GetCurrentInstant(), resolvedByUserId: _userId);
 
         var result = await _service.GetInboxAsync(
@@ -490,6 +509,20 @@ public class NotificationInboxServiceTests : IDisposable
 
         result.Actionable.Should().HaveCount(1);
         result.Informational.Should().HaveCount(1);
+        result.Actionable.Single().Body.Should().Be("Test body");
+    }
+
+    [HumansFact]
+    public async Task GetPopupAsync_DropsAnItemOnceItsRecipientOpensIt()
+    {
+        var opened = await CreateNotificationAsync(NotificationClass.Actionable);
+        var ct = Xunit.TestContext.Current.CancellationToken;
+
+        await _service.ClickThroughAsync(opened.Id, _userId, ct);
+
+        var result = await _service.GetPopupAsync(_userId, ct);
+        result.Actionable.Should().BeEmpty();
+        (await _service.GetUnreadBadgeCountsAsync(_userId, ct)).Should().Be((0, 0));
     }
 
     [HumansFact]

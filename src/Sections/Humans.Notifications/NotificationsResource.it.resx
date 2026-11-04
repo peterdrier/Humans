@@ -121,9 +121,6 @@
   <data name="Notifications_Inbox_Title" xml:space="preserve">
     <value>Notifiche</value>
   </data>
-  <data name="Notifications_Dismiss" xml:space="preserve">
-    <value>Ignora</value>
-  </data>
   <data name="Notifications_HandledBy" xml:space="preserve">
     <value>Gestito da {0}, {1}</value>
   </data>
@@ -153,4 +150,22 @@
     <value>Ignora selezionati</value>
   </data>
   <data name="Notifications_Popup_LoadError" xml:space="preserve"><value>Impossibile caricare le notifiche. Riprova.</value></data>
+  <data name="Notifications_SentTo" xml:space="preserve">
+    <value>Per {0}</value>
+  </data>
+  <data name="Notifications_Audience_CampLeads" xml:space="preserve">
+    <value>responsabili di barrio</value>
+  </data>
+  <data name="Notifications_Audience_Admin" xml:space="preserve">
+    <value>amministratori</value>
+  </data>
+  <data name="Notifications_Audience_Board" xml:space="preserve">
+    <value>il Consiglio</value>
+  </data>
+  <data name="Notifications_Audience_ConsentCoordinator" xml:space="preserve">
+    <value>coordinatori del consenso</value>
+  </data>
+  <data name="Notifications_Audience_ShiftsAdmin" xml:space="preserve">
+    <value>amministratori dei turni</value>
+  </data>
 </root>

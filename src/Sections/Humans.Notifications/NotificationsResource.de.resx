@@ -121,9 +121,6 @@
   <data name="Notifications_Inbox_Title" xml:space="preserve">
     <value>Benachrichtigungen</value>
   </data>
-  <data name="Notifications_Dismiss" xml:space="preserve">
-    <value>Verwerfen</value>
-  </data>
   <data name="Notifications_HandledBy" xml:space="preserve">
     <value>Bearbeitet von {0}, {1}</value>
   </data>
@@ -153,4 +150,22 @@
     <value>Ausgewählte verwerfen</value>
   </data>
   <data name="Notifications_Popup_LoadError" xml:space="preserve"><value>Benachrichtigungen konnten nicht geladen werden. Bitte versuche es erneut.</value></data>
+  <data name="Notifications_SentTo" xml:space="preserve">
+    <value>Für {0}</value>
+  </data>
+  <data name="Notifications_Audience_CampLeads" xml:space="preserve">
+    <value>Barrio-Leitung</value>
+  </data>
+  <data name="Notifications_Audience_Admin" xml:space="preserve">
+    <value>Admins</value>
+  </data>
+  <data name="Notifications_Audience_Board" xml:space="preserve">
+    <value>den Vorstand</value>
+  </data>
+  <data name="Notifications_Audience_ConsentCoordinator" xml:space="preserve">
+    <value>Einwilligungskoordination</value>
+  </data>
+  <data name="Notifications_Audience_ShiftsAdmin" xml:space="preserve">
+    <value>Schicht-Admins</value>
+  </data>
 </root>
