@@ -210,6 +210,8 @@ Authentication routes are served by `AccountController`, which lives in `Humans.
 
 - Self-service email visibility accepts only defined visibility values. Unsupported text and out-of-range numeric input use the existing hidden fallback rather than persisting an undefined audience; valid names, case-insensitive names and defined numeric values retain their meaning.
 
+- Email resource authorization resolves the authenticated actor to the surviving account before checking self-access. The target remains the exact owner id supplied by the action: a merged-away cookie can manage the survivor's email rows, but cannot claim self-access to the old account. Missing actors receive no self-access. UsersAdmin/Admin grants and Board's view-only grant remain independent; the identity read honours request cancellation.
+
 - The profile's onsite chip is Tickets' `OnsiteChipViewComponent` on the `UserPartSlots.Profile` slot (Users decomposition commit 13). Member email-grid and unsubscribe GETs retain browser cancellation for their token-aware service reads.
 
 - Profile-card volunteer-history descriptions retain their 80-character excerpt limit without splitting UTF-16 surrogate pairs; the complete history description remains stored and exported.
