@@ -149,7 +149,7 @@ contact, three write paths with different collision remedies, and no unique inde
 | Iban | string? (34) | Normalized, **unmasked**. Null records a removal. |
 | UpdatedAt | Instant | Last write. |
 
-Payment details read only `finance_payment_details`. The legacy fallback, copy and `ProfileInfo.Iban` were retired after production `GET https://humans.nobodies.team/api/data-migrations` reported `{"key":"finance.iban-to-payment-details","pending":0,"done":true}` on 2026-11-03. Users keeps and erases the legacy `profiles.Iban` column until its separate drop PR.
+Payment details read only `finance_payment_details`. The legacy fallback, copy and `ProfileInfo.Iban` were retired after production `GET https://humans.nobodies.team/api/data-migrations` reported `{"key":"finance.iban-to-payment-details","pending":0,"done":true}` on 2026-11-03. The legacy `profiles.Iban` column is dropped.
 
 Account merges preserve the survivor’s payment-details row, including an explicit cleared value; otherwise the source’s row moves. The source row is removed, and retries preserve the same result.
 

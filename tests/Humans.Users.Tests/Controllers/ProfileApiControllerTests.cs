@@ -113,7 +113,6 @@ public class ProfileApiControllerTests
             BurnerName = burnerName,
             FirstName = "Target",
             LastName = "Display",
-            IsApproved = true,
             CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
             UpdatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
         };

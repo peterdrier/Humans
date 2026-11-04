@@ -23,42 +23,6 @@ namespace Humans.Users.Data.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
-            modelBuilder.Entity("Humans.Users.Contracts.EventParticipation", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<Instant?>("CheckedInAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<Instant?>("DeclaredAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("Source")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)");
-
-                    b.Property<string>("Status")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)");
-
-                    b.Property<Guid>("UserId")
-                        .HasColumnType("uuid");
-
-                    b.Property<int>("Year")
-                        .HasColumnType("integer");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("UserId", "Year")
-                        .IsUnique();
-
-                    b.ToTable("event_participations", (string)null);
-                });
-
             modelBuilder.Entity("Humans.Users.Contracts.User", b =>
                 {
                     b.Property<Guid>("Id")
@@ -116,16 +80,6 @@ namespace Humans.Users.Data.Migrations
                         .HasMaxLength(256)
                         .HasColumnType("character varying(256)")
                         .HasColumnName("GoogleEmail");
-
-                    b.Property<string>("GoogleEmailStatus")
-                        .IsRequired()
-                        .ValueGeneratedOnAdd()
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)")
-                        .HasDefaultValue("Unknown");
-
-                    b.Property<Instant?>("LastConsentReminderSentAt")
-                        .HasColumnType("timestamp with time zone");
 
                     b.Property<Instant?>("LastLoginAt")
                         .HasColumnType("timestamp with time zone");
@@ -187,13 +141,7 @@ namespace Humans.Users.Data.Migrations
                         .HasColumnType("character varying(50)")
                         .HasDefaultValue("Bare");
 
-                    b.Property<bool>("SuppressScheduleChangeEmails")
-                        .HasColumnType("boolean");
-
                     b.Property<bool>("TwoFactorEnabled")
-                        .HasColumnType("boolean");
-
-                    b.Property<bool>("UnsubscribedFromCampaigns")
                         .HasColumnType("boolean");
 
                     b.Property<string>("UserName")
@@ -334,50 +282,6 @@ namespace Humans.Users.Data.Migrations
                     b.ToTable("account_merge_requests", (string)null);
                 });
 
-            modelBuilder.Entity("Humans.Users.Domain.CommunicationPreference", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("Category")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)");
-
-                    b.Property<bool>("InboxEnabled")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("boolean")
-                        .HasDefaultValue(true);
-
-                    b.Property<bool>("OptedOut")
-                        .HasColumnType("boolean");
-
-                    b.Property<Instant?>("SubscribedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("SubscribedAt");
-
-                    b.Property<string>("UpdateSource")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)");
-
-                    b.Property<Instant>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<Guid>("UserId")
-                        .HasColumnType("uuid");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("UserId");
-
-                    b.HasIndex("UserId", "Category")
-                        .IsUnique();
-
-                    b.ToTable("communication_preferences", (string)null);
-                });
-
             modelBuilder.Entity("Humans.Users.Domain.ContactField", b =>
                 {
                     b.Property<Guid>("Id")
@@ -434,14 +338,6 @@ namespace Humans.Users.Data.Migrations
                         .HasMaxLength(4000)
                         .HasColumnType("character varying(4000)");
 
-                    b.Property<string>("Allergies")
-                        .IsRequired()
-                        .HasColumnType("jsonb");
-
-                    b.Property<string>("AllergyOtherText")
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)");
-
                     b.Property<string>("Bio")
                         .HasMaxLength(4000)
                         .HasColumnType("character varying(4000)");
@@ -458,19 +354,6 @@ namespace Humans.Users.Data.Migrations
                         .HasMaxLength(256)
                         .HasColumnType("character varying(256)");
 
-                    b.Property<Instant?>("ConsentCheckAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("ConsentCheckNotes")
-                        .HasMaxLength(4000)
-                        .HasColumnType("character varying(4000)");
-
-                    b.Property<string>("ConsentCheckStatus")
-                        .HasColumnType("text");
-
-                    b.Property<Guid?>("ConsentCheckedByUserId")
-                        .HasColumnType("uuid");
-
                     b.Property<string>("ContributionInterests")
                         .HasColumnType("text");
 
@@ -483,10 +366,6 @@ namespace Humans.Users.Data.Migrations
 
                     b.Property<LocalDate?>("DateOfBirth")
                         .HasColumnType("date");
-
-                    b.Property<string>("DietaryPreference")
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)");
 
                     b.Property<string>("EmergencyContactName")
                         .HasMaxLength(256)
@@ -505,21 +384,6 @@ namespace Humans.Users.Data.Migrations
                         .HasMaxLength(256)
                         .HasColumnType("character varying(256)");
 
-                    b.Property<string>("Iban")
-                        .HasMaxLength(34)
-                        .HasColumnType("character varying(34)");
-
-                    b.Property<string>("IntoleranceOtherText")
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)");
-
-                    b.Property<string>("Intolerances")
-                        .IsRequired()
-                        .HasColumnType("jsonb");
-
-                    b.Property<bool>("IsApproved")
-                        .HasColumnType("boolean");
-
                     b.Property<string>("LastName")
                         .IsRequired()
                         .HasMaxLength(256)
@@ -534,12 +398,6 @@ namespace Humans.Users.Data.Migrations
                     b.Property<string>("MedicalConditions")
                         .HasMaxLength(4000)
                         .HasColumnType("character varying(4000)");
-
-                    b.Property<string>("MembershipTier")
-                        .IsRequired()
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("text")
-                        .HasDefaultValue("Volunteer");
 
                     b.Property<bool>("NoPriorBurnExperience")
                         .HasColumnType("boolean");
@@ -560,16 +418,6 @@ namespace Humans.Users.Data.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
 
-                    b.Property<Instant?>("RejectedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<Guid?>("RejectedByUserId")
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("RejectionReason")
-                        .HasMaxLength(4000)
-                        .HasColumnType("character varying(4000)");
-
                     b.Property<Instant>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -577,8 +425,6 @@ namespace Humans.Users.Data.Migrations
                         .HasColumnType("uuid");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("ConsentCheckStatus");
 
                     b.HasIndex("UserId")
                         .IsUnique();
@@ -776,15 +622,6 @@ namespace Humans.Users.Data.Migrations
                     b.ToTable("user_tokens", (string)null);
                 });
 
-            modelBuilder.Entity("Humans.Users.Contracts.EventParticipation", b =>
-                {
-                    b.HasOne("Humans.Users.Contracts.User", null)
-                        .WithMany("EventParticipations")
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-                });
-
             modelBuilder.Entity("Humans.Users.Contracts.User", b =>
                 {
                     b.HasOne("Humans.Users.Contracts.User", null)
@@ -826,15 +663,6 @@ namespace Humans.Users.Data.Migrations
                     b.Navigation("SourceUser");
 
                     b.Navigation("TargetUser");
-                });
-
-            modelBuilder.Entity("Humans.Users.Domain.CommunicationPreference", b =>
-                {
-                    b.HasOne("Humans.Users.Contracts.User", null)
-                        .WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
                 });
 
             modelBuilder.Entity("Humans.Users.Domain.ContactField", b =>
@@ -932,8 +760,6 @@ namespace Humans.Users.Data.Migrations
 
             modelBuilder.Entity("Humans.Users.Contracts.User", b =>
                 {
-                    b.Navigation("EventParticipations");
-
                     b.Navigation("UserEmails");
                 });
 

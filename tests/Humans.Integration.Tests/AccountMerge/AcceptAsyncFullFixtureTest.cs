@@ -167,10 +167,8 @@ public class AcceptAsyncFullFixtureTest(HumansTestDatabase database)
             .Should().Be(0, "all UserEmails re-FK or collapse off the source");
         (await db.Set<IdentityUserLogin<Guid>>().AsNoTracking().CountAsync(l => l.UserId == sourceId, TestContext.Current.CancellationToken))
             .Should().Be(0, "all logins re-FK to target");
-        (await db.CommunicationPreferences.AsNoTracking().CountAsync(cp => cp.UserId == sourceId, TestContext.Current.CancellationToken))
-            .Should().Be(0);
         (await ticketsDb.EventParticipations.AsNoTracking().CountAsync(ep => ep.UserId == sourceId && ep.Status != null, TestContext.Current.CancellationToken))
-            .Should().Be(0, "Tickets clears the source's participations; the legacy Users rows stay frozen");
+            .Should().Be(0, "Tickets clears the source's participations");
         (await governanceDb.Applications.AsNoTracking().CountAsync(a => a.UserId == sourceId, TestContext.Current.CancellationToken))
             .Should().Be(0);
         (await authDb.RoleAssignments.AsNoTracking().CountAsync(ra =>

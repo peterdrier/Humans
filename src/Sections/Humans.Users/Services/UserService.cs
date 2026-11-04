@@ -698,21 +698,12 @@ internal sealed class UserService(
             .Select(e => e.Email)
             .FirstOrDefault() ?? user.IdentityEmailColumn;
 
-        // The dead legacy flags stay in the Art. 15 export while the columns exist; this is their
-        // only reader.
-#pragma warning disable CS0618
-        var unsubscribedFromCampaigns = user.UnsubscribedFromCampaigns;
-        var suppressScheduleChangeEmails = user.SuppressScheduleChangeEmails;
-#pragma warning restore CS0618
-
         var shaped = new
         {
             user.Id,
             Email = effectiveEmail,
             user.DisplayName,
             user.PreferredLanguage,
-            UnsubscribedFromCampaigns = unsubscribedFromCampaigns,
-            SuppressScheduleChangeEmails = suppressScheduleChangeEmails,
             ContactSource = user.ContactSource?.ToString(),
             State = user.State.ToString(),
             DeletionRequestedAt = user.DeletionRequestedAt.ToIso8601(),
@@ -834,21 +825,12 @@ internal sealed class UserService(
             profile.Pronouns,
             profile.ContributionInterests,
             profile.BoardNotes,
-            // Frozen legacy column; Governance exports the live tier.
-            profile.MembershipTier,
             // JSON key pinned: GDPR export stability.
             IsSuspended = isSuspended,
             profile.NoPriorBurnExperience,
             profile.EmergencyContactName,
             profile.EmergencyContactPhone,
             profile.EmergencyContactRelationship,
-            // Legacy food columns (incl. archived merge rows) stay in the export until their drop;
-            // Cantina exports the live answers.
-            profile.DietaryPreference,
-            profile.Allergies,
-            profile.AllergyOtherText,
-            profile.Intolerances,
-            profile.IntoleranceOtherText,
             profile.MedicalConditions,
             profile.HasCustomProfilePicture,
             CreatedAt = profile.CreatedAt.ToIso8601(),

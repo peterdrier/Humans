@@ -28,22 +28,10 @@ public class EnumStringStabilityTests
     public static TheoryData<Type, string[]> StringStoredEnumData => new()
     {
         {
-            typeof(LegacyMembershipTier), ["Volunteer", "Colaborador", "Asociado"]
-        },
-        {
-            typeof(LegacyConsentCheckStatus), ["Pending", "Cleared", "Flagged"]
-        },
-        {
             typeof(ContactFieldType), ["Email", "Phone", "Signal", "Telegram", "WhatsApp", "Discord", "Other"]
         },
         {
             typeof(ContactFieldVisibility), ["BoardOnly", "CoordinatorsAndBoard", "MyTeams", "AllActiveProfiles"]
-        },
-        {
-            typeof(LegacyMessageCategory), [
-                "System", "EventOperations", "CommunityUpdates", "Marketing", "Governance",
-                "CampaignCodes", "FacilitatedMessages", "Ticketing", "VolunteerUpdates", "TeamUpdates"
-            ]
         }
     };
 }

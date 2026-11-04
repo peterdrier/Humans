@@ -73,7 +73,7 @@ One row per member; a member with no row is a Volunteer.
 | ExpiresAt | LocalDate? | The granting application's `TermExpiresAt`; kept in step by the term-expiry repair |
 | GrantedByApplicationId | Guid? | The approved application that granted the tier; null for Volunteer or a copied tier with no matching approval |
 
-**Read source:** tier reads, account merges and the register-of-members export use only `governance_membership_tiers`. Users retains its frozen `profiles.MembershipTier` column for its own GDPR export until a separate schema drop.
+**Read source:** tier reads, account merges and the register-of-members export use only `governance_membership_tiers`. The legacy `profiles.MembershipTier` column is dropped.
 
 ### ApplicationStateHistory
 

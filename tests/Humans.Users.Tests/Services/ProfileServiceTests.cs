@@ -678,27 +678,6 @@ public sealed class ProfileServiceTests : ServiceTestHarness
             .EventName.Should().Be("Existing history");
     }
 
-    [HumansFact]
-    public async Task SaveProfileAsync_LeavesTheLegacyFoodColumnsUntouched()
-    {
-        var userId = Guid.NewGuid();
-        var profileId = await SeedUserWithProfileAsync(userId);
-        var existing = await Db.Profiles.FirstAsync(profile => profile.Id == profileId, Xunit.TestContext.Current.CancellationToken);
-        existing.DietaryPreference = "Vegan";
-        existing.Allergies = ["Other"];
-        existing.AllergyOtherText = null;
-        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
-
-        var result = await _editor.SaveProfileAsync(userId, MakeRequest(burnerName: "Named"), Xunit.TestContext.Current.CancellationToken);
-
-        result.Succeeded.Should().BeTrue();
-        var saved = await Db.Profiles.AsNoTracking().FirstAsync(profile => profile.Id == profileId, Xunit.TestContext.Current.CancellationToken);
-        saved.BurnerName.Should().Be("Named");
-        saved.DietaryPreference.Should().Be("Vegan");
-        saved.Allergies.Should().Equal("Other");
-        saved.AllergyOtherText.Should().BeNull();
-    }
-
     [HumansTheory]
     [Xunit.InlineData(false)]
     [Xunit.InlineData(true)]
@@ -839,8 +818,7 @@ public sealed class ProfileServiceTests : ServiceTestHarness
         await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
     }
 
-    private async Task<Guid> SeedUserWithProfileAsync(Guid userId,
-        bool isApproved = false, bool withPicture = false)
+    private async Task<Guid> SeedUserWithProfileAsync(Guid userId, bool withPicture = false)
     {
         await SeedUserAsync(userId);
         var profile = new Profile
@@ -850,7 +828,6 @@ public sealed class ProfileServiceTests : ServiceTestHarness
             BurnerName = "OldName",
             FirstName = "Old",
             LastName = "User",
-            IsApproved = isApproved,
             CreatedAt = Clock.GetCurrentInstant() - Duration.FromDays(1),
             UpdatedAt = Clock.GetCurrentInstant() - Duration.FromDays(1)
         };

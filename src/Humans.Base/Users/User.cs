@@ -97,12 +97,6 @@ public class User : IdentityUser<Guid>
         set => base.NormalizedUserName = value;
     }
 
-    /// <summary>
-    /// Frozen: the stamp lives in Consent's <c>consent_reminders</c>. Written only to clear it on GDPR erasure;
-    /// the column goes with its separate drop migration.
-    /// </summary>
-    public Instant? LastConsentReminderSentAt { get; set; }
-
     public Instant? DeletionRequestedAt { get; set; }
 
     /// <summary>DeletionRequestedAt + 30 days.</summary>
@@ -112,12 +106,6 @@ public class User : IdentityUser<Guid>
     public Instant? DeletionEligibleAfter { get; set; }
 
     public bool IsDeletionPending => DeletionRequestedAt.HasValue;
-
-    [Obsolete("No reader or writer; retained for the DB column until a drop migration (peterdrier/Humans#2156).")]
-    public bool UnsubscribedFromCampaigns { get; set; }
-
-    [Obsolete("No reader or writer; retained for the DB column until a drop migration (peterdrier/Humans#2156).")]
-    public bool SuppressScheduleChangeEmails { get; set; }
 
     /// <summary>Null for self-registered users.</summary>
     public ContactSource? ContactSource { get; set; }
