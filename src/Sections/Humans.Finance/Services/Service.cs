@@ -568,7 +568,7 @@ internal sealed class Service(
         }
         catch (Exception ex) when (ex is HoldedTransientException or HoldedPermanentException)
         {
-            logger.LogWarning(ex, "Holded purchase documents unavailable; /Finance/Creditors shows no open-document counts and cannot rule out duplicates.");
+            logger.LogWarning("Holded purchase documents unavailable; /Finance/Creditors shows no open-document counts and cannot rule out duplicates. {Reason}", ex.Message);
         }
 
         // An unbooked transfer means the balance is still open in Holded, so paying again would pay twice. A withdrawn
@@ -648,7 +648,7 @@ internal sealed class Service(
             }
             catch (HoldedTransientException ex)
             {
-                logger.LogWarning(ex, "Holded contact list unavailable; creditor account names will be blank.");
+                logger.LogWarning("Holded contact list unavailable; creditor account names will be blank. {Reason}", ex.Message);
                 return (IReadOnlyList<HoldedContactDto>)[];
             }
             catch (HoldedPermanentException ex)
@@ -1354,7 +1354,7 @@ internal sealed class Service(
         }
         catch (Exception ex) when (ex is HoldedTransientException or HoldedPermanentException)
         {
-            logger.LogWarning(ex, "Holded could not be read for /Finance/HoldedDuplicates.");
+            logger.LogWarning("Holded could not be read for /Finance/HoldedDuplicates. {Reason}", ex.Message);
             return new HoldedDuplicatesVm([], [], "Holded could not be read, so nothing can be judged: " + ex.Message);
         }
     }
@@ -1466,7 +1466,7 @@ internal sealed class Service(
         }
         catch (Exception ex) when (ex is HoldedTransientException or HoldedPermanentException)
         {
-            logger.LogWarning(ex, "Holded could not be read; no duplicate was deleted.");
+            logger.LogWarning("Holded could not be read; no duplicate was deleted. {Reason}", ex.Message);
             return new HoldedDuplicateApplyResult([], "Holded could not be read — nothing was deleted: " + ex.Message, null);
         }
         if (!plan.HasWork)
@@ -1561,7 +1561,7 @@ internal sealed class Service(
         }
         catch (Exception ex) when (ex is HoldedTransientException or HoldedPermanentException)
         {
-            logger.LogWarning(ex, "Holded's chart of accounts could not be read for the duplicate removal balances.");
+            logger.LogWarning("Holded's chart of accounts could not be read for the duplicate removal balances. {Reason}", ex.Message);
             return null;
         }
     }

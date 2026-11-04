@@ -2,7 +2,7 @@ using NodaTime;
 
 namespace Humans.Users.Contracts;
 
-public class UserEmail
+internal sealed class UserEmail
 {
     public Guid Id { get; init; }
 

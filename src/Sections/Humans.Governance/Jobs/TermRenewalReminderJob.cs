@@ -73,8 +73,11 @@ internal sealed class TermRenewalReminderJob(
                 }
 
                 var email = applicant.Email;
-                if (email is null)
+                if (string.IsNullOrWhiteSpace(email))
                 {
+                    logger.LogWarning(
+                        "Skipping term renewal reminder for user {UserId} tier {Tier}: no notification email",
+                        application.UserId, application.MembershipTier);
                     continue;
                 }
 

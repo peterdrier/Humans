@@ -318,8 +318,7 @@ internal sealed class TeamAdminController(
             return RedirectToAction(nameof(Members), new { slug });
         }
 
-        var teamInfo = await _teamService.GetTeamAsync(team.Id, HttpContext.RequestAborted);
-        if (teamInfo is null || teamInfo.Members.All(m => m.UserId != userId))
+        if (team.Members.All(m => m.UserId != userId))
         {
             SetError("That human is not a member of this team.");
             return RedirectToAction(nameof(Members), new { slug });
@@ -367,8 +366,7 @@ internal sealed class TeamAdminController(
         var results = await _userService.SearchUsersAsync(
             q, PersonSearchFields.Name, limit: int.MaxValue, ct: HttpContext.RequestAborted);
 
-        var teamInfo = await _teamService.GetTeamAsync(team.Id, HttpContext.RequestAborted);
-        var existingMemberIds = teamInfo?.Members.Select(m => m.UserId).ToHashSet() ?? [];
+        var existingMemberIds = team.Members.Select(m => m.UserId).ToHashSet();
 
         var filtered = results
             .Where(r => !existingMemberIds.Contains(r.UserId))
@@ -389,11 +387,10 @@ internal sealed class TeamAdminController(
         }
 
         var definitions = await _teamService.GetRoleDefinitionsAsync(team.Id, HttpContext.RequestAborted);
-        var teamInfo = await _teamService.GetTeamAsync(team.Id, HttpContext.RequestAborted);
-        var members = teamInfo?.Members
+        var members = team.Members
             .OrderBy(m => m.Role)
             .ThenBy(m => m.DisplayName, StringComparer.OrdinalIgnoreCase)
-            .ToList() ?? [];
+            .ToList();
 
         var memberUserIds = members.Select(m => m.UserId).ToList();
         var memberInfos = await _userService.GetUserInfosAsync(memberUserIds, HttpContext.RequestAborted);

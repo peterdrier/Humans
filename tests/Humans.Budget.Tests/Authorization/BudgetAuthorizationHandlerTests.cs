@@ -1,3 +1,4 @@
+using Humans.Users.Contracts;
 using Humans.Finance.Contracts;
 using System.Security.Claims;
 using AwesomeAssertions;
@@ -13,6 +14,7 @@ namespace Humans.Budget.Tests.Authorization;
 
 public sealed class BudgetAuthorizationHandlerTests
 {
+    private readonly IUserService _users = Substitute.For<IUserService>();
     private readonly IBudgetService _budgetService = Substitute.For<IBudgetService>();
     private readonly BudgetAuthorizationHandler _handler;
 
@@ -22,25 +24,60 @@ public sealed class BudgetAuthorizationHandlerTests
 
     public BudgetAuthorizationHandlerTests()
     {
-        _handler = new BudgetAuthorizationHandler(_budgetService, new Microsoft.AspNetCore.Http.HttpContextAccessor());
+        _users.GetUserInfoAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(call => UserInfo.Create(new User { Id = call.Arg<Guid>() }, [], [], null));
+        _handler = new BudgetAuthorizationHandler(_budgetService, _users, new Microsoft.AspNetCore.Http.HttpContextAccessor());
         _budgetService.GetEffectiveCoordinatorTeamIdsAsync(UserId)
             .Returns([CoordinatorTeamId]);
     }
 
-    [HumansFact]
-    public async Task AuthorizationRead_PropagatesAbandonedRequests()
+    [HumansTheory]
+    [InlineData(true, true)]
+    [InlineData(true, false)]
+    [InlineData(false, false)]
+    public async Task MembershipAccess_UsesResolvedAccountAndDeniesMissingAccounts(
+        bool accountExists, bool survivorAuthorized)
+    {
+        var cookieId = survivorAuthorized ? Guid.NewGuid() : UserId;
+        var survivorId = survivorAuthorized ? UserId : Guid.NewGuid();
+        _users.GetUserInfoAsync(cookieId, Arg.Any<CancellationToken>()).Returns(accountExists
+            ? UserInfo.Create(new User { Id = survivorId }, [], [], null)
+            : null);
+        if (!survivorAuthorized)
+            _budgetService.GetEffectiveCoordinatorTeamIdsAsync(survivorId, Arg.Any<CancellationToken>()).Returns([]);
+
+        var allowed = await EvaluateAsync(CreateUserWithId(cookieId), CreateCategory("coordinator"));
+
+        allowed.Should().Be(accountExists && survivorAuthorized);
+    }
+
+    [HumansTheory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task AuthorizationRead_PropagatesAbandonedRequests(bool atUser)
     {
         using var request = new CancellationTokenSource();
         var http = new HttpContextAccessor { HttpContext = new DefaultHttpContext { RequestAborted = request.Token } };
         var observed = CancellationToken.None;
+        _users.GetUserInfoAsync(UserId, Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            var ct = call.Arg<CancellationToken>();
+            if (atUser)
+            {
+                observed = ct;
+                request.Cancel();
+            }
+            ct.ThrowIfCancellationRequested();
+            return UserInfo.Create(new User { Id = UserId }, [], [], null);
+        });
         _budgetService.GetEffectiveCoordinatorTeamIdsAsync(UserId, Arg.Any<CancellationToken>()).Returns(call =>
         {
             observed = call.Arg<CancellationToken>();
-            request.Cancel();
+            if (!atUser) request.Cancel();
             observed.ThrowIfCancellationRequested();
             return new HashSet<Guid> { CoordinatorTeamId };
         });
-        var handler = new BudgetAuthorizationHandler(_budgetService, http);
+        var handler = new BudgetAuthorizationHandler(_budgetService, _users, http);
         var context = new AuthorizationHandlerContext([BudgetOperationRequirement.Edit], CreateUser("coordinator"), CreateCategory("coordinator"));
         Func<Task> authorize = () => handler.HandleAsync(context);
         await authorize.Should().ThrowAsync<OperationCanceledException>();

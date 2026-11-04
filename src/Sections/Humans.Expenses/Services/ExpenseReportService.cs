@@ -167,10 +167,11 @@ internal sealed class ExpenseReportService(
 
         // Filtering the whole queue in memory beats a per-audience query at this scale.
         // Drafts and withdrawals are excluded upstream for everyone.
-        var categoryIds = await GetCoordinatorCategoryIdsAsync(viewerUserId, ct);
-        var managedGrantIds = await preapprovals.ListManagedGrantIdsAsync(viewerUserId, ct);
         var viewer = await userService.GetUserInfoAsync(viewerUserId, ct);
-        var ownIds = viewer?.AllUserIds ?? [viewerUserId];
+        if (viewer is null) return [];
+        var categoryIds = await GetCoordinatorCategoryIdsAsync(viewer.Id, ct);
+        var managedGrantIds = await preapprovals.ListManagedGrantIdsAsync(viewer.Id, ct);
+        var ownIds = viewer.AllUserIds;
         return queue
             .Where(r => ownIds.Contains(r.SubmitterUserId)
                         || (r.BudgetCategoryId is { } categoryId && categoryIds.Contains(categoryId))
@@ -206,8 +207,10 @@ internal sealed class ExpenseReportService(
     public async Task<IReadOnlyList<ExpenseReportDto>> GetCoordinatorQueueAsync(
         Guid coordinatorUserId, CancellationToken ct = default)
     {
-        var categoryIds = await GetCoordinatorCategoryIdsAsync(coordinatorUserId, ct);
-        var managedGrantIds = await preapprovals.ListManagedGrantIdsAsync(coordinatorUserId, ct);
+        var coordinator = await userService.GetUserInfoAsync(coordinatorUserId, ct);
+        if (coordinator is null) return [];
+        var categoryIds = await GetCoordinatorCategoryIdsAsync(coordinator.Id, ct);
+        var managedGrantIds = await preapprovals.ListManagedGrantIdsAsync(coordinator.Id, ct);
 
         var queue = categoryIds.Count == 0
             ? []
@@ -321,12 +324,16 @@ internal sealed class ExpenseReportService(
         {
             return (await userService.GetUserInfoAsync(userId, ct))?.BurnerName ?? userId.ToString();
         }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            logger.LogWarning("Audit display-name lookup cancelled for member {UserId}; using member ID", userId);
+        }
         catch (Exception ex)
         {
             // Name enrichment must not skip the audit or fail an edit that already committed.
-            logger.LogWarning(ex, "Could not resolve audit display name for member {UserId}", userId);
-            return userId.ToString();
+            logger.LogError(ex, "Could not resolve audit display name for member {UserId}; using member ID", userId);
         }
+        return userId.ToString();
     }
 
     /// <summary>
@@ -638,7 +645,7 @@ internal sealed class ExpenseReportService(
             var removed = report.Lines.FirstOrDefault(l => l.Id == lineId);
 
             // One atomic save removes the line, its proof rows and their attachment rows; files go only after the
-            // commit (an orphan file is a warning, an orphan row is a bug).
+            // commit; cleanup failures cannot reverse the metadata deletion.
             var removedAttachments = await repo.RemoveLineAsync(reportId, lineId, ct)
                 ?? throw new InvalidOperationException("Failed to remove line.");
 
@@ -657,7 +664,7 @@ internal sealed class ExpenseReportService(
                 }
                 catch (Exception ex)
                 {
-                    logger.LogWarning(ex,
+                    logger.LogError(ex,
                         "Could not delete attachment file {AttachmentId} while removing line {LineId}",
                         attachment.Id, lineId);
                 }
@@ -749,7 +756,7 @@ internal sealed class ExpenseReportService(
                 }
                 catch (Exception ex)
                 {
-                    logger.LogWarning(ex, "Could not delete unlinked attachment file {AttachmentId}", attachmentId);
+                    logger.LogError(ex, "Could not delete unlinked attachment file {AttachmentId}", attachmentId);
                 }
                 return new("Expenses_Validation_LineNotOnReport", []);
             }
@@ -794,7 +801,7 @@ internal sealed class ExpenseReportService(
                 }
                 catch (Exception ex)
                 {
-                    logger.LogWarning(ex,
+                    logger.LogError(ex,
                         "Could not delete attachment file {AttachmentId} after upload rollback",
                         attachmentId);
                 }
@@ -812,7 +819,7 @@ internal sealed class ExpenseReportService(
             }
             catch (Exception ex)
             {
-                logger.LogWarning(ex, "Could not delete superseded attachment file {AttachmentId}", replacedAttachment.Id);
+                logger.LogError(ex, "Could not delete superseded attachment file {AttachmentId}", replacedAttachment.Id);
             }
         }
 
@@ -865,7 +872,7 @@ internal sealed class ExpenseReportService(
             }
             catch (Exception ex)
             {
-                logger.LogWarning(ex,
+                logger.LogError(ex,
                     "Could not delete attachment file {AttachmentId} for line {LineId}",
                     removed.Id, lineId);
             }

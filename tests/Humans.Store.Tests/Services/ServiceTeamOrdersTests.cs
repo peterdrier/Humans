@@ -234,7 +234,7 @@ public class ServiceTeamOrdersTests
                 Id = orderId, TeamId = deptId, Year = 2026,
                 Lines = { new() { Id = Guid.NewGuid(), ProductId = productId, Qty = 2, UnitPriceSnapshot = 10m } }
             }]);
-        _repo.GetActiveProductsForYearAsync(2026, Arg.Any<CancellationToken>())
+        _repo.GetAllProductsForYearAsync(2026, Arg.Any<CancellationToken>())
             .Returns(new List<Product>());
 
         var data = await _service.GetIndexDataAsync(userId, ct: TestContext.Current.CancellationToken);
@@ -258,7 +258,7 @@ public class ServiceTeamOrdersTests
             {
                 [otherDeptId] = MakeDepartment(otherDeptId, "Other", coordinatorUserId: Guid.NewGuid()),
             });
-        _repo.GetActiveProductsForYearAsync(2026, Arg.Any<CancellationToken>())
+        _repo.GetAllProductsForYearAsync(2026, Arg.Any<CancellationToken>())
             .Returns(new List<Product>());
 
         var data = await _service.GetIndexDataAsync(userId, ct: TestContext.Current.CancellationToken);
@@ -277,7 +277,7 @@ public class ServiceTeamOrdersTests
                 [otherDeptId] = MakeDepartment(otherDeptId, "Other", coordinatorUserId: Guid.NewGuid()),
             });
         _repo.GetOrderForTeamAsync(otherDeptId, 2026, Arg.Any<CancellationToken>()).Returns((Order?)null);
-        _repo.GetActiveProductsForYearAsync(2026, Arg.Any<CancellationToken>())
+        _repo.GetAllProductsForYearAsync(2026, Arg.Any<CancellationToken>())
             .Returns(new List<Product>());
 
         var data = await _service.GetAllCounterpartiesIndexDataAsync(ct: TestContext.Current.CancellationToken);

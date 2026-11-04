@@ -122,6 +122,20 @@ public sealed class LowIncomeAdminControllerTests
     }
 
     [HumansFact]
+    public async Task UnavailableRecipient_IsShownAsAnError_AndLogged()
+    {
+        _grants.IssueAsync(Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<string?>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(new GrantIssueResult(Guid.Empty, GrantWriteRefusal.RecipientUnavailable));
+        var controller = NewController();
+
+        var result = await controller.Grant(Guid.NewGuid(), CancellationToken.None);
+
+        result.Should().BeOfType<RedirectToActionResult>();
+        Message(controller, TempDataKeys.ErrorMessage).Should().Contain("no longer available");
+        _logger.Warnings.Should().ContainSingle().Which.Should().BeNull();
+    }
+
+    [HumansFact]
     public async Task TooLongReason_IsShownAsAnError_AndLogged()
     {
         var person = Guid.NewGuid();

@@ -270,12 +270,13 @@ internal sealed class FinanceController(
     [Authorize(Policy = FinancePolicies.Manage)]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> BookSepaTransfer(
-        Guid transferId, string bankMovementId,
+        [BindRequired] Guid transferId, [BindRequired] string bankMovementId,
         int days = IFinanceAdminService.DefaultSepaMatchToleranceDays)
     {
         var actor = await GetCurrentUserInfoAsync(HttpContext.RequestAborted);
         if (actor is null) return Challenge();
         var actorUserId = actor.Id;
+        if (!ModelState.IsValid) return MalformedMutation(actorUserId);
 
         var result = await holdedConnector.BookSepaTransferAsync(transferId, bankMovementId, actorUserId, days);
         if (result.Succeeded) SetSuccess(result.Message); else SetError(result.Message);
@@ -288,11 +289,12 @@ internal sealed class FinanceController(
     [Authorize(Policy = FinancePolicies.Manage)]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> WithdrawSepaTransfer(
-        Guid transferId, int days = IFinanceAdminService.DefaultSepaMatchToleranceDays)
+        [BindRequired] Guid transferId, int days = IFinanceAdminService.DefaultSepaMatchToleranceDays)
     {
         var actor = await GetCurrentUserInfoAsync(HttpContext.RequestAborted);
         if (actor is null) return Challenge();
         var actorUserId = actor.Id;
+        if (!ModelState.IsValid) return MalformedMutation(actorUserId);
 
         var result = await holdedConnector.WithdrawSepaTransferAsync(transferId, actorUserId, HttpContext.RequestAborted);
         if (result.Succeeded) SetSuccess(result.Message); else SetError(result.Message);
@@ -305,9 +307,12 @@ internal sealed class FinanceController(
     [Authorize(Policy = FinancePolicies.Manage)]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> CancelSepaFile(
-        Guid fileId, int days = IFinanceAdminService.DefaultSepaMatchToleranceDays)
+        [BindRequired] Guid fileId, int days = IFinanceAdminService.DefaultSepaMatchToleranceDays)
     {
-        if (GetCurrentUserId() is not { } actorUserId) return Challenge();
+        var actor = await GetCurrentUserInfoAsync(HttpContext.RequestAborted);
+        if (actor is null) return Challenge();
+        var actorUserId = actor.Id;
+        if (!ModelState.IsValid) return MalformedMutation(actorUserId);
 
         var result = await holdedConnector.CancelSepaFileAsync(fileId, actorUserId, HttpContext.RequestAborted);
         if (result.Succeeded) SetSuccess(result.Message); else SetError(result.Message);
@@ -343,12 +348,13 @@ internal sealed class FinanceController(
     [Authorize(Policy = FinancePolicies.Manage)]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> BookSepaFile(
-        Guid fileId, string bankMovementId,
+        [BindRequired] Guid fileId, [BindRequired] string bankMovementId,
         int days = IFinanceAdminService.DefaultSepaMatchToleranceDays)
     {
         var actor = await GetCurrentUserInfoAsync(HttpContext.RequestAborted);
         if (actor is null) return Challenge();
         var actorUserId = actor.Id;
+        if (!ModelState.IsValid) return MalformedMutation(actorUserId);
 
         var result = await holdedConnector.BookSepaFileAsync(fileId, bankMovementId, actorUserId, days);
         if (result.Succeeded) SetSuccess(result.Message); else SetError(result.Message);
@@ -362,16 +368,24 @@ internal sealed class FinanceController(
     [Authorize(Policy = FinancePolicies.Manage)]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> BookSepaFileMatches(
-        Guid fileId, int days = IFinanceAdminService.DefaultSepaMatchToleranceDays)
+        [BindRequired] Guid fileId, int days = IFinanceAdminService.DefaultSepaMatchToleranceDays)
     {
         var actor = await GetCurrentUserInfoAsync(HttpContext.RequestAborted);
         if (actor is null) return Challenge();
         var actorUserId = actor.Id;
+        if (!ModelState.IsValid) return MalformedMutation(actorUserId);
 
         var result = await holdedConnector.BookSepaFileMatchesAsync(fileId, actorUserId, days);
         if (result.Succeeded) SetSuccess(result.Message); else SetError(result.Message);
 
         return RedirectToAction(nameof(Sepa), new { days });
+    }
+
+    private BadRequestObjectResult MalformedMutation(Guid actorUserId)
+    {
+        logger.LogWarning("Rejected malformed Finance {Action} form for actor {ActorUserId}",
+            ControllerContext.ActionDescriptor.ActionName, actorUserId);
+        return BadRequest(ModelState);
     }
 
     /// <summary>Ties resolve on the account number so the order is stable across reloads.</summary>
@@ -460,11 +474,12 @@ internal sealed class FinanceController(
     [HttpPost("Creditors/Bind")]
     [Authorize(Policy = FinancePolicies.Manage)]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> BindCreditor(Guid userId, int supplierAccountNum, string? returnUrl)
+    public async Task<IActionResult> BindCreditor([BindRequired] Guid userId, [BindRequired] int supplierAccountNum, string? returnUrl)
     {
         var actor = await GetCurrentUserInfoAsync(HttpContext.RequestAborted);
         if (actor is null) return Challenge();
         var actorUserId = actor.Id;
+        if (!ModelState.IsValid) return MalformedMutation(actorUserId);
         try
         {
             var result = await holdedConnector.SetCreditorContactAsync(userId, supplierAccountNum, actorUserId);
@@ -487,11 +502,12 @@ internal sealed class FinanceController(
     [HttpPost("Creditors/Unbind")]
     [Authorize(Policy = FinancePolicies.Manage)]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> UnbindCreditor(Guid userId, string? returnUrl)
+    public async Task<IActionResult> UnbindCreditor([BindRequired] Guid userId, string? returnUrl)
     {
         var actor = await GetCurrentUserInfoAsync(HttpContext.RequestAborted);
         if (actor is null) return Challenge();
         var actorUserId = actor.Id;
+        if (!ModelState.IsValid) return MalformedMutation(actorUserId);
         try
         {
             if (await holdedConnector.ClearCreditorContactAsync(userId, actorUserId))

@@ -5,6 +5,7 @@ using System.Security.Claims;
 using Humans.Camps.Contracts;
 using Humans.Settings.Contracts;
 using Humans.Teams.Contracts;
+using Humans.Users.Contracts;
 using Humans.Store.Services;
 using Humans.Store.Services.Dtos;
 using Microsoft.AspNetCore.Authorization;
@@ -21,6 +22,7 @@ namespace Humans.Store.Authorization;
 internal sealed class OrderAuthorizationHandler(
     ICampService campService,
     ITeamService teamService,
+    IUserService users,
     ISettingsService settingsService,
     IClock clock,
     IHttpContextAccessor httpContextAccessor) : IAuthorizationHandler
@@ -74,8 +76,11 @@ internal sealed class OrderAuthorizationHandler(
         }
 
         var userIdClaim = context.User.FindFirst(ClaimTypes.NameIdentifier);
-        if (userIdClaim is null || !Guid.TryParse(userIdClaim.Value, out var userId))
+        if (userIdClaim is null || !Guid.TryParse(userIdClaim.Value, out var claimUserId))
             return;
+        var viewer = await users.GetUserInfoAsync(claimUserId, ct);
+        if (viewer is null) return;
+        var userId = viewer.Id;
 
         bool authorized = false;
         if (resource.CampSeasonId is { } sid)

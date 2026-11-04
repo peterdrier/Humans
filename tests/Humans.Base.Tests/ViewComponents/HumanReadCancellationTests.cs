@@ -1,3 +1,4 @@
+using Humans.Base.Models;
 using AwesomeAssertions;
 using Humans.Base.ViewComponents;
 using Humans.Base.Interfaces;
@@ -49,16 +50,20 @@ public class HumanReadCancellationTests
         await act.Should().ThrowAsync<OperationCanceledException>();
     }
     [HumansTheory]
-    [Xunit.InlineData(false)]
-    [Xunit.InlineData(true)]
-    public async Task ThingsToDo_PropagatesCancellationButIsolatesOperationalFailures(bool canceled)
+    [Xunit.InlineData(false, false)]
+    [Xunit.InlineData(false, true)]
+    [Xunit.InlineData(true, false)]
+    [Xunit.InlineData(true, true)]
+    public async Task ThingsToDo_PropagatesCancellationButIsolatesOperationalFailures(bool canceled, bool deferred)
     {
         using var aborted = new CancellationTokenSource();
         if (canceled) await aborted.CancelAsync();
         var contributor = Substitute.For<ISectionThingsToDo>();
+        Exception failure = canceled ? new OperationCanceledException(aborted.Token) : new IOException("Contributor unavailable");
         contributor.EntriesAsync(Arg.Any<IServiceProvider>(), Arg.Any<ClaimsPrincipal>(), Arg.Any<CancellationToken>())
-            .Returns(ValueTask.FromException<IEnumerable<ThingsToDoEntry>>(
-                canceled ? new OperationCanceledException(aborted.Token) : new IOException("Contributor unavailable")));
+            .Returns(deferred
+                ? ValueTask.FromResult(PartialEntries(failure))
+                : ValueTask.FromException<IEnumerable<ThingsToDoEntry>>(failure));
         var healthy = Substitute.For<ISectionThingsToDo>();
         healthy.EntriesAsync(Arg.Any<IServiceProvider>(), Arg.Any<ClaimsPrincipal>(), Arg.Any<CancellationToken>())
             .Returns(new[] { new ThingsToDoEntry("pending", "Pending", "icon", RawHref: "/") });
@@ -75,8 +80,18 @@ public class HumanReadCancellationTests
         if (canceled)
             await load.Should().ThrowAsync<OperationCanceledException>();
         else
-            (await load()).Should().BeOfType<ViewViewComponentResult>();
+        {
+            var model = (await load()).Should().BeOfType<ViewViewComponentResult>().Which.ViewData!.Model
+                .Should().BeOfType<ThingsToDoViewModel>().Which;
+            model.Items.Should().ContainSingle().Which.Title.Should().Be("Pending");
+        }
         await contributor.Received(1).EntriesAsync(Arg.Any<IServiceProvider>(), Arg.Any<ClaimsPrincipal>(), aborted.Token);
+    }
+
+    private static IEnumerable<ThingsToDoEntry> PartialEntries(Exception failure)
+    {
+        yield return new ThingsToDoEntry("partial", "Partial", "icon", RawHref: "/");
+        throw failure;
     }
 
     [HumansFact]

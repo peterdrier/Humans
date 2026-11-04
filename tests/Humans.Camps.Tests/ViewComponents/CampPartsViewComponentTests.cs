@@ -40,15 +40,23 @@ public class CampPartsViewComponentTests
         contributor.Received(1).Parts();
     }
 
-    [HumansFact]
-    public void ContributorThatThrows_IsSkipped_OthersStillRender()
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public void ContributorThatThrows_IsSkipped_OthersStillRender(bool deferred)
     {
         var broken = Substitute.For<ICampPart>();
-        broken.Parts().Returns(_ => throw new InvalidOperationException("section down"));
+        broken.Parts().Returns(_ => deferred ? PartialParts() : throw new InvalidOperationException("section down"));
 
         var model = ModelFrom(Guid.NewGuid(), broken, Contributor(new CampPart(typeof(EarlyPart))));
 
         model.Parts.Should().ContainSingle().Which.Component.Should().Be(typeof(EarlyPart));
+    }
+
+    private static IEnumerable<CampPart> PartialParts()
+    {
+        yield return new CampPart(typeof(MiddlePart));
+        throw new InvalidOperationException("section down during enumeration");
     }
 
     private sealed class EarlyPart;

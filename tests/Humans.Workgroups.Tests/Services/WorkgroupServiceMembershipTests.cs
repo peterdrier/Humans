@@ -864,6 +864,47 @@ public sealed class WorkgroupServiceMembershipTests : WorkgroupsTestHarness
     }
 
     [HumansTheory]
+    [InlineData("SECONDLY", false)]
+    [InlineData("MINUTELY", false)]
+    [InlineData("HOURLY", false)]
+    [InlineData("SECONDLY", true)]
+    [InlineData("MINUTELY", true)]
+    [InlineData("HOURLY", true)]
+    [InlineData("DAILY", false)]
+    [InlineData("DAILY", true)]
+    public async Task Meeting_RecurrenceFrequencyGuardHandlesValueWhitespace(string frequency, bool update)
+    {
+        var workgroup = await SeedWorkgroupAsync();
+        var member = workgroup.Members.Single().UserId;
+        var now = Clock.GetCurrentInstant();
+        var meeting = update ? await AddMeetingAsync(workgroup.Id, now) : null;
+        var rule = $"FREQ= {frequency.ToLowerInvariant()} ;COUNT=2";
+        var save = new WorkgroupMeetingSave("Changed", now, now.Plus(Duration.FromHours(1)),
+            null, null, false, null, rule, "Europe/Madrid");
+        AuditLog.ClearReceivedCalls();
+
+        var result = update
+            ? await NewService().UpdateMeetingAsync(meeting!.Id, member, save, Ct)
+            : await NewService().CreateMeetingAsync(workgroup.Id, member, save, Ct);
+
+        await using var ctx = OpenContext();
+        var stored = await ctx.Meetings.ToListAsync(Ct);
+        if (string.Equals(frequency, "DAILY", StringComparison.Ordinal))
+        {
+            result.Refusal.Should().BeNull();
+            stored.Should().ContainSingle().Which.RecurrenceRule.Should().Be(rule);
+            return;
+        }
+        result.Refusal.Should().NotBeNull();
+        result.Refusal!.Key.Should().Be(WorkgroupErrorKeys.RecurrenceInvalid);
+        if (update)
+            stored.Should().ContainSingle().Which.RecurrenceRule.Should().Be(meeting!.RecurrenceRule);
+        else
+            stored.Should().BeEmpty();
+        AuditLog.ReceivedCalls().Should().BeEmpty();
+    }
+
+    [HumansTheory]
     [InlineData("FREQ=WEEKLY", null)]
     [InlineData("FREQ=WEEKLY", "Mars/Olympus")]
     [InlineData("FREQ=FORTNIGHTLY", "Europe/Madrid")]

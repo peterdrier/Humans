@@ -78,7 +78,8 @@
         }
         else
         {
-            @Html.Raw($"<div class=\"text-center d-block\"{popoverAttrs}>{AvatarHtml("mb-2 mx-auto")}<div class=\"small\">{cardNameEnc}</div></div>")
+            var focusAttr = string.IsNullOrEmpty(popoverAttrs) ? "" : " tabindex=\"0\"";
+            @Html.Raw($"<div class=\"text-center d-block\"{popoverAttrs}{focusAttr}>{AvatarHtml("mb-2 mx-auto")}<div class=\"small\">{cardNameEnc}</div></div>")
         }
         break;
 }

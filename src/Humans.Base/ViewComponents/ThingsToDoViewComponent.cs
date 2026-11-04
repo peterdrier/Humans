@@ -22,7 +22,8 @@ public class ThingsToDoViewComponent(
         {
             try
             {
-                entries.AddRange(await contributor.EntriesAsync(services, UserClaimsPrincipal, HttpContext.RequestAborted));
+                var contributed = await contributor.EntriesAsync(services, UserClaimsPrincipal, HttpContext.RequestAborted);
+                entries.AddRange(contributed.ToList());
             }
             catch (Exception ex) when (ex is not OperationCanceledException || !HttpContext.RequestAborted.IsCancellationRequested)
             {

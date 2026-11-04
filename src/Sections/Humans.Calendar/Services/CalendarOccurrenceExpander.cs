@@ -126,11 +126,22 @@ internal static class CalendarOccurrenceExpander
         }
 
         var duration = (ev.EndUtc ?? ev.StartUtc!.Value) - ev.StartUtc!.Value;
+        var rule = ParseRecurrenceRule(ev.RecurrenceRule!);
+        if (rule.Until is { } until)
+        {
+            var beyondWindow = until.HasTime
+                ? LocalDateTime.FromDateTime(until.Value).InZoneLeniently(until.IsUtc ? DateTimeZone.Utc : zone).ToInstant() >= to
+                : LocalDate.FromDateTime(until.Value) >= to.InZone(zone).Date;
+            // Ical.Net adds a day to UNTIL before yielding; a last-day cutoff can overflow.
+            // A cutoff beyond this window can end at its last included second instead.
+            if (beyondWindow)
+                rule.Until = new CalDateTime(to.Minus(NodaTime.Duration.FromTicks(1)).ToDateTimeUtc());
+        }
         var ical = new IcalEvent
         {
             DtStart = new CalDateTime(ev.StartUtc.Value.InZone(zone).LocalDateTime.ToDateTimeUnspecified(), zone.Id, hasTime: true),
             Duration = Ical.Net.DataTypes.Duration.FromTimeSpanExact(TimeSpan.FromTicks(duration.BclCompatibleTicks)),
-            RecurrenceRule = ParseRecurrenceRule(ev.RecurrenceRule!),
+            RecurrenceRule = rule,
         };
         var searchFrom = ev.Exceptions
             .Where(x => !x.IsCancelled && x.OverrideEndUtc > from
@@ -200,10 +211,11 @@ internal static class CalendarOccurrenceExpander
                     (e.RecurrenceUntilDate is null || e.RecurrenceUntilDate >= from.InZone(displayZone).Date);
 
             // UNTIL bounds occurrence starts, while COUNT stores the final end.
-            // Allow duration conservatively; expansion applies the exact overlap check.
+            // Compare the gap so a far-future UNTIL plus duration cannot overflow.
+            // Expansion applies the exact overlap check.
             var duration = (e.EndUtc ?? e.StartUtc!.Value) - e.StartUtc!.Value;
             return e.StartUtc <= to &&
-                (e.RecurrenceUntilUtc is null || e.RecurrenceUntilUtc.Value.Plus(duration) >= from);
+                (e.RecurrenceUntilUtc is null || from - e.RecurrenceUntilUtc.Value <= duration);
         }).ToList();
     }
 

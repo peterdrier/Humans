@@ -63,8 +63,10 @@ public class NotificationEmitterTests : IDisposable
         (await _notificationsDb.Notifications.CountAsync(TestContext.Current.CancellationToken)).Should().Be(0);
     }
 
-    [HumansFact]
-    public async Task SendAsync_CreatesOneNotificationPerRecipient_IndividualScope()
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task SendAsync_CreatesOneNotificationPerRecipient_IndividualScope(bool duplicateRecipients)
     {
         var user1 = Guid.NewGuid();
         var user2 = Guid.NewGuid();
@@ -74,7 +76,8 @@ public class NotificationEmitterTests : IDisposable
             NotificationClass.Informational,
             NotificationPriority.Normal,
             "Hello",
-            recipientUserIds: [user1, user2], cancellationToken: TestContext.Current.CancellationToken);
+            recipientUserIds: duplicateRecipients ? [user1, user2, user1, user2] : [user1, user2],
+            cancellationToken: TestContext.Current.CancellationToken);
 
         var stored = await _notificationsDb.Notifications
             .AsNoTracking()

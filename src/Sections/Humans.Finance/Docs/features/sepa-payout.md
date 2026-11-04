@@ -285,6 +285,8 @@ never ages out of its own re-check. The floor (90 days plus the 2-day generation
 *matching*, which takes no row generated outside the feed window anyway. A booking the sweep refuses
 is logged at Warning. One bad line or one Holded exception never aborts the rest of the run.
 
+SEPA mutation forms require their transfer/file and bank movement identifiers. Missing identifiers or malformed values return HTTP 400 before booking, withdrawal or cancellation; a malformed tolerance cannot silently become a default booking window.
+
 ## One line per transfer, no text — Book file
 
 Sabadell's live behaviour: one outgoing line per transfer, dated the execution day, with no

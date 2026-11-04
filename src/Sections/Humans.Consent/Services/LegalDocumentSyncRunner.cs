@@ -104,7 +104,13 @@ internal sealed class LegalDocumentSyncRunner(
             var outstanding = recipient.SelectMany(id => userDocuments[id])
                 .Where(change => !consented.TryGetValue(user.Id, out var versions) || !versions.Contains(change.Version.Id))
                 .Select(change => change.Document.Name).Distinct(StringComparer.Ordinal).ToList();
-            if (outstanding.Count == 0 || user.Email is null) continue;
+            if (outstanding.Count == 0) continue;
+            if (string.IsNullOrWhiteSpace(user.Email))
+            {
+                logger.LogWarning("Skipping legal document notification batch {BatchId} for user {UserId}: no notification email",
+                    batchId, user.Id);
+                continue;
+            }
             try
             {
                 var language = user.PreferredLanguage;

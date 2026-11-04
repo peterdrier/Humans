@@ -448,6 +448,7 @@ internal sealed class AgentService : IAgentService, IAgentConversationRetention
             Model = settings.Model,
             DurationMs = durationMs,
             FetchedDocs = fetchedDocs.ToArray(),
+            RefusalReason = string.Equals(finalFinalizer?.StopReason, "error", StringComparison.Ordinal) ? "error" : null,
             HandedOffToFeedbackId = null
         };
         await _repo.AppendMessageAsync(message, cancellationToken);

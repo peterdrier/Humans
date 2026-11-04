@@ -234,7 +234,9 @@ The provisioning preview, unmatched queue, creditor overview (including member-n
 
 ## Invariants
 
-- Provisioning, SEPA generation/booking/withdrawal, duplicate removal, creditor binding changes and IBAN reveals resolve the acting account through Users before calling the service. Merged sessions use the surviving actor ID; missing accounts retain the action's Challenge/Forbid response and perform no operation. Account reads observe request cancellation, while each service call retains its existing cancellation boundary.
+- Handled Holded read failures for creditor/duplicate planning and the SEPA page or sweep retain Warning logs with their reason, without exception stacks. Existing unavailable-data, omitted-balance and no-write fallbacks remain. Handled SEPA reconciliation refusals, chunk retries and verification failures also retain Warning and their reasons without exception stacks; an unverified reconciliation stays pending.
+
+- Provisioning, SEPA generation/booking/withdrawal (including whole-file cancellation), duplicate removal, creditor binding changes and IBAN reveals resolve the acting account through Users before calling the service. Merged sessions use the surviving actor ID; missing accounts retain the action's Challenge/Forbid response and perform no operation. Account reads observe request cancellation, while each service call retains its existing cancellation boundary.
 
 - Duplicate-document previews order member groups by creditor account then contact name ignoring case, and empty unbound contacts by account number in the view. The plan carries account metadata without display sorting; apply explicitly preserves the account/name processing sequence.
 
@@ -281,6 +283,7 @@ The provisioning preview, unmatched queue, creditor overview (including member-n
 - SEPA booking refuses the full live purchase-document read when an approved document lacks its pending balance. It must not treat that document as paid and turn its payment into a journal remainder. Drafts may omit the balance and remain ineligible for document payments.
 - A creditor row is **payable** only when it is bound to exactly one member, its balance is positive from the member's side, and its Holded contact carries an IBAN. `/Finance/Creditors` shows the reason instead of a checkbox for every other row, and `GenerateSepaPayoutAsync` re-derives the same three rules server-side — the page is display, not the gate.
 - `/Finance/Creditors` defaults to an **owed-only** client-side filter (checked by default) that hides every row with no positive balance; unchecking it reveals settled and negative-balance accounts too. Display-only — it does not change what `GenerateSepaPayoutAsync` will accept.
+- Creditor Bind/Unbind and SEPA Book, Withdraw, CancelFile, BookFile and BookMatches require their posted identifiers (including bank movement IDs and the creditor account number where applicable). Binding errors return HTTP 400 with a Warning after actor resolution and before any mutation. Omitted optional tolerance retains its default; malformed tolerance never falls back into a booking.
 - SEPA generation rejects malformed account-list or amount-dictionary binding with 400 after
   actor resolution. It never generates a file from the valid subset of a malformed selection.
 - Posted SEPA caps and amounts use invariant dot decimals without grouping separators. Comma-formatted values are refused rather than interpreted as larger amounts; an invalid selected amount remains in the batch for its all-or-nothing refusal.
