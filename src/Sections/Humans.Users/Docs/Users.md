@@ -436,6 +436,8 @@ A contact is identified by `ContactSource != null && LastLoginAt == null`. When 
 **Table:** `contact_fields`
 
 Contact fields allow humans to share different types of contact information with per-field visibility controls. Default labels use the viewer's current culture, including legacy email fields; custom Other labels are preserved verbatim. Profile cards and contact lookup details receive the same localized labels.
+
+Contact-field saves apply the same editable-field mapping to new and existing rows. New rows receive a generated ID and creation time; updates preserve both. Historical email rows bypass this mapping and remain read-only.
 Profile-card contact and email visibility badges reuse the email grid's localized privacy labels in all six cultures; visibility filtering is unchanged.
 The private-email label on self-profile cards uses the same six-culture email label as public addresses.
 
