@@ -280,9 +280,7 @@ public class NotificationRepositoryTests : IDisposable
 
         var rows = await _dbContext.NotificationRecipients.AsNoTracking().ToListAsync(Xunit.TestContext.Current.CancellationToken);
         rows.Should().ContainSingle(r => r.NotificationId == n.Id && r.UserId == target);
-        // Target's pre-existing ReadAt is preserved (not overwritten by source's null).
         rows.Single().ReadAt.Should().Be(_now);
-        // Source row dropped entirely (no leftover for the source user).
         rows.Should().NotContain(r => r.UserId == source);
     }
 

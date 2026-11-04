@@ -84,29 +84,20 @@ internal sealed class NotificationInboxService(
         };
     }
 
-    public async Task<NotificationActionResult> ResolveAsync(
+    public Task<NotificationMutationOutcome> ResolveAsync(
         Guid notificationId, Guid userId,
-        CancellationToken ct = default)
-    {
-        var outcome = await repo.ResolveAsync(notificationId, userId, clock.GetCurrentInstant(), NotificationClass.Actionable, ct);
-        return ToActionResult(outcome);
-    }
+        CancellationToken ct = default) =>
+        repo.ResolveAsync(notificationId, userId, clock.GetCurrentInstant(), NotificationClass.Actionable, ct);
 
-    public async Task<NotificationActionResult> DismissAsync(
+    public Task<NotificationMutationOutcome> DismissAsync(
         Guid notificationId, Guid userId,
-        CancellationToken ct = default)
-    {
-        var outcome = await repo.ResolveAsync(notificationId, userId, clock.GetCurrentInstant(), NotificationClass.Informational, ct);
-        return ToActionResult(outcome);
-    }
+        CancellationToken ct = default) =>
+        repo.ResolveAsync(notificationId, userId, clock.GetCurrentInstant(), NotificationClass.Informational, ct);
 
-    public async Task<NotificationActionResult> MarkReadAsync(
+    public Task<NotificationMutationOutcome> MarkReadAsync(
         Guid notificationId, Guid userId,
-        CancellationToken ct = default)
-    {
-        var outcome = await repo.MarkReadAsync(notificationId, userId, clock.GetCurrentInstant(), ct);
-        return ToActionResult(outcome);
-    }
+        CancellationToken ct = default) =>
+        repo.MarkReadAsync(notificationId, userId, clock.GetCurrentInstant(), ct);
 
     public async Task MarkAllReadAsync(
         Guid userId,
@@ -131,14 +122,10 @@ internal sealed class NotificationInboxService(
         await repo.BulkResolveAsync(notificationIds, userId, clock.GetCurrentInstant(), NotificationClass.Informational, ct);
     }
 
-    public async Task<string?> ClickThroughAsync(
+    public Task<string?> ClickThroughAsync(
         Guid notificationId, Guid userId,
-        CancellationToken ct = default)
-    {
-        var outcome = await repo.ClickThroughAsync(notificationId, userId, clock.GetCurrentInstant(), ct);
-        if (outcome.NotFound) return null;
-        return outcome.ActionUrl;
-    }
+        CancellationToken ct = default) =>
+        repo.ClickThroughAsync(notificationId, userId, clock.GetCurrentInstant(), ct);
 
     public async Task ResolveBySourceAsync(
         Guid userId, NotificationSourceDefinition source,
@@ -249,8 +236,4 @@ internal sealed class NotificationInboxService(
             ResolvedByUserId = n.ResolvedByUserId,
         };
     }
-
-    private static NotificationActionResult ToActionResult(NotificationMutationOutcome outcome) =>
-        new(outcome.Success, NotFound: outcome.NotFound, Forbidden: outcome.Forbidden);
-
 }

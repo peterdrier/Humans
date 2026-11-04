@@ -27,7 +27,7 @@ internal sealed class NotificationMeterProvider(
     IGoogleSyncService googleSyncService,
     ITeamService teamService,
     ITicketSync ticketSyncService,
-    IGovernanceService applicationDecisionService,
+    IGovernanceService governanceService,
     ICampService campService,
     IMemoryCache cache,
     ILogger<NotificationMeterProvider> logger,
@@ -48,7 +48,7 @@ internal sealed class NotificationMeterProvider(
 
         var isAdmin = user.IsInRole(RoleNames.Admin);
         var isBoard = user.IsInRole(RoleNames.Board);
-        var isVolunteerCoordinator = user.IsInRole(ShiftsRoles.ShiftsAdmin);
+        var isShiftsAdmin = user.IsInRole(ShiftsRoles.ShiftsAdmin);
         var isConsentCoordinator = user.IsInRole(ConsentRoles.ConsentCoordinator);
 
         if ((isAdmin || isConsentCoordinator) && counts.ConsentReviewsPending > 0)
@@ -62,21 +62,19 @@ internal sealed class NotificationMeterProvider(
             });
         }
 
-        if (isBoard)
+        if (isBoard && viewerId is { } boardMemberUserId)
         {
-            if (viewerId is { } boardMemberUserId)
+            // Governance caches this per user under its own key.
+            var pendingVoteCount = await governanceService.GetUnvotedApplicationCountAsync(boardMemberUserId, cancellationToken);
+            if (pendingVoteCount > 0)
             {
-                var pendingVoteCount = await GetPerUserVotingCountAsync(boardMemberUserId, cancellationToken);
-                if (pendingVoteCount > 0)
+                meters.Add(new NotificationMeter
                 {
-                    meters.Add(new NotificationMeter
-                    {
-                        Title = localizer["Notifications_Meter_ApplicationsPendingVote"],
-                        Count = pendingVoteCount,
-                        ActionUrl = "/Governance/BoardVoting",
-                        Priority = 9,
-                    });
-                }
+                    Title = localizer["Notifications_Meter_ApplicationsPendingVote"],
+                    Count = pendingVoteCount,
+                    ActionUrl = "/Governance/BoardVoting",
+                    Priority = 9,
+                });
             }
         }
 
@@ -102,9 +100,9 @@ internal sealed class NotificationMeterProvider(
             });
         }
 
-        // Board / VolunteerCoordinator see the same review queue the Consent Coordinator
+        // Board and Shifts Admin see the same review queue the Consent Coordinator
         // sees, under a label that matches how they think of it.
-        if ((isBoard || isVolunteerCoordinator) && counts.ConsentReviewsPending > 0)
+        if ((isBoard || isShiftsAdmin) && counts.ConsentReviewsPending > 0)
         {
             meters.Add(new NotificationMeter
             {
@@ -140,23 +138,18 @@ internal sealed class NotificationMeterProvider(
         }
 
         // One counter per lead rather than a stored notification per request.
+        var campLeadRequestsPending = viewerId is { } leadUserId ? await GetPerCampLeadPendingCountAsync(leadUserId, cancellationToken) : 0;
+        if (campLeadRequestsPending > 0)
         {
-            if (viewerId is { } leadUserId)
+            meters.Add(new NotificationMeter
             {
-                var campLeadRequestsPending = await GetPerCampLeadPendingCountAsync(leadUserId, cancellationToken);
-                if (campLeadRequestsPending > 0)
-                {
-                    meters.Add(new NotificationMeter
-                    {
-                        Title = campLeadRequestsPending == 1
-                            ? localizer["Notifications_Meter_CampJoinRequest"]
-                            : localizer["Notifications_Meter_CampJoinRequests", campLeadRequestsPending],
-                        Count = campLeadRequestsPending,
-                        ActionUrl = "/Barrios",
-                        Priority = 3,
-                    });
-                }
-            }
+                Title = campLeadRequestsPending == 1
+                    ? localizer["Notifications_Meter_CampJoinRequest"]
+                    : localizer["Notifications_Meter_CampJoinRequests", campLeadRequestsPending],
+                Count = campLeadRequestsPending,
+                ActionUrl = "/Barrios",
+                Priority = 3,
+            });
         }
 
         return meters;
@@ -243,10 +236,6 @@ internal sealed class NotificationMeterProvider(
             return 0;
         }
     }
-
-    // Governance caches this per user under its own key.
-    private Task<int> GetPerUserVotingCountAsync(Guid boardMemberUserId, CancellationToken cancellationToken) =>
-        applicationDecisionService.GetUnvotedApplicationCountAsync(boardMemberUserId, cancellationToken);
 
     private async Task<MeterCounts> ComputeCountsAsync(CancellationToken cancellationToken)
     {

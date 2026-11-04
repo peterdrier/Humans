@@ -121,9 +121,6 @@
   <data name="Notifications_Inbox_Title" xml:space="preserve">
     <value>Benachrichtigungen</value>
   </data>
-  <data name="Notifications_Dismiss" xml:space="preserve">
-    <value>Verwerfen</value>
-  </data>
   <data name="Notifications_HandledBy" xml:space="preserve">
     <value>Bearbeitet von {0}, {1}</value>
   </data>

@@ -1,3 +1,4 @@
+using Humans.Notifications.Data;
 using Humans.Notifications.Services;
 using Humans.Base.Attributes;
 using Humans.Base.Controllers;
@@ -75,7 +76,7 @@ internal sealed class NotificationsController(
         DecideAsync(id, inboxService.DismissAsync);
 
     private async Task<IActionResult> DecideAsync(
-        Guid id, Func<Guid, Guid, CancellationToken, Task<NotificationActionResult>> decide)
+        Guid id, Func<Guid, Guid, CancellationToken, Task<NotificationMutationOutcome>> decide)
     {
         var user = await GetCurrentUserInfoAsync(HttpContext.RequestAborted);
         if (user is null) return Unauthorized();

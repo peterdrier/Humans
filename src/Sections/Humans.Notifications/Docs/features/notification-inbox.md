@@ -79,7 +79,7 @@ Shared between popup and inbox. 3px left border accent by priority/class. Type t
 
 ## Cleanup
 
-`CleanupNotificationsJob` runs daily. It deletes resolved notifications older than 7 days, unresolved informational notifications older than 30 days, and unresolved rows of retired sources (the ones their sections declare `Retired`: `ApplicationSubmitted`, `ConsentReviewNeeded` and `VolunteerApproved` today) that have no remaining resolution path. Other actionable unresolved notifications are never auto-deleted. Successful unresolved deletions evict all affected recipients' unread badge counts immediately, even if a later cleanup step fails.
+`CleanupNotificationsJob` runs daily. It deletes resolved notifications older than 7 days, unresolved informational notifications older than 30 days, and unresolved rows of retired sources (the ones their sections declare `Retired`: `ApplicationSubmitted`, `ConsentReviewNeeded` and `VolunteerApproved` today) that have no remaining resolution path. Other actionable unresolved notifications are never auto-deleted. Badge counts are read from the rows on every request, so each committed deletion shows at once, even if a later cleanup step fails.
 
 ## Authorization
 
@@ -92,5 +92,4 @@ Each emitting section declares its own sources as `public static readonly Notifi
 ## Related Features
 
 - Communication Preferences (28) -- InboxEnabled extends existing preference model
-- Teams (06) -- AddedToTeam is the first notification migration
 - Shift Management -- ShiftCoverageGap and ShiftAssigned notifications
