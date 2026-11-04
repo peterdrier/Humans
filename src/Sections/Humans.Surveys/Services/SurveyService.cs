@@ -2005,7 +2005,7 @@ internal sealed class SurveyService(
         }
         catch (Exception ex)
         {
-            logger.LogWarning(ex,
+            logger.LogError(ex,
                 "Failed to verify survey {SurveyId} after a failed save; retaining newly uploaded images", surveyId);
         }
     }
