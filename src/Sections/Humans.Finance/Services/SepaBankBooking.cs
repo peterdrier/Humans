@@ -95,7 +95,7 @@ internal sealed class SepaBankBooking(
         catch (Exception ex) when (ex is HoldedTransientException or HoldedPermanentException)
         {
             // The page still lists everything it lists; it just cannot offer a line to book against.
-            logger.LogWarning(ex, "The Sabadell bank feed could not be read for /Finance/Sepa.");
+            logger.LogWarning("The Sabadell bank feed could not be read for /Finance/Sepa. {Reason}", ex.Message);
             // Admin-only page: Holded's message names what failed, which is what the treasurer needs.
             return (withReasons, null, [],
                 "The Sabadell bank feed could not be read, so no transfer can be booked right now: "
@@ -295,7 +295,7 @@ internal sealed class SepaBankBooking(
         }
         catch (Exception ex) when (ex is HoldedTransientException or HoldedPermanentException)
         {
-            logger.LogWarning(ex, "The SEPA sweep could not read the Sabadell bank feed; nothing was booked.");
+            logger.LogWarning("The SEPA sweep could not read the Sabadell bank feed; nothing was booked. {Reason}", ex.Message);
             return;
         }
 
