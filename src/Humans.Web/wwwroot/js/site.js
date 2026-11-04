@@ -291,18 +291,24 @@ document.addEventListener('click', function (e) {
         popup.querySelectorAll('[data-ajax-markallread]').forEach(function (markBtn) {
             markBtn.addEventListener('click', function (e) {
                 e.preventDefault();
+                if (markBtn.disabled) return;
                 var form = markBtn.closest('form');
+                var requestVersion = popupRequestVersion;
+                markBtn.disabled = true;
                 fetch(form.action, {
                     method: 'POST',
+                    redirect: 'error',
                     headers: { 'X-Requested-With': 'XMLHttpRequest' },
                     body: new FormData(form)
                 }).then(function (r) {
-                    if (r.ok) {
-                        // Remove badge — all marked as read
-                        var badge = btn.querySelector('.notification-badge');
-                        if (badge) badge.remove();
-                        closePopup();
-                    }
+                    if (!r.ok) throw new Error(r.status);
+                    var badge = btn.querySelector('.notification-badge');
+                    if (badge) badge.remove();
+                    if (isOpen && requestVersion === popupRequestVersion) closePopup();
+                }).catch(function () {
+                    showToast(markBtn.getAttribute('data-error') || '', 'danger');
+                }).finally(function () {
+                    markBtn.disabled = false;
                 });
             });
         });
