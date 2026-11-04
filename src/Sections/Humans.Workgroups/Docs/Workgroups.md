@@ -294,6 +294,7 @@ Settings and Register an existing group on first setup or after clearing the que
 
 ## Invariants
 
+- Approving, declining and directly adding members share one preflight: the group must exist and be Active before coordinator/admin authorization is checked. An admin override does not bypass the Active requirement.
 - Register edits, member forms and member mutations share one controller resolver: resolve the actor, find the group, then check member-work permission before nested IDs or submitted values. Join, leave, status requests and commenting retain their existing exceptions to the member-work check and their route policies.
 
 - Roster membership-tier badges use localized enum labels in all six cultures.

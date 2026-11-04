@@ -128,10 +128,9 @@ internal sealed partial class WorkgroupService(
     public async Task<WorkgroupMutationResult> ApproveMemberAsync(
         Guid workgroupId, Guid actorUserId, Guid userId, bool asAdmin = false, CancellationToken ct = default)
     {
-        var workgroupResult = await RequireActiveAsync(workgroupId, ct);
+        var workgroupResult = await RequireMembershipManagerAsync(workgroupId, actorUserId, asAdmin, ct);
         if (workgroupResult.Refusal is { } workgroupRefusal) return new(Refusal: workgroupRefusal);
         var workgroup = workgroupResult.Value!;
-        if (RequireCoordinator(workgroup, actorUserId, asAdmin) is { } roleRefusal) return new(Refusal: roleRefusal);
 
         var pending = workgroup.Members.FirstOrDefault(m => m.UserId == userId && m.LeftAt is null && m.IsPending == true);
         if (pending is null) return new(Refusal: new(WorkgroupErrorKeys.NoPendingRequest));
@@ -143,10 +142,9 @@ internal sealed partial class WorkgroupService(
     public async Task<WorkgroupMutationResult> DeclineMemberAsync(
         Guid workgroupId, Guid actorUserId, Guid userId, bool asAdmin = false, CancellationToken ct = default)
     {
-        var workgroupResult = await RequireActiveAsync(workgroupId, ct);
+        var workgroupResult = await RequireMembershipManagerAsync(workgroupId, actorUserId, asAdmin, ct);
         if (workgroupResult.Refusal is { } workgroupRefusal) return new(Refusal: workgroupRefusal);
         var workgroup = workgroupResult.Value!;
-        if (RequireCoordinator(workgroup, actorUserId, asAdmin) is { } roleRefusal) return new(Refusal: roleRefusal);
 
         var pending = workgroup.Members.FirstOrDefault(m => m.UserId == userId && m.LeftAt is null && m.IsPending == true);
         if (pending is null) return new(Refusal: new(WorkgroupErrorKeys.NoPendingRequest));
@@ -166,10 +164,9 @@ internal sealed partial class WorkgroupService(
     public async Task<WorkgroupMutationResult> AddMemberAsync(
         Guid workgroupId, Guid actorUserId, Guid userId, bool asAdmin = false, CancellationToken ct = default)
     {
-        var workgroupResult = await RequireActiveAsync(workgroupId, ct);
+        var workgroupResult = await RequireMembershipManagerAsync(workgroupId, actorUserId, asAdmin, ct);
         if (workgroupResult.Refusal is { } workgroupRefusal) return new(Refusal: workgroupRefusal);
         var workgroup = workgroupResult.Value!;
-        if (RequireCoordinator(workgroup, actorUserId, asAdmin) is { } roleRefusal) return new(Refusal: roleRefusal);
         var target = await ResolveMemberTargetAsync(userId, ct);
         if (target is null)
             return new(Refusal: new(WorkgroupErrorKeys.NotFound));

@@ -127,15 +127,17 @@ internal sealed partial class WorkgroupService
         return null;
     }
 
-    private static WorkgroupRefusal? RequireCoordinator(Workgroup w, Guid actorUserId, bool asAdmin)
+    private async Task<WorkgroupMutationResult<Workgroup>> RequireMembershipManagerAsync(
+        Guid workgroupId, Guid actorUserId, bool asAdmin, CancellationToken ct)
     {
-        if (asAdmin) return null;
-        if (!w.Members.Any(m => m.UserId == actorUserId && m.LeftAt is null && m.IsPending != true
+        var result = await RequireActiveAsync(workgroupId, ct);
+        if (result.Refusal is not null) return result;
+        if (!asAdmin && !result.Value!.Members.Any(m => m.UserId == actorUserId && m.LeftAt is null && m.IsPending != true
                 && m.Role == WorkgroupMemberRole.Coordinator))
         {
-            return new(WorkgroupErrorKeys.NotACoordinator);
+            return new(Refusal: new(WorkgroupErrorKeys.NotACoordinator));
         }
-        return null;
+        return result;
     }
 
     private static WorkgroupRefusal? RequireStatus(Workgroup w, params WorkgroupStatus[] allowed)
