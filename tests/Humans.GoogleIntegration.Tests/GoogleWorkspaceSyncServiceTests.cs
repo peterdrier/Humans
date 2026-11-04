@@ -99,7 +99,7 @@ public sealed class GoogleWorkspaceSyncServiceTests
             });
         var driveSync = new GoogleDriveAccessSyncService(
             [_driveSource], _drivePermissions, _userService, _identities, _userEmailService, _syncSettingsService,
-            _googleSyncLog, _removalNotifications, _resourceRepository, _teamService,
+            _googleSyncLog, Substitute.For<IGoogleSyncLogViewer>(), _removalNotifications, _resourceRepository, _teamService,
             Substitute.For<ITeamResourceManagement>(), clock,
             Substitute.For<ILogger<GoogleDriveAccessSyncService>>());
 
