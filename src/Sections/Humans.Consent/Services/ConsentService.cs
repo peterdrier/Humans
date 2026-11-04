@@ -98,10 +98,9 @@ internal sealed class ConsentService(
             return null;
         }
 
-        var chainIds = await GetChainFollowIdsAsync(userId, ct);
+        var info = await userService.GetUserInfoAsync(userId, ct);
+        var chainIds = info?.AllUserIds ?? [userId];
         var consentRecord = await repo.GetByUserIdsAndVersionAsync(chainIds, documentVersionId, ct);
-
-        var profile = (await userService.GetUserInfoAsync(userId, ct))?.Profile;
 
         return new ConsentReviewDetail(
             DocumentVersionId: version.Id,
@@ -112,7 +111,7 @@ internal sealed class ConsentService(
             ChangesSummary: version.ChangesSummary,
             HasAlreadyConsented: consentRecord is not null,
             ConsentedAt: consentRecord?.ConsentedAt,
-            UserFullName: profile?.FullName);
+            UserFullName: info?.Profile?.FullName);
     }
 
     public async Task<ConsentSubmitResult> SubmitConsentAsync(
@@ -143,8 +142,7 @@ internal sealed class ConsentService(
             return new ConsentSubmitResult(false, ErrorKey: "ContentUnavailable");
         }
 
-        var chainIds = await GetChainFollowIdsAsync(userId, ct);
-        var alreadyConsented = await repo.ExistsForUserIdsAndVersionAsync(chainIds, documentVersionId, ct);
+        var alreadyConsented = await repo.ExistsForUserIdsAndVersionAsync(info.AllUserIds, documentVersionId, ct);
 
         if (alreadyConsented)
             return new ConsentSubmitResult(false, ErrorKey: "AlreadyConsented");

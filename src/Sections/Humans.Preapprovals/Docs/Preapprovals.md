@@ -123,7 +123,7 @@ Admin pages live under the section's URL space, not `/Admin`; they are localizat
 
 - Authorization’s program-manager and member-access reads retain HTTP request cancellation; callers without an HTTP context use the non-cancellable default. Program-resource authorization and the admin index match manager rows against all of the resolved viewer’s current and merged IDs. A manager still cannot administer programs or manage an unrelated program.
 
-- Admin program pages and edit forms render manager and actor IDs through the shared Human component without profile links. Missing members use its localized fallback. Manager order, comma separators and posted manager IDs are preserved; page models carry no display-name dictionary.
+- Admin program pages and edit forms render manager and actor IDs through the shared Human component without profile links. Missing members use its localized fallback. Manager order and comma separators are preserved; page models carry no display-name dictionary. Program create/edit resolves posted manager IDs to surviving accounts and deduplicates them in posted order. Missing or tombstoned managers refuse the complete save before fields, manager rows, audits or deadline notices change; historical manager authorization remains merge-aware.
 
 - Admin program grant ordering belongs to the view model: applications oldest-created first, decided grants nonterminal first then oldest-created. Service projections impose no display order.
 
@@ -141,7 +141,7 @@ Admin pages live under the section's URL space, not `/Admin`; they are localizat
 - Fixed kind: every grant is `PerPersonAmount`; an explicit amount is refused on issue and
   ignored on approve and apply. Per-grant kind: an amount is required on issue; an
   application carries `RequestedAmount` and the manager may approve less.
-- Single and batch issuance share persistence and the subsequent per-beneficiary audit/notice pipeline; sizing, ceiling checks and audit wording remain specific to each entry point. New issues and applications store the resolved survivor ID. Batch issuance resolves and deduplicates people before the ceiling check, so merged IDs cannot reserve multiple grants in one batch. Existing pending applications retain their original row identity when edited.
+- Single and batch issuance share the initial decision stamp (issuing actor and grant creation time), persistence and the subsequent per-beneficiary audit/notice pipeline; sizing, ceiling checks and audit wording remain specific to each entry point. Single/batch issuance and application submission require a resolvable, non-tombstoned beneficiary before any writes or dispatch; an unavailable person refuses the complete batch or pending-application edit. New issues and applications store the resolved survivor ID. Batch issuance resolves and deduplicates people before the ceiling check, so merged IDs cannot reserve multiple grants in one batch. Existing pending applications retain their original row identity when edited.
 - Supplied program amounts and ceilings, and grant amounts, must be positive exact-cent values within the existing `decimal(18,2)` storage range. Sub-cent and oversized inputs are refused before writes or notices; trailing zeroes remain valid.
 - Issue, issue-many and approve are refused on a Closed program or after `ClaimBy`.
   Applying needs Open, `AcceptsApplications` and the deadline not passed; a POST that

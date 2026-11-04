@@ -29,7 +29,7 @@
       One reason per reference:
       Notifications.Contracts — best-effort in-app notice to the human whose role changed.
       Users.Contracts — IUserService for assignee/creator display stitching;
-                        MagicLinkService adds UserManager<User> and IUserEmailService.
+                        MagicLinkService uses its raw identity projection and IUserEmailService.
       Email.Contracts — IEmailService, which MagicLinkService injects to send the
                         login/signup mail built by the section's own AuthEmails.
       Teams.Contracts — ISystemTeamSync, which RoleAssignmentService injects to reconcile

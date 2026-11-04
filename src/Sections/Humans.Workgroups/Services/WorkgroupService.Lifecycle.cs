@@ -242,7 +242,7 @@ internal sealed partial class WorkgroupService
         if (RequireReasons(note) is { } noteRefusal)
             return new(Refusal: noteRefusal);
 
-        var documentResult = await RequireDocumentAsync(documentId, ct);
+        var documentResult = await RequireDocumentAsync(documentId, ct, requireActive: false);
         if (documentResult.Refusal is { } documentRefusal) return new(Refusal: documentRefusal);
         var (workgroup, document) = documentResult.Value;
         if (document.Status != WorkgroupDocumentStatus.Delivered)

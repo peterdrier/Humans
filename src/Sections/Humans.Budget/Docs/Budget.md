@@ -195,6 +195,8 @@ Stored as string via `HasConversion<string>()`.
 
 ## Invariants
 
+- Category authorization resolves the cookie identity through `IUserService` and queries coordinator scope for the surviving account. Missing accounts and coordinator roles held only by a stale alias grant no coordinator-based access. Both reads retain request cancellation; FinanceAdmin/Admin bypasses and deleted-year, restricted-group and ticketing-group exclusions are unchanged.
+
 - Member and finance-admin mutation actions forward request cancellation through account lookup before writes. Member line-item actions also cancel line-item and category-authorization reads; the internal line-item read forwards its token to the repository. Financial writes, ticketing projection refreshes and ticketing sync retain their existing non-cancellable mutation boundaries.
 
 - Authorization’s effective-coordinator reads retain HTTP request cancellation; callers without an HTTP context use the non-cancellable default.
@@ -229,7 +231,7 @@ Stored as string via `HasConversion<string>()`.
 - The ticketing projection parameter editor counts remaining UTC calendar days, matching the controller’s day-count basis. Browser time zones and daylight-saving transitions do not change the rate/target calculation.
 - Ticketing projection previews and persisted projected line items use `TicketingProjection.CalculateWeeks`: the same ISO-week bounds, initial burst, ticket minimum, revenue and fee calculations. Materialization runs after actuals update the projection parameters. Persisted generated week descriptions remain canonical English regardless of the operator’s UI language; preview date labels follow the UI language.
 - Projection materialization runs only inside parameter updates and actuals sync; there is no standalone refresh mutation. It upserts generated rows by category and canonical description, preserving their ids and timestamps when unchanged. Only obsolete generated projections are removed; actuals and manual lines remain. An actuals sync with no changes writes no audit entry.
-- The ticketing projection includes the event date in its final week, including when that date is a Monday and forms a one-day final week. Once the event date has passed, it emits no projected weeks.
+- The ticketing projection includes the event date in its final week, including when that date is a Monday and forms a one-day final week. Once the event date has passed, it emits no projected weeks. Preview and persisted projections bound each week before date addition and stop on the event date, including `9999-12-31`; neither path calculates an out-of-range Sunday or an exclusive end beyond the supported date range.
 - Every create, update, or delete on a group, category, or line item generates a `BudgetAuditLog` entry recording old value, new value, actor, and timestamp; the ticketing sync paths write one summary entry per run that changed anything, with a null actor for the nightly job.
 - Audit values and descriptions preserve complete field changes without separate length caps;
   editing a valid line note (up to 2000 characters) cannot fail because its audit is longer.

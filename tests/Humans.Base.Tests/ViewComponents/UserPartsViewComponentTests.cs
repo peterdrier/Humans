@@ -55,15 +55,23 @@ public class UserPartsViewComponentTests
         contributor.Received(1).Parts();
     }
 
-    [HumansFact]
-    public void ContributorThatThrows_IsSkipped_OthersStillRender()
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public void ContributorThatThrows_IsSkipped_OthersStillRender(bool deferred)
     {
         var broken = Substitute.For<IUserPart>();
-        broken.Parts().Returns(_ => throw new InvalidOperationException("section down"));
+        broken.Parts().Returns(_ => deferred ? PartialParts() : throw new InvalidOperationException("section down"));
 
         var model = ModelFrom(Guid.NewGuid(), broken, Contributor(new UserPart(Slot, typeof(EarlyPart))));
 
         model.Parts.Should().ContainSingle().Which.Component.Should().Be(typeof(EarlyPart));
+    }
+
+    private static IEnumerable<UserPart> PartialParts()
+    {
+        yield return new UserPart(Slot, typeof(MiddlePart));
+        throw new InvalidOperationException("section down during enumeration");
     }
 
     private sealed class EarlyPart;

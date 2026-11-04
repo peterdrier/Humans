@@ -21,10 +21,12 @@
             <div asp-validation-summary="ModelOnly" class="text-danger"></div>
 
             <partial name="_CalendarEventForm" model="Model" />
+            <span asp-validation-for="IsRecurring" class="text-danger"></span>
 
             <div class="form-check mb-3">
                 <input asp-for="IsPublic" class="form-check-input" />
                 <label asp-for="IsPublic" class="form-check-label">@Localizer["Workgroups_Field_IsPublic"]</label>
+                <span asp-validation-for="IsPublic" class="text-danger"></span>
                 <div class="form-text">@Localizer["Workgroups_Field_IsPublicHelp"]</div>
             </div>
 

@@ -181,6 +181,7 @@ internal sealed class AnthropicClient : IAnthropicClient
                 if (evt.TryPickDelta(out var messageDeltaEvent))
                 {
                     // Usage here is cumulative.
+                    inputTokens = messageDeltaEvent.Usage.InputTokens ?? inputTokens;
                     outputTokens = messageDeltaEvent.Usage.OutputTokens;
                     cacheReadTokens = messageDeltaEvent.Usage.CacheReadInputTokens ?? cacheReadTokens;
                     cacheCreationTokens = messageDeltaEvent.Usage.CacheCreationInputTokens ?? cacheCreationTokens;

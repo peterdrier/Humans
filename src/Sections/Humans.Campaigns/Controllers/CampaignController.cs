@@ -48,11 +48,8 @@ internal sealed class CampaignController(
         {
             AddCampaignFormError(result.ErrorKey);
 
-            ViewBag.Title2 = title;
-            ViewBag.Description = description;
-            ViewBag.EmailSubject = emailSubject;
-            ViewBag.EmailBodyTemplate = emailBodyTemplate;
-            ViewBag.ReplyToAddress = replyToAddress;
+            ViewData[nameof(CampaignFormValues)] = new CampaignFormValues(
+                title, description, emailSubject, emailBodyTemplate, replyToAddress);
             return View();
         }
 
@@ -98,11 +95,8 @@ internal sealed class CampaignController(
                 return NotFound();
             }
 
-            ViewBag.Title2 = title;
-            ViewBag.Description = description;
-            ViewBag.EmailSubject = emailSubject;
-            ViewBag.EmailBodyTemplate = emailBodyTemplate;
-            ViewBag.ReplyToAddress = replyToAddress;
+            ViewData[nameof(CampaignFormValues)] = new CampaignFormValues(
+                title, description, emailSubject, emailBodyTemplate, replyToAddress);
             return View(campaign);
         }
 

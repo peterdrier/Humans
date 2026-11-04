@@ -1,3 +1,4 @@
+using Humans.Users.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Camps.Contracts;
 using System.Security.Claims;
@@ -13,27 +14,64 @@ namespace Humans.Camps.Tests.Authorization;
 
 public sealed class CampComplianceAccessHandlerTests
 {
+    private readonly IUserService _users = Substitute.For<IUserService>();
     private readonly IShiftService _shiftManagement = Substitute.For<IShiftService>();
     private readonly CampComplianceAccessHandler _handler;
     private readonly HttpContextAccessor _httpContext = new();
 
     public CampComplianceAccessHandlerTests()
     {
-        _handler = new CampComplianceAccessHandler(_shiftManagement, _httpContext);
+        _users.GetUserInfoAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(call => UserInfo.Create(new User { Id = call.Arg<Guid>() }, [], [], null));
+        _handler = new CampComplianceAccessHandler(_shiftManagement, _users, _httpContext);
         _shiftManagement.GetCoordinatorTeamIdsAsync(Arg.Any<Guid>()).Returns([]);
     }
 
-    [HumansFact]
-    public async Task CoordinatorLookup_PropagatesAbandonedRequests()
+    [HumansTheory]
+    [InlineData(true, true)]
+    [InlineData(true, false)]
+    [InlineData(false, false)]
+    public async Task MembershipAccess_UsesResolvedAccountAndDeniesMissingAccounts(
+        bool accountExists, bool survivorAuthorized)
+    {
+        var coordinatorId = Guid.NewGuid();
+        var cookieId = survivorAuthorized ? Guid.NewGuid() : coordinatorId;
+        var survivorId = survivorAuthorized ? coordinatorId : Guid.NewGuid();
+        _users.GetUserInfoAsync(cookieId, Arg.Any<CancellationToken>()).Returns(accountExists
+            ? UserInfo.Create(new User { Id = survivorId }, [], [], null)
+            : null);
+        _shiftManagement.GetCoordinatorTeamIdsAsync(coordinatorId, Arg.Any<CancellationToken>())
+            .Returns([Guid.NewGuid()]);
+
+        var allowed = await EvaluateAsync(CreateUserWithIdAndRole(cookieId, "SomeNonAdminRole"));
+
+        allowed.Should().Be(accountExists && survivorAuthorized);
+    }
+
+    [HumansTheory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task CoordinatorLookup_PropagatesAbandonedRequests(bool atUser)
     {
         using var request = new CancellationTokenSource();
         _httpContext.HttpContext = new DefaultHttpContext { RequestAborted = request.Token };
         var userId = Guid.NewGuid();
         var observed = CancellationToken.None;
+        _users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            var ct = call.Arg<CancellationToken>();
+            if (atUser)
+            {
+                observed = ct;
+                request.Cancel();
+            }
+            ct.ThrowIfCancellationRequested();
+            return UserInfo.Create(new User { Id = userId }, [], [], null);
+        });
         _shiftManagement.GetCoordinatorTeamIdsAsync(userId, Arg.Any<CancellationToken>()).Returns(call =>
         {
             observed = call.Arg<CancellationToken>();
-            request.Cancel();
+            if (!atUser) request.Cancel();
             observed.ThrowIfCancellationRequested();
             return new List<Guid> { Guid.NewGuid() };
         });

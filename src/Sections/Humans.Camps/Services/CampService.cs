@@ -935,7 +935,7 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex,
+                _logger.LogError(ex,
                     "Failed to delete camp image file at {StoragePath} during camp delete for {CampId}; DB row already removed",
                     path, campId);
             }

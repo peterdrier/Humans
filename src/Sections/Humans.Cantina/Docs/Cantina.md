@@ -55,6 +55,10 @@ Context: `CantinaDbContext` (history table `__EFMigrationsHistory_Cantina`).
 
 `weekStartOffset` is the day-offset of the week's Monday relative to `EventSettingsInfo.GateOpeningDate`. When omitted, the service resolves the week containing today in the event's timezone, off the active event it has already loaded. With no active event the offset is `0` and the page renders its empty state. `/Cantina/Roster/Day` resolves `dayOffset` the same way.
 
+All six roster, reveal and CSV actions reject malformed offset binding with HTTP 400 and a Warning before loading a roster, recording a disclosure or setting a reveal token. Omitted offsets still select the current period. Reveal and CSV actions retain their account preflight before this validation, so missing actors remain Unauthorized.
+
+Numeric offsets must also fit the requested day or full seven-day window within the supported ISO calendar, and leave room for integer navigation and arrival arithmetic even without an active event. The roster service returns no roster for an invalid window before cohort or dietary reads and before disclosure audit; all six actions map that refusal to HTTP 400. Valid empty windows, negative build offsets and current-period defaults retain their existing behavior.
+
 ## Actors & Roles
 
 | Actor | Capabilities |
@@ -77,7 +81,7 @@ Context: `CantinaDbContext` (history table `__EFMigrationsHistory_Cantina`).
   personal rows and audit the surviving account ID after a merge. Missing accounts
   receive 401; cancellation during account lookup stops before roster work.
 
-- The section’s things-to-do contribution forwards caller cancellation through all data reads. Aborted reads propagate instead of being logged or converted into missing prompts.
+- The section’s things-to-do contribution forwards caller cancellation through all data reads. Aborted reads propagate instead of being logged or converted into missing prompts. The shared collector materializes each contributor's entries before appending, so an enumeration failure drops that contributor's whole batch while retaining healthy contributors; request cancellation still propagates.
 
 - **Dietary info is opt-in and never blocks a shift signup** (nobodies-collective/Humans#2104). No signup path — the `/Shifts` day toggle, range signup, onboarding widget, Voluntell — consults Cantina. The roster tolerates humans with empty dietary fields (declined members count as unanswered).
 - **Cantina reports facts; callers decide whether to ask.** `ICantinaService` exposes only the profile (`HasPreference`, `DeclinedToAnswer`); it has no "should prompt" read. Each prompt (Cantina's dashboard nudge, Users' medical prompt, the Shifts `/Shifts` banner) composes its own gate from those facts plus what it owns: today all three hide on a preference or a decline. See [`dietary-nudge`](features/dietary-nudge.md).

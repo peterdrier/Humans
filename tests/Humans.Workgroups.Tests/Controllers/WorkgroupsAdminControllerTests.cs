@@ -60,10 +60,91 @@ public sealed class WorkgroupsAdminControllerTests : WorkgroupsTestHarness
     }
 
     [HumansTheory]
-    [InlineData(null)]
-    [InlineData("not-a-date")]
-    [InlineData("2025-03-01")]
-    public async Task RegisterExisting_RequiresExplicitValidRegistrationDate(string? registeredOn)
+    [InlineData(false, null, "create", false)]
+    [InlineData(true, null, "create", false)]
+    [InlineData(false, "true", null, false)]
+    [InlineData(true, "true", null, false)]
+    [InlineData(false, "true", "unknown", false)]
+    [InlineData(true, "true", "unknown", false)]
+    [InlineData(false, "false", null, true)]
+    [InlineData(true, "false", null, true)]
+    [InlineData(false, "true", "create", true)]
+    [InlineData(true, "true", "create", true)]
+    [InlineData(false, "true", "link", true)]
+    [InlineData(true, "true", "link", true)]
+    public async Task BudgetForms_RequireExplicitBudgetAndValidAccountChoices(
+        bool bootstrap, string? hasBudget, string? accountMode, bool valid)
+    {
+        var service = Substitute.For<IWorkgroupService>();
+        service.RegisterExistingAsync(Arg.Any<Guid>(), Arg.Any<WorkgroupBootstrap>(), Arg.Any<CancellationToken>())
+            .Returns(new WorkgroupMutationResult<Guid>(Guid.NewGuid()));
+        service.SetBudgetAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<WorkgroupBudgetSave>(), Arg.Any<CancellationToken>())
+            .Returns(new WorkgroupMutationResult<Humans.Finance.Contracts.ExpenseAccountRef?>());
+        var controller = MakeAdminController(bootstrap ? nameof(WorkgroupsAdminController.RegisterExisting) : nameof(WorkgroupsAdminController.Budget), service: service);
+        controller.Url = Substitute.For<IUrlHelper>();
+        using var services = new ServiceCollection().AddLogging().AddControllers().Services.BuildServiceProvider();
+        controller.HttpContext.RequestServices = services;
+        var fields = new Dictionary<string, StringValues>(StringComparer.Ordinal);
+        if (bootstrap)
+        {
+            fields["Application.Name"] = "Group";
+            fields["Application.Purpose"] = "Purpose";
+            fields["Application.Deliverable"] = "Report";
+            fields["Application.DeliverableKind"] = "0";
+            fields["Application.Audience"] = "0";
+            fields["Application.IsSensitive"] = "false";
+            fields["CoordinatorUserId"] = SeedUser("Coordinator").ToString();
+            fields["RegisteredOn"] = "2025-03-01";
+        }
+        var prefix = bootstrap ? "Budget." : "";
+        fields[prefix + "Amount"] = "100";
+        fields[prefix + "ExistingAccountNum"] = "62900007";
+        if (hasBudget is not null) fields[prefix + "HasBudget"] =
+            string.Equals(hasBudget, "true", StringComparison.Ordinal) ? new StringValues(["true", "false"]) : hasBudget;
+        if (accountMode is not null) fields[prefix + "AccountMode"] = accountMode;
+        var metadata = services.GetRequiredService<IModelMetadataProvider>().GetMetadataForType(
+            bootstrap ? typeof(RegisterExistingViewModel) : typeof(WorkgroupBudgetFormViewModel));
+        var binder = services.GetRequiredService<IModelBinderFactory>().CreateBinder(new ModelBinderFactoryContext { Metadata = metadata });
+        var binding = DefaultModelBindingContext.CreateBindingContext(controller.ControllerContext,
+            new FormValueProvider(BindingSource.Form, new FormCollection(fields), CultureInfo.InvariantCulture),
+            metadata, bindingInfo: null, modelName: "");
+        await binder.BindModelAsync(binding);
+        var model = binding.Result.Model!;
+        services.GetRequiredService<IObjectModelValidator>().Validate(controller.ControllerContext, null, "", model);
+
+        if (bootstrap) await controller.RegisterExisting((RegisterExistingViewModel)model, Ct);
+        else await controller.Budget(Guid.NewGuid(), (WorkgroupBudgetFormViewModel)model, "group", Ct);
+
+        controller.ModelState.IsValid.Should().Be(valid);
+        if (!valid)
+        {
+            controller.ModelState[prefix + (hasBudget is null ? "HasBudget" : "AccountMode")]!.Errors.Should().NotBeEmpty();
+            await service.DidNotReceiveWithAnyArgs().RegisterExistingAsync(default, default!);
+            await service.DidNotReceiveWithAnyArgs().SetBudgetAsync(default, default, default!);
+        }
+        else
+        {
+            var expectedBudget = new WorkgroupBudgetSave(
+                string.Equals(hasBudget, "true", StringComparison.Ordinal) ? 100m : null,
+                string.Equals(accountMode, "link", StringComparison.Ordinal) ? 62900007 : null);
+            if (bootstrap)
+                await service.Received(1).RegisterExistingAsync(Arg.Any<Guid>(),
+                    Arg.Is<WorkgroupBootstrap>(b => b.Budget == expectedBudget), Arg.Any<CancellationToken>());
+            else
+                await service.Received(1).SetBudgetAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), expectedBudget, Arg.Any<CancellationToken>());
+        }
+    }
+
+    [HumansTheory]
+    [InlineData(null, null)]
+    [InlineData("not-a-date", null)]
+    [InlineData("2025-03-01", null)]
+    [InlineData("2025-03-01", "Application.DeliverableKind")]
+    [InlineData("2025-03-01", "Application.Audience")]
+    [InlineData("2025-03-01", "Application.IsSensitive")]
+    [InlineData("2025-03-01", "Budget.HasBudget")]
+    [InlineData("2025-03-01", "Budget")]
+    public async Task RegisterExisting_RequiresExplicitValidRegistrationFields(string? registeredOn, string? missingField)
     {
         var service = Substitute.For<IWorkgroupService>();
         service.RegisterExistingAsync(Arg.Any<Guid>(), Arg.Any<WorkgroupBootstrap>(), Arg.Any<CancellationToken>())
@@ -77,9 +158,20 @@ public sealed class WorkgroupsAdminControllerTests : WorkgroupsTestHarness
             ["Application.Name"] = "Group",
             ["Application.Purpose"] = "Purpose",
             ["Application.Deliverable"] = "Report",
+            ["Application.DeliverableKind"] = "0",
+            ["Application.Audience"] = "0",
+            ["Application.IsSensitive"] = "false",
+            ["Budget.HasBudget"] = "false",
+            ["Budget.AccountMode"] = "create",
             ["CoordinatorUserId"] = SeedUser("Coordinator").ToString()
         };
         if (registeredOn is not null) fields["RegisteredOn"] = registeredOn;
+        if (string.Equals(missingField, "Budget", StringComparison.Ordinal))
+        {
+            fields.Remove("Budget.HasBudget");
+            fields.Remove("Budget.AccountMode");
+        }
+        else if (missingField is not null) fields.Remove(missingField);
         var metadata = services.GetRequiredService<IModelMetadataProvider>().GetMetadataForType(typeof(RegisterExistingViewModel));
         var binder = services.GetRequiredService<IModelBinderFactory>().CreateBinder(new ModelBinderFactoryContext { Metadata = metadata });
         var binding = DefaultModelBindingContext.CreateBindingContext(controller.ControllerContext,
@@ -90,9 +182,10 @@ public sealed class WorkgroupsAdminControllerTests : WorkgroupsTestHarness
         services.GetRequiredService<IObjectModelValidator>().Validate(controller.ControllerContext, null, "", model);
         var result = await controller.RegisterExisting(model, Ct);
 
-        if (!string.Equals(registeredOn, "2025-03-01", StringComparison.Ordinal))
+        if (missingField is not null || !string.Equals(registeredOn, "2025-03-01", StringComparison.Ordinal))
         {
-            controller.ModelState[nameof(RegisterExistingViewModel.RegisteredOn)]!.Errors.Should().NotBeEmpty();
+            controller.ModelState.Should().ContainKey(missingField ?? nameof(RegisterExistingViewModel.RegisteredOn));
+            controller.ModelState[missingField ?? nameof(RegisterExistingViewModel.RegisteredOn)]!.Errors.Should().NotBeEmpty();
             result.Should().BeOfType<ViewResult>().Which.Model.Should().BeSameAs(model);
             await service.DidNotReceiveWithAnyArgs().RegisterExistingAsync(default, default!);
         }
@@ -335,6 +428,7 @@ public sealed class WorkgroupsAdminControllerTests : WorkgroupsTestHarness
 
         result.Should().BeOfType<ViewResult>().Subject.Model.Should().BeOfType<RegisterExistingViewModel>()
             .Subject.ExpenseAccounts.Should().ContainSingle().Which.Number.Should().Be(62900007);
+        ((RegisterExistingViewModel)((ViewResult)result).Model!).Budget.AccountMode.Should().Be("create");
     }
 
     [HumansFact]

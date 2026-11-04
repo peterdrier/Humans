@@ -65,6 +65,31 @@ public class AgentAdminStatusServiceTests
     }
 
     [HumansFact]
+    public async Task Top_docs_combines_case_variants_and_section_aliases()
+    {
+        await using var db = InMemoryDb();
+        var now = Instant.FromUtc(2026, 5, 17, 12, 0);
+        var conversation = SeedConversation(db, Guid.NewGuid(), now);
+        SeedMessage(db, conversation.Id, now, prompt: 10, output: 5, cached: 0, fetched:
+        [
+            AgentToolNames.FetchSectionGuide + ":Profile",
+            AgentToolNames.FetchSectionGuide + ":Users",
+            AgentToolNames.FetchSectionGuide + ":users",
+            AgentToolNames.FetchFeatureSpec + ":My-Feature",
+            AgentToolNames.FetchFeatureSpec + ":my-feature",
+            AgentToolNames.RouteToIssue,
+        ]);
+        await db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+
+        var report = await BuildService(db, new FakeClock(now)).GetStatusAsync(Xunit.TestContext.Current.CancellationToken);
+
+        report.TopDocs7d.Should().HaveCount(3);
+        report.TopDocs7d.Should().ContainSingle(d => d.Slug == AgentToolNames.FetchSectionGuide + ":Users" && d.Count == 3);
+        report.TopDocs7d.Should().ContainSingle(d => d.Slug == AgentToolNames.FetchFeatureSpec + ":My-Feature" && d.Count == 2);
+        report.TopDocs7d.Should().ContainSingle(d => d.Slug == AgentToolNames.RouteToIssue && d.Count == 1);
+    }
+
+    [HumansFact]
     public async Task Latency_panel_excludes_user_rows_and_zero_duration_refusals()
     {
         // User rows carry no duration at all, and

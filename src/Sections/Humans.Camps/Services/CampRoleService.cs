@@ -549,8 +549,6 @@ internal sealed class CampRoleService(
         // the years users can currently interact with via the UI.
         var settings = await campAccess.GetSettingsAsync(ct);
         var inScopeYears = new HashSet<int>(settings.OpenSeasons) { settings.PublicYear };
-        if (inScopeYears.Count == 0)
-            return new Dictionary<string, Guid[]>(StringComparer.OrdinalIgnoreCase);
 
         // Empty Slug => the definition does not get a Google Group and is not
         // listed in expected claims. Admins set the slug via the role-edit form

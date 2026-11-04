@@ -10,6 +10,7 @@ using Humans.Base.Controllers;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
+using NodaTime;
 using Humans.Users.Contracts;
 
 namespace Humans.Finance.Controllers;
@@ -26,6 +27,8 @@ internal sealed class FinanceController(
     CreditorMatchService creditorMatches,
     ILogger<FinanceController> logger) : HumansControllerBase(userService)
 {
+    private static readonly DateTimeZone MadridZone = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
+
     /// <summary>Placeholder index until the Finance overview (balances, owed, budget vs actuals) exists.</summary>
     [HttpGet("")]
     public IActionResult Index() => View();
@@ -267,12 +270,13 @@ internal sealed class FinanceController(
     [Authorize(Policy = FinancePolicies.Manage)]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> BookSepaTransfer(
-        Guid transferId, string bankMovementId,
+        [BindRequired] Guid transferId, [BindRequired] string bankMovementId,
         int days = IFinanceAdminService.DefaultSepaMatchToleranceDays)
     {
         var actor = await GetCurrentUserInfoAsync(HttpContext.RequestAborted);
         if (actor is null) return Challenge();
         var actorUserId = actor.Id;
+        if (!ModelState.IsValid) return MalformedMutation(actorUserId);
 
         var result = await holdedConnector.BookSepaTransferAsync(transferId, bankMovementId, actorUserId, days);
         if (result.Succeeded) SetSuccess(result.Message); else SetError(result.Message);
@@ -285,11 +289,12 @@ internal sealed class FinanceController(
     [Authorize(Policy = FinancePolicies.Manage)]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> WithdrawSepaTransfer(
-        Guid transferId, int days = IFinanceAdminService.DefaultSepaMatchToleranceDays)
+        [BindRequired] Guid transferId, int days = IFinanceAdminService.DefaultSepaMatchToleranceDays)
     {
         var actor = await GetCurrentUserInfoAsync(HttpContext.RequestAborted);
         if (actor is null) return Challenge();
         var actorUserId = actor.Id;
+        if (!ModelState.IsValid) return MalformedMutation(actorUserId);
 
         var result = await holdedConnector.WithdrawSepaTransferAsync(transferId, actorUserId, HttpContext.RequestAborted);
         if (result.Succeeded) SetSuccess(result.Message); else SetError(result.Message);
@@ -302,9 +307,12 @@ internal sealed class FinanceController(
     [Authorize(Policy = FinancePolicies.Manage)]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> CancelSepaFile(
-        Guid fileId, int days = IFinanceAdminService.DefaultSepaMatchToleranceDays)
+        [BindRequired] Guid fileId, int days = IFinanceAdminService.DefaultSepaMatchToleranceDays)
     {
-        if (GetCurrentUserId() is not { } actorUserId) return Challenge();
+        var actor = await GetCurrentUserInfoAsync(HttpContext.RequestAborted);
+        if (actor is null) return Challenge();
+        var actorUserId = actor.Id;
+        if (!ModelState.IsValid) return MalformedMutation(actorUserId);
 
         var result = await holdedConnector.CancelSepaFileAsync(fileId, actorUserId, HttpContext.RequestAborted);
         if (result.Succeeded) SetSuccess(result.Message); else SetError(result.Message);
@@ -340,12 +348,13 @@ internal sealed class FinanceController(
     [Authorize(Policy = FinancePolicies.Manage)]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> BookSepaFile(
-        Guid fileId, string bankMovementId,
+        [BindRequired] Guid fileId, [BindRequired] string bankMovementId,
         int days = IFinanceAdminService.DefaultSepaMatchToleranceDays)
     {
         var actor = await GetCurrentUserInfoAsync(HttpContext.RequestAborted);
         if (actor is null) return Challenge();
         var actorUserId = actor.Id;
+        if (!ModelState.IsValid) return MalformedMutation(actorUserId);
 
         var result = await holdedConnector.BookSepaFileAsync(fileId, bankMovementId, actorUserId, days);
         if (result.Succeeded) SetSuccess(result.Message); else SetError(result.Message);
@@ -359,16 +368,24 @@ internal sealed class FinanceController(
     [Authorize(Policy = FinancePolicies.Manage)]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> BookSepaFileMatches(
-        Guid fileId, int days = IFinanceAdminService.DefaultSepaMatchToleranceDays)
+        [BindRequired] Guid fileId, int days = IFinanceAdminService.DefaultSepaMatchToleranceDays)
     {
         var actor = await GetCurrentUserInfoAsync(HttpContext.RequestAborted);
         if (actor is null) return Challenge();
         var actorUserId = actor.Id;
+        if (!ModelState.IsValid) return MalformedMutation(actorUserId);
 
         var result = await holdedConnector.BookSepaFileMatchesAsync(fileId, actorUserId, days);
         if (result.Succeeded) SetSuccess(result.Message); else SetError(result.Message);
 
         return RedirectToAction(nameof(Sepa), new { days });
+    }
+
+    private BadRequestObjectResult MalformedMutation(Guid actorUserId)
+    {
+        logger.LogWarning("Rejected malformed Finance {Action} form for actor {ActorUserId}",
+            ControllerContext.ActionDescriptor.ActionName, actorUserId);
+        return BadRequest(ModelState);
     }
 
     /// <summary>Ties resolve on the account number so the order is stable across reloads.</summary>
@@ -406,34 +423,63 @@ internal sealed class FinanceController(
 
         // The running balance is the service's; the page shows newest activity first.
         var memberName = string.IsNullOrWhiteSpace(ledger.Contact?.Name) ? "member" : ledger.Contact.Name;
-        var lines = ledger.Lines
-            .Select(l => new CreditorStatementLineVm(l, StatementDescription(l, memberName)))
+        var lines = StatementRows(ledger.Lines, memberName)
             .OrderByDescending(r => r.Line.Date)
             .ThenByDescending(r => r.Line.EntryNumber)
             .ThenBy(r => r.Line.Line)
             .ToList();
         var match = await creditorMatches.GetAsync(accountNum, viewerUserId, HttpContext.RequestAborted);
-        return View(new CreditorStatementVm(ledger, lines, reports, match));
+        var (transfers, _) = await finance.GetSepaTransfersAsync(HttpContext.RequestAborted);
+        var sepa = transfers
+            .Where(t => t.SupplierAccountNum == accountNum)
+            .OrderByDescending(t => t.GeneratedAt)
+            .ToList();
+        return View(new CreditorStatementVm(ledger, lines, reports, match, sepa));
     }
 
-    // Holded labels a payment with the purchase it settles, which reads like a second purchase.
-    private static string? StatementDescription(CreditorLedgerLine line, string memberName)
+    // Holded books one transfer as a payment line per purchase it settles. We pay a member at most once a day, so
+    // consecutive same-day, same-direction payment lines are one transfer and show as one row; requiring them to be
+    // consecutive keeps each row's running balance true.
+    private static List<CreditorStatementLineVm> StatementRows(IEnumerable<CreditorLedgerLine> lines, string memberName)
     {
-        if (!string.Equals(line.Type, "payment", StringComparison.OrdinalIgnoreCase))
+        var groups = new List<List<CreditorLedgerLine>>();
+        foreach (var line in lines.OrderBy(l => l.Date).ThenBy(l => l.EntryNumber).ThenBy(l => l.Line))
+        {
+            var last = groups.Count > 0 ? groups[^1][^1] : null;
+            if (last is not null && IsPayment(line) && IsPayment(last)
+                && line.Date.InZone(MadridZone).Date == last.Date.InZone(MadridZone).Date
+                && line.Debit > 0 == last.Debit > 0)
+                groups[^1].Add(line);
+            else
+                groups.Add([line]);
+        }
+        return groups.Select(g => new CreditorStatementLineVm(g, StatementDescription(g, memberName))).ToList();
+    }
+
+    private static bool IsPayment(CreditorLedgerLine line) =>
+        string.Equals(line.Type, "payment", StringComparison.OrdinalIgnoreCase);
+
+    // Holded labels a payment with the purchase it settles, which reads like a second purchase.
+    private static string? StatementDescription(List<CreditorLedgerLine> group, string memberName)
+    {
+        var line = group[0];
+        if (!IsPayment(line))
             return line.Description;
-        return line.Debit > 0
+        var description = line.Debit > 0
             ? $"Payment: NCA → {memberName}"
             : $"Payment: {memberName} → NCA";
+        return group.Count > 1 ? $"{description} ({group.Count} purchases)" : description;
     }
 
     [HttpPost("Creditors/Bind")]
     [Authorize(Policy = FinancePolicies.Manage)]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> BindCreditor(Guid userId, int supplierAccountNum, string? returnUrl)
+    public async Task<IActionResult> BindCreditor([BindRequired] Guid userId, [BindRequired] int supplierAccountNum, string? returnUrl)
     {
         var actor = await GetCurrentUserInfoAsync(HttpContext.RequestAborted);
         if (actor is null) return Challenge();
         var actorUserId = actor.Id;
+        if (!ModelState.IsValid) return MalformedMutation(actorUserId);
         try
         {
             var result = await holdedConnector.SetCreditorContactAsync(userId, supplierAccountNum, actorUserId);
@@ -456,11 +502,12 @@ internal sealed class FinanceController(
     [HttpPost("Creditors/Unbind")]
     [Authorize(Policy = FinancePolicies.Manage)]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> UnbindCreditor(Guid userId, string? returnUrl)
+    public async Task<IActionResult> UnbindCreditor([BindRequired] Guid userId, string? returnUrl)
     {
         var actor = await GetCurrentUserInfoAsync(HttpContext.RequestAborted);
         if (actor is null) return Challenge();
         var actorUserId = actor.Id;
+        if (!ModelState.IsValid) return MalformedMutation(actorUserId);
         try
         {
             if (await holdedConnector.ClearCreditorContactAsync(userId, actorUserId))

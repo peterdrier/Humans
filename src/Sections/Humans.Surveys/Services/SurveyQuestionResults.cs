@@ -37,8 +37,8 @@ internal static class SurveyQuestionResults
             case SurveyQuestionType.Rating:
                 {
                     var values = answers.Where(a => a.RatingValue.HasValue).Select(a => a.RatingValue!.Value).ToList();
-                    var min = question.RatingMin ?? (values.Count > 0 ? values.Min() : 0);
-                    var max = question.RatingMax ?? (values.Count > 0 ? values.Max() : min);
+                    var min = question.RatingMin ?? 1;
+                    var max = question.RatingMax ?? 5;
                     var distribution = new List<RatingBucket>();
                     for (long v = min; v <= max; v++)
                     {

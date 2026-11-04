@@ -48,11 +48,11 @@ public sealed record UserEmailRemoveCommand(
 /// The caller decides OAuth policy, conflicts and audit text; Users applies the rows atomically and repairs the
 /// email invariants.
 /// </summary>
-public sealed record UserEmailReconcilePlanCommand(
+internal sealed record UserEmailReconcilePlanCommand(
     UserEmail? DisplacedRowToDelete,
     UserEmail? RowToDelete,
     UserEmail? RowToUpdate,
     UserEmail? RowToInsert);
 
-public sealed record UserEmailReconcilePlanResult(
+internal sealed record UserEmailReconcilePlanResult(
     IReadOnlySet<Guid> MutatedUserIds);

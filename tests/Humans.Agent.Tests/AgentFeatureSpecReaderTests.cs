@@ -1,4 +1,6 @@
 using NSubstitute;
+using System.Net;
+using Octokit;
 using AwesomeAssertions;
 using Humans.Base.Interfaces;
 using Humans.Agent.Services.Preload;
@@ -16,6 +18,32 @@ namespace Humans.Agent.Tests;
 /// </summary>
 public class AgentFeatureSpecReaderTests
 {
+    [HumansTheory]
+    [InlineData("docs/features/global", false)]
+    [InlineData("docs/features/global", true)]
+    [InlineData("src/Sections/Humans.Shifts/Docs/features", false)]
+    [InlineData("src/Sections/Humans.Shifts/Docs/features", true)]
+    public async Task ReadAsync_ResolvesCanonicalFilenameAndSharesCacheAcrossCaseVariants(string folder, bool canonicalFirst)
+    {
+        var source = Substitute.For<IGuideContentSource>();
+        source.ListMarkdownPathsAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<(IReadOnlyList<string>, bool)>(([folder + "/Mixed-Case.md"], true)));
+        source.GetMarkdownAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<string>(new NotFoundException("File not found", HttpStatusCode.NotFound)));
+        source.GetMarkdownAsync(folder, "Mixed-Case", Arg.Any<CancellationToken>()).Returns("# Feature");
+        using var cache = new MemoryCache(new MemoryCacheOptions());
+        var reader = new AgentFeatureSpecReader(source, cache, NullLogger<AgentFeatureSpecReader>.Instance);
+
+        (await reader.ReadAsync(canonicalFirst ? "Mixed-Case" : "mixed-case", TestContext.Current.CancellationToken))
+            .Should().Be("# Feature");
+        (await reader.ReadAsync("MIXED-CASE", TestContext.Current.CancellationToken)).Should().Be("# Feature");
+        (await reader.ReadAsync("mixed-case", TestContext.Current.CancellationToken)).Should().Be("# Feature");
+
+        await source.Received(1).GetMarkdownAsync(folder, "Mixed-Case", TestContext.Current.CancellationToken);
+        await source.Received(1).GetMarkdownAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+        await source.Received(1).ListMarkdownPathsAsync(TestContext.Current.CancellationToken);
+    }
+
     [HumansFact]
     public async Task CancelledDocumentFetch_PropagatesInsteadOfReturningAMiss()
     {

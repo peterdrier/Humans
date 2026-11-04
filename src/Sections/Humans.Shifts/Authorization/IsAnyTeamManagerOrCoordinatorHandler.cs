@@ -1,3 +1,4 @@
+using Humans.Users.Contracts;
 using System.Security.Claims;
 using Humans.Shifts.Contracts;
 using Humans.Base.Constants;
@@ -12,7 +13,7 @@ namespace Humans.Shifts.Authorization;
 /// Coordinator team ids come from Teams' in-RAM model, so no request hits the DB.
 /// </summary>
 internal sealed class IsAnyTeamManagerOrCoordinatorHandler(
-    IShiftService shiftManagement, IHttpContextAccessor httpContextAccessor)
+    IShiftService shiftManagement, IUserService users, IHttpContextAccessor httpContextAccessor)
     : AuthorizationHandler<IsAnyTeamManagerOrCoordinatorRequirement>
 {
     protected override async Task HandleRequirementAsync(
@@ -35,8 +36,10 @@ internal sealed class IsAnyTeamManagerOrCoordinatorHandler(
         if (userIdClaim is null || !Guid.TryParse(userIdClaim.Value, out var userId))
             return;
 
-        var coordinatedTeamIds = await shiftManagement.GetCoordinatorTeamIdsAsync(
-            userId, httpContextAccessor.HttpContext?.RequestAborted ?? CancellationToken.None);
+        var ct = httpContextAccessor.HttpContext?.RequestAborted ?? CancellationToken.None;
+        var viewer = await users.GetUserInfoAsync(userId, ct);
+        if (viewer is null) return;
+        var coordinatedTeamIds = await shiftManagement.GetCoordinatorTeamIdsAsync(viewer.Id, ct);
         if (coordinatedTeamIds.Count > 0)
             context.Succeed(requirement);
     }

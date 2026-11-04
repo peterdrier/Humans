@@ -72,7 +72,7 @@ internal sealed class ProcessAccountDeletionsJob(
                         "Account anonymized",
                         nameof(ProcessAccountDeletionsJob));
 
-                    if (!string.IsNullOrEmpty(summary.OriginalEmail))
+                    if (!string.IsNullOrWhiteSpace(summary.OriginalEmail))
                     {
                         // Sent without an outbox row, so a transport failure is terminal; the
                         // erasure already succeeded and must not be reported as failed or retried.
@@ -92,6 +92,11 @@ internal sealed class ProcessAccountDeletionsJob(
                                 "Account {UserId} was anonymized but its deletion confirmation " +
                                 "could not be delivered: {ExceptionType}", userId, ex.GetType().Name);
                         }
+                    }
+                    else
+                    {
+                        logger.LogWarning("Account {UserId} was anonymized but its deletion confirmation was skipped: no notification email",
+                            userId);
                     }
 
                     processed++;

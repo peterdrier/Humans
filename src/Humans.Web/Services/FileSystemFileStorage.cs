@@ -47,7 +47,7 @@ public sealed class FileSystemFileStorage(IHostEnvironment environment, ILogger<
         }
         catch (Exception ex)
         {
-            logger.LogWarning(ex,
+            logger.LogError(ex,
                 "Failed to save temp file {TempPath} to {FinalPath}; cleaning up",
                 tempPath, fullPath);
             DeleteTempFile(tempPath);
@@ -73,9 +73,13 @@ public sealed class FileSystemFileStorage(IHostEnvironment environment, ILogger<
         {
             return await File.ReadAllBytesAsync(fullPath, ct);
         }
+        catch (IOException ex) when (ex is FileNotFoundException or DirectoryNotFoundException)
+        {
+            return null;
+        }
         catch (IOException ex)
         {
-            logger.LogWarning(ex, "Failed to read file at {Path}", fullPath);
+            logger.LogError(ex, "Failed to read file at {Path}", fullPath);
             return null;
         }
     }
@@ -149,7 +153,7 @@ public sealed class FileSystemFileStorage(IHostEnvironment environment, ILogger<
         }
         catch (Exception cleanupEx) when (cleanupEx is IOException or UnauthorizedAccessException)
         {
-            logger.LogWarning(cleanupEx,
+            logger.LogError(cleanupEx,
                 "Failed to clean up temp file {TempPath} after a failed save",
                 tempPath);
         }

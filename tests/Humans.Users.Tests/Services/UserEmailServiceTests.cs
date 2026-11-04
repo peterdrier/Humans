@@ -1838,14 +1838,19 @@ public class UserEmailServiceTests
     }
 
     [HumansTheory]
-    [Xunit.InlineData(false)]
-    [Xunit.InlineData(true)]
-    public async Task GetNotificationTargetEmailsAsync_UsesCanonicalEmail(bool hasPrimary)
+    [Xunit.InlineData(false, "login@example.org")]
+    [Xunit.InlineData(true, "primary@example.org")]
+    [Xunit.InlineData(false, null)]
+    [Xunit.InlineData(false, "")]
+    [Xunit.InlineData(false, " \t ")]
+    [Xunit.InlineData(true, "")]
+    [Xunit.InlineData(true, " \t ")]
+    public async Task GetNotificationTargetEmailsAsync_UsesCanonicalEmail(bool hasPrimary, string? address)
     {
         var id = Guid.NewGuid();
-        var user = new User { Id = id, Email = "login@example.org" }.ToUserInfo(
+        var user = new User { Id = id, Email = hasPrimary ? "login@example.org" : address }.ToUserInfo(
             hasPrimary
-                ? [new UserEmail { UserId = id, Email = "primary@example.org", IsVerified = true, IsPrimary = true }]
+                ? [new UserEmail { UserId = id, Email = address!, IsVerified = true, IsPrimary = true }]
                 : []);
         _userService.GetUserInfosAsync(
                 Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
@@ -1855,8 +1860,8 @@ public class UserEmailServiceTests
         var result = await _service.GetNotificationTargetEmailsAsync(
             [id], Xunit.TestContext.Current.CancellationToken);
 
-        result.Should().ContainKey(id).WhoseValue.Should().Be(
-            hasPrimary ? "primary@example.org" : "login@example.org");
+        if (string.IsNullOrWhiteSpace(address)) result.Should().BeEmpty();
+        else result.Should().ContainKey(id).WhoseValue.Should().Be(address);
     }
 
     [HumansFact]

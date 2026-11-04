@@ -50,6 +50,7 @@ internal sealed class LowIncomeAdminController(
     {
         GrantWriteRefusal.NoOpenProgram => NoProgram,
         GrantWriteRefusal.ReasonTooLong => "The reason is too long.",
+        GrantWriteRefusal.RecipientUnavailable => "That person is no longer available.",
         _ => throw new ArgumentOutOfRangeException(nameof(refusal), refusal, "Unknown grant write refusal.")
     };
 
