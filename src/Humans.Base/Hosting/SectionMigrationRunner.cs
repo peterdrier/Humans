@@ -15,7 +15,9 @@ namespace Humans.Base.Hosting;
 /// <item>History has rows → plain <c>MigrateAsync</c>.</item>
 /// <item>History empty, sentinel table exists → record the baseline as applied WITHOUT executing it (through EF's own
 /// <see cref="IHistoryRepository"/> script), then <c>MigrateAsync</c> for anything after it.</item>
-/// <item>History empty, sentinel absent (a fresh database) → plain <c>MigrateAsync</c>, executing the baseline.</item>
+/// <item>History empty, sentinel absent (a fresh database) → create the empty history table if missing, then
+/// <c>MigrateAsync</c>, executing the baseline. Pre-creating it keeps EF's own history read inside
+/// <c>MigrateAsync</c> from failing and logging an Error.</item>
 /// </list>
 /// <para>
 /// Idempotent: once the baseline row exists the first branch is taken forever. Only the baseline is ever
@@ -33,8 +35,8 @@ internal static class SectionMigrationRunner
     /// <param name="logger">Records migration decisions and failures.</param>
     /// <param name="ct">Cancels migration work.</param>
     /// <param name="beforeSchemaChange">
-    /// Invoked immediately before anything writes to the schema, including the baseline bookkeeping that creates the
-    /// history table. Idempotent across contexts: one snapshot per boot.
+    /// Invoked immediately before anything writes to the schema, including the bookkeeping that creates the history
+    /// table. Idempotent across contexts: one snapshot per boot.
     /// </param>
     public static async Task MigrateAsync(
         DbContext db,
@@ -85,6 +87,11 @@ internal static class SectionMigrationRunner
                 }
 
                 await beforeSchemaChange(ct);
+                if (!historyTableExists)
+                {
+                    await CreateHistoryTableIfNotExistsAsync(db, ct);
+                }
+
                 await db.Database.MigrateAsync(ct);
 
                 var nowApplied = (await db.Database.GetAppliedMigrationsAsync(ct)).ToList();
@@ -137,9 +144,11 @@ internal static class SectionMigrationRunner
 
     private static async Task RecordBaselineAsAppliedAsync(DbContext db, string baselineId, CancellationToken ct)
     {
-        var historyRepository = db.GetService<IHistoryRepository>();
-        await db.Database.ExecuteSqlRawAsync(historyRepository.GetCreateIfNotExistsScript(), ct);
+        await CreateHistoryTableIfNotExistsAsync(db, ct);
         await db.Database.ExecuteSqlRawAsync(
-            historyRepository.GetInsertScript(new HistoryRow(baselineId, ProductInfo.GetVersion())), ct);
+            db.GetService<IHistoryRepository>().GetInsertScript(new HistoryRow(baselineId, ProductInfo.GetVersion())), ct);
     }
+
+    private static Task CreateHistoryTableIfNotExistsAsync(DbContext db, CancellationToken ct) =>
+        db.Database.ExecuteSqlRawAsync(db.GetService<IHistoryRepository>().GetCreateIfNotExistsScript(), ct);
 }
