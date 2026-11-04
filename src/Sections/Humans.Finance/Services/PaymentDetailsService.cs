@@ -44,7 +44,7 @@ internal sealed class PaymentDetailsService(
         var iban = await ReadIbanAsync(userId, ct);
         if (iban is null) return null;
 
-        // Same entity type and wording as before, so old and new reveals read back together.
+        // Entity type and wording are persisted: unchanged, so every IbanReveal row reads back together.
         await audit.LogAsync(
             FinanceAuditActions.IbanReveal, AuditSubjectTypes.User, userId,
             $"Admin revealed IBAN for user {userId}", actorUserId);

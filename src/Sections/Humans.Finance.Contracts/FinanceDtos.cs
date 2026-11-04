@@ -40,5 +40,4 @@ public sealed record CategoryAccountRow(
     int HoldedAccountNumber,
     string HoldedAccountId,
     string Tag,
-    bool IsActive,
     Instant UpdatedAt);

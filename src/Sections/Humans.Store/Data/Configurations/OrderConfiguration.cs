@@ -17,6 +17,8 @@ internal sealed class OrderConfiguration : IEntityTypeConfiguration<Order>
         b.Property(x => x.CounterpartyAddress).HasMaxLength(500);
         b.Property(x => x.CounterpartyCountryCode).HasMaxLength(2);
         b.Property(x => x.CounterpartyEmail).HasMaxLength(320);
+        b.Property(x => x.CheckoutSessionId).HasMaxLength(255);
+        b.Property(x => x.CheckoutAmountEur).HasColumnType("numeric(12,2)");
         b.Property(x => x.State).HasConversion<int>();
         b.Property(x => x.Year).IsRequired();
         b.HasIndex(x => x.State);

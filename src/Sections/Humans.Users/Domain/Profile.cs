@@ -58,27 +58,6 @@ internal sealed class Profile
     [PersonalData]
     public string? EmergencyContactRelationship { get; set; }
 
-    // Legacy food columns: Cantina owns the answers. Read only by Cantina's fallback and copy;
-    // still exported and erased here until the retirement PR drops them.
-
-    /// <summary>Dietary preference (e.g., "Vegan", "Vegetarian", "Omnivore", "Pescatarian").</summary>
-    [PersonalData]
-    public string? DietaryPreference { get; set; }
-
-    [PersonalData]
-    public List<string> Allergies { get; set; } = [];
-
-    [PersonalData]
-    public List<string> Intolerances { get; set; } = [];
-
-    /// <summary>Free text specifying "Other" allergy when "Other" is selected.</summary>
-    [PersonalData]
-    public string? AllergyOtherText { get; set; }
-
-    /// <summary>Free text specifying "Other" intolerance when "Other" is selected.</summary>
-    [PersonalData]
-    public string? IntoleranceOtherText { get; set; }
-
     /// <summary>
     /// GDPR Art. 9 health data, present on the cached UserInfo: every render or serialize surface
     /// MUST gate it behind the MedicalDataViewer policy.
@@ -109,33 +88,6 @@ internal sealed class Profile
     /// <summary>Notes to the Board, visible to self and the Board only.</summary>
     [PersonalData]
     public string? BoardNotes { get; set; }
-
-    [PersonalData]
-    public string? Iban { get; set; }
-
-    /// <summary>Frozen storage only; Consent owns the review. Kept until the separate column drop.</summary>
-    public bool IsApproved { get; set; }
-
-    /// <summary>
-    /// Frozen legacy column, retained for GDPR export until a separate schema drop.
-    /// Governance owns the live tier.
-    /// </summary>
-    public LegacyMembershipTier MembershipTier { get; set; }
-
-    /// <summary>Frozen legacy column (see <see cref="IsApproved"/>).</summary>
-    public LegacyConsentCheckStatus? ConsentCheckStatus { get; set; }
-
-    public Instant? ConsentCheckAt { get; set; }
-
-    public Guid? ConsentCheckedByUserId { get; set; }
-
-    public string? ConsentCheckNotes { get; set; }
-
-    public string? RejectionReason { get; set; }
-
-    public Instant? RejectedAt { get; set; }
-
-    public Guid? RejectedByUserId { get; set; }
 
     public string FullName => $"{FirstName} {LastName}".Trim();
 

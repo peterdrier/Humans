@@ -65,6 +65,11 @@ internal interface IFinanceAdminService : IApplicationService
         Guid transferId, string bankMovementId, Guid? actorUserId,
         int toleranceDays = DefaultSepaMatchToleranceDays);
 
+    /// <summary>The two-hourly sweep: books every unbooked transfer whose outgoing Sabadell line has appeared, and
+    /// retries the reconcile for every booked-but-unreconciled one.</summary>
+    [ExternalWrite]
+    Task RunSepaBookingSweepAsync(CancellationToken ct = default);
+
     /// <summary>The line's amount must be the file's total, exactly. Only a finance admin's Process click, never the
     /// sweep. Every transfer is checked before any is posted; a refusal part-way leaves booked ones booked, and a rerun
     /// finishes. No <c>CancellationToken</c>, for the same reason.</summary>

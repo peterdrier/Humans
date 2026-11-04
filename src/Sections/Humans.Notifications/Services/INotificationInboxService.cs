@@ -1,5 +1,6 @@
 using Humans.Base.Interfaces;
 using Humans.Notifications.Contracts;
+using Humans.Notifications.Data;
 
 namespace Humans.Notifications.Services;
 
@@ -15,16 +16,16 @@ internal interface INotificationInboxService
         CancellationToken ct = default);
 
     /// <summary>NotFound when missing; Forbidden when the user isn't a recipient or it isn't actionable.</summary>
-    Task<NotificationActionResult> ResolveAsync(
+    Task<NotificationMutationOutcome> ResolveAsync(
         Guid notificationId, Guid userId,
         CancellationToken ct = default);
 
     /// <summary>NotFound when missing; Forbidden when the user isn't a recipient or it is actionable.</summary>
-    Task<NotificationActionResult> DismissAsync(
+    Task<NotificationMutationOutcome> DismissAsync(
         Guid notificationId, Guid userId,
         CancellationToken ct = default);
 
-    Task<NotificationActionResult> MarkReadAsync(
+    Task<NotificationMutationOutcome> MarkReadAsync(
         Guid notificationId, Guid userId,
         CancellationToken ct = default);
 
@@ -53,6 +54,8 @@ internal sealed record NotificationRowDto
 {
     public Guid Id { get; init; }
     public string Title { get; init; } = string.Empty;
+    public string? Body { get; init; }
+    public string? TargetGroupName { get; init; }
     public string? ActionUrl { get; init; }
     public NotificationPriority Priority { get; init; }
     public string Source { get; init; } = string.Empty;
@@ -83,8 +86,3 @@ internal sealed record NotificationPopupResult
     public List<NotificationRowDto> Actionable { get; init; } = [];
     public List<NotificationRowDto> Informational { get; init; } = [];
 }
-
-internal sealed record NotificationActionResult(
-    bool Success,
-    bool NotFound = false,
-    bool Forbidden = false);

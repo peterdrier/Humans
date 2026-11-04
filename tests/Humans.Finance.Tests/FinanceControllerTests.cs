@@ -66,7 +66,10 @@ public class FinanceControllerTests
     private FinanceController MakeController() =>
         new(_users, _finance, _connector, _holdedLedger, _expenses,
             new CashFlowService(_budget, Substitute.For<ITicketService>()),
-            new CreditorMatchService(_holdedLedger, _expenses), NullLogger<FinanceController>.Instance)
+            new CreditorMatchService(_holdedLedger, _expenses),
+            new FinanceOverviewService(_holdedLedger, _finance, _expenses, _budget,
+                new CashFlowService(_budget, Substitute.For<ITicketService>()), SystemClock.Instance),
+            NullLogger<FinanceController>.Instance)
         {
             ControllerContext = new()
             {
@@ -475,7 +478,7 @@ public class FinanceControllerTests
         IReadOnlyList<CreditorAccountRow> rows,
         IReadOnlyList<CreditorContactBinding>? unresolved = null) =>
         _finance.ListCreditorAccountsAsync(Arg.Any<CancellationToken>())
-            .Returns((rows, unresolved ?? []));
+            .Returns((rows, unresolved ?? [], (string?)null));
 
     private static CreditorsPageVm PageOf(IActionResult result) =>
         result.Should().BeOfType<ViewResult>().Subject.Model

@@ -1,6 +1,4 @@
-using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using Humans.Users.Contracts;
 
@@ -44,23 +42,6 @@ internal sealed class ProfileConfiguration : IEntityTypeConfiguration<Profile>
         builder.Property(p => p.AdminNotes)
             .HasMaxLength(4000);
 
-        builder.Property(p => p.IsApproved)
-            .IsRequired();
-
-        builder.Property(p => p.MembershipTier)
-            .IsRequired()
-            .HasDefaultValue(LegacyMembershipTier.Volunteer)
-            .HasConversion<string>();
-
-        builder.Property(p => p.ConsentCheckStatus)
-            .HasConversion<string>();
-
-        builder.Property(p => p.ConsentCheckNotes)
-            .HasMaxLength(4000);
-
-        builder.Property(p => p.RejectionReason)
-            .HasMaxLength(4000);
-
         builder.Property(p => p.DateOfBirth);
 
         builder.Property(p => p.EmergencyContactName)
@@ -72,25 +53,10 @@ internal sealed class ProfileConfiguration : IEntityTypeConfiguration<Profile>
         builder.Property(p => p.EmergencyContactRelationship)
             .HasMaxLength(100);
 
-        // Sequence-equality comparer so EF detects element changes in the JSONB lists.
-        var listComparer = new ValueComparer<List<string>>(
-            (a, b) => a != null && b != null && a.SequenceEqual(b),
-            v => v.Aggregate(0, HashCode.Combine),
-            v => v.ToList());
-
-        ConfigureJsonbList(builder, p => p.Allergies, listComparer);
-        ConfigureJsonbList(builder, p => p.Intolerances, listComparer);
-
-        builder.Property(p => p.DietaryPreference).HasMaxLength(200);
-        builder.Property(p => p.AllergyOtherText).HasMaxLength(500);
-        builder.Property(p => p.IntoleranceOtherText).HasMaxLength(500);
         builder.Property(p => p.MedicalConditions).HasMaxLength(4000);
 
         builder.Property(p => p.NoPriorBurnExperience)
             .IsRequired();
-
-        builder.Property(p => p.Iban)
-            .HasMaxLength(34);
 
         builder.Property(p => p.ProfilePictureContentType)
             .HasMaxLength(100);
@@ -113,21 +79,7 @@ internal sealed class ProfileConfiguration : IEntityTypeConfiguration<Profile>
             .HasForeignKey<Profile>(p => p.UserId)
             .OnDelete(DeleteBehavior.Cascade);
 
-        builder.HasIndex(p => p.ConsentCheckStatus);
-
         builder.Ignore(p => p.FullName);
         builder.Ignore(p => p.HasCustomProfilePicture);
-    }
-
-    private static void ConfigureJsonbList(
-        EntityTypeBuilder<Profile> builder,
-        System.Linq.Expressions.Expression<Func<Profile, List<string>>> propertyExpression,
-        ValueComparer<List<string>> comparer)
-    {
-        builder.Property(propertyExpression).HasColumnType("jsonb")
-            .HasConversion(
-                v => JsonSerializer.Serialize(v, (JsonSerializerOptions?)null),
-                v => JsonSerializer.Deserialize<List<string>>(v, (JsonSerializerOptions?)null) ?? new(),
-                comparer);
     }
 }

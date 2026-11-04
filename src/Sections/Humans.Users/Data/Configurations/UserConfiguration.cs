@@ -34,14 +34,6 @@ internal sealed class UserConfiguration : IEntityTypeConfiguration<User>
             .HasColumnName("GoogleEmail")
             .HasMaxLength(256);
 
-        // Shadow property nothing reads or writes; mapped so EF keeps the column until its drop.
-        builder.Property<LegacyGoogleEmailStatus>("GoogleEmailStatus")
-            .HasConversion<string>()
-            .HasMaxLength(50)
-            .HasDefaultValue(LegacyGoogleEmailStatus.Unknown)
-            .HasSentinel(LegacyGoogleEmailStatus.Unknown)
-            .IsRequired();
-
         builder.Property(u => u.CreatedAt)
             .IsRequired();
 

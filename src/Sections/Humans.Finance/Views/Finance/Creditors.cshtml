@@ -36,7 +36,14 @@
     </div>
 </div>
 
-@if (Model.DuplicateFlaggedAccounts > 0)
+@if (Model.UnavailableReason is { } unavailable)
+{
+    <div class="alert alert-danger">
+        <i class="fa-solid fa-circle-exclamation me-1"></i>
+        <strong>Creditor accounts are not shown and no payout can be generated.</strong> @unavailable
+    </div>
+}
+else if (Model.DuplicateFlaggedAccounts > 0)
 {
     <div class="alert alert-danger">
         <i class="fa-solid fa-clone me-1"></i>
@@ -88,10 +95,10 @@
         </div>
         <div class="card-body">
             <p class="text-muted">
-                These members pushed an expense report but their Holded creditor-account number never
-                resolved — neither the one-shot push lookup nor Holded's own contact list has a number
-                for them. There is no automatic retry; bind each one manually once you know their
-                creditor account (40000000–41999999) in Holded.
+                These members' Holded contact is missing from Holded's contact list, or carries no
+                creditor account (40000000–41999999) yet. Their stored account number is not used: it may
+                be stale. There is no automatic retry; bind each one manually once you know their creditor
+                account in Holded.
             </p>
             <table class="table table-sm align-middle mb-0">
                 <thead><tr><th>Member</th><th>Source</th><th>Bind to account</th></tr></thead>
@@ -120,7 +127,10 @@
     </div>
 }
 
-@if (!Model.Accounts.Any())
+@if (Model.UnavailableReason is not null)
+{
+}
+else if (!Model.Accounts.Any())
 {
     <div class="card"><div class="card-body text-center py-5 text-muted">
         No creditor balances cached yet — run the ledger-mirror sync from
