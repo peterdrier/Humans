@@ -62,10 +62,11 @@ internal sealed class CalendarService(
         var items = new List<CalendarOccurrence>();
         foreach (var contributor in contributors)
         {
-            IReadOnlyList<CalendarFeedItem> contributed;
             try
             {
-                contributed = await contributor.GetPublicItemsForWindowAsync(from, to, ct);
+                var contributed = await contributor.GetPublicItemsForWindowAsync(from, to, ct);
+                var occurrences = contributed.SelectMany(item => ToOccurrences(item, from, to)).ToList();
+                items.AddRange(occurrences);
             }
             catch (OperationCanceledException) when (ct.IsCancellationRequested)
             {
@@ -73,13 +74,12 @@ internal sealed class CalendarService(
             }
             catch (Exception ex)
             {
-                logger.LogWarning(ex,
+                logger.LogError(ex,
                     "Community calendar contributor {Contributor} failed for window [{From}, {To}); its items are skipped",
                     contributor.GetType().Name, from, to);
                 continue;
             }
 
-            items.AddRange(contributed.SelectMany(item => ToOccurrences(item, from, to)));
         }
 
         return items;
