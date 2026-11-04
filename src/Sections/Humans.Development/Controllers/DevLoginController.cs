@@ -4,7 +4,6 @@ using Humans.Auth.Contracts;
 using Humans.Users.Contracts;
 using Humans.Development.Services;
 using Humans.Base.Constants;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
 
@@ -16,8 +15,7 @@ internal sealed record DevPersonaInfo(string Slug, string DisplayName);
 [Route("dev/login")]
 [AllowAnonymous]
 internal sealed class DevLoginController(
-    UserManager<User> userManager,
-    SignInManager<User> signInManager,
+    IUserSignInService signIn,
     IUserEmailService userEmailService,
     DevPersonaSeeder personaSeeder,
     IRoleAssignmentService roleAssignmentService,
@@ -62,20 +60,20 @@ internal sealed class DevLoginController(
         if (string.Equals(info.Slug, "guest", StringComparison.OrdinalIgnoreCase))
             return await SignInAsFreshGuestAsync(info, returnUrl);
 
-        var (resolvedUserId, user) = await ResolveSeededPersonaUserAsync(info);
-        if (user is null)
+        var resolvedUserId = await SeedPersonaAsync(info);
+        var signedInId = await SignInPersonaAsync(info, resolvedUserId);
+        if (signedInId is null)
         {
             logger.LogError("Dev persona {Slug} ({Id}) not found after seeding", info.Slug, resolvedUserId);
             return StatusCode(500, "Dev persona seeding failed");
         }
 
-        await signInManager.SignInAsync(user, isPersistent: true);
-        logger.LogWarning("DEV LOGIN: signed in as user {Id}", user.Id);
+        logger.LogWarning("DEV LOGIN: signed in as user {Id}", signedInId.Value);
 
         return RedirectToLocalOrHome(returnUrl);
     }
 
-    private async Task<(Guid UserId, User? User)> ResolveSeededPersonaUserAsync(DevPersonaInfo info)
+    private async Task<Guid> SeedPersonaAsync(DevPersonaInfo info)
     {
         var id = DevPersonaSeeder.PersonaGuid(info.Slug);
         Guid resolvedUserId;
@@ -99,18 +97,20 @@ internal sealed class DevLoginController(
             SeedLock.Release();
         }
 
-        var user = await userManager.FindByIdAsync(resolvedUserId.ToString());
-        if (user is not null)
-            return (resolvedUserId, user);
+        return resolvedUserId;
+    }
+
+    /// <summary>Falls back to the persona's seeded address when the resolved id has no account.</summary>
+    private async Task<Guid?> SignInPersonaAsync(DevPersonaInfo info, Guid resolvedUserId)
+    {
+        if (await signIn.SignInAsync(resolvedUserId))
+            return resolvedUserId;
 
         var email = $"dev-{info.Slug}@localhost";
         var byEmailUserId = (await userEmailService.FindByAddressAsync(email, aliased: false, verifiedOnly: true))
             .FirstOrDefault()?.UserId;
-        user = byEmailUserId is null
-            ? null
-            : await userManager.FindByIdAsync(byEmailUserId.Value.ToString());
 
-        return (resolvedUserId, user);
+        return byEmailUserId is { } id && await signIn.SignInAsync(id) ? id : null;
     }
 
     [HttpGet("users")]
@@ -131,16 +131,13 @@ internal sealed class DevLoginController(
         if (!IsDevAuthEnabled())
             return NotFound();
 
-        var user = await userManager.FindByIdAsync(id.ToString());
-        if (user is null)
-            return NotFound();
-
         // Impersonating a real Admin is the same hole as the Admin persona.
         if (!AdminSignInAllowed(env, config) && await roleAssignmentService.IsUserAdminAsync(id))
             return NotFound();
 
-        await signInManager.SignInAsync(user, isPersistent: true);
-        logger.LogWarning("DEV LOGIN: signed in as user {Id}", user.Id);
+        if (!await signIn.SignInAsync(id))
+            return NotFound();
+        logger.LogWarning("DEV LOGIN: signed in as user {Id}", id);
 
         return RedirectToLocalOrHome(returnUrl);
     }
@@ -165,15 +162,13 @@ internal sealed class DevLoginController(
     {
         var newId = await personaSeeder.EnsureFreshGuestAsync(info.DisplayName);
 
-        var user = await userManager.FindByIdAsync(newId.ToString());
-        if (user is null)
+        if (!await signIn.SignInAsync(newId))
         {
             logger.LogError("Fresh guest persona ({Id}) not found after seeding", newId);
             return StatusCode(500, "Dev guest seeding failed");
         }
 
-        await signInManager.SignInAsync(user, isPersistent: true);
-        logger.LogWarning("DEV LOGIN: signed in as fresh guest {Id}", user.Id);
+        logger.LogWarning("DEV LOGIN: signed in as fresh guest {Id}", newId);
         return RedirectToLocalOrHome(returnUrl);
     }
 

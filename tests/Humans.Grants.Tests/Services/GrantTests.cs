@@ -40,7 +40,7 @@ public sealed class GrantTests : GrantsTestHarness
         grant.ExpiresOn.Should().Be(new LocalDate(2027, 9, 1));
         grant.NotifiedAt.Should().Be(Clock.GetCurrentInstant());
         await AuditLog.Received(1).LogAsync(GrantsAuditActions.GrantIssued, AuditEntityTypes.Grant, created,
-            Arg.Any<string>(), actor, fresh, AuditEntityTypes.User);
+            Arg.Any<string>(), actor, fresh, AuditSubjectTypes.User);
         await ReceivedNoticeAsync(GrantsNotificationSources.GrantReceived, fresh);
         await Email.Received(1).SendAsync(Arg.Is<EmailMessage>(m => m.RecipientEmail == $"{fresh}@example.org"), Arg.Any<CancellationToken>());
         await Email.Received(1).SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>());
@@ -79,7 +79,7 @@ public sealed class GrantTests : GrantsTestHarness
         foreach (var action in new[] { GrantsAuditActions.GrantIssued, GrantsAuditActions.GrantNoticeResent, GrantsAuditActions.GrantRevoked })
             await AuditLog.Received(1).LogAsync(action, AuditEntityTypes.Grant, grantId,
                 Arg.Is<string>(d => d.Contains($"({expectedYear})", StringComparison.Ordinal)),
-                actor, person, AuditEntityTypes.User);
+                actor, person, AuditSubjectTypes.User);
     }
 
     [HumansFact]
@@ -203,7 +203,7 @@ public sealed class GrantTests : GrantsTestHarness
         saved.RevokedByUserId.Should().Be(actor);
         saved.RevokeReason.Should().Be("Left the crew");
         await AuditLog.Received(1).LogAsync(GrantsAuditActions.GrantRevoked, AuditEntityTypes.Grant, grant.Id,
-            Arg.Any<string>(), actor, person, AuditEntityTypes.User);
+            Arg.Any<string>(), actor, person, AuditSubjectTypes.User);
         await ReceivedNoticeAsync(GrantsNotificationSources.GrantRevoked, person);
         await Email.Received(1).SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>());
     }
@@ -224,7 +224,7 @@ public sealed class GrantTests : GrantsTestHarness
 
         (await ReadGrantAsync(live.Id)).NotifiedAt.Should().Be(Clock.GetCurrentInstant());
         await AuditLog.Received(1).LogAsync(GrantsAuditActions.GrantNoticeResent, AuditEntityTypes.Grant, live.Id,
-            Arg.Any<string>(), actor, person, AuditEntityTypes.User);
+            Arg.Any<string>(), actor, person, AuditSubjectTypes.User);
         await ReceivedNoticeAsync(GrantsNotificationSources.GrantReceived, person);
     }
 

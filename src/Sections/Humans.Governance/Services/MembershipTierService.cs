@@ -64,7 +64,7 @@ internal sealed class MembershipTierService(
                 GovernanceAuditActions.TierDowngraded, "Profile", userId,
                 $"Membership tier changed to {newTier} for {displayName} due to {tier} term expiry",
                 nameof(Jobs.MembershipTierExpiryJob),
-                relatedEntityId: userId, relatedEntityType: nameof(User));
+                relatedEntityId: userId, relatedEntityType: AuditSubjectTypes.User);
             result.Add((userId, newTier));
         }
         return result;

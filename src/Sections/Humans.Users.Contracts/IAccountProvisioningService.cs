@@ -1,3 +1,4 @@
+using NodaTime;
 
 namespace Humans.Users.Contracts;
 
@@ -30,6 +31,14 @@ public interface IAccountProvisioningService
         string firstName,
         string lastName,
         CancellationToken ct = default);
+
+    /// <summary>
+    /// A bare account with no email, profile or password, for fixed system accounts and dev seed data. Returns
+    /// Identity's error descriptions, empty on success. <paramref name="lastLoginAt"/> is seed fixture data only:
+    /// a real sign-in records the login through <see cref="IUserWrite.RecordLoginAsync"/>.
+    /// </summary>
+    Task<IReadOnlyList<string>> CreateAccountAsync(
+        Guid userId, string burnerName, Instant createdAt, Instant? lastLoginAt = null);
 }
 
 public record AccountProvisioningResult(Guid UserId, bool Created);

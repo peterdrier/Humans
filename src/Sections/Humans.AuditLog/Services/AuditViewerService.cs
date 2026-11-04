@@ -122,9 +122,9 @@ internal sealed class AuditViewerService(
     private static Guid? ResolveSubjectId(AuditLogEntrySnapshot e)
     {
         // Guid.Empty is an unmatched address (e.g. WorkspaceAccount): no subject.
-        Guid? subject = e.EntityType is "User" or "Profile" or "WorkspaceAccount"
+        Guid? subject = e.EntityType is AuditSubjectTypes.User or "Profile" or "WorkspaceAccount"
             ? e.EntityId
-            : string.Equals(e.RelatedEntityType, "User", StringComparison.Ordinal)
+            : string.Equals(e.RelatedEntityType, AuditSubjectTypes.User, StringComparison.Ordinal)
                 ? e.RelatedEntityId
                 : null;
         return subject == Guid.Empty ? null : subject;

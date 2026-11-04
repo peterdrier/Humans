@@ -40,7 +40,7 @@ public sealed class ProgramTests : PreapprovalsTestHarness
         await AuditLog.Received(1).LogAsync(PreapprovalsAuditActions.PreapprovalProgramCreated, AuditEntityTypes.Program, program.Id,
             Arg.Any<string>(), actor, Arg.Any<Guid?>(), Arg.Any<string?>());
         await AuditLog.Received(1).LogAsync(PreapprovalsAuditActions.PreapprovalProgramManagerAdded, AuditEntityTypes.Program, program.Id,
-            Arg.Any<string>(), actor, manager, AuditEntityTypes.User);
+            Arg.Any<string>(), actor, manager, AuditSubjectTypes.User);
     }
 
     [HumansTheory]
@@ -129,8 +129,8 @@ public sealed class ProgramTests : PreapprovalsTestHarness
         await using var db = OpenContext();
         (await db.Managers.Where(m => m.ProgramId == program.Id).Select(m => m.UserId).ToListAsync(Ct))
             .Should().BeEquivalentTo([kept, added]);
-        await AuditLog.Received(1).LogAsync(PreapprovalsAuditActions.PreapprovalProgramManagerAdded, AuditEntityTypes.Program, program.Id, Arg.Any<string>(), actor, added, AuditEntityTypes.User);
-        await AuditLog.Received(1).LogAsync(PreapprovalsAuditActions.PreapprovalProgramManagerRemoved, AuditEntityTypes.Program, program.Id, Arg.Any<string>(), actor, old, AuditEntityTypes.User);
+        await AuditLog.Received(1).LogAsync(PreapprovalsAuditActions.PreapprovalProgramManagerAdded, AuditEntityTypes.Program, program.Id, Arg.Any<string>(), actor, added, AuditSubjectTypes.User);
+        await AuditLog.Received(1).LogAsync(PreapprovalsAuditActions.PreapprovalProgramManagerRemoved, AuditEntityTypes.Program, program.Id, Arg.Any<string>(), actor, old, AuditSubjectTypes.User);
     }
 
     [HumansFact]

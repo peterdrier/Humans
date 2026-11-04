@@ -84,11 +84,11 @@ Written fresh from the shapes above, not from today's tree.
   `DbContext`, no `IDataProtectionProvider`, no `IMemoryCache`, and since 2026-10-20 it writes
   nothing: the `users.MagicLinkSentAt` stamp that used to persist the cooldown through
   `UserManager.UpdateAsync` is gone, column included (AUTH-2, Peter chose to drop restart
-  survival), so `UserManager<User>` is lookup-only here.
+  survival). `UserManager<User>` is gone from the section too; lookups go through `IUserService`.
 - **The section ships no controller and no view.** Its only resx is `AuthResource`, the copy of
   the two sign-in emails it sends. `AccountController` and
   `src/Humans.Web/Views/Account/*` stay in Shell because the controller is the app's sign-in surface: it drives
-  ASP.NET Identity's `SignInManager` and the cookie and external-auth handlers the Shell
+  sign-in (through Users' `IUserSignInService`) and the cookie and external-auth handlers the Shell
   configures in `Program.cs`, and the actions that do more than render or challenge provision
   users through `Humans.Users`. None of them writes `role_assignments`. That is a deliberate
   boundary, not an unfinished move.

@@ -2,7 +2,7 @@ using AwesomeAssertions;
 
 namespace Humans.Analyzers.Tests;
 
-public class UserEntityConsumerRatchetAnalyzerTests
+public class UserEntityConsumerAnalyzerTests
 {
     private const string Entities = """
         namespace Humans.Users.Contracts
@@ -26,7 +26,7 @@ public class UserEntityConsumerRatchetAnalyzerTests
 
     private static Task<System.Collections.Immutable.ImmutableArray<Microsoft.CodeAnalysis.Diagnostic>> RunAsync(
         string assembly, string source) =>
-        AnalyzerTestHarness.RunAsync(new UserEntityConsumerRatchetAnalyzer(), assembly, source, referencedSource: Entities);
+        AnalyzerTestHarness.RunAsync(new UserEntityConsumerAnalyzer(), assembly, source, referencedSource: Entities);
 
     [HumansFact]
     public async Task A_new_consumer_naming_an_entity_is_an_error()
@@ -34,22 +34,13 @@ public class UserEntityConsumerRatchetAnalyzerTests
         var diagnostics = await RunAsync("Humans.Issues", Consumer);
 
         diagnostics.Should().ContainSingle()
-            .Which.Id.Should().Be(UserEntityConsumerRatchetAnalyzer.DiagnosticId);
+            .Which.Id.Should().Be(UserEntityConsumerAnalyzer.DiagnosticId);
     }
 
     [HumansFact]
-    public async Task Owners_and_baselined_consumers_are_silent()
+    public async Task The_Users_section_and_Base_are_silent()
     {
         (await RunAsync("Humans.Users", Consumer)).Should().BeEmpty();
-        (await RunAsync("Humans.Teams", Consumer)).Should().BeEmpty();
-    }
-
-    [HumansFact]
-    public async Task A_baselined_assembly_that_no_longer_names_an_entity_is_stale()
-    {
-        var diagnostics = await RunAsync("Humans.Teams", "namespace Demo { public class Clean { } }");
-
-        diagnostics.Should().ContainSingle()
-            .Which.Id.Should().Be(UserEntityConsumerRatchetAnalyzer.StaleBaselineDiagnosticId);
+        (await RunAsync("Humans.Base", Consumer)).Should().BeEmpty();
     }
 }
