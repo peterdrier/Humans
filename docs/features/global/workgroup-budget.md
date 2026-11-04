@@ -122,7 +122,7 @@ it. No `WorkgroupAdmin` role exists; adding one is a separate change.
   The proposed name is shown before submit. When an account is already bound the form shows it
   and the radio defaults to keeping it.
 - Register-existing bootstrap form (`/Workgroups/Admin/RegisterExisting`) gets the same fields.
-- Localization: the member-visible budget block gets keys in all six cultures. The admin form
+- Localization: the member-visible budget block gets keys in all supported cultures. The admin form
   under `/Workgroups/Admin/*` is localization-exempt.
 
 **Docs.** `Workgroups.md` (data model, invariants, triggers, cross-section dependencies gain

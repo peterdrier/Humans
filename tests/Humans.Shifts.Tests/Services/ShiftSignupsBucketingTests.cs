@@ -50,6 +50,7 @@ public class ShiftSignupsBucketingTests
     [InlineData("it", "Squadra sconosciuta")]
     [InlineData("fr", "Équipe inconnue")]
     [InlineData("ca", "Equip desconegut")]
+    [InlineData("nl", "Onbekend")]
     public void Missing_team_names_use_the_ui_language_in_both_member_views(string culture, string expected)
     {
         using var scope = new CultureScope(culture);

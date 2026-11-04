@@ -102,6 +102,7 @@ public sealed class GovernanceWorkgroupsViewComponentTests
     [Xunit.InlineData("it")]
     [Xunit.InlineData("fr")]
     [Xunit.InlineData("ca")]
+    [Xunit.InlineData("nl")]
     public async Task CoordinatorNames_PreserveOrderAndSeparatorsThroughHumanRendering(string language)
     {
         using var culture = new CultureScope(language);
@@ -144,6 +145,7 @@ public sealed class GovernanceWorkgroupsViewComponentTests
     [Xunit.InlineData("it")]
     [Xunit.InlineData("fr")]
     [Xunit.InlineData("ca")]
+    [Xunit.InlineData("nl")]
     public async Task DocumentAttribution_RendersEncodedHumansInsideTheLocalizedSentence(string language)
     {
         using var culture = new CultureScope(language);

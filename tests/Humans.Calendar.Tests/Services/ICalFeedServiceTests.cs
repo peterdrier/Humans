@@ -179,6 +179,7 @@ public class ICalFeedServiceTests
     [InlineData("it")]
     [InlineData("fr")]
     [InlineData("ca")]
+    [InlineData("nl")]
     public async Task GetFeedIcsAsync_ValidToken_SerializesItemsAsUtcVEvents(string language)
     {
         var userId = Guid.NewGuid();

@@ -284,7 +284,7 @@ Approval and rejection share the same ordered eligibility check (application exi
 
 - Opt-outable email builders capture the recipient/template culture on `EmailMessage` before restoring their rendering scope; Email renders the shared unsubscribe footer in that culture.
 
-- Member tier-application and assembly-vote pages localize breadcrumb navigation labels in all six supported cultures. The shared Asociado contribution prompt names Elsewhere in all six cultures, including profile editing.
+- Member tier-application and assembly-vote pages localize breadcrumb navigation labels in all supported cultures. The shared Asociado contribution prompt names Elsewhere in all supported cultures, including profile editing.
 
 - Application-admin paging computes offsets without integer overflow; extreme pages cannot wrap into earlier applications.
 
@@ -294,7 +294,7 @@ Approval and rejection share the same ordered eligibility check (application exi
 - Statutes language tabs retain native language names and use the localized canonical Spanish legal marker.
 
 - Application detail reads supply history timestamps and reviewer/actor IDs without display sorting. Application and Board-detail projections omit unused applicant names and photos; application reviewer/history and tally-peek attribution render the IDs through `<vc:human>` as plain text, without separate Users name lookups. Member and Board detail controllers order history newest first; GDPR export keeps its chronological order.
-- Application status follows: Submitted then Approved, Rejected, or Withdrawn. Member-visible history uses the same six-culture status captions as application details.
+- Application status follows: Submitted then Approved, Rejected, or Withdrawn. Member-visible history uses the same localized status captions as application details.
 - Application submission and withdrawal, Board voting, and finalization use request cancellation for the account lookup before mutation. Cancellation propagates before any application or vote write; decision, team-sync and email work retains its non-cancellable mutation boundary.
 - Each Board member gets exactly one vote per application (DB-enforced via unique index on `(ApplicationId, BoardMemberUserId)`).
 - Board dashboard and detail share one vote projection carrying voter IDs, choices, notes and timestamps in source order. The pages render voter identities through the Human component.
@@ -352,7 +352,7 @@ The Board-voting dashboard controller orders member columns by display name with
 - When an application is submitted: every Board member's voting badge is invalidated so their unvoted count updates. `GovernanceNotificationSources.ApplicationSubmitted` is retired — no new rows emit it (historical rows only); submission no longer dispatches an in-app notification.
 - When an application is approved: the human's `governance_membership_tiers` row is written atomically with the decision (`ApplicationRepository.FinalizeAsync`), they are added to the Colaboradors or Asociados system team via `ISystemTeamSync`, an audit-log entry is written (`GovernanceAuditActions.TierApplicationApproved`), an approval email is sent (`GovernanceEmails.ApplicationApproved` via `IEmailService.SendAsync`), and an in-app notification is dispatched (`GovernanceNotificationSources.ApplicationApproved`). Email + notification are best-effort.
 - When an application is rejected: an audit-log entry is written (`GovernanceAuditActions.TierApplicationRejected`), a rejection email is sent (`GovernanceEmails.ApplicationRejected` via `IEmailService.SendAsync`), and an in-app notification is dispatched (`GovernanceNotificationSources.ApplicationRejected`). Email + notification are best-effort.
-- Approval and rejection emails and in-app notices use the applicant’s supported saved language in all six cultures, with English fallback for missing/unsupported languages or failed profile lookup. The language read for the decision email is reused even if email preparation or delivery fails.
+- Approval and rejection emails and in-app notices use the applicant’s supported saved language in all supported cultures, with English fallback for missing/unsupported languages or failed profile lookup. The language read for the decision email is reused even if email preparation or delivery fails.
 - When an application is approved or rejected: all Board vote records for that application are deleted (atomic inside `IApplicationRepository.FinalizeAsync`).
 - Board vote and finalization forms require an explicit valid choice. Missing or malformed vote/approval values return HTTP 400 with a Warning before any vote, decision, audit or notification is written. Explicit `Yay`/zero and rejection/false remain valid; BoardOnly and AdminOnly gates are unchanged.
 - Renewal emails and in-app notices use the applicant’s supported preferred language, with English fallback for blank, malformed or unsupported preferences. Both format the expiry date through the shared display formatter inside the recipient’s culture scope, which is restored afterward.
@@ -437,6 +437,6 @@ issues filed against it — `Board`, plus `Admin`, which handles every queue. Is
 discovers the declaration through DI and holds no list of sections; dropping the seam
 sends this section's stored issues to the Admin-only queue.
 
-Governance resource keys use `Governance_` in all six cultures; reflective `Enum_` keys retain their shared naming shape. Assembly vote status, kind, choice, majority and tally-method lookups build the same section-prefixed keys.
+Governance resource keys use `Governance_` in all supported cultures; reflective `Enum_` keys retain their shared naming shape. Assembly vote status, kind, choice, majority and tally-method lookups build the same section-prefixed keys.
 
 The status-update audience defaults to unsigned required consents whose grace period is due now, restricted to active assignments. Its optional `expiringWithin` horizon serves advance reminders; it does not change the suspension or metrics audiences. Signed documents and later deadlines remain excluded.

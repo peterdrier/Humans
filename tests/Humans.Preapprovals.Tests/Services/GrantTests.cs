@@ -591,6 +591,7 @@ public sealed class GrantTests : PreapprovalsTestHarness
     [InlineData("it")]
     [InlineData("fr")]
     [InlineData("ca")]
+    [InlineData("nl")]
     public async Task IssueAndChangeAmount_FormatMemberMessagesInRecipientCulture(string language)
     {
         using var callerCulture = new CultureScope("en");

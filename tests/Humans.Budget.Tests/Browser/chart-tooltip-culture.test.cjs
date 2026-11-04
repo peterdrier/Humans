@@ -13,7 +13,8 @@ for (const page of ['Budget/Summary', 'BudgetAdmin/YearDetail']) {
     const script = view.slice(start, end);
     for (const [language, amount] of [
         ['en', '1,234.50'], ['es', '1234,50'], ['de', '1.234,50'],
-        ['it', '1234,50'], ['fr', '1\u202f234,50'], ['ca', '1.234,50'], ['', '1,234.50'],
+        ['it', '1234,50'], ['fr', '1\u202f234,50'], ['ca', '1.234,50'], ['nl', '1.234,50'],
+        ['', '1,234.50'],
     ]) {
         test(`${page} money tooltip follows the document language (${language || 'fallback'})`, () => {
             const context = { document: { documentElement: { lang: language } } };

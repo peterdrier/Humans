@@ -1,0 +1,174 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="metadata">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" />
+              </xsd:sequence>
+              <xsd:attribute name="name" use="required" type="xsd:string" />
+              <xsd:attribute name="type" type="xsd:string" />
+              <xsd:attribute name="mimetype" type="xsd:string" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="assembly">
+            <xsd:complexType>
+              <xsd:attribute name="alias" type="xsd:string" />
+              <xsd:attribute name="name" type="xsd:string" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="1" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" msdata:Ordinal="1" />
+              <xsd:attribute name="type" type="xsd:string" msdata:Ordinal="3" />
+              <xsd:attribute name="mimetype" type="xsd:string" msdata:Ordinal="4" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="resheader">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="Calendar_Agenda" xml:space="preserve"><value>Agenda</value></data>
+  <data name="Calendar_AllDay" xml:space="preserve"><value>hele dag</value></data>
+  <data name="Calendar_AllDayEvent" xml:space="preserve"><value>Hele dag</value></data>
+  <data name="Calendar_AllDayLabel" xml:space="preserve"><value>Hele dag</value></data>
+  <data name="Calendar_AllTeamsMonthView" xml:space="preserve"><value>Alle teams (maandweergave)</value></data>
+  <data name="Calendar_BackToCalendar" xml:space="preserve"><value>Terug naar kalender</value></data>
+  <data name="Calendar_CancelOccurrenceConfirm" xml:space="preserve"><value>Alleen deze herhaling annuleren?</value></data>
+  <data name="Calendar_CancelThisOccurrence" xml:space="preserve"><value>Deze annuleren</value></data>
+  <data name="Calendar_ChangeHistory" xml:space="preserve"><value>Wijzigingsgeschiedenis</value></data>
+  <data name="Calendar_Continues" xml:space="preserve"><value>loopt door</value></data>
+  <data name="Calendar_Created" xml:space="preserve"><value>Aangemaakt op {0}</value></data>
+  <data name="Calendar_CreateEvent" xml:space="preserve"><value>Evenement aanmaken</value></data>
+  <data name="Calendar_DeleteConfirm" xml:space="preserve"><value>Dit evenement en alle herhalingen verwijderen?</value></data>
+  <data name="Calendar_Description" xml:space="preserve"><value>Beschrijving</value></data>
+  <data name="Calendar_EditEvent" xml:space="preserve"><value>Evenement bewerken</value></data>
+  <data name="Calendar_EditSingleOccurrence" xml:space="preserve"><value>Eén herhaling bewerken</value></data>
+  <data name="Calendar_EditSingleOccurrenceHeading" xml:space="preserve"><value>Een enkele herhaling bewerken</value></data>
+  <data name="Calendar_EditThisOccurrence" xml:space="preserve"><value>Deze herhaling bewerken</value></data>
+  <data name="Calendar_End" xml:space="preserve"><value>Einde</value></data>
+  <data name="Calendar_EndDate" xml:space="preserve"><value>Einddatum</value></data>
+  <data name="Calendar_EndDateHelp" xml:space="preserve"><value>Inclusief deze datum — laat leeg voor een evenement van één dag.</value></data>
+  <data name="Calendar_StartDateRequired" xml:space="preserve"><value>Startdatum is verplicht.</value></data>
+  <data name="Calendar_EndDateBeforeStart" xml:space="preserve"><value>De einddatum moet op of na de startdatum liggen.</value></data>
+  <data name="Calendar_UnknownTimezone" xml:space="preserve"><value>Onbekende IANA-tijdzone.</value></data>
+  <data name="Calendar_StartRequired" xml:space="preserve"><value>Begin is verplicht.</value></data>
+  <data name="Calendar_EndBeforeStart" xml:space="preserve"><value>Het einde moet op of na het begin liggen.</value></data>
+  <data name="Calendar_SaveFailed" xml:space="preserve"><value>Kalenderevenement opslaan mislukt.</value></data>
+  <data name="Calendar_InvalidTimedRecurrence" xml:space="preserve"><value>Gebruik een geldige herhalingsregel.</value></data>
+  <data name="Calendar_InvalidTimedEvent" xml:space="preserve"><value>Vul een titel en een geldig tijdsbereik in. Stel de herhalingsregel en de tijdzone samen in.</value></data>
+  <data name="Calendar_EventTitle" xml:space="preserve"><value>Evenement</value></data>
+  <data name="Calendar_FirstStart" xml:space="preserve"><value>Eerste start</value></data>
+  <data name="Calendar_FormTitle" xml:space="preserve"><value>Titel</value></data>
+  <data name="Calendar_LastUpdated" xml:space="preserve"><value>· Laatst bijgewerkt op {0}</value></data>
+  <data name="Calendar_LocationUrl" xml:space="preserve"><value>Locatie-URL</value></data>
+  <data name="Calendar_MoreCount" xml:space="preserve"><value>+{0} meer</value></data>
+  <data name="Calendar_NewEvent" xml:space="preserve"><value>Nieuw evenement</value></data>
+  <data name="Calendar_Next" xml:space="preserve"><value>Volgende</value></data>
+  <data name="Calendar_NoEventsInRange" xml:space="preserve"><value>Geen evenementen in de geselecteerde periode.</value></data>
+  <data name="Calendar_OverrideDescription" xml:space="preserve"><value>Afwijkende beschrijving</value></data>
+  <data name="Calendar_OverrideEnd" xml:space="preserve"><value>Afwijkend einde</value></data>
+  <data name="Calendar_OverrideInstructions" xml:space="preserve"><value>Wijzig alleen deze herhaling van het terugkerende evenement. Laat een veld leeg om de waarde van het hoofdevenement over te nemen.</value></data>
+  <data name="Calendar_OverrideLocation" xml:space="preserve"><value>Afwijkende locatie</value></data>
+  <data name="Calendar_OverrideLocationUrl" xml:space="preserve"><value>Afwijkende locatie-URL</value></data>
+  <data name="Calendar_OverrideStart" xml:space="preserve"><value>Afwijkende start</value></data>
+  <data name="Calendar_OverrideTitle" xml:space="preserve"><value>Afwijkende titel</value></data>
+  <data name="Calendar_OwningTeam" xml:space="preserve"><value>Beherend team</value></data>
+  <data name="Calendar_Prev" xml:space="preserve"><value>Vorige</value></data>
+  <data name="Calendar_Recurrence" xml:space="preserve"><value>Herhaling</value></data>
+  <data name="Calendar_TimeZoneLabel" xml:space="preserve"><value>Tijdzone</value></data>
+  <data name="Calendar_RecurrenceTimezoneNote" xml:space="preserve"><value>Tijdzone: {0}</value></data>
+  <data name="Calendar_RRule" xml:space="preserve"><value>RRULE</value></data>
+  <data name="Calendar_RRuleHelpPrefix" xml:space="preserve"><value>RFC 5545 RRULE. Laat leeg voor een eenmalig evenement. Voorbeeld:</value></data>
+  <data name="Calendar_Repeats" xml:space="preserve"><value>Herhaling</value></data>
+  <data name="Calendar_RepeatNone" xml:space="preserve"><value>Wordt niet herhaald</value></data>
+  <data name="Calendar_RepeatDaily" xml:space="preserve"><value>Dagelijks</value></data>
+  <data name="Calendar_RepeatWeekly" xml:space="preserve"><value>Wekelijks</value></data>
+  <data name="Calendar_RepeatMonthly" xml:space="preserve"><value>Maandelijks</value></data>
+  <data name="Calendar_RepeatYearly" xml:space="preserve"><value>Jaarlijks</value></data>
+  <data name="Calendar_RepeatCustom" xml:space="preserve"><value>Aangepast (RRULE)</value></data>
+  <data name="Calendar_RepeatEvery" xml:space="preserve"><value>Herhaal elke</value></data>
+  <data name="Calendar_RepeatUnitDay" xml:space="preserve"><value>dag(en)</value></data>
+  <data name="Calendar_RepeatUnitWeek" xml:space="preserve"><value>week/weken</value></data>
+  <data name="Calendar_RepeatUnitMonth" xml:space="preserve"><value>maand(en)</value></data>
+  <data name="Calendar_RepeatUnitYear" xml:space="preserve"><value>jaar</value></data>
+  <data name="Calendar_RepeatOn" xml:space="preserve"><value>Herhalen op</value></data>
+  <data name="Calendar_RepeatMonthlyLegend" xml:space="preserve"><value>Maandelijks op</value></data>
+  <data name="Calendar_RepeatMonthlyDay" xml:space="preserve"><value>Op dag {0}</value></data>
+  <data name="Calendar_RepeatMonthlyNth1" xml:space="preserve"><value>Op de eerste {0}</value></data>
+  <data name="Calendar_RepeatMonthlyNth2" xml:space="preserve"><value>Op de tweede {0}</value></data>
+  <data name="Calendar_RepeatMonthlyNth3" xml:space="preserve"><value>Op de derde {0}</value></data>
+  <data name="Calendar_RepeatMonthlyNth4" xml:space="preserve"><value>Op de vierde {0}</value></data>
+  <data name="Calendar_RepeatMonthlyNthLast" xml:space="preserve"><value>Op de laatste {0}</value></data>
+  <data name="Calendar_RepeatEnds" xml:space="preserve"><value>Eindigt</value></data>
+  <data name="Calendar_RepeatEndsNever" xml:space="preserve"><value>Nooit</value></data>
+  <data name="Calendar_RepeatEndsOn" xml:space="preserve"><value>Op</value></data>
+  <data name="Calendar_RepeatEndsAfter" xml:space="preserve"><value>Na</value></data>
+  <data name="Calendar_RepeatOccurrences" xml:space="preserve"><value>keer</value></data>
+  <data name="Calendar_SaveOverride" xml:space="preserve"><value>Afwijking opslaan</value></data>
+  <data name="Calendar_Start" xml:space="preserve"><value>Start</value></data>
+  <data name="Calendar_StartDate" xml:space="preserve"><value>Startdatum</value></data>
+  <data name="Calendar_TeamFallback" xml:space="preserve"><value>Team</value></data>
+  <data name="Calendar_Title" xml:space="preserve"><value>Kalender</value></data>
+  <data name="Calendar_Today" xml:space="preserve"><value>Vandaag</value></data>
+  <data name="Calendar_UpcomingOccurrences" xml:space="preserve"><value>Komende herhalingen</value></data>
+  <data name="Calendar_ViewAriaLabel" xml:space="preserve"><value>Kalenderweergave</value></data>
+  <data name="Calendar_ViewGrid" xml:space="preserve"><value>Raster</value></data>
+  <data name="Calendar_ViewList" xml:space="preserve"><value>Lijst</value></data>
+  <data name="Calendar_Yes" xml:space="preserve"><value>Ja</value></data>
+  <data name="Calendar_InvalidOccurrenceOverride" xml:space="preserve">
+    <value>Voer een geldig datum- of tijdsbereik in voor deze herhaling.</value>
+  </data>
+  <data name="Calendar_InvalidAllDayEvent" xml:space="preserve">
+    <value>Vul een titel en een geldig datumbereik zonder tijden in.</value>
+  </data>
+  <data name="Calendar_InvalidAllDayRecurrence" xml:space="preserve">
+    <value>Gebruik een geldige herhalingsregel met alleen datums, met UNTIL als YYYYMMDD.</value>
+  </data>
+  <data name="Calendar_CannotChangeEventType" xml:space="preserve">
+    <value>Deze reeks bevat gewijzigde herhalingen. Behoud het type (hele dag of met tijd) of maak een nieuwe reeks aan.</value>
+  </data>
+  <data name="Calendar_IcalFeedTitle" xml:space="preserve"><value>iCal-feed</value></data>
+  <data name="Calendar_IcalFeedHelp" xml:space="preserve"><value>Abonneer je in je agenda-app op je diensten en opgeslagen evenementen:</value></data>
+  <data name="Calendar_IcalCopy" xml:space="preserve"><value>Kopiëren</value></data>
+  <data name="Calendar_IcalRegenerateConfirm" xml:space="preserve"><value>Hierdoor wordt de huidige URL ongeldig. Doorgaan?</value></data>
+  <data name="Calendar_IcalRegenerate" xml:space="preserve"><value>URL opnieuw genereren</value></data>
+  <data name="Calendar_IcalRegenerated" xml:space="preserve"><value>iCal-URL opnieuw gegenereerd.</value></data>
+  <data name="Calendar_NoAuditHistory" xml:space="preserve"><value>Geen auditgeschiedenis.</value></data>
+  <data name="Calendar_IcalCreate" xml:space="preserve"><value>Mijn feed-URL aanmaken</value></data>
+  <data name="Calendar_OwningTeamUnavailable" xml:space="preserve"><value>Kies een actief team als eigenaar van dit evenement.</value></data>
+  <data name="Calendar_Source_Workgroups" xml:space="preserve"><value>Werkgroepen</value></data>
+  <data name="Calendar_StartTime" xml:space="preserve"><value>Starttijd</value></data>
+  <data name="Calendar_EndTime" xml:space="preserve"><value>Eindtijd</value></data>
+  <data name="Calendar_EndRequired" xml:space="preserve"><value>Einde is verplicht.</value></data>
+</root>

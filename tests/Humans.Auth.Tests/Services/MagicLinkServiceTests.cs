@@ -68,6 +68,7 @@ public sealed class MagicLinkServiceTests
     [Xunit.InlineData("it")]
     [Xunit.InlineData("fr")]
     [Xunit.InlineData("ca")]
+    [Xunit.InlineData("nl")]
     public async Task SendMagicLinkAsync_ExistingUserByUserEmail_SendsLoginLink(string recipientCulture)
     {
         using var culture = new CultureScope("en");

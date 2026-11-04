@@ -18,7 +18,7 @@ namespace Humans.Settings.Data.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "10.0.10")
+                .HasAnnotation("ProductVersion", "10.0.13")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
@@ -56,23 +56,11 @@ namespace Humans.Settings.Data.Migrations
                         .HasMaxLength(256)
                         .HasColumnType("character varying(256)");
 
-                    b.Property<int>("FinishingWeekendStartOffset")
-                        .HasColumnType("integer");
-
-                    b.Property<int>("FirstCrewStartOffset")
-                        .HasColumnType("integer");
-
                     b.Property<LocalDate>("GateOpeningDate")
                         .HasColumnType("date");
 
                     b.Property<bool?>("IsOffSeason")
                         .HasColumnType("boolean");
-
-                    b.Property<int>("PreEventWeekStartOffset")
-                        .HasColumnType("integer");
-
-                    b.Property<int>("SetupWeekStartOffset")
-                        .HasColumnType("integer");
 
                     b.Property<string>("Status")
                         .IsRequired()

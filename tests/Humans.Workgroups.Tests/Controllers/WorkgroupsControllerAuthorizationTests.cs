@@ -197,12 +197,14 @@ public sealed class WorkgroupsControllerAuthorizationTests : WorkgroupsTestHarne
     [InlineData(false, "it")]
     [InlineData(false, "fr")]
     [InlineData(false, "ca")]
+    [InlineData(false, "nl")]
     [InlineData(true, "en")]
     [InlineData(true, "es")]
     [InlineData(true, "de")]
     [InlineData(true, "it")]
     [InlineData(true, "fr")]
     [InlineData(true, "ca")]
+    [InlineData(true, "nl")]
     public async Task RuleRejection_IsVisibleWithoutExceptionStack(bool form, string culture)
     {
         using var scope = new CultureScope(culture);
@@ -248,6 +250,7 @@ public sealed class WorkgroupsControllerAuthorizationTests : WorkgroupsTestHarne
     [InlineData("it")]
     [InlineData("fr")]
     [InlineData("ca")]
+    [InlineData("nl")]
     public void MemberForms_LocalizeRequiredAndLengthErrors(string culture)
     {
         using var cultureScope = new CultureScope(culture);

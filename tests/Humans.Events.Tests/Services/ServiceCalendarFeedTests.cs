@@ -115,6 +115,7 @@ public class EventServiceCalendarFeedTests
     [Xunit.InlineData("it", "Ospite", "Categoria")]
     [Xunit.InlineData("fr", "Hôte", "Catégorie")]
     [Xunit.InlineData("ca", "Amfitrió", "Categoria")]
+    [Xunit.InlineData("nl", "Organisator", "Categorie")]
     public async Task GetCalendarItems_ApprovedFavourite_MapsFields(string culture, string hostLabel, string categoryLabel)
     {
         using var cultureScope = new CultureScope(culture);

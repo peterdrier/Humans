@@ -171,6 +171,7 @@ public sealed class WorkgroupServiceDocumentTests : WorkgroupsTestHarness
     [InlineData("it", "Documento pubblicato")]
     [InlineData("fr", "Document publié")]
     [InlineData("ca", "Document publicat")]
+    [InlineData("nl", "Document gepubliceerd")]
     [InlineData("invalid!", "Document published")]
     public async Task PublishedNotice_UsesTheRecipientLanguage(string language, string title)
     {

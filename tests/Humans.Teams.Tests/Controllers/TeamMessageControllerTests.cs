@@ -114,6 +114,7 @@ public sealed class TeamMessageControllerTests
     [InlineData("it")]
     [InlineData("fr")]
     [InlineData("ca")]
+    [InlineData("nl")]
     public async Task MessageViews_RenderTheCurrentEncodedRecipient(string language)
     {
         using var culture = new CultureScope(language);

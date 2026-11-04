@@ -24,7 +24,7 @@ Issues is the only in-app reporting path. It replaced Feedback, the single globa
 **Acceptance Criteria:**
 - Floating help widget on every page, authenticated users only — its "Create issue" action opens `_IssueWidgetModal.cshtml`, a partial that lives in the Issues section but is rendered from `Humans.Agent`'s `HelpWidgetViewComponent` (so `Issue_*` copy resolves against `IssuesResource`)
 - `/Issues/New` page with full form (title, type, optional section override, description, optional screenshot)
-- Form and widget validation errors use the current culture in all six supported languages; required fields and length limits are unchanged.
+- Form and widget validation errors use the current culture in all supported languages; required fields and length limits are unchanged.
 - `Section` defaults to auto-detected from `PageUrl` via `IssueSectionInference.FromPath` when the widget is used; the `/Issues/New` form lets the reporter pick or leave blank for auto-detection
 - Page URL, user agent, and the reporter's roles captured automatically into `AdditionalContext`
 - Screenshot upload limited to JPEG/PNG/WebP, max 10 MB
@@ -73,7 +73,7 @@ Issues is the only in-app reporting path. It replaced Feedback, the single globa
 - When a comment is posted, an in-app notification goes to the **other party** — the queue's handlers (same Admin fallback) + assignee when the reporter comments, the reporter + assignee when a handler comments. Email is only sent when a **handler** comments (to the reporter); reporter→handler comments are in-app only because handlers already see new comments in their queue.
 - When status changes, the reporter and current assignee are notified
 - When an issue is assigned, the new assignee is notified
-- Emails are queued via the email outbox (`OutboxEmailService`) and localized in the recipient's preferred language (en/es/de/fr/it/ca)
+- Emails are queued via the email outbox (`OutboxEmailService`) and localized in the recipient's preferred language (en/es/de/fr/it/ca/nl)
 - Once a submission, comment, status or assignment change is saved, its notifications, email and submitted-alert resolution finish even if the browser disconnects. Reads and persistence before that save retain request cancellation. Actionable badge counts query current rows on each read, including after routing changes, retention or erasure.
 - Effective notification email comes from the resolved reporter’s `UserInfo.Email`, alongside the same snapshot’s name and culture, so verified-email and forwarding rules apply
 

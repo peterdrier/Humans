@@ -28,6 +28,7 @@ public class BudgetSummaryViewTests
     [Xunit.InlineData("it", "10,5%", "20,5%")]
     [Xunit.InlineData("fr", "10,5%", "20,5%")]
     [Xunit.InlineData("ca", "10,5%", "20,5%")]
+    [Xunit.InlineData("nl", "10,5%", "20,5%")]
     public async Task BreakdownPercentages_UseUiCultureAndKeepChartNumbersInvariant(
         string language, string income, string expense)
     {
@@ -57,6 +58,7 @@ public class BudgetSummaryViewTests
     [Xunit.InlineData("it", "1.234%")]
     [Xunit.InlineData("fr", "1\u202f234%")]
     [Xunit.InlineData("ca", "1.234%")]
+    [Xunit.InlineData("nl", "1.234%")]
     public async Task CategoryUtilization_UsesUiCultureAndKeepsProgressWidthNumeric(string language, string percentage)
     {
         using var inputCulture = new CultureScope("en");

@@ -102,7 +102,7 @@ Requires Admin or Board role.
 
 ### i18n
 
-For each language (en, es, fr, de, it): switch via nav/footer selector; check `/Profile`, `/Consent`, `/Teams` labels are translated (no raw English keys like `Profile_FieldName`). Switch back to user's preferred language when done.
+For each language (en, es, fr, de, it, ca, nl): switch via nav/footer selector; check `/Profile`, `/Consent`, `/Teams` labels are translated (no raw English keys like `Profile_FieldName`). Switch back to user's preferred language when done.
 
 ---
 

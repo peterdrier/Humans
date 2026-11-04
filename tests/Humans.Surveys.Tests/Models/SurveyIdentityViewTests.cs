@@ -33,6 +33,7 @@ public sealed class SurveyIdentityViewTests
     [Xunit.InlineData("it")]
     [Xunit.InlineData("fr")]
     [Xunit.InlineData("ca")]
+    [Xunit.InlineData("nl")]
     public async Task ResultsAndInvitations_RenderCanonicalIdentity_AndEncodeNames(string language)
     {
         using var culture = new CultureScope(language);

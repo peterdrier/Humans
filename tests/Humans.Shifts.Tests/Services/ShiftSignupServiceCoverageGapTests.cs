@@ -79,6 +79,7 @@ public sealed class ShiftSignupServiceCoverageGapTests : ShiftsTestHarness
     [Xunit.InlineData("it", "Copertura insufficiente: Rota giorno 1", "Solo 1/2 humans confermati.", "Trova copertura →", "Modifica iscrizione al turno: Rota", "Iscrizione rimossa da 'Rota' il giorno 1.", "Visualizza →")]
     [Xunit.InlineData("fr", "Manque de couverture : Rota jour 1", "Seulement 1/2 humans confirmés.", "Trouver un remplacement →", "Modification d’inscription au créneau : Rota", "Inscription supprimée de 'Rota' le jour 1.", "Voir →")]
     [Xunit.InlineData("ca", "Falta de cobertura: Rota dia 1", "Només 1/2 humans confirmats.", "Cerca cobertura →", "Canvi d’inscripció a un torn: Rota", "Inscripció eliminada de 'Rota' el dia 1.", "Mostra →")]
+    [Xunit.InlineData("nl", "Onderbezetting: Rota dag 1", "Slechts 1/2 humans bevestigd.", "Vervanging zoeken →", "Wijziging dienstaanmelding: Rota", "Verwijderd uit 'Rota' op dag 1.", "Bekijken →")]
     public async Task CoordinatorNotices_UseRecipientLanguageIncludingCalendarDate(
         string language, string gapTitle, string gapBody, string gapAction,
         string changeTitle, string changeBody, string changeAction)

@@ -99,6 +99,7 @@ public sealed class CityPlanningApiControllerTests : CityPlanningTestBase
     [InlineData("it")]
     [InlineData("fr")]
     [InlineData("ca")]
+    [InlineData("nl")]
     public void PolygonNoteLengthValidation_UsesLocalizedFeedback(string culture)
     {
         using var cultureScope = new CultureScope(culture);
@@ -224,6 +225,7 @@ public sealed class CityPlanningApiControllerTests : CityPlanningTestBase
     [InlineData("it", "GeoJSON di posizionamento del container non valido.")]
     [InlineData("fr", "Le GeoJSON de placement du conteneur est invalide.")]
     [InlineData("ca", "El GeoJSON d’ubicació del contenidor no és vàlid.")]
+    [InlineData("nl", "Ongeldige GeoJSON voor containerplaatsing.")]
     public async Task InvalidContainerPlacement_ReturnsTheOwnersLocalizedError(string culture, string error)
     {
         using var cultureScope = new CultureScope(culture);

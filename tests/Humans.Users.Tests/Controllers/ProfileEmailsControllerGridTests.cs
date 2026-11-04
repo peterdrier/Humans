@@ -240,6 +240,7 @@ public class ProfileEmailsControllerGridTests
     [InlineData("it")]
     [InlineData("fr")]
     [InlineData("ca")]
+    [InlineData("nl")]
     public async Task VerifyEmail_LocalizesTypedInvalidLink(string culture)
     {
         using var cultureScope = new CultureScope(culture);

@@ -37,16 +37,6 @@ internal sealed class EventSettings : IEventSettingsInfo
     /// </summary>
     public bool? IsOffSeason { get; set; }
 
-    // Legacy storage only. Shifts owns build sub-periods; runtime calendars no longer carry these copies.
-
-    public int FirstCrewStartOffset { get; set; } = -25;
-
-    public int SetupWeekStartOffset { get; set; } = -16;
-
-    public int PreEventWeekStartOffset { get; set; } = -9;
-
-    public int FinishingWeekendStartOffset { get; set; } = -4;
-
     /// <summary>Step function: DayOffset → cumulative EE headcount allowed from that day.</summary>
     public Dictionary<int, int> EarlyEntryCapacity { get; set; } = new();
 
