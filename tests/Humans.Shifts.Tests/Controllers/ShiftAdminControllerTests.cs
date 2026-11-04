@@ -10,6 +10,7 @@ using Microsoft.Extensions.Options;
 using System.Security.Claims;
 using AwesomeAssertions;
 using Humans.Base.Enums;
+using Humans.Base.Constants;
 using Humans.Governance.Contracts;
 using Humans.Shifts.Contracts;
 using Humans.Shifts.Controllers;
@@ -230,19 +231,35 @@ public class ShiftAdminControllerTests
         await _shiftMgmt.Received(1).GetRotasByDepartmentAsync(TeamId, Event.Id, cancellation.Token);
     }
 
-    [HumansFact]
-    public async Task ShiftsReader_who_coordinates_nothing_sees_the_page_with_every_control_off()
+    [HumansTheory]
+    [InlineData(null, false, true, false, false, 1)]
+    [InlineData(null, true, false, true, true, 1)]
+    [InlineData(null, false, false, null, null, 1)]
+    [InlineData(ShiftsRoles.ShiftsNoInfo, false, false, false, true, 1)]
+    [InlineData(ShiftsRoles.ShiftsAdmin, false, false, true, true, 0)]
+    [InlineData(RoleNames.Admin, false, false, true, true, 0)]
+    public async Task Index_ReusesOneCoordinatorDecisionForAccessAndControls(
+        string? role, bool coordinates, bool canRead, bool? canManage, bool? canApprove, int coordinatorReads)
     {
-        _shiftMgmt.IsDeptCoordinatorAsync(UserId, TeamId, Arg.Any<CancellationToken>()).Returns(false);
+        _shiftMgmt.IsDeptCoordinatorAsync(UserId, TeamId, Arg.Any<CancellationToken>()).Returns(coordinates);
         var authorization = Substitute.For<IAuthorizationService>();
         authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(), ShiftsPolicies.Read)
-            .Returns(AuthorizationResult.Success());
+            .Returns(canRead ? AuthorizationResult.Success() : AuthorizationResult.Failed());
+        var controller = BuildSut(authorization: authorization);
+        if (role is not null)
+            ((ClaimsIdentity)controller.User.Identity!).AddClaim(new Claim(ClaimTypes.Role, role));
 
-        var result = await BuildSut(authorization: authorization).Index(Slug);
+        var result = await controller.Index(Slug);
 
-        var model = result.Should().BeOfType<ViewResult>().Which.Model.Should().BeOfType<ShiftAdminViewModel>().Subject;
-        model.CanManageShifts.Should().BeFalse();
-        model.CanApproveSignups.Should().BeFalse();
+        if (canManage is null)
+            result.Should().BeOfType<ForbidResult>();
+        else
+        {
+            var model = result.Should().BeOfType<ViewResult>().Which.Model.Should().BeOfType<ShiftAdminViewModel>().Subject;
+            model.CanManageShifts.Should().Be(canManage.Value);
+            model.CanApproveSignups.Should().Be(canApprove!.Value);
+        }
+        await _shiftMgmt.Received(coordinatorReads).IsDeptCoordinatorAsync(UserId, TeamId, Arg.Any<CancellationToken>());
     }
 
     [HumansTheory]
