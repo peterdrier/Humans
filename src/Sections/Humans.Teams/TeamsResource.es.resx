@@ -388,7 +388,7 @@
     <value>Gestionar Roles</value>
   </data>
   <data name="Teams_TeamDetail_SubTeams" xml:space="preserve">
-    <value>Sub-teams</value>
+    <value>Subequipos</value>
   </data>
   <data name="Teams_PublicDirectory" xml:space="preserve">
     <value>Equipos</value>

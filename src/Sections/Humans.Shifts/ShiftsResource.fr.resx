@@ -256,7 +256,7 @@
     <value>Regrouper les créneaux par département</value>
   </data>
   <data name="Shifts_SlotsFilled" xml:space="preserve">
-    <value>places pourvu</value>
+    <value>places pourvues</value>
   </data>
   <data name="Shifts_RotaSingular" xml:space="preserve">
     <value>roulement</value>
@@ -1156,7 +1156,7 @@
   </data>
   <data name="Shifts_DietaryMissingBanner_Title" xml:space="preserve"><value>Tu nous indiques tes préférences alimentaires ?</value></data>
   <data name="Shifts_DietaryMissingBanner_Body" xml:space="preserve"><value>Tu es inscrit·e à un long créneau. Si tu nous indiques tes préférences alimentaires, la cantine peut prévoir tes repas. C'est facultatif.</value></data>
-  <data name="Shifts_DietaryMissingBanner_Cta" xml:space="preserve"><value>Tell us now</value></data>
+  <data name="Shifts_DietaryMissingBanner_Cta" xml:space="preserve"><value>Dis-le-nous maintenant</value></data>
   <data name="Shifts_DietaryMissingBanner_Decline" xml:space="preserve"><value>Je préfère ne pas répondre</value></data>
   <data name="Shifts_ViewAllMyShifts" xml:space="preserve"><value>Voir tous mes créneaux</value></data>
   <data name="Shifts_SortOrder" xml:space="preserve"><value>Ordre de tri</value></data>

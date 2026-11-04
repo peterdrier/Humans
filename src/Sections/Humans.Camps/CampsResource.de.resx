@@ -193,7 +193,7 @@
   <data name="Camps_Card_Full" xml:space="preserve"><value>Voll</value></data>
   <data name="Camps_Card_KidsWelcome" xml:space="preserve"><value>Kinder willkommen</value></data>
   <data name="Camps_Card_TimesAtNowhere" xml:space="preserve"><value>{0} Jahr(e)</value></data>
-  <data name="Enum_CampVibe_Adult" xml:space="preserve"><value>Adult</value></data>
+  <data name="Enum_CampVibe_Adult" xml:space="preserve"><value>Erwachsene</value></data>
   <data name="Enum_CampVibe_ChillOut" xml:space="preserve"><value>Chill-out</value></data>
   <data name="Enum_CampVibe_ElectronicMusic" xml:space="preserve"><value>Elektronische Musik</value></data>
   <data name="Enum_CampVibe_Games" xml:space="preserve"><value>Spiele</value></data>

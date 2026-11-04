@@ -169,7 +169,7 @@
     <value>Messaggio (facoltativo)</value>
   </data>
   <data name="Teams_JoinTeam_MessagePlaceholder" xml:space="preserve">
-    <value>Racconti al team perché desidera unirti...</value>
+    <value>Racconta al team perché vuoi unirti...</value>
   </data>
   <data name="Teams_JoinTeam_SubmitRequest" xml:space="preserve">
     <value>Invia richiesta</value>
@@ -388,7 +388,7 @@
     <value>Gestisci ruoli</value>
   </data>
   <data name="Teams_TeamDetail_SubTeams" xml:space="preserve">
-    <value>Sub-teams</value>
+    <value>Sottogruppi</value>
   </data>
   <data name="Teams_PublicDirectory" xml:space="preserve">
     <value>Team</value>

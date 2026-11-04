@@ -502,7 +502,7 @@
     <value>Camps &amp; Barrios</value>
   </data>
   <data name="Home_CampsDescription" xml:space="preserve">
-    <value>Registriere dein Camp, entdecke Nachbarn nach Stimmung oder Soundzone und melde dich jede Saison an.</value>
+    <value>Registriere dein Camp, entdecke Nachbarn nach Stimmung oder Soundzone und melde dich jede Saison an. Finde deinen Platz auf der Karte.</value>
   </data>
   <data name="Home_TicketsTitle" xml:space="preserve">
     <value>Tickets &amp; Events</value>
@@ -1400,7 +1400,7 @@
   <data name="About_HangfireDesc" xml:space="preserve"><value>Hintergrundjobs für Sync, Abgleich und alles, was eine HTTP-Anfrage nicht blockieren sollte. PostgreSQL-gestützt, Dashboard inklusive.</value></data>
   <data name="About_IngredientsHeading" xml:space="preserve"><value>Die Zutaten</value></data>
   <data name="About_IngredientsIntro" xml:space="preserve"><value>Jede Werkstatt braucht ihr Material. Daraus ist Humans gebaut:</value></data>
-  <data name="About_Intro" xml:space="preserve"><value>Humans ist das Mitgliedschaftssystem, das Nobodies Collective am Laufen hält — Onboarding von Humans, Team-Bereitstellung, Governance-Tracking und all die Verkabelung, die es einem spanischen Verein ermöglicht, mit dem Organisationsgedächtnis von etwas Zehnmal so Großem zu arbeiten. Mit Sorgfalt gebaut, mit Sturheit gepflegt und mit gekreuzten Fingern ausgerollt.</value></data>
+  <data name="About_Intro" xml:space="preserve"><value>Humans ist das Mitgliedschaftssystem, das Nobodies Collective am Laufen hält — Onboarding von Humans, Team-Bereitstellung, Governance-Tracking und all die Verkabelung, die es einem spanischen Verein ermöglicht, mit dem Organisationsgedächtnis von etwas zehnmal so Großem zu arbeiten. Mit Sorgfalt gebaut, mit Sturheit gepflegt und mit gekreuzten Fingern ausgerollt.</value></data>
   <data name="About_License_Apache2" xml:space="preserve"><value>erfordert einen Copyright-Hinweis, eine Lizenzkopie und eine Angabe von Änderungen, falls modifiziert. Alle Pakete werden unverändert verwendet.</value></data>
   <data name="About_License_BSD2" xml:space="preserve"><value>erfordert einen Copyright-Hinweis in der Dokumentation.</value></data>
   <data name="About_License_BSD3MapLibre" xml:space="preserve"><value>erfordert einen Copyright-Hinweis; diese Seite erfüllt diese Verpflichtung.</value></data>
