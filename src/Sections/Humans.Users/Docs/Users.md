@@ -699,6 +699,7 @@ Email Problems remediation buttons use the shared `data-confirm` handler: each c
 - People-search bio and contribution-interest excerpts preserve complete Unicode characters at both context boundaries. Built-in match labels (including exact user-id matches and contact-field types) use the caller’s current UI culture in all six languages; authored custom contact labels remain verbatim. Labels are composed per search, so switching UI culture does not reuse labels from an earlier query.
 - Profile API search, burner-name count and user-id lookup carry request cancellation through current-user resolution as well as their subsequent reads.
 - Profile shift-history and sent-message visibility checks carry request cancellation through coordinator checks and no-show history reads. The profile controller orders no-shows by review time, newest first and undated entries last. Reviewer IDs pass through to Human rendering without a controller name lookup; absent reviewer IDs remain blank, while unresolved IDs use the shared localized unknown label.
+- A profile request resolves the viewer's coordinator status once for both visibility checks. Self-profile requests skip that read and show neither panel; each panel retains its existing privileged-role check.
 - Human-picker prefills pair the resolved name with the resolved account ID, so an archived account ID is never reposted as the selected value.
 
 - The medical GET carries request cancellation through its current-user read. An abandoned request propagates cancellation.
