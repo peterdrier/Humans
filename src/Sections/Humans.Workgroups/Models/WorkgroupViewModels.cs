@@ -218,11 +218,13 @@ internal sealed class MeetingFormViewModel : ICalendarEventForm
 
     public string? LocationUrl { get; set; }
 
+    [BindRequired]
     public bool IsPublic { get; set; }
 
     // Meetings are always timed.
     public bool IsAllDay { get; set; }
 
+    [BindRequired]
     public bool IsRecurring { get; set; }
 
     public string? RecurrenceRule { get; set; }

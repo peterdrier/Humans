@@ -265,6 +265,7 @@ internal sealed class CalendarController : HumansControllerBase
         var times = CalendarEventForm.Resolve(form, ModelState, _localizer);
         if (times is null || !ModelState.IsValid)
         {
+            _logger.LogWarning("Rejected invalid calendar creation form for user {UserId}", user.Id);
             form.TeamOptions = await GetSelectableTeamsAsync(ct);
             return View(form);
         }
@@ -329,6 +330,7 @@ internal sealed class CalendarController : HumansControllerBase
         var times = CalendarEventForm.Resolve(form, ModelState, _localizer);
         if (times is null || !ModelState.IsValid)
         {
+            _logger.LogWarning("Rejected invalid calendar edit form for user {UserId}", user.Id);
             form.TeamOptions = await GetSelectableTeamsAsync(ct);
             return View(form);
         }

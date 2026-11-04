@@ -219,7 +219,11 @@ internal sealed class WorkgroupsController(
         if (error is not null) return error;
         if (model.Id is { } editing && !workgroup.Meetings.Any(m => m.Id == editing)) return NotFound();
         var times = CalendarEventForm.Resolve(model, ModelState, calendarLocalizer);
-        if (times is null || !ModelState.IsValid) return View(MeetingForm, model);
+        if (times is null || !ModelState.IsValid)
+        {
+            logger.LogWarning("Rejected invalid meeting form for workgroup {WorkgroupId}, user {UserId}", workgroup.Id, user.Id);
+            return View(MeetingForm, model);
+        }
 
         return await FormAsync(model, async () =>
         {

@@ -44,6 +44,62 @@ public sealed class WorkgroupsControllerAuthorizationTests : WorkgroupsTestHarne
     private readonly ILogger<WorkgroupsController> _logger = Substitute.For<ILogger<WorkgroupsController>>();
 
     [HumansTheory]
+    [InlineData("IsRecurring")]
+    [InlineData("IsPublic")]
+    [InlineData(null)]
+    public async Task MeetingForm_RequiresExplicitRecurrenceAndVisibilityChoices(string? missingField)
+    {
+        var group = await SeedWorkgroupAsync();
+        var actor = group.Members.Single().UserId;
+        var service = Substitute.For<IWorkgroupService>();
+        service.GetBySlugAsync(group.Slug, Ct).Returns(await NewService().GetBySlugAsync(group.Slug, Ct));
+        service.CreateMeetingAsync(group.Id, actor, Arg.Any<WorkgroupMeetingSave>(), Ct)
+            .Returns(new WorkgroupMutationResult<Guid>(Guid.NewGuid()));
+        var controller = BuildController(actor, isBoard: false, service);
+        using var services = new ServiceCollection().AddLogging().AddControllers().Services.BuildServiceProvider();
+        controller.HttpContext.RequestServices = services;
+        var fields = new Dictionary<string, StringValues>(StringComparer.Ordinal)
+        {
+            ["Slug"] = group.Slug,
+            ["Title"] = "Meeting",
+            ["StartDate"] = "2026-06-02",
+            ["EndDate"] = "2026-06-02",
+            ["StartTime"] = "10:00:00",
+            ["EndTime"] = "11:00:00",
+            ["TimeZoneId"] = "UTC",
+            ["IsRecurring"] = "false",
+            ["RecurrenceRule"] = "FREQ=WEEKLY",
+            ["IsPublic"] = "false"
+        };
+        if (missingField is not null) fields.Remove(missingField);
+        var metadata = services.GetRequiredService<IModelMetadataProvider>().GetMetadataForType(typeof(MeetingFormViewModel));
+        var binder = services.GetRequiredService<IModelBinderFactory>().CreateBinder(new ModelBinderFactoryContext { Metadata = metadata });
+        var binding = DefaultModelBindingContext.CreateBindingContext(controller.ControllerContext,
+            new FormValueProvider(BindingSource.Form, new FormCollection(fields), CultureInfo.InvariantCulture),
+            metadata, bindingInfo: null, modelName: "");
+        await binder.BindModelAsync(binding);
+        var model = (MeetingFormViewModel)binding.Result.Model!;
+        services.GetRequiredService<IObjectModelValidator>().Validate(controller.ControllerContext, null, "", model);
+
+        var result = await controller.SaveMeeting(group.Slug, model, Ct);
+
+        if (missingField is not null)
+        {
+            controller.ModelState[missingField]!.Errors.Should().NotBeEmpty();
+            result.Should().BeOfType<ViewResult>().Which.Model.Should().BeSameAs(model);
+            await service.DidNotReceiveWithAnyArgs().CreateMeetingAsync(default, default, default!);
+            await service.DidNotReceiveWithAnyArgs().UpdateMeetingAsync(default, default, default!);
+        }
+        else
+        {
+            controller.ModelState.IsValid.Should().BeTrue();
+            result.Should().BeOfType<RedirectToActionResult>();
+            await service.Received(1).CreateMeetingAsync(group.Id, actor,
+                Arg.Is<WorkgroupMeetingSave>(save => !save.IsPublic && save.RecurrenceRule == null), Ct);
+        }
+    }
+
+    [HumansTheory]
     [InlineData(false, "DeliverableKind")]
     [InlineData(false, "Audience")]
     [InlineData(false, "IsSensitive")]
