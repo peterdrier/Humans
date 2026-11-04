@@ -173,4 +173,4 @@ Base's.
 |---|---|---|---|
 | 1 | 2026-08-23 | #1458 | Two silently-misbound resource sets fixed; consent-step redirect loop closed; section docs re-derived from code |
 | 2 | 2026-09-13 | peterdrier/Humans#1663 | `/Guest` found unreachable by the audience it exists for; false notification and Flag-is-inert claims struck from docs and comments; bulk clear stopped building the review page it never reads |
-| 3 | 2026-11-04 | pending | The docs catch up with the code: steps hand forward, no dashboard checklist or review gate, true csproj comments |
+| 3 | 2026-11-04 | peterdrier/Humans#2277 | The docs catch up with the code: steps hand forward, no dashboard checklist or review gate, true csproj comments |
