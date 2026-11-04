@@ -54,6 +54,7 @@ tables (Same-Rule-Different-Spelling, Enforcement Gaps, Canonical Policy Names),
 | Controller | Scope | Roles | Source |
 |---|---|---|---|
 | `TimezoneApiController` (`src/Humans.Web`) | Class | `AllowAnonymous` | Browser beacon |
+| `FileStatsApiController` (`src/Humans.Web`) | Class | `AllowAnonymous` | `/api/stats/files`: daily upload counts and bytes per category for the public metrics site; no keys or names leave |
 | `/health`, `/health/live`, `/health/ready`, `/metrics` (`Program.cs`) | Endpoint | `.AllowAnonymous()` | Probed and scraped by infrastructure that holds no cookie |
 | `HangfireAuthorizationFilter` (`src/Humans.Web`) | Filter | `RoleChecks.IsAdminOrBoard(User)` | Admin and Board open the dashboard; `DashboardOptions.IsReadOnlyFunc` makes it read-only for everyone but Admin outside Development (the fallback policy already requires a signed-in user before the filter runs) |
 

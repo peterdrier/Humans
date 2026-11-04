@@ -1,4 +1,5 @@
 using Humans.Base.Interfaces;
+using NodaTime;
 
 namespace Humans.Web.Services;
 
@@ -120,6 +121,25 @@ public sealed class FileSystemFileStorage(IHostEnvironment environment, ILogger<
             }
         }
         return Task.CompletedTask;
+    }
+
+    public Task<IReadOnlyList<StoredFileInfo>> ListAsync(string prefix, CancellationToken ct = default)
+    {
+        var directory = new DirectoryInfo(ResolveAbsolute(prefix));
+        if (!directory.Exists)
+        {
+            return Task.FromResult<IReadOnlyList<StoredFileInfo>>([]);
+        }
+
+        var files = new List<StoredFileInfo>();
+        foreach (var file in directory.EnumerateFiles("*", SearchOption.AllDirectories))
+        {
+            ct.ThrowIfCancellationRequested();
+            if (file.Name.EndsWith(".tmp", StringComparison.Ordinal)) continue;
+            var key = Path.GetRelativePath(_root, file.FullName).Replace(Path.DirectorySeparatorChar, '/');
+            files.Add(new StoredFileInfo(key, file.Length, Instant.FromDateTimeUtc(file.LastWriteTimeUtc)));
+        }
+        return Task.FromResult<IReadOnlyList<StoredFileInfo>>(files);
     }
 
     private string ResolveAbsolute(string key)
