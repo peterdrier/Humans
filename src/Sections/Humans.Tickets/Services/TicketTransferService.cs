@@ -514,9 +514,9 @@ internal sealed class TicketTransferService(
         var request = await transferRepo.GetByIdAsync(transferRequestId, ct);
         if (request is null) return null;
 
-        var row = await BuildRowDtoAsync(request, ct);
-        var attendee = await ticketRepo.GetAttendeeByIdAsync(request.OriginalTicketAttendeeId, ct);
-        var order = attendee?.TicketOrder;
+        var attendee = await ResolveAttendeeAsync(request, ct);
+        var row = BuildRowDto(request, attendee);
+        var order = attendee.TicketOrder;
         var siblingIds = order is not null
             ? (await ticketRepo.GetVendorTicketIdsForOrderAsync(order.Id, ct))
                 .OrderBy(s => s, StringComparer.Ordinal).ToList()
@@ -525,8 +525,8 @@ internal sealed class TicketTransferService(
         return new TicketTransferDetailDto(
             Row: row,
             OrderDashboardUrl: order?.VendorDashboardUrl,
-            OriginalAttendeeVendorTicketId: attendee?.VendorTicketId ?? string.Empty,
-            OriginalAttendeeEmail: attendee?.AttendeeEmail,
+            OriginalAttendeeVendorTicketId: attendee.VendorTicketId,
+            OriginalAttendeeEmail: attendee.AttendeeEmail,
             OrderVendorId: order?.VendorOrderId ?? string.Empty,
             OrderPurchasedAt: order?.PurchasedAt ?? Instant.MinValue,
             OrderBuyerEmail: order?.BuyerEmail ?? string.Empty,
