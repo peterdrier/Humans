@@ -4426,8 +4426,11 @@ public class SurveyServiceTests
         _repo.GetInvitationsAsync(surveyId, Arg.Any<CancellationToken>())
             .Returns(Enumerable.Range(0, 10).Select(index => new SurveyInvitation
             {
-                Id = Guid.NewGuid(), SurveyId = surveyId, UserId = Guid.NewGuid(),
-                SentAt = _clock.GetCurrentInstant(), Started = index < 7,
+                Id = Guid.NewGuid(),
+                SurveyId = surveyId,
+                UserId = Guid.NewGuid(),
+                SentAt = _clock.GetCurrentInstant(),
+                Started = index < 7,
             }).ToList());
         _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(new Dictionary<Guid, UserInfo>()));
@@ -5045,8 +5048,11 @@ public class SurveyServiceTests
         _repo.GetInvitationsAsync(survey.Id, Arg.Any<CancellationToken>())
             .Returns(Enumerable.Range(0, 4).Select(index => new SurveyInvitation
             {
-                Id = Guid.NewGuid(), SurveyId = survey.Id, UserId = Guid.NewGuid(),
-                SentAt = _clock.GetCurrentInstant(), Started = index < 2,
+                Id = Guid.NewGuid(),
+                SurveyId = survey.Id,
+                UserId = Guid.NewGuid(),
+                SentAt = _clock.GetCurrentInstant(),
+                Started = index < 2,
             }).ToList());
 
         var service = CreateService();

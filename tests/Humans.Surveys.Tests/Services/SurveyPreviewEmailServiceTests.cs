@@ -47,13 +47,15 @@ public sealed class SurveyPreviewEmailServiceTests
                     userId, "Author", false, "fr", null, Instant.FromUnixTimeSeconds(0),
                     null, null, null, null, null, null,
                     null, null, null, [], [], null) with
-                { IdentityEmailColumn = failure switch
+                {
+                    IdentityEmailColumn = failure switch
                     {
                         "null-email" => null,
                         "empty-email" => "",
                         "blank-email" or "blank-email-send" => " \t ",
                         _ => "author@example.org"
-                    } });
+                    }
+                });
             emailService.SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>())
                 .Returns(Task.FromException(new IOException("Outbox unavailable")));
         }

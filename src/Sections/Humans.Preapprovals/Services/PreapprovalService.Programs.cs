@@ -8,7 +8,6 @@ namespace Humans.Preapprovals.Services;
 
 internal sealed partial class PreapprovalService
 {
-    private const string ManagerUnavailable = "One or more selected managers are no longer available.";
     private const int NameMax = 200;
     private const int DescriptionMax = 2000;
 
@@ -21,7 +20,7 @@ internal sealed partial class PreapprovalService
         if (account is null) return new(Refusal: new PreapprovalRefusal(PreapprovalErrorKeys.AccountNotFound));
 
         var managerIds = await ResolveManagerIdsAsync(save.ManagerUserIds, ct);
-        if (managerIds is null) return new(Refusal: new PreapprovalRefusal(ManagerUnavailable));
+        if (managerIds is null) return new(Refusal: new PreapprovalRefusal(PreapprovalErrorKeys.PersonUnavailable));
 
         var now = clock.GetCurrentInstant();
         var program = new PreapprovalProgram
@@ -75,7 +74,7 @@ internal sealed partial class PreapprovalService
             return new(new PreapprovalRefusal(PreapprovalErrorKeys.CeilingBelowCommitted, Euros(info.Granted)));
 
         var wanted = await ResolveManagerIdsAsync(save.ManagerUserIds, ct);
-        if (wanted is null) return new(new PreapprovalRefusal(ManagerUnavailable));
+        if (wanted is null) return new(new PreapprovalRefusal(PreapprovalErrorKeys.PersonUnavailable));
 
         var now = clock.GetCurrentInstant();
         var changes = new List<string>();

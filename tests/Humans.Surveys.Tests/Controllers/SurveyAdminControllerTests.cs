@@ -67,7 +67,8 @@ public sealed class SurveyAdminControllerTests
         surveys.UpdateAsync(surveyId, Arg.Any<SurveyEditInput>(), Arg.Any<SurveyViewer>(), Arg.Any<CancellationToken>())
             .Returns(new SurveySaveResult(surveyId));
         var definition = Editable("Existing", allowAnonymous: string.Equals(missingField, "AllowAnonymous", StringComparison.Ordinal))
-            with { IsAsociadoVote = string.Equals(missingField, "IsAsociadoVote", StringComparison.Ordinal) };
+            with
+        { IsAsociadoVote = string.Equals(missingField, "IsAsociadoVote", StringComparison.Ordinal) };
         surveys.GetForEditAsync(surveyId, Arg.Any<CancellationToken>())
             .Returns(new SurveyDetail(surveyId, SurveyStatus.Draft, definition, actorId));
         var sut = CreateController(surveys, authorizationService: RealAuthorizationService(), userId: actorId,

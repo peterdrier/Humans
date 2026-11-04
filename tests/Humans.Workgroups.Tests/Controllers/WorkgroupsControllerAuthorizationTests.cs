@@ -123,8 +123,12 @@ public sealed class WorkgroupsControllerAuthorizationTests : WorkgroupsTestHarne
         controller.HttpContext.RequestServices = services;
         var fields = new Dictionary<string, StringValues>(StringComparer.Ordinal)
         {
-            ["Name"] = group.Name, ["Purpose"] = "Updated purpose", ["Deliverable"] = "Report",
-            ["DeliverableKind"] = "0", ["Audience"] = "0", ["IsSensitive"] = "false"
+            ["Name"] = group.Name,
+            ["Purpose"] = "Updated purpose",
+            ["Deliverable"] = "Report",
+            ["DeliverableKind"] = "0",
+            ["Audience"] = "0",
+            ["IsSensitive"] = "false"
         };
         if (missingField is not null) fields.Remove(missingField);
         var metadata = services.GetRequiredService<IModelMetadataProvider>().GetMetadataForType(typeof(WorkgroupFormViewModel));

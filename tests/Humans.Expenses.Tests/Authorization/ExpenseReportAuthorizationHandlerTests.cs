@@ -62,7 +62,9 @@ public sealed class ExpenseReportAuthorizationHandlerTests
             .Returns(new HashSet<Guid> { grantId });
         var report = MakeReport(SubmitterId, ExpenseReportStatus.Submitted) with
         {
-            PreapprovalGrantId = grantId, BudgetCategoryId = null, BudgetYearId = null,
+            PreapprovalGrantId = grantId,
+            BudgetCategoryId = null,
+            BudgetYearId = null,
         };
 
         (await EvaluateAsync(CreateUser(cookieId), report, ExpenseReportOperation.Endorse)).Should().BeTrue();

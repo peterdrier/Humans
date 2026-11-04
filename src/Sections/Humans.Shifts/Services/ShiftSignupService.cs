@@ -628,17 +628,17 @@ internal sealed class ShiftSignupService(
 
     private static ShiftSignup NewSignup(
         Guid userId, Guid shiftId, Guid? actorUserId, Instant now, bool autoConfirm, Guid? blockId = null) => new()
-    {
-        Id = Guid.NewGuid(),
-        UserId = userId,
-        ShiftId = shiftId,
-        SignupBlockId = blockId,
-        Status = autoConfirm ? SignupStatus.Confirmed : SignupStatus.Pending,
-        ReviewedByUserId = autoConfirm ? actorUserId ?? userId : null,
-        ReviewedAt = autoConfirm ? now : null,
-        CreatedAt = now,
-        UpdatedAt = now
-    };
+        {
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            ShiftId = shiftId,
+            SignupBlockId = blockId,
+            Status = autoConfirm ? SignupStatus.Confirmed : SignupStatus.Pending,
+            ReviewedByUserId = autoConfirm ? actorUserId ?? userId : null,
+            ReviewedAt = autoConfirm ? now : null,
+            CreatedAt = now,
+            UpdatedAt = now
+        };
 
     private RangeSignupCreation StageRangeSignups(
         Guid userId,
