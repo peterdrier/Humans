@@ -474,18 +474,22 @@ internal sealed class EventService(
     public Task<HashSet<Guid>> GetFavouriteEventIdsAsync(Guid userId, CancellationToken ct = default)
         => repo.GetFavouriteEventIdsAsync(userId, ct);
 
-    public async Task<IReadOnlyList<EventFavouriteInfo>> GetFavouritesWithEventsAsync(Guid userId, CancellationToken ct = default)
+    public async Task<IReadOnlyList<EventFavouriteInfo>> GetFavouritesWithEventsAsync(Guid userId, CancellationToken ct = default) =>
+        (await LoadFavouritesWithCalendarAsync(userId, ct)).Favourites;
+
+    private async Task<(IReadOnlyList<EventFavouriteInfo> Favourites, EventSettingsInfo? Calendar)> LoadFavouritesWithCalendarAsync(
+        Guid userId, CancellationToken ct)
     {
         var guideSettings = await repo.GetGuideSettingsAsync(ct);
         var guideEventId = guideSettings?.EventSettingsId;
         var favourites = await repo.GetFavouritesWithEventsAsync(userId, ct);
-        if (favourites.Count == 0) return [];
+        if (favourites.Count == 0) return ([], null);
 
         var eventSettings = guideSettings is null
             ? null
             : await settingsService.GetEventSettingsByIdAsync(guideSettings.EventSettingsId, ct);
         var canExpand = GetTimeZone(eventSettings) is not null;
-        return favourites.Where(f => f.Event.IsInEvent(guideEventId)).Select(f => new EventFavouriteInfo(
+        var projected = favourites.Where(f => f.Event.IsInEvent(guideEventId)).Select(f => new EventFavouriteInfo(
                 f.Id, f.UserId, f.GuideEventId, f.DayOffset, f.CreatedAt, ToEventInfo(f.Event)))
             .GroupBy(f => f.GuideEventId)
             .SelectMany(group =>
@@ -496,6 +500,7 @@ internal sealed class EventService(
                     || string.IsNullOrWhiteSpace(f.Event.RecurrenceDays) || f.DayOffset is null);
                 return wholeEvent is null ? group.ToArray() : [wholeEvent with { DayOffset = null }];
             }).ToList();
+        return (projected, eventSettings);
     }
 
     public async Task<bool> AddFavouriteAsync(Guid userId, Guid eventId, int? dayOffset, CancellationToken ct = default)
@@ -741,12 +746,10 @@ internal sealed class EventService(
     public async Task<IReadOnlyList<CalendarFeedItem>> GetCalendarItemsForUserAsync(Guid userId, CancellationToken ct)
     {
         // Moderation can drop an event out of the feed without touching the favourite row.
-        var favourites = await GetFavouritesWithEventsAsync(userId, ct);
+        var (favourites, burn) = await LoadFavouritesWithCalendarAsync(userId, ct);
         var approved = favourites.Where(f => f.Event.Status == EventStatus.Approved).ToList();
         if (approved.Count == 0) return [];
 
-        var guideSettings = await repo.GetGuideSettingsAsync(ct);
-        var burn = guideSettings is null ? null : await settingsService.GetEventSettingsByIdAsync(guideSettings.EventSettingsId, ct);
         var tz = burn is null ? null : DateTimeZoneProviders.Tzdb.GetZoneOrNull(burn.TimeZoneId);
         if (burn is not null && tz is null)
         {
