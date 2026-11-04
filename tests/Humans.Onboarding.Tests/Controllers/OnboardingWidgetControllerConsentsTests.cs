@@ -91,10 +91,7 @@ public class OnboardingWidgetControllerConsentsTests
     [HumansFact]
     public async Task Consents_Get_StubProfile_RedirectsToNames_WithLocalizedInfo()
     {
-        // Stub-profile gate: a user with no legal name reaching the consent
-        // step (the original "StubProfile red toast" production bug) gets
-        // bounced back to the Names step with a localized prompt rather than
-        // the doomed-form / raw-error-key UX.
+        // A nameless user at the consent step would only get a refused form: bounce them to Names.
         var userId = Guid.NewGuid();
         var ctrl = BuildSut(userId, isStub: true);
 
@@ -162,10 +159,7 @@ public class OnboardingWidgetControllerConsentsTests
     [HumansFact]
     public async Task Consents_Get_DocumentUnavailable_StopsInsteadOfBouncingOffTheDispatcher()
     {
-        // A required document that is still unsigned but whose detail will not load used to
-        // come back here as a null Next, indistinguishable from "nothing left to sign". The
-        // controller handed it to the dispatcher, the dispatcher answered "consents" because
-        // the document is still unsigned, and the two redirected at each other forever.
+        // Handing an unloadable unsigned document back to the dispatcher loops: it still answers "consents".
         var userId = Guid.NewGuid();
         _onboardingService.GetNextUnsignedConsentAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new NextConsentStepData(NextConsentStepOutcome.DocumentUnavailable, null, 0, 1));
