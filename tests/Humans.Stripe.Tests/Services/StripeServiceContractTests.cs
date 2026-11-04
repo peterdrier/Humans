@@ -440,6 +440,26 @@ public class StripeServiceContractTests
     }
 
     [HumansFact]
+    public async Task CreateCheckoutSession_returns_a_replayed_attempt_in_its_live_state()
+    {
+        var http = Substitute.For<IHttpClient>();
+        using var headers = new HttpResponseMessage();
+        http.MakeRequestAsync(Arg.Any<StripeRequest>(), Arg.Any<CancellationToken>()).Returns(
+            new StripeResponse(HttpStatusCode.OK, headers.Headers,
+                """{"id":"cs_replay","object":"checkout.session","status":"open","url":"https://pay.test/x","currency":"eur","amount_total":2000,"created":1750000000}"""),
+            new StripeResponse(HttpStatusCode.OK, headers.Headers,
+                """{"id":"cs_replay","object":"checkout.session","status":"expired","currency":"eur","amount_total":2000,"created":1750000000}"""));
+        var svc = new StripeService(Options.Create(new StripeSettings { StoreKey = "rk_test_s" }),
+            new CapturingLogger<StripeService>(), http);
+
+        var result = await svc.CreateCheckoutSessionAsync(Guid.NewGuid(), 20m, "https://x/ok", "https://x/no", null,
+            "Order", TestContext.Current.CancellationToken, Guid.NewGuid());
+
+        result.Status.Should().Be("expired");
+        result.Url.Should().BeNull();
+    }
+
+    [HumansFact]
     public async Task PaymentDetails_returns_null_when_the_intent_has_no_charge()
     {
         var svc = Answering(new StripeSettings { TicketsKey = "rk_test_t" }, HttpStatusCode.OK,

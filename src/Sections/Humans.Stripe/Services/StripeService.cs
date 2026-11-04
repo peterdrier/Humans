@@ -131,6 +131,10 @@ internal sealed class StripeService(
                 ? new RequestOptions { IdempotencyKey = $"humans_store_checkout_{attemptId}" }
                 : null;
             var session = await sessions.CreateAsync(options, requestOptions, ct);
+            // A replay returns the cached creation response, which always says open; the attempt's caller needs the
+            // session's live state.
+            if (requestOptions is not null)
+                session = await sessions.GetAsync(session.Id, cancellationToken: ct);
             return MapSession(session) ?? throw new InvalidOperationException(
                 $"Stripe created Checkout Session {session.Id} without EUR currency.");
         }
@@ -143,12 +147,9 @@ internal sealed class StripeService(
         }
     }
 
-    public async Task<StoreCheckoutSessionData> ExpireCheckoutSessionAsync(string sessionId, CancellationToken ct = default)
+    /// <summary>A session that is no longer open comes back as Stripe holds it; an open one Stripe won't expire throws.</summary>
+    private async Task<StoreCheckoutSessionData> ExpireCheckoutSessionAsync(string sessionId, CancellationToken ct)
     {
-        using var _ = logger.TimeOperation();
-        if (!_settings.IsStoreCheckoutConfigured)
-            throw new InvalidOperationException("Stripe Store key is not configured.");
-
         var sessions = new SessionService(new StripeClient(_settings.StoreKey, httpClient: httpClient));
         Session session;
         try

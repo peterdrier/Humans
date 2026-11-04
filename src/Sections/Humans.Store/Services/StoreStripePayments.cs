@@ -69,30 +69,34 @@ internal sealed class StoreStripePayments(
         var session = order is { CheckoutAttemptId: { } openAttempt } && order.CheckoutAmountEur == amountEur
             ? await TryReplayAsync(openAttempt)
             : null;
-        if (session is null)
+        if (IsComplete(session))
+            return null;
+
+        var attemptId = order.CheckoutAttemptId;
+        if (session is not { Status: "open", Url: not null })
         {
-            var attemptId = Guid.NewGuid();
+            attemptId = Guid.NewGuid();
             session = await stripeService.CreateCheckoutSessionAsync(
                 orderId, amountEur, returnUrl, returnUrl, customerEmail, description, ct,
                 checkoutAttemptId: attemptId, supersededSessionId: order.CheckoutSessionId);
-            if (!string.Equals(session.Status, "open", StringComparison.Ordinal) || session.Url is null)
-            {
-                logger.LogWarning(
-                    "Checkout session {SessionId} for order {OrderId} was already {Status}; no replacement opened.",
-                    session.SessionId, orderId, session.Status);
+            if (IsComplete(session) || session.Url is null)
                 return null;
-            }
-            order.CheckoutAttemptId = attemptId;
         }
 
-        if (!string.Equals(order.CheckoutSessionId, session.SessionId, StringComparison.Ordinal)
-            || order.CheckoutAmountEur != amountEur)
+        if (attemptId != order.CheckoutAttemptId
+            || !string.Equals(order.CheckoutSessionId, session.SessionId, StringComparison.Ordinal))
         {
-            order.CheckoutSessionId = session.SessionId;
-            order.CheckoutAmountEur = amountEur;
-            await repo.UpdateOrderAsync(order, ct);
+            await WriteCheckoutAttemptAsync(orderId, attemptId, session.SessionId, amountEur, ct);
         }
         return session.Url;
+
+        bool IsComplete(StoreCheckoutSessionData? s)
+        {
+            if (!string.Equals(s?.Status, "complete", StringComparison.Ordinal)) return false;
+            logger.LogWarning("Checkout session {SessionId} for order {OrderId} already completed; no new session opened.",
+                s!.SessionId, orderId);
+            return true;
+        }
 
         async Task<StoreCheckoutSessionData?> TryReplayAsync(Guid attemptId)
         {
@@ -259,9 +263,21 @@ internal sealed class StoreStripePayments(
         if (order is null || !string.Equals(order.CheckoutSessionId, session.SessionId, StringComparison.Ordinal))
             return;
 
-        order.CheckoutAttemptId = null;
-        order.CheckoutSessionId = null;
-        order.CheckoutAmountEur = null;
+        await WriteCheckoutAttemptAsync(orderId, null, null, null, ct);
+    }
+
+    /// <summary>
+    /// Re-reads the row so only the checkout columns change: a full-row write from a read taken before a Stripe round
+    /// trip would overwrite a concurrent order edit.
+    /// </summary>
+    private async Task WriteCheckoutAttemptAsync(
+        Guid orderId, Guid? attemptId, string? sessionId, decimal? amountEur, CancellationToken ct)
+    {
+        var order = await repo.GetOrderByIdAsync(orderId, ct);
+        if (order is null) return;
+        order.CheckoutAttemptId = attemptId;
+        order.CheckoutSessionId = sessionId;
+        order.CheckoutAmountEur = amountEur;
         await repo.UpdateOrderAsync(order, ct);
     }
 

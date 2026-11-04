@@ -10,7 +10,7 @@ sections (Store, Tickets).
 ### StripeService (Scoped)
 
 Wraps the Stripe SDK using the keys in `IOptions<StripeSettings>`:
-`CreateCheckoutSessionAsync`, `ExpireCheckoutSessionAsync`, `GetPaymentDetailsAsync`,
+`CreateCheckoutSessionAsync`, `GetPaymentDetailsAsync`,
 `ListStoreCheckoutSessionsAsync`, and `ParseStoreCheckoutEvent`, which verifies
 the webhook signature against `StoreWebhookSecret`. Holds no cache.
 

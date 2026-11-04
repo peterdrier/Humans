@@ -25,7 +25,8 @@ public interface IStripeService : IApplicationService
     /// <summary>
     /// Creates a hosted-checkout session; <paramref name="storeOrderId"/> round-trips in the
     /// <c>humans_store_order_id</c> metadata. A non-null <paramref name="checkoutAttemptId"/> is the Stripe idempotency
-    /// key, so repeating an attempt with identical arguments replays its original session. A non-null
+    /// key, so repeating an attempt with identical arguments replays its original session, returned in its live state. A
+    /// non-null
     /// <paramref name="supersededSessionId"/> is expired first; when that session has already completed, no new session
     /// is created and the completed one is returned (Status <c>complete</c>, no Url). Throws on Stripe failure; a null
     /// <paramref name="customerEmail"/> lets Stripe collect it.
@@ -41,13 +42,6 @@ public interface IStripeService : IApplicationService
         CancellationToken ct = default,
         Guid? checkoutAttemptId = null,
         string? supersededSessionId = null);
-
-    /// <summary>
-    /// Expires an open Store-account session and returns it. A session that is no longer open is returned as Stripe holds
-    /// it (Status <c>complete</c> or <c>expired</c>). Throws on Stripe failure.
-    /// </summary>
-    [ExternalWrite]
-    Task<StoreCheckoutSessionData> ExpireCheckoutSessionAsync(string sessionId, CancellationToken ct = default);
 
     /// <summary>
     /// <paramref name="body"/> must be the raw request body. Null when the signing secret is unset, the signature

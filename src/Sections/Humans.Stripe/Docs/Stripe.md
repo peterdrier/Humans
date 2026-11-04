@@ -88,10 +88,9 @@ integration uses — see [`memory/code/stripe-restricted-keys.md`](../../../../m
 - `CreateCheckoutSessionAsync` rejects a non-positive amount and an unconfigured Store key
   before any network call, and throws (rather than returning a sentinel) on Stripe failure.
 - A checkout attempt id becomes the Stripe idempotency key, so repeating an attempt replays its
-  session. A superseded session is expired before its replacement is created; when it has already
-  completed, no replacement is created and the completed session comes back (Status `complete`, no Url).
-- `ExpireCheckoutSessionAsync` returns a session that is no longer open as Stripe holds it, rather
-  than failing; an open session that Stripe refuses to expire throws.
+  session; the session is then re-read so its live status (not the cached `open`) comes back. A
+  superseded session is expired before its replacement is created; when it has already completed,
+  no replacement is created and the completed session comes back (Status `complete`, no Url).
 - EUR → minor units rounds half away from zero; minor units → EUR is exact. Both conversions
   live only in `ToStripeMinorUnits` / `FromStripeMinorUnits`.
 - Every amount read requires explicit EUR, case-insensitively. Ticket fee reads require it on
