@@ -153,7 +153,7 @@ themes:
     detect: "cat docs/architecture/debt-ledger.yml src/Sections/*/Docs/debt.yml 2>/dev/null | grep -c '^  - added:'"
     review: per-item
     last_swept: 2026-11-04
-    remaining: 2
+    remaining: 3
     notes: >-
       Each inbox entry carries its own review tier and a stable `id`; an item is
       closed by deleting its row and citing the id in the PR — ids are never
@@ -170,7 +170,3 @@ inbox:
     id: CENTRAL-107
     what: "OnboardingWidgetController.Shifts decides the viewer's early-entry privilege itself (\"onboarding viewers are never privileged\") before asking EventSettingsInfo.IsEarlyEntryClosed; the effective lock is a Shifts fact. Fix: Shifts' read for the step carries the viewer's effective early-entry lock, which is new Shifts surface and needs Peter. Found by section-doctor's controller-intent thread on Onboarding."
     review: light
-  - added: 2026-11-03
-    id: CENTRAL-106
-    what: "The User EF entity is still public in Humans.Base (src/Humans.Base/Users/User.cs), moved there with UserInfo so Base has no project references; UserEmail is now internal. Entities should not cross a section boundary. HUM0039 holds the remaining assemblies that still name User (Auth, Development, Tickets, Web) as a shrink-only baseline: move each onto UserInfo / IUserService and delete its entry, then narrow what stays public (UserManager<User> callers need the type)."
-    review: panel

@@ -3,7 +3,6 @@ using Humans.Users.Contracts;
 using Humans.Settings.Contracts;
 using Humans.Shifts.Contracts;
 using Humans.Teams.Contracts;
-using Microsoft.AspNetCore.Identity;
 using NodaTime;
 
 namespace Humans.Development.Services;
@@ -32,11 +31,13 @@ internal sealed class DevelopmentDashboardSeeder(
     IUserEmailService userEmailService,
     IUserWrite userService,
     IProfileEditorService profileEditor,
-    UserManager<User> userManager,
+    IAccountProvisioningService accountProvisioning,
     IClock clock,
     ILogger<DevelopmentDashboardSeeder> logger)
 {
     private sealed record SeededRota(Guid Id, Guid TeamId, RotaPeriod Period);
+
+    private sealed record SeededUser(Guid Id, string BurnerName);
 
     private static readonly Guid SeededEventId = Guid.Parse("2f38bf0c-46fd-4f7d-a05b-7ec9e26d8e6b");
 
@@ -232,41 +233,10 @@ internal sealed class DevelopmentDashboardSeeder(
         // exist purely as dashboard data.
         var totalUsers = 120;
 
-        var users = new List<User>();
-        for (var i = 0; i < totalUsers; i++)
-        {
-            var display = $"Dev Human {i:D3}";
-            var email = $"{DevUserEmailPrefix}{i:D3}{DevUserEmailSuffix}";
-            var createdAt = now.Minus(Duration.FromDays(_rng.Next(30, 400)));
-            var lastLoginDaysAgo = _rng.Next(0, 85);
-            // Id MUST be set explicitly: UserManager's username uniqueness validator
-            // reads user.UserName before EF assigns the PK, and the override returns
-            // Id.ToString(). Without an explicit Id, every loop iteration resolves
-            // to UserName = Guid.Empty.ToString() and fails on the second insert.
-            var userId = Guid.NewGuid();
-            var user = new User
-            {
-                Id = userId,
-                BurnerName = display,
-                CreatedAt = createdAt,
-                LastLoginAt = now.Minus(Duration.FromDays(lastLoginDaysAgo)).Minus(Duration.FromHours(_rng.Next(0, 23))),
-            };
-
-            var createResult = await userManager.CreateAsync(user);
-            if (!createResult.Succeeded)
-            {
-                throw new InvalidOperationException(
-                    $"Failed to create seeded dev user '{email}': {string.Join(", ", createResult.Errors.Select(e => e.Description))}");
-            }
-
-            var emailAddition = await userEmailService.AddVerifiedEmailAsync(user.Id, email, cancellationToken);
-            if (emailAddition.ErrorKey is not null)
-                throw new InvalidOperationException("Could not add the verified email address.");
-
-            users.Add(user);
-        }
-
-        // Infrastructure coords logged in 9 days ago (stale) to drive the red chip on the dashboard.
+        // Infrastructure coords logged in 9 days ago (stale) to drive the red chip on the dashboard. Picked before
+        // the cohort is created so each coord's last login is seeded on its account.
+        var coordPicks = new List<(Guid TeamId, int UserIndex)>();
+        var coordLastLogins = new Dictionary<int, Instant>();
         foreach (var parent in parentTeams.Values)
         {
             var isInfrastructure = parent.Name.StartsWith("Infrastructure", StringComparison.Ordinal);
@@ -276,36 +246,56 @@ internal sealed class DevelopmentDashboardSeeder(
 
             for (var i = 0; i < 2; i++)
             {
-                var coord = users[_rng.Next(users.Count)];
-                coord.LastLoginAt = coordLastLogin;
-                var updateResult = await userManager.UpdateAsync(coord);
-                if (!updateResult.Succeeded)
-                {
-                    throw new InvalidOperationException(
-                        $"Failed to update LastLoginAt for seeded coord '{coord.Id}': {string.Join(", ", updateResult.Errors.Select(e => e.Description))}");
-                }
-
-                try
-                {
-                    await teamSeeding.AddSeededMemberAsync(
-                        parent.Id, coord.Id, TeamMemberRole.Coordinator, now.Minus(Duration.FromDays(60)),
-                        cancellationToken);
-                }
-                catch (InvalidOperationException)
-                {
-                    // The RNG may pick the same user as a coord for multiple teams or twice for
-                    // the same team; ignore duplicate membership (it's just demo data).
-                }
+                var index = _rng.Next(totalUsers);
+                coordPicks.Add((parent.Id, index));
+                coordLastLogins[index] = coordLastLogin;
             }
         }
 
-        // Complete Identity fixture updates before profile saves derive Active state.
-        // The original User instances must not overwrite that state afterward.
+        var users = new List<SeededUser>();
+        for (var i = 0; i < totalUsers; i++)
+        {
+            var display = $"Dev Human {i:D3}";
+            var email = $"{DevUserEmailPrefix}{i:D3}{DevUserEmailSuffix}";
+            var createdAt = now.Minus(Duration.FromDays(_rng.Next(30, 400)));
+            var lastLoginDaysAgo = _rng.Next(0, 85);
+            var lastLoginAt = now.Minus(Duration.FromDays(lastLoginDaysAgo)).Minus(Duration.FromHours(_rng.Next(0, 23)));
+            var user = new SeededUser(Guid.NewGuid(), display);
+
+            var errors = await accountProvisioning.CreateAccountAsync(
+                user.Id, display, createdAt, coordLastLogins.GetValueOrDefault(i, lastLoginAt));
+            if (errors.Count > 0)
+            {
+                throw new InvalidOperationException(
+                    $"Failed to create seeded dev user '{email}': {string.Join(", ", errors)}");
+            }
+
+            var emailAddition = await userEmailService.AddVerifiedEmailAsync(user.Id, email, cancellationToken);
+            if (emailAddition.ErrorKey is not null)
+                throw new InvalidOperationException("Could not add the verified email address.");
+
+            users.Add(user);
+        }
+
+        foreach (var (teamId, index) in coordPicks)
+        {
+            try
+            {
+                await teamSeeding.AddSeededMemberAsync(
+                    teamId, users[index].Id, TeamMemberRole.Coordinator, now.Minus(Duration.FromDays(60)),
+                    cancellationToken);
+            }
+            catch (InvalidOperationException)
+            {
+                // The RNG may pick the same user as a coord for multiple teams or twice for
+                // the same team; ignore duplicate membership (it's just demo data).
+            }
+        }
+
         foreach (var user in users)
         {
-            var burnerName = user.BurnerName!; // Assigned for every fixture above.
             var save = await profileEditor.SaveProfileAsync(user.Id, new ProfileSaveRequest(
-                BurnerName: burnerName, FirstName: "Dev", LastName: "Human",
+                BurnerName: user.BurnerName, FirstName: "Dev", LastName: "Human",
                 City: null, CountryCode: null, Latitude: null, Longitude: null, PlaceId: null,
                 Bio: null, Pronouns: null, ContributionInterests: null, BoardNotes: null,
                 BirthdayMonth: null, BirthdayDay: null,

@@ -155,7 +155,7 @@ internal sealed partial class WorkgroupService(
         ct = CancellationToken.None;
         await auditLog.LogAsync(WorkgroupsAuditActions.WorkgroupMembershipDeclined, AuditEntityTypes.Workgroup, workgroup.Id,
             $"Declined the join request of {name}", actorUserId,
-            relatedEntityId: userId, relatedEntityType: AuditEntityTypes.User);
+            relatedEntityId: userId, relatedEntityType: AuditSubjectTypes.User);
         await NotifyAsync([userId], WorkgroupsNotificationSources.WorkgroupMembershipDecided,
             "Workgroups_Notice_MembershipDeclined", ToInfo(workgroup), body: null, ct);
         return new();
@@ -198,7 +198,7 @@ internal sealed partial class WorkgroupService(
         // Related entity is the person admitted: their GDPR export selects audit rows by that column.
         await auditLog.LogAsync(auditAction, AuditEntityTypes.Workgroup, workgroup.Id,
             $"{name} admitted to the group", actorUserId,
-            relatedEntityId: member.UserId, relatedEntityType: AuditEntityTypes.User);
+            relatedEntityId: member.UserId, relatedEntityType: AuditSubjectTypes.User);
         await NotifyAsync([member.UserId], WorkgroupsNotificationSources.WorkgroupMembershipDecided,
             noticeKey, ToInfo(workgroup), body: null, ct);
         await RequestDriveSyncAsync(workgroup, ct);

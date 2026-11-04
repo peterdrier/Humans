@@ -46,7 +46,7 @@ internal sealed class PaymentDetailsService(
 
         // Same entity type and wording as before, so old and new reveals read back together.
         await audit.LogAsync(
-            FinanceAuditActions.IbanReveal, AuditEntityTypes.User, userId,
+            FinanceAuditActions.IbanReveal, AuditSubjectTypes.User, userId,
             $"Admin revealed IBAN for user {userId}", actorUserId);
         return iban;
     }

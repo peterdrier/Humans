@@ -90,11 +90,11 @@ internal sealed partial class GrantService(
 
     private Task AuditGrantAsync(AuditActionDefinition action, Grant grant, string description, Guid actorUserId) =>
         auditLog.LogAsync(action, AuditEntityTypes.Grant, grant.Id, description, actorUserId,
-            relatedEntityId: grant.UserId, relatedEntityType: AuditEntityTypes.User);
+            relatedEntityId: grant.UserId, relatedEntityType: AuditSubjectTypes.User);
 
     private Task AuditProgramAsync(
         AuditActionDefinition action, GrantProgram program, string description, Guid actorUserId, Guid? relatedUserId = null) =>
         auditLog.LogAsync(action, AuditEntityTypes.Program, program.Id, description, actorUserId,
             relatedEntityId: relatedUserId,
-            relatedEntityType: relatedUserId is null ? null : AuditEntityTypes.User);
+            relatedEntityType: relatedUserId is null ? null : AuditSubjectTypes.User);
 }

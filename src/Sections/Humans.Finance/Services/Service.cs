@@ -340,8 +340,9 @@ internal sealed class Service(
     }
 
     /// <summary>The expense lines against the ledger mirror, with SEPA rows. The one non-mirror read is the cached
-    /// contact list, which says which account each bound contact is on, as on /Finance/Creditors. The document mirror
-    /// is not read.</summary>
+    /// contact list, which says which account each bound contact is on. Unreadable, or missing a bound contact, the report is unavailable: the
+    /// binding's stored number may be wrong, and judging against it is worse than not judging. The document mirror is
+    /// not read.</summary>
     public async Task<ExpenseReconReport> GetExpenseReconAsync(int? year, CancellationToken ct = default)
     {
         // A push settled after the last good sweep is Pending, not Missing.
@@ -350,11 +351,21 @@ internal sealed class Service(
 
         var balances = await holded.GetAccountBalancesAsync(ct);
 
-        var expected = await expenses.GetHoldedReconLinesAsync(ct);
         var contacts = await ContactsByIdAsync(ct);
-        var accountByUser = (await repo.GetCreditorContactsAsync(ct))
-            .Select(b => (b.UserId, Account: ResolveCreditorAccount(b, contacts)))
-            .Where(x => x.Account is not null)
+        if (contacts.Count == 0)
+            return ExpenseRecon.Unavailable(year, "The Holded contact list could not be read, so no member's account is known.");
+
+        // The list skips a contact it cannot parse, so a non-empty list can still be missing a bound member's account.
+        var bindings = await repo.GetCreditorContactsAsync(ct);
+        var unreadable = bindings.Count(b => !contacts.ContainsKey(b.HoldedContactId));
+        if (unreadable > 0)
+            return ExpenseRecon.Unavailable(year,
+                $"{unreadable} bound Holded contact(s) are missing from the contact list, so those members' accounts are not known.");
+
+        var expected = await expenses.GetHoldedReconLinesAsync(ct);
+        var accountByUser = bindings
+            .Select(b => (b.UserId, Account: contacts.GetValueOrDefault(b.HoldedContactId)?.SupplierAccountNum))
+            .Where(x => x.Account is >= CreditorAccountMin and <= CreditorAccountMax)
             .GroupBy(x => x.UserId)
             .ToDictionary(g => g.Key, g => g.First().Account!.Value);
 
@@ -765,7 +776,7 @@ internal sealed class Service(
                 "/Finance/Creditors.");
         await audit.LogAsync(FinanceAuditActions.HoldedCreditorBound, HoldedCreditorAccount, userId,
             $"Bound creditor account {supplierAccountNum} (Holded contact {contact.Id})",
-            actorUserId, userId, AuditEntityTypes.User);
+            actorUserId, userId, AuditSubjectTypes.User);
         return CreditorBindResult.Success;
     }
 
@@ -940,7 +951,7 @@ internal sealed class Service(
         try
         {
             await client.DeleteContactAsync(contactId, ct);
-            await audit.LogAsync(FinanceAuditActions.HoldedDuplicateRemoved, AuditEntityTypes.User, userId,
+            await audit.LogAsync(FinanceAuditActions.HoldedDuplicateRemoved, AuditSubjectTypes.User, userId,
                 $"DELETED duplicate Holded contact {contactId} that a concurrent push created; kept "
                 + $"{bound.HoldedContactId}.",
                 jobName);
@@ -997,7 +1008,7 @@ internal sealed class Service(
         await audit.LogAsync(FinanceAuditActions.HoldedCreditorAccountNumChanged, HoldedCreditorAccount, userId,
             $"Creditor account changed from {previous} to {supplierAccountNum} (Holded contact "
             + $"{binding.HoldedContactId}), as Holded reported after the push",
-            jobName, userId, AuditEntityTypes.User);
+            jobName, userId, AuditSubjectTypes.User);
     }
 
     public async Task<bool> ClearCreditorContactAsync(Guid userId, Guid actorUserId, CancellationToken ct = default)
@@ -1008,7 +1019,7 @@ internal sealed class Service(
         await audit.LogAsync(FinanceAuditActions.HoldedCreditorUnbound, HoldedCreditorAccount, userId,
             $"Unbound creditor account {binding.SupplierAccountNum?.ToString(CultureInfo.InvariantCulture) ?? "(unresolved)"} "
             + $"(Holded contact {binding.HoldedContactId})",
-            actorUserId, userId, AuditEntityTypes.User);
+            actorUserId, userId, AuditSubjectTypes.User);
         return true;
     }
 
@@ -1062,7 +1073,7 @@ internal sealed class Service(
                 FinanceAuditActions.SepaPayoutTransfer, SepaTransferEntityType, t.Id,
                 $"SEPA payout {Euros(t.Amount)} to {t.IbanMasked} on creditor account "
                 + $"{t.SupplierAccountNum} (file {fileName}).",
-                actorUserId, t.UserId, AuditEntityTypes.User);
+                actorUserId, t.UserId, AuditSubjectTypes.User);
 
         // The payout is committed: abandoning the download must not suppress its notifications.
         await payoutEmails.SendPayoutEmailsAsync(transfers);
@@ -1206,7 +1217,7 @@ internal sealed class Service(
             FinanceAuditActions.SepaPayoutTransferWithdrawn, SepaTransferEntityType, transferId,
             $"WITHDRAWN the SEPA payout {Euros(transfer.Amount)} to {transfer.IbanMasked} on creditor account "
             + $"{transfer.SupplierAccountNum} (file {row.FileName}): cancelled at the bank before execution.",
-            actorUserId, transfer.UserId, AuditEntityTypes.User);
+            actorUserId, transfer.UserId, AuditSubjectTypes.User);
 
         await payoutEmails.SendWithdrawnEmailAsync(transfer, booking.FileDate(row));
 
@@ -1239,7 +1250,7 @@ internal sealed class Service(
                 FinanceAuditActions.SepaPayoutTransferWithdrawn, SepaTransferEntityType, r.TransferId,
                 $"WITHDRAWN the SEPA payout {Euros(r.Amount)} to {r.IbanMasked} on creditor account "
                 + $"{r.SupplierAccountNum}: file {fileName} was cancelled whole, the bank never executed it.",
-                actorUserId, r.UserId, AuditEntityTypes.User);
+                actorUserId, r.UserId, AuditSubjectTypes.User);
 
         return new SepaBookingResult(true,
             $"Cancelled {fileName}: {live.Count} transfers, {Euros(live.Sum(r => r.Amount))}. "
@@ -1482,7 +1493,7 @@ internal sealed class Service(
                             $"DELETED duplicate Holded purchase document {docId} ({Euros(line.Amount)}, "
                             + $"'{line.Description}') of {member.ContactName} on creditor account {account}; "
                             + $"kept {line.KeptDocId}.",
-                            actorUserId, member.UserId, AuditEntityTypes.User);
+                            actorUserId, member.UserId, AuditSubjectTypes.User);
                     }
                     catch (Exception ex) when (ex is HoldedTransientException or HoldedPermanentException)
                     {
@@ -1500,7 +1511,7 @@ internal sealed class Service(
                         await client.DeleteContactAsync(contactId, ct);
                         deletedContacts.Add(contactId);
                         await audit.LogAsync(
-                            FinanceAuditActions.HoldedDuplicateRemoved, AuditEntityTypes.User, member.UserId,
+                            FinanceAuditActions.HoldedDuplicateRemoved, AuditSubjectTypes.User, member.UserId,
                             $"DELETED duplicate Holded contact {contactId} of {member.ContactName}; kept "
                             + $"{member.BoundContactId ?? "the bound contact"}.",
                             actorUserId);

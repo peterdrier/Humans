@@ -235,7 +235,8 @@ Repository: `IUserRepository`.
 |-------|-----|
 | Users | R/W |
 
-Idempotent provisioning for import jobs. Uses ASP.NET `UserManager<User>`
+Idempotent provisioning for import jobs, plus `CreateAccountAsync` for seeders that create an
+account with a fixed id. Uses ASP.NET `UserManager<User>`
 for password / identity primitives. Cross-section calls via
 `IUserEmailService`, `IUserService`, `IAuditLogService`. No cache.
 Results carry the user id, never the `User` entity: `AccountProvisioningResult(Guid UserId, bool Created)`
@@ -319,3 +320,9 @@ access, no cache.
 
 ---
 
+### UserSignInService (Scoped)
+
+No repository. Wraps ASP.NET `SignInManager<User>` / `UserManager<User>` behind
+`IUserSignInService`, keyed by user id, so callers outside Users never load the `User` entity:
+persistent sign-in, sign-out, password check/set, and the external-login handshake.
+`SetPasswordAsync` loads the user in a fresh scope from `IServiceScopeFactory`. No cache.

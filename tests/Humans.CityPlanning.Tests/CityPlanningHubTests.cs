@@ -70,6 +70,8 @@ public sealed class CityPlanningHubTests
         if (identifier is not null) claims.Add(new Claim(ClaimTypes.NameIdentifier, identifier));
         var context = Substitute.For<HubCallerContext>();
         context.User.Returns(new ClaimsPrincipal(new ClaimsIdentity(claims, "test")));
+        // SignalR's default IUserIdProvider derives UserIdentifier from the NameIdentifier claim.
+        context.UserIdentifier.Returns(identifier);
         context.ConnectionId.Returns(Guid.NewGuid().ToString());
         var clients = Substitute.For<IHubCallerClients>();
         clients.Others.Returns(_others);

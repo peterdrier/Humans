@@ -1,5 +1,4 @@
 using System.Collections.Concurrent;
-using System.Security.Claims;
 using Humans.Base.Authorization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
@@ -19,7 +18,8 @@ internal sealed class CityPlanningHub(IUserService userService) : Hub
 
     public override async Task OnConnectedAsync()
     {
-        if (Guid.TryParse(Context.User?.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
+        // SignalR's default IUserIdProvider reads the NameIdentifier claim, the same one Identity's GetUserId reads.
+        if (Guid.TryParse(Context.UserIdentifier, out var userId))
         {
             var burnerName = (await userService.GetUserInfoAsync(userId))?.BurnerName;
             _displayNames[Context.ConnectionId] = !string.IsNullOrWhiteSpace(burnerName)

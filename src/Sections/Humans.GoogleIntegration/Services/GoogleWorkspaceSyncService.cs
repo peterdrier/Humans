@@ -930,7 +930,7 @@ internal sealed class GoogleWorkspaceSyncService(
     internal static Task AuditUserSyncRerunAsync(IAuditLogService auditLog, Guid userId, int count, Guid actorUserId) =>
         auditLog.LogAsync(
             GoogleIntegrationAuditActions.GoogleSyncRetryScheduled,
-            AuditEntityTypes.User,
+            AuditSubjectTypes.User,
             userId,
             $"Admin enqueued Google sync re-run for user {userId} ({count} team event(s))",
             actorUserId);

@@ -117,7 +117,7 @@ internal sealed class ShiftSignupService(
             ShiftsAuditActions.ShiftSignupCreated, nameof(ShiftSignup), signup.Id,
             $"shift '{shift.Rota.Name}' on {shiftDate} ({statusSuffix})",
             actorUserId ?? userId,
-            userId, AuditEntityTypes.User);
+            userId, AuditSubjectTypes.User);
 
         if (autoConfirm)
         {
@@ -173,7 +173,7 @@ internal sealed class ShiftSignupService(
             ShiftsAuditActions.ShiftSignupConfirmed, nameof(ShiftSignup), signup.Id,
             $"shift '{signup.Shift.Rota.Name}'",
             reviewerUserId,
-            signup.UserId, AuditEntityTypes.User);
+            signup.UserId, AuditSubjectTypes.User);
 
         await notices.DispatchSignupChangeNotificationAsync(signup, signup.Shift,
             "Shifts_Notification_ChangeApproved", signup.Shift.Rota.Name, signup.Shift.DayOffset);
@@ -197,7 +197,7 @@ internal sealed class ShiftSignupService(
             ShiftsAuditActions.ShiftSignupRefused, nameof(ShiftSignup), signup.Id,
             $"shift '{signup.Shift.Rota.Name}'" + (reason is not null ? $": {reason}" : ""),
             reviewerUserId,
-            signup.UserId, AuditEntityTypes.User);
+            signup.UserId, AuditSubjectTypes.User);
 
         await notices.DispatchSignupChangeNotificationAsync(signup, signup.Shift,
             "Shifts_Notification_ChangeRefused", signup.Shift.Rota.Name, signup.Shift.DayOffset);
@@ -249,7 +249,7 @@ internal sealed class ShiftSignupService(
             ShiftsAuditActions.ShiftSignupBailed, nameof(ShiftSignup), signup.Id,
             $"shift '{signup.Shift.Rota.Name}'" + (reason is not null ? $": {reason}" : ""),
             actorUserId,
-            signup.UserId, AuditEntityTypes.User);
+            signup.UserId, AuditSubjectTypes.User);
 
         await notices.DispatchSignupChangeNotificationAsync(signup, signup.Shift,
             "Shifts_Notification_ChangeBailed", signup.Shift.Rota.Name, signup.Shift.DayOffset);
@@ -300,7 +300,7 @@ internal sealed class ShiftSignupService(
             ShiftsAuditActions.ShiftSignupVoluntold, nameof(ShiftSignup), signup.Id,
             $"shift '{shift.Rota.Name}' on {FormatAuditDay(calendar, shift.DayOffset)}",
             enrollerUserId,
-            userId, AuditEntityTypes.User);
+            userId, AuditSubjectTypes.User);
 
         await notices.DispatchSignupChangeNotificationAsync(signup, shift,
             "Shifts_Notification_ChangeAssigned", shift.Rota.Name, shift.DayOffset);
@@ -398,7 +398,7 @@ internal sealed class ShiftSignupService(
                 ShiftsAuditActions.ShiftSignupVoluntold, nameof(ShiftSignup), auditedSignup.Id,
                 $"'{rota.Name}' on {FormatAuditDay(calendar, dayOffset)} (range)",
                 enrollerUserId,
-                userId, AuditEntityTypes.User);
+                userId, AuditSubjectTypes.User);
         }
 
         await notices.DispatchSignupChangeNotificationAsync(firstSignup!, assignable[0], rota,
@@ -437,7 +437,7 @@ internal sealed class ShiftSignupService(
             ShiftsAuditActions.ShiftSignupNoShow, nameof(ShiftSignup), signup.Id,
             $"shift '{signup.Shift.Rota.Name}'",
             reviewerUserId,
-            signup.UserId, AuditEntityTypes.User);
+            signup.UserId, AuditSubjectTypes.User);
 
         return SignupResult.Ok(signup.Id);
     }
@@ -462,7 +462,7 @@ internal sealed class ShiftSignupService(
             $"shift '{signup.Shift.Rota.Name}'" +
             (reason is not null ? $": {reason}" : ""),
             removedByUserId,
-            signup.UserId, AuditEntityTypes.User);
+            signup.UserId, AuditSubjectTypes.User);
 
         await notices.DispatchSignupChangeNotificationAsync(signup, signup.Shift,
             "Shifts_Notification_ChangeRemoved", signup.Shift.Rota.Name, signup.Shift.DayOffset);
@@ -678,7 +678,7 @@ internal sealed class ShiftSignupService(
                 nameof(ShiftSignup), auditedSignup.Id,
                 $"'{rota.Name}' on {FormatAuditDay(eventSettings, dayOffset)} (range, {statusSuffix})",
                 actorUserId,
-                userId, AuditEntityTypes.User);
+                userId, AuditSubjectTypes.User);
         }
     }
 
@@ -753,7 +753,7 @@ internal sealed class ShiftSignupService(
                 ShiftsAuditActions.ShiftSignupConfirmed, nameof(ShiftSignup), approvedSignup.Id,
                 $"shift '{approvedSignup.Shift.Rota.Name}' day {approvedSignup.Shift.DayOffset} (range)",
                 reviewerUserId,
-                approvedSignup.UserId, AuditEntityTypes.User);
+                approvedSignup.UserId, AuditSubjectTypes.User);
         }
 
         foreach (var skipped in skippedAtCapacity)
@@ -762,7 +762,7 @@ internal sealed class ShiftSignupService(
                 ShiftsAuditActions.ShiftSignupRefused, nameof(ShiftSignup), skipped.Id,
                 $"shift '{skipped.Shift.Rota.Name}' day {skipped.Shift.DayOffset} (auto-refused, at capacity)",
                 reviewerUserId,
-                skipped.UserId, AuditEntityTypes.User);
+                skipped.UserId, AuditSubjectTypes.User);
         }
 
         if (approved.Count == 0)
@@ -800,7 +800,7 @@ internal sealed class ShiftSignupService(
                 $"shift '{signup.Shift.Rota.Name}' day {signup.Shift.DayOffset} (range)" +
                 (reason is not null ? $": {reason}" : ""),
                 reviewerUserId,
-                signup.UserId, AuditEntityTypes.User);
+                signup.UserId, AuditSubjectTypes.User);
         }
 
         await notices.DispatchSignupChangeNotificationAsync(signups[0], signups[0].Shift,
@@ -852,7 +852,7 @@ internal sealed class ShiftSignupService(
                 $"shift '{signup.Shift.Rota.Name}' day {signup.Shift.DayOffset} (range)" +
                 (reason is not null ? $": {reason}" : ""),
                 actorUserId,
-                signup.UserId, AuditEntityTypes.User);
+                signup.UserId, AuditSubjectTypes.User);
         }
 
         await notices.DispatchSignupChangeNotificationAsync(firstSignup, firstSignup.Shift,
@@ -1283,10 +1283,10 @@ internal sealed class ShiftSignupService(
                 shiftMgmt.InvalidateDashboardCaches(eventId);
 
             await auditLogService.LogAsync(
-                ShiftsAuditActions.ShiftSignupReassigned, AuditEntityTypes.User, targetUserId,
+                ShiftsAuditActions.ShiftSignupReassigned, AuditSubjectTypes.User, targetUserId,
                 $"Reassigned {movedCount} shift signup(s) from merged source user {sourceUserId}",
                 actorUserId,
-                targetUserId, AuditEntityTypes.User);
+                targetUserId, AuditSubjectTypes.User);
         }
     }
 

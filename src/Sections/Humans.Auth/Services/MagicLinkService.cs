@@ -25,12 +25,9 @@ internal sealed class MagicLinkService(
             .FirstOrDefault();
         if (userEmail is not null)
         {
-            var ownerUser = await userService.GetRawUserInfoAsync(userEmail.UserId, ct);
-            if (ownerUser is not null)
-            {
-                await SendLoginLinkAsync(ownerUser.Id, userEmail.Email, returnUrl, ct);
-                return;
-            }
+            // The row's foreign key guarantees the owner exists.
+            await SendLoginLinkAsync(userEmail.UserId, userEmail.Email, returnUrl, ct);
+            return;
         }
 
         await SendSignupLinkAsync(email, returnUrl, ct);
@@ -38,8 +35,7 @@ internal sealed class MagicLinkService(
 
     public async Task<bool> VerifyLoginTokenAsync(Guid userId, string token, CancellationToken ct = default)
     {
-        var user = await userService.GetRawUserInfoAsync(userId, ct);
-        if (user is null)
+        if (await userService.GetRawUserInfoAsync(userId, ct) is null)
         {
             logger.LogWarning("Magic link login: user {UserId} not found", userId);
             return false;

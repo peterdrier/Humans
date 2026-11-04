@@ -88,7 +88,7 @@ public sealed class MagicLinkServiceTests
             .FindByAddressAsync("alice@work.com", true, true, Arg.Any<CancellationToken>())
             .Returns([UserEmailFixtures.Row(userId, "alice@work.com")]);
 
-        _userService.GetRawUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(CreateUserInfo(user));
+        _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(CreateUserInfo(user));
         _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
             .Returns(CreateUserInfo(user));
 
@@ -122,7 +122,7 @@ public sealed class MagicLinkServiceTests
         _userEmailService
             .FindByAddressAsync("alice@gmail.com", true, true, Arg.Any<CancellationToken>())
             .Returns([UserEmailFixtures.Row(userId, "alice@gmail.com")]);
-        _userService.GetRawUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(CreateUserInfo(user));
+        _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(CreateUserInfo(user));
         _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
             .Returns(CreateUserInfo(user));
 
@@ -174,7 +174,7 @@ public sealed class MagicLinkServiceTests
         _userEmailService
             .FindByAddressAsync("alice@gmail.com", true, true, Arg.Any<CancellationToken>())
             .Returns([UserEmailFixtures.Row(userId, "alice@gmail.com")]);
-        _userService.GetRawUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(CreateUserInfo(user));
+        _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(CreateUserInfo(user));
         _rateLimiter.TryReserveUserSendAsync(userId, Arg.Any<TimeSpan>()).Returns(false);
 
         await _service.SendMagicLinkAsync("alice@gmail.com", null, Xunit.TestContext.Current.CancellationToken);
@@ -228,14 +228,6 @@ public sealed class MagicLinkServiceTests
             .Returns([UserEmailFixtures.Row(userId, "first@example.com")]);
         _userEmailService.FindByAddressAsync("second@example.com", true, true, Arg.Any<CancellationToken>())
             .Returns([UserEmailFixtures.Row(userId, "second@example.com")]);
-        // Separate requests read separate snapshots; only the limiter owns the reservation.
-        _userService.GetRawUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(_ => CreateUserInfo(new User
-        {
-            Id = userId,
-            UserName = "first@example.com",
-            Email = "first@example.com",
-            CreatedAt = Clock.GetCurrentInstant(),
-        }));
         var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var resume = new TaskCompletionSource<UserInfo?>(TaskCreationOptions.RunContinuationsAsynchronously);
         _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(_ =>
@@ -272,7 +264,7 @@ public sealed class MagicLinkServiceTests
         _userEmailService
             .FindByAddressAsync("alice@gmail.com", true, true, Arg.Any<CancellationToken>())
             .Returns([UserEmailFixtures.Row(userId, "alice@gmail.com")]);
-        _userService.GetRawUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(CreateUserInfo(user));
+        _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(CreateUserInfo(user));
         _emailService
             .SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new InvalidOperationException("SMTP down"));
@@ -300,13 +292,12 @@ public sealed class MagicLinkServiceTests
         _userEmailService
             .FindByAddressAsync("alice@gmail.com", true, true, Arg.Any<CancellationToken>())
             .Returns([UserEmailFixtures.Row(userId, "alice@gmail.com")]);
-        _userService.GetRawUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(CreateUserInfo(user));
+        _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(CreateUserInfo(user));
 
         await _service.SendMagicLinkAsync("alice@gmail.com", null, Xunit.TestContext.Current.CancellationToken);
 
         await _emailService.Received(1).SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>());
         _rateLimiter.DidNotReceiveWithAnyArgs().ReleaseUserSendReservation(Guid.Empty);
-        // Auth owns no users column: the cooldown lives only in the rate limiter (AUTH-2).
     }
 
     [HumansFact]
@@ -408,8 +399,6 @@ public sealed class MagicLinkServiceTests
         var ct = Xunit.TestContext.Current.CancellationToken;
         _userEmailService.FindByAddressAsync("source@example.com", true, true, ct)
             .Returns([UserEmailFixtures.Row(userId, "source@example.com")]);
-        _userService.GetRawUserInfoAsync(userId, ct).Returns(CreateUserInfo(
-            new User { Id = userId, State = UserState.Merged, MergedToUserId = survivorId }));
         _userService.GetUserInfoAsync(userId, ct).Returns(CreateUserInfo(
             new User { Id = survivorId, BurnerName = "Survivor" }));
 
@@ -420,27 +409,20 @@ public sealed class MagicLinkServiceTests
             Arg.Is<EmailMessage>(m => m.UserId == userId && m.RecipientName == "Survivor"), ct);
     }
 
-    [HumansTheory]
-    [Xunit.InlineData(false)]
-    [Xunit.InlineData(true)]
-    public async Task IdentityReadCancellation_StopsBeforeEmailOrTokenReservations(bool sending)
+    [HumansFact]
+    public async Task VerifyLoginTokenAsync_IdentityReadCancellation_StopsBeforeTokenReservation()
     {
         using var cancellation = new CancellationTokenSource();
         await cancellation.CancelAsync();
         var ct = cancellation.Token;
         var userId = Guid.NewGuid();
-        _userEmailService.FindByAddressAsync("cancelled@example.com", true, true, ct)
-            .Returns([UserEmailFixtures.Row(userId, "cancelled@example.com")]);
         _userService.GetRawUserInfoAsync(userId, ct)
             .Returns(ValueTask.FromCanceled<UserInfo?>(ct));
 
-        Func<Task> act = sending
-            ? () => _service.SendMagicLinkAsync("cancelled@example.com", null, ct)
-            : async () => { _ = await _service.VerifyLoginTokenAsync(userId, "token", ct); };
+        var act = async () => { _ = await _service.VerifyLoginTokenAsync(userId, "token", ct); };
 
         await act.Should().ThrowAsync<OperationCanceledException>();
         _rateLimiter.ReceivedCalls().Should().BeEmpty();
-        await _emailService.DidNotReceiveWithAnyArgs().SendAsync(default!, default);
     }
 
     [HumansFact]

@@ -287,7 +287,7 @@ internal sealed class CampRoleService(
             await auditLog.LogAsync(
                 CampsAuditActions.CampMemberAddedByLead, nameof(CampMember), campMemberId,
                 "Lead added human as active camp member.", actorUserId,
-                relatedEntityId: memberLookup.UserId, relatedEntityType: AuditEntityTypes.User);
+                relatedEntityId: memberLookup.UserId, relatedEntityType: AuditSubjectTypes.User);
         }
 
         await auditLog.LogAsync(

@@ -184,9 +184,9 @@ internal sealed class CommunicationPreferenceService(
 
     private Task LogPreferenceChangeAsync(Guid userId, string description, Guid? actorUserId) =>
         actorUserId is { } actor
-            ? auditLog.LogAsync(EmailAuditActions.CommunicationPreferenceChanged, "User", userId,
+            ? auditLog.LogAsync(EmailAuditActions.CommunicationPreferenceChanged, AuditSubjectTypes.User, userId,
                 description, actor)
-            : auditLog.LogAsync(EmailAuditActions.CommunicationPreferenceChanged, "User", userId,
+            : auditLog.LogAsync(EmailAuditActions.CommunicationPreferenceChanged, AuditSubjectTypes.User, userId,
                 description, nameof(CommunicationPreferenceService));
 
     /// <summary>Keyed by the raw id, without merge resolution.</summary>

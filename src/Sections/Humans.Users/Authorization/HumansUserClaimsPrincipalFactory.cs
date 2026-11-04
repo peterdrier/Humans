@@ -3,14 +3,14 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Options;
 using Humans.Users.Contracts;
 
-namespace Humans.Web.Authorization;
+namespace Humans.Users.Authorization;
 
 /// <summary>
 /// Replaces the default <c>Name</c> claim (Identity sources it from <c>UserName</c>, which is the user's GUID for
 /// OAuth and magic-link accounts) with the BurnerName, so the topbar never shows a GUID. <c>NameIdentifier</c> still
 /// carries the user id, so authorization is unaffected.
 /// </summary>
-public sealed class HumansUserClaimsPrincipalFactory(
+internal sealed class HumansUserClaimsPrincipalFactory(
     UserManager<User> userManager,
     RoleManager<IdentityRole<Guid>> roleManager,
     IOptions<IdentityOptions> options,

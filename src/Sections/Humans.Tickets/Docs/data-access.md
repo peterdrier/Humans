@@ -257,8 +257,9 @@ No repository, no `IApplicationService`-derived interface (plain class, not
 part of the verifier's service inventory). Provisions and manages the shared
 gate-terminal account (`SystemUserIds.GateTerminal` — a real `User` row, not
 a person) the first time a ticket admin sets its password from
-`/Tickets/Admin/Gate`. Creates the Identity
-user via `UserManager<User>`, saves its profile through Users' canonical
+`/Tickets/Admin/Gate`. Creates the account
+via `IAccountProvisioningService.CreateAccountAsync`, sets the password through
+`IUserSignInService`, saves its profile through Users' canonical
 `IProfileEditorService.SaveProfileAsync`, clears its consent check via
 Consent's `IConsentWrite.RecordConsentCheckAsync`, invalidates the user-access
 cache, and logs via `IAuditLogService`. Users refreshes its own `UserInfo`

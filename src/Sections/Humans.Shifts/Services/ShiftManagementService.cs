@@ -779,7 +779,7 @@ internal sealed class ShiftManagementService(
         {
             await auditLogService.LogAsync(ShiftsAuditActions.ShiftSignupCancelled, nameof(ShiftSignup), signup.Id,
                 $"shift {signup.ShiftId}: {reason}", actorUserId,
-                relatedEntityId: signup.UserId, relatedEntityType: AuditEntityTypes.User);
+                relatedEntityId: signup.UserId, relatedEntityType: AuditSubjectTypes.User);
         }
     }
 
