@@ -511,8 +511,7 @@ public class HoldedFinanceServiceTests
     public async Task ListCreditorAccounts_BindingsSharingAContact_CollideOnOneRowDespiteDifferentNumbers()
     {
         // HoldedContactId and SupplierAccountNum are independent columns, so two members on one Holded
-        // contact can carry numbers that disagree — the legacy state the previously-unguarded seed path
-        // could leave behind. Grouped on the stored number they would be two innocent single-member
+        // contact can carry numbers that disagree. Grouped on the stored number they would be two innocent single-member
         // rows, hiding the contact-id half of the invariant FindConflictingBinding enforces on writes.
         var first = Guid.NewGuid();
         var second = Guid.NewGuid();
@@ -1110,9 +1109,8 @@ public class HoldedFinanceServiceTests
     [Xunit.InlineData(null, "(unresolved)")]
     public async Task SetCreditorAccountNum_ChangedNumber_IsAuditedUnderTheCallingJob(int? before, string beforeText)
     {
-        // 2026-09-21: Holded reset the contact's supplier_record and this write moved the member from
-        // 40000004 to 40000060 with only a log line. A change of the account a member is paid from is
-        // audited, naming the job, the member and both numbers.
+        // Holded can reset a contact's supplier_record, moving the member's account. Every change of the
+        // account a member is paid from is audited, naming the job, the member and both numbers.
         var userId = Guid.NewGuid();
         _repo.GetCreditorContactByUserAsync(userId, Arg.Any<CancellationToken>()).Returns(
             new HoldedCreditorContact

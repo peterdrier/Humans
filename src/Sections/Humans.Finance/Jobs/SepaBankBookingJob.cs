@@ -1,12 +1,12 @@
 using Hangfire;
 using Humans.Base.Interfaces;
-using Humans.Finance.Contracts;
+using Humans.Finance.Services;
 
 namespace Humans.Finance.Jobs;
 
 [DisableConcurrentExecution(timeoutInSeconds: 600)]
-public class SepaBankBookingJob(ISepaBankBooking sweep) : IRecurringJob
+internal sealed class SepaBankBookingJob(IFinanceAdminService finance) : IRecurringJob
 {
     public Task ExecuteAsync(CancellationToken cancellationToken = default) =>
-        sweep.RunAsync(cancellationToken);
+        finance.RunSepaBookingSweepAsync(cancellationToken);
 }

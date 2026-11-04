@@ -81,8 +81,7 @@ API calls, plus `PayPurchaseDocumentAsync` for SEPA booking), `IAuditLogService`
 `IUserService` / `IEmailService` (the payout-generated and
 payout-withdrawn notification to each creditor, through the section's `FinanceEmails` builder).
 Implements the public `IFinanceService` and `IFinanceWrite` (their IBAN members delegate to
-`IPaymentDetailsManagement`), the internal `IFinanceAdminService`, `ISepaBankBooking` and
-`IUserDataContributor`.
+`IPaymentDetailsManagement`), the internal `IFinanceAdminService` and `IUserDataContributor`.
 Injects `IMemoryCache` for the 2-minute Holded contact-list entry
 (`CacheKeys.HoldedContacts`) and `IOptions<SepaOptions>` for the organisation's
 SEPA identity.
@@ -120,13 +119,10 @@ deletes through `IHoldedClient.DeletePurchaseDocumentAsync` / `DeleteContactAsyn
 that `/Finance/Creditors` also reads (which account each bound contact is on), and
 `IUserService.GetUserInfosAsync`. **No write.**
 
-`ISepaBankBooking.RunAsync` (`Humans.Finance.Contracts`, public — the Hangfire
-job needs a public concrete type but must not take the internal
-`IFinanceAdminService`, the same seam `IHoldedNightlySync` is for Holded's `HoldedSyncJob`) is
-the bank-line sweep: books every unbooked transfer whose Sabadell line has
-appeared, and retries the reconcile for every booked-but-unreconciled one.
-Also `[ExternalWrite]`. `SepaBankBookingJob` (`Jobs/`) is its Hangfire shim,
-registered in `Section.cs`, cron `17 */2 * * *`.
+`RunSepaBookingSweepAsync` (also `[ExternalWrite]`) is the bank-line sweep: books every unbooked
+transfer whose Sabadell line has appeared, and retries the reconcile for every booked-but-unreconciled
+one. `SepaBankBookingJob` (`Jobs/`, internal, on `IFinanceAdminService`) is its Hangfire shim, registered in `Section.cs`, cron
+`17 */2 * * *`.
 
 ### PaymentDetailsService (Scoped)
 
