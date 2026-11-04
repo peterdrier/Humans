@@ -72,9 +72,7 @@ internal sealed class Service(
                   .ToArray();
 
         var map = await repo.GetCategoryMapAsync(ct);
-        var activeByCat = map
-            .Where(m => m.IsActive)
-            .ToDictionary(m => m.BudgetCategoryId);
+        var activeByCat = map.ToDictionary(m => m.BudgetCategoryId);
 
         // Avoid numbers in BOTH the local map and the live chart, so one taken remotely but missing locally (a failed
         // map write, or an account made directly in Holded) is never re-proposed.
@@ -85,8 +83,8 @@ internal sealed class Service(
 
         var rows = new List<HoldedProvisioningRow>();
         // Seeded up front, not as the walk meets them: otherwise a ToAdd category sorting before a mapped one could be
-        // handed its tag, and two active rows sharing a tag make attribution arbitrary.
-        var usedTags = map.Where(m => m.IsActive).Select(m => m.Tag).ToHashSet(StringComparer.Ordinal);
+        // handed its tag, and two rows sharing a tag make attribution arbitrary.
+        var usedTags = map.Select(m => m.Tag).ToHashSet(StringComparer.Ordinal);
         var currentActiveCatIds = categories.Select(c => c.Id).ToHashSet();
 
         int nextFree = blockStart;
@@ -175,7 +173,6 @@ internal sealed class Service(
                     HoldedAccountNumber = row.ProposedAccountNum.Value,
                     HoldedAccountId = id,
                     Tag = row.Tag,
-                    IsActive = true,
                     CreatedAt = now,
                     UpdatedAt = now,
                 }, ct);
@@ -305,7 +302,6 @@ internal sealed class Service(
         // A map row whose category is not in the active year still labels old reports but takes no new booking, so it
         // is inactive here and dropped with activeOnly.
         var options = map
-            .Where(m => m.IsActive)
             .Select(m => new ExpenseAccountOption(
                 m.HoldedAccountNumber, m.HoldedAccountId,
                 labels.GetValueOrDefault(m.BudgetCategoryId, $"Category {m.HoldedAccountNumber}"),
@@ -328,7 +324,6 @@ internal sealed class Service(
     {
         var mirror = await holded.GetPurchaseDocumentsAsync(ct);
         var entries = (await repo.GetCategoryMapAsync(ct))
-            .Where(m => m.IsActive)
             .Select(m => new HoldedMatchEntry(m.BudgetCategoryId, m.HoldedAccountId, m.Tag))
             .ToArray();
         var managedIds = (await repo.GetManagedAccountsAsync(ct))
@@ -423,7 +418,7 @@ internal sealed class Service(
         Guid budgetCategoryId, CancellationToken ct = default)
     {
         var map = await repo.GetCategoryMapAsync(ct);
-        return map.FirstOrDefault(m => m.IsActive && m.BudgetCategoryId == budgetCategoryId)?.HoldedAccountId;
+        return map.FirstOrDefault(m => m.BudgetCategoryId == budgetCategoryId)?.HoldedAccountId;
     }
 
     /// <summary>Category and group names resolved from the active budget year.</summary>
@@ -439,7 +434,6 @@ internal sealed class Service(
             m.HoldedAccountNumber,
             m.HoldedAccountId,
             m.Tag,
-            m.IsActive,
             m.UpdatedAt)).ToList();
     }
 

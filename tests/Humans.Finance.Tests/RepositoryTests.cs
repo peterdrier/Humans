@@ -117,25 +117,6 @@ public class RepositoryTests
     }
 
     [HumansFact]
-    public async Task GetCategoryMap_ReturnsArchivedRowsToo_TheServiceDecidesWhatIsActive()
-    {
-        var (repo, _) = Make();
-        await repo.AddCategoryMapAsync(new HoldedCategoryMap
-        {
-            Id = Guid.NewGuid(),
-            BudgetCategoryId = Guid.NewGuid(),
-            HoldedAccountNumber = 6290001,
-            HoldedAccountId = "acc-1",
-            Tag = "a",
-            IsActive = false,
-            CreatedAt = Created,
-            UpdatedAt = Created,
-        }, Ct);
-
-        (await repo.GetCategoryMapAsync(Ct)).Should().ContainSingle();
-    }
-
-    [HumansFact]
     public async Task SaveSepaTransferBooking_StampsBookedAtBookedByAndMovementId()
     {
         var (repo, _) = Make();
