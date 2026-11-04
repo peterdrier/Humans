@@ -6,8 +6,8 @@ admin pages over it. Peter reviews the mirror before anything is booked into Hol
 ## Why
 
 Recon ran off the Stripe Dashboard, one account at a time: finding a buyer's order, matching payouts to the bank,
-and spotting money Stripe held back. The 2026 Tickets risk reserve (peak €338,556.11 on 9 Jul, all released by
-20 Jul) was invisible in the last cycle because the Dashboard balance hides it.
+and spotting money Stripe held back. The 2026 Tickets risk reserve was invisible in the last cycle because the
+Dashboard balance hides it.
 
 ## Accounts and keys
 
