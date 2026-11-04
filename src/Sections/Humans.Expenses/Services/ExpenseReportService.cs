@@ -325,12 +325,16 @@ internal sealed class ExpenseReportService(
         {
             return (await userService.GetUserInfoAsync(userId, ct))?.BurnerName ?? userId.ToString();
         }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            logger.LogWarning("Audit display-name lookup cancelled for member {UserId}; using member ID", userId);
+        }
         catch (Exception ex)
         {
             // Name enrichment must not skip the audit or fail an edit that already committed.
-            logger.LogWarning(ex, "Could not resolve audit display name for member {UserId}", userId);
-            return userId.ToString();
+            logger.LogError(ex, "Could not resolve audit display name for member {UserId}; using member ID", userId);
         }
+        return userId.ToString();
     }
 
     /// <summary>
