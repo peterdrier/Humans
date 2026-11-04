@@ -4,6 +4,7 @@ using Humans.Expenses.Contracts;
 using Humans.Finance.Contracts;
 using Humans.Finance.Models;
 using Humans.Finance.Services;
+using Humans.Holded.Contracts;
 using Humans.Base.Authorization;
 using Humans.Base.Controllers;
 using Microsoft.AspNetCore.Authorization;
@@ -19,6 +20,7 @@ internal sealed class FinanceController(
     IUserService userService,
     IHoldedFinanceManagement holdedFinance,
     IHoldedFinanceAdminService holdedConnector,
+    IHoldedService holded,
     IExpenseReportService expenseReports,
     CashFlowService cashFlow,
     CreditorMatchService creditorMatches,
@@ -45,16 +47,13 @@ internal sealed class FinanceController(
         return RedirectToAction("Index", "BudgetAdmin");
     }
 
-    /// <summary>Cache reads only.</summary>
-    [HttpGet("Holded")]
-    public async Task<IActionResult> Holded(CancellationToken ct)
-        => View(await holdedConnector.GetConnectorOverviewAsync(ct));
-
     [HttpGet("HoldedAccounts")]
     public async Task<IActionResult> HoldedAccounts(int blockStart = 62900100)
     {
         var plan = await holdedConnector.GetProvisioningPlanAsync(blockStart, HttpContext.RequestAborted);
         ViewBag.BlockStart = blockStart;
+        ViewBag.ManagedAccounts = (await holdedConnector.GetManagedAccountsAsync(HttpContext.RequestAborted))
+            .OrderBy(m => m.AccountNumber).ToList();
         return View(plan);
     }
 
@@ -503,8 +502,10 @@ internal sealed class FinanceController(
     {
         try
         {
-            var r = await holdedFinance.SyncAsync();
-            SetSuccess($"Synced {r.DocCount} docs ({r.Matched} matched, {r.Unmatched} unmatched).");
+            if (await holded.SyncPurchaseDocumentsAsync(HttpContext.RequestAborted))
+                SetSuccess("Synced the purchase documents from Holded.");
+            else
+                SetInfo("A purchase-document sync was already running, so this one was skipped.");
         }
         catch (Exception ex)
         {

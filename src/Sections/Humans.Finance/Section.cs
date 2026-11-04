@@ -67,7 +67,6 @@ public sealed class Section :
         services.AddScoped<IHoldedFinanceAdminService>(sp => sp.GetRequiredService<Service>());
         services.AddScoped<ISepaBankBooking>(sp => sp.GetRequiredService<Service>());
         services.AddScoped<Jobs.SepaBankBookingJob>();
-        services.AddScoped<Jobs.HoldedDocSyncJob>();
         services.AddScoped<Jobs.ExpenseReconJob>();
         services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<Service>());
 
@@ -94,7 +93,8 @@ public sealed class Section :
             new("Creditors", "Finance", "Creditors", null, null, "fa-solid fa-users", FinancePolicies.Read),
             new("SEPA payouts", "Finance", "Sepa", null, null, "fa-solid fa-money-bill-transfer", FinancePolicies.Read),
             new("Expense recon", "Finance", "ExpenseRecon", null, null, "fa-solid fa-scale-balanced", FinancePolicies.Read),
-            new("Holded connector", "Finance", "Holded", null, null, "fa-solid fa-plug", FinancePolicies.Read)
+            new("Account map", "Finance", "HoldedAccounts", null, null, "fa-solid fa-diagram-project", FinancePolicies.Read),
+            new("Unmatched docs", "Finance", "HoldedUnmatched", null, null, "fa-solid fa-question", FinancePolicies.Read)
         ])
     ];
 
@@ -128,11 +128,7 @@ public sealed class Section :
         yield return new RecurringJobDescriptor(
             "sepa-bank-booking", typeof(SepaBankBookingJob), "17 */2 * * *");
 
-        // Ahead of Holded's 03:00 ledger sweep; the shared "holded-api" lock keeps them apart if this runs long.
-        yield return new RecurringJobDescriptor(
-            "holded-doc-sync", typeof(HoldedDocSyncJob), "45 2 * * *");
-
-        // After the doc sync (02:45) and Holded's ledger sweep (03:00), so both mirrors it reads are fresh.
+        // After Holded's nightly sync (03:00: purchase documents, then the ledger), so both mirrors it reads are fresh.
         yield return new RecurringJobDescriptor(
             "expense-recon", typeof(ExpenseReconJob), "30 3 * * *");
     }

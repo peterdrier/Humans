@@ -62,7 +62,7 @@ public class FinanceControllerTests
     }
 
     private FinanceController MakeController() =>
-        new(_users, _finance, _connector, _expenses,
+        new(_users, _finance, _connector, _holdedLedger, _expenses,
             new CashFlowService(_budget, Substitute.For<ITicketService>()),
             new CreditorMatchService(_holdedLedger, _expenses), NullLogger<FinanceController>.Instance)
         {
@@ -883,20 +883,6 @@ public class FinanceControllerTests
         UpdatedAt = approvedAt,
         Lines = [],
     };
-
-    [HumansFact]
-    public async Task Holded_RendersTheConnectorOverviewUnchanged()
-    {
-        // The action is dispatch only: the read model is the service's, and the page has no
-        // controller-side assembly to get wrong.
-        var vm = new HoldedConnectorVm(
-            new HoldedDocSyncVm(null, "Idle", null, 0, null, IsStale: true), 3, [], [], []);
-        _connector.GetConnectorOverviewAsync(Arg.Any<CancellationToken>()).Returns(vm);
-
-        var result = await MakeController().Holded(TestContext.Current.CancellationToken);
-
-        result.Should().BeOfType<ViewResult>().Subject.Model.Should().BeSameAs(vm);
-    }
 
     [HumansFact]
     public async Task Sepa_GroupsByFileNewestFirst_AndOrdersTransfersByAccount()

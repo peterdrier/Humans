@@ -66,8 +66,8 @@ If your email was imported from a mailing list, your account already exists and 
 
 Once you are signed in the app takes over and walks you through three steps at
 `/OnboardingWidget`: **Names → Shifts → Consents**. You never have to remember where you
-were — every step hands back to `/OnboardingWidget`, which works out what is still missing
-and sends you to it. Close the tab and come back a week later and you land on the same step.
+were — the flow moves you from step to step, and `/OnboardingWidget` always works out what
+is still missing and sends you to it. Close the tab and come back a week later and you land on the same step.
 
 **Names.** The very first thing the app asks for is your name. However you signed in, until
 you've set a burner name and your legal first and last name, the app sends you to a short
