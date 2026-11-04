@@ -88,8 +88,8 @@ internal sealed class MailerLiteAudienceSyncService(
             .Select(s => s.Id)
             .ToHashSet(StringComparer.Ordinal);
 
-        var toBulkImport = new List<string>();
-        var toAssign = new List<string>();
+        var toBulkImport = new Dictionary<string, string>(StringComparer.Ordinal);
+        var toAssign = new HashSet<string>(StringComparer.Ordinal);
         var keepSubscriberIds = new HashSet<string>(StringComparer.Ordinal);
         int excluded = 0, alreadyAssigned = 0;
 
@@ -98,7 +98,7 @@ internal sealed class MailerLiteAudienceSyncService(
             var norm = MailerLiteEmailNormalization.Normalize(email);
             if (!snapshot.ByEmail.TryGetValue(norm, out var sub))
             {
-                toBulkImport.Add(email);
+                toBulkImport.TryAdd(norm, email);
                 continue;
             }
             if (sub.IsSuppressed)
@@ -121,7 +121,7 @@ internal sealed class MailerLiteAudienceSyncService(
         {
             try
             {
-                var bulk = await ml.BulkImportSubscribersToGroupAsync(group.Id, toBulkImport, ct);
+                var bulk = await ml.BulkImportSubscribersToGroupAsync(group.Id, toBulkImport.Values.ToList(), ct);
                 created = bulk.Created;
                 errors += bulk.Errors;
             }

@@ -46,6 +46,42 @@ public class MailerLiteAudienceSyncServiceTests
             "g1", Arg.Any<IReadOnlyList<string>>(), Arg.Any<CancellationToken>());
     }
 
+    [HumansTheory]
+    [InlineData(false, "duplicate@example.com")]
+    [InlineData(false, " Duplicate@Example.com ")]
+    [InlineData(true, "duplicate@example.com")]
+    [InlineData(true, " Duplicate@Example.com ")]
+    public async Task SyncAsync_SharedDestination_WritesEachSubscriberOnce(bool existingSubscriber, string secondAddress)
+    {
+        var source = Guid.NewGuid();
+        var survivor = Guid.NewGuid();
+        var audience = NewAudience("a-aud", "Humans - A", [source, survivor]);
+        SetupEmails((source, "duplicate@example.com"), (survivor, secondAddress));
+        SetupGroups(Group("g1", "Humans - A"));
+        SetupSubscribers(existingSubscriber ? [Subscriber("s1", "duplicate@example.com", "active")] : []);
+        _ml.BulkImportSubscribersToGroupAsync("g1", Arg.Any<IReadOnlyList<string>>(), Arg.Any<CancellationToken>())
+            .Returns(new BulkImportResult(1, 0, 0, 0));
+
+        var result = await NewService(audience).SyncAsync(audience, ct: TestContext.Current.CancellationToken);
+
+        result.Candidates.Should().Be(2);
+        result.Errors.Should().Be(0);
+        if (existingSubscriber)
+        {
+            result.Assigned.Should().Be(1);
+            await _ml.Received(1).AssignSubscriberToGroupAsync("s1", "g1", Arg.Any<CancellationToken>());
+            await _ml.DidNotReceiveWithAnyArgs().BulkImportSubscribersToGroupAsync(default!, default!);
+        }
+        else
+        {
+            result.Created.Should().Be(1);
+            await _ml.Received(1).BulkImportSubscribersToGroupAsync("g1",
+                Arg.Is<IReadOnlyList<string>>(addresses => addresses.Count == 1 && addresses[0] == "duplicate@example.com"),
+                Arg.Any<CancellationToken>());
+            await _ml.DidNotReceiveWithAnyArgs().AssignSubscriberToGroupAsync(default!, default!);
+        }
+    }
+
     // The invariant names three suppressed statuses, so all three are exercised here:
     // testing only "unsubscribed" left bounced/junk pinned nowhere on the apply path.
     [HumansTheory]
@@ -147,8 +183,9 @@ public class MailerLiteAudienceSyncServiceTests
     {
         var userA = Guid.NewGuid();
         var userB = Guid.NewGuid();
-        var audience = NewAudience("a-aud", "Humans - A", [userA, userB]);
-        SetupEmails((userA, "a@example.com"), (userB, "b@example.com"));
+        var alias = Guid.NewGuid();
+        var audience = NewAudience("a-aud", "Humans - A", [userA, userB, alias]);
+        SetupEmails((userA, "a@example.com"), (userB, "b@example.com"), (alias, "A@example.com"));
         SetupGroups(Group("g1", "Humans - A"));
         SetupSubscribers(
             Subscriber("s1", "a@example.com", "active"),
@@ -159,6 +196,7 @@ public class MailerLiteAudienceSyncServiceTests
         var result = await NewService(audience).SyncAsync(audience, ct: TestContext.Current.CancellationToken);
 
         result.Errors.Should().Be(1);
+        await _ml.Received(1).AssignSubscriberToGroupAsync("s1", "g1", Arg.Any<CancellationToken>());
         result.Assigned.Should().Be(1); // s2 still succeeded
     }
 
