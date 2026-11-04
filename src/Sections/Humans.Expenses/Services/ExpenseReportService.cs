@@ -1562,7 +1562,7 @@ internal sealed class ExpenseReportService(
         // The option list said this account is a budget category, so the map row exists; the
         // category behind it may still be gone or belong to another year.
         var mapRow = (await finance.GetCategoryMapAsync(ct))
-            .FirstOrDefault(m => m.IsActive && m.HoldedAccountNumber == holdedAccountNumber);
+            .FirstOrDefault(m => m.HoldedAccountNumber == holdedAccountNumber);
         if (mapRow is null)
             return (null, ExpenseMutationResult.Failure("Expenses_Validation_CategoryNotFound"));
 

@@ -550,7 +550,7 @@ public class BackdoorFinanceControllerTests
         SetFinanceAdmin(true);
         var categoryId = Guid.NewGuid();
         _finance.GetCategoryMapAsync(Arg.Any<CancellationToken>()).Returns([
-            new CategoryAccountRow(categoryId, "Staff", "Operations", 62900101, "acc-1", "staff", true,
+            new CategoryAccountRow(categoryId, "Staff", "Operations", 62900101, "acc-1", "staff",
                 Instant.FromUtc(2026, 6, 1, 0, 0)),
         ]);
 
@@ -561,7 +561,6 @@ public class BackdoorFinanceControllerTests
         json.Should().Contain(@"""groupName"":""Operations""");
         json.Should().Contain(@"""updatedAt"":""2026-06-01T00:00:00Z""");
         json.Should().Contain(@"""holdedAccountNumber"":62900101");
-        json.Should().Contain(@"""isActive"":true");
     }
 
     [HumansFact]
@@ -772,7 +771,7 @@ public class BackdoorFinanceControllerTests
             ],
             new CreditorContactInfo(Tainted, Tainted, Tainted, Tainted, Tainted, CompactIban, Tainted, Tainted)));
         _finance.GetCategoryMapAsync(Arg.Any<CancellationToken>()).Returns([
-            new CategoryAccountRow(Guid.NewGuid(), Tainted, Tainted, 62900101, Tainted, Tainted, true,
+            new CategoryAccountRow(Guid.NewGuid(), Tainted, Tainted, 62900101, Tainted, Tainted,
                 Instant.FromUtc(2026, 6, 1, 0, 0)),
         ]);
         _finance.GetSepaTransfersAsync(Arg.Any<CancellationToken>()).Returns((

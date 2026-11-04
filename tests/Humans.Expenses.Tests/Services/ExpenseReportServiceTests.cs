@@ -4207,7 +4207,7 @@ public sealed partial class ExpenseReportServiceTests
             .ToList();
         _finance.ListExpenseAccountsAsync(Arg.Any<bool>(), Arg.Any<CancellationToken>()).Returns(options);
         _finance.GetCategoryMapAsync(Arg.Any<CancellationToken>()).Returns(categoryAccounts
-            .Select(a => new CategoryAccountRow(a.CategoryId, null, null, a.AccountNumber, a.AccountId, $"tag-{a.AccountNumber}", true, FakeNow))
+            .Select(a => new CategoryAccountRow(a.CategoryId, null, null, a.AccountNumber, a.AccountId, $"tag-{a.AccountNumber}", FakeNow))
             .ToList());
     }
 

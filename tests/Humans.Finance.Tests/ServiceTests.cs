@@ -102,7 +102,7 @@ public class HoldedFinanceServiceTests
             new()
             {
                 Id = Guid.NewGuid(), BudgetCategoryId = category, HoldedAccountNumber = 6290001,
-                HoldedAccountId = "acc-1", Tag = "comms", IsActive = true, CreatedAt = FixedNow, UpdatedAt = FixedNow,
+                HoldedAccountId = "acc-1", Tag = "comms", CreatedAt = FixedNow, UpdatedAt = FixedNow,
             },
         });
 
@@ -319,7 +319,7 @@ public class HoldedFinanceServiceTests
                 {
                     Id = Guid.NewGuid(), BudgetCategoryId = catIdA,
                     HoldedAccountNumber = 6290001, HoldedAccountId = "acc-1",
-                    Tag = "operationsstaff", IsActive = true,
+                    Tag = "operationsstaff",
                     CreatedAt = FixedNow, UpdatedAt = FixedNow,
                 }
             });
@@ -1733,7 +1733,7 @@ public class HoldedFinanceServiceTests
                 {
                     Id = Guid.NewGuid(), BudgetCategoryId = mappedCat,
                     HoldedAccountNumber = 6290001, HoldedAccountId = "acc-1",
-                    Tag = "operationsstaff", IsActive = true,
+                    Tag = "operationsstaff",
                     CreatedAt = FixedNow, UpdatedAt = FixedNow,
                 }
             });
@@ -1767,7 +1767,6 @@ public class HoldedFinanceServiceTests
         row.BudgetCategoryId.Should().Be(catA);          // "Alpha" sorts first
         row.HoldedAccountNumber.Should().Be(6290010);
         row.HoldedAccountId.Should().Be("acc-6290010");
-        row.IsActive.Should().BeTrue();
         row.Tag.Should().NotBeNullOrEmpty();
         catB.Should().NotBe(catA);
         await _audit.Received(1).LogAsync(FinanceAuditActions.HoldedCategoryAccountProvisioned, Arg.Any<string>(), catA,
@@ -1924,10 +1923,10 @@ public class HoldedFinanceServiceTests
     }
 
     [HumansFact]
-    public async Task GetHoldedAccountIdForCategory_UsesTheActiveMapping_AndIgnoresAnArchivedOne()
+    public async Task GetHoldedAccountIdForCategory_UsesTheCategorysMapping()
     {
-        // Expenses calls this to book a purchase line straight onto the category's account. An
-        // archived row for the same category must never win, and an unmapped category yields null.
+        // Expenses calls this to book a purchase line straight onto the category's account; an
+        // unmapped category yields null.
         var mapped = Guid.NewGuid();
         var unmapped = Guid.NewGuid();
         _repo.GetCategoryMapAsync(Arg.Any<CancellationToken>()).ReturnsForAnyArgs(
@@ -1935,14 +1934,8 @@ public class HoldedFinanceServiceTests
             {
                 new()
                 {
-                    Id = Guid.NewGuid(), BudgetCategoryId = mapped, HoldedAccountNumber = 6290001,
-                    HoldedAccountId = "acc-old", Tag = "a", IsActive = false,
-                    CreatedAt = FixedNow, UpdatedAt = FixedNow,
-                },
-                new()
-                {
                     Id = Guid.NewGuid(), BudgetCategoryId = mapped, HoldedAccountNumber = 6290002,
-                    HoldedAccountId = "acc-live", Tag = "b", IsActive = true,
+                    HoldedAccountId = "acc-live", Tag = "b",
                     CreatedAt = FixedNow, UpdatedAt = FixedNow,
                 },
             });
@@ -2227,7 +2220,7 @@ public class HoldedFinanceServiceTests
         ActiveYearWith((live, "Staff"));
         _repo.GetCategoryMapAsync(Arg.Any<CancellationToken>()).Returns(
         [
-            new() { BudgetCategoryId = live, HoldedAccountNumber = 62900101, Tag = "staff", IsActive = true },
+            new() { BudgetCategoryId = live, HoldedAccountNumber = 62900101, Tag = "staff" },
         ]);
 
         var rows = await MakeService().GetCategoryMapAsync(TestContext.Current.CancellationToken);
@@ -2237,7 +2230,6 @@ public class HoldedFinanceServiceTests
         row.CategoryName.Should().Be("Staff");
         row.GroupName.Should().Be("Operations");
         row.HoldedAccountNumber.Should().Be(62900101);
-        row.IsActive.Should().BeTrue();
     }
 
     private const string AnaIban = "ES7921000813610123456789";
