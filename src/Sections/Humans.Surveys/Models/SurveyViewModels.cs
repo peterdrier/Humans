@@ -151,7 +151,9 @@ internal sealed class SurveyBuilderViewModel
     public Dictionary<string, string> InvitationEmailMessage { get; set; } = new(StringComparer.Ordinal);
 
     public string DefaultCulture { get; set; } = CultureCatalog.DefaultCultureCode;
+    [BindRequired]
     public bool AllowAnonymous { get; set; }
+    [BindRequired]
     public bool IsAsociadoVote { get; set; }
     public LocalDateTime? OpensAt { get; set; }
     public LocalDateTime? ClosesAt { get; set; }

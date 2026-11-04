@@ -337,6 +337,7 @@ internal sealed class SurveyAdminController(
 
         if (!ModelState.IsValid)
         {
+            logger.LogWarning("Rejected invalid survey builder form for user {UserId}, survey {SurveyId}", actor.Id, model.Id);
             await PrepareBuilderForRenderAsync(model, ct);
             return View("Builder", model);
         }
