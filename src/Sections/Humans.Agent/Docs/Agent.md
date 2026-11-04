@@ -105,7 +105,9 @@ Conversation list and transcript GETs propagate request cancellation through vie
    note. EOF without a finalizer is an interruption; a received finalizer protects the
    completed reply from subsequent transport failures. Provider EOF without a finalizer
    also ends the turn with an error, preserving partial prose and usage from completed
-   requests. Stop reasons are scoped to each provider request; incomplete requests never
+   requests. Both provider error finalizers and missing-finalizer interruptions mark that
+   same assistant row with `RefusalReason = "error"`, so admin refusal filters include it
+   without adding a second failure row. Stop reasons are scoped to each provider request; incomplete requests never
    dispatch their pending tools using a previous request's stop reason.
 7. **Append-only conversations per user.** A user can only post to conversations they own. `AgentService.AskAsync` checks ownership before anything else, and `AgentController.Ask` answers a foreign conversation id with 403 before the stream opens. Reading someone else's transcript at `/Agent/Conversation/{id}` stays 404, so a read never confirms the id exists.
 8. **Issue handoff is propose-only.** `route_to_issue` carries `{title, category, description}`. The dispatcher never writes a row server-side; the SSE stream emits an `issueProposal` token and the client opens the Issues submission modal pre-filled. The user reviews and submits via `POST /Issues`.

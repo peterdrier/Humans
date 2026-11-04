@@ -822,9 +822,11 @@ public class AgentServiceTests
     }
 
     [HumansTheory]
-    [Xunit.InlineData(false)]
-    [Xunit.InlineData(true)]
-    public async Task Ask_marks_provider_eof_without_a_finalizer_as_an_error(bool afterToolIteration)
+    [Xunit.InlineData(false, false)]
+    [Xunit.InlineData(true, false)]
+    [Xunit.InlineData(false, true)]
+    [Xunit.InlineData(true, true)]
+    public async Task Ask_marks_provider_interruption_as_an_error_in_frames_and_transcripts(bool afterToolIteration, bool hasErrorFinalizer)
     {
         var userId = Guid.NewGuid();
         var dispatcher = Substitute.For<IAgentToolDispatcher>();
@@ -840,9 +842,14 @@ public class AgentServiceTests
                 new AgentTurnToken(null, new AnthropicToolCall("complete", "fetch_section_guide", """{"section":"teams"}"""), null),
                 new AgentTurnToken(null, null, new AgentTurnFinalizer(100, 20, 5, 3, "claude-sonnet-4-6", "tool_use")));
         }
-        client.EnqueueTurn(
-            new AgentTurnToken("Partial answer", null, null),
-            new AgentTurnToken(null, new AnthropicToolCall("interrupted", "fetch_section_guide", """{"section":"camps"}"""), null));
+        var interrupted = new List<AgentTurnToken>
+        {
+            new("Partial answer", null, null),
+            new(null, new AnthropicToolCall("interrupted", "fetch_section_guide", """{"section":"camps"}"""), null)
+        };
+        if (hasErrorFinalizer)
+            interrupted.Add(new AgentTurnToken(null, null, new AgentTurnFinalizer(0, 0, 0, 0, "claude-sonnet-4-6", "error")));
+        client.EnqueueTurn(interrupted.ToArray());
 
         var tokens = new List<AgentTurnToken>();
         await foreach (var token in service.AskAsync(new AgentTurnRequest(
@@ -864,12 +871,16 @@ public class AgentServiceTests
             userId, finalizer.ConversationId, Xunit.TestContext.Current.CancellationToken);
         var assistant = transcript!.Messages.Should().ContainSingle(message => message.Role == AgentRole.Assistant).Subject;
         assistant.Content.Should().Be("Partial answer");
+        assistant.RefusalReason.Should().Be("error");
+        var refusals = await service.ListAllConversationsForAdminAsync(
+            refusalsOnly: true, userId, take: 25, skip: 0, Xunit.TestContext.Current.CancellationToken);
+        refusals.Should().ContainSingle(row => row.Id == finalizer.ConversationId);
         assistant.PromptTokens.Should().Be(finalizer.InputTokens + finalizer.CacheCreationTokens);
         assistant.OutputTokens.Should().Be(finalizer.OutputTokens);
         var usage = store.Get(userId, new LocalDate(2026, 4, 21), hour: 12);
         usage.MessagesToday.Should().Be(1);
         usage.TokensToday.Should().Be(afterToolIteration ? 123 : 0);
-        logger.Received(1).Log(LogLevel.Error, Arg.Any<EventId>(), Arg.Any<object>(),
+        logger.Received(hasErrorFinalizer ? 0 : 1).Log(LogLevel.Error, Arg.Any<EventId>(), Arg.Any<object>(),
             Arg.Any<Exception?>(), Arg.Any<Func<object, Exception?, string>>());
     }
 
