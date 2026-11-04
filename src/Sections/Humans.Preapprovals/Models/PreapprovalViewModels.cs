@@ -97,7 +97,7 @@ internal sealed class ProgramFormViewModel
     public List<Guid> ManagerUserIds { get; set; } = [];
 
     /// <summary>Set by the controller for rendering; never posted.</summary>
-    public IReadOnlyList<HoldedExpenseAccountOption> Accounts { get; set; } = [];
+    public IReadOnlyList<ExpenseAccountOption> Accounts { get; set; } = [];
     public bool KindLocked { get; set; }
 
     public ProgramSave ToSave() => new(

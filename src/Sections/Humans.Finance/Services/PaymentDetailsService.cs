@@ -12,7 +12,7 @@ internal sealed class PaymentDetailsService(
     IPaymentDetailsRepository repo,
     IUserService users,
     IAuditLogService audit,
-    IClock clock) : IPaymentDetailsManagement, IFinanceWrite, IUserDataContributor, IUserMerge
+    IClock clock) : IPaymentDetailsManagement, IUserDataContributor, IUserMerge
 {
     internal const string PaymentDetailsSlice = "PaymentDetails";
 

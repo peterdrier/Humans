@@ -65,7 +65,7 @@ internal sealed class SepaBankBooking(
     private const string PendingStatus = "pending";
 
     /// <summary>The bank can value-date a day early, and the feed's dates are Madrid days.</summary>
-    private const int GenerationSlackDays = IHoldedFinanceAdminService.DefaultSepaMatchToleranceDays;
+    private const int GenerationSlackDays = IFinanceAdminService.DefaultSepaMatchToleranceDays;
 
     /// <summary>Matched anywhere in the line, not anchored: bank feeds prepend their own wording.</summary>
     private static readonly Regex RemittanceAccount = new(
@@ -78,7 +78,7 @@ internal sealed class SepaBankBooking(
 
     public async Task<(IReadOnlyList<SepaPayoutTransferRow> Rows, string? UnavailableReason,
         IReadOnlyList<SepaBankMovementVm> UnmatchedMovements, string? BankFeedError)>
-        GetSepaPayoutsAsync(int toleranceDays = IHoldedFinanceAdminService.DefaultSepaMatchToleranceDays,
+        GetSepaPayoutsAsync(int toleranceDays = IFinanceAdminService.DefaultSepaMatchToleranceDays,
             CancellationToken ct = default)
     {
         var tolerance = ClampTolerance(toleranceDays);
@@ -427,18 +427,18 @@ internal sealed class SepaBankBooking(
 
     public Task<SepaBookingResult> BookSepaTransferAsync(
         Guid transferId, string bankMovementId, Guid? actorUserId,
-        int toleranceDays = IHoldedFinanceAdminService.DefaultSepaMatchToleranceDays) =>
+        int toleranceDays = IFinanceAdminService.DefaultSepaMatchToleranceDays) =>
         RunBookingAsync(() => BookOneTransferAsync(
             transferId, bankMovementId, actorUserId, ClampTolerance(toleranceDays)));
 
     public Task<SepaBookingResult> BookSepaFileAsync(
         Guid fileId, string bankMovementId, Guid actorUserId,
-        int toleranceDays = IHoldedFinanceAdminService.DefaultSepaMatchToleranceDays) =>
+        int toleranceDays = IFinanceAdminService.DefaultSepaMatchToleranceDays) =>
         RunBookingAsync(() => BookOneFileAsync(fileId, bankMovementId, actorUserId, ClampTolerance(toleranceDays)));
 
     public Task<SepaBookingResult> BookSepaFileMatchesAsync(
         Guid fileId, Guid actorUserId,
-        int toleranceDays = IHoldedFinanceAdminService.DefaultSepaMatchToleranceDays) =>
+        int toleranceDays = IFinanceAdminService.DefaultSepaMatchToleranceDays) =>
         RunBookingAsync(() => BookFileMatchesAsync(fileId, actorUserId, ClampTolerance(toleranceDays)));
 
     /// <summary>Never negative, never past the feed window: beyond it there is no line to match.</summary>

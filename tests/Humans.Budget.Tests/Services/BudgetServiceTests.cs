@@ -724,7 +724,7 @@ public sealed class BudgetServiceTests
         };
         var controller = new BudgetAdminController(budgetOverride ?? budget, _teamService,
             new TicketingBudgetService(tickets, budgetOverride ?? budget, Clock, NullLogger<TicketingBudgetService>.Instance),
-            Clock, users, Substitute.For<IHoldedFinanceService>(),
+            Clock, users, Substitute.For<IFinanceService>(),
             NullLogger<BudgetAdminController>.Instance)
         {
             ControllerContext = new ControllerContext { HttpContext = http },

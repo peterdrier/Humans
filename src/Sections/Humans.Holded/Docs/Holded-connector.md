@@ -137,5 +137,5 @@ this section's connector types directly — each section names its own concrete 
 `ISectionJobs` and registers that job's DI, and Shell schedules whatever the sections yield.
 
 **GDPR** — the connector owns no per-user data. Finance's own `Service` (exposed as
-`IHoldedFinanceService` / `IHoldedFinanceWrite`) is the `IUserDataContributor` that exports the member's
+`IFinanceService` / `IFinanceWrite`) is the `IUserDataContributor` that exports the member's
 `holded_creditor_contacts` binding.

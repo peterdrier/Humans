@@ -17,8 +17,8 @@ internal sealed class ExpenseHoldedPublisher(
     IFileStorage fileStorage,
     IUserService userService,
     IHoldedClient holdedClient,
-    IHoldedFinanceService holdedFinance,
-    IHoldedFinanceWrite holdedFinanceWrite,
+    IFinanceService finance,
+    IFinanceWrite financeWrite,
     IAuditLogService auditLogService,
     ILogger logger) : IApplicationService
 {
@@ -54,7 +54,7 @@ internal sealed class ExpenseHoldedPublisher(
             seedAccountNum = priorLinked?.HoldedSupplierAccountNum;
         }
 
-        var holdedContactId = await holdedFinanceWrite.EnsureCreditorContactAsync(
+        var holdedContactId = await financeWrite.EnsureCreditorContactAsync(
             creditorUserId, report.PayeeName, burnerName, report.PayeeIban,
             seedContactId, seedAccountNum, ExpenseReportBackgroundProcessor.OutboxJobName, ct);
 
@@ -65,7 +65,7 @@ internal sealed class ExpenseHoldedPublisher(
         // and the doc still creates, just unbooked.
         var holdedAccountId = report.HoldedAccountId
             ?? (report.BudgetCategoryId is { } categoryId
-                ? await holdedFinance.GetHoldedAccountIdForCategoryAsync(categoryId, ct)
+                ? await finance.GetHoldedAccountIdForCategoryAsync(categoryId, ct)
                 : null);
 
         // 2–4. One purchase doc per bookable line. A report pushed before per-line docs resumes onto its single doc
@@ -107,7 +107,7 @@ internal sealed class ExpenseHoldedPublisher(
         }
         await repo.SetHoldedContactLinkAsync(report.Id, holdedContactId, supplierAccountNum, now, ct);
         if (supplierAccountNum is not null)
-            await holdedFinanceWrite.SetCreditorAccountNumAsync(
+            await financeWrite.SetCreditorAccountNumAsync(
                 creditorUserId, supplierAccountNum.Value, ExpenseReportBackgroundProcessor.OutboxJobName, ct);
 
         await repo.MarkOutboxProcessedAsync(outboxEventId, now, ct);

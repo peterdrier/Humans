@@ -20,7 +20,7 @@ namespace Humans.Preapprovals.Services;
 internal sealed partial class PreapprovalService(
     IPreapprovalRepository repository,
     IUserService users,
-    IHoldedFinanceService finance,
+    IFinanceService finance,
     INotificationEmitter notifications,
     INotificationAutoResolve notificationResolve,
     IEmailService email,

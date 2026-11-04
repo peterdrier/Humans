@@ -47,7 +47,7 @@ public class HoldedDuplicateTests
         Substitute.For<IEmailService>(), TestFinanceEmails.Create(),
         Options.Create(new SepaOptions()),
         new TrackedCache<string, Dictionary<string, int>>("Finance.SepaStuckBankLines", warmOnStartup: false, NullLogger<Service>.Instance),
-        logger ?? NullLogger<Service>.Instance);
+        Substitute.For<IPaymentDetailsManagement>(), logger ?? NullLogger<Service>.Instance);
 
     public HoldedDuplicateTests()
     {
