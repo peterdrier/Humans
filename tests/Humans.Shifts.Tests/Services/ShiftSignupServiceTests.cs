@@ -458,6 +458,8 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
         result.Success.Should().BeTrue();
         Saved(result).Status.Should().Be(SignupStatus.Pending);
         Saved(result).ReviewedByUserId.Should().BeNull();
+        Saved(result).ReviewedAt.Should().BeNull();
+        Saved(result).SignupBlockId.Should().BeNull();
     }
 
     [HumansFact]
@@ -1067,6 +1069,9 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
         Saved(result).Enrolled.Should().BeTrue();
         Saved(result).EnrolledByUserId.Should().Be(enrollerId);
         Saved(result).ReviewedByUserId.Should().Be(enrollerId);
+        Saved(result).ReviewedAt.Should().Be(Saved(result).CreatedAt);
+        Saved(result).UpdatedAt.Should().Be(Saved(result).CreatedAt);
+        Saved(result).SignupBlockId.Should().BeNull();
     }
 
     [HumansTheory]

@@ -104,21 +104,7 @@ internal sealed class ShiftSignupService(
         // Public rotas auto-confirm whatever the admission or consent status; only RequireApproval parks as Pending.
         var autoConfirm = shift.Rota.Policy == SignupPolicy.Public || canApprove;
 
-        var signup = new ShiftSignup
-        {
-            Id = Guid.NewGuid(),
-            UserId = userId,
-            ShiftId = shiftId,
-            Status = autoConfirm ? SignupStatus.Confirmed : SignupStatus.Pending,
-            CreatedAt = now,
-            UpdatedAt = now
-        };
-
-        if (autoConfirm)
-        {
-            signup.ReviewedByUserId = actorUserId ?? userId;
-            signup.ReviewedAt = now;
-        }
+        var signup = NewSignup(userId, shiftId, actorUserId, now, autoConfirm);
 
         repo.AddRange([signup]);
 
@@ -299,19 +285,9 @@ internal sealed class ShiftSignupService(
         if (overlapWarning is not null)
             return SignupResult.Fail(overlapWarning);
 
-        var signup = new ShiftSignup
-        {
-            Id = Guid.NewGuid(),
-            UserId = userId,
-            ShiftId = shiftId,
-            Status = SignupStatus.Confirmed,
-            Enrolled = true,
-            EnrolledByUserId = enrollerUserId,
-            ReviewedByUserId = enrollerUserId,
-            ReviewedAt = now,
-            CreatedAt = now,
-            UpdatedAt = now
-        };
+        var signup = NewSignup(userId, shiftId, enrollerUserId, now, autoConfirm: true);
+        signup.Enrolled = true;
+        signup.EnrolledByUserId = enrollerUserId;
 
         repo.AddRange([signup]);
 
@@ -402,20 +378,9 @@ internal sealed class ShiftSignupService(
         var voluntoldForAudit = new List<(ShiftSignup Signup, int DayOffset)>();
         foreach (var shift in assignable)
         {
-            var signup = new ShiftSignup
-            {
-                Id = Guid.NewGuid(),
-                UserId = userId,
-                ShiftId = shift.Id,
-                SignupBlockId = blockId,
-                Status = SignupStatus.Confirmed,
-                Enrolled = true,
-                EnrolledByUserId = enrollerUserId,
-                ReviewedByUserId = enrollerUserId,
-                ReviewedAt = now,
-                CreatedAt = now,
-                UpdatedAt = now
-            };
+            var signup = NewSignup(userId, shift.Id, enrollerUserId, now, autoConfirm: true, blockId: blockId);
+            signup.Enrolled = true;
+            signup.EnrolledByUserId = enrollerUserId;
 
             repo.AddRange([signup]);
             firstSignup ??= signup;
@@ -660,6 +625,20 @@ internal sealed class ShiftSignupService(
             ? Task.FromResult(true)
             : shiftMgmt.CanApproveSignupsAsync(userId, teamId);
 
+    private static ShiftSignup NewSignup(
+        Guid userId, Guid shiftId, Guid? actorUserId, Instant now, bool autoConfirm, Guid? blockId = null) => new()
+    {
+        Id = Guid.NewGuid(),
+        UserId = userId,
+        ShiftId = shiftId,
+        SignupBlockId = blockId,
+        Status = autoConfirm ? SignupStatus.Confirmed : SignupStatus.Pending,
+        ReviewedByUserId = autoConfirm ? actorUserId ?? userId : null,
+        ReviewedAt = autoConfirm ? now : null,
+        CreatedAt = now,
+        UpdatedAt = now
+    };
+
     private RangeSignupCreation StageRangeSignups(
         Guid userId,
         Guid? actorUserId,
@@ -672,22 +651,7 @@ internal sealed class ShiftSignupService(
         var rangeSignupsForAudit = new List<(ShiftSignup Signup, int DayOffset)>();
         foreach (var shift in availableShifts)
         {
-            var signup = new ShiftSignup
-            {
-                Id = Guid.NewGuid(),
-                UserId = userId,
-                ShiftId = shift.Id,
-                SignupBlockId = blockId,
-                Status = autoConfirm ? SignupStatus.Confirmed : SignupStatus.Pending,
-                CreatedAt = now,
-                UpdatedAt = now
-            };
-
-            if (autoConfirm)
-            {
-                signup.ReviewedByUserId = actorUserId ?? userId;
-                signup.ReviewedAt = now;
-            }
+            var signup = NewSignup(userId, shift.Id, actorUserId, now, autoConfirm, blockId);
 
             repo.AddRange([signup]);
             lastSignup = signup;
