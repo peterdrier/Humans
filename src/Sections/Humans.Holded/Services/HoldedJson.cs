@@ -67,7 +67,7 @@ internal static class HoldedJson
             : ReadDecimalV2(node);
 
     /// <summary>Humans books in euros and reads every amount as one, so a document in another currency is logged
-    /// (peterdrier/Humans#2040) and read unchanged. An absent currency is EUR and passes silently.</summary>
+    /// and read unchanged. An absent currency is EUR and passes silently.</summary>
     internal static void WarnIfNotEuro(ILogger logger, JsonNode? document, string kind)
     {
         if (Prop(document, "currency") is not JsonValue value || !value.TryGetValue<string>(out var currency)
