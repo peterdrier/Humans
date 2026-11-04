@@ -278,7 +278,7 @@ The Consent Coordinator review queue (`GET /Consent/ReviewQueue`, `POST /Consent
 - Consent deadline audiences use `GetUsersRequiringStatusUpdateAsync`: a zero horizon selects active-role holders already due, while reminder callers supply their look-ahead horizon. Both use the same deadline calculation.
 
 - Membership snapshots and required-team reads resolve merged IDs to the survivor before querying
-  memberships or consent requirements. Snapshot memoization uses that same resolved identity. A snapshot reuses its initial `UserInfo` for status and its canonical ID for required-team reads, rather than resolving the account again in nested public methods; direct status and required-team callers still resolve their own identity.
+  memberships or consent requirements. Snapshot memoization uses that same resolved identity. A snapshot reuses its initial `UserInfo` for status and its canonical ID for required-team reads, rather than resolving the account again in nested public methods; direct status and required-team callers still resolve their own identity. The snapshot's status and `IsVolunteerMember` flag share one Volunteers membership read. Standalone status calculation still skips that read when the account state already determines its status.
 
 Approval and rejection share the same ordered eligibility check (application exists, is Submitted, and has at least one Board vote) before either decision mutates it. They also share one committed-decision path: capture Board ids, finalize the application and delete votes, invalidate the badges, then audit the reviewer and record processing metrics. Approval alone changes the membership tier and syncs the system team.
 

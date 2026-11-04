@@ -33,7 +33,10 @@ internal sealed class MembershipCalculator(
         return await ComputeStatusAsync(info, cancellationToken);
     }
 
-    private async Task<MembershipStatus> ComputeStatusAsync(UserInfo? info, CancellationToken cancellationToken)
+    private async Task<MembershipStatus> ComputeStatusAsync(
+        UserInfo? info,
+        CancellationToken cancellationToken,
+        bool? volunteerMembership = null)
     {
         if (info?.Profile is null)
         {
@@ -53,7 +56,7 @@ internal sealed class MembershipCalculator(
         // Active = has role assignments OR is a Volunteers-team member.
         var userId = info.Id; // roles and memberships were re-pointed to the survivor on merge
         var hasActiveRoles = await HasActiveRolesAsync(userId, cancellationToken);
-        var isVolunteerMember = await membershipQuery.IsUserMemberOfTeamAsync(
+        var isVolunteerMember = volunteerMembership ?? await membershipQuery.IsUserMemberOfTeamAsync(
             SystemTeamIds.Volunteers, userId, cancellationToken);
 
         if (!hasActiveRoles && !isVolunteerMember)
@@ -82,7 +85,9 @@ internal sealed class MembershipCalculator(
             return memoized;
         }
 
-        var status = await ComputeStatusAsync(info, cancellationToken);
+        var isVolunteerMember = await membershipQuery.IsUserMemberOfTeamAsync(
+            SystemTeamIds.Volunteers, userId, cancellationToken);
+        var status = await ComputeStatusAsync(info, cancellationToken, isVolunteerMember);
 
         var eligibleTeamIds = await GetRequiredTeamIdsForResolvedUserAsync(userId, cancellationToken);
         var allRequiredVersionIds = new List<Guid>();
@@ -99,9 +104,6 @@ internal sealed class MembershipCalculator(
         var missingVersionIds = requiredVersionIds
             .Where(id => !consentedVersionIds.Contains(id))
             .ToList();
-
-        var isVolunteerMember = await membershipQuery.IsUserMemberOfTeamAsync(
-            SystemTeamIds.Volunteers, userId, cancellationToken);
 
         var snapshot = new MembershipSnapshot(
             status,

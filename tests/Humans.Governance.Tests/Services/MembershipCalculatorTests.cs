@@ -165,15 +165,18 @@ public class MembershipCalculatorTests
         result.Should().Be(expected);
     }
 
-    [HumansFact]
-    public async Task GetMembershipSnapshotAsync_ReturnsConsolidatedState()
+    [HumansTheory]
+    [Xunit.InlineData(true)]
+    [Xunit.InlineData(false)]
+    public async Task GetMembershipSnapshotAsync_ReturnsConsolidatedState(bool isVolunteerMember)
     {
         var userId = Guid.NewGuid();
         var versionId = Guid.NewGuid();
 
         SeedProfile(userId, isApproved: true, isSuspended: false);
-        SeedActiveRole(userId);
         SeedVolunteersTeamMember(userId);
+        _membershipQuery.IsUserMemberOfTeamAsync(SystemTeamIds.Volunteers, userId, Arg.Any<CancellationToken>())
+            .Returns(isVolunteerMember, !isVolunteerMember);
 
         SeedRequiredVersion(SystemTeamIds.Volunteers, versionId, gracePeriodDays: 0,
             effectiveFrom: _clock.GetCurrentInstant() - Duration.FromDays(1));
@@ -183,8 +186,8 @@ public class MembershipCalculatorTests
         snapshot.RequiredConsentCount.Should().Be(1);
         snapshot.PendingConsentCount.Should().Be(1);
         snapshot.MissingConsentVersionIds.Should().ContainSingle().Which.Should().Be(versionId);
-        snapshot.IsVolunteerMember.Should().BeTrue();
-        snapshot.Status.Should().Be(MembershipStatus.Inactive);
+        snapshot.IsVolunteerMember.Should().Be(isVolunteerMember);
+        snapshot.Status.Should().Be(isVolunteerMember ? MembershipStatus.Inactive : MembershipStatus.None);
     }
 
     [HumansTheory]
