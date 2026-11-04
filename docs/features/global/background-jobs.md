@@ -38,6 +38,7 @@ Several system operations need to run automatically without user interaction: sy
 | DriveActivityMonitorJob | Hourly | Check Drive Activity API for anomalous permission changes |
 | HoldedExpenseOutboxJob | Every 5 minutes | Drain the Holded expense outbox: push approved expense reports to Holded as purchase documents |
 | HoldedSyncJob | Daily 3:00 AM | `holded-sync` (Holded): the full purchase-document pull (the mirror Finance attributes to budget categories), then a trailing 45-day sweep of the full daybook ledger — every account, not just creditors — followed by per-account reconciliation (full-history backfill only on a cold cache or via the on-demand `POST /Holded/FullSync`) |
+| PleoSyncJob | Daily 3:15 AM | `pleo-sync` (Pleo): full sweep of Pleo entries, chart, cardholders and balance into the mirror; skips with an info log when `PLEO_API_KEY`/`PLEO_COMPANY_ID` are unset |
 | ExpenseReconJob | Daily 3:30 AM | `expense-recon` (Finance): after the doc sync and the ledger sweep, recompute the expense-report vs Holded reconciliation report from the local mirrors and log its problem and warning totals (the report itself is `/Finance/ExpenseRecon`) |
 | GateRetentionJob | Daily 3:45 AM | Purge `gate_scan_events` older than `Gate:RetentionDays` (default 365; ≤ 0 disables the purge) |
 | GateVendorCheckInJob | On demand (enqueued) | Best-effort mirror of a gate admit to the ticket vendor (TicketTailor check-in); fire-and-forget from the gate controller, no retries (vendor check-ins aren't idempotent), gated by `Gate:VendorMirrorEnabled` (default off) |
