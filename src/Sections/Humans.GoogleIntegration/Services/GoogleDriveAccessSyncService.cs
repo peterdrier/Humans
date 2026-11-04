@@ -18,6 +18,7 @@ internal sealed class GoogleDriveAccessSyncService(
     IUserEmailService userEmailService,
     ISyncSettingsService syncSettingsService,
     IGoogleSyncLogService googleSyncLog,
+    IGoogleSyncLogViewer googleSyncLogViewer,
     IGoogleRemovalNotificationService removalNotifications,
     IGoogleResourceRepository resourceRepository,
     ITeamService teamService,
@@ -292,7 +293,8 @@ internal sealed class GoogleDriveAccessSyncService(
     {
         var expectedMembers = await HydrateExpectedMembersAsync(claim.Access, ct);
 
-        var permsResult = await drivePermissions.ListPermissionsAsync(claim.FolderId, ct);
+        var (permsResult, _) = await WithTransientRetryAsync(
+            () => drivePermissions.ListPermissionsAsync(claim.FolderId, ct), r => r.Error, ct);
         if (permsResult.Permissions is null)
         {
             var error = $"Google Drive permission list failed (HTTP {permsResult.Error?.StatusCode}): {permsResult.Error?.RawMessage}";
@@ -491,19 +493,40 @@ internal sealed class GoogleDriveAccessSyncService(
                 case DrivePermissionCreateOutcome.Failed:
                     var error = $"Google Drive add failed for {MaskEmail(member.Email)} (HTTP {result.Error?.StatusCode}): {result.Error?.RawMessage}";
                     logger.LogWarning("Google Drive access sync failed for {FolderId} member {Email}: {Error}", claim.FolderId, member.Email, error);
+                    // An internal error is usually a hiccup, so one run proves nothing; the same refusal on the
+                    // next run is how Drive turns away an address it will never accept.
+                    var rejected = result.Error is { IsDriveTargetRejection: true }
+                        || (result.Error is { IsInternalError: true } && member.UserId is { } failedUserId
+                            && await LastGrantFailedWithInternalErrorAsync(claim, member.Email, failedUserId, ct));
+                    var description = $"{error} ({claim.DisplayName})";
                     await googleSyncLog.LogAsync(
-                        GoogleSyncLogAction.AccessGranted, claim.ResourceId, error,
+                        GoogleSyncLogAction.AccessGranted, claim.ResourceId, description,
                         nameof(GoogleDriveAccessSyncService),
                         member.Email, role, syncSource, success: false,
                         errorMessage: error, userId: member.UserId, ct: ct);
                     errors.Add(error);
-                    if (result.Error is { IsDriveTargetRejection: true } && member.UserId is { } rejectedUserId)
+                    if (rejected && member.UserId is { } rejectedUserId)
                         await workspaceIdentities.SetStatusFromSyncAsync(
                             rejectedUserId, plan.IdentityEmailsByEmail[member.Email], GoogleEmailStatus.Rejected, ct);
                     break;
             }
         }
         return errors;
+    }
+
+    /// <summary>
+    /// Whether this member's latest grant on this folder, from an earlier run, also failed with Drive's internal
+    /// error. Grant rows end with the folder's display name, which is all an unregistered folder's row carries.
+    /// </summary>
+    private async Task<bool> LastGrantFailedWithInternalErrorAsync(
+        FolderClaim claim, string email, Guid userId, CancellationToken ct)
+    {
+        var folderSuffix = $" ({claim.DisplayName})";
+        var last = (await googleSyncLogViewer.GetForUserAsync(userId, ct)).FirstOrDefault(row =>
+            row.Action == GoogleSyncLogAction.AccessGranted
+            && string.Equals(row.UserEmail, email, StringComparison.OrdinalIgnoreCase)
+            && row.Description.EndsWith(folderSuffix, StringComparison.Ordinal));
+        return last is { Success: false } && GoogleClientError.IsInternalErrorMessage(last.ErrorMessage);
     }
 
     /// <summary>Waits between transient-failure attempts; tests replace it to skip the backoff.</summary>
@@ -532,11 +555,14 @@ internal sealed class GoogleDriveAccessSyncService(
         return (result, retried);
     }
 
-    /// <summary>Keeps two characters of the local part, like the log pipeline's email redaction.</summary>
+    /// <summary>Keeps two characters of the local part and any <c>+tag</c>, like the log pipeline's email redaction.</summary>
     private static string MaskEmail(string email)
     {
         var at = email.IndexOf('@', StringComparison.Ordinal);
-        return at <= 0 ? "***" : $"{email[..Math.Min(2, at)]}***{email[at..]}";
+        if (at <= 0) return "***";
+        var plus = email.IndexOf('+', 0, at);
+        var end = plus > 0 ? plus : at;
+        return $"{email[..Math.Min(2, end)]}***{email[end..]}";
     }
 
     private async Task<List<string>> ApplyExtraAsync(FolderClaim claim, DrivePlan plan, GoogleSyncSource syncSource, CancellationToken ct)

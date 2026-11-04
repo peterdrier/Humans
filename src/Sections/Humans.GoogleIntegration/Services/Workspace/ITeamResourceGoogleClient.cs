@@ -49,11 +49,18 @@ internal sealed record GoogleClientError(int StatusCode, string? RawMessage)
             || message.Contains("not associated with a google account", StringComparison.OrdinalIgnoreCase)
             || message.Contains("sendnotificationemail", StringComparison.OrdinalIgnoreCase));
 
-    /// <summary>Worth retrying in the same pass: 5xx, 429, or Drive's 400 "internal error".</summary>
-    public bool IsTransient => StatusCode is >= 500 or 429 || IsInternalError;
+    /// <summary>Worth retrying in the same pass: 5xx, 429, Drive's 403 rate limit, or Drive's 400 "internal error".</summary>
+    public bool IsTransient => StatusCode is >= 500 or 429 || IsRateLimited || IsInternalError;
+
+    /// <summary>Drive's quota errors (<c>userRateLimitExceeded</c>, <c>rateLimitExceeded</c>) are 403s whose message
+    /// says so; other 403s are permission failures.</summary>
+    private bool IsRateLimited => StatusCode == 403 && RawMessage is { } message
+        && message.Contains("rate limit exceeded", StringComparison.OrdinalIgnoreCase);
 
     /// <summary>Drive's 400 "Sorry, an internal error has occurred": usually a hiccup, but also how Drive refuses
     /// some plus addresses on custom domains.</summary>
-    public bool IsInternalError => StatusCode == 400 && RawMessage is { } message
-        && message.Contains("internal error has occurred", StringComparison.OrdinalIgnoreCase);
+    public bool IsInternalError => StatusCode == 400 && IsInternalErrorMessage(RawMessage);
+
+    internal static bool IsInternalErrorMessage(string? message) =>
+        message?.Contains("internal error has occurred", StringComparison.OrdinalIgnoreCase) == true;
 }
