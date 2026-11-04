@@ -647,7 +647,7 @@ internal sealed partial class WorkgroupService(
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            logger.LogWarning(ex, "Holded mirror unavailable; the link-existing picker is empty");
+            logger.LogError(ex, "Holded mirror unavailable; the link-existing picker is empty");
             return [];
         }
     }
