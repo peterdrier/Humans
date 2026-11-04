@@ -49,9 +49,14 @@
         <span><i class="fa-solid fa-rotate me-1"></i>Sync</span>
         <form authorize-policy="@FinancePolicies.Manage" asp-action="SyncNow" method="post" class="d-inline js-sync-form">
             @Html.AntiForgeryToken()
-            <button type="submit" class="btn btn-primary btn-sm" disabled="@(!Model.IsConfigured)">
-                <i class="fa-solid fa-arrows-rotate me-1"></i>Sync now
-            </button>
+            @if (Model.IsConfigured)
+            {
+                <button type="submit" class="btn btn-primary btn-sm"><i class="fa-solid fa-arrows-rotate me-1"></i>Sync now</button>
+            }
+            else
+            {
+                <button type="submit" class="btn btn-primary btn-sm" disabled><i class="fa-solid fa-arrows-rotate me-1"></i>Sync now</button>
+            }
         </form>
     </div>
     <div class="card-body">

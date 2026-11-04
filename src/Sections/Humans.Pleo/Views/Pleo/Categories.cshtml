@@ -1,6 +1,9 @@
 @model PleoCategoriesPage
 @{
     ViewData["Title"] = "Pleo categories";
+    // A refused Add comes back with what was typed, so nothing has to be re-entered.
+    var addName = ViewData["AddName"] as string;
+    var addCode = ViewData["AddCode"] as string;
     var madrid = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
     string N(int n) => n.ToString("N0", CultureInfo.InvariantCulture);
 }
@@ -114,7 +117,7 @@ else
             @Html.AntiForgeryToken()
             <div class="col-md-5">
                 <label class="form-label small mb-0" for="name">Name</label>
-                <input id="name" name="name" class="form-control form-control-sm" maxlength="128" required />
+                <input id="name" name="name" value="@addName" class="form-control form-control-sm" maxlength="128" required />
             </div>
             <div class="col-md-5">
                 <label class="form-label small mb-0" for="holdedCode">Holded account</label>
@@ -122,7 +125,14 @@ else
                     <option value="">Pick…</option>
                     @foreach (var a in Model.ActiveAccounts)
                     {
-                        <option value="@a.Value">@a.Label</option>
+                        if (string.Equals(a.Value, addCode, StringComparison.Ordinal))
+                        {
+                            <option value="@a.Value" selected>@a.Label</option>
+                        }
+                        else
+                        {
+                            <option value="@a.Value">@a.Label</option>
+                        }
                     }
                 </select>
             </div>

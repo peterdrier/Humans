@@ -87,9 +87,11 @@ internal sealed class PleoController(
     }
 
     [HttpGet("Categories")]
-    public async Task<IActionResult> Categories(CancellationToken ct)
+    public async Task<IActionResult> Categories(string? name = null, string? holdedCode = null, CancellationToken ct = default)
     {
         var page = await pleo.GetCategoriesPageAsync(ct);
+        ViewData["AddName"] = name;
+        ViewData["AddCode"] = holdedCode;
         return View(page with
         {
             Unlinked = page.Unlinked.OrderByDescending(u => u.Spend).ToList(),
@@ -117,14 +119,20 @@ internal sealed class PleoController(
     [ValidateAntiForgeryToken]
     public Task<IActionResult> Add(string name, string holdedCode, CancellationToken ct) =>
         CategoryActionAsync((userId, c) => pleo.AddCategoryAsync(name ?? "", holdedCode ?? "", userId, c),
-            "Category added.", ct);
+            "Category added.", ct, onError: new { name, holdedCode });
 
+    /// <summary>A refused action redirects with <c>onError</c> as route values, which the Categories page refills its form from.</summary>
     private async Task<IActionResult> CategoryActionAsync(
-        Func<Guid, CancellationToken, Task<string?>> action, string success, CancellationToken ct)
+        Func<Guid, CancellationToken, Task<string?>> action, string success, CancellationToken ct,
+        object? onError = null)
     {
         if (GetCurrentUserId() is not { } userId) return Challenge();
-        if (await action(userId, ct) is { } error) SetError(error);
-        else SetSuccess(success);
+        if (await action(userId, ct) is { } error)
+        {
+            SetError(error);
+            return RedirectToAction(nameof(Categories), onError);
+        }
+        SetSuccess(success);
         return RedirectToAction(nameof(Categories));
     }
 }

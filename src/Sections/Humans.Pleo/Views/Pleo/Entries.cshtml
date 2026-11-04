@@ -15,7 +15,14 @@
             <option value="">Any</option>
             @foreach (var a in Model.Accounts)
             {
-                <option value="@a.Value" selected="@(a.Value == f.Account)">@a.Label</option>
+                @if (string.Equals(a.Value, f.Account, StringComparison.Ordinal))
+                {
+                    <option value="@a.Value" selected>@a.Label</option>
+                }
+                else
+                {
+                    <option value="@a.Value">@a.Label</option>
+                }
             }
         </select>
     </div>
@@ -25,7 +32,14 @@
             <option value="">Any</option>
             @foreach (var c in Model.Cardholders)
             {
-                <option value="@c.Value" selected="@(c.Value == f.Cardholder)">@c.Label</option>
+                @if (string.Equals(c.Value, f.Cardholder, StringComparison.Ordinal))
+                {
+                    <option value="@c.Value" selected>@c.Label</option>
+                }
+                else
+                {
+                    <option value="@c.Value">@c.Label</option>
+                }
             }
         </select>
     </div>
@@ -35,17 +49,38 @@
             <option value="">Any</option>
             @foreach (var fam in Model.Families)
             {
-                <option value="@fam" selected="@(fam == f.Family)">@fam</option>
+                @if (string.Equals(fam, f.Family, StringComparison.Ordinal))
+                {
+                    <option value="@fam" selected>@fam</option>
+                }
+                else
+                {
+                    <option value="@fam">@fam</option>
+                }
             }
         </select>
     </div>
     <div class="col-md-3">
         <div class="form-check form-check-inline">
-            <input class="form-check-input" type="checkbox" id="noReceipt" name="noReceipt" value="true" checked="@f.NoReceipt" />
+            @if (f.NoReceipt)
+            {
+                <input class="form-check-input" type="checkbox" id="noReceipt" name="noReceipt" value="true" checked />
+            }
+            else
+            {
+                <input class="form-check-input" type="checkbox" id="noReceipt" name="noReceipt" value="true" />
+            }
             <label class="form-check-label small" for="noReceipt">No receipt</label>
         </div>
         <div class="form-check form-check-inline">
-            <input class="form-check-input" type="checkbox" id="unmapped" name="unmapped" value="true" checked="@f.Unmapped" />
+            @if (f.Unmapped)
+            {
+                <input class="form-check-input" type="checkbox" id="unmapped" name="unmapped" value="true" checked />
+            }
+            else
+            {
+                <input class="form-check-input" type="checkbox" id="unmapped" name="unmapped" value="true" />
+            }
             <label class="form-check-label small" for="unmapped">Unmapped</label>
         </div>
     </div>
