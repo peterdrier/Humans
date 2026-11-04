@@ -401,7 +401,7 @@ Settings and Register an existing group on first setup or after clearing the que
   nor comment on its documents; Board/Admin can.
 - Nobody can comment outside an open comment window, or on a Draft document.
 - A Dormant group's members **cannot** perform any member mutation (log, meetings,
-  documents, comments, register edits) — only `BoardOrAdmin` actions remain.
+  documents, comments, register edits) — only `BoardOrAdmin` actions remain. Document mutations share the document resolver's active-group preflight; Board disposition recording explicitly retains the lookup that permits ended groups.
 - Anonymous requests **cannot** reach any `/Workgroups*` route — `PolicyNames.AppAccess`
   gates the member controller class-wide, `BoardOrAdmin` gates the admin controller.
 - A member **cannot** leave as the last coordinator without naming a replacement
