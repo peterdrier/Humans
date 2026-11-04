@@ -83,7 +83,7 @@ Inbox selection checkboxes have a localized accessible label in all six supporte
 
 - Section-owned resource keys use the `Notifications_` prefix in all six cultures.
 
-- Known-recipient emission and shared role broadcasts share one dispatch pipeline in `NotificationEmitter`: preference filtering, copy normalization, recipient construction and persistence. Direct sends create one notification per recipient; role sends group all eligible recipients into one shared notification.
+- Known-recipient emission and shared role broadcasts share one dispatch pipeline in `NotificationEmitter`: recipient-ID deduplication, preference filtering, copy normalization, recipient construction and persistence. Repeated IDs deliver once per person and cannot create duplicate recipient keys in a shared notification. Direct sends create one notification per recipient; role sends group all eligible recipients into one shared notification.
 
 - Both dispatch modes use the same copy normalization: titles at most 200 Unicode characters,
   bodies at most 2,000. Excerpts end in an ellipsis without splitting surrogate pairs; an
