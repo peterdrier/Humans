@@ -748,6 +748,9 @@
   <data name="Users_Profile_EmailAlreadyAdded" xml:space="preserve">
     <value>Cette adresse e-mail figure déjà dans ton compte.</value>
   </data>
+  <data name="Users_Profile_EmailVerifiedOnAnotherAccount" xml:space="preserve">
+    <value>Cette adresse e-mail est déjà vérifiée sur un autre compte.</value>
+  </data>
   <data name="Users_Profile_EmailMergePending" xml:space="preserve">
     <value>Une demande de fusion est déjà en attente pour cette adresse e-mail.</value>
   </data>

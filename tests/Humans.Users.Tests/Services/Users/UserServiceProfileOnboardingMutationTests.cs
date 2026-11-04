@@ -68,6 +68,39 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
     [HumansTheory]
     [InlineData(false)]
     [InlineData(true)]
+    public async Task AddUserEmailAsync_AddressVerifiedOnAnotherUser_RefusesVerifiedAndFlagsUnverified(bool verified)
+    {
+        var userId = Guid.NewGuid();
+        var repository = Substitute.For<IUserRepository>();
+        repository.GetByIdAsync(userId, Arg.Any<CancellationToken>()).Returns(new User { Id = userId });
+        repository.GetUserEmailsByAddressAsync(Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns([new UserEmail { Id = Guid.NewGuid(), UserId = Guid.NewGuid(), Email = "held@example.com", IsVerified = true }]);
+        var service = new UserService(repository,
+            AdminAuthorization, _fileStorage, Clock, NullLogger<UserService>.Instance, AuditLog);
+
+        var result = await service.AddUserEmailAsync(userId,
+            new UserEmailAddCommand("held@example.com", IsVerified: verified),
+            TestContext.Current.CancellationToken);
+
+        if (verified)
+        {
+            result.ErrorKey.Should().Be("Users_Profile_EmailVerifiedOnAnotherAccount");
+            result.Added.Should().BeFalse();
+            await repository.DidNotReceive().AddUserEmailAsync(Arg.Any<UserEmail>(), Arg.Any<CancellationToken>());
+        }
+        else
+        {
+            result.ErrorKey.Should().BeNull();
+            result.Added.Should().BeTrue();
+            result.IsConflict.Should().BeTrue();
+            await repository.Received(1).AddUserEmailAsync(
+                Arg.Is<UserEmail>(e => e.UserId == userId && !e.IsVerified), Arg.Any<CancellationToken>());
+        }
+    }
+
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
     public async Task AddUserEmailAsync_StoredLengthLimit_AcceptsTrimmedBoundary(bool padded)
     {
         var userId = Guid.NewGuid();
