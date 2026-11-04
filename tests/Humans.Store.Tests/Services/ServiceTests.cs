@@ -1683,7 +1683,10 @@ public class ServiceTests
         var attemptId = Guid.NewGuid();
         _repo.GetOrderByIdAsync(order.Id, Arg.Any<CancellationToken>()).Returns(new Order
         {
-            Id = order.Id, CheckoutAttemptId = attemptId, CheckoutSessionId = "cs_open", CheckoutAmountEur = 20m,
+            Id = order.Id,
+            CheckoutAttemptId = attemptId,
+            CheckoutSessionId = "cs_open",
+            CheckoutAmountEur = 20m,
         });
         _stripeService.IsStoreCheckoutConfigured.Returns(true);
         _stripeService.CreateCheckoutSessionAsync(order.Id, 20m, Arg.Any<string>(), Arg.Any<string>(),
@@ -1710,8 +1713,11 @@ public class ServiceTests
             new Order { Id = order.Id, CheckoutAttemptId = oldAttempt, CheckoutSessionId = "cs_old", CheckoutAmountEur = 20m },
             new Order
             {
-                Id = order.Id, CounterpartyName = "Edited meanwhile",
-                CheckoutAttemptId = oldAttempt, CheckoutSessionId = "cs_old", CheckoutAmountEur = 20m,
+                Id = order.Id,
+                CounterpartyName = "Edited meanwhile",
+                CheckoutAttemptId = oldAttempt,
+                CheckoutSessionId = "cs_old",
+                CheckoutAmountEur = 20m,
             });
         _stripeService.IsStoreCheckoutConfigured.Returns(true);
         _stripeService.CreateCheckoutSessionAsync(order.Id, 30m, Arg.Any<string>(), Arg.Any<string>(),
@@ -1735,7 +1741,10 @@ public class ServiceTests
         var order = MakeOrderDto(balanceEur: 50m);
         _repo.GetOrderByIdAsync(order.Id, Arg.Any<CancellationToken>()).Returns(new Order
         {
-            Id = order.Id, CheckoutAttemptId = Guid.NewGuid(), CheckoutSessionId = "cs_done", CheckoutAmountEur = 20m,
+            Id = order.Id,
+            CheckoutAttemptId = Guid.NewGuid(),
+            CheckoutSessionId = "cs_done",
+            CheckoutAmountEur = 20m,
         });
         _stripeService.IsStoreCheckoutConfigured.Returns(true);
         _stripeService.CreateCheckoutSessionAsync(Arg.Any<Guid>(), Arg.Any<decimal>(), Arg.Any<string>(),
@@ -1759,7 +1768,10 @@ public class ServiceTests
         var orderId = Guid.NewGuid();
         _repo.GetOrderByIdAsync(orderId, Arg.Any<CancellationToken>()).Returns(new Order
         {
-            Id = orderId, CheckoutAttemptId = Guid.NewGuid(), CheckoutSessionId = "cs_paid", CheckoutAmountEur = 20m,
+            Id = orderId,
+            CheckoutAttemptId = Guid.NewGuid(),
+            CheckoutSessionId = "cs_paid",
+            CheckoutAmountEur = 20m,
         });
 
         await _service.HandleStripeCheckoutWebhookEventAsync(new StoreCheckoutWebhookEvent(
