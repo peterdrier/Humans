@@ -688,20 +688,7 @@ internal sealed class SurveyService(
         var draft = isEligible
             ? await repo.GetDraftResponseAsync(invitation.SurveyId, invitation.UserId, ct)
             : null;
-        var draftAnswers = draft is null
-            ? (IReadOnlyList<SurveyDraftAnswer>)[]
-            : draft.Answers
-                .Select(a => new SurveyDraftAnswer(
-                    a.QuestionId,
-                    a.SelectedOptionValues,
-                    a.TextValue,
-                    a.RatingValue,
-                    a.GridSelections?.ToDictionary(
-                        kv => kv.Key,
-                        kv => (IReadOnlyList<string>)kv.Value,
-                        StringComparer.Ordinal),
-                    a.RankedValue))
-                .ToList();
+        var draftAnswers = draft is null ? [] : MapDraftAnswers(draft);
 
         return new SurveyAnswerContext(
             invitation.SurveyId,
