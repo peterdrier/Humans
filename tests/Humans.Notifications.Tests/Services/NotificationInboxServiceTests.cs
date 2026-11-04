@@ -509,6 +509,20 @@ public class NotificationInboxServiceTests : IDisposable
 
         result.Actionable.Should().HaveCount(1);
         result.Informational.Should().HaveCount(1);
+        result.Actionable.Single().Body.Should().Be("Test body");
+    }
+
+    [HumansFact]
+    public async Task GetPopupAsync_DropsAnItemOnceItsRecipientOpensIt()
+    {
+        var opened = await CreateNotificationAsync(NotificationClass.Actionable);
+        var ct = Xunit.TestContext.Current.CancellationToken;
+
+        await _service.ClickThroughAsync(opened.Id, _userId, ct);
+
+        var result = await _service.GetPopupAsync(_userId, ct);
+        result.Actionable.Should().BeEmpty();
+        (await _service.GetUnreadBadgeCountsAsync(_userId, ct)).Should().Be((0, 0));
     }
 
     [HumansFact]
