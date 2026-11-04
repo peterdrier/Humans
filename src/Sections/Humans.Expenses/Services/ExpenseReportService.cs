@@ -642,7 +642,7 @@ internal sealed class ExpenseReportService(
             var removed = report.Lines.FirstOrDefault(l => l.Id == lineId);
 
             // One atomic save removes the line, its proof rows and their attachment rows; files go only after the
-            // commit (an orphan file is a warning, an orphan row is a bug).
+            // commit; cleanup failures cannot reverse the metadata deletion.
             var removedAttachments = await repo.RemoveLineAsync(reportId, lineId, ct)
                 ?? throw new InvalidOperationException("Failed to remove line.");
 
@@ -661,7 +661,7 @@ internal sealed class ExpenseReportService(
                 }
                 catch (Exception ex)
                 {
-                    logger.LogWarning(ex,
+                    logger.LogError(ex,
                         "Could not delete attachment file {AttachmentId} while removing line {LineId}",
                         attachment.Id, lineId);
                 }
@@ -753,7 +753,7 @@ internal sealed class ExpenseReportService(
                 }
                 catch (Exception ex)
                 {
-                    logger.LogWarning(ex, "Could not delete unlinked attachment file {AttachmentId}", attachmentId);
+                    logger.LogError(ex, "Could not delete unlinked attachment file {AttachmentId}", attachmentId);
                 }
                 return new("Expenses_Validation_LineNotOnReport", []);
             }
@@ -798,7 +798,7 @@ internal sealed class ExpenseReportService(
                 }
                 catch (Exception ex)
                 {
-                    logger.LogWarning(ex,
+                    logger.LogError(ex,
                         "Could not delete attachment file {AttachmentId} after upload rollback",
                         attachmentId);
                 }
@@ -816,7 +816,7 @@ internal sealed class ExpenseReportService(
             }
             catch (Exception ex)
             {
-                logger.LogWarning(ex, "Could not delete superseded attachment file {AttachmentId}", replacedAttachment.Id);
+                logger.LogError(ex, "Could not delete superseded attachment file {AttachmentId}", replacedAttachment.Id);
             }
         }
 
@@ -869,7 +869,7 @@ internal sealed class ExpenseReportService(
             }
             catch (Exception ex)
             {
-                logger.LogWarning(ex,
+                logger.LogError(ex,
                     "Could not delete attachment file {AttachmentId} for line {LineId}",
                     removed.Id, lineId);
             }
