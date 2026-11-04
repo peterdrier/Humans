@@ -40,6 +40,7 @@ internal sealed class CantinaController : HumansControllerBase
         if (!ModelState.IsValid) return InvalidOffset(nameof(weekStartOffset));
         // No sort: the weekly page renders none of People; the CSV sorts for itself.
         var roster = await _roster.GetWeeklyRosterAsync(weekStartOffset, ct: ct).ConfigureAwait(false);
+        if (roster is null) return InvalidOffset(nameof(weekStartOffset));
         ViewData[HealthRevealedKey] = TakeReveal(RevealToken("week", roster.WeekStartOffset));
         return View(roster);
     }
@@ -54,6 +55,7 @@ internal sealed class CantinaController : HumansControllerBase
         if (!ModelState.IsValid) return InvalidOffset(nameof(weekStartOffset));
 
         var roster = await _roster.GetWeeklyRosterAsync(weekStartOffset, RosterDisclosure.HealthReveal(actor.Id), ct).ConfigureAwait(false);
+        if (roster is null) return InvalidOffset(nameof(weekStartOffset));
         TempData[HealthRevealedKey] = RevealToken("week", roster.WeekStartOffset);
         return RedirectToAction(nameof(Roster), new { weekStartOffset = roster.WeekStartOffset });
     }
@@ -67,6 +69,7 @@ internal sealed class CantinaController : HumansControllerBase
         if (!ModelState.IsValid) return InvalidOffset(nameof(weekStartOffset));
 
         var roster = await _roster.GetWeeklyRosterAsync(weekStartOffset, RosterDisclosure.Export(actor.Id), ct).ConfigureAwait(false);
+        if (roster is null) return InvalidOffset(nameof(weekStartOffset));
         roster = CantinaRosterAssembler.WithSortedPeople(roster);
 
         var bytes = CantinaRosterCsvWriter.Write(roster);
@@ -83,6 +86,7 @@ internal sealed class CantinaController : HumansControllerBase
     {
         if (!ModelState.IsValid) return InvalidOffset(nameof(dayOffset));
         var matrix = await _roster.GetDailyRosterAsync(dayOffset, ct: ct).ConfigureAwait(false);
+        if (matrix is null) return InvalidOffset(nameof(dayOffset));
         ViewData[HealthRevealedKey] = TakeReveal(RevealToken("day", matrix.DayOffset));
         return View(CantinaRosterAssembler.WithSortedPeople(matrix));
     }
@@ -97,6 +101,7 @@ internal sealed class CantinaController : HumansControllerBase
         if (!ModelState.IsValid) return InvalidOffset(nameof(dayOffset));
 
         var matrix = await _roster.GetDailyRosterAsync(dayOffset, RosterDisclosure.HealthReveal(actor.Id), ct).ConfigureAwait(false);
+        if (matrix is null) return InvalidOffset(nameof(dayOffset));
         TempData[HealthRevealedKey] = RevealToken("day", matrix.DayOffset);
         return RedirectToAction(nameof(Day), new { dayOffset = matrix.DayOffset });
     }
@@ -110,6 +115,7 @@ internal sealed class CantinaController : HumansControllerBase
         if (!ModelState.IsValid) return InvalidOffset(nameof(dayOffset));
 
         var matrix = await _roster.GetDailyRosterAsync(dayOffset, RosterDisclosure.Export(actor.Id), ct).ConfigureAwait(false);
+        if (matrix is null) return InvalidOffset(nameof(dayOffset));
         matrix = CantinaRosterAssembler.WithSortedPeople(matrix);
 
         var bytes = CantinaDailyMatrixCsvWriter.Write(matrix);
@@ -123,7 +129,9 @@ internal sealed class CantinaController : HumansControllerBase
 
     private BadRequestObjectResult InvalidOffset(string parameter)
     {
-        _logger.LogWarning("Rejected malformed Cantina roster offset {Parameter}", parameter);
+        if (ModelState.IsValid)
+            ModelState.AddModelError(parameter, "The requested roster period is outside the supported date range.");
+        _logger.LogWarning("Rejected invalid Cantina roster offset {Parameter}", parameter);
         return BadRequest(ModelState);
     }
 

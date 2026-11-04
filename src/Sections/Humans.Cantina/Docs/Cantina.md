@@ -57,6 +57,8 @@ Context: `CantinaDbContext` (history table `__EFMigrationsHistory_Cantina`).
 
 All six roster, reveal and CSV actions reject malformed offset binding with HTTP 400 and a Warning before loading a roster, recording a disclosure or setting a reveal token. Omitted offsets still select the current period. Reveal and CSV actions retain their account preflight before this validation, so missing actors remain Unauthorized.
 
+Numeric offsets must also fit the requested day or full seven-day window within the supported ISO calendar, and leave room for integer navigation and arrival arithmetic even without an active event. The roster service returns no roster for an invalid window before cohort or dietary reads and before disclosure audit; all six actions map that refusal to HTTP 400. Valid empty windows, negative build offsets and current-period defaults retain their existing behavior.
+
 ## Actors & Roles
 
 | Actor | Capabilities |
