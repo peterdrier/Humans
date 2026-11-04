@@ -1,0 +1,76 @@
+@model StripePayoutsPage
+@{
+    ViewData["Title"] = "Stripe payouts";
+    var madrid = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
+}
+
+<h1 class="mb-3">Stripe payouts</h1>
+<partial name="_StripeAdminNav" />
+
+<form method="get" asp-action="Payouts" class="row g-2 align-items-end mb-3">
+    <div class="col-md-3">
+        <label class="form-label small mb-0" for="account">Account</label>
+        <select id="account" name="account" class="form-select form-select-sm">
+            <option value="">Any</option>
+            @foreach (var a in Model.Accounts)
+            {
+                @if (string.Equals(a.Value, Model.Account, StringComparison.Ordinal))
+                {
+                    <option value="@a.Value" selected>@a.Label</option>
+                }
+                else
+                {
+                    <option value="@a.Value">@a.Label</option>
+                }
+            }
+        </select>
+    </div>
+    <div class="col-md-3">
+        <button type="submit" class="btn btn-sm btn-primary">Filter</button>
+    </div>
+</form>
+
+<div class="table-responsive">
+    <table class="table table-sm table-hover align-middle">
+        <thead>
+            <tr>
+                <th>Created</th><th>Arrival</th><th>Account</th><th>Id</th><th class="text-end">Amount</th><th>Status</th>
+                <th>Kind</th><th class="text-end">Linked rows</th><th class="text-end">Linked net</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var p in Model.Rows)
+            {
+                <tr>
+                    <td class="text-nowrap">@p.Created.ToDateTime(madrid)</td>
+                    <td class="text-nowrap">@p.ArrivalDate.ToDate()</td>
+                    <td class="small">@p.AccountName</td>
+                    <td><a asp-action="Transactions" asp-route-q="@p.Id"><code class="small">@p.Id</code></a></td>
+                    <td class="text-end text-nowrap">@p.Amount.ToEuro()@(p.Currency == "EUR" ? "" : $" {p.Currency}")</td>
+                    <td class="small @(p.Status == "paid" ? "" : "text-danger")">@p.Status
+                        @if (p.FailureMessage is not null)
+                        {
+                            <div>@p.FailureMessage</div>
+                        }
+                    </td>
+                    <td class="small">@(p.Automatic ? "automatic" : "manual")</td>
+                    <td class="text-end">
+                        @if (p.Automatic)
+                        {
+                            <a asp-action="Transactions" asp-route-payout="@p.Id">@p.LinkedCount</a>
+                        }
+                        else
+                        {
+                            <span class="text-muted">—</span>
+                        }
+                    </td>
+                    <td class="text-end text-nowrap @(p.LinkedMismatch ? "text-danger" : "")">@(p.Automatic ? p.LinkedNet.ToEuro() : "")</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
+<p class="small text-muted">
+    Stripe links the transactions a payout paid out only for automatic payouts; a manual payout draws on the available
+    balance and has none. A paid automatic payout whose linked net differs from its amount is red.
+</p>

@@ -1,6 +1,10 @@
 using Humans.Base.Configuration;
+using Humans.Base.Hosting;
 using Humans.Base.Interfaces;
+using Humans.Finance.Contracts;
 using Humans.Stripe.Contracts;
+using Humans.Stripe.Data;
+using Humans.Stripe.Jobs;
 using Humans.Stripe.Services;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -11,7 +15,9 @@ namespace Humans.Stripe;
 /// <c>Section</c> (as <c>ISectionConfiguration</c>) declares the same <c>STRIPE_*</c> variables to the settings inventory: rename both
 /// together.
 /// </summary>
-public sealed class Section : ISection, ISectionConfiguration
+/// <remarks>No GDPR contributor for the mirror: buyer names and emails are Stripe's own records of who paid, bound to no
+/// member, and the mirror holds only what Stripe still returns.</remarks>
+public sealed class Section : ISection, ISectionAdminNav, ISectionConfiguration, ISectionJobs
 {
     public void Register(IServiceCollection services, IConfiguration configuration)
     {
@@ -27,6 +33,26 @@ public sealed class Section : ISection, ISectionConfiguration
         services.AddScoped<IStripeService, StripeService>();
         services.AddHostedService<StripeStartupSmokeService>();
         services.AddHostedService<StoreWebhookRegistrationService>();
+
+        services.AddSectionDbContext<StripeDbContext>(sentinelTable: "stripe_balance_transactions");
+        services.Configure<StripeMirrorOptions>(opts => StripeMirrorConfiguration.Bind(opts,
+            configuration.GetSection(StripeMirrorConfiguration.AccountsKey).Get<List<StripeMirrorAccount>>() ?? []));
+        services.AddScoped<IStripeMirrorClient, StripeMirrorClient>();
+        services.AddScoped<IStripeMirrorRepository, Repository>();
+        services.AddScoped<IStripeMirrorAdminService, StripeMirrorService>();
+        services.AddScoped<StripeMirrorSyncJob>();
+    }
+
+    IEnumerable<AdminNavGroup> ISectionAdminNav.Groups() =>
+    [
+        new("Stripe", [
+            new("Stripe", "StripeAdmin", "Index", null, null, "fa-brands fa-stripe-s", FinancePolicies.Read)
+        ])
+    ];
+
+    IEnumerable<RecurringJobDescriptor> ISectionJobs.Jobs(IServiceProvider services)
+    {
+        yield return new RecurringJobDescriptor("stripe-mirror-sync", typeof(StripeMirrorSyncJob), "30 3 * * *");
     }
 
     void ISectionConfiguration.DeclareSettings(IConfiguration configuration, ConfigurationRegistry registry)
@@ -42,5 +68,15 @@ public sealed class Section : ISection, ISectionConfiguration
         // PR previews only; never set in QA or production.
         registry.RegisterEnvironmentVariable("STRIPE_STORE_WEBHOOK_REGISTRAR_KEY", "Stripe (Store, PR-preview only)",
             isSensitive: true);
+
+        // The read-only mirror: the org key for every account without its own key variable.
+        registry.RegisterEnvironmentVariable(StripeMirrorConfiguration.OrgKeyVariable, "Stripe (mirror)", isSensitive: true,
+            importance: ConfigurationImportance.Recommended);
+        foreach (var account in configuration.GetSection(StripeMirrorConfiguration.AccountsKey).GetChildren())
+        {
+            configuration.GetOptionalSetting(registry, $"{account.Path}:Id", "Stripe (mirror)");
+            if (configuration.GetOptionalSetting(registry, $"{account.Path}:KeyVariable", "Stripe (mirror)") is { Length: > 0 } variable)
+                registry.RegisterEnvironmentVariable(variable, "Stripe (mirror)", isSensitive: true);
+        }
     }
 }
