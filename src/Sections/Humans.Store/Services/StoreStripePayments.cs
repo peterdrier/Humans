@@ -38,7 +38,12 @@ internal sealed class StoreStripePayments(
             var order = await repo.GetOrderByIdAsync(orderId, ct);
             if (order is null || order.TeamId is not null) continue;
 
-            await RecordStripePaymentAsync(orderId, pi, amount, ct: ct); // idempotent on PI id
+            using (await StripePaymentLock.AcquireAsync(logger, ct))
+            {
+                await RecordStripePaymentCoreAsync(orderId, pi, amount, PaymentStatus.Paid, ct); // idempotent on PI id
+                // Stands in for the undelivered completed webhook, so it releases the attempt the same way.
+                await ClearCheckoutAttemptAsync(s, ct);
+            }
             count++;
             total += amount;
         }
