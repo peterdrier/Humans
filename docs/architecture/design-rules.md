@@ -393,7 +393,7 @@ Most of these compositions are Shell chrome — nav, dashboard tiles, jobs, poli
 | `ISectionChrome` | Layout-embedded view components | `ChromeSlotViewComponent`, named slots (`ChromeSlots`) |
 | `ISectionMemberDashboard` | Member-dashboard view components | `ChromeSlotViewComponent`, same slots |
 | `ISectionThingsToDo` | Member things-to-do entries | `ThingsToDoViewComponent` (returning nothing is the normal case) |
-| `ISectionJobs` | Hangfire recurring-job descriptors (id, type, cron) | `RecurringJobExtensions.UseHumansRecurringJobs` — merges into the roll-call, drives the stale-job sweep |
+| `ISectionJobs` | Hangfire recurring-job descriptors (id, type, cron) | `RecurringJobExtensions.UseHumansRecurringJobs` — merges into the roll-call, drives the stale-job sweep; unexpected registration/sweep failures log Error, while Hangfire distributed-lock timeouts log Warning without exception stacks; startup and guarded sweep behavior remain |
 | `ISectionHealthChecks` | Health checks | builder-time, against `IHealthChecksBuilder` |
 | `ISectionConfiguration` | The appsettings keys and environment variables the section's own code reads | builder-time, against the `ConfigurationRegistry` Shell's `AddConfigurationMetadata` iterates — the inventory behind the admin Configuration page. Not `ISectionSettings`, which contributes a `/Settings` tab |
 | `ISectionDataMigrations` | Operator-run legacy → new data copies (`DataMigration`: key, title, status with every pending row, apply) | Debug's `DataMigrationService` — `/Debug/DataMigrations` (review → apply, audited) and the anonymous counts-only `/api/data-migrations` |
