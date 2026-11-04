@@ -69,7 +69,7 @@
     <value>Scanner</value>
   </data>
   <data name="Scanner_Barcode_Status_Running" xml:space="preserve">
-    <value>Scanne en cours</value>
+    <value>Scan en cours</value>
   </data>
   <data name="Scanner_Barcode_Status_Starting" xml:space="preserve">
     <value>Démarrage de la caméra…</value>

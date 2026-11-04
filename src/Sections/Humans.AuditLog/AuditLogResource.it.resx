@@ -36,12 +36,12 @@
   <data name="Enum_AuditAction_TeamMemberRemoved" xml:space="preserve"><value>Membro del team rimosso</value></data>
   <data name="Enum_AuditAction_MemberSuspended" xml:space="preserve"><value>Membro sospeso</value></data>
   <data name="Enum_AuditAction_MemberUnsuspended" xml:space="preserve"><value>Sospensione del membro revocata</value></data>
-  <data name="Enum_AuditAction_AccountAnonymized" xml:space="preserve"><value>Conto anonimizzato</value></data>
+  <data name="Enum_AuditAction_AccountAnonymized" xml:space="preserve"><value>Account anonimizzato</value></data>
   <data name="Enum_AuditAction_RoleAssigned" xml:space="preserve"><value>Ruolo assegnato</value></data>
   <data name="Enum_AuditAction_RoleEnded" xml:space="preserve"><value>Ruolo terminato</value></data>
   <data name="Enum_AuditAction_VolunteerApproved" xml:space="preserve"><value>Volontario approvato</value></data>
-  <data name="Enum_AuditAction_GoogleResourceAccessGranted" xml:space="preserve"><value>Google accesso alle risorse concesso</value></data>
-  <data name="Enum_AuditAction_GoogleResourceAccessRevoked" xml:space="preserve"><value>Google accesso alle risorse revocato</value></data>
+  <data name="Enum_AuditAction_GoogleResourceAccessGranted" xml:space="preserve"><value>Accesso alle risorse Google concesso</value></data>
+  <data name="Enum_AuditAction_GoogleResourceAccessRevoked" xml:space="preserve"><value>Accesso alle risorse Google revocato</value></data>
   <data name="Enum_AuditAction_GoogleResourceProvisioned" xml:space="preserve"><value>Risorsa Google fornita</value></data>
   <data name="Enum_AuditAction_TeamJoinedDirectly" xml:space="preserve"><value>Adesione diretta al team</value></data>
   <data name="Enum_AuditAction_TeamLeft" xml:space="preserve"><value>Uscita dal team</value></data>
@@ -100,7 +100,7 @@
   <data name="Enum_AuditAction_WorkspaceAccountLinked" xml:space="preserve"><value>Account Workspace collegato</value></data>
   <data name="Enum_AuditAction_WorkspaceAccountBackupCodesGenerated" xml:space="preserve"><value>Codici di recupero dell’account Workspace generati</value></data>
   <data name="Enum_AuditAction_WorkspaceAccountBackupCodesInvalidated" xml:space="preserve"><value>Codici di recupero dell’account Workspace invalidati</value></data>
-  <data name="Enum_AuditAction_WorkspaceAccountResetBlockedFor2Sv" xml:space="preserve"><value>Workspace Reimpostazione dell'account bloccata dalla verifica in due passaggi</value></data>
+  <data name="Enum_AuditAction_WorkspaceAccountResetBlockedFor2Sv" xml:space="preserve"><value>Reimpostazione dell'account Workspace bloccata dalla verifica in due passaggi</value></data>
   <data name="Enum_AuditAction_AccountMergeRequested" xml:space="preserve"><value>È stata richiesta la fusione degli account</value></data>
   <data name="Enum_AuditAction_AccountMergeAccepted" xml:space="preserve"><value>Unione degli account accettata</value></data>
   <data name="Enum_AuditAction_AccountMergeRejected" xml:space="preserve"><value>Unione degli account rifiutata</value></data>
@@ -133,7 +133,7 @@
   <data name="Enum_AuditAction_IssueAssigneeChanged" xml:space="preserve"><value>L'assegnatario del problema è cambiato</value></data>
   <data name="Enum_AuditAction_IssueSectionChanged" xml:space="preserve"><value>La sezione del problema è stata modificata</value></data>
   <data name="Enum_AuditAction_IssueGitHubLinked" xml:space="preserve"><value>Issue collegata a GitHub</value></data>
-  <data name="Enum_AuditAction_AccountPurged" xml:space="preserve"><value>Conto cancellato</value></data>
+  <data name="Enum_AuditAction_AccountPurged" xml:space="preserve"><value>Account eliminato definitivamente</value></data>
   <data name="Enum_AuditAction_UserEmailProviderBackfilled" xml:space="preserve"><value>Provider email completato</value></data>
   <data name="Enum_AuditAction_UserEmailGoogleSet" xml:space="preserve"><value>Indirizzo Google dell’utente impostato</value></data>
   <data name="Enum_AuditAction_UserEmailGoogleCleared" xml:space="preserve"><value>Impostazione dell’indirizzo Google dell’utente rimossa</value></data>
@@ -244,7 +244,7 @@
   <data name="Enum_AuditAction_FeedbackGitHubLinked" xml:space="preserve"><value>Feedback collegato a GitHub</value></data>
   <data name="Enum_AuditAction_IssueCreated" xml:space="preserve"><value>Problema creato</value></data>
   <data name="Enum_AuditAction_SepaPayoutTransfer" xml:space="preserve"><value>Bonifico Sepa</value></data>
-  <data name="Enum_AuditAction_SepaPayoutTransferBooked" xml:space="preserve"><value>Trasferimento di pagamento Sepa prenotato</value></data>
+  <data name="Enum_AuditAction_SepaPayoutTransferBooked" xml:space="preserve"><value>Trasferimento di pagamento SEPA contabilizzato</value></data>
   <data name="Enum_AuditAction_SepaBankLineSkipped" xml:space="preserve"><value>Riga bancaria Sepa ignorata</value></data>
   <data name="Enum_AuditAction_CityPlanningPlacementOpened" xml:space="preserve"><value>Periodo di collocamento urbanistico aperto</value></data>
   <data name="Enum_AuditAction_CityPlanningPlacementClosed" xml:space="preserve"><value>Periodo di collocamento urbanistico chiuso</value></data>
@@ -257,8 +257,8 @@
   <data name="Enum_AuditAction_CityPlanningOfficialZonesDeleted" xml:space="preserve"><value>Zone ufficiali della pianificazione urbanistica eliminate</value></data>
   <data name="Enum_AuditAction_CityPlanningPlacementDatesUpdated" xml:space="preserve"><value>Date di posizionamento della pianificazione urbanistica aggiornate</value></data>
   <data name="Enum_AuditAction_CityPlanningRegistrationInfoUpdated" xml:space="preserve"><value>Informazioni di registrazione della pianificazione urbanistica aggiornate</value></data>
-  <data name="Enum_AuditAction_ExpenseCreatedOnBehalf" xml:space="preserve"><value>Spesa creata per conto di</value></data>
-  <data name="Enum_AuditAction_ExpenseEditedOnBehalf" xml:space="preserve"><value>Spesa modificata per conto di</value></data>
+  <data name="Enum_AuditAction_ExpenseCreatedOnBehalf" xml:space="preserve"><value>Spesa creata per conto di un'altra persona</value></data>
+  <data name="Enum_AuditAction_ExpenseEditedOnBehalf" xml:space="preserve"><value>Spesa modificata per conto di un'altra persona</value></data>
   <data name="Enum_AuditAction_ExpensePayeeIbanUpdated" xml:space="preserve"><value>IBAN del beneficiario aggiornato</value></data>
   <data name="Enum_AuditAction_RideshareSettingsUpdated" xml:space="preserve"><value>Impostazioni di condivisione dei passaggi aggiornate</value></data>
   <data name="Enum_AuditAction_WorkgroupRegistered" xml:space="preserve"><value>Gruppo di lavoro registrato</value></data>

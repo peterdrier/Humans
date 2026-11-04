@@ -117,14 +117,8 @@ namespace Humans.CityPlanning.Data.Migrations
                     b.Property<int?>("PlacementChangeableUntilOffset")
                         .HasColumnType("integer");
 
-                    b.Property<LocalDateTime?>("PlacementClosesAt")
-                        .HasColumnType("timestamp without time zone");
-
                     b.Property<int?>("PlacementClosesOffset")
                         .HasColumnType("integer");
-
-                    b.Property<LocalDateTime?>("PlacementOpensAt")
-                        .HasColumnType("timestamp without time zone");
 
                     b.Property<int?>("PlacementOpensOffset")
                         .HasColumnType("integer");

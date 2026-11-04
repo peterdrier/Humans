@@ -112,7 +112,7 @@ public class EventServiceCalendarFeedTests
     [Xunit.InlineData("en", "Host", "Category")]
     [Xunit.InlineData("es", "Anfitrión", "Categoría")]
     [Xunit.InlineData("de", "Gastgeber", "Kategorie")]
-    [Xunit.InlineData("it", "Ospite", "Categoria")]
+    [Xunit.InlineData("it", "Host", "Categoria")]
     [Xunit.InlineData("fr", "Hôte", "Catégorie")]
     [Xunit.InlineData("ca", "Amfitrió", "Categoria")]
     [Xunit.InlineData("nl", "Organisator", "Categorie")]
