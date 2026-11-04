@@ -54,7 +54,7 @@
     <value>Aún no se ha decodificado ningún código.</value>
   </data>
   <data name="Scanner_Barcode_NotForCheckIn" xml:space="preserve">
-    <value>Esta es una herramienta de prueba — no se usa para el check-in. Escanear una entrada aquí no marca a nadie como entrada.</value>
+    <value>Esta es una herramienta de prueba — no se usa para el check-in. Escanear una entrada aquí no marca a nadie como llegado.</value>
   </data>
   <data name="Scanner_Barcode_Open" xml:space="preserve">
     <value>Abrir escáner</value>

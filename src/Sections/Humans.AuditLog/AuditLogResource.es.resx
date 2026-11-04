@@ -168,7 +168,7 @@
   <data name="Enum_AuditAction_TicketTransferCancelled" xml:space="preserve"><value>Transferencia de entrada cancelada</value></data>
   <data name="Enum_AuditAction_TicketTransferAutoFailed" xml:space="preserve"><value>Transferencia automática de entrada fallida</value></data>
   <data name="Enum_AuditAction_OrphanUserEmailDeleted" xml:space="preserve"><value>Correo de usuario huérfano eliminado</value></data>
-  <data name="Enum_AuditAction_GhostExternalLoginsDeleted" xml:space="preserve"><value>Inicios de sesión externos sin usuario eliminado</value></data>
+  <data name="Enum_AuditAction_GhostExternalLoginsDeleted" xml:space="preserve"><value>Inicios de sesión externos sin usuario eliminados</value></data>
   <data name="Enum_AuditAction_LegacyIdentityEmailBackfilled" xml:space="preserve"><value>Correo de identidad heredada completado retroactivamente</value></data>
   <data name="Enum_AuditAction_CampEarlyEntryGranted" xml:space="preserve"><value>Acceso anticipado al campamento concedido</value></data>
   <data name="Enum_AuditAction_CampEarlyEntryRevoked" xml:space="preserve"><value>Acceso anticipado al campamento revocado</value></data>

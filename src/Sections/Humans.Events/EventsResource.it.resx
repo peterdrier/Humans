@@ -111,7 +111,7 @@
   <data name="Events_Submission_FieldStartTime" xml:space="preserve"><value>Ora di inizio</value></data>
   <data name="Events_Submission_FieldDuration" xml:space="preserve"><value>Durata (minuti)</value></data>
   <data name="Events_Submission_FieldLocationNote" xml:space="preserve"><value>Nota sulla posizione</value></data>
-  <data name="Events_Submission_FieldHost" xml:space="preserve"><value>Ospite</value></data>
+  <data name="Events_Submission_FieldHost" xml:space="preserve"><value>Host</value></data>
   <data name="Events_Submission_FieldPriorityRank" xml:space="preserve"><value>Priorità</value></data>
   <data name="Events_Submission_SelectCategory" xml:space="preserve"><value>— Seleziona una categoria —</value></data>
   <data name="Events_Submission_SelectVenue" xml:space="preserve"><value>— Seleziona un luogo —</value></data>

@@ -502,7 +502,7 @@
     <value>Campamentos y barrios</value>
   </data>
   <data name="Home_CampsDescription" xml:space="preserve">
-    <value>Registra tu campamento, descubre vecinos por ambiente o zona de sonido, y confirma tu participación cada temporada.</value>
+    <value>Registra tu campamento, descubre vecinos por ambiente o zona de sonido, y confirma tu participación cada temporada. Encuentra tu sitio en el mapa.</value>
   </data>
   <data name="Home_TicketsTitle" xml:space="preserve">
     <value>Entradas y eventos</value>

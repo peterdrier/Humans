@@ -90,7 +90,7 @@
     <value>À propos du consentement</value>
   </data>
   <data name="Consent_AboutDescription" xml:space="preserve">
-    <value>En consentant à ces documents, vous acceptez d'être lié par leurs conditions. La version espagnole est le texte juridiquement contraignant. Les traductions en anglais sont fournies à titre indicatif uniquement.</value>
+    <value>En consentant à ces documents, vous acceptez d'être lié par leurs conditions. La version espagnole est le texte juridiquement contraignant. Les traductions sont fournies à titre indicatif uniquement.</value>
   </data>
   <data name="Consent_Review_AlreadyConsented" xml:space="preserve">
     <value>Consentement déjà donné</value>

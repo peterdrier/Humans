@@ -90,7 +90,7 @@
     <value>Informazioni sui consensi</value>
   </data>
   <data name="Consent_AboutDescription" xml:space="preserve">
-    <value>Acconsentendo a questi documenti, accetta di essere vincolato ai loro termini. La versione in spagnolo è il testo legalmente vincolante. Le traduzioni in inglese sono fornite solo per comodità.</value>
+    <value>Acconsentendo a questi documenti, accetta di essere vincolato ai loro termini. La versione in spagnolo è il testo legalmente vincolante. Le traduzioni sono fornite solo per comodità.</value>
   </data>
   <data name="Consent_Review_AlreadyConsented" xml:space="preserve">
     <value>Consenso già dato</value>
