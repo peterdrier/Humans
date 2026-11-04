@@ -247,7 +247,13 @@ internal sealed partial class WorkgroupService
     // The group page and the daily job expand a series from its start, so a sub-daily rule would
     // build an occurrence per second or minute; nobody meets that often.
     private static bool RepeatsWithinADay(string rule) =>
-        rule.Split(';').Any(part => part.Trim().ToUpperInvariant() is "FREQ=SECONDLY" or "FREQ=MINUTELY" or "FREQ=HOURLY");
+        rule.Split(';').Any(part =>
+        {
+            var equals = part.IndexOf('=');
+            return equals >= 0
+                && string.Equals(part[..equals].Trim(), "FREQ", StringComparison.OrdinalIgnoreCase)
+                && part[(equals + 1)..].Trim().ToUpperInvariant() is "SECONDLY" or "MINUTELY" or "HOURLY";
+        });
 
     private static void ApplyMeetingFields(WorkgroupMeeting meeting, WorkgroupMeetingSave save)
     {

@@ -141,7 +141,8 @@ the community calendar uses; nothing per occurrence is stored. The group page ti
 every occurrence that has started plus each meeting's next one, each dated in the meeting's
 zone (organisation zone for a one-off); `NextMeeting` is the earliest upcoming occurrence.
 Editing or deleting acts on the whole series. Meetings repeat daily at most: the service
-refuses sub-daily rules, since the page and the daily job expand a series from its start. A
+refuses sub-daily rules, including case-insensitive frequency values padded with whitespace,
+on both creation and update, since the page and the daily job expand a series from its start. A
 series' later occurrences are scheduled, not evidence of a meeting, so for the update-due
 rhythm only its stored first occurrence counts; the notes posted for later weeks count instead. The calendar contributor passes a repeating
 meeting as one item carrying its rule, so the personal feed holds one repeating VEVENT and the
