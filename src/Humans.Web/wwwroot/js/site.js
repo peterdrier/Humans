@@ -395,10 +395,10 @@ function showToast(message, type) {
     });
 })();
 
-// Human profile popover (lazy-loaded on first hover)
+// Human profile popover (lazy-loaded on first hover or keyboard focus)
 (function () {
     var cache = {};
-    document.addEventListener('mouseenter', function (e) {
+    function initializePopover(e) {
         // Document-level mouseenter bubbles up with e.target === document
         // for cursor entries that don't land on an Element; guard so
         // calling .closest() on a non-Element doesn't throw.
@@ -450,12 +450,14 @@ function showToast(message, type) {
                     }
                 })
                 .catch(function () {
-                    // A failed load must not leave a permanent spinner or block a later hover.
+                    // A failed load must not leave a permanent spinner or block a later hover or focus.
                     popover.dispose();
                     el._popoverInit = false;
                 });
         }
-    }, true);
+    }
+    document.addEventListener('mouseenter', initializePopover, true);
+    document.addEventListener('focusin', initializePopover);
 })();
 
 // Admin sidebar (a horizontal strip of group rows on mobile) and group tabs.

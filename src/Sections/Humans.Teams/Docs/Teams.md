@@ -250,6 +250,7 @@ This section's controllers. `TeamController` (`[Route("Teams")]`) handles both a
 - The roster controller orders filtered slots by priority, team name, role name and slot number; the owner service and repository return materialized data without display ordering. Team-detail member ordering also belongs to its controller: role, then display name with ordinal case-insensitive comparison, for both authenticated and public views.
 - Members of sub-teams are also considered members of the department. They appear in the department's member roster and inherit the department's legal requirements and Google resource access.
 - A human can be a member of multiple teams simultaneously.
+- Public coordinator cards expose their reduced profile popover on hover or keyboard focus; cards without a profile link remain keyboard reachable.
 - System team membership is managed exclusively by an automated sync job. Manual add/remove is blocked for system teams.
 - Role assignment and unassignment share the service lookup and management-authorization check: resolve the role definition, resolve its team, then verify the actor can manage that team before any assignment mutation.
 - Role definitions can be created on any team, including system teams (e.g. governance roles on the Board team). However, `AssignToRoleAsync` blocks assigning a **non-member** to a role on a system team — only existing sync-managed members can be assigned, so role assignment cannot become a backdoor for the manual-membership block above.
