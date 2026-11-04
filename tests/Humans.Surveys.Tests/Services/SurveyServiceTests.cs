@@ -4185,6 +4185,41 @@ public class SurveyServiceTests
     }
 
     [HumansTheory]
+    [InlineData(null, null, null, 1, 5)]
+    [InlineData(null, null, 3, 1, 5)]
+    [InlineData(2, null, 3, 2, 5)]
+    [InlineData(null, 4, 3, 1, 4)]
+    public async Task GetResultsAsync_uses_respondent_defaults_for_omitted_rating_bounds(
+        int? min, int? max, int? answer, int expectedMin, int expectedMax)
+    {
+        var survey = SurveyWith(SurveyStatus.Closed, null, null);
+        var questionId = Guid.NewGuid();
+        var question = RatingQuestion(questionId, survey.Id, 1, 1, 5);
+        question.RatingMin = min;
+        question.RatingMax = max;
+        survey.Questions = [question];
+        _repo.GetByIdAsync(survey.Id, Arg.Any<CancellationToken>()).Returns(survey);
+        _repo.GetResponsesForResultsAsync(survey.Id, Arg.Any<CancellationToken>()).Returns(
+            answer is { } value
+                ? new List<SurveyResponse>
+                {
+                    SubmittedResponse(survey.Id, ResponseAnonymity.Anonymous, SurveyInputMethod.Slug,
+                        _clock.GetCurrentInstant(), null, RatingAnswer(questionId, value))
+                }
+                : new List<SurveyResponse>());
+
+        var result = await CreateService().GetResultsAsync(survey.Id, TestContext.Current.CancellationToken);
+
+        var rating = result!.Questions.Should().ContainSingle().Which;
+        rating.RatingDistribution.Select(bucket => bucket.Value)
+            .Should().Equal(Enumerable.Range(expectedMin, expectedMax - expectedMin + 1));
+        rating.RatingDistribution.Select(bucket => bucket.Count)
+            .Should().Equal(Enumerable.Range(expectedMin, expectedMax - expectedMin + 1)
+                .Select(value => answer == value ? 1 : 0));
+        rating.RatingAverage.Should().Be(answer);
+    }
+
+    [HumansTheory]
     [InlineData(int.MaxValue - 1, int.MaxValue)]
     [InlineData(int.MinValue, int.MinValue + 1)]
     public async Task GetResultsAsync_handles_rating_scales_at_integer_boundaries(int min, int max)
