@@ -310,6 +310,90 @@ public class FinanceControllerTests
     }
 
     [HumansTheory]
+    [InlineData(nameof(FinanceController.BookSepaTransfer), "transferId", false)]
+    [InlineData(nameof(FinanceController.BookSepaTransfer), "transferId", true)]
+    [InlineData(nameof(FinanceController.WithdrawSepaTransfer), "transferId", false)]
+    [InlineData(nameof(FinanceController.WithdrawSepaTransfer), "transferId", true)]
+    [InlineData(nameof(FinanceController.CancelSepaFile), "fileId", false)]
+    [InlineData(nameof(FinanceController.CancelSepaFile), "fileId", true)]
+    [InlineData(nameof(FinanceController.BookSepaFile), "fileId", false)]
+    [InlineData(nameof(FinanceController.BookSepaFile), "fileId", true)]
+    [InlineData(nameof(FinanceController.BookSepaFileMatches), "fileId", false)]
+    [InlineData(nameof(FinanceController.BookSepaFileMatches), "fileId", true)]
+    [InlineData(nameof(FinanceController.BindCreditor), "userId", false)]
+    [InlineData(nameof(FinanceController.BindCreditor), "userId", true)]
+    [InlineData(nameof(FinanceController.UnbindCreditor), "userId", false)]
+    [InlineData(nameof(FinanceController.UnbindCreditor), "userId", true)]
+    [InlineData(nameof(FinanceController.BookSepaTransfer), "days", false)]
+    [InlineData(nameof(FinanceController.WithdrawSepaTransfer), "days", false)]
+    [InlineData(nameof(FinanceController.CancelSepaFile), "days", false)]
+    [InlineData(nameof(FinanceController.BookSepaFile), "days", false)]
+    [InlineData(nameof(FinanceController.BookSepaFileMatches), "days", false)]
+    [InlineData(nameof(FinanceController.BookSepaTransfer), "bankMovementId", true)]
+    [InlineData(nameof(FinanceController.BookSepaFile), "bankMovementId", true)]
+    [InlineData(nameof(FinanceController.BindCreditor), "supplierAccountNum", true)]
+    [InlineData(nameof(FinanceController.BindCreditor), "supplierAccountNum", false)]
+    public async Task Mutation_rejects_missing_identifiers_and_malformed_binding_before_writes(
+        string action, string invalidField, bool omitted)
+    {
+        var controller = MakeControllerWithHttpContext(Ana);
+        var registrations = new ServiceCollection().AddLogging();
+        registrations.AddControllers();
+        using var services = registrations.BuildServiceProvider();
+        controller.HttpContext.RequestServices = services;
+        var fields = new Dictionary<string, StringValues>(StringComparer.Ordinal)
+        {
+            ["userId"] = Bo.ToString(),
+            ["transferId"] = Guid.NewGuid().ToString(),
+            ["fileId"] = Guid.NewGuid().ToString(),
+            ["supplierAccountNum"] = "40000001",
+            ["bankMovementId"] = "bank",
+            ["days"] = "7"
+        };
+        if (omitted) fields.Remove(invalidField);
+        else fields[invalidField] = "invalid";
+
+        var method = typeof(FinanceController).GetMethod(action)!;
+        var parameters = method.GetParameters();
+        var arguments = new object?[parameters.Length];
+        for (var index = 0; index < parameters.Length; index++)
+        {
+            var parameter = parameters[index];
+            arguments[index] = parameter.HasDefaultValue ? parameter.DefaultValue
+                : parameter.ParameterType.IsValueType ? Activator.CreateInstance(parameter.ParameterType) : null;
+            var metadata = ((ModelMetadataProvider)services.GetRequiredService<IModelMetadataProvider>())
+                .GetMetadataForParameter(parameter);
+            var descriptor = new ControllerParameterDescriptor
+            {
+                Name = parameter.Name!, ParameterType = parameter.ParameterType, ParameterInfo = parameter
+            };
+            var binder = services.GetRequiredService<IModelBinderFactory>().CreateBinder(new ModelBinderFactoryContext
+            {
+                Metadata = metadata, CacheToken = parameter
+            });
+            var binding = await services.GetRequiredService<ParameterBinder>().BindModelAsync(
+                controller.ControllerContext, binder,
+                new FormValueProvider(BindingSource.Form, new FormCollection(fields), CultureInfo.InvariantCulture),
+                descriptor, metadata, value: null);
+            if (binding.IsModelSet) arguments[index] = binding.Model;
+        }
+
+        try
+        {
+            var result = await (Task<IActionResult>)method.Invoke(controller, arguments)!;
+            result.Should().BeOfType<BadRequestObjectResult>();
+            var fieldState = controller.ModelState[invalidField]!;
+            fieldState.ValidationState.Should().Be(ModelValidationState.Invalid);
+            fieldState.Errors.Should().Contain(error => error.ErrorMessage.Contains(
+                omitted ? "not provided" : "not valid", StringComparison.Ordinal));
+        }
+        finally
+        {
+            _connector.ReceivedCalls().Should().BeEmpty("invalid binding must not reach a financial mutation");
+        }
+    }
+
+    [HumansTheory]
     [InlineData("blockStart", false)]
     [InlineData("addAll", false)]
     [InlineData("", false)]
