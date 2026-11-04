@@ -304,5 +304,5 @@ src/Sections/Humans.Users/Data/Migrations/20261104164406_DropUsersLegacyStorage.
 # Evidence: pickaxe (log -S) over full history. Its writers moved to user_emails in 316b7860c
 # (2026-06-15); its last write, an anonymization reset, went in 7aeb5b6bc (2026-08-25), and it has
 # had no reader since.
-# Approval: Peter, 2026-11-04, project thread ("fix A-E", covering peterdrier/Humans#2156).
+# Approval: Peter, 2026-11-04, per-drop approval in project thread ("Approve all but #2296" for the listed drops in this PR; peterdrier/Humans#2156).
 src/Sections/Humans.Users/Data/Migrations/20261104164406_DropUsersLegacyStorage.cs:DropColumn(name=GoogleEmailStatus,table=users)#1
