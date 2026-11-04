@@ -364,6 +364,9 @@
   <data name="Users_Emails_AddNew" xml:space="preserve">
     <value>Ajouter une adresse e-mail</value>
   </data>
+  <data name="Users_Emails_NewEmailLabel" xml:space="preserve">
+    <value>Nouvelle adresse e-mail</value>
+  </data>
   <data name="Users_Emails_MergeWarningTitle" xml:space="preserve">
     <value>Fusionner des comptes ?</value>
   </data>
