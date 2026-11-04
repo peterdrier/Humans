@@ -68,7 +68,7 @@
     <value>Revisar y consentir</value>
   </data>
   <data name="Consent_PendingCount" xml:space="preserve">
-    <value>{0} documento(s) requieren su consentimiento. Por favor, revíselos y otorgue su consentimiento para mantener Su estado de voluntario activa.</value>
+    <value>{0} documento(s) requieren su consentimiento. Por favor, revíselos y otorgue su consentimiento para mantener su estado de voluntario activo.</value>
     <comment>{0} = pending document count</comment>
   </data>
   <data name="Consent_AllConsented" xml:space="preserve">

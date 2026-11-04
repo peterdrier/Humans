@@ -40,7 +40,7 @@
   <data name="Enum_AuditAction_RoleAssigned" xml:space="preserve"><value>Rolle zugewiesen</value></data>
   <data name="Enum_AuditAction_RoleEnded" xml:space="preserve"><value>Rolle beendet</value></data>
   <data name="Enum_AuditAction_VolunteerApproved" xml:space="preserve"><value>Freiwilliger zugelassen</value></data>
-  <data name="Enum_AuditAction_GoogleResourceAccessGranted" xml:space="preserve"><value>Google Ressourcenzugriff gewährt</value></data>
+  <data name="Enum_AuditAction_GoogleResourceAccessGranted" xml:space="preserve"><value>Google-Ressourcenzugriff gewährt</value></data>
   <data name="Enum_AuditAction_GoogleResourceAccessRevoked" xml:space="preserve"><value>Google-Ressourcenzugriff widerrufen</value></data>
   <data name="Enum_AuditAction_GoogleResourceProvisioned" xml:space="preserve"><value>Google-Ressource bereitgestellt</value></data>
   <data name="Enum_AuditAction_TeamJoinedDirectly" xml:space="preserve"><value>Direkter Teambeitritt</value></data>
@@ -58,7 +58,7 @@
   <data name="Enum_AuditAction_TierDowngraded" xml:space="preserve"><value>Stufe herabgestuft</value></data>
   <data name="Enum_AuditAction_TierTermExpiryCorrected" xml:space="preserve"><value>Ablauf der Stufenlaufzeit korrigiert</value></data>
   <data name="Enum_AuditAction_GoogleResourceDeactivated" xml:space="preserve"><value>Google-Ressource deaktiviert</value></data>
-  <data name="Enum_AuditAction_FacilitatedMessageSent" xml:space="preserve"><value>Vereinfachte Nachricht gesendet</value></data>
+  <data name="Enum_AuditAction_FacilitatedMessageSent" xml:space="preserve"><value>Vermittelte Nachricht gesendet</value></data>
   <data name="Enum_AuditAction_TeamRoleDefinitionCreated" xml:space="preserve"><value>Teamrollendefinition erstellt</value></data>
   <data name="Enum_AuditAction_TeamRoleDefinitionUpdated" xml:space="preserve"><value>Teamrollendefinition aktualisiert</value></data>
   <data name="Enum_AuditAction_TeamRoleDefinitionDeleted" xml:space="preserve"><value>Teamrollendefinition gelöscht</value></data>
@@ -293,7 +293,7 @@
   <data name="Enum_AuditAction_AssemblyVoteRosterMerged" xml:space="preserve"><value>Wählerlisten der Versammlung zusammengeführt</value></data>
   <data name="Enum_AuditAction_AssemblyVoteRemindersSent" xml:space="preserve"><value>Erinnerungen zur Versammlungsabstimmung gesendet</value></data>
   <data name="Enum_AuditAction_DuplicateAccountFlagged" xml:space="preserve"><value>Doppeltes Konto markiert</value></data>
-  <data name="Enum_AuditAction_WorkgroupDormancyCleared" xml:space="preserve"><value>Arbeitsgruppenruhe gelöscht</value></data>
+  <data name="Enum_AuditAction_WorkgroupDormancyCleared" xml:space="preserve"><value>Inaktivitätsmarkierung der Arbeitsgruppe entfernt</value></data>
   <data name="Enum_AuditAction_StoreOrderYearBackfilled" xml:space="preserve"><value>Bestelljahr nachgetragen</value></data>
   <data name="Enum_AuditAction_EventSettingsUpdated" xml:space="preserve"><value>Ereigniseinstellungen aktualisiert</value></data>
   <data name="Enum_AuditAction_EmailDailySendCountsBackfilled" xml:space="preserve"><value>Tägliche E-Mail-Versandzahlen nachgetragen</value></data>

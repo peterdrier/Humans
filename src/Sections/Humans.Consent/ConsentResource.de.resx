@@ -90,7 +90,7 @@
     <value>Über Einwilligungen</value>
   </data>
   <data name="Consent_AboutDescription" xml:space="preserve">
-    <value>Mit Ihrer Zustimmung zu diesen Dokumenten erklären Sie sich mit deren Bedingungen einverstanden. Die spanische Fassung ist der rechtsverbindliche Text. Englische Übersetzungen dienen ausschließlich der Verständlichkeit.</value>
+    <value>Mit Ihrer Zustimmung zu diesen Dokumenten erklären Sie sich mit deren Bedingungen einverstanden. Die spanische Fassung ist der rechtsverbindliche Text. Übersetzungen dienen ausschließlich der Verständlichkeit.</value>
   </data>
   <data name="Consent_Review_AlreadyConsented" xml:space="preserve">
     <value>Bereits zugestimmt</value>

@@ -582,7 +582,7 @@
     <value>{0} — cap torn aquest dia</value>
   </data>
   <data name="Shifts_ShiftDash_Heatmap_Legend" xml:space="preserve">
-    <value>Llegenda</value>
+    <value>Passa el ratolí per sobre d'una cel·la per veure'n els detalls. Desplaça't horitzontalment per veure tots els dies.</value>
   </data>
   <data name="Shifts_ShiftDash_Departments_Col_Department" xml:space="preserve">
     <value>Departament</value>
@@ -981,11 +981,11 @@
     <comment>TODO: translate</comment>
   </data>
   <data name="Shifts_VolTrack_Msg_CampSetupSaved" xml:space="preserve">
-    <value>Configuració del Barrio desada</value>
+    <value>Data de muntatge del campament desada.</value>
     <comment>TODO: translate</comment>
   </data>
   <data name="Shifts_VolTrack_Msg_CampSetupCleared" xml:space="preserve">
-    <value>Configuració del Barrio esborrada</value>
+    <value>Data de muntatge del campament esborrada.</value>
     <comment>TODO: translate</comment>
   </data>
   <data name="Shifts_VolTrack_Msg_AvailabilitySet" xml:space="preserve">
@@ -1017,7 +1017,7 @@
     <comment>TODO: translate</comment>
   </data>
   <data name="Shifts_VolTrack_Err_SetupBeforeFirstSignup" xml:space="preserve">
-    <value>La configuració no pot ser abans del primer registre</value>
+    <value>La data de muntatge ha de ser igual o posterior a la primera inscripció de muntatge del voluntari.</value>
     <comment>TODO: translate</comment>
   </data>
   <data name="Shifts_ShiftDash_VolTrackEntry_Title" xml:space="preserve">
@@ -1025,7 +1025,7 @@
     <comment>TODO: translate</comment>
   </data>
   <data name="Shifts_ShiftDash_VolTrackEntry_Subtitle" xml:space="preserve">
-    <value>Estat de configuració dels Barrios</value>
+    <value>Identifica buits, marca dates de muntatge del campament i mostra voluntaris declarats però sense reserva.</value>
     <comment>TODO: translate</comment>
   </data>
   <data name="Shifts_ShiftDash_VolTrackEntry_Open" xml:space="preserve">
@@ -1156,7 +1156,7 @@
   </data>
   <data name="Shifts_DietaryMissingBanner_Title" xml:space="preserve"><value>Ens expliques les teves preferències alimentàries?</value></data>
   <data name="Shifts_DietaryMissingBanner_Body" xml:space="preserve"><value>Estàs en un torn llarg. Si ens expliques les teves preferències alimentàries, la cantina pot planificar els teus àpats. És opcional.</value></data>
-  <data name="Shifts_DietaryMissingBanner_Cta" xml:space="preserve"><value>Tell us now</value></data>
+  <data name="Shifts_DietaryMissingBanner_Cta" xml:space="preserve"><value>Digues-nos-ho ara</value></data>
   <data name="Shifts_DietaryMissingBanner_Decline" xml:space="preserve"><value>Prefereixo no respondre</value></data>
   <data name="Shifts_ViewAllMyShifts" xml:space="preserve"><value>Veure tots els meus torns</value></data>
   <data name="Shifts_SortOrder" xml:space="preserve"><value>Ordre</value></data>

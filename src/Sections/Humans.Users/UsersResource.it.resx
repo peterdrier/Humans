@@ -703,7 +703,7 @@
   <data name="Users_Email_EmailVerification_Body" xml:space="preserve">
     <value>&lt;h2&gt;Verifica dell'indirizzo e-mail&lt;/h2&gt;
 &lt;p&gt;Ciao {0},&lt;/p&gt;
-&lt;p&gt;Hai richiesto di impostare &lt;strong&gt;{1}&lt;/strong&gt; come indirizzo e-mail preferito.&lt;/p&gt;
+&lt;p&gt;Hai richiesto di aggiungere &lt;strong&gt;{1}&lt;/strong&gt; al tuo account.&lt;/p&gt;
 &lt;p&gt;Clicca sul link seguente per verificare questo indirizzo:&lt;/p&gt;
 &lt;p&gt;&lt;a href="{2}" style="display:inline-block; padding:12px 24px; background-color:#0d6efd; color:#ffffff; text-decoration:none; border-radius:6px; font-weight:bold; font-size:16px;"&gt;Verifica indirizzo e-mail&lt;/a&gt;&lt;/p&gt;
 &lt;p&gt;Questo link scade tra 24 ore.&lt;/p&gt;
