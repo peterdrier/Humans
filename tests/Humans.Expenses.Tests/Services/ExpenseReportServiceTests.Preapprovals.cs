@@ -1,3 +1,4 @@
+using Humans.Users.Contracts;
 using AwesomeAssertions;
 using Humans.AuditLog.Contracts;
 using Xunit;
@@ -273,6 +274,8 @@ public sealed partial class ExpenseReportServiceTests
         var reportId = Guid.NewGuid();
         await SeedGrantReportAsync(reportId, submitter, grant.Id, ExpenseReportStatus.Submitted, maxAmount: 150m);
         var otherManager = Guid.NewGuid();
+        _userService.GetUserInfoAsync(otherManager, Arg.Any<CancellationToken>())
+            .Returns(UserInfo.Create(new User { Id = otherManager }, [], [], null));
         _preapprovals.ListManagedGrantIdsAsync(otherManager, Arg.Any<CancellationToken>())
             .Returns(new HashSet<Guid> { Guid.NewGuid() });
 
@@ -295,6 +298,8 @@ public sealed partial class ExpenseReportServiceTests
         var reportId = Guid.NewGuid();
         await SeedGrantReportAsync(reportId, submitter, grant.Id, ExpenseReportStatus.Submitted, maxAmount: 150m);
         var manager = Guid.NewGuid();
+        _userService.GetUserInfoAsync(manager, Arg.Any<CancellationToken>())
+            .Returns(UserInfo.Create(new User { Id = manager }, [], [], null));
         _preapprovals.ListManagedGrantIdsAsync(manager, Arg.Any<CancellationToken>())
             .Returns(new HashSet<Guid> { grant.Id });
 

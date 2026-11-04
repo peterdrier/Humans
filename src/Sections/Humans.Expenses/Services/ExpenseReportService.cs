@@ -168,10 +168,11 @@ internal sealed class ExpenseReportService(
 
         // Filtering the whole queue in memory beats a per-audience query at this scale.
         // Drafts and withdrawals are excluded upstream for everyone.
-        var categoryIds = await GetCoordinatorCategoryIdsAsync(viewerUserId, ct);
-        var managedGrantIds = await preapprovals.ListManagedGrantIdsAsync(viewerUserId, ct);
         var viewer = await userService.GetUserInfoAsync(viewerUserId, ct);
-        var ownIds = viewer?.AllUserIds ?? [viewerUserId];
+        if (viewer is null) return [];
+        var categoryIds = await GetCoordinatorCategoryIdsAsync(viewer.Id, ct);
+        var managedGrantIds = await preapprovals.ListManagedGrantIdsAsync(viewer.Id, ct);
+        var ownIds = viewer.AllUserIds;
         return queue
             .Where(r => ownIds.Contains(r.SubmitterUserId)
                         || (r.BudgetCategoryId is { } categoryId && categoryIds.Contains(categoryId))
@@ -207,8 +208,10 @@ internal sealed class ExpenseReportService(
     public async Task<IReadOnlyList<ExpenseReportDto>> GetCoordinatorQueueAsync(
         Guid coordinatorUserId, CancellationToken ct = default)
     {
-        var categoryIds = await GetCoordinatorCategoryIdsAsync(coordinatorUserId, ct);
-        var managedGrantIds = await preapprovals.ListManagedGrantIdsAsync(coordinatorUserId, ct);
+        var coordinator = await userService.GetUserInfoAsync(coordinatorUserId, ct);
+        if (coordinator is null) return [];
+        var categoryIds = await GetCoordinatorCategoryIdsAsync(coordinator.Id, ct);
+        var managedGrantIds = await preapprovals.ListManagedGrantIdsAsync(coordinator.Id, ct);
 
         var queue = categoryIds.Count == 0
             ? []

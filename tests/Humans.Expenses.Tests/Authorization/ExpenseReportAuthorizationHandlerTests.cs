@@ -35,6 +35,8 @@ public sealed class ExpenseReportAuthorizationHandlerTests
 
     public ExpenseReportAuthorizationHandlerTests()
     {
+        _users.GetUserInfoAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(call => UserInfo.Create(new User { Id = call.Arg<Guid>() }, [], [], null));
         _handler = new ExpenseReportAuthorizationHandler(_budgetService, _teamService, _users, _preapprovals, _httpContext);
 
         // Category is linked to TeamId
@@ -45,6 +47,55 @@ public sealed class ExpenseReportAuthorizationHandlerTests
         _teamService.IsUserCoordinatorOfTeamAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(call => TeamCoordinatorAccess.IsCoordinatorOfActiveTeam(
                 teams, call.ArgAt<Guid>(0), call.ArgAt<Guid>(1)));
+    }
+
+    [HumansFact]
+    public async Task MergedPreapprovalManager_RetainsHistoricalProgramAccess()
+    {
+        var cookieId = Guid.NewGuid();
+        var survivorId = Guid.NewGuid();
+        var grantId = Guid.NewGuid();
+        _users.GetUserInfoAsync(cookieId, Arg.Any<CancellationToken>()).Returns(
+            UserInfo.Create(new User { Id = survivorId }, [], [], null) with { MergedUserIds = [cookieId] });
+        _preapprovals.ListManagedGrantIdsAsync(
+                Arg.Is<Guid>(id => id == cookieId || id == survivorId), Arg.Any<CancellationToken>())
+            .Returns(new HashSet<Guid> { grantId });
+        var report = MakeReport(SubmitterId, ExpenseReportStatus.Submitted) with
+        {
+            PreapprovalGrantId = grantId, BudgetCategoryId = null, BudgetYearId = null,
+        };
+
+        (await EvaluateAsync(CreateUser(cookieId), report, ExpenseReportOperation.Endorse)).Should().BeTrue();
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(true, true)]
+    [Xunit.InlineData(true, false)]
+    [Xunit.InlineData(false, false)]
+    public async Task ReviewerIdentityResolution_UsesSurvivorAndDeniesMissingAccounts(
+        bool accountExists, bool survivorCoordinates)
+    {
+        var cookieId = survivorCoordinates ? Guid.NewGuid() : CoordinatorId;
+        var survivorId = survivorCoordinates ? CoordinatorId : Guid.NewGuid();
+        _users.GetUserInfoAsync(cookieId, Arg.Any<CancellationToken>()).Returns(accountExists
+            ? UserInfo.Create(new User { Id = survivorId }, [], [], null) with { MergedUserIds = [cookieId] }
+            : null);
+
+        var allowed = await EvaluateAsync(CreateUser(cookieId),
+            MakeReport(SubmitterId, ExpenseReportStatus.Submitted), ExpenseReportOperation.Endorse);
+
+        allowed.Should().Be(accountExists && survivorCoordinates);
+    }
+
+    [HumansFact]
+    public async Task MissingSubmitterIdentityResolution_DoesNotTrustTheMatchingCookieId()
+    {
+        _users.GetUserInfoAsync(SubmitterId, Arg.Any<CancellationToken>()).Returns((UserInfo?)null);
+
+        var allowed = await EvaluateAsync(CreateUser(SubmitterId),
+            MakeReport(SubmitterId, ExpenseReportStatus.Draft), ExpenseReportOperation.View);
+
+        allowed.Should().BeFalse();
     }
 
     [HumansTheory]
@@ -70,7 +121,7 @@ public sealed class ExpenseReportAuthorizationHandlerTests
         _users.GetUserInfoAsync(CoordinatorId, Arg.Any<CancellationToken>()).Returns(call =>
         {
             Read("User", call.Arg<CancellationToken>());
-            return new ValueTask<UserInfo?>((UserInfo?)null);
+            return new ValueTask<UserInfo?>(UserInfo.Create(new User { Id = CoordinatorId }, [], [], null));
         });
         _preapprovals.ListManagedGrantIdsAsync(CoordinatorId, Arg.Any<CancellationToken>()).Returns(call =>
         {
