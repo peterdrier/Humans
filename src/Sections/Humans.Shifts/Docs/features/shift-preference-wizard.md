@@ -104,7 +104,7 @@ The following fields are not editable on `/Shifts/ShiftInfo`; food answers live 
 
 Other skill/language text is optional and limited to 200 characters in the form and server validation. Invalid submissions redisplay the entered wizard with a visible validation summary and do not change the stored profile.
 
-Option labels and time-preference descriptions are localized in all six cultures. Language labels use the shared native-language names. Input values retain the existing English skill, quirk and language vocabulary; translations never change saved values.
+Option labels and time-preference descriptions are localized in all supported cultures. Language labels use the shared native-language names. Input values retain the existing English skill, quirk and language vocabulary; translations never change saved values.
 
 ## Step Content
 

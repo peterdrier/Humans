@@ -34,6 +34,7 @@ public class EventIdentityViewTests
     [Xunit.InlineData("it")]
     [Xunit.InlineData("fr")]
     [Xunit.InlineData("ca")]
+    [Xunit.InlineData("nl")]
     public async Task Browser_labels_resolve_member_identity_and_preserve_authored_hosts_and_camps(string language)
     {
         using var culture = new CultureScope(language);

@@ -675,6 +675,7 @@ public class TeamControllerPageContentTests
     [InlineData("it")]
     [InlineData("fr")]
     [InlineData("ca")]
+    [InlineData("nl")]
     public async Task Join_InvalidMessageReturnsTheFormWithoutSubmittingARequest(string culture)
     {
         using var cultureScope = new CultureScope(culture);

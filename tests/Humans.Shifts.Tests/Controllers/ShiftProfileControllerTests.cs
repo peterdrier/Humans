@@ -29,6 +29,7 @@ public class ShiftProfileControllerTests
     [InlineData("it")]
     [InlineData("fr")]
     [InlineData("ca")]
+    [InlineData("nl")]
     public async Task ShiftInfo_RejectsOversizedFreeTextWithoutChangingTheProfile(string culture)
     {
         using var cultureScope = new CultureScope(culture);

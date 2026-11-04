@@ -33,6 +33,7 @@ public sealed class GoogleIdentityViewTests
     [Xunit.InlineData("it")]
     [Xunit.InlineData("fr")]
     [Xunit.InlineData("ca")]
+    [Xunit.InlineData("nl")]
     public async Task SyncAndRenames_RenderLocalIdentity_AndKeepExternalNames(string language)
     {
         using var culture = new CultureScope(language);

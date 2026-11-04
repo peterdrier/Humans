@@ -29,6 +29,7 @@ public class ShiftInfoViewTests
     [Xunit.InlineData("it")]
     [Xunit.InlineData("fr")]
     [Xunit.InlineData("ca")]
+    [Xunit.InlineData("nl")]
     [Xunit.InlineData("en", "l'heure \"du jour\"\n</script>\\suite")]
     public async Task Wizard_step_copy_round_trips_through_script(string language, string? overrideCopy = null)
     {

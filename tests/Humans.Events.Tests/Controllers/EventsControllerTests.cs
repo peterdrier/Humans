@@ -741,6 +741,7 @@ public class EventsControllerTests
     [Xunit.InlineData("it")]
     [Xunit.InlineData("fr")]
     [Xunit.InlineData("ca")]
+    [Xunit.InlineData("nl")]
     public void SubmissionForms_LocalizeValidationMessages(string culture)
     {
         using var cultureScope = new CultureScope(culture);

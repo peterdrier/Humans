@@ -273,6 +273,7 @@ public sealed class BulkEventCsvParserTests
     [InlineData("it", "Riga 2: DurationMinutes non è un numero intero.")]
     [InlineData("fr", "Ligne 2 : DurationMinutes n’est pas un nombre entier.")]
     [InlineData("ca", "Fila 2: DurationMinutes no és un nombre enter.")]
+    [InlineData("nl", "Rij 2: DurationMinutes is geen geheel getal.")]
     public void Parse_NonIntegerDuration_KeyRendersInUploaderCultureWithFileRow(string culture, string expectedError)
     {
         var originalCulture = CultureInfo.CurrentUICulture;

@@ -298,7 +298,7 @@ Settings and Register an existing group on first setup or after clearing the que
 - Approving, declining and directly adding members share one preflight: the group must exist and be Active before coordinator/admin authorization is checked. An admin override does not bypass the Active requirement.
 - Register edits, member forms and member mutations share one controller resolver: resolve the actor, find the group, then check member-work permission before nested IDs or submitted values. Join, leave, status requests and commenting retain their existing exceptions to the member-work check and their route policies.
 
-- Roster membership-tier badges use localized enum labels in all six cultures.
+- Roster membership-tier badges use localized enum labels in all supported cultures.
 
 - The section’s things-to-do contribution forwards caller cancellation through all data reads. Aborted reads propagate instead of being logged or converted into missing prompts.
 
@@ -315,9 +315,9 @@ Settings and Register an existing group on first setup or after clearing the que
 - Member and admin action and form refusals preserve typed drafts and remain visible at Warning without exception stacks; action and resource-key context, redirects and localized form feedback are preserved. Only typed section refusals carrying untranslated resource keys and arguments become validation feedback; unexpected dependency lookup or access failures propagate to the application error handler instead of becoming workgroup 404/403 responses.
 - Redirecting member actions reject malformed bound input after authorization and resource ownership checks, before any write. Invalid coordinator selections cannot save a valid subset, and invalid completion reasons cannot default to delivered; refusals return 400 and log a warning. Completion reasons, individual/category comment-response dispositions and Board dispositions must be posted explicitly; omitted choices cannot become delivered, pending or accepted. Explicit zero-valued choices remain valid. Admin binding refusals also log a Warning after actor resolution.
 
-- Member workgroup pages and forms localize breadcrumb navigation labels in all six supported cultures.
+- Member workgroup pages and forms localize breadcrumb navigation labels in all supported cultures.
 
-- Application/register, meeting, log entry and document form required and length errors use shared resources in all six cultures; input limits are unchanged.
+- Application/register, meeting, log entry and document form required and length errors use shared resources in all supported cultures; input limits are unchanged.
 
 - Registration is administrative recognition only (Board Resolution clause 4). No
   transition happens automatically; every lifecycle step is a `BoardOrAdmin` action

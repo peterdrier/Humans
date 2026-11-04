@@ -17,7 +17,7 @@ namespace Humans.Integration.Tests.Controllers;
 /// </para>
 /// <para>
 /// The <c>Email_FacilitatedMessage_*</c> keys are template copy, not page copy: the two views have no
-/// <c>Localizer[…]</c> call. <c>/Email/EmailPreview</c> renders every template in all six cultures, so one GET proves
+/// <c>Localizer[…]</c> call. <c>/Email/EmailPreview</c> renders every template in all supported cultures, so one GET proves
 /// both the neutral set and the satellites, with no language switch.
 /// </para>
 /// </remarks>

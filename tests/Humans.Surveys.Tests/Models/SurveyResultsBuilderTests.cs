@@ -39,6 +39,7 @@ public sealed class SurveyResultsBuilderTests
     [InlineData("it", "3,5")]
     [InlineData("fr", "3,5")]
     [InlineData("ca", "3,5")]
+    [InlineData("nl", "3,5")]
     public void Rating_average_uses_ui_language_independently_of_form_parsing(string language, string expected)
     {
         using var culture = new CultureScope(language);

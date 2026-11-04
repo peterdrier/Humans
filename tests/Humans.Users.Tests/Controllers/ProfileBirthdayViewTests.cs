@@ -28,6 +28,7 @@ public class ProfileBirthdayViewTests
     [Xunit.InlineData("it", "luglio")]
     [Xunit.InlineData("fr", "juillet")]
     [Xunit.InlineData("ca", "juliol")]
+    [Xunit.InlineData("nl", "juli")]
     public async Task BirthdayMonthNames_UseUiLanguageAndKeepNumericValues(string language, string july)
     {
         using var inputCulture = new CultureScope("en");
@@ -45,6 +46,7 @@ public class ProfileBirthdayViewTests
     [Xunit.InlineData("it", true)]
     [Xunit.InlineData("fr", true)]
     [Xunit.InlineData("ca", true)]
+    [Xunit.InlineData("nl", true)]
     public void BirthdayDisplay_ContainsOnlyLocalizedMonthAndDay(string language, bool dayFirst)
     {
         using var culture = new CultureScope(language);

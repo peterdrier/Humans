@@ -33,6 +33,7 @@ public class NotificationBellViewTests
     [Xunit.InlineData("it", "Impossibile caricare le notifiche. Riprova.")]
     [Xunit.InlineData("fr", "Impossible de charger les notifications. Réessaie.")]
     [Xunit.InlineData("ca", "No s’han pogut carregar les notificacions. Torna-ho a provar.")]
+    [Xunit.InlineData("nl", "Kon meldingen niet laden. Probeer het opnieuw.")]
     public async Task Bell_SuppliesLocalizedPopupFailureText(string language, string message)
     {
         using var culture = new CultureScope(language);
@@ -49,6 +50,7 @@ public class NotificationBellViewTests
     [Xunit.InlineData("it")]
     [Xunit.InlineData("fr")]
     [Xunit.InlineData("ca")]
+    [Xunit.InlineData("nl")]
     public async Task ResolvedRow_RendersTheHumanInsideTheLocalizedMessage(string language)
     {
         using var culture = new CultureScope(language);

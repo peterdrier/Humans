@@ -673,7 +673,7 @@ internal sealed partial class WorkgroupService(
         return null;
     }
 
-    // Read in six cultures under the localized "Budget set" badge, so it carries figures only, never English prose.
+    // Read in all supported cultures under the localized "Budget set" badge, so it carries figures only, never English prose.
     private static string BudgetLogBody(Workgroup w) => w.BudgetAmount is { } amount
         ? $"{amount.ToString("0.00", CultureInfo.InvariantCulture)} EUR · {w.HoldedAccountNumber}"
         : "—";

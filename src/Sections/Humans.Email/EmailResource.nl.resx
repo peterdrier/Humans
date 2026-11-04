@@ -1,0 +1,202 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<!-- ReSharper disable MarkupTextTypo -->
+<root xmlns:ns1="urn:schemas-microsoft-com:xml-msdata" xmlns:xs="http://www.w3.org/2001/XMLSchema">
+  <xs:schema id="root">
+    <xs:element name="root" ns1:IsDataSet="true">
+      <xs:complexType>
+        <xs:choice maxOccurs="unbounded">
+          <xs:element name="data">
+            <xs:complexType>
+              <xs:sequence>
+                <xs:element name="value" type="xsd:string" minOccurs="0" ns1:Ordinal="1" />
+                <xs:element name="comment" type="xsd:string" minOccurs="0" ns1:Ordinal="2" />
+              </xs:sequence>
+              <xs:attribute name="name" type="xsd:string" ns1:Ordinal="0" />
+              <xs:attribute name="type" type="xsd:string" />
+              <xs:attribute name="mimetype" type="xsd:string" />
+            </xs:complexType>
+          </xs:element>
+          <xs:element name="resheader">
+            <xs:complexType>
+              <xs:sequence>
+                <xs:element name="value" type="xsd:string" minOccurs="0" ns1:Ordinal="1" />
+              </xs:sequence>
+              <xs:attribute name="name" type="xsd:string" use="required" />
+            </xs:complexType>
+          </xs:element>
+        </xs:choice>
+      </xs:complexType>
+    </xs:element>
+  </xs:schema>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>1.3</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="Email_FacilitatedMessage_Subject" xml:space="preserve">
+    <value>Humans-bericht van: {0}</value>
+  </data>
+  <data name="Email_FacilitatedMessage_Body" xml:space="preserve">
+    <value>&lt;h2&gt;Bericht van {1}&lt;/h2&gt;&lt;p&gt;Hoi {0},&lt;/p&gt;&lt;p&gt;{1} heeft je een bericht gestuurd via Humans:&lt;/p&gt;&lt;hr /&gt;&lt;p&gt;{2}&lt;/p&gt;&lt;hr /&gt;{3}</value>
+  </data>
+  <data name="Email_FacilitatedMessage_NoContactInfo" xml:space="preserve">
+    <value>Deze human heeft ervoor gekozen geen contactgegevens te delen.</value>
+  </data>
+
+  <!-- ======================== -->
+  <!-- Workgroup notice         -->
+  <!-- ======================== -->
+
+  <data name="Email_ComposerSelfTest_Subject" xml:space="preserve"><value>[Test] {0}</value></data>
+  <data name="Email_ComposerSelfTest_DefaultSubject" xml:space="preserve"><value>[Test] Voorbeeld e-maileditor</value></data>
+  <data name="Email_UnsubscribeFooter" xml:space="preserve"><value>Afmelden voor deze e-mails</value></data>
+  <data name="Email_Outbox_AdminTitle" xml:space="preserve"><value>E-mails</value></data>
+  <data name="Email_Outbox_BackToAdmin" xml:space="preserve"><value>Terug naar beheer</value></data>
+  <data name="Email_Outbox_BackToProfile" xml:space="preserve"><value>Terug naar profiel</value></data>
+  <data name="Email_Outbox_DescriptionAdmin" xml:space="preserve"><value>E-mails die het systeem naar deze human heeft gestuurd.</value></data>
+  <data name="Email_Outbox_DescriptionSelf" xml:space="preserve"><value>E-mails die het systeem naar jou heeft gestuurd (in de afgelopen 150 dagen).</value></data>
+  <data name="Email_Outbox_Empty" xml:space="preserve"><value>Geen e-mails geregistreerd.</value></data>
+  <data name="Email_Outbox_Subject" xml:space="preserve"><value>Onderwerp</value></data>
+  <data name="Email_Outbox_MyTitle" xml:space="preserve"><value>Mijn e-mails</value></data>
+  <data name="Email_SendMessage_Title" xml:space="preserve">
+    <value>Stuur {0} een bericht</value>
+  </data>
+  <data name="Email_SendMessage_Breadcrumb" xml:space="preserve">
+    <value>Bericht sturen</value>
+  </data>
+  <data name="Email_SendMessage_Heading" xml:space="preserve">
+    <value>Stuur {0} een bericht</value>
+  </data>
+  <data name="Email_SendMessage_MessageLabel" xml:space="preserve">
+    <value>Bericht</value>
+  </data>
+  <data name="Email_SendMessage_IncludeContactInfo" xml:space="preserve">
+    <value>Mijn contactgegevens meesturen</value>
+  </data>
+  <data name="Email_SendMessage_IncludeContactInfoHelp" xml:space="preserve">
+    <value>Je naam en e-mailadres worden meegestuurd, zodat de ontvanger je rechtstreeks kan antwoorden.</value>
+  </data>
+  <data name="Email_SendMessage_Send" xml:space="preserve">
+    <value>Bericht sturen</value>
+  </data>
+  <data name="Email_SendMessage_Success" xml:space="preserve">
+    <value>Je bericht is verstuurd naar {0}.</value>
+  </data>
+  <data name="Email_SendMessage_OptedOut" xml:space="preserve"><value>Deze human heeft zich afgemeld voor het ontvangen van berichten.</value></data>
+  <data name="Email_BreadcrumbNavigation" xml:space="preserve"><value>Kruimelpad</value></data>
+  <data name="Email_CommPrefs_Title" xml:space="preserve">
+    <value>Communicatievoorkeuren</value>
+  </data>
+  <data name="Email_CommPrefs_Description" xml:space="preserve">
+    <value>Kies welke berichten je ontvangt en hoe.</value>
+  </data>
+  <data name="Email_CommPrefs_Category" xml:space="preserve">
+    <value>Categorie</value>
+  </data>
+  <data name="Email_CommPrefs_Email" xml:space="preserve">
+    <value>E-mail</value>
+  </data>
+  <data name="Email_CommPrefs_Alert" xml:space="preserve">
+    <value>Melding</value>
+  </data>
+  <data name="Email_CommPrefs_BackToProfile" xml:space="preserve">
+    <value>Terug naar profiel</value>
+  </data>
+  <data name="Email_CommPrefs_BackToDashboard" xml:space="preserve">
+    <value>Terug naar dashboard</value>
+  </data>
+  <data name="Email_CommPrefs_OneClick_Prompt" xml:space="preserve">
+    <value>Je hebt op een afmeldlink geklikt in een e-mail over {0}.</value>
+  </data>
+  <data name="Email_CommPrefs_OneClick_Hint" xml:space="preserve">
+    <value>Meld je met één klik af, of pas je voorkeuren aan in het overzicht hieronder.</value>
+  </data>
+  <data name="Email_CommPrefs_OneClick_Button" xml:space="preserve">
+    <value>Afmelden voor {0}</value>
+  </data>
+  <data name="Email_CommPrefs_OneClick_Done" xml:space="preserve">
+    <value>Afgemeld. Je kunt elke categorie hieronder weer inschakelen.</value>
+  </data>
+  <data name="Email_CommPrefs_UpdateSource" xml:space="preserve">
+    <value>Bron</value>
+  </data>
+  <data name="Email_CommPrefs_UpdatedAt" xml:space="preserve">
+    <value>Bijgewerkt</value>
+  </data>
+  <data name="Email_CommPrefs_AlwaysOn" xml:space="preserve"><value>Altijd aan</value></data>
+  <data name="Email_Unsubscribe_Title" xml:space="preserve">
+    <value>Afmelden voor e-mails</value>
+  </data>
+  <data name="Email_Unsubscribe_Heading" xml:space="preserve">
+    <value>Afmelden voor e-mails over {0}?</value>
+    <comment>{0} = category name</comment>
+  </data>
+  <data name="Email_Unsubscribe_Greeting" xml:space="preserve">
+    <value>Hoi {0},</value>
+    <comment>{0} = display name</comment>
+  </data>
+  <data name="Email_Unsubscribe_ConfirmMessage" xml:space="preserve">
+    <value>Als je bevestigt, ontvang je geen e-mails over {0} meer van Humans.</value>
+    <comment>{0} = category name</comment>
+  </data>
+  <data name="Email_Unsubscribe_ConfirmButton" xml:space="preserve">
+    <value>Afmelding bevestigen</value>
+  </data>
+  <data name="Email_Unsubscribe_DoneTitle" xml:space="preserve">
+    <value>Je bent afgemeld</value>
+  </data>
+  <data name="Email_Unsubscribe_DoneMessage" xml:space="preserve">
+    <value>Je ontvangt geen e-mails over {0} meer van Humans.</value>
+    <comment>{0} = category name</comment>
+  </data>
+  <data name="Email_Unsubscribe_DoneManage" xml:space="preserve">
+    <value>Je kunt al je communicatievoorkeuren beheren via je</value>
+  </data>
+  <data name="Email_Unsubscribe_DoneManageLink" xml:space="preserve">
+    <value>communicatievoorkeuren</value>
+  </data>
+  <data name="Email_Unsubscribe_BackHome" xml:space="preserve">
+    <value>Terug naar de startpagina</value>
+  </data>
+  <data name="Email_Unsubscribe_ExpiredTitle" xml:space="preserve">
+    <value>Afmeldlink verlopen</value>
+  </data>
+  <data name="Email_Unsubscribe_ExpiredHeading" xml:space="preserve">
+    <value>Deze afmeldlink is verlopen</value>
+  </data>
+  <data name="Email_Unsubscribe_ExpiredMessage" xml:space="preserve">
+    <value>Gebruik de link uit een recentere e-mail, of</value>
+  </data>
+  <data name="Email_Unsubscribe_ExpiredSignIn" xml:space="preserve">
+    <value>log in om je communicatievoorkeuren te beheren</value>
+  </data>
+  <data name="Email_CommPrefs_Name_System" xml:space="preserve"><value>Systeem</value></data>
+  <data name="Email_CommPrefs_Name_CampaignCodes" xml:space="preserve"><value>Campagnecodes</value></data>
+  <data name="Email_CommPrefs_Name_FacilitatedMessages" xml:space="preserve"><value>Berichten tussen humans</value></data>
+  <data name="Email_CommPrefs_Name_VolunteerUpdates" xml:space="preserve"><value>Updates voor vrijwilligers</value></data>
+  <data name="Email_CommPrefs_Name_TeamUpdates" xml:space="preserve"><value>Teamupdates</value></data>
+  <data name="Email_CommPrefs_Name_Governance" xml:space="preserve"><value>Bestuurszaken</value></data>
+  <data name="Email_CommPrefs_Name_Marketing" xml:space="preserve"><value>Marketing</value></data>
+  <data name="Email_CommPrefs_Description_System" xml:space="preserve"><value>Belangrijke meldingen over je account, toestemming en beveiliging. Altijd aan.</value></data>
+  <data name="Email_CommPrefs_Description_CampaignCodes" xml:space="preserve"><value>Kortingscodes, subsidies en campagnecodes om in te wisselen. Altijd aan.</value></data>
+  <data name="Email_CommPrefs_Description_FacilitatedMessages" xml:space="preserve"><value>Berichten die andere humans je via Humans sturen.</value></data>
+  <data name="Email_CommPrefs_Description_Ticketing" xml:space="preserve"><value>Aankoopbevestigingen en informatie over het evenement.</value></data>
+  <data name="Email_CommPrefs_Description_VolunteerUpdates" xml:space="preserve"><value>Dienstwijzigingen, roosterupdates en meldingen voor vrijwilligers.</value></data>
+  <data name="Email_CommPrefs_Description_TeamUpdates" xml:space="preserve"><value>Drive-rechten en het toevoegen en verwijderen van teamleden.</value></data>
+  <data name="Email_CommPrefs_Description_Governance" xml:space="preserve"><value>Bestuursstemmingen, niveau-aanvragen, roltoewijzingen en onboardingbeoordelingen.</value></data>
+  <data name="Email_CommPrefs_Description_Marketing" xml:space="preserve"><value>Mailinglijst en promoties.</value></data>
+  <data name="Email_CommPrefs_TicketingYear" xml:space="preserve"><value>Tickets — {0}</value></data>
+  <data name="Email_CommPrefs_TicketingLocked" xml:space="preserve"><value>Vergrendeld — je hebt een ticket voor dit jaar</value></data>
+  <data name="Email_CommPrefs_Name_EventOperations" xml:space="preserve"><value>Evenementorganisatie</value></data>
+  <data name="Email_CommPrefs_Name_CommunityUpdates" xml:space="preserve"><value>Community-updates</value></data>
+  <data name="Email_CommPrefs_AlwaysOnCategoryCannotChange" xml:space="preserve"><value>Categorieën die altijd aan staan, kunnen niet worden gewijzigd.</value></data>
+  <data name="Email_CommPrefs_LoadFailed" xml:space="preserve"><value>Kon communicatievoorkeuren niet laden.</value></data>
+  <data name="Email_CommPrefs_TicketingLockedCannotChange" xml:space="preserve"><value>Ticketberichten blijven aan zolang je een ticket voor dit jaar hebt.</value></data>
+</root>

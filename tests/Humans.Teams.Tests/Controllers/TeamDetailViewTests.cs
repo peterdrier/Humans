@@ -32,6 +32,7 @@ public class TeamDetailViewTests
     [Xunit.InlineData("it", SystemTeamType.Volunteers, "Volontari")]
     [Xunit.InlineData("fr", SystemTeamType.Volunteers, "Bénévoles")]
     [Xunit.InlineData("ca", SystemTeamType.Volunteers, "Voluntaris")]
+    [Xunit.InlineData("nl", SystemTeamType.Volunteers, "Vrijwilligers")]
     [Xunit.InlineData("es", SystemTeamType.BarrioLeads, "Responsables de campamento")]
     public async Task SystemTeamType_UsesLocalizedLabelInBadgeAndMembershipCriteria(
         string culture, SystemTeamType type, string expected)

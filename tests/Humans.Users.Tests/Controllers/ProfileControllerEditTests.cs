@@ -294,6 +294,7 @@ public class ProfileControllerEditTests
     [InlineData("it")]
     [InlineData("fr")]
     [InlineData("ca")]
+    [InlineData("nl")]
     public void MemberProfileForms_LocalizeValidationMessages(string culture)
     {
         using var cultureScope = new CultureScope(culture);

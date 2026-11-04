@@ -1,0 +1,223 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<!-- ReSharper disable MarkupTextTypo -->
+<root xmlns:ns1="urn:schemas-microsoft-com:xml-msdata" xmlns:xs="http://www.w3.org/2001/XMLSchema">
+  <xs:schema id="root">
+    <xs:element name="root" ns1:IsDataSet="true">
+      <xs:complexType>
+        <xs:choice maxOccurs="unbounded">
+          <xs:element name="data">
+            <xs:complexType>
+              <xs:sequence>
+                <xs:element name="value" type="xsd:string" minOccurs="0" ns1:Ordinal="1" />
+                <xs:element name="comment" type="xsd:string" minOccurs="0" ns1:Ordinal="2" />
+              </xs:sequence>
+              <xs:attribute name="name" type="xsd:string" ns1:Ordinal="0" />
+              <xs:attribute name="type" type="xsd:string" />
+              <xs:attribute name="mimetype" type="xsd:string" />
+            </xs:complexType>
+          </xs:element>
+          <xs:element name="resheader">
+            <xs:complexType>
+              <xs:sequence>
+                <xs:element name="value" type="xsd:string" minOccurs="0" ns1:Ordinal="1" />
+              </xs:sequence>
+              <xs:attribute name="name" type="xsd:string" use="required" />
+            </xs:complexType>
+          </xs:element>
+        </xs:choice>
+      </xs:complexType>
+    </xs:element>
+  </xs:schema>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>1.3</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="Onboarding_ReviewProfileSummary" xml:space="preserve">
+    <value>Profieloverzicht</value>
+  </data>
+  <data name="Onboarding_ReviewLegalName" xml:space="preserve">
+    <value>Officiële naam</value>
+  </data>
+  <data name="Onboarding_ReviewApplicationMotivation" xml:space="preserve">
+    <value>Motivatie bij aanvraag</value>
+  </data>
+  <data name="Onboarding_ReviewNotesPlaceholder" xml:space="preserve">
+    <value>Optionele notities...</value>
+  </data>
+  <data name="Onboarding_BannerText" xml:space="preserve">
+    <value>Rond het instellen van je account af om toegang te krijgen tot diensten en teamfuncties.</value>
+  </data>
+  <data name="Onboarding_BannerCta" xml:space="preserve">
+    <value>Verder met instellen →</value>
+  </data>
+  <data name="Onboarding_BurnerNameExplainer" xml:space="preserve"><value>De naam die iedereen in het systeem ziet. Een unieke naam helpt maar is niet verplicht, al kan het lastig zijn om "Bob" te vinden tussen de paar duizend humans hier als iemand je zoekt.</value></data>
+  <data name="Onboarding_BurnerNameHelp" xml:space="preserve"><value>De naam waaronder iedereen je zal kennen.</value></data>
+  <data name="Onboarding_Continue" xml:space="preserve"><value>Doorgaan</value></data>
+  <data name="Onboarding_ConsentDocumentUnavailable" xml:space="preserve"><value>We konden het volgende document dat je moet ondertekenen niet laden. Probeer het zo opnieuw, of neem contact met ons op als het blijft gebeuren.</value></data>
+  <data name="Onboarding_LegalNameExplainerEmphasis" xml:space="preserve"><value>niet</value></data>
+  <data name="Onboarding_LegalNameExplainerPost" xml:space="preserve"><value>en maken deze alleen bekend als de wet of een formele controle dat vereist.</value></data>
+  <data name="Onboarding_LegalNameExplainerPre" xml:space="preserve"><value>Wordt intern bewaard, is alleen zichtbaar voor beheerders en wordt alleen gebruikt waar de Spaanse wet dat vereist — bijvoorbeeld voor onze auditregistratie dat je op een specifieke datum en tijd akkoord bent gegaan met de vrijwilligersovereenkomst. We exporteren deze gegevens nadrukkelijk</value></data>
+  <data name="Onboarding_LegalNameLabel" xml:space="preserve"><value>Officiële naam</value></data>
+  <data name="Onboarding_NameRequiredBeforeShifts" xml:space="preserve"><value>Voeg eerst je naam toe — die hebben we nodig voordat je je kunt aanmelden voor diensten.</value></data>
+  <data name="Onboarding_NamesSubtitle" xml:space="preserve"><value>Twee korte stappen voordat je een dienst kiest.</value></data>
+  <data name="Onboarding_NamesTitle" xml:space="preserve"><value>Welkom — laten we beginnen met je naam</value></data>
+  <data name="Onboarding_PriorityCritical" xml:space="preserve"><value>Kritiek</value></data>
+  <data name="Onboarding_PriorityImportant" xml:space="preserve"><value>Belangrijk</value></data>
+  <data name="Onboarding_ShiftsPriorityFilter" xml:space="preserve"><value>Filter op dienstprioriteit</value></data>
+  <data name="Onboarding_ShiftsCriticalBody" xml:space="preserve"><value>Slechts {0}% van de "kritieke" diensten is ingevuld. Help ons het evenement mogelijk te maken door er een paar op je te nemen als je kunt.</value></data>
+  <data name="Onboarding_ShiftsCriticalCta" xml:space="preserve"><value>Als je eerder kunt komen voor de opbouw of kunt blijven voor de afbouw: die plekken zijn het moeilijkst te vullen — geef ze voorrang bij het kiezen van je diensten.</value></data>
+  <data name="Onboarding_ShiftsCriticalCtaSetupClosed" xml:space="preserve"><value>Aanmelden voor de opbouw is gesloten — we zijn al op het terrein. Richt je op diensten tijdens het evenement en de afbouw.</value></data>
+  <data name="Onboarding_ShiftsCriticalHeading" xml:space="preserve"><value>We hebben je nodig!</value></data>
+  <data name="Onboarding_ShiftsImportantAlsoOpen" xml:space="preserve"><value>Er staan ook {0} "belangrijke" diensten open.</value></data>
+  <data name="Onboarding_ShiftsImportantBody" xml:space="preserve"><value>Er staan {0} "belangrijke" diensten open. Als je eerder kunt komen voor de opbouw of kunt blijven voor de afbouw, geef die dan voorrang.</value></data>
+  <data name="Onboarding_ShiftsImportantBodySetupClosed" xml:space="preserve"><value>Er staan {0} "belangrijke" diensten open — richt je op diensten tijdens het evenement en de afbouw.</value></data>
+  <data name="Onboarding_ShiftsNoActiveEvent" xml:space="preserve"><value>Er is momenteel geen actief evenement. Je kunt de onboarding afronden zonder een dienst te kiezen.</value></data>
+  <data name="Onboarding_ShiftsNoCritical" xml:space="preserve"><value>Er staan momenteel geen kritieke diensten open — probeer Belangrijk of Alle.</value></data>
+  <data name="Onboarding_ShiftsNoImportant" xml:space="preserve"><value>Er staan momenteel geen belangrijke diensten open — probeer Alle.</value></data>
+  <data name="Onboarding_ShiftsNotNow" xml:space="preserve"><value>Nu even niet</value></data>
+  <data name="Onboarding_ShiftsSignUpFailed" xml:space="preserve"><value>Aanmelden is niet gelukt.</value></data>
+  <data name="Onboarding_ShiftsSignUpRangeFailed" xml:space="preserve"><value>Aanmelden voor de gekozen periode is niet gelukt.</value></data>
+  <data name="Onboarding_ShiftsTitle" xml:space="preserve"><value>Kies een dienst</value></data>
+  <data name="Onboarding_WelcomeTitle" xml:space="preserve">
+    <value>Welkom</value>
+  </data>
+  <data name="Onboarding_WelcomeHeading" xml:space="preserve">
+    <value>Je bent binnen.</value>
+  </data>
+  <data name="Onboarding_WelcomeSubtitle" xml:space="preserve">
+    <value>Je ticket voor Elsewhere 2026 is bevestigd.</value>
+  </data>
+  <data name="Onboarding_WelcomeShiftsTitle" xml:space="preserve">
+    <value>Laten we dit nu samen waarmaken.</value>
+  </data>
+  <data name="Onboarding_WelcomeShiftsBody" xml:space="preserve">
+    <value>Elsewhere is geen festival waar je alleen naartoe gaat — je bouwt het zelf mee op. Elke human kiest diensten: vooraf opbouwen, tijdens het evenement alles draaiende houden en na afloop alles weer afbreken.</value>
+  </data>
+  <data name="Onboarding_WelcomeShiftsBody2" xml:space="preserve">
+    <value>Om diensten te bekijken en je ervoor aan te melden, heb je een Humans-account nodig. Dat kost maar een paar minuten.</value>
+  </data>
+  <data name="Onboarding_WelcomeCTA" xml:space="preserve">
+    <value>Inloggen of account aanmaken</value>
+  </data>
+  <data name="Onboarding_WelcomeFooter" xml:space="preserve">
+    <value>Heb je al een account? Dezelfde knop — log in en je komt meteen op de dienstenpagina.</value>
+  </data>
+  <data name="Onboarding_WelcomeContact" xml:space="preserve">
+    <value>Vragen? Mail ons op</value>
+  </data>
+  <data name="Onboarding_GuestAccountSubtitle" xml:space="preserve">
+    <value>Ook zonder profiel kun je je account en gegevens beheren.</value>
+  </data>
+  <data name="Onboarding_GuestAccountTitle" xml:space="preserve">
+    <value>Jouw spullen</value>
+  </data>
+  <data name="Onboarding_GuestBarriosDescription" xml:space="preserve">
+    <value>De buurten die mensen tijdens het evenement bouwen en bewonen</value>
+  </data>
+  <data name="Onboarding_GuestCommsDescription" xml:space="preserve">
+    <value>Kies welke e-mails en meldingen je van ons krijgt</value>
+  </data>
+  <data name="Onboarding_GuestCommsTitle" xml:space="preserve">
+    <value>Communicatie</value>
+  </data>
+  <data name="Onboarding_GuestCreateProfile" xml:space="preserve">
+    <value>Mijn profiel aanmaken</value>
+  </data>
+  <data name="Onboarding_GuestDataDescription" xml:space="preserve">
+    <value>Download alles wat we over je hebben — het is van jou</value>
+  </data>
+  <data name="Onboarding_GuestDataTitle" xml:space="preserve">
+    <value>Jouw gegevens</value>
+  </data>
+  <data name="Onboarding_GuestDeleteDescription" xml:space="preserve">
+    <value>Volledige accountverwijdering aanvragen — 30 dagen bedenktijd</value>
+  </data>
+  <data name="Onboarding_GuestDeleteTitle" xml:space="preserve">
+    <value>Verdwijnen</value>
+  </data>
+  <data name="Onboarding_GuestDeletionCancelButton" xml:space="preserve">
+    <value>Ik heb me bedacht</value>
+  </data>
+  <data name="Onboarding_GuestDeletionHeldUntil" xml:space="preserve">
+    <value>We verwijderen alles na {0} — we wachten tot na het evenement.</value>
+  </data>
+  <data name="Onboarding_GuestDeletionPendingTitle" xml:space="preserve">
+    <value>Je bent op weg naar de uitgang</value>
+  </data>
+  <data name="Onboarding_GuestDeletionRequestedOn" xml:space="preserve">
+    <value>Aangevraagd op {0}.</value>
+  </data>
+  <data name="Onboarding_GuestDeletionScheduledFor" xml:space="preserve">
+    <value>Alles verdwijnt op {0}. Echt waar.</value>
+  </data>
+  <data name="Onboarding_GuestExplore" xml:space="preserve">
+    <value>Rondkijken</value>
+  </data>
+  <data name="Onboarding_GuestExploreSubtitle" xml:space="preserve">
+    <value>Geen profiel nodig. Alleen nieuwsgierigheid.</value>
+  </data>
+  <data name="Onboarding_GuestGetInvolvedBullet1" xml:space="preserve">
+    <value>Je kunt je aansluiten bij teams</value>
+  </data>
+  <data name="Onboarding_GuestGetInvolvedBullet2" xml:space="preserve">
+    <value>Je kunt diensten oppakken</value>
+  </data>
+  <data name="Onboarding_GuestGetInvolvedBullet3" xml:space="preserve">
+    <value>Mensen weten echt wie je bent</value>
+  </data>
+  <data name="Onboarding_GuestGetInvolvedDescription" xml:space="preserve">
+    <value>Je bestaat nu wel… maar niemand kan je zien. Maak je profiel aan en ineens:</value>
+  </data>
+  <data name="Onboarding_GuestGetInvolvedHint" xml:space="preserve">
+    <value>Duurt ~2 minuten.</value>
+  </data>
+  <data name="Onboarding_GuestGetInvolvedTitle" xml:space="preserve">
+    <value>Klaar om geen spook meer te zijn?</value>
+  </data>
+  <data name="Onboarding_GuestGreeting" xml:space="preserve">
+    <value>Hoi, {0}.</value>
+  </data>
+  <data name="Onboarding_GuestLegal" xml:space="preserve">
+    <value>Juridisch</value>
+  </data>
+  <data name="Onboarding_GuestLegalDescription" xml:space="preserve">
+    <value>Privacybeleid, voorwaarden, toestemmingsdocumenten — de saaie maar belangrijke dingen</value>
+  </data>
+  <data name="Onboarding_GuestSubtitle" xml:space="preserve">
+    <value>Welkom bij Humans — waar Nobodies Collective alles voor Elsewhere regelt.</value>
+  </data>
+  <data name="Onboarding_GuestTeamsDescription" xml:space="preserve">
+    <value>De teams die alles draaiende houden — geluid, veiligheid, opbouw, alles</value>
+  </data>
+  <data name="Onboarding_GuestDeleteAccountConfirm" xml:space="preserve"><value>Weet je zeker dat je accountverwijdering wilt aanvragen? Je kunt dit nog annuleren vóór de verwijderingsdatum.</value></data>
+  <data name="Onboarding_Email_SignupRejected_Subject" xml:space="preserve">
+    <value>Over je aanmelding</value>
+  </data>
+  <data name="Onboarding_Email_SignupRejected_Body" xml:space="preserve">
+    <value>&lt;h2&gt;Update over je aanmelding&lt;/h2&gt;
+&lt;p&gt;Beste {0},&lt;/p&gt;
+&lt;p&gt;Bedankt voor je interesse om je bij ons aan te sluiten. Na zorgvuldige beoordeling moeten we je helaas laten weten dat we je aanmelding op dit moment niet kunnen goedkeuren.&lt;/p&gt;
+{1}
+&lt;p&gt;Als je vragen hebt of dit besluit wilt bespreken, neem dan contact met ons op via &lt;a href="mailto:{2}"&gt;{2}&lt;/a&gt;.&lt;/p&gt;
+&lt;p&gt;Met vriendelijke groet,&lt;br/&gt;Het Humans-team&lt;/p&gt;</value>
+    <comment>{0} = user name, {1} = reason HTML (or empty), {2} = admin email</comment>
+  </data>
+  <data name="Onboarding_Email_ReasonLine" xml:space="preserve">
+    <value>&lt;p&gt;&lt;strong&gt;Reden:&lt;/strong&gt; {0}&lt;/p&gt;</value>
+    <comment>{0} = reason text (HTML-encoded by caller)</comment>
+  </data>
+  <data name="Onboarding_Notification_ProfileRejectedTitle" xml:space="preserve"><value>Je aanmelding is beoordeeld</value></data>
+  <data name="Onboarding_Notification_ProfileRejectedBody" xml:space="preserve"><value>Je aanmelding kon op dit moment niet worden goedgekeurd.</value></data>
+  <data name="Onboarding_Notification_ProfileRejectedWithReason" xml:space="preserve"><value>Je aanmelding kon niet worden goedgekeurd: {0}</value></data>
+  <data name="Onboarding_Notification_ViewProfile" xml:space="preserve"><value>Profiel bekijken</value></data>
+  <data name="Onboarding_ProfileSaveFailed" xml:space="preserve"><value>Je profiel kon niet worden opgeslagen. Probeer het opnieuw.</value></data>
+  <data name="Onboarding_StubProfile_AddName" xml:space="preserve"><value>Voeg je officiële naam toe voordat je toestemmingen ondertekent.</value></data>
+</root>

@@ -762,6 +762,7 @@ public class CalendarControllerICalTests
     [Xunit.InlineData("it")]
     [Xunit.InlineData("fr")]
     [Xunit.InlineData("ca")]
+    [Xunit.InlineData("nl")]
     public async Task EditOccurrence_rejects_invalid_text_before_writing_in_every_culture(string culture)
     {
         using var cultureScope = new CultureScope(culture);

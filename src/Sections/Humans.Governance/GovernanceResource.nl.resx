@@ -1,0 +1,749 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<!-- ReSharper disable MarkupTextTypo -->
+<root xmlns:ns1="urn:schemas-microsoft-com:xml-msdata" xmlns:xs="http://www.w3.org/2001/XMLSchema">
+  <xs:schema id="root">
+    <xs:element name="root" ns1:IsDataSet="true">
+      <xs:complexType>
+        <xs:choice maxOccurs="unbounded">
+          <xs:element name="data">
+            <xs:complexType>
+              <xs:sequence>
+                <xs:element name="value" type="xsd:string" minOccurs="0" ns1:Ordinal="1" />
+                <xs:element name="comment" type="xsd:string" minOccurs="0" ns1:Ordinal="2" />
+              </xs:sequence>
+              <xs:attribute name="name" type="xsd:string" ns1:Ordinal="0" />
+              <xs:attribute name="type" type="xsd:string" />
+              <xs:attribute name="mimetype" type="xsd:string" />
+            </xs:complexType>
+          </xs:element>
+          <xs:element name="resheader">
+            <xs:complexType>
+              <xs:sequence>
+                <xs:element name="value" type="xsd:string" minOccurs="0" ns1:Ordinal="1" />
+              </xs:sequence>
+              <xs:attribute name="name" type="xsd:string" use="required" />
+            </xs:complexType>
+          </xs:element>
+        </xs:choice>
+      </xs:complexType>
+    </xs:element>
+  </xs:schema>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>1.3</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="Governance_Title" xml:space="preserve">
+    <value>Governance</value>
+  </data>
+  <data name="Governance_BreadcrumbNavigation" xml:space="preserve"><value>Kruimelpad</value></data>
+  <data name="Governance_Application_Title" xml:space="preserve">
+    <value>Governance-aanvraag</value>
+  </data>
+  <data name="Governance_ApplicationDetail_Title" xml:space="preserve">
+    <value>Aanvraaggegevens</value>
+  </data>
+  <data name="Governance_NotYetApplied" xml:space="preserve">
+    <value>Nog geen aanvraag ingediend</value>
+  </data>
+  <data name="Governance_AsociadoDescription" xml:space="preserve">
+    <value>Asociados zijn de formele stemgerechtigde leden van Nobodies Collective. Als Asociado kun je algemene ledenvergaderingen bijwonen, stemmen over collectieve besluiten en deelnemen aan verkiezingen.</value>
+  </data>
+  <data name="Governance_Optional" xml:space="preserve">
+    <value>Dit is optioneel. De meeste humans hoeven geen Asociado te worden. Je hebt al toegang tot voorzieningen zodra je je profiel hebt ingevuld en de vereiste toestemming hebt gegeven.</value>
+  </data>
+  <data name="Governance_ApplyButton" xml:space="preserve">
+    <value>Aanvragen om Asociado te worden</value>
+  </data>
+  <data name="Governance_ColaboradorCanApply" xml:space="preserve">
+    <value>Colaboradores kunnen ook de Asociado-status aanvragen als ze willen deelnemen aan de governance.</value>
+  </data>
+  <data name="Governance_ApplyForAsociado" xml:space="preserve">
+    <value>Asociado aanvragen</value>
+  </data>
+  <data name="Governance_YourApplication" xml:space="preserve">
+    <value>Jouw aanvraag</value>
+  </data>
+  <data name="Governance_Submitted" xml:space="preserve">
+    <value>Ingediend</value>
+  </data>
+  <data name="Governance_Resolved" xml:space="preserve">
+    <value>Afgehandeld</value>
+  </data>
+  <data name="Governance_UnderReviewMessage" xml:space="preserve">
+    <value>Je aanvraag wordt beoordeeld. We sturen je een e-mail zodra er een besluit is genomen.</value>
+  </data>
+  <data name="Governance_ApprovedMessageColaborador" xml:space="preserve">
+    <value>Je bent een goedgekeurde Colaborador van Nobodies Collective.</value>
+  </data>
+  <data name="Governance_ApprovedMessageAsociado" xml:space="preserve">
+    <value>Welkom! Je bent nu een Asociado van Nobodies Collective.</value>
+  </data>
+  <data name="Governance_Tier" xml:space="preserve">
+    <value>Niveau</value>
+  </data>
+  <data name="Governance_TermExpiry" xml:space="preserve">
+    <value>Termijn verloopt</value>
+  </data>
+  <data name="Governance_RejectedMessage" xml:space="preserve">
+    <value>Je aanvraag is niet goedgekeurd. Neem bij vragen contact op met het bestuur.</value>
+  </data>
+  <data name="Governance_WhatIsAsociado" xml:space="preserve">
+    <value>Wat is een Asociado?</value>
+  </data>
+  <data name="Governance_AsociadoLawDescription" xml:space="preserve">
+    <value>Asociados zijn de formele stemgerechtigde leden van de vereniging volgens de Spaanse wet.</value>
+  </data>
+  <data name="Governance_AsociadoCanDo" xml:space="preserve">
+    <value>Als Asociado kun je:</value>
+  </data>
+  <data name="Governance_AttendAssemblies" xml:space="preserve">
+    <value>Algemene ledenvergaderingen bijwonen</value>
+  </data>
+  <data name="Governance_VoteOnDecisions" xml:space="preserve">
+    <value>Stemmen over collectieve besluiten</value>
+  </data>
+  <data name="Governance_ParticipateElections" xml:space="preserve">
+    <value>Deelnemen aan bestuursverkiezingen</value>
+  </data>
+  <data name="Governance_WhoShouldApply" xml:space="preserve">
+    <value>Voor wie is dit bedoeld?</value>
+  </data>
+  <data name="Governance_WhoShouldApplyDescription" xml:space="preserve">
+    <value>Governance-lidmaatschap is bedoeld voor humans in leidinggevende rollen:</value>
+  </data>
+  <data name="Governance_CampLeads" xml:space="preserve">
+    <value>Kampleiders en coördinatoren</value>
+  </data>
+  <data name="Governance_MetaVolunteers" xml:space="preserve">
+    <value>Metavrijwilligers en teamleiders</value>
+  </data>
+  <data name="Governance_LongTermMembers" xml:space="preserve">
+    <value>Langdurig betrokken leden van de community</value>
+  </data>
+  <data name="Governance_BoardReviews" xml:space="preserve">
+    <value>Het bestuur beoordeelt aanvragen op basis van betrokkenheid bij de gemeenschap en aansluiting bij de missie van het collectief.</value>
+  </data>
+  <data name="Governance_NoteNotRequired" xml:space="preserve">
+    <value>Let op: je hoeft geen Asociado te zijn om toegang te krijgen tot voorzieningen of deel te nemen aan evenementen.</value>
+  </data>
+  <data name="Governance_Statutes" xml:space="preserve">
+    <value>Statuten</value>
+  </data>
+  <data name="Governance_Statutes_ContentNotAvailable" xml:space="preserve"><value>Inhoud niet beschikbaar.</value></data>
+  <data name="Governance_MemberCounts" xml:space="preserve">
+    <value>Community</value>
+  </data>
+  <data name="Governance_Colaboradores" xml:space="preserve">
+    <value>Colaboradores</value>
+  </data>
+  <data name="Governance_Asociados" xml:space="preserve">
+    <value>Asociados</value>
+  </data>
+  <data name="Governance_MyApplications_Title" xml:space="preserve">
+    <value>Mijn aanvragen</value>
+  </data>
+  <data name="Governance_Create_NewApplication" xml:space="preserve">
+    <value>Nieuwe aanvraag</value>
+  </data>
+  <data name="Governance_Create_Lead" xml:space="preserve">
+    <value>Colaboradores en Asociados nemen governance-verantwoordelijkheden op zich. Kies het niveau dat het best bij je betrokkenheid past.</value>
+  </data>
+  <data name="Governance_Create_MotivationPlaceholder" xml:space="preserve">
+    <value>Vertel waarom je lid wilt worden...</value>
+  </data>
+  <data name="Governance_Create_MotivationHelp" xml:space="preserve">
+    <value>Minimaal 50 tekens. Vertel iets over jezelf en waarom je deel wilt uitmaken van het collectief.</value>
+  </data>
+  <data name="Governance_Create_AdditionalInfoPlaceholder" xml:space="preserve">
+    <value>Aanvullende informatie die je wilt delen...</value>
+  </data>
+  <data name="Governance_Create_AdditionalInfoHelp" xml:space="preserve">
+    <value>Optioneel. Vermeld relevante vaardigheden, ervaring of hoe je ons hebt leren kennen.</value>
+  </data>
+  <data name="Governance_Create_ConfirmAccuracy" xml:space="preserve">
+    <value>Ik bevestig dat alle informatie in deze aanvraag juist en naar waarheid is ingevuld.</value>
+  </data>
+  <data name="Governance_Create_SubmitApplication" xml:space="preserve">
+    <value>Aanvraag indienen</value>
+  </data>
+  <data name="Governance_Create_IsThisRightForMe" xml:space="preserve">
+    <value>Past dit bij mij?</value>
+  </data>
+  <data name="Governance_Create_IdealFor" xml:space="preserve">
+    <value>Governance is ideaal voor:</value>
+  </data>
+  <data name="Governance_Create_WhatHappensNext" xml:space="preserve">
+    <value>Wat gebeurt er nu?</value>
+  </data>
+  <data name="Governance_Create_Step1" xml:space="preserve">
+    <value>Je aanvraag wordt beoordeeld door het bestuur</value>
+  </data>
+  <data name="Governance_Create_Step2" xml:space="preserve">
+    <value>Het bestuur kijkt naar je betrokkenheid bij de gemeenschap en of je erbij past</value>
+  </data>
+  <data name="Governance_Create_Step3" xml:space="preserve">
+    <value>We nemen mogelijk contact met je op voor meer informatie</value>
+  </data>
+  <data name="Governance_Create_Step4" xml:space="preserve">
+    <value>Je ontvangt een e-mail zodra er een besluit is genomen</value>
+  </data>
+  <data name="Governance_ApplicationDetail_Details" xml:space="preserve">
+    <value>Details</value>
+  </data>
+  <data name="Governance_ApplicationDetail_ApplicationInfo" xml:space="preserve">
+    <value>Aanvraaginformatie</value>
+  </data>
+  <data name="Governance_ApplicationDetail_ReviewStarted" xml:space="preserve">
+    <value>Beoordeling gestart</value>
+  </data>
+  <data name="Governance_ApplicationDetail_ReviewedBy" xml:space="preserve">
+    <value>Beoordeeld door</value>
+  </data>
+  <data name="Governance_ApplicationDetail_YourMotivation" xml:space="preserve">
+    <value>Jouw motivatie</value>
+  </data>
+  <data name="Governance_ApplicationDetail_AdditionalInfo" xml:space="preserve">
+    <value>Aanvullende informatie</value>
+  </data>
+  <data name="Governance_ApplicationDetail_ReviewerNotes" xml:space="preserve">
+    <value>Opmerkingen van de beoordelaar</value>
+  </data>
+  <data name="Governance_ApplicationDetail_WithdrawTitle" xml:space="preserve">
+    <value>Aanvraag intrekken</value>
+  </data>
+  <data name="Governance_ApplicationDetail_WithdrawDescription" xml:space="preserve">
+    <value>Als je niet verder wilt met deze aanvraag, kun je deze intrekken.</value>
+  </data>
+  <data name="Governance_ApplicationDetail_WithdrawConfirm" xml:space="preserve">
+    <value>Weet je zeker dat je deze aanvraag wilt intrekken?</value>
+  </data>
+  <data name="Governance_ApplicationDetail_WithdrawButton" xml:space="preserve">
+    <value>Aanvraag intrekken</value>
+  </data>
+  <data name="Governance_ApplicationDetail_History" xml:space="preserve">
+    <value>Aanvraaggeschiedenis</value>
+  </data>
+  <data name="Governance_ApplicationDetail_NoHistory" xml:space="preserve">
+    <value>Geen geschiedenis beschikbaar.</value>
+  </data>
+  <data name="Governance_ApplicationDetail_By" xml:space="preserve">
+    <value>door</value>
+  </data>
+  <data name="Governance_ApplicationDetail_BackToApplications" xml:space="preserve">
+    <value>Terug naar aanvragen</value>
+  </data>
+  <data name="Governance_AdminApplications_Title" xml:space="preserve">
+    <value>Asociado-aanvragen</value>
+  </data>
+  <data name="Governance_AdminApplicationDetail_Title" xml:space="preserve">
+    <value>Aanvraag beoordelen</value>
+  </data>
+  <data name="Governance_AdminAppDetail_ApplicationReview" xml:space="preserve">
+    <value>Beoordeling van aanvraag</value>
+  </data>
+  <data name="Governance_AdminAppDetail_Motivation" xml:space="preserve">
+    <value>Motivatie</value>
+  </data>
+  <data name="Governance_AdminAppDetail_Reviewer" xml:space="preserve">
+    <value>Beoordelaar</value>
+  </data>
+  <data name="Governance_AdminAppDetail_Language" xml:space="preserve">
+    <value>Taal</value>
+  </data>
+  <data name="Governance_BoardVoting_Title" xml:space="preserve">
+    <value>Stemdashboard bestuur</value>
+  </data>
+  <data name="Governance_BoardVoting_NoApplications" xml:space="preserve">
+    <value>Er zijn geen aanvragen in afwachting van een bestuursstemming.</value>
+  </data>
+  <data name="Governance_BoardVoting_Applicant" xml:space="preserve">
+    <value>Aanvrager</value>
+  </data>
+  <data name="Governance_BoardVoting_Tier" xml:space="preserve">
+    <value>Niveau</value>
+  </data>
+  <data name="Governance_BoardVoting_Details" xml:space="preserve">
+    <value>Details</value>
+  </data>
+  <data name="Governance_BoardVoting_Vote" xml:space="preserve">
+    <value>Stem</value>
+  </data>
+  <data name="Governance_BoardVoting_Note" xml:space="preserve">
+    <value>Opmerking</value>
+  </data>
+  <data name="Governance_BoardVoting_Date" xml:space="preserve">
+    <value>Datum</value>
+  </data>
+  <data name="Governance_BoardVoting_CastVote" xml:space="preserve">
+    <value>Breng je stem uit</value>
+  </data>
+  <data name="Governance_BoardVoting_YourVote" xml:space="preserve">
+    <value>Jouw stem</value>
+  </data>
+  <data name="Governance_BoardVoting_VotesSoFar" xml:space="preserve">
+    <value>Stemmen tot nu toe</value>
+  </data>
+  <data name="Governance_BoardVoting_BoardMember" xml:space="preserve">
+    <value>Bestuurslid</value>
+  </data>
+  <data name="Governance_BoardVoting_VoteSaved" xml:space="preserve">
+    <value>Je stem is geregistreerd.</value>
+  </data>
+  <data name="Governance_BoardVoting_FinalizeDecision" xml:space="preserve">
+    <value>Besluit afronden</value>
+  </data>
+  <data name="Governance_BoardVoting_MeetingDate" xml:space="preserve">
+    <value>Datum bestuursvergadering</value>
+  </data>
+  <data name="Governance_BoardVoting_DecisionNote" xml:space="preserve">
+    <value>Toelichting bij besluit</value>
+  </data>
+  <data name="Governance_BoardVoting_DecisionNotePlaceholder" xml:space="preserve">
+    <value>Samenvatting van het bestuursbesluit...</value>
+  </data>
+  <data name="Governance_BoardVoting_Approve" xml:space="preserve">
+    <value>Goedkeuren</value>
+  </data>
+  <data name="Governance_BoardVoting_Reject" xml:space="preserve">
+    <value>Afwijzen</value>
+  </data>
+  <data name="Governance_BoardVoting_ApproveConfirm" xml:space="preserve">
+    <value>Hiermee wordt de aanvraag goedgekeurd en het lidmaatschapsniveau toegekend. Doorgaan?</value>
+  </data>
+  <data name="Governance_BoardVoting_RejectConfirm" xml:space="preserve">
+    <value>Hiermee wordt de aanvraag afgewezen. Doorgaan?</value>
+  </data>
+  <data name="Governance_BoardVoting_Finalized" xml:space="preserve">
+    <value>Het besluit over de aanvraag is afgerond.</value>
+  </data>
+  <data name="Governance_BoardVoting_ApplicationNotVotable" xml:space="preserve">
+    <value>Er kan niet meer op deze aanvraag worden gestemd.</value>
+  </data>
+  <data name="Governance_BoardVoting_ApplicationNotFound" xml:space="preserve">
+    <value>Aanvraag niet gevonden.</value>
+  </data>
+  <data name="Governance_BoardVoting_AdditionalInfo" xml:space="preserve">
+    <value>Aanvullende informatie</value>
+  </data>
+  <data name="Governance_BoardVoting_NoVotes" xml:space="preserve">
+    <value>Kan niet afronden: er is minimaal één bestuursstem vereist.</value>
+  </data>
+  <data name="Governance_BoardVoting_MeetingDateRequired" xml:space="preserve">
+    <value>Kan niet afronden: er is een datum van de bestuursvergadering vereist.</value>
+  </data>
+  <data name="Governance_Dashboard_AgreementSingular" xml:space="preserve">
+    <value>overeenkomst om door te nemen</value>
+  </data>
+  <data name="Governance_Dashboard_AgreementPlural" xml:space="preserve">
+    <value>overeenkomsten om door te nemen</value>
+  </data>
+  <data name="Governance_Dashboard_GovernanceCardDescription" xml:space="preserve">
+    <value>Ledenvergaderingen, verkiezingen en de serieuze zaken.</value>
+  </data>
+  <data name="Governance_Dashboard_AssemblyVotesCardDescription" xml:space="preserve">
+    <value>Bekijk de open stemmingen van de vereniging en breng je stem uit.</value>
+  </data>
+  <data name="Governance_Votes_Title" xml:space="preserve">
+    <value>Stemmingen</value>
+  </data>
+  <data name="Governance_Votes_NoVotes" xml:space="preserve">
+    <value>Er zijn nog geen stemmingen.</value>
+  </data>
+  <data name="Governance_Votes_Status_Draft" xml:space="preserve">
+    <value>Concept</value>
+  </data>
+  <data name="Governance_Votes_Status_Open" xml:space="preserve">
+    <value>Open</value>
+  </data>
+  <data name="Governance_Votes_Status_Closed" xml:space="preserve">
+    <value>Gesloten</value>
+  </data>
+  <data name="Governance_Votes_Status_Cancelled" xml:space="preserve">
+    <value>Geannuleerd</value>
+  </data>
+  <data name="Governance_Votes_Kind_YesNo" xml:space="preserve">
+    <value>Ja/nee</value>
+  </data>
+  <data name="Governance_Votes_Kind_RankedChoice" xml:space="preserve">
+    <value>Voorkeursstemming</value>
+  </data>
+  <data name="Governance_Votes_ClosesAt" xml:space="preserve">
+    <value>Sluit op {0}</value>
+  </data>
+  <data name="Governance_Votes_ClosedAt" xml:space="preserve">
+    <value>Gesloten op {0}</value>
+  </data>
+  <data name="Governance_Votes_OnRosterOfficial" xml:space="preserve">
+    <value>Je staat op de officiële kiezerslijst.</value>
+  </data>
+  <data name="Governance_Votes_OnRosterIndicative" xml:space="preserve">
+    <value>Je staat op de indicatieve kiezerslijst.</value>
+  </data>
+  <data name="Governance_Votes_NotOnRosterShort" xml:space="preserve">
+    <value>Niet op de kiezerslijst</value>
+  </data>
+  <data name="Governance_Votes_BallotIn" xml:space="preserve">
+    <value>Je stembiljet is binnen</value>
+  </data>
+  <data name="Governance_Votes_BallotNotIn" xml:space="preserve">
+    <value>Je hebt nog niet gestemd</value>
+  </data>
+  <data name="Governance_Votes_Turnout" xml:space="preserve">
+    <value>{0} van {1} hebben gestemd</value>
+  </data>
+  <data name="Governance_Votes_ViewVote" xml:space="preserve">
+    <value>Bekijken</value>
+  </data>
+  <data name="Governance_Votes_ViewResults" xml:space="preserve">
+    <value>Resultaten bekijken</value>
+  </data>
+  <data name="Governance_Votes_MoreInfo" xml:space="preserve">
+    <value>Meer informatie</value>
+  </data>
+  <data name="Governance_Votes_OfficialTextHeading" xml:space="preserve">
+    <value>Officiële tekst</value>
+  </data>
+  <data name="Governance_Votes_TranslationNotice" xml:space="preserve">
+    <value>Dit wordt weergegeven als vertaling. De tekst in het {0} is de bindende versie.</value>
+  </data>
+  <data name="Governance_Votes_YourBallotHeading" xml:space="preserve">
+    <value>Breng je stem uit</value>
+  </data>
+  <data name="Governance_Votes_Choice_Yes" xml:space="preserve">
+    <value>Ja</value>
+  </data>
+  <data name="Governance_Votes_Choice_No" xml:space="preserve">
+    <value>Nee</value>
+  </data>
+  <data name="Governance_Votes_Choice_Abstain" xml:space="preserve">
+    <value>Onthouden</value>
+  </data>
+  <data name="Governance_Votes_Choice_Ranked" xml:space="preserve">
+    <value>Gerangschikt</value>
+  </data>
+  <data name="Governance_Votes_RankOptions" xml:space="preserve">
+    <value>Rangschik de opties</value>
+  </data>
+  <data name="Governance_Votes_AbstainOption" xml:space="preserve">
+    <value>Onthouden</value>
+  </data>
+  <data name="Governance_Votes_RankedOptionHeader" xml:space="preserve">
+    <value>Optie</value>
+  </data>
+  <data name="Governance_Votes_RankedRankHeader" xml:space="preserve">
+    <value>Rang</value>
+  </data>
+  <data name="Governance_Votes_RankedUnranked" xml:space="preserve">
+    <value>Niet gerangschikt</value>
+  </data>
+  <data name="Governance_Votes_Submit" xml:space="preserve">
+    <value>Stembiljet indienen</value>
+  </data>
+  <data name="Governance_Votes_IndicativeBallotNotice" xml:space="preserve">
+    <value>Indicatief — telt niet mee voor de officiële uitslag.</value>
+  </data>
+  <data name="Governance_Votes_CannotVoteClosed" xml:space="preserve">
+    <value>Voor deze stemming kunnen geen stembiljetten meer worden ingediend.</value>
+  </data>
+  <data name="Governance_Votes_NotOnRosterNotice" xml:space="preserve">
+    <value>Je staat niet op de kiezerslijst voor deze stemming.</value>
+  </data>
+  <data name="Governance_Votes_YourRecordedBallotHeading" xml:space="preserve">
+    <value>Je geregistreerde stembiljet</value>
+  </data>
+  <data name="Governance_Votes_RevisionLabel" xml:space="preserve">
+    <value>Versie {0}</value>
+  </data>
+  <data name="Governance_Votes_UpdatedAtLabel" xml:space="preserve">
+    <value>Laatst gewijzigd op {0}</value>
+  </data>
+  <data name="Governance_Votes_NoRanking" xml:space="preserve">
+    <value>Geen opties gerangschikt</value>
+  </data>
+  <data name="Governance_Votes_HistoryHeading" xml:space="preserve">
+    <value>Versiegeschiedenis</value>
+  </data>
+  <data name="Governance_Votes_HistoryRevisionHeader" xml:space="preserve">
+    <value>Versie</value>
+  </data>
+  <data name="Governance_Votes_HistoryChoiceHeader" xml:space="preserve">
+    <value>Keuze</value>
+  </data>
+  <data name="Governance_Votes_HistoryWhenHeader" xml:space="preserve">
+    <value>Geregistreerd</value>
+  </data>
+  <data name="Governance_Votes_ParticipationHeading" xml:space="preserve">
+    <value>Deelname</value>
+  </data>
+  <data name="Governance_Votes_OfficialRosterLabel" xml:space="preserve">
+    <value>Officiële kiezerslijst</value>
+  </data>
+  <data name="Governance_Votes_IndicativeRosterLabel" xml:space="preserve">
+    <value>Indicatieve kiezerslijst</value>
+  </data>
+  <data name="Governance_Votes_ChangedBallotsLabel" xml:space="preserve">
+    <value>Stembiljetten die minstens één keer zijn gewijzigd</value>
+  </data>
+  <data name="Governance_Votes_TotalRevisionsLabel" xml:space="preserve">
+    <value>Totaal aantal versies</value>
+  </data>
+  <data name="Governance_Votes_LastBallotAtLabel" xml:space="preserve">
+    <value>Laatste stembiljet</value>
+  </data>
+  <data name="Governance_Votes_NoBallotsYetValue" xml:space="preserve">
+    <value>Nog geen stembiljetten</value>
+  </data>
+  <data name="Governance_Votes_ClosingTimeLabel" xml:space="preserve">
+    <value>Sluitingstijd</value>
+  </data>
+  <data name="Governance_Votes_CancelledNotice" xml:space="preserve">
+    <value>Deze stemming is geannuleerd.</value>
+  </data>
+  <data name="Governance_Votes_CancelReasonLabel" xml:space="preserve">
+    <value>Reden</value>
+  </data>
+  <data name="Governance_Votes_BallotRecorded" xml:space="preserve">
+    <value>Je stembiljet is geregistreerd.</value>
+  </data>
+  <data name="Governance_Votes_BallotVoteNotOpen" xml:space="preserve">
+    <value>Deze stemming staat niet open voor stembiljetten.</value>
+  </data>
+  <data name="Governance_Votes_BallotInvalid" xml:space="preserve">
+    <value>Dat stembiljet kon niet worden geregistreerd. Controleer je rangschikking en probeer het opnieuw.</value>
+  </data>
+  <data name="Governance_Votes_ResultsHeading" xml:space="preserve">
+    <value>Resultaten</value>
+  </data>
+  <data name="Governance_Votes_OfficialTextAdoptedHeading" xml:space="preserve">
+    <value>Officiële tekst zoals aangenomen</value>
+  </data>
+  <data name="Governance_Votes_OfficialTextVotedHeading" xml:space="preserve">
+    <value>Officiële tekst waarover is gestemd</value>
+  </data>
+  <data name="Governance_Votes_OfficialResultHeading" xml:space="preserve">
+    <value>Officiële uitslag</value>
+  </data>
+  <data name="Governance_Votes_IndicativeResultHeading" xml:space="preserve">
+    <value>Indicatieve uitslag (telt niet mee voor de officiële uitkomst)</value>
+  </data>
+  <data name="Governance_Votes_RequiredMajorityLabel" xml:space="preserve">
+    <value>Vereiste meerderheid</value>
+  </data>
+  <data name="Governance_Votes_Majority_Simple" xml:space="preserve">
+    <value>Gewone meerderheid</value>
+  </data>
+  <data name="Governance_Votes_Majority_TwoThirds" xml:space="preserve">
+    <value>Tweederdemeerderheid</value>
+  </data>
+  <data name="Governance_Votes_VerdictLabel" xml:space="preserve">
+    <value>Uitkomst</value>
+  </data>
+  <data name="Governance_Votes_Verdict_Passed" xml:space="preserve">
+    <value>Aangenomen</value>
+  </data>
+  <data name="Governance_Votes_Verdict_Failed" xml:space="preserve">
+    <value>Verworpen</value>
+  </data>
+  <data name="Governance_Votes_Verdict_Tie" xml:space="preserve">
+    <value>Gelijke stand</value>
+  </data>
+  <data name="Governance_Votes_TieNotice" xml:space="preserve">
+    <value>Volgens art. 10.2 van de statuten brengt de voorzitter van het bestuur bij een gelijke stand de doorslaggevende stem uit, en legt de secretaris dit vast in de notulen (acta).</value>
+  </data>
+  <data name="Governance_Votes_Method_YesNo" xml:space="preserve">
+    <value>Ja/nee-meerderheid</value>
+  </data>
+  <data name="Governance_Votes_Method_InstantRunoff" xml:space="preserve">
+    <value>Instant-runoff</value>
+  </data>
+  <data name="Governance_Votes_RoundsHeading" xml:space="preserve">
+    <value>Rondes</value>
+  </data>
+  <data name="Governance_Votes_RoundColumnHeader" xml:space="preserve">
+    <value>Ronde</value>
+  </data>
+  <data name="Governance_Votes_ExhaustedLabel" xml:space="preserve">
+    <value>Uitgeputte stembiljetten</value>
+  </data>
+  <data name="Governance_Votes_EliminatedLabel" xml:space="preserve">
+    <value>Afgevallen: {0}</value>
+  </data>
+  <data name="Governance_Votes_WinnerLabel" xml:space="preserve">
+    <value>Winnaar: {0}</value>
+  </data>
+  <data name="Governance_Votes_TieBreakExplanation" xml:space="preserve">
+    <value>Bij een gelijke stand voor eliminatie beslist eerst het laagste aantal stemmen in de vorige ronde, daarna de volgorde waarin de opties zijn opgesteld.</value>
+  </data>
+  <data name="Governance_Votes_Note_NoMajority" xml:space="preserve">
+    <value>Geen enkele optie behaalde een meerderheid van de resterende stembiljetten.</value>
+  </data>
+  <data name="Governance_Votes_Note_DecidingRoundLevel" xml:space="preserve">
+    <value>De beslissende ronde eindigde in een gelijke stand; volgens art. 10.2 van de statuten wordt die beslist door de doorslaggevende stem van de voorzitter, vastgelegd in de notulen (acta).</value>
+  </data>
+  <data name="Governance_Votes_Note_TieBrokenByPreviousRound" xml:space="preserve">
+    <value>Ronde {0}: {1} opties eindigden gelijk voor eliminatie; beslecht op basis van het minste aantal stemmen in de vorige ronde.</value>
+  </data>
+  <data name="Governance_Votes_Note_TieBrokenByAuthoredOrder" xml:space="preserve">
+    <value>Ronde {0}: {1} opties eindigden gelijk voor eliminatie; beslecht op basis van de volgorde waarin de opties zijn opgesteld.</value>
+  </data>
+  <data name="Governance_Votes_TieBreakNotesHeading" xml:space="preserve">
+    <value>Toelichting bij gelijke stand</value>
+  </data>
+  <data name="Governance_Votes_ActaHeading" xml:space="preserve">
+    <value>Tekst voor de notulen (acta)</value>
+  </data>
+  <data name="Governance_Votes_ActaHint" xml:space="preserve">
+    <value>Selecteer en kopieer deze tekst voor de notulen.</value>
+  </data>
+  <data name="Governance_Votes_PeeksHeading" xml:space="preserve">
+    <value>Inzage vóór sluiting</value>
+  </data>
+  <data name="Governance_Votes_PeeksEmpty" xml:space="preserve">
+    <value>Niemand heeft de tussenstand vóór sluiting bekeken.</value>
+  </data>
+  <data name="Governance_Votes_PeekedByHeader" xml:space="preserve">
+    <value>Bekeken door</value>
+  </data>
+  <data name="Governance_Votes_PeekedWhenHeader" xml:space="preserve">
+    <value>Wanneer</value>
+  </data>
+  <data name="Governance_Votes_YourBallotResultHeading" xml:space="preserve">
+    <value>Jouw stembiljet</value>
+  </data>
+  <data name="Governance_Votes_DisclosedBallotsHeading" xml:space="preserve">
+    <value>Individuele stembiljetten</value>
+  </data>
+  <data name="Governance_Votes_DisclosedMemberHeader" xml:space="preserve">
+    <value>Human</value>
+  </data>
+  <data name="Governance_Votes_DisclosedAudienceHeader" xml:space="preserve">
+    <value>Kiezersgroep</value>
+  </data>
+  <data name="Governance_Votes_DisclosedChoiceHeader" xml:space="preserve">
+    <value>Keuze</value>
+  </data>
+  <data name="Governance_Votes_DisclosedRevisionHeader" xml:space="preserve">
+    <value>Versie</value>
+  </data>
+  <data name="Governance_Votes_AudienceOfficial" xml:space="preserve">
+    <value>Officieel</value>
+  </data>
+  <data name="Governance_Votes_AudienceIndicative" xml:space="preserve">
+    <value>Indicatief</value>
+  </data>
+  <data name="Governance_Votes_CsvVoteLabel" xml:space="preserve">
+    <value>Stemming</value>
+  </data>
+  <data name="Governance_Votes_MethodLabel" xml:space="preserve">
+    <value>Methode</value>
+  </data>
+  <data name="Governance_Votes_BallotsCastLabel" xml:space="preserve">
+    <value>Uitgebrachte stembiljetten</value>
+  </data>
+  <data name="Governance_Votes_EliminatedHeader" xml:space="preserve">
+    <value>Afgevallen</value>
+  </data>
+  <data name="Governance_Votes_WinnerHeader" xml:space="preserve">
+    <value>Winnaar</value>
+  </data>
+  <data name="Governance_Votes_DownloadCsv" xml:space="preserve">
+    <value>CSV downloaden</value>
+  </data>
+  <data name="Governance_Votes_BallotDuplicateRanks" xml:space="preserve">
+    <value>Elke optie moet een eigen rang krijgen. Twee opties kregen dezelfde rang, dus je stembiljet is niet geregistreerd.</value>
+  </data>
+  <data name="Governance_Create_MotivationLabel" xml:space="preserve">
+    <value>Waarom wil je meedoen?</value>
+  </data>
+  <data name="Governance_Create_AdditionalInfoLabel" xml:space="preserve">
+    <value>Aanvullende informatie (optioneel)</value>
+  </data>
+  <data name="Governance_Email_ApplicationApproved_Subject" xml:space="preserve">
+    <value>Welkom bij de vereniging!</value>
+  </data>
+  <data name="Governance_Email_ApplicationApproved_Body" xml:space="preserve">
+    <value>&lt;h2&gt;Je aanvraag is goedgekeurd!&lt;/h2&gt;
+&lt;p&gt;Beste {0},&lt;/p&gt;
+&lt;p&gt;We zijn blij je te kunnen melden dat je {1}-aanvraag is goedgekeurd. Welkom bij de vereniging!&lt;/p&gt;
+&lt;p&gt;Je hebt nu toegang tot je profiel en kunt teams verkennen:&lt;/p&gt;
+&lt;ul&gt;
+    &lt;li&gt;&lt;a href="{2}/Profile"&gt;Je profiel bekijken&lt;/a&gt;&lt;/li&gt;
+    &lt;li&gt;&lt;a href="{2}/Teams"&gt;Teams bekijken&lt;/a&gt;&lt;/li&gt;
+    &lt;li&gt;&lt;a href="{2}/Consent"&gt;Juridische documenten bekijken&lt;/a&gt;&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;Als je vragen hebt, neem dan gerust contact met ons op.&lt;/p&gt;
+&lt;p&gt;Welkom aan boord!&lt;br/&gt;Het Humans-team&lt;/p&gt;</value>
+    <comment>{0} = user name, {1} = tier, {2} = base URL</comment>
+  </data>
+  <data name="Governance_Email_ApplicationRejected_Subject" xml:space="preserve">
+    <value>Over je lidmaatschapsaanvraag</value>
+  </data>
+  <data name="Governance_Email_ApplicationRejected_Body" xml:space="preserve">
+    <value>&lt;h2&gt;Update over je aanvraag&lt;/h2&gt;
+&lt;p&gt;Beste {0},&lt;/p&gt;
+&lt;p&gt;Bedankt voor je interesse om je bij ons aan te sluiten. Na zorgvuldige beoordeling moeten we je helaas laten weten dat we je {1}-aanvraag op dit moment niet kunnen goedkeuren.&lt;/p&gt;
+{2}
+&lt;p&gt;Heb je vragen of wil je dit besluit bespreken, neem dan contact met ons op via &lt;a href="mailto:{3}"&gt;{3}&lt;/a&gt;.&lt;/p&gt;
+&lt;p&gt;Met vriendelijke groet,&lt;br/&gt;Het Humans-team&lt;/p&gt;</value>
+    <comment>{0} = user name, {1} = tier, {2} = reason HTML (or empty), {3} = admin email</comment>
+  </data>
+  <data name="Governance_Email_TermRenewalReminder_Subject" xml:space="preserve">
+    <value>Je {0}-lidmaatschapstermijn verloopt binnenkort</value>
+    <comment>{0} = tier name</comment>
+  </data>
+  <data name="Governance_Email_TermRenewalReminder_Body" xml:space="preserve">
+    <value>&lt;h2&gt;Verlenging lidmaatschapstermijn&lt;/h2&gt;
+&lt;p&gt;Beste {0},&lt;/p&gt;
+&lt;p&gt;Je termijn als &lt;strong&gt;{1}&lt;/strong&gt; verloopt op &lt;strong&gt;{2}&lt;/strong&gt;.&lt;/p&gt;
+&lt;p&gt;Als je wilt doorgaan als {1}, dien dan een verlengingsaanvraag in voordat je termijn afloopt.&lt;/p&gt;
+&lt;p&gt;&lt;a href="{3}/Governance/Applications/Create"&gt;Verlengingsaanvraag indienen&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;Als je niet verlengt, blijf je een actieve human, maar heb je geen toegang meer op {1}-niveau.&lt;/p&gt;
+&lt;p&gt;Bedankt voor je blijvende inzet!&lt;br/&gt;Het Humans-team&lt;/p&gt;</value>
+    <comment>{0} = user name, {1} = tier name, {2} = expiry date, {3} = base URL</comment>
+  </data>
+  <data name="Governance_Email_AssemblyVoteOpened_Subject" xml:space="preserve"><value>Er staat een stemming open: {0}</value><comment>{0} = vote title</comment></data>
+  <data name="Governance_Email_AssemblyVoteOpened_Body" xml:space="preserve"><value>&lt;h2&gt;{1}&lt;/h2&gt;
+&lt;p&gt;Hoi {0},&lt;/p&gt;
+&lt;p&gt;Er staat een stemming open in de algemene ledenvergadering. Deze sluit op &lt;strong&gt;{2}&lt;/strong&gt;.&lt;/p&gt;
+{4}
+&lt;p&gt;&lt;a href="{3}"&gt;Breng je stem uit&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;Bedankt,&lt;br/&gt;Het Nobodies Collective&lt;/p&gt;</value><comment>{0} = user name, {1} = vote title, {2} = closing time, {3} = vote URL, {4} = indicative-ballot note HTML, empty when official</comment></data>
+  <data name="Governance_Email_AssemblyVoteReminder_Subject" xml:space="preserve"><value>Stemming sluit binnenkort: {0}</value><comment>{0} = vote title</comment></data>
+  <data name="Governance_Email_AssemblyVoteReminder_Body" xml:space="preserve"><value>&lt;h2&gt;{1}&lt;/h2&gt;
+&lt;p&gt;Hoi {0},&lt;/p&gt;
+&lt;p&gt;De stemming &lt;strong&gt;{1}&lt;/strong&gt; sluit over ongeveer 24 uur en je hebt nog niet gestemd.&lt;/p&gt;
+&lt;p&gt;Deze sluit op &lt;strong&gt;{2}&lt;/strong&gt;.&lt;/p&gt;
+{4}
+&lt;p&gt;&lt;a href="{3}"&gt;Breng je stem uit&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;Bedankt,&lt;br/&gt;Het Nobodies Collective&lt;/p&gt;</value><comment>{0} = user name, {1} = vote title, {2} = closing time, {3} = vote URL, {4} = indicative-ballot note HTML, empty when official</comment></data>
+  <data name="Governance_Email_AssemblyVoteCancelled_Subject" xml:space="preserve"><value>Stemming geannuleerd: {0}</value><comment>{0} = vote title</comment></data>
+  <data name="Governance_Email_AssemblyVoteCancelled_Body" xml:space="preserve"><value>&lt;h2&gt;{1}&lt;/h2&gt;
+&lt;p&gt;Hoi {0},&lt;/p&gt;
+&lt;p&gt;De stemming &lt;strong&gt;{1}&lt;/strong&gt; is geannuleerd.&lt;/p&gt;
+{2}
+&lt;p&gt;Het Humans-team&lt;/p&gt;</value><comment>{0} = user name, {1} = vote title, {2} = reason line HTML</comment></data>
+  <data name="Governance_Email_AssemblyVote_IndicativeNote" xml:space="preserve"><value>&lt;p&gt;&lt;em&gt;Je stembiljet is indicatief en telt niet mee voor de officiële uitslag.&lt;/em&gt;&lt;/p&gt;</value></data>
+  <data name="Governance_Email_ReasonLine" xml:space="preserve">
+    <value>&lt;p&gt;&lt;strong&gt;Reden:&lt;/strong&gt; {0}&lt;/p&gt;</value>
+    <comment>{0} = reason text (HTML-encoded by caller)</comment>
+  </data>
+  <data name="Governance_Notification_ApplicationApproved" xml:space="preserve"><value>Je {0}-aanvraag is goedgekeurd</value></data>
+  <data name="Governance_Notification_ApplicationApprovedBody" xml:space="preserve"><value>Gefeliciteerd! Je {0}-aanvraag is goedgekeurd.</value></data>
+  <data name="Governance_Notification_ApplicationRejected" xml:space="preserve"><value>Je {0}-aanvraag is niet goedgekeurd</value></data>
+  <data name="Governance_Notification_ApplicationRejectedBody" xml:space="preserve"><value>Je {0}-aanvraag is niet goedgekeurd.</value></data>
+  <data name="Governance_Notification_ViewApplication" xml:space="preserve"><value>Aanvraag bekijken</value></data>
+  <data name="Governance_Notification_TermRenewalReminder" xml:space="preserve"><value>Je termijn als {0} verloopt op {1}</value></data>
+  <data name="Governance_Notification_TermRenewalReminderBody" xml:space="preserve"><value>Dien een verlengingsaanvraag in om je lidmaatschapsniveau te behouden.</value></data>
+  <data name="Governance_Notification_Renew" xml:space="preserve"><value>Verlengen →</value></data>
+  <data name="Governance_BoardVoting_NoteTooLong" xml:space="preserve"><value>De notitie mag maximaal 4.000 tekens bevatten. Je stem is niet gewijzigd.</value></data>
+  <data name="Governance_BoardVoting_DecisionNoteTooLong" xml:space="preserve"><value>De toelichting bij het besluit mag maximaal 4.000 tekens bevatten. De aanvraag is niet afgerond.</value></data>
+  <data name="Governance_BoardVoting_DecisionNoteRequired" xml:space="preserve"><value>Er is een toelichting bij het besluit vereist om een aanvraag af te wijzen. De aanvraag is niet afgerond.</value></data>
+</root>

@@ -163,6 +163,7 @@ public sealed class IssuesControllerTests
     [InlineData("it")]
     [InlineData("fr")]
     [InlineData("ca")]
+    [InlineData("nl")]
     public async Task SectionRefusals_LocalizeKeysAndLimit_AndGenericFailures(string culture)
     {
         using var scope = new CultureScope(culture);
@@ -218,6 +219,7 @@ public sealed class IssuesControllerTests
     [InlineData("it")]
     [InlineData("fr")]
     [InlineData("ca")]
+    [InlineData("nl")]
     public void SubmissionForm_LocalizesRequiredAndLengthErrors(string culture)
     {
         using var cultureScope = new CultureScope(culture);

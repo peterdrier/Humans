@@ -53,6 +53,7 @@ public sealed class UsersEmailsTests
     [InlineData("it")]
     [InlineData("fr")]
     [InlineData("ca")]
+    [InlineData("nl")]
     public void AccountDeletionRequested_UsesRecipientCultureAndTheCancellationPage(string culture)
     {
         using var callerCulture = new CultureScope("en");

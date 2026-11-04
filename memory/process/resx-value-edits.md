@@ -13,6 +13,6 @@ Editing the text inside a `.resx` `<value>` is a **targeted exact string replace
 
 1. Read the file, copy the exact `<value>…</value>` text including its indentation.
 2. Replace that exact string once — the editor tool's uniqueness check is the assert.
-3. For the same key across all six cultures, do six replacements, one per file. A single pass over a glob will silently skip the file whose wrapping differs.
+3. For the same key across all supported cultures, do one replacement per culture file. A single pass over a glob will silently skip the file whose wrapping differs.
 
-**Why:** A resx is a source file with a fragile header and six parity-tested siblings. The tooling that reformats it does so everywhere at once, so a one-word copy change arrives as an unreviewable diff — and reviewers stop reading resx diffs after the first one of those.
+**Why:** A resx is a source file with a fragile header and parity-tested culture siblings. The tooling that reformats it does so everywhere at once, so a one-word copy change arrives as an unreviewable diff — and reviewers stop reading resx diffs after the first one of those.

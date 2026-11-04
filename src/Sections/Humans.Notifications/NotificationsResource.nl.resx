@@ -1,0 +1,171 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<!-- ReSharper disable MarkupTextTypo -->
+<root xmlns:ns1="urn:schemas-microsoft-com:xml-msdata" xmlns:xs="http://www.w3.org/2001/XMLSchema">
+  <xs:schema id="root">
+    <xs:element name="root" ns1:IsDataSet="true">
+      <xs:complexType>
+        <xs:choice maxOccurs="unbounded">
+          <xs:element name="data">
+            <xs:complexType>
+              <xs:sequence>
+                <xs:element name="value" type="xsd:string" minOccurs="0" ns1:Ordinal="1" />
+                <xs:element name="comment" type="xsd:string" minOccurs="0" ns1:Ordinal="2" />
+              </xs:sequence>
+              <xs:attribute name="name" type="xsd:string" ns1:Ordinal="0" />
+              <xs:attribute name="type" type="xsd:string" />
+              <xs:attribute name="mimetype" type="xsd:string" />
+            </xs:complexType>
+          </xs:element>
+          <xs:element name="resheader">
+            <xs:complexType>
+              <xs:sequence>
+                <xs:element name="value" type="xsd:string" minOccurs="0" ns1:Ordinal="1" />
+              </xs:sequence>
+              <xs:attribute name="name" type="xsd:string" use="required" />
+            </xs:complexType>
+          </xs:element>
+        </xs:choice>
+      </xs:complexType>
+    </xs:element>
+  </xs:schema>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>1.3</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="Notifications_Bell_AriaLabel" xml:space="preserve">
+    <value>Meldingen</value>
+  </data>
+  <data name="Notifications_Popup_AriaLabel" xml:space="preserve">
+    <value>Meldingenpop-up</value>
+  </data>
+  <data name="Notifications_Popup_Title" xml:space="preserve">
+    <value>Meldingen</value>
+  </data>
+  <data name="Notifications_Popup_NeedAction" xml:space="preserve">
+    <value>vereisen actie</value>
+  </data>
+  <data name="Notifications_Popup_Close" xml:space="preserve">
+    <value>Meldingen sluiten</value>
+  </data>
+  <data name="Notifications_Popup_CaughtUp" xml:space="preserve">
+    <value>Je bent helemaal bij.</value>
+  </data>
+  <data name="Notifications_Popup_NoUnread" xml:space="preserve">
+    <value>Geen ongelezen meldingen.</value>
+  </data>
+  <data name="Notifications_Section_NeedsAttention" xml:space="preserve">
+    <value>Vraagt je aandacht</value>
+  </data>
+  <data name="Notifications_Section_Recent" xml:space="preserve">
+    <value>Recent</value>
+  </data>
+  <data name="Notifications_Section_Informational" xml:space="preserve">
+    <value>Ter informatie</value>
+  </data>
+  <data name="Notifications_Section_Resolved" xml:space="preserve">
+    <value>Afgehandeld</value>
+  </data>
+  <data name="Notifications_Section_WorkQueues" xml:space="preserve">
+    <value>Werkwachtrijen</value>
+  </data>
+  <data name="Notifications_Meter_ConsentReviewsPending" xml:space="preserve"><value>Toestemmingscontroles in afwachting</value></data>
+  <data name="Notifications_Meter_ApplicationsPendingVote" xml:space="preserve"><value>Aanvragen die op je stem wachten</value></data>
+  <data name="Notifications_Meter_PendingAccountDeletions" xml:space="preserve"><value>Accountverwijderingen in afwachting</value></data>
+  <data name="Notifications_Meter_FailedGoogleSyncEvents" xml:space="preserve"><value>Mislukte Google-synchronisaties</value></data>
+  <data name="Notifications_Meter_OnboardingProfilesPending" xml:space="preserve"><value>Onboardingprofielen in afwachting</value></data>
+  <data name="Notifications_Meter_TeamJoinRequestsPending" xml:space="preserve"><value>Verzoeken om teamlid te worden in afwachting</value></data>
+  <data name="Notifications_Meter_TicketSyncError" xml:space="preserve"><value>Fout bij ticketsynchronisatie</value></data>
+  <data name="Notifications_Meter_CampJoinRequest" xml:space="preserve"><value>1 Human wil zich bij je kamp aansluiten</value></data>
+  <data name="Notifications_Meter_CampJoinRequests" xml:space="preserve"><value>{0} Humans willen zich bij je kamp aansluiten</value></data>
+  <data name="Notifications_MarkAllRead" xml:space="preserve">
+    <value>Alles als gelezen markeren</value>
+  </data>
+  <data name="Notifications_SeeAll" xml:space="preserve">
+    <value>Alle meldingen bekijken</value>
+  </data>
+  <data name="Notifications_PageTitle" xml:space="preserve">
+    <value>Alle meldingen</value>
+  </data>
+  <data name="Notifications_SearchPlaceholder" xml:space="preserve">
+    <value>Meldingen zoeken...</value>
+  </data>
+  <data name="Notifications_Filter_All" xml:space="preserve">
+    <value>Alle</value>
+  </data>
+  <data name="Notifications_Filter_NeedsAction" xml:space="preserve">
+    <value>Actie vereist</value>
+  </data>
+  <data name="Notifications_Filter_Shifts" xml:space="preserve">
+    <value>Diensten</value>
+  </data>
+  <data name="Notifications_Filter_Approvals" xml:space="preserve">
+    <value>Goedkeuringen</value>
+  </data>
+  <data name="Notifications_Filter_Resolved" xml:space="preserve">
+    <value>Afgehandeld</value>
+  </data>
+  <data name="Notifications_Tab_Unread" xml:space="preserve">
+    <value>Ongelezen</value>
+  </data>
+  <data name="Notifications_Tab_All" xml:space="preserve">
+    <value>Alle</value>
+  </data>
+  <data name="Notifications_Inbox_Title" xml:space="preserve">
+    <value>Meldingen</value>
+  </data>
+  <data name="Notifications_HandledBy" xml:space="preserve">
+    <value>Afgehandeld door {0}, {1}</value>
+  </data>
+  <data name="Notifications_DefaultActionLabel" xml:space="preserve">
+    <value>Bekijken →</value>
+  </data>
+  <data name="Notifications_TimeAgo_JustNow" xml:space="preserve">
+    <value>zojuist</value>
+  </data>
+  <data name="Notifications_TimeAgo_Minutes" xml:space="preserve">
+    <value>{0}m geleden</value>
+  </data>
+  <data name="Notifications_TimeAgo_Hours" xml:space="preserve">
+    <value>{0}u geleden</value>
+  </data>
+  <data name="Notifications_TimeAgo_Days" xml:space="preserve">
+    <value>{0}d geleden</value>
+  </data>
+  <data name="Notifications_Bulk_Selected" xml:space="preserve">
+    <value>{0} geselecteerd</value>
+  </data>
+  <data name="Notifications_SelectNotification" xml:space="preserve"><value>Melding selecteren</value></data>
+  <data name="Notifications_Bulk_Resolve" xml:space="preserve">
+    <value>Selectie afhandelen</value>
+  </data>
+  <data name="Notifications_Bulk_Dismiss" xml:space="preserve">
+    <value>Selectie negeren</value>
+  </data>
+  <data name="Notifications_Popup_LoadError" xml:space="preserve"><value>Kon meldingen niet laden. Probeer het opnieuw.</value></data>
+  <data name="Notifications_SentTo" xml:space="preserve">
+    <value>Voor {0}</value>
+  </data>
+  <data name="Notifications_Audience_CampLeads" xml:space="preserve">
+    <value>Barrioleiders</value>
+  </data>
+  <data name="Notifications_Audience_Admin" xml:space="preserve">
+    <value>Beheerders</value>
+  </data>
+  <data name="Notifications_Audience_Board" xml:space="preserve">
+    <value>het bestuur</value>
+  </data>
+  <data name="Notifications_Audience_ConsentCoordinator" xml:space="preserve">
+    <value>Toestemmingscoördinatoren</value>
+  </data>
+  <data name="Notifications_Audience_ShiftsAdmin" xml:space="preserve">
+    <value>Dienstenbeheerders</value>
+  </data>
+</root>

@@ -29,7 +29,7 @@ GDPR and CAN-SPAM compliance require giving users control over which communicati
 | Governance (board voting, tier applications, role assignments) | Opt-in | Opt-in | On | Yes |
 | Marketing (mailing list, promotions) | Opt-in | Opt-in | Off | Yes |
 
-Category names, descriptions, the clock-derived Ticketing year heading and ticket-lock note are localized in all six supported cultures on member and guest pages. Guest one-click banners and legacy Marketing unsubscribe pages share the translated category names.
+Category names, descriptions, the clock-derived Ticketing year heading and ticket-lock note are localized in all supported cultures on member and guest pages. Guest one-click banners and legacy Marketing unsubscribe pages share the translated category names.
 
 The member panel currently shows only the Email control. Its updates preserve the existing inbox setting rather than resetting the hidden channel. Save requests reject redirects; an expired or revoked session restores the checkbox and shows failure feedback instead of confirming a save.
 

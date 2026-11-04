@@ -1,0 +1,116 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" msdata:Ordinal="0" />
+              <xsd:attribute name="type" type="xsd:string" />
+              <xsd:attribute name="mimetype" type="xsd:string" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="resheader">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>1.3</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+
+  <!-- Enums -->
+      <data name="Enum_GrantStatus_Applied" xml:space="preserve"><value>Aangevraagd</value></data>
+  <data name="Enum_GrantStatus_Open" xml:space="preserve"><value>Open</value></data>
+  <data name="Enum_GrantStatus_Claimed" xml:space="preserve"><value>Gedeclareerd</value></data>
+  <data name="Enum_GrantStatus_Consumed" xml:space="preserve"><value>Gebruikt</value></data>
+  <data name="Enum_GrantStatus_Declined" xml:space="preserve"><value>Afgewezen</value></data>
+  <data name="Enum_GrantStatus_Revoked" xml:space="preserve"><value>Ingetrokken</value></data>
+  <data name="Preapprovals_Title" xml:space="preserve"><value>Voorafgaande goedkeuringen</value></data>
+  <data name="Preapprovals_Intro" xml:space="preserve"><value>Een voorafgaande goedkeuring is een toezegging van de vereniging om je voor een bepaald doel tot een bepaald bedrag terug te betalen, als je je declaratie vóór de deadline indient. Dien op tijd in: daarna wordt niets meer betaald.</value></data>
+  <data name="Preapprovals_Manage" xml:space="preserve"><value>Voorafgaande goedkeuringen beheren</value></data>
+  <data name="Preapprovals_Mine" xml:space="preserve"><value>Mijn voorafgaande goedkeuringen</value></data>
+  <data name="Preapprovals_NoneActive" xml:space="preserve"><value>Je hebt geen openstaande voorafgaande goedkeuringen.</value></data>
+  <data name="Preapprovals_Program" xml:space="preserve"><value>Programma</value></data>
+  <data name="Preapprovals_ClaimBy" xml:space="preserve"><value>Declareren uiterlijk op</value></data>
+  <data name="Preapprovals_DeadlinePassed" xml:space="preserve"><value>Deadline verstreken</value></data>
+  <data name="Preapprovals_DaysLeft" xml:space="preserve"><value>Nog {0} dagen</value></data>
+  <data name="Preapprovals_FileExpense" xml:space="preserve"><value>Declaratie indienen</value></data>
+  <data name="Preapprovals_ViewReport" xml:space="preserve"><value>Declaratie bekijken</value></data>
+  <data name="Preapprovals_OpenPrograms" xml:space="preserve"><value>Programma's waarvoor je een aanvraag kunt indienen</value></data>
+  <data name="Preapprovals_PerPerson" xml:space="preserve"><value>{0} per persoon</value></data>
+  <data name="Preapprovals_AmountOnRequest" xml:space="preserve"><value>Bedrag op aanvraag</value></data>
+  <data name="Preapprovals_Apply" xml:space="preserve"><value>Aanvragen</value></data>
+  <data name="Preapprovals_Past" xml:space="preserve"><value>Eerdere</value></data>
+  <data name="Preapprovals_ApplyTitle" xml:space="preserve"><value>Voorafgaande goedkeuring aanvragen</value></data>
+  <data name="Preapprovals_EditApplication" xml:space="preserve"><value>Je aanvraag bewerken</value></data>
+  <data name="Preapprovals_RequestedAmount" xml:space="preserve"><value>Aangevraagd bedrag</value></data>
+  <data name="Preapprovals_ApplicationNote" xml:space="preserve"><value>Waar is het voor?</value></data>
+  <data name="Preapprovals_ApplicationNote_Help" xml:space="preserve"><value>Een paar regels voor de beheerders van het programma: waar je het aan wilt uitgeven.</value></data>
+  <data name="Preapprovals_NotAccepting" xml:space="preserve"><value>Dit programma accepteert geen aanvragen.</value></data>
+  <data name="Preapprovals_Applied" xml:space="preserve"><value>Je aanvraag is naar de programmabeheerders gestuurd.</value></data>
+  <data name="Preapprovals_Error_NotFound" xml:space="preserve"><value>Niet gevonden.</value></data>
+  <data name="Preapprovals_Error_NameRequired" xml:space="preserve"><value>Een naam is verplicht.</value></data>
+  <data name="Preapprovals_Error_PerPersonAmountRequired" xml:space="preserve"><value>Een programma met een vast bedrag vereist een bedrag per persoon.</value></data>
+  <data name="Preapprovals_Error_PerPersonAmountNotAllowed" xml:space="preserve"><value>Een programma met een bedrag per subsidie heeft geen bedrag per persoon.</value></data>
+  <data name="Preapprovals_Error_AmountPositive" xml:space="preserve"><value>Het bedrag moet groter zijn dan nul.</value></data>
+  <data name="Preapprovals_Error_AmountNotAllowed" xml:space="preserve"><value>Subsidies binnen een programma met een vast bedrag zijn altijd gelijk aan het bedrag per persoon.</value></data>
+  <data name="Preapprovals_Error_AmountRequired" xml:space="preserve"><value>Een bedrag is verplicht.</value></data>
+  <data name="Preapprovals_Error_AccountNotFound" xml:space="preserve"><value>Die kostenrekening is niet beschikbaar.</value></data>
+  <data name="Preapprovals_Error_KindLocked" xml:space="preserve"><value>Het type kan niet meer worden gewijzigd zodra er subsidies zijn.</value></data>
+  <data name="Preapprovals_Error_CeilingExceeded" xml:space="preserve"><value>Daarmee zou het plafond van het programma worden overschreden: nog {0} beschikbaar.</value></data>
+  <data name="Preapprovals_Error_CeilingBelowCommitted" xml:space="preserve"><value>Het plafond kan niet lager zijn dan wat al is toegezegd: {0}.</value></data>
+  <data name="Preapprovals_Error_ProgramClosed" xml:space="preserve"><value>Dit programma is gesloten.</value></data>
+  <data name="Preapprovals_Error_NotAcceptingApplications" xml:space="preserve"><value>Dit programma accepteert geen aanvragen.</value></data>
+  <data name="Preapprovals_Error_DeadlinePassed" xml:space="preserve"><value>De declaratietermijn is verstreken.</value></data>
+  <data name="Preapprovals_Error_WrongStatus" xml:space="preserve"><value>Die actie is niet mogelijk in de huidige status van de subsidie.</value></data>
+  <data name="Preapprovals_Error_NoBeneficiaries" xml:space="preserve"><value>Kies minstens één persoon.</value></data>
+  <data name="Preapprovals_Error_TextTooLong" xml:space="preserve"><value>De tekst is te lang.</value></data>
+  <data name="Preapprovals_Error_IssueManyFixedOnly" xml:space="preserve"><value>Toekennen aan meerdere mensen tegelijk vereist een vast bedrag per persoon.</value></data>
+  <data name="Preapprovals_Notice_Issued" xml:space="preserve"><value>Je hebt een voorafgaande goedkeuring</value></data>
+  <data name="Preapprovals_Notice_Released" xml:space="preserve"><value>Je voorafgaande goedkeuring staat weer open</value></data>
+  <data name="Preapprovals_Notice_DeadlineChanged" xml:space="preserve"><value>De deadline van je voorafgaande goedkeuring is gewijzigd</value></data>
+  <data name="Preapprovals_Notice_Reminder" xml:space="preserve"><value>Dien je declaratie binnenkort in</value></data>
+  <data name="Preapprovals_Notice_Declined" xml:space="preserve"><value>Je aanvraag is afgewezen</value></data>
+  <data name="Preapprovals_Notice_Revoked" xml:space="preserve"><value>Je voorafgaande goedkeuring is ingetrokken</value></data>
+  <data name="Preapprovals_Notice_AmountChanged" xml:space="preserve"><value>Het bedrag van je voorafgaande goedkeuring is gewijzigd</value></data>
+  <data name="Preapprovals_Notice_ApplicationReceived" xml:space="preserve"><value>Nieuwe aanvraag voor voorafgaande goedkeuring</value></data>
+  <data name="Preapprovals_Notice_FileBy_Body" xml:space="preserve"><value>{1} {2}. Dien je declaratie uiterlijk op {3} in.</value></data>
+  <data name="Preapprovals_Notice_Decided_Body" xml:space="preserve"><value>{1} {2}. {4}</value></data>
+  <data name="Preapprovals_Notice_ApplicationReceived_Body" xml:space="preserve"><value>{4} heeft {2} aangevraagd.</value></data>
+  <data name="Preapprovals_Email_Greeting_Generic" xml:space="preserve"><value>Hallo,</value></data>
+  <data name="Preapprovals_Email_Greeting_Named" xml:space="preserve"><value>Hallo {0},</value></data>
+  <data name="Preapprovals_Email_LabelLine" xml:space="preserve"><value>&lt;p&gt;&lt;strong&gt;Voor:&lt;/strong&gt; {0}&lt;/p&gt;</value></data>
+  <data name="Preapprovals_Email_DetailLine" xml:space="preserve"><value>&lt;p&gt;{0}&lt;/p&gt;</value></data>
+  <data name="Preapprovals_Email_Issued_Subject" xml:space="preserve"><value>Voorafgaande goedkeuring: {0}</value></data>
+  <data name="Preapprovals_Email_Issued_Body" xml:space="preserve"><value>&lt;p&gt;{0}&lt;/p&gt;&lt;p&gt;Je hebt een voorafgaande goedkeuring binnen &lt;strong&gt;{1}&lt;/strong&gt;.&lt;/p&gt;{2}&lt;p&gt;&lt;strong&gt;Maximaal:&lt;/strong&gt; {3}&lt;br&gt;&lt;strong&gt;Dien je declaratie uiterlijk in op:&lt;/strong&gt; {4}&lt;/p&gt;&lt;p&gt;Na die datum wordt niets meer terugbetaald. &lt;a href="{5}"&gt;Bekijk je voorafgaande goedkeuringen&lt;/a&gt;.&lt;/p&gt;</value></data>
+  <data name="Preapprovals_Email_Declined_Subject" xml:space="preserve"><value>Aanvraag voor voorafgaande goedkeuring afgewezen: {0}</value></data>
+  <data name="Preapprovals_Email_Declined_Body" xml:space="preserve"><value>&lt;p&gt;{0}&lt;/p&gt;&lt;p&gt;Je aanvraag binnen &lt;strong&gt;{1}&lt;/strong&gt; is afgewezen.&lt;/p&gt;{2}&lt;p&gt;&lt;a href="{3}"&gt;Bekijk het programma&lt;/a&gt;.&lt;/p&gt;</value></data>
+  <data name="Preapprovals_Email_ApplicationReceived_Subject" xml:space="preserve"><value>Aanvraag voor voorafgaande goedkeuring: {0}</value></data>
+  <data name="Preapprovals_Email_ApplicationReceived_Body" xml:space="preserve"><value>&lt;p&gt;{0}&lt;/p&gt;&lt;p&gt;Iemand heeft een voorafgaande goedkeuring aangevraagd binnen &lt;strong&gt;{1}&lt;/strong&gt;.&lt;/p&gt;{2}&lt;p&gt;&lt;strong&gt;Aangevraagd:&lt;/strong&gt; {3}&lt;/p&gt;&lt;p&gt;&lt;a href="{4}"&gt;Beoordeel de aanvraag&lt;/a&gt;.&lt;/p&gt;</value></data>
+  <data name="Preapprovals_Email_DeadlineReminder_Subject" xml:space="preserve"><value>Herinnering: dien uiterlijk op {1} je declaratie in voor {0}</value></data>
+  <data name="Preapprovals_Email_DeadlineReminder_Body" xml:space="preserve"><value>&lt;p&gt;{0}&lt;/p&gt;&lt;p&gt;Je voorafgaande goedkeuring binnen &lt;strong&gt;{1}&lt;/strong&gt; is nog niet gebruikt.&lt;/p&gt;{2}&lt;p&gt;&lt;strong&gt;Maximaal:&lt;/strong&gt; {3}&lt;br&gt;&lt;strong&gt;Dien je declaratie uiterlijk in op:&lt;/strong&gt; {4}&lt;/p&gt;&lt;p&gt;Na die datum wordt niets meer terugbetaald. &lt;a href="{5}"&gt;Bekijk je voorafgaande goedkeuringen&lt;/a&gt;.&lt;/p&gt;</value></data>
+  <data name="Preapprovals_Email_AmountChanged_Subject" xml:space="preserve"><value>Bedrag van voorafgaande goedkeuring gewijzigd: {0}</value></data>
+  <data name="Preapprovals_Email_AmountChanged_Body" xml:space="preserve"><value>&lt;p&gt;{0}&lt;/p&gt;&lt;p&gt;Het bedrag van je voorafgaande goedkeuring binnen &lt;strong&gt;{1}&lt;/strong&gt; is gewijzigd.&lt;/p&gt;{2}&lt;p&gt;&lt;strong&gt;Voorheen:&lt;/strong&gt; {3}&lt;br&gt;&lt;strong&gt;Nu:&lt;/strong&gt; {4}&lt;/p&gt;&lt;p&gt;&lt;a href="{5}"&gt;Bekijk je voorafgaande goedkeuringen&lt;/a&gt;.&lt;/p&gt;</value></data>
+  <data name="Preapprovals_Email_Revoked_Subject" xml:space="preserve"><value>Voorafgaande goedkeuring ingetrokken: {0}</value></data>
+  <data name="Preapprovals_Email_Revoked_Body" xml:space="preserve"><value>&lt;p&gt;{0}&lt;/p&gt;&lt;p&gt;Je voorafgaande goedkeuring onder &lt;strong&gt;{1}&lt;/strong&gt; is ingetrokken.&lt;/p&gt;{2}&lt;p&gt;&lt;strong&gt;Bedrag:&lt;/strong&gt; {3}&lt;/p&gt;{4}&lt;p&gt;Als deze aan een declaratie is gekoppeld, kan Financiën de declaratie hier niet meer mee goedkeuren en zal deze worden afgewezen; verwijder of vervang daarna de voorafgaande goedkeuring in het concept, of trek de declaratie in. &lt;a href="{5}"&gt;Bekijk je voorafgaande goedkeuringen&lt;/a&gt;.&lt;/p&gt;</value></data>
+  <data name="Preapprovals_Email_DeadlineChanged_Subject" xml:space="preserve"><value>Termijn van voorafgaande goedkeuring gewijzigd: dien uiterlijk op {1} je declaratie in voor {0}</value></data>
+  <data name="Preapprovals_Email_DeadlineChanged_Body" xml:space="preserve"><value>&lt;p&gt;{0}&lt;/p&gt;&lt;p&gt;De declaratietermijn van je voorafgaande goedkeuring binnen &lt;strong&gt;{1}&lt;/strong&gt; is verschoven.&lt;/p&gt;{2}&lt;p&gt;&lt;strong&gt;Maximaal:&lt;/strong&gt; {3}&lt;br&gt;&lt;strong&gt;Nieuwe uiterste datum:&lt;/strong&gt; {4}&lt;/p&gt;&lt;p&gt;&lt;a href="{5}"&gt;Bekijk je voorafgaande goedkeuringen&lt;/a&gt;.&lt;/p&gt;</value></data>
+  <data name="Preapprovals_BreadcrumbNavigation" xml:space="preserve"><value>Kruimelpad</value></data>
+  <data name="Preapprovals_Error_AmountPrecision" xml:space="preserve"><value>Bedragen mogen maximaal twee decimalen hebben.</value></data>
+  <data name="Preapprovals_Error_AmountTooLarge" xml:space="preserve"><value>Het bedrag is te hoog.</value></data>
+  <data name="Preapprovals_Error_PersonUnavailable" xml:space="preserve"><value>Dit ledenaccount is niet meer beschikbaar.</value></data>
+</root>

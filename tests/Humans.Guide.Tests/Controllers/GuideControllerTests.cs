@@ -36,6 +36,7 @@ public class GuideControllerTests
     [InlineData("it", "Primi passi", "Inizia qui", "Team")]
     [InlineData("fr", "Premiers pas", "Commencez ici", "Équipes")]
     [InlineData("ca", "Primers passos", "Comença aquí", "Equips")]
+    [InlineData("nl", "Aan de slag", "Begin hier", "Teams")]
     public async Task Document_LocalizesNavigationWhilePreservingContentAndRoutes(
         string culture, string gettingStarted, string startGroup, string teamTitle)
     {

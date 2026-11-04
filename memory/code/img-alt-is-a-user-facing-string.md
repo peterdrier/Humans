@@ -1,9 +1,9 @@
 ---
 name: An img alt on a member-facing view is a user-facing string
-description: An `<img alt>` on a member-facing view needs resx keys in all six cultures — the admin exemption doesn't cover an ungated modal opened from an admin page.
+description: An `<img alt>` on a member-facing view needs resx keys in all supported cultures — the admin exemption doesn't cover an ungated modal opened from an admin page.
 ---
 
-`alt` text is read aloud by a screen reader and shown when the image fails to load. On a member-facing view that makes it a **user-facing string**: it gets a resx key in the section's set, in all six supported cultures (en, es, de, it, fr, ca), like any other.
+`alt` text is read aloud by a screen reader and shown when the image fails to load. On a member-facing view that makes it a **user-facing string**: it gets a resx key in the section's set, in all supported cultures (en, es, de, it, fr, ca, nl), like any other.
 
 A hardcoded English `alt` is the same defect as a hardcoded English heading — it is just easier to miss, because it renders for nobody most of the time.
 

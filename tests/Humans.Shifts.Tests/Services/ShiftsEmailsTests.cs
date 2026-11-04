@@ -34,6 +34,7 @@ public sealed class ShiftsEmailsTests
     [InlineData("it")]
     [InlineData("fr")]
     [InlineData("ca")]
+    [InlineData("nl")]
     public void CoordinatorRotaMessage_RoutesRepliesToCoordinator_VolunteerUpdates(string culture)
     {
         var msg = Create().CoordinatorRotaMessage(RotaRequest() with { Culture = culture });

@@ -20,6 +20,7 @@ public sealed class ContainerValidationLocalizationTests
     [InlineData("it")]
     [InlineData("fr")]
     [InlineData("ca")]
+    [InlineData("nl")]
     public void FormValidationErrors_AreLocalized(string culture)
     {
         using var cultureScope = new CultureScope(culture);

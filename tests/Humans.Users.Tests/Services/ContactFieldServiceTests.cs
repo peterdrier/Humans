@@ -274,6 +274,7 @@ public sealed class ContactFieldServiceTests : ServiceTestHarness
     [InlineData("it")]
     [InlineData("fr")]
     [InlineData("ca")]
+    [InlineData("nl")]
     public async Task GetVisibleContactFields_LocalizesDefaultLabelsAndPreservesCustomLabels(string culture)
     {
         using var cultureScope = new CultureScope(culture);

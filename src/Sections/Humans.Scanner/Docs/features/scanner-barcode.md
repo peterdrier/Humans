@@ -53,7 +53,7 @@ Scanner is reached from its own "Scanner" row in the admin sidebar; its tools ar
 - Nav entry in the admin sidebar (its own Scanner group).
 - Camera start/stop with feature-detect + ZXing fallback.
 - Decoded list rendered in the page, client-side only.
-- Localized copy across all six supported locales.
+- Localized copy across all supported locales.
 - Section invariant doc (`src/Sections/Humans.Scanner/Docs/Scanner.md`) and this feature spec.
 
 ### Out of Scope

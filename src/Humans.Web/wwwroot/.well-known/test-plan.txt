@@ -40,7 +40,7 @@
 
 ## Localization Checks
 
-Supported languages: en, es, fr, de, it
+Supported languages: en, es, fr, de, it, ca, nl
 
 When testing i18n:
 - The consent checkbox validation popup must show in the selected language, NOT the browser default

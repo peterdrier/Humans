@@ -19,7 +19,7 @@ is drained, and the done-check.
 contract changes are pre-approved and listed in the PR (D1), `internal` types
 are never public surface (D2), a new interface/service/endpoint still goes to
 Peter in D3 format, no category-bin skips (D4); one coherent fix or
-same-correction batch per commit (possibly across sections), six cultures,
+same-correction batch per commit (possibly across sections), every culture,
 migrations only via `dotnet ef migrations add`, never touch `NoDestructiveMigrationOps.baseline.txt` or a `[DontFix]` class.
 
 Every ledger row carries a permanent `id:` (`memory/process/debt-ledger-additions.md`). Identify
@@ -171,8 +171,8 @@ corrections require no build.
 
 **What:** A user-facing string hardcoded in English instead of a resx key,
 on a route that is **not** admin/operator-exempt
-(`memory/code/localization-admin-exempt.md`). All six cultures (en, es, de,
-it, fr, ca) in the same commit. Collect a small batch of verified gaps
+(`memory/code/localization-admin-exempt.md`). All supported cultures (en, es, de,
+it, fr, ca, nl) in the same commit. Collect a small batch of verified gaps
 across related views/actions before editing; do not test and commit each
 string or file separately. Follow `daily-debt.md`'s batching rules.
 
@@ -256,7 +256,7 @@ grep -B1 -A1 "review: light" docs/architecture/debt-ledger.yml src/Sections/*/Do
 `memory/code/resource-key-prefix-matches-section.md`. Existing keys are not
 renamed as a side effect of unrelated work. Keep reflection-resolved
 `Enum_{TypeName}_{Value}` keys and the approved `Issue_` prefix unchanged.
-Update every usage and all six cultures together; only take a candidate that
+Update every usage and all supported cultures together; only take a candidate that
 can finish as one coherent change inside the remaining window.
 
 **Seed check (2026-10-17):** The former Governance and Teams prefix seeds are

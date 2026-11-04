@@ -27,6 +27,7 @@ public sealed class GovernanceEmailsTests
     [InlineData("it")]
     [InlineData("fr")]
     [InlineData("ca")]
+    [InlineData("nl")]
     public void ApplicationDecisions_StampGovernanceCategory(string culture)
     {
         var emails = Create();
@@ -52,6 +53,7 @@ public sealed class GovernanceEmailsTests
     [InlineData("it")]
     [InlineData("fr")]
     [InlineData("ca")]
+    [InlineData("nl")]
     public void TermRenewalReminder_FormatsExpiryInTheRecipientCulture(string culture)
     {
         using var callerCulture = new CultureScope("en");

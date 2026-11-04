@@ -50,6 +50,7 @@ public class HumanNameLocalizationTests
     [InlineData("it", "Sconosciuto")]
     [InlineData("fr", "Inconnu")]
     [InlineData("ca", "Desconegut")]
+    [InlineData("nl", "Onbekend")]
     public async Task MissingNames_AreLocalized_WithoutRewritingARealName(string cultureName, string expected)
     {
         using var culture = new CultureScope(cultureName);

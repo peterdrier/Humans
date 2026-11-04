@@ -58,6 +58,7 @@ public class TableColumnTests
     [Xunit.InlineData("it", "1.234,50", "1.234,5")]
     [Xunit.InlineData("fr", "1\u202f234,50", "1\u202f234,5")]
     [Xunit.InlineData("ca", "1.234,50", "1.234,5")]
+    [Xunit.InlineData("nl", "1.234,50", "1.234,5")]
     public void Numeric_cells_use_ui_culture_and_keep_invariant_sort_values(
         string culture, string expectedCurrency, string expectedNumber)
     {

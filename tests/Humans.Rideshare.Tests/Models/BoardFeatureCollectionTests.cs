@@ -36,6 +36,7 @@ public sealed class BoardFeatureCollectionTests
     [InlineData("it")]
     [InlineData("fr")]
     [InlineData("ca")]
+    [InlineData("nl")]
     public void Build_ProvidesLocalizedPopupDatesAlongsideMachineDates(string culture)
     {
         using var scope = new Humans.Base.Extensions.CultureScope(culture);

@@ -49,7 +49,7 @@ None. Guide owns no database tables. All content is fetched from GitHub and cach
 | GET | `/Guide/{name}` | `GuideController.Document` → renders named stem | `[AllowAnonymous]` |
 | POST | `/Guide/Refresh` | `GuideController.Refresh` → re-fetches every stem in `GuideFiles.All` | `[Authorize(AdminOnly)]` |
 
-Unknown stems return 404 (`NotFound.cshtml`). GitHub unavailability on cold cache returns 503 (`Unavailable.cshtml`). Both public fallback pages use shared error/navigation resources in all six UI cultures. The 404 links to Guide home; the 503 links to app home so recovery does not repeat the failed content fetch.
+Unknown stems return 404 (`NotFound.cshtml`). GitHub unavailability on cold cache returns 503 (`Unavailable.cshtml`). Both public fallback pages use shared error/navigation resources in all supported UI cultures. The 404 links to Guide home; the 503 links to app home so recovery does not repeat the failed content fetch.
 
 ## Actors & Roles
 
@@ -65,7 +65,7 @@ Unknown stems return 404 (`NotFound.cshtml`). GitHub unavailability on cold cach
 
 ## Invariants
 
-- Public page titles, sidebar headings and links, and navigation accessibility labels follow the current UI culture in all six supported languages. They use Guide resources and existing shared section labels. Authored Markdown and canonical route/cache stems remain unchanged; refresh controls remain admin-only.
+- Public page titles, sidebar headings and links, and navigation accessibility labels follow the current UI culture in all supported languages. They use Guide resources and existing shared section labels. Authored Markdown and canonical route/cache stems remain unchanged; refresh controls remain admin-only.
 - All content above the first `## As a …` heading in a file is always visible regardless of role.
 - All content at or below a non-`As a …` `##` heading (e.g. `## Related sections`) is always visible.
 - Anonymous users see only Volunteer-scoped blocks; never Coordinator or Board/Admin blocks.

@@ -91,6 +91,7 @@ public class CampContactServiceTests : IDisposable
     [Xunit.InlineData("it", "Nuovo messaggio per Camp - controlla la tua email", "Visualizza il camp")]
     [Xunit.InlineData("fr", "Nouveau message pour Camp - consultez vos e-mails", "Voir le camp")]
     [Xunit.InlineData("ca", "Missatge nou per a Camp - revisa el teu correu", "Mostra el camp")]
+    [Xunit.InlineData("nl", "Nieuw bericht voor Camp - bekijk je e-mail", "Kamp bekijken")]
     [Xunit.InlineData("xx", "New message for Camp - check your email", "View camp")]
     public async Task Contact_notice_uses_each_lead_language(string language, string title, string actionLabel)
     {
