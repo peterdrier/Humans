@@ -1,4 +1,3 @@
-using Humans.Consent.Contracts;
 using Humans.Users.Services;
 using Humans.Base.Attributes;
 using Humans.Base.Models.Tables;
@@ -34,8 +33,7 @@ internal sealed class ProfileController(
     IStringLocalizer<UsersResource> localizer,
     IStringLocalizer<SharedResource> sharedLocalizer,
     IGovernanceService governanceService,
-    IMembershipCalculator membershipCalculator,
-    IConsentService consentService) : HumansControllerBase(userService)
+    IMembershipCalculator membershipCalculator) : HumansControllerBase(userService)
 {
     private readonly IUserManagement _userService = userService;
 
@@ -82,7 +80,6 @@ internal sealed class ProfileController(
             HasPendingConsents = pendingConsentCount > 0,
             PendingConsentCount = pendingConsentCount,
             IsOwnProfile = true,
-            DisplayName = info.BurnerName,
         };
 
         if (latestApplication is not null && latestApplication.Status != ApplicationStatus.Withdrawn)
@@ -107,13 +104,10 @@ internal sealed class ProfileController(
         if (info is null) return NotFound();
 
         var applications = await governanceService.GetUserApplicationsAsync(user.Id, ct);
-        var review = await consentService.GetConsentReviewAsync(info.Id, ct);
         var viewModel = ProfileEditViewModelBuilder.Build(
             info,
             applications,
-            review.IsApproved,
-            preview,
-            p => Url.Action(nameof(ProfileViewController.Picture), "ProfileView", new { id = p.Id, v = p.UpdatedAt.ToUnixTimeTicks() }));
+            preview);
 
         ViewData["GoogleMapsApiKey"] = configuration.GetRequiredSetting(configRegistry, "GoogleMaps:ApiKey", "Google Maps", isSensitive: true);
         return View(viewModel);
@@ -125,9 +119,12 @@ internal sealed class ProfileController(
     [AllowBeforeActiveMembership]
     public async Task<IActionResult> Edit(ProfileViewModel model)
     {
-        var user = await GetCurrentUserInfoAsync();
+        var user = await GetCurrentUserInfoAsync(HttpContext.RequestAborted);
         if (user is null) return NotFound();
+        model.UserId = user.Id;
+        model.HasCustomProfilePicture = user.Profile?.HasCustomPicture == true;
         model.ContactFields = ProfileEditViewModelBuilder.BuildLegacyContactFields(user.Profile);
+        model.IsInitialSetup = user.Profile is null || user.State == UserState.Bare;
 
         if (!ModelState.IsValid)
         {
@@ -142,10 +139,6 @@ internal sealed class ProfileController(
             return View(model);
         }
 
-        // Not yet approved by the Consent Coordinator is initial setup (it covers the no-profile case too).
-        var isInitialSetup = user.Profile is null
-            || !(await consentService.GetConsentReviewAsync(user.Id)).IsApproved;
-
         var pictureUpload = await TryReadProfilePictureUploadAsync(model);
         if (!pictureUpload.Success)
         {
@@ -153,7 +146,7 @@ internal sealed class ProfileController(
             return View(model);
         }
 
-        var (profileId, saveResult) = await SaveEditedProfileOrNullAsync(model, user.Id, isInitialSetup, pictureUpload);
+        var (profileId, saveResult) = await SaveEditedProfileOrNullAsync(model, user.Id, pictureUpload);
         if (saveResult is not null)
             return saveResult;
 
@@ -239,7 +232,7 @@ internal sealed class ProfileController(
     }
 
     private async Task<(Guid ProfileId, IActionResult? EarlyReturn)> SaveEditedProfileOrNullAsync(
-        ProfileViewModel model, Guid userId, bool isInitialSetup, (bool Success, byte[]? Data, string? ContentType) pictureUpload)
+        ProfileViewModel model, Guid userId, (bool Success, byte[]? Data, string? ContentType) pictureUpload)
     {
         var saveRequest = BuildProfileSaveRequest(model, pictureUpload);
 
@@ -251,7 +244,6 @@ internal sealed class ProfileController(
         ModelState.AddModelError(
             string.Equals(errorKey, ProfileEditorService.BurnerCvRequiredErrorKey, StringComparison.Ordinal) ? nameof(model.NoPriorBurnExperience) : string.Empty,
             errorKey is not null ? localizer[errorKey].Value : sharedLocalizer["Common_Error"].Value);
-        model.IsInitialSetup = isInitialSetup;
         model.ShowPrivateFirst = string.IsNullOrEmpty(model.FirstName)
             && string.IsNullOrEmpty(model.LastName)
             && string.IsNullOrEmpty(model.EmergencyContactName);
@@ -338,12 +330,12 @@ internal sealed class ProfileController(
     [AllowBeforeActiveMembership]
     public async Task<IActionResult> Medical([Bind(nameof(MedicalViewModel.MedicalConditions))] MedicalViewModel model)
     {
+        var user = await GetCurrentUserInfoAsync(HttpContext.RequestAborted);
+        if (user is null)
+            return NotFound();
+
         try
         {
-            var user = await GetCurrentUserInfoAsync();
-            if (user is null)
-                return NotFound();
-
             // From the principal, so the reveal list on a re-rendered form is always the member's own.
             model.UserId = user.Id;
             if (!ModelState.IsValid)

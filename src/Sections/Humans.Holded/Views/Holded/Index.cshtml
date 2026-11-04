@@ -22,7 +22,6 @@
 }
 
 <h1 class="mb-3">Holded</h1>
-<partial name="_HoldedNav" />
 
 <p class="text-muted">
     The local mirror of Holded's ledger and chart of accounts. Pages read the mirror and make no
@@ -128,8 +127,10 @@
         </table>
     </div>
     <div class="card-footer text-muted small">
-        <strong>Sync now</strong> sweeps the last 45 days (one or two calls), refreshes the chart and
-        re-pulls up to 10 drifted accounts. <strong>Full resync</strong> rebuilds the mirror from
+        <strong>Sync now</strong> re-reads the purchase-document list (a few calls, plus up to 50 for
+        missing notes), sweeps the last 45 days of the ledger (one or two calls), refreshes the chart and
+        re-pulls up to 10 drifted accounts. <strong>Last run</strong> is the last success; a failed run
+        shows Error and leaves it. <strong>Full resync</strong> rebuilds the mirror from
         inception: about @N(o.FullSyncCalls) calls today, one per 200 lines plus the chart.
     </div>
 </div>

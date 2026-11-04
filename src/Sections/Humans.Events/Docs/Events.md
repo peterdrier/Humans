@@ -24,7 +24,9 @@ Event programming: submission, moderation, browsing, export, and preference mana
 - An **EventVenue** is a named on-site location available as a venue selection for events.
 - An **EventModerationAction** is an append-only audit record of a single moderation decision on an Event.
 - An **EventFavourite** records that a user has bookmarked an Event for their personal schedule.
-- Schedule, favourites API and calendar reads share the same favourite projection. If an event becomes non-recurring, retained day bookmarks project as one whole-event target: one schedule entry, no self-conflict, one calendar UID, and removal clears all its bookmarks. Stored favourite history and GDPR exports remain intact.
+- Browse uses a whole-event favourite target when an event cannot expand into occurrences: non-recurring events, empty recurrence days, or missing gate date/timezone. Any retained day bookmark marks that whole-event card as favourited; removing it clears the event’s bookmarks through the existing whole-event removal path.
+
+- Schedule, favourites API and calendar reads share the same favourite projection. If an event becomes non-recurring, its recurrence selection is empty, or gate-date/timezone context is unavailable, retained day bookmarks project as one whole-event target: one schedule entry, no self-conflict, one calendar UID, and removal clears all its bookmarks. Stored favourite history and GDPR exports remain intact.
 - Favourite mutations are same-origin, cookie-authenticated requests protected by an antiforgery token rendered with each favourite control.
 - An **EventPreference** stores a user's excluded category slugs as a JSON list.
 - **Recurring events** have `IsRecurring = true` and a comma-separated `RecurrenceDays` field encoding integer day offsets from gate-opening date. Individual, barrio and moderator forms reject malformed, repeated or out-of-window offsets before saving, and `SubmitEventAsync`, `UpdateAndResubmitAsync` and `AdminUpdateAsync` refuse them too; each selected offset must be within `0..EventEndOffset`. Storage preserves the complete selection without a separate character cap. An empty selection retains the authored-start fallback, and non-recurring forms ignore recurrence input.
@@ -169,6 +171,8 @@ Adding a favourite requires a currently approved event. A supplied day on a recu
 | `EventsAdminController` | `/Events/Admin/` | EventsAdmin, Admin (Board read-only) — `Settings` has no GET (only `POST SaveSettings`); the guide-settings form is the `/Settings#event-guide` tab (peterdrier/Humans#1634) |
 | `EventsApiController` | `/api/events/` | Public (CORS) + authenticated same-origin |
 
+Member create, edit, withdrawal and bulk-import preflight reads retain browser cancellation, including invalid-form dropdown preparation. Mutation calls and post-attempt form hydration remain detached so committed work can finish. Moderator preflight reads also retain browser cancellation through actor, event, settings, camp and invalid-form lookups; moderation, withdrawal and edit mutations remain detached.
+
 ## Actors & Roles
 
 | Actor | Capabilities |
@@ -180,6 +184,17 @@ Adding a favourite requires a currently approved event. A supplied day on a recu
 
 ## Invariants
 
+- Camp/profile event cards resolve the viewer before loading approved rows and
+  favourite IDs, so merged cookies mark the survivor's favourites. Missing accounts
+  render no card; cancelled account lookup propagates cancellation.
+
+- API favourites, category preferences and personalised public browse exclusions
+  resolve the signed-in account before owner calls, so merged cookies use the
+  survivor's rows. Missing accounts retain anonymous public browse and receive 401
+  on authenticated operations. CSV exports resolve the same canonical audit actor;
+  account preflight honours browser cancellation while mutation tokens stay unchanged.
+
+- Moderation submitter labels and the browse page’s individual-host fallback render through Human by user ID, without controller name hydration. On browse cards, authored host text takes precedence and camp events have no submitter-name fallback. Missing identities use the shared localized unknown label. API, CSV and email name projections remain separate live text consumers.
 - The guide shows one event: `EventGuideSettings.EventSettingsId`. Submission lists, the barrio CSV's existing rows, approved events (and the approved-event cache), favourites, the moderation queue and counts, camp overlap checks, the dashboard and the guide export only include entries of that event, plus entries with no event id yet (`Event.IsInEvent`). Entries of other events are kept, never deleted, and still reach GDPR export and by-id owner/moderator lookups. Pointing the guide at another event rebuilds the approved cache.
 
 - Data migration `events.event-ids` (`/Debug/DataMigrations`) gives each unassigned entry the non-deleted Settings event whose build-start to strike-end window holds the entry's local start date, else the event with the nearest gate opening (earliest on a tie). It only writes rows still without an event id.
@@ -227,7 +242,7 @@ Adding a favourite requires a currently approved event. A supplied day on a recu
 - Individual and barrio submissions and resubmissions require an existing active category, rechecked by the service before mutating the event. Individual submissions and resubmissions also require an existing active shared venue; barrio events use their camp location and require none. Refusals redisplay the form with entered content and a localized error on the affected selector; approved events remain approved and cached when an edit is refused. Internal save results identify the refused selector and distinguish selection refusals from a closed submission window. Moderator editing retains its all-category selection.
 - Category slugs are globally unique (unique constraint enforced at DB level; service validates before create/update).
 - `EventsApiController` is gated behind `EventsFeatureFilter` at class level and `[EnableCors("EventsApi")]`; the public endpoints allow unauthenticated access while `[Authorize] + [DisableCors]` endpoints are same-origin only.
-- Excluded category slugs stored in `EventPreference.ExcludedCategorySlugs` are validated against active categories before save. The API accepts mixed-case slugs; preference reads normalize them to the categories’ canonical lowercase form, and saves store lowercase slugs, so accepted exclusions work in both cached and database-backed browsing. Reading older mixed-case preferences never rewrites their rows.
+- Excluded category slugs stored in `EventPreference.ExcludedCategorySlugs` are validated against active categories before save. This validation read observes browser cancellation; saving the preference remains detached. The API accepts mixed-case slugs; preference reads normalize them to the categories’ canonical lowercase form, and saves store lowercase slugs, so accepted exclusions work in both cached and database-backed browsing. Reading older mixed-case preferences never rewrites their rows.
 - Bulk CSV parsing and row-validation errors use the uploader’s UI culture, while column names and CSV syntax tokens remain unchanged. Invalid CSV values and quoting produce warnings without exception details; unexpected read or parser failures produce error logs with their exception, while the uploader sees generic feedback. Bulk CSV upload is all-or-nothing: if any row fails validation, no events are created or updated. After validation, all changed rows commit in one repository save; a persistence failure preserves existing events and creates none. Its bounded in-memory read stops when the request is aborted. Existing recurring events keep their authored day offsets when the CSV weekday selection is unchanged, even if other fields change; a changed recurrence selection is expanded across the event window. Rows with a non-empty `Id` update the matched camp event; rows with an empty `Id` create a new event. Both paths apply CSV columns through the same mapping, retaining existing identity and submitter fields on edits. Each existing-event `Id` may appear only once, so conflicting edits cannot silently overwrite each other, a category name must identify exactly one active category, and recurrence values must use `true`/`false` plus the documented weekday tokens. `Withdrawn` events cannot be modified via bulk upload.
 - `StartAt` is always stored as UTC `Instant`; timezone conversion is done at presentation layer using `EventGuideSettingsView.TimeZoneId`.
 - All authoring forms and bulk CSV validation require the event start and end to fit years 0001–9999 in both UTC and the event timezone. Unsupported calendar values return form or localized row errors before any event is saved; valid dates outside the event window remain accepted.
@@ -284,3 +299,5 @@ Adding a favourite requires a currently approved event. A supplied day on a recu
 
 - Guide settings require explicitly posted submission dates, publication date and print limit; missing fields cannot replace dates with year one or reset the limit to 100. Explicit zero still means unlimited. The form displays each missing-field error.
 - Guide settings save returns a refusal if the selected event edition disappears between lookup and write, warning without an exception and performing no write. The operator form keeps the selected-edition field error; dependency faults propagate instead of exposing their messages as validation errors. Successful saves refresh the settings cache.
+
+- Global text search selects the highest-scoring matches before applying its result limit, with ordinal case-insensitive name and ID tie-breakers. Existing visibility and event-scope rules still apply; GUID queries retain direct lookup.

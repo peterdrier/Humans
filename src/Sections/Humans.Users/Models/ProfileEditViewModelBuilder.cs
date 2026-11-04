@@ -9,32 +9,23 @@ internal static class ProfileEditViewModelBuilder
     public static ProfileViewModel Build(
         UserInfo info,
         IReadOnlyList<UserApplicationSnapshot> applications,
-        bool isApproved,
-        bool preview,
-        Func<ProfileInfo, string?> customPictureUrl)
+        bool preview)
     {
         ArgumentNullException.ThrowIfNull(info);
         ArgumentNullException.ThrowIfNull(applications);
-        ArgumentNullException.ThrowIfNull(customPictureUrl);
 
         var profile = info.Profile;
 
         var isTierLocked = profile is not null && applications.Any(a =>
             a.Status == ApplicationStatus.Submitted || a.Status == ApplicationStatus.Approved);
         var hasCustomPicture = profile?.HasCustomPicture == true;
-        var isInitialSetup = profile is null || !isApproved || preview;
+        var isInitialSetup = profile is null || info.State == UserState.Bare || preview;
 
         return new ProfileViewModel
         {
             Id = profile?.Id ?? Guid.Empty,
             UserId = info.Id,
-            Email = info.Email ?? string.Empty,
-            DisplayName = info.BurnerName,
-            ProfilePictureUrl = info.ProfilePictureUrl,
             HasCustomProfilePicture = hasCustomPicture,
-            CustomProfilePictureUrl = hasCustomPicture && profile is not null
-                ? customPictureUrl(profile)
-                : null,
             BurnerName = profile?.BurnerName ?? info.BurnerName,
             FirstName = profile?.FirstName ?? string.Empty,
             LastName = profile?.LastName ?? string.Empty,

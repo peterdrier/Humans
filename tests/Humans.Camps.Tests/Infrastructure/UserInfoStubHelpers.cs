@@ -23,9 +23,7 @@ internal static class UserInfoStubHelpers
             user,
             userEmails ?? user.UserEmails?.ToList() ?? [],
             [],
-            [],
             profile: profile,
-            [],
             [],
             [],
             []);

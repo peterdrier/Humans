@@ -70,10 +70,6 @@ public sealed class EventSettingsViewModelTests
         BuildStartOffset: -25,
         EventEndOffset: 6,
         StrikeEndOffset: 9,
-        FirstCrewStartOffset: -25,
-        SetupWeekStartOffset: -16,
-        PreEventWeekStartOffset: -9,
-        FinishingWeekendStartOffset: -4,
         EarlyEntryCapacity: new Dictionary<int, int> { [-14] = 50 },
         BarriosEarlyEntryAllocation: null,
         EarlyEntryClose: null,
@@ -104,7 +100,7 @@ public sealed class EventSettingsViewModelTests
     }
 
     [HumansFact]
-    public void ASavedRow_SavesAnUnrelatedEditWithoutTouchingTheOffsets()
+    public void ASavedRow_PreservesGlobalBuildStartAcrossAnUnrelatedEdit()
     {
         var saved = SavedRow();
         var form = EventSettingsFormMapper.ToViewModel(saved);
@@ -117,10 +113,6 @@ public sealed class EventSettingsViewModelTests
         parsed.Success.Should().BeTrue();
         parsed.Settings!.EventName.Should().Be("Nowhere 2026 (renamed)");
         parsed.Settings.BuildStartOffset.Should().Be(saved.BuildStartOffset);
-        parsed.Settings.FirstCrewStartOffset.Should().Be(saved.FirstCrewStartOffset);
-        parsed.Settings.SetupWeekStartOffset.Should().Be(saved.SetupWeekStartOffset);
-        parsed.Settings.PreEventWeekStartOffset.Should().Be(saved.PreEventWeekStartOffset);
-        parsed.Settings.FinishingWeekendStartOffset.Should().Be(saved.FinishingWeekendStartOffset);
     }
 
     // EarlyEntryStartOffset: BuildStartOffset ≤ offset < 0, null until configured.

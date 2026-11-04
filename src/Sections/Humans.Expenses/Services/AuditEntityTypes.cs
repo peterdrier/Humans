@@ -10,10 +10,4 @@ internal static class AuditEntityTypes
 
     /// <summary>Users' <c>Profile</c>, which is internal to Users, so it is spelled here.</summary>
     public const string Profile = "Profile";
-
-    /// <summary>
-    /// The <c>relatedEntityType</c> on entries about a member, so the member's GDPR export picks them up even when
-    /// someone else was the actor.
-    /// </summary>
-    public const string User = "User";
 }

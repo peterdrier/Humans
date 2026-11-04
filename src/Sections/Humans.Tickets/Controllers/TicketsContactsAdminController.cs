@@ -56,7 +56,7 @@ internal sealed class TicketsContactsAdminController(
             return RedirectToAction(nameof(Index));
         }
 
-        var actor = await GetCurrentUserInfoAsync();
+        var actor = await GetCurrentUserInfoAsync(ct);
         if (actor is null)
         {
             SetError("Could not resolve current user.");

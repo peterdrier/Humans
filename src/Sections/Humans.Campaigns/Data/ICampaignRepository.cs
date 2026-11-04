@@ -92,7 +92,7 @@ internal interface ICampaignRepository : IRepository
         CancellationToken ct = default);
 }
 
-/// <summary>The recipient's address comes from <c>IUserEmailService</c>, not from here.</summary>
+/// <summary>The recipient's address comes from the resolved <c>UserInfo</c>, not from here.</summary>
 internal sealed record GrantWithSendContext(
     Guid GrantId,
     Guid UserId,

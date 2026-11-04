@@ -2,14 +2,14 @@
 @using Humans.Base.Models.Tables
 @using Microsoft.AspNetCore.Html
 @{
-    ViewData["Title"] = "Holded Account Provisioning";
+    ViewData["Title"] = "Holded Account Map";
     var blockStart = (int)ViewBag.BlockStart;
     var toAddRows = Model.Rows.Where(r => r.State == "ToAdd").ToList();
     var hasToAdd = toAddRows.Count > 0;
 }
 
 <div class="d-flex justify-content-between align-items-center mb-4">
-    <h1 class="mb-0">Holded Account Provisioning</h1>
+    <h1 class="mb-0">Holded Account Map</h1>
     <div class="d-flex gap-2">
         <a href="/Holded" class="btn btn-outline-secondary"
            title="Ledger mirror status, sync buttons and the full account list live on the Holded admin screen.">
@@ -118,6 +118,44 @@
             .Build();
     }
     <partial name="_Table" model="planTable" />
+</div>
+
+@{
+    var managed = (IReadOnlyList<Humans.Finance.Models.HoldedManagedAccountVm>)ViewBag.ManagedAccounts;
+}
+<div class="card mt-4">
+    <div class="card-header">
+        <i class="fa-solid fa-folder-tree me-1"></i>Managed accounts
+        <span class="badge bg-secondary ms-2">@managed.Count rows</span>
+    </div>
+    @if (managed.Count == 0)
+    {
+        <div class="card-body text-muted small">No expense accounts created outside the budget map yet.</div>
+    }
+    else
+    {
+        <div class="table-responsive">
+            <table class="table table-sm mb-0">
+                <thead><tr><th>Account</th><th>Label</th><th>Holded id</th><th>Active</th><th>Since</th></tr></thead>
+                <tbody>
+                @foreach (var m in managed)
+                {
+                    <tr>
+                        <td><a asp-controller="Holded" asp-action="Account" asp-route-number="@m.AccountNumber"><code>@m.AccountNumber</code></a></td>
+                        <td>@m.Label</td>
+                        <td class="text-muted small">@m.AccountId</td>
+                        <td>@(m.IsActive ? "Yes" : "Retired")</td>
+                        <td>@m.CreatedAt.ToDate()</td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+        <div class="card-footer text-muted small">
+            Expense accounts created for workgroups and programs rather than budget categories. A document booked
+            to one counts as matched but toward no budget category.
+        </div>
+    }
 </div>
 
 <script>

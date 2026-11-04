@@ -71,7 +71,7 @@ public sealed class FormViewModelTests
     private static readonly LocalDate July3 = new(2026, 7, 3);
     private static readonly LocalDate Today = new(2026, 3, 1);
     private static readonly Instant Now = Instant.FromUtc(2026, 3, 1, 12, 0);
-    private static readonly SettingsView Settings = new(2026, "Elsewhere", 43.2, -2.4,
+    private static readonly SettingsView Settings = new("Elsewhere", 43.2, -2.4,
         new LocalDate(2026, 7, 1), new LocalDate(2026, 7, 10), new LocalDate(2026, 7, 12), new LocalDate(2026, 7, 20));
 
     [HumansTheory]
@@ -121,10 +121,10 @@ public sealed class FormViewModelTests
     [HumansFact]
     public void OfferForm_FromTrip_RoundTripsThroughToSave()
     {
-        var trip = new TripView(Guid.NewGuid(), Guid.NewGuid(), 2026, RideshareDirection.Outbound, "Paris", 48.85, 2.35,
+        var trip = new TripView(Guid.NewGuid(), Guid.NewGuid(), RideshareDirection.Outbound, "Paris", 48.85, 2.35,
             [new Waypoint("Lyon", 45.76, 4.84), new Waypoint("Bordeaux", 44.84, -0.58)], null,
             July3, 2, "Camping", VehicleType.Van, 4, 4, LuggageSize.Lots, "roof box", "no dogs", true,
-            CostSharing.Other, "20€", null, TripStatus.Active, Now, Now);
+            CostSharing.Other, "20€", null, TripStatus.Active, Now);
 
         var form = OfferFormViewModel.FromTrip(trip);
         form.IsEdit.Should().BeTrue();
@@ -140,8 +140,8 @@ public sealed class FormViewModelTests
     [HumansFact]
     public void RequestForm_FromRequest_RoundTripsThroughToSave()
     {
-        var request = new RequestView(Guid.NewGuid(), Guid.NewGuid(), 2026, RideshareDirection.Outbound, "Lyon", 45.76, 4.84,
-            July3, 2, LuggageSize.Lots, false, "two tents", RequestStatus.Active, false, Now, Now);
+        var request = new RequestView(Guid.NewGuid(), Guid.NewGuid(), RideshareDirection.Outbound, "Lyon", 45.76, 4.84,
+            July3, 2, LuggageSize.Lots, false, "two tents", RequestStatus.Active, false, Now);
 
         var form = RequestFormViewModel.FromRequest(request);
         form.IsEdit.Should().BeTrue();
@@ -205,5 +205,5 @@ public sealed class FormViewModelTests
     private static UserInfo User(ProfileInfo? profile) => new(
         Guid.NewGuid(), "Ada", false, "en", null, Now,
         null, null, null, null, null, null,
-        null, null, null, [], [], [], profile, []);
+        null, null, null, [], [], profile);
 }

@@ -21,12 +21,11 @@ internal sealed partial class WorkgroupService(
     IWorkgroupRepository repository,
     IUserService users,
     ISurveyAnalysisRead surveys,
-    IUserEmailService userEmails,
     IRoleAssignmentService roles,
     ISettingsService settings,
     IGoogleSyncService googleSync,
     IGoogleSyncWrite googleSyncWrite,
-    IHoldedFinanceWrite finance,
+    IFinanceWrite finance,
     IHoldedService holded,
     INotificationService notifications,
     IEmailService email,
@@ -158,7 +157,7 @@ internal sealed partial class WorkgroupService(
         ct = CancellationToken.None;
         await auditLog.LogAsync(WorkgroupsAuditActions.WorkgroupMembershipDeclined, AuditEntityTypes.Workgroup, workgroup.Id,
             $"Declined the join request of {name}", actorUserId,
-            relatedEntityId: userId, relatedEntityType: AuditEntityTypes.User);
+            relatedEntityId: userId, relatedEntityType: AuditSubjectTypes.User);
         await NotifyAsync([userId], WorkgroupsNotificationSources.WorkgroupMembershipDecided,
             "Workgroups_Notice_MembershipDeclined", ToInfo(workgroup), body: null, ct);
         return new();
@@ -202,7 +201,7 @@ internal sealed partial class WorkgroupService(
         // Related entity is the person admitted: their GDPR export selects audit rows by that column.
         await auditLog.LogAsync(auditAction, AuditEntityTypes.Workgroup, workgroup.Id,
             $"{name} admitted to the group", actorUserId,
-            relatedEntityId: member.UserId, relatedEntityType: AuditEntityTypes.User);
+            relatedEntityId: member.UserId, relatedEntityType: AuditSubjectTypes.User);
         await NotifyAsync([member.UserId], WorkgroupsNotificationSources.WorkgroupMembershipDecided,
             noticeKey, ToInfo(workgroup), body: null, ct);
         await RequestDriveSyncAsync(workgroup, ct);
@@ -476,6 +475,8 @@ internal sealed partial class WorkgroupService(
             return new(Refusal: new(WorkgroupErrorKeys.BodyRequired));
         if (save.Body.Trim().Length > 16000)
             return new(Refusal: new(WorkgroupErrorKeys.TextTooLong, 16000));
+        var meetingLink = await ResolveMeetingLinkAsync(workgroup.Id, save, ct);
+        if (meetingLink.Refusal is { } meetingRefusal) return new(Refusal: meetingRefusal);
 
         var now = clock.GetCurrentInstant();
         var entry = new WorkgroupLogEntry
@@ -486,6 +487,7 @@ internal sealed partial class WorkgroupService(
             OccurredOn = save.OccurredOn,
             Title = Trimmed(save.Title),
             Body = save.Body.Trim(),
+            MeetingId = meetingLink.Value,
             AuthorUserId = actorUserId,
             CreatedAt = now,
             UpdatedAt = now
@@ -510,8 +512,11 @@ internal sealed partial class WorkgroupService(
             return new(Refusal: new(WorkgroupErrorKeys.BodyRequired));
         if (save.Body.Trim().Length > 16000)
             return new(Refusal: new(WorkgroupErrorKeys.TextTooLong, 16000));
+        var meetingLink = await ResolveMeetingLinkAsync(workgroup.Id, save, ct, entry.MeetingId);
+        if (meetingLink.Refusal is { } meetingRefusal) return new(Refusal: meetingRefusal);
 
         entry.Kind = save.Kind;
+        entry.MeetingId = meetingLink.Value;
         entry.OccurredOn = save.OccurredOn;
         entry.Title = Trimmed(save.Title);
         entry.Body = save.Body.Trim();
@@ -590,7 +595,7 @@ internal sealed partial class WorkgroupService(
         return new();
     }
 
-    public async Task<WorkgroupMutationResult<HoldedExpenseAccountRef?>> SetBudgetAsync(
+    public async Task<WorkgroupMutationResult<ExpenseAccountRef?>> SetBudgetAsync(
         Guid workgroupId, Guid actorUserId, WorkgroupBudgetSave save, CancellationToken ct = default)
     {
         ArgumentNullException.ThrowIfNull(save);
@@ -604,7 +609,7 @@ internal sealed partial class WorkgroupService(
             WorkgroupStatus.Active, WorkgroupStatus.Dormant) is { } statusRefusal) return new(Refusal: statusRefusal);
 
         // Finance first, before any write: a failed create or unknown account leaves the row as it was.
-        HoldedExpenseAccountRef? account = null;
+        ExpenseAccountRef? account = null;
         var needsAccount = save.Amount is not null
             && (workgroup.HoldedAccountNumber is null
                 || (save.ExistingAccountNum is { } wanted && wanted != workgroup.HoldedAccountNumber));
@@ -648,7 +653,7 @@ internal sealed partial class WorkgroupService(
     }
 
     /// <summary>Finance faults log and return retry guidance; cancellation propagates.</summary>
-    private async Task<WorkgroupMutationResult<HoldedExpenseAccountRef>> ResolveBudgetAccountAsync(
+    private async Task<WorkgroupMutationResult<ExpenseAccountRef>> ResolveBudgetAccountAsync(
         Workgroup workgroup, int? existingAccountNum, CancellationToken ct)
     {
         try

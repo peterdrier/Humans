@@ -39,7 +39,7 @@ public sealed class ProgramTests : GrantsTestHarness
         await AuditLog.Received(1).LogAsync(GrantsAuditActions.GrantProgramCreated, AuditEntityTypes.Program, program.Id,
             Arg.Any<string>(), actor, Arg.Any<Guid?>(), Arg.Any<string?>());
         await AuditLog.Received(1).LogAsync(GrantsAuditActions.GrantProgramManagerAdded, AuditEntityTypes.Program, program.Id,
-            Arg.Any<string>(), actor, manager, AuditEntityTypes.User);
+            Arg.Any<string>(), actor, manager, AuditSubjectTypes.User);
     }
 
     [HumansTheory]
@@ -101,9 +101,9 @@ public sealed class ProgramTests : GrantsTestHarness
         await AuditLog.Received(1).LogAsync(GrantsAuditActions.GrantProgramEdited, AuditEntityTypes.Program, program.Id,
             Arg.Is<string>(s => s.Contains("Renamed")), actor, Arg.Any<Guid?>(), Arg.Any<string?>());
         await AuditLog.Received(1).LogAsync(GrantsAuditActions.GrantProgramManagerAdded, AuditEntityTypes.Program, program.Id,
-            Arg.Any<string>(), actor, newManager, AuditEntityTypes.User);
+            Arg.Any<string>(), actor, newManager, AuditSubjectTypes.User);
         await AuditLog.Received(1).LogAsync(GrantsAuditActions.GrantProgramManagerRemoved, AuditEntityTypes.Program, program.Id,
-            Arg.Any<string>(), actor, oldManager, AuditEntityTypes.User);
+            Arg.Any<string>(), actor, oldManager, AuditSubjectTypes.User);
     }
 
     [HumansFact]
@@ -119,7 +119,7 @@ public sealed class ProgramTests : GrantsTestHarness
             .Options;
         var service = new GrantService(
             new GrantRepository(new TestDbContextFactory<GrantsDbContext>(options)),
-            Users, UserEmails, Notifications, Email, EmailFactory, AuditLog, Settings, Clock, Logger);
+            Users, Notifications, Email, EmailFactory, AuditLog, Settings, Clock, Logger);
 
         Func<Task> update = () => service.UpdateProgramAsync(
             program.Id, Save("Renamed", managers: newManager), actor, Ct);
@@ -205,22 +205,22 @@ public sealed class ProgramTests : GrantsTestHarness
     }
 
     [HumansFact]
-    public async Task AnUnstampedProgram_ReadsAsTheEarliestEventOfItsYear_UntilTheDataMigrationStampsIt()
+    public async Task AnUnassignedProgram_DoesNotInferAnEventFromItsYear()
     {
         var autumn = BurnFixtures.Burn(eventName: "Autumn 2027", year: 2027, gateOpeningDate: new LocalDate(2027, 10, 1));
         Settings.GetAllEventSettingsAsync(Arg.Any<CancellationToken>()).Returns([autumn, Event2027]);
         var program = await SeedProgramAsync();
+        (await Db.Programs.SingleAsync(Ct)).EventSettingsId = null;
+        await Db.SaveChangesAsync(Ct);
         var service = NewService();
 
         var info = (await service.GetProgramAsync(program.Id, Ct))!;
-        info.EventSettingsId.Should().Be(Event2027.Id);
-        info.EventName.Should().Be("Nowhere 2027");
+        info.EventSettingsId.Should().BeNull();
+        info.EventName.Should().Be("2027");
+        info.Year.Should().Be(2027);
 
-        (await service.GetEventIdPlanAsync(Ct)).Should().ContainSingle().Which.Event.Id.Should().Be(Event2027.Id);
-        (await service.AssignProgramEventIdsAsync(Ct)).Should().Be(1);
-        (await service.AssignProgramEventIdsAsync(Ct)).Should().Be(0);
         await using var db = OpenContext();
-        (await db.Programs.SingleAsync(Ct)).EventSettingsId.Should().Be(Event2027.Id);
+        (await db.Programs.SingleAsync(Ct)).EventSettingsId.Should().BeNull();
     }
 
     [HumansFact]
@@ -241,7 +241,6 @@ public sealed class ProgramTests : GrantsTestHarness
     public async Task TheYearFollowsTheEvent_WhenTheEventMovesToAnotherYear()
     {
         var program = await SeedProgramAsync();
-        await NewService().AssignProgramEventIdsAsync(Ct);
         var moved = Event2027 with { Year = 2028, GateOpeningDate = new LocalDate(2028, 1, 5) };
         Settings.GetAllEventSettingsAsync(Arg.Any<CancellationToken>()).Returns([moved]);
 

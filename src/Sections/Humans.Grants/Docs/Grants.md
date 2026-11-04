@@ -26,9 +26,9 @@ A grant entitles a human to a thing (a cheaper ticket, early entry for build, st
 | Id | Guid | PK |
 | Name | string(200) | |
 | Entitles | string(500) | What the person gets, in their notice and on their profile |
-| Description | string(2000)? | Managers and Board only |
+| Description | string(2000)? | Managers, Grants Admin and Board only |
 | Year | int | the event's year, for display and sorting |
-| EventSettingsId | Guid? | index; the event. Null on programs from before events were tracked: they read as the earliest non-deleted event of their year (by gate opening) until the `grants.event-ids` data migration (on `/Debug/DataMigrations`) stamps that event |
+| EventSettingsId | Guid? | index; the stored event id. Legacy unassigned programs retain their year label without inferring an event; the `grants.event-ids` migration and fallback retired after production reported done on 2026-11-03 |
 | IssuedBy | GrantIssuer (string) | `Managers` or `Source` |
 | SourceKey | string(32)? | Set only when `IssuedBy = Source`; the key the source section passes |
 | GrantsExpireOn | LocalDate? | Default expiry for its grants; null = never |
@@ -68,11 +68,16 @@ Admin pages live at `/Grants/Admin` (`GrantsAdminController`), in the Admin side
 |-------|--------------|
 | Grant holder | Sees their own grants on their profile; gets an email and in-app notice on issue, resend and revoke |
 | Program manager | Sees the programs they manage; issues (managers' programs only), revokes, resends notices on them |
-| Board, Admin | All manager capabilities on every program. Additionally creates and edits programs and names their managers |
+| Grants Admin, Admin | All manager capabilities on every program. Additionally creates and edits programs and names their managers |
+| Board | Reads every program and its grants; changes nothing |
 | UsersAdmin, Board, Admin | See a person's grants on the admin human-detail card (a program name links to its admin page only when the viewer may open it) |
 | A source section (LowIncome) | Issues and revokes under the open program whose source key it passes, through `IGrantWrite` |
 
 ## Invariants
+
+- Authorization’s viewer and program-manager reads retain HTTP request cancellation; callers without an HTTP context use the non-cancellable default.
+
+- Admin program pages and edit forms render manager and actor IDs through the shared Human component without profile links. Missing members use its localized fallback. Manager order, comma separators and posted manager IDs are preserved; page models carry no display-name dictionary.
 
 - A person holds at most one live grant per program (filtered unique index); issuing to a holder is skipped (manual) or returns the existing id (source write). Issuance resolves merged recipient ids before deduplication and saves new grants under the survivor id. A live grant under any of the person's archived ids also counts as held, and source revocation finds it through any alias.
 - A managers' program is filled only by hand; a source program only through `IGrantWrite` with the matching source key. A closed program takes no new grants either way.
@@ -83,16 +88,17 @@ Admin pages live at `/Grants/Admin` (`GrantsAdminController`), in the Admin side
 - Manual and source issuance share one persist/audit/notice pipeline. Persistence retains caller cancellation; after commit, audit and notices finish independently of browser cancellation. Their distinct batch and source-reference audit descriptions are preserved.
 - Every issue, revoke, resend and program change writes an audit entry (`GrantIssued`, `GrantRevoked`, `GrantNoticeResent`, `GrantProgram*`). Program edits persist fields and manager additions/removals together in one save; a failed manager write leaves the program unchanged and emits no success audit.
 - Grant reads, GDPR exports (held grants and programs created), and issue/revoke/resend audits use the program's current Settings event year, falling back to its stored year when the event is unavailable. Audit year resolution finishes before the mutation commits.
-- A failed email or in-app notice is logged and never fails the write; the two channels fail independently (an in-app outage still sends the email, and vice versa); a manager can resend.
+- A failed email or in-app notice is logged and never fails the write; the two channels fail independently (an in-app outage still sends the email, and vice versa); a manager can resend. A successful recipient lookup supplies the email address too; if that lookup fails, the email step retains its independent lookup attempt and uses the recovered recipient’s canonical id, burner name and preferred language as well as their address.
 - Program-level refusals are English text: every page that shows them is admin-only (`memory/code/localization-admin-exempt.md`). Member-facing copy (notice, email, My grants card) is in all six cultures.
 
 ## Negative Access Rules
 
 - A program manager **cannot** create programs, edit a program, or change its managers.
 - A manager of one program **cannot** see or act on another program's grants (per-grant routes 404 when the grant is not in the routed program).
-- Managers, Board and Admin **cannot** issue by hand under a source program. Another section **cannot** issue under a managers' program or under a source key it does not own.
+- Managers, Grants Admin and Admin **cannot** issue by hand under a source program. Another section **cannot** issue under a managers' program or under a source key it does not own.
 - A grant holder **cannot** reach the admin pages, and **cannot** see anyone else's grants.
-- FinanceAdmin, TicketsAdmin and other roles **cannot** manage grants unless they are Board, Admin, or a named manager.
+- Board **cannot** create, edit, issue, revoke or resend; it reads only.
+- FinanceAdmin, TicketsAdmin and other roles **cannot** manage grants unless they are Grants Admin, Admin, or a named manager.
 
 ## Triggers
 
@@ -105,7 +111,7 @@ Admin pages live at `/Grants/Admin` (`GrantsAdminController`), in the Admin side
 ## Cross-Section Dependencies
 
 - **Audit actions:** declared on `GrantsAuditActions` (`src/Sections/Humans.Grants/GrantsAuditActions.cs`), one `AuditActionDefinition` each, written through `IAuditLogService`: `GrantProgramCreated`, `GrantProgramEdited`, `GrantProgramManagerAdded`, `GrantProgramManagerRemoved`, `GrantIssued`, `GrantRevoked`, `GrantNoticeResent`.
-- **Users**: `IUserService.GetUserInfoAsync` / `GetUserInfosAsync` (merged ids, preferred language, burner names), `IUserEmailService.GetNotificationTargetEmailsAsync` (notice address). Implements `IUserMerge`.
+- **Users**: `IUserService.GetUserInfoAsync` / `GetUserInfosAsync` (merged ids, preferred language, burner names and canonical notice address). Implements `IUserMerge`.
 - **Notifications**: `INotificationEmitter.SendAsync` (`GrantReceived`, `GrantRevoked`). Its sources are declared in `GrantsNotificationSources` (`src/Sections/Humans.Grants/GrantsNotificationSources.cs`), one `NotificationSourceDefinition` each: `GrantReceived` (informational, to the grant holder: a grant issued to the person, or its notice resent); `GrantRevoked` (informational, to the former holder: a grant the person held was revoked).
 - **Email**: `IEmailService.SendAsync`; contributes `IEmailPreviewContributor` samples.
 - **AuditLog**: `IAuditLogService.LogAsync`.

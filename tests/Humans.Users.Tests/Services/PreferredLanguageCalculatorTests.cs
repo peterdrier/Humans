@@ -2,6 +2,11 @@ using AwesomeAssertions;
 using Humans.Governance.Contracts;
 using Humans.Users.Contracts;
 using Humans.Users.Services;
+using Humans.Users.ViewComponents;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc.Rendering;
+using Microsoft.AspNetCore.Mvc.ViewComponents;
+using NSubstitute;
 using NodaTime;
 
 namespace Humans.Users.Tests.Services;
@@ -41,12 +46,12 @@ public class PreferredLanguageCalculatorTests
     }
 
     [HumansFact]
-    public void Build_orders_by_count_descending()
+    public async Task Card_orders_by_count_descending()
     {
         var enUsers = new[] { Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid() };
         var esUser = Guid.NewGuid();
-        var snapshot = enUsers.Select(id => MakeUserInfo(id, "en"))
-            .Append(MakeUserInfo(esUser, "es"))
+        var snapshot = new[] { MakeUserInfo(esUser, "es") }
+            .Concat(enUsers.Select(id => MakeUserInfo(id, "en")))
             .ToList();
         var partition = new MembershipPartition(
             IncompleteSignup: [],
@@ -56,8 +61,20 @@ public class PreferredLanguageCalculatorTests
             Suspended: [],
             PendingDeletion: []);
 
-        var result = PreferredLanguageCalculator.Build(snapshot, partition);
+        var users = Substitute.For<IUserService>();
+        users.GetAllUserInfosAsync(Arg.Any<CancellationToken>()).Returns(snapshot);
+        var membership = Substitute.For<IMembershipCalculator>();
+        membership.PartitionUsersAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>()).Returns(partition);
+        var component = new PreferredLanguageCardViewComponent(users, membership)
+        {
+            ViewComponentContext = new ViewComponentContext
+            {
+                ViewContext = new ViewContext { HttpContext = new DefaultHttpContext() }
+            }
+        };
 
+        var view = (await component.InvokeAsync()).Should().BeOfType<ViewViewComponentResult>().Subject;
+        var result = view.ViewData!.Model.Should().BeAssignableTo<IReadOnlyList<PreferredLanguageCount>>().Subject;
         result.Select(l => l.Language).Should().Equal("en", "es");
     }
 
@@ -70,11 +87,9 @@ public class PreferredLanguageCalculatorTests
             CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
         },
         userEmails: [],
-        eventParticipations: [],
         externalLogins: [],
         profile: null,
         contactFields: [],
         profileLanguages: [],
-        volunteerHistory: [],
-        communicationPreferences: []);
+        volunteerHistory: []);
 }

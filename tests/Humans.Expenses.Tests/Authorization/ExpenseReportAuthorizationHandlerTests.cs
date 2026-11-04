@@ -10,6 +10,7 @@ using Humans.Base.Enums;
 using Humans.Expenses.Authorization;
 using Humans.Preapprovals.Contracts;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using NSubstitute;
 using NodaTime;
 
@@ -22,6 +23,7 @@ public sealed class ExpenseReportAuthorizationHandlerTests
     private readonly IUserService _users = Substitute.For<IUserService>();
     private readonly IPreapprovalService _preapprovals = Substitute.For<IPreapprovalService>();
     private readonly ExpenseReportAuthorizationHandler _handler;
+    private readonly HttpContextAccessor _httpContext = new();
 
     private static readonly Guid SubmitterId = Guid.NewGuid();
     private static readonly Guid CoordinatorId = Guid.NewGuid();
@@ -33,16 +35,69 @@ public sealed class ExpenseReportAuthorizationHandlerTests
 
     public ExpenseReportAuthorizationHandlerTests()
     {
-        _handler = new ExpenseReportAuthorizationHandler(_budgetService, _teamService, _users, _preapprovals);
+        _handler = new ExpenseReportAuthorizationHandler(_budgetService, _teamService, _users, _preapprovals, _httpContext);
 
         // Category is linked to TeamId
-        _budgetService.GetCategoryByIdAsync(CategoryId)
+        _budgetService.GetCategoryByIdAsync(CategoryId, Arg.Any<CancellationToken>())
             .Returns(CreateCategorySnapshot(CategoryId, TeamId));
 
         var teams = CreateTeamMap();
         _teamService.IsUserCoordinatorOfTeamAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(call => TeamCoordinatorAccess.IsCoordinatorOfActiveTeam(
                 teams, call.ArgAt<Guid>(0), call.ArgAt<Guid>(1)));
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData("User")]
+    [Xunit.InlineData("Grant")]
+    [Xunit.InlineData("Category")]
+    [Xunit.InlineData("Team")]
+    public async Task AuthorizationReads_PropagateAbandonedRequests(string boundary)
+    {
+        using var request = new CancellationTokenSource();
+        _httpContext.HttpContext = new DefaultHttpContext { RequestAborted = request.Token };
+        var grantId = Guid.NewGuid();
+        var observed = CancellationToken.None;
+        void Read(string name, CancellationToken ct)
+        {
+            if (string.Equals(name, boundary, StringComparison.Ordinal))
+            {
+                observed = ct;
+                request.Cancel();
+            }
+            ct.ThrowIfCancellationRequested();
+        }
+        _users.GetUserInfoAsync(CoordinatorId, Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            Read("User", call.Arg<CancellationToken>());
+            return new ValueTask<UserInfo?>((UserInfo?)null);
+        });
+        _preapprovals.ListManagedGrantIdsAsync(CoordinatorId, Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            Read("Grant", call.Arg<CancellationToken>());
+            return new HashSet<Guid> { grantId };
+        });
+        _budgetService.GetCategoryByIdAsync(CategoryId, Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            Read("Category", call.Arg<CancellationToken>());
+            return CreateCategorySnapshot(CategoryId, TeamId);
+        });
+        _teamService.IsUserCoordinatorOfTeamAsync(TeamId, CoordinatorId, Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            Read("Team", call.Arg<CancellationToken>());
+            return true;
+        });
+        var report = MakeReport(SubmitterId, ExpenseReportStatus.Submitted) with
+        {
+            PreapprovalGrantId = string.Equals(boundary, "Grant", StringComparison.Ordinal) ? grantId : null,
+        };
+        var requirement = new ExpenseReportOperationRequirement(ExpenseReportOperation.Endorse);
+        var context = new AuthorizationHandlerContext([requirement], CreateUser(CoordinatorId), report);
+
+        Func<Task> authorize = () => _handler.HandleAsync(context);
+        await authorize.Should().ThrowAsync<OperationCanceledException>();
+        observed.Should().Be(request.Token);
+        context.HasSucceeded.Should().BeFalse();
     }
 
     [HumansTheory]
@@ -57,9 +112,9 @@ public sealed class ExpenseReportAuthorizationHandlerTests
         var operation = Enum.Parse<ExpenseReportOperation>(operationName);
         var survivor = Guid.NewGuid();
         _users.GetUserInfoAsync(survivor, Arg.Any<CancellationToken>()).Returns(
-            UserInfo.Create(new User { Id = survivor }, [], [], [], null, []) with { MergedUserIds = [SubmitterId] });
+            UserInfo.Create(new User { Id = survivor }, [], [], null) with { MergedUserIds = [SubmitterId] });
         _users.GetUserInfoAsync(RandomUserId, Arg.Any<CancellationToken>()).Returns(
-            UserInfo.Create(new User { Id = RandomUserId }, [], [], [], null, []) with { MergedUserIds = [Guid.NewGuid()] });
+            UserInfo.Create(new User { Id = RandomUserId }, [], [], null) with { MergedUserIds = [Guid.NewGuid()] });
         var report = MakeReport(SubmitterId, status);
 
         (await EvaluateAsync(CreateUser(survivor), report, operation)).Should().BeTrue();
@@ -392,7 +447,7 @@ public sealed class ExpenseReportAuthorizationHandlerTests
     public async Task CoordinatorCheck_DeniedWhen_CategoryHasNoTeam()
     {
         // Category without a team — coordinator access is not possible
-        _budgetService.GetCategoryByIdAsync(CategoryId)
+        _budgetService.GetCategoryByIdAsync(CategoryId, Arg.Any<CancellationToken>())
             .Returns(CreateCategorySnapshot(CategoryId, null));
 
         var report = MakeReport(SubmitterId, ExpenseReportStatus.Submitted);

@@ -11,7 +11,6 @@ using Humans.Users.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Base.Enums;
 using Humans.Development.Services;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using NodaTime;
@@ -28,8 +27,7 @@ namespace Humans.Development.Tests;
 /// </summary>
 public class DevPersonaSeederTests
 {
-    private readonly UserManager<User> _userManager = Substitute.For<UserManager<User>>(
-        Substitute.For<IUserStore<User>>(), null, null, null, null, null, null, null, null);
+    private readonly IAccountProvisioningService _provisioning = Substitute.For<IAccountProvisioningService>();
     private readonly IProfileEditorService _profileEditor = Substitute.For<IProfileEditorService>();
     private readonly IUserEmailService _userEmails = Substitute.For<IUserEmailService>();
     private readonly IContactFieldService _contactFields = Substitute.For<IContactFieldService>();
@@ -50,6 +48,8 @@ public class DevPersonaSeederTests
 
     public DevPersonaSeederTests()
     {
+        _provisioning.CreateAccountAsync(Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<Instant>(), Arg.Any<Instant?>())
+            .Returns(Array.Empty<string>());
         _userEmails.AddVerifiedEmailAsync(Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(new UserEmailAddResult(Guid.NewGuid(), true, false));
         _profileEditor.SaveProfileAsync(Arg.Any<Guid>(), Arg.Any<ProfileSaveRequest>(), Arg.Any<CancellationToken>())
@@ -57,7 +57,7 @@ public class DevPersonaSeederTests
     }
 
     private DevPersonaSeeder BuildSut() => new(
-        _userManager,
+        _provisioning,
         _profileEditor,
         _userEmails,
         _contactFields,
@@ -86,13 +86,11 @@ public class DevPersonaSeederTests
     private static UserInfo NamedUserInfo(Guid userId, UserState state) =>
         UserInfo.Create(
             new User { Id = userId, DisplayName = "Dev Board", State = state },
-            [], [], [],
+            [], [],
             profile: UserFixtures.Profile(
                 burnerName: "Dev Board",
                 firstName: "Dev",
-                lastName: "Board",
-                isApproved: true),
-            []);
+                lastName: "Board"));
 
     private static MembershipSnapshot Snapshot(params Guid[] missingVersionIds) => new(
         MembershipStatus.Active,
@@ -200,7 +198,7 @@ public class DevPersonaSeederTests
         _users.GetUserInfoAsync(profileless, Arg.Any<CancellationToken>())
             .Returns(new ValueTask<UserInfo?>(UserInfo.Create(
                 new User { Id = profileless, DisplayName = "Dev Guest" },
-                [], [], [], profile: null, [])));
+                [], [], profile: null)));
 
         await BuildSut().EnsureActiveAsync(profileless);
 
@@ -215,8 +213,6 @@ public class DevPersonaSeederTests
     {
         // An existing persona that drifted non-Active is repaired on the existing-persona path.
         var userId = DevPersonaSeeder.PersonaGuid("board");
-        _userManager.FindByIdAsync(userId.ToString())
-            .Returns(new User { Id = userId, DisplayName = "Dev Board" });
         _users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new ValueTask<UserInfo?>(NamedUserInfo(userId, UserState.Suspended)));
         _membershipCalculator.GetMembershipSnapshotAsync(userId, Arg.Any<CancellationToken>())
@@ -229,7 +225,7 @@ public class DevPersonaSeederTests
         var resolved = await BuildSut().EnsurePersonaAsync("board", "Board", userId);
 
         resolved.Should().Be(userId);
-        await _userManager.DidNotReceive().CreateAsync(Arg.Any<User>());
+        await _provisioning.DidNotReceiveWithAnyArgs().CreateAccountAsync(default, default!, default);
         await _consents.Received(1).SubmitConsentAsync(
             userId, Arg.Any<Guid>(), true, Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
         await _humanLifecycle.Received(1).RestoreConsentSuspensionAsync(userId, Arg.Any<CancellationToken>());
@@ -241,8 +237,9 @@ public class DevPersonaSeederTests
     {
         // Guests exist to run onboarding end to end, Consent Coordinator review included.
         var userId = DevPersonaSeeder.PersonaGuid("guest");
-        _userManager.FindByIdAsync(userId.ToString())
-            .Returns(new User { Id = userId, DisplayName = "Dev Guest" });
+        _users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<UserInfo?>(UserInfo.Create(
+                new User { Id = userId, DisplayName = "Dev Guest" }, [], [], profile: null)));
 
         await BuildSut().EnsurePersonaAsync("guest", "Guest", userId);
 
@@ -254,15 +251,16 @@ public class DevPersonaSeederTests
     public async Task EnsureFreshGuestAsync_EachCall_MintsANewProfilelessUser()
     {
         // Parallel testers must never share one guest account.
-        var created = new List<User>();
-        _userManager.CreateAsync(Arg.Do<User>(created.Add)).Returns(IdentityResult.Success);
+        var created = new List<Guid>();
+        _provisioning.CreateAccountAsync(Arg.Do<Guid>(created.Add), Arg.Any<string>(), Arg.Any<Instant>(), Arg.Any<Instant?>())
+            .Returns(Array.Empty<string>());
         var sut = BuildSut();
 
         var first = await sut.EnsureFreshGuestAsync("Guest (No Profile)");
         var second = await sut.EnsureFreshGuestAsync("Guest (No Profile)");
 
         first.Should().NotBe(second);
-        created.Select(u => u.Id).Should().Equal(first, second);
+        created.Should().Equal(first, second);
         await _profileEditor.DidNotReceive().SaveProfileAsync(
             Arg.Any<Guid>(), Arg.Any<ProfileSaveRequest>(), Arg.Any<CancellationToken>());
     }

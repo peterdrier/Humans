@@ -201,3 +201,19 @@ src/Sections/Humans.Store/Data/Migrations/20261021133426_DropStoreTreasurySyncSt
 # project thread, "Approve the index drop"): camp + event replaces camp + year by design.
 # Step 4 deviation: ships inside peterdrier/Humans#2201 with the event-id change, which needs it.
 src/Sections/Humans.Camps/Data/Migrations/20261029213715_AddCampEventIds.cs:DropIndex(name=IX_camp_seasons_CampId_Year,table=camp_seasons)#1
+
+# Feedback: feedback_messages and feedback_reports, the whole Feedback section's data — the
+# historical in-app feedback reports (reporter, category, description, page URL, user agent,
+# screenshot key, status, assignment, GitHub link) and their reporter/admin message threads.
+# Evidence: Issues superseded Feedback (nobodies-collective/Humans#977); no creation path existed
+# since then, and this same PR deletes every reader and writer (admin queue, Backdoor
+# /api/backdoor/feedback, the agent snapshot, the reply-email job, GDPR export/erasure, account
+# merge). The rows are being destroyed deliberately, not because they are empty. Down() recreates
+# both tables with their indexes; they come back empty.
+# Approval: Peter, 2026-11-01, on the section-doctor Feedback thread: "feedback was supposed to be
+# retired completely", then picked "Drop them" on the decision card asking what should happen to
+# the old Feedback reports (one PR deletes the section and a migration drops both tables).
+# Step 4 deviation: ships inside the section-removal PR, because the drop needs the section's own
+# DbContext, which the removal empties.
+src/Sections/Humans.Feedback/Data/Migrations/20261101144113_DropFeedbackTables.cs:DropTable(name=feedback_messages)#1
+src/Sections/Humans.Feedback/Data/Migrations/20261101144113_DropFeedbackTables.cs:DropTable(name=feedback_reports)#1

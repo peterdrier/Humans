@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Runtime.InteropServices;
 using System.Text;
 using Humans.Finance.Domain;
+using Humans.Holded.Contracts;
 
 namespace Humans.Finance.Services;
 
@@ -11,6 +12,13 @@ internal readonly record struct HoldedMatchEntry(
 
 [StructLayout(LayoutKind.Auto)]
 internal readonly record struct HoldedMatchResult(Guid? CategoryId, HoldedMatchSource Source, bool IsManaged = false);
+
+/// <summary>A mirrored purchase document with Finance's category attribution.</summary>
+internal sealed record AttributedDoc(HoldedPurchaseDocInfo Doc, HoldedMatchResult Match)
+{
+    /// <summary>On the Unmatched queue: no category, and not booked to a managed account.</summary>
+    public bool IsUnmatched => Match.CategoryId is null && !Match.IsManaged;
+}
 
 internal static class HoldedMatcher
 {

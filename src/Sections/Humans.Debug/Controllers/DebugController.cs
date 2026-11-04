@@ -308,16 +308,7 @@ internal sealed class DebugController(
             })
             .ToList();
 
-        var swallowed = registry.GetSwallowed()
-            .OrderByDescending(s => s.Count)
-            .Select(s => new SwallowedEntryViewModel
-            {
-                Operation = s.Key,
-                Count = s.Count,
-            })
-            .ToList();
-
-        return View(new TimingsViewModel { Entries = entries, Swallowed = swallowed });
+        return View(new TimingsViewModel { Entries = entries });
     }
 
     [HttpGet("FormatGallery")]
@@ -326,8 +317,11 @@ internal sealed class DebugController(
     [HttpGet("Translations")]
     public IActionResult Translations(
         [FromServices] IStringLocalizer<SharedResource> shared,
-        [FromServices] IStringLocalizerFactory localizerFactory) =>
-        View(TranslationsPageModelBuilder.Build(shared, localizerFactory, sectionCatalog));
+        [FromServices] IStringLocalizerFactory localizerFactory,
+        string? set = null,
+        string? q = null,
+        bool missing = false) =>
+        View(TranslationsPageModelBuilder.Build(shared, localizerFactory, sectionCatalog, set, q, missing));
 
     private static string StatusCategory(int statusCode) => statusCode switch
     {

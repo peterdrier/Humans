@@ -46,8 +46,7 @@ internal sealed class ShiftManagementService(
         [ShiftPriority.Essential] = 6
     };
 
-    private static readonly decimal AllDayShiftHours = (decimal)Duration.FromTicks(
-        Shift.AllDayWindowEnd.TickOfDay - Shift.AllDayWindowStart.TickOfDay).TotalHours;
+    private static readonly decimal AllDayShiftHours = (decimal)Shift.AllDayWindowHours;
 
     // Lazy, to break the DI cycle with TeamService.
     private ITeamService TeamService => serviceProvider.GetRequiredService<ITeamService>();
@@ -143,42 +142,6 @@ internal sealed class ShiftManagementService(
         viewInvalidator.InvalidateAll();
     }
 
-    public async Task<IReadOnlyList<(Guid EventSettingsId, string EventName, BuildSubPeriodStarts Starts)>> GetUncopiedBuildSubPeriodsAsync(
-        CancellationToken ct = default)
-    {
-        var rowsById = (await repo.GetAllEventSettingsAsync(ct)).ToDictionary(r => r.Id);
-        var pending = new List<(Guid, string, BuildSubPeriodStarts)>();
-        // Every Settings cycle, inactive ones included: a cycle without a Shifts row still leans on Settings' values.
-        foreach (var calendar in await SettingsService.GetAllEventSettingsAsync(ct))
-        {
-            if (rowsById.TryGetValue(calendar.Id, out var row)
-                && row.SubPeriodFirstCrewStart is not null && row.SubPeriodSetupWeekStart is not null
-                && row.SubPeriodPreEventWeekStart is not null && row.SubPeriodFinishingWeekendStart is not null)
-                continue;
-
-            var resolved = EventCalendarResolver.WithSubPeriods(calendar, rowsById.GetValueOrDefault(calendar.Id));
-            pending.Add((calendar.Id, calendar.EventName, new BuildSubPeriodStarts(
-                resolved.FirstCrewStartOffset, resolved.SetupWeekStartOffset,
-                resolved.PreEventWeekStartOffset, resolved.FinishingWeekendStartOffset)));
-        }
-        return pending;
-    }
-
-    public async Task<int> CopyBuildSubPeriodsAsync(CancellationToken ct = default)
-    {
-        var pending = await GetUncopiedBuildSubPeriodsAsync(ct);
-        foreach (var (eventSettingsId, _, starts) in pending)
-        {
-            var entity = await EnsureKnobsRowAsync(eventSettingsId);
-            SetSubPeriods(entity, starts);
-            entity.UpdatedAt = clock.GetCurrentInstant();
-            await repo.SaveEventSettingsAsync(entity, EntityMutationMode.Update, ct);
-            EvictDashboardCaches(eventSettingsId);
-        }
-        if (pending.Count > 0) viewInvalidator.InvalidateAll();
-        return pending.Count;
-    }
-
     private static void SetSubPeriods(EventSettings entity, BuildSubPeriodStarts starts)
     {
         entity.SubPeriodFirstCrewStart = starts.FirstCrew;
@@ -198,6 +161,7 @@ internal sealed class ShiftManagementService(
 
         var now = clock.GetCurrentInstant();
         var created = new EventSettings { Id = eventSettingsId, CreatedAt = now, UpdatedAt = now };
+        SetSubPeriods(created, BuildSubPeriodStarts.Default);
         await repo.SaveEventSettingsAsync(created, EntityMutationMode.Add);
         return created;
     }
@@ -529,7 +493,10 @@ internal sealed class ShiftManagementService(
         string query, int max,
         CancellationToken cancellationToken = default)
     {
-        if (Guid.TryParse(query, out var id))
+        if (string.IsNullOrWhiteSpace(query) || max <= 0)
+            return [];
+        var trimmed = query.Trim();
+        if (Guid.TryParse(trimmed, out var id))
         {
             var rota = await repo.GetRotaAsync(id, RotaReadShape.None, cancellationToken);
             return rota is null
@@ -541,11 +508,14 @@ internal sealed class ShiftManagementService(
         if (settings is null) return [];
 
         var rotas = await repo.SearchVolunteerVisibleRotasAsync(
-            query, settings.Id,
-            max, cancellationToken);
+            trimmed, settings.Id, cancellationToken);
 
         return rotas
-            .Select(r => new RotaSearchHit(r.Id, r.Name, r.Name.NameMatchScore(query)))
+            .Select(r => new RotaSearchHit(r.Id, r.Name, r.Name.NameMatchScore(trimmed)))
+            .OrderByDescending(hit => hit.Score)
+            .ThenBy(hit => hit.Name, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(hit => hit.RotaId)
+            .Take(max)
             .ToList();
     }
 
@@ -738,7 +708,7 @@ internal sealed class ShiftManagementService(
         return null;
     }
 
-    private static (int Start, int End) GetRotaDayOffsetBounds(RotaPeriod period, EventSettingsInfo es) =>
+    private static (int Start, int End) GetRotaDayOffsetBounds(RotaPeriod period, BurnSettingsInfo es) =>
         period switch
         {
             RotaPeriod.Build => (es.BuildStartOffset, -1),
@@ -809,7 +779,7 @@ internal sealed class ShiftManagementService(
         {
             await auditLogService.LogAsync(ShiftsAuditActions.ShiftSignupCancelled, nameof(ShiftSignup), signup.Id,
                 $"shift {signup.ShiftId}: {reason}", actorUserId,
-                relatedEntityId: signup.UserId, relatedEntityType: "User");
+                relatedEntityId: signup.UserId, relatedEntityType: AuditSubjectTypes.User);
         }
     }
 
@@ -828,7 +798,7 @@ internal sealed class ShiftManagementService(
 
     /// <summary>Inclusive bounds. subPeriod narrows only when period is Build.</summary>
     private static (int? MinDayOffset, int? MaxDayOffset) GetDayOffsetBounds(
-        ShiftPeriod? period, BuildSubPeriod? subPeriod, EventSettingsInfo es)
+        ShiftPeriod? period, BuildSubPeriod? subPeriod, BurnSettingsInfo es)
     {
         int? minDayOffset = null;
         int? maxDayOffset = null;
@@ -860,7 +830,7 @@ internal sealed class ShiftManagementService(
 
     /// <summary>All three periods when <paramref name="period"/> is null.</summary>
     private static List<int> BuildDayOffsetList(
-        ShiftPeriod? period, BuildSubPeriod? subPeriod, EventSettingsInfo es)
+        ShiftPeriod? period, BuildSubPeriod? subPeriod, BurnSettingsInfo es)
     {
         var offsets = new List<int>();
         if (period is null or ShiftPeriod.Build)
@@ -1037,7 +1007,7 @@ internal sealed class ShiftManagementService(
     /// </summary>
     private static UrgentShiftInfo ToUrgentShiftInfo(
         Shift shift,
-        EventSettingsInfo es,
+        BurnSettingsInfo es,
         double score,
         int confirmedCount,
         int remainingSlots,
@@ -1084,7 +1054,7 @@ internal sealed class ShiftManagementService(
             rota.IsVisibleToVolunteers,
             rota.Tags.Select(t => new ShiftTagSummary(t.Id, t.Name)).ToList());
 
-    internal double CalculateScore(Shift shift, int confirmedCount, EventSettingsInfo eventSettings)
+    internal double CalculateScore(Shift shift, int confirmedCount, IEventSettingsInfo eventSettings)
     {
         var remainingSlots = Math.Max(0, shift.MaxVolunteers - confirmedCount);
         if (remainingSlots == 0) return 0;
@@ -1139,7 +1109,7 @@ internal sealed class ShiftManagementService(
         return result.OrderByDescending(u => u.UrgencyScore).ToList();
     }
 
-    private static bool OverlapsDay(Shift shift, EventSettingsInfo calendar, Instant dayStart, Instant dayEnd)
+    private static bool OverlapsDay(Shift shift, BurnSettingsInfo calendar, Instant dayStart, Instant dayEnd)
     {
         var start = shift.GetAbsoluteStart(calendar);
         var end = shift.GetAbsoluteEnd(calendar);
@@ -1403,7 +1373,7 @@ internal sealed class ShiftManagementService(
 
         var ticketOrders = await TicketQueryService.GetTicketOrdersAsync(ct);
         var ticketHolders = ticketOrders
-            .Where(o => o.PaymentStatus == TicketPaymentStatus.Paid && o.MatchedUserId.HasValue)
+            .Where(o => o.IsCurrentEvent && o.PaymentStatus == TicketPaymentStatus.Paid && o.MatchedUserId.HasValue)
             .Select(o => o.MatchedUserId!.Value)
             .ToHashSet();
 
@@ -1439,7 +1409,7 @@ internal sealed class ShiftManagementService(
     private static List<DepartmentStaffingRow> BuildDepartmentRows(
         IReadOnlyList<Shift> shifts,
         Dictionary<Guid, int> confirmedCounts,
-        EventSettingsInfo es,
+        BurnSettingsInfo es,
         IReadOnlyDictionary<Guid, TeamInfo> teamLookup)
     {
         string NameOf(Guid teamId) =>
@@ -1500,7 +1470,7 @@ internal sealed class ShiftManagementService(
     }
 
     private static (int Total, int Filled, int TotalSlots, int FilledSlots, int Remaining, PeriodStaffing Build, PeriodStaffing Event, PeriodStaffing Strike)
-        AggregateShifts(IReadOnlyList<Shift> shifts, Dictionary<Guid, int> confirmedCounts, EventSettingsInfo es)
+        AggregateShifts(IReadOnlyList<Shift> shifts, Dictionary<Guid, int> confirmedCounts, BurnSettingsInfo es)
     {
         int total = shifts.Count;
         int filled = 0;
@@ -1695,7 +1665,7 @@ internal sealed class ShiftManagementService(
             eventSettingsId, startInstant, endInstant, minDayOffset, maxDayOffset, ct);
 
         var ticketsInWindow = (await TicketQueryService.GetTicketOrdersAsync(ct))
-            .Where(o => o.PaymentStatus == TicketPaymentStatus.Paid
+            .Where(o => o.IsCurrentEvent && o.PaymentStatus == TicketPaymentStatus.Paid
                 && o.PurchasedAt >= startInstant
                 && o.PurchasedAt < endInstant)
             .Select(o => o.PurchasedAt)

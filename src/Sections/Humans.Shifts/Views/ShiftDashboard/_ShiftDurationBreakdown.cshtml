@@ -3,14 +3,9 @@
 @{
     if (Model.Count == 0) { return; }
 
-    static string PctClass(double pct) =>
-        pct >= 80 ? "bg-success" : pct >= 60 ? "bg-warning text-dark" : "bg-danger";
-
-    static double SlotPct(int filled, int total) => total == 0 ? 0 : 100.0 * filled / total;
-
     var totalSlots = Model.Sum(r => r.TotalSlots);
     var totalFilled = Model.Sum(r => r.FilledSlots);
-    var totalPct = SlotPct(totalFilled, totalSlots);
+    var totalPct = StaffingCoveragePresentation.Percentage(totalFilled, totalSlots);
 }
 
 <div class="card mb-4">
@@ -31,7 +26,7 @@
             <tbody>
                 @foreach (var row in Model)
                 {
-                    var pct = SlotPct(row.FilledSlots, row.TotalSlots);
+                    var pct = StaffingCoveragePresentation.Percentage(row.FilledSlots, row.TotalSlots);
                     <tr>
                         <td>
                             @if (row.IsAllDay)
@@ -45,7 +40,7 @@
                         </td>
                         <td class="text-end">@row.TotalSlots</td>
                         <td class="text-end">@row.FilledSlots</td>
-                        <td class="text-end"><span class="badge @PctClass(pct)">@pct.ToString("0")%</span></td>
+                        <td class="text-end"><span class="badge @StaffingCoveragePresentation.Describe(pct).BadgeClass">@pct.ToString("0")%</span></td>
                     </tr>
                 }
             </tbody>
@@ -54,7 +49,7 @@
                     <th>@Localizer["Shifts_ShiftDash_DurationMix_Total"]</th>
                     <th class="text-end">@totalSlots</th>
                     <th class="text-end">@totalFilled</th>
-                    <th class="text-end"><span class="badge @PctClass(totalPct)">@totalPct.ToString("0")%</span></th>
+                    <th class="text-end"><span class="badge @StaffingCoveragePresentation.Describe(totalPct).BadgeClass">@totalPct.ToString("0")%</span></th>
                 </tr>
             </tfoot>
         </table>

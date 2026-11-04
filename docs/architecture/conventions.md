@@ -57,7 +57,7 @@ Not every multi-step cross-repository orchestration needs one, though. `AccountM
 ## Cross-Section FK Columns
 
 <!-- wheat: docs/plans/2026-06-13-q3-transition-plan.md §FK-cut carve-out -->
-A bare `Guid` cross-section FK column gets no index for free. EF auto-created `IX_<table>_<column>` for each cross-section relationship and removed it along with the constraint in nobodies-collective/Humans#992, so any cross-section FK column a query filters or sorts on needs an explicit `HasIndex(...)` in its configuration — `CampMemberConfiguration`, `CampaignGrantConfiguration`, `BudgetAuditLogConfiguration` and `FeedbackReportConfiguration` are the pattern. A missing index here is a production regression that no test surfaces.
+A bare `Guid` cross-section FK column gets no index for free. EF auto-created `IX_<table>_<column>` for each cross-section relationship and removed it along with the constraint in nobodies-collective/Humans#992, so any cross-section FK column a query filters or sorts on needs an explicit `HasIndex(...)` in its configuration — `CampMemberConfiguration`, `CampaignGrantConfiguration` and `BudgetAuditLogConfiguration` are the pattern. A missing index here is a production regression that no test surfaces.
 
 ## Caching
 
@@ -166,7 +166,7 @@ Promote a partial to a view component when any of these apply:
 
 Keep as a partial when the rendering is genuinely pure (badges, alerts, validation script tags, language chooser, role/dietary badges driven from a model already loaded by the page).
 
-**Caching at this scale:** view components must **not** inject or use `IMemoryCache` — a documented project rule ([`../../memory/code/viewcomponent-no-cache.md`](../../memory/code/viewcomponent-no-cache.md)), upheld by review rather than tooling: a dedicated analyzer is described in [`roslyn-analysis.md`](roslyn-analysis.md) §"View components may not inject `IMemoryCache`" but is **not yet built** (`Current coverage: none`). When a view component renders an aggregate count that warrants a short cache, the cache lives inline in the owning service (1–2 minute TTL) and that service owns invalidation on writes that affect the aggregate; the view component is a thin pass-through. (The admin-nav pill counts work this way — each is a `PillCount` delegate on the owning section's `ISectionAdminNav` contribution, resolved by `AdminNavItems` for `AdminSidebarViewComponent` and `AdminTabsViewComponent`, and the delegate only calls that section's service interface. The short cache lives in the owning service: the voting count inside `ApplicationDecisionService`, the feedback count inside `FeedbackService`.)
+**Caching at this scale:** view components must **not** inject or use `IMemoryCache` — a documented project rule ([`../../memory/code/viewcomponent-no-cache.md`](../../memory/code/viewcomponent-no-cache.md)), upheld by review rather than tooling: a dedicated analyzer is described in [`roslyn-analysis.md`](roslyn-analysis.md) §"View components may not inject `IMemoryCache`" but is **not yet built** (`Current coverage: none`). When a view component renders an aggregate count that warrants a short cache, the cache lives inline in the owning service (1–2 minute TTL) and that service owns invalidation on writes that affect the aggregate; the view component is a thin pass-through. (The admin-nav pill counts work this way — each is a `PillCount` delegate on the owning section's `ISectionAdminNav` contribution, resolved by `AdminNavItems` for `AdminSidebarViewComponent` and `AdminTabsViewComponent`, and the delegate only calls that section's service interface. The short cache lives in the owning service, e.g. the voting count inside `ApplicationDecisionService`.)
 
 **Conventions:**
 
@@ -205,7 +205,6 @@ All pages are server-rendered with Razor. The following use `fetch()` for the sp
 | `Humans.Shifts/Views/ShiftAdmin/Index.cshtml` | Shift volunteer search + tag creation | Search input + inline action |
 | `Humans.Shifts/wwwroot/js/shifts.js` | Day-signup toggle without reload | Progressive enhancement |
 | `Humans.Notifications/Views/Notifications/Index.cshtml` | Dismiss/mark-read without reload | Progressive enhancement |
-| `Humans.Feedback/Views/Feedback/Index.cshtml` | Master-detail panel loading | Progressive enhancement |
 | `Humans.Issues/Views/Issues/Index.cshtml` | Master-detail panel loaded via Razor partial (`?partial=true`) | Partial-via-AJAX |
 | `Humans.GoogleIntegration/Views/Google/Sync.cshtml` | Tab content loaded via Razor partial (slow Google API) | Partial-via-AJAX |
 | `Humans.Scanner/wwwroot/js/scanner/tickets.js` (`Views/Scanner/Tickets.cshtml`) | Ticket card loaded via Razor partial (`_TicketCard`) on barcode hit | Partial-via-AJAX |

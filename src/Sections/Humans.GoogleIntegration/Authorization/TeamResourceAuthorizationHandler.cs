@@ -1,3 +1,4 @@
+using Humans.Users.Contracts;
 using System.Security.Claims;
 using Humans.Base.Authorization;
 using Humans.GoogleIntegration.Contracts;
@@ -8,11 +9,12 @@ using Microsoft.AspNetCore.Http;
 namespace Humans.GoogleIntegration.Authorization;
 
 /// <summary>
-/// TeamsAdmin, Board and Admin manage any team; anyone else needs the manage check on the team's department, so
-/// sub-team coordinators do not pass. Handlers get no token, so the read uses the request's cancellation.
+/// TeamsAdmin and Admin manage any team; anyone else needs the manage check on the team's department, so sub-team
+/// coordinators do not pass. Board reads the page through Teams' Read policy and manages nothing. Handlers get no token, so the read uses the request's cancellation.
 /// </summary>
 internal sealed class TeamResourceAuthorizationHandler(
     ITeamResourceService teamResources,
+    IUserService users,
     IHttpContextAccessor httpContextAccessor)
     : AuthorizationHandler<TeamResourceManageRequirement, TeamInfo>
 {
@@ -21,7 +23,7 @@ internal sealed class TeamResourceAuthorizationHandler(
         TeamResourceManageRequirement requirement,
         TeamInfo resource)
     {
-        if (TeamsRoles.IsTeamsAdminBoardOrAdmin(context.User))
+        if (TeamsRoles.IsTeamsAdmin(context.User) || RoleChecks.IsAdmin(context.User))
         {
             context.Succeed(requirement);
             return;
@@ -30,9 +32,14 @@ internal sealed class TeamResourceAuthorizationHandler(
         if (!Guid.TryParse(context.User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
             return;
 
+        var ct = httpContextAccessor.HttpContext?.RequestAborted ?? CancellationToken.None;
+        var viewer = await users.GetUserInfoAsync(userId, ct);
+        if (viewer is null)
+            return;
+
         var departmentId = resource.ParentTeamId ?? resource.Id;
         if (await teamResources.CanManageTeamResourcesAsync(
-                departmentId, userId, httpContextAccessor.HttpContext?.RequestAborted ?? CancellationToken.None))
+                departmentId, viewer.Id, ct))
             context.Succeed(requirement);
     }
 }

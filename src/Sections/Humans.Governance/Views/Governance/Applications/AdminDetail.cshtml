@@ -52,10 +52,10 @@
                         <dd class="col-7">@Model.ReviewStartedAt.ToDate()</dd>
                     }
 
-                    @if (!string.IsNullOrEmpty(Model.ReviewerName))
+                    @if (Model.ReviewedByUserId is { } reviewerId)
                     {
                         <dt class="col-5">@Localizer["Governance_AdminAppDetail_Reviewer"]</dt>
-                        <dd class="col-7">@Model.ReviewerName</dd>
+                        <dd class="col-7"><vc:human user-id="@reviewerId" link="None" /></dd>
                     }
                 </dl>
             </div>

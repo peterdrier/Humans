@@ -104,9 +104,8 @@ internal sealed class AgentController(
         var isAdmin = RoleChecks.IsAdminOrBoard(User);
         var (rows, hasNext) = await LoadConversationsAsync(
             isAdmin, currentUser.Id, refusalsOnly, userId, page, cancellationToken);
-        var listRows = await StitchListRowsAsync(rows, isAdmin, cancellationToken);
         return View(new AgentConversationsViewModel(
-            listRows, IsAdminView: isAdmin, Page: page < 0 ? 0 : page, HasNext: hasNext));
+            rows, IsAdminView: isAdmin, Page: page < 0 ? 0 : page, HasNext: hasNext));
     }
 
     [HttpGet("Conversation/{id:guid}")]
@@ -132,8 +131,7 @@ internal sealed class AgentController(
         var conv = await LoadConversationForViewerAsync(isAdmin, currentUser.Id, id, cancellationToken);
         if (conv is null) return NotFound();
 
-        var displayName = await ResolveOwnerDisplayNameAsync(isAdmin, conv, cancellationToken);
-        return View(new AgentConversationDetailViewModel(conv, displayName, IsAdminView: isAdmin));
+        return View(new AgentConversationDetailViewModel(conv, IsAdminView: isAdmin));
     }
 
     private async Task<(IReadOnlyList<AgentConversationListSnapshot> Rows, bool HasNext)> LoadConversationsAsync(
@@ -158,22 +156,6 @@ internal sealed class AgentController(
             : (rows, false);
     }
 
-    private async Task<List<AgentConversationRow>> StitchListRowsAsync(
-        IReadOnlyList<AgentConversationListSnapshot> rows, bool isAdmin, CancellationToken ct)
-    {
-        // Display names are only meaningful in admin mode (where the table
-        // shows the Human column). Skip the lookup entirely for non-admins.
-        if (!isAdmin || rows.Count == 0)
-            return rows.Select(r => new AgentConversationRow(r, DisplayName: null)).ToList();
-
-        var distinctUserIds = rows.Select(r => r.UserId).Distinct().ToArray();
-        var users1 = await UserService.GetUserInfosAsync(distinctUserIds, ct);
-        return rows.Select(r => new AgentConversationRow(
-            Conversation: r,
-            DisplayName: users1.TryGetValue(r.UserId, out var u) ? u.BurnerName : null)
-        ).ToList();
-    }
-
     private async Task<AgentConversationTranscriptSnapshot?> LoadConversationForViewerAsync(
         bool isAdmin, Guid currentUserId, Guid conversationId, CancellationToken ct)
     {
@@ -181,14 +163,6 @@ internal sealed class AgentController(
             return await agent.GetConversationForAdminAsync(conversationId, ct);
 
         return await agent.GetConversationForUserAsync(currentUserId, conversationId, ct);
-    }
-
-    private async Task<string?> ResolveOwnerDisplayNameAsync(
-        bool isAdmin, AgentConversationTranscriptSnapshot conv, CancellationToken ct)
-    {
-        if (!isAdmin) return null;
-        var owner = await UserService.GetUserInfoAsync(conv.UserId, ct);
-        return owner?.BurnerName ?? conv.UserId.ToString();
     }
 
     private async Task WriteSse(AgentTurnToken token, CancellationToken cancellationToken)
@@ -208,15 +182,11 @@ internal sealed class AgentController(
 /// <summary>Paging applies to the admin view only. <see cref="Page"/> is zero-based; <see cref="HasNext"/> means an
 /// older page exists.</summary>
 internal sealed record AgentConversationsViewModel(
-    IReadOnlyList<AgentConversationRow> Rows,
+    IReadOnlyList<AgentConversationListSnapshot> Rows,
     bool IsAdminView,
     int Page = 0,
     bool HasNext = false);
 
-/// <summary><see cref="DisplayName"/> is null in non-admin views.</summary>
-internal sealed record AgentConversationRow(AgentConversationListSnapshot Conversation, string? DisplayName);
-
 internal sealed record AgentConversationDetailViewModel(
     AgentConversationTranscriptSnapshot Conversation,
-    string? DisplayName,
     bool IsAdminView);

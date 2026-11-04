@@ -97,6 +97,8 @@
   <data name="GoogleIntegration_TeamResources_LinkedResources" xml:space="preserve"><value>Linked Resources</value></data>
   <data name="GoogleIntegration_TeamResources_LastSynced" xml:space="preserve"><value>Last Synced</value></data>
   <data name="GoogleIntegration_TeamResources_NoResources" xml:space="preserve"><value>No resources linked to this team yet. Use the forms below to link a Google Drive folder or Google Group.</value></data>
+  <data name="GoogleIntegration_TeamResources_Restricted" xml:space="preserve"><value>Restricted</value></data>
+  <data name="GoogleIntegration_TeamResources_Inherited" xml:space="preserve"><value>Inherited</value></data>
   <data name="GoogleIntegration_TeamResources_InvalidDriveUrl" xml:space="preserve"><value>Please enter a valid Google Drive folder URL.</value></data>
   <data name="GoogleIntegration_TeamResources_InvalidGroupEmail" xml:space="preserve"><value>Please enter a valid Google Group email address.</value></data>
   <data name="GoogleIntegration_TeamResources_GroupLinked" xml:space="preserve"><value>Google Group "{0}" linked successfully.</value><comment>{0} = group name</comment></data>

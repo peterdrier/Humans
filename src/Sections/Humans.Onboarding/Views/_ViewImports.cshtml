@@ -1,11 +1,10 @@
 @* A section RCL does NOT inherit the host's Views/_ViewImports.cshtml. Omitting a line
    here ships broken markup with a green build and no runtime error.
 
-   Three localizers: the section's own keys, SharedResource (shared vocabulary and the Onboarding_*Label keys
-   DataAnnotations resolves), and Consent's. A key looked up against the wrong one renders as its own name with
-   a green build, so OnboardingLocalizerBindingTests checks every one. *@
+   Two localizers: the section's own keys, and SharedResource (shared vocabulary and the Onboarding_*Label keys
+   DataAnnotations resolves). A key looked up against the wrong one renders as its own name with a green build,
+   so OnboardingLocalizerBindingTests checks every one. *@
 @using Humans.Base.Extensions
-@using Humans.Consent
 @using Humans.Consent.Contracts
 @using Humans.Base.Enums
 @using Humans.Users.Contracts

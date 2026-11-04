@@ -22,7 +22,6 @@ namespace Humans.Campaigns.Services;
 internal sealed class CampaignService(
     ICampaignRepository repository,
     ITeamService teamService,
-    IUserEmailService userEmailService,
     IUserService userService,
     INotificationEmitter notificationService,
     IEmailService emailService,
@@ -408,7 +407,6 @@ internal sealed class CampaignService(
             return new CampaignSendWaveResult(true, SentCount: 0);
 
         var users = await userService.GetUserInfosAsync(eligibleUserIds, ct);
-        var notificationEmails = await userEmailService.GetNotificationTargetEmailsAsync(eligibleUserIds, ct);
 
         var availableCodes = await repository.GetAvailableCodesAsync(
             campaignId, eligibleUserIds.Count, ct);
@@ -436,7 +434,7 @@ internal sealed class CampaignService(
                 continue;
             }
 
-            if (!notificationEmails.TryGetValue(userId, out var recipientEmail))
+            if (user.Email is not { Length: > 0 } recipientEmail)
             {
                 logger.LogWarning(
                     "User {UserId} has no notification email for campaign {CampaignId}; skipping",
@@ -455,7 +453,7 @@ internal sealed class CampaignService(
             await repository.AddGrantAndSaveAsync(grant, ct);
             await audit.LogAsync(CampaignsAuditActions.CampaignWaveSent, "Campaign", campaignId,
                 $"Assigned grant {grant.Id} in wave to team {teamId}.", actorUserId,
-                relatedEntityId: userId, relatedEntityType: "User");
+                relatedEntityId: userId, relatedEntityType: AuditSubjectTypes.User);
             grantedUserIds.Add(userId);
 
             try
@@ -528,14 +526,13 @@ internal sealed class CampaignService(
 
         await audit.LogAsync(CampaignsAuditActions.CampaignGrantResent, "CampaignGrant", grantId,
             $"Started resend for campaign {grant.CampaignId}.", actorUserId,
-            relatedEntityId: grant.UserId, relatedEntityType: "User");
+            relatedEntityId: grant.UserId, relatedEntityType: AuditSubjectTypes.User);
 
         try
         {
             var user = await userService.GetUserInfoAsync(grant.UserId, ct)
                 ?? throw new InvalidOperationException($"User {grant.UserId} for grant {grantId} not found.");
-            var emails = await userEmailService.GetNotificationTargetEmailsAsync([grant.UserId], ct);
-            if (!emails.TryGetValue(grant.UserId, out var recipientEmail))
+            if (user.Email is not { Length: > 0 } recipientEmail)
                 throw new InvalidOperationException(
                     $"No notification email resolved for user {grant.UserId} when resending grant {grantId}.");
 

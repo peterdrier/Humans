@@ -52,7 +52,7 @@ public sealed class VolunteerTrackingExportServiceTests
             .Returns(shifts);
 
         var shiftMgmt = Substitute.For<IShiftManagement>();
-        shiftMgmt.GetDepartmentsWithRotasAsync(EventId)
+        shiftMgmt.GetDepartmentsWithRotasAsync(EventId, Arg.Any<CancellationToken>())
             .Returns(departments ?? Array.Empty<(Guid, string)>());
         var burnSettings = Substitute.For<IBurnSettingsService>();
         burnSettings.GetByIdAsync(EventId, Arg.Any<CancellationToken>())
@@ -96,13 +96,11 @@ public sealed class VolunteerTrackingExportServiceTests
                 CreatedAt = TestNow,
             },
             userEmails: [],
-            eventParticipations: [],
             externalLogins: [],
             profile: null,
             contactFields: [],
             profileLanguages: [],
-            volunteerHistory: [],
-            communicationPreferences: []);
+            volunteerHistory: []);
 
     [HumansFact]
     public async Task EmptyRange_ReturnsModelWithNoGroupsButFullMetadata()
@@ -207,7 +205,7 @@ public sealed class VolunteerTrackingExportServiceTests
             .Returns(teamAOnly);
         var shiftMgmt = Substitute.For<IShiftManagement>();
         var burnSettings = Substitute.For<IBurnSettingsService>();
-        shiftMgmt.GetDepartmentsWithRotasAsync(EventId).Returns([(TeamA, "TeamA")]);
+        shiftMgmt.GetDepartmentsWithRotasAsync(EventId, Arg.Any<CancellationToken>()).Returns([(TeamA, "TeamA")]);
         burnSettings.GetByIdAsync(EventId, Arg.Any<CancellationToken>()).Returns(TestBurnSettings());
         var users = Substitute.For<IUserService>();
         users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
@@ -399,6 +397,37 @@ public sealed class VolunteerTrackingExportServiceTests
 
         model.Groups.Should().HaveCount(1);
         model.Groups[0].Humans.Select(h => h.PlayaName).Should().Equal("Zara", "Alice");
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task Department_reads_cancel_export_and_EarlyEntry_projection_when_the_request_is_aborted(bool earlyEntry)
+    {
+        using var aborted = new CancellationTokenSource();
+        var rows = earlyEntry
+            ? new[] { ShiftRow(Guid.NewGuid(), TeamA, Day1.PlusDays(-1), 8, 10) }
+            : Array.Empty<ConfirmedShiftRow>();
+        var (repo, shifts, settings, users) = BuildMocks(rows);
+        settings.GetActiveAsync(Arg.Any<CancellationToken>()).Returns(TestBurnSettings() with { BuildStartOffset = -7 });
+        shifts.GetDepartmentsWithRotasAsync(EventId, Arg.Any<CancellationToken>())
+            .Returns(async call =>
+            {
+                await aborted.CancelAsync();
+                call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+                return (IReadOnlyList<(Guid TeamId, string TeamName)>)[];
+            });
+        var service = new VolunteerTrackingExportService(repo, shifts, settings, users, _audit);
+        Func<Task> read = async () =>
+        {
+            if (earlyEntry)
+                await service.GetEarlyEntriesAsync(aborted.Token);
+            else
+                await service.BuildAsync(BuildRequest(), aborted.Token);
+        };
+
+        await read.Should().ThrowAsync<OperationCanceledException>();
+        _audit.ReceivedCalls().Should().BeEmpty();
     }
 
     /// <summary>Start and end are event-local hours on <paramref name="localDate"/>.</summary>

@@ -143,7 +143,7 @@
                     @foreach (var p in Model.People)
                     {
                         <tr>
-                            <th scope="row">@p.BurnerName</th>
+                            <th scope="row"><vc:human user-id="@p.UserId" link="None" /></th>
                             @foreach (var d in dietPrefs)
                             {
                                 <td class="text-center">@(p.DietaryPreference == d ? "x" : Html.Raw("&middot;"))</td>

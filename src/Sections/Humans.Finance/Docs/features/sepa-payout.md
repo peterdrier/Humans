@@ -154,8 +154,8 @@ same `Service.BookSepaTransferAsync(transferId, bankMovementId, actorUserId)`
    reconcile in Holded.
    If the save itself fails after Holded accepted the postings, the money that moved is audited
    (`PARTIAL`) and the row stays unbooked — the next attempt posts only what is still missing.
-9. One `FinanceAuditActions.SepaPayoutTransferBooked` entry follows, naming every Holded id, whether the run
-   resumed, and whether the reconcile landed.
+9. One `FinanceAuditActions.SepaPayoutTransferBooked` entry follows, naming document payment references, the journal amount and
+   confirmed/unconfirmed outcome, whether the run resumed, and whether the reconcile landed.
 
 Open means **approved** (`draft: false`) and `payments_pending > 0`. A draft books nothing to the
 ledger, so paying one would post against a document that does not exist for accounting. An approved document
@@ -217,6 +217,23 @@ account's payability on `/Finance/Creditors`. The file card counts it separately
 `FinanceAuditActions.SepaPayoutTransferWithdrawn` entry, one `sepa_payout_withdrawn` email to the member in
 their language saying the transfer announced on the file's date was cancelled before execution,
 and the Article 15 slice shows `WithdrawnAt`.
+
+### Cancelling a file
+
+When the bank rejects a whole file (2026-11-03: Sabadell refused a 51-transfer file), **Cancel file**
+in the file card's header (`POST /Finance/Sepa/CancelFile`, `FinancePolicies.Manage`, antiforgery,
+"are you sure" dialog naming file, count and total) withdraws every live transfer in it in one save.
+It is all or nothing: offered and allowed only while every live transfer could be withdrawn on its
+own. Each transfer gets its own `SepaPayoutTransferWithdrawn` audit entry naming the file. No member
+is emailed: the members were already told at generation, and the reissued file tells them again. A
+file whose every transfer is withdrawn renders as `Cancelled`. Reissuing is by hand: the accounts
+are payable again on `/Finance/Creditors`.
+
+### File cards
+
+Each file card's header shows its transfer count and total (what it still pays; a cancelled file,
+what it held) and toggles the card. Files with nothing left to book (booked, or cancelled) start
+collapsed.
 | The transfer's file is older than the 90-day feed window | the reason, in place of the button |
 | The live balance owes less than the transfer | booked in full; the account goes into credit and the audit entry says `OVERPAID` |
 | The bank line is already reconciled or partly reconciled in Holded, or already booked to another transfer | refused; nothing posted |
@@ -274,7 +291,7 @@ Sabadell's live behaviour: one outgoing line per transfer, dated the execution d
 remittance text echoed. `GetSepaPayoutsAsync` pairs such a line with the one unbooked transfer of
 exactly its amount whose file date is within the **tolerance** of the line's date, inside the feed
 window. The tolerance is days either side of the file's generation date, default
-`IHoldedFinanceAdminService.DefaultSepaMatchToleranceDays` (2), editable at the top of
+`IFinanceAdminService.DefaultSepaMatchToleranceDays` (2), editable at the top of
 `/Finance/Sepa` (`?days=N`, clamped to 0..90) for a bank that executed a file late; the value posts
 back with every booking from that view, so the booking re-validates under the window the page
 paired with. A line whose text names the account is bound only from below (no earlier than the
@@ -408,9 +425,8 @@ Server-side, all-or-nothing:
 
 ## IBAN handling
 
-The payee's unmasked IBAN is stored only as sent: the generated XML and `sepa_payout_transfers.Iban`
-(the IBAN a member gives for reimbursement is a separate row, `finance_payment_details`).
-Logs, audit descriptions, the SEPA page and the cross-section `HoldedCreditorAccountRow` carry
+The unmasked IBAN is stored only as sent: the generated XML and `sepa_payout_transfers.Iban`.
+Logs, audit descriptions, the SEPA page and the cross-section `CreditorAccountRow` carry
 `IbanFormatter.Mask(...)` output only; builder error messages mask the IBAN they name. An admin
 screen (`/Finance/Creditors/{accountNum}`) and the member's own view may show it in full.
 

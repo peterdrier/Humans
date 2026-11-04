@@ -83,10 +83,14 @@ Inbox selection checkboxes have a localized accessible label in all six supporte
 
 - Section-owned resource keys use the `Notifications_` prefix in all six cultures.
 
-- Known-recipient emission and shared role broadcasts use the same copy normalization: titles at most 200 Unicode characters,
+- Known-recipient emission and shared role broadcasts share one dispatch pipeline in `NotificationEmitter`: preference filtering, copy normalization, recipient construction and persistence. Direct sends create one notification per recipient; role sends group all eligible recipients into one shared notification.
+
+- Both dispatch modes use the same copy normalization: titles at most 200 Unicode characters,
   bodies at most 2,000. Excerpts end in an ellipsis without splitting surrogate pairs; an
   oversized title is retained at the start of the body before the body is excerpted.
   Valid-length copy is preserved unchanged.
+
+- Inbox search matches literal, case-insensitive text in titles and bodies after applying recipient, tab and source filters. Surrounding whitespace is trimmed; fewer than two characters leaves the selected inbox unfiltered. SQL pattern characters have no special meaning.
 
 - Inbox keyboard Enter activates a notification’s action once, cancelling native activation when the row handler clicks it.
 
@@ -96,6 +100,8 @@ Inbox selection checkboxes have a localized accessible label in all six supporte
 - An emit call with an empty recipient list is logged at Warning and silently skipped (no notification row written). An emit call where every recipient suppresses the notification via `InboxEnabled=false` for the source's `MessageCategory` (Informational only) is logged at Information and silently skipped.
 - `INotificationService.SendToRoleAsync(role, …)` resolves recipients via `IRoleAssignmentService.GetActiveUserIdsInRoleAsync` — never via `DbContext.RoleAssignments` directly.
 - `Informational` notifications respect each recipient's `InboxEnabled` preference for the source's `MessageCategory`; `Actionable` notifications always go through (they cannot be suppressed by user preference). Known-recipient and role-broadcast dispatch skip preference reads for actionable alerts, so preference lookup failures cannot block their delivery. Informational delivery still requires a successful preference read.
+- Browser inbox actions resolve the signed-in account through Users before reading or changing recipients. Merged sessions use the survivor for inbox rows, read state, resolution attribution, badge counts and per-user meters. Missing accounts receive Unauthorized from controller actions and an empty bell badge. Identity reads use request cancellation; existing mutation tokens are unchanged. The machine inbox receives the owner ID from API-key authentication, whose keys are reassigned on merge.
+
 - Resolution is **shared**: when any recipient resolves a notification, `Notification.ResolvedAt` and `ResolvedByUserId` are set once and the resolution is visible to all recipients. Single, bulk and source-driven resolution share one repository persistence path for the resolution timestamp and actor. Read state (`NotificationRecipient.ReadAt`) remains per-user. Badge counts read the committed recipient state directly, including every recipient of a shared notification resolved by source.
 - Bulk resolve/dismiss reject selection-binding errors with HTTP 400 and a Warning before changing any notification, including valid IDs in a malformed selection. Missing actors still receive Unauthorized.
 - Inbox resolve operations require `Actionable`; dismiss operations require `Informational`, for both single and bulk actions. The service selects the class and the repository checks it alongside recipient ownership before writing shared resolution fields. A wrong-class single action returns Forbidden without changing state.
@@ -124,7 +130,7 @@ Inbox selection checkboxes have a localized accessible label in all six supporte
 
 - **Auth:** `IRoleAssignmentService.GetActiveUserIdsInRoleAsync` — role-scoped fan-out, injected by `NotificationService`.
 - **Teams:** `ITeamService.GetTeamsAsync` (via `NotificationMeterProvider`) — admin team-join-requests meter (pending count summed in-memory from team snapshots).
-- **Users:** `IUserService.GetUserInfosAsync` — display data for resolver + recipient rendering (stitched in memory). `IUserService.GetAllUserInfosAsync` — consent-review, onboarding-pending, and admin pending-deletions meters (all counts derived in-memory from the loaded `UserInfo` snapshot).
+- **Users:** Resolver rendering uses the shared Human component from its stored user id; inbox reads load no user display data. `IUserService.GetAllUserInfosAsync` — consent-review, onboarding-pending, and admin pending-deletions meters (all counts derived in-memory from the loaded `UserInfo` snapshot).
 - **Governance:** `IGovernanceService.GetUnvotedApplicationCountAsync(boardMemberUserId)` — per-board-member voting meter.
 - **Tickets:** `ITicketSync.IsInErrorStateAsync` — admin ticket-sync-error meter.
 - **Google Integration:** `IGoogleSyncService.GetFailedSyncEventCountAsync` — admin failed-sync-events meter.
@@ -168,7 +174,7 @@ Inbound (other sections → Notifications):
 - **Decorator decision — no caching decorator.** Inbox reads and unread badge counts query the repository directly. Repository mutations return only action results or retention counts; they do not gather recipient IDs for cache invalidation. `NotificationBellViewComponent` passes the request-abort token through `GetUnreadBadgeCountsAsync`; the repository counts unread, unresolved recipients by class. Meter aggregates retain their independent two-minute caches in `NotificationMeterProvider`.
 - **Cross-section reads** for meter counts route through `IUserService.GetAllUserInfosAsync` (consent-review pending — with Consent's `IConsentService.GetConsentReviewsAsync` and `ConsentReviewPredicates.NeedsConsentReview` — onboarding-pending, and pending-deletion counts derived in-memory from the snapshot), `IGoogleSyncService.GetFailedSyncEventCountAsync`, `ITeamService.GetTeamsAsync` (pending join-requests summed in-memory), `ITicketSync.IsInErrorStateAsync`, `IGovernanceService.GetUnvotedApplicationCountAsync`, and `ICampService.GetSettingsAsync` + `GetCampsForYearAsync` (the per-lead pending count is derived in-memory from the returned camp snapshots). `IRoleAssignmentService.GetActiveUserIdsInRoleAsync` powers `SendToRoleAsync` so it doesn't query `role_assignments` directly.
 - **Cleanup:** `CleanupNotificationsJob` is registered with Hangfire as `notifications-cleanup` on cron `30 4 * * *` (daily at 04:30 UTC). The job is a scheduler shim over `INotificationRetention.PurgeExpiredAsync`; the rule itself lives in `NotificationInboxService` and goes through `INotificationRepository.DeleteResolvedOlderThanAsync` (7-day cutoff), `DeleteUnresolvedInformationalOlderThanAsync` (30-day cutoff), and `DeleteUnresolvedBySourcesAsync` (purges unresolved rows of the sources their sections declared `Retired`, which have no remaining resolution path). Other actionable unresolved notifications are never auto-deleted. Badge reads reflect each committed deletion, including when a later purge fails.
-- **Cross-domain navs:** `NotificationRecipient.UserId` and `Notification.ResolvedByUserId` are bare Guid columns — no FK constraint, no nav property. Resolver display names resolve via `IUserService.GetUserInfosAsync` in `NotificationInboxService` (design-rules §6).
+- **Cross-domain navs:** `NotificationRecipient.UserId` and `Notification.ResolvedByUserId` are bare Guid columns — no FK constraint, no nav property. Inbox and popup rows carry the resolver id; the shared Human component renders the name without a profile link inside the existing localized handled-by message. Missing resolvers use its localized unknown label. `NotificationInboxService` has no Users dependency (design-rules §6).
 
 ### Routes
 

@@ -2,12 +2,11 @@
 
   <!-- Stays a leaf: folding into Humans.Finance would close a project cycle: Humans.Finance -> Humans.Budget -> Humans.Finance (also via Humans.Holded). -->
 
-  <!-- References only Humans.Base and Humans.AuditLog (for FinanceAuditActions' AuditActionDefinition), so every
-       consumer may reference it freely. -->
+  <!-- References only Humans.Base (for FinanceAuditActions' AuditActionDefinition), so every consumer may reference
+       it freely. -->
 
   <ItemGroup>
     <ProjectReference Include="..\..\Humans.Base\Humans.Base.csproj" />
-    <ProjectReference Include="..\Humans.AuditLog\Humans.AuditLog.csproj" />
   </ItemGroup>
 
   <ItemGroup>

@@ -41,16 +41,6 @@ internal interface IShiftManagement
         Guid eventSettingsId, bool isShiftBrowsingOpen, int? globalVolunteerCap, int reminderLeadTimeHours,
         BuildSubPeriodStarts subPeriods, Guid actorUserId);
 
-    /// <summary>
-    /// Settings cycles whose build sub-periods still come from Settings (no Shifts row, or one with a start unset),
-    /// with the values the copy will write.
-    /// </summary>
-    Task<IReadOnlyList<(Guid EventSettingsId, string EventName, BuildSubPeriodStarts Starts)>> GetUncopiedBuildSubPeriodsAsync(
-        CancellationToken ct = default);
-
-    /// <summary>Writes Settings' values onto every row <see cref="GetUncopiedBuildSubPeriodsAsync"/> lists. Returns the rows written.</summary>
-    Task<int> CopyBuildSubPeriodsAsync(CancellationToken ct = default);
-
     /// <summary>Validates that the team is a department and the event is active.</summary>
     Task CreateRotaAsync(Rota rota, IReadOnlyList<Guid>? tagIds = null);
 

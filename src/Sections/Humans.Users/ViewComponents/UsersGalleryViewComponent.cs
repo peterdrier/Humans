@@ -17,11 +17,9 @@ internal sealed class UsersGalleryViewComponent(IUserService userService) : View
             return Content(string.Empty);
 
         var info = await userService.GetUserInfoAsync(currentUserId, HttpContext.RequestAborted);
-        var displayName = string.IsNullOrEmpty(info?.BurnerName) ? "Current user" : info.BurnerName;
         var sample = new ProfileSummaryViewModel
         {
             UserId = currentUserId,
-            DisplayName = displayName,
             Email = info?.Email,
             MembershipStatus = "Active",
             MembershipTier = "Volunteer",

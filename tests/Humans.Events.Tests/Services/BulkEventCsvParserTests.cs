@@ -1,5 +1,5 @@
 using System.Globalization;
-using CsvHelper.Configuration;
+using CsvHelper;
 using Humans.Base.Csv;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Localization;
@@ -109,11 +109,7 @@ public sealed class BulkEventCsvParserTests
                 nameof(BulkEventCsvRecord.StartTime), nameof(BulkEventCsvRecord.DurationMinutes), nameof(BulkEventCsvRecord.IsRecurring),
                 nameof(BulkEventCsvRecord.PriorityRank), nameof(BulkEventCsvRecord.Description), $"Notes \"quoted\" {new string(other, 25)}");
             csv.WriteRow("Yoga", "Workshop", "2026-07-08", "09:30", "60", "false", "1", "Description", "working note");
-        }, config =>
-        {
-            config.Delimiter = delimiter;
-            config.InjectionOptions = InjectionOptions.None;
-        });
+        }, config => config with { Separator = delimiter[0], Injection = CsvInjection.None });
         using var stream = new MemoryStream(bytes);
         using var reader = new StreamReader(stream);
         var text = (comments ? "# Comma-rich notes, for, the, template, and, extra, columns\n\n" : "") + reader.ReadToEnd();

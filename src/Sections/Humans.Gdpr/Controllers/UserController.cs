@@ -63,7 +63,7 @@ internal sealed class UserController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> CancelDeletion()
     {
-        var user = await GetCurrentUserInfoAsync();
+        var user = await GetCurrentUserInfoAsync(HttpContext.RequestAborted);
         if (user is null)
             return NotFound();
 

@@ -1,0 +1,74 @@
+@model PleoEntryView
+@{
+    var e = Model.Row;
+    ViewData["Title"] = $"Pleo entry {e.Merchant}";
+    var madrid = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
+}
+
+<h1 class="mb-3">@(e.Merchant ?? e.Family)</h1>
+<partial name="_PleoNav" />
+
+<div class="row">
+    <div class="col-lg-5">
+        <dl class="row">
+            <dt class="col-5">Amount</dt>
+            <dd class="col-7">
+                @(e.AmountEur is { } eur ? eur.ToSignedEuro() : "no EUR figure")
+                @if (e.Currency != "EUR")
+                {
+                    <span class="text-muted">(@((e.Minors / 100m).ToString("N2", CultureInfo.InvariantCulture)) @e.Currency)</span>
+                }
+            </dd>
+            <dt class="col-5">Cardholder</dt><dd class="col-7">@e.Cardholder</dd>
+            <dt class="col-5">Family</dt><dd class="col-7">@e.Family @e.SubFamily</dd>
+            <dt class="col-5">Status</dt><dd class="col-7">@e.Status</dd>
+            <dt class="col-5">Performed</dt><dd class="col-7">@(e.PerformedAt is { } p ? p.ToDateTime(madrid) : "—")</dd>
+            <dt class="col-5">Settled</dt><dd class="col-7">@(e.SettledAt is { } s ? s.ToDateTime(madrid) : "—")</dd>
+            <dt class="col-5">Category</dt>
+            <dd class="col-7">
+                @(Model.CategoryName ?? (Model.CategoryId is null ? "none" : "not linked"))
+                @if (Model.CategoryId is not null)
+                {
+                    <div class="small text-muted"><code>@Model.CategoryId</code></div>
+                }
+            </dd>
+            <dt class="col-5">Holded account</dt>
+            <dd class="col-7">@(e.HoldedCode is null ? "unmapped" : $"{e.HoldedCode} {e.HoldedName}")</dd>
+            @if (Model.Note is not null)
+            {
+                <dt class="col-5">Note</dt><dd class="col-7">@Model.Note</dd>
+            }
+        </dl>
+        <details>
+            <summary class="small">Every field, as Pleo returned it</summary>
+            <pre class="small bg-light p-2"><code>@Model.RawJson</code></pre>
+        </details>
+    </div>
+    <div class="col-lg-7">
+        <h2 class="h5">Receipts</h2>
+        @if (Model.ReceiptError is not null)
+        {
+            <div class="alert alert-warning">@Model.ReceiptError</div>
+        }
+        else if (Model.Receipts.Count == 0)
+        {
+            <p class="text-muted">No receipt.</p>
+        }
+        @foreach (var r in Model.Receipts)
+        {
+            var url = Url.Action("Receipt", new { id = e.Id, receiptId = r.Id });
+            <div class="mb-3">
+                @if (r.MimeType == "application/pdf")
+                {
+                    <iframe src="@url" class="w-100 border" style="height: 700px;" title="Receipt"></iframe>
+                }
+                else
+                {
+                    <img src="@url" alt="Receipt" class="img-fluid border" />
+                }
+                <div class="small"><a href="@url" target="_blank" rel="noopener">Open</a>
+                    <span class="text-muted">— fetched live from Pleo; if it doesn't show, Pleo didn't serve it.</span></div>
+            </div>
+        }
+    </div>
+</div>

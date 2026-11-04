@@ -108,7 +108,7 @@ internal sealed class CampImageGallery(
             actorUserId,
             relatedEntityId: result.Value.CampId, relatedEntityType: nameof(Camp));
 
-        // Metadata and audit have committed; file cleanup must finish independently of the request.
+        // Metadata has committed and audit was attempted; cleanup must finish independently of the request.
         try
         {
             await fileStorage.DeleteAsync(result.Value.StoragePath, CancellationToken.None);

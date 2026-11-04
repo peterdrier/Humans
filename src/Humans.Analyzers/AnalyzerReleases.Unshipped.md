@@ -29,3 +29,4 @@ HUM0033 | Humans.Architecture   | Error    | State-changing controller action ([
 HUM0036 | Humans.Architecture   | Error    | View component invoked by its string name (IViewComponentHelper.InvokeAsync(string, …), the InvokeAsync(helper, string) extension, Controller.ViewComponent(string, …), ViewComponentResult.ViewComponentName) — invoke it by Type; analyzes Razor-generated code, skipping unmapped <vc:> tag-helper internals
 HUM0037 | Humans.Architecture   | Error    | EF infrastructure or IQueryable used in a Contracts folder or .Contracts leaf; Identity user models remain allowed
 HUM0038 | Humans.Architecture   | Error    | Read path writes: a controller action answering GET ([HttpGet]/[HttpHead], or no verb attribute) or a view component Invoke/InvokeAsync calls a member of an I*Write interface or a method marked [ExternalWrite]
+HUM0039 | Humans.Architecture   | Error    | The User or UserEmail EF entity is named outside Humans.Base and the Users section

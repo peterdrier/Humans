@@ -1,11 +1,16 @@
+using System.Security.Claims;
+using Humans.Tickets.Controllers;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using Humans.AuditLog.Contracts;
 using Humans.Base.Constants;
 using Humans.Onboarding.Contracts;
 using Humans.Tickets.Services;
 using Humans.Users.Contracts;
 using Microsoft.AspNetCore.Identity;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
+using NodaTime;
 using NSubstitute;
 using Xunit;
 
@@ -13,46 +18,90 @@ namespace Humans.Tickets.Tests.Services;
 
 public sealed class GateTerminalAccountSeederTests : TicketsTestHarness
 {
-    private readonly UserManager<User> _users = Substitute.For<UserManager<User>>(
-        Substitute.For<IUserStore<User>>(), null, null, null, null, null, null, null, null);
-    private readonly UserManager<User> _credentialUsers = Substitute.For<UserManager<User>>(
-        Substitute.For<IUserStore<User>>(), null, null, null, null, null, null, null, null);
+    private readonly IUserSignInService _signIn = Substitute.For<IUserSignInService>();
+    private readonly IUserService _accounts = Substitute.For<IUserService>();
+    private readonly IAccountProvisioningService _provisioning = Substitute.For<IAccountProvisioningService>();
     private readonly IProfileEditorService _profiles = Substitute.For<IProfileEditorService>();
     private readonly IUserWrite _userWrite = Substitute.For<IUserWrite>();
     private readonly IAuditLogService _audit = Substitute.For<IAuditLogService>();
-    private readonly ServiceProvider _credentialServices;
-    private User? _storedUser;
+    private bool _accountExists;
+    private string? _password;
 
     public GateTerminalAccountSeederTests()
     {
-        _credentialServices = new ServiceCollection()
-            .AddScoped(_ => _credentialUsers)
-            .BuildServiceProvider();
-        _users.FindByIdAsync(SystemUserIds.GateTerminal.ToString()).Returns(_ => ReadStoredUser());
-        _credentialUsers.FindByIdAsync(SystemUserIds.GateTerminal.ToString()).Returns(_ => ReadStoredUser());
-        _users.CreateAsync(Arg.Any<User>()).Returns(call =>
-        {
-            _storedUser = call.Arg<User>();
-            _storedUser = ReadStoredUser();
-            return IdentityResult.Success;
-        });
-        _users.HasPasswordAsync(Arg.Any<User>()).Returns(call => call.Arg<User>().PasswordHash is not null);
-        _credentialUsers.GeneratePasswordResetTokenAsync(Arg.Any<User>()).Returns("reset-token");
-        _credentialUsers.ResetPasswordAsync(Arg.Any<User>(), "reset-token", Arg.Any<string>()).Returns(call =>
-        {
-            _storedUser = call.Arg<User>();
-            _storedUser.PasswordHash = "password-set";
-            return IdentityResult.Success;
-        });
-        _credentialUsers.SetLockoutEnabledAsync(Arg.Any<User>(), false).Returns(IdentityResult.Success);
-        _profiles.SaveProfileAsync(Arg.Any<Guid>(), Arg.Any<ProfileSaveRequest>(), Arg.Any<CancellationToken>())
+        _accounts.GetUserInfoAsync(SystemUserIds.GateTerminal, Arg.Any<CancellationToken>()).Returns(_ =>
+            new ValueTask<UserInfo?>(_accountExists
+                ? UserInfo.Create(new User { Id = SystemUserIds.GateTerminal }, [], [], null)
+                : null));
+        _provisioning.CreateAccountAsync(SystemUserIds.GateTerminal, Arg.Any<string>(), Arg.Any<Instant>(), Arg.Any<Instant?>())
             .Returns(_ =>
             {
-                _storedUser!.State = UserState.Active;
-                _storedUser.FirstName = "Gate";
-                _storedUser.LastName = "Terminal";
-                return new ProfileEditResult(true);
+                _accountExists = true;
+                return Array.Empty<string>();
             });
+        _signIn.HasPasswordAsync(SystemUserIds.GateTerminal).Returns(_ => _password is not null);
+        _signIn.SetPasswordAsync(SystemUserIds.GateTerminal, Arg.Any<string>()).Returns(_ =>
+        {
+            _password = "password-set";
+            return IdentityResult.Success;
+        });
+        _profiles.SaveProfileAsync(Arg.Any<Guid>(), Arg.Any<ProfileSaveRequest>(), Arg.Any<CancellationToken>())
+            .Returns(new ProfileEditResult(true));
+    }
+
+    [HumansTheory]
+    [InlineData(AccountScenario.Merged)]
+    [InlineData(AccountScenario.Missing)]
+    [InlineData(AccountScenario.Cancelled)]
+    public async Task PasswordController_ResolvesItsActorBeforeTouchingCredentials(AccountScenario account)
+    {
+        using var request = new CancellationTokenSource();
+        SeedAccount(password: "existing");
+        var cookieId = Guid.NewGuid();
+        var actorId = Guid.NewGuid();
+        var users = Substitute.For<IUserService>();
+        users.GetUserInfoAsync(cookieId, Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+            return new ValueTask<UserInfo?>(account == AccountScenario.Missing
+                ? null : UserInfo.Create(new User { Id = actorId }, [], [], null));
+        });
+        var http = new DefaultHttpContext
+        {
+            RequestAborted = request.Token,
+            User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, cookieId.ToString())], "test"))
+        };
+        var controller = new TicketsGateAdminController(users, NewService())
+        {
+            ControllerContext = new ControllerContext { HttpContext = http },
+            TempData = new TempDataDictionary(http, Substitute.For<ITempDataProvider>()),
+            Url = Substitute.For<IUrlHelper>()
+        };
+        if (account == AccountScenario.Cancelled)
+        {
+            await request.CancelAsync();
+            await Assert.ThrowsAnyAsync<OperationCanceledException>(() => controller.SetPassword("password"));
+        }
+        else
+        {
+            var result = await controller.SetPassword("password");
+            if (account == AccountScenario.Merged)
+            {
+                Assert.IsType<RedirectToActionResult>(result);
+                await _userWrite.Received(1).MarkFakeAsync(SystemUserIds.GateTerminal, actorId, Arg.Any<string>(), Arg.Any<CancellationToken>());
+                await _audit.Received(1).LogAsync(TicketsAuditActions.GateTerminalPasswordSet, AuditSubjectTypes.User,
+                    SystemUserIds.GateTerminal, "Gate terminal password set", actorId);
+            }
+            else Assert.IsType<ChallengeResult>(result);
+        }
+        if (account != AccountScenario.Merged)
+        {
+            Assert.Empty(_signIn.ReceivedCalls());
+            Assert.Empty(_provisioning.ReceivedCalls());
+            Assert.Empty(_accounts.ReceivedCalls());
+            Assert.Empty(_userWrite.ReceivedCalls());
+            Assert.Empty(_audit.ReceivedCalls());
+        }
     }
 
     [HumansTheory]
@@ -69,7 +118,6 @@ public sealed class GateTerminalAccountSeederTests : TicketsTestHarness
                     if (throws) throw new InvalidOperationException("Profile store unavailable");
                     return new ProfileEditResult(false, ErrorKey: "ProfileSaveFailed");
                 }
-                _storedUser!.State = UserState.Active;
                 return new ProfileEditResult(true);
             });
         var service = NewService();
@@ -79,15 +127,15 @@ public sealed class GateTerminalAccountSeederTests : TicketsTestHarness
             await Assert.ThrowsAsync<InvalidOperationException>(() => service.SetPasswordAsync("password", actor));
         else
             Assert.False((await service.SetPasswordAsync("password", actor)).Succeeded);
-        Assert.NotNull(_storedUser);
-        Assert.Null(_storedUser.PasswordHash);
+        Assert.True(_accountExists);
+        Assert.Null(_password);
         Assert.Empty(_audit.ReceivedCalls());
 
         Assert.True((await service.SetPasswordAsync("password", actor)).Succeeded);
 
-        Assert.Equal(UserState.Active, _storedUser.State);
-        Assert.NotNull(_storedUser.PasswordHash);
-        await _users.Received(1).CreateAsync(Arg.Any<User>());
+        Assert.NotNull(_password);
+        await _provisioning.Received(1).CreateAccountAsync(
+            SystemUserIds.GateTerminal, Arg.Any<string>(), Arg.Any<Instant>(), Arg.Any<Instant?>());
         Assert.Equal(2, attempts);
     }
 
@@ -105,69 +153,39 @@ public sealed class GateTerminalAccountSeederTests : TicketsTestHarness
     [HumansFact]
     public async Task ExistingPasswordRotation_DoesNotRepeatAccountSetup()
     {
-        _storedUser = new User { Id = SystemUserIds.GateTerminal, State = UserState.Active, PasswordHash = "existing" };
+        SeedAccount(password: "existing");
 
         Assert.True((await NewService().SetPasswordAsync("replacement", Guid.NewGuid())).Succeeded);
 
-        Assert.Equal("password-set", _storedUser.PasswordHash);
+        Assert.Equal("password-set", _password);
         Assert.Empty(_profiles.ReceivedCalls());
-        await _users.DidNotReceive().CreateAsync(Arg.Any<User>());
+        await _provisioning.DidNotReceiveWithAnyArgs().CreateAccountAsync(default, default!, default);
         // An account provisioned before the marker existed picks it up on rotation.
         await _userWrite.Received(1).MarkFakeAsync(
             SystemUserIds.GateTerminal, Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
-    public async Task InitialPasswordSet_PreservesNamesAndActiveStateSavedByProfileSetup()
-    {
-        Assert.True((await NewService().SetPasswordAsync("password", Guid.NewGuid())).Succeeded);
-
-        Assert.Equal(UserState.Active, _storedUser!.State);
-        Assert.Equal("Gate", _storedUser.FirstName);
-        Assert.Equal("Terminal", _storedUser.LastName);
-        Assert.NotNull(_storedUser.PasswordHash);
-        await _credentialUsers.Received(1).ResetPasswordAsync(
-            Arg.Is<User>(u => u.State == UserState.Active && u.FirstName == "Gate"), "reset-token", "password");
-    }
-
-    [HumansFact]
     public async Task RejectedRotation_LeavesTheExistingPasswordAndDoesNotAuditSuccess()
     {
-        _storedUser = new User { Id = SystemUserIds.GateTerminal, State = UserState.Active, PasswordHash = "existing" };
-        _credentialUsers.ResetPasswordAsync(Arg.Any<User>(), "reset-token", Arg.Any<string>())
+        SeedAccount(password: "existing");
+        _signIn.SetPasswordAsync(SystemUserIds.GateTerminal, Arg.Any<string>())
             .Returns(IdentityResult.Failed(new IdentityError { Code = "PasswordTooShort" }));
 
         Assert.False((await NewService().SetPasswordAsync("short", Guid.NewGuid())).Succeeded);
 
-        Assert.Equal("existing", _storedUser.PasswordHash);
+        Assert.Equal("existing", _password);
         Assert.Empty(_audit.ReceivedCalls());
         Assert.Empty(_profiles.ReceivedCalls());
     }
 
-    // Identity holds a tracked instance, while profile setup saves through another
-    // context. Keep stored rows separate so writing the old instance loses setup.
-    private User? ReadStoredUser() => _storedUser is null ? null : new User
+    private void SeedAccount(string? password)
     {
-        Id = _storedUser.Id,
-        State = _storedUser.State,
-        BurnerName = _storedUser.BurnerName,
-        FirstName = _storedUser.FirstName,
-        LastName = _storedUser.LastName,
-        PasswordHash = _storedUser.PasswordHash,
-    };
+        _accountExists = true;
+        _password = password;
+    }
 
     private GateTerminalAccountSeeder NewService() => new(
-        _users, _credentialServices.GetRequiredService<IServiceScopeFactory>(),
-        _profiles, _userWrite, _audit,
+        _signIn, _accounts, _provisioning, _profiles, _userWrite, _audit,
         Clock, NullLogger<GateTerminalAccountSeeder>.Instance);
-
-    protected override void Dispose(bool disposing)
-    {
-        if (disposing)
-        {
-            _users.Dispose();
-            _credentialServices.Dispose();
-        }
-        base.Dispose(disposing);
-    }
 }

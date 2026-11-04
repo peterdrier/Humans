@@ -1,5 +1,5 @@
-using Humans.Shifts.Domain;
 using Humans.Shifts.Contracts;
+using Humans.Shifts.Domain;
 using Humans.Settings.Contracts;
 namespace Humans.Shifts.Services.Dtos;
 
@@ -14,28 +14,15 @@ internal sealed record ShiftUserView(
     VolunteerBuildStatus? BuildStatus,
     IReadOnlyList<VolunteerTagPreference> TagPreferences,
     IReadOnlyList<ShiftSignup> Signups,
-    EventSettingsInfo? Calendar = null)
+    BurnSettingsInfo? Calendar = null)
 {
-    /// <summary>Pending or Confirmed; the other statuses are no longer commitments.</summary>
-    public bool HasShift => Signups.Any(s =>
-        s.Status is SignupStatus.Pending or SignupStatus.Confirmed);
-
-    public int ActiveSignupCount => Signups.Count(s =>
-        s.Status is SignupStatus.Pending or SignupStatus.Confirmed);
-
-    /// <summary>
-    /// Active signups only. With no <see cref="Calendar"/> (no active event, or none in Settings yet) nothing can be
-    /// classified.
-    /// </summary>
-    public bool HasShiftInPeriod(ShiftPeriod period) => Calendar is not null && Signups.Any(s =>
-        s.Status is SignupStatus.Pending or SignupStatus.Confirmed
-        && s.Shift.GetShiftPeriod(Calendar) == period);
-
-    internal static ShiftUserView Empty(Guid userId) => new(
-        userId,
-        Profile: null,
-        Availability: null,
-        BuildStatus: null,
-        TagPreferences: [],
-        Signups: []);
+    internal ShiftUserSummary ToSummary() => new(
+        UserId,
+        [.. TagPreferences.Select(p =>
+            new ShiftTagPreferenceInfo(p.ShiftTagId, p.ShiftTag?.Name ?? string.Empty))],
+        Calendar is null
+            ? []
+            : [.. Signups
+                .Where(s => s.Shift?.Rota is not null)
+                .Select(s => ShiftUserSummaryProjection.ToSummary(s, Calendar))]);
 }

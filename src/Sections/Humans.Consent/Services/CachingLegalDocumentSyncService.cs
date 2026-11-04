@@ -86,8 +86,8 @@ internal sealed class CachingLegalDocumentSyncService(
         WithInnerAsync(inner => inner.GetActiveDocumentsAsync(cancellationToken));
 
     public Task<IReadOnlyList<LegalDocument>> SyncAllDocumentsAsync(
-        CancellationToken cancellationToken = default) =>
-        WithInnerAsync(inner => inner.SyncAllDocumentsAsync(cancellationToken));
+        CancellationToken cancellationToken = default, ICollection<Exception>? failures = null) =>
+        WithInnerAsync(inner => inner.SyncAllDocumentsAsync(cancellationToken, failures));
 
     public Task<string?> SyncDocumentAsync(
         Guid documentId, CancellationToken cancellationToken = default) =>

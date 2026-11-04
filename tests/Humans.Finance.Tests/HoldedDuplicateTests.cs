@@ -37,16 +37,17 @@ public class HoldedDuplicateTests
     private readonly IHoldedRepository _repo = Substitute.For<IHoldedRepository>();
     private readonly IHoldedClient _client = Substitute.For<IHoldedClient>();
     private readonly IHoldedService _holded = Substitute.For<IHoldedService>();
+    private readonly IHoldedWrite _write = Substitute.For<IHoldedWrite>();
     private readonly IExpenseHoldedBookingService _expenses = Substitute.For<IExpenseHoldedBookingService>();
     private readonly IAuditLogService _audit = Substitute.For<IAuditLogService>();
 
     private Service MakeService(ILogger<Service>? logger = null) => new(
-        _repo, _client, Substitute.For<IBudgetService>(), _holded, _expenses, new FakeClock(FixedNow),
+        _repo, _client, Substitute.For<IBudgetService>(), _holded, _write, _expenses, new FakeClock(FixedNow),
         new MemoryCache(new MemoryCacheOptions()), _audit, Substitute.For<IUserService>(),
-        Substitute.For<IUserEmailService>(), Substitute.For<IEmailService>(), TestFinanceEmails.Create(),
+        Substitute.For<IEmailService>(), TestFinanceEmails.Create(),
         Options.Create(new SepaOptions()),
         new TrackedCache<string, Dictionary<string, int>>("Finance.SepaStuckBankLines", warmOnStartup: false, NullLogger<Service>.Instance),
-        logger ?? NullLogger<Service>.Instance);
+        Substitute.For<IPaymentDetailsManagement>(), logger ?? NullLogger<Service>.Instance);
 
     public HoldedDuplicateTests()
     {
@@ -470,42 +471,6 @@ public class HoldedDuplicateTests
         result.Error.Should().Contain("nothing was deleted");
         await _client.DidNotReceive().DeletePurchaseDocumentAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
         await _holded.DidNotReceive().SyncLedgerAsync(Arg.Any<bool>(), Arg.Any<CancellationToken>());
-    }
-
-    [HumansTheory]
-    [InlineData(true)]
-    [InlineData(false)]
-    public async Task Sync_LogsAWarningWhenDuplicatesExist_AndZeroWhenNone(bool duplicates)
-    {
-        _repo.GetOrCreateDocSyncStateAsync(Arg.Any<CancellationToken>()).Returns(new HoldedDocSyncState());
-        _repo.GetCategoryMapAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedCategoryMap>());
-        _repo.GetManagedAccountsAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedManagedAccount>());
-        _expenses.GetHoldedBookingsAsync(Arg.Any<CancellationToken>()).Returns([Booking("doc-a")]);
-        _client.ListPurchaseDocumentsAsync(Arg.Any<CancellationToken>())
-            .Returns(duplicates ? [Doc("doc-a"), Doc("doc-b")] : [Doc("doc-a")]);
-        // Notes already mirrored, so the sync's own notes fetch has nothing to read.
-        _repo.GetAllDocsAsync(Arg.Any<CancellationToken>()).Returns(
-        [
-            new HoldedExpenseDoc { HoldedDocId = "doc-a", Notes = "" },
-            new HoldedExpenseDoc { HoldedDocId = "doc-b", Notes = "" },
-        ]);
-        var logger = new CapturingLogger<Service>();
-
-        await MakeService(logger).SyncAsync(TestContext.Current.CancellationToken);
-
-        var entry = logger.Entries.Should().ContainSingle(e => e.Message.StartsWith("Holded duplicate check", StringComparison.Ordinal)).Subject;
-        // The nightly line is the list-level rule only: a false positive there only refuses a payout.
-        await _client.DidNotReceive().GetPurchaseDocumentAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
-        if (duplicates)
-        {
-            entry.Level.Should().Be(LogLevel.Warning);
-            entry.Message.Should().Contain("1 expense line(s)").And.Contain("1 extra document(s)").And.Contain("1 member(s)");
-        }
-        else
-        {
-            entry.Level.Should().Be(LogLevel.Information);
-            entry.Message.Should().Contain("zero");
-        }
     }
 
     private static HoldedAccountDto Account_(int number, decimal balance) => new()

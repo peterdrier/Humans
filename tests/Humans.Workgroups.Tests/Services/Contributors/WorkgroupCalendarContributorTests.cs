@@ -81,6 +81,19 @@ public sealed class WorkgroupCalendarContributorTests : WorkgroupsTestHarness
     }
 
     [HumansFact]
+    public async Task PublicItems_PassAStartedSeriesWithItsRule()
+    {
+        var workgroup = await SeedWorkgroupAsync(status: WorkgroupStatus.Active);
+        var now = Clock.GetCurrentInstant();
+        await AddMeetingAsync(workgroup.Id, now.Minus(Duration.FromDays(30)), isPublic: true, weeklyIn: "Europe/Madrid");
+
+        var items = await NewContributor().GetPublicItemsForWindowAsync(now, now.Plus(Duration.FromDays(7)), Ct);
+
+        items.Should().ContainSingle().Which.Should().Match<Humans.Calendar.Contracts.CalendarFeedItem>(
+            i => i.RecurrenceRule == "FREQ=WEEKLY" && i.RecurrenceTimezone == "Europe/Madrid");
+    }
+
+    [HumansFact]
     public async Task PublicItems_ExcludeMeetingsOfDormantGroups()
     {
         var workgroup = await SeedWorkgroupAsync(

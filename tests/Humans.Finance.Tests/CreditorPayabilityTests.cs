@@ -37,9 +37,9 @@ public class CreditorPayabilityTests
     private readonly IHoldedRepository _repo = Substitute.For<IHoldedRepository>();
     private readonly IHoldedClient _client = Substitute.For<IHoldedClient>();
     private readonly IHoldedService _holded = Substitute.For<IHoldedService>();
+    private readonly IHoldedWrite _write = Substitute.For<IHoldedWrite>();
     private readonly IExpenseHoldedBookingService _expenses = Substitute.For<IExpenseHoldedBookingService>();
     private readonly IUserService _users = Substitute.For<IUserService>();
-    private readonly IUserEmailService _userEmails = Substitute.For<IUserEmailService>();
     private readonly SepaOptions _sepa = new()
     {
         CreditorName = "Nobodies Collective",
@@ -48,11 +48,11 @@ public class CreditorPayabilityTests
     };
 
     private Service MakeService() => new(
-        _repo, _client, Substitute.For<IBudgetService>(), _holded, _expenses, new FakeClock(FixedNow),
+        _repo, _client, Substitute.For<IBudgetService>(), _holded, _write, _expenses, new FakeClock(FixedNow),
         new MemoryCache(new MemoryCacheOptions()), Substitute.For<IAuditLogService>(), _users,
-        _userEmails, Substitute.For<IEmailService>(), TestFinanceEmails.Create(),
+        Substitute.For<IEmailService>(), TestFinanceEmails.Create(),
         Options.Create(_sepa), new TrackedCache<string, Dictionary<string, int>>("Finance.SepaStuckBankLines", warmOnStartup: false, NullLogger<Service>.Instance),
-        NullLogger<Service>.Instance);
+        Substitute.For<IPaymentDetailsManagement>(), NullLogger<Service>.Instance);
 
     public CreditorPayabilityTests()
     {
@@ -71,8 +71,6 @@ public class CreditorPayabilityTests
         _expenses.GetHoldedBookingsAsync(Arg.Any<CancellationToken>()).Returns(new List<ExpenseHoldedBooking>());
         _users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, UserInfo>());
-        _userEmails.GetNotificationTargetEmailsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(new Dictionary<Guid, string>());
     }
 
     private static SepaPayoutTransferRow Transfer(Instant? bookedAt = null, Instant? withdrawnAt = null, Instant? generatedAt = null) =>
@@ -110,7 +108,7 @@ public class CreditorPayabilityTests
         row.PendingPayoutFileName.Should().Be("m929.xml");
         row.HasDuplicateDocuments.Should().BeFalse();
         new CreditorAccountRowVm(Account, row.Name, 4800m, [new CreditorBindingVm(UserId, "Paul", "Auto")], row.IbanMasked,
-            0, row.PendingPayoutFileName, row.HasDuplicateDocuments).NotPayableReason.Should().Be("in payout file m929.xml, not booked yet");
+            0, row.PendingPayoutFileName, row.HasDuplicateDocuments).NotPayableReason.Should().Be(CreditorAccountRowVm.InFlightReason);
         result.Succeeded.Should().BeFalse();
         result.ErrorMessage.Should().Contain("already in payout file m929.xml");
         await _repo.DidNotReceiveWithAnyArgs().AddSepaPayoutAsync(default!, default!);

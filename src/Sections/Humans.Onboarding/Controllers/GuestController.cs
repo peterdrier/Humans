@@ -31,18 +31,12 @@ internal sealed class GuestController(
         return View(BuildDashboardViewModel(user));
     }
 
-    private static GuestDashboardViewModel BuildDashboardViewModel(UserInfo user)
+    private static GuestDashboardViewModel BuildDashboardViewModel(UserInfo user) => new()
     {
-        var viewModel = new GuestDashboardViewModel
-        {
-            DisplayName = user.BurnerName,
-        };
-
-        viewModel.IsDeletionPending = user.IsDeletionPending;
-        viewModel.DeletionRequestedAt = user.DeletionRequestedAt?.ToDateTimeUtc();
-        viewModel.DeletionScheduledFor = user.DeletionScheduledFor?.ToDateTimeUtc();
-        viewModel.DeletionEligibleAfter = user.DeletionEligibleAfter?.ToDateTimeUtc();
-
-        return viewModel;
-    }
+        UserId = user.Id,
+        IsDeletionPending = user.IsDeletionPending,
+        DeletionRequestedAt = user.DeletionRequestedAt?.ToDateTimeUtc(),
+        DeletionScheduledFor = user.DeletionScheduledFor?.ToDateTimeUtc(),
+        DeletionEligibleAfter = user.DeletionEligibleAfter?.ToDateTimeUtc(),
+    };
 }

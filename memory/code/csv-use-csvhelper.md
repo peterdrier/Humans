@@ -5,9 +5,9 @@ description: ALL CSV reads/writes go through CsvHelper via the shared `HumansCsv
 
 Every CSV read or write uses **CsvHelper** built from the shared factories in `Humans.Base.Csv.HumansCsv`:
 
-- **Writing:** `HumansCsv.WriteBytes(csv => ...)` (+ `csv.WriteRow(...)` for loose values, `WriteRecords`/ClassMap for typed rows). Gives UTF-8 BOM, CRLF, invariant culture, RFC 4180 conditional quoting, and OWASP CSV-injection escaping (`= + - @ \t \r` → leading apostrophe) on every export.
-- **Reading:** `HumansCsv.ReadConfig()` + `CsvReader`. Gives delimiter detection (Spanish Excel saves semicolons), case/whitespace-forgiving header-name matching, trimmed fields, quoted multiline fields.
-- **Round-trip files** (download → user edits → upload, e.g. the bulk-event template) share one DTO + `ClassMap` between writer and parser so columns can't drift, and turn **off** injection escaping on the write side (`InjectionOptions.None`) — escaping would come back as data and dirty untouched rows.
+- **Writing:** `HumansCsv.WriteBytes(csv => ...)` (+ `csv.WriteRow(...)` for loose values, `csv.WriteBlankLine()` between sections, `WriteRecords` of a `[CsvRecord]` type for typed rows). Gives UTF-8 BOM, CRLF, invariant culture, RFC 4180 conditional quoting, and OWASP CSV-injection escaping (`= + - @ \t \r` → leading apostrophe) on every export.
+- **Reading:** `CsvReader.FromText(text, HumansCsv.ReadConfig())` (adjust options with `with { ... }`). Gives delimiter detection (Spanish Excel saves semicolons), case/whitespace-forgiving header-name matching, trimmed fields, quoted multiline fields.
+- **Round-trip files** (download → user edits → upload, e.g. the bulk-event template) share one `[CsvRecord]` DTO between writer and parser so columns can't drift, and turn **off** injection escaping on the write side (`Injection = CsvInjection.None`) — escaping would come back as data and dirty untouched rows.
 
 **Why:** The app previously had three hand-rolled CSV implementations with divergent quoting policies; 5 of 6 exports had no injection escaping, and the bulk-upload parser broke on quoted newlines and semicolon-delimited files. One library + one config makes every surface consistent and keeps the security properties in one place.
 

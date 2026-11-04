@@ -49,6 +49,26 @@ public sealed class GuestDataControllerTests
             .Wire(signedIn ? _userId : null);
     }
 
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Deletion_stops_before_mutation_when_account_lookup_is_cancelled(bool cancel)
+    {
+        var ctrl = Sut();
+        using var request = new CancellationTokenSource();
+        ctrl.HttpContext.RequestAborted = request.Token;
+        _users.GetUserInfoAsync(_userId, Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+            return new ValueTask<UserInfo?>(ControllerTestHost.Info(_userId));
+        });
+        await request.CancelAsync();
+        Func<Task<IActionResult>> act = () => cancel ? ctrl.CancelDeletion() : ctrl.RequestDeletion();
+
+        await act.Should().ThrowAsync<OperationCanceledException>();
+        _deletion.ReceivedCalls().Should().BeEmpty();
+    }
+
     [HumansFact]
     public async Task DownloadData_ReturnsTheJsonExportOfTheSignedInAccountOnly()
     {

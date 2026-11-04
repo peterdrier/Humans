@@ -71,13 +71,7 @@ internal sealed class CachingRideshareService(
         Guid? eventSettingsId, SettingsSave save, Guid actorUserId, CancellationToken ct = default) =>
         MutateAsync(inner => inner.SaveSettingsAsync(eventSettingsId, save, actorUserId, ct));
 
-    public Task<IReadOnlyList<RideshareEventIdPlanRow>> GetEventIdPlanAsync(CancellationToken ct = default) =>
-        WithInnerAsync(inner => inner.GetEventIdPlanAsync(ct));
-
-    public Task<int> AssignEventIdsAsync(CancellationToken ct = default) =>
-        MutateAsync(inner => inner.AssignEventIdsAsync(ct));
-
-    // A rename changes the snapshot's name, and a gate-opening change can move a year's legacy rows to another event.
+    // Event metadata supplies the snapshot's name.
     public void EventSettingsChanged(Guid eventSettingsId) => Clear();
 
     // Static table: the erasure-coverage architecture test reads it from an

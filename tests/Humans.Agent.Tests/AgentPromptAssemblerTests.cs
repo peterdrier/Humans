@@ -24,9 +24,8 @@ public class AgentPromptAssemblerTests
                 new TeamMembership("Volunteers", TeamMemberRole.Member),
                 new TeamMembership("Tech", TeamMemberRole.Coordinator)
             ],
-            PendingConsentDocs: ["Privacy Policy"],
+            PendingConsentDocs: ["Privacy Policy", "Code of Conduct"],
             OpenTicketIds: [],
-            OpenFeedbackIds: [],
             UpcomingShifts: []);
 
         var assembler = new AgentPromptAssembler();
@@ -35,7 +34,7 @@ public class AgentPromptAssemblerTests
         tail.Should().Contain("Felipe García");
         tail.Should().Contain("Locale: es");
         tail.Should().Contain("TeamsAdmin");
-        tail.Should().Contain("Privacy Policy");
+        tail.Should().Contain("Pending consents: Code of Conduct, Privacy Policy");
     }
 
     [HumansFact]
@@ -55,7 +54,6 @@ public class AgentPromptAssemblerTests
             ],
             PendingConsentDocs: [],
             OpenTicketIds: [],
-            OpenFeedbackIds: [],
             UpcomingShifts: []);
 
         var assembler = new AgentPromptAssembler();
@@ -146,7 +144,6 @@ public class AgentPromptAssemblerTests
             ],
             PendingConsentDocs: [],
             OpenTicketIds: [],
-            OpenFeedbackIds: [],
             UpcomingShifts: []);
 
         var tail = new AgentPromptAssembler().BuildUserContextTail(snapshot);
@@ -204,6 +201,5 @@ public class AgentPromptAssemblerTests
             Teams: [],
             PendingConsentDocs: [],
             OpenTicketIds: [],
-            OpenFeedbackIds: [],
             UpcomingShifts: upcoming);
 }

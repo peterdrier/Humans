@@ -9,8 +9,6 @@ internal interface INotificationRepository : IRepository
 {
     Task AddRangeAsync(IReadOnlyList<Notification> notifications, CancellationToken ct = default);
 
-    Task AddAsync(Notification notification, CancellationToken ct = default);
-
     /// <summary>
     /// Only when the actor is a recipient and the class matches; an already resolved row succeeds without a write.
     /// </summary>

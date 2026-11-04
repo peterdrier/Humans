@@ -29,7 +29,6 @@ public sealed class TicketTransferService_OnwardTransferTests
     private readonly ITicketRepository _ticketRepo = Substitute.For<ITicketRepository>();
     private readonly ITicketService _holdings = Substitute.For<ITicketService>();
     private readonly IUserService _userService = Substitute.For<IUserService>();
-    private readonly IUserEmailService _userEmailService = Substitute.For<IUserEmailService>();
     private readonly IEmailService _emailService = Substitute.For<IEmailService>();
     private readonly TicketsEmails _emailMessages = TestTicketsEmails.Create();
     private readonly IAuditLogService _auditLog = Substitute.For<IAuditLogService>();
@@ -40,7 +39,7 @@ public sealed class TicketTransferService_OnwardTransferTests
     {
         _service = new TicketTransferService(_transferRepo, _ticketRepo, _holdings,
             Substitute.For<ITicketVendorService>(),
-            _userService, _userEmailService, _emailService, _emailMessages,
+            _userService, _emailService, _emailMessages,
             _auditLog,
             _clock, NullLogger<TicketTransferService>.Instance);
 
@@ -147,19 +146,15 @@ public sealed class TicketTransferService_OnwardTransferTests
                 MatchedUserId = UserB,
                 TicketOrder = new TicketOrder { Id = OrderId, MatchedUserId = UserA },
             });
-        var carol = new User { Id = UserC, DisplayName = "Carol", PreferredLanguage = "en" };
+        var carol = new User { Id = UserC, DisplayName = "Carol", PreferredLanguage = "en", Email = "carol@example.com" };
         var carolProfile = UserFixtures.Profile(
             burnerName: "Carol", firstName: "Carol", lastName: "Cohen");
         _userService.GetUserInfoAsync(UserC, Arg.Any<CancellationToken>())
             .Returns(UserInfo.Create(
                 user: carol,
                 userEmails: [],
-                eventParticipations: [],
                 externalLogins: [],
-                profile: carolProfile,
-                communicationPreferences: []));
-        _userEmailService.GetPrimaryEmailAsync(UserC, Arg.Any<CancellationToken>())
-            .Returns("carol@example.com");
+                profile: carolProfile));
         _transferRepo.GetBySenderAsync(UserB, Arg.Any<CancellationToken>())
             .Returns([]);
 

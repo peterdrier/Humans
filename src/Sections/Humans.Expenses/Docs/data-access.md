@@ -22,8 +22,8 @@ Repository: `IExpenseRepository`.
 
 Cross-section calls via `IFileStorage`, `IBudgetService`, `ITeamService`,
 `IUserService`, `IFinanceService` / `IFinanceWrite` (Finance section — `GetIbanAsync` /
-`SetIbanAsync`: the submitter's IBAN is read and written through its owner), `IUserEmailService`, `IEmailService`, `IAuditLogService`,
-`IHoldedService.IsConfigured`, `IHoldedFinanceService` (Finance section — creditor balance exposure to
+`SetIbanAsync`: the submitter's IBAN is read and written through its owner), `IEmailService`, `IAuditLogService`,
+`IHoldedService.IsConfigured`, `IFinanceService` (Finance section — creditor balance exposure to
 expense submitters; `ListExpenseAccountsAsync` / `GetCategoryMapAsync` resolve the
 account a report books to and the budget category it maps to), `IPreapprovalService`
 (Preapprovals section — `GetGrantAsync` / `ListClaimableForUserAsync` for the grant a report
@@ -37,8 +37,8 @@ grant's lifecycle follows the report's), plus the section's own `ExpensesEmails`
 Repository: `IExpenseRepository` (reads approved reports, updates
 `HoldedExpenseOutboxEvents`). Selection, the in-process single-drain gate, retry/backoff, permanent-failure audit and the
 configured-key gate live here; the section's `HoldedExpenseOutboxJob` drives it. Cross-section
-calls via `IFileStorage`, `IUserService`, `IHoldedClient`, `IHoldedFinanceService`,
-`IHoldedFinanceWrite`, `IAuditLogService`, plus `IClock`. No `IMemoryCache`.
+calls via `IFileStorage`, `IUserService`, `IHoldedClient`, `IFinanceService`,
+`IFinanceWrite`, `IAuditLogService`, plus `IClock`. No `IMemoryCache`.
 
 ### ExpenseHoldedPublisher (internal — `IApplicationService`, constructed by `ExpenseReportBackgroundProcessor`)
 
@@ -54,7 +54,7 @@ document + attachment conversation for one approved report. Repository: `IExpens
 | HoldedExpenseOutboxEvents | W (completion) |
 
 Cross-section calls via `IFileStorage`, `IUserService` (submitter, survivor after merge),
-`IHoldedClient` (Holded section — vendor API), `IHoldedFinanceService` / `IHoldedFinanceWrite`
+`IHoldedClient` (Holded section — vendor API), `IFinanceService` / `IFinanceWrite`
 (Finance section owns creditor identity and the contact binding), `IAuditLogService`. No
 `IMemoryCache`.
 

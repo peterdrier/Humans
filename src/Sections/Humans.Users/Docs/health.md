@@ -27,8 +27,8 @@ Users decomposition commit 14.
 | **Address mutation** | add, verify, promote, demote, hide, delete, link/unlink a provider, reconcile the OAuth claim | `IUserEmailService` writes → `IUserManagement` storage commands → repository |
 | **Profile mutation** | save the edit form; save medical conditions; set picture; set tier; stub a profile; replace languages / history | `IProfileEditorService` (validation + file) → `IUserManagement` (row) → repository |
 | **Contact handles** | what can this viewer see of that owner; save the owner's list | `IContactFieldService` |
-| **Mail consent** | moved to Email (Users decomposition commit 14); Users only carries the frozen `communication_preferences` rows on `UserInfo` for Email's fallback and copy | `UserInfo.CommunicationPreferences` (`[Obsolete(HUM_USER_COMMPREFS)]`) |
-| **Presence** | moved to Tickets (Users decomposition commit 13); Users only carries the frozen `event_participations` rows on `UserInfo` for Tickets' fallback and copy | `UserInfo.EventParticipations` (`[Obsolete(HUM_USER_PARTICIPATIONS)]`) |
+| **Mail consent** | Email owns preference reads, writes, merge, export and erasure; Users retains only the frozen table mapping until its drop | `ICommunicationPreferenceService` |
+| **Presence** | Tickets owns participation and its export/retention paths; Users retains only the frozen table mapping until its drop | `ITicketService.GetParticipationsAsync` |
 | **Account life** | create (OAuth callback, magic link, import), suspend / unsuspend / reject / restore, request and cancel deletion, anonymize on expiry, purge (non-prod), merge two accounts | `IExternalLoginService`, `IAccountProvisioningService`, `IHumanLifecycleService`, `IAccountDeletionService`, `IAccountMergeService` + `IDuplicateAccountService`, `INonCompliantMemberSuspension` |
 | **Cache signal** | "this person changed" from a write the service did not see | section-internal: `IUserInfoSliceRefresher` + `UserInfoSaveChangesInterceptor` |
 | **Repair** | email-invariant violations; profile-less accounts; unsynced names; picture migration | `IEmailProblemsService`, the `/Profile/Admin/*` backfill controllers |
@@ -130,8 +130,8 @@ The shapes imply one register with one cache and one write funnel:
   DI cycle.
 - `ExternalLoginService` keeps the `Humans.Application.Services.Users` namespace because an
   analyzer names it by full name.
-- `AccountController` (Shell) and the Development seeders inject `UserManager` directly — the
-  §2a exception.
+- Identity's `UserManager` / `SignInManager` are Users-only: `AccountController` (Shell), Development
+  and Tickets sign in through `IUserSignInService` (CENTRAL-106 closed).
 - `Views/Profile/Edit.cshtml` localizes its shift-preference strings (`Shifts_EditPreferences`,
   `Shifts_PreferencesHelp`) through `ShiftsResource` on purpose.
 

@@ -36,11 +36,11 @@ internal partial interface IShiftManagementRepository : IRepository
     Task DeleteRotaCascadeAsync(Guid rotaId, CancellationToken ct = default);
 
     /// <summary>
-    /// Volunteer-visible rotas in the active event whose name contains <paramref name="query"/>, case-insensitive. At
-    /// most <paramref name="max"/>, unordered: the caller ranks.
+    /// Volunteer-visible rotas in the active event whose name contains <paramref name="query"/>, case-insensitive.
+    /// The caller scores the candidates before applying its limit.
     /// </summary>
     Task<IReadOnlyList<Rota>> SearchVolunteerVisibleRotasAsync(
-        string query, Guid eventSettingsId, int max, CancellationToken ct = default);
+        string query, Guid eventSettingsId, CancellationToken ct = default);
 
     Task SaveShiftAsync(Shift shift, EntityMutationMode mode, CancellationToken ct = default);
 

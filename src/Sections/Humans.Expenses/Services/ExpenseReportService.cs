@@ -27,12 +27,11 @@ internal sealed class ExpenseReportService(
     IBudgetService budgetService,
     ITeamService teamService,
     IUserService userService,
-    IUserEmailService userEmailService,
     IEmailService emailService,
     ExpensesEmails emails,
     IAuditLogService auditLogService,
+    IAuditViewerService auditViewer,
     IHoldedService holded,
-    IHoldedFinanceService holdedFinance,
     IFinanceService finance,
     IFinanceWrite financeWrite,
     IPreapprovalService preapprovals,
@@ -82,7 +81,7 @@ internal sealed class ExpenseReportService(
         // no ledger to read. The push half below still has something to say about why.
         if (!string.IsNullOrEmpty(report.HoldedContactId))
         {
-            var status = await holdedFinance.GetCreditorStatusAsync(
+            var status = await finance.GetCreditorStatusAsync(
                 report.HoldedSupplierAccountNum, ct);
 
             // The creditor contact covers every id the human has held, so the total does too.
@@ -287,7 +286,7 @@ internal sealed class ExpenseReportService(
                     + DescribeGrant(preapprovalGrantId),
                     actorUserId,
                     relatedEntityId: submitterUserId,
-                    relatedEntityType: AuditEntityTypes.User);
+                    relatedEntityType: AuditSubjectTypes.User);
             }
 
             return ExpenseMutationResult.Success;
@@ -345,7 +344,7 @@ internal sealed class ExpenseReportService(
             $"{whatChanged} on behalf of {await DescribeMemberAsync(report.SubmitterUserId, ct)}.",
             actorUserId,
             relatedEntityId: report.SubmitterUserId,
-            relatedEntityType: AuditEntityTypes.User);
+            relatedEntityType: AuditSubjectTypes.User);
     }
 
     private static string DescribeNote(string? note) =>
@@ -414,18 +413,22 @@ internal sealed class ExpenseReportService(
                 : (Guid?)null;
             if (released is { } releasedId)
             {
-                using var scope = new TransactionScope(
+                var afterCommit = new List<Func<CancellationToken, Task>>();
+                using (var scope = new TransactionScope(
                     TransactionScopeOption.Required,
                     new TransactionOptions { IsolationLevel = IsolationLevel.ReadCommitted },
-                    TransactionScopeAsyncFlowOption.Enabled);
-                var release = await preapprovalWrites.ReleaseAsync(releasedId, reportId, actorUserId, ct);
-                if (release.Refusal is { } releaseRefusal)
+                    TransactionScopeAsyncFlowOption.Enabled))
                 {
-                    logger.LogWarning("Pre-approval {GrantId} refused release by report {ReportId}: {Reason}", releasedId, reportId, releaseRefusal);
-                    return ExpenseMutationResult.Failure("Expenses_Validation_PreapprovalUnavailable");
+                    var release = await preapprovalWrites.ReleaseAsync(releasedId, reportId, actorUserId, ct, afterCommit.Add);
+                    if (release.Refusal is { } releaseRefusal)
+                    {
+                        logger.LogWarning("Pre-approval {GrantId} refused release by report {ReportId}: {Reason}", releasedId, reportId, releaseRefusal);
+                        return ExpenseMutationResult.Failure("Expenses_Validation_PreapprovalUnavailable");
+                    }
+                    await repo.UpdateDraftAsync(updated, ct);
+                    scope.Complete();
                 }
-                await repo.UpdateDraftAsync(updated, ct);
-                scope.Complete();
+                foreach (var complete in afterCommit) await complete(CancellationToken.None);
             }
             else
             {
@@ -758,7 +761,7 @@ internal sealed class ExpenseReportService(
                 $"Attachment uploaded to line {lineId}.",
                 actorUserId,
                 relatedEntityId: report.SubmitterUserId,
-                relatedEntityType: AuditEntityTypes.User);
+                relatedEntityType: AuditSubjectTypes.User);
         }
         catch
         {
@@ -851,7 +854,7 @@ internal sealed class ExpenseReportService(
                 $"Attachment removed from line {lineId}.",
                 actorUserId,
                 relatedEntityId: report.SubmitterUserId,
-                relatedEntityType: AuditEntityTypes.User);
+                relatedEntityType: AuditSubjectTypes.User);
 
             // Post-commit cleanup: metadata and audit are written, so request cancellation
             // must not strand the file.
@@ -918,24 +921,28 @@ internal sealed class ExpenseReportService(
                 var grantRefusal = await GetGrantClaimRefusalAsync(grantId, reportId, ct);
                 if (grantRefusal is not null) return grantRefusal;
 
-                using var scope = new TransactionScope(
+                var afterCommit = new List<Func<CancellationToken, Task>>();
+                using (var scope = new TransactionScope(
                     TransactionScopeOption.Required,
                     new TransactionOptions { IsolationLevel = IsolationLevel.ReadCommitted },
-                    TransactionScopeAsyncFlowOption.Enabled);
-                var claim = await preapprovalWrites.ClaimAsync(grantId, reportId, actorUserId, ct);
-                if (claim.Refusal is { } refusal)
+                    TransactionScopeAsyncFlowOption.Enabled))
                 {
-                    logger.LogWarning("Pre-approval {GrantId} refused the claim by report {ReportId}: {Reason}", grantId, reportId, refusal);
-                    return ExpenseMutationResult.Failure("Expenses_Validation_PreapprovalUnavailable");
+                    var claim = await preapprovalWrites.ClaimAsync(grantId, reportId, actorUserId, ct, afterCommit.Add);
+                    if (claim.Refusal is { } refusal)
+                    {
+                        logger.LogWarning("Pre-approval {GrantId} refused the claim by report {ReportId}: {Reason}", grantId, reportId, refusal);
+                        return ExpenseMutationResult.Failure("Expenses_Validation_PreapprovalUnavailable");
+                    }
+                    var stamp = claim.Stamp!;
+                    var ok = await repo.SubmitAsync(
+                        reportId, legalName, payeeIban, now,
+                        grantStamp: new ExpenseBooking(stamp.HoldedAccountNumber, stamp.HoldedAccountId, null, null),
+                        grantMaxAmount: stamp.MaxAmount,
+                        ct: ct);
+                    if (!ok) return ExpenseMutationResult.Failure("Expenses_Validation_CouldNotSubmitReport");
+                    scope.Complete();
                 }
-                var stamp = claim.Stamp!;
-                var ok = await repo.SubmitAsync(
-                    reportId, legalName, payeeIban, now,
-                    grantStamp: new ExpenseBooking(stamp.HoldedAccountNumber, stamp.HoldedAccountId, null, null),
-                    grantMaxAmount: stamp.MaxAmount,
-                    ct: ct);
-                if (!ok) return ExpenseMutationResult.Failure("Expenses_Validation_CouldNotSubmitReport");
-                scope.Complete();
+                foreach (var complete in afterCommit) await complete(CancellationToken.None);
             }
 
             await auditLogService.LogAsync(
@@ -947,7 +954,7 @@ internal sealed class ExpenseReportService(
                 + DescribeGrant(report.PreapprovalGrantId),
                 actorUserId,
                 relatedEntityId: report.SubmitterUserId,
-                relatedEntityType: AuditEntityTypes.User);
+                relatedEntityType: AuditSubjectTypes.User);
 
             return ExpenseMutationResult.Success;
 
@@ -1005,19 +1012,23 @@ internal sealed class ExpenseReportService(
             }
             else
             {
-                using var scope = new TransactionScope(
+                var afterCommit = new List<Func<CancellationToken, Task>>();
+                using (var scope = new TransactionScope(
                     TransactionScopeOption.Required,
                     new TransactionOptions { IsolationLevel = IsolationLevel.ReadCommitted },
-                    TransactionScopeAsyncFlowOption.Enabled);
-                var release = await preapprovalWrites.ReleaseAsync(report.PreapprovalGrantId!.Value, reportId, submitterUserId, ct);
-                if (release.Refusal is { } releaseRefusal)
+                    TransactionScopeAsyncFlowOption.Enabled))
                 {
-                    logger.LogWarning("Pre-approval {GrantId} refused release by report {ReportId}: {Reason}", report.PreapprovalGrantId, reportId, releaseRefusal);
-                    return ExpenseMutationResult.Failure("Expenses_Flash_WithdrawFailed");
+                    var release = await preapprovalWrites.ReleaseAsync(report.PreapprovalGrantId!.Value, reportId, submitterUserId, ct, afterCommit.Add);
+                    if (release.Refusal is { } releaseRefusal)
+                    {
+                        logger.LogWarning("Pre-approval {GrantId} refused release by report {ReportId}: {Reason}", report.PreapprovalGrantId, reportId, releaseRefusal);
+                        return ExpenseMutationResult.Failure("Expenses_Flash_WithdrawFailed");
+                    }
+                    var ok = await repo.WithdrawAsync(reportId, now, ct);
+                    if (!ok) return ExpenseMutationResult.Failure("Expenses_Flash_WithdrawFailed");
+                    scope.Complete();
                 }
-                var ok = await repo.WithdrawAsync(reportId, now, ct);
-                if (!ok) return ExpenseMutationResult.Failure("Expenses_Flash_WithdrawFailed");
-                scope.Complete();
+                foreach (var complete in afterCommit) await complete(CancellationToken.None);
             }
 
             await auditLogService.LogAsync(
@@ -1076,7 +1087,7 @@ internal sealed class ExpenseReportService(
                 await DescribeIbanChangeAsync(submitterUserId, actorUserId, normalized, ct),
                 actorUserId,
                 relatedEntityId: submitterUserId,
-                relatedEntityType: AuditEntityTypes.User);
+                relatedEntityType: AuditSubjectTypes.User);
 
             logger.LogInformation(
                 "IBAN {Action} for user {UserId}",
@@ -1127,7 +1138,7 @@ internal sealed class ExpenseReportService(
             $"{description}.",
             actorUserId,
             relatedEntityId: report.SubmitterUserId,
-            relatedEntityType: AuditEntityTypes.User);
+            relatedEntityType: AuditSubjectTypes.User);
     }
 
     /// <summary>
@@ -1350,9 +1361,8 @@ internal sealed class ExpenseReportService(
         if (approved is null) return;
 
         var submitter = await userService.GetUserInfoAsync(approved.SubmitterUserId, ct);
-        var targets = await userEmailService.GetNotificationTargetEmailsAsync([approved.SubmitterUserId], ct);
-        if (submitter is null || !targets.TryGetValue(approved.SubmitterUserId, out var recipient)
-            || string.IsNullOrWhiteSpace(recipient))
+        var recipient = submitter?.Email;
+        if (submitter is null || string.IsNullOrWhiteSpace(recipient))
         {
             logger.LogWarning(
                 "Skipping expense-approved email for report {ReportId}: submitter {UserId} has no notification email",
@@ -1402,19 +1412,24 @@ internal sealed class ExpenseReportService(
             }
             else
             {
-                using var scope = new TransactionScope(
+                var afterCommit = new List<Func<CancellationToken, Task>>();
+                using (var scope = new TransactionScope(
                     TransactionScopeOption.Required,
                     new TransactionOptions { IsolationLevel = IsolationLevel.ReadCommitted },
-                    TransactionScopeAsyncFlowOption.Enabled);
-                var consumption = await preapprovalWrites.ConsumeAsync(consumedGrantId, reportId, actorUserId, ct);
-                if (consumption.Refusal is { } refusal)
+                    TransactionScopeAsyncFlowOption.Enabled))
                 {
-                    logger.LogWarning("Pre-approval {GrantId} refused consumption by report {ReportId}: {Reason}", consumedGrantId, reportId, refusal);
-                    return ExpenseMutationResult.OperatorFailure("The report's pre-approval was revoked or is no longer held by it; reject the report.");
+                    var consumption = await preapprovalWrites.ConsumeAsync(consumedGrantId, reportId, actorUserId, ct, afterCommit.Add);
+                    if (consumption.Refusal is { } refusal)
+                    {
+                        logger.LogWarning("Pre-approval {GrantId} refused consumption by report {ReportId}: {Reason}", consumedGrantId, reportId, refusal);
+                        return ExpenseMutationResult.OperatorFailure("The report's pre-approval was revoked or is no longer held by it; reject the report.");
+                    }
+                    ok = await repo.ApproveAsync(
+                        reportId, actorUserId, overrideBooking, maxAmount, now, outboxEventId, ct);
+                    if (ok) scope.Complete();
                 }
-                ok = await repo.ApproveAsync(
-                    reportId, actorUserId, overrideBooking, maxAmount, now, outboxEventId, ct);
-                if (ok) scope.Complete();
+                if (ok)
+                    foreach (var complete in afterCommit) await complete(CancellationToken.None);
             }
             if (!ok) return ExpenseMutationResult.OperatorFailure("Could not approve the report. It may not be in an approvable status.");
 
@@ -1530,7 +1545,7 @@ internal sealed class ExpenseReportService(
     private async Task<(ExpenseBooking? Booking, ExpenseMutationResult? Refusal)> ResolveBookingAsync(
         int holdedAccountNumber, Guid? pinnedYearId, CancellationToken ct)
     {
-        var account = (await holdedFinance.ListExpenseAccountsAsync(activeOnly: true, ct))
+        var account = (await finance.ListExpenseAccountsAsync(activeOnly: true, ct))
             .FirstOrDefault(a => a.AccountNum == holdedAccountNumber);
         if (account is null)
             return (null, ExpenseMutationResult.Failure("Expenses_Validation_AccountNotFound"));
@@ -1539,14 +1554,14 @@ internal sealed class ExpenseReportService(
 
         // The option list said this account is a budget category, so the map row exists; the
         // category behind it may still be gone or belong to another year.
-        var mapRow = (await holdedFinance.GetCategoryMapAsync(ct))
+        var mapRow = (await finance.GetCategoryMapAsync(ct))
             .FirstOrDefault(m => m.IsActive && m.HoldedAccountNumber == holdedAccountNumber);
         if (mapRow is null)
             return (null, ExpenseMutationResult.Failure("Expenses_Validation_CategoryNotFound"));
 
         if (pinnedYearId is { } pinned)
         {
-            var snapshot = await budgetService.GetCategoryByIdAsync(mapRow.BudgetCategoryId);
+            var snapshot = await budgetService.GetCategoryByIdAsync(mapRow.BudgetCategoryId, ct);
             if (snapshot is null)
                 return (null, ExpenseMutationResult.Failure("Expenses_Validation_CategoryNotFound"));
             if (snapshot.BudgetGroup?.BudgetYearId != pinned)
@@ -1554,7 +1569,7 @@ internal sealed class ExpenseReportService(
             return (new ExpenseBooking(account.AccountNum, account.AccountId, snapshot.Id, pinned), null);
         }
 
-        var activeYear = await budgetService.GetActiveYearAsync()
+        var activeYear = await budgetService.GetActiveYearAsync(ct)
             ?? throw new InvalidOperationException("No active budget year.");
         var inActiveYear = activeYear.Groups.SelectMany(g => g.Categories).Any(c => c.Id == mapRow.BudgetCategoryId);
         if (!inActiveYear)
@@ -1582,7 +1597,7 @@ internal sealed class ExpenseReportService(
         var categoryId = report.BudgetCategoryId;
         if (categoryId is null)
             return ExpenseMutationResult.OperatorFailure("Report is not booked to a budget category; there is no coordinator to endorse it.");
-        var category = await budgetService.GetCategoryByIdAsync(categoryId.Value);
+        var category = await budgetService.GetCategoryByIdAsync(categoryId.Value, ct);
         if (category is null)
             throw new InvalidOperationException("Budget category not found.");
         if (!category.TeamId.HasValue)
@@ -1631,9 +1646,11 @@ internal sealed class ExpenseReportService(
             ExpensesAuditActions.IbanSet,
             ExpensesAuditActions.IbanRemove,
             FinanceAuditActions.IbanReveal,
-        };
+        }.Select(a => a.Name).ToList();
 
-        var auditEntries = (await auditLogService.GetFilteredEntriesAsync(
+        var auditEntries = (await auditViewer.GetFilteredAsync(
+            entityType: null,
+            entityId: null,
             userId: userId,
             actions: expenseActions,
             limit: 10_000,
@@ -1642,9 +1659,10 @@ internal sealed class ExpenseReportService(
         // Decisions others took on the member's claims name the claim, not the member.
         foreach (var report in allReports)
         {
-            auditEntries.AddRange(await auditLogService.GetFilteredEntriesAsync(
+            auditEntries.AddRange(await auditViewer.GetFilteredAsync(
                 entityType: AuditEntityTypes.Report,
                 entityId: report.Id,
+                userId: null,
                 actions: expenseActions,
                 limit: 10_000,
                 ct: ct));
@@ -1696,7 +1714,7 @@ internal sealed class ExpenseReportService(
         var shapedAudit = auditEntries
             .Select(e => new
             {
-                e.Action,
+                Action = e.Action.Name,
                 e.EntityType,
                 e.EntityId,
                 e.Description,

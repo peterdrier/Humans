@@ -7,8 +7,7 @@ subfolder; `ProfileEditorService`, `ProfileService`, and
 `ContactFieldService` sit alongside the Users services listed under
 [Users](#users) below. Owns `Profiles`, `ContactFields`,
 `ProfileLanguages`, `VolunteerHistoryEntries`, `UserEmails`, and the
-frozen legacy `CommunicationPreferences` (Email owns preferences since
-Users decomposition commit 14). **DbContext:** `UsersDbContext` — the merged
+frozen legacy `CommunicationPreferences` storage mapping (no live access; Email owns preferences). **DbContext:** `UsersDbContext` — the merged
 Users+Profiles context.
 
 The account-merge surface (`AccountMergeService`, `DuplicateAccountService`,
@@ -20,7 +19,7 @@ DB access; its one write is the `DuplicateAccountFlagged` audit entry through
 
 Per-user persistence is a single `IUserRepository`, which owns `Users`,
 `Profiles`, `UserEmails`, `ContactFields`, `ProfileLanguages`,
-`VolunteerHistoryEntries`, the frozen legacy `EventParticipations` (read-only; Tickets owns participation since Users decomposition commit 13), and the ASP.NET-Identity
+`VolunteerHistoryEntries` and the ASP.NET-Identity
 `IdentityUserLogins` bridge. `ProfileService` exposes only
 `IProfilePictureService`; the unified User+Profile read-model lives behind
 `IUserService.GetUserInfoAsync`. Repositories are **Singletons**
@@ -61,7 +60,7 @@ Cross-section reads via `IUserService`, `ITeamService`,
 
 ### UserEmailService (Scoped)
 
-Repository: `IUserRepository`.
+Repository: `IUserRepository`. Notification-address projections use existing `IUserService` snapshots: merge-resolved `Email` for delivery and raw `PrimaryEmail` for primary-only reads. Raw email-row scans remain for orphan diagnostics.
 
 | Table | R/W |
 |-------|-----|
@@ -129,6 +128,7 @@ downstream side effects. Cross-section calls via `IUserService`,
 `IMembershipCalculator`, `IEmailService`, the section's own `UsersEmails` builder, `INotificationEmitter`,
 `IAuditLogService` and `IHumansMetrics`. Google access ends at the next Google reconciliation,
 which excludes suspended humans. No direct DB access or `IMemoryCache`.
+Per-member suspension metrics stay here; run success/failure metrics belong to the scheduled job.
 
 ### UsersEmails (Scoped, internal)
 
@@ -154,7 +154,7 @@ Folder: `src/Sections/Humans.Users/Services/`; repository under
 `Data/Repositories/`. **DbContext:** `UsersDbContext` — the merged
 Users+Profiles context (`Users` is the Identity-backed `users` table via
 `IdentityDbContext<User, …>`, which the context carries directly). Owns
-`Users`, `UserEmails` cross-bridge (read-through), the frozen legacy `EventParticipations` (read-only),
+`Users`, `UserEmails` cross-bridge (read-through),
 ASP.NET `IdentityUserLogins`, and `AccountMergeRequests` — the
 account-merge surface (`AccountMergeService`, `DuplicateAccountService`,
 `AccountMergeRepository`) lives here. The inner `IUserService` registration is wrapped
@@ -171,22 +171,21 @@ the section-only half of the write funnel (profile saves, deletion fields,
 
 ### UserService (Scoped — wrapped by CachingUserService Singleton decorator)
 
-Repositories: `IUserRepository`, `ICommunicationPreferenceRepository`.
+Repository: `IUserRepository`.
 
 | Table | R/W | Repo |
 |-------|-----|------|
 | Users | R/W | IUserRepository |
 | UserEmails | R | IUserRepository |
-| EventParticipations | R (frozen legacy rows: `UserInfo.EventParticipations` for Tickets' fallback, and the `LegacyEventParticipations` export slice) | IUserRepository |
+| EventParticipations | No live access; frozen storage mapping retained until the separate table drop | — |
 | IdentityUserLogins | R | IUserRepository |
 | Profiles | R/W | IUserRepository |
 | ContactFields | R | IUserRepository |
-| CommunicationPreferences | R/D (frozen legacy rows: `UserInfo.CommunicationPreferences` for Email's fallback, the `LegacyCommunicationPreferences` export slice, and erasure) | ICommunicationPreferenceRepository |
+| CommunicationPreferences | Frozen storage; only GDPR erasure deletes a user's rows (`EraseProfileExtrasForUserAsync`) until the separate table drop | — |
 | ProfileLanguages | R/W | IUserRepository |
 | VolunteerHistoryEntries | R | IUserRepository |
 
-The consolidated `IUserRepository` plus the comms-prefs repo
-together compose the `UserInfo` projection inside `CachingUserService` —
+The consolidated `IUserRepository` composes the `UserInfo` projection inside `CachingUserService` —
 a single cached read-model fanning out over the User + Profile section's
 unified persistence layer. Implements `IUserDataContributor`,
 `IUserMerge`.
@@ -236,7 +235,8 @@ Repository: `IUserRepository`.
 |-------|-----|
 | Users | R/W |
 
-Idempotent provisioning for import jobs. Uses ASP.NET `UserManager<User>`
+Idempotent provisioning for import jobs, plus `CreateAccountAsync` for seeders that create an
+account with a fixed id. Uses ASP.NET `UserManager<User>`
 for password / identity primitives. Cross-section calls via
 `IUserEmailService`, `IUserService`, `IAuditLogService`. No cache.
 Results carry the user id, never the `User` entity: `AccountProvisioningResult(Guid UserId, bool Created)`
@@ -320,3 +320,9 @@ access, no cache.
 
 ---
 
+### UserSignInService (Scoped)
+
+No repository. Wraps ASP.NET `SignInManager<User>` / `UserManager<User>` behind
+`IUserSignInService`, keyed by user id, so callers outside Users never load the `User` entity:
+persistent sign-in, sign-out, password check/set, and the external-login handshake.
+`SetPasswordAsync` loads the user in a fresh scope from `IServiceScopeFactory`. No cache.

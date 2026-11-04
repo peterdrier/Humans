@@ -94,13 +94,11 @@ public class ProfileApiControllerTests
         UserInfoFactory.Create(
             user: user,
             userEmails: [],
-            eventParticipations: [],
             externalLogins: [],
             profile: null,
             contactFields: [],
             profileLanguages: [],
-            volunteerHistory: [],
-            communicationPreferences: []);
+            volunteerHistory: []);
 
     private static UserInfo MakeUserInfo(
         Guid userId,
@@ -118,26 +116,24 @@ public class ProfileApiControllerTests
             IsApproved = true,
             CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
             UpdatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
-            RejectedAt = isRejected ? Instant.FromUtc(2026, 2, 1, 0, 0) : null,
         };
         var user = new User
         {
             Id = userId,
             BurnerName = burnerName,
             DisplayName = "Target Display",
+            State = isRejected ? UserState.Rejected : UserState.Active,
             PreferredLanguage = "en",
             CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
         };
         return UserInfoFactory.Create(
             user: user,
             userEmails: [],
-            eventParticipations: [],
             externalLogins: [],
             profile: profile,
             contactFields: [],
             profileLanguages: [],
-            volunteerHistory: [],
-            communicationPreferences: []);
+            volunteerHistory: []);
     }
 
     [HumansTheory]

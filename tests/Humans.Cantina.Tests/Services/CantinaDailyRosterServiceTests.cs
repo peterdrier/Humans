@@ -75,10 +75,6 @@ public class CantinaDailyRosterServiceTests
         BuildStartOffset: 0,
         EventEndOffset: 0,
         StrikeEndOffset: 0,
-        FirstCrewStartOffset: 0,
-        SetupWeekStartOffset: 0,
-        PreEventWeekStartOffset: 0,
-        FinishingWeekendStartOffset: 0,
         EarlyEntryCapacity: new Dictionary<int, int>(),
         BarriosEarlyEntryAllocation: null,
         EarlyEntryClose: null);
@@ -247,10 +243,8 @@ public class CantinaDailyRosterServiceTests
                             PreferredLanguage = "en",
                         },
                         userEmails: [],
-                        eventParticipations: [],
                         externalLogins: [],
-                        profile: UserFixtures.Profile(burnerName: ""),
-                        communicationPreferences: []),
+                        profile: UserFixtures.Profile(burnerName: "")),
                 }));
 
         var result = await _service.GetDailyRosterAsync(dayOffset: 0, ct: Xunit.TestContext.Current.CancellationToken);
@@ -372,10 +366,8 @@ public class CantinaDailyRosterServiceTests
                 // UserInfo.BurnerName reads User.BurnerName, so it is seeded there.
                 user: new User { Id = p.UserId, DisplayName = p.Profile.BurnerName, BurnerName = p.Profile.BurnerName, PreferredLanguage = "en" },
                 userEmails: [],
-                eventParticipations: [],
                 externalLogins: [],
-                profile: p.Profile,
-                communicationPreferences: []));
+                profile: p.Profile));
         _userRead.GetUserInfosAsync(
                 Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(dict));

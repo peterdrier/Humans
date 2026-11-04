@@ -72,8 +72,8 @@ The section's methods, grouped by the question each one answers.
 
 | Shape | The question | Methods | Asked by |
 |---|---|---|---|
-| **A — Accounts to spend against** | Which accounts exist for spending, and make the missing ones | `GetProvisioningPlanAsync`, `ProvisionAsync`, `GetHoldedAccountIdForCategoryAsync`, `GetCategoryMapAsync`, `CreateOrLinkExpenseAccountAsync`, `SetExpenseAccountActiveAsync`, `ListExpenseAccountsAsync` | Finance's own page; Expenses, to book a line; Workgroups; Preapprovals; Backdoor |
-| **B — What was spent** | Pull the invoices; the per-category total, what didn't attribute, how the pull went | `SyncAsync`, `GetActualsForYearAsync`, `GetUnmatchedAsync`, `GetDocSyncInfoAsync`, `GetConnectorOverviewAsync` | Finance's own nightly job and pages; Budget's year page; Backdoor |
+| **A — Accounts to spend against** | Which accounts exist for spending, and make the missing ones | `GetProvisioningPlanAsync`, `ProvisionAsync`, `GetHoldedAccountIdForCategoryAsync`, `GetCategoryMapAsync`, `CreateOrLinkExpenseAccountAsync`, `SetExpenseAccountActiveAsync`, `ListExpenseAccountsAsync` | Finance's own page; Expenses, to book a line; Workgroups; Backdoor |
+| **B — What was spent** | The per-category total over Holded's purchase mirror, what didn't attribute, how the pull went | `GetActualsForYearAsync`, `GetUnmatchedAsync` | Budget's year page; Finance's own pages; Backdoor |
 | **C — Whose account is this** | Which Holded creditor account is this member's — set it, correct it, clear it | `GetCreditorContactByUserAsync`, `EnsureCreditorContactAsync`, `SetCreditorAccountNumAsync`, `SetCreditorContactAsync`, `ClearCreditorContactAsync` | Expenses' push path and views; Finance's own page |
 | **D — What is owed** | What does the org owe this member, the journal behind it, and does it match the reports | `GetCreditorStatusAsync`, `GetCreditorLedgerAsync`, `ListCreditorAccountsAsync`, `CreditorMatchService` | Expenses; Finance's own pages; Backdoor |
 | **E — Paying it** | Is payout configured; make the bank file; what files exist; withdraw a cancelled transfer | `GetSepaPayoutSettings`, `GenerateSepaPayoutAsync`, `GetSepaPayoutsAsync`, `GetSepaTransfersAsync`, `WithdrawSepaTransferAsync` | Finance's own pages; Backdoor |
@@ -96,16 +96,10 @@ What the grouping shows:
 - **F is the section's main write into the books, and the most guarded code in it.** A transfer books
   once, against a line the server re-pairs itself, only while the member's binding still names the
   account and contact the file paid, and only from a treasury account that was configured, never
-  inferred. G's removal is the only other write, and it deletes only what it verified.
-- **G reads E's and D's facts against Expenses' lines**, from local mirrors only, and refuses to
-  report when either mirror has never synced.
-- **H and I share nothing with the Holded shapes.** H is a pure projection of Budget's year; I is a
-  one-table store Expenses owns the use of.
-- **A, C and F each have a half only Finance's own pages call.** The provisioning plan and apply, the
-  manual bind and the unbind, and the sweep live on the internal admin interface beside E, F and G,
-  not on the public cross-section one.
-- **B's `GetDocSyncInfoAsync` carries a C fact.** Its result includes a count of creditor bindings,
-  which is not sync state. Backdoor reads it.
+  inferred.
+- **A, C and F each have a half only Finance's own pages and jobs call.** The provisioning plan and
+  apply, the manual bind and the unbind, and the sweep live on the internal admin interface beside E and F, not on the public
+  cross-section one; their result records live in `Models/`, not the contracts leaf.
 
 ## 3. Structure
 
@@ -121,7 +115,6 @@ Humans.Finance/
   Services/
     Service.cs                 shapes A–G
     SepaBankBooking.cs         shape F and the sweep
-    HoldedDocumentSync.cs      shape B's pull
     HoldedMatcher.cs           pure attribution, no dependencies
     HoldedDuplicateMatcher.cs  pure duplicate detection, no dependencies
     ExpenseRecon.cs            pure reconciliation report, no dependencies
@@ -132,7 +125,7 @@ Humans.Finance/
     CashFlowService.cs         shape H
     PaymentDetailsService.cs   shapes I and J for the IBAN
     I*.cs                      the internal interfaces
-  Jobs/                        three Hangfire shims: doc sync, booking sweep, recon
+  Jobs/                        two Hangfire shims: booking sweep, recon
   Domain/                      the entities and their enums
   Data/                        two repositories over one context, the tables
   Resources/                   the pain.001.001.09 schema the file is validated against
@@ -160,12 +153,12 @@ What the shapes say about the inside:
 
 - Board, `FinanceAdmin` and `Admin` read every `/Finance/*` page this controller serves; every POST
   needs `FinanceAdmin` or `Admin` (`src/Sections/Humans.Finance/Controllers/FinanceController.cs:17`,
-  `src/Sections/Humans.Finance/Section.cs:158`, `src/Sections/Humans.Finance/Section.cs:161`).
+  `src/Sections/Humans.Finance/Section.cs:134`, `src/Sections/Humans.Finance/Section.cs:137`).
 - Only `Admin` sees a member's IBAN unmasked, and every reveal is audited
   (`src/Sections/Humans.Finance/Controllers/PaymentDetailsAdminController.cs:12`,
   `src/Sections/Humans.Finance/Services/PaymentDetailsService.cs:52`).
 - A purchase invoice is attributed as a whole, by its first line's booked account, then by tag, then
-  not at all; first match wins (`src/Sections/Humans.Finance/Services/HoldedDocumentSync.cs:142`,
+  not at all; first match wins (`src/Sections/Humans.Finance/Services/Service.cs:332`,
   `src/Sections/Humans.Finance/Services/HoldedMatcher.cs:56`).
 - An invoice counts toward a category's actuals only when Holded has approved it
   (`src/Sections/Humans.Finance/Services/Service.cs:352`).
@@ -232,10 +225,10 @@ What the shapes say about the inside:
 - A raw IBAN lives in the payment-details row, the bank file, the transfer row and the contact
   create that hands it to Holded; audit entries, exports and cross-section rows carry it masked
   (`src/Sections/Humans.Finance/Services/Service.cs:1117`,
-  `src/Sections/Humans.Finance/Services/PaymentDetailsService.cs:110`).
+  `src/Sections/Humans.Finance/Services/PaymentDetailsService.cs:64`).
 - Erasure deletes the member's IBAN row and contact link and nothing else
   (`src/Sections/Humans.Finance/Services/Service.cs:1651`,
-  `src/Sections/Humans.Finance/Services/PaymentDetailsService.cs:119`).
+  `src/Sections/Humans.Finance/Services/PaymentDetailsService.cs:74`).
 
 ## 5. Seams
 
@@ -266,7 +259,7 @@ Specified, not built. Not ranked, not struck.
   admin-only ([`localization-admin-exempt`](../../../../memory/code/localization-admin-exempt.md)).
 - **No per-report paid state.** A SEPA payout pays a balance, not a report.
 - **No nullable `Balance` on the creditor DTOs.** Both reads return null wholesale when an account has
-  no cached lines. `HoldedCreditorAccountRow` keeps its `decimal?` — the admin list carries accounts
+  no cached lines. `CreditorAccountRow` keeps its `decimal?` — the admin list carries accounts
   with no lines yet.
 - **No split of `Service.cs`'s interfaces per shape.** The shapes share the repository, the clock
   and the contact cache; the self-contained flows are already their own classes behind it.

@@ -507,7 +507,7 @@ internal sealed class GoogleWorkspaceSyncService(
             };
         }
 
-        var groupResources = await GetActiveGroupResourcesAsync(cancellationToken);
+        var groupResources = await resourceRepository.GetActiveByResourceTypeAsync(GoogleResourceType.Group, cancellationToken);
 
         var teamsById = await teamService.GetTeamsAsync(cancellationToken);
         var filtered = groupResources
@@ -737,7 +737,7 @@ internal sealed class GoogleWorkspaceSyncService(
     /// <inheritdoc />
     public async Task<int> UpdateDriveFolderPathsAsync(CancellationToken cancellationToken = default)
     {
-        var driveResources = await resourceRepository.GetActiveDriveFoldersAsync(cancellationToken);
+        var driveResources = await resourceRepository.GetActiveByResourceTypeAsync(GoogleResourceType.DriveFolder, cancellationToken);
 
         if (driveResources.Count == 0) return 0;
         var teamsById = await teamService.GetTeamsAsync(cancellationToken);
@@ -793,7 +793,7 @@ internal sealed class GoogleWorkspaceSyncService(
     /// <inheritdoc />
     public async Task<int> EnforceInheritedAccessRestrictionsAsync(CancellationToken cancellationToken = default)
     {
-        var driveResources = await resourceRepository.GetActiveDriveFoldersAsync(cancellationToken);
+        var driveResources = await resourceRepository.GetActiveByResourceTypeAsync(GoogleResourceType.DriveFolder, cancellationToken);
 
         if (driveResources.Count == 0) return 0;
         var teamsById = await teamService.GetTeamsAsync(cancellationToken);
@@ -930,7 +930,7 @@ internal sealed class GoogleWorkspaceSyncService(
     internal static Task AuditUserSyncRerunAsync(IAuditLogService auditLog, Guid userId, int count, Guid actorUserId) =>
         auditLog.LogAsync(
             GoogleIntegrationAuditActions.GoogleSyncRetryScheduled,
-            "User",
+            AuditSubjectTypes.User,
             userId,
             $"Admin enqueued Google sync re-run for user {userId} ({count} team event(s))",
             actorUserId);
@@ -984,23 +984,9 @@ internal sealed class GoogleWorkspaceSyncService(
     private async Task<GoogleResource?> FindActiveGroupByUrlAsync(string expectedUrl, CancellationToken ct)
     {
         // No URL lookup in the repository; the set is a few dozen groups.
-        var all = await GetActiveGroupResourcesAsync(ct);
+        var all = await resourceRepository.GetActiveByResourceTypeAsync(GoogleResourceType.Group, ct);
         return all.FirstOrDefault(r => r.Url is not null &&
             string.Equals(r.Url, expectedUrl, StringComparison.OrdinalIgnoreCase));
-    }
-
-    private async Task<IReadOnlyList<GoogleResource>> GetActiveGroupResourcesAsync(CancellationToken ct)
-    {
-        var allCounts = await resourceRepository.GetActiveResourceCountsByTeamAsync(ct);
-        var teamIds = allCounts.Keys.ToList();
-        if (teamIds.Count == 0)
-            return [];
-
-        var perTeam = await resourceRepository.GetActiveByTeamIdsAsync(teamIds, ct);
-        return perTeam.Values
-            .SelectMany(rs => rs)
-            .Where(r => r.ResourceType == GoogleResourceType.Group && r.IsActive)
-            .ToList();
     }
 
     private GroupSettingsExpected BuildExpectedGroupSettings() =>

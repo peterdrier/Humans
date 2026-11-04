@@ -21,6 +21,9 @@ internal sealed class DocumentVersion
 
     public bool RequiresReConsent { get; set; }
 
+    /// <summary>Unfinished consolidated sync-email batch; null also leaves historical versions untouched.</summary>
+    public Guid? PendingReConsentBatchId { get; set; }
+
     public Instant CreatedAt { get; init; }
 
     public string? ChangesSummary { get; set; }

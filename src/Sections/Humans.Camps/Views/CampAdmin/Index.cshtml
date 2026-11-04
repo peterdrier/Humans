@@ -329,10 +329,10 @@
                                 }
                             </td>
                             <td>
-                                @foreach (var lead in camp.Leads)
+                                @for (var leadIndex = 0; leadIndex < camp.LeadUserIds.Count; leadIndex++)
                                 {
-                                    <vc:human user-id="@lead.UserId" />
-                                    if (lead != camp.Leads.Last())
+                                    <vc:human user-id="@camp.LeadUserIds[leadIndex]" />
+                                    if (leadIndex < camp.LeadUserIds.Count - 1)
                                     {
                                         <text>, </text>
                                     }

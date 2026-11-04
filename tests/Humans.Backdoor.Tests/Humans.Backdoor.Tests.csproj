@@ -2,7 +2,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\Sections\Humans.Backdoor\Humans.Backdoor.csproj" />
-    <ProjectReference Include="..\..\src\Sections\Humans.AuditLog\Humans.AuditLog.csproj" />
     <ProjectReference Include="..\..\src\Sections\Humans.Auth\Humans.Auth.csproj" />
     <ProjectReference Include="..\..\src\Sections\Humans.Issues\Humans.Issues.csproj" />
     <ProjectReference Include="..\..\src\Sections\Humans.Notifications\Humans.Notifications.csproj" />
@@ -10,9 +9,8 @@
     <ProjectReference Include="..\..\src\Sections\Humans.Store\Humans.Store.csproj" />
     <ProjectReference Include="..\..\src\Sections\Humans.Expenses\Humans.Expenses.csproj" />
     <ProjectReference Include="..\..\src\Sections\Humans.Finance.Contracts\Humans.Finance.Contracts.csproj" />
+    <ProjectReference Include="..\..\src\Sections\Humans.Holded\Humans.Holded.csproj" />
     <ProjectReference Include="..\..\src\Sections\Humans.Budget\Humans.Budget.csproj" />
-    <ProjectReference Include="..\..\src\Sections\Humans.Gdpr\Humans.Gdpr.csproj" />
-    <ProjectReference Include="..\..\src\Sections\Humans.Users.Contracts\Humans.Users.Contracts.csproj" />
     <ProjectReference Include="..\..\src\Humans.Base\Humans.Base.csproj" />
   </ItemGroup>
 

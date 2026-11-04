@@ -8,7 +8,7 @@ namespace Humans.Shifts.Tests.Domain;
 
 public class BuildSubPeriodClassifierTests
 {
-    private static EventSettingsInfo DefaultSettings() => new(
+    private static BurnSettingsInfo DefaultSettings() => new(
         Id: Guid.NewGuid(),
         EventName: "Test Event",
         Year: 2026,
@@ -24,7 +24,7 @@ public class BuildSubPeriodClassifierTests
         FinishingWeekendStartOffset: -4,
         EarlyEntryCapacity: new Dictionary<int, int>(),
         BarriosEarlyEntryAllocation: null,
-        EarlyEntryClose: null);
+        EarlyEntryClose: null, IsShiftBrowsingOpen: false);
 
     [HumansTheory]
     [InlineData(-25, BuildSubPeriod.FirstCrew)]

@@ -1,10 +1,20 @@
 @model DocumentPageViewModel
+@inject Microsoft.AspNetCore.Mvc.Localization.IHtmlLocalizer<WorkgroupsResource> HtmlLocalizer
 @{
     var w = Model.Workgroup;
     var d = Model.Document;
     ViewData["Title"] = d.Title;
     var comments = d.Comments.OrderBy(c => c.CreatedAt).ToList();
     var categories = comments.Select(c => c.Category).Concat(d.CommentCategories).Distinct().ToList();
+    var editor = await Component.InvokeAsync(typeof(HumanViewComponent), new
+    {
+        userId = d.UpdatedByUserId ?? d.CreatedByUserId ?? Guid.Empty,
+        link = HumanLink.None,
+    });
+    using var editorWriter = new System.IO.StringWriter();
+    editor.WriteTo(editorWriter, System.Text.Encodings.Web.HtmlEncoder.Default);
+    // Keep the component's template indentation out of localized sentence punctuation.
+    var editorHtml = new Microsoft.AspNetCore.Html.HtmlString(editorWriter.ToString().Trim());
 }
 
 <nav aria-label="@Localizer["Workgroups_BreadcrumbNavigation"]">
@@ -37,7 +47,7 @@
     }
 </div>
 
-<div class="text-muted small mb-3">@Localizer["Workgroups_LastEditedBy", Model.DisplayName(d.UpdatedByUserId ?? d.CreatedByUserId), d.UpdatedAt.ToDateTime()]</div>
+<div class="text-muted small mb-3">@HtmlLocalizer["Workgroups_LastEditedBy", editorHtml, d.UpdatedAt.ToDateTime()]</div>
 
 <div class="card mb-3">
     <div class="card-body">
@@ -156,7 +166,7 @@ else
                             {
                                 <span class="badge bg-secondary me-1">@Localizer["Workgroups_HiddenByGroup"]</span>
                             }
-                            <span class="text-muted small">@Model.DisplayName(c.AuthorUserId) · @c.CreatedAt.ToDateTime()</span>
+                            <span class="text-muted small"><vc:human user-id="@(c.AuthorUserId ?? Guid.Empty)" link="None" /> · @c.CreatedAt.ToDateTime()</span>
                         </div>
                         <span class="badge @EnumBadgeMap.For(c.Disposition)">@Localizer.EnumDisplay(c.Disposition)</span>
                     </div>

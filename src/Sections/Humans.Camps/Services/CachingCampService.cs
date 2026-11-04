@@ -161,7 +161,12 @@ internal sealed class CachingCampService(
                 hits.Add(new CampSearchHit(camp.Id, season.Name, season.Name.NameMatchScore(trimmed)));
         }
 
-        return hits.Take(max).ToList();
+        return hits
+            .OrderByDescending(hit => hit.Score)
+            .ThenBy(hit => hit.Name, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(hit => hit.CampId)
+            .Take(max)
+            .ToList();
     }
 
     public async Task<CampSeasonInfo?> GetCampSeasonByIdAsync(

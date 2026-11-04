@@ -9,11 +9,6 @@ using NodaTime;
 
 namespace Humans.Email.Services;
 
-/// <summary>
-/// Until the <c>email.communication-preferences</c> data migration has run, a user and category with no row
-/// here reads the frozen legacy Users row, and writes start from it. Resetting a legacy-backed preference
-/// writes a cleared row (<c>OptedOut == null</c>) so the legacy value never comes back.
-/// </summary>
 internal sealed class CommunicationPreferenceService(
     ICommunicationPreferenceRepository repository,
     IUserService userService,
@@ -36,7 +31,7 @@ internal sealed class CommunicationPreferenceService(
         // Resolves a merged-away id forward to its survivor.
         var info = await userService.GetUserInfoAsync(userId, cancellationToken);
         if (info is null) return [];
-        return Effective(await repository.GetByUserIdAsync(info.Id, cancellationToken), LegacyRows(info))
+        return Recorded(await repository.GetByUserIdAsync(info.Id, cancellationToken))
             .Select(ToSnapshot)
             .ToList();
     }
@@ -44,11 +39,7 @@ internal sealed class CommunicationPreferenceService(
     public async Task<IReadOnlyDictionary<Guid, CommunicationPreferenceSnapshot>> GetPreferencesForCategoryAsync(
         MessageCategory category, CancellationToken cancellationToken = default)
     {
-        var legacy = (await userService.GetAllRawUserInfosAsync(cancellationToken))
-            .SelectMany(LegacyRows)
-            .Where(l => l.Category == category)
-            .ToList();
-        return Effective(await repository.GetByCategoryAsync(category, cancellationToken), legacy)
+        return Recorded(await repository.GetByCategoryAsync(category, cancellationToken))
             .ToDictionary(r => r.UserId, ToSnapshot);
     }
 
@@ -73,13 +64,7 @@ internal sealed class CommunicationPreferenceService(
         if (userIds.Count == 0)
             return new HashSet<Guid>();
 
-        var ids = userIds.ToHashSet();
-        var legacy = (await userService.GetAllRawUserInfosAsync(cancellationToken))
-            .Where(u => ids.Contains(u.Id))
-            .SelectMany(LegacyRows)
-            .Where(l => l.Category == category)
-            .ToList();
-        return Effective(await repository.GetForUsersAsync(userIds, category, cancellationToken), legacy)
+        return Recorded(await repository.GetForUsersAsync(userIds, category, cancellationToken))
             .Where(r => !r.InboxEnabled)
             .Select(r => r.UserId)
             .ToHashSet();
@@ -89,15 +74,8 @@ internal sealed class CommunicationPreferenceService(
         MessageCategory category, bool optedOut, CancellationToken cancellationToken = default) =>
         (await GetPreferencesForCategoryAsync(category, cancellationToken)).Values.Count(p => p.OptedOut == optedOut);
 
-    /// <summary>The recorded rows: this table's live rows, plus each legacy row no row here shadows.
-    /// Cleared rows shadow their legacy row and read as nothing recorded.</summary>
-    private static List<CommunicationPreference> Effective(
-        IReadOnlyList<CommunicationPreference> rows, IReadOnlyList<CommunicationPreference> legacy)
-    {
-        var shadowed = rows.Select(r => (r.UserId, r.Category)).ToHashSet();
-        return [.. rows.Where(r => r.OptedOut is not null)
-            .Concat(legacy.Where(l => !shadowed.Contains((l.UserId, l.Category))))];
-    }
+    private static List<CommunicationPreference> Recorded(IReadOnlyList<CommunicationPreference> rows) =>
+        [.. rows.Where(r => r.OptedOut is not null)];
 
     private static CommunicationPreferenceSnapshot ToSnapshot(CommunicationPreference p) =>
         new(p.Category, p.OptedOut!.Value, p.InboxEnabled, p.UpdateSource, p.UpdatedAt, p.SubscribedAt);
@@ -212,22 +190,7 @@ internal sealed class CommunicationPreferenceService(
         if (await CurrentAsync(userId, category, cancellationToken) is null)
             return;
 
-        if (await LegacyRowAsync(userId, category, cancellationToken) is null)
-        {
-            await repository.DeleteAsync(userId, category, cancellationToken);
-        }
-        else
-        {
-            await repository.UpsertAsync(new CommunicationPreference
-            {
-                Id = Guid.NewGuid(),
-                UserId = userId,
-                Category = category,
-                OptedOut = null,
-                UpdatedAt = clock.GetCurrentInstant(),
-                UpdateSource = source,
-            }, cancellationToken);
-        }
+        await repository.DeleteAsync(userId, category, cancellationToken);
 
         await LogPreferenceChangeAsync(userId,
             $"{category} reset to no preference (null) via {source}", actorUserId: null);
@@ -239,20 +202,15 @@ internal sealed class CommunicationPreferenceService(
 
     private Task LogPreferenceChangeAsync(Guid userId, string description, Guid? actorUserId) =>
         actorUserId is { } actor
-            ? auditLog.LogAsync(EmailAuditActions.CommunicationPreferenceChanged, "User", userId,
+            ? auditLog.LogAsync(EmailAuditActions.CommunicationPreferenceChanged, AuditSubjectTypes.User, userId,
                 description, actor)
-            : auditLog.LogAsync(EmailAuditActions.CommunicationPreferenceChanged, "User", userId,
+            : auditLog.LogAsync(EmailAuditActions.CommunicationPreferenceChanged, AuditSubjectTypes.User, userId,
                 description, nameof(CommunicationPreferenceService));
 
-    /// <summary>Keyed by the raw id, without merge resolution: this table's row, else the unshadowed legacy row.</summary>
+    /// <summary>Keyed by the raw id, without merge resolution.</summary>
     private async Task<CommunicationPreference?> CurrentAsync(Guid userId, MessageCategory category, CancellationToken ct) =>
-        Effective(
-            (await repository.GetByUserIdAsync(userId, ct)).Where(r => r.Category == category).ToList(),
-            [.. LegacyRows(await userService.GetRawUserInfoAsync(userId, ct)).Where(l => l.Category == category)])
-        .FirstOrDefault();
-
-    private async Task<CommunicationPreference?> LegacyRowAsync(Guid userId, MessageCategory category, CancellationToken ct) =>
-        LegacyRows(await userService.GetRawUserInfoAsync(userId, ct)).FirstOrDefault(l => l.Category == category);
+        (await repository.GetByUserIdAsync(userId, ct))
+            .FirstOrDefault(r => r.Category == category && r.OptedOut is not null);
 
     public (TokenValidationStatus Status, Guid UserId, MessageCategory Category) ValidateUnsubscribeToken(string token) =>
         tokenProvider.ValidateToken(token);
@@ -263,81 +221,23 @@ internal sealed class CommunicationPreferenceService(
     public string GenerateBrowserUnsubscribeUrl(Guid userId, MessageCategory category) =>
         tokenProvider.GenerateBrowserUnsubscribeUrl(userId, category);
 
-    public async Task<IReadOnlyList<UncopiedPreference>> GetUncopiedLegacyPreferencesAsync(CancellationToken ct = default)
-    {
-        var present = (await repository.GetAllAsync(ct)).Select(r => (r.UserId, r.Category)).ToHashSet();
-        return [.. (await userService.GetAllRawUserInfosAsync(ct))
-            .SelectMany(LegacyRows)
-            .Where(l => !present.Contains((l.UserId, l.Category)))
-            .OrderBy(l => l.UserId).ThenBy(l => l.Category)
-            .Select(l => new UncopiedPreference(l.UserId, ToSnapshot(l)))];
-    }
-
-    public async Task<int> CopyLegacyPreferencesAsync(CancellationToken ct = default)
-    {
-        var written = 0;
-        foreach (var (userId, p) in await GetUncopiedLegacyPreferencesAsync(ct))
-        {
-            var row = new CommunicationPreference
-            {
-                Id = Guid.NewGuid(),
-                UserId = userId,
-                Category = p.Category,
-                OptedOut = p.OptedOut,
-                InboxEnabled = p.InboxEnabled,
-                UpdatedAt = p.UpdatedAt,
-                UpdateSource = p.UpdateSource,
-                SubscribedAt = p.SubscribedAt,
-            };
-            if (await repository.TryInsertAsync(row, ct))
-                written++;
-        }
-        return written;
-    }
-
-    /// <summary>The only reader of the obsolete legacy slice; it goes when the data migration is retired.
-    /// Categories map by name.</summary>
-    private static IReadOnlyList<CommunicationPreference> LegacyRows(UserInfo? info)
-    {
-        if (info is null) return [];
-#pragma warning disable HUM_USER_COMMPREFS // read fallback and copy, until the data migration is retired
-        var legacy = info.CommunicationPreferences;
-#pragma warning restore HUM_USER_COMMPREFS
-        return [.. legacy.Select(l => new CommunicationPreference
-        {
-            Id = l.Id,
-            UserId = info.Id,
-            Category = Enum.Parse<MessageCategory>(l.Category.ToString()),
-            OptedOut = l.OptedOut,
-            InboxEnabled = l.InboxEnabled,
-            UpdatedAt = l.UpdatedAt,
-            UpdateSource = l.UpdateSource,
-            SubscribedAt = l.SubscribedAt,
-        })];
-    }
-
     /// <summary>
     /// Per category the later <c>UpdatedAt</c> wins; a source-only category moves across; every row touched
-    /// is stamped <paramref name="updatedAt"/>. The source keeps a cleared row wherever a legacy row backs it,
-    /// so the copy can't bring it back under the merged-away id.
+    /// is stamped <paramref name="updatedAt"/>. The source's rows are removed.
     /// </summary>
     public async Task ReassignAsync(Guid sourceUserId, Guid targetUserId, Guid actorUserId, Instant updatedAt,
         CancellationToken cancellationToken)
     {
         _ = actorUserId;
-        var sourceLegacy = LegacyRows(await userService.GetRawUserInfoAsync(sourceUserId, cancellationToken));
-        var targetLegacy = LegacyRows(await userService.GetRawUserInfoAsync(targetUserId, cancellationToken));
         var sourceRows = await repository.GetByUserIdAsync(sourceUserId, cancellationToken);
         var targetRows = await repository.GetByUserIdAsync(targetUserId, cancellationToken);
-        if (sourceRows.Count == 0 && sourceLegacy.Count == 0)
+        if (sourceRows.Count == 0)
             return;
 
-        // Target keeps its own rows (cleared ones included), then takes the fold.
-        var target = targetRows.ToDictionary(r => r.Category);
-        var targetEffective = Effective(targetRows, targetLegacy).ToDictionary(r => r.Category);
-        foreach (var src in Effective(sourceRows, sourceLegacy))
+        var target = Recorded(targetRows).ToDictionary(r => r.Category);
+        foreach (var src in Recorded(sourceRows))
         {
-            if (targetEffective.TryGetValue(src.Category, out var tgt))
+            if (target.TryGetValue(src.Category, out var tgt))
             {
                 var winner = src.UpdatedAt > tgt.UpdatedAt ? src : tgt;
                 target[src.Category] = new CommunicationPreference
@@ -368,27 +268,13 @@ internal sealed class CommunicationPreferenceService(
             }
         }
 
-        var sourceCleared = sourceLegacy
-            .Select(l => new CommunicationPreference
-            {
-                Id = Guid.NewGuid(),
-                UserId = sourceUserId,
-                Category = l.Category,
-                OptedOut = null,
-                UpdatedAt = updatedAt,
-                UpdateSource = "AccountMerge",
-            })
-            .ToList();
-
         await repository.ReplaceForUsersAsync(
-            [(sourceUserId, sourceCleared), (targetUserId, target.Values.ToList())], cancellationToken);
+            [(sourceUserId, []), (targetUserId, target.Values.ToList())], cancellationToken);
     }
 
     public async Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct)
     {
-        var rows = Effective(
-            await repository.GetByUserIdAsync(userId, ct),
-            LegacyRows(await userService.GetRawUserInfoAsync(userId, ct)));
+        var rows = Recorded(await repository.GetByUserIdAsync(userId, ct));
         return
         [
             new UserDataSlice(CommunicationPreferencesSlice, rows.OrderBy(cp => cp.Category).Select(cp => new
@@ -411,7 +297,7 @@ internal sealed class CommunicationPreferenceService(
 
     public IReadOnlyDictionary<string, string?> ErasureDeclaration => Erasure;
 
-    /// <summary>Deletes every row. Users' erasure deletes the frozen legacy rows.</summary>
+    /// <summary>Deletes every row owned by Email.</summary>
     public Task EraseForUserAsync(Guid userId, CancellationToken ct) =>
         repository.DeleteAllForUserAsync(userId, ct);
 }

@@ -1,6 +1,7 @@
 @model Humans.Finance.Models.CreditorStatementVm
 @{
     ViewData["Title"] = $"Creditor {Model.Ledger.SupplierAccountNum}";
+    ViewData[Humans.Base.ViewComponents.AdminNavComposition.ParentKey] = "Creditors";
     var ledger = Model.Ledger;
     var lines = Model.Lines;
 

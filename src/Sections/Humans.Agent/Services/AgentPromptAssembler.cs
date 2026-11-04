@@ -70,13 +70,10 @@ internal sealed class AgentPromptAssembler : IAgentPromptAssembler
         }
 
         if (snapshot.PendingConsentDocs.Count > 0)
-            sb.AppendLine("Pending consents: " + string.Join(", ", snapshot.PendingConsentDocs));
+            sb.AppendLine("Pending consents: " + string.Join(", ", snapshot.PendingConsentDocs.Order(StringComparer.Ordinal)));
 
         if (snapshot.OpenTicketIds.Count > 0)
             sb.AppendLine(string.Create(CultureInfo.InvariantCulture, $"OpenTickets: {snapshot.OpenTicketIds.Count}"));
-
-        if (snapshot.OpenFeedbackIds.Count > 0)
-            sb.AppendLine(string.Create(CultureInfo.InvariantCulture, $"OpenFeedback: {snapshot.OpenFeedbackIds.Count}"));
 
         if (snapshot.UpcomingShifts.Count > 0)
         {

@@ -169,7 +169,7 @@ Repositories: `ITicketRepository`, `ITicketTransferRepository`.
 | TicketAttendees | R/W |
 | TicketTransferRequests | R/W |
 
-Cross-section calls via `IUserService`, `IUserEmailService`,
+Cross-section calls via `IUserService` (including canonical contact email),
 `IEmailService`, the section's own `TicketsEmails` builder,
 `IAuditLogService`, plus
 `ITicketVendorService` (`ProcessTransferAsync` / `RetryReissueAsync` run the
@@ -224,15 +224,13 @@ Repository: `IEventParticipationRepository` (Singleton, `IDbContextFactory<Ticke
 
 | Table | R/W |
 |-------|-----|
-| EventParticipations (`tickets_event_participations`) | R/W (W: member declaration, ticket sync, Gate admit via `ITicketWrite`, admin backfill, merge fold, `tickets.event-participations` copy; a `null` `Status` is a cleared record) |
+| EventParticipations (`tickets_event_participations`) | R/W (W: member declaration, ticket sync, Gate admit via `ITicketWrite`, admin backfill, merge fold; a `null` `Status` is a cleared record) |
 
 Implements the internal `IEventParticipationManagement` (and so `ITicketWrite`),
 `IUserDataContributor` (slice `EventParticipations`, retained on erasure) and
 `IUserMerge`. `TicketQueryService` forwards `ITicketService.GetParticipationsAsync` /
 `GetAllParticipationsAsync` to it. Cross-section calls via `IUserService`
-(`GetUserInfoAsync` to forward-resolve a merged id; `GetRawUserInfoAsync` /
-`GetAllRawUserInfosAsync` for the frozen legacy rows — the one suppressed
-`HUM_USER_PARTICIPATIONS` reader, `LegacyRows`) and `IAuditLogService`
+(`GetUserInfoAsync` to forward-resolve a merged id) and `IAuditLogService`
 (`ParticipationBackfilled`). No cache.
 
 ### UserParticipationBackfillService (Scoped)
@@ -259,8 +257,9 @@ No repository, no `IApplicationService`-derived interface (plain class, not
 part of the verifier's service inventory). Provisions and manages the shared
 gate-terminal account (`SystemUserIds.GateTerminal` — a real `User` row, not
 a person) the first time a ticket admin sets its password from
-`/Tickets/Admin/Gate`. Creates the Identity
-user via `UserManager<User>`, saves its profile through Users' canonical
+`/Tickets/Admin/Gate`. Creates the account
+via `IAccountProvisioningService.CreateAccountAsync`, sets the password through
+`IUserSignInService`, saves its profile through Users' canonical
 `IProfileEditorService.SaveProfileAsync`, clears its consent check via
 Consent's `IConsentWrite.RecordConsentCheckAsync`, invalidates the user-access
 cache, and logs via `IAuditLogService`. Users refreshes its own `UserInfo`

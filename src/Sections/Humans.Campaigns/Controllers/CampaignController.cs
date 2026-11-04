@@ -39,7 +39,7 @@ internal sealed class CampaignController(
     [Authorize(Policy = PolicyNames.AdminOnly)]
     public async Task<IActionResult> Create(string title, string? description, string emailSubject, string emailBodyTemplate, string? replyToAddress)
     {
-        var currentUser = await GetCurrentUserInfoAsync();
+        var currentUser = await GetCurrentUserInfoAsync(HttpContext.RequestAborted);
         if (currentUser is null) return Unauthorized();
 
         var result = await campaignService.CreateAsync(
@@ -74,7 +74,7 @@ internal sealed class CampaignController(
     [Authorize(Policy = PolicyNames.AdminOnly)]
     public async Task<IActionResult> Edit(Guid id, string title, string? description, string emailSubject, string emailBodyTemplate, string? replyToAddress)
     {
-        var currentUser = await GetCurrentUserInfoAsync();
+        var currentUser = await GetCurrentUserInfoAsync(HttpContext.RequestAborted);
         if (currentUser is null) return Unauthorized();
 
         var updated = await campaignService.UpdateAsync(
@@ -134,11 +134,7 @@ internal sealed class CampaignController(
         var page = await campaignService.GetDetailPageAsync(id, HttpContext.RequestAborted);
         if (page is null) return NotFound();
 
-        return View(new CampaignDetailViewModel
-        {
-            Campaign = page.Campaign,
-            Stats = page.Stats
-        });
+        return View(page);
     }
 
     [HttpPost("{id:guid}/ImportCodes")]
@@ -147,7 +143,7 @@ internal sealed class CampaignController(
     [RequestSizeLimit(1 * 1024 * 1024)] // Code CSV is read into memory before duplicate filtering.
     public async Task<IActionResult> ImportCodes(Guid id, IFormFile? file)
     {
-        var currentUser = await GetCurrentUserInfoAsync();
+        var currentUser = await GetCurrentUserInfoAsync(HttpContext.RequestAborted);
         if (currentUser is null) return Unauthorized();
 
         if (file is null || file.Length == 0)
@@ -161,32 +157,30 @@ internal sealed class CampaignController(
         var codes = new List<string>();
         if (file.FileName.EndsWith(".csv", StringComparison.OrdinalIgnoreCase))
         {
-            var config = HumansCsv.ReadConfig();
-            config.HasHeaderRecord = false;
-            using var csv = new CsvReader(new StringReader(content), config);
+            using var csv = CsvReader.FromText(content, HumansCsv.ReadConfig() with { HasHeader = false });
             var invalid = false;
             try
             {
                 while (await csv.ReadAsync())
                 {
                     HttpContext.RequestAborted.ThrowIfCancellationRequested();
-                    if (csv.Parser.Count != 1)
+                    if (csv.FieldCount != 1)
                     {
                         invalid = true;
                         break;
                     }
-                    var code = csv.GetField(0);
+                    var code = csv.GetString(0);
                     if (!string.IsNullOrWhiteSpace(code)) codes.Add(code);
                 }
             }
-            catch (CsvHelperException)
+            catch (CsvFormatException)
             {
                 invalid = true;
             }
             if (invalid)
             {
                 logger.LogWarning("Rejected campaign {CampaignId} code CSV at row {Row}: expected one well-formed column",
-                    id, csv.Parser.Row);
+                    id, csv.RowNumber);
                 SetError("Invalid CSV. Upload one column of codes without a header.");
                 return RedirectToAction(nameof(Detail), new { id });
             }
@@ -224,7 +218,7 @@ internal sealed class CampaignController(
     [Authorize(Policy = TicketsPolicies.Manage)]
     public async Task<IActionResult> GenerateCodes(Guid id, int count, string discountType, [BindRequired] decimal discountValue)
     {
-        var currentUser = await GetCurrentUserInfoAsync();
+        var currentUser = await GetCurrentUserInfoAsync(HttpContext.RequestAborted);
         if (currentUser is null) return Unauthorized();
 
         if (!ModelState.IsValid)
@@ -260,7 +254,7 @@ internal sealed class CampaignController(
     [Authorize(Policy = PolicyNames.AdminOnly)]
     public async Task<IActionResult> Activate(Guid id)
     {
-        var currentUser = await GetCurrentUserInfoAsync();
+        var currentUser = await GetCurrentUserInfoAsync(HttpContext.RequestAborted);
         if (currentUser is null) return Unauthorized();
 
         var result = await campaignService.ActivateAsync(currentUser.Id, id);
@@ -282,7 +276,7 @@ internal sealed class CampaignController(
     [Authorize(Policy = PolicyNames.AdminOnly)]
     public async Task<IActionResult> Complete(Guid id)
     {
-        var currentUser = await GetCurrentUserInfoAsync();
+        var currentUser = await GetCurrentUserInfoAsync(HttpContext.RequestAborted);
         if (currentUser is null) return Unauthorized();
 
         var result = await campaignService.CompleteAsync(currentUser.Id, id);
@@ -310,13 +304,7 @@ internal sealed class CampaignController(
             return RedirectToAction(nameof(Detail), new { id });
         }
 
-        return View(new CampaignSendWaveViewModel
-        {
-            Campaign = page.Campaign,
-            Teams = page.Teams,
-            SelectedTeamId = page.SelectedTeamId,
-            Preview = page.Preview
-        });
+        return View(page);
     }
 
     [HttpPost("{id:guid}/SendWave")]
@@ -324,7 +312,7 @@ internal sealed class CampaignController(
     [Authorize(Policy = PolicyNames.AdminOnly)]
     public async Task<IActionResult> SendWave(Guid id, Guid teamId)
     {
-        var currentUser = await GetCurrentUserInfoAsync();
+        var currentUser = await GetCurrentUserInfoAsync(HttpContext.RequestAborted);
         if (currentUser is null) return Unauthorized();
 
         var result = await campaignService.SendWaveAsync(currentUser.Id, id, teamId);
@@ -346,10 +334,10 @@ internal sealed class CampaignController(
     [Authorize(Policy = PolicyNames.AdminOnly)]
     public async Task<IActionResult> Resend(Guid grantId)
     {
-        var currentUser = await GetCurrentUserInfoAsync();
+        var currentUser = await GetCurrentUserInfoAsync(HttpContext.RequestAborted);
         if (currentUser is null) return Unauthorized();
 
-        var campaignId = await campaignService.GetCampaignIdForGrantAsync(grantId);
+        var campaignId = await campaignService.GetCampaignIdForGrantAsync(grantId, HttpContext.RequestAborted);
         if (!campaignId.HasValue) return NotFound();
 
         await campaignService.ResendToGrantAsync(currentUser.Id, grantId);

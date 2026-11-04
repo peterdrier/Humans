@@ -16,15 +16,6 @@ internal interface IHoldedRepository : IRepository
     /// <summary>Keyed on the account number, which is how Holded and every caller identify it.</summary>
     Task UpsertManagedAccountAsync(HoldedManagedAccount row, CancellationToken ct = default);
 
-    /// <summary>Removes missing rows and keeps the identity and creation time of retained ones. A null
-    /// <see cref="HoldedExpenseDoc.Notes"/> keeps the stored notes.</summary>
-    Task ReplaceDocsAsync(IReadOnlyList<HoldedExpenseDoc> docs, Instant now, CancellationToken ct = default);
-    Task<IReadOnlyList<HoldedExpenseDoc>> GetUnmatchedAsync(CancellationToken ct = default);
-    Task<IReadOnlyList<HoldedExpenseDoc>> GetMatchedForYearAsync(int calendarYear, CancellationToken ct = default);
-
-    /// <summary>Matched or not; the two reads above are filtered slices. Unordered.</summary>
-    Task<IReadOnlyList<HoldedExpenseDoc>> GetAllDocsAsync(CancellationToken ct = default);
-
     Task<HoldedCreditorContact?> GetCreditorContactByUserAsync(Guid userId, CancellationToken ct = default);
     Task<IReadOnlyList<HoldedCreditorContact>> GetCreditorContactsAsync(CancellationToken ct = default);
     /// <summary>Inserts or updates in place. False only when a concurrent insert won the member's unique slot; nothing
@@ -63,15 +54,12 @@ internal interface IHoldedRepository : IRepository
     Task SaveSepaTransferPaymentRefsAsync(
         Guid transferId, string holdedPaymentRefs, CancellationToken ct = default);
 
-    /// <summary>The service has already checked the row is unbooked.</summary>
-    Task SaveSepaTransferWithdrawnAsync(
-        Guid transferId, Instant withdrawnAt, Guid withdrawnByUserId, CancellationToken ct = default);
+    /// <summary>One save for all of them, so a cancelled file is never left half withdrawn. The service has already
+    /// checked every row is unbooked.</summary>
+    Task SaveSepaTransfersWithdrawnAsync(
+        IReadOnlyCollection<Guid> transferIds, Instant withdrawnAt, Guid withdrawnByUserId, CancellationToken ct = default);
 
     /// <summary>A reconcile that succeeded on a later pass; the booking is untouched.</summary>
     Task MarkSepaTransferReconciledAsync(
         Guid transferId, Instant reconciledAt, CancellationToken ct = default);
-
-    /// <summary>The persisted singleton, or an unsaved Idle default. Never writes.</summary>
-    Task<HoldedDocSyncState> GetOrCreateDocSyncStateAsync(CancellationToken ct = default);
-    Task SaveDocSyncStateAsync(HoldedDocSyncState state, CancellationToken ct = default);
 }

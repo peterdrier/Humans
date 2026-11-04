@@ -8,7 +8,6 @@ internal sealed record Waypoint(string Label, double Latitude, double Longitude)
 internal sealed record TripView(
     Guid Id,
     Guid UserId,
-    int Year,
     RideshareDirection Direction,
     string MemberPlaceLabel,
     double MemberLatitude,
@@ -29,15 +28,14 @@ internal sealed record TripView(
     string? CostNote,
     Guid? LinkedTripId,
     TripStatus Status,
-    Instant CreatedAt,
-    Instant UpdatedAt)
+    Instant CreatedAt)
 {
     public bool IsFull => SeatsRemaining <= 0;
 
     /// <summary>Last day of travel: departure plus duration minus one.</summary>
-    public LocalDate LastTravelDate => DepartureDate.PlusDays(ExpectedDurationDays - 1);
+    public LocalDate LastTravelDate => RideshareTrip.LastTravelDate(DepartureDate, ExpectedDurationDays);
 
-    public bool CoversDate(LocalDate date) => date >= DepartureDate && date <= LastTravelDate;
+    public bool CoversDate(LocalDate date) => RideshareTrip.CoversDate(DepartureDate, ExpectedDurationDays, date);
 
     public bool IsJoinable => Status == TripStatus.Active && !IsFull;
 }
@@ -45,7 +43,6 @@ internal sealed record TripView(
 internal sealed record RequestView(
     Guid Id,
     Guid UserId,
-    int Year,
     RideshareDirection Direction,
     string PickupPlaceLabel,
     double PickupLatitude,
@@ -57,8 +54,7 @@ internal sealed record RequestView(
     string? Notes,
     RequestStatus Status,
     bool IsMatched,
-    Instant CreatedAt,
-    Instant UpdatedAt);
+    Instant CreatedAt);
 
 internal sealed record InterestView(
     Guid Id,
@@ -68,11 +64,9 @@ internal sealed record InterestView(
     int Seats,
     string? Message,
     InterestStatus Status,
-    Instant CreatedAt,
-    Instant? RespondedAt);
+    Instant CreatedAt);
 
 internal sealed record SettingsView(
-    int Year,
     string DestinationLabel,
     double DestinationLatitude,
     double DestinationLongitude,

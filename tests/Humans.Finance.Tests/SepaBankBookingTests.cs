@@ -48,6 +48,7 @@ public class SepaBankBookingTests
     private readonly IHoldedClient _client = Substitute.For<IHoldedClient>();
     private readonly IBudgetService _budget = Substitute.For<IBudgetService>();
     private readonly IHoldedService _holded = Substitute.For<IHoldedService>();
+    private readonly IHoldedWrite _write = Substitute.For<IHoldedWrite>();
     private readonly FakeClock _clock = new(FixedNow);
     private readonly IMemoryCache _cache = new MemoryCache(new MemoryCacheOptions());
     private readonly TrackedCache<string, Dictionary<string, int>> _bookingState = new(
@@ -59,9 +60,10 @@ public class SepaBankBookingTests
     private Service MakeService() => MakeService(NullLogger<Service>.Instance);
 
     private Service MakeService(ILogger<Service> logger) => new(
-        _repo, _client, _budget, _holded, Substitute.For<IExpenseHoldedBookingService>(), _clock, _cache, _audit,
-        Substitute.For<IUserService>(), Substitute.For<IUserEmailService>(), Substitute.For<IEmailService>(),
-        TestFinanceEmails.Create(), Options.Create(_sepa), _bookingState, logger);
+        _repo, _client, _budget, _holded, _write, Substitute.For<IExpenseHoldedBookingService>(), _clock, _cache, _audit,
+        Substitute.For<IUserService>(), Substitute.For<IEmailService>(),
+        TestFinanceEmails.Create(), Options.Create(_sepa), _bookingState,
+        Substitute.For<IPaymentDetailsManagement>(), logger);
 
     public SepaBankBookingTests()
     {
@@ -83,10 +85,10 @@ public class SepaBankBookingTests
                 Arg.Any<string>(), Arg.Any<decimal>(), Arg.Any<string>(), Arg.Any<LocalDate>(),
                 Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(ci => "pay-" + ci.ArgAt<string>(0));
-        _client.PostLedgerEntryAsync(
+        _write.PostJournalEntryAsync(
                 Arg.Any<LocalDate>(), Arg.Any<int>(), Arg.Any<int>(), Arg.Any<decimal>(),
                 Arg.Any<string>(), Arg.Any<CancellationToken>())
-            .Returns("e-1");
+            .Returns(new HoldedJournalEntryOutcome(true));
     }
 
     [HumansFact]
@@ -105,7 +107,7 @@ public class SepaBankBookingTests
         result.Succeeded.Should().BeTrue();
         await _client.Received(25).PayPurchaseDocumentAsync(
             Arg.Any<string>(), 10m, "treasury-1", LineDate, Tag, Arg.Any<CancellationToken>());
-        await _client.DidNotReceiveWithAnyArgs().PostLedgerEntryAsync(
+        await _write.DidNotReceiveWithAnyArgs().PostJournalEntryAsync(
             default, default, default, default, default!);
         await _repo.Received(1).SaveSepaTransferBookingAsync(
             TransferId, FixedNow, Arg.Any<Guid?>(), MovementId, Arg.Any<Instant?>(),
@@ -120,7 +122,7 @@ public class SepaBankBookingTests
         // Run 1: the €10 document payment lands, the €20 journal entry is refused. Nothing is
         // stamped, the money that did move is audited, and its payment id is written to the row.
         SeedOpenDocs(Doc("d1", 10m, 1));
-        _client.PostLedgerEntryAsync(
+        _write.PostJournalEntryAsync(
                 Arg.Any<LocalDate>(), Arg.Any<int>(), Arg.Any<int>(), Arg.Any<decimal>(),
                 Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Throws(new HoldedPermanentException("Holded 400"));
@@ -155,7 +157,7 @@ public class SepaBankBookingTests
         // posted for the whole €30.
         await _client.Received(1).PayPurchaseDocumentAsync(
             "d1", 10m, "treasury-1", LineDate, Tag, Arg.Any<CancellationToken>());
-        await _client.DidNotReceive().PostLedgerEntryAsync(
+        await _write.DidNotReceive().PostJournalEntryAsync(
             Arg.Any<LocalDate>(), Arg.Any<int>(), Arg.Any<int>(), 30m, Arg.Any<string>(),
             Arg.Any<CancellationToken>());
         await _repo.DidNotReceiveWithAnyArgs().SaveSepaTransferBookingAsync(
@@ -189,7 +191,7 @@ public class SepaBankBookingTests
         result.Succeeded.Should().BeTrue();
         await _client.DidNotReceiveWithAnyArgs().PayPurchaseDocumentAsync(
             default!, default, default, default, default!);
-        await _client.DidNotReceiveWithAnyArgs().PostLedgerEntryAsync(
+        await _write.DidNotReceiveWithAnyArgs().PostJournalEntryAsync(
             default, default, default, default, default!);
         await _repo.Received(1).SaveSepaTransferBookingAsync(
             TransferId, FixedNow, Arg.Any<Guid?>(), MovementId, Arg.Any<Instant?>(), Arg.Any<string?>(),
@@ -214,7 +216,7 @@ public class SepaBankBookingTests
         result.Succeeded.Should().BeTrue();
         await _client.Received(1).PayPurchaseDocumentAsync(
             "d1", 20m, "treasury-1", LineDate, Tag, Arg.Any<CancellationToken>());
-        await _client.Received(1).PostLedgerEntryAsync(
+        await _write.Received(1).PostJournalEntryAsync(
             LineDate, Account, 57200001, 10m, Tag, Arg.Any<CancellationToken>());
         await _repo.Received(1).SaveSepaTransferBookingAsync(
             TransferId, FixedNow, Arg.Any<Guid?>(), MovementId, Arg.Any<Instant?>(), Arg.Any<string?>(),
@@ -251,7 +253,7 @@ public class SepaBankBookingTests
 
         await _client.Received(1).PayPurchaseDocumentAsync(
             "d1", 10m, "treasury-1", LineDate, Tag, Arg.Any<CancellationToken>());
-        await _client.Received(1).PostLedgerEntryAsync(
+        await _write.Received(1).PostJournalEntryAsync(
             LineDate, Account, 57200001, 20m, Tag, Arg.Any<CancellationToken>());
     }
 
@@ -631,7 +633,7 @@ public class SepaBankBookingTests
         await _client.DidNotReceive().PayPurchaseDocumentAsync(
             "newest", Arg.Any<decimal>(), Arg.Any<string>(), Arg.Any<LocalDate>(), Arg.Any<string>(),
             Arg.Any<CancellationToken>());
-        await _client.DidNotReceiveWithAnyArgs().PostLedgerEntryAsync(
+        await _write.DidNotReceiveWithAnyArgs().PostJournalEntryAsync(
             default, default, default, default, default!);
     }
 
@@ -646,7 +648,7 @@ public class SepaBankBookingTests
         result.Succeeded.Should().BeTrue();
         await _client.DidNotReceiveWithAnyArgs().PayPurchaseDocumentAsync(
             default!, default, default, default, default!);
-        await _client.Received(1).PostLedgerEntryAsync(
+        await _write.Received(1).PostJournalEntryAsync(
             LineDate, Account, 57200001, 30m, Tag, Arg.Any<CancellationToken>());
     }
 
@@ -661,7 +663,7 @@ public class SepaBankBookingTests
         await _audit.Received(1).LogAsync(
             FinanceAuditActions.SepaPayoutTransferBooked, Arg.Any<string>(), TransferId,
             Arg.Is<string>(d => d.Contains("d1 10.00 EUR pay-d1", StringComparison.Ordinal)
-                                && d.Contains("journal entry for 20.00 EUR (e-1)", StringComparison.Ordinal)
+                                && d.Contains("journal entry for 20.00 EUR (confirmed)", StringComparison.Ordinal)
                                 && d.Contains(MovementId, StringComparison.Ordinal)
                                 && d.Contains("2026-04-28", StringComparison.Ordinal)
                                 && d.Contains(AnaIbanMasked, StringComparison.Ordinal)
@@ -1134,9 +1136,9 @@ public class SepaBankBookingTests
 
         result.Succeeded.Should().BeTrue();
         // Only the €10 gap — not the €30 the transfer pays.
-        await _client.Received(1).PostLedgerEntryAsync(
+        await _write.Received(1).PostJournalEntryAsync(
             LineDate, Account, 57200001, 10m, Tag, Arg.Any<CancellationToken>());
-        await _client.DidNotReceive().PostLedgerEntryAsync(
+        await _write.DidNotReceive().PostJournalEntryAsync(
             Arg.Any<LocalDate>(), Arg.Any<int>(), Arg.Any<int>(), 30m, Arg.Any<string>(),
             Arg.Any<CancellationToken>());
     }
@@ -1154,7 +1156,7 @@ public class SepaBankBookingTests
         var result = await MakeService().BookSepaTransferAsync(TransferId, MovementId, Guid.NewGuid());
 
         result.Succeeded.Should().BeTrue();
-        await _client.Received(1).PostLedgerEntryAsync(
+        await _write.Received(1).PostJournalEntryAsync(
             LineDate, Account, 57200001, 25m, Tag, Arg.Any<CancellationToken>());
         await _repo.Received(1).SaveSepaTransferBookingAsync(
             TransferId, FixedNow, Arg.Any<Guid?>(), MovementId, Arg.Any<Instant?>(), Arg.Any<string?>(),
@@ -1189,7 +1191,7 @@ public class SepaBankBookingTests
         var result = await MakeService().BookSepaTransferAsync(TransferId, MovementId, Guid.NewGuid());
 
         result.Succeeded.Should().BeTrue();
-        await _client.DidNotReceiveWithAnyArgs().PostLedgerEntryAsync(
+        await _write.DidNotReceiveWithAnyArgs().PostJournalEntryAsync(
             default, default, default, default, default!);
     }
 
@@ -1940,13 +1942,13 @@ public class SepaBankBookingTests
     public async Task Booking_JournalEntryUnconfirmed_StampsOnlyWhenHoldedThenReadsReconciled(
         string statusAfter, bool stamped)
     {
-        // The entry's ref is unconfirmed; the reconcile carries the payment alone either way, and
+        // The journal outcome is unconfirmed; the reconcile carries the payment alone either way, and
         // Holded accepting that can still leave the line `partial` with the remainder unmatched.
         SeedOpenDocs(Doc("d1", 10m, 1));
-        _client.PostLedgerEntryAsync(
+        _write.PostJournalEntryAsync(
                 Arg.Any<LocalDate>(), Arg.Any<int>(), Arg.Any<int>(), Arg.Any<decimal>(),
                 Arg.Any<string>(), Arg.Any<CancellationToken>())
-            .Returns("unconfirmed:e-1");
+            .Returns(new HoldedJournalEntryOutcome(false));
         var reads = 0;
         _client.ListBankMovementsAsync(
                 Arg.Any<string>(), Arg.Any<LocalDate>(), Arg.Any<LocalDate>(),
@@ -1957,6 +1959,14 @@ public class SepaBankBookingTests
         var result = await MakeService().BookSepaTransferAsync(TransferId, MovementId, Guid.NewGuid());
 
         result.Succeeded.Should().BeTrue();
+        result.Message.Should().Contain("journal entry for 20.00 EUR (unconfirmed)");
+        await _audit.Received(1).LogAsync(
+            FinanceAuditActions.SepaPayoutTransferBooked, Arg.Any<string>(), TransferId,
+            Arg.Is<string>(d => d.Contains("journal entry for 20.00 EUR (unconfirmed)", StringComparison.Ordinal)),
+            Arg.Any<Guid>(), _userId, Arg.Any<string>());
+        await _repo.Received(1).SaveSepaTransferBookingAsync(
+            TransferId, FixedNow, Arg.Any<Guid?>(), MovementId, Arg.Any<Instant?>(),
+            "pay-d1,entry:20.00", Arg.Any<CancellationToken>());
         await _client.Received(1).ReconcileBankMovementAsync(
             "treasury-1", MovementId,
             Arg.Is<IReadOnlyList<HoldedReconcileDocumentRef>>(d =>
@@ -2046,10 +2056,10 @@ public class SepaBankBookingTests
             SeedOpenDocs(Batch.Select(t => Doc("d-" + t.Account, t.Amount, 1, "c-" + t.Account)).ToArray());
         SeedOwed(0m, Batch.Select(t => (t.Account, t.Amount)).ToArray());
         SeedMovements(Movement(BatchMovementId, -100m, description));
-        _client.PostLedgerEntryAsync(
+        _write.PostJournalEntryAsync(
                 Arg.Any<LocalDate>(), Arg.Any<int>(), Arg.Any<int>(), Arg.Any<decimal>(),
                 Arg.Any<string>(), Arg.Any<CancellationToken>())
-            .Returns(ci => "e-" + ci.ArgAt<int>(1));
+            .Returns(new HoldedJournalEntryOutcome(true));
     }
 
     [HumansFact]
@@ -2268,7 +2278,7 @@ public class SepaBankBookingTests
     {
         await _client.DidNotReceiveWithAnyArgs().PayPurchaseDocumentAsync(
             default!, default, default, default, default!);
-        await _client.DidNotReceiveWithAnyArgs().PostLedgerEntryAsync(
+        await _write.DidNotReceiveWithAnyArgs().PostJournalEntryAsync(
             default, default, default, default, default!);
         await _repo.DidNotReceiveWithAnyArgs().SaveSepaTransferBookingAsync(
             default, default, default, default!, default, default);

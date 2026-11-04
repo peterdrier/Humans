@@ -1,6 +1,18 @@
 @using Humans.Teams.Contracts
 @model Humans.Users.Models.ProfileCardViewModel
 @inject IAuthorizationService AuthService
+@inject Microsoft.AspNetCore.Mvc.Localization.IHtmlLocalizer<UsersResource> HtmlLocalizer
+@{
+    var human = await Component.InvokeAsync(typeof(Humans.Base.ViewComponents.HumanViewComponent), new
+    {
+        userId = Model.UserId,
+        link = Humans.Base.ViewComponents.HumanLink.None,
+    });
+    using var humanWriter = new System.IO.StringWriter();
+    human.WriteTo(humanWriter, System.Text.Encodings.Web.HtmlEncoder.Default);
+    // The same encoded name fits the heading and localized sentence without template indentation.
+    var humanHtml = new Microsoft.AspNetCore.Html.HtmlString(humanWriter.ToString().Trim());
+}
 
 <div class="card mb-4">
     <div class="card-header d-flex justify-content-between align-items-center">
@@ -19,7 +31,7 @@
                           link="None" />
             </div>
             <div class="col">
-                <h4>@(string.IsNullOrEmpty(Model.BurnerName) ? Model.DisplayName : Model.BurnerName)</h4>
+                <h4>@humanHtml</h4>
                 @if (!string.IsNullOrEmpty(Model.Pronouns))
                 {
                     <span class="text-muted me-2">@Model.Pronouns</span>
@@ -147,7 +159,7 @@
             <a asp-controller="FacilitatedMessage" asp-action="SendMessage" asp-route-id="@Model.UserId"
                class="btn btn-outline-primary">
                 <i class="fa-solid fa-envelope me-1"></i>
-                @string.Format(Localizer["Users_SendMessage_Button"].Value, Model.DisplayName)
+                @HtmlLocalizer["Users_SendMessage_Button", humanHtml]
             </a>
         }
 

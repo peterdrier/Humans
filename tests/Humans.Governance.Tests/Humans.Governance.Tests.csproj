@@ -2,7 +2,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\Sections\Humans.Governance\Humans.Governance.csproj" />
-    <ProjectReference Include="..\..\src\Sections\Humans.AuditLog\Humans.AuditLog.csproj" />
     <ProjectReference Include="..\..\src\Sections\Humans.Auth\Humans.Auth.csproj" />
     <ProjectReference Include="..\..\src\Sections\Humans.Email.Contracts\Humans.Email.Contracts.csproj" />
     <ProjectReference Include="..\..\src\Sections\Humans.Consent\Humans.Consent.csproj" />
@@ -10,7 +9,6 @@
     <ProjectReference Include="..\..\src\Sections\Humans.GoogleIntegration\Humans.GoogleIntegration.csproj" />
     <ProjectReference Include="..\..\src\Sections\Humans.Notifications.Contracts\Humans.Notifications.Contracts.csproj" />
     <ProjectReference Include="..\..\src\Sections\Humans.Teams.Contracts\Humans.Teams.Contracts.csproj" />
-    <ProjectReference Include="..\..\src\Sections\Humans.Users.Contracts\Humans.Users.Contracts.csproj" />
     <ProjectReference Include="..\..\src\Humans.Base\Humans.Base.csproj" />
     <ProjectReference Include="..\..\src\Sections\Humans.Shifts.Contracts\Humans.Shifts.Contracts.csproj" />
   </ItemGroup>

@@ -10,8 +10,7 @@ internal sealed class RideshareSettings
     public int Year { get; set; }
 
     /// <summary>
-    /// The event this row belongs to. Null on rows from before events were tracked, until the
-    /// <c>rideshare.event-ids</c> data migration stamps them; until then they belong to the event that run would pick.
+    /// The event this row belongs to. Legacy orphan rows may remain null and are excluded from event boards.
     /// </summary>
     public Guid? EventSettingsId { get; set; }
 

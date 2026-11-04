@@ -185,8 +185,6 @@ internal sealed class Service(
         }
 
         int[] offsets = [0, settings.BuildStartOffset, settings.EventEndOffset, settings.StrikeEndOffset,
-            settings.FirstCrewStartOffset, settings.SetupWeekStartOffset,
-            settings.PreEventWeekStartOffset, settings.FinishingWeekendStartOffset,
             settings.EarlyEntryStartOffset ?? 0];
         foreach (var offset in offsets)
         {
@@ -234,10 +232,6 @@ internal sealed class Service(
         BuildStartOffset: src.BuildStartOffset,
         EventEndOffset: src.EventEndOffset,
         StrikeEndOffset: src.StrikeEndOffset,
-        FirstCrewStartOffset: src.FirstCrewStartOffset,
-        SetupWeekStartOffset: src.SetupWeekStartOffset,
-        PreEventWeekStartOffset: src.PreEventWeekStartOffset,
-        FinishingWeekendStartOffset: src.FinishingWeekendStartOffset,
         EarlyEntryCapacity: new Dictionary<int, int>(src.EarlyEntryCapacity),
         BarriosEarlyEntryAllocation: src.BarriosEarlyEntryAllocation is null
             ? null : new Dictionary<int, int>(src.BarriosEarlyEntryAllocation),
@@ -256,10 +250,6 @@ internal sealed class Service(
         BuildStartOffset = src.BuildStartOffset,
         EventEndOffset = src.EventEndOffset,
         StrikeEndOffset = src.StrikeEndOffset,
-        FirstCrewStartOffset = src.FirstCrewStartOffset,
-        SetupWeekStartOffset = src.SetupWeekStartOffset,
-        PreEventWeekStartOffset = src.PreEventWeekStartOffset,
-        FinishingWeekendStartOffset = src.FinishingWeekendStartOffset,
         EarlyEntryCapacity = new Dictionary<int, int>(src.EarlyEntryCapacity),
         BarriosEarlyEntryAllocation = src.BarriosEarlyEntryAllocation is null
             ? null : new Dictionary<int, int>(src.BarriosEarlyEntryAllocation),

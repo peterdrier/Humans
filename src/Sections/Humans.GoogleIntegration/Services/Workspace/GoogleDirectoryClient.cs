@@ -14,54 +14,6 @@ internal sealed class GoogleDirectoryClient(
 
     private DirectoryService? _directoryService;
 
-    public async Task<DirectoryUserListResult> ListDomainUsersAsync(CancellationToken ct = default)
-    {
-        using var _ = logger.TimeOperation();
-        try
-        {
-            var service = await GetDirectoryServiceAsync(ct);
-            var users = new List<DirectoryUser>();
-            string? pageToken = null;
-
-            do
-            {
-                var request = service.Users.List();
-                request.Domain = _settings.Domain;
-                request.MaxResults = 500;
-                if (pageToken is not null)
-                {
-                    request.PageToken = pageToken;
-                }
-
-                var response = await request.ExecuteAsync(ct);
-
-                if (response.UsersValue is not null)
-                {
-                    foreach (var u in response.UsersValue)
-                    {
-                        if (!string.IsNullOrEmpty(u.PrimaryEmail))
-                        {
-                            users.Add(new DirectoryUser(u.PrimaryEmail));
-                        }
-                    }
-                }
-
-                pageToken = response.NextPageToken;
-            } while (!string.IsNullOrEmpty(pageToken));
-
-            return new DirectoryUserListResult(users, Error: null);
-        }
-        catch (Google.GoogleApiException ex)
-        {
-            logger.LogWarning(ex,
-                "Google API error listing domain users: Code={Code} Message={Message}",
-                ex.Error?.Code, ex.Error?.Message);
-            return new DirectoryUserListResult(
-                Users: null,
-                Error: new GoogleClientError(ex.Error?.Code ?? 0, ex.Error?.Message));
-        }
-    }
-
     public async Task<DirectoryGroupListResult> ListDomainGroupsAsync(CancellationToken ct = default)
     {
         using var _ = logger.TimeOperation();
@@ -126,7 +78,6 @@ internal sealed class GoogleDirectoryClient(
 
         var credential = await GoogleCredentialLoader.LoadScopedAsync(
             _settings, ct,
-            DirectoryService.Scope.AdminDirectoryUserReadonly,
             DirectoryService.Scope.AdminDirectoryGroupReadonly);
 
         _directoryService = new DirectoryService(new BaseClientService.Initializer

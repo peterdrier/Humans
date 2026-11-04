@@ -86,6 +86,7 @@
   <data name="Enum_WorkgroupLogKind_Disclosure" xml:space="preserve"><value>Divulgació</value></data>
   <data name="Enum_WorkgroupLogKind_StatusRequested" xml:space="preserve"><value>Estat sol·licitat</value></data>
   <data name="Enum_WorkgroupLogKind_Note" xml:space="preserve"><value>Nota</value></data>
+  <data name="Enum_WorkgroupLogKind_MeetingNotes" xml:space="preserve"><value>Notes de la reunió</value></data>
 
   <data name="Enum_WorkgroupDocumentKind_Deliverable" xml:space="preserve"><value>Entregable</value></data>
   <data name="Enum_WorkgroupDocumentKind_AnnualReport" xml:space="preserve"><value>Memòria anual</value></data>
@@ -130,6 +131,7 @@
   <data name="Workgroups_Error_CategoriesRequired" xml:space="preserve"><value>Cal com a mínim una categoria de comentaris.</value></data>
   <data name="Workgroups_Error_CategoryTooLong" xml:space="preserve"><value>Una categoria de comentaris no pot superar els 100 caràcters.</value></data>
   <data name="Workgroups_Error_WindowInvalid" xml:space="preserve"><value>El període de comentaris no és vàlid.</value></data>
+  <data name="Workgroups_Error_RecurrenceInvalid" xml:space="preserve"><value>La regla de repetició no és vàlida.</value></data>
   <data name="Workgroups_Error_CommentsClosed" xml:space="preserve"><value>El període de comentaris no està obert.</value></data>
   <data name="Workgroups_Error_CommentsStillOpen" xml:space="preserve"><value>Tanca el període de comentaris abans d'entregar aquest document.</value></data>
   <data name="Workgroups_Error_UnknownCategory" xml:space="preserve"><value>Aquesta no és una de les categories de comentaris d'aquest document.</value></data>
@@ -232,23 +234,16 @@
   <data name="Workgroups_History" xml:space="preserve"><value>Historial</value></data>
   <data name="Workgroups_NewMeeting" xml:space="preserve"><value>Nova reunió</value></data>
   <data name="Workgroups_NewLogEntry" xml:space="preserve"><value>Nova entrada de l'historial</value></data>
+  <data name="Workgroups_AddMeetingNotes" xml:space="preserve"><value>Afegeix notes</value></data>
   <data name="Workgroups_NoHistory" xml:space="preserve"><value>Encara no hi ha historial.</value></data>
   <data name="Workgroups_Meeting" xml:space="preserve"><value>Reunió</value></data>
 
   <!-- Meeting form -->
   <data name="Workgroups_MeetingNewTitle" xml:space="preserve"><value>Nova reunió</value></data>
   <data name="Workgroups_MeetingEditTitle" xml:space="preserve"><value>Edita la reunió</value></data>
-  <data name="Workgroups_Field_MeetingTitle" xml:space="preserve"><value>Títol</value></data>
-  <data name="Workgroups_Field_StartDate" xml:space="preserve"><value>Data d'inici</value></data>
-  <data name="Workgroups_Field_StartTime" xml:space="preserve"><value>Hora d'inici</value></data>
-  <data name="Workgroups_Field_EndDate" xml:space="preserve"><value>Data de fi</value></data>
-  <data name="Workgroups_Field_EndTime" xml:space="preserve"><value>Hora de fi</value></data>
   <data name="Workgroups_Field_TimesAreUtc" xml:space="preserve"><value>Les hores són en UTC.</value></data>
-  <data name="Workgroups_Field_Location" xml:space="preserve"><value>Ubicació</value></data>
-  <data name="Workgroups_Field_LocationUrl" xml:space="preserve"><value>URL de la ubicació</value></data>
   <data name="Workgroups_Field_IsPublic" xml:space="preserve"><value>Mostra al calendari comunitari</value></data>
   <data name="Workgroups_Field_IsPublicHelp" xml:space="preserve"><value>Qualsevol persona amb accés a l'aplicació pot consultar la reunió i l'acta a la pàgina del grup. Aquesta opció també mostra la reunió al calendari comunitari.</value></data>
-  <data name="Workgroups_Field_Minutes" xml:space="preserve"><value>Acta</value></data>
 
   <!-- Log entry form -->
   <data name="Workgroups_LogEntryNewTitle" xml:space="preserve"><value>Nova entrada de l'historial</value></data>

@@ -47,11 +47,14 @@ public sealed class ControllerTests : PreapprovalsTestHarness
             .Cast<RouteAttribute>().Single().Template.Should().Be("Preapprovals/Admin");
     }
 
-    [HumansFact]
-    public async Task ManagerOfA_OnB_IsForbidden_AndSeesOnlyA()
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task ManagerOfA_OnB_IsForbidden_AndSeesOnlyA(bool merged)
     {
-        var manager = SeedUser("Manager");
-        var a = await SeedProgramAsync(name: "A", managers: manager);
+        var archived = Guid.NewGuid();
+        var manager = SeedUser("Manager", mergedIds: merged ? [archived] : []);
+        var a = await SeedProgramAsync(name: "A", managers: merged ? archived : manager);
         var b = await SeedProgramAsync(name: "B");
         var applicationOnB = await SeedGrantAsync(b, status: GrantStatus.Applied);
         var controller = BuildAdmin(manager);
@@ -60,9 +63,9 @@ public sealed class ControllerTests : PreapprovalsTestHarness
         (await controller.Issue(b.Id, SeedUser(), null, null, Ct)).Should().BeOfType<ForbidResult>();
         (await controller.Approve(b.Id, applicationOnB.Id, null, Ct)).Should().BeOfType<ForbidResult>();
         (await controller.Edit(a.Id, Ct)).Should().BeOfType<ForbidResult>("managers never edit the program itself");
-        (await controller.New(Ct)).Should().BeOfType<ForbidResult>();
         (await ReadGrantAsync(applicationOnB.Id)).Status.Should().Be(GrantStatus.Applied);
 
+        (await controller.Program(a.Id, Ct)).Should().BeOfType<ViewResult>();
         var index = (await controller.Index(Ct)).Should().BeOfType<ViewResult>().Which.Model.Should().BeOfType<AdminIndexViewModel>().Subject;
         index.Programs.Select(p => p.Id).Should().Equal(a.Id);
         index.CanAdminister.Should().BeFalse();
@@ -134,8 +137,37 @@ public sealed class ControllerTests : PreapprovalsTestHarness
         Email.ReceivedCalls().Should().BeEmpty();
     }
 
+    [HumansFact]
+    public void Creating_a_program_is_Finance_Manage_only()
+    {
+        typeof(PreapprovalsAdminController).GetMethods()
+            .Where(m => string.Equals(m.Name, nameof(PreapprovalsAdminController.New), StringComparison.Ordinal))
+            .Should().HaveCount(2)
+            .And.OnlyContain(m => m.GetCustomAttributes(typeof(AuthorizeAttribute), false)
+                .Cast<AuthorizeAttribute>().Any(a => string.Equals(a.Policy, FinancePolicies.Manage, StringComparison.Ordinal)));
+    }
+
+    [HumansFact]
+    public async Task Board_reads_every_program_and_changes_nothing()
+    {
+        var program = await SeedProgramAsync(name: "A");
+        var application = await SeedGrantAsync(program, status: GrantStatus.Applied);
+        var controller = BuildAdmin(SeedUser("Board member"), RoleNames.Board);
+
+        var index = (await controller.Index(Ct)).Should().BeOfType<ViewResult>().Which.Model.Should().BeOfType<AdminIndexViewModel>().Subject;
+        var page = (await controller.Program(program.Id, Ct)).Should().BeOfType<ViewResult>().Which.Model.Should().BeOfType<AdminProgramViewModel>().Subject;
+
+        index.Programs.Select(p => p.Id).Should().Equal(program.Id);
+        index.CanAdminister.Should().BeFalse();
+        page.CanManage.Should().BeFalse();
+        page.CanAdminister.Should().BeFalse();
+        (await controller.Approve(program.Id, application.Id, null, Ct)).Should().BeOfType<ForbidResult>();
+        (await controller.Issue(program.Id, SeedUser(), null, null, Ct)).Should().BeOfType<ForbidResult>();
+        (await controller.Edit(program.Id, Ct)).Should().BeOfType<ForbidResult>();
+        (await ReadGrantAsync(application.Id)).Status.Should().Be(GrantStatus.Applied);
+    }
+
     [HumansTheory]
-    [Xunit.InlineData(RoleNames.Board)]
     [Xunit.InlineData(FinanceRoles.FinanceAdmin)]
     [Xunit.InlineData(RoleNames.Admin)]
     public async Task ManagingRole_CreatesAProgram(string role)
@@ -172,7 +204,7 @@ public sealed class ControllerTests : PreapprovalsTestHarness
     public async Task Program_forms_require_explicit_kind_status_and_application_choice(bool editing, string omitted, bool zeroChoices)
     {
         var existing = editing ? await SeedProgramAsync(kind: ProgramKind.PerGrantAmount, status: ProgramStatus.Closed) : null;
-        var controller = BuildAdmin(SeedUser("Board member"), RoleNames.Board);
+        var controller = BuildAdmin(SeedUser("Finance admin"), FinanceRoles.FinanceAdmin);
         var registrations = new ServiceCollection().AddLogging();
         registrations.AddControllers();
         using var services = registrations.BuildServiceProvider();
@@ -318,9 +350,18 @@ public sealed class ControllerTests : PreapprovalsTestHarness
     {
         var services = new ServiceCollection();
         services.AddLogging();
-        services.AddAuthorization(((ISectionPolicies)new Section()).AddPolicies);
+        services.AddSingleton(Users);
+        services.AddHttpContextAccessor();
+        services.AddAuthorization(options =>
+        {
+            ((ISectionPolicies)new Section()).AddPolicies(options);
+            options.AddPolicy(FinancePolicies.Read,
+                policy => policy.RequireRole(FinanceRoles.FinanceAdmin, RoleNames.Board, RoleNames.Admin));
+            options.AddPolicy(FinancePolicies.Manage,
+                policy => policy.RequireRole(FinanceRoles.FinanceAdmin, RoleNames.Admin));
+        });
         services.AddScoped<IAuthorizationHandler, ProgramAuthorizationHandler>();
-        services.AddScoped<IAuthorizationHandler>(_ => new PreapprovalsPolicyHandler(NewService()));
+        services.AddScoped<IAuthorizationHandler>(_ => new PreapprovalsPolicyHandler(NewService(), new Microsoft.AspNetCore.Http.HttpContextAccessor()));
         var provider = services.BuildServiceProvider();
         _localizer[Arg.Any<string>(), Arg.Any<object[]>()]
             .Returns(call => new LocalizedString(call.ArgAt<string>(0), call.ArgAt<string>(0)));

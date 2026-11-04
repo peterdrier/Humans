@@ -1,11 +1,12 @@
 using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Humans.Calendar.Services.Dtos;
+using Humans.Calendar.Contracts;
 using NodaTime;
 
 namespace Humans.Calendar.Models;
 
-internal sealed class CalendarEventFormViewModel
+internal sealed class CalendarEventFormViewModel : ICalendarEventForm
 {
     public Guid? Id { get; set; }
 
@@ -24,16 +25,15 @@ internal sealed class CalendarEventFormViewModel
     [Required(ErrorMessage = "Validation_Required")]
     public Guid OwningTeamId { get; set; }
 
-    public DateTime? StartLocal { get; set; }
-
-    public DateTime? EndLocal { get; set; }
-
-    // All-day inputs. EndDateLocal is inclusive; the service stores an exclusive end.
-    public DateTime? StartDateLocal { get; set; }
-
-    public DateTime? EndDateLocal { get; set; }
-
     public bool IsAllDay { get; set; }
+
+    public LocalDate? StartDate { get; set; }
+
+    public LocalTime? StartTime { get; set; }
+
+    public LocalDate? EndDate { get; set; }
+
+    public LocalTime? EndTime { get; set; }
 
     [BindRequired]
     public bool IsRecurring { get; set; }
@@ -41,24 +41,21 @@ internal sealed class CalendarEventFormViewModel
     [StringLength(500, ErrorMessage = "Validation_MaxLength")]
     public string? RecurrenceRule { get; set; }
 
-    [Required(ErrorMessage = "Validation_Required")]
     [BindRequired]
-    public string RecurrenceTimezone { get; set; } = "Europe/Madrid";
+    public string TimeZoneId { get; set; } = string.Empty;
+
+    public bool SupportsAllDay => true;
+
+    public bool SupportsRecurrence => true;
 
     public IReadOnlyList<TeamOption> TeamOptions { get; set; } = [];
-
-    /// <summary>
-    /// Null when the posted text names no IANA zone, including a cleared box: <c>GetZoneOrNull(null)</c> throws.
-    /// </summary>
-    public static DateTimeZone? TryResolveZone(string? tz) =>
-        string.IsNullOrWhiteSpace(tz) ? null : DateTimeZoneProviders.Tzdb.GetZoneOrNull(tz);
 
     /// <summary>
     /// Empty means form level: the service names a member only for the recurrence pair it validates by hand.
     /// </summary>
     public static string ErrorFieldFor(string? serviceMemberName) => serviceMemberName switch
     {
-        nameof(CreateCalendarEventDto.RecurrenceTimezone) => nameof(RecurrenceTimezone),
+        nameof(CreateCalendarEventDto.RecurrenceTimezone) => nameof(TimeZoneId),
         nameof(CreateCalendarEventDto.RecurrenceRule) => nameof(RecurrenceRule),
         nameof(CreateCalendarEventDto.OwningTeamId) => nameof(OwningTeamId),
         _ => string.Empty,

@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using AwesomeAssertions;
 using Humans.Base.Constants;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using Humans.Consent.Controllers;
@@ -15,6 +16,89 @@ namespace Humans.Consent.Tests.Controllers;
 
 public sealed class AdminLegalDocumentsControllerTests
 {
+    public enum LegalDocumentMutation
+    {
+        Create,
+        Edit,
+        Archive,
+        Sync,
+        UpdateVersionSummary
+    }
+
+    [HumansTheory]
+    [InlineData(LegalDocumentMutation.Create, AccountScenario.Merged)]
+    [InlineData(LegalDocumentMutation.Create, AccountScenario.Missing)]
+    [InlineData(LegalDocumentMutation.Create, AccountScenario.Cancelled)]
+    [InlineData(LegalDocumentMutation.Edit, AccountScenario.Merged)]
+    [InlineData(LegalDocumentMutation.Edit, AccountScenario.Missing)]
+    [InlineData(LegalDocumentMutation.Edit, AccountScenario.Cancelled)]
+    [InlineData(LegalDocumentMutation.Archive, AccountScenario.Merged)]
+    [InlineData(LegalDocumentMutation.Archive, AccountScenario.Missing)]
+    [InlineData(LegalDocumentMutation.Archive, AccountScenario.Cancelled)]
+    [InlineData(LegalDocumentMutation.Sync, AccountScenario.Merged)]
+    [InlineData(LegalDocumentMutation.Sync, AccountScenario.Missing)]
+    [InlineData(LegalDocumentMutation.Sync, AccountScenario.Cancelled)]
+    [InlineData(LegalDocumentMutation.UpdateVersionSummary, AccountScenario.Merged)]
+    [InlineData(LegalDocumentMutation.UpdateVersionSummary, AccountScenario.Missing)]
+    [InlineData(LegalDocumentMutation.UpdateVersionSummary, AccountScenario.Cancelled)]
+    public async Task DocumentMutations_ResolveTheActorBeforeCallingTheService(LegalDocumentMutation action, AccountScenario account)
+    {
+        using var request = new CancellationTokenSource();
+        var cookieId = Guid.NewGuid();
+        var actorId = Guid.NewGuid();
+        var users = Substitute.For<IUserService>();
+        users.GetUserInfoAsync(cookieId, Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+            return new ValueTask<UserInfo?>(account == AccountScenario.Missing
+                ? null : UserInfo.Create(new User { Id = actorId }, [], [], null));
+        });
+        var documents = Substitute.For<IAdminLegalDocumentService>();
+        documents.NormalizeGitHubFolderPath(Arg.Any<string?>())
+            .Returns(new GitHubFolderPathNormalizationResult(true, null, null));
+        var http = new DefaultHttpContext
+        {
+            RequestAborted = request.Token,
+            User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, cookieId.ToString())], "test"))
+        };
+        var controller = new AdminLegalDocumentsController(users, documents, Substitute.For<ITeamService>(),
+            NullLogger<AdminLegalDocumentsController>.Instance)
+        {
+            ControllerContext = new ControllerContext { HttpContext = http },
+            TempData = new TempDataDictionary(http, Substitute.For<ITempDataProvider>()),
+            Url = Substitute.For<IUrlHelper>()
+        };
+        var documentId = Guid.NewGuid();
+        var model = new Humans.Consent.Models.LegalDocumentEditViewModel { Id = documentId, Name = "Conduct" };
+        Func<Task<IActionResult>> run = () => action switch
+        {
+            LegalDocumentMutation.Create => controller.CreateLegalDocument(model),
+            LegalDocumentMutation.Edit => controller.EditLegalDocument(documentId, model),
+            LegalDocumentMutation.Archive => controller.ArchiveLegalDocument(documentId),
+            LegalDocumentMutation.Sync => controller.SyncLegalDocument(documentId),
+            _ => controller.UpdateVersionSummary(documentId, Guid.NewGuid(), "Summary")
+        };
+        if (account == AccountScenario.Cancelled)
+        {
+            await request.CancelAsync();
+            await run.Should().ThrowAsync<OperationCanceledException>();
+        }
+        else
+        {
+            var result = await run();
+            if (account == AccountScenario.Missing) result.Should().BeOfType<UnauthorizedResult>();
+        }
+        var writes = documents.ReceivedCalls().Where(call =>
+            !string.Equals(call.GetMethodInfo().Name, nameof(IAdminLegalDocumentService.NormalizeGitHubFolderPath), StringComparison.Ordinal));
+        if (account == AccountScenario.Merged)
+        {
+            var arguments = writes.Should().ContainSingle().Which.GetArguments();
+            arguments.OfType<Guid>().Last().Should().Be(actorId);
+            arguments.OfType<CancellationToken>().Should().ContainSingle().Which.Should().Be(CancellationToken.None);
+        }
+        else writes.Should().BeEmpty();
+    }
+
     [HumansTheory]
     [InlineData((int)VersionSummaryUpdateResult.NotFound, true)]
     [InlineData((int)VersionSummaryUpdateResult.Updated, true)]
@@ -34,7 +118,10 @@ public sealed class AdminLegalDocumentsControllerTests
                 ? new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, actor.ToString())], "test"))
                 : new ClaimsPrincipal()
         };
-        var controller = new AdminLegalDocumentsController(Substitute.For<IUserService>(), documents,
+        var users = Substitute.For<IUserService>();
+        users.GetUserInfoAsync(actor, Arg.Any<CancellationToken>())
+            .Returns(UserInfo.Create(new User { Id = actor }, [], [], null));
+        var controller = new AdminLegalDocumentsController(users, documents,
             Substitute.For<ITeamService>(), NullLogger<AdminLegalDocumentsController>.Instance)
         {
             ControllerContext = new ControllerContext { HttpContext = http },
@@ -64,6 +151,39 @@ public sealed class AdminLegalDocumentsControllerTests
             else
                 Assert.Equal("Version summary updated.", controller.TempData[TempDataKeys.SuccessMessage]);
         }
+    }
+
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task InvalidForms_CancelTeamReadsBeforeMutation(bool edit)
+    {
+        using var request = new CancellationTokenSource();
+        var documents = Substitute.For<IAdminLegalDocumentService>();
+        documents.NormalizeGitHubFolderPath(Arg.Any<string?>())
+            .Returns(new GitHubFolderPathNormalizationResult(true, null, null));
+        var teams = Substitute.For<ITeamService>();
+        teams.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+            return Task.FromResult<IReadOnlyDictionary<Guid, TeamInfo>>(new Dictionary<Guid, TeamInfo>());
+        });
+        var users = Substitute.For<IUserService>();
+        var controller = new AdminLegalDocumentsController(users, documents, teams,
+            NullLogger<AdminLegalDocumentsController>.Instance)
+        {
+            ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext { RequestAborted = request.Token } }
+        };
+        controller.ModelState.AddModelError("Name", "Required");
+        var id = Guid.NewGuid();
+        var model = new Humans.Consent.Models.LegalDocumentEditViewModel { Id = id };
+        await request.CancelAsync();
+        Func<Task<IActionResult>> run = () => edit
+            ? controller.EditLegalDocument(id, model) : controller.CreateLegalDocument(model);
+        await run.Should().ThrowAsync<OperationCanceledException>();
+        users.ReceivedCalls().Should().BeEmpty();
+        documents.ReceivedCalls().Should().OnlyContain(call =>
+            string.Equals(call.GetMethodInfo().Name, nameof(IAdminLegalDocumentService.NormalizeGitHubFolderPath), StringComparison.Ordinal));
     }
 
     [HumansTheory]

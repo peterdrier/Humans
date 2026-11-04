@@ -162,7 +162,6 @@ internal sealed class AgentRepository(AgentDbContext db, IClock clock) : IAgentR
             // arch:db-sort-ok admin status window, identity-ordered chronology
             .OrderByDescending(m => m.CreatedAt)
             .Select(m => new AgentStatusMessageRow(
-                m.ConversationId,
                 m.Conversation.UserId,
                 m.CreatedAt,
                 m.Role,

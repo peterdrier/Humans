@@ -206,7 +206,7 @@ public class ServiceTests
 
         var result = await _service.GetOrderPageDataAsync(order, canEdit: true, canPayAuthorized: true, ct: TestContext.Current.CancellationToken);
 
-        result.CounterpartyDisplayName.Should().Be("Camp Test");
+        result.Order.Should().BeSameAs(order);
         result.Catalog.Select(p => p.Name).Should().Equal("Tent", "Blanket");
         result.CanEdit.Should().BeTrue();
         result.CanPay.Should().BeTrue();
@@ -1430,7 +1430,7 @@ public class ServiceTests
         var users = Substitute.For<IUserService>();
         users.GetUserInfoAsync(actor, Arg.Any<CancellationToken>()).Returns(new UserInfo(
             actor, "Tester", false, "en", null, _clock.GetCurrentInstant(), null, null, null, null,
-            null, null, null, null, null, [], [], [], null, []));
+            null, null, null, null, null, [], [], null));
         var http = new DefaultHttpContext
         {
             User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, actor.ToString())], "test"))
@@ -1462,7 +1462,7 @@ public class ServiceTests
         var actor = Guid.NewGuid();
         var users = Substitute.For<IUserService>();
         users.GetUserInfoAsync(actor, Arg.Any<CancellationToken>()).Returns(
-            UserInfo.Create(new User { Id = actor }, [], [], [], null, []));
+            UserInfo.Create(new User { Id = actor }, [], [], null));
         var registrations = new ServiceCollection().AddLogging();
         registrations.AddControllers();
         using var services = registrations.BuildServiceProvider();
@@ -1707,7 +1707,7 @@ public class ServiceTests
             .Returns(Task.FromException<string>(failure));
         var users = Substitute.For<IUserService>();
         users.GetUserInfoAsync(actor, Arg.Any<CancellationToken>()).Returns(
-            UserInfo.Create(new User { Id = actor }, [], [], [], null, []));
+            UserInfo.Create(new User { Id = actor }, [], [], null));
         var authorization = Substitute.For<IAuthorizationService>();
         authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object>(), Arg.Any<IEnumerable<IAuthorizationRequirement>>())
             .Returns(AuthorizationResult.Success());

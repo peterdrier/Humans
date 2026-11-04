@@ -37,8 +37,7 @@ internal sealed class EventSettings : IEventSettingsInfo
     /// </summary>
     public bool? IsOffSeason { get; set; }
 
-    // Build sub-periods: Shifts owns them now (its own event_settings columns). These are only Shifts' fallback
-    // until the shifts.build-sub-periods data migration has copied them; nothing edits them any more.
+    // Legacy storage only. Shifts owns build sub-periods; runtime calendars no longer carry these copies.
 
     public int FirstCrewStartOffset { get; set; } = -25;
 

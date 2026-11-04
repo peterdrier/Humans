@@ -175,12 +175,8 @@ internal interface ITeamRepository : IRepository
     Task<IReadOnlyList<TeamRoleDefinition>> GetRoleDefinitionsAsync(
         Guid teamId, CancellationToken ct = default);
 
-    /// <summary>Tracked, with Team, Assignments and Assignments.TeamMember.</summary>
+    /// <summary>With Team, Assignments and Assignments.TeamMember; detached when the context is disposed.</summary>
     Task<TeamRoleDefinition?> FindRoleDefinitionForMutationAsync(
-        Guid roleDefinitionId, CancellationToken ct = default);
-
-    /// <summary>Tracked, with Team, Assignments and Assignments.TeamMember.</summary>
-    Task<TeamRoleDefinition?> FindRoleDefinitionWithMembersForMutationAsync(
         Guid roleDefinitionId, CancellationToken ct = default);
 
     /// <summary>Matches on the lowercased name.</summary>
@@ -242,8 +238,8 @@ internal interface ITeamRepository : IRepository
     Task<IReadOnlyList<TeamMember>> GetActiveMembershipsForRoleReconciliationAsync(
         CancellationToken ct = default);
 
-    /// <summary>Ignores team-member ids that are no longer active.</summary>
-    Task<int> ApplyMemberRoleChangesAsync(
+    /// <summary>Returns only changed membership ids after saving. Ignores ids that are no longer active.</summary>
+    Task<IReadOnlyList<Guid>> ApplyMemberRoleChangesAsync(
         IReadOnlyCollection<(Guid TeamMemberId, TeamMemberRole Role)> changes,
         CancellationToken ct = default);
 

@@ -46,7 +46,7 @@ internal sealed class CommunicationPreferencesController(
     {
         try
         {
-            var user = await GetCurrentUserInfoAsync();
+            var user = await GetCurrentUserInfoAsync(HttpContext.RequestAborted);
             if (user is null)
                 return Unauthorized();
             if (!ModelState.IsValid)
@@ -64,7 +64,7 @@ internal sealed class CommunicationPreferencesController(
 
             return Ok();
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             logger.LogError(ex, "Failed to save communication preference for {Category}", category);
             return StatusCode(500);

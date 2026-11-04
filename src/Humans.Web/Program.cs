@@ -125,15 +125,7 @@ builder.Services.AddDataProtection()
     .PersistKeysToSystemDbContext()
     .SetApplicationName("Humans.Web");
 
-builder.Services.AddIdentity<User, IdentityRole<Guid>>(options =>
-    {
-        // UserEmail table owns email uniqueness; User.Email is null on new users.
-        options.User.RequireUniqueEmail = false;
-        options.SignIn.RequireConfirmedEmail = false;
-    })
-    .AddHumansEntityFrameworkStores()
-    .AddDefaultTokenProviders()
-    .AddClaimsPrincipalFactory<HumansUserClaimsPrincipalFactory>();
+builder.Services.AddHumansIdentity();
 
 // TLS terminated by Coolify/reverse proxy.
 builder.Services.ConfigureApplicationCookie(options =>
@@ -450,7 +442,7 @@ builder.Services.AddCors(options =>
 var mvcBuilder = builder.Services.AddControllersWithViews(options =>
     {
         // Name-gate runs before the membership gate: a fresh OAuth or imported account with a blank BurnerName goes
-        // to the name form before MembershipRequiredFilter bounces it to Guest/Home.
+        // to the name form before MembershipRequiredFilter routes it by state.
         options.Filters.Add<NameRequiredFilter>();
         options.Filters.Add<MembershipRequiredFilter>();
         options.Filters.Add<Humans.Web.Filters.AuthorizationPillFilter>();

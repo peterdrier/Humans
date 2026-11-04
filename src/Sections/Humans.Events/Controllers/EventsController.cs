@@ -137,17 +137,18 @@ internal sealed class EventsController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Create(IndividualEventFormViewModel model)
     {
-        var user = await GetCurrentUserInfoAsync();
+        var ct = HttpContext.RequestAborted;
+        var user = await GetCurrentUserInfoAsync(ct);
         if (user == null) return Challenge();
 
-        var guideSettings = await guide.GetGuideSettingsAsync();
+        var guideSettings = await guide.GetGuideSettingsAsync(ct);
         if (!IsSubmissionOpen(guideSettings))
         {
             SetError(localizer["Events_SubmissionWindowClosed"].Value);
             return RedirectToAction(nameof(MySubmissions));
         }
 
-        var eventSettings = await LoadBurnSettingsAsync(guide, guideSettings)
+        var eventSettings = await LoadBurnSettingsAsync(guide, guideSettings, ct)
             ?? throw new InvalidOperationException("Event settings not configured.");
 
         ValidateRecurrenceDays(model.IsRecurring, model.RecurrenceDays, eventSettings);
@@ -157,7 +158,7 @@ internal sealed class EventsController(
 
         if (!ModelState.IsValid)
         {
-            await PopulateDropdownsAsync(model, eventSettings);
+            await PopulateDropdownsAsync(model, eventSettings, ct);
             return View("IndividualEventForm", model);
         }
 
@@ -228,20 +229,10 @@ internal sealed class EventsController(
         var localStart = ToLocalDateTime(guideEvent.StartAt, tz);
 
         var model = await BuildFormAsync(eventSettings, ct);
-        model.Id = guideEvent.Id;
-        model.Title = guideEvent.Title;
-        model.Description = guideEvent.Description;
-        model.CategoryId = guideEvent.CategoryId;
+        PopulateProposalForm(model, guideEvent, localStart);
         model.VenueId = guideEvent.GuideSharedVenueId ?? Guid.Empty;
-        model.StartDate = DateOnly.FromDateTime(localStart);
-        model.StartTime = TimeOnly.FromDateTime(localStart);
         model.IsAllDay = guideEvent.IsAllDay;
         model.DurationMinutes = guideEvent.DurationMinutes;
-        model.LocationNote = guideEvent.LocationNote;
-        model.Host = guideEvent.Host;
-        model.IsRecurring = guideEvent.IsRecurring;
-        model.RecurrenceDays = guideEvent.RecurrenceDays;
-        model.IsResubmit = guideEvent.IsResubmission;
 
         return View("IndividualEventForm", model);
     }
@@ -250,20 +241,21 @@ internal sealed class EventsController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Update(Guid eventId, IndividualEventFormViewModel model)
     {
-        var user = await GetCurrentUserInfoAsync();
+        var ct = HttpContext.RequestAborted;
+        var user = await GetCurrentUserInfoAsync(ct);
         if (user == null) return Challenge();
 
-        var editable = await RequireEditableIndividualEventAsync(eventId, user.Id);
+        var editable = await RequireEditableIndividualEventAsync(eventId, user.Id, ct);
         if (editable.Error is not null) return editable.Error;
 
-        var guideSettings = await guide.GetGuideSettingsAsync();
+        var guideSettings = await guide.GetGuideSettingsAsync(ct);
         if (guideSettings == null)
         {
             SetError(localizer["Events_GuideSettingsUnavailable"].Value);
             return RedirectToAction(nameof(MySubmissions));
         }
 
-        var eventSettings = await LoadBurnSettingsAsync(guide, guideSettings)
+        var eventSettings = await LoadBurnSettingsAsync(guide, guideSettings, ct)
             ?? throw new InvalidOperationException("Event settings not configured.");
 
         ValidateRecurrenceDays(model.IsRecurring, model.RecurrenceDays, eventSettings);
@@ -274,7 +266,7 @@ internal sealed class EventsController(
         if (!ModelState.IsValid)
         {
             model.Id = eventId;
-            await PopulateDropdownsAsync(model, eventSettings);
+            await PopulateDropdownsAsync(model, eventSettings, ct);
             return View("IndividualEventForm", model);
         }
 
@@ -305,10 +297,11 @@ internal sealed class EventsController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Withdraw(Guid eventId)
     {
-        var user = await GetCurrentUserInfoAsync();
+        var ct = HttpContext.RequestAborted;
+        var user = await GetCurrentUserInfoAsync(ct);
         if (user == null) return Challenge();
 
-        var guideEvent = await guide.GetUserEventAsync(eventId, user.Id);
+        var guideEvent = await guide.GetUserEventAsync(eventId, user.Id, ct);
         if (guideEvent == null) return NotFound();
 
         if (!guideEvent.CanWithdraw)
@@ -351,14 +344,7 @@ internal sealed class EventsController(
             {
                 var localStart = ToLocalDateTime(startInstant, tz);
 
-                var dayOffset = 0;
-                if (gateOpeningDate != null)
-                {
-                    LocalDate eventDate = tz != null
-                        ? startInstant.InZone(tz).Date
-                        : LocalDate.FromDateTime(startInstant.ToDateTimeUtc());
-                    dayOffset = Period.Between(gateOpeningDate.Value, eventDate, PeriodUnits.Days).Days;
-                }
+                var dayOffset = ComputeDayOffset(startInstant, gateOpeningDate, tz);
 
                 return new ScheduleItemViewModel
                 {
@@ -424,8 +410,6 @@ internal sealed class EventsController(
         var events = await guide.GetApprovedEventsAsync(null, venueId, categoryId, q, excludedSlugs, ct);
 
         var campsById = await LoadCampsByIdAsync(CampService, gateOpeningDate?.Year, ct);
-        var individualSubmitterIds = events.Where(e => e.CampId == null).Select(e => e.SubmitterUserId).Distinct();
-        var submitterInfoById = await LoadSubmittersAsync(UserService, individualSubmitterIds, ct);
 
         var occurrences = EventOccurrenceExpander.Expand(
             events, favouriteDaysByEventId, gateOpeningDate, tz, filterDays);
@@ -435,9 +419,6 @@ internal sealed class EventsController(
             var e = o.Event;
             var camp = e.CampId.HasValue ? campsById.GetValueOrDefault(e.CampId.Value) : null;
             var campName = ResolveCampName(camp);
-            var submitterName = e.CampId == null
-                ? submitterInfoById.GetValueOrDefault(e.SubmitterUserId)?.BurnerName
-                : null;
 
             return new BrowseEventItem
             {
@@ -453,10 +434,8 @@ internal sealed class EventsController(
                 DayOffset = o.DayOffset,
                 FavouriteDayOffset = o.FavouriteDayOffset,
                 IsFavourited = o.IsFavourited,
-                SubmitterName = submitterName,
-                DisplayHost = e.CampId == null
-                    ? (e.Host ?? submitterName)
-                    : e.Host
+                SubmitterUserId = e.CampId == null ? e.SubmitterUserId : null,
+                Host = e.Host
             };
         }).ToList();
 
@@ -530,6 +509,21 @@ internal sealed class EventsController(
             localizer["Events_RecurrenceDaysInvalid"].Value);
     }
 
+    private static void PopulateProposalForm(EventProposalFormViewModel model, EventInfo guideEvent, DateTime localStart)
+    {
+        model.Id = guideEvent.Id;
+        model.Title = guideEvent.Title;
+        model.Description = guideEvent.Description;
+        model.CategoryId = guideEvent.CategoryId;
+        model.StartDate = DateOnly.FromDateTime(localStart);
+        model.StartTime = TimeOnly.FromDateTime(localStart);
+        model.LocationNote = guideEvent.LocationNote;
+        model.Host = guideEvent.Host;
+        model.IsRecurring = guideEvent.IsRecurring;
+        model.RecurrenceDays = guideEvent.RecurrenceDays;
+        model.IsResubmit = guideEvent.IsResubmission;
+    }
+
     private async Task<IndividualEventFormViewModel> BuildFormAsync(EventSettingsInfo burn, CancellationToken ct = default)
     {
         var model = new IndividualEventFormViewModel
@@ -540,13 +534,16 @@ internal sealed class EventsController(
         return model;
     }
 
-    private async Task PopulateDropdownsAsync(IndividualEventFormViewModel model, EventSettingsInfo burn, CancellationToken ct = default)
+    private async Task PopulateDropdownsAsync(EventProposalFormViewModel model, EventSettingsInfo burn, CancellationToken ct = default)
     {
         var categories = await guide.GetActiveCategoriesAsync(ct);
-        var venues = await guide.GetActiveVenuesAsync(ct);
+        var venues = model is IndividualEventFormViewModel
+            ? await guide.GetActiveVenuesAsync(ct)
+            : [];
 
         model.Categories = categories.OrderBy(c => c.DisplayOrder).Select(c => new CategoryOptionViewModel { Id = c.Id, Name = c.Name }).ToList();
-        model.Venues = venues.OrderBy(v => v.DisplayOrder).Select(v => new VenueOptionViewModel { Id = v.Id, Name = v.Name }).ToList();
+        if (model is IndividualEventFormViewModel individual)
+            individual.Venues = venues.OrderBy(v => v.DisplayOrder).Select(v => new VenueOptionViewModel { Id = v.Id, Name = v.Name }).ToList();
         model.TimeZoneId = burn.TimeZoneId;
 
         model.EventDays = BuildEventDayOptions(burn);
@@ -576,17 +573,18 @@ internal sealed class EventsController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> BarrioCreate(string slug, CampEventFormViewModel model)
     {
+        var ct = HttpContext.RequestAborted;
         var (error, user, camp) = await ResolveCampEventManagementAsync(slug);
         if (error != null) return error;
 
-        var guideSettings = await guide.GetGuideSettingsAsync();
+        var guideSettings = await guide.GetGuideSettingsAsync(ct);
         if (!IsSubmissionOpen(guideSettings))
         {
             SetError(localizer["Events_SubmissionWindowClosed"].Value);
             return RedirectToAction(nameof(MySubmissions));
         }
 
-        var eventSettings = await LoadBurnSettingsAsync(guide, guideSettings)
+        var eventSettings = await LoadBurnSettingsAsync(guide, guideSettings, ct)
             ?? throw new InvalidOperationException("Event settings not configured.");
 
         ValidateRecurrenceDays(model.IsRecurring, model.RecurrenceDays, eventSettings);
@@ -597,7 +595,7 @@ internal sealed class EventsController(
             model.CampId = camp.Id;
             model.CampName = ResolveCampDisplayName(camp);
             model.CampSlug = slug;
-            await PopulateBarrioDropdownsAsync(model, eventSettings);
+            await PopulateDropdownsAsync(model, eventSettings, ct);
             return View("BarrioEventForm", model);
         }
 
@@ -634,7 +632,7 @@ internal sealed class EventsController(
             model.CampId = camp.Id;
             model.CampName = ResolveCampDisplayName(camp);
             model.CampSlug = slug;
-            await PopulateBarrioDropdownsAsync(model, eventSettings);
+            await PopulateDropdownsAsync(model, eventSettings);
             return View("BarrioEventForm", model);
         }
         logger.LogInformation("User {UserId} submitted barrio event '{Title}' for camp {CampId}", user.Id, model.Title, camp.Id);
@@ -667,19 +665,9 @@ internal sealed class EventsController(
         var localStart = ToLocalDateTime(guideEvent.StartAt, tz);
 
         var model = await BuildBarrioFormAsync(slug, camp, eventSettings, ct);
-        model.Id = guideEvent.Id;
-        model.Title = guideEvent.Title;
-        model.Description = guideEvent.Description;
-        model.CategoryId = guideEvent.CategoryId;
-        model.StartDate = DateOnly.FromDateTime(localStart);
-        model.StartTime = TimeOnly.FromDateTime(localStart);
+        PopulateProposalForm(model, guideEvent, localStart);
         model.DurationMinutes = guideEvent.DurationMinutes;
-        model.LocationNote = guideEvent.LocationNote;
-        model.Host = guideEvent.Host;
-        model.IsRecurring = guideEvent.IsRecurring;
-        model.RecurrenceDays = guideEvent.RecurrenceDays;
         model.PriorityRank = guideEvent.PriorityRank;
-        model.IsResubmit = guideEvent.IsResubmission;
 
         return View("BarrioEventForm", model);
     }
@@ -688,10 +676,11 @@ internal sealed class EventsController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> BarrioUpdate(string slug, Guid eventId, CampEventFormViewModel model)
     {
+        var ct = HttpContext.RequestAborted;
         var (error, user, camp) = await ResolveCampEventManagementAsync(slug);
         if (error != null) return error;
 
-        var guideEvent = await guide.GetCampEventAsync(eventId, camp.Id);
+        var guideEvent = await guide.GetCampEventAsync(eventId, camp.Id, ct);
         if (guideEvent == null) return NotFound();
 
         if (!guideEvent.CanEdit)
@@ -700,9 +689,9 @@ internal sealed class EventsController(
             return RedirectToAction(nameof(MySubmissions));
         }
 
-        var guideSettings = await guide.GetGuideSettingsAsync()
+        var guideSettings = await guide.GetGuideSettingsAsync(ct)
             ?? throw new InvalidOperationException("Guide settings not configured.");
-        var eventSettings = await LoadBurnSettingsAsync(guide, guideSettings)
+        var eventSettings = await LoadBurnSettingsAsync(guide, guideSettings, ct)
             ?? throw new InvalidOperationException("Event settings not configured.");
 
         ValidateRecurrenceDays(model.IsRecurring, model.RecurrenceDays, eventSettings);
@@ -714,7 +703,7 @@ internal sealed class EventsController(
             model.CampId = camp.Id;
             model.CampName = ResolveCampDisplayName(camp);
             model.CampSlug = slug;
-            await PopulateBarrioDropdownsAsync(model, eventSettings);
+            await PopulateDropdownsAsync(model, eventSettings, ct);
             return View("BarrioEventForm", model);
         }
 
@@ -731,7 +720,7 @@ internal sealed class EventsController(
             model.CampId = camp.Id;
             model.CampName = ResolveCampDisplayName(camp);
             model.CampSlug = slug;
-            await PopulateBarrioDropdownsAsync(model, eventSettings);
+            await PopulateDropdownsAsync(model, eventSettings);
             return View("BarrioEventForm", model);
         }
 
@@ -745,10 +734,11 @@ internal sealed class EventsController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> BarrioWithdraw(string slug, Guid eventId)
     {
+        var ct = HttpContext.RequestAborted;
         var (error, user, camp) = await ResolveCampEventManagementAsync(slug);
         if (error != null) return error;
 
-        var guideEvent = await guide.GetCampEventAsync(eventId, camp.Id);
+        var guideEvent = await guide.GetCampEventAsync(eventId, camp.Id, ct);
         if (guideEvent == null) return NotFound();
 
         if (!guideEvent.CanWithdraw)
@@ -780,10 +770,11 @@ internal sealed class EventsController(
     [RequestSizeLimit(1 * 1024 * 1024)]
     public async Task<IActionResult> BulkUploadImport(string slug, IFormFile? file)
     {
+        var ct = HttpContext.RequestAborted;
         var (error, user, camp) = await ResolveCampEventManagementAsync(slug);
         if (error != null) return error;
 
-        var guideSettings = await guide.GetGuideSettingsAsync();
+        var guideSettings = await guide.GetGuideSettingsAsync(ct);
         if (!IsSubmissionOpen(guideSettings))
         {
             SetError(localizer["Events_SubmissionWindowClosed"].Value);
@@ -796,7 +787,7 @@ internal sealed class EventsController(
             return RedirectToAction(nameof(MySubmissions));
         }
 
-        var eventSettings = await LoadBurnSettingsAsync(guide, guideSettings)
+        var eventSettings = await LoadBurnSettingsAsync(guide, guideSettings, ct)
             ?? throw new InvalidOperationException("Event settings not configured.");
         var tz = GetTimeZone(eventSettings)
             ?? throw new InvalidOperationException("Event timezone not configured.");
@@ -811,7 +802,7 @@ internal sealed class EventsController(
         {
             throw;
         }
-        catch (CsvHelper.BadDataException ex)
+        catch (CsvHelper.CsvFormatException ex)
         {
             logger.LogWarning("Bulk CSV parse failed for camp slug {Slug}: {Message}", slug, ex.Message);
             SetError(localizer["Events_Upload_ParseFailed"].Value);
@@ -890,18 +881,7 @@ internal sealed class EventsController(
             CampSlug = slug,
             TimeZoneId = burn.TimeZoneId
         };
-        await PopulateBarrioDropdownsAsync(model, burn, ct);
+        await PopulateDropdownsAsync(model, burn, ct);
         return model;
     }
-
-    private async Task PopulateBarrioDropdownsAsync(CampEventFormViewModel model, EventSettingsInfo burn, CancellationToken ct = default)
-    {
-        var categories = await guide.GetActiveCategoriesAsync(ct);
-        model.Categories = categories.OrderBy(c => c.DisplayOrder).Select(c => new CategoryOptionViewModel { Id = c.Id, Name = c.Name }).ToList();
-        model.TimeZoneId = burn.TimeZoneId;
-
-        model.EventDays = BuildEventDayOptions(burn);
-    }
-
-
 }

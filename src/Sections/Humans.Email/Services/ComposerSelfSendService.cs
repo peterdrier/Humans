@@ -9,7 +9,6 @@ namespace Humans.Email.Services;
 
 /// <summary>Never takes a recipient from the caller.</summary>
 internal sealed class ComposerSelfSendService(
-    IUserEmailService userEmailService,
     IUserService userService,
     IEmailService emailService,
     IAuditLogService audit,
@@ -22,23 +21,25 @@ internal sealed class ComposerSelfSendService(
     public async Task<string?> SendToSelfAsync(
         Guid userId, string? subject, string? markdownBody, CancellationToken ct = default)
     {
-        var emails = await userEmailService.GetNotificationTargetEmailsAsync([userId], ct);
-        if (!emails.TryGetValue(userId, out var email) || string.IsNullOrWhiteSpace(email))
-            return null;
-
         var user = await userService.GetUserInfoAsync(userId, ct);
+        var email = user?.Email;
+        if (user is null || string.IsNullOrWhiteSpace(email))
+            return null;
+        userId = user.Id;
+
         var fullSubject = string.IsNullOrWhiteSpace(subject)
             ? localizer["Email_ComposerSelfTest_DefaultSubject"].Value
             : string.Format(CultureInfo.CurrentCulture, localizer["Email_ComposerSelfTest_Subject"].Value, subject.Trim());
 
+        // Closing the composer must not interrupt sending after the account read.
         await emailService.SendAsync(new EmailMessage(
-            email, user?.BurnerName, userId, fullSubject, SanitizedMarkdownRenderer.Render(markdownBody),
-            TemplateName, MessageCategory.System), ct);
+            email, user.BurnerName, userId, fullSubject, SanitizedMarkdownRenderer.Render(markdownBody),
+            TemplateName, MessageCategory.System), CancellationToken.None);
 
         try
         {
             await audit.LogAsync(
-                EmailAuditActions.EmailComposerSelfTestSent, "User", userId,
+                EmailAuditActions.EmailComposerSelfTestSent, AuditSubjectTypes.User, userId,
                 "Sent an email composer test message to themselves", userId);
         }
         catch (Exception ex)

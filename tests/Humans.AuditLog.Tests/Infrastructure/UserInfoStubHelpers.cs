@@ -13,9 +13,6 @@ internal static class UserInfoStubHelpers
             new User { Id = userId, PreferredLanguage = "en" },
             [],
             [],
-            [],
             profile: profile ?? UserFixtures.Profile(
-                burnerName: displayName,
-                isApproved: true),
-            []);
+                burnerName: displayName));
 }

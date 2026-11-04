@@ -58,7 +58,7 @@ public class CommunicationPreferencesControllerTests
     }
 
     private UserInfo Viewer() => UserInfo.Create(
-        new User { Id = _userId, DisplayName = "Human", PreferredLanguage = "en" }, [], [], [], profile: null, []);
+        new User { Id = _userId, DisplayName = "Human", PreferredLanguage = "en" }, [], [], profile: null);
 
     [HumansFact]
     public void Routes_AreEmailUrls_AndRequireSignIn()
@@ -105,6 +105,31 @@ public class CommunicationPreferencesControllerTests
         (await _controller.Index()).Should().BeOfType<ViewResult>();
         await request.CancelAsync();
         await FluentActions.Awaiting(() => _controller.Index()).Should().ThrowAsync<OperationCanceledException>();
+    }
+
+    [HumansFact]
+    public async Task UpdatePreference_CancelsAccountReadButKeepsTheWriteDetached()
+    {
+        using var request = new CancellationTokenSource();
+        _controller.HttpContext.RequestAborted = request.Token;
+        async ValueTask<UserInfo?> ReadViewerAsync(CancellationToken ct)
+        {
+            ct.ThrowIfCancellationRequested();
+            return Viewer();
+        }
+        _userService.GetUserInfoAsync(_userId, Arg.Any<CancellationToken>())
+            .Returns(call => ReadViewerAsync(call.Arg<CancellationToken>()));
+
+        Assert.IsType<OkResult>(await _controller.UpdatePreference(MessageCategory.Marketing, false, false));
+        await _commPrefService.Received(1).UpdatePreferenceAsync(_userId, MessageCategory.Marketing,
+            true, false, "Profile", actorUserId: _userId, cancellationToken: CancellationToken.None);
+        _commPrefService.ClearReceivedCalls();
+        await request.CancelAsync();
+
+        await Assert.ThrowsAsync<OperationCanceledException>(() =>
+            _controller.UpdatePreference(MessageCategory.Marketing, false, false));
+        Assert.Empty(_commPrefService.ReceivedCalls());
+        await _userService.Received(2).GetUserInfoAsync(_userId, request.Token);
     }
 
     [HumansTheory]

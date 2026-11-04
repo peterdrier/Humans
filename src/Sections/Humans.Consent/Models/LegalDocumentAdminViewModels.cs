@@ -59,12 +59,9 @@ internal sealed class DocumentVersionSummaryViewModel
 {
     public Guid Id { get; set; }
     public string VersionNumber { get; set; } = string.Empty;
-    public string CommitSha { get; set; } = string.Empty;
     public DateTime EffectiveFrom { get; set; }
-    public DateTime CreatedAt { get; set; }
     public string? ChangesSummary { get; set; }
     public bool RequiresReConsent { get; set; }
-    public int LanguageCount { get; set; }
     public List<string> Languages { get; set; } = [];
 }
 

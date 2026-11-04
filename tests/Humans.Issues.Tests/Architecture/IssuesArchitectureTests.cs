@@ -20,9 +20,7 @@ public class IssuesArchitectureTests
         var paramTypes = ctor.GetParameters().Select(p => p.ParameterType).ToList();
 
         paramTypes.Should().Contain(typeof(IUserService),
-            because: "Issues reads user display names through the read-only user interface");
-        paramTypes.Should().Contain(typeof(IUserEmailService),
-            because: "Issues reads the reporter's notification email through the Users section");
+            because: "Issues reads names, cultures and canonical reporter emails through the read-only user interface");
         paramTypes.Should().Contain(typeof(IRoleAssignmentService),
             because: "Issues reads section role-holders through the read-only role interface");
     }

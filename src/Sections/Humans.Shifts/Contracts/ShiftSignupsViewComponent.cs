@@ -16,13 +16,12 @@ public sealed class ShiftSignupsViewComponent(
     IClock clock,
     ILogger<ShiftSignupsViewComponent> logger) : ViewComponent
 {
-    public async Task<IViewComponentResult> InvokeAsync(Guid userId, ShiftSignupsViewMode viewMode, string? displayName = null)
+    public async Task<IViewComponentResult> InvokeAsync(Guid userId, ShiftSignupsViewMode viewMode)
     {
         var model = new ShiftSignupsViewModel
         {
             ViewMode = viewMode,
-            UserId = userId,
-            DisplayName = displayName
+            UserId = userId
         };
 
         try

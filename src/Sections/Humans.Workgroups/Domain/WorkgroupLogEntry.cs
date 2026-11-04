@@ -25,6 +25,9 @@ internal sealed class WorkgroupLogEntry
 
     public Guid? SurveyId { get; set; }
 
+    /// <summary>The meeting a <see cref="WorkgroupLogKind.MeetingNotes"/> entry is about; <see cref="OccurredOn"/> names the occurrence.</summary>
+    public Guid? MeetingId { get; set; }
+
     public Instant CreatedAt { get; init; }
 
     public Instant UpdatedAt { get; set; }
@@ -32,4 +35,6 @@ internal sealed class WorkgroupLogEntry
     public Workgroup Workgroup { get; set; } = null!;
 
     public WorkgroupDocument? Document { get; set; }
+
+    public WorkgroupMeeting? Meeting { get; set; }
 }

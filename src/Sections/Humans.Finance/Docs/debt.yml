@@ -1,9 +1,13 @@
 # Section debt ledger for Humans.Finance. Shape + routing: memory/process/debt-ledger-additions.md.
 # /debt-sweep pools every src/Sections/*/Docs/debt.yml into the same inbox as the central ledger.
 version: 1
-next_id: 6
+next_id: 7
 inbox:
   - added: 2026-11-02
+    id: FIN-6
+    what: "The payout rule is written twice: Models/CreditorAccountRowVm.cs NotPayableReason (bindings, duplicate docs, pending file, nothing owed, no IBAN) decides which rows /Finance/Creditors offers, and Service.GenerateSepaPayoutAsync re-derives the same refusals when the file is generated. A change to one leaves the page offering what the service refuses, or hiding what it would pay. Fix: one reason computed in the service and carried on the row both read (adds a member to the CreditorAccountRow contract, so it needs Peter's approval). Found by the 2026-11-02 section-doctor run's controller-intent thread."
+    review: panel
+  - added: 2026-11-03
     id: FIN-5
-    what: "The payout rule is written twice: Models/CreditorAccountRowVm.cs NotPayableReason (bindings, duplicate docs, pending file, nothing owed, no IBAN) decides which rows /Finance/Creditors offers, and Service.GenerateSepaPayoutAsync re-derives the same refusals when the file is generated. A change to one leaves the page offering what the service refuses, or hiding what it would pay. Fix: one reason computed in the service and carried on the row both read (adds a member to the HoldedCreditorAccountRow contract, so it needs Peter's approval). Found by the 2026-11-02 section-doctor run's controller-intent thread."
+    what: "FinanceDbContext still maps holded_expense_docs and holded_doc_sync_state (HoldedExpenseDoc, HoldedDocSyncState, HoldedMatchStatus) though nothing reads or writes them since the purchase-document mirror moved to Holded. Drop them in their own PR once production is verified, with Peter's per-case approval and a NoDestructiveMigrationOps baseline entry (no-drops-until-prod-verified)."
     review: panel

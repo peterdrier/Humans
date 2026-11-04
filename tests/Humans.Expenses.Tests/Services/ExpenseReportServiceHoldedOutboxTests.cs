@@ -40,8 +40,7 @@ public class ExpenseReportServiceHoldedOutboxTests
     private readonly IHoldedService _holdedService = Substitute.For<IHoldedService>();
     private readonly IHoldedClient _holdedClient;
     private readonly IFinanceService _finance = Substitute.For<IFinanceService>();
-    private readonly IHoldedFinanceService _holdedFinance;
-    private readonly IHoldedFinanceWrite _holdedFinanceWrite;
+    private readonly IFinanceWrite _financeWrite;
     private readonly IFileStorage _fileStorage;
     private readonly IAuditLogService _auditLog = Substitute.For<IAuditLogService>();
     private readonly FakeClock _clock;
@@ -84,7 +83,7 @@ public class ExpenseReportServiceHoldedOutboxTests
                 Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<Instant>(), Arg.Any<CancellationToken>())
             .Returns(true);
 
-        _budgetService.GetCategoryByIdAsync(CategoryId)
+        _budgetService.GetCategoryByIdAsync(CategoryId, Arg.Any<CancellationToken>())
             .Returns(_category);
 
         var submitter = new User { Id = SubmitterId, DisplayName = "Alice Smith" };
@@ -94,9 +93,8 @@ public class ExpenseReportServiceHoldedOutboxTests
 
         // Contact enrichment is Finance's: ExpenseReportService delegates to
         // EnsureCreditorContactAsync for the contact id, then resolves its supplier-account number.
-        _holdedFinance = Substitute.For<IHoldedFinanceService>();
-        _holdedFinanceWrite = Substitute.For<IHoldedFinanceWrite>();
-        _holdedFinanceWrite.EnsureCreditorContactAsync(
+        _financeWrite = Substitute.For<IFinanceWrite>();
+        _financeWrite.EnsureCreditorContactAsync(
                 Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<string?>(),
                 Arg.Any<string?>(), Arg.Any<int?>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns("holded-contact-1");
@@ -114,12 +112,10 @@ public class ExpenseReportServiceHoldedOutboxTests
             _budgetService,
             Substitute.For<ITeamService>(),
             _userService,
-            Substitute.For<IUserEmailService>(),
             Substitute.For<IEmailService>(),
             TestExpensesEmails.Create(),
-            _auditLog,
+            _auditLog, Substitute.For<IAuditViewerService>(),
             _holdedService,
-            _holdedFinance,
             _finance,
             Substitute.For<IFinanceWrite>(),
             Substitute.For<Humans.Preapprovals.Contracts.IPreapprovalService>(),
@@ -128,7 +124,7 @@ public class ExpenseReportServiceHoldedOutboxTests
             Substitute.For<ILogger<ExpenseReportService>>(),
             Options.Create(new TravelReimbursementConfig()));
         _backgroundProcessor = new ExpenseReportBackgroundProcessor(
-            _repo, _fileStorage, _userService, _holdedClient, _holdedFinance, _holdedFinanceWrite, _auditLog, _clock,
+            _repo, _fileStorage, _userService, _holdedClient, _finance, _financeWrite, _auditLog, _clock,
             NullLogger<ExpenseReportBackgroundProcessor>.Instance);
     }
 
@@ -323,7 +319,7 @@ public class ExpenseReportServiceHoldedOutboxTests
     // Built directly: the shared UserInfoStubHelpers read through a UsersDbContext this
     // test project cannot see.
     private static UserInfo MinimalUserInfo(User user) =>
-        UserInfo.Create(user, [], [], [], profile: null, []);
+        UserInfo.Create(user, [], [], profile: null);
 
     private static HoldedPurchaseDocumentDto MakePurchaseDoc(Instant? approvedAt = null) => new()
     {
@@ -359,7 +355,7 @@ public class ExpenseReportServiceHoldedOutboxTests
     }
 
     private ExpenseReportBackgroundProcessor NewProcessor() => new(
-        _repo, _fileStorage, _userService, _holdedClient, _holdedFinance, _holdedFinanceWrite, _auditLog, _clock,
+        _repo, _fileStorage, _userService, _holdedClient, _finance, _financeWrite, _auditLog, _clock,
         NullLogger<ExpenseReportBackgroundProcessor>.Instance);
 
     [HumansFact]
@@ -521,7 +517,7 @@ public class ExpenseReportServiceHoldedOutboxTests
             .Returns([outboxEvent]);
         _repo.GetByIdAsync(report.Id, Arg.Any<CancellationToken>())
             .Returns(report);
-        _holdedFinance.GetHoldedAccountIdForCategoryAsync(CategoryId, Arg.Any<CancellationToken>())
+        _finance.GetHoldedAccountIdForCategoryAsync(CategoryId, Arg.Any<CancellationToken>())
             .Returns("holded-acc-629001");
         _holdedClient.CreatePurchaseDocumentAsync(Arg.Any<HoldedPurchaseDocumentInput>(), Arg.Any<CancellationToken>())
             .Returns("doc-1");
@@ -567,7 +563,7 @@ public class ExpenseReportServiceHoldedOutboxTests
                 i.Lines.Count == 1 &&
                 string.Equals(i.Lines[0].AccountId, "holded-acc-629009", StringComparison.Ordinal)),
             Arg.Any<CancellationToken>());
-        await _holdedFinance.DidNotReceive().GetHoldedAccountIdForCategoryAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+        await _finance.DidNotReceive().GetHoldedAccountIdForCategoryAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -586,7 +582,7 @@ public class ExpenseReportServiceHoldedOutboxTests
             .Returns([outboxEvent]);
         _repo.GetByIdAsync(report.Id, Arg.Any<CancellationToken>())
             .Returns(report);
-        _holdedFinance.GetHoldedAccountIdForCategoryAsync(CategoryId, Arg.Any<CancellationToken>())
+        _finance.GetHoldedAccountIdForCategoryAsync(CategoryId, Arg.Any<CancellationToken>())
             .Returns((string?)null);
         _holdedClient.CreatePurchaseDocumentAsync(Arg.Any<HoldedPurchaseDocumentInput>(), Arg.Any<CancellationToken>())
             .Returns("doc-1");
@@ -618,7 +614,7 @@ public class ExpenseReportServiceHoldedOutboxTests
             .Returns([outboxEvent]);
         _repo.GetByIdAsync(report.Id, Arg.Any<CancellationToken>())
             .Returns(report);
-        _holdedFinance.GetHoldedAccountIdForCategoryAsync(CategoryId, Arg.Any<CancellationToken>())
+        _finance.GetHoldedAccountIdForCategoryAsync(CategoryId, Arg.Any<CancellationToken>())
             .Returns("holded-acc-629001");
         _holdedClient.CreatePurchaseDocumentAsync(Arg.Any<HoldedPurchaseDocumentInput>(), Arg.Any<CancellationToken>())
             .Returns("doc-capped");
@@ -895,7 +891,7 @@ public class ExpenseReportServiceHoldedOutboxTests
             .Returns([outboxEvent]);
         _repo.GetByIdAsync(report.Id, Arg.Any<CancellationToken>())
             .Returns(report);
-        _holdedFinance.GetHoldedAccountIdForCategoryAsync(CategoryId, Arg.Any<CancellationToken>())
+        _finance.GetHoldedAccountIdForCategoryAsync(CategoryId, Arg.Any<CancellationToken>())
             .Returns("holded-acc-629001");
         _holdedClient.CreatePurchaseDocumentAsync(Arg.Any<HoldedPurchaseDocumentInput>(), Arg.Any<CancellationToken>())
             .Returns("doc-a", "doc-b", "doc-c");
@@ -1442,7 +1438,7 @@ public class ExpenseReportServiceHoldedOutboxTests
         // Use a logger that captures structured log args
         var logger = Substitute.For<ILogger<ExpenseReportBackgroundProcessor>>();
         var sut = new ExpenseReportBackgroundProcessor(
-            _repo, _fileStorage, _userService, _holdedClient, _holdedFinance, _holdedFinanceWrite,
+            _repo, _fileStorage, _userService, _holdedClient, _finance, _financeWrite,
             Substitute.For<IAuditLogService>(), _clock, logger);
 
         var report = MakeReport() with { PayeeIban = "ES9121000418450200051332" };
@@ -1487,7 +1483,7 @@ public class ExpenseReportServiceHoldedOutboxTests
 
         await _backgroundProcessor.DrainHoldedOutboxAsync(BatchSize, TestContext.Current.CancellationToken);
 
-        await _holdedFinanceWrite.Received(1).EnsureCreditorContactAsync(
+        await _financeWrite.Received(1).EnsureCreditorContactAsync(
             survivorId, Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<string?>(),
             Arg.Any<string?>(), Arg.Any<int?>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
         await _repo.Received(1).GetForSubmitterAsync(survivorId, Arg.Any<CancellationToken>());

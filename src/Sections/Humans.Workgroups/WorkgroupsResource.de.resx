@@ -86,6 +86,7 @@
   <data name="Enum_WorkgroupLogKind_Disclosure" xml:space="preserve"><value>Offenlegung</value></data>
   <data name="Enum_WorkgroupLogKind_StatusRequested" xml:space="preserve"><value>Status angefragt</value></data>
   <data name="Enum_WorkgroupLogKind_Note" xml:space="preserve"><value>Notiz</value></data>
+  <data name="Enum_WorkgroupLogKind_MeetingNotes" xml:space="preserve"><value>Besprechungsnotizen</value></data>
 
   <data name="Enum_WorkgroupDocumentKind_Deliverable" xml:space="preserve"><value>Liefergegenstand</value></data>
   <data name="Enum_WorkgroupDocumentKind_AnnualReport" xml:space="preserve"><value>Jahresbericht</value></data>
@@ -130,6 +131,7 @@
   <data name="Workgroups_Error_CategoriesRequired" xml:space="preserve"><value>Mindestens eine Kommentarkategorie ist erforderlich.</value></data>
   <data name="Workgroups_Error_CategoryTooLong" xml:space="preserve"><value>Eine Kommentarkategorie darf nicht länger als 100 Zeichen sein.</value></data>
   <data name="Workgroups_Error_WindowInvalid" xml:space="preserve"><value>Der Kommentierungszeitraum ist ungültig.</value></data>
+  <data name="Workgroups_Error_RecurrenceInvalid" xml:space="preserve"><value>Die Wiederholungsregel ist ungültig.</value></data>
   <data name="Workgroups_Error_CommentsClosed" xml:space="preserve"><value>Die Kommentierungsphase ist nicht geöffnet.</value></data>
   <data name="Workgroups_Error_CommentsStillOpen" xml:space="preserve"><value>Beende die Kommentierungsphase, bevor du dieses Dokument einreichst.</value></data>
   <data name="Workgroups_Error_UnknownCategory" xml:space="preserve"><value>Das ist keine der Kommentarkategorien dieses Dokuments.</value></data>
@@ -232,23 +234,16 @@
   <data name="Workgroups_History" xml:space="preserve"><value>Historie</value></data>
   <data name="Workgroups_NewMeeting" xml:space="preserve"><value>Neues Treffen</value></data>
   <data name="Workgroups_NewLogEntry" xml:space="preserve"><value>Neuer Protokolleintrag</value></data>
+  <data name="Workgroups_AddMeetingNotes" xml:space="preserve"><value>Notizen hinzufügen</value></data>
   <data name="Workgroups_NoHistory" xml:space="preserve"><value>Noch keine Historie.</value></data>
   <data name="Workgroups_Meeting" xml:space="preserve"><value>Treffen</value></data>
 
   <!-- Meeting form -->
   <data name="Workgroups_MeetingNewTitle" xml:space="preserve"><value>Neues Treffen</value></data>
   <data name="Workgroups_MeetingEditTitle" xml:space="preserve"><value>Treffen bearbeiten</value></data>
-  <data name="Workgroups_Field_MeetingTitle" xml:space="preserve"><value>Titel</value></data>
-  <data name="Workgroups_Field_StartDate" xml:space="preserve"><value>Startdatum</value></data>
-  <data name="Workgroups_Field_StartTime" xml:space="preserve"><value>Startzeit</value></data>
-  <data name="Workgroups_Field_EndDate" xml:space="preserve"><value>Enddatum</value></data>
-  <data name="Workgroups_Field_EndTime" xml:space="preserve"><value>Endzeit</value></data>
   <data name="Workgroups_Field_TimesAreUtc" xml:space="preserve"><value>Zeiten sind UTC.</value></data>
-  <data name="Workgroups_Field_Location" xml:space="preserve"><value>Ort</value></data>
-  <data name="Workgroups_Field_LocationUrl" xml:space="preserve"><value>Orts-URL</value></data>
   <data name="Workgroups_Field_IsPublic" xml:space="preserve"><value>Im Community-Kalender anzeigen</value></data>
   <data name="Workgroups_Field_IsPublicHelp" xml:space="preserve"><value>Alle mit Zugang zur App können das Treffen und das Protokoll auf der Gruppenseite lesen. Diese Option zeigt das Treffen zusätzlich im Community-Kalender.</value></data>
-  <data name="Workgroups_Field_Minutes" xml:space="preserve"><value>Protokoll</value></data>
 
   <!-- Log entry form -->
   <data name="Workgroups_LogEntryNewTitle" xml:space="preserve"><value>Neuer Protokolleintrag</value></data>

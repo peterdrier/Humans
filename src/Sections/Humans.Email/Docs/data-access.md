@@ -67,11 +67,10 @@ Repository: `ICommunicationPreferenceRepository` (Singleton, `IDbContextFactory<
 | Table | R/W |
 |-------|-----|
 | CommunicationPreferences | R/W |
-| Users' `communication_preferences` (frozen legacy) | R only via `IUserService` (`UserInfo.CommunicationPreferences`) — never the table |
 
 Implements `ICommunicationPreferenceService`, `ICommunicationPreferenceWrite`,
 the internal `ICommunicationPreferenceManagement`, `IUserDataContributor` and
-`IUserMerge`. Cross-section calls via `IUserService`, every registered `ICommunicationPreferenceLock` (Tickets locks
+`IUserMerge`. Cross-section calls via `IUserService` (merge resolution for reads), every registered `ICommunicationPreferenceLock` (Tickets locks
 the Ticketing preference for ticket holders), `IAuditLogService`;
 `IUnsubscribeTokenProvider` is section-internal. No cache.
 
@@ -121,11 +120,11 @@ No `IMemoryCache`.
 
 No repository. Backs the `_EmailComposer` "Send to me" button
 (peterdrier/Humans#1793): resolves the caller's own notification address via
-`IUserEmailService.GetNotificationTargetEmailsAsync`, renders the typed Markdown
+`IUserService.GetUserInfoAsync` and its canonical `UserInfo.Email`, renders the typed Markdown
 through `SanitizedMarkdownRenderer`, and hands one `composer_self_test`
 `MessageCategory.System` message to `IEmailService.SendAsync` (the outbox
 row is `OutboxEmailService`'s write), then audits `EmailComposerSelfTestSent`
-through `IAuditLogService`. `IUserService` supplies the caller's display name.
+through `IAuditLogService`. The same user snapshot supplies the caller's display name.
 Section-internal; its only consumer is `EmailPreviewController`. No cache.
 
 ---

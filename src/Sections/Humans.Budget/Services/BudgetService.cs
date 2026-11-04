@@ -408,9 +408,9 @@ internal sealed class BudgetService(
         logger.LogInformation("Deleted budget category {CategoryId}", categoryId);
     }
 
-    public async Task<BudgetLineItemSnapshot?> GetLineItemByIdAsync(Guid id)
+    public async Task<BudgetLineItemSnapshot?> GetLineItemByIdAsync(Guid id, CancellationToken ct = default)
     {
-        var lineItem = await repository.GetLineItemByIdAsync(id);
+        var lineItem = await repository.GetLineItemByIdAsync(id, ct);
         return lineItem is null ? null : ToLineItemSnapshot(lineItem);
     }
 
@@ -707,19 +707,6 @@ internal sealed class BudgetService(
             changed, weeklyActuals.Count);
 
         return changed;
-    }
-
-    public async Task<int> RefreshTicketingProjectionsAsync(
-        Guid budgetYearId, Guid? actorUserId, CancellationToken ct = default)
-    {
-        var now = clock.GetCurrentInstant();
-        var today = now.InUtc().Date;
-
-        var created = await repository.RefreshTicketingProjectionsAsync(
-            budgetYearId, today, actorUserId, now, ct);
-
-        logger.LogInformation("Ticketing projections refreshed: {Count} line items", created);
-        return created;
     }
 
     public async Task<IReadOnlyList<TicketingWeekProjection>> GetTicketingProjectionEntriesAsync(

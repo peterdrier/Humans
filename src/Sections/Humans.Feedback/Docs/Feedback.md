@@ -1,187 +1,45 @@
 <!-- freshness:triggers
   src/Sections/Humans.Feedback/**
-  src/Sections/Humans.Backdoor/Controllers/BackdoorFeedbackController.cs
-  src/Humans.Base/Constants/RoleNames.cs
-  src/Humans.Base/Caching/CacheKeys.cs
--->
-<!-- freshness:flag-on-change
-  Feedback report lifecycle, screenshot validation, message thread invariants, and admin-vs-reporter authorization — review when Feedback service/entities/controllers change.
 -->
 
 # Feedback — Section Invariants
 
-> **Retired and closed to new input (nobodies-collective/Humans#977).** Feedback was
-> superseded by [Issues](../../Humans.Issues/Docs/Issues.md) — same shape (bug/feature/question, screenshots,
-> reporter↔handler thread) but with role-routed triage. There is **no creation path
-> left**: no widget, no `POST /Feedback`, no create method on `FeedbackService`, no
-> `IFeedbackRepository.AddReportAsync`. What survives is a **read-and-triage surface
-> over the historical rows, gated on `PolicyNames.AdminOnly`**. Existing
-> `feedback_reports` / `feedback_messages` rows are untouched and still exportable
-> under GDPR. New in-app reporting goes to Issues.
-
-Historical in-app feedback reports (bugs, feature requests, questions) with screenshots and a reporter↔admin conversation thread.
+> **Removed (2026-11-01).** Feedback was superseded by [Issues](../../Humans.Issues/Docs/Issues.md)
+> and is gone: no pages, no Backdoor API, no role, no jobs, no GDPR contributor. What is left is a
+> stub that exists only so the migration dropping its tables can run. Delete the whole project once
+> production has applied `DropFeedbackTables`.
 
 ## Concepts
 
-- A **Feedback Report** is a historical in-app submission from a human — a bug report, feature request, or question. It captures the page URL, optional screenshot, and conversation thread between the reporter and admins. No new reports can be created.
-- **Feedback status** tracks the lifecycle: Open, Acknowledged, Resolved, or WontFix.
-- The admin list bounds description previews to 100 UTF-16 units plus an ellipsis without splitting surrogate pairs; historical descriptions remain complete.
-- List and detail URL previews preserve surrogate pairs at their 30/40-unit limits plus ellipses; the stored URL and full detail display remain complete.
+None. Feedback holds no data and serves no requests.
 
 ## Data Model
 
-### FeedbackReport
+`FeedbackDbContext` maps no entities. Its one live migration, `DropFeedbackTables`, drops
+`feedback_reports` and `feedback_messages`; the reports and their threads are not kept anywhere. The screenshots went first, through the `feedback.delete-screenshots` data migration, which this removal retires.
 
-**Table:** `feedback_reports`
+## Routing
 
-| Property | Type | Purpose |
-|----------|------|---------|
-| Id | Guid | PK |
-| UserId | Guid | Reporter — bare cross-section Guid column, **no FK constraint, no nav property** |
-| Category | FeedbackCategory | Bug, FeatureRequest, Question |
-| Description | string | Feedback text (max 5000) |
-| PageUrl | string | URL where feedback was submitted (max 2000) |
-| UserAgent | string? | Browser user agent string (max 1000) |
-| AdditionalContext | string? | Extra context captured at submission (e.g., reporter's roles) (max 2000) |
-| ScreenshotFileName | string? | Original filename (max 256) |
-| ScreenshotStoragePath | string? | `IFileStorage` key of the screenshot blob (max 512); historical uploads landed under `uploads/feedback/` |
-| ScreenshotContentType | string? | MIME type (`image/jpeg`, `image/png`, `image/webp`) (max 64) |
-| Status | FeedbackStatus | Open, Acknowledged, Resolved, WontFix |
-| GitHubIssueNumber | int? | Positive linked GitHub issue number, or null to clear. Nonpositive numbers are refused before writes or link-change audit entries, preserving the current link. |
-| LastReporterMessageAt | Instant? | Timestamp of the most recent reporter message (drives "needs reply") |
-| LastAdminMessageAt | Instant? | Timestamp of the most recent admin message (drives "needs reply") |
-| AssignedToUserId | Guid? | Bare cross-section Guid column — **no FK constraint, no nav property** |
-| AssignedToTeamId | Guid? | Bare cross-section Guid column — **no FK constraint, no nav property** |
-| CreatedAt | Instant | Submission timestamp |
-| UpdatedAt | Instant | Last modification |
-| Source | FeedbackSource | `UserReport` (default) or `AgentUnresolved` — was set when created by the agent's retired `route_to_feedback` tool |
-| AgentConversationId | Guid? | FK column only — no EF FK constraint to `agent_conversations`; cross-section join is not modeled |
-| ResolvedAt | Instant? | When resolved/won't-fix |
-| ResolvedByUserId | Guid? | Bare cross-section Guid column — **no FK constraint, no nav property** |
-
-**Indexes:** `Status`, `CreatedAt`, `UserId`, `AssignedToUserId`, `AssignedToTeamId`, `Source`, `AgentConversationId`.
-
-### FeedbackMessage
-
-**Table:** `feedback_messages`
-
-Conversation thread between reporter and admins. Aggregate-local (same section as FeedbackReport). `FeedbackReport.Messages ↔ FeedbackMessage.FeedbackReport` is a legal `.Include` inside the repository.
-
-| Property | Type | Purpose |
-|----------|------|---------|
-| Id | Guid | PK |
-| FeedbackReportId | Guid | FK → FeedbackReport, Cascade on delete |
-| SenderUserId | Guid? | Bare cross-section Guid column — **no FK constraint, no nav property**; null when posted via API key (no user session) |
-| Content | string | Message body, authored as Markdown and rendered sanitized (max 5000) |
-| CreatedAt | Instant | When the message was posted |
-| EmailEnqueuePending | bool? | True until a new admin reply is handed to Email; null on historical messages, false after handoff or missing-address skip |
-
-There is no per-message admin/reporter flag — admin-vs-reporter is derived by comparing `SenderUserId` to `FeedbackReport.UserId`, and report-level "needs reply" is derived from `LastReporterMessageAt` vs `LastAdminMessageAt`.
-
-**Indexes:** `FeedbackReportId`, `CreatedAt`.
-
-`FeedbackMessage.SenderUserId` has no navigation property (nobodies-collective/Humans#996) — senders resolve via `IUserService.GetUserInfosAsync`.
-
-### FeedbackCategory
-
-| Value | Description |
-|-------|-------------|
-| Bug | Bug report |
-| FeatureRequest | Feature request |
-| Question | General question |
-
-### FeedbackStatus
-
-| Value | Description |
-|-------|-------------|
-| Open | New, unreviewed |
-| Acknowledged | Admin has seen it |
-| Resolved | Fixed or addressed |
-| WontFix | Will not be addressed |
-
-### FeedbackSource
-
-| Value | Description |
-|-------|-------------|
-| UserReport | Submitted directly by a user (default) |
-| AgentUnresolved | Created by the agent's `route_to_feedback` tool when the agent could not resolve the user's issue |
+None. `/Feedback` no longer exists, and `PrivateUploadMiddleware` returns 404 for every
+`/uploads/feedback/*` path, whoever asks; the files themselves were deleted before the drop.
 
 ## Actors & Roles
 
-| Actor | Capabilities |
-|-------|--------------|
-| Admin | The **only** human actor. View all historical reports at `/Feedback` and `/Feedback/{id}`, update status, assign to humans and/or teams, link GitHub issues, and reply on any report (replies queue an email and dispatch an in-app notification to the reporter). Every action is gated by the controller-level `PolicyNames.AdminOnly`; the index and detail GETs pass the browser abort token through their viewer, report, team, assignee, and reporter reads. |
-| API (key auth) | List, get, post messages, update status, update assignment, set GitHub issue via `/api/backdoor/feedback`. The controller lives in `Humans.Backdoor` and calls this section through `IFeedbackTriage` (nobodies-collective/Humans#1128); the key resolves to a human, so an API reply is attributed exactly like one typed in the UI. No report-creation endpoint. |
-
-`FeedbackRoles.FeedbackAdmin` still exists as an assignable role (it appears on the Staff page and in the Guide, and still admits the holder to the `/Admin` shell via `AnyAdminRole`), but it **no longer grants any Feedback access**. Its former policy `PolicyNames.FeedbackAdminOrAdmin` was deleted with the lockdown.
+None. The `FeedbackAdmin` role is gone; any assignment rows that still name it grant nothing.
 
 ## Invariants
 
-- The queue detail panel accepts only the latest selection request’s response; earlier successes and unavailable responses cannot replace the selected item’s content or wire stale forms.
-
-- Status updates reject undefined enum values before persistence or audit.
-- Browser triage requires an explicitly posted status. Omission shows the existing invalid-status error without reopening the report or clearing resolution metadata; explicit Open remains valid.
-- Every feedback report is linked to the human who submitted it.
-- **No code path creates a feedback report.** There is no service, repository, controller, or view component that writes a new `FeedbackReport` row.
-- Feedback status flows Open → Acknowledged → Resolved or WontFix; transitioning out of a terminal status (Resolved/WontFix) clears `ResolvedAt` and `ResolvedByUserId`.
-- The index controller resolves reporter labels from `UserInfo.BurnerName`, orders them alphabetically and builds native select options with counts and the selected filter. The service returns reporter ids and counts only; no reporter name is copied into a view-model identity field.
-- Only Admin can see feedback reports — including a report's own reporter, who has no route into the section any more.
-- Every message posted through `FeedbackService.PostMessageAsync` is an admin reply: it stamps `LastAdminMessageAt`, emails the reporter, and dispatches an in-app notification. Reporter messages exist only on historical rows.
-- "Needs reply" is derived: true when the reporter has posted a message more recent than any admin reply (`LastReporterMessageAt > LastAdminMessageAt`) or when the report is still Open and no admin has ever replied. The nav-badge count uses the same rule and excludes Resolved/WontFix.
-- A report can optionally be assigned to a human and/or a team. Both assignments are independent and nullable. The list’s 12-unit assignee-name previews preserve whole UTF-16 surrogate pairs; tooltips retain the complete names.
-- Status changes, assignment changes and GitHub links are audit-logged via `FeedbackAuditActions.FeedbackStatusChanged`, `FeedbackAuditActions.FeedbackAssignmentChanged` and `FeedbackAuditActions.FeedbackGitHubLinked`. Every mutation takes the acting user; the `"API"` actor string remains only as the fallback for a caller that resolved to nobody.
-- Admin replies commit the message, timestamps and pending-email flag in one Feedback save before any email handoff. Enqueue failure returns the committed reply with `EmailEnqueuePending=true`, visible in the admin thread. The `feedback-reply-emails` minute job retries through the internal `FeedbackReplyDelivery.ExecuteAsync`; historical null flags are never resent. A process-local delivery lock serializes request/job handoffs and rechecks the owned message after acquiring it.
-- Email handoff uses the reply id as `EmailMessage.DeliveryId`. If enqueue succeeds but clearing Feedback's flag fails, retry reuses Email's existing queue row instead of creating another. Missing reporters, erased identities or missing effective addresses are logged terminal skips. Completed handoff clears the flag before the best-effort in-app notification; queued responses record `FeedbackResponseSent` with an explicit queued-email description and original sender/API actor. This records queue acceptance, not SMTP delivery.
-
-## Negative Access Rules
-
-- Non-Admins **cannot** reach `/Feedback` or `/Feedback/{id}` at all — including reporters looking for their own reports. `FeedbackAdmin` alone is denied.
-- Historical screenshot URLs under `/uploads/feedback/` enforce the same `AdminOnly` policy before static-file serving; denied requests return 404 and screenshot responses are private and non-cacheable.
-- Nobody, at any privilege level, **can** create a feedback report through the app. File an Issue instead.
-- No Feedback link is rendered outside the Admin nav tree: it is absent from the user dropdown, from the Help widget, and from the agent conversation view.
-- Feedback counts (the admin nav pill and the `/Admin` dashboard "Open feedback" tile) render for **Admin only**, not for the other admin-shaped roles that can reach the admin shell.
-
-## Triggers
-
-- After an admin reply is persisted, the reporter's effective notification email is resolved via `IUserEmailService.GetNotificationTargetEmailsAsync` and a localized response email is queued via `IEmailService.SendAsync(FeedbackEmails.FeedbackResponse(...))`. After handoff is acknowledged, a localized in-app `FeedbackNotificationSources.FeedbackResponse` notification is also dispatched in the reporter's supported saved language. Both email and notice fall back to English for blank, invalid or unsupported preferences.
-- Status, assignment and GitHub-link triage mutations share audit attribution: the acting member when supplied, otherwise the machine actor `API`, always after the business save.
-- Triage mutations return explicit missing/refused/success results. Only a missing result becomes 404; core persistence failures retain the normal logged error path, while committed replies retain failed email handoff for automatic retry. Undefined statuses are refused without persistence or audit.
-- When a message is posted, a status changes, or GDPR erasure deletes reports, `FeedbackService` evicts its nav-badge count after persistence. GDPR erasure deletes owned screenshots before removing their rows, propagating storage errors while the keys remain retryable. Once deletion begins, file and row removal ignore caller cancellation; the badge cache is evicted after the save.
-- When an account merge accepts, `FeedbackService.ReassignAsync` (`IUserMerge`) re-FKs `FeedbackReport.UserId` / `AssignedToUserId` / `ResolvedByUserId` and `FeedbackMessage.SenderUserId` from source to target. Called by the account-merge fan-out before Users tombstones the source. All affected report links and message senders move in one section save; assignments remain findable under the active survivor, while unrelated reporters and assignees are preserved.
-- Data migration `feedback.delete-screenshots` (operator-run at `/Debug/DataMigrations`) lists every report screenshot still in storage, deletes each, then deletes the whole `uploads/feedback/` prefix so files no report points to go too; all through `IFileStorage`. It must report done on production before the PR that removes the section and drops its tables merges, since those rows are the only index to the files.
+- The stub keeps `FeedbackResponse` declared as a retired notification source, so the inbox purge
+  clears the rows Feedback already wrote.
+- The stub keeps Feedback's four audit action names declared, so stored audit rows still resolve.
+  When the stub is deleted, those declarations need a new home first.
 
 ## Cross-Section Dependencies
 
-- **Audit actions:** declared on `FeedbackAuditActions` (`src/Sections/Humans.Feedback/FeedbackAuditActions.cs`), one `AuditActionDefinition` each, written through `IAuditLogService`: `FeedbackResponseSent`, `FeedbackStatusChanged`, `FeedbackAssignmentChanged`, `FeedbackGitHubLinked`.
-- **Users/Identity:** `IUserService.GetUserInfosAsync` — batched lookup of the canonical `UserInfo` read model, which already carries `BurnerName`-first display names, resolving reporter, assignee, resolver, and message senders in one call (`memory/architecture/burnername-is-the-display-name.md`).
-- **Profiles:** `IUserEmailService.GetNotificationTargetEmailsAsync` — resolves the effective notification email for a report's reporter when an admin posts a reply. Also: `FeedbackService` implements `IUserMerge` and is called by `IAccountMergeService.AcceptAsync` to re-FK feedback rows during account merge fold.
-- **Teams:** `ITeamService.GetTeamsAsync` / `GetTeamAsync` — assigned-team display names.
-- **Email:** transport only. Feedback owns its one template — `FeedbackEmails` (internal) builds the `EmailMessage` from Feedback's own `Feedback_Email_*` keys in `FeedbackResource`, rendered in the recipient's culture via `CultureScope`, and `FeedbackEmailPreviews` (`IEmailPreviewContributor`, registered in `Section.Register`) lists it at `/Email/EmailPreview` (`memory/architecture/email-templates-live-in-sender.md`, peterdrier/Humans#1651). `IEmailService.SendAsync` with `FeedbackEmails.FeedbackResponse` — admin-reply emails (the production binding is `OutboxEmailService`, so the email is queued through the email outbox).
-- **Notifications:** `INotificationEmitter.SendAsync` — `FeedbackNotificationSources.FeedbackResponse` in-app notification dispatched after an admin reply is persisted. Its sources are declared in `FeedbackNotificationSources` (`src/Sections/Humans.Feedback/FeedbackNotificationSources.cs`), one `NotificationSourceDefinition` each: `FeedbackResponse` (informational, to the reporter: admin responds to feedback).
-- **Audit Log:** `IAuditLogService.LogAsync` — queued reply emails, status, assignment and GitHub-link changes (`FeedbackAuditActions.FeedbackResponseSent`, `FeedbackAuditActions.FeedbackStatusChanged`, `FeedbackAuditActions.FeedbackAssignmentChanged`, `FeedbackAuditActions.FeedbackGitHubLinked`).
-- **Caching:** the actionable badge count is cached inline in `FeedbackService.GetActionableCountAsync` (`FeedbackService.BadgeCacheKey`, 2-min TTL, Static) and evicted by the same service whenever the count could have changed.
-- **GDPR:** export resolves archived account IDs to the survivor before selecting reports and attributing their messages. Implements `IUserDataContributor` to export the reporter's feedback reports, stored browser/submission context (including null when absent), and message contents/pending-email status under `FeedbackService.FeedbackReports`. Replies the person authored on other people's reports are exported under `FeedbackService.FeedbackReplies`, carrying only their own reply content, pending-email status, timestamp and report reference; the other report's submission context and other authors' replies are excluded. Both slices follow the existing erasure path on Article 17 request — reports the person filed are hard-deleted with their messages and screenshots, while a reply they left on someone else's report stays with authorship detached (`SenderUserId` nulled), per its `ErasureDeclaration`.
-- Screenshot deletion must succeed before GDPR erasure removes the report rows; storage failures retain the rows for retry. File deletion and the subsequent row save finish without caller cancellation.
-- **Agent:** `AgentConversationId` is a plain FK column on `feedback_reports` (no EF FK constraint). Reports with `Source = AgentUnresolved` originate from the agent's retired `route_to_feedback` tool. Transcript resolution goes through the Agent section's services when needed. `IFeedbackService.GetOpenFeedbackIdsForUserAsync` still feeds `AgentUserSnapshotProvider`.
+- **AuditLog, Notifications:** the retired declarations above.
+- **Agent:** `agent_conversations.HandedOffToFeedbackId` is Agent's legacy column; it now points
+  at nothing.
 
 ## Architecture
 
-**Owning services:** `FeedbackService` (triage and user lifecycle), `FeedbackReplyDelivery` (durable reply delivery and retries)
-**Owned tables:** `feedback_reports`, `feedback_messages`
-**Status:** Retired — write-locked and admin-gated (nobodies-collective/Humans#977).
-
-- `FeedbackService` lives in `Humans.Feedback.Services` and depends only on Application-layer abstractions. It never imports `Microsoft.EntityFrameworkCore`. Implements `IFeedbackService`, `IFeedbackTriage`, `IUserDataContributor`, and `IUserMerge` — the triage surface is the concrete `internal sealed FeedbackService` the section's own controllers, nav pill and dashboard tile inject. Two interfaces leave the section on the `Contracts/` folder: the one-method public contract `IFeedbackService` (the Agent user snapshot) and `IFeedbackTriage` (the Backdoor machine API, nobodies-collective/Humans#1128).
-- `FeedbackReplyDelivery` owns the shared reply handoff and recurring retry pass (`IRecurringJob`). `FeedbackService.PostMessageAsync` commits the reply before calling it. Both resolve the same scoped delivery pipeline; the static delivery lock, pending flag, stable Email delivery id, audit ordering and best-effort notification behavior are unchanged. `ISectionJobs` keeps the `feedback-reply-emails` schedule and registers the delivery type directly.
-- `IFeedbackRepository` (impl `src/Sections/Humans.Feedback/Data/FeedbackRepository.cs`) owns the SQL surface. Registered as Singleton and uses `IDbContextFactory<FeedbackDbContext>` to create per-call scoped contexts, so the repository can be a long-lived singleton while EF state stays per-request.
-- **Aggregate-local navs kept:** `FeedbackReport.Messages ↔ FeedbackMessage.FeedbackReport`. Both sides live in Feedback-owned tables, so `.Include(f => f.Messages)` is legal inside the repository.
-- **Decorator decision — no caching decorator.** Feedback reports are per-user and admin-triaged, not a hot bulk-read path (same rationale as Governance / User).
-- **No cross-domain navs:** every cross-section reference is a bare Guid FK column — no `HasOne(...)` relationship, no cross-section FK constraint, nothing to `.Include()` (nobodies-collective/Humans#996). The service stitches display data in memory from `IUserService.GetUserInfosAsync`, `IUserEmailService`, and `ITeamService` (design-rules §6b). Read methods return `FeedbackReportInfo` / `FeedbackMessageInfo` records with display names pre-resolved (BurnerName-first); controllers and views consume those record fields directly.
-- **Nav-badge cache invalidation** stays inside `FeedbackService`: it is the key's only reader and the only writer that can move the count, so no other section evicts it.
-- **Architecture test** — `tests/Humans.Feedback.Tests/Architecture/FeedbackArchitectureTests.cs` pins: triage takes `IUserService` / `ITeamService`, delivery takes `IUserEmailService`, and `AuditEntityTypes` members are string literals. Everything else is delegated to the solution-wide analyzers/rules. (`FeedbackService` *does* take `IMemoryCache` for its inline badge-count cache — it is allowlisted in `ApplicationServicesTakeNoMemoryCacheRule`, so the no-`IMemoryCache` check is delegated to that rule rather than pinned here.)
-
-### Touch-and-clean guidance
-
-- Do **not** reintroduce `.Include(f => f.User | f.ResolvedByUser | f.AssignedToUser | f.AssignedToTeam)` or `.Include(m => m.SenderUser)` anywhere — new read paths should go through the repository's existing methods (or extend the repository with a new narrowly-shaped query) and stitch display data in `FeedbackService` via the cross-section service interfaces above.
-- Aggregate-local `.Include(f => f.Messages)` is fine — `feedback_messages` is Feedback-owned.
-- `FeedbackService` caches the feedback nav-badge actionable count inline via `IMemoryCache` (`FeedbackService.BadgeCacheKey`, 2-min TTL) — it is allowlisted in `ApplicationServicesTakeNoMemoryCacheRule` for exactly this short-TTL request-acceleration cache (the badge count is the only thing it caches). No code outside the service evicts the key.
-- New tables that logically belong to Feedback must be added to `design-rules.md §8`; do not silently grow the section's footprint.
+**Owning services:** none. **Owned tables:** none after `DropFeedbackTables`. **Public contract:** none.

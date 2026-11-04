@@ -178,6 +178,47 @@ internal sealed class Repository(IDbContextFactory<HoldedDbContext> factory)
         return await ctx.HoldedApiCalls.AsNoTracking().ToListAsync(ct);
     }
 
+    public async Task ReplacePurchaseDocsAsync(
+        IReadOnlyList<HoldedPurchaseDoc> docs, Instant now, CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        var ids = docs.Select(d => d.Id).ToHashSet(StringComparer.Ordinal);
+        var existing = await ctx.HoldedPurchaseDocs.ToDictionaryAsync(d => d.Id, StringComparer.Ordinal, ct);
+        ctx.HoldedPurchaseDocs.RemoveRange(existing.Values.Where(d => !ids.Contains(d.Id)));
+        foreach (var d in docs)
+        {
+            if (existing.TryGetValue(d.Id, out var cur))
+            {
+                cur.DocNumber = d.DocNumber;
+                cur.ContactName = d.ContactName;
+                cur.ContactId = d.ContactId;
+                cur.Description = d.Description;
+                cur.Date = d.Date;
+                cur.Subtotal = d.Subtotal;
+                cur.Tax = d.Tax;
+                cur.Total = d.Total;
+                cur.Currency = d.Currency;
+                cur.IsApproved = d.IsApproved;
+                cur.Notes = d.Notes ?? cur.Notes;
+                cur.Tags = d.Tags;
+                cur.BookedAccountId = d.BookedAccountId;
+                cur.LastSyncedAt = now;
+            }
+            else
+            {
+                d.LastSyncedAt = now;
+                ctx.HoldedPurchaseDocs.Add(d);
+            }
+        }
+        await ctx.SaveChangesAsync(ct);
+    }
+
+    public async Task<IReadOnlyList<HoldedPurchaseDoc>> GetPurchaseDocsAsync(CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        return await ctx.HoldedPurchaseDocs.AsNoTracking().ToListAsync(ct);
+    }
+
     public async Task<HoldedSyncState> GetOrCreateSyncStateAsync(
         HoldedSyncKind kind, CancellationToken ct = default)
     {

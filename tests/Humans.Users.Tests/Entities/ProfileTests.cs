@@ -56,17 +56,18 @@ public class ProfileTests
         profile.ConsentCheckStatus.Should().BeNull();
     }
 
-    [HumansTheory]
-    [InlineData(LegacyConsentCheckStatus.Pending)]
-    [InlineData(LegacyConsentCheckStatus.Cleared)]
-    [InlineData(LegacyConsentCheckStatus.Flagged)]
-    public void Profile_CanSetConsentCheckStatus(LegacyConsentCheckStatus status)
+    [HumansFact]
+    public void Profile_CanSetConsentCheckStatus()
     {
-        var profile = CreateProfile();
+        // A fact, not a theory: the enum is internal, so it can't be a public test parameter.
+        foreach (var status in Enum.GetValues<LegacyConsentCheckStatus>())
+        {
+            var profile = CreateProfile();
 
-        profile.ConsentCheckStatus = status;
+            profile.ConsentCheckStatus = status;
 
-        profile.ConsentCheckStatus.Should().Be(status);
+            profile.ConsentCheckStatus.Should().Be(status);
+        }
     }
 
     [HumansFact]
@@ -103,18 +104,18 @@ public class ProfileTests
         profile.RejectedByUserId.Should().Be(adminId);
     }
 
-    [HumansTheory]
-    [InlineData(0)]
-    [InlineData(1)]
-    [InlineData(2)]
-    public void Profile_CanSetMembershipTier(int value)
+    [HumansFact]
+    public void Profile_CanSetMembershipTier()
     {
-        var profile = CreateProfile();
+        // A fact, not a theory: the enum is internal, so it can't be a public test parameter.
+        foreach (var tier in Enum.GetValues<LegacyMembershipTier>())
+        {
+            var profile = CreateProfile();
 
-        var tier = (LegacyMembershipTier)value;
-        profile.MembershipTier = tier;
+            profile.MembershipTier = tier;
 
-        profile.MembershipTier.Should().Be(tier);
+            profile.MembershipTier.Should().Be(tier);
+        }
     }
 
     private static Profile CreateProfile()

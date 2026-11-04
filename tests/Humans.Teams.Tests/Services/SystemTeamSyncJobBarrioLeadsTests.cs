@@ -106,22 +106,12 @@ public class SystemTeamSyncJobBarrioLeadsTests
             AdminNotes: null,
             ContributionInterests: null,
             BoardNotes: null,
-            Iban: null,
-            IsApproved: false,
-            ConsentCheckStatus: null,
-            ConsentCheckAt: null,
-            ConsentCheckedByUserId: null,
-            ConsentCheckNotes: null,
-            RejectionReason: null,
-            RejectedAt: null,
-            RejectedByUserId: null,
             NoPriorBurnExperience: false,
             ContactFields: [],
             Languages: [],
             VolunteerHistory: []);
         var user = UserInfo.Create(member,
-            [new UserEmail { Id = Guid.NewGuid(), UserId = member.Id, Email = "member@example.com", IsVerified = true, IsPrimary = true }],
-            [], [], profile, []);
+            [new UserEmail { Id = Guid.NewGuid(), UserId = member.Id, Email = "member@example.com", IsVerified = true, IsPrimary = true }], [], profile);
         var team = new TeamInfo(SystemTeamIds.Volunteers, "Volunteers", null, "volunteers",
             true, true, SystemTeamType.Volunteers, false, false, false, false, default, []);
         _teamService.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(new Dictionary<Guid, TeamInfo> { [team.Id] = team });
@@ -240,6 +230,84 @@ public class SystemTeamSyncJobBarrioLeadsTests
             userId,
             Arg.Any<CancellationToken>(),
             GoogleSyncSource.SystemTeamSync);
+    }
+
+    [HumansFact]
+    public async Task SyncBarrioLeadsTeam_GoogleFailure_DoesNotSkipCommittedMembershipAudits()
+    {
+        var removedId = Guid.NewGuid();
+        var addedIds = new[] { Guid.NewGuid(), Guid.NewGuid() };
+        var team = StubBarrioLeadsTeam(
+            [new TeamMember { Id = Guid.NewGuid(), UserId = removedId, JoinedAt = _clock.GetCurrentInstant() }]);
+        _campRepository.GetActiveLeadUserIdsAsync(Arg.Any<CancellationToken>()).Returns(addedIds);
+        _userService.GetUserInfosAsync(
+                Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(new Dictionary<Guid, UserInfo>()));
+        _googleSyncService.AddUserToTeamResourcesAsync(
+                team.Id, Arg.Any<Guid>(), Arg.Any<CancellationToken>(), GoogleSyncSource.SystemTeamSync)
+            .Returns<GoogleResourceGrantResult>(_ => throw new InvalidOperationException("Google unavailable"));
+        var job = CreateJob();
+
+        var act = () => job.SyncBarrioLeadsTeamAsync(cancellationToken: Xunit.TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("Google unavailable");
+        await _teamService.Received(1).ApplySystemTeamMembershipDeltaAsync(
+            team.Id,
+            Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Count == 2 && addedIds.All(ids.Contains)),
+            Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Count == 1 && ids.Contains(removedId)),
+            Arg.Any<Instant>(), Arg.Any<CancellationToken>());
+        foreach (var addedId in addedIds)
+            await _auditLogService.Received(1).LogAsync(
+                TeamsAuditActions.TeamMemberAdded, "Team", team.Id, Arg.Any<string>(),
+                nameof(SystemTeamSyncJob), addedId, nameof(User));
+        await _auditLogService.Received(1).LogAsync(
+            TeamsAuditActions.TeamMemberRemoved, "Team", team.Id, Arg.Any<string>(),
+            nameof(SystemTeamSyncJob), removedId, nameof(User));
+    }
+
+    [HumansFact]
+    public async Task ReconcileCoordinatorRoles_AuditsOnlyCommittedChanges()
+    {
+        var promote = new TeamRoleReconciliationMembership(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(),
+            "Promote", TeamMemberRole.Member, SystemTeamType.None, true);
+        var demote = new TeamRoleReconciliationMembership(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(),
+            "Demote", TeamMemberRole.Coordinator, SystemTeamType.None, false);
+        var skipped = promote with { TeamMemberId = Guid.NewGuid(), UserId = Guid.NewGuid() };
+        var unchanged = promote with { TeamMemberId = Guid.NewGuid(), UserId = Guid.NewGuid(), HasManagementRoleAssignment = false };
+        var systemCoordinator = demote with { TeamMemberId = Guid.NewGuid(), UserId = Guid.NewGuid(), SystemTeamType = SystemTeamType.Board };
+        _teamService.GetActiveMembershipsForRoleReconciliationAsync(Arg.Any<CancellationToken>())
+            .Returns(new[] { promote, demote, skipped, unchanged, systemCoordinator });
+        _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(new Dictionary<Guid, UserInfo>()));
+        var saved = false;
+        _teamService.ApplyMemberRoleChangesAsync(
+                Arg.Any<IReadOnlyCollection<(Guid TeamMemberId, TeamMemberRole Role)>>(), Arg.Any<CancellationToken>())
+            .Returns(_ => { saved = true; return (IReadOnlyList<Guid>)new[] { promote.TeamMemberId, demote.TeamMemberId }; });
+        _auditLogService.LogAsync(TeamsAuditActions.TeamMemberRoleChanged, "Team", promote.TeamId,
+                Arg.Any<string>(), nameof(SystemTeamSyncJob), promote.UserId, nameof(User))
+            .Returns(_ =>
+            {
+                saved.Should().BeTrue();
+                return Task.CompletedTask;
+            });
+        var report = new SyncReport();
+        var job = CreateJob();
+        var act = () => job.ReconcileCoordinatorRolesAsync(report, Xunit.TestContext.Current.CancellationToken);
+
+        await act();
+
+        await _teamService.Received(1).ApplyMemberRoleChangesAsync(
+            Arg.Is<IReadOnlyCollection<(Guid TeamMemberId, TeamMemberRole Role)>>(changes => changes.Count == 3
+                && changes.Any(change => change.TeamMemberId == promote.TeamMemberId && change.Role == TeamMemberRole.Coordinator)
+                && changes.Any(change => change.TeamMemberId == demote.TeamMemberId && change.Role == TeamMemberRole.Member)
+                && changes.Any(change => change.TeamMemberId == skipped.TeamMemberId && change.Role == TeamMemberRole.Coordinator)), Arg.Any<CancellationToken>());
+        await _auditLogService.Received(1).LogAsync(TeamsAuditActions.TeamMemberRoleChanged, "Team", promote.TeamId,
+            "Set member role to Coordinator by system sync", nameof(SystemTeamSyncJob), promote.UserId, nameof(User));
+        await _auditLogService.Received(1).LogAsync(TeamsAuditActions.TeamMemberRoleChanged, "Team", demote.TeamId,
+            "Set member role to Member by system sync", nameof(SystemTeamSyncJob), demote.UserId, nameof(User));
+        _auditLogService.ReceivedCalls().Should().HaveCount(2);
+        report.Steps.Should().ContainSingle().Which.Changes.Select(change => change.User.UserId)
+            .Should().BeEquivalentTo(new[] { promote.UserId, demote.UserId });
     }
 
     [HumansFact]

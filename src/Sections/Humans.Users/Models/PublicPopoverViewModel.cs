@@ -7,6 +7,5 @@ namespace Humans.Users.Models;
 internal sealed class PublicPopoverViewModel
 {
     public Guid UserId { get; init; }
-    public string DisplayName { get; init; } = string.Empty;
     public IReadOnlyList<string> RoleLabels { get; init; } = [];
 }

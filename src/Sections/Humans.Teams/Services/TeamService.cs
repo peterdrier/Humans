@@ -32,6 +32,7 @@ internal sealed class TeamService(
     ILogger<TeamService> logger) : ITeamManagementService, ITeamSeeding, IGoogleGroupMembershipSource, IUserMerge, IEarlyEntryProvider
 {
     private readonly TeamMembershipNotices membershipNotices = new(notificationService, serviceProvider, logger);
+    private readonly TeamGoogleGroupMemberships googleGroupMemberships = new(repo, logger);
     private static readonly TrackedLock JoinRequestLock = new("Teams.JoinRequest");
     private const int MaxTeamSlugLength = 256;
     private static readonly HashSet<string> ReservedTeamSlugs = new(StringComparer.Ordinal)
@@ -516,7 +517,7 @@ internal sealed class TeamService(
             await auditLogService.LogAsync(
                 TeamsAuditActions.TeamMemberRemoved, nameof(Team), teamId,
                 $"Membership ended when {team.Name} was deactivated",
-                actorUserId, relatedEntityId: userId, relatedEntityType: nameof(User));
+                actorUserId, relatedEntityId: userId, relatedEntityType: AuditSubjectTypes.User);
         }
 
         logger.LogInformation(
@@ -653,7 +654,7 @@ internal sealed class TeamService(
             TeamsAuditActions.TeamJoinedDirectly, nameof(Team), teamId,
             $"Joined {team.Name} directly",
             userId,
-            relatedEntityId: userId, relatedEntityType: nameof(User));
+            relatedEntityId: userId, relatedEntityType: AuditSubjectTypes.User);
 
         await membershipNotices.SendAddedToTeamEmailAsync(userId, team, cancellationToken);
         await membershipNotices.SendTeamMemberAddedNotificationAsync(team, userId, cancellationToken);
@@ -785,7 +786,7 @@ internal sealed class TeamService(
             TeamsAuditActions.TeamLeft, nameof(Team), teamId,
             $"Left {team.Name}",
             userId,
-            relatedEntityId: userId, relatedEntityType: nameof(User));
+            relatedEntityId: userId, relatedEntityType: AuditSubjectTypes.User);
 
         if (wasCoordinator)
         {
@@ -869,7 +870,7 @@ internal sealed class TeamService(
             TeamsAuditActions.TeamJoinRequestApproved, nameof(Team), request.TeamId,
             $"Join request for {request.Team.Name} approved",
             approverUserId,
-            relatedEntityId: request.UserId, relatedEntityType: nameof(User));
+            relatedEntityId: request.UserId, relatedEntityType: AuditSubjectTypes.User);
 
 
         await membershipNotices.SendAddedToTeamEmailAsync(request.UserId, request.Team, cancellationToken);
@@ -904,7 +905,7 @@ internal sealed class TeamService(
             TeamsAuditActions.TeamJoinRequestRejected, nameof(Team), request.TeamId,
             $"Join request for team rejected: {reason}",
             approverUserId,
-            relatedEntityId: request.UserId, relatedEntityType: nameof(User));
+            relatedEntityId: request.UserId, relatedEntityType: AuditSubjectTypes.User);
 
         await membershipNotices.SendJoinRequestRejectedNotificationAsync(request.Team, request.UserId, cancellationToken);
         return new();
@@ -951,9 +952,6 @@ internal sealed class TeamService(
     {
         var isAdmin = await RoleAssignmentService.IsUserAdminAsync(userId, cancellationToken);
         if (isAdmin) return true;
-
-        var isBoardMember = await RoleAssignmentService.IsUserBoardMemberAsync(userId, cancellationToken);
-        if (isBoardMember) return true;
 
         var isTeamsAdmin = await RoleAssignmentService.IsUserTeamsAdminAsync(userId, cancellationToken);
         if (isTeamsAdmin) return true;
@@ -1015,14 +1013,14 @@ internal sealed class TeamService(
             TeamsAuditActions.TeamMemberRemoved, nameof(Team), teamId,
             $"Member removed from {team.Name}",
             actorUserId,
-            relatedEntityId: userId, relatedEntityType: nameof(User));
+            relatedEntityId: userId, relatedEntityType: AuditSubjectTypes.User);
 
         if (mergeTarget is not null && (wasCoordinator || removedAssignments.Count > 0))
         {
             await auditLogService.LogAsync(
                 TeamsAuditActions.TeamMemberRoleChanged, nameof(Team), teamId,
                 $"Folded {removedAssignments.Count} role assignment(s) from merged account {userId}; source coordinator: {wasCoordinator}",
-                actorUserId, mergeTarget.UserId, nameof(User));
+                actorUserId, mergeTarget.UserId, AuditSubjectTypes.User);
         }
 
         await membershipNotices.SendMemberRemovedNotificationAsync(team, userId, teamId, cancellationToken);
@@ -1118,7 +1116,7 @@ internal sealed class TeamService(
             TeamsAuditActions.TeamMemberAdded, nameof(Team), teamId,
             $"Member added to {team.Name}",
             actorUserId,
-            relatedEntityId: targetUserId, relatedEntityType: nameof(User));
+            relatedEntityId: targetUserId, relatedEntityType: AuditSubjectTypes.User);
 
         await membershipNotices.SendAddedToTeamEmailAsync(targetUserId, team, cancellationToken);
 
@@ -1140,7 +1138,7 @@ internal sealed class TeamService(
             TeamsAuditActions.TeamMemberRoleChanged, nameof(Team), teamId,
             $"Set member role to {role}",
             actorUserId,
-            relatedEntityId: userId, relatedEntityType: nameof(User));
+            relatedEntityId: userId, relatedEntityType: AuditSubjectTypes.User);
     }
 
     public async Task<TeamRoleDefinitionMutationResult> CreateRoleDefinitionAsync(
@@ -1297,7 +1295,7 @@ internal sealed class TeamService(
         Guid roleDefinitionId, Guid actorUserId,
         CancellationToken cancellationToken = default)
     {
-        var definition = await repo.FindRoleDefinitionWithMembersForMutationAsync(roleDefinitionId, cancellationToken);
+        var definition = await repo.FindRoleDefinitionForMutationAsync(roleDefinitionId, cancellationToken);
         if (definition is null)
             return new(Refusal: $"Role definition {roleDefinitionId} not found");
         var team = await GetRoleDefinitionTeamAsync(definition, cancellationToken);
@@ -1429,14 +1427,14 @@ internal sealed class TeamService(
                 TeamsAuditActions.TeamMemberAdded, nameof(Team), definition.TeamId,
                 $"Auto-added to {team.Name} via role assignment",
                 actorUserId,
-                relatedEntityId: targetUserId, relatedEntityType: nameof(User));
+                relatedEntityId: targetUserId, relatedEntityType: AuditSubjectTypes.User);
         }
 
         await auditLogService.LogAsync(
             TeamsAuditActions.TeamRoleAssigned, nameof(TeamRoleDefinition), roleDefinitionId,
             $"Assigned to role '{definition.Name}' in {team.Name}",
             actorUserId,
-            relatedEntityId: targetUserId, relatedEntityType: nameof(User));
+            relatedEntityId: targetUserId, relatedEntityType: AuditSubjectTypes.User);
 
         // Management roles promote: reconcile Coordinators in the mutation.
         await SystemTeamSync.SyncMembershipForUserAsync(targetUserId, SystemTeamType.Coordinators, cancellationToken);
@@ -1458,7 +1456,7 @@ internal sealed class TeamService(
             TeamsAuditActions.TeamRoleUnassigned, nameof(TeamRoleDefinition), roleDefinitionId,
             $"Unassigned from role '{definition.Name}' in {team.Name}",
             actorUserId,
-            relatedEntityId: targetUserId, relatedEntityType: nameof(User));
+            relatedEntityId: targetUserId, relatedEntityType: AuditSubjectTypes.User);
 
         // Losing a management role can demote: reconcile Coordinators in the mutation.
         await SystemTeamSync.SyncMembershipForUserAsync(targetUserId, SystemTeamType.Coordinators, cancellationToken);
@@ -2005,7 +2003,6 @@ internal sealed class TeamService(
         request.Team?.Name,
         request.UserId,
         UserDisplayName: null,
-        UserEmail: null,
         UserProfilePictureUrl: null,
         request.Status,
         request.Message,
@@ -2022,7 +2019,6 @@ internal sealed class TeamService(
         return ToJoinRequestSnapshot(request) with
         {
             UserDisplayName = user?.BurnerName,
-            UserEmail = user?.Email,
             UserProfilePictureUrl = user?.ProfilePictureUrl
         };
     }
@@ -2066,12 +2062,12 @@ internal sealed class TeamService(
             .ToList();
     }
 
-    public async Task<int> ApplyMemberRoleChangesAsync(
+    public async Task<IReadOnlyList<Guid>> ApplyMemberRoleChangesAsync(
         IReadOnlyCollection<(Guid TeamMemberId, TeamMemberRole Role)> changes,
         CancellationToken cancellationToken = default)
     {
         if (changes.Count == 0)
-            return 0;
+            return [];
         return await repo.ApplyMemberRoleChangesAsync(changes, cancellationToken);
     }
 
@@ -2086,72 +2082,9 @@ internal sealed class TeamService(
             teamId, userIdsToAdd, userIdsToRemove, now, cancellationToken);
     }
 
-    public async Task<Dictionary<string, Guid[]>> GetExpectedAsync(
+    public Task<Dictionary<string, Guid[]>> GetExpectedAsync(
         string? groupKey = null,
-        CancellationToken ct = default)
-    {
-        var requestedKey = string.IsNullOrWhiteSpace(groupKey)
-            ? null
-            : groupKey.Trim();
+        CancellationToken ct = default) =>
+        googleGroupMemberships.GetExpectedAsync(groupKey, ct);
 
-        var teams = await repo.GetAllActiveAsync(ct);
-        var groupTeams = teams
-            .Where(t => t.GoogleGroupEmail is not null)
-            .Where(t => requestedKey is null
-                || string.Equals(t.GoogleGroupEmail, requestedKey, StringComparison.OrdinalIgnoreCase))
-            .ToList();
-
-        if (groupTeams.Count == 0)
-            return new Dictionary<string, Guid[]>(StringComparer.OrdinalIgnoreCase);
-
-        var duplicateGroupEmails = groupTeams
-            .GroupBy(t => t.GoogleGroupEmail!, StringComparer.OrdinalIgnoreCase)
-            .Where(g => g.Count() > 1)
-            .Select(g => g.Key)
-            .ToHashSet(StringComparer.OrdinalIgnoreCase);
-        foreach (var duplicateGroupEmail in duplicateGroupEmails)
-        {
-            logger.LogWarning(
-                "Multiple active Teams share Google group {GroupKey}; skipping this group membership claim so Google sync fails closed",
-                duplicateGroupEmail);
-        }
-
-        var syncableGroupTeams = groupTeams
-            .Where(t => !duplicateGroupEmails.Contains(t.GoogleGroupEmail!))
-            .ToList();
-        if (syncableGroupTeams.Count == 0)
-            return new Dictionary<string, Guid[]>(StringComparer.OrdinalIgnoreCase);
-
-        var groupTeamIds = syncableGroupTeams.Select(t => t.Id).ToHashSet();
-        var parentIdByChildTeamId = teams
-            .Where(t => t.ParentTeamId is { } parentId && groupTeamIds.Contains(parentId))
-            .ToDictionary(t => t.Id, t => t.ParentTeamId!.Value);
-
-        var childMemberUserIdsByParentTeam = teams
-            .Where(t => parentIdByChildTeamId.ContainsKey(t.Id))
-            .GroupBy(t => parentIdByChildTeamId[t.Id])
-            .ToDictionary(
-                g => g.Key,
-                g => g.SelectMany(t => t.Members.Where(m => m.LeftAt is null).Select(m => m.UserId))
-                    .Distinct()
-                    .ToArray());
-
-        var result = new Dictionary<string, Guid[]>(StringComparer.OrdinalIgnoreCase);
-        foreach (var team in syncableGroupTeams)
-        {
-            var directUserIds = team.Members
-                .Where(m => m.LeftAt is null)
-                .Select(m => m.UserId);
-
-            var childUserIds = childMemberUserIdsByParentTeam.GetValueOrDefault(team.Id)
-                ?? [];
-
-            result[team.GoogleGroupEmail!] = directUserIds
-                .Concat(childUserIds)
-                .Distinct()
-                .ToArray();
-        }
-
-        return result;
-    }
 }

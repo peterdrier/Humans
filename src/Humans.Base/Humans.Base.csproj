@@ -16,16 +16,9 @@
     shape interfaces may carry default-implemented members when a rule must have a
     single home across both implementers (IBurnSettingsInfo's early-entry clock) —
     so a little behaviour lives here, deliberately, not just declarations.
-    THE ONE INVARIANT, restated for what it always meant: Base must stay the bottom of
-    the graph, so every project it references must sit on a chain that TERMINATES.
-    G5 lane 4b-iii A added the first and so far only ProjectReference —
-    Humans.Users.Contracts — and the chain is
-      Humans.Interfaces -> Humans.Users.Contracts -> Humans.Onboarding.Contracts -> nothing.
-    A terminating chain cannot cycle, which is why lanes 3b (#1316) and 3c (#1318) spent
-    themselves making Humans.Users.Contracts terminal before this reference was allowed.
-    Do NOT add a reference to anything that is not on such a chain, and do NOT add an
-    outbound reference to Humans.Users.Contracts or Humans.Onboarding.Contracts — either
-    closes an assembly cycle through Base.
+    THE ONE INVARIANT: Base is the bottom of the graph and has NO Humans.* ProjectReference.
+    Anything every section needs lives here; a type that needs another project's types does
+    not belong here.
 
     EXTERNAL DEPENDENCIES ARE UNRESTRICTED — Peter's ruling, 2026-08-15. Base may take
     any NuGet package or shared framework it needs; only Humans.* ProjectReferences are
@@ -85,6 +78,12 @@
     again (Humans.Infrastructure.Configuration), so no call site moved. Everything else went to
     Humans.Web — including InfrastructureServiceCollectionExtensions, whose two anchor rules
     were self-retiring and went with the assembly.
+
+    Gdpr/ is the GDPR export/erase fan-out seam every data-owning section implements.
+    AuditLog/ is the audit append path every writing section calls.
+    Users/ is the person every section reads: the User and UserEmail entities (tables and EF
+    mapping stay in Humans.Users), UserInfo, IUserService, IUserEmailService and the enums
+    they name. Namespace stays Humans.Users.Contracts.
   -->
 
   <!--
@@ -150,8 +149,7 @@
       leaf with a reference path to this project resolves Microsoft.AspNetCore.App with
       IsTransitiveFrameworkReference=true. Those leaves are NOT framework-free and cannot be
       used as a "cannot name an ASP.NET type" oracle. Only a leaf with no path here
-      — Humans.Onboarding.Contracts (zero-ProjectReference) and
-      Humans.Users.Contracts (one edge, to Onboarding) — resolves Microsoft.NETCore.App alone.
+      — Humans.Onboarding.Contracts (zero-ProjectReference) — resolves Microsoft.NETCore.App alone.
     -->
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
 
@@ -200,15 +198,5 @@
     <PackageReference Include="AngleSharp" />
   </ItemGroup>
 
-  <!--
-    THE ONLY ProjectReference this project has, and it may not gain a second one that is
-    not on a terminating chain — see the invariant at the top of this file.
-    Forced by six arrivals from Humans.UI in G5 lane 4b-iii A: HumansControllerBase and
-    ApiControllerBase (User, IUserService), RoleChecks, SearchResultMappingExtensions and
-    PersonSearchOrderingExtensions.
-  -->
-  <ItemGroup>
-    <ProjectReference Include="..\Sections\Humans.Users.Contracts\Humans.Users.Contracts.csproj" />
-  </ItemGroup>
 
 </Project>

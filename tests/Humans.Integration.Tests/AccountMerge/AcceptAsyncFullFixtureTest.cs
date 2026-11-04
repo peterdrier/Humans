@@ -8,7 +8,6 @@ using Humans.Notifications.Data;
 using Humans.Consent.Data;
 using Humans.Budget.Data;
 using Humans.Campaigns.Data;
-using Humans.Feedback.Data;
 using Humans.Governance.Data;
 using Humans.Tickets.Contracts;
 using Humans.Tickets.Data;
@@ -53,7 +52,6 @@ public class AcceptAsyncFullFixtureTest(HumansTestDatabase database)
         Guid sourceOnlyNotificationId;
         Guid contestedCampaignId;
         Guid sourceOnlyCampaignId;
-        Guid feedbackReportId;
         Guid budgetYearId;
         Guid documentVersionId;
 
@@ -73,12 +71,12 @@ public class AcceptAsyncFullFixtureTest(HumansTestDatabase database)
 
             b.WithSourceLanguage($"x-{runTag.Substring(0, 4)}", LanguageProficiency.Native);
 
-            b.WithSourceCommPref(LegacyMessageCategory.VolunteerUpdates, optedOut: true);
+            b.WithSourceCommPref(MessageCategory.VolunteerUpdates, optedOut: true);
 
             // Logins are keyed on (provider, key), so two users never share one.
             b.WithSourceLogin("Google", sourceLoginKey);
 
-            b.WithSourceEventParticipation(2024, LegacyParticipationStatus.Attended);
+            b.WithSourceEventParticipation(2024, ParticipationStatus.Attended);
 
             b.WithSourceApplication();
 
@@ -119,12 +117,6 @@ public class AcceptAsyncFullFixtureTest(HumansTestDatabase database)
             builder.WithTargetCampaignGrant(contestedCampaignId);
             builder.WithSourceCampaignGrant(sourceOnlyCampaignId);
 
-            // Target-owned report carrying a source message.
-            feedbackReportId = builder.SeedFeedbackReportNow(targetId, $"report-{runTag}");
-            builder.WithSourceFeedbackMessage(feedbackReportId, $"src-msg-{runTag}");
-
-            builder.WithSourceFeedbackReport($"src-report-{runTag}");
-
             // Append-only, as is the consent record below; chain-follow at read time.
             budgetYearId = builder.SeedBudgetYearNow($"BY-{runTag}".Substring(0, 6));
             builder.WithSourceBudgetAuditLog(budgetYearId, budgetDescription);
@@ -150,7 +142,6 @@ public class AcceptAsyncFullFixtureTest(HumansTestDatabase database)
         var governanceDb = assertScope.ServiceProvider.GetRequiredService<GovernanceDbContext>();
         var ticketsDb = assertScope.ServiceProvider.GetRequiredService<TicketsDbContext>();
         var campaignsDb = assertScope.ServiceProvider.GetRequiredService<CampaignsDbContext>();
-        var feedbackDb = assertScope.ServiceProvider.GetRequiredService<FeedbackDbContext>();
         var authDb = assertScope.ServiceProvider.GetRequiredService<AuthDbContext>();
         var notificationsDb = assertScope.ServiceProvider.GetRequiredService<NotificationsDbContext>();
         var budgetDb = assertScope.ServiceProvider.GetRequiredService<BudgetDbContext>();
@@ -199,10 +190,6 @@ public class AcceptAsyncFullFixtureTest(HumansTestDatabase database)
         (await campaignsDb.CampaignGrants.AsNoTracking().CountAsync(g =>
                 g.UserId == sourceId
                 && (g.CampaignId == contestedCampaignId || g.CampaignId == sourceOnlyCampaignId), TestContext.Current.CancellationToken))
-            .Should().Be(0);
-        (await feedbackDb.FeedbackReports.AsNoTracking().CountAsync(r => r.UserId == sourceId, TestContext.Current.CancellationToken))
-            .Should().Be(0);
-        (await feedbackDb.FeedbackMessages.AsNoTracking().CountAsync(m => m.SenderUserId == sourceId, TestContext.Current.CancellationToken))
             .Should().Be(0);
 
         // Profile is the exception: the source row stays as an anonymized tombstone while its child rows re-FK.
@@ -309,13 +296,6 @@ public class AcceptAsyncFullFixtureTest(HumansTestDatabase database)
         (await campaignsDb.CampaignGrants.AsNoTracking()
                 .CountAsync(g => g.UserId == targetId && g.CampaignId == contestedCampaignId, TestContext.Current.CancellationToken))
             .Should().Be(1, "contested campaign grant deduped to a single target row");
-
-        (await feedbackDb.FeedbackReports.AsNoTracking()
-                .AnyAsync(r => r.UserId == targetId && r.Description == $"src-report-{runTag}", TestContext.Current.CancellationToken))
-            .Should().BeTrue("source feedback report re-FK'd to target");
-        (await feedbackDb.FeedbackMessages.AsNoTracking()
-                .AnyAsync(m => m.SenderUserId == targetId && m.Content == $"src-msg-{runTag}", TestContext.Current.CancellationToken))
-            .Should().BeTrue("source feedback message re-FK'd to target");
 
         var sourceProfile = await db.Profiles.AsNoTracking()
             .FirstOrDefaultAsync(p => p.UserId == sourceId, TestContext.Current.CancellationToken);

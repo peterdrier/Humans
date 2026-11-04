@@ -19,11 +19,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <!--
-      No data-access reference of any kind: the section owns no tables, so there is no
-      DbContext to register and nothing here names an EF type (Scanner's and MailerLite's
-      shape - decide the reference from what the section names, not from the SDK).
-    -->
+    <!-- No data-access reference: the section owns no tables. -->
     <ProjectReference Include="..\..\Humans.Base\Humans.Base.csproj" />
     <!-- IIssueQueueOwner: this section declares the issue queue it owns. -->
     <ProjectReference Include="..\Humans.Issues\Humans.Issues.csproj" />
@@ -33,11 +29,9 @@
     <ProjectReference Include="..\Humans.Settings\Humans.Settings.csproj" />
     <ProjectReference Include="..\Humans.Users.Contracts\Humans.Users.Contracts.csproj" />
     <!--
-      Governance, Email and Notifications are consumed through their leaves only. Consent is
-      the one section project this references: the widget's Consents step renders Consent's
-      copy (ConsentResource) through Consent's own _ConsentReviewBody partial. That is why
-      this section's own outward surface had to become a leaf project - see
-      Humans.Onboarding.Contracts.csproj.
+      Consent is referenced whole because the widget's Consents step embeds Consent's
+      ConsentSigningStepViewComponent; that is why this section's own outward surface is a leaf
+      project (Humans.Onboarding.Contracts.csproj).
     -->
     <ProjectReference Include="..\Humans.Consent\Humans.Consent.csproj" />
     <ProjectReference Include="..\Humans.Governance.Contracts\Humans.Governance.Contracts.csproj" />
@@ -52,10 +46,6 @@
   <ItemGroup>
     <!-- The section owns its documentation; keep it visible in Solution Explorer. -->
     <None Include="**\*.md" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <ProjectReference Include="..\Humans.AuditLog\Humans.AuditLog.csproj" />
   </ItemGroup>
 
 </Project>

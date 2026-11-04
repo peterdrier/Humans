@@ -2,7 +2,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\Sections\Humans.Onboarding\Humans.Onboarding.csproj" />
-    <ProjectReference Include="..\..\src\Sections\Humans.AuditLog\Humans.AuditLog.csproj" />
     <ProjectReference Include="..\..\src\Sections\Humans.Email.Contracts\Humans.Email.Contracts.csproj" />
     <ProjectReference Include="..\..\src\Sections\Humans.Consent\Humans.Consent.csproj" />
     <ProjectReference Include="..\..\src\Sections\Humans.Governance.Contracts\Humans.Governance.Contracts.csproj" />
@@ -20,9 +19,8 @@
 
   <ItemGroup>
     <!--
-      The section's two controllers are ASP.NET types and four test classes construct
-      OnboardingWidgetController; a plain Microsoft.NET.Sdk test project does not get the
-      shared framework, and a PackageReference cannot supply it (NU1010 under Central
+      The section's controllers are ASP.NET types; a plain Microsoft.NET.Sdk test project does
+      not get the shared framework, and a PackageReference cannot supply it (NU1010 under Central
       Package Management).
     -->
     <FrameworkReference Include="Microsoft.AspNetCore.App" />

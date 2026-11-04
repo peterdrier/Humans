@@ -8,28 +8,24 @@ using NodaTime;
 
 namespace Humans.Finance.Services;
 
-/// <summary>
-/// Until <c>finance.iban-to-payment-details</c> has run, a member without a row reads their legacy
-/// <c>profiles.Iban</c> through <see cref="UserInfo"/>.
-/// </summary>
 internal sealed class PaymentDetailsService(
     IPaymentDetailsRepository repo,
     IUserService users,
     IAuditLogService audit,
-    IClock clock) : IPaymentDetailsManagement, IFinanceWrite, IUserDataContributor, IUserMerge
+    IClock clock) : IPaymentDetailsManagement, IUserDataContributor, IUserMerge
 {
     internal const string PaymentDetailsSlice = "PaymentDetails";
 
     public async Task<string?> GetIbanAsync(Guid userId, CancellationToken ct = default)
     {
         var info = await users.GetUserInfoAsync(userId, ct);
-        return await ReadIbanAsync(info?.Id ?? userId, info, ct);
+        return await ReadIbanAsync(info?.Id ?? userId, ct);
     }
 
-    private async Task<string?> ReadIbanAsync(Guid userId, UserInfo? info, CancellationToken ct)
+    private async Task<string?> ReadIbanAsync(Guid userId, CancellationToken ct)
     {
         var row = await repo.GetAsync(userId, ct);
-        return row is not null ? row.Iban : LegacyIban(info);
+        return row?.Iban;
     }
 
     public async Task<bool> SetIbanAsync(Guid userId, string? iban, CancellationToken ct = default)
@@ -45,62 +41,20 @@ internal sealed class PaymentDetailsService(
     {
         var info = await users.GetUserInfoAsync(userId, ct);
         userId = info?.Id ?? userId;
-        var iban = await ReadIbanAsync(userId, info, ct);
+        var iban = await ReadIbanAsync(userId, ct);
         if (iban is null) return null;
 
         // Entity type and wording are persisted: unchanged, so every IbanReveal row reads back together.
         await audit.LogAsync(
-            FinanceAuditActions.IbanReveal, nameof(User), userId,
+            FinanceAuditActions.IbanReveal, AuditSubjectTypes.User, userId,
             $"Admin revealed IBAN for user {userId}", actorUserId);
         return iban;
-    }
-
-    public async Task<IReadOnlyList<LegacyIbanRow>> GetUncopiedLegacyIbansAsync(CancellationToken ct = default)
-    {
-        var copied = (await repo.GetAllAsync(ct)).Select(r => r.UserId).ToHashSet();
-        return [.. (await users.GetAllUserInfosAsync(ct))
-            .Where(u => !copied.Contains(u.Id))
-            .Select(u => (User: u, Iban: LegacyIban(u)))
-            .Where(x => x.Iban is not null)
-            .OrderBy(x => x.User.CreatedAt)
-            .Select(x => new LegacyIbanRow(x.User.Id, x.User.BurnerName, x.Iban!))];
-    }
-
-    public async Task<int> CopyLegacyIbansAsync(CancellationToken ct = default)
-    {
-        var now = clock.GetCurrentInstant();
-        var written = 0;
-        foreach (var row in await GetUncopiedLegacyIbansAsync(ct))
-        {
-            if (await repo.TryInsertAsync(row.UserId, row.Iban, now, ct))
-                written++;
-        }
-        return written;
-    }
-
-    /// <summary>The one reader of the obsolete field. Delete with the migration once production reports it done.</summary>
-    private static string? LegacyIban(UserInfo? info)
-    {
-#pragma warning disable HUM_PROFILE_IBAN // the legacy fallback and copy this obsolete field is kept for
-        var iban = info?.Profile?.Iban;
-#pragma warning restore HUM_PROFILE_IBAN
-        return string.IsNullOrWhiteSpace(iban) ? null : iban;
     }
 
     public async Task ReassignAsync(
         Guid mergedFromUserId, Guid mergedToUserId, Guid actorUserId, Instant now, CancellationToken ct)
     {
         _ = actorUserId;
-        // The survivor's legacy value beats the source's row; a recorded removal on either
-        // account beats that account's legacy value.
-        if (await repo.GetAsync(mergedToUserId, ct) is null)
-        {
-            var legacy = LegacyIban(await users.GetRawUserInfoAsync(mergedToUserId, ct));
-            if (legacy is null && await repo.GetAsync(mergedFromUserId, ct) is null)
-                legacy = LegacyIban(await users.GetRawUserInfoAsync(mergedFromUserId, ct));
-            if (legacy is not null)
-                await repo.TryInsertAsync(mergedToUserId, legacy, now, ct);
-        }
         await repo.ReassignAsync(mergedFromUserId, mergedToUserId, now, ct);
     }
 

@@ -85,7 +85,7 @@ backed in-memory by `AgentSettingsStore`, and audits each change through
 `IAuditLogService`. The others are stateless
 adapters or fan-out over public service interfaces (`ITeamService`,
 `IUserService`, `IRoleAssignmentService`, `IConsentService`,
-`IFeedbackService`, `ITicketService`, `IShiftView`,
+`ITicketService`, `IShiftView`,
 `ISettingsService`, `IAuditViewerService`, etc.) for the agent's
 tool-dispatch and user-snapshot surfaces. No `IMemoryCache`.
 

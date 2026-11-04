@@ -71,7 +71,6 @@ public sealed class CachingTeamServiceTests : TeamsTestHarness
             Substitute.For<Humans.GoogleIntegration.Contracts.ITeamResourceService>(),
             Substitute.For<Humans.Shifts.Contracts.IShiftService>(),
             Substitute.For<Humans.Settings.Contracts.ISettingsService>(),
-            userService,
             _roleAssignmentService);
     }
 
@@ -792,6 +791,19 @@ public sealed class CachingTeamServiceTests : TeamsTestHarness
         hit.Name.Should().Be("Kitchenette");
         hit.Score.Should().Be(StringSearchExtensions.ExactNameScore,
             because: "an id paste is as exact as a match gets");
+    }
+
+    [HumansFact]
+    public async Task SearchAsync_LimitKeepsTheHighestScoringMatch()
+    {
+        SeedTeam("A Kitchen");
+        SeedTeam("Kitchen Crew");
+        var exact = SeedTeam("Kitchen");
+        await SaveAllAsync(TestContext.Current.CancellationToken);
+
+        var results = await _service.SearchAsync("Kitchen", 1, TestContext.Current.CancellationToken);
+
+        results.Should().ContainSingle().Which.TeamId.Should().Be(exact.Id);
     }
 
     [HumansFact]

@@ -5,7 +5,6 @@ using Humans.Settings.Contracts;
 using Humans.Shifts.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Users.Contracts;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NodaTime.Testing;
@@ -33,21 +32,10 @@ public class DevelopmentDashboardSeederTests
                 true, false, SystemTeamType.None, true, false, false, false, now, [],
                 ParentTeamId: call.ArgAt<Guid?>(3)));
 
-        var userManager = Substitute.For<UserManager<User>>(
-            Substitute.For<IUserStore<User>>(), null, null, null, null, null, null, null, null);
-        var storedStates = new Dictionary<Guid, UserState>();
-        userManager.CreateAsync(Arg.Any<User>()).Returns(call =>
-        {
-            var user = call.Arg<User>();
-            storedStates.Add(user.Id, user.State);
-            return IdentityResult.Success;
-        });
-        userManager.UpdateAsync(Arg.Any<User>()).Returns(call =>
-        {
-            var user = call.Arg<User>();
-            storedStates[user.Id] = user.State;
-            return IdentityResult.Success;
-        });
+        var provisioning = Substitute.For<IAccountProvisioningService>();
+        var created = new List<Guid>();
+        provisioning.CreateAccountAsync(Arg.Do<Guid>(created.Add), Arg.Any<string>(), Arg.Any<Instant>(), Arg.Any<Instant?>())
+            .Returns(Array.Empty<string>());
 
         var profiles = new Dictionary<Guid, ProfileSaveRequest>();
         var profileEditor = Substitute.For<IProfileEditorService>();
@@ -55,7 +43,6 @@ public class DevelopmentDashboardSeederTests
             .Returns(call =>
             {
                 profiles.Add(call.Arg<Guid>(), call.Arg<ProfileSaveRequest>());
-                storedStates[call.Arg<Guid>()] = UserState.Active;
                 return new ProfileEditResult(true, Guid.NewGuid());
             });
 
@@ -66,7 +53,6 @@ public class DevelopmentDashboardSeederTests
             {
                 var userId = call.ArgAt<Guid>(0);
                 profiles.Should().ContainKey(userId, "the normal profile save must precede self-signup");
-                storedStates[userId].Should().Be(UserState.Active);
                 selfSignupUsers.Add(userId);
                 return SignupResult.Ok(Guid.NewGuid());
             });
@@ -84,15 +70,14 @@ public class DevelopmentDashboardSeederTests
         var sut = new DevelopmentDashboardSeeder(
             shifts, Substitute.For<ISettingsService>(), eventSettingsSeeding, signups,
             Substitute.For<ITeamService>(), Substitute.For<ITeamWrite>(), teams, userEmails,
-            Substitute.For<IUserWrite>(), profileEditor, userManager, new FakeClock(now),
+            Substitute.For<IUserWrite>(), profileEditor, provisioning, new FakeClock(now),
             NullLogger<DevelopmentDashboardSeeder>.Instance);
 
         var result = await sut.SeedAsync(Xunit.TestContext.Current.CancellationToken);
 
         selfSignupUsers.Should().NotBeEmpty();
         profiles.Should().HaveCount(result.UsersCreated);
-        storedStates.Values.Should().OnlyContain(state => state == UserState.Active,
-            "later writes of the original Identity entity must not undo profile-derived state");
+        profiles.Keys.Should().BeEquivalentTo(created);
         profiles.Values.Should().AllSatisfy(profile =>
         {
             profile.BurnerName.Should().NotBeNullOrWhiteSpace();
@@ -101,7 +86,7 @@ public class DevelopmentDashboardSeederTests
         });
         await eventSettingsSeeding.Received().CreateActiveEventAsync(
             Arg.Is<EventSettingsInfo>(settings =>
-                settings.BuildStartOffset <= settings.FirstCrewStartOffset),
+                settings.BuildStartOffset == -25),
             Arg.Any<CancellationToken>());
     }
 
@@ -131,10 +116,9 @@ public class DevelopmentDashboardSeederTests
                 true, false, SystemTeamType.None, true, false, false, false, now, [],
                 ParentTeamId: call.ArgAt<Guid?>(3)));
 
-        var userManager = Substitute.For<UserManager<User>>(
-            Substitute.For<IUserStore<User>>(), null, null, null, null, null, null, null, null);
-        userManager.CreateAsync(Arg.Any<User>()).Returns(IdentityResult.Success);
-        userManager.UpdateAsync(Arg.Any<User>()).Returns(IdentityResult.Success);
+        var provisioning = Substitute.For<IAccountProvisioningService>();
+        provisioning.CreateAccountAsync(Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<Instant>(), Arg.Any<Instant?>())
+            .Returns(Array.Empty<string>());
 
         var profileEditor = Substitute.For<IProfileEditorService>();
         profileEditor.SaveProfileAsync(Arg.Any<Guid>(), Arg.Any<ProfileSaveRequest>(), Arg.Any<CancellationToken>())
@@ -156,7 +140,7 @@ public class DevelopmentDashboardSeederTests
         var sut = new DevelopmentDashboardSeeder(
             shifts, store, store, signups,
             Substitute.For<ITeamService>(), Substitute.For<ITeamWrite>(), teams, userEmails,
-            Substitute.For<IUserWrite>(), profileEditor, userManager, new FakeClock(now),
+            Substitute.For<IUserWrite>(), profileEditor, provisioning, new FakeClock(now),
             NullLogger<DevelopmentDashboardSeeder>.Instance);
 
         var firstSeed = await sut.SeedAsync(Xunit.TestContext.Current.CancellationToken);
@@ -179,6 +163,9 @@ public class DevelopmentDashboardSeederTests
 
         public Task SetValueAsync(string key, string value, CancellationToken cancellationToken = default) =>
             Task.CompletedTask;
+
+        public Task<string> GetTimeZoneIdAsync(CancellationToken cancellationToken = default) =>
+            Task.FromResult("Europe/Madrid");
 
         public Task<EventSettingsInfo?> GetActiveEventSettingsAsync(CancellationToken cancellationToken = default) =>
             Task.FromResult(_events.Values.FirstOrDefault(e => e.Status == EventSettingsStatus.Active));

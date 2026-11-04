@@ -164,7 +164,7 @@ internal sealed class ExternalLoginService(
                 attempt.Login.LoginProvider,
                 lockedSource.Id,
                 activeTarget.Id);
-            return new ExternalLoginCompletionResult(ExternalLoginOutcome.SignedIn, activeTarget);
+            return new ExternalLoginCompletionResult(ExternalLoginOutcome.SignedIn, activeTarget.Id);
         }
         catch (Exception ex)
         {
@@ -207,7 +207,7 @@ internal sealed class ExternalLoginService(
                     "Linked {Provider} login to existing user {UserId} via email match",
                     attempt.Login.LoginProvider,
                     existingByEmail.Id);
-                return new ExternalLoginCompletionResult(ExternalLoginOutcome.SignedIn, existingByEmail);
+                return new ExternalLoginCompletionResult(ExternalLoginOutcome.SignedIn, existingByEmail.Id);
             }
 
             logger.LogWarning(
@@ -258,7 +258,7 @@ internal sealed class ExternalLoginService(
         await userService.EnsureStubProfileAsync(user.Id, ct: ct);
 
         logger.LogInformation("User created an account using {Provider}", attempt.Login.LoginProvider);
-        return new ExternalLoginCompletionResult(ExternalLoginOutcome.SignedIn, user);
+        return new ExternalLoginCompletionResult(ExternalLoginOutcome.SignedIn, user.Id);
     }
 
     // Reconcile for a just-created account: unlike the sign-in paths this one

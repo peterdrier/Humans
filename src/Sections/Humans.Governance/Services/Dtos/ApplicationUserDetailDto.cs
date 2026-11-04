@@ -5,7 +5,6 @@ namespace Humans.Governance.Services.Dtos;
 
 internal sealed record ApplicationUserDetailDto(
     Guid Id,
-    Guid UserId,
     ApplicationStatus Status,
     MembershipTier MembershipTier,
     string Motivation,
@@ -15,7 +14,7 @@ internal sealed record ApplicationUserDetailDto(
     Instant SubmittedAt,
     Instant? ReviewStartedAt,
     Instant? ResolvedAt,
-    string? ReviewerName,
+    Guid? ReviewedByUserId,
     string? ReviewNotes,
     IReadOnlyList<ApplicationStateHistoryDto> History)
 {

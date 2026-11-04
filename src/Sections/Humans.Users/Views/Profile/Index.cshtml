@@ -2,13 +2,22 @@
 @inject IAuthorizationService AuthService
 @model Humans.Users.Models.ProfileViewModel
 @{
-    ViewData["Title"] = Model.IsOwnProfile ? Localizer["Users_Profile_Title"].Value : Model.DisplayName;
+    ViewData["Title"] = Model.IsOwnProfile ? Localizer["Users_Profile_Title"].Value : Model.PageTitle;
 }
 
 <div class="row align-items-start">
     <div class="@(Model.IsOwnProfile ? "col-md-8" : "col-md-12")">
         <div class="d-flex justify-content-between align-items-center">
-            <h1>@(Model.IsOwnProfile ? Localizer["Users_Profile_Title"] : Model.DisplayName)</h1>
+            <h1>
+                @if (Model.IsOwnProfile)
+                {
+                    @Localizer["Users_Profile_Title"]
+                }
+                else
+                {
+                    <vc:human user-id="@Model.UserId" link="None" />
+                }
+            </h1>
             <div class="d-flex gap-2">
                 <vc:access-matrix section="Profile" />
                 <a asp-controller="UsersAdmin" asp-action="AdminDetail" asp-route-id="@Model.UserId" class="btn btn-sm btn-outline-secondary" authorize-policy="@Humans.Users.Contracts.UsersPolicies.Read">
@@ -66,7 +75,7 @@
 
         @if (!Model.IsOwnProfile && Model.CanViewShiftSignups)
         {
-            <vc:shift-signups user-id="@Model.UserId" view-mode="@ShiftSignupsViewMode.Admin" display-name="@Model.DisplayName" />
+            <vc:shift-signups user-id="@Model.UserId" view-mode="@ShiftSignupsViewMode.Admin" />
             <vc:volunteer-build-strip user-id="@Model.UserId" />
         }
 
@@ -78,11 +87,17 @@
                 </div>
                 <div class="card-body p-0">
                     @{
+                        Func<NoShowHistoryItem, IHtmlContent> reviewerCell = @<text>
+                            @if (item.MarkedByUserId is { } reviewerId)
+                            {
+                                <vc:human user-id="@reviewerId" link="None" />
+                            }
+                        </text>;
                         var noShowTable = TableModel.For(Model.NoShowHistory!)
                             .Column(SharedLocalizer["Common_Shift"].Value, r => r.ShiftLabel)
                             .Column(SharedLocalizer["Common_Department"].Value, r => r.DepartmentName)
                             .Column(SharedLocalizer["Common_Date"].Value, r => r.ShiftDateLabel)
-                            .Column(Localizer["Users_Profile_MarkedBy"].Value, r => r.MarkedByName)
+                            .Template(Localizer["Users_Profile_MarkedBy"].Value, reviewerCell)
                             .Column(Localizer["Users_Profile_MarkedAt"].Value, r => r.MarkedAtLabel)
                             .Build();
                     }

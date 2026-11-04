@@ -40,7 +40,7 @@ public sealed class GrantTests : GrantsTestHarness
         grant.ExpiresOn.Should().Be(new LocalDate(2027, 9, 1));
         grant.NotifiedAt.Should().Be(Clock.GetCurrentInstant());
         await AuditLog.Received(1).LogAsync(GrantsAuditActions.GrantIssued, AuditEntityTypes.Grant, created,
-            Arg.Any<string>(), actor, fresh, AuditEntityTypes.User);
+            Arg.Any<string>(), actor, fresh, AuditSubjectTypes.User);
         await ReceivedNoticeAsync(GrantsNotificationSources.GrantReceived, fresh);
         await Email.Received(1).SendAsync(Arg.Is<EmailMessage>(m => m.RecipientEmail == $"{fresh}@example.org"), Arg.Any<CancellationToken>());
         await Email.Received(1).SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>());
@@ -79,7 +79,7 @@ public sealed class GrantTests : GrantsTestHarness
         foreach (var action in new[] { GrantsAuditActions.GrantIssued, GrantsAuditActions.GrantNoticeResent, GrantsAuditActions.GrantRevoked })
             await AuditLog.Received(1).LogAsync(action, AuditEntityTypes.Grant, grantId,
                 Arg.Is<string>(d => d.Contains($"({expectedYear})", StringComparison.Ordinal)),
-                actor, person, AuditEntityTypes.User);
+                actor, person, AuditSubjectTypes.User);
     }
 
     [HumansFact]
@@ -203,7 +203,7 @@ public sealed class GrantTests : GrantsTestHarness
         saved.RevokedByUserId.Should().Be(actor);
         saved.RevokeReason.Should().Be("Left the crew");
         await AuditLog.Received(1).LogAsync(GrantsAuditActions.GrantRevoked, AuditEntityTypes.Grant, grant.Id,
-            Arg.Any<string>(), actor, person, AuditEntityTypes.User);
+            Arg.Any<string>(), actor, person, AuditSubjectTypes.User);
         await ReceivedNoticeAsync(GrantsNotificationSources.GrantRevoked, person);
         await Email.Received(1).SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>());
     }
@@ -224,7 +224,7 @@ public sealed class GrantTests : GrantsTestHarness
 
         (await ReadGrantAsync(live.Id)).NotifiedAt.Should().Be(Clock.GetCurrentInstant());
         await AuditLog.Received(1).LogAsync(GrantsAuditActions.GrantNoticeResent, AuditEntityTypes.Grant, live.Id,
-            Arg.Any<string>(), actor, person, AuditEntityTypes.User);
+            Arg.Any<string>(), actor, person, AuditSubjectTypes.User);
         await ReceivedNoticeAsync(GrantsNotificationSources.GrantReceived, person);
     }
 
@@ -258,6 +258,43 @@ public sealed class GrantTests : GrantsTestHarness
         result.Refusal.Should().BeNull();
         Logger.Entries.Should().Contain(e => e.Exception is InvalidOperationException);
         await Email.Received(1).SendAsync(Arg.Is<EmailMessage>(m => m.RecipientEmail == $"{person}@example.org"), Arg.Any<CancellationToken>());
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData("en", "en")]
+    [Xunit.InlineData("es", "es")]
+    [Xunit.InlineData("de", "de")]
+    [Xunit.InlineData("it", "it")]
+    [Xunit.InlineData("fr", "fr")]
+    [Xunit.InlineData("ca", "ca")]
+    [Xunit.InlineData("unsupported", "en")]
+    [Xunit.InlineData("", "en")]
+    public async Task Resend_RecipientLookupFailure_UsesRecoveredRecipientMetadata(string language, string expectedCulture)
+    {
+        var person = Guid.NewGuid();
+        var survivor = SeedUser("Ana", language: language, mergedIds: [person]);
+        var actor = SeedUser("Manager");
+        var program = await SeedProgramAsync();
+        var grant = await SeedGrantAsync(program, person);
+        var snapshot = await Users.GetUserInfoAsync(survivor, Ct);
+        var failure = new IOException("recipient lookup unavailable");
+        var lookups = 0;
+        Users.GetUserInfoAsync(person, Arg.Any<CancellationToken>()).Returns(_ =>
+        {
+            if (++lookups == 1) throw failure;
+            return new ValueTask<Humans.Users.Contracts.UserInfo?>(snapshot);
+        });
+
+        var result = await NewService().ResendNoticeAsync(grant.Id, actor, Ct);
+
+        result.Refusal.Should().BeNull();
+        (await ReadGrantAsync(grant.Id)).NotifiedAt.Should().Be(Clock.GetCurrentInstant());
+        Logger.Entries.Should().Contain(e => e.Exception == failure);
+        await ReceivedNoticeAsync(GrantsNotificationSources.GrantReceived, person);
+        await Email.Received(1).SendAsync(
+            Arg.Is<EmailMessage>(m => string.Equals(m.RecipientEmail, $"{survivor}@example.org", StringComparison.Ordinal)
+                && m.UserId == survivor && string.Equals(m.RecipientName, "Ana", StringComparison.Ordinal)
+                && string.Equals(m.Culture, expectedCulture, StringComparison.Ordinal)), Arg.Any<CancellationToken>());
     }
 
     [HumansFact]

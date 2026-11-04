@@ -143,17 +143,21 @@ public sealed class CachingEventServiceTests
         exact.Should().BeGreaterThan(contains);
     }
 
-    [HumansFact]
-    public async Task SearchAsync_HonoursTheLimit()
+    [HumansTheory]
+    [InlineData(1)]
+    [InlineData(2)]
+    [InlineData(3)]
+    public async Task SearchAsync_LimitKeepsTheHighestScoringMatches(int max)
     {
-        SeedApproved(
-            Approved("Alpha Sunset"),
-            Approved("Beta Sunset"),
-            Approved("Gamma Sunset"));
+        var exact = Approved("Sunset");
+        var prefix = Approved("Sunset Yoga");
+        var contains = Approved("Morning Sunset");
+        SeedApproved(Approved("Aardvark", "Sunset"), contains, prefix, exact);
 
-        var hits = await _service.SearchAsync("Sunset", 2, TestContext.Current.CancellationToken);
+        var hits = await _service.SearchAsync("Sunset", max, TestContext.Current.CancellationToken);
 
-        hits.Should().HaveCount(2);
+        hits.Select(hit => hit.EventId).Should().BeEquivalentTo(
+            new[] { exact.Id, prefix.Id, contains.Id }.Take(max));
     }
 
     [HumansFact]

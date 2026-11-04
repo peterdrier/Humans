@@ -19,6 +19,7 @@ namespace Humans.Finance.Services;
 internal sealed class SepaBankBooking(
     IHoldedRepository repo,
     IHoldedClient client,
+    IHoldedWrite holdedWrite,
     IClock clock,
     TrackedCache<string, Dictionary<string, int>> bookingState,
     IAuditLogService audit,
@@ -64,7 +65,7 @@ internal sealed class SepaBankBooking(
     private const string PendingStatus = "pending";
 
     /// <summary>The bank can value-date a day early, and the feed's dates are Madrid days.</summary>
-    private const int GenerationSlackDays = IHoldedFinanceAdminService.DefaultSepaMatchToleranceDays;
+    private const int GenerationSlackDays = IFinanceAdminService.DefaultSepaMatchToleranceDays;
 
     /// <summary>Matched anywhere in the line, not anchored: bank feeds prepend their own wording.</summary>
     private static readonly Regex RemittanceAccount = new(
@@ -77,7 +78,7 @@ internal sealed class SepaBankBooking(
 
     public async Task<(IReadOnlyList<SepaPayoutTransferRow> Rows, string? UnavailableReason,
         IReadOnlyList<SepaBankMovementVm> UnmatchedMovements, string? BankFeedError)>
-        GetSepaPayoutsAsync(int toleranceDays = IHoldedFinanceAdminService.DefaultSepaMatchToleranceDays,
+        GetSepaPayoutsAsync(int toleranceDays = IFinanceAdminService.DefaultSepaMatchToleranceDays,
             CancellationToken ct = default)
     {
         var tolerance = ClampTolerance(toleranceDays);
@@ -329,7 +330,7 @@ internal sealed class SepaBankBooking(
                     FinanceAuditActions.SepaPayoutTransferBooked, SepaTransferEntityType, row.TransferId,
                     $"RECONCILED the Sabadell line {row.HoldedBankMovementId} that booked the SEPA payout "
                     + $"{Euros(row.Amount)} to {row.IbanMasked} on creditor account {row.SupplierAccountNum}.",
-                    SepaBookingJobName, row.UserId, nameof(User));
+                    SepaBookingJobName, row.UserId, AuditSubjectTypes.User);
             }
         }
 
@@ -426,18 +427,18 @@ internal sealed class SepaBankBooking(
 
     public Task<SepaBookingResult> BookSepaTransferAsync(
         Guid transferId, string bankMovementId, Guid? actorUserId,
-        int toleranceDays = IHoldedFinanceAdminService.DefaultSepaMatchToleranceDays) =>
+        int toleranceDays = IFinanceAdminService.DefaultSepaMatchToleranceDays) =>
         RunBookingAsync(() => BookOneTransferAsync(
             transferId, bankMovementId, actorUserId, ClampTolerance(toleranceDays)));
 
     public Task<SepaBookingResult> BookSepaFileAsync(
         Guid fileId, string bankMovementId, Guid actorUserId,
-        int toleranceDays = IHoldedFinanceAdminService.DefaultSepaMatchToleranceDays) =>
+        int toleranceDays = IFinanceAdminService.DefaultSepaMatchToleranceDays) =>
         RunBookingAsync(() => BookOneFileAsync(fileId, bankMovementId, actorUserId, ClampTolerance(toleranceDays)));
 
     public Task<SepaBookingResult> BookSepaFileMatchesAsync(
         Guid fileId, Guid actorUserId,
-        int toleranceDays = IHoldedFinanceAdminService.DefaultSepaMatchToleranceDays) =>
+        int toleranceDays = IFinanceAdminService.DefaultSepaMatchToleranceDays) =>
         RunBookingAsync(() => BookFileMatchesAsync(fileId, actorUserId, ClampTolerance(toleranceDays)));
 
     /// <summary>Never negative, never past the feed window: beyond it there is no line to match.</summary>
@@ -490,10 +491,17 @@ internal sealed class SepaBankBooking(
 
         // The "already booked?" read and the stamp sit either side of several Holded round-trips, so two callers (a Book
         // click during the sweep, a double submit) would both post the whole amount. Serialize both entry points.
+        return await UnderBookingGateAsync(booking);
+    }
+
+    /// <summary>For a write that must not interleave with a booking, such as a withdrawal: otherwise a row checked as
+    /// unbooked could be withdrawn while a booking posts its payments, and end up booked and withdrawn at once.</summary>
+    internal async Task<T> UnderBookingGateAsync<T>(Func<Task<T>> work)
+    {
         await BookingGate.WaitAsync(CancellationToken.None);
         try
         {
-            return await booking();
+            return await work();
         }
         finally
         {
@@ -596,7 +604,7 @@ internal sealed class SepaBankBooking(
                     $"RECONCILED the Sabadell line {movement.Id} that paid the whole file "
                     + $"{row.FileName}, including this transfer of {Euros(row.Amount)} to "
                     + $"{row.IbanMasked} on creditor account {row.SupplierAccountNum}.",
-                    actorUserId, row.UserId, nameof(User));
+                    actorUserId, row.UserId, AuditSubjectTypes.User);
             }
 
         return new SepaBookingResult(true,
@@ -734,7 +742,7 @@ internal sealed class SepaBankBooking(
         var overpaidBy = Math.Round(toPost - owedNow, 2, MidpointRounding.AwayFromZero);
 
         var paidDocs = new List<(string DocId, decimal Amount, string Ref)>();
-        string? entryRef = null;
+        HoldedJournalEntryOutcome? entry = null;
         var entryAmount = 0m;
         var remaining = toPost;
 
@@ -784,7 +792,7 @@ internal sealed class SepaBankBooking(
                 try
                 {
                     entryAmount = remaining;
-                    entryRef = await client.PostLedgerEntryAsync(
+                    entry = await holdedWrite.PostJournalEntryAsync(
                         movement.Date, transfer.SupplierAccountNum, sepa.Value.TreasuryLedgerAccount!.Value,
                         remaining, tag, ct);
                     remaining -= entryAmount;
@@ -804,7 +812,7 @@ internal sealed class SepaBankBooking(
         // The journal remainder rides along as an `entry:<amount>` token: not a Holded id, never
         // sent in a reconcile, but what lets the row say how much of the line a human has to match.
         var refTokens = paidDocs.Select(p => p.Ref).ToList();
-        if (entryRef is not null)
+        if (entry is not null)
             refTokens.Add(SepaPayoutTransferRow.JournalEntryRefPrefix
                           + entryAmount.ToString("F2", CultureInfo.InvariantCulture));
         var refs = refTokens.Count == 0 ? null : string.Join(",", refTokens);
@@ -833,7 +841,7 @@ internal sealed class SepaBankBooking(
         // Name the PAYMENTS, never the documents: a purchase ref makes Holded mint a new payment for the whole line.
         // An unconfirmed payment or a journal entry cannot be named, so Holded may read the line `partial`.
         var docs = PaymentRefs(refs);
-        var incomplete = docs.Count < paidDocs.Count || entryRef is not null || resumed;
+        var incomplete = docs.Count < paidDocs.Count || entry is not null || resumed;
 
         var summary = PostingSummary();
         var resumedPart = resumed ? $"; resumed ({Euros(posted)} already posted)" : "";
@@ -861,10 +869,10 @@ internal sealed class SepaBankBooking(
         if (reconciledAt is not null)
             await repo.MarkSepaTransferReconciledAsync(transfer.Id, reconciledAt.Value, ct);
 
-        // Step 9: audit, after the save, naming every Holded id this run created.
+        // Audit payment references and the journal outcome after saving the booking.
         var reconcilePart = reconciledAt is not null
             ? "reconciled."
-            : entryRef is not null
+            : entry is not null
                 ? "RECONCILE PENDING — the journal entry cannot be linked to the bank line by API; "
                   + "reconcile the line in Holded by hand."
                 : "RECONCILE PENDING — tick it in Holded.";
@@ -882,10 +890,10 @@ internal sealed class SepaBankBooking(
             actorUserId is { } actor
                 ? audit.LogAsync(
                     FinanceAuditActions.SepaPayoutTransferBooked, SepaTransferEntityType, transfer.Id,
-                    text, actor, transfer.UserId, nameof(User))
+                    text, actor, transfer.UserId, AuditSubjectTypes.User)
                 : audit.LogAsync(
                     FinanceAuditActions.SepaPayoutTransferBooked, SepaTransferEntityType, transfer.Id,
-                    text, SepaBookingJobName, transfer.UserId, nameof(User));
+                    text, SepaBookingJobName, transfer.UserId, AuditSubjectTypes.User);
 
         string PostingSummary()
         {
@@ -893,9 +901,9 @@ internal sealed class SepaBankBooking(
                 ? "0 document payment(s)"
                 : $"{paidDocs.Count} document payment(s) ("
                   + string.Join(", ", paidDocs.Select(p => $"{p.DocId} {Euros(p.Amount)} {p.Ref}")) + ")";
-            var entryPart = entryRef is null
+            var entryPart = entry is null
                 ? ""
-                : $" and a journal entry for {Euros(entryAmount)} ({entryRef})";
+                : $" and a journal entry for {Euros(entryAmount)} ({(entry.Confirmed ? "confirmed" : "unconfirmed")})";
             return docPart + entryPart;
         }
 

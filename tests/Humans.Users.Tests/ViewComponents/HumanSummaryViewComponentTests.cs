@@ -1,3 +1,17 @@
+using System.Globalization;
+using System.Resources;
+using System.Security.Claims;
+using System.Text.Encodings.Web;
+using Humans.Base;
+using Humans.Base.Extensions;
+using Humans.Base.ViewComponents;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Razor;
+using Microsoft.AspNetCore.Mvc.Routing;
+using Microsoft.AspNetCore.Routing;
+using Microsoft.Extensions.DependencyInjection;
 using Humans.Users.Tests.Infrastructure;
 using Humans.Governance.Contracts;
 using AwesomeAssertions;
@@ -19,7 +33,7 @@ namespace Humans.Users.Tests.ViewComponents;
 public sealed class HumanSummaryViewComponentTests
 {
     [HumansFact]
-    public async Task InvokeAsync_ProfiledHuman_UsesCanonicalPictureAndSummaryProjection()
+    public async Task InvokeAsync_ProfiledHuman_UsesResolvedIdentityAndSummaryProjection()
     {
         var userId = Guid.NewGuid();
         var requestedId = Guid.NewGuid();
@@ -70,8 +84,6 @@ public sealed class HumanSummaryViewComponentTests
         var model = result.Should().BeOfType<ViewViewComponentResult>().Subject.ViewData?.Model;
         var vm = model.Should().BeOfType<ProfileSummaryViewModel>().Subject;
         vm.UserId.Should().Be(userId);
-        vm.DisplayName.Should().Be("Sparkle");
-        vm.ProfilePictureUrl.Should().Be($"/Profile/Picture?id={profile.Id}&v={at.ToUnixTimeTicks()}");
         vm.MembershipTier.Should().Be("Asociado");
         vm.MembershipStatus.Should().Be("Suspended");
         vm.IsSuspended.Should().BeTrue();
@@ -103,4 +115,99 @@ public sealed class HumanSummaryViewComponentTests
 
         await act.Should().ThrowAsync<OperationCanceledException>();
     }
+    [HumansTheory]
+    [Xunit.InlineData("en")]
+    [Xunit.InlineData("es")]
+    [Xunit.InlineData("de")]
+    [Xunit.InlineData("it")]
+    [Xunit.InlineData("fr")]
+    [Xunit.InlineData("ca")]
+    public async Task Popovers_resolve_names_and_localize_missing_identity_without_exposing_admin_fields(string language)
+    {
+        using var culture = new CultureScope(language);
+        var id = Guid.NewGuid();
+        const string name = "Current <script>&";
+        var users = Substitute.For<IUserService>();
+        users.GetUserInfoAsync(id, Arg.Any<CancellationToken>())
+            .Returns(UserInfo.Create(new User { Id = id, BurnerName = name }, [], [], null));
+        var publicModel = new PublicPopoverViewModel { UserId = id, RoleLabels = ["Coordinator · Team"] };
+        var fullModel = new ProfileSummaryViewModel { UserId = id, HiddenTeams = ["Private team"], CampName = "Private camp" };
+        var full = await RenderAsync("/Views/Shared/_HumanPopover.cshtml", fullModel, users);
+        var reduced = await RenderAsync("/Views/Shared/_HumanPopoverPublic.cshtml", publicModel, users);
+        foreach (var html in new[] { full, reduced })
+            html.Should().Contain(HtmlEncoder.Default.Encode(name)).And.NotContain("<script>")
+                .And.NotContain("Private team").And.NotContain("Private camp");
+        reduced.Should().Contain("Coordinator").And.NotContain("fa-location-dot");
+        var missing = await RenderAsync("/Views/Shared/_HumanPopoverPublic.cshtml", new PublicPopoverViewModel { UserId = Guid.NewGuid() }, users);
+        var unknown = new ResourceManager(typeof(SharedResource)).GetString("Common_Unknown", CultureInfo.CurrentUICulture)!;
+        missing.Should().Contain(HtmlEncoder.Default.Encode(unknown));
+    }
+
+    [HumansFact]
+    public async Task Merge_history_and_choices_render_exact_account_names_without_following_redirects()
+    {
+        var id = Guid.NewGuid();
+        var users = Substitute.For<IUserService>();
+        const string name = "Archived <script>&";
+        users.GetRawUserInfoAsync(id, Arg.Any<CancellationToken>())
+            .Returns(UserInfo.Create(new User { Id = id, BurnerName = name }, [], [], null));
+        users.GetUserInfoAsync(id, Arg.Any<CancellationToken>())
+            .Returns(UserInfo.Create(new User { Id = Guid.NewGuid(), BurnerName = "Survivor name" }, [], [], null));
+        var history = await RenderAsync("/Views/Shared/Components/MergedAccounts/Default.cshtml",
+            new MergedAccountsViewModel { MergedIn = [new MergedAccountViewModel { UserId = id }] }, users);
+        var choices = await RenderAsync("/Views/UsersAdminAccountMerges/Index.cshtml",
+            new AccountMergeQueueViewModel { Rows = [new AccountMergeRowViewModel { AccountA = new ProfileSummaryViewModel { UserId = id } }] }, users);
+        history.Should().Contain(HtmlEncoder.Default.Encode(name)).And.NotContain("Survivor name")
+            .And.NotContain("data-human-popover");
+        choices.Should().Contain($"value=\"{id}\"").And.Contain(HtmlEncoder.Default.Encode(name));
+        // Profile cards resolve normally; only the exact-account choice label uses the raw name.
+        choices.Should().Contain("Survivor name");
+    }
+
+    private static async Task<string> RenderAsync(string path, object model, IUserService users)
+    {
+        var builder = WebApplication.CreateBuilder(new WebApplicationOptions
+        {
+            ApplicationName = typeof(HumanSummaryViewComponentTests).Assembly.GetName().Name,
+            EnvironmentName = "Testing",
+        });
+        builder.Services.AddLocalization();
+        builder.Services.AddHttpContextAccessor();
+        builder.Services.AddControllersWithViews()
+            .AddApplicationPart(typeof(UsersResource).Assembly)
+            .AddApplicationPart(typeof(HumanViewComponent).Assembly)
+            // <vc:nobodies-email-badge> is GoogleIntegration's.
+            .AddApplicationPart(typeof(Humans.GoogleIntegration.ViewComponents.NobodiesEmailBadgeViewComponent).Assembly)
+            .AddViewLocalization();
+        builder.Services.AddSingleton(users);
+        var authorization = Substitute.For<IAuthorizationService>();
+        authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(), Arg.Any<string>())
+            .Returns(AuthorizationResult.Failed());
+        builder.Services.AddSingleton(authorization);
+        var url = Substitute.For<IUrlHelper>();
+        url.Action(Arg.Any<UrlActionContext>()).Returns("/");
+        var urls = Substitute.For<IUrlHelperFactory>();
+        urls.GetUrlHelper(Arg.Any<ActionContext>()).Returns(url);
+        builder.Services.AddSingleton(urls);
+        await using var app = builder.Build();
+        using var scope = app.Services.CreateScope();
+        var services = scope.ServiceProvider;
+        var result = services.GetRequiredService<IRazorViewEngine>()
+            .GetView(null, path, isMainPage: false);
+        result.Success.Should().BeTrue();
+        var http = new DefaultHttpContext { RequestServices = services };
+        var route = new RouteData();
+        route.Values["controller"] = "Profile";
+        var action = new ActionContext(http, route, new Microsoft.AspNetCore.Mvc.Abstractions.ActionDescriptor());
+        var data = new ViewDataDictionary(services.GetRequiredService<IModelMetadataProvider>(), new ModelStateDictionary())
+        {
+            Model = model,
+        };
+        using var writer = new StringWriter();
+        var context = new ViewContext(action, result.View!, data,
+            new TempDataDictionary(http, Substitute.For<ITempDataProvider>()), writer, new HtmlHelperOptions());
+        await result.View!.RenderAsync(context);
+        return writer.ToString();
+    }
+
 }

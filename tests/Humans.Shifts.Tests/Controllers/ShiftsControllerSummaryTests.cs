@@ -140,7 +140,7 @@ public class ShiftsControllerSummaryTests
             .Returns(MakeUserInfo(userId));
         var ctrl = new ShiftsController(
             _shiftMgmt, _burnSettings, _signupService, _volunteerTrackingService, _shiftView, _teamService,
-            _auditLogService, _userService, _localizer, Substitute.For<IStringLocalizer<OnboardingResource>>(), _clock, _builder, _logger);
+            _auditLogService, Substitute.For<IAuditViewerService>(), _userService, _localizer, Substitute.For<IStringLocalizer<OnboardingResource>>(), _clock, _builder, _logger);
         var http = new DefaultHttpContext
         {
             User = new ClaimsPrincipal(new ClaimsIdentity(
@@ -166,7 +166,6 @@ public class ShiftsControllerSummaryTests
                 State = UserState.Active,
             },
             userEmails: [],
-            eventParticipations: [],
             externalLogins: [],
             profile: new Profile
             {
@@ -179,6 +178,5 @@ public class ShiftsControllerSummaryTests
             },
             contactFields: [],
             profileLanguages: [],
-            volunteerHistory: [],
-            communicationPreferences: []);
+            volunteerHistory: []);
 }

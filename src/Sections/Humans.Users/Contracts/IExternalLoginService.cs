@@ -37,10 +37,10 @@ public sealed record ExternalLoginAttempt(
     bool ProviderSignInLockedOut,
     Guid? CurrentUserId);
 
-/// <summary><c>SignInUser</c> is set when the caller must issue the cookie; null when a session already exists or the attempt failed.</summary>
+/// <summary><c>SignInUserId</c> is set when the caller must issue the cookie; null when a session already exists or the attempt failed.</summary>
 public sealed record ExternalLoginCompletionResult(
     ExternalLoginOutcome Outcome,
-    User? SignInUser = null)
+    Guid? SignInUserId = null)
 {
     /// <summary>Identity error descriptions for <see cref="ExternalLoginOutcome.CreateFailed"/>.</summary>
     public IReadOnlyList<string> Errors { get; init; } = [];

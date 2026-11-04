@@ -6,29 +6,14 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <InternalsVisibleTo Include="Humans.Feedback.Tests" />
     <!-- The one assembly allowed to see many sections. -->
     <InternalsVisibleTo Include="Humans.Integration.Tests" />
   </ItemGroup>
 
   <ItemGroup>
-    <!--
-      Microsoft.NET.Sdk.Web adds these to ImplicitUsings; Microsoft.NET.Sdk.Razor does not.
-      Declaring them keeps the files moved out of Humans.Web byte-identical to their originals.
-    -->
-    <Using Include="Microsoft.AspNetCore.Http" />
-    <Using Include="Microsoft.AspNetCore.Routing" />
-    <Using Include="Microsoft.Extensions.Logging" />
-  </ItemGroup>
-
-  <ItemGroup>
     <ProjectReference Include="..\..\Humans.Base\Humans.Base.csproj" />
-    <ProjectReference Include="..\Humans.Gdpr\Humans.Gdpr.csproj" />
-    <ProjectReference Include="..\Humans.AuditLog\Humans.AuditLog.csproj" />
     <ProjectReference Include="..\Humans.Email.Contracts\Humans.Email.Contracts.csproj" />
     <ProjectReference Include="..\Humans.Notifications.Contracts\Humans.Notifications.Contracts.csproj" />
-    <ProjectReference Include="..\Humans.Teams.Contracts\Humans.Teams.Contracts.csproj" />
-    <ProjectReference Include="..\Humans.Users.Contracts\Humans.Users.Contracts.csproj" />
   </ItemGroup>
 
   <ItemGroup>

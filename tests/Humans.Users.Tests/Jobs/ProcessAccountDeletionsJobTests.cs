@@ -1,5 +1,6 @@
 using AwesomeAssertions;
 using Humans.Base.Extensions;
+using Humans.Base.Interfaces;
 using Microsoft.Extensions.Logging;
 using NodaTime;
 using NodaTime.Testing;
@@ -177,7 +178,7 @@ public class ProcessAccountDeletionsJobTests : IDisposable
     }
 
     [HumansFact]
-    public async Task ExecuteAsync_ContinuesProcessingAfterIndividualFailure()
+    public async Task ExecuteAsync_ContinuesProcessingAndReportsIndividualFailure()
     {
         var user1 = Guid.NewGuid();
         var user2 = Guid.NewGuid();
@@ -185,13 +186,23 @@ public class ProcessAccountDeletionsJobTests : IDisposable
         _userService.GetAccountsDueForAnonymizationAsync(Now, Arg.Any<CancellationToken>())
             .Returns([user1, user2]);
 
+        var failure = new InvalidOperationException("DB error");
         _accountDeletionService.AnonymizeExpiredAccountAsync(user1, Arg.Any<CancellationToken>())
-            .ThrowsAsync(new InvalidOperationException("DB error"));
+            .ThrowsAsync(failure);
         _accountDeletionService.AnonymizeExpiredAccountAsync(user2, Arg.Any<CancellationToken>())
             .Returns(new AnonymizedAccountSummary(
                 "u2@example.com", "User Two", "en"));
 
-        await _job.ExecuteAsync(Xunit.TestContext.Current.CancellationToken);
+        var metrics = Substitute.For<IHumansMetrics>();
+        var job = new ProcessAccountDeletionsJob(
+            _userService, _accountDeletionService, _emailService, _emailMessages, _auditLogService, metrics, _logger, _clock);
+
+        var error = await Xunit.Record.ExceptionAsync(() => job.ExecuteAsync(Xunit.TestContext.Current.CancellationToken));
+
+        error.Should().BeOfType<AggregateException>().Subject.InnerExceptions
+            .Should().ContainSingle().Which.Should().BeSameAs(failure);
+        metrics.Received(1).RecordJobRun("process_account_deletions", "failure");
+        metrics.DidNotReceive().RecordJobRun("process_account_deletions", "success");
 
         // User 2 still gets its email/audit despite user 1 failing.
         await _emailService.Received(1).SendAsync(

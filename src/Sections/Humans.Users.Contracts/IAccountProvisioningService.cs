@@ -1,3 +1,4 @@
+using NodaTime;
 
 namespace Humans.Users.Contracts;
 
@@ -14,7 +15,7 @@ public interface IAccountProvisioningService
 
     /// <summary>
     /// Replaces the planned unverified, unlinked email row and provisions its contact account atomically. Refuses
-    /// stale plans; a failure keeps the original row.
+    /// stale plans; a metadata or commit failure keeps the original row. Best-effort success audits follow the commit.
     /// </summary>
     Task<AccountProvisioningResult> ReplaceUnverifiedEmailAndProvisionAsync(
         Guid userId, Guid emailId, string email, string? displayName, ContactSource source,
@@ -30,6 +31,14 @@ public interface IAccountProvisioningService
         string firstName,
         string lastName,
         CancellationToken ct = default);
+
+    /// <summary>
+    /// A bare account with no email, profile or password, for fixed system accounts and dev seed data. Returns
+    /// Identity's error descriptions, empty on success. <paramref name="lastLoginAt"/> is seed fixture data only:
+    /// a real sign-in records the login through <see cref="IUserWrite.RecordLoginAsync"/>.
+    /// </summary>
+    Task<IReadOnlyList<string>> CreateAccountAsync(
+        Guid userId, string burnerName, Instant createdAt, Instant? lastLoginAt = null);
 }
 
 public record AccountProvisioningResult(Guid UserId, bool Created);

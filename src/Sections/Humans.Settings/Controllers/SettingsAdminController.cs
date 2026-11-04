@@ -32,9 +32,10 @@ internal sealed class SettingsAdminController(
         if (!parsed.Success)
             return BackToTab(model.Id, Describe(parsed.Errors.Select(error => error.Message)));
 
-        if (GetCurrentUserId() is not { } actorId) return Challenge();
+        var actor = await GetCurrentUserInfoAsync(ct);
+        if (actor is null) return Challenge();
 
-        var result = await settingsService.SaveEventSettingsAsync(parsed.Settings!, actorId, ct);
+        var result = await settingsService.SaveEventSettingsAsync(parsed.Settings!, actor.Id, ct);
         if (!result.Succeeded)
             return BackToTab(model.Id, result.ErrorMessage!);
 
@@ -48,9 +49,10 @@ internal sealed class SettingsAdminController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> TimeZone(string timeZoneId, CancellationToken ct = default)
     {
-        if (GetCurrentUserId() is not { } actorId) return Challenge();
+        var actor = await GetCurrentUserInfoAsync(ct);
+        if (actor is null) return Challenge();
 
-        var result = await settingsService.SaveTimeZoneAsync(timeZoneId ?? string.Empty, actorId, ct);
+        var result = await settingsService.SaveTimeZoneAsync(timeZoneId ?? string.Empty, actor.Id, ct);
         if (!result.Succeeded)
             return BackToTab(null, result.ErrorMessage!);
 
@@ -62,9 +64,10 @@ internal sealed class SettingsAdminController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Activate(Guid id, CancellationToken ct = default)
     {
-        if (GetCurrentUserId() is not { } actorId) return Challenge();
+        var actor = await GetCurrentUserInfoAsync(ct);
+        if (actor is null) return Challenge();
 
-        var result = await settingsService.ActivateEventSettingsAsync(id, actorId, ct);
+        var result = await settingsService.ActivateEventSettingsAsync(id, actor.Id, ct);
         if (!result.Succeeded)
             return BackToTab(null, result.ErrorMessage!);
 

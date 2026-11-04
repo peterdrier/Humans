@@ -1,5 +1,7 @@
+using System.Transactions;
 using Humans.AuditLog.Domain;
 using Microsoft.EntityFrameworkCore;
+using Humans.AuditLog.Contracts;
 
 namespace Humans.AuditLog.Data;
 
@@ -7,6 +9,9 @@ internal sealed class AuditLogRepository(IDbContextFactory<AuditLogDbContext> fa
 {
     public async Task AddAsync(AuditLogEntry entry, CancellationToken ct = default)
     {
+        // A fresh context still enlists in ambient transactions; audit owns its commit.
+        using var scope = new TransactionScope(TransactionScopeOption.Suppress,
+            TransactionScopeAsyncFlowOption.Enabled);
         await using var ctx = await factory.CreateDbContextAsync(ct);
         ctx.AuditLogEntries.Add(entry);
         await ctx.SaveChangesAsync(ct);
@@ -48,7 +53,7 @@ internal sealed class AuditLogRepository(IDbContextFactory<AuditLogDbContext> fa
         return await ctx.AuditLogEntries
             .AsNoTracking()
             .Where(e =>
-                (e.EntityType == "User" && userIds.Contains(e.EntityId)) ||
+                (e.EntityType == AuditSubjectTypes.User && userIds.Contains(e.EntityId)) ||
                 (e.RelatedEntityId.HasValue && userIds.Contains(e.RelatedEntityId.Value)))
             // arch:db-sort-ok top-N audit selector
             .OrderByDescending(e => e.OccurredAt)
@@ -78,7 +83,7 @@ internal sealed class AuditLogRepository(IDbContextFactory<AuditLogDbContext> fa
             query = query.Where(e =>
                 (e.ActorUserId.HasValue && userIds.Contains(e.ActorUserId.Value)) ||
                 (e.RelatedEntityId.HasValue && userIds.Contains(e.RelatedEntityId.Value)) ||
-                (e.EntityType == "User" && userIds.Contains(e.EntityId)));
+                (e.EntityType == AuditSubjectTypes.User && userIds.Contains(e.EntityId)));
 
         if (actions is { Count: > 0 })
             query = query.Where(e => actions.Contains(e.Action));
