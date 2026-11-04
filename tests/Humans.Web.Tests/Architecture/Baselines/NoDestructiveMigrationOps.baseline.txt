@@ -229,7 +229,7 @@ src/Sections/Humans.Feedback/Data/Migrations/20261101144113_DropFeedbackTables.c
 # in peterdrier/Humans#2261: {"key":"finance.iban-to-payment-details","pending":0,"done":true},
 # the standing approval in no-drops-until-prod-verified; and Peter, 2026-11-04, project thread
 # ("fix A-E").
-src/Sections/Humans.Users/Data/Migrations/20261104160829_DropUsersLegacyStorage.cs:DropColumn(name=Iban,table=profiles)#1
+src/Sections/Humans.Users/Data/Migrations/20261104164406_DropUsersLegacyStorage.cs:DropColumn(name=Iban,table=profiles)#1
 
 # profiles review columns IsApproved, ConsentCheckStatus, ConsentCheckAt, ConsentCheckedByUserId,
 # ConsentCheckNotes, RejectionReason, RejectedAt, RejectedByUserId and the index
@@ -239,15 +239,15 @@ src/Sections/Humans.Users/Data/Migrations/20261104160829_DropUsersLegacyStorage.
 # the erasure lines nulling ConsentCheckNotes and RejectionReason, deleted in this PR.
 # Approval: production reading 2026-11-03, quoted in peterdrier/Humans#2261:
 # {"key":"consent.profile-review","pending":0,"done":true}; and Peter, 2026-11-04, project thread.
-src/Sections/Humans.Users/Data/Migrations/20261104160829_DropUsersLegacyStorage.cs:DropIndex(name=IX_profiles_ConsentCheckStatus,table=profiles)#1
-src/Sections/Humans.Users/Data/Migrations/20261104160829_DropUsersLegacyStorage.cs:DropColumn(name=ConsentCheckAt,table=profiles)#1
-src/Sections/Humans.Users/Data/Migrations/20261104160829_DropUsersLegacyStorage.cs:DropColumn(name=ConsentCheckNotes,table=profiles)#1
-src/Sections/Humans.Users/Data/Migrations/20261104160829_DropUsersLegacyStorage.cs:DropColumn(name=ConsentCheckStatus,table=profiles)#1
-src/Sections/Humans.Users/Data/Migrations/20261104160829_DropUsersLegacyStorage.cs:DropColumn(name=ConsentCheckedByUserId,table=profiles)#1
-src/Sections/Humans.Users/Data/Migrations/20261104160829_DropUsersLegacyStorage.cs:DropColumn(name=IsApproved,table=profiles)#1
-src/Sections/Humans.Users/Data/Migrations/20261104160829_DropUsersLegacyStorage.cs:DropColumn(name=RejectedAt,table=profiles)#1
-src/Sections/Humans.Users/Data/Migrations/20261104160829_DropUsersLegacyStorage.cs:DropColumn(name=RejectedByUserId,table=profiles)#1
-src/Sections/Humans.Users/Data/Migrations/20261104160829_DropUsersLegacyStorage.cs:DropColumn(name=RejectionReason,table=profiles)#1
+src/Sections/Humans.Users/Data/Migrations/20261104164406_DropUsersLegacyStorage.cs:DropIndex(name=IX_profiles_ConsentCheckStatus,table=profiles)#1
+src/Sections/Humans.Users/Data/Migrations/20261104164406_DropUsersLegacyStorage.cs:DropColumn(name=ConsentCheckAt,table=profiles)#1
+src/Sections/Humans.Users/Data/Migrations/20261104164406_DropUsersLegacyStorage.cs:DropColumn(name=ConsentCheckNotes,table=profiles)#1
+src/Sections/Humans.Users/Data/Migrations/20261104164406_DropUsersLegacyStorage.cs:DropColumn(name=ConsentCheckStatus,table=profiles)#1
+src/Sections/Humans.Users/Data/Migrations/20261104164406_DropUsersLegacyStorage.cs:DropColumn(name=ConsentCheckedByUserId,table=profiles)#1
+src/Sections/Humans.Users/Data/Migrations/20261104164406_DropUsersLegacyStorage.cs:DropColumn(name=IsApproved,table=profiles)#1
+src/Sections/Humans.Users/Data/Migrations/20261104164406_DropUsersLegacyStorage.cs:DropColumn(name=RejectedAt,table=profiles)#1
+src/Sections/Humans.Users/Data/Migrations/20261104164406_DropUsersLegacyStorage.cs:DropColumn(name=RejectedByUserId,table=profiles)#1
+src/Sections/Humans.Users/Data/Migrations/20261104164406_DropUsersLegacyStorage.cs:DropColumn(name=RejectionReason,table=profiles)#1
 
 # event_participations table — per-user, per-year event attendance, replaced by Tickets'
 # tickets_event_participations.
@@ -256,7 +256,7 @@ src/Sections/Humans.Users/Data/Migrations/20261104160829_DropUsersLegacyStorage.
 # Approval: production reading 2026-11-03, quoted in peterdrier/Humans#2261:
 # {"key":"tickets.event-participations","pending":0,"done":true}; and Peter, 2026-11-04, project
 # thread.
-src/Sections/Humans.Users/Data/Migrations/20261104160829_DropUsersLegacyStorage.cs:DropTable(name=event_participations)#1
+src/Sections/Humans.Users/Data/Migrations/20261104164406_DropUsersLegacyStorage.cs:DropTable(name=event_participations)#1
 
 # communication_preferences table — per-category email opt-outs, replaced by Email's
 # email_communication_preferences.
@@ -265,7 +265,7 @@ src/Sections/Humans.Users/Data/Migrations/20261104160829_DropUsersLegacyStorage.
 # Approval: production reading 2026-11-03, quoted in peterdrier/Humans#2261:
 # {"key":"email.communication-preferences","pending":0,"done":true}; and Peter, 2026-11-04,
 # project thread.
-src/Sections/Humans.Users/Data/Migrations/20261104160829_DropUsersLegacyStorage.cs:DropTable(name=communication_preferences)#1
+src/Sections/Humans.Users/Data/Migrations/20261104164406_DropUsersLegacyStorage.cs:DropTable(name=communication_preferences)#1
 
 # profiles food columns DietaryPreference, Allergies, AllergyOtherText, Intolerances,
 # IntoleranceOtherText — the member's food answers, replaced by Cantina's cantina_dietary_profiles
@@ -277,11 +277,11 @@ src/Sections/Humans.Users/Data/Migrations/20261104160829_DropUsersLegacyStorage.
 # cantina.profile-dietary pending: 0, done: true; and Peter, 2026-11-04, project thread.
 # Down() caveat: EF re-adds Allergies and Intolerances as jsonb NOT NULL DEFAULT '', which Postgres
 # rejects, so a rollback re-adds those two by hand (accepted shape, peterdrier/Humans#1379).
-src/Sections/Humans.Users/Data/Migrations/20261104160829_DropUsersLegacyStorage.cs:DropColumn(name=Allergies,table=profiles)#1
-src/Sections/Humans.Users/Data/Migrations/20261104160829_DropUsersLegacyStorage.cs:DropColumn(name=AllergyOtherText,table=profiles)#1
-src/Sections/Humans.Users/Data/Migrations/20261104160829_DropUsersLegacyStorage.cs:DropColumn(name=DietaryPreference,table=profiles)#1
-src/Sections/Humans.Users/Data/Migrations/20261104160829_DropUsersLegacyStorage.cs:DropColumn(name=IntoleranceOtherText,table=profiles)#1
-src/Sections/Humans.Users/Data/Migrations/20261104160829_DropUsersLegacyStorage.cs:DropColumn(name=Intolerances,table=profiles)#1
+src/Sections/Humans.Users/Data/Migrations/20261104164406_DropUsersLegacyStorage.cs:DropColumn(name=Allergies,table=profiles)#1
+src/Sections/Humans.Users/Data/Migrations/20261104164406_DropUsersLegacyStorage.cs:DropColumn(name=AllergyOtherText,table=profiles)#1
+src/Sections/Humans.Users/Data/Migrations/20261104164406_DropUsersLegacyStorage.cs:DropColumn(name=DietaryPreference,table=profiles)#1
+src/Sections/Humans.Users/Data/Migrations/20261104164406_DropUsersLegacyStorage.cs:DropColumn(name=IntoleranceOtherText,table=profiles)#1
+src/Sections/Humans.Users/Data/Migrations/20261104164406_DropUsersLegacyStorage.cs:DropColumn(name=Intolerances,table=profiles)#1
 
 # profiles.MembershipTier — the legacy tier, replaced by Governance's governance_membership_tiers
 # (USERS-17 in peterdrier/Humans#2156).
@@ -289,7 +289,7 @@ src/Sections/Humans.Users/Data/Migrations/20261104160829_DropUsersLegacyStorage.
 # Art. 15 export read it, removed in this PR (Governance exports the live tier).
 # Approval: production reading quoted in peterdrier/Humans#2217's commit, 2026-10-30:
 # governance.profile-tier pending: 0, done: true; and Peter, 2026-11-04, project thread.
-src/Sections/Humans.Users/Data/Migrations/20261104160829_DropUsersLegacyStorage.cs:DropColumn(name=MembershipTier,table=profiles)#1
+src/Sections/Humans.Users/Data/Migrations/20261104164406_DropUsersLegacyStorage.cs:DropColumn(name=MembershipTier,table=profiles)#1
 
 # users.LastConsentReminderSentAt — the re-consent reminder cooldown stamp, replaced by Consent's
 # consent_reminders (USERS-22 in peterdrier/Humans#2156).
@@ -297,21 +297,12 @@ src/Sections/Humans.Users/Data/Migrations/20261104160829_DropUsersLegacyStorage.
 # was the erasure line clearing it, removed in this PR.
 # Approval: production reading 2026-10-22 recorded in Users.md (consent.reminder-stamps done) and
 # listed as done in peterdrier/Humans#2156; and Peter, 2026-11-04, project thread.
-src/Sections/Humans.Users/Data/Migrations/20261104160829_DropUsersLegacyStorage.cs:DropColumn(name=LastConsentReminderSentAt,table=users)#1
+src/Sections/Humans.Users/Data/Migrations/20261104164406_DropUsersLegacyStorage.cs:DropColumn(name=LastConsentReminderSentAt,table=users)#1
 
-# users.UnsubscribedFromCampaigns, users.SuppressScheduleChangeEmails — the two boolean email
-# opt-outs that predate per-category preferences; users.GoogleEmailStatus — the user-level Google
-# sync status (USERS-12/13/14 in peterdrier/Humans#2156). No data migration behind them.
-# Evidence: git log -S over full history. UnsubscribedFromCampaigns was written by the campaign
-# unsubscribe endpoint and the preferences form from 2026-03-14 (c523f4892, bd3ee4813, 23b0ec159);
-# SuppressScheduleChangeEmails by that form from 2026-03-17 (23b0ec159). Both writers were removed
-# by 2334b6395 (2026-03-24), which replaced them with per-category
-# communication preferences without copying the flags; every later hit is a cache or export
-# projection, the last reader being the Art. 15 export, removed here. Rows may still hold true from
-# that window; nothing has honoured them since 2026-03-24. GoogleEmailStatus's writers moved to
-# user_emails in 316b7860c (2026-06-15); its last write, an anonymization reset, went in
-# 7aeb5b6bc (2026-08-25), and it has had no reader since.
+# users.GoogleEmailStatus — the user-level Google sync status (USERS-14 in peterdrier/Humans#2156).
+# No data migration behind it.
+# Evidence: pickaxe (log -S) over full history. Its writers moved to user_emails in 316b7860c
+# (2026-06-15); its last write, an anonymization reset, went in 7aeb5b6bc (2026-08-25), and it has
+# had no reader since.
 # Approval: Peter, 2026-11-04, project thread ("fix A-E", covering peterdrier/Humans#2156).
-src/Sections/Humans.Users/Data/Migrations/20261104160829_DropUsersLegacyStorage.cs:DropColumn(name=GoogleEmailStatus,table=users)#1
-src/Sections/Humans.Users/Data/Migrations/20261104160829_DropUsersLegacyStorage.cs:DropColumn(name=SuppressScheduleChangeEmails,table=users)#1
-src/Sections/Humans.Users/Data/Migrations/20261104160829_DropUsersLegacyStorage.cs:DropColumn(name=UnsubscribedFromCampaigns,table=users)#1
+src/Sections/Humans.Users/Data/Migrations/20261104164406_DropUsersLegacyStorage.cs:DropColumn(name=GoogleEmailStatus,table=users)#1

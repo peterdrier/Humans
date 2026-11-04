@@ -31,14 +31,6 @@ namespace Humans.Users.Data.Migrations
                 table: "users");
 
             migrationBuilder.DropColumn(
-                name: "SuppressScheduleChangeEmails",
-                table: "users");
-
-            migrationBuilder.DropColumn(
-                name: "UnsubscribedFromCampaigns",
-                table: "users");
-
-            migrationBuilder.DropColumn(
                 name: "Allergies",
                 table: "profiles");
 
@@ -115,20 +107,6 @@ namespace Humans.Users.Data.Migrations
                 table: "users",
                 type: "timestamp with time zone",
                 nullable: true);
-
-            migrationBuilder.AddColumn<bool>(
-                name: "SuppressScheduleChangeEmails",
-                table: "users",
-                type: "boolean",
-                nullable: false,
-                defaultValue: false);
-
-            migrationBuilder.AddColumn<bool>(
-                name: "UnsubscribedFromCampaigns",
-                table: "users",
-                type: "boolean",
-                nullable: false,
-                defaultValue: false);
 
             migrationBuilder.AddColumn<string>(
                 name: "Allergies",

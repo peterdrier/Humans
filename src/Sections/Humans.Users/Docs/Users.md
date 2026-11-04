@@ -61,6 +61,8 @@ Extends `IdentityUser<Guid>` with project-specific columns.
 | ProfilePictureUrl | string? | Google profile picture URL (max 2048) |
 | CreatedAt | Instant | Set on insert; immutable (`init`) |
 | LastLoginAt | Instant? | Most recent login timestamp — distinguishes imported contacts (`null`) from active users |
+| SuppressScheduleChangeEmails | bool | **Dead.** No reader or writer (readers removed in Users decomposition commit 16, except the Art. 15 export); `[Obsolete]`, column kept until its drop PR (peterdrier/Humans#2156). |
+| UnsubscribedFromCampaigns | bool | **Dead.** Email's per-category preferences are the source of truth; no reader or writer (readers removed in commit 16, except the Art. 15 export); `[Obsolete]`, column kept until its drop PR (peterdrier/Humans#2156). |
 | ContactSource | ContactSource? | Where imported from (`Manual`, `MailerLite`, `TicketTailor`); null for self-registered users. |
 | ExternalSourceId | string? (256) | ID in the external source system (e.g., MailerLite subscriber ID). |
 | DeletionRequestedAt | Instant? | When the user requested account deletion |
@@ -244,7 +246,7 @@ The operator-only user directory renders its sort-control label directly, withou
 - **On first OAuth login (no matching account):** `ExternalLoginService.CompleteExternalLoginAsync` (dispatched from `AccountController.ExternalLoginCallback`) creates the `User` via `UserManager.CreateAsync`, attaches the external login, and persists a provider-tagged `UserEmail` row via `IUserEmailService.ReconcileOAuthIdentityAsync` (HUM0005 pins `ExternalLoginService` as its sole caller); `AccountController` then signs the user in by id via `IUserSignInService.SignInAsync`. Profile creation happens lazily in the Profile section (see [Part 2 — Profiles](#part-2--profiles).
 - **On import (Tickets / MailerLite contact upsert):** `AccountProvisioningService.FindOrCreateUserByEmailAsync` looks up an existing user by `UserEmail` and `User.Email` (with gmail/googlemail equivalence), creates a contact-only `User` + `UserEmail` if no match, layers `User.ContactSource` onto an existing self-registered user when null, and writes an `UsersAuditActions.ContactCreated` audit entry on creation.
 - Unverified-address replacement is one Users-owned `ReplaceUnverifiedEmailAndProvisionAsync` operation. It rechecks the planned row, rejects verified/provider-linked/stale rows, and retains ordinary deletion guards. A serializable transaction contains deletion and account/email/stub-profile creation; any provisioning or commit failure restores the original state without success audits. Contact creation or profile-repair audit and the replacement-deletion audit follow the successful outer commit, using AuditLog’s independent best-effort persistence. Ordinary imports retain their own commit-before-audit boundary. The deletion audit identifies the old user and new account. Affected user caches refresh after commit or rollback.
-- **On unsubscribe click / RFC 8058 one-click:** Email's `UnsubscribeService` opts the user out of the message category (Email since Users decomposition commit 14). Email's per-category preferences are the source of truth for opt-out.
+- **On unsubscribe click / RFC 8058 one-click:** Email's `UnsubscribeService` opts the user out of the message category (Email since Users decomposition commit 14). The dead `User.UnsubscribedFromCampaigns` column is never touched — Email's per-category preferences are the source of truth for opt-out.
 - **On admin participation backfill (Tickets since decomposition commit 13):** `/Tickets/Participation/Backfill` previews the parsed valid CSV rows before an explicit confirm POST; preview performs no writes. Confirmation requires an admin actor ID. Tickets' `EventParticipationService.BackfillParticipationsAsync` writes records with `Source = AdminBackfill` and audits each changed member’s final status/year after the repository save, before cache refresh. Counts describe unique changed records: protected Attended rows and identical re-imports produce neither changes nor success audits; duplicate input rows retain the existing sequential status rules. CSV parsing skips undefined numeric statuses and unparseable rows; no valid entries means no write. The default-year GET observes request cancellation.
 - Email-verification, account-deletion request and erasure-confirmation emails use the recipient's supported saved language, falling back to English for blank, invalid or unsupported preferences. Erasure confirmations retain their direct, non-persisted delivery.
 - **On account-deletion request (user-initiated):** `IAccountDeletionService.RequestDeletionAsync` orchestrates the user-initiated path. Internally calls `IUserManagement.SetDeletionPendingAsync` to stamp `DeletionRequestedAt` + `DeletionScheduledFor` on the User row, revokes team memberships and governance roles immediately so the user loses access during the 30-day grace period, and sends a confirmation email. After commit, recipient lookup and confirmation enqueueing finish independently of caller cancellation; failures are logged without changing the successful deletion-request result. Its cancellation link opens Gdpr's `/Gdpr/Deletion` status page, which only shows the signed-in user’s pending request.
@@ -352,6 +354,8 @@ Google sync status is GoogleIntegration's (`google_workspace_identities.Status`,
 A contact is identified by `ContactSource != null && LastLoginAt == null`. When a contact authenticates, `LastLoginAt` is set and they become a regular user.
 
 #### Dead columns
+
+`UnsubscribedFromCampaigns` and `SuppressScheduleChangeEmails` (see the Part 1 field table) have no writer and no reader beyond the Art. 15 export, which keeps them while the columns exist; `UserInfo` and the cache interceptor do not carry them. `[Obsolete]` guards both, and peterdrier/Humans#2156 tracks their drop, pending Peter's call on whether the opt-outs they hold need carrying into Email's preferences first.
 
 ### Profile
 
@@ -505,11 +509,12 @@ Sub-aggregate of Profile — no separate service. Records languages spoken with 
 
 ### Frozen legacy (awaiting drop)
 
-These columns await a separate schema drop. Their owner's still-registered migration reads them through `[Obsolete]` fields on `UserInfo` until fallback retirement. The production `done` reading of the migration at `GET /api/data-migrations` is the drop's approval (`memory/architecture/no-drops-until-prod-verified.md`). Ledger rows: retirement in `docs/architecture/debt-ledger.yml` (CENTRAL-95), schema drops are separate feature work under policy D9, outside the debt ledger.
+These columns await a separate schema drop. A still-registered migration reads its columns through `[Obsolete]` fields on `UserInfo` until fallback retirement. The production `done` reading of the migration at `GET /api/data-migrations` is the drop's approval (`memory/architecture/no-drops-until-prod-verified.md`). Ledger rows: retirement in `docs/architecture/debt-ledger.yml` (CENTRAL-95), schema drops are separate feature work under policy D9, outside the debt ledger.
 
 | Legacy object | Replaced by | Migration key |
 |---|---|---|
 | `user_emails.IsGoogle`, `user_emails.GoogleEmailStatus` | GoogleIntegration `google_workspace_identities` | `google.workspace-identities` |
+| `users.UnsubscribedFromCampaigns`, `users.SuppressScheduleChangeEmails` | none (dead, no migration) | none |
 
 `LegacyGoogleEmailStatus` remains in the contracts until the `google.workspace-identities` retirement.
 

@@ -107,6 +107,12 @@ public class User : IdentityUser<Guid>
 
     public bool IsDeletionPending => DeletionRequestedAt.HasValue;
 
+    [Obsolete("No reader or writer; retained for the DB column until a drop migration (peterdrier/Humans#2156).")]
+    public bool UnsubscribedFromCampaigns { get; set; }
+
+    [Obsolete("No reader or writer; retained for the DB column until a drop migration (peterdrier/Humans#2156).")]
+    public bool SuppressScheduleChangeEmails { get; set; }
+
     /// <summary>Null for self-registered users.</summary>
     public ContactSource? ContactSource { get; set; }
 
