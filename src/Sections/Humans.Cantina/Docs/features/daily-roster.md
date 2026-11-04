@@ -2,7 +2,7 @@
   src/Sections/Humans.Shifts/Services/ShiftManagementService.cs
   src/Sections/Humans.Shifts/Data/ShiftRepository.Signups.cs
   src/Sections/Humans.Users/Domain/Profile.cs
-  src/Sections/Humans.Users.Contracts/UserInfo.cs
+  src/Humans.Base/Users/UserInfo.cs
   src/Sections/Humans.Cantina/**
 -->
 <!-- freshness:flag-on-change

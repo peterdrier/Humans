@@ -18,7 +18,7 @@ Nothing is reachable in Production; nothing is owned.
 
 | Shape | Members | Auth gate | Post-gate action |
 |---|---|---|---|
-| Dev-login sign-in | `SignIn(persona)`, `SignInAsUser(id)` | dev-auth on, host non-Production; Admin persona/impersonation also needs `AdminSignInAllowed` | Seeder writes idempotently, then `SignInManager.SignInAsync` |
+| Dev-login sign-in | `SignIn(persona)`, `SignInAsUser(id)` | dev-auth on, host non-Production; Admin persona/impersonation also needs `AdminSignInAllowed` | Seeder writes idempotently, then `IUserSignInService.SignInAsync` |
 | Dev-login chooser | `Users()` | dev-auth on, host non-Production | Read via `DevPersonaSeeder.GetUsersForChooserAsync` |
 | Dev-seed page | `Index()` | `AdminOnly` + dev-auth on, host non-Production | Renders the budget and camp-role seed buttons |
 | Dev-seed request (default) | `SeedBudget`, `SeedCampRoles` | `[Authorize(policy)]` + dev-auth on, host non-Production | Seeder call, redirect to `/Admin` |

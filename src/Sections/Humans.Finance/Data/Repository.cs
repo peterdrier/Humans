@@ -47,68 +47,6 @@ internal sealed class Repository(IDbContextFactory<FinanceDbContext> factory)
         await ctx.SaveChangesAsync(ct);
     }
 
-    public async Task ReplaceDocsAsync(IReadOnlyList<HoldedExpenseDoc> docs, Instant now, CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        var ids = docs.Select(d => d.HoldedDocId).ToHashSet(StringComparer.Ordinal);
-        var existing = await ctx.HoldedExpenseDocs
-            .ToDictionaryAsync(d => d.HoldedDocId, StringComparer.Ordinal, ct);
-        ctx.HoldedExpenseDocs.RemoveRange(existing.Values.Where(d => !ids.Contains(d.HoldedDocId)));
-        foreach (var d in docs)
-        {
-            if (existing.TryGetValue(d.HoldedDocId, out var cur))
-            {
-                cur.DocNumber = d.DocNumber;
-                cur.ContactName = d.ContactName;
-                cur.ContactId = d.ContactId;
-                // Fetched once per document; a sync that did not fetch keeps what an earlier one stored.
-                cur.Notes = d.Notes ?? cur.Notes;
-                cur.Description = d.Description;
-                cur.Date = d.Date;
-                cur.Subtotal = d.Subtotal;
-                cur.Tax = d.Tax;
-                cur.Total = d.Total;
-                cur.Currency = d.Currency;
-                cur.IsApproved = d.IsApproved;
-                cur.TagsJson = d.TagsJson;
-                cur.BookedAccountId = d.BookedAccountId;
-                cur.BudgetCategoryId = d.BudgetCategoryId;
-                cur.MatchStatus = d.MatchStatus;
-                cur.MatchSource = d.MatchSource;
-                cur.LastSyncedAt = now;
-                cur.UpdatedAt = now;
-            }
-            else
-            {
-                d.LastSyncedAt = now;
-                ctx.HoldedExpenseDocs.Add(d);
-            }
-        }
-        await ctx.SaveChangesAsync(ct);
-    }
-
-    public async Task<IReadOnlyList<HoldedExpenseDoc>> GetUnmatchedAsync(CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.HoldedExpenseDocs.AsNoTracking()
-            .Where(d => d.MatchStatus == HoldedMatchStatus.Unmatched)
-            .ToListAsync(ct);
-    }
-
-    public async Task<IReadOnlyList<HoldedExpenseDoc>> GetAllDocsAsync(CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.HoldedExpenseDocs.AsNoTracking().ToListAsync(ct);
-    }
-
-    public async Task<IReadOnlyList<HoldedExpenseDoc>> GetMatchedForYearAsync(int calendarYear, CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.HoldedExpenseDocs.AsNoTracking()
-            .Where(d => d.MatchStatus == HoldedMatchStatus.Matched && d.Date.Year == calendarYear)
-            .ToListAsync(ct);
-    }
-
     public async Task<HoldedCreditorContact?> GetCreditorContactByUserAsync(
         Guid userId, CancellationToken ct = default)
     {
@@ -287,28 +225,6 @@ internal sealed class Repository(IDbContextFactory<FinanceDbContext> factory)
         if (existing is null) return;
 
         existing.ReconciledAt = reconciledAt;
-        await ctx.SaveChangesAsync(ct);
-    }
-
-    public async Task<HoldedDocSyncState> GetOrCreateDocSyncStateAsync(CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.HoldedDocSyncStates.AsNoTracking().FirstOrDefaultAsync(s => s.Id == 1, ct)
-            ?? new HoldedDocSyncState();
-    }
-
-    public async Task SaveDocSyncStateAsync(HoldedDocSyncState state, CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        var existing = await ctx.HoldedDocSyncStates.FirstOrDefaultAsync(s => s.Id == 1, ct);
-        if (existing is null)
-        {
-            ctx.HoldedDocSyncStates.Add(state);
-        }
-        else
-        {
-            ctx.Entry(existing).CurrentValues.SetValues(state);
-        }
         await ctx.SaveChangesAsync(ct);
     }
 }

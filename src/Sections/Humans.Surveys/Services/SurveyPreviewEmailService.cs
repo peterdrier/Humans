@@ -74,7 +74,7 @@ internal sealed class SurveyPreviewEmailService(
             return (null, "Surveys_PreviewNotFound");
         var survey = detail.Editable;
         var user = await userService.GetUserInfoAsync(userId, ct);
-        if (user?.Email is not { Length: > 0 } email)
+        if (user?.Email is not { } email || string.IsNullOrWhiteSpace(email))
             return (null, "Surveys_PreviewNoEmail");
 
         var name = user?.BurnerName ?? string.Empty;

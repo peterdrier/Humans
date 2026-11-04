@@ -18,7 +18,7 @@ internal sealed class CreditorMatchService(IHoldedService holded, IExpenseReport
     /// <summary>Single-bound accounts with ledger lines only: an org vendor's purchases never come from expense
     /// reports, and a colliding row has no one owner to reconcile.</summary>
     public async Task<IReadOnlyDictionary<int, CreditorMatchVm>> GetForMemberAccountsAsync(
-        IEnumerable<HoldedCreditorAccountRow> rows, Guid viewerUserId, CancellationToken ct)
+        IEnumerable<CreditorAccountRow> rows, Guid viewerUserId, CancellationToken ct)
     {
         var reports = await GetReportsAsync(viewerUserId, ct);
         var matches = new Dictionary<int, CreditorMatchVm>();

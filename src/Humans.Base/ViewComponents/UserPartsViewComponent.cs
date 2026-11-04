@@ -25,11 +25,11 @@ public sealed class UserPartsViewComponent(
             try
             {
                 parts.AddRange(contributor.Parts()
-                    .Where(p => string.Equals(p.Slot, slot, StringComparison.Ordinal)));
+                    .Where(p => string.Equals(p.Slot, slot, StringComparison.Ordinal)).ToList());
             }
             catch (Exception ex)
             {
-                logger.LogWarning(ex, "Failed to load user parts from {Contributor}", contributor.GetType().Name);
+                logger.LogError(ex, "Failed to load user parts from {Contributor}", contributor.GetType().Name);
             }
         }
 

@@ -116,14 +116,16 @@ public class NotificationServiceTests : IDisposable
         (await act.Should().ThrowAsync<IOException>()).Which.Should().BeSameAs(failure);
     }
 
-    [HumansFact]
-    public async Task SendToRoleAsync_CreatesSharedNotificationForRoleHolders()
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task SendToRoleAsync_CreatesSharedNotificationForRoleHolders(bool duplicateRecipients)
     {
         var user1 = Guid.NewGuid();
         var user2 = Guid.NewGuid();
 
         _roleAssignmentService.GetActiveUserIdsInRoleAsync("Board", Arg.Any<CancellationToken>())
-            .Returns([user1, user2]);
+            .Returns(duplicateRecipients ? [user1, user2, user1, user2] : [user1, user2]);
 
         await _service.SendToRoleAsync(
             TestSources.Approval,

@@ -25,6 +25,7 @@ internal sealed class CalendarEventFormViewModel : ICalendarEventForm
     [Required(ErrorMessage = "Validation_Required")]
     public Guid OwningTeamId { get; set; }
 
+    [BindRequired]
     public bool IsAllDay { get; set; }
 
     public LocalDate? StartDate { get; set; }

@@ -6,7 +6,7 @@ namespace Humans.Governance;
 /// localization check finds markers through <c>GetExportedTypes()</c>.
 /// </summary>
 /// <remarks>
-/// <c>Application_*</c>, <c>ApplicationStatus_*</c> and the <c>Profile*</c>/<c>OnboardingReview_*</c>/<c>Common_*</c>
+/// <c>Application_*</c>, <c>ApplicationStatus_*</c> and the <c>Profile*</c>/<c>Common_*</c>
 /// singles stay in <c>SharedResource</c>: profile setup and Consent's review queue render them too.
 /// </remarks>
 public class GovernanceResource;

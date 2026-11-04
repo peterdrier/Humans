@@ -25,6 +25,7 @@ internal sealed class TicketTransferService(
 {
     private const int MaxTransferTextLength = 1000;
     private const string AdminNotesTooLong = "Notes cannot exceed 1,000 characters.";
+    private const string ReceiverEmailMissing = "Receiver email is missing. Finish the transfer manually in TicketTailor and use “Mark successful”.";
 
     // Fixed stripes coordinate instances: attendee id for creation, request id for decisions. Processing makes two
     // 90s vendor calls, so the five-minute acquisition timeout must outlast them.
@@ -119,7 +120,7 @@ internal sealed class TicketTransferService(
 
         var receiverLegalName = receiverProfile.FullName;
         var receiverEmail = receiverInfo.Email;
-        if (receiverEmail is null)
+        if (string.IsNullOrWhiteSpace(receiverEmail))
             return TicketTransferMutationResult.Refused("Tickets_TicketTransfer_InvalidSelection");
 
         var now = clock.GetCurrentInstant();
@@ -147,7 +148,7 @@ internal sealed class TicketTransferService(
             $"Transfer requested: ticket {attendee.VendorTicketId} → {receiverLegalName}",
             senderUserId,
             dto.ReceiverUserId,
-            nameof(User));
+            AuditSubjectTypes.User);
 
         await NotifyRequestedAsync(request, attendee, senderUserId, ct);
 
@@ -220,6 +221,8 @@ internal sealed class TicketTransferService(
             return RefuseAdmin(transferRequestId, adminUserId, "Original ticket has already been checked in and cannot be transferred.");
         if (attendee.Status != TicketAttendeeStatus.Valid)
             return RefuseAdmin(transferRequestId, adminUserId, "Original ticket is no longer valid and cannot be transferred.");
+        if (string.IsNullOrWhiteSpace(request.ReceiverEmail))
+            return RefuseAdmin(transferRequestId, adminUserId, ReceiverEmailMissing);
         await WriteToVendorAsync(request, attendee, ct);
 
         // A committed vendor void is irreversible: its outcome must persist even if the admin's request aborted.
@@ -241,7 +244,7 @@ internal sealed class TicketTransferService(
                     : $"Automated process FAILED — {request.VendorMessage}; process manually in TicketTailor",
                 adminUserId,
                 request.SenderUserId,
-                nameof(User));
+                AuditSubjectTypes.User);
 
             return RefuseAdmin(transferRequestId, adminUserId,
                 request.VendorResult == TicketTransferVendorResult.VoidSucceededIssueFailed
@@ -280,6 +283,9 @@ internal sealed class TicketTransferService(
         var attendee = await ticketRepo.GetAttendeeByIdAsync(request.OriginalTicketAttendeeId, ct);
         if (attendee is null) return RefuseAdmin(transferRequestId, adminUserId, "Original attendee missing.");
 
+        if (string.IsNullOrWhiteSpace(request.ReceiverEmail))
+            return RefuseAdmin(transferRequestId, adminUserId, ReceiverEmailMissing);
+
         // Everything here follows a committed void, so an aborted admin request must not cancel the reissue and
         // strand the held seat.
         var commitCt = CancellationToken.None;
@@ -310,7 +316,7 @@ internal sealed class TicketTransferService(
                 $"Reissue retry failed — {VendorFailureDetail(ex)}",
                 adminUserId,
                 request.SenderUserId,
-                nameof(User));
+                AuditSubjectTypes.User);
             logger.LogError(ex, "Reissue retry failed for transfer {TransferId} against hold {HoldId}",
                 request.Id, request.VendorHoldId);
             return RefuseAdmin(transferRequestId, adminUserId,
@@ -376,7 +382,7 @@ internal sealed class TicketTransferService(
             auditDescription,
             adminUserId,
             request.SenderUserId,
-            nameof(User));
+            AuditSubjectTypes.User);
 
         await NotifyDecisionAsync(request, successful: true, reason: null, ct);
     }
@@ -487,7 +493,7 @@ internal sealed class TicketTransferService(
             $"Transfer cancelled: {reason}",
             adminUserId,
             request.SenderUserId,
-            nameof(User));
+            AuditSubjectTypes.User);
 
         await NotifyDecisionAsync(request, successful: false, reason: reason, ct);
 
@@ -514,9 +520,9 @@ internal sealed class TicketTransferService(
         var request = await transferRepo.GetByIdAsync(transferRequestId, ct);
         if (request is null) return null;
 
-        var row = await BuildRowDtoAsync(request, ct);
-        var attendee = await ticketRepo.GetAttendeeByIdAsync(request.OriginalTicketAttendeeId, ct);
-        var order = attendee?.TicketOrder;
+        var attendee = await ResolveAttendeeAsync(request, ct);
+        var row = BuildRowDto(request, attendee);
+        var order = attendee.TicketOrder;
         var siblingIds = order is not null
             ? (await ticketRepo.GetVendorTicketIdsForOrderAsync(order.Id, ct))
                 .OrderBy(s => s, StringComparer.Ordinal).ToList()
@@ -525,8 +531,8 @@ internal sealed class TicketTransferService(
         return new TicketTransferDetailDto(
             Row: row,
             OrderDashboardUrl: order?.VendorDashboardUrl,
-            OriginalAttendeeVendorTicketId: attendee?.VendorTicketId ?? string.Empty,
-            OriginalAttendeeEmail: attendee?.AttendeeEmail,
+            OriginalAttendeeVendorTicketId: attendee.VendorTicketId,
+            OriginalAttendeeEmail: attendee.AttendeeEmail,
             OrderVendorId: order?.VendorOrderId ?? string.Empty,
             OrderPurchasedAt: order?.PurchasedAt ?? Instant.MinValue,
             OrderBuyerEmail: order?.BuyerEmail ?? string.Empty,

@@ -165,15 +165,18 @@ public class MembershipCalculatorTests
         result.Should().Be(expected);
     }
 
-    [HumansFact]
-    public async Task GetMembershipSnapshotAsync_ReturnsConsolidatedState()
+    [HumansTheory]
+    [Xunit.InlineData(true)]
+    [Xunit.InlineData(false)]
+    public async Task GetMembershipSnapshotAsync_ReturnsConsolidatedState(bool isVolunteerMember)
     {
         var userId = Guid.NewGuid();
         var versionId = Guid.NewGuid();
 
         SeedProfile(userId, isApproved: true, isSuspended: false);
-        SeedActiveRole(userId);
         SeedVolunteersTeamMember(userId);
+        _membershipQuery.IsUserMemberOfTeamAsync(SystemTeamIds.Volunteers, userId, Arg.Any<CancellationToken>())
+            .Returns(isVolunteerMember, !isVolunteerMember);
 
         SeedRequiredVersion(SystemTeamIds.Volunteers, versionId, gracePeriodDays: 0,
             effectiveFrom: _clock.GetCurrentInstant() - Duration.FromDays(1));
@@ -183,8 +186,46 @@ public class MembershipCalculatorTests
         snapshot.RequiredConsentCount.Should().Be(1);
         snapshot.PendingConsentCount.Should().Be(1);
         snapshot.MissingConsentVersionIds.Should().ContainSingle().Which.Should().Be(versionId);
-        snapshot.IsVolunteerMember.Should().BeTrue();
-        snapshot.Status.Should().Be(MembershipStatus.Inactive);
+        snapshot.IsVolunteerMember.Should().Be(isVolunteerMember);
+        snapshot.Status.Should().Be(isVolunteerMember ? MembershipStatus.Inactive : MembershipStatus.None);
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(false, false)]
+    [Xunit.InlineData(false, true)]
+    [Xunit.InlineData(true, false)]
+    [Xunit.InlineData(true, true)]
+    public async Task GetMembershipSnapshotAsync_UsesOneConsentState(bool changeRequirements, bool initiallyPresent)
+    {
+        var userId = Guid.NewGuid();
+        var versionId = Guid.NewGuid();
+        SeedProfile(userId, isApproved: true, isSuspended: false);
+        SeedVolunteersTeamMember(userId);
+        SeedRequiredVersion(SystemTeamIds.Volunteers, versionId, gracePeriodDays: 0,
+            effectiveFrom: _clock.GetCurrentInstant() - Duration.FromDays(1));
+
+        if (changeRequirements)
+        {
+            IReadOnlyList<RequiredDocumentVersionSnapshot> required = _requiredVersionsByTeam[SystemTeamIds.Volunteers];
+            _legalDocumentSyncService.GetRequiredDocumentVersionsForTeamAsync(
+                    SystemTeamIds.Volunteers, Arg.Any<CancellationToken>())
+                .Returns(initiallyPresent ? required : [], initiallyPresent ? [] : required);
+        }
+        else
+        {
+            IReadOnlySet<Guid> signed = new HashSet<Guid> { versionId };
+            IReadOnlySet<Guid> unsigned = new HashSet<Guid>();
+            _consentService.GetConsentedVersionIdsAsync(userId, Arg.Any<CancellationToken>())
+                .Returns(initiallyPresent ? signed : unsigned, initiallyPresent ? unsigned : signed);
+        }
+
+        var snapshot = await _service.GetMembershipSnapshotAsync(userId, Xunit.TestContext.Current.CancellationToken);
+
+        var hasMissingConsent = changeRequirements ? initiallyPresent : !initiallyPresent;
+        snapshot.RequiredConsentCount.Should().Be(changeRequirements && !initiallyPresent ? 0 : 1);
+        snapshot.PendingConsentCount.Should().Be(hasMissingConsent ? 1 : 0);
+        snapshot.MissingConsentVersionIds.Should().BeEquivalentTo(hasMissingConsent ? new[] { versionId } : []);
+        snapshot.Status.Should().Be(hasMissingConsent ? MembershipStatus.Inactive : MembershipStatus.Active);
     }
 
     [HumansTheory]

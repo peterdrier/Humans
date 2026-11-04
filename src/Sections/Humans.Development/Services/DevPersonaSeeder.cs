@@ -10,14 +10,13 @@ using Humans.Teams.Contracts;
 using Humans.CityPlanning.Contracts;
 using Humans.Base.Constants;
 using Humans.Base.Enums;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Options;
 using NodaTime;
 
 namespace Humans.Development.Services;
 
 internal sealed class DevPersonaSeeder(
-    UserManager<User> userManager,
+    IAccountProvisioningService accountProvisioning,
     IProfileEditorService profileEditorService,
     IUserEmailService userEmailService,
     IContactFieldService contactFieldService,
@@ -44,15 +43,14 @@ internal sealed class DevPersonaSeeder(
     /// <summary>Returns the resolved user id: legacy personas keep their old hardcoded GUIDs.</summary>
     public async Task<Guid> EnsurePersonaAsync(string slug, string displayNameSuffix, Guid id)
     {
-        var existing = await userManager.FindByIdAsync(id.ToString());
         var isGuest = string.Equals(slug, "guest", StringComparison.OrdinalIgnoreCase);
-        if (existing is not null)
+        if (await userService.GetUserInfoAsync(id) is not null)
         {
             // Personas seeded before the fake marker existed pick it up on their next sign-in.
             if (!isGuest)
-                await userWrite.MarkFakeAsync(existing.Id, existing.Id, PersonaFakeReason);
-            await EnsureActiveAsync(existing.Id);
-            return existing.Id;
+                await userWrite.MarkFakeAsync(id, id, PersonaFakeReason);
+            await EnsureActiveAsync(id);
+            return id;
         }
 
         var email = $"dev-{slug}@localhost";
@@ -87,19 +85,10 @@ internal sealed class DevPersonaSeeder(
         var roleName = isCoordinatorPersona ? null : RoleNameFromSlug(slug);
         var roles = roleName is not null ? new[] { roleName } : Array.Empty<string>();
 
-        var user = new User
+        var errors = await accountProvisioning.CreateAccountAsync(id, displayName, now, lastLoginAt: now);
+        if (errors.Count > 0)
         {
-            Id = id,
-            BurnerName = displayName,
-            CreatedAt = now,
-            LastLoginAt = now
-        };
-
-        var result = await userManager.CreateAsync(user);
-        if (!result.Succeeded)
-        {
-            logger.LogError("Failed to create dev persona {Email}: {Errors}",
-                email, string.Join(", ", result.Errors.Select(e => e.Description)));
+            logger.LogError("Failed to create dev persona {Email}: {Errors}", email, string.Join(", ", errors));
             return id;
         }
 
@@ -256,19 +245,10 @@ internal sealed class DevPersonaSeeder(
 
     private async Task SeedProfilelessUserAsync(Guid id, string email, string displayName, Instant now)
     {
-        var user = new User
+        var errors = await accountProvisioning.CreateAccountAsync(id, displayName, now, lastLoginAt: now);
+        if (errors.Count > 0)
         {
-            Id = id,
-            BurnerName = displayName,
-            CreatedAt = now,
-            LastLoginAt = now
-        };
-
-        var result = await userManager.CreateAsync(user);
-        if (!result.Succeeded)
-        {
-            logger.LogError("Failed to create dev guest persona {Email}: {Errors}",
-                email, string.Join(", ", result.Errors.Select(e => e.Description)));
+            logger.LogError("Failed to create dev guest persona {Email}: {Errors}", email, string.Join(", ", errors));
             return;
         }
 

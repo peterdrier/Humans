@@ -1,6 +1,7 @@
 @model Humans.Finance.Models.CreditorStatementVm
 @{
     ViewData["Title"] = $"Creditor {Model.Ledger.SupplierAccountNum}";
+    ViewData[Humans.Base.ViewComponents.AdminNavComposition.ParentKey] = "Creditors";
     var ledger = Model.Ledger;
     var lines = Model.Lines;
 
@@ -145,9 +146,56 @@
                     <td class="text-nowrap">@l.Date.InZone(madrid).ToDateTimeUnspecified().ToInvariantDate()</td>
                     <td>@row.Description</td>
                     <td class="text-muted small">@l.Type</td>
-                    <td class="text-end">@(l.Credit > 0 ? l.Credit.ToEuro() : "")</td>
-                    <td class="text-end">@(l.Debit > 0 ? l.Debit.ToEuro() : "")</td>
+                    <td class="text-end">@(row.Credit > 0 ? row.Credit.ToEuro() : "")</td>
+                    <td class="text-end">@(row.Debit > 0 ? row.Debit.ToEuro() : "")</td>
                     <td class="text-end @(row.RunningBalance > 0 ? "finance-positive" : row.RunningBalance < 0 ? "finance-negative" : "")">@row.RunningBalance.ToEuro()</td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    }
+</div>
+
+<div class="card mt-4">
+    <div class="card-header">SEPA payments sent to this account (from our payout files; booked = settled in Holded)</div>
+    @if (Model.SepaTransfers.Count == 0)
+    {
+        <div class="card-body text-muted text-center py-4">No SEPA payout file has paid this account.</div>
+    }
+    else
+    {
+        <table class="table table-sm table-hover mb-0 align-middle">
+            <thead><tr>
+                <th>Generated</th>
+                <th>File</th>
+                <th>IBAN</th>
+                <th>Status</th>
+                <th class="text-end">Amount</th>
+            </tr></thead>
+            <tbody>
+            @foreach (var t in Model.SepaTransfers)
+            {
+                <tr>
+                    <td class="text-nowrap">@t.GeneratedAt.InZone(madrid).Date.ToInvariantDate()</td>
+                    <td><a asp-action="Sepa" class="font-monospace small">@t.FileName</a></td>
+                    <td class="font-monospace small">@t.IbanMasked</td>
+                    <td class="text-nowrap">
+                        @if (t.WithdrawnAt is { } withdrawnAt)
+                        {
+                            <span class="badge text-bg-dark">Withdrawn</span>
+                            <span class="text-muted small">@withdrawnAt.InZone(madrid).Date.ToInvariantDate()</span>
+                        }
+                        else if (t.BookedAt is { } bookedAt)
+                        {
+                            <span class="badge text-bg-success">Booked</span>
+                            <span class="text-muted small">@bookedAt.InZone(madrid).Date.ToInvariantDate()</span>
+                        }
+                        else
+                        {
+                            <span class="badge text-bg-secondary">Generated</span>
+                        }
+                    </td>
+                    <td class="text-end">@t.Amount.ToEuro()</td>
                 </tr>
             }
             </tbody>

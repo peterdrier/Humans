@@ -1,10 +1,10 @@
 <!-- freshness:triggers
   src/Sections/Humans.Workgroups/**
   tests/Humans.Workgroups.Tests/**
-  src/Sections/Humans.Users.Contracts/IUserService.cs
+  src/Humans.Base/Users/IUserService.cs
   src/Sections/Humans.Auth/Contracts/IRoleAssignmentService.cs
   src/Sections/Humans.Teams.Contracts/ITeamService.cs
-  src/Sections/Humans.Finance.Contracts/IHoldedFinanceWrite.cs
+  src/Sections/Humans.Finance.Contracts/IFinanceWrite.cs
   src/Sections/Humans.Holded/Contracts/IHoldedService.cs
   src/Sections/Humans.GoogleIntegration/Contracts/IGoogleSyncService.cs
   src/Sections/Humans.GoogleIntegration/Contracts/IGoogleDriveAccessSource.cs
@@ -141,7 +141,8 @@ the community calendar uses; nothing per occurrence is stored. The group page ti
 every occurrence that has started plus each meeting's next one, each dated in the meeting's
 zone (organisation zone for a one-off); `NextMeeting` is the earliest upcoming occurrence.
 Editing or deleting acts on the whole series. Meetings repeat daily at most: the service
-refuses sub-daily rules, since the page and the daily job expand a series from its start. A
+refuses sub-daily rules, including case-insensitive frequency values padded with whitespace,
+on both creation and update, since the page and the daily job expand a series from its start. A
 series' later occurrences are scheduled, not evidence of a meeting, so for the update-due
 rhythm only its stored first occurrence counts; the notes posted for later weeks count instead. The calendar contributor passes a repeating
 meeting as one item carrying its rule, so the personal feed holds one repeating VEVENT and the
@@ -266,7 +267,8 @@ a clear error while unset.
 | `/Workgroups` | Register: Active, Pending (Applied/Referred), Archive |
 | `/Workgroups/Apply` | Clause 1 application form |
 | `/Workgroups/{slug}` | Group page. Slug routes also resolve by the group's id, so a pre-rename link still lands |
-| `/Workgroups/{slug}/Join`, `/Leave`, `/RequestStatus` | Member actions. Join is a request; Leave while pending withdraws it |
+| `/Workgroups/{slug}/Join`, `/Leave` | Member actions. Join is a request; Leave while pending withdraws it |
+| `/Workgroups/{slug}/RequestStatus` | Board/Admin only; the form is hidden from everyone else |
 | `/Workgroups/{slug}/Members/{userId}/Approve`, `/Decline`, `/Members/Add` | Membership decisions: a coordinator of an Active group, or Board/Admin |
 | `/Workgroups/{slug}/Edit`, `/Coordinators` | Register fields, coordinator handover |
 | `/Workgroups/{slug}/Meetings/*`, `/Log/*` | Meetings and log entries |
@@ -285,12 +287,16 @@ Settings and Register an existing group on first setup or after clearing the que
 
 | Actor | Capabilities |
 |-------|--------------|
-| Any signed-in human with an approved profile | Browse the register and every group page; read Published/Delivered documents, meetings and the log of a non-sensitive group; ask to join, withdraw the request, or leave; comment during an open window (non-sensitive groups); request a status update; apply to form a group |
+| Any signed-in human with an approved profile | Browse the register and every group page; read Published/Delivered documents, meetings and the log of a non-sensitive group; ask to join, withdraw the request, or leave; comment during an open window (non-sensitive groups); apply to form a group |
 | Workgroup member | Additionally: read Draft documents; everything on a sensitive group's page; edit register fields (including the sensitive flag); create/edit meetings; post Update, Meeting notes, Disclosure and Note entries; create/edit/publish/deliver documents; open/close comment periods; respond to and dispose of comments; hide a comment with a reason; link an authored survey; mark the group done |
 | Coordinator | Everything a member can, plus the membership decision: approve or decline join requests and add people directly. Named on the register; addressee of notifications and join requests; may hand coordination to another member |
-| Board, Admin (`BoardOrAdmin`) | Register, refer, refuse, withdraw, close, reactivate; set coordinators (override); approve, decline and add members on any group; register on behalf (bootstrapping); record a document's disposition; view the admin queue; edit any group; read sensitive groups; set the root Drive folder; set the budget and its Holded account |
+| Board, Admin (`BoardOrAdmin`) | Register, refer, refuse, withdraw, close, reactivate; set coordinators (override); approve, decline and add members on any group; register on behalf (bootstrapping); record a document's disposition; view the admin queue; request a status update; edit any group; read sensitive groups; set the root Drive folder; set the budget and its Holded account |
 
 ## Invariants
+
+- Meeting saves require explicit recurrence and public-visibility values. Omitted flags redisplay field errors before any create/update call, with a Warning after member authorization; explicit false choices remain valid. Meetings stay timed-only.
+- Approving, declining and directly adding members share one preflight: the group must exist and be Active before coordinator/admin authorization is checked. An admin override does not bypass the Active requirement.
+- Register edits, member forms and member mutations share one controller resolver: resolve the actor, find the group, then check member-work permission before nested IDs or submitted values. Join, leave, status requests and commenting retain their existing exceptions to the member-work check and their route policies.
 
 - Roster membership-tier badges use localized enum labels in all six cultures.
 
@@ -332,7 +338,7 @@ Settings and Register an existing group on first setup or after clearing the que
   public meetings (the members' own feed keeps them) and the Governance card shows its
   register entry without next meeting, comment or update-due badge; the register and the page header
   show its open-for-comment and update-due badges to members only (Board/Admin on the
-  page). The register listing itself, the join request and the status request are unchanged.
+  page). The register listing itself and the join request are unchanged.
 - **One or two coordinators at all times on an Active group.** The last coordinator
   leaving must name a replacement (`LeaveAsync`); a `BoardOrAdmin` caller may override and
   leave the group coordinatorless on purpose so the Secretary can appoint someone.
@@ -343,6 +349,7 @@ Settings and Register an existing group on first setup or after clearing the que
   override) remain. Controllers and page controls use the resource authorization handler.
 - Refused and Withdrawn require non-empty `Reasons`.
 - Admin actions through the shared decision handler reject binding errors after actor resolution and before mutation. A malformed disposition cannot default to Accepted; no system log, audit or notification is emitted for a rejected form.
+- Apply, register-edit and admin-bootstrap forms require explicit deliverable kind, audience and sensitivity values. Missing choices redisplay field errors and log a Warning before mutation; explicit zero-valued enum choices and `false` remain valid. Admin bootstrap posts its existing sensitivity default explicitly. Binding feedback uses the shared localized validation messages in all supported cultures.
 - Registration creates the Drive subfolder before the status flips; a folder-creation
   failure leaves the group Applied so the Secretary can retry. Application and both
   registration paths run to completion independently of request cancellation. Both are marked `[ExternalWrite]`, and their admin write calls explicitly pass `CancellationToken.None`; authorization and form reads retain the request token.
@@ -377,6 +384,7 @@ Settings and Register an existing group on first setup or after clearing the que
 - Comment/log/document responses stay possible after the comment window closes but not
   after the group leaves Active (`RequireAcceptsMemberWork` on the responding calls too).
 - A group's Slug never collides with a reserved route segment (`apply`, `admin`).
+- Both Board/Admin budget forms require an explicit budget checkbox value. Enabling a budget also requires a valid create/link account choice; omissions and unknown choices cannot clear a budget or create a Holded account. Clearing a budget needs no account choice. The initial registration form selects create; rejected submissions retain their choices.
 - Budget: amount ≥ 0 or null and must be whole cents (at most two decimal places; trailing zeroes are valid). Updates and existing-group registration refuse fractional cents before Finance, Drive creation or persistence, using literal feedback on the Board/Admin-only forms. Refused/Withdrawn rejected; Finance is called before
   anything is written, so a failed create or an unknown account number changes nothing;
   the first account bound is created as "Workgroups / {Name}" or linked to an existing
@@ -397,7 +405,7 @@ Settings and Register an existing group on first setup or after clearing the que
   nor comment on its documents; Board/Admin can.
 - Nobody can comment outside an open comment window, or on a Draft document.
 - A Dormant group's members **cannot** perform any member mutation (log, meetings,
-  documents, comments, register edits) — only `BoardOrAdmin` actions remain.
+  documents, comments, register edits) — only `BoardOrAdmin` actions remain. Document mutations share the document resolver's active-group preflight; Board disposition recording explicitly retains the lookup that permits ended groups.
 - Anonymous requests **cannot** reach any `/Workgroups*` route — `PolicyNames.AppAccess`
   gates the member controller class-wide, `BoardOrAdmin` gates the admin controller.
 - A member **cannot** leave as the last coordinator without naming a replacement
@@ -457,7 +465,7 @@ anything — every action here is a notice, a flag, or a record; a human still h
 
 Disposition-overdue is a read-time badge computed by `WorkgroupInfo` against the caller's
 clock, not a job action — a cached register can never show a stale badge. "Request a status
-update" is a member action (any signed-in human, as often as they like), not part of the job.
+update" is a Board/Admin action (as often as they like), not part of the job.
 
 The job reads how long a group has been quiet — that is how the 30-day nudge knows whether
 its window has come round again — but it never persists a judgement about it: no flag, no
@@ -489,9 +497,9 @@ should end is the Board's decision, taken on the register in front of them.
   A merged-member alias carries both the resolved live id and its language into grouping,
   with one delivery per live recipient even when multiple requested ids resolve to them.
 - **Gdpr**: `IUserDataContributor`, `IUserMerge` — see GDPR below.
-- **Finance**: `IHoldedFinanceWrite.CreateOrLinkExpenseAccountAsync` /
+- **Finance**: `IFinanceWrite.CreateOrLinkExpenseAccountAsync` /
   `SetExpenseAccountActiveAsync` (outbound). **Holded**: `IHoldedService.GetChartAsync`
-  for the admin picker only: active group-6 accounts from the local mirror, with no outbound API call. Both the register-existing and detail views order accounts by number; the mirror read imposes no display order. Account creation and linking still go through Finance.
+  for the admin picker only: active group-6 accounts from the local mirror, with no outbound API call. Both the register-existing and detail views order accounts by number; the mirror read imposes no display order. Unexpected mirror-read failures log at Error with exception details and leave the picker empty; cancellation propagates. Account creation and linking still go through Finance.
 
 ## GDPR
 
@@ -557,7 +565,7 @@ picker labels and roster profile badges load a member dictionary.
 - **Cross-section calls** — `IUserService`,
   `IRoleAssignmentService`, `ISettingsService`, `IGoogleSyncService`, `IGoogleSyncWrite`,
   `INotificationService`, `IEmailService`, `IAuditLogService`,
-  `ISurveyAnalysisRead`, `IClock`, `IHoldedFinanceWrite`, `IHoldedService`.
+  `ISurveyAnalysisRead`, `IClock`, `IFinanceWrite`, `IHoldedService`.
   `ITeamService` is used by `WorkgroupsController` and `WorkgroupDriveAccessSource`, not by `WorkgroupService`.
   `IGovernanceService` is used by `WorkgroupsController` only.
 - **Email** — Workgroups owns the working-group notice: `WorkgroupsEmails` (internal)

@@ -1,4 +1,5 @@
 using System.Net;
+using Humans.Base.Enums;
 using AwesomeAssertions.Execution;
 using Humans.Base.Extensions;
 using Humans.Email.Contracts;
@@ -19,6 +20,59 @@ namespace Humans.Preapprovals.Tests.Services;
 /// <summary>Issue, issue-many, apply, approve, decline, revoke, change amount: the rules and their audit.</summary>
 public sealed class GrantTests : PreapprovalsTestHarness
 {
+    [HumansTheory]
+    [InlineData("issue", null)]
+    [InlineData("issue", UserState.Deleted)]
+    [InlineData("issue", UserState.Merged)]
+    [InlineData("batch", null)]
+    [InlineData("batch", UserState.Deleted)]
+    [InlineData("batch", UserState.Merged)]
+    [InlineData("apply", null)]
+    [InlineData("apply", UserState.Deleted)]
+    [InlineData("apply", UserState.Merged)]
+    [InlineData("edit", null)]
+    [InlineData("edit", UserState.Deleted)]
+    [InlineData("edit", UserState.Merged)]
+    public async Task GrantWrites_RefuseUnavailablePeopleWithoutSavingOrDispatching(string operation, UserState? state)
+    {
+        var actor = SeedUser();
+        var valid = SeedUser();
+        var unavailable = SeedUser();
+        var person = Assert.IsType<UserInfo>(await Users.GetUserInfoAsync(unavailable, Ct));
+        Users.GetUserInfoAsync(unavailable, Arg.Any<CancellationToken>())
+            .Returns(state is { } value ? person with { State = value } : null);
+        var program = await SeedProgramAsync();
+        var pending = string.Equals(operation, "edit", StringComparison.Ordinal)
+            ? await SeedGrantAsync(program, beneficiary: unavailable, status: GrantStatus.Applied)
+            : null;
+        var service = NewService();
+
+        var refusal = operation switch
+        {
+            "issue" => (await service.IssueAsync(program.Id, unavailable, null, null, actor, Ct)).Refusal,
+            "batch" => (await service.IssueManyAsync(program.Id, [valid, unavailable], actor, Ct)).Refusal,
+            _ => (await service.ApplyAsync(program.Id, unavailable, "Changed note", null, Ct)).Refusal
+        };
+
+        refusal!.Key.Should().Be(PreapprovalErrorKeys.PersonUnavailable);
+        await using var db = OpenContext();
+        var grants = await db.Grants.ToListAsync(Ct);
+        if (pending is not null)
+        {
+            var unchanged = grants.Should().ContainSingle().Which;
+            unchanged.Id.Should().Be(pending.Id);
+            unchanged.ApplicationNote.Should().Be(pending.ApplicationNote);
+            unchanged.MaxAmount.Should().Be(pending.MaxAmount);
+            unchanged.UpdatedAt.Should().Be(pending.UpdatedAt);
+        }
+        else
+            grants.Should().BeEmpty();
+        AuditLog.ReceivedCalls().Should().BeEmpty();
+        Notifications.ReceivedCalls().Should().BeEmpty();
+        NotificationResolve.ReceivedCalls().Should().BeEmpty();
+        Email.ReceivedCalls().Should().BeEmpty();
+    }
+
     [HumansTheory]
     [InlineData("issue")]
     [InlineData("issue-many")]
@@ -130,6 +184,7 @@ public sealed class GrantTests : PreapprovalsTestHarness
         var archived = Guid.NewGuid();
         var survivor = SeedUser("Ana", language: "ca", mergedIds: [archived]);
         var person = (await Users.GetUserInfoAsync(survivor, Ct))!;
+        Users.GetUserInfoAsync(archived, Arg.Any<CancellationToken>()).Returns(person);
         Users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(call => new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
                 call.Arg<IReadOnlyCollection<Guid>>().Distinct()
@@ -181,6 +236,7 @@ public sealed class GrantTests : PreapprovalsTestHarness
         grant.MaxAmount.Should().Be(300m);
         grant.Status.Should().Be(GrantStatus.Open);
         grant.DecidedByUserId.Should().Be(actor);
+        grant.DecidedAt.Should().Be(Clock.GetCurrentInstant());
         grant.Label.Should().Be("Fire Lotus");
         await AuditLog.Received(1).LogAsync(PreapprovalsAuditActions.PreapprovalGrantIssued, AuditEntityTypes.Grant, grant.Id, Arg.Any<string>(), actor, program.Id, AuditEntityTypes.Program);
         await Notifications.Received(1).SendAsync(PreapprovalsNotificationSources.PreapprovalFileBy, NotificationClass.Actionable, NotificationPriority.Normal,
@@ -284,11 +340,18 @@ public sealed class GrantTests : PreapprovalsTestHarness
         var program = await SeedProgramAsync(perPerson: 300m, ceiling: 1000m);
         var a = SeedUser("A"); var b = SeedUser("B");
         var service = NewService();
+        var actor = SeedUser("Manager");
 
-        var result = await service.IssueManyAsync(program.Id, [a, b, a], SeedUser(), Ct);
+        var result = await service.IssueManyAsync(program.Id, [a, b, a], actor, Ct);
 
         result.Refusal.Should().BeNull();
         result.Value!.Count.Should().Be(2);
+        foreach (var id in result.Value)
+        {
+            var grant = await ReadGrantAsync(id);
+            grant.DecidedByUserId.Should().Be(actor);
+            grant.DecidedAt.Should().Be(Clock.GetCurrentInstant());
+        }
         (await OpenContext().Grants.ToListAsync(Ct)).Should().OnlyContain(g => g.MaxAmount == 300m && g.Status == GrantStatus.Open);
 
         var perGrant = await SeedProgramAsync(kind: ProgramKind.PerGrantAmount, perPerson: null);

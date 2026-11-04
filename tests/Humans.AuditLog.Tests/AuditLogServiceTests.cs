@@ -372,7 +372,8 @@ public class AuditLogServiceTests : IDisposable
         await _dbContext.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var result = await _service.GetFilteredEntriesAsync(
-            actions: [], userId: userId, ct: TestContext.Current.CancellationToken);
+            entityType: null, entityId: null, userId: userId, actions: [], limit: 20,
+            ct: TestContext.Current.CancellationToken);
 
         result.Select(e => e.Action).Should().Equal(TestActions.RoleAssigned.Name, TestActions.VolunteerApproved.Name);
     }

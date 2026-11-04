@@ -71,12 +71,6 @@ public sealed class StoreControllerRecordPaymentTests
             Substitute.For<IStripeService>(), Substitute.For<IHoldedClient>(),
             Options.Create(new StoreSectionOptions()), NullLogger<Service>.Instance);
 
-        var services = new ServiceCollection();
-        services.AddLogging();
-        services.AddAuthorizationCore();
-        services.AddSingleton<IAuthorizationHandler>(new OrderAuthorizationHandler(camps, teams, settings, clock, new Microsoft.AspNetCore.Http.HttpContextAccessor()));
-        var auth = services.BuildServiceProvider().GetRequiredService<IAuthorizationService>();
-
         var users = identityUsers ?? Substitute.For<IUserService>();
         if (identityUsers is null)
             users.GetUserInfoAsync(_userId, Arg.Any<CancellationToken>())
@@ -85,6 +79,12 @@ public sealed class StoreControllerRecordPaymentTests
                     call.Arg<CancellationToken>().ThrowIfCancellationRequested();
                     return new ValueTask<UserInfo?>(MakeUserInfo(_userId));
                 });
+        var services = new ServiceCollection();
+        services.AddLogging();
+        services.AddAuthorizationCore();
+        services.AddSingleton<IAuthorizationHandler>(new OrderAuthorizationHandler(camps, teams, users, settings, clock, new Microsoft.AspNetCore.Http.HttpContextAccessor()));
+        var auth = services.BuildServiceProvider().GetRequiredService<IAuthorizationService>();
+
         var localizer = Substitute.For<IStringLocalizer<StoreResource>>();
         localizer[Arg.Any<string>()].Returns(ci => new LocalizedString(ci.Arg<string>(), ci.Arg<string>()));
 
@@ -198,10 +198,12 @@ public sealed class StoreControllerRecordPaymentTests
     public async Task StorePages_SortTheCatalogForDisplay(bool detail)
     {
         var controller = BuildController(RoleNames.Admin);
-        _repo.GetActiveProductsForYearAsync(2026, Arg.Any<CancellationToken>()).Returns([
+        Product[] products = [
             new Product { Id = Guid.NewGuid(), Year = 2026, Name = "Tent" },
             new Product { Id = Guid.NewGuid(), Year = 2026, Name = "Blanket" }
-        ]);
+        ];
+        _repo.GetActiveProductsForYearAsync(2026, Arg.Any<CancellationToken>()).Returns(products);
+        _repo.GetAllProductsForYearAsync(2026, Arg.Any<CancellationToken>()).Returns(products);
 
         var result = detail
             ? await controller.Order(_order.Id, TestContext.Current.CancellationToken)

@@ -2,7 +2,7 @@ namespace Humans.Base.Models;
 
 /// <summary>
 /// One row of a "who is this assigned to" person dropdown. Shared because it names no section's vocabulary:
-/// Feedback and Issues both bind it.
+/// Issues binds it.
 /// </summary>
 public class AssigneeOption
 {

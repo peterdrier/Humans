@@ -271,6 +271,8 @@ public sealed class EventRepositoryTests : IDisposable
         var category = SeedCategory("Workshop", "workshop", 1);
         var pendingCamp = SeedEvent(category.Id, Guid.NewGuid(), EventStatus.Pending, _clock.GetCurrentInstant(), campId: Guid.NewGuid());
         var approvedCamp = SeedEvent(category.Id, Guid.NewGuid(), EventStatus.Approved, _clock.GetCurrentInstant(), campId: Guid.NewGuid());
+        pendingCamp.IsRecurring = true;
+        pendingCamp.RecurrenceDays = "1,2";
         SeedEvent(category.Id, Guid.NewGuid(), EventStatus.Rejected, _clock.GetCurrentInstant(), campId: Guid.NewGuid());
         SeedEvent(category.Id, Guid.NewGuid(), EventStatus.Pending, _clock.GetCurrentInstant());
         await _db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
@@ -279,6 +281,9 @@ public sealed class EventRepositoryTests : IDisposable
 
         result.Select(e => e.Id).Should().BeEquivalentTo([pendingCamp.Id, approvedCamp.Id]);
         result.Should().OnlyContain(e => e.CampId.HasValue);
+        var pending = result.Single(e => e.Id == pendingCamp.Id);
+        pending.IsRecurring.Should().BeTrue();
+        pending.RecurrenceDays.Should().Be("1,2");
     }
 
     [HumansFact]

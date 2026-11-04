@@ -184,7 +184,9 @@ public sealed class CampServiceTests : CampsTestHarness
         camp.Seasons.Single(s => s.Year == 2026).LeadUserIds.Should().BeEmpty();
         (await cached.GetCampByIdAsync(created.Id, ct)).Should().BeSameAs(camp);
 
-        var handler = new CampAuthorizationHandler(cached, new Microsoft.AspNetCore.Http.HttpContextAccessor());
+        _userService.GetUserInfoAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(call => UserInfo.Create(new User { Id = call.Arg<Guid>() }, [], [], null));
+        var handler = new CampAuthorizationHandler(cached, _userService, new Microsoft.AspNetCore.Http.HttpContextAccessor());
         foreach (var (viewerId, allowed) in new[] { (leadId, true), (Guid.NewGuid(), false) })
         {
             var viewer = new ClaimsPrincipal(new ClaimsIdentity(

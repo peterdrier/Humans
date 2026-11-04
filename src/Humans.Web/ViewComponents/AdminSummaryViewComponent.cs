@@ -48,7 +48,7 @@ public sealed class AdminSummaryViewComponent(
             catch (Exception ex)
             {
                 // One section's summary read must not take the whole dashboard down.
-                logger.LogWarning(ex, "Failed to compute admin tile {Key}", tile.Key);
+                logger.LogError(ex, "Failed to compute admin tile {Key}", tile.Key);
                 continue;
             }
 

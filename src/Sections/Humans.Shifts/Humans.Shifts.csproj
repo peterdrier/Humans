@@ -55,6 +55,7 @@
       below this project).
         Camps         — ICampService: camp labels and rosters for the summary-by-camp.
         Users         — UserInfo snapshots, IUserMerge, and the profile-side reads.
+        AuditLog      — IAuditViewerService for the orphan-signup scan.
         Auth          — the coordinator/manager authorization surface.
         EarlyEntry    — VolunteerTrackingExportService implements IEarlyEntryProvider;
                         the section project, since EarlyEntry's contracts are a folder.
@@ -74,6 +75,7 @@
                         names no Humans.Shifts type at all.
         Tickets       — early entry gates on the volunteer holding a ticket.
     -->
+    <ProjectReference Include="..\Humans.AuditLog\Humans.AuditLog.csproj" />
     <ProjectReference Include="..\Humans.Settings\Humans.Settings.csproj" />
     <ProjectReference Include="..\Humans.Auth\Humans.Auth.csproj" />
     <!--

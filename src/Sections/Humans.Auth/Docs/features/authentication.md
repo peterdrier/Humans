@@ -5,7 +5,7 @@
   src/Humans.Base/Authorization/**
   src/Humans.Web/Controllers/AccountController.cs
   src/Sections/Humans.Development/Controllers/DevLoginController.cs
-  src/Sections/Humans.Users.Contracts/User.cs
+  src/Humans.Base/Users/User.cs
   src/Sections/Humans.Auth/Domain/RoleAssignment.cs
   src/Humans.Base/Constants/RoleNames.cs
   src/Humans.Base/Interfaces/ISectionRoles.cs
@@ -147,7 +147,6 @@ All roles are stored as temporal `RoleAssignment` records. Role claims are added
 | **TeamsAdmin** | System-wide team management; view sync status but not execute |
 | **CampsAdmin** | Camp management and season approval |
 | **TicketsAdmin** | Ticket vendor integration, discount codes, ticket data export |
-| **FeedbackAdmin** | None — Feedback is retired and Admin-only. Assignable and still shown on the Staff page, but grants no access |
 | **FinanceAdmin** | Budget management (years, groups, categories, line items) |
 | **StoreAdmin** | Store-domain superset: catalog, orders, payments, invoices, treasury sync (FinanceAdmin retains parallel access for accounting workflows) |
 | **EventsAdmin** | Approve, reject, and request edits on event guide submissions |

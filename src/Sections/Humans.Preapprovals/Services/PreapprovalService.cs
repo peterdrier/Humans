@@ -20,7 +20,7 @@ namespace Humans.Preapprovals.Services;
 internal sealed partial class PreapprovalService(
     IPreapprovalRepository repository,
     IUserService users,
-    IHoldedFinanceService finance,
+    IFinanceService finance,
     INotificationEmitter notifications,
     INotificationAutoResolve notificationResolve,
     IEmailService email,
@@ -199,6 +199,14 @@ internal sealed partial class PreapprovalService(
     private static GrantOption ToOption(PreapprovalGrant g) => new(
         g.Id, g.Program.Name, g.Label, g.MaxAmount, g.Program.HoldedAccountNumber,
         g.Program.HoldedAccountId, g.Program.ClaimBy, g.Status);
+
+    private async Task<UserInfo?> ResolveAvailablePersonAsync(Guid userId, CancellationToken ct)
+    {
+        var person = await users.GetUserInfoAsync(userId, ct);
+        if (person is not null && !person.IsTombstone) return person;
+        logger.LogWarning("Preapproval write refused for unavailable person {UserId}", userId);
+        return null;
+    }
 
     /// <summary>So a grant under a since-merged id is still theirs.</summary>
     private async Task<IReadOnlyList<Guid>> AllIdsAsync(Guid userId, CancellationToken ct)

@@ -130,8 +130,8 @@ The shapes imply one register with one cache and one write funnel:
   DI cycle.
 - `ExternalLoginService` keeps the `Humans.Application.Services.Users` namespace because an
   analyzer names it by full name.
-- `AccountController` (Shell) and the Development seeders inject `UserManager` directly — the
-  §2a exception.
+- Identity's `UserManager` / `SignInManager` are Users-only: `AccountController` (Shell), Development
+  and Tickets sign in through `IUserSignInService` (CENTRAL-106 closed).
 - `Views/Profile/Edit.cshtml` localizes its shift-preference strings (`Shifts_EditPreferences`,
   `Shifts_PreferencesHelp`) through `ShiftsResource` on purpose.
 

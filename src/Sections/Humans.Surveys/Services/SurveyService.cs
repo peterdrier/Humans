@@ -478,7 +478,7 @@ internal sealed class SurveyService(
         await repo.ApproveAsync(surveyId, now, ct);
         await auditLog.LogAsync(SurveysAuditActions.SurveyApproved, AuditEntityTypes.Survey, surveyId,
             $"Approved survey '{survey.Title.Resolve(survey.DefaultCulture, survey.DefaultCulture)}'; sending invitations",
-            viewer.UserId, relatedEntityId: survey.CreatedByUserId, relatedEntityType: AuditEntityTypes.User);
+            viewer.UserId, relatedEntityId: survey.CreatedByUserId, relatedEntityType: AuditSubjectTypes.User);
 
         // CancellationToken.None, not ct: approval is persisted, and a request-scoped token firing mid-send would
         // leave the survey Open with a partial invitation set.
@@ -505,7 +505,7 @@ internal sealed class SurveyService(
         await repo.RejectAsync(surveyId, trimmedNote, now, ct);
         await auditLog.LogAsync(SurveysAuditActions.SurveyRejected, AuditEntityTypes.Survey, surveyId,
             $"Rejected survey '{survey.Title.Resolve(survey.DefaultCulture, survey.DefaultCulture)}': {trimmedNote}",
-            viewer.UserId, relatedEntityId: survey.CreatedByUserId, relatedEntityType: AuditEntityTypes.User);
+            viewer.UserId, relatedEntityId: survey.CreatedByUserId, relatedEntityType: AuditSubjectTypes.User);
         return new();
     }
 
@@ -522,8 +522,9 @@ internal sealed class SurveyService(
         var recipients = await ResolveRecipientIdsAsync(
             audienceType, survey.AudienceTeamId, survey.AudienceLoggedInSince, ct);
         if (recipients.Count == 0) return 0;
-        var alreadyInvited = await InvitedUserIdsResolvedAsync(surveyId, ct);
-        var completedPublicParticipants = (await repo.GetInvitationsAsync(surveyId, ct))
+        var participationRows = await repo.GetInvitationsAsync(surveyId, ct);
+        var alreadyInvited = await InvitedUserIdsResolvedAsync(participationRows, ct);
+        var completedPublicParticipants = participationRows
             .Where(invitation => invitation.SentAt is null && invitation.Completed)
             .Select(invitation => invitation.UserId);
         return recipients.Except(alreadyInvited).Except(completedPublicParticipants).Count();
@@ -545,8 +546,8 @@ internal sealed class SurveyService(
         var now = clock.GetCurrentInstant();
         var target = await ResolveRecipientIdsAsync(
             audienceType, survey.AudienceTeamId, survey.AudienceLoggedInSince, ct);
-        var alreadyInvited = await InvitedUserIdsResolvedAsync(surveyId, ct);
         var participationRows = await repo.GetInvitationsAsync(surveyId, ct);
+        var alreadyInvited = await InvitedUserIdsResolvedAsync(participationRows, ct);
         var completedPublicParticipants = participationRows
             .Where(invitation => invitation.SentAt is null && invitation.Completed)
             .Select(invitation => invitation.UserId);
@@ -568,7 +569,7 @@ internal sealed class SurveyService(
 
         foreach (var userId in netNew)
         {
-            if (!users.TryGetValue(userId, out var user) || user.Email is not { Length: > 0 } email)
+            if (!users.TryGetValue(userId, out var user) || user.Email is not { } email || string.IsNullOrWhiteSpace(email))
             {
                 logger.LogWarning(
                     "User {UserId} has no notification email for survey {SurveyId}; skipping invitation",
@@ -635,9 +636,11 @@ internal sealed class SurveyService(
     /// never re-pointed on merge, so the audience (live ids) is compared against both, or the
     /// survivor is invited a second time to a survey their archived id already holds.
     /// </summary>
-    private async Task<HashSet<Guid>> InvitedUserIdsResolvedAsync(Guid surveyId, CancellationToken ct)
+    private async Task<HashSet<Guid>> InvitedUserIdsResolvedAsync(
+        IReadOnlyList<SurveyInvitation> invitations, CancellationToken ct)
     {
-        var invited = (await repo.GetInvitedUserIdsAsync(surveyId, ct)).ToHashSet();
+        var invited = invitations.Where(invitation => invitation.SentAt is not null)
+            .Select(invitation => invitation.UserId).ToHashSet();
         if (invited.Count == 0) return invited;
         foreach (var info in (await userService.GetUserInfosAsync(invited.ToList(), ct)).Values)
             invited.Add(info.Id);
@@ -685,20 +688,7 @@ internal sealed class SurveyService(
         var draft = isEligible
             ? await repo.GetDraftResponseAsync(invitation.SurveyId, invitation.UserId, ct)
             : null;
-        var draftAnswers = draft is null
-            ? (IReadOnlyList<SurveyDraftAnswer>)[]
-            : draft.Answers
-                .Select(a => new SurveyDraftAnswer(
-                    a.QuestionId,
-                    a.SelectedOptionValues,
-                    a.TextValue,
-                    a.RatingValue,
-                    a.GridSelections?.ToDictionary(
-                        kv => kv.Key,
-                        kv => (IReadOnlyList<string>)kv.Value,
-                        StringComparer.Ordinal),
-                    a.RankedValue))
-                .ToList();
+        var draftAnswers = draft is null ? [] : MapDraftAnswers(draft);
 
         return new SurveyAnswerContext(
             invitation.SurveyId,
@@ -728,6 +718,16 @@ internal sealed class SurveyService(
         SurveyInputMethod inputMethod,
         string culture,
         CancellationToken ct = default)
+        => (await GetOrCreateIdentifiedDraftAsync(
+            surveyId, participationId, userId, inputMethod, culture, ct)).Id;
+
+    private async Task<SurveyResponse> GetOrCreateIdentifiedDraftAsync(
+        Guid surveyId,
+        Guid participationId,
+        Guid userId,
+        SurveyInputMethod inputMethod,
+        string culture,
+        CancellationToken ct)
     {
         var survey = await repo.GetByIdAsync(surveyId, ct);
         if (survey?.IsAsociadoVote == true && !await IsEligibleAsociadoAsync(userId, ct))
@@ -740,7 +740,7 @@ internal sealed class SurveyService(
         var existing = await repo.GetDraftResponseAsync(surveyId, userId, ct);
         if (existing is not null)
         {
-            return existing.Id;
+            return existing;
         }
 
         var response = new SurveyResponse
@@ -758,7 +758,7 @@ internal sealed class SurveyService(
 
         // No audit log for individual response activity (privacy).
         await repo.AddResponseAsync(response, ct);
-        return response.Id;
+        return response;
     }
 
     public async Task<SurveyPublicStart?> StartPublicTrackedResponseAsync(
@@ -785,16 +785,14 @@ internal sealed class SurveyService(
             return null;
         }
 
-        var existingDraft = await repo.GetDraftResponseAsync(surveyId, userId, ct);
-        Guid? draftResponseId = null;
-        IReadOnlyList<SurveyDraftAnswer> draftAnswers =
-            existingDraft is null ? [] : MapDraftAnswers(existingDraft);
-        if (anonymity == ResponseAnonymity.Identified)
-        {
-            draftResponseId = await StartIdentifiedDraftAsync(
-                surveyId, participation.Id, userId, SurveyInputMethod.Slug, culture, ct);
-        }
-        return new SurveyPublicStart(participation.Id, draftResponseId, draftAnswers);
+        var draft = anonymity == ResponseAnonymity.Identified
+            ? await GetOrCreateIdentifiedDraftAsync(
+                surveyId, participation.Id, userId, SurveyInputMethod.Slug, culture, ct)
+            : await repo.GetDraftResponseAsync(surveyId, userId, ct);
+        return new SurveyPublicStart(
+            participation.Id,
+            anonymity == ResponseAnonymity.Identified ? draft!.Id : null,
+            draft is null ? [] : MapDraftAnswers(draft));
     }
 
     public Task MarkInvitationStartedAsync(Guid invitationId, CancellationToken ct = default)
@@ -1236,14 +1234,11 @@ internal sealed class SurveyService(
         var selectedResponses = responses
             .Where(response => MatchesScope(response.Anonymity, scope))
             .ToList();
-        var invited = await repo.GetInvitedCountsBySurveyAsync(ct);
-
-        var invitedCount = invited.GetValueOrDefault(surveyId);
+        var invitations = await repo.GetInvitationsAsync(surveyId, ct);
+        var sentInvitations = invitations.Where(invitation => invitation.SentAt.HasValue).ToList();
+        var invitedCount = sentInvitations.Count;
         var responseCount = responses.Count;
-        var completedInvitationCount = invitedCount == 0
-            ? 0
-            : (await repo.GetInvitationsAsync(surveyId, ct))
-                .Count(invitation => invitation.SentAt.HasValue && invitation.Completed);
+        var completedInvitationCount = sentInvitations.Count(invitation => invitation.Completed);
         var responseRate = invitedCount == 0 ? 0d : (double)completedInvitationCount / invitedCount;
 
         var questions = embargoed
@@ -1258,7 +1253,7 @@ internal sealed class SurveyService(
                 .ToList();
 
         var funnel = new SurveyFunnel(
-            LinkStarted: await repo.GetStartedInvitationCountAsync(surveyId, ct),
+            LinkStarted: invitations.Count(invitation => invitation.Started),
             LinkFinished: responses.Count(r => r.InputMethod == SurveyInputMethod.UserSpecificLink),
             SlugStarted: survey.PublicStartedCount,
             SlugFinished: responses.Count(r => r.InputMethod == SurveyInputMethod.Slug));
@@ -2005,7 +2000,7 @@ internal sealed class SurveyService(
         }
         catch (Exception ex)
         {
-            logger.LogWarning(ex,
+            logger.LogError(ex,
                 "Failed to verify survey {SurveyId} after a failed save; retaining newly uploaded images", surveyId);
         }
     }

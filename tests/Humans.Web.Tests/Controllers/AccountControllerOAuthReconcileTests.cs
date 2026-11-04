@@ -12,6 +12,7 @@ using SignInResult = Microsoft.AspNetCore.Identity.SignInResult;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using NodaTime;
 using NodaTime.Testing;
@@ -69,10 +70,9 @@ public class AccountControllerOAuthReconcileTests
             NullLogger<ExternalLoginService>.Instance);
 
         _controller = new AccountController(
-            _signInManager,
+            new UserSignInService(_signInManager, _userManager, Substitute.For<IServiceScopeFactory>()),
             _userService,
             _userService,
-            _userManager,
             _clock,
             NullLogger<AccountController>.Instance,
             externalLoginService,

@@ -285,7 +285,7 @@ public class ShiftsControllerUserActiveSignupsTests
 
         var ctrl = new ShiftsController(
             _shiftMgmt, _burnSettings, _signupService, _volunteerTracking, _shiftView, _teamService,
-            _auditLog, _userService, _localizer, Substitute.For<IStringLocalizer<OnboardingResource>>(), _clock,
+            _auditLog, Substitute.For<IAuditViewerService>(), _userService, _localizer, Substitute.For<IStringLocalizer<OnboardingResource>>(), _clock,
             new ShiftBrowsePageBuilder(_shiftMgmt, _burnSettings, _teamService),
             NullLogger<ShiftsController>.Instance);
 

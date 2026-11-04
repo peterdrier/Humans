@@ -118,7 +118,7 @@ internal sealed class FacilitatedMessageController(
         {
             await auditLogService.LogAsync(
                 EmailAuditActions.FacilitatedMessageSent,
-                "User", targetUser.Id,
+                AuditSubjectTypes.User, targetUser.Id,
                 $"Message sent to {targetUser.BurnerName} (contact info shared: {(model.IncludeContactInfo ? "yes" : "no")})",
                 currentUser.Id);
         }

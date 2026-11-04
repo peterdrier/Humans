@@ -51,17 +51,16 @@ internal sealed class ProfileApiController(
                 .Select(r => r.UserId).Distinct().ToList();
             if (owners.Count != 1)
                 return Ok(Array.Empty<HumanLookupSearchResult>());
-            Guid? matchedUserId = owners[0];
-
-            var matchedInfo = await _userService.GetUserInfoAsync(matchedUserId.Value, ct);
+            var matchedInfo = await _userService.GetUserInfoAsync(owners[0], ct);
             if (matchedInfo is not { IsSearchable: true })
                 return Ok(Array.Empty<HumanLookupSearchResult>());
 
-            var emailDetail = await GetSharedDetailAsync(matchedUserId.Value, viewerUserId, ct);
+            var matchedUserId = matchedInfo.Id;
+            var emailDetail = await GetSharedDetailAsync(matchedUserId, viewerUserId, ct);
             return Ok(new[]
             {
                 new HumanLookupSearchResult(
-                    matchedUserId.Value, matchedInfo.BurnerName, emailDetail, matchedInfo.ProfilePictureUrl)
+                    matchedUserId, matchedInfo.BurnerName, emailDetail, matchedInfo.ProfilePictureUrl)
             });
         }
 

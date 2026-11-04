@@ -31,9 +31,8 @@ prune or delete path, by design (Art. 30 / Art. 17(3)(b)).
 | Shape | Surface | Callers |
 |---|---|---|
 | Append an action | `IAuditLogService.LogAsync` (human and job overloads) | most sections, after a privileged action |
-| Read rows as data | `IAuditLogService.GetFilteredEntriesAsync` | Issues (interleaves audit with comments), Expenses (report history), Users (duplicate-account scan) |
-| Which entities ever had these actions | `IAuditLogService.GetEntityIdsForEntityTypeActionsAsync` | Shifts orphan-signup screen |
-| Named events for a filter or a person | `IAuditViewerService` (`GetFilteredAsync`, `GetForUserAsync`) | `<vc:audit-log>`, Agent tool |
+| Named events for a filter or a person | `IAuditViewerService` (`GetFilteredAsync`, `GetForUserAsync`) | `<vc:audit-log>`, Agent tool, Issues (interleaves audit with comments), Expenses (GDPR export), Users (duplicate-account scan) |
+| Which entities ever had these actions | `IAuditViewerService.GetEntityIdsForEntityTypeActionsAsync` | Shifts orphan-signup screen |
 | Named events for a page | internal `AuditViewerService.GetPageAsync` | `/AuditLog`, admin tile |
 | Show history on a host page | `<vc:audit-log>`, layouts `line` / `table` | Calendar, Debug, Expenses, Store, Teams, Tickets, Users |
 | Legacy Google-column read | `ILegacyGoogleSyncAuditReader` | GoogleIntegration's history-migration screen; leaves with those columns |
@@ -42,7 +41,7 @@ prune or delete path, by design (Art. 30 / Art. 17(3)(b)).
 ## 3. Structure
 
 - **Contracts, two homes, one namespace** (`Humans.AuditLog.Contracts`). The append path
-  (`IAuditLogService`, `AuditLogEntrySnapshot`, `AuditActionDefinition` + its contributor
+  (`IAuditLogService`, `AuditActionDefinition` + its contributor
   contract) is in `src/Humans.Base/AuditLog/`, so writers don't reference this section.
   `Contracts/` keeps `ILegacyGoogleSyncAuditReader` and the read surface
   (`IAuditViewerService`, `AuditEvent`). The `/AuditLog` page read stays
@@ -109,5 +108,3 @@ prune or delete path, by design (Art. 30 / Art. 17(3)(b)).
 - **The alert counts (one per `Alert` action, today `AnomalousPermissionDetected`) and the
   Drive-activity check button** sit on `/AuditLog` though the Drive scan is Monitor's: the page is
   where an admin looks for anomalies.
-- **`IAuditLogReader.GetFilteredEntriesAsync` repeats the contract method** so the viewer takes one
-  injection; both resolve to the same `AuditLogService` instance.

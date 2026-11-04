@@ -30,7 +30,6 @@ public static class CacheKeys
     public static readonly IReadOnlyDictionary<string, CacheKeyMeta> Metadata =
         new Dictionary<string, CacheKeyMeta>(StringComparer.Ordinal)
         {
-            ["FeedbackBadgeCount"] = new("2 min", CacheKeyType.Static),
             ["NotificationMeters"] = new("2 min", CacheKeyType.Static),
             ["HoldedContacts"] = new("2 min", CacheKeyType.Static),
             ["SepaStuckBankLines"] = new("until the lines read again", CacheKeyType.Static),

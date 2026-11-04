@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Mvc.ModelBinding.Validation;
 using AwesomeAssertions;
 using Humans.Surveys.Contracts;
 using Humans.Surveys.Controllers;
@@ -30,6 +31,59 @@ namespace Humans.Surveys.Tests.Controllers;
 public sealed class SurveyControllerTests
 {
     private const string Token = "invite-token";
+
+    [HumansTheory]
+    [Xunit.InlineData(null)]
+    [Xunit.InlineData("Identified")]
+    [Xunit.InlineData("CompletionTracked")]
+    [Xunit.InlineData("Anonymous")]
+    public async Task InvitedStart_RequiresPostedAnonymityBeforeCreatingWizardState(string? choice)
+    {
+        var surveys = Substitute.For<ISurveyService>();
+        var surveyId = Guid.NewGuid();
+        var invitationId = Guid.NewGuid();
+        surveys.ResolveAnswerContextAsync(Token, Arg.Any<CancellationToken>())
+            .Returns(new SurveyAnswerContext(surveyId, invitationId, Guid.NewGuid(),
+                Detail(surveyId, "Thanks!", allowAnonymous: true), [], DraftResponseId: null));
+        var sut = CreateController(surveys, out var session);
+        using var services = new ServiceCollection().AddLogging().AddControllers().Services.BuildServiceProvider();
+        sut.HttpContext.RequestServices = services;
+        sut.Url = Substitute.For<IUrlHelper>();
+        var fields = new Dictionary<string, StringValues>(StringComparer.Ordinal)
+        {
+            ["Token"] = Token,
+            ["Culture"] = "en"
+        };
+        if (choice is not null) fields["Anonymity"] = choice;
+        var metadata = services.GetRequiredService<IModelMetadataProvider>().GetMetadataForType(typeof(SurveyStartViewModel));
+        var binder = services.GetRequiredService<IModelBinderFactory>().CreateBinder(new ModelBinderFactoryContext { Metadata = metadata });
+        var binding = DefaultModelBindingContext.CreateBindingContext(sut.ControllerContext,
+            new FormValueProvider(BindingSource.Form, new FormCollection(fields), CultureInfo.InvariantCulture),
+            metadata, bindingInfo: null, modelName: "");
+        await binder.BindModelAsync(binding);
+        services.GetRequiredService<IObjectModelValidator>().Validate(sut.ControllerContext, null, "", binding.Result.Model!);
+        if (choice is not null)
+            sut.ModelState.IsValid.Should().BeTrue(string.Join("; ", sut.ModelState.Select(field =>
+                $"{field.Key}: {field.Value!.ValidationState} {string.Join(", ", field.Value.Errors.Select(error => error.ErrorMessage))}")));
+
+        var result = await sut.Start((SurveyStartViewModel)binding.Result.Model!, Xunit.TestContext.Current.CancellationToken);
+
+        if (choice is null)
+        {
+            result.Should().BeOfType<BadRequestResult>();
+            sut.ModelState[nameof(SurveyStartViewModel.Anonymity)]!.Errors.Should().NotBeEmpty();
+            SurveyWizardSession.Load(session, Token).Should().BeNull();
+            surveys.ReceivedCalls().Should().BeEmpty();
+        }
+        else
+        {
+            result.Should().BeOfType<RedirectToActionResult>();
+            SurveyWizardSession.Load(session, Token)!.Anonymity.Should().Be(Enum.Parse<ResponseAnonymity>(choice));
+            await surveys.Received(1).MarkInvitationStartedAsync(invitationId, Xunit.TestContext.Current.CancellationToken);
+            if (!string.Equals(choice, "Identified", StringComparison.Ordinal))
+                await surveys.DidNotReceiveWithAnyArgs().StartIdentifiedDraftAsync(default, default, default, default, default!);
+        }
+    }
 
     [HumansTheory]
     [Xunit.InlineData(false)]

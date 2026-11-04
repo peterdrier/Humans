@@ -2,7 +2,7 @@
   src/Sections/Humans.Users/Services/UserEmailService.cs
   src/Sections/Humans.Users/Services/UserService.cs
   src/Humans.Web/Controllers/AccountController.cs
-  src/Sections/Humans.Users.Contracts/User.cs
+  src/Humans.Base/Users/User.cs
   src/Sections/Humans.Users/Data/Configurations/UserConfiguration.cs
 -->
 <!-- freshness:flag-on-change

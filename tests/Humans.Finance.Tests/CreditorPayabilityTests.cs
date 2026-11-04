@@ -52,7 +52,7 @@ public class CreditorPayabilityTests
         new MemoryCache(new MemoryCacheOptions()), Substitute.For<IAuditLogService>(), _users,
         Substitute.For<IEmailService>(), TestFinanceEmails.Create(),
         Options.Create(_sepa), new TrackedCache<string, Dictionary<string, int>>("Finance.SepaStuckBankLines", warmOnStartup: false, NullLogger<Service>.Instance),
-        NullLogger<Service>.Instance);
+        Substitute.For<IPaymentDetailsManagement>(), NullLogger<Service>.Instance);
 
     public CreditorPayabilityTests()
     {
@@ -108,7 +108,7 @@ public class CreditorPayabilityTests
         row.PendingPayoutFileName.Should().Be("m929.xml");
         row.HasDuplicateDocuments.Should().BeFalse();
         new CreditorAccountRowVm(Account, row.Name, 4800m, [new CreditorBindingVm(UserId, "Paul", "Auto")], row.IbanMasked,
-            0, row.PendingPayoutFileName, row.HasDuplicateDocuments).NotPayableReason.Should().Be("in payout file m929.xml, not booked yet");
+            0, row.PendingPayoutFileName, row.HasDuplicateDocuments).NotPayableReason.Should().Be(CreditorAccountRowVm.InFlightReason);
         result.Succeeded.Should().BeFalse();
         result.ErrorMessage.Should().Contain("already in payout file m929.xml");
         await _repo.DidNotReceiveWithAnyArgs().AddSepaPayoutAsync(default!, default!);

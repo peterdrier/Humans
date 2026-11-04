@@ -123,7 +123,7 @@ Admin pages live under the section's URL space, not `/Admin`; they are localizat
 
 - Authorization’s program-manager and member-access reads retain HTTP request cancellation; callers without an HTTP context use the non-cancellable default. Program-resource authorization and the admin index match manager rows against all of the resolved viewer’s current and merged IDs. A manager still cannot administer programs or manage an unrelated program.
 
-- Admin program pages and edit forms render manager and actor IDs through the shared Human component without profile links. Missing members use its localized fallback. Manager order, comma separators and posted manager IDs are preserved; page models carry no display-name dictionary.
+- Admin program pages and edit forms render manager and actor IDs through the shared Human component without profile links. Missing members use its localized fallback. Manager order and comma separators are preserved; page models carry no display-name dictionary. Program create/edit resolves posted manager IDs to surviving accounts and deduplicates them in posted order. Missing or tombstoned managers refuse the complete save before fields, manager rows, audits or deadline notices change; historical manager authorization remains merge-aware.
 
 - Admin program grant ordering belongs to the view model: applications oldest-created first, decided grants nonterminal first then oldest-created. Service projections impose no display order.
 
@@ -141,7 +141,7 @@ Admin pages live under the section's URL space, not `/Admin`; they are localizat
 - Fixed kind: every grant is `PerPersonAmount`; an explicit amount is refused on issue and
   ignored on approve and apply. Per-grant kind: an amount is required on issue; an
   application carries `RequestedAmount` and the manager may approve less.
-- Single and batch issuance share persistence and the subsequent per-beneficiary audit/notice pipeline; sizing, ceiling checks and audit wording remain specific to each entry point. New issues and applications store the resolved survivor ID. Batch issuance resolves and deduplicates people before the ceiling check, so merged IDs cannot reserve multiple grants in one batch. Existing pending applications retain their original row identity when edited.
+- Single and batch issuance share the initial decision stamp (issuing actor and grant creation time), persistence and the subsequent per-beneficiary audit/notice pipeline; sizing, ceiling checks and audit wording remain specific to each entry point. Single/batch issuance and application submission require a resolvable, non-tombstoned beneficiary before any writes or dispatch; an unavailable person refuses the complete batch or pending-application edit. New issues and applications store the resolved survivor ID. Batch issuance resolves and deduplicates people before the ceiling check, so merged IDs cannot reserve multiple grants in one batch. Existing pending applications retain their original row identity when edited.
 - Supplied program amounts and ceilings, and grant amounts, must be positive exact-cent values within the existing `decimal(18,2)` storage range. Sub-cent and oversized inputs are refused before writes or notices; trailing zeroes remain valid.
 - Issue, issue-many and approve are refused on a Closed program or after `ClaimBy`.
   Applying needs Open, `AcceptsApplications` and the deadline not passed; a POST that
@@ -215,7 +215,7 @@ Admin pages live under the section's URL space, not `/Admin`; they are localizat
 - **Audit actions:** declared on `PreapprovalsAuditActions` (`src/Sections/Humans.Preapprovals/PreapprovalsAuditActions.cs`), one `AuditActionDefinition` each, written through `IAuditLogService`: `PreapprovalProgramCreated`, `PreapprovalProgramEdited`, `PreapprovalProgramClosed`, `PreapprovalProgramManagerAdded`, `PreapprovalProgramManagerRemoved`, `PreapprovalGrantIssued`, `PreapprovalGrantApplied`, `PreapprovalGrantApproved`, `PreapprovalGrantDeclined`, `PreapprovalGrantRevoked`, `PreapprovalGrantClaimed`, `PreapprovalGrantReleased`, `PreapprovalGrantConsumed`, `PreapprovalGrantAmountChanged`, `PreapprovalReminderSent`, `PreapprovalMergeDroppedApplication`.
 - **Users**: `IUserService.GetUserInfoAsync` / `GetUserInfosAsync` (merged ids, language,
   display and canonical email from the same recipient snapshot); implements `IUserMerge`.
-- **Finance**: `IHoldedFinanceService.ListExpenseAccountsAsync` to resolve the program's
+- **Finance**: `IFinanceService.ListExpenseAccountsAsync` to resolve the program's
   account id at save.
 - **Notifications**: `INotificationEmitter.SendAsync`, `INotificationAutoResolve.ResolveBySourceKeyAsync`. Its sources are declared in `PreapprovalsNotificationSources` (`src/Sections/Humans.Preapprovals/PreapprovalsNotificationSources.cs`), one `NotificationSourceDefinition` each: `PreapprovalFileBy` (actionable, to the beneficiary: pre-approval issued, released, reminded, or its deadline moved; resolved when the grant leaves Open); `PreapprovalApplicationReceived` (actionable, to the program's managers: someone applies to a pre-approval program; resolved on approve or decline); `PreapprovalGrantDecided` (informational (actionable when a grant is revoked while Claimed by an expense report), to the beneficiary: pre-approval declined, revoked, or its amount changed).
 - **Email**: `IEmailService.SendAsync`; `IEmailPreviewContributor` for the seven templates.
@@ -254,7 +254,7 @@ A `Contracts/` folder in the section (no leaf project: nothing Preapprovals refe
 - **Display stitching** — `IUserService.GetUserInfosAsync` for names on the admin pages;
   `<vc:human>` and `<vc:human-search>` for people.
 - **Cross-section calls** — `IUserService`,
-  `IHoldedFinanceService`, `INotificationEmitter`, `INotificationAutoResolve`,
+  `IFinanceService`, `INotificationEmitter`, `INotificationAutoResolve`,
   `IEmailService`, `IAuditLogService`.
 - **Architecture enforcement** — analyzers HUM0030/32/34/36; `SectionResourceParityTests`
   for the six cultures; `GdprExportDependencyInjectionTests` for the contributor.

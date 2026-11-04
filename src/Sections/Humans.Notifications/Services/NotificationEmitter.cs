@@ -61,6 +61,7 @@ internal sealed class NotificationEmitter(
             return;
         }
 
+        recipientUserIds = recipientUserIds.Distinct().ToArray();
         var now = clock.GetCurrentInstant();
         var category = source.Category;
 

@@ -183,7 +183,7 @@ internal sealed class BackdoorApiKeyService(
             $"Backdoor API key '{key.Label}' ({key.DisplayPrefix}…) {verb}",
             actorUserId,
             relatedEntityId: key.UserId,
-            relatedEntityType: AuditEntityTypes.User);
+            relatedEntityType: AuditSubjectTypes.User);
 
     private static string Hash(string plaintext) =>
         Convert.ToHexStringLower(SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(plaintext)));

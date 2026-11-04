@@ -88,14 +88,14 @@ public class HoldedOutboxDuplicateGuardTests
 
     private ExpenseReportBackgroundProcessor NewProcessor()
     {
-        var writes = Substitute.For<IHoldedFinanceWrite>();
+        var writes = Substitute.For<IFinanceWrite>();
         writes.EnsureCreditorContactAsync(
                 Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<string?>(),
                 Arg.Any<string?>(), Arg.Any<int?>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns("contact-1");
         return new ExpenseReportBackgroundProcessor(
             _repo, Substitute.For<IFileStorage>(), Substitute.For<IUserService>(), _holded,
-            Substitute.For<IHoldedFinanceService>(), writes, _audit, new FakeClock(Now),
+            Substitute.For<IFinanceService>(), writes, _audit, new FakeClock(Now),
             NullLogger<ExpenseReportBackgroundProcessor>.Instance);
     }
 
