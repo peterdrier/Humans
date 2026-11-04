@@ -18,8 +18,8 @@ namespace Humans.Finance.Controllers;
 [Route("Finance")]
 internal sealed class FinanceController(
     IUserService userService,
-    IHoldedFinanceManagement holdedFinance,
-    IHoldedFinanceAdminService holdedConnector,
+    IFinanceService finance,
+    IFinanceAdminService holdedConnector,
     IHoldedService holded,
     IExpenseReportService expenseReports,
     CashFlowService cashFlow,
@@ -85,13 +85,13 @@ internal sealed class FinanceController(
 
     [HttpGet("HoldedUnmatched")]
     public async Task<IActionResult> HoldedUnmatched()
-        => View((await holdedFinance.GetUnmatchedAsync(HttpContext.RequestAborted)).OrderByDescending(d => d.Date).ToList());
+        => View((await finance.GetUnmatchedAsync(HttpContext.RequestAborted)).OrderByDescending(d => d.Date).ToList());
 
     [HttpGet("Creditors")]
     public async Task<IActionResult> Creditors(string? sort, string? dir)
     {
         if (GetCurrentUserId() is not { } viewerUserId) return Challenge();
-        var (rows, unresolved) = await holdedFinance.ListCreditorAccountsAsync(HttpContext.RequestAborted);
+        var (rows, unresolved) = await finance.ListCreditorAccountsAsync(HttpContext.RequestAborted);
         var matches = await creditorMatches.GetForMemberAccountsAsync(rows, viewerUserId, HttpContext.RequestAborted);
 
         var names = new Dictionary<Guid, string>();
@@ -130,7 +130,7 @@ internal sealed class FinanceController(
                 b.Source.ToString()))
             .ToList();
 
-        var recon = await holdedFinance.GetExpenseReconAsync(null, HttpContext.RequestAborted);
+        var recon = await finance.GetExpenseReconAsync(null, HttpContext.RequestAborted);
         return View(new CreditorsPageVm(
             accounts, unresolvedVm, sortBy, sortDir, holdedConnector.GetSepaPayoutSettings(),
             recon.IsAvailable ? recon.Totals.Problems : null, recon.Totals.Warnings));
@@ -139,7 +139,7 @@ internal sealed class FinanceController(
     /// <summary>Local mirrors only; fixes stay on the pages it links to.</summary>
     [HttpGet("ExpenseRecon")]
     public async Task<IActionResult> ExpenseRecon(int? year, CancellationToken ct)
-        => View(await holdedFinance.GetExpenseReconAsync(year, ct));
+        => View(await finance.GetExpenseReconAsync(year, ct));
 
     /// <summary>The "are you sure" step: the same refusals as generation, nothing written. Posted, not linked, because
     /// the selection is a form.</summary>
@@ -166,7 +166,7 @@ internal sealed class FinanceController(
         }
 
         var paid = preview.Lines.Select(l => l.SupplierAccountNum).ToHashSet();
-        var (rows, _) = await holdedFinance.ListCreditorAccountsAsync(ct);
+        var (rows, _) = await finance.ListCreditorAccountsAsync(ct);
         var matches = await creditorMatches.GetForMemberAccountsAsync(
             rows.Where(r => paid.Contains(r.SupplierAccountNum)), viewerUserId, ct);
         return View("SepaReview", new SepaReviewVm(preview.Lines, matches, cap));
@@ -231,7 +231,7 @@ internal sealed class FinanceController(
     /// <summary>Newest file first.</summary>
     [HttpGet("Sepa")]
     public async Task<IActionResult> Sepa(
-        CancellationToken ct, int days = IHoldedFinanceAdminService.DefaultSepaMatchToleranceDays)
+        CancellationToken ct, int days = IFinanceAdminService.DefaultSepaMatchToleranceDays)
     {
         var (rows, unavailable, unmatched, bankFeedError) = await holdedConnector.GetSepaPayoutsAsync(days, ct);
 
@@ -268,7 +268,7 @@ internal sealed class FinanceController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> BookSepaTransfer(
         Guid transferId, string bankMovementId,
-        int days = IHoldedFinanceAdminService.DefaultSepaMatchToleranceDays)
+        int days = IFinanceAdminService.DefaultSepaMatchToleranceDays)
     {
         var actor = await GetCurrentUserInfoAsync(HttpContext.RequestAborted);
         if (actor is null) return Challenge();
@@ -285,7 +285,7 @@ internal sealed class FinanceController(
     [Authorize(Policy = FinancePolicies.Manage)]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> WithdrawSepaTransfer(
-        Guid transferId, int days = IHoldedFinanceAdminService.DefaultSepaMatchToleranceDays)
+        Guid transferId, int days = IFinanceAdminService.DefaultSepaMatchToleranceDays)
     {
         var actor = await GetCurrentUserInfoAsync(HttpContext.RequestAborted);
         if (actor is null) return Challenge();
@@ -302,7 +302,7 @@ internal sealed class FinanceController(
     [Authorize(Policy = FinancePolicies.Manage)]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> CancelSepaFile(
-        Guid fileId, int days = IHoldedFinanceAdminService.DefaultSepaMatchToleranceDays)
+        Guid fileId, int days = IFinanceAdminService.DefaultSepaMatchToleranceDays)
     {
         if (GetCurrentUserId() is not { } actorUserId) return Challenge();
 
@@ -341,7 +341,7 @@ internal sealed class FinanceController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> BookSepaFile(
         Guid fileId, string bankMovementId,
-        int days = IHoldedFinanceAdminService.DefaultSepaMatchToleranceDays)
+        int days = IFinanceAdminService.DefaultSepaMatchToleranceDays)
     {
         var actor = await GetCurrentUserInfoAsync(HttpContext.RequestAborted);
         if (actor is null) return Challenge();
@@ -359,7 +359,7 @@ internal sealed class FinanceController(
     [Authorize(Policy = FinancePolicies.Manage)]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> BookSepaFileMatches(
-        Guid fileId, int days = IHoldedFinanceAdminService.DefaultSepaMatchToleranceDays)
+        Guid fileId, int days = IFinanceAdminService.DefaultSepaMatchToleranceDays)
     {
         var actor = await GetCurrentUserInfoAsync(HttpContext.RequestAborted);
         if (actor is null) return Challenge();
@@ -394,7 +394,7 @@ internal sealed class FinanceController(
     public async Task<IActionResult> CreditorStatement(int accountNum)
     {
         if (GetCurrentUserId() is not { } viewerUserId) return Challenge();
-        var ledger = await holdedFinance.GetCreditorLedgerAsync(accountNum, HttpContext.RequestAborted);
+        var ledger = await finance.GetCreditorLedgerAsync(accountNum, HttpContext.RequestAborted);
         if (ledger is null) return NotFound();
 
         // The finance-admin review queue is every submitted report; the ones booked to this account are the other

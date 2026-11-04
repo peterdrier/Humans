@@ -32,7 +32,7 @@ public sealed class ExpensesControllerPreapprovalTests
     private readonly IUserService _users = Substitute.For<IUserService>();
     private readonly IExpenseReportManagement _reports = Substitute.For<IExpenseReportManagement>();
     private readonly IBudgetService _budget = Substitute.For<IBudgetService>();
-    private readonly IHoldedFinanceService _holdedFinance = Substitute.For<IHoldedFinanceService>();
+    private readonly IFinanceService _finance = Substitute.For<IFinanceService>();
     private readonly IPreapprovalService _preapprovals = Substitute.For<IPreapprovalService>();
     private readonly IStringLocalizer<ExpensesResource> _localizer = Substitute.For<IStringLocalizer<ExpensesResource>>();
     private readonly IAuthorizationService _authorization = Substitute.For<IAuthorizationService>();
@@ -44,8 +44,8 @@ public sealed class ExpensesControllerPreapprovalTests
         _reports.GetForSubmitterAsync(_actorId, Arg.Any<CancellationToken>()).Returns([]);
         _reports.GetCoordinatorQueueAsync(_actorId, Arg.Any<CancellationToken>()).Returns([]);
         _budget.GetEffectiveCoordinatorTeamIdsAsync(_actorId, Arg.Any<CancellationToken>()).Returns(new HashSet<Guid>());
-        _holdedFinance.ListExpenseAccountsAsync(activeOnly: true, Arg.Any<CancellationToken>())
-            .Returns([new HoldedExpenseAccountOption(62900001, "acc-1", "Materials", true, true)]);
+        _finance.ListExpenseAccountsAsync(activeOnly: true, Arg.Any<CancellationToken>())
+            .Returns([new ExpenseAccountOption(62900001, "acc-1", "Materials", true, true)]);
         _preapprovals.ListClaimableForUserAsync(_actorId, Arg.Any<CancellationToken>()).Returns([]);
         _authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(), Arg.Any<string>())
             .Returns(AuthorizationResult.Failed());
@@ -61,7 +61,7 @@ public sealed class ExpensesControllerPreapprovalTests
             User = new ClaimsPrincipal(new ClaimsIdentity(
                 [new Claim(ClaimTypes.NameIdentifier, _actorId.ToString())], "test"))
         };
-        return new ExpensesController(_users, _reports, _budget, _holdedFinance, Substitute.For<IFinanceService>(), _preapprovals,
+        return new ExpensesController(_users, _reports, _budget, _finance, _preapprovals,
             _authorization, TestClock, NullLogger<ExpensesController>.Instance, _localizer)
         {
             ControllerContext = new ControllerContext { HttpContext = http },
@@ -191,14 +191,14 @@ public sealed class ExpensesControllerPreapprovalTests
     {
         using var request = new CancellationTokenSource();
         var grantId = Guid.NewGuid();
-        _holdedFinance.ListExpenseAccountsAsync(true, Arg.Any<CancellationToken>()).Returns(call =>
+        _finance.ListExpenseAccountsAsync(true, Arg.Any<CancellationToken>()).Returns(call =>
         {
             if (lookup == NewFormLookup.ExpenseAccounts)
             {
                 call.Arg<CancellationToken>().Should().Be(request.Token);
                 call.Arg<CancellationToken>().ThrowIfCancellationRequested();
             }
-            return Array.Empty<HoldedExpenseAccountOption>();
+            return Array.Empty<ExpenseAccountOption>();
         });
         _preapprovals.ListClaimableForUserAsync(_actorId, Arg.Any<CancellationToken>()).Returns(call =>
         {
@@ -240,8 +240,8 @@ public sealed class ExpensesControllerPreapprovalTests
             .Returns(AuthorizationResult.Success());
         using var request = new CancellationTokenSource();
         await request.CancelAsync();
-        _holdedFinance.ListExpenseAccountsAsync(activeOnly: true, request.Token)
-            .Returns(Task.FromCanceled<IReadOnlyList<HoldedExpenseAccountOption>>(request.Token));
+        _finance.ListExpenseAccountsAsync(activeOnly: true, request.Token)
+            .Returns(Task.FromCanceled<IReadOnlyList<ExpenseAccountOption>>(request.Token));
         var controller = Build();
         controller.HttpContext.RequestAborted = request.Token;
 
@@ -301,11 +301,11 @@ public sealed class ExpensesControllerPreapprovalTests
     {
         var own = Grant("Own", Today.PlusDays(10));
         _preapprovals.ListClaimableForUserAsync(_actorId, Arg.Any<CancellationToken>()).Returns([own]);
-        _holdedFinance.ListExpenseAccountsAsync(activeOnly: true, Arg.Any<CancellationToken>()).Returns([
-            new HoldedExpenseAccountOption(62900001, "other", "Alpha", false, true),
-            new HoldedExpenseAccountOption(62900003, "z", "Zulu", true, true),
-            new HoldedExpenseAccountOption(62900005, "a5", "Alpha", true, true),
-            new HoldedExpenseAccountOption(62900004, "a4", "alpha", true, true),
+        _finance.ListExpenseAccountsAsync(activeOnly: true, Arg.Any<CancellationToken>()).Returns([
+            new ExpenseAccountOption(62900001, "other", "Alpha", false, true),
+            new ExpenseAccountOption(62900003, "z", "Zulu", true, true),
+            new ExpenseAccountOption(62900005, "a5", "Alpha", true, true),
+            new ExpenseAccountOption(62900004, "a4", "alpha", true, true),
         ]);
 
         var model = (await Build().New()).Should().BeOfType<ViewResult>()
@@ -377,7 +377,7 @@ public sealed class ExpensesControllerPreapprovalTests
         _reports.GetReviewQueueAsync(_actorId, false, Arg.Any<CancellationToken>()).Returns([onRevoked, onHeld, plain]);
         _users.GetUserInfosAsync(Arg.Any<IReadOnlyList<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, UserInfo>());
-        _holdedFinance.ListExpenseAccountsAsync(activeOnly: false, Arg.Any<CancellationToken>()).Returns([]);
+        _finance.ListExpenseAccountsAsync(activeOnly: false, Arg.Any<CancellationToken>()).Returns([]);
         _preapprovals.GetGrantAsync(revoked.Id, Arg.Any<CancellationToken>()).Returns(revoked);
         _preapprovals.GetGrantAsync(held.Id, Arg.Any<CancellationToken>()).Returns(held);
 

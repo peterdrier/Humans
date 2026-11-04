@@ -4,7 +4,7 @@
   src/Humans.Base/Users/IUserService.cs
   src/Sections/Humans.Auth/Contracts/IRoleAssignmentService.cs
   src/Sections/Humans.Teams.Contracts/ITeamService.cs
-  src/Sections/Humans.Finance.Contracts/IHoldedFinanceWrite.cs
+  src/Sections/Humans.Finance.Contracts/IFinanceWrite.cs
   src/Sections/Humans.Holded/Contracts/IHoldedService.cs
   src/Sections/Humans.GoogleIntegration/Contracts/IGoogleSyncService.cs
   src/Sections/Humans.GoogleIntegration/Contracts/IGoogleDriveAccessSource.cs
@@ -490,7 +490,7 @@ should end is the Board's decision, taken on the register in front of them.
   A merged-member alias carries both the resolved live id and its language into grouping,
   with one delivery per live recipient even when multiple requested ids resolve to them.
 - **Gdpr**: `IUserDataContributor`, `IUserMerge` — see GDPR below.
-- **Finance**: `IHoldedFinanceWrite.CreateOrLinkExpenseAccountAsync` /
+- **Finance**: `IFinanceWrite.CreateOrLinkExpenseAccountAsync` /
   `SetExpenseAccountActiveAsync` (outbound). **Holded**: `IHoldedService.GetChartAsync`
   for the admin picker only: active group-6 accounts from the local mirror, with no outbound API call. Both the register-existing and detail views order accounts by number; the mirror read imposes no display order. Account creation and linking still go through Finance.
 
@@ -558,7 +558,7 @@ picker labels and roster profile badges load a member dictionary.
 - **Cross-section calls** — `IUserService`,
   `IRoleAssignmentService`, `ISettingsService`, `IGoogleSyncService`, `IGoogleSyncWrite`,
   `INotificationService`, `IEmailService`, `IAuditLogService`,
-  `ISurveyAnalysisRead`, `IClock`, `IHoldedFinanceWrite`, `IHoldedService`.
+  `ISurveyAnalysisRead`, `IClock`, `IFinanceWrite`, `IHoldedService`.
   `ITeamService` is used by `WorkgroupsController` and `WorkgroupDriveAccessSource`, not by `WorkgroupService`.
   `IGovernanceService` is used by `WorkgroupsController` only.
 - **Email** — Workgroups owns the working-group notice: `WorkgroupsEmails` (internal)

@@ -129,12 +129,13 @@ public class HoldedFinanceServiceTests
         _emailService,
         emailTemplates ?? TestFinanceEmails.Create(),
         Options.Create(_sepa), _bookingState,
-        NullLogger<Service>.Instance);
+        Substitute.For<IPaymentDetailsManagement>(), NullLogger<Service>.Instance);
 
     /// <summary>Same service, with a logger the test can read back.</summary>
     private Service MakeService(ILogger<Service> logger) => new(
         _repo, _client, _budget, _holded, _write, _expenses, _clock, _cache, _audit,
-        _users, _emailService, TestFinanceEmails.Create(), Options.Create(_sepa), _bookingState, logger);
+        _users, _emailService, TestFinanceEmails.Create(), Options.Create(_sepa), _bookingState,
+        Substitute.For<IPaymentDetailsManagement>(), logger);
 
     /// <summary>Ledger-line stub for the mirror reads (positional: entry, line, account, date, type, description, debit, credit).</summary>
     private static HoldedLedgerLineInfo Line(int entry, int line, int account, Instant date,
@@ -2193,28 +2194,6 @@ public class HoldedFinanceServiceTests
                 "financial records are never erased for GDPR reasons");
     }
 
-    [HumansFact]
-    public async Task GetDocSyncInfo_ReportsTheMirrorStateAndTheBindingCount()
-    {
-        // The binding count rides along on this DTO so a caller can show a number without building
-        // the whole creditor view, which would cost a live Holded contacts walk.
-        _holded.GetPurchaseDocumentsAsync(Arg.Any<CancellationToken>())
-            .Returns(new HoldedPurchaseDocMirror(FixedNow, "Error", "holded said no", 42, FixedNow, []));
-        _repo.GetCreditorContactsAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedCreditorContact>
-        {
-            new() { Id = Guid.NewGuid(), UserId = Guid.NewGuid(), HoldedContactId = "c1" },
-            new() { Id = Guid.NewGuid(), UserId = Guid.NewGuid(), HoldedContactId = "c2" },
-        });
-
-        var info = await MakeService().GetDocSyncInfoAsync(TestContext.Current.CancellationToken);
-
-        info.LastSyncAt.Should().Be(FixedNow);
-        info.Status.Should().Be("Error");
-        info.LastError.Should().Be("holded said no");
-        info.LastSyncedDocCount.Should().Be(42);
-        info.CreditorBindingCount.Should().Be(2);
-    }
-
     /// <summary>Seeds the active year with one group holding the given categories.</summary>
     private void ActiveYearWith(params (Guid Id, string Name)[] categories) =>
         _budget.GetActiveYearAsync(Arg.Any<CancellationToken>()).Returns(new BudgetYearDetail(
@@ -3423,7 +3402,7 @@ public class HoldedFinanceServiceTests
 
         var result = await MakeService().CreateOrLinkExpenseAccountAsync("Workgroups / ALM 2027", null, TestContext.Current.CancellationToken);
 
-        result.Should().Be(new HoldedExpenseAccountRef(62900102, "new-1", "Workgroups / ALM 2027", Created: true));
+        result.Should().Be(new ExpenseAccountRef(62900102, "new-1", "Workgroups / ALM 2027", Created: true));
         await _repo.Received(1).UpsertManagedAccountAsync(
             Arg.Is<HoldedManagedAccount>(a => a.HoldedAccountNumber == 62900102 && a.HoldedAccountId == "new-1"
                 && a.Label == "Workgroups / ALM 2027" && a.IsActive && a.CreatedAt == FixedNow),
@@ -3464,7 +3443,7 @@ public class HoldedFinanceServiceTests
 
         var result = await MakeService().CreateOrLinkExpenseAccountAsync("Workgroups / ALM 2027", null, TestContext.Current.CancellationToken);
 
-        result.Should().Be(new HoldedExpenseAccountRef(62900150, "acc-150", "workgroups /  alm 2027", Created: false));
+        result.Should().Be(new ExpenseAccountRef(62900150, "acc-150", "workgroups /  alm 2027", Created: false));
         await _client.DidNotReceive().CreateExpenseAccountAsync(Arg.Any<int>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
         await _repo.Received(1).UpsertManagedAccountAsync(
             Arg.Is<HoldedManagedAccount>(a => a.HoldedAccountNumber == 62900150 && a.Label == "workgroups /  alm 2027"),
@@ -3482,7 +3461,7 @@ public class HoldedFinanceServiceTests
 
         var result = await MakeService().CreateOrLinkExpenseAccountAsync("Workgroups / ALM 2027", 62900151, TestContext.Current.CancellationToken);
 
-        result.Should().Be(new HoldedExpenseAccountRef(62900151, "acc-151", "Other", Created: false));
+        result.Should().Be(new ExpenseAccountRef(62900151, "acc-151", "Other", Created: false));
         await _client.DidNotReceive().CreateExpenseAccountAsync(Arg.Any<int>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
     }
 

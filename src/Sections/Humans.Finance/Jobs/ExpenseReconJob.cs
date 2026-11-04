@@ -7,7 +7,7 @@ namespace Humans.Finance.Jobs;
 /// is a single GET the transport retries on 429; if it still fails the report is unavailable and this logs a warning.
 /// No API-key gate: a preview without Holded reports an unavailable mirror.</summary>
 internal sealed class ExpenseReconJob(
-    IHoldedFinanceService finance,
+    IFinanceService finance,
     ILogger<ExpenseReconJob> logger) : IRecurringJob
 {
     public async Task ExecuteAsync(CancellationToken cancellationToken = default)

@@ -19,9 +19,8 @@
 
   <ItemGroup>
     <!--
-      The section's two controllers are ASP.NET types and four test classes construct
-      OnboardingWidgetController; a plain Microsoft.NET.Sdk test project does not get the
-      shared framework, and a PackageReference cannot supply it (NU1010 under Central
+      The section's controllers are ASP.NET types; a plain Microsoft.NET.Sdk test project does
+      not get the shared framework, and a PackageReference cannot supply it (NU1010 under Central
       Package Management).
     -->
     <FrameworkReference Include="Microsoft.AspNetCore.App" />

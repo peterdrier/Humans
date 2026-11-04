@@ -61,10 +61,9 @@ public sealed class Section :
         services.AddSingleton<ICacheStats>(sp =>
             sp.GetRequiredService<TrackedCache<string, Dictionary<string, int>>>());
         services.AddScoped<Service>();
-        services.AddScoped<IHoldedFinanceManagement>(sp => sp.GetRequiredService<Service>());
-        services.AddScoped<IHoldedFinanceService>(sp => sp.GetRequiredService<Service>());
-        services.AddScoped<IHoldedFinanceWrite>(sp => sp.GetRequiredService<Service>());
-        services.AddScoped<IHoldedFinanceAdminService>(sp => sp.GetRequiredService<Service>());
+        services.AddScoped<IFinanceService>(sp => sp.GetRequiredService<Service>());
+        services.AddScoped<IFinanceWrite>(sp => sp.GetRequiredService<Service>());
+        services.AddScoped<IFinanceAdminService>(sp => sp.GetRequiredService<Service>());
         services.AddScoped<ISepaBankBooking>(sp => sp.GetRequiredService<Service>());
         services.AddScoped<Jobs.SepaBankBookingJob>();
         services.AddScoped<Jobs.ExpenseReconJob>();
@@ -73,8 +72,6 @@ public sealed class Section :
         services.AddScoped<IPaymentDetailsRepository, PaymentDetailsRepository>();
         services.AddScoped<PaymentDetailsService>();
         services.AddScoped<IPaymentDetailsManagement>(sp => sp.GetRequiredService<PaymentDetailsService>());
-        services.AddScoped<IFinanceService>(sp => sp.GetRequiredService<PaymentDetailsService>());
-        services.AddScoped<IFinanceWrite>(sp => sp.GetRequiredService<PaymentDetailsService>());
         services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<PaymentDetailsService>());
         services.AddScoped<IUserMerge>(sp => sp.GetRequiredService<PaymentDetailsService>());
 

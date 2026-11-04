@@ -20,8 +20,8 @@ internal sealed class FinanceOverviewViewModel
     public required IReadOnlyList<BudgetSliceResult> ExpenseSlices { get; init; }
 
     /// <summary>Keyed by BudgetCategoryId.</summary>
-    public IReadOnlyDictionary<Guid, HoldedActualRow> HoldedActualsByCategory { get; init; } =
-        new Dictionary<Guid, HoldedActualRow>();
+    public IReadOnlyDictionary<Guid, CategoryActualRow> HoldedActualsByCategory { get; init; } =
+        new Dictionary<Guid, CategoryActualRow>();
 }
 
 internal sealed class TicketingProjectionUpdateForm

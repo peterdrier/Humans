@@ -38,7 +38,6 @@ public class ExpenseReportServiceGdprTests
     private readonly IAuditLogService _auditLogService;
     private readonly IAuditViewerService _auditViewer = Substitute.For<IAuditViewerService>();
     private readonly IFinanceService _finance = Substitute.For<IFinanceService>();
-    private readonly IHoldedFinanceService _holdedFinance = Substitute.For<IHoldedFinanceService>();
     private readonly IUserDataContributor _sut;
 
     public ExpenseReportServiceGdprTests()
@@ -69,7 +68,6 @@ public class ExpenseReportServiceGdprTests
             TestExpensesEmails.Create(),
             _auditLogService, _auditViewer,
             Substitute.For<IHoldedService>(),
-            _holdedFinance,
             _finance,
             Substitute.For<IFinanceWrite>(),
             Substitute.For<Humans.Preapprovals.Contracts.IPreapprovalService>(),

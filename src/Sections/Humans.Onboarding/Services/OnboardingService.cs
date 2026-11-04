@@ -130,31 +130,28 @@ internal sealed class OnboardingService(
     public Task ConsentSignedAsync(Guid userId, CancellationToken ct = default) =>
         SetConsentCheckPendingIfEligibleAsync(userId, ct);
 
-    /// <summary>Returns true if the status was set. Raises no notification: the queue shows in the sidebar's Review pill.</summary>
-    public async Task<bool> SetConsentCheckPendingIfEligibleAsync(
-        Guid userId, CancellationToken ct = default)
+    /// <summary>Raises no notification: the queue shows in the sidebar's Review pill.</summary>
+    private async Task SetConsentCheckPendingIfEligibleAsync(Guid userId, CancellationToken ct)
     {
         var info = await userService.GetUserInfoAsync(userId, ct);
         if (info is null)
-            return false;
+            return;
         var review = await consentService.GetConsentReviewAsync(info.Id, ct);
         if (!info.NeedsConsentReview(review) || review.Status is not null)
-            return false;
+            return;
         userId = info.Id;
 
         var hasAllConsents = await membershipCalculator.HasAllRequiredConsentsForTeamAsync(
             userId, SystemTeamIds.Volunteers, ct);
         if (!hasAllConsents)
-            return false;
+            return;
 
         var result = await consentWrite.SetConsentCheckPendingAsync(userId, ct);
         if (!result.Success)
-            return false;
+            return;
 
         logger.LogInformation(
             "User {UserId} has all consents signed, consent check set to Pending", userId);
-
-        return true;
     }
 
     public async Task<NextConsentStepData> GetNextUnsignedConsentAsync(

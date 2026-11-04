@@ -40,7 +40,7 @@ Holded launched API v2 (June 2026): REST/JSON at `https://api.holded.com/api/v2`
 
 **`Humans.Finance` keeps the business meaning:** `holded_category_map`, `holded_expense_docs` (+ matching), `holded_creditor_contacts`, provisioning, actuals, creditor screens. Its ledger-line reads switch from its own repository to `IHoldedService`. Its purchase-doc sync keeps state in a new Finance-owned `holded_doc_sync_state` singleton row (the old shared `holded_sync_states` singleton moves to Holded re-keyed). The `/Finance/Creditors` **Resync button (#1241) relocates to `/Holded`**.
 
-**Connector stays Base:** `IHoldedClient`/`HoldedClient` (Application/Infrastructure) — consumed by Expenses, Finance, and Holded. `HoldedSyncJob` stays in `Humans.Infrastructure/Jobs` (no discovery seam for recurring jobs) and calls `IHoldedFinanceService.SyncAsync` + `IHoldedService.SyncLedgerAsync(full: false)`.
+**Connector stays Base:** `IHoldedClient`/`HoldedClient` (Application/Infrastructure) — consumed by Expenses, Finance, and Holded. `HoldedSyncJob` stays in `Humans.Infrastructure/Jobs` (no discovery seam for recurring jobs) and calls `IFinanceService.SyncAsync` + `IHoldedService.SyncLedgerAsync(full: false)`.
 
 **Table moves cost nothing:** every table the Holded section takes over is a re-derivable mirror — the Finance migration drops them, the Holded migration creates them, the first sync refills them. No data migration.
 
@@ -96,7 +96,7 @@ All ledger reads stay derived from `holded_ledger_lines` (June design unchanged)
 
 ## 4. Admin screen — `/Holded`
 
-`HoldedController` in the Holded section project, `[Authorize(Policy = PolicyNames.FinanceAdminOrAdmin)]` (same audience as `/Finance`). The purchase-doc sync status and totals it shows for Finance-owned data come via `IHoldedFinanceService` (ordinary cross-section service read from the controller). View sections:
+`HoldedController` in the Holded section project, `[Authorize(Policy = PolicyNames.FinanceAdminOrAdmin)]` (same audience as `/Finance`). The purchase-doc sync status and totals it shows for Finance-owned data come via `IFinanceService` (ordinary cross-section service read from the controller). View sections:
 
 1. **Connection card:** Holded meter from `GET /usage` (period, usage, limit, by-type breakdown) beside our local count for the month; last-seen rate-limit remaining/window; API key present yes/no.
 2. **Calls per calendar month:** table from `holded_api_calls` (month, total, by endpoint).
@@ -111,7 +111,7 @@ All ledger reads stay derived from `holded_ledger_lines` (June design unchanged)
 
 ## 5. Jobs
 
-- `HoldedSyncJob` (nightly, stays in `Humans.Infrastructure/Jobs`): `IHoldedFinanceService.SyncAsync` (purchase docs) then `IHoldedService.SyncLedgerAsync(full: false)` (trailing window → accounts refresh → reconcile + targeted re-pulls → drain call-log queue).
+- `HoldedSyncJob` (nightly, stays in `Humans.Infrastructure/Jobs`): `IFinanceService.SyncAsync` (purchase docs) then `IHoldedService.SyncLedgerAsync(full: false)` (trailing window → accounts refresh → reconcile + targeted re-pulls → drain call-log queue).
 - Full sync: `SyncLedgerAsync(full: true)` from the `/Holded` button (serialized by the sweep gate).
 - `HoldedExpenseOutboxJob`: unchanged cadence, v2 endpoints underneath.
 

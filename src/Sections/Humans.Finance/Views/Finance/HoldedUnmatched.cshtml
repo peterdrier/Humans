@@ -1,4 +1,4 @@
-@model IReadOnlyList<Humans.Finance.Contracts.HoldedUnmatchedRow>
+@model IReadOnlyList<Humans.Finance.Contracts.UnmatchedDocRow>
 @using Humans.Base.Models.Tables
 @using Microsoft.AspNetCore.Html
 @{
@@ -36,9 +36,9 @@
 }
 else
 {
-    Func<HoldedUnmatchedRow, IHtmlContent> totalCell =
+    Func<UnmatchedDocRow, IHtmlContent> totalCell =
         @<text><span class="text-danger">@item.Total.ToEuro()</span></text>;
-    Func<HoldedUnmatchedRow, IHtmlContent> linkCell =
+    Func<UnmatchedDocRow, IHtmlContent> linkCell =
         @<text><a href="@item.HoldedUrl" target="_blank" rel="noopener noreferrer" class="btn btn-outline-secondary btn-sm"><i class="fa-solid fa-arrow-up-right-from-square me-1"></i>Holded</a></text>;
     var unmatchedTable = TableModel.For(Model)
         .Column("Doc #", r => r.DocNumber)
