@@ -1885,8 +1885,10 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
         signups.Should().AllSatisfy(s => s.Status.Should().Be(SignupStatus.Confirmed));
     }
 
-    [HumansFact]
-    public async Task ApproveRange_AutoRefusesPendingOnShiftFilledSinceRequest()
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ApproveRange_AutoRefusesPendingOnShiftFilledSinceRequest(bool allAtCapacity)
     {
         var (_, rota, _) = SeedShiftScenario(SignupPolicy.RequireApproval);
         var filledShift = SeedAllDayShift(rota, 1);
@@ -1895,6 +1897,11 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
         var blockId = Guid.NewGuid();
         for (var i = 0; i < filledShift.MaxVolunteers; i++)
             SeedSignup(Guid.NewGuid(), filledShift.Id, SignupStatus.Confirmed);
+        if (allAtCapacity)
+        {
+            for (var i = 0; i < freeShift.MaxVolunteers; i++)
+                SeedSignup(Guid.NewGuid(), freeShift.Id, SignupStatus.Confirmed);
+        }
         var filledPending = SeedSignup(userId, filledShift.Id, SignupStatus.Pending);
         filledPending.SignupBlockId = blockId;
         var freePending = SeedSignup(userId, freeShift.Id, SignupStatus.Pending);
@@ -1903,10 +1910,13 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
 
         var result = await _service.ApproveRangeAsync(blockId, Guid.NewGuid());
 
-        result.Success.Should().BeTrue();
-        result.Warning.Should().Contain("capacity");
+        result.Success.Should().Be(!allAtCapacity);
+        if (allAtCapacity)
+            result.Error.Should().Be("Cannot approve: all shifts in this range are at capacity.");
+        else
+            result.Warning.Should().Contain("capacity");
         (await ShiftsDb.ShiftSignups.SingleAsync(s => s.Id == freePending.Id, TestContext.Current.CancellationToken))
-            .Status.Should().Be(SignupStatus.Confirmed);
+            .Status.Should().Be(allAtCapacity ? SignupStatus.Refused : SignupStatus.Confirmed);
         (await ShiftsDb.ShiftSignups.SingleAsync(s => s.Id == filledPending.Id, TestContext.Current.CancellationToken))
             .Status.Should().Be(SignupStatus.Refused);
     }

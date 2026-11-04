@@ -777,29 +777,10 @@ internal sealed class ShiftSignupService(
             warnings.Add($"Day(s) {string.Join(", ", skippedDays)} refused (at capacity).");
         }
 
-        if (approved.Count == 0)
-        {
-            if (skippedAtCapacity.Count > 0)
-            {
-                await repo.SaveChangesAsync();
-                enrollment.Dispose();
-                InvalidateRangeSignupCaches(calendar.Id, skippedAtCapacity[0].UserId, skippedAtCapacity[0].Shift.RotaId);
-
-                foreach (var skipped in skippedAtCapacity)
-                {
-                    await auditLogService.LogAsync(
-                        ShiftsAuditActions.ShiftSignupRefused, nameof(ShiftSignup), skipped.Id,
-                        $"shift '{skipped.Shift.Rota.Name}' day {skipped.Shift.DayOffset} (auto-refused, at capacity)",
-                        reviewerUserId,
-                        skipped.UserId, AuditEntityTypes.User);
-                }
-            }
-            return SignupResult.Fail("Cannot approve: all shifts in this range are at capacity.");
-        }
-
         await repo.SaveChangesAsync();
         enrollment.Dispose();
-        InvalidateRangeSignupCaches(calendar.Id, approved[0].UserId, approved[0].Shift.RotaId);
+        var cacheSignup = approved.Count > 0 ? approved[0] : skippedAtCapacity[0];
+        InvalidateRangeSignupCaches(calendar.Id, cacheSignup.UserId, cacheSignup.Shift.RotaId);
 
         foreach (var approvedSignup in approved)
         {
@@ -818,6 +799,9 @@ internal sealed class ShiftSignupService(
                 reviewerUserId,
                 skipped.UserId, AuditEntityTypes.User);
         }
+
+        if (approved.Count == 0)
+            return SignupResult.Fail("Cannot approve: all shifts in this range are at capacity.");
 
         await notices.DispatchSignupChangeNotificationAsync(approved[0], approved[0].Shift,
             "Shifts_Notification_ChangeApprovedRange", approved[0].Shift.Rota.Name, approved.Count);
