@@ -184,6 +184,7 @@ else
                         <a asp-action="Creditors" asp-route-sort="name" asp-route-dir="@ToggleDir("name")"
                            class="text-decoration-none">@Header("Name", "name")</a>
                     </th>
+                    <th title="Country and currency of the Holded IBAN. Non-euro transfers cost a bank fee.">IBAN</th>
                     <th class="text-end">
                         <a asp-action="Creditors" asp-route-sort="balance" asp-route-dir="@ToggleDir("balance")"
                            class="text-decoration-none">@Header("Balance", "balance")</a>
@@ -258,6 +259,22 @@ else
                         }
                     </td>
                     <td>@(string.IsNullOrWhiteSpace(r.Name) ? "—" : r.Name)</td>
+                    <td class="text-nowrap">
+                        @if (r.IbanCountry is not { } country)
+                        {
+                            <span class="text-muted">—</span>
+                        }
+                        else if (r.IbanCurrency == "EUR")
+                        {
+                            <span class="text-muted">@country · EUR</span>
+                        }
+                        else
+                        {
+                            <span class="badge text-bg-warning" title="Not a euro account: the bank charges a fee for this transfer.">
+                                <i class="fa-solid fa-triangle-exclamation me-1"></i>@country · @(r.IbanCurrency ?? "?")
+                            </span>
+                        }
+                    </td>
                     <td class="text-end text-nowrap">
                         @if (r.Balance is { } bal)
                         {

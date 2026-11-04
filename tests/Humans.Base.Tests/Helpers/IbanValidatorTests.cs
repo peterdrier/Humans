@@ -59,4 +59,14 @@ public class IbanValidatorTests
     {
         IbanValidator.IsValid("ES91 2100 0418 4502 0005 1332").Should().BeTrue();
     }
+
+    [HumansTheory]
+    [InlineData("ES9121000418450200051332", "EUR")]
+    [InlineData("GB29****819", "GBP")]
+    [InlineData("XX00****000", null)]
+    [InlineData(null, null)]
+    public void CurrencyOf_ReadsTheCountryEvenWhenMasked(string? iban, string? expected)
+    {
+        IbanValidator.CurrencyOf(iban).Should().Be(expected);
+    }
 }

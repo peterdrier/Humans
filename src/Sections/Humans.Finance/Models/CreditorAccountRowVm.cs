@@ -45,6 +45,12 @@ internal sealed record CreditorAccountRowVm(
 
     public bool IsPayable => NotPayableReason is null;
 
+    /// <summary>The masked IBAN keeps its first four characters, so the country survives masking.</summary>
+    public string? IbanCountry => IbanMasked is { Length: >= 2 } iban ? iban[..2] : null;
+
+    /// <summary>Null for a country outside the IBAN registry. Non-euro transfers cost a bank fee.</summary>
+    public string? IbanCurrency => Humans.Base.Helpers.IbanValidator.CurrencyOf(IbanMasked);
+
     /// <summary>Unbound rows sort last: an admin sorting by member is looking for people, not gaps.</summary>
     public string MemberSortKey => Bindings.Count == 0
         ? "￿"
