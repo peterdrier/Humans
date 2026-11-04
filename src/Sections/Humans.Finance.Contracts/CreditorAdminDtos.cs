@@ -44,14 +44,16 @@ public sealed record CreditorContactBinding(
 
 /// <summary>Credit = owed to the member, debit = paid out.</summary>
 /// <remarks>
-/// A null <paramref name="Contact"/> (none cached, including when Holded is down) costs the header, not the statement.
+/// A null <paramref name="Contact"/> costs the header, not the statement. <paramref name="ContactUnavailableReason"/> is
+/// set when Holded's contact list is unreadable, so who the account belongs to is unknown.
 /// </remarks>
 public sealed record CreditorLedger(
     int SupplierAccountNum,
     decimal Balance,
     decimal OwedToMember,
     IReadOnlyList<CreditorLedgerLine> Lines,
-    CreditorContactInfo? Contact = null);
+    CreditorContactInfo? Contact = null,
+    string? ContactUnavailableReason = null);
 
 /// <summary>Every field is optional: Holded fills what the contact record carries.</summary>
 public sealed record CreditorContactInfo(

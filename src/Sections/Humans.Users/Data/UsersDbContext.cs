@@ -14,9 +14,7 @@ internal sealed class UsersDbContext(DbContextOptions<UsersDbContext> options)
     public DbSet<UserEmail> UserEmails => Set<UserEmail>();
     public DbSet<VolunteerHistoryEntry> VolunteerHistoryEntries => Set<VolunteerHistoryEntry>();
     public DbSet<AccountMergeRequest> AccountMergeRequests => Set<AccountMergeRequest>();
-    public DbSet<CommunicationPreference> CommunicationPreferences => Set<CommunicationPreference>();
     public DbSet<ProfileLanguage> ProfileLanguages => Set<ProfileLanguage>();
-    public DbSet<EventParticipation> EventParticipations => Set<EventParticipation>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -24,13 +22,11 @@ internal sealed class UsersDbContext(DbContextOptions<UsersDbContext> options)
 
         builder.ApplyConfiguration(new UserConfiguration());
         builder.ApplyConfiguration(new AccountMergeRequestConfiguration());
-        builder.ApplyConfiguration(new EventParticipationConfiguration());
         builder.ApplyConfiguration(new ProfileConfiguration());
         builder.ApplyConfiguration(new ProfileLanguageConfiguration());
         builder.ApplyConfiguration(new ContactFieldConfiguration());
         builder.ApplyConfiguration(new UserEmailConfiguration());
         builder.ApplyConfiguration(new VolunteerHistoryEntryConfiguration());
-        builder.ApplyConfiguration(new CommunicationPreferenceConfiguration());
 
         builder.Entity<User>().ToTable("users");
         builder.Entity<IdentityRole<Guid>>().ToTable("roles");

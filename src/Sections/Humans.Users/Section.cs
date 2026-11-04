@@ -80,7 +80,7 @@ public sealed class Section :
         services.AddSingleton<INotificationSourceContributor, UsersNotificationSources>();
         services.AddSectionDbContext<UsersDbContext>(sentinelTable: "users");
 
-        // On every section's context pipeline: catches User/UserEmail/CommunicationPreference
+        // On every section's context pipeline: catches User/UserEmail
         // writes wherever they are saved, including Identity machinery.
         services.AddSingleton<UserInfoSaveChangesInterceptor>();
         services.AddSingleton<IInterceptor>(sp => sp.GetRequiredService<UserInfoSaveChangesInterceptor>());

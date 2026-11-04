@@ -364,6 +364,9 @@
   <data name="Users_Emails_AddNew" xml:space="preserve">
     <value>Ajouter une adresse e-mail</value>
   </data>
+  <data name="Users_Emails_NewEmailLabel" xml:space="preserve">
+    <value>Nouvelle adresse e-mail</value>
+  </data>
   <data name="Users_Emails_MergeWarningTitle" xml:space="preserve">
     <value>Fusionner des comptes ?</value>
   </data>
@@ -747,6 +750,9 @@
   <data name="Users_Notification_ConsentSuspensionReason" xml:space="preserve"><value>Consentement aux documents requis manquant (délai de grâce expiré)</value></data>
   <data name="Users_Profile_EmailAlreadyAdded" xml:space="preserve">
     <value>Cette adresse e-mail figure déjà dans ton compte.</value>
+  </data>
+  <data name="Users_Profile_EmailVerifiedOnAnotherAccount" xml:space="preserve">
+    <value>Cette adresse e-mail est déjà vérifiée sur un autre compte.</value>
   </data>
   <data name="Users_Profile_EmailMergePending" xml:space="preserve">
     <value>Une demande de fusion est déjà en attente pour cette adresse e-mail.</value>

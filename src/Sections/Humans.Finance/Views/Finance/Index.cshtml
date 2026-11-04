@@ -66,6 +66,14 @@
                     <span class="fs-5 fw-bold text-danger">@owedTotal.ToEuro()</span>
                 }
             </div>
+            @if (owed.Unavailable is { } owedUnavailable)
+            {
+                <div class="card-body text-danger small">
+                    <i class="fa-solid fa-circle-exclamation me-1"></i>@owedUnavailable
+                </div>
+            }
+            else
+            {
             <table class="table table-sm mb-0">
                 <tbody>
                     <tr>
@@ -92,6 +100,7 @@
                     <tr class="fw-bold"><td class="ps-3">Total</td><td class="text-end pe-3">@(owed.Total?.ToEuro() ?? "—")</td></tr>
                 </tbody>
             </table>
+            }
         </div>
     </div>
 </div>
@@ -120,8 +129,8 @@
         <a asp-action="Creditors" class="card h-100 text-decoration-none text-reset">
             <div class="card-body">
                 <div class="text-muted small text-uppercase">Ready to pay</div>
-                <div class="fs-3 fw-bold">@work.ReadyToPay</div>
-                <div class="text-muted small">Members owed @work.ReadyToPayAmount.ToEuro(), not in a SEPA file</div>
+                <div class="fs-3 fw-bold">@(work.CreditorsUnavailable is null ? work.ReadyToPay.ToString() : "—")</div>
+                <div class="text-muted small">@(work.CreditorsUnavailable is null ? $"Members owed {work.ReadyToPayAmount.ToEuro()}, not in a SEPA file" : "Creditor accounts unavailable")</div>
             </div>
         </a>
     </div>
@@ -129,7 +138,7 @@
         <a asp-action="Sepa" class="card h-100 text-decoration-none text-reset">
             <div class="card-body">
                 <div class="text-muted small text-uppercase">Transfers to book</div>
-                <div class="fs-3 fw-bold">@work.AwaitingBooking</div>
+                <div class="fs-3 fw-bold">@(work.CreditorsUnavailable is null ? work.AwaitingBooking.ToString() : "—")</div>
                 <div class="text-muted small">Accounts with a SEPA transfer not booked yet</div>
             </div>
         </a>

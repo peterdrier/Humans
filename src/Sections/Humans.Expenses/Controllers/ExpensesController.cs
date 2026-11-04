@@ -255,6 +255,7 @@ internal sealed class ExpensesController(
                 BoundAccountName = creditor.BoundAccountName,
                 HasCreditorContact = creditor.HasContact,
                 CreditorAccounts = creditor.Accounts,
+                CreditorAccountsUnavailable = creditor.Unavailable,
                 CanApprove = decisions.Approve,
                 CanFinanceReject = decisions.FinanceReject,
                 CanEndorse = decisions.Endorse,
@@ -815,21 +816,18 @@ internal sealed class ExpensesController(
     /// minting a duplicate. Empty for everyone else.
     /// </summary>
     private async Task<(int? BoundAccountNum, string? BoundAccountName, bool HasContact,
-        IReadOnlyList<CreditorAccountRow> Accounts)> GetCreditorBindingViewAsync(
+        IReadOnlyList<CreditorAccountRow> Accounts, string? Unavailable)> GetCreditorBindingViewAsync(
         Guid submitterUserId, bool isFinanceAdmin, CancellationToken ct)
     {
-        if (!isFinanceAdmin) return (null, null, false, []);
+        if (!isFinanceAdmin) return (null, null, false, [], null);
 
         var binding = await finance.GetCreditorContactByUserAsync(submitterUserId, ct);
-        var accounts = (await finance.ListCreditorAccountsAsync(ct)).Accounts
-            .OrderBy(a => a.SupplierAccountNum)
-            .ToList();
+        var (rows, _, unavailable) = await finance.ListCreditorAccountsAsync(ct);
+        var accounts = rows.OrderBy(a => a.SupplierAccountNum).ToList();
 
-        var boundName = binding?.SupplierAccountNum is { } boundNum
-            ? accounts.FirstOrDefault(a => a.SupplierAccountNum == boundNum)?.Name
-            : null;
-
-        return (binding?.SupplierAccountNum, boundName, binding is not null, accounts);
+        // The row Finance placed the binding on, through Holded's contact: the binding's stored number can be stale.
+        var bound = accounts.FirstOrDefault(a => a.Bindings.Any(b => b.UserId == submitterUserId));
+        return (bound?.SupplierAccountNum, bound?.Name, binding is not null, accounts, unavailable);
     }
 
     /// <summary>The authorization handler owns the actor matrix and each decision's status gate.</summary>

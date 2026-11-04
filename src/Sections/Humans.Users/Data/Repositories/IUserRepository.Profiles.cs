@@ -53,10 +53,8 @@ internal partial interface IUserRepository
 
     /// <summary>
     /// GDPR Art. 17, deletion path only: clears the Article 9 special-category
-    /// fields the account-merge fold deliberately leaves on archived profiles
-    /// (diet, allergies, intolerances, medical conditions) plus the
-    /// consent-check and rejection prose, the legacy IBAN, and deletes the profile's language rows
-    /// and the user's frozen <c>communication_preferences</c> rows.
+    /// field the account-merge fold deliberately leaves on archived profiles
+    /// (medical conditions) and deletes the profile's language rows.
     /// </summary>
     Task<int> EraseProfileExtrasForUserAsync(Guid userId, CancellationToken ct = default);
 
