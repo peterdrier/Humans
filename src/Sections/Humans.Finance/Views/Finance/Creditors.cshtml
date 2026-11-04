@@ -184,6 +184,7 @@ else
                         <a asp-action="Creditors" asp-route-sort="name" asp-route-dir="@ToggleDir("name")"
                            class="text-decoration-none">@Header("Name", "name")</a>
                     </th>
+                    <th title="Country of the Holded IBAN and its domestic currency. Transfers outside the EEA cost a bank fee.">IBAN</th>
                     <th class="text-end">
                         <a asp-action="Creditors" asp-route-sort="balance" asp-route-dir="@ToggleDir("balance")"
                            class="text-decoration-none">@Header("Balance", "balance")</a>
@@ -258,6 +259,22 @@ else
                         }
                     </td>
                     <td>@(string.IsNullOrWhiteSpace(r.Name) ? "—" : r.Name)</td>
+                    <td class="text-nowrap">
+                        @if (r.IbanCountry is not { } country)
+                        {
+                            <span class="text-muted">—</span>
+                        }
+                        else if (r.IbanOutsideEea)
+                        {
+                            <span class="badge text-bg-warning" title="Outside the EEA: the bank charges a fee for this transfer.">
+                                <i class="fa-solid fa-triangle-exclamation me-1"></i>@country · @(r.IbanCurrency ?? "?")
+                            </span>
+                        }
+                        else
+                        {
+                            <span class="text-muted">@country · @r.IbanCurrency</span>
+                        }
+                    </td>
                     <td class="text-end text-nowrap">
                         @if (r.Balance is { } bal)
                         {
