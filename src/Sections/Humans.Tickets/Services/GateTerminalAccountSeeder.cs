@@ -69,7 +69,7 @@ internal sealed class GateTerminalAccountSeeder(
 
         await auditLogService.LogAsync(
             TicketsAuditActions.GateTerminalPasswordSet,
-            nameof(User),
+            "User",
             SystemUserIds.GateTerminal,
             "Gate terminal password set",
             actorUserId);

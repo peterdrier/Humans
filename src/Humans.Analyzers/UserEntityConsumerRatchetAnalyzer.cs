@@ -34,14 +34,8 @@ public sealed class UserEntityConsumerRatchetAnalyzer : DiagnosticAnalyzer
     internal static readonly ImmutableHashSet<string> Baseline = ImmutableHashSet.Create(
         StringComparer.Ordinal,
         "Humans.Auth",
-        "Humans.Camps",
         "Humans.CityPlanning",
         "Humans.Development",
-        "Humans.Finance",
-        "Humans.GoogleIntegration",
-        "Humans.Governance",
-        "Humans.Shifts",
-        "Humans.Teams",
         "Humans.Tickets",
         "Humans.Web");
 

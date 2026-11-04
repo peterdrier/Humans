@@ -147,7 +147,7 @@ internal sealed class TicketTransferService(
             $"Transfer requested: ticket {attendee.VendorTicketId} → {receiverLegalName}",
             senderUserId,
             dto.ReceiverUserId,
-            nameof(User));
+            "User");
 
         await NotifyRequestedAsync(request, attendee, senderUserId, ct);
 
@@ -241,7 +241,7 @@ internal sealed class TicketTransferService(
                     : $"Automated process FAILED — {request.VendorMessage}; process manually in TicketTailor",
                 adminUserId,
                 request.SenderUserId,
-                nameof(User));
+                "User");
 
             return RefuseAdmin(transferRequestId, adminUserId,
                 request.VendorResult == TicketTransferVendorResult.VoidSucceededIssueFailed
@@ -310,7 +310,7 @@ internal sealed class TicketTransferService(
                 $"Reissue retry failed — {VendorFailureDetail(ex)}",
                 adminUserId,
                 request.SenderUserId,
-                nameof(User));
+                "User");
             logger.LogError(ex, "Reissue retry failed for transfer {TransferId} against hold {HoldId}",
                 request.Id, request.VendorHoldId);
             return RefuseAdmin(transferRequestId, adminUserId,
@@ -376,7 +376,7 @@ internal sealed class TicketTransferService(
             auditDescription,
             adminUserId,
             request.SenderUserId,
-            nameof(User));
+            "User");
 
         await NotifyDecisionAsync(request, successful: true, reason: null, ct);
     }
@@ -487,7 +487,7 @@ internal sealed class TicketTransferService(
             $"Transfer cancelled: {reason}",
             adminUserId,
             request.SenderUserId,
-            nameof(User));
+            "User");
 
         await NotifyDecisionAsync(request, successful: false, reason: reason, ct);
 

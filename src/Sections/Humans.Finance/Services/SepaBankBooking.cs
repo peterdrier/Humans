@@ -330,7 +330,7 @@ internal sealed class SepaBankBooking(
                     FinanceAuditActions.SepaPayoutTransferBooked, SepaTransferEntityType, row.TransferId,
                     $"RECONCILED the Sabadell line {row.HoldedBankMovementId} that booked the SEPA payout "
                     + $"{Euros(row.Amount)} to {row.IbanMasked} on creditor account {row.SupplierAccountNum}.",
-                    SepaBookingJobName, row.UserId, nameof(User));
+                    SepaBookingJobName, row.UserId, "User");
             }
         }
 
@@ -604,7 +604,7 @@ internal sealed class SepaBankBooking(
                     $"RECONCILED the Sabadell line {movement.Id} that paid the whole file "
                     + $"{row.FileName}, including this transfer of {Euros(row.Amount)} to "
                     + $"{row.IbanMasked} on creditor account {row.SupplierAccountNum}.",
-                    actorUserId, row.UserId, nameof(User));
+                    actorUserId, row.UserId, "User");
             }
 
         return new SepaBookingResult(true,
@@ -890,10 +890,10 @@ internal sealed class SepaBankBooking(
             actorUserId is { } actor
                 ? audit.LogAsync(
                     FinanceAuditActions.SepaPayoutTransferBooked, SepaTransferEntityType, transfer.Id,
-                    text, actor, transfer.UserId, nameof(User))
+                    text, actor, transfer.UserId, "User")
                 : audit.LogAsync(
                     FinanceAuditActions.SepaPayoutTransferBooked, SepaTransferEntityType, transfer.Id,
-                    text, SepaBookingJobName, transfer.UserId, nameof(User));
+                    text, SepaBookingJobName, transfer.UserId, "User");
 
         string PostingSummary()
         {
