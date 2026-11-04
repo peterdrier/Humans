@@ -4075,8 +4075,6 @@ public class SurveyServiceTests
         _repo.GetByIdAsync(surveyId, Arg.Any<CancellationToken>()).Returns(survey);
         _repo.GetResponsesForResultsAsync(surveyId, Arg.Any<CancellationToken>())
             .Returns(Array.Empty<SurveyResponse>());
-        _repo.GetInvitedCountsBySurveyAsync(Arg.Any<CancellationToken>())
-            .Returns(new Dictionary<Guid, int>());
 
         var results = await CreateService().GetResultsAsync(
             surveyId, TestContext.Current.CancellationToken);
@@ -4120,8 +4118,6 @@ public class SurveyServiceTests
         };
         _repo.GetResponsesForResultsAsync(surveyId, Arg.Any<CancellationToken>())
             .Returns(responses);
-        _repo.GetInvitedCountsBySurveyAsync(Arg.Any<CancellationToken>())
-            .Returns(new Dictionary<Guid, int> { [surveyId] = 4 });
         _repo.GetInvitationsAsync(surveyId, Arg.Any<CancellationToken>())
             .Returns(new List<SurveyInvitation>
             {
@@ -4249,8 +4245,6 @@ public class SurveyServiceTests
                     surveyId, ResponseAnonymity.Anonymous, SurveyInputMethod.Slug, now, null,
                     GridAnswer(gridId, ("monday", ["morning"]))),
             ]);
-        _repo.GetInvitedCountsBySurveyAsync(Arg.Any<CancellationToken>())
-            .Returns(new Dictionary<Guid, int>());
         _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(new Dictionary<Guid, UserInfo>()));
 
@@ -4293,8 +4287,6 @@ public class SurveyServiceTests
         };
         _repo.GetResponsesForResultsAsync(surveyId, Arg.Any<CancellationToken>())
             .Returns(responses);
-        _repo.GetInvitedCountsBySurveyAsync(Arg.Any<CancellationToken>())
-            .Returns(new Dictionary<Guid, int>());
         _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(new Dictionary<Guid, UserInfo>()));
 
@@ -4332,8 +4324,6 @@ public class SurveyServiceTests
         };
         _repo.GetResponsesForResultsAsync(surveyId, Arg.Any<CancellationToken>())
             .Returns(responses);
-        _repo.GetInvitedCountsBySurveyAsync(Arg.Any<CancellationToken>())
-            .Returns(new Dictionary<Guid, int>());
         _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
                 new Dictionary<Guid, UserInfo> { [identifiedUser] = UserInfoWithName(identifiedUser, "Sparkle") }));
@@ -4391,8 +4381,6 @@ public class SurveyServiceTests
             SurveyInputMethod.UserSpecificLink, now - Duration.FromMinutes(5), earlierUser);
         _repo.GetResponsesForResultsAsync(surveyId, Arg.Any<CancellationToken>())
             .Returns(new List<SurveyResponse> { laterResponse, earlierResponse });
-        _repo.GetInvitedCountsBySurveyAsync(Arg.Any<CancellationToken>())
-            .Returns(new Dictionary<Guid, int>());
 
         var result = await CreateService().GetResultsAsync(surveyId, TestContext.Current.CancellationToken);
 
@@ -4424,9 +4412,12 @@ public class SurveyServiceTests
         };
         _repo.GetResponsesForResultsAsync(surveyId, Arg.Any<CancellationToken>())
             .Returns(responses);
-        _repo.GetStartedInvitationCountAsync(surveyId, Arg.Any<CancellationToken>()).Returns(7);
-        _repo.GetInvitedCountsBySurveyAsync(Arg.Any<CancellationToken>())
-            .Returns(new Dictionary<Guid, int> { [surveyId] = 10 });
+        _repo.GetInvitationsAsync(surveyId, Arg.Any<CancellationToken>())
+            .Returns(Enumerable.Range(0, 10).Select(index => new SurveyInvitation
+            {
+                Id = Guid.NewGuid(), SurveyId = surveyId, UserId = Guid.NewGuid(),
+                SentAt = _clock.GetCurrentInstant(), Started = index < 7,
+            }).ToList());
         _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(new Dictionary<Guid, UserInfo>()));
 
@@ -5040,9 +5031,12 @@ public class SurveyServiceTests
         _repo.GetByIdAsync(survey.Id, Arg.Any<CancellationToken>()).Returns(survey);
         _repo.GetResponsesForResultsAsync(survey.Id, Arg.Any<CancellationToken>())
             .Returns([response]);
-        _repo.GetInvitedCountsBySurveyAsync(Arg.Any<CancellationToken>())
-            .Returns(new Dictionary<Guid, int> { [survey.Id] = 4 });
-        _repo.GetStartedInvitationCountAsync(survey.Id, Arg.Any<CancellationToken>()).Returns(2);
+        _repo.GetInvitationsAsync(survey.Id, Arg.Any<CancellationToken>())
+            .Returns(Enumerable.Range(0, 4).Select(index => new SurveyInvitation
+            {
+                Id = Guid.NewGuid(), SurveyId = survey.Id, UserId = Guid.NewGuid(),
+                SentAt = _clock.GetCurrentInstant(), Started = index < 2,
+            }).ToList());
 
         var service = CreateService();
         var scoped = await service.GetScopedResultsAsync(
@@ -5092,8 +5086,6 @@ public class SurveyServiceTests
         responses[1].SubmittedAt = now - Duration.FromDays(1);
         _repo.GetByIdAsync(survey.Id, Arg.Any<CancellationToken>()).Returns(survey);
         _repo.GetResponsesForResultsAsync(survey.Id, Arg.Any<CancellationToken>()).Returns(responses);
-        _repo.GetInvitedCountsBySurveyAsync(Arg.Any<CancellationToken>())
-            .Returns(new Dictionary<Guid, int>());
 
         var scoped = await CreateService().GetScopedResultsAsync(
             survey.Id, SurveyResultsScope.Combined, TestContext.Current.CancellationToken);
@@ -5231,8 +5223,6 @@ public class SurveyServiceTests
         _repo.GetByIdAsync(survey.Id, Arg.Any<CancellationToken>()).Returns(survey);
         _repo.GetResponsesForResultsAsync(survey.Id, Arg.Any<CancellationToken>())
             .Returns(responses);
-        _repo.GetInvitedCountsBySurveyAsync(Arg.Any<CancellationToken>())
-            .Returns(new Dictionary<Guid, int>());
         _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, UserInfo>());
 

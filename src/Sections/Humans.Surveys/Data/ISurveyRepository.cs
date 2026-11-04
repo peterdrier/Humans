@@ -130,8 +130,6 @@ internal interface ISurveyRepository : IRepository
     /// <summary>Submitted only (<c>SubmittedAt is not null</c>), with answers. Unordered.</summary>
     Task<IReadOnlyList<SurveyResponse>> GetResponsesForResultsAsync(Guid surveyId, CancellationToken ct = default);
 
-    Task<int> GetStartedInvitationCountAsync(Guid surveyId, CancellationToken ct = default);
-
     /// <summary>
     /// For the Article 15 export. CompletionTracked/Anonymous responses carry no <c>UserId</c> and are not linkable
     /// personal data, so they are excluded.

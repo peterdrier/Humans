@@ -405,14 +405,6 @@ internal sealed class SurveyRepository(IDbContextFactory<SurveysDbContext> facto
             .ToListAsync(ct);
     }
 
-    public async Task<int> GetStartedInvitationCountAsync(Guid surveyId, CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.SurveyInvitations
-            .AsNoTracking()
-            .CountAsync(i => i.SurveyId == surveyId && i.Started, ct);
-    }
-
     public async Task<IReadOnlyList<SurveyResponse>> GetIdentifiedResponsesForUserAsync(Guid userId, CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);

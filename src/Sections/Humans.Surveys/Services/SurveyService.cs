@@ -1239,14 +1239,11 @@ internal sealed class SurveyService(
         var selectedResponses = responses
             .Where(response => MatchesScope(response.Anonymity, scope))
             .ToList();
-        var invited = await repo.GetInvitedCountsBySurveyAsync(ct);
-
-        var invitedCount = invited.GetValueOrDefault(surveyId);
+        var invitations = await repo.GetInvitationsAsync(surveyId, ct);
+        var sentInvitations = invitations.Where(invitation => invitation.SentAt.HasValue).ToList();
+        var invitedCount = sentInvitations.Count;
         var responseCount = responses.Count;
-        var completedInvitationCount = invitedCount == 0
-            ? 0
-            : (await repo.GetInvitationsAsync(surveyId, ct))
-                .Count(invitation => invitation.SentAt.HasValue && invitation.Completed);
+        var completedInvitationCount = sentInvitations.Count(invitation => invitation.Completed);
         var responseRate = invitedCount == 0 ? 0d : (double)completedInvitationCount / invitedCount;
 
         var questions = embargoed
@@ -1261,7 +1258,7 @@ internal sealed class SurveyService(
                 .ToList();
 
         var funnel = new SurveyFunnel(
-            LinkStarted: await repo.GetStartedInvitationCountAsync(surveyId, ct),
+            LinkStarted: invitations.Count(invitation => invitation.Started),
             LinkFinished: responses.Count(r => r.InputMethod == SurveyInputMethod.UserSpecificLink),
             SlugStarted: survey.PublicStartedCount,
             SlugFinished: responses.Count(r => r.InputMethod == SurveyInputMethod.Slug));
