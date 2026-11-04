@@ -76,6 +76,15 @@ internal sealed partial class GrantService(
         return info is null ? [userId] : info.AllUserIds;
     }
 
+    private async Task<IReadOnlyList<Guid>?> ResolveAvailablePersonIdsAsync(Guid userId, CancellationToken ct)
+    {
+        var person = await users.GetUserInfoAsync(userId, ct);
+        if (person is not null && !person.IsTombstone) return person.AllUserIds;
+
+        logger.LogWarning("Grant write refused for unavailable person {UserId}", userId);
+        return null;
+    }
+
     private static string? Trimmed(string? text) =>
         string.IsNullOrWhiteSpace(text) ? null : text.Trim();
 
