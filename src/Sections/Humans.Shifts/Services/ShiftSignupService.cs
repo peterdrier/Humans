@@ -214,7 +214,9 @@ internal sealed class ShiftSignupService(
         if (calendar is null) return SignupResult.Fail(localizer["Shifts_EventCalendarNotConfigured"]);
         var now = clock.GetCurrentInstant();
         var isOwner = signup.UserId == actorUserId;
-        var isPrivileged = await IsPrivilegedAsync(actorUserId, signup.Shift.Rota.TeamId);
+        var earlyEntryClosed = signup.Shift.IsEarlyEntry && calendar.IsEarlyEntryClosed(now);
+        var isPrivileged = (!isOwner || earlyEntryClosed)
+            && await IsPrivilegedAsync(actorUserId, signup.Shift.Rota.TeamId);
 
         if (!isOwner && !isPrivileged)
             return SignupResult.Fail(localizer["Shifts_Bail_NotAuthorized"]);
@@ -232,7 +234,7 @@ internal sealed class ShiftSignupService(
             return SignupResult.Fail(localizer["Shifts_Bail_NotActive"]);
         }
 
-        if (signup.Shift.IsEarlyEntry && calendar.IsEarlyEntryClosed(now) && !isPrivileged)
+        if (earlyEntryClosed && !isPrivileged)
             return SignupResult.Fail(localizer["Shifts_Bail_EarlyEntryClosed"]);
 
         if (IsStatusReasonTooLong(reason, signup.Id, actorUserId))
@@ -820,12 +822,14 @@ internal sealed class ShiftSignupService(
         if (calendar is null) return new("Shifts_EventCalendarNotConfigured");
         var now = clock.GetCurrentInstant();
         var isOwner = firstSignup.UserId == actorUserId;
-        var isPrivileged = await IsPrivilegedAsync(actorUserId, firstSignup.Shift.Rota.TeamId);
+        var earlyEntryClosed = signups.Any(s => s.Shift.IsEarlyEntry) && calendar.IsEarlyEntryClosed(now);
+        var isPrivileged = (!isOwner || earlyEntryClosed)
+            && await IsPrivilegedAsync(actorUserId, firstSignup.Shift.Rota.TeamId);
 
         if (!isOwner && !isPrivileged)
             return new("Shifts_BailRange_NotAuthorized");
 
-        if (signups.Any(s => s.Shift.IsEarlyEntry) && calendar.IsEarlyEntryClosed(now) && !isPrivileged)
+        if (earlyEntryClosed && !isPrivileged)
             return new("Shifts_Bail_EarlyEntryClosed");
 
         if (IsStatusReasonTooLong(reason, firstSignup.Id, actorUserId))

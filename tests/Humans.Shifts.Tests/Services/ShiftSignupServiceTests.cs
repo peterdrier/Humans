@@ -788,13 +788,22 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
         Saved(result).Status.Should().Be(SignupStatus.Confirmed);
     }
 
-    [HumansFact]
-    public async Task Bail_FromConfirmed_SetsBailed()
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Bail_FromConfirmed_SetsBailed(bool earlyEntry)
     {
-        var (_, _, shift) = SeedShiftScenario(SignupPolicy.Public);
+        var (settings, _, shift) = SeedShiftScenario(SignupPolicy.Public);
+        if (earlyEntry)
+        {
+            shift.DayOffset = -1;
+            settings.EarlyEntryClose = TestNow + Duration.FromDays(1);
+        }
         var userId = Guid.NewGuid();
         var signup = SeedSignup(userId, shift.Id, SignupStatus.Confirmed);
         await SaveAllAsync(TestContext.Current.CancellationToken);
+        _teamService.GetUserCoordinatedTeamIdsAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<IReadOnlyList<Guid>>(new IOException("Permission lookup unavailable")));
 
         var result = await _service.BailAsync(signup.Id, userId, "Can't make it");
 
@@ -1872,6 +1881,8 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
             signup.SignupBlockId = blockId;
         }
         await SaveAllAsync(TestContext.Current.CancellationToken);
+        _teamService.GetUserCoordinatedTeamIdsAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<IReadOnlyList<Guid>>(new IOException("Permission lookup unavailable")));
 
         await _service.BailRangeAsync(blockId, userId);
 
