@@ -338,4 +338,6 @@ First-party, GDPR-compliant surveys: author typed/branching multi-language surve
 
 Result drill-down, response export and GDPR response export share the section's question/prompt/option-label mapper. Each caller keeps its own culture selection and payload shape; missing definitions preserve raw answer keys with empty prompts and fallback labels.
 
+Markdown response tables preserve literal backslashes and pipes in question prompts, respondent names and answer cells, while collapsing line breaks to spaces. CSV cells retain their existing serialization.
+
 Response exports (admin CSV/JSON and Backdoor analysis) record `SurveyResponsesExported` with the requesting human, survey id and row count in the owner service. Missing surveys and embargoed open Asociado votes return no export and no disclosure audit. Privacy shaping and results authorization remain unchanged.

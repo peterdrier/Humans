@@ -65,10 +65,11 @@ public static class SurveyResponsesMarkdownBuilder
         _ => answer.TextValue ?? string.Empty,
     };
 
-    /// <summary>Collapses newlines to a space and escapes the column separator.</summary>
+    /// <summary>Collapses newlines to a space and escapes backslashes before the column separator.</summary>
     private static string Escape(string value) => value
         .Replace("\r\n", " ", StringComparison.Ordinal)
         .Replace('\r', ' ')
         .Replace('\n', ' ')
+        .Replace("\\", "\\\\", StringComparison.Ordinal)
         .Replace("|", "\\|", StringComparison.Ordinal);
 }
