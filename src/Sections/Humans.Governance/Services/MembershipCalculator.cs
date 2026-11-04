@@ -30,7 +30,11 @@ internal sealed class MembershipCalculator(
         CancellationToken cancellationToken = default)
     {
         var info = await userService.GetUserInfoAsync(userId, cancellationToken);
+        return await ComputeStatusAsync(info, cancellationToken);
+    }
 
+    private async Task<MembershipStatus> ComputeStatusAsync(UserInfo? info, CancellationToken cancellationToken)
+    {
         if (info?.Profile is null)
         {
             return MembershipStatus.None;
@@ -47,7 +51,7 @@ internal sealed class MembershipCalculator(
         }
 
         // Active = has role assignments OR is a Volunteers-team member.
-        userId = info.Id; // roles and memberships were re-pointed to the survivor on merge
+        var userId = info.Id; // roles and memberships were re-pointed to the survivor on merge
         var hasActiveRoles = await HasActiveRolesAsync(userId, cancellationToken);
         var isVolunteerMember = await membershipQuery.IsUserMemberOfTeamAsync(
             SystemTeamIds.Volunteers, userId, cancellationToken);
@@ -71,15 +75,16 @@ internal sealed class MembershipCalculator(
         CancellationToken cancellationToken = default)
     {
         // Status, memberships, consents and the request memo must describe the same human.
-        userId = (await userService.GetUserInfoAsync(userId, cancellationToken))?.Id ?? userId;
+        var info = await userService.GetUserInfoAsync(userId, cancellationToken);
+        userId = info?.Id ?? userId;
         if (_snapshotMemo.TryGetValue(userId, out var memoized))
         {
             return memoized;
         }
 
-        var status = await ComputeStatusAsync(userId, cancellationToken);
+        var status = await ComputeStatusAsync(info, cancellationToken);
 
-        var eligibleTeamIds = await GetRequiredTeamIdsForUserAsync(userId, cancellationToken);
+        var eligibleTeamIds = await GetRequiredTeamIdsForResolvedUserAsync(userId, cancellationToken);
         var allRequiredVersionIds = new List<Guid>();
 
         foreach (var teamId in eligibleTeamIds)
@@ -254,6 +259,12 @@ internal sealed class MembershipCalculator(
         CancellationToken cancellationToken = default)
     {
         userId = (await userService.GetUserInfoAsync(userId, cancellationToken))?.Id ?? userId;
+        return await GetRequiredTeamIdsForResolvedUserAsync(userId, cancellationToken);
+    }
+
+    private async Task<IReadOnlyList<Guid>> GetRequiredTeamIdsForResolvedUserAsync(
+        Guid userId, CancellationToken cancellationToken)
+    {
         var memberships = await membershipQuery.GetUserTeamsAsync(userId, cancellationToken);
         var teamIds = memberships.Select(m => m.TeamId).ToList();
 
