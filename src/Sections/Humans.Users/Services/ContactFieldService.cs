@@ -127,9 +127,9 @@ internal sealed class ContactFieldService(
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
-                logger.LogWarning(
-                    "ContactFieldService: UserInfo invalidation failed for {UserId}: {ExType}",
-                    ownerUserId.Value, ex.GetType().Name);
+                logger.LogError(ex,
+                    "Contact fields saved but UserInfo refresh failed for {UserId}",
+                    ownerUserId.Value);
             }
         }
     }
