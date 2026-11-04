@@ -72,11 +72,10 @@ the group page is a pull by Workgroups through `IHoldedService.GetLedgerLinesAsy
   Workgroups shows the full live chart via `IHoldedClient.ListExpenseAccountsAsync` so an account
   created by hand in Holded can be linked too.
 
-**Doc sync.** `HoldedMatcher.Match` gets the managed registry's account ids alongside the category
-map entries. A doc booked to a managed account is `MatchStatus = Matched`, `MatchSource = Account`,
-`BudgetCategoryId = null`. It stays off `/Finance/HoldedUnmatched` and off the budget-year actuals
-(`GetActualsForYearAsync` already filters on a non-null category). `/Finance/Holded` lists the
-managed registry beside the category map.
+**Attribution.** `HoldedMatcher.Match` gets the managed registry's account ids alongside the
+category map entries. A doc booked to a managed account is matched with no category. It stays off
+`/Finance/HoldedUnmatched` and off the budget-year actuals (`GetActualsForYearAsync` already filters
+on a non-null category). `/Finance/HoldedAccounts` lists the managed registry below the category map.
 
 ### Workgroups
 

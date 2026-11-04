@@ -24,8 +24,8 @@ internal interface IHoldedFinanceAdminService : IApplicationService
     /// The next push re-resolves. False when nothing was bound.</summary>
     Task<bool> ClearCreditorContactAsync(Guid userId, Guid actorUserId, CancellationToken ct = default);
 
-    /// <summary>Local cache only, so the page cannot inherit the connector's timeout.</summary>
-    Task<HoldedConnectorVm> GetConnectorOverviewAsync(CancellationToken ct = default);
+    /// <summary>Expense accounts created outside the budget map. Unordered.</summary>
+    Task<IReadOnlyList<HoldedManagedAccountVm>> GetManagedAccountsAsync(CancellationToken ct = default);
 
     /// <summary>Read on every /Finance/Creditors load so the page says why payout is unavailable.</summary>
     SepaPayoutSettings GetSepaPayoutSettings();
