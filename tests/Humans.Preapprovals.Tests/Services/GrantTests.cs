@@ -236,6 +236,7 @@ public sealed class GrantTests : PreapprovalsTestHarness
         grant.MaxAmount.Should().Be(300m);
         grant.Status.Should().Be(GrantStatus.Open);
         grant.DecidedByUserId.Should().Be(actor);
+        grant.DecidedAt.Should().Be(Clock.GetCurrentInstant());
         grant.Label.Should().Be("Fire Lotus");
         await AuditLog.Received(1).LogAsync(PreapprovalsAuditActions.PreapprovalGrantIssued, AuditEntityTypes.Grant, grant.Id, Arg.Any<string>(), actor, program.Id, AuditEntityTypes.Program);
         await Notifications.Received(1).SendAsync(PreapprovalsNotificationSources.PreapprovalFileBy, NotificationClass.Actionable, NotificationPriority.Normal,
@@ -339,11 +340,18 @@ public sealed class GrantTests : PreapprovalsTestHarness
         var program = await SeedProgramAsync(perPerson: 300m, ceiling: 1000m);
         var a = SeedUser("A"); var b = SeedUser("B");
         var service = NewService();
+        var actor = SeedUser("Manager");
 
-        var result = await service.IssueManyAsync(program.Id, [a, b, a], SeedUser(), Ct);
+        var result = await service.IssueManyAsync(program.Id, [a, b, a], actor, Ct);
 
         result.Refusal.Should().BeNull();
         result.Value!.Count.Should().Be(2);
+        foreach (var id in result.Value)
+        {
+            var grant = await ReadGrantAsync(id);
+            grant.DecidedByUserId.Should().Be(actor);
+            grant.DecidedAt.Should().Be(Clock.GetCurrentInstant());
+        }
         (await OpenContext().Grants.ToListAsync(Ct)).Should().OnlyContain(g => g.MaxAmount == 300m && g.Status == GrantStatus.Open);
 
         var perGrant = await SeedProgramAsync(kind: ProgramKind.PerGrantAmount, perPerson: null);

@@ -31,8 +31,6 @@ internal sealed partial class PreapprovalService
         var beneficiaryId = beneficiary.Id;
         var now = clock.GetCurrentInstant();
         var grant = NewGrant(program, beneficiaryId, sized.Value, Trimmed(label), GrantStatus.Open, now);
-        grant.DecidedByUserId = actorUserId;
-        grant.DecidedAt = now;
         await PersistIssuedGrantsAsync(program, [grant], actorUserId,
             issued => $"Issued {Euros(issued.MaxAmount)} under \"{program.Name}\"{LabelSuffix(issued)} to {beneficiaryId}; claim by {program.ClaimBy.ToInvariantDate()}.", ct);
         return new(grant.Id);
@@ -63,13 +61,7 @@ internal sealed partial class PreapprovalService
         if (CeilingCheck(program, each * ids.Count) is { } over) return new(Refusal: over);
 
         var now = clock.GetCurrentInstant();
-        var grants = ids.Select(id =>
-        {
-            var g = NewGrant(program, id, each, null, GrantStatus.Open, now);
-            g.DecidedByUserId = actorUserId;
-            g.DecidedAt = now;
-            return g;
-        }).ToList();
+        var grants = ids.Select(id => NewGrant(program, id, each, null, GrantStatus.Open, now)).ToList();
         await PersistIssuedGrantsAsync(program, grants, actorUserId,
             grant => $"Issued {Euros(grant.MaxAmount)} under \"{program.Name}\" to {grant.BeneficiaryUserId} (batch of {grants.Count}); claim by {program.ClaimBy.ToInvariantDate()}.", ct);
         return new(grants.Select(g => g.Id).ToList());
@@ -79,6 +71,11 @@ internal sealed partial class PreapprovalService
         PreapprovalProgram program, IReadOnlyList<PreapprovalGrant> grants, Guid actorUserId,
         Func<PreapprovalGrant, string> describe, CancellationToken ct)
     {
+        foreach (var grant in grants)
+        {
+            grant.DecidedByUserId = actorUserId;
+            grant.DecidedAt = grant.CreatedAt;
+        }
         await repository.AddGrantsAsync(grants, ct);
         // The grants committed; finish their audit and notices after the browser disconnects.
         foreach (var grant in grants)
