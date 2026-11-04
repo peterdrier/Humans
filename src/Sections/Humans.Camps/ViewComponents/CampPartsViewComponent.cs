@@ -15,7 +15,7 @@ public sealed class CampPartsViewComponent(
         {
             try
             {
-                parts.AddRange(contributor.Parts());
+                parts.AddRange(contributor.Parts().ToList());
             }
             catch (Exception ex)
             {
