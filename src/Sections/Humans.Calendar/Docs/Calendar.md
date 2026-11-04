@@ -131,7 +131,7 @@ The calendar is intentionally open: no resource-based authorization gates edit/d
 
 - Recurrence lookback stops at the series start, keeping BCL date boundaries safe. Start-moved overrides may still appear before the series; end-only extensions still use their original recurrence identities.
 - Index, List and Team reject malformed month queries and dates outside the representable navigation/grid window with HTTP 400 before reading occurrences or the feed token. Omitted dates still use the viewer’s current month.
-- Agenda rejects malformed, reversed or unrepresentable date ranges with HTTP 400 and a Warning log before reading occurrences. Its end date remains inclusive; omitted dates retain the viewer-local today → today+60d defaults.
+- Agenda rejects malformed, reversed or unrepresentable date ranges with HTTP 400 and a Warning log before reading occurrences. Expected month and agenda boundary failures retain their input values and reason in Warning logs without exception stacks. Its end date remains inclusive; omitted dates retain the viewer-local today → today+60d defaults.
 - Every `CalendarEvent` has a non-null `OwningTeamId` — a bare Guid naming a team, with no database FK constraint and no navigation property. `CalendarService` create and update refuse an owning team that is missing, inactive or hidden (`CanOwnEvents`, the same rule that fills the form's team picker), as an `OwningTeamId` validation error.
 - Create and edit forms reject missing or unknown destination teams with 404 before mutation. Edit checks the event exists before looking up its submitted team.
 - Only authenticated humans may create, edit, or delete events, or manage exceptions (enforced by `[Authorize]` on `CalendarController`).

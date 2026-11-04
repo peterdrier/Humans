@@ -137,7 +137,7 @@ internal sealed class CalendarController : HumansControllerBase
         }
         catch (Exception ex) when (ex is ArgumentOutOfRangeException or OverflowException or InvalidOperationException)
         {
-            _logger.LogWarning(ex, "Rejected calendar month query year={Year} month={Month}", year, month);
+            _logger.LogWarning("Rejected calendar month query year={Year} month={Month}: {Reason}", year, month, ex.Message);
             return null;
         }
     }
@@ -179,7 +179,7 @@ internal sealed class CalendarController : HumansControllerBase
         }
         catch (Exception ex) when (ex is ArgumentOutOfRangeException or OverflowException or InvalidOperationException)
         {
-            _logger.LogWarning(ex, "Rejected unrepresentable calendar agenda range from {From} to {To}", from, to);
+            _logger.LogWarning("Rejected unrepresentable calendar agenda range from {From} to {To}: {Reason}", from, to, ex.Message);
             return BadRequest();
         }
 
