@@ -34,14 +34,6 @@ internal sealed class CityPlanningSettings
     public Instant? ContainerPlacementOpenedAt { get; set; }
     public Instant? ContainerPlacementClosedAt { get; set; }
 
-    /// <summary>Unread; kept only until its column drop is approved.</summary>
-    [Obsolete("Retired by peterdrier/Humans#2102 — use PlacementOpensOffset. Kept only until its column drop is approved.")]
-    public LocalDateTime? PlacementOpensAt { get; set; }
-
-    /// <summary>Unread; kept only until its column drop is approved.</summary>
-    [Obsolete("Retired by peterdrier/Humans#2102 — use PlacementClosesOffset. Kept only until its column drop is approved.")]
-    public LocalDateTime? PlacementClosesAt { get; set; }
-
     /// <summary>Markdown shown at the top of the barrio registration page. Null/empty = hidden.</summary>
     public string? RegistrationInfo { get; set; }
 

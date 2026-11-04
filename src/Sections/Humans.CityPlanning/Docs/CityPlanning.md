@@ -48,7 +48,6 @@ Per-year singleton controlling the placement phase and map overlays. The current
 | IsContainerPlacementOpen | bool | Whether barrio leads can manage their containers |
 | ContainerPlacementOpenedAt | Instant? | When container placement was last opened |
 | ContainerPlacementClosedAt | Instant? | When container placement was last closed |
-| PlacementOpensAt / PlacementClosesAt | LocalDateTime? | **Retired** (#2102) display-only dates, never enforced. `[Obsolete]`, unread and unwritten; the columns stay until their drop is approved (`debt.yml`) |
 | RegistrationInfo | text? | Admin-editable markdown shown at the top of `/Barrios/Register`. Null/empty = hidden. Keyed to the highest open season year (falling back to the active event's year), not to the active event's year like the other fields. |
 | LimitZoneGeoJson | text? | GeoJSON FeatureCollection — site boundary |
 | OfficialZonesGeoJson | text? | GeoJSON FeatureCollection — named overlay zones |
