@@ -194,6 +194,8 @@ Inbound (other sections → Notifications):
 
 All POST routes are `[ValidateAntiForgeryToken]`. Authorization is "must be a recipient", enforced in `INotificationRepository`. On `Resolve` and `Dismiss` a non-recipient gets `Forbidden`, which the controller maps to `Forbid()` and the cookie scheme turns into a redirect to `/Account/AccessDenied`. On `MarkRead` and `ClickThrough` the same user gets `NotFound` instead — those two look up the recipient row by `(NotificationId, UserId)`, so "not yours" and "does not exist" are indistinguishable to them by construction.
 
+Resolve/dismiss share one actor-and-result path, and their bulk variants share one selection-validation path. All six inbox mutation actions use the same success response: HTTP 200 for AJAX, otherwise a redirect to the inbox. Empty bulk selections still redirect without a write, including AJAX requests. Account resolution honours request cancellation; started mutations retain their detached token.
+
 The section has no key-authed route of its own. Its machine read surface is `INotificationInboxRead`
 (`Humans.Notifications.Contracts`), served by Backdoor at `GET /api/backdoor/notifications` for the key's owner; see
 [`features/notification-api.md`](features/notification-api.md).
