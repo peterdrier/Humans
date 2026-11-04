@@ -347,6 +347,7 @@ Settings and Register an existing group on first setup or after clearing the que
   override) remain. Controllers and page controls use the resource authorization handler.
 - Refused and Withdrawn require non-empty `Reasons`.
 - Admin actions through the shared decision handler reject binding errors after actor resolution and before mutation. A malformed disposition cannot default to Accepted; no system log, audit or notification is emitted for a rejected form.
+- Apply, register-edit and admin-bootstrap forms require explicit deliverable kind, audience and sensitivity values. Missing choices redisplay field errors and log a Warning before mutation; explicit zero-valued enum choices and `false` remain valid. Admin bootstrap posts its existing sensitivity default explicitly. Binding feedback uses the shared localized validation messages in all supported cultures.
 - Registration creates the Drive subfolder before the status flips; a folder-creation
   failure leaves the group Applied so the Secretary can retry. Application and both
   registration paths run to completion independently of request cancellation. Both are marked `[ExternalWrite]`, and their admin write calls explicitly pass `CancellationToken.None`; authorization and form reads retain the request token.

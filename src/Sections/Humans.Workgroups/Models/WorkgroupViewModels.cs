@@ -148,8 +148,10 @@ internal sealed class WorkgroupFormViewModel
     [StringLength(500, ErrorMessage = "Validation_MaxLength")]
     public string Deliverable { get; set; } = string.Empty;
 
+    [BindRequired]
     public WorkgroupDeliverableKind DeliverableKind { get; set; }
 
+    [BindRequired]
     public WorkgroupAudience Audience { get; set; }
 
     public LocalDate? TargetDate { get; set; }
@@ -157,6 +159,7 @@ internal sealed class WorkgroupFormViewModel
     [StringLength(500, ErrorMessage = "Validation_MaxLength")]
     public string? DiscordChannelUrl { get; set; }
 
+    [BindRequired]
     public bool IsSensitive { get; set; }
 
     public Guid? SecondCoordinatorUserId { get; set; }

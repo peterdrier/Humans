@@ -9,6 +9,8 @@
 <div class="card" style="max-width: 760px;">
     <div class="card-body">
         <form method="post" asp-action="RegisterExisting">
+            <input type="hidden" asp-for="Application.IsSensitive" />
+            <span asp-validation-for="Application.IsSensitive" class="text-danger"></span>
             <div asp-validation-summary="ModelOnly" class="text-danger"></div>
 
             <div class="mb-3">
@@ -38,6 +40,7 @@
                             <option value="@value">@value</option>
                         }
                     </select>
+                    <span asp-validation-for="Application.DeliverableKind" class="text-danger"></span>
                 </div>
                 <div class="col-md-4">
                     <label asp-for="Application.Audience" class="form-label">Audience</label>
@@ -47,6 +50,7 @@
                             <option value="@value">@value</option>
                         }
                     </select>
+                    <span asp-validation-for="Application.Audience" class="text-danger"></span>
                 </div>
                 <div class="col-md-4">
                     <label asp-for="Application.TargetDate" class="form-label">Target date</label>

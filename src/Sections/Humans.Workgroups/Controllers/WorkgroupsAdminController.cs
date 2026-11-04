@@ -81,7 +81,11 @@ internal sealed class WorkgroupsAdminController(
     {
         var (error, user) = await ResolveCurrentUserOrChallengeAsync(ct);
         if (error is not null) return error;
-        if (!ModelState.IsValid) return await RegisterExistingViewAsync(model, ct);
+        if (!ModelState.IsValid)
+        {
+            logger.LogWarning("Rejected invalid Workgroup registration form for user {UserId}", user.Id);
+            return await RegisterExistingViewAsync(model, ct);
+        }
 
         // Midnight UTC is precise enough for a backdated start.
         var registeredAt = model.RegisteredOn.AtMidnight().InUtc().ToInstant();

@@ -60,10 +60,13 @@ public sealed class WorkgroupsAdminControllerTests : WorkgroupsTestHarness
     }
 
     [HumansTheory]
-    [InlineData(null)]
-    [InlineData("not-a-date")]
-    [InlineData("2025-03-01")]
-    public async Task RegisterExisting_RequiresExplicitValidRegistrationDate(string? registeredOn)
+    [InlineData(null, null)]
+    [InlineData("not-a-date", null)]
+    [InlineData("2025-03-01", null)]
+    [InlineData("2025-03-01", "Application.DeliverableKind")]
+    [InlineData("2025-03-01", "Application.Audience")]
+    [InlineData("2025-03-01", "Application.IsSensitive")]
+    public async Task RegisterExisting_RequiresExplicitValidRegistrationFields(string? registeredOn, string? missingField)
     {
         var service = Substitute.For<IWorkgroupService>();
         service.RegisterExistingAsync(Arg.Any<Guid>(), Arg.Any<WorkgroupBootstrap>(), Arg.Any<CancellationToken>())
@@ -77,9 +80,13 @@ public sealed class WorkgroupsAdminControllerTests : WorkgroupsTestHarness
             ["Application.Name"] = "Group",
             ["Application.Purpose"] = "Purpose",
             ["Application.Deliverable"] = "Report",
+            ["Application.DeliverableKind"] = "0",
+            ["Application.Audience"] = "0",
+            ["Application.IsSensitive"] = "false",
             ["CoordinatorUserId"] = SeedUser("Coordinator").ToString()
         };
         if (registeredOn is not null) fields["RegisteredOn"] = registeredOn;
+        if (missingField is not null) fields.Remove(missingField);
         var metadata = services.GetRequiredService<IModelMetadataProvider>().GetMetadataForType(typeof(RegisterExistingViewModel));
         var binder = services.GetRequiredService<IModelBinderFactory>().CreateBinder(new ModelBinderFactoryContext { Metadata = metadata });
         var binding = DefaultModelBindingContext.CreateBindingContext(controller.ControllerContext,
@@ -90,9 +97,10 @@ public sealed class WorkgroupsAdminControllerTests : WorkgroupsTestHarness
         services.GetRequiredService<IObjectModelValidator>().Validate(controller.ControllerContext, null, "", model);
         var result = await controller.RegisterExisting(model, Ct);
 
-        if (!string.Equals(registeredOn, "2025-03-01", StringComparison.Ordinal))
+        if (missingField is not null || !string.Equals(registeredOn, "2025-03-01", StringComparison.Ordinal))
         {
-            controller.ModelState[nameof(RegisterExistingViewModel.RegisteredOn)]!.Errors.Should().NotBeEmpty();
+            controller.ModelState.Should().ContainKey(missingField ?? nameof(RegisterExistingViewModel.RegisteredOn));
+            controller.ModelState[missingField ?? nameof(RegisterExistingViewModel.RegisteredOn)]!.Errors.Should().NotBeEmpty();
             result.Should().BeOfType<ViewResult>().Which.Model.Should().BeSameAs(model);
             await service.DidNotReceiveWithAnyArgs().RegisterExistingAsync(default, default!);
         }

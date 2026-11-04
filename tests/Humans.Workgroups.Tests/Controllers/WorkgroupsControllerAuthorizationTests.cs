@@ -44,6 +44,66 @@ public sealed class WorkgroupsControllerAuthorizationTests : WorkgroupsTestHarne
     private readonly ILogger<WorkgroupsController> _logger = Substitute.For<ILogger<WorkgroupsController>>();
 
     [HumansTheory]
+    [InlineData(false, "DeliverableKind")]
+    [InlineData(false, "Audience")]
+    [InlineData(false, "IsSensitive")]
+    [InlineData(false, null)]
+    [InlineData(true, "DeliverableKind")]
+    [InlineData(true, "Audience")]
+    [InlineData(true, "IsSensitive")]
+    [InlineData(true, null)]
+    public async Task RegisterForms_RequireExplicitChoicesBeforeApplyingOrEditing(bool editing, string? missingField)
+    {
+        var group = await SeedWorkgroupAsync(isSensitive: true);
+        var actor = group.Members.Single().UserId;
+        var service = Substitute.For<IWorkgroupService>();
+        service.GetBySlugAsync(group.Slug, Ct).Returns(await NewService().GetBySlugAsync(group.Slug, Ct));
+        service.ApplyAsync(actor, Arg.Any<WorkgroupApplication>(), Ct)
+            .Returns(new WorkgroupMutationResult<Guid>(Guid.NewGuid()));
+        service.EditRegisterAsync(group.Id, actor, Arg.Any<WorkgroupRegisterEdit>(), Ct)
+            .Returns(new WorkgroupMutationResult());
+        var controller = BuildController(actor, isBoard: false, service);
+        using var services = new ServiceCollection().AddLogging().AddControllers().Services.BuildServiceProvider();
+        controller.HttpContext.RequestServices = services;
+        var fields = new Dictionary<string, StringValues>(StringComparer.Ordinal)
+        {
+            ["Name"] = group.Name, ["Purpose"] = "Updated purpose", ["Deliverable"] = "Report",
+            ["DeliverableKind"] = "0", ["Audience"] = "0", ["IsSensitive"] = "false"
+        };
+        if (missingField is not null) fields.Remove(missingField);
+        var metadata = services.GetRequiredService<IModelMetadataProvider>().GetMetadataForType(typeof(WorkgroupFormViewModel));
+        var binder = services.GetRequiredService<IModelBinderFactory>().CreateBinder(new ModelBinderFactoryContext { Metadata = metadata });
+        var binding = DefaultModelBindingContext.CreateBindingContext(controller.ControllerContext,
+            new FormValueProvider(BindingSource.Form, new FormCollection(fields), CultureInfo.InvariantCulture),
+            metadata, bindingInfo: null, modelName: "");
+        await binder.BindModelAsync(binding);
+        var model = (WorkgroupFormViewModel)binding.Result.Model!;
+        services.GetRequiredService<IObjectModelValidator>().Validate(controller.ControllerContext, null, "", model);
+
+        var result = editing ? await controller.Edit(group.Slug, model, Ct) : await controller.Apply(model, Ct);
+
+        if (missingField is not null)
+        {
+            controller.ModelState.Should().ContainKey(missingField);
+            controller.ModelState[missingField]!.Errors.Should().NotBeEmpty();
+            result.Should().BeOfType<ViewResult>().Which.Model.Should().BeSameAs(model);
+            await service.DidNotReceiveWithAnyArgs().ApplyAsync(default, default!);
+            await service.DidNotReceiveWithAnyArgs().EditRegisterAsync(default, default, default!);
+        }
+        else
+        {
+            controller.ModelState.IsValid.Should().BeTrue();
+            result.Should().BeOfType<RedirectToActionResult>();
+            if (editing)
+                await service.Received(1).EditRegisterAsync(group.Id, actor,
+                    Arg.Is<WorkgroupRegisterEdit>(save => !save.IsSensitive && save.DeliverableKind == WorkgroupDeliverableKind.Recommendation && save.Audience == WorkgroupAudience.Board), Ct);
+            else
+                await service.Received(1).ApplyAsync(actor,
+                    Arg.Is<WorkgroupApplication>(save => !save.IsSensitive && save.DeliverableKind == WorkgroupDeliverableKind.Recommendation && save.Audience == WorkgroupAudience.Board), Ct);
+        }
+    }
+
+    [HumansTheory]
     [InlineData(false, false)]
     [InlineData(false, true)]
     [InlineData(true, false)]

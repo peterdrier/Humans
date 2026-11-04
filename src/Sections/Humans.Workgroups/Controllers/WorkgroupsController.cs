@@ -58,7 +58,11 @@ internal sealed class WorkgroupsController(
     {
         var (error, user) = await ResolveCurrentUserOrChallengeAsync(ct);
         if (error is not null) return error;
-        if (!ModelState.IsValid) return View(model);
+        if (!ModelState.IsValid)
+        {
+            logger.LogWarning("Rejected invalid Workgroup application form for user {UserId}", user.Id);
+            return View(model);
+        }
 
         return await FormAsync(model, async () =>
         {
@@ -165,7 +169,11 @@ internal sealed class WorkgroupsController(
     {
         var (error, user, workgroup) = await ResolveMemberWorkAsync(slug, ct);
         if (error is not null) return error;
-        if (!ModelState.IsValid) return View(model);
+        if (!ModelState.IsValid)
+        {
+            logger.LogWarning("Rejected invalid register edit for Workgroup {WorkgroupId}", workgroup.Id);
+            return View(model);
+        }
 
         return await FormAsync(model, async () =>
         {
