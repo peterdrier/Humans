@@ -91,6 +91,12 @@ internal sealed class HoldedSalesClient(HoldedTransport transport)
                 Tax = ReadDecimalV2(Prop(node, "tax")),
                 Total = ReadRequiredDecimalV2(Prop(node, "total"), "total"),
                 IsDraft = Prop(node, "draft")?.GetValue<bool>(),
+                // A line missing its quantity, price or rate would compare as a different line, so it fails the read.
+                Lines = Arr(Prop(node, "lines")).Select(l => new HoldedSalesDocumentLineDto(
+                    Prop(l, "name")?.GetValue<string>() ?? "",
+                    ReadRequiredDecimalV2(Prop(l, "units"), "lines[].units"),
+                    ReadRequiredDecimalV2(Prop(l, "price"), "lines[].price"),
+                    ReadRequiredDecimalV2(Prop(l, "tax"), "lines[].tax"))).ToList(),
                 RawJson = body,
             };
         }

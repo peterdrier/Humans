@@ -162,6 +162,29 @@ public class HoldedClientSalesDocumentTests
         doc.RawJson.Should().Be(json);
     }
 
+    [HumansFact]
+    public async Task GetSalesDocumentAsync_ParsesLinesAndRefusesOneWithoutAPrice()
+    {
+        // v2 returns `lines` (not v1's `products`), every number a string.
+        const string json = """
+        {"id":"doc-9","total":"181.00","lines":[
+          {"name":"Ice","units":"20","price":"5.00","tax":"21","taxes":["s_iva_21"]},
+          {"name":"Ice — refundable deposit","units":"20","price":"3.00","tax":"0"}]}
+        """;
+
+        var doc = await Make(new StubHandler(_ => Respond(HttpStatusCode.OK, json))).GetSalesDocumentAsync(
+            HoldedSalesDocumentKind.Invoice, "doc-9", TestContext.Current.CancellationToken);
+
+        doc.Lines.Should().Equal(
+            new HoldedSalesDocumentLineDto("Ice", 20m, 5m, 21m),
+            new HoldedSalesDocumentLineDto("Ice — refundable deposit", 20m, 3m, 0m));
+
+        var act = async () => await Make(new StubHandler(_ => Respond(HttpStatusCode.OK,
+                """{"id":"doc-9","total":"6.05","lines":[{"name":"Ice","units":"1","tax":"21"}]}""")))
+            .GetSalesDocumentAsync(HoldedSalesDocumentKind.Invoice, "doc-9", TestContext.Current.CancellationToken);
+        await act.Should().ThrowAsync<HoldedPermanentException>().WithMessage("*lines[].price*");
+    }
+
     [HumansTheory]
     [InlineData(HoldedSalesDocumentKind.Invoice, "{}")]
     [InlineData(HoldedSalesDocumentKind.Invoice, "{\"total\":null}")]

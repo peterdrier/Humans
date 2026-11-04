@@ -55,6 +55,12 @@ public sealed record HoldedSalesDocumentDto
     /// <summary>A draft books no revenue and has no number until <see cref="IHoldedClient.ApproveSalesDocumentAsync"/>.
     /// Null when Holded doesn't report the field.</summary>
     public bool? IsDraft { get; init; }
+    /// <summary>The document's lines as Holded holds them, in its order. Empty when Holded reports none.</summary>
+    public required IReadOnlyList<HoldedSalesDocumentLineDto> Lines { get; init; }
     /// <summary>The verbatim response body, kept for the audited payload on <c>store_invoices</c>.</summary>
     public required string RawJson { get; init; }
 }
+
+/// <summary>One line of an issued sales document. <paramref name="Price"/> is the VAT-exclusive unit price;
+/// <paramref name="TaxPercent"/> is the line's primary tax rate (21 for 21%).</summary>
+public sealed record HoldedSalesDocumentLineDto(string Name, decimal Units, decimal Price, decimal TaxPercent);

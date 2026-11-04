@@ -72,7 +72,7 @@ internal sealed class StoreInvoiceIssuer(
             var (adoptedKind, adoptedDoc) = alreadyIssued;
             // The order stayed Open, so it may have been edited or repriced since that document was created. Divergence
             // is a human's problem, not something to reconcile silently.
-            if (GetDocumentTotalsRefusal(order, adoptedDoc, totals) is { } recoveryRefusal)
+            if (GetDocumentMismatchRefusal(order, adoptedDoc, totals) is { } recoveryRefusal)
                 return Refuse(order, actorUserId, recoveryRefusal);
             if (adoptedDoc.IsDraft == true)
             {
@@ -169,29 +169,62 @@ internal sealed class StoreInvoiceIssuer(
     }
 
     /// <summary>
-    /// Freezing against different totals would leave the order contradicting its legal invoice. A retry's lines and
-    /// prices may also have changed since creation. Correcting an issued document is a factura rectificativa, a human
-    /// decision, so both new issuance and recovery fail loudly.
+    /// Freezing against different totals or lines would leave the order contradicting its legal invoice. A retry's lines
+    /// and prices may also have changed since creation, and two lines can trade amounts with every total unchanged, so
+    /// the line set (quantity, unit price, VAT) is compared too; names are not, since a renamed product is the same sale.
+    /// Correcting an issued document is a factura rectificativa, a human decision, so both new issuance and recovery
+    /// fail loudly.
     /// </summary>
-    private static string? GetDocumentTotalsRefusal(
+    private static string? GetDocumentMismatchRefusal(
         Order order, HoldedSalesDocumentDto document, BalanceCalculator.Result totals)
     {
         // Deposits are ordinary tax-0 lines on the document, so they land in Holded's subtotal.
         var expectedSubtotal = decimal.Round(totals.LinesSubtotalEur + totals.DepositTotalEur, 2);
         var expectedTax = decimal.Round(totals.VatTotalEur, 2);
         var expectedTotal = decimal.Round(expectedSubtotal + expectedTax, 2);
+        var name = string.IsNullOrEmpty(document.DocNumber) ? document.Id : document.DocNumber;
         if (decimal.Round(document.Subtotal, 2) == expectedSubtotal
             && decimal.Round(document.Tax, 2) == expectedTax
             && decimal.Round(document.Total, 2) == expectedTotal)
-            return null;
+        {
+            if (ExpectedLineSet(order, totals).SequenceEqual(
+                    LineSet(document.Lines.Select(l => new SalesLine(l.Units, l.Price, l.TaxPercent)))))
+                return null;
+            return $"Holded already holds document {name} for order {order.Id}, but its lines no longer match the "
+                + "order's quantities, unit prices or VAT rates, though the totals agree. Resolve it by hand — "
+                + "correcting an issued document is a factura rectificativa, and no second document will be issued "
+                + "in the meantime.";
+        }
 
-        var name = string.IsNullOrEmpty(document.DocNumber) ? document.Id : document.DocNumber;
         return $"Holded already holds document {name} for order {order.Id}, but it no longer matches "
             + $"the order: the document reads EUR {document.Subtotal:0.00} + {document.Tax:0.00} VAT "
             + $"= {document.Total:0.00}, while the order now totals EUR {expectedSubtotal:0.00} + "
             + $"{expectedTax:0.00} VAT = {expectedTotal:0.00}. Resolve it by hand — correcting an issued document is a factura "
             + "rectificativa, and no second document will be issued in the meantime.";
     }
+
+    /// <summary>The lines <see cref="BuildInvoiceLinesAsync"/> sends: each order line, plus a tax-0 deposit line when
+    /// it carries a deposit.</summary>
+    private static IReadOnlyList<SalesLine> ExpectedLineSet(Order order, BalanceCalculator.Result totals)
+    {
+        var totalsByLine = totals.Lines.ToDictionary(t => t.LineId);
+        var lines = new List<SalesLine>();
+        foreach (var line in order.Lines)
+        {
+            var t = totalsByLine[line.Id];
+            lines.Add(new SalesLine(line.Qty, t.EffectiveUnitPrice, t.EffectiveVatRate));
+            if (t.EffectiveDeposit is { } deposit && deposit > 0m)
+                lines.Add(new SalesLine(line.Qty, deposit, 0m));
+        }
+        return LineSet(lines);
+    }
+
+    private static IReadOnlyList<SalesLine> LineSet(IEnumerable<SalesLine> lines) =>
+        lines.Select(l => l with { Price = decimal.Round(l.Price, 2) })
+            .OrderBy(l => l.Units).ThenBy(l => l.Price).ThenBy(l => l.TaxPercent)
+            .ToList();
+
+    private sealed record SalesLine(decimal Units, decimal Price, decimal TaxPercent);
 
     /// <summary>Holded's list endpoints return <c>tags</c> but not <c>notes</c>, so the tag is what makes a document findable by its order.</summary>
     private static string OrderDocumentTag(Guid orderId) => $"humans-order-{orderId}";
@@ -235,7 +268,7 @@ internal sealed class StoreInvoiceIssuer(
         string auditDetail,
         CancellationToken ct)
     {
-        if (GetDocumentTotalsRefusal(order, document, totals) is { } totalsRefusal)
+        if (GetDocumentMismatchRefusal(order, document, totals) is { } totalsRefusal)
             return Refuse(order, actorUserId, totalsRefusal);
         if (document.IsDraft == true || string.IsNullOrWhiteSpace(document.DocNumber))
             return Refuse(order, actorUserId,
