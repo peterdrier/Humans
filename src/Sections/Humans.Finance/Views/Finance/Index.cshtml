@@ -21,8 +21,12 @@
         <div class="fw-semibold"><i class="fa-solid fa-scale-balanced me-2"></i>Expense recon</div>
         <div class="small text-muted">Approved expense lines against their Holded documents and creditor balances.</div>
     </a>
-    <a asp-action="Holded" class="list-group-item list-group-item-action">
-        <div class="fw-semibold"><i class="fa-solid fa-plug me-2"></i>Holded connector</div>
-        <div class="small text-muted">Purchase-document sync, the budget category map, and every pulled document.</div>
+    <a asp-action="HoldedAccounts" class="list-group-item list-group-item-action">
+        <div class="fw-semibold"><i class="fa-solid fa-diagram-project me-2"></i>Account map</div>
+        <div class="small text-muted">Which Holded account each budget category books to, and the expense accounts created outside the budget.</div>
+    </a>
+    <a asp-action="HoldedUnmatched" class="list-group-item list-group-item-action">
+        <div class="fw-semibold"><i class="fa-solid fa-question me-2"></i>Unmatched docs</div>
+        <div class="small text-muted">Holded purchase documents no budget category claims.</div>
     </a>
 </div>

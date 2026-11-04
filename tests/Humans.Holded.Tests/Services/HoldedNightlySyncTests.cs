@@ -5,12 +5,13 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using NSubstitute;
+using NSubstitute.ExceptionExtensions;
 
 namespace Humans.Holded.Tests.Services;
 
 /// <summary>
 /// The nightly Holded sync must no-op when no API key is configured (PR-preview / local dev),
-/// and run the ledger-mirror sweep when a key is present. Purchase docs are Finance's own job.
+/// and run the purchase-document sync and the ledger sweep when a key is present.
 /// A sweep the gate refuses is reported, never silent. The Hangfire target
 /// <c>HoldedSyncJob</c> is a shim over this — see <see cref="IHoldedNightlySync"/>.
 /// </summary>
@@ -32,19 +33,35 @@ public class HoldedNightlySyncTests
 
         await sync.RunAsync(Xunit.TestContext.Current.CancellationToken);
 
+        await holded.DidNotReceive().SyncPurchaseDocumentsAsync(Arg.Any<CancellationToken>());
         await holded.DidNotReceive().SyncLedgerAsync(Arg.Any<bool>(), Arg.Any<CancellationToken>());
         logger.Entries.Should().ContainSingle(e =>
             e.Level == LogLevel.Information && e.Message.Contains("not configured"));
     }
 
     [HumansFact]
-    public async Task RunAsync_RunsLedgerSweep_WhenApiKeyPresent()
+    public async Task RunAsync_RunsBothSyncs_WhenApiKeyPresent()
     {
         var holded = Substitute.For<IHoldedService>();
         var sync = MakeSync(holded, apiKey: "k");
 
         await sync.RunAsync(Xunit.TestContext.Current.CancellationToken);
 
+        await holded.Received(1).SyncPurchaseDocumentsAsync(Arg.Any<CancellationToken>());
+        await holded.Received(1).SyncLedgerAsync(false, Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task RunAsync_FailedDocumentSync_StillSweepsTheLedger_ThenFails()
+    {
+        var holded = Substitute.For<IHoldedService>();
+        holded.SyncPurchaseDocumentsAsync(Arg.Any<CancellationToken>())
+            .ThrowsAsync(new HoldedTransientException("holded down"));
+        holded.SyncLedgerAsync(false, Arg.Any<CancellationToken>()).Returns(true);
+
+        var run = () => MakeSync(holded, apiKey: "k").RunAsync(Xunit.TestContext.Current.CancellationToken);
+
+        await run.Should().ThrowAsync<HoldedTransientException>();
         await holded.Received(1).SyncLedgerAsync(false, Arg.Any<CancellationToken>());
     }
 
@@ -52,6 +69,7 @@ public class HoldedNightlySyncTests
     public async Task RunAsync_WarnsWhenSweepSkipped()
     {
         var holded = Substitute.For<IHoldedService>();
+        holded.SyncPurchaseDocumentsAsync(Arg.Any<CancellationToken>()).Returns(true);
         holded.SyncLedgerAsync(false, Arg.Any<CancellationToken>()).Returns(false);
         var logger = new CapturingLogger<HoldedNightlySync>();
         var sync = MakeSync(holded, apiKey: "k", logger);
@@ -66,6 +84,7 @@ public class HoldedNightlySyncTests
     public async Task RunAsync_IsQuietWhenSweepRan()
     {
         var holded = Substitute.For<IHoldedService>();
+        holded.SyncPurchaseDocumentsAsync(Arg.Any<CancellationToken>()).Returns(true);
         holded.SyncLedgerAsync(false, Arg.Any<CancellationToken>()).Returns(true);
         var logger = new CapturingLogger<HoldedNightlySync>();
         var sync = MakeSync(holded, apiKey: "k", logger);

@@ -9,7 +9,7 @@ the single-service convention several other sections use). **DbContext:**
 (`src/Sections/Humans.Holded/Data/Repository.cs`, implements
 `IHoldedMirrorRepository`) injects `IDbContextFactory<HoldedDbContext>`
 directly. Owns `HoldedLedgerLines`,
-`HoldedSyncStates`, `HoldedAccounts`, `HoldedApiCalls`.
+`HoldedSyncStates`, `HoldedAccounts`, `HoldedApiCalls`, `HoldedPurchaseDocs`.
 
 This is the **ledger mirror**: it sweeps Holded's daybook journal into
 `HoldedLedgerLines` with replace semantics (a fetched window is the
@@ -30,7 +30,8 @@ Repository: `IHoldedMirrorRepository`.
 | Table | R/W |
 |-------|-----|
 | HoldedLedgerLines | R/W (replace-window upsert via `SyncLedgerAsync` — full history on cold cache or `full: true`, else a 45-day trailing window; read by account (optional window and type), by entry numbers, and as per-account / per-account-and-type / windowed sums grouped in SQL — never the whole table) |
-| HoldedSyncStates | R/W (one row per `HoldedSyncKind`: Ledger, FullSync, Accounts) |
+| HoldedSyncStates | R/W (one row per `HoldedSyncKind`: Ledger, FullSync, Accounts, PurchaseDocs) |
+| HoldedPurchaseDocs | R/W (full replace via `SyncPurchaseDocumentsAsync`, an unfetched note keeps the stored one; read whole by `GetPurchaseDocumentsAsync`, which Finance attributes on read) |
 | HoldedAccounts | R/W (chart-of-accounts cache, refreshed and reconciled every sync) |
 | HoldedApiCalls | R/W (drained from `IHoldedCallLog` after each sync/overview read) |
 
@@ -43,11 +44,12 @@ call-budget display. Implements `IHoldedService` (the ledger-read
 surface consumed cross-section by Finance's `Service` —
 `GetLedgerLinesAsync`, `GetAccountBalancesAsync`; also `IsConfigured`,
 `GetEntryAsync`, `GetPurchaseLinesAsync`, `GetOpenDocumentAmountsAsync`,
-`GetSumsByAccountAsync`, `GetChartAsync` for the callers that will move off
+`GetSumsByAccountAsync`, `GetChartAsync`, `GetPurchaseDocumentsAsync` and
+`SyncPurchaseDocumentsAsync` for the callers that will move off
 `IHoldedClient`) and `IHoldedAdminService` (the `/Holded` pages — summary,
 accounts, calls by month, account statements, entries). No
-`IMemoryCache`. A single in-process `SemaphoreSlim` gate serializes
-`SyncLedgerAsync` runs (the nightly Hangfire job and an admin-triggered
+`IMemoryCache`. In-process `SemaphoreSlim` gates serialize
+`SyncLedgerAsync` runs and `SyncPurchaseDocumentsAsync` runs (the nightly Hangfire job and an admin-triggered
 sync can otherwise race the replace-window).
 
 ### HoldedWrite (Scoped — implements `IHoldedWrite`)
