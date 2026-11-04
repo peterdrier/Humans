@@ -141,7 +141,7 @@ internal sealed class MailerLiteAudienceSyncService(
             }
             catch (Exception ex)
             {
-                logger.LogWarning(ex, "Assign failed for {Sub} in {Audience}", subId, audience.Key);
+                logger.LogError(ex, "Assign failed for {Sub} in {Audience}", subId, audience.Key);
                 errors++;
             }
         }
@@ -155,7 +155,7 @@ internal sealed class MailerLiteAudienceSyncService(
             }
             catch (Exception ex)
             {
-                logger.LogWarning(ex, "Unassign failed for {Sub} in {Audience}", subId, audience.Key);
+                logger.LogError(ex, "Unassign failed for {Sub} in {Audience}", subId, audience.Key);
                 errors++;
             }
         }

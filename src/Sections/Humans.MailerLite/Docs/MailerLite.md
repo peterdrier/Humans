@@ -54,6 +54,8 @@ All routes are `AdminOnly`.
 
 ## Invariants
 
+- Expected audience-preview HTTP failures and timeouts remain visible at Warning without exception stacks. Unexpected subscriber assignment/removal exceptions log at Error with exception details; the sync still counts the failed operation and continues.
+
 - Import commits reject binding errors with HTTP 400 and a Warning before rebuilding or applying a plan, so a malformed numeric limit cannot become an unlimited import. A valid blank limit still applies the whole plan; positive limits retain their existing per-outcome throttle.
 
 - Shared table currency and number cells use the selected UI culture; numeric sort values stay invariant.
