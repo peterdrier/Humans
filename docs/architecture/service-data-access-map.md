@@ -162,8 +162,8 @@ Every table is owned by exactly one repository; there are no HUM0025
    (`IRoleAssignmentWrite`), `IConsentService`,
    `ICampService`, `ITicketService`, `IGoogleSyncService`
    (consumed by `NotificationMeterProvider` for failed-sync-event counts;
-   foreign writes go through `IGoogleSyncWrite`), `ITeamResourceService`, `IHoldedFinanceService`
-   (writes via `IHoldedFinanceWrite`),
+   foreign writes go through `IGoogleSyncWrite`), `ITeamResourceService`, `IFinanceService`
+   (writes via `IFinanceWrite`),
    `ICampaignService` (consumed by `TicketQueryService`; writes via
    `ICampaignWrite`),
    `IEventService` (consumed by `EventsCardViewComponent`

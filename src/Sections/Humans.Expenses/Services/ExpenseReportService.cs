@@ -32,7 +32,6 @@ internal sealed class ExpenseReportService(
     IAuditLogService auditLogService,
     IAuditViewerService auditViewer,
     IHoldedService holded,
-    IHoldedFinanceService holdedFinance,
     IFinanceService finance,
     IFinanceWrite financeWrite,
     IPreapprovalService preapprovals,
@@ -82,7 +81,7 @@ internal sealed class ExpenseReportService(
         // no ledger to read. The push half below still has something to say about why.
         if (!string.IsNullOrEmpty(report.HoldedContactId))
         {
-            var status = await holdedFinance.GetCreditorStatusAsync(
+            var status = await finance.GetCreditorStatusAsync(
                 report.HoldedSupplierAccountNum, ct);
 
             // The creditor contact covers every id the human has held, so the total does too.
@@ -1546,7 +1545,7 @@ internal sealed class ExpenseReportService(
     private async Task<(ExpenseBooking? Booking, ExpenseMutationResult? Refusal)> ResolveBookingAsync(
         int holdedAccountNumber, Guid? pinnedYearId, CancellationToken ct)
     {
-        var account = (await holdedFinance.ListExpenseAccountsAsync(activeOnly: true, ct))
+        var account = (await finance.ListExpenseAccountsAsync(activeOnly: true, ct))
             .FirstOrDefault(a => a.AccountNum == holdedAccountNumber);
         if (account is null)
             return (null, ExpenseMutationResult.Failure("Expenses_Validation_AccountNotFound"));
@@ -1555,7 +1554,7 @@ internal sealed class ExpenseReportService(
 
         // The option list said this account is a budget category, so the map row exists; the
         // category behind it may still be gone or belong to another year.
-        var mapRow = (await holdedFinance.GetCategoryMapAsync(ct))
+        var mapRow = (await finance.GetCategoryMapAsync(ct))
             .FirstOrDefault(m => m.IsActive && m.HoldedAccountNumber == holdedAccountNumber);
         if (mapRow is null)
             return (null, ExpenseMutationResult.Failure("Expenses_Validation_CategoryNotFound"));

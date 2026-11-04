@@ -15,14 +15,14 @@ internal sealed class ExpenseReportBackgroundProcessor(
     IFileStorage fileStorage,
     IUserService userService,
     IHoldedClient holdedClient,
-    IHoldedFinanceService holdedFinance,
-    IHoldedFinanceWrite holdedFinanceWrite,
+    IFinanceService finance,
+    IFinanceWrite financeWrite,
     IAuditLogService auditLogService,
     IClock clock,
     ILogger<ExpenseReportBackgroundProcessor> logger) : IExpenseReportBackgroundProcessor, IApplicationService
 {
     private readonly ExpenseHoldedPublisher holdedPublisher = new(
-        repo, fileStorage, userService, holdedClient, holdedFinance, holdedFinanceWrite, auditLogService, logger);
+        repo, fileStorage, userService, holdedClient, finance, financeWrite, auditLogService, logger);
 
     /// <summary>
     /// With the 2^n-minute backoff, ten attempts span roughly 17 hours: long enough to ride out a Holded outage, short

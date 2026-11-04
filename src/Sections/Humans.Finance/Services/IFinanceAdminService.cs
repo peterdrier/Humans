@@ -5,8 +5,8 @@ using Humans.Finance.Models;
 
 namespace Humans.Finance.Services;
 
-/// <summary>Only Finance's own screens call this; the cross-section surface is <see cref="Contracts.IHoldedFinanceService"/>.</summary>
-internal interface IHoldedFinanceAdminService : IApplicationService
+/// <summary>Only Finance's own screens call this; the cross-section surface is <see cref="Contracts.IFinanceService"/>.</summary>
+internal interface IFinanceAdminService : IApplicationService
 {
     /// <summary>Every active-year budget category with its mapped, proposed or orphaned account, numbered from
     /// <paramref name="blockStart"/>.</summary>

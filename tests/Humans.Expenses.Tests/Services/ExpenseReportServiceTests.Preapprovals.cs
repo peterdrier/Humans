@@ -116,7 +116,7 @@ public sealed partial class ExpenseReportServiceTests
         loaded.BudgetCategoryId.Should().BeNull("a pre-approved report is first reviewed by its program's managers, not a budget coordinator");
         loaded.BudgetYearId.Should().BeNull();
         loaded.MaxAmount.Should().BeNull("the cap is stamped at submit, not at draft");
-        await _holdedFinance.DidNotReceive().ListExpenseAccountsAsync(Arg.Any<bool>(), Arg.Any<CancellationToken>());
+        await _finance.DidNotReceive().ListExpenseAccountsAsync(Arg.Any<bool>(), Arg.Any<CancellationToken>());
     }
 
     [HumansFact]

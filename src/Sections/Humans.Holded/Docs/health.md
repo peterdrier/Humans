@@ -116,7 +116,7 @@ Stated so a violation is recognisable; each names the line that enforces it.
 8. **The connector never clears a Holded field it was not asked to clear** — every payload omits
    its nulls. `HoldedJson.OmitNulls`
 9. **Only `Repository` touches `HoldedDbContext`**, and this section reads no other section's
-   tables — Finance's doc-sync row arrives through `IHoldedFinanceService`, in the controller.
+   tables — Finance's doc-sync row arrives through `IFinanceService`, in the controller.
    `src/Humans.Analyzers/Internal/Rules/DbContextOwnershipRule.cs:8`
 
 ### Negative access

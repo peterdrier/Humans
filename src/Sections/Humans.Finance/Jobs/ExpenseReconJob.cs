@@ -9,7 +9,7 @@ namespace Humans.Finance.Jobs;
 /// preview without Holded reports an unavailable mirror.</summary>
 [DisableConcurrentExecution("holded-api", 300)]
 internal sealed class ExpenseReconJob(
-    IHoldedFinanceService finance,
+    IFinanceService finance,
     ILogger<ExpenseReconJob> logger) : IRecurringJob
 {
     public async Task ExecuteAsync(CancellationToken cancellationToken = default)

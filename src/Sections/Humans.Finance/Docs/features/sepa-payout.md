@@ -291,7 +291,7 @@ Sabadell's live behaviour: one outgoing line per transfer, dated the execution d
 remittance text echoed. `GetSepaPayoutsAsync` pairs such a line with the one unbooked transfer of
 exactly its amount whose file date is within the **tolerance** of the line's date, inside the feed
 window. The tolerance is days either side of the file's generation date, default
-`IHoldedFinanceAdminService.DefaultSepaMatchToleranceDays` (2), editable at the top of
+`IFinanceAdminService.DefaultSepaMatchToleranceDays` (2), editable at the top of
 `/Finance/Sepa` (`?days=N`, clamped to 0..90) for a bank that executed a file late; the value posts
 back with every booking from that view, so the booking re-validates under the window the page
 paired with. A line whose text names the account is bound only from below (no earlier than the
@@ -426,7 +426,7 @@ Server-side, all-or-nothing:
 ## IBAN handling
 
 The unmasked IBAN is stored only as sent: the generated XML and `sepa_payout_transfers.Iban`.
-Logs, audit descriptions, the SEPA page and the cross-section `HoldedCreditorAccountRow` carry
+Logs, audit descriptions, the SEPA page and the cross-section `CreditorAccountRow` carry
 `IbanFormatter.Mask(...)` output only; builder error messages mask the IBAN they name. An admin
 screen (`/Finance/Creditors/{accountNum}`) and the member's own view may show it in full.
 

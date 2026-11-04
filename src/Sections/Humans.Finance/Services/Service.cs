@@ -38,8 +38,15 @@ internal sealed class Service(
     FinanceEmails emails,
     IOptions<SepaOptions> sepa,
     TrackedCache<string, Dictionary<string, int>> bookingState,
-    ILogger<Service> logger) : IHoldedFinanceManagement, IHoldedFinanceAdminService, ISepaBankBooking, IUserDataContributor
+    IPaymentDetailsManagement paymentDetails,
+    ILogger<Service> logger) : IFinanceService, IFinanceWrite, IFinanceAdminService, ISepaBankBooking, IUserDataContributor
 {
+    public Task<string?> GetIbanAsync(Guid userId, CancellationToken ct = default) =>
+        paymentDetails.GetIbanAsync(userId, ct);
+
+    public Task<bool> SetIbanAsync(Guid userId, string? iban, CancellationToken ct = default) =>
+        paymentDetails.SetIbanAsync(userId, iban, ct);
+
     internal const string HoldedCreditorAccount = "HoldedCreditorAccount";
     internal const string AdditionalHoldedCreditorAccounts = "AdditionalHoldedCreditorAccounts";
     internal const string SepaPayouts = "SepaPayouts";
@@ -187,7 +194,7 @@ internal sealed class Service(
         return created;
     }
 
-    public async Task<HoldedExpenseAccountRef> CreateOrLinkExpenseAccountAsync(
+    public async Task<ExpenseAccountRef> CreateOrLinkExpenseAccountAsync(
         string name, int? existingAccountNum, CancellationToken ct = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
@@ -227,7 +234,7 @@ internal sealed class Service(
                 await RegisterManagedAsync(found.AccountNum, found.Id, found.Name, managed, now, ct);
             await audit.LogAsync(FinanceAuditActions.HoldedExpenseAccountLinked, HoldedExpenseAccount, Guid.Empty,
                 $"Linked Holded expense account {found.AccountNum} '{found.Name}' for '{name}'", "Finance");
-            return new HoldedExpenseAccountRef(found.AccountNum, found.Id, found.Name, Created: false);
+            return new ExpenseAccountRef(found.AccountNum, found.Id, found.Name, Created: false);
         }
 
         var used = map.Select(m => m.HoldedAccountNumber)
@@ -251,7 +258,7 @@ internal sealed class Service(
         await audit.LogAsync(FinanceAuditActions.HoldedExpenseAccountCreated, HoldedExpenseAccount, Guid.Empty,
             $"Created Holded expense account {next} '{name}'", "Finance");
         await RegisterManagedAsync(next, id, name, managed, now, ct);
-        return new HoldedExpenseAccountRef(next, id, name, Created: true);
+        return new ExpenseAccountRef(next, id, name, Created: true);
     }
 
     private Task RegisterManagedAsync(
@@ -284,7 +291,7 @@ internal sealed class Service(
             $"{(isActive ? "Restored" : "Retired")} Holded expense account {accountNum} '{row.Label}'", "Finance");
     }
 
-    public async Task<IReadOnlyList<HoldedExpenseAccountOption>> ListExpenseAccountsAsync(
+    public async Task<IReadOnlyList<ExpenseAccountOption>> ListExpenseAccountsAsync(
         bool activeOnly, CancellationToken ct = default)
     {
         var map = await repo.GetCategoryMapAsync(ct);
@@ -299,27 +306,18 @@ internal sealed class Service(
         // is inactive here and dropped with activeOnly.
         var options = map
             .Where(m => m.IsActive)
-            .Select(m => new HoldedExpenseAccountOption(
+            .Select(m => new ExpenseAccountOption(
                 m.HoldedAccountNumber, m.HoldedAccountId,
                 labels.GetValueOrDefault(m.BudgetCategoryId, $"Category {m.HoldedAccountNumber}"),
                 IsBudgetCategory: true, IsActive: labels.ContainsKey(m.BudgetCategoryId)))
             .Where(o => !activeOnly || o.IsActive)
             .Concat(managed
                 .Where(m => !activeOnly || m.IsActive)
-                .Select(m => new HoldedExpenseAccountOption(
+                .Select(m => new ExpenseAccountOption(
                     m.HoldedAccountNumber, m.HoldedAccountId, m.Label,
                     IsBudgetCategory: false, IsActive: m.IsActive)))
             .ToList();
         return options;
-    }
-
-    public async Task<HoldedDocSyncInfo> GetDocSyncInfoAsync(CancellationToken ct = default)
-    {
-        var mirror = await holded.GetPurchaseDocumentsAsync(ct);
-        // From the repo, so a caller never builds the full creditor view (a live contacts walk) just to show a number.
-        var bindings = await repo.GetCreditorContactsAsync(ct);
-        return new HoldedDocSyncInfo(
-            mirror.LastSyncAt, mirror.Status, mirror.LastError, mirror.LastCount, bindings.Count);
     }
 
     /// <summary>The purchase-document mirror with each document's category attribution: account match over tag
@@ -373,7 +371,7 @@ internal sealed class Service(
             id => members.GetValueOrDefault(id)?.BurnerName ?? id.ToString());
     }
 
-    public async Task<IReadOnlyList<HoldedActualRow>> GetActualsForYearAsync(
+    public async Task<IReadOnlyList<CategoryActualRow>> GetActualsForYearAsync(
         int calendarYear, CancellationToken ct = default)
     {
         // Doc-derived, not ledger balances: the budget pages are gross/IVA-inclusive while a 629
@@ -382,10 +380,10 @@ internal sealed class Service(
         return docs
             .Where(d => d.Doc.IsApproved && d.Doc.Date.Year == calendarYear && d.Match.CategoryId is not null)
             .GroupBy(d => d.Match.CategoryId!.Value)
-            .Select(g => new HoldedActualRow(
+            .Select(g => new CategoryActualRow(
                 g.Key,
                 g.Sum(d => d.Doc.Total),
-                g.Select(d => new HoldedActualDoc(
+                g.Select(d => new CategoryActualDoc(
                         d.Doc.Id, d.Doc.DocNumber, d.Doc.ContactName, d.Doc.Description, d.Doc.Date, d.Doc.Total,
                         d.Doc.HoldedUrl))
                     .ToList()))
@@ -393,12 +391,12 @@ internal sealed class Service(
             .ToList();
     }
 
-    public async Task<IReadOnlyList<HoldedUnmatchedRow>> GetUnmatchedAsync(CancellationToken ct = default)
+    public async Task<IReadOnlyList<UnmatchedDocRow>> GetUnmatchedAsync(CancellationToken ct = default)
     {
         var (_, docs) = await AttributedDocsAsync(ct);
         return docs
             .Where(d => d.IsUnmatched)
-            .Select(d => new HoldedUnmatchedRow(
+            .Select(d => new UnmatchedDocRow(
                 d.Doc.Id,
                 d.Doc.DocNumber,
                 d.Doc.ContactName,
@@ -418,12 +416,12 @@ internal sealed class Service(
     }
 
     /// <summary>Category and group names resolved from the active budget year.</summary>
-    private async Task<IReadOnlyList<HoldedCategoryMapRow>> BuildCategoryMapAsync(CancellationToken ct)
+    private async Task<IReadOnlyList<CategoryAccountRow>> BuildCategoryMapAsync(CancellationToken ct)
     {
         var map = await repo.GetCategoryMapAsync(ct);
         var categories = await ActiveYearCategoriesAsync(ct);
 
-        return map.Select(m => new HoldedCategoryMapRow(
+        return map.Select(m => new CategoryAccountRow(
             m.BudgetCategoryId,
             categories.TryGetValue(m.BudgetCategoryId, out var c) ? c.Name : null,
             categories.TryGetValue(m.BudgetCategoryId, out var g) ? g.Group : null,
@@ -434,7 +432,7 @@ internal sealed class Service(
             m.UpdatedAt)).ToList();
     }
 
-    public Task<IReadOnlyList<HoldedCategoryMapRow>> GetCategoryMapAsync(CancellationToken ct = default) =>
+    public Task<IReadOnlyList<CategoryAccountRow>> GetCategoryMapAsync(CancellationToken ct = default) =>
         BuildCategoryMapAsync(ct);
 
     /// <summary>Empty when no year is active.</summary>
@@ -473,7 +471,7 @@ internal sealed class Service(
     private const int CreditorAccountMin = 40000000;
     private const int CreditorAccountMax = 41999999;
 
-    public async Task<HoldedCreditorStatus?> GetCreditorStatusAsync(
+    public async Task<CreditorStatus?> GetCreditorStatusAsync(
         int? supplierAccountNum, CancellationToken ct = default)
     {
         if (supplierAccountNum is not { } num)
@@ -486,7 +484,7 @@ internal sealed class Service(
         var balance = LedgerBalance(lines);
         var payments = lines.Where(l => l.Debit > 0m).ToList();
 
-        return new HoldedCreditorStatus(
+        return new CreditorStatus(
             SupplierAccountNum: num,
             Balance: balance,
             OwedToMember: Math.Max(0m, -balance),
@@ -500,7 +498,7 @@ internal sealed class Service(
     private static decimal LedgerBalance(IReadOnlyCollection<HoldedLedgerLineInfo> lines) =>
         lines.Sum(l => l.Debit) - lines.Sum(l => l.Credit);
 
-    public async Task<(IReadOnlyList<HoldedCreditorAccountRow> Accounts,
+    public async Task<(IReadOnlyList<CreditorAccountRow> Accounts,
                        IReadOnlyList<CreditorContactBinding> Unresolved)> ListCreditorAccountsAsync(
         CancellationToken ct = default)
     {
@@ -585,7 +583,7 @@ internal sealed class Service(
                     ? contactById.GetValueOrDefault(bound[0].HoldedContactId)
                     : contacts.GetValueOrDefault(num);
 
-                return new HoldedCreditorAccountRow(
+                return new CreditorAccountRow(
                     SupplierAccountNum: num,
                     Name: contact?.Name ?? "",
                     Balance: balance,
@@ -771,7 +769,7 @@ internal sealed class Service(
         return CreditorBindResult.Success;
     }
 
-    public async Task<HoldedCreditorLedger?> GetCreditorLedgerAsync(
+    public async Task<CreditorLedger?> GetCreditorLedgerAsync(
         int supplierAccountNum, CancellationToken ct = default)
     {
         // Mirror lines and the cached contact list: no Holded call.
@@ -804,7 +802,7 @@ internal sealed class Service(
                      .ThenBy(i => lines[i].EntryNumber)
                      .ThenBy(i => lines[i].Line))
             runningBalances[i] = running += lines[i].Credit - lines[i].Debit;
-        return new HoldedCreditorLedger(
+        return new CreditorLedger(
             SupplierAccountNum: supplierAccountNum,
             Balance: balance,
             OwedToMember: Math.Max(0m, -balance),
@@ -822,7 +820,7 @@ internal sealed class Service(
             }).ToList(),
             Contact: contact is null
                 ? null
-                : new HoldedContactInfo(
+                : new CreditorContactInfo(
                     contact.Name, contact.TradeName, contact.Email, contact.Phone,
                     contact.Mobile, contact.Iban, contact.TaxCode, contact.Address));
     }
@@ -1282,24 +1280,24 @@ internal sealed class Service(
 
     public Task<(IReadOnlyList<SepaPayoutTransferRow> Rows, string? UnavailableReason,
         IReadOnlyList<SepaBankMovementVm> UnmatchedMovements, string? BankFeedError)>
-        GetSepaPayoutsAsync(int toleranceDays = IHoldedFinanceAdminService.DefaultSepaMatchToleranceDays,
+        GetSepaPayoutsAsync(int toleranceDays = IFinanceAdminService.DefaultSepaMatchToleranceDays,
             CancellationToken ct = default) => booking.GetSepaPayoutsAsync(toleranceDays, ct);
 
     public Task RunAsync(CancellationToken ct = default) => booking.RunAsync(ct);
 
     public Task<SepaBookingResult> BookSepaTransferAsync(
         Guid transferId, string bankMovementId, Guid? actorUserId,
-        int toleranceDays = IHoldedFinanceAdminService.DefaultSepaMatchToleranceDays) =>
+        int toleranceDays = IFinanceAdminService.DefaultSepaMatchToleranceDays) =>
         booking.BookSepaTransferAsync(transferId, bankMovementId, actorUserId, toleranceDays);
 
     public Task<SepaBookingResult> BookSepaFileAsync(
         Guid fileId, string bankMovementId, Guid actorUserId,
-        int toleranceDays = IHoldedFinanceAdminService.DefaultSepaMatchToleranceDays) =>
+        int toleranceDays = IFinanceAdminService.DefaultSepaMatchToleranceDays) =>
         booking.BookSepaFileAsync(fileId, bankMovementId, actorUserId, toleranceDays);
 
     public Task<SepaBookingResult> BookSepaFileMatchesAsync(
         Guid fileId, Guid actorUserId,
-        int toleranceDays = IHoldedFinanceAdminService.DefaultSepaMatchToleranceDays) =>
+        int toleranceDays = IFinanceAdminService.DefaultSepaMatchToleranceDays) =>
         booking.BookSepaFileMatchesAsync(fileId, actorUserId, toleranceDays);
 
     /// <summary>Safe in a download filename.</summary>
