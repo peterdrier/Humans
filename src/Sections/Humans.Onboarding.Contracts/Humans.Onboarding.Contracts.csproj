@@ -1,47 +1,15 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
-  <!-- Stays a leaf: folding into Humans.Onboarding would close a project cycle: Humans.Onboarding -> Humans.Users.Contracts -> Humans.Onboarding (also via Humans.Consent). -->
-
   <!--
-    Onboarding's cross-section surface. This leaf is a *project* rather than a Contracts/
-    folder for a reason no earlier section had: the pair Onboarding/Consent points both
-    ways. Humans.Consent's ConsentController peer-calls
-    IOnboardingIntake.ConsentSignedAsync after a consent submit, and
-    Humans.Onboarding names ConsentResource (the widget's Consents step renders Consent's
-    copy through Consent's own _ConsentReviewBody partial), so a folder inside
-    Humans.Onboarding would make the two section projects reference each other. The leaf
-    breaks it: Humans.Consent -> Humans.Onboarding.Contracts, and Humans.Onboarding ->
-    Humans.Consent, with nothing in this project naming a Consent type
+    A leaf project rather than a Contracts/ folder: Humans.Consent and Humans.Users.Contracts
+    reference this project, and Humans.Onboarding references Humans.Consent (the widget embeds
+    Consent's signing step), so a folder inside Humans.Onboarding would close a project cycle
     (memory/architecture/section-project-cycle-fix.md).
 
-    OnboardingResult is here because it is the funnel's result vocabulary and Users
-    returns it from three surfaces: IUserWrite.SetRejectedAsync,
-    IHumanLifecycleService's three lifecycle transitions and IAccountDeletionService's
-    cancel/purge. The last two are Onboarding's own siblings in the three-concerns split
-    (nobodies-collective#583/#584), so Humans.Users.Contracts referencing this leaf for a
-    two-field record is the Gdpr IUserDataContributor trade: a wide fan-in over a narrow
-    surface is cheap. (IRoleAssignmentService is not one of them - Auth's assign/end pair
-    returns its own RoleAssignmentResult.)
-
-    Everything with no consumer outside the section stays internal: the review-queue
-    reads and their DTOs, the consent-check clear/flag pair, the widget's next-document
-    resolver and the session-state seam.
-
-    ZERO ProjectReference, AND THAT IS LOAD-BEARING — DO NOT ADD ONE. Every member is
-    primitives, Guids and this project's own types, so it sits below Humans.Base and the
-    graph stays acyclic.
-
-    The part that is not obvious: Humans.Users.Contracts references THIS project (for
-    OnboardingResult), and Humans.Base references Humans.Users.Contracts, so Base reaches
-    here. Humans.Users.Contracts is allowed exactly one reference and only because the
-    chain terminates HERE. Add any ProjectReference to this file and you extend that chain
-    past its terminator; add one that leads back toward Humans.Base — which now carries
-    HumansControllerBase and the shared view layer, so it is a live cycle, not a latent
-    one — and you close it from three hops away, in a project nobody was looking at.
-    G5 lane 3b, nobodies-collective/Humans#866.
-
-    If a type here ever genuinely needs something from another project, move the type out
-    instead of adding the reference.
+    ZERO ProjectReference, AND THAT IS LOAD-BEARING. Humans.Users.Contracts references this
+    project for OnboardingResult, so a reference added here that leads back to Users.Contracts
+    or anything that references it closes a cycle in a project nobody was looking at. If a type
+    here ever needs something from another project, move the type out instead.
   -->
 
 </Project>
