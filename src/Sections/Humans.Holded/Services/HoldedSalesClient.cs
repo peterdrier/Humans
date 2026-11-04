@@ -7,7 +7,7 @@ using static Humans.Holded.Services.HoldedJson;
 
 namespace Humans.Holded.Services;
 
-internal sealed class HoldedSalesClient(HoldedTransport transport)
+internal sealed class HoldedSalesClient(HoldedTransport transport, ILogger<HoldedClient> logger)
 {
     private static string SalesSegment(HoldedSalesDocumentKind kind) => kind switch
     {
@@ -83,6 +83,7 @@ internal sealed class HoldedSalesClient(HoldedTransport transport)
         {
             var node = JsonNode.Parse(body)
                 ?? throw new HoldedTransientException("Holded returned empty body");
+            WarnIfNotEuro(logger, node, kind.ToString());
             return new HoldedSalesDocumentDto
             {
                 Id = ReadRequiredString(Prop(node, "id") ?? JsonValue.Create(documentId), "id"),
