@@ -46,9 +46,6 @@ internal interface ISurveyRepository : IRepository
     /// <summary>Drafts (<c>SubmittedAt is null</c>) excluded.</summary>
     Task<IReadOnlyDictionary<Guid, int>> GetResponseCountsBySurveyAsync(CancellationToken ct = default);
 
-    /// <summary>Only rows whose email was prepared (<c>SentAt != null</c>); public-link participation rows are excluded.</summary>
-    Task<IReadOnlySet<Guid>> GetInvitedUserIdsAsync(Guid surveyId, CancellationToken ct = default);
-
     /// <summary>Unordered: the caller sorts.</summary>
     Task<IReadOnlyList<SurveyInvitation>> GetInvitationsAsync(Guid surveyId, CancellationToken ct = default);
 
@@ -132,8 +129,6 @@ internal interface ISurveyRepository : IRepository
 
     /// <summary>Submitted only (<c>SubmittedAt is not null</c>), with answers. Unordered.</summary>
     Task<IReadOnlyList<SurveyResponse>> GetResponsesForResultsAsync(Guid surveyId, CancellationToken ct = default);
-
-    Task<int> GetStartedInvitationCountAsync(Guid surveyId, CancellationToken ct = default);
 
     /// <summary>
     /// For the Article 15 export. CompletionTracked/Anonymous responses carry no <c>UserId</c> and are not linkable

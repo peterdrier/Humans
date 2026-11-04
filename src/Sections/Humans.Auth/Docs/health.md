@@ -79,7 +79,7 @@ Written fresh from the shapes above, not from today's tree.
   inner service and never the repository; the row set it holds is the *only* thing it needs, so
   the warm path should ask for rows and nothing else — not for a display-stitched admin page it
   discards.
-- **Sign-in is nearly an orchestrator.** `MagicLinkService` owns no table. Token minting and URL
+- **Sign-in has no persisted state.** `MagicLinkService` owns no table. Token minting and URL
   shape sit behind one collaborator; replay and cooldown state behind another. It names no
   `DbContext`, no `IDataProtectionProvider`, no `IMemoryCache`, and since 2026-10-20 it writes
   nothing: the `users.MagicLinkSentAt` stamp that used to persist the cooldown through

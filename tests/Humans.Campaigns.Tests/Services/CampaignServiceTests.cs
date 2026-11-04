@@ -9,6 +9,7 @@ using System.Security.Claims;
 using Humans.AuditLog.Contracts;
 using AwesomeAssertions;
 using Humans.Campaigns.Controllers;
+using Humans.Campaigns.Models;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
@@ -507,20 +508,40 @@ public sealed class CampaignServiceTests
         (await create.Create(title, description, subject, "Changed body", replyTo)).Should().BeOfType<ViewResult>();
         create.ModelState.ContainsKey(field).Should().BeTrue();
         create.ModelState[field]!.Errors.Should().ContainSingle().Which.ErrorMessage.Should().NotBeNullOrWhiteSpace();
-        ((string)create.ViewBag.Title2).Should().Be(title);
-        ((string)create.ViewBag.ReplyToAddress).Should().Be(replyTo);
+        var submitted = new CampaignFormValues(title, description, subject, "Changed body", replyTo);
+        create.ViewData[nameof(CampaignFormValues)].Should().Be(submitted);
         (await CampaignsDb.Campaigns.CountAsync(Xunit.TestContext.Current.CancellationToken)).Should().Be(1);
 
         var edit = Controller();
         (await edit.Edit(existing.Id, title, description, subject, "Changed body", replyTo)).Should().BeOfType<ViewResult>();
         edit.ModelState.ContainsKey(field).Should().BeTrue();
         edit.ModelState[field]!.Errors.Should().ContainSingle().Which.ErrorMessage.Should().NotBeNullOrWhiteSpace();
+        edit.ViewData[nameof(CampaignFormValues)].Should().Be(submitted);
         var stored = await _service.GetByIdAsync(existing.Id, Xunit.TestContext.Current.CancellationToken);
         stored!.Title.Should().Be(existing.Title);
         stored.Description.Should().Be(existing.Description);
         stored.EmailSubject.Should().Be(existing.EmailSubject);
         stored.EmailBodyTemplate.Should().Be(existing.EmailBodyTemplate);
         stored.ReplyToAddress.Should().Be(existing.ReplyToAddress);
+    }
+
+    [HumansFact]
+    public async Task EditForm_InvalidSubmission_PreservesClearedFieldsAlongsideStoredIdentity()
+    {
+        var created = await _service.CreateAsync("Existing title", "Existing description", "Existing subject",
+            "Existing body", "before@example.com", _actorId, Xunit.TestContext.Current.CancellationToken);
+        var controller = CreateImportController();
+
+        var result = (await controller.Edit(created.Campaign!.Id, null!, null, null!, null!, null))
+            .Should().BeOfType<ViewResult>().Which;
+
+        var persisted = result.Model.Should().BeOfType<CampaignEditSnapshot>().Which;
+        persisted.Id.Should().Be(created.Campaign.Id);
+        persisted.Title.Should().Be("Existing title");
+        persisted.Description.Should().Be("Existing description");
+        persisted.ReplyToAddress.Should().Be("before@example.com");
+        result.ViewData[nameof(CampaignFormValues)].Should().Be(new CampaignFormValues(null, null, null, null, null));
+        controller.ModelState["title"]!.Errors.Should().ContainSingle();
     }
 
     [HumansFact]

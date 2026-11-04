@@ -39,11 +39,17 @@ public static class RecurringJobExtensions
                     job.Schedule();
                 }
             }
-            catch (Exception ex)
+            catch (DistributedLockTimeoutException ex)
             {
                 // Don't let a stale distributed lock prevent the app from starting.
                 allScheduled = false;
-                logger.LogWarning(ex, "Failed to register recurring job '{JobId}' — will retry on next restart", job.Id);
+                logger.LogWarning("Timed out registering recurring job '{JobId}' — will retry on next restart: {Reason}",
+                    job.Id, ex.Message);
+            }
+            catch (Exception ex)
+            {
+                allScheduled = false;
+                logger.LogError(ex, "Failed to register recurring job '{JobId}' — will retry on next restart", job.Id);
             }
         }
 
@@ -146,9 +152,13 @@ public static class RecurringJobExtensions
                     "Removed recurring job '{JobId}' — the app no longer has a job by that name", stored.Id);
             }
         }
+        catch (DistributedLockTimeoutException ex)
+        {
+            logger.LogWarning("Timed out removing recurring jobs the app no longer has: {Reason}", ex.Message);
+        }
         catch (Exception ex)
         {
-            logger.LogWarning(ex, "Failed to remove recurring jobs the app no longer has");
+            logger.LogError(ex, "Failed to remove recurring jobs the app no longer has");
         }
     }
 }

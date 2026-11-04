@@ -11,6 +11,7 @@ public interface IGrantWrite : IApplicationService
     /// <summary>
     /// Tells the person by email and in-app. Idempotent per person: the result carries an existing live grant's id and
     /// nothing is sent again. <paramref name="sourceRef"/> is the caller's own id for this decision.
+    /// Missing or tombstoned recipients are refused before creating a grant or sending notices.
     /// </summary>
     Task<GrantIssueResult> IssueAsync(
         string sourceKey, Guid userId, string? sourceRef, Guid actorUserId, CancellationToken ct = default);
@@ -26,6 +27,8 @@ public enum GrantWriteRefusal
     NoOpenProgram,
     SourceReferenceTooLong,
     ReasonTooLong,
+    /// <summary>The recipient is missing, erased, or an unresolved merge tombstone.</summary>
+    RecipientUnavailable,
 }
 
 public sealed record GrantIssueResult(Guid GrantId, GrantWriteRefusal Refusal = GrantWriteRefusal.None)

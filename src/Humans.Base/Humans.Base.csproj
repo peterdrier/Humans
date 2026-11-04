@@ -108,6 +108,52 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- Users owns the entities kept in Base to avoid a project cycle. -->
+    <InternalsVisibleTo Include="Humans.Users" />
+    <!-- Repository substitutes name internal email entities and reconcile plans. -->
+    <InternalsVisibleTo Include="DynamicProxyGenAssembly2" />
+    <!-- Existing section fixtures build UserInfo from entities; this is not a production contract. -->
+    <InternalsVisibleTo Include="Humans.Agent.Tests" />
+    <InternalsVisibleTo Include="Humans.AuditLog.Tests" />
+    <InternalsVisibleTo Include="Humans.Auth.Tests" />
+    <InternalsVisibleTo Include="Humans.Backdoor.Tests" />
+    <InternalsVisibleTo Include="Humans.Budget.Tests" />
+    <InternalsVisibleTo Include="Humans.Calendar.Tests" />
+    <InternalsVisibleTo Include="Humans.Campaigns.Tests" />
+    <InternalsVisibleTo Include="Humans.Camps.Tests" />
+    <InternalsVisibleTo Include="Humans.Cantina.Tests" />
+    <InternalsVisibleTo Include="Humans.CityPlanning.Tests" />
+    <InternalsVisibleTo Include="Humans.Consent.Tests" />
+    <InternalsVisibleTo Include="Humans.Containers.Tests" />
+    <InternalsVisibleTo Include="Humans.Debug.Tests" />
+    <InternalsVisibleTo Include="Humans.Development.Tests" />
+    <InternalsVisibleTo Include="Humans.EarlyEntry.Tests" />
+    <InternalsVisibleTo Include="Humans.Email.Tests" />
+    <InternalsVisibleTo Include="Humans.Events.Tests" />
+    <InternalsVisibleTo Include="Humans.Expenses.Tests" />
+    <InternalsVisibleTo Include="Humans.Finance.Tests" />
+    <InternalsVisibleTo Include="Humans.Gate.Tests" />
+    <InternalsVisibleTo Include="Humans.Gdpr.Tests" />
+    <InternalsVisibleTo Include="Humans.GoogleIntegration.Tests" />
+    <InternalsVisibleTo Include="Humans.Governance.Tests" />
+    <InternalsVisibleTo Include="Humans.Grants.Tests" />
+    <InternalsVisibleTo Include="Humans.Guide.Tests" />
+    <InternalsVisibleTo Include="Humans.Issues.Tests" />
+    <InternalsVisibleTo Include="Humans.MailerLite.Tests" />
+    <InternalsVisibleTo Include="Humans.Monitor.Tests" />
+    <InternalsVisibleTo Include="Humans.Notifications.Tests" />
+    <InternalsVisibleTo Include="Humans.Onboarding.Tests" />
+    <InternalsVisibleTo Include="Humans.Preapprovals.Tests" />
+    <InternalsVisibleTo Include="Humans.Settings.Tests" />
+    <InternalsVisibleTo Include="Humans.Shifts.Tests" />
+    <InternalsVisibleTo Include="Humans.Store.Tests" />
+    <InternalsVisibleTo Include="Humans.Surveys.Tests" />
+    <InternalsVisibleTo Include="Humans.Teams.Tests" />
+    <InternalsVisibleTo Include="Humans.Tickets.Tests" />
+    <InternalsVisibleTo Include="Humans.Workgroups.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
     <InternalsVisibleTo Include="Humans.Base.Tests" />
     <InternalsVisibleTo Include="Humans.Users.Tests" />
     <InternalsVisibleTo Include="Humans.Web.Tests" />

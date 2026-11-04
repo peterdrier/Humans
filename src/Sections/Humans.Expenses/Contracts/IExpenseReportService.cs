@@ -20,7 +20,8 @@ public interface IExpenseReportService : IApplicationService
 
     /// <summary>
     /// A finance admin sees every non-draft, non-withdrawn report; anyone else their own (merged accounts included)
-    /// plus those booked to a budget category they coordinate.
+    /// plus those booked to a budget category they coordinate or a preapproval program they manage.
+    /// An unresolved non-admin viewer receives an empty queue.
     /// </summary>
     Task<IReadOnlyList<ExpenseReportDto>> GetReviewQueueAsync(
         Guid viewerUserId, bool isFinanceAdmin, CancellationToken ct = default);

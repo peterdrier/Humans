@@ -63,10 +63,7 @@ internal sealed class AttendeeContactImportService(
     {
         var start = clock.GetCurrentInstant();
 
-        var state = await ticketRepository.GetSyncStateAsync(ct);
-        var eventId = state?.VendorEventId;
-        if (string.IsNullOrEmpty(eventId))
-            throw new InvalidOperationException("No active vendor event id — sync has not run.");
+        var eventId = await RequireActiveVendorEventIdAsync(ct);
 
         // Re-query so plan/apply are stateless (a sync between plan and apply is tolerated).
         var freshById = await LoadFreshUnmatchedAttendeesByIdAsync(eventId, ct);

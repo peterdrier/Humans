@@ -45,12 +45,12 @@ public class TeamAdminControllerMembersTests
     [InlineData("remove", "viewer")]
     [InlineData("remove", "teams")]
     [InlineData("roles", "definitions")]
-    [InlineData("roles", "team")]
+    [InlineData("roles", "teams")]
     [InlineData("roles", "profiles")]
     [InlineData("search", "search")]
-    [InlineData("search", "team")]
+    [InlineData("search", "teams")]
     [InlineData("role-search", "search")]
-    [InlineData("provision", "team")]
+    [InlineData("provision", "teams")]
     [InlineData("edit-invalid", "parent")]
     [InlineData("edit-failed", "parent")]
     public async Task ManagementReads_CancelBeforeWritesAndFinishAfterAnEditAttempt(string action, string boundary)
@@ -498,6 +498,7 @@ public class TeamAdminControllerMembersTests
 
         result.Should().BeOfType<RedirectToActionResult>();
         controller.TempData[TempDataKeys.InfoMessage].Should().Be(warning);
+        await teams.DidNotReceiveWithAnyArgs().GetTeamAsync(default, default);
         controller.TempData[TempDataKeys.SuccessMessage].Should().BeNull();
         controller.TempData[TempDataKeys.ErrorMessage].Should().BeNull();
     }

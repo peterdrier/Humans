@@ -127,15 +127,17 @@ internal sealed partial class WorkgroupService
         return null;
     }
 
-    private static WorkgroupRefusal? RequireCoordinator(Workgroup w, Guid actorUserId, bool asAdmin)
+    private async Task<WorkgroupMutationResult<Workgroup>> RequireMembershipManagerAsync(
+        Guid workgroupId, Guid actorUserId, bool asAdmin, CancellationToken ct)
     {
-        if (asAdmin) return null;
-        if (!w.Members.Any(m => m.UserId == actorUserId && m.LeftAt is null && m.IsPending != true
+        var result = await RequireActiveAsync(workgroupId, ct);
+        if (result.Refusal is not null) return result;
+        if (!asAdmin && !result.Value!.Members.Any(m => m.UserId == actorUserId && m.LeftAt is null && m.IsPending != true
                 && m.Role == WorkgroupMemberRole.Coordinator))
         {
-            return new(WorkgroupErrorKeys.NotACoordinator);
+            return new(Refusal: new(WorkgroupErrorKeys.NotACoordinator));
         }
-        return null;
+        return result;
     }
 
     private static WorkgroupRefusal? RequireStatus(Workgroup w, params WorkgroupStatus[] allowed)
@@ -247,7 +249,13 @@ internal sealed partial class WorkgroupService
     // The group page and the daily job expand a series from its start, so a sub-daily rule would
     // build an occurrence per second or minute; nobody meets that often.
     private static bool RepeatsWithinADay(string rule) =>
-        rule.Split(';').Any(part => part.Trim().ToUpperInvariant() is "FREQ=SECONDLY" or "FREQ=MINUTELY" or "FREQ=HOURLY");
+        rule.Split(';').Any(part =>
+        {
+            var equals = part.IndexOf('=');
+            return equals >= 0
+                && string.Equals(part[..equals].Trim(), "FREQ", StringComparison.OrdinalIgnoreCase)
+                && part[(equals + 1)..].Trim().ToUpperInvariant() is "SECONDLY" or "MINUTELY" or "HOURLY";
+        });
 
     private static void ApplyMeetingFields(WorkgroupMeeting meeting, WorkgroupMeetingSave save)
     {

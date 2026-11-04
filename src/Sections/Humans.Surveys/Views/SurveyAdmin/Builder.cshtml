@@ -136,6 +136,7 @@
                     <div class="form-check">
                         <input type="checkbox" class="form-check-input" id="allowAnon" asp-for="AllowAnonymous" />
                         <label class="form-check-label small" for="allowAnon">@Localizer["Surveys_Admin_Builder_AllowAnonymous"]</label>
+                        <span asp-validation-for="AllowAnonymous" class="text-danger small"></span>
                     </div>
                 </div>
             </div>
@@ -158,6 +159,7 @@
                         <input type="checkbox" class="form-check-input" id="asociadoVote" asp-for="IsAsociadoVote" />
                     }
                     <label class="form-check-label fw-semibold" for="asociadoVote">@Localizer["Surveys_Admin_Builder_IsAsociadoVoteLabel"]</label>
+                    <span asp-validation-for="IsAsociadoVote" class="text-danger small"></span>
                     <div class="form-text">
                         @Localizer["Surveys_Admin_Builder_IsAsociadoVoteHelp"]
                     </div>

@@ -56,8 +56,9 @@ internal sealed class ExpenseReportAuthorizationHandler(
         }
 
         var ct = httpContextAccessor.HttpContext?.RequestAborted ?? CancellationToken.None;
-        var isSubmitter = resource.SubmitterUserId == userId
-            || (await userService.GetUserInfoAsync(userId, ct))?.AllUserIds.Contains(resource.SubmitterUserId) == true;
+        var viewer = await userService.GetUserInfoAsync(userId, ct);
+        if (viewer is null) return;
+        var isSubmitter = viewer.AllUserIds.Contains(resource.SubmitterUserId);
         if (isSubmitter)
         {
             if (op == ExpenseReportOperation.View)
@@ -96,7 +97,7 @@ internal sealed class ExpenseReportAuthorizationHandler(
                 or ExpenseReportOperation.DeclineLine
                 or ExpenseReportOperation.View)
             && (op == ExpenseReportOperation.View || resource.Status == ExpenseReportStatus.Submitted)
-            && await IsFirstReviewerAsync(userId, resource, ct))
+            && await IsFirstReviewerAsync(viewer.Id, resource, ct))
         {
             context.Succeed(requirement);
         }

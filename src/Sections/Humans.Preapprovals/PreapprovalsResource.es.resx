@@ -112,4 +112,5 @@
   <data name="Preapprovals_BreadcrumbNavigation" xml:space="preserve"><value>Ruta de navegación</value></data>
   <data name="Preapprovals_Error_AmountPrecision" xml:space="preserve"><value>Los importes deben tener como máximo dos decimales.</value></data>
   <data name="Preapprovals_Error_AmountTooLarge" xml:space="preserve"><value>El importe es demasiado grande.</value></data>
+  <data name="Preapprovals_Error_PersonUnavailable" xml:space="preserve"><value>Esta cuenta de miembro ya no está disponible.</value></data>
 </root>

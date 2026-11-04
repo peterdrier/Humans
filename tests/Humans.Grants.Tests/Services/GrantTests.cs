@@ -1,4 +1,6 @@
 using Humans.Grants.Contracts;
+using Humans.Base.Enums;
+using Humans.Users.Contracts;
 using AwesomeAssertions;
 using Humans.AuditLog.Contracts;
 using Humans.Email.Contracts;
@@ -16,6 +18,43 @@ namespace Humans.Grants.Tests.Services;
 /// <summary>Issue, revoke, resend by managers; the source write; expiry; notices and audit.</summary>
 public sealed class GrantTests : GrantsTestHarness
 {
+    [HumansTheory]
+    [Xunit.InlineData(false, null)]
+    [Xunit.InlineData(false, UserState.Deleted)]
+    [Xunit.InlineData(false, UserState.Merged)]
+    [Xunit.InlineData(true, null)]
+    [Xunit.InlineData(true, UserState.Deleted)]
+    [Xunit.InlineData(true, UserState.Merged)]
+    public async Task Issuance_RefusesUnavailableRecipientsBeforeAnyGrantOrNotice(bool source, UserState? state)
+    {
+        var valid = SeedUser();
+        var unavailable = SeedUser();
+        var snapshot = Xunit.Assert.IsType<UserInfo>(await Users.GetUserInfoAsync(unavailable, Ct));
+        Users.GetUserInfoAsync(unavailable, Arg.Any<CancellationToken>())
+            .Returns(state is { } value ? snapshot with { State = value } : null);
+        var program = await SeedProgramAsync(issuedBy: source ? GrantIssuer.Source : GrantIssuer.Managers,
+            sourceKey: source ? "low-income" : null);
+        var actor = SeedUser("Manager");
+
+        if (source)
+        {
+            var result = await NewService().IssueAsync("low-income", unavailable, null, actor, Ct);
+            result.Succeeded.Should().BeFalse();
+            result.Refusal.Should().Be(GrantWriteRefusal.RecipientUnavailable);
+            result.GrantId.Should().Be(Guid.Empty);
+        }
+        else
+        {
+            var result = await NewService().IssueToAsync(program.Id, [valid, unavailable], null, actor, Ct);
+            result.Refusal.Should().NotBeNull();
+        }
+
+        (await ReadGrantsAsync()).Should().BeEmpty();
+        AuditLog.ReceivedCalls().Should().BeEmpty();
+        Notifications.ReceivedCalls().Should().BeEmpty();
+        Email.ReceivedCalls().Should().BeEmpty();
+    }
+
     private Task ReceivedNoticeAsync(NotificationSourceDefinition source, Guid recipient, int times = 1) =>
         Notifications.Received(times).SendAsync(source, NotificationClass.Informational, NotificationPriority.Normal,
             Arg.Any<string>(), Arg.Is<IReadOnlyList<Guid>>(r => r.SequenceEqual(new[] { recipient })),
