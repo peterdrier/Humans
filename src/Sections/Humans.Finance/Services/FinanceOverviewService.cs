@@ -123,23 +123,33 @@ internal sealed class FinanceOverviewService(
         var vatOut = await LinesAsync("477");
         var vatIn = await LinesAsync("472");
         var irpf = await LinesAsync("4751");
+        var settlements = (await LinesAsync("4750")).Concat(await LinesAsync("4700"))
+            .Select(l => l.EntryNumber).ToHashSet();
+        var bankEntries = (await LinesAsync("570")).Concat(await LinesAsync("572"))
+            .Select(l => l.EntryNumber).ToHashSet();
 
         return
         [
-            TaxFiling("303", "VAT return", today,
-                (from, to) => Credits(vatOut, from, to) - Debits(vatIn, from, to)),
-            TaxFiling("111", "IRPF withholding", today,
-                (from, to) => Credits(irpf, from, to)),
+            TaxFiling("303", "VAT return", today, (from, to) => VatDue(vatOut, vatIn, settlements, from, to)),
+            TaxFiling("111", "IRPF withholding", today, (from, to) => IrpfDue(irpf, bankEntries, from, to)),
         ];
     }
 
-    // Credits on 477 and debits on 472 only: the quarter-end settlement moves both the other way into 4750, and must
-    // not cancel the quarter out.
-    private static decimal Credits(IEnumerable<HoldedLedgerLineInfo> lines, LocalDate from, LocalDate to) =>
-        lines.Where(l => InRange(l, from, to)).Sum(l => l.Credit);
+    /// <summary>Output VAT less input VAT, credit notes netted in. The quarter-end settlement into 4750/4700 is left
+    /// out by entry: it zeroes 477 and 472 and would cancel the quarter.</summary>
+    internal static decimal VatDue(IEnumerable<HoldedLedgerLineInfo> vatOut, IEnumerable<HoldedLedgerLineInfo> vatIn,
+        IReadOnlySet<int> settlementEntries, LocalDate from, LocalDate to)
+    {
+        bool Counts(HoldedLedgerLineInfo l) => InRange(l, from, to) && !settlementEntries.Contains(l.EntryNumber);
+        return vatOut.Where(Counts).Sum(l => l.Credit - l.Debit) - vatIn.Where(Counts).Sum(l => l.Debit - l.Credit);
+    }
 
-    private static decimal Debits(IEnumerable<HoldedLedgerLineInfo> lines, LocalDate from, LocalDate to) =>
-        lines.Where(l => InRange(l, from, to)).Sum(l => l.Debit);
+    /// <summary>Withholdings less corrections. A debit in an entry that moves a bank account is the payment of an
+    /// earlier return, not a correction; a bank-paid payroll entry's withholding credit still counts.</summary>
+    internal static decimal IrpfDue(IEnumerable<HoldedLedgerLineInfo> irpf, IReadOnlySet<int> bankEntries,
+        LocalDate from, LocalDate to) =>
+        irpf.Where(l => InRange(l, from, to))
+            .Sum(l => l.Credit - (bankEntries.Contains(l.EntryNumber) ? 0m : l.Debit));
 
     private static bool InRange(HoldedLedgerLineInfo line, LocalDate from, LocalDate to)
     {

@@ -27,6 +27,26 @@ public class FinanceOverviewServiceTests
     }
 
     [HumansFact]
+    public void TaxAmounts_NetCreditNotes_AndSkipSettlementAndPayment()
+    {
+        var day = new LocalDate(2026, 11, 2).AtStartOfDayInZone(DateTimeZoneProviders.Tzdb["Europe/Madrid"]).ToInstant();
+        HoldedLedgerLineInfo Line(int entry, int account, decimal debit, decimal credit) =>
+            new(entry, 1, account, day, null, null, debit, credit);
+        var (from, to) = (new LocalDate(2026, 10, 1), new LocalDate(2026, 12, 31));
+
+        var vat = FinanceOverviewService.VatDue(
+            [Line(1, 47700000, 0m, 100m), Line(2, 47700000, 10m, 0m), Line(4, 47700000, 90m, 0m)],
+            [Line(3, 47200000, 30m, 0m), Line(4, 47200000, 0m, 30m)],
+            new HashSet<int> { 4 }, from, to);
+        vat.Should().Be(60m);
+
+        var irpf = FinanceOverviewService.IrpfDue(
+            [Line(5, 47510000, 0m, 50m), Line(6, 47510000, 5m, 0m), Line(7, 47510000, 40m, 0m)],
+            new HashSet<int> { 7 }, from, to);
+        irpf.Should().Be(45m);
+    }
+
+    [HumansFact]
     public void BuildLedgerCards_GroupsCashAndReceivables_AndFlipsTaxes()
     {
         HoldedChartAccountInfo Account(int n, bool archived = false) => new(n, $"A{n}", null, null, archived, 0m);
