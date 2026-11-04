@@ -26,7 +26,9 @@ internal sealed partial class PreapprovalService
         if (sized.Refusal is not null) return new(Refusal: sized.Refusal);
         if (CeilingCheck(program, sized.Value) is { } over) return new(Refusal: over);
 
-        var beneficiaryId = (await AllIdsAsync(beneficiaryUserId, ct))[0];
+        var beneficiary = await ResolveAvailablePersonAsync(beneficiaryUserId, ct);
+        if (beneficiary is null) return new(Refusal: new PreapprovalRefusal(PreapprovalErrorKeys.PersonUnavailable));
+        var beneficiaryId = beneficiary.Id;
         var now = clock.GetCurrentInstant();
         var grant = NewGrant(program, beneficiaryId, sized.Value, Trimmed(label), GrantStatus.Open, now);
         grant.DecidedByUserId = actorUserId;
@@ -48,7 +50,11 @@ internal sealed partial class PreapprovalService
 
         var recipients = new List<Guid>();
         foreach (var id in beneficiaryUserIds.Distinct())
-            recipients.Add((await AllIdsAsync(id, ct))[0]);
+        {
+            var beneficiary = await ResolveAvailablePersonAsync(id, ct);
+            if (beneficiary is null) return new(Refusal: new PreapprovalRefusal(PreapprovalErrorKeys.PersonUnavailable));
+            recipients.Add(beneficiary.Id);
+        }
         var ids = recipients.Distinct().ToList();
         if (ids.Count == 0) return new(Refusal: new PreapprovalRefusal(PreapprovalErrorKeys.NoBeneficiaries));
 
@@ -109,7 +115,9 @@ internal sealed partial class PreapprovalService
         }
         if (MoneyRefusal(amount) is { } amountRefusal) return new(Refusal: amountRefusal);
 
-        var ids = await AllIdsAsync(applicantUserId, ct);
+        var applicant = await ResolveAvailablePersonAsync(applicantUserId, ct);
+        if (applicant is null) return new(Refusal: new PreapprovalRefusal(PreapprovalErrorKeys.PersonUnavailable));
+        var ids = applicant.AllUserIds;
         var now = clock.GetCurrentInstant();
         var pending = program.Grants.FirstOrDefault(g => g.Status == GrantStatus.Applied && ids.Contains(g.BeneficiaryUserId));
         if (pending is not null)

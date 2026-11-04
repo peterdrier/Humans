@@ -127,12 +127,8 @@ internal sealed partial class PreapprovalService
         var managers = new List<Guid>();
         foreach (var id in requested.Distinct())
         {
-            var person = await users.GetUserInfoAsync(id, ct);
-            if (person is null || person.IsTombstone)
-            {
-                logger.LogWarning("Preapproval program save refused for unavailable manager {UserId}", id);
-                return null;
-            }
+            var person = await ResolveAvailablePersonAsync(id, ct);
+            if (person is null) return null;
             managers.Add(person.Id);
         }
         return managers.Distinct().ToList();
