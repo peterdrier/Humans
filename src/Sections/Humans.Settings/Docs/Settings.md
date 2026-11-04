@@ -83,7 +83,6 @@ nobodies-collective/Humans#1630, nobodies-collective/Humans#1631).
 | GateOpeningDate | LocalDate | Day 0 of every offset |
 | BuildStartOffset | int | Negative |
 | EventEndOffset / StrikeEndOffset | int | |
-| FirstCrew/SetupWeek/PreEventWeek/FinishingWeekendStartOffset | int | Legacy storage only: no runtime DTO, interface, form or mapper reads these four columns. Shifts owns its sub-period values and defaults; production reported `shifts.build-sub-periods` done on 2026-11-03. Schema removal remains separate |
 | EarlyEntryCapacity | JSON `Dictionary<int,int>` | Step function, day offset → capacity; dictionary equality and hashing ignore insertion order |
 | BarriosEarlyEntryAllocation | JSON, nullable | |
 | EarlyEntryClose | Instant, nullable | |

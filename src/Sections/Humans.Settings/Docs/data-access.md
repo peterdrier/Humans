@@ -79,7 +79,5 @@ stays reachable. Leaving the id blank on save mints a brand-new cycle
 (nobodies-collective/Humans#1631) — the only birth path for a `settings_event`
 row.
 
-The build window is `[BuildStartOffset, 0)` and the four sub-period boundaries
-partition it, so the form's rule is
-`BuildStartOffset ≤ FirstCrew < SetupWeek < PreEvent < FinishingWeekend < 0`.
-Build start therefore defaults to `-25`, the first-crew day.
+The build window is `[BuildStartOffset, 0)`; its four sub-periods are Shifts'
+(`event_settings.SubPeriod*Start`). Build start defaults to `-25`.
