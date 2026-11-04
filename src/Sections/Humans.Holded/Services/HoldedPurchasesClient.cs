@@ -82,6 +82,7 @@ internal sealed class HoldedPurchasesClient(HoldedTransport transport, ILogger<H
         {
             var node = await JsonNode.ParseAsync(stream, cancellationToken: ct)
                 ?? throw new HoldedTransientException("Holded returned empty body");
+            WarnIfNotEuro(logger, node, "purchase");
 
             return new HoldedPurchaseDocumentDto
             {
@@ -226,7 +227,11 @@ internal sealed class HoldedPurchasesClient(HoldedTransport transport, ILogger<H
         var items = await transport.GetPagedAsync("/api/v2/purchases?limit=200", pageSafetyCap, ct);
         try
         {
-            return items.Select(ParsePurchaseDoc).ToList();
+            return items.Select(n =>
+            {
+                WarnIfNotEuro(logger, n, "purchase");
+                return ParsePurchaseDoc(n);
+            }).ToList();
         }
         catch (Exception ex) when (ex is JsonException or InvalidOperationException
             or FormatException or OverflowException)

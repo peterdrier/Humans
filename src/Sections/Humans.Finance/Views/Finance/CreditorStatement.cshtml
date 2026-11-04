@@ -31,6 +31,14 @@
     </div>
 </div>
 
+@if (ledger.ContactUnavailableReason is { } unknown)
+{
+    <div class="alert alert-warning">
+        <i class="fa-solid fa-triangle-exclamation me-1"></i>
+        The ledger lines are right, but who this account belongs to is not known. @unknown
+    </div>
+}
+
 <div class="row mb-4">
     <div class="col-md-3">
         <div class="card text-center"><div class="card-body">

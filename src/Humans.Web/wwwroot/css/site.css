@@ -2015,6 +2015,23 @@ a.notification-row-line:hover .notification-title {
     min-width: 0;
 }
 
+.notification-body {
+    font-family: var(--h-font-body);
+    font-size: 0.8rem;
+    color: var(--h-sepia-light);
+    line-height: 1.35;
+    margin-top: 0.15rem;
+    white-space: pre-line;
+    overflow-wrap: anywhere;
+}
+
+.notification-audience {
+    font-family: var(--h-font-body);
+    font-size: 0.7rem;
+    color: var(--h-sepia-light);
+    margin-top: 0.1rem;
+}
+
 .notification-title-resolved {
     color: var(--h-sepia-light);
     font-weight: 500;
@@ -2166,6 +2183,10 @@ a.notification-row-line:hover .notification-title {
 
 .notification-meter-row:last-child {
     border-bottom: none;
+}
+
+.notification-meter-text {
+    min-width: 0;
 }
 
 .notification-meter-info {

@@ -25,13 +25,17 @@ internal sealed class FinanceController(
     IExpenseReportService expenseReports,
     CashFlowService cashFlow,
     CreditorMatchService creditorMatches,
+    FinanceOverviewService overview,
     ILogger<FinanceController> logger) : HumansControllerBase(userService)
 {
     private static readonly DateTimeZone MadridZone = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
 
-    /// <summary>Placeholder index until the Finance overview (balances, owed, budget vs actuals) exists.</summary>
     [HttpGet("")]
-    public IActionResult Index() => View();
+    public async Task<IActionResult> Index()
+    {
+        if (GetCurrentUserId() is not { } viewerUserId) return Challenge();
+        return View(await overview.GetAsync(viewerUserId, HttpContext.RequestAborted));
+    }
 
     [HttpGet("CashFlow")]
     public async Task<IActionResult> CashFlow(string period = "monthly")
@@ -94,7 +98,7 @@ internal sealed class FinanceController(
     public async Task<IActionResult> Creditors(string? sort, string? dir)
     {
         if (GetCurrentUserId() is not { } viewerUserId) return Challenge();
-        var (rows, unresolved) = await finance.ListCreditorAccountsAsync(HttpContext.RequestAborted);
+        var (rows, unresolved, unavailable) = await finance.ListCreditorAccountsAsync(HttpContext.RequestAborted);
         var matches = await creditorMatches.GetForMemberAccountsAsync(rows, viewerUserId, HttpContext.RequestAborted);
 
         var names = new Dictionary<Guid, string>();
@@ -136,7 +140,7 @@ internal sealed class FinanceController(
         var recon = await finance.GetExpenseReconAsync(null, HttpContext.RequestAborted);
         return View(new CreditorsPageVm(
             accounts, unresolvedVm, sortBy, sortDir, holdedConnector.GetSepaPayoutSettings(),
-            recon.IsAvailable ? recon.Totals.Problems : null, recon.Totals.Warnings));
+            recon.IsAvailable ? recon.Totals.Problems : null, recon.Totals.Warnings, unavailable));
     }
 
     /// <summary>Local mirrors only; fixes stay on the pages it links to.</summary>
@@ -169,7 +173,7 @@ internal sealed class FinanceController(
         }
 
         var paid = preview.Lines.Select(l => l.SupplierAccountNum).ToHashSet();
-        var (rows, _) = await finance.ListCreditorAccountsAsync(ct);
+        var (rows, _, _) = await finance.ListCreditorAccountsAsync(ct);
         var matches = await creditorMatches.GetForMemberAccountsAsync(
             rows.Where(r => paid.Contains(r.SupplierAccountNum)), viewerUserId, ct);
         return View("SepaReview", new SepaReviewVm(preview.Lines, matches, cap));

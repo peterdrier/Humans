@@ -27,8 +27,8 @@ internal interface INotificationRepository : IRepository
     Task BulkResolveAsync(
         IReadOnlyList<Guid> notificationIds, Guid userId, Instant now, NotificationClass expectedClass, CancellationToken ct = default);
 
-    /// <summary>Marks the row read if needed. NotFound when there is no recipient row.</summary>
-    Task<ClickThroughOutcome> ClickThroughAsync(
+    /// <summary>Marks the row read if needed. Null when there is no recipient row or no action URL.</summary>
+    Task<string?> ClickThroughAsync(
         Guid notificationId, Guid userId, Instant now, CancellationToken ct = default);
 
     /// <summary>Resolves matching notifications shared with the user.</summary>
@@ -62,7 +62,7 @@ internal interface INotificationRepository : IRepository
         Instant resolvedCutoff,
         CancellationToken ct = default);
 
-    /// <summary>Unordered: callers sort.</summary>
+    /// <summary>Unread and unresolved only, so opening an item takes it off the bell. Unordered: callers sort.</summary>
     Task<IReadOnlyList<NotificationRecipient>> GetPopupAsync(
         Guid userId, CancellationToken ct = default);
 
@@ -93,11 +93,6 @@ internal sealed record NotificationMutationOutcome(
     bool Success,
     bool NotFound,
     bool Forbidden);
-
-/// <summary><c>ActionUrl</c> is null when there is no recipient row or no action URL.</summary>
-internal sealed record ClickThroughOutcome(
-    string? ActionUrl,
-    bool NotFound);
 
 internal enum NotificationInboxFilter
 {

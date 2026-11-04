@@ -38,7 +38,12 @@ internal sealed class StoreStripePayments(
             var order = await repo.GetOrderByIdAsync(orderId, ct);
             if (order is null || order.TeamId is not null) continue;
 
-            await RecordStripePaymentAsync(orderId, pi, amount, ct: ct); // idempotent on PI id
+            using (await StripePaymentLock.AcquireAsync(logger, ct))
+            {
+                await RecordStripePaymentCoreAsync(orderId, pi, amount, PaymentStatus.Paid, ct); // idempotent on PI id
+                // Stands in for the undelivered completed webhook, so it releases the attempt the same way.
+                await ClearCheckoutAttemptAsync(s, ct);
+            }
             count++;
             total += amount;
         }
@@ -52,6 +57,69 @@ internal sealed class StoreStripePayments(
         }
 
         return new StripeReconciliationResult(count, total);
+    }
+
+    /// <summary>
+    /// One payable session per order: an unchanged amount replays the open attempt's session through its idempotency key;
+    /// a changed amount expires that session and opens a new attempt. Null when the superseded session had already been
+    /// paid, so no replacement exists.
+    /// </summary>
+    public async Task<string?> OpenCheckoutSessionAsync(
+        Guid orderId, decimal amountEur, string returnUrl, string? customerEmail, string description, CancellationToken ct)
+    {
+        using var mutation = await StripePaymentLock.AcquireAsync(logger, ct);
+        var order = await repo.GetOrderByIdAsync(orderId, ct)
+            ?? throw new InvalidOperationException($"Store order {orderId} not found.");
+
+        var session = order is { CheckoutAttemptId: { } openAttempt } && order.CheckoutAmountEur == amountEur
+            ? await TryReplayAsync(openAttempt)
+            : null;
+        if (IsComplete(session))
+            return null;
+
+        var attemptId = order.CheckoutAttemptId;
+        if (session is not { Status: "open", Url: not null })
+        {
+            attemptId = Guid.NewGuid();
+            session = await stripeService.CreateCheckoutSessionAsync(
+                orderId, amountEur, returnUrl, returnUrl, customerEmail, description, ct,
+                checkoutAttemptId: attemptId, supersededSessionId: order.CheckoutSessionId);
+            if (IsComplete(session) || session.Url is null)
+                return null;
+        }
+
+        if (attemptId != order.CheckoutAttemptId
+            || !string.Equals(order.CheckoutSessionId, session.SessionId, StringComparison.Ordinal))
+        {
+            await WriteCheckoutAttemptAsync(orderId, attemptId, session.SessionId, amountEur, ct);
+        }
+        return session.Url;
+
+        bool IsComplete(StoreCheckoutSessionData? s)
+        {
+            if (!string.Equals(s?.Status, "complete", StringComparison.Ordinal)) return false;
+            logger.LogWarning("Checkout session {SessionId} for order {OrderId} already completed; no new session opened.",
+                s!.SessionId, orderId);
+            return true;
+        }
+
+        async Task<StoreCheckoutSessionData?> TryReplayAsync(Guid attemptId)
+        {
+            try
+            {
+                return await stripeService.CreateCheckoutSessionAsync(
+                    orderId, amountEur, returnUrl, returnUrl, customerEmail, description, ct,
+                    checkoutAttemptId: attemptId);
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                // Stripe rejects a replay whose other arguments changed (a counterparty edit). Replacing the attempt
+                // expires its session first, so falling through never leaves two payable.
+                logger.LogWarning(ex, "Replaying checkout attempt {AttemptId} for order {OrderId} failed; replacing it.",
+                    attemptId, orderId);
+                return null;
+            }
+        }
     }
 
     public async Task RecordStripePaymentAsync(
@@ -115,6 +183,7 @@ internal sealed class StoreStripePayments(
         {
             case StoreCheckoutEventKind.CheckoutSessionCompleted:
                 await HandleCheckoutSessionCompletedAsync(evt, ct);
+                await ClearCheckoutAttemptAsync(evt.Session, ct);
                 break;
 
             case StoreCheckoutEventKind.CheckoutSessionAsyncPaymentSucceeded:
@@ -127,6 +196,7 @@ internal sealed class StoreStripePayments(
 
             case StoreCheckoutEventKind.CheckoutSessionExpired:
                 await HandleCheckoutSessionExpiredAsync(evt, ct);
+                await ClearCheckoutAttemptAsync(evt.Session, ct);
                 break;
 
             default:
@@ -188,6 +258,32 @@ internal sealed class StoreStripePayments(
             // A failed recording must not become a successful webhook acknowledgement.
             throw;
         }
+    }
+
+    /// <summary>Only the order's current attempt is cleared; a superseded session's event leaves its replacement open.</summary>
+    private async Task ClearCheckoutAttemptAsync(StoreCheckoutSessionData? session, CancellationToken ct)
+    {
+        if (session is not { OrderId: { } orderId }) return;
+        var order = await repo.GetOrderByIdAsync(orderId, ct);
+        if (order is null || !string.Equals(order.CheckoutSessionId, session.SessionId, StringComparison.Ordinal))
+            return;
+
+        await WriteCheckoutAttemptAsync(orderId, null, null, null, ct);
+    }
+
+    /// <summary>
+    /// Re-reads the row so only the checkout columns change: a full-row write from a read taken before a Stripe round
+    /// trip would overwrite a concurrent order edit.
+    /// </summary>
+    private async Task WriteCheckoutAttemptAsync(
+        Guid orderId, Guid? attemptId, string? sessionId, decimal? amountEur, CancellationToken ct)
+    {
+        var order = await repo.GetOrderByIdAsync(orderId, ct);
+        if (order is null) return;
+        order.CheckoutAttemptId = attemptId;
+        order.CheckoutSessionId = sessionId;
+        order.CheckoutAmountEur = amountEur;
+        await repo.UpdateOrderAsync(order, ct);
     }
 
     /// <summary>
