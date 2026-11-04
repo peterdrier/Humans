@@ -61,6 +61,9 @@ internal sealed record GoogleClientError(int StatusCode, string? RawMessage)
     /// some plus addresses on custom domains.</summary>
     public bool IsInternalError => StatusCode == 400 && IsInternalErrorMessage(RawMessage);
 
+    /// <summary>A dropped connection is one call's failure, mapped to status 0, never the whole pass's.</summary>
+    internal static bool IsTransportError(Exception ex) => ex is HttpRequestException or IOException;
+
     internal static bool IsInternalErrorMessage(string? message) =>
         message?.Contains("internal error has occurred", StringComparison.OrdinalIgnoreCase) == true;
 }

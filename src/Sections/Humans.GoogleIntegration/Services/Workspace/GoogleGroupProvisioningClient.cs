@@ -95,7 +95,7 @@ internal sealed class GoogleGroupProvisioningClient(
                 GroupNumericId: null,
                 Error: new GoogleClientError(ex.Error?.Code ?? 0, ex.Error?.Message));
         }
-        catch (Exception ex) when (IsTransportError(ex))
+        catch (Exception ex) when (GoogleClientError.IsTransportError(ex))
         {
             logger.LogWarning(ex, "Transport error creating group {Email}", groupEmail);
             return new GroupCreateResult(GroupNumericId: null, Error: new GoogleClientError(0, ex.Message));
@@ -125,7 +125,7 @@ internal sealed class GoogleGroupProvisioningClient(
                 GroupNumericId: null,
                 Error: new GoogleClientError(ex.Error?.Code ?? 0, ex.Error?.Message));
         }
-        catch (Exception ex) when (IsTransportError(ex))
+        catch (Exception ex) when (GoogleClientError.IsTransportError(ex))
         {
             logger.LogWarning(ex, "Transport error looking up group {Email}", groupEmail);
             return new GroupLookupIdResult(GroupNumericId: null, Error: new GoogleClientError(0, ex.Message));
@@ -154,7 +154,7 @@ internal sealed class GoogleGroupProvisioningClient(
                 Settings: null,
                 Error: new GoogleClientError(ex.Error?.Code ?? 0, ex.Error?.Message));
         }
-        catch (Exception ex) when (IsTransportError(ex))
+        catch (Exception ex) when (GoogleClientError.IsTransportError(ex))
         {
             logger.LogWarning(ex, "Transport error reading settings for group {Email}", groupEmail);
             return new GroupSettingsGetResult(Settings: null, Error: new GoogleClientError(0, ex.Message));
@@ -182,15 +182,12 @@ internal sealed class GoogleGroupProvisioningClient(
                 groupEmail, ex.Error?.Code, ex.Error?.Message);
             return new GoogleClientError(ex.Error?.Code ?? 0, ex.Error?.Message);
         }
-        catch (Exception ex) when (IsTransportError(ex))
+        catch (Exception ex) when (GoogleClientError.IsTransportError(ex))
         {
             logger.LogWarning(ex, "Transport error updating settings for group {Email}", groupEmail);
             return new GoogleClientError(0, ex.Message);
         }
     }
-
-    /// <summary>A dropped connection is one group's failure, not the whole reconcile pass's.</summary>
-    private static bool IsTransportError(Exception ex) => ex is HttpRequestException or IOException;
 
     private static SdkGroupSettings BuildSdkSettings(GroupSettingsExpected expected) => new()
     {

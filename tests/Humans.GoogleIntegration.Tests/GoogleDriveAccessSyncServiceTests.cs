@@ -27,9 +27,11 @@ public sealed class GoogleDriveAccessSyncServiceTests
     private readonly IGoogleResourceRepository _resources = Substitute.For<IGoogleResourceRepository>();
     private readonly RecordingLogger<GoogleDriveAccessSyncService> _logger = new();
     private readonly Instant _now = Instant.FromUtc(2026, 9, 10, 12, 0);
+    private readonly FakeClock _clock;
 
     public GoogleDriveAccessSyncServiceTests()
     {
+        _clock = new FakeClock(_now);
         _identities = WorkspaceIdentityFakes.ResolvingThrough(_userService);
         _googleSyncLogViewer.GetForUserAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(Array.Empty<GoogleSyncLogView>());
@@ -192,23 +194,50 @@ public sealed class GoogleDriveAccessSyncServiceTests
         StubFolder("folder-1");
         _drivePermissions.CreatePermissionAsync("folder-1", "alice@example.org", "writer", Arg.Any<CancellationToken>())
             .Returns(new DrivePermissionMutationResult(DrivePermissionCreateOutcome.Failed, GoogleInternalError));
+        RecordSyncLogTrailFor(alice);
+
+        await service.ReconcileOneAsync("folder-1", SyncAction.Execute, Xunit.TestContext.Current.CancellationToken);
+        await _identities.DidNotReceiveWithAnyArgs().SetStatusFromSyncAsync(default, default!, default);
+
+        _clock.Advance(Duration.FromDays(1));
+        await service.ReconcileOneAsync("folder-1", SyncAction.Execute, Xunit.TestContext.Current.CancellationToken);
+        await _identities.Received(1).SetStatusFromSyncAsync(
+            alice, "alice@example.org", GoogleEmailStatus.Rejected, Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task ReconcileAllAsync_InternalErrorOnTwoSameNamedFoldersInOnePass_DoesNotReject()
+    {
+        var alice = Guid.NewGuid();
+        var service = CreateService(
+            new StaticSource("folder-1", "Shared", (alice, DrivePermissionLevel.Contributor)),
+            new StaticSource("folder-2", "Shared", (alice, DrivePermissionLevel.Contributor)));
+        StubUsers((alice, "Alice", "alice@example.org"));
+        StubFolder("folder-1");
+        StubFolder("folder-2");
+        _drivePermissions.CreatePermissionAsync(Arg.Any<string>(), "alice@example.org", "writer", Arg.Any<CancellationToken>())
+            .Returns(new DrivePermissionMutationResult(DrivePermissionCreateOutcome.Failed, GoogleInternalError));
+        RecordSyncLogTrailFor(alice);
+
+        await service.ReconcileAllAsync(SyncAction.Execute, Xunit.TestContext.Current.CancellationToken);
+
+        await _identities.DidNotReceiveWithAnyArgs().SetStatusFromSyncAsync(default, default!, default);
+    }
+
+    /// <summary>Plays logged rows back through the viewer, newest first, as the real sync log does.</summary>
+    private void RecordSyncLogTrailFor(Guid userId)
+    {
         var trail = new List<GoogleSyncLogView>();
         _googleSyncLog.When(log => log.LogAsync(
                 Arg.Any<GoogleSyncLogAction>(), Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(),
                 Arg.Any<string>(), Arg.Any<GoogleSyncSource>(), Arg.Any<bool>(), Arg.Any<string?>(), Arg.Any<Guid?>(),
                 Arg.Any<CancellationToken>()))
             .Do(call => trail.Insert(0, new GoogleSyncLogView(
-                call.ArgAt<GoogleSyncLogAction>(0), _now, $"{call.ArgAt<string>(3)}: {call.ArgAt<string>(2)}", null,
+                call.ArgAt<GoogleSyncLogAction>(0), _clock.GetCurrentInstant(),
+                $"{call.ArgAt<string>(3)}: {call.ArgAt<string>(2)}", null,
                 call.ArgAt<string>(4), call.ArgAt<string>(5), call.ArgAt<GoogleSyncSource>(6), call.ArgAt<bool>(7),
                 call.ArgAt<string?>(8), call.ArgAt<Guid?>(9))));
-        _googleSyncLogViewer.GetForUserAsync(alice, Arg.Any<CancellationToken>()).Returns(_ => trail.ToList());
-
-        await service.ReconcileOneAsync("folder-1", SyncAction.Execute, Xunit.TestContext.Current.CancellationToken);
-        await _identities.DidNotReceiveWithAnyArgs().SetStatusFromSyncAsync(default, default!, default);
-
-        await service.ReconcileOneAsync("folder-1", SyncAction.Execute, Xunit.TestContext.Current.CancellationToken);
-        await _identities.Received(1).SetStatusFromSyncAsync(
-            alice, "alice@example.org", GoogleEmailStatus.Rejected, Arg.Any<CancellationToken>());
+        _googleSyncLogViewer.GetForUserAsync(userId, Arg.Any<CancellationToken>()).Returns(_ => trail.ToList());
     }
 
     [HumansFact]
@@ -1263,7 +1292,7 @@ public sealed class GoogleDriveAccessSyncServiceTests
         _resources,
         Substitute.For<ITeamService>(),
         Substitute.For<ITeamResourceManagement>(),
-        new FakeClock(_now),
+        _clock,
         _logger)
     {
         Delay = (backoff, _) =>

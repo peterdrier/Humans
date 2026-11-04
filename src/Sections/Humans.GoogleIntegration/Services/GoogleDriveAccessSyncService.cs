@@ -32,6 +32,7 @@ internal sealed class GoogleDriveAccessSyncService(
         GoogleResourceType? resourceType = null,
         GoogleSyncSource syncSource = GoogleSyncSource.ScheduledSync)
     {
+        var passStart = clock.GetCurrentInstant();
         var resources = await LoadResourcesAsync(ct);
         var load = await LoadClaimsAsync(sources, folderId: null, logger, ct);
         var claims = load.Claims.Select(claim => claim with
@@ -48,7 +49,7 @@ internal sealed class GoogleDriveAccessSyncService(
 
         foreach (var claim in claims)
         {
-            diffs.Add(await ReconcileClaimSafelyAsync(await WithPathAsync(claim, ct), action, syncSource, ct));
+            diffs.Add(await ReconcileClaimSafelyAsync(await WithPathAsync(claim, ct), action, syncSource, passStart, ct));
         }
 
         if (load.Partial)
@@ -68,6 +69,7 @@ internal sealed class GoogleDriveAccessSyncService(
         CancellationToken ct = default,
         GoogleSyncSource syncSource = GoogleSyncSource.ScheduledSync)
     {
+        var passStart = clock.GetCurrentInstant();
         var resources = await LoadResourcesAsync(ct);
         var load = await LoadClaimsAsync(sources, folderId, logger, ct);
         var claim = load.Claims.SingleOrDefault(c =>
@@ -87,7 +89,7 @@ internal sealed class GoogleDriveAccessSyncService(
         {
             Resources = resources.Where(r => string.Equals(r.GoogleId, folderId, StringComparison.Ordinal)).ToList()
         };
-        return await ReconcileClaimSafelyAsync(await WithPathAsync(claim, ct), action, syncSource, ct);
+        return await ReconcileClaimSafelyAsync(await WithPathAsync(claim, ct), action, syncSource, passStart, ct);
     }
 
     /// <summary>
@@ -206,12 +208,12 @@ internal sealed class GoogleDriveAccessSyncService(
     }
 
     private async Task<ResourceSyncDiff> ReconcileClaimSafelyAsync(
-        FolderClaim claim, SyncAction action, GoogleSyncSource syncSource, CancellationToken ct)
+        FolderClaim claim, SyncAction action, GoogleSyncSource syncSource, Instant passStart, CancellationToken ct)
     {
         ResourceSyncDiff diff;
         try
         {
-            diff = await ReconcileClaimAsync(claim, action, syncSource, ct);
+            diff = await ReconcileClaimAsync(claim, action, syncSource, passStart, ct);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
@@ -289,6 +291,7 @@ internal sealed class GoogleDriveAccessSyncService(
         FolderClaim claim,
         SyncAction action,
         GoogleSyncSource syncSource,
+        Instant passStart,
         CancellationToken ct)
     {
         var expectedMembers = await HydrateExpectedMembersAsync(claim.Access, ct);
@@ -317,7 +320,7 @@ internal sealed class GoogleDriveAccessSyncService(
             var mode = await syncSettingsService.GetModeAsync(SyncServiceType.GoogleDrive, ct);
             if (mode != SyncMode.None)
             {
-                errors.AddRange(await ApplyMissingAndChangedAsync(claim, plan, mode, syncSource, ct));
+                errors.AddRange(await ApplyMissingAndChangedAsync(claim, plan, mode, syncSource, passStart, ct));
 
                 // A failed source may have claimed this folder too; its members would read as
                 // extra or over-privileged, so hold removals and demotions until it answers.
@@ -442,7 +445,8 @@ internal sealed class GoogleDriveAccessSyncService(
             byEmail.ToDictionary(kv => kv.Key, kv => kv.Value.IdentityEmail, GmailAliasEmailComparer.Instance));
     }
 
-    private async Task<List<string>> ApplyMissingAndChangedAsync(FolderClaim claim, DrivePlan plan, SyncMode mode, GoogleSyncSource syncSource, CancellationToken ct)
+    private async Task<List<string>> ApplyMissingAndChangedAsync(
+        FolderClaim claim, DrivePlan plan, SyncMode mode, GoogleSyncSource syncSource, Instant passStart, CancellationToken ct)
     {
         var errors = new List<string>();
         foreach (var member in plan.Members.Where(m => m.State is MemberSyncState.Missing or MemberSyncState.WrongRole))
@@ -497,7 +501,7 @@ internal sealed class GoogleDriveAccessSyncService(
                     // next run is how Drive turns away an address it will never accept.
                     var rejected = result.Error is { IsDriveTargetRejection: true }
                         || (result.Error is { IsInternalError: true } && member.UserId is { } failedUserId
-                            && await LastGrantFailedWithInternalErrorAsync(claim, member.Email, failedUserId, ct));
+                            && await LastGrantFailedWithInternalErrorAsync(claim, member.Email, failedUserId, passStart, ct));
                     var description = $"{error} ({claim.DisplayName})";
                     await googleSyncLog.LogAsync(
                         GoogleSyncLogAction.AccessGranted, claim.ResourceId, description,
@@ -515,17 +519,22 @@ internal sealed class GoogleDriveAccessSyncService(
     }
 
     /// <summary>
-    /// Whether this member's latest grant on this folder, from an earlier run, also failed with Drive's internal
-    /// error. Grant rows end with the folder's display name, which is all an unregistered folder's row carries.
+    /// Whether this member's latest grant on this folder from an earlier pass also failed with Drive's internal
+    /// error. An unregistered folder logs <see cref="Guid.Empty"/>, so its rows are told apart by the display name
+    /// that ends each grant description.
     /// </summary>
     private async Task<bool> LastGrantFailedWithInternalErrorAsync(
-        FolderClaim claim, string email, Guid userId, CancellationToken ct)
+        FolderClaim claim, string email, Guid userId, Instant passStart, CancellationToken ct)
     {
         var folderSuffix = $" ({claim.DisplayName})";
-        var last = (await googleSyncLogViewer.GetForUserAsync(userId, ct)).FirstOrDefault(row =>
-            row.Action == GoogleSyncLogAction.AccessGranted
-            && string.Equals(row.UserEmail, email, StringComparison.OrdinalIgnoreCase)
-            && row.Description.EndsWith(folderSuffix, StringComparison.Ordinal));
+        var rows = claim.ResourceId != Guid.Empty
+            ? (await googleSyncLogViewer.GetForResourceAsync(claim.ResourceId, ct)).Where(row => row.UserId == userId)
+            : (await googleSyncLogViewer.GetForUserAsync(userId, ct)).Where(row =>
+                row.ResourceName is null && row.Description.EndsWith(folderSuffix, StringComparison.Ordinal));
+        var last = rows.FirstOrDefault(row =>
+            row.OccurredAt < passStart
+            && row.Action == GoogleSyncLogAction.AccessGranted
+            && string.Equals(row.UserEmail, email, StringComparison.OrdinalIgnoreCase));
         return last is { Success: false } && GoogleClientError.IsInternalErrorMessage(last.ErrorMessage);
     }
 
