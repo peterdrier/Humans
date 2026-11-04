@@ -203,7 +203,7 @@ Stored as **string** via `HasConversion<string>()`. The column carried a `Paid` 
 
 ## Invariants
 
-- Store member and admin mutations forward request cancellation through account lookup before any write. Invoice issuance also forwards it through the read-only order load before authorization. Stripe Checkout and Holded issuance retain `CancellationToken.None`; other mutation tokens are unchanged.
+- Store order routes share one account-and-order resolver: resolve the current account, then load the requested order before operation-specific authorization. Both reads retain request cancellation; a missing account returns the existing account refusal before any order read, and a missing order returns 404. Other member and admin mutations also forward request cancellation through account lookup before any write. Stripe Checkout and Holded issuance retain `CancellationToken.None`; other mutation tokens are unchanged.
 
 - Authorization’s account, event-timezone, camp-season, camp-lead and department reads retain HTTP request cancellation; callers without an HTTP context use the non-cancellable default. Membership checks resolve the cookie identity through `IUserService` and use the surviving account's camp leadership and department roles. A missing account or membership held only under the stale cookie ID grants no membership-based access. Existing role-based administrator bypasses remain in effect.
 
