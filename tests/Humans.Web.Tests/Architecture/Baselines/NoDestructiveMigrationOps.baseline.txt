@@ -227,7 +227,7 @@ src/Sections/Humans.Feedback/Data/Migrations/20261101144113_DropFeedbackTables.c
 # above), and the "Archived mappings" view went in peterdrier/Humans#2273. Readers only filtered on it,
 # a no-op; they are removed in this PR, with the field on the CategoryAccountRow DTO and the
 # Backdoor category-map JSON.
-# Approval: Peter, 2026-11-04, project thread ("fix A-E", covering peterdrier/Humans#1923).
+# Approval: Peter, 2026-11-04, per-drop approval in project thread ("Approve all but #2296" for the listed drops in this PR; peterdrier/Humans#1923).
 # Down() caveat: EF re-adds the column as boolean NOT NULL DEFAULT false, so after a rollback every
 # row reads inactive to the old code; a rollback must also set it true by hand.
 src/Sections/Humans.Finance/Data/Migrations/20261104170024_DropHoldedCategoryMapIsActive.cs:DropColumn(name=IsActive,table=holded_category_map)#1
