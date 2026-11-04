@@ -1517,10 +1517,10 @@ public class SurveyServiceTests
     public async Task SendInvitesAsync_creates_invitations_only_for_net_new_recipients()
     {
         var teamId = Guid.NewGuid();
-        Guid a = Guid.NewGuid(), b = Guid.NewGuid(), c = Guid.NewGuid();
+        Guid a = Guid.NewGuid(), b = Guid.NewGuid(), c = Guid.NewGuid(), blank = Guid.NewGuid();
         var survey = SurveyWith(SurveyStatus.Open, SurveyAudienceType.Team, teamId);
         _repo.GetByIdAsync(survey.Id, Arg.Any<CancellationToken>()).Returns(survey);
-        _teamService.GetTeamAsync(teamId, Arg.Any<CancellationToken>()).Returns(TeamWith(teamId, a, b, c));
+        _teamService.GetTeamAsync(teamId, Arg.Any<CancellationToken>()).Returns(TeamWith(teamId, a, b, c, blank));
         _repo.GetInvitationsAsync(survey.Id, Arg.Any<CancellationToken>())
             .Returns([new SurveyInvitation { Id = Guid.NewGuid(), SurveyId = survey.Id,
                 UserId = a, SentAt = _clock.GetCurrentInstant() }]);
@@ -1528,7 +1528,8 @@ public class SurveyServiceTests
         var users = new Dictionary<Guid, UserInfo>
         {
             [b] = UserInfoWithName(b, string.Empty, string.Empty) with { IdentityEmailColumn = "b@example.org" },
-            [c] = UserInfoWithName(c, string.Empty, string.Empty) with { IdentityEmailColumn = "c@example.org" }
+            [c] = UserInfoWithName(c, string.Empty, string.Empty) with { IdentityEmailColumn = "c@example.org" },
+            [blank] = UserInfoWithName(blank, string.Empty, string.Empty) with { IdentityEmailColumn = " \t " }
         };
         _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(call => new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
@@ -2075,8 +2076,12 @@ public class SurveyServiceTests
         await _repo.DidNotReceive().SetReminderSentAsync(Arg.Any<Guid>(), Arg.Any<Instant>(), Arg.Any<CancellationToken>());
     }
 
-    [HumansFact]
-    public async Task SendDueRemindersAsync_skips_invitee_with_no_resolvable_email()
+    [HumansTheory]
+    [InlineData(false, null)]
+    [InlineData(true, null)]
+    [InlineData(true, "")]
+    [InlineData(true, " \t ")]
+    public async Task SendDueRemindersAsync_skips_invitee_with_no_resolvable_email(bool userExists, string? email)
     {
         var survey = SurveyWith(SurveyStatus.Open, SurveyAudienceType.Team, Guid.NewGuid());
         var userId = Guid.NewGuid();
@@ -2093,7 +2098,9 @@ public class SurveyServiceTests
         _repo.GetByIdAsync(survey.Id, Arg.Any<CancellationToken>()).Returns(survey);
 
         _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(new Dictionary<Guid, UserInfo>()));
+            .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(userExists
+                ? new Dictionary<Guid, UserInfo> { [userId] = UserInfoWithName(userId, "Tester") with { IdentityEmailColumn = email } }
+                : new Dictionary<Guid, UserInfo>()));
 
         var count = await CreateReminderSender().SendDueRemindersAsync(TestContext.Current.CancellationToken);
 

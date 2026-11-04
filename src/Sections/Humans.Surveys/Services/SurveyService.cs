@@ -569,7 +569,7 @@ internal sealed class SurveyService(
 
         foreach (var userId in netNew)
         {
-            if (!users.TryGetValue(userId, out var user) || user.Email is not { Length: > 0 } email)
+            if (!users.TryGetValue(userId, out var user) || user.Email is not { } email || string.IsNullOrWhiteSpace(email))
             {
                 logger.LogWarning(
                     "User {UserId} has no notification email for survey {SurveyId}; skipping invitation",

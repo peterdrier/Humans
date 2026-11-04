@@ -18,6 +18,10 @@ public sealed class SurveyPreviewEmailServiceTests
     [HumansTheory]
     [Xunit.InlineData("missing-survey")]
     [Xunit.InlineData("missing-email")]
+    [Xunit.InlineData("null-email")]
+    [Xunit.InlineData("empty-email")]
+    [Xunit.InlineData("blank-email")]
+    [Xunit.InlineData("blank-email-send")]
     [Xunit.InlineData("queue-failure")]
     public async Task Preview_failures_return_refusal_keys_without_localized_exceptions(string failure)
     {
@@ -36,15 +40,20 @@ public sealed class SurveyPreviewEmailServiceTests
             surveys.GetForEditAsync(surveyId, Arg.Any<CancellationToken>())
                 .Returns(new SurveyDetail(surveyId, SurveyStatus.Draft, editable, userId));
 
-        if (string.Equals(failure, "queue-failure", StringComparison.Ordinal))
+        if (failure is not ("missing-survey" or "missing-email"))
         {
-
             users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
                 .Returns(new UserInfo(
                     userId, "Author", false, "fr", null, Instant.FromUnixTimeSeconds(0),
                     null, null, null, null, null, null,
                     null, null, null, [], [], null) with
-                { IdentityEmailColumn = "author@example.org" });
+                { IdentityEmailColumn = failure switch
+                    {
+                        "null-email" => null,
+                        "empty-email" => "",
+                        "blank-email" or "blank-email-send" => " \t ",
+                        _ => "author@example.org"
+                    } });
             emailService.SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>())
                 .Returns(Task.FromException(new IOException("Outbox unavailable")));
         }
@@ -53,14 +62,14 @@ public sealed class SurveyPreviewEmailServiceTests
             Substitute.For<IEmailPreviewService>(),
             new SurveyPreviewTokenProvider(DataProtectionProvider.Create("survey-preview-error-language-tests")),
             NullLogger<SurveyPreviewEmailService>.Instance);
-        var errorKey = string.Equals(failure, "queue-failure", StringComparison.Ordinal)
+        var errorKey = failure is "queue-failure" or "blank-email-send"
             ? (await sut.SendToUserAsync(surveyId, userId, ct)).ErrorKey
             : (await sut.PreviewForUserAsync(surveyId, userId, ct)).ErrorKey;
 
         errorKey.Should().Be(failure switch
         {
             "missing-survey" => "Surveys_PreviewNotFound",
-            "missing-email" => "Surveys_PreviewNoEmail",
+            "missing-email" or "null-email" or "empty-email" or "blank-email" or "blank-email-send" => "Surveys_PreviewNoEmail",
             _ => "Surveys_PreviewQueueFailed"
         });
         if (!string.Equals(failure, "queue-failure", StringComparison.Ordinal))
