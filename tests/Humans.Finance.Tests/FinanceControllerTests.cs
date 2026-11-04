@@ -109,6 +109,7 @@ public class FinanceControllerTests
         GenerateSepa,
         BookSepaTransfer,
         WithdrawSepaTransfer,
+        CancelSepaFile,
         ApplyHoldedDuplicates,
         BookSepaFile,
         BookSepaFileMatches,
@@ -130,6 +131,9 @@ public class FinanceControllerTests
     [InlineData(FinanceOperation.WithdrawSepaTransfer, AccountScenario.Merged)]
     [InlineData(FinanceOperation.WithdrawSepaTransfer, AccountScenario.Missing)]
     [InlineData(FinanceOperation.WithdrawSepaTransfer, AccountScenario.Cancelled)]
+    [InlineData(FinanceOperation.CancelSepaFile, AccountScenario.Merged)]
+    [InlineData(FinanceOperation.CancelSepaFile, AccountScenario.Missing)]
+    [InlineData(FinanceOperation.CancelSepaFile, AccountScenario.Cancelled)]
     [InlineData(FinanceOperation.ApplyHoldedDuplicates, AccountScenario.Merged)]
     [InlineData(FinanceOperation.ApplyHoldedDuplicates, AccountScenario.Missing)]
     [InlineData(FinanceOperation.ApplyHoldedDuplicates, AccountScenario.Cancelled)]
@@ -174,6 +178,8 @@ public class FinanceControllerTests
             .Returns(new SepaBookingResult(true, "Booked"));
         _connector.WithdrawSepaTransferAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(new SepaBookingResult(true, "Withdrawn"));
+        _connector.CancelSepaFileAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(new SepaBookingResult(true, "Cancelled"));
         _connector.SetCreditorContactAsync(Arg.Any<Guid>(), Arg.Any<int>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(new CreditorBindResult(true, null));
         var payments = Substitute.For<IPaymentDetailsManagement>();
@@ -191,6 +197,7 @@ public class FinanceControllerTests
             FinanceOperation.GenerateSepa => controller.GenerateSepa([], new Dictionary<int, string>(), "100", request.Token),
             FinanceOperation.BookSepaTransfer => controller.BookSepaTransfer(id, "bank"),
             FinanceOperation.WithdrawSepaTransfer => controller.WithdrawSepaTransfer(id),
+            FinanceOperation.CancelSepaFile => controller.CancelSepaFile(id),
             FinanceOperation.ApplyHoldedDuplicates => controller.ApplyHoldedDuplicates(),
             FinanceOperation.BookSepaFile => controller.BookSepaFile(id, "bank"),
             FinanceOperation.BookSepaFileMatches => controller.BookSepaFileMatches(id),
@@ -216,13 +223,13 @@ public class FinanceControllerTests
                 var actorPosition = operation switch
                 {
                     FinanceOperation.ApplyHoldedDuplicates => 0,
-                    FinanceOperation.WithdrawSepaTransfer or FinanceOperation.BookSepaFileMatches
+                    FinanceOperation.WithdrawSepaTransfer or FinanceOperation.CancelSepaFile or FinanceOperation.BookSepaFileMatches
                         or FinanceOperation.UnbindCreditor or FinanceOperation.RevealIban => 1,
                     _ => 2,
                 };
                 Assert.Equal(survivorId, call.GetArguments()[actorPosition]);
                 foreach (var token in call.GetArguments().OfType<CancellationToken>())
-                    Assert.Equal(operation is FinanceOperation.GenerateSepa or FinanceOperation.WithdrawSepaTransfer or FinanceOperation.RevealIban ? request.Token : CancellationToken.None, token);
+                    Assert.Equal(operation is FinanceOperation.GenerateSepa or FinanceOperation.WithdrawSepaTransfer or FinanceOperation.CancelSepaFile or FinanceOperation.RevealIban ? request.Token : CancellationToken.None, token);
             }
         }
         if (account != AccountScenario.Merged)

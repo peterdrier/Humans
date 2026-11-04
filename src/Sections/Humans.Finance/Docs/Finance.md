@@ -267,7 +267,7 @@ The provisioning preview, unmatched queue, creditor overview (including member-n
 
 ## Invariants
 
-- Provisioning, SEPA generation/booking/withdrawal, duplicate removal, creditor binding changes and IBAN reveals resolve the acting account through Users before calling the service. Merged sessions use the surviving actor ID; missing accounts retain the action's Challenge/Forbid response and perform no operation. Account reads observe request cancellation, while each service call retains its existing cancellation boundary.
+- Provisioning, SEPA generation/booking/withdrawal (including whole-file cancellation), duplicate removal, creditor binding changes and IBAN reveals resolve the acting account through Users before calling the service. Merged sessions use the surviving actor ID; missing accounts retain the action's Challenge/Forbid response and perform no operation. Account reads observe request cancellation, while each service call retains its existing cancellation boundary.
 
 - Duplicate-document previews order member groups by creditor account then contact name ignoring case, and empty unbound contacts by account number in the view. The plan carries account metadata without display sorting; apply explicitly preserves the account/name processing sequence.
 

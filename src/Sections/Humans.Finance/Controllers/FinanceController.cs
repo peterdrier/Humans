@@ -305,7 +305,9 @@ internal sealed class FinanceController(
     public async Task<IActionResult> CancelSepaFile(
         Guid fileId, int days = IHoldedFinanceAdminService.DefaultSepaMatchToleranceDays)
     {
-        if (GetCurrentUserId() is not { } actorUserId) return Challenge();
+        var actor = await GetCurrentUserInfoAsync(HttpContext.RequestAborted);
+        if (actor is null) return Challenge();
+        var actorUserId = actor.Id;
 
         var result = await holdedConnector.CancelSepaFileAsync(fileId, actorUserId, HttpContext.RequestAborted);
         if (result.Succeeded) SetSuccess(result.Message); else SetError(result.Message);
