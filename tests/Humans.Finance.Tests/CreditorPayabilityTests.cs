@@ -101,7 +101,7 @@ public class CreditorPayabilityTests
         _repo.GetSepaPayoutTransferRowsAsync(Arg.Any<CancellationToken>()).Returns([Transfer()]);
         var service = MakeService();
 
-        var (rows, _) = await service.ListCreditorAccountsAsync(TestContext.Current.CancellationToken);
+        var (rows, _, _) = await service.ListCreditorAccountsAsync(TestContext.Current.CancellationToken);
         var result = await service.GenerateSepaPayoutAsync([new SepaPayoutSelection(Account, 4800m)], 10000m, Guid.NewGuid());
 
         var row = rows.Should().ContainSingle().Subject;
@@ -126,7 +126,7 @@ public class CreditorPayabilityTests
             generatedAt: string.Equals(state, "stale", StringComparison.Ordinal) ? FixedNow - Duration.FromDays(120) : null)]);
         var service = MakeService();
 
-        var (rows, _) = await service.ListCreditorAccountsAsync(TestContext.Current.CancellationToken);
+        var (rows, _, _) = await service.ListCreditorAccountsAsync(TestContext.Current.CancellationToken);
         var result = await service.GenerateSepaPayoutAsync([new SepaPayoutSelection(Account, 4800m)], 10000m, Guid.NewGuid());
 
         rows.Should().ContainSingle().Which.PendingPayoutFileName.Should().BeNull();
@@ -140,7 +140,7 @@ public class CreditorPayabilityTests
         _client.ListPurchaseDocumentsAsync(Arg.Any<CancellationToken>()).Returns([Doc("doc-a", 4800m), Doc("doc-b", 4800m)]);
         var service = MakeService();
 
-        var (rows, _) = await service.ListCreditorAccountsAsync(TestContext.Current.CancellationToken);
+        var (rows, _, _) = await service.ListCreditorAccountsAsync(TestContext.Current.CancellationToken);
         var result = await service.GenerateSepaPayoutAsync([new SepaPayoutSelection(Account, 4800m)], 10000m, Guid.NewGuid());
 
         var row = rows.Should().ContainSingle().Subject;
@@ -158,7 +158,7 @@ public class CreditorPayabilityTests
         _client.ListPurchaseDocumentsAsync(Arg.Any<CancellationToken>()).Throws(new HoldedTransientException("Holded 503"));
         var service = MakeService();
 
-        var (rows, _) = await service.ListCreditorAccountsAsync(TestContext.Current.CancellationToken);
+        var (rows, _, _) = await service.ListCreditorAccountsAsync(TestContext.Current.CancellationToken);
         var result = await service.GenerateSepaPayoutAsync([new SepaPayoutSelection(Account, 4800m)], 10000m, Guid.NewGuid());
 
         rows.Should().ContainSingle().Which.HasDuplicateDocuments.Should().BeNull();
@@ -175,7 +175,7 @@ public class CreditorPayabilityTests
         _expenses.GetHoldedBookingsAsync(Arg.Any<CancellationToken>()).Returns([Booking("doc-a"), Booking("doc-b")]);
         _client.ListPurchaseDocumentsAsync(Arg.Any<CancellationToken>()).Returns([Doc("doc-a", 4800m), Doc("doc-b", 4800m)]);
 
-        var (rows, _) = await MakeService().ListCreditorAccountsAsync(TestContext.Current.CancellationToken);
+        var (rows, _, _) = await MakeService().ListCreditorAccountsAsync(TestContext.Current.CancellationToken);
 
         rows.Should().ContainSingle().Which.HasDuplicateDocuments.Should().BeFalse();
     }

@@ -478,7 +478,7 @@ public class FinanceControllerTests
         IReadOnlyList<CreditorAccountRow> rows,
         IReadOnlyList<CreditorContactBinding>? unresolved = null) =>
         _finance.ListCreditorAccountsAsync(Arg.Any<CancellationToken>())
-            .Returns((rows, unresolved ?? []));
+            .Returns((rows, unresolved ?? [], (string?)null));
 
     private static CreditorsPageVm PageOf(IActionResult result) =>
         result.Should().BeOfType<ViewResult>().Subject.Model
