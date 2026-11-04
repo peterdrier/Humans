@@ -82,6 +82,7 @@ public class ServiceIssueInvoiceTests
                 Subtotal = 100m,
                 Tax = 21m,
                 Total = 121m,
+                Lines = [new HoldedSalesDocumentLineDto("Ice", 20m, 5m, 21m)],
                 RawJson = """{"id":"doc-1"}""",
             });
         _holded.CreateContactAsync(Arg.Any<HoldedContactInput>(), Arg.Any<CancellationToken>())
@@ -563,6 +564,7 @@ public class ServiceIssueInvoiceTests
             Tax = tax,
             Total = total,
             IsDraft = isDraft,
+            Lines = [new HoldedSalesDocumentLineDto("Ice", 20m, 5m, 21m)],
             RawJson = $$"""{"id":"{{id}}"}""",
         };
 
@@ -901,6 +903,75 @@ public class ServiceIssueInvoiceTests
         await _audit.DidNotReceive().LogAsync(
             StoreAuditActions.StoreInvoiceIssued, Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<string>(),
             Arg.Any<Guid>(), Arg.Any<Guid?>(), Arg.Any<string>());
+    }
+
+    [HumansFact]
+    public async Task A_recovered_document_whose_lines_differ_under_equal_totals_is_not_adopted()
+    {
+        // 10 x EUR 6 + 10 x EUR 4 keeps every aggregate of 20 x EUR 5, but not the per-line prices
+        // the order would freeze at.
+        var order = CampOrder();
+        Arrange(order, IceProduct());
+        ArrangeAlreadyIssued(order, HoldedSalesDocumentKind.Invoice, SalesDoc(isDraft: false) with
+        {
+            Lines = [new("Ice", 10m, 6m, 21m), new("Ice", 10m, 4m, 21m)],
+        });
+
+        var result = await _service.IssueInvoiceAsync(order.Id, _actor, TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeFalse();
+        result.Refusal.Should().Match("*lines no longer match*");
+        order.State.Should().Be(OrderState.Open);
+        await _repo.DidNotReceive().SaveIssuedInvoiceAsync(
+            Arg.Any<Invoice>(), Arg.Any<Order>(), Arg.Any<CancellationToken>());
+        await _holded.DidNotReceiveWithAnyArgs().CreateSalesDocumentAsync(default, default!);
+    }
+
+    [HumansFact]
+    public async Task A_recovered_document_with_its_deposit_line_is_adopted()
+    {
+        // 10 x EUR 5 at 21%: the VAT amount (10.50) differs from the rate the lines carry.
+        var order = CampOrder(qty: 10);
+        Arrange(order, IceProduct(deposit: 3m));
+        ArrangeAlreadyIssued(order, HoldedSalesDocumentKind.Invoice, SalesDoc(
+            isDraft: false, subtotal: 80m, tax: 10.50m, total: 90.50m) with
+        {
+            Lines = [new("Ice — refundable deposit", 10m, 3m, 0m), new("Ice", 10m, 5m, 21m)],
+        });
+
+        var result = await _service.IssueInvoiceAsync(order.Id, _actor, TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeTrue();
+    }
+
+    [HumansFact]
+    public async Task A_recovered_document_whose_lines_could_not_be_read_is_not_adopted()
+    {
+        var order = CampOrder();
+        Arrange(order, IceProduct());
+        ArrangeAlreadyIssued(order, HoldedSalesDocumentKind.Invoice, SalesDoc(isDraft: true) with { Lines = [] });
+
+        var result = await _service.IssueInvoiceAsync(order.Id, _actor, TestContext.Current.CancellationToken);
+
+        result.Refusal.Should().Match("*lines could not be read*");
+        // Refused before approval: nothing new becomes a legal document.
+        await _holded.DidNotReceiveWithAnyArgs().ApproveSalesDocumentAsync(default, default!);
+    }
+
+    [HumansFact]
+    public async Task A_just_approved_document_is_frozen_on_its_totals_whatever_its_lines_read()
+    {
+        // After this attempt approved the document, a line refusal would strand a legal factura behind an
+        // order that can never freeze, so only the totals gate first issuance.
+        var order = CampOrder();
+        Arrange(order, IceProduct());
+        _holded.GetSalesDocumentAsync(HoldedSalesDocumentKind.Invoice, "doc-1", Arg.Any<CancellationToken>())
+            .Returns(SalesDoc(isDraft: false, id: "doc-1") with { Lines = [] });
+
+        var result = await _service.IssueInvoiceAsync(order.Id, _actor, TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeTrue();
+        order.State.Should().Be(OrderState.InvoiceIssued);
     }
 
     [HumansFact]
