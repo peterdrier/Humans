@@ -37,6 +37,7 @@ internal sealed class CantinaController : HumansControllerBase
     [HttpGet("Roster")]
     public async Task<IActionResult> Roster(int? weekStartOffset = null, CancellationToken ct = default)
     {
+        if (!ModelState.IsValid) return InvalidOffset(nameof(weekStartOffset));
         // No sort: the weekly page renders none of People; the CSV sorts for itself.
         var roster = await _roster.GetWeeklyRosterAsync(weekStartOffset, ct: ct).ConfigureAwait(false);
         ViewData[HealthRevealedKey] = TakeReveal(RevealToken("week", roster.WeekStartOffset));
@@ -50,6 +51,7 @@ internal sealed class CantinaController : HumansControllerBase
     {
         var actor = await GetCurrentUserInfoAsync(ct);
         if (actor is null) return Unauthorized();
+        if (!ModelState.IsValid) return InvalidOffset(nameof(weekStartOffset));
 
         var roster = await _roster.GetWeeklyRosterAsync(weekStartOffset, RosterDisclosure.HealthReveal(actor.Id), ct).ConfigureAwait(false);
         TempData[HealthRevealedKey] = RevealToken("week", roster.WeekStartOffset);
@@ -62,6 +64,7 @@ internal sealed class CantinaController : HumansControllerBase
     {
         var actor = await GetCurrentUserInfoAsync(ct);
         if (actor is null) return Unauthorized();
+        if (!ModelState.IsValid) return InvalidOffset(nameof(weekStartOffset));
 
         var roster = await _roster.GetWeeklyRosterAsync(weekStartOffset, RosterDisclosure.Export(actor.Id), ct).ConfigureAwait(false);
         roster = CantinaRosterAssembler.WithSortedPeople(roster);
@@ -78,6 +81,7 @@ internal sealed class CantinaController : HumansControllerBase
     [HttpGet("Roster/Day")]
     public async Task<IActionResult> Day(int? dayOffset = null, CancellationToken ct = default)
     {
+        if (!ModelState.IsValid) return InvalidOffset(nameof(dayOffset));
         var matrix = await _roster.GetDailyRosterAsync(dayOffset, ct: ct).ConfigureAwait(false);
         ViewData[HealthRevealedKey] = TakeReveal(RevealToken("day", matrix.DayOffset));
         return View(CantinaRosterAssembler.WithSortedPeople(matrix));
@@ -90,6 +94,7 @@ internal sealed class CantinaController : HumansControllerBase
     {
         var actor = await GetCurrentUserInfoAsync(ct);
         if (actor is null) return Unauthorized();
+        if (!ModelState.IsValid) return InvalidOffset(nameof(dayOffset));
 
         var matrix = await _roster.GetDailyRosterAsync(dayOffset, RosterDisclosure.HealthReveal(actor.Id), ct).ConfigureAwait(false);
         TempData[HealthRevealedKey] = RevealToken("day", matrix.DayOffset);
@@ -102,6 +107,7 @@ internal sealed class CantinaController : HumansControllerBase
     {
         var actor = await GetCurrentUserInfoAsync(ct);
         if (actor is null) return Unauthorized();
+        if (!ModelState.IsValid) return InvalidOffset(nameof(dayOffset));
 
         var matrix = await _roster.GetDailyRosterAsync(dayOffset, RosterDisclosure.Export(actor.Id), ct).ConfigureAwait(false);
         matrix = CantinaRosterAssembler.WithSortedPeople(matrix);
@@ -113,6 +119,12 @@ internal sealed class CantinaController : HumansControllerBase
             "Cantina day matrix CSV exported for dayOffset={DayOffset}, people={PeopleCount}",
             matrix.DayOffset, matrix.People.Count);
         return File(bytes, "text/csv; charset=utf-8", filename);
+    }
+
+    private BadRequestObjectResult InvalidOffset(string parameter)
+    {
+        _logger.LogWarning("Rejected malformed Cantina roster offset {Parameter}", parameter);
+        return BadRequest(ModelState);
     }
 
     // The token names the page the reveal was for, so a reveal never unlocks a different week or day.

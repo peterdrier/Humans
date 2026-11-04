@@ -5,6 +5,8 @@ using Humans.Cantina.Controllers;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
+using Microsoft.AspNetCore.Mvc.ModelBinding;
+using Microsoft.AspNetCore.Mvc.ModelBinding.Binders;
 using Microsoft.Extensions.Logging.Abstractions;
 using System.Text.Json;
 using AwesomeAssertions;
@@ -160,6 +162,48 @@ public class CantinaRosterServiceTests
         Csv,
         RevealDayHealth,
         DayCsv
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(nameof(CantinaController.Roster))]
+    [Xunit.InlineData(nameof(CantinaController.Day))]
+    [Xunit.InlineData(nameof(CantinaController.RevealHealth))]
+    [Xunit.InlineData(nameof(CantinaController.RevealDayHealth))]
+    [Xunit.InlineData(nameof(CantinaController.Csv))]
+    [Xunit.InlineData(nameof(CantinaController.DayCsv))]
+    public async Task RosterActions_RejectMalformedOffsetsInsteadOfDefaultingToTheCurrentPeriod(string action)
+    {
+        var controller = Controller(Guid.NewGuid());
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var daily = action is nameof(CantinaController.Day) or nameof(CantinaController.RevealDayHealth)
+            or nameof(CantinaController.DayCsv);
+        var field = daily ? "dayOffset" : "weekStartOffset";
+        var binding = DefaultModelBindingContext.CreateBindingContext(controller.ControllerContext,
+            new QueryStringValueProvider(BindingSource.Query, new QueryCollection(
+                new Dictionary<string, Microsoft.Extensions.Primitives.StringValues>(StringComparer.OrdinalIgnoreCase)
+                { [field] = "not-an-offset" }),
+                System.Globalization.CultureInfo.InvariantCulture),
+            new EmptyModelMetadataProvider().GetMetadataForType(typeof(int?)), bindingInfo: null, modelName: field);
+        await new SimpleTypeModelBinder(typeof(int?), NullLoggerFactory.Instance).BindModelAsync(binding);
+        binding.Result.IsModelSet.Should().BeFalse();
+        controller.ModelState.IsValid.Should().BeFalse();
+
+        var result = action switch
+        {
+            nameof(CantinaController.Roster) => await controller.Roster(null, ct),
+            nameof(CantinaController.Day) => await controller.Day(null, ct),
+            nameof(CantinaController.RevealHealth) => await controller.RevealHealth(null, ct),
+            nameof(CantinaController.RevealDayHealth) => await controller.RevealDayHealth(null, ct),
+            nameof(CantinaController.Csv) => await controller.Csv(null, ct),
+            nameof(CantinaController.DayCsv) => await controller.DayCsv(null, ct),
+            _ => throw new ArgumentOutOfRangeException(nameof(action), action, null)
+        };
+
+        result.Should().BeOfType<BadRequestObjectResult>();
+        _burnSettings.ReceivedCalls().Should().BeEmpty();
+        _dietary.ReceivedCalls().Should().BeEmpty();
+        _audit.ReceivedCalls().Should().BeEmpty();
+        controller.TempData.ContainsKey(CantinaController.HealthRevealedKey).Should().BeFalse();
     }
 
     [HumansTheory]

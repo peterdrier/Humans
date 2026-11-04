@@ -55,6 +55,8 @@ Context: `CantinaDbContext` (history table `__EFMigrationsHistory_Cantina`).
 
 `weekStartOffset` is the day-offset of the week's Monday relative to `EventSettingsInfo.GateOpeningDate`. When omitted, the service resolves the week containing today in the event's timezone, off the active event it has already loaded. With no active event the offset is `0` and the page renders its empty state. `/Cantina/Roster/Day` resolves `dayOffset` the same way.
 
+All six roster, reveal and CSV actions reject malformed offset binding with HTTP 400 and a Warning before loading a roster, recording a disclosure or setting a reveal token. Omitted offsets still select the current period. Reveal and CSV actions retain their account preflight before this validation, so missing actors remain Unauthorized.
+
 ## Actors & Roles
 
 | Actor | Capabilities |
