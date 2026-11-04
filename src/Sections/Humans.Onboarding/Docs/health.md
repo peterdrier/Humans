@@ -5,7 +5,8 @@ be, not a description of what it is.
 
 ## 1. What the section does
 
-Takes a person who has just signed in for the first time and walks them to the point where the
+Takes a person who is new to using Humans (their account may predate them, from a ticket or a
+mailing-list import) and walks them to the point where the
 rest of the application opens up: give us a name, optionally pick a shift, sign the legal
 documents. It decides — from data other sections own — which of those three things the person
 still owes, and it puts that decision behind one URL so every other page can just say "continue

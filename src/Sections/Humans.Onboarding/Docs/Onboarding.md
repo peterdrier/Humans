@@ -27,6 +27,12 @@
 
 Pure orchestrator over Profiles, Consent, Teams, and Governance. Owns no tables.
 
+## Purpose
+
+Humans is a large application, and most people meeting it are volunteers for an event. Onboarding welcomes people who are new to *using* Humans, whether or not their account is new (buying a ticket or joining the mailing list can create one), and gets them going without showing them the whole app at once: a short guided flow collects what the association needs to let them in, then points them at places they can help.
+
+Where it points them depends on what the association needs right now. The shifts step exists because staffing shifts was the pressing need; off-season the better destination may simply be what is going on. Shifts stays one possible destination, not the definition of done.
+
 > **Three-concerns split.** `OnboardingService` is the *intake funnel only* (signup → profile → consents → first-team admission, plus signup reject). The Consent Coordinator review queue is Consent's (`/Consent/ReviewQueue`), next to the `consent_reviews` table it writes. Sibling services own the other workflow stages so onboarding stays narrow:
 >
 > - **Lifecycle state-machine** (suspend/unsuspend, future re-consent suspensions and term-renewals) → `IHumanLifecycleService`.
