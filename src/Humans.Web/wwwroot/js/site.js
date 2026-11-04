@@ -627,15 +627,12 @@ function showToast(message, type) {
 // page and the user's filters/scroll survive. The JS contract (including its
 // antiforgery token) is rendered by Views/Shared/_FavouriteButton.cshtml.
 (function () {
-    function removeRow(btn) {
-        // A whole-event unfavourite (empty data-day) deletes every occurrence
-        // server-side, so remove every occurrence row for this event; a day-specific
-        // unfavourite removes only the clicked row.
+    function removeRow(btn, allOccurrences) {
+        // A day request may delete a whole-event bookmark and clear every occurrence.
         var day = btn.getAttribute('data-day');
-        var toggles = (day === null || day === '')
-            ? document.querySelectorAll('.js-favourite-toggle[data-remove-row="true"][data-event-id="' + btn.getAttribute('data-event-id') + '"]')
-            : [btn];
+        var toggles = document.querySelectorAll('.js-favourite-toggle[data-remove-row="true"][data-event-id="' + btn.getAttribute('data-event-id') + '"]');
         Array.prototype.forEach.call(toggles, function (t) {
+            if (!allOccurrences && day !== null && day !== '' && t.getAttribute('data-day') !== day) return;
             var row = t.closest('.list-group-item');
             if (!row) return;
             var list = row.closest('.list-group');
@@ -664,7 +661,8 @@ function showToast(message, type) {
         if (day !== null && day !== '') url += '?day=' + encodeURIComponent(day);
         var token = btn.closest('form').querySelector('input[name="__RequestVerificationToken"]').value;
 
-        btn.disabled = true;
+        var controls = document.querySelectorAll('.js-favourite-toggle[data-event-id="' + btn.getAttribute('data-event-id') + '"]');
+        Array.prototype.forEach.call(controls, function (control) { control.disabled = true; });
         fetch(url, {
             method: favourited ? 'DELETE' : 'POST',
             redirect: 'error',
@@ -672,16 +670,30 @@ function showToast(message, type) {
         })
             .then(function (r) {
                 if (!r.ok) throw new Error(r.status);
-                if (btn.getAttribute('data-remove-row') === 'true') { removeRow(btn); return; }
-                var nowFav = !favourited;
-                btn.setAttribute('data-favourited', nowFav ? 'true' : 'false');
-                btn.setAttribute('aria-pressed', nowFav ? 'true' : 'false');
-                btn.classList.toggle('btn-danger', nowFav);
-                btn.classList.toggle('btn-outline-danger', !nowFav);
-                var label = btn.getAttribute(nowFav ? 'data-title-remove' : 'data-title-add');
-                if (label) { btn.title = label; btn.setAttribute('aria-label', label); }
+                return fetch('/api/events/favourites', { redirect: 'error' });
+            })
+            .then(function (r) {
+                if (!r.ok) throw new Error(r.status);
+                return r.json();
+            })
+            .then(function (favourites) {
+                var remaining = favourites.filter(function (item) { return item.id === btn.getAttribute('data-event-id'); });
+                var remainingDays = new Set(remaining.map(function (item) { return String(item.dayOffset); }));
+                Array.prototype.forEach.call(controls, function (control) {
+                    if (control.getAttribute('data-remove-row') === 'true') return;
+                    var controlDay = control.getAttribute('data-day');
+                    var wholeControl = controlDay === null || controlDay === '';
+                    var nowFav = wholeControl ? remaining.length > 0 : remainingDays.has(controlDay);
+                    control.setAttribute('data-favourited', nowFav ? 'true' : 'false');
+                    control.setAttribute('aria-pressed', nowFav ? 'true' : 'false');
+                    control.classList.toggle('btn-danger', nowFav);
+                    control.classList.toggle('btn-outline-danger', !nowFav);
+                    var label = control.getAttribute(nowFav ? 'data-title-remove' : 'data-title-add');
+                    if (label) { control.title = label; control.setAttribute('aria-label', label); }
+                });
+                if (btn.getAttribute('data-remove-row') === 'true') removeRow(btn, remaining.length === 0);
             })
             .catch(function () { showToast(btn.getAttribute('data-error') || 'Something went wrong.', 'danger'); })
-            .finally(function () { btn.disabled = false; });
+            .finally(function () { Array.prototype.forEach.call(controls, function (control) { control.disabled = false; }); });
     });
 })();
