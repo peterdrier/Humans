@@ -1873,6 +1873,36 @@ public sealed class AssemblyVoteServiceTests : IDisposable
             .SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>());
     }
 
+    [HumansTheory]
+    [InlineData("")]
+    [InlineData(" ")]
+    public async Task OpeningEmail_UnreachableRecipientStaysUnstampedUntilAddressIsAvailable(string address)
+    {
+        var vote = await _fx.AddVoteAsync(closesAt: _fx.Clock.GetCurrentInstant() + Duration.FromDays(3));
+        var userId = Guid.NewGuid();
+        var row = await _fx.AddRosterRowAsync(vote.Id, userId, isOfficial: true, notified: false);
+        var member = new User { Id = userId, BurnerName = "Member", Email = address }.ToUserInfo();
+        _fx.Users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, UserInfo> { [userId] = member });
+
+        await _fx.Service.RunLapseAndReminderSweepAsync(TestContext.Current.CancellationToken);
+
+        await _fx.Email.DidNotReceive().SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>());
+        (await _fx.Db.AssemblyVoteRosterEntries.AsNoTracking()
+            .SingleAsync(entry => entry.Id == row.Id, TestContext.Current.CancellationToken))
+            .NotifiedAt.Should().BeNull();
+
+        _fx.Users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, UserInfo> { [userId] = member with { IdentityEmailColumn = "member@example.org" } });
+        await _fx.Service.RunLapseAndReminderSweepAsync(TestContext.Current.CancellationToken);
+
+        await _fx.Email.Received(1).SendAsync(
+            Arg.Is<EmailMessage>(message => message.RecipientEmail == "member@example.org"), Arg.Any<CancellationToken>());
+        (await _fx.Db.AssemblyVoteRosterEntries.AsNoTracking()
+            .SingleAsync(entry => entry.Id == row.Id, TestContext.Current.CancellationToken))
+            .NotifiedAt.Should().NotBeNull();
+    }
+
     [HumansFact]
     public async Task OpenAsync_RaisesTheInAppNotificationBeforeTheRosterEmails()
     {

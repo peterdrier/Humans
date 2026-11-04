@@ -446,18 +446,34 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
         Saved(result).ReviewedByUserId.Should().Be(userId);
     }
 
-    [HumansFact]
-    public async Task SignUp_RequireApprovalPolicy_CreatesPending()
+    [HumansTheory]
+    [InlineData(false, false)]
+    [InlineData(false, true)]
+    [InlineData(true, false)]
+    [InlineData(true, true)]
+    public async Task SignUp_RequireApprovalPolicy_CreatesPending(bool range, bool privileged)
     {
-        var (_, _, shift) = SeedShiftScenario(SignupPolicy.RequireApproval);
+        var (_, rota, shift) = SeedShiftScenario(SignupPolicy.RequireApproval);
+        if (range)
+        {
+            rota.Period = RotaPeriod.Strike;
+            shift = SeedAllDayShift(rota, 1);
+        }
         var userId = Guid.NewGuid();
+        var flags = privileged ? ShiftSignupRequestFlags.Privileged : ShiftSignupRequestFlags.None;
         await SaveAllAsync(TestContext.Current.CancellationToken);
 
-        var result = await _service.SignUpAsync(userId, shift.Id);
+        var result = range
+            ? await _service.SignUpRangeAsync(userId, rota.Id, 1, 1, flags: flags)
+            : await _service.SignUpAsync(userId, shift.Id, flags: flags);
 
         result.Success.Should().BeTrue();
         Saved(result).Status.Should().Be(SignupStatus.Pending);
         Saved(result).ReviewedByUserId.Should().BeNull();
+        Saved(result).ReviewedAt.Should().BeNull();
+        if (range) Saved(result).SignupBlockId.Should().NotBeNull();
+        else Saved(result).SignupBlockId.Should().BeNull();
+        await _teamService.Received(1).GetUserCoordinatedTeamIdsAsync(userId, Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -637,6 +653,8 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
 
         result.Success.Should().BeTrue();
         (await ShiftsDb.ShiftSignups.CountAsync(TestContext.Current.CancellationToken)).Should().Be(1);
+        await _teamService.Received(departmentCoordinator ? 1 : 0)
+            .GetUserCoordinatedTeamIdsAsync(userId, Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -770,13 +788,22 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
         Saved(result).Status.Should().Be(SignupStatus.Confirmed);
     }
 
-    [HumansFact]
-    public async Task Bail_FromConfirmed_SetsBailed()
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Bail_FromConfirmed_SetsBailed(bool earlyEntry)
     {
-        var (_, _, shift) = SeedShiftScenario(SignupPolicy.Public);
+        var (settings, _, shift) = SeedShiftScenario(SignupPolicy.Public);
+        if (earlyEntry)
+        {
+            shift.DayOffset = -1;
+            settings.EarlyEntryClose = TestNow + Duration.FromDays(1);
+        }
         var userId = Guid.NewGuid();
         var signup = SeedSignup(userId, shift.Id, SignupStatus.Confirmed);
         await SaveAllAsync(TestContext.Current.CancellationToken);
+        _teamService.GetUserCoordinatedTeamIdsAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<IReadOnlyList<Guid>>(new IOException("Permission lookup unavailable")));
 
         var result = await _service.BailAsync(signup.Id, userId, "Can't make it");
 
@@ -1067,6 +1094,9 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
         Saved(result).Enrolled.Should().BeTrue();
         Saved(result).EnrolledByUserId.Should().Be(enrollerId);
         Saved(result).ReviewedByUserId.Should().Be(enrollerId);
+        Saved(result).ReviewedAt.Should().Be(Saved(result).CreatedAt);
+        Saved(result).UpdatedAt.Should().Be(Saved(result).CreatedAt);
+        Saved(result).SignupBlockId.Should().BeNull();
     }
 
     [HumansTheory]
@@ -1851,6 +1881,8 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
             signup.SignupBlockId = blockId;
         }
         await SaveAllAsync(TestContext.Current.CancellationToken);
+        _teamService.GetUserCoordinatedTeamIdsAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<IReadOnlyList<Guid>>(new IOException("Permission lookup unavailable")));
 
         await _service.BailRangeAsync(blockId, userId);
 
@@ -1885,8 +1917,10 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
         signups.Should().AllSatisfy(s => s.Status.Should().Be(SignupStatus.Confirmed));
     }
 
-    [HumansFact]
-    public async Task ApproveRange_AutoRefusesPendingOnShiftFilledSinceRequest()
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ApproveRange_AutoRefusesPendingOnShiftFilledSinceRequest(bool allAtCapacity)
     {
         var (_, rota, _) = SeedShiftScenario(SignupPolicy.RequireApproval);
         var filledShift = SeedAllDayShift(rota, 1);
@@ -1895,6 +1929,11 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
         var blockId = Guid.NewGuid();
         for (var i = 0; i < filledShift.MaxVolunteers; i++)
             SeedSignup(Guid.NewGuid(), filledShift.Id, SignupStatus.Confirmed);
+        if (allAtCapacity)
+        {
+            for (var i = 0; i < freeShift.MaxVolunteers; i++)
+                SeedSignup(Guid.NewGuid(), freeShift.Id, SignupStatus.Confirmed);
+        }
         var filledPending = SeedSignup(userId, filledShift.Id, SignupStatus.Pending);
         filledPending.SignupBlockId = blockId;
         var freePending = SeedSignup(userId, freeShift.Id, SignupStatus.Pending);
@@ -1903,10 +1942,13 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
 
         var result = await _service.ApproveRangeAsync(blockId, Guid.NewGuid());
 
-        result.Success.Should().BeTrue();
-        result.Warning.Should().Contain("capacity");
+        result.Success.Should().Be(!allAtCapacity);
+        if (allAtCapacity)
+            result.Error.Should().Be("Cannot approve: all shifts in this range are at capacity.");
+        else
+            result.Warning.Should().Contain("capacity");
         (await ShiftsDb.ShiftSignups.SingleAsync(s => s.Id == freePending.Id, TestContext.Current.CancellationToken))
-            .Status.Should().Be(SignupStatus.Confirmed);
+            .Status.Should().Be(allAtCapacity ? SignupStatus.Refused : SignupStatus.Confirmed);
         (await ShiftsDb.ShiftSignups.SingleAsync(s => s.Id == filledPending.Id, TestContext.Current.CancellationToken))
             .Status.Should().Be(SignupStatus.Refused);
     }

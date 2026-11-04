@@ -1,4 +1,6 @@
 using AwesomeAssertions;
+using AngleSharp.Html.Parser;
+using Markdig;
 using NodaTime;
 using Humans.Surveys.Contracts;
 
@@ -20,6 +22,28 @@ public sealed class SurveyResponsesMarkdownBuilderTests
             [new SurveyExportOption("morning", "Morning")],
             GridSelectionMode.Single,
             [new SurveyExportGridRow("monday", "Monday")]);
+
+    [HumansTheory]
+    [Xunit.InlineData(@"one\|pipe")]
+    [Xunit.InlineData(@"two\\|pipe")]
+    [Xunit.InlineData(@"trailing\")]
+    public void Preserves_literal_backslashes_in_prompts_names_and_answers(string value)
+    {
+        var textId = Guid.NewGuid();
+        var markdown = SurveyResponsesMarkdownBuilder.Build(
+            [Text(textId, value)],
+            [new SurveyExportRow(
+                Guid.NewGuid(), ResponseAnonymity.Identified, SurveyInputMethod.UserSpecificLink, "en", Submitted,
+                Guid.NewGuid(), value, [new SurveyExportAnswer(textId, [], [], value, null)])]);
+        var html = Markdown.ToHtml(markdown, new MarkdownPipelineBuilder().UseAdvancedExtensions().Build());
+        using var document = new HtmlParser().ParseDocument(html);
+
+        document.QuerySelectorAll("thead th").Last().TextContent.Should().Be(value);
+        var cells = document.QuerySelectorAll("tbody td");
+        cells.Should().HaveCount(5);
+        cells[3].TextContent.Should().Be(value);
+        cells[4].TextContent.Should().Be(value);
+    }
 
     [HumansFact]
     public void Flattens_multichoice_values_with_pipe_and_uses_values_not_labels()

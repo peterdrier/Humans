@@ -41,10 +41,12 @@
                 <div class="col-md-4">
                     <label asp-for="DeliverableKind" class="form-label">@Localizer["Workgroups_Field_DeliverableKind"]</label>
                     <select asp-for="DeliverableKind" class="form-select" asp-items="@Localizer.EnumSelectItems<WorkgroupDeliverableKind>()"></select>
+                    <span asp-validation-for="DeliverableKind" class="text-danger"></span>
                 </div>
                 <div class="col-md-4">
                     <label asp-for="Audience" class="form-label">@Localizer["Workgroups_Field_Audience"]</label>
                     <select asp-for="Audience" class="form-select" asp-items="@Localizer.EnumSelectItems<WorkgroupAudience>()"></select>
+                    <span asp-validation-for="Audience" class="text-danger"></span>
                 </div>
                 <div class="col-md-4">
                     <label asp-for="TargetDate" class="form-label">@Localizer["Workgroups_Field_TargetDate"]</label>
@@ -61,6 +63,7 @@
             <div class="form-check mb-3">
                 <input asp-for="IsSensitive" class="form-check-input" />
                 <label asp-for="IsSensitive" class="form-check-label">@Localizer["Workgroups_Field_IsSensitive"]</label>
+                <span asp-validation-for="IsSensitive" class="text-danger"></span>
                 <div class="form-text">@Localizer["Workgroups_Field_IsSensitiveHelp"]</div>
             </div>
 

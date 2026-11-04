@@ -112,4 +112,5 @@
   <data name="Preapprovals_BreadcrumbNavigation" xml:space="preserve"><value>Ruta de navegació</value></data>
   <data name="Preapprovals_Error_AmountPrecision" xml:space="preserve"><value>Els imports han de tenir com a màxim dos decimals.</value></data>
   <data name="Preapprovals_Error_AmountTooLarge" xml:space="preserve"><value>L’import és massa elevat.</value></data>
+  <data name="Preapprovals_Error_PersonUnavailable" xml:space="preserve"><value>Aquest compte de membre ja no està disponible.</value></data>
 </root>

@@ -1,4 +1,6 @@
 using AwesomeAssertions;
+using Humans.Base.Enums;
+using Humans.Users.Contracts;
 using Humans.AuditLog.Contracts;
 using Humans.Notifications.Contracts;
 using Humans.Preapprovals.Contracts;
@@ -23,6 +25,68 @@ public sealed class ProgramTests : PreapprovalsTestHarness
         int account = 62900150, LocalDate? claimBy = null, ProgramStatus status = ProgramStatus.Open,
         bool accepts = true, string name = "2026 Creativity", params Guid[] managers) =>
         new(name, "desc", kind, perPerson, ceiling, account, accepts, claimBy ?? Today.PlusMonths(3), status, managers);
+
+    [HumansTheory]
+    [Xunit.InlineData(false, null)]
+    [Xunit.InlineData(false, UserState.Deleted)]
+    [Xunit.InlineData(false, UserState.Merged)]
+    [Xunit.InlineData(true, null)]
+    [Xunit.InlineData(true, UserState.Deleted)]
+    [Xunit.InlineData(true, UserState.Merged)]
+    public async Task ProgramSave_RefusesUnavailableManagersWithoutPersistingAnything(bool update, UserState? state)
+    {
+        var actor = SeedUser();
+        var current = SeedUser();
+        var valid = SeedUser();
+        var unavailable = SeedUser();
+        var snapshot = Xunit.Assert.IsType<UserInfo>(await Users.GetUserInfoAsync(unavailable, Ct));
+        Users.GetUserInfoAsync(unavailable, Arg.Any<CancellationToken>())
+            .Returns(state is { } value ? snapshot with { State = value } : null);
+        var program = update ? await SeedProgramAsync(managers: current) : null;
+        var save = Save(name: "Changed", managers: [valid, unavailable]);
+
+        var result = update
+            ? await NewService().UpdateProgramAsync(program!.Id, save, actor, Ct)
+            : await NewService().CreateProgramAsync(save, actor, Ct);
+
+        result.Refusal.Should().NotBeNull();
+        await using var db = OpenContext();
+        var stored = await db.Programs.Include(p => p.Managers).ToListAsync(Ct);
+        if (update)
+        {
+            var unchanged = stored.Should().ContainSingle().Which;
+            unchanged.Name.Should().Be(program!.Name);
+            unchanged.Managers.Select(m => m.UserId).Should().Equal(current);
+        }
+        else
+            stored.Should().BeEmpty();
+        AuditLog.ReceivedCalls().Should().BeEmpty();
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task ProgramSave_ResolvesAndDeduplicatesManagersBeforePersistingAndAuditing(bool update)
+    {
+        var actor = SeedUser();
+        var archived = Guid.NewGuid();
+        var survivor = SeedUser(mergedIds: [archived]);
+        var person = await Users.GetUserInfoAsync(survivor, Ct);
+        Users.GetUserInfoAsync(archived, Arg.Any<CancellationToken>()).Returns(person);
+        var program = update ? await SeedProgramAsync() : null;
+        var save = Save(managers: [archived, survivor]);
+
+        var result = update
+            ? await NewService().UpdateProgramAsync(program!.Id, save, actor, Ct)
+            : await NewService().CreateProgramAsync(save, actor, Ct);
+
+        result.Refusal.Should().BeNull();
+        await using var db = OpenContext();
+        var stored = await db.Programs.Include(p => p.Managers).SingleAsync(Ct);
+        stored.Managers.Select(m => m.UserId).Should().Equal(survivor);
+        await AuditLog.Received(1).LogAsync(PreapprovalsAuditActions.PreapprovalProgramManagerAdded,
+            AuditEntityTypes.Program, stored.Id, Arg.Any<string>(), actor, survivor, AuditSubjectTypes.User);
+    }
 
     [HumansFact]
     public async Task Create_StoresProgramManagersAndAccountId_AndAudits()

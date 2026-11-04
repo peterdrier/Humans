@@ -35,11 +35,15 @@ public sealed class ProfileCardViewComponent(
         var canViewLegalName = viewMode != ProfileCardViewMode.Public;
         var viewerUserId = userId; // default for self/admin
 
-        if (viewMode == ProfileCardViewMode.Public
-            && Guid.TryParse(UserClaimsPrincipal.FindFirstValue(ClaimTypes.NameIdentifier), out var viewerId))
+        if (viewMode == ProfileCardViewMode.Public)
         {
-            viewerUserId = viewerId;
-            canViewLegalName = await roleAssignmentService.IsUserBoardMemberAsync(viewerId, ct);
+            if (!Guid.TryParse(UserClaimsPrincipal.FindFirstValue(ClaimTypes.NameIdentifier), out var viewerId))
+                return Content(string.Empty);
+            var viewer = await userService.GetUserInfoAsync(viewerId, ct);
+            if (viewer is null) return Content(string.Empty);
+
+            viewerUserId = viewer.Id;
+            canViewLegalName = await roleAssignmentService.IsUserBoardMemberAsync(viewerUserId, ct);
         }
 
         var contactFields = profile is not null

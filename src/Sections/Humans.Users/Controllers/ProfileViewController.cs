@@ -71,10 +71,12 @@ internal sealed class ProfileViewController(
         }
 
         var isOwnProfile = viewer.Id == id;
+        var viewerIsCoordinator = !isOwnProfile
+            && (await shiftMgmt.GetCoordinatorTeamIdsAsync(viewer.Id, ct)).Count > 0;
 
-        var noShowContext = await BuildNoShowHistoryContextAsync(id, viewer.Id, isOwnProfile, ct);
+        var noShowContext = await BuildNoShowHistoryContextAsync(id, isOwnProfile, viewerIsCoordinator, ct);
 
-        var canViewSentMessages = await CanViewSentMessagesAsync(viewer.Id, isOwnProfile, ct);
+        var canViewSentMessages = await CanViewSentMessagesAsync(isOwnProfile, viewerIsCoordinator);
 
         var viewModel = new ProfileViewModel
         {
@@ -92,8 +94,8 @@ internal sealed class ProfileViewController(
 
     private async Task<(bool CanView, List<NoShowHistoryItem>? History)> BuildNoShowHistoryContextAsync(
         Guid profileUserId,
-        Guid viewerId,
         bool isOwnProfile,
+        bool viewerIsCoordinator,
         CancellationToken ct)
     {
         if (isOwnProfile)
@@ -101,7 +103,6 @@ internal sealed class ProfileViewController(
             return (false, null);
         }
 
-        var viewerIsCoordinator = (await shiftMgmt.GetCoordinatorTeamIdsAsync(viewerId, ct)).Count > 0;
         var viewerCanViewShiftHistory = viewerIsCoordinator || ShiftsRoles.IsPrivilegedSignupApprover(User);
         if (!viewerCanViewShiftHistory)
         {
@@ -139,12 +140,11 @@ internal sealed class ProfileViewController(
     /// A coordinator or privileged shift role, never on one's own profile. Same coordinator check as
     /// <see cref="BuildNoShowHistoryContextAsync"/>, so the two panels share access rules.
     /// </summary>
-    private async Task<bool> CanViewSentMessagesAsync(Guid viewerId, bool isOwnProfile, CancellationToken ct)
+    private async Task<bool> CanViewSentMessagesAsync(bool isOwnProfile, bool viewerIsCoordinator)
     {
         if (isOwnProfile)
             return false;
 
-        var viewerIsCoordinator = (await shiftMgmt.GetCoordinatorTeamIdsAsync(viewerId, ct)).Count > 0;
         var isPrivilegedApprover = (await authorizationService.AuthorizeAsync(User, ShiftsPolicies.PrivilegedSignupApprover)).Succeeded;
         return viewerIsCoordinator || isPrivilegedApprover;
     }

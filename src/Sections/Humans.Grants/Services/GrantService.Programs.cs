@@ -22,6 +22,8 @@ internal sealed partial class GrantService
         var events = await settingsService.GetAllEventSettingsAsync(ct);
         if (ChosenEvent(save, events) is not { } evt) return new(Refusal: NoEvent);
         if (await SourceTakenAsync(save, programId: null, ct) is { } refusal) return new(Refusal: refusal);
+        var managerIds = await ResolveManagerIdsAsync(save.ManagerUserIds, ct);
+        if (managerIds is null) return new(Refusal: "One or more selected managers are no longer available.");
 
         var now = clock.GetCurrentInstant();
         var program = new GrantProgram
@@ -40,7 +42,7 @@ internal sealed partial class GrantService
             CreatedAt = now,
             UpdatedAt = now
         };
-        foreach (var userId in save.ManagerUserIds.Distinct())
+        foreach (var userId in managerIds)
             program.Managers.Add(new GrantProgramManager
             { ProgramId = program.Id, UserId = userId, AddedByUserId = actorUserId, AddedAt = now });
         await repository.AddProgramAsync(program, ct);
@@ -67,6 +69,8 @@ internal sealed partial class GrantService
         var events = await settingsService.GetAllEventSettingsAsync(ct);
         if (ChosenEvent(save, events) is not { } evt) return new(NoEvent);
         if (await SourceTakenAsync(save, programId, ct) is { } refusal) return new(refusal);
+        var wanted = await ResolveManagerIdsAsync(save.ManagerUserIds, ct);
+        if (wanted is null) return new("One or more selected managers are no longer available.");
 
         var changes = new List<string>();
         Change(changes, "name", program.Name, save.Name.Trim(), v => program.Name = v);
@@ -88,7 +92,6 @@ internal sealed partial class GrantService
 
         var now = clock.GetCurrentInstant();
         program.UpdatedAt = now;
-        var wanted = save.ManagerUserIds.Distinct().ToList();
         var current = program.Managers.Select(m => m.UserId).ToList();
         var added = wanted.Except(current).ToList();
         var removed = current.Except(wanted).ToList();
@@ -107,6 +110,18 @@ internal sealed partial class GrantService
                 $"Manager removed from \"{program.Name}\".", actorUserId, relatedUserId: id);
 
         return GrantMutationResult.Ok;
+    }
+
+    private async Task<IReadOnlyList<Guid>?> ResolveManagerIdsAsync(IReadOnlyList<Guid> requested, CancellationToken ct)
+    {
+        var managers = new List<Guid>();
+        foreach (var id in requested.Distinct())
+        {
+            var personIds = await ResolveAvailablePersonIdsAsync(id, ct);
+            if (personIds is null) return null;
+            managers.Add(personIds[0]);
+        }
+        return managers.Distinct().ToList();
     }
 
     private static string? Validate(ProgramSave save)

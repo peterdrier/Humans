@@ -34,6 +34,71 @@ namespace Humans.Users.Tests.ViewComponents;
 public sealed class ProfileCardViewComponentTests
 {
     [HumansTheory]
+    [Xunit.InlineData(true, true, "valid")]
+    [Xunit.InlineData(true, false, "valid")]
+    [Xunit.InlineData(false, false, "valid")]
+    [Xunit.InlineData(false, false, null)]
+    [Xunit.InlineData(false, false, "malformed")]
+    public async Task PublicCard_UsesResolvedViewerPermissionsOrHidesMissingViewer(
+        bool viewerExists, bool survivorIsBoard, string? claim)
+    {
+        var targetId = Guid.NewGuid();
+        var cookieId = Guid.NewGuid();
+        var survivorId = Guid.NewGuid();
+        var users = Substitute.For<IUserService>();
+        users.GetUserInfoAsync(targetId, Arg.Any<CancellationToken>()).Returns(
+            UserInfo.Create(new User { Id = targetId }, [], [], UserFixtures.Profile(firstName: "Private name")));
+        users.GetUserInfoAsync(cookieId, Arg.Any<CancellationToken>()).Returns(viewerExists
+            ? UserInfo.Create(new User { Id = survivorId }, [], [], null) : null);
+        var roles = Substitute.For<IRoleAssignmentService>();
+        roles.IsUserBoardMemberAsync(survivorId, Arg.Any<CancellationToken>()).Returns(survivorIsBoard);
+        roles.IsUserBoardMemberAsync(cookieId, Arg.Any<CancellationToken>()).Returns(!survivorIsBoard);
+        var contacts = Substitute.For<IContactFieldService>();
+        contacts.GetViewerAccessLevelAsync(targetId, survivorId, Arg.Any<CancellationToken>())
+            .Returns(ContactFieldVisibility.CoordinatorsAndBoard);
+        var emails = Substitute.For<IUserEmailService>();
+        var teams = Substitute.For<ITeamService>();
+        teams.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(new Dictionary<Guid, TeamInfo>());
+        var component = new ProfileCardViewComponent(users, contacts, emails, teams, roles,
+            Substitute.For<ICommunicationPreferenceService>())
+        {
+            ViewComponentContext = new ViewComponentContext
+            {
+                ViewContext = new ViewContext
+                {
+                    HttpContext = new DefaultHttpContext
+                    {
+                        User = new ClaimsPrincipal(new ClaimsIdentity(claim is null ? [] :
+                            [new Claim(ClaimTypes.NameIdentifier,
+                                string.Equals(claim, "valid", StringComparison.Ordinal) ? cookieId.ToString() : claim)], "test"))
+                    },
+                    ViewData = new ViewDataDictionary(new EmptyModelMetadataProvider(), new ModelStateDictionary())
+                }
+            }
+        };
+
+        var result = await component.InvokeAsync(targetId, ProfileCardViewMode.Public);
+
+        if (!viewerExists)
+        {
+            result.Should().BeOfType<ContentViewComponentResult>().Which.Content.Should().BeEmpty();
+            contacts.ReceivedCalls().Should().BeEmpty();
+            emails.ReceivedCalls().Should().BeEmpty();
+            roles.ReceivedCalls().Should().BeEmpty();
+            return;
+        }
+
+        var model = result.Should().BeOfType<ViewViewComponentResult>().Which.ViewData!.Model
+            .Should().BeOfType<ProfileCardViewModel>().Which;
+        model.CanViewLegalName.Should().Be(survivorIsBoard);
+        model.FirstName.Should().Be(survivorIsBoard ? "Private name" : null);
+        await contacts.Received(1).GetVisibleContactFieldsAsync(targetId, survivorId, Arg.Any<CancellationToken>());
+        await emails.Received(1).GetVisibleEmailsAsync(targetId,
+            ContactFieldVisibility.CoordinatorsAndBoard, Arg.Any<CancellationToken>());
+        await roles.DidNotReceive().IsUserBoardMemberAsync(cookieId, Arg.Any<CancellationToken>());
+    }
+
+    [HumansTheory]
     [Xunit.InlineData(false)]
     [Xunit.InlineData(true)]
     public async Task VolunteerHistoryPreview_PreservesWholeSurrogatePairs(bool fits)
@@ -81,7 +146,11 @@ public sealed class ProfileCardViewComponentTests
             {
                 ViewContext = new ViewContext
                 {
-                    HttpContext = new DefaultHttpContext(),
+                    HttpContext = new DefaultHttpContext
+                    {
+                        User = new ClaimsPrincipal(new ClaimsIdentity(
+                            [new Claim(ClaimTypes.NameIdentifier, userId.ToString())], "test"))
+                    },
                     ViewData = new ViewDataDictionary(new EmptyModelMetadataProvider(), new ModelStateDictionary())
                 }
             }
@@ -149,7 +218,11 @@ public sealed class ProfileCardViewComponentTests
             {
                 ViewContext = new ViewContext
                 {
-                    HttpContext = new DefaultHttpContext(),
+                    HttpContext = new DefaultHttpContext
+                    {
+                        User = new ClaimsPrincipal(new ClaimsIdentity(
+                            [new Claim(ClaimTypes.NameIdentifier, userId.ToString())], "test"))
+                    },
                     ViewData = new ViewDataDictionary(new EmptyModelMetadataProvider(), new ModelStateDictionary()),
                 }
             }
