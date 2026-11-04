@@ -1,32 +1,315 @@
+@model Humans.Finance.Models.FinanceOverviewVm
 @{
     ViewData["Title"] = "Finance";
+    var ledger = Model.Ledger;
+    var owed = Model.Owed;
+    var work = Model.Work;
 }
 
-<h1 class="mb-3">Finance</h1>
+<div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-4">
+    <h1 class="mb-0">Finance</h1>
+    <div class="d-flex align-items-center gap-3">
+        <span class="small text-muted">Holded ledger synced @(Model.LedgerSyncedAt?.ToDateTime() ?? "never")</span>
+        <a href="/Holded" class="btn btn-outline-secondary btn-sm">
+            <i class="fa-solid fa-rotate me-1"></i>Holded sync
+        </a>
+    </div>
+</div>
 
-<div class="list-group">
-    <a asp-action="CashFlow" class="list-group-item list-group-item-action">
-        <div class="fw-semibold"><i class="fa-solid fa-chart-line me-2"></i>Cash flow</div>
-        <div class="small text-muted">When the active budget year's money moves, and when funds run out.</div>
-    </a>
-    <a asp-action="Creditors" class="list-group-item list-group-item-action">
-        <div class="fw-semibold"><i class="fa-solid fa-users me-2"></i>Creditors</div>
-        <div class="small text-muted">What the association owes each member, and which member each creditor account belongs to.</div>
-    </a>
-    <a asp-action="Sepa" class="list-group-item list-group-item-action">
-        <div class="fw-semibold"><i class="fa-solid fa-money-bill-transfer me-2"></i>SEPA payouts</div>
-        <div class="small text-muted">Payout files sent to the bank, and booking each transfer against its bank line.</div>
-    </a>
-    <a asp-action="ExpenseRecon" class="list-group-item list-group-item-action">
-        <div class="fw-semibold"><i class="fa-solid fa-scale-balanced me-2"></i>Expense recon</div>
-        <div class="small text-muted">Approved expense lines against their Holded documents and creditor balances.</div>
-    </a>
-    <a asp-action="HoldedAccounts" class="list-group-item list-group-item-action">
-        <div class="fw-semibold"><i class="fa-solid fa-diagram-project me-2"></i>Account map</div>
-        <div class="small text-muted">Which Holded account each budget category books to, and the expense accounts created outside the budget.</div>
-    </a>
-    <a asp-action="HoldedUnmatched" class="list-group-item list-group-item-action">
-        <div class="fw-semibold"><i class="fa-solid fa-question me-2"></i>Unmatched docs</div>
-        <div class="small text-muted">Holded purchase documents no budget category claims.</div>
-    </a>
+<div class="row g-3 mb-4">
+    <div class="col-lg-6">
+        <div class="card h-100">
+            <div class="card-header d-flex justify-content-between align-items-baseline">
+                <span>Cash on hand</span>
+                @if (ledger is not null)
+                {
+                    <span class="fs-5 fw-bold">@ledger.CashTotal.ToEuro()</span>
+                }
+            </div>
+            @if (ledger is null)
+            {
+                <div class="card-body text-muted">The Holded ledger mirror has never synced.</div>
+            }
+            else
+            {
+                <table class="table table-sm mb-0">
+                    <tbody>
+                        <tr class="table-light"><td colspan="2" class="small text-uppercase text-muted fw-semibold ps-3">Banks</td></tr>
+                        @foreach (var a in ledger.Banks)
+                        {
+                            <tr>
+                                <td class="ps-3"><a href="/Holded/Accounts/@a.AccountNum">@a.Name</a> <span class="small text-muted">@a.AccountNum</span></td>
+                                <td class="text-end pe-3 @(a.Amount == 0m ? "text-muted" : "")">@a.Amount.ToEuro()</td>
+                            </tr>
+                        }
+                        <tr class="table-light"><td colspan="2" class="small text-uppercase text-muted fw-semibold ps-3">Stripe (on 441 for now)</td></tr>
+                        @foreach (var a in ledger.Stripe)
+                        {
+                            <tr>
+                                <td class="ps-3"><a href="/Holded/Accounts/@a.AccountNum">@a.Name</a> <span class="small text-muted">@a.AccountNum</span></td>
+                                <td class="text-end pe-3 @(a.Amount == 0m ? "text-muted" : "")">@a.Amount.ToEuro()</td>
+                            </tr>
+                        }
+                        <tr class="fw-bold"><td class="ps-3">Total</td><td class="text-end pe-3">@ledger.CashTotal.ToEuro()</td></tr>
+                    </tbody>
+                </table>
+            }
+        </div>
+    </div>
+
+    <div class="col-lg-6">
+        <div class="card h-100">
+            <div class="card-header d-flex justify-content-between align-items-baseline">
+                <span>What we owe</span>
+                @if (owed.Total is { } owedTotal)
+                {
+                    <span class="fs-5 fw-bold text-danger">@owedTotal.ToEuro()</span>
+                }
+            </div>
+            @if (owed.Unavailable is { } owedUnavailable)
+            {
+                <div class="card-body text-danger small">
+                    <i class="fa-solid fa-circle-exclamation me-1"></i>@owedUnavailable
+                </div>
+            }
+            else
+            {
+            <table class="table table-sm mb-0">
+                <tbody>
+                    <tr>
+                        <td class="ps-3">
+                            <a asp-action="Creditors">Members awaiting reimbursement</a>
+                            <div class="small text-muted">@owed.MemberAccounts account@(owed.MemberAccounts == 1 ? "" : "s")@(owed.InSepaFiles > 0m ? " · " + owed.InSepaFiles.ToEuro() + " already in SEPA files, not booked yet" : "")</div>
+                        </td>
+                        <td class="text-end pe-3">@owed.Members.ToEuro()</td>
+                    </tr>
+                    <tr>
+                        <td class="ps-3">
+                            <a asp-action="Creditors">Suppliers</a>
+                            <div class="small text-muted">@owed.SupplierAccounts account@(owed.SupplierAccounts == 1 ? "" : "s") with a balance owed</div>
+                        </td>
+                        <td class="text-end pe-3">@owed.Suppliers.ToEuro()</td>
+                    </tr>
+                    <tr>
+                        <td class="ps-3">
+                            Taxes owed to Hacienda
+                            <div class="small text-muted">VAT payable and IRPF withheld (475)</div>
+                        </td>
+                        <td class="text-end pe-3">@(owed.Taxes?.ToEuro() ?? "—")</td>
+                    </tr>
+                    <tr class="fw-bold"><td class="ps-3">Total</td><td class="text-end pe-3">@(owed.Total?.ToEuro() ?? "—")</td></tr>
+                </tbody>
+            </table>
+            }
+        </div>
+    </div>
+</div>
+
+<h2 class="h4 mb-3">Work to do</h2>
+<div class="row g-3 mb-4">
+    <div class="col-md-4 col-lg">
+        <a href="/Expenses/Review" class="card h-100 text-decoration-none text-reset">
+            <div class="card-body">
+                <div class="text-muted small text-uppercase">Awaiting coordinator</div>
+                <div class="fs-3 fw-bold">@work.AwaitingCoordinator</div>
+                <div class="text-muted small">Submitted reports@(work.OldestAwaitingCoordinator is { } oc ? " · oldest " + oc.ToDate() : "")</div>
+            </div>
+        </a>
+    </div>
+    <div class="col-md-4 col-lg">
+        <a href="/Expenses/Review" class="card h-100 text-decoration-none text-reset">
+            <div class="card-body">
+                <div class="text-muted small text-uppercase">Awaiting finance approval</div>
+                <div class="fs-3 fw-bold @(work.AwaitingFinance > 0 ? "text-warning" : "")">@work.AwaitingFinance</div>
+                <div class="text-muted small">Endorsed by a coordinator@(work.OldestAwaitingFinance is { } of ? " · oldest " + of.ToDate() : "")</div>
+            </div>
+        </a>
+    </div>
+    <div class="col-md-4 col-lg">
+        <a asp-action="Creditors" class="card h-100 text-decoration-none text-reset">
+            <div class="card-body">
+                <div class="text-muted small text-uppercase">Ready to pay</div>
+                <div class="fs-3 fw-bold">@(work.CreditorsUnavailable is null ? work.ReadyToPay.ToString() : "—")</div>
+                <div class="text-muted small">@(work.CreditorsUnavailable is null ? $"Members owed {work.ReadyToPayAmount.ToEuro()}, not in a SEPA file" : "Creditor accounts unavailable")</div>
+            </div>
+        </a>
+    </div>
+    <div class="col-md-4 col-lg">
+        <a asp-action="Sepa" class="card h-100 text-decoration-none text-reset">
+            <div class="card-body">
+                <div class="text-muted small text-uppercase">Transfers to book</div>
+                <div class="fs-3 fw-bold">@(work.CreditorsUnavailable is null ? work.AwaitingBooking.ToString() : "—")</div>
+                <div class="text-muted small">Accounts with a SEPA transfer not booked yet</div>
+            </div>
+        </a>
+    </div>
+    <div class="col-md-4 col-lg">
+        <a asp-action="ExpenseRecon" class="card h-100 text-decoration-none text-reset @(work.Problems > 0 ? "border-danger" : "")">
+            <div class="card-body">
+                <div class="text-muted small text-uppercase">Problems</div>
+                <div class="fs-3 fw-bold @(work.Problems > 0 ? "text-danger" : "")">@(work.Problems?.ToString() ?? "—")</div>
+                <div class="text-muted small">
+                    @if (work.ReconProblems is { } rp)
+                    {
+                        <text>@rp recon problem@(rp == 1 ? "" : "s") · @work.DuplicateAccounts duplicate-doc account@(work.DuplicateAccounts == 1 ? "" : "s")</text>
+                    }
+                    else
+                    {
+                        <text>Expense recon unavailable</text>
+                    }
+                </div>
+            </div>
+        </a>
+    </div>
+</div>
+
+<div class="row g-3">
+    <div class="col-lg-4 col-md-6">
+        <div class="card h-100">
+            <div class="card-header">Owed to us</div>
+            @if (ledger is null)
+            {
+                <div class="card-body text-muted">The Holded ledger mirror has never synced.</div>
+            }
+            else
+            {
+                <table class="table table-sm mb-0">
+                    <tbody>
+                        @foreach (var r in ledger.Receivables)
+                        {
+                            <tr><td class="ps-3">@r.Name</td><td class="text-end pe-3 @(r.Amount == 0m ? "text-muted" : "")">@r.Amount.ToEuro()</td></tr>
+                        }
+                        <tr class="fw-bold"><td class="ps-3">Total</td><td class="text-end pe-3">@ledger.ReceivablesTotal.ToEuro()</td></tr>
+                    </tbody>
+                </table>
+            }
+        </div>
+    </div>
+
+    <div class="col-lg-4 col-md-6">
+        <div class="card h-100">
+            <div class="card-header">Net position</div>
+            @if (ledger is null || owed.Total is null)
+            {
+                <div class="card-body text-muted">Needs the Holded ledger mirror.</div>
+            }
+            else
+            {
+                <table class="table table-sm mb-0">
+                    <tbody>
+                        <tr><td class="ps-3">Cash on hand</td><td class="text-end pe-3">@ledger.CashTotal.ToEuro()</td></tr>
+                        <tr><td class="ps-3">Plus owed to us</td><td class="text-end pe-3">@ledger.ReceivablesTotal.ToEuro()</td></tr>
+                        <tr><td class="ps-3">Less what we owe</td><td class="text-end pe-3">@((-owed.Total.Value).ToEuro())</td></tr>
+                        <tr class="fw-bold">
+                            <td class="ps-3">Free to spend</td>
+                            <td class="text-end pe-3 @(Model.NetPosition < 0m ? "text-danger" : "text-success")">@Model.NetPosition.ToEuro()</td>
+                        </tr>
+                    </tbody>
+                </table>
+            }
+        </div>
+    </div>
+
+    <div class="col-lg-4 col-md-6">
+        <div class="card h-100">
+            <div class="card-header">Budget vs actual@(Model.Budget is { } by ? " · " + by.YearName : "")</div>
+            @if (Model.Budget is not { } b)
+            {
+                <div class="card-body text-muted">No active budget year.</div>
+            }
+            else
+            {
+                <div class="card-body pb-2">
+                    <div class="d-flex justify-content-between mb-1">
+                        <span>Spent</span>
+                        <span><strong>@b.Spent.ToEuro(0)</strong> of @b.Planned.ToEuro(0) (@b.SpentPercent%)</span>
+                    </div>
+                    <div class="progress" role="progressbar" aria-label="Budget spent" aria-valuenow="@b.SpentPercent" aria-valuemin="0" aria-valuemax="100">
+                        <div class="progress-bar @(b.SpentPercent > 100 ? "bg-danger" : "bg-success")" style="width: @Math.Min(b.SpentPercent, 100)%"></div>
+                    </div>
+                </div>
+                <table class="table table-sm mb-0">
+                    <tbody>
+                        @foreach (var o in b.OverBudget)
+                        {
+                            <tr><td class="ps-3">Over budget: @o.Name</td><td class="text-end pe-3 text-danger">+@o.Over.ToEuro(0)</td></tr>
+                        }
+                        @if (b.OverBudget.Count == 0)
+                        {
+                            <tr><td class="ps-3 text-muted" colspan="2">No category over budget.</td></tr>
+                        }
+                    </tbody>
+                </table>
+                <div class="card-footer small"><a asp-controller="BudgetAdmin" asp-action="YearDetail" asp-route-id="@b.YearId">Budget detail</a></div>
+            }
+        </div>
+    </div>
+
+    <div class="col-lg-4 col-md-6">
+        <div class="card h-100">
+            <div class="card-header">Runway</div>
+            @if (Model.Runway is not { } rw)
+            {
+                <div class="card-body text-muted">No active budget year.</div>
+            }
+            else
+            {
+                <table class="table table-sm mb-0">
+                    <tbody>
+                        <tr><td class="ps-3">Planned spend this month</td><td class="text-end pe-3">@rw.ThisMonth.ToEuro()</td></tr>
+                        <tr><td class="ps-3">Planned spend next month</td><td class="text-end pe-3">@rw.NextMonth.ToEuro()</td></tr>
+                        <tr><td class="ps-3">Funds run out</td><td class="text-end pe-3 @(rw.FundsRunOut is null ? "" : "text-danger")">@(rw.FundsRunOut ?? "Not within the plan")</td></tr>
+                    </tbody>
+                </table>
+                <div class="card-footer small"><a asp-action="CashFlow">Cash flow</a></div>
+            }
+        </div>
+    </div>
+
+    <div class="col-lg-4 col-md-6">
+        <div class="card h-100">
+            <div class="card-header">Tax calendar</div>
+            @if (ledger is null)
+            {
+                <div class="card-body text-muted">The Holded ledger mirror has never synced.</div>
+            }
+            else
+            {
+                <table class="table table-sm mb-0">
+                    <tbody>
+                        @foreach (var t in ledger.TaxFilings)
+                        {
+                            <tr>
+                                <td class="ps-3">
+                                    @t.Name, Q@(t.Quarter) @t.Year (Modelo @t.Model)
+                                    <div class="small text-muted">due @t.DueDate.ToDate()@(t.IsComplete ? "" : " · quarter so far")</div>
+                                </td>
+                                <td class="text-end pe-3">@t.Amount.ToEuro()</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+        </div>
+    </div>
+
+    <div class="col-lg-4 col-md-6">
+        <div class="card h-100">
+            <div class="card-header">Income this year</div>
+            @if (Model.Income is not { } inc)
+            {
+                <div class="card-body text-muted">No active budget year.</div>
+            }
+            else
+            {
+                <table class="table table-sm mb-0">
+                    <tbody>
+                        <tr><td class="ps-3">Ticket sales, paid (gross)</td><td class="text-end pe-3">@inc.TicketSalesPaid.ToEuro()</td></tr>
+                        <tr><td class="ps-3">Ticketing income target</td><td class="text-end pe-3">@inc.TicketingTarget.ToEuro()</td></tr>
+                        <tr><td class="ps-3">All budgeted income</td><td class="text-end pe-3">@inc.BudgetedIncome.ToEuro()</td></tr>
+                    </tbody>
+                </table>
+            }
+        </div>
+    </div>
 </div>

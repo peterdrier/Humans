@@ -2,14 +2,8 @@
 
   <!-- Stays a leaf: folding into Humans.Finance would close a project cycle: Humans.Finance -> Humans.Budget -> Humans.Finance (also via Humans.Holded). -->
 
-  <!--
-    Finance's cross-section surface as its own leaf, because Humans.Holded, Humans.Expenses and
-    Humans.Budget consume it: a Contracts/ folder inside Humans.Finance would make each of them
-    reference a section project instead of a leaf (memory/architecture/section-project-cycle-fix.md).
-    References only Humans.Base (AuditActionDefinition, which FinanceAuditActions declares for Expenses'
-    IbanReveal rows, lives there), so anything above may reference it freely — which
-    is also why CreditorLedgerLine lives here rather than reaching for the Holded connector's own DTO.
-  -->
+  <!-- References only Humans.Base (for FinanceAuditActions' AuditActionDefinition), so every consumer may reference
+       it freely. -->
 
   <ItemGroup>
     <ProjectReference Include="..\..\Humans.Base\Humans.Base.csproj" />

@@ -25,13 +25,17 @@ internal sealed class FinanceController(
     IExpenseReportService expenseReports,
     CashFlowService cashFlow,
     CreditorMatchService creditorMatches,
+    FinanceOverviewService overview,
     ILogger<FinanceController> logger) : HumansControllerBase(userService)
 {
     private static readonly DateTimeZone MadridZone = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
 
-    /// <summary>Placeholder index until the Finance overview (balances, owed, budget vs actuals) exists.</summary>
     [HttpGet("")]
-    public IActionResult Index() => View();
+    public async Task<IActionResult> Index()
+    {
+        if (GetCurrentUserId() is not { } viewerUserId) return Challenge();
+        return View(await overview.GetAsync(viewerUserId, HttpContext.RequestAborted));
+    }
 
     [HttpGet("CashFlow")]
     public async Task<IActionResult> CashFlow(string period = "monthly")
