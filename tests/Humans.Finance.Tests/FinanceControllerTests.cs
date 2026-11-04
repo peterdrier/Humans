@@ -59,6 +59,8 @@ public class FinanceControllerTests
             .Returns(Array.Empty<ExpenseReportDto>());
         _finance.GetExpenseReconAsync(Arg.Any<int?>(), Arg.Any<CancellationToken>())
             .Returns(ExpenseRecon.Unavailable(null, "never synced"));
+        _finance.GetSepaTransfersAsync(Arg.Any<CancellationToken>())
+            .Returns((Array.Empty<SepaPayoutTransferRow>(), (string?)null));
     }
 
     private FinanceController MakeController() =>
@@ -750,6 +752,46 @@ public class FinanceControllerTests
 
         model.Lines.Select(r => (r.Line.EntryNumber, r.Description)).Should().Equal(
             (3, "Payment: Ana López → NCA"), (2, "Payment: NCA → Ana López"), (1, "Tent pegs"));
+    }
+
+    [HumansFact]
+    public async Task CreditorStatement_SameDayPaymentLines_ShowAsOneRow()
+    {
+        // Madrid midnight, as the mirror stores ledger dates.
+        var day1 = Instant.FromUtc(2026, 2, 28, 23, 0);
+        var day2 = Instant.FromUtc(2026, 3, 1, 23, 0);
+        _finance.GetCreditorLedgerAsync(40000002, Arg.Any<CancellationToken>()).Returns(
+            new CreditorLedger(40000002, 0m, 0m,
+            [
+                Ledger(entry: 1, line: 1, day1) with { Type = "purchase", Credit = 30m, RunningBalance = 30m },
+                Ledger(entry: 2, line: 1, day1) with { Type = "purchase", Credit = 20m, RunningBalance = 50m },
+                Ledger(entry: 3, line: 1, day2) with { Type = "payment", Credit = 0m, Debit = 30m, RunningBalance = 20m },
+                Ledger(entry: 4, line: 1, day2) with { Type = "payment", Credit = 0m, Debit = 20m, RunningBalance = 0m },
+            ],
+            new CreditorContactInfo("Ana López", null, null, null, null, null, null, null)));
+
+        var model = (await MakeControllerWithHttpContext(Ana).CreditorStatement(40000002))
+            .Should().BeOfType<ViewResult>().Subject.Model.Should().BeOfType<CreditorStatementVm>().Subject;
+
+        model.Lines.Select(r => (r.Description, r.Debit, r.RunningBalance)).Should().Equal(
+            ("Payment: NCA → Ana López (2 purchases)", 50m, 0m), (null, 0m, 50m), (null, 0m, 30m));
+    }
+
+    [HumansFact]
+    public async Task CreditorStatement_ListsOnlyTheSepaTransfersToTheAccount_NewestFirst()
+    {
+        _finance.GetCreditorLedgerAsync(40000002, Arg.Any<CancellationToken>())
+            .Returns(new CreditorLedger(40000002, 0m, 0m, []));
+        SepaPayoutTransferRow Transfer(int account, int day) => new(
+            Guid.NewGuid(), Guid.NewGuid(), $"f{day}.xml", Instant.FromUtc(2026, 3, day, 9, 0), Ana, Ana, account,
+            null, "Ana", "ES**1234", 10m, null, null, null, null, null, null, null);
+        _finance.GetSepaTransfersAsync(Arg.Any<CancellationToken>())
+            .Returns(([Transfer(40000002, 1), Transfer(40000003, 5), Transfer(40000002, 9)], (string?)null));
+
+        var model = (await MakeControllerWithHttpContext(Ana).CreditorStatement(40000002))
+            .Should().BeOfType<ViewResult>().Subject.Model.Should().BeOfType<CreditorStatementVm>().Subject;
+
+        model.SepaTransfers.Select(t => t.FileName).Should().Equal("f9.xml", "f1.xml");
     }
 
     [HumansFact]
