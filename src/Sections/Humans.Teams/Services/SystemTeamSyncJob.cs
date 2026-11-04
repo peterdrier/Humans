@@ -159,7 +159,7 @@ internal sealed class SystemTeamSyncJob(
             await auditLogService.LogAsync(
                 TeamsAuditActions.TeamMemberRoleChanged, "Team", member.TeamId,
                 $"Set member role to {change.Role} by system sync",
-                nameof(SystemTeamSyncJob), member.UserId, "User");
+                nameof(SystemTeamSyncJob), member.UserId, AuditEntityTypes.User);
         }
 
         report?.Steps.Add(step);
@@ -469,7 +469,7 @@ internal sealed class SystemTeamSyncJob(
                 TeamsAuditActions.TeamMemberAdded, "Team", team.Id,
                 $"{userName} added to {team.Name} by system sync",
                 nameof(SystemTeamSyncJob),
-                relatedEntityId: userId, relatedEntityType: "User");
+                relatedEntityId: userId, relatedEntityType: AuditEntityTypes.User);
         }
 
         foreach (var userId in toRemove)
@@ -480,7 +480,7 @@ internal sealed class SystemTeamSyncJob(
                 TeamsAuditActions.TeamMemberRemoved, "Team", team.Id,
                 $"{userName} removed from {team.Name} by system sync",
                 nameof(SystemTeamSyncJob),
-                relatedEntityId: userId, relatedEntityType: "User");
+                relatedEntityId: userId, relatedEntityType: AuditEntityTypes.User);
         }
 
         foreach (var userId in toAdd)

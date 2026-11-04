@@ -533,7 +533,7 @@ internal sealed class ShiftsController(
 
         // Entity "User" + the subject's id is what the member's own medical page lists.
         await auditLogService.LogAsync(
-            ShiftsAuditActions.MedicalConditionsRevealed, "User", info.Id,
+            ShiftsAuditActions.MedicalConditionsRevealed, AuditEntityTypes.User, info.Id,
             $"Medical conditions revealed for user {info.Id}", actor.Id);
         return Json(new { text });
     }

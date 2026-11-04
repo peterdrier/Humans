@@ -8,6 +8,8 @@ internal static class AuditEntityTypes
     /// <summary>Matches the historical <c>nameof(Humans.Domain.Entities.Application)</c>.</summary>
     internal const string Application = "Application";
 
+    internal const string User = "User";
+
     internal const string AssemblyVote = "AssemblyVote";
 
     /// <summary>

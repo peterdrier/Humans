@@ -83,7 +83,7 @@ internal sealed class GoogleSyncHistoryMigrationService(
             Id = row.Id,
             Action = action.Value,
             ResourceId = row.ResourceId,
-            UserId = string.Equals(row.RelatedEntityType, "User", StringComparison.Ordinal)
+            UserId = string.Equals(row.RelatedEntityType, AuditEntityTypes.User, StringComparison.Ordinal)
                 ? row.RelatedEntityId
                 : null,
             UserEmail = row.UserEmail ?? string.Empty,
