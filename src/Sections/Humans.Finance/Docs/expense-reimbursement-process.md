@@ -112,8 +112,8 @@ Steps 1–11 are in production. Since 2026-09-06, on `origin/main`:
 - **The 17–18 Oct outbox race** pushed the same expense lines into Holded two or three times
   (430 extra purchase documents, €25,325.24, 20 members) before a payout file was generated
   from the inflated balances. `/Finance/HoldedDuplicates` removes the extras; a member with
-  duplicates cannot be paid out until they are gone, and the nightly doc sync logs a warning
-  while any remain.
+  duplicates cannot be paid out until they are gone, and the nightly expense reconciliation
+  logs a warning while any remain.
 - **The reconciliation report** (`/Finance/ExpenseRecon`, peterdrier/Humans#2207) compares what
   Humans approved with what Holded's ledger holds: every line by account, description and amount, and
   every member's account split into expense purchases, SEPA payments and other movements. It runs nightly at 03:30 and logs "Expense recon: 0 problems" or a warning with the

@@ -52,4 +52,11 @@ public interface IHoldedService : IApplicationService
     /// trailing window anchored on now; true or a cold cache: inception to today. Both refresh the accounts cache,
     /// reconcile totals with targeted re-pulls, and drain the API call log.</summary>
     Task<bool> SyncLedgerAsync(bool full = false, CancellationToken ct = default);
+
+    /// <summary>Every mirrored purchase document, unordered, with the sync's state.</summary>
+    Task<HoldedPurchaseDocMirror> GetPurchaseDocumentsAsync(CancellationToken ct = default);
+
+    /// <summary>Replaces the purchase-document mirror with Holded's whole list and reads the notes of a capped number of
+    /// documents that lack them, newest first. False when a sync was already running and this one was skipped.</summary>
+    Task<bool> SyncPurchaseDocumentsAsync(CancellationToken ct = default);
 }
