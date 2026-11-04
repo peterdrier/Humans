@@ -57,8 +57,13 @@ public class FinanceOverviewServiceTests
         };
         var balances = new Dictionary<int, decimal>
         {
-            [57200001] = 100m, [57200003] = 5m, [44100001] = 20m,
-            [44000001] = 7m, [43000001] = 3m, [43000002] = -1m, [47500001] = -40m,
+            [57200001] = 100m,
+            [57200003] = 5m,
+            [44100001] = 20m,
+            [44000001] = 7m,
+            [43000001] = 3m,
+            [43000002] = -1m,
+            [47500001] = -40m,
         };
 
         var cards = FinanceOverviewService.BuildLedgerCards(chart, balances, []);
