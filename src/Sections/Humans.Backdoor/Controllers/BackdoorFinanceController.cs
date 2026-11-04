@@ -8,6 +8,7 @@ using Humans.Base.Helpers;
 using Humans.Budget.Contracts;
 using Humans.Expenses.Contracts;
 using Humans.Finance.Contracts;
+using Humans.Holded.Contracts;
 using Humans.Users.Contracts;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -20,7 +21,7 @@ namespace Humans.Backdoor.Controllers;
 /// <summary>
 /// GET only. Authorization is imperative, like <c>ExpensesController</c>: each action checks
 /// <see cref="IAuthorizationService"/> against the key owner's roles. No raw IBAN leaves: the projections mask
-/// <see cref="ExpenseReportDto.PayeeIban"/> and <see cref="HoldedContactInfo.Iban"/>, and
+/// <see cref="ExpenseReportDto.PayeeIban"/> and <see cref="CreditorContactInfo.Iban"/>, and
 /// <see cref="OnResultExecuting"/> masks every other string.
 /// </summary>
 [ApiController]
@@ -29,7 +30,8 @@ namespace Humans.Backdoor.Controllers;
 [AllowAnonymous]
 internal sealed class BackdoorFinanceController(
     IExpenseReportService expenses,
-    IHoldedFinanceService finance,
+    IFinanceService finance,
+    IHoldedService holded,
     IBudgetService budget,
     IAuthorizationService authService,
     IUserService users) : ApiControllerBase(users), IResultFilter
@@ -190,22 +192,21 @@ internal sealed class BackdoorFinanceController(
         });
     }
 
-    /// <summary>The purchase-doc sync's state plus the docs it could not match.</summary>
+    /// <summary>Holded's purchase-document sync state plus the docs Finance could not attribute.</summary>
     [HttpGet("holded-sync")]
     public async Task<IActionResult> HoldedSync(CancellationToken ct)
     {
         if (!await IsFinanceAdminAsync()) return StatusCode(StatusCodes.Status403Forbidden);
 
-        var syncInfo = await finance.GetDocSyncInfoAsync(ct);
+        var mirror = await holded.GetPurchaseDocumentsAsync(ct);
         var unmatched = await finance.GetUnmatchedAsync(ct);
 
         return Ok(new
         {
-            lastSyncAt = syncInfo.LastSyncAt?.ToIso8601(),
-            status = syncInfo.Status,
-            lastError = syncInfo.LastError,
-            lastSyncedDocCount = syncInfo.LastSyncedDocCount,
-            creditorBindingCount = syncInfo.CreditorBindingCount,
+            lastSyncAt = mirror.LastSyncAt?.ToIso8601(),
+            status = mirror.Status,
+            lastError = mirror.LastError,
+            lastSyncedDocCount = mirror.LastCount,
             unmatched = unmatched.OrderByDescending(u => u.Date).Select(u => new
             {
                 holdedDocId = u.HoldedDocId,
@@ -237,9 +238,9 @@ internal sealed class BackdoorFinanceController(
             {
                 reports = r.Totals.Reports,
                 lines = r.Totals.Lines,
-                holdedDocs = r.Totals.HoldedDocs,
+                ledgerPurchases = r.Totals.LedgerPurchases,
                 problemLines = r.Totals.ProblemLines,
-                duplicateDocs = r.Totals.DuplicateDocs,
+                duplicateLines = r.Totals.DuplicateLines,
                 excessAmount = r.Totals.ExcessAmount,
                 orphans = r.Totals.Orphans,
                 membersOff = r.Totals.MembersOff,
@@ -260,21 +261,19 @@ internal sealed class BackdoorFinanceController(
                     status = l.Status.ToString(),
                     isProblem = l.IsProblem,
                     holdedDocId = l.HoldedDocId,
-                    holdedDocNumber = l.HoldedDocNumber,
-                    holdedTotal = l.HoldedTotal,
-                    holdedContactName = l.HoldedContactName,
-                    duplicateDocIds = l.DuplicateDocIds,
+                    ledgerAccountNum = l.LedgerAccountNum,
+                    ledgerEntryNumber = l.LedgerEntryNumber,
+                    ledgerDate = l.LedgerDate?.ToInvariantDate(),
+                    duplicateEntryNumbers = l.DuplicateEntryNumbers,
                     excessAmount = l.ExcessAmount,
                 }),
             orphans = r.Orphans.OrderByDescending(o => o.Date).Select(o => new
             {
-                holdedDocId = o.HoldedDocId,
-                docNumber = o.DocNumber,
+                accountNum = o.AccountNum,
+                entryNumber = o.EntryNumber,
                 date = o.Date.ToInvariantDate(),
-                contactName = o.ContactName,
                 description = o.Description,
-                notes = o.Notes,
-                total = o.Total,
+                amount = o.Amount,
                 kind = o.Kind.ToString(),
             }),
             members = r.Members.OrderByDescending(m => m.IsWarning)
@@ -284,19 +283,34 @@ internal sealed class BackdoorFinanceController(
                     memberName = m.MemberName,
                     supplierAccountNum = m.SupplierAccountNum,
                     ledgerBalance = m.LedgerBalance,
-                    expectedBalance = m.ExpectedBalance,
-                    difference = m.Difference,
+                    expensePurchases = m.ExpensePurchases,
+                    sepaPaid = m.SepaPaid,
+                    unclaimedPurchases = m.UnclaimedPurchases,
+                    otherTotal = m.OtherTotal,
+                    missingLines = m.MissingLines,
+                    unclaimedPurchaseCount = m.UnclaimedPurchaseCount,
                     status = m.Status.ToString(),
                     isWarning = m.IsWarning,
-                    openTransfers = m.OpenTransfers.Select(t => new
+                    unmatchedTransfers = m.UnmatchedTransfers.Select(Transfer),
+                    otherMovements = m.OtherMovements.Select(o => new
                     {
-                        transferId = t.TransferId,
-                        fileName = t.FileName,
-                        generatedAt = t.GeneratedAt.ToIso8601(),
-                        amount = t.Amount,
+                        date = o.Date.ToInvariantDate(),
+                        entryNumber = o.EntryNumber,
+                        type = o.Type,
+                        description = o.Description,
+                        amount = o.Amount,
                     }),
+                    openTransfers = m.OpenTransfers.Select(Transfer),
                 }),
         });
+
+        static object Transfer(ExpenseReconOpenTransfer t) => new
+        {
+            transferId = t.TransferId,
+            fileName = t.FileName,
+            generatedAt = t.GeneratedAt.ToIso8601(),
+            amount = t.Amount,
+        };
     }
 
     /// <summary>The one place free text is scrubbed: every string in every JSON body, and the attachment's download
@@ -509,7 +523,7 @@ internal sealed class BackdoorFinanceController(
     };
 
     private static object ProjectCreditorAccount(
-        HoldedCreditorAccountRow a, IReadOnlyDictionary<Guid, string> names) => new
+        CreditorAccountRow a, IReadOnlyDictionary<Guid, string> names) => new
         {
             supplierAccountNum = a.SupplierAccountNum,
             name = a.Name,
@@ -531,9 +545,9 @@ internal sealed class BackdoorFinanceController(
         description = l.Description,
     };
 
-    /// <summary>Never null-forgiving on <see cref="HoldedContactInfo.Iban"/> — masked here, the one
+    /// <summary>Never null-forgiving on <see cref="CreditorContactInfo.Iban"/> — masked here, the one
     /// place this DTO crosses into Backdoor's output.</summary>
-    private static object? ProjectContact(HoldedContactInfo? c) => c is null ? null : new
+    private static object? ProjectContact(CreditorContactInfo? c) => c is null ? null : new
     {
         name = c.Name,
         tradeName = c.TradeName,

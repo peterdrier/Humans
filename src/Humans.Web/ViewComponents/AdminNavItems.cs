@@ -83,7 +83,7 @@ internal static class AdminNavItems
                 }
                 catch (Exception ex)
                 {
-                    logger.LogWarning(ex, "Failed to compute pill count for nav item {Label}", item.Label);
+                    logger.LogError(ex, "Failed to compute pill count for nav item {Label}", item.Label);
                 }
             }
 

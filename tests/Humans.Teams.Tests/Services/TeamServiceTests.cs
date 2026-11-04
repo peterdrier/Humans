@@ -1670,6 +1670,31 @@ public sealed class TeamServiceTests : TeamsTestHarness
     }
 
     [HumansTheory]
+    [InlineData("")]
+    [InlineData(" \t ")]
+    public async Task AddedMemberNotice_BlankEmail_StillDeliversInboxNotice(string address)
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var coordinator = SeedUser(displayName: "Coordinator");
+        var requester = SeedUser(displayName: "Requester");
+        requester.Email = address;
+        requester.PreferredLanguage = "es";
+        var team = SeedTeam("Alpha", requiresApproval: true);
+        SeedTeamMember(team.Id, coordinator.Id, TeamMemberRole.Coordinator);
+        var request = SeedJoinRequest(team.Id, requester.Id);
+        await SaveAllAsync(ct);
+
+        (await _service.ApproveJoinRequestAsync(request.Id, coordinator.Id, null, ct)).Succeeded.Should().BeTrue();
+
+        await _emailService.DidNotReceiveWithAnyArgs().SendAsync(default!);
+        await _teamResourceService.DidNotReceiveWithAnyArgs().GetTeamResourcesAsync(default);
+        Notifier.ReceivedCalls().Where(call =>
+            call.GetArguments()[0] is NotificationSourceDefinition source && source == TeamsNotificationSources.TeamMemberAdded
+            && ((IReadOnlyList<Guid>)call.GetArguments()[4]!).Contains(requester.Id)
+            && string.Equals((string)call.GetArguments()[3]!, "Se le ha añadido al equipo Alpha", StringComparison.Ordinal)).Should().ContainSingle();
+    }
+
+    [HumansTheory]
     [InlineData("normal", "es", "es")]
     [InlineData("email-prep-failure", "es", "es")]
     [InlineData("profile-lookup-failure", "es", "en")]

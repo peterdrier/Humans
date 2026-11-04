@@ -1,3 +1,4 @@
+@inject IStringLocalizer<SharedResource> SharedLocalizer
 @model Humans.Notifications.Models.NotificationInboxViewModel
 @{
     ViewData["Title"] = Localizer["Notifications_PageTitle"];
@@ -39,7 +40,8 @@
 </div>
 
 <!-- Bulk action toolbar (hidden until items selected) -->
-<div class="notification-bulk-toolbar mb-2" id="bulkToolbar" style="display: none;">
+<div class="notification-bulk-toolbar mb-2" id="bulkToolbar" style="display: none;"
+     data-error="@SharedLocalizer["Common_Error"]">
     <span class="notification-bulk-count" id="bulkCount"
           data-template="@Localizer["Notifications_Bulk_Selected"]">@string.Format(Localizer["Notifications_Bulk_Selected"].Value, 0)</span>
     <button type="button" class="btn btn-sm btn-outline-primary" id="bulkResolveBtn">@Localizer["Notifications_Bulk_Resolve"]</button>
@@ -187,7 +189,10 @@
         return input ? input.value : '';
     }
 
+    var bulkPending = false;
+
     function bulkAction(url, filterClass) {
+        if (bulkPending) return;
         var selected = getSelected().filter(function(cb) {
             return cb.dataset.notificationClass === filterClass;
         });
@@ -199,18 +204,27 @@
             formData.append('selectedIds', cb.dataset.notificationId);
         });
 
+        bulkPending = true;
+        resolveBtn.disabled = true;
+        dismissBtn.disabled = true;
         fetch(url, {
             method: 'POST',
+            redirect: 'error',
             headers: { 'X-Requested-With': 'XMLHttpRequest' },
             body: formData
         }).then(function(r) {
-            if (r.ok) {
-                selected.forEach(function(cb) {
-                    var wrapper = cb.closest('.notification-row-wrapper');
-                    if (wrapper) wrapper.remove();
-                });
-                updateBulkToolbar();
-            }
+            if (!r.ok) throw new Error(r.status);
+            selected.forEach(function(cb) {
+                var wrapper = cb.closest('.notification-row-wrapper');
+                if (wrapper) wrapper.remove();
+            });
+            updateBulkToolbar();
+        }).catch(function() {
+            showToast(toolbar.dataset.error, 'danger');
+        }).finally(function() {
+            bulkPending = false;
+            resolveBtn.disabled = false;
+            dismissBtn.disabled = false;
         });
     }
 

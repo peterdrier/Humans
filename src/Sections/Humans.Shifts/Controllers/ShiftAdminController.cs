@@ -32,22 +32,27 @@ internal sealed class ShiftAdminController(
     ILogger<ShiftAdminController> logger,
     IStringLocalizer<ShiftsResource> localizer) : HumansTeamControllerBase(userService, teamService, authorizationService)
 {
-    private readonly ITeamService _teamService = teamService;
 
     [HttpGet("")]
     public async Task<IActionResult> Index(string slug, bool incompleteOnboarding = false, CancellationToken ct = default)
     {
-        var (teamError, user, team) = await ResolveDepartmentAccessAsync(
+        var canManage = ShiftsRoles.IsVolunteerManager(User);
+        var canApprove = ShiftsRoles.CanManageDepartment(User);
+        var (teamError, _, team) = await ResolveDepartmentAccessAsync(
             slug,
             async (resolvedTeam, resolvedUser) =>
-                await CanManageDepartmentAsync(resolvedUser, resolvedTeam, ct)
-                || await CanApproveDepartmentAsync(resolvedUser, resolvedTeam, ct)
+            {
+                if (!canManage || !canApprove)
+                {
+                    var coordinates = await shiftMgmt.IsDeptCoordinatorAsync(resolvedUser.Id, resolvedTeam.Id, ct);
+                    canManage |= coordinates;
+                    canApprove |= coordinates;
+                }
                 // Board reads every department's rotas with both flags off.
-                || (await AuthorizationService.AuthorizeAsync(User, ShiftsPolicies.Read)).Succeeded, ct);
+                return canManage || canApprove
+                    || (await AuthorizationService.AuthorizeAsync(User, ShiftsPolicies.Read)).Succeeded;
+            }, ct);
         if (teamError is not null) return teamError;
-
-        var canManage = await CanManageDepartmentAsync(user, team, ct);
-        var canApprove = await CanApproveDepartmentAsync(user, team, ct);
         var es = await burnSettings.GetActiveAsync(ct);
         if (es is null)
         {
@@ -55,11 +60,8 @@ internal sealed class ShiftAdminController(
             return RedirectToAction("Details", "Team", new { slug });
         }
 
-        var teamEntity = await _teamService.GetTeamAsync(team.Id, ct);
-        if (teamEntity is null) return NotFound();
-
         var model = await pageBuilder.BuildAsync(new ShiftAdminPageRequest(
-            teamEntity,
+            team,
             es,
             canManage,
             canApprove,

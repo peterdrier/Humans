@@ -276,4 +276,17 @@ internal sealed class AccountProvisioningService(
             MagicLinkSignupCompletionOutcome.Created,
             user.Id);
     }
+
+    public async Task<IReadOnlyList<string>> CreateAccountAsync(
+        Guid userId, string burnerName, Instant createdAt, Instant? lastLoginAt = null)
+    {
+        var result = await userManager.CreateAsync(new User
+        {
+            Id = userId,
+            BurnerName = burnerName,
+            CreatedAt = createdAt,
+            LastLoginAt = lastLoginAt
+        });
+        return [.. result.Errors.Select(e => e.Description)];
+    }
 }

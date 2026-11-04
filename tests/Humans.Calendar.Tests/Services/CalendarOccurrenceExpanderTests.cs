@@ -57,6 +57,31 @@ public sealed class CalendarOccurrenceExpanderTests
     }
 
     [HumansTheory]
+    [Xunit.InlineData("99991231T235959Z")]
+    [Xunit.InlineData("99991231T235959")]
+    public void FilterForWindow_UntilNearInstantLimit_KeepsCurrentOccurrences(string until)
+    {
+        var start = Instant.FromUtc(2026, 6, 1, 10, 0);
+        var info = BuildInfo(start: start, end: start.Plus(Duration.FromHours(2)),
+            recurrenceRule: $"FREQ=DAILY;UNTIL={until}") with
+        {
+            RecurrenceTimezone = "Europe/Madrid",
+            RecurrenceUntilUtc = until.EndsWith('Z')
+                ? Instant.FromUtc(9999, 12, 31, 23, 59, 59)
+                : new LocalDateTime(9999, 12, 31, 23, 59, 59)
+                    .InZoneLeniently(DateTimeZoneProviders.Tzdb["Europe/Madrid"]).ToInstant()
+        };
+        var to = start.Plus(Duration.FromDays(1));
+
+        var matched = CalendarOccurrenceExpander.FilterForWindow([info], start, to, null);
+        var occurrence = CalendarOccurrenceExpander.Expand(matched, start, to,
+            new Dictionary<Guid, string>(), NullLogger.Instance).Should().ContainSingle().Subject;
+
+        occurrence.OccurrenceStartUtc.Should().Be(start);
+        occurrence.OccurrenceEndUtc.Should().Be(start.Plus(Duration.FromHours(2)));
+    }
+
+    [HumansTheory]
     [Xunit.InlineData(false)]
     [Xunit.InlineData(true)]
     public void Expand_IncludesZeroDurationEventAtWindowStart(bool recurring)

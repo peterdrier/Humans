@@ -53,7 +53,7 @@ internal sealed class SurveyReminderSender(
                 continue;
             }
 
-            if (!users.TryGetValue(inv.UserId, out var user) || user.Email is not { Length: > 0 } email)
+            if (!users.TryGetValue(inv.UserId, out var user) || user.Email is not { } email || string.IsNullOrWhiteSpace(email))
             {
                 logger.LogWarning(
                     "User {UserId} has no notification email for survey {SurveyId}; skipping reminder",

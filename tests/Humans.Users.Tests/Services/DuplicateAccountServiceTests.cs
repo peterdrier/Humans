@@ -17,9 +17,10 @@ public sealed class DuplicateAccountServiceTests
     private readonly ITeamService _teamService = Substitute.For<ITeamService>();
     private readonly IRoleAssignmentService _roles = Substitute.For<IRoleAssignmentService>();
     private readonly IAuditLogService _audit = Substitute.For<IAuditLogService>();
+    private readonly IAuditViewerService _auditViewer = Substitute.For<IAuditViewerService>();
     private static readonly Instant Now = Instant.FromUtc(2026, 6, 6, 12, 0);
 
-    private DuplicateAccountService Sut => new(_userService, _teamService, _roles, Substitute.For<IGovernanceService>(), _audit);
+    private DuplicateAccountService Sut => new(_userService, _teamService, _roles, Substitute.For<IGovernanceService>(), _audit, _auditViewer);
 
     private void SetUsers(params UserInfo[] infos) =>
         _userService.GetAllUserInfosAsync(Arg.Any<CancellationToken>())
@@ -129,11 +130,11 @@ public sealed class DuplicateAccountServiceTests
         SetUsers(
             MakeInfo(a, emails: [Email(a, "dup@foo.com", verified: true, primary: true)]),
             MakeInfo(b, emails: [Email(b, "dup@foo.com", verified: true, primary: true)]));
-        _audit.GetFilteredEntriesAsync(Arg.Any<IReadOnlyList<AuditActionDefinition>>(), nameof(User), low, null, Arg.Any<int>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult<IReadOnlyList<AuditLogEntrySnapshot>>(
+        _auditViewer.GetFilteredAsync(nameof(User), low, null, Arg.Any<IReadOnlyList<string>?>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IReadOnlyList<AuditEvent>>(
             [
-                new(Guid.NewGuid(), UsersAuditActions.DuplicateAccountFlagged.Name, nameof(User), low, "already flagged",
-                    Now, null, high, nameof(User))
+                new(Guid.NewGuid(), Now, UsersAuditActions.DuplicateAccountFlagged, null, null, nameof(User), low,
+                    null, null, null, null, null, high, nameof(User), "already flagged")
             ]));
 
         var groups = await Sut.DetectDuplicatesAsync(Xunit.TestContext.Current.CancellationToken);

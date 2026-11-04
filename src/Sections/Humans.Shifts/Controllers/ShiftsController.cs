@@ -28,6 +28,7 @@ internal sealed class ShiftsController(
     IShiftRowView shiftView,
     ITeamService teamService,
     IAuditLogService auditLogService,
+    IAuditViewerService auditViewer,
     IUserService userService,
     IStringLocalizer<ShiftsResource> localizer,
     // The name-gate message is Onboarding's copy, rendered from here.
@@ -463,7 +464,7 @@ internal sealed class ShiftsController(
     public async Task<IActionResult> OrphanSignups(CancellationToken ct)
     {
         var allSignups = await signupService.GetAllForOrphanScanAsync(ct);
-        var auditedIds = await auditLogService.GetEntityIdsForEntityTypeActionsAsync(
+        var auditedIds = await auditViewer.GetEntityIdsForEntityTypeActionsAsync(
             nameof(ShiftSignup),
             [ShiftsAuditActions.ShiftSignupCreated, ShiftsAuditActions.ShiftSignupVoluntold, ShiftsAuditActions.ShiftSignupConfirmed],
             ct);
@@ -532,7 +533,7 @@ internal sealed class ShiftsController(
 
         // Entity "User" + the subject's id is what the member's own medical page lists.
         await auditLogService.LogAsync(
-            ShiftsAuditActions.MedicalConditionsRevealed, "User", info.Id,
+            ShiftsAuditActions.MedicalConditionsRevealed, AuditSubjectTypes.User, info.Id,
             $"Medical conditions revealed for user {info.Id}", actor.Id);
         return Json(new { text });
     }

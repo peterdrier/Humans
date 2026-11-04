@@ -1,3 +1,4 @@
+@inject IStringLocalizer<SharedResource> SharedLocalizer
 @model Humans.Notifications.Models.NotificationPopupViewModel
 
 <div class="notification-popup-header">
@@ -69,7 +70,8 @@ else
 <div class="notification-popup-footer">
     <form method="post" asp-controller="Notifications" asp-action="MarkAllRead" class="d-inline">
         @Html.AntiForgeryToken()
-        <button type="submit" class="notification-mark-all-read" data-ajax-markallread>
+        <button type="submit" class="notification-mark-all-read" data-ajax-markallread
+                data-error="@SharedLocalizer["Common_Error"]">
             @Localizer["Notifications_MarkAllRead"]
         </button>
     </form>

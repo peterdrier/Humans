@@ -112,4 +112,5 @@
   <data name="Preapprovals_BreadcrumbNavigation" xml:space="preserve"><value>Fil d’Ariane</value></data>
   <data name="Preapprovals_Error_AmountPrecision" xml:space="preserve"><value>Les montants doivent avoir au maximum deux décimales.</value></data>
   <data name="Preapprovals_Error_AmountTooLarge" xml:space="preserve"><value>Le montant est trop élevé.</value></data>
+  <data name="Preapprovals_Error_PersonUnavailable" xml:space="preserve"><value>Ce compte de membre n’est plus disponible.</value></data>
 </root>

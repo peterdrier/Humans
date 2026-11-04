@@ -18,8 +18,7 @@ internal sealed class OnboardingProgressBannerViewComponent(
         if (User?.Identity?.IsAuthenticated != true)
             return View(hidden);
 
-        var principal = User as ClaimsPrincipal;
-        var userIdRaw = principal?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        var userIdRaw = UserClaimsPrincipal.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         if (!Guid.TryParse(userIdRaw, out var userId))
             return View(hidden);
 

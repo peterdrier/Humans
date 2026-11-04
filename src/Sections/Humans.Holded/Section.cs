@@ -58,12 +58,16 @@ public sealed class Section : ISection, ISectionAdminNav, ISectionConfiguration,
         services.AddScoped<Services.IHoldedNightlySync, Services.HoldedNightlySync>();
 
         services.AddScoped<HoldedSyncJob>();
+        services.AddHostedService<HoldedMirrorCatchUp>();
     }
 
     IEnumerable<AdminNavGroup> ISectionAdminNav.Groups() =>
     [
         new("Holded", [
-            new("Holded", "Holded", "Index", null, null, "fa-solid fa-book", FinancePolicies.Read)
+            new("Summary", "Holded", "Index", null, null, "fa-solid fa-book", FinancePolicies.Read),
+            new("Accounts", "Holded", "Accounts", null, null, "fa-solid fa-list-ol", FinancePolicies.Read),
+            new("Purchases", "Holded", "Purchases", null, null, "fa-solid fa-file-invoice", FinancePolicies.Read),
+            new("API calls", "Holded", "Calls", null, null, "fa-solid fa-tower-broadcast", FinancePolicies.Read)
         ])
     ];
 

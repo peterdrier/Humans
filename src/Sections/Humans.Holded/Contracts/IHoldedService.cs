@@ -13,6 +13,11 @@ public interface IHoldedService : IApplicationService
 
     Task<IReadOnlyList<HoldedLedgerLineInfo>> GetLedgerLinesAsync(int accountNum, CancellationToken ct = default);
 
+    /// <summary>When the ledger mirror last finished a sweep, trailing or full; null when none has ever succeeded.
+    /// A failed sweep leaves it at the last good one, so a ledger-based judgement can tell "not swept yet" from
+    /// "absent".</summary>
+    Task<Instant?> GetLedgerSyncedAtAsync(CancellationToken ct = default);
+
     /// <summary>Σdebit − Σcredit over the whole mirror, for every account with cached lines. Raw bookkeeping sign,
     /// before any display flip.</summary>
     Task<IReadOnlyDictionary<int, decimal>> GetAccountBalancesAsync(CancellationToken ct = default);
@@ -47,4 +52,11 @@ public interface IHoldedService : IApplicationService
     /// trailing window anchored on now; true or a cold cache: inception to today. Both refresh the accounts cache,
     /// reconcile totals with targeted re-pulls, and drain the API call log.</summary>
     Task<bool> SyncLedgerAsync(bool full = false, CancellationToken ct = default);
+
+    /// <summary>Every mirrored purchase document, unordered, with the sync's state.</summary>
+    Task<HoldedPurchaseDocMirror> GetPurchaseDocumentsAsync(CancellationToken ct = default);
+
+    /// <summary>Replaces the purchase-document mirror with Holded's whole list and reads the notes of a capped number of
+    /// documents that lack them, newest first. False when a sync was already running and this one was skipped.</summary>
+    Task<bool> SyncPurchaseDocumentsAsync(CancellationToken ct = default);
 }

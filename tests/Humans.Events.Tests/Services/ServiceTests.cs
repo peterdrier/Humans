@@ -686,6 +686,39 @@ public sealed class EventServiceTests
     }
 
     [HumansTheory]
+    [InlineData(false, "")]
+    [InlineData(false, " \t ")]
+    [InlineData(true, "")]
+    [InlineData(true, " \t ")]
+    public async Task LifecycleEmail_BlankAddress_DoesNotEnqueueMailOrFailTheWrite(bool moderation, string address)
+    {
+        OpenSubmissionWindow();
+        var guideEvent = new Event
+        {
+            Id = Guid.NewGuid(),
+            SubmitterUserId = StubSubmitterWithEmail(address, "Burner"),
+            Status = moderation ? EventStatus.Pending : EventStatus.Draft
+        };
+        if (moderation)
+        {
+            _repo.Events.Add(guideEvent);
+            (await _service.ApplyModerationAsync(guideEvent.Id, Guid.NewGuid(), EventModerationActionType.Rejected,
+                "Too loud", "https://x/edit", TestContext.Current.CancellationToken)).Should().Be(ModerationOutcome.Applied);
+            guideEvent.Status.Should().Be(EventStatus.Rejected);
+        }
+        else
+        {
+            _repo.Categories.Add(new EventCategory { Id = guideEvent.CategoryId });
+            guideEvent.GuideSharedVenueId = Guid.NewGuid();
+            _repo.Venues.Add(new EventVenue { Id = guideEvent.GuideSharedVenueId.Value });
+            (await _service.SubmitEventAsync(guideEvent, "https://x/edit", TestContext.Current.CancellationToken)).ErrorKey.Should().BeNull();
+            _repo.Events.Should().Contain(guideEvent);
+            guideEvent.Status.Should().Be(EventStatus.Pending);
+        }
+        await _emailService.DidNotReceiveWithAnyArgs().SendAsync(default!);
+    }
+
+    [HumansTheory]
     [InlineData(false)]
     [InlineData(true)]
     public async Task LifecycleEmail_AfterCommit_CompletesDespiteRequestCancellation(bool moderation)

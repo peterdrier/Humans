@@ -29,7 +29,7 @@ tables (Same-Rule-Different-Spelling, Enforcement Gaps, Canonical Policy Names),
 | Controller | Scope | Roles | Source |
 |---|---|---|---|
 | `AdminController` (`src/Humans.Web`) | Class | `[Route("Admin")]` only — no class-level `[Authorize]` | — |
-| `AdminController.Index` | Action | `Admin, Board, UsersAdmin, TeamsAdmin, CampsAdmin, TicketsAdmin, EventsAdmin, FeedbackAdmin, FinanceAdmin, StoreAdmin, CantinaAdmin, RideshareAdmin, GrantsAdmin, SurveysAdmin, ShiftsNoInfo, ShiftsAdmin, ConsentCoordinator` | `PolicyNames.AnyAdminRole` (the only action left on the gutted dashboard controller) |
+| `AdminController.Index` | Action | `Admin, Board, UsersAdmin, TeamsAdmin, CampsAdmin, TicketsAdmin, EventsAdmin, FinanceAdmin, StoreAdmin, CantinaAdmin, RideshareAdmin, GrantsAdmin, SurveysAdmin, ShiftsNoInfo, ShiftsAdmin, ConsentCoordinator` | `PolicyNames.AnyAdminRole` (the only action left on the gutted dashboard controller) |
 
 `/Admin/*` is a nav holder, not a section — each admin surface's controller lives in the section it acts on (see Per-Section Inventories above). The admin shell's sidebar groups and tabs come from sections' `ISectionAdminNav` contributions, each item filtered by its own policy (`AdminNavItems`, see §2 Shared Components); only the dashboard link is `AnyAdminRole`-gated.
 
@@ -272,7 +272,7 @@ These actions rely on `if` checks + early return/forbid instead of `[Authorize(P
 | Consent | `ConsentCoordinatorBoardOrAdmin` |
 | Events | `EventsPolicies.Read`, `EventsPolicies.Manage` |
 | Expenses | `ExpenseReportView` |
-| Finance | `FinancePolicies.Read`, `FinancePolicies.Manage` (also gate Budget admin, Holded and the expense decisions) |
+| Finance | `FinancePolicies.Read`, `FinancePolicies.Manage` (also gate Budget admin, Holded, Pleo and the expense decisions) |
 | Grants | `GrantsPolicies.Read`, `GrantsPolicies.Manage`; `GrantPrograms` — section-local in `GrantProgramsPolicy` |
 | Preapprovals | `PreapprovalsManage`, `PreapprovalsAccess` — section-local in `PreapprovalsPolicies` |
 | Rideshare | `RidesharePolicies.Read`, `RidesharePolicies.Manage` |
@@ -301,8 +301,8 @@ These actions rely on `if` checks + early return/forbid instead of `[Authorize(P
 | `TicketsPolicies.Manage` | TicketsAdmin, Admin | Syncs, exports, transfer decisions, contacts import, gate password and staff PINs, discount codes |
 | `ScannerAccess` | TicketsAdmin, Board, Admin OR `SystemUserIds.GateTerminal` | Composite assertion; the read-only gate and scanner |
 | `GateAdmit` | TicketsAdmin, Admin OR `SystemUserIds.GateTerminal` | Composite assertion; the gate write actions. Board reads the gate and admits no one |
-| `FinancePolicies.Read` | FinanceAdmin, Board, Admin | Finance, Budget admin, Holded |
-| `FinancePolicies.Manage` | FinanceAdmin, Admin | Every Finance, Budget, Holded and expense decision |
+| `FinancePolicies.Read` | FinanceAdmin, Board, Admin | Finance, Budget admin, Holded, Pleo |
+| `FinancePolicies.Manage` | FinanceAdmin, Admin | Every Finance, Budget, Holded, Pleo and expense decision |
 | `EventsPolicies.Read` | EventsAdmin, Board, Admin | |
 | `EventsPolicies.Manage` | EventsAdmin, Admin | Moderation, categories, venues, guide settings, the CSV export |
 | `CantinaPolicies.Read` | CantinaAdmin, Board, Admin | Roster and the audited health reveal |
@@ -359,7 +359,7 @@ Every handler — resource-based and composite — lives in its owning section's
 | `CityPlanningMapAdminHandler` | `CityPlanningMapAdminRequirement` | CityPlanning | `CityPlanningMapAdmin` |
 | `PreapprovalsPolicyHandler` | `ManagesPreapprovalsRequirement`, `PreapprovalsAccessRequirement` | Preapprovals | `PreapprovalsManage`, `PreapprovalsAccess` |
 
-The only authorization files left in `src/Humans.Web/` are `Authorization/AuthorizationPolicyExtensions.cs`, `MembershipRequiredFilter.cs`, `NameRequiredFilter.cs`, the claims/identity plumbing (`HttpCurrentUserContext.cs`, `HumansUserClaimsPrincipalFactory.cs`, `RoleAssignmentClaimsTransformation.cs`) and `HangfireAuthorizationFilter.cs` at the project root. The framework-facing plumbing (`PolicyNames`, `RoleNames`, `RoleChecks`, `ISectionRoles`, `HumansControllerBase`, `AuthorizeViewTagHelper`, `SectionNavViewComponent`) lives in `src/Humans.Base/` under the namespaces `Humans.Base.Authorization` / `Humans.Base.Constants` / `Humans.Base.Controllers` / `Humans.Base.TagHelpers`.
+The only authorization files left in `src/Humans.Web/` are `Authorization/AuthorizationPolicyExtensions.cs`, `MembershipRequiredFilter.cs`, `NameRequiredFilter.cs`, the claims/identity plumbing (`HttpCurrentUserContext.cs`, `RoleAssignmentClaimsTransformation.cs`; `HumansUserClaimsPrincipalFactory` moved to `src/Sections/Humans.Users/Authorization/`) and `HangfireAuthorizationFilter.cs` at the project root. The framework-facing plumbing (`PolicyNames`, `RoleNames`, `RoleChecks`, `ISectionRoles`, `HumansControllerBase`, `AuthorizeViewTagHelper`, `SectionNavViewComponent`) lives in `src/Humans.Base/` under the namespaces `Humans.Base.Authorization` / `Humans.Base.Constants` / `Humans.Base.Controllers` / `Humans.Base.TagHelpers`.
 
 ### `IAuthorizationService.AuthorizeAsync` Call Sites
 
@@ -448,7 +448,6 @@ Only `Admin` and `Board` are `RoleNames` constants in Base. Every other role is 
 | `TicketsAdmin` | `"TicketsAdmin"` |
 | `ShiftsNoInfo` | `"ShiftsNoInfo"` |
 | `EventsAdmin` | `"EventsAdmin"` |
-| `FeedbackAdmin` | `"FeedbackAdmin"` |
 | `UsersAdmin` | `"UsersAdmin"` |
 | `FinanceAdmin` | `"FinanceAdmin"` |
 | `StoreAdmin` | `"StoreAdmin"` |

@@ -40,7 +40,7 @@
            min="0" max="90" value="@Model.ToleranceDays" />
     <span>days of the file date</span>
     <button type="submit" class="btn btn-sm btn-outline-secondary">Apply</button>
-    <span class="text-muted small">Default @Humans.Finance.Services.IHoldedFinanceAdminService.DefaultSepaMatchToleranceDays. Widen it when the bank executed a file late; every booking from this view uses the same window.</span>
+    <span class="text-muted small">Default @Humans.Finance.Services.IFinanceAdminService.DefaultSepaMatchToleranceDays. Widen it when the bank executed a file late; every booking from this view uses the same window.</span>
 </form>
 
 @if (Model.UnavailableReason is { } unavailable)

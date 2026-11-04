@@ -1,11 +1,10 @@
 using Humans.Base.Interfaces;
-using NodaTime;
 
 namespace Humans.AuditLog.Contracts;
 
 /// <summary>
 /// Call after the business transaction commits. Each <c>LogAsync</c> saves at once and is best-effort: a failure is logged,
-/// never thrown, so audit never breaks the operation.
+/// never thrown, so audit never breaks the operation. Reads are on the AuditLog section's <c>IAuditViewerService</c>.
 /// </summary>
 public interface IAuditLogService : IApplicationService
 {
@@ -17,30 +16,4 @@ public interface IAuditLogService : IApplicationService
     Task LogAsync(AuditActionDefinition action, string entityType, Guid entityId,
         string description, Guid actorUserId,
         Guid? relatedEntityId = null, string? relatedEntityType = null);
-
-    /// <summary>For a caller that needs rows as data (the issue thread). Pages use <c>&lt;vc:audit-log&gt;</c>.</summary>
-    Task<IReadOnlyList<AuditLogEntrySnapshot>> GetFilteredEntriesAsync(
-        IReadOnlyList<AuditActionDefinition> actions,
-        string? entityType = null,
-        Guid? entityId = null,
-        Guid? userId = null,
-        int limit = 20,
-        CancellationToken ct = default);
-
-    Task<IReadOnlySet<Guid>> GetEntityIdsForEntityTypeActionsAsync(
-        string entityType,
-        IReadOnlyList<AuditActionDefinition> actions,
-        CancellationToken ct = default);
 }
-
-/// <summary><c>Action</c> is the stored name; <c>IAuditViewerService</c> resolves it to its definition.</summary>
-public sealed record AuditLogEntrySnapshot(
-    Guid Id,
-    string Action,
-    string EntityType,
-    Guid EntityId,
-    string Description,
-    Instant OccurredAt,
-    Guid? ActorUserId,
-    Guid? RelatedEntityId,
-    string? RelatedEntityType);

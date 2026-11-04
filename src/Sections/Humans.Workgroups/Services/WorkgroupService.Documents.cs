@@ -43,8 +43,7 @@ internal sealed partial class WorkgroupService
         ArgumentNullException.ThrowIfNull(save);
         var documentResult = await RequireDocumentAsync(documentId, ct);
         if (documentResult.Refusal is { } documentRefusal) return new(Refusal: documentRefusal);
-        var (workgroup, document) = documentResult.Value;
-        if (RequireAcceptsMemberWork(workgroup) is { } stateRefusal) return new(Refusal: stateRefusal);
+        var (_, document) = documentResult.Value;
         if (string.IsNullOrWhiteSpace(save.Title))
             return new(Refusal: new(WorkgroupErrorKeys.NameRequired));
         // Delivered is the association's copy of what it received; the body stops moving.
@@ -65,7 +64,6 @@ internal sealed partial class WorkgroupService
         var documentResult = await RequireDocumentAsync(documentId, ct);
         if (documentResult.Refusal is { } documentRefusal) return new(Refusal: documentRefusal);
         var (workgroup, document) = documentResult.Value;
-        if (RequireAcceptsMemberWork(workgroup) is { } stateRefusal) return new(Refusal: stateRefusal);
         if (document.Status != WorkgroupDocumentStatus.Draft)
             return new(Refusal: new(WorkgroupErrorKeys.WrongStatus));
         if (string.IsNullOrWhiteSpace(document.Body))
@@ -93,7 +91,6 @@ internal sealed partial class WorkgroupService
         var documentResult = await RequireDocumentAsync(documentId, ct);
         if (documentResult.Refusal is { } documentRefusal) return new(Refusal: documentRefusal);
         var (workgroup, document) = documentResult.Value;
-        if (RequireAcceptsMemberWork(workgroup) is { } stateRefusal) return new(Refusal: stateRefusal);
         if (document.Status != WorkgroupDocumentStatus.Published)
             return new(Refusal: new(WorkgroupErrorKeys.NotPublished));
 
@@ -132,7 +129,6 @@ internal sealed partial class WorkgroupService
         var documentResult = await RequireDocumentAsync(documentId, ct);
         if (documentResult.Refusal is { } documentRefusal) return new(Refusal: documentRefusal);
         var (workgroup, document) = documentResult.Value;
-        if (RequireAcceptsMemberWork(workgroup) is { } stateRefusal) return new(Refusal: stateRefusal);
         if (document.CommentsOpenAt is null)
             return new(Refusal: new(WorkgroupErrorKeys.WrongStatus));
 
@@ -151,7 +147,6 @@ internal sealed partial class WorkgroupService
         var documentResult = await RequireDocumentAsync(documentId, ct);
         if (documentResult.Refusal is { } documentRefusal) return new(Refusal: documentRefusal);
         var (workgroup, document) = documentResult.Value;
-        if (RequireAcceptsMemberWork(workgroup) is { } stateRefusal) return new(Refusal: stateRefusal);
         if (document.Status != WorkgroupDocumentStatus.Published)
             return new(Refusal: new(WorkgroupErrorKeys.NotPublished));
 
@@ -184,9 +179,6 @@ internal sealed partial class WorkgroupService
         if (documentResult.Refusal is { } documentRefusal) return new(Refusal: documentRefusal);
         var (workgroup, document) = documentResult.Value;
         var now = clock.GetCurrentInstant();
-
-        // Close and Withdraw leave an open window alone, so the group's status must be checked here too.
-        if (RequireAcceptsMemberWork(workgroup) is { } stateRefusal) return new(Refusal: stateRefusal);
 
         if (workgroup.IsSensitive == true && !workgroup.Members.Any(m => m.UserId == actorUserId && m.LeftAt is null && m.IsPending != true))
             return new(Refusal: new(WorkgroupErrorKeys.MembersOnly));
@@ -259,7 +251,6 @@ internal sealed partial class WorkgroupService
         var documentResult = await RequireDocumentAsync(documentId, ct);
         if (documentResult.Refusal is { } documentRefusal) return new(Refusal: documentRefusal);
         var (workgroup, document) = documentResult.Value;
-        if (RequireAcceptsMemberWork(workgroup) is { } stateRefusal) return new(Refusal: stateRefusal);
 
         var matched = document.CommentCategories
             .FirstOrDefault(c => string.Equals(c, category?.Trim(), StringComparison.OrdinalIgnoreCase));
@@ -330,11 +321,13 @@ internal sealed partial class WorkgroupService
     }
 
     private async Task<WorkgroupMutationResult<(Workgroup Workgroup, WorkgroupDocument Document)>> RequireDocumentAsync(
-        Guid documentId, CancellationToken ct)
+        Guid documentId, CancellationToken ct, bool requireActive = true)
     {
         var document = await repository.GetDocumentAsync(documentId, ct);
         if (document is null) return new(Refusal: new(WorkgroupErrorKeys.NotFound));
-        var workgroup = await RequireAsync(document.WorkgroupId, ct);
+        var workgroup = requireActive
+            ? await RequireActiveAsync(document.WorkgroupId, ct)
+            : await RequireAsync(document.WorkgroupId, ct);
         return workgroup.Refusal is { } refusal
             ? new(Refusal: refusal)
             : new((workgroup.Value!, document));

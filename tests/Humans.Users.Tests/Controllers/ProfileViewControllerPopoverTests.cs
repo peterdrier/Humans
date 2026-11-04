@@ -125,8 +125,38 @@ public class ProfileViewControllerPopoverTests
         model.NoShowHistory!.Select(row => row.ShiftLabel).Should().Equal("Newest", "Older", "Undated");
         model.NoShowHistory!.Select(row => row.MarkedByUserId).Should().Equal(reviewerId, missingReviewerId, null);
         await _userService.DidNotReceive().GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>());
-        await _shiftManagement.Received(2).GetCoordinatorTeamIdsAsync(_viewerId, source.Token);
+        await _shiftManagement.Received(1).GetCoordinatorTeamIdsAsync(_viewerId, source.Token);
         await _shiftSignups.Received(1).GetNoShowHistoryAsync(targetId, source.Token);
+    }
+
+    [HumansTheory]
+    [InlineData(true, false)]
+    [InlineData(false, false)]
+    [InlineData(false, true)]
+    public async Task ViewProfile_SharedCoordinatorReadPreservesSelfAndRoleAccess(bool ownProfile, bool privileged)
+    {
+        var targetId = ownProfile ? _viewerId : Guid.NewGuid();
+        var ct = TestContext.Current.CancellationToken;
+        _userService.GetUserInfoAsync(_viewerId, Arg.Any<CancellationToken>())
+            .Returns(BuildActiveUserInfo(_viewerId, "Viewer", "viewer@example.com"));
+        _userService.GetUserInfoAsync(targetId, Arg.Any<CancellationToken>())
+            .Returns(BuildActiveUserInfo(targetId, "Target", "target@example.com"));
+        _shiftManagement.GetCoordinatorTeamIdsAsync(_viewerId, Arg.Any<CancellationToken>()).Returns([]);
+        _shiftSignups.GetNoShowHistoryAsync(targetId, Arg.Any<CancellationToken>()).Returns([]);
+        if (privileged)
+        {
+            ((ClaimsIdentity)_controller.User.Identity!).AddClaim(new Claim(ClaimTypes.Role, ShiftsRoles.ShiftsNoInfo));
+            _authorizationService.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(),
+                ShiftsPolicies.PrivilegedSignupApprover).Returns(AuthorizationResult.Success());
+        }
+
+        var result = await _controller.ViewProfile(targetId, ct);
+
+        var model = result.Should().BeOfType<ViewResult>().Which.Model.Should().BeOfType<ProfileViewModel>().Which;
+        model.CanViewShiftSignups.Should().Be(!ownProfile && privileged);
+        model.CanViewSentMessages.Should().Be(!ownProfile && privileged);
+        await _shiftManagement.Received(ownProfile ? 0 : 1).GetCoordinatorTeamIdsAsync(_viewerId, ct);
+        await _shiftSignups.Received(!ownProfile && privileged ? 1 : 0).GetNoShowHistoryAsync(targetId, ct);
     }
 
     [HumansFact]

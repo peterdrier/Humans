@@ -31,7 +31,7 @@ internal sealed partial class PreapprovalService
         Guid? relatedUserId = null) =>
         auditLog.LogAsync(action, AuditEntityTypes.Program, program.Id, description, actorUserId,
             relatedEntityId: relatedUserId,
-            relatedEntityType: relatedUserId is null ? null : AuditEntityTypes.User);
+            relatedEntityType: relatedUserId is null ? null : AuditSubjectTypes.User);
 
     /// <summary>Clears the beneficiary's standing "file by" prompt (issued, released, reminders, deadline moved).</summary>
     private Task ResolveFileByAsync(Guid grantId, Guid? actorUserId, CancellationToken ct) =>

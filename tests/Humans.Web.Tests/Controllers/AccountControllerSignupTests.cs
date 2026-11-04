@@ -3,13 +3,10 @@ using Humans.Auth.Contracts;
 using Humans.Users.Contracts;
 using Humans.Web.Controllers;
 using Humans.Web.Services;
-using IAuthenticationSchemeProvider = Microsoft.AspNetCore.Authentication.IAuthenticationSchemeProvider;
 using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Logging.Abstractions;
-using Microsoft.Extensions.Options;
 using NodaTime;
 using NSubstitute;
 
@@ -38,7 +35,7 @@ public sealed class AccountControllerSignupTests
         localizer[Arg.Any<string>(), Arg.Any<object[]>()].Returns(call =>
             new LocalizedString(call.Arg<string>(), call.Arg<string>()));
         var controller = new AccountController(
-            null!, Substitute.For<IUserService>(), Substitute.For<IUserWrite>(), null!, SystemClock.Instance,
+            null!, Substitute.For<IUserService>(), Substitute.For<IUserWrite>(), SystemClock.Instance,
             NullLogger<AccountController>.Instance, Substitute.For<IExternalLoginService>(), magicLinks,
             provisioning, null!, new LoginMethodCounter(), localizer)
         {
@@ -64,80 +61,69 @@ public sealed class AccountControllerSignupTests
         provisioning.ReceivedCalls().Should().BeEmpty();
     }
 
-    // The contracts hand back ids; the controller loads the Identity user by that id and signs it in.
     [HumansFact]
-    public async Task MagicLink_ValidToken_SignsInUserLoadedById()
+    public async Task MagicLink_ValidToken_SignsInById()
     {
-        var user = new User { Id = Guid.NewGuid() };
-        var (userManager, signInManager) = IdentityFakes();
-        userManager.FindByIdAsync(user.Id.ToString()).Returns(user);
+        var userId = Guid.NewGuid();
+        var signIn = SignIn();
         var magicLinks = Substitute.For<IMagicLinkService>();
-        magicLinks.VerifyLoginTokenAsync(user.Id, "login-token", Arg.Any<CancellationToken>()).Returns(true);
-        var controller = Controller(signInManager, userManager, magicLinks, Substitute.For<IAccountProvisioningService>());
+        magicLinks.VerifyLoginTokenAsync(userId, "login-token", Arg.Any<CancellationToken>()).Returns(true);
+        var controller = Controller(signIn, magicLinks, Substitute.For<IAccountProvisioningService>());
 
-        await controller.MagicLink(user.Id, "login-token", "/");
+        await controller.MagicLink(userId, "login-token", "/");
 
-        await signInManager.Received(1).SignInAsync(user, true, null);
+        await signIn.Received(1).SignInAsync(userId);
     }
 
     [HumansFact]
     public async Task MagicLink_InvalidToken_DoesNotSignIn()
     {
         var userId = Guid.NewGuid();
-        var (userManager, signInManager) = IdentityFakes();
-        var controller = Controller(signInManager, userManager, Substitute.For<IMagicLinkService>(),
+        var signIn = SignIn();
+        var controller = Controller(signIn, Substitute.For<IMagicLinkService>(),
             Substitute.For<IAccountProvisioningService>());
 
         var result = await controller.MagicLink(userId, "bad-token", "/");
 
         result.Should().BeOfType<ViewResult>().Which.ViewName.Should().Be("MagicLinkError");
-        await userManager.DidNotReceive().FindByIdAsync(Arg.Any<string>());
-        await signInManager.DidNotReceive().SignInAsync(Arg.Any<User>(), Arg.Any<bool>(), Arg.Any<string?>());
+        await signIn.DidNotReceiveWithAnyArgs().SignInAsync(default);
     }
 
     [HumansFact]
-    public async Task CompleteSignup_Created_SignsInUserLoadedById()
+    public async Task CompleteSignup_Created_SignsInTheCreatedUser()
     {
         const string token = "valid-signup-token";
         const string email = "signup@example.com";
-        var user = new User { Id = Guid.NewGuid() };
-        var (userManager, signInManager) = IdentityFakes();
-        userManager.FindByIdAsync(user.Id.ToString()).Returns(user);
+        var userId = Guid.NewGuid();
+        var signIn = SignIn();
         var magicLinks = Substitute.For<IMagicLinkService>();
         magicLinks.VerifySignupToken(token, email).Returns(email);
         magicLinks.VerifyAndConsumeSignupTokenAsync(token, email, Arg.Any<CancellationToken>()).Returns(email);
         var provisioning = Substitute.For<IAccountProvisioningService>();
         provisioning.CompleteMagicLinkSignupAsync(email, "Burner", "First", "Last", Arg.Any<CancellationToken>())
-            .Returns(new MagicLinkSignupCompletionResult(MagicLinkSignupCompletionOutcome.Created, user.Id));
-        var controller = Controller(signInManager, userManager, magicLinks, provisioning);
+            .Returns(new MagicLinkSignupCompletionResult(MagicLinkSignupCompletionOutcome.Created, userId));
+        var controller = Controller(signIn, magicLinks, provisioning);
 
         await controller.CompleteSignup(token, "Burner", "First", "Last", email, "/");
 
-        await signInManager.Received(1).SignInAsync(user, true, null);
+        await signIn.Received(1).SignInAsync(userId);
         magicLinks.DidNotReceive().ReleaseSignupToken(Arg.Any<string>());
     }
 
-    private static (UserManager<User>, SignInManager<User>) IdentityFakes()
+    private static IUserSignInService SignIn()
     {
-        var userManager = Substitute.For<UserManager<User>>(
-            Substitute.For<IUserStore<User>>(), null, null, null, null, null, null, null, null);
-        var options = Substitute.For<IOptions<IdentityOptions>>();
-        options.Value.Returns(new IdentityOptions());
-        var signInManager = Substitute.For<SignInManager<User>>(
-            userManager, Substitute.For<IHttpContextAccessor>(), Substitute.For<IUserClaimsPrincipalFactory<User>>(),
-            options, NullLogger<SignInManager<User>>.Instance, Substitute.For<IAuthenticationSchemeProvider>(),
-            Substitute.For<IUserConfirmation<User>>());
-        return (userManager, signInManager);
+        var signIn = Substitute.For<IUserSignInService>();
+        signIn.SignInAsync(Arg.Any<Guid>()).Returns(true);
+        return signIn;
     }
 
     private static AccountController Controller(
-        SignInManager<User> signInManager, UserManager<User> userManager,
-        IMagicLinkService magicLinks, IAccountProvisioningService provisioning)
+        IUserSignInService signIn, IMagicLinkService magicLinks, IAccountProvisioningService provisioning)
     {
         var localizer = Substitute.For<IStringLocalizer<Base.SharedResource>>();
         localizer[Arg.Any<string>()].Returns(call => new LocalizedString(call.Arg<string>(), call.Arg<string>()));
         var controller = new AccountController(
-            signInManager, Substitute.For<IUserService>(), Substitute.For<IUserWrite>(), userManager,
+            signIn, Substitute.For<IUserService>(), Substitute.For<IUserWrite>(),
             SystemClock.Instance, NullLogger<AccountController>.Instance, Substitute.For<IExternalLoginService>(),
             magicLinks, provisioning, null!, new LoginMethodCounter(), localizer)
         {

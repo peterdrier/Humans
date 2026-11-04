@@ -304,12 +304,6 @@
   <data name="LinkPreview_Expenses_Description" xml:space="preserve">
     <value>Spesenanträge und Erstattungen.</value>
   </data>
-  <data name="LinkPreview_Feedback_Title" xml:space="preserve">
-    <value>Feedback</value>
-  </data>
-  <data name="LinkPreview_Feedback_Description" xml:space="preserve">
-    <value>Feedback zu Humans senden.</value>
-  </data>
   <data name="LinkPreview_Finance_Title" xml:space="preserve">
     <value>Finanzen</value>
   </data>

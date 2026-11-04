@@ -96,7 +96,7 @@ internal sealed partial class AgentFeatureSpecReader(
             stem.Any(c => !(char.IsLetterOrDigit(c) || c == '-' || c == '_')))
             return null;
 
-        var cacheKey = CacheKeyPrefix + stem;
+        var cacheKey = CacheKeyPrefix + stem.ToUpperInvariant();
         if (cache.TryGetValue<string>(cacheKey, out var cached) && cached is not null)
             return cached;
 
@@ -108,9 +108,11 @@ internal sealed partial class AgentFeatureSpecReader(
             return null;
         }
 
+        // The index accepts case variants, but GitHub filenames retain their indexed spelling.
+        var canonicalStem = index.Keys.First(key => string.Equals(key, stem, StringComparison.OrdinalIgnoreCase));
         try
         {
-            var body = await source.GetMarkdownAsync(folderPath, stem, cancellationToken);
+            var body = await source.GetMarkdownAsync(folderPath, canonicalStem, cancellationToken);
             cache.Set(cacheKey, body, HoldForever);
             return body;
         }

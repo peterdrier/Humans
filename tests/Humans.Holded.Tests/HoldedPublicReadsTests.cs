@@ -181,19 +181,21 @@ public sealed class HoldedPublicReadsTests
     }
 
     [HumansFact]
-    public async Task Accounts_page_groups_by_leading_digit_and_hides_archived_and_empty_by_default()
+    public async Task Accounts_page_groups_by_leading_digit_then_subgroup_and_hides_archived_and_empty_by_default()
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
         await _repo.UpsertAccountsAsync(
         [
             Account(40000004, "Member A", -10m),
+            Account(47200000, "Hacienda Pública, IVA soportado", 5m),
             Account(57200001, "Banco Sabadell", 500m),
             Account(57200002, "Old bank", 0m, archived: true),
             Account(57200003, "Never used"),
         ], FixedNow, ct);
         await SeedAsync(ct,
             Line(1, 1, 40000004, "purchase", credit: 10m),
-            Line(2, 1, 57200001, "entry", debit: 400m));
+            Line(2, 1, 57200001, "entry", debit: 400m),
+            Line(3, 1, 47200000, "entry", debit: 5m));
 
         var page = await _service.GetAccountsPageAsync(new HoldedAccountsFilter(), ct);
 
@@ -205,6 +207,8 @@ public sealed class HoldedPublicReadsTests
         bank.MirrorBalance.Should().Be(400m);
         bank.LineCount.Should().Be(1);
         bank.Mismatches.Should().Be(1);
+        page.Groups.Single(group => group.Digit == 4).Subgroups.Select(sg => (sg.Number, sg.Name))
+            .Should().BeEquivalentTo([(40, "Suppliers"), (47, "Public administrations")]);
         page.HiddenArchived.Should().Be(1);
         page.HiddenEmpty.Should().Be(1);
 

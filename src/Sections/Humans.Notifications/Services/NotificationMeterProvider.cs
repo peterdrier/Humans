@@ -51,7 +51,7 @@ internal sealed class NotificationMeterProvider(
         var isVolunteerCoordinator = user.IsInRole(ShiftsRoles.ShiftsAdmin);
         var isConsentCoordinator = user.IsInRole(ConsentRoles.ConsentCoordinator);
 
-        if (isConsentCoordinator && counts.ConsentReviewsPending > 0)
+        if ((isAdmin || isConsentCoordinator) && counts.ConsentReviewsPending > 0)
         {
             meters.Add(new NotificationMeter
             {

@@ -15,18 +15,15 @@ using Humans.Users.Contracts;
 
 namespace Humans.Budget.Controllers;
 
-/// <summary>
-/// Shares the <c>/Finance</c> route prefix with Finance's <c>FinanceController</c>; the action templates are disjoint.
-/// </summary>
 [Authorize(Policy = FinancePolicies.Read)]
-[Route("Finance")]
+[Route("Budget/Admin")]
 internal sealed class BudgetAdminController(
     IBudgetManagement budgetService,
     ITeamService teamService,
     TicketingBudgetService ticketingBudgetService,
     IClock clock,
     IUserService userService,
-    IHoldedFinanceService holdedFinance,
+    IFinanceService finance,
     ILogger<BudgetAdminController> logger) : HumansControllerBase(userService)
 {
     [HttpGet("")]
@@ -124,7 +121,7 @@ internal sealed class BudgetAdminController(
         }
     }
 
-    [HttpGet("Admin")]
+    [HttpGet("Years")]
     public async Task<IActionResult> Admin()
     {
         var ct = HttpContext.RequestAborted;
@@ -637,11 +634,11 @@ internal sealed class BudgetAdminController(
             }
         }
 
-        IReadOnlyDictionary<Guid, HoldedActualRow> holdedActuals = new Dictionary<Guid, HoldedActualRow>();
+        IReadOnlyDictionary<Guid, CategoryActualRow> holdedActuals = new Dictionary<Guid, CategoryActualRow>();
         if (int.TryParse(year.Year, System.Globalization.NumberStyles.None,
                 System.Globalization.CultureInfo.InvariantCulture, out var calendarYear))
         {
-            var actuals = await holdedFinance.GetActualsForYearAsync(calendarYear, ct);
+            var actuals = await finance.GetActualsForYearAsync(calendarYear, ct);
             holdedActuals = actuals.ToDictionary(r => r.BudgetCategoryId);
         }
 

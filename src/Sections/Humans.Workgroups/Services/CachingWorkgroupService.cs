@@ -189,7 +189,7 @@ internal sealed class CachingWorkgroupService(
         Guid actorUserId, WorkgroupBootstrap bootstrap, CancellationToken ct = default) =>
         MutateAsync(inner => inner.RegisterExistingAsync(actorUserId, bootstrap, ct));
 
-    public Task<WorkgroupMutationResult<HoldedExpenseAccountRef?>> SetBudgetAsync(
+    public Task<WorkgroupMutationResult<ExpenseAccountRef?>> SetBudgetAsync(
         Guid workgroupId, Guid actorUserId, WorkgroupBudgetSave save, CancellationToken ct = default) =>
         MutateAsync(inner => inner.SetBudgetAsync(workgroupId, actorUserId, save, ct));
 

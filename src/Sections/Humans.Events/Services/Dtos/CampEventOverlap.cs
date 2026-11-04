@@ -9,4 +9,6 @@ internal sealed record CampEventOverlap(
     string Title,
     Instant StartAt,
     int DurationMinutes,
-    EventStatus Status);
+    EventStatus Status,
+    bool IsRecurring,
+    string? RecurrenceDays);

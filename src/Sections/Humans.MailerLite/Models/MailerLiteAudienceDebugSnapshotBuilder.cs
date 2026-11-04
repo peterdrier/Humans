@@ -37,13 +37,13 @@ internal static class MailerLiteAudienceDebugSnapshotBuilder
         }
         catch (HttpRequestException ex)
         {
-            logger.LogWarning(ex, "MailerLite read failed for audience {AudienceKey}", audience.Key);
+            logger.LogWarning("MailerLite read failed for audience {AudienceKey}: {StatusCode}", audience.Key, ex.StatusCode);
             mlError = $"MailerLite read failed: {ex.StatusCode?.ToString() ?? "no response"}.";
             subscribers = null;
         }
-        catch (TaskCanceledException ex) when (!ct.IsCancellationRequested)
+        catch (TaskCanceledException) when (!ct.IsCancellationRequested)
         {
-            logger.LogWarning(ex, "MailerLite read timed out for audience {AudienceKey}", audience.Key);
+            logger.LogWarning("MailerLite read timed out for audience {AudienceKey}", audience.Key);
             mlError = "MailerLite read timed out.";
             subscribers = null;
         }
@@ -67,7 +67,7 @@ internal static class MailerLiteAudienceDebugSnapshotBuilder
         {
             if (!byUserId.TryGetValue(uid, out var u)) continue;
             var email = u.Email;
-            if (string.IsNullOrEmpty(email)) continue;
+            if (string.IsNullOrWhiteSpace(email)) continue;
             expected.Add(new DebugExpectedRow(uid, u.BurnerName, email));
         }
 

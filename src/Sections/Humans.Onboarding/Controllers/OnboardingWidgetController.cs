@@ -118,7 +118,7 @@ internal sealed class OnboardingWidgetController(
         if (es is null)
             return View(OnboardingShiftsStepBuilder.BuildEmpty(priority ?? string.Empty));
 
-        // Stats line needs full event-wide set; priorityOnly:false then filter in builder.
+        // The full event-wide set: the builder's stats line needs it, and it filters for display.
         var urgentShifts = await shiftMgmt.GetBrowseShiftsAsync(new ShiftBrowseQuery(
             es.Id,
             Flags: ShiftBrowseQueryFlags.IncludeSignups), ct);

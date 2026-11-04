@@ -1,0 +1,68 @@
+@model HoldedPurchaseDocMirror
+@{
+    ViewData["Title"] = "Holded purchase documents";
+}
+
+<h1 class="mb-3">Holded purchase documents</h1>
+
+<p class="text-muted">
+    Every purchase document Holded lists, as of the last sync
+    (@(Model.LastSyncAt is { } at ? at.ToDateTime() : "never")). Notes are read one document at a time, up to
+    50 a sync, newest first; "—" means not read yet. Which budget category a document counts toward is
+    Finance's call, shown on the budget year and the
+    <a asp-controller="Finance" asp-action="HoldedUnmatched">unmatched documents</a> page.
+</p>
+
+@if (Model.Docs.Count == 0)
+{
+    <div class="card"><div class="card-body text-muted">No documents mirrored yet — run a sync from the summary.</div></div>
+}
+else
+{
+    <div class="card">
+        <div class="table-responsive">
+            <table class="table table-sm table-striped align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th>Date</th><th>Doc #</th><th>Contact</th><th class="text-end">Total</th>
+                        <th>Approved</th><th>Booked account</th><th>Tags</th><th>Notes</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var d in Model.Docs)
+                    {
+                        <tr>
+                            <td class="text-nowrap">@d.Date.ToDate()</td>
+                            <td class="text-nowrap">
+                                <a href="@d.HoldedUrl" target="_blank" rel="noopener noreferrer" title="Open in Holded">
+                                    @(string.IsNullOrWhiteSpace(d.DocNumber) ? d.Id : d.DocNumber)<i class="fa-solid fa-arrow-up-right-from-square ms-1 small"></i>
+                                </a>
+                            </td>
+                            <td>
+                                @d.ContactName
+                                @if (d.Description is not null)
+                                {
+                                    <div class="small text-muted">@d.Description</div>
+                                }
+                            </td>
+                            <td class="text-end">@d.Total.ToEuro()</td>
+                            <td>
+                                @if (d.IsApproved)
+                                {
+                                    <i class="fa-solid fa-check text-success" title="Approved in Holded"></i>
+                                }
+                                else
+                                {
+                                    <span class="text-muted" title="Still a draft in Holded">—</span>
+                                }
+                            </td>
+                            <td class="small"><code>@(d.BookedAccountId ?? "—")</code></td>
+                            <td class="small">@string.Join(", ", d.Tags)</td>
+                            <td class="small text-muted">@(d.Notes ?? "—")</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}

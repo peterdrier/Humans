@@ -72,7 +72,7 @@ Three-state badge: no badge / success dot (informational only) / danger count (a
 340px dropdown from bell, right-aligned. It lists only unread, unresolved items, so opening an item or "Mark all as read" takes it off the bell; the inbox page still holds it until it is resolved, dismissed or purged. Sections: "Needs your attention" (actionable), "Work queues" (meters, each saying which role it is shown for), then "Recent" (informational). Footer: "Mark all as read" + "See all notifications". Empty state: "You're all caught up."
 
 ### Full Inbox Page
-Route: `/Notifications`. Search + filter pills (All, Needs action, Shifts, Approvals, Resolved). Card with dark green header, Unread/All tab toggle. Sections: "Needs attention", "Informational", "Resolved".
+Route: `/Notifications`. Search + filter pills (All, Needs action, Shifts, Approvals, Resolved). Card with dark green header, Unread/All tab toggle. Sections: "Needs attention", "Informational", "Resolved". Bulk Resolve and Dismiss remove matching selected rows only after a successful response, reject redirects, and retain selections with a localized error on failure. Both actions are disabled while a bulk request is pending.
 
 ### Notification Row
 Shared between popup and inbox. 3px left border accent by priority/class. Title and time, then the body text (the reason), then "For <role>" when it went to a role. The title links through `ClickThrough`, which marks it read.

@@ -16,15 +16,14 @@ namespace Humans.Integration.Tests.Controllers;
 /// </remarks>
 public class BudgetPageRenderTests(HumansTestDatabase database) : IntegrationTestBase(database)
 {
-    // /Finance is BudgetAdminController's route prefix.
     private static readonly string[] Pages =
     [
         "/Budget",
         "/Budget/Summary",
-        "/Finance",
-        "/Finance/Admin",
+        "/Budget/Admin",
+        "/Budget/Admin/Years",
         "/Finance/CashFlow",
-        "/Finance/AuditLog",
+        "/Budget/Admin/AuditLog",
     ];
 
     /// <summary>
