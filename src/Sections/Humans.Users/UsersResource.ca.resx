@@ -777,4 +777,33 @@
   <data name="Users_Medical_RevealsTitle" xml:space="preserve"><value>Qui ha consultat això</value></data>
   <data name="Users_Medical_RevealsEmpty" xml:space="preserve"><value>Ningú ha consultat les teves dades mèdiques.</value></data>
   <data name="Users_Medical_RevealedBy" xml:space="preserve"><value>Consultat per</value></data>
+  <data name="Users_Birthdays_Title" xml:space="preserve">
+    <value>Calendari d'aniversaris</value>
+  </data>
+  <data name="Users_Birthdays_Count" xml:space="preserve">
+    <value>{0} aniversaris a {1}</value>
+  </data>
+  <data name="Users_Birthdays_Count_One" xml:space="preserve">
+    <value>{0} aniversari a {1}</value>
+  </data>
+  <data name="Users_Birthdays_None" xml:space="preserve">
+    <value>No hi ha aniversaris a {0}.</value>
+  </data>
+  <data name="Users_Birthdays_Privacy" xml:space="preserve">
+    <value>Només es mostren els humans que han establert el seu aniversari.</value>
+  </data>
+  <data name="Users_Map_Title" xml:space="preserve">
+    <value>Mapa de Humans</value>
+  </data>
+  <data name="Users_Map_Count" xml:space="preserve">
+    <value>{0} humans amb ubicació</value>
+  </data>
+  <data name="Users_Map_None" xml:space="preserve">
+    <value>Cap human no ha establert encara la seva ubicació.</value>
+  </data>
+  <data name="Users_Map_Privacy" xml:space="preserve">
+    <value>Només es mostren els humans que han establert la seva ubicació. La ubicació és aproximada i es basa en la ciutat.</value>
+  </data>
+  <data name="Users_Birthdays_CardDescription" xml:space="preserve"><value>Mira qui celebra l'aniversari aquest mes.</value></data>
+  <data name="Users_Map_CardDescription" xml:space="preserve"><value>Mira on són els humans arreu del món.</value></data>
 </root>

@@ -1,0 +1,26 @@
+<div class="row justify-content-center mb-4">
+    <div class="col-lg-8">
+        <div class="row g-3">
+            @await Html.PartialAsync("_DashboardActionCard", new DashboardActionCardViewModel
+            {
+                Controller = "ProfileView",
+                Action = "Birthdays",
+                Title = Localizer["Users_Birthdays_Title"].Value,
+                Description = Localizer["Users_Birthdays_CardDescription"].Value,
+                IconCssClass = "fa-solid fa-cake-candles",
+                IconVariant = "warning",
+                Compact = true
+            })
+            @await Html.PartialAsync("_DashboardActionCard", new DashboardActionCardViewModel
+            {
+                Controller = "ProfileView",
+                Action = "Map",
+                Title = Localizer["Users_Map_Title"].Value,
+                Description = Localizer["Users_Map_CardDescription"].Value,
+                IconCssClass = "fa-solid fa-map-location-dot",
+                IconVariant = "success",
+                Compact = true
+            })
+        </div>
+    </div>
+</div>

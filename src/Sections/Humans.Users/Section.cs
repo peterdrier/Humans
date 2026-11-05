@@ -51,6 +51,7 @@ public sealed class Section :
     ISectionDataMigrations,
     ISectionHelp,
     ISectionJobs,
+    ISectionMemberDashboard,
     ISectionPolicies,
     ISectionThingsToDo,
     IUserPart
@@ -231,6 +232,9 @@ public sealed class Section :
             new(ChromeSlots.AdminDashboard, typeof(PreferredLanguageCardViewComponent), Weight: 40),
             new(ChromeSlots.WidgetGallery, typeof(UsersGalleryViewComponent)),
         ];
+
+    IEnumerable<ChromeComponent> ISectionMemberDashboard.Components() =>
+        [new(ChromeSlots.MemberDashboard, typeof(HumansDirectoryCardsViewComponent), Weight: 90)];
 
     void ISectionConfiguration.DeclareSettings(IConfiguration configuration, ConfigurationRegistry registry)
     {

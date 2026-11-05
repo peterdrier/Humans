@@ -58,6 +58,8 @@ public class UsersPageRenderTests(HumansTestDatabase database) : IntegrationTest
         ("/Profile/Me/Medical", "Medical conditions"),                       // Users_Profile_DietaryMedical_MedicalConditions_Title
         ("/Email/CommunicationPreferences", "Communication Preferences"),    // Users_CommPrefs_Title (served by Email)
         ("/Email/Outbox", "My Emails"),                                      // Email_Outbox_MyTitle (served by Email)
+        ("/Profile/Birthdays", "Birthday Calendar"),                         // Users_Birthdays_Title
+        ("/Profile/Map", "Humans Map"),                                      // Users_Map_Title
     ];
 
     [HumansFact(Timeout = 180000)]

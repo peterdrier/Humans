@@ -1,17 +1,12 @@
-@model Humans.Teams.Models.BirthdayCalendarViewModel
+@model Humans.Users.Models.BirthdayCalendarViewModel
 @{
-    ViewData["Title"] = Localizer["Teams_Birthdays_Title"].Value;
+    ViewData["Title"] = Localizer["Users_Birthdays_Title"].Value;
 
     var prevMonth = Model.CurrentMonth == 1 ? 12 : Model.CurrentMonth - 1;
     var nextMonth = Model.CurrentMonth == 12 ? 1 : Model.CurrentMonth + 1;
 }
 
-@section Crumbs {
-    <a asp-action="Index">@SharedLocalizer["Teams_Title"]</a>
-    <span>@Localizer["Teams_Birthdays_Title"]</span>
-}
-
-<page-header title="@(Localizer["Teams_Birthdays_Title"].Value)">
+<page-header title="@(Localizer["Users_Birthdays_Title"].Value)">
     <div class="d-flex align-items-center gap-2">
         <a asp-action="Birthdays" asp-route-month="@prevMonth" class="btn btn-outline-secondary btn-sm">
             &laquo;
@@ -27,7 +22,7 @@
 {
     <div class="card">
         <div class="card-header">
-            @string.Format(Localizer[Model.Birthdays.Count == 1 ? "Teams_Birthdays_Count_One" : "Teams_Birthdays_Count"].Value, Model.Birthdays.Count, Model.CurrentMonthName)
+            @string.Format(Localizer[Model.Birthdays.Count == 1 ? "Users_Birthdays_Count_One" : "Users_Birthdays_Count"].Value, Model.Birthdays.Count, Model.CurrentMonthName)
         </div>
         <ul class="list-group list-group-flush">
             @foreach (var group in Model.Birthdays.GroupBy(b => b.DayOfMonth).OrderBy(g => g.Key))
@@ -59,11 +54,11 @@ else
 {
     <div class="card">
         <div class="card-body text-center text-muted py-5">
-            @string.Format(Localizer["Teams_Birthdays_None"].Value, Model.CurrentMonthName)
+            @string.Format(Localizer["Users_Birthdays_None"].Value, Model.CurrentMonthName)
         </div>
     </div>
 }
 
 <div class="mt-3">
-    <p class="text-muted small">@Localizer["Teams_Birthdays_Privacy"]</p>
+    <p class="text-muted small">@Localizer["Users_Birthdays_Privacy"]</p>
 </div>

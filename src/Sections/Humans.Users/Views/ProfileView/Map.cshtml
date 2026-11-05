@@ -1,14 +1,9 @@
-@model Humans.Teams.Models.MapViewModel
+@model Humans.Users.Models.MapViewModel
 @{
-    ViewData["Title"] = Localizer["Teams_Map_Title"].Value;
+    ViewData["Title"] = Localizer["Users_Map_Title"].Value;
 }
 
-@section Crumbs {
-    <a asp-action="Index">@SharedLocalizer["Teams_Title"]</a>
-    <span>@Localizer["Teams_Map_Title"]</span>
-}
-
-<page-header title="@(Localizer["Teams_Map_Title"].Value)" />
+<page-header title="@(Localizer["Users_Map_Title"].Value)" />
 
 @section Styles {
     <style>
@@ -87,7 +82,7 @@
 {
     <div class="card">
         <div class="card-header">
-            @string.Format(Localizer["Teams_Map_Count"].Value, Model.Markers.Count)
+            @string.Format(Localizer["Users_Map_Count"].Value, Model.Markers.Count)
         </div>
         <div class="card-body p-0">
             <div id="map"></div>
@@ -98,13 +93,13 @@ else
 {
     <div class="card">
         <div class="card-body text-center text-muted py-5">
-            @Localizer["Teams_Map_None"]
+            @Localizer["Users_Map_None"]
         </div>
     </div>
 }
 
 <div class="mt-3">
-    <p class="text-muted small">@Localizer["Teams_Map_Privacy"]</p>
+    <p class="text-muted small">@Localizer["Users_Map_Privacy"]</p>
 </div>
 
 @section Scripts {
