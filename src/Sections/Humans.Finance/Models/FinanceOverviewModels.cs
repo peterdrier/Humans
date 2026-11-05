@@ -11,7 +11,8 @@ internal sealed record FinanceOverviewVm(
     FinanceWorkVm Work,
     FinanceBudgetVm? Budget,
     FinanceRunwayVm? Runway,
-    FinanceIncomeVm? Income)
+    FinanceIncomeVm? Income,
+    FinancePleoVm Pleo)
 {
     /// <summary>Cash plus what others owe us, less what we owe. Null until every part is known.</summary>
     public decimal? NetPosition => Ledger is { } l && Owed.Total is { } owed

@@ -71,13 +71,7 @@ public sealed class EmailMessageFactoryTests
     }
 
     [HumansTheory]
-    [InlineData("en")]
-    [InlineData("es")]
-    [InlineData("de")]
-    [InlineData("it")]
-    [InlineData("fr")]
-    [InlineData("ca")]
-    [InlineData("nl")]
+    [MemberData(nameof(SupportedCultures.All), MemberType = typeof(SupportedCultures))]
     public void FacilitatedMessage_CapturesCultureBeforeRestoringTheCaller(string culture)
     {
         using var callerCulture = new Humans.Base.Extensions.CultureScope("en");

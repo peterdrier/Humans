@@ -797,13 +797,16 @@
   <data name="About_License_BSD2" xml:space="preserve"><value>requires copyright notice in documentation.</value></data>
   <data name="About_License_BSD3MapLibre" xml:space="preserve"><value>requires copyright notice; this page satisfies that obligation.</value></data>
   <data name="About_License_ISC" xml:space="preserve"><value>permissive, functionally equivalent to BSD-2-Clause; copyright notice required.</value></data>
+  <data name="About_License_AGPL30" xml:space="preserve"><value>the same license as Humans itself; Humans' complete source is public, which satisfies it.</value></data>
+  <data name="About_License_CCBY40" xml:space="preserve"><value>attribution required; this page satisfies that obligation.</value></data>
   <data name="About_License_LGPL30" xml:space="preserve"><value>the library must be replaceable by the end user. Consumed as unmodified NuGet packages (dynamically linked), satisfying LGPL obligations.</value></data>
   <data name="About_License_MIT" xml:space="preserve"><value>requires copyright notice; this page satisfies that obligation.</value></data>
   <data name="About_License_PostgreSQL" xml:space="preserve"><value>permissive, MIT-like; copyright notice required.</value></data>
   <data name="About_License_SILOFL" xml:space="preserve"><value>free to use and redistribute; fonts cannot be sold standalone.</value></data>
+  <data name="About_License_SourceAvailableAt" xml:space="preserve"><value>Source available at</value></data>
   <data name="About_LicenseBody" xml:space="preserve"><value>Humans is free software, released under the</value></data>
   <data name="About_LicenseComplianceHeading" xml:space="preserve"><value>License Compliance Summary</value></data>
-  <data name="About_LicenseComplianceSummary" xml:space="preserve"><value>All production dependencies use permissive or weak-copyleft licenses. No violations found.</value></data>
+  <data name="About_LicenseComplianceSummary" xml:space="preserve"><value>All production dependencies use permissive, weak-copyleft, or AGPL-compatible licenses. No violations found.</value></data>
   <data name="About_LicenseExplanation" xml:space="preserve"><value>You may use, study, modify, and redistribute this software. If you run a modified version and let others interact with it over a network, you must make your modified source available under the same license.</value></data>
   <data name="About_LicenseFullText" xml:space="preserve"><value>Full license text:</value></data>
   <data name="About_LicenseHeading" xml:space="preserve"><value>License</value></data>

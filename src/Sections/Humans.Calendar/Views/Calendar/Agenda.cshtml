@@ -90,7 +90,7 @@
                         }
                         @if (!string.IsNullOrWhiteSpace(o.Description))
                         {
-                            <div class="small ms-5">@o.Description</div>
+                            <div class="small ms-5">@Html.SanitizedMarkdown(o.Description)</div>
                         }
                     </li>
                 }

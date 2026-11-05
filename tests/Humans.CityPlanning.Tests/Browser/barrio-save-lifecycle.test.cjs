@@ -3,6 +3,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
+const { installHumans } = require('../../browser-support/humans-js.cjs');
 const root = path.resolve(__dirname, '../../../src/Sections/Humans.CityPlanning/wwwroot/js/city-planning/barrio-map');
 const main = fs.readFileSync(path.join(root, 'main.js'), 'utf8');
 const edit = fs.readFileSync(path.join(root, 'edit.js'), 'utf8');
@@ -30,7 +31,7 @@ function editor() {
         exitEditMode() { state.exits++; state.features = []; state.activeCampSeasonId = null; },
         fetch: (url, options) => new Promise((resolve, reject) => requests.push({ url, options, resolve, reject })),
     };
-    vm.createContext(context);
+    installHumans(context); vm.createContext(context);
     vm.runInContext(update + '\n' + handler, context);
     return { state, button, requests, alerts, save: () => save(), update: () => vm.runInContext('updateSaveButton()', context) };
 }

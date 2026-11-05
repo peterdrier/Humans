@@ -62,13 +62,7 @@ public sealed class MagicLinkServiceTests
     }
 
     [HumansTheory]
-    [Xunit.InlineData("en")]
-    [Xunit.InlineData("es")]
-    [Xunit.InlineData("de")]
-    [Xunit.InlineData("it")]
-    [Xunit.InlineData("fr")]
-    [Xunit.InlineData("ca")]
-    [Xunit.InlineData("nl")]
+    [Xunit.MemberData(nameof(SupportedCultures.All), MemberType = typeof(SupportedCultures))]
     public async Task SendMagicLinkAsync_ExistingUserByUserEmail_SendsLoginLink(string recipientCulture)
     {
         using var culture = new CultureScope("en");

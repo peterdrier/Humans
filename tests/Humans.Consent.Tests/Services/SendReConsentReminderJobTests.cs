@@ -24,15 +24,15 @@ namespace Humans.Consent.Tests.Services;
 public sealed class SendReConsentReminderJobTests
 {
     [HumansTheory]
-    [InlineData("send", "en", "Reminder: 3 days to review updated documents")]
-    [InlineData("stamp", "en", "Reminder: 3 days to review updated documents")]
-    [InlineData("success", "en", "Reminder: 3 days to review updated documents")]
-    [InlineData("success", "es", "Recordatorio: 3 días para revisar documentos actualizados")]
-    [InlineData("success", "", "Reminder: 3 days to review updated documents")]
-    [InlineData("success", " ", "Reminder: 3 days to review updated documents")]
-    [InlineData("success", "not a culture!", "Reminder: 3 days to review updated documents")]
-    [InlineData("success", "fr-FR", "Reminder: 3 days to review updated documents")]
-    public async Task RecipientFailure_DoesNotPreventLaterRemindersOrHideJobFailure(string outcome, string language, string expectedSubject)
+    [InlineData("send", "en", "en")]
+    [InlineData("stamp", "en", "en")]
+    [InlineData("success", "en", "en")]
+    [InlineData("success", "es", "es")]
+    [InlineData("success", "", "en")]
+    [InlineData("success", " ", "en")]
+    [InlineData("success", "not a culture!", "en")]
+    [InlineData("success", "fr-FR", "en")]
+    public async Task RecipientFailure_DoesNotPreventLaterRemindersOrHideJobFailure(string outcome, string language, string expectedLanguage)
     {
         using var serverCulture = new CultureScope("fr");
         var now = Instant.FromUtc(2026, 10, 2, 4, 0);
@@ -74,6 +74,9 @@ public sealed class SendReConsentReminderJobTests
             metrics, NullLogger<SendReConsentReminderJob>.Instance, new FakeClock(now));
 
         var error = await Record.ExceptionAsync(() => job.ExecuteAsync(TestContext.Current.CancellationToken));
+        var expectedCulture = System.Globalization.CultureInfo.GetCultureInfo(expectedLanguage);
+        var expectedSubject = string.Format(expectedCulture, new System.Resources.ResourceManager(typeof(ConsentResource))
+            .GetString("Consent_Email_ReConsentReminder_Subject", expectedCulture)!, 3);
 
         await email.Received(1).SendAsync(
             Arg.Is<EmailMessage>(m => m.RecipientEmail == first.Email

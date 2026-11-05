@@ -5,19 +5,21 @@ using Humans.Expenses.Contracts;
 using Humans.Finance.Contracts;
 using Humans.Finance.Models;
 using Humans.Holded.Contracts;
+using Humans.Pleo.Contracts;
 using NodaTime;
 
 namespace Humans.Finance.Services;
 
 /// <summary>/Finance's figures, composed from the pages that own each one: balances from the Holded ledger mirror,
-/// creditors and recon from this section, the review queue from Expenses, plan and actuals from Budget and Cash flow.
-/// Owns no tables.</summary>
+/// creditors and recon from this section, the review queue from Expenses, plan and actuals from Budget and Cash flow,
+/// the Pleo wallet from Pleo. Owns no tables.</summary>
 internal sealed class FinanceOverviewService(
     IHoldedService holded,
     IFinanceService finance,
     IExpenseReportService expenseReports,
     IBudgetService budget,
     CashFlowService cashFlow,
+    IPleoService pleo,
     IClock clock) : IApplicationService
 {
     private static readonly DateTimeZone Madrid = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
@@ -28,9 +30,11 @@ internal sealed class FinanceOverviewService(
 
         var syncedAt = await holded.GetLedgerSyncedAtAsync(ct);
         FinanceLedgerCardsVm? ledger = null;
+        decimal? pleoInHolded = null;
         if (syncedAt is not null)
         {
             var balances = await holded.GetAccountBalancesAsync(ct);
+            pleoInHolded = balances.GetValueOrDefault(PleoBooking.PleoTreasury);
             var chart = await holded.GetChartAsync(ct);
             var filings = await TaxFilingsAsync(chart, today, ct);
             ledger = BuildLedgerCards(chart, balances, filings);
@@ -61,7 +65,8 @@ internal sealed class FinanceOverviewService(
             BuildWork(queue, creditors, recon) with { CreditorsUnavailable = creditorsUnavailable },
             budgetVm,
             runway,
-            income);
+            income,
+            new FinancePleoVm((await pleo.GetWalletBalanceAsync(ct))?.CurrentEur, pleoInHolded));
     }
 
     private static bool Under(int accountNum, string prefix) =>

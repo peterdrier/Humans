@@ -1,4 +1,7 @@
 using AwesomeAssertions;
+using System.Globalization;
+using System.Resources;
+using Humans.Base.Extensions;
 using Xunit;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -232,19 +235,12 @@ public sealed class RoleAssignmentServiceTests : AuthTestHarness
     }
 
     [HumansTheory]
-    [InlineData("en", "You were assigned the Board role", "Your Board role assignment has ended")]
-    [InlineData("es", "Se te ha asignado el rol Board", "Tu asignación al rol Board ha finalizado")]
-    [InlineData("de", "Dir wurde die Rolle Board zugewiesen", "Deine Zuweisung zur Rolle Board ist beendet")]
-    [InlineData("it", "Ti è stato assegnato il ruolo Board", "La tua assegnazione al ruolo Board è terminata")]
-    [InlineData("fr", "Le rôle Board t’a été attribué", "Ton attribution au rôle Board a pris fin")]
-    [InlineData("ca", "Se t'ha assignat el rol Board", "La teva assignació al rol Board ha finalitzat")]
-    [InlineData("nl", "Je hebt de rol Board gekregen", "Je toewijzing voor de rol Board is beëindigd")]
-    [InlineData("", "You were assigned the Board role", "Your Board role assignment has ended")]
-    [InlineData("not-a-culture", "You were assigned the Board role", "Your Board role assignment has ended")]
-    [InlineData("pt", "You were assigned the Board role", "Your Board role assignment has ended")]
-    [InlineData("lookup-fails", "You were assigned the Board role", "Your Board role assignment has ended")]
-    public async Task RoleChanges_NotifyInTheRecipientsLanguage(
-        string language, string assignedTitle, string endedTitle)
+    [MemberData(nameof(SupportedCultures.All), MemberType = typeof(SupportedCultures))]
+    [InlineData("")]
+    [InlineData("not-a-culture")]
+    [InlineData("pt")]
+    [InlineData("lookup-fails")]
+    public async Task RoleChanges_NotifyInTheRecipientsLanguage(string language)
     {
         using var actorCulture = new Humans.Base.Extensions.CultureScope("en");
         var userId = Guid.NewGuid();
@@ -268,8 +264,13 @@ public sealed class RoleAssignmentServiceTests : AuthTestHarness
         ended.Success.Should().BeTrue();
         var notices = Notifier.ReceivedCalls().ToList();
         notices.Should().HaveCount(2);
-        notices[0].GetArguments()[3].Should().Be(assignedTitle);
-        notices[1].GetArguments()[3].Should().Be(endedTitle);
+        var expected = CultureInfo.GetCultureInfo(CultureCatalog.SupportedCultureCodes.Contains(language, StringComparer.Ordinal)
+            ? language : CultureCatalog.DefaultCultureCode);
+        var resources = new ResourceManager(typeof(AuthResource));
+        notices[0].GetArguments()[3].Should().Be(
+            string.Format(expected, resources.GetString("Auth_Notification_RoleAssigned", expected)!, RoleNames.Board));
+        notices[1].GetArguments()[3].Should().Be(
+            string.Format(expected, resources.GetString("Auth_Notification_RoleEnded", expected)!, RoleNames.Board));
         foreach (var notice in notices)
         {
             notice.GetArguments()[4].Should().BeEquivalentTo(new[] { userId });
