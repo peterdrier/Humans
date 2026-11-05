@@ -163,6 +163,46 @@ public sealed class TicketTransferServiceTests
     }
 
     [HumansTheory]
+    [Xunit.InlineData(false, "deleted")]
+    [Xunit.InlineData(true, "deleted")]
+    [Xunit.InlineData(false, "merged")]
+    [Xunit.InlineData(true, "merged")]
+    [Xunit.InlineData(false, "erased")]
+    [Xunit.InlineData(true, "erased")]
+    public async Task ReceiverSelection_RefusesTombstoneWithRetainedContactDetails(bool create, string tombstone)
+    {
+        StubAttendee(TicketAttendeeStatus.Valid, _senderId);
+        var receiver = WrapInUserInfo(MakeUser(_receiverId, "Alice"),
+            UserFixtures.Profile(burnerName: "Alice", firstName: "Alice", lastName: "Smith"));
+        receiver = tombstone switch
+        {
+            "deleted" => receiver with { State = UserState.Deleted },
+            "merged" => receiver with { State = UserState.Merged },
+            _ => receiver with { IsGdprAnonymized = true }
+        };
+        _userService.GetUserInfoAsync(_receiverId, Arg.Any<CancellationToken>()).Returns(receiver);
+
+        if (create)
+        {
+            var result = await _service.CreateRequestAsync(
+                new TicketTransferRequestDto(_attendeeId, _receiverId, "Reason"), _senderId,
+                Xunit.TestContext.Current.CancellationToken);
+            result.RefusalKey.Should().Be("Tickets_TicketTransfer_InvalidSelection");
+        }
+        else
+        {
+            var result = await _service.GetConfirmationAsync(_attendeeId, _receiverId, _senderId,
+                Xunit.TestContext.Current.CancellationToken);
+            result.Should().BeNull();
+        }
+
+        await _transferRepo.DidNotReceive().AddAsync(Arg.Any<TicketTransferRequest>(), Arg.Any<CancellationToken>());
+        _auditLog.ReceivedCalls().Should().BeEmpty();
+        _emailService.ReceivedCalls().Should().BeEmpty();
+        _vendor.ReceivedCalls().Should().BeEmpty();
+    }
+
+    [HumansTheory]
     [Xunit.InlineData(null)]
     [Xunit.InlineData("")]
     [Xunit.InlineData(" \t ")]

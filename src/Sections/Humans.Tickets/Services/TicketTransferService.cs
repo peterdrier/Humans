@@ -66,7 +66,8 @@ internal sealed class TicketTransferService(
         }
 
         var receiverInfo = await userService.GetUserInfoAsync(receiverUserId, ct);
-        if (receiverInfo is null || receiverInfo.Id != receiverUserId || !receiverInfo.HasRequiredNameFields) return null;
+        if (receiverInfo is null || receiverInfo.IsTombstone
+            || receiverInfo.Id != receiverUserId || !receiverInfo.HasRequiredNameFields) return null;
         var receiverEmail = receiverInfo.Email;
         if (string.IsNullOrWhiteSpace(receiverEmail)) return null;
 
@@ -104,7 +105,7 @@ internal sealed class TicketTransferService(
             return TicketTransferMutationResult.Refused("Tickets_TicketTransfer_CheckedIn");
 
         var receiverInfo = await userService.GetUserInfoAsync(dto.ReceiverUserId, ct);
-        if (receiverInfo is null || receiverInfo.Id != dto.ReceiverUserId)
+        if (receiverInfo is null || receiverInfo.IsTombstone || receiverInfo.Id != dto.ReceiverUserId)
             return TicketTransferMutationResult.Refused("Tickets_TicketTransfer_InvalidSelection");
         // Receiver must have a legal name; same message as not-found so the reason doesn't leak.
         if (!receiverInfo.HasRequiredNameFields)

@@ -256,7 +256,7 @@ Inbound (who injects `Humans.Tickets.Contracts`):
 
 **Owned tables:** `ticket_orders`, `ticket_attendees`, `ticket_sync_state`, `ticket_transfer_requests`, `tickets_event_participations`
 
-Transfer confirmation, request creation and sender notifications use the canonical `Email` on their existing `UserInfo` read, preserving verified-primary, verified-secondary and identity fallback selection. Confirmation and request creation both reject missing or whitespace-only receiver emails before persistence or side effects, using the existing invalid-selection feedback. Recipient validation still rejects a merged-away receiver ID.
+Transfer confirmation, request creation and sender notifications use the canonical `Email` on their existing `UserInfo` read, preserving verified-primary, verified-secondary and identity fallback selection. Confirmation and request creation both reject missing or whitespace-only receiver emails before persistence or side effects, using the existing invalid-selection feedback. Recipient validation rejects merged-away IDs and tombstoned receiver records, even when a legal name and email remain.
 
 Automated processing and reissue retry also refuse a missing or whitespace-only stored receiver email before any vendor call or local state change. Invalid legacy requests retain their pending/partial state and any held seat; operators receive manual-completion guidance. Manual “Mark successful” remains available for work completed in TicketTailor.
 
