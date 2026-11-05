@@ -137,7 +137,7 @@
     var groupActual = allGroupLineItems.Sum(li => li.Amount);
     var groupBudget = group.Categories.Sum(c => c.AllocatedAmount);
     // A mixed group (Ticketing: revenue and fees) has no single direction, so its header shows signed
-    // nets and neutral labels; a one-direction group shows magnitudes like its categories do.
+    // nets and a neutral variance label; a one-direction group shows magnitudes like its categories do.
     var groupMixed = group.Categories.Any(c => c.AllocatedAmount < 0) && group.Categories.Any(c => c.AllocatedAmount > 0);
     var groupIsExpense = groupBudget < 0;
     // Each category's variance is positive when favourable, so the group's is their sum.
@@ -356,8 +356,8 @@
                 {
                     <div class="budget-row budget-colhead ps-4">
                         <span>Category</span>
-                        <span class="budget-num">@(groupMixed ? "Budget" : groupIsExpense ? "Planned" : "Target")</span>
-                        <span class="budget-num">Actual</span>
+                        <span class="budget-num">Budget</span>
+                        <span class="budget-num">Lines</span>
                         <span class="budget-num">@(groupMixed ? "Variance" : groupIsExpense ? "Remaining" : "Vs target")</span>
                         <span class="budget-num">Holded</span>
                     </div>
