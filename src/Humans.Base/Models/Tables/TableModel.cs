@@ -1,3 +1,4 @@
+using System.Text.Encodings.Web;
 using Microsoft.AspNetCore.Html;
 
 namespace Humans.Base.Models.Tables;
@@ -28,6 +29,7 @@ public sealed class TableModelBuilder<TRow> where TRow : class
     private Func<object?, IHtmlContent>? _extraFilterContent;
     private Func<TRow, string?>? _rowHref;
     private Func<TRow, string?>? _rowCss;
+    private readonly List<(string Name, Func<TRow, string?> Value)> _rowData = [];
 
     internal TableModelBuilder(IReadOnlyList<TRow> rows) => _rows = rows;
 
@@ -56,6 +58,13 @@ public sealed class TableModelBuilder<TRow> where TRow : class
 
     public TableModelBuilder<TRow> RowHref(Func<TRow, string?> href) { _rowHref = href; return this; }
     public TableModelBuilder<TRow> RowCss(Func<TRow, string?> css) { _rowCss = css; return this; }
+
+    /// <summary>Adds a <c>data-{name}</c> attribute to every row; call once per attribute.</summary>
+    public TableModelBuilder<TRow> RowData(string name, Func<TRow, string?> value)
+    {
+        _rowData.Add((name, value));
+        return this;
+    }
     public TableModelBuilder<TRow> Empty(string message) { _emptyMessage = message; return this; }
     public TableModelBuilder<TRow> Id(string id) { _id = id; return this; }
     public TableModelBuilder<TRow> Css(string cssClass) { _extraCssClass = cssClass; return this; }
@@ -121,8 +130,18 @@ public sealed class TableModelBuilder<TRow> where TRow : class
 
         private readonly Func<TRow, string?>? _rowHref = b._rowHref;
         private readonly Func<TRow, string?>? _rowCss = b._rowCss;
+        private readonly IReadOnlyList<(string Name, Func<TRow, string?> Value)> _rowData = b._rowData;
 
         public string? RowHref(object row) => _rowHref?.Invoke((TRow)row);
         public string? RowCss(object row) => _rowCss?.Invoke((TRow)row);
+
+        public IHtmlContent RowData(object row)
+        {
+            if (_rowData.Count == 0)
+                return HtmlString.Empty;
+            var attributes = _rowData.Select(d =>
+                $" data-{HtmlEncoder.Default.Encode(d.Name)}=\"{HtmlEncoder.Default.Encode(d.Value((TRow)row) ?? string.Empty)}\"");
+            return new HtmlString(string.Concat(attributes));
+        }
     }
 }
