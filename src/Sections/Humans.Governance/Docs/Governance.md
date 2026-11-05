@@ -446,3 +446,5 @@ sends this section's stored issues to the Admin-only queue.
 Governance resource keys use `Governance_` in all supported cultures; reflective `Enum_` keys retain their shared naming shape. Assembly vote status, kind, choice, majority and tally-method lookups build the same section-prefixed keys.
 
 The status-update audience defaults to unsigned required consents whose grace period is due now, restricted to active assignments. Its optional `expiringWithin` horizon serves advance reminders; it does not change the suspension or metrics audiences. Signed documents and later deadlines remain excluded.
+
+The internal `AssemblyVoteDataExport` owns both assembly-vote GDPR slices. Voting records follow every merged account ID, while officer and peek records use the survivor ID because merge reassigns actor columns. `AssemblyVoteService` retains the existing entry point, erasure and merge operations; export keys, ballot history, attribution, ordering and cancellation are unchanged. No public contract or DI registration is added.
