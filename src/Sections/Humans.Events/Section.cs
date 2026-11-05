@@ -1,4 +1,6 @@
 using Humans.Base.Extensions;
+using Humans.Events.Domain;
+using Humans.Base.Models.Tables;
 using NodaTime;
 using Humans.Base.Authorization;
 using Humans.Base.Constants;
@@ -51,6 +53,22 @@ public sealed class Section :
 
     public void Register(IServiceCollection services, IConfiguration configuration)
     {
+        EnumBadgeMap.Register(new Dictionary<Enum, string>
+        {
+            [EventStatus.Draft] = "bg-secondary",
+            [EventStatus.Pending] = "bg-warning text-dark",
+            [EventStatus.Approved] = "bg-success",
+            [EventStatus.Rejected] = "bg-danger",
+            [EventStatus.ResubmitRequested] = "bg-info",
+            [EventStatus.Withdrawn] = "bg-dark",
+
+            [EventModerationActionType.Approved] = "bg-success",
+            [EventModerationActionType.Rejected] = "bg-danger",
+            [EventModerationActionType.ResubmitRequested] = "bg-info",
+            [EventModerationActionType.Edited] = "bg-primary",
+            [EventModerationActionType.Withdrawn] = "bg-secondary",
+        });
+
         services.AddSingleton<IAuditActionContributor, EventsAuditActions>();
         services.AddSectionDbContext<EventGuideDbContext>(sentinelTable: "events");
 

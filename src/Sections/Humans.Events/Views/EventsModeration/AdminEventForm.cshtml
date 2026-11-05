@@ -1,10 +1,9 @@
 @model Humans.Events.Models.AdminEventFormViewModel
 @{
     ViewData["Title"] = "Edit Event";
-    var statusClass = EventStatusPresentation.BadgeClass(Model.Status);
 }
 
-<h2>Edit Event <span class="badge @statusClass align-middle">@Model.Status</span></h2>
+<h2>Edit Event <status-badge value="@Model.Status" class="align-middle" localizer="@Localizer" /></h2>
 
 <div class="alert alert-info">
     <i class="fa-solid fa-pen-to-square me-1"></i>Admin in-place edit. Saving keeps the current

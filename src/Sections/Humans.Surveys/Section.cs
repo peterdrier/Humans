@@ -2,6 +2,7 @@ using Humans.Base.Authorization;
 using Humans.Base.Constants;
 using Humans.Base.Hosting;
 using Humans.Base.Interfaces;
+using Humans.Base.Models.Tables;
 using Humans.Email.Contracts;
 using Humans.Gdpr.Contracts;
 using Humans.Surveys.Authorization;
@@ -29,6 +30,14 @@ public sealed class Section : ISection, ISectionRoles, ISectionAdminNav, ISectio
     public void Register(IServiceCollection services, IConfiguration configuration)
     {
         services.AddSingleton<IAuditActionContributor, SurveysAuditActions>();
+
+        EnumBadgeMap.Register(new Dictionary<Enum, string>
+        {
+            [SurveyStatus.Draft] = "bg-warning text-dark",
+            [SurveyStatus.Open] = "bg-success",
+            [SurveyStatus.Closed] = "bg-secondary",
+            [SurveyStatus.PendingApproval] = "bg-info text-dark",
+        });
         services.AddSectionDbContext<SurveysDbContext>(sentinelTable: "surveys");
 
         services.AddSingleton<ISurveyRepository, SurveyRepository>();   // IDbContextFactory ⇒ Singleton-safe
