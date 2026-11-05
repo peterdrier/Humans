@@ -250,6 +250,8 @@ public class MarkdownEditorTagHelper(
                     {{ name: 'guide', action: function() {{
                         var modalEl = document.getElementById('markdownHelpModal');
                         if (!modalEl || typeof bootstrap === 'undefined') {{ return; }}
+                        // The modal is emitted beside the first editor, possibly inside a hidden container.
+                        if (modalEl.parentElement !== document.body) {{ document.body.appendChild(modalEl); }}
                         bootstrap.Modal.getOrCreateInstance(modalEl).show();
                     }}, className: 'fa-solid fa-circle-question', title: 'Markdown help' }}
                 ]
@@ -296,7 +298,15 @@ public class MarkdownEditorTagHelper(
     }}
     document.addEventListener('shown.bs.collapse', refreshWithin);
     document.addEventListener('shown.bs.modal', refreshWithin);
-    document.addEventListener('shown.bs.tab', refreshWithin);
+    // shown.bs.tab targets the trigger button, not the pane that just became visible.
+    document.addEventListener('shown.bs.tab', function(e) {{
+        var sel = e.target.getAttribute('data-bs-target') || e.target.getAttribute('href');
+        var pane = null;
+        if (sel && sel.charAt(0) === '#') {{
+            try {{ pane = document.querySelector(sel); }} catch (err) {{ pane = null; }}
+        }}
+        if (pane) {{ refreshWithin({{ target: pane }}); }}
+    }});
 
     window.HumansMarkdownEditor = {{ init: init }};
 }})();
