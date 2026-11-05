@@ -927,9 +927,6 @@
   <data name="Nav_City" xml:space="preserve">
     <value>Carte</value>
   </data>
-  <data name="Nav_Rideshare" xml:space="preserve">
-    <value>Covoiturage</value>
-  </data>
   <data name="Nav_Budget" xml:space="preserve">
     <value>Budget</value>
   </data>

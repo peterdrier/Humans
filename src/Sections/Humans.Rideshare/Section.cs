@@ -25,7 +25,6 @@ public sealed class Section :
     ISection,
     ISectionRoles,
     ISectionAdminNav,
-    ISectionNav,
     ISectionPolicies
 {
     IReadOnlyList<RoleDefinition> ISectionRoles.Roles { get; } =
@@ -89,11 +88,6 @@ public sealed class Section :
             new("Settings & stats", "RideshareAdmin", "Index", null, null, "fa-solid fa-car",          RidesharePolicies.Read),
             new("Day roster",       "RideshareAdmin", "Day",   null, null, "fa-solid fa-calendar-day", RidesharePolicies.Read)
         ])
-    ];
-
-    IEnumerable<MemberNavItem> ISectionNav.Items() =>
-    [
-        new("Nav_Rideshare", Controller: "Rideshare", Action: "Index", Policy: PolicyNames.AppAccess, Weight: 55)
     ];
 
     void ISectionPolicies.AddPolicies(AuthorizationOptions options)
