@@ -167,3 +167,10 @@ for `/Email/EmailPreview`. No DB access, no cache.
 ---
 
 
+
+### ApplicationReader (internal, owned by ApplicationDecisionService)
+
+Repository: `IApplicationRepository`. Reads application member/admin/Board views,
+pending snapshots and summary counts; enriches through the existing Users and Auth
+role-assignment contracts. Owns shared vote/history projection. No writes, cache
+or separate DI registration; badge caching remains in the decision service.

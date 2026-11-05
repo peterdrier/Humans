@@ -400,6 +400,8 @@ The Board-voting dashboard controller orders member columns by display name with
 
 ## Architecture
 
+The internal `ApplicationReader` owns member application history/detail, filtered admin lists/detail, pending snapshots, Board dashboard/detail and summary counts, including shared history/vote projections. `ApplicationDecisionService` forwards the existing reads and retains voting-badge caching, decisions, tier changes, reminder workflows, GDPR and expiry repair. Ownership checks, filter/paging behavior, applicant fallbacks, vote/history ordering and cancellation are unchanged. No public contract or DI registration is added.
+
 **Owning services:** `ApplicationDecisionService`, `MembershipTierService`, `MembershipCalculator`, `MembershipQuery`, `AssemblyVoteService`
 **Owned tables:** `applications`, `application_state_history`, `board_votes`, `assembly_votes`, `assembly_vote_options`, `assembly_vote_roster`, `assembly_ballots`, `assembly_ballot_history`, `assembly_vote_peeks`, `governance_membership_tiers`
 **Public surface:** the cross-section surface — `IGovernanceService`, `IMembershipCalculator`, `ApplicationStatus`, `MembershipTier` and the membership snapshot records — sits on the `Humans.Governance.Contracts` leaf, everything else is `internal`.
