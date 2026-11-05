@@ -10,7 +10,7 @@ against the previous run's copy. Not a history: what the section *should* be tod
 ## 1. What the section does
 
 Nothing for users. Feedback was replaced by Issues and removed. What is left is a stub that
-drops the old tables on the next production deploy and keeps two kinds of old records
+drops the old tables on any database that still has them and keeps two kinds of old records
 readable: past audit entries and leftover inbox notifications. The target after production
 has applied the drop is no section at all.
 
