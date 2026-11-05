@@ -12,7 +12,7 @@
     <div class="col-md-6">
         <form method="get" class="d-flex gap-2 align-items-center">
             <label class="form-label mb-0 me-2 text-nowrap">Filter by ticket year:</label>
-            <select name="year" class="form-select form-select-sm" style="width: auto;" id="yearFilter">
+            <select name="year" class="form-select form-select-sm js-auto-submit" style="width: auto;" id="yearFilter">
                 <option value="">All time</option>
                 @foreach (var y in Model.AvailableYears)
                 {
@@ -160,11 +160,3 @@
 }
 
 <a asp-action="AdminList" class="btn btn-outline-secondary">Back to Admin</a>
-
-@section Scripts {
-<script>
-    document.getElementById('yearFilter').addEventListener('change', function () {
-        this.form.submit();
-    });
-</script>
-}

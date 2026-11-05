@@ -9,7 +9,8 @@
 # Pleo — Section Invariants
 
 A read-only mirror of the Pleo card wallet and the `/Pleo` admin pages over it. Step one of getting Pleo spend into
-Holded: Peter reviews the mirror here before anything is booked. Nothing is written to Pleo or to Holded.
+Holded: Peter reviews the mirror here before anything is booked. Nothing is written to Pleo or to Holded; Finance
+books the spend from what `IPleoService` serves (step two, `/Finance/Pleo`).
 
 ## Concepts
 
@@ -67,7 +68,7 @@ All under `FinancePolicies.Read`; English-only finance-admin pages like `/Holded
 |-------|--------------|
 | Finance admin / Admin | Everything (`FinancePolicies.Manage`): Sync now, link, unlink, add a category. |
 | Board | Read every page and receipt (`FinancePolicies.Read`). |
-| Other sections | Read via `IPleoService`. |
+| Other sections | Read via `IPleoService` (Finance, for `/Finance` and `/Finance/Pleo`). |
 | Any other human | Nothing. |
 
 ## Invariants
@@ -119,4 +120,6 @@ step) brings the export and deletion paths with it. `SetByUserId` on a category 
 ### Public contract
 
 `IPleoService` (`Contracts/`): `GetSettledEntriesAsync(from, to)` — entries settled in a Madrid-date window, each with
-its Holded code or null and whether it has a receipt. Step two books only entries with both. Served from the mirror. Everything else is internal.
+its Holded code or null and whether it has a receipt. Finance books only entries with both. `GetWalletBalanceAsync` —
+the wallet's current EUR balance at the last sweep (`PleoWalletBalance`), null before one or in another currency; the
+`/Finance` and `/Finance/Pleo` balance check. Served from the mirror. Everything else is internal.

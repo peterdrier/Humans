@@ -38,7 +38,7 @@
 
 <details class="mb-4" open>
     <summary class="h5">User context tail (per-turn, not cached)</summary>
-    <pre class="bg-light border rounded p-3 small mt-2" style="white-space: pre-wrap;">@Model.UserContextTail</pre>
+    <pre class="bg-light border rounded p-3 small mt-2 pre-wrap">@Model.UserContextTail</pre>
 </details>
 
 <details class="mb-4">
@@ -49,7 +49,7 @@
             <div class="card-header py-1"><code>@tool.Name</code></div>
             <div class="card-body py-2">
                 <p class="mb-1 small">@tool.Description</p>
-                <pre class="bg-light border rounded p-2 small mb-0" style="white-space: pre-wrap;">@tool.JsonSchema</pre>
+                <pre class="bg-light border rounded p-2 small mb-0 pre-wrap">@tool.JsonSchema</pre>
             </div>
         </div>
     }
@@ -68,7 +68,7 @@
             <div class="card mb-2 @(turn.Role == "user" ? "border-primary" : "border-secondary")">
                 <div class="card-header py-1"><strong>@turn.Role</strong></div>
                 <div class="card-body py-2">
-                    <pre class="mb-0 small" style="white-space: pre-wrap;">@turn.Text</pre>
+                    <pre class="mb-0 small pre-wrap">@turn.Text</pre>
                 </div>
             </div>
         }

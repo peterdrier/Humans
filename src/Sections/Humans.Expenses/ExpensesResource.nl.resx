@@ -149,7 +149,6 @@
   <data name="Expenses_Flash_InvalidApprovalInput" xml:space="preserve"><value>Ongeldige invoer voor goedkeuring.</value></data>
   <!-- Submitter expense-edit page -->
   <data name="Expenses_EditReport" xml:space="preserve"><value>Declaratie bewerken</value></data>
-  <data name="Expenses_BreadcrumbNavigation" xml:space="preserve"><value>Kruimelpad</value></data>
   <data name="Expenses_Edit" xml:space="preserve"><value>Bewerken</value></data>
   <data name="Expenses_ReportHeader" xml:space="preserve"><value>Declaratiegegevens</value></data>
   <data name="Expenses_BudgetCategory" xml:space="preserve"><value>Budgetcategorie</value></data>

@@ -3,6 +3,7 @@ const { test } = require('node:test');
 const { readFileSync } = require('node:fs');
 const { resolve } = require('node:path');
 const vm = require('node:vm');
+const { installHumans } = require('../../browser-support/humans-js.cjs');
 
 const source = readFileSync(resolve(__dirname, '../../../src/Sections/Humans.Shifts/Views/ShiftAdmin/Index.cshtml'), 'utf8');
 const start = source.indexOf("    document.querySelectorAll('[data-new-tag-btn]')");
@@ -29,8 +30,8 @@ function picker(id) {
         querySelector: selector => selector.startsWith('[data-new-tag-input=') ? input
             : selector.startsWith('[data-new-tag-btn=') ? button : container,
     };
-    vm.runInNewContext(script, {
-        document, tagCreateUrl: '/tags/create', antiForgeryToken: 'csrf',
+    vm.runInNewContext(script, installHumans({
+        document, tagCreateUrl: '/tags/create',
         syncTagIds: pickerId => { assert.equal(pickerId, id); syncs++; },
         showToast: (message, type) => errors.push({ message, type }),
         fetch: (url, options) => {
@@ -40,7 +41,7 @@ function picker(id) {
             assert.equal(new URLSearchParams(options.body).get('name'), 'Heavy lifting');
             return new Promise((resolve, reject) => { complete = resolve; fail = reject; });
         },
-    });
+    }));
     return {
         input, button, checkbox, errors, requests: () => requests, syncs: () => syncs,
         click: () => button.click(),

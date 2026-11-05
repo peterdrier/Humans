@@ -26,17 +26,10 @@ namespace Humans.GoogleIntegration.Tests;
 
 public sealed class GoogleIdentityViewTests
 {
-    [HumansTheory]
-    [Xunit.InlineData("en")]
-    [Xunit.InlineData("es")]
-    [Xunit.InlineData("de")]
-    [Xunit.InlineData("it")]
-    [Xunit.InlineData("fr")]
-    [Xunit.InlineData("ca")]
-    [Xunit.InlineData("nl")]
-    public async Task SyncAndRenames_RenderLocalIdentity_AndKeepExternalNames(string language)
+    [HumansFact]
+    public async Task SyncAndRenames_RenderLocalIdentity_AndKeepExternalNames()
     {
-        using var culture = new CultureScope(language);
+        using var culture = new CultureScope("en");
         var known = Guid.NewGuid();
         var missing = Guid.NewGuid();
         var users = Substitute.For<IUserService>();

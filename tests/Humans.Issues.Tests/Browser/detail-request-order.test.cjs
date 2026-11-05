@@ -9,7 +9,7 @@ function page() {
         '../../../src/Sections/Humans.Issues/Views/Issues/Index.cshtml'), 'utf8');
     const section = source.indexOf('@section Scripts');
     const start = source.indexOf('<script>', section) + '<script>'.length;
-    const end = source.indexOf("document.querySelectorAll('.issues-filter-form", start);
+    const end = source.indexOf("document.querySelectorAll('[data-issue-id]')", start);
     assert.ok(section >= 0 && end > start);
     const panel = { innerHTML: '' };
     const requests = [];

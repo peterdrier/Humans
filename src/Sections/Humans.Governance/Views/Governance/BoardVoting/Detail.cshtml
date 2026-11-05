@@ -31,7 +31,7 @@
                     @if (!string.IsNullOrEmpty(Model.ApplicationMotivation))
                     {
                         <dt class="col-sm-4">@OnboardingLocalizer["Onboarding_ReviewApplicationMotivation"]</dt>
-                        <dd class="col-sm-8" style="white-space: pre-wrap;">@Model.ApplicationMotivation</dd>
+                        <dd class="col-sm-8 pre-wrap">@Model.ApplicationMotivation</dd>
                     }
                 </dl>
             </div>
@@ -42,7 +42,7 @@
             <div class="card mb-4">
                 <div class="card-header">@Localizer["Governance_BoardVoting_AdditionalInfo"]</div>
                 <div class="card-body">
-                    <p class="mb-0" style="white-space: pre-wrap;">@Model.AdditionalInfo</p>
+                    <p class="mb-0 pre-wrap">@Model.AdditionalInfo</p>
                 </div>
             </div>
         }
@@ -52,7 +52,7 @@
             <div class="card mb-4">
                 <div class="card-header">@SharedLocalizer["Application_SignificantContribution"]</div>
                 <div class="card-body">
-                    <p class="mb-0" style="white-space: pre-wrap;">@Model.SignificantContribution</p>
+                    <p class="mb-0 pre-wrap">@Model.SignificantContribution</p>
                 </div>
             </div>
         }
@@ -62,7 +62,7 @@
             <div class="card mb-4">
                 <div class="card-header">@SharedLocalizer["Application_RoleUnderstanding"]</div>
                 <div class="card-body">
-                    <p class="mb-0" style="white-space: pre-wrap;">@Model.RoleUnderstanding</p>
+                    <p class="mb-0 pre-wrap">@Model.RoleUnderstanding</p>
                 </div>
             </div>
         }

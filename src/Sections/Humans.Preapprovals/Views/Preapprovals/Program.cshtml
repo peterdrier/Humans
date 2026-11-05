@@ -6,12 +6,10 @@
     var pending = Model.Pending;
 }
 
-<nav aria-label="@Localizer["Preapprovals_BreadcrumbNavigation"]">
-    <ol class="breadcrumb">
-        <li class="breadcrumb-item"><a asp-action="Index">@Localizer["Preapprovals_Title"]</a></li>
-        <li class="breadcrumb-item active" aria-current="page">@p.Name</li>
-    </ol>
-</nav>
+@section Crumbs {
+    <a asp-action="Index">@Localizer["Preapprovals_Title"]</a>
+    <span>@p.Name</span>
+}
 
 <h1>@p.Name</h1>
 
@@ -78,7 +76,7 @@
                 {
                     <div class="mb-3">
                         <label asp-for="Form.RequestedAmount" class="form-label">@Localizer["Preapprovals_RequestedAmount"]</label>
-                        <div class="input-group" style="max-width: 240px;">
+                        <div class="input-group mw-240">
                             <input asp-for="Form.RequestedAmount" type="number" step="0.01" min="0.01" class="form-control"
                                    value="@(Model.Form.RequestedAmount ?? pending?.RequestedAmount)" required />
                             <span class="input-group-text">€</span>

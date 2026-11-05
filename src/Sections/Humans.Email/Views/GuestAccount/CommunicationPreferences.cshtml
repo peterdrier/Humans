@@ -4,16 +4,15 @@
     ViewData["Title"] = Localizer["Email_CommPrefs_Title"].Value;
 }
 
+@section Crumbs {
+    <a asp-controller="Guest" asp-action="Index">@SharedLocalizer["Dashboard_Title"]</a>
+    <span>@Localizer["Email_CommPrefs_Title"]</span>
+}
+
 <div class="row">
     <div class="col-12" style="max-width: 900px;">
         @if (string.IsNullOrEmpty(Model.UnsubscribeToken))
         {
-            <nav aria-label="@Localizer["Email_BreadcrumbNavigation"]">
-                <ol class="breadcrumb">
-                    <li class="breadcrumb-item"><a asp-controller="Guest" asp-action="Index">@SharedLocalizer["Dashboard_Title"]</a></li>
-                    <li class="breadcrumb-item active" aria-current="page">@Localizer["Email_CommPrefs_Title"]</li>
-                </ol>
-            </nav>
         }
 
         <h1>@Localizer["Email_CommPrefs_Title"]</h1>
@@ -125,18 +124,12 @@
         body.append('category', category);
         body.append('emailEnabled', emailEnabled);
         body.append('alertEnabled', alertEnabled);
-        body.append('__RequestVerificationToken',
-            document.querySelector('input[name="__RequestVerificationToken"]').value);
         @if (!string.IsNullOrEmpty(Model.UnsubscribeToken))
         {
             @:body.append('utoken', '@Html.Raw(Html.Encode(Model.UnsubscribeToken))');
         }
 
-        return fetch('@Url.Action("UpdatePreference")', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: body.toString()
-        }).then(function (resp) {
+        return Humans.postForm('@Url.Action("UpdatePreference")', body).then(function (resp) {
             if (!resp.ok) throw new Error(resp.statusText);
         });
     }

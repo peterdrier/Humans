@@ -24,29 +24,20 @@ namespace Humans.Email.Tests.ViewComponents;
 
 public class CommunicationPreferenceAccessibilityTests
 {
+    public enum PreferenceSurface { Member, Admin, Guest }
+
+    public static TheoryData<string, PreferenceSurface> CulturesAndSurfaces()
+    {
+        var data = new TheoryData<string, PreferenceSurface>();
+        foreach (var surface in Enum.GetValues<PreferenceSurface>())
+            foreach (var culture in CultureCatalog.SupportedCultureCodes)
+                data.Add(culture, surface);
+        return data;
+    }
+
     [HumansTheory]
-    [InlineData("en", "Member")]
-    [InlineData("es", "Member")]
-    [InlineData("de", "Member")]
-    [InlineData("it", "Member")]
-    [InlineData("fr", "Member")]
-    [InlineData("ca", "Member")]
-    [InlineData("nl", "Member")]
-    [InlineData("en", "Admin")]
-    [InlineData("es", "Admin")]
-    [InlineData("de", "Admin")]
-    [InlineData("it", "Admin")]
-    [InlineData("fr", "Admin")]
-    [InlineData("ca", "Admin")]
-    [InlineData("nl", "Admin")]
-    [InlineData("en", "Guest")]
-    [InlineData("es", "Guest")]
-    [InlineData("de", "Guest")]
-    [InlineData("it", "Guest")]
-    [InlineData("fr", "Guest")]
-    [InlineData("ca", "Guest")]
-    [InlineData("nl", "Guest")]
-    public async Task PreferenceCheckboxes_HaveLocalizedChannelAndCategoryNames(string culture, string surface)
+    [MemberData(nameof(CulturesAndSurfaces))]
+    public async Task PreferenceCheckboxes_HaveLocalizedChannelAndCategoryNames(string culture, PreferenceSurface surface)
     {
         using var cultureScope = new CultureScope(culture);
         var builder = WebApplication.CreateBuilder(new WebApplicationOptions
@@ -66,10 +57,10 @@ public class CommunicationPreferenceAccessibilityTests
         await using var app = builder.Build();
         using var scope = app.Services.CreateScope();
         var services = scope.ServiceProvider;
-        var guest = string.Equals(surface, "Guest", StringComparison.Ordinal);
+        var guest = surface == PreferenceSurface.Guest;
         var model = new CommunicationPreferencesViewModel
         {
-            ReadOnly = string.Equals(surface, "Admin", StringComparison.Ordinal),
+            ReadOnly = surface == PreferenceSurface.Admin,
             TicketingYear = 2026,
             Categories =
             [
