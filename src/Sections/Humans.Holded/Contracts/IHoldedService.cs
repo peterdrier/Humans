@@ -53,6 +53,11 @@ public interface IHoldedService : IApplicationService
     /// reconcile totals with targeted re-pulls, and drain the API call log.</summary>
     Task<bool> SyncLedgerAsync(bool full = false, CancellationToken ct = default);
 
+    /// <summary>Re-pulls one account's whole history from Holded into the mirror: one or two calls, so a caller about
+    /// to post onto the account can judge from what Holded holds now. Shares the ledger sweep's gate: false when a
+    /// sweep was running and nothing was pulled.</summary>
+    Task<bool> SyncAccountLedgerAsync(int accountNum, CancellationToken ct = default);
+
     /// <summary>Every mirrored purchase document, unordered, with the sync's state.</summary>
     Task<HoldedPurchaseDocMirror> GetPurchaseDocumentsAsync(CancellationToken ct = default);
 

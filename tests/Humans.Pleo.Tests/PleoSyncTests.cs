@@ -84,6 +84,18 @@ public sealed class PleoSyncTests
     }
 
     [HumansFact]
+    public async Task Wallet_balance_is_the_last_sweeps_current_balance()
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        (await _service.GetWalletBalanceAsync(ct)).Should().BeNull();
+
+        await SyncAsync();
+
+        (await _service.GetWalletBalanceAsync(ct)).Should()
+            .Be(new Humans.Pleo.Contracts.PleoWalletBalance(10_000m, Instant.FromUtc(2026, 11, 3, 12, 0)));
+    }
+
+    [HumansFact]
     public async Task Empty_rows_are_skipped_and_counted()
     {
         var ct = Xunit.TestContext.Current.CancellationToken;

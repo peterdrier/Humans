@@ -80,6 +80,10 @@ public sealed class Section :
         services.AddScoped<CashFlowService>();
         services.AddScoped<CreditorMatchService>();
         services.AddScoped<FinanceOverviewService>();
+        services.AddScoped<PleoBooking>();
+        // Both outlive a request: the run keeps going after the page is left, and its holds must span runs.
+        services.AddSingleton<PleoBookingState>();
+        services.AddSingleton<PleoBookingRunner>();
     }
 
     IEnumerable<AdminNavGroup> ISectionAdminNav.Groups() =>
@@ -89,6 +93,7 @@ public sealed class Section :
             new("Cash flow", "Finance", "CashFlow", null, null, "fa-solid fa-chart-line", FinancePolicies.Read),
             new("Creditors", "Finance", "Creditors", null, null, "fa-solid fa-users", FinancePolicies.Read),
             new("SEPA payouts", "Finance", "Sepa", null, null, "fa-solid fa-money-bill-transfer", FinancePolicies.Read),
+            new("Pleo reconcile", "Finance", "Pleo", null, null, "fa-solid fa-credit-card", FinancePolicies.Read),
             new("Expense recon", "Finance", "ExpenseRecon", null, null, "fa-solid fa-scale-balanced", FinancePolicies.Read),
             new("Account map", "Finance", "HoldedAccounts", null, null, "fa-solid fa-diagram-project", FinancePolicies.Read),
             new("Unmatched docs", "Finance", "HoldedUnmatched", null, null, "fa-solid fa-question", FinancePolicies.Read)
