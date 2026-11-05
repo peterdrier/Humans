@@ -3,6 +3,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
+const { installHumans } = require('../../browser-support/humans-js.cjs');
 const source = fs.readFileSync(path.resolve(__dirname,
     '../../../src/Sections/Humans.CityPlanning/wwwroot/js/city-planning/barrio-map/edit.js'), 'utf8')
     .replace(/^import[^\n]*;\s*$/gm, '').replaceAll('export ', '');
@@ -23,7 +24,7 @@ function editor() {
         confirm: () => true, showToast: message => alerts.push(message), console: { error() {} },
         fetch: (url, options) => new Promise((resolve, reject) => requests.push({ url, options, resolve, reject })),
     };
-    vm.createContext(context); vm.runInContext(source, context);
+    installHumans(context); vm.createContext(context); vm.runInContext(source, context);
     return { state, buttons, requests, alerts, hides: () => hides, clears: () => clears,
         restore: () => context.restoreVersion('version', 'A'),
         newHistory: () => vm.runInContext('historyVersion++', context),

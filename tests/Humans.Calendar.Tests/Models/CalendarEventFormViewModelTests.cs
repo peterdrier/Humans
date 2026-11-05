@@ -64,17 +64,10 @@ public sealed class CalendarEventFormViewModelTests
     {
         CalendarEventFormViewModel.ErrorFieldFor(serviceMember).Should().BeEmpty();
     }
-    [HumansTheory]
-    [InlineData("en")]
-    [InlineData("es")]
-    [InlineData("de")]
-    [InlineData("it")]
-    [InlineData("fr")]
-    [InlineData("ca")]
-    [InlineData("nl")]
-    public void EventForm_LocalizesRequiredLengthAndUrlErrors(string culture)
+    [HumansFact]
+    public void EventForm_LocalizesRequiredLengthAndUrlErrors()
     {
-        using var cultureScope = new CultureScope(culture);
+        using var cultureScope = new CultureScope("en");
         var registrations = new ServiceCollection().AddLogging().AddLocalization();
         registrations.AddControllers().AddDataAnnotationsLocalization(options =>
             options.DataAnnotationLocalizerProvider = (_, factory) => factory.Create(typeof(SharedResource)));

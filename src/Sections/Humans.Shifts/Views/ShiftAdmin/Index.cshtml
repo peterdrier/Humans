@@ -1043,7 +1043,6 @@
 
 <script>
 (function() {
-    @await Html.PartialAsync("~/Views/Shared/_EscapeHtmlScript.cshtml")
     @await Html.PartialAsync("~/Views/Shared/_VolunteerSearchScript.cshtml", new ViewDataDictionary(ViewData)
     {
         ["SearchUrl"] = searchUrl,
@@ -1076,7 +1075,7 @@
             tbody.innerHTML = '';
             days.forEach(function(day, i) {
                 var tr = document.createElement('tr');
-                tr.innerHTML = '<td>' + escapeHtml(day.label) + '</td>'
+                tr.innerHTML = '<td>' + Humans.escapeHtml(day.label) + '</td>'
                     + '<td><input type="hidden" name="Days[' + i + '].DayOffset" value="' + day.offset + '" />'
                     + '<input type="number" name="Days[' + i + '].MinVolunteers" value="2" class="form-control form-control-sm staffing-min" style="width:80px" min="0" data-idx="' + i + '" /></td>'
                     + '<td><input type="number" name="Days[' + i + '].MaxVolunteers" value="5" class="form-control form-control-sm staffing-max" style="width:80px" min="1" data-idx="' + i + '" /></td>';
@@ -1225,10 +1224,10 @@
             var html = '<ul class="list-group list-group-flush">';
             results.forEach(function(result) {
                 html += '<li class="list-group-item list-group-item-action voluntell-range-pick" style="cursor:pointer"'
-                    + ' data-user-id="' + escapeHtml(result.userId) + '"'
-                    + ' data-display-name="' + escapeHtml(result.displayName) + '"'
-                    + ' data-rota-id="' + escapeHtml(rotaId) + '">';
-                html += '<strong>' + escapeHtml(result.displayName) + '</strong>';
+                    + ' data-user-id="' + Humans.escapeHtml(result.userId) + '"'
+                    + ' data-display-name="' + Humans.escapeHtml(result.displayName) + '"'
+                    + ' data-rota-id="' + Humans.escapeHtml(rotaId) + '">';
+                html += '<strong>' + Humans.escapeHtml(result.displayName) + '</strong>';
                 html += ' <small class="text-muted">(' + result.bookedShiftCount + ' shifts)</small>';
                 html += '</li>';
             });
@@ -1288,17 +1287,13 @@
 
     var tagSearchUrl = '@Url.Action("SearchTags", "ShiftAdmin", new { slug = Model.Department.Slug })';
     var tagCreateUrl = '@Url.Action("CreateTag", "ShiftAdmin", new { slug = Model.Department.Slug })';
-    var antiForgeryToken = document.querySelector('input[name="__RequestVerificationToken"]')?.value || '';
 
     // Medical badge: the text is not in the page; each click is one audited reveal.
     document.addEventListener('click', function(e) {
         var btn = e.target.closest('.medical-reveal');
         if (!btn || btn.disabled) return;
         btn.disabled = true;
-        fetch(btn.getAttribute('data-reveal-url'), {
-            method: 'POST',
-            headers: { 'RequestVerificationToken': antiForgeryToken }
-        })
+        Humans.postJson(btn.getAttribute('data-reveal-url'))
         .then(function(r) { return r.ok ? r.json() : Promise.reject(r.status); })
         .then(function(data) {
             var text = document.createElement('span');
@@ -1322,12 +1317,7 @@
             btn.disabled = true;
             input.disabled = true;
 
-            fetch(tagCreateUrl, {
-                method: 'POST',
-                redirect: 'error',
-                headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'RequestVerificationToken': antiForgeryToken },
-                body: 'name=' + encodeURIComponent(tagName) + '&__RequestVerificationToken=' + encodeURIComponent(antiForgeryToken)
-            })
+            Humans.postForm(tagCreateUrl, { name: tagName }, { redirect: 'error' })
             .then(function(r) {
                 if (!r.ok) throw new Error('Tag creation failed');
                 return r.json();
@@ -1341,7 +1331,7 @@
                     div.className = 'form-check form-check-inline';
                     var cbId = pickerId + '-tag-' + tag.id.replace(/-/g, '');
                     div.innerHTML = '<input class="form-check-input tag-checkbox" type="checkbox" data-tag-id="' + tag.id + '" id="' + cbId + '" checked />'
-                        + '<label class="form-check-label" for="' + cbId + '">' + escapeHtml(tag.name) + '</label>';
+                        + '<label class="form-check-label" for="' + cbId + '">' + Humans.escapeHtml(tag.name) + '</label>';
                     container.appendChild(div);
                     div.querySelector('.tag-checkbox').addEventListener('change', function() { syncTagIds(pickerId); });
                 }

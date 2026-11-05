@@ -21,13 +21,7 @@ public sealed class GovernanceEmailsTests
     private static GovernanceEmails Create() => TestGovernanceEmails.Create();
 
     [HumansTheory]
-    [InlineData("en")]
-    [InlineData("es")]
-    [InlineData("de")]
-    [InlineData("it")]
-    [InlineData("fr")]
-    [InlineData("ca")]
-    [InlineData("nl")]
+    [MemberData(nameof(SupportedCultures.All), MemberType = typeof(SupportedCultures))]
     public void ApplicationDecisions_StampGovernanceCategory(string culture)
     {
         var emails = Create();
@@ -47,13 +41,7 @@ public sealed class GovernanceEmailsTests
     }
 
     [HumansTheory]
-    [InlineData("en")]
-    [InlineData("es")]
-    [InlineData("de")]
-    [InlineData("it")]
-    [InlineData("fr")]
-    [InlineData("ca")]
-    [InlineData("nl")]
+    [MemberData(nameof(SupportedCultures.All), MemberType = typeof(SupportedCultures))]
     public void TermRenewalReminder_FormatsExpiryInTheRecipientCulture(string culture)
     {
         using var callerCulture = new CultureScope("en");

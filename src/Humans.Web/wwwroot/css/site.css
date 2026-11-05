@@ -1435,6 +1435,15 @@ a:hover {
     color: var(--h-sage-dark) !important;
 }
 
+/* Layout utilities Bootstrap lacks: preserve user-entered line breaks; cap form-card widths. */
+.pre-wrap { white-space: pre-wrap; }
+.pre-line { white-space: pre-line; }
+.mw-240 { max-width: 240px; }
+.mw-540 { max-width: 540px; }
+.mw-600 { max-width: 600px; }
+.mw-720 { max-width: 720px; }
+.mw-760 { max-width: 760px; }
+
 /* Finance: sign-based coloring for monetary figures — green = positive, red = negative, never the reverse. */
 .finance-positive {
     color: var(--h-sage-dark) !important;

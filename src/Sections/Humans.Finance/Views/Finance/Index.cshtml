@@ -105,6 +105,17 @@
     </div>
 </div>
 
+@{ var pleo = Model.Pleo; var pleoOff = pleo.Difference is not { } pd || pd != 0m; }
+<a asp-action="Pleo" class="card mb-4 text-decoration-none text-reset @(pleoOff ? "border-danger" : "")">
+    <div class="card-body d-flex flex-wrap gap-4 align-items-baseline">
+        <span class="text-muted small text-uppercase">Pleo wallet vs Holded 57200003</span>
+        <span>Pleo <strong>@(pleo.Wallet?.ToEuro() ?? "—")</strong></span>
+        <span>Holded <strong>@(pleo.Holded?.ToEuro() ?? "—")</strong></span>
+        <span class="@(pleoOff ? "text-danger fw-bold" : "text-success")">Difference @(pleo.Difference?.ToEuro() ?? "unknown")</span>
+        <span class="ms-auto small">Reconcile →</span>
+    </div>
+</a>
+
 <h2 class="h4 mb-3">Work to do</h2>
 <div class="row g-3 mb-4">
     <div class="col-md-4 col-lg">

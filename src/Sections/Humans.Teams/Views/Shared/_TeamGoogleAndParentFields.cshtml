@@ -75,7 +75,7 @@
 
                     var html = '<ul class="mb-0">';
                     resources.forEach(function (r) {
-                        html += '<li><strong>' + escapeHtml(r.name) + '</strong> <span class="badge bg-secondary">' + escapeHtml(r.type) + '</span></li>';
+                        html += '<li><strong>' + Humans.escapeHtml(r.name) + '</strong> <span class="badge bg-secondary">' + Humans.escapeHtml(r.type) + '</span></li>';
                     });
                     html += '</ul>';
 
@@ -89,16 +89,11 @@
                 });
             }
 
-            function escapeHtml(text) {
-                var div = document.createElement('div');
-                div.appendChild(document.createTextNode(text));
-                return div.innerHTML;
-            }
-
             select.addEventListener('change', updateWarning);
 
             if (select.value) {
-                updateWarning();
+                // Humans.* arrives with site.js, after this body script.
+                document.addEventListener('DOMContentLoaded', updateWarning);
             }
         })();
     </script>

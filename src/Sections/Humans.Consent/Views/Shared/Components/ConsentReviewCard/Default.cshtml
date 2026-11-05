@@ -10,7 +10,7 @@
                 <strong><i class="fa-solid fa-ban me-1"></i> Rejected</strong>
                 @if (!string.IsNullOrEmpty(Model.RejectionReason))
                 {
-                    <p class="mb-1 mt-1" style="white-space: pre-wrap;">@Model.RejectionReason</p>
+                    <p class="mb-1 mt-1 pre-wrap">@Model.RejectionReason</p>
                 }
                 <small class="text-muted">
                     @if (Model.RejectedAt.HasValue)

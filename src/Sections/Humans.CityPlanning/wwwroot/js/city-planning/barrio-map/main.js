@@ -120,17 +120,12 @@ document.getElementById('save-btn')?.addEventListener('click', async () => {
     const feature = features[0];
     const geoJson = JSON.stringify(feature);
     const areaSqm = turf.area(feature);
-    const token = document.querySelector('input[name="__RequestVerificationToken"]').value;
 
     saveButton.dataset.saving = 'true';
     saveButton.disabled = true;
     let resp;
     try {
-        resp = await fetch(`/api/city-planning/camp-polygons/${campSeasonId}`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json', 'RequestVerificationToken': token },
-            body: JSON.stringify({ geoJson, areaSqm }),
-        });
+        resp = await Humans.postJson(`/api/city-planning/camp-polygons/${campSeasonId}`, { geoJson, areaSqm }, { method: 'PUT' });
     } catch (error) {
         console.error('Failed to save barrio polygon', error);
         showToast(CONFIG.SAVE_FAILED, 'danger');

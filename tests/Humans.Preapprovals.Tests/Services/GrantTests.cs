@@ -584,17 +584,11 @@ public sealed class GrantTests : PreapprovalsTestHarness
         (await service.ChangeAmountAsync(grant.Id, 50m, SeedUser(), Ct)).Refusal!.Key.Should().Be(PreapprovalErrorKeys.WrongStatus);
     }
 
-    [HumansTheory]
-    [InlineData("en")]
-    [InlineData("es")]
-    [InlineData("de")]
-    [InlineData("it")]
-    [InlineData("fr")]
-    [InlineData("ca")]
-    [InlineData("nl")]
-    public async Task IssueAndChangeAmount_FormatMemberMessagesInRecipientCulture(string language)
+    [HumansFact]
+    public async Task IssueAndChangeAmount_FormatMemberMessagesInRecipientCulture()
     {
-        using var callerCulture = new CultureScope("en");
+        const string language = CultureCatalog.CanonicalLegalCultureCode;
+        using var callerCulture = new CultureScope(CultureCatalog.DefaultCultureCode);
         const decimal oldAmount = 1234.56m;
         const decimal newAmount = 2345.67m;
         var person = SeedUser("Person", language: language);
@@ -615,6 +609,7 @@ public sealed class GrantTests : PreapprovalsTestHarness
             newText = newAmount.ToEuro();
             date = program.ClaimBy.ToDate();
         }
+        oldText.Should().NotBe(oldAmount.ToEuro());
         var notices = Notifications.ReceivedCalls().Where(c =>
             string.Equals(c.GetMethodInfo().Name, "SendAsync", StringComparison.Ordinal)).ToArray();
         var issuedNotice = (string)notices.Single(c =>

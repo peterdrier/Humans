@@ -103,8 +103,8 @@ function makeUnplacedCard(c) {
         + (canClick ? ' list-group-item-action' : '');
     card.dataset.id = c.id;
     card.innerHTML = `
-        <div class="fw-semibold small">${escHtml(c.name)}</div>
-        ${c.description ? `<div class="small text-truncate ${isActive ? 'opacity-75' : 'text-muted'}">${escHtml(c.description)}</div>` : ''}
+        <div class="fw-semibold small">${Humans.escapeHtml(c.name)}</div>
+        ${c.description ? `<div class="small text-truncate ${isActive ? 'opacity-75' : 'text-muted'}">${Humans.escapeHtml(c.description)}</div>` : ''}
     `;
     if (canClick) card.addEventListener('click', () => _onActivate?.(c));
     return card;
@@ -116,15 +116,15 @@ function makePlacedCard(c) {
         + (c.canEdit ? ' list-group-item-action' : '');
     card.dataset.id = c.id;
     card.innerHTML = `
-        <div class="fw-semibold small">✓ ${escHtml(c.name)}</div>
-        ${c.description ? `<div class="small text-truncate opacity-75">${escHtml(c.description)}</div>` : ''}
+        <div class="fw-semibold small">✓ ${Humans.escapeHtml(c.name)}</div>
+        ${c.description ? `<div class="small text-truncate opacity-75">${Humans.escapeHtml(c.description)}</div>` : ''}
         <div class="mt-1 d-flex gap-1">
             <button class="btn btn-outline-secondary btn-sm py-0 px-2" style="font-size:11px;"
-                data-locate-id="${c.id}" title="${escHtml(CONFIG.I18N.CENTER_ON_CONTAINER)}" aria-label="${escHtml(CONFIG.I18N.CENTER_ON_CONTAINER)}">
+                data-locate-id="${c.id}" title="${Humans.escapeHtml(CONFIG.I18N.CENTER_ON_CONTAINER)}" aria-label="${Humans.escapeHtml(CONFIG.I18N.CENTER_ON_CONTAINER)}">
                 <i class="fa-solid fa-location-dot"></i>
             </button>
             <button class="btn btn-outline-info btn-sm py-0 px-2" style="font-size:11px;"
-                data-info-id="${c.id}" title="${escHtml(CONFIG.I18N.PLACEMENT_NOTES)}" aria-label="${escHtml(CONFIG.I18N.PLACEMENT_NOTES)}">
+                data-info-id="${c.id}" title="${Humans.escapeHtml(CONFIG.I18N.PLACEMENT_NOTES)}" aria-label="${Humans.escapeHtml(CONFIG.I18N.PLACEMENT_NOTES)}">
                 <i class="fa-solid fa-circle-info"></i>
             </button>
             ${c.canEdit ? `<button class="btn btn-outline-danger btn-sm py-0 px-2" style="font-size:11px;"
@@ -161,8 +161,4 @@ function makePlacedCard(c) {
         }
     }
     return card;
-}
-
-function escHtml(str) {
-    return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }

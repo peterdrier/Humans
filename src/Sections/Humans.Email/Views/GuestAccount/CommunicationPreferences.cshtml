@@ -124,18 +124,12 @@
         body.append('category', category);
         body.append('emailEnabled', emailEnabled);
         body.append('alertEnabled', alertEnabled);
-        body.append('__RequestVerificationToken',
-            document.querySelector('input[name="__RequestVerificationToken"]').value);
         @if (!string.IsNullOrEmpty(Model.UnsubscribeToken))
         {
             @:body.append('utoken', '@Html.Raw(Html.Encode(Model.UnsubscribeToken))');
         }
 
-        return fetch('@Url.Action("UpdatePreference")', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: body.toString()
-        }).then(function (resp) {
+        return Humans.postForm('@Url.Action("UpdatePreference")', body).then(function (resp) {
             if (!resp.ok) throw new Error(resp.statusText);
         });
     }

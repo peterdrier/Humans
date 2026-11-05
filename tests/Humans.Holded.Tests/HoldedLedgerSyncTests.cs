@@ -307,4 +307,25 @@ public sealed class HoldedLedgerSyncTests
         // own all-time chart balance, so any date narrowing here would manufacture drift.
         (await _service.GetAccountBalancesAsync(ct))[62900105].Should().Be(140m);
     }
+
+    [HumansFact]
+    public async Task Account_repull_replaces_only_that_accounts_whole_history()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var june = Instant.FromUtc(2026, 6, 12, 0, 0);
+        StubWindowFetch(
+            Dto(1, 1, 57200003, june, credit: 10m),
+            Dto(2, 1, 57200003, june, credit: 99m),
+            Dto(3, 1, 57200001, june, credit: 5m));
+        await _service.SyncLedgerAsync(full: true, ct);
+
+        _client.ListLedgerEntriesAsync(Arg.Any<LocalDate>(), Arg.Any<LocalDate>(), 57200003, Arg.Any<CancellationToken>())
+            .Returns([Dto(1, 1, 57200003, june, credit: 10m), Dto(4, 1, 57200003, june, credit: 7m)]);
+        (await _service.SyncAccountLedgerAsync(57200003, ct)).Should().BeTrue();
+
+        LedgerCalls().Last().Should().Be((new LocalDate(2020, 1, 1), Today, (int?)57200003));
+        (await _repo.GetLedgerLinesByAccountNumAsync(57200003, ct: ct)).Select(l => l.EntryNumber)
+            .Should().BeEquivalentTo([1, 4]);
+        (await _repo.GetLedgerLinesByAccountNumAsync(57200001, ct: ct)).Should().ContainSingle();
+    }
 }
