@@ -63,7 +63,7 @@ else if (!byHand)
 }
 else if (Model.CanManage)
 {
-    <div class="card mb-4" style="max-width: 760px;">
+    <div class="card mb-4 mw-760">
         <div class="card-body">
             <h2 class="h5 card-title">Grant to people</h2>
             <p class="small text-muted">Add people one at a time, then grant. Anyone who already holds this grant is skipped. Each person gets an email and a notice.</p>
@@ -73,7 +73,7 @@ else if (Model.CanManage)
             </div>
             <form method="post" asp-action="Issue" asp-route-programId="@p.Id">
                 <ul class="list-group mb-2" id="grants-issue-list"></ul>
-                <div class="mb-2" style="max-width: 240px;">
+                <div class="mb-2 mw-240">
                     <label class="form-label small" for="grants-expires">Expires on (optional)</label>
                     <input type="date" name="expiresOn" id="grants-expires" class="form-control form-control-sm" />
                     <div class="form-text">Overrides the program's date for these grants.</div>

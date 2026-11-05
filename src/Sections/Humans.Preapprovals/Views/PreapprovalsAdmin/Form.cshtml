@@ -14,7 +14,7 @@
 
 <h1>@ViewData["Title"]</h1>
 
-<div class="card" style="max-width: 760px;">
+<div class="card mw-760">
     <div class="card-body">
         <form method="post" asp-action="@(isNew ? "New" : "Edit")" asp-route-programId="@Model.Id">
             <div asp-validation-summary="All" class="text-danger"></div>
