@@ -1,6 +1,10 @@
 @model FinanceOverviewViewModel
 @using Humans.Base.Models.Tables
+@using Humans.Finance.Contracts
+@using Microsoft.AspNetCore.Html
 @{
+    // Only the three total cards carry the euro sign; the columns below are all euros.
+    string Amount(decimal value) => value.ToString("N2", System.Globalization.CultureInfo.CurrentUICulture);
     ViewData["Title"] = $"Finance - {Model.Year.Name}";
     var year = Model.Year;
     var allYears = Model.AllYears;
@@ -30,9 +34,6 @@
             </ul>
         </div>
     }
-    <a asp-controller="Finance" asp-action="CashFlow" class="btn btn-outline-secondary">
-        <i class="fa-solid fa-money-bill-transfer me-1"></i>Cash Flow
-    </a>
     <form authorize-policy="@Humans.Finance.Contracts.FinancePolicies.Manage" asp-action="SyncDepartments" asp-route-id="@year.Id" method="post" class="d-inline">
         @Html.AntiForgeryToken()
         <button type="submit" class="btn btn-outline-secondary">
@@ -48,18 +49,6 @@
             </button>
         </form>
     }
-    <a asp-controller="Finance" asp-action="HoldedAccounts" class="btn btn-outline-secondary">
-        <i class="fa-solid fa-building-columns me-1"></i>Holded Accounts
-    </a>
-    <a asp-controller="Finance" asp-action="HoldedUnmatched" class="btn btn-outline-secondary">
-        <i class="fa-solid fa-triangle-exclamation me-1"></i>Unmatched
-    </a>
-    <a asp-controller="Finance" asp-action="Creditors" class="btn btn-outline-secondary">
-        <i class="fa-solid fa-hand-holding-dollar me-1"></i>Creditor Accounts
-    </a>
-    <a asp-controller="Finance" asp-action="Sepa" class="btn btn-outline-secondary">
-        <i class="fa-solid fa-file-invoice-dollar me-1"></i>SEPA Transfers
-    </a>
     <a asp-action="AuditLog" asp-route-yearId="@year.Id" class="btn btn-outline-secondary">
         <i class="fa-solid fa-clock-rotate-left me-1"></i>Audit Log
     </a>
@@ -147,11 +136,16 @@
     var allGroupLineItems = group.Categories.SelectMany(c => c.LineItems).Where(li => !li.IsCashflowOnly).ToList();
     var groupActual = allGroupLineItems.Sum(li => li.Amount);
     var groupBudget = group.Categories.Sum(c => c.AllocatedAmount);
+    var groupIsExpense = groupBudget < 0;
+    var groupRemaining = groupIsExpense
+        ? Math.Abs(groupBudget) - Math.Abs(groupActual)
+        : groupActual - groupBudget;
+    var groupHolded = group.Categories.Sum(c => Math.Abs(Model.HoldedActualsByCategory.GetValueOrDefault(c.Id)?.Actual ?? 0m));
 
     <div class="accordion-item mb-2">
         <h2 class="accordion-header">
             <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#group-@groupId">
-                <div class="d-flex w-100 justify-content-between align-items-center me-3">
+                <div class="budget-row me-3">
                     <div>
                         <strong>@group.Name</strong>
                         <span class="text-muted ms-2">(@group.Categories.Count categories)</span>
@@ -168,16 +162,10 @@
                             <span class="badge bg-warning text-dark ms-1">Ticketing</span>
                         }
                     </div>
-                    <div class="text-end text-nowrap budget-figures">
-                        <span class="budget-figure">
-                            <span class="budget-figure-label">Budget</span>
-                            <span class="budget-figure-value">@groupBudget.ToEuro()</span>
-                        </span>
-                        <span class="budget-figure">
-                            <span class="budget-figure-label">Actual</span>
-                            <span class="budget-figure-value @(groupActual >= 0 ? "text-success" : "text-danger")">@groupActual.ToEuro()</span>
-                        </span>
-                    </div>
+                    <span class="budget-num">@Amount(Math.Abs(groupBudget))</span>
+                    <span class="budget-num">@Amount(Math.Abs(groupActual))</span>
+                    <span class="budget-num @(groupRemaining >= 0 ? "text-success" : "text-danger")">@Amount(groupRemaining)</span>
+                    <span class="budget-num budget-figure-holded">@Amount(groupHolded)</span>
                 </div>
             </button>
         </h2>
@@ -358,6 +346,13 @@
 
                 @if (group.Categories.Any())
                 {
+                    <div class="budget-row budget-colhead ps-4">
+                        <span>Category</span>
+                        <span class="budget-num">@(groupIsExpense ? "Planned" : "Target")</span>
+                        <span class="budget-num">Actual</span>
+                        <span class="budget-num">@(groupIsExpense ? "Remaining" : "Vs target")</span>
+                        <span class="budget-num">Holded</span>
+                    </div>
                     <div class="accordion" id="categories-@groupId">
                     @foreach (var cat in group.Categories.OrderBy(c => c.SortOrder))
                     {
@@ -374,147 +369,85 @@
                         var displayRemaining = isExpenseBudget
                             ? Math.Abs(catBudget) - Math.Abs(catActual)
                             : catActual - catBudget;
-                        var remainingLabel = isExpenseBudget ? "Remaining" : (displayRemaining >= 0 ? "Over target" : "Under target");
-                        var budgetLabel = isExpenseBudget ? "Planned spend" : "Income target";
                         // Null when Holded booked nothing here: the row only exists for a non-zero actual.
                         var holded = Model.HoldedActualsByCategory.GetValueOrDefault(cat.Id);
 
                         <div class="accordion-item border-0 border-bottom">
                             <h2 class="accordion-header">
                                 <button class="accordion-button collapsed py-2 ps-4" type="button" data-bs-toggle="collapse" data-bs-target="#cat-@catId">
-                                    <div class="d-flex w-100 justify-content-between align-items-center me-3">
-                                        <div>
+                                    <div class="budget-row me-3">
+                                        <span>
                                             @cat.Name
-                                            <span class="badge bg-@(cat.ExpenditureType == ExpenditureType.CapEx ? "primary" : "secondary") ms-1">@cat.ExpenditureType</span>
-                                        </div>
-                                        <div class="text-end text-nowrap budget-figures">
-                                            <span class="budget-figure">
-                                                <span class="budget-figure-label">@budgetLabel</span>
-                                                <span class="budget-figure-value">@displayBudget.ToEuro()</span>
-                                            </span>
-                                            <span class="budget-figure">
-                                                <span class="budget-figure-label">Actual</span>
-                                                <span class="budget-figure-value">@displayActual.ToEuro()</span>
-                                            </span>
-                                            <span class="budget-figure">
-                                                <span class="budget-figure-label">@remainingLabel</span>
-                                                <span class="budget-figure-value @(displayRemaining >= 0 ? "text-success" : "text-danger")">@Math.Abs(displayRemaining).ToEuro()</span>
-                                            </span>
-                                            @if (holded is not null)
+                                            @if (cat.ExpenditureType == ExpenditureType.CapEx)
                                             {
-                                                <span class="budget-figure">
-                                                    <span class="budget-figure-label">Holded</span>
-                                                    <span class="budget-figure-value budget-figure-holded">@Math.Abs(holded.Actual).ToEuro()</span>
-                                                </span>
+                                                <span class="budget-capex ms-1" title="Capital expenditure">CapEx</span>
                                             }
-                                        </div>
+                                        </span>
+                                        <span class="budget-num">@Amount(displayBudget)</span>
+                                        <span class="budget-num">@Amount(displayActual)</span>
+                                        <span class="budget-num @(displayRemaining >= 0 ? "text-success" : "text-danger")">@Amount(displayRemaining)</span>
+                                        <span class="budget-num budget-figure-holded">@(holded is null ? "–" : Amount(Math.Abs(holded.Actual)))</span>
                                     </div>
                                 </button>
                             </h2>
                             <div id="cat-@catId" class="accordion-collapse collapse">
                                 <div class="accordion-body p-0">
-                                    @if (cat.LineItems.Any())
-                                    {
-                                        <div class="table-responsive">
-                                            <table class="table table-sm table-hover mb-0 budget-table">
-                                                <thead class="table-light">
-                                                    <tr>
-                                                        <th class="ps-4">Description</th>
-                                                        <th class="text-end">Amount</th>
-                                                        <th>VAT</th>
-                                                        <th>Expected Date</th>
-                                                        <th>Notes</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody>
-                                                    @foreach (var item in cat.LineItems.OrderBy(li => li.SortOrder))
-                                                    {
-                                                        var amountClass = item.Amount >= 0 ? "text-success" : "text-danger";
-                                                        <tr class="@(item.IsAutoGenerated ? (item.Description.StartsWith("Projected:", StringComparison.Ordinal) ? "table-light fst-italic" : "table-light") : "")">
-                                                            <td class="ps-4">
-                                                                @item.Description
-                                                                @if (item.IsAutoGenerated)
-                                                                {
-                                                                    <span class="badge bg-secondary ms-1">Auto</span>
-                                                                }
-                                                                @if (item.IsCashflowOnly)
-                                                                {
-                                                                    <span class="badge bg-info ms-1">Cashflow</span>
-                                                                }
-                                                            </td>
-                                                            <td class="text-end @amountClass">@item.Amount.ToEuro()</td>
-                                                            <td>
-                                                                @if (item.VatRate > 0)
-                                                                {
-                                                                    <span class="badge bg-warning text-dark">@(item.VatRate)%</span>
-                                                                }
-                                                                else
-                                                                {
-                                                                    <span class="text-muted">0%</span>
-                                                                }
-                                                            </td>
-                                                            <td>@item.ExpectedDate?.ToDate()</td>
-                                                            <td class="text-muted small">@(item.Notes ?? "")</td>
-                                                        </tr>
-                                                    }
-                                                </tbody>
-                                            </table>
-                                        </div>
+                                    @{
+                                        var lineItems = cat.LineItems.OrderBy(li => li.SortOrder).ToList();
+                                        var hasDocs = holded is not null && holded.Docs.Count > 0;
+                                        Func<BudgetLineItemDetail, IHtmlContent> descriptionCell =
+                                            @<text>@item.Description@if (item.IsAutoGenerated)
+                                                {<span class="badge bg-secondary ms-1">Auto</span>}@if (item.IsCashflowOnly)
+                                                {<span class="badge bg-info ms-1">Cashflow</span>}@if (!string.IsNullOrWhiteSpace(item.Notes))
+                                                {<span class="budget-note ms-1">@item.Notes</span>}</text>;
+                                        Func<BudgetLineItemDetail, IHtmlContent> amountCell =
+                                            @<text><span class="@(item.Amount >= 0 ? "text-success" : "text-danger")">@Amount(item.Amount)</span></text>;
+                                        Func<BudgetLineItemDetail, IHtmlContent> vatCell =
+                                            @<text>@if (item.VatRate > 0)
+                                                {<span class="badge bg-warning text-dark">@(item.VatRate)%</span>}
+                                                else
+                                                {<span class="text-muted">0%</span>}</text>;
+                                        var lineItemsTable = TableModel.For(lineItems)
+                                            .Template("Description", descriptionCell)
+                                            .Template("Amount", amountCell, c => c.End())
+                                            .Template("VAT", vatCell)
+                                            .Column("Expected", li => li.ExpectedDate, c => c.Date())
+                                            .RowCss(li => li.IsAutoGenerated ? (li.Description.StartsWith("Projected:", StringComparison.Ordinal) ? "table-light fst-italic" : "table-light") : null)
+                                            .Footer(new TableFooterCell("Total"), new TableFooterCell(Amount(catActual), "text-end"), new TableFooterCell(""), new TableFooterCell(""))
+                                            .Css("budget-table")
+                                            .Empty("No line items yet.")
+                                            .Build();
                                     }
-                                    else
-                                    {
-                                        <div class="text-center text-muted py-3 ps-4">
-                                            No line items yet.
+                                    <div class="budget-detail row g-4 mx-0 px-3 py-3">
+                                        <div class="@(hasDocs ? "col-lg-5" : "col-lg-7") ps-3">
+                                            <div class="budget-subhead mb-1">Line items (@lineItems.Count)</div>
+                                            <partial name="_Table" model="lineItemsTable" />
                                         </div>
-                                    }
-                                    @if (holded is not null && holded.Docs.Count > 0)
-                                    {
-                                        <div class="border-top">
-                                            <div class="px-4 py-2 budget-subhead d-flex justify-content-between align-items-center">
-                                                <span>Holded documents (@holded.Docs.Count)</span>
-                                                <span class="budget-figures">
-                                                    <span class="budget-figure">
-                                                        <span class="budget-figure-label">Total</span>
-                                                        <span class="budget-figure-value budget-figure-holded">@Math.Abs(holded.Actual).ToEuro()</span>
-                                                    </span>
-                                                </span>
+                                        @if (hasDocs)
+                                        {
+                                            Func<CategoryActualDoc, IHtmlContent> docCell =
+                                                @<text><a href="@item.HoldedUrl" target="_blank" rel="noopener">@(string.IsNullOrWhiteSpace(item.DocNumber) ? item.HoldedDocId : item.DocNumber)<i class="fa-solid fa-arrow-up-right-from-square ms-1 small"></i></a></text>;
+                                            Func<CategoryActualDoc, IHtmlContent> supplierCell =
+                                                @<text>@item.ContactName@if (!string.IsNullOrWhiteSpace(item.Description))
+                                                    {<span class="budget-doc-desc" title="@item.Description">@item.Description</span>}</text>;
+                                            var docsTable = TableModel.For(holded!.Docs.OrderByDescending(d => d.Date).ThenBy(d => d.DocNumber, StringComparer.Ordinal).ToList())
+                                                .Template("Document", docCell)
+                                                .Template("Supplier", supplierCell)
+                                                .Column("Date", d => d.Date, c => c.Date())
+                                                .Column("Amount", d => d.Total, c => c.Currency().End())
+                                                .Footer(new TableFooterCell("Total"), new TableFooterCell(""), new TableFooterCell(""), new TableFooterCell(Amount(Math.Abs(holded.Actual)), "text-end"))
+                                                .Css("budget-table")
+                                                .Build();
+                                            <div class="col-lg-7">
+                                                <div class="budget-subhead mb-1">Holded documents (@holded.Docs.Count)</div>
+                                                <partial name="_Table" model="docsTable" />
                                             </div>
-                                            <div class="table-responsive">
-                                                <table class="table table-sm table-hover mb-0 budget-table">
-                                                    <thead class="table-light">
-                                                        <tr>
-                                                            <th class="ps-4">Document</th>
-                                                            <th>Supplier</th>
-                                                            <th>Description</th>
-                                                            <th>Date</th>
-                                                            <th class="text-end pe-4">Amount</th>
-                                                        </tr>
-                                                    </thead>
-                                                    <tbody>
-                                                        @foreach (var doc in holded.Docs.OrderByDescending(d => d.Date).ThenBy(d => d.DocNumber, StringComparer.Ordinal))
-                                                        {
-                                                            <tr>
-                                                                <td class="ps-4">
-                                                                    <a href="@doc.HoldedUrl" target="_blank" rel="noopener">
-                                                                        @(string.IsNullOrWhiteSpace(doc.DocNumber) ? doc.HoldedDocId : doc.DocNumber)
-                                                                        <i class="fa-solid fa-arrow-up-right-from-square ms-1 small"></i>
-                                                                    </a>
-                                                                </td>
-                                                                <td>@doc.ContactName</td>
-                                                                <td class="text-muted small">@doc.Description</td>
-                                                                <td>@doc.Date.ToDate()</td>
-                                                                <td class="text-end pe-4">@doc.Total.ToEuro()</td>
-                                                            </tr>
-                                                        }
-                                                    </tbody>
-                                                </table>
-                                            </div>
+                                        }
+                                        <div class="col-12 ps-3 pt-0">
+                                            <a asp-action="CategoryDetail" asp-route-id="@cat.Id" class="btn btn-outline-primary btn-sm">
+                                                <i class="fa-solid fa-pen me-1"></i>Manage Line Items
+                                            </a>
                                         </div>
-                                    }
-                                    <div class="p-2 ps-4 border-top bg-light">
-                                        <a asp-action="CategoryDetail" asp-route-id="@cat.Id" class="btn btn-outline-primary btn-sm">
-                                            <i class="fa-solid fa-pen me-1"></i>Manage Line Items
-                                        </a>
                                     </div>
                                 </div>
                             </div>
