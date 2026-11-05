@@ -24,37 +24,31 @@ else
 {
     <div class="card">
         <div class="card-body p-0">
-            <table class="table table-hover mb-0 align-middle">
-                <thead>
-                    <tr>
-                        <th>@Localizer["Surveys_Admin_Index_ColumnTitle"]</th>
-                        <th>@Localizer["Surveys_Admin_Queue_Author"]</th>
-                        <th>@Localizer["Surveys_Admin_Queue_Submitted"]</th>
-                        <th></th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach (var item in Model.Items)
-                    {
-                        <tr>
-                            <td>@(string.IsNullOrWhiteSpace(item.Title) ? Localizer["Surveys_Admin_Index_Untitled"].Value : item.Title)</td>
-                            <td>@item.CreatedByName</td>
-                            <td class="small text-muted">@(item.SubmittedAt is { } at ? at.ToDateTime(zone) : "—")</td>
-                            <td class="text-end">
-                                <div class="d-inline" authorize-policy="@Humans.Surveys.Contracts.SurveysPolicies.Manage">
-                                    <form asp-controller="SurveyAdmin" asp-action="Approve" asp-route-id="@item.Id" method="post" class="d-inline">
-                                        @Html.AntiForgeryToken()
-                                        <button type="submit" class="btn btn-success btn-sm">@Localizer["Surveys_Admin_Queue_ApproveAndSend"]</button>
-                                    </form>
-                                    <button type="button" class="btn btn-outline-danger btn-sm" data-bs-toggle="modal" data-bs-target="#rejectModal-@item.Id">
-                                        @Localizer["Surveys_Admin_Queue_Reject"]
-                                    </button>
-                                </div>
-                            </td>
-                        </tr>
-                    }
-                </tbody>
-            </table>
+            @{
+                Func<SurveyPendingApprovalItem, IHtmlContent> queueCell0 = @<text>@(string.IsNullOrWhiteSpace(item.Title) ? Localizer["Surveys_Admin_Index_Untitled"].Value : item.Title)</text>;
+                Func<SurveyPendingApprovalItem, IHtmlContent> queueCell1 = @<text>@item.CreatedByName</text>;
+                Func<SurveyPendingApprovalItem, IHtmlContent> queueCell2 = @<text>@(item.SubmittedAt is { } at ? at.ToDateTime(zone) : "—")</text>;
+                Func<SurveyPendingApprovalItem, IHtmlContent> queueCell3 = @<text>
+                    <div class="d-inline" authorize-policy="@Humans.Surveys.Contracts.SurveysPolicies.Manage">
+                        <form asp-controller="SurveyAdmin" asp-action="Approve" asp-route-id="@item.Id" method="post" class="d-inline">
+                            @Html.AntiForgeryToken()
+                            <button type="submit" class="btn btn-success btn-sm">@Localizer["Surveys_Admin_Queue_ApproveAndSend"]</button>
+                        </form>
+                        <button type="button" class="btn btn-outline-danger btn-sm" data-bs-toggle="modal" data-bs-target="#rejectModal-@item.Id">
+                            @Localizer["Surveys_Admin_Queue_Reject"]
+                        </button>
+                    </div>
+
+                </text>;
+                var queueTable = TableModel.For(Model.Items)
+                    .Template(Localizer["Surveys_Admin_Index_ColumnTitle"], queueCell0)
+                    .Template(Localizer["Surveys_Admin_Queue_Author"], queueCell1)
+                    .Template(Localizer["Surveys_Admin_Queue_Submitted"], queueCell2, o => o.Css("small text-muted"), sortBy: i => i.SubmittedAt)
+                    .Template("", queueCell3, o => o.Css("text-end").NoSort())
+                    .Css("align-middle")
+                    .Build();
+            }
+            <partial name="_Table" model="queueTable" />
         </div>
     </div>
 
