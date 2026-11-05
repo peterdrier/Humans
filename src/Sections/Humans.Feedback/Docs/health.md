@@ -72,4 +72,4 @@ none
 
 | Run | Date | Headline | PR |
 |---|---|---|---|
-| 1 | 2026-11-05 | First doctor pass on the removal stub: the leftover Razor project setup cut, and stale Feedback mentions cleared from docs and Base comments | pending |
+| 1 | 2026-11-05 | First doctor pass on the removal stub: the leftover Razor project setup cut, and stale Feedback mentions cleared from docs and Base comments | peterdrier/Humans#2304 |
