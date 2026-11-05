@@ -156,7 +156,7 @@ internal sealed class SurveyService(
             s.Title, s.Intro, s.ThankYou, s.InvitationEmailSubject, s.InvitationEmailMessage,
             s.DefaultCulture, s.AllowAnonymous, s.OpensAt, s.ClosesAt,
             s.AudienceType, s.AudienceTeamId, s.AudienceLoggedInSince, s.PublicSlug,
-            ToQuestionInputs(s),
+            SurveyQuestionMapping.ToQuestionInputs(s),
             s.IsAsociadoVote == true);
 
         return new SurveyDetail(s.Id, s.Status, input, s.CreatedByUserId, s.RejectionNote);
@@ -276,7 +276,7 @@ internal sealed class SurveyService(
         if (prepared.Error is not null) return ([], [], prepared.Error);
         try
         {
-            var questions = MapQuestions(surveyId, prepared.Input);
+            var questions = SurveyQuestionMapping.MapQuestions(surveyId, prepared.Input);
             if (existing is not null && !allowRankedAvailabilityChanges)
             {
                 var existingById = existing.Questions.ToDictionary(question => question.Id);
@@ -887,7 +887,7 @@ internal sealed class SurveyService(
         // Drop answers to questions hidden under full branching (defends against tampered/stale posts).
         var visible = VisibleAnswers(survey, submission.Answers);
         var visibleAnswers = visible.Answers;
-        var questions = ToQuestionInputs(survey);
+        var questions = SurveyQuestionMapping.ToQuestionInputs(survey);
         var answerStates = visibleAnswers.ToDictionary(
             answer => answer.QuestionId,
             answer => new AnswerState(
@@ -1587,48 +1587,6 @@ internal sealed class SurveyService(
                 settings.AllowReject,
                 settings.OfficialMethod.ToString());
 
-    private static IReadOnlyList<QuestionInput> ToQuestionInputs(Survey survey)
-        => survey.Questions
-            .OrderBy(question => question.PageNumber)
-            .ThenBy(question => question.Order)
-            .Select(question => new QuestionInput(
-                question.Id,
-                question.PageNumber,
-                question.Order,
-                question.Type,
-                question.Prompt,
-                question.HelpText,
-                question.IsRequired,
-                question.RatingMin,
-                question.RatingMax,
-                question.RatingMinLabel,
-                question.RatingMaxLabel,
-                question.ShowIf,
-                question.Options
-                    .OrderBy(option => option.Order)
-                    .Select(option => new OptionInput(
-                        option.Id,
-                        option.Order,
-                        option.Value,
-                        option.Label))
-                    .ToList(),
-                question.GridSelectionMode,
-                question.GridRows?
-                    .Select(row => new GridRowInput(row.Value, row.Label))
-                    .ToList(),
-                question.InformationImages?
-                    .Select(image => new InformationImageInput(
-                        image.Id,
-                        image.Label,
-                        image.AltText,
-                        image.StoragePath,
-                        image.ContentType,
-                        image.FileName))
-                    .ToList(),
-                question.RankedSettings,
-                question.RankedUnavailableOptionValues))
-            .ToList();
-
     private static void ReplaceWizardAnswers(
         SurveyWizardState state,
         IReadOnlyList<SurveyAnswerInput> answers)
@@ -1659,7 +1617,7 @@ internal sealed class SurveyService(
         Survey survey,
         IReadOnlyList<SurveyAnswerInput> answers)
     {
-        var questions = ToQuestionInputs(survey).ToDictionary(q => q.Id!.Value);
+        var questions = SurveyQuestionMapping.ToQuestionInputs(survey).ToDictionary(q => q.Id!.Value);
         var invalidAnswers = new HashSet<Guid>();
         var normalizedAnswers = answers
             .Where(a => questions.TryGetValue(a.QuestionId, out var question)
@@ -1759,56 +1717,6 @@ internal sealed class SurveyService(
                 "Failed to verify survey {SurveyId} after a failed save; retaining newly uploaded images", surveyId);
         }
     }
-
-    /// <summary>Maps builder input to tracked entities, assigning new ids where the input id is null.</summary>
-    private static List<SurveyQuestion> MapQuestions(Guid surveyId, SurveyEditInput input)
-        => input.Questions.Select(q =>
-        {
-            var questionId = q.Id ?? Guid.NewGuid();
-            return new SurveyQuestion
-            {
-                Id = questionId,
-                SurveyId = surveyId,
-                PageNumber = q.PageNumber,
-                Order = q.Order,
-                Type = q.Type,
-                Prompt = q.Prompt,
-                HelpText = q.HelpText,
-                IsRequired = q.IsRequired,
-                RatingMin = q.RatingMin,
-                RatingMax = q.RatingMax,
-                RatingMinLabel = q.RatingMinLabel,
-                RatingMaxLabel = q.RatingMaxLabel,
-                GridSelectionMode = q.Type == SurveyQuestionType.Grid ? q.GridSelectionMode : null,
-                GridRows = q.Type == SurveyQuestionType.Grid
-                    ? (q.GridRows ?? []).Select(row => new SurveyGridRow(row.Value, row.Label)).ToList()
-                    : null,
-                InformationImages = q.Type == SurveyQuestionType.Information
-                    ? (q.InformationImages ?? []).Select(image => new SurveyInformationImage(
-                        image.Id!.Value,
-                        image.StoragePath!,
-                        image.ContentType!,
-                        image.FileName!,
-                        image.Label,
-                        image.AltText)).ToList()
-                    : null,
-                RankedSettings = q.Type == SurveyQuestionType.RankedChoice
-                    ? q.RankedSettings ?? RankedQuestionSettings.Default
-                    : null,
-                RankedUnavailableOptionValues = q.Type == SurveyQuestionType.RankedChoice
-                    ? (q.RankedUnavailableOptionValues ?? []).Distinct(StringComparer.Ordinal).ToList()
-                    : null,
-                ShowIf = q.ShowIf,
-                Options = q.Options.Select(o => new SurveyQuestionOption
-                {
-                    Id = o.Id ?? Guid.NewGuid(),
-                    QuestionId = questionId,
-                    Order = o.Order,
-                    Value = o.Value,
-                    Label = o.Label,
-                }).ToList(),
-            };
-        }).ToList();
 
 
 }
