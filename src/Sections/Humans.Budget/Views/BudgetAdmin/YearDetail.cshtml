@@ -136,11 +136,19 @@
     var allGroupLineItems = group.Categories.SelectMany(c => c.LineItems).Where(li => !li.IsCashflowOnly).ToList();
     var groupActual = allGroupLineItems.Sum(li => li.Amount);
     var groupBudget = group.Categories.Sum(c => c.AllocatedAmount);
+    // A mixed group (Ticketing: revenue and fees) has no single direction, so its header shows signed
+    // nets and neutral labels; a one-direction group shows magnitudes like its categories do.
+    var groupMixed = group.Categories.Any(c => c.AllocatedAmount < 0) && group.Categories.Any(c => c.AllocatedAmount > 0);
     var groupIsExpense = groupBudget < 0;
-    var groupRemaining = groupIsExpense
-        ? Math.Abs(groupBudget) - Math.Abs(groupActual)
-        : groupActual - groupBudget;
-    var groupHolded = group.Categories.Sum(c => Math.Abs(Model.HoldedActualsByCategory.GetValueOrDefault(c.Id)?.Actual ?? 0m));
+    // Each category's variance is positive when favourable, so the group's is their sum.
+    var groupRemaining = group.Categories.Sum(c =>
+    {
+        var actual = c.LineItems.Where(li => !li.IsCashflowOnly).Sum(li => li.Amount);
+        return c.AllocatedAmount < 0 ? Math.Abs(c.AllocatedAmount) - Math.Abs(actual) : actual - c.AllocatedAmount;
+    });
+    var groupHolded = group.Categories.Sum(c =>
+        Math.Abs(Model.HoldedActualsByCategory.GetValueOrDefault(c.Id)?.Actual ?? 0m) * (c.AllocatedAmount < 0 ? -1 : 1));
+    decimal GroupFigure(decimal signed) => groupMixed ? signed : Math.Abs(signed);
 
     <div class="accordion-item mb-2">
         <h2 class="accordion-header">
@@ -162,10 +170,10 @@
                             <span class="badge bg-warning text-dark ms-1">Ticketing</span>
                         }
                     </div>
-                    <span class="budget-num">@Amount(Math.Abs(groupBudget))</span>
-                    <span class="budget-num">@Amount(Math.Abs(groupActual))</span>
+                    <span class="budget-num">@Amount(GroupFigure(groupBudget))</span>
+                    <span class="budget-num">@Amount(GroupFigure(groupActual))</span>
                     <span class="budget-num @(groupRemaining >= 0 ? "text-success" : "text-danger")">@Amount(groupRemaining)</span>
-                    <span class="budget-num budget-figure-holded">@Amount(groupHolded)</span>
+                    <span class="budget-num budget-figure-holded">@Amount(GroupFigure(groupHolded))</span>
                 </div>
             </button>
         </h2>
@@ -348,9 +356,9 @@
                 {
                     <div class="budget-row budget-colhead ps-4">
                         <span>Category</span>
-                        <span class="budget-num">@(groupIsExpense ? "Planned" : "Target")</span>
+                        <span class="budget-num">@(groupMixed ? "Budget" : groupIsExpense ? "Planned" : "Target")</span>
                         <span class="budget-num">Actual</span>
-                        <span class="budget-num">@(groupIsExpense ? "Remaining" : "Vs target")</span>
+                        <span class="budget-num">@(groupMixed ? "Variance" : groupIsExpense ? "Remaining" : "Vs target")</span>
                         <span class="budget-num">Holded</span>
                     </div>
                     <div class="accordion" id="categories-@groupId">
