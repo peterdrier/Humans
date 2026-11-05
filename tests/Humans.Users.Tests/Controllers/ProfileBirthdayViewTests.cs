@@ -39,7 +39,7 @@ public class ProfileBirthdayViewTests
     {
         using var culture = new CultureScope("es");
         CultureInfo.CurrentCulture = CultureInfo.GetCultureInfo("en");
-        var expected = $"29\u00A0{CultureInfo.CurrentUICulture.DateTimeFormat.AbbreviatedMonthGenitiveNames[1]}";
+        var expected = $"29 {CultureInfo.CurrentUICulture.DateTimeFormat.AbbreviatedMonthGenitiveNames[1]}";
 
         new ProfileCardViewModel { BirthdayMonth = 2, BirthdayDay = 29 }
             .FormattedBirthday.Should().Be(expected);

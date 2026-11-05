@@ -35,13 +35,12 @@ public static class DateFormattingExtensions
         return true;
     }
 
-    // Non-breaking spaces: a date is one token and must never wrap mid-date in a table cell.
     private static string DisplayDatePattern(bool weekday, bool year)
     {
         var core = IsDayFirst(CultureInfo.CurrentUICulture)
-            ? (year ? "d\u00A0MMM\u00A0yyyy" : "d\u00A0MMM")
-            : (year ? "MMM\u00A0d,\u00A0yyyy" : "MMM\u00A0d");
-        return weekday ? "ddd\u00A0" + core : core;
+            ? (year ? "d MMM yyyy" : "d MMM")
+            : (year ? "MMM d, yyyy" : "MMM d");
+        return weekday ? "ddd " + core : core;
     }
 
     // 1 — time (24h)

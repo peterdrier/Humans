@@ -121,7 +121,7 @@ public sealed class ShiftSignupServiceEarlyEntryTests : ShiftsTestHarness
         var result = await _service.SignUpRangeAsync(Guid.NewGuid(), rota.Id, -3, -1);
 
         result.Success.Should().BeTrue();
-        result.Warning.Should().Contain("Tue\u00A0Jun\u00A030");
+        result.Warning.Should().Contain("Tue Jun 30");
     }
 
     private (EventSettings eventSettings, Rota rota) SeedBuildScenario()

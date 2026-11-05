@@ -25,10 +25,9 @@ public sealed class DateFormattingExtensionsTests
         var instant = Instant.FromUtc(2026, 6, 5, 10, 34, 56);
         var zone = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
         var month = ui.DateTimeFormat.AbbreviatedMonthGenitiveNames[5];
-        const char nbsp = '\u00A0';
-        var dayMonth = dayFirst ? $"5{nbsp}{month}" : $"{month}{nbsp}5";
-        var fullDate = dayFirst ? $"{dayMonth}{nbsp}2026" : $"{dayMonth},{nbsp}2026";
-        var weekdayDate = $"{ui.DateTimeFormat.GetAbbreviatedDayName(DayOfWeek.Friday)}{nbsp}{dayMonth}";
+        var dayMonth = dayFirst ? $"5 {month}" : $"{month} 5";
+        var fullDate = dayFirst ? $"{dayMonth} 2026" : $"{dayMonth}, 2026";
+        var weekdayDate = $"{ui.DateTimeFormat.GetAbbreviatedDayName(DayOfWeek.Friday)} {dayMonth}";
 
         localDate.ToMonthDay().Should().Be(dayMonth);
         date.ToDate().Should().Be(fullDate);
@@ -68,10 +67,10 @@ public sealed class DateFormattingExtensionsTests
         60m.ToString("0.00", CultureInfo.CurrentCulture).Should().Be("60.00");
     }
 
-    /// <summary>Pins both day/month orders (en month-first, es day-first), joined by non-breaking spaces.</summary>
+    /// <summary>Pins both day/month orders: en is month-first, es day-first.</summary>
     [HumansTheory]
-    [Xunit.InlineData(CultureCatalog.DefaultCultureCode, "Jun\u00A05,\u00A02026")]
-    [Xunit.InlineData(CultureCatalog.CanonicalLegalCultureCode, "5\u00A0jun\u00A02026")]
+    [Xunit.InlineData(CultureCatalog.DefaultCultureCode, "Jun 5, 2026")]
+    [Xunit.InlineData(CultureCatalog.CanonicalLegalCultureCode, "5 jun 2026")]
     public void Display_date_order_follows_the_culture(string culture, string expected)
     {
         using var scope = new CultureScope(culture);
