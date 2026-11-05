@@ -136,9 +136,7 @@ This section's controllers. `TeamController` (`[Route("Teams")]`) handles both a
 | `GET /Teams` | `Index` | `TeamController` | `[AllowAnonymous]` — anonymous sees public teams only; authenticated sees full directory |
 | `GET /Teams/{slug}` | `Details` | `TeamController` | `[AllowAnonymous]` — anonymous sees public pages; hidden teams return 404 for non-admin |
 | `GET /Teams/Tree` | `Tree` | `TeamController` | `[AllowAnonymous]` — departments and their sub-teams as a tree with descriptions and member counts; anonymous sees public-page departments only; never hidden, system or inactive teams |
-| `GET /Teams/Birthdays` | `Birthdays` | `TeamController` | `[Authorize]` (any authenticated human with profile) |
 | `GET /Teams/Roster` | `Roster` | `TeamController` | `[Authorize]` |
-| `GET /Teams/Map` | `Map` | `TeamController` | `[Authorize]` |
 | `GET /Teams/My` | `MyTeams` | `TeamController` | `[Authorize]` |
 | `GET /Teams/{slug}/Join` | `Join` (GET) | `TeamController` | `[Authorize]` — hidden teams return 404 for non-admin |
 | `POST /Teams/{slug}/Join` | `Join` (POST) | `TeamController` | `[Authorize]` — hidden teams return 404 for non-admin |
@@ -341,7 +339,7 @@ A coordinator can relay a one-off message to another member on behalf of a team,
 - **EarlyEntry** (full section): `IEarlyEntryProvider` — `GetEarlyEntriesAsync` projects grants from `EarlyEntryEnabled` teams to the cross-section `EarlyEntryGrant` view (`"{TeamName}: {ProjectName}"`) via `TeamEarlyEntryProjection`, read live by EarlyEntry on every call.
 - **Camps.Contracts:** active camp lead assignments feed the Barrio Leads system team via `ICampLeadDirectory`.
 - **Governance.Contracts:** `IMembershipCalculator` decides Asociados / Colaboradors eligibility.
-- **Consent** (full section; Users decomposition commit 12): `IConsentService.GetConsentReviewsAsync` / `GetConsentReviewAsync` — `SystemTeamSyncJob` excludes a rejected member from Volunteers and gates the tier teams on the review's `IsApproved`; `TeamController`'s birthdays and map list members the Consent Coordinator cleared.
+- **Consent** (full section; Users decomposition commit 12): `IConsentService.GetConsentReviewsAsync` / `GetConsentReviewAsync` — `SystemTeamSyncJob` excludes a rejected member from Volunteers and gates the tier teams on the review's `IsApproved`.
 - **Tickets.Contracts:** the EE page delegates exact, current-event barcode matching to `ITicketService.FindCurrentEventAttendeeByBarcodeAsync`; it formats the matched active human for the picker.
 
 **Inbound** — sections that reference Teams and are not dependencies of it:

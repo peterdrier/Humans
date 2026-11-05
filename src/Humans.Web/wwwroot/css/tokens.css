@@ -72,12 +72,9 @@
   --h-chart-muted:         #e9ecef;
 
   /* --- Map marker tokens --- */
-  --h-map-pin:             #1a73e8;
-  --h-map-pin-border:      #1558b0;
-  --h-map-cluster-large:   #d93025;
-  --h-map-cluster-large-border: #a5211a;
-  --h-map-cluster-medium:  #e8710a;
-  --h-map-cluster-medium-border: #b85a08;
+  --h-map-person:          var(--h-rust);
+  --h-map-cluster:         var(--h-gold-dark);
+  --h-map-cluster-large:   var(--h-umber);
 
   /* --- Chart categorical palette (income) --- */
   --h-chart-cat-1:  #198754; --h-chart-cat-2:  #20c997; --h-chart-cat-3:  #0dcaf0;

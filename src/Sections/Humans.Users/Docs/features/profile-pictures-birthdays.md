@@ -65,7 +65,7 @@ Humans need a way to personalize their profiles. Custom profile pictures make te
 - Monthly view with navigation between months
 - Shows profile picture, display name, day of month, and team memberships
 - Only shows humans who have set their birthday
-- Accessible from Teams index page
+- Reached from a card on the member dashboard
 - Privacy note explaining visibility rules
 - System teams excluded from team name display
 
@@ -107,8 +107,8 @@ Picture saves use `IProfileEditorService.SaveProfileAsync`: `UserService` writes
 | Route | Method | Description |
 |-------|--------|-------------|
 | `GET /Profile/Picture?id={id}` | GET | Serve profile picture (anonymous, cached 1hr) |
-| `GET /Teams/Birthdays` | GET | Birthday calendar (current month) |
-| `GET /Teams/Birthdays?month=N` | GET | Birthday calendar for specific month |
+| `GET /Users/Birthdays` | GET | Birthday calendar (current month) |
+| `GET /Users/Birthdays?month=N` | GET | Birthday calendar for specific month |
 
 ## Picture Upload Flow
 
@@ -162,7 +162,7 @@ All UI strings are localized in every supported language: EN, ES, CA, DE, FR, IT
 - `Users_Profile_PictureTooLarge`, `Users_Profile_PictureInvalidFormat`
 - `Users_ProfileEdit_PictureHelp`, `Users_ProfileEdit_RemovePicture`
 - `Teams_TeamDetail_TeamCoordinators`
-- `Teams_Birthdays_Title`, `Teams_Birthdays_Count`, `Teams_Birthdays_None`, `Teams_Birthdays_Privacy`
+- `Users_Birthdays_Title`, `Users_Birthdays_Count`, `Users_Birthdays_None`, `Users_Birthdays_Privacy`, `Users_Birthdays_CardDescription`
 
 ## Related Features
 

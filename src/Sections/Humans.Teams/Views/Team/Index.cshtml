@@ -10,8 +10,6 @@
         <vc:access-matrix section="Teams" />
         <a asp-action="MyTeams" class="btn btn-outline-secondary">@Localizer["Teams_MyTeams_Title"]</a>
         <a asp-action="Roster" class="btn btn-outline-secondary">@SharedLocalizer["Nav_Roster"]</a>
-        <a asp-action="Birthdays" class="btn btn-outline-secondary">@Localizer["Teams_Birthdays_Title"]</a>
-        <a asp-action="Map" class="btn btn-outline-secondary">@Localizer["Teams_Map_Title"]</a>
         <a asp-action="Tree" class="btn btn-outline-secondary">@Localizer["Teams_Tree_Title"]</a>
         @if ((await AuthService.AuthorizeAsync(User, TeamsPolicies.Read)).Succeeded)
         {

@@ -1,23 +1,91 @@
-@model Humans.Teams.Models.MapViewModel
+@model Humans.Users.Models.MapViewModel
 @{
-    ViewData["Title"] = Localizer["Teams_Map_Title"].Value;
+    ViewData["Title"] = Localizer["Users_Map_Title"].Value;
 }
 
-@section Crumbs {
-    <a asp-action="Index">@SharedLocalizer["Teams_Title"]</a>
-    <span>@Localizer["Teams_Map_Title"]</span>
-}
+<page-header title="@(Localizer["Users_Map_Title"].Value)" />
 
-<page-header title="@(Localizer["Teams_Map_Title"].Value)" />
+@section Styles {
+    <style>
+        #map { width: 100%; height: max(450px, calc(100vh - 300px)); }
+        .map-bubble {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            background: var(--h-map-cluster);
+            color: var(--h-text-on-dark);
+            border: 2px solid var(--h-warm-white);
+            box-shadow: 0 0 0 4px color-mix(in srgb, var(--h-map-cluster) 30%, transparent), 0 1px 3px rgb(0 0 0 / 30%);
+            font-weight: 600;
+            line-height: 1;
+            cursor: pointer;
+            transition: transform 0.15s ease;
+        }
+        .map-bubble:hover { transform: scale(1.1); }
+        .map-bubble--large {
+            background: var(--h-map-cluster-large);
+            box-shadow: 0 0 0 5px color-mix(in srgb, var(--h-map-cluster-large) 30%, transparent), 0 1px 3px rgb(0 0 0 / 30%);
+        }
+        .map-bubble--person {
+            width: 20px;
+            height: 20px;
+            background: var(--h-map-person);
+            box-shadow: 0 0 0 4px color-mix(in srgb, var(--h-map-person) 30%, transparent), 0 1px 3px rgb(0 0 0 / 40%);
+        }
+        /* Google's header row pads the title down to the close button's top edge; centre it on the button instead. */
+        #map .gm-style-iw-chr {
+            align-items: center;
+            border-bottom: 1px solid var(--h-border-light);
+            margin-bottom: 8px;
+        }
+        #map .gm-style-iw-ch { padding-top: 0; }
+        .map-popup-header {
+            font-family: var(--h-font-display);
+            font-weight: 600;
+            font-size: 1.25rem;
+            line-height: 1.2;
+            color: var(--h-text);
+        }
+        .map-popup {
+            max-height: 320px;
+            font-family: var(--h-font-body);
+            overflow-y: auto;
+            scrollbar-width: thin;
+            scrollbar-color: var(--h-border) transparent;
+            padding-right: 4px;
+        }
+        .map-popup--grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            column-gap: 12px;
+        }
+        .map-person {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 4px;
+            border-radius: 6px;
+            color: var(--h-text);
+            font-weight: 500;
+            text-decoration: none;
+            white-space: nowrap;
+            overflow: hidden;
+        }
+        .map-person span { overflow: hidden; text-overflow: ellipsis; }
+        .map-person:hover { background: var(--h-bg-hover); color: var(--h-text); }
+        .map-person img, .map-person div { flex-shrink: 0; }
+    </style>
+}
 
 @if (Model.Markers.Count > 0)
 {
     <div class="card">
         <div class="card-header">
-            @string.Format(Localizer["Teams_Map_Count"].Value, Model.Markers.Count)
+            @string.Format(Localizer["Users_Map_Count"].Value, Model.Markers.Count)
         </div>
         <div class="card-body p-0">
-            <div id="map" style="height: 600px; width: 100%;"></div>
+            <div id="map"></div>
         </div>
     </div>
 }
@@ -25,13 +93,13 @@ else
 {
     <div class="card">
         <div class="card-body text-center text-muted py-5">
-            @Localizer["Teams_Map_None"]
+            @Localizer["Users_Map_None"]
         </div>
     </div>
 }
 
 <div class="mt-3">
-    <p class="text-muted small">@Localizer["Teams_Map_Privacy"]</p>
+    <p class="text-muted small">@Localizer["Users_Map_Privacy"]</p>
 </div>
 
 @section Scripts {
@@ -51,13 +119,21 @@ else
             const cssVar = (name) => _cs.getPropertyValue(name).trim();
             const clrMutedText = cssVar('--h-muted-text');
             const clrTextOnDark = cssVar('--h-text-on-dark');
-            const clrTextSecondary = cssVar('--h-text-secondary');
-            const clrMapPin = cssVar('--h-map-pin');
-            const clrMapPinBorder = cssVar('--h-map-pin-border');
-            const clrMapClusterLarge = cssVar('--h-map-cluster-large');
-            const clrMapClusterLargeBorder = cssVar('--h-map-cluster-large-border');
-            const clrMapClusterMedium = cssVar('--h-map-cluster-medium');
-            const clrMapClusterMediumBorder = cssVar('--h-map-cluster-medium-border');
+
+            // Diameter grows with log(count) so a 300-person cluster stays readable without swallowing its neighbours.
+            function bubble(count) {
+                const el = document.createElement('div');
+                if (count === 1) {
+                    el.className = 'map-bubble map-bubble--person';
+                    return el;
+                }
+                const size = Math.round(28 + 12 * Math.log10(count));
+                el.className = 'map-bubble' + (count >= 50 ? ' map-bubble--large' : '');
+                el.style.width = el.style.height = size + 'px';
+                el.style.fontSize = Math.round(size * 0.4) + 'px';
+                el.textContent = count;
+                return el;
+            }
 
             function avatarHtml(m, size) {
                 const s = size || 40;
@@ -71,13 +147,18 @@ else
             }
 
             function personHtml(m) {
-                const location = [m.city, m.countryCode].filter(Boolean).join(', ');
-                return '<div style="display:flex;align-items:center;gap:8px;padding:4px 0;">' +
-                    avatarHtml(m, 36) +
-                    '<div>' +
-                    '<a href="/Profile/' + m.userId + '" style="font-weight:600;text-decoration:none;">' + Humans.escapeHtml(m.displayName) + '</a>' +
-                    (location ? '<br><span style="color:' + clrTextSecondary + ';font-size:0.85em;">' + Humans.escapeHtml(location) + '</span>' : '') +
-                    '</div></div>';
+                return '<a class="map-person" href="/Profile/' + m.userId + '">' +
+                    avatarHtml(m, 40) +
+                    '<span>' + Humans.escapeHtml(m.displayName) + '</span></a>';
+            }
+
+            // Everyone in a popup shares one location, so it goes in the header once instead of on every row.
+            function popupHeader(people) {
+                const first = people[0];
+                const el = document.createElement('div');
+                el.className = 'map-popup-header';
+                el.textContent = [first.city, first.countryCode].filter(Boolean).join(', ');
+                return el;
             }
 
             function groupByLocation(data) {
@@ -92,12 +173,14 @@ else
 
             async function initMap() {
                 const { Map, InfoWindow } = await google.maps.importLibrary("maps");
-                const { AdvancedMarkerElement, PinElement } = await google.maps.importLibrary("marker");
+                const { AdvancedMarkerElement } = await google.maps.importLibrary("marker");
 
                 const map = new Map(document.getElementById("map"), {
                     zoom: 3,
                     center: { lat: 40, lng: -3 },
-                    mapId: "volunteer-map"
+                    mapId: "volunteer-map",
+                    mapTypeControl: false,
+                    streetViewControl: false
                 });
 
                 const infoWindow = new InfoWindow();
@@ -106,40 +189,27 @@ else
 
                 for (const group of groups) {
                     const first = group[0];
-                    let pinContent;
-
-                    if (group.length > 1) {
-                        const pin = new PinElement({
-                            glyph: '' + group.length,
-                            glyphColor: clrTextOnDark,
-                            background: clrMapPin,
-                            borderColor: clrMapPinBorder,
-                            scale: 1.1
-                        });
-                        pinContent = pin.element;
-                    } else {
-                        pinContent = undefined; // default pin
-                    }
 
                     const marker = new AdvancedMarkerElement({
                         position: { lat: first.latitude, lng: first.longitude },
                         map: map,
                         title: group.length > 1 ? group.length + ' humans' : first.displayName,
                         gmpClickable: true,
-                        content: pinContent
+                        content: bubble(group.length)
                     });
 
                     marker._people = group;
 
                     marker.addEventListener("gmp-click", function () {
-                        const people = marker._people;
-                        let html = '<div style="max-height:300px;overflow-y:auto;">';
+                        const people = [...marker._people].sort((a, b) => a.displayName.localeCompare(b.displayName));
+                        let html = '<div class="map-popup' + (people.length > 8 ? ' map-popup--grid' : '') + '">';
                         for (const p of people) {
                             html += personHtml(p);
                         }
                         html += '</div>';
+                        infoWindow.setHeaderContent(popupHeader(people));
                         infoWindow.setContent(html);
-                        infoWindow.open({ anchor: marker, map: map });
+                        infoWindow.open({ anchor: marker, map: map, shouldFocus: false });
                     });
 
                     mapMarkers.push(marker);
@@ -148,26 +218,23 @@ else
                 if (typeof markerClusterer !== 'undefined') {
                     var renderer = {
                         render: function(ref) {
-                            var count = ref.count;
-                            var position = ref.position;
                             var totalPeople = 0;
                             for (var gm of ref.markers) {
                                 totalPeople += (gm._people ? gm._people.length : 1);
                             }
-                            var pin = new PinElement({
-                                glyph: '' + totalPeople,
-                                glyphColor: clrTextOnDark,
-                                background: totalPeople > 10 ? clrMapClusterLarge : totalPeople > 5 ? clrMapClusterMedium : clrMapPin,
-                                borderColor: totalPeople > 10 ? clrMapClusterLargeBorder : totalPeople > 5 ? clrMapClusterMediumBorder : clrMapPinBorder,
-                                scale: 1.2 + Math.min(totalPeople / 50, 0.6)
-                            });
                             return new AdvancedMarkerElement({
-                                position: position,
-                                content: pin.element
+                                position: ref.position,
+                                content: bubble(totalPeople),
+                                zIndex: totalPeople
                             });
                         }
                     };
-                    new markerClusterer.MarkerClusterer({ markers: mapMarkers, map: map, renderer: renderer });
+                    new markerClusterer.MarkerClusterer({
+                        markers: mapMarkers,
+                        map: map,
+                        renderer: renderer,
+                        algorithm: new markerClusterer.SuperClusterAlgorithm({ radius: 80 })
+                    });
                 }
 
                 if (markers.length > 1) {
