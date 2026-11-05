@@ -238,7 +238,7 @@ Stored as string via `HasConversion<string>()`.
 - Audit values and descriptions preserve complete field changes without separate length caps;
   editing a valid line note (up to 2000 characters) cannot fail because its audit is longer.
 - "Sync Departments" creates a category for each department that does not already have one in the selected year.
-- `/Budget/Admin` index shows a consolidated accordion view: groups, categories with budget vs actual comparison, and inline line items. FinanceAdmin sees all summary data inline.
+- `/Budget/Admin` index shows a consolidated accordion view: groups, categories with budget vs actual comparison, and inline line items. FinanceAdmin sees all summary data inline. Group and category headers share one column grid (Budget; Lines, the line-item sum; remaining; Holded, the booked actual) labelled once per group; only the three total cards carry the euro sign. Expanding a category shows its line items beside its Holded documents. The header carries Budget actions only; Finance pages are reached through Finance's own nav.
 - The internal `BudgetSummaryCalculator` owns regular and buffered summary calculations, generated localized labels and chart slices; `BudgetService` keeps the existing read contract, mutations and persistence. Both calculations retain Finance’s shared VAT formula.
 - Regular and buffered budget summaries share the chart-slice projection: each slice keeps its input order and amount, and its percentage uses that side’s total (zero when the total is not positive).
 - Budget summary chart/table labels for VAT credits and liabilities, cash reserves, Spanish taxes and group buffers use the current UI culture in all supported languages. Authored group/category names and calculated amounts are unchanged.
