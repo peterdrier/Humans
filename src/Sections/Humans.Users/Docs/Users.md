@@ -765,4 +765,6 @@ Deletion confirmations use the no-persistence email path. Delivery failures are 
 
 After email insertion, verification, or removal commits, required primary and Google flag repairs finish independently of browser cancellation; initial reads and the first write remain cancellable.
 
+The internal `UserEmailReconciliation` owns the callback's complete collision decision, atomic email mutation plan, superseded Google-identity cleanup and diagnostic audits. `UserEmailService.ReconcileOAuthIdentityAsync` remains the existing callback entry point; verification, unlinking and user-driven merge requests remain in `UserEmailService`. Decision order, lazy Google identity resolution and cancellation boundaries are unchanged. No DI registration or public contract is added.
+
 Email insertion and OAuth reconciliation refuse deleted or merged accounts, including legacy tombstones, before changing email rows. OAuth linking likewise refuses terminal targets before adding or moving provider credentials; a merged source may still transfer its existing login to a live survivor. Admin recovery bypasses verification cooldowns only for live accounts.
