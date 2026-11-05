@@ -70,8 +70,8 @@ namespace Humans.Tickets.Data.Migrations
 
                     b.Property<string>("AttendeeName")
                         .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)");
+                        .HasMaxLength(513)
+                        .HasColumnType("character varying(513)");
 
                     b.Property<string>("Barcode")
                         .HasMaxLength(100)

@@ -721,6 +721,55 @@ public sealed class TicketTransferServiceTests
             Arg.Any<CancellationToken>());
     }
 
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task Reissue_PreservesFullReceiverName_WithinAttendeeColumn(bool retry)
+    {
+        var fullName = $"{new string('A', 256)} {new string('B', 256)}";
+        var request = new TicketTransferRequest
+        {
+            Id = Guid.NewGuid(),
+            OriginalTicketAttendeeId = _attendeeId,
+            SenderUserId = _senderId,
+            ReceiverUserId = _receiverId,
+            ReceiverLegalName = fullName,
+            ReceiverEmail = "alice@example.com",
+            SenderReason = "Going abroad",
+            RequestedAt = _now,
+        };
+        if (retry)
+        {
+            request.VendorResult = TicketTransferVendorResult.VoidSucceededIssueFailed;
+            request.VendorHoldId = "hold_123";
+        }
+        _transferRepo.GetByIdAsync(request.Id, Arg.Any<CancellationToken>()).Returns(request);
+        StubAttendee(retry ? TicketAttendeeStatus.Void : TicketAttendeeStatus.Valid, _senderId);
+        _vendor.VoidIssuedTicketAsync("tkt_original", true, Arg.Any<CancellationToken>())
+            .Returns(new VoidIssuedTicketResult("tkt_original", "hold_123"));
+        _vendor.IssueTicketAsync(Arg.Any<IssueTicketRequest>(), Arg.Any<CancellationToken>())
+            .Returns(new VendorTicketDto("tt_new", null, fullName, "alice@example.com", "Full Week", 0m, "valid"));
+        TicketAttendee? reissued = null;
+        _ticketRepo.When(r => r.UpsertAttendeesAsync(
+                Arg.Any<IReadOnlyList<TicketAttendee>>(), Arg.Any<CancellationToken>()))
+            .Do(call => reissued = call.ArgAt<IReadOnlyList<TicketAttendee>>(0)
+                .Single(a => string.Equals(a.VendorTicketId, "tt_new", StringComparison.Ordinal)));
+
+        var result = retry
+            ? await _service.RetryReissueAsync(request.Id, _adminId, null, Xunit.TestContext.Current.CancellationToken)
+            : await _service.ProcessTransferAsync(request.Id, _adminId, null, Xunit.TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeTrue();
+        reissued.Should().NotBeNull();
+        reissued!.AttendeeName.Should().Be(fullName);
+        await using var db = new TicketsDbContext(new DbContextOptionsBuilder<TicketsDbContext>()
+            .UseInMemoryDatabase(Guid.NewGuid().ToString()).Options);
+        var columnLength = db.Model.FindEntityType(typeof(TicketAttendee))!
+            .FindProperty(nameof(TicketAttendee.AttendeeName))!.GetMaxLength();
+        columnLength.Should().NotBeNull();
+        reissued.AttendeeName.Length.Should().BeLessThanOrEqualTo(columnLength!.Value);
+    }
+
     [HumansFact]
     public async Task Process_VoidFails_StaysPending_NoLocalWrite_NoEmails()
     {
