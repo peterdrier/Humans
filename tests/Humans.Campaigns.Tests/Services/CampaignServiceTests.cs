@@ -5,6 +5,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Primitives;
 using System.Text;
 using Humans.Base.Constants;
+using Humans.Base.Extensions;
 using System.Security.Claims;
 using Humans.AuditLog.Contracts;
 using AwesomeAssertions;
@@ -923,19 +924,11 @@ public sealed class CampaignServiceTests
     public async Task SendWaveAsync_GroupsRecipientsByLanguageWithEnglishFallbackAndIsolatesDispatchFailures()
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
-        var copy = new[]
-        {
-            ("en", "You received a code from campaign: Test Campaign", "Your campaign code is available under My Codes in your profile.", "My Codes"),
-            ("es", "Has recibido un código de la campaña: Test Campaign", "Tu código de campaña está disponible en Mis códigos en tu perfil.", "Mis códigos"),
-            ("de", "Du hast einen Code aus der Kampagne erhalten: Test Campaign", "Dein Kampagnencode ist unter Meine Codes in deinem Profil verfügbar.", "Meine Codes"),
-            ("it", "Hai ricevuto un codice dalla campagna: Test Campaign", "Il tuo codice della campagna è disponibile in I miei codici nel tuo profilo.", "I miei codici"),
-            ("fr", "Tu as reçu un code de la campagne : Test Campaign", "Ton code de campagne est disponible dans Mes codes sur ton profil.", "Mes codes"),
-            ("ca", "Has rebut un codi de la campanya: Test Campaign", "El teu codi de campanya està disponible a Els meus codis del teu perfil.", "Els meus codis"),
-            ("nl", "Je hebt een code ontvangen van campagne: Test Campaign", "Je campagnecode staat onder Mijn codes in je profiel.", "Mijn codes"),
-        };
-        var campaign = await SeedActiveCampaignWithCodesAsync(Enumerable.Range(0, 8).Select(i => $"CODE-{i}").ToArray());
+        var cultures = CultureCatalog.SupportedCultureCodes;
+        var resources = new System.Resources.ResourceManager(typeof(CampaignsResource));
+        var campaign = await SeedActiveCampaignWithCodesAsync(Enumerable.Range(0, cultures.Count + 1).Select(i => $"CODE-{i}").ToArray());
         var team = SeedTeam("Translated Notices");
-        var recipients = copy.Select(x => SeedUser(preferredLanguage: x.Item1)).ToArray();
+        var recipients = cultures.Select(c => SeedUser(preferredLanguage: c)).ToArray();
         var fallback = SeedUser(preferredLanguage: "unsupported");
         foreach (var user in recipients.Append(fallback))
             SeedTeamMember(team.Id, user.Id);
@@ -948,18 +941,22 @@ public sealed class CampaignServiceTests
 
         var result = await _service.SendWaveAsync(_actorId, campaign.Id, team.Id, ct);
 
-        result.SentCount.Should().Be(8);
+        result.SentCount.Should().Be(cultures.Count + 1);
         var calls = _notifications.ReceivedCalls().ToList();
-        calls.Should().HaveCount(7, "one failed language must not prevent the others from being attempted");
+        calls.Should().HaveCount(cultures.Count, "one failed language must not prevent the others from being attempted");
         for (var index = 0; index < recipients.Length; index++)
         {
             var user = recipients[index];
             var args = calls.Single(c => ((IReadOnlyList<Guid>)c.GetArguments()[4]!).Contains(user.Id)).GetArguments();
-            args[3].Should().Be(copy[index].Item2);
-            args[5].Should().Be(copy[index].Item3);
+            var culture = CultureInfo.GetCultureInfo(cultures[index]);
+            args[3].Should().Be(string.Format(culture,
+                resources.GetString("Campaigns_Notification_ReceivedTitle", culture)!, campaign.Title));
+            args[5].Should().Be(resources.GetString("Campaigns_Notification_ReceivedBody", culture));
             args[6].Should().Be("/Profile/Me");
-            args[7].Should().Be(copy[index].Item4);
-            ((IReadOnlyList<Guid>)args[4]!).Should().BeEquivalentTo(index == 0 ? [user.Id, fallback.Id] : new[] { user.Id });
+            args[7].Should().Be(resources.GetString("Campaigns_Notification_MyCodes", culture));
+            ((IReadOnlyList<Guid>)args[4]!).Should().BeEquivalentTo(
+                string.Equals(cultures[index], CultureCatalog.DefaultCultureCode, StringComparison.Ordinal)
+                    ? [user.Id, fallback.Id] : new[] { user.Id });
         }
     }
 

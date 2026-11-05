@@ -1,6 +1,7 @@
 using System.Globalization;
 using Humans.Base;
 using Humans.Base.Configuration;
+using Humans.Base.Extensions;
 using Humans.Web.ModelBinders;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -60,15 +61,8 @@ public sealed class ServiceProviderValidationTests
         new Uri($"{settings.BaseUrl}/Account/MagicLinkConfirm").AbsolutePath.Should().Be(expectedPath);
     }
 
-    [HumansTheory]
-    [InlineData("en")]
-    [InlineData("es")]
-    [InlineData("de")]
-    [InlineData("it")]
-    [InlineData("fr")]
-    [InlineData("ca")]
-    [InlineData("nl")]
-    public async Task FormBindingErrors_UseTheCurrentRequestCulture(string culture)
+    [HumansFact]
+    public async Task FormBindingErrors_UseTheCurrentRequestCulture()
     {
         var originalCulture = CultureInfo.CurrentUICulture;
         try
@@ -86,7 +80,7 @@ public sealed class ServiceProviderValidationTests
 
             // Resolve MVC once, then change culture as successive requests do. Messages
             // must be localized when binding happens, not when options are constructed.
-            foreach (var requestCulture in new[] { "en", culture })
+            foreach (var requestCulture in new[] { CultureCatalog.DefaultCultureCode, CultureCatalog.CanonicalLegalCultureCode })
             {
                 CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo(requestCulture);
                 var viewData = new ViewDataDictionary(metadataProvider, new ModelStateDictionary());

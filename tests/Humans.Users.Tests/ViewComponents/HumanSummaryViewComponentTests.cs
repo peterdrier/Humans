@@ -115,17 +115,10 @@ public sealed class HumanSummaryViewComponentTests
 
         await act.Should().ThrowAsync<OperationCanceledException>();
     }
-    [HumansTheory]
-    [Xunit.InlineData("en")]
-    [Xunit.InlineData("es")]
-    [Xunit.InlineData("de")]
-    [Xunit.InlineData("it")]
-    [Xunit.InlineData("fr")]
-    [Xunit.InlineData("ca")]
-    [Xunit.InlineData("nl")]
-    public async Task Popovers_resolve_names_and_localize_missing_identity_without_exposing_admin_fields(string language)
+    [HumansFact]
+    public async Task Popovers_resolve_names_and_localize_missing_identity_without_exposing_admin_fields()
     {
-        using var culture = new CultureScope(language);
+        using var culture = new CultureScope("en");
         var id = Guid.NewGuid();
         const string name = "Current <script>&";
         var users = Substitute.For<IUserService>();

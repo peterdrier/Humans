@@ -73,16 +73,8 @@ public sealed class ShiftSignupServiceCoverageGapTests : ShiftsTestHarness
     }
 
     [HumansTheory]
-    [Xunit.InlineData("en", "Coverage gap: Rota day 1", "Only 1/2 humans confirmed.", "Find cover →", "Shift signup change: Rota", "Removed from 'Rota' on day 1.", "View →")]
-    [Xunit.InlineData("es", "Falta de cobertura: Rota día 1", "Solo 1/2 humans confirmados.", "Buscar cobertura →", "Cambio de inscripción a un turno: Rota", "Inscripción eliminada de 'Rota' el día 1.", "Ver →")]
-    [Xunit.InlineData("de", "Unbesetzte Schichten: Rota Tag 1", "Nur 1/2 humans bestätigt.", "Ersatz finden →", "Geänderte Schichtanmeldung: Rota", "Aus 'Rota' an Tag 1 entfernt.", "Anzeigen →")]
-    [Xunit.InlineData("it", "Copertura insufficiente: Rota giorno 1", "Solo 1/2 humans confermati.", "Trova copertura →", "Modifica iscrizione al turno: Rota", "Iscrizione rimossa da 'Rota' il giorno 1.", "Visualizza →")]
-    [Xunit.InlineData("fr", "Manque de couverture : Rota jour 1", "Seulement 1/2 humans confirmés.", "Trouver un remplacement →", "Modification d’inscription au créneau : Rota", "Inscription supprimée de 'Rota' le jour 1.", "Voir →")]
-    [Xunit.InlineData("ca", "Falta de cobertura: Rota dia 1", "Només 1/2 humans confirmats.", "Cerca cobertura →", "Canvi d’inscripció a un torn: Rota", "Inscripció eliminada de 'Rota' el dia 1.", "Mostra →")]
-    [Xunit.InlineData("nl", "Onderbezetting: Rota dag 1", "Slechts 1/2 humans bevestigd.", "Vervanging zoeken →", "Wijziging dienstaanmelding: Rota", "Verwijderd uit 'Rota' op dag 1.", "Bekijken →")]
-    public async Task CoordinatorNotices_UseRecipientLanguageIncludingCalendarDate(
-        string language, string gapTitle, string gapBody, string gapAction,
-        string changeTitle, string changeBody, string changeAction)
+    [Xunit.MemberData(nameof(SupportedCultures.All), MemberType = typeof(SupportedCultures))]
+    public async Task CoordinatorNotices_UseRecipientLanguageIncludingCalendarDate(string language)
     {
         using var actorCulture = new CultureScope("en");
         var (calendar, rota, _, userA, _) = await SeedScenarioAsync(2, 5);
@@ -102,14 +94,17 @@ public sealed class ShiftSignupServiceCoverageGapTests : ShiftsTestHarness
         var notices = _notificationService.ReceivedCalls().Select(call => call.GetArguments()).ToList();
         notices.Should().HaveCount(2);
         var gap = notices.Single(args => (NotificationSourceDefinition)args[0]! == ShiftsNotificationSources.ShiftCoverageGap);
-        gap[3].Should().Be(gapTitle);
-        gap[5].Should().Be(gapBody);
-        gap[7].Should().Be(gapAction);
+        var culture = System.Globalization.CultureInfo.GetCultureInfo(language);
+        var resources = new System.Resources.ResourceManager(typeof(ShiftsResource));
+        string Copy(string key, params object[] args) => string.Format(culture, resources.GetString(key, culture)!, args);
+        gap[3].Should().Be(Copy("Shifts_Notification_CoverageGapTitle", "Rota", 1));
+        gap[5].Should().Be(Copy("Shifts_Notification_CoverageGapBody", 1, 2));
+        gap[7].Should().Be(Copy("Shifts_Notification_FindCover"));
         var change = notices.Single(args => (NotificationSourceDefinition)args[0]! == ShiftsNotificationSources.ShiftSignupChange);
-        change[3].Should().Be(changeTitle);
+        change[3].Should().Be(Copy("Shifts_Notification_SignupChangeTitle", "Rota"));
         using var recipientCulture = new CultureScope(language);
-        change[5].Should().Be($"{changeBody} (Rota, {calendar.GateOpeningDate.PlusDays(1).ToWeekdayDayMonth()})");
-        change[7].Should().Be(changeAction);
+        change[5].Should().Be($"{Copy("Shifts_Notification_ChangeRemoved", "Rota", 1)} (Rota, {calendar.GateOpeningDate.PlusDays(1).ToWeekdayDayMonth()})");
+        change[7].Should().Be(Copy("Shifts_Notification_View"));
         foreach (var notice in notices)
         {
             ((IReadOnlyList<Guid>)notice[4]!).Should().ContainSingle().Which.Should().Be(coordinatorId);

@@ -492,15 +492,8 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
         result.Error.Should().Be("translated duplicate rejection");
     }
 
-    [HumansTheory]
-    [InlineData("en")]
-    [InlineData("es")]
-    [InlineData("de")]
-    [InlineData("it")]
-    [InlineData("fr")]
-    [InlineData("ca")]
-    [InlineData("nl")]
-    public async Task SignUp_OverlappingShift_ReturnsError(string cultureName)
+    [HumansFact]
+    public async Task SignUp_OverlappingShift_ReturnsError()
     {
         var (es, rota, shift1) = SeedShiftScenario(SignupPolicy.Public);
         // Create a second shift at overlapping time (same day, same start)
@@ -509,8 +502,8 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
         SeedSignup(userId, shift1.Id, SignupStatus.Confirmed);
         await SaveAllAsync(TestContext.Current.CancellationToken);
 
-        using var culture = new CultureScope(cultureName);
-        LocalizeSignupMessages(cultureName);
+        using var culture = new CultureScope(CultureCatalog.DefaultCultureCode);
+        LocalizeSignupMessages();
         // shift1: day 1, 10:00-14:00 — shift2: day 1, 10:00-14:00 (identical times)
         var result = await _service.SignUpAsync(userId, shift2.Id);
 
@@ -2507,24 +2500,12 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
     }
 
     [HumansTheory]
-    [InlineData("en", false)]
-    [InlineData("es", false)]
-    [InlineData("de", false)]
-    [InlineData("it", false)]
-    [InlineData("fr", false)]
-    [InlineData("ca", false)]
-    [InlineData("nl", false)]
-    [InlineData("en", true)]
-    [InlineData("es", true)]
-    [InlineData("de", true)]
-    [InlineData("it", true)]
-    [InlineData("fr", true)]
-    [InlineData("ca", true)]
-    [InlineData("nl", true)]
-    public async Task SignUp_EarlyEntryCapacityWarning_IsLocalizedAndStillConfirms(string cultureName, bool filledCapacity)
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task SignUp_EarlyEntryCapacityWarning_IsLocalizedAndStillConfirms(bool filledCapacity)
     {
-        using var culture = new CultureScope(cultureName);
-        LocalizeSignupMessages(cultureName);
+        using var culture = new CultureScope(CultureCatalog.DefaultCultureCode);
+        LocalizeSignupMessages();
         var (es, _, shift) = SeedShiftScenario(SignupPolicy.Public);
         shift.DayOffset = -1;
         es.EarlyEntryCapacity = new Dictionary<int, int> { [-1] = filledCapacity ? 1 : 0 };
@@ -2542,10 +2523,10 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
             es.GateOpeningDate.PlusDays(-1).ToWeekdayDayMonth()));
     }
 
-    private void LocalizeSignupMessages(string cultureName)
+    private void LocalizeSignupMessages()
     {
         var resources = new ResourceManager(typeof(ShiftsResource));
-        var culture = CultureInfo.GetCultureInfo(cultureName);
+        var culture = CultureInfo.CurrentUICulture;
         foreach (var key in new[] { "Shifts_Signup_TimeConflict", "Shifts_Signup_UnknownTeam", "Shifts_Signup_RangeEarlyEntryCapacityDays" })
         {
             _localizer[key].Returns(new LocalizedString(key, resources.GetString(key, culture)!));

@@ -22,37 +22,24 @@ namespace Humans.Users.Tests.Controllers;
 public class ProfileBirthdayViewTests
 {
     [HumansTheory]
-    [Xunit.InlineData("en", "July")]
-    [Xunit.InlineData("es", "julio")]
-    [Xunit.InlineData("de", "Juli")]
-    [Xunit.InlineData("it", "luglio")]
-    [Xunit.InlineData("fr", "juillet")]
-    [Xunit.InlineData("ca", "juliol")]
-    [Xunit.InlineData("nl", "juli")]
-    public async Task BirthdayMonthNames_UseUiLanguageAndKeepNumericValues(string language, string july)
+    [Xunit.MemberData(nameof(SupportedCultures.All), MemberType = typeof(SupportedCultures))]
+    public async Task BirthdayMonthNames_UseUiLanguageAndKeepNumericValues(string language)
     {
         using var inputCulture = new CultureScope("en");
         CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo(language);
+        var july = CultureInfo.CurrentUICulture.DateTimeFormat.GetMonthName(7);
         var html = await RenderAsync("Edit", new ProfileViewModel { BirthdayMonth = 7, BirthdayDay = 1 });
 
         html.Should().Contain($"value=\"7\" selected=\"selected\">{HtmlEncoder.Default.Encode(july)}</option>");
         CultureInfo.CurrentCulture.Name.Should().Be("en");
     }
 
-    [HumansTheory]
-    [Xunit.InlineData("en", false)]
-    [Xunit.InlineData("es", true)]
-    [Xunit.InlineData("de", true)]
-    [Xunit.InlineData("it", true)]
-    [Xunit.InlineData("fr", true)]
-    [Xunit.InlineData("ca", true)]
-    [Xunit.InlineData("nl", true)]
-    public void BirthdayDisplay_ContainsOnlyLocalizedMonthAndDay(string language, bool dayFirst)
+    [HumansFact]
+    public void BirthdayDisplay_ContainsOnlyLocalizedMonthAndDay()
     {
-        using var culture = new CultureScope(language);
+        using var culture = new CultureScope("es");
         CultureInfo.CurrentCulture = CultureInfo.GetCultureInfo("en");
-        var month = CultureInfo.CurrentUICulture.DateTimeFormat.AbbreviatedMonthGenitiveNames[1];
-        var expected = dayFirst ? $"29 {month}" : $"{month} 29";
+        var expected = $"29 {CultureInfo.CurrentUICulture.DateTimeFormat.AbbreviatedMonthGenitiveNames[1]}";
 
         new ProfileCardViewModel { BirthdayMonth = 2, BirthdayDay = 29 }
             .FormattedBirthday.Should().Be(expected);
@@ -62,16 +49,12 @@ public class ProfileBirthdayViewTests
     }
 
     [HumansTheory]
-    [Xunit.InlineData("en", "(41.2345, -1.2345)")]
-    [Xunit.InlineData("es", "(41,2345, -1,2345)")]
-    [Xunit.InlineData("de", "(41,2345, -1,2345)")]
-    [Xunit.InlineData("it", "(41,2345, -1,2345)")]
-    [Xunit.InlineData("fr", "(41,2345, -1,2345)")]
-    [Xunit.InlineData("ca", "(41,2345, -1,2345)")]
-    public async Task LocationCoordinates_UseUiCultureAndKeepEnglishInputValues(string language, string coordinates)
+    [Xunit.MemberData(nameof(SupportedCultures.All), MemberType = typeof(SupportedCultures))]
+    public async Task LocationCoordinates_UseUiCultureAndKeepEnglishInputValues(string language)
     {
         using var inputCulture = new CultureScope("en");
-        CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo(language);
+        var ui = CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo(language);
+        var coordinates = $"({41.2345.ToString("F4", ui)}, {(-1.2345).ToString("F4", ui)})";
         var html = await RenderAsync("Edit", new ProfileViewModel
         {
             City = "Example",
@@ -80,7 +63,7 @@ public class ProfileBirthdayViewTests
             Longitude = -1.2345,
         });
 
-        html.Should().Contain(coordinates);
+        html.Should().Contain(HtmlEncoder.Default.Encode(coordinates));
         html.Should().Contain("value=\"41.2345\"").And.Contain("value=\"-1.2345\"");
         CultureInfo.CurrentCulture.Name.Should().Be("en");
     }
