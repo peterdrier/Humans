@@ -1154,7 +1154,7 @@ internal sealed class TeamService(
         if (team is null)
             return new(Refusal: $"Team {teamId} not found");
 
-        if (SlotCountAndPrioritiesRefusal(slotCount, priorities) is { } prioritiesRefusal)
+        if (RoleCapacityRefusal(slotCount, priorities, estimatedHours) is { } prioritiesRefusal)
             return new(Refusal: prioritiesRefusal);
         if (RoleNameRefusal(name) is { } nameRefusal)
             return new(Refusal: nameRefusal);
@@ -1213,7 +1213,7 @@ internal sealed class TeamService(
         if (!canManage)
             return new(Refusal: "User does not have permission to manage role definitions for this team");
 
-        if (SlotCountAndPrioritiesRefusal(slotCount, priorities) is { } prioritiesRefusal)
+        if (RoleCapacityRefusal(slotCount, priorities, estimatedHours) is { } prioritiesRefusal)
             return new(Refusal: prioritiesRefusal);
 
         if (!canToggleManagement)
@@ -1810,7 +1810,7 @@ internal sealed class TeamService(
         return null;
     }
 
-    private static string? SlotCountAndPrioritiesRefusal(int slotCount, List<SlotPriority> priorities)
+    private static string? RoleCapacityRefusal(int slotCount, List<SlotPriority> priorities, int? estimatedHours)
     {
         if (slotCount < 1)
             return "Slot count must be at least 1";
@@ -1820,6 +1820,8 @@ internal sealed class TeamService(
 
         if (priorities.Any(priority => !Enum.IsDefined(priority)))
             return "Each slot priority must be a defined priority value";
+        if (estimatedHours is < 0)
+            return "Estimated hours cannot be negative";
         return null;
     }
 

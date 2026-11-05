@@ -71,7 +71,7 @@ Cross-domain nav `TeamJoinRequestStateHistory.ChangedByUser → ChangedByUserId`
 
 **Table:** `team_role_definitions`
 
-Named role slots on a team (name, description, slot count, priorities, sort order, `IsManagement` flag, `IsPublic` flag, `Period`, nullable `EstimatedHours`). `EstimatedHours` is the estimated workload in whole hours/year that holding the role represents — informational only (gates nothing); surfaced on `TeamRoleDefinitionSnapshot`/`TeamInfo` so workload aggregations can quantify role hours alongside shift hours. Aggregate-local: `TeamRoleDefinition.Team`. Per-team unique index `IX_team_role_definitions_team_name_unique` on `(TeamId, Name)`.
+Named role slots on a team (name, description, slot count, priorities, sort order, `IsManagement` flag, `IsPublic` flag, `Period`, nullable `EstimatedHours`). `EstimatedHours` is the estimated workload in nonnegative whole hours/year that holding the role represents — informational only (gates nothing); create and update refuse negative values before writing or auditing, while null and zero remain valid; surfaced on `TeamRoleDefinitionSnapshot`/`TeamInfo` so workload aggregations can quantify role hours alongside shift hours. Aggregate-local: `TeamRoleDefinition.Team`. Per-team unique index `IX_team_role_definitions_team_name_unique` on `(TeamId, Name)`.
 
 ### TeamRoleAssignment
 
