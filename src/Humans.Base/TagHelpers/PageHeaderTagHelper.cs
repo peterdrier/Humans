@@ -64,7 +64,7 @@ public class PageHeaderTagHelper : TagHelper
         {
             titleInner.Append("<div class=\"d-flex align-items-center gap-2\">");
         }
-        titleInner.Append("<h1 class=\"mb-0\">").Append(enc.Encode(Title)).Append("</h1>");
+        titleInner.Append("<h1 class=\"mb-0\">").Append(enc.Encode(Title ?? string.Empty)).Append("</h1>");
         if (hasBadge)
         {
             var badgeClass = string.IsNullOrWhiteSpace(BadgeClass) ? "bg-secondary" : BadgeClass.Trim();
@@ -83,9 +83,9 @@ public class PageHeaderTagHelper : TagHelper
         var html = new StringBuilder();
         if (hasActions)
         {
-            html.Append("<div class=\"d-flex justify-content-between align-items-center gap-3 mb-4\">")
+            html.Append("<div class=\"d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4\">")
                 .Append("<div>").Append(titleInner).Append("</div>")
-                .Append("<div class=\"d-flex gap-2 flex-shrink-0\">").Append(actions).Append("</div>")
+                .Append("<div class=\"d-flex flex-wrap gap-2\">").Append(actions).Append("</div>")
                 .Append("</div>");
         }
         else
