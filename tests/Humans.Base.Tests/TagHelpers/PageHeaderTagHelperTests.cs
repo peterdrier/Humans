@@ -35,6 +35,14 @@ public class PageHeaderTagHelperTests
     }
 
     [HumansFact]
+    public async Task NullTitle_RendersEmptyHeadingInsteadOfThrowing()
+    {
+        var html = await RenderAsync(new PageHeaderTagHelper { Title = null! });
+
+        html.Should().Be("<div class=\"mb-4\"><h1 class=\"mb-0\"></h1></div>");
+    }
+
+    [HumansFact]
     public async Task Plain_RendersTitleOnlyInBottomMarginBand()
     {
         var html = await RenderAsync(new PageHeaderTagHelper { Title = "Finance" });

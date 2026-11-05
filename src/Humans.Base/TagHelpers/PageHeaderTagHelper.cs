@@ -64,7 +64,7 @@ public class PageHeaderTagHelper : TagHelper
         {
             titleInner.Append("<div class=\"d-flex align-items-center gap-2\">");
         }
-        titleInner.Append("<h1 class=\"mb-0\">").Append(enc.Encode(Title)).Append("</h1>");
+        titleInner.Append("<h1 class=\"mb-0\">").Append(enc.Encode(Title ?? string.Empty)).Append("</h1>");
         if (hasBadge)
         {
             var badgeClass = string.IsNullOrWhiteSpace(BadgeClass) ? "bg-secondary" : BadgeClass.Trim();
