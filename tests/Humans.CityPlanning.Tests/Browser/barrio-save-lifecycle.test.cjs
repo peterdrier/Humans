@@ -26,7 +26,7 @@ function editor() {
             lineString: () => ({}), length: () => 1, midpoint: () => ({ properties: {} }), point: () => ({}) },
         isOutsideZone: () => false, overlapsOtherCamps: () => false,
         getSpaceRequirementSqm: () => null, getCampSoundZone: () => -1, getSoundZoneOutOfRange: () => false,
-        clearDrawLabel() {}, alert: message => alerts.push(message), console: { error() {} },
+        clearDrawLabel() {}, showToast: message => alerts.push(message), console: { error() {} },
         exitEditMode() { state.exits++; state.features = []; state.activeCampSeasonId = null; },
         fetch: (url, options) => new Promise((resolve, reject) => requests.push({ url, options, resolve, reject })),
     };

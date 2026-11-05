@@ -20,7 +20,7 @@ function editor() {
         document: { getElementById: id => id === 'history-panel' ? panel : id === 'history-list' ? list :
             { disabled: false, classList: { add() {}, remove() {}, toggle() {}, contains: () => false } }, querySelector: () => ({ value: 'csrf' }) },
         bootstrap: { Offcanvas: { getInstance: () => ({ hide: () => hides++ }) } },
-        confirm: () => true, alert: message => alerts.push(message), console: { error() {} },
+        confirm: () => true, showToast: message => alerts.push(message), console: { error() {} },
         fetch: (url, options) => new Promise((resolve, reject) => requests.push({ url, options, resolve, reject })),
     };
     vm.createContext(context); vm.runInContext(source, context);
