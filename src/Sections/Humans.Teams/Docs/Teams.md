@@ -102,7 +102,7 @@ Stored as string via `HasConversion<string>()`.
 
 **Table:** `team_early_entry_grants`
 
-One early-entry (EE) grant: a human may enter on a `LocalDate` for a named project on a team that has the `Team.EarlyEntryEnabled` flag set. Aggregate-local nav `TeamEarlyEntryGrant.Team` (loaded for the cross-section projection). Teams implements `IEarlyEntryProvider`, projecting each grant to the EE roster as `"{TeamName}: {ProjectName}"`. EE is a generic per-team capability (multiple teams may enable it). Managed per-team at `Teams/{slug}/EarlyEntry` by the team's coordinators (de facto) or the cross-team `EarlyEntryAdmin` role (and TeamsAdmin/Admin), gated by `TeamOperationRequirement.ManageEarlyEntry`. GDPR export + right-to-erasure + user-merge fold are covered.
+One early-entry (EE) grant: a human may enter on a `LocalDate` for a named project on a team that has the `Team.EarlyEntryEnabled` flag set. Creation resolves the selected person through Users before writing: merge aliases use the surviving ID in the grant and audit, while missing or tombstoned people are refused. Live non-Active accounts remain eligible. Aggregate-local nav `TeamEarlyEntryGrant.Team` (loaded for the cross-section projection). Teams implements `IEarlyEntryProvider`, projecting each grant to the EE roster as `"{TeamName}: {ProjectName}"`. EE is a generic per-team capability (multiple teams may enable it). Managed per-team at `Teams/{slug}/EarlyEntry` by the team's coordinators (de facto) or the cross-team `EarlyEntryAdmin` role (and TeamsAdmin/Admin), gated by `TeamOperationRequirement.ManageEarlyEntry`. GDPR export + right-to-erasure + user-merge fold are covered.
 
 ### SystemTeamType
 

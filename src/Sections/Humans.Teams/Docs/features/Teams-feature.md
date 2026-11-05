@@ -162,7 +162,7 @@ Nobodies Collective operates through self-organizing working groups (teams). Tea
 - A team must have Early Entry enabled (a flag on the team's admin settings, set by TeamsAdmin/Admin) before it can grant EE
 - The Early Entry page at `/Teams/{slug}/EarlyEntry` is only reachable when the team has Early Entry enabled
 - Coordinators (and parent-department coordinators) manage EE for their own team; the cross-team Early Entry Admin role can manage EE on any enabled team
-- Grant an entry by choosing a person (search by name or ticket barcode), an entry date, and a project name
+- Grant an entry by choosing a person (search by name or ticket barcode), an entry date, and a project name; the service resolves merge aliases to the survivor and refuses unavailable people before any write or audit
 - Edit or remove existing grants; removing a grant that is already gone is a no-op
 - Grants are listed ordered by project name, then entry date
 - Turning Early Entry off on a team keeps existing grants (they just stop counting toward early access)
