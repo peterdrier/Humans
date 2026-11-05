@@ -253,6 +253,8 @@ Google integration management is consolidated in `GoogleController` (`[Route("Go
 
 ## Architecture
 
+The internal `DrivePermissionPlanning` owns the pure expected-versus-actual Drive permission plan, including Gmail alias grouping, inherited access floors and direct-grant classification. `GoogleDriveAccessSyncService` retains hydration, API mutations, retry/error policy, sync logs and removal notices. Planning still selects the highest claimed access level with the same user-ID tie-break; no permission decisions, DI registrations or public contracts change.
+
 **Owning services:** `GoogleWorkspaceSyncService` (implements `IGoogleSyncManagement`), `GoogleGroupSyncService` (implements `IGoogleGroupSync`), `GoogleDriveAccessSyncService` (implements `IGoogleDriveSync`), `GoogleAdminService`, `GoogleWorkspaceUserService`, `SyncSettingsService`, `EmailProvisioningService`, `GoogleTranslationService` (implements `IGoogleTranslationService`)
 **Owned tables:** `sync_service_settings`, `google_sync_outbox`, `google_sync_log`, `google_resources`, `google_workspace_identities`
 **Status:** (A) Migrated.
