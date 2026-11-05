@@ -63,7 +63,7 @@ verbatim; the nav entry is the section's own "Early Entry" group. The route is n
 - The section owns no tables and injects no repository; the orchestrator's only dependency is
   the provider fan-out (`EarlyEntryArchitectureTests.OrchestratorInjectsOnlyTheProviderFanout`).
 - The fan-out is sequential — a simplicity choice, not a thread-safety requirement
-  (design-rules §8b); each provider reads through its own section.
+  (design-rules.md, *Crosscuts, orchestrators and fan-out*); each provider reads through its own section.
 - **Nothing outlives the request.** The scoped service fans out over the providers once per
   request scope, so a grant written in any contributing section shows
   on the next request and no section has to tell this one about its writes
@@ -117,7 +117,7 @@ Inbound, all through `Contracts/`:
 ### Cross-section read interface
 
 The whole outward surface is read-only, so there is no read/write split to make. The
-contracts live in `Contracts/`, the house shape (design-rules §1).
+contracts live in `Contracts/`, the house shape (design-rules.md, *Layers and projects*).
 
 | Read interface | Methods | Notes |
 |---|---:|---|

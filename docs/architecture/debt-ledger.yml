@@ -103,7 +103,7 @@ themes:
       and IMagicLinkService.VerifyLoginTokenAsync (returns `bool` now). The
       marker cannot return (Base -> Users.Contracts cycle), so that interface
       stays review-guarded.
-      Convert to DTO/Info returns (read-model pattern, design-rules §15).
+      Convert to DTO/Info returns (read-model pattern, design-rules.md, *Section caching pattern*).
       Remove each fixed locator line from the baseline file — never add lines.
   - id: baseline-display-sort
     title: Display sorting below the presentation layer

@@ -305,7 +305,7 @@ public class AuditLogServiceTests : IDisposable
 
         capturing.Entries.Should().Contain(
             e => e.Level == LogLevel.Error,
-            because: "a repo save failure must be logged at Error level per design-rules §7a");
+            because: "a repo save failure must be logged at Error level per design-rules.md, *Decorators versus in-service crosscuts*");
     }
 
     [HumansFact]

@@ -69,7 +69,7 @@ Aggregate-local nav `DocumentVersion.LegalDocument` kept. Aggregate-local nav `D
 
 ### ConsentRecord
 
-Append-only per design-rules §12. **DB triggers** (`prevent_consent_record_update` / `prevent_consent_record_delete`, both calling `prevent_consent_record_modification()`) raise an exception on any UPDATE or DELETE against `consent_records`; only INSERT is allowed, to maintain GDPR audit-trail integrity. `IConsentRepository` exposes only `Add`/`Get` methods to match.
+Append-only per design-rules.md, *Append-only entities*. **DB triggers** (`prevent_consent_record_update` / `prevent_consent_record_delete`, both calling `prevent_consent_record_modification()`) raise an exception on any UPDATE or DELETE against `consent_records`; only INSERT is allowed, to maintain GDPR audit-trail integrity. `IConsentRepository` exposes only `Add`/`Get` methods to match.
 
 **Table:** `consent_records`
 
@@ -212,7 +212,7 @@ Document archival uses the shared `data-confirm` handler: each click prompts onc
 - Consent dashboard and review reads carry request cancellation through viewer resolution and dashboard/document reads. Submit and its invalid-form redisplay retain their existing mutation boundaries.
 - Legal-document admin list, create and edit GETs retain request cancellation through document reads and the active-team picker. POST redisplay reads keep their mutation boundary.
 
-- Consent records are immutable. Database triggers prevent UPDATE and DELETE operations on `consent_records`. Only INSERT is allowed to maintain GDPR audit trail integrity (§12).
+- Consent records are immutable. Database triggers prevent UPDATE and DELETE operations on `consent_records`. Only INSERT is allowed to maintain GDPR audit trail integrity (`design-rules.md`, *Append-only entities*).
 - Required-version snapshots for all documents and for a single team share the same latest-effective-version selection in both the inner service and its cache decorator; documents without an effective version are omitted. The cache evaluates effective dates at read time, so a future version becomes current without a cache reload.
 - Legal documents can be global (required of all humans) or team-scoped (required when joining a specific team).
 - Sync emails consolidate only outstanding required documents belonging to each recipient’s teams. Optional updates and required updates already signed by that recipient do not trigger a consent email. Emails use the recipient’s supported saved language, with English fallback for missing or unsupported preferences.
@@ -281,7 +281,7 @@ GitHub document discovery, metadata/raw content, commit-summary and prefix-conte
 - **Governance:** `IMembershipCalculator.GetRequiredTeamIdsForUserAsync` / `HasAllRequiredConsentsAsync` — `ConsentService` resolves which teams' documents apply to a given user and whether all required consents are complete. The review queue reads `IMembershipCalculator.GetMembershipSnapshotAsync` (signed / required counts) and `IGovernanceService` (membership tiers, pending tier applications).
 - **Onboarding:** the review queue's Reject calls `IOnboardingIntake.RejectSignupAsync`, which records the rejection here and carries out the state change, team de-provisioning and notice.
 - **Gdpr:** the My Data page posts to Gdpr's `MemberDataController` (export, request deletion) and `UserController` (cancel deletion); Consent references Gdpr's project only for those routes and its existing contributor types. Pending-deletion dates come from `UserInfo`.
-- **Users/Identity:** `IUserService.GetUserInfoAsync` / `GetUserInfosAsync`, the returned `UserInfo.AllUserIds` chain-follows merge tombstones on every per-user consent read so consents signed under a source id surface for the fold target, and the read resolves a tombstone id forward to its survivor. Consent records are immutable per §12 and stay at source. When `LegalDocumentSyncService` publishes a new / re-consent-required version, the in-app notices go to the document's team members (`ITeamService.GetTeamAsync`), resolved through `IUserService.GetUserInfosAsync` and filtered to `IsActive`, the same audience as the email pass (`LegalDocumentSyncRunner`); notices are grouped by supported recipient language in all supported cultures (English fallback), with delivery failures isolated per group.
+- **Users/Identity:** `IUserService.GetUserInfoAsync` / `GetUserInfosAsync`, the returned `UserInfo.AllUserIds` chain-follows merge tombstones on every per-user consent read so consents signed under a source id surface for the fold target, and the read resolves a tombstone id forward to its survivor. Consent records are immutable per *Append-only entities* and stay at source. When `LegalDocumentSyncService` publishes a new / re-consent-required version, the in-app notices go to the document's team members (`ITeamService.GetTeamAsync`), resolved through `IUserService.GetUserInfosAsync` and filtered to `IsActive`, the same audience as the email pass (`LegalDocumentSyncRunner`); notices are grouped by supported recipient language in all supported cultures (English fallback), with delivery failures isolated per group.
 
 `IGitHubLegalDocumentConnector` is owned by this section (interface and implementation both `internal` in `Humans.Consent.Services`); not a cross-section dependency.
 
@@ -310,7 +310,7 @@ A delayed per-key or bulk consent load cannot republish its old result after an 
   - `DocumentVersion.ConsentRecords` — declared and configured (`DocumentVersionConfiguration`); not navigated by any current service path.
 - **Cross-section calls:** `ITeamService`, `INotificationEmitter`, `IHumanLifecycleService`, `IMembershipCalculator`, `IUserService`.
 - **User parts.** `ConsentReviewCardViewComponent` on `UserPartSlots.AdminDetail` (English, admin view mode only: the consent-check badge and, for a Rejected account, the reason, time and reviewer) and `RejectionReasonViewComponent` on `UserPartSlots.AccountStatus` (Gdpr's status wall, Self view mode, `Consent_AccountStatus_ReasonLabel` in all supported cultures).
-- **Architecture tests:** `tests/Humans.Consent.Tests/Architecture/LegalArchitectureTests.cs` (Octokit containment — the sync service must not reference Octokit), `tests/Humans.Consent.Tests/Architecture/ConsentArchitectureTests.cs` (ConsentService, IConsentRepository append-only shape). Page rendering — the §15 step 12 check — is `tests/Humans.Integration.Tests/Controllers/ConsentPageRenderTests.cs`.
+- **Architecture tests:** `tests/Humans.Consent.Tests/Architecture/LegalArchitectureTests.cs` (Octokit containment — the sync service must not reference Octokit), `tests/Humans.Consent.Tests/Architecture/ConsentArchitectureTests.cs` (ConsentService, IConsentRepository append-only shape). Page rendering — the G5 template step 12 check — is `tests/Humans.Integration.Tests/Controllers/ConsentPageRenderTests.cs`.
 
 ### Touch-and-clean guidance
 

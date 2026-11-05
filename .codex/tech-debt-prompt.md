@@ -31,7 +31,9 @@ file's *Current state* instead of restarting discovery.
 - The section model — what a section *should* look like:
   `docs/sections/SECTION-TEMPLATE.md`, `docs/architecture/design-rules.md`, each
   section's `Docs/<Section>.md` + `Docs/data-access.md`. Divergence from the model is
-  the debt.
+  the debt. `design-rules.md` holds only section-independent rules: a behaviour note
+  (logging levels, UI fallbacks, one section's mechanics) goes in the owning section's
+  `Docs/`, `src/Humans.Base/Docs/Base.md` or `src/Humans.Web/Docs/Shell.md`, never there.
 - Surface / coupling baseline: `dotnet build Humans.slnx -v quiet -clp:ErrorsOnly`, then
   `reforge surface-score --all` (built solution only). Reduce it through
   architecturally-real deletions; the score is a detector, never the objective.

@@ -5,7 +5,7 @@ using NodaTime;
 
 namespace Humans.Application.Services.Users;
 
-// UserManager allowed per design-rules §2a: AspNetUserLogins is the authoritative
+// UserManager allowed per design-rules.md, *Service ownership*: AspNetUserLogins is the authoritative
 // (Provider, ProviderKey) → UserId store. HUM0005 pins ReconcileOAuthIdentityAsync to this class
 // as its sole caller, so keep this service to the OAuth callback alone.
 internal sealed class ExternalLoginService(

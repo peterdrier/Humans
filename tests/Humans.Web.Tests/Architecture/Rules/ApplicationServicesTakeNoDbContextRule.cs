@@ -4,7 +4,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Humans.Web.Tests.Architecture.Rules;
 
-/// <summary>Services reach the database only through repositories (design-rules §3).</summary>
+/// <summary>Services reach the database only through repositories (design-rules.md, *Repository layer*).</summary>
 public class ApplicationServicesTakeNoDbContextRule
 {
     [HumansFact]
@@ -30,7 +30,7 @@ public class ApplicationServicesTakeNoDbContextRule
         violations.Should().BeEmpty(
             because: "application services must access the database through IRepository, " +
                      "never by injecting UsersDbContext or IDbContextFactory directly " +
-                     "(design-rules §3; §15 Option A/B for caching pattern)");
+                     "(design-rules.md, *Repository layer* and *Section caching pattern*)");
     }
 
     private static bool IsDbContextFactory(Type t)

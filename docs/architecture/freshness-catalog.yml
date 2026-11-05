@@ -270,7 +270,7 @@ mechanical:
       Note: with a small user base on a single server, this map is
       diagnostic — call out cross-section table reads (a service reading a
       table owned by another section's repository) as a design rule
-      violation per docs/architecture/design-rules.md §"Services own their data".
+      violation per docs/architecture/design-rules.md, *Service ownership*.
 
   # data-model-index retired 2026-08-18 (Peter): docs/architecture/data-model.md
   # deleted — each section's Docs/ owns its data model; the DbContext→tables
@@ -338,6 +338,8 @@ editorial_trees:
   # Sections in their own project carry their invariants + feature docs in-project
   # rather than in docs/sections/.
   - src/Sections/
+  - src/Humans.Base/Docs/
+  - src/Humans.Web/Docs/
   - docs/architecture/coding-rules.md
   - docs/architecture/design-rules.md
   - docs/architecture/roslyn-analysis.md

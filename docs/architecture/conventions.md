@@ -61,7 +61,7 @@ A bare `Guid` cross-section FK column gets no index for free. EF auto-created `I
 
 ## Caching
 
-See [`design-rules.md`](design-rules.md) §15 for the structured caching pattern (caching decorator owning a `TrackedCache` / `ConcurrentDictionary`; §4–§5 there describe the retired store + decorator predecessor).
+See [`design-rules.md`, *Section caching pattern*](design-rules.md#section-caching-pattern) for the structured caching pattern (caching decorator owning a `TrackedCache` / `ConcurrentDictionary`).
 
 Two controller-level rules still apply at this layer:
 
@@ -72,12 +72,12 @@ Do not add speculative caching because something "might be slow." At this projec
 
 ## Authorization
 
-See [`design-rules.md`](design-rules.md) §11 for the resource-based authorization pattern and handler inventory.
+See [`design-rules.md`, *Authorization*](design-rules.md#authorization) for the resource-based authorization pattern; each section lists its handlers in its `Docs/<Section>.md`.
 
 Two general rules apply at this layer:
 
 1. Web boundary protection for routes/pages/API endpoints via `[Authorize]` attributes or resource-based authorization handlers.
-2. Service/domain enforcement when violating the rule would create invalid state or bypass workflow policy — but service methods are otherwise auth-free; they trust the caller. The only auth exception is the §11 full-Admin destructive-delete guard.
+2. Service/domain enforcement when violating the rule would create invalid state or bypass workflow policy — but service methods are otherwise auth-free; they trust the caller. The only auth exception is the full-Admin destructive-delete guard (`design-rules.md`, *Authorization*).
 
 Do not rely on hidden buttons or view-only checks for anything important.
 
@@ -173,7 +173,7 @@ Keep as a partial when the rendering is genuinely pure (badges, alerts, validati
 - Class: `{Name}ViewComponent.cs` under `ViewComponents/` — of `Humans.Base` if the component is section-agnostic, of the owning section project if it is not, `Humans.Web` otherwise. Section-project view components are discovered by `SectionViewComponentFeatureProvider`.
 - View: `Views/Shared/Components/{Name}/Default.cshtml`
 - ViewModel: `{Name}ViewModel.cs` under `Models/`
-- Invocation: `<vc:{kebab-name} param="…">` tag helper, or `Component.InvokeAsync<T>(...)`/`InvokeAsync(typeof(T), args)` for the internal/cross-section cases (HUM0036 bans invoking by string name, design-rules §8b)
+- Invocation: `<vc:{kebab-name} param="…">` tag helper, or `Component.InvokeAsync<T>(...)`/`InvokeAsync(typeof(T), args)` for the internal/cross-section cases (HUM0036 bans invoking by string name, design-rules.md, *Crosscuts, orchestrators and fan-out*)
 - Responsive table+card pairs render both layouts and toggle via `d-none d-md-block` / `d-md-none` rather than branching per device.
 - authorization tag helpers for role-based visibility
 
@@ -304,7 +304,7 @@ Stop and reconsider when a change introduces any of these:
 - a `.Include()` that navigates across a domain boundary (Profile → User, Team → Profile, Camp → Profile, etc.)
 - a repository method that takes or returns another domain's type
 - a repository method that returns `IQueryable<T>`
-- inline `IMemoryCache.GetOrCreateAsync` caching canonical domain data inside a service method instead of the §15 caching decorator (short-TTL request-acceleration counts are the sanctioned exception)
+- inline `IMemoryCache.GetOrCreateAsync` caching canonical domain data inside a service method instead of the caching decorator (`design-rules.md`, *Section caching pattern*) (short-TTL request-acceleration counts are the sanctioned exception)
 - a cache is added without a clear invalidation owner
 - a cross-domain nav property being added to an entity (e.g., `TeamMember.User`)
 
