@@ -107,8 +107,8 @@ Picture saves use `IProfileEditorService.SaveProfileAsync`: `UserService` writes
 | Route | Method | Description |
 |-------|--------|-------------|
 | `GET /Profile/Picture?id={id}` | GET | Serve profile picture (anonymous, cached 1hr) |
-| `GET /Profile/Birthdays` | GET | Birthday calendar (current month) |
-| `GET /Profile/Birthdays?month=N` | GET | Birthday calendar for specific month |
+| `GET /Users/Birthdays` | GET | Birthday calendar (current month) |
+| `GET /Users/Birthdays?month=N` | GET | Birthday calendar for specific month |
 
 ## Picture Upload Flow
 

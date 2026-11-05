@@ -91,7 +91,7 @@ The shapes imply exactly today's layout, and nothing more:
 - **`_ViewImports` carries one `@addTagHelper` per publisher.** Dropping one ships that
   bucket as inert literal markup on a green build; the integration render tests are the guard.
 - **Two localizers in the view**: the section's own `SearchResource`, plus `SharedResource` for
-  `Search_MinChars`, which `/Profile/Search` also renders — carving it would split that
+  `Search_MinChars`, which `/Users/Search` also renders — carving it would split that
   page's message set.
 - **`SearchResource` sits at the project root in `namespace Humans.Search`** — the manifest
   name derives from the marker's namespace; moving it silently breaks every lookup.

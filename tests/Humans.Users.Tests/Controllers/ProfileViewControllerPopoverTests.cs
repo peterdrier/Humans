@@ -14,8 +14,6 @@ using Humans.Teams.Contracts;
 using Humans.Base.Enums;
 using Humans.Base.Authorization;
 using Humans.Base;
-using Humans.Base.Configuration;
-using Microsoft.Extensions.Configuration;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
@@ -75,10 +73,7 @@ public class ProfileViewControllerPopoverTests
             _teamService,
             _campService,
             Substitute.For<IGovernanceService>(),
-            _authorizationService,
-            new ConfigurationBuilder().Build(),
-            new ConfigurationRegistry(),
-            NodaTime.SystemClock.Instance);
+            _authorizationService);
 
         var identity = new ClaimsIdentity([
             new Claim(ClaimTypes.NameIdentifier, _viewerId.ToString()),
@@ -317,29 +312,6 @@ public class ProfileViewControllerPopoverTests
         var result = await _controller.ViewProfile(id, TestContext.Current.CancellationToken);
 
         result.Should().BeOfType<NotFoundResult>();
-    }
-
-    [HumansFact]
-    public async Task Map_ListsEveryoneWithALocationExceptSuspended()
-    {
-        UserInfo Located(string name, UserState state)
-        {
-            var id = Guid.NewGuid();
-            var user = new User { Id = id, BurnerName = name, DisplayName = name, State = state };
-            var profile = new Profile { Id = Guid.NewGuid(), UserId = id, Latitude = 40.4, Longitude = -3.7, City = "Madrid" };
-            return BuildUserInfo(user, profile, userEmails: null);
-        }
-        var active = Located("Unreviewed", UserState.Active);
-        var suspended = Located("Suspended", UserState.Suspended);
-        var noLocation = BuildActiveUserInfo(Guid.NewGuid(), "Nowhere", "nowhere@example.com");
-        _userService.GetAllUserInfosAsync(Arg.Any<CancellationToken>())
-            .Returns(new[] { active, suspended, noLocation });
-
-        var result = await _controller.Map(TestContext.Current.CancellationToken);
-
-        result.Should().BeOfType<ViewResult>().Subject
-            .Model.Should().BeOfType<MapViewModel>().Subject
-            .Markers.Should().ContainSingle().Which.UserId.Should().Be(active.Id);
     }
 
     private static UserInfo BuildActiveUserInfo(Guid id, string displayName, string email)

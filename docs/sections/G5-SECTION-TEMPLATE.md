@@ -477,9 +477,9 @@ Git Bash.)
        Consent's asks whether carving would split a *message set*. Neither answers `Search_*` on
        its own: 17 keys, one prefix, three renderers. Twelve (`Search_Filter*`,
        `Search_Global*`) are the section's page. `Search_Title`/`Search_Placeholder` belong to
-       Shell's `/Profile/Search`, and `Search_NoResults`/`Search_MatchedIn` to the shared
+       Shell's `/Users/Search`, and `Search_NoResults`/`Search_MatchedIn` to the shared
        `_HumanSearchResults` partial in `Humans.UI` — Feedback's carve-by-renderer, twice over.
-       And `Search_MinChars` is read by the section's page **and** by `/Profile/Search`, which
+       And `Search_MinChars` is read by the section's page **and** by `/Users/Search`, which
        is Consent's question with the answer "yes, it would split a set": it stayed, and the
        section binds `SharedLocalizer` for that one call site. The whole-prefix reflex would
        have moved five keys that render elsewhere, or left twelve behind; **group the prefix's

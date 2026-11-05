@@ -3,7 +3,7 @@
         <div class="row g-3">
             @await Html.PartialAsync("_DashboardActionCard", new DashboardActionCardViewModel
             {
-                Controller = "ProfileView",
+                Controller = "Users",
                 Action = "Birthdays",
                 Title = Localizer["Users_Birthdays_Title"].Value,
                 Description = Localizer["Users_Birthdays_CardDescription"].Value,
@@ -13,7 +13,7 @@
             })
             @await Html.PartialAsync("_DashboardActionCard", new DashboardActionCardViewModel
             {
-                Controller = "ProfileView",
+                Controller = "Users",
                 Action = "Map",
                 Title = Localizer["Users_Map_Title"].Value,
                 Description = Localizer["Users_Map_CardDescription"].Value,

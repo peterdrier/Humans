@@ -58,8 +58,8 @@ public class UsersPageRenderTests(HumansTestDatabase database) : IntegrationTest
         ("/Profile/Me/Medical", "Medical conditions"),                       // Users_Profile_DietaryMedical_MedicalConditions_Title
         ("/Email/CommunicationPreferences", "Communication Preferences"),    // Users_CommPrefs_Title (served by Email)
         ("/Email/Outbox", "My Emails"),                                      // Email_Outbox_MyTitle (served by Email)
-        ("/Profile/Birthdays", "Birthday Calendar"),                         // Users_Birthdays_Title
-        ("/Profile/Map", "Humans Map"),                                      // Users_Map_Title
+        ("/Users/Birthdays", "Birthday Calendar"),                           // Users_Birthdays_Title
+        ("/Users/Map", "Humans Map"),                                        // Users_Map_Title
     ];
 
     [HumansFact(Timeout = 180000)]
@@ -118,7 +118,7 @@ public class UsersPageRenderTests(HumansTestDatabase database) : IntegrationTest
         var ct = Xunit.TestContext.Current.CancellationToken;
         var userId = await Factory.SignInAsFullyOnboardedAsync(Client, DevPersona.Admin);
 
-        var publicSearch = await Client.GetAsync("/Profile/Search?q=Dev", ct);
+        var publicSearch = await Client.GetAsync("/Users/Search?q=Dev", ct);
         publicSearch.StatusCode.Should().Be(HttpStatusCode.OK);
         var publicHtml = await publicSearch.Content.ReadAsStringAsync(ct);
 
@@ -127,7 +127,7 @@ public class UsersPageRenderTests(HumansTestDatabase database) : IntegrationTest
         publicHtml.Should().Contain("Matched in",
             because: "Search_MatchedIn is written by the component's own markup and nothing else "
                    + "on this page emits it");
-        AssertRenderedCleanly(publicHtml, "GET /Profile/Search?q=Dev");
+        AssertRenderedCleanly(publicHtml, "GET /Users/Search?q=Dev");
 
         var adminList = await Client.GetAsync("/Users/Admin", ct);
         adminList.StatusCode.Should().Be(HttpStatusCode.OK);
