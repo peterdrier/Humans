@@ -701,6 +701,33 @@ public sealed class WorkgroupsControllerAuthorizationTests : WorkgroupsTestHarne
     }
 
     [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Details_MirrorUnavailable_StopsOnlyForTheOperatorAccountPicker(bool isBoard)
+    {
+        var workgroup = await SeedWorkgroupAsync();
+        var viewer = SeedUser("Viewer");
+        Holded.GetChartAsync(Arg.Any<CancellationToken>())
+            .Returns<IReadOnlyList<Humans.Holded.Contracts.HoldedChartAccountInfo>>(
+                _ => throw new InvalidOperationException("Mirror failed"));
+        var controller = BuildController(viewer, isBoard);
+
+        var response = await controller.Details(workgroup.Slug, Ct);
+
+        if (isBoard)
+        {
+            var failure = response.Should().BeOfType<ObjectResult>().Which;
+            failure.StatusCode.Should().Be(StatusCodes.Status503ServiceUnavailable);
+            failure.Value.Should().Be("Holded account list unavailable. Retry before selecting a budget account.");
+        }
+        else
+        {
+            response.Should().BeOfType<ViewResult>();
+            await Holded.DidNotReceive().GetChartAsync(Arg.Any<CancellationToken>());
+        }
+    }
+
+    [HumansTheory]
     [InlineData(nameof(MembershipTier.Volunteer), false)]
     [InlineData(nameof(MembershipTier.Colaborador), true)]
     [InlineData(nameof(MembershipTier.Asociado), true)]

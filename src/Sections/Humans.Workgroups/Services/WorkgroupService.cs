@@ -636,7 +636,7 @@ internal sealed partial class WorkgroupService(
         return new(account);
     }
 
-    public async Task<IReadOnlyList<HoldedChartAccountInfo>> ListExpenseAccountsAsync(CancellationToken ct = default)
+    public async Task<IReadOnlyList<HoldedChartAccountInfo>?> ListExpenseAccountsAsync(CancellationToken ct = default)
     {
         try
         {
@@ -646,8 +646,8 @@ internal sealed partial class WorkgroupService(
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            logger.LogError(ex, "Holded mirror unavailable; the link-existing picker is empty");
-            return [];
+            logger.LogError(ex, "Holded mirror unavailable; stopping the account picker");
+            return null;
         }
     }
 

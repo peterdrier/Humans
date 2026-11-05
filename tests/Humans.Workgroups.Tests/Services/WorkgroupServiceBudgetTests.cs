@@ -246,12 +246,12 @@ public sealed class WorkgroupServiceBudgetTests : WorkgroupsTestHarness
     }
 
     [HumansFact]
-    public async Task ListExpenseAccounts_MirrorFails_ReturnsEmpty()
+    public async Task ListExpenseAccounts_MirrorFails_ReturnsUnavailable()
     {
         Holded.GetChartAsync(Arg.Any<CancellationToken>())
             .Returns<IReadOnlyList<HoldedChartAccountInfo>>(_ => throw new InvalidOperationException("Mirror unavailable"));
 
-        (await NewService().ListExpenseAccountsAsync(Ct)).Should().BeEmpty();
+        (await NewService().ListExpenseAccountsAsync(Ct)).Should().BeNull();
     }
 
     [HumansFact]

@@ -112,7 +112,11 @@ internal sealed class WorkgroupsAdminController(
     // mints an orphan "Workgroups / {name}" account.
     private async Task<IActionResult> RegisterExistingViewAsync(RegisterExistingViewModel model, CancellationToken ct)
     {
-        model.ExpenseAccounts = await workgroups.ListExpenseAccountsAsync(ct);
+        var accounts = await workgroups.ListExpenseAccountsAsync(ct);
+        if (accounts is null)
+            return StatusCode(StatusCodes.Status503ServiceUnavailable,
+                "Holded account list unavailable. Retry before selecting a budget account.");
+        model.ExpenseAccounts = accounts;
         return View(nameof(RegisterExisting), model);
     }
 

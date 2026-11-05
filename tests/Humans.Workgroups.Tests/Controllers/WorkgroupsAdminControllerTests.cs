@@ -417,18 +417,36 @@ public sealed class WorkgroupsAdminControllerTests : WorkgroupsTestHarness
     }
 
     [HumansFact]
-    public async Task RegisterExisting_Get_OffersTheMirroredChartForLinking()
+    public async Task RegisterExisting_MirrorUnavailable_StopsWithExplicitReason()
+    {
+        Holded.GetChartAsync(Arg.Any<CancellationToken>())
+            .Returns<IReadOnlyList<HoldedChartAccountInfo>>(_ => throw new InvalidOperationException("Mirror failed"));
+        var controller = MakeAdminController(nameof(WorkgroupsAdminController.RegisterExisting));
+
+        var result = (await controller.RegisterExisting(Ct)).Should().BeOfType<ObjectResult>().Which;
+
+        result.StatusCode.Should().Be(StatusCodes.Status503ServiceUnavailable);
+        result.Value.Should().Be("Holded account list unavailable. Retry before selecting a budget account.");
+    }
+
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task RegisterExisting_Get_OffersTheMirroredChartForLinking(bool hasAccounts)
     {
         Holded.GetChartAsync(Arg.Any<CancellationToken>())
             .Returns(_ => Task.FromResult<IReadOnlyList<HoldedChartAccountInfo>>(
-                [new HoldedChartAccountInfo(62900007, "Sound (legacy)", null, null, false, 0m)]));
+                hasAccounts ? [new HoldedChartAccountInfo(62900007, "Sound (legacy)", null, null, false, 0m)] : []));
         var sut = MakeAdminController(nameof(WorkgroupsAdminController.RegisterExisting));
 
         var result = await sut.RegisterExisting(Ct);
 
-        result.Should().BeOfType<ViewResult>().Subject.Model.Should().BeOfType<RegisterExistingViewModel>()
-            .Subject.ExpenseAccounts.Should().ContainSingle().Which.Number.Should().Be(62900007);
-        ((RegisterExistingViewModel)((ViewResult)result).Model!).Budget.AccountMode.Should().Be("create");
+        var model = result.Should().BeOfType<ViewResult>().Which.Model.Should().BeOfType<RegisterExistingViewModel>().Which;
+        if (hasAccounts)
+            model.ExpenseAccounts.Should().ContainSingle().Which.Number.Should().Be(62900007);
+        else
+            model.ExpenseAccounts.Should().BeEmpty();
+        model.Budget.AccountMode.Should().Be("create");
     }
 
     [HumansFact]
