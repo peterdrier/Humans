@@ -32,7 +32,7 @@ internal sealed class EventService(
     IStringLocalizer<EventsResource> localizer)
     : IEventManagement, ICalendarFeedContributor
 {
-    private readonly EventPersonalSchedule personalSchedule = new(repo, settingsService, clock, logger, localizer);
+    private readonly EventPersonalData personalData = new(repo, settingsService, clock, logger, localizer, userService);
 
     public async Task<EventGuideSettingsView?> GetGuideSettingsAsync(CancellationToken ct = default)
     {
@@ -334,7 +334,7 @@ internal sealed class EventService(
     }
 
     private Task<Guid?> GetGuideEventIdAsync(CancellationToken ct) =>
-        personalSchedule.GetGuideEventIdAsync(ct);
+        personalData.GetGuideEventIdAsync(ct);
 
     private async Task EnsureValidRecurrenceDaysAsync(bool isRecurring, string? recurrenceDays, CancellationToken ct)
     {
@@ -424,22 +424,22 @@ internal sealed class EventService(
             "the caching decorator.");
 
     public Task<HashSet<Guid>> GetFavouriteEventIdsAsync(Guid userId, CancellationToken ct = default) =>
-        personalSchedule.GetFavouriteEventIdsAsync(userId, ct);
+        personalData.GetFavouriteEventIdsAsync(userId, ct);
 
     public Task<IReadOnlyList<EventFavouriteInfo>> GetFavouritesWithEventsAsync(Guid userId, CancellationToken ct = default) =>
-        personalSchedule.GetFavouritesWithEventsAsync(userId, ct);
+        personalData.GetFavouritesWithEventsAsync(userId, ct);
 
     public Task<bool> AddFavouriteAsync(Guid userId, Guid eventId, int? dayOffset, CancellationToken ct = default) =>
-        personalSchedule.AddFavouriteAsync(userId, eventId, dayOffset, ct);
+        personalData.AddFavouriteAsync(userId, eventId, dayOffset, ct);
 
     public Task<bool> RemoveFavouriteAsync(Guid userId, Guid eventId, int? dayOffset, CancellationToken ct = default) =>
-        personalSchedule.RemoveFavouriteAsync(userId, eventId, dayOffset, ct);
+        personalData.RemoveFavouriteAsync(userId, eventId, dayOffset, ct);
 
     public Task<List<string>> GetExcludedCategorySlugsAsync(Guid userId, CancellationToken ct = default) =>
-        personalSchedule.GetExcludedCategorySlugsAsync(userId, ct);
+        personalData.GetExcludedCategorySlugsAsync(userId, ct);
 
     public Task SavePreferenceAsync(Guid userId, List<string> slugs, CancellationToken ct = default) =>
-        personalSchedule.SavePreferenceAsync(userId, slugs, ct);
+        personalData.SavePreferenceAsync(userId, slugs, ct);
 
     public async Task<Dictionary<EventStatus, int>> GetEventStatusCountsAsync(CancellationToken ct = default)
         => await repo.GetModerationStatusCountsAsync(await GetGuideEventIdAsync(ct), ct);
@@ -614,73 +614,12 @@ internal sealed class EventService(
         Task.FromResult<IReadOnlyList<CalendarFeedItem>>([]);
 
     public Task<IReadOnlyList<CalendarFeedItem>> GetCalendarItemsForUserAsync(Guid userId, CancellationToken ct) =>
-        personalSchedule.GetCalendarItemsForUserAsync(userId, ct);
+        personalData.GetCalendarItemsForUserAsync(userId, ct);
 
-    public async Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct)
-    {
-        var info = await userService.GetUserInfoAsync(userId, ct);
-        var userIds = info?.AllUserIds ?? [userId];
-        var favourites = new List<EventFavourite>();
-        var preferences = new List<EventPreference>();
-        foreach (var id in userIds)
-        {
-            favourites.AddRange(await repo.GetFavouritesForContributorAsync(id, ct));
-            if (await repo.GetPreferenceAsync(id, ct) is { } preference)
-                preferences.Add(preference);
-        }
-        var submissions = (await repo.GetAllEventsForDashboardAsync(ct))
-            .Where(e => userIds.Contains(e.SubmitterUserId));
-        var requestedPreference = preferences.FirstOrDefault(p => p.UserId == userId);
+    public Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct) =>
+        personalData.ContributeForUserAsync(userId, ct);
 
-        var shaped = new
-        {
-            SubmittedEvents = submissions
-                .OrderBy(e => e.SubmittedAt)
-                .ThenBy(e => e.Id)
-                .Select(e => new
-                {
-                    e.Id,
-                    e.CampId,
-                    e.GuideSharedVenueId,
-                    e.CategoryId,
-                    e.Title,
-                    e.Description,
-                    e.LocationNote,
-                    e.Host,
-                    StartAt = e.StartAt.ToIso8601(),
-                    e.DurationMinutes,
-                    e.IsRecurring,
-                    e.RecurrenceDays,
-                    e.PriorityRank,
-                    Status = e.Status.ToString(),
-                    SubmittedAt = e.SubmittedAt.ToIso8601(),
-                    LastUpdatedAt = e.LastUpdatedAt.ToIso8601()
-                }).ToList(),
-            Favourites = favourites
-                .OrderBy(f => f.CreatedAt)
-                .Select(f => new
-                {
-                    f.GuideEventId,
-                    f.DayOffset,
-                    CreatedAt = f.CreatedAt.ToIso8601()
-                }).ToList(),
-            Preference = requestedPreference is null ? null : new
-            {
-                requestedPreference.ExcludedCategorySlugs,
-                UpdatedAt = requestedPreference.UpdatedAt.ToIso8601()
-            },
-            AdditionalPreferences = preferences.Where(p => p.UserId != userId).OrderBy(p => p.UpdatedAt).Select(p => new
-            {
-                p.UserId,
-                p.ExcludedCategorySlugs,
-                UpdatedAt = p.UpdatedAt.ToIso8601()
-            }).ToList()
-        };
-
-        return [new UserDataSlice(Events, shaped)];
-    }
-
-    internal const string Events = "Events";
+    internal const string Events = EventPersonalData.Events;
 
     // Static and internal: CachingEventService returns it from an uninitialized instance.
     internal static readonly IReadOnlyDictionary<string, string?> Erasure =
