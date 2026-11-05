@@ -32,10 +32,9 @@
     <span>@Localizer["Governance_Votes_ResultsHeading"]</span>
 }
 
-<div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
-    <h1 class="mb-0">@vote.Title</h1>
+<page-header title="@vote.Title">
     <span class="badge @EnumBadgeMap.For(vote.Status)">@Localizer["Governance_Votes_Status_" + vote.Status]</span>
-</div>
+</page-header>
 
 <p class="text-muted">@Localizer["Governance_Votes_Method_" + results.Result.Method]</p>
 
@@ -172,7 +171,7 @@
     <div class="card-body">
         @if (results.Peeks.Count == 0)
         {
-            <p class="text-muted mb-0">@Localizer["Governance_Votes_PeeksEmpty"]</p>
+            <empty-state class="mb-0">@Localizer["Governance_Votes_PeeksEmpty"]</empty-state>
         }
         else
         {

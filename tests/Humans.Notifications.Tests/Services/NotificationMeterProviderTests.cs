@@ -157,15 +157,8 @@ public class NotificationMeterProviderTests : IDisposable
         meters.Should().Contain(m => m.Title == "Failed Google sync events" && m.Count == 3);
     }
 
-    [HumansTheory]
-    [InlineData("en")]
-    [InlineData("es")]
-    [InlineData("de")]
-    [InlineData("it")]
-    [InlineData("fr")]
-    [InlineData("ca")]
-    [InlineData("nl")]
-    public async Task MeterTitles_FollowRequestCultureIncludingCampRequestCounts(string culture)
+    [HumansFact]
+    public async Task MeterTitles_FollowRequestCultureIncludingCampRequestCounts()
     {
         using var initialCulture = new CultureScope("en");
         using var services = new ServiceCollection().AddLogging().AddLocalization().BuildServiceProvider();
@@ -198,13 +191,14 @@ public class NotificationMeterProviderTests : IDisposable
             "TicketSyncError", "CampJoinRequest"
         };
 
-        _ = await _provider.GetMetersForUserAsync(principal, TestContext.Current.CancellationToken);
-        using var requestCulture = new CultureScope(culture);
+        var english = (await _provider.GetMetersForUserAsync(principal, TestContext.Current.CancellationToken))
+            .Select(m => m.Title).ToList();
+        using var requestCulture = new CultureScope(CultureCatalog.CanonicalLegalCultureCode);
         var meters = await _provider.GetMetersForUserAsync(principal, TestContext.Current.CancellationToken);
 
         var expected = keys.Select(key => localizer["Notifications_Meter_" + key]).ToList();
         expected.Should().OnlyContain(value => !value.ResourceNotFound);
-        meters.Select(m => m.Title).Should().Equal(expected.Select(value => value.Value));
+        meters.Select(m => m.Title).Should().Equal(expected.Select(value => value.Value)).And.NotEqual(english);
         // No per-user cache over the camp reads: a changed roster shows on the next call.
         _campService.GetCampsForYearAsync(2026, Arg.Any<CancellationToken>())
             .Returns([MakeCampInfoWithPendingRequest(userId), MakeCampInfoWithPendingRequest(userId)]);

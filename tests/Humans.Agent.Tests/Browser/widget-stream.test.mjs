@@ -1,7 +1,10 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
+import { createRequire } from 'node:module';
 import vm from 'node:vm';
+
+const { installHumans } = createRequire(import.meta.url)('../../browser-support/humans-js.cjs');
 
 const source = readFileSync(new URL('../../../src/Sections/Humans.Agent/wwwroot/js/agent/widget.js', import.meta.url), 'utf8');
 const text = 'event: text\ndata: {"textDelta":"Partial answer"}\n\n';
@@ -34,11 +37,11 @@ async function submit(chunks) {
         if (chunk instanceof Error) throw chunk;
         return chunk === undefined ? { done: true } : { done: false, value: new TextEncoder().encode(chunk) };
     } };
-    vm.runInNewContext(source, {
+    vm.runInNewContext(source, installHumans({
         document: { getElementById: id => elements[id] ?? null, createElement: () => new Element() },
         fetch: async () => ({ ok: true, body: { getReader: () => reader } }),
         TextDecoder
-    });
+    }));
     await elements.agentComposer.handlers.submit({ preventDefault() {} });
     assert.equal(elements.agentSend.disabled, false);
     return elements.agentMessages.children[1];

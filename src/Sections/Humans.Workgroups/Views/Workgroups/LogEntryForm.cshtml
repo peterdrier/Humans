@@ -12,7 +12,7 @@
 
 <page-header title="@(ViewData["Title"]?.ToString())" />
 
-<div class="card" style="max-width: 720px;">
+<div class="card mw-720">
     <div class="card-body">
         <form method="post" asp-action="SaveLogEntry" asp-route-slug="@Model.Slug">
             <input type="hidden" asp-for="Id" />

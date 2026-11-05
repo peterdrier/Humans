@@ -14,22 +14,19 @@
     string Amt(decimal v) => v.ToString("#,##0.00", System.Globalization.CultureInfo.InvariantCulture);
 }
 
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <h1 class="mb-0">@ledger.SupplierAccountNum@(string.IsNullOrEmpty(c?.Name) ? "" : $" · {c.Name}")</h1>
-    <div class="d-flex gap-2">
-        <a href="https://app.holded.com/accounting/ledger/@ledger.SupplierAccountNum" target="_blank" rel="noopener noreferrer"
-           class="btn btn-outline-primary" title="This account's ledger in Holded itself.">
-            <i class="fa-solid fa-arrow-up-right-from-square me-1"></i>See in Holded
-        </a>
-        <a href="/Holded/Accounts/@ledger.SupplierAccountNum" class="btn btn-outline-secondary"
-           title="The same account in Holded's own sign convention — debit and credit as posted.">
-            <i class="fa-solid fa-book me-1"></i>General ledger
-        </a>
-        <a asp-action="Creditors" class="btn btn-outline-secondary">
-            <i class="fa-solid fa-arrow-left me-1"></i>All Creditors
-        </a>
-    </div>
-</div>
+<page-header title="@($"{ledger.SupplierAccountNum}{(string.IsNullOrEmpty(c?.Name) ? "" : " · " + c.Name)}")">
+    <a href="https://app.holded.com/accounting/ledger/@ledger.SupplierAccountNum" target="_blank" rel="noopener noreferrer"
+       class="btn btn-outline-primary" title="This account's ledger in Holded itself.">
+        <i class="fa-solid fa-arrow-up-right-from-square me-1"></i>See in Holded
+    </a>
+    <a href="/Holded/Accounts/@ledger.SupplierAccountNum" class="btn btn-outline-secondary"
+       title="The same account in Holded's own sign convention — debit and credit as posted.">
+        <i class="fa-solid fa-book me-1"></i>General ledger
+    </a>
+    <a asp-action="Creditors" class="btn btn-outline-secondary">
+        <i class="fa-solid fa-arrow-left me-1"></i>All Creditors
+    </a>
+</page-header>
 
 @if (ledger.ContactUnavailableReason is { } unknown)
 {
@@ -133,7 +130,7 @@
     <div class="card-header">Ledger — everything the mirror holds for this account (credit = owed/in, debit = paid/out; balance = running total after each line, positive = owed to the member)</div>
     @if (lines.Count == 0)
     {
-        <div class="card-body text-muted text-center py-4">No cached ledger lines for this account.</div>
+        <div class="card-body py-4"><empty-state class="mb-0">No cached ledger lines for this account.</empty-state></div>
     }
     else
     {
@@ -168,7 +165,7 @@
     <div class="card-header">SEPA payments sent to this account (from our payout files; booked = settled in Holded)</div>
     @if (Model.SepaTransfers.Count == 0)
     {
-        <div class="card-body text-muted text-center py-4">No SEPA payout file has paid this account.</div>
+        <div class="card-body py-4"><empty-state class="mb-0">No SEPA payout file has paid this account.</empty-state></div>
     }
     else
     {
@@ -215,7 +212,7 @@
     <div class="card-header">Expense reports booked to this account (submitted and later; approved reports are the ones pushed to Holded)</div>
     @if (Model.ExpenseReports.Count == 0)
     {
-        <div class="card-body text-muted text-center py-4">No expense reports are booked to this account.</div>
+        <div class="card-body py-4"><empty-state class="mb-0">No expense reports are booked to this account.</empty-state></div>
     }
     else
     {

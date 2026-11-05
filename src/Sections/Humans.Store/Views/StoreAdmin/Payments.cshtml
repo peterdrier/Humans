@@ -95,7 +95,7 @@ else if (!report.StripeQueried)
 @if (Model.Rows.Count == 0)
 {
     <div class="card">
-        <div class="card-body text-center py-4 text-muted">No Stripe Checkout payments found for the Store account.</div>
+        <div class="card-body py-4"><empty-state class="mb-0">No Stripe Checkout payments found for the Store account.</empty-state></div>
     </div>
 }
 else

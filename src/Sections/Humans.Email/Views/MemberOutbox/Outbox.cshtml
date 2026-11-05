@@ -29,7 +29,7 @@
 
         @if (!Model.Any())
         {
-            <div class="text-muted text-center py-5">@Localizer["Email_Outbox_Empty"]</div>
+            <empty-state class="py-5">@Localizer["Email_Outbox_Empty"]</empty-state>
         }
         else
         {

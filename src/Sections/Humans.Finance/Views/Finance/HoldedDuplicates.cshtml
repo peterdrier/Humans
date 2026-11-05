@@ -4,14 +4,11 @@
     ViewData[Humans.Base.ViewComponents.AdminNavComposition.ParentKey] = "Creditors";
 }
 
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <h1 class="mb-0">Duplicate Holded Documents</h1>
-    <div class="d-flex gap-2">
-        <a asp-action="Creditors" class="btn btn-outline-secondary">
-            <i class="fa-solid fa-arrow-left me-1"></i>Back to Creditor Accounts
-        </a>
-    </div>
-</div>
+<page-header title="Duplicate Holded Documents">
+    <a asp-action="Creditors" class="btn btn-outline-secondary">
+        <i class="fa-solid fa-arrow-left me-1"></i>Back to Creditor Accounts
+    </a>
+</page-header>
 
 <p class="text-muted">
     A dry run, read live from Holded. For every expense line that links to a purchase document, every

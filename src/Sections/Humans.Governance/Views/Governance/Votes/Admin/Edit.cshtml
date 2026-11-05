@@ -5,7 +5,7 @@
 
 @* Admin routes are localization-exempt — plain English literals throughout. *@
 
-<h1 class="mb-3">Edit draft</h1>
+<page-header title="Edit draft" />
 
 <div class="alert alert-info">
     This is a draft: every field here is editable and the draft can be deleted. Once
@@ -45,7 +45,7 @@
                 Model.OfficialText.TryGetValue(culture, out var value);
                 <div class="mb-2">
                     <label class="form-label small fw-semibold mb-1">@culture.ToDisplayLanguageName()</label>
-                    <textarea name="OfficialText[@culture]" class="form-control" rows="4">@value</textarea>
+                    <markdown-editor name="OfficialText[@culture]" id="official-text-@culture" value="@value" rows="4" />
                 </div>
             }
             <div class="row g-3 mt-1">

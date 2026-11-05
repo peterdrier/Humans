@@ -15,7 +15,7 @@
     <input type="hidden" name="sort" value="@Model.SortBy" />
     <input type="hidden" name="dir" value="@Model.SortDir" />
     <input type="hidden" name="filter" value="@Model.StatusFilter" />
-    <div class="input-group" style="max-width: 600px;">
+    <div class="input-group mw-600">
         <input type="text" name="search" class="form-control"
                placeholder="@SharedLocalizer["Admin_SearchPlaceholder"]"
                value="@Model.SearchTerm" autofocus />
@@ -93,7 +93,7 @@
 
 @if (Model.Humans.Count == 0)
 {
-    <div class="alert alert-info">@SharedLocalizer["Admin_NoMembersFound"]</div>
+    <empty-state>@SharedLocalizer["Admin_NoMembersFound"]</empty-state>
 }
 else
 {

@@ -6,7 +6,7 @@
 
 <page-header title="@($"Rideshare {Model.EventName}")" />
 
-<div class="card mb-4" style="max-width: 720px;">
+<div class="card mb-4 mw-720">
     <div class="card-body">
         <div class="h4 mb-1">
             @s.OffersPosted offers · @s.SeatsFilled seats filled · @s.RidersStillLooking riders still looking
@@ -21,7 +21,7 @@
 </div>
 
 <h2 class="h4">Destination &amp; travel windows</h2>
-<form method="post" asp-action="Index" style="max-width: 540px;">
+<form class="mw-540" method="post" asp-action="Index">
     <input type="hidden" asp-for="EventSettingsId" />
     <input type="hidden" asp-for="EventName" />
     <div asp-validation-summary="ModelOnly" class="text-danger"></div>

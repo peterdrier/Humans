@@ -7,12 +7,11 @@
     string Amount(decimal value) => value.ToString("0.00", CultureInfo.InvariantCulture);
 }
 
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <h1 class="mb-0">Send @Model.Total.ToEuro() to @Model.Lines.Count @(Model.Lines.Count == 1 ? "person" : "people")?</h1>
+<page-header title="@($"Send {Model.Total.ToEuro()} to {Model.Lines.Count} {(Model.Lines.Count == 1 ? "person" : "people")}?")">
     <a asp-action="Creditors" class="btn btn-outline-secondary">
         <i class="fa-solid fa-arrow-left me-1"></i>Back to creditors
     </a>
-</div>
+</page-header>
 
 <div class="card mb-3" style="width: fit-content; max-width: 100%; overflow-x: auto">
     <table class="table table-hover mb-0 align-middle w-auto">

@@ -96,7 +96,8 @@ public sealed class EmailPreviewServiceTests
     [HumansFact]
     public void RenderMarkdown_UsesTheCallersCultureForThePlaceholderFooter()
     {
-        using var culture = new Humans.Base.Extensions.CultureScope("es");
+        var callerCulture = Humans.Base.Extensions.CultureCatalog.CanonicalLegalCultureCode;
+        using var culture = new Humans.Base.Extensions.CultureScope(callerCulture);
         var environment = Substitute.For<Microsoft.Extensions.Hosting.IHostEnvironment>();
         environment.EnvironmentName.Returns("Production");
         var composer = new BrandedEmailBodyComposer(
@@ -104,7 +105,9 @@ public sealed class EmailPreviewServiceTests
 
         var preview = new EmailPreviewService(composer).RenderMarkdown("Subject", "Hi", MessageCategory.Governance);
 
-        preview.HtmlBody.Should().Contain("Dejar de recibir estos correos");
+        var resources = new System.Resources.ResourceManager(typeof(EmailResource));
+        preview.HtmlBody.Should().Contain(resources.GetString("Email_UnsubscribeFooter", CultureInfo.GetCultureInfo(callerCulture)))
+            .And.NotContain(resources.GetString("Email_UnsubscribeFooter", CultureInfo.InvariantCulture));
         preview.HtmlBody.Should().Contain("href=\"#\"");
     }
 

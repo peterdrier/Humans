@@ -7,20 +7,18 @@ namespace Humans.Base.Tests.Extensions;
 
 public sealed class DateFormattingExtensionsTests
 {
+    /// <summary>
+    /// The one place date display is tested per culture; section tests assert their own dates in a single culture.
+    /// </summary>
     [HumansTheory]
-    [Xunit.InlineData("en", false)]
-    [Xunit.InlineData("es", true)]
-    [Xunit.InlineData("de", true)]
-    [Xunit.InlineData("it", true)]
-    [Xunit.InlineData("fr", true)]
-    [Xunit.InlineData("ca", true)]
-    [Xunit.InlineData("nl", true)]
-    public void Display_uses_ui_culture_without_changing_parsing_or_machine_formats(
-        string culture, bool dayFirst)
+    [Xunit.MemberData(nameof(SupportedCultures.All), MemberType = typeof(SupportedCultures))]
+    public void Display_uses_ui_culture_without_changing_parsing_or_machine_formats(string culture)
     {
         using var scope = new CultureScope(culture);
         CultureInfo.CurrentCulture = CultureInfo.GetCultureInfo("en");
         var ui = CultureInfo.CurrentUICulture;
+        var pattern = ui.DateTimeFormat.ShortDatePattern;
+        var dayFirst = pattern.IndexOf('d', StringComparison.Ordinal) < pattern.IndexOf('M', StringComparison.Ordinal);
         var date = new DateTime(2026, 6, 5, 12, 34, 56, DateTimeKind.Unspecified);
         var localDate = new LocalDate(2026, 6, 5);
         var localDateTime = localDate.At(new LocalTime(12, 34, 56));
@@ -67,5 +65,16 @@ public sealed class DateFormattingExtensionsTests
         CultureInfo.CurrentCulture.Name.Should().Be("en");
         CultureInfo.CurrentUICulture.Name.Should().Be(culture);
         60m.ToString("0.00", CultureInfo.CurrentCulture).Should().Be("60.00");
+    }
+
+    /// <summary>Pins both day/month orders: en is month-first, es day-first.</summary>
+    [HumansTheory]
+    [Xunit.InlineData(CultureCatalog.DefaultCultureCode, "Jun 5, 2026")]
+    [Xunit.InlineData(CultureCatalog.CanonicalLegalCultureCode, "5 jun 2026")]
+    public void Display_date_order_follows_the_culture(string culture, string expected)
+    {
+        using var scope = new CultureScope(culture);
+
+        new LocalDate(2026, 6, 5).ToDate().Should().Be(expected);
     }
 }

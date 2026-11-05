@@ -1,6 +1,6 @@
 const assert = require('node:assert/strict');
 const { test } = require('node:test');
-const { readFileSync } = require('node:fs');
+const { readFileSync, readdirSync } = require('node:fs');
 const { resolve } = require('node:path');
 const vm = require('node:vm');
 
@@ -11,11 +11,11 @@ for (const page of ['Budget/Summary', 'BudgetAdmin/YearDetail']) {
     const end = view.indexOf('var legendOpts =', start);
     assert.ok(start >= 0 && end > start, `${page} contains the live chart callback`);
     const script = view.slice(start, end);
-    for (const [language, amount] of [
-        ['en', '1,234.50'], ['es', '1234,50'], ['de', '1.234,50'],
-        ['it', '1234,50'], ['fr', '1\u202f234,50'], ['ca', '1.234,50'], ['nl', '1.234,50'],
-        ['', '1,234.50'],
-    ]) {
+    const languages = readdirSync(resolve(__dirname, '../../../src/Sections/Humans.Budget'))
+        .map(file => /^BudgetResource\.([\w-]+)\.resx$/.exec(file)?.[1]).filter(Boolean);
+    const cases = [['en', '1,234.50'], ['', '1,234.50']].concat(languages.map(language => [language,
+        (1234.5).toLocaleString(language, { minimumFractionDigits: 2, maximumFractionDigits: 2 })]));
+    for (const [language, amount] of cases) {
         test(`${page} money tooltip follows the document language (${language || 'fallback'})`, () => {
             const context = { document: { documentElement: { lang: language } } };
             vm.createContext(context);

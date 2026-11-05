@@ -10,7 +10,7 @@
     <span>@Localizer["Expenses_Edit"]</span>
 }
 
-<h1 class="mb-4">@Localizer["Expenses_EditReport"]</h1>
+<page-header title="@(Localizer["Expenses_EditReport"].Value)" />
 
 
 <div class="card mb-4">
@@ -86,7 +86,7 @@
     </div>
     @if (topLevelLines.Count == 0)
     {
-        <div class="card-body text-muted">@Localizer["Expenses_NoLinesYet"]</div>
+        <div class="card-body"><empty-state class="mb-0">@Localizer["Expenses_NoLinesYet"]</empty-state></div>
     }
     else
     {

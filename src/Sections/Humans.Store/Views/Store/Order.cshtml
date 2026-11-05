@@ -150,7 +150,7 @@
 }
 else
 {
-    <div class="alert alert-secondary">@Localizer["Store_NoLines"]</div>
+    <empty-state>@Localizer["Store_NoLines"]</empty-state>
 }
 
 <vc:audit-log entity-type="@AuditEntityTypes.Product"
@@ -277,7 +277,7 @@ else
     }
     else
     {
-        <p class="text-muted">@Localizer["Store_NoPayments"]</p>
+        <empty-state>@Localizer["Store_NoPayments"]</empty-state>
     }
 
     @if (order.BalanceEur > 0 && Model.CanPay)

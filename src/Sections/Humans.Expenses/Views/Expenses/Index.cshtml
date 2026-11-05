@@ -4,29 +4,26 @@
     ViewData["Title"] = Localizer["Expenses_MyReportsTitle"].Value;
 }
 
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <h1 class="mb-0">@Localizer["Expenses_MyReportsTitle"]</h1>
-    <div class="d-flex gap-2">
-        @* Review is one queue scoped to the viewer; this badge counts only what awaits this
-           coordinator's endorsement. *@
-        @if (Model.IsCoordinator)
-        {
-            <a asp-action="Review" class="btn btn-outline-secondary">
-                <i class="fa-solid fa-list-check me-1"></i>@Localizer["Expenses_ReviewQueue"]
-                @if (Model.CoordinatorQueueCount > 0)
-                {
-                    <span class="badge text-bg-secondary ms-1">@Model.CoordinatorQueueCount</span>
-                }
-            </a>
-        }
-        @if (Model.HasActiveYear)
-        {
-            <a asp-action="New" class="btn btn-primary">
-                <i class="fa-solid fa-plus me-1"></i>@Localizer["Expenses_NewReport"]
-            </a>
-        }
-    </div>
-</div>
+<page-header title="@(Localizer["Expenses_MyReportsTitle"].Value)">
+    @* Review is one queue scoped to the viewer; this badge counts only what awaits this
+       coordinator's endorsement. *@
+    @if (Model.IsCoordinator)
+    {
+        <a asp-action="Review" class="btn btn-outline-secondary">
+            <i class="fa-solid fa-list-check me-1"></i>@Localizer["Expenses_ReviewQueue"]
+            @if (Model.CoordinatorQueueCount > 0)
+            {
+                <span class="badge text-bg-secondary ms-1">@Model.CoordinatorQueueCount</span>
+            }
+        </a>
+    }
+    @if (Model.HasActiveYear)
+    {
+        <a asp-action="New" class="btn btn-primary">
+            <i class="fa-solid fa-plus me-1"></i>@Localizer["Expenses_NewReport"]
+        </a>
+    }
+</page-header>
 
 @if (Model.OpenGrants.Count > 0)
 {

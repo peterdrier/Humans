@@ -3,6 +3,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
+const { installHumans } = require('../../browser-support/humans-js.cjs');
 const script = fs.readFileSync(path.resolve(__dirname,
     '../../../src/Sections/Humans.CityPlanning/wwwroot/js/city-planning/barrio-map/admin-import.js'), 'utf8');
 function importer(outcomes) {
@@ -30,7 +31,7 @@ function importer(outcomes) {
             return outcome === 'network' ? Promise.reject(new Error('Offline')) : Promise.resolve({ ok: outcome === 'ok' });
         },
     };
-    vm.createContext(context);
+    installHumans(context); vm.createContext(context);
     vm.runInContext(script + '\npendingImport = { matched: [\n' +
         outcomes.map((_, index) => `{ campSeasonId: '${index}', campName: 'Camp ${index}', geoJson: 'polygon-${index}', newAreaSqm: 42 }`).join(',\n') +
         '\n] };', context);

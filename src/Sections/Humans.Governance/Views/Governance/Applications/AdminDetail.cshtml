@@ -6,10 +6,9 @@
 
 <div class="row">
     <div class="col-md-8">
-        <div class="d-flex justify-content-between align-items-center mb-3">
-            <h1>@Localizer["Governance_AdminAppDetail_ApplicationReview"]</h1>
+        <page-header title="@(Localizer["Governance_AdminAppDetail_ApplicationReview"].Value)">
             <span class="badge fs-5 @EnumBadgeMap.For(Model.Status)">@SharedLocalizer["ApplicationStatus_" + Model.Status.ToString()]</span>
-        </div>
+        </page-header>
 
         <div class="card mb-4">
             <div class="card-header">@SharedLocalizer["AdminApp_Applicant"]</div>

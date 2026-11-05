@@ -25,20 +25,17 @@
     }.Where(r => r is not null));
 }
 
-<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
-    <h1 class="mb-0">Expense Reconciliation</h1>
-    <div class="d-flex gap-2 flex-wrap">
-        <a asp-action="HoldedDuplicates" class="btn btn-outline-secondary">
-            <i class="fa-solid fa-clone me-1"></i>Duplicate docs
-        </a>
-        <a asp-action="Sepa" class="btn btn-outline-secondary">
-            <i class="fa-solid fa-file-invoice-dollar me-1"></i>SEPA transfers
-        </a>
-        <a asp-action="Creditors" class="btn btn-outline-secondary">
-            <i class="fa-solid fa-arrow-left me-1"></i>Back to Creditor Accounts
-        </a>
-    </div>
-</div>
+<page-header title="Expense Reconciliation">
+    <a asp-action="HoldedDuplicates" class="btn btn-outline-secondary">
+        <i class="fa-solid fa-clone me-1"></i>Duplicate docs
+    </a>
+    <a asp-action="Sepa" class="btn btn-outline-secondary">
+        <i class="fa-solid fa-file-invoice-dollar me-1"></i>SEPA transfers
+    </a>
+    <a asp-action="Creditors" class="btn btn-outline-secondary">
+        <i class="fa-solid fa-arrow-left me-1"></i>Back to Creditor Accounts
+    </a>
+</page-header>
 
 <p class="text-muted">
     Read only, from the Holded ledger mirror: each approved expense line (after the authorised-maximum allocation)
