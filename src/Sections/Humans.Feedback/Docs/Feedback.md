@@ -34,9 +34,18 @@ None. The `FeedbackAdmin` role is gone; any assignment rows that still name it g
 - The stub keeps Feedback's four audit action names declared, so stored audit rows still resolve.
   When the stub is deleted, those declarations need a new home first.
 
+## Negative Access Rules
+
+None. There is nothing to reach.
+
+## Triggers
+
+None. No jobs, no event listeners.
+
 ## Cross-Section Dependencies
 
 - **AuditLog, Notifications:** the retired declarations above.
+- **Email:** `MessageCategory.System`, the category the retired notification source declares.
 - **Agent:** `agent_conversations.HandedOffToFeedbackId` is Agent's legacy column; it now points
   at nothing.
 
