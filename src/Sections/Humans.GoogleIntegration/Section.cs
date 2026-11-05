@@ -29,7 +29,6 @@ public sealed class Section :
     ISection,
     ISectionAdminNav,
     ISectionConfiguration,
-    ISectionDataMigrations,
     ISectionHealthChecks,
     ISectionJobs,
     ISectionSettings,
@@ -173,24 +172,6 @@ public sealed class Section :
         configuration.GetOptionalSetting(registry, "TeamResourceManagement:AllowCoordinatorsToManageResources",
             "Teams");
     }
-
-    internal const string WorkspaceIdentitiesKey = "google.workspace-identities";
-
-    IEnumerable<DataMigration> ISectionDataMigrations.Migrations() =>
-    [
-        new(WorkspaceIdentitiesKey, "GoogleIntegration",
-            "Copy each member's Google identity (user_emails.IsGoogle and GoogleEmailStatus) into google_workspace_identities",
-            "WorkspaceIdentityService's legacy fallback, UserEmailInfo.IsGoogle/GoogleEmailStatus and LegacyGoogleEmailStatus; then a drop PR for user_emails.IsGoogle and user_emails.GoogleEmailStatus",
-            StatusAsync, ApplyAsync),
-    ];
-
-    private static async Task<DataMigrationStatus> StatusAsync(IServiceProvider sp, CancellationToken ct) =>
-        new(["User", "Burner name", "Google identity", "Status"],
-            [.. (await sp.GetRequiredService<IWorkspaceIdentityManagement>().GetUncopiedLegacyIdentitiesAsync(ct))
-                .Select(r => (IReadOnlyList<string>)[r.UserId.ToString(), r.BurnerName, r.Email, r.Status.ToString()])]);
-
-    private static Task<int> ApplyAsync(IServiceProvider sp, Guid actorUserId, CancellationToken ct) =>
-        sp.GetRequiredService<IWorkspaceIdentityManagement>().CopyLegacyIdentitiesAsync(ct);
 
     void ISectionHealthChecks.AddHealthChecks(IHealthChecksBuilder builder, IConfiguration configuration)
     {

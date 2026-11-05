@@ -18,6 +18,7 @@ public sealed class GoogleDriveAccessSyncServiceTests
 {
     private readonly IGoogleDrivePermissionsClient _drivePermissions = Substitute.For<IGoogleDrivePermissionsClient>();
     private readonly IUserService _userService = Substitute.For<IUserService>();
+    private readonly InMemoryWorkspaceIdentityRepository _identityRows = new();
     private readonly IWorkspaceIdentityManagement _identities;
     private readonly IUserEmailService _userEmailService = Substitute.For<IUserEmailService>();
     private readonly ISyncSettingsService _syncSettingsService = Substitute.For<ISyncSettingsService>();
@@ -32,7 +33,7 @@ public sealed class GoogleDriveAccessSyncServiceTests
     public GoogleDriveAccessSyncServiceTests()
     {
         _clock = new FakeClock(_now);
-        _identities = WorkspaceIdentityFakes.ResolvingThrough(_userService);
+        _identities = WorkspaceIdentityFakes.ResolvingThrough(_userService, _identityRows);
         _googleSyncLogViewer.GetForUserAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(Array.Empty<GoogleSyncLogView>());
         _syncSettingsService.GetModeAsync(SyncServiceType.GoogleDrive, Arg.Any<CancellationToken>())
@@ -124,7 +125,6 @@ public sealed class GoogleDriveAccessSyncServiceTests
         var alice = Guid.NewGuid();
         var service = CreateService(new StaticSource("folder-1", (alice, DrivePermissionLevel.Contributor)));
         StubUsers((alice, "Alice", "alice@example.org"));
-        var attemptedEmailId = _usersById[alice].UserEmails.Single().Id;
         StubFolder("folder-1");
         _drivePermissions.CreatePermissionAsync("folder-1", "alice@example.org", "writer", Arg.Any<CancellationToken>())
             .Returns(new DrivePermissionMutationResult(
@@ -133,15 +133,9 @@ public sealed class GoogleDriveAccessSyncServiceTests
         _identities.SetStatusFromSyncAsync(alice, "alice@example.org", GoogleEmailStatus.Rejected, Arg.Any<CancellationToken>())
             .Returns(call =>
             {
-                _usersById[alice] = _usersById[alice] with
+                _identityRows.Rows[alice] = new Humans.GoogleIntegration.Domain.WorkspaceIdentityRecord
                 {
-                    UserEmails =
-                    [
-                        new UserEmailInfo(
-                            attemptedEmailId, "alice@example.org", IsVerified: true, IsPrimary: false, IsGoogle: true,
-                            Provider: null, ProviderKey: null, Visibility: null, VerificationSentAt: null,
-                            CreatedAt: _now, UpdatedAt: _now, LegacyGoogleEmailStatus.Rejected)
-                    ]
+                    UserId = alice, Email = "alice@example.org", Status = GoogleEmailStatus.Rejected,
                 };
                 return true;
             });
@@ -1352,8 +1346,8 @@ public sealed class GoogleDriveAccessSyncServiceTests
             if (_usersById.TryGetValue(id, out var user))
                 _usersById[id] = user with
                 {
-                    UserEmails = [new UserEmailInfo(Guid.NewGuid(), email, true, false, true,
-                        null, null, null, null, _now, _now, LegacyGoogleEmailStatus.Unknown)]
+                    UserEmails = [new UserEmailInfo(Guid.NewGuid(), email, true, false,
+                        null, null, null, null, _now, _now)]
                 };
 
         _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())

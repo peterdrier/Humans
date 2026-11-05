@@ -786,8 +786,6 @@ internal sealed class UserService(
             // JSON keys pinned: GDPR export stability.
             IsOAuth = e.Provider != null,
             IsNotificationTarget = e.IsPrimary,
-            e.IsGoogle,
-            GoogleEmailStatus = e.GoogleEmailStatus.ToString(),
             VerificationSentAt = e.VerificationSentAt.ToIso8601(),
             CreatedAt = e.CreatedAt.ToIso8601(),
             UpdatedAt = e.UpdatedAt.ToIso8601(),

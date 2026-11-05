@@ -86,8 +86,7 @@ public class UserEmailServiceReconcileOAuthTests
             new()
             {
                 Id = rowId, UserId = userId, Email = "alice@example.com",
-                IsVerified = true, IsPrimary = true, IsGoogle = true,
-                Provider = Provider, ProviderKey = ProviderKey,
+                IsVerified = true, IsPrimary = true, Provider = Provider, ProviderKey = ProviderKey,
             },
         };
         _repository.GetUserEmailsByUserIdForMutationAsync(userId, Arg.Any<CancellationToken>())
@@ -156,7 +155,7 @@ public class UserEmailServiceReconcileOAuthTests
     public async Task TagMoved_TaggedRowExistsAndSiblingHoldsClaim_UnionsFlagsForceVerifyDeletesOld()
     {
         // Signing user has two rows:
-        //   tagged row at old@example.com (Provider/ProviderKey set, IsPrimary=true, IsGoogle=true, verified)
+        //   tagged row at old@example.com (Provider/ProviderKey set, IsPrimary=true, verified)
         //   sibling row at new@example.com (unverified, no flags)
         // Reconcile must move the tag onto the sibling, union IsPrimary
         // (sibling ends up IsPrimary=true), force IsVerified=true, delete the old
@@ -171,7 +170,6 @@ public class UserEmailServiceReconcileOAuthTests
             Email = "old@example.com",
             IsVerified = true,
             IsPrimary = true,
-            IsGoogle = true,
             Provider = Provider,
             ProviderKey = ProviderKey,
         };
@@ -182,7 +180,6 @@ public class UserEmailServiceReconcileOAuthTests
             Email = "new@example.com",
             IsVerified = false,
             IsPrimary = false,
-            IsGoogle = false,
         };
         _repository.GetUserEmailsByUserIdForMutationAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new List<UserEmail> { oldRow, sibling });
@@ -199,7 +196,6 @@ public class UserEmailServiceReconcileOAuthTests
         sibling.ProviderKey.Should().Be(ProviderKey);
         sibling.IsVerified.Should().BeTrue("OAuth callback proves ownership; tag-move force-verifies");
         sibling.IsPrimary.Should().BeTrue("flag-union: old row had IsPrimary=true");
-        sibling.IsGoogle.Should().BeFalse("the legacy IsGoogle flag is frozen (Users decomposition commit 15)");
         await _googleIdentity.Received(1).ClearIfAddressAsync(userId, "old@example.com", Arg.Any<CancellationToken>());
 
         // Atomic plan: update the sibling AND delete the old tagged row in
@@ -233,7 +229,6 @@ public class UserEmailServiceReconcileOAuthTests
             Email = "match@example.com",
             IsVerified = true,
             IsPrimary = true,
-            IsGoogle = true,
         };
         _repository.GetUserEmailsByUserIdForMutationAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new List<UserEmail> { sibling });
@@ -248,7 +243,6 @@ public class UserEmailServiceReconcileOAuthTests
         sibling.ProviderKey.Should().Be(ProviderKey);
         sibling.IsVerified.Should().BeTrue();
         sibling.IsPrimary.Should().BeTrue("sibling kept its IsPrimary — no old row to flip it from");
-        sibling.IsGoogle.Should().BeTrue("sibling kept its IsGoogle — no old row to flip it from");
         // Atomic plan: update the sibling, no delete (no old tagged row).
         await _repository.Received(1).ApplyUserEmailReconcilePlanAsync(
             displacedRowToDelete: Arg.Is<UserEmail?>(r => r == null),

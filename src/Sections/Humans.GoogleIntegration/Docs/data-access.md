@@ -14,8 +14,8 @@ live under `Services/Workspace/`. **DbContext:**
 (`google_workspace_identities`, via `WorkspaceIdentityService`). Google sync
 verdicts are written to the member's workspace identity through
 `IWorkspaceIdentityManagement.SetStatusFromSyncAsync` with the attempted
-address (Users decomposition commit 15; Users' `user_emails.IsGoogle` /
-`GoogleEmailStatus` are frozen and never written).
+address. Users' retired `user_emails.IsGoogle` / `GoogleEmailStatus` columns
+remain shadow-mapped for a separate schema drop.
 
 `GoogleSyncOutboxEvents` is written only by this section's own
 `GoogleSyncOutboxService` / `GoogleSyncOutboxRepository`; `TeamService`
@@ -51,9 +51,9 @@ Repository: `IWorkspaceIdentityRepository` (Singleton, `IDbContextFactory`).
 Implements the internal `IWorkspaceIdentityManagement` (extends the public
 `IGoogleIntegrationService` reads and `IGoogleIntegrationWrite.ClearIfAddressAsync`),
 `IUserDataContributor` and `IUserMerge`. Reads the member's verified addresses
-via `IUserService` (merge-aware) and is the single reader of the obsolete
-`UserEmailInfo.IsGoogle` / `GoogleEmailStatus` legacy fallback (`HUM_USER_GOOGLE_IDENTITY`
-pragma). Audits `Set` via `IAuditLogService`. No cache (the `UserInfo` read is cached by
+via `IUserService` (merge-aware). The legacy Workspace identity migration and fallback are retired after production reported
+`google.workspace-identities` done on 2026-11-05. Identity reads use GoogleIntegration's own rows.
+Audits `Set` via `IAuditLogService`. No cache (the `UserInfo` read is cached by
 Users' decorator; the table is one row per member).
 
 ### GoogleGroupSyncService (Scoped)
