@@ -260,7 +260,7 @@ The cross-source Early Entry roster (`/Shifts/Admin/EarlyEntry`) is `EarlyEntryR
 
 - Coordinator single-day availability add/remove routes share event/viewer resolution, bound-input validation and mutation dispatch; each route retains its ShiftsPolicies.ManageVolunteers policy and operation-specific success feedback.
 
-- Post-event overall, department and period rates share one calculation: no-shows round to the nearest whole percent away from zero at midpoints; completion is the clamped complement. Both rates are zero when there are no confirmed/no-show signups.
+- Internal `ShiftDashboardMetrics` owns the complete uncached post-event report, reusing the shared parent-team grouping. The management entry point, visibility filtering, confirmed/no-show counts, zero-signup shifts, period buckets, query order and cancellation are unchanged. Post-event overall, department and period rates share one calculation: no-shows round to the nearest whole percent away from zero at midpoints; completion is the clamped complement. Both rates are zero when there are no confirmed/no-show signups.
 
 - Volunteer XLSX exports split work by event-local calendar day, using elapsed time between instants for daily and primary-team hour totals. Repeated clock hours remain worked time; daylight-saving changes cannot remove a volunteer or distort team selection. Export and Early Entry range reads include every confirmed interval overlapping the requested local dates, including longer timed shifts starting more than a day earlier; an interval ending at the range start is excluded.
 

@@ -630,7 +630,9 @@ public sealed class ShiftDashboardMetricsTests : ShiftsTestHarness
         var team = await SeedTeamAsync("Gate");
         var visibleRota = await SeedRotaAsync(team, es, RotaPeriod.Build);
         var hiddenRota = await SeedRotaAsync(team, es, RotaPeriod.Build, isVisible: false);
-        await SeedSignupsAsync(await SeedShiftAsync(visibleRota, -3, 1, 2), SignupStatus.Confirmed, count: 1);
+        var visibleShift = await SeedShiftAsync(visibleRota, -3, 1, 2);
+        await SeedSignupsAsync(visibleShift, SignupStatus.Confirmed, count: 1);
+        await SeedSignupsAsync(visibleShift, SignupStatus.NoShow, count: 1);
         await SeedSignupsAsync(await SeedShiftAsync(visibleRota, -3, 1, 4, adminOnly: true), SignupStatus.Confirmed, count: 3);
         await SeedSignupsAsync(await SeedShiftAsync(hiddenRota, -3, 1, 8), SignupStatus.Confirmed, count: 5);
 
@@ -648,6 +650,14 @@ public sealed class ShiftDashboardMetricsTests : ShiftsTestHarness
 
         (await _service.GetShiftDurationBreakdownAsync(es.Id, ShiftPeriod.Build))
             .Single().TotalSlots.Should().Be(2);
+
+        var postEvent = await _service.GetPostEventStatsAsync(es.Id, Xunit.TestContext.Current.CancellationToken);
+        postEvent.Should().NotBeNull();
+        postEvent!.TotalShifts.Should().Be(1);
+        postEvent.ShiftsWithData.Should().Be(1);
+        postEvent.TotalConfirmed.Should().Be(1);
+        postEvent.TotalNoShow.Should().Be(1);
+        postEvent.Departments.Single().Build.Should().Be(new PostEventPeriodRow(1, 1));
     }
 
     [HumansFact]
