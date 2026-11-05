@@ -28,6 +28,12 @@ Cross-section calls: `IUserService`, `ISettingsService`, `INotificationEmitter`,
 `IAuditLogService`, `IClock` (NodaTime), plus the section-internal `IRouteProvider`
 (OpenRouteService client). The inner service has no `IMemoryCache`.
 
+### RideshareNotices (constructed by RideshareService, not DI-registered)
+
+No repository, no `IMemoryCache`, no table access. Builds and sends the interest-received, -accepted and
+-declined notifications in the recipient's culture. Cross-section calls via `IUserService` (display name,
+culture) and `INotificationEmitter`.
+
 ### CachingRideshareService (Singleton, `Humans.Rideshare.Services`)
 
 | Cache | Type | Read | Write | Invalidate |

@@ -91,6 +91,15 @@ event profile, availability/build-status rows (via
 `IVolunteerTrackingRepository.DeleteVolunteerTrackingForUserAsync`), and
 shift-tag preferences. No `IMemoryCache`.
 
+### ShiftSignupNotices (constructed by ShiftSignupService, not DI-registered)
+
+No repository, no `IMemoryCache`, no table access. Post-save notice delivery for signups: the volunteer's
+assignment notice and the team coordinators' coverage-gap and signup-change notices. A lookup or channel failure
+is logged and never changes the saved signup outcome. Cross-section calls via `INotificationEmitter`,
+`IUserService` (recipient culture), `EventCalendarResolver` (gate-opening date, via `ISettingsService`), and
+`ITeamService` (coordinator ids, lazy-resolved through `IServiceProvider` to keep the TeamService constructor
+cycle open).
+
 ### VolunteerTrackingService (Scoped)
 
 Repositories: `IVolunteerTrackingRepository`, `IShiftManagementRepository`.

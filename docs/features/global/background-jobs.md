@@ -68,22 +68,23 @@ Several system operations need to run automatically without user interaction: sy
       - Parse document content (ES/EN)
       - Create new DocumentVersion
       - Update LegalDocument.CurrentCommitSha
-3. If any documents were updated:
-   a. Identify all active users missing new required consents
-   b. Send ONE consolidated "Action Required" email per user
-   c. Log summary of updates and notifications
+3. For each new version of a required document:
+   a. Notify the active members of the document's team (a re-consent notice
+      when the version requires re-consent, a published notice when the
+      document is new), grouped by preferred language
+   b. Log summary of updates and notifications
 ```
 
 **Triggers**:
 - New document versions requiring re-consent
-- Email notifications to affected members (consolidated)
+- Notifications to the document's team members, linking to `/Consent`
 - Status changes for non-compliant members
 
 **Error Handling**:
 - GitHub API failures: Retry with backoff
 - Parse failures: Log and skip, alert admin
 - Partial sync: Continue with remaining docs
-- N+1 Protection: Users loaded in batches for notification loop
+- A failed notification dispatch is logged and does not fail the sync
 
 ---
 
