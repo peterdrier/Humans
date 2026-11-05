@@ -32,7 +32,7 @@ internal sealed class TeamService(
     ILogger<TeamService> logger) : ITeamManagementService, ITeamSeeding, IGoogleGroupMembershipSource, IUserMerge, IEarlyEntryProvider
 {
     private readonly TeamDataExport dataExport = new(repo, serviceProvider);
-    private readonly TeamSnapshotReader snapshotReader = new(repo, serviceProvider);
+    private readonly TeamSnapshotReader snapshotReader = new(repo, serviceProvider, shiftManagementService);
     private readonly TeamMembershipNotices membershipNotices = new(notificationService, serviceProvider, logger);
     private readonly TeamGoogleGroupMemberships googleGroupMemberships = new(repo, logger);
     private static readonly TrackedLock JoinRequestLock = new("Teams.JoinRequest");
@@ -1599,24 +1599,9 @@ internal sealed class TeamService(
         CancellationToken cancellationToken = default) =>
         repo.GetPublicManagementRoleNamesByTeamIdsAsync(teamIds.ToList(), cancellationToken);
 
-    public async Task<AdminTeamListResult> GetAdminTeamListAsync(
-        int page,
-        int pageSize,
-        CancellationToken cancellationToken = default)
-    {
-        var (items, totalCount) = await repo.GetAllForAdminAsync(page, pageSize, cancellationToken);
-
-        var pendingShiftCounts = await shiftManagementService
-            .GetActivePendingShiftSignupCountsByTeamAsync(cancellationToken);
-
-        var teamIds = items.Select(t => t.Id).ToList();
-        var resourceSummaries = await TeamResourceService
-            .GetTeamResourceSummariesAsync(teamIds, cancellationToken);
-
-        return new AdminTeamListResult(
-            BuildAdminTeamSummaries(items, pendingShiftCounts, resourceSummaries),
-            totalCount);
-    }
+    public Task<AdminTeamListResult> GetAdminTeamListAsync(
+        int page, int pageSize, CancellationToken cancellationToken = default) =>
+        snapshotReader.GetAdminTeamListAsync(page, pageSize, cancellationToken);
 
     // CachingTeamService owns the cache.
     public void InvalidateActiveTeamsCache() { }
@@ -1787,64 +1772,6 @@ internal sealed class TeamService(
             OccurredAt = clock.GetCurrentInstant(),
             DeduplicationKey = $"{teamMemberId}:{eventType}"
         };
-    }
-
-    private static IReadOnlyList<AdminTeamSummary> BuildAdminTeamSummaries(
-        IReadOnlyList<Team> teams,
-        IReadOnlyDictionary<Guid, int> pendingShiftCounts,
-        IReadOnlyDictionary<Guid, TeamResourceSummary> resourceSummaries)
-    {
-        var ordered = new List<AdminTeamSummary>(teams.Count);
-
-        foreach (var team in teams)
-        {
-            if (team.ParentTeamId.HasValue)
-                continue;
-
-            ordered.Add(CreateAdminTeamSummary(team, isChildTeam: false, pendingShiftCounts, resourceSummaries));
-
-            var children = teams
-                .Where(child => child.ParentTeamId == team.Id)
-                .OrderBy(child => child.Name, StringComparer.OrdinalIgnoreCase);
-
-            ordered.AddRange(children.Select(child =>
-                CreateAdminTeamSummary(child, isChildTeam: true, pendingShiftCounts, resourceSummaries)));
-        }
-
-        return ordered;
-    }
-
-    private static AdminTeamSummary CreateAdminTeamSummary(
-        Team team,
-        bool isChildTeam,
-        IReadOnlyDictionary<Guid, int> pendingShiftCounts,
-        IReadOnlyDictionary<Guid, TeamResourceSummary> resourceSummaries)
-    {
-        var systemTeamType = team.SystemTeamType != SystemTeamType.None
-            ? team.SystemTeamType.ToString()
-            : null;
-        var resourceSummary = resourceSummaries.TryGetValue(team.Id, out var summary)
-            ? summary
-            : TeamResourceSummary.Empty;
-
-        return new AdminTeamSummary(
-            team.Id,
-            team.Name,
-            team.Slug,
-            team.IsActive,
-            team.RequiresApproval,
-            team.IsSystemTeam,
-            systemTeamType,
-            team.Members.Count,
-            team.JoinRequests.Count,
-            resourceSummary.HasMailGroup,
-            team.GoogleGroupEmail,
-            resourceSummary.DriveResourceCount,
-            team.RoleDefinitions.Sum(role => role.SlotCount),
-            team.CreatedAt,
-            isChildTeam,
-            pendingShiftCounts.GetValueOrDefault(team.Id),
-            team.IsHidden);
     }
 
     private static TeamJoinRequestSnapshot ToJoinRequestSnapshot(TeamJoinRequest request) => new(
