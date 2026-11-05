@@ -31,7 +31,7 @@ internal sealed class TicketQueryService(
     IClock clock,
     IEventParticipationManagement participations) : ITicketManagement
 {
-    private readonly TicketSalesReports salesReports = new(ticketRepository, campaignService);
+    private readonly TicketSalesReports salesReports = new(ticketRepository, campaignService, budgetService, clock);
     private readonly UserTicketHoldingsReader holdingsReader = new(ticketRepository, ticketTransferRepository, userService, settingsService, clock);
 
     public Task<IReadOnlyList<EventParticipationInfo>> GetParticipationsAsync(Guid userId, CancellationToken ct = default) =>
@@ -86,143 +86,12 @@ internal sealed class TicketQueryService(
         return ids.ToHashSet();
     }
 
-    public async Task<TicketDashboardStats> GetDashboardStatsAsync()
-    {
-        // Crash recovery: a sync stuck in Running for 30 minutes resets.
-        var now = clock.GetCurrentInstant();
-        var staleThreshold = now - Duration.FromMinutes(30);
-        var syncState = await ticketRepository.ResetStaleRunningStateAsync(
-            olderThan: staleThreshold,
-            now: now,
-            errorMessage: "Sync state was stuck in Running for >30 minutes (likely crash). Auto-reset.");
+    public Task<TicketDashboardStats> GetDashboardStatsAsync() =>
+        salesReports.GetDashboardStatsAsync();
 
-        var totals = await ticketRepository.GetDashboardTotalsAsync();
-
-        var revenue = totals.GrossRevenue;
-        var totalStripeFees = totals.TotalStripeFees;
-        var totalAppFees = totals.TotalApplicationFees;
-        var ticketsSold = totals.TicketsSold;
-        // Stripe keeps fee VAT and withheld tax like the fees, so they reduce the payout too.
-        var netRevenue = revenue - totalStripeFees - totalAppFees - totals.TotalFeeTax - totals.TotalWithheldTax;
-        var grossAvgPrice = ticketsSold > 0 ? revenue / ticketsSold : 0;
-        var unmatchedCount = totals.UnmatchedOrderCount;
-
-        var feeData = await ticketRepository.GetPaidOrderPaymentMethodsAsync();
-
-        var feesByMethod = feeData
-            .GroupBy(
-                o => o.PaymentMethodDetail != null ? $"{o.PaymentMethod}/{o.PaymentMethodDetail}" : o.PaymentMethod!,
-                StringComparer.Ordinal)
-            .Select(g =>
-            {
-                var totalAmt = g.Sum(o => o.TotalAmount);
-                var totalStripe = g.Sum(o => o.StripeFee ?? 0m);
-                return new FeeBreakdownByMethod
-                {
-                    PaymentMethod = g.Key,
-                    OrderCount = g.Count(),
-                    TotalAmount = totalAmt,
-                    TotalStripeFees = totalStripe,
-                    TotalApplicationFees = g.Sum(o => o.ApplicationFee ?? 0m),
-                    EffectiveRate = totalAmt > 0 ? Math.Round(totalStripe / totalAmt * 100, 2) : 0,
-                };
-            })
-            .ToList();
-
-        var orderDates = await ticketRepository.GetOrderDateAttendeeCountsAsync();
-
-        var salesByDate = orderDates
-            .GroupBy(o => o.PurchasedAt.InUtc().Date)
-            .ToDictionary(g => g.Key, g => g.Sum(o => o.AttendeeCount));
-
-        var dailySalesPoints = new List<DailySales>();
-        if (salesByDate.Count > 0)
-        {
-            var startDate = salesByDate.Keys.Min();
-            var endDate = salesByDate.Keys.Max();
-            var allDays = new List<(LocalDate Date, int Count)>();
-
-            for (var d = startDate; d <= endDate; d = d.PlusDays(1))
-                allDays.Add((d, salesByDate.GetValueOrDefault(d, 0)));
-
-            for (var i = 0; i < allDays.Count; i++)
-            {
-                var (date, count) = allDays[i];
-                var windowStart = Math.Max(0, i - 6);
-                var window = allDays.Skip(windowStart).Take(i - windowStart + 1);
-                var rollingAvg = window.Average(d => (decimal)d.Count);
-
-                dailySalesPoints.Add(new DailySales
-                {
-                    Date = date.ToInvariantDate(),
-                    TicketsSold = count,
-                    RollingAverage = Math.Round(rollingAvg, 1),
-                });
-            }
-        }
-
-        var recentOrders = await ticketRepository.GetRecentOrdersAsync(count: 10);
-
-        return new TicketDashboardStats
-        {
-            TicketsSold = ticketsSold,
-            Revenue = revenue,
-            TotalStripeFees = totalStripeFees,
-            TotalApplicationFees = totalAppFees,
-            TotalFeeTax = totals.TotalFeeTax,
-            TotalWithheldTax = totals.TotalWithheldTax,
-            NetRevenue = netRevenue,
-            GrossAveragePrice = grossAvgPrice,
-            UnmatchedOrderCount = unmatchedCount,
-            FeesByPaymentMethod = feesByMethod,
-            DailySalesPoints = dailySalesPoints,
-            RecentOrders = recentOrders.ToList(),
-            SyncStatus = syncState?.SyncStatus ?? TicketSyncStatus.Idle,
-            SyncError = syncState?.LastError,
-            LastSyncAt = syncState?.LastSyncAt,
-        };
-    }
-
-    public async Task<BreakEvenResult> CalculateBreakEvenAsync(
-        int ticketsSold,
-        decimal grossRevenue,
-        string currency,
-        bool canAccessFinance,
-        int fallbackTarget)
-    {
-        if (ticketsSold <= 0 || grossRevenue <= 0)
-            return new BreakEvenResult { Target = fallbackTarget, Currency = currency };
-
-        var activeBudgetYear = await budgetService.GetActiveYearAsync();
-        if (activeBudgetYear is null)
-            return new BreakEvenResult { Target = fallbackTarget, Currency = currency };
-
-        var summary = budgetService.ComputeBudgetSummary(activeBudgetYear.Groups);
-        var plannedExpenses = Math.Abs(summary.TotalExpenses);
-        if (plannedExpenses <= 0)
-            return new BreakEvenResult { Target = fallbackTarget, Currency = currency };
-
-        // break-even = sold + ceil((plannedExpenses - revenue) / avgPrice)
-        var grossAverageTicketPrice = grossRevenue / ticketsSold;
-        var remainingExpenses = Math.Max(0m, plannedExpenses - grossRevenue);
-        long remainingTicketsToSell = 0;
-        if (remainingExpenses > 0)
-        {
-            var remainingTicketCount = Math.Ceiling(remainingExpenses / grossAverageTicketPrice);
-            remainingTicketsToSell = remainingTicketCount > int.MaxValue
-                ? int.MaxValue
-                : decimal.ToInt32(remainingTicketCount);
-        }
-
-        var breakEvenTarget = ticketsSold + remainingTicketsToSell;
-        var target = breakEvenTarget > int.MaxValue ? int.MaxValue : (int)breakEvenTarget;
-
-        var detail = canAccessFinance
-            ? $"{currency} {remainingExpenses:N2} remaining expenses / {currency} {grossAverageTicketPrice:N2} gross avg. per ticket = {remainingTicketsToSell:N0} tickets still to sell"
-            : null;
-
-        return new BreakEvenResult { Target = target, Detail = detail, Currency = currency };
-    }
+    public Task<BreakEvenResult> CalculateBreakEvenAsync(
+        int ticketsSold, decimal grossRevenue, string currency, bool canAccessFinance, int fallbackTarget) =>
+        salesReports.CalculateBreakEvenAsync(ticketsSold, grossRevenue, currency, canAccessFinance, fallbackTarget);
 
     public Task<CodeTrackingData> GetCodeTrackingDataAsync(string? search, CancellationToken ct = default) =>
         salesReports.GetCodeTrackingDataAsync(search, ct);
