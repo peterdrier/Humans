@@ -75,91 +75,85 @@
     {
         <div class="card">
             <div class="card-header fw-semibold">Department Breakdown</div>
-            <div class="table-responsive">
-                <table class="table table-sm table-hover mb-0 align-middle">
-                    <thead class="table-light">
-                        <tr>
-                            <th>Department</th>
-                            <th class="text-end">Confirmed</th>
-                            <th class="text-end">No-Shows</th>
-                            <th class="text-end">Completion</th>
-                            <th class="text-center">Set-Up</th>
-                            <th class="text-center">Event</th>
-                            <th class="text-center">Strike</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                    @foreach (var dept in Model.Departments)
+            @{
+                Func<Humans.Shifts.Models.PostEventDepartmentRow, IHtmlContent> deptCell0 = @<text>
+                    @if (item.DepartmentSlug is not null)
                     {
-                        int deptTotal = dept.TotalConfirmed + dept.TotalNoShow;
-
-                        <tr>
-                            <td>
-                                @if (dept.DepartmentSlug is not null)
-                                {
-                                    <a asp-controller="ShiftAdmin" asp-action="Index"
-                                       asp-route-slug="@dept.DepartmentSlug" class="text-decoration-none">
-                                        @dept.DepartmentName
-                                    </a>
-                                }
-                                else
-                                {
-                                    @dept.DepartmentName
-                                }
-                            </td>
-                            <td class="text-end">@dept.TotalConfirmed</td>
-                            <td class="text-end">@dept.TotalNoShow</td>
-                            <td class="text-end">
-                                @if (deptTotal > 0)
-                                {
-                                    <span class="badge @CompletionBadgeClass(dept.CompletionPct)">@dept.CompletionPct%</span>
-                                }
-                                else
-                                {
-                                    <span class="text-muted">—</span>
-                                }
-                            </td>
-                            <td class="text-center">
-                                @if (dept.Build.TotalConfirmed + dept.Build.TotalNoShow > 0)
-                                {
-                                    <span class="badge @CompletionBadgeClass(dept.Build.CompletionPct)" title="@dept.Build.TotalConfirmed confirmed, @dept.Build.TotalNoShow no-shows">
-                                        @dept.Build.CompletionPct%
-                                    </span>
-                                }
-                                else
-                                {
-                                    <span class="text-muted small">—</span>
-                                }
-                            </td>
-                            <td class="text-center">
-                                @if (dept.Event.TotalConfirmed + dept.Event.TotalNoShow > 0)
-                                {
-                                    <span class="badge @CompletionBadgeClass(dept.Event.CompletionPct)" title="@dept.Event.TotalConfirmed confirmed, @dept.Event.TotalNoShow no-shows">
-                                        @dept.Event.CompletionPct%
-                                    </span>
-                                }
-                                else
-                                {
-                                    <span class="text-muted small">—</span>
-                                }
-                            </td>
-                            <td class="text-center">
-                                @if (dept.Strike.TotalConfirmed + dept.Strike.TotalNoShow > 0)
-                                {
-                                    <span class="badge @CompletionBadgeClass(dept.Strike.CompletionPct)" title="@dept.Strike.TotalConfirmed confirmed, @dept.Strike.TotalNoShow no-shows">
-                                        @dept.Strike.CompletionPct%
-                                    </span>
-                                }
-                                else
-                                {
-                                    <span class="text-muted small">—</span>
-                                }
-                            </td>
-                        </tr>
+                        <a asp-controller="ShiftAdmin" asp-action="Index"
+                           asp-route-slug="@item.DepartmentSlug" class="text-decoration-none">
+                            @item.DepartmentName
+                        </a>
                     }
-                    </tbody>
-                </table>
-            </div>
+                    else
+                    {
+                        @item.DepartmentName
+                    }
+
+                </text>;
+                Func<Humans.Shifts.Models.PostEventDepartmentRow, IHtmlContent> deptCell1 = @<text>@item.TotalConfirmed</text>;
+                Func<Humans.Shifts.Models.PostEventDepartmentRow, IHtmlContent> deptCell2 = @<text>@item.TotalNoShow</text>;
+                Func<Humans.Shifts.Models.PostEventDepartmentRow, IHtmlContent> deptCell3 = @<text>
+                    @if (item.TotalConfirmed + item.TotalNoShow > 0)
+                    {
+                        <span class="badge @CompletionBadgeClass(item.CompletionPct)">@item.CompletionPct%</span>
+                    }
+                    else
+                    {
+                        <span class="text-muted">—</span>
+                    }
+
+                </text>;
+                Func<Humans.Shifts.Models.PostEventDepartmentRow, IHtmlContent> deptCell4 = @<text>
+                    @if (item.Build.TotalConfirmed + item.Build.TotalNoShow > 0)
+                    {
+                        <span class="badge @CompletionBadgeClass(item.Build.CompletionPct)" title="@item.Build.TotalConfirmed confirmed, @item.Build.TotalNoShow no-shows">
+                            @item.Build.CompletionPct%
+                        </span>
+                    }
+                    else
+                    {
+                        <span class="text-muted small">—</span>
+                    }
+
+                </text>;
+                Func<Humans.Shifts.Models.PostEventDepartmentRow, IHtmlContent> deptCell5 = @<text>
+                    @if (item.Event.TotalConfirmed + item.Event.TotalNoShow > 0)
+                    {
+                        <span class="badge @CompletionBadgeClass(item.Event.CompletionPct)" title="@item.Event.TotalConfirmed confirmed, @item.Event.TotalNoShow no-shows">
+                            @item.Event.CompletionPct%
+                        </span>
+                    }
+                    else
+                    {
+                        <span class="text-muted small">—</span>
+                    }
+
+                </text>;
+                Func<Humans.Shifts.Models.PostEventDepartmentRow, IHtmlContent> deptCell6 = @<text>
+                    @if (item.Strike.TotalConfirmed + item.Strike.TotalNoShow > 0)
+                    {
+                        <span class="badge @CompletionBadgeClass(item.Strike.CompletionPct)" title="@item.Strike.TotalConfirmed confirmed, @item.Strike.TotalNoShow no-shows">
+                            @item.Strike.CompletionPct%
+                        </span>
+                    }
+                    else
+                    {
+                        <span class="text-muted small">—</span>
+                    }
+
+                </text>;
+                var deptTable = TableModel.For(Model.Departments)
+                    .Template("Department", deptCell0, sortBy: d => d.DepartmentName)
+                    .Template("Confirmed", deptCell1, o => o.End(), sortBy: d => d.TotalConfirmed)
+                    .Template("No-Shows", deptCell2, o => o.End(), sortBy: d => d.TotalNoShow)
+                    .Template("Completion", deptCell3, o => o.End(), sortBy: d => d.TotalConfirmed + d.TotalNoShow > 0 ? d.CompletionPct : (int?)null)
+                    .Template("Set-Up", deptCell4, o => o.Css("text-center").HeaderCss("text-center"), sortBy: d => d.Build.CompletionPct)
+                    .Template("Event", deptCell5, o => o.Css("text-center").HeaderCss("text-center"), sortBy: d => d.Event.CompletionPct)
+                    .Template("Strike", deptCell6, o => o.Css("text-center").HeaderCss("text-center"), sortBy: d => d.Strike.CompletionPct)
+                    .Css("align-middle")
+                    .Build();
+            }
+            <partial name="_Table" model="deptTable" />
         </div>
         <p class="text-muted small mt-2">
             <i class="fa-solid fa-circle-info me-1"></i>
