@@ -21,12 +21,6 @@ function getSpaceRequirementSqm(campSeasonId) {
     return season?.spaceRequirementSqm ?? null;
 }
 
-function escHtml(s) {
-    const d = document.createElement('div');
-    d.textContent = s;
-    return d.innerHTML;
-}
-
 export function onCampPolygonClick(e) {
     if (appState.activeCampSeasonId || isMeasuring()) return;
     const props = e.features[0].properties;
@@ -35,23 +29,23 @@ export function onCampPolygonClick(e) {
     const canEdit = CONFIG.IS_MAP_ADMIN || ((CONFIG.IS_PLACEMENT_OPEN || CONFIG.IS_PLACEMENT_CHANGEABLE) && isOwn);
 
     const area         = props.areaSqm   ? `<div class="text-muted small">${Math.round(props.areaSqm).toLocaleString()} m²</div>` : '';
-    const warning      = props.outsideZone ? `<div class="text-danger small">⚠️ ${escHtml(CONFIG.OUTSIDE_LIMITS)}</div>` : '';
-    const overlapWarn  = props.overlaps    ? `<div class="text-warning small">⚠️ ${escHtml(CONFIG.OVERLAPS_BARRIO)}</div>` : '';
+    const warning      = props.outsideZone ? `<div class="text-danger small">⚠️ ${Humans.escapeHtml(CONFIG.OUTSIDE_LIMITS)}</div>` : '';
+    const overlapWarn  = props.overlaps    ? `<div class="text-warning small">⚠️ ${Humans.escapeHtml(CONFIG.OVERLAPS_BARRIO)}</div>` : '';
     const sizeWarn     = (() => {
         if (!props.spaceRequirementSqm || !props.areaSqm) return '';
         const ratio = props.areaSqm / props.spaceRequirementSqm;
-        if (ratio > SIZE_RATIO_UPPER) return `<div class="text-warning small">⚠️ ${escHtml(CONFIG.AREA_MUCH_LARGER.replace('{0}', Math.round(props.spaceRequirementSqm).toLocaleString()))}</div>`;
-        if (ratio < SIZE_RATIO_LOWER) return `<div class="text-warning small">⚠️ ${escHtml(CONFIG.AREA_MUCH_SMALLER.replace('{0}', Math.round(props.spaceRequirementSqm).toLocaleString()))}</div>`;
+        if (ratio > SIZE_RATIO_UPPER) return `<div class="text-warning small">⚠️ ${Humans.escapeHtml(CONFIG.AREA_MUCH_LARGER.replace('{0}', Math.round(props.spaceRequirementSqm).toLocaleString()))}</div>`;
+        if (ratio < SIZE_RATIO_LOWER) return `<div class="text-warning small">⚠️ ${Humans.escapeHtml(CONFIG.AREA_MUCH_SMALLER.replace('{0}', Math.round(props.spaceRequirementSqm).toLocaleString()))}</div>`;
         return '';
     })();
-    const soundZoneWarn = props.soundZoneOutOfRange ? `<div class="text-warning small">⚠️ ${escHtml(CONFIG.SOUND_ZONE_MISMATCH)}</div>` : '';
-    const editBtn      = canEdit ? `<button class="btn btn-primary btn-sm js-edit-barrio-btn">${escHtml(CONFIG.EDIT)}</button>` : '';
-    const historyBtn   = `<button class="btn btn-outline-secondary btn-sm js-history-barrio-btn"><i class="fa fa-history me-1"></i>${escHtml(CONFIG.HISTORY)}</button>`;
+    const soundZoneWarn = props.soundZoneOutOfRange ? `<div class="text-warning small">⚠️ ${Humans.escapeHtml(CONFIG.SOUND_ZONE_MISMATCH)}</div>` : '';
+    const editBtn      = canEdit ? `<button class="btn btn-primary btn-sm js-edit-barrio-btn">${Humans.escapeHtml(CONFIG.EDIT)}</button>` : '';
+    const historyBtn   = `<button class="btn btn-outline-secondary btn-sm js-history-barrio-btn"><i class="fa fa-history me-1"></i>${Humans.escapeHtml(CONFIG.HISTORY)}</button>`;
 
     if (appState.currentPopup) appState.currentPopup.remove();
     const nameHtml = props.campSlug
-        ? `<a href="/Barrios/${encodeURIComponent(props.campSlug)}" class="fw-bold text-decoration-none">${escHtml(props.campName || CONFIG.GENERIC_CAMP)}</a>`
-        : `<strong>${escHtml(props.campName || CONFIG.GENERIC_CAMP)}</strong>`;
+        ? `<a href="/Barrios/${encodeURIComponent(props.campSlug)}" class="fw-bold text-decoration-none">${Humans.escapeHtml(props.campName || CONFIG.GENERIC_CAMP)}</a>`
+        : `<strong>${Humans.escapeHtml(props.campName || CONFIG.GENERIC_CAMP)}</strong>`;
     appState.currentPopup = new maplibregl.Popup().setLngLat(e.lngLat)
         .setHTML(`<div>${nameHtml}</div>${area}${warning}${overlapWarn}${sizeWarn}${soundZoneWarn}<div class="d-flex flex-column gap-1 mt-1">${editBtn}${historyBtn}</div>`)
         .addTo(appState.map);
@@ -253,24 +247,24 @@ export async function loadHistory(campSeasonId, canEdit = false) {
     } catch (error) {
         if (version !== historyVersion) return;
         console.error('Failed to load barrio polygon history', error);
-        list.innerHTML = `<p class="text-danger text-center py-4">${escHtml(CONFIG.HISTORY_LOAD_FAILED)}</p>`;
+        list.innerHTML = `<p class="text-danger text-center py-4">${Humans.escapeHtml(CONFIG.HISTORY_LOAD_FAILED)}</p>`;
         bootstrap.Offcanvas.getOrCreateInstance(document.getElementById('history-panel')).show();
         return;
     }
     if (version !== historyVersion) return;
     if (!history.length) {
-        list.innerHTML = `<p class="text-muted text-center py-4">${escHtml(CONFIG.HISTORY_EMPTY)}</p>`;
+        list.innerHTML = `<p class="text-muted text-center py-4">${Humans.escapeHtml(CONFIG.HISTORY_EMPTY)}</p>`;
     } else {
         list.innerHTML = history.map(h => `
             <div class="border-bottom py-2 px-1">
                 <div class="d-flex justify-content-between align-items-start">
                     <div>
-                        <div class="fw-semibold small">${escHtml(h.modifiedByDisplayName)}</div>
-                        <div class="text-muted" style="font-size:12px">${escHtml(h.modifiedAt)} &middot; ${Math.round(h.areaSqm).toLocaleString()} m²</div>
-                        <div class="text-secondary" style="font-size:12px">${escHtml(h.note)}</div>
+                        <div class="fw-semibold small">${Humans.escapeHtml(h.modifiedByDisplayName)}</div>
+                        <div class="text-muted" style="font-size:12px">${Humans.escapeHtml(h.modifiedAt)} &middot; ${Math.round(h.areaSqm).toLocaleString()} m²</div>
+                        <div class="text-secondary" style="font-size:12px">${Humans.escapeHtml(h.note)}</div>
                     </div>
                     <div class="d-flex gap-1 flex-shrink-0">
-                        <button class="btn btn-outline-secondary btn-sm py-0 preview-btn" data-id="${h.id}" data-geojson="${encodeURIComponent(h.geoJson)}">${escHtml(CONFIG.PREVIEW)}</button>
+                        <button class="btn btn-outline-secondary btn-sm py-0 preview-btn" data-id="${h.id}" data-geojson="${encodeURIComponent(h.geoJson)}">${Humans.escapeHtml(CONFIG.PREVIEW)}</button>
                         ${CONFIG.IS_MAP_ADMIN ? `<button class="btn btn-outline-warning btn-sm py-0 restore-btn" data-id="${h.id}">Restore</button>` : ''}
                     </div>
                 </div>
@@ -303,13 +297,9 @@ export async function restoreVersion(historyId, campSeasonId) {
     const draft = JSON.stringify(appState.draw.getAll().features);
     restoreInProgress = true;
     document.getElementById('history-list').querySelectorAll('.restore-btn').forEach(btn => { btn.disabled = true; });
-    const token = document.querySelector('input[name="__RequestVerificationToken"]').value;
     let resp;
     try {
-        resp = await fetch(`/api/city-planning/camp-polygons/${id}/restore/${historyId}`, {
-            method: 'POST',
-            headers: { 'RequestVerificationToken': token },
-        });
+        resp = await Humans.postJson(`/api/city-planning/camp-polygons/${id}/restore/${historyId}`);
     } catch (error) {
         console.error('Failed to restore barrio polygon', error);
         showToast('Restore failed.', 'danger');

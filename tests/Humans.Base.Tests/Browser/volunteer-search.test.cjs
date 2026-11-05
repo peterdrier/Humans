@@ -3,6 +3,7 @@ const { test } = require('node:test');
 const { readFileSync } = require('node:fs');
 const { resolve } = require('node:path');
 const vm = require('node:vm');
+const { installHumans } = require('../../browser-support/humans-js.cjs');
 
 function page() {
     const source = readFileSync(resolve(__dirname,
@@ -27,16 +28,15 @@ function page() {
         value: '', dataset: { shiftId }, classList: { contains: () => true },
     }));
     const containers = { one: { innerHTML: '' }, two: { innerHTML: '' } };
-    vm.runInNewContext(script, {
+    vm.runInNewContext(script, installHumans({
         document: {
             addEventListener: (event, handler) => { handlers[event] = handler; },
             querySelector: selector => containers[selector.includes('"one"') ? 'one' : 'two'],
         },
-        escapeHtml: value => String(value ?? ''),
         setTimeout: callback => { const id = ++timerId; timers.set(id, callback); return id; },
         clearTimeout: id => timers.delete(id),
         fetch: url => new Promise((resolveResponse, reject) => requests.push({ url, resolveResponse, reject })),
-    });
+    }));
     return {
         requests, containers,
         type: (index, name) => { inputs[index].value = name; handlers.input({ target: inputs[index] }); },

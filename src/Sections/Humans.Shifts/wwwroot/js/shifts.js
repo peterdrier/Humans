@@ -1,8 +1,4 @@
 (function () {
-  function token() {
-    var el = document.querySelector('input[name="__RequestVerificationToken"]');
-    return el ? el.value : '';
-  }
   // The server renders the badge only when count > 0, so it must be addable and removable here.
   function updateMineBadge(count) {
     var tabs = document.querySelectorAll('.shifts-nav-tabs .nav-link');
@@ -45,13 +41,10 @@
     var original = btn.innerHTML;
     btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>' + original;
     var fd = new FormData();
-    fd.append('__RequestVerificationToken', token());
     fd.append('shiftId', btn.dataset.shiftId);
-    fetch('/Shifts/ToggleDay', {
-      method: 'POST',
+    Humans.postForm('/Shifts/ToggleDay', fd, {
       redirect: 'error',
-      headers: { 'X-Requested-With': 'XMLHttpRequest' },
-      body: fd
+      headers: { 'X-Requested-With': 'XMLHttpRequest' }
     }).then(function (r) {
       if (!r.ok) throw new Error("HTTP " + r.status);
       var redirect = r.headers.get('X-Redirect');

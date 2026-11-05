@@ -167,12 +167,12 @@ function renderPreviewModal(matched, unrecognized) {
     }
 
     if (matched.length === 0) {
-        matchedBody.innerHTML = `<tr><td colspan="3" class="text-muted text-center">${escHtml(t('noCampsMatched'))}</td></tr>`;
+        matchedBody.innerHTML = `<tr><td colspan="3" class="text-muted text-center">${Humans.escapeHtml(t('noCampsMatched'))}</td></tr>`;
         confirmBtn.disabled = true;
     } else {
         matchedBody.innerHTML = matched.map(m => `
             <tr>
-                <td>${escHtml(m.campName)}</td>
+                <td>${Humans.escapeHtml(m.campName)}</td>
                 <td class="text-end">${formatArea(m.previousAreaSqm)}</td>
                 <td class="text-end">${formatArea(m.newAreaSqm)}</td>
             </tr>
@@ -181,29 +181,21 @@ function renderPreviewModal(matched, unrecognized) {
     }
 
     if (unrecognized.length > 0) {
-        unrecList.innerHTML = unrecognized.map(n => `<li>${escHtml(n)}</li>`).join('');
+        unrecList.innerHTML = unrecognized.map(n => `<li>${Humans.escapeHtml(n)}</li>`).join('');
         unrecSection.classList.remove('d-none');
     } else {
         unrecSection.classList.add('d-none');
     }
 }
 
-function escHtml(s) {
-    const d = document.createElement('div');
-    d.textContent = s;
-    return d.innerHTML;
-}
-
 async function handleConfirm() {
     if (!pendingImport?.matched?.length) return;
 
     const confirmBtn = document.getElementById('import-confirm-btn');
-    const tokenEl    = document.querySelector('input[name="__RequestVerificationToken"]');
-    if (!tokenEl) {
+    if (!Humans.csrfToken()) {
         showModalStatus(t('tokenMissingError'), true);
         return;
     }
-    const token    = tokenEl.value;
     const now      = new Date();
     const noteDate = now.toISOString().slice(0, 16).replace('T', ' ');
     const note     = `Imported ${noteDate}`;
@@ -217,14 +209,8 @@ async function handleConfirm() {
     try {
         for (const item of pendingImport.matched) {
             try {
-                const resp = await fetch(`/api/city-planning/camp-polygons/${item.campSeasonId}`, {
-                    method: 'PUT',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'RequestVerificationToken': token,
-                    },
-                    body: JSON.stringify({ geoJson: item.geoJson, areaSqm: item.newAreaSqm, note }),
-                });
+                const resp = await Humans.postJson(`/api/city-planning/camp-polygons/${item.campSeasonId}`,
+                    { geoJson: item.geoJson, areaSqm: item.newAreaSqm, note }, { method: 'PUT' });
                 if (resp.ok) {
                     successCount++;
                 } else {
