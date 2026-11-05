@@ -215,9 +215,6 @@
   <data name="Users_ProfileEdit_TierLocked" xml:space="preserve">
     <value>Je niveau is vergrendeld omdat je een actieve aanvraag of een aanvraag in afwachting hebt.</value>
   </data>
-  <data name="Users_ProfileEdit_MotivationHelp" xml:space="preserve">
-    <value>Minimaal 50 tekens. Dit helpt het bestuur je doelen te begrijpen.</value>
-  </data>
   <data name="Users_ProfileEdit_BurnerNamePlaceholder" xml:space="preserve">
     <value>De naam waarmee je bekendstaat</value>
   </data>

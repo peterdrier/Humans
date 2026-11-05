@@ -215,9 +215,6 @@
   <data name="Users_ProfileEdit_TierLocked" xml:space="preserve">
     <value>Votre catégorie est verrouillée car vous avez une candidature active ou en attente.</value>
   </data>
-  <data name="Users_ProfileEdit_MotivationHelp" xml:space="preserve">
-    <value>Minimum 50 caractères. Cela aide le Conseil à comprendre vos objectifs.</value>
-  </data>
   <data name="Users_ProfileEdit_BurnerNamePlaceholder" xml:space="preserve">
     <value>Le nom sous lequel on vous connaît</value>
   </data>

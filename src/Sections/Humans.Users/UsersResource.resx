@@ -100,7 +100,6 @@
   <data name="Users_ProfileEdit_TierVolunteerDesc" xml:space="preserve"><value>You want to come to the event, contribute your energy, work a shift or join a team. No formal commitment to the association's governance. Most people fall here and that's completely valid.</value></data>
   <data name="Users_ProfileEdit_TierChangeNote" xml:space="preserve"><value>Note: You can always apply to change this later on.</value></data>
   <data name="Users_ProfileEdit_TierLocked" xml:space="preserve"><value>Your tier is locked because you have an active or pending application.</value></data>
-  <data name="Users_ProfileEdit_MotivationHelp" xml:space="preserve"><value>Minimum 50 characters. This helps the Board understand your goals.</value></data>
   <data name="Users_ProfileEdit_BurnerNamePlaceholder" xml:space="preserve"><value>The name you go by</value></data>
   <data name="Users_ProfileEdit_BurnerNameHelp" xml:space="preserve"><value>This is your public display name, visible to everyone.</value></data>
   <data name="Users_ProfileEdit_BurnerNameMatchesLegalName" xml:space="preserve"><value>Your burner name appears to match your legal name. Consider using a different name to protect your privacy — this name is visible to all humans.</value></data>
