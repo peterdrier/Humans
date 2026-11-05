@@ -587,12 +587,14 @@ public class FinanceControllerTests
     [HumansFact]
     public async Task Creditors_ShowsTheBalanceFromTheMembersSide()
     {
-        Accounts([Row(40000002, "Ada", -120m), Row(40000003, "Bo", 40m), Row(40000004, "Cy", null)]);
+        Accounts([Row(40000002, "Ada", -120m), Row(40000003, "Bo", 40m) with { NotPayableReason = "nothing owed" }, Row(40000004, "Cy", null)]);
 
         var page = PageOf(await MakeController().Creditors(sort: null, dir: null));
 
         page.Accounts[0].Balance.Should().Be(120m);   // org owes Ada
         page.Accounts[1].Balance.Should().Be(-40m);   // Bo owes the org
+        page.Accounts[1].NotPayableReason.Should().Be("nothing owed");
+        page.Accounts[1].IsPayable.Should().BeFalse();
         page.Accounts[2].Balance.Should().BeNull();   // no cached lines — not zero
     }
 

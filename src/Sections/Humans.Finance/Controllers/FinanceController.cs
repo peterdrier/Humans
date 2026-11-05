@@ -122,7 +122,7 @@ internal sealed class FinanceController(
                 r.OpenDocumentCount,
                 r.PendingPayoutFileName,
                 r.HasDuplicateDocuments,
-                matches.GetValueOrDefault(r.SupplierAccountNum)))
+                matches.GetValueOrDefault(r.SupplierAccountNum), r.NotPayableReason))
             .ToList();
 
         var sortBy = sort is "name" or "balance" or "member" or "opendocs" ? sort : "account";

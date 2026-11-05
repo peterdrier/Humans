@@ -589,7 +589,7 @@ internal sealed class Service(
                     ? contactById.GetValueOrDefault(bound[0].HoldedContactId)
                     : contacts.GetValueOrDefault(num);
 
-                return new CreditorAccountRow(
+                var row = new CreditorAccountRow(
                     SupplierAccountNum: num,
                     Name: contact?.Name ?? "",
                     Balance: balance,
@@ -605,6 +605,7 @@ internal sealed class Service(
                     HasDuplicateDocuments: bound is { Count: 1 }
                         ? flaggedUsers?.Contains(bound[0].UserId)
                         : false);
+                return row with { NotPayableReason = GetNotPayableReason(row) };
             }).ToList();
 
         // Accounts but no names at all means an unusable contact list, leaving the bind card as bare numbers. One
@@ -615,6 +616,25 @@ internal sealed class Service(
                 "/Finance/Creditors will show bare account numbers.", rows.Count);
 
         return (rows, unresolved, null);
+    }
+
+    private static string? GetNotPayableReason(CreditorAccountRow row)
+    {
+        var account = $"Creditor account {row.SupplierAccountNum}";
+        return row.Bindings.Count switch
+        {
+            0 => $"{account} is not bound to a member — bind it first.",
+            > 1 => $"{account} is bound to {row.Bindings.Count} members — unbind all but the one who owns it first.",
+            _ when row.HasDuplicateDocuments is null =>
+                $"{account}: Holded's document list could not be read, so duplicate documents cannot be ruled out — try again later.",
+            _ when row.HasDuplicateDocuments == true =>
+                $"{account} has duplicate documents in Holded — remove them on /Finance/HoldedDuplicates first.",
+            _ when row.PendingPayoutFileName is { } file =>
+                $"{account} is already in payout file {file}, which is not booked yet — book it or withdraw the transfer first.",
+            _ when row.OwedToMember <= 0m => $"{account}: nothing owed.",
+            _ when row.IbanMasked is null => $"{account} has no IBAN on the Holded contact it is bound to.",
+            _ => null,
+        };
     }
 
     /// <summary>The account Holded's contact is on. Never the binding's stored number: it can be stale, and a stale
@@ -1128,33 +1148,15 @@ internal sealed class Service(
                 return (null,
                     $"Creditor account {s.SupplierAccountNum} is no longer listed — reload the page and try again.");
 
-            if (row.Bindings.Count != 1)
-                return (null, row.Bindings.Count == 0
-                    ? $"Creditor account {s.SupplierAccountNum} is not bound to a member — bind it first."
-                    : $"Creditor account {s.SupplierAccountNum} is bound to {row.Bindings.Count} members — "
-                      + "unbind all but the one who owns it first.");
+            if (row.NotPayableReason is { } notPayable)
+                return (null, notPayable);
 
             if (s.Amount > row.OwedToMember)
                 return (null,
                     $"Creditor account {s.SupplierAccountNum}: {Euros(s.Amount)} is more than the "
                     + $"{Euros(row.OwedToMember)} owed.");
 
-            // Re-derived here because the posted selection is never trusted.
-            if (row.HasDuplicateDocuments is null)
-                return (null,
-                    $"Creditor account {s.SupplierAccountNum}: Holded's document list could not be read, so "
-                    + "duplicate documents cannot be ruled out — try again later.");
-            if (row.HasDuplicateDocuments == true)
-                return (null,
-                    $"Creditor account {s.SupplierAccountNum} has duplicate documents in Holded — remove them "
-                    + "on /Finance/HoldedDuplicates first.");
-            if (row.PendingPayoutFileName is { } pendingFile)
-                return (null,
-                    $"Creditor account {s.SupplierAccountNum} is already in payout file {pendingFile}, which is "
-                    + "not booked yet — book it or withdraw the transfer first.");
-
-            // Name and IBAN both come off the bound contact, so no transfer pairs one person's name with another's
-            // account.
+            // The cache may have refreshed since the row read; never pay a vanished contact or IBAN.
             if (!contactById.TryGetValue(row.Bindings[0].HoldedContactId, out var contact)
                 || string.IsNullOrWhiteSpace(contact.Iban))
                 return (null,

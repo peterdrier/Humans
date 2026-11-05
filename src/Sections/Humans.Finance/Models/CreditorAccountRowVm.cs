@@ -22,26 +22,11 @@ internal sealed record CreditorAccountRowVm(
     int? OpenDocs = null,
     string? PendingPayoutFileName = null,
     bool? HasDuplicateDocuments = false,
-    CreditorMatchVm? Match = null)
+    CreditorMatchVm? Match = null,
+    string? NotPayableReason = null)
 {
-    public const string DuplicateDocumentsReason = "duplicate documents in Holded";
-    public const string InFlightReason = "payment in flight";
-
     /// <summary>Needs an admin to unbind all but the owner.</summary>
     public bool HasCollision => Bindings.Count > 1;
-
-    /// <summary>Null when payable. Display only: the server re-derives the same rules at generation.</summary>
-    public string? NotPayableReason => Bindings.Count switch
-    {
-        0 => "unbound",
-        > 1 => "collision",
-        _ when HasDuplicateDocuments is null => "duplicate check unavailable — Holded's document list could not be read",
-        _ when HasDuplicateDocuments == true => DuplicateDocumentsReason,
-        _ when PendingPayoutFileName is not null => InFlightReason,
-        _ when Balance is not > 0m => "nothing owed",
-        _ when IbanMasked is null => "no IBAN in Holded",
-        _ => null,
-    };
 
     public bool IsPayable => NotPayableReason is null;
 

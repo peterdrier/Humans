@@ -194,8 +194,7 @@ internal sealed class FinanceOverviewService(
             taxesOwed);
     }
 
-    /// <summary>Ready to pay mirrors the Creditors page's payability, less the IBAN check the payout itself
-    /// reports.</summary>
+    /// <summary>Ready to pay uses the same service-derived eligibility as the Creditors page and payout planning.</summary>
     internal static FinanceWorkVm BuildWork(
         IReadOnlyList<ExpenseReportDto> queue,
         IReadOnlyList<CreditorAccountRow> creditors,
@@ -204,8 +203,7 @@ internal sealed class FinanceOverviewService(
         var submitted = queue.Where(r => r.Status == ExpenseReportStatus.Submitted).ToList();
         var endorsed = queue.Where(r => r.Status == ExpenseReportStatus.CoordinatorEndorsed).ToList();
         var ready = creditors
-            .Where(r => r.Bindings.Count == 1 && r.OwedToMember > 0m
-                && r.PendingPayoutFileName is null && r.HasDuplicateDocuments == false)
+            .Where(r => r.NotPayableReason is null)
             .ToList();
         var duplicates = creditors.Count(r => r.HasDuplicateDocuments == true);
         int? reconProblems = recon.IsAvailable ? recon.Totals.Problems : null;

@@ -45,9 +45,10 @@ longer needs a redeploy.
 
 ## Flow
 
-1. `FinanceController.Creditors` renders each row's payability. Payable = **exactly one binding**,
-   **positive balance from the member's side**, **an IBAN on the Holded contact**. Anything else
-   shows the reason (`unbound`, `collision`, `nothing owed`, `no IBAN in Holded`) in place of a box.
+1. `FinanceController.Creditors` renders the service-derived `NotPayableReason` (null means payable),
+   also used by the overview and payout planning. Payable = **exactly one binding**,
+   **positive balance from the member's side**, **an IBAN on the Holded contact**, **no duplicate documents (check available)**, and **no pending payout file**. Anything else
+   shows the service's refusal in place of a box.
    An **"Only show accounts we owe money to"** checkbox, **ticked by default**, hides every row whose
    balance is not positive so the screen opens on just the accounts a payout would touch. It is a
    client-side row filter over the already-rendered table — every row is present in the markup, and
