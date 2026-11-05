@@ -633,7 +633,7 @@ public class TeamAdminControllerMembersTests
     }
 
     [HumansFact]
-    public async Task Board_reads_the_members_page_without_any_management_controls()
+    public async Task Board_reads_the_members_and_roster_pages_without_any_management_controls()
     {
         var userId = Guid.NewGuid();
         var teams = Substitute.For<ITeamManagementService>();
@@ -662,13 +662,19 @@ public class TeamAdminControllerMembersTests
             Url = Substitute.For<IUrlHelper>()
         };
 
-        var members = await controller.Members(team.Slug);
-        var add = await controller.AddMember(team.Slug, new AddMemberModel { UserId = Guid.NewGuid() });
+        users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(new Dictionary<Guid, UserInfo>()));
 
+        var members = await controller.Members(team.Slug);
         var model = members.Should().BeOfType<ViewResult>().Which.Model.Should().BeOfType<TeamMembersViewModel>().Subject;
         model.CanManage.Should().BeFalse();
         model.CanManageRoles.Should().BeFalse();
         model.CanProvisionEmails.Should().BeFalse();
+
+        var roster = await controller.Roster(team.Slug, CancellationToken.None);
+        roster.Should().BeOfType<ViewResult>().Which.Model.Should().BeOfType<TeamRosterViewModel>();
+
+        var add = await controller.AddMember(team.Slug, new AddMemberModel { UserId = Guid.NewGuid() });
         add.Should().BeOfType<ForbidResult>();
     }
 
