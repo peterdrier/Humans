@@ -4,13 +4,13 @@
   src/Humans.Base/Constants/RoleNames.cs
   src/Humans.Base/Authorization/PolicyNames.cs
   src/Sections/Humans.Rideshare/RideshareNotificationSources.cs
-  src/Sections/Humans.AuditLog/Contracts/IAuditLogService.cs
+  src/Humans.Base/AuditLog/IAuditLogService.cs
   src/Sections/Humans.Settings/Contracts/ISettingsService.cs
   src/Sections/Humans.Notifications.Contracts/INotificationEmitter.cs
   src/Humans.Base/Users/IUserService.cs
   src/Humans.Base/Users/UserInfo.cs
   src/Sections/Humans.Users.Contracts/IUserMerge.cs
-  src/Sections/Humans.Gdpr/Contracts/IUserDataContributor.cs
+  src/Humans.Base/Gdpr/IUserDataContributor.cs
 -->
 <!-- freshness:flag-on-change
   The interest-always-anchors-to-a-trip rule, seats/matched derivation, the route-frozen-at-save

@@ -185,7 +185,7 @@ Client-side JavaScript with `fetch()` is appropriate for:
 
 - **Autocomplete/search inputs** that need instant feedback on keystrokes (profile search, member search, volunteer search, shift volunteer search)
 - **Dynamic form field population** that responds to parent field changes (team Google resource dropdown)
-- **Progressive enhancement** for inline actions that avoid full page reloads (notification dismiss/mark-read, feedback detail panel loading)
+- **Progressive enhancement** for inline actions that avoid full page reloads (notification dismiss/mark-read)
 - **Utility behaviors** that are not page content (timezone detection, notification popup, profile popover on hover)
 - **Interactive maps** whose whole surface is a client-rendered canvas driven by a JSON API (the city-planning barrio, container and overview maps; the rideshare board)
 
@@ -212,7 +212,7 @@ All pages are server-rendered with Razor. The following use `fetch()` for the sp
 | `Humans.Users/Views/Profile/Edit.cshtml` | Burner-name collision count on keystroke | Search input |
 | `Humans.Email/Views/CommunicationPreferences/Index.cshtml` | Per-preference toggle POST without reload | Progressive enhancement |
 | `Humans.Email/Views/GuestAccount/CommunicationPreferences.cshtml` | Same toggles on the tokenless guest page | Progressive enhancement |
-| `Humans.Agent/Views/Shared/Components/HelpWidget/Default.cshtml` (`<vc:help-widget>`) | In-place feedback submit without leaving the page | Progressive enhancement |
+| `Humans.Agent/Views/Shared/Components/HelpWidget/Default.cshtml` (`<vc:help-widget>`) | In-place issue submit without leaving the page | Progressive enhancement |
 | `Humans.Agent/wwwroot/js/agent/widget.js` | Streamed answer from `/Agent/Ask` (SSE) | Progressive enhancement |
 | `Humans.CityPlanning/wwwroot/js/city-planning/**` | Barrio, container and overview maps read and write `/api/city-planning/*` | Interactive map |
 | `Humans.Rideshare/wwwroot/js/rideshare/board.js` (`Views/Rideshare/Index.cshtml`) | Rideshare board map reads its GeoJSON feed from `RideshareApi` | Interactive map |

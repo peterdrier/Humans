@@ -272,7 +272,7 @@ have the supporting machinery. Each notes the missing piece.
   every application context, and `Internal/AssemblyScope.IsSection` tells a section
   assembly apart. There is no type→section resolver (the old `Internal/Sections.cs`
   is gone), and the entity→section direction is missing too — an entity declared
-  in a `.Contracts` leaf (`Humans.Users.Contracts.User`) belongs to its own
+  in a `.Contracts` leaf or in `Humans.Base` (`User`) belongs to its own
   section, not to the section doing the querying. HUM0024 used to derive entity
   ownership from EF-config namespace layout, but it is retired
   (nobodies-collective/Humans#1278), so that derivation is no longer available to

@@ -212,19 +212,17 @@ Design specs and implementation plans preserved for historical context. These do
 
 | Directory | Contents |
 |-----------|----------|
-| [plans/](plans/) | Programme-level plans and audits — the Q3 transition gate ladder, the G0 section audit, the demolition and frozen-section inventories, the section dependency DAG, and the cross-section FK-cut inventory |
+| [plans/](plans/) | The cross-section FK-cut inventory |
 | [superpowers/specs/](superpowers/specs/) | Feature design specifications |
-| [superpowers/plans/](superpowers/plans/) | Feature implementation plans |
 
 ## Architecture
 
-Clean Architecture with four layers:
+Vertical sections over a shared base:
 
 ```
-Web             Controllers, Views, ViewModels
-Application     Interfaces, DTOs, Services (business logic), Use Cases
-Infrastructure  EF Core, Repositories, Stores, Caching Decorators, Jobs, Integrations
-Domain          Entities, Enums, Value Objects
+Humans.Web             Shell: layouts, page composition, platform context
+Sections/Humans.<X>    One section each: controllers, views, services, repository, DbContext, migrations
+Humans.Base            Bottom of the graph: role markers, architecture attributes, TrackedCache, shared view layer
 ```
 
 | Document | Description |
