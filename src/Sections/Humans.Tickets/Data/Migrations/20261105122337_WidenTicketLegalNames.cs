@@ -5,11 +5,21 @@
 namespace Humans.Tickets.Data.Migrations
 {
     /// <inheritdoc />
-    public partial class WidenAttendeeLegalName : Migration
+    public partial class WidenTicketLegalNames : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
+            migrationBuilder.AlterColumn<string>(
+                name: "ReceiverLegalName",
+                table: "ticket_transfer_requests",
+                type: "character varying(513)",
+                maxLength: 513,
+                nullable: false,
+                oldClrType: typeof(string),
+                oldType: "character varying(256)",
+                oldMaxLength: 256);
+
             migrationBuilder.AlterColumn<string>(
                 name: "AttendeeName",
                 table: "ticket_attendees",
@@ -24,6 +34,16 @@ namespace Humans.Tickets.Data.Migrations
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
+            migrationBuilder.AlterColumn<string>(
+                name: "ReceiverLegalName",
+                table: "ticket_transfer_requests",
+                type: "character varying(256)",
+                maxLength: 256,
+                nullable: false,
+                oldClrType: typeof(string),
+                oldType: "character varying(513)",
+                oldMaxLength: 513);
+
             migrationBuilder.AlterColumn<string>(
                 name: "AttendeeName",
                 table: "ticket_attendees",

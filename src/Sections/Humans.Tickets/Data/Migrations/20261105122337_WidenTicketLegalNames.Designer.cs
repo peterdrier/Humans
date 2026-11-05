@@ -13,8 +13,8 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Humans.Tickets.Data.Migrations
 {
     [DbContext(typeof(TicketsDbContext))]
-    [Migration("20261105050657_WidenAttendeeLegalName")]
-    partial class WidenAttendeeLegalName
+    [Migration("20261105122337_WidenTicketLegalNames")]
+    partial class WidenTicketLegalNames
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
