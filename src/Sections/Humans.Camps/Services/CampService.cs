@@ -27,6 +27,7 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
     private readonly ISystemTeamSync _systemTeamSync;
     private readonly IFileStorage _fileStorage;
     private readonly CampImageGallery _imageGallery;
+    private readonly CampReadProjection _readProjection;
     private readonly CampMembershipNotices _membershipNotices;
     private readonly Lazy<ICampRoleService> _campRoleService;
     // Lazy: CityPlanningService injects ICampService, closing the cycle.
@@ -55,6 +56,7 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
         ILogger<CampService> logger)
     {
         _repo = repo;
+        _readProjection = new CampReadProjection(repo);
         _auditLog = auditLog;
         _systemTeamSync = systemTeamSync;
         _fileStorage = fileStorage;
@@ -185,10 +187,10 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
         // GetBySlugAsync does not load Seasons.Members, so EE/member counts are
         // unknown here — emit null rather than a misleading 0.
         if (camp is null) return null;
-        var roles = await GetRoleProjectionForYearsAsync(
+        var roles = await _readProjection.GetRoleProjectionForYearsAsync(
             camp.Seasons.Select(season => season.Year).Distinct().ToList(),
             cancellationToken);
-        return CreateCampInfo(camp, includeEarlyEntryGrantCount: false, roles);
+        return CampReadProjection.CreateCampInfo(camp, includeEarlyEntryGrantCount: false, roles);
     }
 
     public async Task<CampInfo?> GetCampByIdAsync(Guid campId, CancellationToken cancellationToken = default)
@@ -197,10 +199,10 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
         // (unlike the by-slug read above).
         var camp = await _repo.GetByIdAsync(campId, cancellationToken);
         if (camp is null) return null;
-        var roles = await GetRoleProjectionForYearsAsync(
+        var roles = await _readProjection.GetRoleProjectionForYearsAsync(
             camp.Seasons.Select(season => season.Year).Distinct().ToList(),
             cancellationToken);
-        return CreateCampInfo(camp, roles: roles);
+        return CampReadProjection.CreateCampInfo(camp, roles: roles);
     }
 
     public async Task<CampEditData?> GetCampEditDataAsync(
@@ -228,7 +230,7 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
             return null;
         }
 
-        return CreateCampEditData(
+        return CampReadProjection.CreateCampEditData(
             camp,
             season,
             season.EventSettingsId,
@@ -240,8 +242,8 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
     {
         var camps = await _repo.GetCampsWithLeadsForYearAsync(
             year, statusFilter: null, cancellationToken);
-        var roles = await GetRoleProjectionForYearsAsync([year], cancellationToken);
-        return camps.Select(c => CreateCampInfo(c, roles: roles)).ToList();
+        var roles = await _readProjection.GetRoleProjectionForYearsAsync([year], cancellationToken);
+        return camps.Select(c => CampReadProjection.CreateCampInfo(c, roles: roles)).ToList();
     }
 
     public async Task<IReadOnlyList<CampInfo>> GetCampsForEventAsync(
@@ -344,191 +346,6 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
             "Camp search runs against the cached CampInfo snapshot in CachingCampService. " +
             "If this is being called on the inner CampService it indicates a DI registration " +
             "mistake — ICampService must resolve to the caching decorator.");
-
-    /// <summary>
-    /// Special-role user-id lists (Lead/Workshop) keyed by season+role, plus the full
-    /// named-role list per camp member — both projected from a single active-assignment
-    /// fetch (active definitions, active members).
-    /// </summary>
-    private sealed record CampRoleProjection(
-        IReadOnlyDictionary<(Guid CampSeasonId, CampSpecialRole Role), IReadOnlyList<Guid>> SpecialRoleUserIds,
-        IReadOnlyDictionary<Guid, IReadOnlyList<string>> MemberRoleNames)
-    {
-        public static readonly CampRoleProjection Empty = new(
-            new Dictionary<(Guid, CampSpecialRole), IReadOnlyList<Guid>>(),
-            new Dictionary<Guid, IReadOnlyList<string>>());
-    }
-
-    private async Task<CampRoleProjection> GetRoleProjectionForYearsAsync(
-        IReadOnlyCollection<int> years, CancellationToken cancellationToken)
-    {
-        if (years.Count == 0) return CampRoleProjection.Empty;
-
-        var assignments = await _repo.GetActiveAssignmentsForYearsAsync(years, cancellationToken);
-
-        var specialRoleUserIds = assignments
-            .Where(a => a.Definition.SpecialRole is CampSpecialRole.Lead or CampSpecialRole.Workshop)
-            .GroupBy(a => (a.CampSeasonId, a.Definition.SpecialRole))
-            .ToDictionary(
-                group => group.Key,
-                group => (IReadOnlyList<Guid>)group
-                    .Select(a => a.CampMember.UserId)
-                    .Distinct()
-                    .ToList());
-
-        var memberRoleNames = assignments
-            .GroupBy(a => a.CampMemberId)
-            .ToDictionary(
-                group => group.Key,
-                group => (IReadOnlyList<string>)group
-                    .OrderBy(a => a.Definition.SortOrder)
-                    .ThenBy(a => a.Definition.Name, StringComparer.OrdinalIgnoreCase)
-                    .Select(a => a.Definition.Name)
-                    .ToList());
-
-        return new CampRoleProjection(specialRoleUserIds, memberRoleNames);
-    }
-
-    private static CampInfo CreateCampInfo(
-        Camp camp,
-        bool includeEarlyEntryGrantCount = true,
-        CampRoleProjection? roles = null)
-    {
-        return new CampInfo(
-            camp.Id,
-            camp.Slug,
-            camp.ContactEmail,
-            camp.ContactPhone,
-            camp.IsSwissCamp,
-            camp.TimesAtNowhere,
-            camp.Seasons
-                .Select(s => CreateCampSeasonInfo(s, camp.Slug, includeEarlyEntryGrantCount, roles))
-                .ToList())
-        {
-            WebOrSocialUrl = camp.WebOrSocialUrl,
-            Links = camp.Links,
-            HideHistoricalNames = camp.HideHistoricalNames,
-            HistoricalNames = camp.HistoricalNames
-                .Select(name => name.Name)
-                .ToList(),
-            Images = camp.Images
-                .Select(image => new CampImageSummary(image.Id, $"/{image.StoragePath}", image.SortOrder))
-                .ToList()
-        };
-    }
-
-    private static CampSeasonInfo CreateCampSeasonInfo(
-        CampSeason season,
-        string campSlug,
-        bool includeEarlyEntryGrantCount = false,
-        CampRoleProjection? roles = null)
-    {
-        return new CampSeasonInfo(
-            season.Id,
-            season.CampId,
-            campSlug,
-            season.Year,
-            season.NameLockDate,
-            season.Name,
-            season.BlurbShort,
-            season.Languages,
-            season.Vibes.ToList(),
-            season.Status,
-            season.AcceptingMembers,
-            season.KidsWelcome,
-            season.AdultPlayspace,
-            season.MemberCount,
-            season.SoundZone,
-            season.SpaceRequirement,
-            season.ElectricalGrid,
-            season.EeSlotCount,
-            includeEarlyEntryGrantCount
-                ? season.Members.Count(m => m.Status == CampMemberStatus.Active && m.HasEarlyEntry)
-                : null,
-            includeEarlyEntryGrantCount
-                ? season.Members.Count(m => m.Status == CampMemberStatus.Active)
-                : null)
-        {
-            EventSettingsId = season.EventSettingsId,
-            BlurbLong = season.BlurbLong,
-            KidsVisiting = season.KidsVisiting,
-            KidsAreaDescription = season.KidsAreaDescription,
-            HasPerformanceSpace = season.HasPerformanceSpace,
-            PerformanceTypes = season.PerformanceTypes,
-            Members = season.Members
-                .Where(m => m.Status != CampMemberStatus.Removed)
-                .OrderBy(m => m.RequestedAt)
-                .Select(m => new CampSeasonMemberInfo(
-                    m.Id,
-                    m.UserId,
-                    m.Status,
-                    m.RequestedAt,
-                    m.ConfirmedAt,
-                    m.HasEarlyEntry)
-                {
-                    Roles = roles?.MemberRoleNames.TryGetValue(m.Id, out var names) == true
-                        ? names
-                        : []
-                })
-                .ToList(),
-            LeadUserIds = GetSpecialRoleUserIds(season.Id, CampSpecialRole.Lead, roles?.SpecialRoleUserIds),
-            WorkshopLeadUserIds = GetSpecialRoleUserIds(season.Id, CampSpecialRole.Workshop, roles?.SpecialRoleUserIds)
-        };
-    }
-
-    private static IReadOnlyList<Guid> GetSpecialRoleUserIds(
-        Guid campSeasonId,
-        CampSpecialRole role,
-        IReadOnlyDictionary<(Guid CampSeasonId, CampSpecialRole Role), IReadOnlyList<Guid>>? specialRoleUserIds)
-    {
-        return specialRoleUserIds is not null
-               && specialRoleUserIds.TryGetValue((campSeasonId, role), out var userIds)
-            ? userIds
-            : [];
-    }
-
-    private static CampEditData CreateCampEditData(Camp camp, CampSeason season, Guid? eventSettingsId, LocalDate today)
-    {
-        return new CampEditData(
-            camp.Id,
-            camp.Slug,
-            season.Id,
-            season.Year,
-            eventSettingsId,
-            season.NameLockDate.HasValue && today >= season.NameLockDate.Value,
-            season.Name,
-            camp.ContactEmail,
-            camp.ContactPhone,
-            camp.Links is { Count: > 0 }
-                ? camp.Links.Select(l => l.Url).ToList()
-                : camp.WebOrSocialUrl is not null
-                    ? [camp.WebOrSocialUrl]
-                    : [],
-            camp.IsSwissCamp,
-            camp.HideHistoricalNames,
-            camp.TimesAtNowhere,
-            season.BlurbLong,
-            season.BlurbShort,
-            season.Languages,
-            season.AcceptingMembers,
-            season.KidsWelcome,
-            season.KidsVisiting,
-            season.KidsAreaDescription,
-            season.HasPerformanceSpace,
-            season.PerformanceTypes,
-            season.Vibes.ToList(),
-            season.AdultPlayspace,
-            season.MemberCount,
-            season.SpaceRequirement,
-            season.SoundZone,
-            season.ElectricalGrid,
-            camp.Images
-                .Select(i => new CampImageSummary(i.Id, $"/{i.StoragePath}", i.SortOrder))
-                .ToList(),
-            camp.HistoricalNames
-                .Select(h => new CampHistoricalNameSummary(h.Id, h.Name, h.Year, h.Source.ToString()))
-                .ToList());
-    }
 
     public async Task<CampWriteResult<CampSeason>> OptInToSeasonAsync(
         Guid campId, Guid eventSettingsId, Guid? actorUserId, CancellationToken cancellationToken = default)
@@ -988,8 +805,8 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
     {
         var season = await _repo.GetSeasonByIdAsync(campSeasonId, cancellationToken);
         if (season is null) return null;
-        var roles = await GetRoleProjectionForYearsAsync([season.Year], cancellationToken);
-        return CreateCampSeasonInfo(
+        var roles = await _readProjection.GetRoleProjectionForYearsAsync([season.Year], cancellationToken);
+        return CampReadProjection.CreateCampSeasonInfo(
             season,
             season.Camp?.Slug ?? string.Empty,
             roles: roles);
