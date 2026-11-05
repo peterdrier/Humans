@@ -312,7 +312,7 @@ export async function restoreVersion(historyId, campSeasonId) {
         });
     } catch (error) {
         console.error('Failed to restore barrio polygon', error);
-        alert('Restore failed.');
+        showToast('Restore failed.', 'danger');
         return;
     } finally {
         restoreInProgress = false;
@@ -324,6 +324,6 @@ export async function restoreVersion(historyId, campSeasonId) {
         bootstrap.Offcanvas.getInstance(document.getElementById('history-panel'))?.hide();
         exitEditMode();
     } else {
-        alert('Restore failed.');
+        showToast('Restore failed.', 'danger');
     }
 }

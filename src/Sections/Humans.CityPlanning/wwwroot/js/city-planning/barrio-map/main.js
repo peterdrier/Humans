@@ -133,7 +133,7 @@ document.getElementById('save-btn')?.addEventListener('click', async () => {
         });
     } catch (error) {
         console.error('Failed to save barrio polygon', error);
-        alert(CONFIG.SAVE_FAILED);
+        showToast(CONFIG.SAVE_FAILED, 'danger');
         return;
     } finally {
         saveButton.dataset.saving = 'false';
@@ -148,7 +148,7 @@ document.getElementById('save-btn')?.addEventListener('click', async () => {
         }
         // SignalR CampPolygonUpdated will refresh the map layer
     } else {
-        alert(CONFIG.SAVE_FAILED);
+        showToast(CONFIG.SAVE_FAILED, 'danger');
     }
 });
 

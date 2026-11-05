@@ -333,7 +333,7 @@
                 }
                 if (!userIdField || !userIdField.value) {
                     e.preventDefault();
-                    alert('Please search and select a human first.');
+                    showToast('Please search and select a human first.', 'danger');
                 }
             });
         });

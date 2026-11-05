@@ -153,11 +153,7 @@
         var toastNetworkError = form.getAttribute('data-toast-network-error') || '';
 
         function show(msg, kind) {
-            if (typeof showToast === 'function') {
-                showToast(msg, kind);
-            } else {
-                alert(msg);
-            }
+            showToast(msg, kind);
         }
 
         form.addEventListener('submit', function (e) {

@@ -19,7 +19,7 @@
     </div>
     <form asp-controller="CampAdmin" asp-action="RolesDrillDown" asp-route-slug="@Model.RouteKey" method="get" class="d-flex gap-2 align-items-center">
         <label for="eventSettingsId" class="form-label mb-0 text-nowrap">Event</label>
-        <select id="eventSettingsId" name="eventSettingsId" class="form-select form-select-sm js-autosubmit" style="max-width: 220px;">
+        <select id="eventSettingsId" name="eventSettingsId" class="form-select form-select-sm js-auto-submit" style="max-width: 220px;">
             @foreach (var option in Model.EventOptions)
             {
                 if (option.EventSettingsId == Model.Event.EventSettingsId)
@@ -60,13 +60,6 @@
         }
     </div>
 </div>
-
-<script nonce="@Context.Items["CspNonce"]">
-    // CSP-compliant replacement for inline onchange.
-    document.querySelectorAll('select.js-autosubmit').forEach(function(el) {
-        el.addEventListener('change', function() { el.form.submit(); });
-    });
-</script>
 
 <div class="card">
     <div class="card-header">
