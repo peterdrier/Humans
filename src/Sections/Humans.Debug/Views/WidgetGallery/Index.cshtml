@@ -593,6 +593,43 @@
                 <div class="wg-card">
                     <div class="wg-card-header">
                         <div>
+                            <span class="wg-card-name">data-copy="…"</span>
+                            <span class="wg-card-kind kind-pa">JS attribute</span>
+                        </div>
+                        <span class="wg-card-path">src/Humans.Web/wwwroot/js/site.js</span>
+                    </div>
+                    <div class="wg-card-note">Delegated click handler: copies the referenced element to the clipboard (<code>.value</code> for inputs and textareas, otherwise <code>textContent</code>). No per-view script needed.</div>
+                    @ParamsBlock(
+                        ("data-copy", "<code>string</code> — CSS selector of the element to copy; put it on the button"),
+                        ("data-copied", "<code>string</code> — optional; toast text shown after a successful copy (pass a localized string)")
+                    )
+                    <div class="wg-card-example">
+                        <div class="input-group mw-600">
+                            <input type="text" class="form-control" id="wgCopySource" value="https://example.org/feed.ics" readonly />
+                            <button class="btn btn-outline-secondary" type="button" data-copy="#wgCopySource" data-copied="Copied">Copy</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="wg-card">
+                    <div class="wg-card-header">
+                        <div>
+                            <span class="wg-card-name">.pre-wrap · .pre-line · .mw-*</span>
+                            <span class="wg-card-kind kind-pa">CSS utility</span>
+                        </div>
+                        <span class="wg-card-path">src/Humans.Web/wwwroot/css/site.css</span>
+                    </div>
+                    <div class="wg-card-note">Replace one-off inline styles. <code>.pre-wrap</code> / <code>.pre-line</code> keep user-entered line breaks; <code>.mw-240</code>, <code>.mw-540</code>, <code>.mw-600</code>, <code>.mw-720</code>, <code>.mw-760</code> cap a form card or input group (px). Bootstrap's <code>text-break</code> / <code>mw-100</code> cover the rest.</div>
+                    @ParamsBlock()
+                    <div class="wg-card-example">
+                        <p class="pre-wrap mb-0">Line one
+Line two (pre-wrap keeps this break)</p>
+                    </div>
+                </div>
+
+                <div class="wg-card">
+                    <div class="wg-card-header">
+                        <div>
                             <span class="wg-card-name">_Pager.cshtml</span>
                             <span class="wg-card-kind kind-pa">Partial</span>
                         </div>

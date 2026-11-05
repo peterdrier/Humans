@@ -395,6 +395,20 @@ function showToast(message, type) {
     });
 })();
 
+// Copy to clipboard: <button data-copy="#sourceId" data-copied="Toast text">.
+// Source is read as .value for inputs/textareas, otherwise textContent; data-copied is optional.
+document.addEventListener('click', function (e) {
+    var trigger = e.target.closest('[data-copy]');
+    if (!trigger || !navigator.clipboard) return;
+    var source = document.querySelector(trigger.getAttribute('data-copy'));
+    if (!source) return;
+    var isField = source.tagName === 'INPUT' || source.tagName === 'TEXTAREA';
+    navigator.clipboard.writeText((isField ? source.value : source.textContent) || '').then(function () {
+        var message = trigger.getAttribute('data-copied');
+        if (message) showToast(message);
+    });
+});
+
 // Human profile popover (lazy-loaded on first hover or keyboard focus)
 (function () {
     var cache = {};

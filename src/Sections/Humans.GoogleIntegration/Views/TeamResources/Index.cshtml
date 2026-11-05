@@ -20,9 +20,9 @@
     <div class="card-header">@Localizer["GoogleIntegration_TeamResources_ServiceAccountTitle"]</div>
     <div class="card-body">
         <p class="mb-2">@Localizer["GoogleIntegration_TeamResources_ShareWithServiceAccount"]</p>
-        <div class="input-group mb-3" style="max-width: 600px;">
+        <div class="input-group mb-3 mw-600">
             <input type="text" class="form-control" value="@Model.ServiceAccountEmail" readonly id="serviceAccountEmail">
-            <button class="btn btn-outline-secondary" type="button" id="copyServiceAccountBtn">@Localizer["GoogleIntegration_TeamResources_Copy"]</button>
+            <button class="btn btn-outline-secondary" type="button" data-copy="#serviceAccountEmail">@Localizer["GoogleIntegration_TeamResources_Copy"]</button>
         </div>
         <ul class="mb-0 text-muted small">
             <li><strong>@Localizer["GoogleIntegration_TeamResources_DriveFolders"]:</strong> @Localizer["GoogleIntegration_TeamResources_DriveFoldersHelp"]</li>
@@ -226,10 +226,6 @@ else
 </div>
 
 <script>
-    document.getElementById('copyServiceAccountBtn').addEventListener('click', function () {
-        navigator.clipboard.writeText(document.getElementById('serviceAccountEmail').value);
-    });
-
     document.querySelectorAll('.permission-select').forEach(function (select) {
         select.addEventListener('change', function () {
             if (confirm('Are you sure you want to change the permission level?')) {
