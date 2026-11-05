@@ -276,6 +276,20 @@ namespace Humans.Finance.Data.Migrations
                     b.ToTable("finance_payment_details", (string)null);
                 });
 
+            modelBuilder.Entity("Humans.Finance.Domain.PleoBookingHold", b =>
+                {
+                    b.Property<string>("PleoEntryId")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<Instant>("HeldAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("PleoEntryId");
+
+                    b.ToTable("pleo_booking_holds", (string)null);
+                });
+
             modelBuilder.Entity("Humans.Finance.Domain.SepaPayoutFile", b =>
                 {
                     b.Property<Guid>("Id")

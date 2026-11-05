@@ -9,6 +9,16 @@ namespace Humans.Finance.Data;
 internal interface IHoldedRepository : IRepository
 {
     Task<IReadOnlyList<HoldedCategoryMap>> GetCategoryMapAsync(CancellationToken ct = default);
+
+    Task<IReadOnlyList<string>> GetPleoBookingHoldsAsync(CancellationToken ct = default);
+
+    /// <summary>The claim saved before a post; false when the entry is already held, so the caller must not post.
+    /// Never takes the caller's token.</summary>
+    Task<bool> TryAddPleoBookingHoldAsync(string pleoEntryId, Instant heldAt);
+
+    /// <summary>Deletes the holds among <paramref name="pleoEntryIds"/>; returns those it deleted.</summary>
+    Task<IReadOnlyList<string>> RemovePleoBookingHoldsAsync(
+        IReadOnlyCollection<string>? pleoEntryIds, CancellationToken ct = default);
     Task AddCategoryMapAsync(HoldedCategoryMap row, CancellationToken ct = default);
 
     Task<IReadOnlyList<HoldedManagedAccount>> GetManagedAccountsAsync(CancellationToken ct = default);

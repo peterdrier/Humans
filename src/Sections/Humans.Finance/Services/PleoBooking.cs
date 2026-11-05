@@ -3,6 +3,7 @@ using Humans.AuditLog.Contracts;
 using Humans.Base.Extensions;
 using Humans.Base.Interfaces;
 using Humans.Finance.Contracts;
+using Humans.Finance.Data;
 using Humans.Finance.Models;
 using Humans.Holded.Contracts;
 using Humans.Pleo.Contracts;
@@ -13,21 +14,23 @@ namespace Humans.Finance.Services;
 /// <summary>
 /// Books Pleo spend into Holded treasury 57200003, one journal entry per Pleo entry, gross. Reads Pleo through
 /// <see cref="IPleoService"/> and the ledger through <see cref="IHoldedService"/>, posts through
-/// <see cref="IHoldedWrite"/>. Owns no tables and stores no Holded ids: an entry is in Holded when a 57200003 line's
-/// description starts <c>Pleo {Id}:</c>.
+/// <see cref="IHoldedWrite"/>. Stores no Holded ids: an entry is in Holded when a 57200003 line's description starts
+/// <c>Pleo {Id}:</c>. Its one table, <c>pleo_booking_holds</c>, guards posts the ledger does not show yet.
 /// </summary>
 /// <remarks>
 /// Never posting twice: every run takes a process-wide gate (one server), re-pulls 57200003's whole history from
 /// Holded, and judges from that; each entry is re-checked against it and against this run's own posts right before
-/// its post. An id is held in <see cref="PleoBookingState"/> from just before its post until a re-pull shows it, and a
-/// run is refused while any is held, so Holded's read-after-write lag, an unconfirmed post or an unanswered one can
-/// never be posted again. A run that dies part-way loses only that hold; the next run's re-pull sees what Holded took.
+/// its post. Before each post a hold row is inserted (the primary key makes it a claim: a second insert fails and
+/// nothing posts); it is deleted only when a re-pull shows the entry, Holded refused it, or a human released it after
+/// checking Holded. A run is refused while any hold stands, so Holded's read-after-write lag, an unconfirmed post, an
+/// unanswered one, or a restart mid-post can never post the entry again.
 /// </remarks>
 internal sealed class PleoBooking(
     IPleoService pleo,
     IHoldedService holded,
     IHoldedWrite write,
     IAuditLogService audit,
+    IHoldedRepository repo,
     PleoBookingState state,
     IClock clock,
     ILogger<PleoBooking> logger) : IApplicationService
@@ -155,7 +158,8 @@ internal sealed class PleoBooking(
 
     public async Task<PleoReconcileVm> GetReconcileAsync(CancellationToken ct = default)
     {
-        var (view, chart) = await LoadAsync(ct);
+        var holds = await repo.GetPleoBookingHoldsAsync(ct);
+        var (view, chart) = await LoadAsync(holds, ct);
         var names = chart.ToDictionary(a => a.Number, a => a.EnglishName ?? a.Name);
         var readyByAccount = view.Spend.Where(r => r.State == PleoSpendState.Ready)
             .GroupBy(r => r.Account!.Value)
@@ -170,11 +174,12 @@ internal sealed class PleoBooking(
             holded.IsConfigured,
             view,
             readyByAccount,
-            state.Pending,
+            holds,
             state.Run);
     }
 
-    private async Task<(PleoLedgerView View, IReadOnlyList<HoldedChartAccountInfo> Chart)> LoadAsync(CancellationToken ct)
+    private async Task<(PleoLedgerView View, IReadOnlyList<HoldedChartAccountInfo> Chart)> LoadAsync(
+        IReadOnlyList<string> holds, CancellationToken ct)
     {
         var today = MadridDate(clock.GetCurrentInstant());
         var entries = await pleo.GetSettledEntriesAsync(Inception, today, ct);
@@ -182,7 +187,7 @@ internal sealed class PleoBooking(
         var sabadell = (await holded.GetLedgerLinesAsync(SabadellTreasury, ct)).Select(l => l.EntryNumber).ToHashSet();
         var chart = await holded.GetChartAsync(ct);
         var open = chart.Where(a => !a.Archived).Select(a => a.Number).ToHashSet();
-        var view = Classify(entries, pleoLines, sabadell, open, state.Pending.ToHashSet(StringComparer.Ordinal));
+        var view = Classify(entries, pleoLines, sabadell, open, holds.ToHashSet(StringComparer.Ordinal));
         return (view, chart);
     }
 
@@ -225,9 +230,10 @@ internal sealed class PleoBooking(
             if (!await holded.SyncAccountLedgerAsync(PleoTreasury, ct))
                 return Finish("A Holded ledger sync is running; nothing was booked. Try again in a minute.");
 
-            var (view, _) = await LoadAsync(ct);
-            state.RemovePending(view.Spend.Where(r => r.State == PleoSpendState.Booked).Select(r => r.Entry.Id));
-            if (state.Pending is { Count: > 0 } held)
+            var (view, _) = await LoadAsync(await repo.GetPleoBookingHoldsAsync(ct), ct);
+            var inLedger = view.Spend.Where(r => r.State == PleoSpendState.Booked).Select(r => r.Entry.Id).ToList();
+            await repo.RemovePleoBookingHoldsAsync(inLedger, ct);
+            if (await repo.GetPleoBookingHoldsAsync(ct) is { Count: > 0 } held)
                 return Finish($"{held.Count} earlier post(s) are not in Holded's {PleoTreasury} ledger yet "
                               + $"({string.Join(", ", held)}). Check them in Holded before booking more.");
 
@@ -240,7 +246,7 @@ internal sealed class PleoBooking(
             foreach (var row in batch)
             {
                 var e = row.Entry;
-                if (booked.Contains(e.Id) || state.IsPending(e.Id))
+                if (booked.Contains(e.Id) || !await repo.TryAddPleoBookingHoldAsync(e.Id, clock.GetCurrentInstant()))
                 {
                     lines.Add(Line(row, PleoBookingOutcome.Skipped, "already in Holded"));
                     continue;
@@ -248,7 +254,6 @@ internal sealed class PleoBooking(
 
                 var (debit, credit) = Sides(row);
                 var amount = Math.Abs(row.Amount);
-                state.AddPending(e.Id);
                 var stop = false;
                 PleoBookingLine line;
                 try
@@ -262,7 +267,7 @@ internal sealed class PleoBooking(
                 }
                 catch (HoldedPermanentException ex)
                 {
-                    state.RemovePending([e.Id]);
+                    await repo.RemovePleoBookingHoldsAsync([e.Id], CancellationToken.None);
                     lines.Add(Line(row, PleoBookingOutcome.Failed, "Holded refused it: " + ex.Message));
                     state.Publish(run with { Lines = lines.ToList() });
                     continue;
@@ -306,7 +311,7 @@ internal sealed class PleoBooking(
             var seen = new Dictionary<string, int>(StringComparer.Ordinal);
             foreach (var l in await holded.GetLedgerLinesAsync(PleoTreasury, CancellationToken.None))
                 if (PleoIdOf(l) is { } id) seen.TryAdd(id, l.EntryNumber);
-            state.RemovePending(seen.Keys);
+            await repo.RemovePleoBookingHoldsAsync(seen.Keys, CancellationToken.None);
             for (var i = 0; i < lines.Count; i++)
                 if (seen.TryGetValue(lines[i].PleoId, out var entry))
                     lines[i] = lines[i] with { HoldedEntry = entry };
@@ -319,7 +324,7 @@ internal sealed class PleoBooking(
 
     public async Task<IReadOnlyList<string>> ClearPendingAsync(Guid actorUserId)
     {
-        var cleared = state.ClearPending();
+        var cleared = await repo.RemovePleoBookingHoldsAsync(null);
         if (cleared.Count > 0)
             await audit.LogAsync(FinanceAuditActions.PleoBookingHoldCleared, AuditEntityType, Guid.Empty,
                 $"Released {cleared.Count} held Pleo post(s) after checking Holded: {string.Join(", ", cleared)}. "

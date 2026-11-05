@@ -147,6 +147,17 @@ contact, three write paths with different collision remedies, and no unique inde
 
 **Cross-section FKs:** `UserId`, `BookedByUserId` and `WithdrawnByUserId` → `User` (Users) — FK only, no navigation property.
 
+### PleoBookingHold
+
+**Table:** `pleo_booking_holds`
+
+| Property | Type | Purpose |
+|----------|------|---------|
+| PleoEntryId | string (64) | PK. The Pleo entry posted, or possibly posted, to Holded 57200003. |
+| HeldAt | Instant | When the post was claimed, just before it was sent. |
+
+A row exists only while Holded's ledger does not show the entry yet. No Holded id, no personal data.
+
 ### PaymentDetails
 
 **Table:** `finance_payment_details`
@@ -348,8 +359,8 @@ The provisioning preview, unmatched queue, creditor overview (including member-n
 - One Holded journal entry per settled Pleo spend entry (every family but `WALLET` and `OUT_OF_POCKET`, status `COMPLETED`): spend (negative) Dr the category's Holded code / Cr 57200003; a refund (positive) the other way round. Amount `|AmountEur|`, gross (VAT is parked). Date: the Madrid date of `SettledAt`. Description `Pleo {Id}: {MerchantName}`.
 - Ready means a receipt, a category, a Holded code that is an open account in the chart mirror, and a non-zero EUR amount. Anything else is never booked.
 - Batches run oldest settled first, `N` at a time (default 1). Nothing books without a click; a job may later call `BookAsync` the same way, but none is scheduled.
-- **Identity:** an entry is in Holded when a 57200003 line's description starts `Pleo {Id}:`. Lines without a Pleo id (booked before this, e.g. entry 2061) count once each for the oldest entry on the same side with the same amount within 3 days, so they are never booked again. Finance stores no Holded id and owns no table for this.
-- **Never posting twice:** (1) a process-wide gate (one server) admits one run; the runner refuses a second click and the gate refuses any other caller. (2) Every run first re-pulls 57200003's whole history from Holded (`IHoldedService.SyncAccountLedgerAsync`) and judges from that, so a post an earlier run made — even one that died before recording anything — is seen. (3) Each entry is re-checked right before its post against that ledger and this run's own posts. (4) An id is held in memory (`PleoBookingState`) from just before its post until a re-pull shows it; a run is refused while any is held. That covers Holded's read-after-write lag, an unconfirmed post (`Confirmed = false`: shown "check in Holded", never retried) and a post Holded did not answer (transient error: the run stops, the entry stays held). A 4xx refusal releases the hold. Holds clear when the ledger shows them, or by `ClearHolds` after a human checked Holded. A restart drops holds; the next run's re-pull is then the record.
+- **Identity:** an entry is in Holded when a 57200003 line's description starts `Pleo {Id}:`. Lines without a Pleo id (booked before this, e.g. entry 2061) count once each for the oldest entry on the same side with the same amount within 3 days, so they are never booked again. Finance stores no Holded id; the ledger is the record of what is booked.
+- **Never posting twice:** (1) a process-wide gate (one server) admits one run; the runner refuses a second click and the gate refuses any other caller. (2) Every run first re-pulls 57200003's whole history from Holded (`IHoldedService.SyncAccountLedgerAsync`) and judges from that, so a post an earlier run made — even one that died before recording anything — is seen. (3) Each entry is re-checked right before its post against that ledger and this run's own posts. (4) Before each post a `pleo_booking_holds` row is inserted; its primary key makes it a claim, so an entry already held is never posted. The row stays until a re-pull shows the entry, and a run is refused while any row stands. That covers Holded's read-after-write lag, an unconfirmed post (`Confirmed = false`: shown "check in Holded", never retried), a post Holded did not answer (transient error: the run stops, the entry stays held) and a restart mid-post. A 4xx refusal deletes the hold. Otherwise holds clear when the ledger shows them, or by `ClearHolds` after a human checked Holded.
 - After a run with posts, 57200003 is re-pulled once more so each booked line names its Holded entry and seen holds clear.
 - Posts never take the request's token: an abandoned call would only hide a post Holded made.
 

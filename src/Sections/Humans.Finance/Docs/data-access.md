@@ -57,13 +57,12 @@ Injected by `FinanceController` only.
 
 ### PleoBooking (Scoped, section-internal) · PleoBookingState, PleoBookingRunner (Singleton)
 
-No repository, no tables, no cache. Orchestrates Pleo → Holded: reads
+Repository: `IHoldedRepository`, for `PleoBookingHolds` only. No cache. Orchestrates Pleo → Holded: reads
 `IPleoService.GetSettledEntriesAsync` / `GetWalletBalanceAsync`, the 57200003
 and 57200001 lines, balances and chart through `IHoldedService`, re-pulls 57200003
 with `IHoldedService.SyncAccountLedgerAsync` before and after a run, and posts
 through `IHoldedWrite.PostJournalEntryAsync`. `PleoBookingState` holds the
-current/last run and the in-memory holds (Pleo ids posted but not yet seen in
-the ledger); `PleoBookingRunner` runs `BookAsync` in its own scope off the
+current/last run; `PleoBookingRunner` runs `BookAsync` in its own scope off the
 request. Injected by `FinanceController` only.
 
 ### CreditorMatchService (Scoped, section-internal)
@@ -142,6 +141,7 @@ Repository: `IPaymentDetailsRepository`.
 
 | Table | R/W |
 |-------|-----|
+| PleoBookingHolds (`pleo_booking_holds`) | R/W by `PleoBooking` only — one row per Pleo entry posted or possibly posted and not yet in the 57200003 ledger; inserted before the post (the primary key is the claim), deleted when the ledger shows it, Holded refused it, or `ClearHolds` |
 | PaymentDetails (`finance_payment_details`) | R/W — one row per member, keyed by `UserId` (bare id, no FK). A null `Iban` records a removal. |
 
 Implements the internal `IPaymentDetailsManagement` (`GetIbanAsync` / `SetIbanAsync`, reached by Expenses

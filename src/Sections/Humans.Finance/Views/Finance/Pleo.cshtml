@@ -123,7 +123,7 @@
                     Nothing more books until they show up. Check each in Holded:
                 </div>
                 <ul class="mb-2">
-                    @foreach (var id in Model.PendingIds)
+                    @foreach (var id in Model.PendingIds.Order(StringComparer.Ordinal))
                     {
                         <li><a href="/Pleo/Entries/@id">Pleo @id</a></li>
                     }

@@ -1,16 +1,13 @@
 using Humans.Finance.Models;
 using Microsoft.Extensions.DependencyInjection;
-using NodaTime;
 
 namespace Humans.Finance.Services;
 
-/// <summary>Process-wide: the current or last booking run, and the Pleo ids this process posted (or may have posted)
-/// that 57200003's ledger does not show yet. Holded's ledger is the record; this only covers the time between a
-/// post and the re-pull that shows it.</summary>
+/// <summary>Process-wide: the current or last booking run, for the page to follow. The holds that keep a post from
+/// repeating are durable (<c>pleo_booking_holds</c>), not here.</summary>
 internal sealed class PleoBookingState
 {
     private readonly Lock _lock = new();
-    private readonly HashSet<string> _pending = new(StringComparer.Ordinal);
     private PleoBookingRunVm? _run;
 
     public PleoBookingRunVm? Run
@@ -21,36 +18,6 @@ internal sealed class PleoBookingState
     public void Publish(PleoBookingRunVm run)
     {
         lock (_lock) _run = run;
-    }
-
-    public IReadOnlyList<string> Pending
-    {
-        get { lock (_lock) return _pending.Order(StringComparer.Ordinal).ToList(); }
-    }
-
-    public bool IsPending(string pleoId)
-    {
-        lock (_lock) return _pending.Contains(pleoId);
-    }
-
-    public void AddPending(string pleoId)
-    {
-        lock (_lock) _pending.Add(pleoId);
-    }
-
-    public void RemovePending(IEnumerable<string> pleoIds)
-    {
-        lock (_lock) _pending.ExceptWith(pleoIds);
-    }
-
-    public IReadOnlyList<string> ClearPending()
-    {
-        lock (_lock)
-        {
-            var cleared = _pending.Order(StringComparer.Ordinal).ToList();
-            _pending.Clear();
-            return cleared;
-        }
     }
 }
 
