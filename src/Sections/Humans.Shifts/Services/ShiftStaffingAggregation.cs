@@ -119,6 +119,18 @@ internal static class ShiftStaffingAggregation
         return (total, filled, totalSlots, filledSlots, remaining, ToStaffing(ShiftPeriod.Build), ToStaffing(ShiftPeriod.Event), ToStaffing(ShiftPeriod.Strike));
     }
 
+    internal static IReadOnlyCollection<Guid> ResolveDepartmentTeamIds(
+        Guid departmentId, IReadOnlyDictionary<Guid, TeamInfo> teams)
+    {
+        var ids = new HashSet<Guid> { departmentId };
+        foreach (var team in teams.Values)
+        {
+            if (team.ParentTeamId == departmentId && !team.IsPromotedToDirectory)
+                ids.Add(team.Id);
+        }
+        return ids;
+    }
+
     internal static IReadOnlyDictionary<Guid, TeamInfo> IncludeParents(
         IReadOnlyDictionary<Guid, TeamInfo> teamsById,
         IEnumerable<Guid> teamIds)
