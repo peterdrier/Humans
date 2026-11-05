@@ -3,6 +3,58 @@
 @model Humans.Camps.Models.CampAdminViewModel
 @{
     ViewData["Title"] = Localizer["Camps_AdminTitle"];
+
+    Func<CampSummaryRowViewModel, IHtmlContent> campNameCell =
+        @<text><a asp-controller="Camp" asp-action="Details" asp-route-slug="@item.Slug">@item.Name</a></text>;
+    Func<CampSummaryRowViewModel, IHtmlContent> eeSlotsCell = @<text>
+        @if (item.SeasonId.HasValue)
+        {
+            <form authorize-policy="@Humans.Camps.Contracts.CampsPolicies.Manage" method="post" asp-controller="CampAdmin" asp-action="SetCampSeasonEeSlotCount"
+                  asp-route-seasonId="@item.SeasonId" class="d-inline">
+                @Html.AntiForgeryToken()
+                <input type="number" name="slotCount" min="0"
+                       value="@item.EeSlotCount"
+                       class="form-control form-control-sm d-inline" style="width:5rem" />
+                <small class="text-muted ms-1">@item.EeGrantedCount / @item.EeSlotCount</small>
+                @if (item.EeGrantedCount > item.EeSlotCount)
+                {
+                    <span class="badge bg-warning ms-1">over</span>
+                }
+                <button type="submit" class="btn btn-sm btn-outline-primary ms-1">Save</button>
+            </form>
+        }
+        else
+        {
+            <span class="text-muted">—</span>
+        }
+    </text>;
+    Func<CampSummaryRowViewModel, IHtmlContent> leadsCell = @<text>
+        @for (var leadIndex = 0; leadIndex < item.LeadUserIds.Count; leadIndex++)
+        {
+            <vc:human user-id="@item.LeadUserIds[leadIndex]" />
+            if (leadIndex < item.LeadUserIds.Count - 1)
+            {
+                <text>, </text>
+            }
+        }
+    </text>;
+    var summaryTable = TableModel.For(Model.AllCampSummaries)
+        .Template("Camp Name", campNameCell, sortBy: c => c.Name)
+        .Column("Accepting", c => c.AcceptingMembers)
+        .Column("Humans", c => c.MemberCount, o => o.Number().End())
+        .Column("Joined", c => c.JoinedMemberCount, o => o.Number().End())
+        .Column("Zone", c => c.Zone)
+        .Column("Space", c => c.SpaceRequirement)
+        .Column("Years", c => c.YearsParticipating, o => o.Number().End())
+        .Template("EE Slots", eeSlotsCell, sortBy: c => c.EeGrantedCount)
+        .Template("Lead(s)", leadsCell)
+        .Footer(new TableFooterCell("Totals"), new TableFooterCell(""),
+            new TableFooterCell(Model.AllCampSummaries.Sum(c => c.MemberCount).ToString(), "text-end"),
+            new TableFooterCell(Model.AllCampSummaries.Sum(c => c.JoinedMemberCount).ToString(), "text-end"),
+            new TableFooterCell(""), new TableFooterCell(""), new TableFooterCell(""),
+            new TableFooterCell($"{Model.AllCampSummaries.Sum(c => c.EeGrantedCount)} / {Model.AllCampSummaries.Sum(c => c.EeSlotCount)}"),
+            new TableFooterCell(""))
+        .Build();
 }
 
 <h1>@Localizer["Camps_AdminTitle"]</h1>
@@ -271,90 +323,7 @@
         <div class="card-header">
             <i class="fa-solid fa-table me-2"></i>Camp Summary (@Model.ActiveEventName)
         </div>
-        <div class="table-responsive">
-            <table class="table table-sm table-hover mb-0">
-                <thead>
-                    <tr>
-                        <th>Camp Name</th>
-                        <th>Accepting</th>
-                        <th class="text-end" title="Headcount the camp declared on its season">Humans</th>
-                        <th class="text-end" title="Active CampMember rows — humans who joined in-app">Joined</th>
-                        <th>Zone</th>
-                        <th>Space</th>
-                        <th class="text-end">Years</th>
-                        <th>EE Slots</th>
-                        <th>Lead(s)</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach (var camp in Model.AllCampSummaries)
-                    {
-                        <tr>
-                            <td>
-                                <a asp-controller="Camp" asp-action="Details" asp-route-slug="@camp.Slug">@camp.Name</a>
-                            </td>
-                            <td>@camp.AcceptingMembers</td>
-                            <td class="text-end">@camp.MemberCount</td>
-                            <td class="text-end">@camp.JoinedMemberCount</td>
-                            <td>@camp.Zone</td>
-                            <td>@camp.SpaceRequirement</td>
-                            <td class="text-end">@camp.YearsParticipating</td>
-                            <td>
-                                @if (camp.SeasonId.HasValue)
-                                {
-                                    <form authorize-policy="@Humans.Camps.Contracts.CampsPolicies.Manage" method="post" asp-controller="CampAdmin" asp-action="SetCampSeasonEeSlotCount"
-                                          asp-route-seasonId="@camp.SeasonId" class="d-inline">
-                                        @Html.AntiForgeryToken()
-                                        <input type="number" name="slotCount" min="0"
-                                               value="@camp.EeSlotCount"
-                                               class="form-control form-control-sm d-inline" style="width:5rem" />
-                                        <small class="text-muted ms-1">@camp.EeGrantedCount / @camp.EeSlotCount</small>
-                                        @if (camp.EeGrantedCount > camp.EeSlotCount)
-                                        {
-                                            <span class="badge bg-warning ms-1">over</span>
-                                        }
-                                        <button type="submit" class="btn btn-sm btn-outline-primary ms-1">Save</button>
-                                    </form>
-                                }
-                                else
-                                {
-                                    <span class="text-muted">—</span>
-                                }
-                            </td>
-                            <td>
-                                @for (var leadIndex = 0; leadIndex < camp.LeadUserIds.Count; leadIndex++)
-                                {
-                                    <vc:human user-id="@camp.LeadUserIds[leadIndex]" />
-                                    if (leadIndex < camp.LeadUserIds.Count - 1)
-                                    {
-                                        <text>, </text>
-                                    }
-                                }
-                            </td>
-                        </tr>
-                    }
-                </tbody>
-                @{
-                    var totalHumans = Model.AllCampSummaries.Sum(c => c.MemberCount);
-                    var totalJoined = Model.AllCampSummaries.Sum(c => c.JoinedMemberCount);
-                    var totalEeSlotsRow = Model.AllCampSummaries.Sum(c => c.EeSlotCount);
-                    var totalEeGrantedRow = Model.AllCampSummaries.Sum(c => c.EeGrantedCount);
-                }
-                <tfoot>
-                    <tr class="table-light fw-semibold">
-                        <td>Totals</td>
-                        <td></td>
-                        <td class="text-end">@totalHumans</td>
-                        <td class="text-end">@totalJoined</td>
-                        <td></td>
-                        <td></td>
-                        <td></td>
-                        <td>@totalEeGrantedRow / @totalEeSlotsRow</td>
-                        <td></td>
-                    </tr>
-                </tfoot>
-            </table>
-        </div>
+        <partial name="_Table" model="summaryTable" />
     </div>
 }
 

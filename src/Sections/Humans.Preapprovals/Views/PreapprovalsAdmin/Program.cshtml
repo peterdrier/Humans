@@ -38,7 +38,7 @@
     Func<GrantInfo, IHtmlContent> beneficiaryCell =
         @<text><vc:human user-id="@item.BeneficiaryUserId" layout="AvatarName" size="28" /></text>;
     Func<GrantInfo, IHtmlContent> statusCell = @<text>
-        <span class="badge @EnumBadgeMap.For(item.Status)">@item.Status</span>
+        <status-badge value="@item.Status" />
         @if (item.DeadlinePassed(Model.Today))
         {
             <span class="badge bg-light text-dark border">deadline passed</span>
@@ -73,7 +73,7 @@
         .Column("Decided", g => g.DecidedAt, o => o.DateTime().Css("small text-muted"))
         .Template("By", deciderCell, o => o.Css("small text-muted"))
         .Template("", grantActionsCell, o => o.NoSort().Css("text-end text-nowrap"))
-        .RowCss(g => $"pre-status-{g.Status}")
+        .RowData("status", g => g.Status.ToString())
         .Id("pre-grants")
         .Css("align-middle")
         .Build();
@@ -219,7 +219,7 @@ else
         filter.addEventListener('change', function () {
             var want = filter.value;
             document.querySelectorAll('#pre-grants tbody tr').forEach(function (row) {
-                row.style.display = !want || row.classList.contains('pre-status-' + want) ? '' : 'none';
+                row.style.display = !want || row.dataset.status === want ? '' : 'none';
             });
         });
     }

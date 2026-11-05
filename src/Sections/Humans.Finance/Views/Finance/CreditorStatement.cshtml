@@ -12,6 +12,47 @@
 
     var m = Model.Match;
     string Amt(decimal v) => v.ToString("#,##0.00", System.Globalization.CultureInfo.InvariantCulture);
+
+    Func<SepaPayoutTransferRow, IHtmlContent> sepaFileCell =
+        @<text><a asp-action="Sepa" class="font-monospace small">@item.FileName</a></text>;
+    Func<SepaPayoutTransferRow, IHtmlContent> sepaStatusCell = @<text>
+        @if (item.WithdrawnAt is { } withdrawnAt)
+        {
+            <span class="badge text-bg-dark">Withdrawn</span>
+            <span class="text-muted small">@withdrawnAt.InZone(madrid).Date.ToInvariantDate()</span>
+        }
+        else if (item.BookedAt is { } bookedAt)
+        {
+            <span class="badge text-bg-success">Booked</span>
+            <span class="text-muted small">@bookedAt.InZone(madrid).Date.ToInvariantDate()</span>
+        }
+        else
+        {
+            <span class="badge text-bg-secondary">Generated</span>
+        }
+    </text>;
+    Func<SepaPayoutTransferRow, IHtmlContent> sepaAmountCell = @<text>@item.Amount.ToEuro()</text>;
+    var sepaTable = TableModel.For(Model.SepaTransfers)
+        .Column("Generated", t => t.GeneratedAt.InZone(madrid).Date.ToInvariantDate(), o => o.Css("text-nowrap"))
+        .Template("File", sepaFileCell, sortBy: t => t.FileName)
+        .Column("IBAN", t => t.IbanMasked, o => o.Css("font-monospace small"))
+        .Template("Status", sepaStatusCell, o => o.Css("text-nowrap"))
+        .Template("Amount", sepaAmountCell, o => o.End(), sortBy: t => t.Amount)
+        .Css("align-middle")
+        .Build();
+
+    Func<Humans.Expenses.Contracts.ExpenseReportDto, IHtmlContent> reportCell =
+        @<text><a href="/Expenses/@item.Id">@item.Id.ToString()[..8]…</a></text>;
+    Func<Humans.Expenses.Contracts.ExpenseReportDto, IHtmlContent> payableCell = @<text>@item.Payable.ToEuro()</text>;
+    var reportsTable = TableModel.For(Model.ExpenseReports)
+        .Template("Report", reportCell, o => o.Css("text-nowrap"))
+        .Column("Status", r => r.Status, o => o.Css("text-nowrap"))
+        .Column("Subject", r => r.Note)
+        .Column("Approved", r => r.ApprovedAt?.InZone(madrid).Date.ToInvariantDate(), o => o.Css("text-nowrap"))
+        .Column("Holded documents", r => r.HoldedDocIds.Count, o => o.Number().End())
+        .Template("Payable", payableCell, o => o.End(), sortBy: r => r.Payable)
+        .Css("align-middle")
+        .Build();
 }
 
 <div class="d-flex justify-content-between align-items-center mb-4">
@@ -172,42 +213,7 @@
     }
     else
     {
-        <table class="table table-sm table-hover mb-0 align-middle">
-            <thead><tr>
-                <th>Generated</th>
-                <th>File</th>
-                <th>IBAN</th>
-                <th>Status</th>
-                <th class="text-end">Amount</th>
-            </tr></thead>
-            <tbody>
-            @foreach (var t in Model.SepaTransfers)
-            {
-                <tr>
-                    <td class="text-nowrap">@t.GeneratedAt.InZone(madrid).Date.ToInvariantDate()</td>
-                    <td><a asp-action="Sepa" class="font-monospace small">@t.FileName</a></td>
-                    <td class="font-monospace small">@t.IbanMasked</td>
-                    <td class="text-nowrap">
-                        @if (t.WithdrawnAt is { } withdrawnAt)
-                        {
-                            <span class="badge text-bg-dark">Withdrawn</span>
-                            <span class="text-muted small">@withdrawnAt.InZone(madrid).Date.ToInvariantDate()</span>
-                        }
-                        else if (t.BookedAt is { } bookedAt)
-                        {
-                            <span class="badge text-bg-success">Booked</span>
-                            <span class="text-muted small">@bookedAt.InZone(madrid).Date.ToInvariantDate()</span>
-                        }
-                        else
-                        {
-                            <span class="badge text-bg-secondary">Generated</span>
-                        }
-                    </td>
-                    <td class="text-end">@t.Amount.ToEuro()</td>
-                </tr>
-            }
-            </tbody>
-        </table>
+        <partial name="_Table" model="sepaTable" />
     }
 </div>
 
@@ -219,28 +225,6 @@
     }
     else
     {
-        <table class="table table-sm table-hover mb-0 align-middle">
-            <thead><tr>
-                <th>Report</th>
-                <th>Status</th>
-                <th>Subject</th>
-                <th>Approved</th>
-                <th class="text-end">Holded documents</th>
-                <th class="text-end">Payable</th>
-            </tr></thead>
-            <tbody>
-            @foreach (var r in Model.ExpenseReports)
-            {
-                <tr>
-                    <td class="text-nowrap"><a href="/Expenses/@r.Id">@r.Id.ToString()[..8]…</a></td>
-                    <td class="text-nowrap">@r.Status</td>
-                    <td>@r.Note</td>
-                    <td class="text-nowrap">@(r.ApprovedAt?.InZone(madrid).Date.ToInvariantDate())</td>
-                    <td class="text-end">@r.HoldedDocIds.Count</td>
-                    <td class="text-end">@r.Payable.ToEuro()</td>
-                </tr>
-            }
-            </tbody>
-        </table>
+        <partial name="_Table" model="reportsTable" />
     }
 </div>

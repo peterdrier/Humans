@@ -7,6 +7,78 @@
     var okLines = lines.Where(l => !l.IsProblem).ToList();
     var members = Model.Members.OrderByDescending(m => m.IsWarning)
         .ThenBy(m => m.MemberName, StringComparer.OrdinalIgnoreCase).ToList();
+
+    Func<ExpenseReconOrphan, IHtmlContent> orphanAccountCell =
+        @<text><a asp-action="CreditorStatement" asp-route-accountNum="@item.AccountNum">@item.AccountNum</a></text>;
+    Func<ExpenseReconOrphan, IHtmlContent> orphanAmountCell = @<text>@item.Amount.ToEuro()</text>;
+    Func<ExpenseReconOrphan, IHtmlContent> orphanKindCell =
+        @<text><span class="badge bg-danger">@(item.Kind == ExpenseReconOrphanKind.UnboundContact ? "Unbound contact" : "No matching line")</span></text>;
+    var orphansTable = TableModel.For(Model.Orphans.OrderByDescending(o => o.Date).ToList())
+        .Column("Date", o => o.Date.ToInvariantDate(), o => o.Css("text-nowrap"))
+        .Template("Account", orphanAccountCell, sortBy: o => o.AccountNum)
+        .Column("Entry", o => o.EntryNumber.ToString(System.Globalization.CultureInfo.InvariantCulture))
+        .Column("Description", o => o.Description)
+        .Template("Amount", orphanAmountCell, o => o.End().Css("text-nowrap"), sortBy: o => o.Amount)
+        .Template("Kind", orphanKindCell)
+        .Css("align-middle")
+        .Build();
+
+    Func<ExpenseReconMember, IHtmlContent> memberCell = @<text><vc:human user-id="@item.UserId" link="None" /></text>;
+    Func<ExpenseReconMember, IHtmlContent> memberAccountCell = @<text>
+        @if (item.SupplierAccountNum is { } account)
+        {
+            <a asp-action="CreditorStatement" asp-route-accountNum="@account">@account</a>
+        }
+        else
+        {
+            <span class="text-muted">—</span>
+        }
+    </text>;
+    Func<ExpenseReconMember, IHtmlContent> expensesCell = @<text>@((-item.ExpensePurchases).ToEuro())</text>;
+    Func<ExpenseReconMember, IHtmlContent> sepaPaidCell = @<text>@((-item.SepaPaid).ToEuro())</text>;
+    Func<ExpenseReconMember, IHtmlContent> unclaimedCell = @<text>@((-item.UnclaimedPurchases).ToEuro())</text>;
+    Func<ExpenseReconMember, IHtmlContent> otherCell = @<text>
+        @if (item.OtherMovements.Count == 0)
+        {
+            @((-item.OtherTotal).ToEuro())
+        }
+        else
+        {
+            <details>
+                <summary>@((-item.OtherTotal).ToEuro())</summary>
+                @foreach (var o in item.OtherMovements)
+                {
+                    <div class="small text-start">@o.Date.ToInvariantDate() · @o.Type · @o.Description · @((-o.Amount).ToEuro())</div>
+                }
+            </details>
+        }
+    </text>;
+    Func<ExpenseReconMember, IHtmlContent> ledgerCell = @<text>@((-item.LedgerBalance).ToEuro())</text>;
+    Func<ExpenseReconMember, IHtmlContent> memberStatusCell = @<text>
+        <span class="badge @MemberBadge(item).Css">@MemberBadge(item).Label</span>
+        @foreach (var t in item.UnmatchedTransfers)
+        {
+            <div class="small"><a asp-action="Sepa">@t.FileName</a> · @t.Amount.ToEuro() not in ledger</div>
+        }
+    </text>;
+    Func<ExpenseReconMember, IHtmlContent> openTransfersCell = @<text>
+        @foreach (var t in item.OpenTransfers)
+        {
+            <div class="small"><a asp-action="Sepa">@t.FileName</a> · @t.Amount.ToEuro()</div>
+        }
+    </text>;
+    var membersTable = TableModel.For(members)
+        .Template("Member", memberCell)
+        .Template("Account", memberAccountCell, sortBy: m => m.SupplierAccountNum)
+        .Template("Expenses", expensesCell, o => o.End().Css("text-nowrap"), sortBy: m => -m.ExpensePurchases)
+        .Template("SEPA paid", sepaPaidCell, o => o.End().Css("text-nowrap"), sortBy: m => -m.SepaPaid)
+        .Template("Unclaimed", unclaimedCell, o => o.End().Css("text-nowrap"), sortBy: m => -m.UnclaimedPurchases)
+        .Template("Other", otherCell, o => o.End().Css("text-nowrap"), sortBy: m => -m.OtherTotal)
+        .Template("Ledger", ledgerCell, o => o.End().Css("text-nowrap"), sortBy: m => -m.LedgerBalance)
+        .Template("Status", memberStatusCell, sortBy: m => m.IsWarning ? 0 : 1)
+        .Template("Open SEPA transfers", openTransfersCell, sortBy: m => m.OpenTransfers.Count)
+        .Css("align-middle")
+        .Build();
 }
 
 @functions {
@@ -107,28 +179,7 @@
 {
     <h2 class="h4">Orphan purchases</h2>
     <p class="text-muted">Ledger purchase lines carrying the expense push's marker that no line claims or counts as its duplicate.</p>
-    <div class="table-responsive mb-4">
-        <table class="table table-sm align-middle">
-            <thead>
-                <tr><th>Date</th><th>Account</th><th>Entry</th><th>Description</th><th class="text-end">Amount</th><th>Kind</th></tr>
-            </thead>
-            <tbody>
-                @foreach (var o in Model.Orphans.OrderByDescending(o => o.Date))
-                {
-                    <tr>
-                        <td class="text-nowrap">@o.Date.ToInvariantDate()</td>
-                        <td><a asp-action="CreditorStatement" asp-route-accountNum="@o.AccountNum">@o.AccountNum</a></td>
-                        <td>@o.EntryNumber</td>
-                        <td>@o.Description</td>
-                        <td class="text-end text-nowrap">@o.Amount.ToEuro()</td>
-                        <td>
-                            <span class="badge bg-danger">@(o.Kind == ExpenseReconOrphanKind.UnboundContact ? "Unbound contact" : "No matching line")</span>
-                        </td>
-                    </tr>
-                }
-            </tbody>
-        </table>
-    </div>
+    <div class="mb-4"><partial name="_Table" model="orphansTable" /></div>
 }
 
 <h2 class="h4">Members</h2>
@@ -138,69 +189,7 @@
     with no payment on its day. <strong>Other</strong> (unmarked purchases, journal entries such as a loan, payments
     made by hand) is information, not a warning. An open transfer is generated but not booked yet.
 </p>
-<div class="table-responsive mb-4">
-    <table class="table table-sm align-middle">
-        <thead>
-            <tr>
-                <th>Member</th><th>Account</th><th class="text-end">Expenses</th><th class="text-end">SEPA paid</th>
-                <th class="text-end">Unclaimed</th><th class="text-end">Other</th><th class="text-end">Ledger</th>
-                <th>Status</th><th>Open SEPA transfers</th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach (var m in members)
-            {
-                var (css, label) = MemberBadge(m);
-                <tr>
-                    <td><vc:human user-id="@m.UserId" link="None" /></td>
-                    <td>
-                        @if (m.SupplierAccountNum is { } account)
-                        {
-                            <a asp-action="CreditorStatement" asp-route-accountNum="@account">@account</a>
-                        }
-                        else
-                        {
-                            <span class="text-muted">—</span>
-                        }
-                    </td>
-                    <td class="text-end text-nowrap">@((-m.ExpensePurchases).ToEuro())</td>
-                    <td class="text-end text-nowrap">@((-m.SepaPaid).ToEuro())</td>
-                    <td class="text-end text-nowrap">@((-m.UnclaimedPurchases).ToEuro())</td>
-                    <td class="text-end text-nowrap">
-                        @if (m.OtherMovements.Count == 0)
-                        {
-                            @((-m.OtherTotal).ToEuro())
-                        }
-                        else
-                        {
-                            <details>
-                                <summary>@((-m.OtherTotal).ToEuro())</summary>
-                                @foreach (var o in m.OtherMovements)
-                                {
-                                    <div class="small text-start">@o.Date.ToInvariantDate() · @o.Type · @o.Description · @((-o.Amount).ToEuro())</div>
-                                }
-                            </details>
-                        }
-                    </td>
-                    <td class="text-end text-nowrap">@((-m.LedgerBalance).ToEuro())</td>
-                    <td>
-                        <span class="badge @css">@label</span>
-                        @foreach (var t in m.UnmatchedTransfers)
-                        {
-                            <div class="small"><a asp-action="Sepa">@t.FileName</a> · @t.Amount.ToEuro() not in ledger</div>
-                        }
-                    </td>
-                    <td>
-                        @foreach (var t in m.OpenTransfers)
-                        {
-                            <div class="small"><a asp-action="Sepa">@t.FileName</a> · @t.Amount.ToEuro()</div>
-                        }
-                    </td>
-                </tr>
-            }
-        </tbody>
-    </table>
-</div>
+<div class="mb-4"><partial name="_Table" model="membersTable" /></div>
 
 @if (okLines.Count > 0)
 {

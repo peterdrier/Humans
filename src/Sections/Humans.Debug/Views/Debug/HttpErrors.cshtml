@@ -41,45 +41,31 @@
     }
     else
     {
-        <div class="table-responsive">
-            <table class="table table-sm table-hover font-monospace" style="font-size: 0.8rem;">
-                <thead>
-                    <tr>
-                        <th style="width: 160px;">Timestamp (UTC)</th>
-                        <th style="width: 60px;">Code</th>
-                        <th style="width: 70px;">Method</th>
-                        <th>URL</th>
-                        <th style="width: 130px;">IP</th>
-                        <th style="width: 160px;">User</th>
-                        <th style="width: 180px;">Client</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach (var e in Model.Entries)
-                    {
-                        var rowClass = e.StatusCode >= 500 ? "table-danger" : "table-warning";
-                        <tr class="@rowClass" data-status="@e.StatusCode">
-                            <td class="text-nowrap">@e.Timestamp.ToInvariantTimestamp()</td>
-                            <td>@e.StatusCode</td>
-                            <td>@e.Method</td>
-                            <td class="text-break">@e.Url</td>
-                            <td>@e.IpAddress</td>
-                            <td>
-                                @if (e.UserId.HasValue)
-                                {
-                                    <vc:human user-id="@e.UserId.Value" />
-                                }
-                                else
-                                {
-                                    <span class="text-muted">—</span>
-                                }
-                            </td>
-                            <td><span title="@e.UserAgent">@e.ClientLabel</span></td>
-                        </tr>
-                    }
-                </tbody>
-            </table>
-        </div>
+        Func<HttpErrorRow, IHtmlContent> userCell = @<text>
+            @if (item.UserId.HasValue)
+            {
+                <vc:human user-id="@item.UserId.Value" />
+            }
+            else
+            {
+                <span class="text-muted">—</span>
+            }
+        </text>;
+        Func<HttpErrorRow, IHtmlContent> timestampCell = @<text>@item.Timestamp.ToInvariantTimestamp()</text>;
+        Func<HttpErrorRow, IHtmlContent> clientCell = @<text><span title="@item.UserAgent">@item.ClientLabel</span></text>;
+        var errorsTable = TableModel.For(Model.Entries)
+            .Template("Timestamp (UTC)", timestampCell, o => o.Css("text-nowrap"), sortBy: e => e.Timestamp)
+            .Column("Code", e => e.StatusCode)
+            .Column("Method", e => e.Method)
+            .Column("URL", e => e.Url, o => o.Css("text-break"))
+            .Column("IP", e => e.IpAddress)
+            .Template("User", userCell)
+            .Template("Client", clientCell, sortBy: e => e.ClientLabel)
+            .RowCss(e => e.StatusCode >= 500 ? "table-danger" : "table-warning")
+            .RowData("status", e => e.StatusCode.ToString(System.Globalization.CultureInfo.InvariantCulture))
+            .Css("font-monospace small")
+            .Build();
+        <partial name="_Table" model="errorsTable" />
     }
 </div>
 

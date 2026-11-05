@@ -115,35 +115,25 @@
 <h2 class="h5">Invitations</h2>
 <div class="card">
     <div class="card-body p-0">
-        <table class="table table-hover mb-0 align-middle">
-            <thead>
-                <tr>
-                    <th>Name</th>
-                    <th>Sent</th>
-                    <th>Email status</th>
-                    <th>Reminder</th>
-                    <th>Started</th>
-                    <th>Completed</th>
-                </tr>
-            </thead>
-            <tbody>
-                @if (Model.Invitations.Count == 0)
-                {
-                    <tr><td colspan="6" class="text-center text-muted py-4">No invitations sent yet.</td></tr>
-                }
-                @foreach (var inv in Model.Invitations)
-                {
-                    <tr>
-                        <td><vc:human user-id="@inv.UserId" link="None" /></td>
-                        <td>@FormatInstant(inv.SentAt)</td>
-                        <td>@if (inv.EmailStatus is { } emailStatus){<status-badge value="@emailStatus" />}else{<span class="badge bg-light text-dark">—</span>}</td>
-                        <td>@FormatInstant(inv.ReminderSentAt)</td>
-                        <td>@(inv.Started ? "Yes" : "—")</td>
-                        <td>@(inv.Completed ? "Yes" : "—")</td>
-                    </tr>
-                }
-            </tbody>
-        </table>
+        @{
+            Func<SurveyInviteStatus, IHtmlContent> inviteCell0 = @<text><vc:human user-id="@item.UserId" link="None" /></text>;
+            Func<SurveyInviteStatus, IHtmlContent> inviteCell1 = @<text>@FormatInstant(item.SentAt)</text>;
+            Func<SurveyInviteStatus, IHtmlContent> inviteCell2 = @<text>@if (item.EmailStatus is { } emailStatus){<status-badge value="@emailStatus" />}else{<span class="badge bg-light text-dark">—</span>}</text>;
+            Func<SurveyInviteStatus, IHtmlContent> inviteCell3 = @<text>@FormatInstant(item.ReminderSentAt)</text>;
+            Func<SurveyInviteStatus, IHtmlContent> inviteCell4 = @<text>@(item.Started ? "Yes" : "—")</text>;
+            Func<SurveyInviteStatus, IHtmlContent> inviteCell5 = @<text>@(item.Completed ? "Yes" : "—")</text>;
+            var invitationsTable = TableModel.For(Model.Invitations)
+                .Template("Name", inviteCell0)
+                .Template("Sent", inviteCell1, sortBy: i => i.SentAt)
+                .Template("Email status", inviteCell2, sortBy: i => i.EmailStatus)
+                .Template("Reminder", inviteCell3, sortBy: i => i.ReminderSentAt)
+                .Template("Started", inviteCell4)
+                .Template("Completed", inviteCell5)
+                .Empty("No invitations sent yet.")
+                .Css("align-middle")
+                .Build();
+        }
+        <partial name="_Table" model="invitationsTable" />
     </div>
 </div>
 
