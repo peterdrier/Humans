@@ -949,6 +949,12 @@ internal sealed class ShiftManagementService(
         var teamIds = shifts.Select(s => s.Rota.TeamId).Distinct().ToList();
         var teamLookup = await GetTeamLookupWithParentsAsync(teamIds, ct);
 
+        var lockedTeams = new HashSet<Guid>();
+        if (es.IsEarlyEntryClosed(clock.GetCurrentInstant()))
+            foreach (var teamId in teamIds)
+                if (query.ViewerUserId is not { } viewerId || !await CanApproveSignupsAsync(viewerId, teamId, ct))
+                    lockedTeams.Add(teamId);
+
         IReadOnlyDictionary<Guid, UserInfo>? userLookup = null;
         if (includeSignups)
         {
@@ -980,7 +986,8 @@ internal sealed class ShiftManagementService(
                         })
                         .ToList()
                     : [];
-                return ToUrgentShiftInfo(s, es, score, confirmedCount, remaining, teamName, signups);
+                return ToUrgentShiftInfo(s, es, score, confirmedCount, remaining, teamName, signups)
+                    with { EarlyEntrySignupsClosed = lockedTeams.Contains(s.Rota.TeamId) };
             })
             .OrderByDescending(u => u.UrgencyScore)
             .ToList();
