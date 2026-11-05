@@ -79,7 +79,7 @@ internal sealed class CalendarOccurrenceComposer(
         Title: item.Summary,
         Description: item.Description,
         Location: item.Location,
-        LocationUrl: null,
+        LocationUrl: item.LocationUrl,
         OwningTeamId: Guid.Empty,
         OwningTeamName: string.Empty,
         IsRecurring: recurring,

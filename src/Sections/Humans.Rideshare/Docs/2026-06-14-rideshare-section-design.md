@@ -246,7 +246,7 @@ Headline reads like *"78 offers · 100 seats filled · 12 riders still looking."
 - **Cross-section read interface** `IRideshareServiceRead` only if another section consumes rideshare data (none anticipated at v1; do not pre-build it).
 - **GDPR** — implement `IUserDataContributor` for export (read-only); wire right-to-erasure **separately** into `AccountDeletionService` (explicit per-section delete/anonymize of trips/requests/interests), not via the contributor — which is export-only.
 - **Architecture test:** `RideshareArchitectureTests` pins the service/repository split, route names, the no-cross-section-nav rule, and the caching-decorator shape. The universal `HUM0025` analyzer enforces single-repository table ownership.
-- **On build:** add the four tables to `design-rules.md §8`, add `docs/sections/Rideshare.md`, add nav links (no orphan pages), and add the CLAUDE.md Extended Docs entry if warranted.
+- **On build:** add the four tables to the section doc's Architecture block, add `docs/sections/Rideshare.md`, add nav links (no orphan pages), and add the CLAUDE.md Extended Docs entry if warranted.
 
 ## 14. Cross-section dependencies
 

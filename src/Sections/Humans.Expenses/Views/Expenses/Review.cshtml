@@ -55,8 +55,6 @@ else
 {
     Func<ExpenseReportDto, IHtmlContent> reportCell =
         @<text><a asp-action="Detail" asp-route-id="@item.Id">@item.Id.ToString()[..8]…</a></text>;
-    Func<ExpenseReportDto, IHtmlContent> submitterCell =
-        @<text><vc:human user-id="@item.SubmitterUserId" link="None" /></text>;
     Func<ExpenseReportDto, IHtmlContent> creditorCell =
         @<text>@if (item.HoldedSupplierAccountNum is { } accountNum)
         {
@@ -100,7 +98,7 @@ else
             : Model.IsRevoked(r.Id) ? "table-warning"
             : null);
         var table = builder
-            .Template(Localizer["Expenses_ColSubmittedBy"].Value, submitterCell)
+            .Human(Localizer["Expenses_ColSubmittedBy"].Value, r => r.SubmitterUserId, HumanLink.None)
             .Column(Localizer["Expenses_HoldedAccount"].Value, r => Model.BookingLabels.TryGetValue(r.Id, out var booking) ? booking : SharedLocalizer["Common_Unknown"].Value, c => c.SelectFilter())
             .Column(Localizer["Expenses_ColSubject"].Value, r => r.Note is { Length: > 80 } n
                 ? n[..(char.IsHighSurrogate(n[79]) && char.IsLowSurrogate(n[80]) ? 79 : 80)] + "…" : r.Note)

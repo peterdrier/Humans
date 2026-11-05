@@ -113,7 +113,7 @@ section owns its own `DbContext` type, so no two contributors touch the same
 instance; how a given repository obtains its context varies — some take one by
 injection, some open one per call through `IDbContextFactory<T>` — and neither
 recreates the sharing. The hazard went with the shared context, and
-`design-rules.md` §8a records the reason as obsolete.
+`design-rules.md`, *Crosscuts, orchestrators and fan-out* records the reason as obsolete.
 
 Sequential is now a simplicity choice, and it stays: one contributor at a time
 keeps failure attribution and log order plain, and at our small scale an export
@@ -316,7 +316,7 @@ that check can't: it discovers contributors by reflection over the same section
 assemblies the runtime composes itself from, and requires no category be
 claimed twice across the whole roster and no retention be left unexplained.
 
-Append-only entities per `design-rules.md` §12 (`consent_records`, `audit_log`,
+Append-only entities per `design-rules.md`, *Append-only entities* (`consent_records`, `audit_log`,
 `budget_audit_logs`, `camp_polygon_histories`, `application_state_history`,
 `team_join_request_state_history`) are not deleted — foreign keys are nulled or
 the row is re-pointed at the anonymized user rather than a separate tombstone

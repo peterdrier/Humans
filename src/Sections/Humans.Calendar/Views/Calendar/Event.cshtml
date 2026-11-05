@@ -53,19 +53,10 @@
             <dd class="col-sm-9">@Localizer["Calendar_Yes"]</dd>
         }
 
-        @if (!string.IsNullOrWhiteSpace(Model.Event.Location))
+        @if (!string.IsNullOrWhiteSpace(Model.Event.Location) || !string.IsNullOrWhiteSpace(Model.Event.LocationUrl))
         {
             <dt class="col-sm-3">@SharedLocalizer["Profile_Location"]</dt>
-            <dd class="col-sm-9">
-                @if (!string.IsNullOrWhiteSpace(Model.Event.LocationUrl))
-                {
-                    <a href="@Model.Event.LocationUrl" target="_blank" rel="noopener">@Model.Event.Location</a>
-                }
-                else
-                {
-                    @Model.Event.Location
-                }
-            </dd>
+            <dd class="col-sm-9"><partial name="_CalendarLocation" model="(Model.Event.Location, Model.Event.LocationUrl)" /></dd>
         }
 
         @if (!string.IsNullOrWhiteSpace(Model.Event.Description))

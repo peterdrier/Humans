@@ -45,5 +45,6 @@ internal sealed class WorkgroupCalendarContributor(IWorkgroupService workgroups)
         m.Location,
         $"/Workgroups/{w.Slug}",
         m.RecurrenceRule,
-        m.RecurrenceTimezone);
+        m.RecurrenceTimezone,
+        m.LocationUrl);
 }

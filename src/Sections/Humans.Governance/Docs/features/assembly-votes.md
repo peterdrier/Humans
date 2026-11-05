@@ -203,7 +203,7 @@ All tables in `GovernanceDbContext`, prefix `assembly_`.
 
 ### AssemblyBallotHistory
 
-**Table:** `assembly_ballot_history`. Append-only (repository exposes Add and Get only, design-rules §12).
+**Table:** `assembly_ballot_history`. Append-only (repository exposes Add and Get only, design-rules.md, *Append-only entities*).
 
 | Property | Type | Notes |
 |---|---|---|

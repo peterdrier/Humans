@@ -17,6 +17,6 @@ description: "Long-term direction: `IUserService` is the one-stop-shop for every
 
 **Related:**
 
-- [`caching-transparent`](caching-transparent.md) — UserInfo IS the §15 stitched-DTO for this section.
+- [`caching-transparent`](caching-transparent.md) — UserInfo IS the caching-pattern stitched DTO for this section.
 - [`interface-method-additions-are-debt`](interface-method-additions-are-debt.md) — adding writes to `IUserService` still requires audit-first + ask-Peter.
 - [`users-profiles-one-section`](users-profiles-one-section.md) — same ownership boundary; this rule clarifies the long-term service surface within it.

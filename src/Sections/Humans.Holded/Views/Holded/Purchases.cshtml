@@ -21,14 +21,14 @@ else
 {
     <div class="card">
         @{
-            Func<HoldedPurchaseDocInfo, IHtmlContent> docCell0 = @<text>@item.Date.ToDate()</text>;
-            Func<HoldedPurchaseDocInfo, IHtmlContent> docCell1 = @<text>
+            Func<HoldedPurchaseDocInfo, IHtmlContent> dateCell = @<text>@item.Date.ToDate()</text>;
+            Func<HoldedPurchaseDocInfo, IHtmlContent> docCell = @<text>
                 <a href="@item.HoldedUrl" target="_blank" rel="noopener noreferrer" title="Open in Holded">
                     @(string.IsNullOrWhiteSpace(item.DocNumber) ? item.Id : item.DocNumber)<i class="fa-solid fa-arrow-up-right-from-square ms-1 small"></i>
                 </a>
 
             </text>;
-            Func<HoldedPurchaseDocInfo, IHtmlContent> docCell2 = @<text>
+            Func<HoldedPurchaseDocInfo, IHtmlContent> contactCell = @<text>
                 @item.ContactName
                 @if (item.Description is not null)
                 {
@@ -36,8 +36,8 @@ else
                 }
 
             </text>;
-            Func<HoldedPurchaseDocInfo, IHtmlContent> docCell3 = @<text>@item.Total.ToEuro()</text>;
-            Func<HoldedPurchaseDocInfo, IHtmlContent> docCell4 = @<text>
+            Func<HoldedPurchaseDocInfo, IHtmlContent> totalCell = @<text>@item.Total.ToEuro()</text>;
+            Func<HoldedPurchaseDocInfo, IHtmlContent> approvedCell = @<text>
                 @if (item.IsApproved)
                 {
                     <i class="fa-solid fa-check text-success" title="Approved in Holded"></i>
@@ -48,18 +48,16 @@ else
                 }
 
             </text>;
-            Func<HoldedPurchaseDocInfo, IHtmlContent> docCell5 = @<text><code>@(item.BookedAccountId ?? "—")</code></text>;
-            Func<HoldedPurchaseDocInfo, IHtmlContent> docCell6 = @<text>@string.Join(", ", item.Tags)</text>;
-            Func<HoldedPurchaseDocInfo, IHtmlContent> docCell7 = @<text>@(item.Notes ?? "—")</text>;
+            Func<HoldedPurchaseDocInfo, IHtmlContent> tagsCell = @<text>@string.Join(", ", item.Tags)</text>;
             var docsTable = TableModel.For(Model.Docs)
-                .Template("Date", docCell0, o => o.Css("text-nowrap"), sortBy: d => d.Date)
-                .Template("Doc #", docCell1, o => o.Css("text-nowrap"), sortBy: d => d.DocNumber)
-                .Template("Contact", docCell2, sortBy: d => d.ContactName)
-                .Template("Total", docCell3, o => o.End(), sortBy: d => d.Total)
-                .Template("Approved", docCell4, sortBy: d => d.IsApproved ? 1 : 0)
-                .Template("Booked account", docCell5, o => o.Css("small"))
-                .Template("Tags", docCell6, o => o.Css("small"))
-                .Template("Notes", docCell7, o => o.Css("small text-muted"))
+                .Template("Date", dateCell, o => o.Css("text-nowrap"), sortBy: d => d.Date)
+                .Template("Doc #", docCell, o => o.Css("text-nowrap"), sortBy: d => d.DocNumber)
+                .Template("Contact", contactCell, sortBy: d => d.ContactName)
+                .Template("Total", totalCell, o => o.End(), sortBy: d => d.Total)
+                .Template("Approved", approvedCell, sortBy: d => d.IsApproved ? 1 : 0)
+                .Column("Booked account", r => r.BookedAccountId ?? "—", o => o.Css("small").Code())
+                .Template("Tags", tagsCell, o => o.Css("small"))
+                .Column("Notes", r => r.Notes ?? "—", o => o.Css("small text-muted"))
                 .Css("align-middle")
                 .Build();
         }

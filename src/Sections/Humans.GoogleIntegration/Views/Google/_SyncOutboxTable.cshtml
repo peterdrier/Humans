@@ -14,10 +14,6 @@
 }
 else
 {
-    Func<GoogleSyncOutboxEventSnapshot, IHtmlContent> eventTypeCell =
-        @<text><code>@item.EventType</code></text>;
-    Func<GoogleSyncOutboxEventSnapshot, IHtmlContent> humanCell =
-        @<text><vc:human user-id="@item.UserId" link="Admin" /></text>;
     Func<GoogleSyncOutboxEventSnapshot, IHtmlContent> googleEmailCell =
         @<text><small class="text-muted">@googleEmailLookup.GetValueOrDefault(item.UserId, "unknown")</small></text>;
     Func<GoogleSyncOutboxEventSnapshot, IHtmlContent> resourceCell = evt =>
@@ -39,8 +35,8 @@ else
         }
     </text>;
     var builder = TableModel.For(Model.ToList())
-        .Template("Event Type", eventTypeCell)
-        .Template("Human", humanCell)
+        .Column("Event Type", r => r.EventType, o => o.Code())
+        .Human("Human", r => r.UserId, HumanLink.Admin)
         .Template("Google Email", googleEmailCell)
         .Column("Team", r => teamLookup.GetValueOrDefault(r.TeamId, r.TeamId.ToString()))
         .Template("Resource", resourceCell)

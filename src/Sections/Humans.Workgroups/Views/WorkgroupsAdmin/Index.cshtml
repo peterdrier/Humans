@@ -2,8 +2,6 @@
 @{
     ViewData["Title"] = "Workgroups";
 
-    Func<WorkgroupInfo, IHtmlContent> nameCell =
-        @<text><a asp-controller="Workgroups" asp-action="Details" asp-route-slug="@item.Slug">@item.Name</a></text>;
     Func<WorkgroupInfo, IHtmlContent> coordinatorsCell =
         @<text>@await Html.PartialAsync("_WorkgroupCoordinators", item)</text>;
     Func<WorkgroupInfo, IHtmlContent> registerCell = @<text>
@@ -12,7 +10,7 @@
         </form>
     </text>;
     var pendingTable = TableModel.For(Model.Pending.ToList())
-        .Template("Name", nameCell, sortBy: w => w.Name)
+        .Link("Name", w => w.Name, w => Url.Action("Details", "Workgroups", new { slug = w.Slug }))
         .Template("Coordinators", coordinatorsCell)
         .Column("Applied", w => w.AppliedAt, o => o.Date())
         .Column("Days waiting", w => (Model.Now - w.AppliedAt).Days, o => o.Number())
@@ -22,15 +20,11 @@
         .Css("align-middle")
         .Build();
 
-    Func<Tuple<WorkgroupInfo, WorkgroupDocumentInfo>, IHtmlContent> groupCell =
-        @<text><a asp-controller="Workgroups" asp-action="Details" asp-route-slug="@item.Item1.Slug">@item.Item1.Name</a></text>;
-    Func<Tuple<WorkgroupInfo, WorkgroupDocumentInfo>, IHtmlContent> documentCell =
-        @<text><a asp-controller="Workgroups" asp-action="Document" asp-route-slug="@item.Item1.Slug" asp-route-id="@item.Item2.Id">@item.Item2.Title</a></text>;
     Func<Tuple<WorkgroupInfo, WorkgroupDocumentInfo>, IHtmlContent> dispositionCell =
         @<text><a asp-controller="Workgroups" asp-action="Document" asp-route-slug="@item.Item1.Slug" asp-route-id="@item.Item2.Id" class="btn btn-sm btn-outline-primary">Record disposition</a></text>;
     var awaitingTable = TableModel.For(Model.AwaitingDisposition.Select(x => Tuple.Create(x.Workgroup, x.Document)).ToList())
-        .Template("Group", groupCell, sortBy: x => x.Item1.Name)
-        .Template("Document", documentCell, sortBy: x => x.Item2.Title)
+        .Link("Group", x => x.Item1.Name, x => Url.Action("Details", "Workgroups", new { slug = x.Item1.Slug }))
+        .Link("Document", x => x.Item2.Title, x => Url.Action("Document", "Workgroups", new { slug = x.Item1.Slug, id = x.Item2.Id }))
         .Column("Delivered", x => x.Item2.DeliveredAt, o => o.Date())
         .Template("", dispositionCell, o => o.NoSort().Css("text-end"))
         .RowCss(x => x.Item1.HasOverdueDisposition(Model.Now) ? "table-warning" : null)
@@ -44,7 +38,7 @@
         }
     </text>;
     var activeTable = TableModel.For(Model.Active.ToList())
-        .Template("Name", nameCell, sortBy: w => w.Name)
+        .Link("Name", w => w.Name, w => Url.Action("Details", "Workgroups", new { slug = w.Slug }))
         .Template("Coordinators", coordinatorsCell)
         .Column("Budget", w => w.BudgetAmount, o => o.Currency())
         .Column("Holded account", w => w.HoldedAccountNumber?.ToString(System.Globalization.CultureInfo.InvariantCulture))
@@ -53,7 +47,7 @@
         .Build();
 
     var dormantTable = TableModel.For(Model.Register.Where(w => w.Status == WorkgroupStatus.Dormant).ToList())
-        .Template("Name", nameCell, sortBy: w => w.Name)
+        .Link("Name", w => w.Name, w => Url.Action("Details", "Workgroups", new { slug = w.Slug }))
         .Column("Reason", w => w.DormantReason)
         .Column("Ended", w => w.EndedAt, o => o.Date())
         .Css("align-middle")

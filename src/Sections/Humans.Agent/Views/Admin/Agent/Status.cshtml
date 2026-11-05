@@ -183,9 +183,8 @@
         else
         {
             <p class="mb-2"><strong>@report.Refusals7dCount</strong> refusals</p>
-            Func<AgentRefusalBucket, IHtmlContent> reasonCell = @<text><code>@item.Reason</code></text>;
             var refusalsTable = TableModel.For(report.Refusals7d.OrderByDescending(bucket => bucket.Count).ToList())
-                .Template("Reason", reasonCell, sortBy: r => r.Reason)
+                .Column("Reason", bucket => bucket.Reason, o => o.Code())
                 .Column("Count", r => r.Count, o => o.Number().End())
                 .Css("w-auto")
                 .Build();
@@ -203,9 +202,8 @@
         }
         else
         {
-            Func<AgentTopDoc, IHtmlContent> slugCell = @<text><code>@item.Slug</code></text>;
             var docsTable = TableModel.For(report.TopDocs7d)
-                .Template("Slug", slugCell, sortBy: d => d.Slug)
+                .Column("Slug", d => d.Slug, o => o.Code())
                 .Column("Fetches", d => d.Count, o => o.Number().End())
                 .Css("w-auto")
                 .Build();
@@ -223,9 +221,8 @@
         }
         else
         {
-            Func<AgentTopUser, IHtmlContent> humanCell = @<text><vc:human user-id="@item.UserId" link="Admin" /></text>;
             var usersTable = TableModel.For(report.TopUsers7d)
-                .Template("Human", humanCell)
+                .Human("Human", u => u.UserId, HumanLink.Admin)
                 .Column("Messages (7d)", u => u.MessageCount, o => o.Number().End())
                 .Column("Daily remaining", u => u.MessagesTodayRemaining, o => o.Number().End())
                 .Column("Hourly remaining", u => u.MessagesThisHourRemaining, o => o.Number().End())

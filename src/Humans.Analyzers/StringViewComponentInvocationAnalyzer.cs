@@ -32,7 +32,7 @@ public sealed class StringViewComponentInvocationAnalyzer : DiagnosticAnalyzer
 
     private static readonly LocalizableString MessageFormat =
         "View component invoked by name \"{0}\". Invoke it by Type: <vc:…> or InvokeAsync<T> in its own section, "
-        + "or a Type from a [ViewComponentSlot] seam across sections (design-rules §8b).";
+        + "or a Type from a [ViewComponentSlot] seam across sections (design-rules.md, *Section contributions to the Shell*).";
 
     public static readonly DiagnosticDescriptor Rule = new(
         id: DiagnosticId,
@@ -45,7 +45,7 @@ public sealed class StringViewComponentInvocationAnalyzer : DiagnosticAnalyzer
             "IViewComponentHelper.InvokeAsync(string, …), its InvokeAsync(helper, string) extension, " +
             "Controller.ViewComponent(string, …) and ViewComponentResult.ViewComponentName resolve a view " +
             "component by name at render time. " +
-            "Invoke by Type so the compiler checks the target (design-rules §8b).");
+            "Invoke by Type so the compiler checks the target (design-rules.md, *Section contributions to the Shell*).");
 
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => [Rule];
 

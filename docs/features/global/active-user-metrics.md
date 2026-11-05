@@ -82,5 +82,5 @@ If week/month usage trends become important later, the right answer is a small p
 ## Related Features
 
 - [`docs/sections/admin-shell.md`](../../sections/admin-shell.md) — the /Admin dashboard is the consumer of the tiles.
-- [`docs/architecture/design-rules.md`](../../architecture/design-rules.md) — §15 caching pattern explains why activity stamps can't live on the `User` entity without disrupting the UserInfo snapshot.
+- [`docs/architecture/design-rules.md`](../../architecture/design-rules.md) — *Section caching pattern* explains why activity stamps can't live on the `User` entity without disrupting the UserInfo snapshot.
 - `IHumansMetrics` / `HumansMetricsService` — the existing Prometheus surface this feature plugs into.

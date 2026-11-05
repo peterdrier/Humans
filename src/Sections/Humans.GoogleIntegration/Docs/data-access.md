@@ -84,7 +84,7 @@ Uses its own `IGoogleResourceRepository` to load linked Drive metadata and recor
 
 No repository — no DbContext
 or repository dependency; all cross-section data access routes through the
-owning services (§15 pattern). Cross-section calls via `IGoogleWorkspaceUserService`,
+owning services (`design-rules.md`, *Section caching pattern*). Cross-section calls via `IGoogleWorkspaceUserService`,
 `IGoogleSyncManagement`, `ITeamService`, `ITeamWrite`, `ITeamResourceManagement`,
 `IUserService`, `IGoogleIntegrationService`, `IUserEmailService`, `IAuditLogService`, plus
 `ILogger<GoogleAdminService>`. No cache.
@@ -152,7 +152,7 @@ Repository: `IGoogleSyncLogRepository`.
 Implements the internal `IGoogleSyncLogService` (writes, plus the
 `/Google/ActivityLog` read, 500-row cap), the public read side
 (`IGoogleSyncLogViewer`) backing `<vc:google-sync-log>`, and
-`IUserDataContributor` for the GDPR export and erasure (design-rules §8a — the
+`IUserDataContributor` for the GDPR export and erasure (design-rules.md, *Personal data obligations* — the
 table holds `UserId`/`UserEmail`). Writes are best-effort — a repository failure is logged
 at Error and swallowed so a sync never fails on its own bookkeeping. The
 contributor read is uncapped, unlike the 200-row display reads. Cross-section
@@ -223,7 +223,7 @@ DB access, no cache.
 
 ### GoogleTranslationService (Scoped)
 
-No repository. Thin §15-compliant facade over `IGoogleTranslationClient`
+No repository. Thin design-rules-compliant facade over `IGoogleTranslationClient`
 (`Services/Workspace/`). Exists so cross-section callers (Survey authoring —
 `SurveyService.PreFillTranslationsAsync`) depend on a GoogleIntegration
 service interface rather than the raw connector client. No DB access,

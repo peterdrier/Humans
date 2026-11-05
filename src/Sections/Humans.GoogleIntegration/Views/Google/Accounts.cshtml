@@ -128,7 +128,7 @@
         }
         else
         {
-                Func<WorkspaceAccountInfo, IHtmlContent> accountCell0 = @<text>
+                Func<WorkspaceAccountInfo, IHtmlContent> emailCell = @<text>
                     <code>@item.PrimaryEmail</code>
                     @if (item.MatchedUserId.HasValue && !item.IsUsedAsPrimary)
                     {
@@ -139,8 +139,8 @@
                     }
 
                 </text>;
-                Func<WorkspaceAccountInfo, IHtmlContent> accountCell1 = @<text>@item.FirstName @item.LastName</text>;
-                Func<WorkspaceAccountInfo, IHtmlContent> accountCell2 = @<text>
+                Func<WorkspaceAccountInfo, IHtmlContent> nameCell = @<text>@item.FirstName @item.LastName</text>;
+                Func<WorkspaceAccountInfo, IHtmlContent> linkedHumanCell = @<text>
                     @if (item.MatchedUserId.HasValue)
                     {
                         <vc:human user-id="@item.MatchedUserId.Value" />
@@ -159,7 +159,7 @@
                     }
 
                 </text>;
-                Func<WorkspaceAccountInfo, IHtmlContent> accountCell3 = @<text>
+                Func<WorkspaceAccountInfo, IHtmlContent> statusCell = @<text>
                     @if (item.IsSuspended)
                     {
                         <span class="badge bg-danger">Suspended</span>
@@ -170,7 +170,7 @@
                     }
 
                 </text>;
-                Func<WorkspaceAccountInfo, IHtmlContent> accountCell4 = @<text>
+                Func<WorkspaceAccountInfo, IHtmlContent> account2faCell = @<text>
                     @if (item.IsEnrolledIn2Sv)
                     {
                         <span class="badge bg-success" title="2-Step Verification is enrolled on this account" data-bs-toggle="tooltip">
@@ -185,7 +185,7 @@
                     }
 
                 </text>;
-                Func<WorkspaceAccountInfo, IHtmlContent> accountCell5 = @<text>
+                Func<WorkspaceAccountInfo, IHtmlContent> recoveryEmailCell = @<text>
                     @if (!string.IsNullOrWhiteSpace(item.RecoveryEmail))
                     {
                         <code class="small">@item.RecoveryEmail</code>
@@ -198,8 +198,8 @@
                     }
 
                 </text>;
-                Func<WorkspaceAccountInfo, IHtmlContent> accountCell6 = @<text>@item.CreationTime.ToDate()</text>;
-                Func<WorkspaceAccountInfo, IHtmlContent> accountCell7 = @<text>
+                Func<WorkspaceAccountInfo, IHtmlContent> createdCell = @<text>@item.CreationTime.ToDate()</text>;
+                Func<WorkspaceAccountInfo, IHtmlContent> lastLoginCell = @<text>
                     @if (item.LastLoginTime.HasValue)
                     {
                         @item.LastLoginTime.Value.ToDate()
@@ -210,7 +210,7 @@
                     }
 
                 </text>;
-                Func<WorkspaceAccountInfo, IHtmlContent> accountCell8 = @<text>
+                Func<WorkspaceAccountInfo, IHtmlContent> actionsCell = @<text>
                     @if (!item.IsSuspended)
                     {
                         <div class="d-inline-flex gap-1">
@@ -242,15 +242,15 @@
 
                 </text>;
                 var accountsTable = TableModel.For(accountRows)
-                    .Template("Email", accountCell0, sortBy: a => a.PrimaryEmail)
-                    .Template("Name", accountCell1, sortBy: a => a.FirstName + " " + a.LastName)
-                    .Template("Linked Human", accountCell2, sortBy: a => a.MatchedUserId.HasValue ? 1 : 0)
-                    .Template("Status", accountCell3, sortBy: a => a.IsSuspended ? 1 : 0)
-                    .Template("2FA", accountCell4, sortBy: a => a.IsEnrolledIn2Sv ? 1 : 0)
-                    .Template("Recovery Email", accountCell5, sortBy: a => a.RecoveryEmail)
-                    .Template("Created", accountCell6, sortBy: a => a.CreationTime)
-                    .Template("Last Login", accountCell7, sortBy: a => a.LastLoginTime)
-                    .Template(Localizer["GoogleIntegration_Accounts_Actions"], accountCell8, o => o.End())
+                    .Template("Email", emailCell, sortBy: a => a.PrimaryEmail)
+                    .Template("Name", nameCell, sortBy: a => a.FirstName + " " + a.LastName)
+                    .Template("Linked Human", linkedHumanCell, sortBy: a => a.MatchedUserId.HasValue ? 1 : 0)
+                    .Template("Status", statusCell, sortBy: a => a.IsSuspended ? 1 : 0)
+                    .Template("2FA", account2faCell, sortBy: a => a.IsEnrolledIn2Sv ? 1 : 0)
+                    .Template("Recovery Email", recoveryEmailCell, sortBy: a => a.RecoveryEmail)
+                    .Template("Created", createdCell, sortBy: a => a.CreationTime)
+                    .Template("Last Login", lastLoginCell, sortBy: a => a.LastLoginTime)
+                    .Template(Localizer["GoogleIntegration_Accounts_Actions"], actionsCell, o => o.End())
                     .Id("accounts-table")
                     .RowCss(a => a.IsSuspended ? "table-secondary" : null)
                     .RowData("is-enrolled-2sv", a => a.IsEnrolledIn2Sv ? "true" : "false")

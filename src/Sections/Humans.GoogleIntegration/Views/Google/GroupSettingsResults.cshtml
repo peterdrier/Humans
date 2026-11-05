@@ -80,14 +80,12 @@
 
             @if (report.HasDrift)
             {
-                Func<GroupSettingDrift, IHtmlContent> driftSettingCell =
-                    @<text><code>@item.SettingName</code></text>;
                 Func<GroupSettingDrift, IHtmlContent> driftExpectedCell =
                     @<text><span class="badge bg-success">@item.ExpectedValue</span></text>;
                 Func<GroupSettingDrift, IHtmlContent> driftActualCell =
                     @<text><span class="badge bg-danger">@item.ActualValue</span></text>;
                 var driftTable = TableModel.For(report.Drifts)
-                    .Template("Setting", driftSettingCell)
+                    .Column("Setting", r => r.SettingName, o => o.Code())
                     .Template("Expected", driftExpectedCell)
                     .Template("Actual", driftActualCell)
                     .Build();

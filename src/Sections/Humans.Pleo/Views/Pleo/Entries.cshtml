@@ -93,11 +93,9 @@
 <p class="text-muted small">@Model.Rows.Count.ToString("N0", CultureInfo.InvariantCulture) entries, newest first.</p>
 
 @{
-    Func<PleoEntryRow, IHtmlContent> entryCell0 = @<text><a asp-action="Entry" asp-route-id="@item.Id">@(item.SettledAt is { } at ? at.ToDate(madrid) : "—")</a></text>;
-    Func<PleoEntryRow, IHtmlContent> entryCell1 = @<text>@item.Cardholder</text>;
-    Func<PleoEntryRow, IHtmlContent> entryCell2 = @<text>@item.Merchant</text>;
-    Func<PleoEntryRow, IHtmlContent> entryCell3 = @<text>@item.Family<span class="text-muted">@(item.SubFamily is null ? "" : $" / {item.SubFamily}")</span></text>;
-    Func<PleoEntryRow, IHtmlContent> entryCell4 = @<text>
+    Func<PleoEntryRow, IHtmlContent> settledCell = @<text><a asp-action="Entry" asp-route-id="@item.Id">@(item.SettledAt is { } at ? at.ToDate(madrid) : "—")</a></text>;
+    Func<PleoEntryRow, IHtmlContent> familyCell = @<text>@item.Family<span class="text-muted">@(item.SubFamily is null ? "" : $" / {item.SubFamily}")</span></text>;
+    Func<PleoEntryRow, IHtmlContent> amountCell = @<text>
         @(item.AmountEur is { } eur ? eur.ToSignedEuro() : "—")
         @if (item.Currency != "EUR")
         {
@@ -105,7 +103,7 @@
         }
 
     </text>;
-    Func<PleoEntryRow, IHtmlContent> entryCell5 = @<text>
+    Func<PleoEntryRow, IHtmlContent> holdedAccountCell = @<text>
         @if (item.HoldedCode is not null)
         {
             <span>@item.HoldedCode</span> <span class="text-muted">@item.HoldedName</span>
@@ -116,17 +114,15 @@
         }
 
     </text>;
-    Func<PleoEntryRow, IHtmlContent> entryCell6 = @<text>@(item.HasReceipt ? "yes" : "no")</text>;
-    Func<PleoEntryRow, IHtmlContent> entryCell7 = @<text>@item.Status</text>;
     var entriesTable = TableModel.For(Model.Rows)
-        .Template("Settled", entryCell0, o => o.Css("text-nowrap"), sortBy: e => e.SettledAt)
-        .Template("Cardholder", entryCell1)
-        .Template("Merchant", entryCell2)
-        .Template("Family", entryCell3, o => o.Css("small"))
-        .Template("Amount", entryCell4, o => o.End().Css("text-nowrap"), sortBy: e => e.AmountEur)
-        .Template("Holded account", entryCell5, o => o.Css("small"), sortBy: e => e.HoldedCode)
-        .Template("Receipt", entryCell6)
-        .Template("Status", entryCell7, o => o.Css("small"))
+        .Template("Settled", settledCell, o => o.Css("text-nowrap"), sortBy: e => e.SettledAt)
+        .Column("Cardholder", r => r.Cardholder)
+        .Column("Merchant", r => r.Merchant)
+        .Template("Family", familyCell, o => o.Css("small"))
+        .Template("Amount", amountCell, o => o.End().Css("text-nowrap"), sortBy: e => e.AmountEur)
+        .Template("Holded account", holdedAccountCell, o => o.Css("small"), sortBy: e => e.HoldedCode)
+        .Column("Receipt", r => r.HasReceipt ? "yes" : "no")
+        .Column("Status", r => r.Status, o => o.Css("small"))
         .Css("align-middle")
         .Build();
 }

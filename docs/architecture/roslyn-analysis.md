@@ -263,8 +263,7 @@ have the supporting machinery. Each notes the missing piece.
   fragile across Razor compiler versions. **Needs:** a Razor-aware analyzer
   shape, or an MSBuild task that walks `.cshtml` AST directly. Defer.
 
-- **`Cross-domain .Include()` calls in Application services** (design-rules §6
-  + the §15i landmark commentary). Call-site shape is clean
+- **`Cross-domain .Include()` calls in Application services** (design-rules.md, *No cross-domain joins*). Call-site shape is clean
   (`IInvocationOperation` on `EntityFrameworkQueryableExtensions.Include`),
   but the rule is "no `.Include()` whose target navigation crosses a section
   boundary" — requires a section-ownership map for entity types. Only part of the
@@ -298,7 +297,7 @@ have the supporting machinery. Each notes the missing piece.
   `src/Humans.Web/Migrations/System/`.
 
 - **`No `.Include()` for navigations across sections by name`** (a softer
-  Phase-1 of the §6 rule). Could fire on hardcoded nav-property names that
+  Phase-1 of the no-cross-domain-joins rule). Could fire on hardcoded nav-property names that
   match cross-section conventions (`Profile`, `Team`, `User` accessed from
   outside the owning section's namespace). **Needs:** the same
   section-ownership map as the strict version above. Same defer.

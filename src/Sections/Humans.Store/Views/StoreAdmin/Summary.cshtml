@@ -28,8 +28,6 @@
         }
         else
         {
-            Func<OrderSummaryDto, IHtmlContent> counterpartyCell =
-                @<text><a asp-controller="Store" asp-action="Order" asp-route-id="@item.OrderId">@item.CounterpartyName</a></text>;
 
             bool IsTeam(OrderSummaryDto r) =>
                 r.CounterpartyType == OrderCounterpartyType.Team;
@@ -49,7 +47,7 @@
 
             var counterpartyTable = TableModel.For(counterpartyRows)
                 .Column("Type", r => r.CounterpartyType)
-                .Template("Counterparty", counterpartyCell)
+                .Link("Counterparty", r => r.CounterpartyName, r => Url.Action("Order", "Store", new { id = r.OrderId }))
                 .Column("State", r => r.State)
                 .Column("Payment", r => PaymentStatus(r), c => c.SelectFilter())
                 .Column("Total due (€)", r => r.TotalDueEur, c => c.Currency().End())

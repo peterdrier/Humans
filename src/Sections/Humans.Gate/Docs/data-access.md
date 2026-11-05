@@ -14,7 +14,7 @@ best-effort vendor check-in mirror back to TicketTailor.
 from the `IEntityTypeConfiguration` classes under
 `src/Sections/Humans.Gate/Data/Configurations/`, `ToTable("gate_…")`).
 `GateRepository` accesses them via `ctx.Set<T>()` and is a **Singleton**
-(`IDbContextFactory` short-lived context pattern, §15b).
+(`IDbContextFactory` short-lived context pattern, design-rules.md, *Section caching pattern*).
 
 **Deliberately no caching decorator** — gate reads must be live: a stale
 verdict admits or blocks the wrong person. Ticket/EE inputs still come from

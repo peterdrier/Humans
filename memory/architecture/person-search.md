@@ -30,7 +30,7 @@ Task<IReadOnlyList<HumanSearchResult>> SearchUsersAsync(
 **Hard invariants:**
 
 - **Emergency-contact data is never searchable.** Regardless of bit-flag combination. `Profile.EmergencyContactName` / `EmergencyContactPhone` are skipped by every branch of `PersonSearchMatcher`.
-- **Auth boundary is the controller, not the service.** Services are auth-free per design-rules §6. A non-admin endpoint passing `Admin` is a programmer error caught in code review, not a runtime check. The bit-flag is auditable at a glance — every call site reads `PersonSearchFields.X` literally.
+- **Auth boundary is the controller, not the service.** Services are auth-free per design-rules.md, *Authorization*. A non-admin endpoint passing `Admin` is a programmer error caught in code review, not a runtime check. The bit-flag is auditable at a glance — every call site reads `PersonSearchFields.X` literally.
 - **Service returns matches in unspecified order.** Display ordering happens at the controller / view per [`display-sort-in-controllers.md`](display-sort-in-controllers.md). Don't push a `sortBy` parameter into the service.
 - **Limit is a safety cap, not a presentation choice.** It protects against fan-out under broad queries. Controllers may further `.Take(N)` after their own `OrderBy`.
 

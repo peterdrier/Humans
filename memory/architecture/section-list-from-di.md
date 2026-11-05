@@ -33,4 +33,4 @@ them dynamically. `/sections/Humans.*/foo` definitely do not add."
 - A ledger row that *carries state* the glob cannot derive — a last-swept date, an opt-out — is a
   deliberate subset and keeps its row; it is the bare "this section exists" roster that is banned.
 
-**Related:** [`design-rules.md` §8b](../../docs/architecture/design-rules.md) (the seam table), [`base-ui-registries-are-section-populated`](base-ui-registries-are-section-populated.md), [`no-tests-for-absences`](no-tests-for-absences.md).
+**Related:** [`design-rules.md`, *Crosscuts, orchestrators and fan-out*](../../docs/architecture/design-rules.md) (the seam table), [`base-ui-registries-are-section-populated`](base-ui-registries-are-section-populated.md), [`no-tests-for-absences`](no-tests-for-absences.md).
