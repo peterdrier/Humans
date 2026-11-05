@@ -20,7 +20,7 @@ namespace Humans.Agent.Services;
 
 internal sealed class AgentService : IAgentService, IAgentConversationRetention
 {
-    internal const string AgentConversations = "AgentConversations";
+    internal const string AgentConversations = AgentConversationReader.AgentConversations;
 
     // Keep turns for one user serialized through final usage billing, across request scopes.
     private static readonly ConcurrentDictionary<Guid, TrackedLock> TurnLocks = new();
@@ -38,7 +38,7 @@ internal sealed class AgentService : IAgentService, IAgentConversationRetention
     private readonly AnthropicOptions _anthropicOptions;
     private readonly IClock _clock;
     private readonly ILogger<AgentService> _logger;
-    private readonly IUserService _users;
+    private readonly AgentConversationReader conversationReader;
 
     public AgentService(
         IAgentSettingsService settings,
@@ -60,7 +60,8 @@ internal sealed class AgentService : IAgentService, IAgentConversationRetention
         _repo = repo; _retentionRuns = retentionRuns; _snapshots = snapshots; _preload = preload;
         _assembler = assembler; _tools = tools; _client = client;
         _anthropicOptions = anthropicOptions.Value;
-        _clock = clock; _logger = logger; _users = users;
+        _clock = clock; _logger = logger;
+        conversationReader = new AgentConversationReader(repo, snapshots, assembler, users);
     }
 
     public async Task<int> PurgeExpiredConversationsAsync(CancellationToken cancellationToken)
@@ -484,89 +485,25 @@ internal sealed class AgentService : IAgentService, IAgentConversationRetention
         return ReplyResources.GetString(resourceKey, culture)!;
     }
 
-    public async Task<IReadOnlyList<AgentConversationListSnapshot>> GetHistoryAsync(
-        Guid userId, int take, CancellationToken ct)
-    {
-        var conversations = await _repo.ListConversationsForUserAsync(userId, take, ct);
-        return conversations.Select(ToListSnapshot).ToList();
-    }
+    public Task<IReadOnlyList<AgentConversationListSnapshot>> GetHistoryAsync(Guid userId, int take, CancellationToken ct) =>
+        conversationReader.GetHistoryAsync(userId, take, ct);
 
-    public async Task<AgentConversationTranscriptSnapshot?> GetConversationForUserAsync(
-        Guid userId, Guid conversationId, CancellationToken ct)
-    {
-        var conv = await _repo.GetConversationByIdAsync(conversationId, ct);
-        return conv is not null && conv.UserId == userId ? ToTranscriptSnapshot(conv) : null;
-    }
+    public Task<AgentConversationTranscriptSnapshot?> GetConversationForUserAsync(Guid userId, Guid conversationId, CancellationToken ct) =>
+        conversationReader.GetConversationForUserAsync(userId, conversationId, ct);
 
-    public async Task<AgentMyConversationView?> GetMyConversationAsync(
-        Guid userId, Guid conversationId, CancellationToken ct)
-    {
-        var conv = await _repo.GetConversationByIdAsync(conversationId, ct);
-        // Ownership mismatch returns null like "not found" (Agent.md invariant 7) — no existence leak.
-        if (conv is null || conv.UserId != userId) return null;
+    public Task<AgentMyConversationView?> GetMyConversationAsync(Guid userId, Guid conversationId, CancellationToken ct) =>
+        conversationReader.GetMyConversationAsync(userId, conversationId, ct);
 
-        // Tail regenerated from current snapshot; may differ from historical turn view (Agent.md open question).
-        var snapshot = await _snapshots.LoadAsync(userId, ct);
-        var tail = _assembler.BuildUserContextTail(snapshot);
-        return new AgentMyConversationView(ToTranscriptSnapshot(conv), tail);
-    }
+    public Task<IReadOnlyList<AgentConversationListSnapshot>> ListAllConversationsForAdminAsync(
+        bool refusalsOnly, Guid? userId, int take, int skip, CancellationToken ct) =>
+        conversationReader.ListAllConversationsForAdminAsync(refusalsOnly, userId, take, skip, ct);
 
-    public async Task<IReadOnlyList<AgentConversationListSnapshot>> ListAllConversationsForAdminAsync(
-        bool refusalsOnly, Guid? userId, int take, int skip,
-        CancellationToken ct)
-    {
-        var conversations = await _repo.ListAllConversationsAsync(refusalsOnly, userId, take, skip, ct);
-        return conversations.Select(ToListSnapshot).ToList();
-    }
+    public Task<IReadOnlyList<AgentConversationTranscriptSnapshot>> ListAllConversationsForAdminWithMessagesAsync(
+        bool refusalsOnly, bool handoffsOnly, Guid? userId, int take, int skip, CancellationToken ct) =>
+        conversationReader.ListAllConversationsForAdminWithMessagesAsync(refusalsOnly, handoffsOnly, userId, take, skip, ct);
 
-    public async Task<IReadOnlyList<AgentConversationTranscriptSnapshot>> ListAllConversationsForAdminWithMessagesAsync(
-        bool refusalsOnly, bool handoffsOnly, Guid? userId, int take, int skip,
-        CancellationToken ct)
-    {
-        var conversations = await _repo.ListAllConversationsWithMessagesAsync(
-            refusalsOnly, handoffsOnly, userId, take, skip, ct);
-        return conversations.Select(ToTranscriptSnapshot).ToList();
-    }
-
-    private static AgentConversationTranscriptSnapshot ToTranscriptSnapshot(AgentConversation conversation) =>
-        new(
-            conversation.Id,
-            conversation.UserId,
-            conversation.Locale,
-            conversation.StartedAt,
-            conversation.LastMessageAt,
-            conversation.MessageCount,
-            conversation.Messages
-                .Select(message => new AgentMessageSnapshot(
-                    message.Id,
-                    message.ConversationId,
-                    message.Role,
-                    message.Content,
-                    message.CreatedAt,
-                    message.PromptTokens,
-                    message.OutputTokens,
-                    message.CachedTokens,
-                    message.Model,
-                    message.DurationMs,
-                    message.FetchedDocs,
-                    message.RefusalReason,
-                    message.HandedOffToFeedbackId))
-                .ToList());
-
-    private static AgentConversationListSnapshot ToListSnapshot(AgentConversation conversation) =>
-        new(
-            conversation.Id,
-            conversation.UserId,
-            conversation.Locale,
-            conversation.StartedAt,
-            conversation.LastMessageAt,
-            conversation.MessageCount);
-
-    public async Task<AgentConversationTranscriptSnapshot?> GetConversationForAdminAsync(Guid id, CancellationToken ct)
-    {
-        var conversation = await _repo.GetConversationByIdAsync(id, ct);
-        return conversation is null ? null : ToTranscriptSnapshot(conversation);
-    }
+    public Task<AgentConversationTranscriptSnapshot?> GetConversationForAdminAsync(Guid id, CancellationToken ct) =>
+        conversationReader.GetConversationForAdminAsync(id, ct);
 
     public async Task<AgentPromptPreview?> GetPromptPreviewForAdminAsync(
         Guid conversationId, CancellationToken ct)
@@ -617,31 +554,8 @@ internal sealed class AgentService : IAgentService, IAgentConversationRetention
             SystemPromptTokens: systemPromptTokens);
     }
 
-    public async Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct)
-    {
-        var info = await _users.GetUserInfoAsync(userId, ct);
-        var conversations = new List<AgentConversation>();
-        foreach (var id in info?.AllUserIds ?? [userId])
-            conversations.AddRange(await _repo.ListConversationsForUserWithMessagesAsync(id, ct));
-        var shaped = conversations.OrderBy(c => c.StartedAt).Select(c => new
-        {
-            c.Id,
-            StartedAt = c.StartedAt.ToIso8601(),
-            LastMessageAt = c.LastMessageAt.ToIso8601(),
-            c.Locale,
-            c.MessageCount,
-            Messages = c.Messages.Select(m => new
-            {
-                m.Role,
-                m.Content,
-                CreatedAt = m.CreatedAt.ToIso8601(),
-                m.Model,
-                m.RefusalReason,
-                m.HandedOffToFeedbackId
-            }).ToList()
-        }).ToList();
-        return [new UserDataSlice(AgentConversations, shaped)];
-    }
+    public Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct) =>
+        conversationReader.ContributeForUserAsync(userId, ct);
 
     private static readonly IReadOnlyDictionary<string, string?> Erasure =
         new Dictionary<string, string?>(StringComparer.Ordinal)
