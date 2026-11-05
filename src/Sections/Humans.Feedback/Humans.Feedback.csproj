@@ -1,14 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk.Razor">
-
-  <PropertyGroup>
-    <!-- MVC views/controllers, not Blazor components. -->
-    <AddRazorSupportForMvc>true</AddRazorSupportForMvc>
-  </PropertyGroup>
-
-  <ItemGroup>
-    <!-- The one assembly allowed to see many sections. -->
-    <InternalsVisibleTo Include="Humans.Integration.Tests" />
-  </ItemGroup>
+<Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
     <ProjectReference Include="..\..\Humans.Base\Humans.Base.csproj" />
