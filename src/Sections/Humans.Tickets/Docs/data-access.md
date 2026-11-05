@@ -287,3 +287,10 @@ Users and Settings contracts and clock for holdings only; export retains its
 matched-user scope and reads the ticket repository directly. The query facade
 retains contributor/erasure contracts and cache ownership remains in its decorator.
 No separate DI registration.
+
+### TicketTransferReader (internal, owned by TicketTransferService)
+
+Repositories: `ITicketTransferRepository`, `ITicketRepository`. Owns transfer
+queue/detail/confirmation reads and shared row projection; uses existing Tickets
+holdings and Users contracts for personal attendee choices and recipient snapshots.
+Mutation results reuse its row projection. No writes, cache or separate DI registration.
