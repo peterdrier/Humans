@@ -225,7 +225,7 @@ This section's controllers. `TeamController` (`[Route("Teams")]`) handles both a
 
 - Expected create, edit, deactivate, join-request rejection and member add/remove rejections log at Warning with their reason and applicable team id, without exception stacks. Form feedback and redirects are unchanged.
 
-- The Teams GDPR slices follow the subject’s resolved merge chain, including ended memberships retained on archived IDs. Requests under an archived ID return the same data.
+- The Teams GDPR slices follow the subject’s resolved merge chain, including ended memberships retained on archived IDs. Requests under an archived ID return the same data. Internal `TeamDataExport` owns the complete three-slice projection and team-name lookup, with lazy Users resolution; `TeamService` remains the contributor entry point and owns erasure. Slice keys, historical memberships, chronological request history and cancellation are unchanged. No DI registration or public contract is added.
 - The `TeamJoinRequests` GDPR export includes the person’s request and review notes plus chronological status-history entries (status, UTC change time and notes). Other users’ requests are excluded.
 
 - Member-facing team details, tree, membership, birthdays, roster, map and join pages localize their breadcrumb navigation label in all supported cultures.
