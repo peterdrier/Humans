@@ -6,7 +6,7 @@ const vm = require('node:vm');
 const { installHumans } = require('../../browser-support/humans-js.cjs');
 
 const source = readFileSync(resolve(__dirname,
-    '../../../src/Sections/Humans.Teams/Views/Team/Map.cshtml'), 'utf8');
+    '../../../src/Sections/Humans.Users/Views/Users/Map.cshtml'), 'utf8');
 const start = source.indexOf('function avatarHtml(');
 const end = source.indexOf('function personHtml(', start);
 assert.ok(start >= 0 && end > start);
