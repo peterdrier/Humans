@@ -1,8 +1,12 @@
+using Humans.Settings.Contracts;
 using NodaTime;
 
 namespace Humans.Camps.Services;
 
-internal sealed class CampReadProjection(ICampRepository repo) : IApplicationService
+internal sealed class CampReadProjection(
+    ICampRepository repo,
+    ISettingsService settingsService,
+    IClock clock) : IApplicationService
 {
     /// <summary>
     /// Special-role user-id lists (Lead/Workshop) keyed by season+role, plus the full
@@ -187,5 +191,88 @@ internal sealed class CampReadProjection(ICampRepository repo) : IApplicationSer
             camp.HistoricalNames
                 .Select(h => new CampHistoricalNameSummary(h.Id, h.Name, h.Year, h.Source.ToString()))
                 .ToList());
+    }
+
+    public async Task<CampInfo?> GetCampBySlugAsync(string slug, CancellationToken cancellationToken = default)
+    {
+        var camp = await repo.GetBySlugAsync(slug, cancellationToken);
+        // GetBySlugAsync does not load Seasons.Members, so EE/member counts are
+        // unknown here — emit null rather than a misleading 0.
+        if (camp is null) return null;
+        var roles = await GetRoleProjectionForYearsAsync(
+            camp.Seasons.Select(season => season.Year).Distinct().ToList(),
+            cancellationToken);
+        return CreateCampInfo(camp, includeEarlyEntryGrantCount: false, roles);
+    }
+
+    public async Task<CampInfo?> GetCampByIdAsync(Guid campId, CancellationToken cancellationToken = default)
+    {
+        // GetByIdAsync loads Seasons.Members, so the EE grant count projects correctly here
+        // (unlike the by-slug read above).
+        var camp = await repo.GetByIdAsync(campId, cancellationToken);
+        if (camp is null) return null;
+        var roles = await GetRoleProjectionForYearsAsync(
+            camp.Seasons.Select(season => season.Year).Distinct().ToList(),
+            cancellationToken);
+        return CreateCampInfo(camp, roles: roles);
+    }
+
+    public async Task<CampEditData?> GetCampEditDataAsync(
+        Guid campId,
+        Guid? eventSettingsId = null,
+        CancellationToken cancellationToken = default)
+    {
+        var camp = await repo.GetByIdAsync(campId, cancellationToken);
+        if (camp is null)
+        {
+            return null;
+        }
+
+        var targetEventId = eventSettingsId
+            ?? (await settingsService.GetActiveEventSettingsAsync(cancellationToken))?.Id;
+        var season = camp.Seasons
+            .FirstOrDefault(s => targetEventId is not null && s.EventSettingsId == targetEventId)
+            ?? camp.Seasons
+                .OrderByDescending(s => s.Year)
+                .ThenByDescending(s => s.CreatedAt)
+                .FirstOrDefault();
+
+        if (season is null)
+        {
+            return null;
+        }
+
+        return CreateCampEditData(
+            camp,
+            season,
+            season.EventSettingsId,
+            clock.GetCurrentInstant().InUtc().Date);
+    }
+
+    public async Task<IReadOnlyList<CampInfo>> GetCampsForYearAsync(
+        int year, CancellationToken cancellationToken = default)
+    {
+        var camps = await repo.GetCampsWithLeadsForYearAsync(
+            year, statusFilter: null, cancellationToken);
+        var roles = await GetRoleProjectionForYearsAsync([year], cancellationToken);
+        return camps.Select(c => CreateCampInfo(c, roles: roles)).ToList();
+    }
+
+    public async Task<CampSeasonInfo?> GetCampSeasonByIdAsync(
+        Guid campSeasonId, CancellationToken cancellationToken = default)
+    {
+        var season = await repo.GetSeasonByIdAsync(campSeasonId, cancellationToken);
+        if (season is null) return null;
+        var roles = await GetRoleProjectionForYearsAsync([season.Year], cancellationToken);
+        return CreateCampSeasonInfo(
+            season,
+            season.Camp?.Slug ?? string.Empty,
+            roles: roles);
+    }
+
+    public async Task<CampMemberLookup?> GetCampMemberStatusAsync(Guid campMemberId, CancellationToken cancellationToken = default)
+    {
+        var row = await repo.GetMemberLookupAsync(campMemberId, cancellationToken);
+        return row is null ? null : new CampMemberLookup(row.Value.CampSeasonId, row.Value.UserId, row.Value.Status);
     }
 }

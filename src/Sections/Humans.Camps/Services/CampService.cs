@@ -55,7 +55,7 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
         ILogger<CampService> logger)
     {
         _repo = repo;
-        _readProjection = new CampReadProjection(repo);
+        _readProjection = new CampReadProjection(repo, settingsService, clock);
         _auditLog = auditLog;
         _systemTeamSync = systemTeamSync;
         _fileStorage = fileStorage;
@@ -181,70 +181,19 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
         return new(camp);
     }
 
-    public async Task<CampInfo?> GetCampBySlugAsync(string slug, CancellationToken cancellationToken = default)
-    {
-        var camp = await _repo.GetBySlugAsync(slug, cancellationToken);
-        // GetBySlugAsync does not load Seasons.Members, so EE/member counts are
-        // unknown here — emit null rather than a misleading 0.
-        if (camp is null) return null;
-        var roles = await _readProjection.GetRoleProjectionForYearsAsync(
-            camp.Seasons.Select(season => season.Year).Distinct().ToList(),
-            cancellationToken);
-        return CampReadProjection.CreateCampInfo(camp, includeEarlyEntryGrantCount: false, roles);
-    }
+    public Task<CampInfo?> GetCampBySlugAsync(string slug, CancellationToken cancellationToken = default) =>
+        _readProjection.GetCampBySlugAsync(slug, cancellationToken);
 
-    public async Task<CampInfo?> GetCampByIdAsync(Guid campId, CancellationToken cancellationToken = default)
-    {
-        // GetByIdAsync loads Seasons.Members, so the EE grant count projects correctly here
-        // (unlike the by-slug read above).
-        var camp = await _repo.GetByIdAsync(campId, cancellationToken);
-        if (camp is null) return null;
-        var roles = await _readProjection.GetRoleProjectionForYearsAsync(
-            camp.Seasons.Select(season => season.Year).Distinct().ToList(),
-            cancellationToken);
-        return CampReadProjection.CreateCampInfo(camp, roles: roles);
-    }
+    public Task<CampInfo?> GetCampByIdAsync(Guid campId, CancellationToken cancellationToken = default) =>
+        _readProjection.GetCampByIdAsync(campId, cancellationToken);
 
-    public async Task<CampEditData?> GetCampEditDataAsync(
-        Guid campId,
-        Guid? eventSettingsId = null,
-        CancellationToken cancellationToken = default)
-    {
-        var camp = await _repo.GetByIdAsync(campId, cancellationToken);
-        if (camp is null)
-        {
-            return null;
-        }
+    public Task<CampEditData?> GetCampEditDataAsync(
+        Guid campId, Guid? eventSettingsId = null, CancellationToken cancellationToken = default) =>
+        _readProjection.GetCampEditDataAsync(campId, eventSettingsId, cancellationToken);
 
-        var targetEventId = eventSettingsId
-            ?? (await _settingsService.GetActiveEventSettingsAsync(cancellationToken))?.Id;
-        var season = camp.Seasons
-            .FirstOrDefault(s => targetEventId is not null && s.EventSettingsId == targetEventId)
-            ?? camp.Seasons
-                .OrderByDescending(s => s.Year)
-                .ThenByDescending(s => s.CreatedAt)
-                .FirstOrDefault();
-
-        if (season is null)
-        {
-            return null;
-        }
-
-        return CampReadProjection.CreateCampEditData(
-            camp,
-            season,
-            season.EventSettingsId,
-            _clock.GetCurrentInstant().InUtc().Date);
-    }
-
-    public async Task<IReadOnlyList<CampInfo>> GetCampsForYearAsync(
-        int year, CancellationToken cancellationToken = default)
-    {
-        var camps = await _repo.GetCampsWithLeadsForYearAsync(
-            year, statusFilter: null, cancellationToken);
-        var roles = await _readProjection.GetRoleProjectionForYearsAsync([year], cancellationToken);
-        return camps.Select(c => CampReadProjection.CreateCampInfo(c, roles: roles)).ToList();
-    }
+    public Task<IReadOnlyList<CampInfo>> GetCampsForYearAsync(
+        int year, CancellationToken cancellationToken = default) =>
+        _readProjection.GetCampsForYearAsync(year, cancellationToken);
 
     public async Task<IReadOnlyList<CampInfo>> GetCampsForEventAsync(
         Guid eventSettingsId, CancellationToken cancellationToken = default)
@@ -544,23 +493,13 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
 
     }
 
-    public async Task<CampSeasonInfo?> GetCampSeasonByIdAsync(
-        Guid campSeasonId, CancellationToken cancellationToken = default)
-    {
-        var season = await _repo.GetSeasonByIdAsync(campSeasonId, cancellationToken);
-        if (season is null) return null;
-        var roles = await _readProjection.GetRoleProjectionForYearsAsync([season.Year], cancellationToken);
-        return CampReadProjection.CreateCampSeasonInfo(
-            season,
-            season.Camp?.Slug ?? string.Empty,
-            roles: roles);
-    }
+    public Task<CampSeasonInfo?> GetCampSeasonByIdAsync(
+        Guid campSeasonId, CancellationToken cancellationToken = default) =>
+        _readProjection.GetCampSeasonByIdAsync(campSeasonId, cancellationToken);
 
-    public async Task<CampMemberLookup?> GetCampMemberStatusAsync(Guid campMemberId, CancellationToken cancellationToken = default)
-    {
-        var row = await _repo.GetMemberLookupAsync(campMemberId, cancellationToken);
-        return row is null ? null : new CampMemberLookup(row.Value.CampSeasonId, row.Value.UserId, row.Value.Status);
-    }
+    public Task<CampMemberLookup?> GetCampMemberStatusAsync(
+        Guid campMemberId, CancellationToken cancellationToken = default) =>
+        _readProjection.GetCampMemberStatusAsync(campMemberId, cancellationToken);
 
     public Task<CampImageUploadResult> UploadImageAsync(
         Guid campId, Stream fileStream, string fileName, string contentType, long length,
