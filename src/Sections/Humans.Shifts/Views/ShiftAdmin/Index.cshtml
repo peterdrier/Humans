@@ -1097,10 +1097,10 @@
         showBtn.addEventListener('click', function() {
             var startOffset = parseInt(startSelect.value);
             var endOffset = parseInt(endSelect.value);
-            if (startOffset > endOffset) { alert('Start must be before end.'); return; }
+            if (startOffset > endOffset) { showToast('Start must be before end.', 'danger'); return; }
 
             var days = allDays.filter(function(d) { return d.offset >= startOffset && d.offset <= endOffset && existingDays.indexOf(d.offset) === -1; });
-            if (days.length === 0) { alert('All days in this range already have shifts.'); return; }
+            if (days.length === 0) { showToast('All days in this range already have shifts.', 'danger'); return; }
             tbody.innerHTML = '';
             days.forEach(function(day, i) {
                 var tr = document.createElement('tr');
