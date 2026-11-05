@@ -1,3 +1,4 @@
+@using Humans.Base.Interfaces
 @using Humans.Base.Models
 @model DailyMatrixDto
 
@@ -91,7 +92,7 @@
 
     <div class="stats" style="--stats-cols: 2">
         <partial name="_StatTile" model='new StatTileViewModel(Localizer["Cantina_Day_TotalOnSite"].Value, Model.TotalOnSite.ToString())' />
-        <partial name="_StatTile" model='new StatTileViewModel(Localizer["Cantina_Day_Unanswered"].Value, Model.UnansweredCount.ToString())' />
+        <partial name="_StatTile" model='new StatTileViewModel(Localizer["Cantina_Day_Unanswered"].Value, Model.UnansweredCount.ToString(), Severity: Model.UnansweredCount > 0 ? TileSeverity.Warning : TileSeverity.Normal)' />
     </div>
 
     @if (Model.People.Count == 0)

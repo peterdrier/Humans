@@ -1,3 +1,4 @@
+@using Humans.Base.Interfaces
 @using Microsoft.AspNetCore.Html
 @using Humans.Email.Services
 @model Humans.Email.Models.EmailOutboxViewModel
@@ -36,7 +37,7 @@
     <partial name="_StatTile" model='new StatTileViewModel("Total Messages", FormatApproxCount(Model.TotalMessageCount))' />
     <partial name="_StatTile" model='new StatTileViewModel("Queued", Model.QueuedCount.ToString())' />
     <partial name="_StatTile" model='new StatTileViewModel("Sent (24h)", Model.SentLast24HoursCount.ToString())' />
-    <partial name="_StatTile" model='new StatTileViewModel("Failed", Model.FailedCount.ToString())' />
+    <partial name="_StatTile" model='new StatTileViewModel("Failed", Model.FailedCount.ToString(), Severity: Model.FailedCount > 0 ? TileSeverity.Critical : TileSeverity.Normal)' />
     <partial name="_StatTile" model='new StatTileViewModel("Messages per run", Model.OutboxBatchSize.ToString())' />
 </div>
 

@@ -1,3 +1,4 @@
+@using Humans.Base.Interfaces
 @model GateVendorBackfillSnapshot
 @{
     ViewData["Title"] = "Vendor check-in backfill";
@@ -33,9 +34,9 @@
 <div class="stats" style="--stats-cols: 5">
     <partial name="_StatTile" model='new StatTileViewModel("Local admits", snapshot.AdmitCount.ToString())' />
     <partial name="_StatTile" model='new StatTileViewModel("Already at vendor", snapshot.AlreadyCheckedInCount.ToString())' />
-    <partial name="_StatTile" model='new StatTileViewModel("Pending mirror", pending.Count.ToString())' />
+    <partial name="_StatTile" model='new StatTileViewModel("Pending mirror", pending.Count.ToString(), Severity: pending.Count > 0 ? TileSeverity.Warning : TileSeverity.Normal)' />
     <partial name="_StatTile" model='new StatTileViewModel("Sent — awaiting sync", sent.Count.ToString())' />
-    <partial name="_StatTile" model='new StatTileViewModel("Unmirrorable", unmirrorable.Count.ToString())' />
+    <partial name="_StatTile" model='new StatTileViewModel("Unmirrorable", unmirrorable.Count.ToString(), Severity: unmirrorable.Count > 0 ? TileSeverity.Critical : TileSeverity.Normal)' />
 </div>
 
 @if (pending.Count == 0)

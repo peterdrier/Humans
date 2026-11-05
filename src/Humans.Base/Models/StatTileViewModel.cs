@@ -9,7 +9,7 @@ namespace Humans.Base.Models;
 /// </summary>
 /// <remarks>
 /// <paramref name="Secondary"/> is the de-emphasised tail of the value ("/ 240").
-/// <paramref name="Severity"/> colours the subline only, so it shows nothing without one.
+/// <paramref name="Severity"/> colours the value and, when present, the subline.
 /// <paramref name="Extra"/> is optional markup rendered under the subline (e.g. a badge row).
 /// </remarks>
 public sealed record StatTileViewModel(

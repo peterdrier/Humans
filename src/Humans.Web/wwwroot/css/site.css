@@ -2982,6 +2982,14 @@ body.city-map-fullscreen main {
     color: var(--h-aged-ink);
 }
 
+.stat .value.warning {
+    color: var(--h-amber);
+}
+
+.stat .value.danger {
+    color: var(--h-rust);
+}
+
 .stat .value em {
     font-style: italic;
     color: var(--h-gold-dark);

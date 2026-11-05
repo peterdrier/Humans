@@ -1,3 +1,4 @@
+@using Humans.Base.Interfaces
 @model Humans.GoogleIntegration.Controllers.GoogleSyncHistoryMigrationViewModel
 @{
     ViewData["Title"] = "Google Sync History Migration";
@@ -25,7 +26,7 @@
     <partial name="_StatTile" model='new StatTileViewModel("Google rows on audit_log", report.Examined.ToString())' />
     <partial name="_StatTile" model='new StatTileViewModel("Already moved", report.AlreadyPresent.ToString())' />
     <partial name="_StatTile" model='new StatTileViewModel("Would move", report.Movable.ToString())' />
-    <partial name="_StatTile" model='new StatTileViewModel("Cannot map", report.Skipped.ToString())' />
+    <partial name="_StatTile" model='new StatTileViewModel("Cannot map", report.Skipped.ToString(), Severity: report.Skipped > 0 ? TileSeverity.Warning : TileSeverity.Normal)' />
 </div>
 
 <div class="card mb-4">

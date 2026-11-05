@@ -3,7 +3,7 @@
 
 <div class="stat">
     <div class="label">@Model.Label</div>
-    <div class="value">
+    <div class="value @(Model.Severity switch { TileSeverity.Warning => "warning", TileSeverity.Critical => "danger", _ => null })">
         @if (!string.IsNullOrEmpty(Model.Value))
         {
             @Model.Value
