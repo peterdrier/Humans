@@ -22,15 +22,11 @@
 }
 else
 {
-        Func<GateLeaderboardRow, IHtmlContent> scannerCell0 = @<text><vc:human user-id="@item.ScannedByUserId" /></text>;
-        Func<GateLeaderboardRow, IHtmlContent> scannerCell1 = @<text>@item.Admitted</text>;
-        Func<GateLeaderboardRow, IHtmlContent> scannerCell2 = @<text>@item.Rejected</text>;
-        Func<GateLeaderboardRow, IHtmlContent> scannerCell3 = @<text>@item.Total</text>;
         var leaderboardTable = TableModel.For(Model)
-            .Template("Scanner", scannerCell0)
-            .Template("Admitted", scannerCell1, o => o.End(), sortBy: r => r.Admitted)
-            .Template("Issues caught", scannerCell2, o => o.End(), sortBy: r => r.Rejected)
-            .Template("Total", scannerCell3, o => o.End(), sortBy: r => r.Total)
+            .Human("Scanner", r => r.ScannedByUserId)
+            .Column("Admitted", r => r.Admitted, o => o.End())
+            .Column("Issues caught", r => r.Rejected, o => o.End())
+            .Column("Total", r => r.Total, o => o.End())
             .Css("align-middle")
             .Build();
     <partial name="_Table" model="leaderboardTable" />

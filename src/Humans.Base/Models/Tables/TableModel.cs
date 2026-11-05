@@ -1,4 +1,5 @@
 using System.Text.Encodings.Web;
+using Humans.Base.ViewComponents;
 using Microsoft.AspNetCore.Html;
 
 namespace Humans.Base.Models.Tables;
@@ -39,6 +40,35 @@ public sealed class TableModelBuilder<TRow> where TRow : class
         var options = new TableColumnOptions();
         configure?.Invoke(options);
         _columns.Add(new TableColumn<TRow>(header, CellFormat.Text, value, template: null, options));
+        return this;
+    }
+
+    /// <summary>
+    /// A link cell: <paramref name="text"/> is formatted and sorted like a <see cref="Column"/> value,
+    /// and links to <paramref name="href"/> when that returns a URL.
+    /// </summary>
+    public TableModelBuilder<TRow> Link(
+        string header, Func<TRow, object?> text, Func<TRow, string?> href,
+        Action<TableColumnOptions>? configure = null)
+    {
+        var options = new TableColumnOptions();
+        configure?.Invoke(options);
+        _columns.Add(new TableColumn<TRow>(header, CellFormat.Text, text, template: null, options, href));
+        return this;
+    }
+
+    /// <summary>
+    /// A member cell rendered by the Human view component, which shows the current name, so the
+    /// column sorts by that rendered name. A null or empty id renders an em dash.
+    /// </summary>
+    public TableModelBuilder<TRow> Human(
+        string header, Func<TRow, Guid?> userId, HumanLink link = HumanLink.Public,
+        HumanLayout layout = HumanLayout.Text, Action<TableColumnOptions>? configure = null)
+    {
+        var options = new TableColumnOptions();
+        configure?.Invoke(options);
+        _columns.Add(new TableColumn<TRow>(header, CellFormat.Human, value: null, template: null, options,
+            userId: userId, humanLayout: layout, humanLink: link));
         return this;
     }
 

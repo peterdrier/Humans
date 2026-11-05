@@ -77,8 +77,8 @@
     }
     else
     {
-            Func<HoldedStatementLine, IHtmlContent> lineCell0 = @<text>@item.Date.ToDate(madrid)</text>;
-            Func<HoldedStatementLine, IHtmlContent> lineCell1 = @<text>
+            Func<HoldedStatementLine, IHtmlContent> dateCell = @<text>@item.Date.ToDate(madrid)</text>;
+            Func<HoldedStatementLine, IHtmlContent> entryCell = @<text>
                 <a asp-action="Entry" asp-route-number="@item.EntryNumber">@item.EntryNumber/@item.Line</a>
                 @if (!string.IsNullOrEmpty(item.EntryId))
                 {
@@ -86,7 +86,7 @@
                 }
 
             </text>;
-            Func<HoldedStatementLine, IHtmlContent> lineCell2 = @<text>
+            Func<HoldedStatementLine, IHtmlContent> counterpartyCell = @<text>
                 @if (item.Counterparty is { } cp)
                 {
                     if (cp.TotalOpposingLines <= 1)
@@ -106,10 +106,8 @@
                 }
 
             </text>;
-            Func<HoldedStatementLine, IHtmlContent> lineCell3 = @<text>@item.Type</text>;
-            Func<HoldedStatementLine, IHtmlContent> lineCell4 = @<text>@item.Description</text>;
-            Func<HoldedStatementLine, IHtmlContent> lineCell5 = @<text>@item.Amount.ToSignedEuro()</text>;
-            Func<HoldedStatementLine, IHtmlContent> lineCell6 = @<text>
+            Func<HoldedStatementLine, IHtmlContent> amountCell = @<text>@item.Amount.ToSignedEuro()</text>;
+            Func<HoldedStatementLine, IHtmlContent> checkedCell = @<text>
                 @if (item.Checked == true)
                 {
                     <i class="fa-solid fa-check text-success"></i>
@@ -121,13 +119,13 @@
 
             </text>;
             var linesTable = TableModel.For(Model.Lines)
-                .Template("Date", lineCell0, o => o.Css("text-nowrap"), sortBy: l => l.Date)
-                .Template("Entry", lineCell1, o => o.Css("text-nowrap text-muted small"), sortBy: l => l.EntryNumber)
-                .Template("Counterparty", lineCell2, o => o.Css("text-nowrap"), sortBy: l => l.Counterparty?.AccountNum)
-                .Template("Type", lineCell3, o => o.Css("text-muted small"))
-                .Template("Description", lineCell4)
-                .Template("Amount", lineCell5, o => o.End(), sortBy: l => l.Amount)
-                .Template("Checked", lineCell6, o => o.Css("text-center").HeaderCss("text-center"), sortBy: l => l.Checked == true ? 1 : 0)
+                .Template("Date", dateCell, o => o.Css("text-nowrap"), sortBy: l => l.Date)
+                .Template("Entry", entryCell, o => o.Css("text-nowrap text-muted small"), sortBy: l => l.EntryNumber)
+                .Template("Counterparty", counterpartyCell, o => o.Css("text-nowrap"), sortBy: l => l.Counterparty?.AccountNum)
+                .Column("Type", r => r.Type, o => o.Css("text-muted small"))
+                .Column("Description", r => r.Description)
+                .Template("Amount", amountCell, o => o.End(), sortBy: l => l.Amount)
+                .Template("Checked", checkedCell, o => o.Css("text-center").HeaderCss("text-center"), sortBy: l => l.Checked == true ? 1 : 0)
                 .Css("align-middle")
                 .Build();
         <partial name="_Table" model="linesTable" />

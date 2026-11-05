@@ -74,18 +74,12 @@
                 }
                 else
                 {
-                    Func<List<ShiftAdminPendingSignup>, IHtmlContent> pendingHumanCell = @<text>
-                        <vc:human user-id="@item[0].UserId" />
-                    </text>;
                     Func<List<ShiftAdminPendingSignup>, IHtmlContent> pendingProfileCell = @<text>
                         @{
                             var pendingProfile = Model.VolunteerProfiles.GetValueOrDefault(item[0].UserId);
                         }
                         @await Html.PartialAsync("_VolunteerProfileBadges", pendingProfile)
 
-                    </text>;
-                    Func<List<ShiftAdminPendingSignup>, IHtmlContent> pendingShiftCell = @<text>
-                        @item[0].RotaName
                     </text>;
                     Func<List<ShiftAdminPendingSignup>, IHtmlContent> pendingDateCell = @<text>
                         @if ((item.Count > 1))
@@ -156,9 +150,9 @@
 
                     </text>;
                     var pendingTable = TableModel.For(pendingGroups.Select(g => g.OrderBy(s => s.Shift.DayOffset).ToList()).ToList())
-                        .Template("Human", pendingHumanCell)
+                        .Human("Human", g => g[0].UserId)
                         .Template("Profile", pendingProfileCell, o => o.NoSort())
-                        .Template("Shift", pendingShiftCell)
+                        .Column("Shift", g => g[0].RotaName)
                         .Template("Date", pendingDateCell, sortBy: g => g[0].Shift.DayOffset)
                         .Template("Submitted", pendingSubmittedCell, sortBy: g => g[0].CreatedAt)
                         .Template("", pendingActionsCell, o => o.NoSort())

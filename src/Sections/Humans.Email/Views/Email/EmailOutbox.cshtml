@@ -59,7 +59,6 @@
                 @(item.RecipientName ?? "—")
             }
         </text>;
-        Func<EmailOutboxMessageDto, IHtmlContent> templateCell = @<text><code class="small">@item.TemplateName</code></text>;
         Func<EmailOutboxMessageDto, IHtmlContent> statusCell = @<text>
             <status-badge value="@item.Status" />
             @if (item.RetryCount > 0)
@@ -99,7 +98,7 @@
         </text>;
         var outboxTable = TableModel.For(Model.Messages)
             .Template("Name", recipientCell)
-            .Template("Template", templateCell)
+            .Column("Template", r => r.TemplateName, o => o.Code().Css("small"))
             .Column("Email Address", r => r.RecipientEmail, c => c.Css("small"))
             .Template("Status", statusCell)
             .Column("Queued At", r => r.CreatedAt.ToInvariantTimestamp(), c => c.Css("text-nowrap small"))
@@ -124,11 +123,10 @@
             }
             else
             {
-                Func<Humans.Email.Services.DailySendCountRow, IHtmlContent> dayCell = @<text>@item.Date.ToInvariantDate()</text>;
                 Func<Humans.Email.Services.DailySendCountRow, IHtmlContent> sentCell = @<text><span class="text-success">@item.SentCount</span></text>;
                 Func<Humans.Email.Services.DailySendCountRow, IHtmlContent> failedCell = @<text><span class="text-danger">@item.FailedCount</span></text>;
                 var dailyTable = TableModel.For(Model.DailyCounts)
-                    .Template("Date (UTC)", dayCell)
+                    .Column("Date (UTC)", r => r.Date.ToInvariantDate())
                     .Template("Sent", sentCell)
                     .Template("Failed", failedCell)
                     .Build();
@@ -145,13 +143,12 @@
             }
             else
             {
-                Func<Humans.Email.Services.TemplateSendCountRow, IHtmlContent> templateCell2 = @<text><code class="small">@item.TemplateName</code></text>;
-                Func<Humans.Email.Services.TemplateSendCountRow, IHtmlContent> sentCell2 = @<text><span class="text-success">@item.SentCount</span></text>;
-                Func<Humans.Email.Services.TemplateSendCountRow, IHtmlContent> failedCell2 = @<text><span class="text-danger">@item.FailedCount</span></text>;
+                Func<Humans.Email.Services.TemplateSendCountRow, IHtmlContent> sentSentCell = @<text><span class="text-success">@item.SentCount</span></text>;
+                Func<Humans.Email.Services.TemplateSendCountRow, IHtmlContent> failedFailedCell = @<text><span class="text-danger">@item.FailedCount</span></text>;
                 var templateTable = TableModel.For(Model.TopTemplates)
-                    .Template("Template", templateCell2)
-                    .Template("Sent", sentCell2)
-                    .Template("Failed", failedCell2)
+                    .Column("Template", r => r.TemplateName, o => o.Code().Css("small"))
+                    .Template("Sent", sentSentCell)
+                    .Template("Failed", failedFailedCell)
                     .Build();
                 <partial name="_Table" model="templateTable" />
             }

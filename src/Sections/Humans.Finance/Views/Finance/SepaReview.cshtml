@@ -16,14 +16,10 @@
 
 <div class="card mb-3" style="width: fit-content; max-width: 100%; overflow-x: auto">
     @{
-        Func<SepaPayoutPreviewLine, IHtmlContent> lineCell0 = @<text><vc:human user-id="@item.UserId" link="None" /></text>;
-        Func<SepaPayoutPreviewLine, IHtmlContent> lineCell1 = @<text><a asp-action="CreditorStatement" asp-route-accountNum="@item.SupplierAccountNum">@item.SupplierAccountNum</a></text>;
-        Func<SepaPayoutPreviewLine, IHtmlContent> lineCell2 = @<text>@item.CreditorName</text>;
-        Func<SepaPayoutPreviewLine, IHtmlContent> lineCell3 = @<text>@item.IbanMasked</text>;
-        Func<SepaPayoutPreviewLine, IHtmlContent> lineCell4 = @<text>@item.Owed.ToEuro()</text>;
-        Func<SepaPayoutPreviewLine, IHtmlContent> lineCell5 = @<text>@item.Amount.ToEuro()</text>;
-        Func<SepaPayoutPreviewLine, IHtmlContent> lineCell6 = @<text>@item.OwedAfter.ToEuro()</text>;
-        Func<SepaPayoutPreviewLine, IHtmlContent> lineCell7 = @<text>
+        Func<SepaPayoutPreviewLine, IHtmlContent> owedCell = @<text>@item.Owed.ToEuro()</text>;
+        Func<SepaPayoutPreviewLine, IHtmlContent> thisPaymentCell = @<text>@item.Amount.ToEuro()</text>;
+        Func<SepaPayoutPreviewLine, IHtmlContent> owedAfterCell = @<text>@item.OwedAfter.ToEuro()</text>;
+        Func<SepaPayoutPreviewLine, IHtmlContent> checksCell = @<text>
             @if (!Model.Matches.TryGetValue(item.SupplierAccountNum, out var match))
             {
                 <span class="text-muted">—</span>
@@ -43,14 +39,14 @@
 
         </text>;
         var linesTable = TableModel.For(Model.Lines)
-            .Template("Human", lineCell0)
-            .Template("Account", lineCell1, sortBy: l => l.SupplierAccountNum)
-            .Template("Full name", lineCell2)
-            .Template("IBAN", lineCell3, o => o.Css("font-monospace text-nowrap"))
-            .Template("Owed", lineCell4, o => o.End().Css("text-nowrap"), sortBy: l => l.Owed)
-            .Template("This payment", lineCell5, o => o.End().Css("text-nowrap fw-semibold"), sortBy: l => l.Amount)
-            .Template("Owed after", lineCell6, o => o.End().Css("text-nowrap"), sortBy: l => l.OwedAfter)
-            .Template("Checks", lineCell7, o => o.Css("text-nowrap"))
+            .Human("Human", r => r.UserId, HumanLink.None)
+            .Link("Account", r => r.SupplierAccountNum, r => Url.Action("CreditorStatement", new { accountNum = r.SupplierAccountNum }))
+            .Column("Full name", r => r.CreditorName)
+            .Column("IBAN", r => r.IbanMasked, o => o.Css("font-monospace text-nowrap"))
+            .Template("Owed", owedCell, o => o.End().Css("text-nowrap"), sortBy: l => l.Owed)
+            .Template("This payment", thisPaymentCell, o => o.End().Css("text-nowrap fw-semibold"), sortBy: l => l.Amount)
+            .Template("Owed after", owedAfterCell, o => o.End().Css("text-nowrap"), sortBy: l => l.OwedAfter)
+            .Template("Checks", checksCell, o => o.Css("text-nowrap"))
             .Footer(new TableFooterCell($"{Model.Lines.Count} transfer{(Model.Lines.Count == 1 ? "" : "s")}"), new TableFooterCell(""), new TableFooterCell(""), new TableFooterCell(""), new TableFooterCell(""),
                 new TableFooterCell(Model.Total.ToEuro(), "text-end text-nowrap"), new TableFooterCell(""), new TableFooterCell(""))
             .Css("align-middle")

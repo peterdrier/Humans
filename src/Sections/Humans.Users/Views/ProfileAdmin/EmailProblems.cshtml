@@ -22,12 +22,10 @@
 }
 else
 {
-    Func<SingleUserIssueRow, IHtmlContent> issueUserCell =
-        @<text><vc:human user-id="@item.UserId" link="Admin" /></text>;
     Func<SingleUserIssueRow, IHtmlContent> issueActionCell =
         @<text><a class="btn btn-sm btn-secondary" href="/Profile/@item.UserId/Admin/Emails">Open emails ▸</a></text>;
     var singleUserTable = TableModel.For(Model.SingleUserIssues)
-        .Template("User", issueUserCell)
+        .Human("User", r => r.UserId, HumanLink.Admin)
         .Column("Problems", r => string.Join(", ", r.ProblemSummaries))
         .Template("", issueActionCell, c => c.NoSort().End())
         .Build();
@@ -47,13 +45,9 @@ else
 }
 else
 {
-    Func<LegacyEmailRow, IHtmlContent> legacyUserCell =
-        @<text><vc:human user-id="@item.UserId" link="Admin" /></text>;
-    Func<LegacyEmailRow, IHtmlContent> legacyEmailCell =
-        @<text><code>@item.LegacyEmail</code></text>;
     var legacyTable = TableModel.For(Model.LegacyEmailRows)
-        .Template("User", legacyUserCell)
-        .Template("Legacy User.Email", legacyEmailCell)
+        .Human("User", r => r.UserId, HumanLink.Admin)
+        .Column("Legacy User.Email", r => r.LegacyEmail, o => o.Code())
         .Build();
     <partial name="_Table" model="legacyTable" />
 }

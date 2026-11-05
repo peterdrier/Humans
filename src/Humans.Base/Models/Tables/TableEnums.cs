@@ -18,6 +18,7 @@ public enum CellFormat
     Number,
     EnumBadge,
     BoolIcon,
+    Human,
     Template,
 }
 

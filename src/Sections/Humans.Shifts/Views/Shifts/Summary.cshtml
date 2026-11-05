@@ -36,8 +36,6 @@
             }
             else
             {
-                Func<ShiftSummaryHumanRow, IHtmlContent> humanCell =
-                    @<text><vc:human user-id="@item.UserId" /></text>;
                 Func<ShiftSummaryHumanRow, IHtmlContent> campCell = @<text>
                     @if (item.CampId is null)
                     {
@@ -49,7 +47,7 @@
                     }
                 </text>;
                 var humanTable = TableModel.For(Model.Humans)
-                    .Template("Human", humanCell)
+                    .Human("Human", r => r.UserId)
                     .Template("Camp", campCell)
                     .Column("Hours", r => Hours(r.Hours), c => c.End())
                     .Column("Count", r => r.Count, c => c.Number().End())

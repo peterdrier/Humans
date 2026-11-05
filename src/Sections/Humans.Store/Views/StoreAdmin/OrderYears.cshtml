@@ -35,9 +35,6 @@ else
         </form>
     }
 
-    Func<OrderYearRepairRow, IHtmlContent> orderCell = @<text>
-        <a asp-controller="Store" asp-action="Order" asp-route-id="@item.OrderId"><code>@item.OrderId</code></a>
-    </text>;
     Func<OrderYearRepairRow, IHtmlContent> seasonCell = @<text>
         @if (item.CampSeasonId is { } seasonId)
         {
@@ -60,7 +57,7 @@ else
     </text>;
     var rows = Model.Rows.OrderBy(row => row.ResolvedYear).ThenBy(row => row.CampName).ToList();
     var table = TableModel.For(rows)
-        .Template("Order", orderCell)
+        .Link("Order", r => r.OrderId, r => Url.Action("Order", "Store", new { id = r.OrderId }), o => o.Code())
         .Template("Camp season", seasonCell)
         .Template("Resolution", resolutionCell)
         .Build();

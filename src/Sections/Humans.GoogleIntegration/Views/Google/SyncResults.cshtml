@@ -43,11 +43,9 @@
             {
                 Func<Humans.Teams.Contracts.SyncChange, IHtmlContent> actionCell = r =>
                     new HtmlString($"<span class=\"badge {(string.Equals(r.Action, "Added", StringComparison.Ordinal) ? "bg-success" : string.Equals(r.Action, "Removed", StringComparison.Ordinal) ? "bg-danger" : string.Equals(r.Action, "Fixed", StringComparison.Ordinal) ? "bg-info" : "bg-secondary")}\">{Html.Encode(r.Action)}</span>");
-                Func<Humans.Teams.Contracts.SyncChange, IHtmlContent> humanCell =
-                    @<text><vc:human user-id="@item.User.UserId" link="Admin" /></text>;
                 var stepTable = TableModel.For(step.Changes)
                     .Template("Action", actionCell, c => c.NoSort())
-                    .Template("Human", humanCell)
+                    .Human("Human", r => r.User.UserId, HumanLink.Admin)
                     .Column("Detail", r => r.Detail)
                     .Build();
                 <div class="card-body p-0">

@@ -48,7 +48,6 @@
             <span class="badge bg-secondary">Not set</span>
         }
     </text>;
-    Func<ConfigurationItemViewModel, IHtmlContent> valueCell = @<text><code>@item.DisplayValue</code></text>;
 }
 
 <page-header title="Configuration Status">
@@ -110,7 +109,7 @@
                 .Template("Key", keyCell, sortBy: i => i.Key)
                 .Template("Importance", importanceCell, sortBy: i => ImportanceRank(i.Importance))
                 .Template("Status", statusCell, sortBy: i => i.IsSet ? 1 : 0)
-                .Template("Value", valueCell, sortBy: i => i.DisplayValue)
+                .Column("Value", r => r.DisplayValue, o => o.Code())
                 .Build();
         }
         <partial name="_Table" model="configTable" />

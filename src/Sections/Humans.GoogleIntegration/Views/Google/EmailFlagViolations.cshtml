@@ -23,8 +23,6 @@
     }
     else
     {
-        Func<UserEmailFlagViolation, IHtmlContent> userCell =
-            @<text><vc:human user-id="@item.UserId" link="Admin" /></text>;
         Func<UserEmailFlagViolation, IHtmlContent> primaryCell = @<text>
             @if (item.HasPrimaryProblem)
             {
@@ -57,7 +55,7 @@
             </a>
         </text>;
         var table = TableModel.For(Model)
-            .Template("User", userCell)
+            .Human("User", r => r.UserId, HumanLink.Admin)
             .Column("Verified rows", r => r.VerifiedCount)
             .Template("Primary verified rows", primaryCell)
             .Template("Issue", issueCell)

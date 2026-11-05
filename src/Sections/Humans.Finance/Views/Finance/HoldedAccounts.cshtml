@@ -95,8 +95,6 @@
             }
             <span class="badge @badgeClass">@item.State</span>
         </text>;
-        Func<HoldedProvisioningRow, IHtmlContent> tagCell =
-            @<text><code class="small">@item.Tag</code></text>;
         Func<HoldedProvisioningRow, IHtmlContent> notesCell = @<text>
             @if (string.Equals(item.State, "Orphan", StringComparison.Ordinal))
             {
@@ -113,7 +111,7 @@
             .Template("State", stateCell)
             .Column("Existing #", r => r.ExistingAccountNum, c => c.End())
             .Column("Proposed #", r => r.ProposedAccountNum, c => c.End())
-            .Template("Tag", tagCell)
+            .Column("Tag", r => r.Tag, o => o.Code().Css("small"))
             .Template("Notes", notesCell)
             .Build();
     }
@@ -134,17 +132,13 @@
     }
     else
     {
-            Func<Humans.Finance.Models.HoldedManagedAccountVm, IHtmlContent> managedCell0 = @<text><a asp-controller="Holded" asp-action="Account" asp-route-number="@item.AccountNumber"><code>@item.AccountNumber</code></a></text>;
-            Func<Humans.Finance.Models.HoldedManagedAccountVm, IHtmlContent> managedCell1 = @<text>@item.Label</text>;
-            Func<Humans.Finance.Models.HoldedManagedAccountVm, IHtmlContent> managedCell2 = @<text>@item.AccountId</text>;
-            Func<Humans.Finance.Models.HoldedManagedAccountVm, IHtmlContent> managedCell3 = @<text>@(item.IsActive ? "Yes" : "Retired")</text>;
-            Func<Humans.Finance.Models.HoldedManagedAccountVm, IHtmlContent> managedCell4 = @<text>@item.CreatedAt.ToDate()</text>;
+            Func<Humans.Finance.Models.HoldedManagedAccountVm, IHtmlContent> sinceCell = @<text>@item.CreatedAt.ToDate()</text>;
             var managedTable = TableModel.For(managed)
-                .Template("Account", managedCell0, sortBy: m => m.AccountNumber)
-                .Template("Label", managedCell1)
-                .Template("Holded id", managedCell2, o => o.Css("text-muted small"))
-                .Template("Active", managedCell3)
-                .Template("Since", managedCell4, sortBy: m => m.CreatedAt)
+                .Link("Account", r => r.AccountNumber, r => Url.Action("Account", "Holded", new { number = r.AccountNumber }), o => o.Code())
+                .Column("Label", r => r.Label)
+                .Column("Holded id", r => r.AccountId, o => o.Css("text-muted small"))
+                .Column("Active", r => r.IsActive ? "Yes" : "Retired")
+                .Template("Since", sinceCell, sortBy: m => m.CreatedAt)
                 .Css("align-middle")
                 .Build();
         <partial name="_Table" model="managedTable" />

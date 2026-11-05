@@ -17,10 +17,9 @@ else
     <div class="card">
         <div class="card-body p-0">
             @{
-                Func<SurveyPendingApprovalItem, IHtmlContent> queueCell0 = @<text>@(string.IsNullOrWhiteSpace(item.Title) ? Localizer["Surveys_Admin_Index_Untitled"].Value : item.Title)</text>;
-                Func<SurveyPendingApprovalItem, IHtmlContent> queueCell1 = @<text>@item.CreatedByName</text>;
-                Func<SurveyPendingApprovalItem, IHtmlContent> queueCell2 = @<text>@(item.SubmittedAt is { } at ? at.ToDateTime(zone) : "—")</text>;
-                Func<SurveyPendingApprovalItem, IHtmlContent> queueCell3 = @<text>
+                Func<SurveyPendingApprovalItem, IHtmlContent> columntitleCell = @<text>@(string.IsNullOrWhiteSpace(item.Title) ? Localizer["Surveys_Admin_Index_Untitled"].Value : item.Title)</text>;
+                Func<SurveyPendingApprovalItem, IHtmlContent> submittedCell = @<text>@(item.SubmittedAt is { } at ? at.ToDateTime(zone) : "—")</text>;
+                Func<SurveyPendingApprovalItem, IHtmlContent> queueActionsCell = @<text>
                     <div class="d-inline" authorize-policy="@Humans.Surveys.Contracts.SurveysPolicies.Manage">
                         <form asp-controller="SurveyAdmin" asp-action="Approve" asp-route-id="@item.Id" method="post" class="d-inline">
                             @Html.AntiForgeryToken()
@@ -33,10 +32,10 @@ else
 
                 </text>;
                 var queueTable = TableModel.For(Model.Items)
-                    .Template(Localizer["Surveys_Admin_Index_ColumnTitle"], queueCell0)
-                    .Template(Localizer["Surveys_Admin_Queue_Author"], queueCell1)
-                    .Template(Localizer["Surveys_Admin_Queue_Submitted"], queueCell2, o => o.Css("small text-muted"), sortBy: i => i.SubmittedAt)
-                    .Template("", queueCell3, o => o.Css("text-end").NoSort())
+                    .Template(Localizer["Surveys_Admin_Index_ColumnTitle"], columntitleCell)
+                    .Column(Localizer["Surveys_Admin_Queue_Author"], r => r.CreatedByName)
+                    .Template(Localizer["Surveys_Admin_Queue_Submitted"], submittedCell, o => o.Css("small text-muted"), sortBy: i => i.SubmittedAt)
+                    .Template("", queueActionsCell, o => o.Css("text-end").NoSort())
                     .Css("align-middle")
                     .Build();
             }

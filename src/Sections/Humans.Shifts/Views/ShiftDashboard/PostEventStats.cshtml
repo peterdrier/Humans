@@ -45,7 +45,7 @@
         <div class="card">
             <div class="card-header fw-semibold">Department Breakdown</div>
             @{
-                Func<Humans.Shifts.Models.PostEventDepartmentRow, IHtmlContent> deptCell0 = @<text>
+                Func<Humans.Shifts.Models.PostEventDepartmentRow, IHtmlContent> departmentCell = @<text>
                     @if (item.DepartmentSlug is not null)
                     {
                         <a asp-controller="ShiftAdmin" asp-action="Index"
@@ -59,9 +59,7 @@
                     }
 
                 </text>;
-                Func<Humans.Shifts.Models.PostEventDepartmentRow, IHtmlContent> deptCell1 = @<text>@item.TotalConfirmed</text>;
-                Func<Humans.Shifts.Models.PostEventDepartmentRow, IHtmlContent> deptCell2 = @<text>@item.TotalNoShow</text>;
-                Func<Humans.Shifts.Models.PostEventDepartmentRow, IHtmlContent> deptCell3 = @<text>
+                Func<Humans.Shifts.Models.PostEventDepartmentRow, IHtmlContent> completionCell = @<text>
                     @if (item.TotalConfirmed + item.TotalNoShow > 0)
                     {
                         <span class="badge @CompletionBadgeClass(item.CompletionPct)">@item.CompletionPct%</span>
@@ -72,7 +70,7 @@
                     }
 
                 </text>;
-                Func<Humans.Shifts.Models.PostEventDepartmentRow, IHtmlContent> deptCell4 = @<text>
+                Func<Humans.Shifts.Models.PostEventDepartmentRow, IHtmlContent> setUpCell = @<text>
                     @if (item.Build.TotalConfirmed + item.Build.TotalNoShow > 0)
                     {
                         <span class="badge @CompletionBadgeClass(item.Build.CompletionPct)" title="@item.Build.TotalConfirmed confirmed, @item.Build.TotalNoShow no-shows">
@@ -85,7 +83,7 @@
                     }
 
                 </text>;
-                Func<Humans.Shifts.Models.PostEventDepartmentRow, IHtmlContent> deptCell5 = @<text>
+                Func<Humans.Shifts.Models.PostEventDepartmentRow, IHtmlContent> eventCell = @<text>
                     @if (item.Event.TotalConfirmed + item.Event.TotalNoShow > 0)
                     {
                         <span class="badge @CompletionBadgeClass(item.Event.CompletionPct)" title="@item.Event.TotalConfirmed confirmed, @item.Event.TotalNoShow no-shows">
@@ -98,7 +96,7 @@
                     }
 
                 </text>;
-                Func<Humans.Shifts.Models.PostEventDepartmentRow, IHtmlContent> deptCell6 = @<text>
+                Func<Humans.Shifts.Models.PostEventDepartmentRow, IHtmlContent> strikeCell = @<text>
                     @if (item.Strike.TotalConfirmed + item.Strike.TotalNoShow > 0)
                     {
                         <span class="badge @CompletionBadgeClass(item.Strike.CompletionPct)" title="@item.Strike.TotalConfirmed confirmed, @item.Strike.TotalNoShow no-shows">
@@ -112,13 +110,13 @@
 
                 </text>;
                 var deptTable = TableModel.For(Model.Departments)
-                    .Template("Department", deptCell0, sortBy: d => d.DepartmentName)
-                    .Template("Confirmed", deptCell1, o => o.End(), sortBy: d => d.TotalConfirmed)
-                    .Template("No-Shows", deptCell2, o => o.End(), sortBy: d => d.TotalNoShow)
-                    .Template("Completion", deptCell3, o => o.End(), sortBy: d => d.TotalConfirmed + d.TotalNoShow > 0 ? d.CompletionPct : (int?)null)
-                    .Template("Set-Up", deptCell4, o => o.Css("text-center").HeaderCss("text-center"), sortBy: d => d.Build.CompletionPct)
-                    .Template("Event", deptCell5, o => o.Css("text-center").HeaderCss("text-center"), sortBy: d => d.Event.CompletionPct)
-                    .Template("Strike", deptCell6, o => o.Css("text-center").HeaderCss("text-center"), sortBy: d => d.Strike.CompletionPct)
+                    .Template("Department", departmentCell, sortBy: d => d.DepartmentName)
+                    .Column("Confirmed", r => r.TotalConfirmed, o => o.End())
+                    .Column("No-Shows", r => r.TotalNoShow, o => o.End())
+                    .Template("Completion", completionCell, o => o.End(), sortBy: d => d.TotalConfirmed + d.TotalNoShow > 0 ? d.CompletionPct : (int?)null)
+                    .Template("Set-Up", setUpCell, o => o.Css("text-center").HeaderCss("text-center"), sortBy: d => d.Build.CompletionPct)
+                    .Template("Event", eventCell, o => o.Css("text-center").HeaderCss("text-center"), sortBy: d => d.Event.CompletionPct)
+                    .Template("Strike", strikeCell, o => o.Css("text-center").HeaderCss("text-center"), sortBy: d => d.Strike.CompletionPct)
                     .Css("align-middle")
                     .Build();
             }

@@ -38,7 +38,7 @@
     </div>
 
     @{
-        Func<AttendeeImportDecisionRow, IHtmlContent> contactCell0 = @<text>
+        Func<AttendeeImportDecisionRow, IHtmlContent> contactActionsCell = @<text>
             @if (item.Outcome is AttendeeImportOutcome.AmbiguousEmailMatches
                               or AttendeeImportOutcome.SkipNoEmail
                               or AttendeeImportOutcome.SkipVoided)
@@ -52,7 +52,7 @@
             }
 
         </text>;
-        Func<AttendeeImportDecisionRow, IHtmlContent> contactCell1 = @<text>
+        Func<AttendeeImportDecisionRow, IHtmlContent> emailCell = @<text>
             @(item.Email ?? "—")
             @if (item.GroupSize > 1)
             {
@@ -60,7 +60,7 @@
             }
 
         </text>;
-        Func<AttendeeImportDecisionRow, IHtmlContent> contactCell2 = @<text>
+        Func<AttendeeImportDecisionRow, IHtmlContent> nameCell = @<text>
             @if (item.ObservedNames is { Count: > 1 } names)
             {
                 <details>
@@ -82,7 +82,7 @@
             }
 
         </text>;
-        Func<AttendeeImportDecisionRow, IHtmlContent> contactCell3 = @<text>
+        Func<AttendeeImportDecisionRow, IHtmlContent> decisionCell = @<text>
             @switch (item.Outcome)
             {
                 case AttendeeImportOutcome.AttachVerified:
@@ -106,7 +106,7 @@
             }
 
         </text>;
-        Func<AttendeeImportDecisionRow, IHtmlContent> contactCell4 = @<text>
+        Func<AttendeeImportDecisionRow, IHtmlContent> targetNotesCell = @<text>
             @if (item.Outcome == AttendeeImportOutcome.AttachVerified && item.TargetUserId is Guid uid)
             {
                 <a asp-controller="UsersAdmin" asp-action="AdminDetail" asp-route-id="@uid">
@@ -125,14 +125,13 @@
             }
 
         </text>;
-        Func<AttendeeImportDecisionRow, IHtmlContent> contactCell5 = @<text><code>@item.VendorTicketId</code></text>;
         var contactsTable = TableModel.For(Model.Rows)
-            .Template("", contactCell0, o => o.NoSort())
-            .Template("Email", contactCell1, sortBy: r => r.Email)
-            .Template("Name", contactCell2, sortBy: r => r.AttendeeName)
-            .Template("Decision", contactCell3, sortBy: r => r.Outcome)
-            .Template("Target / Notes", contactCell4)
-            .Template("Vendor Ticket Id", contactCell5)
+            .Template("", contactActionsCell, o => o.NoSort())
+            .Template("Email", emailCell, sortBy: r => r.Email)
+            .Template("Name", nameCell, sortBy: r => r.AttendeeName)
+            .Template("Decision", decisionCell, sortBy: r => r.Outcome)
+            .Template("Target / Notes", targetNotesCell)
+            .Column("Vendor Ticket Id", r => r.VendorTicketId, o => o.Code())
             .Css("align-middle")
             .Build();
     }

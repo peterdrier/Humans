@@ -2,10 +2,8 @@
 @{
     ViewData["Title"] = "Grant programs";
 
-    Func<ProgramInfo, IHtmlContent> nameCell =
-        @<text><a asp-action="Program" asp-route-programId="@item.Id" class="text-decoration-none">@item.Name</a></text>;
     var table = TableModel.For(Model.Programs)
-        .Template("Program", nameCell, sortBy: p => p.Name)
+        .Link("Program", p => p.Name, p => Url.Action("Program", new { programId = p.Id }))
         .Column("Event", p => p.EventName)
         .Column("Entitles", p => p.Entitles, o => o.Css("small"))
         .Column("Issued by", p => p.IssuedBy == GrantIssuer.Source ? p.SourceKey : "Managers")

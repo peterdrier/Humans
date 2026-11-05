@@ -2,8 +2,6 @@
 @{
     ViewData["Title"] = "Pre-approval programs";
 
-    Func<ProgramInfo, IHtmlContent> nameCell =
-        @<text><a asp-action="Program" asp-route-programId="@item.Id" class="text-decoration-none">@item.Name</a></text>;
     Func<ProgramInfo, IHtmlContent> applicationsCell = @<text>
         @if (item.OpenApplications > 0)
         {
@@ -18,7 +16,7 @@
         }
     </text>;
     var table = TableModel.For(Model.Programs)
-        .Template("Program", nameCell)
+        .Link("Program", p => p.Name, p => Url.Action("Program", new { programId = p.Id }))
         .Column("Kind", p => p.Kind == ProgramKind.FixedPerPerson ? $"{p.PerPersonAmount!.Value.ToEuro()} per person" : "Per grant")
         .Column("Committed", p => p.Granted, o => o.Currency().End())
         .Column("Ceiling", p => p.TotalCeiling, o => o.Currency().End())

@@ -11,7 +11,6 @@
 }
 
 @{
-    Func<ExpenseReconLine, IHtmlContent> memberCell = @<text><vc:human user-id="@item.CreditorUserId" link="None" /></text>;
     Func<ExpenseReconLine, IHtmlContent> reportCell = @<text><a href="/Expenses/@item.ExpenseReportId">@item.ExpenseReportId.ToString()[..8]</a></text>;
     Func<ExpenseReconLine, IHtmlContent> expectedCell = @<text>@item.ExpectedAmount.ToEuro()</text>;
     Func<ExpenseReconLine, IHtmlContent> entryCell = @<text>
@@ -39,7 +38,7 @@
     </text>;
     var table = TableModel.For(Model)
         .Column("Date", l => l.DocumentDate.ToInvariantDate(), o => o.Css("text-nowrap"))
-        .Template("Member", memberCell)
+        .Human("Member", l => l.CreditorUserId, HumanLink.None)
         .Template("Report", reportCell)
         .Column("Line", l => l.LineId is null ? "(whole report, legacy)" : l.Description)
         .Template("Expected", expectedCell, o => o.End().Css("text-nowrap"), sortBy: l => l.ExpectedAmount)

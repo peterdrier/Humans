@@ -116,19 +116,16 @@
 <div class="card">
     <div class="card-body p-0">
         @{
-            Func<SurveyInviteStatus, IHtmlContent> inviteCell0 = @<text><vc:human user-id="@item.UserId" link="None" /></text>;
-            Func<SurveyInviteStatus, IHtmlContent> inviteCell1 = @<text>@FormatInstant(item.SentAt)</text>;
-            Func<SurveyInviteStatus, IHtmlContent> inviteCell2 = @<text>@if (item.EmailStatus is { } emailStatus){<status-badge value="@emailStatus" />}else{<span class="badge bg-light text-dark">—</span>}</text>;
-            Func<SurveyInviteStatus, IHtmlContent> inviteCell3 = @<text>@FormatInstant(item.ReminderSentAt)</text>;
-            Func<SurveyInviteStatus, IHtmlContent> inviteCell4 = @<text>@(item.Started ? "Yes" : "—")</text>;
-            Func<SurveyInviteStatus, IHtmlContent> inviteCell5 = @<text>@(item.Completed ? "Yes" : "—")</text>;
+            Func<SurveyInviteStatus, IHtmlContent> sentCell = @<text>@FormatInstant(item.SentAt)</text>;
+            Func<SurveyInviteStatus, IHtmlContent> emailStatusCell = @<text>@if (item.EmailStatus is { } emailStatus){<status-badge value="@emailStatus" />}else{<span class="badge bg-light text-dark">—</span>}</text>;
+            Func<SurveyInviteStatus, IHtmlContent> reminderCell = @<text>@FormatInstant(item.ReminderSentAt)</text>;
             var invitationsTable = TableModel.For(Model.Invitations)
-                .Template("Name", inviteCell0)
-                .Template("Sent", inviteCell1, sortBy: i => i.SentAt)
-                .Template("Email status", inviteCell2, sortBy: i => i.EmailStatus)
-                .Template("Reminder", inviteCell3, sortBy: i => i.ReminderSentAt)
-                .Template("Started", inviteCell4)
-                .Template("Completed", inviteCell5)
+                .Human("Name", r => r.UserId, HumanLink.None)
+                .Template("Sent", sentCell, sortBy: i => i.SentAt)
+                .Template("Email status", emailStatusCell, sortBy: i => i.EmailStatus)
+                .Template("Reminder", reminderCell, sortBy: i => i.ReminderSentAt)
+                .Column("Started", r => r.Started ? "Yes" : "—")
+                .Column("Completed", r => r.Completed ? "Yes" : "—")
                 .Empty("No invitations sent yet.")
                 .Css("align-middle")
                 .Build();

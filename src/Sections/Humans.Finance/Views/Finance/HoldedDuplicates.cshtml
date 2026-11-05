@@ -82,11 +82,9 @@ else
             </span>
         </div>
         @{
-            Func<HoldedDuplicateLine, IHtmlContent> dupLineCell0 = @<text>@item.Description <div class="text-muted small font-monospace">report @item.ExpenseReportId</div></text>;
-            Func<HoldedDuplicateLine, IHtmlContent> dupLineCell1 = @<text>@item.Amount.ToEuro()</text>;
-            Func<HoldedDuplicateLine, IHtmlContent> dupLineCell2 = @<text>@item.KeptDocId</text>;
-            Func<HoldedDuplicateLine, IHtmlContent> dupLineCell3 = @<text>@(item.DeletableDocIds.Count == 0 ? "—" : string.Join(", ", item.DeletableDocIds))</text>;
-            Func<HoldedDuplicateLine, IHtmlContent> dupLineCell4 = @<text>
+            Func<HoldedDuplicateLine, IHtmlContent> lineCell = @<text>@item.Description <div class="text-muted small font-monospace">report @item.ExpenseReportId</div></text>;
+            Func<HoldedDuplicateLine, IHtmlContent> amountCell = @<text>@item.Amount.ToEuro()</text>;
+            Func<HoldedDuplicateLine, IHtmlContent> refusedCell = @<text>
                 @foreach (var r in item.Refused)
                 {
                     <div><span class="font-monospace">@r.DocId</span> <span class="text-danger">@r.Reason</span></div>
@@ -94,11 +92,11 @@ else
 
             </text>;
             var linesTable = TableModel.For(member.Lines)
-                .Template("Line", dupLineCell0)
-                .Template("Amount", dupLineCell1, o => o.End(), sortBy: l => l.Amount)
-                .Template("Kept", dupLineCell2, o => o.Css("font-monospace small"))
-                .Template("Duplicates to delete", dupLineCell3, o => o.Css("font-monospace small"))
-                .Template("Refused", dupLineCell4, o => o.Css("small").NoSort())
+                .Template("Line", lineCell)
+                .Template("Amount", amountCell, o => o.End(), sortBy: l => l.Amount)
+                .Column("Kept", r => r.KeptDocId, o => o.Css("font-monospace small"))
+                .Column("Duplicates to delete", r => r.DeletableDocIds.Count == 0 ? "—" : string.Join(", ", r.DeletableDocIds), o => o.Css("font-monospace small"))
+                .Template("Refused", refusedCell, o => o.Css("small").NoSort())
                 .Css("align-middle")
                 .Build();
         }

@@ -48,8 +48,6 @@
             <a href="/Expenses/@reportId" class="small ms-1">report</a>
         }
     </text>;
-    Func<GrantInfo, IHtmlContent> deciderCell =
-        @<text><vc:human user-id="@(item.DecidedByUserId ?? Guid.Empty)" link="None" /></text>;
     Func<GrantInfo, IHtmlContent> grantActionsCell = @<text>
         @if (Model.CanManage && (item.Status is GrantStatus.Open or GrantStatus.Claimed))
         {
@@ -71,7 +69,7 @@
         .Template("Status", statusCell)
         .Column("Claim by", g => g.ClaimBy, o => o.Date())
         .Column("Decided", g => g.DecidedAt, o => o.DateTime().Css("small text-muted"))
-        .Template("By", deciderCell, o => o.Css("small text-muted"))
+        .Human("By", g => g.DecidedByUserId ?? Guid.Empty, HumanLink.None, configure: o => o.Css("small text-muted"))
         .Template("", grantActionsCell, o => o.NoSort().Css("text-end text-nowrap"))
         .RowData("status", g => g.Status.ToString())
         .Id("pre-grants")
