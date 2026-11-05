@@ -244,6 +244,8 @@ The cross-source Early Entry roster (`/Shifts/Admin/EarlyEntry`) is `EarlyEntryR
 
 ## Invariants
 
+- The internal `ShiftStaffingAggregation` owns dashboard slot totals, period totals and department/subgroup rows. Dashboard reads and post-event statistics share its parent-team grouping rule; repository reads, cache handling and display ordering remain with their existing owners.
+
 - The department admin index reuses the complete team snapshot returned by department authorization when composing its page; it does not reload the same team by id. Its access decision and page controls share the same permission flags, with at most one coordinator-status read. Admin and Shifts Admin need no coordinator read; NoInfo still cannot manage shifts unless also a department coordinator.
 
 - `IsAnyTeamManagerOrCoordinatorHandler` resolves the cookie identity through `IUserService` before querying the surviving account's coordinated teams. Missing accounts and coordinator roles held only by a stale alias grant no coordinator-based access. Both reads retain request cancellation; existing privileged-role bypasses are unchanged.
