@@ -436,14 +436,6 @@ internal sealed class CampaignService(
                 continue;
             }
 
-            if (user.Email is not { Length: > 0 } recipientEmail)
-            {
-                logger.LogWarning(
-                    "User {UserId} has no notification email for campaign {CampaignId}; skipping",
-                    userId, campaignId);
-                continue;
-            }
-
             var grant = new CampaignGrant
             {
                 Id = Guid.NewGuid(),
@@ -457,6 +449,16 @@ internal sealed class CampaignService(
                 $"Assigned grant {grant.Id} in wave to team {teamId}.", actorUserId,
                 relatedEntityId: userId, relatedEntityType: AuditSubjectTypes.User);
             grantedUserIds.Add(userId);
+
+            // The grant is available in My Codes even when its email handoff is impossible.
+            if (user.Email is not { Length: > 0 } recipientEmail)
+            {
+                logger.LogWarning(
+                    "User {UserId} has no notification email for campaign {CampaignId}; grant {GrantId} remains available in My Codes",
+                    userId, campaignId, grant.Id);
+                failedCount++;
+                continue;
+            }
 
             try
             {

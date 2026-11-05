@@ -989,6 +989,46 @@ public sealed class CampaignServiceTests
             Arg.Any<CancellationToken>());
     }
 
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task SendWaveAsync_WithoutNotificationEmail_StillGrantsAndNotifies(bool hasDeliverablePeer)
+    {
+        var campaign = await SeedActiveCampaignWithCodesAsync(
+            hasDeliverablePeer ? ["NO-MAIL", "WITH-MAIL"] : ["NO-MAIL"]);
+        var person = SeedUser(displayName: "No Email");
+        _people[person.Id] = person with { IdentityEmailColumn = null };
+        _people[person.Id].Email.Should().BeNull();
+        var team = SeedTeam("No Mail");
+        SeedTeamMember(team.Id, person.Id);
+        var recipients = new List<Guid> { person.Id };
+        if (hasDeliverablePeer)
+        {
+            var peer = SeedUser(displayName: "With Email");
+            SeedTeamMember(team.Id, peer.Id);
+            recipients.Add(peer.Id);
+        }
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
+        var preview = await _service.PreviewWaveSendAsync(campaign.Id, team.Id, Xunit.TestContext.Current.CancellationToken);
+
+        var result = await _service.SendWaveAsync(_actorId, campaign.Id, team.Id, Xunit.TestContext.Current.CancellationToken);
+
+        result.Success.Should().BeTrue();
+        result.SentCount.Should().Be(preview.EligibleCount).And.Be(recipients.Count);
+        var grants = await CampaignsDb.CampaignGrants.ToListAsync(Xunit.TestContext.Current.CancellationToken);
+        grants.Select(grant => grant.UserId).Should().BeEquivalentTo(recipients);
+        (await _service.GetActiveOrCompletedGrantsForUserAsync(person.Id, Xunit.TestContext.Current.CancellationToken))
+            .Should().ContainSingle().Which.Code.Should().NotBeNullOrEmpty();
+        _emailService.ReceivedCalls().Should().HaveCount(hasDeliverablePeer ? 1 : 0);
+        await _emailService.DidNotReceive().SendAsync(
+            Arg.Is<EmailMessage>(message => message.UserId == person.Id), Arg.Any<CancellationToken>());
+        var notified = _notifications.ReceivedCalls()
+            .SelectMany(call => (IReadOnlyList<Guid>)call.GetArguments()[4]!);
+        notified.Should().BeEquivalentTo(recipients);
+        await _audit.Received(1).LogAsync(CampaignsAuditActions.CampaignWaveSent, "Campaign", campaign.Id,
+            Arg.Any<string>(), _actorId, person.Id, "User");
+    }
+
     [HumansFact]
     public async Task SendWaveAsync_NotActive_ReturnsNotActive()
     {
