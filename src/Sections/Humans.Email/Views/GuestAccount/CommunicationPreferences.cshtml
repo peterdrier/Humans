@@ -4,16 +4,15 @@
     ViewData["Title"] = Localizer["Email_CommPrefs_Title"].Value;
 }
 
+@section Crumbs {
+    <a asp-controller="Guest" asp-action="Index">@SharedLocalizer["Dashboard_Title"]</a>
+    <span>@Localizer["Email_CommPrefs_Title"]</span>
+}
+
 <div class="row">
     <div class="col-12" style="max-width: 900px;">
         @if (string.IsNullOrEmpty(Model.UnsubscribeToken))
         {
-            <nav aria-label="@Localizer["Email_BreadcrumbNavigation"]">
-                <ol class="breadcrumb">
-                    <li class="breadcrumb-item"><a asp-controller="Guest" asp-action="Index">@SharedLocalizer["Dashboard_Title"]</a></li>
-                    <li class="breadcrumb-item active" aria-current="page">@Localizer["Email_CommPrefs_Title"]</li>
-                </ol>
-            </nav>
         }
 
         <h1>@Localizer["Email_CommPrefs_Title"]</h1>

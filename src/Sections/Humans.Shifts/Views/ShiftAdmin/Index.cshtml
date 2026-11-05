@@ -26,15 +26,13 @@
             : Convert.ToString(fallback, System.Globalization.CultureInfo.InvariantCulture) ?? "";
 }
 
-<div class="container py-4">
-    <nav aria-label="breadcrumb">
-        <ol class="breadcrumb">
-            <li class="breadcrumb-item"><a asp-controller="Team" asp-action="Index">Teams</a></li>
-            <li class="breadcrumb-item"><a asp-controller="Team" asp-action="Details" asp-route-slug="@Model.Department.Slug">@Model.Department.Name</a></li>
-            <li class="breadcrumb-item active">Shifts</li>
-        </ol>
-    </nav>
+@section Crumbs {
+    <a asp-controller="Team" asp-action="Index">Teams</a>
+    <a asp-controller="Team" asp-action="Details" asp-route-slug="@Model.Department.Slug">@Model.Department.Name</a>
+    <span>Shifts</span>
+}
 
+<div class="container py-4">
     <div class="d-flex justify-content-between align-items-center mb-3">
         <h2>@Model.Department.Name — Shifts</h2>
         <div>

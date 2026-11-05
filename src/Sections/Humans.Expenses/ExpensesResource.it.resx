@@ -149,7 +149,6 @@
   <data name="Expenses_Flash_InvalidApprovalInput" xml:space="preserve"><value>Dati di approvazione non validi.</value></data>
   <!-- Submitter expense-edit page -->
   <data name="Expenses_EditReport" xml:space="preserve"><value>Modifica rapporto spese</value></data>
-  <data name="Expenses_BreadcrumbNavigation" xml:space="preserve"><value>Percorso di navigazione</value></data>
   <data name="Expenses_Edit" xml:space="preserve"><value>Modifica</value></data>
   <data name="Expenses_ReportHeader" xml:space="preserve"><value>Intestazione del rapporto</value></data>
   <data name="Expenses_BudgetCategory" xml:space="preserve"><value>Categoria di budget</value></data>

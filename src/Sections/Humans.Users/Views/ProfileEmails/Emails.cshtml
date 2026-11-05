@@ -13,22 +13,20 @@
         || (await AuthService.AuthorizeAsync(User, Humans.Users.Contracts.UsersPolicies.Manage)).Succeeded;
 }
 
+@section Crumbs {
+    @if (Model.IsAdminContext)
+    {
+        <span><vc:human user-id="@Model.TargetUserId" layout="Text" link="Admin" /></span>
+    }
+    else
+    {
+        <a asp-controller="Profile" asp-action="Index">@SharedLocalizer["Nav_MyProfile"]</a>
+    }
+    <span>@Localizer["Users_Emails_Title"]</span>
+}
+
 <div class="row">
     <div class="col-md-8">
-        <nav aria-label="@Localizer["Users_BreadcrumbNavigation"]">
-            <ol class="breadcrumb">
-                @if (Model.IsAdminContext)
-                {
-                    <li class="breadcrumb-item"><vc:human user-id="@Model.TargetUserId" layout="Text" link="Admin" /></li>
-                }
-                else
-                {
-                    <li class="breadcrumb-item"><a asp-controller="Profile" asp-action="Index">@SharedLocalizer["Nav_MyProfile"]</a></li>
-                }
-                <li class="breadcrumb-item active" aria-current="page">@Localizer["Users_Emails_Title"]</li>
-            </ol>
-        </nav>
-
         <h1>@Localizer["Users_Emails_Title"]</h1>
 
         @if (Model.IsAdminContext)

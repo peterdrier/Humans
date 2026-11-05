@@ -4,15 +4,13 @@
     var userId = Model;
 }
 
+@section Crumbs {
+    <a asp-controller="Profile" asp-action="Index">@SharedLocalizer["Nav_MyProfile"]</a>
+    <span>@Localizer["Email_CommPrefs_Title"]</span>
+}
+
 <div class="row">
     <div class="col-12" style="max-width: 900px;">
-        <nav aria-label="@Localizer["Email_BreadcrumbNavigation"]">
-            <ol class="breadcrumb">
-                <li class="breadcrumb-item"><a asp-controller="Profile" asp-action="Index">@SharedLocalizer["Nav_MyProfile"]</a></li>
-                <li class="breadcrumb-item active" aria-current="page">@Localizer["Email_CommPrefs_Title"]</li>
-            </ol>
-        </nav>
-
         <h1>@Localizer["Email_CommPrefs_Title"]</h1>
         <p class="text-muted">@Localizer["Email_CommPrefs_Description"]</p>
 

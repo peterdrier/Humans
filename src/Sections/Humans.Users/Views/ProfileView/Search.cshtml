@@ -4,12 +4,10 @@
     ViewData["Title"] = SharedLocalizer["Search_Title"].Value;
 }
 
-<nav aria-label="@Localizer["Users_BreadcrumbNavigation"]">
-    <ol class="breadcrumb">
-        <li class="breadcrumb-item"><a asp-controller="Team" asp-action="Index">@SharedLocalizer["Teams_Title"]</a></li>
-        <li class="breadcrumb-item active">@SharedLocalizer["Search_Title"]</li>
-    </ol>
-</nav>
+@section Crumbs {
+    <a asp-controller="Team" asp-action="Index">@SharedLocalizer["Teams_Title"]</a>
+    <span>@SharedLocalizer["Search_Title"]</span>
+}
 
 <h2>@SharedLocalizer["Search_Title"]</h2>
 

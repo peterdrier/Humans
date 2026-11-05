@@ -346,7 +346,6 @@
   <data name="Surveys_EmailPreviewTo" xml:space="preserve"><value>An:</value></data>
   <data name="Surveys_EmailPreviewSubject" xml:space="preserve"><value>Betreff:</value></data>
   <data name="Surveys_EmailPreviewFrameTitle" xml:space="preserve"><value>Vorschau der Einladungs-E-Mail zur Umfrage</value></data>
-  <data name="Surveys_BreadcrumbNavigation" xml:space="preserve"><value>Brotkrümelnavigation</value></data>
   <data name="Surveys_StartPreview" xml:space="preserve"><value>Vorschau starten</value></data>
   <data name="Surveys_PreviewThankYou" xml:space="preserve"><value>Dankesseite ansehen</value></data>
   <data name="Surveys_Validation_AudienceUnsupported" xml:space="preserve"><value>Die ausgewählte Umfrage-Zielgruppe wird nicht unterstützt.</value></data>

@@ -16,12 +16,10 @@
     };
 }
 
-<nav aria-label="breadcrumb">
-    <ol class="breadcrumb">
-        <li class="breadcrumb-item"><a asp-action="Admin">City Planning Admin</a></li>
-        <li class="breadcrumb-item active" aria-current="page">@ContainersLocalizer["Containers_Breadcrumb"] @Model.Year</li>
-    </ol>
-</nav>
+@section Crumbs {
+    <a asp-action="Admin">City Planning Admin</a>
+    <span>@ContainersLocalizer["Containers_Breadcrumb"] @Model.Year</span>
+}
 
 <div class="d-flex justify-content-between align-items-center mb-4">
     <h1>@ContainersLocalizer["Containers_Breadcrumb"] <small class="text-muted">@Model.Year</small></h1>

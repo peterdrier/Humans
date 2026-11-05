@@ -4,13 +4,11 @@
     ViewData["Title"] = string.Format(Localizer["GoogleIntegration_TeamResources_Title"].Value, Model.TeamName);
 }
 
-<nav aria-label="breadcrumb">
-    <ol class="breadcrumb">
-        <li class="breadcrumb-item"><a asp-controller="Team" asp-action="Index">@SharedLocalizer["Teams_Title"]</a></li>
-        <li class="breadcrumb-item"><a asp-controller="Team" asp-action="Details" asp-route-slug="@Model.TeamSlug">@Model.TeamName</a></li>
-        <li class="breadcrumb-item active" aria-current="page">@Localizer["GoogleIntegration_TeamResources_Breadcrumb"]</li>
-    </ol>
-</nav>
+@section Crumbs {
+    <a asp-controller="Team" asp-action="Index">@SharedLocalizer["Teams_Title"]</a>
+    <a asp-controller="Team" asp-action="Details" asp-route-slug="@Model.TeamSlug">@Model.TeamName</a>
+    <span>@Localizer["GoogleIntegration_TeamResources_Breadcrumb"]</span>
+}
 
 <h1>@Localizer["GoogleIntegration_TeamResources_Heading"]</h1>
 <p class="text-muted">@Localizer["GoogleIntegration_TeamResources_Team"]: @Model.TeamName</p>

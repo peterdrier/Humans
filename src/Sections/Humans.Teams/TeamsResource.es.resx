@@ -43,7 +43,6 @@
     <data name="Teams_MyTeams_Title" xml:space="preserve">
     <value>Mis equipos</value>
   </data>
-  <data name="Teams_BreadcrumbNavigation" xml:space="preserve"><value>Ruta de navegación</value></data>
   <data name="Teams_JoinTeam_Title" xml:space="preserve">
     <value>Unirse a {0}</value>
     <comment>{0} = team name</comment>
