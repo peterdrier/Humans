@@ -378,7 +378,8 @@ internal sealed class ShiftsController(
             return BadRequest(ModelState);
         }
 
-        await shiftMgmt.SetVolunteerTagPreferencesAsync(user.Id, tagIds ?? []);
+        if (!await shiftMgmt.SetVolunteerTagPreferencesAsync(user.Id, tagIds ?? []))
+            return BadRequest(localizer["Shifts_TagPreferencesInvalid"].Value);
         SetSuccess(localizer["Shifts_TagPreferencesSaved"].Value);
         return RedirectToAction(nameof(Index));
     }
@@ -533,7 +534,7 @@ internal sealed class ShiftsController(
 
         // Entity "User" + the subject's id is what the member's own medical page lists.
         await auditLogService.LogAsync(
-            ShiftsAuditActions.MedicalConditionsRevealed, "User", info.Id,
+            ShiftsAuditActions.MedicalConditionsRevealed, AuditSubjectTypes.User, info.Id,
             $"Medical conditions revealed for user {info.Id}", actor.Id);
         return Json(new { text });
     }

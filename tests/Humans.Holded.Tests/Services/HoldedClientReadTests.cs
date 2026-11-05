@@ -5,6 +5,7 @@ using System.Text.Json.Nodes;
 using AwesomeAssertions;
 using Humans.Holded.Contracts;
 using Humans.Holded.Services;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using NodaTime;
@@ -14,11 +15,11 @@ namespace Humans.Holded.Tests.Services;
 
 public class HoldedClientReadTests
 {
-    private static HoldedClient Make(StubHandler handler) =>
+    private static HoldedClient Make(StubHandler handler, ILogger<HoldedClient>? logger = null) =>
         new(
             new HttpClient(handler) { BaseAddress = new Uri("https://api.holded.com") },
             Options.Create(new HoldedClientOptions { ApiKey = "test-key" }),
-            NullLogger<HoldedClient>.Instance,
+            logger ?? NullLogger<HoldedClient>.Instance,
             new HoldedCallLog(),
             new FakeClock(Instant.FromUtc(2026, 8, 10, 12, 0)));
 
@@ -157,6 +158,27 @@ public class HoldedClientReadTests
         var line = doc.Lines[0];
         line.AccountId.Should().Be("acc-629");
         line.Tags.Should().ContainSingle("adminstaff");
+    }
+
+    [HumansFact]
+    public async Task ListPurchaseDocuments_warns_on_a_foreign_currency_and_still_reads_every_doc()
+    {
+        var json = """
+        {"items":[
+          {"id":"doc-usd","date":"2026-05-14","total":"50.00","currency":"usd"},
+          {"id":"doc-eur","date":"2026-05-14","total":"60.00","currency":"EUR"},
+          {"id":"doc-none","date":"2026-05-14","total":"70.00"}
+        ],"cursor":null,"has_more":false}
+        """;
+        var logger = new CapturingLogger<HoldedClient>();
+        var client = Make(new StubHandler(_ => Respond(HttpStatusCode.OK, json)), logger);
+
+        var docs = await client.ListPurchaseDocumentsAsync(Xunit.TestContext.Current.CancellationToken);
+
+        docs.Select(d => (d.Id, d.Total, d.Currency)).Should().Equal(
+            ("doc-usd", 50.00m, "usd"), ("doc-eur", 60.00m, "EUR"), ("doc-none", 70.00m, "eur"));
+        logger.Entries.Should().ContainSingle(e => e.Level == LogLevel.Warning)
+            .Which.Message.Should().Contain("doc-usd").And.Contain("usd");
     }
 
     [HumansTheory]

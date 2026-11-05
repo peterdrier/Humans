@@ -39,8 +39,9 @@ public interface IUserService
         CancellationToken ct = default);
 
     /// <summary>
-    /// No merge redirect: a tombstone comes back as itself. Only for Users' own merge, deletion and admin code and
-    /// the claims transformation, which must stamp a tombstone's <see cref="UserState.Merged"/>. Null when no row exists.
+    /// No merge redirect: a tombstone comes back as itself. Only for Users' merge, deletion and admin code, Auth's
+    /// token-bound identity checks, and the claims transformation, which must stamp a tombstone's
+    /// <see cref="UserState.Merged"/>. Null when no row exists.
     /// </summary>
     ValueTask<UserInfo?> GetRawUserInfoAsync(Guid userId, CancellationToken ct = default);
 

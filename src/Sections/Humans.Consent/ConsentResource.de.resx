@@ -43,7 +43,6 @@
   <data name="Consent_Index_Title" xml:space="preserve">
     <value>Vereinbarungen</value>
   </data>
-  <data name="Consent_BreadcrumbNavigation" xml:space="preserve"><value>Navigationspfad</value></data>
   <data name="Consent_Review_Title" xml:space="preserve">
     <value>Prüfung: {0}</value>
     <comment>{0} = document name</comment>
@@ -90,7 +89,7 @@
     <value>Über Einwilligungen</value>
   </data>
   <data name="Consent_AboutDescription" xml:space="preserve">
-    <value>Mit Ihrer Zustimmung zu diesen Dokumenten erklären Sie sich mit deren Bedingungen einverstanden. Die spanische Fassung ist der rechtsverbindliche Text. Englische Übersetzungen dienen ausschließlich der Verständlichkeit.</value>
+    <value>Mit Ihrer Zustimmung zu diesen Dokumenten erklären Sie sich mit deren Bedingungen einverstanden. Die spanische Fassung ist der rechtsverbindliche Text. Übersetzungen dienen ausschließlich der Verständlichkeit.</value>
   </data>
   <data name="Consent_Review_AlreadyConsented" xml:space="preserve">
     <value>Bereits zugestimmt</value>

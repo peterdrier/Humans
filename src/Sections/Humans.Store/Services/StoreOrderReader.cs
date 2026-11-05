@@ -32,7 +32,9 @@ internal sealed class StoreOrderReader(
         CancellationToken ct)
     {
         var year = await GetCurrentEventYearAsync(ct);
-        var catalog = await GetActiveCatalogAsync(year, ct);
+        var products = await repo.GetAllProductsForYearAsync(year, ct);
+        var catalog = products.Where(product => product.IsActive).Select(StoreCatalog.MapProduct).ToList();
+        var currentPrices = ToPrices(products);
 
         var counterparties = new List<CounterpartyOrders>();
 
@@ -66,7 +68,6 @@ internal sealed class StoreOrderReader(
         var productIds = campOrders.Concat(teamOrders)
             .SelectMany(o => o.Lines).Select(l => l.ProductId).Distinct().ToList();
         var productNames = await LoadProductNamesAsync(productIds, ct);
-        var currentPrices = await LoadCurrentPricesAsync(ct);
         var campOrdersBySeason = campOrders.ToLookup(o => o.CampSeasonId);
         var teamOrdersByTeam = teamOrders.ToLookup(o => o.TeamId);
 
@@ -109,28 +110,6 @@ internal sealed class StoreOrderReader(
             counterparties);
     }
 
-    public async Task<IReadOnlyList<ProductDto>> GetActiveCatalogAsync(int year, CancellationToken ct = default)
-    {
-        var products = await repo.GetActiveProductsForYearAsync(year, ct);
-        return products
-            .Select(MapProduct)
-            .ToList();
-    }
-
-    public async Task<IReadOnlyList<ProductDto>> GetAllProductsForYearAsync(int year, CancellationToken ct = default)
-    {
-        var products = await repo.GetAllProductsForYearAsync(year, ct);
-        return products
-            .Select(MapProduct)
-            .ToList();
-    }
-
-    public async Task<ProductDto?> GetProductAsync(Guid productId, CancellationToken ct = default)
-    {
-        var p = await repo.GetProductByIdAsync(productId, ct);
-        return p is null ? null : MapProduct(p);
-    }
-
     /// <summary>Falls back to the current UTC year before an active event exists.</summary>
     public async Task<int> GetCurrentEventYearAsync(CancellationToken ct = default)
     {
@@ -146,12 +125,14 @@ internal sealed class StoreOrderReader(
         CancellationToken ct)
     {
         var catalogYear = await GetCurrentEventYearAsync(ct);
-        var prices = new Dictionary<Guid, BalanceCalculator.ProductPrice>();
-        foreach (var product in await repo.GetAllProductsForYearAsync(catalogYear, ct))
-            prices[product.Id] = new BalanceCalculator.ProductPrice(
-                product.UnitPriceEur, product.VatRatePercent, product.DepositAmountEur);
-        return prices;
+        return ToPrices(await repo.GetAllProductsForYearAsync(catalogYear, ct));
     }
+
+    private static IReadOnlyDictionary<Guid, BalanceCalculator.ProductPrice> ToPrices(IEnumerable<Product> products) =>
+        products.ToDictionary(
+            product => product.Id,
+            product => new BalanceCalculator.ProductPrice(
+                product.UnitPriceEur, product.VatRatePercent, product.DepositAmountEur));
 
     public async Task<IReadOnlyDictionary<Guid, string>> LoadProductNamesAsync(
         IReadOnlyCollection<Guid> productIds, CancellationToken ct) =>
@@ -218,9 +199,6 @@ internal sealed class StoreOrderReader(
         }
         return Resources.GetString("Store_UnknownCounterparty", CultureInfo.CurrentUICulture)!;
     }
-    private static ProductDto MapProduct(Product p) =>
-        new(p.Id, p.Year, p.Name, p.Description, p.UnitPriceEur, p.VatRatePercent,
-            p.DepositAmountEur, p.OrderableUntil, p.IsActive, p.HoldedRevenueAccountNum);
 
     /// <summary>
     /// What every year-wide view needs to price an order. Shared by the admin summary and the accounting export so their
@@ -249,9 +227,7 @@ internal sealed class StoreOrderReader(
 
         // Reprice Open orders like the order page does, but from the requested year's products: a historical summary
         // must not reprice against a later year's prices.
-        var currentPrices = products.ToDictionary(
-            p => p.Id,
-            p => new BalanceCalculator.ProductPrice(p.UnitPriceEur, p.VatRatePercent, p.DepositAmountEur));
+        var currentPrices = ToPrices(products);
 
         return new YearContext(seasonsForYear, products, departmentIds, teamNames, currentPrices);
     }
@@ -308,7 +284,7 @@ internal sealed class StoreOrderReader(
             .Select(g => new ProductAggregateDto(
                 g.Key,
                 productNames.TryGetValue(g.Key, out var n) ? n : "(unknown)",
-                g.Sum(x => x.Qty),
+                g.Sum(x => (long)x.Qty),
                 g.Sum(x => x.TotalEur)))
             .ToList();
 
@@ -323,7 +299,7 @@ internal sealed class StoreOrderReader(
                 var perProduct = g
                     .SelectMany(c => c.Order.Lines)
                     .GroupBy(l => l.ProductId)
-                    .ToDictionary(lg => lg.Key, lg => lg.Sum(l => l.Qty));
+                    .ToDictionary(lg => lg.Key, lg => lg.Sum(l => (long)l.Qty));
                 return new CrossTabRow(
                     g.Key.Type, g.Key.Id, g.First().Name, perProduct.Values.Sum(), perProduct);
             }).ToList();

@@ -63,8 +63,16 @@ public sealed class Section :
             FormerNames: ["HumanAdmin"]),
     ];
 
-    internal static IdentityBuilder AddIdentityStores(IdentityBuilder builder) =>
-        builder.AddEntityFrameworkStores<UsersDbContext>();
+    internal static IdentityBuilder AddIdentity(IServiceCollection services) =>
+        services.AddIdentity<User, IdentityRole<Guid>>(options =>
+            {
+                // UserEmail table owns email uniqueness; User.Email is null on new users.
+                options.User.RequireUniqueEmail = false;
+                options.SignIn.RequireConfirmedEmail = false;
+            })
+            .AddEntityFrameworkStores<UsersDbContext>()
+            .AddDefaultTokenProviders()
+            .AddClaimsPrincipalFactory<HumansUserClaimsPrincipalFactory>();
 
     public void Register(IServiceCollection services, IConfiguration configuration)
     {
@@ -72,7 +80,7 @@ public sealed class Section :
         services.AddSingleton<INotificationSourceContributor, UsersNotificationSources>();
         services.AddSectionDbContext<UsersDbContext>(sentinelTable: "users");
 
-        // On every section's context pipeline: catches User/UserEmail/CommunicationPreference
+        // On every section's context pipeline: catches User/UserEmail
         // writes wherever they are saved, including Identity machinery.
         services.AddSingleton<UserInfoSaveChangesInterceptor>();
         services.AddSingleton<IInterceptor>(sp => sp.GetRequiredService<UserInfoSaveChangesInterceptor>());
@@ -137,6 +145,7 @@ public sealed class Section :
         // names it by full name as the sole caller of ReconcileOAuthIdentityAsync.
         services.AddScoped<IAccountDeletionService, AccountDeletionService>();
         services.AddScoped<IExternalLoginService, ExternalLoginService>();
+        services.AddScoped<IUserSignInService, UserSignInService>();
 
         services.AddScoped<ProcessAccountDeletionsJob>();
         services.AddScoped<SuspendNonCompliantMembersJob>();

@@ -36,8 +36,8 @@ public class User : IdentityUser<Guid>
 
     public Instant? LastLoginAt { get; set; }
 
-    /// <summary>The only cross-domain nav on User; the Email override needs it.</summary>
-    public ICollection<UserEmail> UserEmails { get; } = new List<UserEmail>();
+    /// <summary>Owned by Users; the Email override needs this navigation.</summary>
+    internal ICollection<UserEmail> UserEmails { get; } = new List<UserEmail>();
 
     /// <summary>
     /// First verified row, primary first; falls back to base.Email when UserEmails isn't loaded, so always
@@ -96,12 +96,6 @@ public class User : IdentityUser<Guid>
         get => base.NormalizedUserName ?? Id.ToString().ToUpperInvariant();
         set => base.NormalizedUserName = value;
     }
-
-    /// <summary>
-    /// Frozen: the stamp lives in Consent's <c>consent_reminders</c>. Written only to clear it on GDPR erasure;
-    /// the column goes with its separate drop migration.
-    /// </summary>
-    public Instant? LastConsentReminderSentAt { get; set; }
 
     public Instant? DeletionRequestedAt { get; set; }
 

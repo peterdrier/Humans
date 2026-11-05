@@ -81,7 +81,7 @@ is a separate call on the same interface and is unaffected.
 - Custom rules reject zero or out-of-range BYDAY ordinals before saving; valid ordinal weekdays span ±1–53.
 - Save creates the event and redirects to event details
 - Required fields: title, team, start date/time
-- Required, length and URL validation messages use the current culture in all six supported languages.
+- Required, length and URL validation messages use the current culture in all supported languages.
 
 **Not shipped:** the recurrence preview of the next 5 occurrences on the create form. Occurrences are only listed after the event exists, on its detail page.
 
@@ -164,7 +164,7 @@ CalendarEventException
 
 Timed and all-day overrides require representable original and effective ranges, including inherited duration. Series edits reject a duration that would invalidate an active override.
 
-The occurrence editor keeps text overrides optional, enforces these stored length limits and URL syntax before saving, and displays validation errors in all six supported cultures.
+The occurrence editor keeps text overrides optional, enforces these stored length limits and URL syntax before saving, and displays validation errors in all supported cultures.
 
 Timed identities are unique on `(EventId, OriginalOccurrenceStartUtc)`; date identities are unique on `(EventId, OriginalOccurrenceDate)`. `Validate()` requires the row to either cancel the occurrence or override at least one field. A query filter mirrors the parent event's soft-delete so exceptions of deleted events are never returned.
 
@@ -185,7 +185,7 @@ Every timed recurring event is tied to an IANA timezone (e.g., `"Europe/Madrid"`
 1. Recurrence rule is expanded in the event's configured timezone using `Ical.Net`
 2. Each occurrence start/end is calculated in that timezone, respecting DST transitions
 3. Occurrences are stored/queried in UTC (`StartUtc`, `EndUtc`)
-4. Window reads use the viewer zone for all-day date bounds and mixed-source display ordering. Rendering converts back with `NodaTime`, server-side, into the viewer's zone (`CalendarController.GetViewerZone`): the browser-reported session timezone when it is a valid IANA id, otherwise the org default `Europe/Madrid`. The zone is labelled on the page.
+4. Window reads use the viewer zone for all-day date bounds and mixed-source display ordering. Rendering converts back with `NodaTime`, server-side, into the viewer's zone (`CalendarController.GetViewerZone`): the browser-reported session timezone when it is a valid IANA id, otherwise the org default `Europe/Madrid`. The zone is labelled on the page. Its picker disables further changes while saving, reloads on success, and restores the displayed zone with a localized error if saving fails.
 
 This ensures a recurring "19:00 weekly on Monday" stays at 19:00 local time even when daylight saving changes occur.
 

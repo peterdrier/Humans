@@ -4,6 +4,7 @@ using System.Security.Claims;
 using Humans.Camps.Contracts;
 using Humans.Settings.Contracts;
 using Humans.Teams.Contracts;
+using Humans.Users.Contracts;
 using Humans.Store.Services.Dtos;
 using Humans.Base.Constants;
 using Humans.Base.Enums;
@@ -31,17 +32,60 @@ public class OrderAuthorizationHandlerTests
     private readonly ICampService _campService = Substitute.For<ICampService>();
     private readonly ITeamService _teamService = Substitute.For<ITeamService>();
     private readonly ISettingsService _shifts = Substitute.For<ISettingsService>();
+    private readonly IUserService _users = Substitute.For<IUserService>();
     private readonly FakeClock _clock = new(Instant.FromUtc(2026, 3, 14, 12, 0));
     private readonly OrderAuthorizationHandler _handler;
 
     public OrderAuthorizationHandlerTests()
     {
         _shifts.GetActiveEventSettingsAsync().Returns(BurnFixtures.Burn(year: 2026, timeZoneId: "Europe/Madrid"));
-        _handler = new OrderAuthorizationHandler(_campService, _teamService, _shifts, _clock, new Microsoft.AspNetCore.Http.HttpContextAccessor());
+        _users.GetUserInfoAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(call => UserInfo.Create(new User { Id = call.Arg<Guid>() }, [], [], null));
+        _handler = new OrderAuthorizationHandler(_campService, _teamService, _users, _shifts, _clock, new Microsoft.AspNetCore.Http.HttpContextAccessor());
+    }
+
+    [HumansTheory]
+    [InlineData(false, true, true)]
+    [InlineData(true, true, true)]
+    [InlineData(false, false, true)]
+    [InlineData(true, false, true)]
+    [InlineData(false, true, false)]
+    [InlineData(true, true, false)]
+    public async Task MembershipAccess_UsesResolvedAccountAndDeniesMissingAccounts(
+        bool teamOrder, bool accountExists, bool survivorOwns)
+    {
+        var cookieId = Guid.NewGuid();
+        var survivorId = Guid.NewGuid();
+        _users.GetUserInfoAsync(cookieId, Arg.Any<CancellationToken>()).Returns(accountExists
+            ? UserInfo.Create(new User { Id = survivorId }, [], [], null)
+            : null);
+        var order = MakeOrder(teamOrder);
+        var ownerId = accountExists && survivorOwns ? survivorId : cookieId;
+        if (teamOrder)
+        {
+            _teamService.GetTeamAsync(order.TeamId!.Value, Arg.Any<CancellationToken>()).Returns(
+                new TeamInfo(order.TeamId.Value, "Department", null, "department", true, false,
+                    SystemTeamType.None, false, true, false, false, _clock.GetCurrentInstant(), [],
+                    ManagementRoleHolderUserIds: new HashSet<Guid> { ownerId }));
+        }
+        else
+        {
+            var camp = MakeCampInfo(Guid.NewGuid(), order.CampSeasonId!.Value, ownerId);
+            _campService.GetCampSeasonByIdAsync(order.CampSeasonId.Value, Arg.Any<CancellationToken>())
+                .Returns(camp.Seasons[0]);
+            _campService.GetCampsForYearAsync(2026, Arg.Any<CancellationToken>()).Returns([camp]);
+        }
+        var context = new AuthorizationHandlerContext(
+            [OrderOperationRequirement.AddLine], Principal(role: null, cookieId), order);
+
+        await _handler.HandleAsync(context);
+
+        Assert.Equal(accountExists && survivorOwns, context.HasSucceeded);
     }
 
     [HumansTheory]
     [InlineData("Date")]
+    [InlineData("User")]
     [InlineData("Season")]
     [InlineData("Camp")]
     [InlineData("Team")]
@@ -67,6 +111,11 @@ public class OrderAuthorizationHandlerTests
             Read("Date", call.Arg<CancellationToken>());
             return BurnFixtures.Burn(year: 2026, timeZoneId: "Europe/Madrid");
         });
+        _users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            Read("User", call.Arg<CancellationToken>());
+            return UserInfo.Create(new User { Id = userId }, [], [], null);
+        });
         _campService.GetCampSeasonByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(call =>
         {
             Read("Season", call.Arg<CancellationToken>());
@@ -85,7 +134,7 @@ public class OrderAuthorizationHandlerTests
         object resource = string.Equals(boundary, "Date", StringComparison.Ordinal) ? new OrderLineContext(order, FutureDeadline) : order;
         var requirement = string.Equals(boundary, "Date", StringComparison.Ordinal) ? OrderOperationRequirement.AddLine : OrderOperationRequirement.View;
         var context = new AuthorizationHandlerContext([requirement], Principal(role: null, userId), resource);
-        var handler = new OrderAuthorizationHandler(_campService, _teamService, _shifts, _clock, http);
+        var handler = new OrderAuthorizationHandler(_campService, _teamService, _users, _shifts, _clock, http);
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() => handler.HandleAsync(context));
         Assert.Equal(request.Token, observed);
         Assert.False(context.HasSucceeded);

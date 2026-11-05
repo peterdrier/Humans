@@ -62,6 +62,13 @@ internal sealed class ShiftProfileController(
 
             var existing = await shiftMgmt.GetShiftProfileAsync(user.Id, HttpContext.RequestAborted);
 
+            if (!await shiftProfiles.SetVolunteerTagPreferencesAsync(user.Id, model.EditableShiftTagIds))
+            {
+                SetError(shiftsLocalizer["Shifts_TagPreferencesInvalid"].Value);
+                await PopulateCatalogAsync(model);
+                return View(model);
+            }
+
             await shiftMgmt.UpdateShiftProfileAsync(new ShiftVolunteerProfileInfo(
                 user.Id,
                 ShiftInfoViewModel.MergeSkills(
@@ -70,7 +77,6 @@ internal sealed class ShiftProfileController(
                     model.TimePreference, model.SelectedQuirks, existing?.Quirks),
                 ShiftInfoViewModel.MergeLanguages(
                     model.SelectedLanguages, model.LanguageOtherText, existing?.Languages)));
-            await shiftProfiles.SetVolunteerTagPreferencesAsync(user.Id, model.EditableShiftTagIds);
 
             SetSuccess(localizer["Profile_Updated"].Value);
             return RedirectToAction(nameof(ShiftInfo));

@@ -167,8 +167,11 @@ public class CashFlowServiceTests
             new { GroupName = "VAT", CategoryName = "VAT Liability", Amount = -21m });
     }
 
-    [HumansFact]
-    public async Task GetGrossTicketRevenueAsync_ConfiguredEvent_ExcludesOtherEventAndUnpaidOrders()
+    [HumansTheory]
+    [InlineData(TicketPaymentStatus.Pending)]
+    [InlineData(TicketPaymentStatus.Refunded)]
+    [InlineData(TicketPaymentStatus.Cancelled)]
+    public async Task GetGrossTicketRevenueAsync_ConfiguredEvent_ExcludesOtherEventAndUnpaidOrders(TicketPaymentStatus unpaidStatus)
     {
         var year = new BudgetYearDetail(_yearId, "2026", "2026", BudgetYearStatus.Active, false, [], VendorEventId: "event-2026");
         var order = Order(100m);
@@ -177,7 +180,7 @@ public class CashFlowServiceTests
             {
                 order with { VendorEventId = "event-2026" },
                 order with { VendorEventId = "event-2025", IsCurrentEvent = true, TotalAmount = 999m },
-                order with { VendorEventId = "event-2026", PaymentStatus = TicketPaymentStatus.Refunded, TotalAmount = 50m },
+                order with { VendorEventId = "event-2026", PaymentStatus = unpaidStatus, TotalAmount = 50m },
             });
 
         var total = await CreateSut().GetGrossTicketRevenueAsync(year, TestContext.Current.CancellationToken);

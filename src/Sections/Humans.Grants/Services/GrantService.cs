@@ -22,6 +22,9 @@ internal sealed partial class GrantService(
     IClock clock,
     ILogger<GrantService> logger) : IGrantManagement
 {
+    private readonly GrantNotices notices = new(users, notifications, email, emailFactory, logger);
+    internal const string ProfileUrl = GrantNotices.ProfileUrl;
+
     internal static readonly DateTimeZone MadridZone = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
 
     public LocalDate Today => clock.GetCurrentInstant().InZone(MadridZone).Date;
@@ -76,16 +79,25 @@ internal sealed partial class GrantService(
         return info is null ? [userId] : info.AllUserIds;
     }
 
+    private async Task<IReadOnlyList<Guid>?> ResolveAvailablePersonIdsAsync(Guid userId, CancellationToken ct)
+    {
+        var person = await users.GetUserInfoAsync(userId, ct);
+        if (person is not null && !person.IsTombstone) return person.AllUserIds;
+
+        logger.LogWarning("Grant write refused for unavailable person {UserId}", userId);
+        return null;
+    }
+
     private static string? Trimmed(string? text) =>
         string.IsNullOrWhiteSpace(text) ? null : text.Trim();
 
     private Task AuditGrantAsync(AuditActionDefinition action, Grant grant, string description, Guid actorUserId) =>
         auditLog.LogAsync(action, AuditEntityTypes.Grant, grant.Id, description, actorUserId,
-            relatedEntityId: grant.UserId, relatedEntityType: AuditEntityTypes.User);
+            relatedEntityId: grant.UserId, relatedEntityType: AuditSubjectTypes.User);
 
     private Task AuditProgramAsync(
         AuditActionDefinition action, GrantProgram program, string description, Guid actorUserId, Guid? relatedUserId = null) =>
         auditLog.LogAsync(action, AuditEntityTypes.Program, program.Id, description, actorUserId,
             relatedEntityId: relatedUserId,
-            relatedEntityType: relatedUserId is null ? null : AuditEntityTypes.User);
+            relatedEntityType: relatedUserId is null ? null : AuditSubjectTypes.User);
 }

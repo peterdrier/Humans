@@ -3,19 +3,14 @@
     ViewData["Title"] = Localizer["Cantina_Dietary_PageTitle"].Value;
 }
 
+@section Crumbs {
+    <a asp-controller="Profile" asp-action="Index">@SharedLocalizer["Nav_MyProfile"]</a>
+    <span>@Localizer["Cantina_Dietary_PageTitle"]</span>
+}
+
 <div class="row">
     <div class="col-12" style="max-width: 720px; margin: 0 auto;">
-        <nav aria-label="@Localizer["Cantina_Dietary_BreadcrumbNavigation"]">
-            <ol class="breadcrumb">
-                <li class="breadcrumb-item"><a asp-controller="Profile" asp-action="Index">@SharedLocalizer["Nav_MyProfile"]</a></li>
-                <li class="breadcrumb-item active" aria-current="page">@Localizer["Cantina_Dietary_PageTitle"]</li>
-            </ol>
-        </nav>
-
-
-        <h1>@Localizer["Cantina_Dietary_PageTitle"]</h1>
-
-        <p class="text-muted">@Localizer["Cantina_Dietary_OptionalHint"]</p>
+        <page-header title="@(Localizer["Cantina_Dietary_PageTitle"].Value)" subtitle="@(Localizer["Cantina_Dietary_OptionalHint"].Value)" />
 
         @if (Model.DeclinedToAnswer)
         {

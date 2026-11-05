@@ -152,17 +152,6 @@ internal sealed class SurveyRepository(IDbContextFactory<SurveysDbContext> facto
         return rows.ToDictionary(r => r.SurveyId, r => r.Count);
     }
 
-    public async Task<IReadOnlySet<Guid>> GetInvitedUserIdsAsync(Guid surveyId, CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        var ids = await ctx.SurveyInvitations
-            .AsNoTracking()
-            .Where(i => i.SurveyId == surveyId && i.SentAt != null)
-            .Select(i => i.UserId)
-            .ToListAsync(ct);
-        return ids.ToHashSet();
-    }
-
     public async Task<IReadOnlyList<SurveyInvitation>> GetInvitationsAsync(Guid surveyId, CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
@@ -414,14 +403,6 @@ internal sealed class SurveyRepository(IDbContextFactory<SurveysDbContext> facto
             .Include(r => r.Answers)
             .Where(r => r.SurveyId == surveyId && r.SubmittedAt != null)
             .ToListAsync(ct);
-    }
-
-    public async Task<int> GetStartedInvitationCountAsync(Guid surveyId, CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.SurveyInvitations
-            .AsNoTracking()
-            .CountAsync(i => i.SurveyId == surveyId && i.Started, ct);
     }
 
     public async Task<IReadOnlyList<SurveyResponse>> GetIdentifiedResponsesForUserAsync(Guid userId, CancellationToken ct = default)

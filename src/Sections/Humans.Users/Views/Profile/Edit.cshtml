@@ -6,16 +6,14 @@
         $"<option value=\"{lang.Key}\">{System.Net.WebUtility.HtmlEncode(LanguageCatalog.GetDisplayName(lang.Key))} ({lang.Key})</option>"));
 }
 
+@section Crumbs {
+    <a asp-action="Index">@SharedLocalizer["Nav_MyProfile"]</a>
+    <span>@Localizer["Users_ProfileEdit_Title"]</span>
+}
+
 <div class="row">
     <div class="col-12" style="max-width: 900px;">
-        <nav aria-label="@Localizer["Users_BreadcrumbNavigation"]">
-            <ol class="breadcrumb">
-                <li class="breadcrumb-item"><a asp-action="Index">@SharedLocalizer["Nav_MyProfile"]</a></li>
-                <li class="breadcrumb-item active" aria-current="page">@Localizer["Users_ProfileEdit_Title"]</li>
-            </ol>
-        </nav>
-
-        <h1>@Localizer["Users_ProfileEdit_Title"]</h1>
+        <page-header title="@(Localizer["Users_ProfileEdit_Title"].Value)" />
 
         <form asp-action="Edit" method="post" enctype="multipart/form-data">
             @if (ViewData.ModelState.ErrorCount > 0)
@@ -56,7 +54,7 @@
                     <hr />
 
                     <div class="mb-3">
-                        <label asp-for="BurnerName" class="form-label"></label>
+                        <label asp-for="BurnerName" class="form-label">@SharedLocalizer["Onboarding_BurnerNameLabel"]</label>
                         <input asp-for="BurnerName" class="form-control" placeholder="@Localizer["Users_ProfileEdit_BurnerNamePlaceholder"].Value" />
                         <span asp-validation-for="BurnerName" class="text-danger"></span>
                         <div id="burnerNameWarning" class="alert alert-danger mt-2 d-none" role="alert">
@@ -73,7 +71,7 @@
                     </div>
 
                     <div class="mb-3">
-                        <label asp-for="Pronouns" class="form-label"></label>
+                        <label asp-for="Pronouns" class="form-label">@Localizer["Users_Search_Pronouns"]</label>
                         <input asp-for="Pronouns" class="form-control" placeholder="@Localizer["Users_ProfileEdit_PronounsPlaceholder"].Value" />
                         <span asp-validation-for="Pronouns" class="text-danger"></span>
                     </div>
@@ -255,7 +253,7 @@
                     <hr />
 
                     <div class="mb-3">
-                        <label asp-for="Bio" class="form-label"></label>
+                        <label asp-for="Bio" class="form-label">@Localizer["Users_Profile_Bio"]</label>
                         <markdown-editor asp-for="Bio" rows="4" />
                         <span asp-validation-for="Bio" class="text-danger"></span>
                         <div class="form-text">@Localizer["Users_ProfileEdit_BioHelp"]</div>

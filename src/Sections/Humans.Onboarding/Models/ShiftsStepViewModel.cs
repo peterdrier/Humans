@@ -29,6 +29,6 @@ internal sealed class ShiftsStepViewModel
 
     public Dictionary<Guid, SignupStatus> UserSignupStatuses { get; init; } = new();
 
-    /// <summary>Onboarding viewers are never privileged, so this is just "early entry has closed".</summary>
+    /// <summary>Every early-entry rota in the step’s source list is locked for this viewer.</summary>
     public bool EarlyEntrySignupsClosed { get; init; }
 }

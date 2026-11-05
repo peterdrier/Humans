@@ -22,7 +22,7 @@ internal sealed class HoldedClient : IHoldedClient
     {
         _transport = new HoldedTransport(http, options, logger, callLog, clock);
         _purchases = new HoldedPurchasesClient(_transport, logger);
-        _sales = new HoldedSalesClient(_transport);
+        _sales = new HoldedSalesClient(_transport, logger);
         _contacts = new HoldedContactsClient(_transport, logger);
         _treasury = new HoldedTreasuryClient(_transport, logger);
         _accounting = new HoldedAccountingClient(_transport, logger);

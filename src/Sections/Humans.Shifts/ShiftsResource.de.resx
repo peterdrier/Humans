@@ -43,7 +43,6 @@
   <data name="Shifts_SignedUp" xml:space="preserve">
     <value>Angemeldet</value>
   </data>
-  <data name="Shifts_BreadcrumbNavigation" xml:space="preserve"><value>Navigationspfad</value></data>
   <data name="Shifts_Pending" xml:space="preserve">
     <value>(ausstehend)</value>
   </data>
@@ -1156,7 +1155,7 @@
   </data>
   <data name="Shifts_DietaryMissingBanner_Title" xml:space="preserve"><value>Magst du uns deine Essensvorlieben mitteilen?</value></data>
   <data name="Shifts_DietaryMissingBanner_Body" xml:space="preserve"><value>Du bist für eine lange Schicht eingetragen. Wenn du uns deine Essensvorlieben mitteilst, kann die Kantine deine Mahlzeiten planen. Das ist freiwillig.</value></data>
-  <data name="Shifts_DietaryMissingBanner_Cta" xml:space="preserve"><value>Tell us now</value></data>
+  <data name="Shifts_DietaryMissingBanner_Cta" xml:space="preserve"><value>Sag es uns jetzt</value></data>
   <data name="Shifts_DietaryMissingBanner_Decline" xml:space="preserve"><value>Ich möchte nicht antworten</value></data>
   <data name="Shifts_ViewAllMyShifts" xml:space="preserve"><value>Alle meine Schichten anzeigen</value></data>
   <data name="Shifts_SortOrder" xml:space="preserve"><value>Sortierung</value></data>
@@ -1293,4 +1292,5 @@
   <data name="Shifts_Notification_ChangeApprovedRange" xml:space="preserve"><value>Mehrere Schichten für '{0}' genehmigt ({1} Schichten).</value></data>
   <data name="Shifts_Notification_ChangeRefusedRange" xml:space="preserve"><value>Mehrere Schichten für '{0}' abgelehnt ({1} Schichten).</value></data>
   <data name="Shifts_Notification_ChangeBailedRange" xml:space="preserve"><value>Mehrere Schichten von '{0}' abgesagt ({1} Schichten).</value></data>
+  <data name="Shifts_TagPreferencesInvalid" xml:space="preserve"><value>Einige ausgewählte Tags sind nicht mehr verfügbar. Prüfe deine Auswahl und versuche es erneut.</value></data>
 </root>

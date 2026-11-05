@@ -85,10 +85,11 @@
   <data name="Cantina_Dietary_Intolerance_Lactose" xml:space="preserve"><value>Lactosa</value></data>
   <data name="Cantina_Dietary_AllergyOther_Required" xml:space="preserve"><value>Descriu l’altra al·lèrgia.</value></data>
   <data name="Cantina_Dietary_IntoleranceOther_Required" xml:space="preserve"><value>Descriu l’altra intolerància.</value></data>
-  <data name="Cantina_Dietary_BreadcrumbNavigation" xml:space="preserve"><value>Ruta de navegació</value></data>
   <data name="Cantina_Dietary_PageTitle" xml:space="preserve"><value>Informació alimentària</value></data>
   <data name="Cantina_Dietary_Saved" xml:space="preserve"><value>S’ha desat la teva informació alimentària.</value></data>
   <data name="Cantina_Dietary_SaveFailed" xml:space="preserve"><value>No s’ha pogut desar la informació alimentària.</value></data>
+  <data name="Cantina_Dietary_PreferenceTooLong" xml:space="preserve"><value>La preferència alimentària ha de tenir 200 caràcters o menys.</value></data>
+  <data name="Cantina_Dietary_OtherTextTooLong" xml:space="preserve"><value>Els detalls d’altres al·lèrgies o intoleràncies han de tenir 500 caràcters o menys.</value></data>
   <data name="Cantina_Dietary_LoadFailed" xml:space="preserve"><value>No s’ha pogut carregar la informació alimentària.</value></data>
   <data name="Cantina_Dietary_OptionalHint" xml:space="preserve"><value>Opcional. Ajuda la cantina a planificar els àpats dels torns llargs i mai no afecta les teves inscripcions als torns.</value></data>
   <data name="Cantina_Dietary_DeclineButton" xml:space="preserve"><value>Prefereixo no respondre</value></data>

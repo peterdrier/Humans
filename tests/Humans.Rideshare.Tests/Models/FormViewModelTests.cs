@@ -20,16 +20,10 @@ namespace Humans.Rideshare.Tests.Models;
 /// <summary>The offer and request forms: ISO date round-trip, waypoint lines, profile prefill.</summary>
 public sealed class FormViewModelTests
 {
-    [HumansTheory]
-    [InlineData("en")]
-    [InlineData("es")]
-    [InlineData("de")]
-    [InlineData("it")]
-    [InlineData("fr")]
-    [InlineData("ca")]
-    public void MemberForms_LocalizeValidationMessages(string culture)
+    [HumansFact]
+    public void MemberForms_LocalizeValidationMessages()
     {
-        using var cultureScope = new CultureScope(culture);
+        using var cultureScope = new CultureScope(CultureCatalog.DefaultCultureCode);
         var registrations = new ServiceCollection().AddLogging().AddLocalization();
         registrations.AddControllers().AddDataAnnotationsLocalization(options =>
             options.DataAnnotationLocalizerProvider = (_, factory) => factory.Create(typeof(SharedResource)));

@@ -39,7 +39,7 @@ internal sealed class EventsModerationController(
             ? unsortedEvents.OrderBy(e => e.SubmittedAt)
             : unsortedEvents.OrderByDescending(e => e.SubmittedAt)).ToList();
 
-        var campsById = await LoadCampsByIdAsync(camps, eventSettings?.GateOpeningDate.Year, ct);
+        var campsById = await LoadCampsByIdAsync(camps, eventSettings?.Id, ct);
 
         var model = new ModerationQueueViewModel
         {
@@ -63,12 +63,8 @@ internal sealed class EventsModerationController(
                 var evt = campEvents.FirstOrDefault(e => e.Id == row.Id);
                 if (evt?.CampId == null) continue;
 
-                row.DuplicateCandidates = allCampEvents
-                    .Where(other => other.Id != evt.Id
-                                 && other.CampId == evt.CampId
-                                 && EventConflictDetector.Overlaps(
-                                     other.StartAt, other.DurationMinutes,
-                                     evt.StartAt, evt.DurationMinutes))
+                row.DuplicateCandidates = EventConflictDetector.FindCampDuplicateCandidates(
+                        evt, allCampEvents, eventSettings?.GateOpeningDate, tz)
                     .Select(other => new DuplicateCandidateViewModel
                     {
                         Id = other.Id,
@@ -256,7 +252,7 @@ internal sealed class EventsModerationController(
 
     private async Task<string?> ResolveCampNameAsync(Guid campId, EventSettingsInfo eventSettings, CancellationToken ct = default)
     {
-        var campsById = await LoadCampsByIdAsync(camps, eventSettings.GateOpeningDate.Year, ct);
+        var campsById = await LoadCampsByIdAsync(camps, eventSettings.Id, ct);
         return ResolveCampName(campsById.GetValueOrDefault(campId));
     }
 
@@ -324,7 +320,7 @@ internal sealed class EventsModerationController(
         if (guideEvent.CampId.HasValue)
         {
             var (eventSettings, _) = await LoadEventSettingsAsync(ct);
-            var campsById = await LoadCampsByIdAsync(camps, eventSettings?.GateOpeningDate.Year, ct);
+            var campsById = await LoadCampsByIdAsync(camps, eventSettings?.Id, ct);
             campSlug = campsById.GetValueOrDefault(guideEvent.CampId.Value)?.Slug;
         }
 

@@ -32,7 +32,6 @@ internal sealed class ExpenseReportService(
     IAuditLogService auditLogService,
     IAuditViewerService auditViewer,
     IHoldedService holded,
-    IHoldedFinanceService holdedFinance,
     IFinanceService finance,
     IFinanceWrite financeWrite,
     IPreapprovalService preapprovals,
@@ -42,8 +41,12 @@ internal sealed class ExpenseReportService(
     IOptions<TravelReimbursementConfig> travelConfig) : IExpenseReportManagement,
         IUserDataContributor
 {
-    internal const string ExpenseReports = "ExpenseReports";
-    internal const string ExpenseAuditLog = "ExpenseAuditLog";
+    internal const string ExpenseReports = ExpenseReportExport.ExpenseReports;
+    internal const string ExpenseAuditLog = ExpenseReportExport.ExpenseAuditLog;
+
+    private readonly ExpenseReportAccess reportAccess = new(repo, userService, budgetService, teamService, preapprovals);
+    private readonly ExpenseHoldedTimelineReader holdedTimeline = new(repo, finance, userService, holded);
+    private readonly ExpenseReportExport reportExport = new(repo, userService, auditViewer);
 
     private readonly TravelReimbursementConfig _travel = travelConfig.Value;
 
@@ -69,86 +72,8 @@ internal sealed class ExpenseReportService(
     /// The creditor balance already sums all of a member's outstanding docs, so whatever exceeds their own
     /// registered-unpaid report totals shows as fronted amounts and adjustments.
     /// </summary>
-    public async Task<ExpenseHoldedTimeline?> GetHoldedTimelineAsync(
-        ExpenseReportDto report, CancellationToken ct = default)
-    {
-        var outboxEvent = await repo.GetLatestOutboxForReportAsync(report.Id, ct);
-
-        decimal owed = 0m, totalPaid = 0m, memberRegisteredTotal = 0m;
-        var paid = false;
-        LocalDate? paidOn = null;
-
-        // No contact id means no push has ever linked this member to a Holded creditor, so there is
-        // no ledger to read. The push half below still has something to say about why.
-        if (!string.IsNullOrEmpty(report.HoldedContactId))
-        {
-            var status = await holdedFinance.GetCreditorStatusAsync(
-                report.HoldedSupplierAccountNum, ct);
-
-            // The creditor contact covers every id the human has held, so the total does too.
-            var submitter = await userService.GetUserInfoAsync(report.SubmitterUserId, ct);
-            foreach (var id in submitter?.AllUserIds ?? [report.SubmitterUserId])
-            {
-                // Count the documents whatever the report status: reports withdrawn after approval (before that
-                // was refused) still have their booking. RegisteredAmount excludes lines not pushed yet.
-                memberRegisteredTotal += (await repo.GetForSubmitterAsync(id, ct)).Sum(RegisteredAmount);
-            }
-
-            owed = status?.OwedToMember ?? 0m;
-            totalPaid = status?.TotalPaid ?? 0m;
-            // Settled iff the derived creditor balance (Σdebit − Σcredit) is non-negative. A null status
-            // means no cached ledger lines for the account — unknown, not settled.
-            paid = status is { } s && s.Balance >= 0m;
-            paidOn = status?.LastPaymentDate;
-        }
-
-        return new ExpenseHoldedTimeline
-        {
-            RegisteredInHolded = report.HoldedDocIds.Count > 0,
-            OwedToMember = owed,
-            MemberRegisteredTotal = memberRegisteredTotal,
-            OtherAmount = Math.Max(0m, owed - memberRegisteredTotal),
-            Paid = paid,
-            PaidOn = paidOn,
-            TotalPaid = totalPaid,
-            SyncState = ResolveSyncState(outboxEvent),
-            QueuedAt = outboxEvent?.OccurredAt,
-            SettledAt = outboxEvent?.ProcessedAt,
-            RetryCount = outboxEvent?.RetryCount ?? 0,
-            MaxRetries = ExpenseReportBackgroundProcessor.MaxOutboxRetries,
-            LastError = outboxEvent?.LastError,
-            NextRetryAt = outboxEvent is { ProcessedAt: null, FailedPermanently: false }
-                ? outboxEvent.NextRetryAt
-                : null,
-        };
-    }
-
-    /// <summary>
-    /// A legacy report-level doc carried the whole payable; per-line docs count only lines whose doc exists, so a
-    /// half-done push doesn't overstate the registered total against the ledger.
-    /// </summary>
-    private static decimal RegisteredAmount(ExpenseReportDto report) =>
-        report.HoldedDocId is not null
-            ? report.Payable
-            : PayableAllocation.Allocate(report)
-                .Where(a => a.Line.HoldedDocId is not null)
-                .Sum(a => a.Booked);
-
-    private ExpenseHoldedSyncState ResolveSyncState(HoldedExpenseOutboxEvent? outboxEvent) =>
-        ResolveSyncState(outboxEvent, holded.IsConfigured);
-
-    internal static ExpenseHoldedSyncState ResolveSyncState(
-        HoldedExpenseOutboxEvent? outboxEvent, bool holdedConfigured)
-    {
-        if (outboxEvent is null) return ExpenseHoldedSyncState.NotQueued;
-        // Written off sets ProcessedAt too, so it has to be tested before the success case.
-        if (outboxEvent.FailedPermanently) return ExpenseHoldedSyncState.Failed;
-        if (outboxEvent.ProcessedAt is not null) return ExpenseHoldedSyncState.Pushed;
-        if (!holdedConfigured) return ExpenseHoldedSyncState.NotConfigured;
-        return outboxEvent.RetryCount > 0
-            ? ExpenseHoldedSyncState.Retrying
-            : ExpenseHoldedSyncState.Queued;
-    }
+    public Task<ExpenseHoldedTimeline?> GetHoldedTimelineAsync(ExpenseReportDto report, CancellationToken ct = default) =>
+        holdedTimeline.GetHoldedTimelineAsync(report, ct);
 
     public async Task<IReadOnlyList<ExpenseReportDto>> GetForSubmitterAsync(
         Guid submitterUserId, CancellationToken ct = default)
@@ -160,24 +85,9 @@ internal sealed class ExpenseReportService(
         return reports;
     }
 
-    public async Task<IReadOnlyList<ExpenseReportDto>> GetReviewQueueAsync(
-        Guid viewerUserId, bool isFinanceAdmin, CancellationToken ct = default)
-    {
-        var queue = await repo.GetForReviewQueueAsync(ct);
-        if (isFinanceAdmin) return queue;
-
-        // Filtering the whole queue in memory beats a per-audience query at this scale.
-        // Drafts and withdrawals are excluded upstream for everyone.
-        var categoryIds = await GetCoordinatorCategoryIdsAsync(viewerUserId, ct);
-        var managedGrantIds = await preapprovals.ListManagedGrantIdsAsync(viewerUserId, ct);
-        var viewer = await userService.GetUserInfoAsync(viewerUserId, ct);
-        var ownIds = viewer?.AllUserIds ?? [viewerUserId];
-        return queue
-            .Where(r => ownIds.Contains(r.SubmitterUserId)
-                        || (r.BudgetCategoryId is { } categoryId && categoryIds.Contains(categoryId))
-                        || (r.PreapprovalGrantId is { } grantId && managedGrantIds.Contains(grantId)))
-            .ToList();
-    }
+    public Task<IReadOnlyList<ExpenseReportDto>> GetReviewQueueAsync(
+        Guid viewerUserId, bool isFinanceAdmin, CancellationToken ct = default) =>
+        reportAccess.GetReviewQueueAsync(viewerUserId, isFinanceAdmin, ct);
 
     public async Task<ExpenseReportDto?> GetReportOwningAttachmentAsync(
         Guid attachmentId, CancellationToken ct = default)
@@ -204,42 +114,9 @@ internal sealed class ExpenseReportService(
             : new ExpenseAttachmentDownload(bytes, attachment.ContentType, attachment.OriginalFileName);
     }
 
-    public async Task<IReadOnlyList<ExpenseReportDto>> GetCoordinatorQueueAsync(
-        Guid coordinatorUserId, CancellationToken ct = default)
-    {
-        var categoryIds = await GetCoordinatorCategoryIdsAsync(coordinatorUserId, ct);
-        var managedGrantIds = await preapprovals.ListManagedGrantIdsAsync(coordinatorUserId, ct);
-
-        var queue = categoryIds.Count == 0
-            ? []
-            : (await repo.GetByCategoryIdsAndStatusAsync(categoryIds, ExpenseReportStatus.Submitted, ct)).ToList();
-        if (managedGrantIds.Count > 0)
-            queue.AddRange((await repo.GetForReviewQueueAsync(ct)).Where(r =>
-                r.Status == ExpenseReportStatus.Submitted
-                && r.PreapprovalGrantId is { } grantId && managedGrantIds.Contains(grantId)));
-        return queue;
-    }
-
-    private async Task<IReadOnlyList<Guid>> GetCoordinatorCategoryIdsAsync(
-        Guid coordinatorUserId, CancellationToken ct)
-    {
-        var year = await budgetService.GetActiveYearAsync(ct);
-        if (year is null) return [];
-
-        // The same rule that grants endorse: whoever can sign a claim off sees it.
-        var categories = year.Groups.SelectMany(g => g.Categories).Where(c => c.TeamId.HasValue).ToList();
-        var coordinatedTeamIds = new HashSet<Guid>();
-        foreach (var teamId in categories.Select(c => c.TeamId!.Value).Distinct())
-        {
-            if (await teamService.IsUserCoordinatorOfTeamAsync(teamId, coordinatorUserId, ct))
-                coordinatedTeamIds.Add(teamId);
-        }
-
-        return categories
-            .Where(c => coordinatedTeamIds.Contains(c.TeamId!.Value))
-            .Select(c => c.Id)
-            .ToList();
-    }
+    public Task<IReadOnlyList<ExpenseReportDto>> GetCoordinatorQueueAsync(
+        Guid coordinatorUserId, CancellationToken ct = default) =>
+        reportAccess.GetCoordinatorQueueAsync(coordinatorUserId, ct);
 
     public async Task<ExpenseCreateDraftResult> CreateDraftAsync(
         Guid submitterUserId, Guid actorUserId, int holdedAccountNumber, string? note,
@@ -287,7 +164,7 @@ internal sealed class ExpenseReportService(
                     + DescribeGrant(preapprovalGrantId),
                     actorUserId,
                     relatedEntityId: submitterUserId,
-                    relatedEntityType: AuditEntityTypes.User);
+                    relatedEntityType: AuditSubjectTypes.User);
             }
 
             return ExpenseMutationResult.Success;
@@ -322,12 +199,16 @@ internal sealed class ExpenseReportService(
         {
             return (await userService.GetUserInfoAsync(userId, ct))?.BurnerName ?? userId.ToString();
         }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            logger.LogWarning("Audit display-name lookup cancelled for member {UserId}; using member ID", userId);
+        }
         catch (Exception ex)
         {
             // Name enrichment must not skip the audit or fail an edit that already committed.
-            logger.LogWarning(ex, "Could not resolve audit display name for member {UserId}", userId);
-            return userId.ToString();
+            logger.LogError(ex, "Could not resolve audit display name for member {UserId}; using member ID", userId);
         }
+        return userId.ToString();
     }
 
     /// <summary>
@@ -345,7 +226,7 @@ internal sealed class ExpenseReportService(
             $"{whatChanged} on behalf of {await DescribeMemberAsync(report.SubmitterUserId, ct)}.",
             actorUserId,
             relatedEntityId: report.SubmitterUserId,
-            relatedEntityType: AuditEntityTypes.User);
+            relatedEntityType: AuditSubjectTypes.User);
     }
 
     private static string DescribeNote(string? note) =>
@@ -639,7 +520,7 @@ internal sealed class ExpenseReportService(
             var removed = report.Lines.FirstOrDefault(l => l.Id == lineId);
 
             // One atomic save removes the line, its proof rows and their attachment rows; files go only after the
-            // commit (an orphan file is a warning, an orphan row is a bug).
+            // commit; cleanup failures cannot reverse the metadata deletion.
             var removedAttachments = await repo.RemoveLineAsync(reportId, lineId, ct)
                 ?? throw new InvalidOperationException("Failed to remove line.");
 
@@ -658,7 +539,7 @@ internal sealed class ExpenseReportService(
                 }
                 catch (Exception ex)
                 {
-                    logger.LogWarning(ex,
+                    logger.LogError(ex,
                         "Could not delete attachment file {AttachmentId} while removing line {LineId}",
                         attachment.Id, lineId);
                 }
@@ -750,7 +631,7 @@ internal sealed class ExpenseReportService(
                 }
                 catch (Exception ex)
                 {
-                    logger.LogWarning(ex, "Could not delete unlinked attachment file {AttachmentId}", attachmentId);
+                    logger.LogError(ex, "Could not delete unlinked attachment file {AttachmentId}", attachmentId);
                 }
                 return new("Expenses_Validation_LineNotOnReport", []);
             }
@@ -762,7 +643,7 @@ internal sealed class ExpenseReportService(
                 $"Attachment uploaded to line {lineId}.",
                 actorUserId,
                 relatedEntityId: report.SubmitterUserId,
-                relatedEntityType: AuditEntityTypes.User);
+                relatedEntityType: AuditSubjectTypes.User);
         }
         catch
         {
@@ -795,7 +676,7 @@ internal sealed class ExpenseReportService(
                 }
                 catch (Exception ex)
                 {
-                    logger.LogWarning(ex,
+                    logger.LogError(ex,
                         "Could not delete attachment file {AttachmentId} after upload rollback",
                         attachmentId);
                 }
@@ -813,7 +694,7 @@ internal sealed class ExpenseReportService(
             }
             catch (Exception ex)
             {
-                logger.LogWarning(ex, "Could not delete superseded attachment file {AttachmentId}", replacedAttachment.Id);
+                logger.LogError(ex, "Could not delete superseded attachment file {AttachmentId}", replacedAttachment.Id);
             }
         }
 
@@ -855,7 +736,7 @@ internal sealed class ExpenseReportService(
                 $"Attachment removed from line {lineId}.",
                 actorUserId,
                 relatedEntityId: report.SubmitterUserId,
-                relatedEntityType: AuditEntityTypes.User);
+                relatedEntityType: AuditSubjectTypes.User);
 
             // Post-commit cleanup: metadata and audit are written, so request cancellation
             // must not strand the file.
@@ -866,7 +747,7 @@ internal sealed class ExpenseReportService(
             }
             catch (Exception ex)
             {
-                logger.LogWarning(ex,
+                logger.LogError(ex,
                     "Could not delete attachment file {AttachmentId} for line {LineId}",
                     removed.Id, lineId);
             }
@@ -955,7 +836,7 @@ internal sealed class ExpenseReportService(
                 + DescribeGrant(report.PreapprovalGrantId),
                 actorUserId,
                 relatedEntityId: report.SubmitterUserId,
-                relatedEntityType: AuditEntityTypes.User);
+                relatedEntityType: AuditSubjectTypes.User);
 
             return ExpenseMutationResult.Success;
 
@@ -1088,7 +969,7 @@ internal sealed class ExpenseReportService(
                 await DescribeIbanChangeAsync(submitterUserId, actorUserId, normalized, ct),
                 actorUserId,
                 relatedEntityId: submitterUserId,
-                relatedEntityType: AuditEntityTypes.User);
+                relatedEntityType: AuditSubjectTypes.User);
 
             logger.LogInformation(
                 "IBAN {Action} for user {UserId}",
@@ -1139,7 +1020,7 @@ internal sealed class ExpenseReportService(
             $"{description}.",
             actorUserId,
             relatedEntityId: report.SubmitterUserId,
-            relatedEntityType: AuditEntityTypes.User);
+            relatedEntityType: AuditSubjectTypes.User);
     }
 
     /// <summary>
@@ -1323,34 +1204,9 @@ internal sealed class ExpenseReportService(
 
     private const int DeclineReasonMaxLength = 1000;
 
-    /// <summary>
-    /// The service half of the DeclineLine gate: the report must still await a decision (a first reviewer only while
-    /// Submitted, a finance admin through CoordinatorEndorsed), and the line must be top-level. Proof rows are never
-    /// declinable.
-    /// </summary>
-    private async Task<(ExpenseReportDto? Report, ExpenseLineDto? Line, ExpenseMutationResult? Refusal)>
-        GetDeclinableLineAsync(
-            Guid reportId, Guid actorUserId, bool actorIsFinanceAdmin, Guid lineId, CancellationToken ct)
-    {
-        const string cannot = "Could not change the line. The report may no longer be awaiting a decision.";
-        var report = await repo.GetByIdAsync(reportId, ct);
-        if (report is null) return (null, null, ExpenseMutationResult.OperatorFailure(cannot));
-
-        var open = actorIsFinanceAdmin
-            ? report.Status is ExpenseReportStatus.Submitted or ExpenseReportStatus.CoordinatorEndorsed
-            : report.Status is ExpenseReportStatus.Submitted;
-        if (!open) return (null, null, ExpenseMutationResult.OperatorFailure(cannot));
-
-        if (!actorIsFinanceAdmin
-            && await GetFirstReviewerRefusalAsync(report, actorUserId, ct) is { } reviewerRefusal)
-            return (null, null, reviewerRefusal);
-
-        var line = report.Lines.FirstOrDefault(l => l.Id == lineId);
-        if (line is null) return (null, null, ExpenseMutationResult.Failure("Expenses_Validation_LineNotOnReport"));
-        if (line.ParentLineId is not null)
-            return (null, null, ExpenseMutationResult.OperatorFailure("Proof rows cannot be declined; decline the invoice line instead."));
-        return (report, line, null);
-    }
+    private Task<(ExpenseReportDto? Report, ExpenseLineDto? Line, ExpenseMutationResult? Refusal)>
+        GetDeclinableLineAsync(Guid reportId, Guid actorUserId, bool actorIsFinanceAdmin, Guid lineId, CancellationToken ct) =>
+        reportAccess.GetDeclinableLineAsync(reportId, actorUserId, actorIsFinanceAdmin, lineId, ct);
 
     /// <summary>
     /// Re-reads the report so the amount is the DTO's own <c>Payable</c>, cap included. Sent after the save: the outbox
@@ -1511,30 +1367,12 @@ internal sealed class ExpenseReportService(
 
         }, "Error re-queuing Holded push for expense report {ReportId}", reportId);
 
-    /// <summary>
-    /// The service half of the edit gate. A member edits only their own Draft. A finance admin edits on their behalf,
-    /// so ownership is waived and the window is Draft, Submitted and CoordinatorEndorsed.
-    /// </summary>
-    private async Task<(ExpenseReportDto? Report, ExpenseMutationResult? Refusal)> GetEditableReportAsync(
-        Guid reportId, Guid actorUserId, bool actorIsFinanceAdmin, CancellationToken ct)
-    {
-        var report = await repo.GetByIdAsync(reportId, ct);
-        if (report is null)
-            return (null, ExpenseMutationResult.Failure("Expenses_Iban_ReportNotFound"));
-        if (!actorIsFinanceAdmin && !await IsSubmitterAsync(report, actorUserId, ct))
-            return (null, ExpenseMutationResult.Failure("Expenses_Validation_OnlySubmitterCanEdit"));
+    private Task<(ExpenseReportDto? Report, ExpenseMutationResult? Refusal)> GetEditableReportAsync(
+        Guid reportId, Guid actorUserId, bool actorIsFinanceAdmin, CancellationToken ct) =>
+        reportAccess.GetEditableReportAsync(reportId, actorUserId, actorIsFinanceAdmin, ct);
 
-        var editable = actorIsFinanceAdmin
-            ? report.Status is ExpenseReportStatus.Draft or ExpenseReportStatus.Submitted or ExpenseReportStatus.CoordinatorEndorsed
-            : report.Status is ExpenseReportStatus.Draft;
-        return editable
-            ? (report, null)
-            : (null, ExpenseMutationResult.Failure("Expenses_Validation_ReportCannotBeEditedInStatus", report.Status));
-    }
-
-    private async Task<bool> IsSubmitterAsync(ExpenseReportDto report, Guid actorUserId, CancellationToken ct) =>
-        report.SubmitterUserId == actorUserId
-        || (await userService.GetUserInfoAsync(actorUserId, ct))?.AllUserIds.Contains(report.SubmitterUserId) == true;
+    private Task<bool> IsSubmitterAsync(ExpenseReportDto report, Guid actorUserId, CancellationToken ct) =>
+        reportAccess.IsSubmitterAsync(report, actorUserId, ct);
 
     /// <summary>
     /// Resolves what a report books to from the account the submitter picked. A budget-category
@@ -1546,7 +1384,7 @@ internal sealed class ExpenseReportService(
     private async Task<(ExpenseBooking? Booking, ExpenseMutationResult? Refusal)> ResolveBookingAsync(
         int holdedAccountNumber, Guid? pinnedYearId, CancellationToken ct)
     {
-        var account = (await holdedFinance.ListExpenseAccountsAsync(activeOnly: true, ct))
+        var account = (await finance.ListExpenseAccountsAsync(activeOnly: true, ct))
             .FirstOrDefault(a => a.AccountNum == holdedAccountNumber);
         if (account is null)
             return (null, ExpenseMutationResult.Failure("Expenses_Validation_AccountNotFound"));
@@ -1555,8 +1393,8 @@ internal sealed class ExpenseReportService(
 
         // The option list said this account is a budget category, so the map row exists; the
         // category behind it may still be gone or belong to another year.
-        var mapRow = (await holdedFinance.GetCategoryMapAsync(ct))
-            .FirstOrDefault(m => m.IsActive && m.HoldedAccountNumber == holdedAccountNumber);
+        var mapRow = (await finance.GetCategoryMapAsync(ct))
+            .FirstOrDefault(m => m.HoldedAccountNumber == holdedAccountNumber);
         if (mapRow is null)
             return (null, ExpenseMutationResult.Failure("Expenses_Validation_CategoryNotFound"));
 
@@ -1583,155 +1421,13 @@ internal sealed class ExpenseReportService(
         : report.PreapprovalGrantId is null ? "Coordinator"
         : "Pre-approval manager";
 
-    /// <summary>
-    /// A pre-approved report has no category; its first reviewer is a manager of the grant's program, the person who
-    /// already decided it.
-    /// </summary>
-    private async Task<ExpenseMutationResult?> GetFirstReviewerRefusalAsync(
-        ExpenseReportDto report, Guid actorUserId, CancellationToken ct)
-    {
-        if (report.PreapprovalGrantId is { } grantId)
-            return (await preapprovals.ListManagedGrantIdsAsync(actorUserId, ct)).Contains(grantId)
-                ? null
-                : ExpenseMutationResult.OperatorFailure("Actor is not a manager of the report's pre-approval program.");
-
-        var categoryId = report.BudgetCategoryId;
-        if (categoryId is null)
-            return ExpenseMutationResult.OperatorFailure("Report is not booked to a budget category; there is no coordinator to endorse it.");
-        var category = await budgetService.GetCategoryByIdAsync(categoryId.Value, ct);
-        if (category is null)
-            throw new InvalidOperationException("Budget category not found.");
-        if (!category.TeamId.HasValue)
-            return ExpenseMutationResult.OperatorFailure("Category has no owning team; coordinator endorsement is not valid.");
-        var isCoordinator = await teamService.IsUserCoordinatorOfTeamAsync(
-            category.TeamId.Value, actorUserId, ct);
-        if (!isCoordinator)
-            return ExpenseMutationResult.OperatorFailure("Actor is not a coordinator of the category's team.");
-        return null;
-    }
+    private Task<ExpenseMutationResult?> GetFirstReviewerRefusalAsync(
+        ExpenseReportDto report, Guid actorUserId, CancellationToken ct) =>
+        reportAccess.GetFirstReviewerRefusalAsync(report, actorUserId, ct);
 
     /// <summary>Includes accounts merged into this one. The member's IBAN is Finance's slice.</summary>
-    public async Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(
-        Guid userId, CancellationToken ct)
-    {
-        // Asked with an archived id, the survivor's own reports count too.
-        var user = await userService.GetUserInfoAsync(userId, ct);
-        var allIds = user?.AllUserIds ?? [userId];
-
-        var allReports = new List<ExpenseReportDto>();
-        foreach (var id in allIds)
-        {
-            var reports = await repo.GetForSubmitterAsync(id, ct);
-            allReports.AddRange(reports);
-        }
-
-        var expenseActions = new List<AuditActionDefinition>
-        {
-            ExpensesAuditActions.ExpenseCreatedOnBehalf,
-            ExpensesAuditActions.ExpenseEditedOnBehalf,
-            ExpensesAuditActions.ExpensePayeeIbanUpdated,
-            ExpensesAuditActions.ExpenseSubmit,
-            ExpensesAuditActions.ExpenseEndorse,
-            ExpensesAuditActions.ExpenseCoordinatorReject,
-            ExpensesAuditActions.ExpenseApprove,
-            ExpensesAuditActions.ExpenseReject,
-            ExpensesAuditActions.ExpenseWithdraw,
-            ExpensesAuditActions.ExpenseCategoryOverride,
-            ExpensesAuditActions.ExpenseSepaSent,
-            ExpensesAuditActions.ExpenseSepaReopened,
-            ExpensesAuditActions.ExpensePaid,
-            ExpensesAuditActions.ExpenseAttachmentUploaded,
-            ExpensesAuditActions.ExpenseAttachmentRemoved,
-            ExpensesAuditActions.ExpenseLineDeclined,
-            ExpensesAuditActions.ExpenseLineDeclineUndone,
-            ExpensesAuditActions.IbanSet,
-            ExpensesAuditActions.IbanRemove,
-            FinanceAuditActions.IbanReveal,
-        }.Select(a => a.Name).ToList();
-
-        var auditEntries = (await auditViewer.GetFilteredAsync(
-            entityType: null,
-            entityId: null,
-            userId: userId,
-            actions: expenseActions,
-            limit: 10_000,
-            ct: ct)).ToList();
-
-        // Decisions others took on the member's claims name the claim, not the member.
-        foreach (var report in allReports)
-        {
-            auditEntries.AddRange(await auditViewer.GetFilteredAsync(
-                entityType: AuditEntityTypes.Report,
-                entityId: report.Id,
-                userId: null,
-                actions: expenseActions,
-                limit: 10_000,
-                ct: ct));
-        }
-        auditEntries = auditEntries
-            .DistinctBy(e => e.Id)
-            .OrderByDescending(e => e.OccurredAt)
-            .ToList();
-
-        var shapedReports = allReports
-            .OrderBy(r => r.CreatedAt)
-            .Select(r => new
-            {
-                r.Id,
-                r.Status,
-                r.Note,
-                r.PayeeName,
-                PayeeIban = IbanFormatter.Mask(r.PayeeIban),
-                r.Total,
-                r.MaxAmount,
-                SubmittedAt = r.SubmittedAt?.ToIso8601(),
-                CoordinatorEndorsedAt = r.CoordinatorEndorsedAt?.ToIso8601(),
-                ApprovedAt = r.ApprovedAt?.ToIso8601(),
-                r.LastRejectionReason,
-                LastRejectedAt = r.LastRejectedAt?.ToIso8601(),
-                CreatedAt = r.CreatedAt.ToIso8601(),
-                Lines = r.Lines.Select(l => new
-                {
-                    l.Id,
-                    l.Description,
-                    l.Amount,
-                    l.LineType,
-                    l.ParentLineId,
-                    l.SortOrder,
-                    l.Declined,
-                    l.DeclinedReason,
-                    DeclinedAt = l.DeclinedAt?.ToIso8601(),
-                    Attachment = l.Attachment is null
-                        ? null
-                        : new
-                        {
-                            l.Attachment.OriginalFileName,
-                            l.Attachment.ContentType,
-                            l.Attachment.SizeBytes,
-                        }
-                }).ToList()
-            }).ToList();
-
-        var shapedAudit = auditEntries
-            .Select(e => new
-            {
-                Action = e.Action.Name,
-                e.EntityType,
-                e.EntityId,
-                e.Description,
-                OccurredAt = e.OccurredAt.ToIso8601()
-            }).ToList();
-
-        return
-        [
-            new UserDataSlice(ExpenseReports,
-                shapedReports.Count > 0 ? shapedReports : null),
-            new UserDataSlice(ExpenseAuditLog,
-                shapedAudit.Count > 0
-                    ? new { Entries = shapedAudit }
-                    : (object?)null),
-        ];
-    }
+    public Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct) =>
+        reportExport.ContributeForUserAsync(userId, ct);
 
     private const string FiscalRetention =
         "Retained in full, nothing erased: the voucher keeps the payee's legal name, their " +

@@ -28,12 +28,7 @@ public sealed class ShiftsEmailsTests
             Culture: "en");
 
     [HumansTheory]
-    [InlineData("en")]
-    [InlineData("es")]
-    [InlineData("de")]
-    [InlineData("it")]
-    [InlineData("fr")]
-    [InlineData("ca")]
+    [MemberData(nameof(SupportedCultures.All), MemberType = typeof(SupportedCultures))]
     public void CoordinatorRotaMessage_RoutesRepliesToCoordinator_VolunteerUpdates(string culture)
     {
         var msg = Create().CoordinatorRotaMessage(RotaRequest() with { Culture = culture });

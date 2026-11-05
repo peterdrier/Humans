@@ -76,6 +76,16 @@ namespace Humans.Store.Data.Migrations
                     b.Property<Guid?>("CampSeasonId")
                         .HasColumnType("uuid");
 
+                    b.Property<decimal?>("CheckoutAmountEur")
+                        .HasColumnType("numeric(12,2)");
+
+                    b.Property<Guid?>("CheckoutAttemptId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("CheckoutSessionId")
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)");
+
                     b.Property<string>("CounterpartyAddress")
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)");

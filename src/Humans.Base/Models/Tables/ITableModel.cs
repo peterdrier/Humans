@@ -38,6 +38,9 @@ public interface ITableModel
 
     string? RowHref(object row);
     string? RowCss(object row);
+
+    /// <summary>Encoded <c>data-*</c> attributes for the row's <c>tr</c>, for page scripts that filter rows.</summary>
+    IHtmlContent RowData(object row);
 }
 
 public sealed record TableFooterCell(string Text, string? CssClass = null);

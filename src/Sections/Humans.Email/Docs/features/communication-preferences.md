@@ -29,7 +29,7 @@ GDPR and CAN-SPAM compliance require giving users control over which communicati
 | Governance (board voting, tier applications, role assignments) | Opt-in | Opt-in | On | Yes |
 | Marketing (mailing list, promotions) | Opt-in | Opt-in | Off | Yes |
 
-Category names, descriptions, the clock-derived Ticketing year heading and ticket-lock note are localized in all six supported cultures on member and guest pages. Guest one-click banners and legacy Marketing unsubscribe pages share the translated category names.
+Category names, descriptions, the clock-derived Ticketing year heading and ticket-lock note are localized in all supported cultures on member and guest pages. Guest one-click banners and legacy Marketing unsubscribe pages share the translated category names.
 
 The member panel currently shows only the Email control. Its updates preserve the existing inbox setting rather than resetting the hidden channel. Save requests reject redirects; an expired or revoked session restores the checkbox and shows failure feedback instead of confirming a save.
 
@@ -61,13 +61,13 @@ When a user opts out of Facilitated Messages, the "Send Message" button is hidde
 
 **Entity:** `CommunicationPreference` (table: `email_communication_preferences`, Email's since Users decomposition commit 14)
 - `UserId` + `Category` (unique index) — one row per user per category
-- `OptedOut` (bool?) — true = user does NOT receive email for this category; null = a cleared row (reset, or the merge source), read as the category default
+- `OptedOut` (bool?) — true = user does NOT receive email for this category; null = a historical cleared row, read as the category default (resets and merges now delete the row)
 - `InboxEnabled` (bool) — true = user receives in-app alerts for this category
 - `UpdatedAt` (Instant) — when preference was last changed
 - `UpdateSource` (string) — how it was set: "Profile" (signed-in profile UI), "Guest" (signed-in Guest dashboard, profileless), "MagicLink" (anonymous unsubscribe-token endpoints), "OneClick" (RFC 8058 List-Unsubscribe), "Default" (historical lazy seed), "DataMigration"
 - `SubscribedAt` (Instant, nullable) — earliest known opt-in instant for this category; stamped on first opt-in transition or import from a source with a real subscribe date, preserved across later opt-out/re-opt cycles. An account merge fills a missing survivor timestamp from the source before removing its row, retaining any known survivor timestamp regardless of which account's current preference wins.
 
-Reads and writes use only Email's table. The copy and legacy fallback retired after production reported `email.communication-preferences` with `pending: 0`, `done: true` on 2026-11-03. A missing row or a historical null `OptedOut` uses category defaults; resets delete rows. Users' frozen table awaits a separate drop.
+Reads and writes use only Email's table. The copy and legacy fallback retired after production reported `email.communication-preferences` with `pending: 0`, `done: true` on 2026-11-03. A missing row or a historical null `OptedOut` uses category defaults; resets delete rows. Users' legacy table is dropped.
 
 **Enum:** `MessageCategory` (`Humans.Email.Contracts`) — stored as string in DB
 - Active: System, CampaignCodes, FacilitatedMessages, Ticketing, VolunteerUpdates, TeamUpdates, Governance, Marketing

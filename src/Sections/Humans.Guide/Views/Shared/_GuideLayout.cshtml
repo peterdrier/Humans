@@ -1,5 +1,4 @@
 @model GuideViewModel
-@inject IStringLocalizer<SharedResource> SharedLocalizer
 
 <div class="row">
     <aside class="col-md-3 mb-4">
@@ -19,16 +18,6 @@
         </nav>
     </aside>
     <section class="col-md-9">
-        @if (!string.IsNullOrEmpty(Model.FileStem) && !string.Equals(Model.FileStem, "README", StringComparison.OrdinalIgnoreCase))
-        {
-            <nav aria-label="@Localizer["Guide_Breadcrumbs"]">
-                <ol class="breadcrumb">
-                    <li class="breadcrumb-item"><a asp-controller="Guide" asp-action="Index">@SharedLocalizer["SectionHelp_Guide"]</a></li>
-                    <li class="breadcrumb-item active" aria-current="page">@Model.Title</li>
-                </ol>
-            </nav>
-        }
-
         @if (TempData["GuideRefreshStatus"] is string status)
         {
             <div class="alert alert-info">@status</div>

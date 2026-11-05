@@ -1,8 +1,9 @@
 const assert = require('node:assert/strict');
 const { test } = require('node:test');
-const { readFileSync } = require('node:fs');
+const { readFileSync, readdirSync } = require('node:fs');
 const { resolve } = require('node:path');
 const vm = require('node:vm');
+const { installHumans } = require('../../browser-support/humans-js.cjs');
 
 function api(saveFailed, clearFailed, response) {
     const requests = [];
@@ -10,7 +11,7 @@ function api(saveFailed, clearFailed, response) {
         getElementById: () => ({ dataset: { year: '2026', i18nSaveFailed: saveFailed, i18nClearFailed: clearFailed } }),
         querySelector: () => ({ value: 'csrf' }),
     }, ESRI_TILES: [], MAP_BOUNDS: [], fetch: async (url, options) => { requests.push({ url, options }); return response; } };
-    vm.createContext(context);
+    installHumans(context); vm.createContext(context);
     const root = resolve(__dirname, '../../../src/Sections/Humans.CityPlanning/wwwroot/js/city-planning/container-map');
     for (const file of ['config.js', 'api.js']) {
         const source = readFileSync(resolve(root, file), 'utf8').replace(/^import[^\n]*;\s*$/gm, '').replaceAll('export ', '');
@@ -21,13 +22,16 @@ function api(saveFailed, clearFailed, response) {
         clear: () => context.clearPlacement('A', 2026) };
 }
 
-for (const [culture, saveFailed, clearFailed] of [
-    ['en', 'Save failed', 'Clear failed'], ['es', 'Error al guardar', 'Error al borrar'],
-    ['de', 'Speichern fehlgeschlagen', 'Entfernen fehlgeschlagen'],
-    ['it', 'Salvataggio non riuscito', 'Rimozione non riuscita'],
-    ['fr', 'Échec de l’enregistrement', 'Échec de la suppression'],
-    ['ca', 'Error en desar', 'Error en esborrar'],
-]) {
+const resources = resolve(__dirname, '../../../src/Sections/Humans.Containers');
+function translations(...keys) {
+    return readdirSync(resources).filter(file => /^ContainersResource(\.[\w-]+)?\.resx$/.test(file)).map(file => {
+        const resx = readFileSync(resolve(resources, file), 'utf8');
+        return [/^ContainersResource\.([\w-]+)\.resx$/.exec(file)?.[1] ?? 'en',
+            ...keys.map(key => resx.match(new RegExp(`<data name="${key}"[^>]*>\\s*<value>([^<]*)</value>`))[1])];
+    });
+}
+
+for (const [culture, saveFailed, clearFailed] of translations('Containers_MapSaveFailed', 'Containers_MapClearFailed')) {
     for (const operation of ['save', 'notes', 'clear']) {
         test(`${culture} ${operation} errors retain status and server detail with a translated prefix`, async () => {
             const client = api(saveFailed, clearFailed, { ok: false, status: 422, text: async () => 'Server detail' });

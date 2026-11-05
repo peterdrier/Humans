@@ -12,24 +12,70 @@
 
     var m = Model.Match;
     string Amt(decimal v) => v.ToString("#,##0.00", System.Globalization.CultureInfo.InvariantCulture);
+
+    Func<SepaPayoutTransferRow, IHtmlContent> sepaFileCell =
+        @<text><a asp-action="Sepa" class="font-monospace small">@item.FileName</a></text>;
+    Func<SepaPayoutTransferRow, IHtmlContent> sepaStatusCell = @<text>
+        @if (item.WithdrawnAt is { } withdrawnAt)
+        {
+            <span class="badge text-bg-dark">Withdrawn</span>
+            <span class="text-muted small">@withdrawnAt.InZone(madrid).Date.ToInvariantDate()</span>
+        }
+        else if (item.BookedAt is { } bookedAt)
+        {
+            <span class="badge text-bg-success">Booked</span>
+            <span class="text-muted small">@bookedAt.InZone(madrid).Date.ToInvariantDate()</span>
+        }
+        else
+        {
+            <span class="badge text-bg-secondary">Generated</span>
+        }
+    </text>;
+    Func<SepaPayoutTransferRow, IHtmlContent> sepaAmountCell = @<text>@item.Amount.ToEuro()</text>;
+    var sepaTable = TableModel.For(Model.SepaTransfers)
+        .Column("Generated", t => t.GeneratedAt.InZone(madrid).Date.ToInvariantDate(), o => o.Css("text-nowrap"))
+        .Template("File", sepaFileCell, sortBy: t => t.FileName)
+        .Column("IBAN", t => t.IbanMasked, o => o.Css("font-monospace small"))
+        .Template("Status", sepaStatusCell, o => o.Css("text-nowrap"))
+        .Template("Amount", sepaAmountCell, o => o.End(), sortBy: t => t.Amount)
+        .Css("align-middle")
+        .Build();
+
+    Func<Humans.Expenses.Contracts.ExpenseReportDto, IHtmlContent> reportCell =
+        @<text><a href="/Expenses/@item.Id">@item.Id.ToString()[..8]…</a></text>;
+    Func<Humans.Expenses.Contracts.ExpenseReportDto, IHtmlContent> payableCell = @<text>@item.Payable.ToEuro()</text>;
+    var reportsTable = TableModel.For(Model.ExpenseReports)
+        .Template("Report", reportCell, o => o.Css("text-nowrap"))
+        .Column("Status", r => r.Status, o => o.Css("text-nowrap"))
+        .Column("Subject", r => r.Note)
+        .Column("Approved", r => r.ApprovedAt?.InZone(madrid).Date.ToInvariantDate(), o => o.Css("text-nowrap"))
+        .Column("Holded documents", r => r.HoldedDocIds.Count, o => o.Number().End())
+        .Template("Payable", payableCell, o => o.End(), sortBy: r => r.Payable)
+        .Css("align-middle")
+        .Build();
 }
 
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <h1 class="mb-0">@ledger.SupplierAccountNum@(string.IsNullOrEmpty(c?.Name) ? "" : $" · {c.Name}")</h1>
-    <div class="d-flex gap-2">
-        <a href="https://app.holded.com/accounting/ledger/@ledger.SupplierAccountNum" target="_blank" rel="noopener noreferrer"
-           class="btn btn-outline-primary" title="This account's ledger in Holded itself.">
-            <i class="fa-solid fa-arrow-up-right-from-square me-1"></i>See in Holded
-        </a>
-        <a href="/Holded/Accounts/@ledger.SupplierAccountNum" class="btn btn-outline-secondary"
-           title="The same account in Holded's own sign convention — debit and credit as posted.">
-            <i class="fa-solid fa-book me-1"></i>General ledger
-        </a>
-        <a asp-action="Creditors" class="btn btn-outline-secondary">
-            <i class="fa-solid fa-arrow-left me-1"></i>All Creditors
-        </a>
+<page-header title="@($"{ledger.SupplierAccountNum}{(string.IsNullOrEmpty(c?.Name) ? "" : " · " + c.Name)}")">
+    <a href="https://app.holded.com/accounting/ledger/@ledger.SupplierAccountNum" target="_blank" rel="noopener noreferrer"
+       class="btn btn-outline-primary" title="This account's ledger in Holded itself.">
+        <i class="fa-solid fa-arrow-up-right-from-square me-1"></i>See in Holded
+    </a>
+    <a href="/Holded/Accounts/@ledger.SupplierAccountNum" class="btn btn-outline-secondary"
+       title="The same account in Holded's own sign convention — debit and credit as posted.">
+        <i class="fa-solid fa-book me-1"></i>General ledger
+    </a>
+    <a asp-action="Creditors" class="btn btn-outline-secondary">
+        <i class="fa-solid fa-arrow-left me-1"></i>All Creditors
+    </a>
+</page-header>
+
+@if (ledger.ContactUnavailableReason is { } unknown)
+{
+    <div class="alert alert-warning">
+        <i class="fa-solid fa-triangle-exclamation me-1"></i>
+        The ledger lines are right, but who this account belongs to is not known. @unknown
     </div>
-</div>
+}
 
 <div class="row mb-4">
     <div class="col-md-3">
@@ -125,7 +171,7 @@
     <div class="card-header">Ledger — everything the mirror holds for this account (credit = owed/in, debit = paid/out; balance = running total after each line, positive = owed to the member)</div>
     @if (lines.Count == 0)
     {
-        <div class="card-body text-muted text-center py-4">No cached ledger lines for this account.</div>
+        <div class="card-body py-4"><empty-state class="mb-0">No cached ledger lines for this account.</empty-state></div>
     }
     else
     {
@@ -146,8 +192,8 @@
                     <td class="text-nowrap">@l.Date.InZone(madrid).ToDateTimeUnspecified().ToInvariantDate()</td>
                     <td>@row.Description</td>
                     <td class="text-muted small">@l.Type</td>
-                    <td class="text-end">@(l.Credit > 0 ? l.Credit.ToEuro() : "")</td>
-                    <td class="text-end">@(l.Debit > 0 ? l.Debit.ToEuro() : "")</td>
+                    <td class="text-end">@(row.Credit > 0 ? row.Credit.ToEuro() : "")</td>
+                    <td class="text-end">@(row.Debit > 0 ? row.Debit.ToEuro() : "")</td>
                     <td class="text-end @(row.RunningBalance > 0 ? "finance-positive" : row.RunningBalance < 0 ? "finance-negative" : "")">@row.RunningBalance.ToEuro()</td>
                 </tr>
             }
@@ -157,35 +203,25 @@
 </div>
 
 <div class="card mt-4">
-    <div class="card-header">Expense reports booked to this account (submitted and later; approved reports are the ones pushed to Holded)</div>
-    @if (Model.ExpenseReports.Count == 0)
+    <div class="card-header">SEPA payments sent to this account (from our payout files; booked = settled in Holded)</div>
+    @if (Model.SepaTransfers.Count == 0)
     {
-        <div class="card-body text-muted text-center py-4">No expense reports are booked to this account.</div>
+        <div class="card-body py-4"><empty-state class="mb-0">No SEPA payout file has paid this account.</empty-state></div>
     }
     else
     {
-        <table class="table table-sm table-hover mb-0 align-middle">
-            <thead><tr>
-                <th>Report</th>
-                <th>Status</th>
-                <th>Subject</th>
-                <th>Approved</th>
-                <th class="text-end">Holded documents</th>
-                <th class="text-end">Payable</th>
-            </tr></thead>
-            <tbody>
-            @foreach (var r in Model.ExpenseReports)
-            {
-                <tr>
-                    <td class="text-nowrap"><a href="/Expenses/@r.Id">@r.Id.ToString()[..8]…</a></td>
-                    <td class="text-nowrap">@r.Status</td>
-                    <td>@r.Note</td>
-                    <td class="text-nowrap">@(r.ApprovedAt?.InZone(madrid).Date.ToInvariantDate())</td>
-                    <td class="text-end">@r.HoldedDocIds.Count</td>
-                    <td class="text-end">@r.Payable.ToEuro()</td>
-                </tr>
-            }
-            </tbody>
-        </table>
+        <partial name="_Table" model="sepaTable" />
+    }
+</div>
+
+<div class="card mt-4">
+    <div class="card-header">Expense reports booked to this account (submitted and later; approved reports are the ones pushed to Holded)</div>
+    @if (Model.ExpenseReports.Count == 0)
+    {
+        <div class="card-body py-4"><empty-state class="mb-0">No expense reports are booked to this account.</empty-state></div>
+    }
+    else
+    {
+        <partial name="_Table" model="reportsTable" />
     }
 </div>

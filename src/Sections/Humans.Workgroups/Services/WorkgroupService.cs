@@ -25,7 +25,7 @@ internal sealed partial class WorkgroupService(
     ISettingsService settings,
     IGoogleSyncService googleSync,
     IGoogleSyncWrite googleSyncWrite,
-    IHoldedFinanceWrite finance,
+    IFinanceWrite finance,
     IHoldedService holded,
     INotificationService notifications,
     IEmailService email,
@@ -34,28 +34,24 @@ internal sealed partial class WorkgroupService(
     IClock clock,
     ILogger<WorkgroupService> logger) : IWorkgroupService
 {
+    private readonly WorkgroupDataExport dataExport = new(repository);
+    private readonly WorkgroupRegisterReader registerReader = new(repository);
+
+    private readonly WorkgroupNotices notices = new(users, roles, notifications, email, emailFactory, logger);
+
     private static readonly string[] ReservedSlugs = ["apply", "admin"];
 
-    public async Task<IReadOnlyList<WorkgroupInfo>> GetRegisterAsync(CancellationToken ct = default)
-    {
-        var graph = await repository.GetGraphAsync(ct);
-        return graph.Workgroups.Select(ToInfo).ToList();
-    }
+    public Task<IReadOnlyList<WorkgroupInfo>> GetRegisterAsync(CancellationToken ct = default) =>
+        registerReader.GetRegisterAsync(ct);
 
-    public async Task<WorkgroupInfo?> GetBySlugAsync(string slug, CancellationToken ct = default) =>
-        (await GetRegisterAsync(ct)).FirstOrDefault(w => string.Equals(w.Slug, slug, StringComparison.Ordinal));
+    public Task<WorkgroupInfo?> GetBySlugAsync(string slug, CancellationToken ct = default) =>
+        registerReader.GetBySlugAsync(slug, ct);
 
-    public async Task<WorkgroupInfo?> GetByIdAsync(Guid id, CancellationToken ct = default)
-    {
-        var workgroup = await repository.GetWorkgroupAsync(id, ct);
-        return workgroup is null ? null : ToInfo(workgroup);
-    }
+    public Task<WorkgroupInfo?> GetByIdAsync(Guid id, CancellationToken ct = default) =>
+        registerReader.GetByIdAsync(id, ct);
 
-    public async Task<IReadOnlyList<WorkgroupInfo>> GetForMemberAsync(Guid userId, CancellationToken ct = default)
-    {
-        var register = await GetRegisterAsync(ct);
-        return register.Where(w => w.IsMember(userId)).ToList();
-    }
+    public Task<IReadOnlyList<WorkgroupInfo>> GetForMemberAsync(Guid userId, CancellationToken ct = default) =>
+        registerReader.GetForMemberAsync(userId, ct);
 
     public async Task<WorkgroupMutationResult<Guid>> ApplyAsync(
         Guid actorUserId, WorkgroupApplication application, CancellationToken ct = default)
@@ -95,10 +91,10 @@ internal sealed partial class WorkgroupService(
         await repository.AddWorkgroupAsync(workgroup, ct);
 
         var info = ToInfo(workgroup);
-        await NotifyBoardAsync(WorkgroupsNotificationSources.WorkgroupRegistrationPending,
+        await notices.NotifyBoardAsync(WorkgroupsNotificationSources.WorkgroupRegistrationPending,
             $"Working group applied: {workgroup.Name}", info,
             "A new working group is waiting on the Secretary.", ct);
-        await EmailBoardAsync(WorkgroupNoticeKind.Applied, info, detail: null, ct);
+        await notices.EmailBoardAsync(WorkgroupNoticeKind.Applied, info, detail: null, ct);
 
         return new(workgroup.Id);
     }
@@ -120,7 +116,7 @@ internal sealed partial class WorkgroupService(
         // pending row, which erasure deletes, never in an inbox it can't reach.
         ct = CancellationToken.None;
         var info = ToInfo(workgroup);
-        await NotifyAsync(info.CoordinatorUserIds(), WorkgroupsNotificationSources.WorkgroupMembershipRequested,
+        await notices.NotifyAsync(info.CoordinatorUserIds(), WorkgroupsNotificationSources.WorkgroupMembershipRequested,
             "Workgroups_Notice_MembershipRequested", info, body: null, ct);
         return new();
     }
@@ -128,10 +124,9 @@ internal sealed partial class WorkgroupService(
     public async Task<WorkgroupMutationResult> ApproveMemberAsync(
         Guid workgroupId, Guid actorUserId, Guid userId, bool asAdmin = false, CancellationToken ct = default)
     {
-        var workgroupResult = await RequireActiveAsync(workgroupId, ct);
+        var workgroupResult = await RequireMembershipManagerAsync(workgroupId, actorUserId, asAdmin, ct);
         if (workgroupResult.Refusal is { } workgroupRefusal) return new(Refusal: workgroupRefusal);
         var workgroup = workgroupResult.Value!;
-        if (RequireCoordinator(workgroup, actorUserId, asAdmin) is { } roleRefusal) return new(Refusal: roleRefusal);
 
         var pending = workgroup.Members.FirstOrDefault(m => m.UserId == userId && m.LeftAt is null && m.IsPending == true);
         if (pending is null) return new(Refusal: new(WorkgroupErrorKeys.NoPendingRequest));
@@ -143,10 +138,9 @@ internal sealed partial class WorkgroupService(
     public async Task<WorkgroupMutationResult> DeclineMemberAsync(
         Guid workgroupId, Guid actorUserId, Guid userId, bool asAdmin = false, CancellationToken ct = default)
     {
-        var workgroupResult = await RequireActiveAsync(workgroupId, ct);
+        var workgroupResult = await RequireMembershipManagerAsync(workgroupId, actorUserId, asAdmin, ct);
         if (workgroupResult.Refusal is { } workgroupRefusal) return new(Refusal: workgroupRefusal);
         var workgroup = workgroupResult.Value!;
-        if (RequireCoordinator(workgroup, actorUserId, asAdmin) is { } roleRefusal) return new(Refusal: roleRefusal);
 
         var pending = workgroup.Members.FirstOrDefault(m => m.UserId == userId && m.LeftAt is null && m.IsPending == true);
         if (pending is null) return new(Refusal: new(WorkgroupErrorKeys.NoPendingRequest));
@@ -157,8 +151,8 @@ internal sealed partial class WorkgroupService(
         ct = CancellationToken.None;
         await auditLog.LogAsync(WorkgroupsAuditActions.WorkgroupMembershipDeclined, AuditEntityTypes.Workgroup, workgroup.Id,
             $"Declined the join request of {name}", actorUserId,
-            relatedEntityId: userId, relatedEntityType: AuditEntityTypes.User);
-        await NotifyAsync([userId], WorkgroupsNotificationSources.WorkgroupMembershipDecided,
+            relatedEntityId: userId, relatedEntityType: AuditSubjectTypes.User);
+        await notices.NotifyAsync([userId], WorkgroupsNotificationSources.WorkgroupMembershipDecided,
             "Workgroups_Notice_MembershipDeclined", ToInfo(workgroup), body: null, ct);
         return new();
     }
@@ -166,10 +160,9 @@ internal sealed partial class WorkgroupService(
     public async Task<WorkgroupMutationResult> AddMemberAsync(
         Guid workgroupId, Guid actorUserId, Guid userId, bool asAdmin = false, CancellationToken ct = default)
     {
-        var workgroupResult = await RequireActiveAsync(workgroupId, ct);
+        var workgroupResult = await RequireMembershipManagerAsync(workgroupId, actorUserId, asAdmin, ct);
         if (workgroupResult.Refusal is { } workgroupRefusal) return new(Refusal: workgroupRefusal);
         var workgroup = workgroupResult.Value!;
-        if (RequireCoordinator(workgroup, actorUserId, asAdmin) is { } roleRefusal) return new(Refusal: roleRefusal);
         var target = await ResolveMemberTargetAsync(userId, ct);
         if (target is null)
             return new(Refusal: new(WorkgroupErrorKeys.NotFound));
@@ -201,8 +194,8 @@ internal sealed partial class WorkgroupService(
         // Related entity is the person admitted: their GDPR export selects audit rows by that column.
         await auditLog.LogAsync(auditAction, AuditEntityTypes.Workgroup, workgroup.Id,
             $"{name} admitted to the group", actorUserId,
-            relatedEntityId: member.UserId, relatedEntityType: AuditEntityTypes.User);
-        await NotifyAsync([member.UserId], WorkgroupsNotificationSources.WorkgroupMembershipDecided,
+            relatedEntityId: member.UserId, relatedEntityType: AuditSubjectTypes.User);
+        await notices.NotifyAsync([member.UserId], WorkgroupsNotificationSources.WorkgroupMembershipDecided,
             noticeKey, ToInfo(workgroup), body: null, ct);
         await RequestDriveSyncAsync(workgroup, ct);
         return new();
@@ -301,7 +294,7 @@ internal sealed partial class WorkgroupService(
         }, ct);
         ct = CancellationToken.None;
 
-        await NotifyAsync(info.CoordinatorUserIds(), WorkgroupsNotificationSources.WorkgroupReportingDue,
+        await notices.NotifyAsync(info.CoordinatorUserIds(), WorkgroupsNotificationSources.WorkgroupReportingDue,
             "Workgroups_Todo_StatusRequested_Title", info, Trimmed(question), ct);
         return new();
     }
@@ -389,9 +382,9 @@ internal sealed partial class WorkgroupService(
 
         var info = ToInfo(workgroup);
         var affected = changed.Select(m => m.UserId).Distinct().ToList();
-        await NotifyAsync(affected, WorkgroupsNotificationSources.WorkgroupRegistrationDecided,
+        await notices.NotifyAsync(affected, WorkgroupsNotificationSources.WorkgroupRegistrationDecided,
             "Enum_WorkgroupLogKind_CoordinatorChanged", info, string.Join(", ", names), ct);
-        await EmailAsync(affected, WorkgroupNoticeKind.CoordinatorsChanged, info,
+        await notices.EmailAsync(affected, WorkgroupNoticeKind.CoordinatorsChanged, info,
             string.Join(", ", names), ct);
         return new();
     }
@@ -595,7 +588,7 @@ internal sealed partial class WorkgroupService(
         return new();
     }
 
-    public async Task<WorkgroupMutationResult<HoldedExpenseAccountRef?>> SetBudgetAsync(
+    public async Task<WorkgroupMutationResult<ExpenseAccountRef?>> SetBudgetAsync(
         Guid workgroupId, Guid actorUserId, WorkgroupBudgetSave save, CancellationToken ct = default)
     {
         ArgumentNullException.ThrowIfNull(save);
@@ -609,7 +602,7 @@ internal sealed partial class WorkgroupService(
             WorkgroupStatus.Active, WorkgroupStatus.Dormant) is { } statusRefusal) return new(Refusal: statusRefusal);
 
         // Finance first, before any write: a failed create or unknown account leaves the row as it was.
-        HoldedExpenseAccountRef? account = null;
+        ExpenseAccountRef? account = null;
         var needsAccount = save.Amount is not null
             && (workgroup.HoldedAccountNumber is null
                 || (save.ExistingAccountNum is { } wanted && wanted != workgroup.HoldedAccountNumber));
@@ -647,13 +640,13 @@ internal sealed partial class WorkgroupService(
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            logger.LogWarning(ex, "Holded mirror unavailable; the link-existing picker is empty");
+            logger.LogError(ex, "Holded mirror unavailable; the link-existing picker is empty");
             return [];
         }
     }
 
     /// <summary>Finance faults log and return retry guidance; cancellation propagates.</summary>
-    private async Task<WorkgroupMutationResult<HoldedExpenseAccountRef>> ResolveBudgetAccountAsync(
+    private async Task<WorkgroupMutationResult<ExpenseAccountRef>> ResolveBudgetAccountAsync(
         Workgroup workgroup, int? existingAccountNum, CancellationToken ct)
     {
         try
@@ -676,7 +669,7 @@ internal sealed partial class WorkgroupService(
         return null;
     }
 
-    // Read in six cultures under the localized "Budget set" badge, so it carries figures only, never English prose.
+    // Read in all supported cultures under the localized "Budget set" badge, so it carries figures only, never English prose.
     private static string BudgetLogBody(Workgroup w) => w.BudgetAmount is { } amount
         ? $"{amount.ToString("0.00", CultureInfo.InvariantCulture)} EUR · {w.HoldedAccountNumber}"
         : "—";

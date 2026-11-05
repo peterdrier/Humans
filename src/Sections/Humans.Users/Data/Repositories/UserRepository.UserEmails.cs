@@ -139,11 +139,9 @@ internal sealed partial class UserRepository
             }
             else
             {
-                // Clear IsPrimary and IsGoogle so the target's selections stand; the frozen IsGoogle
-                // designation is what the google.workspace-identities fallback reads.
+                // The survivor keeps its notification target.
                 ctx.Entry(src).Property(nameof(UserEmail.UserId)).CurrentValue = targetUserId;
                 src.IsPrimary = false;
-                src.IsGoogle = false;
                 src.UpdatedAt = updatedAt;
             }
         }

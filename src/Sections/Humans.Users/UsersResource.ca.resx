@@ -46,7 +46,6 @@
   <data name="Users_Profile_Title" xml:space="preserve">
     <value>El meu perfil</value>
   </data>
-  <data name="Users_BreadcrumbNavigation" xml:space="preserve"><value>Ruta de navegació</value></data>
   <data name="Users_Profile_ActionRequired" xml:space="preserve">
     <value>Acció requerida:</value>
   </data>
@@ -215,9 +214,6 @@
   <data name="Users_ProfileEdit_TierLocked" xml:space="preserve">
     <value>La teva categoria està bloquejada perquè tens una sol·licitud activa o pendent.</value>
   </data>
-  <data name="Users_ProfileEdit_MotivationHelp" xml:space="preserve">
-    <value>Mínim 50 caràcters. Això ajuda la Junta a entendre els teus objectius.</value>
-  </data>
   <data name="Users_ProfileEdit_BurnerNamePlaceholder" xml:space="preserve">
     <value>El nom pel qual et coneixen</value>
   </data>
@@ -363,6 +359,9 @@
   </data>
   <data name="Users_Emails_AddNew" xml:space="preserve">
     <value>Afegeix adreça de correu</value>
+  </data>
+  <data name="Users_Emails_NewEmailLabel" xml:space="preserve">
+    <value>Nova adreça de correu</value>
   </data>
   <data name="Users_Emails_MergeWarningTitle" xml:space="preserve">
     <value>Fusionar comptes?</value>
@@ -546,7 +545,7 @@
     <value>Verificació del correu electrònic</value>
   </data>
   <data name="Users_VerifyEmail_GoToSettings" xml:space="preserve">
-    <value>Ves a la configuració de correu preferit</value>
+    <value>Ves a la configuració de correu</value>
   </data>
   <data name="Users_VerifyEmail_GoHome" xml:space="preserve">
     <value>Ves a la pàgina d'inici</value>
@@ -703,7 +702,7 @@
   <data name="Users_Email_EmailVerification_Body" xml:space="preserve">
     <value>&lt;h2&gt;Verificació del correu electrònic&lt;/h2&gt;
 &lt;p&gt;Hola {0},&lt;/p&gt;
-&lt;p&gt;Has sol·licitat establir &lt;strong&gt;{1}&lt;/strong&gt; com la teva adreça de correu preferida.&lt;/p&gt;
+&lt;p&gt;Has sol·licitat afegir &lt;strong&gt;{1}&lt;/strong&gt; al teu compte.&lt;/p&gt;
 &lt;p&gt;Fes clic a l’enllaç següent per verificar aquesta adreça:&lt;/p&gt;
 &lt;p&gt;&lt;a href="{2}" style="display:inline-block; padding:12px 24px; background-color:#0d6efd; color:#ffffff; text-decoration:none; border-radius:6px; font-weight:bold; font-size:16px;"&gt;Verifica l’adreça de correu&lt;/a&gt;&lt;/p&gt;
 &lt;p&gt;Aquest enllaç expira en 24 hores.&lt;/p&gt;
@@ -747,6 +746,9 @@
   <data name="Users_Notification_ConsentSuspensionReason" xml:space="preserve"><value>Falta el consentiment als documents requerits (termini de gràcia vençut)</value></data>
   <data name="Users_Profile_EmailAlreadyAdded" xml:space="preserve">
     <value>Aquesta adreça de correu ja és al teu compte.</value>
+  </data>
+  <data name="Users_Profile_EmailVerifiedOnAnotherAccount" xml:space="preserve">
+    <value>Aquesta adreça de correu ja està verificada en un altre compte.</value>
   </data>
   <data name="Users_Profile_EmailMergePending" xml:space="preserve">
     <value>Ja hi ha una sol·licitud de fusió pendent per a aquesta adreça de correu.</value>

@@ -27,12 +27,7 @@ namespace Humans.Shifts.Tests.ViewComponents;
 public class AvailabilityCalendarViewTests
 {
     [HumansTheory]
-    [Xunit.InlineData("en")]
-    [Xunit.InlineData("es")]
-    [Xunit.InlineData("de")]
-    [Xunit.InlineData("it")]
-    [Xunit.InlineData("fr")]
-    [Xunit.InlineData("ca")]
+    [Xunit.MemberData(nameof(SupportedCultures.All), MemberType = typeof(SupportedCultures))]
     public async Task Selected_days_label_preserves_the_member_language(string language)
     {
         using var culture = new CultureScope(language);

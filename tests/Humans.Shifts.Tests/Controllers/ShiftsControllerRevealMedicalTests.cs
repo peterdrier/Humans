@@ -119,7 +119,6 @@ public sealed class ShiftsControllerRevealMedicalTests
                 MedicalConditions = medicalConditions,
                 CreatedAt = TestNow,
                 UpdatedAt = TestNow,
-                IsApproved = true,
             }));
 
     private ShiftsController BuildSut()

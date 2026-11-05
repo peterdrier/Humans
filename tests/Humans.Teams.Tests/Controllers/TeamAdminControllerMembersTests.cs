@@ -45,12 +45,12 @@ public class TeamAdminControllerMembersTests
     [InlineData("remove", "viewer")]
     [InlineData("remove", "teams")]
     [InlineData("roles", "definitions")]
-    [InlineData("roles", "team")]
+    [InlineData("roles", "teams")]
     [InlineData("roles", "profiles")]
     [InlineData("search", "search")]
-    [InlineData("search", "team")]
+    [InlineData("search", "teams")]
     [InlineData("role-search", "search")]
-    [InlineData("provision", "team")]
+    [InlineData("provision", "teams")]
     [InlineData("edit-invalid", "parent")]
     [InlineData("edit-failed", "parent")]
     public async Task ManagementReads_CancelBeforeWritesAndFinishAfterAnEditAttempt(string action, string boundary)
@@ -498,6 +498,7 @@ public class TeamAdminControllerMembersTests
 
         result.Should().BeOfType<RedirectToActionResult>();
         controller.TempData[TempDataKeys.InfoMessage].Should().Be(warning);
+        await teams.DidNotReceiveWithAnyArgs().GetTeamAsync(default, default);
         controller.TempData[TempDataKeys.SuccessMessage].Should().BeNull();
         controller.TempData[TempDataKeys.ErrorMessage].Should().BeNull();
     }
@@ -632,7 +633,7 @@ public class TeamAdminControllerMembersTests
     }
 
     [HumansFact]
-    public async Task Board_reads_the_members_page_without_any_management_controls()
+    public async Task Board_reads_the_members_and_roster_pages_without_any_management_controls()
     {
         var userId = Guid.NewGuid();
         var teams = Substitute.For<ITeamManagementService>();
@@ -661,13 +662,19 @@ public class TeamAdminControllerMembersTests
             Url = Substitute.For<IUrlHelper>()
         };
 
-        var members = await controller.Members(team.Slug);
-        var add = await controller.AddMember(team.Slug, new AddMemberModel { UserId = Guid.NewGuid() });
+        users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(new Dictionary<Guid, UserInfo>()));
 
+        var members = await controller.Members(team.Slug);
         var model = members.Should().BeOfType<ViewResult>().Which.Model.Should().BeOfType<TeamMembersViewModel>().Subject;
         model.CanManage.Should().BeFalse();
         model.CanManageRoles.Should().BeFalse();
         model.CanProvisionEmails.Should().BeFalse();
+
+        var roster = await controller.Roster(team.Slug, CancellationToken.None);
+        roster.Should().BeOfType<ViewResult>().Which.Model.Should().BeOfType<TeamRosterViewModel>();
+
+        var add = await controller.AddMember(team.Slug, new AddMemberModel { UserId = Guid.NewGuid() });
         add.Should().BeOfType<ForbidResult>();
     }
 

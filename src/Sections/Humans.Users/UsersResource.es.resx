@@ -46,7 +46,6 @@
   <data name="Users_Profile_Title" xml:space="preserve">
     <value>Mi perfil</value>
   </data>
-  <data name="Users_BreadcrumbNavigation" xml:space="preserve"><value>Ruta de navegación</value></data>
   <data name="Users_Profile_ActionRequired" xml:space="preserve">
     <value>Acción requerida:</value>
   </data>
@@ -215,9 +214,6 @@
   <data name="Users_ProfileEdit_TierLocked" xml:space="preserve">
     <value>Tu categoría está bloqueada porque tienes una solicitud activa o pendiente.</value>
   </data>
-  <data name="Users_ProfileEdit_MotivationHelp" xml:space="preserve">
-    <value>Mínimo 50 caracteres. Esto ayuda a la Junta a entender tus objetivos.</value>
-  </data>
   <data name="Users_ProfileEdit_BurnerNamePlaceholder" xml:space="preserve">
     <value>El nombre por el que se le conoce</value>
   </data>
@@ -364,6 +360,9 @@
   <data name="Users_Emails_AddNew" xml:space="preserve">
     <value>Agregar dirección de correo</value>
   </data>
+  <data name="Users_Emails_NewEmailLabel" xml:space="preserve">
+    <value>Nueva dirección de correo</value>
+  </data>
   <data name="Users_Emails_MergeWarningTitle" xml:space="preserve">
     <value>¿Fusionar cuentas?</value>
   </data>
@@ -484,19 +483,19 @@
     <value>No se pudo desvincular: la fila es desconocida o no tiene proveedor de inicio de sesión.</value>
   </data>
   <data name="Users_EmailGrid_SetPrimary" xml:space="preserve">
-    <value>Set primary</value>
+    <value>Establecer como principal</value>
   </data>
   <data name="Users_EmailGrid_PrimaryFlagCleared" xml:space="preserve">
-    <value>Primary flag cleared from that row.</value>
+    <value>Marca de principal quitada de esa fila.</value>
   </data>
   <data name="Users_EmailGrid_ClearPrimaryRejected" xml:space="preserve">
-    <value>Could not clear primary flag — the row is unknown or not currently flagged.</value>
+    <value>No se pudo quitar la marca de principal: la fila es desconocida o no está marcada.</value>
   </data>
   <data name="Users_EmailGrid_Clear" xml:space="preserve">
-    <value>Clear</value>
+    <value>Quitar</value>
   </data>
   <data name="Users_EmailGrid_ConfirmClearPrimary" xml:space="preserve">
-    <value>Clear the primary flag from this email row?</value>
+    <value>¿Quitar la marca de principal de esta fila de correo?</value>
   </data>
   <data name="Users_EmailGrid_UnlinkSuccess" xml:space="preserve">
     <value>Proveedor de inicio de sesión desvinculado.</value>
@@ -546,7 +545,7 @@
     <value>Verificación de correo electrónico</value>
   </data>
   <data name="Users_VerifyEmail_GoToSettings" xml:space="preserve">
-    <value>Ir a ajustes de correo preferido</value>
+    <value>Ir a ajustes de correo</value>
   </data>
   <data name="Users_VerifyEmail_GoHome" xml:space="preserve">
     <value>Ir a la página de inicio</value>
@@ -703,7 +702,7 @@
   <data name="Users_Email_EmailVerification_Body" xml:space="preserve">
     <value>&lt;h2&gt;Verificación de correo electrónico&lt;/h2&gt;
 &lt;p&gt;Hola {0},&lt;/p&gt;
-&lt;p&gt;Has solicitado establecer &lt;strong&gt;{1}&lt;/strong&gt; como tu dirección de correo preferida.&lt;/p&gt;
+&lt;p&gt;Has solicitado añadir &lt;strong&gt;{1}&lt;/strong&gt; a tu cuenta.&lt;/p&gt;
 &lt;p&gt;Haz clic en el siguiente enlace para verificar esta dirección:&lt;/p&gt;
 &lt;p&gt;&lt;a href="{2}" style="display:inline-block; padding:12px 24px; background-color:#0d6efd; color:#ffffff; text-decoration:none; border-radius:6px; font-weight:bold; font-size:16px;"&gt;Verificar dirección de correo&lt;/a&gt;&lt;/p&gt;
 &lt;p&gt;Este enlace expira en 24 horas.&lt;/p&gt;
@@ -747,6 +746,9 @@
   <data name="Users_Notification_ConsentSuspensionReason" xml:space="preserve"><value>Falta el consentimiento a los documentos requeridos (plazo de gracia vencido)</value></data>
   <data name="Users_Profile_EmailAlreadyAdded" xml:space="preserve">
     <value>Esta dirección de correo ya está en tu cuenta.</value>
+  </data>
+  <data name="Users_Profile_EmailVerifiedOnAnotherAccount" xml:space="preserve">
+    <value>Esta dirección de correo ya está verificada en otra cuenta.</value>
   </data>
   <data name="Users_Profile_EmailMergePending" xml:space="preserve">
     <value>Ya hay una solicitud de fusión pendiente para esta dirección de correo.</value>

@@ -1,4 +1,6 @@
 using AwesomeAssertions;
+using Humans.Base.Enums;
+using Humans.Users.Contracts;
 using Humans.AuditLog.Contracts;
 using Humans.Notifications.Contracts;
 using Humans.Preapprovals.Contracts;
@@ -24,6 +26,68 @@ public sealed class ProgramTests : PreapprovalsTestHarness
         bool accepts = true, string name = "2026 Creativity", params Guid[] managers) =>
         new(name, "desc", kind, perPerson, ceiling, account, accepts, claimBy ?? Today.PlusMonths(3), status, managers);
 
+    [HumansTheory]
+    [Xunit.InlineData(false, null)]
+    [Xunit.InlineData(false, UserState.Deleted)]
+    [Xunit.InlineData(false, UserState.Merged)]
+    [Xunit.InlineData(true, null)]
+    [Xunit.InlineData(true, UserState.Deleted)]
+    [Xunit.InlineData(true, UserState.Merged)]
+    public async Task ProgramSave_RefusesUnavailableManagersWithoutPersistingAnything(bool update, UserState? state)
+    {
+        var actor = SeedUser();
+        var current = SeedUser();
+        var valid = SeedUser();
+        var unavailable = SeedUser();
+        var snapshot = Xunit.Assert.IsType<UserInfo>(await Users.GetUserInfoAsync(unavailable, Ct));
+        Users.GetUserInfoAsync(unavailable, Arg.Any<CancellationToken>())
+            .Returns(state is { } value ? snapshot with { State = value } : null);
+        var program = update ? await SeedProgramAsync(managers: current) : null;
+        var save = Save(name: "Changed", managers: [valid, unavailable]);
+
+        var result = update
+            ? await NewService().UpdateProgramAsync(program!.Id, save, actor, Ct)
+            : await NewService().CreateProgramAsync(save, actor, Ct);
+
+        result.Refusal.Should().NotBeNull();
+        await using var db = OpenContext();
+        var stored = await db.Programs.Include(p => p.Managers).ToListAsync(Ct);
+        if (update)
+        {
+            var unchanged = stored.Should().ContainSingle().Which;
+            unchanged.Name.Should().Be(program!.Name);
+            unchanged.Managers.Select(m => m.UserId).Should().Equal(current);
+        }
+        else
+            stored.Should().BeEmpty();
+        AuditLog.ReceivedCalls().Should().BeEmpty();
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task ProgramSave_ResolvesAndDeduplicatesManagersBeforePersistingAndAuditing(bool update)
+    {
+        var actor = SeedUser();
+        var archived = Guid.NewGuid();
+        var survivor = SeedUser(mergedIds: [archived]);
+        var person = await Users.GetUserInfoAsync(survivor, Ct);
+        Users.GetUserInfoAsync(archived, Arg.Any<CancellationToken>()).Returns(person);
+        var program = update ? await SeedProgramAsync() : null;
+        var save = Save(managers: [archived, survivor]);
+
+        var result = update
+            ? await NewService().UpdateProgramAsync(program!.Id, save, actor, Ct)
+            : await NewService().CreateProgramAsync(save, actor, Ct);
+
+        result.Refusal.Should().BeNull();
+        await using var db = OpenContext();
+        var stored = await db.Programs.Include(p => p.Managers).SingleAsync(Ct);
+        stored.Managers.Select(m => m.UserId).Should().Equal(survivor);
+        await AuditLog.Received(1).LogAsync(PreapprovalsAuditActions.PreapprovalProgramManagerAdded,
+            AuditEntityTypes.Program, stored.Id, Arg.Any<string>(), actor, survivor, AuditSubjectTypes.User);
+    }
+
     [HumansFact]
     public async Task Create_StoresProgramManagersAndAccountId_AndAudits()
     {
@@ -40,7 +104,7 @@ public sealed class ProgramTests : PreapprovalsTestHarness
         await AuditLog.Received(1).LogAsync(PreapprovalsAuditActions.PreapprovalProgramCreated, AuditEntityTypes.Program, program.Id,
             Arg.Any<string>(), actor, Arg.Any<Guid?>(), Arg.Any<string?>());
         await AuditLog.Received(1).LogAsync(PreapprovalsAuditActions.PreapprovalProgramManagerAdded, AuditEntityTypes.Program, program.Id,
-            Arg.Any<string>(), actor, manager, AuditEntityTypes.User);
+            Arg.Any<string>(), actor, manager, AuditSubjectTypes.User);
     }
 
     [HumansTheory]
@@ -129,8 +193,8 @@ public sealed class ProgramTests : PreapprovalsTestHarness
         await using var db = OpenContext();
         (await db.Managers.Where(m => m.ProgramId == program.Id).Select(m => m.UserId).ToListAsync(Ct))
             .Should().BeEquivalentTo([kept, added]);
-        await AuditLog.Received(1).LogAsync(PreapprovalsAuditActions.PreapprovalProgramManagerAdded, AuditEntityTypes.Program, program.Id, Arg.Any<string>(), actor, added, AuditEntityTypes.User);
-        await AuditLog.Received(1).LogAsync(PreapprovalsAuditActions.PreapprovalProgramManagerRemoved, AuditEntityTypes.Program, program.Id, Arg.Any<string>(), actor, old, AuditEntityTypes.User);
+        await AuditLog.Received(1).LogAsync(PreapprovalsAuditActions.PreapprovalProgramManagerAdded, AuditEntityTypes.Program, program.Id, Arg.Any<string>(), actor, added, AuditSubjectTypes.User);
+        await AuditLog.Received(1).LogAsync(PreapprovalsAuditActions.PreapprovalProgramManagerRemoved, AuditEntityTypes.Program, program.Id, Arg.Any<string>(), actor, old, AuditSubjectTypes.User);
     }
 
     [HumansFact]
@@ -226,11 +290,11 @@ public sealed class ProgramTests : PreapprovalsTestHarness
         await NewService().UpdateProgramAsync(program.Id, Save(claimBy: newDate), actor, request.Token);
 
         request.IsCancellationRequested.Should().Be(cancelAfterSave);
-        await NotificationResolve.Received(1).ResolveBySourceKeyAsync(PreapprovalsNotificationSources.PreapprovalFileBy, PreapprovalService.FileBySourceKey(open.Id), actor, CancellationToken.None);
-        await NotificationResolve.DidNotReceive().ResolveBySourceKeyAsync(PreapprovalsNotificationSources.PreapprovalFileBy, PreapprovalService.FileBySourceKey(claimed.Id), Arg.Any<Guid?>(), Arg.Any<CancellationToken>());
+        await NotificationResolve.Received(1).ResolveBySourceKeyAsync(PreapprovalsNotificationSources.PreapprovalFileBy, PreapprovalNotices.FileBySourceKey(open.Id), actor, CancellationToken.None);
+        await NotificationResolve.DidNotReceive().ResolveBySourceKeyAsync(PreapprovalsNotificationSources.PreapprovalFileBy, PreapprovalNotices.FileBySourceKey(claimed.Id), Arg.Any<Guid?>(), Arg.Any<CancellationToken>());
         await Notifications.Received(1).SendAsync(PreapprovalsNotificationSources.PreapprovalFileBy, NotificationClass.Actionable, NotificationPriority.High,
             Arg.Is<string>(t => t.Contains("2026 Creativity")), Arg.Is<IReadOnlyList<Guid>>(r => r.Single() == open.BeneficiaryUserId),
-            Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), PreapprovalService.FileBySourceKey(open.Id), Arg.Any<CancellationToken>());
+            Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), PreapprovalNotices.FileBySourceKey(open.Id), Arg.Any<CancellationToken>());
         await Email.Received(1).SendAsync(Arg.Is<Humans.Email.Contracts.EmailMessage>(m =>
             m.TemplateName == "preapproval_deadline_changed" && m.Culture == "es"), CancellationToken.None);
         (await OpenContext().Programs.SingleAsync(Ct)).ClaimBy.Should().Be(newDate);

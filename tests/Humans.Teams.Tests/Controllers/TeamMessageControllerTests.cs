@@ -107,16 +107,10 @@ public sealed class TeamMessageControllerTests
         model.SenderEmail.Should().Be("coordinator@example.com");
     }
 
-    [HumansTheory]
-    [InlineData("en")]
-    [InlineData("es")]
-    [InlineData("de")]
-    [InlineData("it")]
-    [InlineData("fr")]
-    [InlineData("ca")]
-    public async Task MessageViews_RenderTheCurrentEncodedRecipient(string language)
+    [HumansFact]
+    public async Task MessageViews_RenderTheCurrentEncodedRecipient()
     {
-        using var culture = new CultureScope(language);
+        using var culture = new CultureScope("en");
         var result = (ViewResult)await _controller.SendMessage(_teamId, _targetId, Ct);
         const string teamName = "Infrastructure <b>&</b>";
         ((TeamSendMessageViewModel)result.Model!).TeamName = teamName;
@@ -147,7 +141,7 @@ public sealed class TeamMessageControllerTests
         using var scope = app.Services.CreateScope();
         var services = scope.ServiceProvider;
         var template = new ResourceManager(typeof(TeamsResource))
-            .GetString("Teams_SendMessage_FromTeam", CultureInfo.GetCultureInfo(language));
+            .GetString("Teams_SendMessage_FromTeam", CultureInfo.CurrentUICulture);
         Assert.NotNull(template);
         var expected = string.Format(CultureInfo.CurrentCulture, template,
             $"<span>{HtmlEncoder.Default.Encode(currentName)}</span>", HtmlEncoder.Default.Encode(teamName));

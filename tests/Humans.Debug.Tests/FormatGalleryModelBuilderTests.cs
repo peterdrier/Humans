@@ -43,12 +43,7 @@ public class FormatGalleryModelBuilderTests
     }
 
     [HumansTheory]
-    [Xunit.InlineData("en")]
-    [Xunit.InlineData("es")]
-    [Xunit.InlineData("de")]
-    [Xunit.InlineData("it")]
-    [Xunit.InlineData("fr")]
-    [Xunit.InlineData("ca")]
+    [Xunit.MemberData(nameof(SupportedCultures.All), MemberType = typeof(SupportedCultures))]
     public void Build_classifies_a_localized_formatter_as_culture_sensitive(string culture)
     {
         using var scope = new Humans.Base.Extensions.CultureScope(culture);

@@ -99,7 +99,7 @@ Stored as string (`HasConversion<string>()`, max length 20).
 
 - Code-tracking summaries carry campaign creation time without display ordering. Tickets owns newest-campaign ordering and its report tie-breakers; grant counts and redemption matching are independent of summary order.
 
-- Create/edit validate trimmed title (200), description (2000), email subject (1000) and Reply-To (320) lengths before persistence. Nonblank Reply-To must be an email address; blank stays optional. Invalid forms redisplay field errors and preserve existing campaign data.
+- Create/edit validate trimmed title (200), description (2000), email subject (1000) and Reply-To (320) lengths before persistence. Both writes share one editable-field mapping: trim required text and normalize blank optional description/Reply-To to null. Nonblank Reply-To must be an email address; blank stays optional. Invalid forms redisplay field errors and the submitted field values, including fields cleared to null, while preserving existing campaign data. Create and edit share the existing `CampaignFormValues` snapshot for redisplay; edit keeps the stored snapshot for identity and breadcrumbs.
 - Placeholder expansion can make a valid subject template exceed the email queue's 1000-character limit. All campaign sends retain the complete rendered subject as an HTML-encoded leading body paragraph in that case, while shortening the subject header to 1000 Unicode characters including an ellipsis. Shorter subjects and their bodies remain unchanged; codes are preserved even when the authored body omits `{{Code}}`.
 
 - Index, edit, detail and Send Wave GETs pass request cancellation to their read-only service/repository calls, so abandoned pages stop loading data. POST current-user lookups and Resend’s grant-to-campaign lookup also observe request cancellation before any mutation begins. Mutating service calls retain their existing cancellation boundaries.
@@ -145,14 +145,16 @@ email template is copied into audit. Refused mutations emit no success entry.
 - **Tickets:** `ITicketDiscountCodes` (`Humans.Tickets.Contracts`) — TicketsAdmin can generate discount codes via the ticket vendor integration; Campaigns asks Tickets for codes through this leaf rather than reaching past it into the Base vendor port. Generation is invoked from the Campaign Detail page, not from the Tickets section.
 - **Email:** transport only. Campaigns owns its one template — `CampaignsEmails` (internal) builds the `EmailMessage` from the campaign's own subject and markdown body (the builder reads no resx), and `CampaignsEmailPreviews` (`IEmailPreviewContributor`, registered in `Section.Register`) lists it at `/Email/EmailPreview` (`memory/architecture/email-templates-live-in-sender.md`). `IEmailService.SendAsync` queues the message through the outbox.
 - **Users:** `IUserService.GetUserInfoAsync` / `GetUserInfosAsync` — canonical recipient email, name and culture from one snapshot for wave and resend messages, plus code-tracking display; `IUnsubscribeService` (Email section, `Humans.Email.Services.UnsubscribeService`) processes the public `/Email/Unsubscribe/{token}` endpoint, validating legacy campaign-only tokens (mapped to `MessageCategory.Marketing`) before delegating opt-out to `ICommunicationPreferenceService.UpdatePreferenceAsync` — `CampaignService` itself does not call `ICommunicationPreferenceService`. Called by `IAccountMergeService` (Users section) — `IUserMerge.ReassignAsync` (implemented by `CampaignService`) re-FKs `CampaignGrant` from source to target during account merge fold.
-- **Gdpr:** `IUserDataContributor` (grant export resolves archived account IDs to the survivor; erasure keeps its per-ID scope) and `IUserMerge` (`Humans.Gdpr.Contracts`), both implemented by `CampaignService`.
+- **Gdpr:** `IUserDataContributor` (`src/Humans.Base/Gdpr/IUserDataContributor.cs`; grant export resolves archived account IDs to the survivor; erasure keeps its per-ID scope) and `IUserMerge` (`Humans.Users.Contracts`), both implemented by `CampaignService`.
 - **AuditLog:** `IAuditLogService.LogAsync` records persisted admin mutations.
 - **Notifications:** `INotificationEmitter.SendAsync` — `CampaignReceived` in-app notifications for wave recipients. Its sources are declared in `CampaignsNotificationSources` (`src/Sections/Humans.Campaigns/CampaignsNotificationSources.cs`), one `NotificationSourceDefinition` each: `CampaignReceived` (informational, to campaign recipients: campaign code granted).
 - **Teams:** `ITeamService.GetTeamsAsync` (Send Wave team picker) and `ITeamService.GetTeamAsync` (team-scoped wave targeting). The Send Wave view orders active team options by name with ordinal comparison; the service returns the available options without display ordering.
 
 ## Architecture
 
-**Owning services:** `CampaignService`
+`CampaignService` owns campaign configuration, lifecycle, code imports, tracking and personal-data coordination. Its internal `CampaignWaveDelivery` owns the complete preview/send/resend job: team targeting, per-grant persistence and audit, email enqueueing and localized in-app notices. The existing management interface delegates to that owner; it adds no public contract or DI registration.
+
+**Owning services:** `CampaignService`, internal `CampaignWaveDelivery`
 **Owned tables:** `campaigns`, `campaign_codes`, `campaign_grants`
 **Status:** (A) Own project. Everything but `Section` is `internal` (HUM0034); the cross-section surface is the `Contracts/` folder (namespace `Humans.Campaigns.Contracts`).
 
@@ -178,7 +180,7 @@ email template is copied into audit. Refused mutations emit no success entry.
 
 | Slot | Component | Audience |
 |---|---|---|
-| `UserPartSlots.Profile` | `MyCodesViewComponent` ("My Codes", member-facing, `Campaigns_MyCodes_*` keys in all six cultures) | Own profile only |
+| `UserPartSlots.Profile` | `MyCodesViewComponent` ("My Codes", member-facing, `Campaigns_MyCodes_*` keys in all supported cultures) | Own profile only |
 | `UserPartSlots.AdminDetail` | `CampaignCodesViewComponent` ("Campaign Codes", English, admin-only) | `/Users/Admin/{id}`, `UsersPolicies.Read` |
 
 Both render nothing when the member has no grants. The cards add no routes, nav entries or data; they are reached from the profile and admin-detail pages.

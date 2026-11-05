@@ -1,4 +1,5 @@
 using System.Net;
+using Humans.Base.Enums;
 using AwesomeAssertions.Execution;
 using Humans.Base.Extensions;
 using Humans.Email.Contracts;
@@ -19,6 +20,59 @@ namespace Humans.Preapprovals.Tests.Services;
 /// <summary>Issue, issue-many, apply, approve, decline, revoke, change amount: the rules and their audit.</summary>
 public sealed class GrantTests : PreapprovalsTestHarness
 {
+    [HumansTheory]
+    [InlineData("issue", null)]
+    [InlineData("issue", UserState.Deleted)]
+    [InlineData("issue", UserState.Merged)]
+    [InlineData("batch", null)]
+    [InlineData("batch", UserState.Deleted)]
+    [InlineData("batch", UserState.Merged)]
+    [InlineData("apply", null)]
+    [InlineData("apply", UserState.Deleted)]
+    [InlineData("apply", UserState.Merged)]
+    [InlineData("edit", null)]
+    [InlineData("edit", UserState.Deleted)]
+    [InlineData("edit", UserState.Merged)]
+    public async Task GrantWrites_RefuseUnavailablePeopleWithoutSavingOrDispatching(string operation, UserState? state)
+    {
+        var actor = SeedUser();
+        var valid = SeedUser();
+        var unavailable = SeedUser();
+        var person = Assert.IsType<UserInfo>(await Users.GetUserInfoAsync(unavailable, Ct));
+        Users.GetUserInfoAsync(unavailable, Arg.Any<CancellationToken>())
+            .Returns(state is { } value ? person with { State = value } : null);
+        var program = await SeedProgramAsync();
+        var pending = string.Equals(operation, "edit", StringComparison.Ordinal)
+            ? await SeedGrantAsync(program, beneficiary: unavailable, status: GrantStatus.Applied)
+            : null;
+        var service = NewService();
+
+        var refusal = operation switch
+        {
+            "issue" => (await service.IssueAsync(program.Id, unavailable, null, null, actor, Ct)).Refusal,
+            "batch" => (await service.IssueManyAsync(program.Id, [valid, unavailable], actor, Ct)).Refusal,
+            _ => (await service.ApplyAsync(program.Id, unavailable, "Changed note", null, Ct)).Refusal
+        };
+
+        refusal!.Key.Should().Be(PreapprovalErrorKeys.PersonUnavailable);
+        await using var db = OpenContext();
+        var grants = await db.Grants.ToListAsync(Ct);
+        if (pending is not null)
+        {
+            var unchanged = grants.Should().ContainSingle().Which;
+            unchanged.Id.Should().Be(pending.Id);
+            unchanged.ApplicationNote.Should().Be(pending.ApplicationNote);
+            unchanged.MaxAmount.Should().Be(pending.MaxAmount);
+            unchanged.UpdatedAt.Should().Be(pending.UpdatedAt);
+        }
+        else
+            grants.Should().BeEmpty();
+        AuditLog.ReceivedCalls().Should().BeEmpty();
+        Notifications.ReceivedCalls().Should().BeEmpty();
+        NotificationResolve.ReceivedCalls().Should().BeEmpty();
+        Email.ReceivedCalls().Should().BeEmpty();
+    }
+
     [HumansTheory]
     [InlineData("issue")]
     [InlineData("issue-many")]
@@ -112,7 +166,7 @@ public sealed class GrantTests : PreapprovalsTestHarness
         foreach (var notice in notices)
         {
             notice[0].Should().Be(PreapprovalsNotificationSources.PreapprovalApplicationReceived);
-            notice[9].Should().Be(PreapprovalService.RequestSourceKey(grant.Id));
+            notice[9].Should().Be(PreapprovalNotices.RequestSourceKey(grant.Id));
         }
         var emails = Email.ReceivedCalls().Select(call => (EmailMessage)call.GetArguments()[0]!).ToList();
         emails.Should().HaveCount(3);
@@ -130,6 +184,7 @@ public sealed class GrantTests : PreapprovalsTestHarness
         var archived = Guid.NewGuid();
         var survivor = SeedUser("Ana", language: "ca", mergedIds: [archived]);
         var person = (await Users.GetUserInfoAsync(survivor, Ct))!;
+        Users.GetUserInfoAsync(archived, Arg.Any<CancellationToken>()).Returns(person);
         Users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(call => new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
                 call.Arg<IReadOnlyCollection<Guid>>().Distinct()
@@ -181,11 +236,12 @@ public sealed class GrantTests : PreapprovalsTestHarness
         grant.MaxAmount.Should().Be(300m);
         grant.Status.Should().Be(GrantStatus.Open);
         grant.DecidedByUserId.Should().Be(actor);
+        grant.DecidedAt.Should().Be(Clock.GetCurrentInstant());
         grant.Label.Should().Be("Fire Lotus");
         await AuditLog.Received(1).LogAsync(PreapprovalsAuditActions.PreapprovalGrantIssued, AuditEntityTypes.Grant, grant.Id, Arg.Any<string>(), actor, program.Id, AuditEntityTypes.Program);
         await Notifications.Received(1).SendAsync(PreapprovalsNotificationSources.PreapprovalFileBy, NotificationClass.Actionable, NotificationPriority.Normal,
             Arg.Any<string>(), Arg.Is<IReadOnlyList<Guid>>(r => r.Single() == person), Arg.Any<string?>(), $"/Preapprovals/{program.Id}",
-            Arg.Any<string?>(), Arg.Any<string?>(), PreapprovalService.FileBySourceKey(grant.Id), Arg.Any<CancellationToken>());
+            Arg.Any<string?>(), Arg.Any<string?>(), PreapprovalNotices.FileBySourceKey(grant.Id), Arg.Any<CancellationToken>());
         await Email.Received(1).SendAsync(Arg.Is<EmailMessage>(m => m.TemplateName == "preapproval_issued" && m.Culture == "de"), Arg.Any<CancellationToken>());
     }
 
@@ -284,11 +340,18 @@ public sealed class GrantTests : PreapprovalsTestHarness
         var program = await SeedProgramAsync(perPerson: 300m, ceiling: 1000m);
         var a = SeedUser("A"); var b = SeedUser("B");
         var service = NewService();
+        var actor = SeedUser("Manager");
 
-        var result = await service.IssueManyAsync(program.Id, [a, b, a], SeedUser(), Ct);
+        var result = await service.IssueManyAsync(program.Id, [a, b, a], actor, Ct);
 
         result.Refusal.Should().BeNull();
         result.Value!.Count.Should().Be(2);
+        foreach (var id in result.Value)
+        {
+            var grant = await ReadGrantAsync(id);
+            grant.DecidedByUserId.Should().Be(actor);
+            grant.DecidedAt.Should().Be(Clock.GetCurrentInstant());
+        }
         (await OpenContext().Grants.ToListAsync(Ct)).Should().OnlyContain(g => g.MaxAmount == 300m && g.Status == GrantStatus.Open);
 
         var perGrant = await SeedProgramAsync(kind: ProgramKind.PerGrantAmount, perPerson: null);
@@ -317,8 +380,8 @@ public sealed class GrantTests : PreapprovalsTestHarness
         grant.ApplicationNote.Should().Be("Bigger flame effects");
         await Notifications.Received(2).SendAsync(PreapprovalsNotificationSources.PreapprovalApplicationReceived, NotificationClass.Actionable, NotificationPriority.Normal,
             Arg.Any<string>(), Arg.Is<IReadOnlyList<Guid>>(r => r.Single() == manager), Arg.Is<string?>(b => b!.Contains("Applicant")),
-            $"/Preapprovals/Admin/{program.Id}", Arg.Any<string?>(), Arg.Any<string?>(), PreapprovalService.RequestSourceKey(grant.Id), Arg.Any<CancellationToken>());
-        await NotificationResolve.Received(1).ResolveBySourceKeyAsync(PreapprovalsNotificationSources.PreapprovalApplicationReceived, PreapprovalService.RequestSourceKey(grant.Id), applicant, CancellationToken.None);
+            $"/Preapprovals/Admin/{program.Id}", Arg.Any<string?>(), Arg.Any<string?>(), PreapprovalNotices.RequestSourceKey(grant.Id), Arg.Any<CancellationToken>());
+        await NotificationResolve.Received(1).ResolveBySourceKeyAsync(PreapprovalsNotificationSources.PreapprovalApplicationReceived, PreapprovalNotices.RequestSourceKey(grant.Id), applicant, CancellationToken.None);
         await AuditLog.Received(2).LogAsync(PreapprovalsAuditActions.PreapprovalGrantApplied, AuditEntityTypes.Grant, grant.Id, Arg.Any<string>(), applicant, Arg.Any<Guid?>(), Arg.Any<string?>());
     }
 
@@ -422,10 +485,10 @@ public sealed class GrantTests : PreapprovalsTestHarness
         grant.MaxAmount.Should().Be(300m);
         grant.RequestedAmount.Should().Be(500m);
         grant.DecidedByUserId.Should().Be(actor);
-        await NotificationResolve.Received(1).ResolveBySourceKeyAsync(PreapprovalsNotificationSources.PreapprovalApplicationReceived, PreapprovalService.RequestSourceKey(grant.Id), actor, CancellationToken.None);
+        await NotificationResolve.Received(1).ResolveBySourceKeyAsync(PreapprovalsNotificationSources.PreapprovalApplicationReceived, PreapprovalNotices.RequestSourceKey(grant.Id), actor, CancellationToken.None);
         await Notifications.Received(1).SendAsync(PreapprovalsNotificationSources.PreapprovalFileBy, NotificationClass.Actionable, NotificationPriority.Normal,
             Arg.Any<string>(), Arg.Is<IReadOnlyList<Guid>>(r => r.Single() == person), Arg.Any<string?>(), Arg.Any<string?>(),
-            Arg.Any<string?>(), Arg.Any<string?>(), PreapprovalService.FileBySourceKey(grant.Id), Arg.Any<CancellationToken>());
+            Arg.Any<string?>(), Arg.Any<string?>(), PreapprovalNotices.FileBySourceKey(grant.Id), Arg.Any<CancellationToken>());
         await AuditLog.Received(1).LogAsync(PreapprovalsAuditActions.PreapprovalGrantApproved, AuditEntityTypes.Grant, grant.Id, Arg.Is<string>(s => s.Contains("requested 500.00 €")), actor, program.Id, AuditEntityTypes.Program);
     }
 
@@ -467,7 +530,7 @@ public sealed class GrantTests : PreapprovalsTestHarness
         var grant = await ReadGrantAsync(application.Id);
         grant.Status.Should().Be(GrantStatus.Declined);
         grant.DecidedByUserId.Should().Be(actor);
-        await NotificationResolve.Received(1).ResolveBySourceKeyAsync(PreapprovalsNotificationSources.PreapprovalApplicationReceived, PreapprovalService.RequestSourceKey(grant.Id), actor, CancellationToken.None);
+        await NotificationResolve.Received(1).ResolveBySourceKeyAsync(PreapprovalsNotificationSources.PreapprovalApplicationReceived, PreapprovalNotices.RequestSourceKey(grant.Id), actor, CancellationToken.None);
         await Notifications.Received(1).SendAsync(PreapprovalsNotificationSources.PreapprovalGrantDecided, NotificationClass.Informational, NotificationPriority.Normal,
             Arg.Any<string>(), Arg.Is<IReadOnlyList<Guid>>(r => r.Single() == person), Arg.Is<string?>(b => b!.Contains("Not this year")),
             Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), null, Arg.Any<CancellationToken>());
@@ -495,7 +558,7 @@ public sealed class GrantTests : PreapprovalsTestHarness
         after.Status.Should().Be(GrantStatus.Revoked);
         after.MaxAmount.Should().Be(300m);
         after.ExpenseReportId.Should().Be(reportId);
-        await NotificationResolve.Received(1).ResolveBySourceKeyAsync(PreapprovalsNotificationSources.PreapprovalFileBy, PreapprovalService.FileBySourceKey(grant.Id), actor, CancellationToken.None);
+        await NotificationResolve.Received(1).ResolveBySourceKeyAsync(PreapprovalsNotificationSources.PreapprovalFileBy, PreapprovalNotices.FileBySourceKey(grant.Id), actor, CancellationToken.None);
         await Notifications.Received(1).SendAsync(PreapprovalsNotificationSources.PreapprovalGrantDecided,
             status == GrantStatus.Claimed ? NotificationClass.Actionable : NotificationClass.Informational, NotificationPriority.Normal,
             Arg.Any<string>(), Arg.Is<IReadOnlyList<Guid>>(r => r.Single() == person), Arg.Is<string?>(b => b!.Contains("Budget cut")),
@@ -521,16 +584,11 @@ public sealed class GrantTests : PreapprovalsTestHarness
         (await service.ChangeAmountAsync(grant.Id, 50m, SeedUser(), Ct)).Refusal!.Key.Should().Be(PreapprovalErrorKeys.WrongStatus);
     }
 
-    [HumansTheory]
-    [InlineData("en")]
-    [InlineData("es")]
-    [InlineData("de")]
-    [InlineData("it")]
-    [InlineData("fr")]
-    [InlineData("ca")]
-    public async Task IssueAndChangeAmount_FormatMemberMessagesInRecipientCulture(string language)
+    [HumansFact]
+    public async Task IssueAndChangeAmount_FormatMemberMessagesInRecipientCulture()
     {
-        using var callerCulture = new CultureScope("en");
+        const string language = CultureCatalog.CanonicalLegalCultureCode;
+        using var callerCulture = new CultureScope(CultureCatalog.DefaultCultureCode);
         const decimal oldAmount = 1234.56m;
         const decimal newAmount = 2345.67m;
         var person = SeedUser("Person", language: language);
@@ -551,6 +609,7 @@ public sealed class GrantTests : PreapprovalsTestHarness
             newText = newAmount.ToEuro();
             date = program.ClaimBy.ToDate();
         }
+        oldText.Should().NotBe(oldAmount.ToEuro());
         var notices = Notifications.ReceivedCalls().Where(c =>
             string.Equals(c.GetMethodInfo().Name, "SendAsync", StringComparison.Ordinal)).ToArray();
         var issuedNotice = (string)notices.Single(c =>

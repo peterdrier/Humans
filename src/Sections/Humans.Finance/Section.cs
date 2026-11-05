@@ -61,11 +61,9 @@ public sealed class Section :
         services.AddSingleton<ICacheStats>(sp =>
             sp.GetRequiredService<TrackedCache<string, Dictionary<string, int>>>());
         services.AddScoped<Service>();
-        services.AddScoped<IHoldedFinanceManagement>(sp => sp.GetRequiredService<Service>());
-        services.AddScoped<IHoldedFinanceService>(sp => sp.GetRequiredService<Service>());
-        services.AddScoped<IHoldedFinanceWrite>(sp => sp.GetRequiredService<Service>());
-        services.AddScoped<IHoldedFinanceAdminService>(sp => sp.GetRequiredService<Service>());
-        services.AddScoped<ISepaBankBooking>(sp => sp.GetRequiredService<Service>());
+        services.AddScoped<IFinanceService>(sp => sp.GetRequiredService<Service>());
+        services.AddScoped<IFinanceWrite>(sp => sp.GetRequiredService<Service>());
+        services.AddScoped<IFinanceAdminService>(sp => sp.GetRequiredService<Service>());
         services.AddScoped<Jobs.SepaBankBookingJob>();
         services.AddScoped<Jobs.ExpenseReconJob>();
         services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<Service>());
@@ -73,8 +71,6 @@ public sealed class Section :
         services.AddScoped<IPaymentDetailsRepository, PaymentDetailsRepository>();
         services.AddScoped<PaymentDetailsService>();
         services.AddScoped<IPaymentDetailsManagement>(sp => sp.GetRequiredService<PaymentDetailsService>());
-        services.AddScoped<IFinanceService>(sp => sp.GetRequiredService<PaymentDetailsService>());
-        services.AddScoped<IFinanceWrite>(sp => sp.GetRequiredService<PaymentDetailsService>());
         services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<PaymentDetailsService>());
         services.AddScoped<IUserMerge>(sp => sp.GetRequiredService<PaymentDetailsService>());
 
@@ -83,6 +79,11 @@ public sealed class Section :
 
         services.AddScoped<CashFlowService>();
         services.AddScoped<CreditorMatchService>();
+        services.AddScoped<FinanceOverviewService>();
+        services.AddScoped<PleoBooking>();
+        // Both outlive a request: the run keeps going after the page is left, and its holds must span runs.
+        services.AddSingleton<PleoBookingState>();
+        services.AddSingleton<PleoBookingRunner>();
     }
 
     IEnumerable<AdminNavGroup> ISectionAdminNav.Groups() =>
@@ -92,6 +93,7 @@ public sealed class Section :
             new("Cash flow", "Finance", "CashFlow", null, null, "fa-solid fa-chart-line", FinancePolicies.Read),
             new("Creditors", "Finance", "Creditors", null, null, "fa-solid fa-users", FinancePolicies.Read),
             new("SEPA payouts", "Finance", "Sepa", null, null, "fa-solid fa-money-bill-transfer", FinancePolicies.Read),
+            new("Pleo reconcile", "Finance", "Pleo", null, null, "fa-solid fa-credit-card", FinancePolicies.Read),
             new("Expense recon", "Finance", "ExpenseRecon", null, null, "fa-solid fa-scale-balanced", FinancePolicies.Read),
             new("Account map", "Finance", "HoldedAccounts", null, null, "fa-solid fa-diagram-project", FinancePolicies.Read),
             new("Unmatched docs", "Finance", "HoldedUnmatched", null, null, "fa-solid fa-question", FinancePolicies.Read)

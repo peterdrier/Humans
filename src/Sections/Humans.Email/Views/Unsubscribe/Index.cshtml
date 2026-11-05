@@ -4,7 +4,7 @@
     var categoryName = Localizer["Email_CommPrefs_Name_Marketing"].Value;
 }
 
-<h1>@Html.Raw(string.Format(Localizer["Email_Unsubscribe_Heading"].Value, Html.Encode(categoryName)))</h1>
+<page-header title="@(string.Format(Localizer["Email_Unsubscribe_Heading"].Value, categoryName))" />
 
 @if (ViewData["UserId"] is Guid userId)
 {

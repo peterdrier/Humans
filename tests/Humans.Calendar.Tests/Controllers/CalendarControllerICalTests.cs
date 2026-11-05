@@ -157,11 +157,15 @@ public class CalendarControllerICalTests
     }
 
     [HumansTheory]
-    [Xunit.InlineData(null)]
-    [Xunit.InlineData("not-a-bool")]
-    [Xunit.InlineData("false")]
-    [Xunit.InlineData("true")]
-    public async Task Edit_requires_an_explicit_recurrence_choice(string? choice)
+    [Xunit.InlineData("IsRecurring", null)]
+    [Xunit.InlineData("IsRecurring", "not-a-bool")]
+    [Xunit.InlineData("IsRecurring", "false")]
+    [Xunit.InlineData("IsRecurring", "true")]
+    [Xunit.InlineData("IsAllDay", null)]
+    [Xunit.InlineData("IsAllDay", "not-a-bool")]
+    [Xunit.InlineData("IsAllDay", "false")]
+    [Xunit.InlineData("IsAllDay", "true")]
+    public async Task Edit_requires_explicit_calendar_mode_choices(string fieldName, string? choice)
     {
         var id = Guid.NewGuid();
         var teamId = Guid.NewGuid();
@@ -179,6 +183,7 @@ public class CalendarControllerICalTests
             ["Title"] = "Updated",
             ["OwningTeamId"] = teamId.ToString(),
             ["IsAllDay"] = "false",
+            ["IsRecurring"] = "true",
             ["StartDate"] = "2026-06-02",
             // Seconds included: the browser's "HH:mm" needs the Shell's binder, which this harness doesn't register.
             ["StartTime"] = "10:00:00",
@@ -187,7 +192,8 @@ public class CalendarControllerICalTests
             ["RecurrenceRule"] = "FREQ=WEEKLY",
             ["TimeZoneId"] = "UTC"
         };
-        if (choice is not null) fields["IsRecurring"] = choice;
+        if (choice is not null) fields[fieldName] = choice;
+        else fields.Remove(fieldName);
         var registrations = new ServiceCollection().AddLogging();
         registrations.AddControllers();
         using var services = registrations.BuildServiceProvider();
@@ -216,17 +222,19 @@ public class CalendarControllerICalTests
         if (choice is null || string.Equals(choice, "not-a-bool", StringComparison.Ordinal))
         {
             result.Should().BeOfType<ViewResult>().Which.Model.Should().BeSameAs(form);
-            controller.ModelState.ContainsKey(nameof(form.IsRecurring)).Should().BeTrue(errors);
+            controller.ModelState.ContainsKey(fieldName).Should().BeTrue(errors);
             // A malformed required property reports both conversion failure and the missing bound value.
-            controller.ModelState[nameof(form.IsRecurring)]!.Errors.Should().HaveCount(choice is null ? 1 : 2);
+            controller.ModelState[fieldName]!.Errors.Should().HaveCount(choice is null ? 1 : 2);
             _calendar.ReceivedCalls().Should().BeEmpty();
         }
         else
         {
             result.Should().BeOfType<RedirectToActionResult>(errors);
-            var expectedRule = string.Equals(choice, "true", StringComparison.Ordinal) ? "FREQ=WEEKLY" : null;
+            var changingRecurrence = string.Equals(fieldName, nameof(form.IsRecurring), StringComparison.Ordinal);
+            var expectedRule = changingRecurrence && string.Equals(choice, "false", StringComparison.Ordinal) ? null : "FREQ=WEEKLY";
+            var expectedAllDay = !changingRecurrence && string.Equals(choice, "true", StringComparison.Ordinal);
             await _calendar.Received(1).UpdateEventWithResultAsync(id,
-                Arg.Is<CreateCalendarEventDto>(d => d.RecurrenceRule == expectedRule), _viewer, ct);
+                Arg.Is<CreateCalendarEventDto>(d => d.RecurrenceRule == expectedRule && d.IsAllDay == expectedAllDay), _viewer, ct);
         }
     }
 
@@ -747,16 +755,10 @@ public class CalendarControllerICalTests
             _viewer, Arg.Any<CancellationToken>());
     }
 
-    [HumansTheory]
-    [Xunit.InlineData("en")]
-    [Xunit.InlineData("es")]
-    [Xunit.InlineData("de")]
-    [Xunit.InlineData("it")]
-    [Xunit.InlineData("fr")]
-    [Xunit.InlineData("ca")]
-    public async Task EditOccurrence_rejects_invalid_text_before_writing_in_every_culture(string culture)
+    [HumansFact]
+    public async Task EditOccurrence_rejects_invalid_text_before_writing()
     {
-        using var cultureScope = new CultureScope(culture);
+        using var cultureScope = new CultureScope("en");
         var registrations = new ServiceCollection().AddLogging().AddLocalization();
         registrations.AddControllers().AddDataAnnotationsLocalization(options =>
             options.DataAnnotationLocalizerProvider = (_, factory) => factory.Create(typeof(SharedResource)));

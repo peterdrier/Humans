@@ -30,24 +30,13 @@ internal sealed class Service(
     private const int MaxImageFileNameLength = 256;
     private const int MaxPlacementNotesLength = 5000;
 
-    public async Task<IReadOnlyList<ContainerDto>> GetByCampAsync(Guid campId, CancellationToken ct = default)
-    {
-        var containers = await repo.GetByCampAsync(campId, ct);
-        return await ToDtosAsync(containers, ct);
-    }
+    private readonly ContainerReader reader = new(repo, campService);
 
-    public async Task<IReadOnlyList<ContainerDto>> GetAllAsync(CancellationToken ct = default)
-    {
-        var containers = await repo.GetAllAsync(ct);
-        return await ToDtosAsync(containers, ct);
-    }
+    public Task<IReadOnlyList<ContainerDto>> GetByCampAsync(Guid campId, CancellationToken ct = default) => reader.GetByCampAsync(campId, ct);
 
-    public async Task<ContainerDto?> GetByIdAsync(Guid id, CancellationToken ct = default)
-    {
-        var container = await repo.GetByIdAsync(id, ct);
-        if (container is null) return null;
-        return ToDto(container, await repo.GetImagesAsync([id], ct));
-    }
+    public Task<IReadOnlyList<ContainerDto>> GetAllAsync(CancellationToken ct = default) => reader.GetAllAsync(ct);
+
+    public Task<ContainerDto?> GetByIdAsync(Guid id, CancellationToken ct = default) => reader.GetByIdAsync(id, ct);
 
     public async Task<ContainerMutationResult<ContainerDto>> CreateAsync(ContainerData data, Guid actorUserId, CancellationToken ct = default)
     {
@@ -203,11 +192,8 @@ internal sealed class Service(
         }
     }
 
-    public async Task<IReadOnlyList<ContainerPlacementDto>> GetPlacementsByYearAsync(int year, CancellationToken ct = default)
-    {
-        var placements = await repo.GetPlacementsByYearAsync(year, ct);
-        return placements.Select(ToPlacementDto).ToList();
-    }
+    public Task<IReadOnlyList<ContainerPlacementDto>> GetPlacementsByYearAsync(int year, CancellationToken ct = default) =>
+        reader.GetPlacementsByYearAsync(year, ct);
 
     public async Task<ContainerMutationResult<ContainerPlacementDto>> SavePlacementAsync(Guid containerId, int year, string geoJson, Guid actorUserId, CancellationToken ct = default)
     {
@@ -367,34 +353,8 @@ internal sealed class Service(
         return new(ToPlacementDto(placement));
     }
 
-    public async Task<ContainerAdminOverview> GetAdminOverviewAsync(int year, CancellationToken ct = default)
-    {
-        var allContainers = await repo.GetAllAsync(ct);
-        var placements = await repo.GetPlacementsByYearAsync(year, ct);
-        var placementByContainerId = placements.ToDictionary(p => p.ContainerId, p => p);
-        var imagesByContainerId = await LoadImagesAsync(allContainers, ct);
-
-        var camps = await campService.GetCampsForYearAsync(year, ct);
-
-        ContainerWithPlacement Compose(Container c) => new(
-            ToDto(c, imagesByContainerId.GetValueOrDefault(c.Id, [])),
-            placementByContainerId.TryGetValue(c.Id, out var p) ? ToPlacementDto(p) : null);
-
-        var byCampId = allContainers
-            .GroupBy(c => c.CampId)
-            .ToDictionary(g => g.Key, g => g.ToList());
-
-        var campGroups = camps
-            .Select(camp => new ContainerCampGroup(
-                camp.Id,
-                camp.Seasons.First(s => s.Year == year).Name,
-                byCampId.TryGetValue(camp.Id, out var cs)
-                    ? cs.Select(Compose).ToList()
-                    : []))
-            .ToList();
-
-        return new ContainerAdminOverview(year, campGroups);
-    }
+    public Task<ContainerAdminOverview> GetAdminOverviewAsync(int year, CancellationToken ct = default) =>
+        reader.GetAdminOverviewAsync(year, ct);
 
     private static ValidationError? ValidateName(string name) => name.IndexOfAny(InvalidNameChars) >= 0
         ? new("Containers_Error_InvalidName") : null;
@@ -469,47 +429,7 @@ internal sealed class Service(
     private static string DisplayFileName(string fileName) =>
         fileName.Split('/', '\\').Last();
 
-    private async Task<IReadOnlyList<ContainerDto>> ToDtosAsync(
-        IReadOnlyList<Container> containers, CancellationToken ct)
-    {
-        var imagesByContainerId = await LoadImagesAsync(containers, ct);
-        return containers
-            .Select(c => ToDto(c, imagesByContainerId.GetValueOrDefault(c.Id, [])))
-            .ToList();
-    }
+    private static ContainerDto ToDto(Container c, IReadOnlyList<ContainerImage> images) => ContainerReader.ToDto(c, images);
 
-    private async Task<Dictionary<Guid, List<ContainerImage>>> LoadImagesAsync(
-        IReadOnlyList<Container> containers, CancellationToken ct)
-    {
-        var images = await repo.GetImagesAsync(containers.Select(c => c.Id).ToList(), ct);
-        return images
-            .GroupBy(i => i.ContainerId)
-            .ToDictionary(g => g.Key, g => g.ToList());
-    }
-
-    private static ContainerDto ToDto(Container c, IReadOnlyList<ContainerImage> images)
-    {
-        var gallery = new List<ContainerImageDto>(images.Count + 1);
-        // Legacy containers still hold their single image in the containers columns;
-        // Guid.Empty addresses it so callers see one uniform, removable gallery.
-        if (c.ImageStoragePath is not null)
-        {
-            gallery.Add(new ContainerImageDto(Guid.Empty, $"/{c.ImageStoragePath}", c.ImageFileName)
-            { SortOrder = int.MinValue });
-        }
-        gallery.AddRange(images
-            .Select(i => new ContainerImageDto(i.Id, $"/{i.StoragePath}", i.FileName) { SortOrder = i.SortOrder }));
-
-        return new ContainerDto(c.Id, c.CampId, c.Name, c.Description, gallery, c.CreatedAt, c.UpdatedAt);
-    }
-
-    private static ContainerPlacementDto ToPlacementDto(ContainerPlacement p) => new(
-        p.ContainerId,
-        p.Year,
-        p.LocationGeoJson,
-        p.PlacementNotes,
-        p.PlacementImageStoragePath is not null ? $"/{p.PlacementImageStoragePath}" : null,
-        p.PlacementImageFileName,
-        p.CreatedAt,
-        p.UpdatedAt);
+    private static ContainerPlacementDto ToPlacementDto(ContainerPlacement p) => ContainerReader.ToPlacementDto(p);
 }

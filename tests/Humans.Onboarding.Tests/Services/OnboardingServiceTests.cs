@@ -226,6 +226,26 @@ public sealed class OnboardingServiceTests
     }
 
     [HumansFact]
+    public async Task RejectSignupAsync_OversizedReasonRefusalStopsBeforeAccountChanges()
+    {
+        var userId = Guid.NewGuid();
+        var reviewerId = Guid.NewGuid();
+        var reason = new string('a', 4001);
+        _consentWrite.RecordRejectionAsync(userId, reviewerId, reason, Arg.Any<CancellationToken>())
+            .Returns(new OnboardingResult(false, "ReviewTextTooLong"));
+
+        var result = await BuildSut().RejectSignupAsync(userId, reviewerId, reason,
+            Xunit.TestContext.Current.CancellationToken);
+
+        result.ErrorKey.Should().Be("ReviewTextTooLong");
+        _userServiceWrite.ReceivedCalls().Should().BeEmpty();
+        _auditLogService.ReceivedCalls().Should().BeEmpty();
+        _syncJob.ReceivedCalls().Should().BeEmpty();
+        _emailService.ReceivedCalls().Should().BeEmpty();
+        _notificationService.ReceivedCalls().Should().BeEmpty();
+    }
+
+    [HumansFact]
     public async Task RejectSignupAsync_OnSuccess_AuditsDeprovisionsAllThreeTeamsAndNotifies()
     {
         // Reject is the section's only coordinator action with consequences: dropping one of the
@@ -287,7 +307,7 @@ public sealed class OnboardingServiceTests
     [HumansTheory]
     [Xunit.InlineData(false)]
     [Xunit.InlineData(true)]
-    public async Task SetConsentCheckPendingIfEligibleAsync_WhenEligible_UsesResolvedUserMutation(bool archivedId)
+    public async Task ConsentSignedAsync_WhenEligible_SetsPendingOnTheResolvedUser(bool archivedId)
     {
         var userId = Guid.NewGuid();
         var requestedId = archivedId ? Guid.NewGuid() : userId;
@@ -307,9 +327,8 @@ public sealed class OnboardingServiceTests
         _consentWrite.SetConsentCheckPendingAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new OnboardingResult(true));
 
-        var set = await BuildSut().SetConsentCheckPendingIfEligibleAsync(requestedId, Xunit.TestContext.Current.CancellationToken);
+        await BuildSut().ConsentSignedAsync(requestedId, Xunit.TestContext.Current.CancellationToken);
 
-        set.Should().BeTrue();
         await _consentWrite.Received(1).SetConsentCheckPendingAsync(userId, Arg.Any<CancellationToken>());
     }
 

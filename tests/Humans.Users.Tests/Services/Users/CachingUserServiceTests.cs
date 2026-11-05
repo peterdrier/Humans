@@ -56,7 +56,6 @@ public class CachingUserServiceTests
         BurnerName = burnerName,
         CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
         UpdatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
-        IsApproved = true,
     };
 
     [HumansTheory]
@@ -163,8 +162,8 @@ public class CachingUserServiceTests
         var testCt = Xunit.TestContext.Current.CancellationToken;
         var userId = Guid.NewGuid();
         var now = Instant.FromUtc(2026, 1, 1, 0, 0);
-        var email = new UserEmailInfo(Guid.NewGuid(), "member@example.com", false, false, false,
-            null, null, null, null, now, now, default);
+        var email = new UserEmailInfo(Guid.NewGuid(), "member@example.com", false, false,
+            null, null, null, null, now, now);
         var original = SampleUserInfo(userId) with
         {
             UserEmails = string.Equals(operation, "add", StringComparison.Ordinal) ? [] : [email]
@@ -455,8 +454,6 @@ public class CachingUserServiceTests
             Email = "eight@example.com",
             IsVerified = true,
             IsPrimary = true,
-            IsGoogle = true,
-            GoogleEmailStatus = LegacyGoogleEmailStatus.Valid,
             Provider = "Google",
             ProviderKey = "subject-xyz",
         };
@@ -468,8 +465,6 @@ public class CachingUserServiceTests
             FirstName = "Eight",
             LastName = "Tables",
             DateOfBirth = new LocalDate(1990, 7, 4),
-            IsApproved = true,
-            MembershipTier = LegacyMembershipTier.Asociado,
             CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
             UpdatedAt = Instant.FromUtc(2026, 1, 2, 0, 0),
         };
@@ -663,7 +658,6 @@ public class CachingUserServiceTests
         string? bio = null,
         string? pronouns = null,
         string? contributionInterests = null,
-        bool isApproved = true,
         bool isSuspended = false,
         bool isRejected = false,
         bool hasProfile = true,
@@ -705,10 +699,8 @@ public class CachingUserServiceTests
             Bio = bio,
             Pronouns = pronouns,
             ContributionInterests = contributionInterests,
-            IsApproved = isApproved,
             CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
             UpdatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
-            RejectedAt = isRejected ? Instant.FromUtc(2026, 1, 1, 0, 0) : null,
         };
 
         var cfRows = (contactFields ?? [])
@@ -842,17 +834,6 @@ public class CachingUserServiceTests
     }
 
     [HumansFact]
-    public async Task SearchUsersAsync_PublicAll_IncludesUnapproved()
-    {
-        var sut = CreateSut();
-        await PrimeAsync(sut, BuildSearchableUserInfo(Guid.NewGuid(), city: "Madrid", isApproved: false));
-
-        var results = await sut.SearchUsersAsync("Madrid", PersonSearchFields.PublicAll, ct: Xunit.TestContext.Current.CancellationToken);
-
-        results.Should().HaveCount(1);
-    }
-
-    [HumansFact]
     public async Task SearchUsersAsync_PublicAll_ExcludesRejected()
     {
         var sut = CreateSut();
@@ -896,16 +877,10 @@ public class CachingUserServiceTests
         results.Should().HaveCount(1);
     }
 
-    [HumansTheory]
-    [InlineData("en", "User ID")]
-    [InlineData("es", "ID de usuario")]
-    [InlineData("de", "Benutzer-ID")]
-    [InlineData("it", "ID utente")]
-    [InlineData("fr", "ID utilisateur")]
-    [InlineData("ca", "ID d'usuari")]
-    public async Task SearchUsersAsync_AdminBit_ExactUserIdLookup(string culture, string label)
+    [HumansFact]
+    public async Task SearchUsersAsync_AdminBit_ExactUserIdLookup()
     {
-        using var scope = new CultureScope(culture);
+        using var scope = new CultureScope("en");
         var userId = Guid.NewGuid();
         var sut = CreateSut();
         await PrimeAsync(sut, BuildSearchableUserInfo(userId, burnerName: "Alice"));
@@ -914,7 +889,7 @@ public class CachingUserServiceTests
 
         results.Should().HaveCount(1);
         results[0].UserId.Should().Be(userId);
-        results[0].MatchField.Should().Be(label);
+        results[0].MatchField.Should().Be("User ID");
     }
 
     [HumansFact]

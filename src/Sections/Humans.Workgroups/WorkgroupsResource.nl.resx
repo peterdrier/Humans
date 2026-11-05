@@ -1,0 +1,354 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" msdata:Ordinal="0" />
+              <xsd:attribute name="type" type="xsd:string" />
+              <xsd:attribute name="mimetype" type="xsd:string" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="resheader">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>1.3</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+
+  <!-- Enums -->
+  <data name="Enum_WorkgroupStatus_Applied" xml:space="preserve"><value>Aangevraagd</value></data>
+  <data name="Enum_WorkgroupStatus_Referred" xml:space="preserve"><value>Doorverwezen naar het bestuur</value></data>
+  <data name="Enum_WorkgroupStatus_Active" xml:space="preserve"><value>Actief</value></data>
+  <data name="Enum_WorkgroupStatus_Refused" xml:space="preserve"><value>Afgewezen</value></data>
+  <data name="Enum_WorkgroupStatus_Withdrawn" xml:space="preserve"><value>Ingetrokken</value></data>
+  <data name="Enum_WorkgroupStatus_Dormant" xml:space="preserve"><value>Slapend</value></data>
+
+  <data name="Enum_WorkgroupDormantReason_Delivered" xml:space="preserve"><value>Opgeleverd</value></data>
+  <data name="Enum_WorkgroupDormantReason_Abandoned" xml:space="preserve"><value>Opgegeven</value></data>
+  <data name="Enum_WorkgroupDormantReason_Quiet" xml:space="preserve"><value>Gesloten wegens inactiviteit</value></data>
+
+  <data name="Enum_WorkgroupDeliverableKind_Recommendation" xml:space="preserve"><value>Aanbeveling</value></data>
+  <data name="Enum_WorkgroupDeliverableKind_DraftPolicy" xml:space="preserve"><value>Conceptbeleid</value></data>
+  <data name="Enum_WorkgroupDeliverableKind_DecisionBrief" xml:space="preserve"><value>Beslisnota</value></data>
+  <data name="Enum_WorkgroupDeliverableKind_Report" xml:space="preserve"><value>Rapport</value></data>
+  <data name="Enum_WorkgroupDeliverableKind_AssemblyProposal" xml:space="preserve"><value>Voorstel voor de ledenvergadering</value></data>
+  <data name="Enum_WorkgroupDeliverableKind_ResolutionProposal" xml:space="preserve"><value>Besluitvoorstel</value></data>
+  <data name="Enum_WorkgroupDeliverableKind_DepartmentRegistration" xml:space="preserve"><value>Registratie als afdeling</value></data>
+  <data name="Enum_WorkgroupDeliverableKind_Consultation" xml:space="preserve"><value>Raadpleging</value></data>
+  <data name="Enum_WorkgroupDeliverableKind_Event" xml:space="preserve"><value>Evenement</value></data>
+  <data name="Enum_WorkgroupDeliverableKind_Other" xml:space="preserve"><value>Overig</value></data>
+
+  <data name="Enum_WorkgroupAudience_Board" xml:space="preserve"><value>het bestuur</value></data>
+  <data name="Enum_WorkgroupAudience_Assembly" xml:space="preserve"><value>de ledenvergadering</value></data>
+  <data name="Enum_WorkgroupAudience_Community" xml:space="preserve"><value>de community</value></data>
+
+  <data name="Enum_WorkgroupMemberRole_Member" xml:space="preserve"><value>Lid</value></data>
+  <data name="Enum_WorkgroupMemberRole_Coordinator" xml:space="preserve"><value>Coördinator</value></data>
+
+  <data name="Enum_WorkgroupLogKind_Applied" xml:space="preserve"><value>Aangevraagd</value></data>
+  <data name="Enum_WorkgroupLogKind_Registered" xml:space="preserve"><value>Geregistreerd</value></data>
+  <data name="Enum_WorkgroupLogKind_Referred" xml:space="preserve"><value>Doorverwezen naar het bestuur</value></data>
+  <data name="Enum_WorkgroupLogKind_Refused" xml:space="preserve"><value>Afgewezen</value></data>
+  <data name="Enum_WorkgroupLogKind_Withdrawn" xml:space="preserve"><value>Ingetrokken</value></data>
+  <data name="Enum_WorkgroupLogKind_Ended" xml:space="preserve"><value>Beëindigd</value></data>
+  <data name="Enum_WorkgroupLogKind_Reactivated" xml:space="preserve"><value>Opnieuw geactiveerd</value></data>
+  <data name="Enum_WorkgroupLogKind_CoordinatorChanged" xml:space="preserve"><value>Coördinatoren gewijzigd</value></data>
+  <data name="Enum_WorkgroupLogKind_ScopeChanged" xml:space="preserve"><value>Reikwijdte gewijzigd</value></data>
+  <data name="Enum_WorkgroupLogKind_MemberJoined" xml:space="preserve"><value>Lid toegetreden</value></data>
+  <data name="Enum_WorkgroupLogKind_MemberLeft" xml:space="preserve"><value>Lid vertrokken</value></data>
+  <data name="Enum_WorkgroupLogKind_DormancyInquiry" xml:space="preserve"><value>Navraag wegens inactiviteit</value></data>
+  <data name="Enum_WorkgroupLogKind_DocumentPublished" xml:space="preserve"><value>Document gepubliceerd</value></data>
+  <data name="Enum_WorkgroupLogKind_CommentPeriodOpened" xml:space="preserve"><value>Reactieperiode geopend</value></data>
+  <data name="Enum_WorkgroupLogKind_CommentPeriodClosed" xml:space="preserve"><value>Reactieperiode gesloten</value></data>
+  <data name="Enum_WorkgroupLogKind_Delivered" xml:space="preserve"><value>Opgeleverd</value></data>
+  <data name="Enum_WorkgroupLogKind_DispositionRecorded" xml:space="preserve"><value>Besluit vastgelegd</value></data>
+  <data name="Enum_WorkgroupLogKind_SurveySubmitted" xml:space="preserve"><value>Enquête ingediend</value></data>
+  <data name="Enum_WorkgroupLogKind_SurveySent" xml:space="preserve"><value>Enquête verstuurd</value></data>
+  <data name="Enum_WorkgroupLogKind_Update" xml:space="preserve"><value>Update</value></data>
+  <data name="Enum_WorkgroupLogKind_Disclosure" xml:space="preserve"><value>Openbaarmaking</value></data>
+  <data name="Enum_WorkgroupLogKind_StatusRequested" xml:space="preserve"><value>Status opgevraagd</value></data>
+  <data name="Enum_WorkgroupLogKind_Note" xml:space="preserve"><value>Notitie</value></data>
+  <data name="Enum_WorkgroupLogKind_MeetingNotes" xml:space="preserve"><value>Vergadernotities</value></data>
+
+  <data name="Enum_WorkgroupDocumentKind_Deliverable" xml:space="preserve"><value>Eindproduct</value></data>
+  <data name="Enum_WorkgroupDocumentKind_AnnualReport" xml:space="preserve"><value>Jaarverslag</value></data>
+  <data name="Enum_WorkgroupDocumentKind_Other" xml:space="preserve"><value>Overig</value></data>
+
+  <data name="Enum_WorkgroupDocumentStatus_Draft" xml:space="preserve"><value>Concept</value></data>
+  <data name="Enum_WorkgroupDocumentStatus_Published" xml:space="preserve"><value>Gepubliceerd</value></data>
+  <data name="Enum_WorkgroupDocumentStatus_Delivered" xml:space="preserve"><value>Opgeleverd</value></data>
+
+  <data name="Enum_WorkgroupDisposition_Accepted" xml:space="preserve"><value>Geaccepteerd</value></data>
+  <data name="Enum_WorkgroupDisposition_Declined" xml:space="preserve"><value>Afgewezen</value></data>
+  <data name="Enum_WorkgroupDisposition_Deferred" xml:space="preserve"><value>Uitgesteld</value></data>
+  <data name="Enum_WorkgroupDisposition_Noted" xml:space="preserve"><value>Voor kennisgeving aangenomen</value></data>
+
+  <data name="Enum_WorkgroupCommentDisposition_Pending" xml:space="preserve"><value>In afwachting</value></data>
+  <data name="Enum_WorkgroupCommentDisposition_Accepted" xml:space="preserve"><value>Geaccepteerd</value></data>
+  <data name="Enum_WorkgroupCommentDisposition_Rejected" xml:space="preserve"><value>Afgewezen</value></data>
+  <data name="Enum_WorkgroupCommentDisposition_Incorporated" xml:space="preserve"><value>Verwerkt</value></data>
+  <data name="Enum_WorkgroupCommentDisposition_Noted" xml:space="preserve"><value>Voor kennisgeving aangenomen</value></data>
+
+  <!-- Rule errors (WorkgroupErrorKeys) -->
+  <data name="Workgroups_Error_NotFound" xml:space="preserve"><value>Dat is niet gevonden.</value></data>
+  <data name="Workgroups_Error_NotAMember" xml:space="preserve"><value>Je bent geen lid van deze groep.</value></data>
+  <data name="Workgroups_Error_AlreadyAMember" xml:space="preserve"><value>Je bent al lid van deze groep.</value></data>
+  <data name="Workgroups_Error_Frozen" xml:space="preserve"><value>Deze groep is slapend; acties van leden zijn bevroren.</value></data>
+  <data name="Workgroups_Error_NameRequired" xml:space="preserve"><value>Een naam is verplicht.</value></data>
+  <data name="Workgroups_Error_PurposeRequired" xml:space="preserve"><value>Een doel is verplicht.</value></data>
+  <data name="Workgroups_Error_DeliverableRequired" xml:space="preserve"><value>Een eindproduct is verplicht.</value></data>
+  <data name="Workgroups_Error_ReasonsRequired" xml:space="preserve"><value>Redenen zijn verplicht.</value></data>
+  <data name="Workgroups_Error_NameTaken" xml:space="preserve"><value>Die naam is al in gebruik.</value></data>
+  <data name="Workgroups_Error_CoordinatorCount" xml:space="preserve"><value>Een groep heeft één of twee coördinatoren nodig.</value></data>
+  <data name="Workgroups_Error_CoordinatorsMustBeMembers" xml:space="preserve"><value>Coördinatoren moeten al lid zijn.</value></data>
+  <data name="Workgroups_Error_LastCoordinatorNeedsReplacement" xml:space="preserve"><value>Je bent de laatste coördinator; wijs een vervanger aan voordat je vertrekt.</value></data>
+  <data name="Workgroups_Error_RootFolderNotConfigured" xml:space="preserve"><value>De hoofdmap in Drive voor werkgroepen is nog niet ingesteld.</value></data>
+  <data name="Workgroups_Error_RootFolderUnreachable" xml:space="preserve"><value>Het serviceaccount heeft geen toegang tot die Drive-map. Controleer de id en of de map met het account is gedeeld.</value></data>
+  <data name="Workgroups_Error_DriveFolderCreationFailed" xml:space="preserve"><value>Het aanmaken van de Drive-map van de groep is mislukt; probeer het opnieuw.</value></data>
+  <data name="Workgroups_Error_WrongStatus" xml:space="preserve"><value>Dat is niet mogelijk in de huidige status van de groep of het document.</value></data>
+  <data name="Workgroups_Error_SystemLogEntry" xml:space="preserve"><value>Systeemlogboekvermeldingen kunnen niet worden bewerkt of verwijderd.</value></data>
+  <data name="Workgroups_Error_BodyRequired" xml:space="preserve"><value>Inhoud is verplicht.</value></data>
+  <data name="Workgroups_Error_DocumentFrozen" xml:space="preserve"><value>Dit document is opgeleverd; de inhoud is bevroren.</value></data>
+  <data name="Workgroups_Error_NotPublished" xml:space="preserve"><value>Dit document is nog niet gepubliceerd.</value></data>
+  <data name="Workgroups_Error_CategoriesRequired" xml:space="preserve"><value>Er is minstens één reactiecategorie verplicht.</value></data>
+  <data name="Workgroups_Error_CategoryTooLong" xml:space="preserve"><value>Een reactiecategorie mag niet langer zijn dan 100 tekens.</value></data>
+  <data name="Workgroups_Error_WindowInvalid" xml:space="preserve"><value>De reactieperiode is ongeldig.</value></data>
+  <data name="Workgroups_Error_RecurrenceInvalid" xml:space="preserve"><value>De herhalingsregel is ongeldig.</value></data>
+  <data name="Workgroups_Error_CommentsClosed" xml:space="preserve"><value>De reactieperiode is niet geopend.</value></data>
+  <data name="Workgroups_Error_CommentsStillOpen" xml:space="preserve"><value>Sluit de reactieperiode voordat je dit document oplevert.</value></data>
+  <data name="Workgroups_Error_UnknownCategory" xml:space="preserve"><value>Dat is geen reactiecategorie van dit document.</value></data>
+  <data name="Workgroups_Error_NotDelivered" xml:space="preserve"><value>Dit document is nog niet opgeleverd.</value></data>
+  <data name="Workgroups_Error_HideReasonRequired" xml:space="preserve"><value>Een reden is verplicht om een reactie te verbergen.</value></data>
+  <data name="Workgroups_Error_DoneReasonInvalid" xml:space="preserve"><value>Die reden is hier niet geldig.</value></data>
+
+  <!-- Things-to-do (SectionThingsToDo) -->
+  <data name="Workgroups_Todo_UpdateDue_Title" xml:space="preserve"><value>Maandelijkse update verwacht</value></data>
+  <data name="Workgroups_Todo_UpdateDue_Description" xml:space="preserve"><value>{0} heeft al 30 dagen geen update geplaatst.</value></data>
+  <data name="Workgroups_Todo_UpdateDue_Action" xml:space="preserve"><value>Een update plaatsen</value></data>
+  <data name="Workgroups_Todo_StatusRequested_Title" xml:space="preserve"><value>Statusupdate gevraagd</value></data>
+
+  <!-- Controller success messages -->
+  <data name="Workgroups_Applied" xml:space="preserve"><value>Aanvraag ingediend. De secretaris beoordeelt deze.</value></data>
+  <data name="Workgroups_Joined" xml:space="preserve"><value>Je verzoek om lid te worden is naar de coördinatoren gestuurd.</value></data>
+  <data name="Workgroups_Left" xml:space="preserve"><value>Je hebt de groep verlaten.</value></data>
+  <data name="Workgroups_StatusRequested" xml:space="preserve"><value>Statusupdate gevraagd.</value></data>
+  <data name="Workgroups_Saved" xml:space="preserve"><value>Opgeslagen.</value></data>
+  <data name="Workgroups_CoordinatorsSaved" xml:space="preserve"><value>Coördinatoren opgeslagen.</value></data>
+  <data name="Workgroups_MeetingSaved" xml:space="preserve"><value>Vergadering opgeslagen.</value></data>
+  <data name="Workgroups_MeetingDeleted" xml:space="preserve"><value>Vergadering verwijderd.</value></data>
+  <data name="Workgroups_LogEntrySaved" xml:space="preserve"><value>Logboekvermelding opgeslagen.</value></data>
+  <data name="Workgroups_LogEntryDeleted" xml:space="preserve"><value>Logboekvermelding verwijderd.</value></data>
+  <data name="Workgroups_SurveyLinked" xml:space="preserve"><value>Enquête gekoppeld.</value></data>
+  <data name="Workgroups_MarkedDone" xml:space="preserve"><value>Groep gemarkeerd als afgerond.</value></data>
+  <data name="Workgroups_DocumentSaved" xml:space="preserve"><value>Document opgeslagen.</value></data>
+  <data name="Workgroups_DocumentPublished" xml:space="preserve"><value>Document gepubliceerd.</value></data>
+  <data name="Workgroups_CommentsOpened" xml:space="preserve"><value>Reactieperiode geopend.</value></data>
+  <data name="Workgroups_CommentsClosed" xml:space="preserve"><value>Reactieperiode gesloten.</value></data>
+  <data name="Workgroups_DocumentDelivered" xml:space="preserve"><value>Document opgeleverd.</value></data>
+  <data name="Workgroups_CommentAdded" xml:space="preserve"><value>Reactie toegevoegd.</value></data>
+  <data name="Workgroups_CommentsAnswered" xml:space="preserve"><value>Categorie beantwoord.</value></data>
+  <data name="Workgroups_CommentAnswered" xml:space="preserve"><value>Reactie beantwoord.</value></data>
+  <data name="Workgroups_CommentHidden" xml:space="preserve"><value>Reactie verborgen.</value></data>
+
+  <!-- Register (Index) -->
+  <data name="Workgroups_Title" xml:space="preserve"><value>Werkgroepen</value></data>
+  <data name="Workgroups_Intro" xml:space="preserve"><value>Werkgroepen op verenigingsniveau: wat ze opleveren, wanneer en aan wie.</value></data>
+  <data name="Workgroups_Active" xml:space="preserve"><value>Actief</value></data>
+  <data name="Workgroups_NoActive" xml:space="preserve"><value>Nog geen actieve groepen.</value></data>
+  <data name="Workgroups_Pending" xml:space="preserve"><value>In afwachting</value></data>
+  <data name="Workgroups_NoPending" xml:space="preserve"><value>Er wacht niets op de secretaris.</value></data>
+  <data name="Workgroups_Archive" xml:space="preserve"><value>Archief</value></data>
+  <data name="Workgroups_NoArchive" xml:space="preserve"><value>Nog niets gearchiveerd.</value></data>
+  <data name="Workgroups_AppliedOn" xml:space="preserve"><value>Aangevraagd</value></data>
+  <data name="Workgroups_Ended" xml:space="preserve"><value>Beëindigd</value></data>
+  <data name="Workgroups_Reasons" xml:space="preserve"><value>Redenen</value></data>
+  <data name="Workgroups_Coordinators" xml:space="preserve"><value>Coördinatoren</value></data>
+  <data name="Workgroups_CoordinatedBy" xml:space="preserve"><value>Gecoördineerd door</value></data>
+  <data name="Workgroups_DeliverableSentence" xml:space="preserve"><value>Uiterlijk {0} leveren we {1} op aan {2}.</value></data>
+  <data name="Workgroups_NoTargetDate" xml:space="preserve"><value>een nog te bepalen datum</value></data>
+  <data name="Workgroups_OpenForComment" xml:space="preserve"><value>Open voor reacties</value></data>
+  <data name="Workgroups_UpdateDue" xml:space="preserve"><value>Update verwacht</value></data>
+  <data name="Workgroups_RegistrationOverdue" xml:space="preserve"><value>Te laat</value></data>
+
+  <!-- Apply / Edit -->
+  <data name="Workgroups_Apply" xml:space="preserve"><value>Groep aanvragen</value></data>
+  <data name="Workgroups_ApplyTitle" xml:space="preserve"><value>Werkgroep aanvragen</value></data>
+  <data name="Workgroups_ApplyIntro" xml:space="preserve"><value>Geef de naam, het doel, de coördinator(en), de verwachte planning en het verwachte resultaat op. De secretaris beoordeelt aanvragen binnen veertien dagen.</value></data>
+  <data name="Workgroups_EditTitle" xml:space="preserve"><value>{0} bewerken</value></data>
+  <data name="Workgroups_ScopeChangeNote" xml:space="preserve"><value>Het wijzigen van het eindproduct, de soort, de streefdatum of de doelgroep wordt in de geschiedenis van de groep vastgelegd als wijziging van de reikwijdte.</value></data>
+  <data name="Workgroups_Field_Name" xml:space="preserve"><value>Naam</value></data>
+  <data name="Workgroups_Field_Purpose" xml:space="preserve"><value>Doel</value></data>
+  <data name="Workgroups_Field_Deliverable" xml:space="preserve"><value>Eindproduct (één regel)</value></data>
+  <data name="Workgroups_Field_DeliverableHelp" xml:space="preserve"><value>Wat de groep belooft, in één zin — het gedeelte "we leveren … op".</value></data>
+  <data name="Workgroups_Field_DeliverableKind" xml:space="preserve"><value>Soort eindproduct</value></data>
+  <data name="Workgroups_Field_Audience" xml:space="preserve"><value>Doelgroep</value></data>
+  <data name="Workgroups_Field_TargetDate" xml:space="preserve"><value>Streefdatum</value></data>
+  <data name="Workgroups_Field_DiscordChannelUrl" xml:space="preserve"><value>URL van het Discord-kanaal</value></data>
+  <data name="Workgroups_Field_SecondCoordinator" xml:space="preserve"><value>Tweede coördinator (optioneel)</value></data>
+
+  <!-- Group page -->
+  <data name="Workgroups_Join" xml:space="preserve"><value>Verzoek om lid te worden</value></data>
+  <data name="Workgroups_Leave" xml:space="preserve"><value>Verlaten</value></data>
+  <data name="Workgroups_DiscordChannel" xml:space="preserve"><value>Discord-kanaal</value></data>
+  <data name="Workgroups_DriveFolder" xml:space="preserve"><value>Drive-map</value></data>
+  <data name="Workgroups_Budget" xml:space="preserve"><value>Budget</value></data>
+  <data name="Workgroups_BudgetAccount" xml:space="preserve"><value>Holded-rekening</value></data>
+  <data name="Enum_WorkgroupLogKind_BudgetSet" xml:space="preserve"><value>Budget vastgesteld</value></data>
+  <data name="Workgroups_Error_BudgetNegative" xml:space="preserve"><value>Het budgetbedrag mag niet negatief zijn.</value></data>
+  <data name="Workgroups_Error_BudgetAccountFailed" xml:space="preserve"><value>Financiën kon de Holded-rekening niet aanmaken of koppelen. Er is niets opgeslagen.</value></data>
+  <data name="Workgroups_NextMeeting" xml:space="preserve"><value>Volgende vergadering</value></data>
+  <data name="Workgroups_PublicMeeting" xml:space="preserve"><value>Communitykalender</value></data>
+  <data name="Workgroups_Roster" xml:space="preserve"><value>Ledenlijst</value></data>
+  <data name="Workgroups_Board" xml:space="preserve"><value>Bestuur</value></data>
+  <data name="Workgroups_Field_ReplacementCoordinator" xml:space="preserve"><value>Vervangende coördinator (jij bent de laatste)</value></data>
+  <data name="Workgroups_SaveCoordinators" xml:space="preserve"><value>Coördinatoren opslaan</value></data>
+  <data name="Workgroups_RequestStatus" xml:space="preserve"><value>Statusupdate vragen</value></data>
+  <data name="Workgroups_RequestStatusPlaceholder" xml:space="preserve"><value>Een vraag van één regel (optioneel)</value></data>
+  <data name="Workgroups_MarkDone" xml:space="preserve"><value>Markeren als afgerond</value></data>
+  <data name="Workgroups_MarkDoneConfirm" xml:space="preserve"><value>Deze groep als afgerond markeren? De groep wordt slapend en acties van leden worden bevroren.</value></data>
+  <data name="Workgroups_Documents" xml:space="preserve"><value>Documenten</value></data>
+  <data name="Workgroups_NewDocument" xml:space="preserve"><value>Nieuw document</value></data>
+  <data name="Workgroups_NoDocuments" xml:space="preserve"><value>Nog geen documenten.</value></data>
+  <data name="Workgroups_Surveys" xml:space="preserve"><value>Enquêtes</value></data>
+  <data name="Workgroups_SurveyIdPlaceholder" xml:space="preserve"><value>Enquête-ID</value></data>
+  <data name="Workgroups_LinkSurvey" xml:space="preserve"><value>Enquête koppelen</value></data>
+  <data name="Workgroups_MySurveys" xml:space="preserve"><value>Mijn enquêtes</value></data>
+  <data name="Workgroups_History" xml:space="preserve"><value>Geschiedenis</value></data>
+  <data name="Workgroups_NewMeeting" xml:space="preserve"><value>Nieuwe vergadering</value></data>
+  <data name="Workgroups_NewLogEntry" xml:space="preserve"><value>Nieuwe logboekvermelding</value></data>
+  <data name="Workgroups_AddMeetingNotes" xml:space="preserve"><value>Notities toevoegen</value></data>
+  <data name="Workgroups_NoHistory" xml:space="preserve"><value>Nog geen geschiedenis.</value></data>
+  <data name="Workgroups_Meeting" xml:space="preserve"><value>Vergadering</value></data>
+
+  <!-- Meeting form -->
+  <data name="Workgroups_MeetingNewTitle" xml:space="preserve"><value>Nieuwe vergadering</value></data>
+  <data name="Workgroups_MeetingEditTitle" xml:space="preserve"><value>Vergadering bewerken</value></data>
+  <data name="Workgroups_Field_TimesAreUtc" xml:space="preserve"><value>Tijden zijn in UTC.</value></data>
+  <data name="Workgroups_Field_IsPublic" xml:space="preserve"><value>Tonen op communitykalender</value></data>
+  <data name="Workgroups_Field_IsPublicHelp" xml:space="preserve"><value>Iedereen met toegang tot de app kan de vergadering en notulen op de pagina van deze groep lezen. Met deze optie wordt de vergadering ook op de communitykalender vermeld.</value></data>
+
+  <!-- Log entry form -->
+  <data name="Workgroups_LogEntryNewTitle" xml:space="preserve"><value>Nieuwe logboekvermelding</value></data>
+  <data name="Workgroups_LogEntryEditTitle" xml:space="preserve"><value>Logboekvermelding bewerken</value></data>
+  <data name="Workgroups_Field_LogKind" xml:space="preserve"><value>Soort</value></data>
+  <data name="Workgroups_Field_OccurredOn" xml:space="preserve"><value>Datum</value></data>
+  <data name="Workgroups_Field_LogTitle" xml:space="preserve"><value>Titel (optioneel)</value></data>
+  <data name="Workgroups_Field_LogBody" xml:space="preserve"><value>Inhoud</value></data>
+
+  <!-- Document form / page -->
+  <data name="Workgroups_DocumentNewTitle" xml:space="preserve"><value>Nieuw document</value></data>
+  <data name="Workgroups_DocumentEditTitle" xml:space="preserve"><value>Document bewerken</value></data>
+  <data name="Workgroups_Field_DocumentTitle" xml:space="preserve"><value>Titel</value></data>
+  <data name="Workgroups_Field_DocumentKind" xml:space="preserve"><value>Soort</value></data>
+  <data name="Workgroups_Field_DocumentBody" xml:space="preserve"><value>Inhoud</value></data>
+  <data name="Workgroups_Field_DocumentBodyHelp" xml:space="preserve"><value>Markdown. Schrijf je concept in je Drive-map en plak hier de publiceerbare tekst.</value></data>
+  <data name="Workgroups_LastEditedBy" xml:space="preserve"><value>Laatst bewerkt door {0} op {1}.</value></data>
+  <data name="Workgroups_Publish" xml:space="preserve"><value>Publiceren</value></data>
+  <data name="Workgroups_OpenComments" xml:space="preserve"><value>Reacties openen</value></data>
+  <data name="Workgroups_CloseComments" xml:space="preserve"><value>Reacties sluiten</value></data>
+  <data name="Workgroups_Deliver" xml:space="preserve"><value>Opleveren</value></data>
+  <data name="Workgroups_DeliverConfirm" xml:space="preserve"><value>Dit document opleveren? De inhoud wordt bevroren en het bestuur krijgt een melding.</value></data>
+  <data name="Workgroups_RecordDisposition" xml:space="preserve"><value>Besluit vastleggen</value></data>
+  <data name="Workgroups_DispositionNotePlaceholder" xml:space="preserve"><value>Het schriftelijke antwoord van het bestuur</value></data>
+  <data name="Workgroups_Field_OpensAt" xml:space="preserve"><value>Opent</value></data>
+  <data name="Workgroups_Field_ClosesAt" xml:space="preserve"><value>Sluit</value></data>
+  <data name="Workgroups_Field_Categories" xml:space="preserve"><value>Reactiecategorieën</value></data>
+  <data name="Workgroups_CategoriesPlaceholder" xml:space="preserve"><value>Eén per regel, bijv. Reikwijdte, Formulering, Planning</value></data>
+  <data name="Workgroups_BackToGroup" xml:space="preserve"><value>Terug naar groep</value></data>
+
+  <!-- Comments -->
+  <data name="Workgroups_Comments" xml:space="preserve"><value>Reacties</value></data>
+  <data name="Workgroups_NoComments" xml:space="preserve"><value>Nog geen reacties.</value></data>
+  <data name="Workgroups_AddComment" xml:space="preserve"><value>Reactie toevoegen</value></data>
+  <data name="Workgroups_HiddenByGroup" xml:space="preserve"><value>Verborgen door de groep</value></data>
+  <data name="Workgroups_HiddenReason" xml:space="preserve"><value>Reden</value></data>
+  <data name="Workgroups_GroupResponse" xml:space="preserve"><value>Antwoord van de groep</value></data>
+  <data name="Workgroups_Respond" xml:space="preserve"><value>Reageren</value></data>
+  <data name="Workgroups_HideComment" xml:space="preserve"><value>Verbergen</value></data>
+  <data name="Workgroups_HideReasonPlaceholder" xml:space="preserve"><value>Reden voor verbergen (verplicht)</value></data>
+  <data name="Workgroups_RespondToCategory" xml:space="preserve"><value>Alle openstaande reacties in deze categorie beantwoorden</value></data>
+  <data name="Workgroups_BulkResponsePlaceholder" xml:space="preserve"><value>Reactie op elke openstaande opmerking in deze categorie</value></data>
+
+  <!-- Governance card and member dashboard -->
+  <data name="Workgroups_GovernanceCardTitle" xml:space="preserve"><value>Werkgroepen</value></data>
+  <data name="Workgroups_ViewRegister" xml:space="preserve"><value>Register bekijken</value></data>
+  <data name="Workgroups_MyWorkgroups" xml:space="preserve"><value>Mijn werkgroepen</value></data>
+  <data name="Workgroups_MyWorkgroupsEmpty" xml:space="preserve"><value>Je bent nog geen lid van een werkgroep.</value></data>
+  <data name="Workgroups_Error_SurveyNotYours" xml:space="preserve">
+    <value>Je kunt alleen een enquête koppelen die je zelf hebt gemaakt.</value>
+  </data>
+  <data name="Workgroups_Error_TextTooLong" xml:space="preserve"><value>Gebruik maximaal {0} tekens.</value></data>
+  <data name="Workgroups_Email_WorkgroupNotice_Greeting_Named" xml:space="preserve"><value>&lt;p&gt;Hoi {0},&lt;/p&gt;</value></data>
+  <data name="Workgroups_Email_WorkgroupNotice_Greeting_Generic" xml:space="preserve"><value>&lt;p&gt;Hallo,&lt;/p&gt;</value></data>
+  <data name="Workgroups_Email_WorkgroupNotice_Applied_Subject" xml:space="preserve"><value>Nieuwe werkgroepaanvraag: {0}</value></data>
+  <data name="Workgroups_Email_WorkgroupNotice_Applied_Body" xml:space="preserve"><value>&lt;h2&gt;Nieuwe aanvraag voor een werkgroep&lt;/h2&gt;{0}&lt;p&gt;Er is een nieuwe aanvraag voor de werkgroep &lt;strong&gt;{1}&lt;/strong&gt; ingediend ter beoordeling door het bestuur.&lt;/p&gt;&lt;p&gt;&lt;a href="{2}"&gt;Werkgroep bekijken&lt;/a&gt;&lt;/p&gt;</value></data>
+  <data name="Workgroups_Email_WorkgroupNotice_Referred_Subject" xml:space="preserve"><value>Werkgroepaanvraag doorverwezen: {0}</value></data>
+  <data name="Workgroups_Email_WorkgroupNotice_Referred_Body" xml:space="preserve"><value>&lt;h2&gt;Aanvraag voor een werkgroep doorverwezen&lt;/h2&gt;{0}&lt;p&gt;De aanvraag voor de werkgroep &lt;strong&gt;{1}&lt;/strong&gt; is doorverwezen naar het bestuur.&lt;/p&gt;&lt;p&gt;&lt;a href="{2}"&gt;Werkgroep bekijken&lt;/a&gt;&lt;/p&gt;</value></data>
+  <data name="Workgroups_Email_WorkgroupNotice_Registered_Subject" xml:space="preserve"><value>Werkgroep geregistreerd: {0}</value></data>
+  <data name="Workgroups_Email_WorkgroupNotice_Registered_Body" xml:space="preserve"><value>&lt;h2&gt;Werkgroep geregistreerd&lt;/h2&gt;{0}&lt;p&gt;De werkgroep &lt;strong&gt;{1}&lt;/strong&gt; is geregistreerd.&lt;/p&gt;&lt;p&gt;&lt;a href="{2}"&gt;Werkgroep bekijken&lt;/a&gt;&lt;/p&gt;</value></data>
+  <data name="Workgroups_Email_WorkgroupNotice_Refused_Subject" xml:space="preserve"><value>Werkgroepaanvraag niet goedgekeurd: {0}</value></data>
+  <data name="Workgroups_Email_WorkgroupNotice_Refused_Body" xml:space="preserve"><value>&lt;h2&gt;Aanvraag voor werkgroep niet goedgekeurd&lt;/h2&gt;{0}&lt;p&gt;De aanvraag voor &lt;strong&gt;{1}&lt;/strong&gt; is niet goedgekeurd.&lt;/p&gt;{2}&lt;p&gt;&lt;a href="{3}"&gt;Werkgroep bekijken&lt;/a&gt;&lt;/p&gt;</value></data>
+  <data name="Workgroups_Email_WorkgroupNotice_Withdrawn_Subject" xml:space="preserve"><value>Werkgroep ingetrokken: {0}</value></data>
+  <data name="Workgroups_Email_WorkgroupNotice_Withdrawn_Body" xml:space="preserve"><value>&lt;h2&gt;Werkgroep ingetrokken&lt;/h2&gt;{0}&lt;p&gt;De werkgroep &lt;strong&gt;{1}&lt;/strong&gt; is ingetrokken.&lt;/p&gt;{2}&lt;p&gt;&lt;a href="{3}"&gt;Werkgroep bekijken&lt;/a&gt;&lt;/p&gt;</value></data>
+  <data name="Workgroups_Email_WorkgroupNotice_Ended_Subject" xml:space="preserve"><value>Werkgroep beëindigd: {0}</value></data>
+  <data name="Workgroups_Email_WorkgroupNotice_Ended_Body" xml:space="preserve"><value>&lt;h2&gt;Werkgroep beëindigd&lt;/h2&gt;{0}&lt;p&gt;De werkgroep &lt;strong&gt;{1}&lt;/strong&gt; is beëindigd.&lt;/p&gt;&lt;p&gt;&lt;a href="{2}"&gt;Werkgroep bekijken&lt;/a&gt;&lt;/p&gt;</value></data>
+  <data name="Workgroups_Email_WorkgroupNotice_Reactivated_Subject" xml:space="preserve"><value>Werkgroep opnieuw geactiveerd: {0}</value></data>
+  <data name="Workgroups_Email_WorkgroupNotice_Reactivated_Body" xml:space="preserve"><value>&lt;h2&gt;Werkgroep opnieuw geactiveerd&lt;/h2&gt;{0}&lt;p&gt;De werkgroep &lt;strong&gt;{1}&lt;/strong&gt; is opnieuw geactiveerd.&lt;/p&gt;&lt;p&gt;&lt;a href="{2}"&gt;Werkgroep bekijken&lt;/a&gt;&lt;/p&gt;</value></data>
+  <data name="Workgroups_Email_WorkgroupNotice_CoordinatorsChanged_Subject" xml:space="preserve"><value>Coördinatoren gewijzigd: {0}</value></data>
+  <data name="Workgroups_Email_WorkgroupNotice_CoordinatorsChanged_Body" xml:space="preserve"><value>&lt;h2&gt;Coördinatoren gewijzigd&lt;/h2&gt;{0}&lt;p&gt;De coördinatoren van &lt;strong&gt;{1}&lt;/strong&gt; zijn gewijzigd.&lt;/p&gt;&lt;p&gt;&lt;a href="{2}"&gt;Werkgroep bekijken&lt;/a&gt;&lt;/p&gt;</value></data>
+  <data name="Workgroups_Email_WorkgroupNotice_DormancyInquiry_Subject" xml:space="preserve"><value>Werkgroep is stil: {0}</value></data>
+  <data name="Workgroups_Email_WorkgroupNotice_DormancyInquiry_Body" xml:space="preserve"><value>&lt;h2&gt;Werkgroep is stil&lt;/h2&gt;{0}&lt;p&gt;De werkgroep &lt;strong&gt;{1}&lt;/strong&gt; heeft al {2} dagen geen activiteit gehad. Plaats een update, anders kan de groep als slapend worden gemarkeerd.&lt;/p&gt;&lt;p&gt;&lt;a href="{3}"&gt;Werkgroep bekijken&lt;/a&gt;&lt;/p&gt;</value></data>
+  <data name="Workgroups_Email_WorkgroupNotice_Delivered_Subject" xml:space="preserve"><value>Werkgroep heeft opgeleverd: {0}</value></data>
+  <data name="Workgroups_Email_WorkgroupNotice_Delivered_Body" xml:space="preserve"><value>&lt;h2&gt;Werkgroep heeft opgeleverd&lt;/h2&gt;{0}&lt;p&gt;De werkgroep &lt;strong&gt;{1}&lt;/strong&gt; heeft haar resultaat opgeleverd: &lt;strong&gt;{2}&lt;/strong&gt;.&lt;/p&gt;&lt;p&gt;&lt;a href="{3}"&gt;Werkgroep bekijken&lt;/a&gt;&lt;/p&gt;</value></data>
+  <data name="Workgroups_Email_WorkgroupNotice_DispositionRecorded_Subject" xml:space="preserve"><value>Bestuursbesluit vastgelegd: {0}</value></data>
+  <data name="Workgroups_Email_WorkgroupNotice_DispositionRecorded_Body" xml:space="preserve"><value>&lt;h2&gt;Bestuursbesluit vastgelegd&lt;/h2&gt;{0}&lt;p&gt;Het bestuur heeft zijn besluit over &lt;strong&gt;{1}&lt;/strong&gt; vastgelegd: {2}.&lt;/p&gt;&lt;p&gt;&lt;a href="{3}"&gt;Werkgroep bekijken&lt;/a&gt;&lt;/p&gt;</value></data>
+  <data name="Workgroups_Email_ReasonLine" xml:space="preserve">
+    <value>&lt;p&gt;&lt;strong&gt;Reden:&lt;/strong&gt; {0}&lt;/p&gt;</value>
+    <comment>{0} = reason text (HTML-encoded by caller)</comment>
+  </data>
+  <data name="Workgroups_RequestPending" xml:space="preserve"><value>Je verzoek om lid te worden wacht op een coördinator.</value></data>
+  <data name="Workgroups_WithdrawRequest" xml:space="preserve"><value>Verzoek intrekken</value></data>
+  <data name="Workgroups_PendingRequests" xml:space="preserve"><value>Lidmaatschapsverzoeken</value></data>
+  <data name="Workgroups_Approve" xml:space="preserve"><value>Goedkeuren</value></data>
+  <data name="Workgroups_Decline" xml:space="preserve"><value>Afwijzen</value></data>
+  <data name="Workgroups_AddMember" xml:space="preserve"><value>Een lid toevoegen</value></data>
+  <data name="Workgroups_MemberApproved" xml:space="preserve"><value>Het verzoek is goedgekeurd.</value></data>
+  <data name="Workgroups_MemberDeclined" xml:space="preserve"><value>Het verzoek is afgewezen.</value></data>
+  <data name="Workgroups_MemberAdded" xml:space="preserve"><value>Het lid is toegevoegd.</value></data>
+  <data name="Workgroups_Sensitive" xml:space="preserve"><value>Vertrouwelijk</value></data>
+  <data name="Workgroups_SensitiveMembersOnly" xml:space="preserve"><value>Deze groep is vertrouwelijk: de leden, documenten en geschiedenis zijn alleen zichtbaar voor leden.</value></data>
+  <data name="Workgroups_Field_IsSensitive" xml:space="preserve"><value>Vertrouwelijke groep</value></data>
+  <data name="Workgroups_Field_IsSensitiveHelp" xml:space="preserve"><value>Alleen leden en het bestuur zien de ledenlijst, documenten en geschiedenis. De naam en het doel blijven in het register staan.</value></data>
+  <data name="Workgroups_Error_MembershipPending" xml:space="preserve"><value>Je verzoek om lid te worden wacht al op een coördinator.</value></data>
+  <data name="Workgroups_Error_NoPendingRequest" xml:space="preserve"><value>Er is geen openstaand verzoek van die persoon.</value></data>
+  <data name="Workgroups_Error_NotACoordinator" xml:space="preserve"><value>Alleen een coördinator kan beslissen wie er lid wordt.</value></data>
+  <data name="Workgroups_Error_MembersOnly" xml:space="preserve"><value>Deze groep is vertrouwelijk; alleen de leden kunnen dat doen.</value></data>
+  <data name="Workgroups_Notice_MembershipRequested" xml:space="preserve"><value>Iemand heeft gevraagd om lid te worden</value></data>
+  <data name="Workgroups_Notice_MembershipApproved" xml:space="preserve"><value>Je verzoek om lid te worden is goedgekeurd</value></data>
+  <data name="Workgroups_Notice_MembershipDeclined" xml:space="preserve"><value>Je verzoek om lid te worden is afgewezen</value></data>
+  <data name="Workgroups_Notice_MemberAdded" xml:space="preserve"><value>Je bent aan de groep toegevoegd</value></data>
+  <data name="Workgroups_Todo_MembershipRequests_Title" xml:space="preserve"><value>Lidmaatschapsverzoeken in afwachting</value></data>
+  <data name="Workgroups_Todo_MembershipRequests_Description" xml:space="preserve"><value>{0} heeft {1} verzoek(en) om lid te worden.</value></data>
+  <data name="Workgroups_Todo_MembershipRequests_Action" xml:space="preserve"><value>Verzoeken beoordelen</value></data>
+  <data name="Workgroups_Error_DiscordUrlInvalid" xml:space="preserve"><value>Voer een absolute HTTP- of HTTPS-URL in voor de Discord-link.</value></data>
+  <data name="Enum_MembershipTier_Volunteer" xml:space="preserve"><value>Vrijwilliger</value></data>
+  <data name="Enum_MembershipTier_Colaborador" xml:space="preserve"><value>Colaborador</value></data>
+  <data name="Enum_MembershipTier_Asociado" xml:space="preserve"><value>Asociado</value></data>
+</root>

@@ -68,6 +68,39 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
     [HumansTheory]
     [InlineData(false)]
     [InlineData(true)]
+    public async Task AddUserEmailAsync_AddressVerifiedOnAnotherUser_RefusesVerifiedAndFlagsUnverified(bool verified)
+    {
+        var userId = Guid.NewGuid();
+        var repository = Substitute.For<IUserRepository>();
+        repository.GetByIdAsync(userId, Arg.Any<CancellationToken>()).Returns(new User { Id = userId });
+        repository.GetUserEmailsByAddressAsync(Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns([new UserEmail { Id = Guid.NewGuid(), UserId = Guid.NewGuid(), Email = "held@example.com", IsVerified = true }]);
+        var service = new UserService(repository,
+            AdminAuthorization, _fileStorage, Clock, NullLogger<UserService>.Instance, AuditLog);
+
+        var result = await service.AddUserEmailAsync(userId,
+            new UserEmailAddCommand("held@example.com", IsVerified: verified),
+            TestContext.Current.CancellationToken);
+
+        if (verified)
+        {
+            result.ErrorKey.Should().Be("Users_Profile_EmailVerifiedOnAnotherAccount");
+            result.Added.Should().BeFalse();
+            await repository.DidNotReceive().AddUserEmailAsync(Arg.Any<UserEmail>(), Arg.Any<CancellationToken>());
+        }
+        else
+        {
+            result.ErrorKey.Should().BeNull();
+            result.Added.Should().BeTrue();
+            result.IsConflict.Should().BeTrue();
+            await repository.Received(1).AddUserEmailAsync(
+                Arg.Is<UserEmail>(e => e.UserId == userId && !e.IsVerified), Arg.Any<CancellationToken>());
+        }
+    }
+
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
     public async Task AddUserEmailAsync_StoredLengthLimit_AcceptsTrimmedBoundary(bool padded)
     {
         var userId = Guid.NewGuid();
@@ -140,7 +173,6 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
             IsPrimary = true,
             Provider = "Google",
             ProviderKey = "sub-1",
-            IsGoogle = false,
         });
         accountUser.State = hasDeletionHold ? UserState.DeletePending : UserState.Bare;
         var arrival = Clock.GetCurrentInstant();
@@ -197,7 +229,6 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
             await SeedUserWithProfileAsync(id);
             var profile = await Db.Profiles.SingleAsync(p => p.UserId == id, TestContext.Current.CancellationToken);
             profile.MedicalConditions = $"Health {id}";
-            profile.DietaryPreference = $"Diet {id}";
         }
         await Db.SaveChangesAsync(TestContext.Current.CancellationToken);
         foreach (var (source, target) in new[] { (oldestId, archivedId), (archivedId, survivorId) })
@@ -220,7 +251,6 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
         foreach (var id in new[] { oldestId, archivedId })
         {
             profiles[id].GetProperty("MedicalConditions").GetString().Should().Be($"Health {id}");
-            profiles[id].GetProperty("DietaryPreference").GetString().Should().Be($"Diet {id}");
         }
         using var currentJson = System.Text.Json.JsonDocument.Parse(System.Text.Json.JsonSerializer.Serialize(
             slices.Single(s => string.Equals(s.SectionName, UserService.Profile, StringComparison.Ordinal)).Data));
@@ -228,7 +258,7 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
     }
 
     [HumansFact]
-    public async Task ContributeForUserAsync_ExportsOwnEmailLifecycleAndGoogleSyncState()
+    public async Task ContributeForUserAsync_ExportsOwnEmailLifecycleWithoutRetiredGoogleState()
     {
         var userId = Guid.NewGuid();
         var otherUserId = Guid.NewGuid();
@@ -239,9 +269,7 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
             new UserEmail
             {
                 Id = Guid.NewGuid(), UserId = userId, Email = "google@example.com",
-                IsVerified = true, IsPrimary = true, IsGoogle = true,
-                GoogleEmailStatus = LegacyGoogleEmailStatus.Rejected,
-                CreatedAt = createdAt,
+                IsVerified = true, IsPrimary = true, CreatedAt = createdAt,
                 UpdatedAt = createdAt.Plus(NodaTime.Duration.FromHours(2)),
                 VerificationSentAt = createdAt.Plus(NodaTime.Duration.FromHours(1)),
             },
@@ -263,14 +291,12 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
         var emails = json.RootElement.EnumerateArray().ToList();
         emails.Should().HaveCount(2);
         var google = emails.Single(e => string.Equals(e.GetProperty("Email").GetString(), "google@example.com", StringComparison.Ordinal));
-        google.GetProperty("IsGoogle").GetBoolean().Should().BeTrue();
-        google.GetProperty("GoogleEmailStatus").GetString().Should().Be("Rejected");
+        google.TryGetProperty("IsGoogle", out _).Should().BeFalse();
+        google.TryGetProperty("GoogleEmailStatus", out _).Should().BeFalse();
         google.GetProperty("CreatedAt").GetString().Should().Be("2026-03-01T12:00:00Z");
         google.GetProperty("UpdatedAt").GetString().Should().Be("2026-03-01T14:00:00Z");
         google.GetProperty("VerificationSentAt").GetString().Should().Be("2026-03-01T13:00:00Z");
         var manual = emails.Single(e => string.Equals(e.GetProperty("Email").GetString(), "manual@example.com", StringComparison.Ordinal));
-        manual.GetProperty("IsGoogle").GetBoolean().Should().BeFalse();
-        manual.GetProperty("GoogleEmailStatus").GetString().Should().Be("Unknown");
         manual.GetProperty("VerificationSentAt").GetString().Should().BeNull();
     }
 
@@ -383,27 +409,6 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
 
         var user = await Db.Users.AsNoTracking().FirstAsync(u => u.Id == userId, TestContext.Current.CancellationToken);
         user.State.Should().Be(UserState.Rejected);
-    }
-
-    [HumansFact]
-    public async Task RetiredLegacyRejection_DoesNotOverrideTheStoredState()
-    {
-        // Migration completion makes users.State authoritative even if a frozen column differs.
-        var userId = Guid.NewGuid();
-        var profileId = await SeedUserWithProfileAsync(userId);
-        var profile = await Db.Profiles.FirstAsync(p => p.Id == profileId, TestContext.Current.CancellationToken);
-        profile.RejectedAt = Clock.GetCurrentInstant();
-        await Db.SaveChangesAsync(TestContext.Current.CancellationToken);
-        Db.ChangeTracker.Clear();
-        (await Db.Users.AsNoTracking().FirstAsync(u => u.Id == userId, TestContext.Current.CancellationToken))
-            .State.Should().NotBe(UserState.Rejected);
-
-        var info = await _service.GetRawUserInfoAsync(userId, TestContext.Current.CancellationToken);
-        info!.IsRejected.Should().BeFalse();
-
-        await _service.SetSuspensionAsync(userId, suspended: false, ct: TestContext.Current.CancellationToken);
-        var user = await Db.Users.AsNoTracking().FirstAsync(u => u.Id == userId, TestContext.Current.CancellationToken);
-        user.State.Should().Be(UserState.Active);
     }
 
     [HumansFact]
@@ -917,10 +922,7 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
         fresh.LastName.Should().Be("User");
     }
 
-    private async Task<Guid> SeedUserWithProfileAsync(
-        Guid userId,
-        LegacyMembershipTier tier = LegacyMembershipTier.Volunteer,
-        bool isApproved = false)
+    private async Task<Guid> SeedUserWithProfileAsync(Guid userId)
     {
         SeedUser(userId);
         var profile = new Profile
@@ -930,8 +932,6 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
             BurnerName = "Test",
             FirstName = "First",
             LastName = "Last",
-            MembershipTier = tier,
-            IsApproved = isApproved,
             CreatedAt = Clock.GetCurrentInstant(),
             UpdatedAt = Clock.GetCurrentInstant(),
         };

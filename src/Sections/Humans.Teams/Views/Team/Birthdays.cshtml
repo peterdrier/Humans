@@ -6,15 +6,12 @@
     var nextMonth = Model.CurrentMonth == 12 ? 1 : Model.CurrentMonth + 1;
 }
 
-<nav aria-label="@Localizer["Teams_BreadcrumbNavigation"]">
-    <ol class="breadcrumb">
-        <li class="breadcrumb-item"><a asp-action="Index">@SharedLocalizer["Teams_Title"]</a></li>
-        <li class="breadcrumb-item active" aria-current="page">@Localizer["Teams_Birthdays_Title"]</li>
-    </ol>
-</nav>
+@section Crumbs {
+    <a asp-action="Index">@SharedLocalizer["Teams_Title"]</a>
+    <span>@Localizer["Teams_Birthdays_Title"]</span>
+}
 
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <h1>@Localizer["Teams_Birthdays_Title"]</h1>
+<page-header title="@(Localizer["Teams_Birthdays_Title"].Value)">
     <div class="d-flex align-items-center gap-2">
         <a asp-action="Birthdays" asp-route-month="@prevMonth" class="btn btn-outline-secondary btn-sm">
             &laquo;
@@ -24,7 +21,7 @@
             &raquo;
         </a>
     </div>
-</div>
+</page-header>
 
 @if (Model.Birthdays.Count > 0)
 {

@@ -22,28 +22,22 @@ internal sealed record CreditorAccountRowVm(
     int? OpenDocs = null,
     string? PendingPayoutFileName = null,
     bool? HasDuplicateDocuments = false,
-    CreditorMatchVm? Match = null)
+    CreditorMatchVm? Match = null,
+    string? NotPayableReason = null)
 {
-    public const string DuplicateDocumentsReason = "duplicate documents in Holded";
-    public const string InFlightReason = "payment in flight";
-
     /// <summary>Needs an admin to unbind all but the owner.</summary>
     public bool HasCollision => Bindings.Count > 1;
 
-    /// <summary>Null when payable. Display only: the server re-derives the same rules at generation.</summary>
-    public string? NotPayableReason => Bindings.Count switch
-    {
-        0 => "unbound",
-        > 1 => "collision",
-        _ when HasDuplicateDocuments is null => "duplicate check unavailable — Holded's document list could not be read",
-        _ when HasDuplicateDocuments == true => DuplicateDocumentsReason,
-        _ when PendingPayoutFileName is not null => InFlightReason,
-        _ when Balance is not > 0m => "nothing owed",
-        _ when IbanMasked is null => "no IBAN in Holded",
-        _ => null,
-    };
-
     public bool IsPayable => NotPayableReason is null;
+
+    /// <summary>The masked IBAN keeps its first four characters, so the country survives masking.</summary>
+    public string? IbanCountry => IbanMasked is { Length: >= 2 } iban ? iban[..2] : null;
+
+    /// <summary>The country's domestic currency, informational only: the SEPA file always sends EUR.</summary>
+    public string? IbanCurrency => Humans.Base.Helpers.IbanValidator.CurrencyOf(IbanMasked);
+
+    /// <summary>Outside the EEA (or unknown), EU fee rules don't apply and the bank charges per transfer.</summary>
+    public bool IbanOutsideEea => IbanCountry is not null && Humans.Base.Helpers.IbanValidator.IsEea(IbanMasked) != true;
 
     /// <summary>Unbound rows sort last: an admin sorting by member is looking for people, not gaps.</summary>
     public string MemberSortKey => Bindings.Count == 0
@@ -66,7 +60,8 @@ internal sealed record CreditorsPageVm(
     string SortDir,
     SepaPayoutSettings Sepa,
     int? ReconProblems = 0,
-    int ReconWarnings = 0)
+    int ReconWarnings = 0,
+    string? UnavailableReason = null)
 {
     /// <summary>Null when the expense reconciliation cannot be computed (the document mirror never synced).</summary>
     public bool ReconUnavailable => ReconProblems is null;

@@ -44,19 +44,15 @@ public class HumanNameLocalizationTests
     }
 
     [HumansTheory]
-    [InlineData("en", "Unknown")]
-    [InlineData("es", "Desconocido")]
-    [InlineData("de", "Unbekannt")]
-    [InlineData("it", "Sconosciuto")]
-    [InlineData("fr", "Inconnu")]
-    [InlineData("ca", "Desconegut")]
-    public async Task MissingNames_AreLocalized_WithoutRewritingARealName(string cultureName, string expected)
+    [MemberData(nameof(SupportedCultures.All), MemberType = typeof(SupportedCultures))]
+    public async Task MissingNames_AreLocalized_WithoutRewritingARealName(string cultureName)
     {
         using var culture = new CultureScope(cultureName);
         using var services = new ServiceCollection().AddLogging().AddLocalization().BuildServiceProvider();
         var users = Substitute.For<IUserService>();
-        var component = new HumanViewComponent(users, Substitute.For<IUrlHelperFactory>(),
-            services.GetRequiredService<IStringLocalizer<SharedResource>>())
+        var localizer = services.GetRequiredService<IStringLocalizer<SharedResource>>();
+        string expected = localizer["Common_Unknown"];
+        var component = new HumanViewComponent(users, Substitute.For<IUrlHelperFactory>(), localizer)
         {
             ViewComponentContext = new ViewComponentContext
             {

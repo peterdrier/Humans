@@ -24,7 +24,7 @@ internal sealed class SepaBankBooking(
     TrackedCache<string, Dictionary<string, int>> bookingState,
     IAuditLogService audit,
     IOptions<SepaOptions> sepa,
-    ILogger logger) : ISepaBankBooking, IApplicationService
+    ILogger logger) : IApplicationService
 {
     private static readonly DateTimeZone MadridZone = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
 
@@ -65,7 +65,7 @@ internal sealed class SepaBankBooking(
     private const string PendingStatus = "pending";
 
     /// <summary>The bank can value-date a day early, and the feed's dates are Madrid days.</summary>
-    private const int GenerationSlackDays = IHoldedFinanceAdminService.DefaultSepaMatchToleranceDays;
+    private const int GenerationSlackDays = IFinanceAdminService.DefaultSepaMatchToleranceDays;
 
     /// <summary>Matched anywhere in the line, not anchored: bank feeds prepend their own wording.</summary>
     private static readonly Regex RemittanceAccount = new(
@@ -78,7 +78,7 @@ internal sealed class SepaBankBooking(
 
     public async Task<(IReadOnlyList<SepaPayoutTransferRow> Rows, string? UnavailableReason,
         IReadOnlyList<SepaBankMovementVm> UnmatchedMovements, string? BankFeedError)>
-        GetSepaPayoutsAsync(int toleranceDays = IHoldedFinanceAdminService.DefaultSepaMatchToleranceDays,
+        GetSepaPayoutsAsync(int toleranceDays = IFinanceAdminService.DefaultSepaMatchToleranceDays,
             CancellationToken ct = default)
     {
         var tolerance = ClampTolerance(toleranceDays);
@@ -95,7 +95,7 @@ internal sealed class SepaBankBooking(
         catch (Exception ex) when (ex is HoldedTransientException or HoldedPermanentException)
         {
             // The page still lists everything it lists; it just cannot offer a line to book against.
-            logger.LogWarning(ex, "The Sabadell bank feed could not be read for /Finance/Sepa.");
+            logger.LogWarning("The Sabadell bank feed could not be read for /Finance/Sepa. {Reason}", ex.Message);
             // Admin-only page: Holded's message names what failed, which is what the treasurer needs.
             return (withReasons, null, [],
                 "The Sabadell bank feed could not be read, so no transfer can be booked right now: "
@@ -295,7 +295,7 @@ internal sealed class SepaBankBooking(
         }
         catch (Exception ex) when (ex is HoldedTransientException or HoldedPermanentException)
         {
-            logger.LogWarning(ex, "The SEPA sweep could not read the Sabadell bank feed; nothing was booked.");
+            logger.LogWarning("The SEPA sweep could not read the Sabadell bank feed; nothing was booked. {Reason}", ex.Message);
             return;
         }
 
@@ -330,7 +330,7 @@ internal sealed class SepaBankBooking(
                     FinanceAuditActions.SepaPayoutTransferBooked, SepaTransferEntityType, row.TransferId,
                     $"RECONCILED the Sabadell line {row.HoldedBankMovementId} that booked the SEPA payout "
                     + $"{Euros(row.Amount)} to {row.IbanMasked} on creditor account {row.SupplierAccountNum}.",
-                    SepaBookingJobName, row.UserId, nameof(User));
+                    SepaBookingJobName, row.UserId, AuditSubjectTypes.User);
             }
         }
 
@@ -427,18 +427,18 @@ internal sealed class SepaBankBooking(
 
     public Task<SepaBookingResult> BookSepaTransferAsync(
         Guid transferId, string bankMovementId, Guid? actorUserId,
-        int toleranceDays = IHoldedFinanceAdminService.DefaultSepaMatchToleranceDays) =>
+        int toleranceDays = IFinanceAdminService.DefaultSepaMatchToleranceDays) =>
         RunBookingAsync(() => BookOneTransferAsync(
             transferId, bankMovementId, actorUserId, ClampTolerance(toleranceDays)));
 
     public Task<SepaBookingResult> BookSepaFileAsync(
         Guid fileId, string bankMovementId, Guid actorUserId,
-        int toleranceDays = IHoldedFinanceAdminService.DefaultSepaMatchToleranceDays) =>
+        int toleranceDays = IFinanceAdminService.DefaultSepaMatchToleranceDays) =>
         RunBookingAsync(() => BookOneFileAsync(fileId, bankMovementId, actorUserId, ClampTolerance(toleranceDays)));
 
     public Task<SepaBookingResult> BookSepaFileMatchesAsync(
         Guid fileId, Guid actorUserId,
-        int toleranceDays = IHoldedFinanceAdminService.DefaultSepaMatchToleranceDays) =>
+        int toleranceDays = IFinanceAdminService.DefaultSepaMatchToleranceDays) =>
         RunBookingAsync(() => BookFileMatchesAsync(fileId, actorUserId, ClampTolerance(toleranceDays)));
 
     /// <summary>Never negative, never past the feed window: beyond it there is no line to match.</summary>
@@ -604,7 +604,7 @@ internal sealed class SepaBankBooking(
                     $"RECONCILED the Sabadell line {movement.Id} that paid the whole file "
                     + $"{row.FileName}, including this transfer of {Euros(row.Amount)} to "
                     + $"{row.IbanMasked} on creditor account {row.SupplierAccountNum}.",
-                    actorUserId, row.UserId, nameof(User));
+                    actorUserId, row.UserId, AuditSubjectTypes.User);
             }
 
         return new SepaBookingResult(true,
@@ -795,7 +795,7 @@ internal sealed class SepaBankBooking(
                     entry = await holdedWrite.PostJournalEntryAsync(
                         movement.Date, transfer.SupplierAccountNum, sepa.Value.TreasuryLedgerAccount!.Value,
                         remaining, tag, ct);
-                    remaining -= entryAmount;   // what is still unposted, which is now nothing
+                    remaining -= entryAmount;
                 }
                 catch (Exception ex) when (ex is HoldedTransientException or HoldedPermanentException)
                 {
@@ -890,10 +890,10 @@ internal sealed class SepaBankBooking(
             actorUserId is { } actor
                 ? audit.LogAsync(
                     FinanceAuditActions.SepaPayoutTransferBooked, SepaTransferEntityType, transfer.Id,
-                    text, actor, transfer.UserId, nameof(User))
+                    text, actor, transfer.UserId, AuditSubjectTypes.User)
                 : audit.LogAsync(
                     FinanceAuditActions.SepaPayoutTransferBooked, SepaTransferEntityType, transfer.Id,
-                    text, SepaBookingJobName, transfer.UserId, nameof(User));
+                    text, SepaBookingJobName, transfer.UserId, AuditSubjectTypes.User);
 
         string PostingSummary()
         {
@@ -1044,14 +1044,14 @@ internal sealed class SepaBankBooking(
         catch (HoldedPermanentException ex) when (docs.Count > ReconcileChunkSize)
         {
             // A refusal moved no money and linked nothing, so the same ids can go again in chunks.
-            logger.LogWarning(ex,
+            logger.LogWarning(
                 "Holded refused the {Count}-payment reconcile of bank movement {MovementId} in one call; "
-                + "re-sending it in chunks of {Chunk}.", docs.Count, movementId, ReconcileChunkSize);
+                + "re-sending it in chunks of {Chunk}. {Reason}", docs.Count, movementId, ReconcileChunkSize, ex.Message);
             chunked = true;
         }
         catch (Exception ex) when (ex is HoldedTransientException or HoldedPermanentException)
         {
-            logger.LogWarning(ex, "Holded refused to reconcile bank movement {MovementId}.", movementId);
+            logger.LogWarning("Holded refused to reconcile bank movement {MovementId}. {Reason}", movementId, ex.Message);
             return null;
         }
 
@@ -1069,9 +1069,9 @@ internal sealed class SepaBankBooking(
                 }
                 catch (Exception ex) when (ex is HoldedTransientException or HoldedPermanentException)
                 {
-                    logger.LogWarning(ex,
+                    logger.LogWarning(
                         "Holded refused chunk {Chunk} ({Size} payment(s)) of the reconcile of bank movement "
-                        + "{MovementId}.", number, chunk.Length, movementId);
+                        + "{MovementId}. {Reason}", number, chunk.Length, movementId, ex.Message);
                     refused.AddRange(chunk);
                 }
             }
@@ -1117,9 +1117,9 @@ internal sealed class SepaBankBooking(
         }
         catch (Exception ex) when (ex is HoldedTransientException or HoldedPermanentException)
         {
-            logger.LogWarning(ex,
+            logger.LogWarning(
                 "Could not re-read bank movement {MovementId} after reconciling it; the transfer stays "
-                + "reconcile pending.", movementId);
+                + "reconcile pending. {Reason}", movementId, ex.Message);
             return null;
         }
 

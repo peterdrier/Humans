@@ -23,7 +23,7 @@ internal sealed class ExpensesIndexViewModel
 
     /// <summary>Null both when unbound and when bound with no cached activity; <see cref="BoundAccountNum"/> tells
     /// them apart.</summary>
-    public HoldedCreditorLedger? AccountLedger { get; init; }
+    public CreditorLedger? AccountLedger { get; init; }
 
     public int? BoundAccountNum { get; init; }
 
@@ -43,7 +43,7 @@ internal sealed class ExpensesIndexViewModel
 
 internal sealed class ExpenseNewViewModel
 {
-    public IReadOnlyList<HoldedExpenseAccountOption> Accounts { get; set; } = [];
+    public IReadOnlyList<ExpenseAccountOption> Accounts { get; set; } = [];
 
     /// <summary>The service derives the budget category; the form never names one.</summary>
     [Range(1, int.MaxValue, ErrorMessage = "Validation_Required")]
@@ -65,7 +65,7 @@ internal sealed class ExpenseNewViewModel
 internal sealed class ExpenseEditViewModel
 {
     public ExpenseReportDto? Report { get; set; }
-    public IReadOnlyList<HoldedExpenseAccountOption> Accounts { get; set; } = [];
+    public IReadOnlyList<ExpenseAccountOption> Accounts { get; set; } = [];
 
     [Range(1, int.MaxValue, ErrorMessage = "Validation_Required")]
     public int HoldedAccountNumber { get; set; }
@@ -131,7 +131,9 @@ internal sealed class ExpenseDetailViewModel
     public string? BoundAccountName { get; init; }
     /// <summary>With or without a 400000xx yet. False means the push will create one, the normal new-member state.</summary>
     public bool HasCreditorContact { get; init; }
-    public IReadOnlyList<HoldedCreditorAccountRow> CreditorAccounts { get; init; } = [];
+    public IReadOnlyList<CreditorAccountRow> CreditorAccounts { get; init; } = [];
+    /// <summary>Set when Holded's contact list is unreadable: no account is known, so none can be bound.</summary>
+    public string? CreditorAccountsUnavailable { get; init; }
 
     public bool CanApprove { get; init; }
     /// <summary>Returns the report to the submitter as a draft.</summary>
@@ -142,7 +144,7 @@ internal sealed class ExpenseDetailViewModel
     public bool CanDeclineLines { get; init; }
 
     /// <summary>Empty unless <see cref="CanApprove"/>.</summary>
-    public IReadOnlyList<HoldedExpenseAccountOption> Accounts { get; init; } = [];
+    public IReadOnlyList<ExpenseAccountOption> Accounts { get; init; } = [];
 }
 
 internal sealed class ExpenseLineNewViewModel

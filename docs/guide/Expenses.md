@@ -41,7 +41,7 @@ Mileage and per diem can't be added to a report. Travel items on older reports s
 
 ### Add your bank details (IBAN)
 
-Your IBAN has to be on your profile before you can submit, since that's how you get paid. It's copied onto the report when you submit, so changing your profile later won't disturb a report that's already on its way.
+Your IBAN has to be saved before you can submit, since that's how you get paid. Set it from your report's page (**Set IBAN**); it's copied onto the report when you submit, so changing it later won't disturb a report that's already on its way.
 
 ### Submit and track
 
@@ -88,4 +88,3 @@ From `/Expenses/New` you can pick another member to file for — the report is t
 ## Related sections
 
 - [Budget](Budget.md) — a report's account can be a budget category, and that category decides whether a coordinator signs off.
-- [Profiles](Profiles.md) — your IBAN lives on your profile and is copied onto a report when you submit.

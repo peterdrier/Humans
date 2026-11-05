@@ -7,16 +7,12 @@ public sealed record UserEmailInfo(
     string Email,
     bool IsVerified,
     bool IsPrimary,
-    [property: Obsolete("Moved to GoogleIntegration's google_workspace_identities (Users decomposition commit 15). Read IGoogleIntegrationService.GetWorkspaceIdentityAsync / GetWorkspaceIdentitiesAsync; the one reader left is GoogleIntegration's legacy fallback and the google.workspace-identities copy.", DiagnosticId = "HUM_USER_GOOGLE_IDENTITY")]
-    bool IsGoogle,
     string? Provider,
     string? ProviderKey,
     ContactFieldVisibility? Visibility,
     Instant? VerificationSentAt,
     Instant CreatedAt,
-    Instant UpdatedAt,
-    [property: Obsolete("Moved to GoogleIntegration's google_workspace_identities (Users decomposition commit 15). Read IGoogleIntegrationService.GetWorkspaceIdentityAsync / GetWorkspaceIdentitiesAsync; the one reader left is GoogleIntegration's legacy fallback and the google.workspace-identities copy.", DiagnosticId = "HUM_USER_GOOGLE_IDENTITY")]
-    LegacyGoogleEmailStatus GoogleEmailStatus);
+    Instant UpdatedAt);
 
 public sealed record ContactFieldInfo(
     Guid Id,
@@ -227,9 +223,9 @@ public sealed record UserInfo(
 
     /// <summary>
     /// Snapshots and orders here, so the cached payload is immutable. Takes projections because the Profile-side
-    /// entities are internal to <c>Humans.Users</c>; public because the section test projects build UserInfo with it.
+    /// entities are internal to <c>Humans.Users</c>. Only the owner and test fixtures build snapshots from entities.
     /// </summary>
-    public static UserInfo Create(
+    internal static UserInfo Create(
         User user,
         IReadOnlyList<UserEmail> userEmails,
         IReadOnlyList<(string Provider, string ProviderKey)> externalLogins,
@@ -239,9 +235,9 @@ public sealed record UserInfo(
             .OrderByDescending(e => e.IsPrimary)
             .ThenBy(e => e.Email, StringComparer.OrdinalIgnoreCase)
             .Select(e => new UserEmailInfo(
-                e.Id, e.Email, e.IsVerified, e.IsPrimary, e.IsGoogle,
+                e.Id, e.Email, e.IsVerified, e.IsPrimary,
                 e.Provider, e.ProviderKey, e.Visibility, e.VerificationSentAt,
-                e.CreatedAt, e.UpdatedAt, e.GoogleEmailStatus))
+                e.CreatedAt, e.UpdatedAt))
             .ToList();
 
         var loginInfos = externalLogins

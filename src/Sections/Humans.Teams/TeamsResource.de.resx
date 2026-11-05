@@ -43,7 +43,6 @@
     <data name="Teams_MyTeams_Title" xml:space="preserve">
     <value>Meine Teams</value>
   </data>
-  <data name="Teams_BreadcrumbNavigation" xml:space="preserve"><value>Navigationspfad</value></data>
   <data name="Teams_JoinTeam_Title" xml:space="preserve">
     <value>{0} beitreten</value>
     <comment>{0} = team name</comment>
@@ -388,7 +387,7 @@
     <value>Rollen verwalten</value>
   </data>
   <data name="Teams_TeamDetail_SubTeams" xml:space="preserve">
-    <value>Sub-teams</value>
+    <value>Unterteams</value>
   </data>
   <data name="Teams_PublicDirectory" xml:space="preserve">
     <value>Teams</value>

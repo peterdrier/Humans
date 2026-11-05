@@ -30,7 +30,7 @@ This section owns no entities and no tables. Everything it creates belongs to an
 | `/dev/seed/budget` | POST | `FinancePolicies.Manage` | Budget demo data, via `IBudgetDemoSeeder` in Budget's `Contracts/` folder |
 | `/dev/seed/camp-roles` | POST | `CampsPolicies.Manage` | Five system camp-role definitions |
 | `/dev/seed/dashboard` | POST | `ShiftsPolicies.Manage` | Coordinator-dashboard demo: one event, 8 departments, 5 subteams, ~120 humans, rotas/shifts/signups |
-| `/dev/seed/dashboard/reset` | POST | `AdminOnly` | Delete everything the dashboard seed created |
+| `/dev/seed/dashboard/reset` | POST | `AdminOnly` | Delete everything the dashboard seed created, then reseed |
 
 Every route 404s when the dev-auth gate is closed. `/dev/login/*` additionally does not exist at all in Production - see Negative Access Rules.
 
@@ -63,7 +63,7 @@ Every route 404s when the dev-auth gate is closed. `/dev/login/*` additionally d
 - **Per-PR previews are the exception, and only the entrypoint can name them.** A preview container runs the same `Staging` environment name as QA, so the discriminator lives where the difference is already known: `docker-entrypoint.sh` derives `PR_ID` from Coolify's container name/FQDN, points the connection string at `humans_pr_{N}`, and defaults `DevAuth__AllowAdmin=true` **inside that same block** - the flag means "this container is on a throwaway PR database", so it must follow the switch actually happening, not `PR_ID` alone. A container that could not switch (no `DB_PASSWORD`, or a hand-supplied connection string) is still on the inherited QA connection, and anonymous Admin over QA data is exactly the escalation this invariant closes. QA's `deploy-qa.sh` never sets the flag. It is only a *default*, so a deploy that wants a preview without Admin can set it to `false`.
 - **Every write goes through the owning section's service.** No `DbContext`, no repository, no cross-section table access - held by the section's csproj (no `Humans.Infrastructure` reference, no EF Core package) and by every seeder taking only application-service dependencies. Not pinned by a test, deliberately - the section has no tables, and an absence has no behaviour to regress.
 - **Persona seeding is idempotent and repairs.** `EnsurePersonaAsync` returns the existing user when there is one, and `EnsureActiveAsync` runs on *every* sign-in: it submits any missing required consents through the canonical consent path and lifts a consent suspension, because personas hold governance roles and the nightly `SuspendNonCompliantMembersJob` suspends them otherwise (nobodies-collective/Humans#867).
-- **Role personas are marked fake** (`IUserWrite.MarkFakeAsync`) on creation and every sign-in, which keeps them out of Consent's review queue. Guests stay unmarked so onboarding can be tested end to end.
+- **Every persona except `guest` is marked fake** (`IUserWrite.MarkFakeAsync`) on creation and every sign-in, which keeps them out of Consent's review queue. Guests stay unmarked so onboarding can be tested end to end.
 - **The `no-name` persona is re-blanked on every sign-in** so the onboarding name gate (#812) re-triggers each time.
 - **The `guest` persona is never reused** - each click mints a new profileless account, so parallel testers do not collide.
 
@@ -86,13 +86,13 @@ Development is a pure consumer and depends on more sections than any other:
 
 | Section | Surface used |
 |---------|--------------|
-| Users / Profiles | `UserManager<User>` and `SignInManager<User>` (the §2a Identity exception, see [`Users.md`](../../Humans.Users/Docs/Users.md)), `IUserService`, `IUserWrite`, `IUserEmailService`, `IProfileEditorService`, `IContactFieldService`, `IHumanLifecycleService` |
+| Users / Profiles | `IUserSignInService`, `IAccountProvisioningService.CreateAccountAsync`, `IUserService`, `IUserWrite`, `IUserEmailService`, `IProfileEditorService`, `IContactFieldService`, `IHumanLifecycleService` |
 | Auth | `IRoleAssignmentService` for login eligibility; `IRoleAssignmentWrite` for persona role seeding; `RoleCatalog` for the persona list |
 | Teams | `ITeamService`, `ITeamWrite`, `ITeamSeeding`, `ISystemTeamSync` |
 | Camps | `ICampService`, `ICampSeeding`, `ICampRoleSeeding` |
 | Shifts | `IShiftSeeding`, `IShiftSignupSeeding` |
 | Settings | `ISettingsService`, `IEventSettingsSeeding` (`Contracts/` folder) - the seeded event's active state |
-| Consent | `IConsentSubmission`, `IConsentWrite` (`Contracts/` folder) |
+| Consent | `IConsentSubmission` (`Contracts/` folder) |
 | Governance | `IMembershipCalculator` (contracts leaf) |
 | City Planning | `CityPlanningOptions` (contracts leaf) - the dev city-planning team slug |
 | Budget | `IBudgetDemoSeeder` (`Contracts/` folder) |
@@ -106,10 +106,10 @@ Nothing depends on Development in the other direction. Shell reaches it twice an
 **Status:** Own project at `src/Sections/Humans.Development`. The section owns no tables, so there is no `DbContext`, no history table and no baseline.
 
 - `DevLoginController` and `DevSeedController` are `internal sealed` in `Humans.Development.Controllers`, routed by Shell's `SectionControllerFeatureProvider`.
-- No `Humans.Infrastructure` reference (Scanner's and Cantina's shape, not Debug's): every write goes through a `Humans.Application` interface or a contracts leaf, and `UserManager<User>` is Identity's, not Infrastructure's.
+- No `Humans.Infrastructure` reference (Scanner's and Cantina's shape, not Debug's): every write goes through another section's published contract.
 - `Contracts/` is an empty folder. Folder-vs-project is decided by where the consumer lives, and there is no compile-time consumer at all.
 - `DevPersonaSeeder` takes no `IMemoryCache`: every role and team write goes through the owning section's service, which evicts its own caches.
-- **Known deviation, carried from the G0 audit (gap #5):** `DevPersonaSeeder` and `DevelopmentDashboardSeeder` create Identity accounts through `UserManager<User>` rather than `IUserService`. This is the §2a framework exception applied to a dev fixture; it is invisible to the analyzers because `UserManager` is neither a repository nor a `DbContext`. Sanctioned here rather than left implicit.
+- **Gap #5 from the G0 audit is closed.** `DevPersonaSeeder` and `DevelopmentDashboardSeeder` create accounts through Users' `IAccountProvisioningService.CreateAccountAsync`; the section never names the `User` entity (HUM0039).
 - **Gap #6 from the G0 audit is closed.** Shifts, Teams and Settings carried out their read-splits: `DevelopmentDashboardSeeder` creates/deletes the seeded event through `IEventSettingsSeeding.CreateActiveEventAsync`/`DeleteEventAsync` (input records, not a mutated `EventSettings` entity), opens shift browsing via `IShiftSeeding.SetShiftBrowsingOpenAsync`, resolves the event via `ISettingsService.GetEventSettingsByIdAsync`, and resolves teams via `ITeamService.GetTeamBySlugAsync` (`TeamInfo`, not the `Team` entity). No baselined entity-returning read remains in this section.
 - **Known deviation, carried from the G0 audit (gap #4):** the Production exclusion covers `DevLoginController` only. `DevSeedController` stays in the MVC graph in Production behind its action-level guards. Generalising the provider to the whole section's controller surface is behavioural.
 - **No renames.** `DevelopmentCampRoleSeeder` and `DevelopmentDashboardSeeder` duplicate the section name, but `DevPersonaSeeder`, `DevLoginController` and `DevSeedController` all use the shorter `Dev` prefix, so stripping half of them would leave the section inconsistently named. `nameof(DevPersonaSeeder)` is also written to `consent_records.user_agent` on every seeded consent, which makes that one a persisted string.

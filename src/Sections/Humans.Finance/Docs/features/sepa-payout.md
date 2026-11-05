@@ -45,9 +45,10 @@ longer needs a redeploy.
 
 ## Flow
 
-1. `FinanceController.Creditors` renders each row's payability. Payable = **exactly one binding**,
-   **positive balance from the member's side**, **an IBAN on the Holded contact**. Anything else
-   shows the reason (`unbound`, `collision`, `nothing owed`, `no IBAN in Holded`) in place of a box.
+1. `FinanceController.Creditors` renders the service-derived `NotPayableReason` (null means payable),
+   also used by the overview and payout planning. Payable = **exactly one binding**,
+   **positive balance from the member's side**, **an IBAN on the Holded contact**, **no duplicate documents (check available)**, and **no pending payout file**. Anything else
+   shows the service's refusal in place of a box.
    An **"Only show accounts we owe money to"** checkbox, **ticked by default**, hides every row whose
    balance is not positive so the screen opens on just the accounts a payout would touch. It is a
    client-side row filter over the already-rendered table — every row is present in the markup, and
@@ -55,7 +56,11 @@ longer needs a redeploy.
    filter changes what is shown, never what a Generate would include.
 2. The checkboxes, amount boxes and the per-transfer cap field belong to a standalone `#sepaForm`
    via the HTML5 `form` attribute — each row already carries an Unbind form and forms cannot nest.
-   The cap field is prefilled from `Sepa:MaxPayoutPerTransfer` but is editable per batch.
+   The cap field is prefilled from `Sepa:MaxPayoutPerTransfer` but is editable per batch. The form
+   posts to `POST /Finance/Sepa/Review`, a confirmation page listing the batch (member, account,
+   bank, short IBAN, owed, payment, owed after, checks; count and total). It runs
+   `PreviewSepaPayoutAsync`, every refusal generation would apply, and writes nothing; only its
+   button posts on to Generate.
 3. `POST /Finance/Sepa/Generate` (`FinancePolicies.Manage`, antiforgery) parses the amounts and the cap
    **invariantly** rather than through model binding, which would use the request culture and read
    `12.34` as `1234` under a comma-decimal locale. An unparseable or non-positive cap refuses the
@@ -203,6 +208,15 @@ it cannot disappear from the FIFO list and be replaced by a journal remainder. D
 | A file with an unbooked transfer that has no line | no Book file button; the card says how many of its transfers are matched |
 | A textless line dated outside the tolerance of every file of its amount | the panel; widen the tolerance on the page if it is that file's |
 | Withdrawn (the bank cancelled it by hand) | the row renders as `Withdrawn` with who and when; no button; the row is out of every matcher and gate |
+| The transfer's file is older than the 90-day feed window | the reason, in place of the button |
+| The live balance owes less than the transfer | booked in full; the account goes into credit and the audit entry says `OVERPAID` |
+| The bank line is already reconciled or partly reconciled in Holded, or already booked to another transfer | refused; nothing posted |
+| The bank line is dated before the file that asked for the transfer was generated (less two days' slack) | it does not match; the line renders in the "needs a human" panel |
+| Two unreconciled lines could each have paid one transfer | refused; both render in the "needs a human" panel |
+| Member has no `HoldedCreditorContact` binding | the reason, in place of the button |
+| The binding's `SupplierAccountNum` no longer matches the transfer's | the reason, in place of the button |
+| The binding's `HoldedContactId` no longer matches the transfer's (rebound to a sibling contact on the same account, nobodies-collective/Humans#1146) | the reason, in place of the button. Skipped for a transfer generated before this guard existed (`HoldedContactId` null) — account-only. |
+| Holded unreadable at booking time | an error; nothing is posted |
 
 ### Withdrawing a transfer
 
@@ -234,19 +248,10 @@ are payable again on `/Finance/Creditors`.
 Each file card's header shows its transfer count and total (what it still pays; a cancelled file,
 what it held) and toggles the card. Files with nothing left to book (booked, or cancelled) start
 collapsed.
-| The transfer's file is older than the 90-day feed window | the reason, in place of the button |
-| The live balance owes less than the transfer | booked in full; the account goes into credit and the audit entry says `OVERPAID` |
-| The bank line is already reconciled or partly reconciled in Holded, or already booked to another transfer | refused; nothing posted |
-| The bank line is dated before the file that asked for the transfer was generated (less two days' slack) | it does not match; the line renders in the "needs a human" panel |
-| Two unreconciled lines could each have paid one transfer | refused; both render in the "needs a human" panel |
-| Member has no `HoldedCreditorContact` binding | the reason, in place of the button |
-| The binding's `SupplierAccountNum` no longer matches the transfer's | the reason, in place of the button |
-| The binding's `HoldedContactId` no longer matches the transfer's (rebound to a sibling contact on the same account, nobodies-collective/Humans#1146) | the reason, in place of the button. Skipped for a transfer generated before this guard existed (`HoldedContactId` null) — account-only. |
-| Holded unreadable at booking time | an error; nothing is posted |
 
 ### When Holded accepts one posting and refuses the next
 
-The state is **no longer terminal**. On a Holded failure mid-allocation, the ids already accepted
+The state is **retryable, not terminal**. On a Holded failure mid-allocation, the ids already accepted
 are logged and audited (`SepaPayoutTransferBooked`, prefixed `PARTIAL`), but **nothing is written to
 the transfer row** — the row stays unbooked and is retryable. The next attempt re-reads what is
 already posted under the transfer's tag (step 4 above) and continues from there, so nothing is ever
@@ -285,13 +290,15 @@ never ages out of its own re-check. The floor (90 days plus the 2-day generation
 *matching*, which takes no row generated outside the feed window anyway. A booking the sweep refuses
 is logged at Warning. One bad line or one Holded exception never aborts the rest of the run.
 
+SEPA mutation forms require their transfer/file and bank movement identifiers. Missing identifiers or malformed values return HTTP 400 before booking, withdrawal or cancellation; a malformed tolerance cannot silently become a default booking window.
+
 ## One line per transfer, no text — Book file
 
 Sabadell's live behaviour: one outgoing line per transfer, dated the execution day, with no
 remittance text echoed. `GetSepaPayoutsAsync` pairs such a line with the one unbooked transfer of
 exactly its amount whose file date is within the **tolerance** of the line's date, inside the feed
 window. The tolerance is days either side of the file's generation date, default
-`IHoldedFinanceAdminService.DefaultSepaMatchToleranceDays` (2), editable at the top of
+`IFinanceAdminService.DefaultSepaMatchToleranceDays` (2), editable at the top of
 `/Finance/Sepa` (`?days=N`, clamped to 0..90) for a bank that executed a file late; the value posts
 back with every booking from that view, so the booking re-validates under the window the page
 paired with. A line whose text names the account is bound only from below (no earlier than the
@@ -426,7 +433,7 @@ Server-side, all-or-nothing:
 ## IBAN handling
 
 The unmasked IBAN is stored only as sent: the generated XML and `sepa_payout_transfers.Iban`.
-Logs, audit descriptions, the SEPA page and the cross-section `HoldedCreditorAccountRow` carry
+Logs, audit descriptions, the SEPA page and the cross-section `CreditorAccountRow` carry
 `IbanFormatter.Mask(...)` output only; builder error messages mask the IBAN they name. An admin
 screen (`/Finance/Creditors/{accountNum}`) and the member's own view may show it in full.
 

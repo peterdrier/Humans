@@ -42,9 +42,11 @@ public sealed record TicketOrderInfo(
 {
     /// <summary>
     /// Matches a configured vendor event exactly, or the current event when no event is configured.
+    /// With <paramref name="paidOnly"/>, only paid orders count toward revenue and ticketing actuals.
     /// </summary>
-    public bool IsForEvent(string? vendorEventId) =>
-        vendorEventId is not null
+    public bool IsForEvent(string? vendorEventId, bool paidOnly = false) =>
+        (!paidOnly || PaymentStatus == TicketPaymentStatus.Paid)
+        && (vendorEventId is not null
             ? string.Equals(VendorEventId, vendorEventId, StringComparison.Ordinal)
-            : IsCurrentEvent;
+            : IsCurrentEvent);
 }

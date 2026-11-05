@@ -55,8 +55,8 @@ Happy path. When something needs fixing it gets more complicated.
    name or IBAN change after the first push waits for the link-check sync (peterdrier/Humans#1777).
 5. **Holded tells Humans** that the member with that account is now owed, say, €132.45. Visible
    at the top of `/Expenses` and on `/Finance/Creditors`.
-6. **On pay day the treasurer selects who gets paid** on `/Finance/Creditors` and generates a
-   **SEPA file** (pain.001.001.09) — a bank file saying pay Sally 123, Joe 243, Fred 321, to the
+6. **On pay day the treasurer selects who gets paid** on `/Finance/Creditors`, confirms the batch
+   on a review page, and generates a **SEPA file** (pain.001.001.09) — a bank file saying pay Sally 123, Joe 243, Fred 321, to the
    right IBANs.
 7. **The file is uploaded to the bank** by the treasurer plus a second verifier, checking the
    totals (3 payments, totaling ####). Then the money goes bye-bye.
@@ -102,9 +102,9 @@ robbed, automation everywhere else.**
   Holded's own payment API, plus one journal entry for whatever no open document covers, so the
   accountant sees a normal ledger.
 
-## Status (2026-10-29)
+## Status
 
-Steps 1–11 are in production. Since 2026-09-06, on `origin/main`:
+Steps 1–11 are in production, plus:
 
 - **Booking runs itself.** The two-hourly sweep (`sepa-bank-booking`) books each transfer once
   its Sabadell line appears; `/Finance/Sepa` keeps the manual Book, Book file and Process

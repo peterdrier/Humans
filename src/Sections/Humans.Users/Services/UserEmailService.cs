@@ -20,6 +20,9 @@ internal sealed class UserEmailService(
     IServiceProvider serviceProvider,
     ILogger<UserEmailService> logger) : IUserEmailService, IUserMerge
 {
+    private readonly UserEmailReader reader = new(repository, userService, clock, serviceProvider);
+    private readonly UserEmailReconciliation reconciliation = new(repository, userService, clock, auditLogService, serviceProvider, logger);
+
     private const string EmailVerificationTokenPurpose = "UserEmailVerification";
 
     // Lazy: breaks DI cycle TeamService -> IEmailService -> IUserEmailService -> IAccountMergeService -> ITeamService.
@@ -32,71 +35,17 @@ internal sealed class UserEmailService(
     // Lazy: GoogleIntegration's identity service reads IUserService.
     private IGoogleIntegrationWrite GoogleIdentity => serviceProvider.GetRequiredService<IGoogleIntegrationWrite>();
 
-    public async Task<IReadOnlyList<UserEmailEditDto>> GetUserEmailsAsync(
-        Guid userId, CancellationToken cancellationToken = default)
-    {
-        var info = await userService.GetUserInfoAsync(userId, cancellationToken);
-        if (info is null) return [];
+    public Task<IReadOnlyList<UserEmailEditDto>> GetUserEmailsAsync(
+        Guid userId, CancellationToken cancellationToken = default) =>
+        reader.GetUserEmailsAsync(userId, cancellationToken);
 
-        var emailIds = info.UserEmails.Select(e => e.Id).ToList();
-        var mergePendingSet = await MergeService.GetPendingEmailIdsAsync(emailIds, cancellationToken);
-        var verifiedCount = info.UserEmails.Count(e => e.IsVerified);
+    public Task<(bool CanAdd, int MinutesUntilResend, Guid? PendingEmailId)> GetEmailCooldownInfoAsync(
+        Guid pendingEmailId, CancellationToken ct = default) =>
+        reader.GetEmailCooldownInfoAsync(pendingEmailId, ct);
 
-        return info.UserEmails.Select(e => new UserEmailEditDto(
-            e.Id,
-            e.Email,
-            e.IsVerified,
-            e.Provider,
-            e.ProviderKey,
-            e.IsPrimary,
-            e.Visibility,
-            IsPendingVerification: !e.IsVerified && e.VerificationSentAt.HasValue,
-            IsMergePending: mergePendingSet.Contains(e.Id),
-            CanUnlink: !string.IsNullOrEmpty(e.Provider) && !string.IsNullOrEmpty(e.ProviderKey)
-                && verifiedCount - (e.IsVerified ? 1 : 0) >= 1
-        )).ToList();
-    }
-
-    public async Task<(bool CanAdd, int MinutesUntilResend, Guid? PendingEmailId)>
-        GetEmailCooldownInfoAsync(Guid pendingEmailId, CancellationToken ct = default)
-    {
-        var pendingRecord = await repository.GetUserEmailByIdReadOnlyAsync(pendingEmailId, ct);
-
-        if (pendingRecord?.VerificationSentAt.HasValue == true)
-        {
-            var now = clock.GetCurrentInstant();
-            var cooldownEnd = pendingRecord.VerificationSentAt.Value.Plus(Duration.FromMinutes(5));
-            if (now < cooldownEnd)
-            {
-                var minutesUntilResend = (int)Math.Ceiling((cooldownEnd - now).TotalMinutes);
-                return (false, minutesUntilResend, pendingEmailId);
-            }
-        }
-
-        return (true, 0, null);
-    }
-
-    public async Task<IReadOnlyList<UserEmailDto>> GetVisibleEmailsAsync(
-        Guid userId, ContactFieldVisibility accessLevel,
-        CancellationToken cancellationToken = default)
-    {
-        var info = await userService.GetUserInfoAsync(userId, cancellationToken);
-        if (info is null) return [];
-
-        var allowed = ContactFieldVisibilityRules.GetAllowedVisibilities(accessLevel);
-
-        return info.UserEmails
-            .Where(e => e.IsVerified && e.Visibility != null && allowed.Contains(e.Visibility!.Value))
-            .Select(e => new UserEmailDto(
-                e.Id,
-                e.Email,
-                e.IsVerified,
-                e.Provider,
-                e.ProviderKey,
-                e.IsPrimary,
-                e.Visibility))
-            .ToList();
-    }
+    public Task<IReadOnlyList<UserEmailDto>> GetVisibleEmailsAsync(
+        Guid userId, ContactFieldVisibility accessLevel, CancellationToken cancellationToken = default) =>
+        reader.GetVisibleEmailsAsync(userId, accessLevel, cancellationToken);
 
     public async Task<AddEmailResult> AddEmailAsync(
         Guid userId, string email, CancellationToken cancellationToken = default)
@@ -320,98 +269,30 @@ internal sealed class UserEmailService(
         return result;
     }
 
-    public async Task<IReadOnlyDictionary<Guid, string>> GetNotificationTargetEmailsAsync(
-        IReadOnlyCollection<Guid> userIds, CancellationToken cancellationToken = default)
-    {
-        if (userIds.Count == 0)
-            return new Dictionary<Guid, string>();
+    public Task<IReadOnlyDictionary<Guid, string>> GetNotificationTargetEmailsAsync(
+        IReadOnlyCollection<Guid> userIds, CancellationToken cancellationToken = default) =>
+        reader.GetNotificationTargetEmailsAsync(userIds, cancellationToken);
 
-        // Resolve first: a tombstone's own address is a sentinel that bounces, and its
-        // notification rows moved to the survivor. The key stays the requested id.
-        var resolved = await userService.GetUserInfosAsync(userIds, cancellationToken);
-
-        var result = new Dictionary<Guid, string>(userIds.Count);
-        foreach (var userId in userIds)
-        {
-            if (!resolved.TryGetValue(userId, out var user))
-                continue;
-
-            if (!string.IsNullOrEmpty(user.Email))
-                result[userId] = user.Email;
-        }
-
-        return result;
-    }
-
-    public async Task<IReadOnlyList<UserEmailRowSnapshot>> FindByAddressAsync(
-        string email, bool aliased, bool verifiedOnly, CancellationToken cancellationToken = default)
-    {
-        // EmailsMatch folds gmail/googlemail on both sides, so the aliased form needs no
-        // separate alternate-address pass.
-        email = email.Trim();
-        var infos = await userService.GetAllUserInfosAsync(cancellationToken);
-        return infos
-            .SelectMany(i => i.UserEmails
-                .Where(e => (!verifiedOnly || e.IsVerified) &&
-                            (aliased
-                                ? EmailNormalization.EmailsMatch(e.Email, email)
-                                : string.Equals(e.Email, email, StringComparison.OrdinalIgnoreCase)))
-                .Select(e => ToSnapshot(i.Id, e)))
-            .ToList();
-    }
+    public Task<IReadOnlyList<UserEmailRowSnapshot>> FindByAddressAsync(
+        string email, bool aliased, bool verifiedOnly, CancellationToken cancellationToken = default) =>
+        reader.FindByAddressAsync(email, aliased, verifiedOnly, cancellationToken);
 
     public Task<IReadOnlyList<Guid>> GetUserIdsByEmailPrefixAndSuffixAsync(
-        string prefix,
-        string suffix,
-        CancellationToken cancellationToken = default) =>
-        repository.GetUserIdsByUserEmailPrefixAndSuffixAsync(prefix, suffix, cancellationToken);
+        string prefix, string suffix, CancellationToken cancellationToken = default) =>
+        reader.GetUserIdsByEmailPrefixAndSuffixAsync(prefix, suffix, cancellationToken);
 
-    public async Task<IReadOnlyList<UserEmailRowSnapshot>> GetEntitiesByUserIdAsync(
-        Guid userId, CancellationToken cancellationToken = default)
-    {
-        // Raw: callers edit and delete rows by the owner id stamped on them, so a resolving read
-        // would hand a tombstone's caller the survivor's rows stamped with the archived id.
-        var info = await userService.GetRawUserInfoAsync(userId, cancellationToken);
-        if (info is null) return [];
-        return info.UserEmails.Select(e => ToSnapshot(userId, e)).ToList();
-    }
+    public Task<IReadOnlyList<UserEmailRowSnapshot>> GetEntitiesByUserIdAsync(
+        Guid userId, CancellationToken cancellationToken = default) =>
+        reader.GetEntitiesByUserIdAsync(userId, cancellationToken);
 
-    private static UserEmailRowSnapshot ToSnapshot(Guid userId, UserEmailInfo email) =>
-        new(
-            email.Id,
-            userId,
-            email.Email,
-            email.IsVerified,
-            email.Provider,
-            email.ProviderKey,
-            email.IsPrimary,
-            email.Visibility,
-            email.VerificationSentAt,
-            email.CreatedAt,
-            email.UpdatedAt);
+    public Task<IReadOnlyDictionary<Guid, string>> GetNotificationEmailsByUserIdsAsync(
+        IReadOnlyCollection<Guid> userIds, CancellationToken cancellationToken = default) =>
+        reader.GetNotificationEmailsByUserIdsAsync(userIds, cancellationToken);
 
-    public async Task<IReadOnlyDictionary<Guid, string>> GetNotificationEmailsByUserIdsAsync(
-        IReadOnlyCollection<Guid> userIds, CancellationToken cancellationToken = default)
-    {
-        if (userIds.Count == 0)
-            return new Dictionary<Guid, string>();
+    public Task<IReadOnlyList<UserEmailMatch>> MatchByEmailsAsync(
+        IReadOnlyCollection<string> emails, CancellationToken cancellationToken = default) =>
+        reader.MatchByEmailsAsync(emails, cancellationToken);
 
-        var requestedIds = userIds.ToHashSet();
-        var users = await userService.GetAllRawUserInfosAsync(cancellationToken);
-        return users
-            .Where(user => requestedIds.Contains(user.Id) && user.PrimaryEmail != null)
-            .ToDictionary(user => user.Id, user => user.PrimaryEmail!);
-    }
-
-    public async Task<IReadOnlyList<UserEmailMatch>> MatchByEmailsAsync(
-        IReadOnlyCollection<string> emails, CancellationToken cancellationToken = default)
-    {
-        var rows = await repository.GetUserEmailsByEmailsAsync(emails, cancellationToken);
-        return rows
-            .Select(r => new UserEmailMatch(
-                r.Email, r.UserId, r.IsPrimary, r.IsVerified, r.UpdatedAt))
-            .ToList();
-    }
     // Order buyer or matched attendee, read through the Tickets section's own interface.
     private async Task<bool> IsAddressTicketLinkedAsync(
         Guid userId, string address, CancellationToken cancellationToken)
@@ -510,46 +391,13 @@ internal sealed class UserEmailService(
     }
 
     /// <inheritdoc />
-    public async Task<IReadOnlyList<UserEmailFlagViolation>> GetEmailFlagViolationsAsync(
-        CancellationToken cancellationToken = default)
-    {
-        var infos = await userService.GetAllUserInfosAsync(cancellationToken);
-
-        var violations = new List<UserEmailFlagViolation>();
-        foreach (var info in infos)
-        {
-            if (info.UserEmails.Count == 0) continue;
-
-            var verified = info.UserEmails.Where(e => e.IsVerified).ToList();
-            var verifiedPrimaryCount = verified.Count(e => e.IsPrimary);
-            var hasPrimaryProblem = verified.Count > 0 && verifiedPrimaryCount != 1;
-
-            if (!hasPrimaryProblem) continue;
-
-            violations.Add(new UserEmailFlagViolation(
-                info.Id,
-                verified.Count,
-                verifiedPrimaryCount,
-                hasPrimaryProblem));
-        }
-
-        return violations;
-    }
+    public Task<IReadOnlyList<UserEmailFlagViolation>> GetEmailFlagViolationsAsync(
+        CancellationToken cancellationToken = default) =>
+        reader.GetEmailFlagViolationsAsync(cancellationToken);
 
     /// <inheritdoc />
-    public async Task<IReadOnlyList<UserEmailOrphan>> GetOrphanUserEmailsAsync(CancellationToken ct = default)
-    {
-        // Iterating UserInfo can't find rows for missing users, so this needs the full-table scan.
-        var allEmails = await repository.GetAllUserEmailsAsync(ct);
-        var liveUserIds = (await userService.GetAllUserInfosAsync(ct).ConfigureAwait(false))
-            .Select(u => u.Id)
-            .ToHashSet();
-
-        return allEmails
-            .Where(e => !liveUserIds.Contains(e.UserId))
-            .Select(e => new UserEmailOrphan(e.UserId, e.Id, e.Email))
-            .ToList();
-    }
+    public Task<IReadOnlyList<UserEmailOrphan>> GetOrphanUserEmailsAsync(CancellationToken ct = default) =>
+        reader.GetOrphanUserEmailsAsync(ct);
 
     /// <inheritdoc />
     public async Task<bool> DeleteByIdAsync(Guid emailId, CancellationToken ct = default)
@@ -642,307 +490,13 @@ internal sealed class UserEmailService(
     }
 
     /// <inheritdoc />
-    public async Task<OAuthReconcileResult> ReconcileOAuthIdentityAsync(
+    public Task<OAuthReconcileResult> ReconcileOAuthIdentityAsync(
         Guid userId,
         string provider,
         string providerKey,
         string claimEmail,
         bool claimEmailVerified,
-        CancellationToken cancellationToken = default)
-    {
-        var now = clock.GetCurrentInstant();
-        var rows = (await repository.GetUserEmailsByUserIdForMutationAsync(userId, cancellationToken)).ToList();
+        CancellationToken cancellationToken = default) =>
+        reconciliation.ReconcileAsync(userId, provider, providerKey, claimEmail, claimEmailVerified, cancellationToken);
 
-        var tagged = rows.FirstOrDefault(r =>
-            string.Equals(r.Provider, provider, StringComparison.Ordinal) &&
-            string.Equals(r.ProviderKey, providerKey, StringComparison.Ordinal));
-
-        // 1. NoChange
-        if (tagged is not null &&
-            string.Equals(tagged.Email, claimEmail, StringComparison.OrdinalIgnoreCase))
-        {
-            return new OAuthReconcileResult(
-                ReconcileOutcome.NoChange, null, tagged.Id, null, null, null, false);
-        }
-
-        var siblingAtClaim = rows.FirstOrDefault(r =>
-            !ReferenceEquals(r, tagged) &&
-            string.Equals(r.Email, claimEmail, StringComparison.OrdinalIgnoreCase));
-
-        // Cross-user check before any mutation, normalized so dot-aliases can't bypass the gate.
-        var normalizedClaim = EmailNormalization.NormalizeForComparison(claimEmail);
-        var alternateClaim = EmailLookupAliases.GetAlternate(normalizedClaim);
-        var blocker = (await repository.GetUserEmailsByAddressAsync(
-                normalizedClaim, alternateClaim, cancellationToken))
-            .FirstOrDefault(e => e.IsVerified && e.UserId != userId);
-
-        // 2. CrossUserBlocked: another user verified-holds the claim and the claim is unverified.
-        if (blocker is not null && !claimEmailVerified)
-        {
-            var blockerRows = await repository.GetUserEmailsByUserIdForMutationAsync(
-                blocker.UserId, cancellationToken);
-
-            var blockedDescription = await BuildCrossUserDiagnosticAsync(
-                kind: "BLOCKED (unverified provider claim)",
-                userId, signingRows: rows,
-                provider, providerKey, claimEmail, claimEmailVerified,
-                previousEmail: tagged?.Email,
-                displaced: blocker,
-                displacedRows: blockerRows,
-                displacedUserLeftWithoutVerifiedEmail: false,
-                cancellationToken);
-
-            logger.LogError(
-                "OAuth cross-user collision BLOCKED (unverified claim): {Description}",
-                blockedDescription);
-
-            await auditLogService.LogAsync(
-                UsersAuditActions.OAuthRenameCollisionBlocked,
-                nameof(User), userId,
-                blockedDescription,
-                actorUserId: userId,
-                relatedEntityId: blocker.Id, relatedEntityType: nameof(UserEmail));
-
-            return new OAuthReconcileResult(
-                ReconcileOutcome.CrossUserBlocked,
-                PreviousEmail: tagged?.Email,
-                AffectedRowId: null,
-                DisplacedUserId: blocker.UserId,
-                DisplacedRowId: blocker.Id,
-                DisplacedEmail: blocker.Email,
-                DisplacedUserLeftWithoutVerifiedEmail: false);
-        }
-
-        // 3. Decide cross-user displacement (snapshot only; commits with step 5).
-        var displaced = false;
-        Guid? displacedUserId = null;
-        Guid? displacedRowId = null;
-        string? displacedEmail = null;
-        var displacedUserLeftWithoutVerifiedEmail = false;
-        string? collisionDiagnostic = null;
-
-        if (blocker is not null && claimEmailVerified)
-        {
-            var displacedUsersRows = await repository.GetUserEmailsByUserIdForMutationAsync(
-                blocker.UserId, cancellationToken);
-            displacedUserLeftWithoutVerifiedEmail = displacedUsersRows
-                .Count(r => r.IsVerified && r.Id != blocker.Id) == 0;
-
-            displaced = true;
-            displacedUserId = blocker.UserId;
-            displacedRowId = blocker.Id;
-            displacedEmail = blocker.Email;
-
-            collisionDiagnostic = await BuildCrossUserDiagnosticAsync(
-                kind: "DISPLACED",
-                userId, signingRows: rows,
-                provider, providerKey, claimEmail, claimEmailVerified,
-                previousEmail: tagged?.Email,
-                displaced: blocker,
-                displacedRows: displacedUsersRows,
-                displacedUserLeftWithoutVerifiedEmail: displacedUserLeftWithoutVerifiedEmail,
-                cancellationToken);
-        }
-
-        // 4. Build the signing user's mutation plan (in memory).
-        ReconcileOutcome outcome;
-        Guid affectedRowId;
-        string? previousEmail = tagged?.Email;
-        AuditActionDefinition signingAction;
-        string signingDescription;
-
-        UserEmail? rowToUpdate = null;
-        UserEmail? rowToDelete = null;
-        UserEmail? rowToInsert = null;
-
-        if (tagged is not null && siblingAtClaim is not null)
-        {
-            // Tag-move: old-tagged row + sibling holds claim email.
-            siblingAtClaim.Provider = provider;
-            siblingAtClaim.ProviderKey = providerKey;
-            siblingAtClaim.IsVerified = true;
-            siblingAtClaim.IsPrimary = siblingAtClaim.IsPrimary || tagged.IsPrimary;
-            siblingAtClaim.UpdatedAt = now;
-            tagged.IsPrimary = false;
-
-            rowToUpdate = siblingAtClaim;
-            rowToDelete = tagged;
-
-            outcome = ReconcileOutcome.TagMoved;
-            affectedRowId = siblingAtClaim.Id;
-            signingAction = UsersAuditActions.GoogleEmailRenamed;
-            signingDescription =
-                $"OAuth tag moved from `{previousEmail}` to `{siblingAtClaim.Email}` " +
-                $"(sub={providerKey}); old row deleted, flags unioned onto matching row.";
-        }
-        else if (tagged is not null)
-        {
-            // Rewrite in place — no sibling at claim email.
-            tagged.Email = claimEmail;
-            tagged.IsVerified = true;
-            tagged.UpdatedAt = now;
-
-            rowToUpdate = tagged;
-
-            outcome = ReconcileOutcome.EmailRewritten;
-            affectedRowId = tagged.Id;
-            signingAction = UsersAuditActions.GoogleEmailRenamed;
-            signingDescription =
-                $"OAuth email renamed `{previousEmail}` -> `{claimEmail}` " +
-                $"(sub={providerKey}).";
-        }
-        else if (siblingAtClaim is not null)
-        {
-            // Attach tag to existing row (legacy backfill / first OAuth on plain-email account).
-            siblingAtClaim.Provider = provider;
-            siblingAtClaim.ProviderKey = providerKey;
-            siblingAtClaim.IsVerified = true;
-            siblingAtClaim.UpdatedAt = now;
-
-            rowToUpdate = siblingAtClaim;
-
-            outcome = ReconcileOutcome.TagMoved;
-            affectedRowId = siblingAtClaim.Id;
-            signingAction = UsersAuditActions.GoogleEmailRenamed;
-            signingDescription =
-                $"OAuth tag attached to existing row `{siblingAtClaim.Email}` " +
-                $"(sub={providerKey}).";
-        }
-        else
-        {
-            rowToInsert = new UserEmail
-            {
-                Id = Guid.NewGuid(),
-                UserId = userId,
-                Email = claimEmail,
-                IsVerified = true,
-                IsPrimary = false,
-                Provider = provider,
-                ProviderKey = providerKey,
-                CreatedAt = now,
-                UpdatedAt = now,
-            };
-
-            outcome = ReconcileOutcome.NewRowCreated;
-            affectedRowId = rowToInsert.Id;
-            signingAction = UsersAuditActions.UserEmailLinked;
-            signingDescription =
-                $"OAuth callback: created UserEmail row " +
-                $"(provider={provider}, sub={providerKey}, email={claimEmail}).";
-        }
-
-        // 5. Apply displacement + signing-user mutation atomically and repair UserEmail invariants.
-        await userService.ApplyUserEmailReconcilePlanAsync(
-            userId,
-            new UserEmailReconcilePlanCommand(
-                DisplacedRowToDelete: displaced ? blocker : null,
-                RowToDelete: rowToDelete,
-                RowToUpdate: rowToUpdate,
-                RowToInsert: rowToInsert),
-            cancellationToken);
-
-        // Addresses that left an account: a tag-move deletes the old row, a rewrite renames it in
-        // place, a displacement deletes the other user's row. Each stops being a Google identity.
-        if (previousEmail is not null && outcome is ReconcileOutcome.TagMoved or ReconcileOutcome.EmailRewritten
-            && !string.Equals(previousEmail, claimEmail, StringComparison.OrdinalIgnoreCase))
-            await GoogleIdentity.ClearIfAddressAsync(userId, previousEmail, cancellationToken);
-        if (displaced)
-            await GoogleIdentity.ClearIfAddressAsync(blocker!.UserId, blocker.Email, cancellationToken);
-
-        // 6. Audit. A displacement writes the OAuthRenameCollision pair instead.
-        if (displaced)
-        {
-            logger.LogError(
-                "OAuth cross-user displacement (verified claim): {Description}",
-                collisionDiagnostic);
-
-            await auditLogService.LogAsync(
-                UsersAuditActions.OAuthRenameCollision,
-                nameof(User), userId,
-                collisionDiagnostic!,
-                actorUserId: userId,
-                relatedEntityId: blocker!.Id, relatedEntityType: nameof(UserEmail));
-
-            var displacedAuditDescription =
-                $"Row `{blocker.Email}` deleted by OAuth callback for user {userId} " +
-                $"(provider={provider}, sub={providerKey})." +
-                (displacedUserLeftWithoutVerifiedEmail
-                    ? " Displaced user left with zero verified emails."
-                    : string.Empty);
-            await auditLogService.LogAsync(
-                UsersAuditActions.UserEmailDisplacedByOAuthRename,
-                nameof(User), blocker.UserId,
-                displacedAuditDescription,
-                actorUserId: userId,
-                relatedEntityId: blocker.Id, relatedEntityType: nameof(UserEmail));
-
-            return new OAuthReconcileResult(
-                ReconcileOutcome.CrossUserDisplaced,
-                previousEmail,
-                affectedRowId,
-                displacedUserId,
-                displacedRowId,
-                displacedEmail,
-                displacedUserLeftWithoutVerifiedEmail);
-        }
-
-        await auditLogService.LogAsync(
-            signingAction,
-            nameof(User), userId,
-            signingDescription,
-            actorUserId: userId,
-            relatedEntityId: affectedRowId, relatedEntityType: nameof(UserEmail));
-
-        return new OAuthReconcileResult(
-            outcome,
-            previousEmail,
-            affectedRowId,
-            displacedUserId,
-            displacedRowId,
-            displacedEmail,
-            displacedUserLeftWithoutVerifiedEmail);
-    }
-
-    private async Task<string> BuildCrossUserDiagnosticAsync(
-        string kind,
-        Guid signingUserId,
-        IReadOnlyList<UserEmail> signingRows,
-        string provider,
-        string providerKey,
-        string claimEmail,
-        bool claimEmailVerified,
-        string? previousEmail,
-        UserEmail displaced,
-        IReadOnlyList<UserEmail> displacedRows,
-        bool displacedUserLeftWithoutVerifiedEmail,
-        CancellationToken ct)
-    {
-        var loginsByUser = await userService.GetExternalLoginsByUserIdsAsync([signingUserId, displaced.UserId], ct);
-        var signingLogins = loginsByUser.TryGetValue(signingUserId, out var sl) ? sl : [];
-        var displacedLogins = loginsByUser.TryGetValue(displaced.UserId, out var dl) ? dl : [];
-
-        var inv = System.Globalization.CultureInfo.InvariantCulture;
-        var sb = new System.Text.StringBuilder();
-        sb.Append(inv, $"OAuth cross-user {kind}: provider={provider} sub={providerKey} ");
-        sb.Append(inv, $"claimEmail={claimEmail} claimEmailVerified={claimEmailVerified} ");
-        sb.Append(inv, $"previousEmail={previousEmail ?? "(none)"} attemptedAt={clock.GetCurrentInstant()}. ");
-        sb.Append(inv, $"SigningUser={signingUserId} rows=[");
-        sb.Append(string.Join(", ", signingRows.Select(FormatRow)));
-        sb.Append("] logins=[");
-        sb.Append(string.Join(", ", signingLogins.Select(l => $"{l.Provider}/{l.ProviderKey}")));
-        sb.Append(inv, $"]. DisplacedUser={displaced.UserId} displacedRowId={displaced.Id} ");
-        sb.Append(inv, $"displacedEmail={displaced.Email}");
-        if (displacedUserLeftWithoutVerifiedEmail)
-            sb.Append(" — displaced user left with zero verified emails after delete");
-        sb.Append(" rows=[");
-        sb.Append(string.Join(", ", displacedRows.Select(FormatRow)));
-        sb.Append("] logins=[");
-        sb.Append(string.Join(", ", displacedLogins.Select(l => $"{l.Provider}/{l.ProviderKey}")));
-        sb.Append("].");
-        return sb.ToString();
-
-        static string FormatRow(UserEmail r) =>
-            $"{{Id={r.Id} Email={r.Email} V={r.IsVerified} P={r.IsPrimary} " +
-            $"Provider={r.Provider ?? "(none)"} Key={r.ProviderKey ?? "(none)"}}}";
-    }
 }

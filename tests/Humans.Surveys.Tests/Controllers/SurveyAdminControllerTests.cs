@@ -1,3 +1,7 @@
+using Microsoft.AspNetCore.Mvc.ModelBinding;
+using Microsoft.AspNetCore.Mvc.ModelBinding.Validation;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Primitives;
 using System.Globalization;
 using System.Resources;
 using AwesomeAssertions;
@@ -44,6 +48,74 @@ public sealed class SurveyAdminControllerTests
         RankedAvailability,
         ExportCsv,
         ExportJson
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(false, "AllowAnonymous")]
+    [Xunit.InlineData(false, "IsAsociadoVote")]
+    [Xunit.InlineData(false, null)]
+    [Xunit.InlineData(true, "AllowAnonymous")]
+    [Xunit.InlineData(true, "IsAsociadoVote")]
+    [Xunit.InlineData(true, null)]
+    public async Task Save_requires_explicit_anonymity_and_vote_flags(bool existing, string? missingField)
+    {
+        var actorId = Guid.NewGuid();
+        var surveyId = Guid.NewGuid();
+        var surveys = Substitute.For<ISurveyService>();
+        surveys.CreateAsync(Arg.Any<SurveyEditInput>(), actorId, Arg.Any<CancellationToken>())
+            .Returns(new SurveySaveResult(surveyId));
+        surveys.UpdateAsync(surveyId, Arg.Any<SurveyEditInput>(), Arg.Any<SurveyViewer>(), Arg.Any<CancellationToken>())
+            .Returns(new SurveySaveResult(surveyId));
+        var definition = Editable("Existing", allowAnonymous: string.Equals(missingField, "AllowAnonymous", StringComparison.Ordinal))
+            with
+        { IsAsociadoVote = string.Equals(missingField, "IsAsociadoVote", StringComparison.Ordinal) };
+        surveys.GetForEditAsync(surveyId, Arg.Any<CancellationToken>())
+            .Returns(new SurveyDetail(surveyId, SurveyStatus.Draft, definition, actorId));
+        var sut = CreateController(surveys, authorizationService: RealAuthorizationService(), userId: actorId,
+            localizer: SpanishLocalizer());
+        using var services = new ServiceCollection().AddLogging().AddControllers().Services.BuildServiceProvider();
+        sut.HttpContext.RequestServices = services;
+        sut.Url = Substitute.For<IUrlHelper>();
+        var fields = new Dictionary<string, StringValues>(StringComparer.Ordinal)
+        {
+            ["Title[en]"] = "Changed",
+            ["AllowAnonymous"] = "false",
+            ["IsAsociadoVote"] = "false"
+        };
+        if (existing) fields["Id"] = surveyId.ToString();
+        if (missingField is not null) fields.Remove(missingField);
+        var metadata = services.GetRequiredService<IModelMetadataProvider>().GetMetadataForType(typeof(SurveyBuilderViewModel));
+        var binder = services.GetRequiredService<IModelBinderFactory>().CreateBinder(new ModelBinderFactoryContext { Metadata = metadata });
+        var binding = DefaultModelBindingContext.CreateBindingContext(sut.ControllerContext,
+            new FormValueProvider(BindingSource.Form, new FormCollection(fields), CultureInfo.InvariantCulture),
+            metadata, bindingInfo: null, modelName: "");
+        await binder.BindModelAsync(binding);
+        var model = (SurveyBuilderViewModel)binding.Result.Model!;
+        services.GetRequiredService<IObjectModelValidator>().Validate(sut.ControllerContext, binding.ValidationState, "", model);
+        var ct = Xunit.TestContext.Current.CancellationToken;
+
+        if (missingField is null) sut.ModelState.IsValid.Should().BeTrue(string.Join("; ", sut.ModelState.Select(field =>
+            $"{field.Key}: {field.Value!.ValidationState} {string.Join(", ", field.Value!.Errors.Select(error => error.ErrorMessage))}")));
+        var result = await sut.Save(model, null, ct);
+
+        if (missingField is not null)
+        {
+            result.Should().BeOfType<ViewResult>().Which.Model.Should().BeSameAs(model);
+            sut.ModelState[missingField]!.Errors.Should().NotBeEmpty();
+            await surveys.DidNotReceiveWithAnyArgs().CreateAsync(default!, default);
+            await surveys.DidNotReceiveWithAnyArgs().UpdateAsync(default, default!, default!);
+        }
+        else
+        {
+            sut.ModelState.IsValid.Should().BeTrue();
+            result.Should().BeOfType<RedirectToActionResult>();
+            if (existing)
+                await surveys.Received(1).UpdateAsync(surveyId,
+                    Arg.Is<SurveyEditInput>(input => !input.AllowAnonymous && !input.IsAsociadoVote), Arg.Any<SurveyViewer>(), ct);
+            else
+                await surveys.Received(1).CreateAsync(
+                    Arg.Is<SurveyEditInput>(input => !input.AllowAnonymous && !input.IsAsociadoVote), actorId, ct);
+        }
     }
 
     [HumansTheory]

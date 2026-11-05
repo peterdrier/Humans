@@ -86,15 +86,9 @@
         let finalized = false;
 
         try {
-            const resp = await fetch('/Agent/Ask', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Accept': 'text/event-stream',
-                    'RequestVerificationToken': composer.querySelector('input[name="__RequestVerificationToken"]').value
-                },
-                body: JSON.stringify({ conversationId: currentConversationId, message: message })
-            });
+            const resp = await Humans.postJson('/Agent/Ask',
+                { conversationId: currentConversationId, message: message },
+                { headers: { 'Accept': 'text/event-stream' } });
             if (!resp.ok) {
                 bubble.textContent = panel.dataset.httpErrorText.replace('{0}', resp.status);
                 return;

@@ -69,17 +69,17 @@ Dispatch checks `CommunicationPreference.InboxEnabled` and suppresses informatio
 Three-state badge: no badge / success dot (informational only) / danger count (actionable). `NotificationBellViewComponent` calls `NotificationInboxService.GetUnreadBadgeCountsAsync` with the request-abort token. Each read queries current unread, unresolved recipient counts, so a read begun before a mutation cannot cache stale counts afterward. Shared-resolution, merge and retention changes are visible on the next read.
 
 ### Popup
-340px dropdown from bell, right-aligned. Sections: "Needs your attention" (actionable) then "Recent" (informational). Footer: "Mark all as read" + "See all notifications". Empty state: "You're all caught up."
+340px dropdown from bell, right-aligned. It lists only unread, unresolved items, so opening an item or "Mark all as read" takes it off the bell; the inbox page still holds it until it is resolved, dismissed or purged. Sections: "Needs your attention" (actionable), "Work queues" (meters, each saying which role it is shown for), then "Recent" (informational). Footer: "Mark all as read" + "See all notifications". Empty state: "You're all caught up."
 
 ### Full Inbox Page
-Route: `/Notifications`. Search + filter pills (All, Needs action, Shifts, Approvals, Resolved). Card with dark green header, Unread/All tab toggle. Sections: "Needs attention", "Informational", "Resolved".
+Route: `/Notifications`. Search + filter pills (All, Needs action, Shifts, Approvals, Resolved). Card with dark green header, Unread/All tab toggle. Sections: "Needs attention", "Informational", "Resolved". Bulk Resolve and Dismiss remove matching selected rows only after a successful response, reject redirects, and retain selections with a localized error on failure. Both actions are disabled while a bulk request is pending.
 
 ### Notification Row
-Shared between popup and inbox. 3px left border accent by priority/class. Type tags: "Urgent" (danger), "Action" (warning), "Info" (success). Group avatar cluster for group-targeted notifications.
+Shared between popup and inbox. 3px left border accent by priority/class. Title and time, then the body text (the reason), then "For <role>" when it went to a role. The title links through `ClickThrough`, which marks it read.
 
 ## Cleanup
 
-`CleanupNotificationsJob` runs daily. It deletes resolved notifications older than 7 days, unresolved informational notifications older than 30 days, and unresolved rows of retired sources (the ones their sections declare `Retired`: `ApplicationSubmitted`, `ConsentReviewNeeded` and `VolunteerApproved` today) that have no remaining resolution path. Other actionable unresolved notifications are never auto-deleted. Successful unresolved deletions evict all affected recipients' unread badge counts immediately, even if a later cleanup step fails.
+`CleanupNotificationsJob` runs daily. It deletes resolved notifications older than 7 days, unresolved informational notifications older than 30 days, and unresolved rows of retired sources (the ones their sections declare `Retired`: `ApplicationSubmitted`, `ConsentReviewNeeded` and `VolunteerApproved` today) that have no remaining resolution path. Other actionable unresolved notifications are never auto-deleted. Badge counts are read from the rows on every request, so each committed deletion shows at once, even if a later cleanup step fails.
 
 ## Authorization
 
@@ -92,5 +92,4 @@ Each emitting section declares its own sources as `public static readonly Notifi
 ## Related Features
 
 - Communication Preferences (28) -- InboxEnabled extends existing preference model
-- Teams (06) -- AddedToTeam is the first notification migration
 - Shift Management -- ShiftCoverageGap and ShiftAssigned notifications

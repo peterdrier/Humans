@@ -19,6 +19,45 @@ namespace Humans.Governance.Tests.Services;
 public sealed class TermRenewalReminderJobTests
 {
     [HumansTheory]
+    [Xunit.InlineData(null)]
+    [Xunit.InlineData("")]
+    [Xunit.InlineData(" ")]
+    [Xunit.InlineData("\t")]
+    public async Task ExecuteAsync_UnreachableRecipientStaysEligibleForRetry(string? address)
+    {
+        var applications = Substitute.For<IGovernanceManagement>();
+        var users = Substitute.For<IUserService>();
+        var email = Substitute.For<IEmailService>();
+        var notifications = Substitute.For<INotificationEmitter>();
+        var clock = new FakeClock(Instant.FromUtc(2026, 3, 1, 12, 0));
+        var candidate = new ApplicationRenewalReminderCandidate(Guid.NewGuid(), Guid.NewGuid(),
+            MembershipTier.Colaborador, clock.GetCurrentInstant(), new LocalDate(2026, 5, 20));
+        applications.GetExpiringApplicationsNeedingReminderAsync(Arg.Any<LocalDate>(), Arg.Any<LocalDate>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IReadOnlyList<ApplicationRenewalReminderCandidate>>([candidate]));
+        applications.GetPendingApplicationUserTiersAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IReadOnlySet<(Guid UserId, MembershipTier Tier)>>(new HashSet<(Guid, MembershipTier)>()));
+        var member = new User { Id = candidate.UserId, BurnerName = "Member", Email = address }.ToUserInfo();
+        users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, UserInfo> { [candidate.UserId] = member });
+        var job = new TermRenewalReminderJob(applications, users, email, TestGovernanceEmails.Create(),
+            notifications, Substitute.For<IHumansMetrics>(), NullLogger<TermRenewalReminderJob>.Instance, clock);
+
+        await job.ExecuteAsync(CancellationToken.None);
+
+        await email.DidNotReceive().SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>());
+        await applications.DidNotReceive().MarkRenewalReminderSentAsync(
+            candidate.Id, Arg.Any<Instant>(), Arg.Any<CancellationToken>());
+
+        users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, UserInfo> { [candidate.UserId] = member with { IdentityEmailColumn = "member@example.org" } });
+        await job.ExecuteAsync(CancellationToken.None);
+
+        await email.Received(1).SendAsync(
+            Arg.Is<EmailMessage>(message => message.RecipientEmail == "member@example.org"), CancellationToken.None);
+        await applications.Received(1).MarkRenewalReminderSentAsync(candidate.Id, clock.GetCurrentInstant(), CancellationToken.None);
+    }
+
+    [HumansTheory]
     [Xunit.InlineData("email", true)]
     [Xunit.InlineData("stamp", true)]
     [Xunit.InlineData("notice", false)]
@@ -97,13 +136,13 @@ public sealed class TermRenewalReminderJobTests
     }
 
     [HumansTheory]
-    [Xunit.InlineData("es")]
-    [Xunit.InlineData("unsupported")]
-    [Xunit.InlineData("")]
-    [Xunit.InlineData(" ")]
-    [Xunit.InlineData("not a culture!")]
-    [Xunit.InlineData("fr-FR")]
-    public async Task ExecuteAsync_LocalizesNoticeAndDateWithoutLeakingRecipientCulture(string language)
+    [Xunit.InlineData("es", "es")]
+    [Xunit.InlineData("unsupported", "en")]
+    [Xunit.InlineData("", "en")]
+    [Xunit.InlineData(" ", "en")]
+    [Xunit.InlineData("not a culture!", "en")]
+    [Xunit.InlineData("fr-FR", "en")]
+    public async Task ExecuteAsync_LocalizesNoticeAndDateWithoutLeakingRecipientCulture(string language, string expectedCulture)
     {
         using var serverCulture = new CultureScope("fr");
         var applications = Substitute.For<IGovernanceManagement>();
@@ -127,7 +166,7 @@ public sealed class TermRenewalReminderJobTests
         var job = new TermRenewalReminderJob(applications, users, email, TestGovernanceEmails.Create(),
             notifications, Substitute.For<IHumansMetrics>(), NullLogger<TermRenewalReminderJob>.Instance, clock);
         string expectedDate;
-        using (new CultureScope(string.Equals(language, "es", StringComparison.Ordinal) ? "es" : "en"))
+        using (new CultureScope(expectedCulture))
             expectedDate = expiry.ToDate();
 
         await job.ExecuteAsync(CancellationToken.None);
@@ -135,15 +174,16 @@ public sealed class TermRenewalReminderJobTests
         var args = notifications.ReceivedCalls().Single().GetArguments();
         args[0].Should().Be(GovernanceNotificationSources.TermRenewalReminder);
         ((IReadOnlyList<Guid>)args[4]!).Should().ContainSingle().Which.Should().Be(userId);
-        var spanish = string.Equals(language, "es", StringComparison.Ordinal);
-        var expectedCulture = spanish ? "es" : "en";
         await email.Received(1).SendAsync(
             Arg.Is<EmailMessage>(m => m.RecipientEmail == "applicant@example.com"
                 && m.Subject.EndsWith("#" + expectedCulture, StringComparison.Ordinal)), CancellationToken.None);
-        args[3].Should().Be(spanish ? $"Tu período como Colaborador vence el {expectedDate}" : $"Your Colaborador term expires {expectedDate}");
-        args[5].Should().Be(spanish ? "Presenta una solicitud de renovación para mantener tu categoría de membresía." : "Submit a renewal application to maintain your membership tier.");
+        var recipientCulture = CultureInfo.GetCultureInfo(expectedCulture);
+        var resources = new System.Resources.ResourceManager(typeof(GovernanceResource));
+        args[3].Should().Be(string.Format(recipientCulture,
+            resources.GetString("Governance_Notification_TermRenewalReminder", recipientCulture)!, MembershipTier.Colaborador, expectedDate));
+        args[5].Should().Be(resources.GetString("Governance_Notification_TermRenewalReminderBody", recipientCulture));
         args[6].Should().Be("/Governance/Applications");
-        args[7].Should().Be(spanish ? "Renovar →" : "Renew →");
+        args[7].Should().Be(resources.GetString("Governance_Notification_Renew", recipientCulture));
         await applications.Received(1).MarkRenewalReminderSentAsync(candidate.Id, clock.GetCurrentInstant(), CancellationToken.None);
         CultureInfo.CurrentCulture.Name.Should().Be("fr");
         CultureInfo.CurrentUICulture.Name.Should().Be("fr");

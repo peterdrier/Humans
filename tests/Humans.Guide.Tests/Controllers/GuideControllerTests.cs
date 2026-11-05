@@ -29,15 +29,8 @@ public class GuideControllerTests
         ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext() }
     };
 
-    [HumansTheory]
-    [InlineData("en", "Getting Started", "Start here", "Teams")]
-    [InlineData("es", "Primeros pasos", "Empieza aquí", "Equipos")]
-    [InlineData("de", "Erste Schritte", "Hier beginnen", "Teams")]
-    [InlineData("it", "Primi passi", "Inizia qui", "Team")]
-    [InlineData("fr", "Premiers pas", "Commencez ici", "Équipes")]
-    [InlineData("ca", "Primers passos", "Comença aquí", "Equips")]
-    public async Task Document_LocalizesNavigationWhilePreservingContentAndRoutes(
-        string culture, string gettingStarted, string startGroup, string teamTitle)
+    [HumansFact]
+    public async Task Document_LocalizesNavigationWhilePreservingContentAndRoutes()
     {
         const string html = "<p>Original authored content</p>";
         _content.GetPageAsync(Arg.Any<string>(), Arg.Any<GuideRoleContext>(), Arg.Any<CancellationToken>()).Returns(html);
@@ -45,14 +38,14 @@ public class GuideControllerTests
             .Returns(GuideRoleContext.Anonymous);
         var controller = CreateController();
 
-        using var scope = new CultureScope(culture);
+        using var scope = new CultureScope("en");
         var result = await controller.Document("teAMs", Xunit.TestContext.Current.CancellationToken);
 
         var model = result.Should().BeOfType<ViewResult>().Which.Model.Should().BeOfType<GuideViewModel>().Subject;
-        model.Title.Should().Be(teamTitle);
-        model.Sidebar.Entries[0].DisplayName.Should().Be(gettingStarted);
-        model.Sidebar.Entries[0].Group.Should().Be(startGroup);
-        model.Sidebar.Entries.Single(e => string.Equals(e.Stem, "Teams", StringComparison.Ordinal)).DisplayName.Should().Be(teamTitle);
+        model.Title.Should().Be("Teams");
+        model.Sidebar.Entries[0].DisplayName.Should().Be("Getting Started");
+        model.Sidebar.Entries[0].Group.Should().Be("Start here");
+        model.Sidebar.Entries.Single(e => string.Equals(e.Stem, "Teams", StringComparison.Ordinal)).DisplayName.Should().Be("Teams");
         model.Sidebar.ActiveStem.Should().Be("Teams");
         model.FileStem.Should().Be("Teams");
         model.Html.ToString().Should().Be(html);

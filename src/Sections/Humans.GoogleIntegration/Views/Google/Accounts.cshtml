@@ -1,6 +1,7 @@
 @model Humans.GoogleIntegration.Models.WorkspaceEmailListViewModel
 @{
     ViewData["Title"] = "@nobodies.team Accounts";
+    var accountRows = Model.Accounts.ToList();
 }
 
 <div class="d-flex justify-content-between align-items-center mb-4">
@@ -123,141 +124,140 @@
     <div class="card-body p-0">
         @if (Model.Accounts.Count == 0)
         {
-            <p class="text-muted text-center py-4 mb-0">No @@nobodies.team accounts found.</p>
+            <empty-state class="py-4 mb-0">No @@nobodies.team accounts found.</empty-state>
         }
         else
         {
-            <table class="table table-hover mb-0" id="accounts-table">
-                <thead>
-                    <tr>
-                        <th>Email</th>
-                        <th>Name</th>
-                        <th>Linked Human</th>
-                        <th>Status</th>
-                        <th>2FA</th>
-                        <th>Recovery Email</th>
-                        <th>Created</th>
-                        <th>Last Login</th>
-                        <th class="text-end">@Localizer["GoogleIntegration_Accounts_Actions"]</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @for (var i = 0; i < Model.Accounts.Count; i++)
+                Func<WorkspaceAccountInfo, IHtmlContent> accountCell0 = @<text>
+                    <code>@item.PrimaryEmail</code>
+                    @if (item.MatchedUserId.HasValue && !item.IsUsedAsPrimary)
                     {
-                        var account = Model.Accounts[i];
-                        <tr class="@(account.IsSuspended ? "table-secondary" : "")"
-                            data-is-enrolled-2sv="@(account.IsEnrolledIn2Sv ? "true" : "false")"
-                            data-is-suspended="@(account.IsSuspended ? "true" : "false")">
-                            <td>
-                                <code>@account.PrimaryEmail</code>
-                                @if (account.MatchedUserId.HasValue && !account.IsUsedAsPrimary)
-                                {
-                                    <span class="badge bg-warning ms-1" title="Account linked but not used as primary notification email"
-                                          data-bs-toggle="tooltip">
-                                        <i class="fa-solid fa-triangle-exclamation"></i> Not primary
-                                    </span>
-                                }
-                            </td>
-                            <td>@account.FirstName @account.LastName</td>
-                            <td>
-                                @if (account.MatchedUserId.HasValue)
-                                {
-                                    <vc:human user-id="@account.MatchedUserId.Value" />
-                                }
-                                else
-                                {
-                                    <form asp-action="LinkAccount" method="post" class="d-flex align-items-center gap-2 link-form">
-                                        @Html.AntiForgeryToken()
-                                        <input type="hidden" name="email" value="@account.PrimaryEmail" />
-                                        <input type="hidden" name="userId" class="link-userId" />
-                                        <vc:human-search field-name="@($"link-{i}")" />
-                                        <button type="submit" class="btn btn-outline-primary btn-sm flex-shrink-0">
-                                            <i class="fa-solid fa-link"></i>
-                                        </button>
-                                    </form>
-                                }
-                            </td>
-                            <td>
-                                @if (account.IsSuspended)
-                                {
-                                    <span class="badge bg-danger">Suspended</span>
-                                }
-                                else
-                                {
-                                    <span class="badge bg-success">Active</span>
-                                }
-                            </td>
-                            <td>
-                                @if (account.IsEnrolledIn2Sv)
-                                {
-                                    <span class="badge bg-success" title="2-Step Verification is enrolled on this account" data-bs-toggle="tooltip">
-                                        <i class="fa-solid fa-shield-halved me-1"></i>2FA ready
-                                    </span>
-                                }
-                                else
-                                {
-                                    <span class="badge bg-danger" title="Account has not completed 2FA enrollment — cannot sign in" data-bs-toggle="tooltip">
-                                        <i class="fa-solid fa-triangle-exclamation me-1"></i>2FA not set up
-                                    </span>
-                                }
-                            </td>
-                            <td>
-                                @if (!string.IsNullOrWhiteSpace(account.RecoveryEmail))
-                                {
-                                    <code class="small">@account.RecoveryEmail</code>
-                                }
-                                else
-                                {
-                                    <span class="badge bg-warning text-dark" title="No personal recovery email on file — recovery requires admin intervention" data-bs-toggle="tooltip">
-                                        <i class="fa-solid fa-triangle-exclamation me-1"></i>None
-                                    </span>
-                                }
-                            </td>
-                            <td>@account.CreationTime.ToDate()</td>
-                            <td>
-                                @if (account.LastLoginTime.HasValue)
-                                {
-                                    @account.LastLoginTime.Value.ToDate()
-                                }
-                                else
-                                {
-                                    <span class="text-muted">Never</span>
-                                }
-                            </td>
-                            <td class="text-end">
-                                @if (!account.IsSuspended)
-                                {
-                                    <div class="d-inline-flex gap-1">
-                                        <form asp-action="ResetPassword" method="post" class="d-inline"
-                                              data-confirm="Reset the password for @account.PrimaryEmail? The new temporary password will be shown once.">
-                                            @Html.AntiForgeryToken()
-                                            <input type="hidden" name="email" value="@account.PrimaryEmail" />
-                                            <button type="submit" class="btn btn-outline-warning btn-sm"
-                                                    title="Issue a fresh temporary password — shown once after submit"
-                                                    data-bs-toggle="tooltip">
-                                                <i class="fa-solid fa-key me-1"></i>@Localizer["GoogleIntegration_Accounts_ResetPassword"]
-                                            </button>
-                                        </form>
-                                        @if (!account.IsEnrolledIn2Sv)
-                                        {
-                                            <form asp-action="ResetPasswordAndGenerate2Fa" method="post" class="d-inline"
-                                                  data-confirm="Reset password and issue a backup verification code for @account.PrimaryEmail? Both will be shown once. Any previously-issued backup codes will be invalidated.">
-                                                @Html.AntiForgeryToken()
-                                                <input type="hidden" name="email" value="@account.PrimaryEmail" />
-                                                <button type="submit" class="btn btn-outline-danger btn-sm"
-                                                        title="Reset the password AND issue one backup code — for locked-out humans not yet enrolled in 2FA"
-                                                        data-bs-toggle="tooltip">
-                                                    <i class="fa-solid fa-key me-1"></i>Reset + 2FA
-                                                </button>
-                                            </form>
-                                        }
-                                    </div>
-                                }
-                            </td>
-                        </tr>
+                        <span class="badge bg-warning ms-1" title="Account linked but not used as primary notification email"
+                              data-bs-toggle="tooltip">
+                            <i class="fa-solid fa-triangle-exclamation"></i> Not primary
+                        </span>
                     }
-                </tbody>
-            </table>
+
+                </text>;
+                Func<WorkspaceAccountInfo, IHtmlContent> accountCell1 = @<text>@item.FirstName @item.LastName</text>;
+                Func<WorkspaceAccountInfo, IHtmlContent> accountCell2 = @<text>
+                    @if (item.MatchedUserId.HasValue)
+                    {
+                        <vc:human user-id="@item.MatchedUserId.Value" />
+                    }
+                    else
+                    {
+                        <form asp-action="LinkAccount" method="post" class="d-flex align-items-center gap-2 link-form">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="email" value="@item.PrimaryEmail" />
+                            <input type="hidden" name="userId" class="link-userId" />
+                            <vc:human-search field-name="@($"link-{accountRows.IndexOf(item)}")" />
+                            <button type="submit" class="btn btn-outline-primary btn-sm flex-shrink-0">
+                                <i class="fa-solid fa-link"></i>
+                            </button>
+                        </form>
+                    }
+
+                </text>;
+                Func<WorkspaceAccountInfo, IHtmlContent> accountCell3 = @<text>
+                    @if (item.IsSuspended)
+                    {
+                        <span class="badge bg-danger">Suspended</span>
+                    }
+                    else
+                    {
+                        <span class="badge bg-success">Active</span>
+                    }
+
+                </text>;
+                Func<WorkspaceAccountInfo, IHtmlContent> accountCell4 = @<text>
+                    @if (item.IsEnrolledIn2Sv)
+                    {
+                        <span class="badge bg-success" title="2-Step Verification is enrolled on this account" data-bs-toggle="tooltip">
+                            <i class="fa-solid fa-shield-halved me-1"></i>2FA ready
+                        </span>
+                    }
+                    else
+                    {
+                        <span class="badge bg-danger" title="Account has not completed 2FA enrollment — cannot sign in" data-bs-toggle="tooltip">
+                            <i class="fa-solid fa-triangle-exclamation me-1"></i>2FA not set up
+                        </span>
+                    }
+
+                </text>;
+                Func<WorkspaceAccountInfo, IHtmlContent> accountCell5 = @<text>
+                    @if (!string.IsNullOrWhiteSpace(item.RecoveryEmail))
+                    {
+                        <code class="small">@item.RecoveryEmail</code>
+                    }
+                    else
+                    {
+                        <span class="badge bg-warning text-dark" title="No personal recovery email on file — recovery requires admin intervention" data-bs-toggle="tooltip">
+                            <i class="fa-solid fa-triangle-exclamation me-1"></i>None
+                        </span>
+                    }
+
+                </text>;
+                Func<WorkspaceAccountInfo, IHtmlContent> accountCell6 = @<text>@item.CreationTime.ToDate()</text>;
+                Func<WorkspaceAccountInfo, IHtmlContent> accountCell7 = @<text>
+                    @if (item.LastLoginTime.HasValue)
+                    {
+                        @item.LastLoginTime.Value.ToDate()
+                    }
+                    else
+                    {
+                        <span class="text-muted">Never</span>
+                    }
+
+                </text>;
+                Func<WorkspaceAccountInfo, IHtmlContent> accountCell8 = @<text>
+                    @if (!item.IsSuspended)
+                    {
+                        <div class="d-inline-flex gap-1">
+                            <form asp-action="ResetPassword" method="post" class="d-inline"
+                                  data-confirm="Reset the password for @item.PrimaryEmail? The new temporary password will be shown once.">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="email" value="@item.PrimaryEmail" />
+                                <button type="submit" class="btn btn-outline-warning btn-sm"
+                                        title="Issue a fresh temporary password — shown once after submit"
+                                        data-bs-toggle="tooltip">
+                                    <i class="fa-solid fa-key me-1"></i>@Localizer["GoogleIntegration_Accounts_ResetPassword"]
+                                </button>
+                            </form>
+                            @if (!item.IsEnrolledIn2Sv)
+                            {
+                                <form asp-action="ResetPasswordAndGenerate2Fa" method="post" class="d-inline"
+                                      data-confirm="Reset password and issue a backup verification code for @item.PrimaryEmail? Both will be shown once. Any previously-issued backup codes will be invalidated.">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="email" value="@item.PrimaryEmail" />
+                                    <button type="submit" class="btn btn-outline-danger btn-sm"
+                                            title="Reset the password AND issue one backup code — for locked-out humans not yet enrolled in 2FA"
+                                            data-bs-toggle="tooltip">
+                                        <i class="fa-solid fa-key me-1"></i>Reset + 2FA
+                                    </button>
+                                </form>
+                            }
+                        </div>
+                    }
+
+                </text>;
+                var accountsTable = TableModel.For(accountRows)
+                    .Template("Email", accountCell0, sortBy: a => a.PrimaryEmail)
+                    .Template("Name", accountCell1, sortBy: a => a.FirstName + " " + a.LastName)
+                    .Template("Linked Human", accountCell2, sortBy: a => a.MatchedUserId.HasValue ? 1 : 0)
+                    .Template("Status", accountCell3, sortBy: a => a.IsSuspended ? 1 : 0)
+                    .Template("2FA", accountCell4, sortBy: a => a.IsEnrolledIn2Sv ? 1 : 0)
+                    .Template("Recovery Email", accountCell5, sortBy: a => a.RecoveryEmail)
+                    .Template("Created", accountCell6, sortBy: a => a.CreationTime)
+                    .Template("Last Login", accountCell7, sortBy: a => a.LastLoginTime)
+                    .Template(Localizer["GoogleIntegration_Accounts_Actions"], accountCell8, o => o.End())
+                    .Id("accounts-table")
+                    .RowCss(a => a.IsSuspended ? "table-secondary" : null)
+                    .RowData("is-enrolled-2sv", a => a.IsEnrolledIn2Sv ? "true" : "false")
+                    .RowData("is-suspended", a => a.IsSuspended ? "true" : "false")
+                    .Css("align-middle")
+                    .Build();
+            <partial name="_Table" model="accountsTable" />
         }
     </div>
 </div>
@@ -290,14 +290,11 @@
                         Hand these to <code>@recoveryCreds.Email</code> securely — they cannot be retrieved again after you close this dialog.
                     </div>
 
-                    <pre id="recovery-credentials-text" class="bg-light p-3 border rounded mb-3 small" style="white-space: pre-wrap;">@clipboardText</pre>
+                    <pre id="recovery-credentials-text" class="bg-light p-3 border rounded mb-3 small pre-wrap">@clipboardText</pre>
 
-                    <button type="button" class="btn btn-outline-primary btn-sm" id="copy-recovery-credentials">
+                    <button type="button" class="btn btn-outline-primary btn-sm" data-copy="#recovery-credentials-text" data-copied="Copied">
                         <i class="fa-solid fa-copy me-1"></i>Copy to clipboard
                     </button>
-                    <span id="copy-recovery-credentials-feedback" class="text-success ms-2" style="display:none;">
-                        <i class="fa-solid fa-check me-1"></i>Copied
-                    </span>
 
                     <hr />
 
@@ -333,7 +330,7 @@
                 }
                 if (!userIdField || !userIdField.value) {
                     e.preventDefault();
-                    alert('Please search and select a human first.');
+                    showToast('Please search and select a human first.', 'danger');
                 }
             });
         });
@@ -357,7 +354,7 @@
             });
         })();
 
-        // Recovery-credentials modal: copy-to-clipboard, acknowledgement gate, and auto-show once.
+        // Recovery-credentials modal: acknowledgement gate, and auto-show once.
         (function () {
             var modalEl = document.getElementById('recovery-credentials-modal');
             if (!modalEl) return;
@@ -373,22 +370,7 @@
                 });
             }
 
-            var copyBtn = document.getElementById('copy-recovery-credentials');
             var credsEl = document.getElementById('recovery-credentials-text');
-            var feedback = document.getElementById('copy-recovery-credentials-feedback');
-            if (copyBtn && credsEl) {
-                copyBtn.addEventListener('click', function () {
-                    var text = credsEl.textContent || '';
-                    if (navigator.clipboard && navigator.clipboard.writeText) {
-                        navigator.clipboard.writeText(text).then(function () {
-                            if (feedback) {
-                                feedback.style.display = 'inline';
-                                setTimeout(function () { feedback.style.display = 'none'; }, 2000);
-                            }
-                        });
-                    }
-                });
-            }
 
             // On close, clear the credentials from the DOM so browser back/refresh can't re-expose them.
             modalEl.addEventListener('hidden.bs.modal', function () {

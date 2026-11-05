@@ -25,6 +25,7 @@
     <ProjectReference Include="..\Humans.Budget\Humans.Budget.csproj" />
     <ProjectReference Include="..\Humans.Tickets.Contracts\Humans.Tickets.Contracts.csproj" />
     <ProjectReference Include="..\Humans.Holded\Humans.Holded.csproj" />
+    <ProjectReference Include="..\Humans.Pleo\Humans.Pleo.csproj" />
     <ProjectReference Include="..\Humans.Expenses\Humans.Expenses.csproj" />
     <ProjectReference Include="..\Humans.Email.Contracts\Humans.Email.Contracts.csproj" />
   </ItemGroup>
@@ -36,8 +37,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <!-- Jobs/SepaBankBookingJob.cs — [DisableConcurrentExecution] and IRecurringJob. Package, not
-         project, so no cycle is possible; it was already arriving transitively. -->
+    <!-- Jobs/SepaBankBookingJob.cs — [DisableConcurrentExecution] and IRecurringJob. A package, not
+         a project, so it cannot close a cycle. -->
     <PackageReference Include="Hangfire.Core" />
     <PackageReference Include="Microsoft.EntityFrameworkCore" />
     <PackageReference Include="NodaTime" />

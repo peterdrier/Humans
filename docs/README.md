@@ -115,7 +115,7 @@ Terse, authoritative invariant docs for each major section: concepts, data model
 | [Debug](../src/Sections/Humans.Debug/Docs/Debug.md) | Developer/diagnostics section: admin-only pages exposing operational insight (client demographics, request health) that no domain section owns — owns no tables |
 | [Development](../src/Sections/Humans.Development/Docs/Development.md) | Dev-only tooling: persona sign-in and fixture seeding, never reachable in Production — owns no tables |
 | [Early Entry](../src/Sections/Humans.EarlyEntry/Docs/EarlyEntry.md) | Cross-source Early Entry: who may enter the site before gates open, on which day, and because of what — owns no data, fans out over every contributing section |
-| [Email](../src/Sections/Humans.Email/Docs/Email.md) | Transactional email outbox: queue, render, deliver, retry, and pause/resume — backs campaign sends, onboarding, shift, and feedback emails |
+| [Email](../src/Sections/Humans.Email/Docs/Email.md) | Transactional email outbox: queue, render, deliver, retry, and pause/resume — backs campaign sends, onboarding, and shift emails |
 | [Events](../src/Sections/Humans.Events/Docs/Events.md) | Event programming: submission, moderation, browsing, export, and preference management for festival events |
 | [Expenses](../src/Sections/Humans.Expenses/Docs/Expenses.md) | Expense reports submitted by members and approved by Finance Admin; approval books into Holded async, and paid/unpaid status is read back from the member's Holded creditor ledger rather than stamped on the report — payment itself happens externally, with no SEPA-file generation in the app |
 | [Finance](../src/Sections/Humans.Finance/Docs/Finance.md) | Treasurer's reality side of money — actuals, reconciliation, and treasurer-facing operational data sharing keys with Budget |
@@ -141,7 +141,7 @@ Terse, authoritative invariant docs for each major section: concepts, data model
 | [Settings](../src/Sections/Humans.Settings/Docs/Settings.md) | App-wide `system_settings` key/value store every section may read and write, plus `settings_event`, the app-wide event calendar and active-cycle record |
 | [Shifts](../src/Sections/Humans.Shifts/Docs/Shifts.md) | Event shifts, rotas, signups, range blocks, event settings, general availability, and per-event volunteer profiles |
 | [Store](../src/Sections/Humans.Store/Docs/Store.md) | Per-camp catalog ordering, multi-method payments, and consolidated Holded factura issuance for Camp Lead purchases |
-| [Stripe](../src/Sections/Humans.Stripe/Docs/Stripe.md) | The payments connector — Checkout Session creation, webhook signature verification, fee lookups, boot-time key probes; owns no tables and no UI |
+| [Stripe](../src/Sections/Humans.Stripe/Docs/Stripe.md) | The payments connector — Checkout Session creation, webhook signature verification, fee lookups, boot-time key probes — plus the read-only Stripe mirror (ledger, payouts, balance, reserves) and the `/Stripe` pages |
 | [Survey](../src/Sections/Humans.Surveys/Docs/Surveys.md) | First-party, GDPR-compliant surveys: author typed/branching multi-language surveys, send tokenised email invitations to a resolved audience, collect responses across three anonymity tiers (invite link or public slug), and read results in-app, via CSV/JSON export, or a key-authed analysis API |
 | [Teams](../src/Sections/Humans.Teams/Docs/Teams.md) | Departments and sub-teams, join requests, role definitions, team pages, and linked Google resources |
 | [Tickets](../src/Sections/Humans.Tickets/Docs/Tickets.md) | External ticket vendor sync (orders + attendees), Stripe-fee enrichment, auto-matching by email, event-participation derivation |
@@ -212,24 +212,24 @@ Design specs and implementation plans preserved for historical context. These do
 
 | Directory | Contents |
 |-----------|----------|
-| [plans/](plans/) | Programme-level plans and audits — the Q3 transition gate ladder, the G0 section audit, the demolition and frozen-section inventories, the section dependency DAG, and the cross-section FK-cut inventory |
+| [plans/](plans/) | The cross-section FK-cut inventory |
 | [superpowers/specs/](superpowers/specs/) | Feature design specifications |
-| [superpowers/plans/](superpowers/plans/) | Feature implementation plans |
 
 ## Architecture
 
-Clean Architecture with four layers:
+Vertical sections over a shared base:
 
 ```
-Web             Controllers, Views, ViewModels
-Application     Interfaces, DTOs, Services (business logic), Use Cases
-Infrastructure  EF Core, Repositories, Stores, Caching Decorators, Jobs, Integrations
-Domain          Entities, Enums, Value Objects
+Humans.Web             Shell: layouts, page composition, platform context
+Sections/Humans.<X>    One section each: controllers, views, services, repository, DbContext, migrations
+Humans.Base            Bottom of the graph: role markers, architecture attributes, TrackedCache, shared view layer
 ```
 
 | Document | Description |
 |----------|-------------|
-| [Design Rules](architecture/design-rules.md) | Persistence, service ownership, repository / store / decorator pattern, cross-domain join ban, authorization, migration strategy |
+| [Design Rules](architecture/design-rules.md) | The regulations under the hard rules: layering, service and table ownership, repository layer, join ban, cross-service calls, crosscuts and fan-out, Shell seams, personal data, authorization, append-only entities, the caching pattern |
+| [Base](../src/Humans.Base/Docs/Base.md) | What `Humans.Base` holds: markers, attributes, `TrackedCache`, the persistence seam, the Users/Audit/Gdpr cores, the shared view layer |
+| [Shell](../src/Humans.Web/Docs/Shell.md) | What `Humans.Web` holds and the seam catalog: how section contributions are composed into nav, admin, jobs, policies and settings |
 | [Conventions](architecture/conventions.md) | Domain invariants, transactions, integration, time/config, rendering (Razor vs fetch), testing, exception rule, smell checklist |
 | [Dependency Graph](architecture/dependency-graph.md) | Service-to-service dependency graph, current vs target edges, circular dependency analysis |
 | [Project Rules Catalog](../memory/INDEX.md) | Atomic rules (one per file under `memory/<bucket>/`). `architecture/coding-rules.md` is now a stub redirecting here. |

@@ -1,9 +1,12 @@
 using Humans.Users.Contracts;
 using Microsoft.AspNetCore.DataProtection;
 using NodaTime;
+using System.Globalization;
+using System.Resources;
 using System.Security.Claims;
 using System.Text.Encodings.Web;
 using AwesomeAssertions;
+using Humans.Base;
 using Humans.Base.Extensions;
 using Humans.Base.Enums;
 using Humans.Base.ViewComponents;
@@ -26,17 +29,15 @@ namespace Humans.Teams.Tests.Controllers;
 public class TeamDetailViewTests
 {
     [HumansTheory]
-    [Xunit.InlineData("en", SystemTeamType.Volunteers, "Volunteers")]
-    [Xunit.InlineData("es", SystemTeamType.Volunteers, "Voluntarios")]
-    [Xunit.InlineData("de", SystemTeamType.Volunteers, "Freiwillige")]
-    [Xunit.InlineData("it", SystemTeamType.Volunteers, "Volontari")]
-    [Xunit.InlineData("fr", SystemTeamType.Volunteers, "Bénévoles")]
-    [Xunit.InlineData("ca", SystemTeamType.Volunteers, "Voluntaris")]
-    [Xunit.InlineData("es", SystemTeamType.BarrioLeads, "Responsables de campamento")]
-    public async Task SystemTeamType_UsesLocalizedLabelInBadgeAndMembershipCriteria(
-        string culture, SystemTeamType type, string expected)
+    [Xunit.InlineData(SystemTeamType.Volunteers)]
+    [Xunit.InlineData(SystemTeamType.BarrioLeads)]
+    public async Task SystemTeamType_UsesLocalizedLabelInBadgeAndMembershipCriteria(SystemTeamType type)
     {
-        using var language = new CultureScope(culture);
+        var key = $"Enum_{nameof(SystemTeamType)}_{type}";
+        var resources = new ResourceManager(typeof(SharedResource));
+        var expected = resources.GetString(key, CultureInfo.GetCultureInfo(CultureCatalog.CanonicalLegalCultureCode))!;
+        expected.Should().NotBe(resources.GetString(key, CultureInfo.InvariantCulture));
+        using var language = new CultureScope(CultureCatalog.CanonicalLegalCultureCode);
         var model = new TeamDetailViewModel
         {
             Name = "Example",

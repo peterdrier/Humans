@@ -1,3 +1,5 @@
+using System.Globalization;
+using System.Resources;
 using AwesomeAssertions;
 using Humans.Base.Extensions;
 using Humans.Users.Contracts;
@@ -10,15 +12,13 @@ namespace Humans.Users.Tests.Services.Profiles;
 public class PersonSearchMatcherTests
 {
     [HumansTheory]
-    [InlineData("en", "Name", "City", "Other", "Legal Name")]
-    [InlineData("es", "Nombre", "Ciudad", "Otro", "Nombre legal")]
-    [InlineData("de", "Name", "Stadt", "Sonstiges", "Bürgerlicher Name")]
-    [InlineData("it", "Nome", "Città", "Altro", "Nome legale")]
-    [InlineData("fr", "Nom", "Ville", "Autre", "Nom légal")]
-    [InlineData("ca", "Nom", "Ciutat", "Altres", "Nom legal")]
-    public void Built_in_match_labels_use_ui_culture_and_custom_labels_stay_verbatim(
-        string culture, string name, string city, string other, string legalName)
+    [MemberData(nameof(SupportedCultures.All), MemberType = typeof(SupportedCultures))]
+    public void Built_in_match_labels_use_ui_culture_and_custom_labels_stay_verbatim(string culture)
     {
+        var resources = new ResourceManager(typeof(UsersResource));
+        string Label(string key) => resources.GetString(key, CultureInfo.GetCultureInfo(culture))!;
+        var (name, legalName, city, other) = (Label("Users_Search_Name"), Label("Users_Profile_LegalName"),
+            Label("Users_ProfileEdit_City"), Label("Enum_ContactFieldType_Other"));
         using var scope = new CultureScope(culture);
         PersonSearchMatcher.Match(Human(burnerName: "Alice"), "Alice", PersonSearchFields.Name)!
             .Field.Should().Be(name);
@@ -50,9 +50,6 @@ public class PersonSearchMatcherTests
         string? medicalConditions = null,
         string? adminNotes = null,
         string? boardNotes = null,
-        string? iban = null,
-        string? consentCheckNotes = null,
-        string? rejectionReason = null,
         string? emergencyContactName = null,
         string? contactLabel = null,
         bool isRejected = false,
@@ -77,9 +74,6 @@ public class PersonSearchMatcherTests
             MedicalConditions = medicalConditions,
             AdminNotes = adminNotes,
             BoardNotes = boardNotes,
-            Iban = iban,
-            ConsentCheckNotes = consentCheckNotes,
-            RejectionReason = rejectionReason,
             EmergencyContactName = emergencyContactName,
             CreatedAt = At,
             UpdatedAt = At,
@@ -348,9 +342,6 @@ public class PersonSearchMatcherTests
     [HumansTheory]
     [InlineData("adminnote")]
     [InlineData("boardnote")]
-    [InlineData("consentnote")]
-    [InlineData("rejectreason")]
-    [InlineData("ES9121")]      // IBAN fragment
     [InlineData("penicillin")]  // medical
     [InlineData("janedoe")]     // emergency contact name
     public void Board_private_and_health_fields_never_match_even_under_AdminAll(string query)
@@ -359,9 +350,6 @@ public class PersonSearchMatcherTests
             burnerName: "Sparkle",
             adminNotes: "adminnote",
             boardNotes: "boardnote",
-            consentCheckNotes: "consentnote",
-            rejectionReason: "rejectreason",
-            iban: "ES9121000418450200051332",
             medicalConditions: "penicillin allergy",
             emergencyContactName: "Jane Doe");
 

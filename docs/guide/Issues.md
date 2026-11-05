@@ -14,7 +14,7 @@
 
 # Issues
 
-Issues is how you tell us something is wrong, ask for something new, or ask a question. It replaced the old Feedback page, which has since been removed.
+Issues is how you tell us something is wrong, ask for something new, or ask a question.
 
 ## What this section is for
 

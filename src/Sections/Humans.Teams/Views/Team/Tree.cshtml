@@ -28,17 +28,12 @@
     .team-tree .team-desc p:last-child { margin-bottom: 0; }
 </style>
 
-<nav aria-label="@Localizer["Teams_BreadcrumbNavigation"]">
-    <ol class="breadcrumb">
-        <li class="breadcrumb-item"><a asp-action="Index">@SharedLocalizer["Teams_Title"]</a></li>
-        <li class="breadcrumb-item active" aria-current="page">@Localizer["Teams_Tree_Title"]</li>
-    </ol>
-</nav>
+@section Crumbs {
+    <a asp-action="Index">@SharedLocalizer["Teams_Title"]</a>
+    <span>@Localizer["Teams_Tree_Title"]</span>
+}
 
-<div class="mb-4">
-    <h1 class="mb-1">@Localizer["Teams_Tree_Title"]</h1>
-    <p class="text-muted mb-0">@Localizer["Teams_Tree_Subtitle"]</p>
-</div>
+<page-header title="@(Localizer["Teams_Tree_Title"].Value)" subtitle="@(Localizer["Teams_Tree_Subtitle"].Value)" />
 
 @if (Model.Departments.Count == 0)
 {

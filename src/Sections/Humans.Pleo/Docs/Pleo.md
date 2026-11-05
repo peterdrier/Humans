@@ -9,7 +9,8 @@
 # Pleo — Section Invariants
 
 A read-only mirror of the Pleo card wallet and the `/Pleo` admin pages over it. Step one of getting Pleo spend into
-Holded: Peter reviews the mirror here before anything is booked. Nothing is written to Pleo or to Holded.
+Holded: Peter reviews the mirror here before anything is booked. Nothing is written to Pleo or to Holded; Finance
+books the spend from what `IPleoService` serves (step two, `/Finance/Pleo`).
 
 ## Concepts
 
@@ -67,7 +68,7 @@ All under `FinancePolicies.Read`; English-only finance-admin pages like `/Holded
 |-------|--------------|
 | Finance admin / Admin | Everything (`FinancePolicies.Manage`): Sync now, link, unlink, add a category. |
 | Board | Read every page and receipt (`FinancePolicies.Read`). |
-| Other sections | Read via `IPleoService`. |
+| Other sections | Read via `IPleoService` (Finance, for `/Finance` and `/Finance/Pleo`). |
 | Any other human | Nothing. |
 
 ## Invariants
@@ -81,6 +82,9 @@ All under `FinancePolicies.Read`; English-only finance-admin pages like `/Holded
 - One sweep at a time: an in-process gate shared by the nightly job and Sync now; a second caller is skipped and
   told so. No key (`PLEO_API_KEY`, `PLEO_COMPANY_ID`): the job logs and skips, Sync now is disabled.
 - The connector is read-only: GETs and the `:search` POSTs. The key holds write scopes; nothing here uses them.
+<!-- wheat: docs/superpowers/specs/2026-08-10-pleo-connector-design.md §Pleo API facts -->
+- The mirror polls: Pleo's webhooks cover only export jobs and vendors, nothing per entry. Cardholders come from
+  `/v2/employees`; the `/v1/employees` and `/v1/users` paths are denied to a standalone key.
 - Receipts are fetched live and never stored. The file comes from Pleo's signed CDN URL (an `https` `*.pleo.io` host
   only), without the API key; anything but an image or PDF is served as `application/octet-stream`. Only that
   response may be framed by its own origin, so the entry page can show a PDF.
@@ -119,4 +123,6 @@ step) brings the export and deletion paths with it. `SetByUserId` on a category 
 ### Public contract
 
 `IPleoService` (`Contracts/`): `GetSettledEntriesAsync(from, to)` — entries settled in a Madrid-date window, each with
-its Holded code or null and whether it has a receipt. Step two books only entries with both. Served from the mirror. Everything else is internal.
+its Holded code or null and whether it has a receipt. Finance books only entries with both. `GetWalletBalanceAsync` —
+the wallet's current EUR balance at the last sweep (`PleoWalletBalance`), null before one or in another currency; the
+`/Finance` and `/Finance/Pleo` balance check. Served from the mirror. Everything else is internal.

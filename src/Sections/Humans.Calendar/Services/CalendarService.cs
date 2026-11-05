@@ -6,11 +6,7 @@ using Humans.AuditLog.Contracts;
 using Humans.Calendar.Data;
 using Humans.Calendar.Domain;
 using Humans.Teams.Contracts;
-using Ical.Net;
-using Ical.Net.DataTypes;
-using Ical.Net.Evaluation;
 using NodaTime;
-using IcalEvent = Ical.Net.CalendarComponents.CalendarEvent;
 
 namespace Humans.Calendar.Services;
 
@@ -26,99 +22,18 @@ internal sealed class CalendarService(
     ILogger<CalendarService> logger,
     IServiceScopeFactory scopeFactory) : ICalendarService
 {
+    private readonly CalendarOccurrenceComposer occurrenceComposer = new(teams, scopeFactory, logger);
+
     /// <summary>Forms use an inclusive last day; storage uses an exclusive date.</summary>
     public static (LocalDate Start, LocalDate End) AllDayWindow(LocalDate startDate, LocalDate inclusiveEndDate) =>
         (startDate, inclusiveEndDate.PlusDays(1));
 
     public static LocalDate AllDayInclusiveEndDate(LocalDate exclusiveEndDate) => exclusiveEndDate.PlusDays(-1);
 
-    public async Task<IReadOnlyList<CalendarOccurrence>> ComposeOccurrencesAsync(
+    public Task<IReadOnlyList<CalendarOccurrence>> ComposeOccurrencesAsync(
         IReadOnlyList<CalendarEventInfo> events, Instant from, Instant to, DateTimeZone viewerZone,
-        Guid? teamId = null, CancellationToken ct = default)
-    {
-        var matched = CalendarOccurrenceExpander.FilterForWindow(
-            events,
-            from, to, teamId, viewerZone);
-
-        var teamNames = await ResolveTeamNamesAsync(matched, ct);
-        var occurrences = CalendarOccurrenceExpander.Expand(matched, from, to, teamNames, logger, viewerZone).ToList();
-
-        // Community items carry no team, so a ?teamId filter has nothing of theirs to show.
-        if (teamId is null)
-            occurrences.AddRange(await FanOutContributorItemsAsync(from, to, ct));
-
-        return occurrences;
-    }
-
-    /// <summary>
-    /// Never cached. A throwing contributor is logged and skipped so it can't take down the community calendar.
-    /// </summary>
-    private async Task<IReadOnlyList<CalendarOccurrence>> FanOutContributorItemsAsync(
-        Instant from, Instant to, CancellationToken ct)
-    {
-        await using var scope = scopeFactory.CreateAsyncScope();
-        var contributors = scope.ServiceProvider.GetServices<ICalendarFeedContributor>();
-
-        var items = new List<CalendarOccurrence>();
-        foreach (var contributor in contributors)
-        {
-            IReadOnlyList<CalendarFeedItem> contributed;
-            try
-            {
-                contributed = await contributor.GetPublicItemsForWindowAsync(from, to, ct);
-            }
-            catch (OperationCanceledException) when (ct.IsCancellationRequested)
-            {
-                throw;
-            }
-            catch (Exception ex)
-            {
-                logger.LogWarning(ex,
-                    "Community calendar contributor {Contributor} failed for window [{From}, {To}); its items are skipped",
-                    contributor.GetType().Name, from, to);
-                continue;
-            }
-
-            items.AddRange(contributed.SelectMany(item => ToOccurrences(item, from, to)));
-        }
-
-        return items;
-    }
-
-    private static IEnumerable<CalendarOccurrence> ToOccurrences(CalendarFeedItem item, Instant from, Instant to) =>
-        item.RecurrenceRule is null
-            ? [ToOccurrence(item, item.Start, item.End, recurring: false)]
-            : CalendarRecurrence.Occurrences(item.Start, item.End, item.RecurrenceRule, item.RecurrenceTimezone, from, to)
-                .Select(o => ToOccurrence(item, o.Start, o.End, recurring: true));
-
-    private static CalendarOccurrence ToOccurrence(CalendarFeedItem item, Instant start, Instant end, bool recurring) => new(
-        EventId: Guid.Empty,
-        OccurrenceStartUtc: start,
-        OccurrenceEndUtc: end,
-        IsAllDay: false,
-        Title: item.Summary,
-        Description: item.Description,
-        Location: item.Location,
-        LocationUrl: null,
-        OwningTeamId: Guid.Empty,
-        OwningTeamName: string.Empty,
-        IsRecurring: recurring,
-        OriginalOccurrenceStartUtc: recurring ? start : null,
-        Source: item.Source,
-        Url: item.Url);
-
-    private async Task<IReadOnlyDictionary<Guid, string>> ResolveTeamNamesAsync(
-        IReadOnlyList<CalendarEventInfo> events, CancellationToken ct)
-    {
-        if (events.Count == 0)
-            return new Dictionary<Guid, string>();
-
-        var teamIds = events.Select(e => e.OwningTeamId).Distinct().ToList();
-        var teamsById = await teams.GetTeamsAsync(ct);
-        return teamIds
-            .Where(teamsById.ContainsKey)
-            .ToDictionary(id => id, id => teamsById[id].Name);
-    }
+        Guid? teamId = null, CancellationToken ct = default) =>
+        occurrenceComposer.ComposeOccurrencesAsync(events, from, to, viewerZone, teamId, ct);
 
     public async Task<IReadOnlyList<CalendarEventInfo>> GetAllEventInfosAsync(CancellationToken ct = default)
     {
@@ -163,19 +78,19 @@ internal sealed class CalendarService(
 
     private CalendarEventMutationResult PrepareEvent(CreateCalendarEventDto dto, Guid createdByUserId)
     {
-        if (RecurrenceRuleRefusal(dto.RecurrenceRule) is { } recurrenceRefusal)
+        if (CalendarRecurrenceRules.RecurrenceRuleRefusal(dto.RecurrenceRule) is { } recurrenceRefusal)
         {
             logger.LogWarning("Calendar recurrence rejected: {Reason}", recurrenceRefusal);
             return CalendarEventMutationResult.ValidationFailed(nameof(CreateCalendarEventDto.RecurrenceRule),
                 dto.IsAllDay ? "Calendar_InvalidAllDayRecurrence" : "Calendar_InvalidTimedRecurrence");
         }
-        if (TimezoneRefusal(dto.RecurrenceTimezone) is { } timezoneRefusal)
+        if (CalendarRecurrenceRules.TimezoneRefusal(dto.RecurrenceTimezone) is { } timezoneRefusal)
         {
             logger.LogWarning("Calendar recurrence timezone rejected: {Reason}", timezoneRefusal);
             return CalendarEventMutationResult.ValidationFailed(nameof(CreateCalendarEventDto.RecurrenceTimezone),
                 dto.IsAllDay ? "Calendar_InvalidAllDayRecurrence" : "Calendar_UnknownTimezone");
         }
-        if (dto.IsAllDay && !IsDateOnlyRecurrence(dto.RecurrenceRule))
+        if (dto.IsAllDay && !CalendarRecurrenceRules.IsDateOnlyRecurrence(dto.RecurrenceRule))
         {
             logger.LogWarning("All-day recurrence rejected: rule contains time components");
             return CalendarEventMutationResult.ValidationFailed(nameof(CreateCalendarEventDto.RecurrenceRule),
@@ -211,8 +126,8 @@ internal sealed class CalendarService(
             return CalendarEventMutationResult.Failed(dto.IsAllDay ? "Calendar_InvalidAllDayEvent" : "Calendar_InvalidTimedEvent");
         }
 
-        ev.RecurrenceUntilUtc = dto.IsAllDay ? null : ComputeRecurrenceUntilUtc(dto.RecurrenceRule, dto.RecurrenceTimezone, dto.StartUtc, dto.EndUtc);
-        ev.RecurrenceUntilDate = dto.IsAllDay ? ComputeRecurrenceUntilDate(dto.RecurrenceRule, dto.StartDate, dto.EndDateExclusive) : null;
+        ev.RecurrenceUntilUtc = dto.IsAllDay ? null : CalendarRecurrenceRules.ComputeRecurrenceUntilUtc(dto.RecurrenceRule, dto.RecurrenceTimezone, dto.StartUtc, dto.EndUtc);
+        ev.RecurrenceUntilDate = dto.IsAllDay ? CalendarRecurrenceRules.ComputeRecurrenceUntilDate(dto.RecurrenceRule, dto.StartDate, dto.EndDateExclusive) : null;
 
         return CalendarEventMutationResult.Success(ev);
     }
@@ -235,158 +150,6 @@ internal sealed class CalendarService(
             logger.LogError(ex, "Failed to create calendar event");
             return CalendarEventMutationResult.Failed("Calendar_SaveFailed");
         }
-    }
-
-    // Reject malformed RRULE at write time so reads can't crash during expansion.
-    internal static string? RecurrenceRuleRefusal(string? rrule)
-    {
-        if (rrule is { Length: > 500 })
-            return "Recurrence rules cannot exceed 500 characters.";
-        if (string.IsNullOrWhiteSpace(rrule)) return null;
-        try
-        {
-            var pattern = CalendarOccurrenceExpander.ParseRecurrenceRule(rrule);
-            var parts = rrule.Split(';', StringSplitOptions.RemoveEmptyEntries);
-            var names = parts.Select(part => part[..part.IndexOf('=')].Trim()).ToArray();
-            if (names.Distinct(StringComparer.OrdinalIgnoreCase).Count() != names.Length)
-                return "Recurrence rule is malformed: rule parts cannot repeat.";
-            // The library silently ignores UNTIL values it cannot parse.
-            if (names.Contains("UNTIL", StringComparer.OrdinalIgnoreCase) && pattern.Until is null)
-                return "Recurrence rule is malformed: UNTIL must be a valid DATE or DATE-TIME.";
-            // The library accepts numeric enum values, which also bypass the all-day frequency guard.
-            if (parts.Any(part => part.StartsWith("FREQ=", StringComparison.OrdinalIgnoreCase) &&
-                    part[5..].Trim().ToUpperInvariant() is not ("SECONDLY" or "MINUTELY" or "HOURLY" or
-                        "DAILY" or "WEEKLY" or "MONTHLY" or "YEARLY")))
-                return "Recurrence rule is malformed: FREQ must name an RFC 5545 frequency.";
-            if (pattern.ByDay.Any(day => day.Offset is < -53 or 0 or > 53))
-                return "Recurrence rule is malformed: BYDAY ordinal offsets must be between -53 and 53, excluding zero.";
-            // The parser accepts these combinations, but RFC 5545 section 3.3.10 forbids them.
-            if (pattern.ByDay.Any(day => day.Offset is not null) &&
-                (pattern.Frequency is not (FrequencyType.Monthly or FrequencyType.Yearly) || pattern.ByWeekNo.Count > 0))
-                return "Recurrence rule is malformed: ordinal BYDAY requires MONTHLY or YEARLY without BYWEEKNO.";
-            if (pattern.ByMonthDay.Count > 0 && pattern.Frequency == FrequencyType.Weekly)
-                return "Recurrence rule is malformed: BYMONTHDAY cannot be used with WEEKLY.";
-            if (pattern.ByYearDay.Count > 0 &&
-                pattern.Frequency is FrequencyType.Daily or FrequencyType.Weekly or FrequencyType.Monthly)
-                return "Recurrence rule is malformed: BYYEARDAY cannot be used with DAILY, WEEKLY or MONTHLY.";
-            if (pattern.ByWeekNo.Count > 0 && pattern.Frequency != FrequencyType.Yearly)
-                return "Recurrence rule is malformed: BYWEEKNO requires YEARLY.";
-            if (pattern.BySetPosition.Count > 0 && !names.Any(name =>
-                    name.StartsWith("BY", StringComparison.OrdinalIgnoreCase) &&
-                    !string.Equals(name, "BYSETPOS", StringComparison.OrdinalIgnoreCase)))
-                return "Recurrence rule is malformed: BYSETPOS requires another BY rule part.";
-        }
-        catch (Exception ex)
-        {
-            return $"Recurrence rule is malformed: {ex.Message}";
-        }
-        return null;
-    }
-
-    // At write time too: the controller guard doesn't cover jobs and tests.
-    internal static string? TimezoneRefusal(string? tz)
-    {
-        if (string.IsNullOrWhiteSpace(tz)) return null;
-        if (DateTimeZoneProviders.Tzdb.GetZoneOrNull(tz) is null)
-            return $"Recurrence timezone is unknown: '{tz}'.";
-        return null;
-    }
-
-    // Read by CalendarOccurrenceExpander.FilterForWindow's prefilter. Null only for open-ended rules.
-    private static Instant? ComputeRecurrenceUntilUtc(string? rrule, string? tz, Instant? dtStart, Instant? dtEnd)
-    {
-        if (dtStart is null || string.IsNullOrWhiteSpace(rrule) || string.IsNullOrWhiteSpace(tz)) return null;
-
-        int? count = null;
-        foreach (var part in rrule.Split(';', StringSplitOptions.RemoveEmptyEntries))
-        {
-            var eq = part.IndexOf('=');
-            if (eq <= 0) continue;
-            var key = part[..eq];
-            var val = part[(eq + 1)..].Trim();
-
-            if (string.Equals(key, "UNTIL", StringComparison.OrdinalIgnoreCase))
-            {
-                // Match the recurrence library's case-insensitive DATE-TIME parsing.
-                val = val.ToUpperInvariant();
-                var zone = DateTimeZoneProviders.Tzdb.GetZoneOrNull(tz);
-                if (zone is null) return null;
-
-                if (val.EndsWith('Z'))
-                {
-                    return DateFormattingExtensions.IcalBasicDateTimePattern.Parse(val[..^1]).Value
-                        .InUtc().ToInstant();
-                }
-                if (val.Contains('T'))
-                {
-                    var local = DateFormattingExtensions.IcalBasicDateTimePattern.Parse(val).Value;
-                    return local.InZoneLeniently(zone).ToInstant();
-                }
-                // DATE form — treat UNTIL as end-of-day in the rule's timezone.
-                var date = DateFormattingExtensions.IcalBasicDatePattern.Parse(val).Value;
-                return date.PlusDays(1).AtMidnight().InZoneLeniently(zone).ToInstant();
-            }
-            else if (string.Equals(key, "COUNT", StringComparison.OrdinalIgnoreCase))
-            {
-                if (int.TryParse(val, System.Globalization.NumberStyles.Integer,
-                        System.Globalization.CultureInfo.InvariantCulture, out var c) && c > 0)
-                {
-                    count = c;
-                }
-            }
-        }
-
-        if (count is null) return null;
-
-        var ruleZone = DateTimeZoneProviders.Tzdb.GetZoneOrNull(tz);
-        if (ruleZone is null) return null;
-
-        var dtStartLocal = dtStart.Value.InZone(ruleZone).LocalDateTime.ToDateTimeUnspecified();
-        var duration = (dtEnd ?? dtStart.Value) - dtStart.Value;
-
-        var icalEv = new IcalEvent
-        {
-            DtStart = new CalDateTime(dtStartLocal, tz, hasTime: true),
-            Duration = Ical.Net.DataTypes.Duration.FromTimeSpanExact(TimeSpan.FromTicks(duration.BclCompatibleTicks)),
-        };
-        icalEv.RecurrenceRule = CalendarOccurrenceExpander.ParseRecurrenceRule(rrule);
-
-        var startCalDt = new CalDateTime(dtStartLocal, tz, hasTime: true);
-        var last = icalEv.GetOccurrences(startCalDt, new EvaluationOptions())
-            .Take(count.Value)
-            .LastOrDefault();
-        if (last is null) return null;
-
-        var lastLocal = LocalDateTime.FromDateTime(last.Period.StartTime.Value);
-        var lastStart = lastLocal.InZoneLeniently(ruleZone).ToInstant();
-        return lastStart.Plus(duration);
-    }
-
-    private static LocalDate? ComputeRecurrenceUntilDate(string? rule, LocalDate? start, LocalDate? end)
-    {
-        if (string.IsNullOrWhiteSpace(rule) || start is null || end is null) return null;
-        var pattern = CalendarOccurrenceExpander.ParseRecurrenceRule(rule);
-        var days = NodaTime.Period.Between(start.Value, end.Value, PeriodUnits.Days).Days;
-        if (pattern.Until is not null)
-            return LocalDate.FromDateTime(pattern.Until.Value).PlusDays(days);
-        if (pattern.Count is not > 0) return null;
-        var ical = new IcalEvent
-        {
-            DtStart = new CalDateTime(start.Value.ToDateTimeUnspecified(), hasTime: false),
-            RecurrenceRule = pattern,
-        };
-        var last = ical.GetOccurrences(ical.DtStart, new EvaluationOptions()).Take(pattern.Count.Value).LastOrDefault();
-        return last is null ? null : LocalDate.FromDateTime(last.Period.StartTime.Value).PlusDays(days);
-    }
-
-    private static bool IsDateOnlyRecurrence(string? rule)
-    {
-        if (string.IsNullOrWhiteSpace(rule)) return true;
-        var pattern = CalendarOccurrenceExpander.ParseRecurrenceRule(rule);
-        return pattern.Frequency is not (FrequencyType.Hourly or FrequencyType.Minutely or FrequencyType.Secondly)
-            && pattern.ByHour.Count == 0 && pattern.ByMinute.Count == 0 && pattern.BySecond.Count == 0
-            && rule.Split(';').All(part => !part.StartsWith("UNTIL=", StringComparison.OrdinalIgnoreCase)
-                || part[6..].Trim().Length == 8);
     }
 
     private async Task<CalendarEventMutationResult> UpdateEventAsync(Guid id, CreateCalendarEventDto dto, Guid updatedByUserId, CancellationToken ct = default)

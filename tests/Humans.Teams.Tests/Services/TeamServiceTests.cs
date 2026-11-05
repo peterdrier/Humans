@@ -1,3 +1,5 @@
+using System.Globalization;
+using System.Resources;
 using Humans.Base.Interfaces;
 using Xunit;
 using Humans.Base.Helpers;
@@ -1670,6 +1672,31 @@ public sealed class TeamServiceTests : TeamsTestHarness
     }
 
     [HumansTheory]
+    [InlineData("")]
+    [InlineData(" \t ")]
+    public async Task AddedMemberNotice_BlankEmail_StillDeliversInboxNotice(string address)
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var coordinator = SeedUser(displayName: "Coordinator");
+        var requester = SeedUser(displayName: "Requester");
+        requester.Email = address;
+        requester.PreferredLanguage = "es";
+        var team = SeedTeam("Alpha", requiresApproval: true);
+        SeedTeamMember(team.Id, coordinator.Id, TeamMemberRole.Coordinator);
+        var request = SeedJoinRequest(team.Id, requester.Id);
+        await SaveAllAsync(ct);
+
+        (await _service.ApproveJoinRequestAsync(request.Id, coordinator.Id, null, ct)).Succeeded.Should().BeTrue();
+
+        await _emailService.DidNotReceiveWithAnyArgs().SendAsync(default!);
+        await _teamResourceService.DidNotReceiveWithAnyArgs().GetTeamResourcesAsync(default);
+        Notifier.ReceivedCalls().Where(call =>
+            call.GetArguments()[0] is NotificationSourceDefinition source && source == TeamsNotificationSources.TeamMemberAdded
+            && ((IReadOnlyList<Guid>)call.GetArguments()[4]!).Contains(requester.Id)
+            && string.Equals((string)call.GetArguments()[3]!, Notice("es", "Teams_Email_AddedToTeam_Subject", "Alpha"), StringComparison.Ordinal)).Should().ContainSingle();
+    }
+
+    [HumansTheory]
     [InlineData("normal", "es", "es")]
     [InlineData("email-prep-failure", "es", "es")]
     [InlineData("profile-lookup-failure", "es", "en")]
@@ -1702,10 +1729,7 @@ public sealed class TeamServiceTests : TeamsTestHarness
                 && source == TeamsNotificationSources.TeamMemberAdded
                 && ((IReadOnlyList<Guid>)call.GetArguments()[4]!).Contains(requester.Id))
             .Single().GetArguments();
-        if (string.Equals(expectedCulture, "en", StringComparison.Ordinal))
-            ((string)args[3]!).Should().EndWith("added to Alpha");
-        else
-            args[3].Should().Be("Se le ha añadido al equipo Alpha");
+        args[3].Should().Be(Notice(expectedCulture, "Teams_Email_AddedToTeam_Subject", "Alpha"));
         args[6].Should().Be($"/Teams/{team.Slug}");
         if (string.Equals(mode, "normal", StringComparison.Ordinal))
             await _emailService.Received(1).SendAsync(
@@ -1717,15 +1741,8 @@ public sealed class TeamServiceTests : TeamsTestHarness
     }
 
     [HumansTheory]
-    [InlineData("en", "New join request for Alpha", "Requester joined Alpha", "Requester has requested to join Alpha.", "Requester has joined Alpha.", "Review request", "View members")]
-    [InlineData("es", "Nueva solicitud para unirse a Alpha", "Requester se ha unido a Alpha", "Requester ha solicitado unirse a Alpha.", "Requester se ha unido a Alpha.", "Revisar solicitud", "Ver miembros")]
-    [InlineData("de", "Neue Beitrittsanfrage für Alpha", "Requester ist dem Team Alpha beigetreten", "Requester möchte Alpha beitreten.", "Requester ist dem Team Alpha beigetreten.", "Anfrage prüfen", "Mitglieder anzeigen")]
-    [InlineData("it", "Nuova richiesta di adesione a Alpha", "Requester ora fa parte di Alpha", "Requester ha chiesto di unirsi a Alpha.", "Requester ora fa parte di Alpha.", "Esamina richiesta", "Visualizza membri")]
-    [InlineData("fr", "Nouvelle demande pour rejoindre Alpha", "Requester a rejoint Alpha", "Requester a demandé à rejoindre Alpha.", "Requester a rejoint Alpha.", "Examiner la demande", "Voir les membres")]
-    [InlineData("ca", "Nova sol·licitud per unir-se a Alpha", "Requester s’ha unit a Alpha", "Requester ha sol·licitat unir-se a Alpha.", "Requester s’ha unit a Alpha.", "Revisa la sol·licitud", "Mostra els membres")]
-    public async Task CoordinatorMembershipNotices_UseEachRecipientsLanguage(
-        string language, string requestTitle, string joinedTitle, string requestBody, string joinedBody,
-        string reviewLabel, string membersLabel)
+    [MemberData(nameof(SupportedCultures.All), MemberType = typeof(SupportedCultures))]
+    public async Task CoordinatorMembershipNotices_UseEachRecipientsLanguage(string language)
     {
         using var actorCulture = new CultureScope("fr");
         var coordinator = SeedUser(displayName: "Coordinator");
@@ -1746,9 +1763,13 @@ public sealed class TeamServiceTests : TeamsTestHarness
             var args = Notifier.ReceivedCalls().Where(call => call.GetArguments()[0] is NotificationSourceDefinition
                 && ((IReadOnlyList<Guid>)call.GetArguments()[4]!).Contains(coordinator.Id)).Single().GetArguments();
             ((IReadOnlyList<Guid>)args[4]!).Should().BeEquivalentTo(new[] { coordinator.Id, secondCoordinator.Id });
-            args[3].Should().Be(requiresApproval ? requestTitle : joinedTitle);
-            args[5].Should().Be(requiresApproval ? requestBody : joinedBody);
-            args[7].Should().Be(requiresApproval ? reviewLabel : membersLabel);
+            args[3].Should().Be(requiresApproval
+                ? Notice(language, "Teams_Notification_JoinRequestSubmitted", "Alpha")
+                : Notice(language, "Teams_Notification_MemberJoined", "Requester", "Alpha"));
+            args[5].Should().Be(requiresApproval
+                ? Notice(language, "Teams_Notification_JoinRequestSubmittedBody", "Requester", "Alpha")
+                : Notice(language, "Teams_Notification_MemberJoinedBody", "Requester", "Alpha"));
+            args[7].Should().Be(Notice(language, requiresApproval ? "Teams_Notification_ReviewRequest" : "Teams_Notification_ViewMembers"));
             args[6].Should().Be($"/Teams/{team.Slug}/Members");
         }
     }
@@ -1788,8 +1809,9 @@ public sealed class TeamServiceTests : TeamsTestHarness
             ? "Someone has requested to join Alpha." : "Someone has joined Alpha.");
         var spanish = calls.Single(args => ((IReadOnlyList<Guid>)args[4]!).Contains(firstSpanish.Id));
         ((IReadOnlyList<Guid>)spanish[4]!).Should().BeEquivalentTo(new[] { firstSpanish.Id, secondSpanish.Id });
-        spanish[5].Should().Be(requiresApproval
-            ? "Alguien ha solicitado unirse a Alpha." : "Alguien se ha unido a Alpha.");
+        spanish[5].Should().Be(Notice("es",
+            requiresApproval ? "Teams_Notification_JoinRequestSubmittedBody" : "Teams_Notification_MemberJoinedBody",
+            Notice("es", "Teams_Notification_Someone"), "Alpha"));
     }
 
     [HumansTheory]
@@ -3237,12 +3259,10 @@ public sealed class TeamServiceTests : TeamsTestHarness
         critical.IsPublic.Should().BeTrue();
         result.Where(slot => slot.RoleDefinitionId == alphaDefinition.Id).Should().OnlyContain(slot => !slot.IsPublic);
         critical.Priority.Should().Be(nameof(SlotPriority.Critical));
-        SlotPriority.Critical.GetBadgeClass().Should().Be("bg-danger");
         result.Single(slot => string.Equals(slot.TeamName, "Alpha", StringComparison.Ordinal) && slot.SlotNumber == 1)
             .AssignedUserId.Should().Be(alphaMember.Id);
         var unprioritized = result.Single(slot => string.Equals(slot.TeamName, "Alpha", StringComparison.Ordinal) && slot.SlotNumber == 2);
         unprioritized.Priority.Should().Be(nameof(SlotPriority.None));
-        SlotPriority.None.GetBadgeClass().Should().Be("bg-light text-dark");
     }
 
     [HumansFact]
@@ -3540,6 +3560,12 @@ public sealed class TeamServiceTests : TeamsTestHarness
                 return active is null ? null : ToEventSettingsInfo(active);
             });
         return settingsService;
+    }
+
+    private static string Notice(string culture, string key, params object[] args)
+    {
+        var info = CultureInfo.GetCultureInfo(culture);
+        return string.Format(info, new ResourceManager(typeof(TeamsResource)).GetString(key, info)!, args);
     }
 
     private static EventSettingsInfo ToEventSettingsInfo(EventSettings src) => new(

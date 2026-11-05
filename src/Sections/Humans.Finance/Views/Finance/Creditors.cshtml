@@ -11,32 +11,36 @@
         Model.SortBy == col ? label + (Model.SortDir == "asc" ? " ▲" : " ▼") : label;
 }
 
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <h1 class="mb-0">Creditor Accounts</h1>
-    <div class="d-flex gap-2">
-        <a asp-action="Sepa" class="btn btn-outline-secondary"
-           title="Generated payout files, their transfers, and the button that books each payment into Holded.">
-            <i class="fa-solid fa-file-invoice-dollar me-1"></i>SEPA transfers
-        </a>
-        <a asp-action="HoldedDuplicates" class="btn btn-outline-secondary"
-           title="Expense lines whose Holded document was created twice, and the button that removes the extras.">
-            <i class="fa-solid fa-clone me-1"></i>Duplicate docs
-        </a>
-        <a asp-action="ExpenseRecon" class="btn btn-outline-secondary"
-           title="Approved expense lines against the Holded documents and creditor balances.">
-            <i class="fa-solid fa-scale-balanced me-1"></i>Expense recon
-        </a>
-        <a href="/Holded" class="btn btn-outline-secondary"
-           title="Ledger mirror status, sync buttons and the full account list live on the Holded admin screen.">
-            <i class="fa-solid fa-rotate me-1"></i>Holded sync
-        </a>
-        <a asp-controller="BudgetAdmin" asp-action="Index" class="btn btn-outline-secondary">
-            <i class="fa-solid fa-arrow-left me-1"></i>Back to Finance
-        </a>
-    </div>
-</div>
+<page-header title="Creditor Accounts">
+    <a asp-action="Sepa" class="btn btn-outline-secondary"
+       title="Generated payout files, their transfers, and the button that books each payment into Holded.">
+        <i class="fa-solid fa-file-invoice-dollar me-1"></i>SEPA transfers
+    </a>
+    <a asp-action="HoldedDuplicates" class="btn btn-outline-secondary"
+       title="Expense lines whose Holded document was created twice, and the button that removes the extras.">
+        <i class="fa-solid fa-clone me-1"></i>Duplicate docs
+    </a>
+    <a asp-action="ExpenseRecon" class="btn btn-outline-secondary"
+       title="Approved expense lines against the Holded documents and creditor balances.">
+        <i class="fa-solid fa-scale-balanced me-1"></i>Expense recon
+    </a>
+    <a href="/Holded" class="btn btn-outline-secondary"
+       title="Ledger mirror status, sync buttons and the full account list live on the Holded admin screen.">
+        <i class="fa-solid fa-rotate me-1"></i>Holded sync
+    </a>
+    <a asp-controller="BudgetAdmin" asp-action="Index" class="btn btn-outline-secondary">
+        <i class="fa-solid fa-arrow-left me-1"></i>Back to Finance
+    </a>
+</page-header>
 
-@if (Model.DuplicateFlaggedAccounts > 0)
+@if (Model.UnavailableReason is { } unavailable)
+{
+    <div class="alert alert-danger">
+        <i class="fa-solid fa-circle-exclamation me-1"></i>
+        <strong>Creditor accounts are not shown and no payout can be generated.</strong> @unavailable
+    </div>
+}
+else if (Model.DuplicateFlaggedAccounts > 0)
 {
     <div class="alert alert-danger">
         <i class="fa-solid fa-clone me-1"></i>
@@ -88,10 +92,10 @@
         </div>
         <div class="card-body">
             <p class="text-muted">
-                These members pushed an expense report but their Holded creditor-account number never
-                resolved — neither the one-shot push lookup nor Holded's own contact list has a number
-                for them. There is no automatic retry; bind each one manually once you know their
-                creditor account (40000000–41999999) in Holded.
+                These members' Holded contact is missing from Holded's contact list, or carries no
+                creditor account (40000000–41999999) yet. Their stored account number is not used: it may
+                be stale. There is no automatic retry; bind each one manually once you know their creditor
+                account in Holded.
             </p>
             <table class="table table-sm align-middle mb-0">
                 <thead><tr><th>Member</th><th>Source</th><th>Bind to account</th></tr></thead>
@@ -120,7 +124,10 @@
     </div>
 }
 
-@if (!Model.Accounts.Any())
+@if (Model.UnavailableReason is not null)
+{
+}
+else if (!Model.Accounts.Any())
 {
     <div class="card"><div class="card-body text-center py-5 text-muted">
         No creditor balances cached yet — run the ledger-mirror sync from
@@ -174,6 +181,7 @@ else
                         <a asp-action="Creditors" asp-route-sort="name" asp-route-dir="@ToggleDir("name")"
                            class="text-decoration-none">@Header("Name", "name")</a>
                     </th>
+                    <th title="Country of the Holded IBAN and its domestic currency. Transfers outside the EEA cost a bank fee.">IBAN</th>
                     <th class="text-end">
                         <a asp-action="Creditors" asp-route-sort="balance" asp-route-dir="@ToggleDir("balance")"
                            class="text-decoration-none">@Header("Balance", "balance")</a>
@@ -217,7 +225,7 @@ else
                                 </div>
                             </div>
                         }
-                        else if (r.NotPayableReason == Humans.Finance.Models.CreditorAccountRowVm.InFlightReason)
+                        else if (r.Bindings.Count == 1 && r.PendingPayoutFileName is not null && r.HasDuplicateDocuments == false)
                         {
                             <a asp-action="Sepa" class="badge rounded-pill text-bg-warning text-decoration-none"
                                data-bs-toggle="tooltip"
@@ -248,6 +256,22 @@ else
                         }
                     </td>
                     <td>@(string.IsNullOrWhiteSpace(r.Name) ? "—" : r.Name)</td>
+                    <td class="text-nowrap">
+                        @if (r.IbanCountry is not { } country)
+                        {
+                            <span class="text-muted">—</span>
+                        }
+                        else if (r.IbanOutsideEea)
+                        {
+                            <span class="badge text-bg-warning" title="Outside the EEA: the bank charges a fee for this transfer.">
+                                <i class="fa-solid fa-triangle-exclamation me-1"></i>@country · @(r.IbanCurrency ?? "?")
+                            </span>
+                        }
+                        else
+                        {
+                            <span class="text-muted">@country · @r.IbanCurrency</span>
+                        }
+                    </td>
                     <td class="text-end text-nowrap">
                         @if (r.Balance is { } bal)
                         {

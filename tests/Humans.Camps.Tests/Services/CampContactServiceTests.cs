@@ -1,5 +1,8 @@
+using System.Globalization;
+using System.Resources;
 using AwesomeAssertions;
 using Humans.AuditLog.Contracts;
+using Humans.Base.Extensions;
 using Humans.Email.Contracts;
 using Humans.Users.Contracts;
 using Humans.Notifications.Contracts;
@@ -85,14 +88,9 @@ public class CampContactServiceTests : IDisposable
     }
 
     [HumansTheory]
-    [Xunit.InlineData("en", "New message for Camp - check your email", "View camp")]
-    [Xunit.InlineData("es", "Nuevo mensaje para Camp - revisa tu correo", "Ver campamento")]
-    [Xunit.InlineData("de", "Neue Nachricht für Camp - prüfe deine E-Mails", "Camp ansehen")]
-    [Xunit.InlineData("it", "Nuovo messaggio per Camp - controlla la tua email", "Visualizza il camp")]
-    [Xunit.InlineData("fr", "Nouveau message pour Camp - consultez vos e-mails", "Voir le camp")]
-    [Xunit.InlineData("ca", "Missatge nou per a Camp - revisa el teu correu", "Mostra el camp")]
-    [Xunit.InlineData("xx", "New message for Camp - check your email", "View camp")]
-    public async Task Contact_notice_uses_each_lead_language(string language, string title, string actionLabel)
+    [Xunit.MemberData(nameof(SupportedCultures.All), MemberType = typeof(SupportedCultures))]
+    [Xunit.InlineData("xx")]
+    public async Task Contact_notice_uses_each_lead_language(string language)
     {
         var leadId = Guid.NewGuid();
         _users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
@@ -105,11 +103,15 @@ public class CampContactServiceTests : IDisposable
             _campId, "camp@example.com", "Camp", _senderId, "Alice", "alice@example.com",
             "Hello", false, [leadId], "/Barrios/camp");
 
+        var culture = CultureInfo.GetCultureInfo(CultureCatalog.SupportedCultureCodes.Contains(language, StringComparer.Ordinal)
+            ? language : CultureCatalog.DefaultCultureCode);
+        var resources = new ResourceManager(typeof(CampsResource));
         await _notificationEmitter.Received(1).SendAsync(
             CampsNotificationSources.FacilitatedMessageReceived, NotificationClass.Informational,
-            NotificationPriority.Normal, title,
+            NotificationPriority.Normal,
+            string.Format(culture, resources.GetString("Camps_Notification_MessageReceived", culture)!, "Camp"),
             Arg.Is<IReadOnlyList<Guid>>(ids => ids.Count == 1 && ids[0] == leadId),
-            null, "/Barrios/camp", actionLabel, null, null, Arg.Any<CancellationToken>());
+            null, "/Barrios/camp", resources.GetString("Camps_Notification_ViewCamp", culture), null, null, Arg.Any<CancellationToken>());
     }
 
     [HumansFact]

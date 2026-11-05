@@ -80,7 +80,7 @@ public sealed class GoogleWorkspaceSyncServiceReconciliationTests : GoogleIntegr
                 .Select(r => r.GoogleId).Distinct(StringComparer.Ordinal).ToDictionary(id => id, _ => new GoogleDriveAccessClaim([]), StringComparer.Ordinal)));
         var driveSync = new GoogleDriveAccessSyncService(
             [_driveSource], _drivePermissions, _userService, _identities, _userEmailService, _syncSettingsService,
-            _syncLog, _removalNotifications, repository, _teamService, teamResourceService,
+            _syncLog, Substitute.For<IGoogleSyncLogViewer>(), _removalNotifications, repository, _teamService, teamResourceService,
             Clock, NullLogger<GoogleDriveAccessSyncService>.Instance);
 
         var options = Options.Create(new GoogleWorkspaceOptions { Domain = "nobodies.team" });
@@ -327,8 +327,8 @@ public sealed class GoogleWorkspaceSyncServiceReconciliationTests : GoogleIntegr
             {
                 [memberId] = new User { Id = memberId, DisplayName = "Second-team human", CreatedAt = Clock.GetCurrentInstant() }.ToUserInfo() with
                 {
-                    UserEmails = [new UserEmailInfo(Guid.NewGuid(), email, true, false, true, null, null, null, null,
-                        Clock.GetCurrentInstant(), Clock.GetCurrentInstant(), LegacyGoogleEmailStatus.Unknown)]
+                    UserEmails = [new UserEmailInfo(Guid.NewGuid(), email, true, false, null, null, null, null,
+                        Clock.GetCurrentInstant(), Clock.GetCurrentInstant())]
                 }
             });
 

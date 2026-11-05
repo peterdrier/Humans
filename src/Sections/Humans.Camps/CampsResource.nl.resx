@@ -1,0 +1,343 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<!-- ReSharper disable MarkupTextTypo -->
+<root xmlns:ns1="urn:schemas-microsoft-com:xml-msdata" xmlns:xs="http://www.w3.org/2001/XMLSchema">
+  <xs:schema id="root">
+    <xs:element name="root" ns1:IsDataSet="true">
+      <xs:complexType>
+        <xs:choice maxOccurs="unbounded">
+          <xs:element name="data">
+            <xs:complexType>
+              <xs:sequence>
+                <xs:element name="value" type="xsd:string" minOccurs="0" ns1:Ordinal="1" />
+                <xs:element name="comment" type="xsd:string" minOccurs="0" ns1:Ordinal="2" />
+              </xs:sequence>
+              <xs:attribute name="name" type="xsd:string" ns1:Ordinal="0" />
+              <xs:attribute name="type" type="xsd:string" />
+              <xs:attribute name="mimetype" type="xsd:string" />
+            </xs:complexType>
+          </xs:element>
+          <xs:element name="resheader">
+            <xs:complexType>
+              <xs:sequence>
+                <xs:element name="value" type="xsd:string" minOccurs="0" ns1:Ordinal="1" />
+              </xs:sequence>
+              <xs:attribute name="name" type="xsd:string" use="required" />
+            </xs:complexType>
+          </xs:element>
+        </xs:choice>
+      </xs:complexType>
+    </xs:element>
+  </xs:schema>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>1.3</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="Camps_Singular" xml:space="preserve">
+    <value>Barrio</value>
+  </data>
+  <data name="Camps_AdminTitle" xml:space="preserve">
+    <value>Barriobeheer</value>
+  </data>
+  <data name="Camps_ShiftSignupBadgeTitle" xml:space="preserve"><value>Actieve dienstaanmeldingen voor het huidige evenement (in afwachting of bevestigd)</value></data>
+  <data name="Camps_ShiftSignupBadgeAriaLabel" xml:space="preserve"><value>{0} actieve dienstaanmeldingen</value></data>
+  <data name="Camps_SwissCampLabel" xml:space="preserve">
+    <value>Heeft dit kamp ooit "Swiss Camp" geheten</value>
+  </data>
+  <data name="Camps_InfoTitle" xml:space="preserve">
+    <value>Barrio-info</value>
+  </data>
+  <data name="Camps_NameLabel" xml:space="preserve">
+    <value>Barrionaam</value>
+  </data>
+  <data name="Camps_ContactButton" xml:space="preserve">
+    <value>Contact opnemen met deze barrio</value>
+  </data>
+  <data name="Camps_ContactLoginHint" xml:space="preserve">
+    <value>Log in om contact op te nemen met dit kamp</value>
+  </data>
+  <data name="Camps_ContactLoginDetail" xml:space="preserve">
+    <value>Je e-mailadres blijft privé.</value>
+  </data>
+  <data name="Camps_ContactLoginDetailOpenSeason" xml:space="preserve">
+    <value>Als je inlogt, kun je vastleggen dat je bij dit kamp hoort en zien welke evenementen het organiseert. Je e-mailadres blijft privé.</value>
+  </data>
+  <data name="Camps_Contact_Title" xml:space="preserve">
+    <value>Contact opnemen met {0}</value>
+  </data>
+  <data name="Camps_Contact_Heading" xml:space="preserve">
+    <value>Contact opnemen met {0}</value>
+  </data>
+  <data name="Camps_Contact_Breadcrumb" xml:space="preserve">
+    <value>Contact</value>
+  </data>
+  <data name="Camps_Contact_MessageLabel" xml:space="preserve">
+    <value>Je bericht</value>
+  </data>
+  <data name="Camps_Contact_IncludeContactInfo" xml:space="preserve">
+    <value>Mijn contactgegevens meesturen</value>
+  </data>
+  <data name="Camps_Contact_IncludeContactInfoHelp" xml:space="preserve">
+    <value>Je e-mailadres wordt toegevoegd als antwoordadres, zodat ze direct kunnen reageren</value>
+  </data>
+  <data name="Camps_Contact_Send" xml:space="preserve">
+    <value>Versturen</value>
+  </data>
+  <data name="Camps_Contact_Success" xml:space="preserve">
+    <value>Je bericht is verstuurd naar {0}.</value>
+  </data>
+  <data name="Camps_Contact_RateLimited" xml:space="preserve">
+    <value>Je hebt onlangs al contact opgenomen met deze barrio. Wacht een paar minuten voordat je nog een bericht stuurt.</value>
+  </data>
+  <data name="Camps_Links_Header" xml:space="preserve">
+    <value>Links &amp; contact</value>
+  </data>
+  <data name="Camps_Edit_Links" xml:space="preserve">
+    <value>Links</value>
+  </data>
+  <data name="Camps_Edit_AddLink" xml:space="preserve">
+    <value>Link toevoegen</value>
+  </data>
+  <data name="Camps_Edit_WebsiteNudge" xml:space="preserve">
+    <value>We raden je sterk aan een website voor je barrio toe te voegen, zodat bezoekers meer over jullie te weten kunnen komen.</value>
+  </data>
+  <data name="Camps_Card_NeedsPhoto" xml:space="preserve">
+    <value>Deze barrio heeft een foto nodig!</value>
+  </data>
+  <data name="Camps_AboutHeading" xml:space="preserve"><value>Over je {0}</value></data>
+  <data name="Camps_AcceptingMembersLabel" xml:space="preserve"><value>Nieuwe humans welkom?</value></data>
+  <data name="Camps_AdultPlayspaceLabel" xml:space="preserve"><value>Speelruimte voor volwassenen</value></data>
+  <data name="Camps_BlurbLongLabel" xml:space="preserve"><value>Volledige beschrijving</value></data>
+  <data name="Camps_BlurbLongPlaceholder" xml:space="preserve"><value>Vertel de wereld over je kamp.</value></data>
+  <data name="Camps_BlurbShortLabel" xml:space="preserve"><value>Korte beschrijving</value></data>
+  <data name="Camps_BlurbShortPlaceholder" xml:space="preserve"><value>Eén of twee zinnen over je kamp (max. 300 tekens)</value></data>
+  <data name="Camps_CommunityHeading" xml:space="preserve"><value>Community</value></data>
+  <data name="Camps_ContactEmailLabel" xml:space="preserve"><value>Contact-e-mailadres</value></data>
+  <data name="Camps_ContactPhoneLabel" xml:space="preserve"><value>Contacttelefoonnummer</value></data>
+  <data name="Camps_ContactPhonePlaceholder" xml:space="preserve"><value>+34 612 345 678</value></data>
+  <data name="Camps_CultureHeading" xml:space="preserve"><value>Cultuur &amp; evenementen</value></data>
+  <data name="Camps_Edit_AutoCreatedFromNameChange" xml:space="preserve"><value>Automatisch aangemaakt na naamswijziging</value></data>
+  <data name="Camps_Edit_ContainersSeparate" xml:space="preserve"><value>Containers worden nu apart beheerd.</value></data>
+  <data name="Camps_Edit_HideHistoricalNames" xml:space="preserve"><value>Eerdere namen verbergen</value></data>
+  <data name="Camps_Edit_HistoricalNamesHeading" xml:space="preserve"><value>Eerdere namen</value></data>
+  <data name="Camps_Edit_HistoricalNamesHelp" xml:space="preserve"><value>Namen waaronder dit kamp eerder bekendstond.</value></data>
+  <data name="Camps_Edit_ImageAlt" xml:space="preserve"><value>Kampafbeelding</value></data>
+  <data name="Camps_Edit_ImagesHeading" xml:space="preserve"><value>Afbeeldingen ({0}/{1})</value></data>
+  <data name="Camps_Edit_ImageUploadHelp" xml:space="preserve"><value>JPEG, PNG of WebP. Max. 10 MB.</value></data>
+  <data name="Camps_Edit_ManageContainers" xml:space="preserve"><value>Containers beheren →</value></data>
+  <data name="Camps_Edit_MembersRolesDescription" xml:space="preserve"><value>Beheer actieve leden, rollen, leads en lidmaatschapsverzoeken in afwachting.</value></data>
+  <data name="Camps_Edit_MembersRolesHeading" xml:space="preserve"><value>Leden &amp; rollen</value></data>
+  <data name="Camps_Edit_NameLocked" xml:space="preserve"><value>De naam staat vast voor dit seizoen.</value></data>
+  <data name="Camps_Edit_OpenMembersRoles" xml:space="preserve"><value>Leden &amp; rollen openen</value></data>
+  <data name="Camps_Edit_OpenStore" xml:space="preserve"><value>Winkel openen</value></data>
+  <data name="Camps_Edit_PreviousNamePlaceholder" xml:space="preserve"><value>Eerdere kampnaam</value></data>
+  <data name="Camps_Edit_StoreDescription" xml:space="preserve"><value>Plaats een bestelling voor dit kamp.</value></data>
+  <data name="Camps_Edit_StoreHeading" xml:space="preserve"><value>Winkel</value></data>
+  <data name="Camps_Edit_UploadImage" xml:space="preserve"><value>Afbeelding uploaden</value></data>
+  <data name="Camps_ElectricalGridLabel" xml:space="preserve"><value>Elektriciteitsnet</value></data>
+  <data name="Camps_HistoryHeading" xml:space="preserve"><value>Geschiedenis</value></data>
+  <data name="Camps_Index_AcceptingMembersFilter" xml:space="preserve"><value>Neemt leden aan</value></data>
+  <data name="Camps_Index_AllOption" xml:space="preserve"><value>Alle</value></data>
+  <data name="Camps_Index_BarrioGuide" xml:space="preserve"><value>Barriogids 2026</value></data>
+  <data name="Camps_Index_FilterButton" xml:space="preserve"><value>Filteren</value></data>
+  <data name="Camps_Index_KidsWelcomeFilter" xml:space="preserve"><value>Kinderen welkom</value></data>
+  <data name="Camps_Index_NoFilterResults" xml:space="preserve"><value>Geen {0} gevonden voor de geselecteerde filters.</value></data>
+  <data name="Camps_Index_NoSearchResults" xml:space="preserve"><value>Geen {0} gevonden voor je zoekopdracht.</value></data>
+  <data name="Camps_Index_PendingApproval" xml:space="preserve"><value>in afwachting van goedkeuring</value></data>
+  <data name="Camps_MyCamps_Title" xml:space="preserve"><value>Mijn barrio's</value></data>
+  <data name="Camps_MyCamps_Active" xml:space="preserve"><value>Actief</value></data>
+  <data name="Camps_MyCamps_Pending" xml:space="preserve"><value>In afwachting</value></data>
+  <data name="Camps_RolesCard_Roles" xml:space="preserve"><value>Rollen</value></data>
+  <data name="Camps_RolesCard_Leads" xml:space="preserve"><value>Leads</value></data>
+  <data name="Camps_RolesCard_OpenSlot" xml:space="preserve"><value>open plek</value></data>
+  <data name="Camps_RolesCard_OpenSlots" xml:space="preserve"><value>open plekken</value></data>
+  <data name="Camps_Index_SearchLabel" xml:space="preserve"><value>Zoeken</value></data>
+  <data name="Camps_Index_SearchPlaceholder" xml:space="preserve"><value>Typ de naam van een {0}…</value></data>
+  <data name="Camps_Index_ShowLeadPositions" xml:space="preserve"><value>Leadposities tonen</value></data>
+  <data name="Camps_Index_SoundZoneLabel" xml:space="preserve"><value>Geluidszone</value></data>
+  <data name="Camps_Index_VibeLabel" xml:space="preserve"><value>Sfeer</value></data>
+  <data name="Camps_KidsAreaDescriptionLabel" xml:space="preserve"><value>Beschrijving kinderruimte</value></data>
+  <data name="Camps_KidsAreaDescriptionPlaceholder" xml:space="preserve"><value>Beschrijf je kinderruimte, indien van toepassing</value></data>
+  <data name="Camps_KidsVisitingLabel" xml:space="preserve"><value>Beleid voor bezoekende kinderen</value></data>
+  <data name="Camps_KidsWelcomeLabel" xml:space="preserve"><value>Kinderen welkom?</value></data>
+  <data name="Camps_LanguagesLabel" xml:space="preserve"><value>Gesproken talen</value></data>
+  <data name="Camps_LanguagesPlaceholder" xml:space="preserve"><value>bijv. Engels, Spaans, Duits</value></data>
+  <data name="Camps_MarkdownSupported" xml:space="preserve"><value>Markdown-opmaak wordt ondersteund</value></data>
+  <data name="Camps_MemberCountLabel" xml:space="preserve"><value>Verwacht aantal Humans</value></data>
+  <data name="Camps_NoPreference" xml:space="preserve"><value>Geen voorkeur</value></data>
+  <data name="Camps_NotSure" xml:space="preserve"><value>Weet ik nog niet</value></data>
+  <data name="Camps_PerformanceSpaceLabel" xml:space="preserve"><value>Ruimte voor optredens</value></data>
+  <data name="Camps_PerformanceTypesLabel" xml:space="preserve"><value>Soorten optredens</value></data>
+  <data name="Camps_PerformanceTypesPlaceholder" xml:space="preserve"><value>bijv. muziek, theater, workshops</value></data>
+  <data name="Camps_PlacementHeading" xml:space="preserve"><value>Plaatsing</value></data>
+  <data name="Camps_PreviousNamesHelp" xml:space="preserve"><value>Als je kamp in eerdere jaren andere namen had, vermeld ze dan hier.</value></data>
+  <data name="Camps_PreviousNamesLabel" xml:space="preserve"><value>Eerdere namen</value></data>
+  <data name="Camps_PreviousNamesPlaceholder" xml:space="preserve"><value>Kommagescheiden lijst van eerdere kampnamen</value></data>
+  <data name="Camps_Register_Breadcrumb" xml:space="preserve"><value>Registreren</value></data>
+  <data name="Camps_Register_Heading" xml:space="preserve"><value>Registreer je {0}</value></data>
+  <data name="Camps_Register_ImportantInfo" xml:space="preserve"><value>Belangrijke informatie</value></data>
+  <data name="Camps_Register_Season" xml:space="preserve"><value>seizoen</value></data>
+  <data name="Camps_Register_Submit" xml:space="preserve"><value>{0} registreren</value></data>
+  <data name="Camps_SoundZoneLabel" xml:space="preserve"><value>Voorkeur geluidszone</value></data>
+  <data name="Camps_SpaceRequirementLabel" xml:space="preserve"><value>Benodigde ruimte</value></data>
+  <data name="Camps_TimesParticipatingLabel" xml:space="preserve"><value>Aantal deelnames</value></data>
+  <data name="Camps_VibesLabel" xml:space="preserve"><value>Sferen</value></data>
+  <data name="Camps_Card_AcceptingMembers" xml:space="preserve"><value>Neemt leden aan</value></data>
+  <data name="Camps_Card_Full" xml:space="preserve"><value>Vol</value></data>
+  <data name="Camps_Card_KidsWelcome" xml:space="preserve"><value>Kinderen welkom</value></data>
+  <data name="Camps_Card_TimesAtNowhere" xml:space="preserve"><value>{0} jaar</value></data>
+  <data name="Enum_CampVibe_Adult" xml:space="preserve"><value>Volwassenen</value></data>
+  <data name="Enum_CampVibe_ChillOut" xml:space="preserve"><value>Chill-out</value></data>
+  <data name="Enum_CampVibe_ElectronicMusic" xml:space="preserve"><value>Elektronische muziek</value></data>
+  <data name="Enum_CampVibe_Games" xml:space="preserve"><value>Spellen</value></data>
+  <data name="Enum_CampVibe_Lecture" xml:space="preserve"><value>Lezing</value></data>
+  <data name="Enum_CampVibe_LiveMusic" xml:space="preserve"><value>Livemuziek</value></data>
+  <data name="Enum_CampVibe_Queer" xml:space="preserve"><value>Queer</value></data>
+  <data name="Enum_CampVibe_Sober" xml:space="preserve"><value>Nuchter</value></data>
+  <data name="Enum_CampVibe_Wellness" xml:space="preserve"><value>Wellness</value></data>
+  <data name="Enum_CampVibe_Workshop" xml:space="preserve"><value>Workshop</value></data>
+  <data name="Camps_Details_AlsoKnownAs" xml:space="preserve"><value>Ook bekend als:</value></data>
+  <data name="Camps_Details_SwissCampBadge" xml:space="preserve"><value>Swiss Camp</value></data>
+  <data name="Camps_Details_RosterEmpty" xml:space="preserve"><value>Nog geen humans geregistreerd voor dit seizoen.</value></data>
+  <data name="Camps_Details_Roster" xml:space="preserve"><value>Ledenlijst {0}</value></data>
+  <data name="Camps_Members_NoRolesDefined" xml:space="preserve"><value>Nog geen kamprollen gedefinieerd.</value></data>
+  <data name="Camps_Members_NoRolesAdminHint" xml:space="preserve"><value>CampAdmin kan ze toevoegen via</value></data>
+  <data name="Camps_Members_NoRolesAdminHintLink" xml:space="preserve"><value>Kamprollen</value></data>
+  <data name="Camps_Members_RoleRequiredBadge" xml:space="preserve"><value>verplicht</value></data>
+  <data name="Camps_Members_RoleSlotsFilled" xml:space="preserve"><value>{0} / {1} bezet</value></data>
+  <data name="Camps_Members_RoleOverCapacityBadge" xml:space="preserve"><value>Overbezet</value></data>
+  <data name="Camps_Members_RoleOverCapacityTitle" xml:space="preserve"><value>Meer toewijzingen dan het ingestelde aantal plekken.</value></data>
+  <data name="Camps_Members_AddMemberSearchHelp" xml:space="preserve"><value>Zoek op naam. De human wordt als Actief toegevoegd aan het open seizoen van het kamp.</value></data>
+  <data name="Camps_Members_NoPendingRequests" xml:space="preserve"><value>Geen verzoeken in afwachting.</value></data>
+  <data name="Camps_Members_Members" xml:space="preserve"><value>Leden</value></data>
+  <data name="Camps_Members_Roles" xml:space="preserve"><value>Rollen</value></data>
+  <data name="Camps_Members_ShowDescription" xml:space="preserve"><value>Beschrijving tonen</value></data>
+  <data name="Camps_Members_AddToRole" xml:space="preserve"><value>Aan rol toevoegen</value></data>
+  <data name="Camps_Members_RemoveAssignment" xml:space="preserve"><value>Deze toewijzing verwijderen</value></data>
+  <data name="Camps_Members_RemoveAssignmentConfirm" xml:space="preserve"><value>Deze toewijzing verwijderen?</value></data>
+  <data name="Camps_Members_AssignHelp" xml:space="preserve"><value>Toewijzen — voegt toe aan het kamp als deze persoon nog geen lid is</value></data>
+  <data name="Camps_Members_AddActiveMember" xml:space="preserve"><value>Actief lid toevoegen</value></data>
+  <data name="Camps_Members_SeasonHumans" xml:space="preserve"><value>Humans dit seizoen</value></data>
+  <data name="Camps_Members_PendingRequests" xml:space="preserve"><value>Verzoeken in afwachting</value></data>
+  <data name="Camps_Members_RejectConfirm" xml:space="preserve"><value>Dit verzoek afwijzen?</value></data>
+  <data name="Camps_Members_ActiveHumans" xml:space="preserve"><value>Actieve Humans</value></data>
+  <data name="Camps_Members_EeSlotsHelp" xml:space="preserve"><value>Plekken voor vroege toegang toegekend / toegewezen aan dit kamp voor {0}</value></data>
+  <data name="Camps_Members_RevokeEarlyEntry" xml:space="preserve"><value>Vroege toegang intrekken</value></data>
+  <data name="Camps_Members_GrantEarlyEntry" xml:space="preserve"><value>Vroege toegang toekennen</value></data>
+  <data name="Camps_Members_GrantEe" xml:space="preserve"><value>EE toekennen</value></data>
+  <data name="Camps_Members_RemoveHumanConfirm" xml:space="preserve"><value>Deze human verwijderen?</value></data>
+  <data name="Camps_Members_RecordHelp" xml:space="preserve"><value>Dit is een registratie zodat de app weet wie in welk kamp zit. Goedkeuren op deze plek laat iemand niet toe tot je kamp — dat verloopt via het eigen proces van je kamp.</value></data>
+  <data name="Camps_Members_Approve" xml:space="preserve"><value>Goedkeuren</value></data>
+  <data name="Camps_Members_Reject" xml:space="preserve"><value>Afwijzen</value></data>
+  <!-- Controller feedback -->
+  <data name="Camps_Flash_RegistrationClosed" xml:space="preserve"><value>Registratie is momenteel gesloten.</value></data>
+  <data name="Camps_Flash_RegistrationPendingReview" xml:space="preserve"><value>Je kamp is geregistreerd en wacht op beoordeling.</value></data>
+  <data name="Camps_Flash_RegistrationFailed" xml:space="preserve"><value>We konden je kamp nu niet registreren. Probeer het opnieuw of neem contact op met een beheerder als het probleem aanhoudt.</value></data>
+  <data name="Camps_Flash_NoSeason" xml:space="preserve"><value>Geen seizoen gevonden voor dit kamp.</value></data>
+  <data name="Camps_Flash_UnknownHuman" xml:space="preserve"><value>(onbekend)</value></data>
+  <data name="Camps_Flash_UpdateFailed" xml:space="preserve"><value>Kamp bijwerken mislukt.</value></data>
+  <data name="Camps_Flash_Updated" xml:space="preserve"><value>Kamp bijgewerkt.</value></data>
+  <data name="Camps_Flash_OptedIn" xml:space="preserve"><value>Aangemeld voor seizoen {0}.</value></data>
+  <data name="Camps_Flash_SeasonWithdrawn" xml:space="preserve"><value>Seizoen ingetrokken.</value></data>
+  <data name="Camps_Flash_SeasonFull" xml:space="preserve"><value>Seizoen gemarkeerd als vol.</value></data>
+  <data name="Camps_Flash_NameRequired" xml:space="preserve"><value>Naam mag niet leeg zijn.</value></data>
+  <data name="Camps_Validation_HistoricalNameLength" xml:space="preserve"><value>Eerdere namen mogen niet langer zijn dan 256 tekens.</value></data>
+  <data name="Camps_Flash_ReservedName" xml:space="preserve"><value>De naam '{0}' levert een gereserveerde slug op.</value></data>
+  <data name="Camps_Flash_SeasonNotOpen" xml:space="preserve"><value>Seizoen {0} is niet open voor registratie.</value></data>
+  <data name="Camps_Flash_SeasonAlreadyExists" xml:space="preserve"><value>Het kamp heeft al een seizoen voor {0}.</value></data>
+  <data name="Camps_Flash_NoPreviousSeason" xml:space="preserve"><value>Geen vorig seizoen om van te kopiëren.</value></data>
+  <data name="Camps_Flash_HistoricalNameAdded" xml:space="preserve"><value>Eerdere naam toegevoegd.</value></data>
+  <data name="Camps_Flash_HistoricalNameRemoved" xml:space="preserve"><value>Eerdere naam verwijderd.</value></data>
+  <data name="Camps_Flash_ImageRequired" xml:space="preserve"><value>Selecteer een bestand om te uploaden.</value></data>
+  <data name="Camps_Flash_ImageUploaded" xml:space="preserve"><value>Afbeelding geüpload.</value></data>
+  <data name="Camps_Flash_ImageUploadFailed" xml:space="preserve"><value>Afbeelding uploaden mislukt.</value></data>
+  <data name="Camps_Flash_ImageDeleted" xml:space="preserve"><value>Afbeelding verwijderd.</value></data>
+  <data name="Camps_Flash_ImageOrderUpdated" xml:space="preserve"><value>Volgorde van afbeeldingen bijgewerkt.</value></data>
+  <data name="Camps_Flash_RequestWithdrawn" xml:space="preserve"><value>Je verzoek in afwachting is ingetrokken.</value></data>
+  <data name="Camps_Flash_MembershipLeft" xml:space="preserve"><value>Je hebt dit kamp voor dit seizoen verlaten.</value></data>
+  <data name="Camps_Flash_MembershipLeaveFailed" xml:space="preserve"><value>Kon dit kamp niet verlaten.</value></data>
+  <data name="Camps_Flash_MembershipApproved" xml:space="preserve"><value>Lidmaatschap goedgekeurd.</value></data>
+  <data name="Camps_Flash_RequestRejected" xml:space="preserve"><value>Verzoek afgewezen.</value></data>
+  <data name="Camps_Flash_MemberRemoved" xml:space="preserve"><value>Lid verwijderd.</value></data>
+  <data name="Camps_Flash_EarlyEntryGranted" xml:space="preserve"><value>Vroege toegang toegekend.</value></data>
+  <data name="Camps_Flash_EarlyEntryRevoked" xml:space="preserve"><value>Vroege toegang ingetrokken.</value></data>
+  <data name="Camps_Flash_EarlyEntryCapReached" xml:space="preserve"><value>Kan geen vroege toegang toekennen: het maximumaantal plekken voor dit kamp is bereikt.</value></data>
+  <data name="Camps_Flash_EarlyEntryActiveMembersOnly" xml:space="preserve"><value>Alleen actieve kampleden kunnen vroege toegang hebben.</value></data>
+  <data name="Camps_Flash_EarlyEntryAlreadyEntered" xml:space="preserve"><value>Kan vroege toegang niet intrekken: dit lid is het evenement al binnengegaan, dus de plek is gebruikt.</value></data>
+  <data name="Camps_Flash_HumanRequired" xml:space="preserve"><value>Zoek en selecteer eerst een human.</value></data>
+  <data name="Camps_Flash_NoActiveSeason" xml:space="preserve"><value>Geen actief seizoen voor dit kamp.</value></data>
+  <data name="Camps_Flash_HumanAdded" xml:space="preserve"><value>Human toegevoegd aan kamp.</value></data>
+  <data name="Camps_Flash_HumanAddFailed" xml:space="preserve"><value>Human toevoegen aan kamp mislukt.</value></data>
+  <data name="Camps_Flash_RoleAssignFailed" xml:space="preserve"><value>Rol toewijzen mislukt.</value></data>
+  <data name="Camps_Flash_RoleAssigned" xml:space="preserve"><value>Rol toegewezen.</value></data>
+  <data name="Camps_Flash_RoleNotFound" xml:space="preserve"><value>Roldefinitie niet gevonden.</value></data>
+  <data name="Camps_Flash_RoleDeactivated" xml:space="preserve"><value>Die rol is gedeactiveerd.</value></data>
+  <data name="Camps_Flash_RoleMemberNotFound" xml:space="preserve"><value>Kamplid niet gevonden.</value></data>
+  <data name="Camps_Flash_RoleActiveMembersOnly" xml:space="preserve"><value>Alleen actieve kampleden kunnen rollen hebben.</value></data>
+  <data name="Camps_Flash_RoleMemberSeasonMismatch" xml:space="preserve"><value>Lid zit niet in dit seizoen.</value></data>
+  <data name="Camps_Flash_RoleSlotsFilled" xml:space="preserve"><value>Alle plekken voor deze rol zijn bezet.</value></data>
+  <data name="Camps_Flash_RoleAlreadyHeld" xml:space="preserve"><value>Die human heeft deze rol al.</value></data>
+  <data name="Camps_Flash_RoleSeasonNotFound" xml:space="preserve"><value>Seizoen niet gevonden.</value></data>
+  <data name="Camps_Flash_UnknownError" xml:space="preserve"><value>Onbekende fout.</value></data>
+  <data name="Camps_Flash_RoleUnassigned" xml:space="preserve"><value>Roltoewijzing opgeheven.</value></data>
+  <data name="Camps_Flash_AssignmentNotFound" xml:space="preserve"><value>Toewijzing niet gevonden.</value></data>
+  <data name="Camps_Details_Slide" xml:space="preserve"><value>Dia {0}</value></data>
+  <data name="Camps_Details_Previous" xml:space="preserve"><value>Vorige</value></data>
+  <data name="Camps_Details_Next" xml:space="preserve"><value>Volgende</value></data>
+  <data name="Camps_Details_SeasonLink" xml:space="preserve"><value>Seizoenspagina {0} bekijken</value></data>
+  <data name="Camps_Details_MyMembership" xml:space="preserve"><value>Mijn lidmaatschap</value></data>
+  <data name="Camps_Details_LeadForSeason" xml:space="preserve"><value>Je bent lead voor {0}.</value></data>
+  <data name="Camps_Details_MembershipHelp" xml:space="preserve"><value>Hiermee word je geen lid van het kamp. Word eerst lid via de eigen procedure van het kamp en geef dit daarna door aan Humans. Zo krijg je toegang tot eventuele kamprollen, toewijzingen voor vroege toegang en meldingen.</value></data>
+  <data name="Camps_Details_FullSeason" xml:space="preserve"><value>Dit kamp geeft aan dat het vol is voor {0} — je kunt nog steeds een verzoek indienen om lid te worden.</value></data>
+  <data name="Camps_Details_RequestJoin" xml:space="preserve"><value>Verzoek om lid te worden voor {0}</value></data>
+  <data name="Camps_Details_PendingApproval" xml:space="preserve"><value>In afwachting van goedkeuring door een lead voor {0}.</value></data>
+  <data name="Camps_Details_WithdrawConfirm" xml:space="preserve"><value>Je verzoek in afwachting intrekken?</value></data>
+  <data name="Camps_Details_WithdrawRequest" xml:space="preserve"><value>Verzoek intrekken</value></data>
+  <data name="Camps_Details_ActiveMembership" xml:space="preserve"><value>Je bent lid voor {0}.</value></data>
+  <data name="Camps_Details_LeaveConfirm" xml:space="preserve"><value>Dit kamp verlaten voor dit seizoen?</value></data>
+  <data name="Camps_Details_LeaveCamp" xml:space="preserve"><value>Kamp verlaten</value></data>
+  <data name="Camps_Details_Containers" xml:space="preserve"><value>Containers</value></data>
+  <data name="Camps_Flash_RequestNoOpenSeason" xml:space="preserve"><value>Dit kamp staat dit jaar niet open voor nieuwe leden.</value></data>
+  <data name="Camps_Flash_RequestCreated" xml:space="preserve"><value>Je verzoek om lid te worden is naar de leads van het kamp gestuurd.</value></data>
+  <data name="Camps_Flash_RequestAlreadyActive" xml:space="preserve"><value>Je bent al een actief lid van dit kamp.</value></data>
+  <data name="Camps_Flash_RequestAlreadyPending" xml:space="preserve"><value>Je hebt al een verzoek in afwachting voor dit kamp.</value></data>
+  <data name="Camps_Details_EditAndAssignRoles" xml:space="preserve"><value>{0} bewerken / Rollen toewijzen</value></data>
+  <data name="Camps_Details_ManageEvents" xml:space="preserve"><value>Evenementen beheren</value></data>
+  <data name="Camps_Details_WithdrawSeasonConfirm" xml:space="preserve"><value>Weet je zeker dat je je uit dit seizoen wilt terugtrekken?</value></data>
+  <data name="Camps_Details_WithdrawSeason" xml:space="preserve"><value>Seizoen intrekken</value></data>
+  <data name="Camps_Details_MarkFullConfirm" xml:space="preserve"><value>Dit seizoen als vol markeren? Hiermee laat je bezoekers alleen weten dat jullie vol lijken — mensen kunnen nog steeds een verzoek indienen om lid te worden.</value></data>
+  <data name="Camps_Details_MarkFull" xml:space="preserve"><value>Seizoen als vol markeren</value></data>
+  <data name="Camps_Notification_MembershipApproved" xml:space="preserve"><value>Je verzoek om lid te worden van {0} is goedgekeurd</value></data>
+  <data name="Camps_Notification_MembershipRejected" xml:space="preserve"><value>Je verzoek om lid te worden van {0} is niet goedgekeurd</value></data>
+  <data name="Camps_Notification_ViewCamp" xml:space="preserve"><value>Kamp bekijken</value></data>
+  <data name="Camps_Notification_GenericCamp" xml:space="preserve"><value>een kamp</value></data>
+  <data name="Camps_Notification_SeasonClosed" xml:space="preserve"><value>Seizoen {0} voor {1} is niet meer open</value></data>
+  <data name="Camps_Notification_SeasonClosedBody" xml:space="preserve"><value>Je verzoek in afwachting om lid te worden van dit kamp wordt niet beoordeeld, omdat het seizoen is ingetrokken of afgewezen.</value></data>
+  <data name="Camps_Notification_RoleAssigned" xml:space="preserve"><value>Je hebt de rol {0} toegewezen gekregen.</value></data>
+  <data name="Camps_Validation_ImageCount" xml:space="preserve"><value>Elke barrio mag maximaal 5 afbeeldingen hebben.</value></data>
+  <data name="Camps_Validation_ImageType" xml:space="preserve"><value>Alleen JPEG-, PNG- en WebP-afbeeldingen zijn toegestaan.</value></data>
+  <data name="Camps_Validation_ImageSize" xml:space="preserve"><value>Afbeelding moet kleiner zijn dan 10 MB.</value></data>
+  <data name="Camps_Validation_ImageFilenameLength" xml:space="preserve"><value>De bestandsnaam van de afbeelding mag maximaal 256 tekens bevatten.</value></data>
+  <data name="Camps_Validation_ImageExtension" xml:space="preserve"><value>De bestandsnaam van de afbeelding moet eindigen op .jpg, .jpeg, .png of .webp.</value></data>
+  <data name="Camps_Flash_WithdrawRequiresPending" xml:space="preserve"><value>Alleen een lidmaatschapsverzoek in afwachting kan worden ingetrokken.</value></data>
+  <data name="Camps_Flash_LeaveRequiresActive" xml:space="preserve"><value>Je kunt een kamp alleen verlaten als je er actief lid van bent.</value></data>
+  <data name="Camps_Flash_ApproveRequiresPending" xml:space="preserve"><value>Alleen een lidmaatschapsverzoek in afwachting kan worden goedgekeurd.</value></data>
+  <data name="Camps_Flash_RejectRequiresPending" xml:space="preserve"><value>Alleen een lidmaatschapsverzoek in afwachting kan worden afgewezen.</value></data>
+  <data name="Camps_Flash_RemoveRequiresActive" xml:space="preserve"><value>Alleen een actief kamplidmaatschap kan worden verwijderd.</value></data>
+  <data name="Camps_Flash_CampNotFound" xml:space="preserve"><value>Kamp niet gevonden.</value></data>
+  <data name="Camps_Flash_HistoricalNameNotFound" xml:space="preserve"><value>Eerdere naam niet gevonden.</value></data>
+  <data name="Camps_Flash_HistoricalNameWrongCamp" xml:space="preserve"><value>Deze eerdere naam hoort niet bij dit kamp.</value></data>
+  <data name="Camps_Flash_ImageNotFound" xml:space="preserve"><value>Afbeelding niet gevonden.</value></data>
+  <data name="Camps_Flash_ImageWrongCamp" xml:space="preserve"><value>Deze afbeelding hoort niet bij dit kamp.</value></data>
+  <data name="Camps_Notification_MessageReceived" xml:space="preserve"><value>Nieuw bericht voor {0} - bekijk je e-mail</value></data>
+  <data name="Camps_Flash_SeasonWrongCamp" xml:space="preserve"><value>Dit seizoen hoort niet bij dit kamp.</value></data>
+  <data name="Camps_Flash_SeasonWithdrawRequiresOpen" xml:space="preserve"><value>Alleen een seizoen dat in afwachting of actief is, kan worden ingetrokken.</value></data>
+  <data name="Camps_Flash_SeasonFullRequiresActive" xml:space="preserve"><value>Alleen een actief seizoen kan als vol worden gemarkeerd.</value></data>
+</root>

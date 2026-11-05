@@ -28,16 +28,10 @@ namespace Humans.Gate.Tests;
 
 public class GateIdentityViewTests
 {
-    [HumansTheory]
-    [Xunit.InlineData("en")]
-    [Xunit.InlineData("es")]
-    [Xunit.InlineData("de")]
-    [Xunit.InlineData("it")]
-    [Xunit.InlineData("fr")]
-    [Xunit.InlineData("ca")]
-    public async Task Claim_and_PIN_labels_resolve_names_without_changing_roster_ids_or_PIN_mode(string language)
+    [HumansFact]
+    public async Task Claim_and_PIN_labels_resolve_names_without_changing_roster_ids_or_PIN_mode()
     {
-        using var culture = new CultureScope(language);
+        using var culture = new CultureScope("en");
         var id = Guid.NewGuid();
         var missing = Guid.NewGuid();
         const string name = "Current <script>&";

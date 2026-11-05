@@ -176,20 +176,33 @@ public sealed class CampRepositoryTests : IDisposable
         _dbContext.CampSeasons.Add(season);
         await _dbContext.SaveChangesAsync(ct);
 
-        (await _repo.SeasonExistsAsync(camp.Id, eventId, unassignedYear: null, ct)).Should().BeTrue();
-        (await _repo.SeasonExistsAsync(camp.Id, Guid.NewGuid(), unassignedYear: 2026, ct)).Should().BeFalse();
+        (await _repo.SeasonExistsAsync(camp.Id, eventId, ct)).Should().BeTrue();
+        (await _repo.SeasonExistsAsync(camp.Id, Guid.NewGuid(), ct)).Should().BeFalse();
     }
 
     [HumansFact]
-    public async Task SeasonExistsAsync_CountsAnUnassignedSeasonOnlyForItsYear()
+    public async Task EventScopedWrites_IgnoreUnassignedAndOtherEvents()
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
-        var camp = await SeedCampAsync("other-year");
-        await SeedSeasonAsync(camp.Id, 2026, CampSeasonStatus.Active);
+        var camp = await SeedCampAsync("unassigned");
+        var current = BuildSeason(camp.Id, CampSeasonStatus.Active, 2026);
+        var unassigned = BuildSeason(camp.Id, CampSeasonStatus.Active, 2026);
+        var other = BuildSeason(camp.Id, CampSeasonStatus.Active, 2026);
+        current.EventSettingsId = Guid.NewGuid();
+        other.EventSettingsId = Guid.NewGuid();
+        _dbContext.CampSeasons.AddRange(current, unassigned, other);
+        await _dbContext.SaveChangesAsync(ct);
 
-        (await _repo.SeasonExistsAsync(camp.Id, Guid.NewGuid(), unassignedYear: 2026, ct)).Should().BeTrue();
-        (await _repo.SeasonExistsAsync(camp.Id, Guid.NewGuid(), unassignedYear: 2027, ct)).Should().BeFalse();
-        (await _repo.SeasonExistsAsync(camp.Id, Guid.NewGuid(), unassignedYear: null, ct)).Should().BeFalse();
+        (await _repo.SeasonExistsAsync(camp.Id, Guid.NewGuid(), ct)).Should().BeFalse();
+        (await _repo.SeasonExistsAsync(camp.Id, current.EventSettingsId.Value, ct)).Should().BeTrue();
+        var lockDate = new LocalDate(2026, 6, 1);
+        (await _repo.SetNameLockDateForEventAsync(current.EventSettingsId.Value, lockDate, ct)).Should().Be(1);
+        await _dbContext.Entry(current).ReloadAsync(ct);
+        await _dbContext.Entry(unassigned).ReloadAsync(ct);
+        await _dbContext.Entry(other).ReloadAsync(ct);
+        current.NameLockDate.Should().Be(lockDate);
+        unassigned.NameLockDate.Should().NotBe(lockDate);
+        other.NameLockDate.Should().NotBe(lockDate);
     }
 
     [HumansFact]
@@ -270,40 +283,6 @@ public sealed class CampRepositoryTests : IDisposable
 
         (await _repo.GetEventSettingsAsync(ct)).Should().ContainSingle()
             .Which.Should().BeEquivalentTo(new CampEventSettings { EventSettingsId = eventId, RegistrationOpen = false });
-    }
-
-    [HumansFact]
-    public async Task AddMissingEventSettingsAsync_LeavesExistingRowsAlone()
-    {
-        var ct = Xunit.TestContext.Current.CancellationToken;
-        var closed = Guid.NewGuid();
-        var fresh = Guid.NewGuid();
-        await _repo.SetRegistrationOpenAsync(closed, false, ct);
-
-        var added = await _repo.AddMissingEventSettingsAsync(
-            new Dictionary<Guid, bool> { [closed] = true, [fresh] = true }, ct);
-
-        added.Should().Be(1);
-        (await _repo.GetEventSettingsAsync(ct)).Should().BeEquivalentTo(
-        [
-            new CampEventSettings { EventSettingsId = closed, RegistrationOpen = false },
-            new CampEventSettings { EventSettingsId = fresh, RegistrationOpen = true },
-        ]);
-    }
-
-    [HumansFact]
-    public async Task AssignSeasonEventIdsAsync_WritesOnlySeasonsWithoutAnEventId()
-    {
-        var ct = Xunit.TestContext.Current.CancellationToken;
-        var season = await SeedCampWithSeasonAsync("event-id-camp");
-        var target = Guid.NewGuid();
-
-        (await _repo.GetSeasonsWithoutEventIdAsync(ct)).Select(s => s.Id).Should().Contain(season.Id);
-        (await _repo.AssignSeasonEventIdsAsync(new Dictionary<Guid, Guid> { [season.Id] = target }, ct)).Should().Be(1);
-        (await _repo.AssignSeasonEventIdsAsync(new Dictionary<Guid, Guid> { [season.Id] = Guid.NewGuid() }, ct)).Should().Be(0);
-
-        (await _dbContext.CampSeasons.AsNoTracking().SingleAsync(s => s.Id == season.Id, ct)).EventSettingsId.Should().Be(target);
-        (await _repo.GetSeasonsWithoutEventIdAsync(ct)).Select(s => s.Id).Should().NotContain(season.Id);
     }
 
     [HumansFact]

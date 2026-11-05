@@ -115,7 +115,7 @@ internal sealed class CampImageGallery(
         }
         catch (Exception ex)
         {
-            logger.LogWarning(ex,
+            logger.LogError(ex,
                 "Failed to delete camp image file at {StoragePath} for image {ImageId}; DB row already removed",
                 result.Value.StoragePath, imageId);
         }

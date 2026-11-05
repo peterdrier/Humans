@@ -3,7 +3,7 @@
     ViewData["Title"] = Localizer["Events_ScheduleTitle"].Value;
 }
 
-<h2 class="mb-3">@Localizer["Events_ScheduleTitle"]</h2>
+<page-header title="@(Localizer["Events_ScheduleTitle"].Value)" />
 
 
 @if (Model.TimeZoneId != null)

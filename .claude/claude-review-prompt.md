@@ -59,7 +59,7 @@ Skip these; they are the most expensive reads and carry the least signal:
 
 - `*/Migrations/*.Designer.cs` and `*ModelSnapshot.cs` — EF-generated from
   the migration. Review the migration's own `.cs` instead.
-- `*.resx` translation text — parity tests enforce all six cultures. Only
+- `*.resx` translation text — parity tests enforce all supported cultures. Only
   check that a new user-facing string got a key.
 - `tests/e2e/package-lock.json`, images, icons and fonts under `wwwroot/`.
 - `docs/`, `memory/` and other markdown — doc concerns are out of scope.

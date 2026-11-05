@@ -14,8 +14,7 @@ public sealed class OnboardingShiftsListViewComponent(IBurnSettingsService burnS
         Guid eventSettingsId,
         IReadOnlyList<UrgentShiftInfo> shifts,
         HashSet<Guid> userSignupShiftIds,
-        Dictionary<Guid, SignupStatus> userSignupStatuses,
-        bool earlyEntrySignupsClosed)
+        Dictionary<Guid, SignupStatus> userSignupStatuses)
     {
         var eventSettings = await burnSettings.GetByIdAsync(eventSettingsId, HttpContext.RequestAborted);
         if (eventSettings is null)
@@ -37,7 +36,6 @@ public sealed class OnboardingShiftsListViewComponent(IBurnSettingsService burnS
             UrgencyRankedRotas = rotaGroups,
             UserSignupShiftIds = userSignupShiftIds,
             UserSignupStatuses = userSignupStatuses,
-            EarlyEntrySignupsClosed = earlyEntrySignupsClosed,
         });
     }
 }

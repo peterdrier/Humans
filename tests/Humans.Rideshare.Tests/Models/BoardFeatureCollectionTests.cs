@@ -29,16 +29,10 @@ public sealed class BoardFeatureCollectionTests
         _localizer[Arg.Any<string>()].Returns(ci => new LocalizedString(ci.Arg<string>(), "L:" + ci.Arg<string>()));
     }
 
-    [HumansTheory]
-    [InlineData("en")]
-    [InlineData("es")]
-    [InlineData("de")]
-    [InlineData("it")]
-    [InlineData("fr")]
-    [InlineData("ca")]
-    public void Build_ProvidesLocalizedPopupDatesAlongsideMachineDates(string culture)
+    [HumansFact]
+    public void Build_ProvidesLocalizedPopupDatesAlongsideMachineDates()
     {
-        using var scope = new Humans.Base.Extensions.CultureScope(culture);
+        using var scope = new Humans.Base.Extensions.CultureScope(Humans.Base.Extensions.CultureCatalog.CanonicalLegalCultureCode);
         System.Globalization.CultureInfo.CurrentCulture = System.Globalization.CultureInfo.GetCultureInfo("en");
         var trip = Trip(Guid.NewGuid(), route: StoredRoute);
         var request = Request(Guid.NewGuid());

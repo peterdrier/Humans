@@ -53,8 +53,9 @@ Surfaced on `/Debug/CacheStats`.
 
 ### MagicLinkService (Scoped)
 
-No repository. Uses ASP.NET `UserManager<User>` plus `IUserEmailService`,
-`IUserService`, `IEmailService`, the section's own `AuthEmails` builder,
+No repository. Uses `IUserEmailService`,
+`IUserService` (`GetRawUserInfoAsync` for token-bound identity checks, `GetUserInfoAsync` for display data),
+`IEmailService`, the section's own `AuthEmails` builder,
 `IMagicLinkRateLimiter`, `IMagicLinkUrlBuilder`. No direct `IMemoryCache` —
 rate-limit/replay sentinels are owned by `IMagicLinkRateLimiter`
 (same section, `Services/`) which writes `magic_link_used:{sha256(token)}`,

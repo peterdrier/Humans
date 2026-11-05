@@ -1,12 +1,9 @@
 @model CampaignEditSnapshot
 @{
     ViewData["Title"] = "Edit Campaign";
-    // On validation failure, prefer submitted values (ViewBag) over the persisted ones.
-    var title2 = ViewBag.Title2 as string ?? Model.Title;
-    var description = ViewBag.Description as string ?? Model.Description;
-    var emailSubject = ViewBag.EmailSubject as string ?? Model.EmailSubject;
-    var emailBodyTemplate = ViewBag.EmailBodyTemplate as string ?? Model.EmailBodyTemplate;
-    var replyToAddress = ViewBag.ReplyToAddress as string ?? Model.ReplyToAddress;
+    // A submitted form may intentionally clear persisted fields to null.
+    var form = ViewData[nameof(CampaignFormValues)] as CampaignFormValues
+        ?? new(Model.Title, Model.Description, Model.EmailSubject, Model.EmailBodyTemplate, Model.ReplyToAddress);
 }
 
 @section Crumbs {
@@ -14,7 +11,7 @@
     <span>Edit</span>
 }
 
-<h1>Edit Campaign</h1>
+<page-header title="Edit Campaign" />
 
 
 <div class="card">
@@ -23,8 +20,7 @@
             @Html.AntiForgeryToken()
             @Html.ValidationSummary(false, "", new { @class = "text-danger" })
 
-            <partial name="_CampaignFormFields" model="@(new CampaignFormValues(
-                title2, description, emailSubject, emailBodyTemplate, replyToAddress))" />
+            <partial name="_CampaignFormFields" model="@form" />
 
             <div class="d-flex gap-2">
                 <button type="submit" class="btn btn-primary">Save Changes</button>

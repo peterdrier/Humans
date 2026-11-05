@@ -3,6 +3,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
+const { installHumans } = require('../../browser-support/humans-js.cjs');
 
 const script = fs.readFileSync(path.resolve(__dirname,
     '../../../src/Sections/Humans.Shifts/wwwroot/js/shifts.js'), 'utf8');
@@ -29,15 +30,15 @@ async function toggle(status, headers = {}, reject = false, redirected = false) 
         querySelectorAll: () => [],
         createElement: () => ({ remove() {} }),
     };
-    vm.runInNewContext(script, {
-        document, window, FormData: class { append() {} }, setTimeout() {},
+    vm.runInNewContext(script, installHumans({
+        document, window, FormData: class { append() {} has() { return false; } }, setTimeout() {},
         fetch: (_, options) => reject || (redirected && options.redirect === 'error')
             ? Promise.reject(new Error('Request failed')) : Promise.resolve({
             ok: status >= 200 && status < 300, status,
             headers: { get: name => headers[name] ?? null },
             text: () => { state.reads++; return Promise.resolve('<tr>server fragment</tr>'); },
         }),
-    });
+    }));
     click({ target: { closest: () => button } });
     await new Promise(setImmediate);
     return { state, button, window };

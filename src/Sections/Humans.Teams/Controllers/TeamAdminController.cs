@@ -222,14 +222,14 @@ internal sealed class TeamAdminController(
     };
 
     /// <summary>
-    /// The policy narrows <see cref="HumansTeamControllerBase.ResolveTeamManagementAsync"/>, which also passes
-    /// coordinators, to Board or Admin.
+    /// The policy narrows <see cref="HumansTeamControllerBase.ResolveTeamViewAsync"/>, which also passes
+    /// coordinators, to Board or Admin. The read resolver is what lets Board through: Board holds no team-management right.
     /// </summary>
     [HttpGet("Roster")]
     [Authorize(Policy = PolicyNames.BoardOrAdmin)]
     public async Task<IActionResult> Roster(string slug, CancellationToken ct)
     {
-        var (teamError, _, team) = await ResolveTeamManagementAsync(slug, HttpContext.RequestAborted);
+        var (teamError, _, team, _) = await ResolveTeamViewAsync(slug, HttpContext.RequestAborted);
         if (teamError is not null)
         {
             return teamError;
@@ -318,8 +318,7 @@ internal sealed class TeamAdminController(
             return RedirectToAction(nameof(Members), new { slug });
         }
 
-        var teamInfo = await _teamService.GetTeamAsync(team.Id, HttpContext.RequestAborted);
-        if (teamInfo is null || teamInfo.Members.All(m => m.UserId != userId))
+        if (team.Members.All(m => m.UserId != userId))
         {
             SetError("That human is not a member of this team.");
             return RedirectToAction(nameof(Members), new { slug });
@@ -367,8 +366,7 @@ internal sealed class TeamAdminController(
         var results = await _userService.SearchUsersAsync(
             q, PersonSearchFields.Name, limit: int.MaxValue, ct: HttpContext.RequestAborted);
 
-        var teamInfo = await _teamService.GetTeamAsync(team.Id, HttpContext.RequestAborted);
-        var existingMemberIds = teamInfo?.Members.Select(m => m.UserId).ToHashSet() ?? [];
+        var existingMemberIds = team.Members.Select(m => m.UserId).ToHashSet();
 
         var filtered = results
             .Where(r => !existingMemberIds.Contains(r.UserId))
@@ -389,11 +387,10 @@ internal sealed class TeamAdminController(
         }
 
         var definitions = await _teamService.GetRoleDefinitionsAsync(team.Id, HttpContext.RequestAborted);
-        var teamInfo = await _teamService.GetTeamAsync(team.Id, HttpContext.RequestAborted);
-        var members = teamInfo?.Members
+        var members = team.Members
             .OrderBy(m => m.Role)
             .ThenBy(m => m.DisplayName, StringComparer.OrdinalIgnoreCase)
-            .ToList() ?? [];
+            .ToList();
 
         var memberUserIds = members.Select(m => m.UserId).ToList();
         var memberInfos = await _userService.GetUserInfosAsync(memberUserIds, HttpContext.RequestAborted);

@@ -1,10 +1,11 @@
 using Microsoft.AspNetCore.Identity;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Humans.Users.Contracts;
 
-/// <summary>Lets Shell's Identity builder use the section's stores, which stay internal.</summary>
+/// <summary>Registers ASP.NET Identity over the section's internal stores and claims factory.</summary>
 public static class UsersIdentityExtensions
 {
-    public static IdentityBuilder AddHumansEntityFrameworkStores(this IdentityBuilder builder) =>
-        Section.AddIdentityStores(builder);
+    public static IdentityBuilder AddHumansIdentity(this IServiceCollection services) =>
+        Section.AddIdentity(services);
 }

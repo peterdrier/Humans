@@ -1,6 +1,45 @@
 @model AssemblyVoteBallotsViewModel
 @{
     ViewData["Title"] = "Vote ballots";
+
+    Func<AssemblyBallotDisclosureRow, IHtmlContent> memberCell = @<text>
+        @if (item.UserId is { } userId)
+        {
+            <vc:human user-id="@userId" link="None" />
+        }
+        else
+        {
+            <text>—</text>
+        }
+    </text>;
+    Func<AssemblyBallotDisclosureRow, IHtmlContent> rosterCell = @<text>
+        @if (item.IsOfficial)
+        {
+            <span class="badge bg-primary">Official</span>
+        }
+        else
+        {
+            <span class="badge bg-secondary">Indicative</span>
+        }
+    </text>;
+    Func<AssemblyBallotDisclosureRow, IHtmlContent> choiceCell = @<text>
+        @if (item.Choice == AssemblyBallotChoice.Ranked && item.Ranking is { Count: > 0 } ranking)
+        {
+            @string.Join(" > ", ranking.Select(Model.LabelFor))
+        }
+        else
+        {
+            @item.Choice
+        }
+    </text>;
+    var table = TableModel.For(Model.Ballots.OrderByDescending(b => b.IsOfficial).ThenBy(b => b.DisplayName, StringComparer.CurrentCulture).ToList())
+        .Template("Member", memberCell)
+        .Template("Roster", rosterCell)
+        .Template("Choice / ranking", choiceCell)
+        .Column("Revision", b => b.Revision, o => o.Number().End())
+        .Css("align-middle")
+        .Empty("No ballots cast.")
+        .Build();
 }
 
 @* Admin routes are localization-exempt — plain English literals throughout. *@
@@ -9,64 +48,11 @@
     Viewing this list has been recorded in the audit log.
 </div>
 
-<h1 class="mb-3">Individual ballots</h1>
+<page-header title="Individual ballots" />
 
 <div class="card">
     <div class="card-body p-0">
-        <div class="table-responsive">
-            <table class="table table-hover mb-0 align-middle">
-                <thead>
-                    <tr>
-                        <th>Member</th>
-                        <th>Roster</th>
-                        <th>Choice / ranking</th>
-                        <th class="text-end">Revision</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @if (Model.Ballots.Count == 0)
-                    {
-                        <tr><td colspan="4" class="text-center text-muted py-4">No ballots cast.</td></tr>
-                    }
-                    @foreach (var ballot in Model.Ballots.OrderByDescending(b => b.IsOfficial).ThenBy(b => b.DisplayName, StringComparer.CurrentCulture))
-                    {
-                        <tr>
-                            <td>
-                                @if (ballot.UserId is { } userId)
-                                {
-                                    <vc:human user-id="@userId" link="None" />
-                                }
-                                else
-                                {
-                                    <text>—</text>
-                                }
-                            </td>
-                            <td>
-                                @if (ballot.IsOfficial)
-                                {
-                                    <span class="badge bg-primary">Official</span>
-                                }
-                                else
-                                {
-                                    <span class="badge bg-secondary">Indicative</span>
-                                }
-                            </td>
-                            <td>
-                                @if (ballot.Choice == AssemblyBallotChoice.Ranked && ballot.Ranking is { Count: > 0 } ranking)
-                                {
-                                    @string.Join(" > ", ranking.Select(Model.LabelFor))
-                                }
-                                else
-                                {
-                                    @ballot.Choice
-                                }
-                            </td>
-                            <td class="text-end">@ballot.Revision</td>
-                        </tr>
-                    }
-                </tbody>
-            </table>
-        </div>
+        <partial name="_Table" model="table" />
     </div>
 </div>
 

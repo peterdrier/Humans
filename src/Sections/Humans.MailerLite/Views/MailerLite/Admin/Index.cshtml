@@ -3,8 +3,7 @@
     ViewData["Title"] = "MailerLite Dashboard";
 }
 
-<div class="d-flex justify-content-between align-items-center mb-3">
-    <h1 class="mb-0">MailerLite Dashboard</h1>
+<page-header title="MailerLite Dashboard">
     <div class="d-flex align-items-center gap-2">
         <span class="text-muted small">
             @if (Model.CacheFetchedAt is { } fetched)
@@ -30,7 +29,7 @@
             </a>
         }
     </div>
-</div>
+</page-header>
 
 
 @if (Model.MlError is not null)

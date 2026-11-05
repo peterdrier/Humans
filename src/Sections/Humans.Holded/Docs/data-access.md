@@ -29,7 +29,7 @@ Repository: `IHoldedMirrorRepository`.
 
 | Table | R/W |
 |-------|-----|
-| HoldedLedgerLines | R/W (replace-window upsert via `SyncLedgerAsync` — full history on cold cache or `full: true`, else a 45-day trailing window; read by account (optional window and type), by entry numbers, and as per-account / per-account-and-type / windowed sums grouped in SQL — never the whole table) |
+| HoldedLedgerLines | R/W (replace-window upsert via `SyncLedgerAsync` — full history on cold cache or `full: true`, else a 45-day trailing window; one account's full history via `SyncAccountLedgerAsync`; read by account (optional window and type), by entry numbers, and as per-account / per-account-and-type / windowed sums grouped in SQL — never the whole table) |
 | HoldedSyncStates | R/W (one row per `HoldedSyncKind`: Ledger, FullSync, Accounts, PurchaseDocs) |
 | HoldedPurchaseDocs | R/W (full replace via `SyncPurchaseDocumentsAsync`, an unfetched note keeps the stored one; read whole by `GetPurchaseDocumentsAsync`, which Finance attributes on read) |
 | HoldedAccounts | R/W (chart-of-accounts cache, refreshed and reconciled every sync) |

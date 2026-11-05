@@ -24,7 +24,6 @@ internal sealed class ExpensesController(
     IUserService userService,
     IExpenseReportManagement service,
     IBudgetService budgetService,
-    IHoldedFinanceService holdedFinance,
     IFinanceService finance,
     IPreapprovalService preapprovals,
     IAuthorizationService authService,
@@ -60,12 +59,12 @@ internal sealed class ExpensesController(
 
             // Own account only. GetCreditorLedgerAsync returns null both for "not bound" and "bound, nothing cached
             // yet", so the binding is read separately: telling a bound member to get bound is worse than silence.
-            HoldedCreditorLedger? accountLedger = null;
-            var binding = await holdedFinance.GetCreditorContactByUserAsync(user.Id, HttpContext.RequestAborted);
+            CreditorLedger? accountLedger = null;
+            var binding = await finance.GetCreditorContactByUserAsync(user.Id, HttpContext.RequestAborted);
             var boundAccountNum = binding?.SupplierAccountNum;
             if (boundAccountNum is { } accNum)
             {
-                var led = await holdedFinance.GetCreditorLedgerAsync(accNum, HttpContext.RequestAborted);
+                var led = await finance.GetCreditorLedgerAsync(accNum, HttpContext.RequestAborted);
                 if (led is not null)
                     accountLedger = led with
                     {
@@ -256,6 +255,7 @@ internal sealed class ExpensesController(
                 BoundAccountName = creditor.BoundAccountName,
                 HasCreditorContact = creditor.HasContact,
                 CreditorAccounts = creditor.Accounts,
+                CreditorAccountsUnavailable = creditor.Unavailable,
                 CanApprove = decisions.Approve,
                 CanFinanceReject = decisions.FinanceReject,
                 CanEndorse = decisions.Endorse,
@@ -816,21 +816,18 @@ internal sealed class ExpensesController(
     /// minting a duplicate. Empty for everyone else.
     /// </summary>
     private async Task<(int? BoundAccountNum, string? BoundAccountName, bool HasContact,
-        IReadOnlyList<HoldedCreditorAccountRow> Accounts)> GetCreditorBindingViewAsync(
+        IReadOnlyList<CreditorAccountRow> Accounts, string? Unavailable)> GetCreditorBindingViewAsync(
         Guid submitterUserId, bool isFinanceAdmin, CancellationToken ct)
     {
-        if (!isFinanceAdmin) return (null, null, false, []);
+        if (!isFinanceAdmin) return (null, null, false, [], null);
 
-        var binding = await holdedFinance.GetCreditorContactByUserAsync(submitterUserId, ct);
-        var accounts = (await holdedFinance.ListCreditorAccountsAsync(ct)).Accounts
-            .OrderBy(a => a.SupplierAccountNum)
-            .ToList();
+        var binding = await finance.GetCreditorContactByUserAsync(submitterUserId, ct);
+        var (rows, _, unavailable) = await finance.ListCreditorAccountsAsync(ct);
+        var accounts = rows.OrderBy(a => a.SupplierAccountNum).ToList();
 
-        var boundName = binding?.SupplierAccountNum is { } boundNum
-            ? accounts.FirstOrDefault(a => a.SupplierAccountNum == boundNum)?.Name
-            : null;
-
-        return (binding?.SupplierAccountNum, boundName, binding is not null, accounts);
+        // The row Finance placed the binding on, through Holded's contact: the binding's stored number can be stale.
+        var bound = accounts.FirstOrDefault(a => a.Bindings.Any(b => b.UserId == submitterUserId));
+        return (bound?.SupplierAccountNum, bound?.Name, binding is not null, accounts, unavailable);
     }
 
     /// <summary>The authorization handler owns the actor matrix and each decision's status gate.</summary>
@@ -899,7 +896,7 @@ internal sealed class ExpensesController(
         {
             if (report.HoldedAccountNumber != 0)
             {
-                accountLabels ??= (await holdedFinance.ListExpenseAccountsAsync(activeOnly: false, ct))
+                accountLabels ??= (await finance.ListExpenseAccountsAsync(activeOnly: false, ct))
                     .GroupBy(a => a.AccountNum)
                     .ToDictionary(g => g.Key, g => g.First().Label);
                 labels[report.Id] = accountLabels.TryGetValue(report.HoldedAccountNumber, out var accountLabel)
@@ -960,10 +957,10 @@ internal sealed class ExpensesController(
 
     /// <summary>Budget-category accounts first. The service refuses a cross-year rebooking, so one list serves the new
     /// form, the edit form and the approval override.</summary>
-    private async Task<IReadOnlyList<HoldedExpenseAccountOption>> BuildAccountOptionsAsync(
+    private async Task<IReadOnlyList<ExpenseAccountOption>> BuildAccountOptionsAsync(
         CancellationToken ct = default)
     {
-        var accounts = await holdedFinance.ListExpenseAccountsAsync(activeOnly: true, ct);
+        var accounts = await finance.ListExpenseAccountsAsync(activeOnly: true, ct);
         return accounts
             .OrderByDescending(a => a.IsBudgetCategory)
             .ThenBy(a => a.Label, StringComparer.OrdinalIgnoreCase)

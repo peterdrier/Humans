@@ -271,8 +271,8 @@ internal sealed class WorkloadService(
             h ??= new RoleDeptHours(role.TeamName, role.TeamSlug, 0, 0);
             perTeam[role.TeamId] = h with
             {
-                PlannedHours = h.PlannedHours + est * role.SlotCount,
-                FilledHours = h.FilledHours + est * assigned,
+                PlannedHours = h.PlannedHours + (decimal)est * role.SlotCount,
+                FilledHours = h.FilledHours + (decimal)est * assigned,
             };
         }
         return perTeam;

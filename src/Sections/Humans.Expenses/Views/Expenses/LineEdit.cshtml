@@ -7,17 +7,15 @@
     var isProof = line.ParentLineId is not null;
 }
 
-<nav aria-label="@Localizer["Expenses_BreadcrumbNavigation"]" class="mb-3">
-    <ol class="breadcrumb">
-        <li class="breadcrumb-item"><a asp-action="Index">@Localizer["Expenses_MyReportsTitle"]</a></li>
-        <li class="breadcrumb-item"><a asp-action="Edit" asp-route-id="@r.Id">@Localizer["Expenses_EditReport"]</a></li>
-        @if (isProof)
-        {
-            <li class="breadcrumb-item"><a asp-action="LineProofs" asp-route-id="@r.Id" asp-route-lineId="@line.ParentLineId">@Localizer["Expenses_ReceiptsBehindInvoice"]</a></li>
-        }
-        <li class="breadcrumb-item active" aria-current="page">@Localizer["Expenses_Line"]</li>
-    </ol>
-</nav>
+@section Crumbs {
+    <a asp-action="Index">@Localizer["Expenses_MyReportsTitle"]</a>
+    <a asp-action="Edit" asp-route-id="@r.Id">@Localizer["Expenses_EditReport"]</a>
+    @if (isProof)
+    {
+        <a asp-action="LineProofs" asp-route-id="@r.Id" asp-route-lineId="@line.ParentLineId">@Localizer["Expenses_ReceiptsBehindInvoice"]</a>
+    }
+    <span>@Localizer["Expenses_Line"]</span>
+}
 
 <div class="row justify-content-center">
     <div class="col-lg-7">
@@ -147,15 +145,3 @@
         </div>
     </div>
 </div>
-
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    document.querySelectorAll('[data-confirm]').forEach(function(btn) {
-        btn.addEventListener('click', function(e) {
-            if (!confirm(this.getAttribute('data-confirm'))) {
-                e.preventDefault();
-            }
-        });
-    });
-});
-</script>

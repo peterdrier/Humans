@@ -71,6 +71,7 @@ section** it belongs to (ledger mirror, sync, `/Holded` admin screen) has its ow
 - Account numbers, supplier account numbers, ledger entry numbers and ledger line numbers must be integral. Numeric forms such as `40000001.0` are accepted; fractions are rejected instead of truncated. Contact-list parsing retains its existing skip-and-log behavior for unreadable contacts.
 - Purchase-document IDs must be nonblank; a missing/blank ID fails the complete read with `HoldedPermanentException`, so Finance never syncs an empty document identity. Approved (`draft: false`) purchase documents require a non-null `payments_pending`; a missing balance fails the complete read with `HoldedPermanentException`. Otherwise Finance could omit an unpaid invoice and post a journal remainder instead. Drafts and unknown approval states may omit the balance and read as 0; neither is bookable.
 - Sales-document totals are required: a missing or null `total` fails as a permanent connector error before Store can finish issuance or compare a recovered invoice. Explicit zero remains valid.
+- A sales-document read returns its `lines` (v2's name for v1's `products`) as name, units, unit price and the line's `tax`, which the v2 spec defines as the primary tax percent (the document-level `tax` is an amount); not yet confirmed against a live read. The read follows an approval, so a line without a readable `units`, `price` or `tax` never fails it: the document reads as having no lines, with a warning.
 - Contact and sales-document detail IDs must be nonblank when returned; an absent/null ID retains the requested-ID fallback. Contact lists skip and log unidentified rows while retaining valid contacts. Tagged sales-document searches reject unidentified matches, including whitespace IDs, rather than returning an incomplete recovery result.
 - Accounting-account debit, credit and balance are required decimal strings. Missing or null totals reject the complete page with `HoldedPermanentException`; they never become fabricated zero balances.
 - A `ledger-entries` item is exactly `id, entry_number, line, date, type, description,
@@ -90,7 +91,7 @@ section** it belongs to (ledger mirror, sync, `/Holded` admin screen) has its ow
   and logged, except a **pending outgoing** one: it could be a SEPA rival, so it fails the read with
   a `HoldedPermanentException` whose `BankMovementId` names it, unless the caller passes that id in
   `skipUnreadableDateIds` (Finance does so after three stuck sweep runs, peterdrier/Humans#1946).
-- Currency is EUR-only. Multi-currency is out of scope.
+- Currency is EUR-only. Multi-currency is out of scope: a purchase or sales document read with a currency set to anything but EUR logs a warning (document id and currency) and is read unchanged, amounts as euros; an absent currency is EUR (peterdrier/Humans#2040).
 - Line taxes are Holded **tax keys**, scoped by direction: `s_iva_21` / `s_iva_0` on sales
   documents, `p_iva_21` on purchases. The decimal separator is dropped, not rounded —
   7.5% is `s_iva_75`.
@@ -125,9 +126,8 @@ options. They add no interfaces or DI registrations, and the public contract sta
 
 **Consumers outside the section** (each to move onto `IHoldedService` / `IHoldedWrite`, ledger debt
 `CENTRAL-105`; `IHoldedClient` goes internal when none remain): Expenses (`ExpenseHoldedPublisher` and
-`ExpenseReportBackgroundProcessor` for the push, `ExpenseReportService` via
-`IHoldedClient.IsConfigured`), Finance (`Service`, `SepaBankBooking`), this section's own purchase-document sync, Workgroups (`WorkgroupService`) and Store
-(`Service`, `StoreInvoiceIssuer`) reach it through the public `Contracts/` folder.
+`ExpenseReportBackgroundProcessor` for the push), Finance (`Service`, `SepaBankBooking`) and Store
+(`Service`, `StoreInvoiceIssuer`) reach it through the public `Contracts/` folder, as does this section's own mirror sync.
 
 **The jobs live with their sections.** `HoldedSyncJob` is in `Humans.Holded/Jobs/`, a shim over
 this section's own `IHoldedNightlySync`; `HoldedExpenseOutboxJob` is in `Humans.Expenses/Jobs/`,
@@ -137,5 +137,5 @@ this section's connector types directly — each section names its own concrete 
 `ISectionJobs` and registers that job's DI, and Shell schedules whatever the sections yield.
 
 **GDPR** — the connector owns no per-user data. Finance's own `Service` (exposed as
-`IHoldedFinanceService` / `IHoldedFinanceWrite`) is the `IUserDataContributor` that exports the member's
+`IFinanceService` / `IFinanceWrite`) is the `IUserDataContributor` that exports the member's
 `holded_creditor_contacts` binding.

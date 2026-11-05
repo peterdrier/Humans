@@ -45,6 +45,11 @@ public class AuthorizationPolicyTests : IDisposable
         var services = new ServiceCollection();
         services.AddLogging();
         services.AddHttpContextAccessor();
+        var users = Substitute.For<IUserService>();
+        users.GetUserInfoAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(call =>
+            new ValueTask<UserInfo?>(UserInfo.Create(
+                new User { Id = call.Arg<Guid>(), State = UserState.Active }, [], [], profile: null)));
+        services.AddSingleton(users);
         services.AddScoped(_ => Substitute.For<IBudgetService>());
         services.AddScoped(_ => Substitute.For<ICampService>());
         services.AddScoped(_ => Substitute.For<ICityPlanningService>());

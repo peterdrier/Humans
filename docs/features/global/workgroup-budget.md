@@ -47,10 +47,10 @@ the group page is a pull by Workgroups through `IHoldedService.GetLedgerLinesAsy
 | IsActive | bool | Retired accounts drop out of `ListExpenseAccountsAsync(activeOnly: true)` |
 | CreatedAt / UpdatedAt | Instant | |
 
-**Public surface** (`Humans.Finance.Contracts`) — new members, approved by Peter. The two writes sit on `IHoldedFinanceWrite`, the list on `IHoldedFinanceService`:
+**Public surface** (`Humans.Finance.Contracts`) — new members, approved by Peter. The two writes sit on `IFinanceWrite`, the list on `IFinanceService`:
 
-- `IHoldedFinanceWrite.CreateOrLinkExpenseAccountAsync(string name, int? existingAccountNum, CancellationToken)`
-  → `HoldedExpenseAccountRef(int AccountNum, string AccountId, string Name, bool Created)`.
+- `IFinanceWrite.CreateOrLinkExpenseAccountAsync(string name, int? existingAccountNum, CancellationToken)`
+  → `ExpenseAccountRef(int AccountNum, string AccountId, string Name, bool Created)`.
   1. `existingAccountNum` given: the account must exist in the live chart
      (`IHoldedClient.ListExpenseAccountsAsync`); returns it, `Created = false`. Unknown number → throws.
   2. Otherwise match `name` against the live chart by normalized name (trim, collapse whitespace,
@@ -62,11 +62,11 @@ the group page is a pull by Workgroups through `IHoldedService.GetLedgerLinesAsy
   Every path upserts a `holded_managed_accounts` row unless the account is already in
   `holded_category_map` (a budget-category account linked on purpose stays Finance's category
   account and is not re-registered). Audited (`HoldedExpenseAccountCreated` / `…Linked`).
-- `IHoldedFinanceWrite.SetExpenseAccountActiveAsync(int accountNum, bool isActive, CancellationToken)`
+- `IFinanceWrite.SetExpenseAccountActiveAsync(int accountNum, bool isActive, CancellationToken)`
   — flips the registry row. No-op when the number is a category account or unknown.
-- `IHoldedFinanceService.ListExpenseAccountsAsync(bool activeOnly, CancellationToken)`
-  → `IReadOnlyList<HoldedExpenseAccountOption(int AccountNum, string AccountId, string Label, bool IsBudgetCategory, bool IsActive)>`.
-  Union of the category map (label `Group / Category` from the active budget year, always active)
+- `IFinanceService.ListExpenseAccountsAsync(bool activeOnly, CancellationToken)`
+  → `IReadOnlyList<ExpenseAccountOption(int AccountNum, string AccountId, string Label, bool IsBudgetCategory, bool IsActive)>`.
+  Union of the category map (label `Group / Category` from the active budget year; inactive when the category is not in that year)
   and the managed registry (its `Label`). Cache reads only — no Holded call. This is what the
   Workgroups picker and the phase-2 Expenses dropdown consume; the "link existing" picker in
   Workgroups shows the full live chart via `IHoldedClient.ListExpenseAccountsAsync` so an account
@@ -122,11 +122,11 @@ it. No `WorkgroupAdmin` role exists; adding one is a separate change.
   The proposed name is shown before submit. When an account is already bound the form shows it
   and the radio defaults to keeping it.
 - Register-existing bootstrap form (`/Workgroups/Admin/RegisterExisting`) gets the same fields.
-- Localization: the member-visible budget block gets keys in all six cultures. The admin form
+- Localization: the member-visible budget block gets keys in all supported cultures. The admin form
   under `/Workgroups/Admin/*` is localization-exempt.
 
 **Docs.** `Workgroups.md` (data model, invariants, triggers, cross-section dependencies gain
-`IHoldedFinanceWrite` and `IHoldedClient`), `authorization.md`, `data-access.md`; Finance's
+`IFinanceWrite` and `IHoldedClient`), `authorization.md`, `data-access.md`; Finance's
 `Finance.md` (new table, new surface, sync rule). Dependency graph edge Workgroups → Finance.
 
 **GDPR.** No personal data added. Nothing to export or erase.
@@ -151,7 +151,7 @@ An expense report names the Holded account it goes to, not a budget category.
   become nullable and are derived at selection time for category-mapped accounts (account →
   category via Finance's map) so endorsement routing and year pinning keep working for
   department reports.
-- The New/Edit dropdown is `IHoldedFinanceService.ListExpenseAccountsAsync(activeOnly: true)`,
+- The New/Edit dropdown is `IFinanceService.ListExpenseAccountsAsync(activeOnly: true)`,
   grouped "Budget categories" / "Other accounts".
 - Reports on an unmapped account skip coordinator endorsement: Submitted → Finance review.
   Peter's decision; the Finance admin is the gate.

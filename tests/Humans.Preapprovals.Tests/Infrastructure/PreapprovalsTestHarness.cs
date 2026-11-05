@@ -52,12 +52,12 @@ public abstract class PreapprovalsTestHarness : IDisposable
                 return new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(dict);
             });
 
-        Finance = Substitute.For<IHoldedFinanceService>();
+        Finance = Substitute.For<IFinanceService>();
         Finance.ListExpenseAccountsAsync(Arg.Any<bool>(), Arg.Any<CancellationToken>())
-            .Returns(_ => Task.FromResult<IReadOnlyList<HoldedExpenseAccountOption>>(
+            .Returns(_ => Task.FromResult<IReadOnlyList<ExpenseAccountOption>>(
             [
-                new HoldedExpenseAccountOption(62900150, "acc-62900150", "Creativity grants", true, true),
-                new HoldedExpenseAccountOption(62900160, "acc-62900160", "Infrastructure", true, true)
+                new ExpenseAccountOption(62900150, "acc-62900150", "Creativity grants", true, true),
+                new ExpenseAccountOption(62900160, "acc-62900160", "Infrastructure", true, true)
             ]));
 
         Notifications = Substitute.For<INotificationEmitter>();
@@ -72,7 +72,7 @@ public abstract class PreapprovalsTestHarness : IDisposable
     private protected TestDbContextFactory<PreapprovalsDbContext> DbFactory { get; }
     private protected FakeClock Clock { get; }
     private protected IUserService Users { get; }
-    private protected IHoldedFinanceService Finance { get; }
+    private protected IFinanceService Finance { get; }
     private protected INotificationEmitter Notifications { get; }
     private protected INotificationAutoResolve NotificationResolve { get; }
     private protected IEmailService Email { get; }

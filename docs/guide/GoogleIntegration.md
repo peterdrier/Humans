@@ -71,7 +71,7 @@ Duplicate links on the same team are rejected. Unlinking is soft — the record 
 
 ### What coordinators cannot do
 
-Sync settings, group-settings drift remediation, and workspace account provisioning are Admin-only. You also cannot manage resources for teams you do not coordinate. The `TeamResourceManagement:AllowCoordinatorsToManageResources` config flag gates coordinator access entirely — if it is off, only Board and TeamsAdmins can link and unlink.
+Sync settings, group-settings drift remediation, and workspace account provisioning are Admin-only. You also cannot manage resources for teams you do not coordinate. The `TeamResourceManagement:AllowCoordinatorsToManageResources` config flag gates coordinator access entirely — if it is off, only TeamsAdmins and Admins can link and unlink. Board members can open a team's resources page to view it, but every form is hidden.
 
 ## As a Board member / Admin
 

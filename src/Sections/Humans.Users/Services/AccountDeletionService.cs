@@ -109,7 +109,7 @@ internal sealed class AccountDeletionService(
         {
             var notificationEmails = await userEmailService.GetNotificationTargetEmailsAsync([userId], CancellationToken.None);
             var notificationEmail = notificationEmails.GetValueOrDefault(userId) ?? user.Email;
-            if (notificationEmail is not null)
+            if (!string.IsNullOrWhiteSpace(notificationEmail))
             {
                 await emailService.SendAsync(emailMessages.AccountDeletionRequested(
                     userId,
@@ -119,6 +119,10 @@ internal sealed class AccountDeletionService(
                     user.PreferredLanguage.IsSupportedCultureCode()
                         ? user.PreferredLanguage : CultureCatalog.DefaultCultureCode),
                     CancellationToken.None);
+            }
+            else
+            {
+                logger.LogWarning("Skipping account-deletion request confirmation for user {UserId}: no notification email", userId);
             }
         }
         catch (Exception ex)

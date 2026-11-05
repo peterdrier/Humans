@@ -119,7 +119,8 @@ internal sealed record GateDecisionResult(
     Guid? PreviousAdmitByUserId,
     string? VendorTicketId = null,
     GateOverrideFailure? OverrideFailure = null,
-    int? RetryAfterSeconds = null);
+    int? RetryAfterSeconds = null,
+    bool InputTooLong = false);
 
 internal enum GateOverrideFailure
 {

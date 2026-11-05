@@ -41,7 +41,7 @@ public class OnboardingWidgetControllerNamesTests
     private OnboardingWidgetController BuildSut(Guid userId, string lang = "en", OnboardingWidgetStep currentStep = OnboardingWidgetStep.Names)
     {
         _state.GetCurrentStepAsync(userId, Arg.Any<CancellationToken>()).Returns(currentStep);
-        var ctrl = new OnboardingWidgetController(_userService, _state, _profileEditor, _signups, _shiftMgmt, _burnSettings, _shiftView, _onboardingService, SystemClock.Instance, _localizer, Microsoft.Extensions.Logging.Abstractions.NullLogger<OnboardingWidgetController>.Instance);
+        var ctrl = new OnboardingWidgetController(_userService, _state, _profileEditor, _signups, _shiftMgmt, _burnSettings, _shiftView, _onboardingService, _localizer, Microsoft.Extensions.Logging.Abstractions.NullLogger<OnboardingWidgetController>.Instance);
         var http = new DefaultHttpContext
         {
             User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, userId.ToString())],
@@ -55,14 +55,10 @@ public class OnboardingWidgetControllerNamesTests
     [HumansFact]
     public async Task Names_Get_ReturnsBlankViewModel_IgnoringOauthClaims()
     {
-        // OAuth-supplied legal names are unverified — provider-set GivenName /
-        // Surname must NOT prefill the form. Reports of users blowing through
-        // the Names step with whatever Google handed us are the regression
-        // this guards. The prefill reads the saved profile (none here → blank),
-        // never the claims.
+        // OAuth-supplied names are unverified: the prefill reads the saved profile (none here), never claims.
         var userId = Guid.NewGuid();
         var ctrl = new OnboardingWidgetController(
-            _userService, _state, _profileEditor, _signups, _shiftMgmt, _burnSettings, _shiftView, _onboardingService, SystemClock.Instance, _localizer, Microsoft.Extensions.Logging.Abstractions.NullLogger<OnboardingWidgetController>.Instance);
+            _userService, _state, _profileEditor, _signups, _shiftMgmt, _burnSettings, _shiftView, _onboardingService, _localizer, Microsoft.Extensions.Logging.Abstractions.NullLogger<OnboardingWidgetController>.Instance);
         var http = new DefaultHttpContext
         {
             User = new ClaimsPrincipal(new ClaimsIdentity(
@@ -168,11 +164,7 @@ public class OnboardingWidgetControllerNamesTests
     [HumansFact]
     public async Task Names_Post_RedirectsToIndex_AndDoesNotSave_WhenUserAlreadyNamed()
     {
-        // Names POST is reachable directly. SaveProfileAsync does a full
-        // overwrite, so re-posting with a Names-only viewmodel would clobber
-        // existing City/Bio/EmergencyContact/etc. Guard: bail out when the user
-        // already has their name on file — an in-section check against their own
-        // profile, NOT the consent/step state.
+        // Already named: skip the save, so the full-field overwrite can't clobber the rest of the profile.
         var userId = Guid.NewGuid();
         var ctrl = BuildSut(userId);
         _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())

@@ -237,12 +237,6 @@ body.admin-shell .crumb .trail > :last-child {
     font-weight: 600;
 }
 
-/* The shell's crumb replaces a page's own Bootstrap breadcrumb (member pages render in the shell
-   for admin-role users). */
-body.admin-shell .main nav[aria-label="breadcrumb"] {
-    display: none;
-}
-
 /* ── Group tabs ───────────────────────────────────────────────────────── */
 
 /* Above the breadcrumb, pulled up into the main area's top padding. */
@@ -320,59 +314,6 @@ body.admin-shell .sub {
     margin: 4px 0 22px;
     max-width: 640px;
     line-height: 1.55;
-}
-
-/* ── Stats row ────────────────────────────────────────────────────────── */
-
-body.admin-shell .stats {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 16px;
-    margin-bottom: 28px;
-}
-
-body.admin-shell .stat {
-    background: var(--h-warm-white);
-    border: 1px solid var(--h-border);
-    border-radius: var(--h-radius-lg);
-    padding: 18px 20px;
-    box-shadow: var(--h-shadow-sm);
-}
-
-body.admin-shell .stat .label {
-    font-family: var(--h-font-body);
-    font-size: 0.7rem;
-    letter-spacing: 0.15em;
-    text-transform: uppercase;
-    color: var(--h-sepia);
-    margin-bottom: 6px;
-}
-
-body.admin-shell .stat .value {
-    font-family: var(--h-font-display);
-    font-size: 2.2rem;
-    font-weight: 700;
-    line-height: 1;
-    color: var(--h-aged-ink);
-}
-
-body.admin-shell .stat .value em {
-    font-style: italic;
-    color: var(--h-gold-dark);
-    font-size: 1rem;
-    font-weight: 500;
-}
-
-body.admin-shell .stat .delta {
-    font-family: var(--h-font-display);
-    font-style: italic;
-    font-size: 0.78rem;
-    color: var(--h-sage-dark);
-    margin-top: 4px;
-}
-
-body.admin-shell .stat .delta.bad {
-    color: var(--h-rust);
 }
 
 /* ── Sign-in method dial (Google share of sign-ins) ───────────────────── */
@@ -549,7 +490,6 @@ body.admin-shell .split-panels {
 
 @media (min-width: 768px) and (max-width: 1099.98px) {
     body.admin-shell .app-shell { grid-template-columns: 200px 1fr; }
-    body.admin-shell .stats { grid-template-columns: repeat(2, 1fr); }
     body.admin-shell .split-panels { grid-template-columns: 1fr; }
 }
 
@@ -563,7 +503,6 @@ body.admin-shell .split-panels {
        (which have flex-shrink:0), so the column expands past the viewport
        and the inner overflow:auto never triggers. */
     body.admin-shell .app-shell { grid-template-columns: minmax(0, 1fr); }
-    body.admin-shell .stats { grid-template-columns: 1fr; }
     body.admin-shell .split-panels { grid-template-columns: 1fr; }
 
     body.admin-shell .m-nav { padding: 0 16px; gap: 12px; height: 56px; }

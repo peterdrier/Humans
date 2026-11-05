@@ -1,3 +1,4 @@
+@inject IStringLocalizer<SharedResource> SharedLocalizer
 @model Humans.Notifications.Models.NotificationPopupViewModel
 
 <div class="notification-popup-header">
@@ -42,9 +43,12 @@ else
             @foreach (var meter in Model.Meters)
             {
                 <div class="notification-meter-row">
-                    <div class="notification-meter-info">
-                        <span class="notification-meter-title">@meter.Title</span>
-                        <span class="badge rounded-pill bg-warning text-dark notification-meter-badge">@meter.Count</span>
+                    <div class="notification-meter-text">
+                        <div class="notification-meter-info">
+                            <span class="notification-meter-title">@meter.Title</span>
+                            <span class="badge rounded-pill bg-warning text-dark notification-meter-badge">@meter.Count</span>
+                        </div>
+                        <div class="notification-audience">@string.Format(Localizer["Notifications_SentTo"].Value, meter.Audience)</div>
                     </div>
                     <a href="@meter.ActionUrl" class="btn btn-sm btn-outline-primary notification-meter-action">
                         @Localizer["Notifications_DefaultActionLabel"]
@@ -66,7 +70,8 @@ else
 <div class="notification-popup-footer">
     <form method="post" asp-controller="Notifications" asp-action="MarkAllRead" class="d-inline">
         @Html.AntiForgeryToken()
-        <button type="submit" class="notification-mark-all-read" data-ajax-markallread>
+        <button type="submit" class="notification-mark-all-read" data-ajax-markallread
+                data-error="@SharedLocalizer["Common_Error"]">
             @Localizer["Notifications_MarkAllRead"]
         </button>
     </form>

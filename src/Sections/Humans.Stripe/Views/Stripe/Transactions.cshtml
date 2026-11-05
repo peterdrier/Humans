@@ -1,0 +1,109 @@
+@model StripeTransactionsPage
+@{
+    ViewData["Title"] = "Stripe transactions";
+    var madrid = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
+    var f = Model.Filter;
+    var matched = (int)(ViewData["MatchCount"] ?? 0);
+    string N(int n) => n.ToString("N0", CultureInfo.InvariantCulture);
+}
+
+<h1 class="mb-3">Stripe transactions</h1>
+<partial name="_StripeNav" />
+
+<form method="get" asp-action="Transactions" class="row g-2 align-items-end mb-3">
+    <div class="col-md-4">
+        <label class="form-label small mb-0" for="q">Search</label>
+        <input id="q" name="q" value="@f.Q" class="form-control form-control-sm"
+               placeholder="name, email, order id, description, ch_/pi_/po_/txn_ id" />
+    </div>
+    <div class="col-md-2">
+        <label class="form-label small mb-0" for="account">Account</label>
+        <select id="account" name="account" class="form-select form-select-sm">
+            <option value="">Any</option>
+            @foreach (var a in Model.Accounts)
+            {
+                @if (string.Equals(a.Value, f.Account, StringComparison.Ordinal))
+                {
+                    <option value="@a.Value" selected>@a.Label</option>
+                }
+                else
+                {
+                    <option value="@a.Value">@a.Label</option>
+                }
+            }
+        </select>
+    </div>
+    <div class="col-md-2">
+        <label class="form-label small mb-0" for="type">Type</label>
+        <select id="type" name="type" class="form-select form-select-sm">
+            <option value="">Any</option>
+            @foreach (var t in Model.Types)
+            {
+                @if (string.Equals(t, f.Type, StringComparison.Ordinal))
+                {
+                    <option value="@t" selected>@t</option>
+                }
+                else
+                {
+                    <option value="@t">@t</option>
+                }
+            }
+        </select>
+    </div>
+    @if (!string.IsNullOrEmpty(f.Payout))
+    {
+        <input type="hidden" name="payout" value="@f.Payout" />
+    }
+    <div class="col-md-3">
+        <button type="submit" class="btn btn-sm btn-primary">Filter</button>
+        <a asp-action="Transactions" class="btn btn-sm btn-link">Clear</a>
+    </div>
+</form>
+
+<p class="text-muted small">
+    @N(matched) transactions@(string.IsNullOrEmpty(f.Payout) ? "" : $" in payout {f.Payout}"), newest first.
+    @if (matched > Model.Rows.Count)
+    {
+        <span class="text-danger">Showing the newest @N(Model.Rows.Count); narrow the search to see the rest.</span>
+    }
+</p>
+
+<div class="table-responsive">
+    <table class="table table-sm table-hover align-middle">
+        <thead>
+            <tr>
+                <th>Created</th><th>Account</th><th>Type</th><th>Description</th><th>Buyer</th>
+                <th class="text-end">Amount</th><th class="text-end">Fee</th><th class="text-end">Net</th>
+                <th>Available</th><th>Payout</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var t in Model.Rows)
+            {
+                <tr>
+                    <td class="text-nowrap"><a asp-action="Transaction" asp-route-id="@t.Id">@t.Created.ToDateTime(madrid)</a></td>
+                    <td class="small">@t.AccountName</td>
+                    <td class="small">
+                        @t.Type
+                        @if (!string.Equals(t.Type, t.ReportingCategory, StringComparison.Ordinal))
+                        {
+                            <div class="text-muted">@t.ReportingCategory</div>
+                        }
+                    </td>
+                    <td class="small">@t.Description</td>
+                    <td class="small">@t.CustomerName<div class="text-muted">@t.CustomerEmail</div></td>
+                    <td class="text-end text-nowrap">@StripeMoneyFormat.Show(t.Amount, t.Currency, signed: true)</td>
+                    <td class="text-end text-nowrap text-muted">@(t.Fee == 0m ? "" : StripeMoneyFormat.Show(t.Fee, t.Currency))</td>
+                    <td class="text-end text-nowrap">@StripeMoneyFormat.Show(t.Net, t.Currency, signed: true)</td>
+                    <td class="text-nowrap small">@t.AvailableOn.ToDate()</td>
+                    <td class="small">
+                        @if (t.PayoutId is not null)
+                        {
+                            <a asp-action="Transactions" asp-route-payout="@t.PayoutId"><code>@t.PayoutId</code></a>
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>

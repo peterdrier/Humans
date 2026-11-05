@@ -47,7 +47,7 @@ public class HoldedDuplicateTests
         Substitute.For<IEmailService>(), TestFinanceEmails.Create(),
         Options.Create(new SepaOptions()),
         new TrackedCache<string, Dictionary<string, int>>("Finance.SepaStuckBankLines", warmOnStartup: false, NullLogger<Service>.Instance),
-        logger ?? NullLogger<Service>.Instance);
+        Substitute.For<IPaymentDetailsManagement>(), logger ?? NullLogger<Service>.Instance);
 
     public HoldedDuplicateTests()
     {
@@ -457,6 +457,19 @@ public class HoldedDuplicateTests
         var result = await MakeService().RemoveHoldedDuplicatesAsync(Actor);
 
         result.Error.Should().Contain("nothing was deleted");
+        await _client.DidNotReceive().DeletePurchaseDocumentAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task Apply_WhenTheContactListCannotBeRead_DeletesNothingAndSaysWhy()
+    {
+        _expenses.GetHoldedBookingsAsync(Arg.Any<CancellationToken>()).Returns([Booking("doc-a")]);
+        _client.ListPurchaseDocumentsAsync(Arg.Any<CancellationToken>()).Returns([Doc("doc-a"), Doc("doc-b")]);
+        _client.ListContactsAsync(Arg.Any<CancellationToken>()).Throws(new HoldedTransientException("timeout"));
+
+        var result = await MakeService().RemoveHoldedDuplicatesAsync(Actor);
+
+        result.Error.Should().Be("Nothing was deleted: " + Service.ContactListUnavailable);
         await _client.DidNotReceive().DeletePurchaseDocumentAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
     }
 

@@ -1,3 +1,5 @@
+@using Humans.Base.Interfaces
+@using Humans.Base.Models
 @model DailyMatrixDto
 
 @functions {
@@ -48,61 +50,34 @@
 }
 
 <div class="container py-4">
-    <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
-        <h1 class="mb-0">
-            @if (Model.CalendarDate is not null)
-            {
-                @FormatLong(Model.CalendarDate)
-            }
-            else
-            {
-                @Localizer["Cantina_Roster_NoActiveEvent"]
-            }
-            @if (isToday)
-            {
-                <span class="badge bg-info ms-2 align-middle">@Localizer["Cantina_Day_TodayBadge"]</span>
-            }
-        </h1>
-        <div class="d-flex gap-2">
-            @* Back to the week this day was opened from; the shell's Roster crumb goes to the current week. *@
-            <a class="btn btn-sm btn-outline-secondary" asp-action="Roster" asp-route-weekStartOffset="@Model.WeekStartOffset">
-                <i class="fa-solid fa-arrow-left me-1"></i>@Localizer["Cantina_Roster_PageTitle"]
-            </a>
-            @if (!healthRevealed && Model.People.Count > 0)
-            {
-                <form asp-action="RevealDayHealth" asp-route-dayOffset="@Model.DayOffset" method="post" class="d-inline">
-                    @Html.AntiForgeryToken()
-                    <button type="submit" class="btn btn-sm btn-outline-danger" title="@Localizer["Cantina_Roster_RevealHealthNote"].Value">
-                        <i class="fa-solid fa-eye me-1"></i>@Localizer["Cantina_Roster_RevealHealth"]
-                    </button>
-                </form>
-            }
-            <a authorize-policy="@Humans.Cantina.Contracts.CantinaPolicies.Manage" class="btn btn-sm btn-primary" asp-action="DayCsv" asp-route-dayOffset="@Model.DayOffset">
-                <i class="fa-solid fa-download me-1"></i>@Localizer["Cantina_Day_DownloadCsv"]
-            </a>
-        </div>
-    </div>
+    <page-header title="@(Model.CalendarDate is not null ? FormatLong(Model.CalendarDate) : Localizer["Cantina_Roster_NoActiveEvent"].Value)"
+                 badge="@(isToday ? Localizer["Cantina_Day_TodayBadge"].Value : null)" badge-class="bg-info">
+        @* Back to the week this day was opened from; the shell's Roster crumb goes to the current week. *@
+        <a class="btn btn-sm btn-outline-secondary" asp-action="Roster" asp-route-weekStartOffset="@Model.WeekStartOffset">
+            <i class="fa-solid fa-arrow-left me-1"></i>@Localizer["Cantina_Roster_PageTitle"]
+        </a>
+        @if (!healthRevealed && Model.People.Count > 0)
+        {
+            <form asp-action="RevealDayHealth" asp-route-dayOffset="@Model.DayOffset" method="post" class="d-inline">
+                @Html.AntiForgeryToken()
+                <button type="submit" class="btn btn-sm btn-outline-danger" title="@Localizer["Cantina_Roster_RevealHealthNote"].Value">
+                    <i class="fa-solid fa-eye me-1"></i>@Localizer["Cantina_Roster_RevealHealth"]
+                </button>
+            </form>
+        }
+        <a authorize-policy="@Humans.Cantina.Contracts.CantinaPolicies.Manage" class="btn btn-sm btn-primary" asp-action="DayCsv" asp-route-dayOffset="@Model.DayOffset">
+            <i class="fa-solid fa-download me-1"></i>@Localizer["Cantina_Day_DownloadCsv"]
+        </a>
+    </page-header>
 
     @if (!healthRevealed && Model.People.Count > 0)
     {
         <p class="text-muted small"><i class="fa-solid fa-lock me-1"></i>@Localizer["Cantina_Roster_HealthHidden"]</p>
     }
 
-    <div class="card mb-4">
-        <div class="card-body">
-            <div class="row text-center">
-                <div class="col">
-                    <div class="h3 mb-0">@Model.TotalOnSite</div>
-                    <div class="text-muted small">@Localizer["Cantina_Day_TotalOnSite"]</div>
-                </div>
-                <div class="col">
-                    <div class="h3 mb-0 @(Model.UnansweredCount > 0 ? "text-warning" : "text-muted")">
-                        @Model.UnansweredCount
-                    </div>
-                    <div class="text-muted small">@Localizer["Cantina_Day_Unanswered"]</div>
-                </div>
-            </div>
-        </div>
+    <div class="stats" style="--stats-cols: 2">
+        <partial name="_StatTile" model='new StatTileViewModel(Localizer["Cantina_Day_TotalOnSite"].Value, Model.TotalOnSite.ToString())' />
+        <partial name="_StatTile" model='new StatTileViewModel(Localizer["Cantina_Day_Unanswered"].Value, Model.UnansweredCount.ToString(), Severity: Model.UnansweredCount > 0 ? TileSeverity.Warning : TileSeverity.Normal)' />
     </div>
 
     @if (Model.People.Count == 0)

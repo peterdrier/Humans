@@ -22,6 +22,7 @@ internal static class PreapprovalErrorKeys
     public const string NotAcceptingApplications = "Preapprovals_Error_NotAcceptingApplications";
     public const string DeadlinePassed = "Preapprovals_Error_DeadlinePassed";
     public const string WrongStatus = "Preapprovals_Error_WrongStatus";
+    public const string PersonUnavailable = "Preapprovals_Error_PersonUnavailable";
     public const string NoBeneficiaries = "Preapprovals_Error_NoBeneficiaries";
     public const string TextTooLong = "Preapprovals_Error_TextTooLong";
     public const string IssueManyFixedOnly = "Preapprovals_Error_IssueManyFixedOnly";

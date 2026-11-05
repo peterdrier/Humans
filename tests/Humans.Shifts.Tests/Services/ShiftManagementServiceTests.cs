@@ -579,6 +579,50 @@ public sealed class ShiftManagementServiceTests : ShiftsTestHarness
         saved.Languages.Should().BeEmpty();
     }
 
+    [HumansTheory]
+    [Xunit.InlineData(false, "member")]
+    [Xunit.InlineData(true, "member")]
+    [Xunit.InlineData(false, "coordinator")]
+    [Xunit.InlineData(true, "coordinator")]
+    [Xunit.InlineData(true, "parent-coordinator")]
+    [Xunit.InlineData(true, "admin")]
+    [Xunit.InlineData(true, "unscoped")]
+    public async Task GetBrowseShifts_EarlyEntryLockUsesViewerPrivilegeForEachTeam(bool closed, string viewerKind)
+    {
+        var (es, rota) = SeedRotaScenario(RotaPeriod.Build);
+        es.EarlyEntryClose = TestNow + Duration.FromSeconds(closed ? 0 : 1);
+        var (_, otherRota) = SeedRotaScenario(RotaPeriod.Build);
+        otherRota.EventSettingsId = es.Id;
+        otherRota.EventSettings = es;
+        SeedShift(rota, dayOffset: -1);
+        SeedShift(otherRota, dayOffset: -1);
+        var viewer = Guid.NewGuid();
+        if (viewerKind is "coordinator" or "parent-coordinator")
+        {
+            var coordinatedTeamId = rota.TeamId;
+            if (viewerKind is "parent-coordinator")
+            {
+                coordinatedTeamId = Guid.NewGuid();
+                TeamsDb.Teams.Local.Single(t => t.Id == rota.TeamId).ParentTeamId = coordinatedTeamId;
+            }
+            _teamService.GetUserCoordinatedTeamIdsAsync(viewer, Arg.Any<CancellationToken>())
+                .Returns(new List<Guid> { coordinatedTeamId });
+        }
+        if (viewerKind is "admin")
+            _roleAssignmentService.HasActiveRoleAsync(viewer, Humans.Base.Constants.RoleNames.Admin, Arg.Any<CancellationToken>())
+                .Returns(true);
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
+
+        var rows = await _service.GetBrowseShiftsAsync(new ShiftBrowseQuery(es.Id,
+            ViewerUserId: viewerKind is "unscoped" ? null : viewer), Xunit.TestContext.Current.CancellationToken);
+
+        rows.Should().HaveCount(2);
+        rows.Single(r => r.Rota.Id == rota.Id).EarlyEntrySignupsClosed.Should()
+            .Be(closed && viewerKind is "member" or "unscoped");
+        rows.Single(r => r.Rota.Id == otherRota.Id).EarlyEntrySignupsClosed.Should()
+            .Be(closed && viewerKind is not "admin");
+    }
+
     [HumansFact]
     public async Task GetBrowseShifts_IncludeSignups_ReturnsConfirmedAndPendingOnly()
     {

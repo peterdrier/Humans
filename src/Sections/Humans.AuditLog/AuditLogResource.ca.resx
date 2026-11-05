@@ -49,7 +49,7 @@
   <data name="Enum_AuditAction_TeamJoinRequestRejected" xml:space="preserve"><value>Sol·licitud d’incorporació a l’equip rebutjada</value></data>
   <data name="Enum_AuditAction_TeamMemberRoleChanged" xml:space="preserve"><value>El rol dels membres de l'equip ha canviat</value></data>
   <data name="Enum_AuditAction_AnomalousPermissionDetected" xml:space="preserve"><value>S'ha detectat un permís anòmal</value></data>
-  <data name="Enum_AuditAction_MembershipsRevokedOnDeletionRequest" xml:space="preserve"><value>Membres revocats en sol·licitud de supressió</value></data>
+  <data name="Enum_AuditAction_MembershipsRevokedOnDeletionRequest" xml:space="preserve"><value>Pertinences revocades en sol·licitud de supressió</value></data>
   <data name="Enum_AuditAction_ConsentCheckCleared" xml:space="preserve"><value>Revisió del consentiment validada</value></data>
   <data name="Enum_AuditAction_ConsentCheckFlagged" xml:space="preserve"><value>Comprovació de consentiment marcada</value></data>
   <data name="Enum_AuditAction_SignupRejected" xml:space="preserve"><value>S'ha rebutjat la inscripció</value></data>
@@ -67,14 +67,14 @@
   <data name="Enum_AuditAction_CampCreated" xml:space="preserve"><value>Es va crear un campament</value></data>
   <data name="Enum_AuditAction_CampUpdated" xml:space="preserve"><value>Campament actualitzat</value></data>
   <data name="Enum_AuditAction_CampDeleted" xml:space="preserve"><value>Campament suprimit</value></data>
-  <data name="Enum_AuditAction_CampSeasonCreated" xml:space="preserve"><value>Temporada de colònies creada</value></data>
+  <data name="Enum_AuditAction_CampSeasonCreated" xml:space="preserve"><value>Temporada de campament creada</value></data>
   <data name="Enum_AuditAction_CampRegistrationOpened" xml:space="preserve"><value>Inscripcions als campaments obertes</value></data>
   <data name="Enum_AuditAction_CampRegistrationClosed" xml:space="preserve"><value>Inscripcions als campaments tancades</value></data>
   <data name="Enum_AuditAction_CampNameLockDateChanged" xml:space="preserve"><value>Data de bloqueig dels noms de campament modificada</value></data>
-  <data name="Enum_AuditAction_CampSeasonApproved" xml:space="preserve"><value>Temporada de colònies aprovada</value></data>
-  <data name="Enum_AuditAction_CampSeasonRejected" xml:space="preserve"><value>Temporada de colònies rebutjada</value></data>
-  <data name="Enum_AuditAction_CampSeasonWithdrawn" xml:space="preserve"><value>Temporada de colònies retirada</value></data>
-  <data name="Enum_AuditAction_CampSeasonStatusChanged" xml:space="preserve"><value>L'estat de la temporada de colònies ha canviat</value></data>
+  <data name="Enum_AuditAction_CampSeasonApproved" xml:space="preserve"><value>Temporada de campament aprovada</value></data>
+  <data name="Enum_AuditAction_CampSeasonRejected" xml:space="preserve"><value>Temporada de campament rebutjada</value></data>
+  <data name="Enum_AuditAction_CampSeasonWithdrawn" xml:space="preserve"><value>Temporada de campament retirada</value></data>
+  <data name="Enum_AuditAction_CampSeasonStatusChanged" xml:space="preserve"><value>L'estat de la temporada de campament ha canviat</value></data>
   <data name="Enum_AuditAction_CampNameChanged" xml:space="preserve"><value>El nom del campament ha canviat</value></data>
   <data name="Enum_AuditAction_CampLeadAdded" xml:space="preserve"><value>Responsable del campament afegit</value></data>
   <data name="Enum_AuditAction_CampLeadRemoved" xml:space="preserve"><value>Responsable del campament retirat</value></data>
@@ -388,7 +388,7 @@
   <data name="Enum_AuditAction_EmailOutboxDiscarded" xml:space="preserve"><value>Missatge de la bústia de sortida de correu descartat</value></data>
   <data name="Enum_AuditAction_EmailOutboxRetried" xml:space="preserve"><value>Missatge de la bústia de sortida de correu reintentat</value></data>
   <data name="Enum_AuditAction_EmailSendingPaused" xml:space="preserve"><value>Enviament de correus aturat</value></data>
-  <data name="Enum_AuditAction_EmailSendingResumed" xml:space="preserve"><value>Enviament de correus represos</value></data>
+  <data name="Enum_AuditAction_EmailSendingResumed" xml:space="preserve"><value>Enviament de correus reprès</value></data>
   <data name="Enum_AuditAction_GrantIssued" xml:space="preserve"><value>Concessió atorgada</value></data>
   <data name="Enum_AuditAction_GrantNoticeResent" xml:space="preserve"><value>Avís de concessió reenviat</value></data>
   <data name="Enum_AuditAction_GrantProgramCreated" xml:space="preserve"><value>Programa de concessions creat</value></data>

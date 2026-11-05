@@ -66,6 +66,11 @@ internal sealed class GoogleGroupMembershipClient(
                 Memberships: null,
                 Error: new GoogleClientError(ex.Error?.Code ?? 0, ex.Error?.Message));
         }
+        catch (Exception ex) when (GoogleClientError.IsTransportError(ex))
+        {
+            logger.LogWarning(ex, "Transport error listing memberships for group {GroupId}", groupGoogleId);
+            return new GroupMembershipListResult(Memberships: null, Error: new GoogleClientError(0, ex.Message));
+        }
     }
 
     public async Task<GroupMembershipMutationResult> CreateMembershipAsync(
@@ -107,6 +112,12 @@ internal sealed class GoogleGroupMembershipClient(
                 GroupMembershipMutationOutcome.Failed,
                 Error: new GoogleClientError(ex.Error?.Code ?? 0, ex.Error?.Message));
         }
+        catch (Exception ex) when (GoogleClientError.IsTransportError(ex))
+        {
+            logger.LogWarning(ex, "Transport error adding {Email} to group {GroupId}", memberEmail, groupGoogleId);
+            return new GroupMembershipMutationResult(
+                GroupMembershipMutationOutcome.Failed, Error: new GoogleClientError(0, ex.Message));
+        }
     }
 
     public async Task<GoogleClientError?> DeleteMembershipAsync(
@@ -140,6 +151,11 @@ internal sealed class GoogleGroupMembershipClient(
                 "Google API error deleting membership {Name}: Code={Code} Message={Message}",
                 membershipResourceName, ex.Error?.Code, ex.Error?.Message);
             return new GoogleClientError(ex.Error?.Code ?? 0, ex.Error?.Message);
+        }
+        catch (Exception ex) when (GoogleClientError.IsTransportError(ex))
+        {
+            logger.LogWarning(ex, "Transport error deleting membership {Name}", membershipResourceName);
+            return new GoogleClientError(0, ex.Message);
         }
     }
 

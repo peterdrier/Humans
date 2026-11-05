@@ -19,6 +19,9 @@ internal sealed partial class PreapprovalService
         var account = await ResolveAccountAsync(save.HoldedAccountNumber, keep: null, ct);
         if (account is null) return new(Refusal: new PreapprovalRefusal(PreapprovalErrorKeys.AccountNotFound));
 
+        var managerIds = await ResolveManagerIdsAsync(save.ManagerUserIds, ct);
+        if (managerIds is null) return new(Refusal: new PreapprovalRefusal(PreapprovalErrorKeys.PersonUnavailable));
+
         var now = clock.GetCurrentInstant();
         var program = new PreapprovalProgram
         {
@@ -37,7 +40,7 @@ internal sealed partial class PreapprovalService
             CreatedAt = now,
             UpdatedAt = now
         };
-        foreach (var userId in save.ManagerUserIds.Distinct())
+        foreach (var userId in managerIds)
             program.Managers.Add(new ProgramManager
             { ProgramId = program.Id, UserId = userId, AddedByUserId = actorUserId, AddedAt = now });
         await repository.AddProgramAsync(program, ct);
@@ -70,6 +73,9 @@ internal sealed partial class PreapprovalService
         if (save.TotalCeiling is { } ceiling && ceiling < info.Granted)
             return new(new PreapprovalRefusal(PreapprovalErrorKeys.CeilingBelowCommitted, Euros(info.Granted)));
 
+        var wanted = await ResolveManagerIdsAsync(save.ManagerUserIds, ct);
+        if (wanted is null) return new(new PreapprovalRefusal(PreapprovalErrorKeys.PersonUnavailable));
+
         var now = clock.GetCurrentInstant();
         var changes = new List<string>();
         var oldClaimBy = program.ClaimBy;
@@ -87,7 +93,6 @@ internal sealed partial class PreapprovalService
         Change(changes, "status", program.Status, save.Status, v => program.Status = v);
         Change(changes, "kind", program.Kind, save.Kind, v => program.Kind = v);
         program.UpdatedAt = now;
-        var wanted = save.ManagerUserIds.Distinct().ToList();
         var current = program.Managers.Select(m => m.UserId).ToList();
         var added = wanted.Except(current).ToList();
         var removed = current.Except(wanted).ToList();
@@ -116,6 +121,18 @@ internal sealed partial class PreapprovalService
         return PreapprovalMutationResult.Ok;
     }
 
+    private async Task<IReadOnlyList<Guid>?> ResolveManagerIdsAsync(IReadOnlyList<Guid> requested, CancellationToken ct)
+    {
+        var managers = new List<Guid>();
+        foreach (var id in requested.Distinct())
+        {
+            var person = await ResolveAvailablePersonAsync(id, ct);
+            if (person is null) return null;
+            managers.Add(person.Id);
+        }
+        return managers.Distinct().ToList();
+    }
+
     /// <summary>
     /// Reminder markers carry the deadline they announced, so the reminders simply run again for the new date.
     /// </summary>
@@ -123,10 +140,10 @@ internal sealed partial class PreapprovalService
     {
         foreach (var grant in program.Grants.Where(g => g.Status == GrantStatus.Open))
         {
-            await ResolveFileByAsync(grant.Id, actorUserId, ct);
+            await notices.ResolveFileByAsync(grant.Id, actorUserId, ct);
             var info = ToInfo(grant, program);
-            await NotifyFileByAsync(info, "Preapprovals_Notice_DeadlineChanged", NotificationPriority.High, ct);
-            await EmailAsync(info, PreapprovalNoticeKind.DeadlineChanged, detail: null, ct);
+            await notices.NotifyFileByAsync(info, "Preapprovals_Notice_DeadlineChanged", NotificationPriority.High, ct);
+            await notices.EmailAsync(info, PreapprovalNoticeKind.DeadlineChanged, detail: null, ct);
         }
     }
 

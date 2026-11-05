@@ -39,11 +39,13 @@ internal sealed class CantinaRosterService : ICantinaRosterService
         _audit = audit;
     }
 
-    public async Task<WeeklyRosterDto> GetWeeklyRosterAsync(int? weekStartOffset = null, RosterDisclosure? disclosure = null, CancellationToken ct = default)
+    public async Task<WeeklyRosterDto?> GetWeeklyRosterAsync(int? weekStartOffset = null, RosterDisclosure? disclosure = null, CancellationToken ct = default)
     {
         var burn = await _settingsService.GetActiveEventSettingsAsync(ct).ConfigureAwait(false);
+        var offset = weekStartOffset ?? CurrentWeekStartOffset(burn);
+        if (!CanRepresentWindow(burn, offset, DaysPerWeek)) return null;
         var roster = await BuildWeeklyRosterAsync(
-            burn, weekStartOffset ?? CurrentWeekStartOffset(burn), ct).ConfigureAwait(false);
+            burn, offset, ct).ConfigureAwait(false);
         if (disclosure is not null)
         {
             // One row per disclosure, never one per member shown: the roster is the kitchen assembling a few hundred
@@ -170,11 +172,13 @@ internal sealed class CantinaRosterService : ICantinaRosterService
             ? Period.Between(burn.GateOpeningDate, today, PeriodUnits.Days).Days
             : 0;
 
-    public async Task<DailyMatrixDto> GetDailyRosterAsync(int? dayOffset = null, RosterDisclosure? disclosure = null, CancellationToken ct = default)
+    public async Task<DailyMatrixDto?> GetDailyRosterAsync(int? dayOffset = null, RosterDisclosure? disclosure = null, CancellationToken ct = default)
     {
         var burn = await _settingsService.GetActiveEventSettingsAsync(ct).ConfigureAwait(false);
+        var offset = dayOffset ?? CurrentDayOffset(burn);
+        if (!CanRepresentWindow(burn, offset, 1)) return null;
         var matrix = await BuildDailyRosterAsync(
-            burn, dayOffset ?? CurrentDayOffset(burn), ct).ConfigureAwait(false);
+            burn, offset, ct).ConfigureAwait(false);
         if (disclosure is not null)
         {
             var scope = $"day {matrix.CalendarDate.ToInvariantDate() ?? "no active event"}";
@@ -183,6 +187,18 @@ internal sealed class CantinaRosterService : ICantinaRosterService
                 disclosure.ActorUserId).ConfigureAwait(false);
         }
         return matrix;
+    }
+
+    private static bool CanRepresentWindow(EventSettingsInfo? burn, int offset, int days)
+    {
+        // Navigation and arrival scans add/subtract a week even without an event date.
+        if ((long)offset - DaysPerWeek < int.MinValue || (long)offset + DaysPerWeek > int.MaxValue)
+            return false;
+        if (burn is null) return true;
+
+        var minimum = -Period.Between(LocalDate.MinIsoValue, burn.GateOpeningDate, PeriodUnits.Days).Days;
+        var maximum = Period.Between(burn.GateOpeningDate, LocalDate.MaxIsoValue, PeriodUnits.Days).Days;
+        return offset >= minimum && (long)offset + days - 1 <= maximum;
     }
 
     private async Task<DailyMatrixDto> BuildDailyRosterAsync(

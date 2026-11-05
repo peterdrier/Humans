@@ -139,6 +139,7 @@ internal sealed class EmailController(
         ["fr"] = ("François Dupont", "francois@example.com"),
         ["it"] = ("Giulia Rossi", "giulia@example.com"),
         ["ca"] = ("Jordi Puig", "jordi@example.com"),
+        ["nl"] = ("Sanne de Vries", "sanne@example.com"),
     };
 
     [HttpGet("EmailPreview")]

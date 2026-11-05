@@ -317,17 +317,23 @@ public sealed class EventParticipationServiceTests : IDisposable
             .Should().Be(template);
     }
 
-    [HumansFact]
-    public async Task Declaration_ActsOnTheSignedInMember_ForTheActiveYear()
+    [HumansTheory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task Declaration_ActsOnTheSignedInMember_ForTheActiveYear(bool declared)
     {
         var user = SeedUser();
         var participations = Substitute.For<IEventParticipationManagement>();
+        participations.DeclareNotAttendingAsync(user.Id, 2026, Arg.Any<CancellationToken>()).Returns(declared);
         participations.UndoNotAttendingAsync(user.Id, 2026, Arg.Any<CancellationToken>()).Returns(false);
         var controller = NewController(user.Id, participations, activeYear: 2026);
 
         (await controller.DeclareNotAttending()).Should().BeOfType<RedirectResult>().Which.Url.Should().Be("/");
         await participations.Received(1).DeclareNotAttendingAsync(user.Id, 2026, Arg.Any<CancellationToken>());
-        controller.TempData[TempDataKeys.SuccessMessage].Should().Be("Tickets_NotAttending_Declared");
+        controller.TempData[declared ? TempDataKeys.SuccessMessage : TempDataKeys.ErrorMessage]
+            .Should().Be(declared ? "Tickets_NotAttending_Declared" : "Tickets_NotAttending_AlreadyAttended");
+        controller.TempData.ContainsKey(declared ? TempDataKeys.ErrorMessage : TempDataKeys.SuccessMessage)
+            .Should().BeFalse();
 
         await controller.UndoNotAttending();
         controller.TempData[TempDataKeys.ErrorMessage].Should().Be("Tickets_NotAttending_UndoFailed");

@@ -4,7 +4,7 @@
   src/Humans.Base/Users/IUserService.cs
   src/Sections/Humans.Auth/Contracts/IRoleAssignmentService.cs
   src/Sections/Humans.Teams.Contracts/ITeamService.cs
-  src/Sections/Humans.Finance.Contracts/IHoldedFinanceWrite.cs
+  src/Sections/Humans.Finance.Contracts/IFinanceWrite.cs
   src/Sections/Humans.Holded/Contracts/IHoldedService.cs
   src/Sections/Humans.GoogleIntegration/Contracts/IGoogleSyncService.cs
   src/Sections/Humans.GoogleIntegration/Contracts/IGoogleDriveAccessSource.cs
@@ -141,7 +141,8 @@ the community calendar uses; nothing per occurrence is stored. The group page ti
 every occurrence that has started plus each meeting's next one, each dated in the meeting's
 zone (organisation zone for a one-off); `NextMeeting` is the earliest upcoming occurrence.
 Editing or deleting acts on the whole series. Meetings repeat daily at most: the service
-refuses sub-daily rules, since the page and the daily job expand a series from its start. A
+refuses sub-daily rules, including case-insensitive frequency values padded with whitespace,
+on both creation and update, since the page and the daily job expand a series from its start. A
 series' later occurrences are scheduled, not evidence of a meeting, so for the update-due
 rhythm only its stored first occurrence counts; the notes posted for later weeks count instead. The calendar contributor passes a repeating
 meeting as one item carrying its rule, so the personal feed holds one repeating VEVENT and the
@@ -186,7 +187,7 @@ alone stays on the queue. Register-existing requires an explicit valid registrat
 Reactivated, CoordinatorChanged, ScopeChanged, MemberJoined, MemberLeft,
 DormancyInquiry, DocumentPublished, CommentPeriodOpened, CommentPeriodClosed, Delivered,
 DispositionRecorded, SurveySubmitted, SurveySent, BudgetSet. Member: Update, Disclosure,
-StatusRequested, Note.
+StatusRequested, Note, MeetingNotes.
 
 `DormancyInquiry` is no longer written by anything. The member stays because `Kind` is
 stored as a string and a group bootstrapped with a backdated `RegisteredAt` may already
@@ -293,7 +294,11 @@ Settings and Register an existing group on first setup or after clearing the que
 
 ## Invariants
 
-- Roster membership-tier badges use localized enum labels in all six cultures.
+- Meeting saves require explicit recurrence and public-visibility values. Omitted flags redisplay field errors before any create/update call, with a Warning after member authorization; explicit false choices remain valid. Meetings stay timed-only.
+- Approving, declining and directly adding members share one preflight: the group must exist and be Active before coordinator/admin authorization is checked. An admin override does not bypass the Active requirement.
+- Register edits, member forms and member mutations share one controller resolver: resolve the actor, find the group, then check member-work permission before nested IDs or submitted values. Join, leave, status requests and commenting retain their existing exceptions to the member-work check and their route policies.
+
+- Roster membership-tier badges use localized enum labels in all supported cultures.
 
 - The section’s things-to-do contribution forwards caller cancellation through all data reads. Aborted reads propagate instead of being logged or converted into missing prompts.
 
@@ -310,9 +315,8 @@ Settings and Register an existing group on first setup or after clearing the que
 - Member and admin action and form refusals preserve typed drafts and remain visible at Warning without exception stacks; action and resource-key context, redirects and localized form feedback are preserved. Only typed section refusals carrying untranslated resource keys and arguments become validation feedback; unexpected dependency lookup or access failures propagate to the application error handler instead of becoming workgroup 404/403 responses.
 - Redirecting member actions reject malformed bound input after authorization and resource ownership checks, before any write. Invalid coordinator selections cannot save a valid subset, and invalid completion reasons cannot default to delivered; refusals return 400 and log a warning. Completion reasons, individual/category comment-response dispositions and Board dispositions must be posted explicitly; omitted choices cannot become delivered, pending or accepted. Explicit zero-valued choices remain valid. Admin binding refusals also log a Warning after actor resolution.
 
-- Member workgroup pages and forms localize breadcrumb navigation labels in all six supported cultures.
 
-- Application/register, meeting, log entry and document form required and length errors use shared resources in all six cultures; input limits are unchanged.
+- Application/register, meeting, log entry and document form required and length errors use shared resources in all supported cultures; input limits are unchanged.
 
 - Registration is administrative recognition only (Board Resolution clause 4). No
   transition happens automatically; every lifecycle step is a `BoardOrAdmin` action
@@ -344,6 +348,7 @@ Settings and Register an existing group on first setup or after clearing the que
   override) remain. Controllers and page controls use the resource authorization handler.
 - Refused and Withdrawn require non-empty `Reasons`.
 - Admin actions through the shared decision handler reject binding errors after actor resolution and before mutation. A malformed disposition cannot default to Accepted; no system log, audit or notification is emitted for a rejected form.
+- Apply, register-edit and admin-bootstrap forms require explicit deliverable kind, audience and sensitivity values. Missing choices redisplay field errors and log a Warning before mutation; explicit zero-valued enum choices and `false` remain valid. Admin bootstrap posts its existing sensitivity default explicitly. Binding feedback uses the shared localized validation messages in all supported cultures.
 - Registration creates the Drive subfolder before the status flips; a folder-creation
   failure leaves the group Applied so the Secretary can retry. Application and both
   registration paths run to completion independently of request cancellation. Both are marked `[ExternalWrite]`, and their admin write calls explicitly pass `CancellationToken.None`; authorization and form reads retain the request token.
@@ -378,6 +383,7 @@ Settings and Register an existing group on first setup or after clearing the que
 - Comment/log/document responses stay possible after the comment window closes but not
   after the group leaves Active (`RequireAcceptsMemberWork` on the responding calls too).
 - A group's Slug never collides with a reserved route segment (`apply`, `admin`).
+- Both Board/Admin budget forms require an explicit budget checkbox value. Enabling a budget also requires a valid create/link account choice; omissions and unknown choices cannot clear a budget or create a Holded account. Clearing a budget needs no account choice. The initial registration form selects create; rejected submissions retain their choices.
 - Budget: amount ≥ 0 or null and must be whole cents (at most two decimal places; trailing zeroes are valid). Updates and existing-group registration refuse fractional cents before Finance, Drive creation or persistence, using literal feedback on the Board/Admin-only forms. Refused/Withdrawn rejected; Finance is called before
   anything is written, so a failed create or an unknown account number changes nothing;
   the first account bound is created as "Workgroups / {Name}" or linked to an existing
@@ -398,7 +404,7 @@ Settings and Register an existing group on first setup or after clearing the que
   nor comment on its documents; Board/Admin can.
 - Nobody can comment outside an open comment window, or on a Draft document.
 - A Dormant group's members **cannot** perform any member mutation (log, meetings,
-  documents, comments, register edits) — only `BoardOrAdmin` actions remain.
+  documents, comments, register edits) — only `BoardOrAdmin` actions remain. Document mutations share the document resolver's active-group preflight; Board disposition recording explicitly retains the lookup that permits ended groups.
 - Anonymous requests **cannot** reach any `/Workgroups*` route — `PolicyNames.AppAccess`
   gates the member controller class-wide, `BoardOrAdmin` gates the admin controller.
 - A member **cannot** leave as the last coordinator without naming a replacement
@@ -485,14 +491,14 @@ should end is the Board's decision, taken on the register in front of them.
 - **Settings**: `ISettingsService` — legacy root-folder read fallback until the admin saves section-owned settings.
 - **Surveys**: `ISurveyAnalysisRead` — `LinkSurveyAsync` reads the posted survey to check the
   actor authored it before writing the log entry. One-way: Surveys never references Workgroups.
-- **Notifications, Email, AuditLog**: crosscuts, per Triggers above. Member notifications
+- **Notifications, Email, AuditLog**: crosscuts, per Triggers above. The internal `WorkgroupNotices` owns recipient lookup, culture grouping, Board delivery and independent best-effort sends. Lifecycle, document, membership, GDPR and rhythm paths invoke it after their existing state/audit steps; transitions, rhythm timing and Drive synchronization remain in `WorkgroupService`. Member notifications
   use existing localized labels, grouped by supported recipient language (English fallback); authored content is unchanged.
   A merged-member alias carries both the resolved live id and its language into grouping,
   with one delivery per live recipient even when multiple requested ids resolve to them.
-- **Gdpr**: `IUserDataContributor`, `IUserMerge` — see GDPR below.
-- **Finance**: `IHoldedFinanceWrite.CreateOrLinkExpenseAccountAsync` /
+- **Base / Users**: `IUserDataContributor` (`Humans.Base.Gdpr`), `IUserMerge` (`Humans.Users.Contracts`) — see GDPR below.
+- **Finance**: `IFinanceWrite.CreateOrLinkExpenseAccountAsync` /
   `SetExpenseAccountActiveAsync` (outbound). **Holded**: `IHoldedService.GetChartAsync`
-  for the admin picker only: active group-6 accounts from the local mirror, with no outbound API call. Both the register-existing and detail views order accounts by number; the mirror read imposes no display order. Account creation and linking still go through Finance.
+  for the admin picker only: active group-6 accounts from the local mirror, with no outbound API call. Both the register-existing and detail views order accounts by number; the mirror read imposes no display order. Unexpected mirror-read failures log at Error with exception details and leave the picker empty; cancellation propagates. Account creation and linking still go through Finance.
 
 ## GDPR
 
@@ -514,6 +520,10 @@ should end is the Board's decision, taken on the register in front of them.
 - **Consent**: nothing new is gated — joining is the member's own action.
 
 ## Architecture
+
+The internal `WorkgroupRegisterReader` owns register, slug, ID and member reads and their complete group/document projections. Mutation guards reuse those projections and the same safe Discord-link policy. `WorkgroupService` keeps the existing entry points and all writes; cached graphs, deleted-meeting filtering, member selection and workflow authorization remain unchanged. No public contract or DI registration is added.
+
+The internal `WorkgroupDataExport` owns all six GDPR export slices, including register-name lookup and author/responder/moderator attribution. `WorkgroupService` retains the existing entry point, erasure with coordinator-loss notification and account merge; export keys, shapes, ordering and cancellation are unchanged. No public contract or DI registration is added.
 
 **Owning services:** `WorkgroupService` (inner, keyed `"workgroups-inner"`),
 `CachingWorkgroupService` (Singleton decorator)
@@ -558,7 +568,7 @@ picker labels and roster profile badges load a member dictionary.
 - **Cross-section calls** — `IUserService`,
   `IRoleAssignmentService`, `ISettingsService`, `IGoogleSyncService`, `IGoogleSyncWrite`,
   `INotificationService`, `IEmailService`, `IAuditLogService`,
-  `ISurveyAnalysisRead`, `IClock`, `IHoldedFinanceWrite`, `IHoldedService`.
+  `ISurveyAnalysisRead`, `IClock`, `IFinanceWrite`, `IHoldedService`.
   `ITeamService` is used by `WorkgroupsController` and `WorkgroupDriveAccessSource`, not by `WorkgroupService`.
   `IGovernanceService` is used by `WorkgroupsController` only.
 - **Email** — Workgroups owns the working-group notice: `WorkgroupsEmails` (internal)

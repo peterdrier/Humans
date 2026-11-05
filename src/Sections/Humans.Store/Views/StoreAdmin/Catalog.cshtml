@@ -5,15 +5,12 @@
     ViewData["Title"] = "Store Catalog";
 }
 
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <h1 class="mb-0">Store Catalog — @Model.Year</h1>
-    <div class="d-flex gap-2">
-        <a authorize-policy="@Humans.Store.Contracts.StorePolicies.Manage" asp-action="Edit" class="btn btn-primary">
-            <i class="fa-solid fa-plus me-1"></i>Create product
-        </a>
-        <a asp-controller="Store" asp-action="Index" class="btn btn-outline-secondary">Back to Store</a>
-    </div>
-</div>
+<page-header title="@($"Store Catalog — {Model.Year}")">
+    <a authorize-policy="@Humans.Store.Contracts.StorePolicies.Manage" asp-action="Edit" class="btn btn-primary">
+        <i class="fa-solid fa-plus me-1"></i>Create product
+    </a>
+    <a asp-controller="Store" asp-action="Index" class="btn btn-outline-secondary">Back to Store</a>
+</page-header>
 
 
 @if (Model.Products.Count == 0)
@@ -75,16 +72,4 @@ else
         }
         <partial name="_Table" model="catalogAdminTable" />
     </div>
-}
-
-@section Scripts {
-    <script nonce="@Context.Items["CspNonce"]">
-        document.querySelectorAll('[data-confirm]').forEach(function (button) {
-            button.addEventListener('click', function (e) {
-                if (!confirm(this.getAttribute('data-confirm'))) {
-                    e.preventDefault();
-                }
-            });
-        });
-    </script>
 }

@@ -260,7 +260,7 @@ public class ExpenseReconTests
         Substitute.For<IEmailService>(), TestFinanceEmails.Create(),
         Options.Create(new SepaOptions()),
         new TrackedCache<string, Dictionary<string, int>>("Finance.SepaStuckBankLines", warmOnStartup: false, NullLogger<Service>.Instance),
-        NullLogger<Service>.Instance);
+        Substitute.For<IPaymentDetailsManagement>(), NullLogger<Service>.Instance);
 
     [HumansFact]
     public async Task GetExpenseRecon_ReadsTheAccountTheBoundContactIsOn_NotTheStoredNumber()
@@ -288,6 +288,38 @@ public class ExpenseReconTests
     }
 
     [HumansFact]
+    public async Task GetExpenseRecon_ContactListUnreadable_IsUnavailable_NeverTheStoredNumber()
+    {
+        _holded.GetLedgerSyncedAtAsync(Arg.Any<CancellationToken>()).Returns(SyncedAt);
+        _holded.GetAccountBalancesAsync(Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<int, decimal> { [AliceAccount] = -100m });
+        _client.ListContactsAsync(Arg.Any<CancellationToken>()).ThrowsAsync(new HoldedTransientException("timeout"));
+
+        var report = await MakeService().GetExpenseReconAsync(null, TestContext.Current.CancellationToken);
+
+        report.IsAvailable.Should().BeFalse();
+        await _holded.DidNotReceive().GetLedgerLinesAsync(Arg.Any<int>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task GetExpenseRecon_BoundContactMissingFromList_IsUnavailable()
+    {
+        _holded.GetLedgerSyncedAtAsync(Arg.Any<CancellationToken>()).Returns(SyncedAt);
+        _repo.GetCreditorContactsAsync(Arg.Any<CancellationToken>()).Returns(
+        [
+            new HoldedCreditorContact { UserId = Alice, HoldedContactId = "c-alice", SupplierAccountNum = AliceAccount },
+            new HoldedCreditorContact { UserId = Guid.NewGuid(), HoldedContactId = "c-unparsed", SupplierAccountNum = 41000099 },
+        ]);
+        _client.ListContactsAsync(Arg.Any<CancellationToken>()).Returns(
+            [new HoldedContactDto { Id = "c-alice", SupplierAccountNum = AliceAccount }]);
+
+        var report = await MakeService().GetExpenseReconAsync(null, TestContext.Current.CancellationToken);
+
+        report.IsAvailable.Should().BeFalse();
+        await _holded.DidNotReceive().GetLedgerLinesAsync(Arg.Any<int>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
     public async Task GetExpenseRecon_LedgerNeverSynced_IsUnavailable()
     {
         _holded.GetLedgerSyncedAtAsync(Arg.Any<CancellationToken>()).Returns((Instant?)null);
@@ -306,7 +338,7 @@ public class ExpenseReconTests
     [InlineData(0, 3, LogLevel.Warning)]
     public async Task Job_LogsOneSummaryLine(int orphans, int membersOff, LogLevel level)
     {
-        var finance = Substitute.For<IHoldedFinanceService>();
+        var finance = Substitute.For<IFinanceService>();
         finance.GetExpenseReconAsync(null, Arg.Any<CancellationToken>()).Returns(new ExpenseReconReport(
             null, SyncedAt, null, [], [], [], [], new ExpenseReconTotals(1, 1, 1, 0, 0, 0m, orphans, membersOff)));
         var logger = new CapturingLogger<ExpenseReconJob>();

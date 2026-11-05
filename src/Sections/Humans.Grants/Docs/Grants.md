@@ -77,9 +77,11 @@ Admin pages live at `/Grants/Admin` (`GrantsAdminController`), in the Admin side
 
 - Authorization’s viewer and program-manager reads retain HTTP request cancellation; callers without an HTTP context use the non-cancellable default.
 
-- Admin program pages and edit forms render manager and actor IDs through the shared Human component without profile links. Missing members use its localized fallback. Manager order, comma separators and posted manager IDs are preserved; page models carry no display-name dictionary.
+- Admin program pages and edit forms render manager and actor IDs through the shared Human component without profile links. Missing members use its localized fallback. Manager order and comma separators are preserved; page models carry no display-name dictionary.
+- Program creation and editing resolve posted managers to their surviving IDs and deduplicate them before persistence and manager audits. Missing or tombstoned managers refuse the entire save before any program fields or manager rows change. Existing historical-manager authorization reads retain their alias handling.
 
 - A person holds at most one live grant per program (filtered unique index); issuing to a holder is skipped (manual) or returns the existing id (source write). Issuance resolves merged recipient ids before deduplication and saves new grants under the survivor id. A live grant under any of the person's archived ids also counts as held, and source revocation finds it through any alias.
+- Both issuance paths refuse missing or tombstoned recipients before persistence, audit or notices. A manual batch containing any unavailable recipient is refused in full; source issuance returns `GrantWriteRefusal.RecipientUnavailable`. Real merge survivors remain eligible. Read/export and revocation paths retain historical-id fallback for existing records.
 - A managers' program is filled only by hand; a source program only through `IGrantWrite` with the matching source key. A closed program takes no new grants either way.
 - At most one program per source key is open at a time (refused on create and edit), so `IGrantWrite` callers pass only their key and Grants resolves the program. Source issue/revoke return `GrantIssueResult` / `GrantRevokeResult`: no open program and overlong source references/reasons are typed refusals before mutation, audit or notices. Existing live grant IDs and the no-live-grant revoke outcome remain explicit. Dependency failures propagate.
 - A program's issuer and status must be defined enum values; anything else is refused on create and edit.
@@ -89,7 +91,7 @@ Admin pages live at `/Grants/Admin` (`GrantsAdminController`), in the Admin side
 - Every issue, revoke, resend and program change writes an audit entry (`GrantIssued`, `GrantRevoked`, `GrantNoticeResent`, `GrantProgram*`). Program edits persist fields and manager additions/removals together in one save; a failed manager write leaves the program unchanged and emits no success audit.
 - Grant reads, GDPR exports (held grants and programs created), and issue/revoke/resend audits use the program's current Settings event year, falling back to its stored year when the event is unavailable. Audit year resolution finishes before the mutation commits.
 - A failed email or in-app notice is logged and never fails the write; the two channels fail independently (an in-app outage still sends the email, and vice versa); a manager can resend. A successful recipient lookup supplies the email address too; if that lookup fails, the email step retains its independent lookup attempt and uses the recovered recipient’s canonical id, burner name and preferred language as well as their address.
-- Program-level refusals are English text: every page that shows them is admin-only (`memory/code/localization-admin-exempt.md`). Member-facing copy (notice, email, My grants card) is in all six cultures.
+- Program-level refusals are English text: every page that shows them is admin-only (`memory/code/localization-admin-exempt.md`). Member-facing copy (notice, email, My grants card) is in all supported cultures.
 
 ## Negative Access Rules
 
@@ -121,6 +123,8 @@ Admin pages live at `/Grants/Admin` (`GrantsAdminController`), in the Admin side
 - Email and Tickets do not know Grants exists; delivery of the thing (e.g. a vendor code) is a later, separate concern.
 
 ## Architecture
+
+The internal `GrantNotices` owns recipient lookup and the complete issued/revoked email and in-app delivery job, reused for resend. `GrantService` retains persistence, audit ordering, notification timestamps and the existing profile-link alias. Culture selection, independent channel failures, lookup retry and cancellation boundaries are unchanged. No public contract or DI registration is added.
 
 **Owning services:** `GrantService`
 **Owned tables:** `grant_programs`, `grant_program_managers`, `grants`

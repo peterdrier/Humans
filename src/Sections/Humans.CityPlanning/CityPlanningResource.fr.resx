@@ -84,7 +84,7 @@
     <value>Aller au placement des conteneurs</value>
   </data>
   <data name="CityPlanning_PlacementPhaseInfo" xml:space="preserve">
-    <value>Placement phase info</value>
+    <value>Infos sur la phase de placement</value>
   </data>
   <data name="CityPlanning_Admin_Title" xml:space="preserve">
     <value>Admin Carte des Barrios</value>

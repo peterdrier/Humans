@@ -10,6 +10,7 @@ using Humans.Base.Helpers;
 using Humans.Budget.Contracts;
 using Humans.Expenses.Contracts;
 using Humans.Finance.Contracts;
+using Humans.Holded.Contracts;
 using Humans.Users.Contracts;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Builder;
@@ -29,7 +30,7 @@ namespace Humans.Backdoor.Tests.Controllers;
 
 /// <summary>
 /// The authorization and formatting the machine finance API does on top of
-/// <see cref="IExpenseReportService"/> and <see cref="IHoldedFinanceService"/>
+/// <see cref="IExpenseReportService"/> and <see cref="IFinanceService"/>
 /// — everything below is controller work: the services are substitutes
 /// throughout, and <see cref="IAuthorizationService"/> is a substitute too — the actor matrix
 /// itself is <c>ExpenseReportAuthorizationHandlerTests</c>' job.
@@ -37,7 +38,8 @@ namespace Humans.Backdoor.Tests.Controllers;
 public class BackdoorFinanceControllerTests
 {
     private readonly IExpenseReportService _expenses = Substitute.For<IExpenseReportService>();
-    private readonly IHoldedFinanceService _finance = Substitute.For<IHoldedFinanceService>();
+    private readonly IFinanceService _finance = Substitute.For<IFinanceService>();
+    private readonly IHoldedService _holded = Substitute.For<IHoldedService>();
     private readonly IBudgetService _budget = Substitute.For<IBudgetService>();
     private readonly IAuthorizationService _auth = Substitute.For<IAuthorizationService>();
     private readonly IUserService _users = Substitute.For<IUserService>();
@@ -49,7 +51,7 @@ public class BackdoorFinanceControllerTests
         // tests override when the resolved name itself matters.
         _users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(new Dictionary<Guid, UserInfo>()));
-        _sut = new BackdoorFinanceController(_expenses, _finance, _budget, _auth, _users);
+        _sut = new BackdoorFinanceController(_expenses, _finance, _holded, _budget, _auth, _users);
     }
 
     /// <summary>Read-only surface, GET only — no <c>[Http{Post,Put,Patch,Delete}]</c> action anywhere
@@ -473,9 +475,9 @@ public class BackdoorFinanceControllerTests
         var orphan = Guid.NewGuid();
         var newerOrphan = Guid.NewGuid();
         _finance.ListCreditorAccountsAsync(Arg.Any<CancellationToken>()).Returns((
-            (IReadOnlyList<HoldedCreditorAccountRow>)
+            (IReadOnlyList<CreditorAccountRow>)
             [
-                new HoldedCreditorAccountRow(40000060, "Ana Torres", -50m, 50m,
+                new CreditorAccountRow(40000060, "Ana Torres", -50m, 50m,
                     [
                         new CreditorContactBinding(ben, "c-ben", 40000060, CreditorContactSource.Manual)
                             { CreatedAt = Instant.FromUtc(2026, 2, 1, 0, 0) },
@@ -490,7 +492,8 @@ public class BackdoorFinanceControllerTests
                     { CreatedAt = Instant.FromUtc(2026, 2, 1, 0, 0) },
                 new CreditorContactBinding(orphan, "c-orphan", null, CreditorContactSource.Auto)
                     { CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0) },
-            ]));
+            ],
+            (string?)null));
 
         var result = await _sut.CreditorAccounts(Xunit.TestContext.Current.CancellationToken);
 
@@ -518,9 +521,9 @@ public class BackdoorFinanceControllerTests
     {
         SetPrincipal(Guid.NewGuid());
         SetFinanceAdmin(true);
-        _finance.GetCreditorLedgerAsync(40000060, Arg.Any<CancellationToken>()).Returns(new HoldedCreditorLedger(
+        _finance.GetCreditorLedgerAsync(40000060, Arg.Any<CancellationToken>()).Returns(new CreditorLedger(
             40000060, -50m, 50m, [],
-            new HoldedContactInfo("Ana Torres", null, "ana@example.com", null, null,
+            new CreditorContactInfo("Ana Torres", null, "ana@example.com", null, null,
                 "ES7921000813610123456789", null, null)));
 
         var result = await _sut.CreditorLedger(40000060, Xunit.TestContext.Current.CancellationToken);
@@ -548,7 +551,7 @@ public class BackdoorFinanceControllerTests
         SetFinanceAdmin(true);
         var categoryId = Guid.NewGuid();
         _finance.GetCategoryMapAsync(Arg.Any<CancellationToken>()).Returns([
-            new HoldedCategoryMapRow(categoryId, "Staff", "Operations", 62900101, "acc-1", "staff", true,
+            new CategoryAccountRow(categoryId, "Staff", "Operations", 62900101, "acc-1", "staff",
                 Instant.FromUtc(2026, 6, 1, 0, 0)),
         ]);
 
@@ -559,7 +562,6 @@ public class BackdoorFinanceControllerTests
         json.Should().Contain(@"""groupName"":""Operations""");
         json.Should().Contain(@"""updatedAt"":""2026-06-01T00:00:00Z""");
         json.Should().Contain(@"""holdedAccountNumber"":62900101");
-        json.Should().Contain(@"""isActive"":true");
     }
 
     [HumansFact]
@@ -619,12 +621,12 @@ public class BackdoorFinanceControllerTests
     {
         SetPrincipal(Guid.NewGuid());
         SetFinanceAdmin(true);
-        _finance.GetDocSyncInfoAsync(Arg.Any<CancellationToken>()).Returns(
-            new HoldedDocSyncInfo(Instant.FromUtc(2026, 6, 1, 3, 0), "Idle", null, 12, 4));
+        _holded.GetPurchaseDocumentsAsync(Arg.Any<CancellationToken>()).Returns(
+            new HoldedPurchaseDocMirror(Instant.FromUtc(2026, 6, 1, 3, 0), "Idle", null, 12, null, []));
         _finance.GetUnmatchedAsync(Arg.Any<CancellationToken>()).Returns([
-            new HoldedUnmatchedRow("d0", "F250001", "Acme", "Old supplies", 20m, "No account, no tag", "https://holded/d0")
+            new UnmatchedDocRow("d0", "F250001", "Acme", "Old supplies", 20m, "No account, no tag", "https://holded/d0")
                 { Date = new LocalDate(2026, 1, 1) },
-            new HoldedUnmatchedRow("d1", "F260001", "Acme", "Supplies", 30m, "No account, no tag", "https://holded/d1")
+            new UnmatchedDocRow("d1", "F260001", "Acme", "Supplies", 30m, "No account, no tag", "https://holded/d1")
                 { Date = new LocalDate(2026, 6, 1) },
         ]);
 
@@ -632,7 +634,7 @@ public class BackdoorFinanceControllerTests
 
         var json = Emitted(result);
         json.Should().Contain(@"""status"":""Idle""");
-        json.Should().Contain(@"""creditorBindingCount"":4");
+        json.Should().Contain(@"""lastSyncedDocCount"":12");
         json.Should().Contain(@"""docNumber"":""F260001""");
         using var payload = JsonDocument.Parse(json);
         payload.RootElement.GetProperty("unmatched").EnumerateArray()
@@ -744,16 +746,17 @@ public class BackdoorFinanceControllerTests
         _expenses.TryReadAttachmentAsync(report, attachmentId, Arg.Any<CancellationToken>())
             .Returns(new ExpenseAttachmentDownload([1, 2, 3], "application/pdf", CompactIban + ".pdf"));
         _finance.ListCreditorAccountsAsync(Arg.Any<CancellationToken>()).Returns((
-            (IReadOnlyList<HoldedCreditorAccountRow>)
+            (IReadOnlyList<CreditorAccountRow>)
             [
-                new HoldedCreditorAccountRow(40000060, Tainted, -50m, 50m,
+                new CreditorAccountRow(40000060, Tainted, -50m, 50m,
                     [new CreditorContactBinding(userId, Tainted, 40000060, CreditorContactSource.Auto)], Tainted),
             ],
             (IReadOnlyList<CreditorContactBinding>)
             [
                 new CreditorContactBinding(userId, Tainted, null, CreditorContactSource.Auto),
-            ]));
-        _finance.GetCreditorLedgerAsync(40000060, Arg.Any<CancellationToken>()).Returns(new HoldedCreditorLedger(
+            ],
+            (string?)null));
+        _finance.GetCreditorLedgerAsync(40000060, Arg.Any<CancellationToken>()).Returns(new CreditorLedger(
             40000060, -50m, 50m,
             [
                 new CreditorLedgerLine
@@ -768,9 +771,9 @@ public class BackdoorFinanceControllerTests
                     Description = Tainted,
                 },
             ],
-            new HoldedContactInfo(Tainted, Tainted, Tainted, Tainted, Tainted, CompactIban, Tainted, Tainted)));
+            new CreditorContactInfo(Tainted, Tainted, Tainted, Tainted, Tainted, CompactIban, Tainted, Tainted)));
         _finance.GetCategoryMapAsync(Arg.Any<CancellationToken>()).Returns([
-            new HoldedCategoryMapRow(Guid.NewGuid(), Tainted, Tainted, 62900101, Tainted, Tainted, true,
+            new CategoryAccountRow(Guid.NewGuid(), Tainted, Tainted, 62900101, Tainted, Tainted,
                 Instant.FromUtc(2026, 6, 1, 0, 0)),
         ]);
         _finance.GetSepaTransfersAsync(Arg.Any<CancellationToken>()).Returns((
@@ -782,10 +785,10 @@ public class BackdoorFinanceControllerTests
                     null, null, Tainted, null, Tainted, Tainted, Tainted),
             ],
             (string?)Tainted));
-        _finance.GetDocSyncInfoAsync(Arg.Any<CancellationToken>()).Returns(
-            new HoldedDocSyncInfo(Instant.FromUtc(2026, 6, 1, 3, 0), Tainted, Tainted, 12, 4));
+        _holded.GetPurchaseDocumentsAsync(Arg.Any<CancellationToken>()).Returns(
+            new HoldedPurchaseDocMirror(Instant.FromUtc(2026, 6, 1, 3, 0), Tainted, Tainted, 12, null, []));
         _finance.GetUnmatchedAsync(Arg.Any<CancellationToken>()).Returns([
-            new HoldedUnmatchedRow(Tainted, Tainted, Tainted, Tainted, 30m, Tainted, Tainted),
+            new UnmatchedDocRow(Tainted, Tainted, Tainted, Tainted, 30m, Tainted, Tainted),
         ]);
         _finance.GetExpenseReconAsync(null, Arg.Any<CancellationToken>()).Returns(new ExpenseReconReport(
             null, null, null, [],
@@ -850,7 +853,7 @@ public class BackdoorFinanceControllerTests
                 apm.FeatureProviders.Add(new FinanceControllerOnly());
             });
         builder.Services.AddSingleton(keys).AddScoped<BackdoorApiKeyAuthFilter>()
-            .AddSingleton(_expenses).AddSingleton(_finance).AddSingleton(_budget).AddSingleton(_auth)
+            .AddSingleton(_expenses).AddSingleton(_finance).AddSingleton(_holded).AddSingleton(_budget).AddSingleton(_auth)
             .AddSingleton(_users);
         await using var app = builder.Build();
         app.MapControllers();

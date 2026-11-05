@@ -111,6 +111,6 @@ public abstract class TicketsTestHarness : IDisposable
     public sealed class PeopleRegistry
     {
         public List<User> Users { get; } = [];
-        public List<UserEmail> UserEmails { get; } = [];
+        internal List<UserEmail> UserEmails { get; } = [];
     }
 }

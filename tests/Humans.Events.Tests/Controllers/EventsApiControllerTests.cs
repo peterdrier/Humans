@@ -125,7 +125,7 @@ public class EventsApiControllerTests
             ReadAsync<IReadOnlyList<ApprovedEventView>>([approved], ReadBoundary.Approved, call.Arg<CancellationToken>()));
         _guide.GetApprovedEventByIdAsync(approved.Id, Arg.Any<CancellationToken>()).Returns(call =>
             ReadAsync<ApprovedEventView?>(approved, ReadBoundary.Event, call.Arg<CancellationToken>()));
-        _camps.GetCampsForYearAsync(burn.GateOpeningDate.Year, Arg.Any<CancellationToken>()).Returns(call =>
+        _camps.GetCampsForEventAsync(burn.Id, Arg.Any<CancellationToken>()).Returns(call =>
             ReadAsync<IReadOnlyList<CampInfo>>([], ReadBoundary.Camps, call.Arg<CancellationToken>()));
         _users.GetUserInfoAsync(approved.SubmitterUserId, Arg.Any<CancellationToken>()).Returns(call =>
             new ValueTask<UserInfo?>(ReadAsync<UserInfo?>(MakeUserInfo(approved.SubmitterUserId, "Host"),

@@ -99,7 +99,7 @@ public sealed class GoogleWorkspaceSyncServiceTests
             });
         var driveSync = new GoogleDriveAccessSyncService(
             [_driveSource], _drivePermissions, _userService, _identities, _userEmailService, _syncSettingsService,
-            _googleSyncLog, _removalNotifications, _resourceRepository, _teamService,
+            _googleSyncLog, Substitute.For<IGoogleSyncLogViewer>(), _removalNotifications, _resourceRepository, _teamService,
             Substitute.For<ITeamResourceManagement>(), clock,
             Substitute.For<ILogger<GoogleDriveAccessSyncService>>());
 
@@ -1227,7 +1227,7 @@ public sealed class GoogleWorkspaceSyncServiceTests
             IsActive = true
         };
 
-    private static UserInfo MakeUser(Guid userId, string email, GoogleEmailStatus status = GoogleEmailStatus.Unknown) =>
+    private static UserInfo MakeUser(Guid userId, string email) =>
         UserInfo.Create(
             new User
             {
@@ -1237,7 +1237,7 @@ public sealed class GoogleWorkspaceSyncServiceTests
                 Email = email
             },
             [new UserEmail { Id = Guid.NewGuid(), UserId = userId, Email = email,
-                IsVerified = true, IsGoogle = true, GoogleEmailStatus = (LegacyGoogleEmailStatus)status }], [], null);
+                IsVerified = true, }], [], null);
 
     // Admin retries: the service writes the audit entry.
 

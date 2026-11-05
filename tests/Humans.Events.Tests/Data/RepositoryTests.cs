@@ -271,6 +271,8 @@ public sealed class EventRepositoryTests : IDisposable
         var category = SeedCategory("Workshop", "workshop", 1);
         var pendingCamp = SeedEvent(category.Id, Guid.NewGuid(), EventStatus.Pending, _clock.GetCurrentInstant(), campId: Guid.NewGuid());
         var approvedCamp = SeedEvent(category.Id, Guid.NewGuid(), EventStatus.Approved, _clock.GetCurrentInstant(), campId: Guid.NewGuid());
+        pendingCamp.IsRecurring = true;
+        pendingCamp.RecurrenceDays = "1,2";
         SeedEvent(category.Id, Guid.NewGuid(), EventStatus.Rejected, _clock.GetCurrentInstant(), campId: Guid.NewGuid());
         SeedEvent(category.Id, Guid.NewGuid(), EventStatus.Pending, _clock.GetCurrentInstant());
         await _db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
@@ -279,42 +281,34 @@ public sealed class EventRepositoryTests : IDisposable
 
         result.Select(e => e.Id).Should().BeEquivalentTo([pendingCamp.Id, approvedCamp.Id]);
         result.Should().OnlyContain(e => e.CampId.HasValue);
+        var pending = result.Single(e => e.Id == pendingCamp.Id);
+        pending.IsRecurring.Should().BeTrue();
+        pending.RecurrenceDays.Should().Be("1,2");
     }
 
-    [HumansFact]
-    public async Task GetModerationStatusCountsAsync_ScopesToEvent_KeepingUnassignedRows()
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task EventScopedReads_ExcludeUnassignedAndOtherEvents(bool unscoped)
     {
         var category = SeedCategory("Workshop", "workshop", 1);
         var thisEvent = Guid.NewGuid();
-        SeedEvent(category.Id, Guid.NewGuid(), EventStatus.Pending, _clock.GetCurrentInstant()).EventSettingsId = thisEvent;
-        SeedEvent(category.Id, Guid.NewGuid(), EventStatus.Pending, _clock.GetCurrentInstant());
-        SeedEvent(category.Id, Guid.NewGuid(), EventStatus.Pending, _clock.GetCurrentInstant()).EventSettingsId = Guid.NewGuid();
+        var campId = Guid.NewGuid();
+        var current = SeedEvent(category.Id, Guid.NewGuid(), EventStatus.Pending, _clock.GetCurrentInstant(), campId: campId);
+        current.EventSettingsId = thisEvent;
+        var unassigned = SeedEvent(category.Id, Guid.NewGuid(), EventStatus.Pending, _clock.GetCurrentInstant(), campId: campId);
+        var other = SeedEvent(category.Id, Guid.NewGuid(), EventStatus.Pending, _clock.GetCurrentInstant(), campId: campId);
+        other.EventSettingsId = Guid.NewGuid();
         await _db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        Guid? filter = unscoped ? null : thisEvent;
 
-        var result = await _repo.GetModerationStatusCountsAsync(thisEvent, Xunit.TestContext.Current.CancellationToken);
+        var counts = await _repo.GetModerationStatusCountsAsync(filter, Xunit.TestContext.Current.CancellationToken);
+        var overlaps = await _repo.GetActiveCampEventsAsync(filter, Xunit.TestContext.Current.CancellationToken);
 
-        result.Should().ContainKey(EventStatus.Pending).WhoseValue.Should().Be(2);
-    }
-
-    [HumansFact]
-    public async Task AssignEventSettingsIdsAsync_WritesOnlyUnassignedRows()
-    {
-        var category = SeedCategory("Workshop", "workshop", 1);
-        var unassigned = SeedEvent(category.Id, Guid.NewGuid(), EventStatus.Approved, _clock.GetCurrentInstant());
-        var assigned = SeedEvent(category.Id, Guid.NewGuid(), EventStatus.Approved, _clock.GetCurrentInstant());
-        var keptEvent = Guid.NewGuid();
-        assigned.EventSettingsId = keptEvent;
-        await _db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
-        var target = Guid.NewGuid();
-
-        var written = await _repo.AssignEventSettingsIdsAsync(
-            new Dictionary<Guid, Guid> { [unassigned.Id] = target, [assigned.Id] = target },
-            Xunit.TestContext.Current.CancellationToken);
-
-        written.Should().Be(1);
-        _db.ChangeTracker.Clear();
-        (await _db.Events.FindAsync([unassigned.Id], Xunit.TestContext.Current.CancellationToken))!.EventSettingsId.Should().Be(target);
-        (await _db.Events.FindAsync([assigned.Id], Xunit.TestContext.Current.CancellationToken))!.EventSettingsId.Should().Be(keptEvent);
+        counts.Should().ContainKey(EventStatus.Pending).WhoseValue.Should().Be(unscoped ? 3 : 1);
+        overlaps.Select(e => e.Id).Should().BeEquivalentTo(unscoped
+            ? new[] { current.Id, unassigned.Id, other.Id }
+            : new[] { current.Id });
     }
 
     [HumansFact]

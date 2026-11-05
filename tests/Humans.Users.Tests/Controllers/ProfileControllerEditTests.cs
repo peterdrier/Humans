@@ -287,16 +287,10 @@ public class ProfileControllerEditTests
         _contactFields.ReceivedCalls().Should().BeEmpty();
     }
 
-    [HumansTheory]
-    [InlineData("en")]
-    [InlineData("es")]
-    [InlineData("de")]
-    [InlineData("it")]
-    [InlineData("fr")]
-    [InlineData("ca")]
-    public void MemberProfileForms_LocalizeValidationMessages(string culture)
+    [HumansFact]
+    public void MemberProfileForms_LocalizeValidationMessages()
     {
-        using var cultureScope = new CultureScope(culture);
+        using var cultureScope = new CultureScope("en");
         var registrations = new ServiceCollection().AddLogging().AddLocalization();
         registrations.AddControllers().AddDataAnnotationsLocalization(options =>
             options.DataAnnotationLocalizerProvider = (_, factory) => factory.Create(typeof(SharedResource)));

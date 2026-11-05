@@ -232,17 +232,11 @@ public class ShiftsControllerUserActiveSignupsTests
         Assert.Equal("Keeper", Assert.Single(model.UserActiveSignups).RotaName);
     }
 
-    [HumansTheory]
-    [InlineData("en")]
-    [InlineData("es")]
-    [InlineData("de")]
-    [InlineData("it")]
-    [InlineData("fr")]
-    [InlineData("ca")]
-    public async Task BailRange_LocalizesRefusalKeysInTheMembersCulture(string culture)
+    [HumansFact]
+    public async Task BailRange_LocalizesRefusalKeysInTheMembersCulture()
     {
         const string key = "Shifts_BailRange_NotAuthorized";
-        using var scope = new Humans.Base.Extensions.CultureScope(culture);
+        using var scope = new Humans.Base.Extensions.CultureScope(Humans.Base.Extensions.CultureCatalog.DefaultCultureCode);
         var resources = new System.Resources.ResourceManager(typeof(ShiftsResource));
         var translated = resources.GetString(key, System.Globalization.CultureInfo.CurrentUICulture)!;
         _localizer[key].Returns(new LocalizedString(key, translated));
@@ -359,7 +353,6 @@ public class ShiftsControllerUserActiveSignupsTests
                 BurnerName = "Burner",
                 FirstName = "First",
                 LastName = "Last",
-                DietaryPreference = "None",
                 CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
                 UpdatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
             },

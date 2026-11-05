@@ -4,6 +4,7 @@
   src/Sections/Humans.Consent/Services/**
   src/Sections/Humans.Auth/**
   src/Humans.Web/Authorization/MembershipRequiredFilter.cs
+  src/Sections/Humans.Governance/Services/MembershipCalculator.cs
   src/Humans.Web/Authorization/RoleAssignmentClaimsTransformation.cs
   src/Humans.Web/Controllers/HomeController.cs
   src/Humans.Base/Constants/SystemTeamIds.cs
@@ -18,11 +19,11 @@
 
 ## Business Context
 
-App access is the stored **`UserState`**: a human reaches the full application the moment `UserState == Active` — i.e. they have entered their legal name. Access does **not** derive from Volunteers-team membership. The **Volunteers team** is a system-managed Google Workspace provisioning group that named, consented volunteers belong to; `SystemTeamSyncJob` reconciles it on **name + consents** (the consent check / `IsApproved` are an audit annotation, not consulted for membership or access). Volunteer status is displayed on the dashboard.
+App access is the stored **`UserState`**: a human reaches the full application the moment `UserState == Active` — i.e. they have entered their legal name. Access does **not** derive from Volunteers-team membership. The **Volunteers team** is a system-managed Google Workspace provisioning group that named, consented volunteers belong to; `SystemTeamSyncJob` reconciles it on **name + consents** (the consent check / `IsApproved` are an audit annotation, not consulted for membership or access). Membership status is computed by Governance (see Membership Status below).
 
 Volunteer access is the **universal baseline** for all membership tiers. Whether a human selects Volunteer, Colaborador, or Asociado tier, they all become Volunteers first. Tier applications (Colaborador/Asociado) proceed in parallel through the Board voting queue and do not block Volunteer access. See [Membership Tiers](../../../Humans.Governance/Docs/features/membership-tiers.md) and [Onboarding Pipeline](onboarding-pipeline.md).
 
-The consent check is purely a **Volunteer-level safety gate** performed by a Consent Coordinator. It is independent of any tier application.
+The consent check is a Consent Coordinator **audit annotation** on the Volunteer. It gates nothing and is independent of any tier application.
 
 ## User Stories
 
@@ -34,7 +35,7 @@ The consent check is purely a **Volunteer-level safety gate** performed by a Con
 
 **Acceptance Criteria:**
 - Status displayed on dashboard
-- Onboarding checklist shown to non-volunteers explaining next steps
+- A member who has not finished setup is sent to the onboarding widget (`/OnboardingWidget`), which shows the next step
 - Quick links to Teams and Governance only visible to active volunteers
 - Colaborador/Asociado badge shown if applicable (no badge for Volunteer — that's everyone)
 
@@ -45,12 +46,8 @@ The consent check is purely a **Volunteer-level safety gate** performed by a Con
 **So that** I can take action
 
 **Acceptance Criteria:**
-- Dashboard shows "Getting Started" checklist:
-  1. Complete profile
-  2. Sign required consents
-  3. Safety check (Pending / Cleared)
-- Each step shows completion state
-- Links to relevant pages
+- The onboarding widget (`/OnboardingWidget`) dispatches to the next incomplete step
+- While setup is unfinished, the layout banner links back to the widget
 
 ### US-5.3: Track Status Changes
 
@@ -63,54 +60,9 @@ The consent check is purely a **Volunteer-level safety gate** performed by a Con
 - Filter the human list by `UserState` (bare/active/suspended/adminsuspended/rejected/deleting/merged/deleted)
 - Audit trail records status-changing events
 
-## Dashboard Status
+## Membership Status
 
-Status is computed on the dashboard based on Volunteers team presence and profile state:
-
-```
-┌─────────────────────────────┐
-│    Compute Dashboard Status │
-└──────────────┬──────────────┘
-               │
-        ┌──────▼──────┐
-        │ IsSuspended?│
-        └──────┬──────┘
-               │
-        ┌─Yes──┴──No───┐
-        │              │
-   [Suspended]  ┌──────▼──────────┐
-                │ Rejected?       │
-                │ (State=Rejected)│
-                └──────┬──────────┘
-                       │
-                ┌─Yes──┴──No───┐
-                │              │
-           [Rejected]   ┌──────▼──────────┐
-                        │ In Volunteers   │
-                        │ Team?           │
-                        └──────┬──────────┘
-                               │
-                        ┌─No───┴──Yes──┐
-                        │              │
-                   [Pending]    ┌──────▼──────┐
-                                │ Missing     │
-                                │ Consents?   │
-                                └──────┬──────┘
-                                       │
-                                ┌─Yes──┴──No───┐
-                                │              │
-                           [Inactive]     [Active]
-```
-
-## Status Display
-
-| Status | Badge | Color | Meaning |
-|--------|-------|-------|---------|
-| Active | `bg-success` | Green | In Volunteers team, all consents current |
-| Pending | `bg-info` | Blue | Not yet in Volunteers team (name + consents not yet reconciled by `SystemTeamSyncJob`) |
-| Inactive | `bg-warning` | Yellow | In Volunteers team but missing re-consent on updated docs |
-| Suspended | `bg-danger` | Red | Admin-suspended |
-| Rejected | `bg-danger` | Red | Consent check rejected by ConsentCoordinator, Board, or Admin |
+Governance's `MembershipCalculator.GetMembershipSnapshotAsync` computes its status, in this order: no profile gives None; suspended gives Suspended; `UserState` not Active gives Pending if Bare, else None; Active with no active roles and not a Volunteers member gives None; expired Volunteers consents give Inactive; otherwise Active. There is no Rejected status. See [Membership Status](../../../Humans.Governance/Docs/features/membership-status.md).
 
 ## Volunteer Gating (MembershipRequiredFilter)
 
@@ -160,11 +112,7 @@ Name + all consents → Volunteers team (Google Workspace), reconciled by System
 
 Neither consent-check clearance nor consent submission triggers a per-user team sync any more — `SystemTeamSyncJob` reconciles Volunteers membership on **name + consents** (eventually consistent). App access is unaffected: it was granted at name entry (`UserState == Active`).
 
-The consent check is a Volunteer safety gate only — it does not evaluate tier applications.
-
-## Migration: Existing Users
-
-Existing approved users (`IsApproved = true`) are **grandfathered in** — they receive `ConsentCheckStatus = Cleared` in the migration and are not required to go through the consent check process. The new consent check gate only applies to humans who sign up after the feature is deployed.
+The consent check is an audit annotation only; it does not evaluate tier applications.
 
 ## Status Dependencies
 
@@ -221,20 +169,18 @@ Triggered by:
 
 ## Compliance Automation
 
-### Grace Period → Team Removal Flow
+### Grace Period → Suspension Flow
 ```
 Document Updated (new version published)
     │
-Day 0: Notification email sent to affected team members
+Day 0: Email and in-app notice to the document's team members
     │
-Day 1-6: Reminder emails (configurable per document)
+Before the deadline: re-consent reminder emails (ConsentReminderDaysBeforeSuspension, with cooldown)
     │
 Day N (GracePeriodDays expires, default 7):
     │
     ▼
-System sync removes user from team
-    → Google resource access revoked
-    → Audit entry logged
+Users' SuspendNonCompliantMembersJob suspends the member
 ```
 
 ### Restoration Flow
@@ -248,7 +194,7 @@ When a user signs the missing documents:
 
 - [Membership Tiers](../../../Humans.Governance/Docs/features/membership-tiers.md) — Tier definitions (Volunteer is baseline)
 - [Onboarding Pipeline](onboarding-pipeline.md) — Full onboarding flow
-- [Coordinator Roles](../../../Humans.Shifts/Docs/features/coordinator-roles.md) — Consent Coordinator performs safety checks
+- [Coordinator Roles](../../../Humans.Shifts/Docs/features/coordinator-roles.md) — Consent Coordinator performs consent reviews
 - [Authentication](../../../Humans.Auth/Docs/features/authentication.md) — UserState access claim, role claims
 - [Legal Documents & Consent](../../../Humans.Consent/Docs/features/legal-documents-consent.md) — Consent completion contributes to Volunteers eligibility (name + consents)
 - [Teams](../../../Humans.Teams/Docs/features/Teams-feature.md) — Volunteers team is a Google Workspace provisioning group (name + consents), not the access gate

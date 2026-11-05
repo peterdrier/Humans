@@ -48,14 +48,8 @@ public class AuditLogUiLocalizationTests
     }
 
     [HumansTheory]
-    [InlineData("en", "System", "assigned role")]
-    [InlineData("es", "Sistema", "asignó un rol")]
-    [InlineData("de", "System", "hat eine Rolle verliehen")]
-    [InlineData("it", "Sistema", "ha assegnato un ruolo")]
-    [InlineData("fr", "Système", "a attribué un rôle")]
-    [InlineData("ca", "Sistema", "ha assignat un rol")]
-    public async Task MemberLine_RendersLocalizedActorAndVerb_WithoutChangingStoredDescription(
-        string cultureName, string systemLabel, string subjectlessVerb)
+    [MemberData(nameof(SupportedCultures.All), MemberType = typeof(SupportedCultures))]
+    public async Task MemberLine_RendersLocalizedActorAndVerb_WithoutChangingStoredDescription(string cultureName)
     {
         using var culture = new CultureScope(cultureName);
         using var services = new ServiceCollection().AddLogging().AddLocalization().BuildServiceProvider();
@@ -79,8 +73,9 @@ public class AuditLogUiLocalizationTests
 
         await page.ExecuteAsync();
 
-        writer.ToString().Should().Contain(HtmlEncoder.Default.Encode(systemLabel));
-        writer.ToString().Should().Contain(HtmlEncoder.Default.Encode(subjectlessVerb));
+        writer.ToString().Should().Contain(HtmlEncoder.Default.Encode(localizer["AuditLog_System"]));
+        writer.ToString().Should().Contain(
+            $"<span>{HtmlEncoder.Default.Encode(TestActions.RoleAssigned.ToLocalizedAuditVerb(true, localizer)!)}</span>");
         writer.ToString().Should().Contain("role &#x27;&lt;Board&gt;&#x27;");
         writer.ToString().Should().NotContain("AuditLog_");
         entry.Description.Should().Be("role '<Board>'");

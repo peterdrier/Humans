@@ -20,12 +20,7 @@ namespace Humans.Shifts.Tests.ViewComponents;
 public class VolunteerSearchScriptTests
 {
     [HumansTheory]
-    [Xunit.InlineData("en")]
-    [Xunit.InlineData("es")]
-    [Xunit.InlineData("de")]
-    [Xunit.InlineData("it")]
-    [Xunit.InlineData("fr")]
-    [Xunit.InlineData("ca")]
+    [Xunit.MemberData(nameof(SupportedCultures.All), MemberType = typeof(SupportedCultures))]
     public async Task Search_labels_round_trip_through_rendered_script_literals(string language)
     {
         var resources = new ResourceManager(typeof(ShiftsResource));

@@ -1,8 +1,10 @@
 @{
     ViewData["Title"] = "New Campaign";
+    var form = ViewData[nameof(CampaignFormValues)] as CampaignFormValues
+        ?? new(null, null, null, null, null);
 }
 
-<h1>New Campaign</h1>
+<page-header title="New Campaign" />
 
 
 <div class="card">
@@ -11,10 +13,7 @@
             @Html.AntiForgeryToken()
             @Html.ValidationSummary(false, "", new { @class = "text-danger" })
 
-            <partial name="_CampaignFormFields" model="@(new CampaignFormValues(
-                ViewBag.Title2 as string, ViewBag.Description as string,
-                ViewBag.EmailSubject as string, ViewBag.EmailBodyTemplate as string,
-                ViewBag.ReplyToAddress as string))" />
+            <partial name="_CampaignFormFields" model="@form" />
 
             <div class="d-flex gap-2">
                 <button type="submit" class="btn btn-primary">Create Campaign</button>

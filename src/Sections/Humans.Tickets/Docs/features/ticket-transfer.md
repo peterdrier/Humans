@@ -43,7 +43,7 @@ Outcomes are recorded on the request columns + audit log.
 
 ### US-42.1: Sender requests a transfer (one-page wizard)
 
-A receiver selected before an account merge must be selected again: confirmation and creation reject ids that resolve to a different survivor. Transfers never create a receiver link to an archived account, including an archived alias of the sender.
+A receiver selected before an account merge must be selected again: confirmation and creation reject ids that resolve to a different survivor. Transfers never create a receiver link to an archived account, including an archived alias of the sender. Confirmation and creation also refuse same-ID tombstones with retained contact details, using the existing invalid-selection feedback.
 **As a** Sender (current holder of a `Valid`, not-yet-checked-in ticket)
 **I want to** request sending the ticket to a specific other Humans member
 **So that** the seat goes to someone I trust rather than being wasted
@@ -64,7 +64,7 @@ A receiver selected before an account merge must be selected again: confirmation
 - On submit a `Pending` request is created; the Sender sees a pending stamp on the ticket and a Cancel
   control on the homepage.
 
-Member request and cancellation errors are localized in all six cultures. Unknown failure text is logged and replaced by a translated fallback.
+Member request and cancellation errors are localized in all supported cultures. Unknown failure text is logged and replaced by a translated fallback.
 
 ### US-42.2: Sender cancels a pending transfer
 - A Cancel control appears on the Sender's pending-transfer ticket on the homepage.

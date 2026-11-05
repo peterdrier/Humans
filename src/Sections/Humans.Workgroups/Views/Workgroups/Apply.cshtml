@@ -3,17 +3,14 @@
     ViewData["Title"] = Localizer["Workgroups_ApplyTitle"];
 }
 
-<nav aria-label="@Localizer["Workgroups_BreadcrumbNavigation"]">
-    <ol class="breadcrumb">
-        <li class="breadcrumb-item"><a asp-action="Index">@Localizer["Workgroups_Title"]</a></li>
-        <li class="breadcrumb-item active" aria-current="page">@ViewData["Title"]</li>
-    </ol>
-</nav>
+@section Crumbs {
+    <a asp-action="Index">@Localizer["Workgroups_Title"]</a>
+    <span>@ViewData["Title"]</span>
+}
 
-<h1>@ViewData["Title"]</h1>
-<p class="text-muted">@Localizer["Workgroups_ApplyIntro"]</p>
+<page-header title="@(ViewData["Title"]?.ToString())" subtitle="@(Localizer["Workgroups_ApplyIntro"].Value)" />
 
-<div class="card" style="max-width: 760px;">
+<div class="card mw-760">
     <div class="card-body">
         <form method="post" asp-action="Apply">
             <div asp-validation-summary="ModelOnly" class="text-danger"></div>
@@ -41,10 +38,12 @@
                 <div class="col-md-4">
                     <label asp-for="DeliverableKind" class="form-label">@Localizer["Workgroups_Field_DeliverableKind"]</label>
                     <select asp-for="DeliverableKind" class="form-select" asp-items="@Localizer.EnumSelectItems<WorkgroupDeliverableKind>()"></select>
+                    <span asp-validation-for="DeliverableKind" class="text-danger"></span>
                 </div>
                 <div class="col-md-4">
                     <label asp-for="Audience" class="form-label">@Localizer["Workgroups_Field_Audience"]</label>
                     <select asp-for="Audience" class="form-select" asp-items="@Localizer.EnumSelectItems<WorkgroupAudience>()"></select>
+                    <span asp-validation-for="Audience" class="text-danger"></span>
                 </div>
                 <div class="col-md-4">
                     <label asp-for="TargetDate" class="form-label">@Localizer["Workgroups_Field_TargetDate"]</label>
@@ -61,6 +60,7 @@
             <div class="form-check mb-3">
                 <input asp-for="IsSensitive" class="form-check-input" />
                 <label asp-for="IsSensitive" class="form-check-label">@Localizer["Workgroups_Field_IsSensitive"]</label>
+                <span asp-validation-for="IsSensitive" class="text-danger"></span>
                 <div class="form-text">@Localizer["Workgroups_Field_IsSensitiveHelp"]</div>
             </div>
 

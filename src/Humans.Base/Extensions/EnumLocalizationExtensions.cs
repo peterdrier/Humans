@@ -14,9 +14,13 @@ public static class EnumLocalizationExtensions
 {
     /// <summary>Localized display text for a single enum value.</summary>
     public static string EnumDisplay<TEnum>(this IStringLocalizer localizer, TEnum value)
-        where TEnum : struct, Enum
+        where TEnum : struct, Enum =>
+        EnumDisplay(localizer, (Enum)value);
+
+    /// <summary>Localized display text for an enum value whose type is only known at runtime.</summary>
+    public static string EnumDisplay(this IStringLocalizer localizer, Enum value)
     {
-        var localized = localizer[$"Enum_{typeof(TEnum).Name}_{value}"];
+        var localized = localizer[$"Enum_{value.GetType().Name}_{value}"];
         return localized.ResourceNotFound ? Humanize(value.ToString()) : localized.Value;
     }
 

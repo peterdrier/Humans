@@ -3,12 +3,13 @@
     ViewData["Title"] = "Register an existing group";
 }
 
-<h1>@ViewData["Title"]</h1>
-<p class="text-muted">Bootstraps a group that already exists: applies on its behalf and registers it Active immediately, backdated to when it really started.</p>
+<page-header title="@(ViewData["Title"]?.ToString())" subtitle="Bootstraps a group that already exists: applies on its behalf and registers it Active immediately, backdated to when it really started." />
 
-<div class="card" style="max-width: 760px;">
+<div class="card mw-760">
     <div class="card-body">
         <form method="post" asp-action="RegisterExisting">
+            <input type="hidden" asp-for="Application.IsSensitive" />
+            <span asp-validation-for="Application.IsSensitive" class="text-danger"></span>
             <div asp-validation-summary="ModelOnly" class="text-danger"></div>
 
             <div class="mb-3">
@@ -38,6 +39,7 @@
                             <option value="@value">@value</option>
                         }
                     </select>
+                    <span asp-validation-for="Application.DeliverableKind" class="text-danger"></span>
                 </div>
                 <div class="col-md-4">
                     <label asp-for="Application.Audience" class="form-label">Audience</label>
@@ -47,6 +49,7 @@
                             <option value="@value">@value</option>
                         }
                     </select>
+                    <span asp-validation-for="Application.Audience" class="text-danger"></span>
                 </div>
                 <div class="col-md-4">
                     <label asp-for="Application.TargetDate" class="form-label">Target date</label>
@@ -76,14 +79,16 @@
                 <div class="form-check mb-2">
                     <input asp-for="Budget.HasBudget" class="form-check-input" />
                     <label asp-for="Budget.HasBudget" class="form-check-label">This workgroup has a budget</label>
+                    <span asp-validation-for="Budget.HasBudget" class="text-danger"></span>
                 </div>
-                <div class="mb-2" style="max-width: 240px;">
+                <div class="mb-2 mw-240">
                     <label asp-for="Budget.Amount" class="form-label">Amount (EUR)</label>
                     <input asp-for="Budget.Amount" type="number" step="0.01" min="0" class="form-control" />
                     <span asp-validation-for="Budget.Amount" class="text-danger"></span>
                 </div>
                 <div class="form-check"><input class="form-check-input" type="radio" asp-for="Budget.AccountMode" id="mode-create" value="create" /><label class="form-check-label" for="mode-create">Create <code>Workgroups / {name}</code> in Holded (linked instead if one of that name already exists)</label></div>
                 <div class="form-check mb-2"><input class="form-check-input" type="radio" asp-for="Budget.AccountMode" id="mode-link" value="link" /><label class="form-check-label" for="mode-link">Link an existing account</label></div>
+                <span asp-validation-for="Budget.AccountMode" class="text-danger"></span>
                 <select asp-for="Budget.ExistingAccountNum" class="form-select" style="max-width: 480px;">
                     <option value="">— choose —</option>
                     @foreach (var a in Model.ExpenseAccounts.OrderBy(a => a.Number))

@@ -115,7 +115,7 @@ Read surface (internal, consumed by the section's own views and by the admin pag
 
 ## Surfaces
 
-All user-facing strings on the bell, popup and `/Notifications` come from `NotificationsResource` in all six cultures. Entry text comes from the publishing section's resource set.
+All user-facing strings on the bell, popup and `/Notifications` come from `NotificationsResource` in all supported cultures. Entry text comes from the publishing section's resource set.
 
 | Verb | Route | Purpose | Who |
 |------|-------|---------|-----|

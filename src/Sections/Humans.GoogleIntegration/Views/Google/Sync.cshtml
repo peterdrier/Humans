@@ -2,10 +2,9 @@
     ViewData["Title"] = "Resource Sync Status";
 }
 
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <h2>Resource Sync Status</h2>
+<page-header title="Resource Sync Status">
     <a asp-action="Index" class="btn btn-outline-secondary btn-sm">Back to Google</a>
-</div>
+</page-header>
 
 <ul class="nav nav-tabs" id="syncTabs" role="tablist">
     <li class="nav-item" role="presentation">
@@ -37,10 +36,6 @@
 (function () {
     'use strict';
 
-    @await Html.PartialAsync("~/Views/Shared/_RequestVerificationTokenScript.cshtml")
-
-    var antiForgeryToken = getRequestVerificationToken('#antiForgeryForm input[name="__RequestVerificationToken"]');
-
     // Tab data-resource-type values to API enum values.
     var resourceTypeMap = { 'DriveFolder': 0, 'Group': 2 };
     var previewVersions = new WeakMap();
@@ -68,11 +63,7 @@
         previewVersions.set(pane, version);
         pane.innerHTML = '<div class="text-center py-5"><div class="spinner-border" role="status"><span class="visually-hidden">Loading...</span></div></div>';
 
-        fetch('/Google/Sync/Preview/' + getResourceTypeValue(resourceType), {
-            method: 'POST',
-            headers: { 'RequestVerificationToken': antiForgeryToken },
-            redirect: 'error'
-        })
+        Humans.postJson('/Google/Sync/Preview/' + getResourceTypeValue(resourceType), undefined, { redirect: 'error' })
             .then(function (r) {
                 if (!r.ok) throw new Error('Request failed: ' + r.status);
                 return r.text();
@@ -134,13 +125,7 @@
     }
 
     function executeSingle(resourceId, syncAction, resourceType) {
-        fetch('/Google/Sync/Execute/' + resourceId + '?action=' + syncAction, {
-            method: 'POST',
-            headers: {
-                'RequestVerificationToken': antiForgeryToken,
-                'Content-Type': 'application/json'
-            }
-        })
+        Humans.postJson('/Google/Sync/Execute/' + resourceId + '?action=' + syncAction)
         .then(function (r) {
             if (!r.ok) throw new Error('Request failed: ' + r.status);
             return r.json();
@@ -149,19 +134,13 @@
             loadTab(resourceType);
         })
         .catch(function (err) {
-            alert('Sync failed: ' + err.message);
+            showToast('Sync failed: ' + err.message, 'danger');
         });
     }
 
     function executeAll(resourceType, syncAction) {
         var typeValue = getResourceTypeValue(resourceType);
-        fetch('/Google/Sync/ExecuteAll/' + typeValue + '?action=' + syncAction, {
-            method: 'POST',
-            headers: {
-                'RequestVerificationToken': antiForgeryToken,
-                'Content-Type': 'application/json'
-            }
-        })
+        Humans.postJson('/Google/Sync/ExecuteAll/' + typeValue + '?action=' + syncAction)
         .then(function (r) {
             if (!r.ok) throw new Error('Request failed: ' + r.status);
             return r.json();
@@ -170,7 +149,7 @@
             loadTab(resourceType);
         })
         .catch(function (err) {
-            alert('Sync failed: ' + err.message);
+            showToast('Sync failed: ' + err.message, 'danger');
         });
     }
 

@@ -1,0 +1,183 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- ReSharper disable MarkupTextTypo -->
+<root xmlns:ns1="urn:schemas-microsoft-com:xml-msdata" xmlns:xs="http://www.w3.org/2001/XMLSchema">
+  <xs:schema id="root">
+    <xs:element name="root" ns1:IsDataSet="true">
+      <xs:complexType>
+        <xs:choice maxOccurs="unbounded">
+          <xs:element name="data">
+            <xs:complexType>
+              <xs:sequence>
+                <xs:element name="value" type="xsd:string" minOccurs="0" ns1:Ordinal="1" />
+                <xs:element name="comment" type="xsd:string" minOccurs="0" ns1:Ordinal="2" />
+              </xs:sequence>
+              <xs:attribute name="name" type="xsd:string" ns1:Ordinal="0" />
+              <xs:attribute name="type" type="xsd:string" />
+              <xs:attribute name="mimetype" type="xsd:string" />
+            </xs:complexType>
+          </xs:element>
+          <xs:element name="resheader">
+            <xs:complexType>
+              <xs:sequence>
+                <xs:element name="value" type="xsd:string" minOccurs="0" ns1:Ordinal="1" />
+              </xs:sequence>
+              <xs:attribute name="name" type="xsd:string" use="required" />
+            </xs:complexType>
+          </xs:element>
+        </xs:choice>
+      </xs:complexType>
+    </xs:element>
+  </xs:schema>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>1.3</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="Enum_EventStatus_Approved" xml:space="preserve"><value>Goedgekeurd</value></data>
+  <data name="Enum_EventStatus_Draft" xml:space="preserve"><value>Concept</value></data>
+  <data name="Enum_EventStatus_Pending" xml:space="preserve"><value>In afwachting</value></data>
+  <data name="Enum_EventStatus_Rejected" xml:space="preserve"><value>Afgewezen</value></data>
+  <data name="Enum_EventStatus_ResubmitRequested" xml:space="preserve"><value>Wijzigingen gevraagd</value></data>
+  <data name="Enum_EventStatus_Withdrawn" xml:space="preserve"><value>Ingetrokken</value></data>
+  <data name="Events_AddBarrioEvent" xml:space="preserve"><value>Barrio-evenement toevoegen</value></data>
+  <data name="Events_AddToFavourites" xml:space="preserve"><value>Toevoegen aan favorieten</value></data>
+  <data name="Events_AllCategories" xml:space="preserve"><value>Alle categorieën</value></data>
+  <data name="Events_AllTimesIn" xml:space="preserve"><value>Alle tijden in {0}. Playa Time kan van toepassing zijn!</value></data>
+  <data name="Events_AllTimesInShort" xml:space="preserve"><value>Alle tijden in {0}</value></data>
+  <data name="Events_AllVenues" xml:space="preserve"><value>Alle locaties</value></data>
+  <data name="Events_BrowseTitle" xml:space="preserve"><value>Evenementen bekijken</value></data>
+  <data name="Events_ColActions" xml:space="preserve"><value>Acties</value></data>
+  <data name="Events_ColCategory" xml:space="preserve"><value>Categorie</value></data>
+  <data name="Events_ColDateTime" xml:space="preserve"><value>Datum en tijd</value></data>
+  <data name="Events_ColEventName" xml:space="preserve"><value>Naam evenement</value></data>
+  <data name="Events_ColPriority" xml:space="preserve"><value>Prioriteit</value></data>
+  <data name="Events_ConflictBadge" xml:space="preserve"><value>Overlapt in tijd met een ander favoriet evenement</value></data>
+  <data name="Events_DownloadCsv" xml:space="preserve"><value>Evenementen-CSV downloaden</value></data>
+  <data name="Events_DurationMin" xml:space="preserve"><value>{0} min</value></data>
+  <data name="Events_DurationHours" xml:space="preserve"><value>{0} u</value></data>
+  <data name="Events_DurationHoursMinutes" xml:space="preserve"><value>{0} u {1} min</value></data>
+  <data name="Events_FavouritesOnly" xml:space="preserve"><value>Alleen</value></data>
+  <data name="Events_FilterCategory" xml:space="preserve"><value>Categorie</value></data>
+  <data name="Events_FilterDay" xml:space="preserve"><value>Dag</value></data>
+  <data name="Events_FilterSearch" xml:space="preserve"><value>Zoeken</value></data>
+  <data name="Events_FilterVenue" xml:space="preserve"><value>Locatie</value></data>
+  <data name="Events_MyPersonalEvents" xml:space="preserve"><value>Mijn persoonlijke evenementen</value></data>
+  <data name="Events_MySchedule" xml:space="preserve"><value>Mijn programma</value></data>
+  <data name="Events_MySubmissions" xml:space="preserve"><value>Mijn inzendingen</value></data>
+  <data name="Events_MySubmissionsTitle" xml:space="preserve"><value>Mijn ingediende evenementen</value></data>
+  <data name="Events_NoBarrioEvents" xml:space="preserve"><value>Nog geen evenementen ingediend voor deze barrio.</value></data>
+  <data name="Events_NoEventsFound" xml:space="preserve"><value>Geen evenementen gevonden. Probeer je filters aan te passen.</value></data>
+  <data name="Events_NoPersonalEvents" xml:space="preserve"><value>Je hebt nog geen persoonlijke evenementen ingediend.</value></data>
+  <data name="Events_RemoveFromFavourites" xml:space="preserve"><value>Verwijderen uit favorieten</value></data>
+  <data name="Events_RemoveFromSchedule" xml:space="preserve"><value>Verwijderen uit programma</value></data>
+  <data name="Events_RemoveFromScheduleConfirm" xml:space="preserve"><value>Dit evenement uit je programma verwijderen?</value></data>
+  <data name="Events_ScheduleEmpty" xml:space="preserve"><value>Je hebt nog geen evenementen als favoriet gemarkeerd. Bekijk de {0} om evenementen aan je programma toe te voegen.</value></data>
+  <data name="Events_ScheduleEmptyLink" xml:space="preserve"><value>evenementengids</value></data>
+  <data name="Events_ScheduleTitle" xml:space="preserve"><value>Mijn programma</value></data>
+  <data name="Events_SearchPlaceholder" xml:space="preserve"><value>Zoek op titel of beschrijving…</value></data>
+  <data name="Events_StatApproved" xml:space="preserve"><value>Goedgekeurd</value></data>
+  <data name="Events_StatPending" xml:space="preserve"><value>In afwachting</value></data>
+  <data name="Events_StatSubmitted" xml:space="preserve"><value>Ingediend</value></data>
+  <data name="Events_SubmissionWindow" xml:space="preserve"><value>Indieningsperiode:</value></data>
+  <data name="Events_SubmissionWindowClosed" xml:space="preserve"><value>De indieningsperiode is momenteel niet open. Neem contact op met een beheerder om de gidsinstellingen te configureren.</value></data>
+  <data name="Events_SubmitNewEvent" xml:space="preserve"><value>Nieuw evenement indienen</value></data>
+  <data name="Events_UploadColErrors" xml:space="preserve"><value>Fouten</value></data>
+  <data name="Events_UploadColEvent" xml:space="preserve"><value>Evenement</value></data>
+  <data name="Events_UploadColRow" xml:space="preserve"><value>Rij</value></data>
+  <data name="Events_UploadCsv" xml:space="preserve"><value>CSV uploaden</value></data>
+  <data name="Events_UploadFailed" xml:space="preserve"><value>Uploaden mislukt.</value></data>
+  <data name="Events_UploadFailedDetail" xml:space="preserve"><value>Los de onderstaande fouten op en probeer het opnieuw. Er zijn geen evenementen opgeslagen.</value></data>
+  <data name="Events_WithdrawConfirm" xml:space="preserve"><value>Dit evenement intrekken?</value></data>
+  <data name="Events_Submission_EditTitle" xml:space="preserve"><value>Evenement bewerken</value></data>
+  <data name="Events_Submission_SubmitTitle" xml:space="preserve"><value>Een evenement indienen</value></data>
+  <data name="Events_Submission_Edit" xml:space="preserve"><value>Bewerken</value></data>
+  <data name="Events_Submission_New" xml:space="preserve"><value>Nieuw</value></data>
+  <data name="Events_Submission_ReturnedForEdits" xml:space="preserve"><value>Dit evenement is teruggestuurd voor aanpassingen. Werk de gegevens bij en dien het opnieuw in.</value></data>
+  <data name="Events_Submission_CharactersRemaining" xml:space="preserve"><value>tekens over</value></data>
+  <data name="Events_Submission_MarkdownSupported" xml:space="preserve"><value>Markdown-opmaak wordt ondersteund</value></data>
+  <data name="Events_Submission_FieldTitle" xml:space="preserve"><value>Titel</value></data>
+  <data name="Events_Submission_FieldDescription" xml:space="preserve"><value>Beschrijving</value></data>
+  <data name="Events_Submission_FieldCategory" xml:space="preserve"><value>Categorie</value></data>
+  <data name="Events_Submission_FieldVenue" xml:space="preserve"><value>Locatie</value></data>
+  <data name="Events_Submission_FieldDate" xml:space="preserve"><value>Datum</value></data>
+  <data name="Events_Submission_FieldStartTime" xml:space="preserve"><value>Starttijd</value></data>
+  <data name="Events_Submission_FieldDuration" xml:space="preserve"><value>Duur (minuten)</value></data>
+  <data name="Events_Submission_FieldLocationNote" xml:space="preserve"><value>Locatietoelichting</value></data>
+  <data name="Events_Submission_FieldHost" xml:space="preserve"><value>Organisator</value></data>
+  <data name="Events_Submission_FieldPriorityRank" xml:space="preserve"><value>Prioriteitsrang</value></data>
+  <data name="Events_Submission_SelectCategory" xml:space="preserve"><value>— Kies een categorie —</value></data>
+  <data name="Events_Submission_SelectVenue" xml:space="preserve"><value>— Kies een locatie —</value></data>
+  <data name="Events_Submission_AllDay" xml:space="preserve"><value>Duurt de hele dag</value></data>
+  <data name="Events_Submission_SelectDay" xml:space="preserve"><value>— Kies een dag —</value></data>
+  <data name="Events_Submission_Repeats" xml:space="preserve"><value>Dit evenement herhaalt zich op meerdere dagen</value></data>
+  <data name="Events_Submission_RecurrenceDays" xml:space="preserve"><value>Herhalingsdagen</value></data>
+  <data name="Events_Submission_LocationPlaceholder" xml:space="preserve"><value>bijv. bij de vuurplaats</value></data>
+  <data name="Events_Submission_HostPlaceholder" xml:space="preserve"><value>bijv. Het Theecollectief</value></data>
+  <data name="Events_Submission_HostHelp" xml:space="preserve"><value>Wordt in de gids getoond in plaats van je naam als je dit invult.</value></data>
+  <data name="Events_Submission_Resubmit" xml:space="preserve"><value>Opnieuw indienen</value></data>
+  <data name="Events_Submission_SubmitForReview" xml:space="preserve"><value>Indienen ter beoordeling</value></data>
+  <data name="Events_Submission_Cancel" xml:space="preserve"><value>Annuleren</value></data>
+  <data name="Events_Submission_BarrioEditTitle" xml:space="preserve"><value>Evenement bewerken — {0}</value></data>
+  <data name="Events_Submission_BarrioSubmitTitle" xml:space="preserve"><value>Evenement indienen — {0}</value></data>
+  <data name="Events_Submission_SubmitNew" xml:space="preserve"><value>Nieuw evenement indienen</value></data>
+  <data name="Events_Submission_BarrioHostPlaceholder" xml:space="preserve"><value>bijv. Luna</value></data>
+  <data name="Events_Submission_BarrioHostHelp" xml:space="preserve"><value>Optioneel — de naam van de persoon die dit evenement organiseert.</value></data>
+  <data name="Events_Submission_PriorityHelp" xml:space="preserve"><value>1 = hoogste prioriteit voor selectie in de gedrukte gids.</value></data>
+  <data name="Events_CardTitle" xml:space="preserve"><value>Evenementen</value></data>
+  <data name="Events_RecurringEvent" xml:space="preserve"><value>Terugkerend evenement</value></data>
+  <data name="Events_NotEditable" xml:space="preserve"><value>Dit evenement kan in de huidige status niet worden bewerkt.</value></data>
+  <data name="Events_NotWithdrawable" xml:space="preserve"><value>Dit evenement kan in de huidige status niet worden ingetrokken.</value></data>
+  <data name="Events_GuideSettingsUnavailable" xml:space="preserve"><value>De gidsinstellingen zijn niet geconfigureerd.</value></data>
+  <data name="Events_SubmittedForReview" xml:space="preserve"><value>Evenement “{0}” is ter beoordeling ingediend.</value><comment>{0} = event title</comment></data>
+  <data name="Events_ResubmittedForReview" xml:space="preserve"><value>Evenement “{0}” is opnieuw ter beoordeling ingediend.</value><comment>{0} = event title</comment></data>
+  <data name="Events_Withdrawn" xml:space="preserve"><value>Evenement “{0}” ingetrokken.</value><comment>{0} = event title</comment></data>
+  <data name="Events_UploadSelectCsv" xml:space="preserve"><value>Kies een CSV-bestand om te uploaden.</value></data>
+  <data name="Events_UploadNoRows" xml:space="preserve"><value>De CSV bevatte geen evenementrijen. Voeg minstens één rij toe onder de kopregel en probeer het opnieuw.</value></data>
+  <data name="Events_UploadComplete" xml:space="preserve"><value>Bulkupload voltooid — {0} aangemaakt, {1} bijgewerkt.</value><comment>{0} = created count; {1} = updated count</comment></data>
+  <data name="Events_Upload_TitleRequired" xml:space="preserve"><value>Het veld Title is verplicht.</value></data>
+  <data name="Events_Upload_TitleTooLong" xml:space="preserve"><value>Title mag maximaal 80 tekens bevatten.</value></data>
+  <data name="Events_Upload_DescriptionRequired" xml:space="preserve"><value>Het veld Description is verplicht.</value></data>
+  <data name="Events_Upload_DescriptionTooLong" xml:space="preserve"><value>Description mag maximaal 450 tekens bevatten.</value></data>
+  <data name="Events_Upload_LocationNoteTooLong" xml:space="preserve"><value>LocationNote mag maximaal 120 tekens bevatten.</value></data>
+  <data name="Events_Upload_HostTooLong" xml:space="preserve"><value>Host mag maximaal 40 tekens bevatten.</value></data>
+  <data name="Events_Upload_CategoryRequired" xml:space="preserve"><value>Het veld Category is verplicht.</value></data>
+  <data name="Events_Upload_CategoryInvalid" xml:space="preserve"><value>Categorie '{0}' is geen geldige actieve categorie.</value></data>
+  <data name="Events_Upload_CategoryAmbiguous" xml:space="preserve"><value>Categorie '{0}' komt overeen met meer dan één actieve categorie.</value></data>
+  <data name="Events_Upload_DateRequired" xml:space="preserve"><value>Het veld Date is verplicht.</value></data>
+  <data name="Events_Upload_DateFormat" xml:space="preserve"><value>Date moet de notatie yyyy-MM-dd hebben.</value></data>
+  <data name="Events_Upload_DateRange" xml:space="preserve"><value>Het begin en einde van het evenement moeten binnen de jaren 0001–9999 vallen, zowel in UTC als in de tijdzone van het evenement.</value></data>
+  <data name="Events_Upload_StartTimeRequired" xml:space="preserve"><value>StartTime is verplicht.</value></data>
+  <data name="Events_Upload_StartTimeFormat" xml:space="preserve"><value>StartTime moet de notatie HH:mm hebben.</value></data>
+  <data name="Events_Upload_DurationRange" xml:space="preserve"><value>DurationMinutes moet tussen 15 en 480 liggen.</value></data>
+  <data name="Events_Upload_DurationIncrement" xml:space="preserve"><value>DurationMinutes moet een veelvoud van 15 zijn.</value></data>
+  <data name="Events_Upload_PriorityRange" xml:space="preserve"><value>PriorityRank moet tussen 1 en 100 liggen.</value></data>
+  <data name="Events_Upload_RecurrenceDays" xml:space="preserve"><value>RecurrenceDays mag alleen Mon Tue Wed Thu Fri Sat Sun bevatten.</value></data>
+  <data name="Events_Upload_DuplicateEventId" xml:space="preserve"><value>Evenement {0} komt meer dan één keer voor in de upload.</value></data>
+  <data name="Events_Upload_EventNotFound" xml:space="preserve"><value>Evenement {0} niet gevonden voor deze barrio.</value></data>
+  <data name="Events_Upload_WithdrawnEventCannotUpdate" xml:space="preserve"><value>Ingetrokken evenementen kunnen niet via een bulkupload worden bijgewerkt.</value></data>
+  <data name="Events_Upload_MissingRequiredColumns" xml:space="preserve"><value>In het CSV-bestand ontbreken verplichte kolommen: {0}. Download een nieuw sjabloon om te zien welke kolommen worden verwacht.</value></data>
+  <data name="Events_Upload_RowIdInvalidGuid" xml:space="preserve"><value>Rij {0}: Id is geen geldige Guid.</value></data>
+  <data name="Events_Upload_RowDurationNotInteger" xml:space="preserve"><value>Rij {0}: DurationMinutes is geen geheel getal.</value></data>
+  <data name="Events_Upload_RowPriorityNotInteger" xml:space="preserve"><value>Rij {0}: PriorityRank is geen geheel getal.</value></data>
+  <data name="Events_Upload_RowRecurringBoolean" xml:space="preserve"><value>Rij {0}: IsRecurring moet true of false zijn.</value></data>
+  <data name="Events_Upload_ParseFailed" xml:space="preserve"><value>Kan CSV niet verwerken. Download een nieuw sjabloon en controleer de bestandsindeling.</value></data>
+  <data name="Events_Upload_ParseErrorDetail" xml:space="preserve"><value>Kan CSV niet verwerken: {0}</value></data>
+  <data name="Events_Email_Pending_Subject" xml:space="preserve"><value>Je ingediende evenement is ontvangen</value></data>
+  <data name="Events_Email_Pending_Body" xml:space="preserve"><value>&lt;p&gt;Hoi {0},&lt;/p&gt;&lt;p&gt;Je evenement &lt;strong&gt;{1}&lt;/strong&gt; is ontvangen en staat nu in de moderatiewachtrij. Je krijgt een melding zodra het is beoordeeld.&lt;/p&gt;&lt;p&gt;&lt;a href="{3}"&gt;Bekijk je inzendingen&lt;/a&gt;&lt;/p&gt;</value></data>
+  <data name="Events_Email_Approved_Subject" xml:space="preserve"><value>Je evenement is goedgekeurd</value></data>
+  <data name="Events_Email_Approved_Body" xml:space="preserve"><value>&lt;p&gt;Hoi {0},&lt;/p&gt;&lt;p&gt;Je evenement &lt;strong&gt;{1}&lt;/strong&gt; is goedgekeurd en verschijnt in de evenementengids.&lt;/p&gt;</value></data>
+  <data name="Events_Email_Rejected_Subject" xml:space="preserve"><value>Je ingediende evenement is niet goedgekeurd</value></data>
+  <data name="Events_Email_Rejected_Body" xml:space="preserve"><value>&lt;p&gt;Hoi {0},&lt;/p&gt;&lt;p&gt;Je evenement &lt;strong&gt;{1}&lt;/strong&gt; is niet goedgekeurd voor de evenementengids.&lt;/p&gt;&lt;p&gt;&lt;strong&gt;Reden:&lt;/strong&gt; {2}&lt;/p&gt;&lt;p&gt;Je kunt je evenement hier bewerken en opnieuw indienen: &lt;a href="{3}"&gt;Evenement bewerken&lt;/a&gt;&lt;/p&gt;</value></data>
+  <data name="Events_Email_ResubmitRequested_Subject" xml:space="preserve"><value>Wijzigingen gevraagd voor je ingediende evenement</value></data>
+  <data name="Events_Email_ResubmitRequested_Body" xml:space="preserve"><value>&lt;p&gt;Hoi {0},&lt;/p&gt;&lt;p&gt;Het moderatieteam heeft wijzigingen gevraagd voor je evenement &lt;strong&gt;{1}&lt;/strong&gt; voordat het kan worden goedgekeurd.&lt;/p&gt;&lt;p&gt;&lt;strong&gt;Feedback:&lt;/strong&gt; {2}&lt;/p&gt;&lt;p&gt;Werk het bij en dien het hier opnieuw in: &lt;a href="{3}"&gt;Evenement bewerken&lt;/a&gt;&lt;/p&gt;</value></data>
+  <data name="Events_RecurrenceDaysInvalid" xml:space="preserve"><value>Kies elke herhalingsdag één keer uit de kalender van dit evenement.</value></data>
+  <data name="Events_CategoryUnavailable" xml:space="preserve"><value>Kies een actieve categorie. De geselecteerde categorie is niet meer beschikbaar.</value></data>
+  <data name="Events_VenueUnavailable" xml:space="preserve"><value>Kies een actieve locatie. De geselecteerde locatie is niet meer beschikbaar.</value></data>
+</root>

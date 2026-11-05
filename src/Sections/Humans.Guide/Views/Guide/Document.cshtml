@@ -1,6 +1,12 @@
 @model GuideViewModel
+@inject IStringLocalizer<SharedResource> SharedLocalizer
 @{
     ViewData["Title"] = Model.Title;
+}
+
+@section Crumbs {
+    <a asp-controller="Guide" asp-action="Index">@SharedLocalizer["SectionHelp_Guide"]</a>
+    <span>@Model.Title</span>
 }
 
 @await Html.PartialAsync("_GuideLayout", Model)

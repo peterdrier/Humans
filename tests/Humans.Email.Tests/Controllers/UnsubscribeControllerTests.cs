@@ -28,12 +28,7 @@ namespace Humans.Email.Tests.Controllers;
 public class UnsubscribeControllerTests
 {
     [HumansTheory]
-    [InlineData("en")]
-    [InlineData("es")]
-    [InlineData("de")]
-    [InlineData("it")]
-    [InlineData("fr")]
-    [InlineData("ca")]
+    [MemberData(nameof(SupportedCultures.All), MemberType = typeof(SupportedCultures))]
     public async Task LegacyGreeting_RendersCurrentIdentityWithoutProfileAccess(string language)
     {
         using var culture = new CultureScope(language);

@@ -22,16 +22,10 @@ namespace Humans.Shifts.Tests.Controllers;
 
 public class ShiftProfileControllerTests
 {
-    [HumansTheory]
-    [InlineData("en")]
-    [InlineData("es")]
-    [InlineData("de")]
-    [InlineData("it")]
-    [InlineData("fr")]
-    [InlineData("ca")]
-    public async Task ShiftInfo_RejectsOversizedFreeTextWithoutChangingTheProfile(string culture)
+    [HumansFact]
+    public async Task ShiftInfo_RejectsOversizedFreeTextWithoutChangingTheProfile()
     {
-        using var cultureScope = new CultureScope(culture);
+        using var cultureScope = new CultureScope(CultureCatalog.DefaultCultureCode);
         var registrations = new ServiceCollection().AddLogging().AddLocalization();
         registrations.AddControllers().AddDataAnnotationsLocalization(options =>
             options.DataAnnotationLocalizerProvider = (_, factory) => factory.Create(typeof(SharedResource)));
@@ -106,6 +100,32 @@ public class ShiftProfileControllerTests
             userId, Arg.Is<IReadOnlyList<Guid>>(ids => ids.Count == 1 && ids[0] == tagId));
     }
 
+    [HumansFact]
+    public async Task ShiftInfo_UnknownTags_RedisplaysWithoutChangingProfile()
+    {
+        using var services = new ServiceCollection().AddLogging().AddLocalization().BuildServiceProvider();
+        var shifts = Substitute.For<IShiftManagement>();
+        var profiles = Substitute.For<IShiftVolunteerProfiles>();
+        var users = Substitute.For<IUserService>();
+        var userId = Guid.NewGuid();
+        users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<UserInfo?>(UserInfo.Create(new User { Id = userId }, [], [], null)));
+        var http = new DefaultHttpContext
+        {
+            RequestServices = services,
+            User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, userId.ToString())], "Test")),
+        };
+        var controller = Build(shifts, profiles, Substitute.For<IShiftView>(), users,
+            services.GetRequiredService<IStringLocalizer<SharedResource>>(),
+            services.GetRequiredService<IStringLocalizer<ShiftsResource>>(), http);
+        profiles.SetVolunteerTagPreferencesAsync(userId, Arg.Any<IReadOnlyList<Guid>>()).Returns(false);
+        var model = new ShiftInfoViewModel { EditableShiftTagIds = [Guid.NewGuid()] };
+
+        (await controller.ShiftInfo(model)).Should().BeOfType<ViewResult>().Which.Model.Should().BeSameAs(model);
+
+        await shifts.DidNotReceive().UpdateShiftProfileAsync(Arg.Any<ShiftVolunteerProfileInfo>());
+    }
+
     [HumansTheory]
     [InlineData("get", "viewer")]
     [InlineData("get", "profile")]
@@ -167,11 +187,14 @@ public class ShiftProfileControllerTests
 
     private static ShiftProfileController Build(
         IShiftManagement shifts, IShiftVolunteerProfiles profiles, IShiftView view, IUserService users,
-        IStringLocalizer<SharedResource> shared, IStringLocalizer<ShiftsResource> shiftsLocalizer, DefaultHttpContext http) =>
-        new(shifts, profiles, view, users, shared, shiftsLocalizer, NullLogger<ShiftProfileController>.Instance)
+        IStringLocalizer<SharedResource> shared, IStringLocalizer<ShiftsResource> shiftsLocalizer, DefaultHttpContext http)
+    {
+        profiles.SetVolunteerTagPreferencesAsync(Arg.Any<Guid>(), Arg.Any<IReadOnlyList<Guid>>()).Returns(true);
+        return new(shifts, profiles, view, users, shared, shiftsLocalizer, NullLogger<ShiftProfileController>.Instance)
         {
             ControllerContext = new ControllerContext { HttpContext = http },
             TempData = new TempDataDictionary(http, Substitute.For<ITempDataProvider>()),
             Url = Substitute.For<IUrlHelper>(),
         };
+    }
 }

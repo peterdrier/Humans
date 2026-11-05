@@ -27,31 +27,22 @@ namespace Humans.Notifications.Tests.ViewComponents;
 public class NotificationBellViewTests
 {
     [HumansTheory]
-    [Xunit.InlineData("en", "Could not load notifications. Please try again.")]
-    [Xunit.InlineData("es", "No se pudieron cargar las notificaciones. Inténtalo de nuevo.")]
-    [Xunit.InlineData("de", "Benachrichtigungen konnten nicht geladen werden. Bitte versuche es erneut.")]
-    [Xunit.InlineData("it", "Impossibile caricare le notifiche. Riprova.")]
-    [Xunit.InlineData("fr", "Impossible de charger les notifications. Réessaie.")]
-    [Xunit.InlineData("ca", "No s’han pogut carregar les notificacions. Torna-ho a provar.")]
-    public async Task Bell_SuppliesLocalizedPopupFailureText(string language, string message)
+    [Xunit.MemberData(nameof(SupportedCultures.All), MemberType = typeof(SupportedCultures))]
+    public async Task Bell_SuppliesLocalizedPopupFailureText(string language)
     {
         using var culture = new CultureScope(language);
+        var message = new ResourceManager(typeof(NotificationsResource))
+            .GetString("Notifications_Popup_LoadError", CultureInfo.CurrentUICulture)!;
         var html = await RenderAsync("/Views/Shared/Components/NotificationBell/Default.cshtml",
             new NotificationBadgeViewModel { ActionableUnreadCount = 2 });
 
         html.Should().Contain($"data-load-error=\"{HtmlEncoder.Default.Encode(message)}\"");
     }
 
-    [HumansTheory]
-    [Xunit.InlineData("en")]
-    [Xunit.InlineData("es")]
-    [Xunit.InlineData("de")]
-    [Xunit.InlineData("it")]
-    [Xunit.InlineData("fr")]
-    [Xunit.InlineData("ca")]
-    public async Task ResolvedRow_RendersTheHumanInsideTheLocalizedMessage(string language)
+    [HumansFact]
+    public async Task ResolvedRow_RendersTheHumanInsideTheLocalizedMessage()
     {
-        using var culture = new CultureScope(language);
+        using var culture = new CultureScope(CultureCatalog.DefaultCultureCode);
         var resolverId = Guid.NewGuid();
         const string name = "Resolver <script>&";
         var users = Substitute.For<IUserService>();

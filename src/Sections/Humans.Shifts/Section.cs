@@ -133,7 +133,7 @@ public sealed class Section :
         services.AddScoped<IAuthorizationHandler, IsAnyTeamManagerOrCoordinatorHandler>();
 
         // Base cannot name these enums, so the section registers them. An unregistered value falls back to
-        // "bg-secondary" silently; ShiftsArchitectureTests pins all nine.
+        // "bg-secondary" silently; ShiftsBadgeRowsTests pins every row.
         EnumBadgeMap.Register(new Dictionary<Enum, string>
         {
             [ShiftPeriod.Build] = "bg-info",
@@ -146,6 +146,15 @@ public sealed class Section :
             [SignupStatus.Bailed] = "bg-secondary",
             [SignupStatus.Cancelled] = "bg-dark",
             [SignupStatus.NoShow] = "bg-danger",
+
+            [RotaPeriod.Build] = "bg-info",
+            [RotaPeriod.Event] = "bg-success",
+            [RotaPeriod.Strike] = "bg-secondary",
+            [RotaPeriod.All] = "bg-primary",
+
+            [ShiftPriority.Normal] = "bg-secondary",
+            [ShiftPriority.Important] = "bg-warning text-dark",
+            [ShiftPriority.Essential] = "bg-danger",
         });
     }
 

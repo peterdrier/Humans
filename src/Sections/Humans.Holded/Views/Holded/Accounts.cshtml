@@ -22,14 +22,14 @@
     }
 }
 
-<h1 class="mb-3">Holded accounts</h1>
-
-<p class="text-muted">
-    Holded's chart of accounts beside the mirror. <strong>Holded</strong> is Holded's own running
-    balance, <strong>Mirror</strong> is the sum of the mirrored lines; both read in the association's
-    point of view (+ money in, − money out). A ✗ means they disagree, compared before that sign is applied.
-    Groups follow the account number's leading digit, and subgroups its first two.
-</p>
+<page-header title="Holded accounts">
+    <page-header-subtitle>
+        Holded's chart of accounts beside the mirror. <strong>Holded</strong> is Holded's own running
+        balance, <strong>Mirror</strong> is the sum of the mirrored lines; both read in the association's
+        point of view (+ money in, − money out). A ✗ means they disagree, compared before that sign is applied.
+        Groups follow the account number's leading digit, and subgroups its first two.
+    </page-header-subtitle>
+</page-header>
 
 <div class="d-flex flex-wrap gap-2 mb-3 align-items-center">
     @if (f.Mismatched)
@@ -87,40 +87,35 @@
                     <span class="me-auto">@sg.Number@(sg.Name is null ? "" : $" · {sg.Name}")</span>
                     @{ Totals(sg.Accounts.Count, sg.HoldedBalance, sg.MirrorBalance, sg.LineCount, sg.Mismatches); }
                 </summary>
-                <div class="table-responsive">
-                    <table class="table table-sm table-striped align-middle mb-0">
-                        <thead>
-                            <tr>
-                                <th>Number</th><th>Name (Holded)</th><th>English name</th>
-                                <th class="text-end">Holded balance</th><th class="text-end">Mirror balance</th>
-                                <th class="text-end">Lines</th><th class="text-center">OK</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                        @foreach (var a in sg.Accounts)
+                    Func<HoldedAccountRow, IHtmlContent> accountCell0 = @<text><a asp-action="Account" asp-route-number="@item.Number"><code>@item.Number</code></a></text>;
+                    Func<HoldedAccountRow, IHtmlContent> accountCell1 = @<text>@item.Name @if (item.Archived) { <span class="badge bg-secondary ms-1">archived</span> }</text>;
+                    Func<HoldedAccountRow, IHtmlContent> accountCell2 = @<text>@item.EnglishName</text>;
+                    Func<HoldedAccountRow, IHtmlContent> accountCell3 = @<text>@item.HoldedBalance.ToSignedEuro()</text>;
+                    Func<HoldedAccountRow, IHtmlContent> accountCell4 = @<text>@(item.LocalBalance is null ? "—" : item.LocalBalance.Value.ToSignedEuro())</text>;
+                    Func<HoldedAccountRow, IHtmlContent> accountCell5 = @<text>@N(item.LocalLineCount)</text>;
+                    Func<HoldedAccountRow, IHtmlContent> accountCell6 = @<text>
+                        @if (item.Reconciled)
                         {
-                            <tr class="@(a.Archived ? "text-muted" : "")">
-                                <td class="text-nowrap"><a asp-action="Account" asp-route-number="@a.Number"><code>@a.Number</code></a></td>
-                                <td>@a.Name @if (a.Archived) { <span class="badge bg-secondary ms-1">archived</span> }</td>
-                                <td class="text-muted">@a.EnglishName</td>
-                                <td class="text-end">@a.HoldedBalance.ToSignedEuro()</td>
-                                <td class="text-end">@(a.LocalBalance is null ? "—" : a.LocalBalance.Value.ToSignedEuro())</td>
-                                <td class="text-end">@N(a.LocalLineCount)</td>
-                                <td class="text-center">
-                                    @if (a.Reconciled)
-                                    {
-                                        <i class="fa-solid fa-check text-success"></i>
-                                    }
-                                    else
-                                    {
-                                        <i class="fa-solid fa-xmark text-danger"></i>
-                                    }
-                                </td>
-                            </tr>
+                            <i class="fa-solid fa-check text-success"></i>
                         }
-                        </tbody>
-                    </table>
-                </div>
+                        else
+                        {
+                            <i class="fa-solid fa-xmark text-danger"></i>
+                        }
+
+                    </text>;
+                    var accountsTable = TableModel.For(sg.Accounts)
+                        .Template("Number", accountCell0, o => o.Css("text-nowrap"), sortBy: a => a.Number)
+                        .Template("Name (Holded)", accountCell1, sortBy: a => a.Name)
+                        .Template("English name", accountCell2, o => o.Css("text-muted"))
+                        .Template("Holded balance", accountCell3, o => o.End(), sortBy: a => a.HoldedBalance)
+                        .Template("Mirror balance", accountCell4, o => o.End(), sortBy: a => a.LocalBalance)
+                        .Template("Lines", accountCell5, o => o.End(), sortBy: a => a.LocalLineCount)
+                        .Template("OK", accountCell6, o => o.Css("text-center").HeaderCss("text-center"), sortBy: a => a.Reconciled ? 1 : 0)
+                        .RowCss(a => a.Archived ? "text-muted" : null)
+                        .Css("align-middle")
+                        .Build();
+                <partial name="_Table" model="accountsTable" />
             @:</details>
         }
         </div>

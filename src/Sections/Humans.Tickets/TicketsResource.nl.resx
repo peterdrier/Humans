@@ -1,0 +1,103 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<!-- ReSharper disable MarkupTextTypo -->
+<root xmlns:ns1="urn:schemas-microsoft-com:xml-msdata" xmlns:xs="http://www.w3.org/2001/XMLSchema">
+  <xs:schema id="root">
+    <xs:element name="root" ns1:IsDataSet="true">
+      <xs:complexType>
+        <xs:choice maxOccurs="unbounded">
+          <xs:element name="data">
+            <xs:complexType>
+              <xs:sequence>
+                <xs:element name="value" type="xsd:string" minOccurs="0" ns1:Ordinal="1" />
+                <xs:element name="comment" type="xsd:string" minOccurs="0" ns1:Ordinal="2" />
+              </xs:sequence>
+              <xs:attribute name="name" type="xsd:string" ns1:Ordinal="0" />
+              <xs:attribute name="type" type="xsd:string" />
+              <xs:attribute name="mimetype" type="xsd:string" />
+            </xs:complexType>
+          </xs:element>
+          <xs:element name="resheader">
+            <xs:complexType>
+              <xs:sequence>
+                <xs:element name="value" type="xsd:string" minOccurs="0" ns1:Ordinal="1" />
+              </xs:sequence>
+              <xs:attribute name="name" type="xsd:string" use="required" />
+            </xs:complexType>
+          </xs:element>
+        </xs:choice>
+      </xs:complexType>
+    </xs:element>
+  </xs:schema>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>1.3</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="Tickets_TicketTransfer_Pending" xml:space="preserve">
+    <value>In afwachting van beoordeling</value>
+  </data>
+  <data name="Tickets_TicketTransfer_AlreadyPending" xml:space="preserve"><value>Overdracht al in afwachting</value></data>
+  <data name="Tickets_TicketTransfer_CancelRequest" xml:space="preserve"><value>Verzoek annuleren</value></data>
+  <data name="Tickets_TicketTransfer_CheckedIn" xml:space="preserve"><value>Al ingecheckt — kan niet worden overgedragen</value></data>
+  <data name="Tickets_TicketTransfer_ConfirmDetails" xml:space="preserve"><value>Hiermee vraag je aan om ticket {0} ({1}) over te dragen aan {2}.</value></data>
+  <data name="Tickets_TicketTransfer_ConfirmNote" xml:space="preserve"><value>Ons ticketteam verwerkt dit en laat je binnenkort iets weten.</value></data>
+  <data name="Tickets_TicketTransfer_Continue" xml:space="preserve"><value>Doorgaan</value></data>
+  <data name="Tickets_TicketTransfer_NoneTransferable" xml:space="preserve"><value>Geen van je tickets kan op dit moment worden overgedragen.</value></data>
+  <data name="Tickets_TicketTransfer_NoRequests" xml:space="preserve"><value>Je hebt nog geen overdrachten aangevraagd.</value></data>
+  <data name="Tickets_TicketTransfer_NoTickets" xml:space="preserve"><value>Je hebt geen tickets om over te dragen.</value></data>
+  <data name="Tickets_TicketTransfer_NotTransferable" xml:space="preserve"><value>Niet overdraagbaar</value></data>
+  <data name="Tickets_TicketTransfer_ReasonLabel" xml:space="preserve"><value>Reden voor de overdracht (optioneel, zichtbaar voor het ticketteam)</value></data>
+  <data name="Tickets_TicketTransfer_RecipientPlaceholder" xml:space="preserve"><value>Zoek op naam of plak het exacte e-mailadres…</value></data>
+  <data name="Tickets_TicketTransfer_Requested" xml:space="preserve"><value>Aangevraagd</value></data>
+  <data name="Tickets_TicketTransfer_RequestTransfer" xml:space="preserve"><value>Overdracht aanvragen</value></data>
+  <data name="Tickets_TicketTransfer_StatusApproved" xml:space="preserve"><value>Voltooid</value></data>
+  <data name="Tickets_TicketTransfer_StatusCancelled" xml:space="preserve"><value>Geannuleerd</value></data>
+  <data name="Tickets_TicketTransfer_StatusRejected" xml:space="preserve"><value>Geannuleerd door team</value></data>
+  <data name="Tickets_TicketTransfer_Step1" xml:space="preserve"><value>1. Kies het ticket dat je wilt overdragen</value></data>
+  <data name="Tickets_TicketTransfer_Step2" xml:space="preserve"><value>2. Aan wie stuur je het?</value></data>
+  <data name="Tickets_TicketTransfer_Step3" xml:space="preserve"><value>3. Bevestigen</value></data>
+  <data name="Tickets_TicketTransfer_Title" xml:space="preserve"><value>Een ticket overdragen</value></data>
+  <data name="Tickets_TicketTransfer_YourRequests" xml:space="preserve"><value>Je overdrachtsverzoeken</value></data>
+  <data name="Tickets_TicketTransfer_InvalidSelection" xml:space="preserve"><value>Die overdracht kon niet worden voorbereid — kies een van je tickets en een geldige ontvanger anders dan jezelf.</value></data>
+  <data name="Tickets_TicketTransfer_RequestSubmitted" xml:space="preserve"><value>Overdracht aangevraagd. Ons ticketteam verwerkt deze en laat je binnenkort iets weten.</value></data>
+  <data name="Tickets_TicketTransfer_Cancelled" xml:space="preserve"><value>Overdracht geannuleerd.</value></data>
+  <data name="Tickets_TicketTransfer_NotFound" xml:space="preserve"><value>Overdracht niet gevonden.</value></data>
+  <data name="Tickets_TicketTransfer_OnlyPendingCanBeCancelled" xml:space="preserve"><value>Alleen overdrachten in afwachting kunnen worden geannuleerd.</value></data>
+  <data name="Tickets_TicketTransfer_OnlySenderCanCancel" xml:space="preserve"><value>Alleen de afzender kan deze overdracht annuleren.</value></data>
+  <data name="Tickets_TicketTransfer_CancelFailed" xml:space="preserve"><value>De overdracht kon niet worden geannuleerd. Vernieuw de pagina of neem contact op met het ticketteam.</value></data>
+  <data name="Tickets_TicketTransfer_NotCurrentHolder" xml:space="preserve"><value>Je kunt alleen tickets overdragen die momenteel op jouw naam staan.</value></data>
+  <data name="Tickets_TicketStub_EventLabel" xml:space="preserve"><value>{0} · Toegang voor één persoon</value></data>
+  <data name="Tickets_TicketStub_CheckedIn" xml:space="preserve"><value>Ingecheckt</value></data>
+  <data name="Tickets_TicketStub_Void" xml:space="preserve"><value>Ongeldig</value></data>
+  <data name="Tickets_TicketStub_EarlyEntry" xml:space="preserve"><value>Vroege toegang {0}</value><comment>{0} = fecha de acceso</comment></data>
+  <data name="Tickets_TicketStub_TransferPending" xml:space="preserve"><value>Overdracht in afwachting</value></data>
+  <data name="Tickets_TicketHoldings_Title" xml:space="preserve"><value>Tickets</value></data>
+  <data name="Tickets_TicketHoldings_OrderSingular" xml:space="preserve"><value>bestelling</value></data>
+  <data name="Tickets_TicketHoldings_OrderPlural" xml:space="preserve"><value>bestellingen</value></data>
+  <data name="Tickets_TicketHoldings_Empty" xml:space="preserve"><value>Geen tickets.</value></data>
+  <data name="Tickets_MemberTicketStatus_Transfers" xml:space="preserve"><value>Overdrachten…</value></data>
+  <data name="Tickets_TicketTransfer_Email_Requested_Subject" xml:space="preserve"><value>Ticketoverdracht aangevraagd</value></data>
+  <data name="Tickets_TicketTransfer_Email_Requested_Body" xml:space="preserve"><value>&lt;p&gt;Hoi {0},&lt;/p&gt;&lt;p&gt;We hebben je verzoek ontvangen om ticket &lt;strong&gt;{1}&lt;/strong&gt; over te dragen aan &lt;strong&gt;{2}&lt;/strong&gt;.&lt;/p&gt;&lt;p&gt;Ons ticketteam handelt dit af en laat je binnenkort iets weten. Je hoeft verder niets te doen.&lt;/p&gt;</value></data>
+  <data name="Tickets_TicketTransfer_Email_Completed_Subject" xml:space="preserve"><value>Ticketoverdracht voltooid</value></data>
+  <data name="Tickets_TicketTransfer_Email_Completed_Body" xml:space="preserve"><value>&lt;p&gt;Hoi {0},&lt;/p&gt;&lt;p&gt;De overdracht van ticket &lt;strong&gt;{1}&lt;/strong&gt; aan &lt;strong&gt;{2}&lt;/strong&gt; is voltooid.&lt;/p&gt;</value></data>
+  <data name="Tickets_TicketTransfer_Email_Cancelled_Subject" xml:space="preserve"><value>Ticketoverdracht geannuleerd</value></data>
+  <data name="Tickets_TicketTransfer_Email_Cancelled_Body" xml:space="preserve"><value>&lt;p&gt;Hoi {0},&lt;/p&gt;&lt;p&gt;De aangevraagde overdracht van ticket &lt;strong&gt;{1}&lt;/strong&gt; aan &lt;strong&gt;{2}&lt;/strong&gt; is niet voltooid.&lt;/p&gt;{3}&lt;p&gt;Heb je vragen? Beantwoord deze e-mail en ons ticketteam helpt je verder.&lt;/p&gt;</value></data>
+  <data name="Tickets_TicketTransfer_Email_Cancelled_Reason" xml:space="preserve"><value>&lt;p&gt;&lt;strong&gt;Reden:&lt;/strong&gt; {0}&lt;/p&gt;</value></data>
+  <data name="Tickets_Onsite_Since" xml:space="preserve"><value>Op het terrein sinds {0}</value></data>
+  <data name="Tickets_Onsite_Title" xml:space="preserve"><value>Ingecheckt bij de gate</value></data>
+  <data name="Tickets_NotAttending_Declared" xml:space="preserve"><value>Je bent voor dit jaar gemarkeerd als niet aanwezig.</value></data>
+  <data name="Tickets_NotAttending_AlreadyAttended" xml:space="preserve"><value>Je aanwezigheid is al geregistreerd, dus je kunt niet meer worden gemarkeerd als niet aanwezig.</value></data>
+  <data name="Tickets_NotAttending_Failed" xml:space="preserve"><value>Er is iets misgegaan. Probeer het opnieuw.</value></data>
+  <data name="Tickets_NotAttending_NoActiveEvent" xml:space="preserve"><value>Er is geen actief evenement ingesteld.</value></data>
+  <data name="Tickets_NotAttending_Undone" xml:space="preserve"><value>Je verklaring is verwijderd.</value></data>
+  <data name="Tickets_NotAttending_UndoFailed" xml:space="preserve"><value>Ongedaan maken is mislukt — je status is mogelijk bijgewerkt door de ticketsynchronisatie.</value></data>
+  <data name="Tickets_MemberTicketStatus_Unavailable" xml:space="preserve"><value>Je ticketstatus is op dit moment niet beschikbaar. Probeer het later opnieuw.</value></data>
+  <data name="Tickets_TicketTransfer_ReasonTooLong" xml:space="preserve"><value>Redenen mogen niet langer zijn dan 1.000 tekens.</value></data>
+</root>

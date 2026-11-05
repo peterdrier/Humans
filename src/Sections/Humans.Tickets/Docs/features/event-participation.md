@@ -19,7 +19,7 @@ Track yearly event participation status for each human, enabling self-service op
 
 ### As a human, I want to declare I'm not attending this year
 - Dashboard ticket widget shows "Not attending this year" button when no ticket linked (the widget is hidden while the active event is off season)
-- Clicking sets participation status to NotAttending
+- Clicking sets participation status to NotAttending when attendance has not already been recorded; otherwise the page reports the refusal in the selected UI language and leaves the Attended record intact.
 - Can undo the declaration to return to default state
 
 ### As a ticket holder, my participation is auto-tracked
@@ -47,7 +47,7 @@ Track yearly event participation status for each human, enabling self-service op
 | Id | Guid | PK |
 | UserId | Guid | User id (no FK — cross-section) |
 | Year | int | Event year |
-| Status | ParticipationStatus? | NotAttending, Ticketed, Attended, NoShow; `null` = cleared (kept only where a legacy Users row backs that user and year) |
+| Status | ParticipationStatus? | NotAttending, Ticketed, Attended, NoShow; `null` = historical cleared row, read as unknown; new removals delete the row |
 | DeclaredAt | Instant? | When user self-declared NotAttending |
 | CheckedInAt | Instant? | Earliest gate check-in for the year; write-once (never overwritten once set) |
 | Source | ParticipationSource | UserDeclared, TicketSync, AdminBackfill |
@@ -71,13 +71,9 @@ Added `Year` (int) to EventSettings so participation records can be linked to th
 
 Attended is permanent -- cannot be reverted by any mechanism.
 
-## Legacy data and the move from Users
-
-Until Users decomposition commit 13 the records lived in Users' `event_participations`. That table is now frozen: nothing writes it, and the only reader is `EventParticipationService`, which answers a user and year with no Tickets record from the legacy row and seeds every write from it. A removal that a legacy row backs leaves a cleared record so the legacy value cannot return. The `tickets.event-participations` data migration (`/Debug/DataMigrations`) copies the legacy rows; a later PR retires the fallback and drops the table.
-
 ## Account merge
 
-`EventParticipationService` (`IUserMerge`) folds the merged-away account's years into the survivor: the higher status wins (`Attended > Ticketed > NoShow > NotAttending`) and brings its source and declaration time; the first check-in time is kept. The source's records are cleared.
+`EventParticipationService` (`IUserMerge`) folds the merged-away account's years into the survivor: the higher status wins (`Attended > Ticketed > NoShow > NotAttending`) and brings its source and declaration time; the first check-in time is kept. The source's records are deleted.
 
 ## GDPR
 

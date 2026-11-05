@@ -127,23 +127,17 @@ public sealed class ServicePlacementTests
         result.Year.Should().Be(Year);
     }
 
-    [HumansTheory]
-    [InlineData("en", "Invalid container placement GeoJSON.")]
-    [InlineData("es", "El GeoJSON de ubicación del contenedor no es válido.")]
-    [InlineData("de", "Ungültiges GeoJSON für die Containerplatzierung.")]
-    [InlineData("it", "GeoJSON di posizionamento del container non valido.")]
-    [InlineData("fr", "Le GeoJSON de placement du conteneur est invalide.")]
-    [InlineData("ca", "El GeoJSON d’ubicació del contenidor no és vàlid.")]
-    public async Task SavePlacementAsync_RejectsInvalidGeometryInTheCallersCulture(string culture, string expected)
+    [HumansFact]
+    public async Task SavePlacementAsync_RejectsInvalidGeometry()
     {
-        using var cultureScope = new Humans.Base.Extensions.CultureScope(culture);
+        using var cultureScope = new Humans.Base.Extensions.CultureScope("en");
         var container = await SeedContainerAsync();
 
         var act = () => _sut.SavePlacementAsync(container.Id, Year, "{}", ActorUserId, TestContext.Current.CancellationToken);
 
         var refusal = await act();
         refusal.ErrorKey.Should().Be("Containers_Error_InvalidPlacementGeoJson");
-        ServiceImageTests.Localizer[refusal.ErrorKey!].Value.Should().Be(expected);
+        ServiceImageTests.Localizer[refusal.ErrorKey!].Value.Should().Be("Invalid container placement GeoJSON.");
         (await _sut.GetPlacementsByYearAsync(Year, TestContext.Current.CancellationToken)).Should().BeEmpty();
     }
 

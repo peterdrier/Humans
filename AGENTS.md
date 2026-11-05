@@ -84,7 +84,7 @@ Terminology matters here — the full ubiquitous language lives in [`CONTEXT.md`
 
 The most common defect here is a change that works on the path you tested and is missing everywhere else. Before calling work done, walk this list and say which entries applied:
 
-- **Every supported culture.** Every user-facing string lives in the section's resx set, in all six supported cultures (en, es, de, it, fr, ca — parity tests enforce it). A hardcoded string or a missing translation is an incomplete change. Exception: a page only admin or operator roles can reach (`/Admin/*`, `/TeamAdmin/*`, `/Shifts/Dashboard`, `/Monitor/*`) doesn't get new localization keys ([`localization-admin-exempt`](memory/code/localization-admin-exempt.md)).
+- **Every supported culture.** Every user-facing string lives in the section's resx set, in all supported cultures (en, es, de, it, fr, ca, nl — parity tests enforce it). A hardcoded string or a missing translation is an incomplete change. Exception: a page only admin or operator roles can reach (`/Admin/*`, `/TeamAdmin/*`, `/Shifts/Dashboard`, `/Monitor/*`) doesn't get new localization keys ([`localization-admin-exempt`](memory/code/localization-admin-exempt.md)).
 - **Authorization, including the negative cases.** Each section's invariant doc lists who must *not* see or do a thing. New pages and endpoints need the deny paths verified, not just the happy path.
 - **Audit trail.** Actions taken by automation or admins on members' behalf need their audit entries.
 - **GDPR paths.** New personal data → export contributor, deletion path, consent where it applies.
@@ -129,7 +129,7 @@ Controllers parse the request, call services, and format the response — no log
 
 ## Where code lives
 
-- `src/Humans.Base` — the bottom of the graph: role markers, architecture attributes, `TrackedCache`, the shared view layer. The only project every section may reference.
+- `src/Humans.Base` — the bottom of the graph, with no project references: role markers, architecture attributes, `TrackedCache`, the shared view layer, the Users core (`User`, `IUserService`), the audit append path (`IAuditLogService`) and the GDPR contributor seam (`IUserDataContributor`). The only project every section may reference.
 - `src/Sections/Humans.<Section>[.Contracts]` — the sections. `ls src/Sections` is the list. Each carries `Docs/<Section>.md` (its invariants, following [`docs/sections/SECTION-TEMPLATE.md`](docs/sections/SECTION-TEMPLATE.md)), and where present `Docs/features/` (its feature specs; cross-section specs live in [`docs/features/global/`](docs/features/global/)) and `Docs/data-access.md` — grep the latter to find which section owns a service, repository, or table.
 - `src/Humans.Web` — the Shell. Layouts, page composition, platform context. `/` (Home) and `/Admin/*` are Shell frames, not sections: their page bodies are section-contributed, and their services belong to the sections they act on.
 - `docs/architecture/` — the hard rules, [`design-rules.md`](docs/architecture/design-rules.md) (the **regulations**: the implementing detail behind the hard rules — open a single section on demand; read cover-to-cover only when onboarding), [`code-review-rules.md`](docs/architecture/code-review-rules.md) (reviewer reject rules), [`dependency-graph.md`](docs/architecture/dependency-graph.md), and [`code-analysis.md`](docs/architecture/code-analysis.md).

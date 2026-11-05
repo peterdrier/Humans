@@ -43,8 +43,7 @@ internal sealed partial class WorkgroupService
         ArgumentNullException.ThrowIfNull(save);
         var documentResult = await RequireDocumentAsync(documentId, ct);
         if (documentResult.Refusal is { } documentRefusal) return new(Refusal: documentRefusal);
-        var (workgroup, document) = documentResult.Value;
-        if (RequireAcceptsMemberWork(workgroup) is { } stateRefusal) return new(Refusal: stateRefusal);
+        var (_, document) = documentResult.Value;
         if (string.IsNullOrWhiteSpace(save.Title))
             return new(Refusal: new(WorkgroupErrorKeys.NameRequired));
         // Delivered is the association's copy of what it received; the body stops moving.
@@ -65,7 +64,6 @@ internal sealed partial class WorkgroupService
         var documentResult = await RequireDocumentAsync(documentId, ct);
         if (documentResult.Refusal is { } documentRefusal) return new(Refusal: documentRefusal);
         var (workgroup, document) = documentResult.Value;
-        if (RequireAcceptsMemberWork(workgroup) is { } stateRefusal) return new(Refusal: stateRefusal);
         if (document.Status != WorkgroupDocumentStatus.Draft)
             return new(Refusal: new(WorkgroupErrorKeys.WrongStatus));
         if (string.IsNullOrWhiteSpace(document.Body))
@@ -81,7 +79,7 @@ internal sealed partial class WorkgroupService
         ct = CancellationToken.None;
 
         var info = ToInfo(workgroup);
-        await NotifyAsync(info.CurrentMemberUserIds(), WorkgroupsNotificationSources.WorkgroupDocumentActivity,
+        await notices.NotifyAsync(info.CurrentMemberUserIds(), WorkgroupsNotificationSources.WorkgroupDocumentActivity,
             "Enum_WorkgroupLogKind_DocumentPublished", info, document.Title, ct);
         return new();
     }
@@ -93,7 +91,6 @@ internal sealed partial class WorkgroupService
         var documentResult = await RequireDocumentAsync(documentId, ct);
         if (documentResult.Refusal is { } documentRefusal) return new(Refusal: documentRefusal);
         var (workgroup, document) = documentResult.Value;
-        if (RequireAcceptsMemberWork(workgroup) is { } stateRefusal) return new(Refusal: stateRefusal);
         if (document.Status != WorkgroupDocumentStatus.Published)
             return new(Refusal: new(WorkgroupErrorKeys.NotPublished));
 
@@ -122,7 +119,7 @@ internal sealed partial class WorkgroupService
         ct = CancellationToken.None;
 
         var info = ToInfo(workgroup);
-        await NotifyAsync(info.CurrentMemberUserIds(), WorkgroupsNotificationSources.WorkgroupDocumentActivity,
+        await notices.NotifyAsync(info.CurrentMemberUserIds(), WorkgroupsNotificationSources.WorkgroupDocumentActivity,
             "Enum_WorkgroupLogKind_CommentPeriodOpened", info, document.Title, ct);
         return new();
     }
@@ -132,7 +129,6 @@ internal sealed partial class WorkgroupService
         var documentResult = await RequireDocumentAsync(documentId, ct);
         if (documentResult.Refusal is { } documentRefusal) return new(Refusal: documentRefusal);
         var (workgroup, document) = documentResult.Value;
-        if (RequireAcceptsMemberWork(workgroup) is { } stateRefusal) return new(Refusal: stateRefusal);
         if (document.CommentsOpenAt is null)
             return new(Refusal: new(WorkgroupErrorKeys.WrongStatus));
 
@@ -151,7 +147,6 @@ internal sealed partial class WorkgroupService
         var documentResult = await RequireDocumentAsync(documentId, ct);
         if (documentResult.Refusal is { } documentRefusal) return new(Refusal: documentRefusal);
         var (workgroup, document) = documentResult.Value;
-        if (RequireAcceptsMemberWork(workgroup) is { } stateRefusal) return new(Refusal: stateRefusal);
         if (document.Status != WorkgroupDocumentStatus.Published)
             return new(Refusal: new(WorkgroupErrorKeys.NotPublished));
 
@@ -170,10 +165,10 @@ internal sealed partial class WorkgroupService
         ct = CancellationToken.None;
 
         var info = ToInfo(workgroup);
-        await NotifyBoardAsync(WorkgroupsNotificationSources.WorkgroupDocumentActivity,
+        await notices.NotifyBoardAsync(WorkgroupsNotificationSources.WorkgroupDocumentActivity,
             $"Delivered for a decision: {document.Title}", info,
             $"{workgroup.Name} delivered {document.Title} to the {workgroup.Audience}.", ct);
-        await EmailBoardAsync(WorkgroupNoticeKind.Delivered, info, document.Title, ct);
+        await notices.EmailBoardAsync(WorkgroupNoticeKind.Delivered, info, document.Title, ct);
         return new();
     }
 
@@ -184,9 +179,6 @@ internal sealed partial class WorkgroupService
         if (documentResult.Refusal is { } documentRefusal) return new(Refusal: documentRefusal);
         var (workgroup, document) = documentResult.Value;
         var now = clock.GetCurrentInstant();
-
-        // Close and Withdraw leave an open window alone, so the group's status must be checked here too.
-        if (RequireAcceptsMemberWork(workgroup) is { } stateRefusal) return new(Refusal: stateRefusal);
 
         if (workgroup.IsSensitive == true && !workgroup.Members.Any(m => m.UserId == actorUserId && m.LeftAt is null && m.IsPending != true))
             return new(Refusal: new(WorkgroupErrorKeys.MembersOnly));
@@ -242,7 +234,7 @@ internal sealed partial class WorkgroupService
         if (comment.AuthorUserId is { } author)
         {
             var info = ToInfo(workgroup);
-            await NotifyAsync([author], WorkgroupsNotificationSources.WorkgroupDocumentActivity,
+            await notices.NotifyAsync([author], WorkgroupsNotificationSources.WorkgroupDocumentActivity,
                 "Workgroups_CommentAnswered", info, $"{comment.Document.Title}: {Trimmed(response)}", ct);
         }
         return new();
@@ -259,7 +251,6 @@ internal sealed partial class WorkgroupService
         var documentResult = await RequireDocumentAsync(documentId, ct);
         if (documentResult.Refusal is { } documentRefusal) return new(Refusal: documentRefusal);
         var (workgroup, document) = documentResult.Value;
-        if (RequireAcceptsMemberWork(workgroup) is { } stateRefusal) return new(Refusal: stateRefusal);
 
         var matched = document.CommentCategories
             .FirstOrDefault(c => string.Equals(c, category?.Trim(), StringComparison.OrdinalIgnoreCase));
@@ -284,7 +275,7 @@ internal sealed partial class WorkgroupService
 
         var info = ToInfo(workgroup);
         var authors = pending.Select(c => c.AuthorUserId).OfType<Guid>().Distinct().ToList();
-        await NotifyAsync(authors, WorkgroupsNotificationSources.WorkgroupDocumentActivity,
+        await notices.NotifyAsync(authors, WorkgroupsNotificationSources.WorkgroupDocumentActivity,
             "Workgroups_CommentAnswered", info, $"{document.Title}: {Trimmed(response)}", ct);
         return new();
     }
@@ -330,11 +321,13 @@ internal sealed partial class WorkgroupService
     }
 
     private async Task<WorkgroupMutationResult<(Workgroup Workgroup, WorkgroupDocument Document)>> RequireDocumentAsync(
-        Guid documentId, CancellationToken ct)
+        Guid documentId, CancellationToken ct, bool requireActive = true)
     {
         var document = await repository.GetDocumentAsync(documentId, ct);
         if (document is null) return new(Refusal: new(WorkgroupErrorKeys.NotFound));
-        var workgroup = await RequireAsync(document.WorkgroupId, ct);
+        var workgroup = requireActive
+            ? await RequireActiveAsync(document.WorkgroupId, ct)
+            : await RequireAsync(document.WorkgroupId, ct);
         return workgroup.Refusal is { } refusal
             ? new(Refusal: refusal)
             : new((workgroup.Value!, document));
