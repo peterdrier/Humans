@@ -2,15 +2,8 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\Humans.Web\Humans.Web.csproj" />
-    <ProjectReference Include="..\..\src\Sections\Humans.AuditLog\Humans.AuditLog.csproj" />
-    <ProjectReference Include="..\..\src\Sections\Humans.Users\Humans.Users.csproj" />
-    <ProjectReference Include="..\..\src\Sections\Humans.Auth\Humans.Auth.csproj" />
-    <ProjectReference Include="..\..\src\Sections\Humans.Governance.Contracts\Humans.Governance.Contracts.csproj" />
-    <ProjectReference Include="..\..\src\Sections\Humans.Gdpr\Humans.Gdpr.csproj" />
-    <ProjectReference Include="..\..\src\Sections\Humans.Onboarding.Contracts\Humans.Onboarding.Contracts.csproj" />
-    <ProjectReference Include="..\..\src\Sections\Humans.Tickets.Contracts\Humans.Tickets.Contracts.csproj" />
-    <ProjectReference Include="..\..\src\Sections\Humans.Shifts.Contracts\Humans.Shifts.Contracts.csproj" />
-    <ProjectReference Include="..\..\src\Sections\Humans.Users.Contracts\Humans.Users.Contracts.csproj" />
+    <!-- Shell loads most sections as modules at runtime; the tests sweep every one, so they reference all. -->
+    <ProjectReference Include="..\..\src\Sections\*\*.csproj" />
     <ProjectReference Include="..\..\src\Humans.Base\Humans.Base.csproj" />
   </ItemGroup>
 
