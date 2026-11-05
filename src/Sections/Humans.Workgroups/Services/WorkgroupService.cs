@@ -34,6 +34,8 @@ internal sealed partial class WorkgroupService(
     IClock clock,
     ILogger<WorkgroupService> logger) : IWorkgroupService
 {
+    private readonly WorkgroupDataExport dataExport = new(repository);
+
     private readonly WorkgroupNotices notices = new(users, roles, notifications, email, emailFactory, logger);
 
     private static readonly string[] ReservedSlugs = ["apply", "admin"];
