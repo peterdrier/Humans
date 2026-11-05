@@ -32,7 +32,7 @@ internal sealed class TicketQueryService(
     IEventParticipationManagement participations) : ITicketManagement
 {
     private readonly TicketSalesReports salesReports = new(ticketRepository, campaignService, budgetService, clock);
-    private readonly UserTicketHoldingsReader holdingsReader = new(ticketRepository, ticketTransferRepository, userService, settingsService, clock);
+    private readonly UserTicketPersonalData personalData = new(ticketRepository, ticketTransferRepository, userService, settingsService, clock);
 
     public Task<IReadOnlyList<EventParticipationInfo>> GetParticipationsAsync(Guid userId, CancellationToken ct = default) =>
         participations.GetParticipationsAsync(userId, ct);
@@ -344,35 +344,7 @@ internal sealed class TicketQueryService(
     }
 
     public Task<UserTicketHoldings> GetUserTicketHoldingsAsync(Guid userId, CancellationToken ct = default) =>
-        holdingsReader.GetUserTicketHoldingsAsync(userId, ct);
-
-    private async Task<UserTicketExportData> GetUserTicketExportDataAsync(
-        Guid userId, CancellationToken ct = default)
-    {
-        var orders = await ticketRepository.GetOrdersMatchedToUserAsync(userId, ct);
-        var orderRows = orders
-            .Select(o => new UserTicketOrderExportRow(
-                o.BuyerName,
-                o.BuyerEmail,
-                o.TotalAmount,
-                o.Currency,
-                o.PaymentStatus.ToString(),
-                o.DiscountCode,
-                o.PurchasedAt))
-            .ToList();
-
-        var attendees = await ticketRepository.GetAttendeesMatchedToUserAsync(userId, ct);
-        var attendeeRows = attendees
-            .Select(a => new UserTicketAttendeeExportRow(
-                a.AttendeeName,
-                a.AttendeeEmail,
-                a.TicketTypeName,
-                a.Price,
-                a.Status.ToString()))
-            .ToList();
-
-        return new UserTicketExportData(orderRows, attendeeRows);
-    }
+        personalData.GetUserTicketHoldingsAsync(userId, ct);
 
     private static TicketOrderInfo Project(
         TicketOrder o, string? currentEventId,
@@ -413,36 +385,11 @@ internal sealed class TicketQueryService(
         FeeTax: o.FeeTax,
         WithheldTax: o.WithheldTax);
 
-    public async Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(
-        Guid userId, CancellationToken ct)
-    {
-        var export = await GetUserTicketExportDataAsync(userId, ct);
+    public Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct) =>
+        personalData.ContributeForUserAsync(userId, ct);
 
-        var ordersSlice = new UserDataSlice(TicketOrders, export.Orders.Select(o => new
-        {
-            o.BuyerName,
-            o.BuyerEmail,
-            o.TotalAmount,
-            o.Currency,
-            o.PaymentStatus,
-            o.DiscountCode,
-            PurchasedAt = o.PurchasedAt.ToIso8601(),
-        }).ToList());
-
-        var attendeesSlice = new UserDataSlice(TicketAttendeeMatches, export.Attendees.Select(a => new
-        {
-            a.AttendeeName,
-            a.AttendeeEmail,
-            a.TicketTypeName,
-            a.Price,
-            a.Status,
-        }).ToList());
-
-        return [ordersSlice, attendeesSlice];
-    }
-
-    internal const string TicketOrders = "TicketOrders";
-    internal const string TicketAttendeeMatches = "TicketAttendeeMatches";
+    internal const string TicketOrders = UserTicketPersonalData.TicketOrders;
+    internal const string TicketAttendeeMatches = UserTicketPersonalData.TicketAttendeeMatches;
 
     private const string SalesRecordRetention =
         "Partially retained: the order/attendee row itself (amount, currency, ticket type, " +

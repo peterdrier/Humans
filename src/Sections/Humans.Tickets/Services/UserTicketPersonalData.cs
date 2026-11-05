@@ -1,4 +1,7 @@
 using Humans.Base.Interfaces;
+using Humans.Base.Extensions;
+using Humans.Gdpr.Contracts;
+using Humans.Tickets.Services.Dtos;
 using Humans.Settings.Contracts;
 using Humans.Tickets.Contracts;
 using Humans.Tickets.Data;
@@ -8,7 +11,7 @@ using NodaTime;
 
 namespace Humans.Tickets.Services;
 
-internal sealed class UserTicketHoldingsReader(
+internal sealed class UserTicketPersonalData(
     ITicketRepository ticketRepository,
     ITicketTransferRepository ticketTransferRepository,
     IUserService userService,
@@ -109,4 +112,63 @@ internal sealed class UserTicketHoldingsReader(
         return attendeeEmails.Count(email => lookup.TryGetValue(email, out var owner) && owner == userId);
     }
 
+
+    private async Task<UserTicketExportData> GetUserTicketExportDataAsync(
+        Guid userId, CancellationToken ct = default)
+    {
+        var orders = await ticketRepository.GetOrdersMatchedToUserAsync(userId, ct);
+        var orderRows = orders
+            .Select(o => new UserTicketOrderExportRow(
+                o.BuyerName,
+                o.BuyerEmail,
+                o.TotalAmount,
+                o.Currency,
+                o.PaymentStatus.ToString(),
+                o.DiscountCode,
+                o.PurchasedAt))
+            .ToList();
+
+        var attendees = await ticketRepository.GetAttendeesMatchedToUserAsync(userId, ct);
+        var attendeeRows = attendees
+            .Select(a => new UserTicketAttendeeExportRow(
+                a.AttendeeName,
+                a.AttendeeEmail,
+                a.TicketTypeName,
+                a.Price,
+                a.Status.ToString()))
+            .ToList();
+
+        return new UserTicketExportData(orderRows, attendeeRows);
+    }
+
+    public async Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(
+        Guid userId, CancellationToken ct)
+    {
+        var export = await GetUserTicketExportDataAsync(userId, ct);
+
+        var ordersSlice = new UserDataSlice(TicketOrders, export.Orders.Select(o => new
+        {
+            o.BuyerName,
+            o.BuyerEmail,
+            o.TotalAmount,
+            o.Currency,
+            o.PaymentStatus,
+            o.DiscountCode,
+            PurchasedAt = o.PurchasedAt.ToIso8601(),
+        }).ToList());
+
+        var attendeesSlice = new UserDataSlice(TicketAttendeeMatches, export.Attendees.Select(a => new
+        {
+            a.AttendeeName,
+            a.AttendeeEmail,
+            a.TicketTypeName,
+            a.Price,
+            a.Status,
+        }).ToList());
+
+        return [ordersSlice, attendeesSlice];
+    }
+
+    internal const string TicketOrders = "TicketOrders";
+    internal const string TicketAttendeeMatches = "TicketAttendeeMatches";
 }

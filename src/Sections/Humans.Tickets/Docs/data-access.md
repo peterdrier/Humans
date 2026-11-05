@@ -278,3 +278,12 @@ leaf rather than the raw vendor port. `GateVendorCheckInJob` (`Humans.Gate`)
 is the other consumer, via `ITicketVendorMirror`. No DB access, no cache.
 
 ---
+
+### UserTicketPersonalData (internal, owned by TicketQueryService)
+
+Repositories: `ITicketRepository`, `ITicketTransferRepository`. Owns per-user
+holdings and the existing GDPR order/attendee export projections. Uses the existing
+Users and Settings contracts and clock for holdings only; export retains its
+matched-user scope and reads the ticket repository directly. The query facade
+retains contributor/erasure contracts and cache ownership remains in its decorator.
+No separate DI registration.
