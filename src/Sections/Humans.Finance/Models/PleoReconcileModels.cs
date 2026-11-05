@@ -3,12 +3,10 @@ using NodaTime;
 
 namespace Humans.Finance.Models;
 
-/// <summary>Where one Pleo spend entry stands against Holded 57200003. <see cref="Pending"/>: this process posted it
-/// and the ledger does not show it yet; it counts as booked and is never posted again.</summary>
+/// <summary>Where one Pleo spend entry stands against Holded 57200003.</summary>
 internal enum PleoSpendState
 {
     Booked,
-    Pending,
     Ready,
     NoReceipt,
     NoCategory,
@@ -30,7 +28,11 @@ internal sealed record PleoSpendRow(
 internal sealed record PleoTopUpRow(string PleoId, LocalDate Date, decimal Amount, int? HoldedEntry);
 
 /// <summary>The classified mirror, before any display shaping.</summary>
-internal sealed record PleoLedgerView(IReadOnlyList<PleoTopUpRow> TopUps, IReadOnlyList<PleoSpendRow> Spend);
+internal sealed record PleoLedgerView(
+    IReadOnlyList<PleoTopUpRow> TopUps, IReadOnlyList<PleoSpendRow> Spend, IReadOnlyList<PleoDuplicate> Duplicates);
+
+/// <summary>A Pleo id named by more than one 57200003 entry: booked twice; delete the extra one in Holded.</summary>
+internal sealed record PleoDuplicate(string PleoId, IReadOnlyList<int> HoldedEntries);
 
 internal enum PleoBookingOutcome { Posted, Unconfirmed, Failed, Skipped }
 
@@ -58,7 +60,6 @@ internal sealed record PleoReconcileVm(
     bool HoldedConfigured,
     PleoLedgerView View,
     IReadOnlyList<PleoAccountTotalVm> ReadyByAccount,
-    IReadOnlyList<string> PendingIds,
     PleoBookingRunVm? Run)
 {
     public decimal? Difference => Wallet is { } w ? w.CurrentEur - Holded : null;

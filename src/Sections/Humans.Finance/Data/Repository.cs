@@ -22,43 +22,6 @@ internal sealed class Repository(IDbContextFactory<FinanceDbContext> factory)
         await ctx.SaveChangesAsync(ct);
     }
 
-    public async Task<IReadOnlyList<string>> GetPleoBookingHoldsAsync(CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.PleoBookingHolds.AsNoTracking().Select(h => h.PleoEntryId).ToListAsync(ct);
-    }
-
-    public async Task<bool> TryAddPleoBookingHoldAsync(string pleoEntryId, Instant heldAt)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(CancellationToken.None);
-        ctx.PleoBookingHolds.Add(new PleoBookingHold { PleoEntryId = pleoEntryId, HeldAt = heldAt });
-        try
-        {
-            await ctx.SaveChangesAsync(CancellationToken.None);
-        }
-        catch (DbUpdateException ex) when (ex.InnerException is Npgsql.PostgresException
-        {
-            SqlState: Npgsql.PostgresErrorCodes.UniqueViolation
-        })
-        {
-            return false;
-        }
-        return true;
-    }
-
-    public async Task<IReadOnlyList<string>> RemovePleoBookingHoldsAsync(
-        IReadOnlyCollection<string>? pleoEntryIds, CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        var rows = pleoEntryIds is null
-            ? await ctx.PleoBookingHolds.ToListAsync(ct)
-            : await ctx.PleoBookingHolds.Where(h => pleoEntryIds.Contains(h.PleoEntryId)).ToListAsync(ct);
-        if (rows.Count == 0) return [];
-        ctx.PleoBookingHolds.RemoveRange(rows);
-        await ctx.SaveChangesAsync(ct);
-        return rows.Select(h => h.PleoEntryId).ToList();
-    }
-
     public async Task<IReadOnlyList<HoldedManagedAccount>> GetManagedAccountsAsync(CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);

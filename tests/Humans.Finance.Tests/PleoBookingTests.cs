@@ -1,6 +1,5 @@
 using AwesomeAssertions;
 using Humans.AuditLog.Contracts;
-using Humans.Finance.Data;
 using Humans.Finance.Models;
 using Humans.Finance.Services;
 using Humans.Holded.Contracts;
@@ -18,8 +17,7 @@ internal static class TestPleo
 {
     public static PleoBooking Booking() => new(
         Substitute.For<IPleoService>(), Substitute.For<IHoldedService>(), Substitute.For<IHoldedWrite>(),
-        Substitute.For<IAuditLogService>(), Substitute.For<IHoldedRepository>(), new PleoBookingState(),
-        SystemClock.Instance,
+        Substitute.For<IAuditLogService>(), new PleoBookingState(), SystemClock.Instance,
         NullLogger<PleoBooking>.Instance);
 
     public static PleoBookingRunner Runner() =>
@@ -31,14 +29,11 @@ public class PleoBookingTests
     private const int Food = 62900001;
     private static readonly DateTimeZone Madrid = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
     private static readonly IReadOnlySet<int> Open = new HashSet<int> { Food, PleoBooking.PleoTreasury };
-    private static readonly IReadOnlySet<string> NoneHeld = new HashSet<string>(StringComparer.Ordinal);
 
     private readonly IPleoService _pleo = Substitute.For<IPleoService>();
     private readonly IHoldedService _holded = Substitute.For<IHoldedService>();
     private readonly IHoldedWrite _write = Substitute.For<IHoldedWrite>();
     private readonly PleoBookingState _state = new();
-    private readonly IHoldedRepository _repo = Substitute.For<IHoldedRepository>();
-    private readonly SortedSet<string> _holds = new(StringComparer.Ordinal);
     private readonly List<HoldedLedgerLineInfo> _ledger = [];
 
     public PleoBookingTests()
@@ -52,18 +47,9 @@ public class PleoBookingTests
         _write.PostJournalEntryAsync(default, default, default, default, default!, default)
             .ReturnsForAnyArgs(new HoldedJournalEntryOutcome(true));
 
-        // The hold table, primary key and all.
-        _repo.GetPleoBookingHoldsAsync(Arg.Any<CancellationToken>()).Returns(_ => _holds.ToList());
-        _repo.TryAddPleoBookingHoldAsync(default!, default).ReturnsForAnyArgs(ci => _holds.Add(ci.Arg<string>()));
-        _repo.RemovePleoBookingHoldsAsync(default, default).ReturnsForAnyArgs(ci =>
-        {
-            var ids = ci.Arg<IReadOnlyCollection<string>?>() ?? _holds.ToList();
-            var removed = ids.Where(_holds.Remove).ToList();
-            return (IReadOnlyList<string>)removed;
-        });
     }
 
-    private PleoBooking Booking() => new(_pleo, _holded, _write, Substitute.For<IAuditLogService>(), _repo, _state,
+    private PleoBooking Booking() => new(_pleo, _holded, _write, Substitute.For<IAuditLogService>(), _state,
         new FakeClock(Instant.FromUtc(2026, 11, 5, 12, 0)), NullLogger<PleoBooking>.Instance);
 
     private void GivenEntries(params PleoEntryInfo[] entries) =>
@@ -104,7 +90,7 @@ public class PleoBookingTests
                 Entry("buy", -20m),
             ],
             [Line(1954, 11, 500m, 0m, "Transferencia")],
-            new HashSet<int> { 1954 }, Open, NoneHeld);
+            new HashSet<int> { 1954 }, Open);
 
         view.Spend.Select(r => r.Entry.Id).Should().Equal("buy");
         view.Spend[0].State.Should().Be(PleoSpendState.Ready);
@@ -126,7 +112,7 @@ public class PleoBookingTests
                 Line(2061, 12, 0m, 71.97m, "Amazon"),
                 Line(2062, 1, 0m, 15m, "Something else"),
             ],
-            new HashSet<int>(), Open, NoneHeld);
+            new HashSet<int>(), Open);
 
         var byId = view.Spend.ToDictionary(r => r.Entry.Id, StringComparer.Ordinal);
         byId["byId"].Should().Match<PleoSpendRow>(r => r.State == PleoSpendState.Booked && r.HoldedEntry == 4700);
@@ -141,12 +127,24 @@ public class PleoBookingTests
         var view = PleoBooking.Classify(
             [Entry("refund", 40m)],
             [Line(1955, 10, 40m, 0m, "Transferencia")],
-            new HashSet<int> { 1955 }, Open, NoneHeld);
+            new HashSet<int> { 1955 }, Open);
         view.Spend[0].State.Should().Be(PleoSpendState.Ready);
 
         var legacy = PleoBooking.Classify(
-            [Entry("refund", 40m)], [Line(3000, 10, 40m, 0m, "Abono")], new HashSet<int>(), Open, NoneHeld);
+            [Entry("refund", 40m)], [Line(3000, 10, 40m, 0m, "Abono")], new HashSet<int>(), Open);
         legacy.Spend[0].Should().Match<PleoSpendRow>(r => r.State == PleoSpendState.Booked && r.HoldedEntry == 3000);
+    }
+
+    [HumansFact]
+    public void Classify_FlagsAPleoIdOnTwoEntriesAsADuplicate()
+    {
+        var view = PleoBooking.Classify(
+            [Entry("a", -10m)],
+            [Line(4700, 10, 0m, 10m, "Pleo a: MAKRO"), Line(4701, 10, 0m, 10m, "Pleo a: MAKRO")],
+            new HashSet<int>(), Open);
+
+        view.Duplicates.Should().ContainSingle().Which.HoldedEntries.Should().Equal(4700, 4701);
+        view.Spend.Single().State.Should().Be(PleoSpendState.Booked);
     }
 
     [HumansFact]
@@ -197,26 +195,23 @@ public class PleoBookingTests
     }
 
     [HumansFact]
-    public async Task Book_UnconfirmedPostIsHeld_AndTheNextRunIsRefusedUntilTheLedgerShowsIt()
+    public async Task Book_UnconfirmedPostIsReported_AndSkippedOnceTheLedgerShowsIt()
     {
         GivenEntries(Entry("a", -10m, day: 1), Entry("b", -11m, day: 2));
         _write.PostJournalEntryAsync(default, default, default, default, default!, default)
             .ReturnsForAnyArgs(new HoldedJournalEntryOutcome(false));
 
         var first = await Booking().BookAsync(1, null);
-        first.Lines.Single().Outcome.Should().Be(PleoBookingOutcome.Unconfirmed);
-
-        var second = await Booking().BookAsync(1, null);
-        second.Refused.Should().Contain("not in Holded's");
-        await _write.ReceivedWithAnyArgs(1).PostJournalEntryAsync(default, default, default, default, default!, default);
+        first.Lines.Single().Should().Match<PleoBookingLine>(l =>
+            l.PleoId == "a" && l.Outcome == PleoBookingOutcome.Unconfirmed && l.Error!.Contains("check in Holded"));
 
         _ledger.Add(Line(4800, 1, 0m, 10m, "Pleo a: MAKRO"));
-        var third = await Booking().BookAsync(1, null);
-        third.Lines.Single().PleoId.Should().Be("b");
+        var second = await Booking().BookAsync(1, null);
+        second.Lines.Single().PleoId.Should().Be("b");
     }
 
     [HumansFact]
-    public async Task Book_TransientFailureStopsAndHolds_PermanentFailureReleases()
+    public async Task Book_PermanentFailureContinues_TransientFailureStops()
     {
         GivenEntries(Entry("a", -10m, day: 1), Entry("b", -11m, day: 2), Entry("c", -12m, day: 3));
         _write.PostJournalEntryAsync(default, default, default, default, default!, default)
@@ -229,22 +224,6 @@ public class PleoBookingTests
         run.Lines.Select(l => (l.PleoId, l.Outcome)).Should().Equal(
             ("a", PleoBookingOutcome.Failed), ("b", PleoBookingOutcome.Failed));
         run.Refused.Should().Contain("Stopped");
-        _holds.Should().Equal("b");
-    }
-
-    [HumansFact]
-    public async Task Book_HoldSurvivesARestart_AndAnAlreadyHeldEntryIsNeverPosted()
-    {
-        GivenEntries(Entry("a", -10m, day: 1), Entry("b", -11m, day: 2));
-        _holds.Add("a"); // written by a run that died after posting, before the ledger showed it
-
-        var refused = await Booking().BookAsync(null, null);
-        refused.Refused.Should().Contain("a");
-        await _write.DidNotReceiveWithAnyArgs().PostJournalEntryAsync(default, default, default, default, default!, default);
-
-        _ledger.Add(Line(4900, 1, 0m, 10m, "Pleo a: MAKRO"));
-        var run = await Booking().BookAsync(null, null);
-        run.Lines.Select(l => l.PleoId).Should().Equal("b");
-        _holds.Should().Equal(["b"], "a hold stands until the ledger shows the entry");
+        await _write.ReceivedWithAnyArgs(2).PostJournalEntryAsync(default, default, default, default, default!, default);
     }
 }

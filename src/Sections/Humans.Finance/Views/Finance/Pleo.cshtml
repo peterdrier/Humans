@@ -4,9 +4,9 @@
     ViewData["Title"] = "Pleo reconcile";
     var running = (bool)(ViewBag.PleoRunning ?? false) || Model.Run is { IsRunning: true };
     var spend = Model.View.Spend;
-    var booked = spend.Where(r => r.State is PleoSpendState.Booked or PleoSpendState.Pending).ToList();
+    var booked = spend.Where(r => r.State == PleoSpendState.Booked).ToList();
     var ready = spend.Where(r => r.State == PleoSpendState.Ready).ToList();
-    var notReady = spend.Where(r => r.State is not (PleoSpendState.Booked or PleoSpendState.Pending or PleoSpendState.Ready)).ToList();
+    var notReady = spend.Where(r => r.State is not (PleoSpendState.Booked or PleoSpendState.Ready)).ToList();
     var groups = new[]
     {
         (PleoSpendState.NoReceipt, "No receipt"),
@@ -90,10 +90,6 @@
         <div class="card h-100"><div class="card-body">
             <div class="text-muted small text-uppercase">Already in Holded</div>
             <div class="fs-3 fw-bold">@booked.Count · @booked.Sum(r => r.Amount).ToEuro()</div>
-            @if (booked.Any(r => r.State == PleoSpendState.Pending))
-            {
-                <div class="small text-warning">@booked.Count(r => r.State == PleoSpendState.Pending) posted but not in the ledger yet: check in Holded</div>
-            }
         </div></div>
     </div>
     <div class="col-md-4">
@@ -114,24 +110,23 @@
 <div class="card mb-4">
     <div class="card-header">Book into Holded</div>
     <div class="card-body">
-        @if (Model.PendingIds.Count > 0)
+        @if (Model.View.Duplicates.Count > 0)
         {
-            <div class="alert alert-warning">
-                <div>
-                    <i class="fa-solid fa-triangle-exclamation me-1"></i>
-                    @Model.PendingIds.Count post(s) are held: posted (or possibly posted) and not in the @PleoBooking.PleoTreasury ledger yet.
-                    Nothing more books until they show up. Check each in Holded:
-                </div>
-                <ul class="mb-2">
-                    @foreach (var id in Model.PendingIds.Order(StringComparer.Ordinal))
+            <div class="alert alert-danger">
+                <i class="fa-solid fa-clone me-1"></i>
+                @Model.View.Duplicates.Count Pleo entr@(Model.View.Duplicates.Count == 1 ? "y is" : "ies are") booked more than once. Delete the extra entry in Holded:
+                <ul class="mb-0">
+                    @foreach (var dup in Model.View.Duplicates)
                     {
-                        <li><a href="/Pleo/Entries/@id">Pleo @id</a></li>
+                        <li>
+                            <a href="/Pleo/Entries/@dup.PleoId">Pleo @dup.PleoId</a>:
+                            @foreach (var n in dup.HoldedEntries)
+                            {
+                                <a href="/Holded/Entries/@n" class="me-1">entry @n</a>
+                            }
+                        </li>
                     }
                 </ul>
-                <form authorize-policy="@Humans.Finance.Contracts.FinancePolicies.Manage" asp-action="ClearPleoHolds" method="post" class="d-inline"
-                      data-confirm="Only release these after checking Holded: any not in Holded will be booked again by the next run.">
-                    <button type="submit" class="btn btn-sm btn-outline-danger">Checked in Holded: release holds</button>
-                </form>
             </div>
         }
 

@@ -15,7 +15,6 @@ internal sealed class FinanceDbContext(DbContextOptions<FinanceDbContext> option
     public DbSet<SepaPayoutFile> SepaPayoutFiles => Set<SepaPayoutFile>();
     public DbSet<SepaPayoutTransfer> SepaPayoutTransfers => Set<SepaPayoutTransfer>();
     public DbSet<PaymentDetails> PaymentDetails => Set<PaymentDetails>();
-    public DbSet<PleoBookingHold> PleoBookingHolds => Set<PleoBookingHold>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -29,6 +28,5 @@ internal sealed class FinanceDbContext(DbContextOptions<FinanceDbContext> option
         builder.ApplyConfiguration(new SepaPayoutFileConfiguration());
         builder.ApplyConfiguration(new SepaPayoutTransferConfiguration());
         builder.ApplyConfiguration(new PaymentDetailsConfiguration());
-        builder.ApplyConfiguration(new PleoBookingHoldConfiguration());
     }
 }

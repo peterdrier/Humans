@@ -62,22 +62,6 @@ internal sealed class FinanceController(
         return RedirectToAction(nameof(Pleo));
     }
 
-    [HttpPost("Pleo/ClearHolds")]
-    [Authorize(Policy = FinancePolicies.Manage)]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> ClearPleoHolds()
-    {
-        if (GetCurrentUserId() is not { } actorUserId) return Challenge();
-        if (pleoRunner.IsRunning)
-        {
-            SetError("A booking run is going; holds are kept until it ends.");
-            return RedirectToAction(nameof(Pleo));
-        }
-        var cleared = await pleoBooking.ClearPendingAsync(actorUserId);
-        SetSuccess($"Released {cleared.Count} held post(s).");
-        return RedirectToAction(nameof(Pleo));
-    }
-
     [HttpGet("CashFlow")]
     public async Task<IActionResult> CashFlow(string period = "monthly")
     {

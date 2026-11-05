@@ -147,17 +147,6 @@ contact, three write paths with different collision remedies, and no unique inde
 
 **Cross-section FKs:** `UserId`, `BookedByUserId` and `WithdrawnByUserId` → `User` (Users) — FK only, no navigation property.
 
-### PleoBookingHold
-
-**Table:** `pleo_booking_holds`
-
-| Property | Type | Purpose |
-|----------|------|---------|
-| PleoEntryId | string (64) | PK. The Pleo entry posted, or possibly posted, to Holded 57200003. |
-| HeldAt | Instant | When the post was claimed, just before it was sent. |
-
-A row exists only while Holded's ledger does not show the entry yet. No Holded id, no personal data.
-
 ### PaymentDetails
 
 **Table:** `finance_payment_details`
@@ -246,9 +235,8 @@ The provisioning preview, unmatched queue, creditor overview (including member-n
 | Route | Purpose |
 |-------|---------|
 | `GET /Finance` | Also carries the Pleo card: the wallet (Pleo mirror) beside Holded 57200003's balance, the difference red when not 0.00 or unknown, linking to `/Finance/Pleo` |
-| `GET /Finance/Pleo` | Pleo reconcile: the balance strip; top-ups (each settled `WALLET` load paired with a 57200003 debit whose entry has a 57200001 leg, same amount, within 3 days; unmatched in red, no button — the Sabadell line is categorised in Holded); spend split into already in Holded, ready (by Holded account) and not ready by reason (no receipt, no category, category not mapped to an open account, no receipt and no category, no EUR amount), each reason expanding to its entries linked to `/Pleo/Entries/{id}`; the booking control and the last run's lines. Refreshes itself while a run is going |
+| `GET /Finance/Pleo` | Pleo reconcile: the balance strip; top-ups (each settled `WALLET` load paired with a 57200003 debit whose entry has a 57200001 leg, same amount, within 3 days; unmatched in red, no button — the Sabadell line is categorised in Holded); spend split into already in Holded, ready (by Holded account) and not ready by reason (no receipt, no category, category not mapped to an open account, no receipt and no category, no EUR amount), each reason expanding to its entries linked to `/Pleo/Entries/{id}`; a red banner when a Pleo id sits on two 57200003 entries (delete the extra in Holded); the booking control and the last run's lines. Refreshes itself while a run is going |
 | `POST /Finance/Pleo/Book` | `batch` ∈ `1`, `10`, `50`, `all`: starts a run off the request (`PleoBookingRunner`) and redirects back. A second start while one runs is refused |
-| `POST /Finance/Pleo/ClearHolds` | Releases the held posts (below) after a human checked them in Holded; audited. Refused while a run is going |
 
 ## Actors & Roles
 
@@ -360,8 +348,8 @@ The provisioning preview, unmatched queue, creditor overview (including member-n
 - Ready means a receipt, a category, a Holded code that is an open account in the chart mirror, and a non-zero EUR amount. Anything else is never booked.
 - Batches run oldest settled first, `N` at a time (default 1). Nothing books without a click; a job may later call `BookAsync` the same way, but none is scheduled.
 - **Identity:** an entry is in Holded when a 57200003 line's description starts `Pleo {Id}:`. Lines without a Pleo id (booked before this, e.g. entry 2061) count once each for the oldest entry on the same side with the same amount within 3 days, so they are never booked again. Finance stores no Holded id; the ledger is the record of what is booked.
-- **Never posting twice:** (1) a process-wide gate (one server) admits one run; the runner refuses a second click and the gate refuses any other caller. (2) Every run first re-pulls 57200003's whole history from Holded (`IHoldedService.SyncAccountLedgerAsync`) and judges from that, so a post an earlier run made — even one that died before recording anything — is seen. (3) Each entry is re-checked right before its post against that ledger and this run's own posts. (4) Before each post a `pleo_booking_holds` row is inserted; its primary key makes it a claim, so an entry already held is never posted. The row stays until a re-pull shows the entry, and a run is refused while any row stands. That covers Holded's read-after-write lag, an unconfirmed post (`Confirmed = false`: shown "check in Holded", never retried), a post Holded did not answer (transient error: the run stops, the entry stays held) and a restart mid-post. A 4xx refusal deletes the hold. Otherwise holds clear when the ledger shows them, or by `ClearHolds` after a human checked Holded.
-- After a run with posts, 57200003 is re-pulled once more so each booked line names its Holded entry and seen holds clear.
+- **Duplicates kept rare, not impossible** (Peter's call: a duplicate is deleted in Holded): (1) a process-wide gate (one server) admits one run; the runner refuses a second click and the gate refuses any other caller. (2) Every run first re-pulls 57200003's whole history from Holded (`IHoldedService.SyncAccountLedgerAsync`) and skips every entry it shows. (3) An unconfirmed post (`Confirmed = false`) or one Holded did not answer is shown "check in Holded"; an unanswered one stops the run. If Holded took it but does not list it by the next run, it is posted again, and the duplicate banner names both entries.
+- After a run with posts, 57200003 is re-pulled once more so each booked line names its Holded entry.
 - Posts never take the request's token: an abandoned call would only hide a post Holded made.
 
 ## Negative Access Rules
@@ -370,7 +358,7 @@ The provisioning preview, unmatched queue, creditor overview (including member-n
 - FinanceAdmin, Board and UsersAdmin **cannot** reveal a raw IBAN or see the Payment Details card; both are Admin only.
 - Finance **cannot** read or write Budget tables directly, and **cannot write Budget data at all**: its only Budget dependency is the read contract `IBudgetService`.
 - Finance **cannot** write the purchase-document mirror; it only triggers the Holded section's sync.
-- Board **cannot** start a Pleo booking or release its holds (`FinancePolicies.Manage`).
+- Board **cannot** start a Pleo booking (`FinancePolicies.Manage`).
 - Finance **cannot** write Pleo: it reads `IPleoService` only, and Pleo never references Holded.
 - Finance **cannot** read Expenses tables: what it needs for the duplicate check and the reconciliation (the lines and the values the push writes) comes through `IExpenseHoldedBookingService` as DTOs.
 - The expense reconciliation **cannot** call Holded or write anything: page, backdoor route, nightly job and Creditors banner all read local mirrors.
@@ -387,7 +375,7 @@ The provisioning preview, unmatched queue, creditor overview (including member-n
 
 Derived from `Humans.Finance.csproj`'s project references and the contracts namespaces the service uses (Budget, Holded, GDPR and AuditLog are referenced as section projects, whose public face is their `Contracts/` folder; Users and Email through their `.Contracts` leaves):
 
-- **Audit actions:** declared on `FinanceAuditActions` (`src/Sections/Humans.Finance.Contracts/FinanceAuditActions.cs`), one `AuditActionDefinition` each, written through `IAuditLogService`: `IbanReveal`, `HoldedExpenseAccountCreated`, `HoldedExpenseAccountLinked`, `HoldedExpenseAccountActiveChanged`, `SepaPayoutTransfer`, `SepaPayoutTransferBooked`, `SepaBankLineSkipped`, `SepaPayoutTransferWithdrawn`, `HoldedDuplicateRemoved`, `HoldedCreditorBound`, `HoldedCreditorUnbound`, `HoldedCreditorAccountNumChanged`, `HoldedCategoryAccountProvisioned`, `PleoEntryBooked` (one per Pleo entry posted or possibly posted, naming both accounts and the outcome), `PleoBookingHoldCleared`. The class is public in `Humans.Finance.Contracts` because Expenses includes `IbanReveal` rows in the member's GDPR export.
+- **Audit actions:** declared on `FinanceAuditActions` (`src/Sections/Humans.Finance.Contracts/FinanceAuditActions.cs`), one `AuditActionDefinition` each, written through `IAuditLogService`: `IbanReveal`, `HoldedExpenseAccountCreated`, `HoldedExpenseAccountLinked`, `HoldedExpenseAccountActiveChanged`, `SepaPayoutTransfer`, `SepaPayoutTransferBooked`, `SepaBankLineSkipped`, `SepaPayoutTransferWithdrawn`, `HoldedDuplicateRemoved`, `HoldedCreditorBound`, `HoldedCreditorUnbound`, `HoldedCreditorAccountNumChanged`, `HoldedCategoryAccountProvisioned`, `PleoEntryBooked` (one per Pleo entry posted or possibly posted, naming both accounts and the outcome). The class is public in `Humans.Finance.Contracts` because Expenses includes `IbanReveal` rows in the member's GDPR export.
 - **Budget** (`Humans.Budget.Contracts`): `IBudgetService.GetActiveYearAsync`, for the categories the provisioning plan is built from and the plan cash flow projects. Read-only.
 - **Tickets** (`Humans.Tickets.Contracts`): `ITicketService.GetTicketOrdersAsync`, the paid orders whose gross revenue seeds the cash-flow runway. Read-only.
 - **Pleo** (`Humans.Pleo.Contracts`): `IPleoService.GetSettledEntriesAsync` and `GetWalletBalanceAsync`, for the Pleo card and booking. Read-only; Pleo references only Finance's `.Contracts` leaf, so the project reference goes to the Pleo section project.

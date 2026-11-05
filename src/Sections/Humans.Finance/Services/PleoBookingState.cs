@@ -3,8 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Humans.Finance.Services;
 
-/// <summary>Process-wide: the current or last booking run, for the page to follow. The holds that keep a post from
-/// repeating are durable (<c>pleo_booking_holds</c>), not here.</summary>
+/// <summary>Process-wide: the current or last booking run, for the page to follow.</summary>
 internal sealed class PleoBookingState
 {
     private readonly Lock _lock = new();
