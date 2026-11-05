@@ -7,25 +7,20 @@
 }
 
 <div class="container py-4">
-    <div class="d-flex justify-content-between align-items-start mb-3">
-        <div>
-            <h1 class="h3 mb-0">@Model.Event.Title</h1>
-            <p class="text-muted mb-0">
-                <a asp-action="Team" asp-route-teamId="@Model.Event.OwningTeamId">@Model.OwningTeamName</a>
-            </p>
-        </div>
+    <page-header title="@Model.Event.Title">
+        <page-header-subtitle>
+            <a asp-action="Team" asp-route-teamId="@Model.Event.OwningTeamId">@Model.OwningTeamName</a>
+        </page-header-subtitle>
         @if (Model.CanEdit)
         {
-            <div>
-                <a class="btn btn-sm btn-outline-primary" asp-action="Edit" asp-route-id="@Model.Event.Id">@SharedLocalizer["Common_Edit"]</a>
-                <form asp-action="Delete" asp-route-id="@Model.Event.Id" method="post" class="d-inline"
-                      data-confirm="@Localizer["Calendar_DeleteConfirm"]">
-                    @Html.AntiForgeryToken()
-                    <button type="submit" class="btn btn-sm btn-outline-danger">@SharedLocalizer["Common_Delete"]</button>
-                </form>
-            </div>
+            <a class="btn btn-sm btn-outline-primary" asp-action="Edit" asp-route-id="@Model.Event.Id">@SharedLocalizer["Common_Edit"]</a>
+            <form asp-action="Delete" asp-route-id="@Model.Event.Id" method="post" class="d-inline"
+                  data-confirm="@Localizer["Calendar_DeleteConfirm"]">
+                @Html.AntiForgeryToken()
+                <button type="submit" class="btn btn-sm btn-outline-danger">@SharedLocalizer["Common_Delete"]</button>
+            </form>
         }
-    </div>
+    </page-header>
 
     <dl class="row">
         <dt class="col-sm-3">@Localizer["Calendar_FirstStart"]</dt>

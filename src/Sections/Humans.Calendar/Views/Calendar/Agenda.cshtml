@@ -30,12 +30,11 @@
 <div class="container py-4">
     <partial name="_CalendarViewPills" />
 
-    <div class="d-flex justify-content-between align-items-center mb-3">
-        <h1 class="h3 mb-0">@Localizer["Calendar_Agenda"]</h1>
+    <page-header title="@(Localizer["Calendar_Agenda"].Value)">
         <div>
             <a class="btn btn-sm btn-primary" asp-action="Create">@Localizer["Calendar_NewEvent"]</a>
         </div>
-    </div>
+    </page-header>
 
     <partial name="_CalendarTimeZonePicker" model="Model.ViewerTimezoneLabel" />
 

@@ -3,26 +3,23 @@
     var years = ViewBag.Years as IReadOnlyList<BudgetYearSummarySnapshot> ?? [];
 }
 
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <h1 class="mb-0">Finance</h1>
-    <div class="d-flex gap-2">
-        <a asp-controller="Finance" asp-action="HoldedAccounts" class="btn btn-outline-secondary">
-            <i class="fa-solid fa-building-columns me-1"></i>Holded Accounts
-        </a>
-        <a asp-controller="Finance" asp-action="HoldedUnmatched" class="btn btn-outline-secondary">
-            <i class="fa-solid fa-triangle-exclamation me-1"></i>Unmatched
-        </a>
-        <a asp-controller="Finance" asp-action="Creditors" class="btn btn-outline-secondary">
-            <i class="fa-solid fa-hand-holding-dollar me-1"></i>Creditor Accounts
-        </a>
-        <a asp-controller="Finance" asp-action="Sepa" class="btn btn-outline-secondary">
-            <i class="fa-solid fa-file-invoice-dollar me-1"></i>SEPA Transfers
-        </a>
-        <a asp-action="Admin" class="btn btn-outline-primary">
-            <i class="fa-solid fa-gear me-1"></i>Finance Admin
-        </a>
-    </div>
-</div>
+<page-header title="Finance">
+    <a asp-controller="Finance" asp-action="HoldedAccounts" class="btn btn-outline-secondary">
+        <i class="fa-solid fa-building-columns me-1"></i>Holded Accounts
+    </a>
+    <a asp-controller="Finance" asp-action="HoldedUnmatched" class="btn btn-outline-secondary">
+        <i class="fa-solid fa-triangle-exclamation me-1"></i>Unmatched
+    </a>
+    <a asp-controller="Finance" asp-action="Creditors" class="btn btn-outline-secondary">
+        <i class="fa-solid fa-hand-holding-dollar me-1"></i>Creditor Accounts
+    </a>
+    <a asp-controller="Finance" asp-action="Sepa" class="btn btn-outline-secondary">
+        <i class="fa-solid fa-file-invoice-dollar me-1"></i>SEPA Transfers
+    </a>
+    <a asp-action="Admin" class="btn btn-outline-primary">
+        <i class="fa-solid fa-gear me-1"></i>Finance Admin
+    </a>
+</page-header>
 
 
 <div class="card">

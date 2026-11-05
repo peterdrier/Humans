@@ -3,7 +3,7 @@
     var categoryName = Localizer["Email_CommPrefs_Name_Marketing"].Value;
 }
 
-<h1>@Localizer["Email_Unsubscribe_DoneTitle"]</h1>
+<page-header title="@(Localizer["Email_Unsubscribe_DoneTitle"].Value)" />
 
 <p>@Html.Raw(string.Format(Localizer["Email_Unsubscribe_DoneMessage"].Value, Html.Encode(categoryName)))</p>
 

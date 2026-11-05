@@ -1,9 +1,10 @@
 @model Humans.Events.Models.AdminEventFormViewModel
+@using Humans.Base.Models.Tables
 @{
     ViewData["Title"] = "Edit Event";
 }
 
-<h2>Edit Event <status-badge value="@Model.Status" class="align-middle" localizer="@Localizer" /></h2>
+<page-header title="Edit Event" badge="@Localizer.EnumDisplay(Model.Status)" badge-class="@EnumBadgeMap.For(Model.Status)" />
 
 <div class="alert alert-info">
     <i class="fa-solid fa-pen-to-square me-1"></i>Admin in-place edit. Saving keeps the current

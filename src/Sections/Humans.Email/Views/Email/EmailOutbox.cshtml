@@ -14,9 +14,8 @@
     }
 }
 
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <div>
-        <h1 class="mb-0">Email Outbox</h1>
+<page-header title="Email Outbox">
+    <page-header-subtitle>
         @if (Model.IsPaused)
         {
             <span class="text-warning fw-semibold"><i class="fa-solid fa-circle-pause me-1"></i>Sending paused</span>
@@ -25,12 +24,10 @@
         {
             <span class="text-success fw-semibold"><i class="fa-solid fa-circle-check me-1"></i>Sending active</span>
         }
-    </div>
-    <div class="d-flex gap-2 align-items-center">
-        <a href="/Settings#email" class="btn btn-outline-secondary">Manage sending</a>
-        <a asp-controller="Admin" asp-action="Index" class="btn btn-outline-secondary">Back</a>
-    </div>
-</div>
+    </page-header-subtitle>
+    <a href="/Settings#email" class="btn btn-outline-secondary">Manage sending</a>
+    <a asp-controller="Admin" asp-action="Index" class="btn btn-outline-secondary">Back</a>
+</page-header>
 
 
 <div class="stats" style="--stats-cols: 5">

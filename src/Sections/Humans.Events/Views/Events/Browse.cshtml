@@ -5,7 +5,7 @@
                      || !string.IsNullOrEmpty(Model.SearchQuery) || Model.FavouritesOnly;
 }
 
-<h2 class="mb-3">@Localizer["Events_BrowseTitle"]</h2>
+<page-header title="@(Localizer["Events_BrowseTitle"].Value)" />
 
 @if (Model.TimeZoneId != null)
 {
