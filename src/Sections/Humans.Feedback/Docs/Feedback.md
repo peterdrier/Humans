@@ -4,7 +4,7 @@
 
 # Feedback — Section Invariants
 
-> **Removed (2026-11-01).** Feedback was superseded by [Issues](../../Humans.Issues/Docs/Issues.md)
+> **Removed (2026-11-03).** Feedback was superseded by [Issues](../../Humans.Issues/Docs/Issues.md)
 > and is gone: no pages, no Backdoor API, no role, no jobs, no GDPR contributor. What is left is a
 > stub that exists only so the migration dropping its tables can run. Delete the whole project once
 > production has applied `DropFeedbackTables`.
@@ -15,7 +15,7 @@ None. Feedback holds no data and serves no requests.
 
 ## Data Model
 
-`FeedbackDbContext` maps no entities. Its one live migration, `DropFeedbackTables`, drops
+`FeedbackDbContext` maps no entities. Its migration chain ends with `DropFeedbackTables`, which drops
 `feedback_reports` and `feedback_messages`; the reports and their threads are not kept anywhere. The screenshots went first, through the `feedback.delete-screenshots` data migration, which this removal retires.
 
 ## Routing

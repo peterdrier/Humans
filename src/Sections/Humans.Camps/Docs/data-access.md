@@ -82,7 +82,7 @@ Repository: `ICampRepository`.
 
 Cross-section calls via `ICampRoleCampAccess` (implemented by
 `CachingCampService` — camp-member status without the full camp surface),
-`IUserService`, `IUserEmailService`, `IGoogleIntegrationService` (Workspace
+`IUserService`, `IGoogleIntegrationService` (Workspace
 identities for the role drill-down), `IAuditLogService`,
 `INotificationEmitter`. The decorator evicts the cached `CampInfo` after its
 role writes. Implements

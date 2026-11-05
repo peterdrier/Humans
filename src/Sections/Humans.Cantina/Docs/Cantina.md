@@ -120,7 +120,7 @@ Numeric offsets must also fit the requested day or full seven-day window within 
 - **Shifts:** `IShiftService.GetOnSiteUserIdsForDayAsync` (on-site cohort). Service-layer reads only; the cantina never touches the Shifts repository.
 - **Settings:** `ISettingsService.GetActiveEventSettingsAsync` (active event/burn).
 - **Users/Identity:** `IUserService.GetUserInfosAsync` / `GetUserInfoAsync` — cached `UserInfo` for burner names and the merge chain. No entity reads.
-- **Gdpr:** implements `IUserDataContributor` and `IUserMerge` (`DietaryProfileService`).
+- **Gdpr / Users:** implements `IUserDataContributor` (Base) and `IUserMerge` (Users contract) in `DietaryProfileService`.
 - **Inbound:** Shifts (banner, volunteer search, admin badges) and Users (medical prompt) read `ICantinaService`.
 
 ## Architecture

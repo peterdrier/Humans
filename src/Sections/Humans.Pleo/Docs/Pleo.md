@@ -82,6 +82,9 @@ All under `FinancePolicies.Read`; English-only finance-admin pages like `/Holded
 - One sweep at a time: an in-process gate shared by the nightly job and Sync now; a second caller is skipped and
   told so. No key (`PLEO_API_KEY`, `PLEO_COMPANY_ID`): the job logs and skips, Sync now is disabled.
 - The connector is read-only: GETs and the `:search` POSTs. The key holds write scopes; nothing here uses them.
+<!-- wheat: docs/superpowers/specs/2026-08-10-pleo-connector-design.md §Pleo API facts -->
+- The mirror polls: Pleo's webhooks cover only export jobs and vendors, nothing per entry. Cardholders come from
+  `/v2/employees`; the `/v1/employees` and `/v1/users` paths are denied to a standalone key.
 - Receipts are fetched live and never stored. The file comes from Pleo's signed CDN URL (an `https` `*.pleo.io` host
   only), without the API key; anything but an image or PDF is served as `application/octet-stream`. Only that
   response may be framed by its own origin, so the entry page can show a PDF.

@@ -169,20 +169,18 @@ Triggered by:
 
 ## Compliance Automation
 
-### Grace Period → Team Removal Flow
+### Grace Period → Suspension Flow
 ```
 Document Updated (new version published)
     │
-Day 0: Notification email sent to affected team members
+Day 0: Email and in-app notice to the document's team members
     │
-Day 1-6: Reminder emails (configurable per document)
+Before the deadline: re-consent reminder emails (ConsentReminderDaysBeforeSuspension, with cooldown)
     │
 Day N (GracePeriodDays expires, default 7):
     │
     ▼
-System sync removes user from team
-    → Google resource access revoked
-    → Audit entry logged
+Users' SuspendNonCompliantMembersJob suspends the member
 ```
 
 ### Restoration Flow

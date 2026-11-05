@@ -6,8 +6,7 @@ Folder: `src/Sections/Humans.Users/Services/` — no separate `Profiles/`
 subfolder; `ProfileEditorService`, `ProfileService`, and
 `ContactFieldService` sit alongside the Users services listed under
 [Users](#users) below. Owns `Profiles`, `ContactFields`,
-`ProfileLanguages`, `VolunteerHistoryEntries`, `UserEmails`, and the
-frozen legacy `CommunicationPreferences` storage mapping (no live access; Email owns preferences). **DbContext:** `UsersDbContext` — the merged
+`ProfileLanguages`, `VolunteerHistoryEntries` and `UserEmails`. **DbContext:** `UsersDbContext` — the merged
 Users+Profiles context.
 
 The account-merge surface (`AccountMergeService`, `DuplicateAccountService`,
@@ -301,8 +300,9 @@ Detection-only: loads the cached `UserInfo` read-model via
 gmail/googlemail equivalence), then counts active teams / role assignments
 per involved user, with each user's membership tier and consent review. Resolution is delegated to
 `AccountMergeService.MergeAsync`. **No DB access.** Cross-section calls via
-`IUserService`, `ITeamService`, `IRoleAssignmentService`, `IGovernanceService`,
-`IConsentService`, `IAuditLogService`. No cache.
+`IUserService` (in-section, through the internal `IUserManagement`), `ITeamService`, `IRoleAssignmentService`,
+`IGovernanceService`, `IConsentService`, `IAuditLogService` and `IAuditViewerService` (the
+already-flagged `DuplicateAccountFlagged` entries). No cache.
 
 ### ExternalLoginService (Scoped)
 

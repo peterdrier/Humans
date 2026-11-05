@@ -334,7 +334,7 @@ Board members are de facto Asociados: they are on the official roster whether or
 
 ## Cross-section dependencies
 
-- **Users:** `IUserService` for names, preferred language, active state; `IUserEmailService` for the notification address.
+- **Users:** `IUserService` for names, preferred language, active state and the notification address.
 - **Auth:** `IRoleAssignmentService.GetActiveUserIdsInRoleAsync(RoleNames.Board)` for the Board members on the official roster (already a Governance dependency).
 - **Teams:** `ITeamService` for the Volunteers team membership (`AllMembers` indicative audience).
 - **Email:** `IEmailService.SendAsync` + `GovernanceEmails` messages (opened, reminder, cancelled).

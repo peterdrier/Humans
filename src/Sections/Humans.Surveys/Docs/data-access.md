@@ -67,6 +67,12 @@ A `LoggedInSince` audience type (`surveys.AudienceLoggedInSince` cutoff
 column) resolves from the cached `UserInfo.LastLoginAt` via the existing
 `IUserService` fan-out.
 
+### SurveyTranslationFiller (constructed by SurveyService, not DI-registered)
+
+No repository, no `IMemoryCache`, no table access. Fills blank localized texts of an in-flight survey edit from
+the default culture, one batched `IGoogleTranslationService` call per target culture; authored text is never
+overwritten. Returns the updated edit input and the filled count; `SurveyService` persists it.
+
 ### SurveyReminderSender (Scoped — `ISurveyReminderSender`)
 
 Owns the daily reminder batch through the existing job contract. Reads `surveys` and

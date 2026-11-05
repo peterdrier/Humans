@@ -68,7 +68,7 @@ Nobodies Collective operates through self-organizing working groups (teams). Tea
 - Join, leave, and request-withdrawal failures use the selected UI language, with a translated fallback for unknown errors.
 
 ### US-6.5: Approve/Reject Join Requests
-**As a** team coordinator or board member
+**As a** team coordinator or TeamsAdmin
 **I want to** review and process join requests
 **So that** appropriate members can join the team
 
@@ -90,7 +90,7 @@ Nobodies Collective operates through self-organizing working groups (teams). Tea
 - Google resources access revoked
 
 ### US-6.7: Manage Team Members
-**As a** team coordinator or board member
+**As a** team coordinator or TeamsAdmin
 **I want to** manage team membership and roles
 **So that** the team is properly organized
 
@@ -127,7 +127,7 @@ Nobodies Collective operates through self-organizing working groups (teams). Tea
 - System teams and sub-teams cannot be made public
 
 ### US-6.10: Edit Team Page Content (Coordinator/Admin)
-**As a** team coordinator, board member, or admin
+**As a** team coordinator, TeamsAdmin, or admin
 **I want to** edit my team's public page content
 **So that** I can provide information to potential volunteers
 
@@ -154,7 +154,7 @@ Nobodies Collective operates through self-organizing working groups (teams). Tea
 - Subteams only appear if `IsPromotedToDirectory` is true; top-level teams always appear
 
 ### US-6.12: Manage Team Early Entry (Coordinator/EE Admin)
-**As a** team coordinator, Early Entry Admin, board member, or admin
+**As a** team coordinator, Early Entry Admin, TeamsAdmin, or admin
 **I want to** grant festival early-entry access to people on behalf of my team
 **So that** project crews who need to arrive ahead of the gates are on the early-entry roster
 
@@ -249,7 +249,7 @@ User submits request
           |
           v
 +---------------------+
-| Coordinator/Board   |
+| Coordinator/Admin   |
 | reviews request     |
 +---------+-----------+
           |

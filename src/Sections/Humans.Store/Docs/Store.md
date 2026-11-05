@@ -66,6 +66,7 @@ A camp's order against a season.
 | State | OrderState (int) | Open or InvoiceIssued; team orders stay Open |
 | CounterpartyName / CounterpartyVatId / CounterpartyAddress / CounterpartyCountryCode / CounterpartyEmail | string? | Editable by Camp Lead while Open; Store admins (StoreAdmin, FinanceAdmin, Admin) always. Never populated on team orders. |
 | IssuedInvoiceId | Guid? | Set when invoice is issued (camp orders only) |
+| CheckoutAttemptId / CheckoutSessionId / CheckoutAmountEur | Guid? / string(255)? / numeric(12,2)? | The order's one open Stripe checkout attempt: set together, cleared together when the session completes or expires (see Invariants). |
 | CreatedAt / UpdatedAt | Instant | |
 
 **Indexes:** `CampSeasonId`, `TeamId`, `State`.

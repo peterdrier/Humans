@@ -192,7 +192,7 @@ Ambiguous characters (0, O, l, 1, I) are excluded for readability.
 | Action | Required Role |
 |--------|---------------|
 | Provision account | UsersAdmin, Admin |
-| Provision account for a member of a team (from the team's Members page) | Coordinator of that team; TeamsAdmin, Board, Admin for any team |
+| Provision account for a member of a team (from the team's Members page) | Coordinator of that team (or its parent department); TeamsAdmin, Admin for any team |
 | Link existing account | Admin |
 | View `/Google/Accounts` (2FA status, recovery email, etc.) | Admin |
 | Reset password (one-shot delivery) | Admin |

@@ -21,11 +21,13 @@ The association hands individual people entitlements: a cheaper ticket, early en
 
 **As a program manager, I issue grants by hand** to one or more people, optionally with an expiry that overrides the program's.
 - People already holding a live grant in the program are skipped.
+- A batch containing anyone missing or erased is refused in full.
 - I see and act only on the programs I manage; I cannot issue under a source program.
 
 **As a source section (Low Income), I issue and revoke** through `IGrantWrite`, passing only my source key.
 - Grants resolves the open program for the key; none open is an error.
 - Issuing to a current holder returns the existing grant.
+- A missing or erased recipient is refused (`GrantWriteRefusal.RecipientUnavailable`).
 
 **As a manager, I revoke a grant** with an optional reason, or **resend its notice**.
 - The revoked row stays (who, when, why); it cannot be resent or revoked again.

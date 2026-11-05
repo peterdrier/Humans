@@ -153,7 +153,7 @@ This section's controllers. `TeamController` (`[Route("Teams")]`) handles both a
 | `GET /Teams/{teamId:guid}/GoogleResources` | `GetTeamGoogleResources` | `TeamController` | `[Authorize(Policy = TeamsPolicies.Read)]` — JSON API for resource picker |
 | `GET /Teams/{teamId:guid}/SendMessage/{id:guid}` | `SendMessage` (GET) | `TeamMessageController` | `[Authorize]` + `ITeamMessageOptionsProvider` — send as team: the team must be one the viewer may send as (see Invariants); 403 otherwise, redirect to the profile for self or an opted-out recipient |
 | `POST /Teams/{teamId:guid}/SendMessage/{id:guid}` | `SendMessage` (POST) | `TeamMessageController` | `[Authorize]`, anti-forgery, same guards re-checked |
-| `GET /Teams/{slug}/Members` | `Members` | `TeamAdminController` | `ResolveTeamManagementAsync` (coordinator or TeamsAdmin/Admin) |
+| `GET /Teams/{slug}/Members` | `Members` | `TeamAdminController` | `ResolveTeamViewAsync` — the team's managers (coordinator or TeamsAdmin/Admin), or a Teams reader (Board) with `CanManage` false and every form hidden |
 | `POST /Teams/{slug}/Members/Add` | `AddMember` | `TeamAdminController` | `ResolveTeamManagementAsync` |
 | `POST /Teams/{slug}/Members/{userId}/Remove` | `RemoveMember` | `TeamAdminController` | `ResolveTeamManagementAsync` |
 | `POST /Teams/{slug}/Members/{userId}/ProvisionEmail` | `ProvisionEmail` | `TeamAdminController` | `ResolveTeamManagementAsync` |
@@ -177,7 +177,7 @@ This section's controllers. `TeamController` (`[Route("Teams")]`) handles both a
 | `POST /Teams/{slug}/EarlyEntry/Remove` | `RemoveEarlyEntry` | `TeamAdminController` | `ResolveEarlyEntryManagementAsync` |
 | `GET /Teams/{slug}/EarlyEntry/LookupTicket` | `LookupTicket` | `TeamAdminController` | `ResolveEarlyEntryManagementAsync` — AJAX ticket-barcode lookup; returns 0-or-1 `HumanLookupSearchResult` |
 
-`ResolveTeamManagementAsync` authorizes via `TeamAuthorizationHandler` + `TeamOperationRequirement.ManageCoordinators`; `ResolveEarlyEntryManagementAsync` authorizes the same handler with `TeamOperationRequirement.ManageEarlyEntry`.
+`ResolveTeamManagementAsync` authorizes via `TeamAuthorizationHandler` + `TeamOperationRequirement.ManageCoordinators`; `ResolveTeamViewAsync` is the same check or `TeamsPolicies.Read`; `ResolveEarlyEntryManagementAsync` authorizes the same handler with `TeamOperationRequirement.ManageEarlyEntry`.
 
 ## Actors & Roles
 
@@ -337,7 +337,7 @@ A coordinator can relay a one-off message to another member on behalf of a team,
 - **Notifications.Contracts:** `INotificationEmitter` on join-request events.
 - **AuditLog:** `IAuditLogService` for every membership and EE mutation, and `<vc:audit-log>` in `TeamAdmin/Members`.
 - **Email.Contracts:** `IEmailService.SendAsync`, `IEmailMessageFactory.FacilitatedMessage` (with the team's group as `replyTo`) and `ICommunicationPreferenceService.AcceptsFacilitatedMessagesAsync` for send as team. Otherwise transport only (`IEmailService.SendAsync`) for the reconciler's "added to team" mail. Teams owns the template: `TeamsEmails` (internal) builds the `EmailMessage` from Teams' own `Teams_Email_*` keys in `TeamsResource`, renders linked resources alphabetically in the recipient's supported culture via `CultureScope` (English fallback for missing or unsupported saved preferences), and `TeamsEmailPreviews` (`IEmailPreviewContributor`, registered in `Section.Register`) lists it at `/Email/EmailPreview` (`memory/architecture/email-templates-live-in-sender.md`, peterdrier/Humans#1651).
-- **Gdpr:** `IUserDataContributor` (export + erasure).
+- **Base (`Humans.Base.Gdpr`):** `IUserDataContributor` (export + erasure).
 - **EarlyEntry** (full section): `IEarlyEntryProvider` — `GetEarlyEntriesAsync` projects grants from `EarlyEntryEnabled` teams to the cross-section `EarlyEntryGrant` view (`"{TeamName}: {ProjectName}"`) via `TeamEarlyEntryProjection`, read live by EarlyEntry on every call.
 - **Camps.Contracts:** active camp lead assignments feed the Barrio Leads system team via `ICampLeadDirectory`.
 - **Governance.Contracts:** `IMembershipCalculator` decides Asociados / Colaboradors eligibility.
