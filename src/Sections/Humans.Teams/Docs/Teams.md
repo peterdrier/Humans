@@ -410,3 +410,5 @@ sends this section's stored issues to the Admin-only queue.
 Validation and authorization refusals for permanent team deletion happen before the delete.
 
 - Global text search selects the highest-scoring matches before applying its result limit, with ordinal case-insensitive name and ID tie-breakers. Existing visibility and event-scope rules still apply; GUID queries retain direct lookup.
+
+The internal `TeamPageContent` owns page-content updates and the safe call-to-action URL policy shared with `TeamPageSummaryMapper`. `TeamService` retains the management entry point; controller authorization and decorator invalidation remain unchanged. Action normalization, refusal order, public-page constraints, persistence, audit and diagnostic handling keep their existing semantics. No public contract or DI registration is added.
