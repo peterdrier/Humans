@@ -188,8 +188,7 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
         var roles = await GetRoleProjectionForYearsAsync(
             camp.Seasons.Select(season => season.Year).Distinct().ToList(),
             cancellationToken);
-        var registration = await GetRegistrationByEventAsync(cancellationToken);
-        return CreateCampInfo(camp, registration, includeEarlyEntryGrantCount: false, roles);
+        return CreateCampInfo(camp, includeEarlyEntryGrantCount: false, roles);
     }
 
     public async Task<CampInfo?> GetCampByIdAsync(Guid campId, CancellationToken cancellationToken = default)
@@ -201,8 +200,7 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
         var roles = await GetRoleProjectionForYearsAsync(
             camp.Seasons.Select(season => season.Year).Distinct().ToList(),
             cancellationToken);
-        var registration = await GetRegistrationByEventAsync(cancellationToken);
-        return CreateCampInfo(camp, registration, roles: roles);
+        return CreateCampInfo(camp, roles: roles);
     }
 
     public async Task<CampEditData?> GetCampEditDataAsync(
@@ -218,9 +216,8 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
 
         var targetEventId = eventSettingsId
             ?? (await _settingsService.GetActiveEventSettingsAsync(cancellationToken))?.Id;
-        var registration = await GetRegistrationByEventAsync(cancellationToken);
         var season = camp.Seasons
-            .FirstOrDefault(s => targetEventId is not null && SeasonEventId(s, registration) == targetEventId)
+            .FirstOrDefault(s => targetEventId is not null && s.EventSettingsId == targetEventId)
             ?? camp.Seasons
                 .OrderByDescending(s => s.Year)
                 .ThenByDescending(s => s.CreatedAt)
@@ -234,7 +231,7 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
         return CreateCampEditData(
             camp,
             season,
-            SeasonEventId(season, registration),
+            season.EventSettingsId,
             _clock.GetCurrentInstant().InUtc().Date);
     }
 
@@ -244,8 +241,7 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
         var camps = await _repo.GetCampsWithLeadsForYearAsync(
             year, statusFilter: null, cancellationToken);
         var roles = await GetRoleProjectionForYearsAsync([year], cancellationToken);
-        var registration = await GetRegistrationByEventAsync(cancellationToken);
-        return camps.Select(c => CreateCampInfo(c, registration, roles: roles)).ToList();
+        return camps.Select(c => CreateCampInfo(c, roles: roles)).ToList();
     }
 
     public async Task<IReadOnlyList<CampInfo>> GetCampsForEventAsync(
@@ -278,15 +274,11 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
 
     public async Task<CampSettingsInfo> GetSettingsAsync(CancellationToken cancellationToken = default)
     {
-        var settings = await _repo.GetSettingsReadOnlyAsync(cancellationToken);
-        if (settings is null)
-            throw new InvalidOperationException("Camp settings not found.");
+        _ = await _repo.GetSettingsReadOnlyAsync(cancellationToken)
+            ?? throw new InvalidOperationException("Camp settings not found.");
 
         var registration = await GetRegistrationByEventAsync(cancellationToken);
-        var eventYears = registration.Select(r => r.Year).ToHashSet();
-        // A legacy open year with no Settings event at all stays open: there is no event row to carry it.
         var openYears = registration.Where(r => r.RegistrationOpen).Select(r => r.Year)
-            .Concat(settings.OpenSeasons.Where(y => !eventYears.Contains(y)))
             .Distinct()
             .ToList();
         var (activeYear, activeEventId) = await GetActiveEventAsync(cancellationToken);
@@ -307,8 +299,7 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
         foreach (var openEvent in openEvents)
         {
             var ofEvent = lockDates
-                .Where(r => (r.EventSettingsId ?? PickSeasonEvent(registration, r.Year)?.EventSettingsId)
-                    == openEvent.EventSettingsId)
+                .Where(r => r.EventSettingsId == openEvent.EventSettingsId)
                 .ToList();
             if (ofEvent.Count > 0)
                 nameLockDates[openEvent.EventSettingsId] = ofEvent.Max(r => r.LockDate);
@@ -400,7 +391,6 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
 
     private static CampInfo CreateCampInfo(
         Camp camp,
-        IReadOnlyList<CampEventRegistration> registration,
         bool includeEarlyEntryGrantCount = true,
         CampRoleProjection? roles = null)
     {
@@ -412,7 +402,7 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
             camp.IsSwissCamp,
             camp.TimesAtNowhere,
             camp.Seasons
-                .Select(s => CreateCampSeasonInfo(s, camp.Slug, registration, includeEarlyEntryGrantCount, roles))
+                .Select(s => CreateCampSeasonInfo(s, camp.Slug, includeEarlyEntryGrantCount, roles))
                 .ToList())
         {
             WebOrSocialUrl = camp.WebOrSocialUrl,
@@ -430,7 +420,6 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
     private static CampSeasonInfo CreateCampSeasonInfo(
         CampSeason season,
         string campSlug,
-        IReadOnlyList<CampEventRegistration> registration,
         bool includeEarlyEntryGrantCount = false,
         CampRoleProjection? roles = null)
     {
@@ -460,7 +449,7 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
                 ? season.Members.Count(m => m.Status == CampMemberStatus.Active)
                 : null)
         {
-            EventSettingsId = SeasonEventId(season, registration),
+            EventSettingsId = season.EventSettingsId,
             BlurbLong = season.BlurbLong,
             KidsVisiting = season.KidsVisiting,
             KidsAreaDescription = season.KidsAreaDescription,
@@ -552,7 +541,7 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
         }
 
         if (await _repo.SeasonExistsAsync(
-                campId, eventSettingsId, UnassignedYearFor(registration, targetEvent), cancellationToken))
+                campId, eventSettingsId, cancellationToken))
         {
             return new(null, "Camps_Flash_SeasonAlreadyExists");
         }
@@ -1003,7 +992,6 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
         return CreateCampSeasonInfo(
             season,
             season.Camp?.Slug ?? string.Empty,
-            await GetRegistrationByEventAsync(cancellationToken),
             roles: roles);
     }
 
@@ -1029,13 +1017,12 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
     public async Task<IReadOnlyList<CampEventRegistration>> GetRegistrationByEventAsync(
         CancellationToken cancellationToken = default)
     {
-        var legacyOpenYears = (await _repo.GetSettingsReadOnlyAsync(cancellationToken))?.OpenSeasons ?? [];
         var rows = (await _repo.GetEventSettingsAsync(cancellationToken)).ToDictionary(r => r.EventSettingsId);
         return [.. (await _settingsService.GetAllEventSettingsAsync(cancellationToken))
             .Where(e => e.Status != EventSettingsStatus.Deleted)
             .OrderByDescending(e => e.GateOpeningDate)
             .Select(e => new CampEventRegistration(e.Id, e.EventName, e.Year,
-                rows.TryGetValue(e.Id, out var row) ? row.RegistrationOpen : legacyOpenYears.Contains(e.Year)))];
+                rows.TryGetValue(e.Id, out var row) && row.RegistrationOpen))];
     }
 
     public Task OpenSeasonAsync(Guid eventSettingsId, Guid actorUserId, CancellationToken cancellationToken = default) =>
@@ -1061,57 +1048,6 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
         }
     }
 
-    public async Task<CampEventIdPlan> GetEventIdPlanAsync(CancellationToken cancellationToken = default)
-    {
-        var legacyOpenYears = (await _repo.GetSettingsReadOnlyAsync(cancellationToken))?.OpenSeasons ?? [];
-        var registration = await GetRegistrationByEventAsync(cancellationToken);
-        var seasons = new List<(Guid, string, int, Guid, string)>();
-        foreach (var season in await _repo.GetSeasonsWithoutEventIdAsync(cancellationToken))
-        {
-            if (PickSeasonEvent(registration, season.Year) is { } owner)
-                seasons.Add((season.Id, season.Name, season.Year, owner.EventSettingsId, owner.EventName));
-        }
-
-        return new CampEventIdPlan(legacyOpenYears, seasons);
-    }
-
-    public async Task<int> AssignSeasonEventIdsAsync(CancellationToken cancellationToken = default)
-    {
-        // Pin today's effective registration state first, then retire the legacy list: an event created later
-        // starts closed instead of inheriting its year's legacy flag.
-        var registration = await GetRegistrationByEventAsync(cancellationToken);
-        var rowsWritten = await _repo.AddMissingEventSettingsAsync(
-            registration.Where(r => r.RegistrationOpen).ToDictionary(r => r.EventSettingsId, r => r.RegistrationOpen),
-            cancellationToken);
-        if (await _repo.ClearLegacyOpenSeasonsAsync(cancellationToken))
-            rowsWritten++;
-        var plan = await GetEventIdPlanAsync(cancellationToken);
-        return rowsWritten + await _repo.AssignSeasonEventIdsAsync(
-            plan.Seasons.ToDictionary(p => p.SeasonId, p => p.EventSettingsId), cancellationToken);
-    }
-
-    /// <summary>
-    /// The event a season belongs to: its own id, else the one <c>camps.event-ids</c> would give it, so lookups by
-    /// event work before that data migration runs.
-    /// </summary>
-    private static Guid? SeasonEventId(CampSeason season, IReadOnlyList<CampEventRegistration> registration) =>
-        season.EventSettingsId ?? PickSeasonEvent(registration, season.Year)?.EventSettingsId;
-
-    /// <summary>The year whose unassigned seasons belong to <paramref name="target"/>; null when none do.</summary>
-    private static int? UnassignedYearFor(
-        IReadOnlyList<CampEventRegistration> registration, CampEventRegistration target) =>
-        PickSeasonEvent(registration, target.Year)?.EventSettingsId == target.EventSettingsId ? target.Year : null;
-
-    /// <summary>
-    /// Of the year's events, the earliest one open for registration, else the earliest. Null when Settings has no
-    /// event that year. <paramref name="registration"/> is ordered latest gate opening first.
-    /// </summary>
-    internal static CampEventRegistration? PickSeasonEvent(IReadOnlyList<CampEventRegistration> registration, int year)
-    {
-        var ofYear = registration.Where(r => r.Year == year).ToList();
-        return ofYear.LastOrDefault(r => r.RegistrationOpen) ?? ofYear.LastOrDefault();
-    }
-
     public async Task SetNameLockDateAsync(
         Guid eventSettingsId, LocalDate lockDate, Guid actorUserId, CancellationToken cancellationToken = default)
     {
@@ -1122,7 +1058,7 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
             ?? throw new InvalidOperationException($"Event {eventSettingsId} not found.");
         // Complete the save and audit together even if the caller stops waiting.
         var changed = await _repo.SetNameLockDateForEventAsync(
-            eventSettingsId, UnassignedYearFor(registration, targetEvent), lockDate, CancellationToken.None);
+            eventSettingsId, lockDate, CancellationToken.None);
         if (changed > 0)
         {
             await _auditLog.LogAsync(CampsAuditActions.CampNameLockDateChanged, nameof(CampSettings), settings.Id,
@@ -1274,14 +1210,13 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
         Guid campId, Guid userId, CancellationToken cancellationToken = default)
     {
         var activeEventId = (await _settingsService.GetActiveEventSettingsAsync(cancellationToken))?.Id;
-        var registration = await GetRegistrationByEventAsync(cancellationToken);
         var camp = await _repo.GetByIdAsync(campId, cancellationToken);
         // Active AND Full both accept requests — Full is an informational label the lead
         // sets to say "we look full," not an enforcement gate. Humans doesn't yet know
         // everyone actually in the camp, so people still need to be able to request/join.
         var season = camp?.Seasons.FirstOrDefault(s =>
             activeEventId is not null
-            && SeasonEventId(s, registration) == activeEventId
+            && s.EventSettingsId == activeEventId
             && (s.Status == CampSeasonStatus.Active || s.Status == CampSeasonStatus.Full));
         if (season is null)
         {
@@ -1432,10 +1367,9 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
             ?? (await _settingsService.GetActiveEventSettingsAsync(cancellationToken))?.Id;
         if (targetEventId is null)
             return null;
-        var registration = await GetRegistrationByEventAsync(cancellationToken);
         var camp = await _repo.GetByIdAsync(campId, cancellationToken);
         // Full is informational only: it must not block camp management.
-        return camp?.Seasons.FirstOrDefault(s => SeasonEventId(s, registration) == targetEventId
+        return camp?.Seasons.FirstOrDefault(s => s.EventSettingsId == targetEventId
             && s.Status is CampSeasonStatus.Active or CampSeasonStatus.Full);
     }
 
