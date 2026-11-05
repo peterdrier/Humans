@@ -5,6 +5,15 @@ namespace Humans.Surveys.Services;
 
 internal static class SurveyQuestionMapping
 {
+    internal static SurveyRankedSettings? ToRankedSettings(RankedQuestionSettings? settings)
+        => settings is null
+            ? null
+            : new SurveyRankedSettings(
+                settings.AllowEqualRanks,
+                settings.AllowReject,
+                settings.OfficialMethod.ToString());
+
+
     internal static IReadOnlyList<QuestionInput> ToQuestionInputs(Survey survey)
         => survey.Questions
             .OrderBy(question => question.PageNumber)
