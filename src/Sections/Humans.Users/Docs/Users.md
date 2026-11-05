@@ -134,7 +134,7 @@ These are managed by `UserManager<User>` / `SignInManager<User>` / `RoleManager<
 
 ## Routing
 
-The section's controllers (`Controllers/`): `ProfileController` (`/Profile/Me/*`, the member's own profile), `ProfileEmailsController` (`/Profile/Me/Emails/*` and `/Profile/{id}/Admin/Emails/*`), `ProfileViewController` (`/Profile/{id}`, `/Profile/Picture`, popovers, `/Profile/Search`), `ProfileApiController` (`/api/profiles/*`), `UsersAdminController` (`/Users/Admin/*`), `UsersAdminAccountMergesController`, `ProfileAdminController` (`/Profile/Admin/EmailProblems/*`). The section's one-off copies are data migrations (`ISectionDataMigrations`, below), run from Debug's `/Debug/DataMigrations`. The Profile, API and admin routes are tabled under [Part 2 — Routing](#routing-1); Part 1 covers identity.
+The section's controllers (`Controllers/`): `ProfileController` (`/Profile/Me/*`, the member's own profile), `ProfileEmailsController` (`/Profile/Me/Emails/*` and `/Profile/{id}/Admin/Emails/*`), `ProfileViewController` (`/Profile/{id}`, `/Profile/Picture`, popovers), `ProfileApiController` (`/api/profiles/*`), `UsersAdminController` (`/Users/Admin/*`), `UsersAdminAccountMergesController`, `ProfileAdminController` (`/Profile/Admin/EmailProblems/*`). The section's one-off copies are data migrations (`ISectionDataMigrations`, below), run from Debug's `/Debug/DataMigrations`. The Profile, API and admin routes are tabled under [Part 2 — Routing](#routing-1); Part 1 covers identity.
 
 Authentication routes are served by `AccountController`, which lives in `Humans.Web/Controllers/` (the Shell) but dispatches into this section's services (`ExternalLoginService`, `IMagicLinkService`, `AccountProvisioningService`):
 
@@ -562,7 +562,6 @@ Self-service profile functionality lives under `/Profile`, split by shape across
 | `/Profile/{id}/Popover` | Quick profile popup |
 | `/Profile/{id}/PublicPopover` | `[AllowAnonymous]` — public-page coordinator popover; 404 unless the target coordinates a public-page team ([spec](features/public-coordinator-popover.md)) |
 | `/Email/SendMessage/{id}` | GET/POST — send facilitated message; served by Email's `FacilitatedMessageController` (the profile card links to it). Send as team is Teams' `/Teams/{teamId}/SendMessage/{id}`, offered by Teams' `Profile` user part |
-| `/Profile/Search` | People search |
 | `/Profile/Picture` | `[AllowAnonymous]` — profile picture bytes |
 | `/api/profiles/search` | API people search |
 | `/api/profiles/burner-name-count` | Live burner-name collision count, excluding the caller ([spec](features/burner-name-collision-warning.md)) |

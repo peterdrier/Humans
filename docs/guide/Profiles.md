@@ -37,7 +37,7 @@ Each contact field has its own visibility setting, so you can share your Signal 
 - **My Data** (`/Consent/MyData`) — data export and account deletion
 - **Outbox** (`/Email/Outbox`) — the emails the system has sent to you
 - **View another human** (`/Profile/{id}`) — another human's profile, filtered by visibility
-- **Search** (`/Profile/Search`) — find other humans by name
+- **Search** (`/Search`) — find other humans by name
 
 ## As a Volunteer
 
@@ -88,7 +88,7 @@ On another human's profile, use Send Message (`/Email/SendMessage/{id}`). The sy
 
 ### Search for humans
 
-Go to `/Profile/Search` and type a name. Results respect your access level and exclude suspended humans.
+Go to `/Search` and type a name. Results respect your access level and exclude suspended humans.
 
 ### Export your data or delete your account
 

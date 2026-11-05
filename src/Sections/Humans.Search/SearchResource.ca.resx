@@ -45,4 +45,7 @@
   <data name="Search_GlobalPlaceholderEvents" xml:space="preserve"><value>Cerca humans, equips, barris, torns, esdeveniments…</value></data>
   <data name="Search_GlobalTitle" xml:space="preserve"><value>Cerca</value></data>
   <data name="Search_QueryAriaLabel" xml:space="preserve"><value>Consulta de cerca</value></data>
+  <data name="Search_MinChars" xml:space="preserve">
+    <value>Escriu almenys 2 caràcters per cercar.</value>
+  </data>
 </root>
