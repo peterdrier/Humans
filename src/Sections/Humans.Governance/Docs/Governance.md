@@ -269,6 +269,8 @@ The Consent Coordinator review queue (`GET /Consent/ReviewQueue`, `POST /Consent
 
 ## Invariants
 
+- The internal `AssemblyVotePresentation` owns the plain-text acta and the Madrid closing-time conversion shared with roster emails. Result loading, embargo/disclosure decisions, closer-name resolution and audits remain in `AssemblyVoteService`.
+
 - Assembly-vote administration (including peek and ballot disclosure) and term-expiry correction resolve their actor through Users before proceeding. Merged sessions audit the surviving account; missing accounts receive Challenge for vote administration and Unauthorized for term correction. Actor lookup cancellation propagates before service calls. Existing mutation tokens, frozen rosters and member ballot eligibility are unchanged.
 
 - Membership status uses account state, active affiliations and consent deadlines; the Consent Coordinator review is an independent annotation. Bare accounts are pending, suspended accounts remain suspended, and other non-active states cannot become active through stale affiliations.
