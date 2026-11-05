@@ -167,7 +167,7 @@ public sealed class StripeMirrorSyncTests
     }
 
     private static UserEmailInfo Email(string address, bool verified) => new(Guid.NewGuid(), address, verified, false,
-        false, null, null, null, null, Instant.MinValue, Instant.MinValue, LegacyGoogleEmailStatus.Unknown);
+        null, null, null, null, Instant.MinValue, Instant.MinValue);
 
     [HumansFact]
     public async Task Export_holds_the_members_payments_by_verified_email_only()
