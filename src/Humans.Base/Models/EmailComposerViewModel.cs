@@ -7,7 +7,7 @@ namespace Humans.Base.Models;
 /// "To:" line naming who the send reaches, and a "Send to me" button that queues the same
 /// branded send to the signed-in human through <c>/Email/SendMarkdownToSelf</c>.
 /// Every human-composed send form (profile message, camp contact, rota messages, survey
-/// invitation, feedback reply, issue comment, campaign) renders through this one component
+/// invitation, issue comment, campaign) renders through this one component
 /// instead of its own subject/body/editor markup.
 /// </summary>
 public class EmailComposerViewModel
@@ -27,7 +27,7 @@ public class EmailComposerViewModel
 
     /// <summary>
     /// The single human the send reaches, rendered through <c>&lt;vc:human&gt;</c> on the "To:"
-    /// line (profile message, feedback reply, issue comment to the reporter).
+    /// line (profile message, issue comment to the reporter).
     /// </summary>
     public Guid? RecipientUserId { get; init; }
 

@@ -21,6 +21,7 @@ public sealed class Section : ISection, ISectionChrome, ISectionJobs
 
         services.AddSingleton<INotificationRepository, NotificationRepository>();
 
+        services.AddSingleton<INotificationSourceContributor, RetiredNotificationSources>();
         services.AddSingleton<NotificationSourceRegistry>();
         services.AddSingleton<IHostedService>(sp => sp.GetRequiredService<NotificationSourceRegistry>());
 
