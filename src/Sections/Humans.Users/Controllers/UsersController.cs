@@ -3,7 +3,6 @@ using Humans.Base.Controllers;
 using Humans.Base.Enums;
 using Humans.Base.Extensions;
 using Humans.Teams.Contracts;
-using Humans.Users.Contracts;
 using Humans.Users.Models;
 using Humans.Users.Services;
 using Microsoft.AspNetCore.Authorization;
@@ -23,27 +22,6 @@ internal sealed class UsersController(
     IClock clock) : HumansControllerBase(userService)
 {
     private readonly IUserManagement _userService = userService;
-
-    [HttpGet("Search")]
-    public async Task<IActionResult> Search(string? q, CancellationToken ct)
-    {
-        var viewModel = new HumanSearchViewModel { Query = q };
-
-        if (!q.HasSearchTerm())
-        {
-            return View(viewModel);
-        }
-
-        // Never the Admin bit here. Uncapped, so relevance ranking can surface the right person.
-        var results = await _userService.SearchUsersAsync(
-            q, PersonSearchFields.PublicAll, limit: int.MaxValue, ct);
-
-        viewModel.Results = results
-            .OrderByRelevance()
-            .ToList();
-
-        return View(viewModel);
-    }
 
     [HttpGet("Birthdays")]
     public async Task<IActionResult> Birthdays(int? month, CancellationToken ct)

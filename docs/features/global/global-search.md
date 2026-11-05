@@ -74,7 +74,7 @@ The feature matches **each entity's own public fields only** — no cross-modal 
 **So that** I find what I'm looking for without typing exactly the right field
 
 **Acceptance Criteria:**
-- **Humans** match via `IUserService.SearchUsersAsync` with `PersonSearchFields.PublicAll` (`Name | Bio`, per `memory/architecture/person-search.md`) — the resolved display name plus the `Bio` bucket: bio, city, contribution-interests, CV, pronouns, `AllActiveProfiles`-visible ContactFields, and publicly-exposed emails. The bit-flag's existing fields are unchanged — humans inherit the same scope as `/Users/Search` for non-admin viewers. Emergency-contact data and admin-only fields are never searchable.
+- **Humans** match via `IUserService.SearchUsersAsync` with `PersonSearchFields.PublicAll` (`Name | Bio`, per `memory/architecture/person-search.md`) — the resolved display name plus the `Bio` bucket: bio, city, contribution-interests, CV, pronouns, `AllActiveProfiles`-visible ContactFields, and publicly-exposed emails. The bit-flag's existing fields are unchanged — humans inherit the same scope as `/Profile/Search` for non-admin viewers. Emergency-contact data and admin-only fields are never searchable.
 - **Teams** match on `Team.Name` only.
 - **Camps** match on the active event's `CampSeason.Name` only.
 - **Shifts** (rotas) match on `Rota.Name` only.
@@ -150,7 +150,7 @@ a Description-only match, per US-GS.3). No bucket scores in the orchestrator any
 | Name (prefix)   |   80  |
 | Name (contains) |   60  |
 
-Display ordering is a presentation concern and lives in `SearchController.BuildViewModel` per `memory/architecture/display-sort-in-controllers.md` — the service returns scored but unsorted buckets. Each non-human bucket sorts by `Score desc, SortKey asc` at the controller; the humans bucket sorts by relevance (`OrderByRelevance()`: `Score` desc, then `BurnerName`), matching `/Users/Search`.
+Display ordering is a presentation concern and lives in `SearchController.BuildViewModel` per `memory/architecture/display-sort-in-controllers.md` — the service returns scored but unsorted buckets. Each non-human bucket sorts by `Score desc, SortKey asc` at the controller; the humans bucket sorts by relevance (`OrderByRelevance()`: `Score` desc, then `BurnerName`), matching `/Profile/Search`.
 
 Counts reflect every match — there is no cap, so the chip count is the true number of hits the user can scroll to. There is no separate `CountMatchingAsync` per section; the buckets are already the full result set.
 
@@ -170,7 +170,7 @@ Counts reflect every match — there is no cap, so the chip count is the true nu
 
 `/Search` renders type-grouped sections, in order: **Humans**, **Teams**, **Camps**, **Shifts**, **Events**. Each section is hidden when its bucket is empty. The Events section and chip are also hidden when `Features:Events` is off (the view reads `IConfiguration` directly for this gate).
 
-- **Humans** are rendered one row at a time by Users' own `<vc:user-search-result>` (see `memory/architecture/person-search.md`). Search holds ids and the match context Users' own search produced, and builds no display model — `/Users/Search` renders the same component (nobodies-collective/Humans#1062).
+- **Humans** are rendered one row at a time by Users' own `<vc:user-search-result>` (see `memory/architecture/person-search.md`). Search holds ids and the match context Users' own search produced, and builds no display model — `/Profile/Search` renders the same component (nobodies-collective/Humans#1062).
 - **Teams / Camps / Shifts / Events** are rendered the same way: `_GlobalSearchSection` switches on the row's `Type` and emits that section's own component — `<vc:teams-search-result team-id>`, `<vc:camps-search-result camp-id>`, `<vc:shifts-search-result rota-id>`, `<vc:events-search-result event-id>`. Search projects no `Title`/`Subtitle`/`Url` for any of them (nobodies-collective/Humans#1062). Every bucket keys by the entity's `Guid`; a component that needs a slug for its link fetches it from the entity it just loaded.
 
 A type-filter chip row at the top (All | Humans | Teams | Camps | Shifts | Events) preserves the query and toggles the active filter. Counts on each chip reflect the full match count.

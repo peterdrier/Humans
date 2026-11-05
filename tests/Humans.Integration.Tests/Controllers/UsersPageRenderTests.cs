@@ -118,7 +118,7 @@ public class UsersPageRenderTests(HumansTestDatabase database) : IntegrationTest
         var ct = Xunit.TestContext.Current.CancellationToken;
         var userId = await Factory.SignInAsFullyOnboardedAsync(Client, DevPersona.Admin);
 
-        var publicSearch = await Client.GetAsync("/Users/Search?q=Dev", ct);
+        var publicSearch = await Client.GetAsync("/Profile/Search?q=Dev", ct);
         publicSearch.StatusCode.Should().Be(HttpStatusCode.OK);
         var publicHtml = await publicSearch.Content.ReadAsStringAsync(ct);
 
@@ -127,7 +127,7 @@ public class UsersPageRenderTests(HumansTestDatabase database) : IntegrationTest
         publicHtml.Should().Contain("Matched in",
             because: "Search_MatchedIn is written by the component's own markup and nothing else "
                    + "on this page emits it");
-        AssertRenderedCleanly(publicHtml, "GET /Users/Search?q=Dev");
+        AssertRenderedCleanly(publicHtml, "GET /Profile/Search?q=Dev");
 
         var adminList = await Client.GetAsync("/Users/Admin", ct);
         adminList.StatusCode.Should().Be(HttpStatusCode.OK);
