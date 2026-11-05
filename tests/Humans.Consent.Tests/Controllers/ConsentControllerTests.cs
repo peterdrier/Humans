@@ -247,9 +247,9 @@ public sealed class ConsentControllerTests
         Assert.True(html.IndexOf("B-pending-team", StringComparison.Ordinal) < html.IndexOf("Z-complete-team", StringComparison.Ordinal));
         Assert.True(html.IndexOf("Alpha-pending-document", StringComparison.Ordinal) < html.IndexOf("Zulu-pending-document", StringComparison.Ordinal));
         Assert.True(html.IndexOf("Zulu-pending-document", StringComparison.Ordinal) < html.IndexOf("0-signed-document", StringComparison.Ordinal));
-        Assert.Contains("Jan 31, 2026", html);
-        Assert.Contains("Jan 31, 2026 23:30", html);
-        Assert.DoesNotContain("Feb 1, 2026", html);
+        Assert.Contains("Jan&#xA0;31,&#xA0;2026", html);
+        Assert.Contains("Jan&#xA0;31,&#xA0;2026 23:30", html);
+        Assert.DoesNotContain("Feb&#xA0;1,&#xA0;2026", html);
         Assert.Contains("History09", html);
         Assert.DoesNotContain("History10", html);
     }

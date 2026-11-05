@@ -26,7 +26,7 @@ public sealed class FinanceEmailsTests
         msg.ReplyTo.Should().BeNull();
         msg.Subject.Should().EndWith("#de");
         msg.HtmlBody.Should().Contain("Alice &lt;A&gt;");
-        msg.HtmlBody.Should().Contain("1.234,50 €");
+        msg.HtmlBody.Should().Contain("1.234,50\u00A0€");
         msg.HtmlBody.Should().Contain("ES79****789");
     }
 
