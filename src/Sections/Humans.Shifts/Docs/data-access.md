@@ -226,3 +226,12 @@ Stateless calculators / projections — no DI dependencies, no DB access.
 ---
 
 
+
+### ShiftBrowseReader (internal, owned by ShiftManagementService)
+
+Repository: `IShiftManagementRepository`. Assembles urgent/general browse rows
+through the existing event calendar resolver, urgency ranking and department
+aggregation helpers. Resolves Teams, Users and Auth lazily through the existing
+service provider; owns unchanged coordinator/approval read predicates used by
+browse eligibility. Shared shift/rota projection also serves existing management
+reads. No writes, cache or separate DI registration.
