@@ -72,7 +72,7 @@ delete:
   ticket for the current event, its post-event hold date, whichever is later.
 - **After the erase date:** your personal information is automatically erased
   (anonymised) in the background, section by section — profile, contact details,
-  emails, photo, tickets, feedback, messages, survey answers, the lot.
+  emails, photo, tickets, messages, survey answers, the lot.
 - **Your `@nobodies.team` account is suspended** as part of that, and your Google
   access (drives, group emails) falls away on the normal sync cycle once you've
   left your teams.

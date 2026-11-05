@@ -577,8 +577,6 @@
   <data name="Search_MinChars" xml:space="preserve"><value>Enter at least 2 characters to search.</value></data>
   <data name="Camp_Plural" xml:space="preserve"><value>Barrios</value></data>
 
-  <!-- Feedback Email -->
-
   <!-- Issue Comment Email -->
 
   <!-- Magic Link Auth -->

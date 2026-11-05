@@ -47,7 +47,6 @@ Several system operations need to run automatically without user interaction: sy
 | WorkgroupRhythmJob | Daily 6:00 AM | Workgroups' daily reporting-rhythm pass (design §13) |
 | PreapprovalRemindersJob | Daily 5:00 AM | `preapprovals-reminders`: 14-day and 3-day claim-deadline reminders to Open pre-approval holders, each recorded once per `(grant, kind, deadline)` in `pre_reminders_sent`; never changes a grant |
 | SepaBankBookingJob | Every 2 hours at :17 | `sepa-bank-booking`: the SEPA bank-line sweep — book the transfers whose Sabadell line has landed and retry pending reconciles |
-| FeedbackReplyDelivery (`feedback-reply-emails`) | Every minute | Retry durable feedback replies whose Email handoff has not yet been acknowledged |
 
 > **Note:** `SystemTeamSyncJob` and `GoogleResourceReconciliationJob` were historically disabled by default because they modify Google Shared Drive and Group permissions; both are now registered as normal scheduled jobs (`teams-system-sync` hourly, `google-resource-reconciliation` daily at 03:00) in `RecurringJobExtensions.UseHumansRecurringJobs`. `GoogleResourceReconciliationJob` still no-ops per service when that service's sync mode is `None` (configured at `/Google/SyncSettings`). The manual "Sync Now" button at `/Google/Sync` remains available for on-demand runs. `SendAdminDailyDigestJob` / `SendBoardDailyDigestJob` have been retired and their job types no longer exist; deleting a job needs no cleanup step, because startup removes every stored Hangfire schedule that is not in the roll-call.
 

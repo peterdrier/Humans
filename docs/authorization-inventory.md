@@ -417,7 +417,6 @@ The only authorization files left in `src/Humans.Web/` are `Authorization/Author
 | `src/Humans.Web/ViewComponents/AdminNavItems.cs` | 69 | `AuthorizeAsync(user, null, item.Policy)` (filters admin sidebar groups and tabs) |
 | `src/Humans.Web/ViewComponents/AdminSidebarViewComponent.cs` | 26 | `AuthorizeAsync(HttpContext.User, PolicyNames.AnyAdminRole)` (dashboard link) |
 | `src/Humans.Web/ViewComponents/AdminSummaryViewComponent.cs` | 34 | `AuthorizeAsync(HttpContext.User, null, tile.Policy)` (filters admin dashboard tiles) |
-| `src/Humans.Web/Middleware/PrivateUploadMiddleware.cs` | 34 | `AuthorizeAsync(principal, context, PolicyNames.AdminOnly)` (private feedback uploads; issue uploads go through `IIssueTriage` visibility instead) |
 
 ---
 
