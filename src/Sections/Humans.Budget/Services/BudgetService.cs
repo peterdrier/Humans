@@ -251,7 +251,7 @@ internal sealed class BudgetService(
         return ToGroupDetail(group);
     }
 
-    public async Task UpdateGroupAsync(
+    public async Task<BudgetSaveResult<BudgetGroupDetail>> UpdateGroupAsync(
         Guid groupId, string name, int sortOrder, bool isRestricted, Guid actorUserId)
     {
         var now = clock.GetCurrentInstant();
@@ -259,18 +259,20 @@ internal sealed class BudgetService(
         var ok = await repository.UpdateGroupAsync(
             groupId, name, sortOrder, isRestricted, actorUserId, now);
         if (!ok)
-            throw new InvalidOperationException($"Budget group {groupId} not found");
+            return new(Refusal: $"Budget group {groupId} not found");
+        return new();
     }
 
-    public async Task DeleteGroupAsync(Guid groupId, Guid actorUserId)
+    public async Task<BudgetSaveResult<BudgetGroupDetail>> DeleteGroupAsync(Guid groupId, Guid actorUserId)
     {
         var now = clock.GetCurrentInstant();
 
         var ok = await repository.DeleteGroupAsync(groupId, actorUserId, now);
         if (!ok)
-            throw new InvalidOperationException($"Budget group {groupId} not found");
+            return new(Refusal: $"Budget group {groupId} not found");
 
         logger.LogInformation("Deleted budget group {GroupId}", groupId);
+        return new();
     }
 
     public async Task<BudgetCategorySnapshot?> GetCategoryByIdAsync(Guid id, CancellationToken ct = default)
@@ -393,19 +395,20 @@ internal sealed class BudgetService(
         var ok = await repository.UpdateCategoryAsync(
             categoryId, name, allocatedAmount, expenditureType, actorUserId, now);
         if (!ok)
-            throw new InvalidOperationException($"Budget category {categoryId} not found");
+            return new(Refusal: $"Budget category {categoryId} not found");
         return new();
     }
 
-    public async Task DeleteCategoryAsync(Guid categoryId, Guid actorUserId)
+    public async Task<BudgetSaveResult<BudgetCategoryDetail>> DeleteCategoryAsync(Guid categoryId, Guid actorUserId)
     {
         var now = clock.GetCurrentInstant();
 
         var ok = await repository.DeleteCategoryAsync(categoryId, actorUserId, now);
         if (!ok)
-            throw new InvalidOperationException($"Budget category {categoryId} not found");
+            return new(Refusal: $"Budget category {categoryId} not found");
 
         logger.LogInformation("Deleted budget category {CategoryId}", categoryId);
+        return new();
     }
 
     public async Task<BudgetLineItemSnapshot?> GetLineItemByIdAsync(Guid id, CancellationToken ct = default)
@@ -483,7 +486,7 @@ internal sealed class BudgetService(
 
         var ok = await repository.UpdateLineItemAsync(update, actorUserId, now);
         if (!ok)
-            throw new InvalidOperationException($"Budget line item {lineItemId} not found");
+            return new(Refusal: $"Budget line item {lineItemId} not found");
         return new();
     }
 
@@ -498,15 +501,16 @@ internal sealed class BudgetService(
     private static string? VatRateRefusal(int vatRate) =>
         vatRate is < 0 or > 21 ? "VAT rate must be between 0 and 21." : null;
 
-    public async Task DeleteLineItemAsync(Guid lineItemId, Guid actorUserId)
+    public async Task<BudgetSaveResult<BudgetLineItemSnapshot>> DeleteLineItemAsync(Guid lineItemId, Guid actorUserId)
     {
         var now = clock.GetCurrentInstant();
 
         var ok = await repository.DeleteLineItemAsync(lineItemId, actorUserId, now);
         if (!ok)
-            throw new InvalidOperationException($"Budget line item {lineItemId} not found");
+            return new(Refusal: $"Budget line item {lineItemId} not found");
 
         logger.LogInformation("Deleted line item {LineItemId}", lineItemId);
+        return new();
     }
 
     public async Task<TicketingProjectionSaveResult> UpdateTicketingProjectionAsync(

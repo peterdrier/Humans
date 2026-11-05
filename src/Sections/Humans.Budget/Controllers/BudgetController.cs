@@ -234,8 +234,14 @@ internal sealed class BudgetController(
 
         try
         {
-            await budgetService.DeleteLineItemAsync(id, user.Id);
-            SetSuccess(localizer["Budget_Flash_LineDeleted"].Value);
+            var result = await budgetService.DeleteLineItemAsync(id, user.Id);
+            if (result.Refusal is not null)
+            {
+                logger.LogWarning("Budget line item deletion refused for {LineItemId}, actor {ActorId}", id, user.Id);
+                SetError(localizer["Budget_Flash_LineDeleteFailed"].Value);
+            }
+            else
+                SetSuccess(localizer["Budget_Flash_LineDeleted"].Value);
         }
         catch (Exception ex)
         {

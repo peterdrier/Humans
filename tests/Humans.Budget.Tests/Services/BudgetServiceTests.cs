@@ -874,6 +874,7 @@ public sealed class BudgetServiceTests
     [InlineData("Delete", "Budget_Flash_LineDeleteFailed", false)]
     [InlineData("Create", "Budget_Flash_LineCreateFailed", true)]
     [InlineData("Update", "Budget_Flash_LineUpdateFailed", true)]
+    [InlineData("Delete", "Budget_Flash_LineDeleteFailed", true)]
     public async Task CoordinatorLineFailure_DisplaysGenericLocalizedMessage(string action, string errorKey, bool refused)
     {
         var (admin, budget, viewerId) = CreateAdminController(true);
@@ -892,12 +893,13 @@ public sealed class BudgetServiceTests
             .Returns(Task.FromException<BudgetSaveResult<BudgetLineItemSnapshot>>(failure));
         budget.UpdateLineItemAsync(_yearId, "Item", 0m, null, null, null, 0, viewerId)
             .Returns(Task.FromException<BudgetSaveResult<BudgetLineItemSnapshot>>(failure));
-        budget.DeleteLineItemAsync(_yearId, viewerId).Returns(Task.FromException(failure));
+        budget.DeleteLineItemAsync(_yearId, viewerId).Returns(Task.FromException<BudgetSaveResult<BudgetLineItemSnapshot>>(failure));
         if (refused)
         {
             var refusal = new BudgetSaveResult<BudgetLineItemSnapshot>(Refusal: "Amount cannot be stored exactly.");
             budget.CreateLineItemAsync(_yearId, "Item", 0m, null, null, null, 0, viewerId).Returns(refusal);
             budget.UpdateLineItemAsync(_yearId, "Item", 0m, null, null, null, 0, viewerId).Returns(refusal);
+            budget.DeleteLineItemAsync(_yearId, viewerId).Returns(new BudgetSaveResult<BudgetLineItemSnapshot>(Refusal: "Line item no longer exists."));
         }
         var resources = new System.Resources.ResourceManager(typeof(BudgetResource));
         var culture = CultureInfo.GetCultureInfo("en");
@@ -933,6 +935,39 @@ public sealed class BudgetServiceTests
         log[0].Should().Be(refused ? Microsoft.Extensions.Logging.LogLevel.Warning : Microsoft.Extensions.Logging.LogLevel.Error);
         if (refused) log[3].Should().BeNull();
         else log[3].Should().BeSameAs(failure);
+    }
+
+    [HumansTheory]
+    [InlineData("update-group")]
+    [InlineData("delete-group")]
+    [InlineData("update-category")]
+    [InlineData("delete-category")]
+    [InlineData("update-line")]
+    [InlineData("delete-line")]
+    public async Task MissingMutationTarget_ShowsRefusalWithoutSuccessOrWrites(string operation)
+    {
+        var missingId = Guid.NewGuid();
+        var (controller, _, _) = CreateAdminController(true, _service);
+        var result = operation switch
+        {
+            "update-group" => await controller.UpdateGroup(missingId, "Group", 0, false),
+            "delete-group" => await controller.DeleteGroup(missingId),
+            "update-category" => await controller.UpdateCategory(missingId, "Category", 0m, ExpenditureType.OpEx),
+            "delete-category" => await controller.DeleteCategory(missingId, _yearId),
+            "update-line" => await controller.UpdateLineItem(missingId, "Line", 0m, null, null, null, 0, _yearId),
+            _ => await controller.DeleteLineItem(missingId, _yearId)
+        };
+
+        result.Should().BeOfType<RedirectToActionResult>();
+        var entity = operation.EndsWith("group", StringComparison.Ordinal) ? "group"
+            : operation.EndsWith("category", StringComparison.Ordinal) ? "category" : "line item";
+        controller.TempData["ErrorMessage"].Should().Be($"Budget {entity} {missingId} not found");
+        controller.TempData.ContainsKey("SuccessMessage").Should().BeFalse();
+        await using var db = await BudgetDbFactory.CreateDbContextAsync(TestContext.Current.CancellationToken);
+        (await db.BudgetGroups.CountAsync(TestContext.Current.CancellationToken)).Should().Be(0);
+        (await db.BudgetCategories.CountAsync(TestContext.Current.CancellationToken)).Should().Be(0);
+        (await db.BudgetLineItems.CountAsync(TestContext.Current.CancellationToken)).Should().Be(0);
+        (await db.BudgetAuditLogs.CountAsync(TestContext.Current.CancellationToken)).Should().Be(0);
     }
 
     [HumansTheory]

@@ -298,7 +298,13 @@ internal sealed class BudgetAdminController(
 
         try
         {
-            await budgetService.UpdateGroupAsync(id, name, sortOrder, isRestricted, user.Id);
+            var result = await budgetService.UpdateGroupAsync(id, name, sortOrder, isRestricted, user.Id);
+            if (result.Refusal is { } refusal)
+            {
+                logger.LogWarning("Budget UpdateGroup refused for {EntityId}, actor {ActorId}: {Reason}", id, user.Id, refusal);
+                SetError(refusal);
+                return RedirectToAction(nameof(Admin));
+            }
             SetSuccess($"Group '{name}' updated.");
             return RedirectToAction(nameof(Admin));
         }
@@ -320,7 +326,13 @@ internal sealed class BudgetAdminController(
 
         try
         {
-            await budgetService.DeleteGroupAsync(id, user.Id);
+            var result = await budgetService.DeleteGroupAsync(id, user.Id);
+            if (result.Refusal is { } refusal)
+            {
+                logger.LogWarning("Budget DeleteGroup refused for {EntityId}, actor {ActorId}: {Reason}", id, user.Id, refusal);
+                SetError(refusal);
+                return RedirectToAction(nameof(Admin));
+            }
             SetSuccess("Group deleted.");
             return RedirectToAction(nameof(Admin));
         }
@@ -352,7 +364,7 @@ internal sealed class BudgetAdminController(
             var result = await budgetService.CreateCategoryAsync(budgetGroupId, name, allocatedAmount, expenditureType, teamId, user.Id);
             if (result.Refusal is not null)
             {
-                logger.LogWarning("Rejected budget category amount for actor {ActorId}", user.Id);
+                logger.LogWarning("Rejected budget category input for actor {ActorId}", user.Id);
                 SetError(result.Refusal);
                 return RedirectToAction(nameof(YearDetail), new { id = budgetYearId });
             }
@@ -387,7 +399,7 @@ internal sealed class BudgetAdminController(
             var result = await budgetService.UpdateCategoryAsync(id, name, allocatedAmount, expenditureType, user.Id);
             if (result.Refusal is not null)
             {
-                logger.LogWarning("Rejected budget category amount for actor {ActorId}", user.Id);
+                logger.LogWarning("Rejected budget category input for actor {ActorId}", user.Id);
                 SetError(result.Refusal);
                 return RedirectToAction(nameof(CategoryDetail), new { id });
             }
@@ -412,7 +424,13 @@ internal sealed class BudgetAdminController(
 
         try
         {
-            await budgetService.DeleteCategoryAsync(id, user.Id);
+            var result = await budgetService.DeleteCategoryAsync(id, user.Id);
+            if (result.Refusal is { } refusal)
+            {
+                logger.LogWarning("Budget DeleteCategory refused for {EntityId}, actor {ActorId}: {Reason}", id, user.Id, refusal);
+                SetError(refusal);
+                return RedirectToAction(nameof(YearDetail), new { id = budgetYearId });
+            }
             SetSuccess("Category deleted.");
             return RedirectToAction(nameof(YearDetail), new { id = budgetYearId });
         }
@@ -508,7 +526,13 @@ internal sealed class BudgetAdminController(
 
         try
         {
-            await budgetService.DeleteLineItemAsync(id, user.Id);
+            var result = await budgetService.DeleteLineItemAsync(id, user.Id);
+            if (result.Refusal is { } refusal)
+            {
+                logger.LogWarning("Budget DeleteLineItem refused for {EntityId}, actor {ActorId}: {Reason}", id, user.Id, refusal);
+                SetError(refusal);
+                return RedirectToAction(nameof(CategoryDetail), new { id = budgetCategoryId });
+            }
             SetSuccess("Line item deleted.");
             return RedirectToAction(nameof(CategoryDetail), new { id = budgetCategoryId });
         }
