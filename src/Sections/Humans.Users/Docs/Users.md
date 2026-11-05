@@ -291,6 +291,8 @@ Identity store registration stays in the section entry point. Shell calls the co
 
 A lazy per-key cache miss cannot republish its old result after an intervening cache eviction or refresh.
 
+The internal `UserDataExport` owns account/profile export collection, merge-chain traversal, retained merged-profile collection and JSON shaping. `UserService` retains the existing contributor contract, slice-name constants, erasure declaration and deletion paths. Export keys, legacy preference flags and profile-field inclusion remain unchanged.
+
 **Owning services:** `UserService`, `AccountProvisioningService`, `AccountDeletionService`, `AccountMergeService` + `DuplicateAccountService` (the one ordered merge engine and the stateless duplicate detector; `AccountMergeService` is backed by `IAccountMergeRepository` for `account_merge_requests` and contributes the `AccountMergeRequests` GDPR slice), `ExternalLoginService` (the OAuth-callback decision ladder, kept out of `AccountController` per HUM0031; sole caller of `IUserEmailService.ReconcileOAuthIdentityAsync`) — all in `Humans.Users/Services/`.
 **Owned tables:** `users`, `user_claims`, `user_logins`, `user_tokens`, `roles` (legacy), `user_roles` (legacy), `role_claims` (legacy), `account_merge_requests`.
 
