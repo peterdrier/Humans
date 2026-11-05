@@ -226,6 +226,26 @@ public sealed class OnboardingServiceTests
     }
 
     [HumansFact]
+    public async Task RejectSignupAsync_OversizedReasonRefusalStopsBeforeAccountChanges()
+    {
+        var userId = Guid.NewGuid();
+        var reviewerId = Guid.NewGuid();
+        var reason = new string('a', 4001);
+        _consentWrite.RecordRejectionAsync(userId, reviewerId, reason, Arg.Any<CancellationToken>())
+            .Returns(new OnboardingResult(false, "ReviewTextTooLong"));
+
+        var result = await BuildSut().RejectSignupAsync(userId, reviewerId, reason,
+            Xunit.TestContext.Current.CancellationToken);
+
+        result.ErrorKey.Should().Be("ReviewTextTooLong");
+        _userServiceWrite.ReceivedCalls().Should().BeEmpty();
+        _auditLogService.ReceivedCalls().Should().BeEmpty();
+        _syncJob.ReceivedCalls().Should().BeEmpty();
+        _emailService.ReceivedCalls().Should().BeEmpty();
+        _notificationService.ReceivedCalls().Should().BeEmpty();
+    }
+
+    [HumansFact]
     public async Task RejectSignupAsync_OnSuccess_AuditsDeprovisionsAllThreeTeamsAndNotifies()
     {
         // Reject is the section's only coordinator action with consequences: dropping one of the

@@ -94,6 +94,7 @@ Board voting is Governance's: `/Governance/BoardVoting`. Onboarding does not con
 - The widget saves names to the resolved account whose profile it preserves. Its dispatcher and Shifts page read that account’s commitments, so a merge alias cannot hide an existing signup or send name edits to an archived profile.
 - Consent-review eligibility checks and the Pending annotation write use the resolved survivor ID when called with a merged account ID; an archived profile is never annotated on the survivor’s behalf.
 
+- Consent's `ReviewTextTooLong` refusal for reasons over 4,000 Unicode characters stops signup rejection before the Users state write, audits, deprovisioning, email or notification. Existing `AlreadyRejected` recovery continues using the recorded reason.
 - Onboarding steps: (1) complete profile, (2) consent to all required global legal documents, (3) automatic admission to the Volunteers system team. CC review of the consent check is an independent audit track that runs in parallel — it does not gate admission.
 - Volunteer onboarding is never blocked by tier applications — they are separate, parallel paths.
 - Guest dashboard and widget-step reads propagate request cancellation through viewer, eligibility, consent, active-event, priority-shift browse and signup reads; an abandoned request stops rather than selecting a fallback step.

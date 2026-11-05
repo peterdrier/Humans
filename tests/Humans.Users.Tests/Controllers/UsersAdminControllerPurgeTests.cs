@@ -238,6 +238,21 @@ public class UsersAdminControllerPurgeTests
     }
 
     [HumansFact]
+    public async Task RejectSignup_OversizedReasonReturnsToDetailWithFeedback()
+    {
+        var target = Guid.NewGuid();
+        _onboarding.RejectSignupAsync(target, _adminUserId, "text", Arg.Any<CancellationToken>())
+            .Returns(new OnboardingResult(false, "ReviewTextTooLong"));
+        var controller = BuildController();
+
+        var result = await controller.RejectSignup(target, "text");
+
+        result.Should().BeOfType<RedirectToActionResult>()
+            .Which.ActionName.Should().Be(nameof(UsersAdminController.AdminDetail));
+        controller.TempData["ErrorMessage"].Should().Be("Rejection reason must be 4,000 characters or fewer.");
+    }
+
+    [HumansFact]
     public async Task Audience_ProjectsSegmentationForTheSelectedYear()
     {
         var segmentation = new AudienceSegmentation(10, 6, 8, 5, 1, [2025, 2026], 2026);

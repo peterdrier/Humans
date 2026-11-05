@@ -170,6 +170,9 @@ Authentication routes are served by `AccountController`, which lives in `Humans.
 
 ## Invariants
 
+- Signup rejection reports Consent's `ReviewTextTooLong` refusal on the admin detail page instead of a missing-user response. The operator form shows the 4,000-character reason limit.
+
+
 - Profile, medical, email and administrator lifecycle actions honour request
   cancellation during account preflight, including purge's raw target-name lookup.
   These reads finish before mutation handling; started writes retain their existing

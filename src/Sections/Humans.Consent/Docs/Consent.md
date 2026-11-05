@@ -173,6 +173,9 @@ Document archival uses the shared `data-confirm` handler: each click prompts onc
 
 ## Invariants
 
+- Review notes and rejection reasons are limited to 4,000 Unicode characters before any review write or audit. Oversized text that would be written returns `ReviewTextTooLong`; existing rejection preconditions retain precedence, and valid text is stored without truncation. The operator queue shows the limit and specific refusal feedback.
+
+
 - Commit-summary fetch failures remain a null fallback: GitHub API failures log Warning with status only, without raw error bodies or exception stacks; unexpected failures log Error with diagnostics. Caller cancellation still propagates.
 
 - Consent review detail and submission each resolve the person once: profile/name checks and prior-signature lookup use that same snapshot’s complete current/merged ID chain. Other consent-chain reads retain their standalone resolution.
