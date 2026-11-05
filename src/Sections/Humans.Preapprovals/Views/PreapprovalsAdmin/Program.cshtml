@@ -58,7 +58,7 @@
                 <button type="submit" class="btn btn-sm btn-outline-secondary">Set amount</button>
             </form>
             <form method="post" asp-action="Revoke" asp-route-programId="@p.Id" asp-route-grantId="@item.Id" class="d-inline-flex gap-1 align-items-center ms-1"
-                  onsubmit="return confirm('Revoke this pre-approval? The amount stays on record as not claimed.');">
+                  data-confirm="Revoke this pre-approval? The amount stays on record as not claimed.">
                 <input type="text" name="reason" class="form-control form-control-sm" style="width: 160px;" placeholder="Reason (optional)" maxlength="2000" />
                 <button type="submit" class="btn btn-sm btn-outline-danger">Revoke</button>
             </form>

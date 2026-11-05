@@ -145,7 +145,7 @@
     <form method="get" id="shifts-filter-form" class="row g-2 mb-3 align-items-end">
         <div class="col-auto">
             <label class="form-label mb-1">@Localizer["Shifts_Department"]</label>
-            <select name="departmentId" class="form-select form-select-sm">
+            <select name="departmentId" class="form-select form-select-sm js-auto-submit">
                 <option value="">@Localizer["Shifts_AllDepartments"]</option>
                 @foreach (var dept in Model.AllDepartments)
                 {
@@ -155,7 +155,7 @@
         </div>
         <div class="col-auto">
             <label class="form-label mb-1">@Localizer["Shifts_DayFilter_Label"]</label>
-            <select name="day" class="form-select form-select-sm">
+            <select name="day" class="form-select form-select-sm js-auto-submit">
                 <option value="">@Localizer["Shifts_DayFilter_AllDays"]</option>
                 @foreach (var opt in Model.DayOptions)
                 {
@@ -286,10 +286,6 @@
     }
 
     <script>
-        document.querySelectorAll('[name="departmentId"], [name="day"]').forEach(function(el) {
-            el.addEventListener('change', function() { this.form.submit(); });
-        });
-
         document.querySelectorAll('.phase-check').forEach(function(cb) {
             cb.addEventListener('change', function() {
                 var checked = Array.from(document.querySelectorAll('.phase-check:checked')).map(function(c) { return c.value; });

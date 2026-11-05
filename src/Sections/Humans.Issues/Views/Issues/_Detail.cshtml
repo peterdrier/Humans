@@ -141,7 +141,7 @@
                     {
                         <form asp-action="UpdateStatus" asp-route-id="@Model.Id" method="post" class="d-inline">
                             @Html.AntiForgeryToken()
-                            <select name="Status" class="form-select form-select-sm detail-auto-submit">
+                            <select name="Status" class="form-select form-select-sm js-auto-submit">
                                 @foreach (var s in Enum.GetValues<IssueStatus>())
                                 {
                                     if (Model.Status == s)
@@ -171,7 +171,7 @@
                     {
                         <form asp-action="UpdateSection" asp-route-id="@Model.Id" method="post" class="d-inline">
                             @Html.AntiForgeryToken()
-                            <select name="Section" class="form-select form-select-sm detail-auto-submit">
+                            <select name="Section" class="form-select form-select-sm js-auto-submit">
                                 <option value="">@Localizer["Issue_Unspecified"]</option>
                                 @foreach (var kvp in Routing.AreaLabelResourceKeys.OrderBy(p => Localizer[p.Value].Value, StringComparer.CurrentCultureIgnoreCase))
                                 {
@@ -204,7 +204,7 @@
                     {
                         <form asp-action="UpdateAssignee" asp-route-id="@Model.Id" method="post" class="d-inline">
                             @Html.AntiForgeryToken()
-                            <select name="AssigneeUserId" class="form-select form-select-sm detail-auto-submit">
+                            <select name="AssigneeUserId" class="form-select form-select-sm js-auto-submit">
                                 <option value="">@Localizer["Issue_Unassigned"]</option>
                                 @foreach (var a in Model.AssigneeOptions)
                                 {
@@ -240,7 +240,7 @@
                                 <span class="input-group-text">#</span>
                                 <input type="text" inputmode="numeric" pattern="[0-9]*"
                                        name="GitHubIssueNumber" value="@Model.GitHubIssueNumber"
-                                       class="form-control form-control-sm detail-auto-submit" placeholder="—" />
+                                       class="form-control form-control-sm js-auto-submit" placeholder="—" />
                             </div>
                         </form>
                     }
