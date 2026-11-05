@@ -1,5 +1,3 @@
-using System.Globalization;
-using System.Resources;
 using Humans.Auth.Contracts;
 using Humans.Base.Threading;
 using Humans.Gdpr.Contracts;
@@ -39,7 +37,7 @@ internal sealed class ApplicationDecisionService(
     IClock clock,
     ILogger<ApplicationDecisionService> logger) : IGovernanceManagement, IUserDataContributor, IUserMerge
 {
-    private static readonly ResourceManager NoticeResources = new(typeof(GovernanceResource));
+    private readonly ApplicationDecisionNotices notices = new(userService, emailService, emailMessages, notificationService, logger);
     private static readonly TrackedLock SubmissionLock = new("Governance.SubmitApplication");
 
     internal const string Applications = "Applications";
@@ -80,25 +78,7 @@ internal sealed class ApplicationDecisionService(
             await syncJob.SyncMembershipForUserAsync(
                 application.UserId, SystemTeamType.Asociados, cancellationToken);
 
-        var culture = await SendDecisionEmailAsync(
-            application,
-            "approval",
-            (recipientEmail, user, language) => emailMessages.ApplicationApproved(
-                user.Id,
-                recipientEmail,
-                user.BurnerName,
-                application.MembershipTier,
-                language),
-            cancellationToken);
-
-        await SendDecisionNotificationAsync(
-            application,
-            GovernanceNotificationSources.ApplicationApproved,
-            "Governance_Notification_ApplicationApproved",
-            "Governance_Notification_ApplicationApprovedBody",
-            "ApplicationApproved",
-            culture,
-            cancellationToken);
+        await notices.SendApprovalAsync(application, cancellationToken);
 
         return new ApplicationDecisionResult(true);
     }
@@ -129,26 +109,7 @@ internal sealed class ApplicationDecisionService(
 
         await FinalizeDecisionAsync(application, reviewerUserId, cancellationToken);
 
-        var culture = await SendDecisionEmailAsync(
-            application,
-            "rejection",
-            (recipientEmail, user, language) => emailMessages.ApplicationRejected(
-                user.Id,
-                recipientEmail,
-                user.BurnerName,
-                application.MembershipTier,
-                reason,
-                language),
-            cancellationToken);
-
-        await SendDecisionNotificationAsync(
-            application,
-            GovernanceNotificationSources.ApplicationRejected,
-            "Governance_Notification_ApplicationRejected",
-            "Governance_Notification_ApplicationRejectedBody",
-            "ApplicationRejected",
-            culture,
-            cancellationToken);
+        await notices.SendRejectionAsync(application, reason, cancellationToken);
 
         return new ApplicationDecisionResult(true);
     }
@@ -692,73 +653,4 @@ internal sealed class ApplicationDecisionService(
                 Notes: h.Notes))
             .ToList();
 
-    private async Task<CultureInfo> SendDecisionEmailAsync(
-        MemberApplication application,
-        string decisionName,
-        Func<string, UserInfo, string, EmailMessage> buildMessage,
-        CancellationToken cancellationToken)
-    {
-        var culture = CultureInfo.GetCultureInfo("en");
-        try
-        {
-            var user = await userService.GetUserInfoAsync(application.UserId, cancellationToken);
-            if (user is null)
-                return culture;
-
-            culture = CultureInfo.GetCultureInfo(user.PreferredLanguage.IsSupportedCultureCode() ? user.PreferredLanguage : "en");
-
-            var recipientEmail = user.Email;
-            if (!string.IsNullOrWhiteSpace(recipientEmail))
-            {
-                await emailService.SendAsync(buildMessage(recipientEmail, user, culture.Name));
-            }
-            else
-            {
-                logger.LogWarning(
-                    "Skipping {DecisionName} email for application {ApplicationId} because user {UserId} has no notification-target email",
-                    decisionName, application.Id, application.UserId);
-            }
-        }
-        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-        {
-            throw;
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex,
-                "Failed to send {DecisionName} email for {ApplicationId}",
-                decisionName, application.Id);
-        }
-        return culture;
-    }
-
-    private async Task SendDecisionNotificationAsync(
-        MemberApplication application,
-        NotificationSourceDefinition source,
-        string titleKey,
-        string bodyKey,
-        string logName,
-        CultureInfo culture,
-        CancellationToken cancellationToken)
-    {
-        try
-        {
-            await notificationService.SendAsync(
-                source,
-                NotificationClass.Informational,
-                NotificationPriority.Normal,
-                string.Format(culture, NoticeResources.GetString(titleKey, culture)!, application.MembershipTier),
-                [application.UserId],
-                body: string.Format(culture, NoticeResources.GetString(bodyKey, culture)!, application.MembershipTier),
-                actionUrl: "/Governance/Applications",
-                actionLabel: NoticeResources.GetString("Governance_Notification_ViewApplication", culture),
-                cancellationToken: cancellationToken);
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex,
-                "Failed to dispatch {NotificationName} notification for {ApplicationId}",
-                logName, application.Id);
-        }
-    }
 }
