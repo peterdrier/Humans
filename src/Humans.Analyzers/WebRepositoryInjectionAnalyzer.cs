@@ -38,7 +38,7 @@ public sealed class WebRepositoryInjectionAnalyzer : DiagnosticAnalyzer
         description:
             "A repository is the persistence boundary its own section's application service " +
             "owns. A controller parses the request and calls the service; reaching past it " +
-            "to the repository collapses the layer (design-rules §2b, §3).");
+            "to the repository collapses the layer (design-rules.md, *Service ownership* and *Repository layer*).");
 
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => [Rule];
 

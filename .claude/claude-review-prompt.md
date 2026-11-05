@@ -98,7 +98,7 @@ the PR introduces it; cite the atom or doc named.
   config in section A that reads or writes a table section B owns, or a
   nav property / `HasOne` / FK across sections. Cross-section data is an
   in-memory join through the owning section's public `I<Section>Service`. (`no-cross-section-ef-joins`,
-  design-rules §6b)
+  design-rules.md, *No cross-domain joins*)
 - **EF entities crossing a boundary.** A public contract interface
   returning an entity, `IQueryable`, or an EF type. (`service-read-no-ef`)
 - **Logic in controllers.** Business rules, repository calls or cache calls

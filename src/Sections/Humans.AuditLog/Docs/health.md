@@ -90,7 +90,7 @@ prune or delete path, by design (Art. 30 / Art. 17(3)(b)).
 ## 6. Deliberately not done
 
 - **No caching decorator**: writes scatter across most sections, reads are admin-only and
-  index-filtered; a cache buys nothing (§15 Option A).
+  index-filtered; a cache buys nothing (the no-decorator shape).
 - **Predicate-pushed reads, not load-into-RAM**: `audit_log` is the one unbounded, ever-growing
   table; the repository keeps `Where`-at-the-database reads as a sanctioned exception to
   `no-linq-at-db-layer`.

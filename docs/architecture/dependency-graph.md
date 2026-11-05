@@ -787,7 +787,7 @@ When adding a new cross-service call, default to ctor injection. Reach for the l
 The most depended-on cross-section surfaces (read the counts off the diagram):
 
 - **`UserService`** — largest fan-in by far; nearly every section reads users through `IUserService`; the few cross-section writes go through `IUserWrite`; the internal `IUserManagement` joins both with the section-only members. Its only outbound edges are `IAdminAuthorizationService` and the audit crosscut, which is what keeps it foundational.
-- **`AuditLogService`** — every write-path service logs audit events (in-service per design-rules §7a, not a decorator).
+- **`AuditLogService`** — every write-path service logs audit events (in-service per design-rules.md, *Decorators versus in-service crosscuts*, not a decorator).
 - **`TeamService`** — second-largest section fan-in; read consumers go through `ITeamService`, cross-section writes through `ITeamWrite` (internal `ITeamManagement` joins them); batch methods exist to avoid N+1 at call sites.
 - **`UserEmailService`** — email-identity lookups across the system. (The Google Workspace address is `WorkspaceIdentityService`'s since the Users decomposition.)
 - **`OutboxEmailService`** (`IEmailService`) / **`CommunicationPreferenceService`** — outbound mail and its consent/unsubscribe gating.

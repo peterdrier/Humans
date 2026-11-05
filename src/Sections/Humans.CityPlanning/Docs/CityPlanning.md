@@ -70,7 +70,7 @@ One polygon per CampSeason representing the camp's placed barrio area.
 
 ### CampPolygonHistory
 
-Append-only per design-rules §12. The repository exposes no `UpdateAsync` / `RemoveAsync` — restores call `SavePolygonAndAppendHistoryAsync` with a `"Restored from ..."` note, which both updates the polygon and appends a new history row.
+Append-only per design-rules.md, *Append-only entities*. The repository exposes no `UpdateAsync` / `RemoveAsync` — restores call `SavePolygonAndAppendHistoryAsync` with a `"Restored from ..."` note, which both updates the polygon and appends a new history row.
 
 **Table:** `camp_polygon_histories`
 
@@ -166,7 +166,7 @@ Broadcasts `CampPolygonUpdated(campSeasonId, geoJson, areaSqm, soundZone, campNa
 
 - Only one CampPolygon per CampSeason (unique constraint on `CampSeasonId`).
 - Barrio history displays only the latest requested camp season. Switching barrios clears prior preview/restore controls immediately; late success or failure cannot overwrite a newer request or reopen a dismissed panel. One panel-close handler clears history previews while preserving active edits.
-- CampPolygonHistory is append-only — edits and restores always create a new history entry (design-rules §12).
+- CampPolygonHistory is append-only — edits and restores always create a new history entry (design-rules.md, *Append-only entities*).
 - Barrio placement has one effective state, computed on every read by `CityPlanningService` (peterdrier/Humans#2102): the manual override when set (true = Open, false = Closed); otherwise the schedule, by today's date in the active event's time zone (`EventSettingsInfo.TimeZoneId`) against `GateOpeningDate` + offset — **Open** from the opening day through the closing day, **Changeable** through the changeable-until day, then **Closed**. No opening day, no active event, or a row for another year than the active event's means Closed unless forced open. No job flips anything: the date decides at read time.
 - Camp leads can create or edit their own camp's polygon only while placement is Open, and only edit one that already exists while it is Changeable. City-planning team members and CampsAdmin are exempt. Lead authority comes from the specific camp season being edited; leadership in another season of the same camp grants no access.
 - The schedule's days must run open ≤ close ≤ changeable-until, within 366 days of gate opening, and a changeable-until day needs a closing day; anything else is refused without a write or an audit entry.
@@ -246,7 +246,7 @@ Broadcasts `CampPolygonUpdated(campSeasonId, geoJson, areaSqm, soundZone, campNa
 - Season-scoped cascade delete (`DeletePolygonsForCampSeasonsAsync`) — removes a season's polygon and its history rows in one unit of work, and is the one exception to append-only. Reached from Camps through `ICityPlanningWrite.DeleteCampPolygonsForSeasonsAsync` when a camp is deleted.
 - Settings read (`GetSettingsAsync` — null when the year has no row; never writes) and upsert (`GetOrCreateSettingsAsync`, `MutateSettingsAsync` — write paths only). All field-level mutations (barrio override, barrio schedule, container phase, limit zone, official zones, registration info) flow through `MutateSettingsAsync` at the service layer. It returns `Task`, so no EF entity leaves the repository.
 
-Per §12, `camp_polygon_histories` is append-only — the repository intentionally exposes no `UpdateHistoryAsync` / `RemoveHistoryAsync`.
+Per design-rules.md, *Append-only entities*, `camp_polygon_histories` is append-only — the repository intentionally exposes no `UpdateHistoryAsync` / `RemoveHistoryAsync`.
 
 ## Issue queue
 

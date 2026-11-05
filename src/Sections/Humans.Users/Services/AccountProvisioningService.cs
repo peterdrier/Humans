@@ -8,7 +8,7 @@ using NodaTime;
 
 namespace Humans.Users.Services;
 
-// Idempotent account provisioning for import jobs. UserManager allowed per the §2a exception.
+// Idempotent account provisioning for import jobs. UserManager allowed per the Identity exception in design-rules.md, *Service ownership*.
 internal sealed class AccountProvisioningService(
     IUserRepository userRepository,
     IUserEmailService userEmailService,

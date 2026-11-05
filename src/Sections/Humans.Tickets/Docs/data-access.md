@@ -270,7 +270,7 @@ section's public service surface.
 
 ### TicketVendorGateway (Scoped)
 
-No repository. Thin §15-compliant facade over `ITicketVendorService` (the
+No repository. Thin design-rules-compliant facade over `ITicketVendorService` (the
 vendor port, `src/Sections/Humans.Tickets/Contracts/`) — same
 shape as `GoogleTranslationService`. Implements `ITicketDiscountCodes` +
 `ITicketVendorMirror` (`Humans.Tickets.Contracts`) so cross-section callers

@@ -352,7 +352,7 @@ CampRoleAssignment
 ├── CampRoleDefinitionId: Guid (FK → CampRoleDefinition, ON DELETE RESTRICT)
 ├── CampMemberId: Guid (FK → CampMember, ON DELETE CASCADE)
 ├── AssignedAt: Instant
-└── AssignedByUserId: Guid (scalar; no nav per design-rules §6)
+└── AssignedByUserId: Guid (scalar; no nav per design-rules.md, *No cross-domain joins*)
 ```
 
 - Unique index on `(CampSeasonId, CampRoleDefinitionId, CampMemberId)` — same human cannot hold the same role twice in the same season.

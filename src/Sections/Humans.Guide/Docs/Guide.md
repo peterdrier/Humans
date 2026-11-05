@@ -114,5 +114,5 @@ Unknown stems return 404 (`NotFound.cshtml`). GitHub unavailability on cold cach
 
 #### Accepted deviations
 
-- `GuideContentService` injects `IMemoryCache` directly rather than using §15's repository/decorator options. Content is not an entity read and the section owns no tables to decorate — the service *is* the cache. Allowlisted with that rationale in `ApplicationServicesTakeNoMemoryCacheRule`, which the section entered at its G5 move.
+- `GuideContentService` injects `IMemoryCache` directly rather than using the caching pattern's repository/decorator options (`design-rules.md`, *Section caching pattern*). Content is not an entity read and the section owns no tables to decorate — the service *is* the cache. Allowlisted with that rationale in `ApplicationServicesTakeNoMemoryCacheRule`, which the section entered at its G5 move.
 - `docs/guide/**` stayed in the repo root rather than moving into `Docs/`. `GitHubGuideContentSource` fetches `{GuideSettings.FolderPath}/{stem}.md` from `nobodies-collective/Humans@main` **at runtime**, so the path is a live API with no fallback: moving the folder 404s every guide page on every deployed instance until the change reaches production `main`.

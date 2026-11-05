@@ -26,7 +26,7 @@ env:
   # The per-section DbContexts (nobodies-collective/Humans#858) are not listed
   # here: detect-migration-changes derives every `context:project` pair from
   # each Data/<Context>.cs and requires its design-time factory beside it
-  # (design-rules §4), so a new section or a G5 move needs
+  # (design-rules.md, *Service ownership*), so a new section or a G5 move needs
   # no edit in this file. The `has-pending-model-changes` loops and the
   # from-scratch baseline apply iterate only the affected pairs.
 

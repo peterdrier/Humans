@@ -4,7 +4,7 @@ using Microsoft.Extensions.Caching.Memory;
 namespace Humans.Web.Tests.Architecture.Rules;
 
 /// <summary>
-/// Under the §15 caching pattern a service caches through a decorator or not at all; the allowlist holds the
+/// Under the section caching pattern (design-rules.md) a service caches through a decorator or not at all; the allowlist holds the
 /// reviewed exceptions.
 /// </summary>
 public class ApplicationServicesTakeNoMemoryCacheRule
@@ -59,7 +59,7 @@ public class ApplicationServicesTakeNoMemoryCacheRule
 
         violations.Should().BeEmpty(
             because: "application services must not hold IMemoryCache unless they are on the " +
-                     "§15-allowlist; add to Allowlist only after explicit review and add a " +
+                     "caching-pattern allowlist; add to Allowlist only after explicit review and add a " +
                      "comment explaining the caching rationale");
     }
 }

@@ -5,7 +5,7 @@
 Project: `src/Sections/Humans.Backdoor` — service under `Services/`,
 repository under `Data/`. **DbContext:** `BackdoorDbContext`.
 `BackdoorApiKeyRepository` injects `IDbContextFactory<BackdoorDbContext>`
-directly (Singleton, §15b). Owns `backdoor_api_keys`.
+directly (Singleton, per design-rules.md, *Section caching pattern*). Owns `backdoor_api_keys`.
 
 ### BackdoorApiKeyService (Scoped)
 

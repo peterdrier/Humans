@@ -157,7 +157,7 @@ First-party, GDPR-compliant surveys: author typed/branching multi-language surve
   export on surveys they don't own, and approve-and-send or reject-with-note a `PendingApproval`
   submission. Surveys Admin, Board and Admin: the official link, the Send page, results and preview on
   surveys they don't own, and the approval queue at `/Survey/Admin/Queue`. Per-survey ownership and the approval gate are enforced by `SurveyAuthorizationHandler`
-  (design-rules §11), never by view filtering; `SurveyService` re-checks ownership on every edit path
+  (design-rules.md, *Authorization*), never by view filtering; `SurveyService` re-checks ownership on every edit path
   (`UpdateAsync`, translation pre-fill, ranked availability), so an edit the handler refuses is refused
   whoever the caller is.
   Preview wizard banners, their email-send control and the email-preview page use the site UI language in all supported cultures. Builder and results status badges reuse the localized survey-status captions. The authoring question-type selector localizes all eight captions in all supported cultures while posting the unchanged enum values. Their breadcrumb navigation labels use the site UI language in all supported cultures.

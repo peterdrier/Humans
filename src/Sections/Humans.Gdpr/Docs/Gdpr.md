@@ -133,7 +133,7 @@ calls `EraseForUserAsync` per merge-chain id from the deletion paths.
 - **The fan-out is sequential, never `Task.WhenAll`.** A simplicity choice, not
   a correctness requirement: one contributor at a time keeps failure
   attribution and log order plain, and there is nothing to win at this scale
-  (`design-rules.md` §8b).
+  (`design-rules.md`, *Crosscuts, orchestrators and fan-out*).
 - **No cross-section database reads.** A contributor reads only its own
   section's tables; data from another section arrives through that section's
   own contributor, never through an `Include` chain.
@@ -215,4 +215,4 @@ sealed`) behind the public `IGdprService` in `Contracts/`, exposing both
 - **Known gap:** the contributor-coverage tests are reflection-based, so a new
   user-scoped section whose owning service never implements
   `IUserDataContributor` at all leaves nothing to enumerate and the suite
-  passes vacuously. The guardrail is prose in `design-rules.md` §8a.
+  passes vacuously. The guardrail is prose in `design-rules.md`, *Personal data obligations*.

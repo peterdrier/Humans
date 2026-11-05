@@ -172,7 +172,7 @@ member may also post them from the plain log form with no meeting. Any number of
 attach to one occurrence. Bodies are Markdown, written in the shared Markdown editor and
 rendered with `SanitizedMarkdown`.
 
-Not §12 append-only by design: the log is a working record; the audit trail is the
+Not append-only by design: the log is a working record; the audit trail is the
 immutable one. Member entries are editable and hard-deletable by any member (audited).
 System entries never change.
 

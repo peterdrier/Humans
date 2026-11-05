@@ -61,7 +61,7 @@ Cross-domain navs: `TeamJoinRequest.User`, `TeamJoinRequest.ReviewedByUser` (bot
 
 ### TeamJoinRequestStateHistory
 
-Append-only per design-rules §12.
+Append-only per design-rules.md, *Append-only entities*.
 
 **Table:** `team_join_request_state_history`
 
@@ -274,8 +274,8 @@ This section's controllers. `TeamController` (`[Route("Teams")]`) handles both a
 - A **sensitive team** (`IsSensitive = true`) is an admin-only flag (not publicly visible). **Only a global Admin can set or clear `IsSensitive`**, enforced in `TeamService.UpdateTeamAsync`: a caller that changes the flag must pass the global Admin check, so no second caller can set it around Edit Team. On Edit Team the checkbox is additionally suppressed for non-Admin editors, so a non-Admin's save passes `null` (leave-unchanged) and never reaches the check (ref #824). Adding or approving a member surfaces a deterrent confirmation modal in the Members admin view that shows the audit record that will be created.
 - The team tree (`/Teams/Tree`) lists active, non-hidden, non-system teams nested under their department, with description and member count. Anonymous viewers get only public-page departments (the directory rule) and their sub-teams; a name links to Details only when the viewer can open it (authenticated, or a public-page department / promoted sub-team). `tree` is a reserved team slug.
 - The Teams directory (`/Teams`) shows only **directory-visible** teams: top-level teams (departments) always appear; sub-teams only appear if `IsPromotedToDirectory` is true. Sub-teams are always accessible from their parent team's detail page regardless of this flag.
-- `team_join_request_state_history` is append-only per §12.
-- Resource-based authorization per design-rules §11: `TeamAuthorizationHandler` + `TeamOperationRequirement`.
+- `team_join_request_state_history` is append-only per design-rules.md, *Append-only entities*.
+- Resource-based authorization per design-rules.md, *Authorization*: `TeamAuthorizationHandler` + `TeamOperationRequirement`.
 - Early Entry is gated by the per-team `EarlyEntryEnabled` flag: only enabled teams contribute EE grants to the cross-section roster, expose the EE management page, and accept new grants (`AddEarlyEntryGrantAsync` rejects a disabled team). Multiple teams may enable it. EarlyEntry reads grants live, so a flag or team-name change shows on its next read.
 - Inactive teams grant no Early Entry: the roster excludes grants of deactivated teams. Grants are kept and resume if the team is reactivated.
 - Toggling `EarlyEntryEnabled` off never deletes existing grants — they simply stop appearing on the roster while disabled.
