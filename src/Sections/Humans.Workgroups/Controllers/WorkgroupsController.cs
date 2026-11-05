@@ -88,12 +88,9 @@ internal sealed class WorkgroupsController(
         var tiers = await governance.GetMembershipTiersAsync(ct);
         var canSeeBudget = canAdminister
             || tiers.GetValueOrDefault(user.Id) is MembershipTier.Colaborador or MembershipTier.Asociado;
-        IReadOnlyList<HoldedChartAccountInfo>? accounts = canAdminister
+        IReadOnlyList<HoldedChartAccountInfo> accounts = canAdminister
             ? await workgroups.ListExpenseAccountsAsync(ct)
             : [];
-        if (accounts is null)
-            return StatusCode(StatusCodes.Status503ServiceUnavailable,
-                "Holded account list unavailable. Retry before selecting a budget account.");
 
         return View(new WorkgroupPageViewModel
         {

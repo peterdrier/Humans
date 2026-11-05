@@ -135,7 +135,9 @@ public sealed class GoogleDriveAccessSyncServiceTests
             {
                 _identityRows.Rows[alice] = new Humans.GoogleIntegration.Domain.WorkspaceIdentityRecord
                 {
-                    UserId = alice, Email = "alice@example.org", Status = GoogleEmailStatus.Rejected,
+                    UserId = alice,
+                    Email = "alice@example.org",
+                    Status = GoogleEmailStatus.Rejected,
                 };
                 return true;
             });

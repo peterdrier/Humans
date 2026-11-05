@@ -65,7 +65,9 @@ public sealed class WorkspaceIdentityServiceTests
         if (addresses.FirstOrDefault(a => a.Designated) is { } designated)
             _repo.Rows[id] = new Humans.GoogleIntegration.Domain.WorkspaceIdentityRecord
             {
-                UserId = id, Email = designated.Email, Status = designated.Status,
+                UserId = id,
+                Email = designated.Email,
+                Status = designated.Status,
             };
         return info;
     }

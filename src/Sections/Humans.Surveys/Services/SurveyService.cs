@@ -1194,7 +1194,6 @@ internal sealed class SurveyService(
         Guid mergedFromUserId, Guid mergedToUserId, Guid actorUserId, Instant now, CancellationToken ct)
         => repo.ReassignAuthorshipAsync(mergedFromUserId, mergedToUserId, now, ct);
 
-    /// <summary>Builds the Identified-only drill-down; views render identities by user ID. Other tiers never appear (no identity exposure).</summary>
     private static void ReplaceWizardAnswers(
         SurveyWizardState state,
         IReadOnlyList<SurveyAnswerInput> answers)

@@ -301,7 +301,9 @@ public sealed class GoogleRemovalNotificationServiceTests
         if (emails.FirstOrDefault(e => e.designated) is { Email: not null } designation)
             _identities.Rows[userId] = new Humans.GoogleIntegration.Domain.WorkspaceIdentityRecord
             {
-                UserId = userId, Email = designation.Email, Status = GoogleEmailStatus.Unknown,
+                UserId = userId,
+                Email = designation.Email,
+                Status = GoogleEmailStatus.Unknown,
             };
         return user;
     }

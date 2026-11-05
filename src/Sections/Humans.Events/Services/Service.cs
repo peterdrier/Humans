@@ -608,7 +608,6 @@ internal sealed class EventService(
         SubmittedAt: e.SubmittedAt,
         LastUpdatedAt: e.LastUpdatedAt);
 
-    // Project defensively: Category may be null and EventVenue / moderation history unloaded.
     // Nothing public to contribute to the community calendar yet.
     public Task<IReadOnlyList<CalendarFeedItem>> GetPublicItemsForWindowAsync(Instant from, Instant to, CancellationToken ct) =>
         Task.FromResult<IReadOnlyList<CalendarFeedItem>>([]);

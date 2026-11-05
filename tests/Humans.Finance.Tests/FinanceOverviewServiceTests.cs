@@ -124,7 +124,8 @@ public class FinanceOverviewServiceTests
     private static CreditorAccountRow Row(int num, decimal owed, IReadOnlyList<CreditorContactBinding> bindings,
         string? pending = null, bool duplicates = false, string? reason = null) =>
         new(num, $"N{num}", -owed, Math.Max(0m, owed), bindings, PendingPayoutFileName: pending,
-            HasDuplicateDocuments: duplicates) { NotPayableReason = reason };
+            HasDuplicateDocuments: duplicates)
+        { NotPayableReason = reason };
 
     private static BudgetCategoryDetail Category(Guid yearId, string name, decimal allocated) =>
         new(Guid.NewGuid(), yearId, name, allocated, ExpenditureType.OpEx, null, 0, []);

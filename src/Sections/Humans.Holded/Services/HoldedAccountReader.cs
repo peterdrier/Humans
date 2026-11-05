@@ -113,6 +113,8 @@ internal sealed class HoldedAccountReader(IHoldedMirrorRepository repo) : IAppli
             .ToList();
     }
 
+    /// <summary>From the leading digit, not Holded's <c>group</c> field, which is Spanish free text we would have to
+    /// translate by string match.</summary>
     private static string GroupName(int number) =>
         LeadingDigit(number) switch
         {

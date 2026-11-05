@@ -391,19 +391,28 @@ public class SummaryAggregateTests
             .Returns([MakeCampInfo(seasonId, "Large order", "large")]);
         var products = new[] { productId, secondProductId }.Distinct().Select(id => new Product
         {
-            Id = id, Year = 2026, Name = id.ToString(), UnitPriceEur = 1m,
-            OrderableUntil = new LocalDate(2026, 12, 31), IsActive = true
+            Id = id,
+            Year = 2026,
+            Name = id.ToString(),
+            UnitPriceEur = 1m,
+            OrderableUntil = new LocalDate(2026, 12, 31),
+            IsActive = true
         }).ToList();
         _repo.GetAllProductsForYearAsync(2026, Arg.Any<CancellationToken>()).Returns(products);
         var order = new Order
         {
-            Id = Guid.NewGuid(), CampSeasonId = seasonId, State = OrderState.Open
+            Id = Guid.NewGuid(),
+            CampSeasonId = seasonId,
+            State = OrderState.Open
         };
         foreach (var id in new[] { productId, secondProductId })
             order.Lines.Add(new OrderLine
             {
-                Id = Guid.NewGuid(), OrderId = order.Id, ProductId = id,
-                Qty = int.MaxValue, UnitPriceSnapshot = 1m
+                Id = Guid.NewGuid(),
+                OrderId = order.Id,
+                ProductId = id,
+                Qty = int.MaxValue,
+                UnitPriceSnapshot = 1m
             });
         _repo.GetOrdersForCampSeasonsWithLinesAndPaymentsAsync(
             Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>()).Returns([order]);

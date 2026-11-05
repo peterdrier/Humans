@@ -74,6 +74,7 @@ internal sealed record EventInfo(
     Instant LastUpdatedAt,
     IReadOnlyList<EventModerationHistoryInfo> ModerationHistory)
 {
+    // Project defensively: Category may be null and EventVenue / moderation history unloaded.
     internal static EventInfo FromEvent(Event e) => new(
         Id: e.Id,
         CampId: e.CampId,

@@ -499,7 +499,7 @@ should end is the Board's decision, taken on the register in front of them.
 - **Gdpr**: `IUserDataContributor`, `IUserMerge` — see GDPR below.
 - **Finance**: `IFinanceWrite.CreateOrLinkExpenseAccountAsync` /
   `SetExpenseAccountActiveAsync` (outbound). **Holded**: `IHoldedService.GetChartAsync`
-  for the admin picker only: active group-6 accounts from the local mirror, with no outbound API call. Both the register-existing and detail views order accounts by number; the mirror read imposes no display order. Unexpected mirror-read failures log at Error with exception details and return an unavailable result, distinct from a successful empty chart. Register-existing and Board/Admin detail requests stop with HTTP 503 and an explicit retry reason before rendering budget-account choices; ordinary member detail reads do not load the picker. Cancellation propagates. Account creation and linking still go through Finance.
+  for the admin picker only: active group-6 accounts from the local mirror, with no outbound API call. Both the register-existing and detail views order accounts by number; the mirror read imposes no display order. Unexpected mirror-read failures log at Error with exception details and leave the picker empty; cancellation propagates. Account creation and linking still go through Finance.
 
 ## GDPR
 

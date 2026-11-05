@@ -228,7 +228,7 @@ else
                                 </div>
                             </div>
                         }
-                        else if (r.PendingPayoutFileName is not null && r.HasDuplicateDocuments == false)
+                        else if (r.Bindings.Count == 1 && r.PendingPayoutFileName is not null && r.HasDuplicateDocuments == false)
                         {
                             <a asp-action="Sepa" class="badge rounded-pill text-bg-warning text-decoration-none"
                                data-bs-toggle="tooltip"

@@ -195,7 +195,8 @@ internal sealed class ShiftBrowseReader(
                         .ToList()
                     : [];
                 return ToUrgentShiftInfo(s, es, score, confirmedCount, remaining, teamName, signups)
-                    with { EarlyEntrySignupsClosed = lockedTeams.Contains(s.Rota.TeamId) };
+                    with
+                { EarlyEntrySignupsClosed = lockedTeams.Contains(s.Rota.TeamId) };
             })
             .OrderByDescending(u => u.UrgencyScore)
             .ToList();

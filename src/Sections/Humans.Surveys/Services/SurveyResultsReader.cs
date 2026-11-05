@@ -179,6 +179,7 @@ internal sealed class SurveyResultsReader(
         return new SurveyResponseExport(surveyId, survey.Title.Resolve(culture, culture), culture, questions, rows);
     }
 
+    /// <summary>Builds the Identified-only drill-down; views render identities by user ID. Other tiers never appear (no identity exposure).</summary>
     private static IReadOnlyList<RespondentDetail> BuildIdentifiedRespondents(
         Survey survey, IReadOnlyList<SurveyResponse> responses, string culture)
     {

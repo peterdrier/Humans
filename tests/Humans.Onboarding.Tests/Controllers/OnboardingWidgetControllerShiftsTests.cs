@@ -106,7 +106,8 @@ public class OnboardingWidgetControllerShiftsTests
         _burnSettings.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>())
             .Returns(BurnFixtures.Burn() with { EarlyEntryClose = NodaTime.Instant.FromUtc(2020, 1, 1, 0, 0) });
         var row = UrgentShiftFixtures.Urgent(shift: UrgentShiftFixtures.Shift(dayOffset: -1))
-            with { EarlyEntrySignupsClosed = locked };
+            with
+        { EarlyEntrySignupsClosed = locked };
         _shiftMgmt.GetBrowseShiftsAsync(Arg.Any<ShiftBrowseQuery>(), Arg.Any<CancellationToken>())
             .Returns(new[] { row, row with { EarlyEntrySignupsClosed = otherLocked } });
         _shiftView.GetUserAsync(userId, Arg.Any<CancellationToken>())

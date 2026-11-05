@@ -31,8 +31,6 @@ internal sealed class BudgetService(
 
     public Task<BudgetYearDetail?> GetActiveYearAsync(CancellationToken ct = default) => reader.GetActiveYearAsync(ct);
 
-    private static BudgetYearDetail ToYearDetail(BudgetYear year) => BudgetReader.ToYearDetail(year);
-
     private static BudgetGroupDetail ToGroupDetail(BudgetGroup group) => BudgetReader.ToGroupDetail(group);
 
     private static BudgetCategoryDetail ToCategoryDetail(BudgetCategory category) => BudgetReader.ToCategoryDetail(category);

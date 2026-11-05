@@ -611,12 +611,6 @@ internal sealed class ShiftManagementService(
 
     private static RotaInfo ToRotaInfo(Rota rota) => ShiftBrowseReader.ToRotaInfo(rota);
 
-    internal double CalculateScore(Shift shift, int confirmedCount, IEventSettingsInfo eventSettings) =>
-        ShiftUrgencyRanking.CalculateScore(shift, confirmedCount, eventSettings, clock);
-
-    internal static List<UrgentShiftInfo> ApplyPeriodDiverseLimit(List<UrgentShiftInfo> rankedShifts, int limit) =>
-        ShiftUrgencyRanking.ApplyPeriodDiverseLimit(rankedShifts, limit);
-
     public Task<ShiftStaffingSnapshot> GetStaffingSnapshotAsync(
         Guid eventSettingsId, Guid? departmentId = null, ShiftPeriod? period = null,
         BuildSubPeriod? subPeriod = null, CancellationToken ct = default) =>

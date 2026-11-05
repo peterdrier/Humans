@@ -474,8 +474,6 @@ internal sealed class Service(
         return message[..length] + "…";
     }
 
-    /// <summary>From the leading digit, not Holded's <c>group</c> field, which is Spanish free text we would have to
-    /// translate by string match.</summary>
     /// <summary>Local midnight of the start date. Rows dated before it are outside the sweep and must survive.</summary>
     private static Instant ToWindowStart(LocalDate from) =>
         from.AtStartOfDayInZone(MadridZone).ToInstant();

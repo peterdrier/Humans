@@ -1761,9 +1761,13 @@ public class HoldedFinanceServiceTests
         _repo.GetCategoryMapAsync(Arg.Any<CancellationToken>()).Returns(reservedTags.Select((tag, index) =>
             new HoldedCategoryMap
             {
-                Id = Guid.NewGuid(), BudgetCategoryId = Guid.NewGuid(),
-                HoldedAccountNumber = 62900000 + index, HoldedAccountId = "mapped-" + index,
-                Tag = tag, CreatedAt = FixedNow, UpdatedAt = FixedNow,
+                Id = Guid.NewGuid(),
+                BudgetCategoryId = Guid.NewGuid(),
+                HoldedAccountNumber = 62900000 + index,
+                HoldedAccountId = "mapped-" + index,
+                Tag = tag,
+                CreatedAt = FixedNow,
+                UpdatedAt = FixedNow,
             }).ToList());
         _client.ListExpenseAccountsAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedExpenseAccountDto>());
 

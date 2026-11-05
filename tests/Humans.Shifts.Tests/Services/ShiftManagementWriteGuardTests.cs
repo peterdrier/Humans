@@ -79,7 +79,9 @@ public sealed class ShiftManagementWriteGuardTests : ShiftsTestHarness
         ShiftsDb.ShiftTags.AddRange(oldTag, newTag);
         ShiftsDb.VolunteerTagPreferences.Add(new VolunteerTagPreference
         {
-            Id = Guid.NewGuid(), UserId = userId, ShiftTagId = oldTag.Id
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            ShiftTagId = oldTag.Id
         });
         await ShiftsDb.SaveChangesAsync(TestContext.Current.CancellationToken);
 
@@ -102,7 +104,9 @@ public sealed class ShiftManagementWriteGuardTests : ShiftsTestHarness
         ShiftsDb.ShiftTags.Add(tag);
         ShiftsDb.VolunteerTagPreferences.Add(new VolunteerTagPreference
         {
-            Id = Guid.NewGuid(), UserId = userId, ShiftTagId = tag.Id
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            ShiftTagId = tag.Id
         });
         await ShiftsDb.SaveChangesAsync(TestContext.Current.CancellationToken);
 

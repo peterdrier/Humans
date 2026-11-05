@@ -245,17 +245,25 @@ public sealed class EventServiceTests
         { EventSettingsId = burn.Id };
         var otherSeason = season with
         {
-            Id = Guid.NewGuid(), Year = otherYear, Name = "Other Event Camp", EventSettingsId = Guid.NewGuid()
+            Id = Guid.NewGuid(),
+            Year = otherYear,
+            Name = "Other Event Camp",
+            EventSettingsId = Guid.NewGuid()
         };
         var camp = new CampInfo(campId, "camp", "camp@example.org", "", false, 0, [otherSeason, season]);
         _camps.GetCampsForYearAsync(2026, ct).Returns([camp]);
         _camps.GetCampsForEventAsync(burn.Id, ct).Returns([camp with { Seasons = [season] }]);
         _repo.Events.Add(new Event
         {
-            Id = Guid.NewGuid(), CampId = campId, EventSettingsId = burn.Id,
+            Id = Guid.NewGuid(),
+            CampId = campId,
+            EventSettingsId = burn.Id,
             Category = new EventCategory { Name = "Workshop", Slug = "workshop" },
-            Title = "Camp workshop", Description = "Description", Status = EventStatus.Approved,
-            StartAt = Instant.FromUtc(2026, 7, 1, 8, 30), DurationMinutes = 60
+            Title = "Camp workshop",
+            Description = "Description",
+            Status = EventStatus.Approved,
+            StartAt = Instant.FromUtc(2026, 7, 1, 8, 30),
+            DurationMinutes = 60
         });
 
         var csv = HumansCsv.Utf8WithBom.GetString(await _service.GetApprovedEventsForExportAsync(Guid.NewGuid(), ct));

@@ -173,7 +173,7 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
             IsPrimary = true,
             Provider = "Google",
             ProviderKey = "sub-1",
-            });
+        });
         accountUser.State = hasDeletionHold ? UserState.DeletePending : UserState.Bare;
         var arrival = Clock.GetCurrentInstant();
         accountUser.DeletionRequestedAt = hasDeletionHold ? arrival : null;

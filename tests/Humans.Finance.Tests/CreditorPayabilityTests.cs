@@ -193,7 +193,9 @@ public class CreditorPayabilityTests
         _repo.GetCreditorContactsAsync(Arg.Any<CancellationToken>()).Returns(
             Enumerable.Range(0, bindingCount).Select(_ => new HoldedCreditorContact
             {
-                UserId = Guid.NewGuid(), HoldedContactId = "c1", SupplierAccountNum = Account,
+                UserId = Guid.NewGuid(),
+                HoldedContactId = "c1",
+                SupplierAccountNum = Account,
             }).ToList());
         _holded.GetAccountBalancesAsync(Arg.Any<CancellationToken>())
             .Returns(new Dictionary<int, decimal> { [Account] = balance });
