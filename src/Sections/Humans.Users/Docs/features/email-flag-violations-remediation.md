@@ -86,7 +86,7 @@ New service surface (`IUserEmailService`):
 | Method | Semantics |
 |--------|-----------|
 | `ClearPrimaryAsync(userId, userEmailId, actorUserId, ct)` | Drop `IsPrimary` from a single row. Returns false if row not found or not flagged. **Intentionally bypasses `EnsurePrimaryInvariantAsync`** — leaves the user with zero primary so the operator picks the new one explicitly. |
-| `GetEmailFlagViolationsAsync(ct)` | Returns the list of users whose verified-primary count != 1 among verified emails, sorted by burner name. |
+| `GetEmailFlagViolationsAsync(ct)` | Returns the list of users whose verified-primary count != 1 among verified emails, unordered; `GoogleController.EmailFlagViolations` orders the page by burner name. |
 
 New audit action: `UsersAuditActions.UserEmailPrimaryCleared` (`UserEmailGoogleCleared` never got a writer and is no longer declared).
 
@@ -107,4 +107,4 @@ New audit action: `UsersAuditActions.UserEmailPrimaryCleared` (`UserEmailGoogleC
 
 - [`src/Sections/Humans.Users/Docs/features/preferred-email.md`](../../../Humans.Users/Docs/features/preferred-email.md) — base email management feature; the Set Primary / Set Google flow this remediation extends.
 - [`memory/code/localization-admin-exempt.md`](../../../../../memory/code/localization-admin-exempt.md) — why `/Google/EmailFlagViolations` uses inline literals rather than resx keys.
-- [`memory/architecture/display-sort-in-controllers.md`](../../../../../memory/architecture/display-sort-in-controllers.md) — display-sort convention; `GetEmailFlagViolationsAsync` currently sorts by burner name in the service itself, not in `GoogleController.EmailFlagViolations`.
+- [`memory/architecture/display-sort-in-controllers.md`](../../../../../memory/architecture/display-sort-in-controllers.md) — display-sort convention; `GoogleController.EmailFlagViolations` resolves burner names through `IUserService.GetUserInfosAsync` and orders the page.

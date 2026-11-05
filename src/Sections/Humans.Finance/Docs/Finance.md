@@ -68,7 +68,6 @@ own PR once production is verified (`no-drops-until-prod-verified`).
 | HoldedAccountNumber | int | Reserved account number in Holded |
 | HoldedAccountId | string | Holded's internal account id |
 | Tag | string | Dash-free normalized fallback tag (Holded strips separators) |
-| IsActive | bool | Always `true` today — nothing flips it; see Concepts |
 | CreatedAt | Instant | |
 | UpdatedAt | Instant | |
 
@@ -201,13 +200,13 @@ Budget's admin pages are at `/Budget/Admin/*` (`Humans.Budget`'s `BudgetAdminCon
 
 | Route | Purpose |
 |-------|---------|
-| `GET /Finance/CashFlow?period=weekly\|monthly` | The active year's cash flow (see Concepts). Any other `period` renders monthly. No active year → flash and redirect to `/Finance`. Linked from the `/Finance` year page toolbar |
+| `GET /Finance/CashFlow?period=weekly\|monthly` | The active year's cash flow (see Concepts). Any other `period` renders monthly. No active year → flash and redirect to `/Budget/Admin`. Linked from the Budget year page toolbar and the `/Finance` overview |
 
 ### Holded integration
 
 | Route | Purpose |
 |-------|---------|
-| `GET /Finance` | Index of the Finance pages, a placeholder until the Finance overview exists |
+| `GET /Finance` | The Finance overview (see Concepts): cash, what we owe, work to do, budget vs actual, runway, income, tax calendar |
 | `GET /Finance/HoldedAccounts` | Account map: provisioning (reconcile + apply) and the managed-account registry |
 | `GET /Finance/HoldedUnmatched` | Unmatched-doc worklist with deep links and "Sync now" |
 | `GET /Finance/Creditors` | Admin overview of all cached 400000xx creditor accounts with member bindings and, per bound contact, the count of open (approved, still-owing) purchase documents — one live `ListPurchaseDocumentsAsync` call per render, "—" when unbound, colliding or unreadable. A **Checks** column flags a single-bound account whose expense side and ledger disagree (`CreditorMatchService`, below); "—" on any other row. An **IBAN** column shows the Holded IBAN's country and that country's domestic currency (`IbanValidator.CurrencyOf`, read off the masked IBAN; informational, the SEPA file always sends EUR); a country outside the EEA or unknown (`IbanValidator.IsEea`) is a warning badge, because EU fee rules don't cover it and the bank charges per transfer |
@@ -364,7 +363,7 @@ Derived from `Humans.Finance.csproj`'s project references and the contracts name
 - **Email** (`Humans.Email.Contracts`): `IEmailService.SendAsync` for the payout email. The template, its resx set (`FinanceResource`, the section's only one — its screens are admin-only and carry no keys) and its `/Email/EmailPreview` sample are this section's (`FinanceEmails`, `FinanceEmailPreviews`); Email keeps the mechanics (memory/architecture/email-templates-live-in-sender.md).
 - **GDPR** (`Humans.Gdpr.Contracts`): Finance implements `IUserDataContributor` for the Article 15 export of every creditor binding and SEPA payout across the member's resolved `AllUserIds` (including archived merge sources; retained financial rows are not rekeyed). `HoldedCreditorAccount` preserves its original object-or-null shape for the requested account; `AdditionalHoldedCreditorAccounts` contains other merge-chain bindings with their user ids, omitted when none exist. Payout rows remain globally ordered by generation time. `CreditorLedger` carries the mirrored Holded journal lines (date, entry, type, free-text description, debit, credit, running balance) of every account those bindings resolve to, read through `GetCreditorLedgerAsync` like the creditor statement. The export stops with an exception naming the cause when the contact list is unreadable or lacks a bound contact, since either would drop the member's ledger silently; a contact with no creditor number yet has no ledger and exports none; an account also bound to a member outside the requester's merge chain (a collision) is withheld with a warning log until resolved on `/Finance/Creditors`, since the lines carry no user id; null when unbound, all accounts withheld, or the mirror holds no lines. Generation, booking and reconciliation dates serialize as UTC ISO 8601 strings; absent booking/reconciliation dates stay null. For Article 17 erasure, `EraseForUserAsync` drops the binding (`ClearCreditorContactAsync`); `ErasureDeclaration` maps both creditor-binding slices to `null` (erased in full) and `SepaPayouts` and `CreditorLedger` to a fiscal-retention basis (Código de Comercio Art. 30, Ley 58/2003 Art. 66 — GDPR Art. 17(3)(b)): a payment order stripped of its payee is no longer evidence of the payment. Ledger lines carry no user id, so once the binding is erased they are no longer linkable to the person here. Financial records are never erased for GDPR reasons ([`financial-records-never-erased`](../../../../memory/architecture/financial-records-never-erased.md)). The invoices themselves live in Holded and are fiscal records outside this section's ownership. `PaymentDetailsService` is a second contributor: slice `PaymentDetails` (the masked IBAN), erased in full by deleting the row; the legacy `profiles.Iban` is erased by Users.
 
-Budget never calls into Finance.
+Budget reads Finance only through `IFinanceService.GetActualsForYearAsync` (`BudgetAdminController`).
 
 Browser attribution on creditor bindings, duplicate-contact pages, expense-reconciliation members/lines and SEPA files/transfers renders user IDs through the shared Human component, without profile links. Missing members use its localized fallback. A booked transfer with no actor is labeled as the automatic sweep. SEPA-normalized creditor names remain the bank-file identities; the creditor and SEPA view models retain member-name text only where server-side member sorting or native confirmation prompts need it. Reconciliation name fields remain for the Backdoor JSON projection and ordinal member ordering; browser labels use the IDs.
 
@@ -440,7 +439,7 @@ on the next sync.
   - No cross-domain navs: `BudgetCategoryId`, `HoldedCreditorContact.UserId`, `SepaPayoutFile.GeneratedByUserId` and `SepaPayoutTransfer.UserId` are FK-only, no navigation property
   - A payout file and its transfers are written in one `AddSepaPayoutAsync` save — one without the other is not a state this section wants to be in
   - `SaveSepaTransfersWithdrawnAsync` is the one update outside the booking columns: `WithdrawnAt`/`WithdrawnByUserId` only, for one transfer or a whole cancelled file in one save
-  - Expense docs upsert (full overwrite on re-sync); ledger tables belong to the Holded section
+  - The purchase-document and ledger mirrors belong to the Holded section
 - **`IPaymentDetailsRepository`** — owns `finance_payment_details`; `UserId` is the key and a bare id
 
 ### Touch-and-clean guidance

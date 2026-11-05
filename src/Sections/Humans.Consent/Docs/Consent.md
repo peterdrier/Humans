@@ -200,7 +200,7 @@ Document archival uses the shared `data-confirm` handler: each click prompts onc
 
 - The consent dashboard renders section service DTOs directly, sorting pending teams/documents before signed ones and then by ordinal name. It retains UTC date display and the ten most recent history rows; the controller does not copy DTOs into duplicate row models.
 
-- The member consent dashboard and review pages localize breadcrumb navigation labels in all supported cultures. Consent resources consistently use `Consent_`, including the shared review form consumed by Onboarding and the empty-state message reused by Governance.
+- The member consent dashboard and review pages localize breadcrumb navigation labels in all supported cultures. Consent resources consistently use `Consent_`, including the shared review body the onboarding widget's signing step renders.
 - Anonymous Legal pages use the existing localized content-unavailable message when GitHub content is absent.
 - The shared document partial renders the supplied localized empty message for zero translations as well as empty translation text; unavailable Legal content does not leave a blank card.
 - Legal and consent document tabs retain native language names and localize the canonical Spanish legal marker in all supported cultures.
