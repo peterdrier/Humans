@@ -37,10 +37,9 @@ a map board lets people spot each other by eye. No booking, no payment, no autom
 - **Settings** (`RideshareSettings`) is a per-event singleton: the burn destination point and the
   inbound/outbound travel windows.
 - **Event scope.** Every settings row, trip and request belongs to an event (`EventSettingsId`); the
-  board, Mine and admin pages show only rows explicitly assigned to the active event. No year-based
-  inference remains after production reported `rideshare.event-ids` done on 2026-11-03. Unassigned
-  orphan rows remain stored and included in their owner's GDPR paths, but never appear on event
-  boards. With no active event the pages show "not set up" and posting is refused.
+  board, Mine and admin pages show only rows explicitly assigned to the active event; nothing infers an
+  event from a row's year. Orphan rows with no event id remain stored and included in their owner's GDPR
+  paths, but never appear on event boards. With no active event the pages show "not set up" and posting is refused.
 - **SeatsRemaining** is derived, never stored: `SeatsOffered − Σ(Seats of Accepted interests on
   the trip)`. A trip `IsFull` when this is `≤ 0`.
 - **Matched** (on a request) is derived: an `Accepted` interest exists either authored by the
@@ -315,8 +314,8 @@ a map board lets people spot each other by eye. No booking, no payment, no autom
 - **Settings**: `ISettingsService.GetActiveEventSettingsAsync()` — the active event everything anchors to;
   `GetAllEventSettingsAsync()` — resolves stored event ids and their names.
   The decorator implements `IEventSettingsChangeListener` and clears every snapshot when event metadata changes.
-- **Notifications**: `INotificationEmitter.SendAsync` — interest created/accepted/declined Its sources are declared in `RideshareNotificationSources` (`src/Sections/Humans.Rideshare/RideshareNotificationSources.cs`), one `NotificationSourceDefinition` each: `RideshareInterestReceived` (actionable, to the trip/request owner: someone expresses interest in a ride); `RideshareInterestAccepted` (informational, to the interested user: owner accepts the interest); `RideshareInterestDeclined` (informational, to the interested user: owner declines the interest).
-  notifications, delivered to the canonical user ID resolved for the recipient (falling back to the supplied ID when unavailable), localized to each recipient's supported preferred language (English for missing, blank, malformed or unsupported values), including trip dates, action labels and the fallback actor name when no burner name is available, `actionUrl: "/Rideshare/Mine"`.
+- **Notifications**: `INotificationEmitter.SendAsync` — interest created/accepted/declined notifications. Its sources are declared in `RideshareNotificationSources` (`src/Sections/Humans.Rideshare/RideshareNotificationSources.cs`), one `NotificationSourceDefinition` each: `RideshareInterestReceived` (actionable, to the trip/request owner: someone expresses interest in a ride); `RideshareInterestAccepted` (informational, to the interested user: owner accepts the interest); `RideshareInterestDeclined` (informational, to the interested user: owner declines the interest).
+  Notices are delivered to the canonical user ID resolved for the recipient (falling back to the supplied ID when unavailable), localized to each recipient's supported preferred language (English for missing, blank, malformed or unsupported values), including trip dates, action labels and the fallback actor name when no burner name is available, `actionUrl: "/Rideshare/Mine"`.
 - **AuditLog**: `IAuditLogService.LogAsync` — settings updates.
 - **Gdpr**: `IUserDataContributor` — exports `RideshareTrips`, `RideshareRequests` and
   `RideshareInterests` for the resolved survivor, including requests under archived account IDs;

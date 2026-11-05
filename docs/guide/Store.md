@@ -45,7 +45,7 @@ While your order is open, you can fill in the billing details (name, VAT ID, add
 
 ### Pay
 
-From your order's detail page, use **Pay** to pay by card — the payment is recorded automatically once it goes through. If a payment is already awaiting clearance (e.g. a bank debit mandate that hasn't settled yet), the Pay button is hidden until that payment either confirms or fails; this prevents a double charge. Bank transfers aren't recorded against the order yet — neither the hand-entry screen nor automatic matching from the org's accounts is switched on.
+From your order's detail page, use **Pay** to pay by card — the payment is recorded automatically once it goes through. If a payment is already awaiting clearance (e.g. a bank debit mandate that hasn't settled yet), the Pay button is hidden until that payment either confirms or fails; this prevents a double charge. Pressing Pay again for the same amount takes you back to the same Stripe page; paying a different amount closes the earlier page and opens a new one. Bank transfers aren't recorded against the order yet — neither the hand-entry screen nor automatic matching from the org's accounts is switched on.
 
 ![TODO: screenshot — order detail page showing items, balance, and the Pay button]
 
@@ -79,6 +79,8 @@ lines, because a deposit is money held, not money earned.
 
 If an item is missing its Holded revenue account, or the deposit account hasn't been configured
 yet, nothing is sent to Holded and you're told exactly what to fix.
+
+If an earlier attempt already left a document in Holded and its items or totals no longer match the order, issuing is refused and the order stays open.
 
 > **Heads up:** the Finance order-review screen (entering manual payments by hand) isn't switched
 > on yet.

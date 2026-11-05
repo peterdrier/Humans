@@ -37,7 +37,7 @@ This tightens the Art. 9 boundary: cantina coordinators don't need health data a
 
 `DietaryPreference`, `Allergies`, `Intolerances`, `AllergyOtherText`, `IntoleranceOtherText` are not special-category data — they're personal data already disclosed to coordinators via the existing badges path, and the roster aggregates them. The roster introduces no retention policy of its own; the answers live in Cantina's `cantina_dietary_profiles` (see [Dietary Nudge](dietary-nudge.md)).
 
-The free-text allergy and intolerance entries (health data) stay hidden on the weekly and daily pages until the viewer presses the audited reveal (`CantinaHealthDetailsRevealed`, which also records a row against each member whose answers the page shows); preference roll-ups and allergy / intolerance counts always show.
+The free-text allergy and intolerance entries (health data) stay hidden on the weekly and daily pages until the viewer presses the audited reveal (`CantinaHealthDetailsRevealed`, one row naming the actor and the week or day, never one per member shown); preference roll-ups and allergy / intolerance counts always show.
 
 > **Retention, as actually implemented:** right-to-erasure deletes the member's `cantina_dietary_profiles` row (`DietaryProfileService.EraseForUserAsync`, a Gdpr erasure contributor), and Users' erasure still nulls the legacy food columns on `profiles` plus `MedicalConditions` (nobodies-collective/Humans#1446). A merge keeps the survivor's answers; the source's move only when the survivor has none. An erased member drops off this page on the next read.
 
