@@ -10,76 +10,12 @@ using NodaTime;
 
 namespace Humans.Workgroups.Services;
 
-/// <summary>Projection, guards and crosscut calls, kept apart so the rule files read as rules.</summary>
+/// <summary>Guards and crosscut calls, kept apart so the rule files read as rules.</summary>
 internal sealed partial class WorkgroupService
 {
-    private static WorkgroupInfo ToInfo(Workgroup w) => new(
-        w.Id,
-        w.Slug,
-        w.Name,
-        w.Purpose,
-        w.Deliverable,
-        w.DeliverableKind,
-        w.Audience,
-        w.TargetDate,
-        w.Status,
-        w.DormantReason,
-        w.Reasons,
-        w.DriveFolderId,
-        SafeDiscordLink(w.DiscordChannelUrl),
-        w.AppliedByUserId,
-        w.AppliedAt,
-        w.RegisteredAt,
-        w.EndedAt,
-        w.Members
-            .Select(m => new WorkgroupMemberInfo(m.Id, m.UserId, m.Role, m.JoinedAt, m.LeftAt, m.IsPending == true))
-            .ToList(),
-        // Soft-deleted meetings are gone outside the repository; the log keeps the history.
-        w.Meetings
-            .Where(m => m.DeletedAt is null)
-            .Select(m => new WorkgroupMeetingInfo(
-                m.Id, m.Title, m.StartUtc, m.EndUtc, m.Location, m.LocationUrl, m.IsPublic,
-                m.Minutes, m.CreatedByUserId, m.CreatedAt, m.UpdatedAt, m.Description,
-                m.RecurrenceRule, m.RecurrenceTimezone))
-            .ToList(),
-        w.LogEntries
-            .Select(e => new WorkgroupLogEntryInfo(
-                e.Id, e.Kind, e.OccurredOn, e.Title, e.Body, e.AuthorUserId, e.DocumentId,
-                e.SurveyId, e.CreatedAt, e.UpdatedAt, e.MeetingId))
-            .ToList(),
-        w.Documents
-            .Select(ToInfo)
-            .ToList(),
-        w.BudgetAmount,
-        w.HoldedAccountNumber,
-        w.HoldedAccountId,
-        w.IsSensitive == true);
+    private static WorkgroupInfo ToInfo(Workgroup w) => WorkgroupRegisterReader.ToInfo(w);
 
-    private static WorkgroupDocumentInfo ToInfo(WorkgroupDocument d) => new(
-        d.Id,
-        d.WorkgroupId,
-        d.Title,
-        d.Kind,
-        d.Body,
-        d.Status,
-        d.CommentCategories.ToList(),
-        d.CommentsOpenAt,
-        d.CommentsCloseAt,
-        d.DeliveredAt,
-        d.Disposition,
-        d.DispositionNote,
-        d.DispositionAt,
-        d.DispositionByUserId,
-        d.CreatedByUserId,
-        d.UpdatedByUserId,
-        d.CreatedAt,
-        d.UpdatedAt,
-        d.Comments
-            .Select(c => new WorkgroupCommentInfo(
-                c.Id, c.DocumentId, c.Category, c.AuthorUserId, c.Body, c.CreatedAt,
-                c.Disposition, c.Response, c.RespondedByUserId, c.RespondedAt, c.HiddenAt,
-                c.HiddenByUserId, c.HiddenReason))
-            .ToList());
+    private static WorkgroupDocumentInfo ToInfo(WorkgroupDocument d) => WorkgroupRegisterReader.ToInfo(d);
 
     private async Task<WorkgroupMutationResult<Workgroup>> RequireAsync(Guid workgroupId, CancellationToken ct)
     {
@@ -193,17 +129,9 @@ internal sealed partial class WorkgroupService
             return new(WorkgroupErrorKeys.PurposeRequired);
         if (string.IsNullOrWhiteSpace(deliverable))
             return new(WorkgroupErrorKeys.DeliverableRequired);
-        if (!string.IsNullOrWhiteSpace(discordChannelUrl) && SafeDiscordLink(discordChannelUrl) is null)
+        if (!string.IsNullOrWhiteSpace(discordChannelUrl) && WorkgroupRegisterReader.SafeDiscordLink(discordChannelUrl) is null)
             return new(WorkgroupErrorKeys.DiscordUrlInvalid);
         return null;
-    }
-
-    // Also guards stored legacy links when projecting them into an href.
-    private static string? SafeDiscordLink(string? url)
-    {
-        var trimmed = Trimmed(url);
-        return Uri.TryCreate(trimmed, UriKind.Absolute, out var uri)
-            && uri.Scheme is "http" or "https" ? trimmed : null;
     }
 
     private static WorkgroupRefusal? ValidateMeeting(WorkgroupMeetingSave save)

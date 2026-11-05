@@ -35,31 +35,23 @@ internal sealed partial class WorkgroupService(
     ILogger<WorkgroupService> logger) : IWorkgroupService
 {
     private readonly WorkgroupDataExport dataExport = new(repository);
+    private readonly WorkgroupRegisterReader registerReader = new(repository);
 
     private readonly WorkgroupNotices notices = new(users, roles, notifications, email, emailFactory, logger);
 
     private static readonly string[] ReservedSlugs = ["apply", "admin"];
 
-    public async Task<IReadOnlyList<WorkgroupInfo>> GetRegisterAsync(CancellationToken ct = default)
-    {
-        var graph = await repository.GetGraphAsync(ct);
-        return graph.Workgroups.Select(ToInfo).ToList();
-    }
+    public Task<IReadOnlyList<WorkgroupInfo>> GetRegisterAsync(CancellationToken ct = default) =>
+        registerReader.GetRegisterAsync(ct);
 
-    public async Task<WorkgroupInfo?> GetBySlugAsync(string slug, CancellationToken ct = default) =>
-        (await GetRegisterAsync(ct)).FirstOrDefault(w => string.Equals(w.Slug, slug, StringComparison.Ordinal));
+    public Task<WorkgroupInfo?> GetBySlugAsync(string slug, CancellationToken ct = default) =>
+        registerReader.GetBySlugAsync(slug, ct);
 
-    public async Task<WorkgroupInfo?> GetByIdAsync(Guid id, CancellationToken ct = default)
-    {
-        var workgroup = await repository.GetWorkgroupAsync(id, ct);
-        return workgroup is null ? null : ToInfo(workgroup);
-    }
+    public Task<WorkgroupInfo?> GetByIdAsync(Guid id, CancellationToken ct = default) =>
+        registerReader.GetByIdAsync(id, ct);
 
-    public async Task<IReadOnlyList<WorkgroupInfo>> GetForMemberAsync(Guid userId, CancellationToken ct = default)
-    {
-        var register = await GetRegisterAsync(ct);
-        return register.Where(w => w.IsMember(userId)).ToList();
-    }
+    public Task<IReadOnlyList<WorkgroupInfo>> GetForMemberAsync(Guid userId, CancellationToken ct = default) =>
+        registerReader.GetForMemberAsync(userId, ct);
 
     public async Task<WorkgroupMutationResult<Guid>> ApplyAsync(
         Guid actorUserId, WorkgroupApplication application, CancellationToken ct = default)
