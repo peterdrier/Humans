@@ -802,6 +802,7 @@
   <data name="About_License_MIT" xml:space="preserve"><value>requires copyright notice; this page satisfies that obligation.</value></data>
   <data name="About_License_PostgreSQL" xml:space="preserve"><value>permissive, MIT-like; copyright notice required.</value></data>
   <data name="About_License_SILOFL" xml:space="preserve"><value>free to use and redistribute; fonts cannot be sold standalone.</value></data>
+  <data name="About_License_SourceAvailableAt" xml:space="preserve"><value>Source available at</value></data>
   <data name="About_LicenseBody" xml:space="preserve"><value>Humans is free software, released under the</value></data>
   <data name="About_LicenseComplianceHeading" xml:space="preserve"><value>License Compliance Summary</value></data>
   <data name="About_LicenseComplianceSummary" xml:space="preserve"><value>All production dependencies use permissive, weak-copyleft, or AGPL-compatible licenses. No violations found.</value></data>

@@ -1411,6 +1411,7 @@
   <data name="About_License_MIT" xml:space="preserve"><value>vereist een auteursrechtvermelding; deze pagina voldoet aan die verplichting.</value></data>
   <data name="About_License_PostgreSQL" xml:space="preserve"><value>permissief, vergelijkbaar met MIT; auteursrechtvermelding vereist.</value></data>
   <data name="About_License_SILOFL" xml:space="preserve"><value>vrij te gebruiken en te verspreiden; lettertypen mogen niet los worden verkocht.</value></data>
+  <data name="About_License_SourceAvailableAt" xml:space="preserve"><value>Broncode beschikbaar op</value></data>
   <data name="About_LicenseBody" xml:space="preserve"><value>Humans is vrije software, uitgebracht onder de</value></data>
   <data name="About_LicenseComplianceHeading" xml:space="preserve"><value>Overzicht van licentienaleving</value></data>
   <data name="About_LicenseComplianceSummary" xml:space="preserve"><value>Alle productieafhankelijkheden gebruiken permissieve, zwak-copyleft- of AGPL-compatibele licenties. Geen overtredingen gevonden.</value></data>

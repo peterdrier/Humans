@@ -1411,6 +1411,7 @@
   <data name="About_License_MIT" xml:space="preserve"><value>requiere aviso de copyright; esta página cumple con esa obligación.</value></data>
   <data name="About_License_PostgreSQL" xml:space="preserve"><value>permisiva, similar a MIT; requiere aviso de copyright.</value></data>
   <data name="About_License_SILOFL" xml:space="preserve"><value>libre de usar y redistribuir; las fuentes no pueden venderse por separado.</value></data>
+  <data name="About_License_SourceAvailableAt" xml:space="preserve"><value>Código fuente disponible en</value></data>
   <data name="About_LicenseBody" xml:space="preserve"><value>Humans es software libre, publicado bajo la</value></data>
   <data name="About_LicenseComplianceHeading" xml:space="preserve"><value>Resumen de cumplimiento de licencias</value></data>
   <data name="About_LicenseComplianceSummary" xml:space="preserve"><value>Todas las dependencias de producción usan licencias permisivas, de copyleft débil o compatibles con AGPL. No se han encontrado infracciones.</value></data>

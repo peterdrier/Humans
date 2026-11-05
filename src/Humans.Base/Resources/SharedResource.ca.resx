@@ -1411,6 +1411,7 @@
   <data name="About_License_MIT" xml:space="preserve"><value>requereix avís de drets d'autor; aquesta pàgina compleix aquesta obligació.</value></data>
   <data name="About_License_PostgreSQL" xml:space="preserve"><value>permissiva, semblant a MIT; cal avís de drets d'autor.</value></data>
   <data name="About_License_SILOFL" xml:space="preserve"><value>lliure d'utilitzar i redistribuir; les tipografies no es poden vendre per separat.</value></data>
+  <data name="About_License_SourceAvailableAt" xml:space="preserve"><value>Codi font disponible a</value></data>
   <data name="About_LicenseBody" xml:space="preserve"><value>Humans és programari lliure, publicat sota la</value></data>
   <data name="About_LicenseComplianceHeading" xml:space="preserve"><value>Resum de compliment de llicències</value></data>
   <data name="About_LicenseComplianceSummary" xml:space="preserve"><value>Totes les dependències de producció utilitzen llicències permissives, de copyleft feble o compatibles amb AGPL. No s'ha trobat cap infracció.</value></data>
