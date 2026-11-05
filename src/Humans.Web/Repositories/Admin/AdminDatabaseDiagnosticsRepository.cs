@@ -97,7 +97,8 @@ internal sealed class AdminDatabaseDiagnosticsRepository(
         WHERE d.datname = current_database()
         """;
 
-    // query_to_xml runs one exact count(*) per table inside a single round trip.
+    // query_to_xml runs one exact count(*) per table inside a single round trip. Other sessions' temp tables and
+    // unreadable tables would abort the whole statement, so they are filtered out first.
     private const string TablesSql = """
         SELECT n.nspname::text AS "Schema",
                c.relname::text AS "Name",
@@ -120,6 +121,8 @@ internal sealed class AdminDatabaseDiagnosticsRepository(
         WHERE c.relkind = 'r'
           AND n.nspname NOT IN ('pg_catalog', 'information_schema')
           AND n.nspname NOT LIKE 'pg_toast%'
+          AND c.relpersistence <> 't'
+          AND has_table_privilege(c.oid, 'SELECT')
         ORDER BY pg_total_relation_size(c.oid) DESC
         """;
 
