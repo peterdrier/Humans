@@ -63,7 +63,7 @@ internal sealed class Service(
         + "two minutes; if this persists, check the Holded connection.";
     private static readonly DateTimeZone MadridZone = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
     private readonly HoldedCategoryAccounts categoryAccounts = new(repo, client, budget, clock, audit, logger);
-    private readonly SepaBankBooking booking = new(repo, client, holdedWrite, clock, bookingState, audit, sepa, logger);
+    private readonly SepaBankBooking booking = new(repo, client, holded, holdedWrite, clock, bookingState, audit, sepa, logger);
     private readonly SepaPayoutEmails payoutEmails = new(users, emailService, emails, logger);
 
     public Task<HoldedProvisioningPlan> GetProvisioningPlanAsync(int blockStart, CancellationToken ct = default) =>

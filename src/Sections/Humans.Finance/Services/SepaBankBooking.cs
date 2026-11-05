@@ -19,6 +19,7 @@ namespace Humans.Finance.Services;
 internal sealed class SepaBankBooking(
     IHoldedRepository repo,
     IHoldedClient client,
+    IHoldedService holded,
     IHoldedWrite holdedWrite,
     IClock clock,
     TrackedCache<string, Dictionary<string, int>> bookingState,
@@ -731,7 +732,7 @@ internal sealed class SepaBankBooking(
             if (posted < 0m) posted = 0m;        // a tagged credit is not "already paid"
 
             // Every booking, not only a resume: a run that died before saving its ids left payments nothing points at.
-            if (await PriorPaymentsRefusalAsync(movement.Date, binding.HoldedContactId) is { } refusal)
+            if (await PriorPaymentsRefusalAsync(movement.Date, transfer.SupplierAccountNum) is { } refusal)
                 return new SepaBookingResult(false, refusal + " Nothing was posted.");
             posted += priorPaid;
         }
@@ -975,47 +976,26 @@ internal sealed class SepaBankBooking(
             }
         }
 
-        // Reads every saved payment back off the member's documents. A saved id Holded no longer shows, one dated
-        // another day than this line, or a payment of this line's day and treasury Humans never recorded (a POST that
-        // failed after Holded saved it, or a run that died before saving its ids) means the amount still owed is
-        // unknown, so the booking stops.
-        async Task<string?> PriorPaymentsRefusalAsync(LocalDate lineDate, string contactId)
+        // Holded keeps no tag on a document payment, so the ledger's payment lines on the creditor account dated this
+        // line are the only record of what earlier runs paid. Synced first, then read from the mirror. A count that
+        // differs from the ids Humans saved (a POST that failed after Holded saved it, a run that died before saving
+        // its ids, an id gone) means the amount still owed is unknown, so the booking stops.
+        async Task<string?> PriorPaymentsRefusalAsync(LocalDate lineDate, int account)
         {
-            var treasury = sepa.Value.TreasuryAccountId;
-            var payments = new List<(string DocId, HoldedPaymentDetailDto Payment)>();
-            foreach (var doc in (await client.ListPurchaseDocumentsAsync(ct))
-                         .Where(d => d.IsDraft == false
-                                     && string.Equals(d.ContactId, contactId, StringComparison.Ordinal)))
-                payments.AddRange((await client.GetPurchaseDocumentAsync(doc.Id, ct)).Payments.Select(p => (doc.Id, p)));
-
-            var byId = payments
-                .GroupBy(p => p.Payment.Id, StringComparer.Ordinal)
-                .ToDictionary(g => g.Key, g => g.First(), StringComparer.Ordinal);
-            var missing = priorRefs.Where(r => !byId.ContainsKey(r)).ToList();
-            if (missing.Count > 0)
-                return $"An earlier attempt saved Holded payment(s) {string.Join(",", missing)} for this transfer, "
-                       + "but none of the member's Holded documents shows them now — settle it in Holded by hand.";
-
-            var prior = priorRefs.Select(r => byId[r]).ToList();
-            var otherDay = prior.Where(p => p.Payment.Date != lineDate).Select(p => p.Payment).FirstOrDefault();
-            if (otherDay is not null)
-                return $"Holded payment {otherDay.Id} an earlier attempt posted is dated "
-                       + $"{otherDay.Date.ToInvariantDate()}, not this Sabadell line's "
-                       + $"{lineDate.ToInvariantDate()} — settle it in Holded by hand.";
-
-            var known = priorRefs.ToHashSet(StringComparer.Ordinal);
-            var unrecorded = payments
-                .Where(p => !known.Contains(p.Payment.Id) && p.Payment.Date == lineDate
-                            && (string.IsNullOrWhiteSpace(treasury)
-                                || string.Equals(p.Payment.BankId, treasury, StringComparison.Ordinal)))
+            if (!await holded.SyncAccountLedgerAsync(account, ct))
+                return "A Holded ledger sync is running, so this account's payments cannot be checked. Try again "
+                       + "in a minute.";
+            var onDay = (await holded.GetLedgerLinesAsync(account, ct))
+                .Where(l => l.AccountNum == account
+                            && string.Equals(l.Type, "payment", StringComparison.Ordinal)
+                            && l.Date.InZone(MadridZone).Date == lineDate)
                 .ToList();
-            if (unrecorded.Count > 0)
-                return "The member's Holded documents carry payment(s) dated this Sabadell line that Humans "
-                       + "never recorded ("
-                       + string.Join(", ", unrecorded.Select(p => $"{p.Payment.Id} {Euros(p.Payment.Amount)} on {p.DocId}"))
-                       + ") — possibly one a failed request left behind. Settle it in Holded by hand.";
+            if (onDay.Count != priorRefs.Count)
+                return $"Holded's ledger shows {onDay.Count} document payment(s) on creditor account {account} dated "
+                       + $"{lineDate.ToInvariantDate()} ({Euros(onDay.Sum(l => l.Debit - l.Credit))}), but Humans "
+                       + $"recorded {priorRefs.Count} — settle it in Holded by hand.";
 
-            priorPaid = prior.Sum(p => p.Payment.Amount);
+            priorPaid = onDay.Sum(l => l.Debit - l.Credit);
             return null;
         }
 

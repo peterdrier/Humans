@@ -81,8 +81,8 @@ public class SepaBankBookingTests
         SeedOwed(30m);
         SeedTaggedLines();
         SeedOpenDocs();
-        _client.GetPurchaseDocumentAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
-            .Returns(ci => NoPayments(ci.ArgAt<string>(0)));
+        _holded.SyncAccountLedgerAsync(Arg.Any<int>(), Arg.Any<CancellationToken>()).Returns(true);
+        SeedPaymentLines();
         _client.PayPurchaseDocumentAsync(
                 Arg.Any<string>(), Arg.Any<decimal>(), Arg.Any<string>(), Arg.Any<LocalDate>(),
                 Arg.Any<string>(), Arg.Any<CancellationToken>())
@@ -142,8 +142,8 @@ public class SepaBankBookingTests
         await _repo.Received(1).SaveSepaTransferPaymentRefsAsync(
             TransferId, "pay-d1", Arg.Any<CancellationToken>());
 
-        // Run 2: the tag sum cannot see a purchase payment, so the €10 is read back off the
-        // document by its saved id, and only the €20 still missing is posted.
+        // Run 2: the tag sum cannot see a purchase payment, so the €10 is read off the synced
+        // ledger mirror's payment line, and only the €20 still missing is posted.
         _write.ClearSubstitute(ClearOptions.All);
         _write.PostJournalEntryAsync(
                 Arg.Any<LocalDate>(), Arg.Any<int>(), Arg.Any<int>(), Arg.Any<decimal>(),
@@ -151,7 +151,7 @@ public class SepaBankBookingTests
             .Returns(new HoldedJournalEntryOutcome(true));
         SeedTransfer(30m, paymentRefs: "pay-d1");
         SeedOpenDocs(Doc("d1", 0m, 1));
-        SeedPayments("d1", ("pay-d1", 10m, LineDate));
+        SeedPaymentLines(10m);
 
         var second = await MakeService().BookSepaTransferAsync(TransferId, MovementId, Guid.NewGuid());
 
@@ -184,24 +184,28 @@ public class SepaBankBookingTests
     }
 
     [HumansTheory]
-    [InlineData("pay-d1,unconfirmed:d2", false, "could not identify")]
-    [InlineData("pay-gone", false, "pay-gone")]
-    [InlineData("pay-d1", true, "pay-stray")]
-    [InlineData(null, true, "pay-stray")]
-    public async Task Booking_ResumeThatCannotAccountForEveryPayment_PostsNothing(
-        string? savedRefs, bool stray, string reason)
+    [InlineData("pay-d1,unconfirmed:d2", 1, "could not identify")]
+    [InlineData("pay-d1", 0, "recorded 1")]
+    [InlineData("pay-d1", 2, "recorded 1")]
+    [InlineData(null, 1, "recorded 0")]
+    [InlineData("pay-d1", -1, "sync is running")]
+    public async Task Booking_ThatCannotAccountForEveryPayment_PostsNothing(
+        string? savedRefs, int linesOnDay, string reason)
     {
-        // Unconfirmed id; a saved id no document shows; a payment of the line's day nobody recorded
-        // (what a 503 that Holded saved anyway leaves behind, or a run that died before saving its ids).
+        // An unconfirmed id; a saved id the ledger no longer shows; a payment of the line's day
+        // nobody recorded (a 503 Holded saved anyway, or a run that died before saving its ids);
+        // a busy sync, which never falls back to the unsynced mirror.
         SeedTransfer(30m, paymentRefs: savedRefs);
-        SeedOpenDocs(Doc("d1", 0m, 1), Doc("d2", 20m, 2));
-        SeedPayments("d1", ("pay-d1", 10m, LineDate));
-        SeedPayments("d2", stray ? [("pay-stray", 5m, LineDate)] : []);
+        SeedOpenDocs(Doc("d2", 20m, 2));
+        if (linesOnDay < 0)
+            _holded.SyncAccountLedgerAsync(Account, Arg.Any<CancellationToken>()).Returns(false);
+        else
+            SeedPaymentLines(Enumerable.Repeat(5m, linesOnDay).ToArray());
 
         var result = await MakeService().BookSepaTransferAsync(TransferId, MovementId, Guid.NewGuid());
 
         result.Succeeded.Should().BeFalse();
-        result.Message.Should().Contain(reason).And.Contain("by hand");
+        result.Message.Should().Contain(reason);
         await _client.DidNotReceiveWithAnyArgs().PayPurchaseDocumentAsync(
             default!, default, default, default, default!);
         await _write.DidNotReceiveWithAnyArgs().PostJournalEntryAsync(
@@ -2485,22 +2489,13 @@ public class SepaBankBookingTests
             IsDraft = false,
         };
 
-    private void SeedPayments(string docId, params (string Id, decimal Amount, LocalDate Date)[] payments) =>
-        _client.GetPurchaseDocumentAsync(docId, Arg.Any<CancellationToken>()).Returns(NoPayments(docId) with
-        {
-            Payments = payments.Select(p => new HoldedPaymentDetailDto(p.Id, p.Amount, p.Date, "treasury-1")).ToList(),
-        });
-
-    private static HoldedPurchaseDocumentDto NoPayments(string docId) => new()
-    {
-        Id = docId,
-        DocNumber = docId,
-        Subtotal = 0m,
-        Tax = 0m,
-        Total = 0m,
-        PaymentsTotal = 0m,
-        PaymentsPending = 0m,
-    };
+    /// <summary>Document-payment lines on the creditor account dated the bank line, in the ledger mirror.</summary>
+    private void SeedPaymentLines(params decimal[] amounts) =>
+        _holded.GetLedgerLinesAsync(Account, Arg.Any<CancellationToken>()).Returns(amounts
+            .Select((a, i) => new HoldedLedgerLineInfo(
+                100 + i, 1, Account, LineDate.AtMidnight().InZoneLeniently(DateTimeZoneProviders.Tzdb["Europe/Madrid"]).ToInstant(),
+                "payment", null, a, 0m))
+            .ToList());
 
     private void SeedOpenDocs(params HoldedPurchaseDocListItemDto[] docs) =>
         _client.ListPurchaseDocumentsAsync(Arg.Any<CancellationToken>()).Returns(docs.ToList());

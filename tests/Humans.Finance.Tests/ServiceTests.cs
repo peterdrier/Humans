@@ -2320,6 +2320,7 @@ public class HoldedFinanceServiceTests
         _sepa.CreditorIdentifier = "G12345678901";
         _sepa.TreasuryAccountId = "treasury-1";
         _sepa.TreasuryLedgerAccount = 57200001;
+        _holded.SyncAccountLedgerAsync(Arg.Any<int>(), Arg.Any<CancellationToken>()).Returns(true);
     }
 
     [HumansFact]
