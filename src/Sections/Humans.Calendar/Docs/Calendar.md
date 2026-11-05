@@ -124,6 +124,8 @@ The calendar is intentionally open: no resource-based authorization gates edit/d
 
 ## Invariants
 
+- The internal `CalendarRecurrenceRules` owns RRULE parsing, validation, legacy all-day cutoff conversion and finite-series bounds. Event writes and the public recurrence validator share it; occurrence-window expansion, override decisions and persistence remain in their existing owners.
+
 - Member event history supplies localized empty text to the shared audit component in all supported cultures; its event predicate and history entries are unchanged.
 
 - Grid and list browser titles use Base’s invariant `yyyy-MM` formatter for their month identifier.

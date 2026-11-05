@@ -226,7 +226,7 @@ public sealed class CalendarOccurrenceExpanderTests
     [Xunit.InlineData("FREQ=DAILY;UNTIL= 20260603 ", "FREQ=DAILY;UNTIL= 20260603 ")]
     public void Expand_LegacyAllDayUntil_AcceptsValidatedRuleValues(string rule, string projectedRule)
     {
-        CalendarService.RecurrenceRuleRefusal(rule).Should().BeNull();
+        CalendarRecurrenceRules.RecurrenceRuleRefusal(rule).Should().BeNull();
         var zone = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
         var day = new LocalDate(2026, 6, 1);
         var info = CalendarOccurrenceExpander.ToInfo(new Humans.Calendar.Domain.CalendarEvent

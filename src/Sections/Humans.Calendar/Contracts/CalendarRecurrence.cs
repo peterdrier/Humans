@@ -12,7 +12,7 @@ namespace Humans.Calendar.Contracts;
 public static class CalendarRecurrence
 {
     /// <summary>True for a blank rule or one Calendar would accept on a timed event.</summary>
-    public static bool IsValidRule(string? rule) => CalendarService.RecurrenceRuleRefusal(rule) is null;
+    public static bool IsValidRule(string? rule) => CalendarRecurrenceRules.RecurrenceRuleRefusal(rule) is null;
 
     /// <summary>
     /// The occurrences of a timed item overlapping [<paramref name="from"/>, <paramref name="to"/>), first-occurrence
