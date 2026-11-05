@@ -76,7 +76,7 @@
             var votesTable = TableModel.For(Model.Votes)
                 .Human(Localizer["Governance_BoardVoting_BoardMember"].Value, r => r.BoardMemberUserId)
                 .Column(Localizer["Governance_BoardVoting_Vote"].Value, r => r.Vote, c => c.EnumBadge())
-                .Template(Localizer["Governance_BoardVoting_Date"].Value, votedAtCell)
+                .Template(Localizer["Governance_BoardVoting_Date"].Value, votedAtCell, c => c.Css("text-nowrap"))
                 .Template(Localizer["Governance_BoardVoting_Note"].Value, noteCell)
                 .Build();
             <div class="card mb-4">

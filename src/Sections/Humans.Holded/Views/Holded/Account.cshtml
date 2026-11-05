@@ -124,7 +124,7 @@
                 .Template("Counterparty", counterpartyCell, o => o.Css("text-nowrap"), sortBy: l => l.Counterparty?.AccountNum)
                 .Column("Type", r => r.Type, o => o.Css("text-muted small"))
                 .Column("Description", r => r.Description)
-                .Template("Amount", amountCell, o => o.End(), sortBy: l => l.Amount)
+                .Template("Amount", amountCell, o => o.Css("text-nowrap").End(), sortBy: l => l.Amount)
                 .Template("Checked", checkedCell, o => o.Css("text-center").HeaderCss("text-center"), sortBy: l => l.Checked == true ? 1 : 0)
                 .Css("align-middle")
                 .Build();

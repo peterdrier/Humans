@@ -117,7 +117,11 @@ public sealed class TableColumn<TRow>(
     public string? FilterParamName => options.FilterParamNameValue;
     public string? FilterValue => options.FilterValueValue;
     public IReadOnlyList<string> FilterOptions => options.FilterOptionsValue;
-    public string? CellCssClass => options.CellCssValue;
+    // Dates and amounts are one token each: never let one wrap mid-value in a narrow column.
+    public string? CellCssClass => Format is CellFormat.Date or CellFormat.DateTime
+        or CellFormat.Currency or CellFormat.Number
+        ? string.IsNullOrEmpty(options.CellCssValue) ? "text-nowrap" : $"{options.CellCssValue} text-nowrap"
+        : options.CellCssValue;
     public string? HeaderCssClass => options.HeaderCssValue;
 
     public string SortType => Format is CellFormat.Date or CellFormat.DateTime

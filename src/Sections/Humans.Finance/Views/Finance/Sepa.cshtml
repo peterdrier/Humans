@@ -64,8 +64,8 @@
             Func<SepaBankMovementVm, IHtmlContent> dateCell = @<text>@item.Date.ToInvariantDate()</text>;
             Func<SepaBankMovementVm, IHtmlContent> unmatchedAmountCell = @<text>@item.Amount.ToEuro()</text>;
             var unmatchedTable = TableModel.For(Model.UnmatchedMovements)
-                .Template("Date", dateCell, sortBy: m => m.Date)
-                .Template("Amount", unmatchedAmountCell, o => o.End(), sortBy: m => m.Amount)
+                .Template("Date", dateCell, c => c.Css("text-nowrap"), sortBy: m => m.Date)
+                .Template("Amount", unmatchedAmountCell, o => o.Css("text-nowrap").End(), sortBy: m => m.Amount)
                 .Column("Description", r => r.Description ?? "—", o => o.Css("text-muted small"))
                 .Column("Account", r => r.ParsedAccountNum?.ToString() ?? "—")
                 .Column("Why", r => r.Reason, o => o.Css("text-muted small"))
@@ -322,7 +322,7 @@
                 .Link("Account", r => r.Row.SupplierAccountNum, r => Url.Action("CreditorStatement", new { accountNum = r.Row.SupplierAccountNum }))
                 .Template("Member", memberCell)
                 .Column("IBAN", r => r.Row.IbanMasked, o => o.Css("font-monospace small"))
-                .Template("Amount", amountCell, o => o.End(), sortBy: t => t.Row.Amount)
+                .Template("Amount", amountCell, o => o.Css("text-nowrap").End(), sortBy: t => t.Row.Amount)
                 .Template("Status", statusCell, sortBy: t => t.Row.IsWithdrawn ? 2 : t.Row.IsBooked ? 1 : 0)
                 .Template("Book", bookCell, o => o.NoSort())
                 .Template("Withdraw", withdrawCell, o => o.NoSort())

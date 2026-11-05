@@ -52,6 +52,14 @@ public class TableColumnTests
         col.SortType.Should().Be("number");
     }
 
+    [HumansFact]
+    public void Date_and_numeric_cells_never_wrap_but_text_cells_may()
+    {
+        Col(CellFormat.Date, r => r.When).CellCssClass.Should().Be("text-nowrap");
+        Col(CellFormat.Currency, r => r.Amount).CellCssClass.Should().Be("text-nowrap");
+        Col(CellFormat.Text, r => r.Name).CellCssClass.Should().BeNull();
+    }
+
     [HumansTheory]
     [Xunit.MemberData(nameof(SupportedCultures.All), MemberType = typeof(SupportedCultures))]
     public void Numeric_cells_use_ui_culture_and_keep_invariant_sort_values(string culture)

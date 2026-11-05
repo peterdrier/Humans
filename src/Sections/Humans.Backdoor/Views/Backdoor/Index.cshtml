@@ -43,7 +43,7 @@
         .Human("Owner", k => k.UserId, HumanLink.None)
         .Column("Label", k => k.Label)
         .Template("Key", keyCell)
-        .Template("Created", createdCell, sortBy: k => k.CreatedAt)
+        .Template("Created", createdCell, c => c.Css("text-nowrap"), sortBy: k => k.CreatedAt)
         .Template("Last used", lastUsedCell, sortBy: k => k.LastUsedAt)
         .Template("Status", statusCell)
         .Template("Actions", actionsCell, o => o.NoSort().Css("text-end").HeaderCss("text-end"))

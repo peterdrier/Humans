@@ -35,7 +35,7 @@ else
     var table = TableModel.For(rows)
         .Link("Order", r => r.OrderId, r => Url.Action("Order", "Store", new { id = r.OrderId }), o => o.Code())
         .Column("Method", r => r.Method)
-        .Column("Amount", r => r.AmountEur.ToEuro())
+        .Column("Amount", r => r.AmountEur.ToEuro(), c => c.Css("text-nowrap"))
         .Template("Received", receivedCell)
         .Build();
     <partial name="_Table" model="table" />

@@ -51,7 +51,7 @@
             var membershipsTable = TableModel.For(Model.Memberships)
                 .Template(Localizer["Teams_MyTeams_Team"].Value, membershipTeamCell)
                 .Template(SharedLocalizer["MyTeams_Role"].Value, membershipRoleCell)
-                .Column(Localizer["Teams_MyTeams_Joined"].Value, r => r.JoinedAt.ToDate())
+                .Column(Localizer["Teams_MyTeams_Joined"].Value, r => r.JoinedAt.ToDate(), c => c.Css("text-nowrap"))
                 .Template(Localizer["Teams_MyTeams_Actions"].Value, membershipActionsCell, c => c.NoSort())
                 .Build();
         }
@@ -83,7 +83,7 @@ else
             var pendingRequestsTable = TableModel.For(Model.PendingRequests)
                 .Link(Localizer["Teams_MyTeams_Team"].Value, r => r.TeamName, r => Url.Action("Details", new { slug = r.TeamSlug }))
                 .Template(Localizer["Teams_MyTeams_Status"].Value, requestStatusCell)
-                .Column(Localizer["Teams_MyTeams_Requested"].Value, r => r.RequestedAt.ToDate())
+                .Column(Localizer["Teams_MyTeams_Requested"].Value, r => r.RequestedAt.ToDate(), c => c.Css("text-nowrap"))
                 .Template(Localizer["Teams_MyTeams_Actions"].Value, requestWithdrawCell, c => c.NoSort())
                 .Build();
         }

@@ -58,7 +58,7 @@
             var appTable = TableModel.For(Model.Applications)
                 .Template(SharedLocalizer["AdminApp_Applicant"].Value, applicantCell)
                 .Template(Localizer["Governance_BoardVoting_Tier"].Value, tierCell, c => c.NoSort())
-                .Column(Localizer["Governance_Submitted"].Value, a => a.SubmittedAt.ToDate())
+                .Column(Localizer["Governance_Submitted"].Value, a => a.SubmittedAt.ToDate(), c => c.Css("text-nowrap"))
                 .Template(SharedLocalizer["Common_Status"].Value, statusCell, c => c.NoSort())
                 .Template(SharedLocalizer["AdminApp_Preview"].Value, previewCell)
                 .Template("", detailCell, c => c.NoSort().End())
