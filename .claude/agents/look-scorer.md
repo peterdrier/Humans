@@ -39,5 +39,8 @@ Omit `mobile` when there are no mobile screenshots. Keep each problem under 20 w
 
 - Screenshots contain members' personal data. Never quote names, emails, phone numbers or other personal details in problems; describe the element instead.
 - A page that is an error page, access denied or blank: score overall 1 and add one `bug` problem saying so; skip the other metrics (leave them out).
+- An anchor page in your `pages` list is scored blind like any other page; never copy Peter's values, because comparing your score with his is how the calibration is checked.
+- Read every screenshot that exists for a page before scoring that width. Never infer a mobile score from the desktop shot.
+- Use the anchors' spread: the anchors run from 2 (Home, Teams) to 4 (Budget, Finance). A page clearly busier or flatter than Home is a 1 or 2; one cleaner than Budget is a 5. Defaulting to 3 hides the differences this audit exists to find.
 - Do not soften scores. Most pages in a working app land at 2 to 4; use 1 and 5 when the rubric's description really fits.
 - When done, reply with one line per page: `id: desktop overall / mobile overall`.

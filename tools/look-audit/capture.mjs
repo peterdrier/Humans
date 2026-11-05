@@ -194,6 +194,10 @@ async function capture(ctxInfo, url, id, tag) {
     if (/\/Account\/(AccessDenied|Login)|\/Identity\/Account\/(AccessDenied|Login)/i.test(out.final) || [401, 403].includes(out.httpStatus)) { out.status = 'denied'; return out; }
     if (out.httpStatus >= 400) { out.status = 'error'; return out; }
     if (!/html/i.test(out.contentType)) { out.status = 'non-html'; return out; }
+    // A redirect lands on another route's page, which is scored under that route; scoring it twice skews section medians.
+    if (out.final.split('?')[0].replace(/\/$/, '').toLowerCase() !== url.split('?')[0].replace(/\/$/, '').toLowerCase()) { out.status = 'redirect'; return out; }
+    // Partial-view endpoints (popups, cards loaded into another page) have no stylesheet of their own.
+    if (await page.evaluate(() => document.styleSheets.length === 0)) { out.status = 'fragment'; return out; }
     out.networkIdle = await page.waitForLoadState('networkidle', { timeout: 30000 }).then(() => true, () => false);
     await dismissCookies(page, cookies);
 
