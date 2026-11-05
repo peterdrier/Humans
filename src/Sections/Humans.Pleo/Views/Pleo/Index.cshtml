@@ -154,32 +154,27 @@
     <div class="col-lg-7">
         <div class="card mb-4">
             <div class="card-header">Spend by Holded account</div>
-            <div class="table-responsive">
-                <table class="table table-sm align-middle mb-0">
-                    <thead><tr><th>Account</th><th class="text-end">Entries</th><th class="text-end">Spend</th></tr></thead>
-                    <tbody>
-                        @foreach (var a in Model.ByAccount)
-                        {
-                            <tr>
-                                <td class="@(a.Flagged ? "text-danger" : "")">
-                                    <a asp-action="Entries" asp-route-account="@a.Key">@a.Label</a>
-                                    @if (a.Flagged)
-                                    {
-                                        <span class="small">(missing or archived in Pleo's chart)</span>
-                                    }
-                                </td>
-                                <td class="text-end">@N(a.Count)</td>
-                                <td class="text-end text-nowrap">@a.Spend.ToEuro()</td>
-                            </tr>
-                        }
-                        <tr class="@(Model.Unmapped.Count > 0 ? "text-danger" : "text-muted")">
-                            <td><a asp-action="Entries" asp-route-unmapped="true">Unmapped</a></td>
-                            <td class="text-end">@N(Model.Unmapped.Count)</td>
-                            <td class="text-end text-nowrap">@Model.Unmapped.Spend.ToEuro()</td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
+            @{
+                Func<PleoSpendTotal, IHtmlContent> spendAccountCell0 = @<text>
+                    <span class="@(item.Flagged ? "text-danger" : "")">
+                                                        <a asp-action="Entries" asp-route-account="@item.Key">@item.Label</a>
+                                                        @if (item.Flagged)
+                                                        {
+                                                            <span class="small">(missing or archived in Pleo's chart)</span>
+                                                        }
+                                                    </span>
+                </text>;
+                Func<PleoSpendTotal, IHtmlContent> spendAccountCell1 = @<text>@N(item.Count)</text>;
+                Func<PleoSpendTotal, IHtmlContent> spendAccountCell2 = @<text>@item.Spend.ToEuro()</text>;
+                var accountTable = TableModel.For(Model.ByAccount)
+                    .Template("Account", spendAccountCell0, sortBy: a => a.Label)
+                    .Template("Entries", spendAccountCell1, o => o.End(), sortBy: a => a.Count)
+                    .Template("Spend", spendAccountCell2, o => o.End().Css("text-nowrap"), sortBy: a => a.Spend)
+                    .Css("align-middle")
+                    .Build();
+            }
+            <partial name="_Table" model="accountTable" />
+                <div class="small px-2 py-1 @(Model.Unmapped.Count > 0 ? "text-danger" : "text-muted")"><a asp-action="Entries" asp-route-unmapped="true">Unmapped</a> · @N(Model.Unmapped.Count) entries · @Model.Unmapped.Spend.ToEuro()</div>
             <div class="card-footer small text-muted">
                 Completed card purchases, Pleo invoices and out-of-pocket, net of refunds. An entry maps through its
                 category, once that category's id is <a asp-action="Categories">linked</a>.
@@ -189,21 +184,18 @@
     <div class="col-lg-5">
         <div class="card mb-4">
             <div class="card-header">Spend by cardholder</div>
-            <div class="table-responsive">
-                <table class="table table-sm align-middle mb-0">
-                    <thead><tr><th>Cardholder</th><th class="text-end">Entries</th><th class="text-end">Spend</th></tr></thead>
-                    <tbody>
-                        @foreach (var c in Model.ByCardholder)
-                        {
-                            <tr>
-                                <td><a asp-action="Entries" asp-route-cardholder="@c.Key">@c.Label</a></td>
-                                <td class="text-end">@N(c.Count)</td>
-                                <td class="text-end text-nowrap">@c.Spend.ToEuro()</td>
-                            </tr>
-                        }
-                    </tbody>
-                </table>
-            </div>
+            @{
+                Func<PleoSpendTotal, IHtmlContent> cardholderCell0 = @<text><a asp-action="Entries" asp-route-cardholder="@item.Key">@item.Label</a></text>;
+                Func<PleoSpendTotal, IHtmlContent> cardholderCell1 = @<text>@N(item.Count)</text>;
+                Func<PleoSpendTotal, IHtmlContent> cardholderCell2 = @<text>@item.Spend.ToEuro()</text>;
+                var cardholderTable = TableModel.For(Model.ByCardholder)
+                    .Template("Cardholder", cardholderCell0, sortBy: c => c.Label)
+                    .Template("Entries", cardholderCell1, o => o.End(), sortBy: c => c.Count)
+                    .Template("Spend", cardholderCell2, o => o.End().Css("text-nowrap"), sortBy: c => c.Spend)
+                    .Css("align-middle")
+                    .Build();
+            }
+            <partial name="_Table" model="cardholderTable" />
         </div>
     </div>
 </div>
