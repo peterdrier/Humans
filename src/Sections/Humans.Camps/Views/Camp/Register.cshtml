@@ -136,13 +136,7 @@
                 </div>
                 <div class="col-12">
                     <label asp-for="KidsAreaDescription" class="form-label">@Localizer["Camps_KidsAreaDescriptionLabel"]</label>
-                    <textarea asp-for="KidsAreaDescription" class="form-control" rows="2"
-                              placeholder="@Localizer["Camps_KidsAreaDescriptionPlaceholder"]"></textarea>
-                    <div class="form-text">
-                        <a href="#" data-bs-toggle="modal" data-bs-target="#markdownHelpModal">
-                            <i class="fa-solid fa-circle-info me-1"></i>@Localizer["Camps_MarkdownSupported"]
-                        </a>
-                    </div>
+                    <markdown-editor asp-for="KidsAreaDescription" rows="2" placeholder="@Localizer["Camps_KidsAreaDescriptionPlaceholder"]" />
                 </div>
                 <div class="col-md-4">
                     <label asp-for="AdultPlayspace" class="form-label">@Localizer["Camps_AdultPlayspaceLabel"]</label>

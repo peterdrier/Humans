@@ -266,6 +266,7 @@ public class MarkdownEditorTagHelper(
                     }}
                 }});
             }}
+            el.humansMde = mde;
             el.dataset.mdeInitialized = 'true';
         }} catch (e) {{
             // Leave the bare textarea in place on failure.
@@ -285,6 +286,17 @@ public class MarkdownEditorTagHelper(
         }}
         tryInit();
     }}
+
+    // CodeMirror measures zero size inside display:none, so editors in collapses/modals render blank
+    // until refreshed once their container is shown.
+    function refreshWithin(e) {{
+        editorElements(e.target).forEach(function(el) {{
+            if (el.humansMde) {{ el.humansMde.codemirror.refresh(); }}
+        }});
+    }}
+    document.addEventListener('shown.bs.collapse', refreshWithin);
+    document.addEventListener('shown.bs.modal', refreshWithin);
+    document.addEventListener('shown.bs.tab', refreshWithin);
 
     window.HumansMarkdownEditor = {{ init: init }};
 }})();

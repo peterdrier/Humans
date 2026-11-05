@@ -292,21 +292,11 @@
                                 </div>
                                 <div class="col-md-4">
                                     <label class="form-label">Description</label>
-                                    <textarea name="Description" class="form-control" rows="2">@EditValue(isEditingRota, "Description", isEditingRota ? invalidRotaEdit!.Description : rota.Description)</textarea>
-                                    <div class="form-text">
-                                        <a href="#" data-bs-toggle="modal" data-bs-target="#markdownHelpModal">
-                                            <i class="fa-solid fa-circle-info me-1"></i>Markdown
-                                        </a>
-                                    </div>
+                                    <markdown-editor name="Description" id="edit-rota-description-@rota.Id.ToString("N")" rows="2" value="@(EditValue(isEditingRota, "Description", isEditingRota ? invalidRotaEdit!.Description : rota.Description))" />
                                 </div>
                                 <div class="col-md-4">
                                     <label class="form-label">Practical Info</label>
-                                    <textarea name="PracticalInfo" class="form-control" rows="2" placeholder="Meeting point, instructions...">@EditValue(isEditingRota, "PracticalInfo", isEditingRota ? invalidRotaEdit!.PracticalInfo : rota.PracticalInfo)</textarea>
-                                    <div class="form-text">
-                                        <a href="#" data-bs-toggle="modal" data-bs-target="#markdownHelpModal">
-                                            <i class="fa-solid fa-circle-info me-1"></i>Markdown
-                                        </a>
-                                    </div>
+                                    <markdown-editor name="PracticalInfo" id="edit-rota-practical-@rota.Id.ToString("N")" rows="2" placeholder="Meeting point, instructions..." value="@(EditValue(isEditingRota, "PracticalInfo", isEditingRota ? invalidRotaEdit!.PracticalInfo : rota.PracticalInfo))" />
                                 </div>
                                 <div class="col-md-2">
                                     <button type="submit" class="btn btn-primary">Save</button>
@@ -518,12 +508,7 @@
                                                         @Html.ValidationSummary(false, "", new { @class = "text-danger" })
                                                     }
                                                     <div class="mb-2">
-                                                        <textarea name="Description" class="form-control form-control-sm" rows="2" placeholder="Shift duties, notes...">@EditValue(isEditingShift, "Description", isEditingShift ? invalidShiftEdit!.Description : shift.Description)</textarea>
-                                                        <div class="form-text">
-                                                            <a href="#" data-bs-toggle="modal" data-bs-target="#markdownHelpModal">
-                                                                <i class="fa-solid fa-circle-info me-1"></i>Markdown
-                                                            </a>
-                                                        </div>
+                                                        <markdown-editor name="Description" id="edit-shift-description-@shift.Id.ToString("N")" rows="2" placeholder="Shift duties, notes..." value="@(EditValue(isEditingShift, "Description", isEditingShift ? invalidShiftEdit!.Description : shift.Description))" />
                                                     </div>
                                                     @{
                                                         var (editPeriodStart, editPeriodEnd) = rota.Period switch
@@ -1000,21 +985,11 @@
                     <div class="row g-2 mt-2">
                         <div class="col-md-6">
                             <label class="form-label">Description</label>
-                            <textarea name="Description" class="form-control" rows="2"></textarea>
-                            <div class="form-text">
-                                <a href="#" data-bs-toggle="modal" data-bs-target="#markdownHelpModal">
-                                    <i class="fa-solid fa-circle-info me-1"></i>Markdown
-                                </a>
-                            </div>
+                            <markdown-editor name="Description" id="create-rota-description" rows="2" />
                         </div>
                         <div class="col-md-6">
                             <label class="form-label">Practical Info</label>
-                            <textarea name="PracticalInfo" class="form-control" rows="2" placeholder="Meeting point, instructions..."></textarea>
-                            <div class="form-text">
-                                <a href="#" data-bs-toggle="modal" data-bs-target="#markdownHelpModal">
-                                    <i class="fa-solid fa-circle-info me-1"></i>Markdown
-                                </a>
-                            </div>
+                            <markdown-editor name="PracticalInfo" id="create-rota-practical" rows="2" placeholder="Meeting point, instructions..." />
                         </div>
                     </div>
                     @if (Model.AllTags.Count > 0)
