@@ -618,8 +618,11 @@ internal sealed class ShiftSignupService(
         => warning is null ? nextWarning : $"{warning} {nextWarning}";
 
     // Audit and notice text is persisted English; keep its dates out of the actor's UI culture.
-    private static string FormatAuditDay(BurnSettingsInfo eventSettings, int dayOffset) =>
-        eventSettings.GateOpeningDate.PlusDays(dayOffset).ToInvariantWeekdayMonthDay();
+    private static string FormatAuditDay(BurnSettingsInfo eventSettings, int dayOffset)
+    {
+        using var culture = new CultureScope("en");
+        return eventSettings.GateOpeningDate.PlusDays(dayOffset).ToWeekdayDayMonth();
+    }
 
     private Task<bool> IsPrivilegedAsync(Guid userId, Guid teamId) =>
         shiftMgmt.CanApproveSignupsAsync(userId, teamId);

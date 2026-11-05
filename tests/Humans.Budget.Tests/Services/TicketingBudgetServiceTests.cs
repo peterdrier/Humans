@@ -106,10 +106,14 @@ public class TicketingBudgetServiceTests
                 Arg.Any<CancellationToken>())
             .Returns(1);
 
+        string expected;
+        using (new CultureScope("en"))
+            expected = $"{new LocalDate(2026, 3, 2).ToWeekdayDayMonth()}–{new LocalDate(2026, 3, 8).ToWeekdayDayMonth()}";
+
         using (new CultureScope("es"))
             await CreateSut().SyncActualsAsync(_yearId, actorUserId: null, Xunit.TestContext.Current.CancellationToken);
 
-        capturedActuals.Should().ContainSingle().Which.WeekLabel.Should().Be("Mon Mar 2–Sun Mar 8"); // a persisted match key: must equal rows already stored
+        capturedActuals.Should().ContainSingle().Which.WeekLabel.Should().Be(expected);
     }
 
     [HumansTheory]

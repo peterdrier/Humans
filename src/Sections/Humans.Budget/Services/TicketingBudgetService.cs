@@ -36,33 +36,37 @@ internal sealed class TicketingBudgetService(
             var today = clock.GetCurrentInstant().InUtc().Date;
             var currentWeekMonday = GetIsoMonday(today);
 
-            // Invariant labels whatever the operator's UI language: BudgetRepository matches existing actuals rows by
-            // description, so the label must never change with display formatting.
-            var weeklyActuals = orders
-                .Where(o => o.IsForEvent(activeYear.VendorEventId, paidOnly: true))
-                .GroupBy(o => GetIsoMonday(o.PurchasedAt.InUtc().Date))
-                .Where(g => g.Key < currentWeekMonday)
-                .OrderBy(g => g.Key)
-                .Select(g =>
-                {
-                    var monday = g.Key;
-                    var sunday = monday.PlusDays(6);
-                    return new TicketingWeeklyActuals(
-                        Monday: monday,
-                        Sunday: sunday,
-                        WeekLabel: $"{monday.ToInvariantWeekdayMonthDay()}–{sunday.ToInvariantWeekdayMonthDay()}",
-                        TicketCount: g.Sum(o => o.Attendees.Count(a =>
-                            a.Status == TicketAttendeeStatus.Valid ||
-                            a.Status == TicketAttendeeStatus.CheckedIn)),
-                        Revenue: g.Sum(o => o.TotalAmount),
-                        StripeFees: g.Sum(o => o.StripeFee ?? 0m),
-                        TicketTailorFees: g.Sum(o => o.ApplicationFee ?? 0m),
-                        StripeFeeTax: g.Sum(o => o.FeeTax ?? 0m),
-                        // Null FeeTax = enriched before Stripe's tax bucket was captured: unknown, not zero.
-                        StripeFeesTaxUnknown: g.Where(o => o.FeeTax is null).Sum(o => o.StripeFee ?? 0m),
-                        StripeFeesUntaxed: g.Where(o => o.FeeTax == 0m).Sum(o => o.StripeFee ?? 0m));
-                })
-                .ToList();
+            // Canonical English descriptions whatever the operator's UI language: BudgetRepository matches existing
+            // actuals rows by description.
+            List<TicketingWeeklyActuals> weeklyActuals;
+            using (new CultureScope("en"))
+            {
+                weeklyActuals = orders
+                    .Where(o => o.IsForEvent(activeYear.VendorEventId, paidOnly: true))
+                    .GroupBy(o => GetIsoMonday(o.PurchasedAt.InUtc().Date))
+                    .Where(g => g.Key < currentWeekMonday)
+                    .OrderBy(g => g.Key)
+                    .Select(g =>
+                    {
+                        var monday = g.Key;
+                        var sunday = monday.PlusDays(6);
+                        return new TicketingWeeklyActuals(
+                            Monday: monday,
+                            Sunday: sunday,
+                            WeekLabel: $"{monday.ToWeekdayDayMonth()}–{sunday.ToWeekdayDayMonth()}",
+                            TicketCount: g.Sum(o => o.Attendees.Count(a =>
+                                a.Status == TicketAttendeeStatus.Valid ||
+                                a.Status == TicketAttendeeStatus.CheckedIn)),
+                            Revenue: g.Sum(o => o.TotalAmount),
+                            StripeFees: g.Sum(o => o.StripeFee ?? 0m),
+                            TicketTailorFees: g.Sum(o => o.ApplicationFee ?? 0m),
+                            StripeFeeTax: g.Sum(o => o.FeeTax ?? 0m),
+                            // Null FeeTax = enriched before Stripe's tax bucket was captured: unknown, not zero.
+                            StripeFeesTaxUnknown: g.Where(o => o.FeeTax is null).Sum(o => o.StripeFee ?? 0m),
+                            StripeFeesUntaxed: g.Where(o => o.FeeTax == 0m).Sum(o => o.StripeFee ?? 0m));
+                    })
+                    .ToList();
+            }
 
             return await budgetService.SyncTicketingActualsAsync(
                 budgetYearId, weeklyActuals, actorUserId, ct);

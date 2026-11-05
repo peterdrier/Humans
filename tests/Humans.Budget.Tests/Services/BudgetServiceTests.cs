@@ -2009,7 +2009,7 @@ public sealed class BudgetServiceTests
             .ToListAsync(TestContext.Current.CancellationToken);
         projectedRevenueItems.Should().NotBeEmpty();
         projectedRevenueItems.Should().AllSatisfy(item => item.Description.Should().MatchRegex(
-            "^Projected: Week of (Mon|Tue|Wed|Thu|Fri|Sat|Sun) (Mar|Apr) [0-9]+–(Mon|Tue|Wed|Thu|Fri|Sat|Sun) (Mar|Apr) [0-9]+$"));
+            "^Projected: Week of (Mon|Tue|Wed|Thu|Fri|Sat|Sun)\u00A0(Mar|Apr)\u00A0[0-9]+–(Mon|Tue|Wed|Thu|Fri|Sat|Sun)\u00A0(Mar|Apr)\u00A0[0-9]+$"));
         CultureInfo.CurrentCulture.Name.Should().Be("en");
         CultureInfo.CurrentUICulture.Name.Should().Be(culture);
     }

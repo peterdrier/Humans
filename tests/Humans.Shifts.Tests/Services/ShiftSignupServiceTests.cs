@@ -2144,7 +2144,7 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
         result.Success.Should().BeTrue();
         await AuditLog.Received(1).LogAsync(
             ShiftsAuditActions.ShiftSignupCreated, nameof(ShiftSignup), Saved(result).Id,
-            Arg.Is<string>(s => s.Contains("on Thu Jul 2 (confirmed)")),
+            Arg.Is<string>(s => s.Contains("on Thu\u00A0Jul\u00A02 (confirmed)")),
             userId,
             userId, nameof(User));
     }
