@@ -40,12 +40,17 @@ public sealed class TableModelBuilder<TRow> where TRow : class
         return this;
     }
 
+    /// <summary>
+    /// Razor-rendered cell. <paramref name="sortBy"/> gives client sorting a value other than
+    /// the cell's visible text — a date, an amount, or a name hidden behind markup.
+    /// </summary>
     public TableModelBuilder<TRow> Template(
-        string header, Func<TRow, IHtmlContent> template, Action<TableColumnOptions>? configure = null)
+        string header, Func<TRow, IHtmlContent> template, Action<TableColumnOptions>? configure = null,
+        Func<TRow, object?>? sortBy = null)
     {
         var options = new TableColumnOptions();
         configure?.Invoke(options);
-        _columns.Add(new TableColumn<TRow>(header, CellFormat.Template, value: null, template, options));
+        _columns.Add(new TableColumn<TRow>(header, CellFormat.Template, sortBy, template, options));
         return this;
     }
 

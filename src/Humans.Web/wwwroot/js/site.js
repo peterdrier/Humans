@@ -127,8 +127,12 @@ document.addEventListener('click', function (e) {
                 if (activeIndicator) activeIndicator.textContent = nextDirection === 'asc' ? ' ▲' : ' ▼';
 
                 var rows = Array.from(tbody.rows);
+                // Blank cells (a null amount or date) don't make a numeric column sort as text.
                 var comparisonType = sortType === 'auto'
                     ? (rows.every(function (row) {
+                        var value = valueFromRow(row, columnIndex, key);
+                        return textForSort(value) === '' || numberForSort(value) !== null;
+                    }) && rows.some(function (row) {
                         return numberForSort(valueFromRow(row, columnIndex, key)) !== null;
                     }) ? 'number' : 'text')
                     : sortType;
