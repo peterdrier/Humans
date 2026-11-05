@@ -56,6 +56,8 @@ public class CreditorPayabilityTests
 
     public CreditorPayabilityTests()
     {
+        // A payout refreshes the contact mirror first; an unstubbed Task<bool> reads as a sync already running.
+        _holded.SyncContactsAsync(Arg.Any<CancellationToken>()).Returns(true);
         _holded.GetAccountBalancesAsync(Arg.Any<CancellationToken>())
             .Returns(new Dictionary<int, decimal> { [Account] = -4800m });
         _holded.GetContactsAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedContactDto>

@@ -993,6 +993,20 @@ internal sealed class Service(
             return (null,
                 $"Creditor account {duplicate.Key} was selected twice — a payout pays each account once.");
 
+        // The file pays the IBAN on Holded's contact now, not last night's: a fix made in Holded today must not pay the
+        // old account. So a payout refreshes the contact mirror first and refuses without it.
+        try
+        {
+            if (!await holded.SyncContactsAsync(ct))
+                return (null, "A Holded contact sync is already running, so the payees' IBANs cannot be "
+                              + "confirmed — try again in a moment.");
+        }
+        catch (Exception ex) when (ex is HoldedTransientException or HoldedPermanentException)
+        {
+            return (null,
+                $"Holded's contacts could not be refreshed, so the payees' IBANs cannot be confirmed: {ex.Message}");
+        }
+
         var (rows, _, contactsUnavailable) = await ListCreditorAccountsAsync(ct);
         if (contactsUnavailable is not null)
             return (null, contactsUnavailable);
@@ -1021,7 +1035,7 @@ internal sealed class Service(
                     $"Creditor account {s.SupplierAccountNum}: {Euros(s.Amount)} is more than the "
                     + $"{Euros(row.OwedToMember)} owed.");
 
-            // The cache may have refreshed since the row read; never pay a vanished contact or IBAN.
+            // Never pay a contact or IBAN the mirror lacks.
             if (!contactById.TryGetValue(row.Bindings[0].HoldedContactId, out var contact)
                 || string.IsNullOrWhiteSpace(contact.Iban))
                 return (null,

@@ -60,6 +60,8 @@ public class HoldedFinanceServiceTests
 
     public HoldedFinanceServiceTests()
     {
+        // A payout refreshes the contact mirror first; an unstubbed Task<bool> reads as a sync already running.
+        _holded.SyncContactsAsync(Arg.Any<CancellationToken>()).Returns(true);
         // An unstubbed Task<bool> yields false, which the service reads as a lost unique-index race.
         _repo.UpsertCreditorContactAsync(
                 Arg.Any<HoldedCreditorContact>(), Arg.Any<Instant>(), Arg.Any<CancellationToken>())
@@ -2696,6 +2698,21 @@ public class HoldedFinanceServiceTests
 
         result.Succeeded.Should().BeFalse();
         result.ErrorMessage.Should().Contain("no IBAN");
+    }
+
+    [HumansFact]
+    public async Task GenerateSepaPayout_ContactRefreshFails_IsRefusedAndWritesNothing()
+    {
+        ConfigureSepa();
+        SeedPayableCreditor();
+        _holded.SyncContactsAsync(Arg.Any<CancellationToken>()).ThrowsAsync(new HoldedTransientException("503"));
+
+        var result = await MakeService().GenerateSepaPayoutAsync(
+            [new SepaPayoutSelection(40000004, 10m)], 50m, Guid.NewGuid(),
+            TestContext.Current.CancellationToken);
+
+        result.ErrorMessage.Should().Contain("IBANs cannot be confirmed");
+        await _repo.DidNotReceiveWithAnyArgs().AddSepaPayoutAsync(default!, default!);
     }
 
     [HumansFact]
