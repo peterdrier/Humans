@@ -11,30 +11,27 @@
         Model.SortBy == col ? label + (Model.SortDir == "asc" ? " ▲" : " ▼") : label;
 }
 
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <h1 class="mb-0">Creditor Accounts</h1>
-    <div class="d-flex gap-2">
-        <a asp-action="Sepa" class="btn btn-outline-secondary"
-           title="Generated payout files, their transfers, and the button that books each payment into Holded.">
-            <i class="fa-solid fa-file-invoice-dollar me-1"></i>SEPA transfers
-        </a>
-        <a asp-action="HoldedDuplicates" class="btn btn-outline-secondary"
-           title="Expense lines whose Holded document was created twice, and the button that removes the extras.">
-            <i class="fa-solid fa-clone me-1"></i>Duplicate docs
-        </a>
-        <a asp-action="ExpenseRecon" class="btn btn-outline-secondary"
-           title="Approved expense lines against the Holded documents and creditor balances.">
-            <i class="fa-solid fa-scale-balanced me-1"></i>Expense recon
-        </a>
-        <a href="/Holded" class="btn btn-outline-secondary"
-           title="Ledger mirror status, sync buttons and the full account list live on the Holded admin screen.">
-            <i class="fa-solid fa-rotate me-1"></i>Holded sync
-        </a>
-        <a asp-controller="BudgetAdmin" asp-action="Index" class="btn btn-outline-secondary">
-            <i class="fa-solid fa-arrow-left me-1"></i>Back to Finance
-        </a>
-    </div>
-</div>
+<page-header title="Creditor Accounts">
+    <a asp-action="Sepa" class="btn btn-outline-secondary"
+       title="Generated payout files, their transfers, and the button that books each payment into Holded.">
+        <i class="fa-solid fa-file-invoice-dollar me-1"></i>SEPA transfers
+    </a>
+    <a asp-action="HoldedDuplicates" class="btn btn-outline-secondary"
+       title="Expense lines whose Holded document was created twice, and the button that removes the extras.">
+        <i class="fa-solid fa-clone me-1"></i>Duplicate docs
+    </a>
+    <a asp-action="ExpenseRecon" class="btn btn-outline-secondary"
+       title="Approved expense lines against the Holded documents and creditor balances.">
+        <i class="fa-solid fa-scale-balanced me-1"></i>Expense recon
+    </a>
+    <a href="/Holded" class="btn btn-outline-secondary"
+       title="Ledger mirror status, sync buttons and the full account list live on the Holded admin screen.">
+        <i class="fa-solid fa-rotate me-1"></i>Holded sync
+    </a>
+    <a asp-controller="BudgetAdmin" asp-action="Index" class="btn btn-outline-secondary">
+        <i class="fa-solid fa-arrow-left me-1"></i>Back to Finance
+    </a>
+</page-header>
 
 @if (Model.UnavailableReason is { } unavailable)
 {

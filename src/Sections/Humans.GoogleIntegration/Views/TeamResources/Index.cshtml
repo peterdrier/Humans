@@ -10,8 +10,8 @@
     <span>@Localizer["GoogleIntegration_TeamResources_Breadcrumb"]</span>
 }
 
-<h1>@Localizer["GoogleIntegration_TeamResources_Heading"]</h1>
-<p class="text-muted">@Localizer["GoogleIntegration_TeamResources_Team"]: @Model.TeamName</p>
+<page-header title="@(Localizer["GoogleIntegration_TeamResources_Heading"].Value)"
+             subtitle="@($"{Localizer["GoogleIntegration_TeamResources_Team"].Value}: {Model.TeamName}")" />
 
 
 <div class="card mb-4">
