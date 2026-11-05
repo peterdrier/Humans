@@ -83,13 +83,18 @@ internal sealed class HoldedController(
     {
         // Each sync on its own: a failed document pull must not skip the ledger sweep, or the reverse.
         var docs = await TrySyncAsync("purchase-document sync", () => holded.SyncPurchaseDocumentsAsync(ct), ct);
+        var contacts = await TrySyncAsync("contact sync", () => holded.SyncContactsAsync(ct), ct);
         var ledger = await TrySyncAsync("ledger sweep", () => holded.SyncLedgerAsync(full: false, ct), ct);
-        var failed = new[] { docs is null ? "purchase documents" : null, ledger is null ? "ledger" : null }
+        var failed = new[]
+            {
+                docs is null ? "purchase documents" : null, contacts is null ? "contacts" : null,
+                ledger is null ? "ledger" : null,
+            }
             .OfType<string>().ToList();
         if (failed.Count > 0)
             SetError($"Sync failed: {string.Join(" and ", failed)}.");
-        else if (docs == true && ledger == true)
-            SetSuccess("Synced the purchase documents and swept the trailing ledger window.");
+        else if (docs == true && contacts == true && ledger == true)
+            SetSuccess("Synced the purchase documents and contacts, and swept the trailing ledger window.");
         else
             SetInfo("A sync was already running, so part of this one was skipped.");
         return RedirectToAction(nameof(Index));

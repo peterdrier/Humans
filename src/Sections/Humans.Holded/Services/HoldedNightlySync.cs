@@ -20,7 +20,7 @@ internal sealed class HoldedNightlySync(
 
         // The gates are non-blocking: if a sync is already running this one returns false. Say so, or a skipped
         // night reads as a successful sync in the job history.
-        // A failed document pull (already logged and recorded as Error) must not cost the ledger its nightly sweep;
+        // A failed document or contact pull (already logged and recorded as Error) must not cost the ledger its nightly sweep;
         // it is rethrown afterwards so the job still shows as failed.
         ExceptionDispatchInfo? docsFailure = null;
         try
@@ -31,6 +31,16 @@ internal sealed class HoldedNightlySync(
         catch (Exception ex) when (ex is not OperationCanceledException || !ct.IsCancellationRequested)
         {
             docsFailure = ExceptionDispatchInfo.Capture(ex);
+        }
+
+        try
+        {
+            if (!await holded.SyncContactsAsync(ct))
+                logger.LogWarning("Nightly Holded contact sync skipped — a sync was already running.");
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException || !ct.IsCancellationRequested)
+        {
+            docsFailure ??= ExceptionDispatchInfo.Capture(ex);
         }
 
         if (!await holded.SyncLedgerAsync(full: false, ct))

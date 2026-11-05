@@ -54,7 +54,8 @@ to this section too and has its own doc ([`Holded-connector.md`](Holded-connecto
 | `holded_ledger_lines` | full daybook mirror, all accounts, unique `(EntryNumber, Line)` |
 | `holded_accounts` | chart-of-accounts cache with Holded's debit/credit/balance totals |
 | `holded_api_calls` | per-call metering (endpoint, status, rate-limit headers) |
-| `holded_purchase_docs` | purchase-document mirror keyed on Holded's doc id: number, contact, description, Madrid date, amounts, approved (`draft == false`; absent reads as not approved), notes, doc + line tags, first line's booked account |
+| `holded_purchase_docs` | purchase-document mirror keyed on Holded's doc id: number, contact, description, Madrid date, amounts, approved (`draft == false`; absent reads as not approved), payments pending (null until re-synced), notes, doc + line tags, first line's booked account |
+| `holded_contacts` | contact mirror keyed on Holded's contact id: name, supplier account number, trade name, email, phone, mobile, IBAN, tax code, address. Full pull with replace semantics |
 | `holded_sync_states` | one row per sync kind (`Ledger`, `Accounts`, `FullSync`, `PurchaseDocs`), lazy-created |
 
 Sentinel table is `holded_accounts` — created by this baseline alone, so its existence proves
@@ -194,7 +195,7 @@ Audit entries stay with the calling section, which knows why it wrote.
   untouched. Finance calls it on 57200003 before and after a Pleo booking run, so its "already in Holded"
   judgement is Holded's own current ledger.
 - Reads (`IHoldedService`: lines, balances, entry, purchase lines, open document amounts, sums by account,
-  chart, purchase documents, last ledger sync) never call Holded, and nothing loads the whole ledger table: balances and sums are grouped
+  chart, purchase documents, contacts, last ledger sync) never call Holded, and nothing loads the whole ledger table: balances and sums are grouped
   in the database, statements load only their own entries. Amounts are Holded's raw sign.
 - `GetLedgerSyncedAtAsync` is the later `LastSyncAt` of the `Ledger` and `FullSync` states, stamped only
   on success, so a failed sweep leaves the last good one. Finance's expense recon uses it to tell a push
@@ -217,6 +218,9 @@ Audit entries stay with the calling section, which knows why it wrote.
   are their reimbursement history, identifiable through Finance's member→creditor binding.
   Finance's GDPR contributor exports those lines (its `CreditorLedger` slice, read through
   `IHoldedService.GetLedgerLinesAsync`) and declares their fiscal-retention basis.
+  The contact mirror holds the same personal data Holded's contact list does (a member's name,
+  IBAN, email, phone, address). It is keyed by Holded's contact id, not by member, follows Holded
+  on every sync, and Finance's creditor statement and payout already read it through the binding.
 
 ## Negative Access Rules
 
@@ -226,9 +230,9 @@ Audit entries stay with the calling section, which knows why it wrote.
 
 ## Triggers
 
-- `HoldedSyncJob` (nightly at 03:00, this section's `Jobs/`; scheduled by this section's `ISectionJobs`, job id `holded-sync`): `SyncPurchaseDocumentsAsync`, then `SyncLedgerAsync(full: false)`, under the `holded-api` Hangfire job lock so a long run never overlaps the next. A failed document pull still lets the ledger sweep run, then fails the job.
-- `HoldedMirrorCatchUp` (hosted service): at boot, with an API key and a purchase-document mirror that has never synced (a fresh deployment), enqueues one `HoldedSyncJob` instead of leaving Finance's actuals empty until 03:00.
-- `/Holded` buttons: `SyncNow` (purchase docs, then incremental ledger + reconcile; each runs whatever the other did, and a failure names which), `FullSync` (ledger).
+- `HoldedSyncJob` (nightly at 03:00, this section's `Jobs/`; scheduled by this section's `ISectionJobs`, job id `holded-sync`): `SyncPurchaseDocumentsAsync`, `SyncContactsAsync`, then `SyncLedgerAsync(full: false)`, under the `holded-api` Hangfire job lock so a long run never overlaps the next. A failed document or contact pull still lets the ledger sweep run, then fails the job.
+- `HoldedMirrorCatchUp` (hosted service): at boot, with an API key and a purchase-document or contact mirror that has never synced (a fresh deployment), enqueues one `HoldedSyncJob` instead of leaving Finance's actuals empty until 03:00.
+- `/Holded` buttons: `SyncNow` (purchase docs, contacts, then incremental ledger + reconcile; each runs whatever the other did, and a failure names which), `FullSync` (ledger).
 - Finance's `POST /Finance/HoldedSync/Run` ("Sync Now" on its unmatched queue) calls `SyncPurchaseDocumentsAsync`.
 
 ## Cross-Section Dependencies
