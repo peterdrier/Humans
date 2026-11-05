@@ -4,7 +4,7 @@
     ViewData["Title"] = isEdit ? "Edit Category" : "New Category";
 }
 
-<h2>@ViewData["Title"]</h2>
+<page-header title="@(ViewData["Title"]?.ToString())" />
 
 <div class="card" style="max-width: 600px;">
     <div class="card-body">

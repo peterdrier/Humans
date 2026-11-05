@@ -6,10 +6,9 @@
         .Any(item => !string.IsNullOrWhiteSpace(item.LegalName));
 }
 
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <h1 class="mb-0">@Localizer["Consent_Queue_Title"]</h1>
+<page-header title="@(Localizer["Consent_Queue_Title"].Value)">
     <vc:access-matrix section="ConsentReview" />
-</div>
+</page-header>
 
 
 @if (Model.PendingReviews.Count == 0 && Model.FlaggedReviews.Count == 0)

@@ -37,15 +37,14 @@
 <div class="container py-4">
     <partial name="_CalendarViewPills" />
 
-    <div class="d-flex justify-content-between align-items-center mb-3">
-        <h1 class="h3 mb-0">@Model.Month.Year @culture.DateTimeFormat.GetMonthName(Model.Month.Month)</h1>
+    <page-header title="@($"{Model.Month.Year} {culture.DateTimeFormat.GetMonthName(Model.Month.Month)}")">
         <div>
             <a class="btn btn-sm btn-primary" asp-action="Create">@Localizer["Calendar_NewEvent"]</a>
             <a class="btn btn-sm btn-outline-secondary" asp-action="Index" asp-route-year="@prev.Year" asp-route-month="@prev.Month" asp-route-teamId="@Model.FilterTeamId">&larr; @Localizer["Calendar_Prev"]</a>
             <a class="btn btn-sm btn-outline-secondary" asp-action="Index">@Localizer["Calendar_Today"]</a>
             <a class="btn btn-sm btn-outline-secondary" asp-action="Index" asp-route-year="@next.Year" asp-route-month="@next.Month" asp-route-teamId="@Model.FilterTeamId">@Localizer["Calendar_Next"] &rarr;</a>
         </div>
-    </div>
+    </page-header>
 
     <partial name="_CalendarTimeZonePicker" model="Model.ViewerTimezoneLabel" />
 

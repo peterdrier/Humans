@@ -14,28 +14,23 @@
     var canGenerateCodes = (await AuthService.AuthorizeAsync(User, Humans.Tickets.Contracts.TicketsPolicies.Manage)).Succeeded;
 }
 
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <div>
-        <h1>@Model.Campaign.Title <span class="badge @statusClass fs-6">@Model.Campaign.Status</span></h1>
-        @if (!string.IsNullOrWhiteSpace(Model.Campaign.Description))
-        {
-            <div class="text-muted mb-0">@Html.SanitizedMarkdown(Model.Campaign.Description)</div>
-        }
-    </div>
-    <div class="d-flex gap-2">
-        @if (isAdmin)
-        {
-            <a asp-action="Edit" asp-route-id="@Model.Campaign.Id" class="btn btn-outline-primary btn-sm">
-                <i class="fa-solid fa-pen me-1"></i>Edit <i class="fa-solid fa-lock auth-lock-icon"></i>
-            </a>
-            <a asp-action="Index" class="btn btn-outline-secondary">Back to Campaigns</a>
-        }
-        else
-        {
-            <a asp-controller="Ticket" asp-action="Codes" class="btn btn-outline-secondary">Back to Code Tracking</a>
-        }
-    </div>
-</div>
+<page-header title="@Model.Campaign.Title" badge="@Model.Campaign.Status.ToString()" badge-class="@(statusClass + " fs-6")">
+    @if (!string.IsNullOrWhiteSpace(Model.Campaign.Description))
+    {
+        <page-header-subtitle>@Html.SanitizedMarkdown(Model.Campaign.Description)</page-header-subtitle>
+    }
+    @if (isAdmin)
+    {
+        <a asp-action="Edit" asp-route-id="@Model.Campaign.Id" class="btn btn-outline-primary btn-sm">
+            <i class="fa-solid fa-pen me-1"></i>Edit <i class="fa-solid fa-lock auth-lock-icon"></i>
+        </a>
+        <a asp-action="Index" class="btn btn-outline-secondary">Back to Campaigns</a>
+    }
+    else
+    {
+        <a asp-controller="Ticket" asp-action="Codes" class="btn btn-outline-secondary">Back to Code Tracking</a>
+    }
+</page-header>
 
 
 <div class="d-flex flex-wrap gap-2 mb-4">

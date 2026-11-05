@@ -15,8 +15,7 @@
         {
         }
 
-        <h1>@Localizer["Email_CommPrefs_Title"]</h1>
-        <p class="text-muted">@Localizer["Email_CommPrefs_Description"]</p>
+        <page-header title="@(Localizer["Email_CommPrefs_Title"].Value)" subtitle="@(Localizer["Email_CommPrefs_Description"].Value)" />
 
 
         @if (Model.HighlightCategory is { } highlight && !highlight.IsAlwaysOn())

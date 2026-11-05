@@ -60,11 +60,7 @@
 }
 
 <div class="container py-4">
-    <div class="d-flex flex-wrap justify-content-between align-items-start mb-3 gap-2">
-        <div>
-            <h1 class="mb-1">@Localizer["Cantina_Roster_PageTitle"]</h1>
-            <div class="text-muted">@subtitle</div>
-        </div>
+    <page-header title="@(Localizer["Cantina_Roster_PageTitle"].Value)" subtitle="@subtitle">
         <div class="d-flex flex-wrap align-items-center gap-2 week-picker">
             <span class="form-label mb-0 small text-muted me-1">@Localizer["Cantina_Roster_WeekPickerLabel"]</span>
             <div class="btn-group" role="group" aria-label="@Localizer["Cantina_Roster_WeekPickerLabel"].Value">
@@ -95,7 +91,7 @@
                 <i class="fa-solid fa-download me-1"></i>@Localizer["Cantina_Roster_DownloadCsv"]
             </a>
         </div>
-    </div>
+    </page-header>
 
     <div class="row g-3 mb-4">
         <div class="col-md-4">

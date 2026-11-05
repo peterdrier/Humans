@@ -17,10 +17,16 @@ namespace Humans.Base.TagHelpers;
 ///   <page-header title="@Model.Name" subtitle="Budget year"
 ///                badge="@Model.Status" badge-class="@Model.Status.GetBadgeClass()" />
 ///
+///   <page-header title="@Model.Name">
+///       <page-header-subtitle><a asp-action="Team">@Model.TeamName</a></page-header-subtitle>
+///       <a asp-action="Edit" class="btn btn-primary">Edit</a>
+///   </page-header>
+///
 /// Always emits exactly one &lt;h1&gt; (so page titles stop drifting to h2) and keeps the
 /// badge OUT of the heading text, so screen-reader heading outlines stay clean.
-/// Plain-text title/subtitle/badge only — headers whose subtitle carries markup keep
-/// their hand-rolled markup.
+/// Title and badge are plain text. A subtitle that carries markup (links, sanitized markdown)
+/// goes in a nested <c>&lt;page-header-subtitle&gt;</c>, which wins over the <c>subtitle</c>
+/// attribute; every other child is the right-aligned actions area.
 /// </summary>
 [HtmlTargetElement("page-header", Attributes = "title")]
 public class PageHeaderTagHelper : TagHelper
@@ -46,6 +52,8 @@ public class PageHeaderTagHelper : TagHelper
         ArgumentNullException.ThrowIfNull(context);
         ArgumentNullException.ThrowIfNull(output);
 
+        var slot = new SubtitleSlot();
+        context.Items[typeof(PageHeaderTagHelper)] = slot;
         var actions = (await output.GetChildContentAsync()).GetContent().Trim();
         var hasActions = !string.IsNullOrWhiteSpace(actions);
         var enc = HtmlEncoder.Default;
@@ -63,7 +71,11 @@ public class PageHeaderTagHelper : TagHelper
             titleInner.Append("<span class=\"badge ").Append(enc.Encode(badgeClass)).Append("\">")
                       .Append(enc.Encode(Badge!)).Append("</span></div>");
         }
-        if (!string.IsNullOrWhiteSpace(Subtitle))
+        if (!string.IsNullOrWhiteSpace(slot.Html))
+        {
+            titleInner.Append("<div class=\"text-muted mb-0\">").Append(slot.Html).Append("</div>");
+        }
+        else if (!string.IsNullOrWhiteSpace(Subtitle))
         {
             titleInner.Append("<p class=\"text-muted mb-0\">").Append(enc.Encode(Subtitle)).Append("</p>");
         }
@@ -83,5 +95,32 @@ public class PageHeaderTagHelper : TagHelper
 
         output.TagName = null;
         output.Content.SetHtmlContent(html.ToString());
+    }
+
+    /// <summary>Mutable holder the nested <see cref="PageHeaderSubtitleTagHelper"/> fills while the child content renders.</summary>
+    internal sealed class SubtitleSlot
+    {
+        public string? Html { get; set; }
+    }
+}
+
+/// <summary>
+/// Markup subtitle for a <c>&lt;page-header&gt;</c>: its content renders in the muted line under
+/// the title instead of the plain-text <c>subtitle</c> attribute. Emits nothing itself.
+/// </summary>
+[HtmlTargetElement("page-header-subtitle", ParentTag = "page-header")]
+public class PageHeaderSubtitleTagHelper : TagHelper
+{
+    public override async Task ProcessAsync(TagHelperContext context, TagHelperOutput output)
+    {
+        ArgumentNullException.ThrowIfNull(context);
+        ArgumentNullException.ThrowIfNull(output);
+
+        var content = (await output.GetChildContentAsync()).GetContent().Trim();
+        if (context.Items.TryGetValue(typeof(PageHeaderTagHelper), out var slot) && slot is PageHeaderTagHelper.SubtitleSlot holder)
+        {
+            holder.Html = content;
+        }
+        output.SuppressOutput();
     }
 }

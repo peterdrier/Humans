@@ -14,16 +14,12 @@
 
 <div class="row">
     <div class="col-lg-10">
-        <div class="d-flex justify-content-between align-items-center mb-3">
-            <div>
-                <h1 class="mb-0">@Model.DocumentName</h1>
-                <span class="badge bg-info">@Localizer["Consent_Version"] @Model.VersionNumber</span>
-            </div>
+        <page-header title="@Model.DocumentName" badge="@($"{Localizer["Consent_Version"].Value} {Model.VersionNumber}")" badge-class="bg-info">
             @if (Model.HasAlreadyConsented)
             {
                 <span class="badge bg-success fs-6">@Localizer["Consent_Review_AlreadyConsented"]</span>
             }
-        </div>
+        </page-header>
 
         @if (!Model.HasAlreadyConsented)
         {

@@ -4,12 +4,13 @@
     ViewData[Humans.Base.ViewComponents.AdminNavComposition.ParentKey] = nameof(EmailController.EmailOutbox);
 }
 
-<h1>Backfill Daily Send Counts</h1>
-<p class="text-muted">
-    Recomputes (Date, Template) rows from retained outbox history for any combination that
-    has no <code>email_daily_send_counts</code> row yet. Existing rows — written by the
-    processor, or by an earlier run of this backfill — are never touched.
-</p>
+<page-header title="Backfill Daily Send Counts">
+    <page-header-subtitle>
+        Recomputes (Date, Template) rows from retained outbox history for any combination that
+        has no <code>email_daily_send_counts</code> row yet. Existing rows — written by the
+        processor, or by an earlier run of this backfill — are never touched.
+    </page-header-subtitle>
+</page-header>
 
 @if (Model.RowsToAdd == 0)
 {

@@ -3,8 +3,7 @@
     ViewData["Title"] = $"Barrio role compliance — {Model.Event.EventName}";
 }
 
-<div class="d-flex justify-content-between align-items-center mb-3">
-    <h1 class="mb-0">Barrio role compliance &mdash; @Model.Event.EventName</h1>
+<page-header title="@($"Barrio role compliance — {Model.Event.EventName}")">
     <form asp-controller="CampCompliance" asp-action="Compliance" method="get" class="d-flex gap-2 align-items-center">
         <label for="eventSettingsId" class="form-label mb-0 text-nowrap">Event</label>
         <select id="eventSettingsId" name="eventSettingsId" class="form-select form-select-sm" style="max-width: 220px;">
@@ -24,7 +23,7 @@
             <i class="fa-solid fa-arrows-rotate me-1"></i>Show
         </button>
     </form>
-</div>
+</page-header>
 
 
 @if (Model.Rows.Count == 0)

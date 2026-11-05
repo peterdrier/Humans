@@ -4,7 +4,7 @@
     var statusClass = EventStatusPresentation.BadgeClass(Model.Status);
 }
 
-<h2>Edit Event <span class="badge @statusClass align-middle">@Model.Status</span></h2>
+<page-header title="Edit Event" badge="@Model.Status.ToString()" badge-class="@statusClass" />
 
 <div class="alert alert-info">
     <i class="fa-solid fa-pen-to-square me-1"></i>Admin in-place edit. Saving keeps the current
