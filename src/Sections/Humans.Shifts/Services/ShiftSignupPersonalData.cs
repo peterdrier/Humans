@@ -1,5 +1,10 @@
 using Humans.Base.Extensions;
 using Humans.Base.Interfaces;
+using Humans.Calendar.Contracts;
+using Humans.Shifts.Contracts;
+using Humans.Settings.Contracts;
+using Microsoft.Extensions.Localization;
+
 using Humans.Gdpr.Contracts;
 using Humans.Shifts.Data;
 using Humans.Shifts.Domain;
@@ -9,12 +14,13 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Humans.Shifts.Services;
 
-internal sealed class ShiftSignupExport(
+internal sealed class ShiftSignupPersonalData(
     IShiftManagementRepository repo,
     IVolunteerTrackingRepository trackingRepo,
     EventCalendarResolver calendarResolver,
     IUserService users,
-    IServiceProvider serviceProvider) : IApplicationService
+    IServiceProvider serviceProvider,
+    IStringLocalizer<ShiftsResource> localizer) : IApplicationService
 {
     internal const string ShiftSignups = "ShiftSignups";
     internal const string VolunteerEventProfiles = "VolunteerEventProfiles";
@@ -24,6 +30,92 @@ internal sealed class ShiftSignupExport(
 
     // Lazy, to break the DI cycle with TeamService.
     private ITeamService TeamService => serviceProvider.GetRequiredService<ITeamService>();
+
+    public async Task<IReadOnlyList<ShiftSignupSummary>> GetByUserAsync(Guid userId, Guid? eventSettingsId = null, CancellationToken ct = default)
+    {
+        var signups = await repo.GetForUsersAsync([userId], eventSettingsId, ct);
+        var result = new List<ShiftSignupSummary>(signups.Count);
+        foreach (var signup in signups)
+        {
+            if (signup.Shift?.Rota is null) continue;
+            if (await calendarResolver.GetAsync(signup.Shift.Rota.EventSettingsId, ct) is { } calendar)
+                result.Add(ShiftUserSummaryProjection.ToSummary(signup, calendar));
+        }
+
+        return result;
+    }
+
+    public async Task<IReadOnlyList<NoShowHistoryEntry>> GetNoShowHistoryAsync(Guid userId, CancellationToken ct = default)
+    {
+        var signups = (await repo.GetForUsersAsync([userId], ct: ct))
+            .Where(s => s.Status == SignupStatus.NoShow)
+            .ToList();
+
+        var calendarsById = new Dictionary<Guid, BurnSettingsInfo>();
+        foreach (var id in signups.Select(s => s.Shift.Rota.EventSettingsId).Distinct())
+        {
+            var calendar = await calendarResolver.GetAsync(id, ct);
+            if (calendar is not null) calendarsById[id] = calendar;
+        }
+
+        return signups
+            .Where(s => calendarsById.ContainsKey(s.Shift.Rota.EventSettingsId))
+            .Select(s =>
+            {
+                var rota = s.Shift.Rota;
+                var calendar = calendarsById[rota.EventSettingsId];
+                return new NoShowHistoryEntry(
+                    ShiftLabel: rota.Name,
+                    TeamId: rota.TeamId,
+                    ShiftStart: s.Shift.GetAbsoluteStart(calendar),
+                    TimeZoneId: calendar.TimeZoneId,
+                    ReviewedByUserId: s.ReviewedByUserId,
+                    ReviewedAt: s.ReviewedAt);
+            }).ToList();
+    }
+
+    public async Task<IReadOnlyList<CalendarFeedItem>> GetCalendarItemsForUserAsync(Guid userId, CancellationToken ct)
+    {
+        // Active commitments only; history is out of feed scope (spec 2026-06-09-ical-feed).
+        var signups = (await repo.GetForUsersAsync([userId], ct: ct))
+            .Where(ss => ss.Status is SignupStatus.Confirmed or SignupStatus.Pending)
+            .ToList();
+        if (signups.Count == 0) return [];
+
+        var teamsById = await TeamService.GetTeamsAsync(ct);
+
+        var calendarsById = new Dictionary<Guid, BurnSettingsInfo>();
+        foreach (var id in signups.Select(ss => ss.Shift.Rota.EventSettingsId).Distinct())
+        {
+            var calendar = await calendarResolver.GetAsync(id, ct);
+            if (calendar is not null) calendarsById[id] = calendar;
+        }
+
+        return signups
+            .Where(ss => calendarsById.ContainsKey(ss.Shift.Rota.EventSettingsId))
+            .Select(ss =>
+            {
+                var es = calendarsById[ss.Shift.Rota.EventSettingsId];
+                var summary = teamsById.TryGetValue(ss.Shift.Rota.TeamId, out var team)
+                    ? $"{team.Name}: {ss.Shift.Rota.Name}"
+                    : ss.Shift.Rota.Name;
+                if (ss.Status == SignupStatus.Pending)
+                    summary += $" {localizer["Shifts_Pending"].Value}";
+
+                var description = string.Join("\n\n", new[] { ss.Shift.Description, ss.Shift.Rota.PracticalInfo }
+                    .Where(s => !string.IsNullOrWhiteSpace(s)));
+
+                return new CalendarFeedItem(
+                    Uid: $"shift-{ss.Id}@humans.nobodies.team",
+                    Source: "Shifts",
+                    Summary: summary,
+                    Description: description.Length == 0 ? null : description,
+                    Start: ss.Shift.GetAbsoluteStart(es),
+                    End: ss.Shift.GetAbsoluteEnd(es),
+                    Location: null,
+                    Url: "/Shifts/Mine");
+            }).ToList();
+    }
 
     public async Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct)
     {
