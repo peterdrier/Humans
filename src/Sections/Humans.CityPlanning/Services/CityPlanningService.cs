@@ -375,32 +375,31 @@ internal sealed class CityPlanningService(
             userId,
             cancellationToken);
 
-    public async Task<GeoJsonUploadResult> UpdateLimitZoneFromUploadAsync(
-        IFormFile? file, Guid userId, CancellationToken cancellationToken = default)
-    {
-        var geoJson = await ReadGeoJsonUploadAsync(file, cancellationToken);
-        if (!geoJson.Success)
-            return new GeoJsonUploadResult(false, geoJson.ErrorKey);
+    public Task<GeoJsonUploadResult> UpdateLimitZoneFromUploadAsync(
+        IFormFile? file, Guid userId, CancellationToken cancellationToken = default) =>
+        UploadGeoJsonAsync(file, userId, UpdateLimitZoneAsync, cancellationToken);
 
-        await UpdateLimitZoneAsync(geoJson.Content!, userId, cancellationToken);
-        return new GeoJsonUploadResult(true);
-    }
-
-    private static async Task<(bool Success, string? ErrorKey, string? Content)> ReadGeoJsonUploadAsync(
-        IFormFile? file,
+    private static async Task<GeoJsonUploadResult> UploadGeoJsonAsync(
+        IFormFile? file, Guid userId,
+        Func<string, Guid, CancellationToken, Task> updateAsync,
         CancellationToken cancellationToken)
     {
         if (file is null || file.Length == 0)
-            return (false, "MissingFile", null);
+            return new(false, "MissingFile");
 
         if (file.Length > MaxGeoJsonUploadBytes)
-            return (false, "FileTooLarge", null);
+            return new(false, "FileTooLarge");
 
-        using var reader = new StreamReader(file.OpenReadStream());
-        var geoJson = await reader.ReadToEndAsync(cancellationToken);
-        return CityPlanningGeoJsonValidation.IsValidOverlayGeoJson(geoJson)
-            ? (true, null, geoJson)
-            : (false, "InvalidGeoJson", null);
+        string geoJson;
+        using (var reader = new StreamReader(file.OpenReadStream()))
+        {
+            geoJson = await reader.ReadToEndAsync(cancellationToken);
+            if (!CityPlanningGeoJsonValidation.IsValidOverlayGeoJson(geoJson))
+                return new(false, "InvalidGeoJson");
+        }
+
+        await updateAsync(geoJson, userId, cancellationToken);
+        return new(true);
     }
 
     public Task DeleteLimitZoneAsync(Guid userId, CancellationToken cancellationToken = default) =>
@@ -420,16 +419,9 @@ internal sealed class CityPlanningService(
             userId,
             cancellationToken);
 
-    public async Task<GeoJsonUploadResult> UpdateOfficialZonesFromUploadAsync(
-        IFormFile? file, Guid userId, CancellationToken cancellationToken = default)
-    {
-        var geoJson = await ReadGeoJsonUploadAsync(file, cancellationToken);
-        if (!geoJson.Success)
-            return new GeoJsonUploadResult(false, geoJson.ErrorKey);
-
-        await UpdateOfficialZonesAsync(geoJson.Content!, userId, cancellationToken);
-        return new GeoJsonUploadResult(true);
-    }
+    public Task<GeoJsonUploadResult> UpdateOfficialZonesFromUploadAsync(
+        IFormFile? file, Guid userId, CancellationToken cancellationToken = default) =>
+        UploadGeoJsonAsync(file, userId, UpdateOfficialZonesAsync, cancellationToken);
 
     public Task DeleteOfficialZonesAsync(Guid userId, CancellationToken cancellationToken = default) =>
         MutateSettingsAndAuditAsync(
