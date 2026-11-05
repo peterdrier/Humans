@@ -17,7 +17,7 @@ As a nonprofit operating in Spain and the EU, Nobodies Collective must comply wi
 ## Key Concepts
 
 - **Team-scoped documents**: Every document belongs to a Team. Documents on the Volunteers team (all active members) are effectively global. Other teams (Board, Leads, user-created) can have team-specific required documents.
-- **Per-document grace period**: Each document has its own `GracePeriodDays` (default 7). After grace expires without re-consent, the user is removed from that team.
+- **Per-document grace period**: Each document has its own `GracePeriodDays` (default 7). After grace expires without re-consent, Users' `SuspendNonCompliantMembersJob` suspends the member.
 - **Multi-language content**: Document versions store content in a `Content` dictionary keyed by language code ("es", "en", "de", etc.). Spanish ("es") is always canonical/legally binding.
 - **Folder-based GitHub sync**: Admin sets a `GitHubFolderPath`; sync discovers translations by naming convention: `name.md` (Spanish), `name-en.md` (English), `name-de.md` (German), etc.
 - **Admin CRUD**: Documents are created and managed via the admin UI at `/Legal/Admin/Documents`, not in config files.
@@ -96,7 +96,7 @@ As a nonprofit operating in Spain and the EU, Nobodies Collective must comply wi
 - Email notification when re-consent required
 - Only team members notified (not all users)
 - Old consent remains in audit trail
-- Per-document grace period before team removal
+- Per-document grace period before suspension
 
 ## Data Model
 
@@ -256,7 +256,7 @@ When a new version is published with `RequiresReConsent = true`:
 2. Their consent status for that team becomes incomplete
 3. They must review and consent to new version
 4. Original consent remains in audit trail
-5. Per-document grace period applies before team removal
+5. Per-document grace period applies before suspension
 
 ## Business Rules
 
