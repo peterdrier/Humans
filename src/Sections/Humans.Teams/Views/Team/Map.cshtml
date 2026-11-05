@@ -37,27 +37,22 @@
             background: var(--h-map-person);
             box-shadow: 0 1px 3px rgb(0 0 0 / 40%);
         }
+        /* Google's header row pads the title down to the close button's top edge; centre it on the button instead. */
+        #map .gm-style-iw-chr {
+            align-items: center;
+            border-bottom: 1px solid var(--h-border-light);
+            margin-bottom: 8px;
+        }
+        #map .gm-style-iw-ch { padding-top: 0; }
         .map-popup-header {
             font-family: var(--h-font-display);
             font-weight: 600;
-            font-size: 1rem;
+            font-size: 1.25rem;
+            line-height: 1.2;
             color: var(--h-text);
-            padding-top: 4px;
-        }
-        .map-popup-count {
-            display: inline-block;
-            min-width: 1.6em;
-            padding: 1px 6px;
-            margin-left: 4px;
-            border-radius: 999px;
-            background: var(--h-map-cluster);
-            color: var(--h-text-on-dark);
-            font-size: 0.75rem;
-            text-align: center;
-            vertical-align: middle;
         }
         .map-popup {
-            max-height: 280px;
+            max-height: 320px;
             font-family: var(--h-font-body);
             overflow-y: auto;
             scrollbar-width: thin;
@@ -73,7 +68,7 @@
             display: flex;
             align-items: center;
             gap: 8px;
-            padding: 3px 4px;
+            padding: 4px;
             border-radius: 6px;
             color: var(--h-text);
             font-weight: 500;
@@ -157,7 +152,7 @@ else
 
             function personHtml(m) {
                 return '<a class="map-person" href="/Profile/' + m.userId + '">' +
-                    avatarHtml(m, 28) +
+                    avatarHtml(m, 40) +
                     '<span>' + Humans.escapeHtml(m.displayName) + '</span></a>';
             }
 
@@ -167,12 +162,6 @@ else
                 const el = document.createElement('div');
                 el.className = 'map-popup-header';
                 el.textContent = [first.city, first.countryCode].filter(Boolean).join(', ');
-                if (people.length > 1) {
-                    const count = document.createElement('span');
-                    count.className = 'map-popup-count';
-                    count.textContent = people.length;
-                    el.append(' ', count);
-                }
                 return el;
             }
 
