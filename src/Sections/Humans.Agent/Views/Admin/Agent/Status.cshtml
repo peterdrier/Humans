@@ -178,7 +178,7 @@
     <div class="card-body">
         @if (report.Refusals7dCount == 0)
         {
-            <p class="text-muted mb-0">No refusals in the last 7 days.</p>
+            <empty-state class="mb-0">No refusals in the last 7 days.</empty-state>
         }
         else
         {
@@ -209,7 +209,7 @@
     <div class="card-body">
         @if (!report.TopDocs7d.Any())
         {
-            <p class="text-muted mb-0">No tool fetches in the last 7 days.</p>
+            <empty-state class="mb-0">No tool fetches in the last 7 days.</empty-state>
         }
         else
         {
@@ -239,7 +239,7 @@
     <div class="card-body">
         @if (!report.TopUsers7d.Any())
         {
-            <p class="text-muted mb-0">No activity in the last 7 days.</p>
+            <empty-state class="mb-0">No activity in the last 7 days.</empty-state>
         }
         else
         {

@@ -41,7 +41,7 @@
 
     @if (!grouped.Any())
     {
-        <p class="text-muted">@Localizer["Calendar_NoEventsInRange"]</p>
+        <empty-state>@Localizer["Calendar_NoEventsInRange"]</empty-state>
     }
     else
     {

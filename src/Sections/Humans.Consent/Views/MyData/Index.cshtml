@@ -86,7 +86,7 @@
     <div class="card-body">
         @if (Model.SignedDocuments.Count == 0)
         {
-            <p class="text-muted">@Localizer["Consent_NoRecords"]</p>
+            <empty-state>@Localizer["Consent_NoRecords"]</empty-state>
         }
         else
         {

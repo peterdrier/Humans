@@ -389,7 +389,7 @@
         @{ var visibleDocs = w.Documents.Where(d => d.Status != WorkgroupDocumentStatus.Draft || Model.IsMember || Model.CanAdminister).OrderByDescending(d => d.CreatedAt).ToList(); }
         @if (visibleDocs.Count == 0)
         {
-            <p class="text-muted">@Localizer["Workgroups_NoDocuments"]</p>
+            <empty-state>@Localizer["Workgroups_NoDocuments"]</empty-state>
         }
         else
         {
@@ -441,7 +441,7 @@
         @{ var timeline = Timeline().OrderByDescending(t => t.Date).ToList(); }
         @if (timeline.Count == 0)
         {
-            <p class="text-muted">@Localizer["Workgroups_NoHistory"]</p>
+            <empty-state>@Localizer["Workgroups_NoHistory"]</empty-state>
         }
         else
         {

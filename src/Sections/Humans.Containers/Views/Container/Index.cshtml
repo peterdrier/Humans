@@ -51,7 +51,7 @@
 
 @if (Model.Containers.Count == 0)
 {
-    <div class="alert alert-secondary">@Localizer["Containers_Empty"]</div>
+    <empty-state>@Localizer["Containers_Empty"]</empty-state>
 }
 else
 {

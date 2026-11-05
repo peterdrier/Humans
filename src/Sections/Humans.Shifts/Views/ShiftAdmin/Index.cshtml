@@ -72,7 +72,7 @@
             <div class="card-body">
                 @if (pendingGroups.Count == 0)
                 {
-                    <p class="text-muted mb-0">No pending signups match the "Incomplete onboarding" filter.</p>
+                    <empty-state class="mb-0">No pending signups match the "Incomplete onboarding" filter.</empty-state>
                 }
                 else
                 {
@@ -691,7 +691,7 @@
                 }
                 else
                 {
-                    <p class="text-muted">No shifts yet.</p>
+                    <empty-state>No shifts yet.</empty-state>
                 }
 
                 @if (Model.CanManageShifts && rota.Period != RotaPeriod.Event)

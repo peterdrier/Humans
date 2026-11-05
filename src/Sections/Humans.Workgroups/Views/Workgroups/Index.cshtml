@@ -16,7 +16,7 @@
 <h2 class="h4 mt-4">@Localizer["Workgroups_Active"] <span class="badge bg-secondary">@Model.Active.Count</span></h2>
 @if (Model.Active.Count == 0)
 {
-    <p class="text-muted">@Localizer["Workgroups_NoActive"]</p>
+    <empty-state>@Localizer["Workgroups_NoActive"]</empty-state>
 }
 else
 {
@@ -58,7 +58,7 @@ else
 <h2 class="h4 mt-4">@Localizer["Workgroups_Pending"] <span class="badge bg-secondary">@Model.Pending.Count</span></h2>
 @if (Model.Pending.Count == 0)
 {
-    <p class="text-muted">@Localizer["Workgroups_NoPending"]</p>
+    <empty-state>@Localizer["Workgroups_NoPending"]</empty-state>
 }
 else
 {
@@ -96,7 +96,7 @@ else
 <h2 class="h4 mt-4">@Localizer["Workgroups_Archive"] <span class="badge bg-secondary">@Model.Archive.Count</span></h2>
 @if (Model.Archive.Count == 0)
 {
-    <p class="text-muted">@Localizer["Workgroups_NoArchive"]</p>
+    <empty-state>@Localizer["Workgroups_NoArchive"]</empty-state>
 }
 else
 {

@@ -610,6 +610,62 @@
                 <div class="wg-card">
                     <div class="wg-card-header">
                         <div>
+                            <span class="wg-card-name">&lt;empty-state&gt;</span>
+                            <span class="wg-card-kind kind-th">TagHelper</span>
+                        </div>
+                        <span class="wg-card-path">src/Humans.Base/TagHelpers/EmptyStateTagHelper.cs</span>
+                    </div>
+                    <div class="wg-card-note">
+                        The "nothing here yet" message for a list or collection that is empty: muted, centered, the same look
+                        <code>_Table</code> gives its <code>EmptyMessage</code> row. Renders a <code>&lt;p&gt;</code>; child content is the
+                        message. Not for hints or help text, and not inside tables.
+                    </div>
+                    @ParamsBlock(
+                        ("class", "<code>string</code> — optional; appended for context spacing (<code>mb-0</code>, <code>small</code>, <code>py-4</code>…)"),
+                        ("child content", "The message — plain text or localized markup")
+                    )
+                    <div class="wg-variants">
+                        <div class="wg-variant-label">default</div>
+                        <div class="wg-variant-render">
+                            <empty-state>No workgroups yet.</empty-state>
+                        </div>
+
+                        <div class="wg-variant-label">class="mb-0 small"</div>
+                        <div class="wg-variant-render">
+                            <empty-state class="mb-0 small">No interests yet.</empty-state>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="wg-card">
+                    <div class="wg-card-header">
+                        <div>
+                            <span class="wg-card-name">_StatTile.cshtml</span>
+                            <span class="wg-card-kind kind-pa">Partial</span>
+                        </div>
+                        <span class="wg-card-path">src/Humans.Base/Views/Shared/_StatTile.cshtml</span>
+                    </div>
+                    <div class="wg-card-note">
+                        A label, one big value and an optional subline. Wrap tiles in <code>&lt;div class="stats"&gt;</code> (4 columns,
+                        2 on tablets, 1 on phones; <code>style="--stats-cols: N"</code> sets the desktop column count). Same look as
+                        the admin dashboard tiles.
+                    </div>
+                    @ParamsBlock(
+                        ("@@model", "<code>StatTileViewModel</code> — Label, Value, Secondary (de-emphasised tail of the value), Subline, Severity (colours the subline), Extra (markup under the subline)")
+                    )
+                    <div class="wg-card-example">
+                        <div class="stats">
+                            <partial name="_StatTile" model='new StatTileViewModel("Shifts filled", "86", "/ 120 (72%)")' />
+                            <partial name="_StatTile" model='new StatTileViewModel("Responses", "42", Subline: "since Monday")' />
+                            <partial name="_StatTile" model='new StatTileViewModel("Stale pending", "3", Subline: "older than 7 days", Severity: TileSeverity.Warning)' />
+                            <partial name="_StatTile" model='new StatTileViewModel("Response rate", "—")' />
+                        </div>
+                    </div>
+                </div>
+
+                <div class="wg-card">
+                    <div class="wg-card-header">
+                        <div>
                             <span class="wg-card-name">authorize-policy="…"</span>
                             <span class="wg-card-kind kind-th">TagHelper</span>
                         </div>

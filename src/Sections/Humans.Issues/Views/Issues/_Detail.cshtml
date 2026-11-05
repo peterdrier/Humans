@@ -45,7 +45,7 @@
 
             @if (Model.Thread.Count == 0)
             {
-                <p class="text-muted small">@Localizer["Issue_NoActivity"]</p>
+                <empty-state class="small">@Localizer["Issue_NoActivity"]</empty-state>
             }
 
             @foreach (var ev in Model.Thread)

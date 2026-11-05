@@ -36,7 +36,7 @@
 <h2 class="h4 mt-4">@Localizer["Rideshare_MyOffers"]</h2>
 @if (Model.Offers.Count == 0)
 {
-    <p class="text-muted">@Localizer["Rideshare_NoMyOffers"]</p>
+    <empty-state>@Localizer["Rideshare_NoMyOffers"]</empty-state>
 }
 @foreach (var row in Model.Offers)
 {
@@ -81,7 +81,7 @@
             <h3 class="h6 mt-3 mb-2">@Localizer["Rideshare_InterestsReceived"]</h3>
             @if (row.Received.Count == 0)
             {
-                <p class="text-muted small mb-0">@Localizer["Rideshare_NoInterestsYet"]</p>
+                <empty-state class="small mb-0">@Localizer["Rideshare_NoInterestsYet"]</empty-state>
             }
             else
             {
@@ -99,7 +99,7 @@
 <h2 class="h4 mt-4">@Localizer["Rideshare_MyRequests"]</h2>
 @if (Model.Requests.Count == 0)
 {
-    <p class="text-muted">@Localizer["Rideshare_NoMyRequests"]</p>
+    <empty-state>@Localizer["Rideshare_NoMyRequests"]</empty-state>
 }
 @foreach (var row in Model.Requests)
 {
@@ -139,7 +139,7 @@
             <h3 class="h6 mt-3 mb-2">@Localizer["Rideshare_DriversOffering"]</h3>
             @if (row.Received.Count == 0)
             {
-                <p class="text-muted small mb-0">@Localizer["Rideshare_NoInterestsYet"]</p>
+                <empty-state class="small mb-0">@Localizer["Rideshare_NoInterestsYet"]</empty-state>
             }
             else
             {
@@ -157,7 +157,7 @@
 <h2 class="h4 mt-4">@Localizer["Rideshare_InterestsSent"]</h2>
 @if (Model.Sent.Count == 0)
 {
-    <p class="text-muted">@Localizer["Rideshare_NoInterestsSent"]</p>
+    <empty-state>@Localizer["Rideshare_NoInterestsSent"]</empty-state>
 }
 else
 {

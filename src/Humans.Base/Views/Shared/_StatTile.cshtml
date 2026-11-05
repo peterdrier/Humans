@@ -1,0 +1,21 @@
+@model Humans.Base.Models.StatTileViewModel
+@using Humans.Base.Interfaces
+
+<div class="stat">
+    <div class="label">@Model.Label</div>
+    <div class="value">
+        @if (!string.IsNullOrEmpty(Model.Value))
+        {
+            @Model.Value
+        }
+        @if (Model.Secondary is not null)
+        {
+            <em>@Model.Secondary</em>
+        }
+    </div>
+    @if (Model.Subline is not null)
+    {
+        <div class="delta @(Model.Severity == TileSeverity.Normal ? null : "bad")">@Model.Subline</div>
+    }
+    @Model.Extra
+</div>

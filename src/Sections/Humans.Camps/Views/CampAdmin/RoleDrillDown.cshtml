@@ -80,7 +80,7 @@
     @if (Model.Camps.Count == 0)
     {
         <div class="card-body">
-            <p class="text-muted mb-0">No camps participate in @Model.Event.EventName.</p>
+            <empty-state class="mb-0">No camps participate in @Model.Event.EventName.</empty-state>
         </div>
     }
     else

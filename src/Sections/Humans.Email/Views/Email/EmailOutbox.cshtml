@@ -32,54 +32,19 @@
 </div>
 
 
-<div class="row g-3 mb-4">
-    <div class="col-6 col-md">
-        <div class="card text-center">
-            <div class="card-body">
-                <div class="display-6 fw-bold text-primary">@FormatApproxCount(Model.TotalMessageCount)</div>
-                <div class="text-muted small">Total Messages</div>
-            </div>
-        </div>
-    </div>
-    <div class="col-6 col-md">
-        <div class="card text-center">
-            <div class="card-body">
-                <div class="display-6 fw-bold text-warning">@Model.QueuedCount</div>
-                <div class="text-muted small">Queued</div>
-            </div>
-        </div>
-    </div>
-    <div class="col-6 col-md">
-        <div class="card text-center">
-            <div class="card-body">
-                <div class="display-6 fw-bold text-success">@Model.SentLast24HoursCount</div>
-                <div class="text-muted small">Sent (24h)</div>
-            </div>
-        </div>
-    </div>
-    <div class="col-6 col-md">
-        <div class="card text-center">
-            <div class="card-body">
-                <div class="display-6 fw-bold text-danger">@Model.FailedCount</div>
-                <div class="text-muted small">Failed</div>
-            </div>
-        </div>
-    </div>
-    <div class="col-6 col-md">
-        <div class="card text-center">
-            <div class="card-body">
-                <div class="display-6 fw-bold text-secondary">@Model.OutboxBatchSize</div>
-                <div class="text-muted small">Messages per run</div>
-            </div>
-        </div>
-    </div>
+<div class="stats" style="--stats-cols: 5">
+    <partial name="_StatTile" model='new StatTileViewModel("Total Messages", FormatApproxCount(Model.TotalMessageCount))' />
+    <partial name="_StatTile" model='new StatTileViewModel("Queued", Model.QueuedCount.ToString())' />
+    <partial name="_StatTile" model='new StatTileViewModel("Sent (24h)", Model.SentLast24HoursCount.ToString())' />
+    <partial name="_StatTile" model='new StatTileViewModel("Failed", Model.FailedCount.ToString())' />
+    <partial name="_StatTile" model='new StatTileViewModel("Messages per run", Model.OutboxBatchSize.ToString())' />
 </div>
 
 <div class="card">
     <div class="card-header">Recent Messages (last 50)</div>
     @if (!Model.Messages.Any())
     {
-        <div class="card-body text-muted">No messages in the outbox.</div>
+        <div class="card-body"><empty-state class="mb-0">No messages in the outbox.</empty-state></div>
     }
     else
     {
@@ -163,7 +128,7 @@
             </div>
             @if (!Model.DailyCounts.Any())
             {
-                <div class="card-body text-muted">No daily send counts recorded yet.</div>
+                <div class="card-body"><empty-state class="mb-0">No daily send counts recorded yet.</empty-state></div>
             }
             else
             {
@@ -184,7 +149,7 @@
             <div class="card-header">Top Templates (Last 90 Days)</div>
             @if (!Model.TopTemplates.Any())
             {
-                <div class="card-body text-muted">No daily send counts recorded yet.</div>
+                <div class="card-body"><empty-state class="mb-0">No daily send counts recorded yet.</empty-state></div>
             }
             else
             {

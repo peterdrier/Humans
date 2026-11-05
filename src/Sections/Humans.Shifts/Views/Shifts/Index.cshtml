@@ -344,7 +344,7 @@
 
     @if (Model.Departments.Count == 0)
     {
-        <div class="alert alert-info">@SharedLocalizer["Shifts_NoShiftsAvailable"]</div>
+        <empty-state>@SharedLocalizer["Shifts_NoShiftsAvailable"]</empty-state>
     }
     else if (isUrgencySort)
     {
