@@ -53,7 +53,7 @@ public sealed record DatabaseServerSummary(
     long TempFiles,
     long TempBytes);
 
-/// <summary><see cref="Rows"/> is an exact <c>count(*)</c>, not the planner estimate.</summary>
+/// <summary><see cref="Rows"/> is the stats collector's live-tuple count, kept current by every insert and delete.</summary>
 public sealed record DatabaseTableInfo(
     string Schema,
     string Name,

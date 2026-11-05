@@ -28,7 +28,7 @@
         <div class="value">@Model.Tables.Count.ToString("N0")</div>
     </div>
     <div class="stat">
-        <div class="label">Rows</div>
+        <div class="label">Live rows</div>
         <div class="value">@Model.Tables.Sum(t => t.Rows).ToString("N0")</div>
     </div>
     <div class="stat">
@@ -113,7 +113,7 @@
         var tablesTable = TableModel.For(Model.Tables)
             .Column("Schema", t => t.Schema)
             .Column("Table", t => t.Name)
-            .Column("Rows", t => t.Rows, c => c.Number().End())
+            .Column("Live rows", t => t.Rows, c => c.Number().End())
             .Column("Total (KB)", t => Kb(t.TotalBytes), c => c.Number().End())
             .Column("Data (KB)", t => Kb(t.TableBytes), c => c.Number().End())
             .Column("Index (KB)", t => Kb(t.IndexBytes), c => c.Number().End())
