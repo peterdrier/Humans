@@ -11,7 +11,7 @@ namespace Humans.Stripe.Services;
 
 internal enum StripeSyncOutcome { NotConfigured, Busy, Synced, SomeFailed }
 
-/// <summary>The Stripe mirror and the <c>/Stripe/Admin</c> pages over it. Pages read the mirror only.</summary>
+/// <summary>The Stripe mirror and the <c>/Stripe</c> pages over it. Pages read the mirror only.</summary>
 internal interface IStripeMirrorAdminService : IApplicationService
 {
     /// <summary>Sweeps each configured account in turn. A failed account records its error on its sync row and leaves

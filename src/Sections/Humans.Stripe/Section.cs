@@ -15,8 +15,8 @@ namespace Humans.Stripe;
 /// <c>Section</c> (as <c>ISectionConfiguration</c>) declares the same <c>STRIPE_*</c> variables to the settings inventory: rename both
 /// together.
 /// </summary>
-/// <remarks>No GDPR contributor for the mirror: buyer names and emails are Stripe's own records of who paid, bound to no
-/// member, and the mirror holds only what Stripe still returns.</remarks>
+/// <remarks>No GDPR contributor for the mirror: buyer names and emails are financial records, which erasure does not
+/// reach, and are bound to no member.</remarks>
 public sealed class Section : ISection, ISectionAdminNav, ISectionConfiguration, ISectionJobs
 {
     public void Register(IServiceCollection services, IConfiguration configuration)
@@ -46,7 +46,7 @@ public sealed class Section : ISection, ISectionAdminNav, ISectionConfiguration,
     IEnumerable<AdminNavGroup> ISectionAdminNav.Groups() =>
     [
         new("Stripe", [
-            new("Stripe", "StripeAdmin", "Index", null, null, "fa-brands fa-stripe-s", FinancePolicies.Read)
+            new("Stripe", "Stripe", "Index", null, null, "fa-brands fa-stripe-s", FinancePolicies.Read)
         ])
     ];
 

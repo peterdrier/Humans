@@ -19,7 +19,7 @@ internal sealed class StripeMirrorSyncJob(IStripeMirrorAdminService stripe, ILog
                 break;
             // Each failure is already logged and on its account's sync row; failing the job makes Hangfire show it.
             case StripeSyncOutcome.SomeFailed:
-                throw new InvalidOperationException("Stripe mirror sweep failed for at least one account; see /Stripe/Admin.");
+                throw new InvalidOperationException("Stripe mirror sweep failed for at least one account; see /Stripe.");
         }
     }
 }

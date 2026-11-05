@@ -10,11 +10,11 @@ using Microsoft.Extensions.Logging;
 namespace Humans.Stripe.Controllers;
 
 [Authorize(Policy = FinancePolicies.Read)]
-[Route("Stripe/Admin")]
-internal sealed class StripeAdminController(
+[Route("Stripe")]
+internal sealed class StripeController(
     IUserService userService,
     IStripeMirrorAdminService stripe,
-    ILogger<StripeAdminController> logger) : HumansControllerBase(userService)
+    ILogger<StripeController> logger) : HumansControllerBase(userService)
 {
     /// <summary>The list page renders at most this many rows, newest first; the count above it says when more matched.</summary>
     internal const int TransactionDisplayCap = 1000;

@@ -10,7 +10,7 @@
 
 The payments connector. Wraps the Stripe.NET SDK behind `IStripeService` so no other
 production assembly names a Stripe type. Also holds a read-only **mirror** of every Stripe
-account's ledger and the `/Stripe/Admin` pages over it (recon: find an order, match payouts,
+account's ledger and the `/Stripe` pages over it (recon: find an order, match payouts,
 see reserve holds). Spec: [`features/stripe-mirror.md`](features/stripe-mirror.md).
 
 - **For:** the one place Humans talks to Stripe. Store gets hosted checkout and a verified
@@ -87,8 +87,8 @@ integration uses — see [`memory/code/stripe-restricted-keys.md`](../../../../m
 
 | Actor | Capabilities |
 |-------|--------------|
-| Finance admin / Admin | `/Stripe/Admin/*` and Sync now (`FinancePolicies.Manage`). |
-| Board | Read `/Stripe/Admin/*` (`FinancePolicies.Read`). |
+| Finance admin / Admin | `/Stripe/*` and Sync now (`FinancePolicies.Manage`). |
+| Board | Read `/Stripe/*` (`FinancePolicies.Read`). |
 | Any other human | Nothing. |
 | Stripe (the vendor) | Delivers signed webhooks to Store's `/Store/StripeWebhook`, which verifies them through this section. |
 
@@ -202,7 +202,7 @@ integration uses — see [`memory/code/stripe-restricted-keys.md`](../../../../m
 
 - Services never import `Microsoft.EntityFrameworkCore`; `Data/Repository.cs` (`IStripeMirrorRepository`) is the only reader and writer of the mirror tables, and only `StripeMirrorService` calls it.
 - **Decorator decision** — no caching decorator: every call exists to see Stripe's current state.
-- The section is a Razor class library (`Microsoft.NET.Sdk.Razor`, MVC) for `/Stripe/Admin`.
+- The section is a Razor class library (`Microsoft.NET.Sdk.Razor`, MVC) for `/Stripe`.
 - **Architecture test** — `tests/Humans.Stripe.Tests/Architecture/StripeConnectorArchitectureTests.cs`.
 - **Namespace hazard:** inside `Humans.Stripe.*` the bare name `Stripe` binds to the section,
   not to the SDK. `using Stripe;` at compilation-unit level is safe; an inline `Stripe.Xxx`
@@ -211,6 +211,6 @@ integration uses — see [`memory/code/stripe-restricted-keys.md`](../../../../m
 ## GDPR
 
 The mirror holds buyer names and emails as Stripe records them (billing details, receipt email,
-the ticket vendor's charge metadata), bound to no member, so there is no export contributor or
-erasure path to hang them on; a sweep keeps only what Stripe still returns. They are the
-association's payment records, which Stripe retains regardless. No bulk export of them exists.
+the ticket vendor's charge metadata). They are financial records, which the association must keep:
+no erasure path applies, and none is built. They are bound to no member, so there is no export
+contributor either. No bulk export of them exists.

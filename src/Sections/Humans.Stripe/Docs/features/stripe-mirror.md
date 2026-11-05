@@ -30,7 +30,7 @@ whose key is unset is shown as not configured and never swept. The existing `STR
 - **Payouts**, and for each automatic payout the transactions it paid out. Stripe links none to a manual payout.
 - **Balance** per currency: available and pending.
 
-## Pages (`/Stripe/Admin`, `FinancePolicies.Read`; Sync now needs `FinancePolicies.Manage`)
+## Pages (`/Stripe`, `FinancePolicies.Read`; Sync now needs `FinancePolicies.Manage`)
 
 - **Accounts**: per account, Stripe's balance beside the sum of every mirrored net (red when they differ), gross
   charges, fees, refunds, paid out, risk reserve held today with its peak, and the payout minimum kept back at the last payout.
