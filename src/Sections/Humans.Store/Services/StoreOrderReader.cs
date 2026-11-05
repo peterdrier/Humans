@@ -33,7 +33,7 @@ internal sealed class StoreOrderReader(
     {
         var year = await GetCurrentEventYearAsync(ct);
         var products = await repo.GetAllProductsForYearAsync(year, ct);
-        var catalog = products.Where(product => product.IsActive).Select(MapProduct).ToList();
+        var catalog = products.Where(product => product.IsActive).Select(StoreCatalog.MapProduct).ToList();
         var currentPrices = ToPrices(products);
 
         var counterparties = new List<CounterpartyOrders>();
@@ -108,28 +108,6 @@ internal sealed class StoreOrderReader(
             year,
             catalog,
             counterparties);
-    }
-
-    public async Task<IReadOnlyList<ProductDto>> GetActiveCatalogAsync(int year, CancellationToken ct = default)
-    {
-        var products = await repo.GetActiveProductsForYearAsync(year, ct);
-        return products
-            .Select(MapProduct)
-            .ToList();
-    }
-
-    public async Task<IReadOnlyList<ProductDto>> GetAllProductsForYearAsync(int year, CancellationToken ct = default)
-    {
-        var products = await repo.GetAllProductsForYearAsync(year, ct);
-        return products
-            .Select(MapProduct)
-            .ToList();
-    }
-
-    public async Task<ProductDto?> GetProductAsync(Guid productId, CancellationToken ct = default)
-    {
-        var p = await repo.GetProductByIdAsync(productId, ct);
-        return p is null ? null : MapProduct(p);
     }
 
     /// <summary>Falls back to the current UTC year before an active event exists.</summary>
@@ -221,9 +199,6 @@ internal sealed class StoreOrderReader(
         }
         return Resources.GetString("Store_UnknownCounterparty", CultureInfo.CurrentUICulture)!;
     }
-    private static ProductDto MapProduct(Product p) =>
-        new(p.Id, p.Year, p.Name, p.Description, p.UnitPriceEur, p.VatRatePercent,
-            p.DepositAmountEur, p.OrderableUntil, p.IsActive, p.HoldedRevenueAccountNum);
 
     /// <summary>
     /// What every year-wide view needs to price an order. Shared by the admin summary and the accounting export so their
