@@ -62,13 +62,7 @@ public class GuestControllerTests
     }
 
     [HumansTheory]
-    [InlineData("en")]
-    [InlineData("es")]
-    [InlineData("de")]
-    [InlineData("it")]
-    [InlineData("fr")]
-    [InlineData("ca")]
-    [InlineData("nl")]
+    [MemberData(nameof(SupportedCultures.All), MemberType = typeof(SupportedCultures))]
     public async Task GuestGreeting_RendersTheCurrentEncodedIdentityInTheViewersCulture(string language)
     {
         using var culture = new CultureScope(language);

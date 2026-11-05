@@ -174,7 +174,7 @@
         {
             <hr />
             <h6 class="text-muted mb-2">@Localizer["Users_Profile_ContributionInterests"]</h6>
-            <p class="mb-0" style="white-space: pre-line">@Model.ContributionInterests</p>
+            <p class="mb-0 pre-line">@Model.ContributionInterests</p>
         }
 
         @if (Model.VolunteerHistory.Count > 0)
@@ -275,7 +275,7 @@
                 @if (!string.IsNullOrEmpty(Model.BoardNotes))
                 {
                     <dt class="col-3">@Localizer["Users_Profile_BoardNotes"]</dt>
-                    <dd class="col-9" style="white-space: pre-line">@Model.BoardNotes</dd>
+                    <dd class="col-9 pre-line">@Model.BoardNotes</dd>
                 }
             </dl>
         </div>

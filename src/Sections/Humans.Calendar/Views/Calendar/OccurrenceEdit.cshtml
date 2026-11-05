@@ -68,7 +68,7 @@
 
         <div class="mb-3">
             <label asp-for="OverrideDescription" class="form-label">@Localizer["Calendar_OverrideDescription"]</label>
-            <textarea asp-for="OverrideDescription" class="form-control" rows="3"></textarea>
+            <markdown-editor asp-for="OverrideDescription" rows="3" />
         </div>
 
         <button type="submit" class="btn btn-primary">@Localizer["Calendar_SaveOverride"]</button>

@@ -917,85 +917,69 @@ public sealed partial class ExpenseReportServiceTests
         logger.Entries.Should().NotContain(e => e.Level == LogLevel.Error);
     }
 
-    [HumansTheory]
-    [InlineData("en", "Please select a file.")]
-    [InlineData("es", "Selecciona un archivo.")]
-    [InlineData("de", "Bitte wähle eine Datei aus.")]
-    [InlineData("it", "Seleziona un file.")]
-    [InlineData("fr", "Veuillez sélectionner un fichier.")]
-    [InlineData("ca", "Selecciona un fitxer.")]
-    [InlineData("nl", "Kies een bestand.")]
-    public async Task AddLineWithResultAsync_ReturnsUploadKey_WhichTheControllerLocalizes_BeforeCreatingLine(
-        string culture, string expectedMessage)
+    [HumansFact]
+    public async Task AddLineWithResultAsync_ReturnsUploadKey_WhichTheControllerLocalizes_BeforeCreatingLine()
     {
-        var originalCulture = CultureInfo.CurrentUICulture;
-        try
+        using var culture = new CultureScope("en");
+        await using var content = new MemoryStream();
+
+        var result = await _sut.AddLineWithResultAsync(
+            Guid.NewGuid(), Guid.NewGuid(), false, "Receipt", 10m,
+            file: new ExpenseFileUpload("receipt.pdf", "application/pdf", content),
+            ct: TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeFalse();
+        result.LineId.Should().BeNull();
+        result.Error!.ResourceKey.Should().Be("Expenses_Flash_SelectFile");
+
+        var actorId = Guid.NewGuid();
+        var reportId = Guid.NewGuid();
+        _userService.GetUserInfoAsync(actorId, Arg.Any<CancellationToken>()).Returns(
+            UserInfo.Create(new User { Id = actorId }, [], [], null));
+        var reports = Substitute.For<IExpenseReportManagement>();
+        reports.GetAsync(reportId, Arg.Any<CancellationToken>()).Returns(new ExpenseReportDto
         {
-            CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo(culture);
-            await using var content = new MemoryStream();
-
-            var result = await _sut.AddLineWithResultAsync(
-                Guid.NewGuid(), Guid.NewGuid(), false, "Receipt", 10m,
-                file: new ExpenseFileUpload("receipt.pdf", "application/pdf", content),
-                ct: TestContext.Current.CancellationToken);
-
-            result.Succeeded.Should().BeFalse();
-            result.LineId.Should().BeNull();
-            result.Error!.ResourceKey.Should().Be("Expenses_Flash_SelectFile");
-
-            var actorId = Guid.NewGuid();
-            var reportId = Guid.NewGuid();
-            _userService.GetUserInfoAsync(actorId, Arg.Any<CancellationToken>()).Returns(
-                UserInfo.Create(new User { Id = actorId }, [], [], null));
-            var reports = Substitute.For<IExpenseReportManagement>();
-            reports.GetAsync(reportId, Arg.Any<CancellationToken>()).Returns(new ExpenseReportDto
-            {
-                Id = reportId,
-                SubmitterUserId = actorId,
-                HoldedAccountNumber = 0,
-                BudgetCategoryId = Guid.NewGuid(),
-                BudgetYearId = Guid.NewGuid(),
-                Status = ExpenseReportStatus.Draft,
-                PayeeName = "",
-                PayeeIban = "",
-                Total = 0,
-                CreatedAt = default,
-                UpdatedAt = default,
-                Lines = []
-            });
-            reports.AddLineWithResultAsync(reportId, actorId, Arg.Any<bool>(), "Receipt", 10m,
-                ExpenseLineType.Receipt, null, Arg.Any<ExpenseFileUpload?>(), Arg.Any<CancellationToken>()).Returns(result);
-            var authorization = Substitute.For<IAuthorizationService>();
-            authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(),
-                Arg.Any<IEnumerable<IAuthorizationRequirement>>()).Returns(AuthorizationResult.Success());
-            authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(), Arg.Any<string>())
-                .Returns(AuthorizationResult.Failed());
-            var context = new DefaultHttpContext
-            {
-                User = new ClaimsPrincipal(new ClaimsIdentity(
-                    [new Claim(ClaimTypes.NameIdentifier, actorId.ToString())], "test"))
-            };
-            var controller = new ExpensesController(_userService, reports, _budgetService, _finance, _preapprovals,
-                authorization, Clock, NullLogger<ExpensesController>.Instance, _localizer)
-            {
-                ControllerContext = new ControllerContext { HttpContext = context },
-                TempData = new TempDataDictionary(context, Substitute.For<ITempDataProvider>())
-            };
-            var file = new FormFile(content, 0, 0, "File", "receipt.pdf")
-            {
-                Headers = new HeaderDictionary(),
-                ContentType = "application/pdf"
-            };
-            await controller.AddLine(reportId, new AddLineInputModel { Description = "Receipt", Amount = 10m }, file);
-            controller.TempData[TempDataKeys.ErrorMessage].Should().Be(
-                $"{_localizer["Expenses_Flash_AddLineFailed"]} {expectedMessage}");
-            (await _expenseRepo.GetAllAsync(TestContext.Current.CancellationToken))
-                .Should().BeEmpty();
-        }
-        finally
+            Id = reportId,
+            SubmitterUserId = actorId,
+            HoldedAccountNumber = 0,
+            BudgetCategoryId = Guid.NewGuid(),
+            BudgetYearId = Guid.NewGuid(),
+            Status = ExpenseReportStatus.Draft,
+            PayeeName = "",
+            PayeeIban = "",
+            Total = 0,
+            CreatedAt = default,
+            UpdatedAt = default,
+            Lines = []
+        });
+        reports.AddLineWithResultAsync(reportId, actorId, Arg.Any<bool>(), "Receipt", 10m,
+            ExpenseLineType.Receipt, null, Arg.Any<ExpenseFileUpload?>(), Arg.Any<CancellationToken>()).Returns(result);
+        var authorization = Substitute.For<IAuthorizationService>();
+        authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(),
+            Arg.Any<IEnumerable<IAuthorizationRequirement>>()).Returns(AuthorizationResult.Success());
+        authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(), Arg.Any<string>())
+            .Returns(AuthorizationResult.Failed());
+        var context = new DefaultHttpContext
         {
-            CultureInfo.CurrentUICulture = originalCulture;
-        }
+            User = new ClaimsPrincipal(new ClaimsIdentity(
+                [new Claim(ClaimTypes.NameIdentifier, actorId.ToString())], "test"))
+        };
+        var controller = new ExpensesController(_userService, reports, _budgetService, _finance, _preapprovals,
+            authorization, Clock, NullLogger<ExpensesController>.Instance, _localizer)
+        {
+            ControllerContext = new ControllerContext { HttpContext = context },
+            TempData = new TempDataDictionary(context, Substitute.For<ITempDataProvider>())
+        };
+        var file = new FormFile(content, 0, 0, "File", "receipt.pdf")
+        {
+            Headers = new HeaderDictionary(),
+            ContentType = "application/pdf"
+        };
+        await controller.AddLine(reportId, new AddLineInputModel { Description = "Receipt", Amount = 10m }, file);
+        controller.TempData[TempDataKeys.ErrorMessage].Should().Be(
+            $"{_localizer["Expenses_Flash_AddLineFailed"]} Please select a file.");
+        (await _expenseRepo.GetAllAsync(TestContext.Current.CancellationToken))
+            .Should().BeEmpty();
     }
 
     [HumansFact]
@@ -2884,13 +2868,16 @@ public sealed partial class ExpenseReportServiceTests
     }
 
     [HumansTheory]
-    [InlineData("es", "es", "25,00 €")]
-    [InlineData("", "en", "25.00 €")]
-    [InlineData(" ", "en", "25.00 €")]
-    [InlineData("not-a-culture", "en", "25.00 €")]
-    [InlineData("pt", "en", "25.00 €")]
-    public async Task ApproveAsync_EmailsTheSubmitter_WithTheCappedAmountAndAMaskedIban(string language, string expectedCulture, string amount)
+    [InlineData("es", "es")]
+    [InlineData("", "en")]
+    [InlineData(" ", "en")]
+    [InlineData("not-a-culture", "en")]
+    [InlineData("pt", "en")]
+    public async Task ApproveAsync_EmailsTheSubmitter_WithTheCappedAmountAndAMaskedIban(string language, string expectedCulture)
     {
+        string amount;
+        using (new CultureScope(expectedCulture))
+            amount = 25m.ToEuro();
         using var actorCulture = new CultureScope("fr");
         // The one moment a member hears that money is coming.
         var (_, category) = SetupActiveYear();

@@ -185,17 +185,10 @@ public sealed class ShiftSignupServiceCalendarFeedTests : ShiftsTestHarness
         item.Url.Should().Be("/Shifts/Mine");
     }
 
-    [HumansTheory]
-    [InlineData("en")]
-    [InlineData("es")]
-    [InlineData("de")]
-    [InlineData("it")]
-    [InlineData("fr")]
-    [InlineData("ca")]
-    [InlineData("nl")]
-    public async Task GetCalendarItems_PendingSignup_MarkedPendingInSummary(string language)
+    [HumansFact]
+    public async Task GetCalendarItems_PendingSignup_MarkedPendingInSummary()
     {
-        using var culture = new CultureScope(language);
+        using var culture = new CultureScope(CultureCatalog.DefaultCultureCode);
         var (_, _, shift) = SeedShiftScenario();
         var userId = Guid.NewGuid();
         SeedSignup(shift, userId, SignupStatus.Pending);

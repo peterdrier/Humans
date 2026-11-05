@@ -70,7 +70,7 @@
 
         @if (Model.Personal.Events.Count == 0)
         {
-            <p class="text-muted mb-0">@Localizer["Events_NoPersonalEvents"]</p>
+            <empty-state class="mb-0">@Localizer["Events_NoPersonalEvents"]</empty-state>
         }
         else
         {
@@ -151,7 +151,7 @@
 
             @if (barrio.Events.Count == 0)
             {
-                <p class="text-muted mb-3">@Localizer["Events_NoBarrioEvents"]</p>
+                <empty-state class="mb-3">@Localizer["Events_NoBarrioEvents"]</empty-state>
             }
             else
             {

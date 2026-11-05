@@ -7,6 +7,8 @@ const vm = require('node:vm');
 const site = readFileSync(resolve(__dirname, '../../../src/Humans.Web/wwwroot/js/site.js'), 'utf8');
 const confirmationScript = site.slice(site.indexOf('// Generic confirmation handler'),
     site.indexOf('// Auto-submit forms'));
+const autoSubmitScript = site.slice(site.indexOf('// Auto-submit forms'),
+    site.indexOf('// Clickable table rows'));
 const views = [
     ['email remediation', 'Humans.Users/Views/ProfileAdmin/EmailProblems.cshtml'],
     ['legal-document archival', 'Humans.Consent/Views/AdminLegalDocuments/LegalDocuments.cshtml'],
@@ -17,10 +19,10 @@ function page(viewPath, accepted) {
     const localClicks = [];
     const delegatedClicks = [];
     const prompts = [];
-    let teamChange;
+    const changeHandlers = [];
     let teamSubmits = 0;
     const teamSelect = { form: { submit() { teamSubmits++; } },
-        addEventListener(event, handler) { teamChange = handler; } };
+        closest(selector) { return selector === '.js-auto-submit' ? this : null; } };
     const button = {
         tagName: 'BUTTON',
         getAttribute() { return 'Confirm this action?'; },
@@ -30,8 +32,10 @@ function page(viewPath, accepted) {
     const context = {
         document: {
             querySelectorAll() { return [button]; },
-            getElementById() { return teamSelect; },
-            addEventListener(event, handler) { if (event === 'click') delegatedClicks.push(handler); },
+            addEventListener(event, handler) {
+                if (event === 'click') delegatedClicks.push(handler);
+                if (event === 'change') changeHandlers.push(handler);
+            },
         },
         confirm(message) { prompts.push(message); return accepted; },
     };
@@ -40,6 +44,7 @@ function page(viewPath, accepted) {
         vm.runInContext(match[1], context);
     }
     vm.runInContext(confirmationScript, context);
+    vm.runInContext(autoSubmitScript, context);
     return {
         click() {
             const event = { target: button, defaultPrevented: false, propagationStopped: false,
@@ -52,7 +57,7 @@ function page(viewPath, accepted) {
             return !event.defaultPrevented;
         },
         prompts,
-        changeTeam() { teamChange.call(teamSelect); return teamSubmits; },
+        changeTeam() { for (const handler of changeHandlers) handler({ target: teamSelect }); return teamSubmits; },
     };
 }
 

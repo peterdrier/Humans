@@ -89,7 +89,7 @@
             <div class="card-header"><strong>@Localizer["Expenses_ExpenseLines"]</strong></div>
             @if (r.Lines.Count == 0)
             {
-                <div class="card-body text-muted">@Localizer["Expenses_Detail_NoLines"]</div>
+                <div class="card-body"><empty-state class="mb-0">@Localizer["Expenses_Detail_NoLines"]</empty-state></div>
             }
             else
             {
@@ -697,15 +697,3 @@
         </div>
     </div>
 }
-
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    document.querySelectorAll('[data-confirm]').forEach(function(btn) {
-        btn.addEventListener('click', function(e) {
-            if (!confirm(this.getAttribute('data-confirm'))) {
-                e.preventDefault();
-            }
-        });
-    });
-});
-</script>

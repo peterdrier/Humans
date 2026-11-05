@@ -3,6 +3,7 @@ const { test } = require('node:test');
 const { readFileSync } = require('node:fs');
 const { resolve } = require('node:path');
 const vm = require('node:vm');
+const { installHumans } = require('../../browser-support/humans-js.cjs');
 
 function page() {
     const classes = () => {
@@ -31,11 +32,12 @@ function page() {
         });
     const requests = [];
     const context = {
-        window: {}, FormData, getRequestVerificationToken: () => 'token',
+        window: {}, FormData,
         bootstrap: { Modal: { getOrCreateInstance: () => ({ show() {} }) } },
         document: { getElementById: id => elements[id] },
         fetch: () => new Promise((resolveResponse, reject) => requests.push({ resolveResponse, reject })),
     };
+    installHumans(context);
     vm.createContext(context);
     const install = () => vm.runInContext(script, context);
     install();

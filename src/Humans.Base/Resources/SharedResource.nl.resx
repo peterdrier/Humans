@@ -1406,13 +1406,16 @@
   <data name="About_License_BSD2" xml:space="preserve"><value>vereist een auteursrechtvermelding in de documentatie.</value></data>
   <data name="About_License_BSD3MapLibre" xml:space="preserve"><value>vereist een auteursrechtvermelding; deze pagina voldoet aan die verplichting.</value></data>
   <data name="About_License_ISC" xml:space="preserve"><value>permissief, functioneel gelijkwaardig aan BSD-2-Clause; auteursrechtvermelding vereist.</value></data>
+  <data name="About_License_AGPL30" xml:space="preserve"><value>dezelfde licentie als Humans zelf; de volledige broncode van Humans is openbaar, waarmee eraan is voldaan.</value></data>
+  <data name="About_License_CCBY40" xml:space="preserve"><value>naamsvermelding vereist; deze pagina voldoet aan die verplichting.</value></data>
   <data name="About_License_LGPL30" xml:space="preserve"><value>de bibliotheek moet door de eindgebruiker vervangen kunnen worden. Wordt gebruikt als ongewijzigde NuGet-pakketten (dynamisch gekoppeld), waarmee aan de LGPL-verplichtingen wordt voldaan.</value></data>
   <data name="About_License_MIT" xml:space="preserve"><value>vereist een auteursrechtvermelding; deze pagina voldoet aan die verplichting.</value></data>
   <data name="About_License_PostgreSQL" xml:space="preserve"><value>permissief, vergelijkbaar met MIT; auteursrechtvermelding vereist.</value></data>
   <data name="About_License_SILOFL" xml:space="preserve"><value>vrij te gebruiken en te verspreiden; lettertypen mogen niet los worden verkocht.</value></data>
+  <data name="About_License_SourceAvailableAt" xml:space="preserve"><value>Broncode beschikbaar op</value></data>
   <data name="About_LicenseBody" xml:space="preserve"><value>Humans is vrije software, uitgebracht onder de</value></data>
   <data name="About_LicenseComplianceHeading" xml:space="preserve"><value>Overzicht van licentienaleving</value></data>
-  <data name="About_LicenseComplianceSummary" xml:space="preserve"><value>Alle productieafhankelijkheden gebruiken permissieve of zwak-copyleftlicenties. Geen overtredingen gevonden.</value></data>
+  <data name="About_LicenseComplianceSummary" xml:space="preserve"><value>Alle productieafhankelijkheden gebruiken permissieve, zwak-copyleft- of AGPL-compatibele licenties. Geen overtredingen gevonden.</value></data>
   <data name="About_LicenseExplanation" xml:space="preserve"><value>Je mag deze software gebruiken, bestuderen, aanpassen en verspreiden. Als je een aangepaste versie draait en anderen er via een netwerk mee laat werken, moet je je aangepaste broncode onder dezelfde licentie beschikbaar stellen.</value></data>
   <data name="About_LicenseFullText" xml:space="preserve"><value>Volledige licentietekst:</value></data>
   <data name="About_LicenseHeading" xml:space="preserve"><value>Licentie</value></data>

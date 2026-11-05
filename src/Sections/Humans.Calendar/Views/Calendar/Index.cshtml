@@ -183,7 +183,7 @@
                 <p class="text-muted">@Localizer["Calendar_IcalFeedHelp"]</p>
                 <div class="input-group mb-2">
                     <input type="text" class="form-control" id="icalUrl" value="@Model.ICalUrl" readonly />
-                    <button class="btn btn-outline-secondary" type="button" id="copyIcalBtn">@Localizer["Calendar_IcalCopy"]</button>
+                    <button class="btn btn-outline-secondary" type="button" data-copy="#icalUrl">@Localizer["Calendar_IcalCopy"]</button>
                 </div>
                 <form asp-action="RegenerateIcal" method="post" class="d-inline">
                     @Html.AntiForgeryToken()
@@ -192,12 +192,6 @@
                 </form>
             </div>
         </div>
-
-        <script>
-            document.getElementById('copyIcalBtn').addEventListener('click', function () {
-                navigator.clipboard.writeText(document.getElementById('icalUrl').value);
-            });
-        </script>
     }
     else if (Model.CanCreateICal)
     {

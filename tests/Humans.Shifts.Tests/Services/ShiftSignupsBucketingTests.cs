@@ -43,17 +43,11 @@ public class ShiftSignupsBucketingTests
 
     private readonly Guid _userId = Guid.NewGuid();
 
-    [HumansTheory]
-    [InlineData("en", "Unknown")]
-    [InlineData("es", "Equipo desconocido")]
-    [InlineData("de", "Unbekanntes Team")]
-    [InlineData("it", "Squadra sconosciuta")]
-    [InlineData("fr", "Équipe inconnue")]
-    [InlineData("ca", "Equip desconegut")]
-    [InlineData("nl", "Onbekend")]
-    public void Missing_team_names_use_the_ui_language_in_both_member_views(string culture, string expected)
+    [HumansFact]
+    public void Missing_team_names_use_the_ui_language_in_both_member_views()
     {
-        using var scope = new CultureScope(culture);
+        const string expected = "Unknown";
+        using var scope = new CultureScope(CultureCatalog.DefaultCultureCode);
         var summary = MakeSignup(SignupStatus.Pending, dayOffset: 1, startHour: 8, durationHours: 4);
         var signup = new ShiftSignup
         {

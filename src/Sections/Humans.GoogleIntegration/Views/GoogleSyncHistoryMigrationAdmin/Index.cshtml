@@ -1,3 +1,4 @@
+@using Humans.Base.Interfaces
 @model Humans.GoogleIntegration.Controllers.GoogleSyncHistoryMigrationViewModel
 @{
     ViewData["Title"] = "Google Sync History Migration";
@@ -20,39 +21,11 @@
     time. What you see below is the dry run: it writes nothing until you press the button.
 </p>
 
-<div class="row g-3 mb-4">
-    <div class="col-md-3">
-        <div class="card h-100">
-            <div class="card-body">
-                <h6 class="card-subtitle text-muted mb-2">Google rows on audit_log</h6>
-                <p class="h2 mb-0">@report.Examined</p>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-3">
-        <div class="card h-100">
-            <div class="card-body">
-                <h6 class="card-subtitle text-muted mb-2">Already moved</h6>
-                <p class="h2 mb-0 text-success">@report.AlreadyPresent</p>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-3">
-        <div class="card h-100">
-            <div class="card-body">
-                <h6 class="card-subtitle text-muted mb-2">Would move</h6>
-                <p class="h2 mb-0 @(report.Movable == 0 ? "text-success" : "text-primary")">@report.Movable</p>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-3">
-        <div class="card h-100">
-            <div class="card-body">
-                <h6 class="card-subtitle text-muted mb-2">Cannot map</h6>
-                <p class="h2 mb-0 @(report.Skipped == 0 ? "text-success" : "text-warning")">@report.Skipped</p>
-            </div>
-        </div>
-    </div>
+<div class="stats">
+    <partial name="_StatTile" model='new StatTileViewModel("Google rows on audit_log", report.Examined.ToString())' />
+    <partial name="_StatTile" model='new StatTileViewModel("Already moved", report.AlreadyPresent.ToString())' />
+    <partial name="_StatTile" model='new StatTileViewModel("Would move", report.Movable.ToString())' />
+    <partial name="_StatTile" model='new StatTileViewModel("Cannot map", report.Skipped.ToString(), Severity: report.Skipped > 0 ? TileSeverity.Warning : TileSeverity.Normal)' />
 </div>
 
 <div class="card mb-4">

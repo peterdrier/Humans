@@ -3,6 +3,7 @@ const { test } = require('node:test');
 const { readFileSync } = require('node:fs');
 const { resolve } = require('node:path');
 const vm = require('node:vm');
+const { installHumans } = require('../../browser-support/humans-js.cjs');
 
 const source = readFileSync(resolve(__dirname, '../../../src/Sections/Humans.Notifications/Views/Notifications/Index.cshtml'), 'utf8');
 const script = source.slice(source.indexOf('<script>') + 8, source.indexOf('</script>'));
@@ -23,13 +24,13 @@ function inbox(outcome) {
         bulkResolveBtn: { disabled: false, style: {}, addEventListener: (_, fn) => { handlers.resolve = fn; } },
         bulkDismissBtn: { disabled: false, style: {}, addEventListener: (_, fn) => { handlers.dismiss = fn; } },
     };
-    vm.runInNewContext(script, {
+    vm.runInNewContext(script, installHumans({
         document: {
             getElementById: id => elements[id] ?? null,
             querySelector: () => ({ value: 'csrf' }),
             querySelectorAll: () => rows.filter(row => !removed.includes(row.dataset.notificationClass)),
         },
-        FormData: class { append() {} },
+        FormData: class { append() {} has() { return false; } },
         showToast: message => errors.push(message),
         fetch: async (_, options) => {
             requests++;
@@ -39,7 +40,7 @@ function inbox(outcome) {
             if (outcome === 'deferred') return new Promise(done => { completePost = done; });
             return { ok: outcome !== '503', status: outcome === '503' ? 503 : 200 };
         },
-    });
+    }));
     return {
         errors, removed, elements, requests: () => requests,
         click: async kind => { handlers[kind](); await flush(); },

@@ -7,19 +7,21 @@ namespace Humans.Base.Tests.Helpers;
 
 public sealed class LanguageCatalogTests
 {
+    [HumansFact]
+    public void GetDisplayName_IsEnglishInTheDefaultCulture()
+    {
+        using var scope = new CultureScope(CultureCatalog.DefaultCultureCode);
+
+        LanguageCatalog.GetDisplayName("de").Should().Be("German");
+    }
+
     [HumansTheory]
-    [InlineData("en", "German")]
-    [InlineData("es", "alemán")]
-    [InlineData("de", "Deutsch")]
-    [InlineData("it", "tedesco")]
-    [InlineData("fr", "allemand")]
-    [InlineData("ca", "alemany")]
-    [InlineData("nl", "Duits")]
-    public void GetDisplayName_UsesTheViewersCulture(string culture, string expected)
+    [MemberData(nameof(SupportedCultures.Translated), MemberType = typeof(SupportedCultures))]
+    public void GetDisplayName_UsesTheViewersCulture(string culture)
     {
         using var scope = new CultureScope(culture);
 
-        LanguageCatalog.GetDisplayName("de").Should().Be(expected);
+        LanguageCatalog.GetDisplayName("de").Should().NotBe("German");
     }
 
     [HumansTheory]

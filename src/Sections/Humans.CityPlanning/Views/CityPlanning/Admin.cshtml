@@ -41,7 +41,7 @@
                     }
                     else
                     {
-                        <p class="text-muted mb-3">@Localizer["CityPlanning_Admin_LimitZoneEmpty"]</p>
+                        <empty-state class="mb-3">@Localizer["CityPlanning_Admin_LimitZoneEmpty"]</empty-state>
                     }
                     <form method="post" action="/CityPlanning/BarrioMap/Admin/UploadLimitZone" enctype="multipart/form-data" class="mt-3">
                         @Html.AntiForgeryToken()
@@ -82,7 +82,7 @@
                     }
                     else
                     {
-                        <p class="text-muted mb-3">@Localizer["CityPlanning_Admin_OfficialZonesEmpty"]</p>
+                        <empty-state class="mb-3">@Localizer["CityPlanning_Admin_OfficialZonesEmpty"]</empty-state>
                     }
                     <form method="post" action="/CityPlanning/BarrioMap/Admin/UploadOfficialZones" enctype="multipart/form-data" class="mt-3">
                         @Html.AntiForgeryToken()

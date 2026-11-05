@@ -157,13 +157,7 @@ public sealed class IssuesControllerTests
     }
 
     [HumansTheory]
-    [InlineData("en")]
-    [InlineData("es")]
-    [InlineData("de")]
-    [InlineData("it")]
-    [InlineData("fr")]
-    [InlineData("ca")]
-    [InlineData("nl")]
+    [MemberData(nameof(SupportedCultures.All), MemberType = typeof(SupportedCultures))]
     public async Task SectionRefusals_LocalizeKeysAndLimit_AndGenericFailures(string culture)
     {
         using var scope = new CultureScope(culture);
@@ -213,13 +207,7 @@ public sealed class IssuesControllerTests
     }
 
     [HumansTheory]
-    [InlineData("en")]
-    [InlineData("es")]
-    [InlineData("de")]
-    [InlineData("it")]
-    [InlineData("fr")]
-    [InlineData("ca")]
-    [InlineData("nl")]
+    [MemberData(nameof(SupportedCultures.All), MemberType = typeof(SupportedCultures))]
     public void SubmissionForm_LocalizesRequiredAndLengthErrors(string culture)
     {
         using var cultureScope = new CultureScope(culture);

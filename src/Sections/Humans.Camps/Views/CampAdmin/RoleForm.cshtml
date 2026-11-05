@@ -43,7 +43,7 @@
 
                     <div class="mb-3">
                         <label asp-for="Description" class="form-label">Description</label>
-                        <textarea asp-for="Description" class="form-control" rows="3"></textarea>
+                        <markdown-editor asp-for="Description" rows="3" />
                         <div class="form-text">Markdown allowed.</div>
                         <span asp-validation-for="Description" class="text-danger"></span>
                     </div>

@@ -30,7 +30,7 @@
     {
         <input type="hidden" name="filter" value="@Model.Filter.Value" />
     }
-    <div class="input-group" style="max-width: 600px;">
+    <div class="input-group mw-600">
         <input type="text" name="q" class="form-control" value="@Model.Query"
                placeholder="@(eventsEnabled ? Localizer["Search_GlobalPlaceholderEvents"].Value : Localizer["Search_GlobalPlaceholder"].Value)"
                autofocus aria-label="@Localizer["Search_QueryAriaLabel"]" />

@@ -86,7 +86,7 @@
     </div>
     @if (topLevelLines.Count == 0)
     {
-        <div class="card-body text-muted">@Localizer["Expenses_NoLinesYet"]</div>
+        <div class="card-body"><empty-state class="mb-0">@Localizer["Expenses_NoLinesYet"]</empty-state></div>
     }
     else
     {

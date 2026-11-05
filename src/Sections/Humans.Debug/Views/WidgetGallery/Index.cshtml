@@ -655,6 +655,43 @@
                 <div class="wg-card">
                     <div class="wg-card-header">
                         <div>
+                            <span class="wg-card-name">data-copy="…"</span>
+                            <span class="wg-card-kind kind-pa">JS attribute</span>
+                        </div>
+                        <span class="wg-card-path">src/Humans.Web/wwwroot/js/site.js</span>
+                    </div>
+                    <div class="wg-card-note">Delegated click handler: copies the referenced element to the clipboard (<code>.value</code> for inputs and textareas, otherwise <code>textContent</code>). No per-view script needed.</div>
+                    @ParamsBlock(
+                        ("data-copy", "<code>string</code> — CSS selector of the element to copy; put it on the button"),
+                        ("data-copied", "<code>string</code> — optional; toast text shown after a successful copy (pass a localized string)")
+                    )
+                    <div class="wg-card-example">
+                        <div class="input-group mw-600">
+                            <input type="text" class="form-control" id="wgCopySource" value="https://example.org/feed.ics" readonly />
+                            <button class="btn btn-outline-secondary" type="button" data-copy="#wgCopySource" data-copied="Copied">Copy</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="wg-card">
+                    <div class="wg-card-header">
+                        <div>
+                            <span class="wg-card-name">.pre-wrap · .pre-line · .mw-*</span>
+                            <span class="wg-card-kind kind-pa">CSS utility</span>
+                        </div>
+                        <span class="wg-card-path">src/Humans.Web/wwwroot/css/site.css</span>
+                    </div>
+                    <div class="wg-card-note">Replace one-off inline styles. <code>.pre-wrap</code> / <code>.pre-line</code> keep user-entered line breaks; <code>.mw-240</code>, <code>.mw-540</code>, <code>.mw-600</code>, <code>.mw-720</code>, <code>.mw-760</code> cap a form card or input group (px). Bootstrap's <code>text-break</code> / <code>mw-100</code> cover the rest.</div>
+                    @ParamsBlock()
+                    <div class="wg-card-example">
+                        <p class="pre-wrap mb-0">Line one
+Line two (pre-wrap keeps this break)</p>
+                    </div>
+                </div>
+
+                <div class="wg-card">
+                    <div class="wg-card-header">
+                        <div>
                             <span class="wg-card-name">_Pager.cshtml</span>
                             <span class="wg-card-kind kind-pa">Partial</span>
                         </div>
@@ -666,6 +703,62 @@
                     )
                     <div class="wg-card-example">
                         @await Html.PartialAsync("_Pager", Model.SamplePager)
+                    </div>
+                </div>
+
+                <div class="wg-card">
+                    <div class="wg-card-header">
+                        <div>
+                            <span class="wg-card-name">&lt;empty-state&gt;</span>
+                            <span class="wg-card-kind kind-th">TagHelper</span>
+                        </div>
+                        <span class="wg-card-path">src/Humans.Base/TagHelpers/EmptyStateTagHelper.cs</span>
+                    </div>
+                    <div class="wg-card-note">
+                        The "nothing here yet" message for a list or collection that is empty: muted, centered, the same look
+                        <code>_Table</code> gives its <code>EmptyMessage</code> row. Renders a <code>&lt;p&gt;</code>; child content is the
+                        message. Not for hints or help text, and not inside tables.
+                    </div>
+                    @ParamsBlock(
+                        ("class", "<code>string</code> — optional; appended for context spacing (<code>mb-0</code>, <code>small</code>, <code>py-4</code>…)"),
+                        ("child content", "The message — plain text or localized markup")
+                    )
+                    <div class="wg-variants">
+                        <div class="wg-variant-label">default</div>
+                        <div class="wg-variant-render">
+                            <empty-state>No workgroups yet.</empty-state>
+                        </div>
+
+                        <div class="wg-variant-label">class="mb-0 small"</div>
+                        <div class="wg-variant-render">
+                            <empty-state class="mb-0 small">No interests yet.</empty-state>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="wg-card">
+                    <div class="wg-card-header">
+                        <div>
+                            <span class="wg-card-name">_StatTile.cshtml</span>
+                            <span class="wg-card-kind kind-pa">Partial</span>
+                        </div>
+                        <span class="wg-card-path">src/Humans.Base/Views/Shared/_StatTile.cshtml</span>
+                    </div>
+                    <div class="wg-card-note">
+                        A label, one big value and an optional subline. Wrap tiles in <code>&lt;div class="stats"&gt;</code> (4 columns,
+                        2 on tablets, 1 on phones; <code>style="--stats-cols: N"</code> sets the desktop column count). Same look as
+                        the admin dashboard tiles.
+                    </div>
+                    @ParamsBlock(
+                        ("@@model", "<code>StatTileViewModel</code> — Label, Value, Secondary (de-emphasised tail of the value), Subline, Severity (colours the subline), Extra (markup under the subline)")
+                    )
+                    <div class="wg-card-example">
+                        <div class="stats">
+                            <partial name="_StatTile" model='new StatTileViewModel("Shifts filled", "86", "/ 120 (72%)")' />
+                            <partial name="_StatTile" model='new StatTileViewModel("Responses", "42", Subline: "since Monday")' />
+                            <partial name="_StatTile" model='new StatTileViewModel("Stale pending", "3", Subline: "older than 7 days", Severity: TileSeverity.Warning)' />
+                            <partial name="_StatTile" model='new StatTileViewModel("Response rate", "—")' />
+                        </div>
                     </div>
                 </div>
 
@@ -753,6 +846,32 @@
                         <div class="text-muted small">↑ empty until a section contributes; each contributed link is gated for the current viewer.</div>
                     </div>
                 </div>
+
+                <div class="wg-card">
+                    <div class="wg-card-header">
+                        <div>
+                            <span class="wg-card-name">Shared JS (site.js)</span>
+                            <span class="wg-card-kind">JavaScript</span>
+                        </div>
+                        <span class="wg-card-path">src/Humans.Web/wwwroot/js/site.js</span>
+                    </div>
+                    <div class="wg-card-note">
+                        Loaded by both layouts, so views and section scripts use these instead of re-writing them.
+                        <code>Humans.*</code> arrives after body scripts run: call it from event handlers or
+                        <code>DOMContentLoaded</code>, not at the top level of a view body.
+                    </div>
+                    <ul class="small mb-0">
+                        <li><code>data-confirm="…"</code> — on a link, button or form: asks <code>confirm()</code> first and cancels on No. No local handler needed.</li>
+                        <li><code>.js-auto-submit</code> — on a wrapper: submits the enclosing form when a control inside changes.</li>
+                        <li><code>data-href="…"</code> — on a <code>&lt;tr&gt;</code>: the row navigates on click, ignoring clicks on links and controls inside it.</li>
+                        <li><code>showToast(message, type)</code> — Bootstrap toast in the layout's toast container; <code>type</code> is <code>success</code> (default) or <code>danger</code>.</li>
+                        <li><code>Humans.csrfToken([selector])</code> — the page's antiforgery token, or <code>''</code> when absent.</li>
+                        <li><code>Humans.escapeHtml(value)</code> — escapes <code>&amp; &lt; &gt; " '</code>; <code>null</code> becomes <code>''</code>. Safe in text and quoted attributes.</li>
+                        <li><code>Humans.postJson(url, body, opts)</code> — <code>fetch</code> POST with the antiforgery header and a JSON body; <code>opts.method</code> switches to PUT, and <code>opts.headers</code> / <code>redirect</code> pass through. Resolves to the <code>Response</code>.</li>
+                        <li><code>Humans.postForm(url, data, opts)</code> — same for a <code>FormData</code>, <code>URLSearchParams</code> or plain object; the token is added to the body as well.</li>
+                        <li><code>Humans.loadChartJs()</code> — loads the pinned Chart.js once (SRI-checked) and resolves to <code>Chart</code>.</li>
+                    </ul>
+                </div>
             </section>
 
             <section id="skipped" class="wg-section">
@@ -768,7 +887,7 @@
                     <li><strong>Layout partials</strong> — <code>_Layout</code>, <code>_AdminLayout</code>, <code>_GuideLayout</code>, <code>_LoginPartial</code>, <code>_VersionInfo</code>: page chrome that doesn't render in isolation.</li>
                     <li><strong>Coordinator dashboard</strong> — <code>AdminSummaryViewComponent</code>: the summary strip is assembled from the tiles sections contribute, so it only renders inside a request that carries an admin identity. See <a href="/Admin/Dashboard">/Admin/Dashboard</a>.</li>
                     <li><strong>Sign-in method dial</strong> — <code>LoginMethodCardViewComponent</code>: Shell-owned dashboard card over the process-wide in-memory sign-in tally; nothing references the Shell, so it can't be invoked from here. See <a href="/Admin">/Admin</a>.</li>
-                    <li><strong>Script-only partials</strong> — <code>_RequestVerificationTokenScript</code>, <code>_EscapeHtmlScript</code>, <code>_GitHubFolderPathScript</code>, <code>_VolunteerSearchScript</code>, <code>_ValidationScriptsPartial</code>: emit JS only.</li>
+                    <li><strong>Script-only partials</strong> — <code>_GitHubFolderPathScript</code>, <code>_VolunteerSearchScript</code>, <code>_ValidationScriptsPartial</code>: emit JS only.</li>
                     <li><strong>Infrastructure tag helper</strong> — <code>NonceTagHelper</code>: applies CSP nonces to <code>&lt;script&gt;</code>/<code>&lt;style&gt;</code>; nothing visible to render.</li>
                 </ul>
             </section>
