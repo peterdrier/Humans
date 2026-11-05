@@ -289,8 +289,15 @@ internal sealed class Service(
         return (await repo.GetContactsAsync(ct))
             .Select(c => new HoldedContactDto
             {
-                Id = c.Id, Name = c.Name, SupplierAccountNum = c.SupplierAccountNum, TradeName = c.TradeName,
-                Email = c.Email, Phone = c.Phone, Mobile = c.Mobile, Iban = c.Iban, TaxCode = c.TaxCode,
+                Id = c.Id,
+                Name = c.Name,
+                SupplierAccountNum = c.SupplierAccountNum,
+                TradeName = c.TradeName,
+                Email = c.Email,
+                Phone = c.Phone,
+                Mobile = c.Mobile,
+                Iban = c.Iban,
+                TaxCode = c.TaxCode,
                 Address = c.Address,
             })
             .ToList();
@@ -317,8 +324,15 @@ internal sealed class Service(
                 var contacts = (await client.ListContactsAsync(ct))
                     .Select(c => new HoldedContact
                     {
-                        Id = c.Id, Name = c.Name, SupplierAccountNum = c.SupplierAccountNum, TradeName = c.TradeName,
-                        Email = c.Email, Phone = c.Phone, Mobile = c.Mobile, Iban = c.Iban, TaxCode = c.TaxCode,
+                        Id = c.Id,
+                        Name = c.Name,
+                        SupplierAccountNum = c.SupplierAccountNum,
+                        TradeName = c.TradeName,
+                        Email = c.Email,
+                        Phone = c.Phone,
+                        Mobile = c.Mobile,
+                        Iban = c.Iban,
+                        TaxCode = c.TaxCode,
                         Address = c.Address,
                     })
                     .ToList();
