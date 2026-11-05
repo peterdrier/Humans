@@ -284,7 +284,7 @@ internal sealed class StoreOrderReader(
             .Select(g => new ProductAggregateDto(
                 g.Key,
                 productNames.TryGetValue(g.Key, out var n) ? n : "(unknown)",
-                g.Sum(x => x.Qty),
+                g.Sum(x => (long)x.Qty),
                 g.Sum(x => x.TotalEur)))
             .ToList();
 
@@ -299,7 +299,7 @@ internal sealed class StoreOrderReader(
                 var perProduct = g
                     .SelectMany(c => c.Order.Lines)
                     .GroupBy(l => l.ProductId)
-                    .ToDictionary(lg => lg.Key, lg => lg.Sum(l => l.Qty));
+                    .ToDictionary(lg => lg.Key, lg => lg.Sum(l => (long)l.Qty));
                 return new CrossTabRow(
                     g.Key.Type, g.Key.Id, g.First().Name, perProduct.Values.Sum(), perProduct);
             }).ToList();
