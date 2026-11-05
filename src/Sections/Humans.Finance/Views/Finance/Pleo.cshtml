@@ -129,7 +129,7 @@
                     }
                 </ul>
                 <form authorize-policy="@Humans.Finance.Contracts.FinancePolicies.Manage" asp-action="ClearPleoHolds" method="post" class="d-inline"
-                      onsubmit="return confirm('Only release these after checking Holded: any not in Holded will be booked again by the next run.');">
+                      data-confirm="Only release these after checking Holded: any not in Holded will be booked again by the next run.">
                     <button type="submit" class="btn btn-sm btn-outline-danger">Checked in Holded: release holds</button>
                 </form>
             </div>
@@ -155,8 +155,7 @@
         else
         {
             <form authorize-policy="@Humans.Finance.Contracts.FinancePolicies.Manage" asp-action="BookPleo" method="post"
-                  class="d-flex align-items-center gap-2 flex-wrap"
-                  onsubmit="this.querySelector('button').disabled = true;">
+                  class="d-flex align-items-center gap-2 flex-wrap">
                 <label for="batch" class="mb-0">Book next</label>
                 <select id="batch" name="batch" class="form-select form-select-sm w-auto">
                     <option value="1" selected>1</option>

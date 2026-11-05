@@ -267,6 +267,8 @@ internal sealed class PleoBooking(
                 }
                 catch (HoldedPermanentException ex)
                 {
+                    logger.LogWarning("Holded refused Pleo entry {PleoId} ({Amount} on {Account}): {Reason}",
+                        e.Id, amount, row.Account, ex.Message);
                     await repo.RemovePleoBookingHoldsAsync([e.Id], CancellationToken.None);
                     lines.Add(Line(row, PleoBookingOutcome.Failed, "Holded refused it: " + ex.Message));
                     state.Publish(run with { Lines = lines.ToList() });
@@ -274,6 +276,8 @@ internal sealed class PleoBooking(
                 }
                 catch (HoldedTransientException ex)
                 {
+                    logger.LogWarning("Holded did not answer the post of Pleo entry {PleoId}; it stays held: {Reason}",
+                        e.Id, ex.Message);
                     // It may have landed: held, never retried, and the run stops while Holded is struggling.
                     line = Line(row, PleoBookingOutcome.Failed, $"Holded did not answer ({ex.Message}): it may have posted, check in Holded");
                     stop = true;
