@@ -41,7 +41,7 @@ the profile-edit flow below.
 
 No repository or cache. Serializes profile/CV submissions per user and delegates
 fields, CV history and picture bytes to `IUserManagement.SaveProfileAsync`.
-`UserService` writes picture bytes before publishing metadata, commits fields and
+The internal `UserProfileMutations`, owned by `UserService`, writes picture bytes before publishing metadata, commits fields and
 CV together with the legacy identity name, and cleans superseded files after the save.
 
 ### ContactFieldService (Scoped)
@@ -190,6 +190,15 @@ unified persistence layer. Implements `IUserDataContributor`,
 
 Cross-section calls via `IAdminAuthorizationService` and `IAuditLogService` (admin stub-profile creation after save). No direct
 `IMemoryCache` — caching is in the Singleton decorator.
+
+### UserProfileMutations (internal, owned by UserService)
+
+Repository: `IUserRepository`. Owns stub creation, profile/CV/picture saves,
+medical text and profile-language replacement. Reuses `UserInfoReader` for the
+existing stub-account checks, `IAuditLogService` for admin stub creation and
+`IFileStorage` for picture writes and cleanup. Shares the existing static profile
+locks across its write paths; `UserService` also uses its superseded-picture
+cleanup after merge. No separate DI registration or cache.
 
 ### CachingUserService (Singleton, `Humans.Users.Data`)
 
