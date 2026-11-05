@@ -1405,13 +1405,15 @@
   <data name="About_License_BSD2" xml:space="preserve"><value>requereix avís de drets d'autor a la documentació.</value></data>
   <data name="About_License_BSD3MapLibre" xml:space="preserve"><value>requereix avís de drets d'autor; aquesta pàgina compleix aquesta obligació.</value></data>
   <data name="About_License_ISC" xml:space="preserve"><value>permissiva, funcionalment equivalent a BSD-2-Clause; cal avís de drets d'autor.</value></data>
+  <data name="About_License_AGPL30" xml:space="preserve"><value>la mateixa llicència que el mateix Humans; el codi font complet de Humans és públic, cosa que la compleix.</value></data>
+  <data name="About_License_CCBY40" xml:space="preserve"><value>cal atribució; aquesta pàgina compleix aquesta obligació.</value></data>
   <data name="About_License_LGPL30" xml:space="preserve"><value>la biblioteca ha de poder ser substituïble per l'usuari final. S'utilitza com a paquets NuGet sense modificar (enllaçats dinàmicament), complint les obligacions de la LGPL.</value></data>
   <data name="About_License_MIT" xml:space="preserve"><value>requereix avís de drets d'autor; aquesta pàgina compleix aquesta obligació.</value></data>
   <data name="About_License_PostgreSQL" xml:space="preserve"><value>permissiva, semblant a MIT; cal avís de drets d'autor.</value></data>
   <data name="About_License_SILOFL" xml:space="preserve"><value>lliure d'utilitzar i redistribuir; les tipografies no es poden vendre per separat.</value></data>
   <data name="About_LicenseBody" xml:space="preserve"><value>Humans és programari lliure, publicat sota la</value></data>
   <data name="About_LicenseComplianceHeading" xml:space="preserve"><value>Resum de compliment de llicències</value></data>
-  <data name="About_LicenseComplianceSummary" xml:space="preserve"><value>Totes les dependències de producció utilitzen llicències permissives o de copyleft feble. No s'ha trobat cap infracció.</value></data>
+  <data name="About_LicenseComplianceSummary" xml:space="preserve"><value>Totes les dependències de producció utilitzen llicències permissives, de copyleft feble o compatibles amb AGPL. No s'ha trobat cap infracció.</value></data>
   <data name="About_LicenseExplanation" xml:space="preserve"><value>Pots utilitzar, estudiar, modificar i redistribuir aquest programari. Si executes una versió modificada i permets que altres hi interactuïn a través d'una xarxa, has de posar a disposició el teu codi font modificat sota la mateixa llicència.</value></data>
   <data name="About_LicenseFullText" xml:space="preserve"><value>Text complet de la llicència:</value></data>
   <data name="About_LicenseHeading" xml:space="preserve"><value>Llicència</value></data>

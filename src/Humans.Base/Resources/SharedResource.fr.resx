@@ -1405,13 +1405,15 @@
   <data name="About_License_BSD2" xml:space="preserve"><value>exige une mention de copyright dans la documentation.</value></data>
   <data name="About_License_BSD3MapLibre" xml:space="preserve"><value>exige une mention de copyright ; cette page satisfait cette obligation.</value></data>
   <data name="About_License_ISC" xml:space="preserve"><value>permissive, fonctionnellement équivalente à BSD-2-Clause ; mention de copyright requise.</value></data>
+  <data name="About_License_AGPL30" xml:space="preserve"><value>la même licence que Humans ; le code source complet de Humans est public, ce qui la respecte.</value></data>
+  <data name="About_License_CCBY40" xml:space="preserve"><value>attribution requise ; cette page remplit cette obligation.</value></data>
   <data name="About_License_LGPL30" xml:space="preserve"><value>la bibliothèque doit pouvoir être remplacée par l'utilisateur final. Consommée en tant que paquets NuGet non modifiés (liaison dynamique), ce qui satisfait les obligations de la LGPL.</value></data>
   <data name="About_License_MIT" xml:space="preserve"><value>exige une mention de copyright ; cette page satisfait cette obligation.</value></data>
   <data name="About_License_PostgreSQL" xml:space="preserve"><value>permissive, semblable à MIT ; mention de copyright requise.</value></data>
   <data name="About_License_SILOFL" xml:space="preserve"><value>libres d'utilisation et de redistribution ; les polices ne peuvent pas être vendues séparément.</value></data>
   <data name="About_LicenseBody" xml:space="preserve"><value>Humans est un logiciel libre, publié sous la</value></data>
   <data name="About_LicenseComplianceHeading" xml:space="preserve"><value>Résumé de la conformité des licences</value></data>
-  <data name="About_LicenseComplianceSummary" xml:space="preserve"><value>Toutes les dépendances de production utilisent des licences permissives ou à copyleft faible. Aucune violation détectée.</value></data>
+  <data name="About_LicenseComplianceSummary" xml:space="preserve"><value>Toutes les dépendances de production utilisent des licences permissives, à copyleft faible ou compatibles AGPL. Aucune violation détectée.</value></data>
   <data name="About_LicenseExplanation" xml:space="preserve"><value>Vous pouvez utiliser, étudier, modifier et redistribuer ce logiciel. Si vous exécutez une version modifiée et permettez à d'autres d'interagir avec elle sur un réseau, vous devez mettre à disposition votre code source modifié sous la même licence.</value></data>
   <data name="About_LicenseFullText" xml:space="preserve"><value>Texte complet de la licence :</value></data>
   <data name="About_LicenseHeading" xml:space="preserve"><value>Licence</value></data>

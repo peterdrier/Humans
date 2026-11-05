@@ -1405,13 +1405,15 @@
   <data name="About_License_BSD2" xml:space="preserve"><value>erfordert einen Copyright-Hinweis in der Dokumentation.</value></data>
   <data name="About_License_BSD3MapLibre" xml:space="preserve"><value>erfordert einen Copyright-Hinweis; diese Seite erfüllt diese Verpflichtung.</value></data>
   <data name="About_License_ISC" xml:space="preserve"><value>permissiv, funktional gleichwertig zu BSD-2-Clause; Copyright-Hinweis erforderlich.</value></data>
+  <data name="About_License_AGPL30" xml:space="preserve"><value>dieselbe Lizenz wie Humans selbst; der vollständige Quellcode von Humans ist öffentlich, womit sie erfüllt ist.</value></data>
+  <data name="About_License_CCBY40" xml:space="preserve"><value>Namensnennung erforderlich; diese Seite erfüllt diese Pflicht.</value></data>
   <data name="About_License_LGPL30" xml:space="preserve"><value>die Bibliothek muss für die Endnutzer austauschbar sein. Werden als unveränderte NuGet-Pakete (dynamisch eingebunden) genutzt, was die LGPL-Verpflichtungen erfüllt.</value></data>
   <data name="About_License_MIT" xml:space="preserve"><value>erfordert einen Copyright-Hinweis; diese Seite erfüllt diese Verpflichtung.</value></data>
   <data name="About_License_PostgreSQL" xml:space="preserve"><value>permissiv, MIT-ähnlich; Copyright-Hinweis erforderlich.</value></data>
   <data name="About_License_SILOFL" xml:space="preserve"><value>frei nutzbar und weiterverbreitbar; Schriften dürfen nicht eigenständig verkauft werden.</value></data>
   <data name="About_LicenseBody" xml:space="preserve"><value>Humans ist freie Software, veröffentlicht unter der</value></data>
   <data name="About_LicenseComplianceHeading" xml:space="preserve"><value>Zusammenfassung zur Lizenzkonformität</value></data>
-  <data name="About_LicenseComplianceSummary" xml:space="preserve"><value>Alle produktiven Abhängigkeiten nutzen permissive oder schwach-copyleft Lizenzen. Keine Verstöße gefunden.</value></data>
+  <data name="About_LicenseComplianceSummary" xml:space="preserve"><value>Alle produktiven Abhängigkeiten nutzen permissive, schwach-copyleft oder AGPL-kompatible Lizenzen. Keine Verstöße gefunden.</value></data>
   <data name="About_LicenseExplanation" xml:space="preserve"><value>Du darfst diese Software verwenden, studieren, verändern und weiterverbreiten. Wenn du eine veränderte Version betreibst und andere über ein Netzwerk damit interagieren lässt, musst du deinen veränderten Quellcode unter derselben Lizenz verfügbar machen.</value></data>
   <data name="About_LicenseFullText" xml:space="preserve"><value>Vollständiger Lizenztext:</value></data>
   <data name="About_LicenseHeading" xml:space="preserve"><value>Lizenz</value></data>

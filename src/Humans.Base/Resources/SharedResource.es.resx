@@ -1405,13 +1405,15 @@
   <data name="About_License_BSD2" xml:space="preserve"><value>requiere aviso de copyright en la documentación.</value></data>
   <data name="About_License_BSD3MapLibre" xml:space="preserve"><value>requiere aviso de copyright; esta página cumple con esa obligación.</value></data>
   <data name="About_License_ISC" xml:space="preserve"><value>permisiva, funcionalmente equivalente a BSD-2-Clause; requiere aviso de copyright.</value></data>
+  <data name="About_License_AGPL30" xml:space="preserve"><value>la misma licencia que el propio Humans; el código fuente completo de Humans es público, lo que la cumple.</value></data>
+  <data name="About_License_CCBY40" xml:space="preserve"><value>requiere atribución; esta página cumple esa obligación.</value></data>
   <data name="About_License_LGPL30" xml:space="preserve"><value>la biblioteca debe poder ser reemplazada por el usuario final. Se consume como paquetes NuGet sin modificar (enlazados dinámicamente), cumpliendo las obligaciones de la LGPL.</value></data>
   <data name="About_License_MIT" xml:space="preserve"><value>requiere aviso de copyright; esta página cumple con esa obligación.</value></data>
   <data name="About_License_PostgreSQL" xml:space="preserve"><value>permisiva, similar a MIT; requiere aviso de copyright.</value></data>
   <data name="About_License_SILOFL" xml:space="preserve"><value>libre de usar y redistribuir; las fuentes no pueden venderse por separado.</value></data>
   <data name="About_LicenseBody" xml:space="preserve"><value>Humans es software libre, publicado bajo la</value></data>
   <data name="About_LicenseComplianceHeading" xml:space="preserve"><value>Resumen de cumplimiento de licencias</value></data>
-  <data name="About_LicenseComplianceSummary" xml:space="preserve"><value>Todas las dependencias de producción usan licencias permisivas o de copyleft débil. No se han encontrado infracciones.</value></data>
+  <data name="About_LicenseComplianceSummary" xml:space="preserve"><value>Todas las dependencias de producción usan licencias permisivas, de copyleft débil o compatibles con AGPL. No se han encontrado infracciones.</value></data>
   <data name="About_LicenseExplanation" xml:space="preserve"><value>Puedes usar, estudiar, modificar y redistribuir este software. Si ejecutas una versión modificada y permites que otros interactúen con ella a través de una red, debes poner tu código fuente modificado a disposición bajo la misma licencia.</value></data>
   <data name="About_LicenseFullText" xml:space="preserve"><value>Texto completo de la licencia:</value></data>
   <data name="About_LicenseHeading" xml:space="preserve"><value>Licencia</value></data>
