@@ -37,6 +37,7 @@ internal sealed class ShiftManagementService(
     ILogger<ShiftManagementService> logger) : IShiftManagement, IUserMerge
 {
     private static readonly TimeSpan DashboardCacheTtl = TimeSpan.FromMinutes(5);
+    private readonly ShiftCoordinatorActivity coordinatorActivity = new(repo, calendarResolver, serviceProvider, cache, DashboardCacheTtl);
     private const string OverallCoverageCacheKey = "dashboard-overall-coverage";
 
     private static readonly decimal AllDayShiftHours = (decimal)Shift.AllDayWindowHours;
@@ -55,26 +56,7 @@ internal sealed class ShiftManagementService(
         CancellationToken ct = default)
     {
         var teamsById = await TeamService.GetTeamsAsync(ct);
-        return IncludeParents(teamsById, teamIds);
-    }
-
-    private static IReadOnlyDictionary<Guid, TeamInfo> IncludeParents(
-        IReadOnlyDictionary<Guid, TeamInfo> teamsById,
-        IEnumerable<Guid> teamIds)
-    {
-        var result = new Dictionary<Guid, TeamInfo>();
-        var pending = new Queue<Guid>(teamIds.Distinct());
-        while (pending.TryDequeue(out var teamId))
-        {
-            if (result.ContainsKey(teamId) || !teamsById.TryGetValue(teamId, out var team))
-                continue;
-
-            result[teamId] = team;
-            if (team.ParentTeamId is { } parentId)
-                pending.Enqueue(parentId);
-        }
-
-        return result;
+        return ShiftStaffingAggregation.IncludeParents(teamsById, teamIds);
     }
 
     private static bool IsInDirectory(TeamInfo team) =>
@@ -789,38 +771,6 @@ internal sealed class ShiftManagementService(
         return shift?.Rota is null ? null : new ShiftWithRota(ToShiftInfo(shift), ToRotaInfo(shift.Rota));
     }
 
-    /// <summary>Inclusive bounds. subPeriod narrows only when period is Build.</summary>
-    private static (int? MinDayOffset, int? MaxDayOffset) GetDayOffsetBounds(
-        ShiftPeriod? period, BuildSubPeriod? subPeriod, BurnSettingsInfo es)
-    {
-        int? minDayOffset = null;
-        int? maxDayOffset = null;
-
-        switch (period)
-        {
-            case ShiftPeriod.Build:
-                maxDayOffset = -1;
-                break;
-            case ShiftPeriod.Event:
-                minDayOffset = 0;
-                maxDayOffset = es.EventEndOffset;
-                break;
-            case ShiftPeriod.Strike:
-                minDayOffset = es.EventEndOffset + 1;
-                break;
-        }
-
-        if (period == ShiftPeriod.Build && subPeriod is not null)
-        {
-            var (start, end) = BuildSubPeriodClassifier.BoundsFor(subPeriod.Value, es);
-            minDayOffset = start;
-            // BoundsFor is half-open; repo bounds are inclusive.
-            maxDayOffset = end - 1;
-        }
-
-        return (minDayOffset, maxDayOffset);
-    }
-
     /// <summary>All three periods when <paramref name="period"/> is null.</summary>
     private static List<int> BuildDayOffsetList(
         ShiftPeriod? period, BuildSubPeriod? subPeriod, BurnSettingsInfo es)
@@ -853,7 +803,7 @@ internal sealed class ShiftManagementService(
         var es = await calendarResolver.GetAsync(eventSettingsId, ct);
         if (es is null) return [];
 
-        var (minDayOffset, maxDayOffset) = GetDayOffsetBounds(period, subPeriod, es);
+        var (minDayOffset, maxDayOffset) = BuildSubPeriodClassifier.GetDayOffsetBounds(period, subPeriod, es);
 
         // A reversed range is swapped. A single bound stays open-ended; do not mirror it onto the missing side.
         if (startDate.HasValue || endDate.HasValue)
@@ -1261,7 +1211,7 @@ internal sealed class ShiftManagementService(
     internal static string OverviewCacheKey(Guid eventId, ShiftPeriod? period) =>
         $"dashboard-overview:{eventId}:{period?.ToString() ?? "all"}";
     internal static string CoordinatorActivityCacheKey(Guid eventId, ShiftPeriod? period) =>
-        $"dashboard-coordinator-activity:{eventId}:{period?.ToString() ?? "all"}";
+        ShiftCoordinatorActivity.CacheKey(eventId, period);
     internal static string TrendsCacheKey(Guid eventId, TrendWindow window, ShiftPeriod? period) =>
         $"dashboard-trends:{eventId}:{window}:{period?.ToString() ?? "all"}";
 
@@ -1354,106 +1304,9 @@ internal sealed class ShiftManagementService(
             staffing.TotalSlots > 0 ? 100.0 * staffing.FilledSlots / staffing.TotalSlots : 0d;
     }
 
-    public async Task<IReadOnlyList<CoordinatorActivityRow>> GetCoordinatorActivityAsync(Guid eventSettingsId, ShiftPeriod? period = null, BuildSubPeriod? subPeriod = null, CancellationToken ct = default)
-    {
-        // Sub-periods would fan the cache key out 4x, so only the base period is cached.
-        if (subPeriod is not null)
-            return await ComputeCoordinatorActivityAsync(eventSettingsId, period, subPeriod, ct);
-
-        var cached = await cache.GetOrCreateAsync(CoordinatorActivityCacheKey(eventSettingsId, period), async entry =>
-        {
-            entry.SlidingExpiration = DashboardCacheTtl;
-            return await ComputeCoordinatorActivityAsync(eventSettingsId, period, subPeriod: null, ct);
-        });
-        return cached!;
-    }
-
-    private async Task<IReadOnlyList<CoordinatorActivityRow>> ComputeCoordinatorActivityAsync(Guid eventSettingsId, ShiftPeriod? period, BuildSubPeriod? subPeriod, CancellationToken ct)
-    {
-        int? minDayOffset = null;
-        int? maxDayOffset = null;
-
-        if (period is not null)
-        {
-            var es = await calendarResolver.GetAsync(eventSettingsId, ct);
-            if (es is null) return [];
-            (minDayOffset, maxDayOffset) = GetDayOffsetBounds(period, subPeriod, es);
-        }
-
-        var pendingCounts = await repo.GetPendingSignupCountsByTeamAsync(
-            eventSettingsId, minDayOffset, maxDayOffset, ct);
-
-        if (pendingCounts.Count == 0)
-            return [];
-
-        var teamsById = await TeamService.GetTeamsAsync(ct);
-        var teamMeta = IncludeParents(teamsById, pendingCounts.Keys);
-
-        var relevantTeamIds = new HashSet<Guid>(pendingCounts.Keys.Where(teamMeta.ContainsKey));
-        foreach (var id in relevantTeamIds.ToList())
-        {
-            var current = teamMeta.GetValueOrDefault(id);
-            while (current?.ParentTeamId is Guid parentId && teamMeta.ContainsKey(parentId))
-            {
-                if (!relevantTeamIds.Add(parentId))
-                    break;
-                current = teamMeta[parentId];
-            }
-        }
-
-        var coordsRaw = relevantTeamIds
-            .Where(teamsById.ContainsKey)
-            .SelectMany(id => teamsById[id].Members
-                .Where(m => m.Role == TeamMemberRole.Coordinator)
-                .Select(m => new TeamCoordinatorRef(id, m.UserId)))
-            .ToList();
-        var coordinatorUserIds = coordsRaw.Select(c => c.UserId).Distinct().ToList();
-
-        var userLookup = await UserService.GetUserInfosAsync(coordinatorUserIds, ct);
-
-        var coordsByTeam = coordsRaw
-            .GroupBy(c => c.TeamId)
-            .ToDictionary(
-                g => g.Key,
-                g => (IReadOnlyList<CoordinatorLogin>)g
-                    .Select(c =>
-                    {
-                        userLookup.TryGetValue(c.UserId, out var user);
-                        return new CoordinatorLogin(
-                            c.UserId,
-                            user?.LastLoginAt);
-                    })
-                    .ToList());
-
-        CoordinatorActivityRow BuildRow(Guid teamId)
-        {
-            var t = teamMeta[teamId];
-            var ownPending = pendingCounts.GetValueOrDefault(teamId, 0);
-            var coords = coordsByTeam.GetValueOrDefault(teamId, []);
-
-            var childIds = relevantTeamIds
-                .Where(id => teamMeta[id].ParentTeamId == teamId);
-
-            var subgroups = childIds
-                .Select(BuildRow)
-                .ToList();
-
-            var aggregate = ownPending + subgroups.Sum(s => s.AggregatePendingCount);
-            return new CoordinatorActivityRow(teamId, t.Name, coords, ownPending, aggregate, subgroups);
-        }
-
-        var rootIds = relevantTeamIds
-            .Where(id =>
-            {
-                var t = teamMeta[id];
-                return !t.ParentTeamId.HasValue || !relevantTeamIds.Contains(t.ParentTeamId.Value);
-            });
-
-        return rootIds
-            .Select(BuildRow)
-            .Where(r => r.AggregatePendingCount > 0)
-            .ToList();
-    }
+    public Task<IReadOnlyList<CoordinatorActivityRow>> GetCoordinatorActivityAsync(
+        Guid eventSettingsId, ShiftPeriod? period = null, BuildSubPeriod? subPeriod = null, CancellationToken ct = default) =>
+        coordinatorActivity.GetCoordinatorActivityAsync(eventSettingsId, period, subPeriod, ct);
 
     public async Task<IReadOnlyList<DashboardTrendPoint>> GetDashboardTrendsAsync(
         Guid eventSettingsId, TrendWindow window, ShiftPeriod? period = null,
@@ -1498,7 +1351,7 @@ internal sealed class ShiftManagementService(
         var startInstant = start.AtStartOfDayInZone(tz).ToInstant();
         var endInstant = today.PlusDays(1).AtStartOfDayInZone(tz).ToInstant();
 
-        var (minDayOffset, maxDayOffset) = GetDayOffsetBounds(period, subPeriod, es);
+        var (minDayOffset, maxDayOffset) = BuildSubPeriodClassifier.GetDayOffsetBounds(period, subPeriod, es);
 
         var signupsInWindow = await repo.GetSignupCreatedAtsInWindowAsync(
             eventSettingsId, startInstant, endInstant, minDayOffset, maxDayOffset, ct);

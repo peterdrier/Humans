@@ -119,4 +119,22 @@ internal static class ShiftStaffingAggregation
         return (total, filled, totalSlots, filledSlots, remaining, ToStaffing(ShiftPeriod.Build), ToStaffing(ShiftPeriod.Event), ToStaffing(ShiftPeriod.Strike));
     }
 
+    internal static IReadOnlyDictionary<Guid, TeamInfo> IncludeParents(
+        IReadOnlyDictionary<Guid, TeamInfo> teamsById,
+        IEnumerable<Guid> teamIds)
+    {
+        var result = new Dictionary<Guid, TeamInfo>();
+        var pending = new Queue<Guid>(teamIds.Distinct());
+        while (pending.TryDequeue(out var teamId))
+        {
+            if (result.ContainsKey(teamId) || !teamsById.TryGetValue(teamId, out var team))
+                continue;
+
+            result[teamId] = team;
+            if (team.ParentTeamId is { } parentId)
+                pending.Enqueue(parentId);
+        }
+
+        return result;
+    }
 }
