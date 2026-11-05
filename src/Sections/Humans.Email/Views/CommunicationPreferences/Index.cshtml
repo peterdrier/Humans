@@ -39,18 +39,11 @@
             body.append('category', category);
             body.append('emailEnabled', emailCb ? emailCb.checked : true);
             body.append('alertEnabled', alertCb ? alertCb.checked : row.dataset.alertEnabled === 'true');
-            body.append('__RequestVerificationToken',
-                document.querySelector('input[name="__RequestVerificationToken"]').value);
 
             this.disabled = true;
             var self = this;
 
-            fetch('@Url.Action("UpdatePreference")', {
-                method: 'POST',
-                redirect: 'error',
-                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                body: body.toString()
-            }).then(function (resp) {
+            Humans.postForm('@Url.Action("UpdatePreference")', body, { redirect: 'error' }).then(function (resp) {
                 if (!resp.ok) throw new Error(resp.statusText);
                 row.classList.add('table-success');
                 setTimeout(function () { row.classList.remove('table-success'); }, 600);

@@ -691,6 +691,32 @@
                         <div class="text-muted small">↑ empty until a section contributes; each contributed link is gated for the current viewer.</div>
                     </div>
                 </div>
+
+                <div class="wg-card">
+                    <div class="wg-card-header">
+                        <div>
+                            <span class="wg-card-name">Shared JS (site.js)</span>
+                            <span class="wg-card-kind">JavaScript</span>
+                        </div>
+                        <span class="wg-card-path">src/Humans.Web/wwwroot/js/site.js</span>
+                    </div>
+                    <div class="wg-card-note">
+                        Loaded by both layouts, so views and section scripts use these instead of re-writing them.
+                        <code>Humans.*</code> arrives after body scripts run: call it from event handlers or
+                        <code>DOMContentLoaded</code>, not at the top level of a view body.
+                    </div>
+                    <ul class="small mb-0">
+                        <li><code>data-confirm="…"</code> — on a link, button or form: asks <code>confirm()</code> first and cancels on No. No local handler needed.</li>
+                        <li><code>.js-auto-submit</code> — on a wrapper: submits the enclosing form when a control inside changes.</li>
+                        <li><code>data-href="…"</code> — on a <code>&lt;tr&gt;</code>: the row navigates on click, ignoring clicks on links and controls inside it.</li>
+                        <li><code>showToast(message, type)</code> — Bootstrap toast in the layout's toast container; <code>type</code> is <code>success</code> (default) or <code>danger</code>.</li>
+                        <li><code>Humans.csrfToken([selector])</code> — the page's antiforgery token, or <code>''</code> when absent.</li>
+                        <li><code>Humans.escapeHtml(value)</code> — escapes <code>&amp; &lt; &gt; " '</code>; <code>null</code> becomes <code>''</code>. Safe in text and quoted attributes.</li>
+                        <li><code>Humans.postJson(url, body, opts)</code> — <code>fetch</code> POST with the antiforgery header and a JSON body; <code>opts.method</code> switches to PUT, and <code>opts.headers</code> / <code>redirect</code> pass through. Resolves to the <code>Response</code>.</li>
+                        <li><code>Humans.postForm(url, data, opts)</code> — same for a <code>FormData</code>, <code>URLSearchParams</code> or plain object; the token is added to the body as well.</li>
+                        <li><code>Humans.loadChartJs()</code> — loads the pinned Chart.js once (SRI-checked) and resolves to <code>Chart</code>.</li>
+                    </ul>
+                </div>
             </section>
 
             <section id="skipped" class="wg-section">
@@ -706,7 +732,7 @@
                     <li><strong>Layout partials</strong> — <code>_Layout</code>, <code>_AdminLayout</code>, <code>_GuideLayout</code>, <code>_LoginPartial</code>, <code>_VersionInfo</code>: page chrome that doesn't render in isolation.</li>
                     <li><strong>Coordinator dashboard</strong> — <code>AdminSummaryViewComponent</code>: the summary strip is assembled from the tiles sections contribute, so it only renders inside a request that carries an admin identity. See <a href="/Admin/Dashboard">/Admin/Dashboard</a>.</li>
                     <li><strong>Sign-in method dial</strong> — <code>LoginMethodCardViewComponent</code>: Shell-owned dashboard card over the process-wide in-memory sign-in tally; nothing references the Shell, so it can't be invoked from here. See <a href="/Admin">/Admin</a>.</li>
-                    <li><strong>Script-only partials</strong> — <code>_RequestVerificationTokenScript</code>, <code>_EscapeHtmlScript</code>, <code>_GitHubFolderPathScript</code>, <code>_VolunteerSearchScript</code>, <code>_ValidationScriptsPartial</code>: emit JS only.</li>
+                    <li><strong>Script-only partials</strong> — <code>_GitHubFolderPathScript</code>, <code>_VolunteerSearchScript</code>, <code>_ValidationScriptsPartial</code>: emit JS only.</li>
                     <li><strong>Infrastructure tag helper</strong> — <code>NonceTagHelper</code>: applies CSP nonces to <code>&lt;script&gt;</code>/<code>&lt;style&gt;</code>; nothing visible to render.</li>
                 </ul>
             </section>
