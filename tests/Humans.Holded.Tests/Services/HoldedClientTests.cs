@@ -301,7 +301,7 @@ public class HoldedClientTests
     /// <paramref name="afterDetail"/> is what the second read's <c>payments_detail</c> holds.</summary>
     private static StubHandler PaymentHandler(
         string beforeDetail, string afterDetail, Action<HttpRequestMessage>? onPost = null,
-        Func<int, HttpResponseMessage?>? overrideGet = null)
+        Func<int, HttpResponseMessage?>? overrideGet = null, HttpStatusCode postStatus = HttpStatusCode.Created)
     {
         var gets = 0;
         return new StubHandler(req =>
@@ -310,7 +310,7 @@ public class HoldedClientTests
             {
                 req.RequestUri!.PathAndQuery.Should().Be("/api/v2/purchases/doc-123/payments");
                 onPost?.Invoke(req);
-                return Respond(HttpStatusCode.Created, """{"status":"paid"}""");
+                return Respond(postStatus, """{"status":"paid"}""");
             }
             req.RequestUri!.PathAndQuery.Should().Be("/api/v2/purchases/doc-123");
             gets++;
@@ -384,6 +384,24 @@ public class HoldedClientTests
             Xunit.TestContext.Current.CancellationToken);
 
         id.Should().Be("unconfirmed:doc-123");
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(true)]
+    [Xunit.InlineData(false)]
+    public async Task PayPurchaseDocumentAsync_PostAnswers503_TheDocumentSaysWhetherItPosted(bool savedAnyway)
+    {
+        // Production, 2026-11-05: a 503 is not proof nothing was saved. The document decides.
+        var handler = PaymentHandler(
+            OldPayment, OldPayment + (savedAnyway ? "," + NewPayment : ""),
+            postStatus: HttpStatusCode.ServiceUnavailable);
+
+        var act = async () => await Make(handler).PayPurchaseDocumentAsync(
+            "doc-123", 18m, "treasury-1", new LocalDate(2026, 8, 25), null,
+            Xunit.TestContext.Current.CancellationToken);
+
+        if (savedAnyway) (await act()).Should().Be("pay-9");
+        else await act.Should().ThrowAsync<HoldedTransientException>();
     }
 
     [HumansFact]

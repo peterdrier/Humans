@@ -1144,7 +1144,7 @@ internal sealed class Service(
         if (bankMovementId is { Length: > 0 })
             return $"Transfer to {ibanMasked} is tied to Sabadell line {bankMovementId} — it cannot be withdrawn.";
         if (paymentRefs is { Length: > 0 })
-            return $"Transfer to {ibanMasked} already posted Holded payment(s) {paymentRefs} — settle it in Holded instead.";
+            return $"Transfer to {ibanMasked} already posted Holded payment(s) {paymentRefs} — the money moved, so it cannot be withdrawn; book it to finish.";
         return null;
     }
 

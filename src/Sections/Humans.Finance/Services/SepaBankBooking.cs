@@ -247,11 +247,10 @@ internal sealed class SepaBankBooking(
     {
         if (row.IsBooked) return null;
         if (row.IsWithdrawn) return null;   // renders as withdrawn; nothing books it
-        // Payments landed and the run stopped before booking. Holded keeps no tag on a purchase
-        // payment, so a retry cannot see them and would post the amount again as a journal entry.
-        if (row.PostedButNotBooked)
+        // A payment Holded took without an id cannot be read back, so the resume cannot count it.
+        if (row.PostedButNotBooked && HasUnconfirmedRef(row.HoldedPaymentRefs))
             return "an earlier attempt posted Holded payment(s) " + row.HoldedPaymentRefs
-                   + " and then stopped — Humans cannot see them again; settle it in Holded by hand";
+                   + " and could not identify one of them — settle it in Holded by hand";
         // Nothing in Humans can still book this one: the line that paid it, if any, has dropped
         // off the feed. Say so rather than leaving it in "waiting for the Sabadell line" forever.
         if (IsStale(row))
@@ -636,12 +635,14 @@ internal sealed class SepaBankBooking(
                 $"Transfer to {transfer.IbanMasked} was withdrawn — nothing was posted to Holded.");
 
         // An earlier run posted payments and stopped. Holded drops the description on a purchase payment, so the tag
-        // sum cannot see them and a retry would post again. Refuse until a human settles it.
-        if (transfer.HoldedPaymentRefs is { Length: > 0 })
+        // sum cannot see them: the resume reads each saved id back off the member's documents instead. An id-less
+        // payment cannot be read back.
+        var priorRefs = SplitRefs(transfer.HoldedPaymentRefs);
+        if (HasUnconfirmedRef(transfer.HoldedPaymentRefs))
             return new SepaBookingResult(false,
                 $"An earlier attempt posted Holded payment(s) {transfer.HoldedPaymentRefs} for this "
-                + "transfer and then stopped — Humans cannot see them again, so a retry would post "
-                + "the money twice. Settle it in Holded by hand; nothing was posted.");
+                + "transfer and could not identify one of them, so Humans cannot tell what is still "
+                + "owed. Settle it in Holded by hand; nothing was posted.");
 
         var binding = await repo.GetCreditorContactByUserAsync(transfer.UserId, ct);
         if (binding is null || string.IsNullOrEmpty(binding.HoldedContactId))
@@ -701,6 +702,7 @@ internal sealed class SepaBankBooking(
         // Steps 3 and 4: the live creditor balance, and what this transfer already posted.
         decimal owedNow;
         decimal posted;
+        var priorPaid = 0m;
         try
         {
             // The live chart total, not the nightly mirror: the audit entry names what was owed now.
@@ -726,6 +728,13 @@ internal sealed class SepaBankBooking(
                 .Where(l => (l.Description ?? "").Contains(tag, StringComparison.Ordinal))
                 .Sum(l => l.Debit - l.Credit);   // paying a creditor DEBITS 400xxxxx
             if (posted < 0m) posted = 0m;        // a tagged credit is not "already paid"
+
+            if (priorRefs.Count > 0)
+            {
+                if (await PriorPaymentsRefusalAsync(movement.Date, binding.HoldedContactId) is { } refusal)
+                    return new SepaBookingResult(false, refusal + " Nothing was posted.");
+                posted += priorPaid;
+            }
         }
         catch (Exception ex) when (ex is HoldedTransientException or HoldedPermanentException)
         {
@@ -811,7 +820,7 @@ internal sealed class SepaBankBooking(
         var now = clock.GetCurrentInstant();
         // The journal remainder rides along as an `entry:<amount>` token: not a Holded id, never
         // sent in a reconcile, but what lets the row say how much of the line a human has to match.
-        var refTokens = paidDocs.Select(p => p.Ref).ToList();
+        var refTokens = priorRefs.Concat(paidDocs.Select(p => p.Ref)).ToList();
         if (entry is not null)
             refTokens.Add(SepaPayoutTransferRow.JournalEntryRefPrefix
                           + entryAmount.ToString("F2", CultureInfo.InvariantCulture));
@@ -841,7 +850,7 @@ internal sealed class SepaBankBooking(
         // Name the PAYMENTS, never the documents: a purchase ref makes Holded mint a new payment for the whole line.
         // An unconfirmed payment or a journal entry cannot be named, so Holded may read the line `partial`.
         var docs = PaymentRefs(refs);
-        var incomplete = docs.Count < paidDocs.Count || entry is not null || resumed;
+        var incomplete = docs.Count < priorRefs.Count + paidDocs.Count || entry is not null || resumed;
 
         var summary = PostingSummary();
         var resumedPart = resumed ? $"; resumed ({Euros(posted)} already posted)" : "";
@@ -939,21 +948,21 @@ internal sealed class SepaBankBooking(
             return new SepaBookingResult(false, $"Holded refused the {what} — nothing was posted.");
         }
 
-        // A journal entry keeps its tag, so the tag sum resumes from it; a document payment does not, so the retry
-        // refuses.
-        string NextStep() => paidDocs.Count == 0
-            ? "the next attempt posts only what is still missing"
-            : "settle it in Holded by hand — a retry refuses, since Holded keeps no tag on a payment";
+        // A journal entry keeps its tag and a saved payment id is read back, so a retry resumes from both. A payment
+        // with no id cannot be read back.
+        string NextStep() => paidDocs.Any(p => HasUnconfirmedRef(p.Ref))
+            ? "settle it in Holded by hand — Holded took a payment Humans could not identify"
+            : "book it again to finish — the retry posts only what is still missing";
 
-        // Written to the row so the next attempt refuses (the tag sum cannot see a purchase payment) and the page says
-        // why.
+        // Written to the row, after any an earlier run saved, so the next attempt can read them back: the tag sum
+        // cannot see a purchase payment.
         async Task RememberLandedPaymentsAsync()
         {
             if (paidDocs.Count == 0) return;
             try
             {
                 await repo.SaveSepaTransferPaymentRefsAsync(
-                    transfer.Id, string.Join(",", paidDocs.Select(p => p.Ref)), ct);
+                    transfer.Id, string.Join(",", priorRefs.Concat(paidDocs.Select(p => p.Ref))), ct);
             }
             catch (Exception ex)
             {
@@ -961,6 +970,49 @@ internal sealed class SepaBankBooking(
                     "The payment ids Holded accepted for SEPA transfer {TransferId} could not be saved; the "
                     + "audit entry is the only record of them.", transferId);
             }
+        }
+
+        // Reads every saved payment back off the member's documents. A saved id Holded no longer shows, one dated
+        // another day than this line, or a payment of this line's day and treasury Humans never recorded (a POST that
+        // failed after Holded saved it) means the amount still owed is unknown, so the resume stops.
+        async Task<string?> PriorPaymentsRefusalAsync(LocalDate lineDate, string contactId)
+        {
+            var treasury = sepa.Value.TreasuryAccountId;
+            var payments = new List<(string DocId, HoldedPaymentDetailDto Payment)>();
+            foreach (var doc in (await client.ListPurchaseDocumentsAsync(ct))
+                         .Where(d => d.IsDraft == false
+                                     && string.Equals(d.ContactId, contactId, StringComparison.Ordinal)))
+                payments.AddRange((await client.GetPurchaseDocumentAsync(doc.Id, ct)).Payments.Select(p => (doc.Id, p)));
+
+            var byId = payments
+                .GroupBy(p => p.Payment.Id, StringComparer.Ordinal)
+                .ToDictionary(g => g.Key, g => g.First(), StringComparer.Ordinal);
+            var missing = priorRefs.Where(r => !byId.ContainsKey(r)).ToList();
+            if (missing.Count > 0)
+                return $"An earlier attempt saved Holded payment(s) {string.Join(",", missing)} for this transfer, "
+                       + "but none of the member's Holded documents shows them now — settle it in Holded by hand.";
+
+            var prior = priorRefs.Select(r => byId[r]).ToList();
+            var otherDay = prior.Where(p => p.Payment.Date != lineDate).Select(p => p.Payment).FirstOrDefault();
+            if (otherDay is not null)
+                return $"Holded payment {otherDay.Id} an earlier attempt posted is dated "
+                       + $"{otherDay.Date.ToInvariantDate()}, not this Sabadell line's "
+                       + $"{lineDate.ToInvariantDate()} — settle it in Holded by hand.";
+
+            var known = priorRefs.ToHashSet(StringComparer.Ordinal);
+            var unrecorded = payments
+                .Where(p => !known.Contains(p.Payment.Id) && p.Payment.Date == lineDate
+                            && (string.IsNullOrWhiteSpace(treasury)
+                                || string.Equals(p.Payment.BankId, treasury, StringComparison.Ordinal)))
+                .ToList();
+            if (unrecorded.Count > 0)
+                return "The member's Holded documents carry payment(s) dated this Sabadell line that Humans "
+                       + "never recorded ("
+                       + string.Join(", ", unrecorded.Select(p => $"{p.Payment.Id} {Euros(p.Payment.Amount)} on {p.DocId}"))
+                       + ") — possibly one a failed request left behind. Settle it in Holded by hand.";
+
+            priorPaid = prior.Sum(p => p.Payment.Amount);
+            return null;
         }
 
         string? PairingRefusal(
@@ -1093,6 +1145,12 @@ internal sealed class SepaBankBooking(
 
     /// <summary>Leaves out <c>unconfirmed:</c> sentinels (never replaced by the document id) and the <c>entry:</c>
     /// token: Holded cannot link a ledger entry to a bank line.</summary>
+    private static List<string> SplitRefs(string? joined) =>
+        (joined ?? "").Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList();
+
+    private static bool HasUnconfirmedRef(string? joined) =>
+        SplitRefs(joined).Any(r => r.StartsWith("unconfirmed:", StringComparison.Ordinal));
+
     private static List<HoldedReconcileDocumentRef> PaymentRefs(string? joined) =>
         (joined ?? "")
             .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)

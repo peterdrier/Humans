@@ -117,7 +117,7 @@ public class SepaBankBookingTests
     }
 
     [HumansFact]
-    public async Task Booking_RetriedAfterTheJournalEntryFailed_RefusesUntilAHumanSettlesIt()
+    public async Task Booking_RetriedAfterTheJournalEntryFailed_ResumesFromTheSavedPayment()
     {
         // Run 1: the €10 document payment lands, the €20 journal entry is refused. Nothing is
         // stamped, the money that did move is audited, and its payment id is written to the row.
@@ -140,32 +140,55 @@ public class SepaBankBookingTests
         await _repo.Received(1).SaveSepaTransferPaymentRefsAsync(
             TransferId, "pay-d1", Arg.Any<CancellationToken>());
 
-        // Run 2: Holded discards the description on a purchase payment, so the tag sum reads 0 and
-        // the €10 that moved is invisible to the retry — it would post the whole €30 again as a
-        // journal entry. The row now carries the payment id, and the retry refuses on it.
-        _client.ClearSubstitute(ClearOptions.CallActions | ClearOptions.ReturnValues);
+        // Run 2: the tag sum cannot see a purchase payment, so the €10 is read back off the
+        // document by its saved id, and only the €20 still missing is posted.
+        _write.ClearSubstitute(ClearOptions.All);
+        _write.PostJournalEntryAsync(
+                Arg.Any<LocalDate>(), Arg.Any<int>(), Arg.Any<int>(), Arg.Any<decimal>(),
+                Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(new HoldedJournalEntryOutcome(true));
         SeedTransfer(30m, paymentRefs: "pay-d1");
-        SeedMovements(Movement());
-        SeedOwed(20m);
         SeedOpenDocs(Doc("d1", 0m, 1));
+        SeedPayments("d1", ("pay-d1", 10m, LineDate));
 
         var second = await MakeService().BookSepaTransferAsync(TransferId, MovementId, Guid.NewGuid());
 
-        second.Succeeded.Should().BeFalse();
-        second.Message.Should().Contain("pay-d1").And.Contain("Settle it in Holded by hand");
-        // Across both runs: the one payment of run 1, and never the journal entry run 2 would have
-        // posted for the whole €30.
+        second.Succeeded.Should().BeTrue();
         await _client.Received(1).PayPurchaseDocumentAsync(
             "d1", 10m, "treasury-1", LineDate, Tag, Arg.Any<CancellationToken>());
-        await _write.DidNotReceive().PostJournalEntryAsync(
-            Arg.Any<LocalDate>(), Arg.Any<int>(), Arg.Any<int>(), 30m, Arg.Any<string>(),
+        await _write.Received(1).PostJournalEntryAsync(
+            LineDate, Account, 57200001, 20m, Tag, Arg.Any<CancellationToken>());
+        await _repo.Received(1).SaveSepaTransferBookingAsync(
+            TransferId, FixedNow, Arg.Any<Guid?>(), MovementId, null, "pay-d1,entry:20.00",
             Arg.Any<CancellationToken>());
-        await _repo.DidNotReceiveWithAnyArgs().SaveSepaTransferBookingAsync(
-            default, default, default, default!, default, default);
+    }
+
+    [HumansTheory]
+    [InlineData("pay-d1,unconfirmed:d2", false, "could not identify")]
+    [InlineData("pay-gone", false, "pay-gone")]
+    [InlineData("pay-d1", true, "pay-stray")]
+    public async Task Booking_ResumeThatCannotAccountForEveryPayment_PostsNothing(
+        string savedRefs, bool stray, string reason)
+    {
+        // Unconfirmed id; a saved id no document shows; a payment of the line's day nobody recorded
+        // (what a 503 that Holded saved anyway leaves behind).
+        SeedTransfer(30m, paymentRefs: savedRefs);
+        SeedOpenDocs(Doc("d1", 0m, 1), Doc("d2", 20m, 2));
+        SeedPayments("d1", ("pay-d1", 10m, LineDate));
+        SeedPayments("d2", stray ? [("pay-stray", 5m, LineDate)] : []);
+
+        var result = await MakeService().BookSepaTransferAsync(TransferId, MovementId, Guid.NewGuid());
+
+        result.Succeeded.Should().BeFalse();
+        result.Message.Should().Contain(reason).And.Contain("by hand");
+        await _client.DidNotReceiveWithAnyArgs().PayPurchaseDocumentAsync(
+            default!, default, default, default, default!);
+        await _write.DidNotReceiveWithAnyArgs().PostJournalEntryAsync(
+            default, default, default, default, default!);
     }
 
     [HumansFact]
-    public async Task Page_TransferWithPaymentsLandedButNotBooked_IsNotOffered_AndSaysWhy()
+    public async Task Page_TransferWithAnUnconfirmedPayment_IsNotOffered_AndSaysWhy()
     {
         SeedRows(Row(TransferId, _userId, paymentRefs: "pay-d1,unconfirmed:d2"));
         SeedContacts(_userId);
@@ -2440,6 +2463,14 @@ public class SepaBankBookingTests
             PaymentsPending = pending,
             IsDraft = false,
         };
+
+    private void SeedPayments(string docId, params (string Id, decimal Amount, LocalDate Date)[] payments) =>
+        _client.GetPurchaseDocumentAsync(docId, Arg.Any<CancellationToken>()).Returns(new HoldedPurchaseDocumentDto
+        {
+            Id = docId, DocNumber = docId, Subtotal = 0m, Tax = 0m, Total = 0m, PaymentsTotal = 0m,
+            PaymentsPending = 0m,
+            Payments = payments.Select(p => new HoldedPaymentDetailDto(p.Id, p.Amount, p.Date, "treasury-1")).ToList(),
+        });
 
     private void SeedOpenDocs(params HoldedPurchaseDocListItemDto[] docs) =>
         _client.ListPurchaseDocumentsAsync(Arg.Any<CancellationToken>()).Returns(docs.ToList());
