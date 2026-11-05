@@ -1838,10 +1838,18 @@ internal sealed class ShiftManagementService(
         return new ShiftTagSummary(tag.Id, tag.Name);
     }
 
-    public async Task SetVolunteerTagPreferencesAsync(Guid userId, IReadOnlyList<Guid> tagIds)
+    public async Task<bool> SetVolunteerTagPreferencesAsync(Guid userId, IReadOnlyList<Guid> tagIds)
     {
+        var knownIds = (await repo.GetTagsAsync()).Select(tag => tag.Id).ToHashSet();
+        if (tagIds.Any(id => !knownIds.Contains(id)))
+        {
+            logger.LogWarning("Rejected unknown volunteer tag preferences for user {UserId}", userId);
+            return false;
+        }
+
         await repo.SetVolunteerTagPreferencesAsync(userId, tagIds);
         viewInvalidator.InvalidateUser(userId);
+        return true;
     }
 
     public async Task<IReadOnlyDictionary<Guid, int>> GetActivePendingShiftSignupCountsByTeamAsync(

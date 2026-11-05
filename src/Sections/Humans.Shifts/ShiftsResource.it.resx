@@ -1293,4 +1293,5 @@
   <data name="Shifts_Notification_ChangeApprovedRange" xml:space="preserve"><value>Iscrizione a più turni di '{0}' approvata ({1} turni).</value></data>
   <data name="Shifts_Notification_ChangeRefusedRange" xml:space="preserve"><value>Iscrizione a più turni di '{0}' rifiutata ({1} turni).</value></data>
   <data name="Shifts_Notification_ChangeBailedRange" xml:space="preserve"><value>Annullamento di più turni di '{0}' ({1} turni).</value></data>
+  <data name="Shifts_TagPreferencesInvalid" xml:space="preserve"><value>Alcuni tag selezionati non sono più disponibili. Controlla la selezione e riprova.</value></data>
 </root>

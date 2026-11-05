@@ -508,3 +508,5 @@ Account-deletion signup cancellation, signup reassignment on account merge, and 
 - Rota and shift deletion return resource-key refusals for missing records or confirmed signups, warning without an exception before any cascade delete. Department coordinators receive refusal counts and successful deletion feedback in all supported cultures. Dependency faults propagate instead of becoming refusal text; department ownership/authorization gates, confirmed-signup protection and existing cascade/cache behavior remain.
 
 - Global text search selects the highest-scoring matches before applying its result limit, with ordinal case-insensitive name and ID tie-breakers. Existing visibility and event-scope rules still apply; GUID queries retain direct lookup.
+
+- Volunteer tag preference replacement refuses the entire selection if any tag id is unknown, preserving existing preferences. Both forms display a localized refusal; the shift-info form checks this before changing profile fields. Empty selections still clear preferences, and repeated valid ids remain deduplicated.

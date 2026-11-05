@@ -69,6 +69,53 @@ public sealed class ShiftManagementWriteGuardTests : ShiftsTestHarness
     }
 
     [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task SetVolunteerTagPreferences_ValidSelection_ReplacesOrClears(bool clear)
+    {
+        var userId = Guid.NewGuid();
+        var oldTag = new ShiftTag { Id = Guid.NewGuid(), Name = "Old" };
+        var newTag = new ShiftTag { Id = Guid.NewGuid(), Name = "New" };
+        ShiftsDb.ShiftTags.AddRange(oldTag, newTag);
+        ShiftsDb.VolunteerTagPreferences.Add(new VolunteerTagPreference
+        {
+            Id = Guid.NewGuid(), UserId = userId, ShiftTagId = oldTag.Id
+        });
+        await ShiftsDb.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        (await _service.SetVolunteerTagPreferencesAsync(userId,
+            clear ? [] : [newTag.Id, newTag.Id])).Should().BeTrue();
+
+        var saved = await ShiftsDb.VolunteerTagPreferences.AsNoTracking()
+            .Where(p => p.UserId == userId).Select(p => p.ShiftTagId)
+            .ToListAsync(TestContext.Current.CancellationToken);
+        saved.Should().Equal(clear ? [] : new[] { newTag.Id });
+    }
+
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task SetVolunteerTagPreferences_UnknownTag_PreservesExistingSelection(bool emptyId)
+    {
+        var userId = Guid.NewGuid();
+        var tag = new ShiftTag { Id = Guid.NewGuid(), Name = "Existing" };
+        ShiftsDb.ShiftTags.Add(tag);
+        ShiftsDb.VolunteerTagPreferences.Add(new VolunteerTagPreference
+        {
+            Id = Guid.NewGuid(), UserId = userId, ShiftTagId = tag.Id
+        });
+        await ShiftsDb.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        (await _service.SetVolunteerTagPreferencesAsync(userId,
+            [tag.Id, emptyId ? Guid.Empty : Guid.NewGuid()])).Should().BeFalse();
+
+        var saved = await ShiftsDb.VolunteerTagPreferences.AsNoTracking()
+            .Where(p => p.UserId == userId).Select(p => p.ShiftTagId)
+            .ToListAsync(TestContext.Current.CancellationToken);
+        saved.Should().Equal(tag.Id);
+    }
+
+    [HumansTheory]
     [InlineData(RoleNames.Admin)]
     [InlineData(ShiftsRoles.ShiftsNoInfo)]
     [InlineData(ShiftsRoles.ShiftsAdmin)]
