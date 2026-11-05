@@ -35,6 +35,14 @@ public class PageHeaderTagHelperTests
     }
 
     [HumansFact]
+    public async Task NullTitle_RendersEmptyHeadingInsteadOfThrowing()
+    {
+        var html = await RenderAsync(new PageHeaderTagHelper { Title = null! });
+
+        html.Should().Be("<div class=\"mb-4\"><h1 class=\"mb-0\"></h1></div>");
+    }
+
+    [HumansFact]
     public async Task Plain_RendersTitleOnlyInBottomMarginBand()
     {
         var html = await RenderAsync(new PageHeaderTagHelper { Title = "Finance" });
@@ -70,7 +78,7 @@ public class PageHeaderTagHelperTests
             subtitleSlot: "sub",
             actions: "<a class=\"btn\">Go</a>");
 
-        html.Should().Contain("<div class=\"d-flex gap-2 flex-shrink-0\"><a class=\"btn\">Go</a></div>");
+        html.Should().Contain("<div class=\"d-flex flex-wrap gap-2\"><a class=\"btn\">Go</a></div>");
         html.Split("sub").Length.Should().Be(2, "the subtitle renders once, under the title");
     }
 
@@ -80,9 +88,9 @@ public class PageHeaderTagHelperTests
         var html = await RenderAsync(new PageHeaderTagHelper { Title = "T" }, actions: "<a class=\"btn\">Go</a>");
 
         html.Should().Be(
-            "<div class=\"d-flex justify-content-between align-items-center gap-3 mb-4\">"
+            "<div class=\"d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4\">"
             + "<div><h1 class=\"mb-0\">T</h1></div>"
-            + "<div class=\"d-flex gap-2 flex-shrink-0\"><a class=\"btn\">Go</a></div></div>");
+            + "<div class=\"d-flex flex-wrap gap-2\"><a class=\"btn\">Go</a></div></div>");
     }
 
     [HumansFact]
