@@ -1,3 +1,5 @@
+using System.Text;
+using NodaTime;
 using Humans.Surveys.Contracts;
 using Humans.Surveys.Domain;
 
@@ -5,6 +7,10 @@ namespace Humans.Surveys.Services;
 
 internal static class SurveyDefinitionValidation
 {
+    private const int PublicSlugMaxLength = 80;
+    private const int InvitationEmailSubjectMaxLength = 200;
+    private const int InvitationEmailMessageMaxLength = 4000;
+
     internal static SurveyAuthoringError? Validate(IReadOnlyList<SurveyQuestion> questions, SurveyEditInput input) =>
         ValidateQuestionConfiguration(questions)
         ?? ValidateBranching(questions)
@@ -206,5 +212,72 @@ internal static class SurveyDefinitionValidation
             }
         }
         return null;
+    }
+
+    internal static SurveyAuthoringError? AudienceConfigurationError(
+        SurveyAudienceType? type, Guid? teamId, Instant? loggedInSince, bool requireAudience)
+    {
+        if (type is null)
+            return requireAudience ? new(null, "Survey has no audience to invite.") : null;
+        if (!Enum.IsDefined(type.Value))
+            return new("Surveys_Validation_AudienceUnsupported", "The selected survey audience is not supported.");
+        if (type == SurveyAudienceType.Team && teamId is null)
+            return new("Surveys_Admin_Builder_Error_TeamRequired", "A team is required for the Team audience.");
+        if (type == SurveyAudienceType.LoggedInSince && loggedInSince is null)
+            return new("Surveys_Admin_Builder_Error_LoggedInSinceRequired", "A cutoff date is required for the Logged in since audience.");
+        return null;
+    }
+
+
+    internal static SurveyAuthoringError? ValidateInvitationEmailCopy(
+        LocalizedText subject,
+        LocalizedText message)
+    {
+        var multilineSubject = subject.Values.FirstOrDefault(
+            pair => pair.Value.Contains('\r', StringComparison.Ordinal)
+                    || pair.Value.Contains('\n', StringComparison.Ordinal));
+        if (!string.IsNullOrEmpty(multilineSubject.Key))
+            return new("Surveys_Validation_SubjectSingleLine",
+                $"Survey invitation email subjects must be a single line ({multilineSubject.Key}).", multilineSubject.Key);
+
+        return ValidateLocalizedLength(subject, InvitationEmailSubjectMaxLength,
+                   "Survey invitation email subjects", "Surveys_Validation_SubjectLength")
+               ?? ValidateLocalizedLength(message, InvitationEmailMessageMaxLength,
+                   "Survey invitation email messages", "Surveys_Validation_MessageLength");
+
+        static SurveyAuthoringError? ValidateLocalizedLength(
+            LocalizedText text, int maxLength, string description, string key)
+        {
+            var offender = text.Values.FirstOrDefault(pair => pair.Value.Length > maxLength);
+            return string.IsNullOrEmpty(offender.Key) ? null : new(key,
+                $"{description} must be {maxLength} characters or fewer ({offender.Key}).", maxLength, offender.Key);
+        }
+    }
+
+
+    /// <summary>
+    /// Slugs that would shadow the literal-segment routes under <c>/Survey</c> (the answering wizard
+    /// and the admin area). Authoring rejects these so a public link can never collide with a real action.
+    /// </summary>
+    private static readonly IReadOnlySet<string> ReservedSlugs =
+        new HashSet<string>(StringComparer.Ordinal) { "admin", "answer" };
+
+    /// <summary>Normalizes authoring input (null when blank) and rejects overlong/reserved slugs.</summary>
+    internal static (string? Slug, SurveyAuthoringError? Error) PreparePublicSlugForWrite(string? slug)
+    {
+        if (string.IsNullOrWhiteSpace(slug)) return (null, null);
+        var normalized = slug.Trim().ToLowerInvariant();
+        // PostgreSQL's varchar limit counts characters, not UTF-16 code units.
+        if (normalized.EnumerateRunes().Count() > PublicSlugMaxLength)
+        {
+            return (null, new("Surveys_Validation_SlugLength",
+                $"The public link slug must be no longer than {PublicSlugMaxLength} characters.", PublicSlugMaxLength));
+        }
+        if (ReservedSlugs.Contains(normalized))
+        {
+            return (null, new("Surveys_Validation_SlugReserved", $"Slug '{normalized}' is reserved.", normalized));
+        }
+
+        return (normalized, null);
     }
 }
