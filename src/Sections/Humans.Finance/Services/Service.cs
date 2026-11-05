@@ -1716,15 +1716,23 @@ internal sealed class Service(
     public Task EraseForUserAsync(Guid userId, CancellationToken ct) =>
         DeleteCreditorBindingAsync(userId, ct);
 
-    /// <summary>Dash-free. On a collision, appends the first 4 hex chars of the category id.</summary>
+    /// <summary>Bounded, dash-free key; existing mapped tags always win collisions.</summary>
     private static string UniqueTag(
         string groupName, string categoryName, Guid categoryId,
         HashSet<string> usedTags)
     {
         var baseTag = HoldedMatcher.NormalizeTag(groupName + categoryName);
-        if (!usedTags.Contains(baseTag))
-            return baseTag;
+        if (baseTag.Length == 0) baseTag = categoryId.ToString("N");
+        baseTag = baseTag[..Math.Min(baseTag.Length, HoldedCategoryMap.TagMaxLength)];
+        if (!usedTags.Contains(baseTag)) return baseTag;
 
-        return baseTag + categoryId.ToString("N")[..4];
+        var categorySuffix = categoryId.ToString("N")[..4];
+        var suffix = categorySuffix;
+        for (var attempt = 1; ; attempt++)
+        {
+            var candidate = baseTag[..Math.Min(baseTag.Length, HoldedCategoryMap.TagMaxLength - suffix.Length)] + suffix;
+            if (!usedTags.Contains(candidate)) return candidate;
+            suffix = categorySuffix + attempt.ToString(CultureInfo.InvariantCulture);
+        }
     }
 }

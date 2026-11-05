@@ -13,6 +13,6 @@ internal sealed class HoldedCategoryMapConfiguration : IEntityTypeConfiguration<
         b.HasIndex(x => x.BudgetCategoryId).IsUnique();
         b.HasIndex(x => x.HoldedAccountNumber).IsUnique();
         b.Property(x => x.HoldedAccountId).HasMaxLength(64);
-        b.Property(x => x.Tag).HasMaxLength(128);
+        b.Property(x => x.Tag).HasMaxLength(HoldedCategoryMap.TagMaxLength);
     }
 }

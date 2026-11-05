@@ -1733,6 +1733,51 @@ public class HoldedFinanceServiceTests
         proposed.Tag.Should().StartWith("operationsstaff");
     }
 
+    [HumansTheory]
+    [InlineData("Operations", "Staff")]
+    [InlineData("Operations", "-")]
+    [InlineData("-", "-")]
+    [InlineData("long", "long")]
+    [InlineData("reserved", "Staff")]
+    public async Task GetProvisioningPlan_GeneratedTags_AreBoundedNonemptyAndUnique(string group, string category)
+    {
+        var reservedTags = string.Equals(group, "reserved", StringComparison.Ordinal)
+            ? new[] { "operationsstaff", "operationsstaff1234", "operationsstaff12341" }
+            : [];
+        if (reservedTags.Length > 0) group = "Operations";
+        if (string.Equals(group, "long", StringComparison.Ordinal)) group = new string('g', 90);
+        if (string.Equals(category, "long", StringComparison.Ordinal)) category = new string('c', 90);
+        var ids = new[]
+        {
+            Guid.Parse("12340000-0000-0000-0000-000000000001"),
+            Guid.Parse("12340000-0000-0000-0000-000000000002"),
+            Guid.Parse("12340000-0000-0000-0000-000000000003"),
+        };
+        _budget.GetActiveYearAsync(Arg.Any<CancellationToken>()).Returns(new BudgetYearDetail(
+            Guid.NewGuid(), "2026", "Camp 2026", BudgetYearStatus.Active, false,
+            [new BudgetGroupDetail(Guid.NewGuid(), Guid.NewGuid(), group, 0, false, false, false, null,
+                ids.Select((id, index) => new BudgetCategoryDetail(id, Guid.NewGuid(),
+                    category + new string('-', index), 0, ExpenditureType.OpEx, null, index, [])).ToList())]));
+        _repo.GetCategoryMapAsync(Arg.Any<CancellationToken>()).Returns(reservedTags.Select((tag, index) =>
+            new HoldedCategoryMap
+            {
+                Id = Guid.NewGuid(), BudgetCategoryId = Guid.NewGuid(),
+                HoldedAccountNumber = 62900000 + index, HoldedAccountId = "mapped-" + index,
+                Tag = tag, CreatedAt = FixedNow, UpdatedAt = FixedNow,
+            }).ToList());
+        _client.ListExpenseAccountsAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedExpenseAccountDto>());
+
+        var plan = await MakeService().GetProvisioningPlanAsync(62900100, TestContext.Current.CancellationToken);
+
+        var tags = plan.Rows.Where(row => string.Equals(row.State, "ToAdd", StringComparison.Ordinal))
+            .Select(row => row.Tag).ToList();
+        tags.Should().HaveCount(3).And.OnlyHaveUniqueItems();
+        tags.Should().OnlyContain(tag => tag.Length > 0 && tag.Length <= HoldedCategoryMap.TagMaxLength);
+        tags.Intersect(reservedTags, StringComparer.Ordinal).Should().BeEmpty();
+        plan.Rows.Where(row => string.Equals(row.State, "Orphan", StringComparison.Ordinal))
+            .Select(row => row.Tag).Should().Equal(reservedTags);
+    }
+
     [HumansFact]
     public async Task Provision_AddOne_CreatesExactlyTheFirstPendingAccount()
     {
