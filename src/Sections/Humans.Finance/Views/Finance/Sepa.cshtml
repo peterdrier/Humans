@@ -326,7 +326,7 @@
             </text>;
             var transfersTable = TableModel.For(file.Transfers)
                 .Template("Account", transferCell0, sortBy: t => t.Row.SupplierAccountNum)
-                .Template("Member", transferCell1, sortBy: t => t.MemberName)
+                .Template("Member", transferCell1)
                 .Template("IBAN", transferCell2, o => o.Css("font-monospace small"))
                 .Template("Amount", transferCell3, o => o.End(), sortBy: t => t.Row.Amount)
                 .Template("Status", transferCell4, sortBy: t => t.Row.IsWithdrawn ? 2 : t.Row.IsBooked ? 1 : 0)

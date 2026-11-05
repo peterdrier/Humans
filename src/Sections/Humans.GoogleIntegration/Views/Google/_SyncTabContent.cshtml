@@ -228,7 +228,7 @@ else
                     {
                         var membersBuilder = TableModel.For(diff.Members)
                             .Column("Email", m => m.Email)
-                            .Template("Name", memberNameCell, sortBy: m => m.DisplayName)
+                            .Template("Name", memberNameCell)
                             .Template("Status", memberStateCell, sortBy: m => MemberState(m.State).Label);
                         if (showPermission)
                         {

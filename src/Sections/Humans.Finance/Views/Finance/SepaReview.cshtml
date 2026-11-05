@@ -43,7 +43,7 @@
 
         </text>;
         var linesTable = TableModel.For(Model.Lines)
-            .Template("Human", lineCell0, sortBy: l => l.CreditorName)
+            .Template("Human", lineCell0)
             .Template("Account", lineCell1, sortBy: l => l.SupplierAccountNum)
             .Template("Full name", lineCell2)
             .Template("IBAN", lineCell3, o => o.Css("font-monospace text-nowrap"))

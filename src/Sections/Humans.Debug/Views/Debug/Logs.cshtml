@@ -79,55 +79,44 @@
     }
     else
     {
-        <div class="table-responsive">
-            <table class="table table-sm table-hover font-monospace" style="font-size: 0.8rem;">
-                <thead>
-                    <tr>
-                        <th style="width: 160px;">Timestamp (UTC)</th>
-                        <th style="width: 80px;">Level</th>
-                        <th style="width: 160px;">User</th>
-                        <th>Message</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach (var evt in Model)
-                    {
-                        var levelClass = evt.Level switch
-                        {
-                            Serilog.Events.LogEventLevel.Fatal => "table-danger fw-bold",
-                            Serilog.Events.LogEventLevel.Error => "table-danger",
-                            Serilog.Events.LogEventLevel.Warning => "table-warning",
-                            _ => ""
-                        };
-                        var evtUserId = CurrentUserEnricher.ExtractFromEvent(evt);
-                        <tr class="@levelClass" data-level="@evt.Level">
-                            <td class="text-nowrap">@evt.Timestamp.UtcDateTime.ToInvariantTimestamp()</td>
-                            <td>@evt.Level</td>
-                            <td>
-                                @if (evtUserId.HasValue)
-                                {
-                                    <vc:human user-id="@evtUserId.Value" />
-                                }
-                                else
-                                {
-                                    <span class="text-muted">—</span>
-                                }
-                            </td>
-                            <td>
-                                @evt.RenderMessage()
-                                @if (evt.Exception != null)
-                                {
-                                    <details class="mt-1">
-                                        <summary class="text-danger" style="cursor: pointer;">Exception</summary>
-                                        <pre class="mb-0 text-wrap" style="font-size: 0.75rem;">@evt.Exception</pre>
-                                    </details>
-                                }
-                            </td>
-                        </tr>
-                    }
-                </tbody>
-            </table>
-        </div>
+        Func<Serilog.Events.LogEvent, IHtmlContent> timestampCell = @<text>@item.Timestamp.UtcDateTime.ToInvariantTimestamp()</text>;
+        Func<Serilog.Events.LogEvent, IHtmlContent> userCell = @<text>
+            @{ var evtUserId = CurrentUserEnricher.ExtractFromEvent(item); }
+            @if (evtUserId.HasValue)
+            {
+                <vc:human user-id="@evtUserId.Value" />
+            }
+            else
+            {
+                <span class="text-muted">—</span>
+            }
+        </text>;
+        Func<Serilog.Events.LogEvent, IHtmlContent> messageCell = @<text>
+            @item.RenderMessage()
+            @if (item.Exception != null)
+            {
+                <details class="mt-1">
+                    <summary class="text-danger" style="cursor: pointer;">Exception</summary>
+                    <pre class="mb-0 text-wrap" style="font-size: 0.75rem;">@item.Exception</pre>
+                </details>
+            }
+        </text>;
+        var logsTable = TableModel.For(Model)
+            .Template("Timestamp (UTC)", timestampCell, o => o.Css("text-nowrap"), sortBy: e => e.Timestamp.UtcTicks)
+            .Column("Level", e => e.Level)
+            .Template("User", userCell)
+            .Template("Message", messageCell, o => o.NoSort())
+            .RowCss(e => e.Level switch
+            {
+                Serilog.Events.LogEventLevel.Fatal => "table-danger fw-bold",
+                Serilog.Events.LogEventLevel.Error => "table-danger",
+                Serilog.Events.LogEventLevel.Warning => "table-warning",
+                _ => null,
+            })
+            .RowData("level", e => e.Level.ToString())
+            .Css("font-monospace small")
+            .Build();
+        <partial name="_Table" model="logsTable" />
     }
 </div>
 

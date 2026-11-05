@@ -44,7 +44,9 @@ public sealed class TableModelBuilder<TRow> where TRow : class
 
     /// <summary>
     /// Razor-rendered cell. <paramref name="sortBy"/> gives client sorting a value other than
-    /// the cell's visible text — a date, an amount, or a name hidden behind markup.
+    /// the cell's visible text, such as a date or an amount. The value is written into the page
+    /// as <c>data-sort-value</c>, so never pass one the page must not show, such as a stored name
+    /// behind a <c>vc:human</c> cell: leave sortBy off and the column sorts by the rendered name.
     /// </summary>
     public TableModelBuilder<TRow> Template(
         string header, Func<TRow, IHtmlContent> template, Action<TableColumnOptions>? configure = null,

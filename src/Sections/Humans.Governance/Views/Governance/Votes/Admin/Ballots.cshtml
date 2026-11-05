@@ -33,7 +33,7 @@
         }
     </text>;
     var table = TableModel.For(Model.Ballots.OrderByDescending(b => b.IsOfficial).ThenBy(b => b.DisplayName, StringComparer.CurrentCulture).ToList())
-        .Template("Member", memberCell, sortBy: b => b.DisplayName)
+        .Template("Member", memberCell)
         .Template("Roster", rosterCell)
         .Template("Choice / ranking", choiceCell)
         .Column("Revision", b => b.Revision, o => o.Number().End())

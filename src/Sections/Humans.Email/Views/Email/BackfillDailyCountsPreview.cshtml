@@ -24,29 +24,16 @@ else
 
     <div class="card mb-3">
         <div class="card-header">Sample (first @Model.Sample.Count of @Model.RowsToAdd)</div>
-        <div class="table-responsive">
-            <table class="table table-sm mb-0">
-                <thead>
-                    <tr>
-                        <th>Date (UTC)</th>
-                        <th>Template</th>
-                        <th>Would add Sent</th>
-                        <th>Would add Failed</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach (var row in Model.Sample)
-                    {
-                        <tr>
-                            <td>@row.Date.ToInvariantDate()</td>
-                            <td><code class="small">@row.TemplateName</code></td>
-                            <td class="text-success">@row.SentCount</td>
-                            <td class="text-danger">@row.FailedCount</td>
-                        </tr>
-                    }
-                </tbody>
-            </table>
-        </div>
+        @{
+            Func<Humans.Email.Services.DailyTemplateSendCountRow, IHtmlContent> templateCell = @<text><code class="small">@item.TemplateName</code></text>;
+            var sampleTable = TableModel.For(Model.Sample)
+                .Column("Date (UTC)", r => r.Date, o => o.Date())
+                .Template("Template", templateCell, sortBy: r => r.TemplateName)
+                .Column("Would add Sent", r => r.SentCount, o => o.Number().Css("text-success"))
+                .Column("Would add Failed", r => r.FailedCount, o => o.Number().Css("text-danger"))
+                .Build();
+        }
+        <partial name="_Table" model="sampleTable" />
     </div>
 
     <form method="post" asp-action="BackfillDailyCounts">

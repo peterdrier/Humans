@@ -59,7 +59,7 @@ else
 
         </text>;
         var membersTable = TableModel.For(Model.Members)
-            .Template("Member", resultCell0, sortBy: m => m.ContactName)
+            .Template("Member", resultCell0)
             .Template("Account", resultCell1, sortBy: m => m.SupplierAccountNum)
             .Template("Owed before", resultCell2, o => o.End(), sortBy: m => m.BalanceBefore)
             .Template("Owed after", resultCell3, o => o.End(), sortBy: m => m.BalanceAfter)

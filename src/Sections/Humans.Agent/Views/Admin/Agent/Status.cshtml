@@ -183,23 +183,13 @@
         else
         {
             <p class="mb-2"><strong>@report.Refusals7dCount</strong> refusals</p>
-            <table class="table table-sm mb-0" style="width: auto;">
-                <thead>
-                    <tr>
-                        <th scope="col">Reason</th>
-                        <th scope="col" class="text-end">Count</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach (var row in report.Refusals7d.OrderByDescending(bucket => bucket.Count))
-                    {
-                        <tr>
-                            <td><code>@row.Reason</code></td>
-                            <td class="text-end">@row.Count</td>
-                        </tr>
-                    }
-                </tbody>
-            </table>
+            Func<AgentRefusalBucket, IHtmlContent> reasonCell = @<text><code>@item.Reason</code></text>;
+            var refusalsTable = TableModel.For(report.Refusals7d.OrderByDescending(bucket => bucket.Count).ToList())
+                .Template("Reason", reasonCell, sortBy: r => r.Reason)
+                .Column("Count", r => r.Count, o => o.Number().End())
+                .Css("w-auto")
+                .Build();
+            <partial name="_Table" model="refusalsTable" />
         }
     </div>
 </div>
@@ -213,23 +203,13 @@
         }
         else
         {
-            <table class="table table-sm mb-0" style="width: auto;">
-                <thead>
-                    <tr>
-                        <th scope="col">Slug</th>
-                        <th scope="col" class="text-end">Fetches</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach (var d in report.TopDocs7d)
-                    {
-                        <tr>
-                            <td><code>@d.Slug</code></td>
-                            <td class="text-end">@d.Count</td>
-                        </tr>
-                    }
-                </tbody>
-            </table>
+            Func<AgentTopDoc, IHtmlContent> slugCell = @<text><code>@item.Slug</code></text>;
+            var docsTable = TableModel.For(report.TopDocs7d)
+                .Template("Slug", slugCell, sortBy: d => d.Slug)
+                .Column("Fetches", d => d.Count, o => o.Number().End())
+                .Css("w-auto")
+                .Build();
+            <partial name="_Table" model="docsTable" />
         }
     </div>
 </div>
@@ -243,27 +223,14 @@
         }
         else
         {
-            <table class="table table-sm mb-0">
-                <thead>
-                    <tr>
-                        <th scope="col">Human</th>
-                        <th scope="col" class="text-end">Messages (7d)</th>
-                        <th scope="col" class="text-end">Daily remaining</th>
-                        <th scope="col" class="text-end">Hourly remaining</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach (var u in report.TopUsers7d)
-                    {
-                        <tr>
-                            <td><vc:human user-id="@u.UserId" link="Admin" /></td>
-                            <td class="text-end">@u.MessageCount</td>
-                            <td class="text-end">@u.MessagesTodayRemaining</td>
-                            <td class="text-end">@u.MessagesThisHourRemaining</td>
-                        </tr>
-                    }
-                </tbody>
-            </table>
+            Func<AgentTopUser, IHtmlContent> humanCell = @<text><vc:human user-id="@item.UserId" link="Admin" /></text>;
+            var usersTable = TableModel.For(report.TopUsers7d)
+                .Template("Human", humanCell)
+                .Column("Messages (7d)", u => u.MessageCount, o => o.Number().End())
+                .Column("Daily remaining", u => u.MessagesTodayRemaining, o => o.Number().End())
+                .Column("Hourly remaining", u => u.MessagesThisHourRemaining, o => o.Number().End())
+                .Build();
+            <partial name="_Table" model="usersTable" />
         }
     </div>
 </div>
