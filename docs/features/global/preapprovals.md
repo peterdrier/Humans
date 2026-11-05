@@ -170,7 +170,7 @@ ceiling. These are sums over frozen rows, never stored and never adjusted when a
 
 ## Surface
 
-The public surface is a `Contracts/` folder in the section (no `.Contracts` leaf project: nothing Preapprovals references reaches Expenses, so no cycle asks for one). `IPreapprovalService` is the 3-member read face, `IPreapprovalWrite` the three Expenses transitions, both consumed only by Expenses; `IPreapprovalManagement : IPreapprovalService, IPreapprovalWrite` is internal to `Humans.Preapprovals.Services`.
+The public surface is a `Contracts/` folder in the section (no `.Contracts` leaf project: nothing Preapprovals references reaches Expenses, so no cycle asks for one). `IPreapprovalService` is the read face, `IPreapprovalWrite` the Expenses transitions, both consumed only by Expenses; `IPreapprovalManagement : IPreapprovalService, IPreapprovalWrite` is internal to `Humans.Preapprovals.Services`.
 
 ```csharp
 public interface IPreapprovalService

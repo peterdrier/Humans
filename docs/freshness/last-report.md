@@ -24,7 +24,7 @@ Pleo mirror); Board read-only access (#2219); and Users' legacy storage drop (nu
   HoldedDocumentSync; ~20 stale edges dropped (UserEmailService, ShiftView, PaymentDetails), AuditViewer/HoldedWrite
   edges added; roster gains TeamGoogleGroupMemberships, UserSignInService, ShiftViewService; `linkStyle` re-indexed.
 - `service-data-access-map`: ShiftSignupNotices, SurveyTranslationFiller, RideshareNotices headings; rollup
-  (Users legacy tables gone, HoldedPurchaseDocs, GrantsDbContext row, 36 section contexts); dependency lists in
+  (Users legacy tables gone, HoldedPurchaseDocs, GrantsDbContext row); dependency lists in
   Shifts, Surveys, Rideshare, Finance, Consent, CityPlanning, Issues, Tickets, Users, Governance, Camps, Google.
 - `authorization-inventory`: `AuthorizeAsync` call-site table and view-map line numbers regenerated (Board Read
   checks on Shifts/Teams, Grants/Preapprovals Read/Manage split, PrivateUploadMiddleware row removed). No

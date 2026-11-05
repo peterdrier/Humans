@@ -316,9 +316,9 @@ Every table is owned by exactly one repository; there are no HUM0025
 
 15. **The per-section DbContext split is complete — "one
     table, one repository" is a compile/schema-enforced boundary for
-    every table-owning section, with no shared context left.** 36 section
-    contexts exist (Feedback's carries no tables, only the migration that dropped them) — see the full DbContext table in the intro Methodology block
-    above — each mapping **only** its own section's tables via explicit
+    every table-owning section, with no shared context left.** Every section
+    context (Feedback's carries no tables, only the migration that dropped them; see the full DbContext table in the intro Methodology block
+    above) maps **only** its own section's tables via explicit
     `ApplyConfiguration` calls (no assembly scanning), so a section's
     repository cannot accidentally `Set<T>()` a foreign table without
     first injecting that section's `IDbContextFactory<T>` — a conspicuous,
