@@ -21,7 +21,7 @@ Actionable badge counts query the repository directly for the viewer’s queues 
 Cross-section calls via `IUserService` (canonical reporter email, names and cultures),
 `IRoleAssignmentService`, `IEmailService`,
 the section's own `IssuesEmails` builder, `INotificationEmitter`, `INotificationAutoResolve`,
-`IAuditLogService`,
+`IAuditLogService`, `IAuditViewerService` (the `IssueCreated` entry naming who actually filed a machine-created issue),
 `ISectionCatalog`, `IFileStorage` (screenshot bytes; the row keeps only the key; atomic uploads and failed-submission cleanup). Routes through `IssueSectionRouting`
 (Singleton, owns no table): the queue lookup built from every
 `IIssueQueueOwner` DI discovered — each owning section declares its own queue

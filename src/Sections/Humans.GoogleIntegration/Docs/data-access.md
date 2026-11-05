@@ -149,8 +149,8 @@ at Error and swallowed so a sync never fails on its own bookkeeping. The
 contributor read is uncapped, unlike the 200-row display reads. Cross-section
 calls: `ITeamResourceManagement` (resource display names),
 `IUserService.GetUserInfoAsync`, whose `UserInfo.AllUserIds` chain-follows
-merge tombstones on per-user reads, and `IUserEmailService` for erasure, which
-suspends the human's Workspace account through a lazily resolved
+merge tombstones on per-user reads, and `IUserService.GetRawUserInfoAsync` for erasure, which
+suspends the human's verified Workspace mailboxes through a lazily resolved
 `IGoogleAdminService` before deleting their rows. No cache.
 
 ### GoogleSyncHistoryMigrationService (Scoped, `internal`)

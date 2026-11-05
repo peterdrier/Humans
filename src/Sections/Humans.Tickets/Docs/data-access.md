@@ -215,7 +215,8 @@ Repository: `ITicketRepository`.
 
 Cross-section calls via `IUserEmailService`, `IAccountProvisioningService`,
 `IUserService`, `ISettingsService`,
-`IAuditLogService`. Imports attendee contact data into the system; the decorator
+`IAuditLogService`; records each matched attendee's participation through the section's own
+`IEventParticipationManagement`. Imports attendee contact data into the system; the decorator
 clears both ticket slices after `ApplyAsync`. No `IMemoryCache` directly.
 
 ### EventParticipationService (Scoped)

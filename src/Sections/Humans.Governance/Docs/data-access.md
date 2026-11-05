@@ -85,7 +85,7 @@ Repositories: `IAssemblyVoteRepository`, plus the section's `IApplicationReposit
 
 No cache, no caching decorator — one vote at a time and ~120 voters.
 
-Cross-section calls via `IUserService`, `IUserEmailService`,
+Cross-section calls via `IUserService`,
 `IRoleAssignmentService`, `ITeamService`, `IEmailService`,
 the section's own `GovernanceEmails` builder, `INotificationEmitter`,
 `INotificationAutoResolve`, `IAuditLogService`, `IGoogleTranslationService`,

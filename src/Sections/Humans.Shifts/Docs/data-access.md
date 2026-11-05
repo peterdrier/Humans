@@ -176,13 +176,10 @@ Both cache instances are surfaced on `/Debug/CacheStats`.
 
 ### BurnSettingsService (Scoped)
 
-Repository: `IShiftManagementRepository` (read-only — fetches `EventSettings`).
+No repository, no tables. Reads through the section's `EventCalendarResolver`, which composes
+`ISettingsService`'s event dates with Shifts' own build sub-periods.
 
-| Table | R/W |
-|-------|-----|
-| EventSettings | R |
-
-Read-only adapter mapping `EventSettings` → `BurnSettingsInfo` DTO at the
+Read-only adapter exposing the composed `BurnSettingsInfo` DTO at the
 section boundary. Exposes `IBurnSettingsService` for cross-section
 consumers that need active-event metadata without coupling to the full
 shifts surface. No cache (single active row, cold path).
