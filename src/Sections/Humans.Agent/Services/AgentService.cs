@@ -61,7 +61,7 @@ internal sealed class AgentService : IAgentService, IAgentConversationRetention
         _assembler = assembler; _tools = tools; _client = client;
         _anthropicOptions = anthropicOptions.Value;
         _clock = clock; _logger = logger;
-        conversationReader = new AgentConversationReader(repo, snapshots, assembler, users);
+        conversationReader = new AgentConversationReader(repo, snapshots, assembler, users, settings, preload, client, logger);
     }
 
     public async Task<int> PurgeExpiredConversationsAsync(CancellationToken cancellationToken)
@@ -505,54 +505,9 @@ internal sealed class AgentService : IAgentService, IAgentConversationRetention
     public Task<AgentConversationTranscriptSnapshot?> GetConversationForAdminAsync(Guid id, CancellationToken ct) =>
         conversationReader.GetConversationForAdminAsync(id, ct);
 
-    public async Task<AgentPromptPreview?> GetPromptPreviewForAdminAsync(
-        Guid conversationId, CancellationToken ct)
-    {
-        var conversation = await _repo.GetConversationByIdAsync(conversationId, ct);
-        if (conversation is null) return null;
-
-        var settings = _settings.Current;
-        var snapshot = await _snapshots.LoadAsync(conversation.UserId, ct);
-        var preloadText = await _preload.BuildAsync(settings.PreloadConfig, ct);
-        var systemPrompt = _assembler.BuildSystemPrompt(preloadText);
-        var tail = _assembler.BuildUserContextTail(snapshot);
-        var toolDefs = _assembler.BuildToolDefinitions();
-
-        // Mirror AskAsync's history replay rules so the preview matches what
-        // would actually be sent on the next turn.
-        var replayed = conversation.GetReplayableMessages()
-            .Select(m => new AgentPromptHistoryTurn(
-                Role: m.Role == AgentRole.User ? "user" : "assistant",
-                Text: m.Content))
-            .ToList();
-
-        var tools = toolDefs
-            .Select(t => new AgentPromptToolDefinition(t.Name, t.Description, t.JsonSchema))
-            .ToList();
-
-        // Measure the system prompt with the real tokenizer (count_tokens). This is a diagnostic
-        // nicety — a failed/rate-limited count renders as null; request cancellation propagates.
-        int? systemPromptTokens = null;
-        try
-        {
-            systemPromptTokens = await _client.CountTokensAsync(settings.Model, systemPrompt, ct);
-        }
-        catch (Exception ex) when (!ct.IsCancellationRequested)
-        {
-            // Expected/transient (rate limit, network) — log the reason at Warning, drop the
-            // stack trace per memory/code/always-log-problems.md.
-            _logger.LogWarning(
-                "count_tokens failed for prompt preview; rendering without a token count: {Reason}", ex.Message);
-        }
-
-        return new AgentPromptPreview(
-            Model: settings.Model,
-            SystemPrompt: systemPrompt,
-            UserContextTail: tail,
-            Tools: tools,
-            ReplayedHistory: replayed,
-            SystemPromptTokens: systemPromptTokens);
-    }
+    public Task<AgentPromptPreview?> GetPromptPreviewForAdminAsync(
+        Guid conversationId, CancellationToken ct) =>
+        conversationReader.GetPromptPreviewForAdminAsync(conversationId, ct);
 
     public Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct) =>
         conversationReader.ContributeForUserAsync(userId, ct);
