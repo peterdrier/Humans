@@ -1,0 +1,50 @@
+@model StripeTransactionView
+@{
+    var t = Model.Row;
+    ViewData["Title"] = $"Stripe {t.Id}";
+    var madrid = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
+}
+
+<h1 class="mb-3">Stripe transaction</h1>
+<partial name="_StripeNav" />
+
+<dl class="row">
+    <dt class="col-sm-3">Id</dt><dd class="col-sm-9"><code>@t.Id</code></dd>
+    <dt class="col-sm-3">Account</dt><dd class="col-sm-9">@t.AccountName <code class="small">@Model.AccountId</code></dd>
+    <dt class="col-sm-3">Type</dt><dd class="col-sm-9">@t.Type <span class="text-muted">(@t.ReportingCategory, @t.Status)</span></dd>
+    <dt class="col-sm-3">Created</dt><dd class="col-sm-9">@t.Created.ToDateTime(madrid)</dd>
+    <dt class="col-sm-3">Available on</dt><dd class="col-sm-9">@t.AvailableOn.ToDate()</dd>
+    <dt class="col-sm-3">Amount / fee / net</dt>
+    <dd class="col-sm-9">@StripeMoneyFormat.Show(t.Amount, t.Currency, signed: true) / @StripeMoneyFormat.Show(t.Fee, t.Currency) / @StripeMoneyFormat.Show(t.Net, t.Currency, signed: true)</dd>
+    <dt class="col-sm-3">Description</dt><dd class="col-sm-9">@t.Description</dd>
+    <dt class="col-sm-3">Buyer</dt><dd class="col-sm-9">@t.CustomerName @t.CustomerEmail</dd>
+    <dt class="col-sm-3">Source</dt><dd class="col-sm-9"><code>@t.SourceId</code></dd>
+    <dt class="col-sm-3">PaymentIntent</dt>
+    <dd class="col-sm-9">
+        @if (Model.PaymentIntentId is not null)
+        {
+            <a asp-action="Transactions" asp-route-q="@Model.PaymentIntentId"><code>@Model.PaymentIntentId</code></a>
+            <span class="text-muted small">(every row on it)</span>
+        }
+    </dd>
+    <dt class="col-sm-3">Payout</dt>
+    <dd class="col-sm-9">
+        @if (t.PayoutId is not null)
+        {
+            <a asp-action="Transactions" asp-route-payout="@t.PayoutId"><code>@t.PayoutId</code></a>
+        }
+        else
+        {
+            <span class="text-muted">none linked (Stripe links rows only to automatic payouts)</span>
+        }
+    </dd>
+</dl>
+
+@if (Model.Metadata is not null)
+{
+    <h2 class="h5">Charge metadata</h2>
+    <pre class="bg-light p-2 small">@Model.Metadata</pre>
+}
+
+<h2 class="h5">As Stripe returned it</h2>
+<pre class="bg-light p-2 small">@Model.Raw</pre>
