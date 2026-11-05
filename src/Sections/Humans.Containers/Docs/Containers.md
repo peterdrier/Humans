@@ -136,6 +136,8 @@ Physical shipping containers managed per-barrio or at org level, placed on the C
 
 ## Architecture
 
+The internal `ContainerReader` owns camp/all/individual container reads, yearly placements, the admin overview and shared gallery/placement projection. `Service` forwards existing reads and reuses the same projection after mutations. Legacy gallery entries, image order, camp/year grouping and placement metadata remain unchanged. Authorization, file validation/rollback/cleanup and all writes retain their existing boundaries; no public contract or DI registration is added.
+
 **Owning services:** `Service` (`Humans.Containers.Services`)
 **Owned tables:** `containers`, `container_images`, `container_placements`
 
