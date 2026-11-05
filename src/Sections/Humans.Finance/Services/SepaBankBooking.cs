@@ -703,6 +703,7 @@ internal sealed class SepaBankBooking(
         decimal owedNow;
         decimal posted;
         var priorPaid = 0m;
+        var refsSaved = true;
         try
         {
             // The live chart total, not the nightly mirror: the audit entry names what was owed now.
@@ -950,9 +951,12 @@ internal sealed class SepaBankBooking(
 
         // A journal entry keeps its tag and a saved payment id is read back, so a retry resumes from both. A payment
         // with no id cannot be read back.
-        string NextStep() => paidDocs.Any(p => HasUnconfirmedRef(p.Ref))
-            ? "settle it in Holded by hand — Holded took a payment Humans could not identify"
-            : "book it again to finish — the retry posts only what is still missing";
+        // Without the saved ids the retry cannot see the payments and would post them again.
+        string NextStep() => !refsSaved
+            ? "settle it in Holded by hand — the payment ids could not be saved, so a retry would pay again"
+            : paidDocs.Any(p => HasUnconfirmedRef(p.Ref))
+                ? "settle it in Holded by hand — Holded took a payment Humans could not identify"
+                : "book it again to finish — the retry posts only what is still missing";
 
         // Written to the row, after any an earlier run saved, so the next attempt can read them back: the tag sum
         // cannot see a purchase payment.
@@ -966,6 +970,7 @@ internal sealed class SepaBankBooking(
             }
             catch (Exception ex)
             {
+                refsSaved = false;
                 logger.LogError(ex,
                     "The payment ids Holded accepted for SEPA transfer {TransferId} could not be saved; the "
                     + "audit entry is the only record of them.", transferId);
@@ -1143,14 +1148,14 @@ internal sealed class SepaBankBooking(
             : clock.GetCurrentInstant();
     }
 
-    /// <summary>Leaves out <c>unconfirmed:</c> sentinels (never replaced by the document id) and the <c>entry:</c>
-    /// token: Holded cannot link a ledger entry to a bank line.</summary>
     private static List<string> SplitRefs(string? joined) =>
         (joined ?? "").Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList();
 
     private static bool HasUnconfirmedRef(string? joined) =>
         SplitRefs(joined).Any(r => r.StartsWith("unconfirmed:", StringComparison.Ordinal));
 
+    /// <summary>Leaves out <c>unconfirmed:</c> sentinels (never replaced by the document id) and the <c>entry:</c>
+    /// token: Holded cannot link a ledger entry to a bank line.</summary>
     private static List<HoldedReconcileDocumentRef> PaymentRefs(string? joined) =>
         (joined ?? "")
             .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)

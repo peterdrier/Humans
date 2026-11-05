@@ -163,6 +163,24 @@ public class SepaBankBookingTests
             Arg.Any<CancellationToken>());
     }
 
+    [HumansFact]
+    public async Task Booking_StoppedAndThePaymentIdsCannotBeSaved_SaysSettleByHand()
+    {
+        // Without the ids the retry could not see the payment and would post it again.
+        SeedOpenDocs(Doc("d1", 10m, 1));
+        _write.PostJournalEntryAsync(
+                Arg.Any<LocalDate>(), Arg.Any<int>(), Arg.Any<int>(), Arg.Any<decimal>(),
+                Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Throws(new HoldedTransientException("Holded 503"));
+        _repo.SaveSepaTransferPaymentRefsAsync(Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .ThrowsAsync(new InvalidOperationException("db down"));
+
+        var result = await MakeService().BookSepaTransferAsync(TransferId, MovementId, Guid.NewGuid());
+
+        result.Succeeded.Should().BeFalse();
+        result.Message.Should().Contain("settle it in Holded by hand").And.Contain("could not be saved");
+    }
+
     [HumansTheory]
     [InlineData("pay-d1,unconfirmed:d2", false, "could not identify")]
     [InlineData("pay-gone", false, "pay-gone")]
@@ -2467,7 +2485,12 @@ public class SepaBankBookingTests
     private void SeedPayments(string docId, params (string Id, decimal Amount, LocalDate Date)[] payments) =>
         _client.GetPurchaseDocumentAsync(docId, Arg.Any<CancellationToken>()).Returns(new HoldedPurchaseDocumentDto
         {
-            Id = docId, DocNumber = docId, Subtotal = 0m, Tax = 0m, Total = 0m, PaymentsTotal = 0m,
+            Id = docId,
+            DocNumber = docId,
+            Subtotal = 0m,
+            Tax = 0m,
+            Total = 0m,
+            PaymentsTotal = 0m,
             PaymentsPending = 0m,
             Payments = payments.Select(p => new HoldedPaymentDetailDto(p.Id, p.Amount, p.Date, "treasury-1")).ToList(),
         });
