@@ -309,7 +309,7 @@ already-flagged `DuplicateAccountFlagged` entries). No cache.
 No repository. OAuth-callback decision ladder (link-while-signed-in →
 lockout-relink → verified-email link → create-new-account) per HUM0031.
 Uses ASP.NET `UserManager<User>`
-directly (framework concern, per design-rules §2a — `AspNetUserLogins` is
+directly (framework concern, per design-rules.md, *Service ownership* — `AspNetUserLogins` is
 the authoritative store for `(Provider, ProviderKey)` → `UserId`) plus
 `IUserService` (login-timestamp recording, stub-profile provisioning on
 create), `IUserEmailService` (`ReconcileOAuthIdentityAsync` — the sole

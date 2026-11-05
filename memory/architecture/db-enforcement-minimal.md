@@ -12,7 +12,7 @@ Don't pitch designs by saying "DB-enforced uniqueness eliminates the race window
 - When weighing storage shape, judge it on data-model clarity (what's the entity, what's the relationship), not on which DB constraints fire.
 - If a service-layer pre-check is sufficient at this scale, the DB index isn't a design argument — it's an implementation detail.
 - Don't confuse display concerns (slot 1, slot 2, slot 3) with storage concerns (a row per assignment, ordering done at render time).
-- The exceptions are the immutability triggers on `consent_records` and `audit_log` — those ARE doctrinally enforced at the DB level (and listed in [design-rules.md §12](../../docs/architecture/design-rules.md#12-immutable-entity-rules)).
+- The exceptions are the immutability triggers on `consent_records` and `audit_log` — those ARE doctrinally enforced at the DB level (and listed in [design-rules.md, *Append-only entities*](../../docs/architecture/design-rules.md#append-only-entities)).
 - CHECK constraints are not merely non-doctrinal, they are banned outright — see [`no-db-check-constraints`](no-db-check-constraints.md).
 - NOT NULL is not an enforcement tool either. Required-ness lives in service code; a nullable
   column with a null default is perfectly fine storage (Peter, 2026-08-18, peterdrier/Humans#1379).
@@ -20,4 +20,4 @@ Don't pitch designs by saying "DB-enforced uniqueness eliminates the race window
   rollbacks — into ceremony: #1379's `RawPayload jsonb NOT NULL` forced an invalid `DEFAULT ''`
   into the drop's `Down()` and burned a review cycle on a rollback nobody will ever run.
 
-**Related:** [`no-db-check-constraints`](no-db-check-constraints.md), [`audit-log-as-concurrency-safety-net`](audit-log-as-concurrency-safety-net.md), [design-rules.md §12](../../docs/architecture/design-rules.md#12-immutable-entity-rules).
+**Related:** [`no-db-check-constraints`](no-db-check-constraints.md), [`audit-log-as-concurrency-safety-net`](audit-log-as-concurrency-safety-net.md), [design-rules.md, *Append-only entities*](../../docs/architecture/design-rules.md#append-only-entities).

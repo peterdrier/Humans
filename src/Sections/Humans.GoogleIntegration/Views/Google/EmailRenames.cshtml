@@ -26,8 +26,6 @@
     }
     else
     {
-        Func<EmailRenameInfo, IHtmlContent> humanCell =
-            @<text><vc:human user-id="@item.UserId" link="None" /></text>;
         Func<EmailRenameInfo, IHtmlContent> arrowCell =
             @<text><i class="fa-solid fa-arrow-right text-muted"></i></text>;
         Func<EmailRenameInfo, IHtmlContent> oldEmailCell =
@@ -45,7 +43,7 @@
             }
         </text>;
         var renameTable = TableModel.For(Model.Renames)
-            .Template("Human", humanCell)
+            .Human("Human", r => r.UserId, HumanLink.None)
             .Template("Old Email", oldEmailCell)
             .Template("", arrowCell, c => c.NoSort())
             .Template("New Email", newEmailCell)

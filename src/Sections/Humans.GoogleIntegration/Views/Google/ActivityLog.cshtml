@@ -41,7 +41,7 @@
         }
     </text>;
     var table = TableModel.For(Model.Entries)
-        .Template("When", whenCell, c => c.NoSort())
+        .Template("When", whenCell, c => c.Css("text-nowrap").NoSort())
         .Template("Who", whoCell, c => c.NoSort())
         .Column("Resource", e => e.ResourceName ?? UnlinkedLabel(e.Description))
         .Template("Action", actionCell, c => c.NoSort())

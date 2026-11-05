@@ -80,7 +80,7 @@ The goal is to identify cross-section table overlap, duplicated caching, and cac
 >
 > At our small single-server scale this map is diagnostic, not gating —
 > **cross-section table reads are flagged as design-rule violations per
-> [`design-rules.md` §"Services own their data"](design-rules.md)**, but
+> [`design-rules.md`, *Service ownership*](design-rules.md#service-ownership)**, but
 > serve as a backlog rather than a blocker.
 
 ---
@@ -212,7 +212,7 @@ Every table is owned by exactly one repository; there are no HUM0025
    `IUserService.GetAllUserInfosAsync`. It has no repository; the
    last-run marker
    (`SettingKeys.DriveActivityMonitorLastRunAt`) is read/written
-   through `ISettingsService` — a §15-compliant cross-section service
+   through `ISettingsService` — a contract-compliant cross-section service
    call, not a foreign repository read.
 
 7. **Settings' tables are owned by a single section/repository.**
@@ -306,7 +306,7 @@ Every table is owned by exactly one repository; there are no HUM0025
     memory (no new interface method), checks early entry via
     `IEarlyEntryService`, verifies supervisor roles via
     `IRoleAssignmentService`, and pulls the gate-crew roster via
-    `IShiftManagement` — all §15-compliant service-interface calls.
+    `IShiftManagement` — all contract-compliant service-interface calls.
     Its one cross-section **write** — projecting an admit onto the guest's
     participation record as `Attended` — goes through the
     owning `ITicketWrite.RecordParticipationAsync` (Tickets), so no
@@ -435,7 +435,7 @@ repositories directly, bypassing the service layer.
 None. Every write (`User`/`Profile`/`UserEmail`,
 system-team membership, dev barrio camp/season/lead via `ICampSeeding` /
 `ICampRoleSeeding`, city-planning team, role assignments, contact fields)
-goes through the owning section's service interface per design-rules §2c.
+goes through the owning section's service interface per design-rules.md, *Service ownership*.
 `DevLoginController` injects `IUserSignInService`,
 `IUserEmailService`, `IRoleAssignmentService`, and `DevPersonaSeeder`
 (`src/Sections/Humans.Development/Services/DevPersonaSeeder.cs`, which
@@ -458,7 +458,7 @@ logic funnels into services even from jobs
 (e.g. `CleanupNotificationsJob` calls `INotificationRepository` via
 `NotificationService`; `LegalDocumentSyncService` runs via Hangfire and
 goes through its own repository). Specific jobs and their tables vary;
-treat each as an audit item per the section §15 carve-outs.
+treat each as an audit item per the caching-pattern carve-outs.
 
 ---
 
@@ -473,6 +473,6 @@ Controllers and components that touch `IMemoryCache` directly.
 | **GatePinThrottle** (`Humans.Gate/Services/Stores/`; used by `GateController` PIN claim / override) | TryGetValue / Set / Remove | `GatePinFailures:{key}` |
 | **GateVendorMirrorLedger** (`Humans.Gate/Services/Stores/`; used by `GateController` and `GateVendorBackfillAdminController`) | TryGetValue / Set (atomic claim) | `GateVendorMirrorSent:{vendorTicketId}` |
 
-The §15 work continues to push cache populators into the owning service
+The caching-pattern work continues to push cache populators into the owning service
 behind transparent decorators. No view component injects `IMemoryCache`; nav
 badge counts are owned by `ApplicationDecisionService` (`NavBadge:Voting:{userId}`).

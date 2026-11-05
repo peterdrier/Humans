@@ -96,7 +96,7 @@
                         var noShowTable = TableModel.For(Model.NoShowHistory!)
                             .Column(SharedLocalizer["Common_Shift"].Value, r => r.ShiftLabel)
                             .Column(SharedLocalizer["Common_Department"].Value, r => r.DepartmentName)
-                            .Column(SharedLocalizer["Common_Date"].Value, r => r.ShiftDateLabel)
+                            .Column(SharedLocalizer["Common_Date"].Value, r => r.ShiftDateLabel, c => c.Css("text-nowrap"))
                             .Template(Localizer["Users_Profile_MarkedBy"].Value, reviewerCell)
                             .Column(Localizer["Users_Profile_MarkedAt"].Value, r => r.MarkedAtLabel)
                             .Build();

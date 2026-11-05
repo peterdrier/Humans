@@ -19,7 +19,7 @@ public class CampsArchitectureTests
     {
         typeof(ICampManagement).IsAssignableFrom(typeof(CachingCampService))
             .Should().BeTrue(
-                because: "the decorator transparently substitutes the inner service per §15a");
+                because: "the decorator transparently substitutes the inner service per the caching pattern (design-rules.md, *Decorator rules*)");
     }
 
     [HumansFact]
@@ -46,7 +46,7 @@ public class CampsArchitectureTests
     {
         typeof(CachingCampService).Namespace
             .Should().Be("Humans.Camps.Services",
-                because: "§15d decorators live in Humans.Infrastructure.Services.<Section>");
+                because: "decorators live in Humans.Infrastructure.Services.<Section>");
     }
 
     /// <summary>

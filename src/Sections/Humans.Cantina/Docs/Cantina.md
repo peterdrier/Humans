@@ -128,7 +128,7 @@ Numeric offsets must also fit the requested day or full seven-day window within 
 **Project:** `src/Sections/Humans.Cantina` (nobodies-collective/Humans#866)
 **Owning services:** `CantinaRosterService`, `DietaryProfileService`
 **Owned tables:** `cantina_dietary_profiles` (nobodies-collective/Humans#1113).
-**Status:** (A) Migrated — new section in feature [#36](features/daily-roster.md); built on the §15 pattern.
+**Status:** (A) Migrated — new section in feature [#36](features/daily-roster.md); built on the caching pattern (`design-rules.md`, *Section caching pattern*).
 **Health target:** [`health.md`](health.md) — the shape this section is converging on, its seams and its deliberately-not-done list.
 
 - Everything but `Section`, `CantinaResource` and `Contracts/` is `internal` (HUM0034). `Contracts/ICantinaService` (+ `DietaryProfileInfo`) is the public read surface; a folder, not a `.Contracts` project, because no consumer closes a cycle (of Shifts and Users, Cantina references only their `.Contracts` leaves). There is no `ICantinaWrite`: only the section's own form writes. `IDietaryProfileManagement` (internal) adds the save and the decline. `ICantinaRosterService` stays in `Services/`, `internal`.

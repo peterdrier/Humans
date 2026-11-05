@@ -12,8 +12,8 @@ The codebase is organised by **section**, not by layer. A section is a vertical 
 
 Sections are the primary mechanism for keeping the app out of spaghetti as it grows. The enforcement story has three parts:
 
-1. **`docs/architecture/design-rules.md`** defines the architectural laws that apply to every section (§8 table ownership, §2c no cross-service table access, §6 no cross-domain `.Include`, §11 auth pattern, §12 append-only entities, §15 caching pattern).
-2. **`src/Sections/Humans.<Section>/Docs/<Section>.md`** applies those laws to one section — who owns what, what invariants hold, which cross-section interfaces it uses, and where the section is in its migration to the §15 pattern.
+1. **`docs/architecture/design-rules.md`** defines the architectural laws that apply to every section (*Service ownership*, *No cross-domain joins*, *Authorization*, *Append-only entities*, *Section caching pattern*).
+2. **`src/Sections/Humans.<Section>/Docs/<Section>.md`** applies those laws to one section — who owns what, what invariants hold, which cross-section interfaces it uses, and where the section is in its migration to the caching pattern.
 3. **Architecture analyzers** (`src/Humans.Analyzers/`) enforce mechanical rules at compile time; shared architecture tests live in `tests/Humans.Web.Tests/Architecture/`.
 
 If a change conflicts with the section doc, **either the change is wrong or the doc is** — both are PR-blocking until one is updated.
@@ -82,7 +82,7 @@ Rules:
    the owning section's public service interface — never joins the table.
 2. Enums owned by this section live here too; a cross-section enum is
    documented by the section that hosts it (e.g. AuditLog for AuditAction).
-3. If the entity is append-only per design-rules §12, say so and name the
+3. If the entity is append-only per design-rules.md, *Append-only entities*, say so and name the
    enforcement (DB trigger, repository shape, architecture test).
 -->
 
@@ -174,10 +174,10 @@ A section's `Contracts/` (or `.Contracts` leaf) is its whole public face. If oth
 | `I<Section>Write` | N | Optional; "—" unless a cross-section write is unavoidable (state why) |
 
 <!--
-Required. The three-line footer. Owning services and owned tables must stay in
-sync with `docs/architecture/design-rules.md §8`. If the section owns no
+Required. The three-line footer. This doc is the record of which services and tables
+the section owns (`docs/architecture/design-rules.md`, *Service ownership*). If the section owns no
 tables, write "None — orchestrator over <list of services>." If this section
-gains or loses a table, UPDATE §8 IN THE SAME COMMIT (CLAUDE.md coding rules).
+gains or loses a table, update this footer in the same commit.
 
 Status is one of A/B/C; the sub-sections below depend on which one you pick.
 Delete the two blocks that do not apply.
@@ -190,7 +190,7 @@ Use this single block; delete the (B) and (C) blocks below.
 - Service(s) live in `src/Sections/Humans.<Section>/Services/` and never import `Microsoft.EntityFrameworkCore`.
 - `I<Section>Repository` (impl in `src/Sections/Humans.<Section>/Data/`) is the only code path that touches this section's tables via `DbContext`.
 - **Decorator decision** — one of:
-  - Caching decorator (`Caching<Section>Service`, Singleton, dict-backed). Pattern per design-rules §15d. Inherits `TrackedCache<TKey,TValue>` which itself implements `IHostedService`; register the decorator as a hosted service via `services.AddHostedService(sp => sp.GetRequiredService<Caching<Section>Service>())`. No separate `*WarmupHostedService` class.
+  - Caching decorator (`Caching<Section>Service`, Singleton, dict-backed). Pattern per design-rules.md, *Section caching pattern*. Inherits `TrackedCache<TKey,TValue>` which itself implements `IHostedService`; register the decorator as a hosted service via `services.AddHostedService(sp => sp.GetRequiredService<Caching<Section>Service>())`. No separate `*WarmupHostedService` class.
   - No caching decorator. Rationale: <low-traffic, admin-only, sequential queue drain, etc.>
 - **Display stitching** — cross-section display data resolves through `<IUserService.GetUserInfosAsync, ITeamService.GetTeamsAsync, …>`.
 - **Cross-section calls** — the public interfaces this section consumes: `<IUserService, ITeamService, ...>`.
@@ -209,7 +209,7 @@ Use all three sub-blocks below; delete the (A) and (C) blocks.
 
 - **`I<Section>Repository`** — owns <tables>
   - Aggregate-local navs kept: <list>
-  - Append-only note (if §12 applies): ...
+  - Append-only note (if the append-only rule applies): ...
 
 #### Current violations
 
@@ -217,9 +217,9 @@ Use all three sub-blocks below; delete the (A) and (C) blocks.
 Keep to actual, observed call sites with file:line references. Group by:
 - Cross-domain `.Include()` calls
 - Cross-section direct DbContext reads
-- Within-section cross-service direct DbContext reads (§2c)
+- Within-section cross-service direct DbContext reads (design-rules.md, *Service ownership*)
 - Inline `IMemoryCache` usage in service methods
-- §8 gaps (tables this section touches but §8 does not list)
+- Ownership gaps (tables this section touches but its Architecture footer does not list)
 
 Strike-through items (`~~...~~`) and inline-annotate when a PR resolves them;
 delete them only once ALL violations in the section are gone and the section
@@ -246,7 +246,7 @@ debt than it started. Keep these grounded in file:line references.
 
 ### For (C) Pre-migration sections
 
-> **Status (pre-migration):** This section currently follows the "services in Infrastructure, direct DbContext" model. It will be migrated to the §15 repository pattern per [`../architecture/design-rules.md`](../architecture/design-rules.md). **Delete this block once the migration lands and this section's services and repositories live in its own `Humans.<Section>` project.**
+> **Status (pre-migration):** This section currently follows the "services in Infrastructure, direct DbContext" model. It will be migrated to the repository pattern per [`../architecture/design-rules.md`](../architecture/design-rules.md). **Delete this block once the migration lands and this section's services and repositories live in its own `Humans.<Section>` project.**
 
 Use the same three sub-blocks as (B): `#### Target repositories`, `#### Current violations`, `#### Touch-and-clean guidance`. Delete the (A) and (B) blocks.
 ```
@@ -258,9 +258,9 @@ Use the same three sub-blocks as (B): `#### Target repositories`, `#### Current 
 Rules that apply when writing or updating any section doc:
 
 1. **Invariants are present tense, not aspirational.** "A department can have at most one management role" — not "a department should have..." or "we plan to enforce...". If it's aspirational, it belongs under Architecture, not Invariants.
-2. **Ownership is always stated twice.** `design-rules.md §8` is the authoritative table; the Architecture footer in this doc mirrors it. They drift in practice — do not let that drift reach a PR. If you add a new table to a section, edit both files in the same commit.
+2. **Ownership is stated here.** The Architecture footer in this doc is the record of the section's owned tables; `service-data-access-map.md` carries the context-to-table rollup. If you add a new table to a section, update the footer in the same commit.
 3. **Cross-section dependencies name the interface.** "Calls `IProfileService.GetByUserIdsAsync`" — not "reads profiles" or "integrates with Profiles." The interface name is the contract; the word "integrates" is a code smell.
-4. **Architecture tests are cited inline.** When §15 or §12 or §6 is enforced by a test, name the file. Readers should be able to jump from the invariant to the guardrail without grep.
+4. **Architecture tests are cited inline.** When a rule (caching, append-only, the join ban) is enforced by a test, name the file. Readers should be able to jump from the invariant to the guardrail without grep.
 5. **"Current violations" is the ONLY place to list violations.** Do not let them leak into Invariants (those are what IS true, not what IS broken). Status (A) sections have no "Current violations" block — full stop.
 6. **Terse wins.** Every bullet that could be shortened without losing meaning should be. Readers will stop reading a bloated doc; they will not stop reading at the point the bullet becomes terse.
 7. **No emojis, no narrative ("let's"), no commentary ("interestingly..."), no "as of today"** — anchor every date with a concrete reference ("2026-04-22", "PR #243").
@@ -286,10 +286,10 @@ Note: **entity field tables DO belong here** (under `## Data Model`). A section 
 
 When a new major section is introduced:
 
-1. **Add it to `docs/architecture/design-rules.md §8`** (Table Ownership Map) in the same PR that introduces it. Include owning services and owned tables.
+1. **State its owning services and owned tables** in the Architecture footer of its `Docs/<Section>.md` in the same PR that introduces it.
 2. **Copy the canonical shape** above into `src/Sections/Humans.<Section>/Docs/<Section>.md` and fill it in.
-3. **Pick a migration status.** New sections **must** be (A) from day one per `design-rules.md §15h(1)` — new code goes straight into its own `Humans.<Section>` project with a repository. Starting in (B) or (C) is a design-rules violation, not a shortcut.
+3. **Pick a migration status.** New sections **must** be (A) from day one per `design-rules.md`, *Section caching pattern* — new code goes straight into its own `Humans.<Section>` project with a repository. Starting in (B) or (C) is a design-rules violation, not a shortcut.
 4. **Add a link in the project CLAUDE.md's "Extended Docs" table** if the section is significant enough to flag at the project level.
-5. **If the section owns user-scoped tables**, implement `IUserDataContributor` per `design-rules.md §8a`. The architecture tests (`GdprExportDependencyInjectionTests`) will fail until it is wired up.
-6. **If the section needs resource-based authorization**, add a `<Section>AuthorizationHandler` + `<Section>OperationRequirement` pair per `design-rules.md §11`. Do not invent a new auth pattern.
+5. **If the section owns user-scoped tables**, implement `IUserDataContributor` per `design-rules.md`, *Personal data obligations*. The architecture tests (`GdprExportDependencyInjectionTests`) will fail until it is wired up.
+6. **If the section needs resource-based authorization**, add a `<Section>AuthorizationHandler` + `<Section>OperationRequirement` pair per `design-rules.md`, *Authorization*. Do not invent a new auth pattern.
 7. **Every new page gets a nav link.** CLAUDE.md: "No orphan pages." This applies the moment the section introduces its first controller.

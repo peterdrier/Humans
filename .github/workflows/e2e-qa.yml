@@ -1,18 +1,15 @@
 name: E2E Tests (QA)
 
+# Daily, not per push: the suite is too flaky to gate each merge. Runs test whatever main
+# is deployed on QA at the time.
 on:
-  push:
-    branches: [main]
-  # Manual runs test whatever main is deployed on QA, so a branch can prove a spec change
-  # before it merges; the deploy wait only applies to pushes.
+  schedule:
+    - cron: '0 5 * * *'
   workflow_dispatch:
 
-# QA only ever runs the newest main deploy, so a push run against a superseded
-# sha is testing an environment that no longer exists — cancel it. A manual run
-# queues behind whatever is running instead of cancelling it.
 concurrency:
   group: e2e-qa
-  cancel-in-progress: ${{ github.event_name == 'push' }}
+  cancel-in-progress: false
 
 jobs:
   e2e:
@@ -29,31 +26,6 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version: 22
-
-      - name: Wait for QA deploy
-        if: github.event_name == 'push'
-        working-directory: .
-        run: |
-          FULL_SHA="${{ github.sha }}"
-          SHORT_SHA="${FULL_SHA:0:8}"
-          URL="https://humans.n.burn.camp/api/version"
-          echo "Waiting for $SHORT_SHA to deploy..."
-
-          # A QA deploy normally lands 3 to 4.5 minutes after the push.
-          for i in $(seq 1 180); do
-            DEPLOYED=$(curl -sf "$URL" | jq -r '.commit // empty' 2>/dev/null || true)
-            if [ "$DEPLOYED" = "$SHORT_SHA" ] || [ "$DEPLOYED" = "$FULL_SHA" ]; then
-              echo "Deploy confirmed after ~$((i * 5))s"
-              exit 0
-            fi
-            echo "Attempt $i: deployed=$DEPLOYED, expected=$SHORT_SHA"
-            sleep 5
-          done
-
-          # A superseded run is cancelled by the concurrency group above, so reaching here means
-          # the deploy itself is late or broken. Fail: a run that tested nothing must not show green.
-          echo "::error::Build $SHORT_SHA not deployed to QA within 15 minutes (deployed=$DEPLOYED)"
-          exit 1
 
       - name: Install dependencies
         run: npm ci

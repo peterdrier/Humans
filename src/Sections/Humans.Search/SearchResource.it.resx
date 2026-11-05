@@ -45,4 +45,7 @@
   <data name="Search_GlobalPlaceholderEvents" xml:space="preserve"><value>Cerca humans, team, camp, turni, eventi…</value></data>
   <data name="Search_GlobalTitle" xml:space="preserve"><value>Cerca</value></data>
   <data name="Search_QueryAriaLabel" xml:space="preserve"><value>Testo di ricerca</value></data>
+  <data name="Search_MinChars" xml:space="preserve">
+    <value>Inserisci almeno 2 caratteri per cercare.</value>
+  </data>
 </root>

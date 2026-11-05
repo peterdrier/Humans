@@ -128,7 +128,8 @@ exactly one home.
 - ~~**An anonymous way in.**~~ Settled 2026-09-11: the link was missing, not the branch dead.
   `Section.cs` contributes a `Guide` item to the member top nav through `ISectionNav`, with
   no `Visible` predicate, so a signed-out reader can reach the pages the filter's anonymous
-  branch was always written to serve.
+  branch was always written to serve. The top-nav link was dropped 2026-11-05 to shorten the bar;
+  signed-out readers now reach `/Guide` only by URL.
 
 ## 6. Deliberately not done
 

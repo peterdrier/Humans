@@ -44,7 +44,7 @@ public sealed class Section : ISection, ISectionChrome, ISectionNav, IUserPart
     }
 
     IEnumerable<MemberNavItem> ISectionNav.Items() =>
-        [new("Calendar", Controller: "Calendar", Action: "Index", Weight: 30)];
+        [new("Calendar", Controller: "Calendar", Action: "Index", Weight: 1, IconCssClass: "fa-solid fa-calendar-days")];
 
     IEnumerable<UserPart> IUserPart.Parts() => [new(UserPartSlots.AdminDetail, typeof(UserCalendarViewComponent))];
 }

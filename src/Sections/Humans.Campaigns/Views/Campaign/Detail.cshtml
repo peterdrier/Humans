@@ -126,10 +126,6 @@
         else
         {
             var rows = Model.Campaign.Grants.OrderByDescending(g => g.AssignedAt).ToList();
-            Func<CampaignGrantSummary, IHtmlContent> humanCell =
-                @<text><vc:human user-id="@item.UserId" /></text>;
-            Func<CampaignGrantSummary, IHtmlContent> codeCell =
-                @<text><code>@item.Code</code></text>;
             Func<CampaignGrantSummary, IHtmlContent> redeemedCell = @<text>
                 @if (item.RedeemedAt.HasValue)
                 {
@@ -150,8 +146,8 @@
                     </form>
                 </text>;
             var grantsTableBuilder = TableModel.For(rows)
-                .Template("Human", humanCell)
-                .Template("Code", codeCell)
+                .Human("Human", r => r.UserId)
+                .Column("Code", r => r.Code, o => o.Code())
                 .Column("Assigned", r => r.AssignedAt, c => c.DateTime())
                 .Template("Redeemed", redeemedCell);
             if (isAdmin)

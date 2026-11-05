@@ -15,8 +15,7 @@ public sealed class Section :
     ISection,
     ISectionAnnotations,
     ISectionConfiguration,
-    ISectionHealthChecks,
-    ISectionNav
+    ISectionHealthChecks
 {
     public void Register(IServiceCollection services, IConfiguration configuration)
     {
@@ -45,13 +44,4 @@ public sealed class Section :
     {
         builder.AddCheck<GitHubHealthCheck>("github", tags: [HealthCheckTags.External]);
     }
-
-    IEnumerable<MemberNavItem> ISectionNav.Items() =>
-    [
-        new(
-            "Guide",
-            Controller: "Guide",
-            Action: "Index",
-            Weight: 1010)
-    ];
 }

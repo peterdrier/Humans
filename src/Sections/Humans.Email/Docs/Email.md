@@ -133,7 +133,7 @@ Stored as **string** (`HasConversion<string>()`, `HasMaxLength(20)`). The `Faile
 |-----|---------|
 | `IsEmailSendingPaused` | When `"true"`, `ProcessEmailOutboxJob` skips processing. Read / written through `IEmailOutboxManagement.IsEmailPausedAsync` / `SetEmailPausedAsync`, which delegate to `ISettingsService` (the Settings section owns the `system_settings` table). The processor job also reads it through `IEmailOutboxManagement.IsEmailPausedAsync`. |
 
-Per design-rules §8, each `system_settings` key is owned by its consuming section. Email owns this key (its semantics and the only reads/writes); persistence routes through `ISettingsService`. Do not touch this key from any other section.
+Per the Settings section's contract (`Settings.md`), each `system_settings` key is owned by its consuming section. Email owns this key (its semantics and the only reads/writes); persistence routes through `ISettingsService`. Do not touch this key from any other section.
 
 ## Routing
 

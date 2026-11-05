@@ -73,8 +73,6 @@
     }
     else
     {
-        Func<CampRoleDrillDownCampRowViewModel, IHtmlContent> barrioCell =
-            @<text><a asp-controller="Camp" asp-action="Details" asp-route-slug="@item.CampSlug">@item.CampName</a></text>;
         Func<CampRoleDrillDownCampRowViewModel, IHtmlContent> assigneesCell = @<text>
             @if (item.Assignees.Count == 0)
             {
@@ -91,7 +89,7 @@
             }
         </text>;
         var rosterTable = TableModel.For(Model.Camps)
-            .Template("Barrio", barrioCell)
+            .Link("Barrio", r => r.CampName, r => Url.Action("Details", "Camp", new { slug = r.CampSlug }))
             .Template("Assignees", assigneesCell)
             .Build();
         <partial name="_Table" model="rosterTable" />

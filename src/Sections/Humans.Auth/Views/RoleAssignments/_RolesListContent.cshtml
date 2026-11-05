@@ -85,7 +85,7 @@
             var rolesTable = TableModel.For(Model.RoleAssignments)
                 .Template(Localizer["Auth_Roles_User"].Value, userCell)
                 .Template(SharedLocalizer["MyTeams_Role"].Value, roleCell)
-                .Column(Localizer["Auth_Roles_ValidFrom"].Value, ra => ra.ValidFrom.ToDate())
+                .Column(Localizer["Auth_Roles_ValidFrom"].Value, ra => ra.ValidFrom.ToDate(), c => c.Css("text-nowrap"))
                 .Template(Localizer["Auth_Roles_ValidTo"].Value, validToCell)
                 .Template(SharedLocalizer["Common_Status"].Value, statusCell, c => c.NoSort())
                 .Template("", actionCell, c => c.NoSort().End())

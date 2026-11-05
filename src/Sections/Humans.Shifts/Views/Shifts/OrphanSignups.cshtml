@@ -54,8 +54,6 @@
     }
     else
     {
-        Func<OrphanSignupRow, IHtmlContent> humanCell =
-            @<text><vc:human user-id="@item.UserId" /></text>;
         Func<OrphanSignupRow, IHtmlContent> createdAtCell = @<text>
             <time datetime="@item.CreatedAt.ToString()">
                 @item.CreatedAt.ToString()
@@ -94,11 +92,11 @@
         Func<OrphanSignupRow, IHtmlContent> signupIdCell =
             @<text><code class="small">@item.SignupId.ToString()[..8]</code></text>;
         var table = TableModel.For(Model.Rows)
-            .Template("Human", humanCell)
+            .Human("Human", r => r.UserId)
             .Column("Rota", r => r.RotaName)
-            .Column("Shift date", r => r.ShiftDate.ToWeekdayDayMonth())
+            .Column("Shift date", r => r.ShiftDate.ToWeekdayDayMonth(), c => c.Css("text-nowrap"))
             .Column("Status", r => r.Status, c => c.EnumBadge())
-            .Template("Created", createdAtCell)
+            .Template("Created", createdAtCell, c => c.Css("text-nowrap"))
             .Template("Reviewed by", reviewedByCell)
             .Template("Enrolled by", enrolledByCell)
             .Template("Block", blockCell)

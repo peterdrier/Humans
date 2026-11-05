@@ -43,8 +43,6 @@ else
             }
         </div>
     </text>;
-    Func<EventCategoryRowViewModel, IHtmlContent> catSlugCell =
-        @<text><code>@item.Slug</code></text>;
     Func<EventCategoryRowViewModel, IHtmlContent> catSensitiveCell = @<text>
         @if (item.IsSensitive)
         {
@@ -75,7 +73,7 @@ else
     var catTable = TableModel.For(Model.Categories)
         .Template("Order", catOrderCell, c => c.NoSort())
         .Column("Name", r => r.Name)
-        .Template("Slug", catSlugCell)
+        .Column("Slug", r => r.Slug, o => o.Code())
         .Template("Sensitive", catSensitiveCell)
         .Template("Active", catActiveCell)
         .Column("Events", r => r.EventCount)

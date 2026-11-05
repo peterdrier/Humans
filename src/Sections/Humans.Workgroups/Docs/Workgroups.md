@@ -117,7 +117,7 @@ Unique filtered `(WorkgroupId, UserId)` where `LeftAt IS NULL`.
 | RecurrenceRule | string(500)? | RFC 5545 RRULE; null for a one-off. Validated with Calendar's `CalendarRecurrence.IsValidRule` |
 | RecurrenceTimezone | string(100)? | IANA zone the rule repeats in, so 19:00 stays 19:00 across DST; set exactly when the rule is |
 | Description | string(4000)? | What the meeting is for, written beforehand; shown on the group page and as the calendar entry's description (falls back to the deliverable) |
-| Location / LocationUrl | string(500)? / string(2000)? | |
+| Location / LocationUrl | string(500)? / string(2000)? | The URL links the location on the group page and calendar views, and leads the feed entry's description |
 | IsPublic | bool | Adds the meeting to the community calendar; register visibility stays AppAccess |
 | Minutes | text? | Legacy single minutes box: no longer editable, still shown on the meeting's first occurrence. New notes are MeetingNotes log entries |
 | CreatedByUserId | Guid? | Bare reference; nulled on erasure |
@@ -127,8 +127,8 @@ Unique filtered `(WorkgroupId, UserId)` where `LeftAt IS NULL`.
 Indexes `(WorkgroupId, StartUtc)` and `CreatedByUserId` filtered non-null — the erasure
 predicate reads that column.
 
-Meeting URLs accept up to 2000 characters. The service validates the limit for creates
-and edits; form failures preserve the entered values and show a localized error.
+Meeting URLs accept up to 2000 characters and only absolute http(s). The service validates both for creates
+and edits, and the register read drops a stored URL that isn't http(s); form failures preserve the entered values and show a localized error.
 Meetings are created and edited through Calendar's shared form (`_CalendarEventForm`,
 `ICalendarEventForm`): date and time inputs plus a time zone chooser that defaults to the
 organisation zone (`ISettingsService.GetTimeZoneIdAsync`, Settings' `Event:TimeZoneId`). Times
@@ -172,7 +172,7 @@ member may also post them from the plain log form with no meeting. Any number of
 attach to one occurrence. Bodies are Markdown, written in the shared Markdown editor and
 rendered with `SanitizedMarkdown`.
 
-Not §12 append-only by design: the log is a working record; the audit trail is the
+Not append-only by design: the log is a working record; the audit trail is the
 immutable one. Member entries are editable and hard-deletable by any member (audited).
 System entries never change.
 

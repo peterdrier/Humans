@@ -1,10 +1,8 @@
 @model IReadOnlyList<Humans.Campaigns.Contracts.CampaignGrantSummary>
 @{
-    Func<CampaignGrantSummary, IHtmlContent> codeCell =
-        @<text><code>@item.Code</code></text>;
     var campaignCodesTable = TableModel.For(Model.OrderByDescending(g => g.AssignedAt).ToList())
         .Column("Campaign", g => g.CampaignTitle)
-        .Template("Code", codeCell)
+        .Column("Code", g => g.Code, o => o.Code())
         .Column("Assigned", g => g.AssignedAt, c => c.Date())
         .Build();
 }

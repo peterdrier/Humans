@@ -169,7 +169,7 @@ Goal: every sweep shrinks the historical-doc pile by ~5% (soft target, ~7% soft 
 4. **De-duplicate against target.** If the wheat is already in the target doc, drop it.
 5. **Genre-check against EXISTING destinations only.** Allowed:
    - `docs/sections/*.md` — section invariants only, no rationale narrative (per `SECTION-TEMPLATE.md`)
-   - `docs/architecture/design-rules.md` — architecture-level decisions that extend the constitution
+   - `docs/architecture/design-rules.md` — only a rule that stays true for every section (its header states the test). A fact about one section goes to that section's `Docs/<Section>.md`; Base and Shell facts go to `src/Humans.Base/Docs/Base.md` and `src/Humans.Web/Docs/Shell.md`
    - `docs/architecture/conventions.md` — pattern definitions (when to use X, naming, etc.)
    - **Never** create new design docs, ADR files, or `memory/` atoms during a sweep. `memory/` is for **atomic task-fires rules**, not for narrative-history-of-decisions, and design docs carry weight that needs Peter's review. If verified-true wheat genuinely fits none of the three allowed destinations, **ASK Peter inline** where it should live (don't invent a destination, and don't silently drop durable signal). Asking is fine; queuing for "next pass" is not.
 6. **Migrate** the wheat with a `<!-- wheat: <source path> §<section> -->` provenance comment. Preserve original prose voice.
@@ -317,7 +317,7 @@ Print the PR URL.
 
 After the PR is open and **before** teardown, present **every item that needs Peter's judgment INLINE in the chat** — as a terse, numbered, actionable list, one line each: every "Flagged for human review" judgment call, every open "Question", every uncertain prune-wheat item. This is the delivery of the review; the report is only the record. Peter reviews **here, now, inline** — he does not read the report, so a sweep that ends with unresolved items sitting in the report has failed.
 
-- Phrase each as a decision he can answer in a word or two (e.g. "1. Refresh the stale §15i snapshot, or leave it frozen?"). Inline prose, never the `AskUserQuestion` tool (project rule). Don't pad with paragraph-long options.
+- Phrase each as a decision he can answer in a word or two (e.g. "1. Refresh the stale decorator list in Shell.md, or leave it frozen?"). Inline prose, never the `AskUserQuestion` tool (project rule). Don't pad with paragraph-long options.
 - Wait for his answers. Apply the resulting edits to the PR branch in the worktree, then **`git add` the touched files and make a new `git commit`** (the Phase 7 commit already happened — uncommitted working-tree edits will not push), update the report's Flagged / Questions / Proposed sections to record each resolution, and `git push` to update the PR. A bare `git push` without that follow-up commit sends nothing.
 - Only purely-informational notes that need **no** decision may remain solely in the report.
 - **Do not run Phase 8 (teardown) or declare the sweep done until every surfaced item is resolved or Peter explicitly defers it.** "I'll note it in the report for you to review" is the exact failure this phase exists to prevent.

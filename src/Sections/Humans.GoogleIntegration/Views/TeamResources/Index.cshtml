@@ -35,7 +35,7 @@
     <div class="card mb-4">
         <div class="card-header">@Localizer["GoogleIntegration_TeamResources_LinkedResources"]</div>
         @{
-            Func<Humans.GoogleIntegration.Models.GoogleResourceViewModel, IHtmlContent> resourceCell0 = @<text>
+            Func<Humans.GoogleIntegration.Models.GoogleResourceViewModel, IHtmlContent> nameCell = @<text>
                 @if (!string.IsNullOrEmpty(item.Url))
                 {
                     <a href="@item.Url" target="_blank" rel="noopener noreferrer">@item.Name</a>
@@ -46,7 +46,7 @@
                 }
 
             </text>;
-            Func<Humans.GoogleIntegration.Models.GoogleResourceViewModel, IHtmlContent> resourceCell1 = @<text>
+            Func<Humans.GoogleIntegration.Models.GoogleResourceViewModel, IHtmlContent> typeCell = @<text>
                 @if (string.Equals(item.ResourceType, "Drive Folder", StringComparison.Ordinal))
                 {
                     <span class="badge bg-info">Drive Folder</span>
@@ -65,7 +65,7 @@
                 }
 
             </text>;
-            Func<Humans.GoogleIntegration.Models.GoogleResourceViewModel, IHtmlContent> resourceCell2 = @<text>
+            Func<Humans.GoogleIntegration.Models.GoogleResourceViewModel, IHtmlContent> permissionCell = @<text>
                 @if (item.IsDriveResource)
                 {
                     <form asp-action="UpdatePermissionLevel" asp-route-slug="@Model.TeamSlug" asp-route-resourceId="@item.Id" method="post" class="d-inline permission-form">
@@ -95,7 +95,7 @@
                 }
 
             </text>;
-            Func<Humans.GoogleIntegration.Models.GoogleResourceViewModel, IHtmlContent> resourceCell3 = @<text>
+            Func<Humans.GoogleIntegration.Models.GoogleResourceViewModel, IHtmlContent> restrictInheritanceCell = @<text>
                 @if (item.IsDriveFolder && !Model.CanManage)
                 {
                     <span class="badge @(item.RestrictInheritedAccess ? "bg-warning text-dark" : "bg-secondary")">
@@ -131,7 +131,7 @@
                 }
 
             </text>;
-            Func<Humans.GoogleIntegration.Models.GoogleResourceViewModel, IHtmlContent> resourceCell4 = @<text>
+            Func<Humans.GoogleIntegration.Models.GoogleResourceViewModel, IHtmlContent> lastsyncedCell = @<text>
                 @if (item.LastSyncedAt.HasValue)
                 {
                             @item.LastSyncedAt.Value.ToDateTime()
@@ -142,7 +142,7 @@
                 }
 
             </text>;
-            Func<Humans.GoogleIntegration.Models.GoogleResourceViewModel, IHtmlContent> resourceCell5 = @<text>
+            Func<Humans.GoogleIntegration.Models.GoogleResourceViewModel, IHtmlContent> statusCell = @<text>
                 @if (!string.IsNullOrEmpty(item.ErrorMessage))
                 {
                     <span class="badge bg-danger" title="@item.ErrorMessage">Error</span>
@@ -153,7 +153,7 @@
                 }
 
             </text>;
-            Func<Humans.GoogleIntegration.Models.GoogleResourceViewModel, IHtmlContent> resourceCell6 = @<text>
+            Func<Humans.GoogleIntegration.Models.GoogleResourceViewModel, IHtmlContent> actionsCell = @<text>
                 @if (Model.CanManage)
                 {
                     <div class="d-flex gap-1" role="group">
@@ -166,13 +166,13 @@
 
             </text>;
             var resourcesTable = TableModel.For(Model.Resources)
-                .Template(Localizer["GoogleIntegration_TeamResources_Name"], resourceCell0, sortBy: r => r.Name)
-                .Template(Localizer["GoogleIntegration_TeamResources_Type"], resourceCell1)
-                .Template("Permission", resourceCell2)
-                .Template("Restrict Inheritance", resourceCell3)
-                .Template(Localizer["GoogleIntegration_TeamResources_LastSynced"], resourceCell4, sortBy: r => r.LastSyncedAt)
-                .Template(SharedLocalizer["Common_Status"], resourceCell5)
-                .Template(Localizer["GoogleIntegration_TeamResources_Actions"], resourceCell6, o => o.NoSort())
+                .Template(Localizer["GoogleIntegration_TeamResources_Name"], nameCell, sortBy: r => r.Name)
+                .Template(Localizer["GoogleIntegration_TeamResources_Type"], typeCell)
+                .Template("Permission", permissionCell)
+                .Template("Restrict Inheritance", restrictInheritanceCell)
+                .Template(Localizer["GoogleIntegration_TeamResources_LastSynced"], lastsyncedCell, sortBy: r => r.LastSyncedAt)
+                .Template(SharedLocalizer["Common_Status"], statusCell)
+                .Template(Localizer["GoogleIntegration_TeamResources_Actions"], actionsCell, o => o.NoSort())
                 .Css("align-middle")
                 .Build();
         }

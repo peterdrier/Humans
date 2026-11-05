@@ -77,7 +77,7 @@ One row per member; a member with no row is a Volunteer.
 
 ### ApplicationStateHistory
 
-Append-only per design-rules §12 — `IApplicationRepository` exposes no update or delete surface for this table. (Append-only is enforced at the repository layer, not via DB triggers — only `consent_records` has DB-level immutability triggers.)
+Append-only per design-rules.md, *Append-only entities* — `IApplicationRepository` exposes no update or delete surface for this table. (Append-only is enforced at the repository layer, not via DB triggers — only `consent_records` has DB-level immutability triggers.)
 
 **Table:** `application_state_history`
 
@@ -330,7 +330,7 @@ Approval and rejection share the same ordered eligibility check (application exi
 - **IRV:** the majority base in each round is the ballots that still rank a continuing option; ballots that rank none (or Abstain) are exhausted. Elimination takes the fewest votes, breaking ties by fewest votes in the previous round and then by authored option order.
 - The IRV counter derives its continuing options and authored-order tie-break lookup from one ordered key sequence; callers need not order options before counting.
 - **Ties are reported, never resolved.** Statutes Art. 10.2 gives the President of the Board the casting vote and the Secretary records it in the acta; the system prints that rule and stops.
-- `application_state_history` is append-only per §12 — repository exposes `AddAsync` and `GetXxxAsync` but no `UpdateAsync` / `DeleteAsync`.
+- `application_state_history` is append-only per design-rules.md, *Append-only entities* — repository exposes `AddAsync` and `GetXxxAsync` but no `UpdateAsync` / `DeleteAsync`.
 
 The Board-voting dashboard controller orders member columns by display name with ordinal case-insensitive comparison. The decision service returns the member data without presentation ordering.
 

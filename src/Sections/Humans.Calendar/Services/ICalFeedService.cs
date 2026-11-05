@@ -79,8 +79,11 @@ internal sealed class ICalFeedService(
             {
                 Uid = item.Uid,
                 Summary = item.Summary,
-                Description = item.Description,
-                Location = item.Location,
+                // Google and Outlook ignore URL and don't link LOCATION, but every client links a URL in DESCRIPTION.
+                Description = item.LocationUrl is null
+                    ? item.Description
+                    : string.IsNullOrWhiteSpace(item.Description) ? item.LocationUrl : $"{item.LocationUrl}\n\n{item.Description}",
+                Location = string.IsNullOrWhiteSpace(item.Location) ? item.LocationUrl : item.Location,
                 // ToDateTimeUtc keeps Kind=Utc so DTSTART gets its Z suffix (Ical.Net version-sensitive; a test guards it).
                 DtStart = new CalDateTime(item.Start.ToDateTimeUtc()),
                 DtEnd = new CalDateTime(item.End.ToDateTimeUtc()),
@@ -95,6 +98,8 @@ internal sealed class ICalFeedService(
                 ev.RecurrenceRule = new RecurrencePattern(rule);
                 if (zonesAdded.Add(zone.Id)) calendar.AddTimeZone(zone.Id);
             }
+            // Google Calendar draws its Join button from this property; other clients ignore it.
+            if (item.LocationUrl is not null) ev.AddProperty("X-GOOGLE-CONFERENCE", item.LocationUrl);
             calendar.Events.Add(ev);
         }
 

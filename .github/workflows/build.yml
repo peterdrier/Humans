@@ -16,7 +16,7 @@ on:
 # Cancel superseded runs on the same PR — agent-driven PRs push in bursts and
 # the stale runs just burn runner time and queue depth. Pushes to main are
 # never cancelled and never coalesced: each gets a unique group via run_id,
-# because every main commit deploys to QA and e2e-qa waits on its exact sha.
+# because every main commit deploys to QA.
 concurrency:
   group: ${{ github.workflow }}-${{ github.event_name == 'pull_request' && format('pr-{0}', github.event.pull_request.number) || github.run_id }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
@@ -26,7 +26,7 @@ env:
   # The per-section DbContexts (nobodies-collective/Humans#858) are not listed
   # here: detect-migration-changes derives every `context:project` pair from
   # each Data/<Context>.cs and requires its design-time factory beside it
-  # (design-rules §4), so a new section or a G5 move needs
+  # (design-rules.md, *Service ownership*), so a new section or a G5 move needs
   # no edit in this file. The `has-pending-model-changes` loops and the
   # from-scratch baseline apply iterate only the affected pairs.
 
