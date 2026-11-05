@@ -69,14 +69,7 @@ else
                                     <td class="text-center">
                                         @if (hasVote && cell?.Vote != null)
                                         {
-                                            var badgeClass = cell.Vote switch
-                                            {
-                                                VoteChoice.Yay => "bg-success",
-                                                VoteChoice.Maybe => "bg-warning text-dark",
-                                                VoteChoice.No => "bg-danger",
-                                                _ => "bg-secondary"
-                                            };
-                                            <span class="badge @badgeClass" title="@cell.Note">@cell.Vote</span>
+                                            <status-badge value="@cell.Vote" title="@cell.Note" />
                                         }
                                         else
                                         {

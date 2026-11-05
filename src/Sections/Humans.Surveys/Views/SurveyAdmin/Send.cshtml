@@ -8,21 +8,6 @@
     string FormatInstant(Instant? instant) =>
         instant is null ? "—" : instant.Value.ToDateTime(zone);
 
-    static string StatusBadge(SurveyStatus s) => s switch
-    {
-        SurveyStatus.Open => "bg-success",
-        SurveyStatus.Closed => "bg-secondary",
-        _ => "bg-warning text-dark",
-    };
-
-    static string EmailBadge(EmailOutboxStatus? s) => s switch
-    {
-        EmailOutboxStatus.Sent => "bg-success",
-        EmailOutboxStatus.Failed => "bg-danger",
-        EmailOutboxStatus.Queued => "bg-info text-dark",
-        _ => "bg-light text-dark",
-    };
-
     static string AudienceLabel(SurveyAudienceType audience) => audience switch
     {
         SurveyAudienceType.Team => "Team",
@@ -53,7 +38,7 @@
                 <i class="fa-solid fa-envelope me-1"></i>Send preview email to me
             </button>
         </form>
-        <span class="badge @StatusBadge(Model.Status)">@Model.Status</span>
+        <status-badge value="@Model.Status" localizer="@Localizer" />
     </div>
 </div>
 
@@ -151,7 +136,7 @@
                     <tr>
                         <td><vc:human user-id="@inv.UserId" link="None" /></td>
                         <td>@FormatInstant(inv.SentAt)</td>
-                        <td><span class="badge @EmailBadge(inv.EmailStatus)">@(inv.EmailStatus?.ToString() ?? "—")</span></td>
+                        <td>@if (inv.EmailStatus is { } emailStatus){<status-badge value="@emailStatus" />}else{<span class="badge bg-light text-dark">—</span>}</td>
                         <td>@FormatInstant(inv.ReminderSentAt)</td>
                         <td>@(inv.Started ? "Yes" : "—")</td>
                         <td>@(inv.Completed ? "Yes" : "—")</td>

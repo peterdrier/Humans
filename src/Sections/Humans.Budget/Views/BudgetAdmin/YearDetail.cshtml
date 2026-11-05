@@ -1,4 +1,5 @@
 @model FinanceOverviewViewModel
+@using Humans.Base.Models.Tables
 @{
     ViewData["Title"] = $"Finance - {Model.Year.Name}";
     var year = Model.Year;
@@ -9,7 +10,7 @@
     var expenseData = Model.ExpenseSlices.Select(s => s.Amount).ToList();
 }
 
-<page-header title="@year.Name" badge="@year.Status.ToString()" badge-class="@(year.Status.GetBadgeClass() + " fs-6")">
+<page-header title="@year.Name" badge="@year.Status.ToString()" badge-class="@(EnumBadgeMap.For(year.Status) + " fs-6")">
     @if (allYears.Count > 1)
     {
         <div class="dropdown">
@@ -22,7 +23,7 @@
                     <li>
                         <a asp-action="YearDetail" asp-route-id="@y.Id" class="dropdown-item @(y.Id == year.Id ? "active" : "")">
                             @y.Name
-                            <span class="badge @y.Status.GetBadgeClass() ms-1">@y.Status</span>
+                            <status-badge value="@y.Status" class="ms-1" />
                         </a>
                     </li>
                 }

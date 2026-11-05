@@ -53,8 +53,6 @@ internal sealed class IndividualEventRowViewModel
     public EventStatus Status { get; set; }
     public bool CanEdit { get; set; }
     public bool CanWithdraw { get; set; }
-
-    public string StatusBadgeClass => EventStatusPresentation.BadgeClass(Status);
 }
 
 internal abstract class EventProposalFormViewModel

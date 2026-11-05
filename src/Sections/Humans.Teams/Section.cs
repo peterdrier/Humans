@@ -1,4 +1,5 @@
 using System.Globalization;
+using Humans.Base.Models.Tables;
 using Humans.Base.Authorization;
 using Humans.Base.Constants;
 using Humans.Base.Hosting;
@@ -51,6 +52,19 @@ public sealed class Section :
 
     public void Register(IServiceCollection services, IConfiguration configuration)
     {
+        EnumBadgeMap.Register(new Dictionary<Enum, string>
+        {
+            [SlotPriority.None] = "bg-light text-dark",
+            [SlotPriority.Critical] = "bg-danger",
+            [SlotPriority.Important] = "bg-warning text-dark",
+            [SlotPriority.NiceToHave] = "bg-secondary",
+
+            [RolePeriod.YearRound] = "bg-light text-dark",
+            [RolePeriod.Build] = "bg-info",
+            [RolePeriod.Event] = "bg-success",
+            [RolePeriod.Strike] = "bg-secondary",
+        });
+
         services.AddSingleton<IAuditActionContributor, TeamsAuditActions>();
         services.AddSingleton<INotificationSourceContributor, TeamsNotificationSources>();
         services.AddSectionDbContext<TeamsDbContext>(sentinelTable: "teams");

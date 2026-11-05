@@ -50,8 +50,14 @@ public sealed class Section :
         services.AddScoped<IAuthorizationHandler, ExpenseReportAuthorizationHandler>();
 
         // Base cannot name ExpenseReportStatus, so the section registers its own badge colours.
-        EnumBadgeMap.Register(
-            Enum.GetValues<ExpenseReportStatus>().ToDictionary(s => (Enum)s, s => s.GetBadgeClass()));
+        EnumBadgeMap.Register(new Dictionary<Enum, string>
+        {
+            [ExpenseReportStatus.Draft] = "bg-secondary",
+            [ExpenseReportStatus.Submitted] = "bg-primary",
+            [ExpenseReportStatus.CoordinatorEndorsed] = "bg-info text-dark",
+            [ExpenseReportStatus.Approved] = "bg-success",
+            [ExpenseReportStatus.Withdrawn] = "bg-secondary",
+        });
 
         services.AddScoped<HoldedExpenseOutboxJob>();
     }

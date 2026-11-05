@@ -33,7 +33,7 @@
 <div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-2">
     <div>
         <h1 class="mb-1">@w.Name</h1>
-        <span class="badge @EnumBadgeMap.For(w.Status)">@Localizer.EnumDisplay(w.Status)</span>
+        <status-badge value="@w.Status" localizer="@Localizer" />
         @if (isDormant && w.DormantReason is { } dr)
         {
             <span class="badge bg-secondary">@Localizer.EnumDisplay(dr)</span>
@@ -404,7 +404,7 @@
                             {
                                 <span class="badge bg-primary">@Localizer["Workgroups_OpenForComment"]</span>
                             }
-                            <span class="badge @EnumBadgeMap.For(d.Status)">@Localizer.EnumDisplay(d.Status)</span>
+                            <status-badge value="@d.Status" localizer="@Localizer" />
                         </span>
                     </a>
                 }

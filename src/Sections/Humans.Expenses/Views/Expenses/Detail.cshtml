@@ -1,8 +1,8 @@
 @model Humans.Expenses.Models.ExpenseDetailViewModel
+@using Humans.Base.Models.Tables
 @{
     ViewData["Title"] = Localizer["Expenses_ReportTitle"].Value;
     var r = Model.Report;
-    var badgeClass = r.Status.GetBadgeClass();
 }
 
 @section Crumbs {
@@ -11,8 +11,8 @@
 }
 
 <page-header title="@(Localizer["Expenses_ReportTitle"].Value)"
-             badge="@(Localizer[$"Enum_ExpenseReportStatus_{r.Status}"].Value)"
-             badge-class="@(badgeClass + " fs-6")">
+             badge="@Localizer.EnumDisplay(r.Status)"
+             badge-class="@(EnumBadgeMap.For(r.Status) + " fs-6")">
     @if (Model.CanEdit)
     {
         <a asp-action="Edit" asp-route-id="@r.Id" class="btn btn-outline-primary">

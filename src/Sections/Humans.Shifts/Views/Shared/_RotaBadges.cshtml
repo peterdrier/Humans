@@ -9,15 +9,16 @@
 }
 @if (Model.Rota.Priority == ShiftPriority.Essential)
 {
-    <span class="badge bg-danger @spacing">@Localizer["Shifts_Essential"]</span>
+    <status-badge value="@Model.Rota.Priority" text="@Localizer["Shifts_Essential"].Value" class="@spacing" />
 }
 else if (Model.Rota.Priority == ShiftPriority.Important)
 {
-    <span class="badge bg-warning text-dark @spacing">@Localizer["Shifts_Important"]</span>
+    <status-badge value="@Model.Rota.Priority" text="@Localizer["Shifts_Important"].Value" class="@spacing" />
 }
 @if (Model.ShowPeriodBadge)
 {
-    <span class="badge @(Model.Rota.Period switch { RotaPeriod.Build => "bg-info", RotaPeriod.Strike => "bg-secondary", RotaPeriod.All => "bg-primary", _ => "bg-success" }) @spacing">@(Model.Rota.Period switch { RotaPeriod.Build => SharedLocalizer["Shifts_SetUp"].Value, RotaPeriod.All => SharedLocalizer["Shifts_AllPhases"].Value, _ => Model.Rota.Period.ToString() })</span>
+    <status-badge value="@Model.Rota.Period" class="@spacing"
+                  text="@(Model.Rota.Period switch { RotaPeriod.Build => SharedLocalizer["Shifts_SetUp"].Value, RotaPeriod.All => SharedLocalizer["Shifts_AllPhases"].Value, _ => Model.Rota.Period.ToString() })" />
 }
 @if (!Model.Rota.IsVisibleToVolunteers)
 {
