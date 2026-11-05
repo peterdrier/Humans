@@ -1361,7 +1361,7 @@ internal sealed class SurveyService(
                  q.RankedUnavailableOptionValues?.ToList()))
             .ToList();
 
-        var answerContext = BuildRespondentAnswerContext(survey, culture);
+        var answerContext = new SurveyAnswerProjection(survey, culture);
 
         // Identity is resolved only for Identified rows in ordinary surveys. Asociado exports never
         // expose identity, timestamps or submission order, including for legacy Identified rows.
@@ -1395,14 +1395,12 @@ internal sealed class SurveyService(
                     .Select(a => new SurveyExportAnswer(
                         a.QuestionId,
                         a.SelectedOptionValues,
-                        ResolveSelectedLabels(a, answerContext.OptionLabels),
+                        answerContext.ResolveSelectedLabels(a),
                         a.TextValue,
                         a.RatingValue,
-                        CopyGridSelections(a),
-                         answerContext.QuestionsById.TryGetValue(a.QuestionId, out var question)
-                             ? ResolveGridSelections(a, question, culture)
-                             : [],
-                         CopyRankedBallot(a)))
+                        SurveyAnswerProjection.CopyGridSelections(a),
+                         answerContext.ResolveGridSelections(a),
+                         SurveyAnswerProjection.CopyRankedBallot(a)))
                     .ToList();
 
                 return new SurveyExportRow(
@@ -1450,7 +1448,7 @@ internal sealed class SurveyService(
                     ? survey?.DefaultCulture ?? "en"
                     : r.Culture;
 
-                var answerContext = BuildRespondentAnswerContext(survey, culture);
+                var answerContext = new SurveyAnswerProjection(survey, culture);
 
                 return new
                 {
@@ -1459,14 +1457,12 @@ internal sealed class SurveyService(
                     Culture = culture,
                     Answers = r.Answers.Select(a => new
                     {
-                        Question = answerContext.Prompts.GetValueOrDefault(a.QuestionId, string.Empty),
-                        SelectedLabels = ResolveSelectedLabels(a, answerContext.OptionLabels),
-                        GridSelections = CopyGridSelections(a),
-                        GridSelectionLabels = answerContext.QuestionsById.TryGetValue(a.QuestionId, out var question)
-                             ? ResolveGridSelections(a, question, culture)
-                             : [],
-                        RankedBallot = CopyRankedBallot(a),
-                        RankedBallotLabels = ResolveRankedBallot(a, answerContext.OptionLabels),
+                        Question = answerContext.PromptFor(a),
+                        SelectedLabels = answerContext.ResolveSelectedLabels(a),
+                        GridSelections = SurveyAnswerProjection.CopyGridSelections(a),
+                        GridSelectionLabels = answerContext.ResolveGridSelections(a),
+                        RankedBallot = SurveyAnswerProjection.CopyRankedBallot(a),
+                        RankedBallotLabels = answerContext.ResolveRankedBallot(a),
                         a.TextValue,
                         a.RatingValue,
                     }).ToList(),
@@ -1573,12 +1569,12 @@ internal sealed class SurveyService(
             .ToList();
         if (identified.Count == 0) return [];
 
-        var answerContext = BuildRespondentAnswerContext(survey, culture);
+        var answerContext = new SurveyAnswerProjection(survey, culture);
 
         return identified
             .Select(r =>
             {
-                var answers = BuildRespondentAnswers(r, answerContext, culture);
+                var answers = answerContext.BuildRespondentAnswers(r);
                 return new RespondentDetail(r.UserId!.Value, r.SubmittedAt, answers) { ResponseId = r.Id };
             })
             .ToList();
@@ -1587,85 +1583,13 @@ internal sealed class SurveyService(
     private static IReadOnlyList<UnattributedBallotDetail> BuildUnattributedBallots(
         Survey survey, IReadOnlyList<SurveyResponse> responses, string culture)
     {
-        var answerContext = BuildRespondentAnswerContext(survey, culture);
+        var answerContext = new SurveyAnswerProjection(survey, culture);
         return responses
             .OrderBy(response => response.Id)
             .Select(response => new UnattributedBallotDetail(
-                BuildRespondentAnswers(response, answerContext, culture)))
+                answerContext.BuildRespondentAnswers(response)))
             .ToList();
     }
-
-    private static RespondentAnswerContext BuildRespondentAnswerContext(Survey? survey, string culture)
-    {
-        var questions = survey?.Questions ?? [];
-        return new(
-            questions.ToDictionary(
-                question => question.Id,
-                question => question.Options.ToDictionary(
-                    option => option.Value,
-                    option => option.Label.Resolve(culture, culture),
-                    StringComparer.Ordinal)),
-            questions.ToDictionary(
-                question => question.Id,
-                question => question.Prompt.Resolve(culture, culture)),
-            questions.ToDictionary(question => question.Id));
-    }
-
-    private static IReadOnlyList<RespondentAnswer> BuildRespondentAnswers(
-        SurveyResponse response, RespondentAnswerContext context, string culture) =>
-        response.Answers
-            .Select(answer => new RespondentAnswer(
-                answer.QuestionId,
-                context.Prompts.GetValueOrDefault(answer.QuestionId, string.Empty),
-                ResolveSelectedLabels(answer, context.OptionLabels),
-                answer.TextValue,
-                answer.RatingValue,
-                context.QuestionsById.TryGetValue(answer.QuestionId, out var question)
-                    ? ResolveGridSelections(answer, question, culture)
-                    : [],
-                ResolveRankedBallot(answer, context.OptionLabels)))
-            .ToList();
-
-    private static IReadOnlyList<string> ResolveSelectedLabels(
-        SurveyAnswer answer, IReadOnlyDictionary<Guid, Dictionary<string, string>> optionLabels)
-    {
-        if (answer.SelectedOptionValues.Count == 0) return [];
-        var labels = optionLabels.GetValueOrDefault(answer.QuestionId);
-        return answer.SelectedOptionValues
-            .Select(v => labels is not null && labels.TryGetValue(v, out var label) ? label : v)
-            .ToList();
-    }
-
-    private static IReadOnlyList<ResolvedGridSelection> ResolveGridSelections(
-        SurveyAnswer answer, SurveyQuestion question, string culture)
-    {
-        if (answer.GridSelections is null) return [];
-
-        var rows = (question.GridRows ?? []).ToDictionary(
-            row => row.Value,
-            row => row.Label.Resolve(culture, culture),
-            StringComparer.Ordinal);
-        var columns = question.Options.ToDictionary(
-            option => option.Value,
-            option => option.Label.Resolve(culture, culture),
-            StringComparer.Ordinal);
-        return answer.GridSelections
-            .Where(selection => selection.Value.Count > 0)
-            .Select(selection => new ResolvedGridSelection(
-                selection.Key,
-                rows.GetValueOrDefault(selection.Key, selection.Key),
-                selection.Value.ToList(),
-                selection.Value
-                    .Select(value => columns.GetValueOrDefault(value, value))
-                    .ToList()))
-            .ToList();
-    }
-
-    private static IReadOnlyDictionary<string, IReadOnlyList<string>>? CopyGridSelections(SurveyAnswer answer)
-        => answer.GridSelections?.ToDictionary(
-            selection => selection.Key,
-            selection => (IReadOnlyList<string>)selection.Value.ToList(),
-            StringComparer.Ordinal);
 
     private static SurveyRankedSettings? ToRankedSettings(RankedQuestionSettings? settings)
         => settings is null
@@ -1674,29 +1598,6 @@ internal sealed class SurveyService(
                 settings.AllowEqualRanks,
                 settings.AllowReject,
                 settings.OfficialMethod.ToString());
-
-    private static SurveyRankedBallot? CopyRankedBallot(SurveyAnswer answer)
-        => answer.RankedValue is null
-            ? null
-            : new SurveyRankedBallot(
-                [.. answer.RankedValue.RankGroups.Select(group => (IReadOnlyList<string>)[.. group])],
-                [.. answer.RankedValue.Rejected]);
-
-    private static ResolvedRankedBallot? ResolveRankedBallot(
-        SurveyAnswer answer,
-        IReadOnlyDictionary<Guid, Dictionary<string, string>> optionLabels)
-    {
-        if (answer.RankedValue is null) return null;
-
-        var labels = optionLabels.GetValueOrDefault(answer.QuestionId);
-        string Resolve(string value) =>
-            labels is not null && labels.TryGetValue(value, out var label) ? label : value;
-
-        return new ResolvedRankedBallot(
-            [.. answer.RankedValue.RankGroups
-                .Select(group => (IReadOnlyList<string>)[.. group.Select(Resolve)])],
-            [.. answer.RankedValue.Rejected.Select(Resolve)]);
-    }
 
     private static IReadOnlyList<QuestionInput> ToQuestionInputs(Survey survey)
         => survey.Questions
@@ -2054,11 +1955,6 @@ internal sealed class SurveyService(
                 }).ToList(),
             };
         }).ToList();
-
-    private sealed record RespondentAnswerContext(
-        IReadOnlyDictionary<Guid, Dictionary<string, string>> OptionLabels,
-        IReadOnlyDictionary<Guid, string> Prompts,
-        IReadOnlyDictionary<Guid, SurveyQuestion> QuestionsById);
 
     /// <summary>
     /// Slugs that would shadow the literal-segment routes under <c>/Survey</c> (the answering wizard
