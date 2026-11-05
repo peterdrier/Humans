@@ -179,7 +179,7 @@ that row again (no audit entry either way — seeding has no real actor).
 
 ## Cross-Section Dependencies
 
-Declared in `Humans.Settings.csproj`: `Humans.Base` and `Humans.AuditLog`.
+Declared in `Humans.Settings.csproj`: `Humans.Base` only (it carries the audit append path).
 Everything else below is a section reaching *in* through this section's
 `Contracts/` folder, or a seam it implements.
 
