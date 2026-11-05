@@ -40,4 +40,10 @@ public sealed class FinanceAuditActions : AuditActionContributor
     public static readonly AuditActionDefinition HoldedCreditorAccountNumChanged = new("HoldedCreditorAccountNumChanged");
 
     public static readonly AuditActionDefinition HoldedCategoryAccountProvisioned = new("HoldedCategoryAccountProvisioned");
+
+    // One per Pleo entry posted (or possibly posted) to Holded 57200003: names the entry, both accounts and the outcome.
+    public static readonly AuditActionDefinition PleoEntryBooked = new("PleoEntryBooked");
+
+    // A finance admin released the held Pleo posts after checking them in Holded.
+    public static readonly AuditActionDefinition PleoBookingHoldCleared = new("PleoBookingHoldCleared");
 }

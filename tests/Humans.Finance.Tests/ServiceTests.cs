@@ -179,7 +179,8 @@ public class HoldedFinanceServiceTests
             new CreditorMatchService(_holded, Substitute.For<Humans.Expenses.Contracts.IExpenseReportService>()),
             new FinanceOverviewService(_holded, service, Substitute.For<Humans.Expenses.Contracts.IExpenseReportService>(),
                 _budget, new CashFlowService(_budget, Substitute.For<Humans.Tickets.Contracts.ITicketService>()),
-                SystemClock.Instance),
+                Substitute.For<Humans.Pleo.Contracts.IPleoService>(), SystemClock.Instance),
+            TestPleo.Booking(), TestPleo.Runner(),
             NullLogger<FinanceController>.Instance)
         {
             ControllerContext = new()

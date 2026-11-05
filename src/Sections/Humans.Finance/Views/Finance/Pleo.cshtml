@@ -1,0 +1,277 @@
+@model Humans.Finance.Models.PleoReconcileVm
+@using Humans.Finance.Services
+@{
+    ViewData["Title"] = "Pleo reconcile";
+    var running = (bool)(ViewBag.PleoRunning ?? false) || Model.Run is { IsRunning: true };
+    var spend = Model.View.Spend;
+    var booked = spend.Where(r => r.State is PleoSpendState.Booked or PleoSpendState.Pending).ToList();
+    var ready = spend.Where(r => r.State == PleoSpendState.Ready).ToList();
+    var notReady = spend.Where(r => r.State is not (PleoSpendState.Booked or PleoSpendState.Pending or PleoSpendState.Ready)).ToList();
+    var groups = new[]
+    {
+        (PleoSpendState.NoReceipt, "No receipt"),
+        (PleoSpendState.NoCategory, "No category"),
+        (PleoSpendState.NotMapped, "Category not mapped to an open Holded account"),
+        (PleoSpendState.NoReceiptNoCategory, "No receipt and no category"),
+        (PleoSpendState.NoAmount, "No EUR amount"),
+    };
+    var difference = Model.Difference;
+    var run = Model.Run;
+}
+
+@functions {
+    private static string Signed(decimal amount) => amount > 0m ? "+" + amount.ToEuro() : amount.ToEuro();
+}
+
+<div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-4">
+    <h1 class="mb-0">Pleo reconcile</h1>
+    <div class="d-flex align-items-center gap-3">
+        <span class="small text-muted">
+            Pleo synced @(Model.Wallet?.SyncedAt.ToInvariantTimestamp() ?? "never")
+            · Holded ledger synced @(Model.LedgerSyncedAt?.ToInvariantTimestamp() ?? "never")
+        </span>
+        <a href="/Pleo" class="btn btn-outline-secondary btn-sm">Pleo</a>
+        <a asp-action="Index" class="btn btn-outline-secondary btn-sm"><i class="fa-solid fa-arrow-left me-1"></i>Finance</a>
+    </div>
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-md-4">
+        <div class="card h-100"><div class="card-body">
+            <div class="text-muted small text-uppercase">Pleo wallet</div>
+            <div class="fs-3 fw-bold">@(Model.Wallet?.CurrentEur.ToEuro() ?? "—")</div>
+        </div></div>
+    </div>
+    <div class="col-md-4">
+        <div class="card h-100"><div class="card-body">
+            <div class="text-muted small text-uppercase">Holded @PleoBooking.PleoTreasury</div>
+            <div class="fs-3 fw-bold"><a href="/Holded/Accounts/@PleoBooking.PleoTreasury" class="text-reset">@Model.Holded.ToEuro()</a></div>
+        </div></div>
+    </div>
+    <div class="col-md-4">
+        <div class="card h-100"><div class="card-body">
+            <div class="text-muted small text-uppercase">Difference</div>
+            <div class="fs-3 fw-bold @(difference is { } d && d != 0m ? "text-danger" : "text-success")">@(difference?.ToEuro() ?? "—")</div>
+            <div class="small text-muted">Pleo − Holded</div>
+        </div></div>
+    </div>
+</div>
+
+<h2 class="h4 mb-3">Top-ups (Sabadell → Pleo)</h2>
+<div class="card mb-4">
+    <table class="table table-sm mb-0">
+        <thead><tr><th class="ps-3">Pleo date</th><th class="text-end">Amount</th><th class="pe-3">Holded</th></tr></thead>
+        <tbody>
+            @foreach (var t in Model.View.TopUps)
+            {
+                <tr class="@(t.HoldedEntry is null ? "table-danger" : "")">
+                    <td class="ps-3"><a href="/Pleo/Entries/@t.PleoId">@t.Date.ToDate()</a></td>
+                    <td class="text-end">@t.Amount.ToEuro()</td>
+                    <td class="pe-3">
+                        @if (t.HoldedEntry is { } n)
+                        {
+                            <span class="text-success">✓</span> <a href="/Holded/Entries/@n">entry @n</a>
+                        }
+                        else
+                        {
+                            <span class="text-danger">✗ no @PleoBooking.SabadellTreasury → @PleoBooking.PleoTreasury transfer of @t.Amount.ToEuro() in Holded</span>
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+    <div class="card-footer small text-muted">Book a missing top-up by categorising the Sabadell line in Holded.</div>
+</div>
+
+<h2 class="h4 mb-3">Spend</h2>
+<div class="row g-3 mb-3">
+    <div class="col-md-4">
+        <div class="card h-100"><div class="card-body">
+            <div class="text-muted small text-uppercase">Already in Holded</div>
+            <div class="fs-3 fw-bold">@booked.Count · @booked.Sum(r => r.Amount).ToEuro()</div>
+            @if (booked.Any(r => r.State == PleoSpendState.Pending))
+            {
+                <div class="small text-warning">@booked.Count(r => r.State == PleoSpendState.Pending) posted but not in the ledger yet: check in Holded</div>
+            }
+        </div></div>
+    </div>
+    <div class="col-md-4">
+        <div class="card h-100"><div class="card-body">
+            <div class="text-muted small text-uppercase">Ready to book</div>
+            <div class="fs-3 fw-bold">@ready.Count · @ready.Sum(r => r.Amount).ToEuro()</div>
+            <div class="small text-muted">Receipt attached and category mapped to a Holded account@(ready.Count > 0 ? $" · {ready[0].Date.ToDate()} → {ready[^1].Date.ToDate()}" : "")</div>
+        </div></div>
+    </div>
+    <div class="col-md-4">
+        <div class="card h-100"><div class="card-body">
+            <div class="text-muted small text-uppercase">Not ready</div>
+            <div class="fs-3 fw-bold @(notReady.Count > 0 ? "text-warning" : "")">@notReady.Count · @notReady.Sum(r => r.Amount).ToEuro()</div>
+        </div></div>
+    </div>
+</div>
+
+<div class="card mb-4">
+    <div class="card-header">Book into Holded</div>
+    <div class="card-body">
+        @if (Model.PendingIds.Count > 0)
+        {
+            <div class="alert alert-warning">
+                <div>
+                    <i class="fa-solid fa-triangle-exclamation me-1"></i>
+                    @Model.PendingIds.Count post(s) are held: posted (or possibly posted) and not in the @PleoBooking.PleoTreasury ledger yet.
+                    Nothing more books until they show up. Check each in Holded:
+                </div>
+                <ul class="mb-2">
+                    @foreach (var id in Model.PendingIds)
+                    {
+                        <li><a href="/Pleo/Entries/@id">Pleo @id</a></li>
+                    }
+                </ul>
+                <form authorize-policy="@Humans.Finance.Contracts.FinancePolicies.Manage" asp-action="ClearPleoHolds" method="post" class="d-inline"
+                      onsubmit="return confirm('Only release these after checking Holded: any not in Holded will be booked again by the next run.');">
+                    <button type="submit" class="btn btn-sm btn-outline-danger">Checked in Holded: release holds</button>
+                </form>
+            </div>
+        }
+
+        @if (running)
+        {
+            <div class="alert alert-info mb-0">
+                <i class="fa-solid fa-spinner fa-spin me-1"></i>
+                Booking… @(run?.Lines.Count ?? 0) / @(run?.Total ?? 0) done@(run is not null && run.Lines.Any(l => l.Outcome == PleoBookingOutcome.Failed) ? $" · {run.Lines.Count(l => l.Outcome == PleoBookingOutcome.Failed)} failed" : "").
+                This page refreshes itself; leaving it does not stop the run.
+            </div>
+            <script>setTimeout(function () { location.reload(); }, 3000);</script>
+        }
+        else if (!Model.HoldedConfigured)
+        {
+            <p class="text-muted mb-0">Holded is not configured here, so nothing can be booked.</p>
+        }
+        else if (ready.Count == 0)
+        {
+            <p class="text-muted mb-0">Nothing is ready to book.</p>
+        }
+        else
+        {
+            <form authorize-policy="@Humans.Finance.Contracts.FinancePolicies.Manage" asp-action="BookPleo" method="post"
+                  class="d-flex align-items-center gap-2 flex-wrap"
+                  onsubmit="this.querySelector('button').disabled = true;">
+                <label for="batch" class="mb-0">Book next</label>
+                <select id="batch" name="batch" class="form-select form-select-sm w-auto">
+                    <option value="1" selected>1</option>
+                    <option value="10">10</option>
+                    <option value="50">50</option>
+                    <option value="all">all @ready.Count</option>
+                </select>
+                <span class="text-muted small">oldest first</span>
+                <button type="submit" class="btn btn-primary btn-sm">Book into Holded</button>
+            </form>
+            <div class="small text-muted mt-2">Defaults to 1. Nothing else is booked until you click again.</div>
+        }
+    </div>
+
+    @if (run is not null && !run.IsRunning)
+    {
+        <div class="card-body border-top">
+            <div class="mb-2">
+                <strong>Last run</strong> @run.StartedAt.ToInvariantTimestamp():
+                @run.Lines.Count(l => l.Outcome is PleoBookingOutcome.Posted or PleoBookingOutcome.Unconfirmed) booked
+                of @run.Total · @run.Lines.Count(l => l.Outcome == PleoBookingOutcome.Failed) failed
+                @if (run.Refused is { } why)
+                {
+                    <div class="text-danger small">@why</div>
+                }
+            </div>
+            @if (run.Lines.Count > 0)
+            {
+                <table class="table table-sm mb-0">
+                    <thead><tr><th>Date</th><th>Merchant</th><th>Account</th><th class="text-end">Amount</th><th>Holded</th><th>Pleo</th></tr></thead>
+                    <tbody>
+                        @foreach (var l in run.Lines)
+                        {
+                            <tr class="@(l.Outcome == PleoBookingOutcome.Failed ? "table-danger" : l.Outcome == PleoBookingOutcome.Unconfirmed ? "table-warning" : "")">
+                                <td>@l.Date.ToDate()</td>
+                                <td>@l.Merchant</td>
+                                <td>@l.Account</td>
+                                <td class="text-end">@Signed(l.Amount)</td>
+                                <td>
+                                    @if (l.HoldedEntry is { } n)
+                                    {
+                                        <a href="/Holded/Entries/@n">entry @n</a>
+                                    }
+                                    else if (l.Outcome is PleoBookingOutcome.Posted or PleoBookingOutcome.Unconfirmed)
+                                    {
+                                        <span class="text-warning">check in Holded</span>
+                                    }
+                                    @if (l.Error is { } err)
+                                    {
+                                        <div class="small @(l.Outcome == PleoBookingOutcome.Failed ? "text-danger" : "text-muted")">@err</div>
+                                    }
+                                </td>
+                                <td><a href="/Pleo/Entries/@l.PleoId">Pleo</a></td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+        </div>
+    }
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-lg-6">
+        <div class="card h-100">
+            <div class="card-header">Ready, by Holded account (@Model.ReadyByAccount.Count account@(Model.ReadyByAccount.Count == 1 ? "" : "s"))</div>
+            <table class="table table-sm mb-0">
+                <tbody>
+                    @foreach (var a in Model.ReadyByAccount)
+                    {
+                        <tr>
+                            <td class="ps-3"><a href="/Holded/Accounts/@a.AccountNum">@a.AccountNum</a> <span class="text-muted">@a.Name</span></td>
+                            <td class="text-end">@a.Count</td>
+                            <td class="text-end pe-3">@a.Total.ToEuro()</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+    <div class="col-lg-6">
+        <div class="card h-100">
+            <div class="card-header">Not ready, by reason</div>
+            <div class="list-group list-group-flush">
+                @foreach (var (state, label) in groups)
+                {
+                    var rows = notReady.Where(r => r.State == state).ToList();
+                    <details class="list-group-item">
+                        <summary>@label — @rows.Count@(rows.Count > 0 ? " · " + rows.Sum(r => r.Amount).ToEuro() : "")</summary>
+                        @if (rows.Count > 0)
+                        {
+                            <table class="table table-sm mb-0 mt-2">
+                                <tbody>
+                                    @foreach (var r in rows)
+                                    {
+                                        <tr>
+                                            <td>@r.Date.ToDate()</td>
+                                            <td>@r.Entry.MerchantName</td>
+                                            <td class="text-end">@Signed(r.Amount)</td>
+                                            <td><a href="/Pleo/Entries/@r.Entry.Id">open in Pleo</a></td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        }
+                    </details>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+<p class="small text-muted">
+    One journal entry per Pleo entry, gross: spend debits its category's account and credits @PleoBooking.PleoTreasury;
+    a refund the other way round. The description <code>Pleo {id}: {merchant}</code> is how an entry is found in Holded
+    again. Loads are booked from the Sabadell line; out-of-pocket entries never touched the wallet and go through
+    expense claims.
+</p>

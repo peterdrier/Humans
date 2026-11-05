@@ -68,7 +68,8 @@ public class FinanceControllerTests
             new CashFlowService(_budget, Substitute.For<ITicketService>()),
             new CreditorMatchService(_holdedLedger, _expenses),
             new FinanceOverviewService(_holdedLedger, _finance, _expenses, _budget,
-                new CashFlowService(_budget, Substitute.For<ITicketService>()), SystemClock.Instance),
+                new CashFlowService(_budget, Substitute.For<ITicketService>()), Substitute.For<Humans.Pleo.Contracts.IPleoService>(), SystemClock.Instance),
+            TestPleo.Booking(), TestPleo.Runner(),
             NullLogger<FinanceController>.Instance)
         {
             ControllerContext = new()

@@ -51,8 +51,20 @@ No repository, no tables, no cache. Composes `/Finance` from the Holded ledger
 mirror (`GetLedgerSyncedAtAsync`, `GetAccountBalancesAsync`, `GetChartAsync`,
 `GetLedgerLinesAsync` for the 472/477/4751 tax accounts), this section's
 `ListCreditorAccountsAsync`, `GetExpenseReconAsync` and `GetActualsForYearAsync`,
-`IExpenseReportService.GetReviewQueueAsync`, `IBudgetService` and
-`CashFlowService`. Injected by `FinanceController` only.
+`IExpenseReportService.GetReviewQueueAsync`, `IBudgetService`,
+`CashFlowService` and `IPleoService.GetWalletBalanceAsync` (the Pleo card).
+Injected by `FinanceController` only.
+
+### PleoBooking (Scoped, section-internal) · PleoBookingState, PleoBookingRunner (Singleton)
+
+No repository, no tables, no cache. Orchestrates Pleo → Holded: reads
+`IPleoService.GetSettledEntriesAsync` / `GetWalletBalanceAsync`, the 57200003
+and 57200001 lines, balances and chart through `IHoldedService`, re-pulls 57200003
+with `IHoldedService.SyncAccountLedgerAsync` before and after a run, and posts
+through `IHoldedWrite.PostJournalEntryAsync`. `PleoBookingState` holds the
+current/last run and the in-memory holds (Pleo ids posted but not yet seen in
+the ledger); `PleoBookingRunner` runs `BookAsync` in its own scope off the
+request. Injected by `FinanceController` only.
 
 ### CreditorMatchService (Scoped, section-internal)
 
