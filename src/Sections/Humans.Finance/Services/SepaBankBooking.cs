@@ -730,12 +730,10 @@ internal sealed class SepaBankBooking(
                 .Sum(l => l.Debit - l.Credit);   // paying a creditor DEBITS 400xxxxx
             if (posted < 0m) posted = 0m;        // a tagged credit is not "already paid"
 
-            if (priorRefs.Count > 0)
-            {
-                if (await PriorPaymentsRefusalAsync(movement.Date, binding.HoldedContactId) is { } refusal)
-                    return new SepaBookingResult(false, refusal + " Nothing was posted.");
-                posted += priorPaid;
-            }
+            // Every booking, not only a resume: a run that died before saving its ids left payments nothing points at.
+            if (await PriorPaymentsRefusalAsync(movement.Date, binding.HoldedContactId) is { } refusal)
+                return new SepaBookingResult(false, refusal + " Nothing was posted.");
+            posted += priorPaid;
         }
         catch (Exception ex) when (ex is HoldedTransientException or HoldedPermanentException)
         {
@@ -979,7 +977,8 @@ internal sealed class SepaBankBooking(
 
         // Reads every saved payment back off the member's documents. A saved id Holded no longer shows, one dated
         // another day than this line, or a payment of this line's day and treasury Humans never recorded (a POST that
-        // failed after Holded saved it) means the amount still owed is unknown, so the resume stops.
+        // failed after Holded saved it, or a run that died before saving its ids) means the amount still owed is
+        // unknown, so the booking stops.
         async Task<string?> PriorPaymentsRefusalAsync(LocalDate lineDate, string contactId)
         {
             var treasury = sepa.Value.TreasuryAccountId;

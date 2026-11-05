@@ -81,6 +81,8 @@ public class SepaBankBookingTests
         SeedOwed(30m);
         SeedTaggedLines();
         SeedOpenDocs();
+        _client.GetPurchaseDocumentAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(ci => NoPayments(ci.ArgAt<string>(0)));
         _client.PayPurchaseDocumentAsync(
                 Arg.Any<string>(), Arg.Any<decimal>(), Arg.Any<string>(), Arg.Any<LocalDate>(),
                 Arg.Any<string>(), Arg.Any<CancellationToken>())
@@ -185,11 +187,12 @@ public class SepaBankBookingTests
     [InlineData("pay-d1,unconfirmed:d2", false, "could not identify")]
     [InlineData("pay-gone", false, "pay-gone")]
     [InlineData("pay-d1", true, "pay-stray")]
+    [InlineData(null, true, "pay-stray")]
     public async Task Booking_ResumeThatCannotAccountForEveryPayment_PostsNothing(
-        string savedRefs, bool stray, string reason)
+        string? savedRefs, bool stray, string reason)
     {
         // Unconfirmed id; a saved id no document shows; a payment of the line's day nobody recorded
-        // (what a 503 that Holded saved anyway leaves behind).
+        // (what a 503 that Holded saved anyway leaves behind, or a run that died before saving its ids).
         SeedTransfer(30m, paymentRefs: savedRefs);
         SeedOpenDocs(Doc("d1", 0m, 1), Doc("d2", 20m, 2));
         SeedPayments("d1", ("pay-d1", 10m, LineDate));
@@ -2483,17 +2486,21 @@ public class SepaBankBookingTests
         };
 
     private void SeedPayments(string docId, params (string Id, decimal Amount, LocalDate Date)[] payments) =>
-        _client.GetPurchaseDocumentAsync(docId, Arg.Any<CancellationToken>()).Returns(new HoldedPurchaseDocumentDto
+        _client.GetPurchaseDocumentAsync(docId, Arg.Any<CancellationToken>()).Returns(NoPayments(docId) with
         {
-            Id = docId,
-            DocNumber = docId,
-            Subtotal = 0m,
-            Tax = 0m,
-            Total = 0m,
-            PaymentsTotal = 0m,
-            PaymentsPending = 0m,
             Payments = payments.Select(p => new HoldedPaymentDetailDto(p.Id, p.Amount, p.Date, "treasury-1")).ToList(),
         });
+
+    private static HoldedPurchaseDocumentDto NoPayments(string docId) => new()
+    {
+        Id = docId,
+        DocNumber = docId,
+        Subtotal = 0m,
+        Tax = 0m,
+        Total = 0m,
+        PaymentsTotal = 0m,
+        PaymentsPending = 0m,
+    };
 
     private void SeedOpenDocs(params HoldedPurchaseDocListItemDto[] docs) =>
         _client.ListPurchaseDocumentsAsync(Arg.Any<CancellationToken>()).Returns(docs.ToList());
