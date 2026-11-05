@@ -268,6 +268,50 @@ public class GateServiceTests
             .Outcome.Should().Be(GatePreCheckOutcome.NeedsIdCheck);
     }
 
+    [HumansTheory]
+    [Xunit.InlineData("barcode", 128, false)]
+    [Xunit.InlineData("lane", 64, false)]
+    [Xunit.InlineData("note", 1000, false)]
+    [Xunit.InlineData("barcode", 128, true)]
+    [Xunit.InlineData("lane", 64, true)]
+    [Xunit.InlineData("note", 1000, true)]
+    public async Task RecordDecision_OverlongInput_RefusesBeforeWriting(string field, int limit, bool supplementary)
+    {
+        var text = string.Concat(Enumerable.Repeat(supplementary ? "😀" : "X", limit + 1));
+        var input = new GateDecisionInput(field is "barcode" ? text : Barcode, true, false,
+            field is "lane" ? text : "L1", null, field is "note" ? text : null);
+        StubTicket(barcode: input.Barcode);
+
+        var result = await _svc.RecordDecisionAsync(input, AgentId, Xunit.TestContext.Current.CancellationToken);
+
+        result.InputTooLong.Should().BeTrue();
+        result.Verdict.Should().Be(GateVerdict.Unresolved);
+        (await GateDb.GateScanEvents.CountAsync(Xunit.TestContext.Current.CancellationToken)).Should().Be(0);
+        _jobs.ReceivedCalls().Should().BeEmpty();
+        _users.ReceivedCalls().Should().BeEmpty();
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task RecordDecision_StorageBoundaries_PreserveNormalizedBarcodeAndMetadata(bool supplementary)
+    {
+        var unit = supplementary ? "😀" : "X";
+        var barcode = string.Concat(Enumerable.Repeat(unit, 128));
+        var lane = string.Concat(Enumerable.Repeat(unit, 64));
+        var note = string.Concat(Enumerable.Repeat(unit, 1000));
+        StubTicket(barcode: barcode);
+
+        var result = await _svc.RecordDecisionAsync(new GateDecisionInput("  " + barcode + "  ", true, false,
+            lane, null, note), AgentId, Xunit.TestContext.Current.CancellationToken);
+
+        result.Verdict.Should().Be(GateVerdict.Admitted);
+        var saved = await GateDb.GateScanEvents.SingleAsync(Xunit.TestContext.Current.CancellationToken);
+        saved.Barcode.Should().Be(barcode);
+        saved.LaneId.Should().Be(lane);
+        saved.Note.Should().Be(note);
+    }
+
     [HumansFact]
     public async Task RecordDecision_IdConfirmed_Admits_ThenDuplicateOnRescan()
     {
