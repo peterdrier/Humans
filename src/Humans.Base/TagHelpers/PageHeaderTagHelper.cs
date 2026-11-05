@@ -83,9 +83,9 @@ public class PageHeaderTagHelper : TagHelper
         var html = new StringBuilder();
         if (hasActions)
         {
-            html.Append("<div class=\"d-flex justify-content-between align-items-center gap-3 mb-4\">")
+            html.Append("<div class=\"d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4\">")
                 .Append("<div>").Append(titleInner).Append("</div>")
-                .Append("<div class=\"d-flex gap-2 flex-shrink-0\">").Append(actions).Append("</div>")
+                .Append("<div class=\"d-flex flex-wrap gap-2\">").Append(actions).Append("</div>")
                 .Append("</div>");
         }
         else
