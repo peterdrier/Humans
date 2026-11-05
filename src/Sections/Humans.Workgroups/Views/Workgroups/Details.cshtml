@@ -32,7 +32,7 @@
 
 <page-header title="@w.Name">
     <page-header-subtitle>
-        <span class="badge @EnumBadgeMap.For(w.Status)">@Localizer.EnumDisplay(w.Status)</span>
+        <status-badge value="@w.Status" localizer="@Localizer" />
         @if (isDormant && w.DormantReason is { } dr)
         {
             <span class="badge bg-secondary">@Localizer.EnumDisplay(dr)</span>
@@ -401,7 +401,7 @@
                             {
                                 <span class="badge bg-primary">@Localizer["Workgroups_OpenForComment"]</span>
                             }
-                            <span class="badge @EnumBadgeMap.For(d.Status)">@Localizer.EnumDisplay(d.Status)</span>
+                            <status-badge value="@d.Status" localizer="@Localizer" />
                         </span>
                     </a>
                 }

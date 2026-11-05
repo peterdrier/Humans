@@ -1,4 +1,5 @@
 using Humans.Teams.Contracts;
+using Humans.Base.Models.Tables;
 using Humans.Base.Authorization;
 using Humans.Base.Configuration;
 using Humans.Base.Constants;
@@ -37,6 +38,17 @@ public sealed class Section :
 {
     public void Register(IServiceCollection services, IConfiguration configuration)
     {
+        EnumBadgeMap.Register(new Dictionary<Enum, string>
+        {
+            [GoogleEmailStatus.Unknown] = "bg-secondary",
+            [GoogleEmailStatus.Valid] = "bg-success",
+            [GoogleEmailStatus.Rejected] = "bg-danger",
+
+            [SyncMode.None] = "bg-secondary",
+            [SyncMode.AddOnly] = "bg-info",
+            [SyncMode.AddAndRemove] = "bg-success",
+        });
+
         services.AddSingleton<IAuditActionContributor, GoogleIntegrationAuditActions>();
         services.AddSingleton<INotificationSourceContributor, GoogleIntegrationNotificationSources>();
         services.Configure<GoogleWorkspaceSettings>(configuration.GetSection(GoogleWorkspaceSettings.SectionName));

@@ -402,7 +402,6 @@
                                             var shiftDate = Model.EventSettings.GateOpeningDate.PlusDays(shift.DayOffset);
                                             var shiftDateLabel = shiftDate.ToWeekdayDayMonth();
                                             var phase = shift.GetShiftPeriod(Model.EventSettings);
-                                            var phaseBadge = ShiftDisplayItem.PeriodBadgeClass(phase);
                                             var phaseLabel = phase switch
                                             {
                                                 ShiftPeriod.Build => "Set-up",
@@ -411,7 +410,7 @@
                                                 _ => ""
                                             };
                                         }
-                                        <td><span class="badge @phaseBadge me-1">@phaseLabel</span>@if (isPast){<span class="badge bg-secondary bg-opacity-50 me-1">past</span>}@shiftDateLabel</td>
+                                        <td><status-badge value="@phase" text="@phaseLabel" class="me-1" />@if (isPast){<span class="badge bg-secondary bg-opacity-50 me-1">past</span>}@shiftDateLabel</td>
                                         <td>@shift.StartTime.ToTime()</td>
                                         <td>@(shift.IsAllDay ? "Full day" : $"{shift.DurationHours}h")</td>
                                         @{

@@ -86,13 +86,9 @@ else
                             </a>
                         }
                     </td>
-                    @{
-                        var periodBadge = slot.Period.GetBadgeClass();
-                        var periodLabel = SharedLocalizer.EnumDisplay(slot.Period);
-                    }
-                    <td><span class="badge @periodBadge">@periodLabel</span></td>
+                    <td><status-badge value="@slot.Period" /></td>
                     <td>@slot.SlotNumber</td>
-                    <td><span class="badge @slot.Priority.GetBadgeClass()">@SharedLocalizer.EnumDisplay(slot.Priority)</span></td>
+                    <td><status-badge value="@slot.Priority" /></td>
                     <td>
                         @if (slot.IsFilled && slot.AssignedUserId.HasValue)
                         {

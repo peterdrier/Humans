@@ -4,12 +4,6 @@
 @{
     ViewData["Title"] = Localizer["Surveys_Admin_Results_Title"].Value;
 
-    static string StatusBadge(SurveyStatus s) => s switch
-    {
-        SurveyStatus.Open => "bg-success",
-        SurveyStatus.Closed => "bg-secondary",
-        _ => "bg-warning text-dark",
-    };
     var untitled = Localizer["Surveys_Admin_Results_Untitled"].Value;
 }
 
@@ -21,7 +15,7 @@
 }
 
 <page-header title="@(string.IsNullOrWhiteSpace(Model.Title) ? untitled : Model.Title)">
-    <span class="badge @StatusBadge(Model.Status)">@Localizer.EnumDisplay(Model.Status)</span>
+    <status-badge value="@Model.Status" localizer="@Localizer" />
     @if (!Model.IsEmbargoed && Model.CanExport)
     {
         <a asp-controller="SurveyAdmin" asp-action="ExportCsv" asp-route-id="@Model.SurveyId" class="btn btn-outline-secondary btn-sm">@Localizer["Surveys_Admin_Results_DownloadCsv"]</a>

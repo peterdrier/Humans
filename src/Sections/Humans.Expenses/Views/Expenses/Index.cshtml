@@ -146,7 +146,7 @@ else
     Func<ExpenseReportDto, IHtmlContent> reportActionCell =
         @<text><a asp-action="Detail" asp-route-id="@item.Id" class="btn btn-sm btn-outline-secondary">@SharedLocalizer["Common_View"]</a></text>;
     Func<ExpenseReportDto, IHtmlContent> reportStatusCell =
-        @<text><span class="badge @EnumBadgeMap.For(item.Status)">@Localizer.EnumDisplay(item.Status)</span></text>;
+        @<text><status-badge value="@item.Status" localizer="@Localizer" /></text>;
     var reportRows = Model.Reports.OrderByDescending(x => x.CreatedAt).ToList();
     var reportsTable = TableModel.For(reportRows)
         .Column(SharedLocalizer["Common_Created"].Value, r => r.CreatedAt, c => c.Date())
