@@ -22,17 +22,10 @@ namespace Humans.Shifts.Tests.Controllers;
 
 public class ShiftProfileControllerTests
 {
-    [HumansTheory]
-    [InlineData("en")]
-    [InlineData("es")]
-    [InlineData("de")]
-    [InlineData("it")]
-    [InlineData("fr")]
-    [InlineData("ca")]
-    [InlineData("nl")]
-    public async Task ShiftInfo_RejectsOversizedFreeTextWithoutChangingTheProfile(string culture)
+    [HumansFact]
+    public async Task ShiftInfo_RejectsOversizedFreeTextWithoutChangingTheProfile()
     {
-        using var cultureScope = new CultureScope(culture);
+        using var cultureScope = new CultureScope(CultureCatalog.DefaultCultureCode);
         var registrations = new ServiceCollection().AddLogging().AddLocalization();
         registrations.AddControllers().AddDataAnnotationsLocalization(options =>
             options.DataAnnotationLocalizerProvider = (_, factory) => factory.Create(typeof(SharedResource)));

@@ -4,20 +4,17 @@
     ViewData["Title"] = isNew ? "New pre-approval program" : "Edit program";
 }
 
-<nav aria-label="breadcrumb">
-    <ol class="breadcrumb">
-        <li class="breadcrumb-item"><a asp-action="Index">Pre-approval programs</a></li>
-        @if (!isNew)
-        {
-            <li class="breadcrumb-item"><a asp-action="Program" asp-route-programId="@Model.Id">@Model.Name</a></li>
-        }
-        <li class="breadcrumb-item active" aria-current="page">@ViewData["Title"]</li>
-    </ol>
-</nav>
+@section Crumbs {
+    @if (!isNew)
+    {
+        <a asp-action="Program" asp-route-programId="@Model.Id">@Model.Name</a>
+    }
+    <span>@ViewData["Title"]</span>
+}
 
 <h1>@ViewData["Title"]</h1>
 
-<div class="card" style="max-width: 760px;">
+<div class="card mw-760">
     <div class="card-body">
         <form method="post" asp-action="@(isNew ? "New" : "Edit")" asp-route-programId="@Model.Id">
             <div asp-validation-summary="All" class="text-danger"></div>

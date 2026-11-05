@@ -9,16 +9,14 @@
     var vatProjections = VatProjection.ForLineItems(category.LineItems);
 }
 
-<nav aria-label="@Localizer["Budget_BreadcrumbNavigation"]" class="mb-3">
-    <ol class="breadcrumb">
-        <li class="breadcrumb-item"><a asp-action="Index">@Localizer["Budget_Title"]</a></li>
-        @if (group is not null)
-        {
-            <li class="breadcrumb-item">@group.Name</li>
-        }
-        <li class="breadcrumb-item active">@category.Name</li>
-    </ol>
-</nav>
+@section Crumbs {
+    <a asp-action="Index">@Localizer["Budget_Title"]</a>
+    @if (group is not null)
+    {
+        <span>@group.Name</span>
+    }
+    <span>@category.Name</span>
+}
 
 <div class="d-flex justify-content-between align-items-center mb-4">
     <h1 class="mb-0">@category.Name</h1>
@@ -346,15 +344,3 @@
         <i class="fa-solid fa-arrow-left me-1"></i>@Localizer["Budget_BackToBudget"]
     </a>
 </div>
-
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    document.querySelectorAll('[data-confirm]').forEach(function(btn) {
-        btn.addEventListener('click', function(e) {
-            if (!confirm(this.getAttribute('data-confirm'))) {
-                e.preventDefault();
-            }
-        });
-    });
-});
-</script>

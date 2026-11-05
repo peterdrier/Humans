@@ -85,7 +85,6 @@
   <data name="Cantina_Dietary_Intolerance_Lactose" xml:space="preserve"><value>Lactose</value></data>
   <data name="Cantina_Dietary_AllergyOther_Required" xml:space="preserve"><value>Beschrijf je allergie bij "Anders".</value></data>
   <data name="Cantina_Dietary_IntoleranceOther_Required" xml:space="preserve"><value>Beschrijf je intolerantie bij "Anders".</value></data>
-  <data name="Cantina_Dietary_BreadcrumbNavigation" xml:space="preserve"><value>Kruimelpad</value></data>
   <data name="Cantina_Dietary_PageTitle" xml:space="preserve"><value>Dieetinformatie</value></data>
   <data name="Cantina_Dietary_Saved" xml:space="preserve"><value>Je dieetinformatie is opgeslagen.</value></data>
   <data name="Cantina_Dietary_SaveFailed" xml:space="preserve"><value>Opslaan van dieetinformatie is mislukt.</value></data>

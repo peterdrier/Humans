@@ -4,14 +4,80 @@
     ViewData["Title"] = p.Name;
     var fixedKind = p.Kind == ProgramKind.FixedPerPerson;
     var canCommit = p.Status == ProgramStatus.Open && !p.DeadlinePassed(Model.Today);
-}
 
-<nav aria-label="breadcrumb">
-    <ol class="breadcrumb">
-        <li class="breadcrumb-item"><a asp-action="Index">Pre-approval programs</a></li>
-        <li class="breadcrumb-item active" aria-current="page">@p.Name</li>
-    </ol>
-</nav>
+    Func<GrantInfo, IHtmlContent> applicantCell =
+        @<text><vc:human user-id="@item.BeneficiaryUserId" layout="AvatarName" size="28" /></text>;
+    Func<GrantInfo, IHtmlContent> applicationActionsCell = @<text>
+        @if (canCommit && Model.CanManage)
+        {
+            <form method="post" asp-action="Approve" asp-route-programId="@p.Id" asp-route-grantId="@item.Id" class="d-inline-flex gap-1 align-items-center">
+                @if (!fixedKind)
+                {
+                    <input type="number" name="amount" step="0.01" min="0.01" class="form-control form-control-sm" style="width: 120px;" value="@item.RequestedAmount" />
+                }
+                <button type="submit" class="btn btn-sm btn-success">Approve</button>
+            </form>
+        }
+        @if (Model.CanManage)
+        {
+            <form method="post" asp-action="Decline" asp-route-programId="@p.Id" asp-route-grantId="@item.Id" class="d-inline-flex gap-1 align-items-center ms-1">
+                <input type="text" name="note" class="form-control form-control-sm" style="width: 180px;" placeholder="Reason (optional)" maxlength="2000" />
+                <button type="submit" class="btn btn-sm btn-outline-danger">Decline</button>
+            </form>
+        }
+    </text>;
+    var applicationsTable = TableModel.For(Model.Applications.ToList())
+        .Template("Who", applicantCell)
+        .Column("Requested", g => g.MaxAmount, o => o.Currency())
+        .Column("Note", g => g.ApplicationNote, o => o.Css("small").NoSort())
+        .Column("Applied", g => g.CreatedAt, o => o.DateTime().Css("small text-muted"))
+        .Template("", applicationActionsCell, o => o.NoSort().Css("text-end"))
+        .Css("align-middle")
+        .Build();
+
+    Func<GrantInfo, IHtmlContent> beneficiaryCell =
+        @<text><vc:human user-id="@item.BeneficiaryUserId" layout="AvatarName" size="28" /></text>;
+    Func<GrantInfo, IHtmlContent> statusCell = @<text>
+        <span class="badge @EnumBadgeMap.For(item.Status)">@item.Status</span>
+        @if (item.DeadlinePassed(Model.Today))
+        {
+            <span class="badge bg-light text-dark border">deadline passed</span>
+        }
+        @if (item.ExpenseReportId is { } reportId)
+        {
+            <a href="/Expenses/@reportId" class="small ms-1">report</a>
+        }
+    </text>;
+    Func<GrantInfo, IHtmlContent> deciderCell =
+        @<text><vc:human user-id="@(item.DecidedByUserId ?? Guid.Empty)" link="None" /></text>;
+    Func<GrantInfo, IHtmlContent> grantActionsCell = @<text>
+        @if (Model.CanManage && (item.Status is GrantStatus.Open or GrantStatus.Claimed))
+        {
+            <form method="post" asp-action="Amount" asp-route-programId="@p.Id" asp-route-grantId="@item.Id" class="d-inline-flex gap-1 align-items-center">
+                <input type="number" name="amount" step="0.01" min="0.01" class="form-control form-control-sm" style="width: 110px;" value="@item.MaxAmount" required />
+                <button type="submit" class="btn btn-sm btn-outline-secondary">Set amount</button>
+            </form>
+            <form method="post" asp-action="Revoke" asp-route-programId="@p.Id" asp-route-grantId="@item.Id" class="d-inline-flex gap-1 align-items-center ms-1"
+                  data-confirm="Revoke this pre-approval? The amount stays on record as not claimed.">
+                <input type="text" name="reason" class="form-control form-control-sm" style="width: 160px;" placeholder="Reason (optional)" maxlength="2000" />
+                <button type="submit" class="btn btn-sm btn-outline-danger">Revoke</button>
+            </form>
+        }
+    </text>;
+    var grantsTable = TableModel.For(Model.Decided.ToList())
+        .Template("Who", beneficiaryCell)
+        .Column("Label", g => g.Label)
+        .Column("Amount", g => g.MaxAmount, o => o.Currency().End())
+        .Template("Status", statusCell)
+        .Column("Claim by", g => g.ClaimBy, o => o.Date())
+        .Column("Decided", g => g.DecidedAt, o => o.DateTime().Css("small text-muted"))
+        .Template("By", deciderCell, o => o.Css("small text-muted"))
+        .Template("", grantActionsCell, o => o.NoSort().Css("text-end text-nowrap"))
+        .RowCss(g => $"pre-status-{g.Status}")
+        .Id("pre-grants")
+        .Css("align-middle")
+        .Build();
+}
 
 <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
     <h1 class="mb-0">@p.Name <span class="badge @EnumBadgeMap.For(p.Status) fs-6 align-middle">@p.Status</span></h1>
@@ -81,7 +147,7 @@
                         </div>
                         @if (!fixedKind)
                         {
-                            <div class="mb-2 input-group" style="max-width: 240px;">
+                            <div class="mb-2 input-group mw-240">
                                 <input type="number" name="amount" step="0.01" min="0.01" class="form-control" placeholder="Amount" required />
                                 <span class="input-group-text">€</span>
                             </div>
@@ -123,47 +189,13 @@ else if (!canCommit)
 @if (Model.Applications.Any())
 {
     <h2 class="h4 mt-4">Applications <span class="badge bg-warning text-dark">@Model.Applications.Count()</span></h2>
-    <div class="table-responsive">
-        <table class="table align-middle">
-            <thead><tr><th>Who</th><th>Requested</th><th>Note</th><th>Applied</th><th></th></tr></thead>
-            <tbody>
-                @foreach (var g in Model.Applications)
-                {
-                    <tr>
-                        <td><vc:human user-id="@g.BeneficiaryUserId" layout="AvatarName" size="28" /></td>
-                        <td>@g.MaxAmount.ToEuro()</td>
-                        <td class="small">@g.ApplicationNote</td>
-                        <td class="small text-muted">@g.CreatedAt.ToDateTime()</td>
-                        <td class="text-end">
-                            @if (canCommit && Model.CanManage)
-                            {
-                                <form method="post" asp-action="Approve" asp-route-programId="@p.Id" asp-route-grantId="@g.Id" class="d-inline-flex gap-1 align-items-center">
-                                    @if (!fixedKind)
-                                    {
-                                        <input type="number" name="amount" step="0.01" min="0.01" class="form-control form-control-sm" style="width: 120px;" value="@g.RequestedAmount" />
-                                    }
-                                    <button type="submit" class="btn btn-sm btn-success">Approve</button>
-                                </form>
-                            }
-                            @if (Model.CanManage)
-                            {
-                                <form method="post" asp-action="Decline" asp-route-programId="@p.Id" asp-route-grantId="@g.Id" class="d-inline-flex gap-1 align-items-center ms-1">
-                                    <input type="text" name="note" class="form-control form-control-sm" style="width: 180px;" placeholder="Reason (optional)" maxlength="2000" />
-                                    <button type="submit" class="btn btn-sm btn-outline-danger">Decline</button>
-                                </form>
-                            }
-                        </td>
-                    </tr>
-                }
-            </tbody>
-        </table>
-    </div>
+    <partial name="_Table" model="applicationsTable" />
 }
 
 <h2 class="h4 mt-4">Grants</h2>
 @if (!Model.Decided.Any())
 {
-    <p class="text-muted">No grants yet.</p>
+    <empty-state>No grants yet.</empty-state>
 }
 else
 {
@@ -177,49 +209,7 @@ else
             }
         </select>
     </div>
-    <div class="table-responsive">
-        <table class="table align-middle" id="pre-grants">
-            <thead><tr><th>Who</th><th>Label</th><th class="text-end">Amount</th><th>Status</th><th>Claim by</th><th>Decided</th><th></th></tr></thead>
-            <tbody>
-                @foreach (var g in Model.Decided)
-                {
-                    var mutable = Model.CanManage && (g.Status is GrantStatus.Open or GrantStatus.Claimed);
-                    <tr data-status="@g.Status">
-                        <td><vc:human user-id="@g.BeneficiaryUserId" layout="AvatarName" size="28" /></td>
-                        <td>@g.Label</td>
-                        <td class="text-end">@g.MaxAmount.ToEuro()</td>
-                        <td>
-                            <span class="badge @EnumBadgeMap.For(g.Status)">@g.Status</span>
-                            @if (g.DeadlinePassed(Model.Today))
-                            {
-                                <span class="badge bg-light text-dark border">deadline passed</span>
-                            }
-                            @if (g.ExpenseReportId is { } reportId)
-                            {
-                                <a href="/Expenses/@reportId" class="small ms-1">report</a>
-                            }
-                        </td>
-                        <td>@g.ClaimBy.ToDate()</td>
-                        <td class="small text-muted"><vc:human user-id="@(g.DecidedByUserId ?? Guid.Empty)" link="None" /> @g.DecidedAt?.ToDateTime()</td>
-                        <td class="text-end text-nowrap">
-                            @if (mutable)
-                            {
-                                <form method="post" asp-action="Amount" asp-route-programId="@p.Id" asp-route-grantId="@g.Id" class="d-inline-flex gap-1 align-items-center">
-                                    <input type="number" name="amount" step="0.01" min="0.01" class="form-control form-control-sm" style="width: 110px;" value="@g.MaxAmount" required />
-                                    <button type="submit" class="btn btn-sm btn-outline-secondary">Set amount</button>
-                                </form>
-                                <form method="post" asp-action="Revoke" asp-route-programId="@p.Id" asp-route-grantId="@g.Id" class="d-inline-flex gap-1 align-items-center ms-1"
-                                      onsubmit="return confirm('Revoke this pre-approval? The amount stays on record as not claimed.');">
-                                    <input type="text" name="reason" class="form-control form-control-sm" style="width: 160px;" placeholder="Reason (optional)" maxlength="2000" />
-                                    <button type="submit" class="btn btn-sm btn-outline-danger">Revoke</button>
-                                </form>
-                            }
-                        </td>
-                    </tr>
-                }
-            </tbody>
-        </table>
-    </div>
+    <partial name="_Table" model="grantsTable" />
 }
 
 <script>
@@ -229,7 +219,7 @@ else
         filter.addEventListener('change', function () {
             var want = filter.value;
             document.querySelectorAll('#pre-grants tbody tr').forEach(function (row) {
-                row.style.display = !want || row.dataset.status === want ? '' : 'none';
+                row.style.display = !want || row.classList.contains('pre-status-' + want) ? '' : 'none';
             });
         });
     }

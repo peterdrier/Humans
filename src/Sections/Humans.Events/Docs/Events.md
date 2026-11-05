@@ -222,7 +222,6 @@ Member create, edit, withdrawal and bulk-import preflight reads retain browser c
 - `Event.Resubmit` owns re-queue transitions for individual edits and bulk uploads: pending events retain their submission time; approved edits become pending with a fresh submission time. The internal `EventBulkImporter` validates the entire CSV before applying changed rows; template rendering and row validation retain their existing helpers.
 - Individual and camp submitter edits check `CanBeEditedBySubmitter` before changing fields. Every permitted status is accepted by `UpdateAndResubmitAsync`; the controllers call it directly without exception-message classification.
 
-- Member personal/camp event submission forms and My Submissions localize breadcrumb navigation labels in all supported cultures.
 
 - The `Events` GDPR export includes the person’s personal and camp submissions in every status, with authored content and schedule fields, alongside favourites and category preferences. The contributor resolves `AllUserIds` so archived merge sources are included throughout; submissions are filtered to those submitter IDs and unrelated members remain excluded. The existing `Preference` key retains its object/null shape for the requested account; `AdditionalPreferences` includes exclusions under the other identities in its merge chain. Internal moderator notes are excluded. Export reads do not alter rows.
 

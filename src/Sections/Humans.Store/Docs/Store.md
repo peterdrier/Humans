@@ -226,7 +226,6 @@ Stored as **string** via `HasConversion<string>()`. The column carried a `Paid` 
 
 - Shared table currency and number cells use the selected UI culture; numeric sort values stay invariant.
 
-- Member-facing order pages localize their breadcrumb navigation label in all supported cultures.
 - Order projections use the current UI culture for missing-product and missing-counterparty labels in all supported cultures; stored names remain unchanged.
 - Stripe checkout localizes its camp-order fallback label in the current UI culture when no billing name is supplied; supplied names and the merchant prefix remain unchanged.
 

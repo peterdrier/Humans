@@ -3,6 +3,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
+const { installHumans } = require('../../browser-support/humans-js.cjs');
 const view = fs.readFileSync(path.resolve(__dirname, '../../../src/Sections/Humans.Email/Views/GuestAccount/CommunicationPreferences.cshtml'), 'utf8');
 const script = view.slice(view.indexOf('<script>') + 8, view.indexOf('</script>'))
     .replace(/^\s*@if.*Model.UnsubscribeToken.*\n\s*\{\n\s*@:body.append.*\n\s*\}/gm, '');
@@ -35,12 +36,12 @@ function page() {
             : rows.find(r => selector.includes(r.dataset.categoryRow)),
         getElementById: id => id === 'oneClickUnsubscribe' ? unsubscribe : banner,
     };
-    vm.runInNewContext(script, { document, URLSearchParams, setTimeout() {}, fetch: (url, options) => {
+    vm.runInNewContext(script, installHumans({ document, URLSearchParams, setTimeout() {}, fetch: (url, options) => {
         let resolve;
         const promise = new Promise(yes => resolve = yes);
         requests.push({ body: new URLSearchParams(options.body), resolve });
         return promise;
-    } });
+    } }));
     return { rows, banner, unsubscribe, requests, reply: (index, ok = true) => requests[index].resolve({ ok }) };
 }
 test('email and alert writes cannot overlap in one guest preference row', async () => {

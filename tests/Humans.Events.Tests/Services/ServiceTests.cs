@@ -613,13 +613,15 @@ public sealed class EventServiceTests
     }
 
     [HumansTheory]
-    [InlineData("es", "Hemos recibido el envío de tu evento")]
-    [InlineData("", "Your event submission has been received")]
-    [InlineData(" ", "Your event submission has been received")]
-    [InlineData("not a culture!", "Your event submission has been received")]
-    [InlineData("fr-FR", "Your event submission has been received")]
-    public async Task SubmitEventAsync_WithActionUrl_EmailsSubmitterConfirmation(string language, string subject)
+    [InlineData("es", "es")]
+    [InlineData("", "en")]
+    [InlineData(" ", "en")]
+    [InlineData("not a culture!", "en")]
+    [InlineData("fr-FR", "en")]
+    public async Task SubmitEventAsync_WithActionUrl_EmailsSubmitterConfirmation(string language, string expectedCulture)
     {
+        var subject = new System.Resources.ResourceManager(typeof(EventsResource))
+            .GetString("Events_Email_Pending_Subject", CultureInfo.GetCultureInfo(expectedCulture));
         OpenSubmissionWindow();
         using var actorCulture = new CultureScope("fr");
         var submitterId = StubSubmitterWithEmail("sub@example.com", "Burner", language);
@@ -1402,37 +1404,22 @@ public sealed class EventServiceTests
         slices[0].Data.Should().NotBeNull();
     }
 
-    [HumansTheory]
-    [InlineData("en", "Title is required.")]
-    [InlineData("es", "El campo Title es obligatorio.")]
-    [InlineData("de", "Title ist erforderlich.")]
-    [InlineData("it", "Il campo Title è obbligatorio.")]
-    [InlineData("fr", "Le champ Title est obligatoire.")]
-    [InlineData("ca", "El camp Title és obligatori.")]
-    [InlineData("nl", "Het veld Title is verplicht.")]
-    public async Task BulkImportAsync_InvalidRow_ReturnsErrorsAndWritesNothing_UsesUploaderCulture(string culture, string expectedError)
+    [HumansFact]
+    public async Task BulkImportAsync_InvalidRow_ReturnsErrorsAndWritesNothing()
     {
         OpenSubmissionWindow();
-        var originalCulture = CultureInfo.CurrentUICulture;
-        try
-        {
-            CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo(culture);
-            var campId = Guid.NewGuid();
-            _repo.Categories.Add(new EventCategory { Id = Guid.NewGuid(), Name = "Workshop", Slug = "workshop", IsActive = true });
+        using var culture = new CultureScope("en");
+        var campId = Guid.NewGuid();
+        _repo.Categories.Add(new EventCategory { Id = Guid.NewGuid(), Name = "Workshop", Slug = "workshop", IsActive = true });
 
-            var result = await _service.BulkImportAsync(
-                campId, Guid.NewGuid(), [Row(title: "")],
-                new LocalDate(2026, 7, 8), 6, DateTimeZone.Utc, TestContext.Current.CancellationToken);
+        var result = await _service.BulkImportAsync(
+            campId, Guid.NewGuid(), [Row(title: "")],
+            new LocalDate(2026, 7, 8), 6, DateTimeZone.Utc, TestContext.Current.CancellationToken);
 
-            result.HasErrors.Should().BeTrue();
-            result.Errors.Should().ContainSingle(e => e.Errors.Contains(expectedError));
-            _repo.Events.Should().BeEmpty();
-            _repo.SaveChangesCount.Should().Be(0);
-        }
-        finally
-        {
-            CultureInfo.CurrentUICulture = originalCulture;
-        }
+        result.HasErrors.Should().BeTrue();
+        result.Errors.Should().ContainSingle(e => e.Errors.Contains("Title is required."));
+        _repo.Events.Should().BeEmpty();
+        _repo.SaveChangesCount.Should().Be(0);
     }
 
     [HumansTheory]

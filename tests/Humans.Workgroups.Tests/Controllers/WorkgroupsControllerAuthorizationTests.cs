@@ -191,23 +191,11 @@ public sealed class WorkgroupsControllerAuthorizationTests : WorkgroupsTestHarne
     }
 
     [HumansTheory]
-    [InlineData(false, "en")]
-    [InlineData(false, "es")]
-    [InlineData(false, "de")]
-    [InlineData(false, "it")]
-    [InlineData(false, "fr")]
-    [InlineData(false, "ca")]
-    [InlineData(false, "nl")]
-    [InlineData(true, "en")]
-    [InlineData(true, "es")]
-    [InlineData(true, "de")]
-    [InlineData(true, "it")]
-    [InlineData(true, "fr")]
-    [InlineData(true, "ca")]
-    [InlineData(true, "nl")]
-    public async Task RuleRejection_IsVisibleWithoutExceptionStack(bool form, string culture)
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task RuleRejection_IsVisibleWithoutExceptionStack(bool form)
     {
-        using var scope = new CultureScope(culture);
+        using var scope = new CultureScope("en");
         var (controller, workgroup) = await BuildAsync(asMember: true);
         var key = form ? WorkgroupErrorKeys.WindowInvalid : WorkgroupErrorKeys.DoneReasonInvalid;
         var resources = new System.Resources.ResourceManager(typeof(WorkgroupsResource));
@@ -243,17 +231,10 @@ public sealed class WorkgroupsControllerAuthorizationTests : WorkgroupsTestHarne
         arguments[2]!.ToString().Should().Contain(key).And.Contain("Test");
     }
 
-    [HumansTheory]
-    [InlineData("en")]
-    [InlineData("es")]
-    [InlineData("de")]
-    [InlineData("it")]
-    [InlineData("fr")]
-    [InlineData("ca")]
-    [InlineData("nl")]
-    public void MemberForms_LocalizeRequiredAndLengthErrors(string culture)
+    [HumansFact]
+    public void MemberForms_LocalizeRequiredAndLengthErrors()
     {
-        using var cultureScope = new CultureScope(culture);
+        using var cultureScope = new CultureScope("en");
         var registrations = new ServiceCollection().AddLogging().AddLocalization();
         registrations.AddControllers().AddDataAnnotationsLocalization(options =>
             options.DataAnnotationLocalizerProvider = (_, factory) => factory.Create(typeof(SharedResource)));

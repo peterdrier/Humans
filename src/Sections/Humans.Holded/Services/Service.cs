@@ -179,6 +179,30 @@ internal sealed class Service(
         }
     }
 
+    public async Task<bool> SyncAccountLedgerAsync(int accountNum, CancellationToken ct = default)
+    {
+        if (!await LedgerSyncGate.WaitAsync(0, ct))
+        {
+            logger.LogInformation("Holded ledger sync already in progress — skipping the {Account} re-pull.", accountNum);
+            return false;
+        }
+
+        try
+        {
+            var now = clock.GetCurrentInstant();
+            var fetched = await client.ListLedgerEntriesAsync(
+                LedgerInception, now.InZone(MadridZone).Date, accountNum, ct);
+            await repo.ReplaceLedgerWindowAsync(
+                ToWindowStart(LedgerInception), now, accountNum, fetched.Select(l => ToEntity(l, now)).ToList(), now, ct);
+            await DrainCallLogAsync(ct);
+            return true;
+        }
+        finally
+        {
+            LedgerSyncGate.Release();
+        }
+    }
+
     public async Task<HoldedPurchaseDocMirror> GetPurchaseDocumentsAsync(CancellationToken ct = default)
     {
         var state = (await repo.GetSyncStatesAsync(ct)).FirstOrDefault(s => s.Kind == HoldedSyncKind.PurchaseDocs);

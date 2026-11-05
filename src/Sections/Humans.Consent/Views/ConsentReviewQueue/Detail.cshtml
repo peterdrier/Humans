@@ -33,7 +33,7 @@
                     @if (!string.IsNullOrEmpty(Model.ApplicationMotivation))
                     {
                         <dt class="col-sm-4">@Localizer["Consent_Queue_ApplicationMotivation"]</dt>
-                        <dd class="col-sm-8" style="white-space: pre-wrap;">@Model.ApplicationMotivation</dd>
+                        <dd class="col-sm-8 pre-wrap">@Model.ApplicationMotivation</dd>
                     }
                 </dl>
             </div>
@@ -44,7 +44,7 @@
             <div class="card mb-4">
                 <div class="card-header">@Localizer["Consent_Queue_PreviousNotes"]</div>
                 <div class="card-body">
-                    <p class="mb-0" style="white-space: pre-wrap;">@Model.ConsentCheckNotes</p>
+                    <p class="mb-0 pre-wrap">@Model.ConsentCheckNotes</p>
                 </div>
             </div>
         }

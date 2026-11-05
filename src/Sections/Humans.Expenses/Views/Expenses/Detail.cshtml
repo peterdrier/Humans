@@ -5,12 +5,10 @@
     var badgeClass = r.Status.GetBadgeClass();
 }
 
-<nav aria-label="@Localizer["Expenses_BreadcrumbNavigation"].Value" class="mb-3">
-    <ol class="breadcrumb">
-        <li class="breadcrumb-item"><a asp-action="Index">@Localizer["Expenses_MyReportsTitle"]</a></li>
-        <li class="breadcrumb-item active" aria-current="page">@Localizer["Expenses_ColReport"]</li>
-    </ol>
-</nav>
+@section Crumbs {
+    <a asp-action="Index">@Localizer["Expenses_MyReportsTitle"]</a>
+    <span>@Localizer["Expenses_ColReport"]</span>
+}
 
 <div class="d-flex justify-content-between align-items-center mb-4">
     <div class="d-flex align-items-center gap-2">
@@ -95,7 +93,7 @@
             <div class="card-header"><strong>@Localizer["Expenses_ExpenseLines"]</strong></div>
             @if (r.Lines.Count == 0)
             {
-                <div class="card-body text-muted">@Localizer["Expenses_Detail_NoLines"]</div>
+                <div class="card-body"><empty-state class="mb-0">@Localizer["Expenses_Detail_NoLines"]</empty-state></div>
             }
             else
             {
@@ -703,15 +701,3 @@
         </div>
     </div>
 }
-
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    document.querySelectorAll('[data-confirm]').forEach(function(btn) {
-        btn.addEventListener('click', function(e) {
-            if (!confirm(this.getAttribute('data-confirm'))) {
-                e.preventDefault();
-            }
-        });
-    });
-});
-</script>

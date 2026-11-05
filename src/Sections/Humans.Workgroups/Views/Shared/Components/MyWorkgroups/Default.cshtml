@@ -8,7 +8,7 @@
                 <h2 class="h6 text-uppercase text-muted mb-3"><i class="fa-solid fa-people-group me-2"></i>@Localizer["Workgroups_MyWorkgroups"]</h2>
                 @if (Model.Mine.Count == 0)
                 {
-                    <p class="text-muted mb-2">@Localizer["Workgroups_MyWorkgroupsEmpty"]</p>
+                    <empty-state class="mb-2">@Localizer["Workgroups_MyWorkgroupsEmpty"]</empty-state>
                     <a asp-controller="Workgroups" asp-action="Index" class="btn btn-sm btn-outline-primary">@Localizer["Workgroups_ViewRegister"]</a>
                 }
                 else

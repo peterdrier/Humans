@@ -189,6 +189,10 @@ Audit entries stay with the calling section, which knows why it wrote.
   sync. A failed list records `Error` on the `PurchaseDocs` state and keeps the last good mirror.
 - Sweeps are serialized by a non-blocking in-process gate; a second caller is skipped and told
   so, never queued (single-server deployment).
+- `SyncAccountLedgerAsync(accountNum)` re-pulls one account's whole history (inception to today) and replaces
+  only that account's mirrored lines, under the same gate (false when a sweep holds it). Sync states are
+  untouched. Finance calls it on 57200003 before and after a Pleo booking run, so its "already in Holded"
+  judgement is Holded's own current ledger.
 - Reads (`IHoldedService`: lines, balances, entry, purchase lines, open document amounts, sums by account,
   chart, purchase documents, last ledger sync) never call Holded, and nothing loads the whole ledger table: balances and sums are grouped
   in the database, statements load only their own entries. Amounts are Holded's raw sign.
@@ -230,7 +234,7 @@ Audit entries stay with the calling section, which knows why it wrote.
 ## Cross-Section Dependencies
 
 - Outbound: `IHoldedClient` (this section's own connector). Finance's `FinancePolicies` constants only.
-- Inbound: Finance (creditor statuses/statements, the purchase mirror for actuals and recon, and its manual purchase sync, via `IHoldedService`), the nightly job.
+- Inbound: Finance (creditor statuses/statements, the purchase mirror for actuals and recon, and its manual purchase sync, via `IHoldedService`; the 57200003 re-pull and journal entries for Pleo booking via `IHoldedService.SyncAccountLedgerAsync` and `IHoldedWrite.PostJournalEntryAsync`), the nightly job.
 
 ## Architecture
 

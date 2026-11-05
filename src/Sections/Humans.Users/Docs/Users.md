@@ -155,7 +155,7 @@ Authentication routes are served by `AccountController`, which lives in `Humans.
 **Served by Gdpr, not this section:** `/Gdpr/Status`, `/Gdpr/Deletion`, `/Gdpr/Deletion/Cancel` (`UserController`), `POST /Gdpr/RequestDeletion` and `GET /Gdpr/DownloadData` (`MemberDataController`) — the moved pages take Gdpr's URLs. They inject `IAccountDeletionService` from `Humans.Users.Contracts`; the deletion work (grace period, ticket hold, audit, email, the timestamps on `users` behind `IUserWrite`, the anonymize job) stays here.
 
 **Served by Email and Gdpr since Users decomposition commit 14:** `/Email/Unsubscribe/*`, `/Email/Guest/CommunicationPreferences*` and `/Email/CommunicationPreferences*` (Email); `POST /Gdpr/Guest/RequestDeletion` and `/Gdpr/Guest/CancelDeletion` (Gdpr's `GuestDataController`, still calling this section's `IAccountDeletionService`). Each took its new owner's URLs.
-- Member profile, email, search and messaging pages localize their breadcrumb navigation landmark in all supported cultures. The profile’s application contribution prompt uses the shared localized Elsewhere wording.
+- The profile’s application contribution prompt uses the shared localized Elsewhere wording.
 - The `/Consent/MyData` page (Consent's) is not served by this section; its `Users_ProfilePrivacy_Title` key stays here only for the profile-hub link.
 
 ## Actors & Roles

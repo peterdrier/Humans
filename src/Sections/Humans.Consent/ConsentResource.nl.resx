@@ -43,7 +43,6 @@
   <data name="Consent_Index_Title" xml:space="preserve">
     <value>Overeenkomsten</value>
   </data>
-  <data name="Consent_BreadcrumbNavigation" xml:space="preserve"><value>Kruimelpad</value></data>
   <data name="Consent_Review_Title" xml:space="preserve">
     <value>Bekijken: {0}</value>
     <comment>{0} = document name</comment>

@@ -270,7 +270,6 @@ Operator build/strike staffing and event-shift generation reject malformed numer
 
 - Shared table currency and number cells use the selected UI culture; numeric sort values stay invariant.
 
-- The member shift-profile wizard localizes breadcrumb navigation labels in all supported cultures.
 
 - The `ShiftSignups` GDPR export includes each signup’s UTC last-update timestamp, including system cancellations without a reviewer date.
 - Department shift-management, email-preview and volunteer/tag search GETs retain request cancellation through viewer and department authorization and their rota, profile, consent, availability, signup, team and tag reads plus staffing charts. Caller-cancelled volunteer searches propagate cancellation without a failure response or log. Department mutation preflight reads, ownership probes, email previews and invalid edit-form redisplays retain request cancellation. Ownership-probe service reads pass that token to the repository. Mutation and email-queue calls retain their existing detached tokens. Department-page badges and names reuse the same loaded user dictionary.

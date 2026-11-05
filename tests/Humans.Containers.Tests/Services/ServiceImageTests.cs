@@ -6,7 +6,6 @@ using Humans.Containers.Contracts;
 using Humans.Containers.Data;
 using Humans.Containers.Domain;
 using Humans.Containers.Services;
-using System.Globalization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.Localization;
@@ -156,26 +155,17 @@ public sealed class ServiceImageTests
     }
 
     [HumansFact]
-    public async Task CreateAsync_ImageRuleMessage_IsInTheCallersCulture()
+    public async Task CreateAsync_ImageRuleMessage_CarriesTheImageLimit()
     {
-        var original = CultureInfo.CurrentUICulture;
-        try
-        {
-            CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo("es");
-            var act = async () => await _sut.CreateAsync(actorUserId: Guid.NewGuid(), data: new ContainerData(
-                CampId: CampId,
-                Name: "Test",
-                Description: null,
-                NewImages: FakeImages(6)), ct: TestContext.Current.CancellationToken);
+        using var culture = new Humans.Base.Extensions.CultureScope("en");
+        var refusal = await _sut.CreateAsync(actorUserId: Guid.NewGuid(), data: new ContainerData(
+            CampId: CampId,
+            Name: "Test",
+            Description: null,
+            NewImages: FakeImages(6)), ct: TestContext.Current.CancellationToken);
 
-            var refusal = await act();
-            refusal.ErrorKey.Should().Be("Containers_Error_TooManyImages");
-            Localizer[refusal.ErrorKey!, refusal.ErrorArgs ?? []].Value.Should().Be("Un contenedor puede tener como máximo 5 imágenes.");
-        }
-        finally
-        {
-            CultureInfo.CurrentUICulture = original;
-        }
+        refusal.ErrorKey.Should().Be("Containers_Error_TooManyImages");
+        Localizer[refusal.ErrorKey!, refusal.ErrorArgs ?? []].Value.Should().Be("A container can have at most 5 images.");
     }
 
     [HumansFact]

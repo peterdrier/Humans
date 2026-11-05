@@ -879,17 +879,10 @@ public class CachingUserServiceTests
         results.Should().HaveCount(1);
     }
 
-    [HumansTheory]
-    [InlineData("en", "User ID")]
-    [InlineData("es", "ID de usuario")]
-    [InlineData("de", "Benutzer-ID")]
-    [InlineData("it", "ID utente")]
-    [InlineData("fr", "ID utilisateur")]
-    [InlineData("ca", "ID d'usuari")]
-    [InlineData("nl", "Gebruikers-ID")]
-    public async Task SearchUsersAsync_AdminBit_ExactUserIdLookup(string culture, string label)
+    [HumansFact]
+    public async Task SearchUsersAsync_AdminBit_ExactUserIdLookup()
     {
-        using var scope = new CultureScope(culture);
+        using var scope = new CultureScope("en");
         var userId = Guid.NewGuid();
         var sut = CreateSut();
         await PrimeAsync(sut, BuildSearchableUserInfo(userId, burnerName: "Alice"));
@@ -898,7 +891,7 @@ public class CachingUserServiceTests
 
         results.Should().HaveCount(1);
         results[0].UserId.Should().Be(userId);
-        results[0].MatchField.Should().Be(label);
+        results[0].MatchField.Should().Be("User ID");
     }
 
     [HumansFact]

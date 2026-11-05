@@ -5,12 +5,10 @@
     var totalPending = Model.TeamGroups.Sum(g => g.Documents.Count(d => !d.HasConsented));
 }
 
-<nav aria-label="@Localizer["Consent_BreadcrumbNavigation"]">
-    <ol class="breadcrumb">
-        <li class="breadcrumb-item"><a asp-controller="Profile" asp-action="Index">@SharedLocalizer["Nav_MyProfile"]</a></li>
-        <li class="breadcrumb-item active" aria-current="page">@Localizer["Consent_Index_Title"]</li>
-    </ol>
-</nav>
+@section Crumbs {
+    <a asp-controller="Profile" asp-action="Index">@SharedLocalizer["Nav_MyProfile"]</a>
+    <span>@Localizer["Consent_Index_Title"]</span>
+}
 
 <h1>@Localizer["Consent_Index_Title"]</h1>
 
@@ -21,7 +19,7 @@
         {
             <div class="card mb-4">
                 <div class="card-body">
-                    <p class="text-muted mb-0">@Localizer["Consent_NoDocumentsRequired"]</p>
+                    <empty-state class="mb-0">@Localizer["Consent_NoDocumentsRequired"]</empty-state>
                 </div>
             </div>
         }
@@ -106,7 +104,7 @@
             <div class="card-body">
                 @if (Model.ConsentHistory.Count == 0)
                 {
-                    <p class="text-muted">@Localizer["Consent_NoRecords"]</p>
+                    <empty-state>@Localizer["Consent_NoRecords"]</empty-state>
                 }
                 else
                 {

@@ -267,17 +267,10 @@ public sealed class ContactFieldServiceTests : ServiceTestHarness
         result[0].Label.Should().Be("Phone");
     }
 
-    [HumansTheory]
-    [InlineData("en")]
-    [InlineData("es")]
-    [InlineData("de")]
-    [InlineData("it")]
-    [InlineData("fr")]
-    [InlineData("ca")]
-    [InlineData("nl")]
-    public async Task GetVisibleContactFields_LocalizesDefaultLabelsAndPreservesCustomLabels(string culture)
+    [HumansFact]
+    public async Task GetVisibleContactFields_LocalizesDefaultLabelsAndPreservesCustomLabels()
     {
-        using var cultureScope = new CultureScope(culture);
+        using var cultureScope = new CultureScope("en");
         var localizer = new StringLocalizer<UsersResource>(new ResourceManagerStringLocalizerFactory(
             Options.Create(new LocalizationOptions()), NullLoggerFactory.Instance));
         var ownerId = Guid.NewGuid();

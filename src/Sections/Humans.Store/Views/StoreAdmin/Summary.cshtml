@@ -24,7 +24,7 @@
     <div class="card-body p-0">
         @if (s.ByCounterparty.Count == 0)
         {
-            <p class="text-muted m-3 mb-3">No orders for @s.Year.</p>
+            <empty-state class="m-3 mb-3">No orders for @s.Year.</empty-state>
         }
         else
         {
@@ -75,7 +75,7 @@
     <div class="card-body p-0">
         @if (s.ByItem.Count == 0)
         {
-            <p class="text-muted m-3 mb-3">No lines for @s.Year.</p>
+            <empty-state class="m-3 mb-3">No lines for @s.Year.</empty-state>
         }
         else
         {
@@ -95,7 +95,7 @@
     <div class="card-body p-0 table-responsive">
         @if (s.CrossTab.Counterparties.Count == 0 || s.CrossTab.Products.Count == 0)
         {
-            <p class="text-muted m-3 mb-3">Nothing to plot for @s.Year.</p>
+            <empty-state class="m-3 mb-3">Nothing to plot for @s.Year.</empty-state>
         }
         else
         {

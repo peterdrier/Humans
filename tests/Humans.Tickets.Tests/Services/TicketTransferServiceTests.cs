@@ -1,3 +1,5 @@
+using System.Globalization;
+using System.Resources;
 using Humans.Base.Extensions;
 using Humans.Base.Constants;
 using Humans.Tickets.Controllers;
@@ -188,13 +190,14 @@ public sealed class TicketTransferServiceTests
     }
 
     [HumansTheory]
-    [Xunit.InlineData("es", "Solicitud de transferencia de entrada")]
-    [Xunit.InlineData("", "Ticket transfer requested")]
-    [Xunit.InlineData(" ", "Ticket transfer requested")]
-    [Xunit.InlineData("not a culture!", "Ticket transfer requested")]
-    [Xunit.InlineData("fr-FR", "Ticket transfer requested")]
-    public async Task CreateRequest_Persists_Audits_AndEmailsSenderAndTeam(string language, string expectedSubject)
+    [Xunit.InlineData("es", "es")]
+    [Xunit.InlineData("", "en")]
+    [Xunit.InlineData(" ", "en")]
+    [Xunit.InlineData("not a culture!", "en")]
+    [Xunit.InlineData("fr-FR", "en")]
+    public async Task CreateRequest_Persists_Audits_AndEmailsSenderAndTeam(string language, string expectedCulture)
     {
+        var expectedSubject = Subject("Tickets_TicketTransfer_Email_Requested_Subject", expectedCulture);
         using var actorCulture = new CultureScope("fr");
         var sender = MakeUser(_senderId, "Bob");
         sender.PreferredLanguage = language;
@@ -524,16 +527,18 @@ public sealed class TicketTransferServiceTests
     }
 
     [HumansTheory]
-    [Xunit.InlineData("es", "de", "Transferencia de entrada completada", "Ticketübertragung abgeschlossen")]
-    [Xunit.InlineData("", "es", "Ticket transfer complete", "Transferencia de entrada completada")]
-    [Xunit.InlineData(" ", "de", "Ticket transfer complete", "Ticketübertragung abgeschlossen")]
-    [Xunit.InlineData("not a culture!", "fr-FR", "Ticket transfer complete", "Ticket transfer complete")]
-    [Xunit.InlineData("fr-FR", "", "Ticket transfer complete", "Ticket transfer complete")]
-    [Xunit.InlineData("es", " ", "Transferencia de entrada completada", "Ticket transfer complete")]
-    [Xunit.InlineData("es", "not a culture!", "Transferencia de entrada completada", "Ticket transfer complete")]
+    [Xunit.InlineData("es", "de", "es", "de")]
+    [Xunit.InlineData("", "es", "en", "es")]
+    [Xunit.InlineData(" ", "de", "en", "de")]
+    [Xunit.InlineData("not a culture!", "fr-FR", "en", "en")]
+    [Xunit.InlineData("fr-FR", "", "en", "en")]
+    [Xunit.InlineData("es", " ", "es", "en")]
+    [Xunit.InlineData("es", "not a culture!", "es", "en")]
     public async Task Approve_EmailsEachPartyInTheirOwnLanguage(
-        string senderLanguage, string receiverLanguage, string expectedSenderSubject, string expectedReceiverSubject)
+        string senderLanguage, string receiverLanguage, string expectedSenderCulture, string expectedReceiverCulture)
     {
+        var expectedSenderSubject = Subject("Tickets_TicketTransfer_Email_Completed_Subject", expectedSenderCulture);
+        var expectedReceiverSubject = Subject("Tickets_TicketTransfer_Email_Completed_Subject", expectedReceiverCulture);
         using var actorCulture = new CultureScope("fr");
         var sender = MakeUser(_senderId, "Bob");
         sender.PreferredLanguage = senderLanguage;
@@ -558,6 +563,9 @@ public sealed class TicketTransferServiceTests
                 && m.Subject == expectedReceiverSubject),
             Arg.Any<CancellationToken>());
     }
+
+    private static string Subject(string key, string culture) =>
+        new ResourceManager(typeof(TicketsResource)).GetString(key, CultureInfo.GetCultureInfo(culture))!;
 
     [HumansFact]
     public async Task Approve_ReceiverLookupFails_StillEmailsReceiverInEnglish()

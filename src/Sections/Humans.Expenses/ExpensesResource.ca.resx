@@ -149,7 +149,6 @@
   <data name="Expenses_Flash_InvalidApprovalInput" xml:space="preserve"><value>Dades d'aprovació no vàlides.</value></data>
   <!-- Submitter expense-edit page -->
   <data name="Expenses_EditReport" xml:space="preserve"><value>Edita l'informe de despeses</value></data>
-  <data name="Expenses_BreadcrumbNavigation" xml:space="preserve"><value>Fil d'Ariadna</value></data>
   <data name="Expenses_Edit" xml:space="preserve"><value>Edita</value></data>
   <data name="Expenses_ReportHeader" xml:space="preserve"><value>Capçalera de l'informe</value></data>
   <data name="Expenses_BudgetCategory" xml:space="preserve"><value>Categoria pressupostària</value></data>

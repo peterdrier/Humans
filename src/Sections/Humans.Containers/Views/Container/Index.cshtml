@@ -18,13 +18,11 @@
     };
 }
 
-<nav aria-label="@Localizer["Containers_BreadcrumbNavigation"]">
-    <ol class="breadcrumb">
-        <li class="breadcrumb-item"><a asp-controller="Camp" asp-action="Index">@SharedLocalizer["Camp_Plural"]</a></li>
-        <li class="breadcrumb-item"><a asp-controller="Camp" asp-action="Details" asp-route-slug="@Model.CampSlug">@Model.CampName</a></li>
-        <li class="breadcrumb-item active" aria-current="page">@Localizer["Containers_Breadcrumb"]</li>
-    </ol>
-</nav>
+@section Crumbs {
+    <a asp-controller="Camp" asp-action="Index">@SharedLocalizer["Camp_Plural"]</a>
+    <a asp-controller="Camp" asp-action="Details" asp-route-slug="@Model.CampSlug">@Model.CampName</a>
+    <span>@Localizer["Containers_Breadcrumb"]</span>
+}
 
 <div class="d-flex align-items-center gap-2 mb-4">
     <h1 class="mb-0">@Localizer["Containers_Breadcrumb"] <small class="text-muted">@Model.CampName</small></h1>
@@ -51,7 +49,7 @@
 
 @if (Model.Containers.Count == 0)
 {
-    <div class="alert alert-secondary">@Localizer["Containers_Empty"]</div>
+    <empty-state>@Localizer["Containers_Empty"]</empty-state>
 }
 else
 {

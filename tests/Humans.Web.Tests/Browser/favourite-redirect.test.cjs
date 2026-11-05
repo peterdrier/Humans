@@ -3,6 +3,7 @@ const { test } = require('node:test');
 const { readFileSync } = require('node:fs');
 const { resolve } = require('node:path');
 const vm = require('node:vm');
+const { installHumans } = require('../../browser-support/humans-js.cjs');
 
 const source = readFileSync(resolve(__dirname, '../../../src/Humans.Web/wwwroot/js/site.js'), 'utf8');
 const script = source.slice(source.indexOf('// Favourite hearts'));
@@ -33,7 +34,7 @@ function page(removing, redirected, options = {}) {
             : selector === '.list-group-item' ? row : button;
         return button;
     });
-    vm.runInNewContext(script, {
+    vm.runInNewContext(script, installHumans({
         document: {
             addEventListener: (_, handler) => { click = handler; },
             querySelectorAll: selector => buttons.filter(b => !b.removed &&
@@ -56,7 +57,7 @@ function page(removing, redirected, options = {}) {
                 id: 'event-id', dayOffset: day,
             })) };
         },
-    });
+    }));
     return {
         button: buttons[0], attrs: buttons[0].attrs, buttons, errors,
         removed: () => removed,
