@@ -560,6 +560,7 @@ public sealed class BudgetServiceTests
     [InlineData("foreignYear")]
     [InlineData("missingGroup")]
     [InlineData("valid")]
+    [InlineData("invalidVat")]
     public async Task Projection_update_validates_group_year_before_parameters_or_forecasts(string scenario)
     {
         var seeded = await SeedTicketingYearAsync();
@@ -578,7 +579,7 @@ public sealed class BudgetServiceTests
             InitialSalesCount = 10,
             DailySalesRate = 5m,
             AverageTicketPrice = 120m,
-            VatRate = 21,
+            VatRate = string.Equals(scenario, "invalidVat", StringComparison.Ordinal) ? 22 : 21,
             StripeFeePercent = 1.5m,
             StripeFeeFixed = 0.3m,
             TicketTailorFeePercent = 0.5m
@@ -590,7 +591,13 @@ public sealed class BudgetServiceTests
         if (!valid)
         {
             (await db.BudgetAuditLogs.CountAsync(TestContext.Current.CancellationToken)).Should().Be(0);
-            result.Should().BeOfType<NotFoundResult>();
+            if (string.Equals(scenario, "invalidVat", StringComparison.Ordinal))
+            {
+                result.Should().BeOfType<RedirectToActionResult>();
+                controller.TempData["ErrorMessage"].Should().Be("VAT rate must be between 0 and 21.");
+            }
+            else
+                result.Should().BeOfType<NotFoundResult>();
             controller.TempData.ContainsKey("SuccessMessage").Should().BeFalse();
         }
         else
@@ -1082,8 +1089,11 @@ public sealed class BudgetServiceTests
             vatRate,
             Guid.NewGuid());
 
-        await act.Should().ThrowAsync<ArgumentOutOfRangeException>()
-            .WithMessage("*between 0 and 21*");
+        var result = await act();
+        result.Refusal.Should().Be("VAT rate must be between 0 and 21.");
+        await using var db = await BudgetDbFactory.CreateDbContextAsync(TestContext.Current.CancellationToken);
+        (await db.BudgetAuditLogs.CountAsync(TestContext.Current.CancellationToken)).Should().Be(0);
+        (await db.BudgetLineItems.CountAsync(TestContext.Current.CancellationToken)).Should().Be(0);
     }
 
     [HumansTheory]
@@ -1170,8 +1180,13 @@ public sealed class BudgetServiceTests
             vatRate,
             Guid.NewGuid());
 
-        await act.Should().ThrowAsync<ArgumentOutOfRangeException>()
-            .WithMessage("*between 0 and 21*");
+        var result = await act();
+        result.Refusal.Should().Be("VAT rate must be between 0 and 21.");
+        await using var db = await BudgetDbFactory.CreateDbContextAsync(TestContext.Current.CancellationToken);
+        (await db.BudgetAuditLogs.CountAsync(TestContext.Current.CancellationToken)).Should().Be(0);
+        var persisted = await db.BudgetLineItems.SingleAsync(TestContext.Current.CancellationToken);
+        persisted.VatRate.Should().Be(0);
+        persisted.Amount.Should().Be(100m);
     }
 
     [HumansTheory]
@@ -1182,8 +1197,11 @@ public sealed class BudgetServiceTests
         var act = () => _service.UpdateTicketingProjectionAsync(
             Guid.NewGuid(), null, null, 0, 0m, 0m, vatRate, 0m, 0m, 0m, Guid.NewGuid());
 
-        await act.Should().ThrowAsync<ArgumentOutOfRangeException>()
-            .WithMessage("*between 0 and 21*");
+        var result = await act();
+        result.Refusal.Should().Be("VAT rate must be between 0 and 21.");
+        await using var db = await BudgetDbFactory.CreateDbContextAsync(TestContext.Current.CancellationToken);
+        (await db.BudgetAuditLogs.CountAsync(TestContext.Current.CancellationToken)).Should().Be(0);
+        (await db.TicketingProjections.CountAsync(TestContext.Current.CancellationToken)).Should().Be(0);
     }
 
     [HumansFact]

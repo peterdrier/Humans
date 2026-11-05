@@ -446,7 +446,7 @@ internal sealed class BudgetAdminController(
             var result = await budgetService.CreateLineItemAsync(budgetCategoryId, description, amount, responsibleTeamId, notes, nodaDate, vatRate, user.Id);
             if (result.Refusal is not null)
             {
-                logger.LogWarning("Rejected budget line item amount for actor {ActorId}", user.Id);
+                logger.LogWarning("Rejected budget line item input for actor {ActorId}", user.Id);
                 SetError(result.Refusal);
                 return RedirectToAction(nameof(CategoryDetail), new { id = budgetCategoryId });
             }
@@ -483,7 +483,7 @@ internal sealed class BudgetAdminController(
             var result = await budgetService.UpdateLineItemAsync(id, description, amount, responsibleTeamId, notes, nodaDate, vatRate, user.Id);
             if (result.Refusal is not null)
             {
-                logger.LogWarning("Rejected budget line item amount for actor {ActorId}", user.Id);
+                logger.LogWarning("Rejected budget line item input for actor {ActorId}", user.Id);
                 SetError(result.Refusal);
                 return RedirectToAction(nameof(CategoryDetail), new { id = budgetCategoryId });
             }
@@ -560,7 +560,7 @@ internal sealed class BudgetAdminController(
 
         try
         {
-            var count = await ticketingBudgetService.UpdateProjectionAndRefreshAsync(
+            var result = await ticketingBudgetService.UpdateProjectionAndRefreshAsync(
                 new TicketingProjectionUpdateCommand(
                     groupId,
                     form.BudgetYearId,
@@ -574,8 +574,14 @@ internal sealed class BudgetAdminController(
                     form.StripeFeeFixed,
                     form.TicketTailorFeePercent),
                 user.Id);
-            if (count is null) return NotFound();
-            SetSuccess($"Ticketing projection saved - {count} projected line item(s) generated.");
+            if (result is null) return NotFound();
+            if (result.Value.Refusal is { } refusal)
+            {
+                logger.LogWarning("Rejected ticketing projection for group {GroupId}, actor {ActorId}: {Reason}", groupId, user.Id, refusal);
+                SetError(refusal);
+            }
+            else
+                SetSuccess($"Ticketing projection saved - {result.Value.Count} projected line item(s) generated.");
         }
         catch (Exception ex)
         {

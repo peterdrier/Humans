@@ -18,7 +18,7 @@ internal interface IBudgetManagement : IBudgetService, IApplicationService
     Task<int> SyncDepartmentsAsync(Guid budgetYearId, Guid actorUserId);
     Task<EnsureTicketingGroupResult> EnsureTicketingGroupAsync(Guid budgetYearId, Guid actorUserId);
 
-    Task<int> UpdateTicketingProjectionAsync(Guid budgetGroupId, LocalDate? startDate, LocalDate? eventDate,
+    Task<TicketingProjectionSaveResult> UpdateTicketingProjectionAsync(Guid budgetGroupId, LocalDate? startDate, LocalDate? eventDate,
         int initialSalesCount, decimal dailySalesRate, decimal averageTicketPrice, int vatRate,
         decimal stripeFeePercent, decimal stripeFeeFixed, decimal ticketTailorFeePercent, Guid actorUserId,
         bool refreshProjections = false, CancellationToken ct = default);

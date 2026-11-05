@@ -436,7 +436,8 @@ internal sealed class BudgetService(
         if (ValidateMoneyAmount(amount) is { } refusal)
             return new(Refusal: refusal);
 
-        ValidateVatRate(vatRate);
+        if (VatRateRefusal(vatRate) is { } vatRefusal)
+            return new(Refusal: vatRefusal);
 
         var now = clock.GetCurrentInstant();
 
@@ -466,7 +467,8 @@ internal sealed class BudgetService(
         if (ValidateMoneyAmount(amount) is { } refusal)
             return new(Refusal: refusal);
 
-        ValidateVatRate(vatRate);
+        if (VatRateRefusal(vatRate) is { } vatRefusal)
+            return new(Refusal: vatRefusal);
 
         var now = clock.GetCurrentInstant();
 
@@ -493,11 +495,8 @@ internal sealed class BudgetService(
             : null;
     }
 
-    private static void ValidateVatRate(int vatRate)
-    {
-        if (vatRate is < 0 or > 21)
-            throw new ArgumentOutOfRangeException(nameof(vatRate), vatRate, "VAT rate must be between 0 and 21.");
-    }
+    private static string? VatRateRefusal(int vatRate) =>
+        vatRate is < 0 or > 21 ? "VAT rate must be between 0 and 21." : null;
 
     public async Task DeleteLineItemAsync(Guid lineItemId, Guid actorUserId)
     {
@@ -510,13 +509,14 @@ internal sealed class BudgetService(
         logger.LogInformation("Deleted line item {LineItemId}", lineItemId);
     }
 
-    public async Task<int> UpdateTicketingProjectionAsync(
+    public async Task<TicketingProjectionSaveResult> UpdateTicketingProjectionAsync(
         Guid budgetGroupId, LocalDate? startDate, LocalDate? eventDate,
         int initialSalesCount, decimal dailySalesRate, decimal averageTicketPrice, int vatRate,
         decimal stripeFeePercent, decimal stripeFeeFixed, decimal ticketTailorFeePercent, Guid actorUserId,
         bool refreshProjections = false, CancellationToken ct = default)
     {
-        ValidateVatRate(vatRate);
+        if (VatRateRefusal(vatRate) is { } vatRefusal)
+            return new(Refusal: vatRefusal);
 
         var now = clock.GetCurrentInstant();
 
@@ -536,7 +536,7 @@ internal sealed class BudgetService(
             update, actorUserId, now, ct, refreshProjections ? now.InUtc().Date : null);
 
         logger.LogInformation("Updated ticketing projection for group {GroupId}", budgetGroupId);
-        return created;
+        return new(created);
     }
 
     public async Task<IReadOnlyList<BudgetAuditLogSnapshot>> GetAuditLogAsync(Guid? budgetYearId, CancellationToken ct = default)

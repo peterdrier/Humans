@@ -265,7 +265,7 @@ internal sealed class DevelopmentBudgetSeeder(
             await SeedLineItemsAsync(category, ticketSeed.LineItems, actorUserId, () => lineItemsCreated++);
         }
 
-        await budgetService.UpdateTicketingProjectionAsync(
+        var projection = await budgetService.UpdateTicketingProjectionAsync(
             ticketingGroup.Id,
             startDate: new LocalDate(publicYear, 1, 15),
             eventDate: new LocalDate(publicYear, 8, 24),
@@ -277,6 +277,8 @@ internal sealed class DevelopmentBudgetSeeder(
             stripeFeeFixed: 0.25m,
             ticketTailorFeePercent: 3.00m,
             actorUserId);
+        if (projection.Refusal is not null)
+            throw new InvalidOperationException(projection.Refusal);
 
         logger.LogInformation(
             "Development budget seed completed for {BudgetYearCode}: teamsCreated={TeamsCreated}, teamsUpdated={TeamsUpdated}, categoriesCreated={CategoriesCreated}, lineItemsCreated={LineItemsCreated}",
