@@ -40,6 +40,15 @@ Implements the internal `IGoogleSyncManagement` (which extends the public `IGoog
 and `IGoogleDriveAccessSource` (source-owned grant levels); the identity
 target and status via the section's own `IWorkspaceIdentityManagement`. No cache.
 
+### GoogleDriveFolderMaintenance (internal, owned by GoogleWorkspaceSyncService)
+
+Repository: `IGoogleResourceRepository`. Reads active Drive resources and updates
+stored folder names after complete path resolution. Through `ITeamService` and
+`IGoogleDrivePermissionsClient`, restricts maintenance to active teams and corrects
+saved inherited-access preferences, auditing each correction via `IAuditLogService`.
+The sync management facade retains the existing methods; no separate DI registration
+or cache.
+
 ### WorkspaceIdentityService (Scoped)
 
 Repository: `IWorkspaceIdentityRepository` (Singleton, `IDbContextFactory`).

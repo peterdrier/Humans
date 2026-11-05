@@ -255,6 +255,8 @@ Google integration management is consolidated in `GoogleController` (`[Route("Go
 
 ## Architecture
 
+The internal `GoogleDriveFolderMaintenance` owns stored folder-path refresh and inherited-access restriction enforcement, including the shared Drive setter. `GoogleWorkspaceSyncService` forwards its existing entry points. Active-team filtering, complete-path requirements, per-resource failure isolation, correction audits and cancellation remain unchanged. Folder creation, membership reconciliation and permission planning keep their existing owners; no contract or DI registration is added.
+
 The internal `DrivePermissionPlanning` owns the pure expected-versus-actual Drive permission plan, including Gmail alias grouping, inherited access floors and direct-grant classification. `GoogleDriveAccessSyncService` retains hydration, API mutations, retry/error policy, sync logs and removal notices. Planning still selects the highest claimed access level with the same user-ID tie-break; no permission decisions, DI registrations or public contracts change.
 
 **Owning services:** `GoogleWorkspaceSyncService` (implements `IGoogleSyncManagement`), `GoogleGroupSyncService` (implements `IGoogleGroupSync`), `GoogleDriveAccessSyncService` (implements `IGoogleDriveSync`), `GoogleAdminService`, `GoogleWorkspaceUserService`, `SyncSettingsService`, `EmailProvisioningService`, `GoogleTranslationService` (implements `IGoogleTranslationService`)

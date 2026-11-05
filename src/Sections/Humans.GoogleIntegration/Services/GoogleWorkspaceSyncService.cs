@@ -33,6 +33,8 @@ internal sealed class GoogleWorkspaceSyncService(
     ILogger<GoogleWorkspaceSyncService> logger) : IGoogleSyncManagement
 {
     private readonly GoogleWorkspaceOptions _options = options.Value;
+    private readonly GoogleDriveFolderMaintenance folderMaintenance = new(
+        resourceRepository, teamService, drivePermissions, auditLogService, logger);
     private readonly GoogleSyncOutboxAdministration outboxAdministration = new(
         googleSyncOutboxRepository, workspaceIdentities, teamService, clock, auditLogService, logger);
     private readonly GoogleGroupSettings groupSettings = new(
@@ -507,128 +509,17 @@ internal sealed class GoogleWorkspaceSyncService(
         groupSettings.GetAllDomainGroupsAsync(cancellationToken);
 
     /// <inheritdoc />
-    public async Task<int> UpdateDriveFolderPathsAsync(CancellationToken cancellationToken = default)
-    {
-        var driveResources = await resourceRepository.GetActiveByResourceTypeAsync(GoogleResourceType.DriveFolder, cancellationToken);
-
-        if (driveResources.Count == 0) return 0;
-        var teamsById = await teamService.GetTeamsAsync(cancellationToken);
-        var filtered = driveResources
-            .Where(r => teamsById.TryGetValue(r.TeamId, out var t) && t.IsActive)
-            .ToList();
-
-        if (filtered.Count == 0) return 0;
-
-        var updatedCount = 0;
-        foreach (var resource in filtered)
-        {
-            try
-            {
-                var fullPath = await DriveFolderPath.ResolveAsync(drivePermissions, resource.GoogleId, logger, cancellationToken);
-                if (fullPath is not null && !string.Equals(resource.Name, fullPath, StringComparison.Ordinal))
-                {
-                    logger.LogInformation(
-                        "Drive folder path changed for resource {ResourceId}: '{OldName}' -> '{NewName}'",
-                        resource.Id, resource.Name, fullPath);
-                    await resourceRepository.UpdateNameAsync(resource.Id, fullPath, cancellationToken);
-                    updatedCount++;
-                }
-            }
-            catch (Exception ex)
-            {
-                logger.LogError(ex,
-                    "Failed to resolve Drive folder path for resource {ResourceId} ({GoogleId})",
-                    resource.Id, resource.GoogleId);
-            }
-        }
-
-        return updatedCount;
-    }
+    public Task<int> UpdateDriveFolderPathsAsync(CancellationToken cancellationToken = default) =>
+        folderMaintenance.UpdateDriveFolderPathsAsync(cancellationToken);
 
     /// <inheritdoc />
-    public async Task SetInheritedPermissionsDisabledAsync(
-        string googleFileId,
-        bool restrict,
-        CancellationToken cancellationToken = default)
-    {
-        var error = await drivePermissions.SetInheritedPermissionsDisabledAsync(googleFileId, restrict, cancellationToken);
-        if (error is not null)
-        {
-            logger.LogWarning(
-                "Failed to set inheritedPermissionsDisabled={Restrict} on {FileId} — HTTP {Code}: {Message}",
-                restrict, googleFileId, error.StatusCode, error.RawMessage);
-            throw new InvalidOperationException(
-                $"Google Drive inheritedPermissionsDisabled update failed for {googleFileId}: HTTP {error.StatusCode} — {error.RawMessage}");
-        }
-    }
+    public Task SetInheritedPermissionsDisabledAsync(
+        string googleFileId, bool restrict, CancellationToken cancellationToken = default) =>
+        folderMaintenance.SetInheritedPermissionsDisabledAsync(googleFileId, restrict, cancellationToken);
 
     /// <inheritdoc />
-    public async Task<int> EnforceInheritedAccessRestrictionsAsync(CancellationToken cancellationToken = default)
-    {
-        var driveResources = await resourceRepository.GetActiveByResourceTypeAsync(GoogleResourceType.DriveFolder, cancellationToken);
-
-        if (driveResources.Count == 0) return 0;
-        var teamsById = await teamService.GetTeamsAsync(cancellationToken);
-
-        var restricted = driveResources
-            .Where(r => r.RestrictInheritedAccess
-                && r.ResourceType == GoogleResourceType.DriveFolder
-                && teamsById.TryGetValue(r.TeamId, out var t) && t.IsActive)
-            .ToList();
-
-        if (restricted.Count == 0) return 0;
-
-        var correctedCount = 0;
-        foreach (var resource in restricted)
-        {
-            try
-            {
-                var fileResult = await drivePermissions.GetFileAsync(resource.GoogleId, cancellationToken);
-                if (fileResult.File is null)
-                {
-                    if ((fileResult.Error?.StatusCode ?? 0) == 404)
-                    {
-                        logger.LogWarning(
-                            "Drive folder {GoogleId} not found (resource {ResourceId}) during inherited access check — may have been deleted",
-                            resource.GoogleId, resource.Id);
-                    }
-                    else
-                    {
-                        logger.LogWarning(
-                            "Failed to fetch file {GoogleId} during inherited access check — HTTP {Code}: {Message}",
-                            resource.GoogleId, fileResult.Error?.StatusCode, fileResult.Error?.RawMessage);
-                    }
-                    continue;
-                }
-
-                if (fileResult.File.InheritedPermissionsDisabled != true)
-                {
-                    logger.LogWarning(
-                        "Inherited access drift detected for resource {ResourceId} ({GoogleId}): " +
-                        "inheritedPermissionsDisabled is {Actual}, expected true. Correcting.",
-                        resource.Id, resource.GoogleId, fileResult.File.InheritedPermissionsDisabled);
-
-                    await SetInheritedPermissionsDisabledAsync(resource.GoogleId, true, cancellationToken);
-
-                    await auditLogService.LogAsync(
-                        GoogleIntegrationAuditActions.GoogleResourceInheritanceDriftCorrected,
-                        nameof(GoogleResource), resource.Id,
-                        $"Corrected inherited access drift for Drive folder '{resource.Name}' — re-disabled inherited permissions",
-                        "GoogleResourceReconciliationJob");
-
-                    correctedCount++;
-                }
-            }
-            catch (Exception ex)
-            {
-                logger.LogError(ex,
-                    "Failed to check/enforce inherited access restriction for resource {ResourceId} ({GoogleId})",
-                    resource.Id, resource.GoogleId);
-            }
-        }
-
-        return correctedCount;
-    }
+    public Task<int> EnforceInheritedAccessRestrictionsAsync(CancellationToken cancellationToken = default) =>
+        folderMaintenance.EnforceInheritedAccessRestrictionsAsync(cancellationToken);
 
     public Task<int> GetFailedSyncEventCountAsync(CancellationToken cancellationToken = default) =>
         outboxAdministration.GetFailedSyncEventCountAsync(cancellationToken);
