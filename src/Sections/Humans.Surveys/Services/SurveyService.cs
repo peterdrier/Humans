@@ -34,151 +34,51 @@ internal sealed class SurveyService(
     IGoogleTranslationService translation,
     IFileStorage fileStorage) : ISurveyService, IUserDataContributor, IUserMerge
 {
+    private readonly SurveyDefinitionReader definitionReader = new(repo, tokenProvider);
+    private readonly SurveyResultsReader resultsReader = new(repo, userService, auditLog);
+    private readonly SurveyDataExport dataExport = new(repo, userService);
+    private readonly SurveyAudience audience = new(teamService, userService, governanceService, ticketService, shiftView, logger);
     private readonly SurveyImageUploads imageUploads = new(fileStorage, logger);
     private readonly SurveyTranslationFiller translationFiller = new(translation);
 
     private static readonly TrackedLock ResponseFinalizationLock = new("Surveys.ResponseFinalization");
 
-    internal const string SurveyResponses = "SurveyResponses";
-    internal const string AuthoredSurveys = "AuthoredSurveys";
-    internal const string SurveyInvitations = "SurveyInvitations";
+    internal const string SurveyResponses = SurveyDataExport.SurveyResponses;
+    internal const string AuthoredSurveys = SurveyDataExport.AuthoredSurveys;
+    internal const string SurveyInvitations = SurveyDataExport.SurveyInvitations;
 
-    private const int PublicSlugMaxLength = 80;
-    private const int InvitationEmailSubjectMaxLength = 200;
-    private const int InvitationEmailMessageMaxLength = 4000;
     // A shared epoch, not the real time: a CompletionTracked public start's real CreatedAt would
     // correlate with the unlinked response's SubmittedAt and unmask the respondent.
     private static readonly Instant NonCorrelatablePublicParticipationCreatedAt =
         Instant.FromUtc(1970, 1, 1, 0, 0);
 
-    public async Task<IReadOnlyList<SurveySummary>> GetSummariesAsync(CancellationToken ct = default)
-    {
-        var surveys = await repo.GetAllSummariesAsync(ct);
-        var invited = await repo.GetInvitedCountsBySurveyAsync(ct);
-        var responses = await repo.GetResponseCountsBySurveyAsync(ct);
+    public Task<IReadOnlyList<SurveySummary>> GetSummariesAsync(CancellationToken ct = default) =>
+        definitionReader.GetSummariesAsync(ct);
 
-        return surveys.Select(s => new SurveySummary(
-            s.Id,
-            s.Title.Resolve(s.DefaultCulture, s.DefaultCulture),
-            s.Status,
-            invited.GetValueOrDefault(s.Id),
-            responses.GetValueOrDefault(s.Id),
-            s.CreatedByUserId)).ToList();
-    }
+    public Task<SurveyOfficialLink?> GetOfficialLinkAsync(Guid surveyId, Guid userId, CancellationToken ct = default) =>
+        definitionReader.GetOfficialLinkAsync(surveyId, userId, ct);
 
-    public async Task<SurveyOfficialLink?> GetOfficialLinkAsync(
-        Guid surveyId,
-        Guid userId,
-        CancellationToken ct = default)
-    {
-        var survey = await repo.GetByIdAsync(surveyId, ct);
-        if (survey?.Status != SurveyStatus.Open) return null;
+    public Task<SurveyDefinitionSnapshot?> GetDefinitionAsync(Guid surveyId, CancellationToken ct = default) =>
+        definitionReader.GetDefinitionAsync(surveyId, ct);
 
-        var invitation = (await repo.GetInvitationsAsync(surveyId, ct))
-            .FirstOrDefault(candidate =>
-                candidate.UserId == userId
-                && candidate.SentAt is not null
-                && !candidate.Completed);
-        if (invitation is not null)
-        {
-            return new SurveyOfficialLink(tokenProvider.Create(invitation.Id), null);
-        }
-
-        return string.IsNullOrWhiteSpace(survey.PublicSlug)
-            ? null
-            : new SurveyOfficialLink(null, survey.PublicSlug);
-    }
-
-    /// <summary>
-    /// The machine-readable question graph behind <c>/api/backdoor/surveys/{id}</c>. Built on
-    /// <see cref="GetForEditAsync"/> so there is one read path, then flattened: localized text
-    /// resolved once in the survey's default culture, and the stored branching payload mirrored
-    /// onto <see cref="SurveyBranchCondition"/> so the persisted jsonb shape stays private.
-    /// </summary>
-    public async Task<SurveyDefinitionSnapshot?> GetDefinitionAsync(Guid surveyId, CancellationToken ct = default)
-    {
-        var detail = await GetForEditAsync(surveyId, ct);
-        if (detail is null) return null;
-
-        var e = detail.Editable;
-        var culture = e.DefaultCulture;
-
-        return new SurveyDefinitionSnapshot(
-            detail.Id,
-            e.Title.Resolve(culture, culture),
-            detail.Status,
-            culture,
-            [.. e.Questions
-                .OrderBy(q => q.PageNumber)
-                .ThenBy(q => q.Order)
-                .Select(q => new SurveyDefinitionQuestion(
-                    // Persisted questions always carry an id; the nullable is the authoring
-                    // shape, where a not-yet-saved question has none.
-                    q.Id ?? Guid.Empty,
-                    q.PageNumber,
-                    q.Order,
-                    q.Type,
-                    q.Prompt.Resolve(culture, culture),
-                    q.Type == SurveyQuestionType.Information ? q.HelpText.Resolve(culture, culture) : null,
-                    q.IsRequired,
-                    q.RatingMin,
-                    q.RatingMax,
-                    ToBranchCondition(q.ShowIf),
-                    q.GridSelectionMode,
-                    [.. (q.GridRows ?? [])
-                        .Select(row => new SurveyExportGridRow(row.Value, row.Label.Resolve(culture, culture)))],
-                    [.. (q.InformationImages ?? [])
-                        .Where(image => !string.IsNullOrWhiteSpace(image.StoragePath))
-                        .Select(image => new SurveyDefinitionImage(
-                            image.Id ?? Guid.Empty,
-                            $"/{image.StoragePath!.TrimStart('/')}",
-                            image.Label.Resolve(culture, culture),
-                            image.AltText.Resolve(culture, culture)))],
-                     [.. q.Options
-                         .OrderBy(o => o.Order)
-                         .Select(o => new SurveyExportOption(o.Value, o.Label.Resolve(culture, culture)))],
-                     ToRankedSettings(q.RankedSettings),
-                     q.RankedUnavailableOptionValues?.ToList()))]);
-    }
-
-    private static SurveyBranchCondition? ToBranchCondition(BranchCondition? condition) =>
-        condition is null
-            ? null
-            : new SurveyBranchCondition(
-                condition.Combine.ToString(),
-                [.. condition.Clauses.Select(c => new SurveyBranchClause(
-                    c.QuestionId, c.Operator.ToString(), c.OptionValues))]);
-
-    public async Task<SurveyDetail?> GetForEditAsync(Guid surveyId, CancellationToken ct = default)
-    {
-        var s = await repo.GetByIdAsync(surveyId, ct);
-        if (s is null) return null;
-
-        var input = new SurveyEditInput(
-            s.Title, s.Intro, s.ThankYou, s.InvitationEmailSubject, s.InvitationEmailMessage,
-            s.DefaultCulture, s.AllowAnonymous, s.OpensAt, s.ClosesAt,
-            s.AudienceType, s.AudienceTeamId, s.AudienceLoggedInSince, s.PublicSlug,
-            ToQuestionInputs(s),
-            s.IsAsociadoVote == true);
-
-        return new SurveyDetail(s.Id, s.Status, input, s.CreatedByUserId, s.RejectionNote);
-    }
+    public Task<SurveyDetail?> GetForEditAsync(Guid surveyId, CancellationToken ct = default) =>
+        definitionReader.GetForEditAsync(surveyId, ct);
 
     public Task<bool> HasSavedAnswersAsync(Guid surveyId, CancellationToken ct = default)
         => repo.HasSavedAnswersAsync(surveyId, ct);
 
     public async Task<SurveySaveResult> CreateAsync(SurveyEditInput input, Guid actorUserId, CancellationToken ct = default)
     {
-        var error = AudienceConfigurationError(
+        var error = SurveyDefinitionValidation.AudienceConfigurationError(
             input.AudienceType, input.AudienceTeamId, input.AudienceLoggedInSince, requireAudience: false);
         if (error is not null) return new(Error: error);
         var invitationEmailSubject = NormalizeLocalizedText(input.InvitationEmailSubject);
         var invitationEmailMessage = NormalizeLocalizedText(input.InvitationEmailMessage);
-        error = ValidateInvitationEmailCopy(invitationEmailSubject, invitationEmailMessage);
+        error = SurveyDefinitionValidation.ValidateInvitationEmailCopy(invitationEmailSubject, invitationEmailMessage);
         if (error is not null) return new(Error: error);
         var now = clock.GetCurrentInstant();
         var surveyId = Guid.NewGuid();
-        var (publicSlug, slugError) = PreparePublicSlugForWrite(input.PublicSlug);
+        var (publicSlug, slugError) = SurveyDefinitionValidation.PreparePublicSlugForWrite(input.PublicSlug);
         if (slugError is not null) return new(Error: slugError);
         var (questions, newStoragePaths, questionError) = await PrepareQuestionsAsync(
             surveyId, input, existing: null, allowRankedAvailabilityChanges: false, ct);
@@ -219,12 +119,12 @@ internal sealed class SurveyService(
         CancellationToken ct)
     {
         var actorUserId = viewer.UserId;
-        var error = AudienceConfigurationError(
+        var error = SurveyDefinitionValidation.AudienceConfigurationError(
             input.AudienceType, input.AudienceTeamId, input.AudienceLoggedInSince, requireAudience: false);
         if (error is not null) return new(Error: error);
         var invitationEmailSubject = NormalizeLocalizedText(input.InvitationEmailSubject);
         var invitationEmailMessage = NormalizeLocalizedText(input.InvitationEmailMessage);
-        error = ValidateInvitationEmailCopy(invitationEmailSubject, invitationEmailMessage);
+        error = SurveyDefinitionValidation.ValidateInvitationEmailCopy(invitationEmailSubject, invitationEmailMessage);
         if (error is not null) return new(Error: error);
         var now = clock.GetCurrentInstant();
         var existing = await repo.GetByIdAsync(surveyId, ct);
@@ -246,7 +146,7 @@ internal sealed class SurveyService(
             return new(Error: new("Surveys_Validation_VoteModeFrozen",
                 "Asociado vote mode cannot change after the survey has opened."));
         }
-        var (publicSlug, slugError) = PreparePublicSlugForWrite(input.PublicSlug);
+        var (publicSlug, slugError) = SurveyDefinitionValidation.PreparePublicSlugForWrite(input.PublicSlug);
         if (slugError is not null) return new(Error: slugError);
         var (questions, newStoragePaths, questionError) = await PrepareQuestionsAsync(
             surveyId, input, existing, allowRankedAvailabilityChanges, ct);
@@ -278,7 +178,7 @@ internal sealed class SurveyService(
         if (prepared.Error is not null) return ([], [], prepared.Error);
         try
         {
-            var questions = MapQuestions(surveyId, prepared.Input);
+            var questions = SurveyQuestionMapping.MapQuestions(surveyId, prepared.Input);
             if (existing is not null && !allowRankedAvailabilityChanges)
             {
                 var existingById = existing.Questions.ToDictionary(question => question.Id);
@@ -461,7 +361,7 @@ internal sealed class SurveyService(
         // Send validates the audience, and Open is not a state the author can edit out of — so a
         // misconfigured audience has to fail here, before approval is persisted, leaving the
         // survey in the queue where a Surveys Admin can reject it back to the author.
-        var audienceError = AudienceConfigurationError(
+        var audienceError = SurveyDefinitionValidation.AudienceConfigurationError(
             survey.AudienceType, survey.AudienceTeamId, survey.AudienceLoggedInSince, requireAudience: true);
         if (audienceError is not null)
             return new(Refusal: audienceError.DiagnosticMessage);
@@ -469,7 +369,7 @@ internal sealed class SurveyService(
         // Well-formed is not the same as non-empty: a Team audience whose team has since been
         // deleted passes configuration and resolves to nobody. Resolve here too, so that case
         // also fails in the queue rather than opening a survey that invites no one.
-        var recipients = await ResolveRecipientIdsAsync(
+        var recipients = await audience.ResolveRecipientIdsAsync(
             survey.AudienceType!.Value, survey.AudienceTeamId, survey.AudienceLoggedInSince, ct);
         if (recipients.Count == 0)
             return new(Refusal: "This survey's audience resolves to nobody to invite.");
@@ -515,11 +415,11 @@ internal sealed class SurveyService(
         if (survey?.AudienceType is null) return 0;
         var audienceType = survey.AudienceType.Value;
         if (Enum.IsDefined(audienceType) &&
-            AudienceConfigurationError(
+            SurveyDefinitionValidation.AudienceConfigurationError(
                 audienceType, survey.AudienceTeamId, survey.AudienceLoggedInSince, requireAudience: true) is not null)
             return 0;
 
-        var recipients = await ResolveRecipientIdsAsync(
+        var recipients = await audience.ResolveRecipientIdsAsync(
             audienceType, survey.AudienceTeamId, survey.AudienceLoggedInSince, ct);
         if (recipients.Count == 0) return 0;
         var participationRows = await repo.GetInvitationsAsync(surveyId, ct);
@@ -537,14 +437,14 @@ internal sealed class SurveyService(
             return new SendResult(0, 0, 0, "Survey not found.");
         if (survey.Status != SurveyStatus.Open)
             return new SendResult(0, 0, 0, "Invitations can only be sent for an Open survey.");
-        var audienceError = AudienceConfigurationError(
+        var audienceError = SurveyDefinitionValidation.AudienceConfigurationError(
             survey.AudienceType, survey.AudienceTeamId, survey.AudienceLoggedInSince, requireAudience: true);
         if (audienceError is not null)
             return new SendResult(0, 0, 0, audienceError.DiagnosticMessage);
         var audienceType = survey.AudienceType!.Value;
 
         var now = clock.GetCurrentInstant();
-        var target = await ResolveRecipientIdsAsync(
+        var target = await audience.ResolveRecipientIdsAsync(
             audienceType, survey.AudienceTeamId, survey.AudienceLoggedInSince, ct);
         var participationRows = await repo.GetInvitationsAsync(surveyId, ct);
         var alreadyInvited = await InvitedUserIdsResolvedAsync(participationRows, ct);
@@ -700,16 +600,8 @@ internal sealed class SurveyService(
             IsEligible: isEligible);
     }
 
-    public async Task<bool> IsEligibleAsociadoAsync(Guid userId, CancellationToken ct = default)
-    {
-        // Every caller passes an id a draft, invitation or response is stored under. A merged-away
-        // id resolves to an eligible survivor, but answering under the archived id would let one
-        // Asociado hold two ballots, so eligibility requires the stored id to be the live one.
-        var info = await userService.GetUserInfoAsync(userId, ct);
-        return info is not null && info.Id == userId
-            && IsEligibleAsociado(info)
-            && await governanceService.GetMembershipTierAsync(userId, ct) == MembershipTier.Asociado;
-    }
+    public Task<bool> IsEligibleAsociadoAsync(Guid userId, CancellationToken ct = default) =>
+        audience.IsEligibleAsociadoAsync(userId, ct);
 
     public async Task<Guid> StartIdentifiedDraftAsync(
         Guid surveyId,
@@ -804,10 +696,8 @@ internal sealed class SurveyService(
         CancellationToken ct = default)
     {
         // Invalid public URLs are lookup misses; authoring rejects invalid slugs instead.
-        if (string.IsNullOrWhiteSpace(slug)) return null;
-        var normalized = slug.Trim().ToLowerInvariant();
-        if (normalized.EnumerateRunes().Count() > PublicSlugMaxLength || ReservedSlugs.Contains(normalized))
-            return null;
+        var (normalized, slugError) = SurveyDefinitionValidation.PreparePublicSlugForWrite(slug);
+        if (normalized is null || slugError is not null) return null;
 
         var surveyId = await repo.GetIdByPublicSlugAsync(normalized, ct);
         if (surveyId is null) return null;
@@ -826,7 +716,7 @@ internal sealed class SurveyService(
         }
 
         var isEligible = editable.AudienceType is null
-            || (await ResolveRecipientIdsAsync(
+            || (await audience.ResolveRecipientIdsAsync(
                 editable.AudienceType.Value,
                 editable.AudienceTeamId,
                 editable.AudienceLoggedInSince,
@@ -899,7 +789,7 @@ internal sealed class SurveyService(
         // Drop answers to questions hidden under full branching (defends against tampered/stale posts).
         var visible = VisibleAnswers(survey, submission.Answers);
         var visibleAnswers = visible.Answers;
-        var questions = ToQuestionInputs(survey);
+        var questions = SurveyQuestionMapping.ToQuestionInputs(survey);
         var answerStates = visibleAnswers.ToDictionary(
             answer => answer.QuestionId,
             answer => new AnswerState(
@@ -1214,82 +1104,16 @@ internal sealed class SurveyService(
         return new SurveyWizardAdvanceResult(SurveyWizardOutcome.Submitted, []);
     }
 
-    public async Task<SurveyResultsView?> GetResultsAsync(Guid surveyId, CancellationToken ct = default)
-    {
-        var scoped = await GetScopedResultsAsync(surveyId, SurveyResultsScope.Combined, ct);
-        return scoped is { IsEmbargoed: false } ? scoped.Results : null;
-    }
+    public Task<SurveyResultsView?> GetResultsAsync(Guid surveyId, CancellationToken ct = default) =>
+        resultsReader.GetResultsAsync(surveyId, ct);
 
-    public async Task<SurveyScopedResults?> GetScopedResultsAsync(
-        Guid surveyId,
-        SurveyResultsScope scope,
-        CancellationToken ct = default)
-    {
-        var survey = await repo.GetByIdAsync(surveyId, ct);
-        if (survey is null) return null;
+    public Task<SurveyScopedResults?> GetScopedResultsAsync(
+        Guid surveyId, SurveyResultsScope scope, CancellationToken ct = default) =>
+        resultsReader.GetScopedResultsAsync(surveyId, scope, ct);
 
-        var culture = survey.DefaultCulture;
-        var responses = await repo.GetResponsesForResultsAsync(surveyId, ct);
-        var embargoed = survey.IsAsociadoVote == true && survey.Status != SurveyStatus.Closed;
-        var selectedResponses = responses
-            .Where(response => MatchesScope(response.Anonymity, scope))
-            .ToList();
-        var invitations = await repo.GetInvitationsAsync(surveyId, ct);
-        var sentInvitations = invitations.Where(invitation => invitation.SentAt.HasValue).ToList();
-        var invitedCount = sentInvitations.Count;
-        var responseCount = responses.Count;
-        var completedInvitationCount = sentInvitations.Count(invitation => invitation.Completed);
-        var responseRate = invitedCount == 0 ? 0d : (double)completedInvitationCount / invitedCount;
-
-        var questions = embargoed
-            ? []
-            : survey.Questions
-                .Where(q => q.Type != SurveyQuestionType.Information)
-                .Select(q => SurveyQuestionResults.BuildQuestionAggregate(q, selectedResponses, culture) with
-                {
-                    PageNumber = q.PageNumber,
-                    Order = q.Order,
-                })
-                .ToList();
-
-        var funnel = new SurveyFunnel(
-            LinkStarted: invitations.Count(invitation => invitation.Started),
-            LinkFinished: responses.Count(r => r.InputMethod == SurveyInputMethod.UserSpecificLink),
-            SlugStarted: survey.PublicStartedCount,
-            SlugFinished: responses.Count(r => r.InputMethod == SurveyInputMethod.Slug));
-
-        var identified = embargoed || survey.IsAsociadoVote == true
-            ? []
-            : BuildIdentifiedRespondents(survey, responses, culture);
-        var unattributedBallots = !embargoed && survey.IsAsociadoVote == true
-            ? BuildUnattributedBallots(survey, selectedResponses, culture)
-            : [];
-        var rankedQuestions = embargoed
-            ? new Dictionary<Guid, RankedQuestionResult>()
-            : survey.Questions
-                .Where(question => question.Type == SurveyQuestionType.RankedChoice)
-                .ToDictionary(
-                    question => question.Id,
-                    question => SurveyQuestionResults.BuildRankedQuestionResult(question, selectedResponses, culture));
-
-        return new SurveyScopedResults(
-            new SurveyResultsView(
-                surveyId,
-                survey.Title.Resolve(culture, culture),
-                survey.Status,
-                invitedCount,
-                responseCount,
-                responseRate,
-                funnel,
-                questions,
-                identified),
-            embargoed ? 0 : selectedResponses.Count,
-            scope,
-            embargoed,
-            rankedQuestions,
-            survey.IsAsociadoVote == true,
-            unattributedBallots);
-    }
+    public Task<SurveyResponseExport?> GetResponseExportAsync(
+        Guid surveyId, Guid actorUserId, CancellationToken ct = default) =>
+        resultsReader.GetResponseExportAsync(surveyId, actorUserId, ct);
 
     public async Task<SurveySaveResult> SetRankedAvailabilityAsync(
         Guid surveyId,
@@ -1324,207 +1148,13 @@ internal sealed class SurveyService(
             ct);
     }
 
-    private static bool MatchesScope(ResponseAnonymity anonymity, SurveyResultsScope scope) => scope switch
-    {
-        SurveyResultsScope.Unique => anonymity is ResponseAnonymity.Identified or ResponseAnonymity.CompletionTracked,
-        SurveyResultsScope.Anonymous => anonymity == ResponseAnonymity.Anonymous,
-        _ => true,
-    };
-
-    public async Task<SurveyResponseExport?> GetResponseExportAsync(Guid surveyId, Guid actorUserId, CancellationToken ct = default)
-    {
-        var survey = await repo.GetByIdAsync(surveyId, ct);
-        if (survey is null) return null;
-        if (survey.IsAsociadoVote == true && survey.Status != SurveyStatus.Closed) return null;
-
-        var culture = survey.DefaultCulture;
-        var responses = await repo.GetResponsesForResultsAsync(surveyId, ct);
-
-        var orderedQuestions = survey.Questions
-            .Where(q => q.Type != SurveyQuestionType.Information)
-            .OrderBy(q => q.PageNumber).ThenBy(q => q.Order)
-            .ToList();
-
-        var questions = orderedQuestions
-            .Select(q => new SurveyExportQuestion(
-                q.Id,
-                q.Prompt.Resolve(culture, culture),
-                q.Type,
-                q.Options.OrderBy(o => o.Order)
-                    .Select(o => new SurveyExportOption(o.Value, o.Label.Resolve(culture, culture)))
-                    .ToList(),
-                q.GridSelectionMode,
-                 q.GridRows?.Select(row => new SurveyExportGridRow(
-                     row.Value,
-                     row.Label.Resolve(culture, culture))).ToList(),
-                 ToRankedSettings(q.RankedSettings),
-                 q.RankedUnavailableOptionValues?.ToList()))
-            .ToList();
-
-        var answerContext = BuildRespondentAnswerContext(survey, culture);
-
-        // Identity is resolved only for Identified rows in ordinary surveys. Asociado exports never
-        // expose identity, timestamps or submission order, including for legacy Identified rows.
-        var identifiedUserIds = responses
-            .Where(r => survey.IsAsociadoVote != true
-                && r.Anonymity == ResponseAnonymity.Identified
-                && r.UserId.HasValue)
-            .Select(r => r.UserId!.Value)
-            .Distinct()
-            .ToList();
-        var users = identifiedUserIds.Count == 0
-            ? new Dictionary<Guid, UserInfo>()
-            : await userService.GetUserInfosAsync(identifiedUserIds, ct);
-
-        var rows = (survey.IsAsociadoVote == true
-                ? responses.OrderBy(r => r.Id)
-                : responses.OrderBy(r => r.SubmittedAt))
-            .Select(r =>
-            {
-                Guid? userId = null;
-                string? userName = null;
-                if (survey.IsAsociadoVote != true
-                    && r.Anonymity == ResponseAnonymity.Identified
-                    && r.UserId is { } id)
-                {
-                    userId = id;
-                    userName = users.TryGetValue(id, out var user) ? user.BurnerName : id.ToString();
-                }
-
-                var answers = r.Answers
-                    .Select(a => new SurveyExportAnswer(
-                        a.QuestionId,
-                        a.SelectedOptionValues,
-                        ResolveSelectedLabels(a, answerContext.OptionLabels),
-                        a.TextValue,
-                        a.RatingValue,
-                        CopyGridSelections(a),
-                         answerContext.QuestionsById.TryGetValue(a.QuestionId, out var question)
-                             ? ResolveGridSelections(a, question, culture)
-                             : [],
-                         CopyRankedBallot(a)))
-                    .ToList();
-
-                return new SurveyExportRow(
-                    r.Id, r.Anonymity, r.InputMethod, r.Culture,
-                    survey.IsAsociadoVote == true ? null : r.SubmittedAt, userId, userName, answers);
-            })
-            .ToList();
-
-        await auditLog.LogAsync(SurveysAuditActions.SurveyResponsesExported, "Survey", surveyId,
-            $"Survey responses exported: {rows.Count} rows", actorUserId);
-        return new SurveyResponseExport(surveyId, survey.Title.Resolve(culture, culture), culture, questions, rows);
-    }
-
     /// <summary>
     /// Only Identified responses carry a <c>UserId</c>; for CompletionTracked/Anonymous respondents and the merely
     /// invited, the invitation slice is the record instead. Every slice is always emitted (empty, never null) so the
     /// export keys stay stable.
     /// </summary>
-    public async Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct)
-    {
-        var user = await userService.GetUserInfoAsync(userId, ct);
-        var userIds = user?.AllUserIds ?? [userId];
-        var responses = new List<SurveyResponse>();
-        var invitations = new List<SurveyInvitation>();
-        foreach (var id in userIds)
-        {
-            responses.AddRange(await repo.GetIdentifiedResponsesForUserAsync(id, ct));
-            invitations.AddRange(await repo.GetInvitationsForUserAsync(id, ct));
-        }
-
-        // Load each distinct survey definition once (few at this scale) to resolve titles, prompts, and labels.
-        var definitions = new Dictionary<Guid, Survey>();
-        foreach (var surveyId in responses.Select(r => r.SurveyId).Distinct())
-        {
-            var survey = await repo.GetByIdAsync(surveyId, ct);
-            if (survey is not null) definitions[surveyId] = survey;
-        }
-
-        var shaped = responses
-            .OrderBy(r => r.SubmittedAt)
-            .Select(r =>
-            {
-                definitions.TryGetValue(r.SurveyId, out var survey);
-                var culture = string.IsNullOrEmpty(r.Culture)
-                    ? survey?.DefaultCulture ?? "en"
-                    : r.Culture;
-
-                var answerContext = BuildRespondentAnswerContext(survey, culture);
-
-                return new
-                {
-                    Survey = survey?.Title.Resolve(culture, culture) ?? r.SurveyId.ToString(),
-                    SubmittedAt = r.SubmittedAt.ToIso8601(),
-                    Culture = culture,
-                    Answers = r.Answers.Select(a => new
-                    {
-                        Question = answerContext.Prompts.GetValueOrDefault(a.QuestionId, string.Empty),
-                        SelectedLabels = ResolveSelectedLabels(a, answerContext.OptionLabels),
-                        GridSelections = CopyGridSelections(a),
-                        GridSelectionLabels = answerContext.QuestionsById.TryGetValue(a.QuestionId, out var question)
-                             ? ResolveGridSelections(a, question, culture)
-                             : [],
-                        RankedBallot = CopyRankedBallot(a),
-                        RankedBallotLabels = ResolveRankedBallot(a, answerContext.OptionLabels),
-                        a.TextValue,
-                        a.RatingValue,
-                    }).ToList(),
-                };
-            })
-            .ToList();
-
-        // Authoring is open to any approved human, so a member's own surveys are their
-        // personal data too — Drafts nobody else can see included.
-        var authored = (await repo.GetSurveysAuthoredByAsync(user?.Id ?? userId, ct))
-            .OrderBy(s => s.CreatedAt)
-            .Select(s => new
-            {
-                Survey = s.Title.Resolve(s.DefaultCulture, s.DefaultCulture),
-                Status = s.Status.ToString(),
-                s.RejectionNote,
-                CreatedAt = s.CreatedAt.ToIso8601(),
-                QuestionCount = s.Questions.Count
-            })
-            .ToList();
-
-        // The invitation ledger. Most responses are not Identified, so for someone who was only
-        // invited — or who answered under completion tracking — this is the only record of theirs
-        // the section holds. The timestamps here are invitation-side and say nothing about when a
-        // response arrived, so they do not correlate with an anonymous answer.
-        foreach (var surveyId in invitations.Select(i => i.SurveyId).Distinct())
-        {
-            if (definitions.ContainsKey(surveyId)) continue;
-            var survey = await repo.GetByIdAsync(surveyId, ct);
-            if (survey is not null) definitions[surveyId] = survey;
-        }
-
-        var invited = invitations
-            .OrderBy(i => i.CreatedAt)
-            .Select(i =>
-            {
-                definitions.TryGetValue(i.SurveyId, out var survey);
-                var culture = survey?.DefaultCulture ?? "en";
-                return new
-                {
-                    Survey = survey?.Title.Resolve(culture, culture) ?? i.SurveyId.ToString(),
-                    InvitedAt = i.CreatedAt.ToIso8601(),
-                    SentAt = i.SentAt.ToIso8601(),
-                    EmailStatus = i.LatestEmailStatus?.ToString(),
-                    ReminderSentAt = i.ReminderSentAt.ToIso8601(),
-                    i.Started,
-                    i.Completed
-                };
-            })
-            .ToList();
-
-        return
-        [
-            new UserDataSlice(SurveyResponses, shaped),
-            new UserDataSlice(AuthoredSurveys, authored),
-            new UserDataSlice(SurveyInvitations, invited)
-        ];
-    }
+    public Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct) =>
+        dataExport.ContributeForUserAsync(userId, ct);
 
     private static readonly IReadOnlyDictionary<string, string?> Erasure =
         new Dictionary<string, string?>(StringComparer.Ordinal)
@@ -1564,182 +1194,6 @@ internal sealed class SurveyService(
         Guid mergedFromUserId, Guid mergedToUserId, Guid actorUserId, Instant now, CancellationToken ct)
         => repo.ReassignAuthorshipAsync(mergedFromUserId, mergedToUserId, now, ct);
 
-    /// <summary>Builds the Identified-only drill-down; views render identities by user ID. Other tiers never appear (no identity exposure).</summary>
-    private static IReadOnlyList<RespondentDetail> BuildIdentifiedRespondents(
-        Survey survey, IReadOnlyList<SurveyResponse> responses, string culture)
-    {
-        var identified = responses
-            .Where(r => r.Anonymity == ResponseAnonymity.Identified && r.UserId.HasValue)
-            .ToList();
-        if (identified.Count == 0) return [];
-
-        var answerContext = BuildRespondentAnswerContext(survey, culture);
-
-        return identified
-            .Select(r =>
-            {
-                var answers = BuildRespondentAnswers(r, answerContext, culture);
-                return new RespondentDetail(r.UserId!.Value, r.SubmittedAt, answers) { ResponseId = r.Id };
-            })
-            .ToList();
-    }
-
-    private static IReadOnlyList<UnattributedBallotDetail> BuildUnattributedBallots(
-        Survey survey, IReadOnlyList<SurveyResponse> responses, string culture)
-    {
-        var answerContext = BuildRespondentAnswerContext(survey, culture);
-        return responses
-            .OrderBy(response => response.Id)
-            .Select(response => new UnattributedBallotDetail(
-                BuildRespondentAnswers(response, answerContext, culture)))
-            .ToList();
-    }
-
-    private static RespondentAnswerContext BuildRespondentAnswerContext(Survey? survey, string culture)
-    {
-        var questions = survey?.Questions ?? [];
-        return new(
-            questions.ToDictionary(
-                question => question.Id,
-                question => question.Options.ToDictionary(
-                    option => option.Value,
-                    option => option.Label.Resolve(culture, culture),
-                    StringComparer.Ordinal)),
-            questions.ToDictionary(
-                question => question.Id,
-                question => question.Prompt.Resolve(culture, culture)),
-            questions.ToDictionary(question => question.Id));
-    }
-
-    private static IReadOnlyList<RespondentAnswer> BuildRespondentAnswers(
-        SurveyResponse response, RespondentAnswerContext context, string culture) =>
-        response.Answers
-            .Select(answer => new RespondentAnswer(
-                answer.QuestionId,
-                context.Prompts.GetValueOrDefault(answer.QuestionId, string.Empty),
-                ResolveSelectedLabels(answer, context.OptionLabels),
-                answer.TextValue,
-                answer.RatingValue,
-                context.QuestionsById.TryGetValue(answer.QuestionId, out var question)
-                    ? ResolveGridSelections(answer, question, culture)
-                    : [],
-                ResolveRankedBallot(answer, context.OptionLabels)))
-            .ToList();
-
-    private static IReadOnlyList<string> ResolveSelectedLabels(
-        SurveyAnswer answer, IReadOnlyDictionary<Guid, Dictionary<string, string>> optionLabels)
-    {
-        if (answer.SelectedOptionValues.Count == 0) return [];
-        var labels = optionLabels.GetValueOrDefault(answer.QuestionId);
-        return answer.SelectedOptionValues
-            .Select(v => labels is not null && labels.TryGetValue(v, out var label) ? label : v)
-            .ToList();
-    }
-
-    private static IReadOnlyList<ResolvedGridSelection> ResolveGridSelections(
-        SurveyAnswer answer, SurveyQuestion question, string culture)
-    {
-        if (answer.GridSelections is null) return [];
-
-        var rows = (question.GridRows ?? []).ToDictionary(
-            row => row.Value,
-            row => row.Label.Resolve(culture, culture),
-            StringComparer.Ordinal);
-        var columns = question.Options.ToDictionary(
-            option => option.Value,
-            option => option.Label.Resolve(culture, culture),
-            StringComparer.Ordinal);
-        return answer.GridSelections
-            .Where(selection => selection.Value.Count > 0)
-            .Select(selection => new ResolvedGridSelection(
-                selection.Key,
-                rows.GetValueOrDefault(selection.Key, selection.Key),
-                selection.Value.ToList(),
-                selection.Value
-                    .Select(value => columns.GetValueOrDefault(value, value))
-                    .ToList()))
-            .ToList();
-    }
-
-    private static IReadOnlyDictionary<string, IReadOnlyList<string>>? CopyGridSelections(SurveyAnswer answer)
-        => answer.GridSelections?.ToDictionary(
-            selection => selection.Key,
-            selection => (IReadOnlyList<string>)selection.Value.ToList(),
-            StringComparer.Ordinal);
-
-    private static SurveyRankedSettings? ToRankedSettings(RankedQuestionSettings? settings)
-        => settings is null
-            ? null
-            : new SurveyRankedSettings(
-                settings.AllowEqualRanks,
-                settings.AllowReject,
-                settings.OfficialMethod.ToString());
-
-    private static SurveyRankedBallot? CopyRankedBallot(SurveyAnswer answer)
-        => answer.RankedValue is null
-            ? null
-            : new SurveyRankedBallot(
-                [.. answer.RankedValue.RankGroups.Select(group => (IReadOnlyList<string>)[.. group])],
-                [.. answer.RankedValue.Rejected]);
-
-    private static ResolvedRankedBallot? ResolveRankedBallot(
-        SurveyAnswer answer,
-        IReadOnlyDictionary<Guid, Dictionary<string, string>> optionLabels)
-    {
-        if (answer.RankedValue is null) return null;
-
-        var labels = optionLabels.GetValueOrDefault(answer.QuestionId);
-        string Resolve(string value) =>
-            labels is not null && labels.TryGetValue(value, out var label) ? label : value;
-
-        return new ResolvedRankedBallot(
-            [.. answer.RankedValue.RankGroups
-                .Select(group => (IReadOnlyList<string>)[.. group.Select(Resolve)])],
-            [.. answer.RankedValue.Rejected.Select(Resolve)]);
-    }
-
-    private static IReadOnlyList<QuestionInput> ToQuestionInputs(Survey survey)
-        => survey.Questions
-            .OrderBy(question => question.PageNumber)
-            .ThenBy(question => question.Order)
-            .Select(question => new QuestionInput(
-                question.Id,
-                question.PageNumber,
-                question.Order,
-                question.Type,
-                question.Prompt,
-                question.HelpText,
-                question.IsRequired,
-                question.RatingMin,
-                question.RatingMax,
-                question.RatingMinLabel,
-                question.RatingMaxLabel,
-                question.ShowIf,
-                question.Options
-                    .OrderBy(option => option.Order)
-                    .Select(option => new OptionInput(
-                        option.Id,
-                        option.Order,
-                        option.Value,
-                        option.Label))
-                    .ToList(),
-                question.GridSelectionMode,
-                question.GridRows?
-                    .Select(row => new GridRowInput(row.Value, row.Label))
-                    .ToList(),
-                question.InformationImages?
-                    .Select(image => new InformationImageInput(
-                        image.Id,
-                        image.Label,
-                        image.AltText,
-                        image.StoragePath,
-                        image.ContentType,
-                        image.FileName))
-                    .ToList(),
-                question.RankedSettings,
-                question.RankedUnavailableOptionValues))
-            .ToList();
-
     private static void ReplaceWizardAnswers(
         SurveyWizardState state,
         IReadOnlyList<SurveyAnswerInput> answers)
@@ -1770,7 +1224,7 @@ internal sealed class SurveyService(
         Survey survey,
         IReadOnlyList<SurveyAnswerInput> answers)
     {
-        var questions = ToQuestionInputs(survey).ToDictionary(q => q.Id!.Value);
+        var questions = SurveyQuestionMapping.ToQuestionInputs(survey).ToDictionary(q => q.Id!.Value);
         var invalidAnswers = new HashSet<Guid>();
         var normalizedAnswers = answers
             .Where(a => questions.TryGetValue(a.QuestionId, out var question)
@@ -1847,145 +1301,11 @@ internal sealed class SurveyService(
                 answer.RankedValue))
             .ToList();
 
-    /// <summary>
-    /// Resolves an audience predicate into the set of recipient user ids via cross-section read
-    /// interfaces. No marketing opt-out filter — surveys are System/always-send.
-    /// </summary>
-    private async Task<IReadOnlySet<Guid>> ResolveRecipientIdsAsync(
-        SurveyAudienceType type, Guid? teamId, Instant? loggedInSince, CancellationToken ct)
-    {
-        switch (type)
-        {
-            case SurveyAudienceType.Team:
-                {
-                    if (teamId is null) return new HashSet<Guid>();
-                    var team = await teamService.GetTeamAsync(teamId.Value, ct);
-                    return team?.Members.Select(m => m.UserId).ToHashSet() ?? new HashSet<Guid>();
-                }
-
-            case SurveyAudienceType.AllActiveMembers:
-                return (await ActiveMemberIdsAsync(ct)).ToHashSet();
-
-            case SurveyAudienceType.Asociados:
-                {
-                    var tiers = await governanceService.GetMembershipTiersAsync(ct);
-                    return (await userService.GetAllUserInfosAsync(ct))
-                        .Where(user => IsEligibleAsociado(user)
-                            && tiers.GetValueOrDefault(user.Id) == MembershipTier.Asociado)
-                        .Select(user => user.Id)
-                        .ToHashSet();
-                }
-
-            case SurveyAudienceType.TicketHolders:
-                {
-                    var orders = await ticketService.GetTicketOrdersAsync(ct);
-                    return orders
-                        .Where(o => o.IsCurrentEvent)
-                        .SelectMany(o => o.Attendees)
-                        .Where(a => a.MatchedUserId.HasValue
-                            && (a.Status == TicketAttendeeStatus.Valid || a.Status == TicketAttendeeStatus.CheckedIn))
-                        .Select(a => a.MatchedUserId!.Value)
-                        .ToHashSet();
-                }
-
-            case SurveyAudienceType.ShiftParticipants:
-                {
-                    var activeIds = await ActiveMemberIdsAsync(ct);
-                    var views = await shiftView.GetUsersAsync(activeIds, ct);
-                    return views
-                        .Where(kv => kv.Value.HasShift)
-                        .Select(kv => kv.Key)
-                        .ToHashSet();
-                }
-
-            case SurveyAudienceType.LoggedInSince:
-                {
-                    // Null LastLoginAt never matches (predates tracking). Deliberately no IsApproved filter:
-                    // mid-onboarding users belong in this audience. Deletion-pending, rejected and suspended
-                    // accounts can't reach the survey, so they are never invited.
-                    if (loggedInSince is null) return new HashSet<Guid>();
-                    var users = await userService.GetAllUserInfosAsync(ct);
-                    return users
-                        .Where(u => u.LastLoginAt is { } lastLogin && lastLogin >= loggedInSince.Value)
-                        .Where(u => !u.IsDeletionPending)
-                        .Where(u => u.State is not (UserState.Rejected or UserState.Suspended or UserState.AdminSuspended))
-                        .Select(u => u.Id)
-                        .ToHashSet();
-                }
-
-            default:
-                // Unknown audience type resolves to nobody, silently — the send would look like
-                // it worked while inviting no one.
-                logger.SwitchDefaultWarn(type);
-                return new HashSet<Guid>();
-        }
-    }
-
-    private async Task<List<Guid>> ActiveMemberIdsAsync(CancellationToken ct)
-    {
-        var users = await userService.GetAllUserInfosAsync(ct);
-        return users
-            .Where(u => u.State == UserState.Active && !u.IsFake && !u.IsDeletionPending)
-            .Select(u => u.Id)
-            .ToList();
-    }
-
-    /// <summary>The account half of Asociado eligibility; the tier half is Governance's
-    /// (<see cref="IGovernanceService.GetMembershipTierAsync"/>). The Consent Coordinator's review
-    /// does not gate voting.</summary>
-    private static bool IsEligibleAsociado(UserInfo? user)
-        => user is
-        {
-            IsGdprAnonymized: false,
-            IsDeletionPending: false,
-            IsMerged: false,
-            State: UserState.Active,
-        };
-
-    private static SurveyAuthoringError? AudienceConfigurationError(
-        SurveyAudienceType? type, Guid? teamId, Instant? loggedInSince, bool requireAudience)
-    {
-        if (type is null)
-            return requireAudience ? new(null, "Survey has no audience to invite.") : null;
-        if (!Enum.IsDefined(type.Value))
-            return new("Surveys_Validation_AudienceUnsupported", "The selected survey audience is not supported.");
-        if (type == SurveyAudienceType.Team && teamId is null)
-            return new("Surveys_Admin_Builder_Error_TeamRequired", "A team is required for the Team audience.");
-        if (type == SurveyAudienceType.LoggedInSince && loggedInSince is null)
-            return new("Surveys_Admin_Builder_Error_LoggedInSinceRequired", "A cutoff date is required for the Logged in since audience.");
-        return null;
-    }
-
     private static LocalizedText NormalizeLocalizedText(LocalizedText text)
         => new(text.Values.ToDictionary(
             pair => pair.Key,
             pair => pair.Value?.Trim() ?? string.Empty,
             StringComparer.OrdinalIgnoreCase));
-
-    private static SurveyAuthoringError? ValidateInvitationEmailCopy(
-        LocalizedText subject,
-        LocalizedText message)
-    {
-        var multilineSubject = subject.Values.FirstOrDefault(
-            pair => pair.Value.Contains('\r', StringComparison.Ordinal)
-                    || pair.Value.Contains('\n', StringComparison.Ordinal));
-        if (!string.IsNullOrEmpty(multilineSubject.Key))
-            return new("Surveys_Validation_SubjectSingleLine",
-                $"Survey invitation email subjects must be a single line ({multilineSubject.Key}).", multilineSubject.Key);
-
-        return ValidateLocalizedLength(subject, InvitationEmailSubjectMaxLength,
-                   "Survey invitation email subjects", "Surveys_Validation_SubjectLength")
-               ?? ValidateLocalizedLength(message, InvitationEmailMessageMaxLength,
-                   "Survey invitation email messages", "Surveys_Validation_MessageLength");
-
-        static SurveyAuthoringError? ValidateLocalizedLength(
-            LocalizedText text, int maxLength, string description, string key)
-        {
-            var offender = text.Values.FirstOrDefault(pair => pair.Value.Length > maxLength);
-            return string.IsNullOrEmpty(offender.Key) ? null : new(key,
-                $"{description} must be {maxLength} characters or fewer ({offender.Key}).", maxLength, offender.Key);
-        }
-    }
 
     private async Task CleanupFailedInformationImageUploadAsync(
         Guid surveyId, IReadOnlyList<string> newStoragePaths)
@@ -2005,84 +1325,5 @@ internal sealed class SurveyService(
         }
     }
 
-    /// <summary>Maps builder input to tracked entities, assigning new ids where the input id is null.</summary>
-    private static List<SurveyQuestion> MapQuestions(Guid surveyId, SurveyEditInput input)
-        => input.Questions.Select(q =>
-        {
-            var questionId = q.Id ?? Guid.NewGuid();
-            return new SurveyQuestion
-            {
-                Id = questionId,
-                SurveyId = surveyId,
-                PageNumber = q.PageNumber,
-                Order = q.Order,
-                Type = q.Type,
-                Prompt = q.Prompt,
-                HelpText = q.HelpText,
-                IsRequired = q.IsRequired,
-                RatingMin = q.RatingMin,
-                RatingMax = q.RatingMax,
-                RatingMinLabel = q.RatingMinLabel,
-                RatingMaxLabel = q.RatingMaxLabel,
-                GridSelectionMode = q.Type == SurveyQuestionType.Grid ? q.GridSelectionMode : null,
-                GridRows = q.Type == SurveyQuestionType.Grid
-                    ? (q.GridRows ?? []).Select(row => new SurveyGridRow(row.Value, row.Label)).ToList()
-                    : null,
-                InformationImages = q.Type == SurveyQuestionType.Information
-                    ? (q.InformationImages ?? []).Select(image => new SurveyInformationImage(
-                        image.Id!.Value,
-                        image.StoragePath!,
-                        image.ContentType!,
-                        image.FileName!,
-                        image.Label,
-                        image.AltText)).ToList()
-                    : null,
-                RankedSettings = q.Type == SurveyQuestionType.RankedChoice
-                    ? q.RankedSettings ?? RankedQuestionSettings.Default
-                    : null,
-                RankedUnavailableOptionValues = q.Type == SurveyQuestionType.RankedChoice
-                    ? (q.RankedUnavailableOptionValues ?? []).Distinct(StringComparer.Ordinal).ToList()
-                    : null,
-                ShowIf = q.ShowIf,
-                Options = q.Options.Select(o => new SurveyQuestionOption
-                {
-                    Id = o.Id ?? Guid.NewGuid(),
-                    QuestionId = questionId,
-                    Order = o.Order,
-                    Value = o.Value,
-                    Label = o.Label,
-                }).ToList(),
-            };
-        }).ToList();
 
-    private sealed record RespondentAnswerContext(
-        IReadOnlyDictionary<Guid, Dictionary<string, string>> OptionLabels,
-        IReadOnlyDictionary<Guid, string> Prompts,
-        IReadOnlyDictionary<Guid, SurveyQuestion> QuestionsById);
-
-    /// <summary>
-    /// Slugs that would shadow the literal-segment routes under <c>/Survey</c> (the answering wizard
-    /// and the admin area). Authoring rejects these so a public link can never collide with a real action.
-    /// </summary>
-    private static readonly IReadOnlySet<string> ReservedSlugs =
-        new HashSet<string>(StringComparer.Ordinal) { "admin", "answer" };
-
-    /// <summary>Normalizes authoring input (null when blank) and rejects overlong/reserved slugs.</summary>
-    private static (string? Slug, SurveyAuthoringError? Error) PreparePublicSlugForWrite(string? slug)
-    {
-        if (string.IsNullOrWhiteSpace(slug)) return (null, null);
-        var normalized = slug.Trim().ToLowerInvariant();
-        // PostgreSQL's varchar limit counts characters, not UTF-16 code units.
-        if (normalized.EnumerateRunes().Count() > PublicSlugMaxLength)
-        {
-            return (null, new("Surveys_Validation_SlugLength",
-                $"The public link slug must be no longer than {PublicSlugMaxLength} characters.", PublicSlugMaxLength));
-        }
-        if (ReservedSlugs.Contains(normalized))
-        {
-            return (null, new("Surveys_Validation_SlugReserved", $"Slug '{normalized}' is reserved.", normalized));
-        }
-
-        return (normalized, null);
-    }
 }

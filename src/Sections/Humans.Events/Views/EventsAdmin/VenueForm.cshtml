@@ -5,7 +5,7 @@
     ViewData[Humans.Base.ViewComponents.AdminNavComposition.ParentKey] = nameof(Humans.Events.Controllers.EventsAdminController.Venues);
 }
 
-<h2>@ViewData["Title"]</h2>
+<page-header title="@(ViewData["Title"]?.ToString())" />
 
 <div class="card mw-600">
     <div class="card-body">

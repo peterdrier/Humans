@@ -289,6 +289,27 @@ public sealed class WorkloadServiceTests : ShiftsTestHarness
     }
 
     [HumansFact]
+    public async Task ByDepartment_RoleHourProducts_PreserveDecimalTotalsBeyondIntegerRange()
+    {
+        await SeedEventAsync();
+        var team = await SeedWorkloadTeamAsync("Board");
+        var alice = await SeedUserWithProfileAsync("Alice");
+        var bob = await SeedUserWithProfileAsync("Bob");
+        StubTeams(TeamWithRoles(team.Id, "Board", "board",
+            Role(team.Id, "Board", "board", RolePeriod.YearRound,
+                estimatedHours: int.MaxValue, slotCount: 2, alice.Id, bob.Id)));
+
+        var report = await _service.GetForActiveEventAsync(Xunit.TestContext.Current.CancellationToken);
+
+        report.Should().NotBeNull();
+        var department = report.ByDepartment.Should().ContainSingle().Which;
+        department.PlannedHours.Should().Be(4_294_967_294m);
+        department.FilledHours.Should().Be(4_294_967_294m);
+        report.ByPerson.Should().HaveCount(2).And.AllSatisfy(person =>
+            person.YearRoundHours.Should().Be(int.MaxValue));
+    }
+
+    [HumansFact]
     public async Task RoleHours_FromInactiveTeams_AreExcluded()
     {
         // A retired (deactivated) team can still carry role assignments — they

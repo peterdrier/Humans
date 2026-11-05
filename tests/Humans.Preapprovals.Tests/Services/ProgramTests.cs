@@ -290,11 +290,11 @@ public sealed class ProgramTests : PreapprovalsTestHarness
         await NewService().UpdateProgramAsync(program.Id, Save(claimBy: newDate), actor, request.Token);
 
         request.IsCancellationRequested.Should().Be(cancelAfterSave);
-        await NotificationResolve.Received(1).ResolveBySourceKeyAsync(PreapprovalsNotificationSources.PreapprovalFileBy, PreapprovalService.FileBySourceKey(open.Id), actor, CancellationToken.None);
-        await NotificationResolve.DidNotReceive().ResolveBySourceKeyAsync(PreapprovalsNotificationSources.PreapprovalFileBy, PreapprovalService.FileBySourceKey(claimed.Id), Arg.Any<Guid?>(), Arg.Any<CancellationToken>());
+        await NotificationResolve.Received(1).ResolveBySourceKeyAsync(PreapprovalsNotificationSources.PreapprovalFileBy, PreapprovalNotices.FileBySourceKey(open.Id), actor, CancellationToken.None);
+        await NotificationResolve.DidNotReceive().ResolveBySourceKeyAsync(PreapprovalsNotificationSources.PreapprovalFileBy, PreapprovalNotices.FileBySourceKey(claimed.Id), Arg.Any<Guid?>(), Arg.Any<CancellationToken>());
         await Notifications.Received(1).SendAsync(PreapprovalsNotificationSources.PreapprovalFileBy, NotificationClass.Actionable, NotificationPriority.High,
             Arg.Is<string>(t => t.Contains("2026 Creativity")), Arg.Is<IReadOnlyList<Guid>>(r => r.Single() == open.BeneficiaryUserId),
-            Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), PreapprovalService.FileBySourceKey(open.Id), Arg.Any<CancellationToken>());
+            Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), PreapprovalNotices.FileBySourceKey(open.Id), Arg.Any<CancellationToken>());
         await Email.Received(1).SendAsync(Arg.Is<Humans.Email.Contracts.EmailMessage>(m =>
             m.TemplateName == "preapproval_deadline_changed" && m.Culture == "es"), CancellationToken.None);
         (await OpenContext().Programs.SingleAsync(Ct)).ClaimBy.Should().Be(newDate);

@@ -15,7 +15,7 @@ namespace Humans.Calendar.Tests.Models;
 
 /// <summary>
 /// The form's timezone box is free text, and the controller needs a zone object out of it to
-/// convert the posted local times — so unlike <c>CalendarService.TimezoneRefusal</c>, which
+/// convert the posted local times — so unlike <c>CalendarRecurrenceRules.TimezoneRefusal</c>, which
 /// treats a blank timezone as valid (a non-recurring event stores none), blank is unusable here.
 /// </summary>
 public sealed class CalendarEventFormViewModelTests

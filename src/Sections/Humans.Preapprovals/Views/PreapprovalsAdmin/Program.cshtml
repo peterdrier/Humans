@@ -38,7 +38,7 @@
     Func<GrantInfo, IHtmlContent> beneficiaryCell =
         @<text><vc:human user-id="@item.BeneficiaryUserId" layout="AvatarName" size="28" /></text>;
     Func<GrantInfo, IHtmlContent> statusCell = @<text>
-        <span class="badge @EnumBadgeMap.For(item.Status)">@item.Status</span>
+        <status-badge value="@item.Status" />
         @if (item.DeadlinePassed(Model.Today))
         {
             <span class="badge bg-light text-dark border">deadline passed</span>
@@ -73,19 +73,18 @@
         .Column("Decided", g => g.DecidedAt, o => o.DateTime().Css("small text-muted"))
         .Template("By", deciderCell, o => o.Css("small text-muted"))
         .Template("", grantActionsCell, o => o.NoSort().Css("text-end text-nowrap"))
-        .RowCss(g => $"pre-status-{g.Status}")
+        .RowData("status", g => g.Status.ToString())
         .Id("pre-grants")
         .Css("align-middle")
         .Build();
 }
 
-<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
-    <h1 class="mb-0">@p.Name <span class="badge @EnumBadgeMap.For(p.Status) fs-6 align-middle">@p.Status</span></h1>
+<page-header title="@p.Name" badge="@p.Status.ToString()" badge-class="@(EnumBadgeMap.For(p.Status) + " fs-6")">
     @if (Model.CanAdminister)
     {
         <a asp-action="Edit" asp-route-programId="@p.Id" class="btn btn-outline-secondary"><i class="fa-solid fa-pen me-1"></i>Edit program</a>
     }
-</div>
+</page-header>
 
 <div class="row g-3 mb-4">
     <div class="col-md-3"><div class="card h-100"><div class="card-body"><div class="text-muted small">Committed</div><div class="h4 mb-0">@p.Granted.ToEuro()</div></div></div></div>
@@ -219,7 +218,7 @@ else
         filter.addEventListener('change', function () {
             var want = filter.value;
             document.querySelectorAll('#pre-grants tbody tr').forEach(function (row) {
-                row.style.display = !want || row.classList.contains('pre-status-' + want) ? '' : 'none';
+                row.style.display = !want || row.dataset.status === want ? '' : 'none';
             });
         });
     }

@@ -47,7 +47,7 @@ Track yearly event participation status for each human, enabling self-service op
 | Id | Guid | PK |
 | UserId | Guid | User id (no FK — cross-section) |
 | Year | int | Event year |
-| Status | ParticipationStatus? | NotAttending, Ticketed, Attended, NoShow; `null` = cleared (kept only where a legacy Users row backs that user and year) |
+| Status | ParticipationStatus? | NotAttending, Ticketed, Attended, NoShow; `null` = historical cleared row, read as unknown; new removals delete the row |
 | DeclaredAt | Instant? | When user self-declared NotAttending |
 | CheckedInAt | Instant? | Earliest gate check-in for the year; write-once (never overwritten once set) |
 | Source | ParticipationSource | UserDeclared, TicketSync, AdminBackfill |
@@ -71,13 +71,9 @@ Added `Year` (int) to EventSettings so participation records can be linked to th
 
 Attended is permanent -- cannot be reverted by any mechanism.
 
-## Legacy data and the move from Users
-
-Until Users decomposition commit 13 the records lived in Users' `event_participations`. The `tickets.event-participations` data migration copied them, its fallback is retired, and the legacy table is dropped.
-
 ## Account merge
 
-`EventParticipationService` (`IUserMerge`) folds the merged-away account's years into the survivor: the higher status wins (`Attended > Ticketed > NoShow > NotAttending`) and brings its source and declaration time; the first check-in time is kept. The source's records are cleared.
+`EventParticipationService` (`IUserMerge`) folds the merged-away account's years into the survivor: the higher status wins (`Attended > Ticketed > NoShow > NotAttending`) and brings its source and declaration time; the first check-in time is kept. The source's records are deleted.
 
 ## GDPR
 

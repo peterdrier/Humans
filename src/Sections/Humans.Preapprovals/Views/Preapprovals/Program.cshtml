@@ -11,7 +11,7 @@
     <span>@p.Name</span>
 }
 
-<h1>@p.Name</h1>
+<page-header title="@p.Name" />
 
 <dl class="row">
     <dt class="col-sm-3">@SharedLocalizer["Common_Amount"]</dt>
@@ -54,7 +54,7 @@
                     }
                 </span>
                 <span>
-                    <span class="badge @EnumBadgeMap.For(g.Status)">@Localizer.EnumDisplay(g.Status)</span>
+                    <status-badge value="@g.Status" localizer="@Localizer" />
                     @if (g.IsClaimable(Model.Today))
                     {
                         <a href="/Expenses/New?grant=@g.Id" class="btn btn-sm btn-primary ms-2">@Localizer["Preapprovals_FileExpense"]</a>

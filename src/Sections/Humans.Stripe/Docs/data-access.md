@@ -2,10 +2,12 @@
 
 ## Stripe
 
-Project: `src/Sections/Humans.Stripe` — services under `Services/`. **No
-DbContext, no repository, no tables, no DB access in any service:** the section
-is the Stripe payment connector; callers persist results through their own
-sections (Store, Tickets).
+Project: `src/Sections/Humans.Stripe` — services under `Services/`. **DbContext:**
+`StripeDbContext`. `Repository` (`Data/Repository.cs`, implements
+`IStripeMirrorRepository`) injects `IDbContextFactory<StripeDbContext>` directly and owns
+`StripeBalanceTransactions`, `StripePayouts`, `StripeBalances`, `StripeSyncStates` — the
+read-only mirror. The connector calls persist nothing; callers persist their results
+through their own sections (Store, Tickets).
 
 ### StripeService (Scoped)
 
@@ -13,6 +15,20 @@ Wraps the Stripe SDK using the keys in `IOptions<StripeSettings>`:
 `CreateCheckoutSessionAsync`, `GetPaymentDetailsAsync`,
 `ListStoreCheckoutSessionsAsync`, and `ParseStoreCheckoutEvent`, which verifies
 the webhook signature against `StoreWebhookSecret`. Holds no cache.
+
+### StripeMirrorService (Scoped, implements `IStripeMirrorAdminService`)
+
+Repository: `IStripeMirrorRepository`.
+
+| Table | R/W |
+|-------|-----|
+| StripeBalanceTransactions | R/W (an account's rows replaced by its sweep; read whole, without `Raw`, for the pages — a few thousand rows) |
+| StripePayouts | R/W (replaced per account) |
+| StripeBalances | R/W (replaced per account) |
+| StripeSyncStates | R/W (one row per account) |
+
+No cross-section service calls. Its only outbound is `IStripeMirrorClient`
+(`StripeMirrorClient`): read-only list/retrieve calls through Stripe.net.
 
 ### StripeStartupSmokeService (IHostedService)
 

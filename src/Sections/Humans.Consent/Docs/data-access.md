@@ -64,17 +64,18 @@ documents from the legal-internal repo.
 
 ### LegalDocumentSyncRunner (Scoped)
 
-Repository: `IConsentRepository`.
+Repository: `ILegalDocumentRepository`.
 
 | Table | R/W |
 |-------|-----|
-| ConsentRecords | R |
+| LegalDocuments | R |
+| DocumentVersions | R/W (reads versions with a pending re-consent batch; `CompleteReConsentBatchAsync` clears the marker once a batch mails without failure) |
 
 The body of `SyncLegalDocumentsJob`. Runs
-`ILegalDocumentSyncManagement.SyncAllDocumentsAsync`, then, for each updated
-document, narrows the affected teams' active members down to those without a
-consent record for the new version — `GetPairsForUsersAndVersionsAsync` is its
-only repository call, read-only — and mails them the re-consent notice.
+`ILegalDocumentSyncManagement.SyncAllDocumentsAsync`, then, for each pending
+re-consent batch, narrows the affected teams' active members down to those without a
+consent record for the new version (through the section's own `IConsentService.GetConsentMapForUsersAsync`,
+not a `ConsentRecords` read) and mails them the re-consent notice.
 Cross-section calls via `IEmailService` plus the section's own `ConsentEmails`
 builder (`ReConsentsRequired`), `ITeamService` (team membership) and
 `IUserService`. No cache.

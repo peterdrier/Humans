@@ -1,4 +1,5 @@
 @model FinanceOverviewViewModel
+@using Humans.Base.Models.Tables
 @{
     ViewData["Title"] = $"Finance - {Model.Year.Name}";
     var year = Model.Year;
@@ -9,69 +10,63 @@
     var expenseData = Model.ExpenseSlices.Select(s => s.Amount).ToList();
 }
 
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <div class="d-flex align-items-center gap-3">
-        <h1 class="mb-0">@year.Name</h1>
-        <span class="badge @year.Status.GetBadgeClass() fs-6">@year.Status</span>
-    </div>
-    <div class="d-flex gap-2">
-        @if (allYears.Count > 1)
-        {
-            <div class="dropdown">
-                <button class="btn btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
-                    <i class="fa-solid fa-calendar me-1"></i>Switch Year
-                </button>
-                <ul class="dropdown-menu">
-                    @foreach (var y in allYears.OrderByDescending(y => y.Year, StringComparer.Ordinal))
-                    {
-                        <li>
-                            <a asp-action="YearDetail" asp-route-id="@y.Id" class="dropdown-item @(y.Id == year.Id ? "active" : "")">
-                                @y.Name
-                                <span class="badge @y.Status.GetBadgeClass() ms-1">@y.Status</span>
-                            </a>
-                        </li>
-                    }
-                </ul>
-            </div>
-        }
-        <a asp-controller="Finance" asp-action="CashFlow" class="btn btn-outline-secondary">
-            <i class="fa-solid fa-money-bill-transfer me-1"></i>Cash Flow
-        </a>
-        <form authorize-policy="@Humans.Finance.Contracts.FinancePolicies.Manage" asp-action="SyncDepartments" asp-route-id="@year.Id" method="post" class="d-inline">
+<page-header title="@year.Name" badge="@year.Status.ToString()" badge-class="@(EnumBadgeMap.For(year.Status) + " fs-6")">
+    @if (allYears.Count > 1)
+    {
+        <div class="dropdown">
+            <button class="btn btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                <i class="fa-solid fa-calendar me-1"></i>Switch Year
+            </button>
+            <ul class="dropdown-menu">
+                @foreach (var y in allYears.OrderByDescending(y => y.Year, StringComparer.Ordinal))
+                {
+                    <li>
+                        <a asp-action="YearDetail" asp-route-id="@y.Id" class="dropdown-item @(y.Id == year.Id ? "active" : "")">
+                            @y.Name
+                            <status-badge value="@y.Status" class="ms-1" />
+                        </a>
+                    </li>
+                }
+            </ul>
+        </div>
+    }
+    <a asp-controller="Finance" asp-action="CashFlow" class="btn btn-outline-secondary">
+        <i class="fa-solid fa-money-bill-transfer me-1"></i>Cash Flow
+    </a>
+    <form authorize-policy="@Humans.Finance.Contracts.FinancePolicies.Manage" asp-action="SyncDepartments" asp-route-id="@year.Id" method="post" class="d-inline">
+        @Html.AntiForgeryToken()
+        <button type="submit" class="btn btn-outline-secondary">
+            <i class="fa-solid fa-arrows-rotate me-1"></i>Sync Departments
+        </button>
+    </form>
+    @if (!year.Groups.Any(g => g.IsTicketingGroup))
+    {
+        <form authorize-policy="@Humans.Finance.Contracts.FinancePolicies.Manage" asp-action="EnsureTicketingGroup" asp-route-id="@year.Id" method="post" class="d-inline">
             @Html.AntiForgeryToken()
-            <button type="submit" class="btn btn-outline-secondary">
-                <i class="fa-solid fa-arrows-rotate me-1"></i>Sync Departments
+            <button type="submit" class="btn btn-outline-warning">
+                <i class="fa-solid fa-ticket me-1"></i>Add Ticketing Group
             </button>
         </form>
-        @if (!year.Groups.Any(g => g.IsTicketingGroup))
-        {
-            <form authorize-policy="@Humans.Finance.Contracts.FinancePolicies.Manage" asp-action="EnsureTicketingGroup" asp-route-id="@year.Id" method="post" class="d-inline">
-                @Html.AntiForgeryToken()
-                <button type="submit" class="btn btn-outline-warning">
-                    <i class="fa-solid fa-ticket me-1"></i>Add Ticketing Group
-                </button>
-            </form>
-        }
-        <a asp-controller="Finance" asp-action="HoldedAccounts" class="btn btn-outline-secondary">
-            <i class="fa-solid fa-building-columns me-1"></i>Holded Accounts
-        </a>
-        <a asp-controller="Finance" asp-action="HoldedUnmatched" class="btn btn-outline-secondary">
-            <i class="fa-solid fa-triangle-exclamation me-1"></i>Unmatched
-        </a>
-        <a asp-controller="Finance" asp-action="Creditors" class="btn btn-outline-secondary">
-            <i class="fa-solid fa-hand-holding-dollar me-1"></i>Creditor Accounts
-        </a>
-        <a asp-controller="Finance" asp-action="Sepa" class="btn btn-outline-secondary">
-            <i class="fa-solid fa-file-invoice-dollar me-1"></i>SEPA Transfers
-        </a>
-        <a asp-action="AuditLog" asp-route-yearId="@year.Id" class="btn btn-outline-secondary">
-            <i class="fa-solid fa-clock-rotate-left me-1"></i>Audit Log
-        </a>
-        <a asp-action="Admin" class="btn btn-outline-primary">
-            <i class="fa-solid fa-gear me-1"></i>Admin
-        </a>
-    </div>
-</div>
+    }
+    <a asp-controller="Finance" asp-action="HoldedAccounts" class="btn btn-outline-secondary">
+        <i class="fa-solid fa-building-columns me-1"></i>Holded Accounts
+    </a>
+    <a asp-controller="Finance" asp-action="HoldedUnmatched" class="btn btn-outline-secondary">
+        <i class="fa-solid fa-triangle-exclamation me-1"></i>Unmatched
+    </a>
+    <a asp-controller="Finance" asp-action="Creditors" class="btn btn-outline-secondary">
+        <i class="fa-solid fa-hand-holding-dollar me-1"></i>Creditor Accounts
+    </a>
+    <a asp-controller="Finance" asp-action="Sepa" class="btn btn-outline-secondary">
+        <i class="fa-solid fa-file-invoice-dollar me-1"></i>SEPA Transfers
+    </a>
+    <a asp-action="AuditLog" asp-route-yearId="@year.Id" class="btn btn-outline-secondary">
+        <i class="fa-solid fa-clock-rotate-left me-1"></i>Audit Log
+    </a>
+    <a asp-action="Admin" class="btn btn-outline-primary">
+        <i class="fa-solid fa-gear me-1"></i>Admin
+    </a>
+</page-header>
 
 
 <div class="row mb-4">

@@ -8,21 +8,6 @@
     string FormatInstant(Instant? instant) =>
         instant is null ? "—" : instant.Value.ToDateTime(zone);
 
-    static string StatusBadge(SurveyStatus s) => s switch
-    {
-        SurveyStatus.Open => "bg-success",
-        SurveyStatus.Closed => "bg-secondary",
-        _ => "bg-warning text-dark",
-    };
-
-    static string EmailBadge(EmailOutboxStatus? s) => s switch
-    {
-        EmailOutboxStatus.Sent => "bg-success",
-        EmailOutboxStatus.Failed => "bg-danger",
-        EmailOutboxStatus.Queued => "bg-info text-dark",
-        _ => "bg-light text-dark",
-    };
-
     static string AudienceLabel(SurveyAudienceType audience) => audience switch
     {
         SurveyAudienceType.Team => "Team",
@@ -43,19 +28,16 @@
     <span>Send</span>
 }
 
-<div class="d-flex justify-content-between align-items-center mb-3">
-    <h1 class="mb-0">@(string.IsNullOrWhiteSpace(Model.Title) ? "(untitled)" : Model.Title)</h1>
-    <div class="d-flex align-items-center gap-2">
-        <partial name="_SurveyPreviewMenu" model="@Model.Id" />
-        <form asp-controller="SurveyAdmin" asp-action="SendPreviewEmail" asp-route-id="@Model.Id" method="post" class="d-inline">
-            @Html.AntiForgeryToken()
-            <button type="submit" class="btn btn-outline-primary btn-sm">
-                <i class="fa-solid fa-envelope me-1"></i>Send preview email to me
-            </button>
-        </form>
-        <span class="badge @StatusBadge(Model.Status)">@Model.Status</span>
-    </div>
-</div>
+<page-header title="@(string.IsNullOrWhiteSpace(Model.Title) ? "(untitled)" : Model.Title)">
+    <partial name="_SurveyPreviewMenu" model="@Model.Id" />
+    <form asp-controller="SurveyAdmin" asp-action="SendPreviewEmail" asp-route-id="@Model.Id" method="post" class="d-inline">
+        @Html.AntiForgeryToken()
+        <button type="submit" class="btn btn-outline-primary btn-sm">
+            <i class="fa-solid fa-envelope me-1"></i>Send preview email to me
+        </button>
+    </form>
+    <status-badge value="@Model.Status" localizer="@Localizer" />
+</page-header>
 
 <div class="card mb-3">
     <div class="card-body">
@@ -130,35 +112,25 @@
 <h2 class="h5">Invitations</h2>
 <div class="card">
     <div class="card-body p-0">
-        <table class="table table-hover mb-0 align-middle">
-            <thead>
-                <tr>
-                    <th>Name</th>
-                    <th>Sent</th>
-                    <th>Email status</th>
-                    <th>Reminder</th>
-                    <th>Started</th>
-                    <th>Completed</th>
-                </tr>
-            </thead>
-            <tbody>
-                @if (Model.Invitations.Count == 0)
-                {
-                    <tr><td colspan="6" class="text-center text-muted py-4">No invitations sent yet.</td></tr>
-                }
-                @foreach (var inv in Model.Invitations)
-                {
-                    <tr>
-                        <td><vc:human user-id="@inv.UserId" link="None" /></td>
-                        <td>@FormatInstant(inv.SentAt)</td>
-                        <td><span class="badge @EmailBadge(inv.EmailStatus)">@(inv.EmailStatus?.ToString() ?? "—")</span></td>
-                        <td>@FormatInstant(inv.ReminderSentAt)</td>
-                        <td>@(inv.Started ? "Yes" : "—")</td>
-                        <td>@(inv.Completed ? "Yes" : "—")</td>
-                    </tr>
-                }
-            </tbody>
-        </table>
+        @{
+            Func<SurveyInviteStatus, IHtmlContent> inviteCell0 = @<text><vc:human user-id="@item.UserId" link="None" /></text>;
+            Func<SurveyInviteStatus, IHtmlContent> inviteCell1 = @<text>@FormatInstant(item.SentAt)</text>;
+            Func<SurveyInviteStatus, IHtmlContent> inviteCell2 = @<text>@if (item.EmailStatus is { } emailStatus){<status-badge value="@emailStatus" />}else{<span class="badge bg-light text-dark">—</span>}</text>;
+            Func<SurveyInviteStatus, IHtmlContent> inviteCell3 = @<text>@FormatInstant(item.ReminderSentAt)</text>;
+            Func<SurveyInviteStatus, IHtmlContent> inviteCell4 = @<text>@(item.Started ? "Yes" : "—")</text>;
+            Func<SurveyInviteStatus, IHtmlContent> inviteCell5 = @<text>@(item.Completed ? "Yes" : "—")</text>;
+            var invitationsTable = TableModel.For(Model.Invitations)
+                .Template("Name", inviteCell0)
+                .Template("Sent", inviteCell1, sortBy: i => i.SentAt)
+                .Template("Email status", inviteCell2, sortBy: i => i.EmailStatus)
+                .Template("Reminder", inviteCell3, sortBy: i => i.ReminderSentAt)
+                .Template("Started", inviteCell4)
+                .Template("Completed", inviteCell5)
+                .Empty("No invitations sent yet.")
+                .Css("align-middle")
+                .Build();
+        }
+        <partial name="_Table" model="invitationsTable" />
     </div>
 </div>
 

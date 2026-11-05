@@ -65,7 +65,7 @@ internal interface ICampManagement : ICampService, IApplicationService, IEarlyEn
 
     /// <summary>
     /// Every non-deleted Settings event, latest gate opening first, with whether camp registration is open for it.
-    /// An event Camps has no row for falls back to the legacy open-season years until <c>camps.event-ids</c> runs.
+    /// An event Camps has no row for starts closed.
     /// </summary>
     Task<IReadOnlyList<CampEventRegistration>> GetRegistrationByEventAsync(CancellationToken cancellationToken = default);
     /// <summary>Audited when it changes the event's registration state.</summary>
@@ -73,14 +73,6 @@ internal interface ICampManagement : ICampService, IApplicationService, IEarlyEn
     /// <inheritdoc cref="OpenSeasonAsync"/>
     Task CloseSeasonAsync(Guid eventSettingsId, Guid actorUserId, CancellationToken cancellationToken = default);
 
-    /// <summary>What <see cref="AssignSeasonEventIdsAsync"/> still has to do.</summary>
-    Task<CampEventIdPlan> GetEventIdPlanAsync(CancellationToken cancellationToken = default);
-    /// <summary>
-    /// Gives every event open today its own registration row, empties the legacy open-season year list (so later
-    /// events start closed and every opening is an audited admin action), and writes an event id onto every season
-    /// the plan lists. Returns the rows written.
-    /// </summary>
-    Task<int> AssignSeasonEventIdsAsync(CancellationToken cancellationToken = default);
     Task SetNameLockDateAsync(Guid eventSettingsId, LocalDate lockDate, Guid actorUserId, CancellationToken cancellationToken = default);
 
     /// <summary>Idempotent — returns existing row's id with an <c>Already*</c> outcome if one exists.</summary>
@@ -184,11 +176,6 @@ internal sealed record CampUpdateResult(bool Succeeded, string? ErrorKey)
 
     public static CampUpdateResult Failure(string errorMessage) => new(false, errorMessage);
 }
-
-internal sealed record CampEventIdPlan(
-    IReadOnlyList<int> LegacyOpenYears,
-    IReadOnlyList<(Guid SeasonId, string SeasonName, int Year, Guid EventSettingsId, string EventName)> Seasons);
-
 
 internal enum CampMemberRequestOutcome
 {

@@ -1,0 +1,148 @@
+@model StripeSummary
+@{
+    ViewData["Title"] = "Stripe";
+    var madrid = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
+    string N(int n) => n.ToString("N0", CultureInfo.InvariantCulture);
+    string StatusBadge(string status) => status switch
+    {
+        "Running" => "bg-info",
+        "Error" => "bg-danger",
+        _ => "bg-success"
+    };
+}
+
+<h1 class="mb-3">Stripe</h1>
+<partial name="_StripeNav" />
+
+<p class="text-muted">
+    A read-only mirror of our Stripe accounts, rebuilt from Stripe by every sweep (nightly at 03:30). Nothing here is
+    written to Stripe or booked into Holded.
+</p>
+
+<div class="mb-4">
+    <form authorize-policy="@FinancePolicies.Manage" asp-action="SyncNow" method="post" class="d-inline js-sync-form">
+        @Html.AntiForgeryToken()
+        @if (Model.AnyConfigured)
+        {
+            <button type="submit" class="btn btn-primary btn-sm"><i class="fa-solid fa-arrows-rotate me-1"></i>Sync now</button>
+        }
+        else
+        {
+            <button type="submit" class="btn btn-primary btn-sm" disabled><i class="fa-solid fa-arrows-rotate me-1"></i>Sync now</button>
+            <span class="text-muted small ms-2">No <code>STRIPE_ORG_READ_KEY</code>: the mirror is shown as last synced, and syncing is off.</span>
+        }
+    </form>
+</div>
+
+<div class="row">
+    @foreach (var a in Model.Accounts)
+    {
+        <div class="col-xl-6">
+            <div class="card mb-4">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <span class="fw-semibold">@a.Name</span>
+                    <code class="small">@a.Id</code>
+                </div>
+                <div class="card-body">
+                    <dl class="row mb-0 small">
+                        <dt class="col-5">Key</dt>
+                        <dd class="col-7">
+                            @if (a.IsConfigured)
+                            {
+                                <span class="badge bg-success">Configured</span>
+                                <span class="text-muted">@(a.UsesOrgKey ? "org key" : "own key")</span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-secondary">Not configured</span>
+                            }
+                        </dd>
+                        <dt class="col-5">Last sweep</dt>
+                        <dd class="col-7">
+                            @if (a.Sync is { } s)
+                            {
+                                <span class="badge @StatusBadge(s.Status)">@s.Status</span>
+                                <span class="ms-1">@(s.LastSyncAt is { } at ? at.ToDateTime(madrid) : "never")</span>
+                                @if (s.LastError is not null)
+                                {
+                                    <div class="text-danger mt-1">@s.LastError</div>
+                                }
+                            }
+                            else
+                            {
+                                <span class="text-muted">never</span>
+                            }
+                        </dd>
+                        <dt class="col-5">Mirror</dt>
+                        <dd class="col-7">
+                            <a asp-action="Transactions" asp-route-account="@a.Id">@N(a.TransactionCount) transactions</a> ·
+                            <a asp-action="Payouts" asp-route-account="@a.Id">@N(a.PayoutCount) payouts</a>
+                        </dd>
+                    </dl>
+                </div>
+                <table class="table table-sm align-middle mb-0">
+                    <tbody>
+                        @foreach (var b in a.Balances)
+                        {
+                            <tr>
+                                <td>Stripe balance (@b.Currency)</td>
+                                <td class="text-muted small">@StripeMoneyFormat.Show(b.Available, b.Currency) available · @StripeMoneyFormat.Show(b.Pending, b.Currency) pending</td>
+                                <td class="text-end text-nowrap fw-semibold">@StripeMoneyFormat.Show(b.Total, b.Currency)</td>
+                            </tr>
+                        }
+                        <tr>
+                            <td>Computed from transactions</td>
+                            <td class="text-muted small">sum of every transaction's net</td>
+                            <td class="text-end text-nowrap">@a.Computed.ToEuro()</td>
+                        </tr>
+                        <tr>
+                            <td>Difference (Stripe − computed)</td><td></td>
+                            <td class="text-end text-nowrap @(a.Difference is { } d && d != 0m ? "text-danger" : "text-success")">
+                                @(a.Difference is { } diff ? diff.ToSignedEuro() : "—")
+                            </td>
+                        </tr>
+                        <tr><td>Gross charges</td><td></td><td class="text-end text-nowrap">@a.Gross.ToEuro()</td></tr>
+                        <tr><td>Stripe fees</td><td></td><td class="text-end text-nowrap">@a.Fees.ToEuro()</td></tr>
+                        <tr><td>Refunds</td><td></td><td class="text-end text-nowrap">@a.Refunds.ToSignedEuro()</td></tr>
+                        <tr><td>Paid out</td><td class="text-muted small">net of failed payouts</td><td class="text-end text-nowrap">@a.PaidOut.ToEuro()</td></tr>
+                        <tr>
+                            <td><a asp-action="Reserves">Risk reserve held today</a></td>
+                            <td class="text-muted small">
+                                @if (a.ReservePeak is { } peak)
+                                {
+                                    <text>peak @peak.Held.ToEuro() on @peak.Date.ToDate()</text>
+                                }
+                            </td>
+                            <td class="text-end text-nowrap @(a.ReserveHeldNow != 0m ? "text-danger" : "")">@a.ReserveHeldNow.ToEuro()</td>
+                        </tr>
+                        @if (a.MinimumKept is { } kept)
+                        {
+                            <tr>
+                                <td>Payout minimum balance</td>
+                                <td class="text-muted small">kept back from the payout of @kept.Date.ToDate(); stays in the balance</td>
+                                <td class="text-end text-nowrap">@kept.Held.ToEuro()</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+                @if (a.OtherCurrencies.Count > 0)
+                {
+                    <div class="card-footer small text-danger">
+                        Non-EUR rows (@string.Join(", ", a.OtherCurrencies)) are mirrored but left out of these EUR totals.
+                    </div>
+                }
+            </div>
+        </div>
+    }
+</div>
+
+<script>
+    // A second submit only earns a "skipped" toast; disable on click.
+    document.querySelectorAll('.js-sync-form').forEach(function (form) {
+        form.addEventListener('submit', function () {
+            var button = form.querySelector('button[type="submit"]');
+            button.disabled = true;
+            button.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>Working…';
+        });
+    });
+</script>

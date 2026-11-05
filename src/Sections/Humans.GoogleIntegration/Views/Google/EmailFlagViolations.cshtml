@@ -5,12 +5,11 @@
 }
 
 <div class="container-fluid px-4">
-    <div class="d-flex justify-content-between align-items-center mt-4 mb-3">
-        <h1>Email flag violations</h1>
+    <page-header title="Email flag violations">
         <a asp-action="Index" class="btn btn-outline-secondary btn-sm">
             <i class="fa-solid fa-arrow-left me-1"></i>Back to Google
         </a>
-    </div>
+    </page-header>
 
 
     <p class="text-muted">Users whose verified email rows violate the exactly-one IsPrimary invariant. Open each user's email grid to remediate. (The Google identity is one row per user in google_workspace_identities, so it cannot be duplicated.)</p>

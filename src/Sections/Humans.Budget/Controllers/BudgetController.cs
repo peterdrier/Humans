@@ -161,7 +161,7 @@ internal sealed class BudgetController(
                 budgetCategoryId, description, amount, responsibleTeamId, notes, nodaDate, vatRate, user.Id);
             if (result.Refusal is not null)
             {
-                logger.LogWarning("Rejected budget line item amount for actor {ActorId}", user.Id);
+                logger.LogWarning("Rejected budget line item input for actor {ActorId}", user.Id);
                 SetError(localizer["Budget_Flash_LineCreateFailed"].Value);
                 return RedirectToAction(nameof(CategoryDetail), new { id = budgetCategoryId });
             }
@@ -204,7 +204,7 @@ internal sealed class BudgetController(
                 id, description, amount, responsibleTeamId, notes, nodaDate, vatRate, user.Id);
             if (result.Refusal is not null)
             {
-                logger.LogWarning("Rejected budget line item amount for actor {ActorId}", user.Id);
+                logger.LogWarning("Rejected budget line item input for actor {ActorId}", user.Id);
                 SetError(localizer["Budget_Flash_LineUpdateFailed"].Value);
                 return RedirectToAction(nameof(CategoryDetail), new { id = lineItem.BudgetCategoryId });
             }
@@ -234,8 +234,14 @@ internal sealed class BudgetController(
 
         try
         {
-            await budgetService.DeleteLineItemAsync(id, user.Id);
-            SetSuccess(localizer["Budget_Flash_LineDeleted"].Value);
+            var result = await budgetService.DeleteLineItemAsync(id, user.Id);
+            if (result.Refusal is not null)
+            {
+                logger.LogWarning("Budget line item deletion refused for {LineItemId}, actor {ActorId}", id, user.Id);
+                SetError(localizer["Budget_Flash_LineDeleteFailed"].Value);
+            }
+            else
+                SetSuccess(localizer["Budget_Flash_LineDeleted"].Value);
         }
         catch (Exception ex)
         {

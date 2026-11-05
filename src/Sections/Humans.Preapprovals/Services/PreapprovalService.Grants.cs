@@ -130,7 +130,7 @@ internal sealed partial class PreapprovalService
             ct = CancellationToken.None;
             await AuditGrantAsync(PreapprovalsAuditActions.PreapprovalGrantApplied, pending,
                 $"Application to \"{program.Name}\" edited: {Euros(amount)}.", applicantUserId);
-            await ResolveRequestAsync(pending.Id, applicantUserId, ct);
+            await notices.ResolveRequestAsync(pending.Id, applicantUserId, ct);
             await AnnounceApplicationAsync(info, ToInfo(pending, program), ct);
             return new(pending.Id);
         }
@@ -175,7 +175,7 @@ internal sealed partial class PreapprovalService
             $"Application to \"{program.Name}\" approved: {Euros(grant.MaxAmount)}" +
             $"{(grant.RequestedAmount is { } r && r != grant.MaxAmount ? $" (requested {Euros(r)})" : "")}; claim by {program.ClaimBy.ToInvariantDate()}.",
             actorUserId);
-        await ResolveRequestAsync(grant.Id, actorUserId, ct);
+        await notices.ResolveRequestAsync(grant.Id, actorUserId, ct);
         await AnnounceIssuedAsync(ToInfo(grant, program), ct);
         return PreapprovalMutationResult.Ok;
     }
@@ -200,10 +200,10 @@ internal sealed partial class PreapprovalService
         var reason = Trimmed(note);
         await AuditGrantAsync(PreapprovalsAuditActions.PreapprovalGrantDeclined, grant,
             $"Application to \"{grant.Program.Name}\" declined{(reason is null ? "" : $": {reason}")}.", actorUserId);
-        await ResolveRequestAsync(grant.Id, actorUserId, ct);
+        await notices.ResolveRequestAsync(grant.Id, actorUserId, ct);
         var info = ToInfo(grant);
-        await NotifyDecidedAsync(info, "Preapprovals_Notice_Declined", reason, ct);
-        await EmailAsync(info, PreapprovalNoticeKind.Declined, reason, ct);
+        await notices.NotifyDecidedAsync(info, "Preapprovals_Notice_Declined", reason, ct);
+        await notices.EmailAsync(info, PreapprovalNoticeKind.Declined, reason, ct);
         return PreapprovalMutationResult.Ok;
     }
 
@@ -229,10 +229,10 @@ internal sealed partial class PreapprovalService
             $"Revoked {Euros(grant.MaxAmount)} under \"{grant.Program.Name}\"{LabelSuffix(grant)}" +
             $"{(holdingReportId is { } r ? $" while held by expense report {r}" : "")}{(why is null ? "" : $": {why}")}.",
             actorUserId);
-        await ResolveFileByAsync(grant.Id, actorUserId, ct);
+        await notices.ResolveFileByAsync(grant.Id, actorUserId, ct);
         var info = ToInfo(grant);
-        await NotifyDecidedAsync(info, "Preapprovals_Notice_Revoked", why, ct, holdingReportId: holdingReportId);
-        await EmailAsync(info, PreapprovalNoticeKind.Revoked, why, ct);
+        await notices.NotifyDecidedAsync(info, "Preapprovals_Notice_Revoked", why, ct, holdingReportId: holdingReportId);
+        await notices.EmailAsync(info, PreapprovalNoticeKind.Revoked, why, ct);
         return PreapprovalMutationResult.Ok;
     }
 
@@ -262,8 +262,8 @@ internal sealed partial class PreapprovalService
             $"{(grant.Status == GrantStatus.Claimed && grant.ExpenseReportId is { } r ? $" (held by expense report {r}; its cap follows at next submit)" : "")}.",
             actorUserId);
         var info = ToInfo(grant, program);
-        await NotifyDecidedAsync(info, "Preapprovals_Notice_AmountChanged", null, ct, previousAmount: old);
-        await EmailAsync(info, PreapprovalNoticeKind.AmountChanged, null, ct, previousAmount: old);
+        await notices.NotifyDecidedAsync(info, "Preapprovals_Notice_AmountChanged", null, ct, previousAmount: old);
+        await notices.EmailAsync(info, PreapprovalNoticeKind.AmountChanged, null, ct, previousAmount: old);
         return PreapprovalMutationResult.Ok;
     }
 
@@ -316,13 +316,13 @@ internal sealed partial class PreapprovalService
 
     private async Task AnnounceIssuedAsync(GrantInfo info, CancellationToken ct)
     {
-        await NotifyFileByAsync(info, "Preapprovals_Notice_Issued", NotificationPriority.Normal, ct);
-        await EmailAsync(info, PreapprovalNoticeKind.Issued, detail: null, ct);
+        await notices.NotifyFileByAsync(info, "Preapprovals_Notice_Issued", NotificationPriority.Normal, ct);
+        await notices.EmailAsync(info, PreapprovalNoticeKind.Issued, detail: null, ct);
     }
 
     private async Task AnnounceApplicationAsync(ProgramInfo program, GrantInfo info, CancellationToken ct)
     {
-        await SafeAsync(() => NotifyManagersAsync(program, info, ct), "notify managers", info.Id);
-        await SafeAsync(() => EmailManagersAsync(program, info, ct), "email managers", info.Id);
+        await notices.SafeAsync(() => notices.NotifyManagersAsync(program, info, ct), "notify managers", info.Id);
+        await notices.SafeAsync(() => notices.EmailManagersAsync(program, info, ct), "email managers", info.Id);
     }
 }

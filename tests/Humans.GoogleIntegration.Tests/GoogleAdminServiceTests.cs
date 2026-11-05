@@ -312,6 +312,45 @@ public class GoogleAdminServiceTests
             Arg.Any<Guid?>(), Arg.Any<string?>());
     }
 
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task ProvisionStandaloneAccountAsync_DeliversCommittedPasswordDespiteAuditFailure(bool workspaceFails)
+    {
+        _workspaceUserService.GetAccountAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns((WorkspaceUserAccount?)null);
+        string? issuedPassword = null;
+        _workspaceUserService.ProvisionAccountAsync(
+                Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(),
+                Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns(call =>
+            {
+                if (workspaceFails) throw new InvalidOperationException("Workspace unavailable");
+                issuedPassword = call.ArgAt<string>(3);
+                return new WorkspaceUserAccount("person@nobodies.team", "Person", "Test", false,
+                    DateTime.UtcNow, null, IsEnrolledIn2Sv: false);
+            });
+        _auditLogService.LogAsync(GoogleIntegrationAuditActions.WorkspaceAccountProvisioned,
+                Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<Guid>(),
+                Arg.Any<Guid?>(), Arg.Any<string?>())
+            .ThrowsAsync(new InvalidOperationException("Audit unavailable"));
+
+        var result = await _service.ProvisionStandaloneAccountAsync(
+            "person", "Person", "Test", _actorUserId, Xunit.TestContext.Current.CancellationToken);
+
+        result.Success.Should().Be(!workspaceFails);
+        result.TemporaryPassword.Should().Be(issuedPassword);
+        if (!workspaceFails)
+        {
+            result.TemporaryPassword.Should().NotBeNullOrEmpty();
+            _logger.Received(1).Log(LogLevel.Critical, Arg.Any<EventId>(),
+                Arg.Is<object>(state => !state.ToString()!.Contains(issuedPassword!)),
+                Arg.Any<Exception?>(), Arg.Any<Func<object, Exception?, string>>());
+        }
+        else
+            _auditLogService.ReceivedCalls().Should().BeEmpty();
+    }
+
     [HumansFact]
     public async Task ProvisionStandaloneAccountAsync_ReturnsErrorIfAlreadyExists()
     {

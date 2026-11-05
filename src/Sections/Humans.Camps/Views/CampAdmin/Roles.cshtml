@@ -5,15 +5,11 @@
     ViewData["Title"] = "Camp roles";
 }
 
-<div class="d-flex justify-content-between align-items-center mb-3">
-    <div>
-        <h1 class="mb-1">Camp roles</h1>
-        <p class="text-muted mb-0">Global role definitions applied to every barrio.</p>
-    </div>
+<page-header title="Camp roles" subtitle="Global role definitions applied to every barrio.">
     <a authorize-policy="@Humans.Camps.Contracts.CampsPolicies.Manage" asp-controller="CampAdmin" asp-action="CreateRole" class="btn btn-primary">
         <i class="fa-solid fa-plus me-1"></i>Add role
     </a>
-</div>
+</page-header>
 
 
 <div class="card mb-4">

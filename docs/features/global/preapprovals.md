@@ -170,7 +170,7 @@ ceiling. These are sums over frozen rows, never stored and never adjusted when a
 
 ## Surface
 
-The public surface is a `Contracts/` folder in the section (no `.Contracts` leaf project: nothing Preapprovals references reaches Expenses, so no cycle asks for one). `IPreapprovalService` is the 2-member read face, `IPreapprovalWrite` the three Expenses transitions, both consumed only by Expenses; `IPreapprovalManagement : IPreapprovalService, IPreapprovalWrite` is internal to `Humans.Preapprovals.Services`.
+The public surface is a `Contracts/` folder in the section (no `.Contracts` leaf project: nothing Preapprovals references reaches Expenses, so no cycle asks for one). `IPreapprovalService` is the read face, `IPreapprovalWrite` the Expenses transitions, both consumed only by Expenses; `IPreapprovalManagement : IPreapprovalService, IPreapprovalWrite` is internal to `Humans.Preapprovals.Services`.
 
 ```csharp
 public interface IPreapprovalService
@@ -178,16 +178,21 @@ public interface IPreapprovalService
     // Grants the member may file against today: Open and ClaimBy not passed.
     Task<IReadOnlyList<GrantOption>> ListClaimableForUserAsync(Guid userId, CancellationToken ct);
     Task<GrantOption?> GetGrantAsync(Guid grantId, CancellationToken ct);
+    // Grants whose program the user is a named manager of (Expenses' first-review queue).
+    Task<IReadOnlySet<Guid>> ListManagedGrantIdsAsync(Guid userId, CancellationToken ct);
 }
 
 public sealed record GrantOption(
     Guid Id, string ProgramName, string? Label, decimal MaxAmount,
     int HoldedAccountNumber, string HoldedAccountId, LocalDate ClaimBy, GrantStatus Status);
 
-// IPreapprovalWrite, called by Expenses only. Each one audited with the report id.
-Task<GrantStamp> ClaimAsync(Guid grantId, Guid expenseReportId, Guid actorUserId, CancellationToken ct); // Open → Claimed; idempotent for the same report; throws unless claimable
-Task ReleaseAsync(Guid grantId, Guid expenseReportId, Guid actorUserId, CancellationToken ct); // Claimed → Open (withdraw before approval)
-Task ConsumeAsync(Guid grantId, Guid expenseReportId, Guid actorUserId, CancellationToken ct); // Claimed → Consumed (approve)
+// IPreapprovalWrite, called by Expenses only. Each one audited with the report id. A refusal comes back
+// in the result (Refusal), not as an exception; afterCommit defers notices until Expenses' transaction commits.
+Task<PreapprovalWriteResult> ClaimAsync(Guid grantId, Guid expenseReportId, Guid actorUserId, CancellationToken ct, Action<Func<CancellationToken, Task>>? afterCommit = null); // Open → Claimed; idempotent for the same report; refused unless claimable
+Task<PreapprovalWriteResult> ReleaseAsync(/* same parameters */); // Claimed → Open (withdraw before approval)
+Task<PreapprovalWriteResult> ConsumeAsync(/* same parameters */); // Claimed → Consumed (approve)
+
+public sealed record PreapprovalWriteResult(GrantStamp? Stamp = null, string? Refusal = null);
 ```
 
 Program and manager administration, issuing, applying, approving, declining and revoking live on
@@ -195,7 +200,7 @@ the internal `IPreapprovalManagement` (the `I<Section>Management` pattern), whic
 controllers inject. Nothing outside the section sees them. When Creativity exists it gets one narrow
 issue command on the public contract, not the whole management surface.
 
-`ClaimAsync` returns the stamp Expenses must write: `GrantStamp(decimal MaxAmount,
+A successful `ClaimAsync` carries the stamp Expenses must write in `PreapprovalWriteResult.Stamp`: `GrantStamp(decimal MaxAmount,
 int HoldedAccountNumber, string HoldedAccountId, LocalDate ClaimBy)`, read from the program as
 it is **at submit time**.
 

@@ -37,7 +37,7 @@ public sealed class ExpensesTransitionTests : PreapprovalsTestHarness
             expenseReportId: string.Equals(transition, "claim", StringComparison.Ordinal) ? null : Report);
         var service = NewService();
         NotificationResolve.ResolveBySourceKeyAsync(PreapprovalsNotificationSources.PreapprovalFileBy,
-                PreapprovalService.FileBySourceKey(grant.Id), person, Arg.Any<CancellationToken>())
+                PreapprovalNotices.FileBySourceKey(grant.Id), person, Arg.Any<CancellationToken>())
             .Returns(Task.FromException(new IOException("Inbox resolution unavailable")));
         var afterCommit = new List<Func<CancellationToken, Task>>();
         using (var scope = new TransactionScope(TransactionScopeOption.Required, TransactionScopeAsyncFlowOption.Enabled))
@@ -91,7 +91,7 @@ public sealed class ExpensesTransitionTests : PreapprovalsTestHarness
         stored.Status.Should().Be(GrantStatus.Claimed);
         stored.ExpenseReportId.Should().Be(Report);
         await NotificationResolve.Received(1).ResolveBySourceKeyAsync(
-            PreapprovalsNotificationSources.PreapprovalFileBy, PreapprovalService.FileBySourceKey(grant.Id), person, Arg.Any<CancellationToken>());
+            PreapprovalsNotificationSources.PreapprovalFileBy, PreapprovalNotices.FileBySourceKey(grant.Id), person, Arg.Any<CancellationToken>());
         await AuditLog.Received(1).LogAsync(PreapprovalsAuditActions.PreapprovalGrantClaimed, AuditEntityTypes.Grant, grant.Id,
             Arg.Is<string>(d => d.Contains(Report.ToString())), person, Report, AuditEntityTypes.ExpenseReport);
     }
@@ -192,7 +192,7 @@ public sealed class ExpensesTransitionTests : PreapprovalsTestHarness
         stored.ExpenseReportId.Should().Be(Report);
         await Notifications.Received(1).SendAsync(PreapprovalsNotificationSources.PreapprovalFileBy, NotificationClass.Actionable, NotificationPriority.Normal,
             Arg.Any<string>(), Arg.Is<IReadOnlyList<Guid>>(r => r.Single() == person), Arg.Any<string?>(), Arg.Any<string?>(),
-            Arg.Any<string?>(), Arg.Any<string?>(), PreapprovalService.FileBySourceKey(grant.Id), Arg.Any<CancellationToken>());
+            Arg.Any<string?>(), Arg.Any<string?>(), PreapprovalNotices.FileBySourceKey(grant.Id), Arg.Any<CancellationToken>());
         await AuditLog.Received(1).LogAsync(PreapprovalsAuditActions.PreapprovalGrantReleased, AuditEntityTypes.Grant, grant.Id, Arg.Any<string>(), person, Report, AuditEntityTypes.ExpenseReport);
     }
 

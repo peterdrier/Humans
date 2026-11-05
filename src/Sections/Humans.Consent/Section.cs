@@ -1,4 +1,5 @@
 using Humans.Base.Authorization;
+using Humans.Base.Models.Tables;
 using Humans.Base.Constants;
 using Humans.Base.Hosting;
 using Humans.Base.Interfaces;
@@ -44,6 +45,13 @@ public sealed class Section :
 
     public void Register(IServiceCollection services, IConfiguration configuration)
     {
+        EnumBadgeMap.Register(new Dictionary<Enum, string>
+        {
+            [ConsentCheckStatus.Pending] = "bg-warning text-dark",
+            [ConsentCheckStatus.Cleared] = "bg-success",
+            [ConsentCheckStatus.Flagged] = "bg-danger",
+        });
+
         services.AddSingleton<IAuditActionContributor, ConsentAuditActions>();
         services.AddSingleton<INotificationSourceContributor, ConsentNotificationSources>();
         services.AddSectionDbContext<LegalDbContext>(sentinelTable: "legal_documents");

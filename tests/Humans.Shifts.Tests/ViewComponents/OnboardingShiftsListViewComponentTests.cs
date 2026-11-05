@@ -54,18 +54,21 @@ public sealed class OnboardingShiftsListViewComponentTests
     {
         _burnSettings.GetByIdAsync(Event.Id, Arg.Any<CancellationToken>()).Returns(Event);
 
-        var result = await _sut.InvokeAsync(Event.Id, [], [], new Dictionary<Guid, SignupStatus>(), earlyEntrySignupsClosed: true);
+        var locked = UrgentShiftFixtures.Urgent() with { EarlyEntrySignupsClosed = true };
+        var open = UrgentShiftFixtures.Urgent() with { EarlyEntrySignupsClosed = false };
+        var result = await _sut.InvokeAsync(Event.Id, [locked, open], [], new Dictionary<Guid, SignupStatus>());
 
         var model = result.Should().BeOfType<ViewViewComponentResult>()
             .Which.ViewData!.Model.Should().BeOfType<ShiftBrowseViewModel>().Subject;
         model.EventSettings.Should().BeSameAs(Event);
-        model.EarlyEntrySignupsClosed.Should().BeTrue();
+        model.UrgencyRankedRotas.Single(r => r.Rota.Id == locked.Rota.Id).EarlyEntrySignupsClosed.Should().BeTrue();
+        model.UrgencyRankedRotas.Single(r => r.Rota.Id == open.Rota.Id).EarlyEntrySignupsClosed.Should().BeFalse();
     }
 
     [HumansFact]
     public async Task Renders_nothing_when_the_event_is_unknown()
     {
-        var result = await _sut.InvokeAsync(Guid.NewGuid(), [], [], new Dictionary<Guid, SignupStatus>(), earlyEntrySignupsClosed: false);
+        var result = await _sut.InvokeAsync(Guid.NewGuid(), [], [], new Dictionary<Guid, SignupStatus>());
 
         result.Should().BeOfType<ContentViewComponentResult>()
             .Which.Content.Should().BeEmpty();

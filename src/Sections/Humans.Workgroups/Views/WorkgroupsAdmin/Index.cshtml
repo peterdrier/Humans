@@ -1,15 +1,69 @@
 @model AdminQueueViewModel
 @{
     ViewData["Title"] = "Workgroups";
+
+    Func<WorkgroupInfo, IHtmlContent> nameCell =
+        @<text><a asp-controller="Workgroups" asp-action="Details" asp-route-slug="@item.Slug">@item.Name</a></text>;
+    Func<WorkgroupInfo, IHtmlContent> coordinatorsCell =
+        @<text>@await Html.PartialAsync("_WorkgroupCoordinators", item)</text>;
+    Func<WorkgroupInfo, IHtmlContent> registerCell = @<text>
+        <form method="post" asp-action="Register" asp-route-id="@item.Id">
+            <button type="submit" class="btn btn-sm btn-success">Register</button>
+        </form>
+    </text>;
+    var pendingTable = TableModel.For(Model.Pending.ToList())
+        .Template("Name", nameCell, sortBy: w => w.Name)
+        .Template("Coordinators", coordinatorsCell)
+        .Column("Applied", w => w.AppliedAt, o => o.Date())
+        .Column("Days waiting", w => (Model.Now - w.AppliedAt).Days, o => o.Number())
+        .Column("Status", w => w.Status)
+        .Template("", registerCell, o => o.NoSort().Css("text-end"))
+        .RowCss(w => w.IsRegistrationOverdue(Model.Now) ? "table-danger" : null)
+        .Css("align-middle")
+        .Build();
+
+    Func<Tuple<WorkgroupInfo, WorkgroupDocumentInfo>, IHtmlContent> groupCell =
+        @<text><a asp-controller="Workgroups" asp-action="Details" asp-route-slug="@item.Item1.Slug">@item.Item1.Name</a></text>;
+    Func<Tuple<WorkgroupInfo, WorkgroupDocumentInfo>, IHtmlContent> documentCell =
+        @<text><a asp-controller="Workgroups" asp-action="Document" asp-route-slug="@item.Item1.Slug" asp-route-id="@item.Item2.Id">@item.Item2.Title</a></text>;
+    Func<Tuple<WorkgroupInfo, WorkgroupDocumentInfo>, IHtmlContent> dispositionCell =
+        @<text><a asp-controller="Workgroups" asp-action="Document" asp-route-slug="@item.Item1.Slug" asp-route-id="@item.Item2.Id" class="btn btn-sm btn-outline-primary">Record disposition</a></text>;
+    var awaitingTable = TableModel.For(Model.AwaitingDisposition.Select(x => Tuple.Create(x.Workgroup, x.Document)).ToList())
+        .Template("Group", groupCell, sortBy: x => x.Item1.Name)
+        .Template("Document", documentCell, sortBy: x => x.Item2.Title)
+        .Column("Delivered", x => x.Item2.DeliveredAt, o => o.Date())
+        .Template("", dispositionCell, o => o.NoSort().Css("text-end"))
+        .RowCss(x => x.Item1.HasOverdueDisposition(Model.Now) ? "table-warning" : null)
+        .Css("align-middle")
+        .Build();
+
+    Func<WorkgroupInfo, IHtmlContent> flagsCell = @<text>
+        @if (item.IsUpdateDue(Model.Now))
+        {
+            <span class="badge bg-warning text-dark">Update due</span>
+        }
+    </text>;
+    var activeTable = TableModel.For(Model.Active.ToList())
+        .Template("Name", nameCell, sortBy: w => w.Name)
+        .Template("Coordinators", coordinatorsCell)
+        .Column("Budget", w => w.BudgetAmount, o => o.Currency())
+        .Column("Holded account", w => w.HoldedAccountNumber?.ToString(System.Globalization.CultureInfo.InvariantCulture))
+        .Template("Flags", flagsCell)
+        .Css("align-middle")
+        .Build();
+
+    var dormantTable = TableModel.For(Model.Register.Where(w => w.Status == WorkgroupStatus.Dormant).ToList())
+        .Template("Name", nameCell, sortBy: w => w.Name)
+        .Column("Reason", w => w.DormantReason)
+        .Column("Ended", w => w.EndedAt, o => o.Date())
+        .Css("align-middle")
+        .Build();
 }
 
-<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
-    <h1 class="mb-0">Workgroups</h1>
-    <div class="d-flex gap-2">
-        <a asp-action="RegisterExisting" class="btn btn-outline-secondary btn-sm">Register an existing group</a>
-        <a asp-action="Settings" class="btn btn-outline-secondary btn-sm">Settings</a>
-    </div>
-</div>
+<page-header title="Workgroups">
+    <a asp-action="RegisterExisting" class="btn btn-outline-secondary btn-sm">Register an existing group</a>
+    <a asp-action="Settings" class="btn btn-outline-secondary btn-sm">Settings</a>
+</page-header>
 
 <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
 
@@ -29,38 +83,7 @@
 }
 else
 {
-    <div class="table-responsive mb-4">
-        <table class="table table-sm align-middle">
-            <thead>
-                <tr>
-                    <th>Name</th>
-                    <th>Coordinators</th>
-                    <th>Applied</th>
-                    <th>Days waiting</th>
-                    <th>Status</th>
-                    <th></th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach (var w in pending)
-                {
-                    var days = (Model.Now - w.AppliedAt).Days;
-                    <tr class="@(w.IsRegistrationOverdue(Model.Now) ? "table-danger" : "")">
-                        <td><a asp-controller="Workgroups" asp-action="Details" asp-route-slug="@w.Slug">@w.Name</a></td>
-                        <td>@await Html.PartialAsync("_WorkgroupCoordinators", w)</td>
-                        <td>@w.AppliedAt.ToDate()</td>
-                        <td>@days</td>
-                        <td>@w.Status</td>
-                        <td class="text-end">
-                            <form method="post" asp-action="Register" asp-route-id="@w.Id">
-                                <button type="submit" class="btn btn-sm btn-success">Register</button>
-                            </form>
-                        </td>
-                    </tr>
-                }
-            </tbody>
-        </table>
-    </div>
+    <partial name="_Table" model="pendingTable" />
 }
 
 <h2 class="h5 mt-4">Awaiting disposition</h2>
@@ -71,31 +94,7 @@ else
 }
 else
 {
-    <div class="table-responsive mb-4">
-        <table class="table table-sm align-middle">
-            <thead>
-                <tr>
-                    <th>Group</th>
-                    <th>Document</th>
-                    <th>Delivered</th>
-                    <th></th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach (var (w, doc) in awaiting)
-                {
-                    <tr class="@(w.HasOverdueDisposition(Model.Now) ? "table-warning" : "")">
-                        <td><a asp-controller="Workgroups" asp-action="Details" asp-route-slug="@w.Slug">@w.Name</a></td>
-                        <td><a asp-controller="Workgroups" asp-action="Document" asp-route-slug="@w.Slug" asp-route-id="@doc.Id">@doc.Title</a></td>
-                        <td>@doc.DeliveredAt?.ToDate()</td>
-                        <td class="text-end">
-                            <a asp-controller="Workgroups" asp-action="Document" asp-route-slug="@w.Slug" asp-route-id="@doc.Id" class="btn btn-sm btn-outline-primary">Record disposition</a>
-                        </td>
-                    </tr>
-                }
-            </tbody>
-        </table>
-    </div>
+    <partial name="_Table" model="awaitingTable" />
 }
 
 <h2 class="h5 mt-4">Active groups</h2>
@@ -108,36 +107,7 @@ else
 }
 else
 {
-    <div class="table-responsive">
-        <table class="table table-sm align-middle">
-            <thead>
-                <tr>
-                    <th>Name</th>
-                    <th>Coordinators</th>
-                    <th>Budget</th>
-                    <th>Holded account</th>
-                    <th>Flags</th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach (var w in active)
-                {
-                    <tr>
-                        <td><a asp-controller="Workgroups" asp-action="Details" asp-route-slug="@w.Slug">@w.Name</a></td>
-                        <td>@await Html.PartialAsync("_WorkgroupCoordinators", w)</td>
-                        <td>@(w.BudgetAmount is { } budget ? budget.ToEuro() : "—")</td>
-                        <td>@(w.HoldedAccountNumber is { } acct ? acct.ToString() : "—")</td>
-                        <td>
-                            @if (w.IsUpdateDue(Model.Now))
-                            {
-                                <span class="badge bg-warning text-dark">Update due</span>
-                            }
-                        </td>
-                    </tr>
-                }
-            </tbody>
-        </table>
-    </div>
+    <partial name="_Table" model="activeTable" />
 }
 
 <h2 class="h5 mt-4">Archive</h2>
@@ -148,25 +118,5 @@ else
 }
 else
 {
-    <div class="table-responsive">
-        <table class="table table-sm align-middle">
-            <thead>
-                <tr>
-                    <th>Name</th>
-                    <th>Reason</th>
-                    <th>Ended</th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach (var w in dormant)
-                {
-                    <tr>
-                        <td><a asp-controller="Workgroups" asp-action="Details" asp-route-slug="@w.Slug">@w.Name</a></td>
-                        <td>@w.DormantReason</td>
-                        <td>@w.EndedAt?.ToDate()</td>
-                    </tr>
-                }
-            </tbody>
-        </table>
-    </div>
+    <partial name="_Table" model="dormantTable" />
 }

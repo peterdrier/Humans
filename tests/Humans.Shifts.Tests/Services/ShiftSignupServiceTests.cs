@@ -1516,6 +1516,9 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
         // day -3 (skipConflicts case); day -2 is at capacity from others (capacity-warning case).
         var (_, rota, _) = SeedShiftScenario(SignupPolicy.Public);
         rota.Period = RotaPeriod.Build;
+        var coordinatorId = Guid.NewGuid();
+        _teamService.GetTeamAsync(rota.TeamId, Arg.Any<CancellationToken>())
+            .Returns(BuildTeamInfoWithCoordinator(rota.TeamId, coordinatorId));
         for (var day = -4; day <= -1; day++)
             SeedAllDayShift(rota, day);
         var userId = Guid.NewGuid();
@@ -1550,6 +1553,13 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
             .OrderBy(o => o)
             .ToListAsync(TestContext.Current.CancellationToken);
         newSignups.Should().Equal(-4, -1);
+        await Notifier.Received(1).SendAsync(
+            ShiftsNotificationSources.ShiftSignupChange,
+            Arg.Any<NotificationClass>(), Arg.Any<NotificationPriority>(),
+            Arg.Any<string>(), Arg.Is<IReadOnlyList<Guid>>(c => c.Contains(coordinatorId)),
+            Arg.Is<string?>(body => body != null && body.Contains("(2 shifts, confirmed).", StringComparison.Ordinal)),
+            Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(),
+            Arg.Any<CancellationToken>());
     }
 
     [HumansFact]

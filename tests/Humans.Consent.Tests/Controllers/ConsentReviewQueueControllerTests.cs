@@ -219,6 +219,31 @@ public class ConsentReviewQueueControllerTests
             .RejectSignupAsync(default, default, default);
     }
 
+    [HumansTheory]
+    [InlineData("clear")]
+    [InlineData("flag")]
+    [InlineData("reject")]
+    public async Task OversizedReviewText_ShowsSpecificRefusal(string action)
+    {
+        var refusal = new OnboardingResult(false, "ReviewTextTooLong");
+        _queue.ClearAsync(_subjectId, _reviewerId, "text", Arg.Any<CancellationToken>()).Returns(refusal);
+        _queue.FlagAsync(_subjectId, _reviewerId, "text", Arg.Any<CancellationToken>()).Returns(refusal);
+        _onboarding.RejectSignupAsync(_subjectId, _reviewerId, "text", Arg.Any<CancellationToken>()).Returns(refusal);
+        var controller = BuildSut();
+
+        var result = action switch
+        {
+            "clear" => await controller.Clear(_subjectId, "text"),
+            "flag" => await controller.Flag(_subjectId, "text"),
+            "reject" => await controller.Reject(_subjectId, "text"),
+            _ => throw new ArgumentOutOfRangeException(nameof(action)),
+        };
+
+        result.Should().BeOfType<RedirectToActionResult>();
+        controller.TempData["ErrorMessage"].Should().Be("Review text must be 4,000 characters or fewer.");
+        controller.TempData.ContainsKey("SuccessMessage").Should().BeFalse();
+    }
+
     private static IEnumerable<MethodInfo> MutatingActions() =>
         typeof(ConsentReviewQueueController)
             .GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly)

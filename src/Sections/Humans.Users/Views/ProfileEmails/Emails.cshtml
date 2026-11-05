@@ -27,7 +27,7 @@
 
 <div class="row">
     <div class="col-md-8">
-        <h1>@Localizer["Users_Emails_Title"]</h1>
+        <page-header title="@(Localizer["Users_Emails_Title"].Value)" />
 
         @if (Model.IsAdminContext)
         {

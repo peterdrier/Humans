@@ -88,6 +88,8 @@
   <data name="Cantina_Dietary_PageTitle" xml:space="preserve"><value>Información alimentaria</value></data>
   <data name="Cantina_Dietary_Saved" xml:space="preserve"><value>Tu información alimentaria se ha guardado.</value></data>
   <data name="Cantina_Dietary_SaveFailed" xml:space="preserve"><value>No se pudo guardar la información alimentaria.</value></data>
+  <data name="Cantina_Dietary_PreferenceTooLong" xml:space="preserve"><value>La preferencia alimentaria debe tener 200 caracteres o menos.</value></data>
+  <data name="Cantina_Dietary_OtherTextTooLong" xml:space="preserve"><value>Los detalles de otras alergias o intolerancias deben tener 500 caracteres o menos.</value></data>
   <data name="Cantina_Dietary_LoadFailed" xml:space="preserve"><value>No se pudo cargar la información alimentaria.</value></data>
   <data name="Cantina_Dietary_OptionalHint" xml:space="preserve"><value>Opcional. Ayuda a la cantina a planificar las comidas de los turnos largos y nunca afecta a tus inscripciones en turnos.</value></data>
   <data name="Cantina_Dietary_DeclineButton" xml:space="preserve"><value>Prefiero no responder</value></data>

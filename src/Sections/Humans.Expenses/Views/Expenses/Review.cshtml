@@ -11,9 +11,7 @@
     <span>@Localizer["Expenses_ReviewQueue"]</span>
 }
 
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <h1>@Localizer["Expenses_ReviewQueue"]</h1>
-</div>
+<page-header title="@(Localizer["Expenses_ReviewQueue"].Value)" />
 
 @* A written-off push looks healthy everywhere else, so without this it is only found by reconciling Holded by hand.
    Finance admins are the only ones who can act on it. *@
@@ -118,7 +116,7 @@ else
             .Build();
 
         <h2 class="h5 mt-4 mb-2">
-            <span class="badge @group.Key.GetBadgeClass()">@Localizer.EnumDisplay(group.Key)</span>
+            <status-badge value="@group.Key" localizer="@Localizer" />
             <span class="text-muted ms-1">@rows.Count</span>
         </h2>
         <partial name="_Table" model="table" />

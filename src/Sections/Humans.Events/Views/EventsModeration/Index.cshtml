@@ -3,7 +3,7 @@
     ViewData["Title"] = "Moderate Events";
 }
 
-<h2 class="mb-3">Moderate Events</h2>
+<page-header title="Moderate Events" />
 
 
 <ul class="nav nav-tabs mb-4">
@@ -79,7 +79,7 @@ else
                                 {
                                     <span class="badge bg-warning text-dark" title="Potential duplicate"><i class="fa-solid fa-triangle-exclamation"></i></span>
                                 }
-                                <span class="badge @evt.StatusBadgeClass">@evt.Status</span>
+                                <status-badge value="@evt.Status" localizer="@Localizer" />
                             </div>
                         </div>
                     </button>
@@ -165,7 +165,7 @@ else
                                         @foreach (var h in evt.History)
                                         {
                                             <li class="mb-2">
-                                                <span class="badge @h.ActionBadgeClass">@h.Action</span>
+                                                <status-badge value="@h.Action" />
                                                 by <vc:human user-id="@h.ActorUserId" link="Admin" />
                                                 <small class="text-muted">@h.CreatedAt.ToDateTime()</small>
                                                 @if (!string.IsNullOrEmpty(h.Reason))

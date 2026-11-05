@@ -26,15 +26,6 @@ internal sealed class UserEmail
     /// <summary>OIDC <c>sub</c>: stable across Workspace renames, so the only legitimate key for rewriting <see cref="Email"/>.</summary>
     public string? ProviderKey { get; set; }
 
-    /// <summary>
-    /// Frozen: the Workspace identity is GoogleIntegration's. Written only to clear it on rows a merge moves; read
-    /// only by the <c>google.workspace-identities</c> copy and fallback. Dropped once that copy is done.
-    /// </summary>
-    public bool IsGoogle { get; set; }
-
-    /// <summary>Frozen: read only by the <c>google.workspace-identities</c> copy and fallback.</summary>
-    public LegacyGoogleEmailStatus GoogleEmailStatus { get; set; } = LegacyGoogleEmailStatus.Unknown;
-
     /// <summary>The notification target. Exactly one per user, enforced in <c>UserEmailService</c>, not the database.</summary>
     public bool IsPrimary { get; set; }
 

@@ -89,7 +89,6 @@ public class AcceptAsyncFoldTests(HumansTestDatabase database) : IntegrationTest
             .ContainSingle(e => string.Equals(e.Email, sharedEmail, StringComparison.OrdinalIgnoreCase)).Subject;
         collapsed.IsVerified.Should().BeTrue("source's verified flag should OR-combine into the target row");
         collapsed.IsPrimary.Should().BeTrue("target's authoritative IsPrimary should be preserved");
-        collapsed.IsGoogle.Should().BeTrue("target's authoritative IsGoogle should be preserved");
 
         var sourceEmails = await emailRepo.GetUserEmailsByUserIdReadOnlyAsync(sourceId, TestContext.Current.CancellationToken);
         sourceEmails.Should().NotContain(e => string.Equals(e.Email, sharedEmail, StringComparison.OrdinalIgnoreCase));

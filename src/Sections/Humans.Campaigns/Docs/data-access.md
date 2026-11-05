@@ -25,11 +25,20 @@ generation), plus `IClock`. Implements `ICampaignManagement` (internal; extends 
 `ICampaignService` and `ICampaignWrite`), `IUserDataContributor`, `IUserMerge`. No
 `IMemoryCache`.
 
+### CampaignWaveDelivery (internal, owned by CampaignService)
+
+Repository: `ICampaignRepository`. Reads campaigns, available codes and existing
+grants; persists individual wave grants. Owns preview/send/resend, team targeting,
+per-grant audit, email handoff and localized in-app notices. Uses the existing
+Teams, Users, AuditLog, Email and Notifications contracts, `CampaignsEmails` and
+`IClock`. Constructed by `CampaignService`; no separate DI registration or cache.
+The management facade forwards all three operations without changing their contracts.
+
 ### CampaignsEmails (Scoped, internal)
 
 No repository. Pure builder — substitutes the campaign's own subject and
 markdown body, reads no resource set and writes nothing. Returns
-`EmailMessage` values for `CampaignService` to pass to
+`EmailMessage` values for `CampaignWaveDelivery` to pass to
 `IEmailService.SendAsync`. No DB access, no cache.
 
 ### CampaignsEmailPreviews (Scoped)

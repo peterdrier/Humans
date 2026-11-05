@@ -9,7 +9,7 @@
     <span>@(isEdit ? Localizer["Events_Submission_Edit"] : Localizer["Events_Submission_New"])</span>
 }
 
-<h2>@(isEdit ? Localizer["Events_Submission_EditTitle"] : Localizer["Events_Submission_SubmitTitle"])</h2>
+<page-header title="@(isEdit ? Localizer["Events_Submission_EditTitle"].Value : Localizer["Events_Submission_SubmitTitle"].Value)" />
 
 @if (Model.IsResubmit)
 {

@@ -5,7 +5,7 @@
 
 <div class="row">
     <section class="col-md-9 offset-md-3">
-        <h1>@SharedLocalizer["Error_SomethingWentWrong"]</h1>
+        <page-header title="@(SharedLocalizer["Error_SomethingWentWrong"].Value)" />
         <p>@SharedLocalizer["Error_TryAgainLater"]</p>
         @* Not the Guide home: that re-enters the same content load and lands back here. *@
         <p><a asp-controller="Home" asp-action="Index">@SharedLocalizer["Common_ReturnHome"]</a></p>

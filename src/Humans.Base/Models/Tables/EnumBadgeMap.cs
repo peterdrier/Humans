@@ -8,7 +8,7 @@ using ILogger = Serilog.ILogger;
 namespace Humans.Base.Models.Tables;
 
 /// <summary>
-/// Central enum-value → Bootstrap badge class registry for <see cref="CellFormat.EnumBadge"/> columns.
+/// Central enum-value → Bootstrap badge class registry for <see cref="CellFormat.EnumBadge"/> columns and the <c>&lt;status-badge&gt;</c> tag helper.
 /// Views stop owning color decisions: add new mappings here, never inline in a view.
 /// Unmapped values render as bg-secondary.
 /// </summary>

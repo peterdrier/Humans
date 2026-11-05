@@ -61,7 +61,7 @@ public sealed class AssemblyBallotIdentityViewTests
             var encoded = HtmlEncoder.Default.Encode("Current <b>&");
             html.Should().Contain(encoded).And.Contain(HtmlEncoder.Default.Encode(unknown));
             html.Should().NotContain("Current <b>&").And.NotContain("A stale").And.NotContain("B stale").And.NotContain("Erased identity");
-            html.Should().MatchRegex(@"<td>\s*—\s*</td>");
+            html.Should().MatchRegex(@"<td[^>]*>\s*—\s*</td>");
             html.IndexOf(encoded, StringComparison.Ordinal).Should().BeLessThan(html.IndexOf(HtmlEncoder.Default.Encode(unknown), StringComparison.Ordinal));
         }
         await users.DidNotReceive().GetUserInfoAsync(Guid.Empty, Arg.Any<CancellationToken>());

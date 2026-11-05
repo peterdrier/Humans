@@ -269,7 +269,7 @@ CampSeason
 ```
 CampSettings
 ├── Id: Guid
-└── OpenSeasons: List<int> [JSON; legacy fallback for events with no CampEventSettings row]
+└── OpenSeasons: List<int> [unused legacy JSON column; registration uses CampEventSettings]
 ```
 
 ### CampEventSettings

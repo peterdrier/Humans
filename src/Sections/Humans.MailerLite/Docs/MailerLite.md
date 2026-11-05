@@ -110,8 +110,8 @@ All routes are `AdminOnly`.
 ## Cross-Section Dependencies
 
 The section references the contracts leaves `Humans.Users.Contracts`, `Humans.Email.Contracts`,
-`Humans.Tickets.Contracts` and `Humans.Shifts.Contracts`, the section projects `Humans.Gdpr` and
-`Humans.AuditLog` (contracts in their `Contracts/` folders), plus `Humans.Base`. The
+`Humans.Tickets.Contracts` and `Humans.Shifts.Contracts`, plus `Humans.Base` (which carries the
+audit append path and the GDPR contributor seam). The
 communication-preference interfaces live in `Humans.Email.Contracts` (Users decomposition commit 14).
 
 - **Audit actions:** declared on `MailerLiteAuditActions` (`src/Sections/Humans.MailerLite/MailerLiteAuditActions.cs`), one `AuditActionDefinition` each, written through `IAuditLogService`: `MailerLiteReconciliationCompleted`, `MailerLiteAudienceSyncCompleted`.

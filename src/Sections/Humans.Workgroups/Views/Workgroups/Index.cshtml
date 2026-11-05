@@ -2,6 +2,40 @@
 @{
     ViewData["Title"] = Localizer["Workgroups_Title"];
 
+    Func<WorkgroupInfo, IHtmlContent> nameCell =
+        @<text><a asp-action="Details" asp-route-slug="@item.Slug">@item.Name</a></text>;
+    Func<WorkgroupInfo, IHtmlContent> coordinatorsCell =
+        @<text>@await Html.PartialAsync("_WorkgroupCoordinators", item)</text>;
+    Func<WorkgroupInfo, IHtmlContent> pendingStatusCell = @<text>
+        <status-badge value="@item.Status" localizer="@Localizer" />
+        @if (item.IsRegistrationOverdue(Model.Now))
+        {
+            <span class="badge bg-danger ms-1">@Localizer["Workgroups_RegistrationOverdue"]</span>
+        }
+    </text>;
+    var pendingTable = TableModel.For(Model.Pending)
+        .Template(SharedLocalizer["Common_General"], nameCell, sortBy: w => w.Name)
+        .Template(Localizer["Workgroups_Coordinators"], coordinatorsCell)
+        .Template(SharedLocalizer["Common_Status"], pendingStatusCell)
+        .Column(Localizer["Workgroups_AppliedOn"], w => w.AppliedAt, o => o.Date())
+        .Css("align-middle")
+        .Build();
+
+    Func<WorkgroupInfo, IHtmlContent> archiveStatusCell = @<text>
+        <status-badge value="@item.Status" localizer="@Localizer" />
+        @if (item.Status == WorkgroupStatus.Dormant && item.DormantReason is { } reason)
+        {
+            <span class="text-muted small ms-1">(@Localizer.EnumDisplay(reason))</span>
+        }
+    </text>;
+    var archiveTable = TableModel.For(Model.Archive)
+        .Template(SharedLocalizer["Common_General"], nameCell, sortBy: w => w.Name)
+        .Template(SharedLocalizer["Common_Status"], archiveStatusCell)
+        .Column(Localizer["Workgroups_Reasons"], w => w.Reasons, o => o.Css("small text-muted"))
+        .Column(Localizer["Workgroups_Ended"], w => w.EndedAt, o => o.Date())
+        .Css("align-middle")
+        .Build();
+
 }
 
 <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
@@ -62,35 +96,7 @@ else
 }
 else
 {
-    <div class="table-responsive mb-4">
-        <table class="table table-sm align-middle">
-            <thead>
-                <tr>
-                    <th>@SharedLocalizer["Common_General"]</th>
-                    <th>@Localizer["Workgroups_Coordinators"]</th>
-                    <th>@SharedLocalizer["Common_Status"]</th>
-                    <th>@Localizer["Workgroups_AppliedOn"]</th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach (var w in Model.Pending)
-                {
-                    <tr>
-                        <td><a asp-action="Details" asp-route-slug="@w.Slug">@w.Name</a></td>
-                        <td>@await Html.PartialAsync("_WorkgroupCoordinators", w)</td>
-                        <td>
-                            <span class="badge @EnumBadgeMap.For(w.Status)">@Localizer.EnumDisplay(w.Status)</span>
-                            @if (w.IsRegistrationOverdue(Model.Now))
-                            {
-                                <span class="badge bg-danger ms-1">@Localizer["Workgroups_RegistrationOverdue"]</span>
-                            }
-                        </td>
-                        <td>@w.AppliedAt.ToDate()</td>
-                    </tr>
-                }
-            </tbody>
-        </table>
-    </div>
+    <partial name="_Table" model="pendingTable" />
 }
 
 <h2 class="h4 mt-4">@Localizer["Workgroups_Archive"] <span class="badge bg-secondary">@Model.Archive.Count</span></h2>
@@ -100,33 +106,5 @@ else
 }
 else
 {
-    <div class="table-responsive">
-        <table class="table table-sm align-middle">
-            <thead>
-                <tr>
-                    <th>@SharedLocalizer["Common_General"]</th>
-                    <th>@SharedLocalizer["Common_Status"]</th>
-                    <th>@Localizer["Workgroups_Reasons"]</th>
-                    <th>@Localizer["Workgroups_Ended"]</th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach (var w in Model.Archive)
-                {
-                    <tr>
-                        <td><a asp-action="Details" asp-route-slug="@w.Slug">@w.Name</a></td>
-                        <td>
-                            <span class="badge @EnumBadgeMap.For(w.Status)">@Localizer.EnumDisplay(w.Status)</span>
-                            @if (w.Status == WorkgroupStatus.Dormant && w.DormantReason is { } reason)
-                            {
-                                <span class="text-muted small ms-1">(@Localizer.EnumDisplay(reason))</span>
-                            }
-                        </td>
-                        <td class="small text-muted">@w.Reasons</td>
-                        <td>@w.EndedAt?.ToDate()</td>
-                    </tr>
-                }
-            </tbody>
-        </table>
-    </div>
+    <partial name="_Table" model="archiveTable" />
 }

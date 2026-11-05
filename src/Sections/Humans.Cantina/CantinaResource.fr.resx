@@ -88,6 +88,8 @@
   <data name="Cantina_Dietary_PageTitle" xml:space="preserve"><value>Informations alimentaires</value></data>
   <data name="Cantina_Dietary_Saved" xml:space="preserve"><value>Vos informations alimentaires ont été enregistrées.</value></data>
   <data name="Cantina_Dietary_SaveFailed" xml:space="preserve"><value>Impossible d’enregistrer les informations alimentaires.</value></data>
+  <data name="Cantina_Dietary_PreferenceTooLong" xml:space="preserve"><value>La préférence alimentaire doit comporter au maximum 200 caractères.</value></data>
+  <data name="Cantina_Dietary_OtherTextTooLong" xml:space="preserve"><value>Les précisions sur les autres allergies ou intolérances doivent comporter au maximum 500 caractères.</value></data>
   <data name="Cantina_Dietary_LoadFailed" xml:space="preserve"><value>Impossible de charger les informations alimentaires.</value></data>
   <data name="Cantina_Dietary_OptionalHint" xml:space="preserve"><value>Facultatif. Cela aide la cantine à prévoir les repas des longs créneaux et n'a jamais d'effet sur vos inscriptions aux créneaux.</value></data>
   <data name="Cantina_Dietary_DeclineButton" xml:space="preserve"><value>Je préfère ne pas répondre</value></data>

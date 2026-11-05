@@ -35,4 +35,36 @@ internal static class BuildSubPeriodClassifier
             BuildSubPeriod.FinishingWeekend => (settings.FinishingWeekendStartOffset, 0),
             _ => throw new ArgumentOutOfRangeException(nameof(subPeriod)),
         };
+
+    /// <summary>Inclusive bounds. subPeriod narrows only when period is Build.</summary>
+    internal static (int? MinDayOffset, int? MaxDayOffset) GetDayOffsetBounds(
+        ShiftPeriod? period, BuildSubPeriod? subPeriod, BurnSettingsInfo es)
+    {
+        int? minDayOffset = null;
+        int? maxDayOffset = null;
+
+        switch (period)
+        {
+            case ShiftPeriod.Build:
+                maxDayOffset = -1;
+                break;
+            case ShiftPeriod.Event:
+                minDayOffset = 0;
+                maxDayOffset = es.EventEndOffset;
+                break;
+            case ShiftPeriod.Strike:
+                minDayOffset = es.EventEndOffset + 1;
+                break;
+        }
+
+        if (period == ShiftPeriod.Build && subPeriod is not null)
+        {
+            var (start, end) = BuildSubPeriodClassifier.BoundsFor(subPeriod.Value, es);
+            minDayOffset = start;
+            // BoundsFor is half-open; repo bounds are inclusive.
+            maxDayOffset = end - 1;
+        }
+
+        return (minDayOffset, maxDayOffset);
+    }
 }

@@ -175,23 +175,12 @@ internal sealed class GoogleAdminService(
                 ErrorMessage: $"Account {fullEmail} already exists in Google Workspace.");
         }
 
+        string tempPassword;
         try
         {
-            var tempPassword = PasswordGenerator.GenerateTemporary();
-
+            tempPassword = PasswordGenerator.GenerateTemporary();
             await workspaceUserService.ProvisionAccountAsync(
                 fullEmail, firstName.Trim(), lastName.Trim(), tempPassword, ct: ct);
-
-            // Audit after Google succeeds: the Workspace call is the business save here.
-            await auditLogService.LogAsync(
-                GoogleIntegrationAuditActions.WorkspaceAccountProvisioned,
-                "WorkspaceAccount", Guid.Empty,
-                $"Provisioned @{NobodiesTeamDomain} account: {fullEmail}",
-                actorUserId);
-
-            return new WorkspaceAccountActionResult(true,
-                Message: $"Account {fullEmail} provisioned. Temporary password: {tempPassword}",
-                TemporaryPassword: tempPassword);
         }
         catch (Exception ex)
         {
@@ -199,6 +188,26 @@ internal sealed class GoogleAdminService(
             return new WorkspaceAccountActionResult(false,
                 ErrorMessage: $"Failed to provision {fullEmail}. Check logs for details.");
         }
+
+        // Google has committed the account; an audit failure must not discard its only temporary password.
+        try
+        {
+            await auditLogService.LogAsync(
+                GoogleIntegrationAuditActions.WorkspaceAccountProvisioned,
+                "WorkspaceAccount", Guid.Empty,
+                $"Provisioned @{NobodiesTeamDomain} account: {fullEmail}",
+                actorUserId);
+        }
+        catch (Exception ex)
+        {
+            logger.LogCritical(ex,
+                "Audit-log write failed AFTER provisioning {Email} by actor {ActorUserId}. Account was created; reconcile audit trail manually.",
+                fullEmail, actorUserId);
+        }
+
+        return new WorkspaceAccountActionResult(true,
+            Message: $"Account {fullEmail} provisioned. Temporary password: {tempPassword}",
+            TemporaryPassword: tempPassword);
     }
 
     public async Task<WorkspaceAccountActionResult> SuspendAccountAsync(

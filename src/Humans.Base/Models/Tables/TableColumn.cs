@@ -138,20 +138,23 @@ public sealed class TableColumn<TRow>(
 
     public string? SortValue(object row)
     {
-        if (value is null || !string.Equals(SortType, "number", StringComparison.Ordinal))
+        var isTemplate = Format == CellFormat.Template;
+        if (value is null || (!isTemplate && !string.Equals(SortType, "number", StringComparison.Ordinal)))
             return null;
 
         var raw = value((TRow)row);
         if (raw is null)
             return string.Empty;
 
-        return Format switch
+        return raw switch
         {
-            CellFormat.Date when raw is LocalDate date =>
-                date.AtMidnight().InUtc().ToInstant().ToUnixTimeMilliseconds().ToString(CultureInfo.InvariantCulture),
-            CellFormat.Date or CellFormat.DateTime =>
-                ((Instant)raw).ToUnixTimeMilliseconds().ToString(CultureInfo.InvariantCulture),
-            _ => ToDecimal(raw).ToString(CultureInfo.InvariantCulture),
+            LocalDate date => date.AtMidnight().InUtc().ToInstant().ToUnixTimeMilliseconds().ToString(CultureInfo.InvariantCulture),
+            Instant instant => instant.ToUnixTimeMilliseconds().ToString(CultureInfo.InvariantCulture),
+            DateTime dateTime => dateTime.Ticks.ToString(CultureInfo.InvariantCulture),
+            string text => text,
+            Enum enumValue => enumValue.ToString(),
+            IConvertible => ToDecimal(raw).ToString(CultureInfo.InvariantCulture),
+            _ => raw.ToString(),
         };
     }
 

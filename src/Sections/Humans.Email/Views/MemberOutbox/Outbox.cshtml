@@ -7,8 +7,7 @@
 
 <div class="row">
     <div class="col-md-10">
-        <div class="d-flex justify-content-between align-items-center mb-3">
-            <h1>@ViewData["Title"]</h1>
+        <page-header title="@(ViewData["Title"]?.ToString())">
             @if (isAdminView)
             {
                 <a asp-controller="UsersAdmin" asp-action="AdminDetail" asp-route-id="@humanId.Value" class="btn btn-outline-secondary btn-sm">
@@ -21,7 +20,7 @@
                     <i class="fa-solid fa-arrow-left me-1"></i>@Localizer["Email_Outbox_BackToProfile"]
                 </a>
             }
-        </div>
+        </page-header>
 
 
         <p class="text-muted">
@@ -48,17 +47,10 @@
                             @for (var i = 0; i < Model.Count; i++)
                             {
                                 var msg = Model[i];
-                                var statusClass = msg.Status switch
-                                {
-                                    EmailOutboxStatus.Queued => "bg-warning text-dark",
-                                    EmailOutboxStatus.Sent => "bg-success",
-                                    EmailOutboxStatus.Failed => "bg-danger",
-                                    _ => "bg-secondary"
-                                };
                                 var collapseId = $"msg-body-{i}";
                                 <tr data-bs-toggle="collapse" data-bs-target="#@collapseId" role="button" style="cursor: pointer;">
                                     <td>@msg.Subject</td>
-                                    <td><span class="badge @statusClass">@SharedLocalizer.EnumDisplay(msg.Status)@* Enum_EmailOutboxStatus_* is Humans.Email's set, left in SharedResource *@</span></td>
+                                    <td><status-badge value="@msg.Status" /></td>
                                     <td>@msg.CreatedAt.ToDateTimeUtc().ToDateTime()</td>
                                 </tr>
                                 <tr class="collapse" id="@collapseId">

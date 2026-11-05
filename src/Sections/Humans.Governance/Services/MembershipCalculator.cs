@@ -25,24 +25,10 @@ internal sealed class MembershipCalculator(
     // chrome components ask for the same user's snapshot in one render.
     private readonly Dictionary<Guid, MembershipSnapshot> _snapshotMemo = [];
 
-    public async Task<MembershipStatus> ComputeStatusAsync(
-        Guid userId,
-        CancellationToken cancellationToken = default)
-    {
-        var info = await userService.GetUserInfoAsync(userId, cancellationToken);
-        var status = await ComputeStatusBeforeConsentCheckAsync(info, cancellationToken);
-        if (status != MembershipStatus.Active)
-            return status;
-
-        return await HasAnyExpiredConsentsForTeamAsync(info!.Id, SystemTeamIds.Volunteers, cancellationToken)
-            ? MembershipStatus.Inactive
-            : MembershipStatus.Active;
-    }
-
     private async Task<MembershipStatus> ComputeStatusBeforeConsentCheckAsync(
         UserInfo? info,
         CancellationToken cancellationToken,
-        bool? volunteerMembership = null)
+        bool isVolunteerMember)
     {
         if (info?.Profile is null)
         {
@@ -61,9 +47,7 @@ internal sealed class MembershipCalculator(
 
         // Active = has role assignments OR is a Volunteers-team member.
         var userId = info.Id; // roles and memberships were re-pointed to the survivor on merge
-        var hasActiveRoles = await HasActiveRolesAsync(userId, cancellationToken);
-        var isVolunteerMember = volunteerMembership ?? await membershipQuery.IsUserMemberOfTeamAsync(
-            SystemTeamIds.Volunteers, userId, cancellationToken);
+        var hasActiveRoles = await membershipQuery.HasAnyActiveAssignmentAsync(userId, cancellationToken);
 
         if (!hasActiveRoles && !isVolunteerMember)
         {
@@ -142,18 +126,6 @@ internal sealed class MembershipCalculator(
         return requiredVersions.All(v => consentedVersionIds.Contains(v.Id));
     }
 
-    public async Task<bool> HasAnyExpiredConsentsForTeamAsync(
-        Guid userId,
-        Guid teamId,
-        CancellationToken ct = default)
-    {
-        var now = clock.GetCurrentInstant();
-        var requiredVersions = await legalDocumentSyncService.GetRequiredDocumentVersionsForTeamAsync(teamId, ct);
-        var consentedVersionIds = await ConsentService.GetConsentedVersionIdsAsync(userId, ct);
-
-        return HasExpiredConsents(requiredVersions, consentedVersionIds, now);
-    }
-
     private static bool HasExpiredConsents(
         IReadOnlyList<RequiredDocumentVersionSnapshot> requiredVersions,
         IReadOnlySet<Guid> consentedVersionIds,
@@ -174,11 +146,6 @@ internal sealed class MembershipCalculator(
             .Where(id => !consentedVersionIds.Contains(id))
             .ToList();
     }
-
-    public Task<bool> HasActiveRolesAsync(
-        Guid userId,
-        CancellationToken cancellationToken = default) =>
-        membershipQuery.HasAnyActiveAssignmentAsync(userId, cancellationToken);
 
     public async Task<IReadOnlyList<Guid>> GetUsersRequiringStatusUpdateAsync(
         CancellationToken cancellationToken = default,

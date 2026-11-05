@@ -9,7 +9,7 @@
     <span>@Localizer["Teams_Roster_Title"]</span>
 }
 
-<h2>@Localizer["Teams_Roster_Title"]</h2>
+<page-header title="@(Localizer["Teams_Roster_Title"].Value)" />
 
 <div class="mb-3 d-flex gap-2">
     <div class="dropdown">
@@ -86,13 +86,9 @@ else
                             </a>
                         }
                     </td>
-                    @{
-                        var periodBadge = slot.Period.GetBadgeClass();
-                        var periodLabel = SharedLocalizer.EnumDisplay(slot.Period);
-                    }
-                    <td><span class="badge @periodBadge">@periodLabel</span></td>
+                    <td><status-badge value="@slot.Period" /></td>
                     <td>@slot.SlotNumber</td>
-                    <td><span class="badge @slot.Priority.GetBadgeClass()">@SharedLocalizer.EnumDisplay(slot.Priority)</span></td>
+                    <td><status-badge value="@slot.Priority" /></td>
                     <td>
                         @if (slot.IsFilled && slot.AssignedUserId.HasValue)
                         {

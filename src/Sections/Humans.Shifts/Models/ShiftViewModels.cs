@@ -219,6 +219,8 @@ internal sealed class DepartmentShiftGroup
 
 internal sealed class RotaShiftGroup
 {
+    public bool EarlyEntrySignupsClosed { get; set; }
+
     public RotaInfo Rota { get; set; } = null!;
     public List<ShiftDisplayItem> Shifts { get; set; } = [];
 
@@ -248,13 +250,6 @@ internal sealed class ShiftDisplayItem
         ShiftPeriod.Event => localizer["Shifts_Event"].Value,
         ShiftPeriod.Strike => localizer["Shifts_Strike"].Value,
         _ => string.Empty
-    };
-
-    internal static string PeriodBadgeClass(ShiftPeriod period) => period switch
-    {
-        ShiftPeriod.Build => "bg-info",
-        ShiftPeriod.Event => "bg-success",
-        _ => "bg-secondary"
     };
 
     public ShiftInfo Shift { get; set; } = null!;

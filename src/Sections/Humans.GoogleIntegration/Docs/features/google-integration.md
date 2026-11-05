@@ -587,10 +587,12 @@ On Google API error (resource sync):
 ### Error Scenarios
 | Error | Handling |
 |-------|----------|
-| Rate limit exceeded (429) | Transient — retry with backoff |
+| Rate limit exceeded (429, or a 403 whose message says "rate limit exceeded") | Transient — Drive permission listing, create and role change retry in-pass with backoff |
+| Dropped connection (reset, I/O error) in a Group client | One group's failed call, never the pass's; Execute schedules a scoped retry |
+| Drive 400 "internal error" on a grant | Transient in-pass; the same refusal on the member's next run marks the address rejected |
 | User not found (404) | Permanent — mark user email rejected |
 | Invalid email (400) | Permanent — mark user email rejected |
-| Permission denied (403) | Permanent — no Google account for address, mark rejected |
+| Permission denied (403, other than rate limit) | Permanent — no Google account for address, mark rejected |
 | Folder not found | Resource marked inactive — an admin re-links the folder |
 | Inherited permission delete | Any permission with an inherited component is excluded from deletion. Source-owned Drive reconciliation can instead reduce a direct elevation to the inherited floor, as described above. If Drive still 403s on a delete race (inheritance changed between list and delete), the failure is classified terminal, logged once, and not retried until the next reconciliation pass (nobodies-collective/Humans#945) |
 

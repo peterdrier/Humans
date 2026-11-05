@@ -8,6 +8,8 @@ namespace Humans.Consent.Domain;
 /// </summary>
 internal sealed class ConsentReview
 {
+    internal const int MaxTextLength = 4000;
+
     public Guid UserId { get; init; }
 
     /// <summary>Null until all required consents are signed.</summary>

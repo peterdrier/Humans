@@ -214,14 +214,15 @@
 }
 
 <div class="container my-4">
-    <h1>Widget Gallery</h1>
-    <p class="text-muted mb-4">
+    <page-header title="Widget Gallery">
+        <page-header-subtitle>
         A live catalog of every reusable UI widget — TagHelpers, ViewComponents, and shared partials —
         rendered against real data. Companion to <a href="/ColorPalette">/ColorPalette</a>.
         Admin-only. Base and Shell widgets are cataloged here; each section's own widgets arrive
         through the <code>ChromeSlots.WidgetGallery</code> slot under <a href="#sections">Section widgets</a>.
         Resolved sample data: current human <strong>@Model.CurrentUserDisplayName</strong>.
-    </p>
+        </page-header-subtitle>
+    </page-header>
 
     <div class="row">
         <div class="col-md-3 mb-3">
@@ -591,6 +592,49 @@
                 <div class="wg-card">
                     <div class="wg-card-header">
                         <div>
+                            <span class="wg-card-name">&lt;page-header&gt;</span>
+                            <span class="wg-card-kind kind-th">TagHelper</span>
+                        </div>
+                        <span class="wg-card-path">src/Humans.Base/TagHelpers/PageHeaderTagHelper.cs</span>
+                    </div>
+                    <div class="wg-card-note">
+                        The page title band: exactly one <code>&lt;h1&gt;</code>, an optional badge beside it (outside the heading), an optional muted subtitle, and a right-aligned actions area. Every page title goes through it.
+                        Plain subtitle: the <code>subtitle</code> attribute. A subtitle with markup (links, sanitized markdown): a nested <code>&lt;page-header-subtitle&gt;</code>. Every other child is an action.
+                    </div>
+                    @ParamsBlock(
+                        ("title", "<code>string</code> — required; the page's single <code>&lt;h1&gt;</code>"),
+                        ("subtitle", "<code>string?</code> — plain-text muted line; ignored when a <code>&lt;page-header-subtitle&gt;</code> child is present"),
+                        ("badge / badge-class", "<code>string?</code> — badge text and Bootstrap classes (default <code>bg-secondary</code>)"),
+                        ("<page-header-subtitle>", "child element — markup subtitle"),
+                        ("child content", "actions, right-aligned")
+                    )
+                    <div class="wg-variants">
+                        <div class="wg-variant-label">title only</div>
+                        <div class="wg-variant-render">
+                            <page-header title="Finance" />
+                        </div>
+
+                        <div class="wg-variant-label">badge + subtitle attribute + actions</div>
+                        <div class="wg-variant-render">
+                            <page-header title="Budget 2026" subtitle="Budget year" badge="Active" badge-class="bg-success">
+                                <a href="#" class="btn btn-outline-secondary btn-sm">Back</a>
+                                <a href="#" class="btn btn-primary btn-sm">Edit</a>
+                            </page-header>
+                        </div>
+
+                        <div class="wg-variant-label">&lt;page-header-subtitle&gt; with a link<span class="wg-variant-sub">markup subtitle</span></div>
+                        <div class="wg-variant-render">
+                            <page-header title="Opening shift">
+                                <page-header-subtitle><a href="#">Cantina team</a></page-header-subtitle>
+                                <a href="#" class="btn btn-primary btn-sm">Sign up</a>
+                            </page-header>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="wg-card">
+                    <div class="wg-card-header">
+                        <div>
                             <span class="wg-card-name">_AuthorizationPill.cshtml</span>
                             <span class="wg-card-kind kind-pa">Partial</span>
                         </div>
@@ -802,6 +846,28 @@ Line two (pre-wrap keeps this break)</p>
                         <div class="text-muted small">↑ empty until a section contributes; each contributed link is gated for the current viewer.</div>
                     </div>
                 </div>
+                <div class="wg-card">
+                    <div class="wg-card-header">
+                        <div>
+                            <span class="wg-card-name">&lt;status-badge&gt;</span>
+                            <span class="wg-card-kind kind-th">TagHelper</span>
+                        </div>
+                        <span class="wg-card-path">src/Humans.Base/TagHelpers/StatusBadgeTagHelper.cs</span>
+                    </div>
+                    <div class="wg-card-note">Enum status as a badge: colour from <code>EnumBadgeMap</code> (sections register their rows in <code>Section.Register</code>), text from the enum's localized display. Views never pick a badge colour themselves.</div>
+                    @ParamsBlock(
+                        ("value", "<code>Enum</code> — required; a null value renders nothing"),
+                        ("class", "<code>string</code> — optional extra classes after <code>badge &lt;colour&gt;</code> (<code>ms-1</code>, <code>fs-6</code>)"),
+                        ("text", "<code>string</code> — optional text replacing the enum display, for views that show non-enum text"),
+                        ("localizer", "<code>IStringLocalizer</code> — optional; pass the view's <code>Localizer</code> when the enum's <code>Enum_{Type}_{Value}</code> keys live in the section's own resource (default: <code>SharedResource</code>)")
+                    )
+                    <div class="wg-card-example">
+                        <status-badge value="@EmailOutboxStatus.Queued" />
+                        <status-badge value="@EmailOutboxStatus.Sent" class="ms-1" />
+                        <status-badge value="@EmailOutboxStatus.Failed" text="Custom text" class="ms-1" />
+                    </div>
+                </div>
+
 
                 <div class="wg-card">
                     <div class="wg-card-header">

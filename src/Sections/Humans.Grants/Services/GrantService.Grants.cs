@@ -68,7 +68,7 @@ internal sealed partial class GrantService
         await repository.UpdateGrantAsync(grant, ct);
         await AuditGrantAsync(GrantsAuditActions.GrantNoticeResent, grant,
             $"Notice for \"{grant.Program.Name}\" ({year}) sent again.", actorUserId);
-        await AnnounceIssuedAsync(grant, grant.Program, CancellationToken.None);
+        await notices.AnnounceIssuedAsync(grant, grant.Program, CancellationToken.None);
         return GrantMutationResult.Ok;
     }
 
@@ -103,7 +103,7 @@ internal sealed partial class GrantService
         foreach (var grant in grants)
         {
             await AuditGrantAsync(GrantsAuditActions.GrantIssued, grant, describe(grant, year), actorUserId);
-            await AnnounceIssuedAsync(grant, program, CancellationToken.None);
+            await notices.AnnounceIssuedAsync(grant, program, CancellationToken.None);
         }
     }
 
@@ -145,7 +145,7 @@ internal sealed partial class GrantService
         await AuditGrantAsync(GrantsAuditActions.GrantRevoked, grant,
             $"Revoked under \"{grant.Program.Name}\" ({year}){(reason is null ? "" : $": {reason}")}.",
             actorUserId);
-        await AnnounceRevokedAsync(grant, grant.Program, ct);
+        await notices.AnnounceRevokedAsync(grant, grant.Program, ct);
     }
 
     private static Grant NewGrant(

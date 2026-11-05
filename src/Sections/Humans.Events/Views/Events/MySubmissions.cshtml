@@ -8,7 +8,7 @@
     <span>@Localizer["Events_MySubmissionsTitle"]</span>
 }
 
-<h2 class="mb-4">@Localizer["Events_MySubmissionsTitle"]</h2>
+<page-header title="@(Localizer["Events_MySubmissionsTitle"].Value)" />
 
 
 @if (!Model.IsSubmissionOpen)
@@ -75,7 +75,7 @@
         else
         {
             Func<IndividualEventRowViewModel, IHtmlContent> personalStatusCell =
-                @<text><span class="badge @item.StatusBadgeClass">@Localizer.EnumDisplay(item.Status)</span></text>;
+                @<text><status-badge value="@item.Status" localizer="@Localizer" /></text>;
             Func<IndividualEventRowViewModel, IHtmlContent> personalActionsCell = @<text>
                 @if (item.CanEdit)
                 {
@@ -107,7 +107,7 @@
 
 @{
     Func<CampEventRowViewModel, IHtmlContent> barrioStatusCell =
-        @<text><span class="badge @item.StatusBadgeClass">@Localizer.EnumDisplay(item.Status)</span></text>;
+        @<text><status-badge value="@item.Status" localizer="@Localizer" /></text>;
 }
 @foreach (var barrio in Model.Barrios)
 {

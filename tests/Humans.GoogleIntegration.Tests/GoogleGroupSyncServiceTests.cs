@@ -1012,7 +1012,6 @@ public sealed class GoogleGroupSyncServiceTests
                 UserId = u.UserId,
                 Email = u.Email,
                 IsVerified = true,
-                IsGoogle = true,
                 CreatedAt = _clock.GetCurrentInstant(),
                 UpdatedAt = _clock.GetCurrentInstant()
             });

@@ -50,7 +50,7 @@ else
                             }
                         </td>
                         <td>@g.MaxAmount.ToEuro()</td>
-                        <td><span class="badge @EnumBadgeMap.For(g.Status)">@Localizer.EnumDisplay(g.Status)</span></td>
+                        <td><status-badge value="@g.Status" localizer="@Localizer" /></td>
                         <td class="@DeadlineClass(g)">
                             @g.ClaimBy.ToDate()
                             @if (g.DeadlinePassed(Model.Today))
@@ -116,7 +116,7 @@ else
                     <tr>
                         <td>@g.ProgramName @(g.Label is null ? "" : $"· {g.Label}")</td>
                         <td>@g.MaxAmount.ToEuro()</td>
-                        <td><span class="badge @EnumBadgeMap.For(g.Status)">@Localizer.EnumDisplay(g.Status)</span></td>
+                        <td><status-badge value="@g.Status" localizer="@Localizer" /></td>
                         <td>@g.ClaimBy.ToDate()</td>
                     </tr>
                 }

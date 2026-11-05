@@ -119,11 +119,21 @@ internal sealed class EmailProvisioningService(
                 await workspaceIdentities.SetAsync(userId, workspaceRow.Email, provisionedByUserId);
             }
 
-            await auditLogService.LogAsync(
-                GoogleIntegrationAuditActions.WorkspaceAccountProvisioned,
-                "WorkspaceAccount", userId,
-                $"Provisioned and linked @nobodies.team account: {fullEmail}",
-                provisionedByUserId);
+            // The account is created and linked; keep delivering credentials if the audit store is unavailable.
+            try
+            {
+                await auditLogService.LogAsync(
+                    GoogleIntegrationAuditActions.WorkspaceAccountProvisioned,
+                    "WorkspaceAccount", userId,
+                    $"Provisioned and linked @nobodies.team account: {fullEmail}",
+                    provisionedByUserId);
+            }
+            catch (Exception ex)
+            {
+                logger.LogCritical(ex,
+                    "Audit-log write failed AFTER provisioning {Email} for user {UserId} by actor {ActorUserId}. Account was created and linked; reconcile audit trail manually.",
+                    fullEmail, userId, provisionedByUserId);
+            }
 
             var language = user.PreferredLanguage.IsSupportedCultureCode()
                 ? user.PreferredLanguage

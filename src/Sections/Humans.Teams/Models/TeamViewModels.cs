@@ -506,22 +506,3 @@ internal sealed record TeamRosterViewModel(
 
 /// <summary>No name field: the burner name renders through <c>&lt;vc:human&gt;</c>.</summary>
 internal sealed record TeamRosterRowViewModel(Guid UserId, string LegalName, Instant JoinedAt);
-
-internal static class RoleBadgeExtensions
-{
-    internal static string GetBadgeClass(this SlotPriority priority) => priority switch
-    {
-        SlotPriority.Critical => "bg-danger",
-        SlotPriority.Important => "bg-warning text-dark",
-        SlotPriority.NiceToHave => "bg-secondary",
-        _ => "bg-light text-dark"
-    };
-
-    internal static string GetBadgeClass(this RolePeriod period) => period switch
-    {
-        RolePeriod.Build => "bg-info",
-        RolePeriod.Event => "bg-success",
-        RolePeriod.Strike => "bg-secondary",
-        _ => "bg-light text-dark"
-    };
-}

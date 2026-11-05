@@ -62,7 +62,7 @@ The consent check is a Consent Coordinator **audit annotation** on the Volunteer
 
 ## Membership Status
 
-Governance's `MembershipCalculator.ComputeStatusAsync` computes it, in this order: no profile gives None; suspended gives Suspended; `UserState` not Active gives Pending if Bare, else None; Active with no active roles and not a Volunteers member gives None; expired Volunteers consents give Inactive; otherwise Active. There is no Rejected status. See [Membership Status](../../../Humans.Governance/Docs/features/membership-status.md).
+Governance's `MembershipCalculator.GetMembershipSnapshotAsync` computes its status, in this order: no profile gives None; suspended gives Suspended; `UserState` not Active gives Pending if Bare, else None; Active with no active roles and not a Volunteers member gives None; expired Volunteers consents give Inactive; otherwise Active. There is no Rejected status. See [Membership Status](../../../Humans.Governance/Docs/features/membership-status.md).
 
 ## Volunteer Gating (MembershipRequiredFilter)
 
@@ -169,20 +169,18 @@ Triggered by:
 
 ## Compliance Automation
 
-### Grace Period → Team Removal Flow
+### Grace Period → Suspension Flow
 ```
 Document Updated (new version published)
     │
-Day 0: Notification email sent to affected team members
+Day 0: Email and in-app notice to the document's team members
     │
-Day 1-6: Reminder emails (configurable per document)
+Before the deadline: re-consent reminder emails (ConsentReminderDaysBeforeSuspension, with cooldown)
     │
 Day N (GracePeriodDays expires, default 7):
     │
     ▼
-System sync removes user from team
-    → Google resource access revoked
-    → Audit entry logged
+Users' SuspendNonCompliantMembersJob suspends the member
 ```
 
 ### Restoration Flow

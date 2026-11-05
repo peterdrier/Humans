@@ -222,14 +222,14 @@ internal sealed class TeamAdminController(
     };
 
     /// <summary>
-    /// The policy narrows <see cref="HumansTeamControllerBase.ResolveTeamManagementAsync"/>, which also passes
-    /// coordinators, to Board or Admin.
+    /// The policy narrows <see cref="HumansTeamControllerBase.ResolveTeamViewAsync"/>, which also passes
+    /// coordinators, to Board or Admin. The read resolver is what lets Board through: Board holds no team-management right.
     /// </summary>
     [HttpGet("Roster")]
     [Authorize(Policy = PolicyNames.BoardOrAdmin)]
     public async Task<IActionResult> Roster(string slug, CancellationToken ct)
     {
-        var (teamError, _, team) = await ResolveTeamManagementAsync(slug, HttpContext.RequestAborted);
+        var (teamError, _, team, _) = await ResolveTeamViewAsync(slug, HttpContext.RequestAborted);
         if (teamError is not null)
         {
             return teamError;

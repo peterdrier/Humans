@@ -1,5 +1,6 @@
 using System.Globalization;
-using Humans.AuditLog.Contracts;
+using Humans.Base.Interfaces;
+using Humans.Email.Contracts;
 using Humans.Base.Extensions;
 using Humans.Preapprovals.Contracts;
 using Humans.Preapprovals.Domain;
@@ -9,7 +10,13 @@ using Humans.Users.Contracts;
 namespace Humans.Preapprovals.Services;
 
 /// <summary>Committed grant changes keep best-effort notices; reminder delivery must succeed before it is stamped.</summary>
-internal sealed partial class PreapprovalService
+internal sealed class PreapprovalNotices(
+    IUserService users,
+    INotificationEmitter notifications,
+    INotificationAutoResolve notificationResolve,
+    IEmailService email,
+    PreapprovalsEmails emailFactory,
+    ILogger logger) : IApplicationService
 {
     private static readonly System.Resources.ResourceManager NoticeResources = new(typeof(PreapprovalsResource));
 
@@ -19,40 +26,26 @@ internal sealed partial class PreapprovalService
     private static string MemberUrl(Guid programId) => $"/Preapprovals/{programId}";
     private static string ManageUrl(Guid programId) => $"/Preapprovals/Admin/{programId}";
 
-    private Task AuditGrantAsync(
-        AuditActionDefinition action, Domain.PreapprovalGrant grant, string description, Guid actorUserId,
-        Guid? expenseReportId = null) =>
-        auditLog.LogAsync(action, AuditEntityTypes.Grant, grant.Id, description, actorUserId,
-            relatedEntityId: expenseReportId ?? grant.ProgramId,
-            relatedEntityType: expenseReportId is null ? AuditEntityTypes.Program : AuditEntityTypes.ExpenseReport);
-
-    private Task AuditProgramAsync(
-        AuditActionDefinition action, Domain.PreapprovalProgram program, string description, Guid actorUserId,
-        Guid? relatedUserId = null) =>
-        auditLog.LogAsync(action, AuditEntityTypes.Program, program.Id, description, actorUserId,
-            relatedEntityId: relatedUserId,
-            relatedEntityType: relatedUserId is null ? null : AuditSubjectTypes.User);
-
     /// <summary>Clears the beneficiary's standing "file by" prompt (issued, released, reminders, deadline moved).</summary>
-    private Task ResolveFileByAsync(Guid grantId, Guid? actorUserId, CancellationToken ct) =>
+    internal Task ResolveFileByAsync(Guid grantId, Guid? actorUserId, CancellationToken ct) =>
         SafeAsync(() => notificationResolve.ResolveBySourceKeyAsync(
             PreapprovalsNotificationSources.PreapprovalFileBy, FileBySourceKey(grantId), actorUserId, ct), "resolve file-by", grantId);
 
     /// <summary>Clears the managers' "application received" prompt (approved, declined, dropped).</summary>
-    private Task ResolveRequestAsync(Guid grantId, Guid? actorUserId, CancellationToken ct) =>
+    internal Task ResolveRequestAsync(Guid grantId, Guid? actorUserId, CancellationToken ct) =>
         SafeAsync(() => notificationResolve.ResolveBySourceKeyAsync(
             PreapprovalsNotificationSources.PreapprovalApplicationReceived, RequestSourceKey(grantId), actorUserId, ct),
             "resolve application-received", grantId);
 
     /// <summary>Keyed by the grant, so one resolve clears every variant (issued, released, reminder, deadline moved).</summary>
-    private Task NotifyFileByAsync(GrantInfo info, string titleKey, NotificationPriority priority, CancellationToken ct,
+    internal Task NotifyFileByAsync(GrantInfo info, string titleKey, NotificationPriority priority, CancellationToken ct,
         bool propagateFailures = false) =>
         NotifyAsync([info.BeneficiaryUserId], PreapprovalsNotificationSources.PreapprovalFileBy, NotificationClass.Actionable,
             priority, titleKey, info, "Preapprovals_Notice_FileBy_Body", MemberUrl(info.ProgramId),
             FileBySourceKey(info.Id), ct, propagateFailures: propagateFailures);
 
     /// <summary>Informational unless revocation affects a holding report; no source key.</summary>
-    private Task NotifyDecidedAsync(GrantInfo info, string titleKey, string? detail, CancellationToken ct,
+    internal Task NotifyDecidedAsync(GrantInfo info, string titleKey, string? detail, CancellationToken ct,
         decimal? previousAmount = null, Guid? holdingReportId = null) =>
         NotifyAsync([info.BeneficiaryUserId], PreapprovalsNotificationSources.PreapprovalGrantDecided,
             holdingReportId is not null
@@ -65,7 +58,7 @@ internal sealed partial class PreapprovalService
             sourceKey: null, ct, detail, previousAmount);
 
     /// <summary>To every manager of the program: someone applied. Resolved on decision.</summary>
-    private async Task NotifyManagersAsync(ProgramInfo program, GrantInfo info, CancellationToken ct)
+    internal async Task NotifyManagersAsync(ProgramInfo program, GrantInfo info, CancellationToken ct)
     {
         var applicant = await users.GetUserInfoAsync(info.BeneficiaryUserId, ct);
         await NotifyAsync(program.ManagerUserIds, PreapprovalsNotificationSources.PreapprovalApplicationReceived,
@@ -126,12 +119,12 @@ internal sealed partial class PreapprovalService
         }
     }
 
-    private Task EmailAsync(GrantInfo info, PreapprovalNoticeKind kind, string? detail, CancellationToken ct,
+    internal Task EmailAsync(GrantInfo info, PreapprovalNoticeKind kind, string? detail, CancellationToken ct,
         decimal? previousAmount = null, bool propagateFailures = false) =>
         EmailAsync([info.BeneficiaryUserId], info, kind, detail, MemberUrl(info.ProgramId), ct, previousAmount, propagateFailures);
 
     /// <summary>One email per manager: who applied and for what.</summary>
-    private async Task EmailManagersAsync(ProgramInfo program, GrantInfo info, CancellationToken ct)
+    internal async Task EmailManagersAsync(ProgramInfo program, GrantInfo info, CancellationToken ct)
     {
         var applicant = await users.GetUserInfoAsync(info.BeneficiaryUserId, ct);
         var detail = applicant?.BurnerName ?? "A member";
@@ -188,7 +181,7 @@ internal sealed partial class PreapprovalService
         }
     }
 
-    private async Task SafeAsync(Func<Task> action, string what, Guid grantId)
+    internal async Task SafeAsync(Func<Task> action, string what, Guid grantId)
     {
         try
         {

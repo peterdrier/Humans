@@ -29,3 +29,10 @@ No repository, no DB access, no cache. `GrantsEmails` builds `EmailMessage` valu
 gallery entry over it.
 
 ---
+
+### GrantNotices (internal, owned by GrantService)
+
+No repository or cache. Resolves recipients through the existing Users contract
+and sends the owning section’s localized copy through Email and Notifications.
+Issue, resend and revoke reuse this owner after their existing persistence/audit
+steps. No separate DI registration.

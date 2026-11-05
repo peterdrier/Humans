@@ -21,9 +21,9 @@ namespace Humans.Calendar.Tests.Services;
 ///
 /// <para>Covers:</para>
 /// <list type="bullet">
-///   <item><see cref="CalendarService.RecurrenceRuleRefusal"/> — rejects malformed
+///   <item><see cref="CalendarRecurrenceRules.RecurrenceRuleRefusal"/> — rejects malformed
 ///     RRULEs so they cannot persist and blow up later occurrence expansion.</item>
-///   <item><see cref="CalendarService.TimezoneRefusal"/> — rejects unknown timezone
+///   <item><see cref="CalendarRecurrenceRules.TimezoneRefusal"/> — rejects unknown timezone
 ///     IDs at the service boundary so non-controller callers can't slip past the
 ///     web-layer guard and crash inside occurrence expansion.</item>
 ///   <item>NodaTime Tzdb contract — <c>GetZoneOrNull</c> returns null for unknown IDs
@@ -216,7 +216,7 @@ public class CalendarServiceValidationTests
     [InlineData("FREQ=HOURLY;BYYEARDAY=1;BYSETPOS=1")]
     public void RecurrenceRuleRefusal_valid_input_returns_null(string? rrule)
     {
-        CalendarService.RecurrenceRuleRefusal(rrule).Should().BeNull();
+        CalendarRecurrenceRules.RecurrenceRuleRefusal(rrule).Should().BeNull();
     }
 
     [HumansTheory]
@@ -224,7 +224,7 @@ public class CalendarServiceValidationTests
     [InlineData("FREQ=WEEKLY;BYDAY=XX")]
     public void RecurrenceRuleRefusal_malformed_input_returns_reason(string rrule)
     {
-        CalendarService.RecurrenceRuleRefusal(rrule).Should().Contain("Recurrence rule is malformed");
+        CalendarRecurrenceRules.RecurrenceRuleRefusal(rrule).Should().Contain("Recurrence rule is malformed");
     }
 
     [HumansTheory]
@@ -235,7 +235,7 @@ public class CalendarServiceValidationTests
     [InlineData("UTC")]
     public void TimezoneRefusal_valid_input_returns_null(string? tz)
     {
-        CalendarService.TimezoneRefusal(tz).Should().BeNull();
+        CalendarRecurrenceRules.TimezoneRefusal(tz).Should().BeNull();
     }
 
     [HumansTheory]
@@ -243,7 +243,7 @@ public class CalendarServiceValidationTests
     [InlineData("Not/A/Real/Zone")]
     public void TimezoneRefusal_unknown_input_returns_reason(string tz)
     {
-        CalendarService.TimezoneRefusal(tz).Should().Contain("Recurrence timezone is unknown");
+        CalendarRecurrenceRules.TimezoneRefusal(tz).Should().Contain("Recurrence timezone is unknown");
     }
 
     // The three tests below document the NodaTime Tzdb contract the CalendarController
@@ -419,7 +419,7 @@ public class CalendarServiceValidationTests
     [InlineData("FREQ= DAILY ;UNTIL=20260603T100000Z", false)]
     public async Task EventWithResultAsync_UTC_until_is_independent_of_case_and_server_timezone(string rule, bool update)
     {
-        CalendarService.RecurrenceRuleRefusal(rule).Should().BeNull();
+        CalendarRecurrenceRules.RecurrenceRuleRefusal(rule).Should().BeNull();
         var repo = Substitute.For<ICalendarRepository>();
         var service = BuildService(repo);
         var start = Instant.FromUtc(2026, 6, 1, 10, 0);

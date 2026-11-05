@@ -462,6 +462,8 @@ public sealed class CachingCampServiceTests : CampsTestHarness
         _settingsService.GetAllEventSettingsAsync(Arg.Any<CancellationToken>()).Returns([burn]);
         await SeedSettingsAsync(openSeasons: [2026]);
         var (_, season) = await SeedCampWithSeasonAsync(year: 2026);
+        season.EventSettingsId = burn.Id;
+        await SaveAllAsync(TestContext.Current.CancellationToken);
         var granted = await SeedActiveMemberAsync(season.Id, hasEarlyEntry: true);
         await SeedActiveMemberAsync(season.Id, hasEarlyEntry: false);
         await SeedMemberAsync(season.Id, CampMemberStatus.Pending, hasEarlyEntry: true);

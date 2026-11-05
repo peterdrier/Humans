@@ -20,7 +20,7 @@ The goal is to identify cross-section table overlap, duplicated caching, and cac
 >
 > | DbContext | Owns |
 > |-----------|------|
-> | `UsersDbContext` | `Profiles`, `ContactFields`, `UserEmails`, `VolunteerHistoryEntries`, `AccountMergeRequests`, `CommunicationPreferences` (frozen legacy — Email owns preferences), `ProfileLanguages`, `EventParticipations` (frozen legacy — Tickets owns participation), plus the Identity base (`IdentityDbContext<User, IdentityRole<Guid>, Guid>`: `users`/`roles`/`user_roles`/`user_claims`/`user_logins`/`role_claims`/`user_tokens`). Own project, `src/Sections/Humans.Users/` (Profiles folded in — no separate Profiles project). |
+> | `UsersDbContext` | `Profiles`, `ContactFields`, `UserEmails`, `VolunteerHistoryEntries`, `AccountMergeRequests`, `ProfileLanguages`, plus the Identity base (`IdentityDbContext<User, IdentityRole<Guid>, Guid>`: `users`/`roles`/`user_roles`/`user_claims`/`user_logins`/`role_claims`/`user_tokens`). Own project, `src/Sections/Humans.Users/` (Profiles folded in — no separate Profiles project). |
 > | `TeamsDbContext` | `Teams`, `TeamMembers`, `TeamJoinRequests`, `TeamJoinRequestStateHistories`, `TeamRoleDefinitions`, `TeamRoleAssignments`, `TeamEarlyEntryGrants` — owned by `src/Sections/Humans.Teams`; `TeamRepository` injects `IDbContextFactory<TeamsDbContext>` |
 > | `AuditLogDbContext` | `AuditLogEntries` — owned by `src/Sections/Humans.AuditLog` (a *horizontal* section — see [AuditLog](../../src/Sections/Humans.AuditLog/Docs/data-access.md)) |
 > | `LegalDbContext` | `LegalDocuments`, `DocumentVersions`, `ConsentRecords`, `consent_reviews`, `consent_reminders` — own project, `src/Sections/Humans.Consent/Data/`. `ConsentRecords` lives here (not a separate Consent context) — Consent has never owned its own DbContext. |
@@ -46,8 +46,9 @@ The goal is to identify cross-section table overlap, duplicated caching, and cac
 > | `ContainersDbContext` | `Containers`, `ContainerPlacements`, `ContainerImages` (own project, `src/Sections/Humans.Containers/`) |
 > | `ExpensesDbContext` | `ExpenseReports`, `ExpenseLines`, `ExpenseAttachments`, `HoldedExpenseOutboxEvents` (own project, `src/Sections/Humans.Expenses/`) |
 > | `FinanceDbContext` | `HoldedExpenseDocs`, `HoldedCategoryMap`, `HoldedCreditorContacts`, `HoldedDocSyncStates`, `HoldedManagedAccounts`, `SepaPayoutFiles`, `SepaPayoutTransfers`, `finance_payment_details` (own project, `src/Sections/Humans.Finance/`). The ledger mirror (`HoldedLedgerLines`, its sync state, the chart-of-accounts cache, and the API call log) lives in the separate `HoldedDbContext` below. |
-> | `HoldedDbContext` | `HoldedLedgerLines`, `HoldedSyncStates`, `HoldedAccounts`, `HoldedApiCalls` (own project, `src/Sections/Humans.Holded/`). The daybook-journal ledger mirror, chart-of-accounts cache, and Holded API call-log/metering — split out of Finance so the two sections that both touch Holded data stay structurally isolated from each other. |
+> | `HoldedDbContext` | `HoldedLedgerLines`, `HoldedSyncStates`, `HoldedAccounts`, `HoldedApiCalls`, `HoldedPurchaseDocs` (own project, `src/Sections/Humans.Holded/`). The daybook-journal ledger mirror, purchase-document mirror, chart-of-accounts cache, and Holded API call-log/metering — split out of Finance so the two sections that both touch Holded data stay structurally isolated from each other. |
 > | `PleoDbContext` | `PleoEntries`, `PleoEmployees`, `PleoAccounts`, `PleoBalances`, `PleoSyncStates`, `PleoCategories` (own project, `src/Sections/Humans.Pleo/`). The read-only Pleo mirror plus the hand-linked category → Holded account mapping. |
+> | `StripeDbContext` | `StripeBalanceTransactions`, `StripePayouts`, `StripeBalances`, `StripeSyncStates` (own project, `src/Sections/Humans.Stripe/`). The read-only Stripe mirror across every configured account. |
 > | `EventGuideDbContext` | `EventGuideSettings`, `EventCategories`, `EventVenues`, `Events`, `EventModerationActions`, `EventPreferences`, `EventFavourites` (own project, `src/Sections/Humans.Events/`; the Shifts-owned `EventSettings` / `EventParticipations` tables deliberately stay off this context, despite the name collision) |
 > | `StoreDbContext` | `Products`, `Orders`, `OrderLines`, `Payments`, `Invoices` (own project, `src/Sections/Humans.Store/`, table names `store_products` / `store_orders` / `store_order_lines` / `store_payments` / `store_invoices`) |
 > | `BackdoorDbContext` | `backdoor_api_keys` (own project, `src/Sections/Humans.Backdoor/`) |
@@ -55,6 +56,7 @@ The goal is to identify cross-section table overlap, duplicated caching, and cac
 > | `RideshareDbContext` | `RideshareTrips`, `RideshareRequests`, `RideshareInterests`, `RideshareSettings` (own project, `src/Sections/Humans.Rideshare/`, table names `rideshare_trips` / `rideshare_requests` / `rideshare_interests` / `rideshare_settings`) |
 > | `WorkgroupsDbContext` | `workgroups`, `workgroup_members`, `workgroup_meetings`, `workgroup_log_entries`, `workgroup_documents`, `workgroup_document_comments`, `workgroups_settings` (own project, `src/Sections/Humans.Workgroups/`) |
 > | `CantinaDbContext` | `cantina_dietary_profiles` (own project, `src/Sections/Humans.Cantina/`) |
+> | `GrantsDbContext` | `Programs` (`grant_programs`), `Managers` (`grant_program_managers`), `Grants` (`grants`) (own project, `src/Sections/Humans.Grants/`) |
 > | `PreapprovalsDbContext` | `pre_programs`, `pre_program_managers`, `pre_grants`, `pre_reminders_sent` (own project, `src/Sections/Humans.Preapprovals/`) |
 >
 > Each context applies its `IEntityTypeConfiguration` classes explicitly (no
@@ -179,13 +181,10 @@ Every table is owned by exactly one repository; there are no HUM0025
    read-only contracts the section's services implement directly. All keep
    the cross-section coupling minimal and `[SurfaceBudget]`-bounded.
 
-3. **`IProfileService` retired into `IUserService`.** The Profile-section
-   service surface is folded into `IUserService` as part of the
-   Users+Profile section merge; the interface's `[SurfaceBudget]` is
-   intentionally suspended during the merge.
-   `ProfileEditorService` and `ContactFieldService` remain in
-   `Humans.Users/Services/` as section-internal collaborators; the only
-   Application-layer service named `ProfileService` is a thin
+3. **Profile reads and writes go through `IUserService`.** The unified
+   User+Profile read-model sits behind `IUserService`; `ProfileEditorService`
+   and `ContactFieldService` live in `Humans.Users/Services/` as
+   section-internal collaborators, and `ProfileService` is a thin
    `IProfilePictureService` implementation for picture-bytes IO.
 
 4. **Tickets ↔ Profiles email lookup.**
@@ -318,9 +317,9 @@ Every table is owned by exactly one repository; there are no HUM0025
 
 15. **The per-section DbContext split is complete — "one
     table, one repository" is a compile/schema-enforced boundary for
-    every table-owning section, with no shared context left.** 35 contexts
-    exist — see the full DbContext table in the intro Methodology block
-    above — each mapping **only** its own section's tables via explicit
+    every table-owning section, with no shared context left.** Every section
+    context (Feedback's carries no tables, only the migration that dropped them; see the full DbContext table in the intro Methodology block
+    above) maps **only** its own section's tables via explicit
     `ApplyConfiguration` calls (no assembly scanning), so a section's
     repository cannot accidentally `Set<T>()` a foreign table without
     first injecting that section's `IDbContextFactory<T>` — a conspicuous,
@@ -392,9 +391,9 @@ separately below the key table.
 | `TrackedCache<Guid, CalendarEventInfo>` | Calendar | `Calendar.Event` | Per-Entity | CachingCalendarService warmup + lazy load | per-event `ReplaceAsync` after delegated write |
 | `TrackedCache<Guid, ApprovedEventView>` + category/venue/settings snapshots | Events | `Event.ApprovedEventView` | Per-Entity / Static | CachingEventService warmup + lazy load | inline per write |
 | `TrackedCache<Guid, UserConsentInfo>` | Consent | `Consent.UserConsentInfo` | Per-User | CachingConsentService lazy load | synchronous per-user evict on submit; merge reloads via `UserInfo.AllUserIds` |
-| `TrackedCache<Guid, LegalDocumentInfo>` | Legal | `Legal.LegalDocumentInfo` | Per-Entity | CachingLegalDocumentSyncService warmup + lazy load | `CachingLegalDocumentSyncService.InvalidateAll` (called directly by `LegalDocumentSyncService` after each write) |
+| `TrackedCache<Guid, ActiveRequiredLegalDocumentSnapshot>` | Legal | `Legal.LegalDocumentInfo` | Per-Entity | CachingLegalDocumentSyncService warmup + lazy load | `CachingLegalDocumentSyncService.InvalidateAll` (called directly by `LegalDocumentSyncService` after each write) |
 | `TrackedCache<Guid, RoleAssignmentRow>` | Auth | `Auth.RoleAssignmentRow` | Per-Entity | CachingRoleAssignmentService warmup + lazy load | wholesale `Clear()` by the inner `RoleAssignmentService` after each repository write |
-| `TrackedCache<int, RideshareSnapshot>` | Rideshare | `Rideshare.Snapshot` | Per-Year | CachingRideshareService lazy load | full `Clear()` after every delegated write |
+| `TrackedCache<Guid, RideshareSnapshot>` | Rideshare | `Rideshare.Snapshot` | Per-Event | CachingRideshareService lazy load | full `Clear()` after every delegated write |
 | `TrackedCache<byte, IReadOnlyList<WorkgroupInfo>>` | Workgroups | `Workgroups.Register` | Single entry | CachingWorkgroupService lazy load | full `Clear()` after every delegated write |
 | `TrackedCache<string, CachedVendorEventSummary>` | Tickets | `Tickets.VendorEventSummary` | Per-Entity (15-min freshness in value) | CachingTicketVendorService lazy load | own `GetOrdersAsync` pass-through (per event, after a successful pull) |
 | `TrackedCache<string, Dictionary<string, int>>` | Finance | `Finance.SepaStuckBankLines` | Single entry | `SepaBankBooking` sweep | `SepaBankBooking` (cleared when no line is stuck) |

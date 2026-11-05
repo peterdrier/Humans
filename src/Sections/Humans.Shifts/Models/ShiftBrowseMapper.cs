@@ -39,6 +39,7 @@ internal static class ShiftBrowseMapper
         return new RotaShiftGroup
         {
             Rota = rota,
+            EarlyEntrySignupsClosed = rotaGroup.First().EarlyEntrySignupsClosed,
             Shifts = shifts,
             DepartmentName = departmentName,
             DepartmentSlug = departmentSlug,

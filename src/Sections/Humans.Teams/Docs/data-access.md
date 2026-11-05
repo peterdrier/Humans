@@ -152,3 +152,11 @@ registered in `Section.Register`) — builds one sample per template via
 ---
 
 
+
+### TeamPageContent (internal, owned by TeamService)
+
+Repository: `ITeamRepository`. Updates the owning team row’s page content, calls to
+action, public-page flags and timestamps; audits successful writes through
+`IAuditLogService`. Shares its safe URL predicate with `TeamPageSummaryMapper`.
+No separate DI registration or cache; the existing management facade and caching
+decorator remain the entry point.

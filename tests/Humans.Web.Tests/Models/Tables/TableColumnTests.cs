@@ -121,4 +121,13 @@ public class TableColumnTests
         Render(col.Cell(new Row { Name = "x" })).Should().Be("<b>x</b>");
         col.SortValue(new Row { Name = "x" }).Should().BeNull();
     }
+
+    [HumansFact]
+    public void Template_sorts_by_its_sortBy_value_not_its_markup()
+    {
+        var col = new TableColumn<Row>("H", CellFormat.Template, value: r => r.Amount,
+            template: r => new HtmlString($"<b>{r.Amount} €</b>"), new TableColumnOptions());
+        col.SortValue(new Row { Amount = 12.5m }).Should().Be("12.5");
+        col.SortType.Should().Be("auto");
+    }
 }
