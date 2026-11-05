@@ -3,9 +3,9 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
+const { installHumans } = require('../../browser-support/humans-js.cjs');
 const view = fs.readFileSync(path.resolve(__dirname, '../../../src/Sections/Humans.GoogleIntegration/Views/Google/Sync.cshtml'), 'utf8');
-const script = view.slice(view.indexOf('(function ()'), view.indexOf('</script>'))
-    .replace(/^.*@await Html.PartialAsync.*$/m, '');
+const script = view.slice(view.indexOf('(function ()'), view.indexOf('</script>'));
 const flush = () => new Promise(resolve => setImmediate(resolve));
 function deferred() {
     let resolve, reject;
@@ -27,11 +27,11 @@ function dashboard() {
         getElementById: id => panes[id === 'drives-tab' ? 'DriveFolder' : 'Group'],
         addEventListener() {},
     };
-    vm.runInNewContext(script, { document, getRequestVerificationToken: () => 'token', fetch: (url, options) => {
+    vm.runInNewContext(script, installHumans({ document, fetch: (url, options) => {
         const request = deferred();
         requests.push({ ...request, url, options });
         return request.promise;
-    } });
+    } }));
     return { panes, requests, load: type => tabs[type === 'DriveFolder' ? 0 : 1].show(),
         reply: (index, html) => requests[index].resolve({ ok: true, text: async () => html }) };
 }
@@ -64,7 +64,7 @@ test('drive and group previews update independently', async () => {
     assert.equal(ui.requests[0].url, '/Google/Sync/Preview/0');
     assert.equal(ui.requests[1].url, '/Google/Sync/Preview/2');
     assert.equal(ui.requests[0].options.method, 'POST');
-    assert.equal(ui.requests[0].options.headers.RequestVerificationToken, 'token');
+    assert.equal(ui.requests[0].options.headers.RequestVerificationToken, 'csrf');
     ui.reply(1, 'groups'); ui.reply(0, 'drives'); await flush();
     assert.equal(ui.panes.DriveFolder.innerHTML, 'drives');
     assert.equal(ui.panes.Group.innerHTML, 'groups');

@@ -3,6 +3,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
+const { installHumans } = require('../../browser-support/humans-js.cjs');
 const view = fs.readFileSync(path.resolve(__dirname, '../../../src/Sections/Humans.Email/Views/CommunicationPreferences/Index.cshtml'), 'utf8');
 const script = view.slice(view.indexOf('<script>') + 8, view.indexOf('</script>'));
 const flush = () => new Promise(resolve => setImmediate(resolve));
@@ -14,14 +15,14 @@ function form(alertEnabled) {
         classList: { add: value => classes.add(value), remove: value => classes.delete(value) } };
     const email = { checked: true, disabled: false, dataset: { category: 'Marketing', channel: 'email' }, closest: () => row,
         addEventListener: (name, handler) => change = () => handler.call(email) };
-    vm.runInNewContext(script, { URLSearchParams, setTimeout() {},
+    vm.runInNewContext(script, installHumans({ URLSearchParams, setTimeout() {},
         document: { querySelectorAll: () => [email], querySelector: () => ({ value: 'token' }) },
         fetch: (url, requestOptions) => {
             options = requestOptions;
             requests.push(new URLSearchParams(options.body));
             return new Promise((yes, no) => { resolve = yes; reject = no; });
         },
-    });
+    }));
     return { email, requests, classes, change: () => { email.checked = !email.checked; change(); }, reply: ok => resolve({ ok }),
         redirect: () => options.redirect === 'error' ? reject(new TypeError('redirect blocked')) : resolve({ ok: true }) };
 }

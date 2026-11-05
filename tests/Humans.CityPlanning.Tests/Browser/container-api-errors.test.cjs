@@ -3,6 +3,7 @@ const { test } = require('node:test');
 const { readFileSync } = require('node:fs');
 const { resolve } = require('node:path');
 const vm = require('node:vm');
+const { installHumans } = require('../../browser-support/humans-js.cjs');
 
 function api(saveFailed, clearFailed, response) {
     const requests = [];
@@ -10,7 +11,7 @@ function api(saveFailed, clearFailed, response) {
         getElementById: () => ({ dataset: { year: '2026', i18nSaveFailed: saveFailed, i18nClearFailed: clearFailed } }),
         querySelector: () => ({ value: 'csrf' }),
     }, ESRI_TILES: [], MAP_BOUNDS: [], fetch: async (url, options) => { requests.push({ url, options }); return response; } };
-    vm.createContext(context);
+    installHumans(context); vm.createContext(context);
     const root = resolve(__dirname, '../../../src/Sections/Humans.CityPlanning/wwwroot/js/city-planning/container-map');
     for (const file of ['config.js', 'api.js']) {
         const source = readFileSync(resolve(root, file), 'utf8').replace(/^import[^\n]*;\s*$/gm, '').replaceAll('export ', '');

@@ -3,6 +3,7 @@ const { test } = require('node:test');
 const { readFileSync } = require('node:fs');
 const { resolve } = require('node:path');
 const vm = require('node:vm');
+const { installHumans } = require('../../browser-support/humans-js.cjs');
 
 function renderLabels(center, notes) {
     const cards = [];
@@ -15,7 +16,7 @@ function renderLabels(center, notes) {
         } } : sections[id],
         createElement: () => ({ dataset: {}, querySelector: () => ({ addEventListener() {} }), addEventListener() {} }),
     }, ESRI_TILES: [], MAP_BOUNDS: [] };
-    vm.createContext(context);
+    installHumans(context); vm.createContext(context);
     const root = resolve(__dirname, '../../../src/Sections/Humans.CityPlanning/wwwroot/js/city-planning/container-map');
     for (const file of ['config.js', 'sidebar.js']) {
         const source = readFileSync(resolve(root, file), 'utf8').replace(/^import[^\n]*;\s*$/gm, '').replaceAll('export ', '');

@@ -3,6 +3,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
+const { installHumans } = require('../../browser-support/humans-js.cjs');
 const script = fs.readFileSync(path.resolve(__dirname,
     '../../../src/Sections/Humans.CityPlanning/wwwroot/js/city-planning/barrio-map/admin-import.js'), 'utf8');
 const settle = () => new Promise(setImmediate);
@@ -32,7 +33,7 @@ function preview() {
         bootstrap: { Modal: { getOrCreateInstance: () => ({ show: () => shows++ }) } },
         fetch: () => { fetches++; return response.promise; },
     };
-    vm.createContext(context); vm.runInContext(script, context);
+    installHumans(context); vm.createContext(context); vm.runInContext(script, context);
     return { read, response, fileInput, error, shows: () => shows, fetches: () => fetches,
         seed: () => vm.runInContext("pendingImport = { matched: [{ campSeasonId: 'old' }], unrecognized: [] };", context),
         pending: () => vm.runInContext('pendingImport', context), run: () => vm.runInContext('handlePreview()', context),
