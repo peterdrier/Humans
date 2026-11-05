@@ -188,7 +188,7 @@ Member create, edit, withdrawal and bulk-import preflight reads retain browser c
 
 ## Invariants
 
-- Configured-guide camp enrichment uses the guide event ID through Camps' existing event-scoped contract, which supplies only the matching season. Browse, schedule, API, dashboard, moderation, print and CSV use that season's name; another event in the same year or a future season cannot replace it. Missing event settings yield no camp enrichment. Camp-management authorization and authoring context retain their existing policy.
+- Configured-guide camp enrichment uses the guide event ID through Camps' existing event-scoped contract, which supplies only the matching season. Browse, schedule, API, dashboard, moderation, print and CSV use that season's name; another event in the same year or a future season cannot replace it. Missing event settings yield no camp enrichment. Authoring labels (My Submissions, camp forms and bulk templates) resolve the configured guide season explicitly, using the slug if that season is absent. Camp-management authorization and managed-camp selection retain their existing policy; unconfigured guides retain unscoped camp labels.
 
 
 - Camp/profile event cards resolve the viewer before loading approved rows and

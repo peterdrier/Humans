@@ -575,6 +575,7 @@ public class EventsControllerTests
     [Xunit.InlineData(nameof(EventsController.BarrioEdit), "Categories")]
     [Xunit.InlineData(nameof(EventsController.BulkUploadTemplate), "Camp")]
     [Xunit.InlineData(nameof(EventsController.BulkUploadTemplate), "Viewer")]
+    [Xunit.InlineData(nameof(EventsController.BulkUploadTemplate), "Guide")]
     [Xunit.InlineData(nameof(EventsController.BulkUploadTemplate), "Template")]
     [Xunit.InlineData(nameof(EventsController.Create), "Viewer")]
     [Xunit.InlineData(nameof(EventsController.Create), "Guide")]
@@ -862,6 +863,65 @@ public class EventsControllerTests
         var result = await controller.Update(eventId, new IndividualEventFormViewModel());
 
         result.Should().BeOfType<ForbidResult>();
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData("list", true)]
+    [Xunit.InlineData("form", true)]
+    [Xunit.InlineData("template", true)]
+    [Xunit.InlineData("form", false)]
+    public async Task CampAuthoringLabels_UseConfiguredSeasonWithoutChangingCampAuthority(string route, bool hasSeason)
+    {
+        var userId = Guid.NewGuid();
+        var campId = Guid.NewGuid();
+        StubEditableGuideSettings();
+        var settings = (await _guide.GetGuideSettingsAsync())! with
+        {
+            SubmissionOpenAt = Instant.FromUtc(2026, 5, 1, 0, 0),
+            SubmissionCloseAt = Instant.FromUtc(2026, 6, 1, 0, 0),
+            GuidePublishAt = Instant.FromUtc(2026, 6, 1, 0, 0)
+        };
+        _guide.GetGuideSettingsAsync(Arg.Any<CancellationToken>()).Returns(settings);
+        _clock.GetCurrentInstant().Returns(Instant.FromUtc(2026, 5, 15, 0, 0));
+        _guide.GetEventSettingsByIdAsync(settings.EventSettingsId, Arg.Any<CancellationToken>())
+            .Returns(MakeBurnSettings() with { Id = settings.EventSettingsId });
+        var season = new CampSeasonInfo(
+            Guid.NewGuid(), campId, "camp", 2026, null, "Guide Camp", "", "en", [],
+            default, default, default, default, 1, null, null, null, 0, null, null)
+        { LeadUserIds = [userId], EventSettingsId = settings.EventSettingsId };
+        var future = season with { Id = Guid.NewGuid(), Year = 2027, Name = "Future Camp", EventSettingsId = Guid.NewGuid() };
+        var camp = new CampInfo(campId, "camp", "camp@example.org", "", false, 0,
+            hasSeason ? [future, season] : [future]);
+        _camps.GetSettingsAsync(Arg.Any<CancellationToken>()).Returns(new CampSettingsInfo(2026, [2026]));
+        _camps.GetCampsForYearAsync(2026, Arg.Any<CancellationToken>()).Returns([camp]);
+        _camps.GetCampBySlugAsync(camp.Slug, Arg.Any<CancellationToken>()).Returns(camp);
+        _authz.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(), Arg.Any<IEnumerable<IAuthorizationRequirement>>())
+            .Returns(AuthorizationResult.Success());
+        _guide.GetUserSubmissionsAsync(userId, Arg.Any<CancellationToken>()).Returns([]);
+        _guide.GetCampSubmissionsSummaryAsync(campId, Arg.Any<CancellationToken>())
+            .Returns(new CampSubmissionsSummary(0, 0, 0, []));
+        _guide.BuildBulkUploadTemplateAsync(campId, Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns([]);
+        var controller = BuildController(userId);
+        controller.TempData = new TempDataDictionary(controller.HttpContext, Substitute.For<ITempDataProvider>());
+        var expected = hasSeason ? "Guide Camp" : "camp";
+
+        switch (route)
+        {
+            case "list":
+                var list = (await controller.MySubmissions()).Should().BeOfType<ViewResult>().Which;
+                list.Model.Should().BeOfType<MySubmissionsViewModel>().Which.Barrios.Single().CampName.Should().Be(expected);
+                break;
+            case "form":
+                var form = (await controller.BarrioSubmit("camp")).Should().BeOfType<ViewResult>().Which;
+                form.Model.Should().BeOfType<CampEventFormViewModel>().Which.CampName.Should().Be(expected);
+                break;
+            case "template":
+                (await controller.BulkUploadTemplate("camp")).Should().BeOfType<FileContentResult>();
+                await _guide.Received(1).BuildBulkUploadTemplateAsync(campId, expected, Arg.Any<CancellationToken>());
+                break;
+            default:
+                throw new ArgumentOutOfRangeException(nameof(route));
+        }
     }
 
     [HumansFact]
