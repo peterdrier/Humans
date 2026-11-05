@@ -323,54 +323,6 @@ internal sealed class EventService(
         await repo.SaveEventAndModerationActionAsync(guideEvent, action, ct);
     }
 
-    public async Task<IReadOnlyList<(Guid EntryId, string Title, Instant StartAt, Guid EventSettingsId, string EventName)>> GetUnassignedGuideEntriesAsync(
-        CancellationToken ct = default)
-    {
-        var events = (await settingsService.GetAllEventSettingsAsync(ct))
-            .Where(e => e.Status != EventSettingsStatus.Deleted)
-            .OrderBy(e => e.GateOpeningDate)
-            .ToList();
-        if (events.Count == 0) return [];
-
-        // The GDPR read: every entry regardless of status or event.
-        return [.. (await repo.GetAllEventsForDashboardAsync(ct))
-            .Where(e => e.EventSettingsId is null)
-            .Select(e =>
-            {
-                var owner = PickEventFor(e.StartAt, events);
-                return (e.Id, e.Title, e.StartAt, owner.Id, owner.EventName);
-            })];
-    }
-
-    public async Task<int> AssignGuideEntryEventIdsAsync(CancellationToken ct = default)
-    {
-        var pending = await GetUnassignedGuideEntriesAsync(ct);
-        return await repo.AssignEventSettingsIdsAsync(pending.ToDictionary(p => p.EntryId, p => p.EventSettingsId), ct);
-    }
-
-    /// <summary>
-    /// The event whose build-to-strike window holds the start's local date; otherwise the one whose gate opening is
-    /// nearest (earliest on a tie). <paramref name="events"/> is non-empty and ordered by gate opening.
-    /// </summary>
-    internal static EventSettingsInfo PickEventFor(Instant startAt, IReadOnlyList<EventSettingsInfo> events)
-    {
-        var nearest = events[0];
-        var nearestDistance = int.MaxValue;
-        foreach (var candidate in events)
-        {
-            var zone = DateTimeZoneProviders.Tzdb.GetZoneOrNull(candidate.TimeZoneId) ?? DateTimeZone.Utc;
-            var offset = Period.Between(candidate.GateOpeningDate, startAt.InZone(zone).Date, PeriodUnits.Days).Days;
-            if (offset >= candidate.BuildStartOffset && offset <= candidate.StrikeEndOffset)
-                return candidate;
-            if (Math.Abs(offset) < nearestDistance)
-            {
-                nearest = candidate;
-                nearestDistance = Math.Abs(offset);
-            }
-        }
-        return nearest;
-    }
-
     /// <summary>Null when the submission window is closed or not configured.</summary>
     private async Task<EventGuideSettings?> GetOpenSubmissionSettingsAsync(CancellationToken ct)
     {

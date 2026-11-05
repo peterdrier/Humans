@@ -24,6 +24,7 @@ public class EventServiceCalendarFeedTests
         new StringLocalizer<EventsResource>(new ResourceManagerStringLocalizerFactory(
             Options.Create(new LocalizationOptions()), NullLoggerFactory.Instance));
 
+    private readonly Guid _eventEditionId = Guid.NewGuid();
     private static readonly Instant FixedNow = Instant.FromUtc(2026, 6, 15, 12, 0);
     // 19:00 Europe/Madrid on 2026-07-01 = 17:00 UTC (CEST).
     private static readonly Instant EventStart = Instant.FromUtc(2026, 7, 1, 17, 0);
@@ -40,13 +41,14 @@ public class EventServiceCalendarFeedTests
             .Returns((EventGuideSettings?)null);
     }
 
-    private static Event MakeEvent(
+    private Event MakeEvent(
         EventStatus status,
         bool isRecurring = false,
         string? recurrenceDays = null) => new()
         {
             Id = Guid.NewGuid(),
             SubmitterUserId = Guid.NewGuid(),
+            EventSettingsId = _eventEditionId,
             CategoryId = Guid.NewGuid(),
             Title = "Sunset Yoga",
             Description = "Bring a mat.",
@@ -84,7 +86,7 @@ public class EventServiceCalendarFeedTests
         var guideSettings = new EventGuideSettings
         {
             Id = Guid.NewGuid(),
-            EventSettingsId = Guid.NewGuid(),
+            EventSettingsId = _eventEditionId,
             SubmissionOpenAt = FixedNow,
             SubmissionCloseAt = FixedNow,
             GuidePublishAt = FixedNow,

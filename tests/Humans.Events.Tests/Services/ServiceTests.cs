@@ -187,6 +187,7 @@ public sealed class EventServiceTests
             {
                 Id = Guid.NewGuid(),
                 SubmitterUserId = submitterId,
+                EventSettingsId = burn.Id,
                 Category = new EventCategory { Name = "Workshop", Slug = "workshop" },
                 EventVenue = new EventVenue { Name = "Main Stage" },
                 Title = "Fire Circle",
@@ -1042,7 +1043,7 @@ public sealed class EventServiceTests
     }
 
     [HumansFact]
-    public async Task GetApprovedEventsAsync_ShowsOnlyTheGuidesEventAndUnassignedEntries()
+    public async Task GetApprovedEventsAsync_ShowsOnlyTheGuidesAssignedEntries()
     {
         var guideEventId = Guid.NewGuid();
         _repo.Settings = new EventGuideSettings { Id = Guid.NewGuid(), EventSettingsId = guideEventId };
@@ -1061,57 +1062,10 @@ public sealed class EventServiceTests
 
         var result = await _service.GetApprovedEventsAsync(null, null, null, null, [], TestContext.Current.CancellationToken);
 
-        result.Select(e => e.Id).Should().BeEquivalentTo([current.Id, unassigned.Id]);
+        result.Select(e => e.Id).Should().BeEquivalentTo([current.Id]);
+        (await _service.GetApprovedEventByIdAsync(unassigned.Id, TestContext.Current.CancellationToken)).Should().BeNull();
         (await _service.GetApprovedEventByIdAsync(lastYear.Id, TestContext.Current.CancellationToken)).Should().BeNull();
     }
-
-    [HumansFact]
-    public void PickEventFor_PrefersTheWindowHoldingTheStartDate_ElseTheNearestGateOpening()
-    {
-        var y2026 = Cycle("Nowhere 2026", new LocalDate(2026, 7, 7));
-        var y2027 = Cycle("Nowhere 2027", new LocalDate(2027, 7, 6));
-        IReadOnlyList<EventSettingsInfo> cycles = [y2026, y2027];
-
-        // 23:30 UTC on gate-minus-15 is already gate-minus-14 (build start) in Madrid.
-        EventService.PickEventFor(Instant.FromUtc(2026, 6, 22, 23, 30), cycles).Should().Be(y2026);
-        EventService.PickEventFor(Instant.FromUtc(2027, 7, 8, 10, 0), cycles).Should().Be(y2027);
-        EventService.PickEventFor(Instant.FromUtc(2026, 12, 1, 10, 0), cycles).Should().Be(y2026);
-        EventService.PickEventFor(Instant.FromUtc(2027, 3, 1, 10, 0), cycles).Should().Be(y2027);
-    }
-
-    [HumansFact]
-    public async Task AssignGuideEntryEventIdsAsync_AssignsEveryUnassignedEntry_AndLeavesAssignedOnes()
-    {
-        var y2026 = Cycle("Nowhere 2026", new LocalDate(2026, 7, 7));
-        var deleted = Cycle("Deleted", new LocalDate(2026, 7, 7)) with { Status = EventSettingsStatus.Deleted };
-        _burnSettings.GetAllEventSettingsAsync(Arg.Any<CancellationToken>()).Returns([deleted, y2026]);
-        var unassigned = new Event { Id = Guid.NewGuid(), Title = "Old", StartAt = Instant.FromUtc(2026, 7, 9, 18, 0) };
-        var otherEvent = Guid.NewGuid();
-        var assigned = new Event { Id = Guid.NewGuid(), EventSettingsId = otherEvent, StartAt = Instant.FromUtc(2026, 7, 9, 18, 0) };
-        _repo.Events.AddRange([unassigned, assigned]);
-
-        var pending = await _service.GetUnassignedGuideEntriesAsync(TestContext.Current.CancellationToken);
-        var written = await _service.AssignGuideEntryEventIdsAsync(TestContext.Current.CancellationToken);
-
-        pending.Should().ContainSingle().Which.EventName.Should().Be("Nowhere 2026");
-        written.Should().Be(1);
-        unassigned.EventSettingsId.Should().Be(y2026.Id);
-        assigned.EventSettingsId.Should().Be(otherEvent);
-        (await _service.GetUnassignedGuideEntriesAsync(TestContext.Current.CancellationToken)).Should().BeEmpty();
-    }
-
-    private static EventSettingsInfo Cycle(string name, LocalDate gateOpening) => new(
-        Id: Guid.NewGuid(),
-        EventName: name,
-        Year: gateOpening.Year,
-        TimeZoneId: "Europe/Madrid",
-        GateOpeningDate: gateOpening,
-        BuildStartOffset: -14,
-        EventEndOffset: 6,
-        StrikeEndOffset: 10,
-        EarlyEntryCapacity: new Dictionary<int, int>(),
-        BarriosEarlyEntryAllocation: null,
-        EarlyEntryClose: null);
 
     [HumansFact]
     public async Task SubmitEventAsync_WindowClosed_ReturnsRefusalAndWritesNothing()
@@ -1543,6 +1497,8 @@ public sealed class EventServiceTests
             ExistingEvent(campId, category.Id, EventStatus.Approved),
             ExistingEvent(campId, category.Id, EventStatus.Approved),
         };
+        foreach (var row in existing)
+            row.EventSettingsId = eventId;
         await using (var seed = await factory.CreateDbContextAsync(ct))
         {
             seed.EventCategories.Add(category);
@@ -1885,6 +1841,7 @@ public sealed class EventServiceTests
         {
             Id = Guid.NewGuid(),
             CampId = campId,
+            EventSettingsId = _repo.Settings?.EventSettingsId ?? Guid.Empty,
             SubmitterUserId = Guid.NewGuid(),
             CategoryId = categoryId,
             Title = "My Event",
@@ -2091,15 +2048,6 @@ public sealed class EventServiceTests
                 SaveChangesCount++;
             }
             return Task.CompletedTask;
-        }
-
-        public Task<int> AssignEventSettingsIdsAsync(IReadOnlyDictionary<Guid, Guid> eventSettingsIdByEventId, CancellationToken ct = default)
-        {
-            var rows = Events.Where(e => e.EventSettingsId is null && eventSettingsIdByEventId.ContainsKey(e.Id)).ToList();
-            foreach (var row in rows)
-                row.EventSettingsId = eventSettingsIdByEventId[row.Id];
-            SaveChangesCount++;
-            return Task.FromResult(rows.Count);
         }
 
         public Task<IReadOnlyList<Event>> GetApprovedEventsAsync(Guid? campId, Guid? venueId, Guid? categoryId, string? q, IReadOnlyList<string> excludedSlugs, CancellationToken ct = default)

@@ -72,19 +72,6 @@ internal sealed class CachingEventService(
             return saved;
         });
 
-    public Task<IReadOnlyList<(Guid EntryId, string Title, Instant StartAt, Guid EventSettingsId, string EventName)>> GetUnassignedGuideEntriesAsync(
-        CancellationToken ct = default) =>
-        WithInnerAsync(inner => inner.GetUnassignedGuideEntriesAsync(ct));
-
-    public Task<int> AssignGuideEntryEventIdsAsync(CancellationToken ct = default) =>
-        MutateAsync(async () =>
-        {
-            var written = await WithInnerAsync(inner => inner.AssignGuideEntryEventIdsAsync(ct));
-            // Entries assigned to another event leave the guide's approved set.
-            if (written > 0) await RefreshAllEventsAsync(ct);
-            return written;
-        });
-
     public async Task<IReadOnlyList<EventCategoryView>> GetActiveCategoriesAsync(CancellationToken ct = default)
     {
         await EnsureLoadedAsync(ct);
