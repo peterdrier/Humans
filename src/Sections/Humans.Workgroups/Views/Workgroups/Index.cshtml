@@ -2,8 +2,6 @@
 @{
     ViewData["Title"] = Localizer["Workgroups_Title"];
 
-    Func<WorkgroupInfo, IHtmlContent> nameCell =
-        @<text><a asp-action="Details" asp-route-slug="@item.Slug">@item.Name</a></text>;
     Func<WorkgroupInfo, IHtmlContent> coordinatorsCell =
         @<text>@await Html.PartialAsync("_WorkgroupCoordinators", item)</text>;
     Func<WorkgroupInfo, IHtmlContent> pendingStatusCell = @<text>
@@ -14,7 +12,7 @@
         }
     </text>;
     var pendingTable = TableModel.For(Model.Pending)
-        .Template(SharedLocalizer["Common_General"], nameCell, sortBy: w => w.Name)
+        .Link(SharedLocalizer["Common_General"], w => w.Name, w => Url.Action("Details", new { slug = w.Slug }))
         .Template(Localizer["Workgroups_Coordinators"], coordinatorsCell)
         .Template(SharedLocalizer["Common_Status"], pendingStatusCell)
         .Column(Localizer["Workgroups_AppliedOn"], w => w.AppliedAt, o => o.Date())
@@ -29,7 +27,7 @@
         }
     </text>;
     var archiveTable = TableModel.For(Model.Archive)
-        .Template(SharedLocalizer["Common_General"], nameCell, sortBy: w => w.Name)
+        .Link(SharedLocalizer["Common_General"], w => w.Name, w => Url.Action("Details", new { slug = w.Slug }))
         .Template(SharedLocalizer["Common_Status"], archiveStatusCell)
         .Column(Localizer["Workgroups_Reasons"], w => w.Reasons, o => o.Css("small text-muted"))
         .Column(Localizer["Workgroups_Ended"], w => w.EndedAt, o => o.Date())

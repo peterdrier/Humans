@@ -155,7 +155,7 @@
         <div class="card mb-4">
             <div class="card-header">Spend by Holded account</div>
             @{
-                Func<PleoSpendTotal, IHtmlContent> spendAccountCell0 = @<text>
+                Func<PleoSpendTotal, IHtmlContent> accountCell = @<text>
                     <span class="@(item.Flagged ? "text-danger" : "")">
                                                         <a asp-action="Entries" asp-route-account="@item.Key">@item.Label</a>
                                                         @if (item.Flagged)
@@ -164,12 +164,12 @@
                                                         }
                                                     </span>
                 </text>;
-                Func<PleoSpendTotal, IHtmlContent> spendAccountCell1 = @<text>@N(item.Count)</text>;
-                Func<PleoSpendTotal, IHtmlContent> spendAccountCell2 = @<text>@item.Spend.ToEuro()</text>;
+                Func<PleoSpendTotal, IHtmlContent> spendAccountEntriesCell = @<text>@N(item.Count)</text>;
+                Func<PleoSpendTotal, IHtmlContent> spendAccountSpendCell = @<text>@item.Spend.ToEuro()</text>;
                 var accountTable = TableModel.For(Model.ByAccount)
-                    .Template("Account", spendAccountCell0, sortBy: a => a.Label)
-                    .Template("Entries", spendAccountCell1, o => o.End(), sortBy: a => a.Count)
-                    .Template("Spend", spendAccountCell2, o => o.End().Css("text-nowrap"), sortBy: a => a.Spend)
+                    .Template("Account", accountCell, sortBy: a => a.Label)
+                    .Template("Entries", spendAccountEntriesCell, o => o.End(), sortBy: a => a.Count)
+                    .Template("Spend", spendAccountSpendCell, o => o.End().Css("text-nowrap"), sortBy: a => a.Spend)
                     .Css("align-middle")
                     .Build();
             }
@@ -185,13 +185,12 @@
         <div class="card mb-4">
             <div class="card-header">Spend by cardholder</div>
             @{
-                Func<PleoSpendTotal, IHtmlContent> cardholderCell0 = @<text><a asp-action="Entries" asp-route-cardholder="@item.Key">@item.Label</a></text>;
-                Func<PleoSpendTotal, IHtmlContent> cardholderCell1 = @<text>@N(item.Count)</text>;
-                Func<PleoSpendTotal, IHtmlContent> cardholderCell2 = @<text>@item.Spend.ToEuro()</text>;
+                Func<PleoSpendTotal, IHtmlContent> entriesCell = @<text>@N(item.Count)</text>;
+                Func<PleoSpendTotal, IHtmlContent> spendCell = @<text>@item.Spend.ToEuro()</text>;
                 var cardholderTable = TableModel.For(Model.ByCardholder)
-                    .Template("Cardholder", cardholderCell0, sortBy: c => c.Label)
-                    .Template("Entries", cardholderCell1, o => o.End(), sortBy: c => c.Count)
-                    .Template("Spend", cardholderCell2, o => o.End().Css("text-nowrap"), sortBy: c => c.Spend)
+                    .Link("Cardholder", r => r.Label, r => Url.Action("Entries", new { cardholder = r.Key }))
+                    .Template("Entries", entriesCell, o => o.End(), sortBy: c => c.Count)
+                    .Template("Spend", spendCell, o => o.End().Css("text-nowrap"), sortBy: c => c.Spend)
                     .Css("align-middle")
                     .Build();
             }

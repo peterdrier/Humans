@@ -26,11 +26,18 @@
     // Razor's null-attribute suppression skips data-* attributes, so a row without an
     // href must branch around the attribute entirely — data-href="" would make site.js
     // navigate to "" (page reload) on any row click.
-    void RenderCells(object row)
+    async Task RenderCells(object row)
     {
         foreach (var col in cols)
         {
-            <td class="@col.CellCssClass" data-sort-value="@col.SortValue(row)">@col.Cell(row)</td>
+            if (col.Human(row) is { } human)
+            {
+                <td class="@col.CellCssClass"><vc:human user-id="@human.UserId" layout="@human.Layout" link="@human.Link" /></td>
+            }
+            else
+            {
+                <td class="@col.CellCssClass" data-sort-value="@col.SortValue(row)">@col.Cell(row)</td>
+            }
         }
     }
 }
@@ -149,13 +156,13 @@
                     if (!string.IsNullOrEmpty(rowHref))
                     {
                         <tr data-href="@rowHref" class="@Model.RowCss(row)" @Model.RowData(row)>
-                            @{ RenderCells(row); }
+                            @{ await RenderCells(row); }
                         </tr>
                     }
                     else
                     {
                         <tr class="@Model.RowCss(row)" @Model.RowData(row)>
-                            @{ RenderCells(row); }
+                            @{ await RenderCells(row); }
                         </tr>
                     }
                 }

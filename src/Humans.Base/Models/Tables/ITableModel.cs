@@ -1,3 +1,4 @@
+using Humans.Base.ViewComponents;
 using Microsoft.AspNetCore.Html;
 
 namespace Humans.Base.Models.Tables;
@@ -43,6 +44,9 @@ public interface ITableModel
     IHtmlContent RowData(object row);
 }
 
+/// <summary>Arguments for the Human view component in a <see cref="CellFormat.Human"/> cell.</summary>
+public sealed record HumanCell(Guid UserId, HumanLayout Layout, HumanLink Link);
+
 public sealed record TableFooterCell(string Text, string? CssClass = null);
 
 public interface ITableColumn
@@ -75,4 +79,7 @@ public interface ITableColumn
 
     /// <summary>data-sort-value emitted on the td so dates/money sort correctly client-side; null = omit.</summary>
     string? SortValue(object row);
+
+    /// <summary>A <see cref="CellFormat.Human"/> cell's member, rendered by the Human view component; null otherwise.</summary>
+    HumanCell? Human(object row);
 }

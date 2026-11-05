@@ -32,8 +32,8 @@ else
         }
     </div>
 
-        Func<HoldedDuplicateMemberResult, IHtmlContent> resultCell0 = @<text><vc:human user-id="@item.UserId" link="None" /> <div class="text-muted small">@item.ContactName</div></text>;
-        Func<HoldedDuplicateMemberResult, IHtmlContent> resultCell1 = @<text>
+        Func<HoldedDuplicateMemberResult, IHtmlContent> memberCell = @<text><vc:human user-id="@item.UserId" link="None" /> <div class="text-muted small">@item.ContactName</div></text>;
+        Func<HoldedDuplicateMemberResult, IHtmlContent> accountCell = @<text>
             @if (item.SupplierAccountNum is { } account)
             {
                 <a asp-action="CreditorStatement" asp-route-accountNum="@account">@account</a>
@@ -44,11 +44,9 @@ else
             }
 
         </text>;
-        Func<HoldedDuplicateMemberResult, IHtmlContent> resultCell2 = @<text>@Owed(item.BalanceBefore)</text>;
-        Func<HoldedDuplicateMemberResult, IHtmlContent> resultCell3 = @<text>@Owed(item.BalanceAfter)</text>;
-        Func<HoldedDuplicateMemberResult, IHtmlContent> resultCell4 = @<text>@(item.DeletedDocIds.Count == 0 ? "—" : string.Join(", ", item.DeletedDocIds))</text>;
-        Func<HoldedDuplicateMemberResult, IHtmlContent> resultCell5 = @<text>@(item.DeletedContactIds.Count == 0 ? "—" : string.Join(", ", item.DeletedContactIds))</text>;
-        Func<HoldedDuplicateMemberResult, IHtmlContent> resultCell6 = @<text>
+        Func<HoldedDuplicateMemberResult, IHtmlContent> owedBeforeCell = @<text>@Owed(item.BalanceBefore)</text>;
+        Func<HoldedDuplicateMemberResult, IHtmlContent> owedAfterCell = @<text>@Owed(item.BalanceAfter)</text>;
+        Func<HoldedDuplicateMemberResult, IHtmlContent> failuresCell = @<text>
             @foreach (var f in item.Failures)
             {
                 <div>@f</div>
@@ -56,13 +54,13 @@ else
 
         </text>;
         var membersTable = TableModel.For(Model.Members)
-            .Template("Member", resultCell0)
-            .Template("Account", resultCell1, sortBy: m => m.SupplierAccountNum)
-            .Template("Owed before", resultCell2, o => o.End(), sortBy: m => m.BalanceBefore)
-            .Template("Owed after", resultCell3, o => o.End(), sortBy: m => m.BalanceAfter)
-            .Template("Deleted documents", resultCell4, o => o.Css("font-monospace small"))
-            .Template("Deleted contacts", resultCell5, o => o.Css("font-monospace small"))
-            .Template("Failures", resultCell6, o => o.Css("small text-danger").NoSort())
+            .Template("Member", memberCell)
+            .Template("Account", accountCell, sortBy: m => m.SupplierAccountNum)
+            .Template("Owed before", owedBeforeCell, o => o.End(), sortBy: m => m.BalanceBefore)
+            .Template("Owed after", owedAfterCell, o => o.End(), sortBy: m => m.BalanceAfter)
+            .Column("Deleted documents", r => r.DeletedDocIds.Count == 0 ? "—" : string.Join(", ", r.DeletedDocIds), o => o.Css("font-monospace small"))
+            .Column("Deleted contacts", r => r.DeletedContactIds.Count == 0 ? "—" : string.Join(", ", r.DeletedContactIds), o => o.Css("font-monospace small"))
+            .Template("Failures", failuresCell, o => o.Css("small text-danger").NoSort())
             .Css("align-middle")
             .Build();
     <partial name="_Table" model="membersTable" />
