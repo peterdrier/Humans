@@ -10,8 +10,9 @@
     <span>Roles</span>
 }
 
-<h1>Manage Roles</h1>
-<p class="text-muted">@Localizer["Teams_MyTeams_Team"]: @Model.TeamName</p>
+<page-header title="Manage Roles">
+    <page-header-subtitle>@Localizer["Teams_MyTeams_Team"]: @Model.TeamName</page-header-subtitle>
+</page-header>
 
 
 @if (Model.RoleDefinitions.Any())

@@ -9,8 +9,9 @@
     <span>Roster</span>
 }
 
-<h1>Roster</h1>
-<p class="text-muted">@Model.TeamName — @Model.Rows.Count humans. Sorted by legal name; click any header to re-sort.</p>
+<page-header title="Roster">
+    <page-header-subtitle>@Model.TeamName — @Model.Rows.Count humans. Sorted by legal name; click any header to re-sort.</page-header-subtitle>
+</page-header>
 
 @{
     var rosterTable = TableModel.For(Model.Rows)

@@ -4,8 +4,7 @@
     ViewData["Title"] = Localizer["Store_Title"].Value;
 }
 
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <h1 class="mb-0">@Localizer["Store_Title"]</h1>
+<page-header title="@(Localizer["Store_Title"].Value)">
     <div class="d-flex align-items-center gap-2">
         <div class="btn-group" authorize-policy="@Humans.Store.Contracts.StorePolicies.Read">
             <a asp-controller="StoreAdmin" asp-action="Catalog" class="btn btn-sm btn-outline-secondary">@Localizer["Store_AdminCatalog"]</a>
@@ -14,7 +13,7 @@
         </div>
         <span class="badge bg-secondary fs-6">@Model.Year</span>
     </div>
-</div>
+</page-header>
 
 
 @if (!Model.Counterparties.Any())

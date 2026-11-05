@@ -33,12 +33,9 @@
 }
 
 <div class="container py-4">
-    <div class="d-flex justify-content-between align-items-center mb-3">
-        <h2>@Model.Department.Name — Shifts</h2>
-        <div>
-            <span class="badge bg-primary fs-6">@Model.ConfirmedCount / @Model.TotalSlots filled</span>
-        </div>
-    </div>
+    <page-header title="@($"{Model.Department.Name} — Shifts")">
+        <span class="badge bg-primary fs-6">@Model.ConfirmedCount / @Model.TotalSlots filled</span>
+    </page-header>
 
 
     @await Html.PartialAsync("_StaffingChart", (Model.StaffingData, "deptStaffingChart"))

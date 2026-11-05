@@ -23,9 +23,8 @@
     <span>@d.Title</span>
 }
 
-<div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-2">
-    <div>
-        <h1 class="mb-1">@d.Title</h1>
+<page-header title="@d.Title">
+    <page-header-subtitle>
         <span class="badge @EnumBadgeMap.For(d.Status)">@Localizer.EnumDisplay(d.Status)</span>
         <span class="badge bg-light text-dark border">@Localizer.EnumDisplay(d.Kind)</span>
         @if (Model.IsOpenForComment)
@@ -36,14 +35,14 @@
         {
             <span class="badge @EnumBadgeMap.For(disposition)">@Localizer.EnumDisplay(disposition)</span>
         }
-    </div>
+    </page-header-subtitle>
     @if (Model.CanDoMemberWork && d.Status != WorkgroupDocumentStatus.Delivered)
     {
         <a asp-action="EditDocument" asp-route-slug="@w.Slug" asp-route-id="@d.Id" class="btn btn-sm btn-outline-secondary">
             <i class="fa-solid fa-pen me-1"></i>@SharedLocalizer["Common_Edit"]
         </a>
     }
-</div>
+</page-header>
 
 <div class="text-muted small mb-3">@HtmlLocalizer["Workgroups_LastEditedBy", editorHtml, d.UpdatedAt.ToDateTime()]</div>
 

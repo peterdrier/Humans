@@ -11,8 +11,7 @@
     <span>@Localizer["Teams_Birthdays_Title"]</span>
 }
 
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <h1>@Localizer["Teams_Birthdays_Title"]</h1>
+<page-header title="@(Localizer["Teams_Birthdays_Title"].Value)">
     <div class="d-flex align-items-center gap-2">
         <a asp-action="Birthdays" asp-route-month="@prevMonth" class="btn btn-outline-secondary btn-sm">
             &laquo;
@@ -22,7 +21,7 @@
             &raquo;
         </a>
     </div>
-</div>
+</page-header>
 
 @if (Model.Birthdays.Count > 0)
 {

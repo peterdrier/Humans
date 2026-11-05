@@ -15,10 +15,9 @@
     <span>Teams Summary</span>
 }
 
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <h1>Teams Summary</h1>
+<page-header title="Teams Summary">
     <a asp-action="CreateTeam" class="btn btn-primary" authorize-policy="@Humans.Teams.Contracts.TeamsPolicies.Manage">@Localizer["Teams_CreateTeam"]</a>
-</div>
+</page-header>
 
 
 @foreach (var group in groups)

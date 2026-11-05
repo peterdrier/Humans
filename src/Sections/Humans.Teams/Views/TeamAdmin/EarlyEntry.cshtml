@@ -3,8 +3,7 @@
     ViewData["Title"] = $"Early Entry — {Model.TeamName}";
 }
 
-<h1>Early Entry — @Model.TeamName</h1>
-<p class="text-muted">Each grant is one human, one date, one project.</p>
+<page-header title="@($"Early Entry — {Model.TeamName}")" subtitle="Each grant is one human, one date, one project." />
 
 <div asp-validation-summary="All" class="text-danger"></div>
 

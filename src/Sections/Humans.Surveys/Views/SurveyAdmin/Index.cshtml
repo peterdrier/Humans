@@ -21,10 +21,9 @@
     }
 }
 
-<div class="d-flex justify-content-between align-items-center mb-3">
-    <h1 class="mb-0">@Localizer["Surveys_Admin_Index_Title"]</h1>
+<page-header title="@(Localizer["Surveys_Admin_Index_Title"].Value)">
     <a asp-controller="SurveyAdmin" asp-action="Create" class="btn btn-primary btn-sm">@Localizer["Surveys_Admin_Index_New"]</a>
-</div>
+</page-header>
 
 <div class="card">
     <div class="card-body p-0">
