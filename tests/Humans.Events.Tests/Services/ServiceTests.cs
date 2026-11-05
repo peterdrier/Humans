@@ -176,7 +176,7 @@ public sealed class EventServiceTests
         var burn = BurnFixtures.Burn();
         _repo.Settings = new EventGuideSettings { Id = Guid.NewGuid(), EventSettingsId = burn.Id, MaxPrintSlots = 20 };
         _burnSettings.GetEventSettingsByIdAsync(burn.Id, ct).Returns(burn);
-        _camps.GetCampsForYearAsync(2026, ct).Returns(Array.Empty<CampInfo>());
+        _camps.GetCampsForEventAsync(burn.Id, ct).Returns(Array.Empty<CampInfo>());
         _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), ct)
             .Returns(new Dictionary<Guid, UserInfo>
             {
@@ -227,6 +227,46 @@ public sealed class EventServiceTests
             model.DayGroups.SelectMany(day => day.Entries).Should()
                 .OnlyContain(entry => string.Equals(entry.CampOrVenueName, "Main Stage", StringComparison.Ordinal));
         _audit.ReceivedCalls().Should().ContainSingle();
+    }
+
+    [HumansTheory]
+    [InlineData(2026)]
+    [InlineData(2027)]
+    public async Task GuideExports_UseCampSeasonForConfiguredEvent(int otherYear)
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var burn = BurnFixtures.Burn();
+        _repo.Settings = new EventGuideSettings { Id = Guid.NewGuid(), EventSettingsId = burn.Id, MaxPrintSlots = 20 };
+        _burnSettings.GetEventSettingsByIdAsync(burn.Id, ct).Returns(burn);
+        var campId = Guid.NewGuid();
+        var season = new CampSeasonInfo(
+            Guid.NewGuid(), campId, "camp", 2026, null, "Guide Camp", "", "en", [],
+            default, default, default, default, 1, null, null, null, 0, null, null)
+        { EventSettingsId = burn.Id };
+        var otherSeason = season with
+        {
+            Id = Guid.NewGuid(), Year = otherYear, Name = "Other Event Camp", EventSettingsId = Guid.NewGuid()
+        };
+        var camp = new CampInfo(campId, "camp", "camp@example.org", "", false, 0, [otherSeason, season]);
+        _camps.GetCampsForYearAsync(2026, ct).Returns([camp]);
+        _camps.GetCampsForEventAsync(burn.Id, ct).Returns([camp with { Seasons = [season] }]);
+        _repo.Events.Add(new Event
+        {
+            Id = Guid.NewGuid(), CampId = campId, EventSettingsId = burn.Id,
+            Category = new EventCategory { Name = "Workshop", Slug = "workshop" },
+            Title = "Camp workshop", Description = "Description", Status = EventStatus.Approved,
+            StartAt = Instant.FromUtc(2026, 7, 1, 8, 30), DurationMinutes = 60
+        });
+
+        var csv = HumansCsv.Utf8WithBom.GetString(await _service.GetApprovedEventsForExportAsync(Guid.NewGuid(), ct));
+        csv.Should().Contain("Guide Camp").And.NotContain("Other Event Camp");
+        var controller = new EventsExportController(_service, _camps, _userService);
+        var print = (await controller.PrintGuide(ct)).Should().BeOfType<ViewResult>().Which;
+        var model = print.Model.Should().BeOfType<EventsExportController.PrintGuideViewModel>().Which;
+        model.DayGroups.SelectMany(d => d.Entries).Should().ContainSingle()
+            .Which.CampOrVenueName.Should().Be("Guide Camp");
+        await _camps.Received(2).GetCampsForEventAsync(burn.Id, ct);
+        await _camps.DidNotReceive().GetCampsForYearAsync(Arg.Any<int>(), Arg.Any<CancellationToken>());
     }
 
     [HumansTheory]

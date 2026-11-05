@@ -664,6 +664,8 @@ public class EventsControllerTests
             ReadAsync(new CampSettingsInfo(2026, [2026]), "CampSettings", call.Arg<CancellationToken>()));
         _camps.GetCampsForYearAsync(2026, Arg.Any<CancellationToken>()).Returns(call =>
             ReadAsync<IReadOnlyList<CampInfo>>([camp], "Camps", call.Arg<CancellationToken>()));
+        _camps.GetCampsForEventAsync(burn.Id, Arg.Any<CancellationToken>()).Returns(call =>
+            ReadAsync<IReadOnlyList<CampInfo>>([camp], "Camps", call.Arg<CancellationToken>()));
         _guide.GetCampSubmissionsSummaryAsync(campId, Arg.Any<CancellationToken>()).Returns(call =>
             ReadAsync(new CampSubmissionsSummary(0, 0, 0, []), "CampSummary", call.Arg<CancellationToken>()));
         _guide.GetActiveCategoriesAsync(Arg.Any<CancellationToken>()).Returns(call =>

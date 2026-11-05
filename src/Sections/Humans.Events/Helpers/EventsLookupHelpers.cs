@@ -52,11 +52,12 @@ internal static class EventsLookupHelpers
         return await guide.GetEventSettingsByIdAsync(guideSettings.EventSettingsId, ct);
     }
 
+    // Event-scoped CampInfo carries only that season, so Active cannot pick another event's name.
     public static async Task<Dictionary<Guid, CampInfo>> LoadCampsByIdAsync(
-        ICampService camps, int? year, CancellationToken ct = default)
+        ICampService camps, Guid? eventSettingsId, CancellationToken ct = default)
     {
-        if (year is null) return [];
-        var list = await camps.GetCampsForYearAsync(year.Value, ct);
+        if (eventSettingsId is null) return [];
+        var list = await camps.GetCampsForEventAsync(eventSettingsId.Value, ct);
         return list.ToDictionary(c => c.Id);
     }
 }

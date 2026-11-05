@@ -330,7 +330,7 @@ internal sealed class EventsController(
 
         var gateOpeningDate = eventSettings?.GateOpeningDate;
         var favourites = await guide.GetFavouritesWithEventsAsync(user.Id, ct);
-        var campsById = await LoadCampsByIdAsync(CampService, gateOpeningDate?.Year, ct);
+        var campsById = await LoadCampsByIdAsync(CampService, eventSettings?.Id, ct);
 
         var scheduleItems = favourites.SelectMany(f =>
         {
@@ -409,7 +409,7 @@ internal sealed class EventsController(
             .ToLookup(f => f.GuideEventId, f => f.DayOffset);
         var events = await guide.GetApprovedEventsAsync(null, venueId, categoryId, q, excludedSlugs, ct);
 
-        var campsById = await LoadCampsByIdAsync(CampService, gateOpeningDate?.Year, ct);
+        var campsById = await LoadCampsByIdAsync(CampService, eventSettings?.Id, ct);
 
         var occurrences = EventOccurrenceExpander.Expand(
             events, favouriteDaysByEventId, gateOpeningDate, tz, filterDays);

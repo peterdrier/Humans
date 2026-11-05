@@ -188,6 +188,9 @@ Member create, edit, withdrawal and bulk-import preflight reads retain browser c
 
 ## Invariants
 
+- Configured-guide camp enrichment uses the guide event ID through Camps' existing event-scoped contract, which supplies only the matching season. Browse, schedule, API, dashboard, moderation, print and CSV use that season's name; another event in the same year or a future season cannot replace it. Missing event settings yield no camp enrichment. Camp-management authorization and authoring context retain their existing policy.
+
+
 - Camp/profile event cards resolve the viewer before loading approved rows and
   favourite IDs, so merged cookies mark the survivor's favourites. Missing accounts
   render no card; cancelled account lookup propagates cancellation.
