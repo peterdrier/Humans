@@ -568,7 +568,7 @@ internal sealed class ShiftSignupService(
         if (autoConfirm)
         {
             await notices.DispatchSignupChangeNotificationAsync(createdSignups.LastSignup, availableShifts[^1], rota,
-                "Shifts_Notification_ChangeConfirmedRange", rota.Name, shiftsInRange.Count);
+                "Shifts_Notification_ChangeConfirmedRange", rota.Name, availableShifts.Count);
         }
 
         return SignupResult.Ok(createdSignups.LastSignup.Id, warning);
