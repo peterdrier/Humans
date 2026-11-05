@@ -46,7 +46,6 @@
   <data name="Users_Profile_Title" xml:space="preserve">
     <value>Il mio Profilo</value>
   </data>
-  <data name="Users_BreadcrumbNavigation" xml:space="preserve"><value>Percorso di navigazione</value></data>
   <data name="Users_Profile_ActionRequired" xml:space="preserve">
     <value>Azione richiesta:</value>
   </data>
@@ -214,9 +213,6 @@
   </data>
   <data name="Users_ProfileEdit_TierLocked" xml:space="preserve">
     <value>La tua categoria è bloccata perché hai una domanda attiva o in sospeso.</value>
-  </data>
-  <data name="Users_ProfileEdit_MotivationHelp" xml:space="preserve">
-    <value>Minimo 50 caratteri. Questo aiuta il Consiglio a comprendere i tuoi obiettivi.</value>
   </data>
   <data name="Users_ProfileEdit_BurnerNamePlaceholder" xml:space="preserve">
     <value>Il nome con cui è conosciuto/a</value>

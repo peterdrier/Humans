@@ -4,7 +4,7 @@
     var message = ViewData["Message"] as string;
 }
 
-<h1>@Localizer["Users_VerifyEmail_Title"]</h1>
+<page-header title="@(Localizer["Users_VerifyEmail_Title"].Value)" />
 
 @if (success)
 {

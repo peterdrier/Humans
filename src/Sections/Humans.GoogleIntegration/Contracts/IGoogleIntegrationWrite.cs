@@ -7,7 +7,7 @@ public interface IGoogleIntegrationWrite : IApplicationService
 {
     /// <summary>
     /// Users calls this after deleting or unlinking the address. When it is the designated identity, the designation
-    /// is cleared: reads fall back to the automatic choice, never to the frozen legacy <c>IsGoogle</c> flag.
+    /// is cleared: reads fall back to the automatic choice.
     /// </summary>
     Task ClearIfAddressAsync(Guid userId, string email, CancellationToken ct = default);
 }

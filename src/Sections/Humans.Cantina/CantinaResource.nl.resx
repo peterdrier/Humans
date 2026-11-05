@@ -85,10 +85,11 @@
   <data name="Cantina_Dietary_Intolerance_Lactose" xml:space="preserve"><value>Lactose</value></data>
   <data name="Cantina_Dietary_AllergyOther_Required" xml:space="preserve"><value>Beschrijf je allergie bij "Anders".</value></data>
   <data name="Cantina_Dietary_IntoleranceOther_Required" xml:space="preserve"><value>Beschrijf je intolerantie bij "Anders".</value></data>
-  <data name="Cantina_Dietary_BreadcrumbNavigation" xml:space="preserve"><value>Kruimelpad</value></data>
   <data name="Cantina_Dietary_PageTitle" xml:space="preserve"><value>Dieetinformatie</value></data>
   <data name="Cantina_Dietary_Saved" xml:space="preserve"><value>Je dieetinformatie is opgeslagen.</value></data>
   <data name="Cantina_Dietary_SaveFailed" xml:space="preserve"><value>Opslaan van dieetinformatie is mislukt.</value></data>
+  <data name="Cantina_Dietary_PreferenceTooLong" xml:space="preserve"><value>De voedingsvoorkeur mag maximaal 200 tekens bevatten.</value></data>
+  <data name="Cantina_Dietary_OtherTextTooLong" xml:space="preserve"><value>De toelichting op andere allergieën of intoleranties mag maximaal 500 tekens bevatten.</value></data>
   <data name="Cantina_Dietary_LoadFailed" xml:space="preserve"><value>Laden van dieetinformatie is mislukt.</value></data>
   <data name="Cantina_Dietary_OptionalHint" xml:space="preserve"><value>Optioneel. Hiermee kan de cantina maaltijden plannen voor lange diensten. Dit heeft nooit invloed op je dienstaanmeldingen.</value></data>
   <data name="Cantina_Dietary_DeclineButton" xml:space="preserve"><value>Ik geef liever geen antwoord</value></data>

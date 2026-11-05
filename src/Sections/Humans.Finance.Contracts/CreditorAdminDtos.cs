@@ -31,7 +31,11 @@ public sealed record CreditorAccountRow(
     string? IbanMasked = null,
     int? OpenDocumentCount = null,
     string? PendingPayoutFileName = null,
-    bool? HasDuplicateDocuments = false);
+    bool? HasDuplicateDocuments = false)
+{
+    /// <summary>Service-derived refusal shared by creditor screens and payout planning; null when payable.</summary>
+    public string? NotPayableReason { get; init; }
+}
 
 public sealed record CreditorContactBinding(
     Guid UserId,

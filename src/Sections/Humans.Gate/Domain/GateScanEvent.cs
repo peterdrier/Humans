@@ -5,6 +5,10 @@ namespace Humans.Gate.Domain;
 /// <summary>Append-only. The unique index on <see cref="AdmitDedupeKey"/> is the duplicate guard; it doesn't wait for a vendor sync.</summary>
 internal sealed class GateScanEvent
 {
+    internal const int BarcodeMaxLength = 128;
+    internal const int LaneIdMaxLength = 64;
+    internal const int NoteMaxLength = 1000;
+
     public Guid Id { get; init; }
 
     /// <summary>Server clock: authoritative.</summary>

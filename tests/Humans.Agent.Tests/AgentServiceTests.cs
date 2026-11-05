@@ -85,13 +85,7 @@ public class AgentServiceTests
     }
 
     [HumansTheory]
-    [Xunit.InlineData("en")]
-    [Xunit.InlineData("es")]
-    [Xunit.InlineData("de")]
-    [Xunit.InlineData("it")]
-    [Xunit.InlineData("fr")]
-    [Xunit.InlineData("ca")]
-    [Xunit.InlineData("nl")]
+    [Xunit.MemberData(nameof(SupportedCultures.All), MemberType = typeof(SupportedCultures))]
     public async Task Ask_localizes_the_abuse_refusal_in_the_requested_culture(string locale)
     {
         var (svc, _) = await BuildServiceAsync(s => s.Enabled = true);

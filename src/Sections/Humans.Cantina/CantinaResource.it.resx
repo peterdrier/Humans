@@ -85,10 +85,11 @@
   <data name="Cantina_Dietary_Intolerance_Lactose" xml:space="preserve"><value>Lattosio</value></data>
   <data name="Cantina_Dietary_AllergyOther_Required" xml:space="preserve"><value>Descrivi l’altra allergia.</value></data>
   <data name="Cantina_Dietary_IntoleranceOther_Required" xml:space="preserve"><value>Descrivi l’altra intolleranza.</value></data>
-  <data name="Cantina_Dietary_BreadcrumbNavigation" xml:space="preserve"><value>Percorso di navigazione</value></data>
   <data name="Cantina_Dietary_PageTitle" xml:space="preserve"><value>Informazioni alimentari</value></data>
   <data name="Cantina_Dietary_Saved" xml:space="preserve"><value>Le tue informazioni alimentari sono state salvate.</value></data>
   <data name="Cantina_Dietary_SaveFailed" xml:space="preserve"><value>Impossibile salvare le informazioni alimentari.</value></data>
+  <data name="Cantina_Dietary_PreferenceTooLong" xml:space="preserve"><value>La preferenza alimentare deve contenere al massimo 200 caratteri.</value></data>
+  <data name="Cantina_Dietary_OtherTextTooLong" xml:space="preserve"><value>I dettagli su altre allergie o intolleranze devono contenere al massimo 500 caratteri.</value></data>
   <data name="Cantina_Dietary_LoadFailed" xml:space="preserve"><value>Impossibile caricare le informazioni alimentari.</value></data>
   <data name="Cantina_Dietary_OptionalHint" xml:space="preserve"><value>Facoltativo. Aiuta la mensa a pianificare i pasti dei turni lunghi e non influisce mai sulle tue iscrizioni ai turni.</value></data>
   <data name="Cantina_Dietary_DeclineButton" xml:space="preserve"><value>Preferisco non rispondere</value></data>

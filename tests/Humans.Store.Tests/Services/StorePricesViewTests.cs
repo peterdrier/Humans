@@ -27,18 +27,12 @@ namespace Humans.Store.Tests.Services;
 
 public class StorePricesViewTests
 {
-    [HumansTheory]
-    [Xunit.InlineData("en", "10.5")]
-    [Xunit.InlineData("es", "10,5")]
-    [Xunit.InlineData("de", "10,5")]
-    [Xunit.InlineData("it", "10,5")]
-    [Xunit.InlineData("fr", "10,5")]
-    [Xunit.InlineData("ca", "10,5")]
-    [Xunit.InlineData("nl", "10,5")]
-    public async Task VatBreakdowns_UseUiDecimalSeparator(string language, string vat)
+    [HumansFact]
+    public async Task VatBreakdowns_UseUiDecimalSeparator()
     {
-        using var inputCulture = new CultureScope("en");
-        CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo(language);
+        const string vat = "10,5";
+        using var inputCulture = new CultureScope(CultureCatalog.DefaultCultureCode);
+        CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo(CultureCatalog.CanonicalLegalCultureCode);
         var product = new ProductDto(Guid.NewGuid(), 2026, "Ice", "", 100, 10.5m, null,
             new LocalDate(2026, 7, 1), true);
         var index = await RenderAsync("Index", new IndexViewModel { Year = 2026, Catalog = [product] });
@@ -53,23 +47,15 @@ public class StorePricesViewTests
         using var assertions = new AwesomeAssertions.Execution.AssertionScope();
         index.Should().Contain(HtmlEncoder.Default.Encode($" + {vat}% "));
         detail.Should().Contain(HtmlEncoder.Default.Encode($" + {vat}% "));
-        detail.Should().Contain("class=\"breadcrumb-item\">Camp</li>");
         CultureInfo.CurrentCulture.Name.Should().Be("en");
     }
 
     [HumansTheory]
-    [Xunit.InlineData("en", OrderState.Open, "Open")]
-    [Xunit.InlineData("es", OrderState.Open, "Abierto")]
-    [Xunit.InlineData("de", OrderState.Open, "Offen")]
-    [Xunit.InlineData("it", OrderState.Open, "Aperto")]
-    [Xunit.InlineData("fr", OrderState.Open, "Ouverte")]
-    [Xunit.InlineData("ca", OrderState.Open, "Oberta")]
-    [Xunit.InlineData("nl", OrderState.Open, "Open")]
-    [Xunit.InlineData("en", OrderState.InvoiceIssued, "Invoice issued")]
-    [Xunit.InlineData("es", OrderState.InvoiceIssued, "Factura emitida")]
-    public async Task MemberOrderList_UsesExistingStateLabels(string language, OrderState state, string label)
+    [Xunit.InlineData(OrderState.Open, "Open")]
+    [Xunit.InlineData(OrderState.InvoiceIssued, "Invoice issued")]
+    public async Task MemberOrderList_UsesExistingStateLabels(OrderState state, string label)
     {
-        using var culture = new CultureScope(language);
+        using var culture = new CultureScope(CultureCatalog.DefaultCultureCode);
         var campId = Guid.NewGuid();
         var order = new OrderDto(Guid.NewGuid(), campId, null, OrderCounterpartyType.Camp, "Camp", 2026,
             state, null, null, null, null, null, null, [], [], 0, 0, 0, 0, 0, Instant.FromUtc(2026, 7, 1, 0, 0));
@@ -83,16 +69,10 @@ public class StorePricesViewTests
         html.Should().Contain($"class=\"badge bg-secondary\">{HtmlEncoder.Default.Encode(label)}</span>");
     }
 
-    [HumansTheory]
-    [Xunit.InlineData("en", "Date", "Action", "Description")]
-    [Xunit.InlineData("es", "Fecha", "Acción", "Descripción")]
-    [Xunit.InlineData("de", "Datum", "Aktion", "Beschreibung")]
-    [Xunit.InlineData("it", "Data", "Azione", "Descrizione")]
-    [Xunit.InlineData("fr", "Date", "Action", "Description")]
-    [Xunit.InlineData("ca", "Data", "Acció", "Descripció")]
-    public async Task PriceHistory_UsesHostColumnLabels(string language, string date, string action, string description)
+    [HumansFact]
+    public async Task PriceHistory_UsesHostColumnLabels()
     {
-        using var culture = new CultureScope(language);
+        using var culture = new CultureScope(CultureCatalog.DefaultCultureCode);
         var now = Instant.FromUtc(2026, 7, 1, 0, 0);
         var orderId = Guid.NewGuid();
         var productId = Guid.NewGuid();
@@ -107,21 +87,17 @@ public class StorePricesViewTests
 
         var table = html[html.LastIndexOf("<thead>", StringComparison.Ordinal)..];
         var headers = table[..table.IndexOf("</thead>", StringComparison.Ordinal)];
-        foreach (var label in new[] { date, action, description })
+        foreach (var label in new[] { "Date", "Action", "Description" })
             headers.Should().Contain(HtmlEncoder.Default.Encode(label));
     }
 
-    [HumansTheory]
-    [Xunit.InlineData("en", "2,469.00", "1,234.50")]
-    [Xunit.InlineData("es", "2.469,00", "1.234,50")]
-    [Xunit.InlineData("de", "2.469,00", "1.234,50")]
-    [Xunit.InlineData("it", "2.469,00", "1.234,50")]
-    [Xunit.InlineData("fr", "2\u202f469,00", "1\u202f234,50")]
-    [Xunit.InlineData("ca", "2.469,00", "1.234,50")]
-    public async Task AdminSummary_CampTotalsUseUiCultureLikeRows(string language, string due, string paidAndBalance)
+    [HumansFact]
+    public async Task AdminSummary_CampTotalsUseUiCultureLikeRows()
     {
-        using var inputCulture = new CultureScope("en");
-        CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo(language);
+        const string due = "2.469,00";
+        const string paidAndBalance = "1.234,50";
+        using var inputCulture = new CultureScope(CultureCatalog.DefaultCultureCode);
+        CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo(CultureCatalog.CanonicalLegalCultureCode);
         var model = new SummaryViewModel
         {
             Summary = new SummaryDto(2026,

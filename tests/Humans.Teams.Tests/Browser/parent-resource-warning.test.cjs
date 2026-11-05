@@ -3,6 +3,7 @@ const { test } = require('node:test');
 const { readFileSync } = require('node:fs');
 const { resolve } = require('node:path');
 const vm = require('node:vm');
+const { installHumans } = require('../../browser-support/humans-js.cjs');
 
 function page(initial = '') {
     const source = readFileSync(resolve(__dirname,
@@ -12,7 +13,7 @@ function page(initial = '') {
     assert.ok(start >= 0 && end > start);
     const classes = new Set(['d-none']);
     const warning = { classList: { add: name => classes.add(name), remove: name => classes.delete(name) } };
-    let change;
+    let change, ready;
     const select = { value: initial, addEventListener: (_, handler) => { change = handler; } };
     const resources = { innerHTML: '' };
     const elements = { parentTeamSelect: select, parentResourceWarning: warning, parentResourceList: resources };
@@ -20,12 +21,14 @@ function page(initial = '') {
     const context = {
         document: {
             getElementById: id => elements[id],
+            addEventListener: (event, handler) => { if (event === 'DOMContentLoaded') ready = handler; },
             createTextNode: text => ({ textContent: text }),
             createElement: () => ({ appendChild(child) { this.innerHTML = child.textContent; } }),
         },
         fetch: url => new Promise((resolveResponse, reject) => requests.push({ url, resolveResponse, reject })),
     };
-    vm.createContext(context); vm.runInContext(source.slice(start, end), context);
+    installHumans(context); vm.createContext(context); vm.runInContext(source.slice(start, end), context);
+    ready?.();
     return {
         resources, hidden: () => classes.has('d-none'),
         select: value => { select.value = value; change(); },

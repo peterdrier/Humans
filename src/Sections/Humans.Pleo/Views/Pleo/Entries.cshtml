@@ -5,7 +5,7 @@
     var f = Model.Filter;
 }
 
-<h1 class="mb-3">Pleo entries</h1>
+<page-header title="Pleo entries" />
 <partial name="_PleoNav" />
 
 <form method="get" asp-action="Entries" class="row g-2 align-items-end mb-3">
@@ -92,45 +92,42 @@
 
 <p class="text-muted small">@Model.Rows.Count.ToString("N0", CultureInfo.InvariantCulture) entries, newest first.</p>
 
-<div class="table-responsive">
-    <table class="table table-sm table-hover align-middle">
-        <thead>
-            <tr>
-                <th>Settled</th><th>Cardholder</th><th>Merchant</th><th>Family</th>
-                <th class="text-end">Amount</th><th>Holded account</th><th>Receipt</th><th>Status</th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach (var e in Model.Rows)
-            {
-                <tr>
-                    <td class="text-nowrap">
-                        <a asp-action="Entry" asp-route-id="@e.Id">@(e.SettledAt is { } at ? at.ToDate(madrid) : "—")</a>
-                    </td>
-                    <td>@e.Cardholder</td>
-                    <td>@e.Merchant</td>
-                    <td class="small">@e.Family<span class="text-muted">@(e.SubFamily is null ? "" : $" / {e.SubFamily}")</span></td>
-                    <td class="text-end text-nowrap">
-                        @(e.AmountEur is { } eur ? eur.ToSignedEuro() : "—")
-                        @if (e.Currency != "EUR")
-                        {
-                            <div class="small text-muted">@((e.Minors / 100m).ToString("N2", CultureInfo.InvariantCulture)) @e.Currency</div>
-                        }
-                    </td>
-                    <td class="small">
-                        @if (e.HoldedCode is not null)
-                        {
-                            <span>@e.HoldedCode</span> <span class="text-muted">@e.HoldedName</span>
-                        }
-                        else
-                        {
-                            <span class="text-muted">unmapped</span>
-                        }
-                    </td>
-                    <td>@(e.HasReceipt ? "yes" : "no")</td>
-                    <td class="small">@e.Status</td>
-                </tr>
-            }
-        </tbody>
-    </table>
-</div>
+@{
+    Func<PleoEntryRow, IHtmlContent> entryCell0 = @<text><a asp-action="Entry" asp-route-id="@item.Id">@(item.SettledAt is { } at ? at.ToDate(madrid) : "—")</a></text>;
+    Func<PleoEntryRow, IHtmlContent> entryCell1 = @<text>@item.Cardholder</text>;
+    Func<PleoEntryRow, IHtmlContent> entryCell2 = @<text>@item.Merchant</text>;
+    Func<PleoEntryRow, IHtmlContent> entryCell3 = @<text>@item.Family<span class="text-muted">@(item.SubFamily is null ? "" : $" / {item.SubFamily}")</span></text>;
+    Func<PleoEntryRow, IHtmlContent> entryCell4 = @<text>
+        @(item.AmountEur is { } eur ? eur.ToSignedEuro() : "—")
+        @if (item.Currency != "EUR")
+        {
+            <div class="small text-muted">@((item.Minors / 100m).ToString("N2", CultureInfo.InvariantCulture)) @item.Currency</div>
+        }
+
+    </text>;
+    Func<PleoEntryRow, IHtmlContent> entryCell5 = @<text>
+        @if (item.HoldedCode is not null)
+        {
+            <span>@item.HoldedCode</span> <span class="text-muted">@item.HoldedName</span>
+        }
+        else
+        {
+            <span class="text-muted">unmapped</span>
+        }
+
+    </text>;
+    Func<PleoEntryRow, IHtmlContent> entryCell6 = @<text>@(item.HasReceipt ? "yes" : "no")</text>;
+    Func<PleoEntryRow, IHtmlContent> entryCell7 = @<text>@item.Status</text>;
+    var entriesTable = TableModel.For(Model.Rows)
+        .Template("Settled", entryCell0, o => o.Css("text-nowrap"), sortBy: e => e.SettledAt)
+        .Template("Cardholder", entryCell1)
+        .Template("Merchant", entryCell2)
+        .Template("Family", entryCell3, o => o.Css("small"))
+        .Template("Amount", entryCell4, o => o.End().Css("text-nowrap"), sortBy: e => e.AmountEur)
+        .Template("Holded account", entryCell5, o => o.Css("small"), sortBy: e => e.HoldedCode)
+        .Template("Receipt", entryCell6)
+        .Template("Status", entryCell7, o => o.Css("small"))
+        .Css("align-middle")
+        .Build();
+}
+<partial name="_Table" model="entriesTable" />

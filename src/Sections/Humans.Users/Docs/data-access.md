@@ -6,8 +6,7 @@ Folder: `src/Sections/Humans.Users/Services/` — no separate `Profiles/`
 subfolder; `ProfileEditorService`, `ProfileService`, and
 `ContactFieldService` sit alongside the Users services listed under
 [Users](#users) below. Owns `Profiles`, `ContactFields`,
-`ProfileLanguages`, `VolunteerHistoryEntries`, `UserEmails`, and the
-frozen legacy `CommunicationPreferences` storage mapping (no live access; Email owns preferences). **DbContext:** `UsersDbContext` — the merged
+`ProfileLanguages`, `VolunteerHistoryEntries` and `UserEmails`. **DbContext:** `UsersDbContext` — the merged
 Users+Profiles context.
 
 The account-merge surface (`AccountMergeService`, `DuplicateAccountService`,
@@ -41,7 +40,7 @@ the profile-edit flow below.
 
 No repository or cache. Serializes profile/CV submissions per user and delegates
 fields, CV history and picture bytes to `IUserManagement.SaveProfileAsync`.
-`UserService` writes picture bytes before publishing metadata, commits fields and
+The internal `UserProfileMutations`, owned by `UserService`, writes picture bytes before publishing metadata, commits fields and
 CV together with the legacy identity name, and cleans superseded files after the save.
 
 ### ContactFieldService (Scoped)
@@ -191,6 +190,15 @@ unified persistence layer. Implements `IUserDataContributor`,
 Cross-section calls via `IAdminAuthorizationService` and `IAuditLogService` (admin stub-profile creation after save). No direct
 `IMemoryCache` — caching is in the Singleton decorator.
 
+### UserProfileMutations (internal, owned by UserService)
+
+Repository: `IUserRepository`. Owns stub creation, profile/CV/picture saves,
+medical text and profile-language replacement. Reuses `UserInfoReader` for the
+existing stub-account checks, `IAuditLogService` for admin stub creation and
+`IFileStorage` for picture writes and cleanup. Shares the existing static profile
+locks across its write paths; `UserService` also uses its superseded-picture
+cleanup after merge. No separate DI registration or cache.
+
 ### CachingUserService (Singleton, `Humans.Users.Data`)
 
 | Cache | Type | Read | Write | Invalidate |
@@ -292,8 +300,9 @@ Detection-only: loads the cached `UserInfo` read-model via
 gmail/googlemail equivalence), then counts active teams / role assignments
 per involved user, with each user's membership tier and consent review. Resolution is delegated to
 `AccountMergeService.MergeAsync`. **No DB access.** Cross-section calls via
-`IUserService`, `ITeamService`, `IRoleAssignmentService`, `IGovernanceService`,
-`IConsentService`, `IAuditLogService`. No cache.
+`IUserService` (in-section, through the internal `IUserManagement`), `ITeamService`, `IRoleAssignmentService`,
+`IGovernanceService`, `IConsentService`, `IAuditLogService` and `IAuditViewerService` (the
+already-flagged `DuplicateAccountFlagged` entries). No cache.
 
 ### ExternalLoginService (Scoped)
 

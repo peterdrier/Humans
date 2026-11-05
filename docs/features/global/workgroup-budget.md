@@ -66,7 +66,7 @@ the group page is a pull by Workgroups through `IHoldedService.GetLedgerLinesAsy
   — flips the registry row. No-op when the number is a category account or unknown.
 - `IFinanceService.ListExpenseAccountsAsync(bool activeOnly, CancellationToken)`
   → `IReadOnlyList<ExpenseAccountOption(int AccountNum, string AccountId, string Label, bool IsBudgetCategory, bool IsActive)>`.
-  Union of the category map (label `Group / Category` from the active budget year, always active)
+  Union of the category map (label `Group / Category` from the active budget year; inactive when the category is not in that year)
   and the managed registry (its `Label`). Cache reads only — no Holded call. This is what the
   Workgroups picker and the phase-2 Expenses dropdown consume; the "link existing" picker in
   Workgroups shows the full live chart via `IHoldedClient.ListExpenseAccountsAsync` so an account

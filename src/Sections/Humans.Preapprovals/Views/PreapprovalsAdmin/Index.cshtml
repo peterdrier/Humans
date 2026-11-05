@@ -1,6 +1,35 @@
 @model AdminIndexViewModel
 @{
     ViewData["Title"] = "Pre-approval programs";
+
+    Func<ProgramInfo, IHtmlContent> nameCell =
+        @<text><a asp-action="Program" asp-route-programId="@item.Id" class="text-decoration-none">@item.Name</a></text>;
+    Func<ProgramInfo, IHtmlContent> applicationsCell = @<text>
+        @if (item.OpenApplications > 0)
+        {
+            <span class="badge bg-warning text-dark">@item.OpenApplications</span>
+        }
+    </text>;
+    Func<ProgramInfo, IHtmlContent> statusCell = @<text>
+        <status-badge value="@item.Status" />
+        @if (item.AcceptsApplications && item.IsAcceptingApplications(Model.Today))
+        {
+            <span class="badge bg-info text-dark">Accepting applications</span>
+        }
+    </text>;
+    var table = TableModel.For(Model.Programs)
+        .Template("Program", nameCell)
+        .Column("Kind", p => p.Kind == ProgramKind.FixedPerPerson ? $"{p.PerPersonAmount!.Value.ToEuro()} per person" : "Per grant")
+        .Column("Committed", p => p.Granted, o => o.Currency().End())
+        .Column("Ceiling", p => p.TotalCeiling, o => o.Currency().End())
+        .Column("Remaining", p => p.Remaining, o => o.Currency().End())
+        .Column("Not claimed", p => p.NotClaimed(Model.Today), o => o.Currency().End().Css("text-muted"))
+        .Template("Applications", applicationsCell, o => o.Css("text-center").HeaderCss("text-center"), sortBy: p => p.OpenApplications)
+        .Column("Claim by", p => p.ClaimBy, o => o.Date())
+        .Template("Status", statusCell)
+        .RowCss(p => p.DeadlinePassed(Model.Today) ? "text-muted" : null)
+        .Css("align-middle")
+        .Build();
 }
 
 <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
@@ -13,52 +42,9 @@
 
 @if (Model.Programs.Count == 0)
 {
-    <p class="text-muted">No programs yet.</p>
+    <empty-state>No programs yet.</empty-state>
 }
 else
 {
-    <div class="table-responsive">
-        <table class="table align-middle">
-            <thead>
-                <tr>
-                    <th>Program</th>
-                    <th>Kind</th>
-                    <th class="text-end">Committed</th>
-                    <th class="text-end">Ceiling</th>
-                    <th class="text-end">Remaining</th>
-                    <th class="text-end">Not claimed</th>
-                    <th class="text-center">Applications</th>
-                    <th>Claim by</th>
-                    <th>Status</th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach (var p in Model.Programs)
-                {
-                    <tr>
-                        <td><a asp-action="Program" asp-route-programId="@p.Id" class="text-decoration-none">@p.Name</a></td>
-                        <td>@(p.Kind == ProgramKind.FixedPerPerson ? $"{p.PerPersonAmount!.Value.ToEuro()} per person" : "Per grant")</td>
-                        <td class="text-end">@p.Granted.ToEuro()</td>
-                        <td class="text-end">@(p.TotalCeiling?.ToEuro() ?? "—")</td>
-                        <td class="text-end">@(p.Remaining?.ToEuro() ?? "—")</td>
-                        <td class="text-end text-muted">@p.NotClaimed(Model.Today).ToEuro()</td>
-                        <td class="text-center">
-                            @if (p.OpenApplications > 0)
-                            {
-                                <span class="badge bg-warning text-dark">@p.OpenApplications</span>
-                            }
-                        </td>
-                        <td class="@(p.DeadlinePassed(Model.Today) ? "text-muted" : "")">@p.ClaimBy.ToDate()</td>
-                        <td>
-                            <span class="badge @EnumBadgeMap.For(p.Status)">@p.Status</span>
-                            @if (p.AcceptsApplications && p.IsAcceptingApplications(Model.Today))
-                            {
-                                <span class="badge bg-info text-dark">Accepting applications</span>
-                            }
-                        </td>
-                    </tr>
-                }
-            </tbody>
-        </table>
-    </div>
+    <partial name="_Table" model="table" />
 }

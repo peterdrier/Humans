@@ -13,23 +13,21 @@
         || (await AuthService.AuthorizeAsync(User, Humans.Users.Contracts.UsersPolicies.Manage)).Succeeded;
 }
 
+@section Crumbs {
+    @if (Model.IsAdminContext)
+    {
+        <span><vc:human user-id="@Model.TargetUserId" layout="Text" link="Admin" /></span>
+    }
+    else
+    {
+        <a asp-controller="Profile" asp-action="Index">@SharedLocalizer["Nav_MyProfile"]</a>
+    }
+    <span>@Localizer["Users_Emails_Title"]</span>
+}
+
 <div class="row">
     <div class="col-md-8">
-        <nav aria-label="@Localizer["Users_BreadcrumbNavigation"]">
-            <ol class="breadcrumb">
-                @if (Model.IsAdminContext)
-                {
-                    <li class="breadcrumb-item"><vc:human user-id="@Model.TargetUserId" layout="Text" link="Admin" /></li>
-                }
-                else
-                {
-                    <li class="breadcrumb-item"><a asp-controller="Profile" asp-action="Index">@SharedLocalizer["Nav_MyProfile"]</a></li>
-                }
-                <li class="breadcrumb-item active" aria-current="page">@Localizer["Users_Emails_Title"]</li>
-            </ol>
-        </nav>
-
-        <h1>@Localizer["Users_Emails_Title"]</h1>
+        <page-header title="@(Localizer["Users_Emails_Title"].Value)" />
 
         @if (Model.IsAdminContext)
         {
@@ -365,7 +363,7 @@
                 <div class="card-body p-0">
                     @if (!Model.ExternalLogins.Any())
                     {
-                        <div class="p-3 text-muted">No external login rows for this user.</div>
+                        <empty-state class="p-3">No external login rows for this user.</empty-state>
                     }
                     else
                     {
@@ -416,7 +414,7 @@
                 <div class="card-body p-0">
                     @if (!Model.RawUserEmails.Any())
                     {
-                        <div class="p-3 text-muted">No rows.</div>
+                        <empty-state class="p-3">No rows.</empty-state>
                     }
                     else
                     {
@@ -559,7 +557,7 @@
                     </div>
                     @if (!Model.LinkedAccounts.Any())
                     {
-                        <div class="p-3 text-muted">@Localizer["Users_LinkedAccounts_Empty"]</div>
+                        <empty-state class="p-3">@Localizer["Users_LinkedAccounts_Empty"]</empty-state>
                     }
                     else
                     {

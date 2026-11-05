@@ -346,7 +346,6 @@
   <data name="Surveys_EmailPreviewTo" xml:space="preserve"><value>À :</value></data>
   <data name="Surveys_EmailPreviewSubject" xml:space="preserve"><value>Objet :</value></data>
   <data name="Surveys_EmailPreviewFrameTitle" xml:space="preserve"><value>Aperçu de l’e-mail d’invitation au questionnaire</value></data>
-  <data name="Surveys_BreadcrumbNavigation" xml:space="preserve"><value>Fil d’Ariane</value></data>
   <data name="Surveys_StartPreview" xml:space="preserve"><value>Commencer l’aperçu</value></data>
   <data name="Surveys_PreviewThankYou" xml:space="preserve"><value>Aperçu du remerciement</value></data>
   <data name="Surveys_Validation_AudienceUnsupported" xml:space="preserve"><value>Le public sélectionné pour le questionnaire n’est pas pris en charge.</value></data>

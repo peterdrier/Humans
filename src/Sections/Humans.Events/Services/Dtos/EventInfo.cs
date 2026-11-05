@@ -74,6 +74,33 @@ internal sealed record EventInfo(
     Instant LastUpdatedAt,
     IReadOnlyList<EventModerationHistoryInfo> ModerationHistory)
 {
+    // Project defensively: Category may be null and EventVenue / moderation history unloaded.
+    internal static EventInfo FromEvent(Event e) => new(
+        Id: e.Id,
+        CampId: e.CampId,
+        GuideSharedVenueId: e.GuideSharedVenueId,
+        SubmitterUserId: e.SubmitterUserId,
+        CategoryId: e.CategoryId,
+        CategoryName: e.Category?.Name ?? string.Empty,
+        CategorySlug: e.Category?.Slug ?? string.Empty,
+        CategoryIsSensitive: e.Category?.IsSensitive ?? false,
+        VenueName: e.EventVenue?.Name,
+        Title: e.Title,
+        Description: e.Description,
+        LocationNote: e.LocationNote,
+        Host: e.Host,
+        StartAt: e.StartAt,
+        DurationMinutes: e.DurationMinutes,
+        IsRecurring: e.IsRecurring,
+        RecurrenceDays: e.RecurrenceDays,
+        PriorityRank: e.PriorityRank,
+        Status: e.Status,
+        SubmittedAt: e.SubmittedAt,
+        LastUpdatedAt: e.LastUpdatedAt,
+        ModerationHistory: e.EventModerationActions
+            .Select(a => new EventModerationHistoryInfo(a.ActorUserId, a.Action, a.Reason, a.CreatedAt))
+            .ToList());
+
     public bool CanEdit => Event.IsEditableBySubmitter(Status, CampId is not null);
 
     public bool CanWithdraw => Event.IsWithdrawableBySubmitter(Status, CampId is not null);

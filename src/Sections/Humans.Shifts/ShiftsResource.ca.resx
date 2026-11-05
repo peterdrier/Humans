@@ -43,7 +43,6 @@
   <data name="Shifts_SignedUp" xml:space="preserve">
     <value>Apuntats</value>
   </data>
-  <data name="Shifts_BreadcrumbNavigation" xml:space="preserve"><value>Ruta de navegació</value></data>
   <data name="Shifts_Pending" xml:space="preserve">
     <value>(pendent)</value>
   </data>
@@ -1293,4 +1292,5 @@
   <data name="Shifts_Notification_ChangeApprovedRange" xml:space="preserve"><value>Inscripció a diversos torns de '{0}' aprovada ({1} torns).</value></data>
   <data name="Shifts_Notification_ChangeRefusedRange" xml:space="preserve"><value>Inscripció a diversos torns de '{0}' rebutjada ({1} torns).</value></data>
   <data name="Shifts_Notification_ChangeBailedRange" xml:space="preserve"><value>Cancel·lació de diversos torns de '{0}' ({1} torns).</value></data>
+  <data name="Shifts_TagPreferencesInvalid" xml:space="preserve"><value>Algunes etiquetes seleccionades ja no estan disponibles. Revisa la selecció i torna-ho a provar.</value></data>
 </root>

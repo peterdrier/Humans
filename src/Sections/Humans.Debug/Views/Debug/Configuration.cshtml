@@ -1,6 +1,54 @@
 @model AdminConfigurationViewModel
 @{
     ViewData["Title"] = "Configuration Status";
+
+    static int ImportanceRank(string importance) => importance switch
+    {
+        "critical" => 0,
+        "recommended" => 1,
+        _ => 2,
+    };
+
+    Func<ConfigurationItemViewModel, IHtmlContent> keyCell = @<text>
+        <code>@item.Key</code>
+        @if (item.IsSensitive)
+        {
+            <i class="fa-solid fa-lock text-muted ms-1" title="Sensitive — value masked"></i>
+        }
+    </text>;
+    Func<ConfigurationItemViewModel, IHtmlContent> importanceCell = @<text>
+        @if (string.Equals(item.Importance, "critical", StringComparison.Ordinal))
+        {
+            <span class="badge bg-danger">Critical</span>
+        }
+        else if (string.Equals(item.Importance, "recommended", StringComparison.Ordinal))
+        {
+            <span class="badge bg-warning text-dark">Recommended</span>
+        }
+        else
+        {
+            <span class="badge bg-secondary">Optional</span>
+        }
+    </text>;
+    Func<ConfigurationItemViewModel, IHtmlContent> statusCell = @<text>
+        @if (item.IsSet)
+        {
+            <span class="badge bg-success">Set</span>
+        }
+        else if (string.Equals(item.Importance, "critical", StringComparison.Ordinal))
+        {
+            <span class="badge bg-danger">Missing</span>
+        }
+        else if (string.Equals(item.Importance, "recommended", StringComparison.Ordinal))
+        {
+            <span class="badge bg-warning text-dark">Not set</span>
+        }
+        else
+        {
+            <span class="badge bg-secondary">Not set</span>
+        }
+    </text>;
+    Func<ConfigurationItemViewModel, IHtmlContent> valueCell = @<text><code>@item.DisplayValue</code></text>;
 }
 
 <page-header title="Configuration Status">
@@ -57,64 +105,14 @@
                 }
             </span>
         </div>
-        <div class="table-responsive">
-            <table class="table table-sm mb-0">
-                <thead>
-                    <tr>
-                        <th>Key</th>
-                        <th>Importance</th>
-                        <th>Status</th>
-                        <th>Value</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach (var item in group)
-                    {
-                        <tr>
-                            <td>
-                                <code>@item.Key</code>
-                                @if (item.IsSensitive)
-                                {
-                                    <i class="fa-solid fa-lock text-muted ms-1" title="Sensitive — value masked"></i>
-                                }
-                            </td>
-                            <td>
-                                @if (string.Equals(item.Importance, "critical", StringComparison.Ordinal))
-                                {
-                                    <span class="badge bg-danger">Critical</span>
-                                }
-                                else if (string.Equals(item.Importance, "recommended", StringComparison.Ordinal))
-                                {
-                                    <span class="badge bg-warning text-dark">Recommended</span>
-                                }
-                                else
-                                {
-                                    <span class="badge bg-secondary">Optional</span>
-                                }
-                            </td>
-                            <td>
-                                @if (item.IsSet)
-                                {
-                                    <span class="badge bg-success">Set</span>
-                                }
-                                else if (string.Equals(item.Importance, "critical", StringComparison.Ordinal))
-                                {
-                                    <span class="badge bg-danger">Missing</span>
-                                }
-                                else if (string.Equals(item.Importance, "recommended", StringComparison.Ordinal))
-                                {
-                                    <span class="badge bg-warning text-dark">Not set</span>
-                                }
-                                else
-                                {
-                                    <span class="badge bg-secondary">Not set</span>
-                                }
-                            </td>
-                            <td><code>@item.DisplayValue</code></td>
-                        </tr>
-                    }
-                </tbody>
-            </table>
-        </div>
+        @{
+            var configTable = TableModel.For(group.ToList())
+                .Template("Key", keyCell, sortBy: i => i.Key)
+                .Template("Importance", importanceCell, sortBy: i => ImportanceRank(i.Importance))
+                .Template("Status", statusCell, sortBy: i => i.IsSet ? 1 : 0)
+                .Template("Value", valueCell, sortBy: i => i.DisplayValue)
+                .Build();
+        }
+        <partial name="_Table" model="configTable" />
     </div>
 }

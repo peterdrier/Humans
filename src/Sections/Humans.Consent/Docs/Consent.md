@@ -16,7 +16,7 @@ Good looks like: a signature can never be altered or lost, a member is never ask
 
 Deliberate choices: Spanish is the binding text and the only one hashed; completing consents never gates app access and provisions nothing (the system-team sync reconciles membership); the Coordinator's verdict is an annotation, not a gate.
 
-Out of scope: deciding who is a member (Governance), suspending for missing consents (Users), the Coordinator's review queue and workflow (Onboarding), sending mail (Email).
+Out of scope: deciding who is a member (Governance), suspending for missing consents (Users), the sign-up rejection workflow the queue's Reject triggers (Onboarding), sending mail (Email).
 
 ## Concepts
 
@@ -84,7 +84,7 @@ Append-only per design-rules §12. **DB triggers** (`prevent_consent_record_upda
 | ContentHash | string (64) | SHA-256 hex of canonical Spanish content at consent time |
 | ExplicitConsent | bool | Always true for valid records |
 
-`ConsentService.SubmitConsentAsync` refuses unchecked consent before writing any record or recording consent metrics. The document remains signable on a later explicit submission; UI checkbox guards are an additional check.
+`ConsentService.SubmitConsentAsync` refuses unchecked consent before writing any record or recording consent metrics. The document remains signable on a later explicit submission; UI checkbox guards are an additional check. Every refused submission shows the member a message, and once a record is saved a failed report to Onboarding is logged, never shown as a failed signature.
 
 **Unique index:** `(UserId, DocumentVersionId)` — prevents duplicate consents for the same version.
 
@@ -173,6 +173,9 @@ Document archival uses the shared `data-confirm` handler: each click prompts onc
 
 ## Invariants
 
+- Review notes and rejection reasons are limited to 4,000 Unicode characters before any review write or audit. Oversized text that would be written returns `ReviewTextTooLong`; existing rejection preconditions retain precedence, and valid text is stored without truncation. The operator queue shows the limit and specific refusal feedback.
+
+
 - Commit-summary fetch failures remain a null fallback: GitHub API failures log Warning with status only, without raw error bodies or exception stacks; unexpected failures log Error with diagnostics. Caller cancellation still propagates.
 
 - Consent review detail and submission each resolve the person once: profile/name checks and prior-signature lookup use that same snapshot’s complete current/merged ID chain. Other consent-chain reads retain their standalone resolution.
@@ -200,7 +203,7 @@ Document archival uses the shared `data-confirm` handler: each click prompts onc
 
 - The consent dashboard renders section service DTOs directly, sorting pending teams/documents before signed ones and then by ordinal name. It retains UTC date display and the ten most recent history rows; the controller does not copy DTOs into duplicate row models.
 
-- The member consent dashboard and review pages localize breadcrumb navigation labels in all supported cultures. Consent resources consistently use `Consent_`, including the shared review form consumed by Onboarding and the empty-state message reused by Governance.
+- The member consent dashboard and review pages localize breadcrumb navigation labels in all supported cultures. Consent resources consistently use `Consent_`, including the shared review body the onboarding widget's signing step renders and the empty-state message reused by Governance.
 - Anonymous Legal pages use the existing localized content-unavailable message when GitHub content is absent.
 - The shared document partial renders the supplied localized empty message for zero translations as well as empty translation text; unavailable Legal content does not leave a blank card.
 - Legal and consent document tabs retain native language names and localize the canonical Spanish legal marker in all supported cultures.
@@ -218,6 +221,7 @@ Document archival uses the shared `data-confirm` handler: each click prompts onc
 - Synced version content is fetched by each file’s immutable blob SHA, after resolving the latest commit changing that path on the configured branch and pinning its metadata read to that commit. The canonical Spanish content and version SHA come from the same fetch, reused without a second branch read. Change summaries use that canonical file’s commit reference; the blob SHA remains the version identity.
 - GitHub document reads use the configured `GitHub:Branch`, including both directory discovery and translated file content for the anonymous `/Legal` pages.
 - When a new document version is published, existing consents for the old version become stale and re-consent is required.
+- Internal `LegalDocumentPublication` owns single-document GitHub sync, version persistence, cache eviction, publication audit and localized fan-out. `LegalDocumentSyncService` retains document administration, read projections and batch error handling; the runner retains durable re-consent batching. Publication still evicts before audit and fan-out, and unchanged content only touches its sync timestamp. Job attribution and cancellation boundaries are preserved; no DI registration or public contract is added.
 - Per-user reads on `consent_records` chain-follow merge tombstones via the resolved record's `UserInfo.AllUserIds` so consents signed under a now-merged source id surface for the fold target. Consent records stay at source after merge, DB triggers (`prevent_consent_record_update`, `prevent_consent_record_delete`) make any rewrite physically impossible.
 - New signatures use the resolved survivor ID, including when a widget submits an archived account ID. Required-consent checks and post-save suspension-notification cleanup use that same ID; existing immutable signatures keep their original attribution.
 
@@ -285,7 +289,7 @@ GitHub document discovery, metadata/raw content, commit-summary and prefix-conte
 
 A delayed per-key or bulk consent load cannot republish its old result after an intervening cache eviction or refresh.
 
-**Owning services:** `LegalDocumentService` (Statutes page), `LegalDocumentSyncService` (document-side — sole writer for `legal_documents`/`document_versions`, owning both the admin write surface `IAdminLegalDocumentService` and the GitHub-sync write surface `ILegalDocumentSyncManagement`; nobodies-collective/Humans#751), `ConsentService` (consent-side), `LegalDocumentSyncRunner` (the GitHub sync + re-consent fan-out body) — all in `Humans.Consent.Services`, `internal sealed`. `SyncLegalDocumentsJob` (`Humans.Consent/Jobs/`) is `internal sealed` too: the section registers and schedules it in `Section.cs`.
+**Owning services:** `LegalDocumentService` (Statutes page), `LegalDocumentSyncService` (document-side — sole writer for `legal_documents`/`document_versions`, owning both the admin write surface `IAdminLegalDocumentService` and the GitHub-sync write surface `ILegalDocumentSyncManagement`; nobodies-collective/Humans#751), `ConsentService` (consent-side), `LegalDocumentSyncRunner` (the GitHub sync + re-consent fan-out body), `ConsentReviewQueueService` (the Coordinator's review queue: list, detail, clear, bulk clear, flag) — all in `Humans.Consent.Services`, `internal sealed`. `SyncLegalDocumentsJob` (`Humans.Consent/Jobs/`) is `internal sealed` too: the section registers and schedules it in `Section.cs`.
 **Owned tables:** `legal_documents`, `document_versions`, `consent_records`, `consent_reviews`, `consent_reminders`
 **Status:** Own project — `src/Sections/Humans.Consent` + `src/Sections/Humans.Consent/Contracts`. Owns `LegalDbContext` and its migrations; entities, repositories, services, controllers, views and `ConsentResource` are all internal to the assembly. The context keeps the name `LegalDbContext` and the `legal_*` table names.
 

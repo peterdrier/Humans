@@ -3,16 +3,14 @@
     ViewData["Title"] = $"Edit Page — {Model.TeamName}";
 }
 
-<nav aria-label="breadcrumb">
-    <ol class="breadcrumb">
-        <li class="breadcrumb-item"><a asp-controller="Team" asp-action="Index">@SharedLocalizer["Teams_Title"]</a></li>
-        <li class="breadcrumb-item"><a asp-controller="Team" asp-action="Details" asp-route-slug="@Model.Slug">@Model.TeamName</a></li>
-        <li class="breadcrumb-item active" aria-current="page">Edit Page</li>
-    </ol>
-</nav>
+@section Crumbs {
+    <a asp-controller="Team" asp-action="Index">@SharedLocalizer["Teams_Title"]</a>
+    <a asp-controller="Team" asp-action="Details" asp-route-slug="@Model.Slug">@Model.TeamName</a>
+    <span>Edit Page</span>
+}
 
 
-<h2>Edit Page &mdash; @Model.TeamName</h2>
+<page-header title="@($"Edit Page — {Model.TeamName}")" />
 
 <form method="post" asp-action="EditPage" asp-route-slug="@Model.Slug">
     @Html.AntiForgeryToken()

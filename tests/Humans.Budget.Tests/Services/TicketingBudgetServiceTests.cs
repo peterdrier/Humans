@@ -7,6 +7,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
+using Xunit;
 
 namespace Humans.Budget.Tests.Services;
 
@@ -115,8 +116,11 @@ public class TicketingBudgetServiceTests
         capturedActuals.Should().ContainSingle().Which.WeekLabel.Should().Be(expected);
     }
 
-    [HumansFact]
-    public async Task SyncActualsAsync_IgnoresNonPaidOrders()
+    [HumansTheory]
+    [InlineData(TicketPaymentStatus.Pending)]
+    [InlineData(TicketPaymentStatus.Refunded)]
+    [InlineData(TicketPaymentStatus.Cancelled)]
+    public async Task SyncActualsAsync_IgnoresNonPaidOrders(TicketPaymentStatus unpaidStatus)
     {
         var purchasedAt = Instant.FromUtc(2026, 3, 3, 10, 0); // inside completed week Mon 2 Mar
         _ticketService.GetTicketOrdersAsync(Arg.Any<CancellationToken>())
@@ -128,7 +132,7 @@ public class TicketingBudgetServiceTests
                     999m,
                     10m,
                     5m,
-                    TicketPaymentStatus.Pending,
+                    unpaidStatus,
                     TicketAttendeeStatus.Valid,
                     TicketAttendeeStatus.CheckedIn),
             });
@@ -363,7 +367,7 @@ public class TicketingBudgetServiceTests
         _budgetService.UpdateTicketingProjectionAsync(groupId, command.StartDate, command.EventDate,
             command.InitialSalesCount, command.DailySalesRate, command.AverageTicketPrice, command.VatRate,
             command.StripeFeePercent, command.StripeFeeFixed, command.TicketTailorFeePercent, actorUserId,
-            refreshProjections: true, Xunit.TestContext.Current.CancellationToken).Returns(4);
+            refreshProjections: true, Xunit.TestContext.Current.CancellationToken).Returns(new TicketingProjectionSaveResult(4));
 
         _budgetService.GetYearByIdAsync(yearId, Arg.Any<CancellationToken>()).Returns(
             new BudgetYearDetail(yearId, "2026", "Budget", BudgetYearStatus.Active, false,
@@ -372,7 +376,7 @@ public class TicketingBudgetServiceTests
 
         var result = await sut.UpdateProjectionAndRefreshAsync(command, actorUserId, Xunit.TestContext.Current.CancellationToken);
 
-        result.Should().Be(4);
+        result.Should().Be(new TicketingProjectionSaveResult(4));
         await _budgetService.Received(1).UpdateTicketingProjectionAsync(groupId, command.StartDate, command.EventDate,
             command.InitialSalesCount, command.DailySalesRate, command.AverageTicketPrice, command.VatRate,
             command.StripeFeePercent, command.StripeFeeFixed, command.TicketTailorFeePercent, actorUserId,

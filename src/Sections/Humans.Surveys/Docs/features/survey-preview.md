@@ -10,7 +10,7 @@ risks creating misleading invitation/funnel data and makes authoring unnecessari
 
 ### Preview a survey
 
-- A Board or Admin can open Preview from the survey list, builder, or Send page.
+- A Surveys Admin, Board or Admin can open Preview from the survey list, builder, or Send page.
 - Preview opens in a new browser tab from those entry points.
 - Draft, Open, and Closed surveys can all be previewed.
 - The preview reuses the respondent intro, question-page, grid, and thank-you views.
@@ -31,7 +31,7 @@ risks creating misleading invitation/funnel data and makes authoring unnecessari
 
 ### Send a preview email to myself
 
-- A Board or Admin can queue a preview email from the Send page or from the preview notice shown on
+- A Surveys Admin, Board or Admin can queue a preview email from the Send page or from the preview notice shown on
   the intro, question, and thank-you pages.
 - The recipient is the currently authenticated user's canonical notification email.
 - The message uses the same localized survey-invitation template, authored custom subject/message

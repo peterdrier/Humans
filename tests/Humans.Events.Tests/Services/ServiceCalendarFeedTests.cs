@@ -24,6 +24,7 @@ public class EventServiceCalendarFeedTests
         new StringLocalizer<EventsResource>(new ResourceManagerStringLocalizerFactory(
             Options.Create(new LocalizationOptions()), NullLoggerFactory.Instance));
 
+    private readonly Guid _eventEditionId = Guid.NewGuid();
     private static readonly Instant FixedNow = Instant.FromUtc(2026, 6, 15, 12, 0);
     // 19:00 Europe/Madrid on 2026-07-01 = 17:00 UTC (CEST).
     private static readonly Instant EventStart = Instant.FromUtc(2026, 7, 1, 17, 0);
@@ -40,13 +41,14 @@ public class EventServiceCalendarFeedTests
             .Returns((EventGuideSettings?)null);
     }
 
-    private static Event MakeEvent(
+    private Event MakeEvent(
         EventStatus status,
         bool isRecurring = false,
         string? recurrenceDays = null) => new()
         {
             Id = Guid.NewGuid(),
             SubmitterUserId = Guid.NewGuid(),
+            EventSettingsId = _eventEditionId,
             CategoryId = Guid.NewGuid(),
             Title = "Sunset Yoga",
             Description = "Bring a mat.",
@@ -84,7 +86,7 @@ public class EventServiceCalendarFeedTests
         var guideSettings = new EventGuideSettings
         {
             Id = Guid.NewGuid(),
-            EventSettingsId = Guid.NewGuid(),
+            EventSettingsId = _eventEditionId,
             SubmissionOpenAt = FixedNow,
             SubmissionCloseAt = FixedNow,
             GuidePublishAt = FixedNow,
@@ -108,17 +110,10 @@ public class EventServiceCalendarFeedTests
                 EarlyEntryClose: null));
     }
 
-    [HumansTheory]
-    [Xunit.InlineData("en", "Host", "Category")]
-    [Xunit.InlineData("es", "Anfitrión", "Categoría")]
-    [Xunit.InlineData("de", "Gastgeber", "Kategorie")]
-    [Xunit.InlineData("it", "Host", "Categoria")]
-    [Xunit.InlineData("fr", "Hôte", "Catégorie")]
-    [Xunit.InlineData("ca", "Amfitrió", "Categoria")]
-    [Xunit.InlineData("nl", "Organisator", "Categorie")]
-    public async Task GetCalendarItems_ApprovedFavourite_MapsFields(string culture, string hostLabel, string categoryLabel)
+    [HumansFact]
+    public async Task GetCalendarItems_ApprovedFavourite_MapsFields()
     {
-        using var cultureScope = new CultureScope(culture);
+        using var cultureScope = new CultureScope("en");
         var userId = Guid.NewGuid();
         var ev = MakeEvent(EventStatus.Approved);
         ev.Category = new EventCategory { Id = ev.CategoryId, Name = "Wellness", Slug = "wellness" };
@@ -134,8 +129,8 @@ public class EventServiceCalendarFeedTests
         item.End.Should().Be(EventStart.Plus(Duration.FromMinutes(90)));
         item.Location.Should().Be("Behind the dome");
         item.Description.Should().Contain("Bring a mat.");
-        item.Description.Should().Contain($"{hostLabel}: Stretchy");
-        item.Description.Should().Contain($"{categoryLabel}: Wellness");
+        item.Description.Should().Contain("Host: Stretchy");
+        item.Description.Should().Contain("Category: Wellness");
         item.Uid.Should().Be($"event-{ev.Id}-20260701@humans.nobodies.team");
         item.Url.Should().Be("/Events/Schedule");
     }

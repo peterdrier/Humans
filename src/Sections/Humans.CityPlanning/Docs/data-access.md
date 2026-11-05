@@ -19,7 +19,7 @@ Repository: `ICityPlanningRepository`.
 | CampPolygonHistories | R/W |
 
 Cross-section calls via `ICampService`, `ITeamService`,
-`IUserService`, plus the `IAuditLogService` crosscut for settings
+`IUserService`, `ISettingsService` (active event), plus the `IAuditLogService` crosscut for settings
 writes. Uses `CityPlanningOptions`. No `IMemoryCache`.
 
 ---

@@ -65,8 +65,8 @@ internal sealed partial class PreapprovalService
 
             info = ToInfo(fresh);
             var priority = kind == ReminderKind.D3 ? NotificationPriority.High : NotificationPriority.Normal;
-            await NotifyFileByAsync(info, "Preapprovals_Notice_Reminder", priority, ct, propagateFailures: true);
-            await EmailAsync(info, PreapprovalNoticeKind.DeadlineReminder, detail: null, ct, propagateFailures: true);
+            await notices.NotifyFileByAsync(info, "Preapprovals_Notice_Reminder", priority, ct, propagateFailures: true);
+            await notices.EmailAsync(info, PreapprovalNoticeKind.DeadlineReminder, detail: null, ct, propagateFailures: true);
             await repository.AddReminderSentAsync(new ReminderSent
             {
                 GrantId = fresh.Id,

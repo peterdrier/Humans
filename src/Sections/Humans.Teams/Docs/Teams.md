@@ -71,7 +71,7 @@ Cross-domain nav `TeamJoinRequestStateHistory.ChangedByUser → ChangedByUserId`
 
 **Table:** `team_role_definitions`
 
-Named role slots on a team (name, description, slot count, priorities, sort order, `IsManagement` flag, `IsPublic` flag, `Period`, nullable `EstimatedHours`). `EstimatedHours` is the estimated workload in whole hours/year that holding the role represents — informational only (gates nothing); surfaced on `TeamRoleDefinitionSnapshot`/`TeamInfo` so workload aggregations can quantify role hours alongside shift hours. Aggregate-local: `TeamRoleDefinition.Team`. Per-team unique index `IX_team_role_definitions_team_name_unique` on `(TeamId, Name)`.
+Named role slots on a team (name, description, slot count, priorities, sort order, `IsManagement` flag, `IsPublic` flag, `Period`, nullable `EstimatedHours`). `EstimatedHours` is the estimated workload in nonnegative whole hours/year that holding the role represents — informational only (gates nothing); create and update refuse negative values before writing or auditing, while null and zero remain valid; surfaced on `TeamRoleDefinitionSnapshot`/`TeamInfo` so workload aggregations can quantify role hours alongside shift hours. Aggregate-local: `TeamRoleDefinition.Team`. Per-team unique index `IX_team_role_definitions_team_name_unique` on `(TeamId, Name)`.
 
 ### TeamRoleAssignment
 
@@ -102,7 +102,7 @@ Stored as string via `HasConversion<string>()`.
 
 **Table:** `team_early_entry_grants`
 
-One early-entry (EE) grant: a human may enter on a `LocalDate` for a named project on a team that has the `Team.EarlyEntryEnabled` flag set. Aggregate-local nav `TeamEarlyEntryGrant.Team` (loaded for the cross-section projection). Teams implements `IEarlyEntryProvider`, projecting each grant to the EE roster as `"{TeamName}: {ProjectName}"`. EE is a generic per-team capability (multiple teams may enable it). Managed per-team at `Teams/{slug}/EarlyEntry` by the team's coordinators (de facto) or the cross-team `EarlyEntryAdmin` role (and TeamsAdmin/Admin), gated by `TeamOperationRequirement.ManageEarlyEntry`. GDPR export + right-to-erasure + user-merge fold are covered.
+One early-entry (EE) grant: a human may enter on a `LocalDate` for a named project on a team that has the `Team.EarlyEntryEnabled` flag set. Creation resolves the selected person through Users before writing: merge aliases use the surviving ID in the grant and audit, while missing or tombstoned people are refused. Live non-Active accounts remain eligible. Aggregate-local nav `TeamEarlyEntryGrant.Team` (loaded for the cross-section projection). Teams implements `IEarlyEntryProvider`, projecting each grant to the EE roster as `"{TeamName}: {ProjectName}"`. EE is a generic per-team capability (multiple teams may enable it). Managed per-team at `Teams/{slug}/EarlyEntry` by the team's coordinators (de facto) or the cross-team `EarlyEntryAdmin` role (and TeamsAdmin/Admin), gated by `TeamOperationRequirement.ManageEarlyEntry`. GDPR export + right-to-erasure + user-merge fold are covered.
 
 ### SystemTeamType
 
@@ -153,12 +153,12 @@ This section's controllers. `TeamController` (`[Route("Teams")]`) handles both a
 | `GET /Teams/{teamId:guid}/GoogleResources` | `GetTeamGoogleResources` | `TeamController` | `[Authorize(Policy = TeamsPolicies.Read)]` — JSON API for resource picker |
 | `GET /Teams/{teamId:guid}/SendMessage/{id:guid}` | `SendMessage` (GET) | `TeamMessageController` | `[Authorize]` + `ITeamMessageOptionsProvider` — send as team: the team must be one the viewer may send as (see Invariants); 403 otherwise, redirect to the profile for self or an opted-out recipient |
 | `POST /Teams/{teamId:guid}/SendMessage/{id:guid}` | `SendMessage` (POST) | `TeamMessageController` | `[Authorize]`, anti-forgery, same guards re-checked |
-| `GET /Teams/{slug}/Members` | `Members` | `TeamAdminController` | `ResolveTeamManagementAsync` (coordinator or TeamsAdmin/Admin) |
+| `GET /Teams/{slug}/Members` | `Members` | `TeamAdminController` | `ResolveTeamViewAsync` — the team's managers (coordinator or TeamsAdmin/Admin), or a Teams reader (Board) with `CanManage` false and every form hidden |
 | `POST /Teams/{slug}/Members/Add` | `AddMember` | `TeamAdminController` | `ResolveTeamManagementAsync` |
 | `POST /Teams/{slug}/Members/{userId}/Remove` | `RemoveMember` | `TeamAdminController` | `ResolveTeamManagementAsync` |
 | `POST /Teams/{slug}/Members/{userId}/ProvisionEmail` | `ProvisionEmail` | `TeamAdminController` | `ResolveTeamManagementAsync` |
 | `GET /Teams/{slug}/Members/Search` | `SearchUsers` | `TeamAdminController` | `ResolveTeamManagementAsync` — AJAX name search |
-| `GET /Teams/{slug}/Roster` | `Roster` | `TeamAdminController` | `[Authorize(Policy = BoardOrAdmin)]` + `ResolveTeamManagementAsync` — burner name + legal name; policy narrows the coordinator-inclusive resolver to Board/Admin |
+| `GET /Teams/{slug}/Roster` | `Roster` | `TeamAdminController` | `[Authorize(Policy = BoardOrAdmin)]` + `ResolveTeamViewAsync` — burner name + legal name; policy narrows the coordinator-inclusive read resolver to Board/Admin |
 | `POST /Teams/{slug}/Requests/{requestId}/Approve` | `ApproveRequest` | `TeamAdminController` | `ResolveTeamManagementAsync` |
 | `POST /Teams/{slug}/Requests/{requestId}/Reject` | `RejectRequest` | `TeamAdminController` | `ResolveTeamManagementAsync` |
 | `GET /Teams/{slug}/Roles` | `Roles` | `TeamAdminController` | `ResolveTeamManagementAsync` |
@@ -177,7 +177,7 @@ This section's controllers. `TeamController` (`[Route("Teams")]`) handles both a
 | `POST /Teams/{slug}/EarlyEntry/Remove` | `RemoveEarlyEntry` | `TeamAdminController` | `ResolveEarlyEntryManagementAsync` |
 | `GET /Teams/{slug}/EarlyEntry/LookupTicket` | `LookupTicket` | `TeamAdminController` | `ResolveEarlyEntryManagementAsync` — AJAX ticket-barcode lookup; returns 0-or-1 `HumanLookupSearchResult` |
 
-`ResolveTeamManagementAsync` authorizes via `TeamAuthorizationHandler` + `TeamOperationRequirement.ManageCoordinators`; `ResolveEarlyEntryManagementAsync` authorizes the same handler with `TeamOperationRequirement.ManageEarlyEntry`.
+`ResolveTeamManagementAsync` authorizes via `TeamAuthorizationHandler` + `TeamOperationRequirement.ManageCoordinators`; `ResolveTeamViewAsync` is the same check or `TeamsPolicies.Read`; `ResolveEarlyEntryManagementAsync` authorizes the same handler with `TeamOperationRequirement.ManageEarlyEntry`.
 
 ## Actors & Roles
 
@@ -225,10 +225,9 @@ This section's controllers. `TeamController` (`[Route("Teams")]`) handles both a
 
 - Expected create, edit, deactivate, join-request rejection and member add/remove rejections log at Warning with their reason and applicable team id, without exception stacks. Form feedback and redirects are unchanged.
 
-- The Teams GDPR slices follow the subject’s resolved merge chain, including ended memberships retained on archived IDs. Requests under an archived ID return the same data.
+- The Teams GDPR slices follow the subject’s resolved merge chain, including ended memberships retained on archived IDs. Requests under an archived ID return the same data. Internal `TeamDataExport` owns the complete three-slice projection and team-name lookup, with lazy Users resolution; `TeamService` remains the contributor entry point and owns erasure. Slice keys, historical memberships, chronological request history and cancellation are unchanged. No DI registration or public contract is added.
 - The `TeamJoinRequests` GDPR export includes the person’s request and review notes plus chronological status-history entries (status, UTC change time and notes). Other users’ requests are excluded.
 
-- Member-facing team details, tree, membership, birthdays, roster, map and join pages localize their breadcrumb navigation label in all supported cultures.
 
 - GoogleIntegration's team resources GET forwards request cancellation through viewer, team, resource-management permission, resource list and service-account email reads. Shared permission helpers retain their existing default token for resource mutations.
 - The shared department-access resolver accepts a caller token for viewer and team reads; department GETs can retain request cancellation while mutation callers keep the default token.
@@ -338,7 +337,7 @@ A coordinator can relay a one-off message to another member on behalf of a team,
 - **Notifications.Contracts:** `INotificationEmitter` on join-request events.
 - **AuditLog:** `IAuditLogService` for every membership and EE mutation, and `<vc:audit-log>` in `TeamAdmin/Members`.
 - **Email.Contracts:** `IEmailService.SendAsync`, `IEmailMessageFactory.FacilitatedMessage` (with the team's group as `replyTo`) and `ICommunicationPreferenceService.AcceptsFacilitatedMessagesAsync` for send as team. Otherwise transport only (`IEmailService.SendAsync`) for the reconciler's "added to team" mail. Teams owns the template: `TeamsEmails` (internal) builds the `EmailMessage` from Teams' own `Teams_Email_*` keys in `TeamsResource`, renders linked resources alphabetically in the recipient's supported culture via `CultureScope` (English fallback for missing or unsupported saved preferences), and `TeamsEmailPreviews` (`IEmailPreviewContributor`, registered in `Section.Register`) lists it at `/Email/EmailPreview` (`memory/architecture/email-templates-live-in-sender.md`, peterdrier/Humans#1651).
-- **Gdpr:** `IUserDataContributor` (export + erasure).
+- **Base (`Humans.Base.Gdpr`):** `IUserDataContributor` (export + erasure).
 - **EarlyEntry** (full section): `IEarlyEntryProvider` — `GetEarlyEntriesAsync` projects grants from `EarlyEntryEnabled` teams to the cross-section `EarlyEntryGrant` view (`"{TeamName}: {ProjectName}"`) via `TeamEarlyEntryProjection`, read live by EarlyEntry on every call.
 - **Camps.Contracts:** active camp lead assignments feed the Barrio Leads system team via `ICampLeadDirectory`.
 - **Governance.Contracts:** `IMembershipCalculator` decides Asociados / Colaboradors eligibility.
@@ -373,6 +372,7 @@ Teams-owned resource keys use the `Teams_` prefix in all supported cultures. Sha
 - **Roster owner.** `TeamPageService.GetRosterAsync` expands roles from the canonical cached `TeamInfo.RoleDefinitions` for active non-system teams and carries assigned-user IDs for rendering. There is no separate all-role repository query or decorator pass-through. The controller retains visibility checks and display sorting.
 - **Role ordering.** Cached role definitions are unordered. Role administration and team-detail views order by authored `SortOrder`, then name; the roster applies its own display keys. Management-label lookup explicitly selects the first public management role by authored order and name rather than relying on cache order.
 - **Team detail owner.** `TeamPageService` assembles the detail page from canonical `TeamInfo` reads, role checks and live pending-request lookups. The decorator owns no detail-page authorization or mapping, and the inner service has no duplicate entity-backed detail implementation. The detail DTOs belong to the page-service layer.
+- **Snapshot owner.** Internal `TeamSnapshotReader` assembles Teams-owned metadata, role definitions, hierarchy and pending counts, then enriches member references with live Users display data. `TeamService` retains the existing forwarding entry points; the decorator retains caching and invalidation. Users resolution stays lazy to preserve the dependency cycle, and empty member sets need no Users lookup. The same reader owns admin-list loading, pending-shift/resource enrichment and parent/child summary projection. `TeamService` retains its forwarding entry point; paging, total counts, hierarchy ordering and lazy resource resolution are unchanged. No DI registration or public contract is added.
 - **Decorator decision — caching decorator.** `CachingTeamService` is a Singleton transparent decorator for `ITeamService`. It caches `TeamReadSnapshot` metadata and membership references owned by Teams, and resolves member names, emails and photos live through the inner service and `IUserService` on each read. ID, slug, bulk and parent reads share that path; Users merges and profile edits need no cross-section flush. It inherits `TrackedCache<Guid, TeamReadSnapshot>` which implements `IHostedService`; registered via `services.AddHostedService(sp => sp.GetRequiredService<CachingTeamService>())`. Bulk invalidations call `Clear()` (flips warmed flag) and the next read re-warms via `EnsureWarmedAsync`. Mutations invalidate even if the inner call throws or is cancelled after writing, preserving the original failure; completed no-op results retain their existing invalidation policy. Re-warming rebuilds both the team set and the user-to-team membership index. `TeamInfo` / `TeamMemberInfo` are the service read models; the EF `Team` entity remains legacy surface area until the service-entity-boundary cleanup removes it from read APIs. `TeamInfo` is the complete returned read shape — it carries `ChildTeamIds`, page-content fields, and the CTA list so `TeamPageService.GetTeamDetailAsync` projects from cached Teams facts and live Users display data (slug → `TeamInfo` → walk `ChildTeamIds` → stitch `RoleDefinitions`); `ITeamRepository.GetRoleDefinitionsAsync` is retained only for inner write-path flows. Pending-request lookups (`GetUserPendingRequestAsync`, `GetPendingRequestsForTeamAsync`) still route through the inner service on the auth/management read path — real-time accuracy is required and a stale per-team pending count would mislead coordinators.
 - **Cross-domain navs `[Obsolete]`-marked:** `TeamMember.User`, `TeamJoinRequest.User`, `TeamJoinRequest.ReviewedByUser`, `TeamRoleAssignment.AssignedByUser`, `TeamJoinRequestStateHistory.ChangedByUser`. Nothing populates them — display data is resolved via `IUserService.GetUserInfosAsync` / `GetUserInfoAsync` into DTOs. The navs exist only for the FK relationship; the `#pragma warning disable CS0618` blocks in the section gate in-section `.Team` nav reads, never a `.User` read.
 
@@ -409,3 +409,5 @@ sends this section's stored issues to the Admin-only queue.
 Validation and authorization refusals for permanent team deletion happen before the delete.
 
 - Global text search selects the highest-scoring matches before applying its result limit, with ordinal case-insensitive name and ID tie-breakers. Existing visibility and event-scope rules still apply; GUID queries retain direct lookup.
+
+The internal `TeamPageContent` owns page-content updates and the safe call-to-action URL policy shared with `TeamPageSummaryMapper`. `TeamService` retains the management entry point; controller authorization and decorator invalidation remain unchanged. Action normalization, refusal order, public-page constraints, persistence, audit and diagnostic handling keep their existing semantics. No public contract or DI registration is added.

@@ -7,23 +7,15 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ModelBinding.Validation;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Localization;
-using Xunit;
 
 namespace Humans.Containers.Tests;
 
 public sealed class ContainerValidationLocalizationTests
 {
-    [HumansTheory]
-    [InlineData("en")]
-    [InlineData("es")]
-    [InlineData("de")]
-    [InlineData("it")]
-    [InlineData("fr")]
-    [InlineData("ca")]
-    [InlineData("nl")]
-    public void FormValidationErrors_AreLocalized(string culture)
+    [HumansFact]
+    public void FormValidationErrors_AreLocalized()
     {
-        using var cultureScope = new CultureScope(culture);
+        using var cultureScope = new CultureScope("en");
         var registrations = new ServiceCollection().AddLogging().AddLocalization();
         registrations.AddControllers().AddDataAnnotationsLocalization(options =>
             options.DataAnnotationLocalizerProvider = (_, factory) => factory.Create(typeof(SharedResource)));

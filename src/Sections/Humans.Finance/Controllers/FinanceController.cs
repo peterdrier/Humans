@@ -26,6 +26,8 @@ internal sealed class FinanceController(
     CashFlowService cashFlow,
     CreditorMatchService creditorMatches,
     FinanceOverviewService overview,
+    PleoBooking pleoBooking,
+    PleoBookingRunner pleoRunner,
     ILogger<FinanceController> logger) : HumansControllerBase(userService)
 {
     private static readonly DateTimeZone MadridZone = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
@@ -35,6 +37,29 @@ internal sealed class FinanceController(
     {
         if (GetCurrentUserId() is not { } viewerUserId) return Challenge();
         return View(await overview.GetAsync(viewerUserId, HttpContext.RequestAborted));
+    }
+
+    [HttpGet("Pleo")]
+    public async Task<IActionResult> Pleo()
+    {
+        ViewBag.PleoRunning = pleoRunner.IsRunning;
+        return View(await pleoBooking.GetReconcileAsync(HttpContext.RequestAborted));
+    }
+
+    /// <summary>Starts a run off the request and comes straight back; the page follows its progress.</summary>
+    [HttpPost("Pleo/Book")]
+    [Authorize(Policy = FinancePolicies.Manage)]
+    [ValidateAntiForgeryToken]
+    public IActionResult BookPleo([BindRequired] string batch)
+    {
+        if (GetCurrentUserId() is not { } actorUserId) return Challenge();
+        int? limit = batch switch { "1" => 1, "10" => 10, "50" => 50, "all" => null, _ => 0 };
+        if (!ModelState.IsValid || limit == 0) return BadRequest();
+        if (pleoRunner.TryStart(limit, actorUserId))
+            SetSuccess("Booking started.");
+        else
+            SetError("A booking run is already going; nothing more was started.");
+        return RedirectToAction(nameof(Pleo));
     }
 
     [HttpGet("CashFlow")]
@@ -122,7 +147,7 @@ internal sealed class FinanceController(
                 r.OpenDocumentCount,
                 r.PendingPayoutFileName,
                 r.HasDuplicateDocuments,
-                matches.GetValueOrDefault(r.SupplierAccountNum)))
+                matches.GetValueOrDefault(r.SupplierAccountNum), r.NotPayableReason))
             .ToList();
 
         var sortBy = sort is "name" or "balance" or "member" or "opendocs" ? sort : "account";

@@ -43,7 +43,6 @@
   <data name="Shifts_SignedUp" xml:space="preserve">
     <value>Inscrits</value>
   </data>
-  <data name="Shifts_BreadcrumbNavigation" xml:space="preserve"><value>Fil d’Ariane</value></data>
   <data name="Shifts_Pending" xml:space="preserve">
     <value>(en attente)</value>
   </data>
@@ -1293,4 +1292,5 @@
   <data name="Shifts_Notification_ChangeApprovedRange" xml:space="preserve"><value>Inscription à plusieurs créneaux de '{0}' approuvée ({1} créneaux).</value></data>
   <data name="Shifts_Notification_ChangeRefusedRange" xml:space="preserve"><value>Inscription à plusieurs créneaux de '{0}' refusée ({1} créneaux).</value></data>
   <data name="Shifts_Notification_ChangeBailedRange" xml:space="preserve"><value>Annulation de plusieurs créneaux de '{0}' ({1} créneaux).</value></data>
+  <data name="Shifts_TagPreferencesInvalid" xml:space="preserve"><value>Certaines étiquettes sélectionnées ne sont plus disponibles. Vérifiez votre sélection et réessayez.</value></data>
 </root>

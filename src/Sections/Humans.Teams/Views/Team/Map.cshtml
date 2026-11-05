@@ -3,14 +3,12 @@
     ViewData["Title"] = Localizer["Teams_Map_Title"].Value;
 }
 
-<nav aria-label="@Localizer["Teams_BreadcrumbNavigation"]">
-    <ol class="breadcrumb">
-        <li class="breadcrumb-item"><a asp-action="Index">@SharedLocalizer["Teams_Title"]</a></li>
-        <li class="breadcrumb-item active" aria-current="page">@Localizer["Teams_Map_Title"]</li>
-    </ol>
-</nav>
+@section Crumbs {
+    <a asp-action="Index">@SharedLocalizer["Teams_Title"]</a>
+    <span>@Localizer["Teams_Map_Title"]</span>
+}
 
-<h1 class="mb-4">@Localizer["Teams_Map_Title"]</h1>
+<page-header title="@(Localizer["Teams_Map_Title"].Value)" />
 
 @if (Model.Markers.Count > 0)
 {
@@ -49,8 +47,6 @@ else
         <script>
             const markers = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Markers, new System.Text.Json.JsonSerializerOptions { PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase }));
 
-            @await Html.PartialAsync("~/Views/Shared/_EscapeHtmlScript.cshtml")
-
             const _cs = getComputedStyle(document.documentElement);
             const cssVar = (name) => _cs.getPropertyValue(name).trim();
             const clrMutedText = cssVar('--h-muted-text');
@@ -66,12 +62,12 @@ else
             function avatarHtml(m, size) {
                 const s = size || 40;
                 if (m.profilePictureUrl) {
-                    return '<img src="' + escapeHtml(m.profilePictureUrl) + '" alt="" style="width:' + s + 'px;height:' + s + 'px;border-radius:50%;object-fit:cover;">';
+                    return '<img src="' + Humans.escapeHtml(m.profilePictureUrl) + '" alt="" style="width:' + s + 'px;height:' + s + 'px;border-radius:50%;object-fit:cover;">';
                 }
                 const graphemes = new Intl.Segmenter(undefined, { granularity: 'grapheme' });
                 const initials = (m.displayName || '?').split(' ').filter(Boolean).slice(0, 2)
                     .map(word => graphemes.segment(word)[Symbol.iterator]().next().value.segment).join('').toUpperCase();
-                return '<div style="width:' + s + 'px;height:' + s + 'px;border-radius:50%;background:' + clrMutedText + ';color:' + clrTextOnDark + ';display:flex;align-items:center;justify-content:center;font-size:' + Math.round(s * 0.4) + 'px;font-weight:600;">' + escapeHtml(initials) + '</div>';
+                return '<div style="width:' + s + 'px;height:' + s + 'px;border-radius:50%;background:' + clrMutedText + ';color:' + clrTextOnDark + ';display:flex;align-items:center;justify-content:center;font-size:' + Math.round(s * 0.4) + 'px;font-weight:600;">' + Humans.escapeHtml(initials) + '</div>';
             }
 
             function personHtml(m) {
@@ -79,8 +75,8 @@ else
                 return '<div style="display:flex;align-items:center;gap:8px;padding:4px 0;">' +
                     avatarHtml(m, 36) +
                     '<div>' +
-                    '<a href="/Profile/' + m.userId + '" style="font-weight:600;text-decoration:none;">' + escapeHtml(m.displayName) + '</a>' +
-                    (location ? '<br><span style="color:' + clrTextSecondary + ';font-size:0.85em;">' + escapeHtml(location) + '</span>' : '') +
+                    '<a href="/Profile/' + m.userId + '" style="font-weight:600;text-decoration:none;">' + Humans.escapeHtml(m.displayName) + '</a>' +
+                    (location ? '<br><span style="color:' + clrTextSecondary + ';font-size:0.85em;">' + Humans.escapeHtml(location) + '</span>' : '') +
                     '</div></div>';
             }
 

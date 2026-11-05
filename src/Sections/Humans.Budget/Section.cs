@@ -1,4 +1,5 @@
 using Humans.Base.Authorization;
+using Humans.Base.Models.Tables;
 using Humans.Base.Constants;
 using Humans.Base.Hosting;
 using Humans.Base.Interfaces;
@@ -25,6 +26,13 @@ public sealed class Section :
 {
     public void Register(IServiceCollection services, IConfiguration configuration)
     {
+        EnumBadgeMap.Register(new Dictionary<Enum, string>
+        {
+            [BudgetYearStatus.Draft] = "bg-warning text-dark",
+            [BudgetYearStatus.Active] = "bg-success",
+            [BudgetYearStatus.Closed] = "bg-secondary",
+        });
+
         services.AddSectionDbContext<BudgetDbContext>(sentinelTable: "budget_years");
 
         services.AddSingleton<IBudgetRepository, BudgetRepository>();

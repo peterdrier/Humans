@@ -360,7 +360,6 @@
   <data name="Surveys_EmailPreviewTo" xml:space="preserve"><value>Para:</value></data>
   <data name="Surveys_EmailPreviewSubject" xml:space="preserve"><value>Asunto:</value></data>
   <data name="Surveys_EmailPreviewFrameTitle" xml:space="preserve"><value>Vista previa del correo de invitación a la encuesta</value></data>
-  <data name="Surveys_BreadcrumbNavigation" xml:space="preserve"><value>Navegación de ruta</value></data>
   <data name="Surveys_StartPreview" xml:space="preserve"><value>Iniciar vista previa</value></data>
   <data name="Surveys_PreviewThankYou" xml:space="preserve"><value>Vista previa del agradecimiento</value></data>
   <data name="Surveys_Validation_AudienceUnsupported" xml:space="preserve"><value>El público seleccionado para la encuesta no es compatible.</value></data>

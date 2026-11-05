@@ -140,10 +140,10 @@ internal sealed partial class PreapprovalService
     {
         foreach (var grant in program.Grants.Where(g => g.Status == GrantStatus.Open))
         {
-            await ResolveFileByAsync(grant.Id, actorUserId, ct);
+            await notices.ResolveFileByAsync(grant.Id, actorUserId, ct);
             var info = ToInfo(grant, program);
-            await NotifyFileByAsync(info, "Preapprovals_Notice_DeadlineChanged", NotificationPriority.High, ct);
-            await EmailAsync(info, PreapprovalNoticeKind.DeadlineChanged, detail: null, ct);
+            await notices.NotifyFileByAsync(info, "Preapprovals_Notice_DeadlineChanged", NotificationPriority.High, ct);
+            await notices.EmailAsync(info, PreapprovalNoticeKind.DeadlineChanged, detail: null, ct);
         }
     }
 

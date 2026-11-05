@@ -82,11 +82,11 @@ public class FinanceOverviewServiceTests
         var rows = new[]
         {
             Row(40000001, 50m, [Bind()]),                              // ready to pay
-            Row(40000002, 30m, [Bind()], pending: "f.xml"),             // in a SEPA file
-            Row(40000003, 20m, [Bind(), Bind()]),                       // collision: owed, not payable
-            Row(40000004, 10m, [Bind()], duplicates: true),             // duplicate docs
-            Row(40000005, 70m, []),                                     // supplier
-            Row(40000006, -5m, []),                                     // prepayment: not owed
+            Row(40000002, 30m, [Bind()], pending: "f.xml", reason: "in flight"), // in a SEPA file
+            Row(40000003, 20m, [Bind(), Bind()], reason: "collision"), // collision: owed, not payable
+            Row(40000004, 10m, [Bind()], duplicates: true, reason: "duplicates"), // duplicate docs
+            Row(40000005, 70m, [], reason: "unbound"), // supplier
+            Row(40000006, -5m, [], reason: "nothing owed"), // prepayment: not owed
         };
 
         var owed = FinanceOverviewService.BuildOwed(rows, taxesOwed: 9m);
@@ -95,7 +95,8 @@ public class FinanceOverviewServiceTests
         (owed with { Unavailable = "contacts unreadable" }).Total.Should().BeNull("an unknown creditor total is not zero");
 
         var recon = new ExpenseReconReport(null, null, null, [], [], [], [], new ExpenseReconTotals(0, 0, 0, 2, 0, 0m, 1, 0));
-        var work = FinanceOverviewService.BuildWork([], rows, recon);
+        var work = FinanceOverviewService.BuildWork([], [.. rows,
+            Row(40000007, 60m, [Bind()], reason: "no IBAN")], recon);
         work.ReadyToPay.Should().Be(1);
         work.ReadyToPayAmount.Should().Be(50m);
         work.AwaitingBooking.Should().Be(1);
@@ -121,9 +122,10 @@ public class FinanceOverviewServiceTests
     }
 
     private static CreditorAccountRow Row(int num, decimal owed, IReadOnlyList<CreditorContactBinding> bindings,
-        string? pending = null, bool duplicates = false) =>
+        string? pending = null, bool duplicates = false, string? reason = null) =>
         new(num, $"N{num}", -owed, Math.Max(0m, owed), bindings, PendingPayoutFileName: pending,
-            HasDuplicateDocuments: duplicates);
+            HasDuplicateDocuments: duplicates)
+        { NotPayableReason = reason };
 
     private static BudgetCategoryDetail Category(Guid yearId, string name, decimal allocated) =>
         new(Guid.NewGuid(), yearId, name, allocated, ExpenditureType.OpEx, null, 0, []);

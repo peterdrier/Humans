@@ -353,7 +353,7 @@ internal sealed class CachingCampService(
         MutateAsync(async () =>
         {
             await WithInnerAsync(inner => inner.OpenSeasonAsync(eventSettingsId, actorUserId, cancellationToken));
-            // Seasons without an event id map to their year's open event, so opening one can move them.
+            // Registration changes alter which years the decorator warms.
             RefreshAll();
             await InvalidateSettingsAsync(cancellationToken);
         });
@@ -366,22 +366,8 @@ internal sealed class CachingCampService(
             await InvalidateSettingsAsync(cancellationToken);
         });
 
-    public Task<CampEventIdPlan> GetEventIdPlanAsync(CancellationToken cancellationToken = default) =>
-        WithInnerAsync(inner => inner.GetEventIdPlanAsync(cancellationToken));
-
-    public Task<int> AssignSeasonEventIdsAsync(CancellationToken cancellationToken = default) =>
-        MutateAsync(async () =>
-        {
-            var written = await WithInnerAsync(inner => inner.AssignSeasonEventIdsAsync(cancellationToken));
-            // Seasons gained event ids and registration moved to per-event rows.
-            RefreshAll();
-            await InvalidateSettingsAsync(cancellationToken);
-            return written;
-        });
-
     /// <summary>
-    /// Open seasons and the event of each season without an event id are derived from Settings' events, so any event
-    /// save can change them. Bumps the version so a load already in flight returns its result without publishing it.
+    /// The registration catalogue and active event are derived from Settings, so an event save can change them. Bumps the version so a load already in flight returns its result without publishing it.
     /// </summary>
     public void EventSettingsChanged(Guid eventSettingsId)
     {

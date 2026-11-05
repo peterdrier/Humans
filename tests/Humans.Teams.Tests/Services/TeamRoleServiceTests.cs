@@ -118,8 +118,51 @@ public sealed class TeamRoleServiceTests : TeamsTestHarness
         inDb.Should().NotBeNull();
     }
 
-    [HumansFact]
-    public async Task CreateRoleDefinitionAsync_WithEstimatedHours_PersistsValue()
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task RoleDefinition_NegativeEstimatedHours_RefusesWithoutMutationOrAudit(bool update)
+    {
+        var admin = SeedUser("Admin");
+        SeedAdminRole(admin);
+        var team = SeedTeam("Test Team");
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
+        Guid? definitionId = null;
+        if (update)
+        {
+            var created = await _service.CreateRoleDefinitionAsync(
+                team.Id, "Coordinator", null, 1, [SlotPriority.Critical], 0, RolePeriod.YearRound, admin.Id,
+                estimatedHours: 120, cancellationToken: Xunit.TestContext.Current.CancellationToken);
+            definitionId = created.Definition!.Id;
+        }
+        AuditLog.ClearReceivedCalls();
+
+        var result = update
+            ? await _service.UpdateRoleDefinitionAsync(definitionId!.Value, "Changed", null, 1,
+                [SlotPriority.Critical], 0, false, RolePeriod.YearRound, admin.Id,
+                estimatedHours: -1, cancellationToken: Xunit.TestContext.Current.CancellationToken)
+            : await _service.CreateRoleDefinitionAsync(team.Id, "Coordinator", null, 1,
+                [SlotPriority.Critical], 0, RolePeriod.YearRound, admin.Id,
+                estimatedHours: -1, cancellationToken: Xunit.TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeFalse();
+        result.Refusal.Should().Be("Estimated hours cannot be negative");
+        var definitions = await TeamsDb.Set<TeamRoleDefinition>().AsNoTracking()
+            .ToListAsync(Xunit.TestContext.Current.CancellationToken);
+        if (update)
+        {
+            definitions.Should().ContainSingle().Which.EstimatedHours.Should().Be(120);
+            definitions[0].Name.Should().Be("Coordinator");
+        }
+        else
+            definitions.Should().BeEmpty();
+        AuditLog.ReceivedCalls().Should().BeEmpty();
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(0)]
+    [Xunit.InlineData(120)]
+    public async Task CreateRoleDefinitionAsync_WithEstimatedHours_PersistsValue(int hours)
     {
         var admin = SeedUser("Admin");
         SeedAdminRole(admin);
@@ -129,12 +172,12 @@ public sealed class TeamRoleServiceTests : TeamsTestHarness
         var result = await _service.CreateRoleDefinitionAsync(
             team.Id, "Coordinator", null, 1,
             [SlotPriority.Critical], 0, RolePeriod.YearRound, admin.Id,
-            estimatedHours: 120, cancellationToken: Xunit.TestContext.Current.CancellationToken);
+            estimatedHours: hours, cancellationToken: Xunit.TestContext.Current.CancellationToken);
 
-        result.Definition!.EstimatedHours.Should().Be(120);
+        result.Definition!.EstimatedHours.Should().Be(hours);
 
         var inDb = await TeamsDb.Set<TeamRoleDefinition>().FirstAsync(d => d.Id == result.Definition!.Id, Xunit.TestContext.Current.CancellationToken);
-        inDb.EstimatedHours.Should().Be(120);
+        inDb.EstimatedHours.Should().Be(hours);
     }
 
     [HumansFact]

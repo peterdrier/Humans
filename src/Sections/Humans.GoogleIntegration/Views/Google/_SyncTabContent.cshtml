@@ -46,8 +46,56 @@
 
 @{
     var downgrades = result.Diffs
-        .SelectMany(d => d.Members.Where(m => m.State == MemberSyncState.Downgrade).Select(m => (Diff: d, Member: m)))
+        .SelectMany(d => d.Members.Where(m => m.State == MemberSyncState.Downgrade).Select(m => Tuple.Create(d, m)))
         .ToList();
+
+    Func<MemberSyncStatus, IHtmlContent> teamsCell = @<text>
+        @foreach (var team in item.TeamLinks)
+        {
+            <a href="/Teams/@team.Slug" class="badge bg-light text-dark border me-1 text-decoration-none">@team.Name</a>
+        }
+    </text>;
+    Func<Tuple<ResourceSyncDiff, MemberSyncStatus>, IHtmlContent> downgradeNameCell = @<text>
+        @if (item.Item2.UserId is { } userId)
+        {
+            <vc:human user-id="@userId" link="None" />
+        }
+        else
+        {
+            @item.Item2.DisplayName
+        }
+    </text>;
+    Func<Tuple<ResourceSyncDiff, MemberSyncStatus>, IHtmlContent> downgradeTeamsCell = x => teamsCell(x.Item2);
+    var downgradesTable = TableModel.For(downgrades)
+        .Column("Resource", x => x.Item1.ResourceName)
+        .Column("Email", x => x.Item2.Email)
+        .Template("Name", downgradeNameCell, sortBy: x => x.Item2.DisplayName)
+        .Column("Current", x => x.Item2.CurrentRole)
+        .Column("Expected", x => x.Item2.ExpectedRole)
+        .Template("Teams", downgradeTeamsCell, o => o.NoSort())
+        .Build();
+
+    static (string Label, string Badge) MemberState(MemberSyncState state) => state switch
+    {
+        MemberSyncState.Correct => ("Correct", "bg-success"),
+        MemberSyncState.Missing => ("Missing", "bg-warning text-dark"),
+        MemberSyncState.Inherited => ("Inherited", "bg-secondary"),
+        MemberSyncState.WrongRole => ("Wrong Role", "bg-info text-dark"),
+        MemberSyncState.Downgrade => ("Downgrade", "bg-danger"),
+        _ => ("Extra", "bg-danger")
+    };
+    Func<MemberSyncStatus, IHtmlContent> memberNameCell = @<text>
+        @if (item.UserId is { } userId)
+        {
+            <vc:human user-id="@userId" layout="AvatarName" size="24" link="Admin" />
+        }
+        else if (!string.IsNullOrEmpty(item.DisplayName) && !string.Equals(item.DisplayName, item.Email, StringComparison.Ordinal))
+        {
+            @item.DisplayName
+        }
+    </text>;
+    Func<MemberSyncStatus, IHtmlContent> memberStateCell =
+        @<text><span class="badge @MemberState(item.State).Badge">@MemberState(item.State).Label</span></text>;
 }
 @if (downgrades.Count > 0)
 {
@@ -56,44 +104,13 @@
             <strong>Pending downgrades (@downgrades.Count)</strong>
             <small class="text-muted ms-2">Direct roles above what teams/workgroups grant. When Drive sync mode is AddAndRemove, the next sync lowers each to its expected role. Give anyone who needs the access a team role or permission level first.</small>
         </div>
-        <table class="table table-sm mb-0">
-            <thead>
-                <tr><th>Resource</th><th>Email</th><th>Name</th><th>Current</th><th>Expected</th><th>Teams</th></tr>
-            </thead>
-            <tbody>
-                @foreach (var (d, m) in downgrades)
-                {
-                    <tr>
-                        <td>@d.ResourceName</td>
-                        <td>@m.Email</td>
-                        <td>
-                            @if (m.UserId is { } userId)
-                            {
-                                <vc:human user-id="@userId" link="None" />
-                            }
-                            else
-                            {
-                                @m.DisplayName
-                            }
-                        </td>
-                        <td>@m.CurrentRole</td>
-                        <td>@m.ExpectedRole</td>
-                        <td>
-                            @foreach (var team in m.TeamLinks)
-                            {
-                                <a href="/Teams/@team.Slug" class="badge bg-light text-dark border me-1 text-decoration-none">@team.Name</a>
-                            }
-                        </td>
-                    </tr>
-                }
-            </tbody>
-        </table>
+        <partial name="_Table" model="downgradesTable" />
     </div>
 }
 
 @if (result.Diffs.Count == 0)
 {
-    <div class="alert alert-info">No resources found for this type.</div>
+    <empty-state>No resources found for this type.</empty-state>
 }
 else
 {
@@ -209,63 +226,24 @@ else
                     }
                     else if (diff.Members.Count > 0)
                     {
-                        <table class="table table-sm mb-0">
-                            <thead>
-                                <tr>
-                                    <th>Email</th>
-                                    <th>Name</th>
-                                    <th>Status</th>
-                                    @if (showPermission)
-                                    {
-                                        <th>Role (current / expected)</th>
-                                    }
-                                    <th>Teams</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @foreach (var m in diff.Members)
-                                {
-                                    var (stateLabel, badgeClass) = m.State switch
-                                    {
-                                        MemberSyncState.Correct => ("Correct", "bg-success"),
-                                        MemberSyncState.Missing => ("Missing", "bg-warning text-dark"),
-                                        MemberSyncState.Inherited => ("Inherited", "bg-secondary"),
-                                        MemberSyncState.WrongRole => ("Wrong Role", "bg-info text-dark"),
-                                        MemberSyncState.Downgrade => ("Downgrade", "bg-danger"),
-                                        _ => ("Extra", "bg-danger")
-                                    };
-
-                                    <tr class="member-row" data-member-state="@((int)m.State)">
-                                        <td>@m.Email</td>
-                                        <td>
-                                            @if (m.UserId is { } userId)
-                                            {
-                                                <vc:human user-id="@userId" layout="AvatarName" size="24" link="Admin" />
-                                            }
-                                            else if (!string.IsNullOrEmpty(m.DisplayName) && !string.Equals(m.DisplayName, m.Email, StringComparison.Ordinal))
-                                            {
-                                                @m.DisplayName
-                                            }
-                                        </td>
-                                        <td><span class="badge @badgeClass">@stateLabel</span></td>
-                                        @if (showPermission)
-                                        {
-                                            <td>@(m.CurrentRole ?? "\u2014") / @(m.ExpectedRole ?? "\u2014")</td>
-                                        }
-                                        <td>
-                                            @foreach (var team in m.TeamLinks)
-                                            {
-                                                <a href="/Teams/@team.Slug" class="badge bg-light text-dark border me-1 text-decoration-none">@team.Name</a>
-                                            }
-                                        </td>
-                                    </tr>
-                                }
-                            </tbody>
-                        </table>
+                        var membersBuilder = TableModel.For(diff.Members)
+                            .Column("Email", m => m.Email)
+                            .Template("Name", memberNameCell)
+                            .Template("Status", memberStateCell, sortBy: m => MemberState(m.State).Label);
+                        if (showPermission)
+                        {
+                            membersBuilder.Column("Role (current / expected)", m => $"{m.CurrentRole ?? "\u2014"} / {m.ExpectedRole ?? "\u2014"}");
+                        }
+                        var membersTable = membersBuilder
+                            .Template("Teams", teamsCell, o => o.NoSort())
+                            .RowCss(_ => "member-row")
+                            .RowData("member-state", m => ((int)m.State).ToString(System.Globalization.CultureInfo.InvariantCulture))
+                            .Build();
+                        <partial name="_Table" model="membersTable" />
                     }
                     else
                     {
-                        <div class="p-3 text-muted">No members</div>
+                        <empty-state class="p-3">No members</empty-state>
                     }
                 </div>
             </div>

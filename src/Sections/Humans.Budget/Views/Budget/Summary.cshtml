@@ -9,20 +9,17 @@
     var expenseData = Model.ExpenseSlices.Select(s => s.Amount).ToList();
 }
 
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <h1 class="mb-0">@Localizer["Budget_OverviewTitle"]</h1>
-    <div class="d-flex gap-2">
-        <a asp-controller="Expenses" asp-action="Index" class="btn btn-outline-primary">
-            <i class="fa-solid fa-receipt me-1"></i>@Localizer["Budget_Expenses"]
+<page-header title="@(Localizer["Budget_OverviewTitle"].Value)">
+    <a asp-controller="Expenses" asp-action="Index" class="btn btn-outline-primary">
+        <i class="fa-solid fa-receipt me-1"></i>@Localizer["Budget_Expenses"]
+    </a>
+    @if (Model.IsCoordinator)
+    {
+        <a asp-action="Index" class="btn btn-outline-primary">
+            <i class="fa-solid fa-list me-1"></i>@Localizer["Budget_DepartmentDetail"]
         </a>
-        @if (Model.IsCoordinator)
-        {
-            <a asp-action="Index" class="btn btn-outline-primary">
-                <i class="fa-solid fa-list me-1"></i>@Localizer["Budget_DepartmentDetail"]
-            </a>
-        }
-    </div>
-</div>
+    }
+</page-header>
 
 
 <p class="text-muted mb-4">@Localizer["Budget_OverviewSubtitle", Model.YearName]</p>

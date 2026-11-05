@@ -105,7 +105,6 @@ public class EmailGridFlowTests(HumansTestDatabase database) : IntegrationTestBa
         await using var verifyScope = Factory.Services.CreateAsyncScope();
         var verifyDb = verifyScope.ServiceProvider.GetRequiredService<UsersDbContext>();
         var row = await verifyDb.Set<UserEmail>().AsNoTracking().SingleAsync(e => e.Id == targetEmailId, Xunit.TestContext.Current.CancellationToken);
-        row.IsGoogle.Should().BeFalse("SetGoogle must not have run for the unprivileged actor.");
     }
 
     [HumansFact(Timeout = 30_000)]

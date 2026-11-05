@@ -166,6 +166,12 @@ internal sealed class UsersAdminController(
         var result = await onboardingService.RejectSignupAsync(id, currentUser.Id, reason);
         if (!result.Success)
         {
+            if (string.Equals(result.ErrorKey, "ReviewTextTooLong", StringComparison.Ordinal))
+            {
+                SetError("Rejection reason must be 4,000 characters or fewer.");
+                return RedirectToAction(nameof(AdminDetail), new { id });
+            }
+
             if (!string.Equals(result.ErrorKey, "AlreadyRejected", StringComparison.Ordinal))
                 return NotFound();
 

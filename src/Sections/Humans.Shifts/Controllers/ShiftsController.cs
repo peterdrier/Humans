@@ -378,7 +378,8 @@ internal sealed class ShiftsController(
             return BadRequest(ModelState);
         }
 
-        await shiftMgmt.SetVolunteerTagPreferencesAsync(user.Id, tagIds ?? []);
+        if (!await shiftMgmt.SetVolunteerTagPreferencesAsync(user.Id, tagIds ?? []))
+            return BadRequest(localizer["Shifts_TagPreferencesInvalid"].Value);
         SetSuccess(localizer["Shifts_TagPreferencesSaved"].Value);
         return RedirectToAction(nameof(Index));
     }

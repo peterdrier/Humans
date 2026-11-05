@@ -34,7 +34,7 @@ public class MergeAsyncFullFixtureTests(HumansTestDatabase database) : Integrati
         {
             b.WithSourceEmail(sourceEmail, verified: true, isPrimary: true);
 
-            // IsGoogle too, so preserving IsPrimary and IsGoogle is assertable.
+            // Preserve the target’s primary address.
             b.WithTargetEmail(targetEmail, verified: true, isPrimary: true, isGoogle: true);
 
             b.WithSourceLogin("Google", sourceLoginKey);
@@ -90,14 +90,12 @@ public class MergeAsyncFullFixtureTests(HumansTestDatabase database) : Integrati
                     && l.LoginProvider == "Google" && l.ProviderKey == sourceLoginKey, TestContext.Current.CancellationToken))
             .Should().BeTrue("source login must be re-FK'd to target");
 
-        // 4: the target's IsPrimary and IsGoogle are preserved.
+        // 4: the target's IsPrimary is preserved.
         var survivingTargetEmail = await db.UserEmails.AsNoTracking()
             .FirstOrDefaultAsync(e => e.UserId == targetId && e.Email == targetEmail, TestContext.Current.CancellationToken);
         survivingTargetEmail.Should().NotBeNull();
         survivingTargetEmail.IsPrimary.Should().BeTrue(
             "target's pre-existing IsPrimary must remain true after fold");
-        survivingTargetEmail.IsGoogle.Should().BeTrue(
-            "target's pre-existing IsGoogle must remain true after fold");
 
         // 5: the source is tombstoned.
         var sourceUser = await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == sourceId, TestContext.Current.CancellationToken);

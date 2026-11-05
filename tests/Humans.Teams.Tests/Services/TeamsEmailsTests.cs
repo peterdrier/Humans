@@ -16,13 +16,7 @@ public sealed class TeamsEmailsTests
     private static TeamsEmails Create() => TestTeamsEmails.Create();
 
     [HumansTheory]
-    [InlineData("en")]
-    [InlineData("es")]
-    [InlineData("de")]
-    [InlineData("it")]
-    [InlineData("fr")]
-    [InlineData("ca")]
-    [InlineData("nl")]
+    [MemberData(nameof(SupportedCultures.All), MemberType = typeof(SupportedCultures))]
     public void AddedToTeam_StampsTeamUpdates(string culture)
     {
         var msg = Create().AddedToTeam(Guid.NewGuid(), "a@x.com", "Alice", "Alpha", "alpha", [], culture);

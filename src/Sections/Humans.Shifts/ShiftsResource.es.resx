@@ -43,7 +43,6 @@
   <data name="Shifts_SignedUp" xml:space="preserve">
     <value>Apuntados</value>
   </data>
-  <data name="Shifts_BreadcrumbNavigation" xml:space="preserve"><value>Ruta de navegación</value></data>
   <data name="Shifts_Pending" xml:space="preserve">
     <value>(pendiente)</value>
   </data>
@@ -1294,4 +1293,5 @@
   <data name="Shifts_Notification_ChangeApprovedRange" xml:space="preserve"><value>Inscripción a varios turnos de '{0}' aprobada ({1} turnos).</value></data>
   <data name="Shifts_Notification_ChangeRefusedRange" xml:space="preserve"><value>Inscripción a varios turnos de '{0}' rechazada ({1} turnos).</value></data>
   <data name="Shifts_Notification_ChangeBailedRange" xml:space="preserve"><value>Cancelación de varios turnos de '{0}' ({1} turnos).</value></data>
+  <data name="Shifts_TagPreferencesInvalid" xml:space="preserve"><value>Algunas etiquetas seleccionadas ya no están disponibles. Revisa tu selección e inténtalo de nuevo.</value></data>
 </root>

@@ -1,3 +1,4 @@
+@using Humans.Base.Interfaces
 @model GateVendorBackfillSnapshot
 @{
     ViewData["Title"] = "Vendor check-in backfill";
@@ -7,10 +8,9 @@
     var unmirrorable = snapshot.Unmirrorable.OrderBy(r => r.AdmittedAt).ToList();
 }
 
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <h1>Vendor check-in backfill</h1>
+<page-header title="Vendor check-in backfill">
     <small class="text-muted">Temp page — remove after use</small>
-</div>
+</page-header>
 
 <p class="text-muted">
     Gate admits recorded locally in <code>gate_scan_events</code> but not yet checked in at
@@ -30,47 +30,12 @@
     </div>
 }
 
-<div class="row g-3 mb-4">
-    <div class="col-md">
-        <div class="card h-100">
-            <div class="card-body">
-                <h6 class="card-subtitle text-muted mb-2">Local admits</h6>
-                <p class="h2 mb-0">@snapshot.AdmitCount</p>
-            </div>
-        </div>
-    </div>
-    <div class="col-md">
-        <div class="card h-100">
-            <div class="card-body">
-                <h6 class="card-subtitle text-muted mb-2">Already at vendor</h6>
-                <p class="h2 mb-0 text-success">@snapshot.AlreadyCheckedInCount</p>
-            </div>
-        </div>
-    </div>
-    <div class="col-md">
-        <div class="card h-100">
-            <div class="card-body">
-                <h6 class="card-subtitle text-muted mb-2">Pending mirror</h6>
-                <p class="h2 mb-0 @(pending.Count == 0 ? "text-success" : "text-warning")">@pending.Count</p>
-            </div>
-        </div>
-    </div>
-    <div class="col-md">
-        <div class="card h-100">
-            <div class="card-body">
-                <h6 class="card-subtitle text-muted mb-2">Sent — awaiting sync</h6>
-                <p class="h2 mb-0 text-info">@sent.Count</p>
-            </div>
-        </div>
-    </div>
-    <div class="col-md">
-        <div class="card h-100">
-            <div class="card-body">
-                <h6 class="card-subtitle text-muted mb-2">Unmirrorable</h6>
-                <p class="h2 mb-0 @(unmirrorable.Count == 0 ? "text-success" : "text-danger")">@unmirrorable.Count</p>
-            </div>
-        </div>
-    </div>
+<div class="stats" style="--stats-cols: 5">
+    <partial name="_StatTile" model='new StatTileViewModel("Local admits", snapshot.AdmitCount.ToString())' />
+    <partial name="_StatTile" model='new StatTileViewModel("Already at vendor", snapshot.AlreadyCheckedInCount.ToString())' />
+    <partial name="_StatTile" model='new StatTileViewModel("Pending mirror", pending.Count.ToString(), Severity: pending.Count > 0 ? TileSeverity.Warning : TileSeverity.Normal)' />
+    <partial name="_StatTile" model='new StatTileViewModel("Sent — awaiting sync", sent.Count.ToString())' />
+    <partial name="_StatTile" model='new StatTileViewModel("Unmirrorable", unmirrorable.Count.ToString(), Severity: unmirrorable.Count > 0 ? TileSeverity.Critical : TileSeverity.Normal)' />
 </div>
 
 @if (pending.Count == 0)
@@ -107,37 +72,29 @@ else
 
     <div class="card mb-4">
         <div class="card-header">Pending check-ins</div>
-        <div class="table-responsive">
-            <table class="table table-sm table-hover mb-0 align-middle">
-                <thead>
-                    <tr>
-                        <th>Attendee</th>
-                        <th>Barcode</th>
-                        <th>Vendor ticket</th>
-                        <th>Admitted (UTC)</th>
-                        <th></th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach (var row in pending)
-                    {
-                        <tr>
-                            <td>@(row.AttendeeName ?? "—")</td>
-                            <td><code>@row.Barcode</code></td>
-                            <td><code>@row.VendorTicketId</code></td>
-                            <td>@row.AdmittedAt.ToInvariantTimestamp()</td>
-                            <td class="text-end">
-                                <form method="post" asp-action="RunOne" class="d-inline">
-                                    @Html.AntiForgeryToken()
-                                    <input type="hidden" name="vendorTicketId" value="@row.VendorTicketId" />
-                                    <button type="submit" class="btn btn-sm btn-outline-primary">Send</button>
-                                </form>
-                            </td>
-                        </tr>
-                    }
-                </tbody>
-            </table>
-        </div>
+        @{
+            Func<GateVendorBackfillRow, IHtmlContent> pendingCell0 = @<text>@(item.AttendeeName ?? "—")</text>;
+            Func<GateVendorBackfillRow, IHtmlContent> pendingCell1 = @<text><code>@item.Barcode</code></text>;
+            Func<GateVendorBackfillRow, IHtmlContent> pendingCell2 = @<text><code>@item.VendorTicketId</code></text>;
+            Func<GateVendorBackfillRow, IHtmlContent> pendingCell3 = @<text>@item.AdmittedAt.ToInvariantTimestamp()</text>;
+            Func<GateVendorBackfillRow, IHtmlContent> pendingCell4 = @<text>
+                <form method="post" asp-action="RunOne" class="d-inline">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="vendorTicketId" value="@item.VendorTicketId" />
+                    <button type="submit" class="btn btn-sm btn-outline-primary">Send</button>
+                </form>
+
+            </text>;
+            var pendingTable = TableModel.For(pending)
+                .Template("Attendee", pendingCell0)
+                .Template("Barcode", pendingCell1)
+                .Template("Vendor ticket", pendingCell2)
+                .Template("Admitted (UTC)", pendingCell3, sortBy: r => r.AdmittedAt)
+                .Template("", pendingCell4, o => o.Css("text-end").NoSort())
+                .Css("align-middle")
+                .Build();
+        }
+        <partial name="_Table" model="pendingTable" />
     </div>
 }
 
@@ -151,29 +108,20 @@ else
                 ticket sync confirms the vendor-side check-in.
             </p>
         </div>
-        <div class="table-responsive">
-            <table class="table table-sm mb-0 align-middle">
-                <thead>
-                    <tr>
-                        <th>Attendee</th>
-                        <th>Barcode</th>
-                        <th>Vendor ticket</th>
-                        <th>Admitted (UTC)</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach (var row in sent)
-                    {
-                        <tr>
-                            <td>@(row.AttendeeName ?? "—")</td>
-                            <td><code>@row.Barcode</code></td>
-                            <td><code>@row.VendorTicketId</code></td>
-                            <td>@row.AdmittedAt.ToInvariantTimestamp()</td>
-                        </tr>
-                    }
-                </tbody>
-            </table>
-        </div>
+        @{
+            Func<GateVendorBackfillRow, IHtmlContent> sentCell0 = @<text>@(item.AttendeeName ?? "—")</text>;
+            Func<GateVendorBackfillRow, IHtmlContent> sentCell1 = @<text><code>@item.Barcode</code></text>;
+            Func<GateVendorBackfillRow, IHtmlContent> sentCell2 = @<text><code>@item.VendorTicketId</code></text>;
+            Func<GateVendorBackfillRow, IHtmlContent> sentCell3 = @<text>@item.AdmittedAt.ToInvariantTimestamp()</text>;
+            var sentTable = TableModel.For(sent)
+                .Template("Attendee", sentCell0)
+                .Template("Barcode", sentCell1)
+                .Template("Vendor ticket", sentCell2)
+                .Template("Admitted (UTC)", sentCell3, sortBy: r => r.AdmittedAt)
+                .Css("align-middle")
+                .Build();
+        }
+        <partial name="_Table" model="sentTable" />
     </div>
 }
 
@@ -187,26 +135,17 @@ else
                 unmatched-barcode overrides), so the API can't check them in.
             </p>
         </div>
-        <div class="table-responsive">
-            <table class="table table-sm mb-0 align-middle">
-                <thead>
-                    <tr>
-                        <th>Attendee</th>
-                        <th>Barcode</th>
-                        <th>Admitted (UTC)</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach (var row in unmirrorable)
-                    {
-                        <tr>
-                            <td>@(row.AttendeeName ?? "—")</td>
-                            <td><code>@row.Barcode</code></td>
-                            <td>@row.AdmittedAt.ToInvariantTimestamp()</td>
-                        </tr>
-                    }
-                </tbody>
-            </table>
-        </div>
+        @{
+            Func<GateVendorBackfillRow, IHtmlContent> unmirrorableCell0 = @<text>@(item.AttendeeName ?? "—")</text>;
+            Func<GateVendorBackfillRow, IHtmlContent> unmirrorableCell1 = @<text><code>@item.Barcode</code></text>;
+            Func<GateVendorBackfillRow, IHtmlContent> unmirrorableCell2 = @<text>@item.AdmittedAt.ToInvariantTimestamp()</text>;
+            var unmirrorableTable = TableModel.For(unmirrorable)
+                .Template("Attendee", unmirrorableCell0)
+                .Template("Barcode", unmirrorableCell1)
+                .Template("Admitted (UTC)", unmirrorableCell2, sortBy: r => r.AdmittedAt)
+                .Css("align-middle")
+                .Build();
+        }
+        <partial name="_Table" model="unmirrorableTable" />
     </div>
 }

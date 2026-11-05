@@ -18,7 +18,7 @@ internal interface IBudgetManagement : IBudgetService, IApplicationService
     Task<int> SyncDepartmentsAsync(Guid budgetYearId, Guid actorUserId);
     Task<EnsureTicketingGroupResult> EnsureTicketingGroupAsync(Guid budgetYearId, Guid actorUserId);
 
-    Task<int> UpdateTicketingProjectionAsync(Guid budgetGroupId, LocalDate? startDate, LocalDate? eventDate,
+    Task<TicketingProjectionSaveResult> UpdateTicketingProjectionAsync(Guid budgetGroupId, LocalDate? startDate, LocalDate? eventDate,
         int initialSalesCount, decimal dailySalesRate, decimal averageTicketPrice, int vatRate,
         decimal stripeFeePercent, decimal stripeFeeFixed, decimal ticketTailorFeePercent, Guid actorUserId,
         bool refreshProjections = false, CancellationToken ct = default);
@@ -42,18 +42,18 @@ internal interface IBudgetManagement : IBudgetService, IApplicationService
     int GetActualTicketsSold(BudgetGroupDetail ticketingGroup);
 
     Task<BudgetGroupDetail> CreateGroupAsync(Guid budgetYearId, string name, bool isRestricted, Guid actorUserId);
-    Task UpdateGroupAsync(Guid groupId, string name, int sortOrder, bool isRestricted, Guid actorUserId);
-    Task DeleteGroupAsync(Guid groupId, Guid actorUserId);
+    Task<BudgetSaveResult<BudgetGroupDetail>> UpdateGroupAsync(Guid groupId, string name, int sortOrder, bool isRestricted, Guid actorUserId);
+    Task<BudgetSaveResult<BudgetGroupDetail>> DeleteGroupAsync(Guid groupId, Guid actorUserId);
 
     Task<CoordinatorCategoryDetailViewData> GetCoordinatorCategoryDetailViewDataAsync(Guid categoryId, Guid userId, bool isFinanceAdmin, CancellationToken ct = default);
     Task<BudgetSaveResult<BudgetCategoryDetail>> CreateCategoryAsync(Guid budgetGroupId, string name, decimal allocatedAmount, ExpenditureType expenditureType, Guid? teamId, Guid actorUserId);
     Task<BudgetSaveResult<BudgetCategoryDetail>> UpdateCategoryAsync(Guid categoryId, string name, decimal allocatedAmount, ExpenditureType expenditureType, Guid actorUserId);
-    Task DeleteCategoryAsync(Guid categoryId, Guid actorUserId);
+    Task<BudgetSaveResult<BudgetCategoryDetail>> DeleteCategoryAsync(Guid categoryId, Guid actorUserId);
 
     Task<BudgetLineItemSnapshot?> GetLineItemByIdAsync(Guid id, CancellationToken ct = default);
     Task<BudgetSaveResult<BudgetLineItemSnapshot>> CreateLineItemAsync(Guid budgetCategoryId, string description, decimal amount, Guid? responsibleTeamId, string? notes, LocalDate? expectedDate, int vatRate, Guid actorUserId);
     Task<BudgetSaveResult<BudgetLineItemSnapshot>> UpdateLineItemAsync(Guid lineItemId, string description, decimal amount, Guid? responsibleTeamId, string? notes, LocalDate? expectedDate, int vatRate, Guid actorUserId);
-    Task DeleteLineItemAsync(Guid lineItemId, Guid actorUserId);
+    Task<BudgetSaveResult<BudgetLineItemSnapshot>> DeleteLineItemAsync(Guid lineItemId, Guid actorUserId);
 
     Task<IReadOnlyList<BudgetAuditLogSnapshot>> GetAuditLogAsync(Guid? budgetYearId, CancellationToken ct = default);
 

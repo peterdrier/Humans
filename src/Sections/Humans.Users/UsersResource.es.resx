@@ -46,7 +46,6 @@
   <data name="Users_Profile_Title" xml:space="preserve">
     <value>Mi perfil</value>
   </data>
-  <data name="Users_BreadcrumbNavigation" xml:space="preserve"><value>Ruta de navegación</value></data>
   <data name="Users_Profile_ActionRequired" xml:space="preserve">
     <value>Acción requerida:</value>
   </data>
@@ -214,9 +213,6 @@
   </data>
   <data name="Users_ProfileEdit_TierLocked" xml:space="preserve">
     <value>Tu categoría está bloqueada porque tienes una solicitud activa o pendiente.</value>
-  </data>
-  <data name="Users_ProfileEdit_MotivationHelp" xml:space="preserve">
-    <value>Mínimo 50 caracteres. Esto ayuda a la Junta a entender tus objetivos.</value>
   </data>
   <data name="Users_ProfileEdit_BurnerNamePlaceholder" xml:space="preserve">
     <value>El nombre por el que se le conoce</value>

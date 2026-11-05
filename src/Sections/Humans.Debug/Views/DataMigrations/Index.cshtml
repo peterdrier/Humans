@@ -19,7 +19,7 @@
 
 @if (Model.Count == 0)
 {
-    <p class="text-muted">No section registers a data migration.</p>
+    <empty-state>No section registers a data migration.</empty-state>
 }
 else
 {
@@ -80,29 +80,14 @@ else
                 </div>
                 @if (!status.Done)
                 {
-                    <div class="table-responsive">
-                        <table class="table table-sm table-hover align-middle mb-0">
-                            <thead>
-                                <tr>
-                                    @foreach (var column in status.Columns)
-                                    {
-                                        <th>@column</th>
-                                    }
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @foreach (var row in status.PendingRows)
-                                {
-                                    <tr>
-                                        @foreach (var cell in row)
-                                        {
-                                            <td>@cell</td>
-                                        }
-                                    </tr>
-                                }
-                            </tbody>
-                        </table>
-                    </div>
+                    var pendingBuilder = TableModel.For(status.PendingRows);
+                    for (var c = 0; c < status.Columns.Count; c++)
+                    {
+                        var col = c;
+                        pendingBuilder.Column(status.Columns[c], r => r[col]);
+                    }
+                    var pendingTable = pendingBuilder.Css("align-middle").Build();
+                    <partial name="_Table" model="pendingTable" />
                 }
             </div>
         }

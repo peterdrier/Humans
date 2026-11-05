@@ -25,17 +25,14 @@
     }
 }
 
-<nav aria-label="@Localizer["Workgroups_BreadcrumbNavigation"]">
-    <ol class="breadcrumb">
-        <li class="breadcrumb-item"><a asp-action="Index">@Localizer["Workgroups_Title"]</a></li>
-        <li class="breadcrumb-item active" aria-current="page">@w.Name</li>
-    </ol>
-</nav>
+@section Crumbs {
+    <a asp-action="Index">@Localizer["Workgroups_Title"]</a>
+    <span>@w.Name</span>
+}
 
-<div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-2">
-    <div>
-        <h1 class="mb-1">@w.Name</h1>
-        <span class="badge @EnumBadgeMap.For(w.Status)">@Localizer.EnumDisplay(w.Status)</span>
+<page-header title="@w.Name">
+    <page-header-subtitle>
+        <status-badge value="@w.Status" localizer="@Localizer" />
         @if (isDormant && w.DormantReason is { } dr)
         {
             <span class="badge bg-secondary">@Localizer.EnumDisplay(dr)</span>
@@ -55,31 +52,29 @@
                 <span class="badge bg-warning text-dark">@Localizer["Workgroups_UpdateDue"]</span>
             }
         }
-    </div>
-    <div class="d-flex flex-wrap gap-2">
-        @if (Model.CanDoMemberWork)
-        {
-            <a asp-action="Edit" asp-route-slug="@w.Slug" class="btn btn-sm btn-outline-secondary">
-                <i class="fa-solid fa-pen me-1"></i>@SharedLocalizer["Common_Edit"]
-            </a>
-        }
-        @if (Model.IsPendingMember)
-        {
-            <form method="post" asp-action="Leave" asp-route-slug="@w.Slug">
-                <span class="text-muted small me-2">@Localizer["Workgroups_RequestPending"]</span>
-                <button type="submit" class="btn btn-sm btn-outline-secondary">@Localizer["Workgroups_WithdrawRequest"]</button>
-            </form>
-        }
-        else if (!Model.IsMember)
-        {
-            <form method="post" asp-action="Join" asp-route-slug="@w.Slug">
-                <button type="submit" class="btn btn-sm btn-primary">
-                    <i class="fa-solid fa-user-plus me-1"></i>@Localizer["Workgroups_Join"]
-                </button>
-            </form>
-        }
-    </div>
-</div>
+    </page-header-subtitle>
+    @if (Model.CanDoMemberWork)
+    {
+        <a asp-action="Edit" asp-route-slug="@w.Slug" class="btn btn-sm btn-outline-secondary">
+            <i class="fa-solid fa-pen me-1"></i>@SharedLocalizer["Common_Edit"]
+        </a>
+    }
+    @if (Model.IsPendingMember)
+    {
+        <form method="post" asp-action="Leave" asp-route-slug="@w.Slug">
+            <span class="text-muted small me-2">@Localizer["Workgroups_RequestPending"]</span>
+            <button type="submit" class="btn btn-sm btn-outline-secondary">@Localizer["Workgroups_WithdrawRequest"]</button>
+        </form>
+    }
+    else if (!Model.IsMember)
+    {
+        <form method="post" asp-action="Join" asp-route-slug="@w.Slug">
+            <button type="submit" class="btn btn-sm btn-primary">
+                <i class="fa-solid fa-user-plus me-1"></i>@Localizer["Workgroups_Join"]
+            </button>
+        </form>
+    }
+</page-header>
 
 @if (!Model.CanSeeContent)
 {
@@ -141,7 +136,7 @@
                     <input type="hidden" name="HasBudget" value="false" />
                     <label class="form-check-label" for="budget-has">This workgroup has a budget</label>
                 </div>
-                <div class="mb-3" style="max-width: 240px;">
+                <div class="mb-3 mw-240">
                     <label class="form-label" for="budget-amount">Amount (EUR)</label>
                     <input class="form-control" type="number" step="0.01" min="0" id="budget-amount" name="Amount" value="@(w.BudgetAmount?.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture))" />
                 </div>
@@ -208,7 +203,7 @@
                     <div class="d-flex flex-wrap gap-2 mb-2">
                         @for (var slot = 0; slot < 2; slot++)
                         {
-                            <select name="coordinatorUserIds" class="form-select form-select-sm" style="max-width: 240px;">
+                            <select name="coordinatorUserIds" class="form-select form-select-sm mw-240">
                                 <option value="">—</option>
                                 @foreach (var member in members)
                                 {
@@ -244,7 +239,7 @@
             </div>
             @if (!string.IsNullOrWhiteSpace(nextMeeting.Description))
             {
-                <div class="small mt-1" style="white-space: pre-line;">@nextMeeting.Description</div>
+                <div class="small mt-1 pre-line">@nextMeeting.Description</div>
             }
         </div>
     </div>
@@ -389,7 +384,7 @@
         @{ var visibleDocs = w.Documents.Where(d => d.Status != WorkgroupDocumentStatus.Draft || Model.IsMember || Model.CanAdminister).OrderByDescending(d => d.CreatedAt).ToList(); }
         @if (visibleDocs.Count == 0)
         {
-            <p class="text-muted">@Localizer["Workgroups_NoDocuments"]</p>
+            <empty-state>@Localizer["Workgroups_NoDocuments"]</empty-state>
         }
         else
         {
@@ -406,7 +401,7 @@
                             {
                                 <span class="badge bg-primary">@Localizer["Workgroups_OpenForComment"]</span>
                             }
-                            <span class="badge @EnumBadgeMap.For(d.Status)">@Localizer.EnumDisplay(d.Status)</span>
+                            <status-badge value="@d.Status" localizer="@Localizer" />
                         </span>
                     </a>
                 }
@@ -441,7 +436,7 @@
         @{ var timeline = Timeline().OrderByDescending(t => t.Date).ToList(); }
         @if (timeline.Count == 0)
         {
-            <p class="text-muted">@Localizer["Workgroups_NoHistory"]</p>
+            <empty-state>@Localizer["Workgroups_NoHistory"]</empty-state>
         }
         else
         {
@@ -497,7 +492,7 @@
                         </div>
                         @if (!string.IsNullOrWhiteSpace(entry.Meeting?.Description))
                         {
-                            <div class="mt-1 small text-muted" style="white-space: pre-line;">@entry.Meeting.Description</div>
+                            <div class="mt-1 small text-muted pre-line">@entry.Meeting.Description</div>
                         }
                         @{ var body = minutes ?? entry.Log?.Body; }
                         @if (!string.IsNullOrWhiteSpace(body))

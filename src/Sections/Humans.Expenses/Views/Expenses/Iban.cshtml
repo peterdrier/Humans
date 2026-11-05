@@ -18,17 +18,15 @@
     }
 }
 
-<nav aria-label="@Localizer["Expenses_BreadcrumbNavigation"]" class="mb-3">
-    <ol class="breadcrumb">
-        <li class="breadcrumb-item"><a asp-action="Index">@Localizer["Expenses_MyReportsTitle"]</a></li>
-        <li class="breadcrumb-item"><a asp-action="Detail" asp-route-id="@Model.ReportId">@Localizer["Expenses_ColReport"]</a></li>
-        <li class="breadcrumb-item active" aria-current="page">@Localizer["Expenses_PaymentIban"]</li>
-    </ol>
-</nav>
+@section Crumbs {
+    <a asp-action="Index">@Localizer["Expenses_MyReportsTitle"]</a>
+    <a asp-action="Detail" asp-route-id="@Model.ReportId">@Localizer["Expenses_ColReport"]</a>
+    <span>@Localizer["Expenses_PaymentIban"]</span>
+}
 
 <div class="row">
     <div class="col-md-6">
-        <h1 class="mb-1">@Localizer["Expenses_PaymentIban"]</h1>
+        <page-header title="@(Localizer["Expenses_PaymentIban"].Value)" />
         @* An admin setting this for somebody else is editing that member's profile, not their own —
            say whose account it is before they type an account number into it. *@
         @if (memberHtml is not null)

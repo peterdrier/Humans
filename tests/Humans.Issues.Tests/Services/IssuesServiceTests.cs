@@ -724,6 +724,12 @@ public sealed class IssuesServiceTests
             && ReferenceEquals(call.GetArguments()[3], failure)).Should().Be(allRolesFail ? 2 : 1);
     }
 
+    private static string Notice(string culture, string key, params object[] arguments)
+    {
+        var info = System.Globalization.CultureInfo.GetCultureInfo(culture);
+        return string.Format(info, new System.Resources.ResourceManager(typeof(IssuesResource)).GetString(key, info)!, arguments);
+    }
+
     public static TheoryData<NotificationSourceDefinition> FanoutNoticeSources => new(
         IssuesNotificationSources.IssueSubmitted,
         IssuesNotificationSources.IssueComment,
@@ -783,7 +789,7 @@ public sealed class IssuesServiceTests
         arguments[0].Should().Be(source);
         ((IReadOnlyList<Guid>)arguments[4]!).Should().Equal(second.Id);
         arguments[6].Should().Be($"/Issues/{issueId}");
-        arguments[7].Should().Be("Voir le sujet");
+        arguments[7].Should().Be(Notice("fr", "Issue_Notice_Open"));
     }
 
     [HumansTheory]
@@ -825,15 +831,15 @@ public sealed class IssuesServiceTests
         }
 
         var args = _notificationService.ReceivedCalls().Should().ContainSingle().Subject.GetArguments();
-        var titlePrefix = source.Name switch
+        var titleKey = source.Name switch
         {
-            nameof(IssuesNotificationSources.IssueSubmitted) => "Se presentó un asunto nuevo: ",
-            nameof(IssuesNotificationSources.IssueComment) => "Nuevo comentario sobre el asunto: ",
-            nameof(IssuesNotificationSources.IssueStatusChanged) => "El estado del asunto cambió: ",
-            nameof(IssuesNotificationSources.IssueAssigned) => "Se te asignó un asunto: ",
+            nameof(IssuesNotificationSources.IssueSubmitted) => "Issue_Notice_SubmittedTitle",
+            nameof(IssuesNotificationSources.IssueComment) => "Issue_Notice_CommentTitle",
+            nameof(IssuesNotificationSources.IssueStatusChanged) => "Issue_Notice_StatusChangedTitle",
+            nameof(IssuesNotificationSources.IssueAssigned) => "Issue_Notice_AssignedTitle",
             _ => throw new ArgumentOutOfRangeException(nameof(source))
         };
-        args[3].Should().Be(titlePrefix + title);
+        args[3].Should().Be(Notice("es", titleKey, title));
         var resources = new System.Resources.ResourceManager(typeof(IssuesResource));
         var culture = System.Globalization.CultureInfo.GetCultureInfo("es");
         args[5].Should().Be(source == IssuesNotificationSources.IssueStatusChanged
@@ -1482,11 +1488,11 @@ public sealed class IssuesServiceTests
             IssuesNotificationSources.IssueAssigned,
             NotificationClass.Actionable,
             NotificationPriority.Normal,
-            Arg.Is<string>(title => title == "Se te asignó un asunto: Title"),
+            Arg.Is<string>(title => title == Notice("es", "Issue_Notice_AssignedTitle", "Title")),
             Arg.Is<IReadOnlyList<Guid>>(ids => ids.Contains(newAssigneeId)),
             Arg.Any<string?>(),
             Arg.Any<string?>(),
-            Arg.Is<string?>(label => label == "Ver asunto"),
+            Arg.Is<string?>(label => label == Notice("es", "Issue_Notice_Open")),
             Arg.Any<string?>(),
             Arg.Any<string?>(),
             Arg.Any<CancellationToken>());
@@ -2763,7 +2769,7 @@ public sealed class IssuesServiceTests
 
         var notice = _notificationService.ReceivedCalls().Should().ContainSingle().Subject.GetArguments();
         ((IReadOnlyList<Guid>)notice[4]!).Should().ContainSingle().Which.Should().Be(survivor.Id);
-        notice[3].Should().Be("Se presentó un asunto nuevo: Title");
+        notice[3].Should().Be(Notice("es", "Issue_Notice_SubmittedTitle", "Title"));
         notice[9].Should().Be(result.Issue!.Id.ToString());
     }
 

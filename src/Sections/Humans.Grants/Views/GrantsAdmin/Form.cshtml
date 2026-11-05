@@ -4,20 +4,17 @@
     ViewData["Title"] = isNew ? "New grant program" : "Edit program";
 }
 
-<nav aria-label="breadcrumb">
-    <ol class="breadcrumb">
-        <li class="breadcrumb-item"><a asp-action="Index">Grant programs</a></li>
-        @if (!isNew)
-        {
-            <li class="breadcrumb-item"><a asp-action="Program" asp-route-programId="@Model.Id">@Model.Name</a></li>
-        }
-        <li class="breadcrumb-item active" aria-current="page">@ViewData["Title"]</li>
-    </ol>
-</nav>
+@section Crumbs {
+    @if (!isNew)
+    {
+        <a asp-action="Program" asp-route-programId="@Model.Id">@Model.Name</a>
+    }
+    <span>@ViewData["Title"]</span>
+}
 
-<h1>@ViewData["Title"]</h1>
+<page-header title="@(ViewData["Title"]?.ToString())" />
 
-<div class="card" style="max-width: 760px;">
+<div class="card mw-760">
     <div class="card-body">
         <form method="post" asp-action="@(isNew ? "New" : "Edit")" asp-route-programId="@Model.Id">
             <div asp-validation-summary="All" class="text-danger"></div>
@@ -74,7 +71,7 @@
                 </div>
             </div>
 
-            <div class="mb-3" style="max-width: 240px;">
+            <div class="mb-3 mw-240">
                 <label asp-for="Status" class="form-label">Status</label>
                 <select asp-for="Status" class="form-select">
                     <option value="@GrantProgramStatus.Open">Open</option>

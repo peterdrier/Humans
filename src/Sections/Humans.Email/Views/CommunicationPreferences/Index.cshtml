@@ -4,17 +4,14 @@
     var userId = Model;
 }
 
+@section Crumbs {
+    <a asp-controller="Profile" asp-action="Index">@SharedLocalizer["Nav_MyProfile"]</a>
+    <span>@Localizer["Email_CommPrefs_Title"]</span>
+}
+
 <div class="row">
     <div class="col-12" style="max-width: 900px;">
-        <nav aria-label="@Localizer["Email_BreadcrumbNavigation"]">
-            <ol class="breadcrumb">
-                <li class="breadcrumb-item"><a asp-controller="Profile" asp-action="Index">@SharedLocalizer["Nav_MyProfile"]</a></li>
-                <li class="breadcrumb-item active" aria-current="page">@Localizer["Email_CommPrefs_Title"]</li>
-            </ol>
-        </nav>
-
-        <h1>@Localizer["Email_CommPrefs_Title"]</h1>
-        <p class="text-muted">@Localizer["Email_CommPrefs_Description"]</p>
+        <page-header title="@(Localizer["Email_CommPrefs_Title"].Value)" subtitle="@(Localizer["Email_CommPrefs_Description"].Value)" />
 
 
         <vc:communication-preferences-panel user-id="@userId" read-only="false" />
@@ -39,18 +36,11 @@
             body.append('category', category);
             body.append('emailEnabled', emailCb ? emailCb.checked : true);
             body.append('alertEnabled', alertCb ? alertCb.checked : row.dataset.alertEnabled === 'true');
-            body.append('__RequestVerificationToken',
-                document.querySelector('input[name="__RequestVerificationToken"]').value);
 
             this.disabled = true;
             var self = this;
 
-            fetch('@Url.Action("UpdatePreference")', {
-                method: 'POST',
-                redirect: 'error',
-                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                body: body.toString()
-            }).then(function (resp) {
+            Humans.postForm('@Url.Action("UpdatePreference")', body, { redirect: 'error' }).then(function (resp) {
                 if (!resp.ok) throw new Error(resp.statusText);
                 row.classList.add('table-success');
                 setTimeout(function () { row.classList.remove('table-success'); }, 600);

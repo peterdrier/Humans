@@ -22,6 +22,7 @@ internal sealed class ConsentReviewQueueController(
     IStringLocalizer<ConsentResource> localizer,
     IStringLocalizer<SharedResource> sharedLocalizer) : HumansControllerBase(userService)
 {
+    private const string ReviewTextTooLongMessage = "Review text must be 4,000 characters or fewer.";
     private readonly IUserService _userService = userService;
 
     [HttpGet("")]
@@ -95,6 +96,7 @@ internal sealed class ConsentReviewQueueController(
                 SetError(result.ErrorKey switch
                 {
                     "AlreadyRejected" => localizer["Consent_Queue_AlreadyRejected"].Value,
+                    "ReviewTextTooLong" => ReviewTextTooLongMessage,
                     _ => sharedLocalizer["Common_Error"].Value
                 });
                 return RedirectToAction(nameof(Index));
@@ -173,7 +175,9 @@ internal sealed class ConsentReviewQueueController(
 
             if (!result.Success)
             {
-                SetError(sharedLocalizer["Common_Error"].Value);
+                SetError(string.Equals(result.ErrorKey, "ReviewTextTooLong", StringComparison.Ordinal)
+                    ? ReviewTextTooLongMessage
+                    : sharedLocalizer["Common_Error"].Value);
                 return RedirectToAction(nameof(Index));
             }
 
@@ -219,9 +223,12 @@ internal sealed class ConsentReviewQueueController(
             return;
         }
 
-        SetError(string.Equals(result.ErrorKey, "AlreadyRejected", StringComparison.Ordinal)
-            ? localizer["Consent_Queue_AlreadyRejected"].Value
-            : sharedLocalizer["Common_Error"].Value);
+        SetError(result.ErrorKey switch
+        {
+            "AlreadyRejected" => localizer["Consent_Queue_AlreadyRejected"].Value,
+            "ReviewTextTooLong" => ReviewTextTooLongMessage,
+            _ => sharedLocalizer["Common_Error"].Value
+        });
     }
 
     private static ConsentReviewQueueItemViewModel MapToItem(UserInfo info, ReviewQueueData data)

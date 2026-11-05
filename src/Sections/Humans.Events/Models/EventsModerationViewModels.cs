@@ -37,8 +37,6 @@ internal sealed class ModerationEventRowViewModel
     public EventStatus Status { get; set; }
     public List<ModerationHistoryItemViewModel> History { get; set; } = [];
     public List<DuplicateCandidateViewModel> DuplicateCandidates { get; set; } = [];
-
-    public string StatusBadgeClass => EventStatusPresentation.BadgeClass(Status);
 }
 
 internal sealed class ModerationHistoryItemViewModel
@@ -48,15 +46,6 @@ internal sealed class ModerationHistoryItemViewModel
     public EventModerationActionType Action { get; set; }
     public string? Reason { get; set; }
     public DateTime CreatedAt { get; set; }
-
-    public string ActionBadgeClass => Action switch
-    {
-        EventModerationActionType.Approved => "bg-success",
-        EventModerationActionType.Rejected => "bg-danger",
-        EventModerationActionType.ResubmitRequested => "bg-info",
-        EventModerationActionType.Edited => "bg-primary",
-        _ => "bg-secondary"
-    };
 }
 
 internal sealed class DuplicateCandidateViewModel
@@ -157,18 +146,4 @@ internal sealed class AdminEventFormViewModel
     public List<VenueOptionViewModel> Venues { get; set; } = [];
     public List<EventDayOptionViewModel> EventDays { get; set; } = [];
     public string? TimeZoneId { get; set; }
-}
-
-internal static class EventStatusPresentation
-{
-    internal static string BadgeClass(EventStatus status) => status switch
-    {
-        EventStatus.Draft => "bg-secondary",
-        EventStatus.Pending => "bg-warning text-dark",
-        EventStatus.Approved => "bg-success",
-        EventStatus.Rejected => "bg-danger",
-        EventStatus.ResubmitRequested => "bg-info",
-        EventStatus.Withdrawn => "bg-dark",
-        _ => "bg-secondary"
-    };
 }

@@ -2,7 +2,7 @@
 
 @* Explicit asp-controller/asp-action: inside /Settings, ambient route data would resolve "Admin" against the wrong
    controller. *@
-<form method="post" asp-controller="Gate" asp-action="Admin" style="max-width: 540px;">
+<form class="mw-540" method="post" asp-controller="Gate" asp-action="Admin">
     <div class="mb-3">
         <label class="form-label" asp-for="GeneralEntryOpensAtUtc">General entry opens at (UTC, ISO instant)</label>
         <input class="form-control" asp-for="GeneralEntryOpensAtUtc" placeholder="2026-07-06T10:00:00Z" />

@@ -360,7 +360,6 @@
   <data name="Surveys_EmailPreviewTo" xml:space="preserve"><value>Aan:</value></data>
   <data name="Surveys_EmailPreviewSubject" xml:space="preserve"><value>Onderwerp:</value></data>
   <data name="Surveys_EmailPreviewFrameTitle" xml:space="preserve"><value>Voorbeeld van uitnodigingsmail voor enquête</value></data>
-  <data name="Surveys_BreadcrumbNavigation" xml:space="preserve"><value>Kruimelpadnavigatie</value></data>
   <data name="Surveys_StartPreview" xml:space="preserve"><value>Voorbeeld starten</value></data>
   <data name="Surveys_PreviewThankYou" xml:space="preserve"><value>Voorbeeld van bedankpagina</value></data>
   <data name="Surveys_Validation_AudienceUnsupported" xml:space="preserve"><value>De geselecteerde enquêtedoelgroep wordt niet ondersteund.</value></data>

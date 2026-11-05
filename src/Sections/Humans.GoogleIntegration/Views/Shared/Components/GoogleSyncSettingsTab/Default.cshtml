@@ -11,16 +11,7 @@
             <div class="card">
                 <div class="card-header d-flex justify-content-between align-items-center">
                     <strong>@setting.ServiceName</strong>
-                    @{
-                        var badgeClass = setting.CurrentMode switch
-                        {
-                            SyncMode.None => "bg-secondary",
-                            SyncMode.AddOnly => "bg-info",
-                            SyncMode.AddAndRemove => "bg-success",
-                            _ => "bg-secondary"
-                        };
-                    }
-                    <span class="badge @badgeClass">@setting.CurrentMode</span>
+                    <status-badge value="@setting.CurrentMode" />
                 </div>
                 <div class="card-body">
                     <form method="post" asp-controller="Google" asp-action="UpdateSyncSetting">

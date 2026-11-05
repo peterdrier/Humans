@@ -1,6 +1,19 @@
 @model AdminIndexViewModel
 @{
     ViewData["Title"] = "Grant programs";
+
+    Func<ProgramInfo, IHtmlContent> nameCell =
+        @<text><a asp-action="Program" asp-route-programId="@item.Id" class="text-decoration-none">@item.Name</a></text>;
+    var table = TableModel.For(Model.Programs)
+        .Template("Program", nameCell, sortBy: p => p.Name)
+        .Column("Event", p => p.EventName)
+        .Column("Entitles", p => p.Entitles, o => o.Css("small"))
+        .Column("Issued by", p => p.IssuedBy == GrantIssuer.Source ? p.SourceKey : "Managers")
+        .Column("Active", p => p.Count(GrantState.Active, Model.Today), o => o.Number().End())
+        .Column("Expires", p => p.GrantsExpireOn, o => o.Date())
+        .Column("Status", p => p.Status, o => o.EnumBadge())
+        .Css("align-middle")
+        .Build();
 }
 
 <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
@@ -13,37 +26,9 @@
 
 @if (Model.Programs.Count == 0)
 {
-    <p class="text-muted">No programs yet.</p>
+    <empty-state>No programs yet.</empty-state>
 }
 else
 {
-    <div class="table-responsive">
-        <table class="table align-middle">
-            <thead>
-                <tr>
-                    <th>Program</th>
-                    <th>Event</th>
-                    <th>Entitles</th>
-                    <th>Issued by</th>
-                    <th class="text-end">Active</th>
-                    <th>Expires</th>
-                    <th>Status</th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach (var p in Model.Programs)
-                {
-                    <tr>
-                        <td><a asp-action="Program" asp-route-programId="@p.Id" class="text-decoration-none">@p.Name</a></td>
-                        <td>@p.EventName</td>
-                        <td class="small">@p.Entitles</td>
-                        <td>@(p.IssuedBy == GrantIssuer.Source ? p.SourceKey : "Managers")</td>
-                        <td class="text-end">@p.Count(GrantState.Active, Model.Today)</td>
-                        <td>@(p.GrantsExpireOn?.ToDate() ?? "—")</td>
-                        <td><span class="badge @EnumBadgeMap.For(p.Status)">@p.Status</span></td>
-                    </tr>
-                }
-            </tbody>
-        </table>
-    </div>
+    <partial name="_Table" model="table" />
 }

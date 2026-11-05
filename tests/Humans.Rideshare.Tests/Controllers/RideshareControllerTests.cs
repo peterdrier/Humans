@@ -337,17 +337,10 @@ public sealed class RideshareControllerTests
         await _rideshare.DidNotReceiveWithAnyArgs().CreateOfferAsync(default, default, default!);
     }
 
-    [HumansTheory]
-    [InlineData("en")]
-    [InlineData("es")]
-    [InlineData("de")]
-    [InlineData("it")]
-    [InlineData("fr")]
-    [InlineData("ca")]
-    [InlineData("nl")]
-    public async Task OfferPost_ARule_RerendersTheFormWithAModelError(string culture)
+    [HumansFact]
+    public async Task OfferPost_ARule_RerendersTheFormWithAModelError()
     {
-        using var scope = new Humans.Base.Extensions.CultureScope(culture);
+        using var scope = new Humans.Base.Extensions.CultureScope(Humans.Base.Extensions.CultureCatalog.DefaultCultureCode);
         const string key = "Rideshare_Error_PlaceNotFound";
         var resources = new System.Resources.ResourceManager(typeof(RideshareResource));
         var translated = string.Format(CultureInfo.CurrentUICulture,

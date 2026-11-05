@@ -46,7 +46,6 @@
   <data name="Users_Profile_Title" xml:space="preserve">
     <value>Mijn profiel</value>
   </data>
-  <data name="Users_BreadcrumbNavigation" xml:space="preserve"><value>Kruimelpad</value></data>
   <data name="Users_Profile_ActionRequired" xml:space="preserve">
     <value>Actie vereist:</value>
   </data>
@@ -214,9 +213,6 @@
   </data>
   <data name="Users_ProfileEdit_TierLocked" xml:space="preserve">
     <value>Je niveau is vergrendeld omdat je een actieve aanvraag of een aanvraag in afwachting hebt.</value>
-  </data>
-  <data name="Users_ProfileEdit_MotivationHelp" xml:space="preserve">
-    <value>Minimaal 50 tekens. Dit helpt het bestuur je doelen te begrijpen.</value>
   </data>
   <data name="Users_ProfileEdit_BurnerNamePlaceholder" xml:space="preserve">
     <value>De naam waarmee je bekendstaat</value>

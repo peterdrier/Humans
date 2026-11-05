@@ -3,17 +3,15 @@
     ViewData["Title"] = Localizer[Model.Id is null ? "Workgroups_MeetingNewTitle" : "Workgroups_MeetingEditTitle"];
 }
 
-<nav aria-label="@Localizer["Workgroups_BreadcrumbNavigation"]">
-    <ol class="breadcrumb">
-        <li class="breadcrumb-item"><a asp-action="Index">@Localizer["Workgroups_Title"]</a></li>
-        <li class="breadcrumb-item"><a asp-action="Details" asp-route-slug="@Model.Slug">@Model.Slug</a></li>
-        <li class="breadcrumb-item active" aria-current="page">@ViewData["Title"]</li>
-    </ol>
-</nav>
+@section Crumbs {
+    <a asp-action="Index">@Localizer["Workgroups_Title"]</a>
+    <a asp-action="Details" asp-route-slug="@Model.Slug">@Model.Slug</a>
+    <span>@ViewData["Title"]</span>
+}
 
-<h1>@ViewData["Title"]</h1>
+<page-header title="@(ViewData["Title"]?.ToString())" />
 
-<div class="card" style="max-width: 720px;">
+<div class="card mw-720">
     <div class="card-body">
         <form method="post" asp-action="SaveMeeting" asp-route-slug="@Model.Slug" id="meeting-form">
             <input type="hidden" asp-for="Id" />

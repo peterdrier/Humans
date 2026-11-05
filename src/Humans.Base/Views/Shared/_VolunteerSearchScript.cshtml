@@ -25,7 +25,7 @@
         }
 
         return items.map(function (item) {
-            return '<span class="badge ' + cssClass + ' me-1">' + escapeHtml(item) + '</span>';
+            return '<span class="badge ' + cssClass + ' me-1">' + Humans.escapeHtml(item) + '</span>';
         }).join('');
     }
 
@@ -35,15 +35,15 @@
         }
 
         if (dietaryPreferenceStyle === 'badge') {
-            return '<span class="badge bg-success me-1">' + escapeHtml(value) + '</span>';
+            return '<span class="badge bg-success me-1">' + Humans.escapeHtml(value) + '</span>';
         }
 
-        return '<small class="text-muted ms-2">' + escapeHtml(value) + '</small>';
+        return '<small class="text-muted ms-2">' + Humans.escapeHtml(value) + '</small>';
     }
 
     function renderResults(results, shiftId, container) {
         if (!results || results.length === 0) {
-            container.innerHTML = '<p class="text-muted small mb-0">' + escapeHtml(noResultsText) + '</p>';
+            container.innerHTML = '<p class="text-muted small mb-0">' + Humans.escapeHtml(noResultsText) + '</p>';
             return;
         }
 
@@ -53,7 +53,7 @@
                 ? '<span class="badge bg-success ms-2">Pool</span>'
                 : '';
             var overlapWarning = result.hasOverlap
-                ? '<span class="badge bg-warning text-dark ms-2">' + escapeHtml(overlapLabel) + '</span>'
+                ? '<span class="badge bg-warning text-dark ms-2">' + Humans.escapeHtml(overlapLabel) + '</span>'
                 : '';
             var skillBadges = renderBadges(result.skills, 'bg-info text-dark');
             var quirkBadges = renderBadges(result.quirks, 'bg-secondary');
@@ -62,17 +62,17 @@
 
             html += '<li class="list-group-item d-flex justify-content-between align-items-start flex-wrap gap-2">';
             html += '<div>';
-            html += '<strong>' + escapeHtml(result.displayName) + '</strong>';
+            html += '<strong>' + Humans.escapeHtml(result.displayName) + '</strong>';
             html += poolBadge;
             html += overlapWarning;
             html += ' <small class="text-muted">(' + result.bookedShiftCount + ' shifts)</small>';
             html += dietaryPreference;
             html += '<div class="mt-1">' + skillBadges + quirkBadges + languageBadges + '</div>';
             html += '</div>';
-            html += '<form method="post" action="' + escapeHtml(voluntellUrl) + '">';
+            html += '<form method="post" action="' + Humans.escapeHtml(voluntellUrl) + '">';
             html += tokenHtml;
-            html += '<input type="hidden" name="shiftId" value="' + escapeHtml(shiftId) + '" />';
-            html += '<input type="hidden" name="userId" value="' + escapeHtml(result.userId) + '" />';
+            html += '<input type="hidden" name="shiftId" value="' + Humans.escapeHtml(shiftId) + '" />';
+            html += '<input type="hidden" name="userId" value="' + Humans.escapeHtml(result.userId) + '" />';
             html += '<button type="submit" class="btn btn-sm ' + assignButtonClass + '"'
                 + (result.hasOverlap ? ' title="Warning: schedule conflict"' : '')
                 + '>Assign</button>';
@@ -119,7 +119,7 @@
                 })
                 .catch(function () {
                     if (version !== state.version) return;
-                    resultsDiv.innerHTML = '<p class="text-danger small mb-0">' + escapeHtml(errorText) + '</p>';
+                    resultsDiv.innerHTML = '<p class="text-danger small mb-0">' + Humans.escapeHtml(errorText) + '</p>';
                 });
         }, 300);
     });

@@ -168,7 +168,7 @@ nobodies-collective/Humans#933.)
 - Resetting the shared PIN keypad cancels its pending delayed completion. Closing the supervisor override with Cancel cannot submit the PIN afterward; a reopened panel submits only its new entry.
 
 - The cutoff is evaluated against the server clock; `ClientScanAt` never influences it.
-- Decision requests require an explicit ID confirmation (`true` or `false`); malformed input or a missing confirmation returns 400 before PIN checks or scan writes.
+- Decision requests require an explicit ID confirmation (`true` or `false`); malformed input or a missing confirmation returns 400 before PIN checks or scan writes. The service also rejects a normalized barcode over 128 Unicode characters, a lane id over 64, or a note over 1000 before PIN checks or side effects; the controller maps that refusal to 400. Boundary values are retained without truncation.
 - A barcode can be admitted at most once (atomic unique index + pre-check); re-entry is governed
   by a physical wristband, not a second scan.
 - `scannedByUserId` is server-derived from the authenticated principal (the gate account); an
@@ -230,8 +230,8 @@ nobodies-collective/Humans#933.)
   (opt-in via `Gate:RosterTeamId`; see Configuration — claim flow unreachable since
   peterdrier/Humans#1075). Read-only consumption of the existing Shifts surface — no new Shifts surface.
   _Cross-section read approved by Peter (verbal, 2026-06-29)._
-- **Users** — `IUserService` (scanner name; supervisor/claim display names; leaderboard
-  rendering via `<vc:human>`).
+- **Users** — `IUserService` (resolving the signed-in account to its survivor for scanner/actor attribution; the
+  claim-search lookup; names render via `<vc:human>`).
 - **Tickets** — `ITicketWrite.RecordParticipationAsync` — on an
   admit with a matched guest, `GateService` projects the check-in onto the guest's
   `EventParticipation` row (Attended, `CheckedInAt` = admit instant, year = the active event's).

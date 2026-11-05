@@ -10,7 +10,14 @@ public interface IPleoService : IApplicationService
     /// Entries Pleo has not settled are not returned.</summary>
     Task<IReadOnlyList<PleoEntryInfo>> GetSettledEntriesAsync(
         LocalDate from, LocalDate to, CancellationToken ct = default);
+
+    /// <summary>The wallet's current balance at the last sweep, in EUR; null before the first sweep or when Pleo
+    /// reports another currency. Pending debits are left out, as in Pleo's own figure.</summary>
+    Task<PleoWalletBalance?> GetWalletBalanceAsync(CancellationToken ct = default);
 }
+
+/// <summary><paramref name="SyncedAt"/> is when the sweep that read it ran.</summary>
+public sealed record PleoWalletBalance(decimal CurrentEur, Instant SyncedAt);
 
 /// <summary>One mirrored entry. <c>AmountEur</c> is signed (+ into the Pleo wallet, − out), null when Pleo gave no EUR
 /// figure. <c>HoldedCode</c> is the Holded account the entry's category maps to, null when the entry has no category

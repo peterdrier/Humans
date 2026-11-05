@@ -18,14 +18,13 @@
     };
 }
 
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <h1 class="mb-0">Stripe Payments</h1>
+<page-header title="Stripe Payments">
     <div class="btn-group">
         <a asp-action="Catalog" class="btn btn-outline-secondary">Catalog</a>
         <a asp-action="Summary" class="btn btn-outline-secondary">Summary</a>
         <a asp-controller="Store" asp-action="Index" class="btn btn-outline-secondary">Back to Store</a>
     </div>
-</div>
+</page-header>
 
 
 @if (!report.WebhookConfigured)
@@ -96,7 +95,7 @@ else if (!report.StripeQueried)
 @if (Model.Rows.Count == 0)
 {
     <div class="card">
-        <div class="card-body text-center py-4 text-muted">No Stripe Checkout payments found for the Store account.</div>
+        <div class="card-body py-4"><empty-state class="mb-0">No Stripe Checkout payments found for the Store account.</empty-state></div>
     </div>
 }
 else

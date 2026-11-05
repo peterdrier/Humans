@@ -42,7 +42,6 @@
 </div>
 
 <script>
-@await Html.PartialAsync("_RequestVerificationTokenScript")
 (function () {
     var loadingHtml = @Html.Raw(JsonSerializer.Serialize("<p class=\"text-muted p-3\">" + Localizer["EmailComposer_PreviewLoading"].Value + "</p>"));
     var errorText = @Html.Raw(JsonSerializer.Serialize(Localizer["EmailComposer_PreviewError"].Value));
@@ -78,13 +77,8 @@
         form.append('subject', subject || '');
         form.append('body', body || '');
         form.append('category', category || '');
-        form.append('__RequestVerificationToken', getRequestVerificationToken());
 
-        fetch(previewUrl, {
-            method: 'POST',
-            headers: { 'X-Requested-With': 'XMLHttpRequest' },
-            body: form
-        })
+        Humans.postForm(previewUrl, form, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
             .then(function (resp) {
                 if (!resp.ok) { throw new Error('preview failed'); }
                 return resp.json();
@@ -145,14 +139,9 @@
                 var form = new FormData();
                 form.append('subject', subjectEl ? subjectEl.value : '');
                 form.append('body', bodyEl ? bodyEl.value : '');
-                form.append('__RequestVerificationToken', getRequestVerificationToken());
 
                 btn.disabled = true;
-                fetch(selfSendUrl, {
-                    method: 'POST',
-                    headers: { 'X-Requested-With': 'XMLHttpRequest' },
-                    body: form
-                })
+                Humans.postForm(selfSendUrl, form, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
                     .then(function (resp) {
                         if (resp.status === 429) { throw new Error(selfRateLimitedText); }
                         if (resp.status === 422) { throw new Error(selfNoAddressText); }

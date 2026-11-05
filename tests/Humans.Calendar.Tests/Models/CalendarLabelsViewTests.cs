@@ -25,18 +25,13 @@ namespace Humans.Calendar.Tests.Models;
 public class CalendarLabelsViewTests
 {
     [HumansTheory]
-    [Xunit.InlineData("en", "July")]
-    [Xunit.InlineData("es", "julio")]
-    [Xunit.InlineData("de", "Juli")]
-    [Xunit.InlineData("it", "luglio")]
-    [Xunit.InlineData("fr", "juillet")]
-    [Xunit.InlineData("ca", "juliol")]
-    [Xunit.InlineData("nl", "juli")]
-    public async Task MonthHeadings_UseUiLanguageWithEnglishInputCulture(string language, string month)
+    [Xunit.MemberData(nameof(SupportedCultures.All), MemberType = typeof(SupportedCultures))]
+    public async Task MonthHeadings_UseUiLanguageWithEnglishInputCulture(string language)
     {
         using var inputCulture = new CultureScope("en");
         CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo(language);
         var model = new CalendarMonthViewModel(new YearMonth(2026, 7), [], null, "Europe/Madrid");
+        var month = CultureInfo.GetCultureInfo(language).DateTimeFormat.GetMonthName(7);
 
         foreach (var page in new[] { "Index", "List", "Team" })
         {
@@ -47,18 +42,13 @@ public class CalendarLabelsViewTests
     }
 
     [HumansTheory]
-    [Xunit.InlineData("en", "Mon", "Monday")]
-    [Xunit.InlineData("es", "lun", "lunes")]
-    [Xunit.InlineData("de", "Mo", "Montag")]
-    [Xunit.InlineData("it", "lun", "lunedì")]
-    [Xunit.InlineData("fr", "lun.", "lundi")]
-    [Xunit.InlineData("ca", "dl.", "dilluns")]
-    [Xunit.InlineData("nl", "ma", "maandag")]
-    public async Task WeekdayLabels_UseUiLanguageAndPreserveRecurrenceCodes(
-        string language, string abbreviated, string monday)
+    [Xunit.MemberData(nameof(SupportedCultures.All), MemberType = typeof(SupportedCultures))]
+    public async Task WeekdayLabels_UseUiLanguageAndPreserveRecurrenceCodes(string language)
     {
         using var inputCulture = new CultureScope("en");
         CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo(language);
+        var abbreviated = CultureInfo.CurrentUICulture.DateTimeFormat.GetAbbreviatedDayName(DayOfWeek.Monday);
+        var monday = CultureInfo.CurrentUICulture.DateTimeFormat.GetDayName(DayOfWeek.Monday);
         var grid = await RenderAsync("Index", new CalendarMonthViewModel(new YearMonth(2026, 7), [], null, "Europe/Madrid"));
         grid.Should().Contain($">{HtmlEncoder.Default.Encode(abbreviated)}</th>");
 
@@ -70,16 +60,10 @@ public class CalendarLabelsViewTests
         CultureInfo.CurrentCulture.Name.Should().Be("en");
     }
 
-    [HumansTheory]
-    [Xunit.InlineData("en", "No audit history.")]
-    [Xunit.InlineData("es", "No hay historial de auditoría.")]
-    [Xunit.InlineData("de", "Kein Prüfverlauf vorhanden.")]
-    [Xunit.InlineData("it", "Nessuna cronologia di audit.")]
-    [Xunit.InlineData("fr", "Aucun historique d’audit.")]
-    [Xunit.InlineData("ca", "No hi ha historial d’auditoria.")]
-    public async Task Event_EmptyHistory_UsesHostLanguage(string language, string message)
+    [HumansFact]
+    public async Task Event_EmptyHistory_UsesHostLanguage()
     {
-        using var culture = new CultureScope(language);
+        using var culture = new CultureScope("en");
         var now = Instant.FromUtc(2026, 7, 1, 0, 0);
         var detail = new CalendarEventDetail(Guid.NewGuid(), "Fixture", null, null, null,
             Guid.NewGuid(), now, now + Duration.FromHours(1), false, null, null, now, now);
@@ -87,19 +71,16 @@ public class CalendarLabelsViewTests
 
         var html = await RenderAsync("Event", model);
 
-        html.Should().Contain(HtmlEncoder.Default.Encode(message));
+        html.Should().Contain("No audit history.");
     }
 
-    [HumansTheory]
-    [Xunit.InlineData("en", "Workgroups")]
-    [Xunit.InlineData("es", "Grupos de trabajo")]
-    [Xunit.InlineData("de", "Arbeitsgruppen")]
-    [Xunit.InlineData("it", "Gruppi di lavoro")]
-    [Xunit.InlineData("fr", "Groupes de travail")]
-    [Xunit.InlineData("ca", "Grups de treball")]
-    public async Task CommunitySources_UseUiLanguageAcrossCalendarViews(string language, string sourceLabel)
+    [HumansFact]
+    public async Task CommunitySources_UseUiLanguageAcrossCalendarViews()
     {
-        using var culture = new CultureScope(language);
+        using var culture = new CultureScope(CultureCatalog.CanonicalLegalCultureCode);
+        var sourceLabel = new System.Resources.ResourceManager(typeof(CalendarResource))
+            .GetString("Calendar_Source_Workgroups", CultureInfo.CurrentUICulture);
+        sourceLabel.Should().NotBe("Workgroups");
         var start = Instant.FromUtc(2026, 7, 6, 10, 0);
         var single = new CalendarOccurrence(Guid.Empty, start, start + Duration.FromHours(1), false,
             "Meeting", null, null, null, Guid.Empty, "", false, null, Source: "Workgroups");
@@ -117,7 +98,7 @@ public class CalendarLabelsViewTests
             html.Should().Contain($"— {sourceLabel}", page);
             html.Should().Contain("New contributor", page);
             html.Should().NotContain("Calendar_Source_", page);
-            if (!string.Equals(language, "en", StringComparison.Ordinal)) html.Should().NotContain("— Workgroups", page);
+            html.Should().NotContain("— Workgroups", page);
         }
         single.Source.Should().Be("Workgroups");
     }

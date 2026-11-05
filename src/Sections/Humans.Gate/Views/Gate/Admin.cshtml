@@ -4,19 +4,19 @@
     Layout = "_AdminLayout";
 }
 
-<h1>Staff PINs</h1>
+<page-header title="Staff PINs" />
 <p class="text-muted">
     Gate settings (general entry time, minor age threshold) moved to
     <a href="/Settings#gate">/Settings</a>.
 </p>
-<p class="text-muted" style="max-width: 540px;">
+<p class="text-muted mw-540">
     Staff PINs attribute scans when claiming the gate — anyone, supervisors included, can set their
     own at the kiosk, or enrol one here out of band. Overrides are authorized by the shared supervisor
     PIN (set in configuration), never by these. Resetting a PIN clears it; enrol the replacement
     here (the kiosk claim step is currently bypassed).
 </p>
 
-<form method="post" asp-action="SetStaffPin" style="max-width: 540px;" class="mb-3">
+<form method="post" asp-action="SetStaffPin" class="mb-3 mw-540">
     <label class="form-label">Enrol or change a PIN</label>
     <div class="d-flex gap-2 align-items-start mb-2">
         <vc:human-search field-name="userId" instance-key="setpin" scope="Name" allow-email="true"
@@ -28,7 +28,7 @@
     <div class="form-text">4 digits, and not trivially guessable (no 1234, 0000, or repeats).</div>
 </form>
 
-<form method="post" asp-action="ResetStaffPin" style="max-width: 540px;">
+<form class="mw-540" method="post" asp-action="ResetStaffPin">
     <label class="form-label">Reset a PIN</label>
     <div class="d-flex gap-2 align-items-start">
         <vc:human-search field-name="userId" instance-key="resetpin" scope="Name" allow-email="true"

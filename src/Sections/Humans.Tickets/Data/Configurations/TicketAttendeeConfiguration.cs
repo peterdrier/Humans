@@ -21,7 +21,7 @@ internal sealed class TicketAttendeeConfiguration : IEntityTypeConfiguration<Tic
 
         builder.Property(a => a.AttendeeName)
             .IsRequired()
-            .HasMaxLength(200);
+            .HasMaxLength(513);
 
         builder.Property(a => a.AttendeeEmail)
             .HasMaxLength(320);

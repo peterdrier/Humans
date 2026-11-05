@@ -13,21 +13,16 @@
     }
 }
 
-<nav aria-label="@Localizer["Governance_BreadcrumbNavigation"]">
-    <ol class="breadcrumb">
-        <li class="breadcrumb-item"><a asp-controller="Governance" asp-action="Index">@Localizer["Governance_Title"]</a></li>
-        <li class="breadcrumb-item"><a asp-action="Index">@Localizer["Governance_Votes_Title"]</a></li>
-        <li class="breadcrumb-item active" aria-current="page">@vote.Title</li>
-    </ol>
-</nav>
+@section Crumbs {
+    <a asp-controller="Governance" asp-action="Index">@Localizer["Governance_Title"]</a>
+    <a asp-action="Index">@Localizer["Governance_Votes_Title"]</a>
+    <span>@vote.Title</span>
+}
 
-<div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
-    <h1 class="mb-0">@vote.Title</h1>
-    <div class="d-flex gap-2">
-        <span class="badge bg-secondary">@Localizer["Governance_Votes_Kind_" + vote.Kind]</span>
-        <span class="badge @EnumBadgeMap.For(vote.Status)">@Localizer["Governance_Votes_Status_" + vote.Status]</span>
-    </div>
-</div>
+<page-header title="@vote.Title">
+    <span class="badge bg-secondary">@Localizer["Governance_Votes_Kind_" + vote.Kind]</span>
+    <span class="badge @EnumBadgeMap.For(vote.Status)">@Localizer["Governance_Votes_Status_" + vote.Status]</span>
+</page-header>
 
 <p class="text-muted">
     @if (vote.Status == AssemblyVoteStatus.Open)

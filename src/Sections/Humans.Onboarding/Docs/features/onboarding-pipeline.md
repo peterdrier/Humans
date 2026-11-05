@@ -211,7 +211,7 @@ The Names POST is reachable directly. `IProfileEditorService.SaveProfileAsync` d
 
 ### Authorization
 
-The controller inherits `HumansControllerBase` for `SetError` / TempData conventions. User identity is resolved from the `NameIdentifier` claim (the controller is `[Authorize]`-gated; full `User` resolution via `UserManager` isn't needed because the actions only consume `userId`).
+The controller inherits `HumansControllerBase` for `SetError` / TempData conventions. User identity is resolved from the `NameIdentifier` claim (the controller is `[Authorize]`-gated; no user entity is resolved, since the actions only consume `userId`).
 
 ## Business Rules
 

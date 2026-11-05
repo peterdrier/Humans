@@ -1435,6 +1435,15 @@ a:hover {
     color: var(--h-sage-dark) !important;
 }
 
+/* Layout utilities Bootstrap lacks: preserve user-entered line breaks; cap form-card widths. */
+.pre-wrap { white-space: pre-wrap; }
+.pre-line { white-space: pre-line; }
+.mw-240 { max-width: 240px; }
+.mw-540 { max-width: 540px; }
+.mw-600 { max-width: 600px; }
+.mw-720 { max-width: 720px; }
+.mw-760 { max-width: 760px; }
+
 /* Finance: sign-based coloring for monetary figures — green = positive, red = negative, never the reverse. */
 .finance-positive {
     color: var(--h-sage-dark) !important;
@@ -2946,4 +2955,73 @@ body.city-map-fullscreen main {
 .budget-table {
     font-family: var(--h-font-body);
     font-variant-numeric: tabular-nums;
+}
+
+/* ── Stat tiles (_StatTile inside a .stats grid) ───────────────────────── */
+
+.stats {
+    display: grid;
+    grid-template-columns: repeat(var(--stats-cols, 4), 1fr);
+    gap: 16px;
+    margin-bottom: 28px;
+}
+
+.stat {
+    background: var(--h-warm-white);
+    border: 1px solid var(--h-border);
+    border-radius: var(--h-radius-lg);
+    padding: 18px 20px;
+    box-shadow: var(--h-shadow-sm);
+}
+
+.stat .label {
+    font-family: var(--h-font-body);
+    font-size: 0.7rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--h-sepia);
+    margin-bottom: 6px;
+}
+
+.stat .value {
+    font-family: var(--h-font-display);
+    font-size: 2.2rem;
+    font-weight: 700;
+    line-height: 1;
+    color: var(--h-aged-ink);
+}
+
+.stat .value.warning {
+    color: var(--h-amber);
+}
+
+.stat .value.danger {
+    color: var(--h-rust);
+}
+
+.stat .value em {
+    font-style: italic;
+    color: var(--h-gold-dark);
+    font-size: 1rem;
+    font-weight: 500;
+}
+
+.stat .delta {
+    font-family: var(--h-font-display);
+    font-style: italic;
+    font-size: 0.78rem;
+    color: var(--h-sage-dark);
+    margin-top: 4px;
+}
+
+.stat .delta.bad {
+    color: var(--h-rust);
+}
+
+@media (min-width: 768px) and (max-width: 1099.98px) {
+    .stats { grid-template-columns: repeat(2, 1fr); }
+}
+
+@media (max-width: 767.98px) {
+    .stats { grid-template-columns: 1fr; }
 }

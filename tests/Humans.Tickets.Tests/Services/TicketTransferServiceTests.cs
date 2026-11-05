@@ -1,3 +1,5 @@
+using System.Globalization;
+using System.Resources;
 using Humans.Base.Extensions;
 using Humans.Base.Constants;
 using Humans.Tickets.Controllers;
@@ -163,6 +165,46 @@ public sealed class TicketTransferServiceTests
     }
 
     [HumansTheory]
+    [Xunit.InlineData(false, "deleted")]
+    [Xunit.InlineData(true, "deleted")]
+    [Xunit.InlineData(false, "merged")]
+    [Xunit.InlineData(true, "merged")]
+    [Xunit.InlineData(false, "erased")]
+    [Xunit.InlineData(true, "erased")]
+    public async Task ReceiverSelection_RefusesTombstoneWithRetainedContactDetails(bool create, string tombstone)
+    {
+        StubAttendee(TicketAttendeeStatus.Valid, _senderId);
+        var receiver = WrapInUserInfo(MakeUser(_receiverId, "Alice"),
+            UserFixtures.Profile(burnerName: "Alice", firstName: "Alice", lastName: "Smith"));
+        receiver = tombstone switch
+        {
+            "deleted" => receiver with { State = UserState.Deleted },
+            "merged" => receiver with { State = UserState.Merged },
+            _ => receiver with { IsGdprAnonymized = true }
+        };
+        _userService.GetUserInfoAsync(_receiverId, Arg.Any<CancellationToken>()).Returns(receiver);
+
+        if (create)
+        {
+            var result = await _service.CreateRequestAsync(
+                new TicketTransferRequestDto(_attendeeId, _receiverId, "Reason"), _senderId,
+                Xunit.TestContext.Current.CancellationToken);
+            result.RefusalKey.Should().Be("Tickets_TicketTransfer_InvalidSelection");
+        }
+        else
+        {
+            var result = await _service.GetConfirmationAsync(_attendeeId, _receiverId, _senderId,
+                Xunit.TestContext.Current.CancellationToken);
+            result.Should().BeNull();
+        }
+
+        await _transferRepo.DidNotReceive().AddAsync(Arg.Any<TicketTransferRequest>(), Arg.Any<CancellationToken>());
+        _auditLog.ReceivedCalls().Should().BeEmpty();
+        _emailService.ReceivedCalls().Should().BeEmpty();
+        _vendor.ReceivedCalls().Should().BeEmpty();
+    }
+
+    [HumansTheory]
     [Xunit.InlineData(null)]
     [Xunit.InlineData("")]
     [Xunit.InlineData(" \t ")]
@@ -187,14 +229,41 @@ public sealed class TicketTransferServiceTests
         _vendor.ReceivedCalls().Should().BeEmpty();
     }
 
-    [HumansTheory]
-    [Xunit.InlineData("es", "Solicitud de transferencia de entrada")]
-    [Xunit.InlineData("", "Ticket transfer requested")]
-    [Xunit.InlineData(" ", "Ticket transfer requested")]
-    [Xunit.InlineData("not a culture!", "Ticket transfer requested")]
-    [Xunit.InlineData("fr-FR", "Ticket transfer requested")]
-    public async Task CreateRequest_Persists_Audits_AndEmailsSenderAndTeam(string language, string expectedSubject)
+    [HumansFact]
+    public async Task CreateRequest_PreservesMaximumLengthProfileName_WithinSnapshotColumn()
     {
+        var firstName = new string('A', 256);
+        var lastName = new string('B', 256);
+        var fullName = $"{firstName} {lastName}";
+        _userService.GetUserInfoAsync(_receiverId, Arg.Any<CancellationToken>())
+            .Returns(WrapInUserInfo(MakeUser(_receiverId, "Alice"),
+                UserFixtures.Profile(burnerName: "Alice", firstName: firstName, lastName: lastName)));
+        StubAttendee(TicketAttendeeStatus.Valid, _senderId);
+
+        var result = await _service.CreateRequestAsync(
+            new TicketTransferRequestDto(_attendeeId, _receiverId, "Going abroad"), _senderId,
+            Xunit.TestContext.Current.CancellationToken);
+
+        result.Transfer!.ReceiverLegalName.Should().Be(fullName);
+        await _transferRepo.Received(1).AddAsync(
+            Arg.Is<TicketTransferRequest>(r => r.ReceiverLegalName == fullName), Arg.Any<CancellationToken>());
+        await using var db = new TicketsDbContext(new DbContextOptionsBuilder<TicketsDbContext>()
+            .UseInMemoryDatabase(Guid.NewGuid().ToString()).Options);
+        var columnLength = db.Model.FindEntityType(typeof(TicketTransferRequest))!
+            .FindProperty(nameof(TicketTransferRequest.ReceiverLegalName))!.GetMaxLength();
+        columnLength.Should().NotBeNull();
+        fullName.Length.Should().BeLessThanOrEqualTo(columnLength!.Value);
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData("es", "es")]
+    [Xunit.InlineData("", "en")]
+    [Xunit.InlineData(" ", "en")]
+    [Xunit.InlineData("not a culture!", "en")]
+    [Xunit.InlineData("fr-FR", "en")]
+    public async Task CreateRequest_Persists_Audits_AndEmailsSenderAndTeam(string language, string expectedCulture)
+    {
+        var expectedSubject = Subject("Tickets_TicketTransfer_Email_Requested_Subject", expectedCulture);
         using var actorCulture = new CultureScope("fr");
         var sender = MakeUser(_senderId, "Bob");
         sender.PreferredLanguage = language;
@@ -524,16 +593,18 @@ public sealed class TicketTransferServiceTests
     }
 
     [HumansTheory]
-    [Xunit.InlineData("es", "de", "Transferencia de entrada completada", "Ticketübertragung abgeschlossen")]
-    [Xunit.InlineData("", "es", "Ticket transfer complete", "Transferencia de entrada completada")]
-    [Xunit.InlineData(" ", "de", "Ticket transfer complete", "Ticketübertragung abgeschlossen")]
-    [Xunit.InlineData("not a culture!", "fr-FR", "Ticket transfer complete", "Ticket transfer complete")]
-    [Xunit.InlineData("fr-FR", "", "Ticket transfer complete", "Ticket transfer complete")]
-    [Xunit.InlineData("es", " ", "Transferencia de entrada completada", "Ticket transfer complete")]
-    [Xunit.InlineData("es", "not a culture!", "Transferencia de entrada completada", "Ticket transfer complete")]
+    [Xunit.InlineData("es", "de", "es", "de")]
+    [Xunit.InlineData("", "es", "en", "es")]
+    [Xunit.InlineData(" ", "de", "en", "de")]
+    [Xunit.InlineData("not a culture!", "fr-FR", "en", "en")]
+    [Xunit.InlineData("fr-FR", "", "en", "en")]
+    [Xunit.InlineData("es", " ", "es", "en")]
+    [Xunit.InlineData("es", "not a culture!", "es", "en")]
     public async Task Approve_EmailsEachPartyInTheirOwnLanguage(
-        string senderLanguage, string receiverLanguage, string expectedSenderSubject, string expectedReceiverSubject)
+        string senderLanguage, string receiverLanguage, string expectedSenderCulture, string expectedReceiverCulture)
     {
+        var expectedSenderSubject = Subject("Tickets_TicketTransfer_Email_Completed_Subject", expectedSenderCulture);
+        var expectedReceiverSubject = Subject("Tickets_TicketTransfer_Email_Completed_Subject", expectedReceiverCulture);
         using var actorCulture = new CultureScope("fr");
         var sender = MakeUser(_senderId, "Bob");
         sender.PreferredLanguage = senderLanguage;
@@ -558,6 +629,9 @@ public sealed class TicketTransferServiceTests
                 && m.Subject == expectedReceiverSubject),
             Arg.Any<CancellationToken>());
     }
+
+    private static string Subject(string key, string culture) =>
+        new ResourceManager(typeof(TicketsResource)).GetString(key, CultureInfo.GetCultureInfo(culture))!;
 
     [HumansFact]
     public async Task Approve_ReceiverLookupFails_StillEmailsReceiverInEnglish()
@@ -653,6 +727,55 @@ public sealed class TicketTransferServiceTests
         await _emailService.Received(2).SendAsync(
             Arg.Is<EmailMessage>(m => m.TemplateName == "ticket_transfer_completed"),
             Arg.Any<CancellationToken>());
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task Reissue_PreservesFullReceiverName_WithinAttendeeColumn(bool retry)
+    {
+        var fullName = $"{new string('A', 256)} {new string('B', 256)}";
+        var request = new TicketTransferRequest
+        {
+            Id = Guid.NewGuid(),
+            OriginalTicketAttendeeId = _attendeeId,
+            SenderUserId = _senderId,
+            ReceiverUserId = _receiverId,
+            ReceiverLegalName = fullName,
+            ReceiverEmail = "alice@example.com",
+            SenderReason = "Going abroad",
+            RequestedAt = _now,
+        };
+        if (retry)
+        {
+            request.VendorResult = TicketTransferVendorResult.VoidSucceededIssueFailed;
+            request.VendorHoldId = "hold_123";
+        }
+        _transferRepo.GetByIdAsync(request.Id, Arg.Any<CancellationToken>()).Returns(request);
+        StubAttendee(retry ? TicketAttendeeStatus.Void : TicketAttendeeStatus.Valid, _senderId);
+        _vendor.VoidIssuedTicketAsync("tkt_original", true, Arg.Any<CancellationToken>())
+            .Returns(new VoidIssuedTicketResult("tkt_original", "hold_123"));
+        _vendor.IssueTicketAsync(Arg.Any<IssueTicketRequest>(), Arg.Any<CancellationToken>())
+            .Returns(new VendorTicketDto("tt_new", null, fullName, "alice@example.com", "Full Week", 0m, "valid"));
+        TicketAttendee? reissued = null;
+        _ticketRepo.When(r => r.UpsertAttendeesAsync(
+                Arg.Any<IReadOnlyList<TicketAttendee>>(), Arg.Any<CancellationToken>()))
+            .Do(call => reissued = call.ArgAt<IReadOnlyList<TicketAttendee>>(0)
+                .Single(a => string.Equals(a.VendorTicketId, "tt_new", StringComparison.Ordinal)));
+
+        var result = retry
+            ? await _service.RetryReissueAsync(request.Id, _adminId, null, Xunit.TestContext.Current.CancellationToken)
+            : await _service.ProcessTransferAsync(request.Id, _adminId, null, Xunit.TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeTrue();
+        reissued.Should().NotBeNull();
+        reissued!.AttendeeName.Should().Be(fullName);
+        await using var db = new TicketsDbContext(new DbContextOptionsBuilder<TicketsDbContext>()
+            .UseInMemoryDatabase(Guid.NewGuid().ToString()).Options);
+        var columnLength = db.Model.FindEntityType(typeof(TicketAttendee))!
+            .FindProperty(nameof(TicketAttendee.AttendeeName))!.GetMaxLength();
+        columnLength.Should().NotBeNull();
+        reissued.AttendeeName.Length.Should().BeLessThanOrEqualTo(columnLength!.Value);
     }
 
     [HumansFact]

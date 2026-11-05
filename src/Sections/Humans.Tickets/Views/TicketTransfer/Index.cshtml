@@ -11,7 +11,7 @@
         : Localizer["Tickets_TicketTransfer_NotTransferable"].Value;
 }
 
-<h1>@Localizer["Tickets_TicketTransfer_Title"]</h1>
+<page-header title="@(Localizer["Tickets_TicketTransfer_Title"].Value)" />
 
 
 @if (Model.Error is not null)
@@ -23,7 +23,7 @@
 {
     @if (held.Count == 0)
     {
-        <div class="alert alert-info">@Localizer["Tickets_TicketTransfer_NoTickets"]</div>
+        <empty-state>@Localizer["Tickets_TicketTransfer_NoTickets"]</empty-state>
         <a class="btn btn-outline-secondary" asp-controller="Home" asp-action="Index">@SharedLocalizer["Common_Back"]</a>
     }
     else
@@ -68,7 +68,7 @@
             }
             else
             {
-                <p class="text-muted">@Localizer["Tickets_TicketTransfer_NoneTransferable"]</p>
+                <empty-state>@Localizer["Tickets_TicketTransfer_NoneTransferable"]</empty-state>
                 <a class="btn btn-outline-secondary" asp-controller="Home" asp-action="Index">@SharedLocalizer["Common_Back"]</a>
             }
         </form>
@@ -78,7 +78,7 @@
     <h2 class="h5 mb-3">@Localizer["Tickets_TicketTransfer_YourRequests"]</h2>
     @if (Model.MyTransfers.Count == 0)
     {
-        <p class="text-muted">@Localizer["Tickets_TicketTransfer_NoRequests"]</p>
+        <empty-state>@Localizer["Tickets_TicketTransfer_NoRequests"]</empty-state>
     }
     else
     {

@@ -10,49 +10,42 @@
     };
 }
 
-<div class="table-responsive mb-4">
-    <table class="table table-sm align-middle">
-        <thead>
-            <tr>
-                <th>Date</th><th>Member</th><th>Report</th><th>Line</th><th class="text-end">Expected</th>
-                <th>Ledger entry</th><th>Status</th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach (var l in Model)
-            {
-                var (css, label) = LineBadge(l.Status);
-                <tr>
-                    <td class="text-nowrap">@l.DocumentDate.ToInvariantDate()</td>
-                    <td><vc:human user-id="@l.CreditorUserId" link="None" /></td>
-                    <td><a href="/Expenses/@l.ExpenseReportId">@l.ExpenseReportId.ToString()[..8]</a></td>
-                    <td>@(l.LineId is null ? "(whole report, legacy)" : l.Description)</td>
-                    <td class="text-end text-nowrap">@l.ExpectedAmount.ToEuro()</td>
-                    <td>
-                        @if (l.LedgerEntryNumber is { } entry)
-                        {
-                            <a asp-action="CreditorStatement" asp-route-accountNum="@l.LedgerAccountNum">@l.LedgerAccountNum</a>
-                            <span>#@entry</span>
-                            <div class="small text-muted">@l.LedgerDate?.ToInvariantDate()</div>
-                        }
-                        else
-                        {
-                            <span class="text-muted">—</span>
-                        }
-                    </td>
-                    <td>
-                        <span class="badge @css">@label</span>
-                        @if (l.Status is ExpenseReconLineStatus.Missing or ExpenseReconLineStatus.Pending)
-                        {
-                            <div class="small text-muted">push: @l.PushState</div>
-                        }
-                        @if (l.DuplicateEntryNumbers.Count > 0)
-                        {
-                            <div class="small">@l.DuplicateEntryNumbers.Count extra · @l.ExcessAmount.ToEuro()</div>
-                        }
-                    </td>
-                </tr>
-            }
-        </tbody>
-    </table>
-</div>
+@{
+    Func<ExpenseReconLine, IHtmlContent> memberCell = @<text><vc:human user-id="@item.CreditorUserId" link="None" /></text>;
+    Func<ExpenseReconLine, IHtmlContent> reportCell = @<text><a href="/Expenses/@item.ExpenseReportId">@item.ExpenseReportId.ToString()[..8]</a></text>;
+    Func<ExpenseReconLine, IHtmlContent> expectedCell = @<text>@item.ExpectedAmount.ToEuro()</text>;
+    Func<ExpenseReconLine, IHtmlContent> entryCell = @<text>
+        @if (item.LedgerEntryNumber is { } entry)
+        {
+            <a asp-action="CreditorStatement" asp-route-accountNum="@item.LedgerAccountNum">@item.LedgerAccountNum</a>
+            <span>#@entry</span>
+            <div class="small text-muted">@item.LedgerDate?.ToInvariantDate()</div>
+        }
+        else
+        {
+            <span class="text-muted">—</span>
+        }
+    </text>;
+    Func<ExpenseReconLine, IHtmlContent> statusCell = @<text>
+        <span class="badge @LineBadge(item.Status).Css">@LineBadge(item.Status).Label</span>
+        @if (item.Status is ExpenseReconLineStatus.Missing or ExpenseReconLineStatus.Pending)
+        {
+            <div class="small text-muted">push: @item.PushState</div>
+        }
+        @if (item.DuplicateEntryNumbers.Count > 0)
+        {
+            <div class="small">@item.DuplicateEntryNumbers.Count extra · @item.ExcessAmount.ToEuro()</div>
+        }
+    </text>;
+    var table = TableModel.For(Model)
+        .Column("Date", l => l.DocumentDate.ToInvariantDate(), o => o.Css("text-nowrap"))
+        .Template("Member", memberCell)
+        .Template("Report", reportCell)
+        .Column("Line", l => l.LineId is null ? "(whole report, legacy)" : l.Description)
+        .Template("Expected", expectedCell, o => o.End().Css("text-nowrap"), sortBy: l => l.ExpectedAmount)
+        .Template("Ledger entry", entryCell, sortBy: l => l.LedgerEntryNumber)
+        .Template("Status", statusCell, sortBy: l => l.Status)
+        .Css("align-middle")
+        .Build();
+}
+<div class="mb-4"><partial name="_Table" model="table" /></div>

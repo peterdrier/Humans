@@ -30,7 +30,7 @@ collision guard).
 
 ### SepaBankBooking (section-internal)
 
-Composed by `Service` using `IHoldedRepository`, `IHoldedClient`, `IClock`,
+Composed by `Service` using `IHoldedRepository`, `IHoldedClient`, `IHoldedWrite`, `IClock`,
 a singleton `TrackedCache<string, Dictionary<string, int>>` for sweep failure
 counts, `IAuditLogService` and `IOptions<SepaOptions>`. Owns the manual
 and scheduled bank-booking workflow: reads creditor bindings and payout rows,
@@ -48,11 +48,21 @@ orders' gross revenue for the runway). Injected by `FinanceController` only.
 ### FinanceOverviewService (Scoped, section-internal)
 
 No repository, no tables, no cache. Composes `/Finance` from the Holded ledger
-mirror (`GetLedgerSyncedAtAsync`, `GetAccountBalancesAsync`, `GetChartAsync`,
-`GetLedgerLinesAsync` for the 472/477/4751 tax accounts), this section's
-`ListCreditorAccountsAsync`, `GetExpenseReconAsync` and `GetActualsForYearAsync`,
-`IExpenseReportService.GetReviewQueueAsync`, `IBudgetService` and
-`CashFlowService`. Injected by `FinanceController` only.
+mirror through `IHoldedService` (`GetLedgerSyncedAtAsync`, `GetAccountBalancesAsync`, `GetChartAsync`,
+`GetLedgerLinesAsync` for the 472/477/4751 tax accounts), this section's own `IFinanceService`
+(`ListCreditorAccountsAsync`, `GetExpenseReconAsync` and `GetActualsForYearAsync`),
+`IExpenseReportService.GetReviewQueueAsync`, `IBudgetService`, `CashFlowService` and
+`IPleoService.GetWalletBalanceAsync` (the Pleo card). Injected by `FinanceController` only.
+
+### PleoBooking (Scoped, section-internal) · PleoBookingState, PleoBookingRunner (Singleton)
+
+No repository, no tables, no cache. Orchestrates Pleo → Holded: reads
+`IPleoService.GetSettledEntriesAsync` / `GetWalletBalanceAsync`, the 57200003
+and 57200001 lines, balances and chart through `IHoldedService`, re-pulls 57200003
+with `IHoldedService.SyncAccountLedgerAsync` before and after a run, and posts
+through `IHoldedWrite.PostJournalEntryAsync`. `PleoBookingState` holds the
+current/last run; `PleoBookingRunner` runs `BookAsync` in its own scope off the
+request. Injected by `FinanceController` only.
 
 ### CreditorMatchService (Scoped, section-internal)
 
@@ -76,7 +86,8 @@ mirror read surface — `holded` in the ctor; ledger-line /
 account-balance reads for creditor status, ledger, and account listing, and the purchase-document
 mirror for actuals, the unmatched queue and expense recon),
 `IHoldedClient` (Holded's `Contracts/` folder — purchase-document / contact / expense-account
-API calls, plus `PayPurchaseDocumentAsync` for SEPA booking), `IAuditLogService`
+API calls, plus `PayPurchaseDocumentAsync` for SEPA booking), `IHoldedWrite` (Holded's ensure-style write
+face: creditor contacts and purchase documents), `IAuditLogService`
 (one entry per SEPA credit transfer generated, and one per transfer booked), and
 `IUserService` / `IEmailService` (the payout-generated and
 payout-withdrawn notification to each creditor, through the section's `FinanceEmails` builder).

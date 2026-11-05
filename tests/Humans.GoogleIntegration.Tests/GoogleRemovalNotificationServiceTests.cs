@@ -11,6 +11,7 @@ namespace Humans.GoogleIntegration.Tests;
 
 public sealed class GoogleRemovalNotificationServiceTests
 {
+    private readonly InMemoryWorkspaceIdentityRepository _identities = new();
     private readonly IUserEmailService _userEmailService = Substitute.For<IUserEmailService>();
     private readonly IUserService _userService = Substitute.For<IUserService>();
     private readonly IEmailService _emailService = Substitute.For<IEmailService>();
@@ -22,7 +23,7 @@ public sealed class GoogleRemovalNotificationServiceTests
         _service = new GoogleRemovalNotificationService(
             _userEmailService,
             _userService,
-            WorkspaceIdentityFakes.ResolvingThrough(_userService),
+            WorkspaceIdentityFakes.ResolvingThrough(_userService, _identities),
             _emailService,
             _emailMessages,
             NullLogger<GoogleRemovalNotificationService>.Instance);
@@ -56,8 +57,8 @@ public sealed class GoogleRemovalNotificationServiceTests
             userId,
             "Alice",
             "en",
-            ("old@nobodies.team", verified: true, isGoogle: false),
-            ("new@nobodies.team", verified: true, isGoogle: true));
+            ("old@nobodies.team", verified: true, designated: false),
+            ("new@nobodies.team", verified: true, designated: true));
 
         _userEmailService.FindByAddressAsync("old@nobodies.team", false, true, Arg.Any<CancellationToken>())
             .Returns([UserEmailFixtures.Row(userId, "old@nobodies.team")]);
@@ -102,8 +103,8 @@ public sealed class GoogleRemovalNotificationServiceTests
             userId,
             "Alice",
             language,
-            ("old@nobodies.team", verified: true, isGoogle: false),
-            ("new@nobodies.team", verified: true, isGoogle: true));
+            ("old@nobodies.team", verified: true, designated: false),
+            ("new@nobodies.team", verified: true, designated: true));
         _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
             .Returns(user.ToUserInfo(user.UserEmails.ToList()));
 
@@ -150,7 +151,7 @@ public sealed class GoogleRemovalNotificationServiceTests
             userId,
             "Bob",
             language,
-            ("primary@nobodies.team", verified: true, isGoogle: true));
+            ("primary@nobodies.team", verified: true, designated: true));
 
         _userEmailService.FindByAddressAsync("primary@nobodies.team", false, true, Arg.Any<CancellationToken>())
             .Returns([UserEmailFixtures.Row(userId, "primary@nobodies.team")]);
@@ -194,7 +195,7 @@ public sealed class GoogleRemovalNotificationServiceTests
             userId,
             "Carol",
             language,
-            ("only@nobodies.team", verified: true, isGoogle: true));
+            ("only@nobodies.team", verified: true, designated: true));
 
         _userEmailService.FindByAddressAsync("only@nobodies.team", false, true, Arg.Any<CancellationToken>())
             .Returns([UserEmailFixtures.Row(userId, "only@nobodies.team")]);
@@ -230,7 +231,7 @@ public sealed class GoogleRemovalNotificationServiceTests
             userId,
             "Dee",
             "en",
-            ("dee@nobodies.team", verified: true, isGoogle: true));
+            ("dee@nobodies.team", verified: true, designated: true));
 
         _userEmailService.FindByAddressAsync("dee@nobodies.team", false, true, Arg.Any<CancellationToken>())
             .Returns([UserEmailFixtures.Row(userId, "dee@nobodies.team")]);
@@ -270,11 +271,11 @@ public sealed class GoogleRemovalNotificationServiceTests
             .FindByAddressAsync(null!, false, false, Arg.Any<CancellationToken>());
     }
 
-    private static User BuildUserWithEmails(
+    private User BuildUserWithEmails(
         Guid userId,
         string displayName,
         string preferredLanguage,
-        params (string Email, bool verified, bool isGoogle)[] emails)
+        params (string Email, bool verified, bool designated)[] emails)
     {
         var user = new User
         {
@@ -286,7 +287,7 @@ public sealed class GoogleRemovalNotificationServiceTests
             PreferredLanguage = preferredLanguage
         };
 
-        foreach (var (email, verified, isGoogle) in emails)
+        foreach (var (email, verified, _) in emails)
         {
             user.UserEmails.Add(new UserEmail
             {
@@ -294,10 +295,16 @@ public sealed class GoogleRemovalNotificationServiceTests
                 UserId = userId,
                 Email = email,
                 IsVerified = verified,
-                IsGoogle = isGoogle
             });
         }
 
+        if (emails.FirstOrDefault(e => e.designated) is { Email: not null } designation)
+            _identities.Rows[userId] = new Humans.GoogleIntegration.Domain.WorkspaceIdentityRecord
+            {
+                UserId = userId,
+                Email = designation.Email,
+                Status = GoogleEmailStatus.Unknown,
+            };
         return user;
     }
 }

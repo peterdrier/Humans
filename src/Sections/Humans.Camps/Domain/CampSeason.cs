@@ -14,8 +14,8 @@ internal sealed class CampSeason
     public int Year { get; init; }
 
     /// <summary>
-    /// Settings' event row this season belongs to, stamped on creation. Null only on seasons older than the column,
-    /// until the <c>camps.event-ids</c> data migration assigns them.
+    /// Settings' event row this season belongs to, stamped on creation. Unassigned legacy seasons retain null;
+    /// their year does not confer event ownership.
     /// </summary>
     public Guid? EventSettingsId { get; set; }
     public string Name { get; set; } = string.Empty;

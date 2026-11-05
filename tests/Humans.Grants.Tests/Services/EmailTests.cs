@@ -9,17 +9,18 @@ namespace Humans.Grants.Tests.Services;
 public sealed class EmailTests
 {
     [HumansTheory]
-    [Xunit.InlineData("en", "You have a grant")]
-    [Xunit.InlineData("es", "Tienes una concesión")]
-    [Xunit.InlineData("ca", "Tens una concessió")]
-    public void Issued_RendersInRecipientCulture_WithExpiryAndLink(string culture, string subjectStart)
+    [Xunit.MemberData(nameof(SupportedCultures.All), MemberType = typeof(SupportedCultures))]
+    public void Issued_RendersInRecipientCulture_WithExpiryAndLink(string culture)
     {
+        var recipientCulture = System.Globalization.CultureInfo.GetCultureInfo(culture);
+        var subject = string.Format(recipientCulture, new System.Resources.ResourceManager(typeof(GrantsResource))
+            .GetString("Grants_Email_Issued_Subject", recipientCulture)!, "Build crew 2027");
         var message = TestGrantsEmails.CreateReal().Notice(new GrantNoticeRequest(
             Guid.NewGuid(),
             "a@example.org", "Ana", GrantNoticeKind.Issued, "Build crew 2027", "a <cheap> ticket",
             new LocalDate(2027, 5, 1), GrantService.ProfileUrl, Culture: culture));
 
-        message.Subject.Should().StartWith(subjectStart).And.EndWith("Build crew 2027");
+        message.Subject.Should().Be(subject);
         message.HtmlBody.Should().Contain("a &lt;cheap&gt; ticket")
             .And.Contain($"{TestGrantsEmails.BaseUrl}/Profile/Me")
             .And.Contain("2027");

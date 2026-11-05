@@ -29,6 +29,8 @@ internal sealed partial class PreapprovalService(
     IClock clock,
     ILogger<PreapprovalService> logger) : IPreapprovalManagement
 {
+    private readonly PreapprovalNotices notices = new(users, notifications, notificationResolve, email, emailFactory, logger);
+
     private static readonly DateTimeZone MadridZone = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
 
     internal const string ReminderJobName = "PreapprovalRemindersJob";
@@ -114,7 +116,7 @@ internal sealed partial class PreapprovalService(
             await AuditGrantAsync(PreapprovalsAuditActions.PreapprovalGrantClaimed, grant,
                 $"Claimed by expense report {expenseReportId}: cap {Euros(grant.MaxAmount)}, account {grant.Program.HoldedAccountNumber}.",
                 actorUserId, expenseReportId);
-            await ResolveFileByAsync(grant.Id, actorUserId, completionToken);
+            await notices.ResolveFileByAsync(grant.Id, actorUserId, completionToken);
         }, ct, afterCommit);
         return new(Stamp: Stamp(grant));
     }
@@ -133,7 +135,7 @@ internal sealed partial class PreapprovalService(
             await AuditGrantAsync(PreapprovalsAuditActions.PreapprovalGrantReleased, grant,
                 $"Released by withdrawal of expense report {expenseReportId}; open again until {grant.Program.ClaimBy.ToInvariantDate()}.",
                 actorUserId, expenseReportId);
-            await NotifyFileByAsync(ToInfo(grant), "Preapprovals_Notice_Released", NotificationPriority.Normal, completionToken);
+            await notices.NotifyFileByAsync(ToInfo(grant), "Preapprovals_Notice_Released", NotificationPriority.Normal, completionToken);
         }, ct, afterCommit);
         return new();
     }
@@ -224,4 +226,18 @@ internal sealed partial class PreapprovalService(
         : null;
 
     private static string Euros(decimal amount) => amount.ToString("N2", CultureInfo.InvariantCulture) + " €";
+    private Task AuditGrantAsync(
+        AuditActionDefinition action, Domain.PreapprovalGrant grant, string description, Guid actorUserId,
+        Guid? expenseReportId = null) =>
+        auditLog.LogAsync(action, AuditEntityTypes.Grant, grant.Id, description, actorUserId,
+            relatedEntityId: expenseReportId ?? grant.ProgramId,
+            relatedEntityType: expenseReportId is null ? AuditEntityTypes.Program : AuditEntityTypes.ExpenseReport);
+
+    private Task AuditProgramAsync(
+        AuditActionDefinition action, Domain.PreapprovalProgram program, string description, Guid actorUserId,
+        Guid? relatedUserId = null) =>
+        auditLog.LogAsync(action, AuditEntityTypes.Program, program.Id, description, actorUserId,
+            relatedEntityId: relatedUserId,
+            relatedEntityType: relatedUserId is null ? null : AuditSubjectTypes.User);
+
 }

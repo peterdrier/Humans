@@ -22,7 +22,7 @@
     <span>@Model.Name</span>
 }
 
-<h1 class="mb-4">@Model.Name</h1>
+<page-header title="@Model.Name" />
 
 
 <div class="alert alert-warning d-flex align-items-center" role="alert">
@@ -369,15 +369,3 @@
         </a>
     }
 </div>
-
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    document.querySelectorAll('[data-confirm]').forEach(function(btn) {
-        btn.addEventListener('click', function(e) {
-            if (!confirm(this.getAttribute('data-confirm'))) {
-                e.preventDefault();
-            }
-        });
-    });
-});
-</script>

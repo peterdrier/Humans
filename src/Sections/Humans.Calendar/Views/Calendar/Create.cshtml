@@ -4,9 +4,9 @@
 }
 
 <div class="container py-4">
-    <h1 class="h3 mb-3">@Localizer["Calendar_NewEvent"]</h1>
+    <page-header title="@(Localizer["Calendar_NewEvent"].Value)" />
 
-    <div class="card" style="max-width: 720px;">
+    <div class="card mw-720">
         <div class="card-body">
             <form method="post" asp-action="Create">
                 @Html.AntiForgeryToken()

@@ -43,7 +43,6 @@
   <data name="Shifts_SignedUp" xml:space="preserve">
     <value>Aangemeld</value>
   </data>
-  <data name="Shifts_BreadcrumbNavigation" xml:space="preserve"><value>Kruimelpad</value></data>
   <data name="Shifts_Pending" xml:space="preserve">
     <value>(in afwachting)</value>
   </data>
@@ -1294,4 +1293,5 @@
   <data name="Shifts_Notification_ChangeApprovedRange" xml:space="preserve"><value>Reeks goedgekeurd ({1} diensten) voor '{0}'.</value></data>
   <data name="Shifts_Notification_ChangeRefusedRange" xml:space="preserve"><value>Reeks geweigerd ({1} diensten) voor '{0}'.</value></data>
   <data name="Shifts_Notification_ChangeBailedRange" xml:space="preserve"><value>Afgemeld voor een reeks diensten van '{0}' ({1} diensten).</value></data>
+  <data name="Shifts_TagPreferencesInvalid" xml:space="preserve"><value>Sommige geselecteerde tags zijn niet meer beschikbaar. Controleer je selectie en probeer het opnieuw.</value></data>
 </root>

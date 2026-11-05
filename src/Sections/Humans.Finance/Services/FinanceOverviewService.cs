@@ -5,19 +5,21 @@ using Humans.Expenses.Contracts;
 using Humans.Finance.Contracts;
 using Humans.Finance.Models;
 using Humans.Holded.Contracts;
+using Humans.Pleo.Contracts;
 using NodaTime;
 
 namespace Humans.Finance.Services;
 
 /// <summary>/Finance's figures, composed from the pages that own each one: balances from the Holded ledger mirror,
-/// creditors and recon from this section, the review queue from Expenses, plan and actuals from Budget and Cash flow.
-/// Owns no tables.</summary>
+/// creditors and recon from this section, the review queue from Expenses, plan and actuals from Budget and Cash flow,
+/// the Pleo wallet from Pleo. Owns no tables.</summary>
 internal sealed class FinanceOverviewService(
     IHoldedService holded,
     IFinanceService finance,
     IExpenseReportService expenseReports,
     IBudgetService budget,
     CashFlowService cashFlow,
+    IPleoService pleo,
     IClock clock) : IApplicationService
 {
     private static readonly DateTimeZone Madrid = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
@@ -28,9 +30,11 @@ internal sealed class FinanceOverviewService(
 
         var syncedAt = await holded.GetLedgerSyncedAtAsync(ct);
         FinanceLedgerCardsVm? ledger = null;
+        decimal? pleoInHolded = null;
         if (syncedAt is not null)
         {
             var balances = await holded.GetAccountBalancesAsync(ct);
+            pleoInHolded = balances.GetValueOrDefault(PleoBooking.PleoTreasury);
             var chart = await holded.GetChartAsync(ct);
             var filings = await TaxFilingsAsync(chart, today, ct);
             ledger = BuildLedgerCards(chart, balances, filings);
@@ -61,7 +65,8 @@ internal sealed class FinanceOverviewService(
             BuildWork(queue, creditors, recon) with { CreditorsUnavailable = creditorsUnavailable },
             budgetVm,
             runway,
-            income);
+            income,
+            new FinancePleoVm((await pleo.GetWalletBalanceAsync(ct))?.CurrentEur, pleoInHolded));
     }
 
     private static bool Under(int accountNum, string prefix) =>
@@ -194,8 +199,7 @@ internal sealed class FinanceOverviewService(
             taxesOwed);
     }
 
-    /// <summary>Ready to pay mirrors the Creditors page's payability, less the IBAN check the payout itself
-    /// reports.</summary>
+    /// <summary>Ready to pay uses the same service-derived eligibility as the Creditors page and payout planning.</summary>
     internal static FinanceWorkVm BuildWork(
         IReadOnlyList<ExpenseReportDto> queue,
         IReadOnlyList<CreditorAccountRow> creditors,
@@ -204,8 +208,7 @@ internal sealed class FinanceOverviewService(
         var submitted = queue.Where(r => r.Status == ExpenseReportStatus.Submitted).ToList();
         var endorsed = queue.Where(r => r.Status == ExpenseReportStatus.CoordinatorEndorsed).ToList();
         var ready = creditors
-            .Where(r => r.Bindings.Count == 1 && r.OwedToMember > 0m
-                && r.PendingPayoutFileName is null && r.HasDuplicateDocuments == false)
+            .Where(r => r.NotPayableReason is null)
             .ToList();
         var duplicates = creditors.Count(r => r.HasDuplicateDocuments == true);
         int? reconProblems = recon.IsAvailable ? recon.Totals.Problems : null;

@@ -85,7 +85,7 @@ Repositories: `IAssemblyVoteRepository`, plus the section's `IApplicationReposit
 
 No cache, no caching decorator — one vote at a time and ~120 voters.
 
-Cross-section calls via `IUserService`, `IUserEmailService`,
+Cross-section calls via `IUserService`,
 `IRoleAssignmentService`, `ITeamService`, `IEmailService`,
 the section's own `GovernanceEmails` builder, `INotificationEmitter`,
 `INotificationAutoResolve`, `IAuditLogService`, `IGoogleTranslationService`,
@@ -167,3 +167,17 @@ for `/Email/EmailPreview`. No DB access, no cache.
 ---
 
 
+
+### ApplicationReader (internal, owned by ApplicationDecisionService)
+
+Repository: `IApplicationRepository`. Reads application member/admin/Board views,
+pending snapshots and summary counts; enriches through the existing Users and Auth
+role-assignment contracts. Owns shared vote/history projection. No writes, cache
+or separate DI registration; badge caching remains in the decision service.
+
+### AssemblyVoteDrafts (internal, owned by AssemblyVoteService)
+
+Repository: `IAssemblyVoteRepository`. Owns draft authoring and its existing
+state/revision guards; uses the existing translation contract, clock and logger.
+Shares bounded-text and safe-URL policy with the service. No legal-vote transitions,
+cache or separate DI registration.

@@ -3,6 +3,7 @@ const { test } = require('node:test');
 const { readFileSync } = require('node:fs');
 const { resolve } = require('node:path');
 const vm = require('node:vm');
+const { installHumans } = require('../../browser-support/humans-js.cjs');
 
 const source = readFileSync(resolve(__dirname, '../../../src/Sections/Humans.Rideshare/wwwroot/js/rideshare/board.js'), 'utf8');
 
@@ -38,6 +39,7 @@ for (const mode of ['success', 'missing-library', 'map-failure', 'map-never-load
             console: { error() {} },
         };
         if (mode === 'missing-library') delete context.maplibregl;
+        installHumans(context);
         vm.runInNewContext(source, context);
         await new Promise(resolve => setImmediate(resolve));
         assert.equal(typeof handlers['.js-interest-btn'], 'function');
@@ -56,7 +58,7 @@ for (const mode of ['success', 'missing-library', 'map-failure', 'map-never-load
 for (const [name, expected] of [['😀 Driver', '😀'], ['e\u0301 Rider', 'E\u0301'], ['👩‍👩‍👧‍👦 Family', '👩‍👩‍👧‍👦'], ['', '?']]) {
     test(`popup avatar preserves the first grapheme of ${JSON.stringify(name)}`, () => {
         const context = { document: { querySelectorAll: () => [], getElementById: () => null } };
-        vm.createContext(context); vm.runInContext(source, context);
+        installHumans(context); vm.createContext(context); vm.runInContext(source, context);
         const html = context.personHtml(name, null, 'Driver');
         assert.ok(html.includes(`>${expected}</span>`), html);
     });
@@ -64,7 +66,7 @@ for (const [name, expected] of [['😀 Driver', '😀'], ['e\u0301 Rider', 'E\u0
 
 test('popups render escaped server-localized dates instead of machine dates', () => {
     const context = { document: { querySelectorAll: () => [], getElementById: () => null } };
-    vm.createContext(context); vm.runInContext(source, context);
+    installHumans(context); vm.createContext(context); vm.runInContext(source, context);
     const offer = context.tripPopupHtml({
         departureDate: '2026-07-03', departureDateLabel: 'ven. 3 juil. <local>',
     }, key => key);

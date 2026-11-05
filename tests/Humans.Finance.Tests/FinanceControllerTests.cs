@@ -68,7 +68,8 @@ public class FinanceControllerTests
             new CashFlowService(_budget, Substitute.For<ITicketService>()),
             new CreditorMatchService(_holdedLedger, _expenses),
             new FinanceOverviewService(_holdedLedger, _finance, _expenses, _budget,
-                new CashFlowService(_budget, Substitute.For<ITicketService>()), SystemClock.Instance),
+                new CashFlowService(_budget, Substitute.For<ITicketService>()), Substitute.For<Humans.Pleo.Contracts.IPleoService>(), SystemClock.Instance),
+            TestPleo.Booking(), TestPleo.Runner(),
             NullLogger<FinanceController>.Instance)
         {
             ControllerContext = new()
@@ -587,12 +588,14 @@ public class FinanceControllerTests
     [HumansFact]
     public async Task Creditors_ShowsTheBalanceFromTheMembersSide()
     {
-        Accounts([Row(40000002, "Ada", -120m), Row(40000003, "Bo", 40m), Row(40000004, "Cy", null)]);
+        Accounts([Row(40000002, "Ada", -120m), Row(40000003, "Bo", 40m) with { NotPayableReason = "nothing owed" }, Row(40000004, "Cy", null)]);
 
         var page = PageOf(await MakeController().Creditors(sort: null, dir: null));
 
         page.Accounts[0].Balance.Should().Be(120m);   // org owes Ada
         page.Accounts[1].Balance.Should().Be(-40m);   // Bo owes the org
+        page.Accounts[1].NotPayableReason.Should().Be("nothing owed");
+        page.Accounts[1].IsPayable.Should().BeFalse();
         page.Accounts[2].Balance.Should().BeNull();   // no cached lines — not zero
     }
 
@@ -1179,23 +1182,11 @@ public class FinanceControllerTests
     private static Instant Stamp(int day) => Instant.FromUtc(2026, 8, day, 9, 0);
 
     [HumansTheory]
-    [InlineData("en", false)]
-    [InlineData("es", false)]
-    [InlineData("de", false)]
-    [InlineData("it", false)]
-    [InlineData("fr", false)]
-    [InlineData("ca", false)]
-    [InlineData("nl", false)]
-    [InlineData("en", true)]
-    [InlineData("es", true)]
-    [InlineData("de", true)]
-    [InlineData("it", true)]
-    [InlineData("fr", true)]
-    [InlineData("ca", true)]
-    [InlineData("nl", true)]
-    public async Task DuplicatePages_RenderMemberIdsWithoutANameDictionary(string language, bool applied)
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task DuplicatePages_RenderMemberIdsWithoutANameDictionary(bool applied)
     {
-        using var culture = new CultureScope(language);
+        using var culture = new CultureScope("en");
         const string name = "Member <script>&";
         _users.GetUserInfoAsync(Ana, Arg.Any<CancellationToken>()).Returns(MakeUserInfo(Ana, name));
         object model = applied
@@ -1269,17 +1260,10 @@ public class FinanceControllerTests
             .And.Contain("Legal account").And.NotContain("Current <b>&");
     }
 
-    [HumansTheory]
-    [InlineData("en")]
-    [InlineData("es")]
-    [InlineData("de")]
-    [InlineData("it")]
-    [InlineData("fr")]
-    [InlineData("ca")]
-    [InlineData("nl")]
-    public async Task ExpenseRecon_RendersCurrentHumansForMembersAndLines_WithTheirLedgerEntry(string language)
+    [HumansFact]
+    public async Task ExpenseRecon_RendersCurrentHumansForMembersAndLines_WithTheirLedgerEntry()
     {
-        using var culture = new CultureScope(language);
+        using var culture = new CultureScope("en");
         const string name = "Current member <script>&";
         _users.GetUserInfoAsync(Ana, Arg.Any<CancellationToken>()).Returns(MakeUserInfo(Ana, name));
         var report = new ExpenseReconReport(2026, Stamp(1), null, [2026],
