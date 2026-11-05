@@ -256,7 +256,7 @@ Draft ──open (Admin)──▶ Open ──ClosesAt reached / Stop (Admin)─�
 
 ## Routing
 
-All member-facing routes are localized (six cultures). Admin routes are exempt.
+All member-facing routes are localized (all supported cultures). Admin routes are exempt.
 
 | Route | Policy | Purpose |
 |---|---|---|
@@ -334,7 +334,7 @@ Board members are de facto Asociados: they are on the official roster whether or
 
 ## Cross-section dependencies
 
-- **Users:** `IUserService` for names, preferred language, active state; `IUserEmailService` for the notification address.
+- **Users:** `IUserService` for names, preferred language, active state and the notification address.
 - **Auth:** `IRoleAssignmentService.GetActiveUserIdsInRoleAsync(RoleNames.Board)` for the Board members on the official roster (already a Governance dependency).
 - **Teams:** `ITeamService` for the Volunteers team membership (`AllMembers` indicative audience).
 - **Email:** `IEmailService.SendAsync` + `GovernanceEmails` messages (opened, reminder, cancelled).
@@ -369,7 +369,7 @@ Anything not listed is the implementer's call within this spec.
 
 - `memory/architecture/governance-scope.md` is updated in this PR to add assembly votes to Governance's scope.
 - Update `Docs/Governance.md` (Concepts, Data Model, Routing, Actors, Invariants, Triggers) and `Docs/data-access.md`, `Docs/authorization.md` in the implementation commit.
-- Six-culture resx for every member-facing string; admin pages exempt.
+- Resx in every supported culture for every member-facing string; admin pages exempt.
 - One migration on `GovernanceDbContext`.
 - Tests under `tests/Humans.Governance.Tests`: roster snapshot, embargo (no content on any Open read), peek audits, ballot change bumps revision and appends history, official/indicative separation, YesNo verdicts (tie, TwoThirds boundary), IRV rounds incl. exhausted ballots and both tie-break steps, lapse closes without the job, no reopen, erasure tombstone keeps the stored result.
 

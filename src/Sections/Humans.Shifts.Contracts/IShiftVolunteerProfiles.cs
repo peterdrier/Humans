@@ -12,8 +12,8 @@ public interface IShiftVolunteerProfiles
     /// <summary>Case-insensitive contains on name.</summary>
     Task<IReadOnlyList<ShiftTagSummary>> GetTagsAsync(string? query = null, CancellationToken ct = default);
 
-    /// <summary>Replaces any existing ones.</summary>
-    Task SetVolunteerTagPreferencesAsync(Guid userId, IReadOnlyList<Guid> tagIds);
+    /// <summary>Replaces existing preferences; false when any requested tag does not exist, leaving them unchanged.</summary>
+    Task<bool> SetVolunteerTagPreferencesAsync(Guid userId, IReadOnlyList<Guid> tagIds);
 }
 
 public record ShiftTagSummary(Guid Id, string Name);

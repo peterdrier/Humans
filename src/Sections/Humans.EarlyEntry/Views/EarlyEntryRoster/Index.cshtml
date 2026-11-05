@@ -2,10 +2,13 @@
 @{
     ViewData["Title"] = "Early Entry Roster";
 }
-<h1>Early Entry Roster</h1>
-<p class="text-muted">Everyone granted early entry, from camps, build shifts and teams. Rows flagged
-    <span class="badge bg-warning text-dark">multiple</span> hold EE from more than one source —
-    one slot is redundant and can be reallocated.</p>
+<page-header title="Early Entry Roster">
+    <page-header-subtitle>
+        Everyone granted early entry, from camps, build shifts and teams. Rows flagged
+        <span class="badge bg-warning text-dark">multiple</span> hold EE from more than one source —
+        one slot is redundant and can be reallocated.
+    </page-header-subtitle>
+</page-header>
 
 @if (Model.Rows.Count == 0)
 {

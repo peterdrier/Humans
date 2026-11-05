@@ -3,15 +3,15 @@
     ViewData["Title"] = "Holded purchase documents";
 }
 
-<h1 class="mb-3">Holded purchase documents</h1>
-
-<p class="text-muted">
-    Every purchase document Holded lists, as of the last sync
-    (@(Model.LastSyncAt is { } at ? at.ToDateTime() : "never")). Notes are read one document at a time, up to
-    50 a sync, newest first; "—" means not read yet. Which budget category a document counts toward is
-    Finance's call, shown on the budget year and the
-    <a asp-controller="Finance" asp-action="HoldedUnmatched">unmatched documents</a> page.
-</p>
+<page-header title="Holded purchase documents">
+    <page-header-subtitle>
+        Every purchase document Holded lists, as of the last sync
+        (@(Model.LastSyncAt is { } at ? at.ToDateTime() : "never")). Notes are read one document at a time, up to
+        50 a sync, newest first; "—" means not read yet. Which budget category a document counts toward is
+        Finance's call, shown on the budget year and the
+        <a asp-controller="Finance" asp-action="HoldedUnmatched">unmatched documents</a> page.
+    </page-header-subtitle>
+</page-header>
 
 @if (Model.Docs.Count == 0)
 {
@@ -20,49 +20,49 @@
 else
 {
     <div class="card">
-        <div class="table-responsive">
-            <table class="table table-sm table-striped align-middle mb-0">
-                <thead>
-                    <tr>
-                        <th>Date</th><th>Doc #</th><th>Contact</th><th class="text-end">Total</th>
-                        <th>Approved</th><th>Booked account</th><th>Tags</th><th>Notes</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach (var d in Model.Docs)
-                    {
-                        <tr>
-                            <td class="text-nowrap">@d.Date.ToDate()</td>
-                            <td class="text-nowrap">
-                                <a href="@d.HoldedUrl" target="_blank" rel="noopener noreferrer" title="Open in Holded">
-                                    @(string.IsNullOrWhiteSpace(d.DocNumber) ? d.Id : d.DocNumber)<i class="fa-solid fa-arrow-up-right-from-square ms-1 small"></i>
-                                </a>
-                            </td>
-                            <td>
-                                @d.ContactName
-                                @if (d.Description is not null)
-                                {
-                                    <div class="small text-muted">@d.Description</div>
-                                }
-                            </td>
-                            <td class="text-end">@d.Total.ToEuro()</td>
-                            <td>
-                                @if (d.IsApproved)
-                                {
-                                    <i class="fa-solid fa-check text-success" title="Approved in Holded"></i>
-                                }
-                                else
-                                {
-                                    <span class="text-muted" title="Still a draft in Holded">—</span>
-                                }
-                            </td>
-                            <td class="small"><code>@(d.BookedAccountId ?? "—")</code></td>
-                            <td class="small">@string.Join(", ", d.Tags)</td>
-                            <td class="small text-muted">@(d.Notes ?? "—")</td>
-                        </tr>
-                    }
-                </tbody>
-            </table>
-        </div>
+        @{
+            Func<HoldedPurchaseDocInfo, IHtmlContent> docCell0 = @<text>@item.Date.ToDate()</text>;
+            Func<HoldedPurchaseDocInfo, IHtmlContent> docCell1 = @<text>
+                <a href="@item.HoldedUrl" target="_blank" rel="noopener noreferrer" title="Open in Holded">
+                    @(string.IsNullOrWhiteSpace(item.DocNumber) ? item.Id : item.DocNumber)<i class="fa-solid fa-arrow-up-right-from-square ms-1 small"></i>
+                </a>
+
+            </text>;
+            Func<HoldedPurchaseDocInfo, IHtmlContent> docCell2 = @<text>
+                @item.ContactName
+                @if (item.Description is not null)
+                {
+                    <div class="small text-muted">@item.Description</div>
+                }
+
+            </text>;
+            Func<HoldedPurchaseDocInfo, IHtmlContent> docCell3 = @<text>@item.Total.ToEuro()</text>;
+            Func<HoldedPurchaseDocInfo, IHtmlContent> docCell4 = @<text>
+                @if (item.IsApproved)
+                {
+                    <i class="fa-solid fa-check text-success" title="Approved in Holded"></i>
+                }
+                else
+                {
+                    <span class="text-muted" title="Still a draft in Holded">—</span>
+                }
+
+            </text>;
+            Func<HoldedPurchaseDocInfo, IHtmlContent> docCell5 = @<text><code>@(item.BookedAccountId ?? "—")</code></text>;
+            Func<HoldedPurchaseDocInfo, IHtmlContent> docCell6 = @<text>@string.Join(", ", item.Tags)</text>;
+            Func<HoldedPurchaseDocInfo, IHtmlContent> docCell7 = @<text>@(item.Notes ?? "—")</text>;
+            var docsTable = TableModel.For(Model.Docs)
+                .Template("Date", docCell0, o => o.Css("text-nowrap"), sortBy: d => d.Date)
+                .Template("Doc #", docCell1, o => o.Css("text-nowrap"), sortBy: d => d.DocNumber)
+                .Template("Contact", docCell2, sortBy: d => d.ContactName)
+                .Template("Total", docCell3, o => o.End(), sortBy: d => d.Total)
+                .Template("Approved", docCell4, sortBy: d => d.IsApproved ? 1 : 0)
+                .Template("Booked account", docCell5, o => o.Css("small"))
+                .Template("Tags", docCell6, o => o.Css("small"))
+                .Template("Notes", docCell7, o => o.Css("small text-muted"))
+                .Css("align-middle")
+                .Build();
+        }
+        <partial name="_Table" model="docsTable" />
     </div>
 }

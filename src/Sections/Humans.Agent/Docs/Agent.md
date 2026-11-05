@@ -62,7 +62,7 @@ Single-row table (PK `Id = 1`, enforced by `ck_agent_settings_singleton`) holdin
 
 Per-user message and token counters live in the Singleton `IAgentRateLimitStore`. Phase 1 has no persisted `agent_rate_limits` table — counters reset whenever the process restarts. Phase 2 revisits persistence if abuse traffic warrants it. Turns for the same user are serialized within the process, across request scopes: each waits before reading current settings, conversation history and quotas, and releases only after normal or failed/disconnected-turn usage is recorded. Waiting honours request cancellation and times out after five minutes; cancellation while waiting writes nothing. Different users can stream independently.
 
-The member history page uses localized labels, including the link to each transcript, in all six supported cultures.
+The member history page uses localized labels, including the link to each transcript, in all supported cultures.
 
 ## Actors & Roles
 
@@ -97,7 +97,7 @@ Conversation list and transcript GETs propagate request cancellation through vie
    <!-- wheat: docs/superpowers/specs/2026-07-30-faq-proposals-production.md §How this run differed -->
    `RefusalReason` is written only for `rate_limited`, abuse-flag and `error` turns. An answer that fails to help ("I don't know") is an ordinary assistant message, so refusal counts are not a knowledge-gap signal; KB triage reads transcripts.
    Refusal and silent-turn replies come from Agent resources in the member/conversation locale
-   (all six supported cultures, English fallback). Stored handoff text reuses the widget’s
+   (all supported cultures, English fallback). Stored handoff text reuses the widget’s
    `Agent_IssueProposed` key so the live reply and transcript cannot drift.
    The issue widget displays localized server upload refusals from JSON error responses, falling back to its localized validation message for other response shapes.
    The widget’s browser error/status messages and Close label are localized too; its
@@ -113,7 +113,7 @@ Conversation list and transcript GETs propagate request cancellation through vie
 7. **Append-only conversations per user.** A user can only post to conversations they own. `AgentService.AskAsync` checks ownership before anything else, and `AgentController.Ask` answers a foreign conversation id with 403 before the stream opens. Reading someone else's transcript at `/Agent/Conversation/{id}` stays 404, so a read never confirms the id exists.
 8. **Issue handoff is propose-only.** `route_to_issue` carries `{title, category, description}`. The dispatcher never writes a row server-side; the SSE stream emits an `issueProposal` token and the client opens the Issues submission modal pre-filled. The user reviews and submits via `POST /Issues`.
    Unrecognized categories, including undefined numeric enum values, fall back to Question.
-<!-- route_to_issue is propose-only; do not revert to server-side auto-creation of FeedbackReport rows. -->
+<!-- route_to_issue is propose-only; do not revert to server-side auto-creation of Issue rows. -->
 9. **Retention.** Conversations older than `AgentSettings.RetentionDays` are hard-deleted daily.
 10. **Single provider.** One `AnthropicClient` instance, one configured model at a time. No multi-provider fallback in Phase 1. Spend estimates use each message’s recorded model: the Claude 5 family, Haiku 4.5 and Opus 4.5–4.8 use their published rates, while legacy Opus 4/4.1 retain their higher rates. Unknown models use the Sonnet fallback. Cache writes join fresh input in stored totals and daily-token accounting, including interrupted turns; stream finalizers retain the provider’s separate counters. A provider stream that reaches EOF without its terminal event emits an error finalizer with its known input, output and cache usage rather than falling through to zero-usage accounting. Completed streams emit only one finalizer. The adapter also supplies internal, non-serialized usage snapshots at message start and cumulative usage updates. Input-token updates replace the initial count when supplied; later deltas that omit it retain the last reported count, including in EOF error finalizers; the turn accumulates only changes within each provider request. Cancellation or disposal before a terminal frame therefore bills the usage already reported, without inventing unreported output or adding the same counters again at completion. The spend estimate prices writes at the standard input rate, without their premium. Historical rows that omitted writes remain unchanged.
 11. **A turn never ends with an empty assistant reply.** If the tool loop (including cap-hit synthesis) produces no assistant prose, `AgentService` fills in a localized fallback before persisting instead of storing/streaming a blank bubble: for a `route_to_issue` handoff, it persists the widget's own `Agent_IssueProposed` resource string (persisted only, not streamed — the widget already renders its own localized line live); otherwise a generic "couldn't answer" fallback that IS streamed to the client and logged as a warning (nobodies-collective/Humans#1144).
@@ -160,6 +160,8 @@ Missing, unknown or revoked key → 401. Unknown id → 404. Mutations (deletion
 - **GDPR** — `AgentService` implements `IUserDataContributor` so per-user export pulls conversation history across the resolved `AllUserIds`, including archived merge sources, ordered by conversation start. Transcripts remain keyed to their original owner; unrelated conversations remain excluded. Conversation start/last-message and message creation dates serialize as UTC ISO 8601 strings. User deletion hard-deletes conversations and cascades to their messages; the retention job also purges old conversations.
 
 ## Architecture
+
+Internal `AgentConversationReader` owns stored history lists, member/admin transcript projections, the ownership-checked member conversation view, admin prompt-preview reconstruction and merge-chain GDPR export. `AgentService` retains existing entry points, turn execution, retention and erasure. Prompt previews keep replay rules aligned with turns, propagate cancellation and tolerate vendor token-count failures. Ownership mismatch still returns null; transcript shapes, export ordering, user-context tail generation and cancellation are unchanged. No DI registration or public contract is added.
 
 **Owning services:** `AgentService` (orchestrator), `AgentSettingsService`, `AgentToolDispatcher`, `AgentUserSnapshotProvider`, `AgentAbuseDetector`, `AgentPromptAssembler`, `AgentPreloadCorpusBuilder`, `AgentPreloadAugmentor`, `AnthropicClient`. `AgentPreloadAugmentor` collects each section's `ISectionHelp` glossary contribution (only `SectionHelpContent.Faq` still lives in `Humans.Base`) and implements `IAgentPreloadAugmentor` from this project's `Contracts/` folder; `AgentConversationRetentionJob` lives under `Jobs/` and calls `IAgentConversationRetention`, its registration and schedule contributed via `Section.cs`.
 **Owned tables:** `agent_conversations`, `agent_messages`, `agent_settings`.

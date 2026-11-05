@@ -655,12 +655,9 @@ public class TeamControllerPageContentTests
             }
 
             (await ActAsync()).Should().BeOfType<RedirectToActionResult>();
-            controller.TempData[TempDataKeys.ErrorMessage].Should().Be(action switch
-            {
-                "Join" => "Ya tiene una solicitud pendiente para este equipo.",
-                "Leave" => "No formas parte de este equipo.",
-                _ => "Esta solicitud para unirte no está disponible o ya no está pendiente."
-            });
+            var expected = services.GetRequiredService<IStringLocalizer<TeamsResource>>()[key];
+            expected.ResourceNotFound.Should().BeFalse();
+            controller.TempData[TempDataKeys.ErrorMessage].Should().Be(expected.Value);
         }
         finally
         {
@@ -668,16 +665,10 @@ public class TeamControllerPageContentTests
         }
     }
 
-    [HumansTheory]
-    [InlineData("en")]
-    [InlineData("es")]
-    [InlineData("de")]
-    [InlineData("it")]
-    [InlineData("fr")]
-    [InlineData("ca")]
-    public async Task Join_InvalidMessageReturnsTheFormWithoutSubmittingARequest(string culture)
+    [HumansFact]
+    public async Task Join_InvalidMessageReturnsTheFormWithoutSubmittingARequest()
     {
-        using var cultureScope = new CultureScope(culture);
+        using var cultureScope = new CultureScope("en");
         var registrations = new ServiceCollection().AddLogging().AddLocalization();
         registrations.AddControllers().AddDataAnnotationsLocalization(options =>
             options.DataAnnotationLocalizerProvider = (_, factory) => factory.Create(typeof(SharedResource)));

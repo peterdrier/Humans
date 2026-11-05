@@ -13,7 +13,7 @@
 
 The Issues section is the in-app issue tracker — bugs, feature requests, and questions raised by humans against any section of the app. Submissions are routed by `Issue.Section` to the role-holders who own that section (e.g. an issue tagged `Tickets` lands in the queue of every `TicketsAdmin`), so triage is decentralised: each section's coordinators see only the issues that concern them, while Admin sees everything. A reporter can have a back-and-forth conversation with handlers right inside the issue detail; "ball-in-court" is derived from the latest comment so the system never lies about whose move it is. Claude Code agents have programmatic read/write access via an API key for automated triage and follow-up.
 
-Issues is the only in-app reporting path. It replaced Feedback, the single global queue, which has since been removed.
+Issues is the only in-app reporting path.
 
 ## User Stories
 
@@ -24,7 +24,7 @@ Issues is the only in-app reporting path. It replaced Feedback, the single globa
 **Acceptance Criteria:**
 - Floating help widget on every page, authenticated users only — its "Create issue" action opens `_IssueWidgetModal.cshtml`, a partial that lives in the Issues section but is rendered from `Humans.Agent`'s `HelpWidgetViewComponent` (so `Issue_*` copy resolves against `IssuesResource`)
 - `/Issues/New` page with full form (title, type, optional section override, description, optional screenshot)
-- Form and widget validation errors use the current culture in all six supported languages; required fields and length limits are unchanged.
+- Form and widget validation errors use the current culture in all supported languages; required fields and length limits are unchanged.
 - `Section` defaults to auto-detected from `PageUrl` via `IssueSectionInference.FromPath` when the widget is used; the `/Issues/New` form lets the reporter pick or leave blank for auto-detection
 - Page URL, user agent, and the reporter's roles captured automatically into `AdditionalContext`
 - Screenshot upload limited to JPEG/PNG/WebP, max 10 MB
@@ -69,11 +69,11 @@ Issues is the only in-app reporting path. It replaced Feedback, the single globa
 **As** a reporter or handler, **I want** to know when something happens on an issue I'm involved in, **so that** I don't have to refresh `/Issues` to keep the conversation moving.
 
 **Acceptance Criteria:**
-- When a new issue is submitted, an in-app `IssuesNotificationSources.IssueSubmitted` notification fans out to role-holders of `issue.Section`, or to Admins when no role owns the queue, keyed by `sourceKey: issue.Id.ToString()`; when the issue transitions to a terminal status, `IssuesService.ResolveSubmittedNotificationsAsync` resolves those notifications by that sourceKey
+- When a new issue is submitted, an in-app `IssuesNotificationSources.IssueSubmitted` notification fans out to role-holders of `issue.Section`, or to Admins when no role owns the queue, keyed by `sourceKey: issue.Id.ToString()`; when the issue transitions to a terminal status, `IssueNotices.ResolveSubmittedNotificationsAsync` resolves those notifications by that sourceKey
 - When a comment is posted, an in-app notification goes to the **other party** — the queue's handlers (same Admin fallback) + assignee when the reporter comments, the reporter + assignee when a handler comments. Email is only sent when a **handler** comments (to the reporter); reporter→handler comments are in-app only because handlers already see new comments in their queue.
 - When status changes, the reporter and current assignee are notified
 - When an issue is assigned, the new assignee is notified
-- Emails are queued via the email outbox (`OutboxEmailService`) and localized in the recipient's preferred language (en/es/de/fr/it/ca)
+- Emails are queued via the email outbox (`OutboxEmailService`) and localized in the recipient's preferred language (en/es/de/fr/it/ca/nl)
 - Once a submission, comment, status or assignment change is saved, its notifications, email and submitted-alert resolution finish even if the browser disconnects. Reads and persistence before that save retain request cancellation. Actionable badge counts query current rows on each read, including after routing changes, retention or erasure.
 - Effective notification email comes from the resolved reporter’s `UserInfo.Email`, alongside the same snapshot’s name and culture, so verified-email and forwarding rules apply
 
@@ -164,7 +164,7 @@ Two places read it, for different reasons:
 
 ## Claude Code Integration
 
-The Issues API is the read/write surface Claude Code agents use to triage and follow up on issues during dev sessions. This replaces the older `/triage` skill that worked exclusively against the Feedback API.
+The Issues API is the read/write surface Claude Code agents use to triage and follow up on issues during dev sessions.
 
 - **API key:** a personal key allocated at `/Backdoor`. `BackdoorApiKeyAuthFilter` (in `Humans.Backdoor`) enforces the `X-Api-Key` header on every `/api/backdoor/*` route, resolves it to its owner and installs them as the request principal. 401 when the header is missing, or the key is unknown or revoked — the two are deliberately indistinguishable.
 - **Workflow:** an agent calls `GET /api/backdoor/issues?status=Triage` to pull the current triage queue, optionally narrowed by `section=` for per-section sweeps. For each issue it can `POST /api/backdoor/issues/{id}/comments` to ask a clarifying question, `PATCH /api/backdoor/issues/{id}/status` to advance through the lifecycle, `PATCH /api/backdoor/issues/{id}/assignee` to route the issue to a human, `PATCH /api/backdoor/issues/{id}/section` to re-route, or `PATCH /api/backdoor/issues/{id}/github-issue` to link a freshly-created GitHub issue.

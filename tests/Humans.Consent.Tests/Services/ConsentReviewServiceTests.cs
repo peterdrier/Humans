@@ -163,6 +163,61 @@ public sealed class ConsentReviewServiceTests : IDisposable
             ConsentAuditActions.ConsentCheckCleared, "Profile", user.Id, "Consent check cleared", reviewer);
     }
 
+    [HumansTheory]
+    [InlineData("clear", 4000)]
+    [InlineData("clear", 4001)]
+    [InlineData("flag", 4000)]
+    [InlineData("flag", 4001)]
+    [InlineData("reject", 4000)]
+    [InlineData("reject", 4001)]
+    public async Task ReviewFreeTextRespectsStorageLimit_WithoutTruncatingUnicode(string action, int characters)
+    {
+        var user = SeedUser();
+        var text = string.Concat(Enumerable.Repeat("😀", characters));
+        var reviewer = Guid.NewGuid();
+
+        var result = action switch
+        {
+            "clear" => await _sut.RecordConsentCheckAsync(user.Id, ConsentCheckStatus.Cleared, reviewer, text, Ct),
+            "flag" => await _sut.RecordConsentCheckAsync(user.Id, ConsentCheckStatus.Flagged, reviewer, text, Ct),
+            "reject" => await _sut.RecordRejectionAsync(user.Id, reviewer, text, Ct),
+            _ => throw new ArgumentOutOfRangeException(nameof(action)),
+        };
+
+        result.Success.Should().Be(characters <= 4000);
+        if (characters > 4000)
+        {
+            result.ErrorKey.Should().Be("ReviewTextTooLong");
+            (await _db.ConsentReviews.AnyAsync(r => r.UserId == user.Id, Ct)).Should().BeFalse();
+            _audit.ReceivedCalls().Should().BeEmpty();
+            return;
+        }
+
+        var row = await RowAsync(user.Id);
+        row.Should().NotBeNull();
+        (string.Equals(action, "reject", StringComparison.Ordinal) ? row!.RejectionReason : row!.Notes)
+            .Should().Be(text);
+    }
+
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task OversizedText_DoesNotHideExistingRejection(bool clear)
+    {
+        var user = SeedUser();
+        var reviewer = Guid.NewGuid();
+        await _sut.RecordRejectionAsync(user.Id, reviewer, "Original reason", Ct);
+        var text = new string('a', 4001);
+
+        var result = clear
+            ? await _sut.RecordConsentCheckAsync(user.Id, ConsentCheckStatus.Cleared, reviewer, text, Ct)
+            : await _sut.RecordRejectionAsync(user.Id, reviewer, text, Ct);
+
+        result.ErrorKey.Should().Be("AlreadyRejected");
+        (await RowAsync(user.Id))!.RejectionReason.Should().Be("Original reason");
+        _audit.ReceivedCalls().Should().BeEmpty();
+    }
+
     [HumansFact]
     public async Task RecordConsentCheck_Flagged_ClearsApproval()
     {

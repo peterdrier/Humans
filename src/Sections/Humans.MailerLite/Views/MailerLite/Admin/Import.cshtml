@@ -3,12 +3,11 @@
     ViewData["Title"] = "Import Preview";
 }
 
-<div class="d-flex justify-content-between align-items-center mb-3">
-    <h1 class="mb-0">Import Preview</h1>
+<page-header title="Import Preview">
     <a href="/MailerLite/Admin" class="btn btn-outline-secondary">
         <i class="fa-solid fa-arrow-left me-1"></i>Back to Dashboard
     </a>
-</div>
+</page-header>
 
 <div class="card mb-4">
     <div class="card-header"><strong>Plan Summary</strong></div>
@@ -87,6 +86,35 @@
     if (catRows.Count == 0) continue;
 
     var collapseId = $"collapse-{cat.Outcome}";
+    Func<SubscriberDecision, IHtmlContent> ambiguousCell = @<text>
+        @foreach (var uid in item.AmbiguousUserIds ?? [])
+        {
+            <span class="me-2"><vc:human user-id="@uid" link="Admin" /></span>
+        }
+    </text>;
+    Func<SubscriberDecision, IHtmlContent> matchedCell = @<text>
+        @if (item.TargetUserId is Guid uid)
+        {
+            <vc:human user-id="@uid" link="Admin" />
+        }
+        else
+        {
+            <span class="text-muted">—</span>
+        }
+    </text>;
+    var decisionsBuilder = TableModel.For(catRows)
+        .Column("Email", r => r.Email, o => o.Css("font-monospace"))
+        .Column("ML Status", r => r.Status);
+    if (cat.Outcome == SubscriberOutcome.AmbiguousEmailMatches)
+    {
+        decisionsBuilder.Template("Ambiguous User Ids", ambiguousCell);
+    }
+    else if (cat.Outcome != SubscriberOutcome.CreateNewHuman
+          && cat.Outcome != SubscriberOutcome.UnconfirmedSkipped)
+    {
+        decisionsBuilder.Template("Matched Human", matchedCell);
+    }
+    var decisionsTable = decisionsBuilder.Build();
     <div class="card mb-3">
         <div class="card-header d-flex justify-content-between align-items-center">
             <button class="btn btn-link p-0 text-start text-decoration-none fw-semibold"
@@ -100,58 +128,7 @@
         </div>
         <div class="collapse" id="@collapseId">
             <div class="card-body p-0">
-                <div class="table-responsive">
-                    <table class="table table-sm table-hover mb-0">
-                        <thead>
-                            <tr>
-                                <th>Email</th>
-                                <th>ML Status</th>
-                                @if (cat.Outcome == SubscriberOutcome.AmbiguousEmailMatches)
-                                {
-                                    <th>Ambiguous User Ids</th>
-                                }
-                                else if (cat.Outcome != SubscriberOutcome.CreateNewHuman
-                                      && cat.Outcome != SubscriberOutcome.UnconfirmedSkipped)
-                                {
-                                    <th>Matched Human</th>
-                                }
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach (var row in catRows)
-                            {
-                                <tr>
-                                    <td class="font-monospace">@row.Email</td>
-                                    <td>@row.Status</td>
-                                    @if (cat.Outcome == SubscriberOutcome.AmbiguousEmailMatches)
-                                    {
-                                        var ambiguous = row.AmbiguousUserIds ?? [];
-                                        <td>
-                                            @foreach (var uid in ambiguous)
-                                            {
-                                                <span class="me-2"><vc:human user-id="@uid" link="Admin" /></span>
-                                            }
-                                        </td>
-                                    }
-                                    else if (cat.Outcome != SubscriberOutcome.CreateNewHuman
-                                          && cat.Outcome != SubscriberOutcome.UnconfirmedSkipped)
-                                    {
-                                        <td>
-                                            @if (row.TargetUserId is Guid uid)
-                                            {
-                                                <vc:human user-id="@uid" link="Admin" />
-                                            }
-                                            else
-                                            {
-                                                <span class="text-muted">—</span>
-                                            }
-                                        </td>
-                                    }
-                                </tr>
-                            }
-                        </tbody>
-                    </table>
-                </div>
+                <partial name="_Table" model="decisionsTable" />
             </div>
         </div>
     </div>

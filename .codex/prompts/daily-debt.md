@@ -119,8 +119,8 @@ These come straight from this repo's own rules
   in code, configuration, or a real migration.
 - **No surgical fixes.** Fix a problem properly within its scope, or leave it
   untouched. Do not paper over a symptom.
-- **Every user-facing string needs all six cultures** (en, es, de, it, fr,
-  ca) — parity tests enforce it. Exception: pages only admin/operator roles
+- **Every user-facing string needs all supported cultures** (en, es, de, it, fr,
+  ca, nl) — parity tests enforce it. Exception: pages only admin/operator roles
   reach (`/Admin/*`, `/TeamAdmin/*`, `/Shifts/Dashboard`, `/Monitor/*`) don't
   need new resx keys (`memory/code/localization-admin-exempt.md`).
 - **Schema changes need a migration in that section's own `DbContext`.**
@@ -237,7 +237,7 @@ interfaces; section ownership still applies to every candidate.
   then batch straightforward display-sort moves within the section. Business
   ordering, pagination, and transaction-sensitive changes need separate judgment.
 - Localizations still need the admin/operator exemption checked per route,
-  existing keys reused where appropriate, and all six cultures for every
+  existing keys reused where appropriate, and all supported cultures for every
   string. Run resource parity once for the batch, plus affected section tests.
 - Cancellation changes require inspecting token origin and call semantics
   at every site. Read-only calls and external mutations follow different

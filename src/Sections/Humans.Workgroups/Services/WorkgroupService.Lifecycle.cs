@@ -59,10 +59,10 @@ internal sealed partial class WorkgroupService
             actorUserId);
 
         var info = ToInfo(workgroup);
-        await NotifyBoardAsync(WorkgroupsNotificationSources.WorkgroupRegistrationPending,
+        await notices.NotifyBoardAsync(WorkgroupsNotificationSources.WorkgroupRegistrationPending,
             $"Referred to the Board: {workgroup.Name}", info,
             Trimmed(note) ?? "A refusal ground may apply; the Board decides at its next meeting.", ct);
-        await EmailBoardAsync(WorkgroupNoticeKind.Referred, info, Trimmed(note), ct);
+        await notices.EmailBoardAsync(WorkgroupNoticeKind.Referred, info, Trimmed(note), ct);
         return new();
     }
 
@@ -263,10 +263,10 @@ internal sealed partial class WorkgroupService
             AuditEntityTypes.WorkgroupDocument, document.Id);
 
         var info = ToInfo(workgroup);
-        await NotifyAsync(info.CurrentMemberUserIds(), WorkgroupsNotificationSources.WorkgroupDispositionRecorded,
+        await notices.NotifyAsync(info.CurrentMemberUserIds(), WorkgroupsNotificationSources.WorkgroupDispositionRecorded,
             $"Enum_WorkgroupDisposition_{disposition}", info, $"{document.Title}: {note.Trim()}", ct);
         // The coordinators owe the follow-up, so they also get the email.
-        await EmailAsync(info.CoordinatorUserIds(), WorkgroupNoticeKind.DispositionRecorded, info,
+        await notices.EmailAsync(info.CoordinatorUserIds(), WorkgroupNoticeKind.DispositionRecorded, info,
             $"{disposition}: {note.Trim()}", ct);
         return new();
     }
@@ -298,7 +298,7 @@ internal sealed partial class WorkgroupService
     {
         var info = ToInfo(workgroup);
         var coordinators = info.CoordinatorUserIds();
-        await NotifyAsync(coordinators, WorkgroupsNotificationSources.WorkgroupRegistrationDecided, $"Enum_WorkgroupLogKind_{kind}", info, detail, ct);
-        await EmailAsync(coordinators, kind, info, detail, ct);
+        await notices.NotifyAsync(coordinators, WorkgroupsNotificationSources.WorkgroupRegistrationDecided, $"Enum_WorkgroupLogKind_{kind}", info, detail, ct);
+        await notices.EmailAsync(coordinators, kind, info, detail, ct);
     }
 }

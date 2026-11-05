@@ -130,7 +130,7 @@ public class MembershipCalculatorTests
     [Xunit.InlineData(null, true)]
     [Xunit.InlineData(ConsentCheckStatus.Cleared, true)]
     [Xunit.InlineData(ConsentCheckStatus.Flagged, true)]
-    public async Task ComputeStatusAsync_ReviewAnnotationDoesNotGateMembership(ConsentCheckStatus? review, bool overdueConsent)
+    public async Task GetMembershipSnapshotAsync_ReviewAnnotationDoesNotGateMembership(ConsentCheckStatus? review, bool overdueConsent)
     {
         var userId = Guid.NewGuid();
         SeedProfile(userId, isApproved: review == ConsentCheckStatus.Cleared, isSuspended: false);
@@ -140,7 +140,7 @@ public class MembershipCalculatorTests
             SeedRequiredVersion(SystemTeamIds.Volunteers, Guid.NewGuid(), gracePeriodDays: 0,
                 effectiveFrom: _clock.GetCurrentInstant() - Duration.FromDays(10));
 
-        var result = await _service.ComputeStatusAsync(userId, Xunit.TestContext.Current.CancellationToken);
+        var result = (await _service.GetMembershipSnapshotAsync(userId, Xunit.TestContext.Current.CancellationToken)).Status;
 
         result.Should().Be(overdueConsent ? MembershipStatus.Inactive : MembershipStatus.Active);
     }
@@ -152,7 +152,7 @@ public class MembershipCalculatorTests
     [Xunit.InlineData(UserState.Deleted, MembershipStatus.None)]
     [Xunit.InlineData(UserState.Merged, MembershipStatus.None)]
     [Xunit.InlineData(UserState.AdminSuspended, MembershipStatus.Suspended)]
-    public async Task ComputeStatusAsync_StaleAffiliationsDoNotOverrideAccountState(UserState state, MembershipStatus expected)
+    public async Task GetMembershipSnapshotAsync_StaleAffiliationsDoNotOverrideAccountState(UserState state, MembershipStatus expected)
     {
         var userId = Guid.NewGuid();
         SeedProfile(userId, isApproved: true, isSuspended: false);
@@ -160,7 +160,7 @@ public class MembershipCalculatorTests
         SeedVolunteersTeamMember(userId);
         SeedActiveRole(userId);
 
-        var result = await _service.ComputeStatusAsync(userId, Xunit.TestContext.Current.CancellationToken);
+        var result = (await _service.GetMembershipSnapshotAsync(userId, Xunit.TestContext.Current.CancellationToken)).Status;
 
         result.Should().Be(expected);
     }
@@ -426,41 +426,41 @@ public class MembershipCalculatorTests
     }
 
     [HumansFact]
-    public async Task ComputeStatusAsync_NoProfile_ReturnsNone()
+    public async Task GetMembershipSnapshotAsync_NoProfile_ReturnsNone()
     {
         var userId = Guid.NewGuid();
 
-        var result = await _service.ComputeStatusAsync(userId, Xunit.TestContext.Current.CancellationToken);
+        var result = (await _service.GetMembershipSnapshotAsync(userId, Xunit.TestContext.Current.CancellationToken)).Status;
 
         result.Should().Be(MembershipStatus.None);
     }
 
     [HumansFact]
-    public async Task ComputeStatusAsync_SuspendedProfile_ReturnsSuspended()
+    public async Task GetMembershipSnapshotAsync_SuspendedProfile_ReturnsSuspended()
     {
         var userId = Guid.NewGuid();
         SeedProfile(userId, isApproved: true, isSuspended: true);
 
-        var result = await _service.ComputeStatusAsync(userId, Xunit.TestContext.Current.CancellationToken);
+        var result = (await _service.GetMembershipSnapshotAsync(userId, Xunit.TestContext.Current.CancellationToken)).Status;
 
         result.Should().Be(MembershipStatus.Suspended);
     }
 
     [HumansFact]
-    public async Task ComputeStatusAsync_ApprovedWithActiveRole_NoExpiredConsents_ReturnsActive()
+    public async Task GetMembershipSnapshotAsync_ApprovedWithActiveRole_NoExpiredConsents_ReturnsActive()
     {
         var userId = Guid.NewGuid();
         SeedProfile(userId, isApproved: true, isSuspended: false);
         SeedActiveRole(userId);
         SeedVolunteersTeamMember(userId);
 
-        var result = await _service.ComputeStatusAsync(userId, Xunit.TestContext.Current.CancellationToken);
+        var result = (await _service.GetMembershipSnapshotAsync(userId, Xunit.TestContext.Current.CancellationToken)).Status;
 
         result.Should().Be(MembershipStatus.Active);
     }
 
     [HumansFact]
-    public async Task ComputeStatusAsync_ApprovedWithExpiredConsents_ReturnsInactive()
+    public async Task GetMembershipSnapshotAsync_ApprovedWithExpiredConsents_ReturnsInactive()
     {
         var userId = Guid.NewGuid();
         SeedProfile(userId, isApproved: true, isSuspended: false);
@@ -470,30 +470,32 @@ public class MembershipCalculatorTests
         SeedRequiredVersion(SystemTeamIds.Volunteers, Guid.NewGuid(), gracePeriodDays: 0,
             effectiveFrom: _clock.GetCurrentInstant() - Duration.FromDays(10));
 
-        var result = await _service.ComputeStatusAsync(userId, Xunit.TestContext.Current.CancellationToken);
+        var result = (await _service.GetMembershipSnapshotAsync(userId, Xunit.TestContext.Current.CancellationToken)).Status;
 
         result.Should().Be(MembershipStatus.Inactive);
     }
 
     [HumansFact]
-    public async Task HasActiveRolesAsync_ActiveRole_ReturnsTrue()
+    public async Task GetMembershipSnapshotAsync_ActiveRoleWithoutTeam_ReturnsActive()
     {
         var userId = Guid.NewGuid();
+        SeedProfile(userId, isApproved: true, isSuspended: false);
         SeedActiveRole(userId);
 
-        var result = await _service.HasActiveRolesAsync(userId, Xunit.TestContext.Current.CancellationToken);
+        var result = (await _service.GetMembershipSnapshotAsync(userId, Xunit.TestContext.Current.CancellationToken)).Status;
 
-        result.Should().BeTrue();
+        result.Should().Be(MembershipStatus.Active);
     }
 
     [HumansFact]
-    public async Task HasActiveRolesAsync_NoRoles_ReturnsFalse()
+    public async Task GetMembershipSnapshotAsync_NoAffiliations_ReturnsNone()
     {
         var userId = Guid.NewGuid();
+        SeedProfile(userId, isApproved: true, isSuspended: false);
 
-        var result = await _service.HasActiveRolesAsync(userId, Xunit.TestContext.Current.CancellationToken);
+        var result = (await _service.GetMembershipSnapshotAsync(userId, Xunit.TestContext.Current.CancellationToken)).Status;
 
-        result.Should().BeFalse();
+        result.Should().Be(MembershipStatus.None);
     }
 
     [HumansFact]
@@ -572,44 +574,47 @@ public class MembershipCalculatorTests
     }
 
     [HumansFact]
-    public async Task HasAnyExpiredConsentsForTeamAsync_ExpiredUnsigned_ReturnsTrue()
+    public async Task GetMembershipSnapshotAsync_ExpiredUnsignedConsent_ReturnsInactive()
     {
         var userId = Guid.NewGuid();
-        var team = SeedTeam("Geeks", SystemTeamType.None);
-        SeedRequiredVersion(team.Id, Guid.NewGuid(), gracePeriodDays: 0,
+        SeedProfile(userId, isApproved: true, isSuspended: false);
+        SeedVolunteersTeamMember(userId);
+        SeedRequiredVersion(SystemTeamIds.Volunteers, Guid.NewGuid(), gracePeriodDays: 0,
             effectiveFrom: _clock.GetCurrentInstant() - Duration.FromDays(10));
 
-        var result = await _service.HasAnyExpiredConsentsForTeamAsync(userId, team.Id, Xunit.TestContext.Current.CancellationToken);
+        var result = (await _service.GetMembershipSnapshotAsync(userId, Xunit.TestContext.Current.CancellationToken)).Status;
 
-        result.Should().BeTrue();
+        result.Should().Be(MembershipStatus.Inactive);
     }
 
     [HumansFact]
-    public async Task HasAnyExpiredConsentsForTeamAsync_WithinGracePeriod_ReturnsFalse()
+    public async Task GetMembershipSnapshotAsync_ConsentWithinGracePeriod_ReturnsActive()
     {
         var userId = Guid.NewGuid();
-        var team = SeedTeam("Geeks", SystemTeamType.None);
-        SeedRequiredVersion(team.Id, Guid.NewGuid(), gracePeriodDays: 365,
+        SeedProfile(userId, isApproved: true, isSuspended: false);
+        SeedVolunteersTeamMember(userId);
+        SeedRequiredVersion(SystemTeamIds.Volunteers, Guid.NewGuid(), gracePeriodDays: 365,
             effectiveFrom: _clock.GetCurrentInstant() - Duration.FromDays(10));
 
-        var result = await _service.HasAnyExpiredConsentsForTeamAsync(userId, team.Id, Xunit.TestContext.Current.CancellationToken);
+        var result = (await _service.GetMembershipSnapshotAsync(userId, Xunit.TestContext.Current.CancellationToken)).Status;
 
-        result.Should().BeFalse();
+        result.Should().Be(MembershipStatus.Active);
     }
 
     [HumansFact]
-    public async Task HasAnyExpiredConsentsForTeamAsync_AllSigned_ReturnsFalse()
+    public async Task GetMembershipSnapshotAsync_ExpiredSignedConsent_ReturnsActive()
     {
         var userId = Guid.NewGuid();
-        var team = SeedTeam("Geeks", SystemTeamType.None);
+        SeedProfile(userId, isApproved: true, isSuspended: false);
+        SeedVolunteersTeamMember(userId);
         var versionId = Guid.NewGuid();
-        SeedRequiredVersion(team.Id, versionId, gracePeriodDays: 0,
+        SeedRequiredVersion(SystemTeamIds.Volunteers, versionId, gracePeriodDays: 0,
             effectiveFrom: _clock.GetCurrentInstant() - Duration.FromDays(10));
         SeedConsent(userId, versionId);
 
-        var result = await _service.HasAnyExpiredConsentsForTeamAsync(userId, team.Id, Xunit.TestContext.Current.CancellationToken);
+        var result = (await _service.GetMembershipSnapshotAsync(userId, Xunit.TestContext.Current.CancellationToken)).Status;
 
-        result.Should().BeFalse();
+        result.Should().Be(MembershipStatus.Active);
     }
 
     [HumansFact]

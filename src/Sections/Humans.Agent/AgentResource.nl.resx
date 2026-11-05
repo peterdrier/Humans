@@ -1,0 +1,146 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="metadata">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" />
+              </xsd:sequence>
+              <xsd:attribute name="name" use="required" type="xsd:string" />
+              <xsd:attribute name="type" type="xsd:string" />
+              <xsd:attribute name="mimetype" type="xsd:string" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="assembly">
+            <xsd:complexType>
+              <xsd:attribute name="alias" type="xsd:string" />
+              <xsd:attribute name="name" type="xsd:string" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" msdata:Ordinal="1" />
+              <xsd:attribute name="type" type="xsd:string" msdata:Ordinal="3" />
+              <xsd:attribute name="mimetype" type="xsd:string" msdata:Ordinal="4" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="resheader">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a2c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a2c561934e089</value>
+  </resheader>
+  <data name="Agent_ConversationBackToHistory" xml:space="preserve">
+    <value>Terug naar geschiedenis</value>
+  </data>
+  <data name="Agent_ConversationEmpty" xml:space="preserve">
+    <value>Geen berichten in dit gesprek.</value>
+  </data>
+  <data name="Agent_ConversationRefusedLabel" xml:space="preserve">
+    <value>De assistent heeft geweigerd op dit bericht te antwoorden.</value>
+  </data>
+  <data name="Agent_ConversationTitle" xml:space="preserve">
+    <value>Gesprek met de assistent</value>
+  </data>
+  <data name="Agent_ConversationToolCallsSummary" xml:space="preserve">
+    <value>{0} toolaanroep(en)</value>
+  </data>
+  <data name="Agent_ConversationTranscript" xml:space="preserve">
+    <value>Transcript</value>
+  </data>
+  <data name="Agent_ContextCardCaveat" xml:space="preserve">
+    <value>Dit is je huidige context. Als je rollen of teams sinds dit gesprek zijn veranderd, zag de assistent destijds een andere versie.</value>
+  </data>
+  <data name="Agent_ContextCardEmpty" xml:space="preserve">
+    <value>Er wordt momenteel geen persoonlijke context naar de assistent gestuurd.</value>
+  </data>
+  <data name="Agent_ContextCardSummary" xml:space="preserve">
+    <value>Je context (zoals de assistent je nu ziet)</value>
+  </data>
+  <data name="Agent_DetailId" xml:space="preserve">
+    <value>ID</value>
+  </data>
+  <data name="Agent_DetailLocale" xml:space="preserve">
+    <value>Taal</value>
+  </data>
+  <data name="Agent_DetailRefusal" xml:space="preserve">
+    <value>Weigering: {0}</value>
+  </data>
+  <data name="Agent_HistoryEmpty" xml:space="preserve">
+    <value>Nog geen gesprekken.</value>
+  </data>
+  <data name="Agent_HistoryLastMessage" xml:space="preserve">
+    <value>Laatste bericht</value>
+  </data>
+  <data name="Agent_HistoryMessages" xml:space="preserve">
+    <value>Berichten</value>
+  </data>
+  <data name="Agent_HistoryStarted" xml:space="preserve">
+    <value>Gestart</value>
+  </data>
+  <data name="Agent_HistoryTitle" xml:space="preserve">
+    <value>Assistent — Mijn gesprekken</value>
+  </data>
+  <data name="Agent_InputPlaceholder" xml:space="preserve">
+    <value>Stel een vraag over hoe het systeem werkt…</value>
+  </data>
+  <data name="Agent_PanelTitle" xml:space="preserve">
+    <value>Assistent</value>
+  </data>
+  <data name="Agent_TermsLink" xml:space="preserve">
+    <value>AI-voorwaarden</value>
+  </data>
+  <data name="Agent_Send" xml:space="preserve">
+    <value>Versturen</value>
+  </data>
+  <data name="Agent_ViewHistory" xml:space="preserve">
+    <value>Geschiedenis</value>
+  </data>
+  <data name="Agent_Help_WidgetButton" xml:space="preserve">
+    <value>Help</value>
+  </data>
+  <data name="Agent_Help_Menu_TalkWithAgent" xml:space="preserve">
+    <value>Praat met de assistent</value>
+  </data>
+  <data name="Agent_Help_Menu_CreateIssue" xml:space="preserve">
+    <value>Melding aanmaken</value>
+  </data>
+  <data name="Agent_IssueProposed" xml:space="preserve">
+    <value>Hier kan ik zelf geen antwoord op geven. Ik heb een melding voor het team opgesteld — bekijk die en dien hem in.</value>
+  </data>
+  <data name="Agent_SilentTurnFallback" xml:space="preserve"><value>Ik kon daar geen antwoord op samenstellen — kun je het anders formuleren of opnieuw vragen?</value></data>
+  <data name="Agent_AbuseRefusal" xml:space="preserve"><value>Hiermee kan ik je niet helpen. Als je in nood bent, neem dan contact op met een coördinator of met de hulpdiensten.</value></data>
+  <data name="Agent_HttpError" xml:space="preserve"><value>Fout: {0}</value></data>
+  <data name="Agent_NetworkError" xml:space="preserve"><value>Netwerkfout.</value></data>
+  <data name="Agent_DisabledReply" xml:space="preserve"><value>(De assistent is momenteel uitgeschakeld.)</value></data>
+  <data name="Agent_RateLimitedReply" xml:space="preserve"><value>(Daglimiet bereikt — probeer het morgen opnieuw.)</value></data>
+  <data name="Agent_TurnErrorReply" xml:space="preserve"><value>(Er ging iets mis bij het beantwoorden. Probeer het opnieuw.)</value></data>
+</root>

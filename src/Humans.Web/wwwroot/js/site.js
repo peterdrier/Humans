@@ -1,3 +1,85 @@
+// Shared helpers for views and section scripts: window.Humans.*
+// Inline scripts in a view body run before this file loads, so call these from event
+// handlers or DOMContentLoaded, never at the top level of a body script.
+(function () {
+    var chartPromise = null;
+
+    // Antiforgery token from the page's hidden input or <meta>; '' when absent.
+    // Pass a selector to read a specific element instead.
+    function csrfToken(selector) {
+        var el = selector
+            ? document.querySelector(selector)
+            : document.querySelector('input[name="__RequestVerificationToken"]')
+                || document.querySelector('meta[name="__RequestVerificationToken"]');
+        return el ? (el.value || el.getAttribute('content') || '') : '';
+    }
+
+    // Safe for element text and quoted attribute values.
+    function escapeHtml(value) {
+        if (value === null || value === undefined) return '';
+        return String(value)
+            .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    }
+
+    // fetch() with the antiforgery header. opts.headers merge over the defaults; every other
+    // opts key (method, redirect, signal) goes to fetch, so PUT is { method: 'PUT' }.
+    // A body-less call sends no Content-Type. Resolves to the Response; callers check .ok.
+    function postJson(url, body, opts) {
+        opts = opts || {};
+        var headers = { RequestVerificationToken: csrfToken() };
+        if (body !== undefined) headers['Content-Type'] = 'application/json';
+        var init = Object.assign({ method: 'POST', credentials: 'same-origin' }, opts);
+        init.headers = Object.assign(headers, opts.headers);
+        if (body !== undefined) init.body = JSON.stringify(body);
+        return fetch(url, init);
+    }
+
+    // Like postJson for form-encoded bodies. data is a FormData, URLSearchParams or plain
+    // object; the token goes in the body as well as the header.
+    function postForm(url, data, opts) {
+        opts = opts || {};
+        var body = data;
+        if (!(body instanceof FormData) && !(body instanceof URLSearchParams)) {
+            body = new URLSearchParams();
+            Object.keys(data || {}).forEach(function (key) { body.append(key, data[key]); });
+        }
+        if (!body.has('__RequestVerificationToken')) body.append('__RequestVerificationToken', csrfToken());
+        var init = Object.assign({ method: 'POST', credentials: 'same-origin' }, opts);
+        init.headers = Object.assign({ RequestVerificationToken: csrfToken() }, opts.headers);
+        init.body = body;
+        return fetch(url, init);
+    }
+
+    // Loads the pinned Chart.js once and resolves to window.Chart.
+    function loadChartJs() {
+        if (window.Chart) return Promise.resolve(window.Chart);
+        if (!chartPromise) {
+            chartPromise = new Promise(function (resolve, reject) {
+                var script = document.createElement('script');
+                script.src = 'https://cdn.jsdelivr.net/npm/chart.js@4.5.1/dist/chart.umd.min.js';
+                script.integrity = 'sha384-jb8JQMbMoBUzgWatfe6COACi2ljcDdZQ2OxczGA3bGNeWe+6DChMTBJemed7ZnvJ';
+                script.crossOrigin = 'anonymous';
+                script.onload = function () { resolve(window.Chart); };
+                script.onerror = function () {
+                    chartPromise = null;
+                    reject(new Error('Chart.js failed to load'));
+                };
+                document.head.appendChild(script);
+            });
+        }
+        return chartPromise;
+    }
+
+    window.Humans = Object.assign(window.Humans || {}, {
+        csrfToken: csrfToken,
+        escapeHtml: escapeHtml,
+        postJson: postJson,
+        postForm: postForm,
+        loadChartJs: loadChartJs
+    });
+})();
+
 // Cookie consent banner
 (function () {
     var banner = document.getElementById('cookieConsent');
@@ -127,8 +209,12 @@ document.addEventListener('click', function (e) {
                 if (activeIndicator) activeIndicator.textContent = nextDirection === 'asc' ? ' ▲' : ' ▼';
 
                 var rows = Array.from(tbody.rows);
+                // Blank cells (a null amount or date) don't make a numeric column sort as text.
                 var comparisonType = sortType === 'auto'
                     ? (rows.every(function (row) {
+                        var value = valueFromRow(row, columnIndex, key);
+                        return textForSort(value) === '' || numberForSort(value) !== null;
+                    }) && rows.some(function (row) {
                         return numberForSort(valueFromRow(row, columnIndex, key)) !== null;
                     }) ? 'number' : 'text')
                     : sortType;
@@ -394,6 +480,20 @@ function showToast(message, type) {
         new bootstrap.Tooltip(el);
     });
 })();
+
+// Copy to clipboard: <button data-copy="#sourceId" data-copied="Toast text">.
+// Source is read as .value for inputs/textareas, otherwise textContent; data-copied is optional.
+document.addEventListener('click', function (e) {
+    var trigger = e.target.closest('[data-copy]');
+    if (!trigger || !navigator.clipboard) return;
+    var source = document.querySelector(trigger.getAttribute('data-copy'));
+    if (!source) return;
+    var isField = source.tagName === 'INPUT' || source.tagName === 'TEXTAREA';
+    navigator.clipboard.writeText((isField ? source.value : source.textContent) || '').then(function () {
+        var message = trigger.getAttribute('data-copied');
+        if (message) showToast(message);
+    });
+});
 
 // Human profile popover (lazy-loaded on first hover or keyboard focus)
 (function () {
@@ -667,15 +767,10 @@ function showToast(message, type) {
         var url = '/api/events/favourites/' + encodeURIComponent(btn.getAttribute('data-event-id'));
         var day = btn.getAttribute('data-day');
         if (day !== null && day !== '') url += '?day=' + encodeURIComponent(day);
-        var token = btn.closest('form').querySelector('input[name="__RequestVerificationToken"]').value;
 
         var controls = document.querySelectorAll('.js-favourite-toggle[data-event-id="' + btn.getAttribute('data-event-id') + '"]');
         Array.prototype.forEach.call(controls, function (control) { control.disabled = true; });
-        fetch(url, {
-            method: favourited ? 'DELETE' : 'POST',
-            redirect: 'error',
-            headers: { RequestVerificationToken: token }
-        })
+        Humans.postJson(url, undefined, { method: favourited ? 'DELETE' : 'POST', redirect: 'error' })
             .then(function (r) {
                 if (!r.ok) throw new Error(r.status);
                 return fetch('/api/events/favourites', { redirect: 'error' });

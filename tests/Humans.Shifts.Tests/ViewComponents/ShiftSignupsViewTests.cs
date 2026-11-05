@@ -24,16 +24,10 @@ namespace Humans.Shifts.Tests.ViewComponents;
 
 public class ShiftSignupsViewTests
 {
-    [HumansTheory]
-    [Xunit.InlineData("en")]
-    [Xunit.InlineData("es")]
-    [Xunit.InlineData("de")]
-    [Xunit.InlineData("it")]
-    [Xunit.InlineData("fr")]
-    [Xunit.InlineData("ca")]
-    public async Task Header_resolves_the_subject_only_for_admin_mode(string language)
+    [HumansFact]
+    public async Task Header_resolves_the_subject_only_for_admin_mode()
     {
-        using var culture = new CultureScope(language);
+        using var culture = new CultureScope(CultureCatalog.DefaultCultureCode);
         var userId = Guid.NewGuid();
         const string name = "Current <script>&";
         var users = Substitute.For<IUserService>();

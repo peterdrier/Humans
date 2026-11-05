@@ -46,7 +46,6 @@
   <data name="Users_Profile_Title" xml:space="preserve">
     <value>Mon profil</value>
   </data>
-  <data name="Users_BreadcrumbNavigation" xml:space="preserve"><value>Fil d’Ariane</value></data>
   <data name="Users_Profile_ActionRequired" xml:space="preserve">
     <value>Action requise :</value>
   </data>
@@ -214,9 +213,6 @@
   </data>
   <data name="Users_ProfileEdit_TierLocked" xml:space="preserve">
     <value>Votre catégorie est verrouillée car vous avez une candidature active ou en attente.</value>
-  </data>
-  <data name="Users_ProfileEdit_MotivationHelp" xml:space="preserve">
-    <value>Minimum 50 caractères. Cela aide le Conseil à comprendre vos objectifs.</value>
   </data>
   <data name="Users_ProfileEdit_BurnerNamePlaceholder" xml:space="preserve">
     <value>Le nom sous lequel on vous connaît</value>
@@ -549,7 +545,7 @@
     <value>Vérification de l'adresse e-mail</value>
   </data>
   <data name="Users_VerifyEmail_GoToSettings" xml:space="preserve">
-    <value>Accéder aux paramètres de l'e-mail préféré</value>
+    <value>Accéder aux paramètres e-mail</value>
   </data>
   <data name="Users_VerifyEmail_GoHome" xml:space="preserve">
     <value>Retour à l'accueil</value>
@@ -706,7 +702,7 @@
   <data name="Users_Email_EmailVerification_Body" xml:space="preserve">
     <value>&lt;h2&gt;Vérification de l'adresse e-mail&lt;/h2&gt;
 &lt;p&gt;Bonjour {0},&lt;/p&gt;
-&lt;p&gt;Vous avez demandé à définir &lt;strong&gt;{1}&lt;/strong&gt; comme adresse e-mail préférée.&lt;/p&gt;
+&lt;p&gt;Vous avez demandé à ajouter &lt;strong&gt;{1}&lt;/strong&gt; à votre compte.&lt;/p&gt;
 &lt;p&gt;Cliquez sur le lien ci-dessous pour vérifier cette adresse :&lt;/p&gt;
 &lt;p&gt;&lt;a href="{2}" style="display:inline-block; padding:12px 24px; background-color:#0d6efd; color:#ffffff; text-decoration:none; border-radius:6px; font-weight:bold; font-size:16px;"&gt;Vérifier l'adresse e-mail&lt;/a&gt;&lt;/p&gt;
 &lt;p&gt;Ce lien expire dans 24 heures.&lt;/p&gt;

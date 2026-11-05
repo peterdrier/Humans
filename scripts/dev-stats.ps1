@@ -22,15 +22,16 @@ $testCount = (git grep -E '^\s*\[(Fact|Theory|HumansFact|HumansTheory)' -- 'test
 # Analyzer rules: distinct HUMxxxx diagnostic ids in the analyzer project.
 $analyzerRuleCount = (git grep -ohE 'HUM[0-9]{4}' -- 'src/Humans.Analyzers/*.cs' | Sort-Object -Unique | Measure-Object).Count
 
-# Section count: [assembly: Section("...")] declarations under src/Sections. Line-anchored so
-# doc-comment mentions of the attribute (e.g. Scanner's own docs) don't inflate the count.
-# G5 moves land weekly — this is generated, never hand-maintained.
-$sectionCount = (git grep -E '^\[assembly: Section\(' -- 'src/Sections/*' | Measure-Object -Line).Lines
+# Section count: a project is a section when its Section.cs implements ISection (SectionAttribute
+# was retired in peterdrier/Humans#1330). The class line can wrap, so match the file, not the line.
+$sectionCount = (git grep -lE '\bISection\b' -- 'src/Sections/*/Section.cs' | Measure-Object -Line).Lines
 
-# Per-author commit + line counts over the whole history.
+# Per-author commit + line counts over the whole history. %aN applies .mailmap, so one person
+# committing under two names or emails is counted once. Claude-authored commits are AI work,
+# already reported by the co-author percentage, so they are not a contributor row.
 $authors = @{}
 $current = $null
-git log --numstat --format='AUTHOR:%an' | ForEach-Object {
+git log --numstat --format='AUTHOR:%aN' | ForEach-Object {
     if ($_ -like 'AUTHOR:*') {
         $current = $_.Substring(7)
         if (-not $authors.ContainsKey($current)) {
@@ -43,7 +44,7 @@ git log --numstat --format='AUTHOR:%an' | ForEach-Object {
         $authors[$current].deleted += [int]$Matches[2]
     }
 }
-$contributors = $authors.GetEnumerator() | Where-Object { $_.Key -notmatch '\[bot\]$' } | Sort-Object { $_.Value.added } -Descending | ForEach-Object {
+$contributors = $authors.GetEnumerator() | Where-Object { $_.Key -notmatch '\[bot\]$' -and $_.Key -ne 'Claude' } | Sort-Object { $_.Value.added } -Descending | ForEach-Object {
     [ordered]@{ name = $_.Key; commits = $_.Value.commits; linesAdded = $_.Value.added; linesDeleted = $_.Value.deleted }
 }
 

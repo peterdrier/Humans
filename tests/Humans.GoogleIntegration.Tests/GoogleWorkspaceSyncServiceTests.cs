@@ -1227,7 +1227,7 @@ public sealed class GoogleWorkspaceSyncServiceTests
             IsActive = true
         };
 
-    private static UserInfo MakeUser(Guid userId, string email, GoogleEmailStatus status = GoogleEmailStatus.Unknown) =>
+    private static UserInfo MakeUser(Guid userId, string email) =>
         UserInfo.Create(
             new User
             {
@@ -1237,7 +1237,7 @@ public sealed class GoogleWorkspaceSyncServiceTests
                 Email = email
             },
             [new UserEmail { Id = Guid.NewGuid(), UserId = userId, Email = email,
-                IsVerified = true, IsGoogle = true, GoogleEmailStatus = (LegacyGoogleEmailStatus)status }], [], null);
+                IsVerified = true, }], [], null);
 
     // Admin retries: the service writes the audit entry.
 

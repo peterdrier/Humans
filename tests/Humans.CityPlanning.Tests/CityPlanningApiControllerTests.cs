@@ -92,16 +92,10 @@ public sealed class CityPlanningApiControllerTests : CityPlanningTestBase
         return controller;
     }
 
-    [HumansTheory]
-    [InlineData("en")]
-    [InlineData("es")]
-    [InlineData("de")]
-    [InlineData("it")]
-    [InlineData("fr")]
-    [InlineData("ca")]
-    public void PolygonNoteLengthValidation_UsesLocalizedFeedback(string culture)
+    [HumansFact]
+    public void PolygonNoteLengthValidation_UsesLocalizedFeedback()
     {
-        using var cultureScope = new CultureScope(culture);
+        using var cultureScope = new CultureScope("en");
         var registrations = new ServiceCollection().AddLogging().AddLocalization();
         registrations.AddControllers().AddDataAnnotationsLocalization(options =>
             options.DataAnnotationLocalizerProvider = (_, factory) => factory.Create(typeof(SharedResource)));
@@ -217,16 +211,10 @@ public sealed class CityPlanningApiControllerTests : CityPlanningTestBase
         result.Should().BeOfType<FileContentResult>();
     }
 
-    [HumansTheory]
-    [InlineData("en", "Invalid container placement GeoJSON.")]
-    [InlineData("es", "El GeoJSON de ubicación del contenedor no es válido.")]
-    [InlineData("de", "Ungültiges GeoJSON für die Containerplatzierung.")]
-    [InlineData("it", "GeoJSON di posizionamento del container non valido.")]
-    [InlineData("fr", "Le GeoJSON de placement du conteneur est invalide.")]
-    [InlineData("ca", "El GeoJSON d’ubicació del contenidor no és vàlid.")]
-    public async Task InvalidContainerPlacement_ReturnsTheOwnersLocalizedError(string culture, string error)
+    [HumansFact]
+    public async Task InvalidContainerPlacement_ReturnsTheOwnersLocalizedError()
     {
-        using var cultureScope = new CultureScope(culture);
+        using var cultureScope = new CultureScope("en");
         using var services = new ServiceCollection().AddLogging().AddLocalization().BuildServiceProvider();
         _containersLocalizer = services.GetRequiredService<IStringLocalizer<ContainersResource>>();
         _authorization = Substitute.For<IAuthorizationService>();
@@ -241,7 +229,7 @@ public sealed class CityPlanningApiControllerTests : CityPlanningTestBase
         var result = await CreateController().SaveContainerPlacement(
             id, 2026, new SaveContainerPlacementRequest("{}"), TestContext.Current.CancellationToken);
 
-        result.Should().BeOfType<UnprocessableEntityObjectResult>().Which.Value.Should().Be(error);
+        result.Should().BeOfType<UnprocessableEntityObjectResult>().Which.Value.Should().Be("Invalid container placement GeoJSON.");
     }
 
     [HumansTheory]

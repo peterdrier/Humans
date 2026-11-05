@@ -3,14 +3,12 @@
     ViewData["Title"] = Localizer["Teams_MyTeams_Title"].Value;
 }
 
-<nav aria-label="@Localizer["Teams_BreadcrumbNavigation"]">
-    <ol class="breadcrumb">
-        <li class="breadcrumb-item"><a asp-action="Index">@SharedLocalizer["Teams_Title"]</a></li>
-        <li class="breadcrumb-item active" aria-current="page">@Localizer["Teams_MyTeams_Title"]</li>
-    </ol>
-</nav>
+@section Crumbs {
+    <a asp-action="Index">@SharedLocalizer["Teams_Title"]</a>
+    <span>@Localizer["Teams_MyTeams_Title"]</span>
+}
 
-<h1>@Localizer["Teams_MyTeams_Title"]</h1>
+<page-header title="@(Localizer["Teams_MyTeams_Title"].Value)" />
 
 
 @if (Model.Memberships.Any())

@@ -16,6 +16,7 @@ public class TableColumnTests
         public string? Name { get; init; }
         public decimal Amount { get; init; }
         public Instant? When { get; init; }
+        public LocalDate Day { get; init; }
         public EmailOutboxStatus Status { get; init; }
         public bool Flag { get; init; }
     }
@@ -52,15 +53,12 @@ public class TableColumnTests
     }
 
     [HumansTheory]
-    [Xunit.InlineData("en", "1,234.50", "1,234.5")]
-    [Xunit.InlineData("es", "1.234,50", "1.234,5")]
-    [Xunit.InlineData("de", "1.234,50", "1.234,5")]
-    [Xunit.InlineData("it", "1.234,50", "1.234,5")]
-    [Xunit.InlineData("fr", "1\u202f234,50", "1\u202f234,5")]
-    [Xunit.InlineData("ca", "1.234,50", "1.234,5")]
-    public void Numeric_cells_use_ui_culture_and_keep_invariant_sort_values(
-        string culture, string expectedCurrency, string expectedNumber)
+    [Xunit.MemberData(nameof(SupportedCultures.All), MemberType = typeof(SupportedCultures))]
+    public void Numeric_cells_use_ui_culture_and_keep_invariant_sort_values(string culture)
     {
+        var ui = CultureInfo.GetCultureInfo(culture);
+        var expectedCurrency = 1234.5m.ToString("N2", ui);
+        var expectedNumber = 1234.5m.ToString("#,##0.##", ui);
         using var scope = new CultureScope(culture);
         CultureInfo.CurrentCulture = CultureInfo.GetCultureInfo("en");
         var row = new Row { Amount = 1234.5m };
@@ -87,6 +85,18 @@ public class TableColumnTests
     }
 
     [HumansFact]
+    public void Date_accepts_a_local_date_and_sorts_it_chronologically()
+    {
+        var col = Col(CellFormat.Date, r => r.Day);
+        var early = new Row { Day = new LocalDate(2026, 2, 1) };
+        var late = new Row { Day = new LocalDate(2026, 10, 1) };
+
+        Render(col.Cell(early)).Should().Be(HtmlEncoder.Default.Encode(early.Day.ToDate()));
+        long.Parse(col.SortValue(early)!, CultureInfo.InvariantCulture)
+            .Should().BeLessThan(long.Parse(col.SortValue(late)!, CultureInfo.InvariantCulture));
+    }
+
+    [HumansFact]
     public void EnumBadge_wraps_value_in_registered_badge()
     {
         var col = Col(CellFormat.EnumBadge, r => r.Status);
@@ -110,5 +120,14 @@ public class TableColumnTests
             template: r => new HtmlString($"<b>{r.Name}</b>"), new TableColumnOptions());
         Render(col.Cell(new Row { Name = "x" })).Should().Be("<b>x</b>");
         col.SortValue(new Row { Name = "x" }).Should().BeNull();
+    }
+
+    [HumansFact]
+    public void Template_sorts_by_its_sortBy_value_not_its_markup()
+    {
+        var col = new TableColumn<Row>("H", CellFormat.Template, value: r => r.Amount,
+            template: r => new HtmlString($"<b>{r.Amount} €</b>"), new TableColumnOptions());
+        col.SortValue(new Row { Amount = 12.5m }).Should().Be("12.5");
+        col.SortType.Should().Be("auto");
     }
 }

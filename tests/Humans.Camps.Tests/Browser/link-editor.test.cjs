@@ -24,8 +24,10 @@ function editor(label, count = 0) {
     vm.runInNewContext(script, { document });
     return { rows, add: () => handlers.add(), remove: row => handlers.remove({ target: { closest: selector => selector === '.remove-link' ? {} : row } }) };
 }
-for (const culture of ['en', 'es', 'de', 'it', 'fr', 'ca']) {
-    const resource = fs.readFileSync(path.join(root, `src/Humans.Base/Resources/SharedResource${culture === 'en' ? '' : '.' + culture}.resx`), 'utf8');
+const resources = path.join(root, 'src/Humans.Base/Resources');
+for (const file of fs.readdirSync(resources).filter(name => /^SharedResource(\.[\w-]+)?\.resx$/.test(name))) {
+    const culture = /^SharedResource\.([\w-]+)\.resx$/.exec(file)?.[1] ?? 'en';
+    const resource = fs.readFileSync(path.join(resources, file), 'utf8');
     const label = resource.match(/<data name="Common_Remove"[^>]*><value>(.*?)<\/value>/s)[1];
     test(`added camp link has a translated accessible remove name in ${culture}`, () => {
         const form = editor(label);

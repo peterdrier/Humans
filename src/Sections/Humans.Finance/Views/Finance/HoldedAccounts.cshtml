@@ -8,18 +8,15 @@
     var hasToAdd = toAddRows.Count > 0;
 }
 
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <h1 class="mb-0">Holded Account Map</h1>
-    <div class="d-flex gap-2">
-        <a href="/Holded" class="btn btn-outline-secondary"
-           title="Ledger mirror status, sync buttons and the full account list live on the Holded admin screen.">
-            <i class="fa-solid fa-rotate me-1"></i>Holded sync
-        </a>
-        <a asp-controller="BudgetAdmin" asp-action="Index" class="btn btn-outline-secondary">
-            <i class="fa-solid fa-arrow-left me-1"></i>Back to Finance
-        </a>
-    </div>
-</div>
+<page-header title="Holded Account Map">
+    <a href="/Holded" class="btn btn-outline-secondary"
+       title="Ledger mirror status, sync buttons and the full account list live on the Holded admin screen.">
+        <i class="fa-solid fa-rotate me-1"></i>Holded sync
+    </a>
+    <a asp-controller="BudgetAdmin" asp-action="Index" class="btn btn-outline-secondary">
+        <i class="fa-solid fa-arrow-left me-1"></i>Back to Finance
+    </a>
+</page-header>
 
 
 <div class="alert alert-info mb-4">
@@ -130,27 +127,24 @@
     </div>
     @if (managed.Count == 0)
     {
-        <div class="card-body text-muted small">No expense accounts created outside the budget map yet.</div>
+        <div class="card-body small"><empty-state class="mb-0">No expense accounts created outside the budget map yet.</empty-state></div>
     }
     else
     {
-        <div class="table-responsive">
-            <table class="table table-sm mb-0">
-                <thead><tr><th>Account</th><th>Label</th><th>Holded id</th><th>Active</th><th>Since</th></tr></thead>
-                <tbody>
-                @foreach (var m in managed)
-                {
-                    <tr>
-                        <td><a asp-controller="Holded" asp-action="Account" asp-route-number="@m.AccountNumber"><code>@m.AccountNumber</code></a></td>
-                        <td>@m.Label</td>
-                        <td class="text-muted small">@m.AccountId</td>
-                        <td>@(m.IsActive ? "Yes" : "Retired")</td>
-                        <td>@m.CreatedAt.ToDate()</td>
-                    </tr>
-                }
-                </tbody>
-            </table>
-        </div>
+            Func<Humans.Finance.Models.HoldedManagedAccountVm, IHtmlContent> managedCell0 = @<text><a asp-controller="Holded" asp-action="Account" asp-route-number="@item.AccountNumber"><code>@item.AccountNumber</code></a></text>;
+            Func<Humans.Finance.Models.HoldedManagedAccountVm, IHtmlContent> managedCell1 = @<text>@item.Label</text>;
+            Func<Humans.Finance.Models.HoldedManagedAccountVm, IHtmlContent> managedCell2 = @<text>@item.AccountId</text>;
+            Func<Humans.Finance.Models.HoldedManagedAccountVm, IHtmlContent> managedCell3 = @<text>@(item.IsActive ? "Yes" : "Retired")</text>;
+            Func<Humans.Finance.Models.HoldedManagedAccountVm, IHtmlContent> managedCell4 = @<text>@item.CreatedAt.ToDate()</text>;
+            var managedTable = TableModel.For(managed)
+                .Template("Account", managedCell0, sortBy: m => m.AccountNumber)
+                .Template("Label", managedCell1)
+                .Template("Holded id", managedCell2, o => o.Css("text-muted small"))
+                .Template("Active", managedCell3)
+                .Template("Since", managedCell4, sortBy: m => m.CreatedAt)
+                .Css("align-middle")
+                .Build();
+        <partial name="_Table" model="managedTable" />
         <div class="card-footer text-muted small">
             Expense accounts created for workgroups and programs rather than budget categories. A document booked
             to one counts as matched but toward no budget category.

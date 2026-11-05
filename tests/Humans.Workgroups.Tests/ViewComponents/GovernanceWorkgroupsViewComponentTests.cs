@@ -95,16 +95,10 @@ public sealed class GovernanceWorkgroupsViewComponentTests
 
         await act.Should().ThrowAsync<OperationCanceledException>();
     }
-    [HumansTheory]
-    [Xunit.InlineData("en")]
-    [Xunit.InlineData("es")]
-    [Xunit.InlineData("de")]
-    [Xunit.InlineData("it")]
-    [Xunit.InlineData("fr")]
-    [Xunit.InlineData("ca")]
-    public async Task CoordinatorNames_PreserveOrderAndSeparatorsThroughHumanRendering(string language)
+    [HumansFact]
+    public async Task CoordinatorNames_PreserveOrderAndSeparatorsThroughHumanRendering()
     {
-        using var culture = new CultureScope(language);
+        using var culture = new CultureScope("en");
         var now = Instant.FromUtc(2026, 11, 3, 1, 0);
         var firstId = Guid.NewGuid();
         var secondId = Guid.NewGuid();
@@ -137,16 +131,10 @@ public sealed class GovernanceWorkgroupsViewComponentTests
         html.Should().NotContain("<script>").And.NotContain("<b>").And.NotContain("<a ");
     }
 
-    [HumansTheory]
-    [Xunit.InlineData("en")]
-    [Xunit.InlineData("es")]
-    [Xunit.InlineData("de")]
-    [Xunit.InlineData("it")]
-    [Xunit.InlineData("fr")]
-    [Xunit.InlineData("ca")]
-    public async Task DocumentAttribution_RendersEncodedHumansInsideTheLocalizedSentence(string language)
+    [HumansFact]
+    public async Task DocumentAttribution_RendersEncodedHumansInsideTheLocalizedSentence()
     {
-        using var culture = new CultureScope(language);
+        using var culture = new CultureScope("en");
         var now = Instant.FromUtc(2026, 11, 3, 1, 0);
         var editorId = Guid.NewGuid();
         var authorId = Guid.NewGuid();

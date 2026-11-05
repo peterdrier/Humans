@@ -250,6 +250,8 @@ public class MarkdownEditorTagHelper(
                     {{ name: 'guide', action: function() {{
                         var modalEl = document.getElementById('markdownHelpModal');
                         if (!modalEl || typeof bootstrap === 'undefined') {{ return; }}
+                        // The modal is emitted beside the first editor, possibly inside a hidden container.
+                        if (modalEl.parentElement !== document.body) {{ document.body.appendChild(modalEl); }}
                         bootstrap.Modal.getOrCreateInstance(modalEl).show();
                     }}, className: 'fa-solid fa-circle-question', title: 'Markdown help' }}
                 ]
@@ -266,6 +268,7 @@ public class MarkdownEditorTagHelper(
                     }}
                 }});
             }}
+            el.humansMde = mde;
             el.dataset.mdeInitialized = 'true';
         }} catch (e) {{
             // Leave the bare textarea in place on failure.
@@ -285,6 +288,25 @@ public class MarkdownEditorTagHelper(
         }}
         tryInit();
     }}
+
+    // CodeMirror measures zero size inside display:none, so editors in collapses/modals render blank
+    // until refreshed once their container is shown.
+    function refreshWithin(e) {{
+        editorElements(e.target).forEach(function(el) {{
+            if (el.humansMde) {{ el.humansMde.codemirror.refresh(); }}
+        }});
+    }}
+    document.addEventListener('shown.bs.collapse', refreshWithin);
+    document.addEventListener('shown.bs.modal', refreshWithin);
+    // shown.bs.tab targets the trigger button, not the pane that just became visible.
+    document.addEventListener('shown.bs.tab', function(e) {{
+        var sel = e.target.getAttribute('data-bs-target') || e.target.getAttribute('href');
+        var pane = null;
+        if (sel && sel.charAt(0) === '#') {{
+            try {{ pane = document.querySelector(sel); }} catch (err) {{ pane = null; }}
+        }}
+        if (pane) {{ refreshWithin({{ target: pane }}); }}
+    }});
 
     window.HumansMarkdownEditor = {{ init: init }};
 }})();

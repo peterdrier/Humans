@@ -95,7 +95,7 @@ The avatar is rendered from `UserId` by the shared `<vc:human>` component, which
 
 ## Localization
 
-Existing keys cover all browse-page strings — no new keys needed for the avatar-chip rendering. The existing `Shifts_SignedUp` column header and `Shifts_Pending` label (used in avatar tooltips) are already in all 6 locales.
+Existing keys cover all browse-page strings — no new keys needed for the avatar-chip rendering. The existing `Shifts_SignedUp` column header and `Shifts_Pending` label (used in avatar tooltips) are already in all supported locales.
 
 ## Related Features
 

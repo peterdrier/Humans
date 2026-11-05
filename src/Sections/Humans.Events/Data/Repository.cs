@@ -253,18 +253,6 @@ internal sealed class EventRepository(IDbContextFactory<EventGuideDbContext> fac
         await ctx.SaveChangesAsync(ct);
     }
 
-    public async Task<int> AssignEventSettingsIdsAsync(
-        IReadOnlyDictionary<Guid, Guid> eventSettingsIdByEventId, CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        var ids = eventSettingsIdByEventId.Keys.ToList();
-        var rows = await ctx.Events.Where(e => ids.Contains(e.Id) && e.EventSettingsId == null).ToListAsync(ct);
-        foreach (var row in rows)
-            row.EventSettingsId = eventSettingsIdByEventId[row.Id];
-        await ctx.SaveChangesAsync(ct);
-        return rows.Count;
-    }
-
     public async Task<IReadOnlyList<Event>> GetApprovedEventsAsync(
         Guid? campId, Guid? venueId, Guid? categoryId, string? q,
         IReadOnlyList<string> excludedSlugs, CancellationToken ct = default)
@@ -328,7 +316,7 @@ internal sealed class EventRepository(IDbContextFactory<EventGuideDbContext> fac
         var groups = await ctx.Events
             .AsNoTracking()
             .Where(e => moderationStatuses.Contains(e.Status))
-            .Where(e => eventSettingsId == null || e.EventSettingsId == null || e.EventSettingsId == eventSettingsId)
+            .Where(e => eventSettingsId == null || e.EventSettingsId == eventSettingsId)
             .GroupBy(e => e.Status)
             .Select(g => new { Status = g.Key, Count = g.Count() })
             .ToListAsync(ct);
@@ -370,7 +358,7 @@ internal sealed class EventRepository(IDbContextFactory<EventGuideDbContext> fac
             .AsNoTracking()
             .Where(e => e.CampId != null &&
                         (e.Status == EventStatus.Pending || e.Status == EventStatus.Approved))
-            .Where(e => eventSettingsId == null || e.EventSettingsId == null || e.EventSettingsId == eventSettingsId)
+            .Where(e => eventSettingsId == null || e.EventSettingsId == eventSettingsId)
             .Select(e => new { e.Id, e.CampId, e.Title, e.StartAt, e.DurationMinutes, e.Status, e.IsRecurring, e.RecurrenceDays })
             .ToListAsync(ct);
 

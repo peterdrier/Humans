@@ -108,3 +108,10 @@ token check comes from the warm `CachingUserService` TrackedCache.
 ---
 
 
+
+### CalendarOccurrenceComposer (internal, owned by CalendarService)
+
+No repository or cache. Composes the event snapshots supplied by the existing
+query facade, resolves team names through `ITeamService`, and opens the existing
+async scope for `ICalendarFeedContributor` fan-out. Reuses
+`CalendarOccurrenceExpander`; no separate DI registration.

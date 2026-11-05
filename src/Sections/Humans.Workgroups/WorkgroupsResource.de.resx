@@ -34,7 +34,6 @@
 
   <!-- Enums -->
   <data name="Enum_WorkgroupStatus_Applied" xml:space="preserve"><value>Beantragt</value></data>
-  <data name="Workgroups_BreadcrumbNavigation" xml:space="preserve"><value>Navigationspfad</value></data>
   <data name="Enum_WorkgroupStatus_Referred" xml:space="preserve"><value>An den Vorstand weitergeleitet</value></data>
   <data name="Enum_WorkgroupStatus_Active" xml:space="preserve"><value>Aktiv</value></data>
   <data name="Enum_WorkgroupStatus_Refused" xml:space="preserve"><value>Abgelehnt</value></data>
@@ -74,7 +73,7 @@
   <data name="Enum_WorkgroupLogKind_ScopeChanged" xml:space="preserve"><value>Umfang geändert</value></data>
   <data name="Enum_WorkgroupLogKind_MemberJoined" xml:space="preserve"><value>Mitglied beigetreten</value></data>
   <data name="Enum_WorkgroupLogKind_MemberLeft" xml:space="preserve"><value>Mitglied ausgetreten</value></data>
-  <data name="Enum_WorkgroupLogKind_DormancyInquiry" xml:space="preserve"><value>Ruhestandsanfrage</value></data>
+  <data name="Enum_WorkgroupLogKind_DormancyInquiry" xml:space="preserve"><value>Nachfrage wegen Inaktivität</value></data>
   <data name="Enum_WorkgroupLogKind_DocumentPublished" xml:space="preserve"><value>Dokument veröffentlicht</value></data>
   <data name="Enum_WorkgroupLogKind_CommentPeriodOpened" xml:space="preserve"><value>Kommentierungsphase eröffnet</value></data>
   <data name="Enum_WorkgroupLogKind_CommentPeriodClosed" xml:space="preserve"><value>Kommentierungsphase geschlossen</value></data>

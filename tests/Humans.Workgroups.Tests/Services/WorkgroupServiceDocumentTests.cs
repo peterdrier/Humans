@@ -165,14 +165,16 @@ public sealed class WorkgroupServiceDocumentTests : WorkgroupsTestHarness
     }
 
     [HumansTheory]
-    [InlineData("en", "Document published")]
-    [InlineData("es", "Documento publicado")]
-    [InlineData("de", "Dokument veröffentlicht")]
-    [InlineData("it", "Documento pubblicato")]
-    [InlineData("fr", "Document publié")]
-    [InlineData("ca", "Document publicat")]
-    [InlineData("invalid!", "Document published")]
-    public async Task PublishedNotice_UsesTheRecipientLanguage(string language, string title)
+    [MemberData(nameof(SupportedCultures.All), MemberType = typeof(SupportedCultures))]
+    public Task PublishedNotice_UsesTheRecipientLanguage(string language) =>
+        AssertPublishedNoticeTitleAsync(language, new System.Resources.ResourceManager(typeof(WorkgroupsResource))
+            .GetString("Enum_WorkgroupLogKind_DocumentPublished", System.Globalization.CultureInfo.GetCultureInfo(language))!);
+
+    [HumansFact]
+    public Task PublishedNotice_UnsupportedLanguage_FallsBackToEnglish() =>
+        AssertPublishedNoticeTitleAsync("invalid!", "Document published");
+
+    private async Task AssertPublishedNoticeTitleAsync(string language, string title)
     {
         var coordinator = SeedUser(language: language);
         var group = await SeedWorkgroupAsync(coordinatorUserId: coordinator);

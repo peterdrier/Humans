@@ -6,7 +6,7 @@ public static class CultureCatalog
     public const string CanonicalLegalCultureCode = "es";
 
     public static IReadOnlyList<string> SupportedCultureCodes { get; } =
-        ["en", "es", "de", "it", "fr", "ca"];
+        ["en", "es", "de", "it", "fr", "ca", "nl"];
 }
 
 public static class CultureCodeExtensions
@@ -20,7 +20,8 @@ public static class CultureCodeExtensions
             ["fr"] = "Fran\u00e7ais",
             ["it"] = "Italiano",
             ["pt"] = "Portugu\u00eas",
-            ["ca"] = "Catal\u00e0"
+            ["ca"] = "Catal\u00e0",
+            ["nl"] = "Nederlands"
         };
 
     public static bool IsSupportedCultureCode(this string? cultureCode)
@@ -39,6 +40,7 @@ public static class CultureCodeExtensions
             ["it"] = "it",
             ["pt"] = "pt",
             ["ca"] = "es-ct",
+            ["nl"] = "nl",
         };
 
     /// <summary>

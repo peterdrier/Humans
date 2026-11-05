@@ -9,8 +9,7 @@ public sealed record OnboardingShiftsStepArgs(
     Guid EventSettingsId,
     IReadOnlyList<UrgentShiftInfo> Shifts,
     HashSet<Guid> UserSignupShiftIds,
-    Dictionary<Guid, SignupStatus> UserSignupStatuses,
-    bool EarlyEntrySignupsClosed);
+    Dictionary<Guid, SignupStatus> UserSignupStatuses);
 
 /// <summary>
 /// In this project's <c>Contracts/</c> folder, not the <c>.Contracts</c> leaf: the args name Shifts types, and

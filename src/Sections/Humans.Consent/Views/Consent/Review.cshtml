@@ -7,25 +7,19 @@
     ViewData["Title"] = string.Format(Localizer["Consent_Review_Title"].Value, Model.DocumentName);
 }
 
-<nav aria-label="@Localizer["Consent_BreadcrumbNavigation"]">
-    <ol class="breadcrumb">
-        <li class="breadcrumb-item"><a asp-action="Index">@SharedLocalizer["Nav_Consents"]</a></li>
-        <li class="breadcrumb-item active" aria-current="page">@Model.DocumentName</li>
-    </ol>
-</nav>
+@section Crumbs {
+    <a asp-action="Index">@SharedLocalizer["Nav_Consents"]</a>
+    <span>@Model.DocumentName</span>
+}
 
 <div class="row">
     <div class="col-lg-10">
-        <div class="d-flex justify-content-between align-items-center mb-3">
-            <div>
-                <h1 class="mb-0">@Model.DocumentName</h1>
-                <span class="badge bg-info">@Localizer["Consent_Version"] @Model.VersionNumber</span>
-            </div>
+        <page-header title="@Model.DocumentName" badge="@($"{Localizer["Consent_Version"].Value} {Model.VersionNumber}")" badge-class="bg-info">
             @if (Model.HasAlreadyConsented)
             {
                 <span class="badge bg-success fs-6">@Localizer["Consent_Review_AlreadyConsented"]</span>
             }
-        </div>
+        </page-header>
 
         @if (!Model.HasAlreadyConsented)
         {

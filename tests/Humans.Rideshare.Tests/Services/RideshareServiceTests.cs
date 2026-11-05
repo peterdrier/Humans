@@ -1026,14 +1026,13 @@ public sealed class RideshareServiceTests : RideshareTestHarness
     }
 
     [HumansTheory]
-    [InlineData("en", "A human is interested in your ride")]
-    [InlineData("es", "Un human está interesado en tu viaje")]
-    [InlineData("de", "Ein human interessiert sich für deine Fahrt")]
-    [InlineData("it", "Un human è interessato al tuo viaggio")]
-    [InlineData("fr", "Un human est intéressé par votre trajet")]
-    [InlineData("ca", "Un human està interessat en el teu viatge")]
-    public async Task InterestNotification_MissingActorName_UsesRecipientLanguage(string language, string title)
+    [MemberData(nameof(SupportedCultures.All), MemberType = typeof(SupportedCultures))]
+    public async Task InterestNotification_MissingActorName_UsesRecipientLanguage(string language)
     {
+        var resources = new System.Resources.ResourceManager(typeof(RideshareResource));
+        var culture = System.Globalization.CultureInfo.GetCultureInfo(language);
+        var title = string.Format(culture, resources.GetString("Rideshare_NoticeInterestRide", culture)!,
+            resources.GetString("Rideshare_NoticeHuman", culture));
         var driver = SeedUser("Ada");
         var rider = SeedUser(" ");
         var trip = await SeedTripAsync(driver);

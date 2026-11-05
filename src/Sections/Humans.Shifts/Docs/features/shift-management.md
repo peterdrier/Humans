@@ -68,7 +68,7 @@ Nobodies Collective runs multi-day events (e.g., Nowhere) where volunteers are n
 - Per-day instant signup on the browse page: clicking a day's toggle button signs up or bails that single shift via `POST /Shifts/ToggleDay` (AJAX, no page reload), re-rendering just that row. Applies to both timed Event shifts and all-day Build/Strike days. Date-range signup over a shared `SignupBlockId` (via `SignUpRangeAsync`) lives only in the onboarding-widget shift step
 - If a day-toggle request receives an HTTP redirect (for example after account access changes), the row stays intact and shows the existing localized error. Explicit `X-Redirect` responses still navigate.
 - Overlap detection prevents signing up for conflicting time slots — a toggle that would overlap an existing confirmed signup is refused with a warning toast and the day stays unsigned
-- Range signup and coordinator range assignment also detect selected all-day shifts that overlap each other on the same date. Conflict-skipping paths omit that entire date with a warning; signup without conflict skipping refuses the range.
+- Range signup and coordinator range assignment also detect selected all-day shifts that overlap each other on the same date. Conflict-skipping paths omit that entire date with a warning; signup without conflict skipping refuses the range. Coordinator confirmation notices count only the newly saved signups after conflict and capacity filtering.
 - AdminOnly shifts hidden from non-privileged users
 - EE freeze blocks non-privileged build shift signups after early entry close
 

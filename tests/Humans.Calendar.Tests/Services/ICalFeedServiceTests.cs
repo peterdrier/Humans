@@ -173,12 +173,7 @@ public class ICalFeedServiceTests
     }
 
     [HumansTheory]
-    [InlineData("en")]
-    [InlineData("es")]
-    [InlineData("de")]
-    [InlineData("it")]
-    [InlineData("fr")]
-    [InlineData("ca")]
+    [MemberData(nameof(SupportedCultures.All), MemberType = typeof(SupportedCultures))]
     public async Task GetFeedIcsAsync_ValidToken_SerializesItemsAsUtcVEvents(string language)
     {
         var userId = Guid.NewGuid();

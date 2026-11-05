@@ -85,7 +85,7 @@ internal sealed class EventsDashboardController(IEventManagement guide, ICampSer
         }).ToList();
 
         var campEvents = allEvents.Where(e => e.CampId.HasValue).ToList();
-        var campsById = await LoadCampsByIdAsync(camps, gateOpeningDate?.Year, ct);
+        var campsById = await LoadCampsByIdAsync(camps, eventSettings?.Id, ct);
         model.TopCamps = campEvents
             .GroupBy(e => e.CampId!.Value)
             .Select(g =>

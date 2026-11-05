@@ -8,16 +8,13 @@
         .Sum(p => p.AmountEur);
 }
 
-<nav aria-label="@Localizer["Store_BreadcrumbNavigation"]" class="mb-3">
-    <ol class="breadcrumb">
-        <li class="breadcrumb-item"><a asp-action="Index">@Localizer["Store_Title"]</a></li>
-        <li class="breadcrumb-item">@Model.Order.CounterpartyDisplayName</li>
-        <li class="breadcrumb-item active">@Localizer["Store_Order"]</li>
-    </ol>
-</nav>
+@section Crumbs {
+    <a asp-action="Index">@Localizer["Store_Title"]</a>
+    <span>@Model.Order.CounterpartyDisplayName</span>
+    <span>@Localizer["Store_Order"]</span>
+}
 
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <h1 class="mb-0">@Localizer["Store_Order"]</h1>
+<page-header title="@(Localizer["Store_Order"].Value)">
     <div class="d-flex align-items-center gap-2">
         <span class="badge bg-info text-dark fs-6">@Localizer.EnumDisplay(order.CounterpartyType)</span>
         <span class="badge bg-secondary fs-6">@Localizer.EnumDisplay(order.State)</span>
@@ -46,7 +43,7 @@
             </form>
         }
     </div>
-</div>
+</page-header>
 
 
 @if (!isTeamOrder)
@@ -153,7 +150,7 @@
 }
 else
 {
-    <div class="alert alert-secondary">@Localizer["Store_NoLines"]</div>
+    <empty-state>@Localizer["Store_NoLines"]</empty-state>
 }
 
 <vc:audit-log entity-type="@AuditEntityTypes.Product"
@@ -280,7 +277,7 @@ else
     }
     else
     {
-        <p class="text-muted">@Localizer["Store_NoPayments"]</p>
+        <empty-state>@Localizer["Store_NoPayments"]</empty-state>
     }
 
     @if (order.BalanceEur > 0 && Model.CanPay)

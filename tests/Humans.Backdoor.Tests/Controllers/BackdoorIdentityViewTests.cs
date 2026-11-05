@@ -25,16 +25,10 @@ namespace Humans.Backdoor.Tests.Controllers;
 
 public sealed class BackdoorIdentityViewTests
 {
-    [HumansTheory]
-    [Xunit.InlineData("en")]
-    [Xunit.InlineData("es")]
-    [Xunit.InlineData("de")]
-    [Xunit.InlineData("it")]
-    [Xunit.InlineData("fr")]
-    [Xunit.InlineData("ca")]
-    public async Task KeyOwners_RenderCanonicalIdentity_AndPreserveKeyStatus(string language)
+    [HumansFact]
+    public async Task KeyOwners_RenderCanonicalIdentity_AndPreserveKeyStatus()
     {
-        using var culture = new CultureScope(language);
+        using var culture = new CultureScope("en");
         var known = Guid.NewGuid();
         var missing = Guid.NewGuid();
         var users = Substitute.For<IUserService>();

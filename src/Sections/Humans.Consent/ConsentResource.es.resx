@@ -43,7 +43,6 @@
   <data name="Consent_Index_Title" xml:space="preserve">
     <value>Acuerdos</value>
   </data>
-  <data name="Consent_BreadcrumbNavigation" xml:space="preserve"><value>Ruta de navegación</value></data>
   <data name="Consent_Review_Title" xml:space="preserve">
     <value>Revisar: {0}</value>
     <comment>{0} = document name</comment>
@@ -68,7 +67,7 @@
     <value>Revisar y consentir</value>
   </data>
   <data name="Consent_PendingCount" xml:space="preserve">
-    <value>{0} documento(s) requieren su consentimiento. Por favor, revíselos y otorgue su consentimiento para mantener Su estado de voluntario activa.</value>
+    <value>{0} documento(s) requieren su consentimiento. Por favor, revíselos y otorgue su consentimiento para mantener su estado de voluntario activo.</value>
     <comment>{0} = pending document count</comment>
   </data>
   <data name="Consent_AllConsented" xml:space="preserve">

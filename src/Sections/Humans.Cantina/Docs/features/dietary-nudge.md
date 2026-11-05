@@ -50,7 +50,7 @@ Both forms carry `[AllowBeforeActiveMembership]` so a not-yet-Active member can 
 **Acceptance Criteria:**
 - `GET`/`POST /Cantina/Dietary`; full page, works without JS.
 - Fields: **Dietary preference** (required radio: Omnivore, Vegetarian, Vegan, Pescatarian); **Allergies** (chips from `DietaryOptions.AllergyOptions`, `Other` reveals `AllergyOtherText`, ≤ 500); **Intolerances** (chips, `Other` reveals `IntoleranceOtherText`, ≤ 500).
-- POST refuses `Other` without text; chips are filtered against `DietaryOptions`; Other text is kept only while `Other` is selected. The preference is not re-validated beyond being non-blank.
+- POST refuses `Other` without text; chips are filtered against `DietaryOptions`; Other text is kept only while `Other` is selected. Preference values are not restricted to the radio options. After normalization, the service enforces the existing storage bounds: 200 Unicode characters for the preference and 500 for each retained Other text. A refusal preserves the previous answers or opt-out and shows localized feedback.
 - Says the form is optional and never affects shift signups; shows a note when the member previously declined.
 - A secondary **"I don't want to answer"** button (`DeclineToAnswer=true`, `formnovalidate`) records the opt-out: answers cleared, `DeclinedToAnswer` set, no validation.
 - On success: redirect to `/Shifts` when `returnAction=shifts`, else Home; on failure re-render with values kept. Saving answers clears a prior decline.

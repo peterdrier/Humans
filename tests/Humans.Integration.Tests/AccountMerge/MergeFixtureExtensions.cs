@@ -55,7 +55,6 @@ public static class MergeFixtureExtensions
             Email = email,
             IsVerified = false,
             IsPrimary = false,
-            IsGoogle = false,
             CreatedAt = now,
             UpdatedAt = now,
         };

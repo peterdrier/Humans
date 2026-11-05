@@ -46,7 +46,6 @@
   <data name="Users_Profile_Title" xml:space="preserve">
     <value>Mein Profil</value>
   </data>
-  <data name="Users_BreadcrumbNavigation" xml:space="preserve"><value>Navigationspfad</value></data>
   <data name="Users_Profile_ActionRequired" xml:space="preserve">
     <value>Handlungsbedarf:</value>
   </data>
@@ -214,9 +213,6 @@
   </data>
   <data name="Users_ProfileEdit_TierLocked" xml:space="preserve">
     <value>Ihre Kategorie ist gesperrt, da Sie einen aktiven oder ausstehenden Antrag haben.</value>
-  </data>
-  <data name="Users_ProfileEdit_MotivationHelp" xml:space="preserve">
-    <value>Mindestens 50 Zeichen. Dies hilft dem Vorstand, Ihre Ziele zu verstehen.</value>
   </data>
   <data name="Users_ProfileEdit_BurnerNamePlaceholder" xml:space="preserve">
     <value>Der Name, unter dem Sie bekannt sind</value>
@@ -706,7 +702,7 @@
   <data name="Users_Email_EmailVerification_Body" xml:space="preserve">
     <value>&lt;h2&gt;E-Mail-Verifizierung&lt;/h2&gt;
 &lt;p&gt;Hallo {0},&lt;/p&gt;
-&lt;p&gt;Du hast angefordert, &lt;strong&gt;{1}&lt;/strong&gt; als bevorzugte E-Mail-Adresse festzulegen.&lt;/p&gt;
+&lt;p&gt;Du hast angefordert, &lt;strong&gt;{1}&lt;/strong&gt; zu deinem Konto hinzuzufügen.&lt;/p&gt;
 &lt;p&gt;Klicke auf den folgenden Link, um diese E-Mail-Adresse zu verifizieren:&lt;/p&gt;
 &lt;p&gt;&lt;a href="{2}" style="display:inline-block; padding:12px 24px; background-color:#0d6efd; color:#ffffff; text-decoration:none; border-radius:6px; font-weight:bold; font-size:16px;"&gt;E-Mail-Adresse verifizieren&lt;/a&gt;&lt;/p&gt;
 &lt;p&gt;Dieser Link läuft in 24 Stunden ab.&lt;/p&gt;
@@ -723,7 +719,7 @@
   <data name="Users_Email_AccountDeletionRequested_Body" xml:space="preserve">
     <value>&lt;h2&gt;Kontolöschungsanfrage erhalten&lt;/h2&gt;
 &lt;p&gt;Hallo {0},&lt;/p&gt;
-&lt;p&gt;Wir haben deine Anfrage zur Kontolöschung erhalten. Dein Konto und alle zugehorigen Daten werden am &lt;strong&gt;{1}&lt;/strong&gt; dauerhaft gelöscht.&lt;/p&gt;
+&lt;p&gt;Wir haben deine Anfrage zur Kontolöschung erhalten. Dein Konto und alle zugehörigen Daten werden am &lt;strong&gt;{1}&lt;/strong&gt; dauerhaft gelöscht.&lt;/p&gt;
 &lt;p&gt;Wenn du es dir anders überlegst, kannst du diese Anfrage vor dem Löschdatum stornieren:&lt;/p&gt;
 &lt;p&gt;&lt;a href="{2}/Gdpr/Deletion"&gt;Löschungsanfrage stornieren&lt;/a&gt;&lt;/p&gt;
 &lt;p&gt;Nach der Löschung kann diese Aktion nicht rückgängig gemacht werden und alle Daten werden dauerhaft entfernt.&lt;/p&gt;

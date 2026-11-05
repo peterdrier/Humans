@@ -43,7 +43,6 @@
   <data name="Shifts_SignedUp" xml:space="preserve">
     <value>Iscritti</value>
   </data>
-  <data name="Shifts_BreadcrumbNavigation" xml:space="preserve"><value>Percorso di navigazione</value></data>
   <data name="Shifts_Pending" xml:space="preserve">
     <value>(in attesa)</value>
   </data>
@@ -582,7 +581,7 @@
     <value>{0} — nessun turno in questo giorno</value>
   </data>
   <data name="Shifts_ShiftDash_Heatmap_Legend" xml:space="preserve">
-    <value>Legenda</value>
+    <value>Passa il mouse su una cella per i dettagli. Scorri orizzontalmente per vedere tutti i giorni.</value>
   </data>
   <data name="Shifts_ShiftDash_Departments_Col_Department" xml:space="preserve">
     <value>Dipartimento</value>
@@ -981,11 +980,11 @@
     <comment>TODO: translate</comment>
   </data>
   <data name="Shifts_VolTrack_Msg_CampSetupSaved" xml:space="preserve">
-    <value>Configurazione Barrio salvata</value>
+    <value>Data di montaggio del camp salvata.</value>
     <comment>TODO: translate</comment>
   </data>
   <data name="Shifts_VolTrack_Msg_CampSetupCleared" xml:space="preserve">
-    <value>Configurazione Barrio cancellata</value>
+    <value>Data di montaggio del camp cancellata.</value>
     <comment>TODO: translate</comment>
   </data>
   <data name="Shifts_VolTrack_Msg_AvailabilitySet" xml:space="preserve">
@@ -1017,7 +1016,7 @@
     <comment>TODO: translate</comment>
   </data>
   <data name="Shifts_VolTrack_Err_SetupBeforeFirstSignup" xml:space="preserve">
-    <value>La configurazione non può avvenire prima del primo iscritto</value>
+    <value>La data di montaggio deve essere uguale o successiva alla prima iscrizione di montaggio del volontario.</value>
     <comment>TODO: translate</comment>
   </data>
   <data name="Shifts_ShiftDash_VolTrackEntry_Title" xml:space="preserve">
@@ -1025,7 +1024,7 @@
     <comment>TODO: translate</comment>
   </data>
   <data name="Shifts_ShiftDash_VolTrackEntry_Subtitle" xml:space="preserve">
-    <value>Stato configurazione Barrios</value>
+    <value>Individua i buchi, segna le date di montaggio del camp, mostra i volontari dichiarati ma non prenotati.</value>
     <comment>TODO: translate</comment>
   </data>
   <data name="Shifts_ShiftDash_VolTrackEntry_Open" xml:space="preserve">
@@ -1156,7 +1155,7 @@
   </data>
   <data name="Shifts_DietaryMissingBanner_Title" xml:space="preserve"><value>Ci dici le tue preferenze alimentari?</value></data>
   <data name="Shifts_DietaryMissingBanner_Body" xml:space="preserve"><value>Sei iscritto a un turno lungo. Se ci dici le tue preferenze alimentari, la mensa può pianificare i tuoi pasti. È facoltativo.</value></data>
-  <data name="Shifts_DietaryMissingBanner_Cta" xml:space="preserve"><value>Tell us now</value></data>
+  <data name="Shifts_DietaryMissingBanner_Cta" xml:space="preserve"><value>Diccelo ora</value></data>
   <data name="Shifts_DietaryMissingBanner_Decline" xml:space="preserve"><value>Preferisco non rispondere</value></data>
   <data name="Shifts_ViewAllMyShifts" xml:space="preserve"><value>Vedi tutti i miei turni</value></data>
   <data name="Shifts_SortOrder" xml:space="preserve"><value>Ordinamento</value></data>
@@ -1293,4 +1292,5 @@
   <data name="Shifts_Notification_ChangeApprovedRange" xml:space="preserve"><value>Iscrizione a più turni di '{0}' approvata ({1} turni).</value></data>
   <data name="Shifts_Notification_ChangeRefusedRange" xml:space="preserve"><value>Iscrizione a più turni di '{0}' rifiutata ({1} turni).</value></data>
   <data name="Shifts_Notification_ChangeBailedRange" xml:space="preserve"><value>Annullamento di più turni di '{0}' ({1} turni).</value></data>
+  <data name="Shifts_TagPreferencesInvalid" xml:space="preserve"><value>Alcuni tag selezionati non sono più disponibili. Controlla la selezione e riprova.</value></data>
 </root>

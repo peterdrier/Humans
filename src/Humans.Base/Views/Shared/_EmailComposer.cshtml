@@ -3,13 +3,13 @@
 @* Shared human-composed-email component: optional subject field, an EasyMDE Markdown
    body (via the markdown-editor tag helper — which brings its own "?" Markdown help),
    and a "Preview" button that shows the exact branded, sanitized send. Every compose
-   form (profile message, camp contact, rota messages, survey invitation, feedback
-   reply, issue comment, campaign) renders through this one component instead of its
+   form (profile message, camp contact, rota messages, survey invitation,
+   issue comment, campaign) renders through this one component instead of its
    own subject/body/editor markup. It also shows a read-only "To:" line (warning styling
    and a confirm-on-submit at or above WarnRecipientCount) and a "Send to me" button that
    queues the same branded send to the signed-in human only.
 
-   A page that injects this partial via innerHTML (Feedback/Issues detail panels) sets
+   A page that injects this partial via innerHTML (the Issues detail panel) sets
    IncludePreviewModal = false and instead includes _EmailPreviewModal itself, once, at
    page level with the same PreviewModalId — and must call window.HumansEmailComposer
    .wire(root) / window.HumansMarkdownEditor.init(root) on the injected root afterwards,

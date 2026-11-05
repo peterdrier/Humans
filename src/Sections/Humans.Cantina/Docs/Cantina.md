@@ -92,7 +92,7 @@ Numeric offsets must also fit the requested day or full seven-day window within 
 - Allergy and intolerance details (health data) are hidden on the roster pages until an audited reveal: the reveal POST records `CantinaHealthDetailsRevealed` through the same roster service path (one row on the event naming the actor, the week or day and the person-row count; never one row per member shown, because the roster is the kitchen's working list across a few hundred people, not a lookup of one person's health data), hands a token for that one week or day through TempData, and the following render shows the details once. Preference roll-ups and allergy / intolerance **counts** always show. Pinned by `CantinaRosterServiceTests.HealthReveal_IsAudited_AndUnlocksOnlyThePageItWasPostedFor` and `HealthReveal_WritesOneRow_HoweverManyMembersItShows`.
 - The roster is rendered live on every request — no cached aggregates. CSV exports the same in-memory aggregate produced for the HTML view.
 - Every `RosterPersonDto` in the cohort has a confirmed shift no later than the day after the week, so its arrival day always exists and `ArrivesOn` is non-nullable.
-- A dietary save is the member's own: the form takes the user from the principal, refuses "Other" without its text, filters chips against `DietaryOptions`, and keeps no medical field. A save clears `DeclinedToAnswer`; a decline clears every food field. Member self-saves and declines are not audited.
+- A dietary save is the member's own: the form takes the user from the principal, refuses "Other" without its text, filters chips against `DietaryOptions`, and keeps no medical field. A save clears `DeclinedToAnswer`; a decline clears every food field. After normalization, saves refuse preferences over 200 Unicode characters and retained Other texts over 500, matching the existing columns. Refusals preserve all stored answers and the opt-out; unknown preferences within the bound and discarded text remain supported. Member self-saves and declines are not audited.
 - Merge (`IUserMerge`): the survivor's answers win. When the survivor has no row, the source's row moves. Saved empty answers and declines are preserved. The source's row is removed; retries preserve the result. Reads under an archived id resolve to the survivor.
 - GDPR: export slice `DietaryProfile` (row, including `DeclinedToAnswer`; null when none); erasure deletes the row. Users' erasure still nulls the legacy columns.
 - The roster reads cached `UserInfo.BurnerName` for culture-aware sorting and CSV snapshots, with `"(unknown)"` when the cohort read did not return a usable name. Daily HTML renders `UserId` through the shared Human component without profile links, using its localized missing-member label. This does not unlock allergy or intolerance columns: their audited reveal gate remains separate.
@@ -109,7 +109,7 @@ Numeric offsets must also fit the requested day or full seven-day window within 
 
 - View renders on each request; no cache, no background job, no scheduled invalidation. Data is live as of the request.
 - CSV export computes the same in-memory aggregate as the HTML view and streams it as `text/csv; charset=utf-8` with filename `cantina-roster-week-of-<yyyy-MM-dd>.csv`.
-- The dietary things-to-do (`ISectionThingsToDo`, key `dietary`) shows while the member has neither a preference nor `DeclinedToAnswer`; its copy switches on `IShiftService.HasQualifyingCantinaSignupAsync`. Its title, descriptions and action use the shared `Todo_DietaryMedical_*` resources translated into all six supported cultures. Saving a preference or choosing "I don't want to answer" clears it, Users' medical prompt and the `/Shifts` banner.
+- The dietary things-to-do (`ISectionThingsToDo`, key `dietary`) shows while the member has neither a preference nor `DeclinedToAnswer`; its copy switches on `IShiftService.HasQualifyingCantinaSignupAsync`. Its title, descriptions and action use the shared `Todo_DietaryMedical_*` resources translated into all supported cultures. Saving a preference or choosing "I don't want to answer" clears it, Users' medical prompt and the `/Shifts` banner.
 - Weekly/daily CSV callers and the health reveals pass a `RosterDisclosure` (actor + audit action) to the roster service, which audits after the personal rows are built. No notifications or outbox events.
 
 ## Cross-Section Dependencies
@@ -120,7 +120,7 @@ Numeric offsets must also fit the requested day or full seven-day window within 
 - **Shifts:** `IShiftService.GetOnSiteUserIdsForDayAsync` (on-site cohort). Service-layer reads only; the cantina never touches the Shifts repository.
 - **Settings:** `ISettingsService.GetActiveEventSettingsAsync` (active event/burn).
 - **Users/Identity:** `IUserService.GetUserInfosAsync` / `GetUserInfoAsync` — cached `UserInfo` for burner names and the merge chain. No entity reads.
-- **Gdpr:** implements `IUserDataContributor` and `IUserMerge` (`DietaryProfileService`).
+- **Gdpr / Users:** implements `IUserDataContributor` (Base) and `IUserMerge` (Users contract) in `DietaryProfileService`.
 - **Inbound:** Shifts (banner, volunteer search, admin badges) and Users (medical prompt) read `ICantinaService`.
 
 ## Architecture

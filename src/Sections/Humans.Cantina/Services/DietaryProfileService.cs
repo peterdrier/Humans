@@ -53,16 +53,23 @@ internal sealed class DietaryProfileService(
 
         var allergies = answers.Allergies.Where(a => DietaryOptions.AllergyOptions.Contains(a, StringComparer.Ordinal)).Distinct(StringComparer.Ordinal).ToList();
         var intolerances = answers.Intolerances.Where(i => DietaryOptions.IntoleranceOptions.Contains(i, StringComparer.Ordinal)).Distinct(StringComparer.Ordinal).ToList();
+        var preference = string.IsNullOrWhiteSpace(answers.DietaryPreference) ? null : answers.DietaryPreference;
+        var allergyOther = allergies.Contains(DietaryOptions.OtherOption) ? answers.AllergyOtherText?.Trim() : null;
+        var intoleranceOther = intolerances.Contains(DietaryOptions.OtherOption) ? answers.IntoleranceOtherText?.Trim() : null;
+        if (preference?.EnumerateRunes().Count() > 200)
+            return "Cantina_Dietary_PreferenceTooLong";
+        if (allergyOther?.EnumerateRunes().Count() > 500 || intoleranceOther?.EnumerateRunes().Count() > 500)
+            return "Cantina_Dietary_OtherTextTooLong";
+
         await repo.UpsertAsync(new DietaryProfile
         {
             UserId = userId,
-            // Not re-validated against DietaryPreferences: the radio group constrains the UI and the column has always
-            // taken any non-blank string.
-            DietaryPreference = string.IsNullOrWhiteSpace(answers.DietaryPreference) ? null : answers.DietaryPreference,
+            // Unknown preferences remain valid within the column bound; only the radio group constrains the UI.
+            DietaryPreference = preference,
             Allergies = allergies,
-            AllergyOtherText = allergies.Contains(DietaryOptions.OtherOption) ? answers.AllergyOtherText?.Trim() : null,
+            AllergyOtherText = allergyOther,
             Intolerances = intolerances,
-            IntoleranceOtherText = intolerances.Contains(DietaryOptions.OtherOption) ? answers.IntoleranceOtherText?.Trim() : null,
+            IntoleranceOtherText = intoleranceOther,
             DeclinedToAnswer = false,
             UpdatedAt = clock.GetCurrentInstant(),
         }, ct);

@@ -125,7 +125,7 @@ rules:
       # 2. THE BACKLOG — the standing count per section, so a run can report the size of
       #    the section's debt without being asked to fix it. Existing keys are NOT
       #    backfilled as a side effect of other work (see `home`); a backfill is its own
-      #    deliberate change, one section at a time, and it touches six language files
+      #    deliberate change, one section at a time, and it touches every culture's language file
       #    plus every call site.
       - kind: shell
         what: standing non-conforming key count per section

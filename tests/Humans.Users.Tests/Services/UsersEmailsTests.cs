@@ -47,12 +47,7 @@ public sealed class UsersEmailsTests
     }
 
     [HumansTheory]
-    [InlineData("en")]
-    [InlineData("es")]
-    [InlineData("de")]
-    [InlineData("it")]
-    [InlineData("fr")]
-    [InlineData("ca")]
+    [MemberData(nameof(SupportedCultures.All), MemberType = typeof(SupportedCultures))]
     public void AccountDeletionRequested_UsesRecipientCultureAndTheCancellationPage(string culture)
     {
         using var callerCulture = new CultureScope("en");

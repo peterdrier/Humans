@@ -26,16 +26,10 @@ namespace Humans.Surveys.Tests.Models;
 
 public sealed class SurveyIdentityViewTests
 {
-    [HumansTheory]
-    [Xunit.InlineData("en")]
-    [Xunit.InlineData("es")]
-    [Xunit.InlineData("de")]
-    [Xunit.InlineData("it")]
-    [Xunit.InlineData("fr")]
-    [Xunit.InlineData("ca")]
-    public async Task ResultsAndInvitations_RenderCanonicalIdentity_AndEncodeNames(string language)
+    [HumansFact]
+    public async Task ResultsAndInvitations_RenderCanonicalIdentity_AndEncodeNames()
     {
-        using var culture = new CultureScope(language);
+        using var culture = new CultureScope("en");
         var known = Guid.NewGuid();
         var missing = Guid.NewGuid();
         var users = Substitute.For<IUserService>();

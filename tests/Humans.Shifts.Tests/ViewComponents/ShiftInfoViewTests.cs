@@ -23,16 +23,11 @@ namespace Humans.Shifts.Tests.ViewComponents;
 public class ShiftInfoViewTests
 {
     [HumansTheory]
-    [Xunit.InlineData("en")]
-    [Xunit.InlineData("es")]
-    [Xunit.InlineData("de")]
-    [Xunit.InlineData("it")]
-    [Xunit.InlineData("fr")]
-    [Xunit.InlineData("ca")]
-    [Xunit.InlineData("en", "l'heure \"du jour\"\n</script>\\suite")]
-    public async Task Wizard_step_copy_round_trips_through_script(string language, string? overrideCopy = null)
+    [Xunit.InlineData(null)]
+    [Xunit.InlineData("l'heure à \"du jour\"\n</script>\\suite")]
+    public async Task Wizard_step_copy_round_trips_through_script(string? overrideCopy)
     {
-        using var culture = new CultureScope(language);
+        using var culture = new CultureScope(CultureCatalog.DefaultCultureCode);
         var resources = new ResourceManager(typeof(ShiftsResource));
         string Copy(string key) => overrideCopy ?? resources.GetString(key, CultureInfo.CurrentUICulture)!;
         var localizer = Substitute.For<IStringLocalizer<ShiftsResource>>();

@@ -1,0 +1,1604 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<!-- ReSharper disable MarkupTextTypo -->
+<root xmlns:ns1="urn:schemas-microsoft-com:xml-msdata" xmlns:xs="http://www.w3.org/2001/XMLSchema">
+  <xs:schema id="root">
+    <xs:element name="root" ns1:IsDataSet="true">
+      <xs:complexType>
+        <xs:choice maxOccurs="unbounded">
+          <xs:element name="data">
+            <xs:complexType>
+              <xs:sequence>
+                <xs:element name="value" type="xsd:string" minOccurs="0" ns1:Ordinal="1" />
+                <xs:element name="comment" type="xsd:string" minOccurs="0" ns1:Ordinal="2" />
+              </xs:sequence>
+              <xs:attribute name="name" type="xsd:string" ns1:Ordinal="0" />
+              <xs:attribute name="type" type="xsd:string" />
+              <xs:attribute name="mimetype" type="xsd:string" />
+            </xs:complexType>
+          </xs:element>
+          <xs:element name="resheader">
+            <xs:complexType>
+              <xs:sequence>
+                <xs:element name="value" type="xsd:string" minOccurs="0" ns1:Ordinal="1" />
+              </xs:sequence>
+              <xs:attribute name="name" type="xsd:string" use="required" />
+            </xs:complexType>
+          </xs:element>
+        </xs:choice>
+      </xs:complexType>
+    </xs:element>
+  </xs:schema>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>1.3</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="Common_ReturnHome" xml:space="preserve">
+    <value>Terug naar de startpagina</value>
+  </data>
+  <data name="Common_Status" xml:space="preserve">
+    <value>Status</value>
+  </data>
+  <data name="Common_EditProfile" xml:space="preserve">
+    <value>Profiel bewerken</value>
+  </data>
+  <data name="Common_Cancel" xml:space="preserve">
+    <value>Annuleren</value>
+  </data>
+  <data name="Common_Close" xml:space="preserve">
+    <value>Sluiten</value>
+  </data>
+  <data name="Common_Previous" xml:space="preserve"><value>Vorige</value></data>
+  <data name="Common_Next" xml:space="preserve"><value>Volgende</value></data>
+  <data name="Common_Pagination" xml:space="preserve"><value>Paginering</value></data>
+  <data name="Common_Breadcrumb" xml:space="preserve"><value>Kruimelpad</value></data>
+  <data name="Common_Filter" xml:space="preserve"><value>Filteren</value></data>
+  <data name="Common_FilterColumn" xml:space="preserve"><value>{0} filteren</value></data>
+  <data name="Common_All" xml:space="preserve"><value>Alle</value></data>
+  <data name="SectionHelp_Title" xml:space="preserve"><value>Hulp bij dit onderdeel</value></data>
+  <data name="SectionHelp_Guide" xml:space="preserve"><value>Handleiding</value></data>
+  <data name="SectionHelp_Glossary" xml:space="preserve"><value>Woordenlijst</value></data>
+  <data name="SectionHelp_AccessMatrix" xml:space="preserve"><value>Toegangsmatrix</value></data>
+  <data name="SectionHelp_Feature" xml:space="preserve"><value>Functie</value></data>
+  <data name="EmailComposer_Preview" xml:space="preserve">
+    <value>Voorbeeld</value>
+  </data>
+  <data name="EmailComposer_PreviewModalTitle" xml:space="preserve">
+    <value>E-mailvoorbeeld</value>
+  </data>
+  <data name="EmailComposer_PreviewLoading" xml:space="preserve">
+    <value>Voorbeeld laden…</value>
+  </data>
+  <data name="EmailComposer_PreviewError" xml:space="preserve">
+    <value>Het voorbeeld kon niet worden geladen. Probeer het opnieuw.</value>
+  </data>
+  <data name="EmailComposer_MarkdownSupported" xml:space="preserve">
+    <value>Ondersteunt Markdown — vet, links, lijsten, afbeeldingen.</value>
+  </data>
+  <data name="EmailComposer_PreviewSubjectLabel" xml:space="preserve">
+    <value>Onderwerp</value>
+  </data>
+  <data name="Common_General" xml:space="preserve">
+    <value>Algemeen</value>
+  </data>
+  <data name="Common_Save" xml:space="preserve">
+    <value>Wijzigingen opslaan</value>
+  </data>
+
+  <!-- Language names: Unicode CLDR; English catalog labels retained. -->
+  <data name="Language_AF" xml:space="preserve"><value>Afrikaans</value></data>
+  <data name="Language_AM" xml:space="preserve"><value>Amhaars</value></data>
+  <data name="Language_AR" xml:space="preserve"><value>Arabisch</value></data>
+  <data name="Language_AZ" xml:space="preserve"><value>Azerbeidzjaans</value></data>
+  <data name="Language_BE" xml:space="preserve"><value>Belarussisch</value></data>
+  <data name="Language_BG" xml:space="preserve"><value>Bulgaars</value></data>
+  <data name="Language_BN" xml:space="preserve"><value>Bengaals</value></data>
+  <data name="Language_BS" xml:space="preserve"><value>Bosnisch</value></data>
+  <data name="Language_CA" xml:space="preserve"><value>Catalaans</value></data>
+  <data name="Language_CS" xml:space="preserve"><value>Tsjechisch</value></data>
+  <data name="Language_CY" xml:space="preserve"><value>Welsh</value></data>
+  <data name="Language_DA" xml:space="preserve"><value>Deens</value></data>
+  <data name="Language_DE" xml:space="preserve"><value>Duits</value></data>
+  <data name="Language_EL" xml:space="preserve"><value>Grieks</value></data>
+  <data name="Language_EN" xml:space="preserve"><value>Engels</value></data>
+  <data name="Language_EO" xml:space="preserve"><value>Esperanto</value></data>
+  <data name="Language_ES" xml:space="preserve"><value>Spaans</value></data>
+  <data name="Language_ET" xml:space="preserve"><value>Estisch</value></data>
+  <data name="Language_EU" xml:space="preserve"><value>Baskisch</value></data>
+  <data name="Language_FA" xml:space="preserve"><value>Perzisch</value></data>
+  <data name="Language_FI" xml:space="preserve"><value>Fins</value></data>
+  <data name="Language_FR" xml:space="preserve"><value>Frans</value></data>
+  <data name="Language_GA" xml:space="preserve"><value>Iers</value></data>
+  <data name="Language_GL" xml:space="preserve"><value>Galicisch</value></data>
+  <data name="Language_GU" xml:space="preserve"><value>Gujarati</value></data>
+  <data name="Language_HA" xml:space="preserve"><value>Hausa</value></data>
+  <data name="Language_HE" xml:space="preserve"><value>Hebreeuws</value></data>
+  <data name="Language_HI" xml:space="preserve"><value>Hindi</value></data>
+  <data name="Language_HR" xml:space="preserve"><value>Kroatisch</value></data>
+  <data name="Language_HU" xml:space="preserve"><value>Hongaars</value></data>
+  <data name="Language_HY" xml:space="preserve"><value>Armeens</value></data>
+  <data name="Language_ID" xml:space="preserve"><value>Indonesisch</value></data>
+  <data name="Language_IS" xml:space="preserve"><value>IJslands</value></data>
+  <data name="Language_IT" xml:space="preserve"><value>Italiaans</value></data>
+  <data name="Language_JA" xml:space="preserve"><value>Japans</value></data>
+  <data name="Language_KA" xml:space="preserve"><value>Georgisch</value></data>
+  <data name="Language_KK" xml:space="preserve"><value>Kazachs</value></data>
+  <data name="Language_KM" xml:space="preserve"><value>Khmer</value></data>
+  <data name="Language_KN" xml:space="preserve"><value>Kannada</value></data>
+  <data name="Language_KO" xml:space="preserve"><value>Koreaans</value></data>
+  <data name="Language_KU" xml:space="preserve"><value>Koerdisch</value></data>
+  <data name="Language_LA" xml:space="preserve"><value>Latijn</value></data>
+  <data name="Language_LT" xml:space="preserve"><value>Litouws</value></data>
+  <data name="Language_LV" xml:space="preserve"><value>Lets</value></data>
+  <data name="Language_MK" xml:space="preserve"><value>Macedonisch</value></data>
+  <data name="Language_ML" xml:space="preserve"><value>Malayalam</value></data>
+  <data name="Language_MN" xml:space="preserve"><value>Mongools</value></data>
+  <data name="Language_MR" xml:space="preserve"><value>Marathi</value></data>
+  <data name="Language_MS" xml:space="preserve"><value>Maleis</value></data>
+  <data name="Language_MT" xml:space="preserve"><value>Maltees</value></data>
+  <data name="Language_MY" xml:space="preserve"><value>Birmaans</value></data>
+  <data name="Language_NE" xml:space="preserve"><value>Nepalees</value></data>
+  <data name="Language_NL" xml:space="preserve"><value>Nederlands</value></data>
+  <data name="Language_NO" xml:space="preserve"><value>Noors</value></data>
+  <data name="Language_PA" xml:space="preserve"><value>Punjabi</value></data>
+  <data name="Language_PL" xml:space="preserve"><value>Pools</value></data>
+  <data name="Language_PS" xml:space="preserve"><value>Pasjtoe</value></data>
+  <data name="Language_PT" xml:space="preserve"><value>Portugees</value></data>
+  <data name="Language_RO" xml:space="preserve"><value>Roemeens</value></data>
+  <data name="Language_RU" xml:space="preserve"><value>Russisch</value></data>
+  <data name="Language_SI" xml:space="preserve"><value>Singalees</value></data>
+  <data name="Language_SK" xml:space="preserve"><value>Slowaaks</value></data>
+  <data name="Language_SL" xml:space="preserve"><value>Sloveens</value></data>
+  <data name="Language_SO" xml:space="preserve"><value>Somalisch</value></data>
+  <data name="Language_SQ" xml:space="preserve"><value>Albanees</value></data>
+  <data name="Language_SR" xml:space="preserve"><value>Servisch</value></data>
+  <data name="Language_SV" xml:space="preserve"><value>Zweeds</value></data>
+  <data name="Language_SW" xml:space="preserve"><value>Swahili</value></data>
+  <data name="Language_TA" xml:space="preserve"><value>Tamil</value></data>
+  <data name="Language_TE" xml:space="preserve"><value>Telugu</value></data>
+  <data name="Language_TH" xml:space="preserve"><value>Thai</value></data>
+  <data name="Language_TL" xml:space="preserve"><value>Filipijns</value></data>
+  <data name="Language_TR" xml:space="preserve"><value>Turks</value></data>
+  <data name="Language_UK" xml:space="preserve"><value>Oekraïens</value></data>
+  <data name="Language_UR" xml:space="preserve"><value>Urdu</value></data>
+  <data name="Language_UZ" xml:space="preserve"><value>Oezbeeks</value></data>
+  <data name="Language_VI" xml:space="preserve"><value>Vietnamees</value></data>
+  <data name="Language_ZH" xml:space="preserve"><value>Chinees</value></data>
+  <data name="Language_ZU" xml:space="preserve"><value>Zoeloe</value></data>
+
+  <data name="Common_Edit" xml:space="preserve">
+    <value>Bewerken</value>
+  </data>
+  <data name="Common_Add" xml:space="preserve">
+    <value>Toevoegen</value>
+  </data>
+  <data name="Common_Delete" xml:space="preserve">
+    <value>Verwijderen</value>
+  </data>
+  <data name="Common_Back" xml:space="preserve">
+    <value>Terug</value>
+  </data>
+  <data name="Common_ExportGeoJson" xml:space="preserve">
+    <value>GeoJSON exporteren</value>
+  </data>
+  <data name="Common_NotProvided" xml:space="preserve">
+    <value>Niet opgegeven</value>
+  </data>
+  <data name="Common_Error" xml:space="preserve">
+    <value>Er is iets misgegaan. Probeer het later opnieuw.</value>
+  </data>
+  <data name="Common_Unknown" xml:space="preserve">
+    <value>Onbekend</value>
+  </data>
+  <data name="Nav_Brand" xml:space="preserve">
+    <value>Humans</value>
+  </data>
+  <data name="Nav_MyProfile" xml:space="preserve">
+    <value>Mijn profiel</value>
+  </data>
+  <data name="Nav_Teams" xml:space="preserve">
+    <value>Teams</value>
+  </data>
+  <data name="Nav_Shifts" xml:space="preserve">
+    <value>Vrijwilligerswerk</value>
+  </data>
+  <data name="Nav_Roster" xml:space="preserve">
+    <value>Rooster</value>
+  </data>
+  <data name="Nav_Consents" xml:space="preserve">
+    <value>Overeenkomsten</value>
+  </data>
+  <data name="Nav_Governance" xml:space="preserve">
+    <value>Governance</value>
+  </data>
+  <data name="Nav_Privacy" xml:space="preserve">
+    <value>Privacy</value>
+  </data>
+  <data name="Nav_About" xml:space="preserve">
+    <value>Over ons</value>
+  </data>
+  <data name="Nav_Admin" xml:space="preserve">
+    <value>Beheer</value>
+  </data>
+  <data name="CookieBanner_Title" xml:space="preserve">
+    <value>Cookiemelding</value>
+  </data>
+  <data name="CookieBanner_Text" xml:space="preserve">
+    <value>Deze site gebruikt essentiële cookies die nodig zijn voor authenticatie en beveiliging. Er worden geen tracking- of analysecookies gebruikt.</value>
+  </data>
+  <data name="CookieBanner_LearnMore" xml:space="preserve">
+    <value>Meer informatie</value>
+  </data>
+  <data name="CookieBanner_Accept" xml:space="preserve">
+    <value>Accepteren</value>
+  </data>
+  <data name="Login_Logout" xml:space="preserve">
+    <value>Uitloggen</value>
+  </data>
+  <data name="Login_Login" xml:space="preserve">
+    <value>Inloggen</value>
+  </data>
+  <data name="Login_Title" xml:space="preserve">
+    <value>Inloggen</value>
+  </data>
+  <data name="Login_Description" xml:space="preserve">
+    <value>Log in om Humans te gebruiken.</value>
+  </data>
+  <data name="LinkPreview_About_Title" xml:space="preserve">
+    <value>Over ons</value>
+  </data>
+  <data name="LinkPreview_About_Description" xml:space="preserve">
+    <value>Wat Humans is en wie het bouwt.</value>
+  </data>
+  <data name="LinkPreview_Barrios_Title" xml:space="preserve">
+    <value>Barrios</value>
+  </data>
+  <data name="LinkPreview_Barrios_Description" xml:space="preserve">
+    <value>Barrios en kampplaatsing voor Nobodies.</value>
+  </data>
+  <data name="LinkPreview_Budget_Title" xml:space="preserve">
+    <value>Budget</value>
+  </data>
+  <data name="LinkPreview_Budget_Description" xml:space="preserve">
+    <value>Waar het geld van de vereniging vandaan komt en waar het naartoe gaat.</value>
+  </data>
+  <data name="LinkPreview_Calendar_Title" xml:space="preserve">
+    <value>Kalender</value>
+  </data>
+  <data name="LinkPreview_Calendar_Description" xml:space="preserve">
+    <value>Komende data en evenementen van Nobodies.</value>
+  </data>
+  <data name="LinkPreview_Camps_Title" xml:space="preserve">
+    <value>Kampen</value>
+  </data>
+  <data name="LinkPreview_Camps_Description" xml:space="preserve">
+    <value>Kampregistratie en plaatsing.</value>
+  </data>
+  <data name="LinkPreview_Cantina_Title" xml:space="preserve">
+    <value>Cantina</value>
+  </data>
+  <data name="LinkPreview_Cantina_Description" xml:space="preserve">
+    <value>De cantina van Nobodies.</value>
+  </data>
+  <data name="LinkPreview_CityPlanning_Title" xml:space="preserve">
+    <value>Stadsplanning</value>
+  </data>
+  <data name="LinkPreview_CityPlanning_Description" xml:space="preserve">
+    <value>De stadsindeling en het plaatsingsplan.</value>
+  </data>
+  <data name="LinkPreview_Events_Title" xml:space="preserve">
+    <value>Evenementen</value>
+  </data>
+  <data name="LinkPreview_Events_Description" xml:space="preserve">
+    <value>Evenementen van Nobodies: wat er te doen is en wie er gaat.</value>
+  </data>
+  <data name="LinkPreview_Expenses_Title" xml:space="preserve">
+    <value>Declaraties</value>
+  </data>
+  <data name="LinkPreview_Expenses_Description" xml:space="preserve">
+    <value>Declaraties en terugbetalingen.</value>
+  </data>
+  <data name="LinkPreview_Finance_Title" xml:space="preserve">
+    <value>Financiën</value>
+  </data>
+  <data name="LinkPreview_Finance_Description" xml:space="preserve">
+    <value>De rekeningen en transacties van de vereniging.</value>
+  </data>
+  <data name="LinkPreview_Gate_Title" xml:space="preserve">
+    <value>Gate</value>
+  </data>
+  <data name="LinkPreview_Gate_Description" xml:space="preserve">
+    <value>Inchecken bij de gate bij aankomst.</value>
+  </data>
+  <data name="LinkPreview_Governance_Title" xml:space="preserve">
+    <value>Governance</value>
+  </data>
+  <data name="LinkPreview_Governance_Description" xml:space="preserve">
+    <value>Aanvragen, bestuursstemmingen en stemmingen van de ledenvergadering.</value>
+  </data>
+  <data name="LinkPreview_Guide_Title" xml:space="preserve">
+    <value>Handleiding</value>
+  </data>
+  <data name="LinkPreview_Guide_Description" xml:space="preserve">
+    <value>Hoe Humans werkt, stap voor stap.</value>
+  </data>
+  <data name="LinkPreview_Issues_Title" xml:space="preserve">
+    <value>Meldingen</value>
+  </data>
+  <data name="LinkPreview_Issues_Description" xml:space="preserve">
+    <value>Problemen met Humans melden en volgen.</value>
+  </data>
+  <data name="LinkPreview_Legal_Title" xml:space="preserve">
+    <value>Juridisch</value>
+  </data>
+  <data name="LinkPreview_Legal_Description" xml:space="preserve">
+    <value>Statuten, beleid en juridische documenten.</value>
+  </data>
+  <data name="LinkPreview_Notifications_Title" xml:space="preserve">
+    <value>Meldingen</value>
+  </data>
+  <data name="LinkPreview_Notifications_Description" xml:space="preserve">
+    <value>Jouw Humans-meldingen.</value>
+  </data>
+  <data name="LinkPreview_Profile_Title" xml:space="preserve">
+    <value>Profiel</value>
+  </data>
+  <data name="LinkPreview_Profile_Description" xml:space="preserve">
+    <value>Een ledenprofiel op Humans.</value>
+  </data>
+  <data name="LinkPreview_Rideshare_Title" xml:space="preserve">
+    <value>Carpoolen</value>
+  </data>
+  <data name="LinkPreview_Rideshare_Description" xml:space="preserve">
+    <value>Deel een rit van en naar het evenement.</value>
+  </data>
+  <data name="LinkPreview_Search_Title" xml:space="preserve">
+    <value>Zoeken</value>
+  </data>
+  <data name="LinkPreview_Search_Description" xml:space="preserve">
+    <value>Vind leden, teams en meer.</value>
+  </data>
+  <data name="LinkPreview_Settings_Title" xml:space="preserve">
+    <value>Instellingen</value>
+  </data>
+  <data name="LinkPreview_Settings_Description" xml:space="preserve">
+    <value>Jouw Humans-instellingen.</value>
+  </data>
+  <data name="LinkPreview_Shifts_Title" xml:space="preserve">
+    <value>Diensten</value>
+  </data>
+  <data name="LinkPreview_Shifts_Description" xml:space="preserve">
+    <value>Vrijwilligersdiensten: meld je aan en zie wie er dienst heeft.</value>
+  </data>
+  <data name="LinkPreview_Store_Title" xml:space="preserve">
+    <value>Winkel</value>
+  </data>
+  <data name="LinkPreview_Store_Description" xml:space="preserve">
+    <value>De winkel van Nobodies.</value>
+  </data>
+  <data name="LinkPreview_Survey_Title" xml:space="preserve">
+    <value>Enquête</value>
+  </data>
+  <data name="LinkPreview_Survey_Description" xml:space="preserve">
+    <value>Een enquête of stembiljet van Nobodies.</value>
+  </data>
+  <data name="LinkPreview_Teams_Title" xml:space="preserve">
+    <value>Teams</value>
+  </data>
+  <data name="LinkPreview_Teams_Description" xml:space="preserve">
+    <value>Teams en hun ledenlijsten.</value>
+  </data>
+  <data name="LinkPreview_Tickets_Title" xml:space="preserve">
+    <value>Tickets</value>
+  </data>
+  <data name="LinkPreview_Tickets_Description" xml:space="preserve">
+    <value>Je tickets en de ticketverkoop.</value>
+  </data>
+  <data name="LinkPreview_Tour_Title" xml:space="preserve">
+    <value>Rondleiding</value>
+  </data>
+  <data name="LinkPreview_Tour_Description" xml:space="preserve">
+    <value>Een rondleiding door Humans.</value>
+  </data>
+  <data name="LinkPreview_Workgroups_Title" xml:space="preserve">
+    <value>Werkgroepen</value>
+  </data>
+  <data name="LinkPreview_Workgroups_Description" xml:space="preserve">
+    <value>Werkgroepen en hun leden.</value>
+  </data>
+  <data name="LinkPreview_Agent_Title" xml:space="preserve">
+    <value>Assistent</value>
+  </data>
+  <data name="LinkPreview_Agent_Description" xml:space="preserve">
+    <value>Vraag het de Humans-assistent.</value>
+  </data>
+  <data name="LinkPreview_Camp_Title" xml:space="preserve">
+    <value>Kamp</value>
+  </data>
+  <data name="LinkPreview_Camp_Description" xml:space="preserve">
+    <value>De containers en verzending van een kamp.</value>
+  </data>
+  <data name="LinkPreview_Consent_Title" xml:space="preserve">
+    <value>Toestemmingen</value>
+  </data>
+  <data name="LinkPreview_Consent_Description" xml:space="preserve">
+    <value>Je toestemmingen en het bijbehorende beleid.</value>
+  </data>
+  <data name="LinkPreview_Welcome_Title" xml:space="preserve">
+    <value>Welkom</value>
+  </data>
+  <data name="LinkPreview_Welcome_Description" xml:space="preserve">
+    <value>Ga aan de slag op Humans.</value>
+  </data>
+  <data name="Login_SignInWithGoogle" xml:space="preserve">
+    <value>Inloggen met Google</value>
+  </data>
+  <data name="Login_SetupFailed" xml:space="preserve"><value>We konden je account niet helemaal instellen. Probeer het opnieuw.</value></data>
+  <data name="Login_SignInFailed" xml:space="preserve">
+    <value>Inloggen mislukt. Dit kan gebeuren als je te lang hebt gewacht of als je browser cookies blokkeert. Probeer het opnieuw.</value>
+  </data>
+  <data name="Login_LockedOut" xml:space="preserve"><value>Dit account is geblokkeerd. Neem contact op met een beheerder als je hulp nodig hebt bij het inloggen.</value></data>
+  <data name="AccessDenied_Title" xml:space="preserve">
+    <value>Toegang geweigerd</value>
+  </data>
+  <data name="AccessDenied_Description" xml:space="preserve">
+    <value>Je hebt geen toegang tot deze pagina.</value>
+  </data>
+  <data name="Error_Title" xml:space="preserve">
+    <value>Fout</value>
+  </data>
+  <data name="Error_Oops" xml:space="preserve">
+    <value>Oeps!</value>
+  </data>
+  <data name="Error_SomethingWentWrong" xml:space="preserve">
+    <value>Er is iets misgegaan</value>
+  </data>
+  <data name="Error_CodeAndReference" xml:space="preserve">
+    <value>Fout {0} · Referentie {1}</value>
+  </data>
+  <data name="Error_TryAgainLater" xml:space="preserve">
+    <value>Er is een fout opgetreden bij het verwerken van je verzoek. Probeer het later opnieuw.</value>
+  </data>
+  <data name="Error404_Title" xml:space="preserve">
+    <value>Pagina niet gevonden</value>
+  </data>
+  <data name="Error404_Description" xml:space="preserve">
+    <value>De pagina die je zoekt bestaat niet of is verplaatst.</value>
+  </data>
+  <data name="Home_Title" xml:space="preserve">
+    <value>Startpagina</value>
+  </data>
+  <data name="Home_Tagline" xml:space="preserve">
+    <value>Waar Nobodies Collective zich organiseert</value>
+  </data>
+  <data name="Home_HeroDescription" xml:space="preserve">
+    <value>Het communityplatform voor onze humans — meld je aan voor diensten, sluit je aan bij teams, registreer je kamp en help dingen mogelijk te maken.</value>
+  </data>
+  <data name="Home_CTA" xml:space="preserve">
+    <value>Aan de slag</value>
+  </data>
+  <data name="Home_FeaturesTitle" xml:space="preserve">
+    <value>Alles wat je nodig hebt om mee te doen</value>
+  </data>
+  <data name="Home_ShiftsTitle" xml:space="preserve">
+    <value>Diensten &amp; vrijwilligerswerk</value>
+  </data>
+  <data name="Home_ShiftsDescription" xml:space="preserve">
+    <value>Bekijk openstaande diensten, meld je aan voor rollen tijdens het evenement en houd je planning bij. Zie wat dringend is en waar hulp het hardst nodig is.</value>
+  </data>
+  <data name="Home_TeamsTitle" xml:space="preserve">
+    <value>Teams &amp; werkgroepen</value>
+  </data>
+  <data name="Home_TeamsDescription" xml:space="preserve">
+    <value>Zelforganiserende werkgroepen met coördinatoren, gedeelde middelen en goedkeuringsprocedures. Vind je team.</value>
+  </data>
+  <data name="Home_CampsTitle" xml:space="preserve">
+    <value>Kampen &amp; barrios</value>
+  </data>
+  <data name="Home_CampsDescription" xml:space="preserve">
+    <value>Registreer je kamp, ontdek buren op basis van sfeer of geluidszone en meld je elk seizoen aan. Vind je plek op de kaart.</value>
+  </data>
+  <data name="Home_TicketsTitle" xml:space="preserve">
+    <value>Tickets &amp; evenementen</value>
+  </data>
+  <data name="Home_TicketsDescription" xml:space="preserve">
+    <value>Integratie met ticketverkoop, koppeling van deelnemers en kortingsacties — allemaal gekoppeld aan je profiel.</value>
+  </data>
+  <data name="Home_BudgetTitle" xml:space="preserve">
+    <value>Budgettransparantie</value>
+  </data>
+  <data name="Home_BudgetDescription" xml:space="preserve">
+    <value>Bekijk hoe middelen over afdelingen worden verdeeld. Open budgetplanning met openbare overzichten die iedereen kan inzien.</value>
+  </data>
+  <data name="Home_ProfilesTitle" xml:space="preserve">
+    <value>Profielen &amp; ledenlijst</value>
+  </data>
+  <data name="Home_ProfilesDescription" xml:space="preserve">
+    <value>Uitgebreide profielen met burnernamen, locaties en noodcontacten. Een verjaardagskalender en ledenlijst voor de community.</value>
+  </data>
+  <data name="Home_GettingStartedTitle" xml:space="preserve">
+    <value>Snel aan de slag</value>
+  </data>
+  <data name="Home_Step1" xml:space="preserve">
+    <value>&lt;strong&gt;Log in&lt;/strong&gt; met je Google-account</value>
+  </data>
+  <data name="Home_Step2" xml:space="preserve">
+    <value>&lt;strong&gt;Stel je profiel in&lt;/strong&gt; — naam, locatie en hoe je bereikbaar wilt zijn</value>
+  </data>
+  <data name="Home_Step3" xml:space="preserve">
+    <value>&lt;strong&gt;Ga akkoord met de basis&lt;/strong&gt; — wij regelen het papierwerk, zodat jij je kunt richten op meedoen</value>
+  </data>
+  <data name="Home_GettingStartedSummary" xml:space="preserve">
+    <value>Duurt maar een paar minuten. Daarna ben je binnen — bekijk diensten, sluit je aan bij teams en draag je steentje bij.</value>
+  </data>
+  <data name="Dashboard_Title" xml:space="preserve">
+    <value>Dashboard</value>
+  </data>
+  <data name="Dashboard_Welcome" xml:space="preserve">
+    <value>Welkom, {0}</value>
+    <comment>{0} = display name</comment>
+  </data>
+  <data name="Dashboard_ProfileCard" xml:space="preserve">
+    <value>Profiel</value>
+  </data>
+  <data name="Dashboard_ProfileCompletionPercent" xml:space="preserve">
+    <value>Je profiel is voor {0}% compleet</value>
+    <comment>{0} = percentage 0-99</comment>
+  </data>
+  <data name="Dashboard_ConsentsCard" xml:space="preserve">
+    <value>Overeenkomsten</value>
+  </data>
+  <data name="Dashboard_MembershipTier" xml:space="preserve">
+    <value>Lidmaatschapsniveau</value>
+  </data>
+  <data name="Dashboard_TierApplicationPending" xml:space="preserve">
+    <value>Je niveau-aanvraag wacht op beoordeling door het bestuur.</value>
+  </data>
+  <data name="Dashboard_TierActive" xml:space="preserve">
+    <value>Je lidmaatschapsniveau is actief.</value>
+  </data>
+  <data name="Dashboard_ManageConsents" xml:space="preserve">
+    <value>Overeenkomsten bekijken</value>
+  </data>
+  <data name="Dashboard_RejectedTitle" xml:space="preserve">
+    <value>Aanmelding afgewezen</value>
+  </data>
+  <data name="Dashboard_RejectedMessage" xml:space="preserve">
+    <value>Je aanmelding is beoordeeld en niet goedgekeurd. Heb je vragen, neem dan contact op met het beheerteam.</value>
+  </data>
+  <data name="Dashboard_RejectionReason" xml:space="preserve">
+    <value>Reden</value>
+  </data>
+  <data name="Dashboard_Subtitle" xml:space="preserve">
+    <value>Dit is er gaande.</value>
+  </data>
+  <data name="Dashboard_YourStuff" xml:space="preserve">
+    <value>Jouw zaken</value>
+  </data>
+  <data name="Dashboard_YourStuffSubtitle" xml:space="preserve">
+    <value>Profiel, overeenkomsten en de dingen die alleen van jou zijn.</value>
+  </data>
+  <data name="Dashboard_ProfileCardDescription" xml:space="preserve">
+    <value>Werk je gegevens, foto en zo bij.</value>
+  </data>
+  <data name="Dashboard_ConsentsCardDescription" xml:space="preserve">
+    <value>Het papierwerk van het human-zijn.</value>
+  </data>
+  <data name="Dashboard_PrivacyCard" xml:space="preserve">
+    <value>Privacy</value>
+  </data>
+  <data name="Dashboard_PrivacyCardDescription" xml:space="preserve">
+    <value>Bepaal wat anderen over je kunnen zien.</value>
+  </data>
+  <data name="Dashboard_TicketNotConfigured" xml:space="preserve">
+    <value>Ticketinformatie is nog niet beschikbaar. Even geduld.</value>
+  </data>
+  <data name="Dashboard_TicketConfirmed" xml:space="preserve">
+    <value>Je bent erbij. Ticket geregeld.</value>
+  </data>
+  <data name="Dashboard_TicketCount" xml:space="preserve">
+    <value>Je hebt {0} tickets</value>
+    <comment>{0} = ticket count</comment>
+  </data>
+  <data name="Dashboard_NotAttending" xml:space="preserve">
+    <value>Je komt dit jaar niet.</value>
+  </data>
+  <data name="Dashboard_NotAttendingHint" xml:space="preserve">
+    <value>Van gedachten veranderd? Geen probleem.</value>
+  </data>
+  <data name="Dashboard_UndoNotAttending" xml:space="preserve">
+    <value>Eigenlijk kom ik misschien toch</value>
+  </data>
+  <data name="Dashboard_TicketMissing" xml:space="preserve">
+    <value>Nog geen ticket</value>
+  </data>
+  <data name="Dashboard_TicketMissingHint" xml:space="preserve">
+    <value>We zien geen ticket dat aan je account is gekoppeld.</value>
+  </data>
+  <data name="Dashboard_BuyTicket" xml:space="preserve">
+    <value>Haal je ticket</value>
+  </data>
+  <data name="Dashboard_DifferentEmail" xml:space="preserve">
+    <value>Met een ander e-mailadres gekocht?</value>
+  </data>
+  <data name="Dashboard_DeclareNotAttending" xml:space="preserve">
+    <value>Ik kom dit jaar niet</value>
+  </data>
+  <data name="Guest_TicketsTitle" xml:space="preserve">
+    <value>Jouw tickets</value>
+  </data>
+  <data name="Guest_TicketsHeader_Purchased" xml:space="preserve">
+    <value>Gekocht</value>
+  </data>
+  <data name="Guest_TicketsHeader_Buyer" xml:space="preserve">
+    <value>Koper</value>
+  </data>
+  <data name="Guest_TicketsHeader_Tickets" xml:space="preserve">
+    <value>Tickets</value>
+  </data>
+  <data name="Guest_TicketsHeader_Amount" xml:space="preserve">
+    <value>Bedrag</value>
+  </data>
+  <data name="Guest_TicketsConfirmed" xml:space="preserve">
+    <value>Je hebt een ticket voor het evenement.</value>
+  </data>
+  <data name="Privacy_Title" xml:space="preserve">
+    <value>Privacybeleid</value>
+  </data>
+  <data name="Profile_Location" xml:space="preserve">
+    <value>Locatie</value>
+  </data>
+  <data name="Profile_Coordinator" xml:space="preserve">
+    <value>Coördinator</value>
+  </data>
+  <data name="Profile_MembershipTier" xml:space="preserve">
+    <value>Lidmaatschapsniveau</value>
+  </data>
+  <data name="Profile_MotivationRequired" xml:space="preserve">
+    <value>Voor aanvragen voor Colaborador en Asociado is een motivatie verplicht.</value>
+  </data>
+  <data name="ProfileEdit_TierDescription" xml:space="preserve">
+    <value>Kies hoe je wilt deelnemen:</value>
+  </data>
+  <data name="ProfileEdit_TierColaboradorDesc" xml:space="preserve">
+    <value>Je wilt je meer inzetten: je aansluiten bij werkgroepen, ledenvergaderingen bijwonen en meepraten over de organisatie. Je bent nog niet klaar voor stemrecht (of komt er nog niet voor in aanmerking), maar je wilt wel zonder stemrecht aan tafel zitten.</value>
+  </data>
+  <data name="ProfileEdit_TierAsociadoDesc" xml:space="preserve">
+    <value>Je hebt een wezenlijke bijdrage geleverd aan een onderdeel van het evenement of de community, of daar leiding aan gegeven. Je begrijpt dat deze rol draait om bestuurlijke beslissingen namens de hele community en je bent bereid die verantwoordelijkheid serieus te nemen. Als je twijfelt, past Colaborador voorlopig waarschijnlijk beter bij je.</value>
+  </data>
+  <data name="ProfileEdit_TierAsociadoSubtitle" xml:space="preserve">
+    <value>stemgerechtigd lid</value>
+  </data>
+  <data name="Application_AsociadoQuestionsHeader" xml:space="preserve">
+    <value>Aanvullende vragen voor Asociado-aanvragers</value>
+  </data>
+  <data name="Application_SignificantContribution" xml:space="preserve">
+    <value>Wat is je belangrijkste bijdrage aan Elsewhere geweest?</value>
+  </data>
+  <data name="Application_SignificantContributionPlaceholder" xml:space="preserve">
+    <value>Als je niets kunt bedenken, maar wel een belangrijke bijdrage hebt geleverd aan een andere Burn, vertel ons daar dan over.</value>
+  </data>
+  <data name="Application_SignificantContributionRequired" xml:space="preserve">
+    <value>Beschrijf je belangrijkste bijdrage voor een Asociado-aanvraag.</value>
+  </data>
+  <data name="Application_RoleUnderstanding" xml:space="preserve">
+    <value>Wat is volgens jou, in je eigen woorden, de rol van een Asociado, en waarom wil je die verantwoordelijkheid?</value>
+  </data>
+  <data name="Application_RoleUnderstandingPlaceholder" xml:space="preserve">
+    <value>Vertel ons wat deze rol voor je betekent en waarom je er klaar voor bent.</value>
+  </data>
+  <data name="Application_RoleUnderstandingRequired" xml:space="preserve">
+    <value>Beschrijf wat de rol van Asociado volgens jou inhoudt.</value>
+  </data>
+  <data name="Profile_Updated" xml:space="preserve">
+    <value>Profiel bijgewerkt.</value>
+  </data>
+  <data name="ApplicationStatus_Submitted" xml:space="preserve">
+    <value>Ingediend</value>
+  </data>
+  <data name="ApplicationStatus_Approved" xml:space="preserve">
+    <value>Goedgekeurd</value>
+  </data>
+  <data name="ApplicationStatus_Rejected" xml:space="preserve">
+    <value>Afgewezen</value>
+  </data>
+  <data name="ApplicationStatus_Withdrawn" xml:space="preserve">
+    <value>Ingetrokken</value>
+  </data>
+  <data name="Admin_ApplicationStats" xml:space="preserve">
+    <value>Aanvraagstatistieken</value>
+  </data>
+  <data name="Admin_StatsTotal" xml:space="preserve">
+    <value>Totaal</value>
+  </data>
+  <data name="Admin_StatsApproved" xml:space="preserve">
+    <value>Goedgekeurd</value>
+  </data>
+  <data name="Admin_StatsRejected" xml:space="preserve">
+    <value>Afgewezen</value>
+  </data>
+  <data name="Admin_StatsPending" xml:space="preserve">
+    <value>In afwachting</value>
+  </data>
+  <data name="Application_AlreadyPending" xml:space="preserve">
+    <value>Je hebt al een aanvraag in afwachting.</value>
+  </data>
+  <data name="Application_InvalidTier" xml:space="preserve">
+    <value>Kies Colaborador of Asociado voor je aanvraag.</value>
+  </data>
+  <data name="Application_ConfirmAccuracy" xml:space="preserve">
+    <value>Je moet bevestigen dat je gegevens kloppen.</value>
+  </data>
+  <data name="Application_Submitted" xml:space="preserve">
+    <value>Je aanvraag is ingediend!</value>
+  </data>
+  <data name="Application_SubmitError" xml:space="preserve">
+    <value>Er is iets misgegaan bij het indienen van je aanvraag. Probeer het opnieuw.</value>
+  </data>
+  <data name="Application_CannotWithdraw" xml:space="preserve">
+    <value>Deze aanvraag kan niet worden ingetrokken.</value>
+  </data>
+  <data name="Application_Withdrawn" xml:space="preserve">
+    <value>Je aanvraag is ingetrokken.</value>
+  </data>
+  <data name="Teams_Title" xml:space="preserve">
+    <value>Teams</value>
+  </data>
+  <data name="Teams_Member" xml:space="preserve">
+    <value>Lid</value>
+  </data>
+  <data name="TeamDetail_Actions" xml:space="preserve">
+    <value>Acties</value>
+  </data>
+  <data name="MyTeams_Role" xml:space="preserve">
+    <value>Rol</value>
+  </data>
+  <data name="MyTeams_View" xml:space="preserve">
+    <value>Bekijken</value>
+  </data>
+  <data name="Admin_ProvideRejectionReason" xml:space="preserve">
+    <value>Geef een reden voor de afwijzing op.</value>
+  </data>
+  <data name="Admin_MemberSuspended" xml:space="preserve">
+    <value>Human is geschorst.</value>
+  </data>
+  <data name="Admin_MemberUnsuspended" xml:space="preserve">
+    <value>De schorsing van de human is opgeheven.</value>
+  </data>
+  <data name="Admin_VolunteerApproved" xml:space="preserve">
+    <value>Human is goedgekeurd.</value>
+  </data>
+  <data name="Admin_TeamCreated" xml:space="preserve">
+    <value>Team "{0}" is aangemaakt.</value>
+    <comment>{0} = team name</comment>
+  </data>
+  <data name="Admin_TeamCreateError" xml:space="preserve">
+    <value>Er is een fout opgetreden bij het aanmaken van het team.</value>
+  </data>
+  <data name="Admin_TeamUpdated" xml:space="preserve">
+    <value>Team bijgewerkt.</value>
+  </data>
+  <data name="Admin_TeamDeactivated" xml:space="preserve">
+    <value>Team gedeactiveerd.</value>
+  </data>
+  <data name="Admin_RoleAlreadyActive" xml:space="preserve">
+    <value>De gebruiker heeft al een actieve toewijzing voor de rol '{0}'.</value>
+    <comment>{0} = role name</comment>
+  </data>
+  <data name="Admin_RoleAssigned" xml:space="preserve">
+    <value>Rol '{0}' toegewezen.</value>
+    <comment>{0} = role name</comment>
+  </data>
+  <data name="Admin_RoleNotActive" xml:space="preserve">
+    <value>Deze roltoewijzing is momenteel niet actief.</value>
+  </data>
+  <data name="Admin_RoleEnded" xml:space="preserve">
+    <value>Rol '{0}' beëindigd voor {1}.</value>
+    <comment>{0} = role name, {1} = user display name</comment>
+  </data>
+  <data name="Admin_GoogleSyncSuccess" xml:space="preserve">
+    <value>Google-resources zijn gesynchroniseerd.</value>
+  </data>
+  <data name="Admin_GoogleSyncFailed" xml:space="preserve">
+    <value>Synchronisatie mislukt. Bekijk de logs voor details.</value>
+  </data>
+  <data name="Admin_TotalMembers" xml:space="preserve">
+    <value>Totaal aantal humans</value>
+  </data>
+  <data name="Admin_ActiveMembers" xml:space="preserve">
+    <value>Actieve humans</value>
+  </data>
+  <data name="Admin_PendingVolunteers" xml:space="preserve">
+    <value>Vrijwilligers in afwachting</value>
+  </data>
+  <data name="Admin_PendingApplications" xml:space="preserve">
+    <value>Aanvragen in afwachting</value>
+  </data>
+  <data name="Admin_PendingConsents" xml:space="preserve">
+    <value>Overeenkomsten in afwachting</value>
+  </data>
+  <data name="Admin_QuickActions" xml:space="preserve">
+    <value>Snelle acties</value>
+  </data>
+  <data name="Admin_ReviewPendingVolunteers" xml:space="preserve">
+    <value>Vrijwilligers in afwachting beoordelen</value>
+  </data>
+  <data name="Admin_ReviewApplications" xml:space="preserve">
+    <value>Aanvragen beoordelen</value>
+  </data>
+  <data name="Admin_ManageMembers" xml:space="preserve">
+    <value>Humans beheren</value>
+  </data>
+  <data name="Admin_ManageTeams" xml:space="preserve">
+    <value>Teams beheren</value>
+  </data>
+  <data name="Admin_ManageRoles" xml:space="preserve">
+    <value>Rollen beheren</value>
+  </data>
+  <data name="Admin_GoogleSyncStatus" xml:space="preserve">
+    <value>Status Google-synchronisatie</value>
+  </data>
+  <data name="Admin_BackgroundJobs" xml:space="preserve">
+    <value>Achtergrondtaken</value>
+  </data>
+  <data name="Admin_SystemHealth" xml:space="preserve">
+    <value>Systeemstatus</value>
+  </data>
+  <data name="Admin_DatabaseConnection" xml:space="preserve">
+    <value>Databaseverbinding</value>
+  </data>
+  <data name="Admin_ViewHealthCheck" xml:space="preserve">
+    <value>Statuscontrole bekijken</value>
+  </data>
+  <data name="Admin_RecentActivity" xml:space="preserve">
+    <value>Recente activiteit</value>
+  </data>
+  <data name="Admin_NoRecentActivity" xml:space="preserve">
+    <value>Geen recente activiteit vastgelegd.</value>
+  </data>
+  <data name="Admin_TotalCount" xml:space="preserve">
+    <value>{0} in totaal</value>
+    <comment>{0} = count</comment>
+  </data>
+  <data name="Admin_SearchPlaceholder" xml:space="preserve">
+    <value>Zoek op e-mailadres of naam...</value>
+  </data>
+  <data name="Admin_Search" xml:space="preserve">
+    <value>Zoeken</value>
+  </data>
+  <data name="Admin_Clear" xml:space="preserve">
+    <value>Wissen</value>
+  </data>
+  <data name="Admin_NoMembersFound" xml:space="preserve">
+    <value>Geen humans gevonden.</value>
+  </data>
+  <data name="Admin_Joined" xml:space="preserve">
+    <value>Lid sinds</value>
+  </data>
+  <data name="Admin_LastLogin" xml:space="preserve">
+    <value>Laatst ingelogd</value>
+  </data>
+  <data name="Admin_Never" xml:space="preserve">
+    <value>Nooit</value>
+  </data>
+  <data name="Admin_NoProfile" xml:space="preserve">
+    <value>Geen profiel</value>
+  </data>
+  <data name="AdminHuman_Approved" xml:space="preserve">
+    <value>Goedgekeurd</value>
+  </data>
+  <data name="AdminHuman_MembershipTier" xml:space="preserve">
+    <value>Lidmaatschapsniveau</value>
+  </data>
+  <data name="AdminHuman_Active" xml:space="preserve">
+    <value>Actief</value>
+  </data>
+  <data name="AdminApp_Pending" xml:space="preserve">
+    <value>In afwachting</value>
+  </data>
+  <data name="AdminApp_Rejected" xml:space="preserve">
+    <value>Afgewezen</value>
+  </data>
+  <data name="AdminApp_Withdrawn" xml:space="preserve">
+    <value>Ingetrokken</value>
+  </data>
+  <data name="AdminApp_NoApplicationsFound" xml:space="preserve">
+    <value>Geen aanvragen gevonden.</value>
+  </data>
+  <data name="AdminApp_Applicant" xml:space="preserve">
+    <value>Aanvrager</value>
+  </data>
+  <data name="AdminApp_Preview" xml:space="preserve">
+    <value>Voorbeeld</value>
+  </data>
+  <data name="AdminApp_Review" xml:space="preserve">
+    <value>Beoordelen</value>
+  </data>
+  <data name="GoogleSync_Details" xml:space="preserve">
+    <value>Details</value>
+  </data>
+  <data name="Nav_City" xml:space="preserve">
+    <value>Stad</value>
+  </data>
+  <data name="Nav_Rideshare" xml:space="preserve">
+    <value>Carpoolen</value>
+  </data>
+  <data name="Nav_Budget" xml:space="preserve">
+    <value>Budget</value>
+  </data>
+  <data name="Validation_PhoneE164" xml:space="preserve">
+    <value>{0} moet beginnen met + en de landcode (bijv. +34 612 345 678)</value>
+  </data>
+  <data name="Validation_PhonePlaceholder" xml:space="preserve">
+    <value>+34 612 345 678</value>
+  </data>
+  <data name="Validation_PhoneHint" xml:space="preserve">
+    <value>Moet beginnen met + en een landcode (bijv. +34 612 345 678)</value>
+  </data>
+  <data name="Dashboard_TermExpires" xml:space="preserve">
+    <value>Termijn verloopt: {0}</value>
+    <comment>{0} = formatted date</comment>
+  </data>
+  <data name="Dashboard_TermExpiresSoon" xml:space="preserve">
+    <value>Je lidmaatschapstermijn verloopt op {0}. Dien een verlengingsaanvraag in om lid te blijven.</value>
+    <comment>{0} = formatted date</comment>
+  </data>
+  <data name="Dashboard_TermExpired" xml:space="preserve">
+    <value>Je lidmaatschapstermijn is verlopen. Dien een verlengingsaanvraag in om je niveau te herstellen.</value>
+  </data>
+  <data name="Dashboard_RenewNow" xml:space="preserve">
+    <value>Nu verlengen</value>
+  </data>
+  <data name="Search_Title" xml:space="preserve">
+    <value>Humans zoeken</value>
+  </data>
+  <data name="Search_Placeholder" xml:space="preserve">
+    <value>Zoek op naam, stad, interesses, bio...</value>
+  </data>
+  <data name="Search_NoResults" xml:space="preserve">
+    <value>Geen humans gevonden die aan je zoekopdracht voldoen.</value>
+  </data>
+  <data name="Search_MatchedIn" xml:space="preserve">
+    <value>Gevonden in</value>
+  </data>
+  <data name="Search_MinChars" xml:space="preserve">
+    <value>Voer minstens 2 tekens in om te zoeken.</value>
+  </data>
+  <data name="Camp_Plural" xml:space="preserve">
+    <value>Barrios</value>
+  </data>
+  <data name="Login_MagicLink_Title" xml:space="preserve">
+    <value>Of log in met e-mail</value>
+  </data>
+  <data name="Login_MagicLink_Placeholder" xml:space="preserve">
+    <value>jouw@email.com</value>
+  </data>
+  <data name="Login_MagicLink_Submit" xml:space="preserve">
+    <value>Stuur me een inloglink</value>
+  </data>
+  <data name="GateLogin_Title" xml:space="preserve">
+    <value>Gateterminal</value>
+  </data>
+  <data name="GateLogin_Description" xml:space="preserve">
+    <value>Log in op de gedeelde gate-laptop om tickets op te zoeken. Vraag het ticketteam om de inloggegevens.</value>
+  </data>
+  <data name="GateLogin_Username" xml:space="preserve">
+    <value>Gebruikersnaam</value>
+  </data>
+  <data name="GateLogin_Password" xml:space="preserve">
+    <value>Wachtwoord</value>
+  </data>
+  <data name="GateLogin_SignIn" xml:space="preserve">
+    <value>Inloggen</value>
+  </data>
+  <data name="GateLogin_Invalid" xml:space="preserve">
+    <value>Verkeerde gebruikersnaam of verkeerd wachtwoord. De gebruikersnaam is "gate"; het wachtwoord wordt ingesteld door het ticketteam — vraag hen om het huidige wachtwoord.</value>
+  </data>
+  <data name="GateLogin_Throttled" xml:space="preserve">
+    <value>Inloggen vanaf dit netwerk is {0} seconden gepauzeerd: er zijn vanaf hier te veel pogingen met een verkeerd wachtwoord gedaan. Als jij dat niet was, probeert iemand met dezelfde internetverbinding wachtwoorden uit op deze pagina. Wacht tot de pauze voorbij is en voer dan het juiste wachtwoord in — vraag het ticketteam als je het niet zeker weet. Het account zelf is NIET geblokkeerd; ticketbeheerders kunnen het wachtwoord bekijken of wijzigen onder Tickets → Gateterminal.</value>
+    <comment>{0}=seconds remaining</comment>
+  </data>
+  <data name="MagicLinkSent_Title" xml:space="preserve">
+    <value>Controleer je e-mail</value>
+  </data>
+  <data name="MagicLinkSent_Message" xml:space="preserve">
+    <value>We hebben vanaf humans@nobodies.team een link naar dat e-mailadres gestuurd. Kijk in je inbox (en je spammap).</value>
+  </data>
+  <data name="MagicLinkError_Title" xml:space="preserve">
+    <value>Link verlopen of ongeldig</value>
+  </data>
+  <data name="MagicLinkError_Message" xml:space="preserve">
+    <value>Deze inloglink is verlopen of al gebruikt.</value>
+  </data>
+  <data name="MagicLinkError_RequestNew" xml:space="preserve">
+    <value>Nieuwe link aanvragen</value>
+  </data>
+  <data name="CompleteSignup_Title" xml:space="preserve">
+    <value>Rond je aanmelding af</value>
+  </data>
+  <data name="CompleteSignup_BurnerNameLabel" xml:space="preserve">
+    <value>Burnernaam</value>
+  </data>
+  <data name="CompleteSignup_BurnerNameHelp" xml:space="preserve">
+    <value>Dit is de naam die iedereen in Humans ziet. Gebruik de naam waaronder je in de community bekendstaat.</value>
+  </data>
+  <data name="CompleteSignup_FirstNameLabel" xml:space="preserve">
+    <value>Officiële voornaam</value>
+  </data>
+  <data name="CompleteSignup_LastNameLabel" xml:space="preserve">
+    <value>Officiële achternaam</value>
+  </data>
+  <data name="CompleteSignup_LegalNameNote" xml:space="preserve">
+    <value>We vragen je officiële naam zodat we weten wie er achter de burnernamen zit en je later de vrijwilligersovereenkomst kunt ondertekenen. Deze naam is alleen zichtbaar voor beheerders binnen Humans en wordt nooit buiten de app gedeeld. Overal elders word je alleen met je burnernaam weergegeven.</value>
+  </data>
+  <data name="CompleteSignup_PrivacyLink" xml:space="preserve">
+    <value>Lees ons privacybeleid</value>
+  </data>
+  <data name="CompleteSignup_AllFieldsRequired" xml:space="preserve">
+    <value>Vul je burnernaam en je officiële voor- en achternaam in.</value>
+  </data>
+  <data name="CompleteSignup_Submit" xml:space="preserve">
+    <value>Account aanmaken</value>
+  </data>
+  <data name="MagicLinkSent_BackToLogin" xml:space="preserve">
+    <value>Terug naar inloggen</value>
+  </data>
+  <data name="MagicLinkSent_Expiry" xml:space="preserve">
+    <value>Je link verloopt om {0}.</value>
+  </data>
+  <data name="MagicLinkConfirm_Title" xml:space="preserve">
+    <value>Inloggen</value>
+  </data>
+  <data name="MagicLinkConfirm_Message" xml:space="preserve">
+    <value>Klik op de knop hieronder om in te loggen op je account.</value>
+  </data>
+  <data name="MagicLinkConfirm_SignIn" xml:space="preserve">
+    <value>Inloggen</value>
+  </data>
+  <data name="Todo_Title" xml:space="preserve">
+    <value>Te doen</value>
+  </data>
+  <data name="Todo_PendingBadge" xml:space="preserve">
+    <value>{0} in afwachting</value>
+  </data>
+  <data name="Todo_Profile_Title" xml:space="preserve">
+    <value>Maak je profiel compleet</value>
+  </data>
+  <data name="Todo_Profile_Done" xml:space="preserve">
+    <value>Je profiel is compleet.</value>
+  </data>
+  <data name="Todo_Profile_Action" xml:space="preserve">
+    <value>Profiel bewerken</value>
+  </data>
+  <data name="Todo_Consents_Title" xml:space="preserve">
+    <value>Overeenkomsten accepteren</value>
+  </data>
+  <data name="Todo_Consents_Done" xml:space="preserve">
+    <value>Alle overeenkomsten zijn up-to-date.</value>
+  </data>
+  <data name="Todo_Consents_Pending" xml:space="preserve">
+    <value>Voor {0} van de {1} documenten is je toestemming nodig.</value>
+  </data>
+  <data name="Todo_Consents_Action" xml:space="preserve">
+    <value>Overeenkomsten bekijken</value>
+  </data>
+  <data name="Todo_ConsentCheck_Title" xml:space="preserve">
+    <value>Controle door coördinator</value>
+  </data>
+  <data name="Todo_ConsentCheck_Done" xml:space="preserve">
+    <value>Een coördinator heeft je documenten gecontroleerd en goedgekeurd.</value>
+  </data>
+  <data name="Todo_ConsentCheck_Pending" xml:space="preserve">
+    <value>Een coördinator beoordeelt je documenten zodra je profiel en overeenkomsten compleet zijn.</value>
+  </data>
+  <data name="Todo_ShiftInfo_Title" xml:space="preserve">
+    <value>Stel je dienstvoorkeuren in</value>
+  </data>
+  <data name="Todo_ShiftInfo_Done" xml:space="preserve">
+    <value>Je dienstvoorkeuren zijn ingesteld.</value>
+  </data>
+  <data name="Todo_ShiftInfo_Pending" xml:space="preserve">
+    <value>Vul je dienstinformatie in, zodat coördinatoren je vaardigheden en voorkeuren kennen.</value>
+  </data>
+  <data name="Todo_ShiftInfo_Action" xml:space="preserve">
+    <value>Dienstinformatie invullen</value>
+  </data>
+  <data name="Shifts_All" xml:space="preserve">
+    <value>Alle</value>
+  </data>
+  <data name="Shifts_SetUp" xml:space="preserve">
+    <value>Opbouw</value>
+  </data>
+  <data name="Shifts_Event" xml:space="preserve">
+    <value>Evenement</value>
+  </data>
+  <data name="Shifts_Strike" xml:space="preserve">
+    <value>Afbouw</value>
+  </data>
+  <data name="Shifts_NoShiftsAvailable" xml:space="preserve">
+    <value>Nog geen diensten beschikbaar.</value>
+  </data>
+  <data name="Shifts_AllPhases" xml:space="preserve">
+    <value>Alle fasen</value>
+  </data>
+  <data name="Nav_Legal" xml:space="preserve">
+    <value>Juridisch</value>
+  </data>
+  <data name="Nav_Staff" xml:space="preserve">
+    <value>Medewerkers</value>
+  </data>
+  <data name="Nav_Guide" xml:space="preserve">
+    <value>Help</value>
+  </data>
+  <data name="ShiftsSummary_Title" xml:space="preserve">
+    <value>Diensten</value>
+  </data>
+  <data name="ShiftsSummary_SlotsFilled" xml:space="preserve">
+    <value>{0} / {1} plekken bezet</value>
+    <comment>{0} = filled, {1} = total</comment>
+  </data>
+  <data name="ShiftsSummary_HumansSignedUp" xml:space="preserve">
+    <value>{0} humans aangemeld</value>
+    <comment>{0} = count</comment>
+  </data>
+  <data name="ShiftsSummary_PendingCount" xml:space="preserve">
+    <value>{0} in afwachting</value>
+    <comment>{0} = count</comment>
+  </data>
+  <data name="ShiftsSummary_NoShifts" xml:space="preserve">
+    <value>Nog geen diensten ingesteld.</value>
+  </data>
+  <data name="ShiftsSummary_IncludesSubTeams" xml:space="preserve">
+    <value>Inclusief diensten van {0} subteam(s)</value>
+    <comment>{0} = count</comment>
+  </data>
+  <data name="ShiftsSummary_ManageShifts" xml:space="preserve">
+    <value>Diensten beheren</value>
+  </data>
+  <data name="Medical_Badge" xml:space="preserve">
+    <value>Medisch</value>
+  </data>
+  <data name="Privacy_Lead" xml:space="preserve">
+    <value>Humans beheert het lidmaatschap van Nobodies Collective en verwerkt persoonsgegevens in overeenstemming met de AVG en de Spaanse wet op de gegevensbescherming (LOPDGDD).</value>
+  </data>
+  <data name="Privacy_DataControllerTitle" xml:space="preserve">
+    <value>Verwerkingsverantwoordelijke</value>
+  </data>
+  <data name="Privacy_DataControllerBody" xml:space="preserve">
+    <value>Een Spaanse vereniging zonder winstoogmerk, gevestigd in Madrid (NIF G26726299).</value>
+  </data>
+  <data name="Privacy_DataControllerDPO" xml:space="preserve">
+    <value>Neem voor vragen over gegevensbescherming contact op met onze functionaris voor gegevensbescherming via:</value>
+  </data>
+  <data name="Privacy_DataWeCollectTitle" xml:space="preserve">
+    <value>Gegevens die we verzamelen</value>
+  </data>
+  <data name="Privacy_DataWeCollectIntro" xml:space="preserve">
+    <value>We verzamelen en verwerken de volgende categorieën persoonsgegevens:</value>
+  </data>
+  <data name="Privacy_Collect_Identity" xml:space="preserve">
+    <value>Naam, e-mailadres (via Google-authenticatie), weergavenaam/burnernaam</value>
+  </data>
+  <data name="Privacy_Collect_Contact" xml:space="preserve">
+    <value>Telefoonnummer, stad, land (optioneel)</value>
+  </data>
+  <data name="Privacy_Collect_Profile" xml:space="preserve">
+    <value>Bio, teamlidmaatschappen, roltoewijzingen</value>
+  </data>
+  <data name="Privacy_Collect_Technical" xml:space="preserve">
+    <value>IP-adres en useragent (voor toestemmingsregistraties)</value>
+  </data>
+  <data name="Privacy_Collect_Application" xml:space="preserve">
+    <value>Lidmaatschapsaanvragen en motivaties</value>
+  </data>
+  <data name="Privacy_Collect_Consent" xml:space="preserve">
+    <value>Registraties van je akkoord met juridische documenten</value>
+  </data>
+  <data name="Privacy_LegalBasisTitle" xml:space="preserve">
+    <value>Rechtsgrond voor de verwerking</value>
+  </data>
+  <data name="Privacy_LegalBasisIntro" xml:space="preserve">
+    <value>We verwerken je gegevens op basis van:</value>
+  </data>
+  <data name="Privacy_Legal_Contract" xml:space="preserve">
+    <value>Verwerking die nodig is voor het ledenbeheer</value>
+  </data>
+  <data name="Privacy_Legal_LegitimateInterest" xml:space="preserve">
+    <value>Het bijhouden van de verenigingsadministratie en communicatie</value>
+  </data>
+  <data name="Privacy_Legal_LegalObligation" xml:space="preserve">
+    <value>Naleving van Spaanse regelgeving voor verenigingen zonder winstoogmerk</value>
+  </data>
+  <data name="Privacy_Legal_Consent" xml:space="preserve">
+    <value>Voor optionele gegevens die je zelf verstrekt</value>
+  </data>
+  <data name="Privacy_HowWeUseTitle" xml:space="preserve">
+    <value>Hoe we je gegevens gebruiken</value>
+  </data>
+  <data name="Privacy_Use_Membership" xml:space="preserve">
+    <value>Om je lidmaatschap en deelname aan teams te beheren</value>
+  </data>
+  <data name="Privacy_Use_Communicate" xml:space="preserve">
+    <value>Om met je te communiceren over activiteiten van de organisatie</value>
+  </data>
+  <data name="Privacy_Use_LegalCompliance" xml:space="preserve">
+    <value>Om registraties bij te houden voor naleving van wet- en regelgeving</value>
+  </data>
+  <data name="Privacy_Use_Connections" xml:space="preserve">
+    <value>Om contact tussen humans mogelijk te maken (op basis van je zichtbaarheidsinstellingen)</value>
+  </data>
+  <data name="Privacy_DataRetentionTitle" xml:space="preserve">
+    <value>Bewaartermijnen</value>
+  </data>
+  <data name="Privacy_DataRetentionIntro" xml:space="preserve">
+    <value>We bewaren je gegevens volgens het volgende beleid:</value>
+  </data>
+  <data name="Privacy_Retention_Active" xml:space="preserve">
+    <value>Gegevens worden bewaard zolang je account actief is</value>
+  </data>
+  <data name="Privacy_Retention_Inactive" xml:space="preserve">
+    <value>Gegevens worden maximaal 7 jaar bewaard om aan wettelijke verplichtingen te voldoen</value>
+  </data>
+  <data name="Privacy_Retention_Consent" xml:space="preserve">
+    <value>Voor onbepaalde tijd bewaard zoals vereist voor naleving van de AVG</value>
+  </data>
+  <data name="Privacy_Retention_Deleted" xml:space="preserve">
+    <value>Geanonimiseerd na een bedenktijd van 30 dagen</value>
+  </data>
+  <data name="Privacy_YourRightsTitle" xml:space="preserve">
+    <value>Je rechten</value>
+  </data>
+  <data name="Privacy_YourRightsIntro" xml:space="preserve">
+    <value>Onder de AVG heb je de volgende rechten:</value>
+  </data>
+  <data name="Privacy_Rights_Access" xml:space="preserve">
+    <value>Een kopie van je persoonsgegevens opvragen</value>
+  </data>
+  <data name="Privacy_Rights_Rectification" xml:space="preserve">
+    <value>Correctie van onjuiste gegevens aanvragen</value>
+  </data>
+  <data name="Privacy_Rights_Erasure" xml:space="preserve">
+    <value>Om verwijdering van je gegevens vragen ("recht op vergetelheid")</value>
+  </data>
+  <data name="Privacy_Rights_Portability" xml:space="preserve">
+    <value>Je gegevens ontvangen in een machineleesbaar formaat</value>
+  </data>
+  <data name="Privacy_Rights_Restriction" xml:space="preserve">
+    <value>Beperking van de verwerking aanvragen</value>
+  </data>
+  <data name="Privacy_Rights_Objection" xml:space="preserve">
+    <value>Bezwaar maken tegen bepaalde vormen van verwerking</value>
+  </data>
+  <data name="Privacy_YourRightsExercise" xml:space="preserve">
+    <value>Om deze rechten uit te oefenen, ga je naar je instellingen voor {0} of neem je contact met ons op via {1}.</value>
+    <comment>{0} = Privacy &amp; Data link, {1} = DPO email</comment>
+  </data>
+  <data name="Privacy_PrivacyAndData" xml:space="preserve">
+    <value>Privacy &amp; gegevens</value>
+  </data>
+  <data name="Privacy_CookiesTitle" xml:space="preserve">
+    <value>Cookies</value>
+  </data>
+  <data name="Privacy_CookiesIntro" xml:space="preserve">
+    <value>Deze site gebruikt alleen essentiële cookies die nodig zijn voor:</value>
+  </data>
+  <data name="Privacy_Cookies_Auth" xml:space="preserve">
+    <value>Gebruikersauthenticatie en sessiebeheer</value>
+  </data>
+  <data name="Privacy_Cookies_Antiforgery" xml:space="preserve">
+    <value>Anti-vervalsingstokens voor formulierbeveiliging</value>
+  </data>
+  <data name="Privacy_Cookies_Consent" xml:space="preserve">
+    <value>Voorkeur voor cookietoestemming</value>
+  </data>
+  <data name="Privacy_CookiesNoTracking" xml:space="preserve">
+    <value>We gebruiken geen cookies voor analyses, advertenties of tracking door derden.</value>
+  </data>
+  <data name="Privacy_DataSecurityTitle" xml:space="preserve">
+    <value>Gegevensbeveiliging</value>
+  </data>
+  <data name="Privacy_DataSecurityIntro" xml:space="preserve">
+    <value>We nemen passende technische en organisatorische maatregelen om je gegevens te beschermen, waaronder:</value>
+  </data>
+  <data name="Privacy_Security_Encryption" xml:space="preserve">
+    <value>Versleuteling tijdens verzending (HTTPS)</value>
+  </data>
+  <data name="Privacy_Security_OAuth" xml:space="preserve">
+    <value>Veilige authenticatie via Google OAuth</value>
+  </data>
+  <data name="Privacy_Security_AccessControls" xml:space="preserve">
+    <value>Toegangscontroles en auditlogging</value>
+  </data>
+  <data name="Privacy_Security_Reviews" xml:space="preserve">
+    <value>Regelmatige beveiligingscontroles</value>
+  </data>
+  <data name="Privacy_ThirdPartyTitle" xml:space="preserve">
+    <value>Diensten van derden</value>
+  </data>
+  <data name="Privacy_ThirdPartyIntro" xml:space="preserve">
+    <value>We gebruiken de volgende diensten van derden:</value>
+  </data>
+  <data name="Privacy_ThirdParty_GoogleOAuth" xml:space="preserve">
+    <value>Voor veilige authenticatie</value>
+  </data>
+  <data name="Privacy_ThirdParty_GoogleWorkspace" xml:space="preserve">
+    <value>Voor het inrichten van teamvoorzieningen (gedeelde drives, groepen)</value>
+  </data>
+  <data name="Privacy_ChangesTitle" xml:space="preserve">
+    <value>Wijzigingen in dit beleid</value>
+  </data>
+  <data name="Privacy_ChangesBody" xml:space="preserve">
+    <value>We kunnen dit privacybeleid van tijd tot tijd bijwerken. We brengen actieve humans per e-mail op de hoogte van belangrijke wijzigingen.</value>
+  </data>
+  <data name="Privacy_ContactTitle" xml:space="preserve">
+    <value>Contact &amp; klachten</value>
+  </data>
+  <data name="Privacy_ContactBody" xml:space="preserve">
+    <value>Neem bij vragen of zorgen over dit beleid contact op met onze functionaris voor gegevensbescherming via {0}.</value>
+    <comment>{0} = DPO email</comment>
+  </data>
+  <data name="Privacy_ComplaintBody" xml:space="preserve">
+    <value>Als je niet tevreden bent met ons antwoord, heb je het recht een klacht in te dienen bij de Spaanse gegevensbeschermingsautoriteit (AEPD) via {0}.</value>
+    <comment>{0} = AEPD URL</comment>
+  </data>
+  <data name="Common_NotAvailable" xml:space="preserve">
+    <value>N.v.t.</value>
+  </data>
+  <data name="EmailGrid_LinkFailed" xml:space="preserve">
+    <value>We konden dit Google-account niet koppelen. Probeer het opnieuw.</value>
+  </data>
+  <data name="Profile_BuildStrip_Title" xml:space="preserve">
+    <value>Beschikbaarheid &amp; registratie tijdens de opbouw</value>
+  </data>
+  <data name="Todo_DietaryMedical_Title" xml:space="preserve"><value>Vertel ons over je dieetwensen</value></data>
+  <data name="Todo_DietaryMedical_Pending" xml:space="preserve"><value>We hebben dit nodig om de maaltijden in de cantina te plannen</value></data>
+  <data name="Todo_DietaryMedical_Done" xml:space="preserve"><value>Bedankt — we hebben het ontvangen</value></data>
+  <data name="Todo_DietaryMedical_Action" xml:space="preserve"><value>Invullen</value></data>
+  <data name="Todo_DietaryMedical_NoShift_Pending" xml:space="preserve"><value>Vertel ons over je dieetwensen, zodat we voorbereid zijn wanneer je je aanmeldt.</value></data>
+  <data name="Common_Optional" xml:space="preserve"><value>Optioneel</value></data>
+
+  <!-- ======================== -->
+  <!-- Survey                   -->
+  <!-- ======================== -->
+  <data name="About_AdditionalHelp" xml:space="preserve"><value>Met extra hulp van</value></data>
+  <data name="About_AdditionalHelpAnd" xml:space="preserve"><value>en</value></data>
+  <data name="About_AnthropicNote" xml:space="preserve"><value>Antwoorden van de gespreksassistent worden gegenereerd via de API van Anthropic. Volgens de verwerkersovereenkomst (DPA) van Anthropic worden er geen gegevens gebruikt om modellen te trainen.</value></data>
+  <data name="About_Cat_AILLM" xml:space="preserve"><value>AI/LLM</value></data>
+  <data name="About_Cat_BackgroundJobs" xml:space="preserve"><value>Achtergrondtaken</value></data>
+  <data name="About_Cat_Calendar" xml:space="preserve"><value>Kalender</value></data>
+  <data name="About_Cat_CSV" xml:space="preserve"><value>CSV</value></data>
+  <data name="About_Cat_Database" xml:space="preserve"><value>Database</value></data>
+  <data name="About_Cat_DateTime" xml:space="preserve"><value>Datum/tijd</value></data>
+  <data name="About_Cat_Email" xml:space="preserve"><value>E-mail</value></data>
+  <data name="About_Cat_Framework" xml:space="preserve"><value>Framework</value></data>
+  <data name="About_Cat_GitHubAPI" xml:space="preserve"><value>GitHub-API</value></data>
+  <data name="About_Cat_GoogleAPIs" xml:space="preserve"><value>Google-API's</value></data>
+  <data name="About_Cat_HealthChecks" xml:space="preserve"><value>Statuscontroles</value></data>
+  <data name="About_Cat_ImageProcessing" xml:space="preserve"><value>Beeldverwerking</value></data>
+  <data name="About_Cat_Logging" xml:space="preserve"><value>Logging</value></data>
+  <data name="About_Cat_Markdown" xml:space="preserve"><value>Markdown</value></data>
+  <data name="About_Cat_Observability" xml:space="preserve"><value>Observability</value></data>
+  <data name="About_Cat_Payments" xml:space="preserve"><value>Betalingen</value></data>
+  <data name="About_Cat_Sanitization" xml:space="preserve"><value>Opschoning</value></data>
+  <data name="About_Cat_Spreadsheet" xml:space="preserve"><value>Spreadsheet</value></data>
+  <data name="About_Cat_StateMachine" xml:space="preserve"><value>Toestandsmachine</value></data>
+  <data name="About_Cat_UserAgent" xml:space="preserve"><value>User-Agent</value></data>
+  <data name="About_ColCategory" xml:space="preserve"><value>Categorie</value></data>
+  <data name="About_ColLibrary" xml:space="preserve"><value>Bibliotheek</value></data>
+  <data name="About_ColLicense" xml:space="preserve"><value>Licentie</value></data>
+  <data name="About_ColPackage" xml:space="preserve"><value>Pakket</value></data>
+  <data name="About_ColVersion" xml:space="preserve"><value>Versie</value></data>
+  <data name="About_DotNetDesc" xml:space="preserve"><value>ASP.NET Core MVC met Razor-views, Identity en de hele Microsoft-stack. Het raamwerk dat alles bij elkaar houdt.</value></data>
+  <data name="About_FrontendHeading" xml:space="preserve"><value>Frontend-/CDN-afhankelijkheden</value></data>
+  <data name="About_GoogleDesc" xml:space="preserve"><value>Admin Directory, Drive en Groups — maakt gedeelde drives, mappen en mailinglijsten aan, zodat niemand dat met de hand hoeft te doen.</value></data>
+  <data name="About_HangfireDesc" xml:space="preserve"><value>Achtergrondtaken voor synchronisatie, afstemming en alles wat een HTTP-verzoek niet mag blokkeren. Met PostgreSQL als opslag en een dashboard erbij.</value></data>
+  <data name="About_IngredientsHeading" xml:space="preserve"><value>De ingrediënten</value></data>
+  <data name="About_IngredientsIntro" xml:space="preserve"><value>Elke werkplaats heeft materialen nodig. Hiermee is Humans gebouwd:</value></data>
+  <data name="About_Intro" xml:space="preserve"><value>Humans is het ledensysteem dat Nobodies Collective draaiende houdt — onboarding van humans, provisioning van teams, het bijhouden van governance en al het loodgieterswerk waarmee een Spaanse non-profit kan functioneren met het organisatiegeheugen van iets dat tien keer zo groot is. Met zorg gebouwd, met koppigheid onderhouden en uitgerold terwijl we duimden.</value></data>
+  <data name="About_License_Apache2" xml:space="preserve"><value>vereist een auteursrechtvermelding, een kopie van de licentie en bij wijzigingen een beschrijving daarvan. Alle pakketten worden ongewijzigd gebruikt.</value></data>
+  <data name="About_License_BSD2" xml:space="preserve"><value>vereist een auteursrechtvermelding in de documentatie.</value></data>
+  <data name="About_License_BSD3MapLibre" xml:space="preserve"><value>vereist een auteursrechtvermelding; deze pagina voldoet aan die verplichting.</value></data>
+  <data name="About_License_ISC" xml:space="preserve"><value>permissief, functioneel gelijkwaardig aan BSD-2-Clause; auteursrechtvermelding vereist.</value></data>
+  <data name="About_License_AGPL30" xml:space="preserve"><value>dezelfde licentie als Humans zelf; de volledige broncode van Humans is openbaar, waarmee eraan is voldaan.</value></data>
+  <data name="About_License_CCBY40" xml:space="preserve"><value>naamsvermelding vereist; deze pagina voldoet aan die verplichting.</value></data>
+  <data name="About_License_LGPL30" xml:space="preserve"><value>de bibliotheek moet door de eindgebruiker vervangen kunnen worden. Wordt gebruikt als ongewijzigde NuGet-pakketten (dynamisch gekoppeld), waarmee aan de LGPL-verplichtingen wordt voldaan.</value></data>
+  <data name="About_License_MIT" xml:space="preserve"><value>vereist een auteursrechtvermelding; deze pagina voldoet aan die verplichting.</value></data>
+  <data name="About_License_PostgreSQL" xml:space="preserve"><value>permissief, vergelijkbaar met MIT; auteursrechtvermelding vereist.</value></data>
+  <data name="About_License_SILOFL" xml:space="preserve"><value>vrij te gebruiken en te verspreiden; lettertypen mogen niet los worden verkocht.</value></data>
+  <data name="About_License_SourceAvailableAt" xml:space="preserve"><value>Broncode beschikbaar op</value></data>
+  <data name="About_LicenseBody" xml:space="preserve"><value>Humans is vrije software, uitgebracht onder de</value></data>
+  <data name="About_LicenseComplianceHeading" xml:space="preserve"><value>Overzicht van licentienaleving</value></data>
+  <data name="About_LicenseComplianceSummary" xml:space="preserve"><value>Alle productieafhankelijkheden gebruiken permissieve, zwak-copyleft- of AGPL-compatibele licenties. Geen overtredingen gevonden.</value></data>
+  <data name="About_LicenseExplanation" xml:space="preserve"><value>Je mag deze software gebruiken, bestuderen, aanpassen en verspreiden. Als je een aangepaste versie draait en anderen er via een netwerk mee laat werken, moet je je aangepaste broncode onder dezelfde licentie beschikbaar stellen.</value></data>
+  <data name="About_LicenseFullText" xml:space="preserve"><value>Volledige licentietekst:</value></data>
+  <data name="About_LicenseHeading" xml:space="preserve"><value>Licentie</value></data>
+  <data name="About_LicenseSourceCode" xml:space="preserve"><value>Broncode:</value></data>
+  <data name="About_MadeBy" xml:space="preserve"><value>Gemaakt door</value></data>
+  <data name="About_MadeByTail" xml:space="preserve"><value>met liefde voor de Nobodies-community.</value></data>
+  <data name="About_MailKitDesc" xml:space="preserve"><value>Transactionele e-mail voor meldingen en onboarding. De enige bibliotheek waardoor SMTP bijna prettig aanvoelt.</value></data>
+  <data name="About_MeetTheStaff" xml:space="preserve"><value>Maak kennis met de medewerkers</value></data>
+  <data name="About_NeedHelp" xml:space="preserve"><value>Hulp nodig?</value></data>
+  <data name="About_NuGetPackagesHeading" xml:space="preserve"><value>NuGet-pakketten</value></data>
+  <data name="About_OpenSourceLicensesHeading" xml:space="preserve"><value>Opensourcelicenties</value></data>
+  <data name="About_OpenSourceLicensesIntro" xml:space="preserve"><value>Humans staat op de schouders van opensourceprojecten. De tabel hieronder toont elke productieafhankelijkheid, met versie en licentie.</value></data>
+  <data name="About_OtelDesc" xml:space="preserve"><value>Gestructureerde logging, gedistribueerde traces en Prometheus-metrics. Want "het werkt op mijn machine" is geen monitoringstrategie.</value></data>
+  <data name="About_PostgresDesc" xml:space="preserve"><value>Relationele gegevens met Entity Framework Core en Npgsql. Overal NodaTime-typen — nergens een DateTime te bekennen.</value></data>
+  <data name="About_Staff_BackToAbout" xml:space="preserve"><value>Terug naar Over ons</value></data>
+  <data name="About_Staff_Empty" xml:space="preserve"><value>Geen actieve rolhouders gevonden. Het kasteel lijkt leeg te zijn.</value></data>
+  <data name="About_Staff_Intro" xml:space="preserve"><value>Elk collectief heeft zijn hoeders nodig. Dit zijn de humans die vrijwillig hun tijd en energie steken in het draaiende houden van Nobodies — van governance tot technische ondersteuning, van vertrouwen en veiligheid tot ticket-alchemie.</value></data>
+  <data name="About_Staff_Title" xml:space="preserve"><value>De humans achter de schermen</value></data>
+  <data name="About_Title" xml:space="preserve"><value>Over Humans</value></data>
+  <data name="Common_Admin" xml:space="preserve"><value>Beheerder</value></data>
+  <data name="Common_Amount" xml:space="preserve"><value>Bedrag</value></data>
+  <data name="Common_Clear" xml:space="preserve"><value>Wissen</value></data>
+  <data name="Common_Created" xml:space="preserve"><value>Aangemaakt</value></data>
+  <data name="Common_Date" xml:space="preserve"><value>Datum</value></data>
+  <data name="Common_DeleteImage" xml:space="preserve"><value>Afbeelding verwijderen</value></data>
+  <data name="Common_Department" xml:space="preserve"><value>Afdeling</value></data>
+  <data name="Common_MoveDown" xml:space="preserve"><value>Omlaag verplaatsen</value></data>
+  <data name="Common_MoveUp" xml:space="preserve"><value>Omhoog verplaatsen</value></data>
+  <data name="Common_Other" xml:space="preserve"><value>Overig</value></data>
+  <data name="Common_Preview" xml:space="preserve"><value>Voorbeeld</value></data>
+  <data name="Common_Remove" xml:space="preserve"><value>Verwijderen</value></data>
+  <data name="Common_Required" xml:space="preserve"><value>(verplicht)</value></data>
+  <data name="Common_Sender" xml:space="preserve"><value>Afzender</value></data>
+  <data name="Common_Shift" xml:space="preserve"><value>Dienst</value></data>
+  <data name="Common_Total" xml:space="preserve"><value>Totaal</value></data>
+  <data name="Common_View" xml:space="preserve"><value>Bekijken</value></data>
+  <data name="Enum_AdultPlayspacePolicy_NightOnly" xml:space="preserve"><value>Alleen 's nachts</value></data>
+  <data name="Enum_AdultPlayspacePolicy_No" xml:space="preserve"><value>Nee</value></data>
+  <data name="Enum_AdultPlayspacePolicy_Yes" xml:space="preserve"><value>Ja</value></data>
+  <data name="Enum_ElectricalGrid_Norg" xml:space="preserve"><value>Norg</value></data>
+  <data name="Enum_ElectricalGrid_OwnSupply" xml:space="preserve"><value>Eigen stroomvoorziening</value></data>
+  <data name="Enum_ElectricalGrid_Red" xml:space="preserve"><value>Rood</value></data>
+  <data name="Enum_ElectricalGrid_Unknown" xml:space="preserve"><value>Onbekend</value></data>
+  <data name="Enum_ElectricalGrid_Yellow" xml:space="preserve"><value>Geel</value></data>
+  <data name="Enum_EmailOutboxStatus_Failed" xml:space="preserve"><value>Mislukt</value></data>
+  <data name="Enum_EmailOutboxStatus_Queued" xml:space="preserve"><value>In de wachtrij</value></data>
+  <data name="Enum_EmailOutboxStatus_Sent" xml:space="preserve"><value>Verzonden</value></data>
+  <data name="Enum_KidsVisitingPolicy_DaytimeOnly" xml:space="preserve"><value>Alleen overdag</value></data>
+  <data name="Enum_KidsVisitingPolicy_No" xml:space="preserve"><value>Nee</value></data>
+  <data name="Enum_KidsVisitingPolicy_Yes" xml:space="preserve"><value>Ja</value></data>
+  <data name="Enum_PerformanceSpaceStatus_No" xml:space="preserve"><value>Nee</value></data>
+  <data name="Enum_PerformanceSpaceStatus_WorkingOnIt" xml:space="preserve"><value>Wordt aan gewerkt</value></data>
+  <data name="Enum_PerformanceSpaceStatus_Yes" xml:space="preserve"><value>Ja</value></data>
+  <data name="Enum_RolePeriod_Build" xml:space="preserve"><value>Opbouw</value></data>
+  <data name="Enum_RolePeriod_Event" xml:space="preserve"><value>Evenement</value></data>
+  <data name="Enum_RolePeriod_Strike" xml:space="preserve"><value>Afbouw</value></data>
+  <data name="Enum_RolePeriod_YearRound" xml:space="preserve"><value>Het hele jaar</value></data>
+  <data name="Enum_SlotPriority_Critical" xml:space="preserve"><value>Kritiek</value></data>
+  <data name="Enum_SlotPriority_Important" xml:space="preserve"><value>Belangrijk</value></data>
+  <data name="Enum_SlotPriority_NiceToHave" xml:space="preserve"><value>Mooi meegenomen</value></data>
+  <data name="Enum_SlotPriority_None" xml:space="preserve"><value>Geen</value></data>
+  <data name="Enum_SoundZone_Blue" xml:space="preserve"><value>Blauw</value></data>
+  <data name="Enum_SoundZone_Green" xml:space="preserve"><value>Groen</value></data>
+  <data name="Enum_SoundZone_Orange" xml:space="preserve"><value>Oranje</value></data>
+  <data name="Enum_SoundZone_Red" xml:space="preserve"><value>Rood</value></data>
+  <data name="Enum_SoundZone_Surprise" xml:space="preserve"><value>Verrassing</value></data>
+  <data name="Enum_SoundZone_Yellow" xml:space="preserve"><value>Geel</value></data>
+  <data name="Enum_SpaceSize_Sqm1000" xml:space="preserve"><value>1000 m²</value></data>
+  <data name="Enum_SpaceSize_Sqm1200" xml:space="preserve"><value>1200 m²</value></data>
+  <data name="Enum_SpaceSize_Sqm150" xml:space="preserve"><value>150 m²</value></data>
+  <data name="Enum_SpaceSize_Sqm1500" xml:space="preserve"><value>1500 m²</value></data>
+  <data name="Enum_SpaceSize_Sqm1800" xml:space="preserve"><value>1800 m²</value></data>
+  <data name="Enum_SpaceSize_Sqm2200" xml:space="preserve"><value>2200 m²</value></data>
+  <data name="Enum_SpaceSize_Sqm2800" xml:space="preserve"><value>2800 m²</value></data>
+  <data name="Enum_SpaceSize_Sqm300" xml:space="preserve"><value>300 m²</value></data>
+  <data name="Enum_SpaceSize_Sqm450" xml:space="preserve"><value>450 m²</value></data>
+  <data name="Enum_SpaceSize_Sqm600" xml:space="preserve"><value>600 m²</value></data>
+  <data name="Enum_SpaceSize_Sqm800" xml:space="preserve"><value>800 m²</value></data>
+  <data name="Enum_YesNoMaybe_Maybe" xml:space="preserve"><value>Misschien</value></data>
+  <data name="Enum_YesNoMaybe_No" xml:space="preserve"><value>Nee</value></data>
+  <data name="Enum_YesNoMaybe_Yes" xml:space="preserve"><value>Ja</value></data>
+  <data name="MarkdownHelp_Bold" xml:space="preserve"><value>vet</value></data>
+  <data name="MarkdownHelp_ColYouGet" xml:space="preserve"><value>Je krijgt</value></data>
+  <data name="MarkdownHelp_ColYouType" xml:space="preserve"><value>Je typt</value></data>
+  <data name="MarkdownHelp_EmbeddedImage" xml:space="preserve"><value>ingesloten afbeelding</value></data>
+  <data name="MarkdownHelp_First" xml:space="preserve"><value>eerste</value></data>
+  <data name="MarkdownHelp_Heading1" xml:space="preserve"><value>Kop 1</value></data>
+  <data name="MarkdownHelp_Heading2" xml:space="preserve"><value>Kop 2</value></data>
+  <data name="MarkdownHelp_InlineCode" xml:space="preserve"><value>inline code</value></data>
+  <data name="MarkdownHelp_Intro" xml:space="preserve"><value>Markdown is een eenvoudige manier om tekst op te maken. Typ links de syntaxis en deze wordt weergegeven zoals rechts te zien is.</value></data>
+  <data name="MarkdownHelp_Italic" xml:space="preserve"><value>cursief</value></data>
+  <data name="MarkdownHelp_ItemOne" xml:space="preserve"><value>item één</value></data>
+  <data name="MarkdownHelp_ItemTwo" xml:space="preserve"><value>item twee</value></data>
+  <data name="MarkdownHelp_LinkText" xml:space="preserve"><value>linktekst</value></data>
+  <data name="MarkdownHelp_QuoteText" xml:space="preserve"><value>citaattekst</value></data>
+  <data name="MarkdownHelp_Second" xml:space="preserve"><value>tweede</value></data>
+  <data name="MarkdownHelp_Strikethrough" xml:space="preserve"><value>doorgehaald</value></data>
+  <data name="MarkdownHelp_TableAdmin" xml:space="preserve"><value>Beheerder</value></data>
+  <data name="MarkdownHelp_TableHuman" xml:space="preserve"><value>Human</value></data>
+  <data name="MarkdownHelp_TableName" xml:space="preserve"><value>Naam</value></data>
+  <data name="MarkdownHelp_TableRole" xml:space="preserve"><value>Rol</value></data>
+  <data name="MarkdownHelp_TablesHeading" xml:space="preserve"><value>Tabellen</value></data>
+  <data name="MarkdownHelp_TaskDone" xml:space="preserve"><value>Klaar</value></data>
+  <data name="MarkdownHelp_TaskListsHeading" xml:space="preserve"><value>Takenlijsten</value></data>
+  <data name="MarkdownHelp_TaskToDo" xml:space="preserve"><value>Te doen</value></data>
+  <data name="MarkdownHelp_Title" xml:space="preserve"><value>Markdown-spiekbriefje</value></data>
+  <data name="Privacy_ThirdParty_GooglePolicyLink" xml:space="preserve"><value>Privacybeleid van Google</value></data>
+  <data name="Privacy_ThirdParty_Gmail" xml:space="preserve"><value>Voor het bezorgen van de e-mails die we je sturen (je e-mailadres, naam en de inhoud van het bericht)</value></data>
+  <data name="Privacy_ThirdParty_GoogleMaps" xml:space="preserve"><value>Voor het zoeken naar locaties en kaarten (de plaats die je zoekt en je IP-adres, verzonden door je browser)</value></data>
+  <data name="Privacy_ThirdParty_Stripe" xml:space="preserve"><value>Voor kaartbetalingen in de winkel (naam en e-mailadres van de koper; kaartgegevens worden rechtstreeks bij Stripe ingevoerd)</value></data>
+  <data name="Privacy_ThirdParty_Holded" xml:space="preserve"><value>Voor de boekhouding van de vereniging (voor terugbetalingen van declaraties: officiële naam, burnernaam, IBAN, declaratiegegevens en bonnen; voor winkelfacturen: naam, fiscaal identificatienummer, adres en e-mailadres van de koper)</value></data>
+  <data name="Privacy_ThirdParty_TicketTailor" xml:space="preserve"><value>Voor ticketverkoop en het uitgeven van tickets (naam van de tickethouder, e-mailadres en check-ins)</value></data>
+  <data name="Privacy_ThirdParty_MailerLite" xml:space="preserve"><value>Voor mailinglijsten (e-mailadres en lijstlidmaatschap, zoals tickethouder of dienstvrijwilliger; wordt niet gedeeld als je je hebt afgemeld voor marketingmails)</value></data>
+  <data name="Privacy_ThirdParty_Anthropic" xml:space="preserve"><value>Voor de hulpassistent in de app, alleen wanneer je deze gebruikt (je berichten plus je burnernaam, taal, lidmaatschapsniveau, rollen, teams en aankomende diensten)</value></data>
+  <data name="Privacy_ThirdParty_PolicyLink" xml:space="preserve"><value>Privacybeleid</value></data>
+  <data name="Onboarding_BurnerNameLabel" xml:space="preserve"><value>Burnernaam</value></data>
+  <data name="Onboarding_LegalFirstNameLabel" xml:space="preserve"><value>Officiële voornaam</value></data>
+  <data name="Onboarding_LegalLastNameLabel" xml:space="preserve"><value>Officiële achternaam of -namen</value></data>
+  <data name="Nav_Votes" xml:space="preserve"><value>Stemmingen</value></data>
+  <data name="Todo_AssemblyVote_Title" xml:space="preserve"><value>Breng je stem uit</value></data>
+  <data name="Todo_AssemblyVote_Pending" xml:space="preserve"><value>"{0}" staat open voor stemming.</value><comment>{0} = vote title</comment></data>
+  <data name="Todo_AssemblyVote_Done" xml:space="preserve"><value>Je stembiljet voor "{0}" is vastgelegd. Je kunt het wijzigen totdat de stemming sluit.</value><comment>{0} = vote title</comment></data>
+  <data name="Todo_AssemblyVote_Action" xml:space="preserve"><value>Stemmen</value></data>
+
+  <!-- Settings tab label: a SharedResource key because SettingsTabsViewComponent cannot see a contributing section's own resource set -->
+  <data name="Settings_TabEvent" xml:space="preserve">
+    <value>Evenementen</value>
+  </data>
+
+  <data name="Settings_TabAgent" xml:space="preserve">
+    <value>Agent</value>
+  </data>
+
+  <data name="Settings_TabGoogleSync" xml:space="preserve">
+    <value>Google-synchronisatie</value>
+  </data>
+
+  <data name="Settings_TabEmail" xml:space="preserve">
+    <value>E-mail</value>
+  </data>
+  <data name="Settings_TabCityPlanning" xml:space="preserve">
+    <value>Barriokaart</value>
+  </data>
+  <data name="Settings_TabGate" xml:space="preserve">
+    <value>Gate</value>
+  </data>
+  <data name="Settings_TabBarrios" xml:space="preserve">
+    <value>Barrio's</value>
+  </data>
+  <data name="Settings_TabEventGuide" xml:space="preserve">
+    <value>Evenementengids</value>
+  </data>
+  <data name="Settings_TabShifts" xml:space="preserve">
+    <value>Diensten</value>
+  </data>
+  <data name="EmailComposer_To" xml:space="preserve"><value>Aan</value></data>
+  <data name="EmailComposer_RecipientCountOne" xml:space="preserve"><value>1 ontvanger</value></data>
+  <data name="EmailComposer_RecipientCountMany" xml:space="preserve"><value>{0} ontvangers</value></data>
+  <data name="EmailComposer_LargeSendWarning" xml:space="preserve"><value>Grote verzending. Controleer alles goed voordat je verstuurt.</value></data>
+  <data name="EmailComposer_ConfirmLargeSend" xml:space="preserve"><value>Deze e-mail naar {0} ontvangers versturen?</value></data>
+  <data name="EmailComposer_SendToMe" xml:space="preserve"><value>Naar mij sturen</value></data>
+  <data name="EmailComposer_SendToMeSent" xml:space="preserve"><value>Testmail aan {0} staat in de wachtrij.</value></data>
+  <data name="EmailComposer_SendToMeError" xml:space="preserve"><value>De testmail kon niet worden verstuurd. Probeer het opnieuw.</value></data>
+  <data name="EmailComposer_SendToMeRateLimited" xml:space="preserve"><value>Te veel testmails. Wacht een minuut en probeer het opnieuw.</value></data>
+  <data name="EmailComposer_SendToMeNoAddress" xml:space="preserve"><value>Je account heeft geen e-mailadres om naar te sturen.</value></data>
+  <data name="Validation_Required" xml:space="preserve"><value>Dit veld is verplicht.</value></data>
+  <data name="Validation_MaxLength" xml:space="preserve"><value>Voer maximaal {1} tekens in.</value></data>
+  <data name="Validation_Range" xml:space="preserve"><value>Voer een waarde tussen {1} en {2} in.</value></data>
+  <data name="Validation_InvalidCharacters" xml:space="preserve"><value>Dit veld bevat ongeldige tekens.</value></data>
+  <data name="Validation_EmailAddress" xml:space="preserve"><value>Voer een geldig e-mailadres in.</value></data>
+  <data name="Validation_InvalidValue" xml:space="preserve"><value>Voer een geldige waarde in.</value></data>
+  <data name="Validation_Number" xml:space="preserve"><value>Voer een getal in.</value></data>
+  <data name="Enum_SystemTeamType_Volunteers" xml:space="preserve"><value>Vrijwilligers</value></data>
+  <data name="Enum_SystemTeamType_Coordinators" xml:space="preserve"><value>Coördinatoren</value></data>
+  <data name="Enum_SystemTeamType_Board" xml:space="preserve"><value>Bestuur</value></data>
+  <data name="Enum_SystemTeamType_Asociados" xml:space="preserve"><value>Asociados</value></data>
+  <data name="Enum_SystemTeamType_Colaboradors" xml:space="preserve"><value>Colaboradores</value></data>
+  <data name="Enum_SystemTeamType_BarrioLeads" xml:space="preserve"><value>Kampleiders</value></data>
+  <data name="Application_MotivationLength" xml:space="preserve"><value>De motivatie moet tussen de 50 en 2000 tekens bevatten.</value></data>
+  <data name="Application_AdditionalInfoTooLong" xml:space="preserve"><value>Aanvullende informatie mag niet langer zijn dan 1000 tekens.</value></data>
+  <data name="Application_SignificantContributionTooLong" xml:space="preserve"><value>De beschrijving van je belangrijke bijdrage mag maximaal 2000 tekens bevatten.</value></data>
+  <data name="Application_RoleUnderstandingTooLong" xml:space="preserve"><value>Je uitleg over hoe je de rol ziet mag maximaal 2000 tekens bevatten.</value></data>
+  <data name="Document_LegalLabel" xml:space="preserve"><value>Juridisch</value></data>
+  <data name="Todo_Medical_Title" xml:space="preserve"><value>Moeten coördinatoren iets weten over je gezondheid?</value></data>
+  <data name="Todo_Medical_Pending" xml:space="preserve"><value>Optioneel. Alleen jij en de No-Info-beheerders kunnen dit zien.</value></data>
+</root>

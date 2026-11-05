@@ -122,12 +122,7 @@ public sealed class FacilitatedMessageControllerTests
     }
 
     [HumansTheory]
-    [Xunit.InlineData("en")]
-    [Xunit.InlineData("es")]
-    [Xunit.InlineData("de")]
-    [Xunit.InlineData("it")]
-    [Xunit.InlineData("fr")]
-    [Xunit.InlineData("ca")]
+    [Xunit.MemberData(nameof(SupportedCultures.All), MemberType = typeof(SupportedCultures))]
     public async Task ComposerHeading_RendersTheCurrentEncodedIdentity(string language)
     {
         using var culture = new CultureScope(language);

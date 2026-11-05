@@ -3,7 +3,7 @@
 @* Shared "Preview" modal for the _EmailComposer component, keyed by @Model so a page can host
    more than one instance at once (survey invitation's per-culture tabs) or supply this once at
    page level for a composer that instead renders inside an AJAX-injected partial whose own copy
-   never executes (Feedback/Issues detail panels). Defines window.HumansEmailComposer.preview(
+   never executes (the Issues detail panel). Defines window.HumansEmailComposer.preview(
    subject, body, category, modalId) and .wire(root), which POSTs to the Email section's
    "EmailPreviewMarkdown" named route (resolved server-side below, never a hardcoded Email URL —
    Base is the bottom of the dependency graph and must not know section routes) and shows the
@@ -42,7 +42,6 @@
 </div>
 
 <script>
-@await Html.PartialAsync("_RequestVerificationTokenScript")
 (function () {
     var loadingHtml = @Html.Raw(JsonSerializer.Serialize("<p class=\"text-muted p-3\">" + Localizer["EmailComposer_PreviewLoading"].Value + "</p>"));
     var errorText = @Html.Raw(JsonSerializer.Serialize(Localizer["EmailComposer_PreviewError"].Value));
@@ -78,13 +77,8 @@
         form.append('subject', subject || '');
         form.append('body', body || '');
         form.append('category', category || '');
-        form.append('__RequestVerificationToken', getRequestVerificationToken());
 
-        fetch(previewUrl, {
-            method: 'POST',
-            headers: { 'X-Requested-With': 'XMLHttpRequest' },
-            body: form
-        })
+        Humans.postForm(previewUrl, form, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
             .then(function (resp) {
                 if (!resp.ok) { throw new Error('preview failed'); }
                 return resp.json();
@@ -107,7 +101,7 @@
     // Wires every not-yet-wired .email-composer-preview-btn under `root` (default: whole
     // document) to open its own targeted preview modal. Runs automatically when this script
     // executes normally, and is called again by a host page after it injects a composer via
-    // innerHTML — whose own copy of this script never runs — e.g. Feedback/Issues detail panels.
+    // innerHTML — whose own copy of this script never runs — e.g. the Issues detail panel.
     window.HumansEmailComposer.wire = function (root) {
         (root || document).querySelectorAll('.email-composer-preview-btn').forEach(function (btn) {
             if (btn.dataset.composerWired === 'true') { return; }
@@ -145,14 +139,9 @@
                 var form = new FormData();
                 form.append('subject', subjectEl ? subjectEl.value : '');
                 form.append('body', bodyEl ? bodyEl.value : '');
-                form.append('__RequestVerificationToken', getRequestVerificationToken());
 
                 btn.disabled = true;
-                fetch(selfSendUrl, {
-                    method: 'POST',
-                    headers: { 'X-Requested-With': 'XMLHttpRequest' },
-                    body: form
-                })
+                Humans.postForm(selfSendUrl, form, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
                     .then(function (resp) {
                         if (resp.status === 429) { throw new Error(selfRateLimitedText); }
                         if (resp.status === 422) { throw new Error(selfNoAddressText); }

@@ -183,7 +183,6 @@ Admin pages live under the section's URL space, not `/Admin`; they are localizat
   entry (`PreapprovalsAuditActions.Preapproval*`), related to the program, the expense report, or the
   affected user. Program kind edits before the first grant include the old and new sizing
   rules in the program-edit audit, alongside any per-person amount change. Program fields and manager additions/removals persist in one save; a failed manager write leaves fields and managers unchanged, without success audits or deadline notices.
-- The member program page localizes its breadcrumb navigation label in all six supported cultures.
 - Member notices and emails format amounts and claim deadlines in the recipient’s culture. Both channels resolve merged recipients to their canonical user IDs and deliver once per person, even when manager rows name both an archived ID and its survivor.
   Amount changes carry both amounts as numbers until rendering; audit amounts remain invariant.
 - Issue / approve: `PreapprovalFileBy` notification (Actionable, source key
@@ -227,6 +226,8 @@ Admin pages live under the section's URL space, not `/Admin`; they are localizat
 
 ## Architecture
 
+The internal `PreapprovalNotices` owns recipient resolution, localized delivery and standing-notice completion. Ordinary delivery failures remain best-effort; reminder delivery propagates failures before the service writes its sent stamp. Audits, transactions, reminder selection and stamps remain in `PreapprovalService`.
+
 **Owning services:** `PreapprovalService` (`Humans.Preapprovals`; `IPreapprovalService` / `IPreapprovalWrite` public in `Contracts/`, `IPreapprovalManagement` internal)
 **Owned tables:** `pre_programs`, `pre_program_managers`, `pre_grants`, `pre_reminders_sent`
 **Status:** (A) Migrated — built as a section from day one (2026-10-16).
@@ -246,7 +247,7 @@ A `Contracts/` folder in the section (no leaf project: nothing Preapprovals refe
 ### For (A) Migrated sections
 
 - `PreapprovalService` lives in `Services/` as partial files (core, Programs, Grants,
-  Notices, Reminders, Gdpr) and never imports `Microsoft.EntityFrameworkCore`.
+  Reminders, Gdpr) and never imports `Microsoft.EntityFrameworkCore`.
 - `IPreapprovalRepository` (impl in `Data/`) is the only code path that touches the four
   tables; it hands over detached graphs and takes scalars back.
 - **Decorator decision** — no caching decorator. Rationale: a few programs a year, pages
@@ -257,4 +258,4 @@ A `Contracts/` folder in the section (no leaf project: nothing Preapprovals refe
   `IFinanceService`, `INotificationEmitter`, `INotificationAutoResolve`,
   `IEmailService`, `IAuditLogService`.
 - **Architecture enforcement** — analyzers HUM0030/32/34/36; `SectionResourceParityTests`
-  for the six cultures; `GdprExportDependencyInjectionTests` for the contributor.
+  across every culture; `GdprExportDependencyInjectionTests` for the contributor.

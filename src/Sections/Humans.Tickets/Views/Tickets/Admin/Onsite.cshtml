@@ -4,7 +4,7 @@
     ViewData["Title"] = "Who's Onsite";
 }
 
-<h1>Who's Onsite</h1>
+<page-header title="Who's Onsite" />
 
 @if (Model.Year == 0)
 {
@@ -56,7 +56,7 @@ else
 
     @if (Model.Rows.Count == 0)
     {
-        <p class="text-muted">No humans currently onsite matching the selected filters.</p>
+        <empty-state>No humans currently onsite matching the selected filters.</empty-state>
     }
     else
     {

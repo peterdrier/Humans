@@ -90,7 +90,8 @@ public sealed record ShiftBrowseQuery(
     Guid? DepartmentId = null,
     LocalDate? FromDate = null,
     LocalDate? ToDate = null,
-    ShiftBrowseQueryFlags Flags = ShiftBrowseQueryFlags.None);
+    ShiftBrowseQueryFlags Flags = ShiftBrowseQueryFlags.None,
+    Guid? ViewerUserId = null);
 
 public record DailyStaffingData(
     int DayOffset,

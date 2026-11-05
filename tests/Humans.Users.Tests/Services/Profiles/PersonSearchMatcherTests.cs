@@ -1,3 +1,5 @@
+using System.Globalization;
+using System.Resources;
 using AwesomeAssertions;
 using Humans.Base.Extensions;
 using Humans.Users.Contracts;
@@ -10,15 +12,13 @@ namespace Humans.Users.Tests.Services.Profiles;
 public class PersonSearchMatcherTests
 {
     [HumansTheory]
-    [InlineData("en", "Name", "City", "Other", "Legal Name")]
-    [InlineData("es", "Nombre", "Ciudad", "Otro", "Nombre legal")]
-    [InlineData("de", "Name", "Stadt", "Sonstiges", "Bürgerlicher Name")]
-    [InlineData("it", "Nome", "Città", "Altro", "Nome legale")]
-    [InlineData("fr", "Nom", "Ville", "Autre", "Nom légal")]
-    [InlineData("ca", "Nom", "Ciutat", "Altres", "Nom legal")]
-    public void Built_in_match_labels_use_ui_culture_and_custom_labels_stay_verbatim(
-        string culture, string name, string city, string other, string legalName)
+    [MemberData(nameof(SupportedCultures.All), MemberType = typeof(SupportedCultures))]
+    public void Built_in_match_labels_use_ui_culture_and_custom_labels_stay_verbatim(string culture)
     {
+        var resources = new ResourceManager(typeof(UsersResource));
+        string Label(string key) => resources.GetString(key, CultureInfo.GetCultureInfo(culture))!;
+        var (name, legalName, city, other) = (Label("Users_Search_Name"), Label("Users_Profile_LegalName"),
+            Label("Users_ProfileEdit_City"), Label("Enum_ContactFieldType_Other"));
         using var scope = new CultureScope(culture);
         PersonSearchMatcher.Match(Human(burnerName: "Alice"), "Alice", PersonSearchFields.Name)!
             .Field.Should().Be(name);

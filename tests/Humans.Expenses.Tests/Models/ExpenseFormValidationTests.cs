@@ -14,12 +14,7 @@ namespace Humans.Expenses.Tests.Models;
 public sealed class ExpenseFormValidationTests
 {
     [HumansTheory]
-    [InlineData("en")]
-    [InlineData("es")]
-    [InlineData("de")]
-    [InlineData("it")]
-    [InlineData("fr")]
-    [InlineData("ca")]
+    [MemberData(nameof(SupportedCultures.All), MemberType = typeof(SupportedCultures))]
     public void MemberForms_RenderLocalizedAnnotationErrors(string culture)
     {
         using var cultureScope = new CultureScope(culture);

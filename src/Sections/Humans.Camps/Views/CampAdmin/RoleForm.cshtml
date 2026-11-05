@@ -4,16 +4,11 @@
     ViewData["Title"] = isEdit ? "Edit camp role" : "Add camp role";
 }
 
-<nav aria-label="breadcrumb">
-    <ol class="breadcrumb">
-        <li class="breadcrumb-item"><a asp-controller="Camp" asp-action="Index">@SharedLocalizer["Camp_Plural"]</a></li>
-        <li class="breadcrumb-item"><a asp-action="Index">@Localizer["Camps_AdminTitle"]</a></li>
-        <li class="breadcrumb-item"><a asp-action="Roles">Roles</a></li>
-        <li class="breadcrumb-item active" aria-current="page">@(isEdit ? "Edit" : "Add")</li>
-    </ol>
-</nav>
+@section Crumbs {
+    <span>@(isEdit ? "Edit" : "Add")</span>
+}
 
-<h1 class="mb-3">@(isEdit ? "Edit camp role" : "Add camp role")</h1>
+<page-header title="@(isEdit ? "Edit camp role" : "Add camp role")" />
 
 
 <div asp-validation-summary="ModelOnly" class="alert alert-danger"></div>
@@ -48,7 +43,7 @@
 
                     <div class="mb-3">
                         <label asp-for="Description" class="form-label">Description</label>
-                        <textarea asp-for="Description" class="form-control" rows="3"></textarea>
+                        <markdown-editor asp-for="Description" rows="3" />
                         <div class="form-text">Markdown allowed.</div>
                         <span asp-validation-for="Description" class="text-danger"></span>
                     </div>

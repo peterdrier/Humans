@@ -1,0 +1,46 @@
+@model StripeReservesPage
+@{
+    ViewData["Title"] = "Stripe reserves";
+}
+
+<h1 class="mb-3">Stripe reserves</h1>
+<partial name="_StripeNav" />
+
+<p class="text-muted">
+    What Stripe held back, day by day. A hold and its release are created together; each takes effect on its
+    available date, so "held on a day" is the running total of every hold and release available by then.
+</p>
+
+@if (Model.Curves.Count == 0)
+{
+    <p class="text-muted">No risk reserve rows in the mirror.</p>
+}
+
+@foreach (var c in Model.Curves)
+{
+    <div class="card mb-4">
+        <div class="card-header d-flex justify-content-between">
+            <span><span class="fw-semibold">@c.AccountName</span> · @c.Label</span>
+            <span class="small text-muted">peak @c.Peak.ToEuro()</span>
+        </div>
+        <div class="table-responsive" style="max-height: 32rem;">
+            <table class="table table-sm align-middle mb-0">
+                <thead><tr><th>Available on</th><th class="text-end">Change</th><th class="text-end">Held</th><th class="w-50"></th></tr></thead>
+                <tbody>
+                    @foreach (var p in c.Points)
+                    {
+                        var width = c.Peak > 0m ? Math.Clamp(p.Held / c.Peak * 100m, 0m, 100m) : 0m;
+                        <tr class="@(p.Held == c.Peak && c.Peak > 0m ? "fw-semibold" : "")">
+                            <td class="text-nowrap">@p.Date.ToDate()</td>
+                            <td class="text-end text-nowrap text-muted">@p.Change.ToSignedEuro()</td>
+                            <td class="text-end text-nowrap">@p.Held.ToEuro()</td>
+                            <td>
+                                <div class="bg-warning" style="height: .6rem; width: @width.ToString("0.##", CultureInfo.InvariantCulture)%;"></div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}

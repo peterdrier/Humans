@@ -157,7 +157,7 @@ The team photo gallery (US-14.2) renders member pictures through the shared `<vc
 
 ## Localization
 
-All UI strings are localized in 6 languages: EN, ES, CA, DE, FR, IT. Keys include:
+All UI strings are localized in every supported language: EN, ES, CA, DE, FR, IT, NL. Keys include:
 - `Users_Profile_ProfilePicture`, `Users_Profile_DateOfBirth`
 - `Users_Profile_PictureTooLarge`, `Users_Profile_PictureInvalidFormat`
 - `Users_ProfileEdit_PictureHelp`, `Users_ProfileEdit_RemovePicture`

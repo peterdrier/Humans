@@ -110,7 +110,7 @@
     <value>Reintentar</value>
   </data>
   <data name="GoogleIntegration_Identity_Set" xml:space="preserve">
-    <value>Set Google</value>
+    <value>Establecer para Google</value>
   </data>
   <data name="GoogleIntegration_Identity_Updated" xml:space="preserve">
     <value>Correo de servicio de Google actualizado. La sincronización se reintentará con el nuevo correo.</value>

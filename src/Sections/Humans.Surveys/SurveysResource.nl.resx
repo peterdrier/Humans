@@ -1,0 +1,418 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- ReSharper disable MarkupTextTypo -->
+<root xmlns:ns1="urn:schemas-microsoft-com:xml-msdata" xmlns:xs="http://www.w3.org/2001/XMLSchema">
+  <xs:schema id="root">
+    <xs:element name="root" ns1:IsDataSet="true">
+      <xs:complexType>
+        <xs:choice maxOccurs="unbounded">
+          <xs:element name="data">
+            <xs:complexType>
+              <xs:sequence>
+                <xs:element name="value" type="xsd:string" minOccurs="0" ns1:Ordinal="1" />
+                <xs:element name="comment" type="xsd:string" minOccurs="0" ns1:Ordinal="2" />
+              </xs:sequence>
+              <xs:attribute name="name" type="xsd:string" ns1:Ordinal="0" />
+              <xs:attribute name="type" type="xsd:string" />
+              <xs:attribute name="mimetype" type="xsd:string" />
+            </xs:complexType>
+          </xs:element>
+          <xs:element name="resheader">
+            <xs:complexType>
+              <xs:sequence>
+                <xs:element name="value" type="xsd:string" minOccurs="0" ns1:Ordinal="1" />
+              </xs:sequence>
+              <xs:attribute name="name" type="xsd:string" use="required" />
+            </xs:complexType>
+          </xs:element>
+        </xs:choice>
+      </xs:complexType>
+    </xs:element>
+  </xs:schema>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>1.3</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="Surveys_TransparencyNote" xml:space="preserve"><value>Je antwoorden kunnen worden bekeken en geanalyseerd, ook met geautomatiseerde hulpmiddelen, om het collectief te verbeteren.</value></data>
+  <data name="Surveys_AsociadoVote_Heading" xml:space="preserve"><value>Bindende Asociado-stemming</value></data>
+  <data name="Surveys_AsociadoVote_Body" xml:space="preserve"><value>Dit is een bindende stemming van de vereniging. Humans controleert of je momenteel een actieve, goedgekeurde Asociado bent voordat je mag deelnemen en opnieuw wanneer je je stembiljet indient. Je deelname wordt geregistreerd om dubbel stemmen te voorkomen, maar je ingediende stembiljet wordt niet aan je identiteit gekoppeld. De resultaten blijven verzegeld tot de stemming sluit. Dien alleen je eigen weloverwogen stembiljet in; een ingediend stembiljet kan niet worden vervangen.</value></data>
+  <data name="Surveys_AsociadoVote_PageReminder" xml:space="preserve"><value>Je stembiljet maakt deel uit van een bindend besluit van de vereniging. Je stemgerechtigdheid wordt bij het indienen opnieuw gecontroleerd en het ingediende stembiljet wordt niet aan je identiteit gekoppeld.</value></data>
+  <data name="Surveys_AsociadoIneligible_Heading" xml:space="preserve"><value>Je bent niet stemgerechtigd</value></data>
+  <data name="Surveys_AsociadoIneligible_Body" xml:space="preserve"><value>Deze bindende stemming is alleen toegankelijk voor mensen die momenteel actieve, goedgekeurde Asociados zijn. Als je denkt dat je lidmaatschapsgegevens niet kloppen, neem dan contact op met het bestuur voordat de stemperiode sluit.</value></data>
+  <data name="Surveys_TitleFallback" xml:space="preserve"><value>Enquête</value></data>
+  <data name="Surveys_Language" xml:space="preserve"><value>Taal</value></data>
+  <data name="Surveys_AnonymityLegend" xml:space="preserve"><value>Hoe wil je antwoorden?</value></data>
+  <data name="Surveys_Anonymity_Identified" xml:space="preserve"><value>Op naam</value></data>
+  <data name="Surveys_Anonymity_IdentifiedHelp" xml:space="preserve"><value>aan jou gekoppeld; je kunt stoppen en later verdergaan.</value></data>
+  <data name="Surveys_Anonymity_CompletionTracked" xml:space="preserve"><value>Deelname geregistreerd</value></data>
+  <data name="Surveys_Anonymity_CompletionTrackedHelp" xml:space="preserve"><value>je antwoorden worden niet aan jou gekoppeld, maar je deelname wordt geteld.</value></data>
+  <data name="Surveys_Anonymity_Anonymous" xml:space="preserve"><value>Anoniem</value></data>
+  <data name="Surveys_Anonymity_AnonymousHelp" xml:space="preserve"><value>op geen enkele manier aan jou gekoppeld.</value></data>
+  <data name="Surveys_AnonymityFootnote" xml:space="preserve"><value>Anonieme reacties en reacties met geregistreerde deelname kun je niet hervatten, en mogelijk krijg je toch nog één herinnering. Alleen een reactie op naam kun je pauzeren en later voortzetten.</value></data>
+  <data name="Surveys_Start" xml:space="preserve"><value>Starten</value></data>
+  <data name="Surveys_PageOf" xml:space="preserve"><value>Pagina {0} van {1}</value></data>
+  <data name="Surveys_QuestionRequired" xml:space="preserve"><value>Deze vraag is verplicht.</value></data>
+  <data name="Surveys_ValidationAlert" xml:space="preserve"><value>Controleer de gemarkeerde antwoorden voordat je verdergaat.</value></data>
+  <data name="Surveys_AnswerInvalid" xml:space="preserve"><value>Controleer dit antwoord en probeer het opnieuw.</value></data>
+  <data name="Surveys_Back" xml:space="preserve"><value>Terug</value></data>
+  <data name="Surveys_Next" xml:space="preserve"><value>Volgende</value></data>
+  <data name="Surveys_Submit" xml:space="preserve"><value>Versturen</value></data>
+  <data name="Surveys_Closed_Title" xml:space="preserve"><value>Enquête niet beschikbaar</value></data>
+  <data name="Surveys_Closed_Heading" xml:space="preserve"><value>Deze enquête is gesloten</value></data>
+  <data name="Surveys_Closed_Body" xml:space="preserve"><value>Bedankt voor je interesse — deze enquête accepteert geen reacties meer.</value></data>
+  <data name="Surveys_Ineligible_Heading" xml:space="preserve"><value>Deze enquête is niet beschikbaar voor jou</value></data>
+  <data name="Surveys_Ineligible_Body" xml:space="preserve"><value>Je behoort momenteel niet tot de doelgroep van deze enquête.</value></data>
+  <data name="Surveys_NothingToAnswer_Heading" xml:space="preserve"><value>Er zijn geen vragen om te beantwoorden</value></data>
+  <data name="Surveys_NothingToAnswer_Body" xml:space="preserve"><value>Deze enquête heeft geen vragen voor jou, dus er is niets ingediend. Als je hier vragen verwachtte, laat het ons dan weten.</value></data>
+  <data name="Surveys_InvalidLink_Heading" xml:space="preserve"><value>Deze link is niet meer geldig</value></data>
+  <data name="Surveys_InvalidLink_Body" xml:space="preserve"><value>De enquêtelink die je hebt gebruikt, is ongeldig of verlopen. Als je denkt dat dit een vergissing is, vraag dan een nieuwe link aan.</value></data>
+  <data name="Surveys_ThankYou_Heading" xml:space="preserve"><value>Bedankt</value></data>
+  <data name="Surveys_ThankYouFallback" xml:space="preserve"><value>Bedankt voor je reactie.</value></data>
+  <data name="Surveys_Ranked_Option" xml:space="preserve"><value>Optie</value></data>
+  <data name="Surveys_Ranked_Rank" xml:space="preserve"><value>Rang</value></data>
+  <data name="Surveys_Ranked_Reject" xml:space="preserve"><value>Afwijzen</value></data>
+  <data name="Surveys_Ranked_Unranked" xml:space="preserve"><value>Niet gerangschikt</value></data>
+  <data name="Surveys_Ranked_Best" xml:space="preserve"><value>Beste</value></data>
+  <data name="Surveys_Ranked_Worst" xml:space="preserve"><value>Slechtste</value></data>
+  <data name="Surveys_Admin_Index_Title" xml:space="preserve"><value>Enquêtes</value></data>
+  <data name="Surveys_Admin_Index_New" xml:space="preserve"><value>Nieuwe enquête</value></data>
+  <data name="Surveys_Admin_Index_ColumnTitle" xml:space="preserve"><value>Titel</value></data>
+  <data name="Surveys_Admin_Index_ColumnAuthor" xml:space="preserve"><value>Auteur</value></data>
+  <data name="Surveys_Admin_Index_ColumnStatus" xml:space="preserve"><value>Status</value></data>
+  <data name="Surveys_Admin_Index_ColumnInvited" xml:space="preserve"><value>Uitgenodigd</value></data>
+  <data name="Surveys_Admin_Index_ColumnResponses" xml:space="preserve"><value>Reacties</value></data>
+  <data name="Surveys_Admin_Index_ColumnRate" xml:space="preserve"><value>Percentage</value></data>
+  <data name="Surveys_Admin_Index_Empty" xml:space="preserve"><value>Nog geen enquêtes.</value></data>
+  <data name="Surveys_Admin_Index_Untitled" xml:space="preserve"><value>Enquête zonder titel</value></data>
+  <data name="Surveys_Admin_Index_RejectionNote" xml:space="preserve"><value>Afgewezen: {0}</value></data>
+  <data name="Surveys_Admin_Index_Edit" xml:space="preserve"><value>Bewerken</value></data>
+  <data name="Surveys_Admin_Index_SubmitForApproval" xml:space="preserve"><value>Ter goedkeuring indienen</value></data>
+  <data name="Surveys_Admin_Index_Send" xml:space="preserve"><value>Versturen</value></data>
+  <data name="Surveys_Admin_Index_Results" xml:space="preserve"><value>Resultaten</value></data>
+  <data name="Enum_SurveyStatus_Draft" xml:space="preserve"><value>Concept</value></data>
+  <data name="Enum_SurveyStatus_Open" xml:space="preserve"><value>Open</value></data>
+  <data name="Enum_SurveyStatus_Closed" xml:space="preserve"><value>Gesloten</value></data>
+  <data name="Enum_SurveyStatus_PendingApproval" xml:space="preserve"><value>In afwachting van goedkeuring</value></data>
+  <data name="Surveys_Admin_Queue_Title" xml:space="preserve"><value>Goedkeuring van enquêtes</value></data>
+  <data name="Surveys_Admin_Queue_Empty" xml:space="preserve"><value>Er wacht niets op goedkeuring.</value></data>
+  <data name="Surveys_Admin_Queue_Author" xml:space="preserve"><value>Auteur</value></data>
+  <data name="Surveys_Admin_Queue_Submitted" xml:space="preserve"><value>Ingediend</value></data>
+  <data name="Surveys_Admin_Queue_ApproveAndSend" xml:space="preserve"><value>Goedkeuren en versturen</value></data>
+  <data name="Surveys_Admin_Queue_Reject" xml:space="preserve"><value>Afwijzen</value></data>
+  <data name="Surveys_Admin_Queue_RejectNoteLabel" xml:space="preserve"><value>Notitie voor de auteur</value></data>
+  <data name="Surveys_Admin_Queue_RejectNoteRequired" xml:space="preserve"><value>Een notitie is verplicht om een inzending af te wijzen.</value></data>
+  <data name="Surveys_Admin_Queue_Approved" xml:space="preserve"><value>Enquête goedgekeurd en geopend; {0} uitnodiging(en) in de wachtrij gezet, {1} mislukt.</value></data>
+  <data name="Surveys_Admin_Queue_Rejected" xml:space="preserve"><value>Enquête afgewezen en als concept teruggestuurd naar de auteur.</value></data>
+  <data name="Surveys_Admin_Index_Submitted" xml:space="preserve"><value>Enquête ingediend ter goedkeuring door het bestuur of een beheerder.</value></data>
+  <data name="Surveys_Admin_Common_AdminBreadcrumb" xml:space="preserve"><value>Beheer</value></data>
+  <data name="Surveys_Admin_Builder_TitleNew" xml:space="preserve"><value>Nieuwe enquête</value></data>
+  <data name="Surveys_Admin_Builder_TitleEdit" xml:space="preserve"><value>Enquête bewerken</value></data>
+  <data name="Surveys_Admin_Builder_Audience_Team" xml:space="preserve"><value>Een team</value></data>
+  <data name="Surveys_Admin_Builder_Audience_AllActiveMembers" xml:space="preserve"><value>Alle actieve Humans</value></data>
+  <data name="Surveys_Admin_Builder_Audience_TicketHolders" xml:space="preserve"><value>Huidige tickethouders</value></data>
+  <data name="Surveys_Admin_Builder_Audience_ShiftParticipants" xml:space="preserve"><value>Humans met diensten</value></data>
+  <data name="Surveys_Admin_Builder_Audience_LoggedInSince" xml:space="preserve"><value>Humans die sinds een bepaalde datum hebben ingelogd</value></data>
+  <data name="Surveys_Admin_Builder_Audience_Asociados" xml:space="preserve"><value>Alle actieve Asociados</value></data>
+  <data name="Surveys_Admin_Builder_ConfirmOpenVote" xml:space="preserve"><value>Deze bindende Asociado-stemming openen? Na opening kunnen de vragen, formuleringen, instellingen, datums, doelgroep en uitnodigingstekst niet meer worden bewerkt; na sluiting kan de stemming niet opnieuw worden geopend.</value></data>
+  <data name="Surveys_Admin_Builder_ConfirmOpenSurvey" xml:space="preserve"><value>Deze enquête openen zodat er reacties kunnen binnenkomen?</value></data>
+  <data name="Surveys_Admin_Builder_Open" xml:space="preserve"><value>Openen</value></data>
+  <data name="Surveys_Admin_Builder_ConfirmClose" xml:space="preserve"><value>Deze enquête sluiten voor nieuwe reacties?</value></data>
+  <data name="Surveys_Admin_Builder_Close" xml:space="preserve"><value>Sluiten</value></data>
+  <data name="Surveys_Admin_Builder_LockedTitle" xml:space="preserve"><value>Deze bindende Asociado-stemming is vergrendeld.</value></data>
+  <data name="Surveys_Admin_Builder_LockedBody" xml:space="preserve"><value>Sinds de opening zijn de vragen, formulering, instellingen, data, doelgroep en uitnodigingstekst alleen-lezen. Je kunt nog wel een voorbeeld bekijken, de stemming sluiten, de deelname inzien en — na sluiting — gerangschikte opties als niet beschikbaar markeren voor een hertelling.</value></data>
+  <data name="Surveys_Admin_Builder_EditingLanguage" xml:space="preserve"><value>Bewerkingstaal:</value></data>
+  <data name="Surveys_Admin_Builder_SurveySectionHeader" xml:space="preserve"><value>Enquête</value></data>
+  <data name="Surveys_Admin_Builder_Field_Title" xml:space="preserve"><value>Titel</value></data>
+  <data name="Surveys_Admin_Builder_Field_Intro" xml:space="preserve"><value>Inleiding</value></data>
+  <data name="Surveys_Admin_Builder_Field_ThankYou" xml:space="preserve"><value>Bedanktekst</value></data>
+  <data name="Surveys_Admin_Builder_DefaultLanguage" xml:space="preserve"><value>Standaardtaal</value></data>
+  <data name="Surveys_Admin_Builder_OpensAt" xml:space="preserve"><value>Opent op</value></data>
+  <data name="Surveys_Admin_Builder_ClosesAt" xml:space="preserve"><value>Sluit op</value></data>
+  <data name="Surveys_Admin_Builder_AllowAnonymous" xml:space="preserve"><value>Anonieme reacties toestaan</value></data>
+  <data name="Surveys_Admin_Builder_AsociadoVoteHeading" xml:space="preserve"><value>Asociado-stemming</value></data>
+  <data name="Surveys_Admin_Builder_AsociadoVoteWarning" xml:space="preserve"><value>Gebruik dit alleen voor een bindend besluit van de vereniging. Controleer elke vraag, optie, datum, vertaling, doelgroepinstelling en uitnodiging zorgvuldig voordat je de stemming opent. Openen is onomkeerbaar: de volledige enquête wordt alleen-lezen en kan na sluiting niet meer worden heropend.</value></data>
+  <data name="Surveys_Admin_Builder_IsAsociadoVoteLabel" xml:space="preserve"><value>Dit is een bindende Asociado-stemming</value></data>
+  <data name="Surveys_Admin_Builder_IsAsociadoVoteHelp" xml:space="preserve"><value>Alleen actieve, goedgekeurde Asociados mogen antwoorden. Humans registreert wie er heeft gestemd om de stemgerechtigdheid te handhaven en dubbel stemmen te voorkomen, maar slaat ingediende stembiljetten op zonder kiezersidentiteit. Zolang de stemming open is, zijn alleen deelnamestatistieken zichtbaar; alle uit antwoorden afgeleide resultaten blijven verzegeld tot de sluiting. Zodra de enquête is geopend, kan deze niet meer worden bewerkt. Zodra deze is gesloten, kan deze niet meer worden heropend.</value></data>
+  <data name="Surveys_Admin_Builder_AudienceLabel" xml:space="preserve"><value>Doelgroep</value></data>
+  <data name="Surveys_Admin_Builder_NoAudienceSelected" xml:space="preserve"><value>Geen doelgroep geselecteerd</value></data>
+  <data name="Surveys_Admin_Builder_AudienceHelp" xml:space="preserve"><value>Uitnodigingen worden na het opslaan afzonderlijk gecontroleerd en verstuurd.</value></data>
+  <data name="Surveys_Admin_Builder_TeamLabel" xml:space="preserve"><value>Team</value></data>
+  <data name="Surveys_Admin_Builder_ChooseTeam" xml:space="preserve"><value>Kies een team</value></data>
+  <data name="Surveys_Admin_Builder_LoggedInSinceLabel" xml:space="preserve"><value>Ingelogd sinds</value></data>
+  <data name="Surveys_Admin_Builder_SlugLabel" xml:space="preserve"><value>Slug voor deelbare link (optioneel)</value></data>
+  <data name="Surveys_Admin_Builder_SlugPlaceholder" xml:space="preserve"><value>bijv. feedback-2026</value></data>
+  <data name="Surveys_Admin_Builder_SlugHelp" xml:space="preserve"><value>Aan anonieme enquêtes kan iedereen met de link deelnemen. Voor enquêtes op naam moet je inloggen en, als dat is ingesteld, op dat moment tot de doelgroep behoren.</value></data>
+  <data name="Surveys_Admin_Builder_InvitationEmailHeader" xml:space="preserve"><value>Uitnodigingsmail</value></data>
+  <data name="Surveys_Admin_Builder_InvitationEmailIntro" xml:space="preserve"><value>Pas de eerste uitnodiging aan. Humans voegt de aanhef, de enquêtetitel, de knop met de enquêtelink en de afsluiting toe. Het bericht ondersteunt Markdown-opmaak, inclusief https://-afbeeldingen. Laat een veld leeg om de standaardtekst te gebruiken.</value></data>
+  <data name="Surveys_Admin_Builder_Field_EmailSubject" xml:space="preserve"><value>E-mailonderwerp</value></data>
+  <data name="Surveys_Admin_Builder_Field_EmailMessage" xml:space="preserve"><value>E-mailbericht</value></data>
+  <data name="Surveys_Admin_Builder_QuestionsHeader" xml:space="preserve"><value>Vragen</value></data>
+  <data name="Surveys_Admin_Builder_AddQuestion" xml:space="preserve"><value>+ Vraag toevoegen</value></data>
+  <data name="Surveys_Admin_Builder_SaveTranslateTitle" xml:space="preserve"><value>Slaat op en vertaalt vervolgens automatisch de velden die nog ontbreken in andere talen vanuit de standaardtaal. Bestaande tekst wordt nooit overschreven — controleer deze vóór het openen.</value></data>
+  <data name="Surveys_Admin_Builder_SaveTranslate" xml:space="preserve"><value>Opslaan + ontbrekende vertalen</value></data>
+  <data name="Surveys_Admin_Builder_SaveReview" xml:space="preserve"><value>Opslaan en ontvangers controleren</value></data>
+  <data name="Surveys_Admin_Builder_SaveSurvey" xml:space="preserve"><value>Enquête opslaan</value></data>
+  <data name="Surveys_Admin_Builder_JS_Columns" xml:space="preserve"><value>Kolommen</value></data>
+  <data name="Surveys_Admin_Builder_JS_Options" xml:space="preserve"><value>Opties</value></data>
+  <data name="Surveys_Admin_Builder_QuestionLabel" xml:space="preserve"><value>Vraag</value></data>
+  <data name="Surveys_Admin_Builder_JS_ChooseQuestion" xml:space="preserve"><value>— kies een vraag —</value></data>
+  <data name="Surveys_Admin_Builder_JS_Untitled" xml:space="preserve"><value>(zonder titel)</value></data>
+  <data name="Surveys_Admin_Builder_MoveQuestionUp" xml:space="preserve"><value>Vraag omhoog verplaatsen</value></data>
+  <data name="Surveys_Admin_Builder_MoveQuestionDown" xml:space="preserve"><value>Vraag omlaag verplaatsen</value></data>
+  <data name="Surveys_Admin_Builder_QuestionOrderAriaLabel" xml:space="preserve"><value>Vraagvolgorde</value></data>
+  <data name="Surveys_Admin_Builder_AddBelow" xml:space="preserve"><value>+ Hieronder toevoegen</value></data>
+  <data name="Surveys_Admin_Builder_RemoveQuestion" xml:space="preserve"><value>Verwijderen</value></data>
+  <data name="Surveys_Admin_Builder_PageLabel" xml:space="preserve"><value>Pagina</value></data>
+  <data name="Surveys_Admin_Builder_TypeLabel" xml:space="preserve"><value>Type</value></data>
+  <data name="Surveys_Admin_Builder_RequiredLabel" xml:space="preserve"><value>Verplicht</value></data>
+  <data name="Surveys_Admin_Builder_Field_Prompt" xml:space="preserve"><value>Vraagtekst / optionele informatiekop</value></data>
+  <data name="Surveys_Admin_Builder_Field_HelpText" xml:space="preserve"><value>Hulptekst / informatie in Markdown</value></data>
+  <data name="Surveys_Admin_Builder_ImagesLabel" xml:space="preserve"><value>Afbeeldingen</value></data>
+  <data name="Surveys_Admin_Builder_ImagesHelp" xml:space="preserve"><value>Maximaal vijf, weergegeven als tabbladen met label.</value></data>
+  <data name="Surveys_Admin_Builder_ImagesPublicWarning" xml:space="preserve"><value>URL's van geüploade afbeeldingen zijn openbaar en kunnen buiten deze enquête worden gedeeld.</value></data>
+  <data name="Surveys_Admin_Builder_AddImage" xml:space="preserve"><value>+ Afbeelding toevoegen</value></data>
+  <data name="Surveys_Admin_Builder_RatingMinLabel" xml:space="preserve"><value>Minimumscore</value></data>
+  <data name="Surveys_Admin_Builder_RatingMaxLabel" xml:space="preserve"><value>Maximumscore</value></data>
+  <data name="Surveys_Admin_Builder_Field_MinLabel" xml:space="preserve"><value>Label voor minimum</value></data>
+  <data name="Surveys_Admin_Builder_Field_MaxLabel" xml:space="preserve"><value>Label voor maximum</value></data>
+  <data name="Surveys_Admin_Builder_OptionsLabel" xml:space="preserve"><value>Opties</value></data>
+  <data name="Surveys_Admin_Builder_AddOption" xml:space="preserve"><value>+ Optie toevoegen</value></data>
+  <data name="Surveys_Admin_Builder_GridColumnHelp" xml:space="preserve"><value>Rastervragen ondersteunen maximaal vijf kolommen.</value></data>
+  <data name="Surveys_Admin_Builder_RankedMethodNote" xml:space="preserve"><value>Rangschikkingsvragen gebruiken Ranked Pairs (Tideman) als officiële methode. Als twee uitkomsten gelijk blijven, wint de optie die eerder in de lijst staat.</value></data>
+  <data name="Surveys_Admin_Builder_AllowEqualRanks" xml:space="preserve"><value>Gelijke rangen toestaan</value></data>
+  <data name="Surveys_Admin_Builder_IncludeReject" xml:space="preserve"><value>Een optie 'Afwijzen' opnemen</value></data>
+  <data name="Surveys_Admin_Builder_RankedLockedHelp" xml:space="preserve"><value>Gerangschikte kandidaten, volgorde en instellingen zijn vergrendeld omdat er al een antwoord is opgeslagen.</value></data>
+  <data name="Surveys_Admin_Builder_SelectionsPerRow" xml:space="preserve"><value>Keuzes per rij</value></data>
+  <data name="Surveys_Admin_Builder_OneChoice" xml:space="preserve"><value>Eén keuze</value></data>
+  <data name="Surveys_Admin_Builder_MultipleChoices" xml:space="preserve"><value>Meerdere keuzes</value></data>
+  <data name="Surveys_Admin_Builder_RowsLabel" xml:space="preserve"><value>Rijen</value></data>
+  <data name="Surveys_Admin_Builder_AddRow" xml:space="preserve"><value>+ Rij toevoegen</value></data>
+  <data name="Surveys_Admin_Builder_VisibilityLabel" xml:space="preserve"><value>Zichtbaarheid</value></data>
+  <data name="Surveys_Admin_Builder_AlwaysShown" xml:space="preserve"><value>Altijd zichtbaar</value></data>
+  <data name="Surveys_Admin_Builder_ConditionalShown" xml:space="preserve"><value>Alleen zichtbaar als…</value></data>
+  <data name="Surveys_Admin_Builder_CombineAll" xml:space="preserve"><value>aan alle voorwaarden is voldaan</value></data>
+  <data name="Surveys_Admin_Builder_CombineAny" xml:space="preserve"><value>aan een van de voorwaarden is voldaan</value></data>
+  <data name="Surveys_Admin_Builder_AddCondition" xml:space="preserve"><value>+ Voorwaarde toevoegen</value></data>
+  <data name="Surveys_Admin_Builder_ConditionsHelp" xml:space="preserve"><value>Voorwaarden mogen alleen naar eerdere vragen verwijzen (gecontroleerd bij opslaan).</value></data>
+  <data name="Surveys_Admin_Builder_ValueLabel" xml:space="preserve"><value>Waarde</value></data>
+  <data name="Surveys_Admin_Builder_ValuePlaceholder_Option" xml:space="preserve"><value>vaste sleutel, bijv. ja</value></data>
+  <data name="Surveys_Admin_Builder_Field_OptionLabel" xml:space="preserve"><value>Label</value></data>
+  <data name="Surveys_Admin_Builder_OptionActionsAriaLabel" xml:space="preserve"><value>Optieacties</value></data>
+  <data name="Surveys_Admin_Builder_MoveOptionUp" xml:space="preserve"><value>Optie omhoog verplaatsen</value></data>
+  <data name="Surveys_Admin_Builder_MoveOptionDown" xml:space="preserve"><value>Optie omlaag verplaatsen</value></data>
+  <data name="Surveys_Admin_Builder_RemoveOption" xml:space="preserve"><value>Optie verwijderen</value></data>
+  <data name="Surveys_Admin_Builder_Field_RowLabel" xml:space="preserve"><value>Rijlabel</value></data>
+  <data name="Surveys_Admin_Builder_ValuePlaceholder_GridRow" xml:space="preserve"><value>vaste sleutel, bijv. may-03-09</value></data>
+  <data name="Surveys_Admin_Builder_GridRowActionsAriaLabel" xml:space="preserve"><value>Acties voor rasterrij</value></data>
+  <data name="Surveys_Admin_Builder_MoveRowUp" xml:space="preserve"><value>Rij omhoog verplaatsen</value></data>
+  <data name="Surveys_Admin_Builder_MoveRowDown" xml:space="preserve"><value>Rij omlaag verplaatsen</value></data>
+  <data name="Surveys_Admin_Builder_RemoveRow" xml:space="preserve"><value>Rij verwijderen</value></data>
+  <data name="Surveys_Admin_Builder_ViewCurrentImage" xml:space="preserve"><value>Huidige afbeelding bekijken</value></data>
+  <data name="Surveys_Admin_Builder_ReplaceImageHelp" xml:space="preserve"><value>Kies hieronder een nieuw bestand om deze te vervangen.</value></data>
+  <data name="Surveys_Admin_Builder_ImageOrderAriaLabel" xml:space="preserve"><value>Volgorde en verwijdering van afbeeldingen</value></data>
+  <data name="Surveys_Admin_Builder_MoveImageUp" xml:space="preserve"><value>Afbeelding omhoog verplaatsen</value></data>
+  <data name="Surveys_Admin_Builder_MoveImageDown" xml:space="preserve"><value>Afbeelding omlaag verplaatsen</value></data>
+  <data name="Surveys_Admin_Builder_RemoveImage" xml:space="preserve"><value>Verwijderen</value></data>
+  <data name="Surveys_Admin_Builder_Field_TabLabel" xml:space="preserve"><value>Tabbladlabel</value></data>
+  <data name="Surveys_Admin_Builder_Field_ImageAltText" xml:space="preserve"><value>Alt-tekst van afbeelding</value></data>
+  <data name="Surveys_Admin_Builder_OperatorIsAnyOf" xml:space="preserve"><value>is een van</value></data>
+  <data name="Surveys_Admin_Builder_OperatorIsNoneOf" xml:space="preserve"><value>is geen van</value></data>
+  <data name="Surveys_Admin_Builder_OperatorHasAnswer" xml:space="preserve"><value>heeft een antwoord</value></data>
+  <data name="Surveys_Admin_Builder_OperatorHasNoAnswer" xml:space="preserve"><value>heeft geen antwoord</value></data>
+  <data name="Surveys_Admin_Builder_RemoveCondition" xml:space="preserve"><value>Voorwaarde verwijderen</value></data>
+  <data name="Surveys_Admin_PreviewMenu_Preview" xml:space="preserve"><value>Voorbeeld</value></data>
+  <data name="Surveys_Admin_PreviewMenu_PreviewSurvey" xml:space="preserve"><value>Voorbeeld van enquête</value></data>
+  <data name="Surveys_Admin_PreviewMenu_PreviewEmail" xml:space="preserve"><value>Voorbeeld van e-mail</value></data>
+  <data name="Surveys_Admin_Results_Title" xml:space="preserve"><value>Enquêteresultaten</value></data>
+  <data name="Surveys_Admin_Results_Untitled" xml:space="preserve"><value>(zonder titel)</value></data>
+  <data name="Surveys_Admin_Results_Breadcrumb" xml:space="preserve"><value>Resultaten</value></data>
+  <data name="Surveys_Admin_Results_DownloadCsv" xml:space="preserve"><value>CSV downloaden</value></data>
+  <data name="Surveys_Admin_Results_DownloadJson" xml:space="preserve"><value>JSON downloaden</value></data>
+  <data name="Surveys_Admin_Results_EmbargoNotice" xml:space="preserve"><value>Dit is een Asociado-stemming. Uit antwoorden afgeleide resultaten, exports en gegevens van respondenten komen pas beschikbaar nadat de stemming is gesloten.</value></data>
+  <data name="Surveys_Admin_Results_QuestionResultsLabel" xml:space="preserve"><value>Resultaten per vraag:</value></data>
+  <data name="Surveys_Admin_Results_ResponseCount" xml:space="preserve"><value>{0} reactie(s)</value></data>
+  <data name="Surveys_Admin_Results_FilterAriaLabel" xml:space="preserve"><value>Vraagresultaten filteren</value></data>
+  <data name="Surveys_Admin_Results_ScopeUnique" xml:space="preserve"><value>Geïdentificeerd / uniek</value></data>
+  <data name="Surveys_Admin_Results_ScopeAnonymous" xml:space="preserve"><value>Anoniem</value></data>
+  <data name="Surveys_Admin_Results_ScopeCombined" xml:space="preserve"><value>Gecombineerd</value></data>
+  <data name="Surveys_Admin_Results_StatResponses" xml:space="preserve"><value>Reacties</value></data>
+  <data name="Surveys_Admin_Results_StatInvited" xml:space="preserve"><value>Uitgenodigd</value></data>
+  <data name="Surveys_Admin_Results_StatResponseRate" xml:space="preserve"><value>Responspercentage</value></data>
+  <data name="Surveys_Admin_Results_FunnelHeader" xml:space="preserve"><value>Deelnametrechter</value></data>
+  <data name="Surveys_Admin_Results_FunnelAllResponses" xml:space="preserve"><value>(alle reacties)</value></data>
+  <data name="Surveys_Admin_Results_InviteLink" xml:space="preserve"><value>Uitnodigingslink</value></data>
+  <data name="Surveys_Admin_Results_PublicLink" xml:space="preserve"><value>Openbare link</value></data>
+  <data name="Surveys_Admin_Results_Started" xml:space="preserve"><value>Gestart:</value></data>
+  <data name="Surveys_Admin_Results_Finished" xml:space="preserve"><value>Afgerond:</value></data>
+  <data name="Surveys_Admin_Results_QuestionsHeader" xml:space="preserve"><value>Vragen</value></data>
+  <data name="Surveys_Admin_Results_NoQuestions" xml:space="preserve"><value>Deze enquête heeft geen vragen.</value></data>
+  <data name="Surveys_Admin_Results_NoRankedBallots" xml:space="preserve"><value>Geen gerangschikte stembiljetten.</value></data>
+  <data name="Surveys_Admin_Results_OriginalOfficialResult" xml:space="preserve"><value>Oorspronkelijke officiële uitslag — alle aangemaakte opties</value></data>
+  <data name="Surveys_Admin_Results_CurrentOfficialResult" xml:space="preserve"><value>Huidige officiële uitslag — beschikbare opties</value></data>
+  <data name="Surveys_Admin_Results_NoWinner" xml:space="preserve"><value>Geen winnaar</value></data>
+  <data name="Surveys_Admin_Results_CycleDetectedAvailable" xml:space="preserve"><value>Voorkeurscyclus gevonden in de telling van beschikbare opties:</value></data>
+  <data name="Surveys_Admin_Results_CycleDetectedAll" xml:space="preserve"><value>Voorkeurscyclus gevonden in de telling van alle opties:</value></data>
+  <data name="Surveys_Admin_Results_CycleExplanationCurrent" xml:space="preserve"><value>Net als bij steen–papier–schaar verslaat elke optie een andere, maar wordt deze verslagen door een derde. Geen enkele optie verslaat elke andere optie in een onderling duel, dus lost Ranked Pairs de cyclus op door de sterkste overwinningen vast te zetten zonder een lus te vormen.</value></data>
+  <data name="Surveys_Admin_Results_CycleExplanationOriginal" xml:space="preserve"><value>Net als bij steen-papier-schaar versloeg elke optie een andere, maar werd zelf verslagen door een derde. Door een niet-beschikbare optie te verwijderen, wordt deze cyclus doorbroken. De resterende opties worden vervolgens rechtstreeks vergeleken, waardoor de winnaar kan veranderen, ook als de vorige winnaar nog beschikbaar is.</value></data>
+  <data name="Surveys_Admin_Results_CycleLinkText" xml:space="preserve"><value>Waarom veranderingen in beschikbaarheid contra-intuïtief kunnen lijken</value></data>
+  <data name="Surveys_Admin_Results_WinnerChanged" xml:space="preserve"><value>Het uitsluiten van niet-beschikbare opties verandert de officiële winnaar.</value></data>
+  <data name="Surveys_Admin_Results_SensitivityHeader" xml:space="preserve"><value>Gevoeligheidsanalyse — momenteel beschikbare opties</value></data>
+  <data name="Surveys_Admin_Results_ColumnMethod" xml:space="preserve"><value>Methode</value></data>
+  <data name="Surveys_Results_MethodRankedPairsOfficial" xml:space="preserve"><value>Ranked Pairs (officieel)</value></data>
+  <data name="Surveys_Results_MethodCondorcetCheck" xml:space="preserve"><value>Condorcet-controle</value></data>
+  <data name="Surveys_Results_MethodBordaCount" xml:space="preserve"><value>Borda-telling</value></data>
+  <data name="Surveys_Admin_Results_ColumnWinner" xml:space="preserve"><value>Winnaar</value></data>
+  <data name="Surveys_Admin_Results_ColumnNotes" xml:space="preserve"><value>Opmerkingen</value></data>
+  <data name="Surveys_Admin_Results_NoUniqueWinner" xml:space="preserve"><value>Geen unieke winnaar</value></data>
+  <data name="Surveys_Admin_Results_TieBreakApplied" xml:space="preserve"><value>Gelijke stand beslecht op volgorde van aanmaak</value></data>
+  <data name="Surveys_Admin_Results_PairwiseSummary" xml:space="preserve"><value>Paarsgewijze vergelijkingen</value></data>
+  <data name="Surveys_Admin_Results_ColumnPair" xml:space="preserve"><value>Paar</value></data>
+  <data name="Surveys_Admin_Results_ColumnVotes" xml:space="preserve"><value>Stemmen</value></data>
+  <data name="Surveys_Admin_Results_VsSeparator" xml:space="preserve"><value>tegen</value></data>
+  <data name="Surveys_Admin_Results_RejectionsHeader" xml:space="preserve"><value>Afwijzingen</value></data>
+  <data name="Surveys_Admin_Results_ColumnOption" xml:space="preserve"><value>Optie</value></data>
+  <data name="Surveys_Admin_Results_ColumnRejected" xml:space="preserve"><value>Afgewezen</value></data>
+  <data name="Surveys_Admin_Results_ColumnStatus" xml:space="preserve"><value>Status</value></data>
+  <data name="Surveys_Admin_Results_NoLongerAvailable" xml:space="preserve"><value>Niet meer beschikbaar</value></data>
+  <data name="Surveys_Admin_Results_UnavailableOptionsLegend" xml:space="preserve"><value>Niet-beschikbare opties</value></data>
+  <data name="Surveys_Admin_Results_UnavailableOptionsHelp" xml:space="preserve"><value>Sluit datums of keuzes uit die niet meer beschikbaar zijn, zonder opgeslagen stembiljetten te wijzigen.</value></data>
+  <data name="Surveys_Admin_Results_Recalculate" xml:space="preserve"><value>Opnieuw berekenen</value></data>
+  <data name="Surveys_Admin_Results_NoOptions" xml:space="preserve"><value>Geen opties.</value></data>
+  <data name="Surveys_Admin_Results_AverageLabel" xml:space="preserve"><value>Gemiddelde:</value></data>
+  <data name="Surveys_Admin_Results_GridNoRowsColumns" xml:space="preserve"><value>Geen rasterrijen of -kolommen.</value></data>
+  <data name="Surveys_Admin_Results_ColumnRow" xml:space="preserve"><value>Rij</value></data>
+  <data name="Surveys_Admin_Results_NoFreeTextAnswers" xml:space="preserve"><value>Geen open antwoorden.</value></data>
+  <data name="Surveys_Admin_Results_IdentifiedRespondentsHeader" xml:space="preserve"><value>Geïdentificeerde respondenten</value></data>
+  <data name="Surveys_Admin_Results_NoIdentifiedRespondents" xml:space="preserve"><value>Geen geïdentificeerde respondenten.</value></data>
+  <data name="Surveys_Admin_Results_IndividualBallotsHeader" xml:space="preserve"><value>Individuele stembiljetten</value></data>
+  <data name="Surveys_Admin_Results_BallotsPrivacyNote" xml:space="preserve"><value>Humans heeft vastgelegd wie de stemming heeft voltooid om de stemgerechtigdheid te handhaven en dubbel stemmen te voorkomen, maar deze ingediende stembiljetten zijn niet gekoppeld aan de identiteit van kiezers.</value></data>
+  <data name="Surveys_Admin_Results_NoBallotsInView" xml:space="preserve"><value>Geen stembiljetten in deze weergave.</value></data>
+  <data name="Surveys_Admin_Results_BallotLabel" xml:space="preserve"><value>Stembiljet {0}</value></data>
+  <data name="Surveys_Admin_Results_BackToSurveys" xml:space="preserve"><value>Terug naar enquêtes</value></data>
+  <data name="Surveys_Admin_Results_RespondentRejectedLabel" xml:space="preserve"><value>Afgewezen:</value></data>
+  <data name="Surveys_Admin_Builder_Error_TeamRequired" xml:space="preserve">
+    <value>Kies een team voor de doelgroep Team.</value>
+  </data>
+  <data name="Surveys_Admin_Builder_Error_LoggedInSinceRequired" xml:space="preserve">
+    <value>Voor de doelgroep "Ingelogd sinds" is een peildatum vereist.</value>
+  </data>
+  <data name="Surveys_Admin_Builder_Saved_TranslationsFilled" xml:space="preserve">
+    <value>Enquête opgeslagen; {0} ontbrekende vertaling(en) vooraf ingevuld — controleer ze vóór het openen.</value>
+  </data>
+  <data name="Surveys_Admin_Builder_Saved_NoTranslationsNeeded" xml:space="preserve">
+    <value>Enquête opgeslagen — geen ontbrekende vertalingen om in te vullen.</value>
+  </data>
+  <data name="Surveys_Admin_Builder_Saved_TranslationFailed" xml:space="preserve">
+    <value>Enquête opgeslagen, maar het vertalen is mislukt. Probeer het opnieuw.</value>
+  </data>
+  <data name="Surveys_Email_SurveyInvitation_Subject" xml:space="preserve">
+    <value>Graag invullen: {0}</value>
+    <comment>{0} = survey title</comment>
+  </data>
+  <data name="Surveys_Email_SurveyInvitation_Body" xml:space="preserve">
+    <value>&lt;h2&gt;{1}&lt;/h2&gt;
+&lt;p&gt;Hoi {0},&lt;/p&gt;
+{3}
+&lt;p&gt;&lt;a href="{2}"&gt;Enquête openen&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;Bedankt,&lt;br/&gt;Het Nobodies Collective&lt;/p&gt;</value>
+    <comment>{0} = user name, {1} = survey title, {2} = answer URL, {3} = encoded invitation message HTML</comment>
+  </data>
+  <data name="Surveys_Email_SurveyInvitation_DefaultMessage" xml:space="preserve">
+    <value>Je bent uitgenodigd om de enquête &lt;strong&gt;{0}&lt;/strong&gt; in te vullen. Het duurt maar een paar minuten.</value>
+  </data>
+  <data name="Surveys_Email_SurveyReminder_Subject" xml:space="preserve">
+    <value>Herinnering: {0}</value>
+    <comment>{0} = survey title</comment>
+  </data>
+  <data name="Surveys_Email_SurveyReminder_Body" xml:space="preserve">
+    <value>&lt;h2&gt;{1}&lt;/h2&gt;
+&lt;p&gt;Hoi {0},&lt;/p&gt;
+&lt;p&gt;Even een herinnering dat de enquête &lt;strong&gt;{1}&lt;/strong&gt; nog op je reactie wacht.&lt;/p&gt;
+&lt;p&gt;&lt;a href="{2}"&gt;Enquête openen&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;Bedankt,&lt;br/&gt;Het Nobodies Collective&lt;/p&gt;</value>
+    <comment>{0} = user name, {1} = survey title, {2} = answer URL</comment>
+  </data>
+  <data name="Surveys_Admin_Builder_InvitationRecipients" xml:space="preserve"><value>Iedereen naar wie deze enquête wordt verstuurd (gekozen bij het versturen)</value></data>
+  <data name="Surveys_Created" xml:space="preserve"><value>Enquête aangemaakt.</value></data>
+  <data name="Surveys_Saved" xml:space="preserve"><value>Enquête opgeslagen.</value></data>
+  <data name="Surveys_PreviewEmailQueued" xml:space="preserve"><value>Voorbeeldmail van de enquête in de wachtrij gezet voor {0}.</value></data>
+  <data name="Surveys_PreviewNotFound" xml:space="preserve"><value>Enquête niet gevonden.</value></data>
+  <data name="Surveys_PreviewFailed" xml:space="preserve"><value>Het e-mailvoorbeeld kon niet worden geladen. Probeer het opnieuw.</value></data>
+  <data name="Surveys_SubmitNotAuthor" xml:space="preserve"><value>Alleen de auteur van de enquête mag deze ter goedkeuring indienen.</value></data>
+  <data name="Surveys_SubmitNotDraft" xml:space="preserve"><value>Alleen een conceptenquête kan ter goedkeuring worden ingediend.</value></data>
+  <data name="Surveys_SubmitFailed" xml:space="preserve"><value>De enquête kon niet ter goedkeuring worden ingediend. Probeer het opnieuw.</value></data>
+  <data name="Surveys_PreviewNoEmail" xml:space="preserve"><value>Je account heeft geen e-mailadres voor meldingen.</value></data>
+  <data name="Surveys_PreviewQueueFailed" xml:space="preserve"><value>De voorbeeldmail van de enquête kon niet in de wachtrij worden gezet.</value></data>
+  <data name="Surveys_PreviewOnly" xml:space="preserve"><value>Alleen voorbeeld</value></data>
+  <data name="Surveys_SendPreviewEmail" xml:space="preserve"><value>Voorbeeldmail naar mij sturen</value></data>
+  <data name="Surveys_PreviewIntroNotice" xml:space="preserve"><value>Je kunt deze enquête bekijken, maar er worden geen antwoorden of activiteiten opgeslagen.</value></data>
+  <data name="Surveys_PreviewPageNotice" xml:space="preserve"><value>Antwoorden en activiteit worden niet opgeslagen. Voorwaardelijke vragen worden getoond zodat je ze kunt bekijken.</value></data>
+  <data name="Surveys_PreviewThankYouNotice" xml:space="preserve"><value>Er is geen antwoord ingediend.</value></data>
+  <data name="Surveys_EmailPreviewTitle" xml:space="preserve"><value>Voorbeeld van enquêtemail</value></data>
+  <data name="Surveys_EmailPreviewDescription" xml:space="preserve"><value>Dit is de uitnodiging die naar de momenteel ingelogde gebruiker zou worden verstuurd.</value></data>
+  <data name="Surveys_EmailPreviewTo" xml:space="preserve"><value>Aan:</value></data>
+  <data name="Surveys_EmailPreviewSubject" xml:space="preserve"><value>Onderwerp:</value></data>
+  <data name="Surveys_EmailPreviewFrameTitle" xml:space="preserve"><value>Voorbeeld van uitnodigingsmail voor enquête</value></data>
+  <data name="Surveys_StartPreview" xml:space="preserve"><value>Voorbeeld starten</value></data>
+  <data name="Surveys_PreviewThankYou" xml:space="preserve"><value>Voorbeeld van bedankpagina</value></data>
+  <data name="Surveys_Validation_AudienceUnsupported" xml:space="preserve"><value>De geselecteerde enquêtedoelgroep wordt niet ondersteund.</value></data>
+  <data name="Surveys_Validation_SubjectSingleLine" xml:space="preserve"><value>Onderwerpen van uitnodigingsmails moeten uit één regel bestaan ({0}).</value></data>
+  <data name="Surveys_Validation_SubjectLength" xml:space="preserve"><value>Onderwerpen van uitnodigingsmails mogen maximaal {0} tekens lang zijn ({1}).</value></data>
+  <data name="Surveys_Validation_MessageLength" xml:space="preserve"><value>Het bericht van een uitnodigingsmail mag maximaal {0} tekens bevatten ({1}).</value></data>
+  <data name="Surveys_Validation_ImagesLimit" xml:space="preserve"><value>Een informatie-item mag maximaal {0} afbeeldingen bevatten.</value></data>
+  <data name="Surveys_Validation_InformationRequired" xml:space="preserve"><value>Informatie-item {0} kan niet verplicht zijn.</value></data>
+  <data name="Surveys_Validation_InformationImagesLimit" xml:space="preserve"><value>Informatie-item {0} mag maximaal {1} afbeeldingen bevatten.</value></data>
+  <data name="Surveys_Validation_InformationContentRequired" xml:space="preserve"><value>Informatie-item {0} moet Markdown of ten minste één afbeelding bevatten.</value></data>
+  <data name="Surveys_Validation_InformationLabelRequired" xml:space="preserve"><value>Elke afbeelding in informatie-item {0} moet een label hebben.</value></data>
+  <data name="Surveys_Validation_InformationAltTextRequired" xml:space="preserve"><value>Elke afbeelding in informatie-item {0} moet een alt-tekst hebben.</value></data>
+  <data name="Surveys_Validation_GridMode" xml:space="preserve"><value>Voor rastervraag {0} moet een selectiemodus worden gekozen.</value></data>
+  <data name="Surveys_Validation_GridRows" xml:space="preserve"><value>Rastervraag {0} moet ten minste één rij hebben.</value></data>
+  <data name="Surveys_Validation_GridColumns" xml:space="preserve"><value>Rastervraag {0} moet tussen de één en vijf kolommen hebben.</value></data>
+  <data name="Surveys_Validation_GridRowBlank" xml:space="preserve"><value>De rijwaarden van rastervraag {0} mogen niet leeg zijn.</value></data>
+  <data name="Surveys_Validation_GridRowUnique" xml:space="preserve"><value>De rijwaarden van rastervraag {0} moeten uniek zijn.</value></data>
+  <data name="Surveys_Validation_GridColumnBlank" xml:space="preserve"><value>De kolomwaarden van rastervraag {0} mogen niet leeg zijn.</value></data>
+  <data name="Surveys_Validation_GridColumnUnique" xml:space="preserve"><value>De kolomwaarden van rastervraag {0} moeten uniek zijn.</value></data>
+  <data name="Surveys_Validation_RankedOptions" xml:space="preserve"><value>Rangschikkingsvraag {0} moet ten minste twee opties hebben.</value></data>
+  <data name="Surveys_Validation_RankedSettings" xml:space="preserve"><value>Rangschikkingsvraag {0} moet geldige rangschikkingsinstellingen hebben.</value></data>
+  <data name="Surveys_Validation_RankedOptionBlank" xml:space="preserve"><value>De optiewaarden van rangschikkingsvraag {0} mogen niet leeg zijn.</value></data>
+  <data name="Surveys_Validation_RankedOptionUnique" xml:space="preserve"><value>De optiewaarden van rangschikkingsvraag {0} moeten uniek zijn.</value></data>
+  <data name="Surveys_Validation_BranchEarlier" xml:space="preserve"><value>Een vertakkingsvoorwaarde moet verwijzen naar een eerdere vraag. Betrokken vraag-ID's: {0}.</value></data>
+  <data name="Surveys_Validation_BranchEmptyClause" xml:space="preserve"><value>Een vertakkingsvoorwaarde Is/Is niet moet optiewaarden bevatten. Betrokken vraag-ID's: {0}.</value></data>
+  <data name="Surveys_Validation_BranchUnsupportedSource" xml:space="preserve"><value>Raster-, rangschikkings- en informatievragen kunnen geen bron voor een vertakking zijn. Betrokken vraag-ID's: {0}.</value></data>
+  <data name="Surveys_Validation_VoteAudience" xml:space="preserve"><value>Asociado-stemmingen moeten gericht zijn op de doelgroep Asociados.</value></data>
+  <data name="Surveys_Validation_VoteAnonymity" xml:space="preserve"><value>Asociado-stemmingen gebruiken een vaste weergave waarbij deelname wordt bijgehouden.</value></data>
+  <data name="Surveys_Validation_FrozenRankedCount" xml:space="preserve"><value>Rangschikkingsvragen kunnen niet worden toegevoegd of verwijderd nadat de stemming is begonnen.</value></data>
+  <data name="Surveys_Validation_FrozenRankedSettings" xml:space="preserve"><value>Kandidaten, volgorde en instellingen van rangschikkingsvragen kunnen na het eerste opgeslagen antwoord niet meer worden gewijzigd.</value></data>
+  <data name="Surveys_Validation_ImageRequired" xml:space="preserve"><value>Selecteer voor elke afbeeldingsrij een afbeeldingsbestand. Als een eerdere opslagpoging is mislukt, selecteer het bestand dan opnieuw.</value></data>
+  <data name="Surveys_Validation_ImageEmpty" xml:space="preserve"><value>De geselecteerde afbeelding is leeg.</value></data>
+  <data name="Surveys_Validation_ImageContentType" xml:space="preserve"><value>Alleen JPEG-, PNG- en WebP-afbeeldingen zijn toegestaan.</value></data>
+  <data name="Surveys_Validation_ImageSize" xml:space="preserve"><value>Elke afbeelding bij een Informatie-vraag moet kleiner zijn dan 10 MB.</value></data>
+  <data name="Surveys_Validation_ImageExtension" xml:space="preserve"><value>Bestandsnamen van afbeeldingen moeten eindigen op .jpg, .jpeg, .png of .webp.</value></data>
+  <data name="Surveys_Validation_ImageFileNameLength" xml:space="preserve"><value>Bestandsnamen van afbeeldingen mogen maximaal {0} tekens bevatten.</value></data>
+  <data name="Surveys_Validation_SlugLength" xml:space="preserve"><value>De slug van de openbare link mag niet langer zijn dan {0} tekens.</value></data>
+  <data name="Surveys_Validation_SlugReserved" xml:space="preserve"><value>De slug “{0}” van de openbare link is gereserveerd.</value></data>
+  <data name="Surveys_Validation_SaveNotAuthor" xml:space="preserve"><value>Alleen de maker van de enquête mag deze bewerken.</value></data>
+  <data name="Surveys_Validation_VoteReadOnly" xml:space="preserve"><value>Een Asociado-stemming kan na opening niet meer worden bewerkt.</value></data>
+  <data name="Surveys_Validation_VoteModeFrozen" xml:space="preserve"><value>De Asociado-stemmodus kan niet meer worden gewijzigd nadat de enquête is geopend.</value></data>
+  <data name="Surveys_Validation_SaveFailed" xml:space="preserve"><value>De enquête kon niet worden opgeslagen. Probeer het opnieuw.</value></data>
+  <data name="Surveys_Validation_OptionValueLength" xml:space="preserve"><value>Optiewaarden mogen maximaal {0} tekens bevatten.</value></data>
+  <data name="Enum_SurveyQuestionType_SingleChoice" xml:space="preserve"><value>Enkele keuze</value></data>
+  <data name="Enum_SurveyQuestionType_MultiChoice" xml:space="preserve"><value>Meerdere keuzes</value></data>
+  <data name="Enum_SurveyQuestionType_ShortText" xml:space="preserve"><value>Korte tekst</value></data>
+  <data name="Enum_SurveyQuestionType_LongText" xml:space="preserve"><value>Lange tekst</value></data>
+  <data name="Enum_SurveyQuestionType_Rating" xml:space="preserve"><value>Beoordeling</value></data>
+  <data name="Enum_SurveyQuestionType_Grid" xml:space="preserve"><value>Raster</value></data>
+  <data name="Enum_SurveyQuestionType_Information" xml:space="preserve"><value>Informatie</value></data>
+  <data name="Enum_SurveyQuestionType_RankedChoice" xml:space="preserve"><value>Rangschikking</value></data>
+  <data name="Surveys_Validation_ChoiceOptionEmpty" xml:space="preserve"><value>Elke keuzevraag moet minstens één optie hebben.</value></data>
+  <data name="Surveys_Validation_ChoiceOptionBlank" xml:space="preserve"><value>Optiewaarden in een keuzevraag mogen niet leeg zijn.</value></data>
+  <data name="Surveys_Validation_ChoiceOptionUnique" xml:space="preserve"><value>Optiewaarden binnen een keuzevraag moeten uniek zijn.</value></data>
+  <data name="Surveys_Validation_RatingBounds" xml:space="preserve"><value>Het minimum van de beoordeling mag niet hoger zijn dan het maximum.</value></data>
+</root>

@@ -3,6 +3,7 @@ const { test } = require('node:test');
 const { readFileSync } = require('node:fs');
 const { resolve } = require('node:path');
 const vm = require('node:vm');
+const { installHumans } = require('../../browser-support/humans-js.cjs');
 
 function page() {
     const source = readFileSync(resolve(__dirname,
@@ -39,7 +40,7 @@ function page() {
         clearTimeout: id => timers.delete(id),
         fetch: url => new Promise((resolveResponse, reject) => requests.push({ url, resolveResponse, reject })),
     };
-    vm.createContext(context); vm.runInContext(script, context);
+    installHumans(context); vm.createContext(context); vm.runInContext(script, context);
     return {
         rotas, requests,
         type: (index, text) => { rotas[index].input.value = text; handlers.input({ target: rotas[index].input }); },

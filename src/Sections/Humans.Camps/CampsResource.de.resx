@@ -193,7 +193,7 @@
   <data name="Camps_Card_Full" xml:space="preserve"><value>Voll</value></data>
   <data name="Camps_Card_KidsWelcome" xml:space="preserve"><value>Kinder willkommen</value></data>
   <data name="Camps_Card_TimesAtNowhere" xml:space="preserve"><value>{0} Jahr(e)</value></data>
-  <data name="Enum_CampVibe_Adult" xml:space="preserve"><value>Adult</value></data>
+  <data name="Enum_CampVibe_Adult" xml:space="preserve"><value>Erwachsene</value></data>
   <data name="Enum_CampVibe_ChillOut" xml:space="preserve"><value>Chill-out</value></data>
   <data name="Enum_CampVibe_ElectronicMusic" xml:space="preserve"><value>Elektronische Musik</value></data>
   <data name="Enum_CampVibe_Games" xml:space="preserve"><value>Spiele</value></data>
@@ -288,7 +288,6 @@
   <data name="Camps_Flash_UnknownError" xml:space="preserve"><value>Unbekannter Fehler.</value></data>
   <data name="Camps_Flash_RoleUnassigned" xml:space="preserve"><value>Rollenzuweisung aufgehoben.</value></data>
   <data name="Camps_Flash_AssignmentNotFound" xml:space="preserve"><value>Zuweisung nicht gefunden.</value></data>
-  <data name="Camps_Details_Breadcrumb" xml:space="preserve"><value>Navigationspfad</value></data>
   <data name="Camps_Details_Slide" xml:space="preserve"><value>Folie {0}</value></data>
   <data name="Camps_Details_Previous" xml:space="preserve"><value>Zurück</value></data>
   <data name="Camps_Details_Next" xml:space="preserve"><value>Weiter</value></data>

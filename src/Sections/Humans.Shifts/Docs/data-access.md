@@ -91,6 +91,15 @@ event profile, availability/build-status rows (via
 `IVolunteerTrackingRepository.DeleteVolunteerTrackingForUserAsync`), and
 shift-tag preferences. No `IMemoryCache`.
 
+### ShiftSignupNotices (constructed by ShiftSignupService, not DI-registered)
+
+No repository, no `IMemoryCache`, no table access. Post-save notice delivery for signups: the volunteer's
+assignment notice and the team coordinators' coverage-gap and signup-change notices. A lookup or channel failure
+is logged and never changes the saved signup outcome. Cross-section calls via `INotificationEmitter`,
+`IUserService` (recipient culture), `EventCalendarResolver` (gate-opening date, via `ISettingsService`), and
+`ITeamService` (coordinator ids, lazy-resolved through `IServiceProvider` to keep the TeamService constructor
+cycle open).
+
 ### VolunteerTrackingService (Scoped)
 
 Repositories: `IVolunteerTrackingRepository`, `IShiftManagementRepository`.
@@ -167,13 +176,10 @@ Both cache instances are surfaced on `/Debug/CacheStats`.
 
 ### BurnSettingsService (Scoped)
 
-Repository: `IShiftManagementRepository` (read-only — fetches `EventSettings`).
+No repository, no tables. Reads through the section's `EventCalendarResolver`, which composes
+`ISettingsService`'s event dates with Shifts' own build sub-periods.
 
-| Table | R/W |
-|-------|-----|
-| EventSettings | R |
-
-Read-only adapter mapping `EventSettings` → `BurnSettingsInfo` DTO at the
+Read-only adapter exposing the composed `BurnSettingsInfo` DTO at the
 section boundary. Exposes `IBurnSettingsService` for cross-section
 consumers that need active-event metadata without coupling to the full
 shifts surface. No cache (single active row, cold path).
@@ -226,3 +232,12 @@ Stateless calculators / projections — no DI dependencies, no DB access.
 ---
 
 
+
+### ShiftBrowseReader (internal, owned by ShiftManagementService)
+
+Repository: `IShiftManagementRepository`. Assembles urgent/general browse rows
+through the existing event calendar resolver, urgency ranking and department
+aggregation helpers. Resolves Teams, Users and Auth lazily through the existing
+service provider; owns unchanged coordinator/approval read predicates used by
+browse eligibility. Shared shift/rota projection also serves existing management
+reads. No writes, cache or separate DI registration.

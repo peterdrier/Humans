@@ -59,7 +59,7 @@ pages and data.
 | Section | Through |
 |---|---|
 | GoogleIntegration | `IGoogleDriveActivityClient`, `ITeamResourceService` |
-| AuditLog | `IAuditLogService` |
+| AuditLog | `IAuditLogService` (append path, declared in `src/Humans.Base/AuditLog/IAuditLogService.cs`) |
 | Settings | `ISettingsService` |
 | Users | `IUserService` |
 

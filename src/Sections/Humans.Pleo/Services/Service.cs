@@ -214,6 +214,11 @@ internal sealed class Service(
             .ToList();
     }
 
+    public async Task<PleoWalletBalance?> GetWalletBalanceAsync(CancellationToken ct = default) =>
+        await repo.GetBalanceAsync(ct) is { } b && string.Equals(b.Currency, PleoEntryRules.Eur, StringComparison.Ordinal)
+            ? new PleoWalletBalance(b.CurrentMinors / 100m, b.SyncedAt)
+            : null;
+
     public async Task<PleoSummary> GetSummaryAsync(CancellationToken ct = default)
     {
         var m = await LoadAsync(ct);

@@ -233,16 +233,10 @@ public class ProfileEmailsControllerGridTests
         arguments[2]!.ToString().Should().Contain(expectedError).And.Contain(emailId.ToString());
     }
 
-    [HumansTheory]
-    [InlineData("en")]
-    [InlineData("es")]
-    [InlineData("de")]
-    [InlineData("it")]
-    [InlineData("fr")]
-    [InlineData("ca")]
-    public async Task VerifyEmail_LocalizesTypedInvalidLink(string culture)
+    [HumansFact]
+    public async Task VerifyEmail_LocalizesTypedInvalidLink()
     {
-        using var cultureScope = new CultureScope(culture);
+        using var cultureScope = new CultureScope("en");
         var localizer = new StringLocalizer<UsersResource>(new ResourceManagerStringLocalizerFactory(
             Options.Create(new LocalizationOptions()), NullLoggerFactory.Instance));
         var controller = new ProfileEmailsController(

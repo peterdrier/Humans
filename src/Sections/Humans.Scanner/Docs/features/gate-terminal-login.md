@@ -46,10 +46,10 @@ cannot be opened by the kiosk account.
   (`GateTerminalAccountSeeder`). User row with the well-known GUID + a minimal
   Profile ("Gate Terminal", legal name Gate/Terminal) created through the canonical
   `SaveProfileAsync` path so `UserStateClassifier` yields `Active` (the membership
-  filter requires it). Consent check is auto-cleared so the account never sits in
+  filter requires it). The account is marked fake in Users (on every password set) so it never sits in
   the Consent Coordinator review queue. If setup fails after creating the user,
   another password-set attempt resumes setup on that row. Until a password exists,
-  profile and consent-review annotation must both succeed before a password is set.
+  account creation and the profile save must both succeed before a password is set.
   Credential writes reload the user in a fresh Identity scope after setup, preserving
   the names and Active state saved through the profile service. Established-account
   password rotation does not repeat provisioning.
@@ -103,7 +103,7 @@ cannot be opened by the kiosk account.
 
 - `SystemUserIds` constants + GUID block `0004` reservation.
 - `ScannerAccess` policy on `ScannerController` and `TicketsOnsiteAdminController`.
-- `/Account/GateLogin` (localized, all six locales).
+- `/Account/GateLogin` (localized, all supported locales).
 - `/Tickets/Admin/Gate` admin card (status + set/rotate password) + admin-nav entry.
 - `GateTerminalAccountSeeder` (`src/Sections/Humans.Tickets/Services/`, registered by the
   Tickets section in every environment).

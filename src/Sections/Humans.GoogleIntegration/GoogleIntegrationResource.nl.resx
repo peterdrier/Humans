@@ -1,0 +1,157 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" msdata:Ordinal="0" />
+              <xsd:attribute name="type" type="xsd:string" />
+              <xsd:attribute name="mimetype" type="xsd:string" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="resheader">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>1.3</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <data name="GoogleIntegration_Accounts_Actions" xml:space="preserve">
+    <value>Acties</value>
+  </data>
+  <data name="GoogleIntegration_Accounts_ResetPassword" xml:space="preserve">
+    <value>Wachtwoord resetten</value>
+  </data>
+  <data name="GoogleIntegration_Email_WorkspaceCredentials_Subject" xml:space="preserve">
+    <value>Je @nobodies.team-account is klaar</value>
+  </data>
+  <data name="GoogleIntegration_Email_WorkspaceCredentials_Body" xml:space="preserve">
+    <value>&lt;h2&gt;Je @nobodies.team-account is klaar&lt;/h2&gt;
+&lt;p&gt;Hoi {0},&lt;/p&gt;
+&lt;p&gt;Je Google Workspace-account is aangemaakt:&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;Gebruikersnaam:&lt;/strong&gt; {1}&lt;br/&gt;
+&lt;strong&gt;Tijdelijk wachtwoord:&lt;/strong&gt; {2}&lt;/p&gt;
+&lt;p&gt;Log in op &lt;a href="https://mail.google.com/"&gt;mail.google.com&lt;/a&gt;. De eerste keer dat je inlogt, wordt je gevraagd je wachtwoord te wijzigen.&lt;/p&gt;
+&lt;p&gt;Onze organisatie heeft tweefactorauthenticatie (2FA) ingeschakeld. Daarom moet je tijdens het inloggen ook een tweede factor instellen (zoals een telefoon of een authenticator-app).&lt;/p&gt;
+&lt;p&gt;Het Humans-team&lt;/p&gt;</value>
+    <comment>{0} = user name, {1} = workspace email, {2} = temporary password</comment>
+  </data>
+  <data name="GoogleIntegration_Email_GoogleGroupRemoval_LossOfAccess_Subject" xml:space="preserve">
+    <value>Je bent verwijderd uit de groep {0}</value>
+    <comment>{0} = group email</comment>
+  </data>
+  <data name="GoogleIntegration_Email_GoogleGroupRemoval_LossOfAccess_Body" xml:space="preserve">
+    <value>&lt;h2&gt;Toegang tot groep verwijderd&lt;/h2&gt;
+&lt;p&gt;Hoi {0},&lt;/p&gt;
+&lt;p&gt;Je toegang tot de Google Group &lt;strong&gt;{1}&lt;/strong&gt; (&lt;code&gt;{2}&lt;/code&gt;) is verwijderd.&lt;/p&gt;
+&lt;p&gt;Dit is automatisch gebeurd op basis van je huidige team- en roltoewijzingen bij Nobodies. Je ontvangt geen berichten meer die naar deze groep worden gestuurd.&lt;/p&gt;
+&lt;p&gt;Denk je dat dit een vergissing is, neem dan contact op met de coördinator van je team.&lt;/p&gt;
+&lt;p&gt;Het Humans-team&lt;/p&gt;</value>
+    <comment>{0} = user name, {1} = group display name, {2} = group email</comment>
+  </data>
+  <data name="GoogleIntegration_Email_GoogleDriveRemoval_LossOfAccess_Subject" xml:space="preserve">
+    <value>Je toegang tot {0} is verwijderd</value>
+    <comment>{0} = folder name</comment>
+  </data>
+  <data name="GoogleIntegration_Email_GoogleDriveRemoval_LossOfAccess_Body" xml:space="preserve">
+    <value>&lt;h2&gt;Toegang tot Drive verwijderd&lt;/h2&gt;
+&lt;p&gt;Hoi {0},&lt;/p&gt;
+&lt;p&gt;Je toegang tot de gedeelde map &lt;strong&gt;{1}&lt;/strong&gt; is verwijderd.&lt;/p&gt;
+&lt;p&gt;Dit is automatisch gebeurd op basis van je huidige team- en roltoewijzingen bij Nobodies.&lt;/p&gt;
+&lt;p&gt;Denk je dat dit een vergissing is, neem dan contact op met de coördinator van je team.&lt;/p&gt;
+&lt;p&gt;Het Humans-team&lt;/p&gt;</value>
+    <comment>{0} = user name, {1} = folder name</comment>
+  </data>
+  <data name="GoogleIntegration_Email_GoogleAccessRemoval_SecondaryCleanup_Subject" xml:space="preserve">
+    <value>{0} heeft geen toegang meer tot Nobodies-groepen</value>
+    <comment>{0} = removed email</comment>
+  </data>
+  <data name="GoogleIntegration_Email_GoogleAccessRemoval_SecondaryCleanup_Body" xml:space="preserve">
+    <value>&lt;h2&gt;Secundair e-mailadres opgeruimd&lt;/h2&gt;
+&lt;p&gt;Hoi {0},&lt;/p&gt;
+&lt;p&gt;Het adres &lt;strong&gt;{1}&lt;/strong&gt; is verwijderd uit de groepen en gedeelde mappen van Nobodies.&lt;/p&gt;
+&lt;p&gt;Je primaire Nobodies-e-mailadres is nu &lt;strong&gt;{2}&lt;/strong&gt;, en je toegang tot groepen en gedeelde mappen via dat adres is ongewijzigd. Dit bericht is alleen ter bevestiging van welk adres is opgeruimd.&lt;/p&gt;
+&lt;p&gt;Als je denkt dat {1} nog steeds toegang had moeten hebben, neem dan contact op met je teamcoördinator.&lt;/p&gt;
+&lt;p&gt;Het Humans-team&lt;/p&gt;</value>
+    <comment>{0} = user name, {1} = removed email, {2} = current Google email</comment>
+  </data>
+  <data name="GoogleIntegration_Notification_WorkspaceReadyBody" xml:space="preserve"><value>Je Workspace-e-mailadres {0} is aangemaakt. Kijk in je persoonlijke e-mail voor je inloggegevens.</value></data>
+  <data name="GoogleIntegration_Notification_ViewProfile" xml:space="preserve"><value>Profiel bekijken</value></data>
+  <data name="GoogleIntegration_Notification_WorkspaceReadyWithoutCredentialsBody" xml:space="preserve"><value>Je Workspace-e-mailadres {0} is aangemaakt. Neem contact op met een beheerder voor je inloggegevens.</value></data>
+  <data name="GoogleIntegration_NobodiesEmailBadge_HasAccount" xml:space="preserve"><value>Heeft een @nobodies.team-e-mailaccount</value></data>
+  <data name="GoogleIntegration_Identity_SyncRejectedTitle" xml:space="preserve">
+    <value>Google-synchronisatie gepauzeerd voor dit adres.</value>
+  </data>
+  <data name="GoogleIntegration_Identity_SyncRejectedBody" xml:space="preserve">
+    <value>Google heeft je geselecteerde Google-e-mailadres geweigerd bij een poging om toegang te geven tot Drive of je toe te voegen aan een groep — meestal omdat het adres niet aan een Google-account is gekoppeld. Nieuwe synchronisatiepogingen worden onderdrukt totdat een beheerder dit oplost. Selecteer een ander e-mailadres dat aan een Google-account is gekoppeld en vraag een beheerder om de geweigerde status te wissen.</value>
+  </data>
+  <data name="GoogleIntegration_Identity_Problem" xml:space="preserve">
+    <value>Probleem met Google-synchronisatie</value>
+  </data>
+  <data name="GoogleIntegration_Identity_Ok" xml:space="preserve">
+    <value>Google OK</value>
+  </data>
+  <data name="GoogleIntegration_Identity_Retry" xml:space="preserve">
+    <value>Opnieuw proberen</value>
+  </data>
+  <data name="GoogleIntegration_Identity_Set" xml:space="preserve">
+    <value>Instellen voor Google</value>
+  </data>
+  <data name="GoogleIntegration_Identity_Updated" xml:space="preserve">
+    <value>Google-service-e-mailadres bijgewerkt. De synchronisatie wordt opnieuw geprobeerd met het nieuwe e-mailadres.</value>
+  </data>
+  <data name="GoogleIntegration_Identity_SetRejected" xml:space="preserve">
+    <value>Kon het Google-service-e-mailadres niet instellen — de rij is onbekend of niet geverifieerd.</value>
+  </data>
+  <data name="GoogleIntegration_Identity_Google" xml:space="preserve">
+    <value>Google</value>
+  </data>
+  <data name="GoogleIntegration_Identity_VerifyFirst" xml:space="preserve">
+    <value>Eerst verifiëren</value>
+  </data>
+  <data name="GoogleIntegration_Identity_Locked" xml:space="preserve"><value>Vergrendeld door de rij met het Workspace-e-mailadres</value></data>
+  <data name="GoogleIntegration_TeamResources_Heading" xml:space="preserve"><value>Resources beheren</value></data>
+  <data name="GoogleIntegration_TeamResources_Team" xml:space="preserve"><value>Team</value></data>
+  <data name="GoogleIntegration_TeamResources_Name" xml:space="preserve"><value>Naam</value></data>
+  <data name="GoogleIntegration_TeamResources_Type" xml:space="preserve"><value>Type</value></data>
+  <data name="GoogleIntegration_TeamResources_Actions" xml:space="preserve"><value>Acties</value></data>
+  <data name="GoogleIntegration_TeamResources_BackToTeam" xml:space="preserve"><value>Terug naar team</value></data>
+  <data name="GoogleIntegration_TeamResources_ManageMembers" xml:space="preserve"><value>Leden beheren</value></data>
+  <data name="GoogleIntegration_TeamResources_Title" xml:space="preserve"><value>Resources beheren - {0}</value><comment>{0} = team name</comment></data>
+  <data name="GoogleIntegration_TeamResources_Breadcrumb" xml:space="preserve"><value>Resources</value></data>
+  <data name="GoogleIntegration_TeamResources_ServiceAccountTitle" xml:space="preserve"><value>Serviceaccount</value></data>
+  <data name="GoogleIntegration_TeamResources_ShareWithServiceAccount" xml:space="preserve"><value>Om een Google-resource te koppelen, moet je die eerst delen met het serviceaccount:</value></data>
+  <data name="GoogleIntegration_TeamResources_Copy" xml:space="preserve"><value>Kopiëren</value></data>
+  <data name="GoogleIntegration_TeamResources_DriveFolders" xml:space="preserve"><value>Drive-mappen</value></data>
+  <data name="GoogleIntegration_TeamResources_DriveFoldersHelp" xml:space="preserve"><value>Deel de map met dit e-mailadres als Bewerker</value></data>
+  <data name="GoogleIntegration_TeamResources_GoogleGroups" xml:space="preserve"><value>Google Groups</value></data>
+  <data name="GoogleIntegration_TeamResources_GoogleGroupsHelp" xml:space="preserve"><value>Voeg dit e-mailadres toe als Beheerder van de groep</value></data>
+  <data name="GoogleIntegration_TeamResources_LinkedResources" xml:space="preserve"><value>Gekoppelde resources</value></data>
+  <data name="GoogleIntegration_TeamResources_LastSynced" xml:space="preserve"><value>Laatst gesynchroniseerd</value></data>
+  <data name="GoogleIntegration_TeamResources_NoResources" xml:space="preserve"><value>Er zijn nog geen resources aan dit team gekoppeld. Gebruik de formulieren hieronder om een Google Drive-map of Google Group te koppelen.</value></data>
+  <data name="GoogleIntegration_TeamResources_Restricted" xml:space="preserve"><value>Beperkt</value></data>
+  <data name="GoogleIntegration_TeamResources_Inherited" xml:space="preserve"><value>Overgenomen</value></data>
+  <data name="GoogleIntegration_TeamResources_InvalidDriveUrl" xml:space="preserve"><value>Voer een geldige URL van een Google Drive-map in.</value></data>
+  <data name="GoogleIntegration_TeamResources_InvalidGroupEmail" xml:space="preserve"><value>Voer een geldig e-mailadres van een Google Group in.</value></data>
+  <data name="GoogleIntegration_TeamResources_GroupLinked" xml:space="preserve"><value>Google Group "{0}" is gekoppeld.</value><comment>{0} = group name</comment></data>
+  <data name="GoogleIntegration_TeamResources_GroupLinkFailed" xml:space="preserve"><value>Koppelen van Google Group is mislukt.</value></data>
+  <data name="GoogleIntegration_TeamResources_ResourceUnlinked" xml:space="preserve"><value>Resource losgekoppeld van het team.</value></data>
+  <data name="GoogleIntegration_TeamResources_ResourceSynced" xml:space="preserve"><value>Rechten van de resource zijn gesynchroniseerd.</value></data>
+  <data name="GoogleIntegration_TeamResources_ResourceSyncFailed" xml:space="preserve"><value>Synchroniseren van rechten van de resource is mislukt: {0}</value><comment>{0} = error message</comment></data>
+  <data name="GoogleIntegration_TeamResources_ServiceAccount" xml:space="preserve"><value>Serviceaccount: {0}</value><comment>{0} = service account email</comment></data>
+</root>

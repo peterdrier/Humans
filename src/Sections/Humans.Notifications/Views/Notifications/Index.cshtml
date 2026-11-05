@@ -4,7 +4,7 @@
     ViewData["Title"] = Localizer["Notifications_PageTitle"];
 }
 
-<h1>@Localizer["Notifications_PageTitle"]</h1>
+<page-header title="@(Localizer["Notifications_PageTitle"].Value)" />
 
 <div class="notification-toolbar mb-3">
     <form method="get" asp-action="Index" class="notification-search-form">
@@ -184,11 +184,6 @@
         cb.addEventListener('change', updateBulkToolbar);
     });
 
-    function getAntiForgeryToken() {
-        var input = document.querySelector('input[name="__RequestVerificationToken"]');
-        return input ? input.value : '';
-    }
-
     var bulkPending = false;
 
     function bulkAction(url, filterClass) {
@@ -199,7 +194,6 @@
         if (selected.length === 0) return;
 
         var formData = new FormData();
-        formData.append('__RequestVerificationToken', getAntiForgeryToken());
         selected.forEach(function(cb) {
             formData.append('selectedIds', cb.dataset.notificationId);
         });
@@ -207,11 +201,9 @@
         bulkPending = true;
         resolveBtn.disabled = true;
         dismissBtn.disabled = true;
-        fetch(url, {
-            method: 'POST',
+        Humans.postForm(url, formData, {
             redirect: 'error',
-            headers: { 'X-Requested-With': 'XMLHttpRequest' },
-            body: formData
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
         }).then(function(r) {
             if (!r.ok) throw new Error(r.status);
             selected.forEach(function(cb) {

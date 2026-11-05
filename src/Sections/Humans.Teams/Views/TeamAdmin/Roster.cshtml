@@ -3,16 +3,15 @@
     ViewData["Title"] = $"Roster — {Model.TeamName}";
 }
 
-<nav aria-label="breadcrumb">
-    <ol class="breadcrumb">
-        <li class="breadcrumb-item"><a asp-controller="Team" asp-action="Index">@SharedLocalizer["Teams_Title"]</a></li>
-        <li class="breadcrumb-item"><a asp-controller="Team" asp-action="Details" asp-route-slug="@Model.TeamSlug">@Model.TeamName</a></li>
-        <li class="breadcrumb-item active" aria-current="page">Roster</li>
-    </ol>
-</nav>
+@section Crumbs {
+    <a asp-controller="Team" asp-action="Index">@SharedLocalizer["Teams_Title"]</a>
+    <a asp-controller="Team" asp-action="Details" asp-route-slug="@Model.TeamSlug">@Model.TeamName</a>
+    <span>Roster</span>
+}
 
-<h1>Roster</h1>
-<p class="text-muted">@Model.TeamName — @Model.Rows.Count humans. Sorted by legal name; click any header to re-sort.</p>
+<page-header title="Roster">
+    <page-header-subtitle>@Model.TeamName — @Model.Rows.Count humans. Sorted by legal name; click any header to re-sort.</page-header-subtitle>
+</page-header>
 
 @{
     var rosterTable = TableModel.For(Model.Rows)

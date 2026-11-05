@@ -25,18 +25,9 @@ internal interface IWorkspaceIdentityManagement : IGoogleIntegrationService, IGo
     /// in for. Callers apply one only while that identity address is still the member's.</summary>
     Task<IReadOnlyDictionary<Guid, DriveEmailOverride>> GetDriveEmailsAsync(CancellationToken ct = default);
 
-    /// <summary>Living members whose legacy <c>user_emails</c> Google flag or verdict has no
-    /// <c>google_workspace_identities</c> row yet, with the identity the copy will write.</summary>
-    Task<IReadOnlyList<LegacyWorkspaceIdentityRow>> GetUncopiedLegacyIdentitiesAsync(CancellationToken ct = default);
 
-    /// <summary>Copies every pending legacy identity into its own row. Idempotent: a row written
-    /// since the list was read is left alone. Returns the rows written.</summary>
-    Task<int> CopyLegacyIdentitiesAsync(CancellationToken ct = default);
 }
 
 /// <summary>The address Drive grants (<paramref name="DriveEmail"/>) in place of the identity
 /// address <paramref name="IdentityEmail"/>.</summary>
 internal sealed record DriveEmailOverride(string IdentityEmail, string DriveEmail);
-
-/// <summary>One pending legacy identity: what the read resolves to today, which the copy pins.</summary>
-internal sealed record LegacyWorkspaceIdentityRow(Guid UserId, string BurnerName, string Email, GoogleEmailStatus Status);

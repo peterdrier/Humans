@@ -22,14 +22,8 @@ namespace Humans.Budget.Tests;
 public class BudgetSummaryViewTests
 {
     [HumansTheory]
-    [Xunit.InlineData("en", "10.5%", "20.5%")]
-    [Xunit.InlineData("es", "10,5%", "20,5%")]
-    [Xunit.InlineData("de", "10,5%", "20,5%")]
-    [Xunit.InlineData("it", "10,5%", "20,5%")]
-    [Xunit.InlineData("fr", "10,5%", "20,5%")]
-    [Xunit.InlineData("ca", "10,5%", "20,5%")]
-    public async Task BreakdownPercentages_UseUiCultureAndKeepChartNumbersInvariant(
-        string language, string income, string expense)
+    [Xunit.MemberData(nameof(SupportedCultures.All), MemberType = typeof(SupportedCultures))]
+    public async Task BreakdownPercentages_UseUiCultureAndKeepChartNumbersInvariant(string language)
     {
         using var inputCulture = new CultureScope("en");
         CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo(language);
@@ -43,21 +37,17 @@ public class BudgetSummaryViewTests
         });
 
         using var assertions = new AwesomeAssertions.Execution.AssertionScope();
-        html.Should().Contain($">{income}</td>");
-        html.Should().Contain($">{expense}</td>");
+        var ui = CultureInfo.GetCultureInfo(language);
+        html.Should().Contain($">{10.5m.ToString("N1", ui)}%</td>");
+        html.Should().Contain($">{20.5m.ToString("N1", ui)}%</td>");
         html.Should().Contain("var incomeData = [10.5];");
         html.Should().Contain("var expenseData = [20.5];");
         CultureInfo.CurrentCulture.Name.Should().Be("en");
     }
 
     [HumansTheory]
-    [Xunit.InlineData("en", "1,234%")]
-    [Xunit.InlineData("es", "1.234%")]
-    [Xunit.InlineData("de", "1.234%")]
-    [Xunit.InlineData("it", "1.234%")]
-    [Xunit.InlineData("fr", "1\u202f234%")]
-    [Xunit.InlineData("ca", "1.234%")]
-    public async Task CategoryUtilization_UsesUiCultureAndKeepsProgressWidthNumeric(string language, string percentage)
+    [Xunit.MemberData(nameof(SupportedCultures.All), MemberType = typeof(SupportedCultures))]
+    public async Task CategoryUtilization_UsesUiCultureAndKeepsProgressWidthNumeric(string language)
     {
         using var inputCulture = new CultureScope("en");
         CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo(language);
@@ -73,7 +63,7 @@ public class BudgetSummaryViewTests
 
         var html = await RenderAsync("CategoryDetail", model);
 
-        html.Should().Contain($">{HtmlEncoder.Default.Encode(percentage)}</small>");
+        html.Should().Contain($">{HtmlEncoder.Default.Encode(1234m.ToString("N0", CultureInfo.GetCultureInfo(language)))}%</small>");
         html.Should().Contain("width: 100%");
         CultureInfo.CurrentCulture.Name.Should().Be("en");
     }

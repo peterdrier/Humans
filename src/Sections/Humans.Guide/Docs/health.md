@@ -138,7 +138,7 @@ exactly one home.
   read routes are `[AllowAnonymous]` and no longer reachable only from the signed-in menu, which
   puts them outside AGENTS.md's admin/operator localization exemption. Answer unchanged —
   translating four pieces of page furniture around English content buys a reader nothing, so the
-  exemption is stated here rather than earned by a six-culture resx set (Peter, 2026-09-14).
+  exemption is stated here rather than earned by a localized resx set (Peter, 2026-09-14).
 - **Fence state is line-scanned, not parsed.** `GuideSegmenter` decides whether a `##` is a
   heading by tracking fence delimiters itself rather than walking Markdig's block AST. That buys
   byte-exact rejoining (invariant 13) and one parse per render instead of two; it costs coverage

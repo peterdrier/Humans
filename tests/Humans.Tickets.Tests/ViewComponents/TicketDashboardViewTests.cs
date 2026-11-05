@@ -125,14 +125,10 @@ public class TicketDashboardViewTests
     }
 
     [HumansTheory]
-    [InlineData("en", "1,234.50 USD")]
-    [InlineData("es", "1.234,50 USD")]
-    [InlineData("de", "1.234,50 USD")]
-    [InlineData("it", "1.234,50 USD")]
-    [InlineData("fr", "1\u202f234,50 USD")]
-    [InlineData("ca", "1.234,50 USD")]
-    public async Task GuestOrders_RenderAmountInUiCultureAndKeepCurrencyCode(string culture, string expected)
+    [MemberData(nameof(SupportedCultures.All), MemberType = typeof(SupportedCultures))]
+    public async Task GuestOrders_RenderAmountInUiCultureAndKeepCurrencyCode(string culture)
     {
+        var expected = $"{1234.5m.ToString("N2", CultureInfo.GetCultureInfo(culture))} USD";
         var orders = new List<UserTicketOrderSummary>
         {
             new("Buyer", Instant.FromUtc(2026, 7, 1, 12, 0), 2, 1234.5m, "USD"),
@@ -145,15 +141,15 @@ public class TicketDashboardViewTests
     }
 
     [HumansTheory]
-    [InlineData("en", "1,234", "1,234.50", "315.00", "919.50", "12.5%")]
-    [InlineData("es", "1.234", "1.234,50", "315,00", "919,50", "12,5%")]
-    [InlineData("de", "1.234", "1.234,50", "315,00", "919,50", "12,5%")]
-    [InlineData("it", "1.234", "1.234,50", "315,00", "919,50", "12,5%")]
-    [InlineData("fr", "1\u202f234", "1\u202f234,50", "315,00", "919,50", "12,5%")]
-    [InlineData("ca", "1.234", "1.234,50", "315,00", "919,50", "12,5%")]
-    public async Task DashboardNumbers_UseUiCultureAcrossCardsRowsAndTotals(
-        string language, string count, string amount, string taxable, string vip, string rate)
+    [MemberData(nameof(SupportedCultures.All), MemberType = typeof(SupportedCultures))]
+    public async Task DashboardNumbers_UseUiCultureAcrossCardsRowsAndTotals(string language)
     {
+        var ui = CultureInfo.GetCultureInfo(language);
+        var count = 1234.ToString("N0", ui);
+        var amount = 1234.5m.ToString("N2", ui);
+        var taxable = 315m.ToString("N2", ui);
+        var vip = 919.5m.ToString("N2", ui);
+        var rate = $"{12.5m.ToString(ui)}%";
         var index = await RenderAsync("Index", new TicketDashboardViewModel
         {
             IsConfigured = true,

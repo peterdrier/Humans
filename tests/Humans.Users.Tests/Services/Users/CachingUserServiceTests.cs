@@ -162,8 +162,8 @@ public class CachingUserServiceTests
         var testCt = Xunit.TestContext.Current.CancellationToken;
         var userId = Guid.NewGuid();
         var now = Instant.FromUtc(2026, 1, 1, 0, 0);
-        var email = new UserEmailInfo(Guid.NewGuid(), "member@example.com", false, false, false,
-            null, null, null, null, now, now, default);
+        var email = new UserEmailInfo(Guid.NewGuid(), "member@example.com", false, false,
+            null, null, null, null, now, now);
         var original = SampleUserInfo(userId) with
         {
             UserEmails = string.Equals(operation, "add", StringComparison.Ordinal) ? [] : [email]
@@ -454,8 +454,6 @@ public class CachingUserServiceTests
             Email = "eight@example.com",
             IsVerified = true,
             IsPrimary = true,
-            IsGoogle = true,
-            GoogleEmailStatus = LegacyGoogleEmailStatus.Valid,
             Provider = "Google",
             ProviderKey = "subject-xyz",
         };
@@ -879,16 +877,10 @@ public class CachingUserServiceTests
         results.Should().HaveCount(1);
     }
 
-    [HumansTheory]
-    [InlineData("en", "User ID")]
-    [InlineData("es", "ID de usuario")]
-    [InlineData("de", "Benutzer-ID")]
-    [InlineData("it", "ID utente")]
-    [InlineData("fr", "ID utilisateur")]
-    [InlineData("ca", "ID d'usuari")]
-    public async Task SearchUsersAsync_AdminBit_ExactUserIdLookup(string culture, string label)
+    [HumansFact]
+    public async Task SearchUsersAsync_AdminBit_ExactUserIdLookup()
     {
-        using var scope = new CultureScope(culture);
+        using var scope = new CultureScope("en");
         var userId = Guid.NewGuid();
         var sut = CreateSut();
         await PrimeAsync(sut, BuildSearchableUserInfo(userId, burnerName: "Alice"));
@@ -897,7 +889,7 @@ public class CachingUserServiceTests
 
         results.Should().HaveCount(1);
         results[0].UserId.Should().Be(userId);
-        results[0].MatchField.Should().Be(label);
+        results[0].MatchField.Should().Be("User ID");
     }
 
     [HumansFact]

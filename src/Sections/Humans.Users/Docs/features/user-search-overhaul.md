@@ -99,12 +99,12 @@ Accent-folding for the Postgres `ILIKE` **entity** searches (teams/camps/shifts/
 ```sql
 WITH p AS (
   SELECT pr."BurnerName" AS burner, pr."FirstName" AS fn, pr."LastName" AS ln,
-         u."DisplayName" AS disp, pr."RejectedAt" AS rej
+         u."DisplayName" AS disp, u."State" AS rej
   FROM profiles pr JOIN users u ON u."Id" = pr."UserId"
 )
-SELECT 'total (not rejected)' AS metric, count(*) FROM p WHERE rej IS NULL
+SELECT 'total (not rejected)' AS metric, count(*) FROM p WHERE rej <> 'Rejected'
 UNION ALL SELECT 'DEFECT#1 rendered-but-unsearchable (blank BurnerName + has DisplayName)',
-       count(*) FROM p WHERE coalesce(trim(burner),'')='' AND coalesce(trim(disp),'')<>'' AND rej IS NULL
+       count(*) FROM p WHERE coalesce(trim(burner),'')='' AND coalesce(trim(disp),'')<>'' AND rej <> 'Rejected'
 UNION ALL SELECT 'DEFECT#3 accented chars in name fields',
-       count(*) FROM p WHERE (burner ~ '[^\x20-\x7E]' OR fn ~ '[^\x20-\x7E]' OR ln ~ '[^\x20-\x7E]') AND rej IS NULL;
+       count(*) FROM p WHERE (burner ~ '[^\x20-\x7E]' OR fn ~ '[^\x20-\x7E]' OR ln ~ '[^\x20-\x7E]') AND rej <> 'Rejected';
 ```

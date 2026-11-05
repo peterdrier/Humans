@@ -5,13 +5,12 @@
 }
 
 <div class="container py-4">
-    <div class="d-flex justify-content-between align-items-center mb-3">
-        <h2>Site-wide workload</h2>
+    <page-header title="Site-wide workload">
         @if (Model is not null)
         {
             <span class="badge bg-secondary fs-6">Event @Model.EventYear</span>
         }
-    </div>
+    </page-header>
 
     @if (Model is null)
     {

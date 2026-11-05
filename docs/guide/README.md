@@ -30,9 +30,9 @@ AI in just one place — an optional [in-app helper](AiHelper.md) you can chat
 with for support; nothing else relies on it.
 
 The app is at [humans.nobodies.team](https://humans.nobodies.team/),
-available in English, Español, Deutsch, Français, Italiano, and Català.
-Questions: start with the in-app help button (AI helper, issue filing,
-feedback) or ask in [#🧘-humans-app](https://discord.gg/fq7gr29p) on Discord.
+available in English, Español, Deutsch, Français, Italiano, Català, and Nederlands.
+Questions: start with the in-app help button (AI helper, issue filing)
+or ask in [#🧘-humans-app](https://discord.gg/fq7gr29p) on Discord.
 [humans@nobodies.team](mailto:humans@nobodies.team) is third-level support —
 email it only when nothing else worked.
 

@@ -10,7 +10,7 @@ namespace Humans.Web.Services;
 /// The first path segment of <c>ReturnUrl</c> is matched (case-insensitively) against
 /// <see cref="Segments"/>; each entry has a <c>LinkPreview_{Segment}_Title</c> and
 /// <c>LinkPreview_{Segment}_Description</c> key in SharedResource. Adding a top-level route
-/// means adding it here plus the two keys in all six cultures. Only local URLs match; nothing
+/// means adding it here plus the two keys in all supported cultures. Only local URLs match; nothing
 /// about the target beyond its area ever reaches the preview.
 /// </remarks>
 public static class LoginLinkPreview

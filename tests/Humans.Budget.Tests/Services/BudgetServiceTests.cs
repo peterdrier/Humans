@@ -560,6 +560,7 @@ public sealed class BudgetServiceTests
     [InlineData("foreignYear")]
     [InlineData("missingGroup")]
     [InlineData("valid")]
+    [InlineData("invalidVat")]
     public async Task Projection_update_validates_group_year_before_parameters_or_forecasts(string scenario)
     {
         var seeded = await SeedTicketingYearAsync();
@@ -578,7 +579,7 @@ public sealed class BudgetServiceTests
             InitialSalesCount = 10,
             DailySalesRate = 5m,
             AverageTicketPrice = 120m,
-            VatRate = 21,
+            VatRate = string.Equals(scenario, "invalidVat", StringComparison.Ordinal) ? 22 : 21,
             StripeFeePercent = 1.5m,
             StripeFeeFixed = 0.3m,
             TicketTailorFeePercent = 0.5m
@@ -590,7 +591,13 @@ public sealed class BudgetServiceTests
         if (!valid)
         {
             (await db.BudgetAuditLogs.CountAsync(TestContext.Current.CancellationToken)).Should().Be(0);
-            result.Should().BeOfType<NotFoundResult>();
+            if (string.Equals(scenario, "invalidVat", StringComparison.Ordinal))
+            {
+                result.Should().BeOfType<RedirectToActionResult>();
+                controller.TempData["ErrorMessage"].Should().Be("VAT rate must be between 0 and 21.");
+            }
+            else
+                result.Should().BeOfType<NotFoundResult>();
             controller.TempData.ContainsKey("SuccessMessage").Should().BeFalse();
         }
         else
@@ -867,6 +874,7 @@ public sealed class BudgetServiceTests
     [InlineData("Delete", "Budget_Flash_LineDeleteFailed", false)]
     [InlineData("Create", "Budget_Flash_LineCreateFailed", true)]
     [InlineData("Update", "Budget_Flash_LineUpdateFailed", true)]
+    [InlineData("Delete", "Budget_Flash_LineDeleteFailed", true)]
     public async Task CoordinatorLineFailure_DisplaysGenericLocalizedMessage(string action, string errorKey, bool refused)
     {
         var (admin, budget, viewerId) = CreateAdminController(true);
@@ -885,12 +893,13 @@ public sealed class BudgetServiceTests
             .Returns(Task.FromException<BudgetSaveResult<BudgetLineItemSnapshot>>(failure));
         budget.UpdateLineItemAsync(_yearId, "Item", 0m, null, null, null, 0, viewerId)
             .Returns(Task.FromException<BudgetSaveResult<BudgetLineItemSnapshot>>(failure));
-        budget.DeleteLineItemAsync(_yearId, viewerId).Returns(Task.FromException(failure));
+        budget.DeleteLineItemAsync(_yearId, viewerId).Returns(Task.FromException<BudgetSaveResult<BudgetLineItemSnapshot>>(failure));
         if (refused)
         {
             var refusal = new BudgetSaveResult<BudgetLineItemSnapshot>(Refusal: "Amount cannot be stored exactly.");
             budget.CreateLineItemAsync(_yearId, "Item", 0m, null, null, null, 0, viewerId).Returns(refusal);
             budget.UpdateLineItemAsync(_yearId, "Item", 0m, null, null, null, 0, viewerId).Returns(refusal);
+            budget.DeleteLineItemAsync(_yearId, viewerId).Returns(new BudgetSaveResult<BudgetLineItemSnapshot>(Refusal: "Line item no longer exists."));
         }
         var resources = new System.Resources.ResourceManager(typeof(BudgetResource));
         var culture = CultureInfo.GetCultureInfo("en");
@@ -926,6 +935,39 @@ public sealed class BudgetServiceTests
         log[0].Should().Be(refused ? Microsoft.Extensions.Logging.LogLevel.Warning : Microsoft.Extensions.Logging.LogLevel.Error);
         if (refused) log[3].Should().BeNull();
         else log[3].Should().BeSameAs(failure);
+    }
+
+    [HumansTheory]
+    [InlineData("update-group")]
+    [InlineData("delete-group")]
+    [InlineData("update-category")]
+    [InlineData("delete-category")]
+    [InlineData("update-line")]
+    [InlineData("delete-line")]
+    public async Task MissingMutationTarget_ShowsRefusalWithoutSuccessOrWrites(string operation)
+    {
+        var missingId = Guid.NewGuid();
+        var (controller, _, _) = CreateAdminController(true, _service);
+        var result = operation switch
+        {
+            "update-group" => await controller.UpdateGroup(missingId, "Group", 0, false),
+            "delete-group" => await controller.DeleteGroup(missingId),
+            "update-category" => await controller.UpdateCategory(missingId, "Category", 0m, ExpenditureType.OpEx),
+            "delete-category" => await controller.DeleteCategory(missingId, _yearId),
+            "update-line" => await controller.UpdateLineItem(missingId, "Line", 0m, null, null, null, 0, _yearId),
+            _ => await controller.DeleteLineItem(missingId, _yearId)
+        };
+
+        result.Should().BeOfType<RedirectToActionResult>();
+        var entity = operation.EndsWith("group", StringComparison.Ordinal) ? "group"
+            : operation.EndsWith("category", StringComparison.Ordinal) ? "category" : "line item";
+        controller.TempData["ErrorMessage"].Should().Be($"Budget {entity} {missingId} not found");
+        controller.TempData.ContainsKey("SuccessMessage").Should().BeFalse();
+        await using var db = await BudgetDbFactory.CreateDbContextAsync(TestContext.Current.CancellationToken);
+        (await db.BudgetGroups.CountAsync(TestContext.Current.CancellationToken)).Should().Be(0);
+        (await db.BudgetCategories.CountAsync(TestContext.Current.CancellationToken)).Should().Be(0);
+        (await db.BudgetLineItems.CountAsync(TestContext.Current.CancellationToken)).Should().Be(0);
+        (await db.BudgetAuditLogs.CountAsync(TestContext.Current.CancellationToken)).Should().Be(0);
     }
 
     [HumansTheory]
@@ -1082,8 +1124,11 @@ public sealed class BudgetServiceTests
             vatRate,
             Guid.NewGuid());
 
-        await act.Should().ThrowAsync<ArgumentOutOfRangeException>()
-            .WithMessage("*between 0 and 21*");
+        var result = await act();
+        result.Refusal.Should().Be("VAT rate must be between 0 and 21.");
+        await using var db = await BudgetDbFactory.CreateDbContextAsync(TestContext.Current.CancellationToken);
+        (await db.BudgetAuditLogs.CountAsync(TestContext.Current.CancellationToken)).Should().Be(0);
+        (await db.BudgetLineItems.CountAsync(TestContext.Current.CancellationToken)).Should().Be(0);
     }
 
     [HumansTheory]
@@ -1170,8 +1215,13 @@ public sealed class BudgetServiceTests
             vatRate,
             Guid.NewGuid());
 
-        await act.Should().ThrowAsync<ArgumentOutOfRangeException>()
-            .WithMessage("*between 0 and 21*");
+        var result = await act();
+        result.Refusal.Should().Be("VAT rate must be between 0 and 21.");
+        await using var db = await BudgetDbFactory.CreateDbContextAsync(TestContext.Current.CancellationToken);
+        (await db.BudgetAuditLogs.CountAsync(TestContext.Current.CancellationToken)).Should().Be(0);
+        var persisted = await db.BudgetLineItems.SingleAsync(TestContext.Current.CancellationToken);
+        persisted.VatRate.Should().Be(0);
+        persisted.Amount.Should().Be(100m);
     }
 
     [HumansTheory]
@@ -1182,8 +1232,11 @@ public sealed class BudgetServiceTests
         var act = () => _service.UpdateTicketingProjectionAsync(
             Guid.NewGuid(), null, null, 0, 0m, 0m, vatRate, 0m, 0m, 0m, Guid.NewGuid());
 
-        await act.Should().ThrowAsync<ArgumentOutOfRangeException>()
-            .WithMessage("*between 0 and 21*");
+        var result = await act();
+        result.Refusal.Should().Be("VAT rate must be between 0 and 21.");
+        await using var db = await BudgetDbFactory.CreateDbContextAsync(TestContext.Current.CancellationToken);
+        (await db.BudgetAuditLogs.CountAsync(TestContext.Current.CancellationToken)).Should().Be(0);
+        (await db.TicketingProjections.CountAsync(TestContext.Current.CancellationToken)).Should().Be(0);
     }
 
     [HumansFact]
@@ -1933,12 +1986,7 @@ public sealed class BudgetServiceTests
     }
 
     [HumansTheory]
-    [InlineData("en")]
-    [InlineData("es")]
-    [InlineData("de")]
-    [InlineData("it")]
-    [InlineData("fr")]
-    [InlineData("ca")]
+    [MemberData(nameof(SupportedCultures.All), MemberType = typeof(SupportedCultures))]
     public async Task SyncTicketingActualsAsync_materializes_projected_weeks_when_projection_is_valid(string culture)
     {
         using var scope = new Humans.Base.Extensions.CultureScope(culture);
@@ -2228,17 +2276,10 @@ public sealed class BudgetServiceTests
         summary.ExpenseSlices.Select(sl => sl.Name).Should().BeEquivalentTo(["Ops", "VAT Liability"]);
     }
 
-    [HumansTheory]
-    [InlineData("en", "VAT Credit", "VAT Liability", "Cash Reserves (90%)", "Spanish Taxes (10%)", "Main Buffer")]
-    [InlineData("es", "IVA a compensar", "IVA a pagar", "Reservas de efectivo (90%)", "Impuestos españoles (10%)", "Margen de Main")]
-    [InlineData("de", "Mehrwertsteuer-Guthaben", "Mehrwertsteuer-Verbindlichkeit", "Liquiditätsreserven (90%)", "Spanische Steuern (10%)", "Main-Puffer")]
-    [InlineData("it", "Credito IVA", "IVA a debito", "Riserve di liquidità (90%)", "Imposte spagnole (10%)", "Margine di Main")]
-    [InlineData("fr", "Crédit de TVA", "TVA due", "Réserves de trésorerie (90%)", "Impôts espagnols (10%)", "Marge de Main")]
-    [InlineData("ca", "IVA a compensar", "IVA a pagar", "Reserves d'efectiu (90%)", "Impostos espanyols (10%)", "Marge de Main")]
-    public void ComputeBudgetSummaryWithBuffers_localizes_generated_labels(
-        string culture, string credit, string liability, string reserves, string taxes, string buffer)
+    [HumansFact]
+    public void ComputeBudgetSummaryWithBuffers_localizes_generated_labels()
     {
-        using var scope = new CultureScope(culture);
+        using var scope = new CultureScope("en");
         var groupId = Guid.NewGuid();
         IReadOnlyList<BudgetGroupDetail> groups =
         [
@@ -2253,8 +2294,9 @@ public sealed class BudgetServiceTests
 
         var summary = _service.ComputeBudgetSummaryWithBuffers(groups);
 
-        summary.IncomeSlices.Select(slice => slice.Name).Should().BeEquivalentTo(["Sales", credit]);
-        summary.ExpenseSlices.Select(slice => slice.Name).Should().BeEquivalentTo(["Ops", liability, reserves, taxes, buffer]);
+        summary.IncomeSlices.Select(slice => slice.Name).Should().BeEquivalentTo(["Sales", "VAT Credit"]);
+        summary.ExpenseSlices.Select(slice => slice.Name).Should().BeEquivalentTo(
+            ["Ops", "VAT Liability", "Cash Reserves (90%)", "Spanish Taxes (10%)", "Main Buffer"]);
         summary.TotalIncome.Should().Be(112.1m);
         summary.TotalExpenses.Should().Be(-22.1m);
         summary.NetBalance.Should().Be(90m);

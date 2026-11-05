@@ -12,7 +12,7 @@
 <div class="container py-4">
     <div class="row justify-content-center">
         <div class="col-lg-10">
-            <h1 class="mb-2">@Localizer["Onboarding_ShiftsTitle"]</h1>
+            <page-header title="@(Localizer["Onboarding_ShiftsTitle"].Value)" />
 
             @if (Model.HasAnyCritical)
             {
@@ -80,8 +80,7 @@
                     EventSettingsId: Model.EventSettings!.Id,
                     Shifts: Model.Shifts,
                     UserSignupShiftIds: Model.UserSignupShiftIds,
-                    UserSignupStatuses: Model.UserSignupStatuses,
-                    EarlyEntrySignupsClosed: Model.EarlyEntrySignupsClosed))
+                    UserSignupStatuses: Model.UserSignupStatuses))
             }
         </div>
     </div>

@@ -4,13 +4,13 @@
   src/Humans.Base/Constants/RoleNames.cs
   src/Humans.Base/Authorization/PolicyNames.cs
   src/Sections/Humans.Rideshare/RideshareNotificationSources.cs
-  src/Sections/Humans.AuditLog/Contracts/IAuditLogService.cs
+  src/Humans.Base/AuditLog/IAuditLogService.cs
   src/Sections/Humans.Settings/Contracts/ISettingsService.cs
   src/Sections/Humans.Notifications.Contracts/INotificationEmitter.cs
   src/Humans.Base/Users/IUserService.cs
   src/Humans.Base/Users/UserInfo.cs
   src/Sections/Humans.Users.Contracts/IUserMerge.cs
-  src/Sections/Humans.Gdpr/Contracts/IUserDataContributor.cs
+  src/Humans.Base/Gdpr/IUserDataContributor.cs
 -->
 <!-- freshness:flag-on-change
   The interest-always-anchors-to-a-trip rule, seats/matched derivation, the route-frozen-at-save
@@ -37,10 +37,9 @@ a map board lets people spot each other by eye. No booking, no payment, no autom
 - **Settings** (`RideshareSettings`) is a per-event singleton: the burn destination point and the
   inbound/outbound travel windows.
 - **Event scope.** Every settings row, trip and request belongs to an event (`EventSettingsId`); the
-  board, Mine and admin pages show only rows explicitly assigned to the active event. No year-based
-  inference remains after production reported `rideshare.event-ids` done on 2026-11-03. Unassigned
-  orphan rows remain stored and included in their owner's GDPR paths, but never appear on event
-  boards. With no active event the pages show "not set up" and posting is refused.
+  board, Mine and admin pages show only rows explicitly assigned to the active event; nothing infers an
+  event from a row's year. Orphan rows with no event id remain stored and included in their owner's GDPR
+  paths, but never appear on event boards. With no active event the pages show "not set up" and posting is refused.
 - **SeatsRemaining** is derived, never stored: `SeatsOffered − Σ(Seats of Accepted interests on
   the trip)`. A trip `IsFull` when this is `≤ 0`.
 - **Matched** (on a request) is derived: an `Accepted` interest exists either authored by the
@@ -256,7 +255,7 @@ a map board lets people spot each other by eye. No booking, no payment, no autom
 - **Driver discretion is absolute.** Accept/decline is the posting owner's call; the app never prompts for or records a justification.
 - **Coarse locations only.** Only city-level points are geocoded and sent to the routing provider; profile location is a pre-fill the user can always override. Offer and request labels accept the full 256-character profile city in forms and storage, without shortening it.
 - **Rosters are admin-and-driver only.** A trip's accepted riders are visible to that trip's driver (via `Mine`) and to RideshareAdmin/Admin (Day roster); never on the public board. The rider on a roster row is the request's owner when the driver answered a pin, else the interest's `FromUserId`.
-- **Rule failures are localized.** Mutation services return a refusal carrying a `RideshareResource` key and format arguments; member and admin controllers localize it and preserve the form or toast flow. Dependency faults propagate without becoming refusal feedback. Not-found and unauthorized exceptions retain their separate 404/403 paths. Offer/request form annotations use the shared required, maximum-length and numeric-range translations in all six cultures.
+- **Rule failures are localized.** Mutation services return a refusal carrying a `RideshareResource` key and format arguments; member and admin controllers localize it and preserve the form or toast flow. Dependency faults propagate without becoming refusal feedback. Not-found and unauthorized exceptions retain their separate 404/403 paths. Offer/request form annotations use the shared required, maximum-length and numeric-range translations in all supported cultures.
 - **Ownership gates edits.** Only `trip.UserId` may update or cancel that trip; only `request.UserId` may update or cancel that request. A cancelled trip or request cannot be edited.
 - **Admin settings require posted destination coordinates.** Missing latitude or longitude returns the form with field errors before any settings save or audit; an explicitly posted zero is valid. Existing coordinate bounds still apply.
 - **Offer and request forms require posted choices and counts.** Direction, vehicle type, luggage capacity/load, cost sharing, detour willingness, fuel contribution, duration, seats and party size cannot silently fall back to initial values when omitted. Invalid forms show field errors before any save; explicitly posted zero-valued choices and both true and false checkbox values remain valid.
@@ -315,8 +314,8 @@ a map board lets people spot each other by eye. No booking, no payment, no autom
 - **Settings**: `ISettingsService.GetActiveEventSettingsAsync()` — the active event everything anchors to;
   `GetAllEventSettingsAsync()` — resolves stored event ids and their names.
   The decorator implements `IEventSettingsChangeListener` and clears every snapshot when event metadata changes.
-- **Notifications**: `INotificationEmitter.SendAsync` — interest created/accepted/declined Its sources are declared in `RideshareNotificationSources` (`src/Sections/Humans.Rideshare/RideshareNotificationSources.cs`), one `NotificationSourceDefinition` each: `RideshareInterestReceived` (actionable, to the trip/request owner: someone expresses interest in a ride); `RideshareInterestAccepted` (informational, to the interested user: owner accepts the interest); `RideshareInterestDeclined` (informational, to the interested user: owner declines the interest).
-  notifications, delivered to the canonical user ID resolved for the recipient (falling back to the supplied ID when unavailable), localized to each recipient's supported preferred language (English for missing, blank, malformed or unsupported values), including trip dates, action labels and the fallback actor name when no burner name is available, `actionUrl: "/Rideshare/Mine"`.
+- **Notifications**: `INotificationEmitter.SendAsync` — interest created/accepted/declined notifications. Its sources are declared in `RideshareNotificationSources` (`src/Sections/Humans.Rideshare/RideshareNotificationSources.cs`), one `NotificationSourceDefinition` each: `RideshareInterestReceived` (actionable, to the trip/request owner: someone expresses interest in a ride); `RideshareInterestAccepted` (informational, to the interested user: owner accepts the interest); `RideshareInterestDeclined` (informational, to the interested user: owner declines the interest).
+  Notices are delivered to the canonical user ID resolved for the recipient (falling back to the supplied ID when unavailable), localized to each recipient's supported preferred language (English for missing, blank, malformed or unsupported values), including trip dates, action labels and the fallback actor name when no burner name is available, `actionUrl: "/Rideshare/Mine"`.
 - **AuditLog**: `IAuditLogService.LogAsync` — settings updates.
 - **Gdpr**: `IUserDataContributor` — exports `RideshareTrips`, `RideshareRequests` and
   `RideshareInterests` for the resolved survivor, including requests under archived account IDs;

@@ -3,13 +3,11 @@
     ViewData["Title"] = Localizer[Model.IsInvoice ? "Expenses_AddInvoice" : "Expenses_AddReceipt"].Value;
 }
 
-<nav aria-label="@Localizer["Expenses_BreadcrumbNavigation"]" class="mb-3">
-    <ol class="breadcrumb">
-        <li class="breadcrumb-item"><a asp-action="Index">@Localizer["Expenses_MyReportsTitle"]</a></li>
-        <li class="breadcrumb-item"><a asp-action="Edit" asp-route-id="@Model.ReportId">@Localizer["Expenses_EditReport"]</a></li>
-        <li class="breadcrumb-item active" aria-current="page">@Localizer[Model.IsInvoice ? "Expenses_AddInvoice" : "Expenses_AddReceipt"]</li>
-    </ol>
-</nav>
+@section Crumbs {
+    <a asp-action="Index">@Localizer["Expenses_MyReportsTitle"]</a>
+    <a asp-action="Edit" asp-route-id="@Model.ReportId">@Localizer["Expenses_EditReport"]</a>
+    <span>@Localizer[Model.IsInvoice ? "Expenses_AddInvoice" : "Expenses_AddReceipt"]</span>
+}
 
 <div class="row justify-content-center">
     <div class="col-lg-7">

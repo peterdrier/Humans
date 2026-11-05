@@ -33,14 +33,10 @@ public sealed class SurveyResultsBuilderTests
     }
 
     [HumansTheory]
-    [InlineData("en", "3.5")]
-    [InlineData("es", "3,5")]
-    [InlineData("de", "3,5")]
-    [InlineData("it", "3,5")]
-    [InlineData("fr", "3,5")]
-    [InlineData("ca", "3,5")]
-    public void Rating_average_uses_ui_language_independently_of_form_parsing(string language, string expected)
+    [MemberData(nameof(SupportedCultures.All), MemberType = typeof(SupportedCultures))]
+    public void Rating_average_uses_ui_language_independently_of_form_parsing(string language)
     {
+        var expected = 3.5.ToString("0.0", CultureInfo.GetCultureInfo(language));
         using var culture = new CultureScope(language);
         CultureInfo.CurrentCulture = CultureInfo.GetCultureInfo("en");
         var results = new SurveyResultsView(

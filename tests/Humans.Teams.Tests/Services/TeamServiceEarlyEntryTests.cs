@@ -34,6 +34,7 @@ public sealed class TeamServiceEarlyEntryTests
     private readonly TeamService _service;
     private readonly ISystemTeamSync _systemTeamSync = Substitute.For<ISystemTeamSync>();
     private readonly IRoleAssignmentService _roles = Substitute.For<IRoleAssignmentService>();
+    private readonly IUserService _users = Substitute.For<IUserService>();
 
     public TeamServiceEarlyEntryTests()
     {
@@ -47,7 +48,7 @@ public sealed class TeamServiceEarlyEntryTests
                 .With<IGoogleSyncOutboxService>()
                 .With<IGoogleIntegrationService>()
                 .With<ITeamResourceService>()
-                .With<IUserService>()
+                .With(_users)
                 .With(_systemTeamSync)
                 .With(_roles)
                 .Build(),
@@ -156,11 +157,16 @@ public sealed class TeamServiceEarlyEntryTests
         row.ProjectName.Should().Be("Lanterns");
     }
 
-    [HumansFact]
-    public async Task AddEarlyEntryGrantAsync_TeamEnabled_AddsAndAudits()
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task AddEarlyEntryGrantAsync_TeamEnabled_AddsAndAuditsForResolvedPerson(bool mergedAlias)
     {
         var teamId = Guid.NewGuid();
         var userId = Guid.NewGuid();
+        var resolvedId = mergedAlias ? Guid.NewGuid() : userId;
+        _users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(UserInfo.Create(new User { Id = resolvedId }, [], [], null));
         var actor = Guid.NewGuid();
         var date = new LocalDate(2026, 7, 6);
         _repo.GetByIdAsync(teamId, Arg.Any<CancellationToken>())
@@ -171,7 +177,7 @@ public sealed class TeamServiceEarlyEntryTests
         await _repo.Received(1).AddEarlyEntryGrantAsync(
             Arg.Is<TeamEarlyEntryGrant>(g =>
                 g.TeamId == teamId &&
-                g.UserId == userId &&
+                g.UserId == resolvedId &&
                 g.EntryDate == date &&
                 g.ProjectName == "Trimmed Project" &&
                 g.CreatedByUserId == actor &&
@@ -179,7 +185,35 @@ public sealed class TeamServiceEarlyEntryTests
             Arg.Any<CancellationToken>());
         await _audit.Received(1).LogAsync(
             TeamsAuditActions.EarlyEntryGranted, nameof(TeamEarlyEntryGrant), Arg.Any<Guid>(),
-            Arg.Any<string>(), actor, Arg.Any<Guid?>(), Arg.Any<string?>());
+            Arg.Is<string>(description => description.Contains(resolvedId.ToString(), StringComparison.Ordinal)), actor, Arg.Any<Guid?>(), Arg.Any<string?>());
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData("missing")]
+    [Xunit.InlineData("deleted")]
+    [Xunit.InlineData("merged")]
+    [Xunit.InlineData("erased")]
+    public async Task AddEarlyEntryGrantAsync_UnavailablePerson_DoesNotWriteOrAudit(string unavailable)
+    {
+        var teamId = Guid.NewGuid();
+        var userId = Guid.NewGuid();
+        _repo.GetByIdAsync(teamId, Arg.Any<CancellationToken>())
+            .Returns(new Team { Id = teamId, EarlyEntryEnabled = true });
+        UserInfo? person = unavailable switch
+        {
+            "deleted" => UserInfo.Create(new User { Id = userId, State = UserState.Deleted }, [], [], null),
+            "merged" => UserInfo.Create(new User { Id = userId, State = UserState.Merged }, [], [], null),
+            "erased" => UserInfo.Create(new User { Id = userId }, [], [], null) with { IsGdprAnonymized = true },
+            _ => null
+        };
+        _users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(person);
+
+        var add = () => _service.AddEarlyEntryGrantAsync(teamId, userId, new LocalDate(2026, 7, 6),
+            "Project", Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+
+        await add.Should().ThrowAsync<InvalidOperationException>();
+        await _repo.DidNotReceive().AddEarlyEntryGrantAsync(Arg.Any<TeamEarlyEntryGrant>(), Arg.Any<CancellationToken>());
+        _audit.ReceivedCalls().Should().BeEmpty();
     }
 
     [HumansFact]

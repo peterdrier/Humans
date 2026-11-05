@@ -107,7 +107,7 @@ internal sealed class AssemblyVoteAdminListViewModel
 
 /// <summary>
 /// Draft create/edit form. Carries a per-culture input for every localized field so the Board
-/// can author all six cultures in one page, plus the repeatable RankedChoice option rows.
+/// can author all supported cultures in one page, plus the repeatable RankedChoice option rows.
 /// </summary>
 internal sealed class AssemblyVoteDraftFormViewModel
 {

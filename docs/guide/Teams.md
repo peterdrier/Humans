@@ -131,6 +131,8 @@ In many departments it's the sub-team leads â€” not the top-level coordinator â€
 
 (assumes Coordinator knowledge)
 
+Board members read teams but change nothing: the teams summary, each team's settings, Members page and Google resources page open read-only. Creating, editing, approving and deleting are for TeamsAdmin and Admin.
+
 ### Create a team
 
 `/Teams/Create` (TeamsAdmin, Admin). Set name, description, approval mode, optional parent department, optional Google Group prefix, and the hidden flag. The slug is auto-generated and can be overridden on edit.

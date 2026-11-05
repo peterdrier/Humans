@@ -6,16 +6,14 @@
         : Localizer["Events_Submission_BarrioSubmitTitle", Model.CampName].Value;
 }
 
-<nav aria-label="@Localizer["Events_BreadcrumbNavigation"]">
-    <ol class="breadcrumb">
-        <li class="breadcrumb-item"><a asp-controller="Camp" asp-action="Index">@SharedLocalizer["Camp_Plural"]</a></li>
-        <li class="breadcrumb-item"><a asp-controller="Camp" asp-action="Details" asp-route-slug="@Model.CampSlug">@Model.CampName</a></li>
-        <li class="breadcrumb-item"><a asp-controller="Events" asp-action="MySubmissions">@Localizer["Events_MySubmissionsTitle"]</a></li>
-        <li class="breadcrumb-item active" aria-current="page">@(isEdit ? Localizer["Events_Submission_Edit"] : Localizer["Events_Submission_New"])</li>
-    </ol>
-</nav>
+@section Crumbs {
+    <a asp-controller="Camp" asp-action="Index">@SharedLocalizer["Camp_Plural"]</a>
+    <a asp-controller="Camp" asp-action="Details" asp-route-slug="@Model.CampSlug">@Model.CampName</a>
+    <a asp-controller="Events" asp-action="MySubmissions">@Localizer["Events_MySubmissionsTitle"]</a>
+    <span>@(isEdit ? Localizer["Events_Submission_Edit"] : Localizer["Events_Submission_New"])</span>
+}
 
-<h2>@(isEdit ? Localizer["Events_Submission_EditTitle"] : Localizer["Events_Submission_SubmitNew"])</h2>
+<page-header title="@(isEdit ? Localizer["Events_Submission_EditTitle"].Value : Localizer["Events_Submission_SubmitNew"].Value)" />
 
 @if (Model.IsResubmit)
 {
