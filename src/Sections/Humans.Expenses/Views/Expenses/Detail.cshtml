@@ -5,12 +5,10 @@
     var badgeClass = r.Status.GetBadgeClass();
 }
 
-<nav aria-label="@Localizer["Expenses_BreadcrumbNavigation"].Value" class="mb-3">
-    <ol class="breadcrumb">
-        <li class="breadcrumb-item"><a asp-action="Index">@Localizer["Expenses_MyReportsTitle"]</a></li>
-        <li class="breadcrumb-item active" aria-current="page">@Localizer["Expenses_ColReport"]</li>
-    </ol>
-</nav>
+@section Crumbs {
+    <a asp-action="Index">@Localizer["Expenses_MyReportsTitle"]</a>
+    <span>@Localizer["Expenses_ColReport"]</span>
+}
 
 <div class="d-flex justify-content-between align-items-center mb-4">
     <div class="d-flex align-items-center gap-2">

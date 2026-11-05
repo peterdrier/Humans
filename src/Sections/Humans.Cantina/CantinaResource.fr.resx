@@ -85,7 +85,6 @@
   <data name="Cantina_Dietary_Intolerance_Lactose" xml:space="preserve"><value>Lactose</value></data>
   <data name="Cantina_Dietary_AllergyOther_Required" xml:space="preserve"><value>Veuillez décrire votre autre allergie.</value></data>
   <data name="Cantina_Dietary_IntoleranceOther_Required" xml:space="preserve"><value>Veuillez décrire votre autre intolérance.</value></data>
-  <data name="Cantina_Dietary_BreadcrumbNavigation" xml:space="preserve"><value>Fil d’Ariane</value></data>
   <data name="Cantina_Dietary_PageTitle" xml:space="preserve"><value>Informations alimentaires</value></data>
   <data name="Cantina_Dietary_Saved" xml:space="preserve"><value>Vos informations alimentaires ont été enregistrées.</value></data>
   <data name="Cantina_Dietary_SaveFailed" xml:space="preserve"><value>Impossible d’enregistrer les informations alimentaires.</value></data>

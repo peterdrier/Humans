@@ -3,14 +3,12 @@
     ViewData["Title"] = $"{Localizer["Camps_Edit_MembersRolesHeading"]} — {Model.Name}";
 }
 
-<nav aria-label="@Localizer["Camps_Details_Breadcrumb"]">
-    <ol class="breadcrumb">
-        <li class="breadcrumb-item"><a asp-action="Index">@SharedLocalizer["Camp_Plural"]</a></li>
-        <li class="breadcrumb-item"><a asp-action="Details" asp-route-slug="@Model.Slug">@Model.Name</a></li>
-        <li class="breadcrumb-item"><a asp-action="Edit" asp-route-slug="@Model.Slug">@SharedLocalizer["Common_Edit"]</a></li>
-        <li class="breadcrumb-item active" aria-current="page">@Localizer["Camps_Members_Members"]</li>
-    </ol>
-</nav>
+@section Crumbs {
+    <a asp-action="Index">@SharedLocalizer["Camp_Plural"]</a>
+    <a asp-action="Details" asp-route-slug="@Model.Slug">@Model.Name</a>
+    <a asp-action="Edit" asp-route-slug="@Model.Slug">@SharedLocalizer["Common_Edit"]</a>
+    <span>@Localizer["Camps_Members_Members"]</span>
+}
 
 <h1 class="mb-4">@Localizer["Camps_Edit_MembersRolesHeading"] — @Model.Name <small class="text-muted">(@Model.Year)</small></h1>
 

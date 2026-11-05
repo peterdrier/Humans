@@ -43,7 +43,6 @@
   <data name="Shifts_SignedUp" xml:space="preserve">
     <value>Aangemeld</value>
   </data>
-  <data name="Shifts_BreadcrumbNavigation" xml:space="preserve"><value>Kruimelpad</value></data>
   <data name="Shifts_Pending" xml:space="preserve">
     <value>(in afwachting)</value>
   </data>

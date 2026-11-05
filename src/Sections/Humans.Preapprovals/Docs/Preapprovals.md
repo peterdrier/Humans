@@ -183,7 +183,6 @@ Admin pages live under the section's URL space, not `/Admin`; they are localizat
   entry (`PreapprovalsAuditActions.Preapproval*`), related to the program, the expense report, or the
   affected user. Program kind edits before the first grant include the old and new sizing
   rules in the program-edit audit, alongside any per-person amount change. Program fields and manager additions/removals persist in one save; a failed manager write leaves fields and managers unchanged, without success audits or deadline notices.
-- The member program page localizes its breadcrumb navigation label in all supported cultures.
 - Member notices and emails format amounts and claim deadlines in the recipient’s culture. Both channels resolve merged recipients to their canonical user IDs and deliver once per person, even when manager rows name both an archived ID and its survivor.
   Amount changes carry both amounts as numbers until rendering; audit amounts remain invariant.
 - Issue / approve: `PreapprovalFileBy` notification (Actionable, source key

@@ -237,12 +237,6 @@ body.admin-shell .crumb .trail > :last-child {
     font-weight: 600;
 }
 
-/* The shell's crumb replaces a page's own Bootstrap breadcrumb (member pages render in the shell
-   for admin-role users). */
-body.admin-shell .main nav[aria-label="breadcrumb"] {
-    display: none;
-}
-
 /* ── Group tabs ───────────────────────────────────────────────────────── */
 
 /* Above the breadcrumb, pulled up into the main area's top padding. */

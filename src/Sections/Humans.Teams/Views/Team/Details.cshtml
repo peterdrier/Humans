@@ -8,16 +8,14 @@
 }
 
 
-<nav aria-label="@Localizer["Teams_BreadcrumbNavigation"]">
-    <ol class="breadcrumb">
-        <li class="breadcrumb-item"><a asp-action="Index">@SharedLocalizer["Teams_Title"]</a></li>
-        @if (Model.ParentTeam != null)
-        {
-            <li class="breadcrumb-item"><a asp-action="Details" asp-route-slug="@Model.ParentTeam.Slug">@Model.ParentTeam.Name</a></li>
-        }
-        <li class="breadcrumb-item active" aria-current="page">@Model.Name</li>
-    </ol>
-</nav>
+@section Crumbs {
+    <a asp-action="Index">@SharedLocalizer["Teams_Title"]</a>
+    @if (Model.ParentTeam != null)
+    {
+        <a asp-action="Details" asp-route-slug="@Model.ParentTeam.Slug">@Model.ParentTeam.Name</a>
+    }
+    <span>@Model.Name</span>
+}
 
 
 <div class="row">

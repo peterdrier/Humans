@@ -5,14 +5,6 @@
     var zone = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
 }
 
-<nav aria-label="breadcrumb">
-    <ol class="breadcrumb">
-        <li class="breadcrumb-item"><a asp-controller="Admin" asp-action="Index">Admin</a></li>
-        <li class="breadcrumb-item"><a asp-controller="SurveyAdmin" asp-action="Index">@Localizer["Surveys_Admin_Index_Title"]</a></li>
-        <li class="breadcrumb-item active" aria-current="page">@Localizer["Surveys_Admin_Queue_Title"]</li>
-    </ol>
-</nav>
-
 <h1 class="mb-3">@Localizer["Surveys_Admin_Queue_Title"]</h1>
 <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
 

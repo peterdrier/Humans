@@ -3,13 +3,11 @@
     ViewData["Title"] = Localizer[Model.Id is null ? "Workgroups_MeetingNewTitle" : "Workgroups_MeetingEditTitle"];
 }
 
-<nav aria-label="@Localizer["Workgroups_BreadcrumbNavigation"]">
-    <ol class="breadcrumb">
-        <li class="breadcrumb-item"><a asp-action="Index">@Localizer["Workgroups_Title"]</a></li>
-        <li class="breadcrumb-item"><a asp-action="Details" asp-route-slug="@Model.Slug">@Model.Slug</a></li>
-        <li class="breadcrumb-item active" aria-current="page">@ViewData["Title"]</li>
-    </ol>
-</nav>
+@section Crumbs {
+    <a asp-action="Index">@Localizer["Workgroups_Title"]</a>
+    <a asp-action="Details" asp-route-slug="@Model.Slug">@Model.Slug</a>
+    <span>@ViewData["Title"]</span>
+}
 
 <h1>@ViewData["Title"]</h1>
 

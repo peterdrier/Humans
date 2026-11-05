@@ -4,13 +4,6 @@
     var statusClass = EventStatusPresentation.BadgeClass(Model.Status);
 }
 
-<nav aria-label="breadcrumb">
-    <ol class="breadcrumb">
-        <li class="breadcrumb-item"><a asp-controller="EventsModeration" asp-action="Index">Moderate Events</a></li>
-        <li class="breadcrumb-item active" aria-current="page">Edit</li>
-    </ol>
-</nav>
-
 <h2>Edit Event <span class="badge @statusClass align-middle">@Model.Status</span></h2>
 
 <div class="alert alert-info">

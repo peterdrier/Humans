@@ -3,13 +3,11 @@
     ViewData["Title"] = Localizer["Workgroups_EditTitle", Model.Name];
 }
 
-<nav aria-label="@Localizer["Workgroups_BreadcrumbNavigation"]">
-    <ol class="breadcrumb">
-        <li class="breadcrumb-item"><a asp-action="Index">@Localizer["Workgroups_Title"]</a></li>
-        <li class="breadcrumb-item"><a asp-action="Details" asp-route-slug="@Model.Slug">@Model.Name</a></li>
-        <li class="breadcrumb-item active" aria-current="page">@SharedLocalizer["Common_Edit"]</li>
-    </ol>
-</nav>
+@section Crumbs {
+    <a asp-action="Index">@Localizer["Workgroups_Title"]</a>
+    <a asp-action="Details" asp-route-slug="@Model.Slug">@Model.Name</a>
+    <span>@SharedLocalizer["Common_Edit"]</span>
+}
 
 <h1>@Localizer["Workgroups_EditTitle", Model.Name]</h1>
 

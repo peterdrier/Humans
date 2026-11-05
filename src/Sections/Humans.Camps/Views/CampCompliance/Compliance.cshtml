@@ -3,14 +3,6 @@
     ViewData["Title"] = $"Barrio role compliance — {Model.Event.EventName}";
 }
 
-<nav aria-label="breadcrumb">
-    <ol class="breadcrumb">
-        <li class="breadcrumb-item"><a asp-controller="Camp" asp-action="Index">@SharedLocalizer["Camp_Plural"]</a></li>
-        <li class="breadcrumb-item"><a asp-controller="CampAdmin" asp-action="Index">Admin</a></li>
-        <li class="breadcrumb-item active" aria-current="page">Compliance</li>
-    </ol>
-</nav>
-
 <div class="d-flex justify-content-between align-items-center mb-3">
     <h1 class="mb-0">Barrio role compliance &mdash; @Model.Event.EventName</h1>
     <form asp-controller="CampCompliance" asp-action="Compliance" method="get" class="d-flex gap-2 align-items-center">
