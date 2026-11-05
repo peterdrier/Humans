@@ -1,117 +1,111 @@
-# Freshness sweep: 2026-10-30
+# Freshness sweep: 2026-11-05
 
 **Mode:** diff
-**Previous anchor:** `cb3d8b37`
-**New anchor:** `f71de1eb` (upstream/main)
-**Worktree base:** `origin/main` @ `f71de1eb` (frozen at start; same commit as upstream/main)
-**Diff window:** the "Comments earn their place" commits, resharper cleanups and dependency bumps
-touched nearly every file, so docs were matched only against files changed by the other commits.
-Every marked editorial doc and every mechanical entry was still dirty.
+**Previous anchor:** `f71de1eb`
+**New anchor:** `8eacc6bf` (upstream/main)
+**Worktree base:** `origin/main` @ `3e48ed48` (frozen at start; contains upstream/main)
+**Diff window:** 67 commits, 1,933 files. The Users-core and User-entity moves into Base touched nearly every
+section, so every mechanical entry and 159 marked editorial docs were dirty. Matched files were triaged for real
+behavior change; pure namespace churn was skipped.
 
-**Result:** every dirty editorial doc was reviewed and edited where it had drifted. Every verifier in
-`run-all.sh` passes except `dev-stats` (environmental, see Skipped); `diff-mode.sh` passes and
-`verify-triggers.sh --check` finds no dead triggers.
+**Result:** every dirty doc was reviewed and edited where it had drifted. Every verifier in
+`docs/scripts/freshness-checks/` passes except `dev-stats` (environmental, see Skipped); `diff-mode.sh` passes
+17/17 and `verify-triggers.sh --check` finds no dead triggers.
 
-Most of the drift came from the window's access changes. Board now reads every section's admin pages
-read-only (pages moved from `*Policies.Manage` to `*Policies.Read`; writes stay on Manage). Roles are
-now section-owned, and several were renamed (Shifts NoInfo, Early Entry Admin). Endpoints are
-authenticated by default, with `[AllowBeforeActiveMembership]`. The rest came from moving things into
-each section: `Section<Seam>.cs` folded into `Section.cs`, and audit actions and notification sources
-now declared per section. Several features were also scoped to an event (barrio seasons, rideshare,
-grants).
+Most drift came from: the Users core, audit append path and GDPR contributor seam moving into `Humans.Base`
+(sections lost their AuditLog/Gdpr project refs); the Feedback section's removal; the Holded/Finance/Pleo
+reshuffle (`IFinanceService`, purchase mirror in Holded, `/Finance` overview, Budget admin at `/Budget/Admin`,
+Pleo mirror); Board read-only access (#2219); and Users' legacy storage drop (null rows now read as historical).
 
 ## Updated automatically
 
-- `dependency-graph`: nodes added (CampImageGallery, CampMembershipNotices, ConsentReminderService,
-  CreditorMatchService, FeedbackReplyDelivery, StoreStripePayments), and new edges added
-  (CityPlan→Settings, ConsentReview→Audit, ExpenseBookings→Holded, LowIncome→User,
-  ShiftMgmt⇢Settings). Stale edges removed: Merge→Team/Notif, DupAcct→Consent, Feedback→Email/NotifEmitter/UEmail,
-  Consent→NotifInbox, Team⇢Email, Cal⇢Team. UserNameSyncService and TicketingPreferenceLock removed.
-  `linkStyle` re-indexed.
-- `service-data-access-map`: Camps (CampEventSettings table; CampImageGallery, CampMembershipNotices),
-  Finance (CreditorMatchService), Store (StoreStripePayments), Cantina (IDietaryProfileRepository),
-  Rideshare (real table names). Rollup unchanged.
-- `authorization-inventory`: the touched section maps and the global file. Agent/Backdoor/Debug are now
-  BoardOrAdmin with AdminOnly POSTs. Also covered: the key-authed Backdoor API `[AllowAnonymous]`,
-  the `[AllowBeforeActiveMembership]` markers, Shifts RevealMedical, CityPlanning placement schedule,
-  Dev login, `AuthorizeAsync` line numbers, and the Team view rows.
-- `about-page-packages`: Anthropic 13.3.0, MailKit 4.18.2, Google.Apis.CloudIdentity.v1 1.77.0.4309,
-  Markdig 1.5.0, AngleSharp 1.8.6.
-- `docs-readme-index`: Grants spec and invariants, LowIncome invariants.
+- `dependency-graph`: added ConsentReviewQueueService, FinanceOverviewService, HoldedWrite, PleoService,
+  ShiftSignupNotices, SurveyTranslationFiller; Finance/Store nodes renamed FinanceService/StoreService; removed
+  HoldedDocumentSync; ~20 stale edges dropped (UserEmailService, ShiftView, PaymentDetails), AuditViewer/HoldedWrite
+  edges added; roster gains TeamGoogleGroupMemberships, UserSignInService, ShiftViewService; `linkStyle` re-indexed.
+- `service-data-access-map`: ShiftSignupNotices, SurveyTranslationFiller, RideshareNotices headings; rollup
+  (Users legacy tables gone, HoldedPurchaseDocs, GrantsDbContext row, 36 section contexts); dependency lists in
+  Shifts, Surveys, Rideshare, Finance, Consent, CityPlanning, Issues, Tickets, Users, Governance, Camps, Google.
+- `authorization-inventory`: `AuthorizeAsync` call-site table and view-map line numbers regenerated (Board Read
+  checks on Shifts/Teams, Grants/Preapprovals Read/Manage split, PrivateUploadMiddleware row removed). No
+  per-section `authorization.md` needed changes.
+- `about-page-packages`: Ical.Net 5.2.4, Google.Apis.Auth 1.78.0, AngleSharp 1.9.0, HtmlSanitizer 10.0.1120,
+  Markdig 1.5.1.
+- `docs-readme-index`: dead `superpowers/plans/` row removed, `plans/` row narrowed to what remains, stale
+  four-layer architecture blurb replaced with the sections/Base/Shell shape.
+- `reforge-history`: 3 days appended.
 - `guid-reservations`, `code-analysis-suppressions`: checked, no change.
-- `reforge-history`: no completed day after the last row (2026-10-29).
-
-## Fixed in place (editorial drift)
-
-- **Architecture:** `design-rules.md` §8b now lists the AuditActionRegistry/IAuditActionContributor and
-  NotificationSourceRegistry/INotificationSourceContributor fanouts. In `code-review-rules.md`, under
-  authenticated-by-default, a mutating action needs an explicit policy or resource check.
-  `roslyn-analysis.md` has the matching note on the POST candidate.
-  `AGENTS.md`, `conventions.md`, `coding-rules.md` and `seed-data.md` were verified current.
-- **Users/Auth:** guide Profiles (separate dietary/shifts/medical pages; Board read-only); `Auth.md`
-  (fallback policy, the Home/Index exception); `Users.md` (folded seams, export failure route);
-  `contact-fields.md` (no default visibility, pre-existing); `profile-pictures-birthdays.md`;
-  `user-search-overhaul.md` (ExactName, pre-existing).
-- **Governance cluster:** guide Governance (Board assigns no roles); `Onboarding.md` (UsersAdmin ≠
-  ConsentCoordinator, pre-existing; AllowBeforeActiveMembership; VolunteerApproved retired);
-  `onboarding-pipeline.md`; `Consent.md` (current arch-test names).
-- **Money:** guides Budget, Store, Expenses (pre-approval managers do the first review);
-  `Finance.md`, `Store.md`, `Store-feature.md` (pages on Read, writes on Manage);
-  `expense-reimbursement-process.md`.
-- **Tickets/Gate:** guide Tickets; `Tickets.md`, `ticket-transfer.md`,
-  `ticket-vendor-integration.md` (Board read-only); `Gate.md` and `gate-terminal-login.md` (GateAdmit
-  excludes Board); `EarlyEntry.md` (roster on ShiftsPolicies.Read, pre-existing).
-- **Events/Camps:** guides Events, Camps (`/Season/{eventSettingsId}`, per-event registration),
-  CityPlanning (schedule-driven placement); `Events.md`, `Events-feature.md`, `Calendar.md`,
-  `Camps-feature.md`, `CityPlanning.md` (`UpdatePlacementScheduleAsync`), `Cantina.md`,
-  `daily-roster.md` and `dietary-nudge.md` (audited medical reveal, no legacy-profile fallback),
-  `Rideshare.md`.
-- **Shifts/Teams/Google:** guides Shifts, Teams; `Shifts.md`, `shift-management.md`,
-  `post-event-stats.md`, `workload-dashboard.md`, `47-volunteer-tracking.md` (Read pages; the day-off
-  audit actions were pre-existing drift); `coordinator-roles.md` (section-owned roles);
-  `shift-preference-wizard.md`; `Monitor.md`, `drive-activity-monitoring.md`;
-  `google-integration.md`; `workspace-account-provisioning.md` (coordinator ProvisionEmail path,
-  pre-existing); `Teams-feature.md`.
-- **Email/Notifications/Audit:** guide Campaigns, `Campaigns.md`, `Campaigns-feature.md` (Board
-  read-only detail); `AuditLog.md` (enum references removed); `MailerLite.md`.
-- **Platform:** guides Issues and Admin; `Tour.md`, `Guide.md`, `Search.md` and `feedback-system.md`
-  (folded seams); `Development.md`; `Agent-feature.md`; `Settings.md`; `Debug.md`; `client-stats.md`
-  (pre-existing).
-- **Global:** `admin-shell.md`, `administration.md`, `background-jobs.md` (ExpenseReconJob),
-  `gdpr-export.md`, `global-search.md`, `preapprovals.md`.
 
 ## Dead trigger globs
 
 ### Repaired
-- `Shifts.md`, `shift-management.md`, `shift-signup-visibility.md`: `src/Humans.Base/Authorization/ShiftsRoles.cs` →
-  `src/Sections/Humans.Shifts.Contracts/ShiftsRoles.cs`
-- `Rideshare.md`: `src/Sections/Humans.Notifications.Contracts/RideshareNotificationSources.cs` →
-  `src/Sections/Humans.Rideshare/RideshareNotificationSources.cs`
+- `Rideshare.md` — `src/Sections/Humans.AuditLog/Contracts/IAuditLogService.cs` → `src/Humans.Base/AuditLog/IAuditLogService.cs`
+- `Rideshare.md` — `src/Sections/Humans.Gdpr/Contracts/IUserDataContributor.cs` → `src/Humans.Base/Gdpr/IUserDataContributor.cs`
 
 ### Unresolved
 None.
 
+## Fixed in place (editorial drift)
+
+- **Architecture/global:** `AGENTS.md` (Base has no project refs; holds Users core, audit append, GDPR seam);
+  `design-rules.md`, `code-analysis.md`, `roslyn-analysis.md` (User entity and audit write face in Base);
+  `conventions.md` (Feedback mentions); `background-jobs.md` (FeedbackReplyDelivery gone; legal-doc sync sends
+  in-app notices plus one email per member); `admin-shell.md` (Pleo group, real Finance/Holded items);
+  `seed-data.md` (Pleo category seeds); `Backdoor.md`, `finance-read-api.md` (feedback API gone, expense-recon
+  route); `Development.md`; `Feedback.md` tombstone date.
+- **Users/Auth:** `Users.md` (AccountMarkedFake, IUserWrite members, IUserEmailService, contributor names);
+  `Auth.md` (IUserSignInService); `authentication.md`; `user-search-overhaul.md` (State-based rejection);
+  `email-flag-violations-remediation.md`; guide YourData.
+- **Consent/Onboarding/Governance:** `Consent.md` (review queue owned here, every refusal shows a message);
+  `legal-documents-consent.md` and `volunteer-status.md` (grace expiry suspends via
+  SuspendNonCompliantMembersJob); `Governance.md`, `assembly-votes.md`; `onboarding-pipeline.md`; guide
+  LegalAndConsent.
+- **Money:** `Finance.md`, `Budget-feature.md`, guide Budget (`/Budget/Admin`, `/Finance` overview, IsActive
+  dropped); `sepa-payout.md`, `expense-reimbursement-process.md` (SEPA review step; refusals table repaired);
+  `Holded-connector.md`; `Expenses.md`; `Store.md`, `Store-feature.md`, guide Store (one checkout attempt per
+  order, invoice-recovery refusal); `grants.md`; `preapprovals.md`; `workgroup-budget.md`; guide Expenses (IBAN on
+  the report page); `Pleo.md` (migrated wheat).
+- **Tickets/Gate:** `Tickets.md`, `event-participation.md`, Tickets `data-access.md` (legacy fallback gone);
+  `gate-terminal-login.md` (account marked fake); `Gate.md`, `Containers.md`, `EarlyEntry.md`; guide Tickets.
+- **Events/Camps:** `Camps.md`, `Cantina.md`, `daily-roster.md` (one audit row per reveal), `CityPlanning.md`,
+  `Events.md`, `Rideshare.md` (history prose → current state).
+- **Shifts/Teams/Google:** `Teams.md`, `Teams-feature.md`, guides Teams/Shifts/GoogleIntegration (Board
+  read-only); `GoogleIntegration.md`, `workspace-account-provisioning.md`, `google-integration.md`,
+  `43-google-group-membership-sync.md` (per-group transport errors, Drive retry); `google-removal-notifications.md`
+  (nl); `Shifts.md`, `email-a-rota.md`; `Workgroups.md` (MeetingNotes log kind).
+- **Email/Notifications/platform:** `Email.md`, `communication-preferences.md`; `Issues.md`, `issues-system.md`,
+  `Agent.md`, `Agent-feature.md`, guide Issues (Feedback gone); `Campaigns.md`, `MailerLite.md`, `Monitor.md`,
+  `Settings.md`; guide Admin (bell semantics); Surveys `ranked-choice-voting.md`, `survey-preview.md`.
+
 ## Pruned
 
-- `docs/superpowers/plans/2026-09-25-workgroup-budget.md` (under the 5% target). The
-  feature has shipped. The plan's global constraints and review-focus rules are already in
-  `docs/features/global/workgroup-budget.md` and the Workgroups.md budget invariant
-  (`WorkgroupService.SetBudgetAsync`). The rest is task lists and code samples. No inbound refs.
+- `docs/superpowers/specs/2026-08-10-pleo-connector-design.md` (52 lines). Pleo shipped (#2276); `Pleo.md`
+  already covers the API, tables, sweep and pages.
+
+### Wheat migrated
+- Pleo spec §Pleo API facts → `Pleo.md` Invariants: the mirror polls (no entry-level webhooks); cardholders via
+  `/v2/employees`. Verified against `PleoClient` (`/v2/employees`, `accounting-entries:search`).
 
 ### Not pruned
-- Too young: `2026-10-19-users-decomposition-plan.md`. Kept on purpose: the freshness-sweep,
-  debt-sweep and section-doctor designs (cited from `.claude/` skills), the Pleo draft, and
-  `fk-cut-inventory.md` (cited by code).
+Under the 5% target (2,178 lines): the remaining candidates are cited. `fk-cut-inventory.md` (test baseline), the
+freshness-sweep, debt-sweep and section-doctor designs (`.claude/` skills); `users-decomposition-plan.md` is too
+young.
 
 ## Unmarked editorial (add `freshness:triggers`)
 
-Surveys `ranked-choice-voting.md`, `grid-questions.md`, `survey-preview.md`,
-`survey-information-blocks.md`, `survey-intro-markdown.md`, `survey-invitation-email-copy.md`;
-Backdoor `finance-read-api.md`; Finance `sepa-payout.md`; Notifications `notification-api.md`.
+Surveys `ranked-choice-voting.md`, `grid-questions.md`, `survey-preview.md`, `survey-information-blocks.md`,
+`survey-intro-markdown.md`, `survey-invitation-email-copy.md`; Backdoor `finance-read-api.md`; Finance
+`sepa-payout.md`; Notifications `notification-api.md`. (Checked this sweep for this window's concrete drift.)
 
 ## Flagged for human review
 
-None. The open judgment calls are listed under Questions.
+- **Code bug, not doc drift:** `/Teams/{slug}/Roster` is `[Authorize(BoardOrAdmin)]` but calls
+  `ResolveTeamManagementAsync`, which `TeamAuthorizationHandler` denies to Board → Board gets 403. Docs still say
+  Board can open it (Teams.md, guide Teams, Teams-feature US-6.13); left until the code is decided.
+- `tests/e2e/tests/admin-shell.spec.ts` expects the old Finance/Holded sidebar items and no Pleo group (test code,
+  outside the sweep).
+- `notification-board.md` still names Feedback as an emitting section; kept as an approved-design snapshot.
+- Public `/api/stats/files` (#2292, `FileStatsApiController` in the Shell) is documented in no section doc.
 
 ## Proposed for review
 
@@ -119,17 +113,11 @@ None — all candidates resolved this sweep.
 
 ## Questions
 
-1. design-rules §11 / conventions.md: state the authenticated-by-default fallback and `[AllowBeforeActiveMembership]` gate explicitly?
-2. design-rules §11 resource-less handler list: add `GrantsPolicyHandler` and `PreapprovalsPolicyHandler`?
-3. dependency-graph: give non-service helpers with cross-section edges (TeamMembershipNotices, SystemTeamSyncJob, NonCompliantMemberSuspension, SepaPayoutEmails) nodes?
-4. dependency-graph: NotifMeter's `ITicketSync` edge — keep pointing at TicketSync, or switch to TicketQ (the caching decorator)?
-5. `SyncLegalDocumentsJob` is public "because Shell names the concrete type", but Consent's own `Section.cs` registers it now. Fix the comment and doc line (and make the job internal)?
-6. `notification-board.md` (an approved forward design) says it "replaces the NotificationSource enum", which is already gone. Leave it as is?
-7. Update the stale `sidebarMatrix` in `tests/e2e/tests/admin-shell.spec.ts` (code, outside sweep scope)?
+- Roster for Board: fix the code (read view) or narrow the docs to Admin/TeamsAdmin/coordinators? Tracked in peterdrier/Humans#2306.
+- `volunteer-status.md` "Becoming Inactive" still lists "removed from Volunteers team by system sync" beside the
+  suspension flow; left as is (unsure whether Inactive is still reachable that way).
+- `profile-search-detail.md` says per-result contact-field reads are not cached; may now be cached `UserInfo`.
 
 ## Skipped (errors)
 
-- `dev-stats`: `generate-stats.sh` needs `cloc`, which is not installed in the cloud container and
-  could not be installed. reforge-history also has no new completed day, so nothing is lost this run.
-  The `dev-stats.sh` verifier also fails here: it reads the local `main` branch, which is stale in a
-  fresh cloud clone (2026-10-27), not origin/main.
+- `dev-stats`: `cloc` is not installed in this environment and installing it was refused. Re-run locally.
