@@ -274,6 +274,8 @@ Stored as string via `HasConversion<string>()`.
 
 ## Architecture
 
+The internal `BudgetReader` owns year/category/line-item views, coordinator scope, audit rows, ticketing projection entries and their shared DTO mapping. `BudgetService` forwards the existing reads and reuses those mappings after mutations. Coordinator restrictions, missing-team fallbacks, field/order preservation, projection dates/formatting and cancellation are unchanged. Mutation validation, audit writes, ticketing synchronization, calculations and GDPR retain their existing owners; no public contract or DI registration is added.
+
 **Owning services:** `BudgetService`, `TicketingBudgetService`
 **Owned tables:** `budget_years`, `budget_groups`, `budget_categories`, `budget_line_items`, `budget_audit_logs`, `ticketing_projections`
 **Status:** (A) Migrated.
