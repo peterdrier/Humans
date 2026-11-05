@@ -16,6 +16,7 @@ public class TableColumnTests
         public string? Name { get; init; }
         public decimal Amount { get; init; }
         public Instant? When { get; init; }
+        public LocalDate Day { get; init; }
         public EmailOutboxStatus Status { get; init; }
         public bool Flag { get; init; }
     }
@@ -85,6 +86,18 @@ public class TableColumnTests
         Render(col.Cell(row)).Should().Be(HtmlEncoder.Default.Encode(instant.ToDate()));
         col.SortValue(row).Should().Be(instant.ToUnixTimeMilliseconds().ToString(CultureInfo.InvariantCulture));
         Render(col.Cell(new Row { When = null })).Should().Contain("—");
+    }
+
+    [HumansFact]
+    public void Date_accepts_a_local_date_and_sorts_it_chronologically()
+    {
+        var col = Col(CellFormat.Date, r => r.Day);
+        var early = new Row { Day = new LocalDate(2026, 2, 1) };
+        var late = new Row { Day = new LocalDate(2026, 10, 1) };
+
+        Render(col.Cell(early)).Should().Be(HtmlEncoder.Default.Encode(early.Day.ToDate()));
+        long.Parse(col.SortValue(early)!, CultureInfo.InvariantCulture)
+            .Should().BeLessThan(long.Parse(col.SortValue(late)!, CultureInfo.InvariantCulture));
     }
 
     [HumansFact]

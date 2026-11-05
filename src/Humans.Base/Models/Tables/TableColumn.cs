@@ -126,7 +126,7 @@ public sealed class TableColumn<TRow>(
 
         return Format switch
         {
-            CellFormat.Date => Encoded(((Instant)raw).ToDate()),
+            CellFormat.Date => Encoded(raw is LocalDate date ? date.ToDate() : ((Instant)raw).ToDate()),
             CellFormat.DateTime => Encoded(((Instant)raw).ToDateTime()),
             CellFormat.Currency => Encoded(ToDecimal(raw).ToString("N2", CultureInfo.CurrentUICulture)),
             CellFormat.Number => Encoded(ToDecimal(raw).ToString("#,##0.##", CultureInfo.CurrentUICulture)),
@@ -147,6 +147,8 @@ public sealed class TableColumn<TRow>(
 
         return Format switch
         {
+            CellFormat.Date when raw is LocalDate date =>
+                date.AtMidnight().InUtc().ToInstant().ToUnixTimeMilliseconds().ToString(CultureInfo.InvariantCulture),
             CellFormat.Date or CellFormat.DateTime =>
                 ((Instant)raw).ToUnixTimeMilliseconds().ToString(CultureInfo.InvariantCulture),
             _ => ToDecimal(raw).ToString(CultureInfo.InvariantCulture),
