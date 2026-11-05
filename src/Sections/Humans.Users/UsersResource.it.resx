@@ -46,7 +46,6 @@
   <data name="Users_Profile_Title" xml:space="preserve">
     <value>Il mio Profilo</value>
   </data>
-  <data name="Users_BreadcrumbNavigation" xml:space="preserve"><value>Percorso di navigazione</value></data>
   <data name="Users_Profile_ActionRequired" xml:space="preserve">
     <value>Azione richiesta:</value>
   </data>

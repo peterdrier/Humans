@@ -12,12 +12,10 @@
     var unallocated = totalAllocated - totalLineItems;
 }
 
-<nav aria-label="@Localizer["Budget_BreadcrumbNavigation"]">
-    <ol class="breadcrumb">
-        <li class="breadcrumb-item"><a asp-action="Summary">@Localizer["Budget_Title"]</a></li>
-        <li class="breadcrumb-item active" aria-current="page">@Model.Year.Name</li>
-    </ol>
-</nav>
+@section Crumbs {
+    <a asp-action="Summary">@Localizer["Budget_Title"]</a>
+    <span>@Model.Year.Name</span>
+}
 
 <div class="d-flex justify-content-between align-items-center mb-4">
     <div class="d-flex align-items-center gap-3">
@@ -71,7 +69,7 @@
 {
     <div class="card">
         <div class="card-body text-center py-4">
-            <p class="text-muted mb-0">@Localizer["Budget_NoGroups"]</p>
+            <empty-state class="mb-0">@Localizer["Budget_NoGroups"]</empty-state>
         </div>
     </div>
 }

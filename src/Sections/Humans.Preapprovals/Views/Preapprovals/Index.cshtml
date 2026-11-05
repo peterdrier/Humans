@@ -23,7 +23,7 @@
 <h2 class="h4 mt-4">@Localizer["Preapprovals_Mine"]</h2>
 @if (!Model.Active.Any())
 {
-    <p class="text-muted">@Localizer["Preapprovals_NoneActive"]</p>
+    <empty-state>@Localizer["Preapprovals_NoneActive"]</empty-state>
 }
 else
 {

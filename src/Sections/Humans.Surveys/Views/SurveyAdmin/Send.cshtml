@@ -20,17 +20,13 @@
     };
 }
 
-<nav aria-label="breadcrumb">
-    <ol class="breadcrumb">
-        <li class="breadcrumb-item"><a asp-controller="Admin" asp-action="Index">Admin</a></li>
-        <li class="breadcrumb-item"><a asp-controller="SurveyAdmin" asp-action="Index">Surveys</a></li>
-        @if (Model.CanManage)
-        {
-            <li class="breadcrumb-item"><a asp-controller="SurveyAdmin" asp-action="Edit" asp-route-id="@Model.Id">@(string.IsNullOrWhiteSpace(Model.Title) ? "(untitled)" : Model.Title)</a></li>
-        }
-        <li class="breadcrumb-item active" aria-current="page">Send</li>
-    </ol>
-</nav>
+@section Crumbs {
+    @if (Model.CanManage)
+    {
+        <a asp-controller="SurveyAdmin" asp-action="Edit" asp-route-id="@Model.Id">@(string.IsNullOrWhiteSpace(Model.Title) ? "(untitled)" : Model.Title)</a>
+    }
+    <span>Send</span>
+}
 
 <div class="d-flex justify-content-between align-items-center mb-3">
     <h1 class="mb-0">@(string.IsNullOrWhiteSpace(Model.Title) ? "(untitled)" : Model.Title)</h1>
@@ -96,7 +92,7 @@
             }
             else if (Model.AudienceType is not null)
             {
-                <p class="text-muted mb-0">There are no new humans to invite from the current audience.</p>
+                <empty-state class="mb-0">There are no new humans to invite from the current audience.</empty-state>
             }
         }
         else if (Model.CanSend && Model.CanManage)
@@ -111,7 +107,7 @@
         }
         else if (Model.AudienceType is not null && Model.NewRecipientCount == 0)
         {
-            <p class="text-muted mb-0">There are no new humans to invite from the current audience.</p>
+            <empty-state class="mb-0">There are no new humans to invite from the current audience.</empty-state>
         }
     </div>
 </div>

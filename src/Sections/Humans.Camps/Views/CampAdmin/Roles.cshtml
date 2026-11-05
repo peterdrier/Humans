@@ -5,14 +5,6 @@
     ViewData["Title"] = "Camp roles";
 }
 
-<nav aria-label="breadcrumb">
-    <ol class="breadcrumb">
-        <li class="breadcrumb-item"><a asp-controller="Camp" asp-action="Index">@SharedLocalizer["Camp_Plural"]</a></li>
-        <li class="breadcrumb-item"><a asp-action="Index">@Localizer["Camps_AdminTitle"]</a></li>
-        <li class="breadcrumb-item active" aria-current="page">Roles</li>
-    </ol>
-</nav>
-
 <div class="d-flex justify-content-between align-items-center mb-3">
     <div>
         <h1 class="mb-1">Camp roles</h1>
@@ -31,7 +23,7 @@
     @if (Model.Active.Count == 0)
     {
         <div class="card-body">
-            <p class="text-muted mb-0">No active camp roles defined yet. Use <strong>Add role</strong> to create the first one.</p>
+            <empty-state class="mb-0">No active camp roles defined yet. Use <strong>Add role</strong> to create the first one.</empty-state>
         </div>
     }
     else

@@ -5,12 +5,10 @@
     var madridZone = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
 }
 
-<nav aria-label="@Localizer["Governance_BreadcrumbNavigation"]">
-    <ol class="breadcrumb">
-        <li class="breadcrumb-item"><a asp-controller="Governance" asp-action="Index">@Localizer["Governance_Title"]</a></li>
-        <li class="breadcrumb-item active" aria-current="page">@Localizer["Governance_Votes_Title"]</li>
-    </ol>
-</nav>
+@section Crumbs {
+    <a asp-controller="Governance" asp-action="Index">@Localizer["Governance_Title"]</a>
+    <span>@Localizer["Governance_Votes_Title"]</span>
+}
 
 <h1 class="mb-4">@Localizer["Governance_Votes_Title"]</h1>
 
@@ -18,7 +16,7 @@
 {
     <div class="card">
         <div class="card-body">
-            <p class="card-text text-muted mb-0">@Localizer["Governance_Votes_NoVotes"]</p>
+            <empty-state class="mb-0">@Localizer["Governance_Votes_NoVotes"]</empty-state>
         </div>
     </div>
 }

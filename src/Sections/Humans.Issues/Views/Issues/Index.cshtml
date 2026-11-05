@@ -29,7 +29,7 @@
                asp-action="Index" asp-route-view="@IssueViewMode.Closed">@Localizer["Issue_Closed"]</a>
         </div>
 
-        <select name="category" class="form-select form-select-sm" style="width: auto;">
+        <select name="category" class="form-select form-select-sm js-auto-submit" style="width: auto;">
             <option value="">@Localizer["Issue_AllCategories"]</option>
             @foreach (var c in Model.CategoryValues)
             {
@@ -46,7 +46,7 @@
 
         @if (Model.SectionOptions.Count > 0)
         {
-            <select name="section" class="form-select form-select-sm" style="width: auto;">
+            <select name="section" class="form-select form-select-sm js-auto-submit" style="width: auto;">
                 <option value="">@Localizer["Issue_AllAreas"]</option>
                 @foreach (var s in Model.SectionOptions)
                 {
@@ -64,7 +64,7 @@
 
         @if (Model.IsAdmin && Model.Reporters.Count > 0)
         {
-            <select name="reporter" class="form-select form-select-sm" style="width: auto;">
+            <select name="reporter" class="form-select form-select-sm js-auto-submit" style="width: auto;">
                 <option value="">@Localizer["Issue_AllReporters"]</option>
                 @foreach (var r in Model.Reporters)
                 {
@@ -101,7 +101,7 @@
         <div class="col-md-5 col-lg-4 border-end overflow-auto" style="max-height: 80vh;">
             @if (Model.Issues.Count == 0)
             {
-                <p class="text-muted p-3">@Localizer["Issue_NoneFound"]</p>
+                <empty-state class="p-3">@Localizer["Issue_NoneFound"]</empty-state>
             }
             <table class="table table-hover table-sm align-middle issues-table mb-0">
                 @* Three headers for three cells: the reporter and comment count live inside the title and updated cells. *@
@@ -192,9 +192,6 @@
                 if (requestVersion !== detailRequestVersion) return;
                 const panel = document.getElementById('detail-panel');
                 panel.innerHTML = html;
-                document.querySelectorAll('#detail-panel .detail-auto-submit').forEach(el => {
-                    el.addEventListener('change', () => el.form.submit());
-                });
                 // Same reason: the injected _EmailComposer's own <script> never ran.
                 window.HumansMarkdownEditor && window.HumansMarkdownEditor.init(panel);
                 window.HumansEmailComposer && window.HumansEmailComposer.wire(panel);
@@ -204,9 +201,6 @@
             history.replaceState(null, '', `/Issues?selected=${issueId}`);
         }
 
-        document.querySelectorAll('.issues-filter-form select').forEach(sel => {
-            sel.addEventListener('change', () => sel.form.submit());
-        });
         document.querySelectorAll('[data-issue-id]').forEach(el => {
             el.addEventListener('click', () => loadIssueDetail(el.dataset.issueId));
         });

@@ -346,7 +346,6 @@
   <data name="Surveys_EmailPreviewTo" xml:space="preserve"><value>Per a:</value></data>
   <data name="Surveys_EmailPreviewSubject" xml:space="preserve"><value>Assumpte:</value></data>
   <data name="Surveys_EmailPreviewFrameTitle" xml:space="preserve"><value>Previsualització del correu d’invitació a l’enquesta</value></data>
-  <data name="Surveys_BreadcrumbNavigation" xml:space="preserve"><value>Navegació de ruta</value></data>
   <data name="Surveys_StartPreview" xml:space="preserve"><value>Inicia la previsualització</value></data>
   <data name="Surveys_PreviewThankYou" xml:space="preserve"><value>Previsualitza l’agraïment</value></data>
   <data name="Surveys_Validation_AudienceUnsupported" xml:space="preserve"><value>El públic seleccionat per a l’enquesta no és compatible.</value></data>

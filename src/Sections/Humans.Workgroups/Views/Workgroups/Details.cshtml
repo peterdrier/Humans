@@ -25,12 +25,10 @@
     }
 }
 
-<nav aria-label="@Localizer["Workgroups_BreadcrumbNavigation"]">
-    <ol class="breadcrumb">
-        <li class="breadcrumb-item"><a asp-action="Index">@Localizer["Workgroups_Title"]</a></li>
-        <li class="breadcrumb-item active" aria-current="page">@w.Name</li>
-    </ol>
-</nav>
+@section Crumbs {
+    <a asp-action="Index">@Localizer["Workgroups_Title"]</a>
+    <span>@w.Name</span>
+}
 
 <div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-2">
     <div>
@@ -389,7 +387,7 @@
         @{ var visibleDocs = w.Documents.Where(d => d.Status != WorkgroupDocumentStatus.Draft || Model.IsMember || Model.CanAdminister).OrderByDescending(d => d.CreatedAt).ToList(); }
         @if (visibleDocs.Count == 0)
         {
-            <p class="text-muted">@Localizer["Workgroups_NoDocuments"]</p>
+            <empty-state>@Localizer["Workgroups_NoDocuments"]</empty-state>
         }
         else
         {
@@ -441,7 +439,7 @@
         @{ var timeline = Timeline().OrderByDescending(t => t.Date).ToList(); }
         @if (timeline.Count == 0)
         {
-            <p class="text-muted">@Localizer["Workgroups_NoHistory"]</p>
+            <empty-state>@Localizer["Workgroups_NoHistory"]</empty-state>
         }
         else
         {

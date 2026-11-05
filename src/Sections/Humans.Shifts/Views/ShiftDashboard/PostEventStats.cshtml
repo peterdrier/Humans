@@ -1,3 +1,5 @@
+@using Humans.Base.Interfaces
+@using Humans.Base.Models
 @model Humans.Shifts.Models.PostEventStats
 
 @{
@@ -7,6 +9,13 @@
         pct >= 90 ? "bg-success" : pct >= 75 ? "bg-warning text-dark" : "bg-danger";
 
     int totalSignups = Model.TotalConfirmed + Model.TotalNoShow;
+
+    var totalShifts = new StatTileViewModel("Total Shifts", Model.TotalShifts.ToString(), Subline: $"{Model.ShiftsWithData} with outcome data");
+    var confirmed = new StatTileViewModel("Confirmed", Model.TotalConfirmed.ToString(), Subline: "completed signups");
+    var noShows = new StatTileViewModel("No-Shows", Model.TotalNoShow.ToString(), Subline: "recorded no-shows", Severity: Model.TotalNoShow > 0 ? TileSeverity.Warning : TileSeverity.Normal);
+    var completion = totalSignups > 0
+        ? new StatTileViewModel("Completion Rate", $"{Model.CompletionPct}%", Subline: $"{Model.NoShowPct}% no-show rate")
+        : new StatTileViewModel("Completion Rate", "—", Subline: "no outcome data recorded");
 }
 
 <div class="container py-4">
@@ -20,56 +29,16 @@
         outcome recorded are excluded from the no-show rate.
     </p>
 
-    <div class="row g-3 mb-4">
-        <div class="col-md-3">
-            <div class="card h-100">
-                <div class="card-body">
-                    <div class="text-muted small text-uppercase">Total Shifts</div>
-                    <div class="fs-3 fw-bold">@Model.TotalShifts</div>
-                    <div class="text-muted small">@Model.ShiftsWithData with outcome data</div>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <div class="card h-100">
-                <div class="card-body">
-                    <div class="text-muted small text-uppercase">Confirmed</div>
-                    <div class="fs-3 fw-bold text-success">@Model.TotalConfirmed</div>
-                    <div class="text-muted small">completed signups</div>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <div class="card h-100 @(Model.TotalNoShow > 0 ? "border-warning" : "")">
-                <div class="card-body">
-                    <div class="text-muted small text-uppercase">No-Shows</div>
-                    <div class="fs-3 fw-bold @(Model.TotalNoShow > 0 ? "text-warning" : "")">@Model.TotalNoShow</div>
-                    <div class="text-muted small">recorded no-shows</div>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <div class="card h-100">
-                <div class="card-body">
-                    <div class="text-muted small text-uppercase">Completion Rate</div>
-                    @if (totalSignups > 0)
-                    {
-                        <div class="fs-3 fw-bold">@Model.CompletionPct%</div>
-                        <div class="text-muted small">@Model.NoShowPct% no-show rate</div>
-                    }
-                    else
-                    {
-                        <div class="fs-3 fw-bold text-muted">—</div>
-                        <div class="text-muted small">no outcome data recorded</div>
-                    }
-                </div>
-            </div>
-        </div>
+    <div class="stats">
+        <partial name="_StatTile" model="totalShifts" />
+        <partial name="_StatTile" model="confirmed" />
+        <partial name="_StatTile" model="noShows" />
+        <partial name="_StatTile" model="completion" />
     </div>
 
     @if (Model.Departments.Count == 0)
     {
-        <div class="alert alert-info">No departments with shift data found for this event.</div>
+        <empty-state>No departments with shift data found for this event.</empty-state>
     }
     else
     {

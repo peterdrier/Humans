@@ -4,11 +4,9 @@
     ViewData["Title"] = Localizer["Events_MySubmissionsTitle"].Value;
 }
 
-<nav aria-label="@Localizer["Events_BreadcrumbNavigation"]">
-    <ol class="breadcrumb">
-        <li class="breadcrumb-item active" aria-current="page">@Localizer["Events_MySubmissionsTitle"]</li>
-    </ol>
-</nav>
+@section Crumbs {
+    <span>@Localizer["Events_MySubmissionsTitle"]</span>
+}
 
 <h2 class="mb-4">@Localizer["Events_MySubmissionsTitle"]</h2>
 
@@ -72,7 +70,7 @@
 
         @if (Model.Personal.Events.Count == 0)
         {
-            <p class="text-muted mb-0">@Localizer["Events_NoPersonalEvents"]</p>
+            <empty-state class="mb-0">@Localizer["Events_NoPersonalEvents"]</empty-state>
         }
         else
         {
@@ -153,7 +151,7 @@
 
             @if (barrio.Events.Count == 0)
             {
-                <p class="text-muted mb-3">@Localizer["Events_NoBarrioEvents"]</p>
+                <empty-state class="mb-3">@Localizer["Events_NoBarrioEvents"]</empty-state>
             }
             else
             {

@@ -4,16 +4,13 @@
     ViewData["Title"] = isNew ? "New grant program" : "Edit program";
 }
 
-<nav aria-label="breadcrumb">
-    <ol class="breadcrumb">
-        <li class="breadcrumb-item"><a asp-action="Index">Grant programs</a></li>
-        @if (!isNew)
-        {
-            <li class="breadcrumb-item"><a asp-action="Program" asp-route-programId="@Model.Id">@Model.Name</a></li>
-        }
-        <li class="breadcrumb-item active" aria-current="page">@ViewData["Title"]</li>
-    </ol>
-</nav>
+@section Crumbs {
+    @if (!isNew)
+    {
+        <a asp-action="Program" asp-route-programId="@Model.Id">@Model.Name</a>
+    }
+    <span>@ViewData["Title"]</span>
+}
 
 <h1>@ViewData["Title"]</h1>
 

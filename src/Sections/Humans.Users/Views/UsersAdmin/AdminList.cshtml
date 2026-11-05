@@ -94,7 +94,7 @@
 
 @if (Model.Humans.Count == 0)
 {
-    <div class="alert alert-info">@SharedLocalizer["Admin_NoMembersFound"]</div>
+    <empty-state>@SharedLocalizer["Admin_NoMembersFound"]</empty-state>
 }
 else
 {

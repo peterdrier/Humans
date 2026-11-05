@@ -149,7 +149,6 @@
   <data name="Expenses_Flash_InvalidApprovalInput" xml:space="preserve"><value>Ungültige Genehmigungsdaten.</value></data>
   <!-- Submitter expense-edit page -->
   <data name="Expenses_EditReport" xml:space="preserve"><value>Ausgabenbericht bearbeiten</value></data>
-  <data name="Expenses_BreadcrumbNavigation" xml:space="preserve"><value>Brotkrümelnavigation</value></data>
   <data name="Expenses_Edit" xml:space="preserve"><value>Bearbeiten</value></data>
   <data name="Expenses_ReportHeader" xml:space="preserve"><value>Berichtskopf</value></data>
   <data name="Expenses_BudgetCategory" xml:space="preserve"><value>Budgetkategorie</value></data>

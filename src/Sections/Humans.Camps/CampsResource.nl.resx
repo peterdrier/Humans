@@ -288,7 +288,6 @@
   <data name="Camps_Flash_UnknownError" xml:space="preserve"><value>Onbekende fout.</value></data>
   <data name="Camps_Flash_RoleUnassigned" xml:space="preserve"><value>Roltoewijzing opgeheven.</value></data>
   <data name="Camps_Flash_AssignmentNotFound" xml:space="preserve"><value>Toewijzing niet gevonden.</value></data>
-  <data name="Camps_Details_Breadcrumb" xml:space="preserve"><value>Kruimelpad</value></data>
   <data name="Camps_Details_Slide" xml:space="preserve"><value>Dia {0}</value></data>
   <data name="Camps_Details_Previous" xml:space="preserve"><value>Vorige</value></data>
   <data name="Camps_Details_Next" xml:space="preserve"><value>Volgende</value></data>

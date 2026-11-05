@@ -8,16 +8,14 @@
 }
 
 
-<nav aria-label="@Localizer["Teams_BreadcrumbNavigation"]">
-    <ol class="breadcrumb">
-        <li class="breadcrumb-item"><a asp-action="Index">@SharedLocalizer["Teams_Title"]</a></li>
-        @if (Model.ParentTeam != null)
-        {
-            <li class="breadcrumb-item"><a asp-action="Details" asp-route-slug="@Model.ParentTeam.Slug">@Model.ParentTeam.Name</a></li>
-        }
-        <li class="breadcrumb-item active" aria-current="page">@Model.Name</li>
-    </ol>
-</nav>
+@section Crumbs {
+    <a asp-action="Index">@SharedLocalizer["Teams_Title"]</a>
+    @if (Model.ParentTeam != null)
+    {
+        <a asp-action="Details" asp-route-slug="@Model.ParentTeam.Slug">@Model.ParentTeam.Name</a>
+    }
+    <span>@Model.Name</span>
+}
 
 
 <div class="row">
@@ -99,7 +97,7 @@
         {
             <div class="card mb-4">
                 <div class="card-body text-center py-4">
-                    <p class="text-muted mb-3">@Localizer["Teams_TeamDetail_NoPageContent"]</p>
+                    <empty-state class="mb-3">@Localizer["Teams_TeamDetail_NoPageContent"]</empty-state>
                     <a asp-controller="TeamAdmin" asp-action="EditPage" asp-route-slug="@Model.Slug" class="btn btn-outline-primary">
                         <i class="fa-solid fa-pen-to-square me-1"></i>@Localizer["Teams_TeamDetail_AddPageContent"]
                     </a>
@@ -203,7 +201,7 @@
                 }
                 else
                 {
-                    <p class="text-center text-muted mb-0">@Localizer["Teams_TeamDetail_NoMembers"]</p>
+                    <empty-state class="mb-0">@Localizer["Teams_TeamDetail_NoMembers"]</empty-state>
                 }
             </div>
         </div>

@@ -85,7 +85,6 @@
   <data name="Cantina_Dietary_Intolerance_Lactose" xml:space="preserve"><value>Lattosio</value></data>
   <data name="Cantina_Dietary_AllergyOther_Required" xml:space="preserve"><value>Descrivi l’altra allergia.</value></data>
   <data name="Cantina_Dietary_IntoleranceOther_Required" xml:space="preserve"><value>Descrivi l’altra intolleranza.</value></data>
-  <data name="Cantina_Dietary_BreadcrumbNavigation" xml:space="preserve"><value>Percorso di navigazione</value></data>
   <data name="Cantina_Dietary_PageTitle" xml:space="preserve"><value>Informazioni alimentari</value></data>
   <data name="Cantina_Dietary_Saved" xml:space="preserve"><value>Le tue informazioni alimentari sono state salvate.</value></data>
   <data name="Cantina_Dietary_SaveFailed" xml:space="preserve"><value>Impossibile salvare le informazioni alimentari.</value></data>

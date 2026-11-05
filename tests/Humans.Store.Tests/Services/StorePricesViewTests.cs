@@ -53,7 +53,6 @@ public class StorePricesViewTests
         using var assertions = new AwesomeAssertions.Execution.AssertionScope();
         index.Should().Contain(HtmlEncoder.Default.Encode($" + {vat}% "));
         detail.Should().Contain(HtmlEncoder.Default.Encode($" + {vat}% "));
-        detail.Should().Contain("class=\"breadcrumb-item\">Camp</li>");
         CultureInfo.CurrentCulture.Name.Should().Be("en");
     }
 

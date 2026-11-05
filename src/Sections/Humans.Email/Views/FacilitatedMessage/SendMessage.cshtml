@@ -12,12 +12,10 @@
     var recipientHtml = new Microsoft.AspNetCore.Html.HtmlString(recipientWriter.ToString().Trim());
 }
 
-<nav aria-label="@Localizer["Email_BreadcrumbNavigation"]">
-    <ol class="breadcrumb">
-        <li class="breadcrumb-item"><vc:human user-id="@Model.RecipientId" /></li>
-        <li class="breadcrumb-item active" aria-current="page">@Localizer["Email_SendMessage_Breadcrumb"]</li>
-    </ol>
-</nav>
+@section Crumbs {
+    <span><vc:human user-id="@Model.RecipientId" /></span>
+    <span>@Localizer["Email_SendMessage_Breadcrumb"]</span>
+}
 
 <h1>@HtmlLocalizer["Email_SendMessage_Heading", recipientHtml]</h1>
 

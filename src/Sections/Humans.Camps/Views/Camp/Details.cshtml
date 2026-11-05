@@ -10,12 +10,10 @@
     var membershipYear = Model.Membership.OpenSeasonYear?.ToString(System.Globalization.CultureInfo.CurrentCulture) ?? string.Empty;
 }
 
-<nav aria-label="@Localizer["Camps_Details_Breadcrumb"]">
-    <ol class="breadcrumb">
-        <li class="breadcrumb-item"><a asp-action="Index">@SharedLocalizer["Camp_Plural"]</a></li>
-        <li class="breadcrumb-item active" aria-current="page">@Model.Name</li>
-    </ol>
-</nav>
+@section Crumbs {
+    <a asp-action="Index">@SharedLocalizer["Camp_Plural"]</a>
+    <span>@Model.Name</span>
+}
 
 
 <div class="row">

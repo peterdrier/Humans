@@ -85,7 +85,6 @@
   <data name="Cantina_Dietary_Intolerance_Lactose" xml:space="preserve"><value>Lactose</value></data>
   <data name="Cantina_Dietary_AllergyOther_Required" xml:space="preserve"><value>Please describe your "Other" allergy.</value></data>
   <data name="Cantina_Dietary_IntoleranceOther_Required" xml:space="preserve"><value>Please describe your "Other" intolerance.</value></data>
-  <data name="Cantina_Dietary_BreadcrumbNavigation" xml:space="preserve"><value>Breadcrumb</value></data>
   <data name="Cantina_Dietary_PageTitle" xml:space="preserve"><value>Dietary info</value></data>
   <data name="Cantina_Dietary_Saved" xml:space="preserve"><value>Your dietary info has been saved.</value></data>
   <data name="Cantina_Dietary_SaveFailed" xml:space="preserve"><value>Failed to save dietary info.</value></data>

@@ -149,7 +149,7 @@
             loadTab(resourceType);
         })
         .catch(function (err) {
-            alert('Sync failed: ' + err.message);
+            showToast('Sync failed: ' + err.message, 'danger');
         });
     }
 
@@ -170,7 +170,7 @@
             loadTab(resourceType);
         })
         .catch(function (err) {
-            alert('Sync failed: ' + err.message);
+            showToast('Sync failed: ' + err.message, 'danger');
         });
     }
 

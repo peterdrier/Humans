@@ -46,7 +46,6 @@
   <data name="Users_Profile_Title" xml:space="preserve">
     <value>Mon profil</value>
   </data>
-  <data name="Users_BreadcrumbNavigation" xml:space="preserve"><value>Fil d’Ariane</value></data>
   <data name="Users_Profile_ActionRequired" xml:space="preserve">
     <value>Action requise :</value>
   </data>

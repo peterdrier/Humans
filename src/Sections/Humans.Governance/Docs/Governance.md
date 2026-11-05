@@ -284,7 +284,7 @@ Approval and rejection share the same ordered eligibility check (application exi
 
 - Opt-outable email builders capture the recipient/template culture on `EmailMessage` before restoring their rendering scope; Email renders the shared unsubscribe footer in that culture.
 
-- Member tier-application and assembly-vote pages localize breadcrumb navigation labels in all supported cultures. The shared Asociado contribution prompt names Elsewhere in all supported cultures, including profile editing.
+- The shared Asociado contribution prompt names Elsewhere in all supported cultures, including profile editing.
 
 - Application-admin paging computes offsets without integer overflow; extreme pages cannot wrap into earlier applications.
 

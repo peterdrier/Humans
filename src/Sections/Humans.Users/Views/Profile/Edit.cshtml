@@ -6,15 +6,13 @@
         $"<option value=\"{lang.Key}\">{System.Net.WebUtility.HtmlEncode(LanguageCatalog.GetDisplayName(lang.Key))} ({lang.Key})</option>"));
 }
 
+@section Crumbs {
+    <a asp-action="Index">@SharedLocalizer["Nav_MyProfile"]</a>
+    <span>@Localizer["Users_ProfileEdit_Title"]</span>
+}
+
 <div class="row">
     <div class="col-12" style="max-width: 900px;">
-        <nav aria-label="@Localizer["Users_BreadcrumbNavigation"]">
-            <ol class="breadcrumb">
-                <li class="breadcrumb-item"><a asp-action="Index">@SharedLocalizer["Nav_MyProfile"]</a></li>
-                <li class="breadcrumb-item active" aria-current="page">@Localizer["Users_ProfileEdit_Title"]</li>
-            </ol>
-        </nav>
-
         <h1>@Localizer["Users_ProfileEdit_Title"]</h1>
 
         <form asp-action="Edit" method="post" enctype="multipart/form-data">

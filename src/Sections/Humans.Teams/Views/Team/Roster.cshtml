@@ -4,12 +4,10 @@
     ViewData["Title"] = Localizer["Teams_Roster_Title"].Value;
 }
 
-<nav aria-label="@Localizer["Teams_BreadcrumbNavigation"]">
-    <ol class="breadcrumb">
-        <li class="breadcrumb-item"><a asp-action="Index">@SharedLocalizer["Teams_Title"]</a></li>
-        <li class="breadcrumb-item active" aria-current="page">@Localizer["Teams_Roster_Title"]</li>
-    </ol>
-</nav>
+@section Crumbs {
+    <a asp-action="Index">@SharedLocalizer["Teams_Title"]</a>
+    <span>@Localizer["Teams_Roster_Title"]</span>
+}
 
 <h2>@Localizer["Teams_Roster_Title"]</h2>
 
@@ -52,7 +50,7 @@
 
 @if (!Model.Slots.Any())
 {
-    <div class="alert alert-info">@Localizer["Teams_Roster_NoSlots"]</div>
+    <empty-state>@Localizer["Teams_Roster_NoSlots"]</empty-state>
 }
 else
 {

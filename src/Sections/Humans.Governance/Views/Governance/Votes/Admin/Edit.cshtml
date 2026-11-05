@@ -45,7 +45,7 @@
                 Model.OfficialText.TryGetValue(culture, out var value);
                 <div class="mb-2">
                     <label class="form-label small fw-semibold mb-1">@culture.ToDisplayLanguageName()</label>
-                    <textarea name="OfficialText[@culture]" class="form-control" rows="4">@value</textarea>
+                    <markdown-editor name="OfficialText[@culture]" id="official-text-@culture" value="@value" rows="4" />
                 </div>
             }
             <div class="row g-3 mt-1">
