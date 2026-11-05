@@ -1,8 +1,11 @@
 using System.Text.Json;
+using Humans.Base.Extensions;
+using Humans.Gdpr.Contracts;
 using Humans.Base.Interfaces;
 using Humans.Stripe.Data;
 using Humans.Stripe.Domain;
 using Humans.Stripe.Models;
+using Humans.Users.Contracts;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using NodaTime;
@@ -31,7 +34,8 @@ internal sealed class StripeMirrorService(
     IStripeMirrorClient client,
     IOptions<StripeMirrorOptions> options,
     IClock clock,
-    ILogger<StripeMirrorService> logger) : IStripeMirrorAdminService
+    IUserService users,
+    ILogger<StripeMirrorService> logger) : IStripeMirrorAdminService, IUserDataContributor
 {
     /// <summary>One sweep at a time across the nightly job and Sync now; a second caller skips instead of waiting.</summary>
     private static readonly SemaphoreSlim SyncGate = new(1, 1);
@@ -86,15 +90,26 @@ internal sealed class StripeMirrorService(
                 account.Name, transactions.Count, fetch.Payouts.Count);
             return true;
         }
-        catch (Exception ex) when (ex is not OperationCanceledException || !ct.IsCancellationRequested)
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            // Never leave the row at Running for a sweep that stopped.
+            await RecordErrorAsync(state, "Sweep cancelled before it finished; the mirror is as it was.");
+            throw;
+        }
+        catch (Exception ex)
         {
             logger.LogError(ex, "Stripe {Account} sweep failed", account.Name);
-            state.SyncStatus = StripeSyncStatus.Error;
-            state.StatusChangedAt = clock.GetCurrentInstant();
-            state.LastError = ex.Message.Length <= 2000 ? ex.Message : ex.Message[..2000];
-            await repo.SaveSyncStateAsync(state, CancellationToken.None);
+            await RecordErrorAsync(state, ex.Message);
             return false;
         }
+    }
+
+    private async Task RecordErrorAsync(StripeSyncState state, string message)
+    {
+        state.SyncStatus = StripeSyncStatus.Error;
+        state.StatusChangedAt = clock.GetCurrentInstant();
+        state.LastError = message.Length <= 2000 ? message : message[..2000];
+        await repo.SaveSyncStateAsync(state, CancellationToken.None);
     }
 
     /// <summary>A refund or dispute names no buyer; it takes one from a row on the same PaymentIntent, so searching a
@@ -268,4 +283,52 @@ internal sealed class StripeMirrorService(
         }
         return new StripeReservesPage(curves);
     }
+
+    // ── GDPR ─────────────────────────────────────────────────────────────────
+
+    internal const string PaymentsSlice = "StripePayments";
+
+    private static readonly IReadOnlyDictionary<string, string?> Erasure =
+        new Dictionary<string, string?>(StringComparer.Ordinal)
+        {
+            [PaymentsSlice] =
+                "Retained in full, nothing erased: each row is a Stripe balance transaction (a payment, refund or " +
+                "dispute) with the buyer's name and email as Stripe recorded them. Spanish law requires the books and " +
+                "their supporting documents be kept 6 years (Código de Comercio Art. 30) and 4 years for tax purposes " +
+                "(Ley 58/2003 Art. 66), and Stripe keeps the same records regardless. The rows carry no user id. " +
+                "GDPR Art. 17(3)(b).",
+        };
+
+    public IReadOnlyDictionary<string, string?> ErasureDeclaration => Erasure;
+
+    /// <summary>Rows whose buyer email is one of the member's verified addresses. An unverified address could be
+    /// someone else's, so it never pulls their payments into this export.</summary>
+    public async Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct)
+    {
+        var info = await users.GetUserInfoAsync(userId, ct);
+        var emails = (info?.UserEmails ?? []).Where(e => e.IsVerified)
+            .Select(e => e.Email).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        if (emails.Count == 0) return [];
+
+        var rows = (await repo.GetTransactionsAsync(ct))
+            .Where(t => t.CustomerEmail is not null && emails.Contains(t.CustomerEmail))
+            .OrderBy(t => t.Created)
+            .Select(t => new
+            {
+                Account = NameOf(t.AccountId),
+                t.Id,
+                t.Type,
+                Created = t.Created.ToIso8601(),
+                Amount = Eur(t.Amount),
+                t.Currency,
+                t.Description,
+                t.CustomerName,
+                t.CustomerEmail,
+            })
+            .ToList();
+        return rows.Count == 0 ? [] : [new UserDataSlice(PaymentsSlice, rows)];
+    }
+
+    /// <summary>Financial records are never erased (see <see cref="Erasure"/>); there is no member binding to drop.</summary>
+    public Task EraseForUserAsync(Guid userId, CancellationToken ct) => Task.CompletedTask;
 }

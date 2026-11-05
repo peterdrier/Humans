@@ -1,4 +1,5 @@
 using Humans.Base.Configuration;
+using Humans.Gdpr.Contracts;
 using Humans.Base.Hosting;
 using Humans.Base.Interfaces;
 using Humans.Finance.Contracts;
@@ -15,8 +16,6 @@ namespace Humans.Stripe;
 /// <c>Section</c> (as <c>ISectionConfiguration</c>) declares the same <c>STRIPE_*</c> variables to the settings inventory: rename both
 /// together.
 /// </summary>
-/// <remarks>No GDPR contributor for the mirror: buyer names and emails are financial records, which erasure does not
-/// reach, and are bound to no member.</remarks>
 public sealed class Section : ISection, ISectionAdminNav, ISectionConfiguration, ISectionJobs
 {
     public void Register(IServiceCollection services, IConfiguration configuration)
@@ -39,7 +38,9 @@ public sealed class Section : ISection, ISectionAdminNav, ISectionConfiguration,
             configuration.GetSection(StripeMirrorConfiguration.AccountsKey).Get<List<StripeMirrorAccount>>() ?? []));
         services.AddScoped<IStripeMirrorClient, StripeMirrorClient>();
         services.AddScoped<IStripeMirrorRepository, Repository>();
-        services.AddScoped<IStripeMirrorAdminService, StripeMirrorService>();
+        services.AddScoped<StripeMirrorService>();
+        services.AddScoped<IStripeMirrorAdminService>(sp => sp.GetRequiredService<StripeMirrorService>());
+        services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<StripeMirrorService>());
         services.AddScoped<StripeMirrorSyncJob>();
     }
 

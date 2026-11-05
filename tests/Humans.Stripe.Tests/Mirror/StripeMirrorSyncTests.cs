@@ -9,6 +9,7 @@ using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
 using NSubstitute.ExceptionExtensions;
+using Humans.Users.Contracts;
 
 namespace Humans.Stripe.Tests.Mirror;
 
@@ -19,6 +20,7 @@ public sealed class StripeMirrorSyncTests
 
     private readonly Repository _repo;
     private readonly IStripeMirrorClient _client = Substitute.For<IStripeMirrorClient>();
+    private readonly IUserService _users = Substitute.For<IUserService>();
     private readonly StripeMirrorService _service;
 
     public StripeMirrorSyncTests()
@@ -30,7 +32,7 @@ public sealed class StripeMirrorSyncTests
             Accounts = [Tickets, Store, new StripeMirrorAccount { Name = "ICE", Id = "acct_i", KeyVariable = "STRIPE_ICE_READ_KEY" }],
         };
         _service = new StripeMirrorService(_repo, _client, Options.Create(accounts),
-            new FakeClock(Instant.FromUtc(2026, 11, 5, 12, 0)), NullLogger<StripeMirrorService>.Instance);
+            new FakeClock(Instant.FromUtc(2026, 11, 5, 12, 0)), _users, NullLogger<StripeMirrorService>.Instance);
     }
 
     private static CancellationToken Ct => Xunit.TestContext.Current.CancellationToken;
@@ -84,7 +86,7 @@ public sealed class StripeMirrorSyncTests
     {
         var service = new StripeMirrorService(_repo, _client,
             Options.Create(new StripeMirrorOptions { Accounts = [new StripeMirrorAccount { Name = "Tickets", Id = "acct_t" }] }),
-            new FakeClock(Instant.FromUtc(2026, 11, 5, 12, 0)), NullLogger<StripeMirrorService>.Instance);
+            new FakeClock(Instant.FromUtc(2026, 11, 5, 12, 0)), _users, NullLogger<StripeMirrorService>.Instance);
 
         (await service.SyncAsync(Ct)).Should().Be(StripeSyncOutcome.NotConfigured);
         await _client.DidNotReceiveWithAnyArgs().FetchAsync(default!, default);
@@ -146,5 +148,46 @@ public sealed class StripeMirrorSyncTests
         tickets.ReservePeak.Date.Should().Be(new LocalDate(2026, 7, 9));
         tickets.ReserveHeldNow.Should().Be(0m);
         tickets.MinimumKept!.Held.Should().Be(2500.00m, "the minimum is kept back from the payout and stays in the balance");
+    }
+
+    [HumansFact]
+    public async Task A_cancelled_sweep_does_not_leave_its_account_running()
+    {
+        using var cts = new CancellationTokenSource();
+        _client.FetchAsync(Tickets, Arg.Any<CancellationToken>()).Returns<StripeAccountFetch>(_ =>
+        {
+            cts.Cancel();
+            throw new OperationCanceledException(cts.Token);
+        });
+
+        var act = () => _service.SyncAsync(cts.Token);
+
+        await act.Should().ThrowAsync<OperationCanceledException>();
+        (await _repo.GetSyncStatesAsync(Ct)).Single().SyncStatus.Should().Be(StripeSyncStatus.Error);
+    }
+
+    private static UserEmailInfo Email(string address, bool verified) => new(Guid.NewGuid(), address, verified, false,
+        false, null, null, null, null, Instant.MinValue, Instant.MinValue, LegacyGoogleEmailStatus.Unknown);
+
+    [HumansFact]
+    public async Task Export_holds_the_members_payments_by_verified_email_only()
+    {
+        var userId = Guid.NewGuid();
+        _users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(new UserInfo(
+            userId, "Ana", false, "en", null, Instant.MinValue, null, null, null, null, null, null, null, null, null,
+            [Email("Ana@Example.org", verified: true), Email("other@example.org", verified: false)], [], null));
+        Returns(Tickets,
+            Txn("mine", "acct_t", 100, email: "ana@example.org"),
+            Txn("unverified", "acct_t", 200, email: "other@example.org"),
+            Txn("theirs", "acct_t", 300, email: "ben@example.org"));
+        Returns(Store);
+        await _service.SyncAsync(Ct);
+
+        var slices = await _service.ContributeForUserAsync(userId, Ct);
+
+        slices.Should().ContainSingle().Which.SectionName.Should().Be(StripeMirrorService.PaymentsSlice);
+        System.Text.Json.JsonSerializer.Serialize(slices[0].Data).Should().Contain("\"mine\"")
+            .And.NotContain("unverified").And.NotContain("theirs");
+        _service.ErasureDeclaration[StripeMirrorService.PaymentsSlice].Should().Contain("Art. 17(3)(b)");
     }
 }

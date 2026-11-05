@@ -211,6 +211,7 @@ integration uses — see [`memory/code/stripe-restricted-keys.md`](../../../../m
 ## GDPR
 
 The mirror holds buyer names and emails as Stripe records them (billing details, receipt email,
-the ticket vendor's charge metadata). They are financial records, which the association must keep:
-no erasure path applies, and none is built. They are bound to no member, so there is no export
-contributor either. No bulk export of them exists.
+the ticket vendor's charge metadata). A member's data export includes every row whose buyer email
+is one of their verified addresses (`StripePayments`, from `StripeMirrorService`). Erasure keeps
+them: they are financial records, retained on the fiscal basis in the `ErasureDeclaration`. No
+bulk export of them exists.
