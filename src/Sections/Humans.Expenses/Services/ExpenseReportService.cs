@@ -44,7 +44,7 @@ internal sealed class ExpenseReportService(
     internal const string ExpenseReports = ExpenseReportExport.ExpenseReports;
     internal const string ExpenseAuditLog = ExpenseReportExport.ExpenseAuditLog;
 
-    private readonly ExpenseReviewQueueReader reviewQueues = new(repo, userService, budgetService, teamService, preapprovals);
+    private readonly ExpenseReportAccess reportAccess = new(repo, userService, budgetService, teamService, preapprovals);
     private readonly ExpenseHoldedTimelineReader holdedTimeline = new(repo, finance, userService, holded);
     private readonly ExpenseReportExport reportExport = new(repo, userService, auditViewer);
 
@@ -87,7 +87,7 @@ internal sealed class ExpenseReportService(
 
     public Task<IReadOnlyList<ExpenseReportDto>> GetReviewQueueAsync(
         Guid viewerUserId, bool isFinanceAdmin, CancellationToken ct = default) =>
-        reviewQueues.GetReviewQueueAsync(viewerUserId, isFinanceAdmin, ct);
+        reportAccess.GetReviewQueueAsync(viewerUserId, isFinanceAdmin, ct);
 
     public async Task<ExpenseReportDto?> GetReportOwningAttachmentAsync(
         Guid attachmentId, CancellationToken ct = default)
@@ -116,7 +116,7 @@ internal sealed class ExpenseReportService(
 
     public Task<IReadOnlyList<ExpenseReportDto>> GetCoordinatorQueueAsync(
         Guid coordinatorUserId, CancellationToken ct = default) =>
-        reviewQueues.GetCoordinatorQueueAsync(coordinatorUserId, ct);
+        reportAccess.GetCoordinatorQueueAsync(coordinatorUserId, ct);
 
     public async Task<ExpenseCreateDraftResult> CreateDraftAsync(
         Guid submitterUserId, Guid actorUserId, int holdedAccountNumber, string? note,
@@ -1204,34 +1204,9 @@ internal sealed class ExpenseReportService(
 
     private const int DeclineReasonMaxLength = 1000;
 
-    /// <summary>
-    /// The service half of the DeclineLine gate: the report must still await a decision (a first reviewer only while
-    /// Submitted, a finance admin through CoordinatorEndorsed), and the line must be top-level. Proof rows are never
-    /// declinable.
-    /// </summary>
-    private async Task<(ExpenseReportDto? Report, ExpenseLineDto? Line, ExpenseMutationResult? Refusal)>
-        GetDeclinableLineAsync(
-            Guid reportId, Guid actorUserId, bool actorIsFinanceAdmin, Guid lineId, CancellationToken ct)
-    {
-        const string cannot = "Could not change the line. The report may no longer be awaiting a decision.";
-        var report = await repo.GetByIdAsync(reportId, ct);
-        if (report is null) return (null, null, ExpenseMutationResult.OperatorFailure(cannot));
-
-        var open = actorIsFinanceAdmin
-            ? report.Status is ExpenseReportStatus.Submitted or ExpenseReportStatus.CoordinatorEndorsed
-            : report.Status is ExpenseReportStatus.Submitted;
-        if (!open) return (null, null, ExpenseMutationResult.OperatorFailure(cannot));
-
-        if (!actorIsFinanceAdmin
-            && await GetFirstReviewerRefusalAsync(report, actorUserId, ct) is { } reviewerRefusal)
-            return (null, null, reviewerRefusal);
-
-        var line = report.Lines.FirstOrDefault(l => l.Id == lineId);
-        if (line is null) return (null, null, ExpenseMutationResult.Failure("Expenses_Validation_LineNotOnReport"));
-        if (line.ParentLineId is not null)
-            return (null, null, ExpenseMutationResult.OperatorFailure("Proof rows cannot be declined; decline the invoice line instead."));
-        return (report, line, null);
-    }
+    private Task<(ExpenseReportDto? Report, ExpenseLineDto? Line, ExpenseMutationResult? Refusal)>
+        GetDeclinableLineAsync(Guid reportId, Guid actorUserId, bool actorIsFinanceAdmin, Guid lineId, CancellationToken ct) =>
+        reportAccess.GetDeclinableLineAsync(reportId, actorUserId, actorIsFinanceAdmin, lineId, ct);
 
     /// <summary>
     /// Re-reads the report so the amount is the DTO's own <c>Payable</c>, cap included. Sent after the save: the outbox
@@ -1392,30 +1367,12 @@ internal sealed class ExpenseReportService(
 
         }, "Error re-queuing Holded push for expense report {ReportId}", reportId);
 
-    /// <summary>
-    /// The service half of the edit gate. A member edits only their own Draft. A finance admin edits on their behalf,
-    /// so ownership is waived and the window is Draft, Submitted and CoordinatorEndorsed.
-    /// </summary>
-    private async Task<(ExpenseReportDto? Report, ExpenseMutationResult? Refusal)> GetEditableReportAsync(
-        Guid reportId, Guid actorUserId, bool actorIsFinanceAdmin, CancellationToken ct)
-    {
-        var report = await repo.GetByIdAsync(reportId, ct);
-        if (report is null)
-            return (null, ExpenseMutationResult.Failure("Expenses_Iban_ReportNotFound"));
-        if (!actorIsFinanceAdmin && !await IsSubmitterAsync(report, actorUserId, ct))
-            return (null, ExpenseMutationResult.Failure("Expenses_Validation_OnlySubmitterCanEdit"));
+    private Task<(ExpenseReportDto? Report, ExpenseMutationResult? Refusal)> GetEditableReportAsync(
+        Guid reportId, Guid actorUserId, bool actorIsFinanceAdmin, CancellationToken ct) =>
+        reportAccess.GetEditableReportAsync(reportId, actorUserId, actorIsFinanceAdmin, ct);
 
-        var editable = actorIsFinanceAdmin
-            ? report.Status is ExpenseReportStatus.Draft or ExpenseReportStatus.Submitted or ExpenseReportStatus.CoordinatorEndorsed
-            : report.Status is ExpenseReportStatus.Draft;
-        return editable
-            ? (report, null)
-            : (null, ExpenseMutationResult.Failure("Expenses_Validation_ReportCannotBeEditedInStatus", report.Status));
-    }
-
-    private async Task<bool> IsSubmitterAsync(ExpenseReportDto report, Guid actorUserId, CancellationToken ct) =>
-        report.SubmitterUserId == actorUserId
-        || (await userService.GetUserInfoAsync(actorUserId, ct))?.AllUserIds.Contains(report.SubmitterUserId) == true;
+    private Task<bool> IsSubmitterAsync(ExpenseReportDto report, Guid actorUserId, CancellationToken ct) =>
+        reportAccess.IsSubmitterAsync(report, actorUserId, ct);
 
     /// <summary>
     /// Resolves what a report books to from the account the submitter picked. A budget-category
@@ -1464,32 +1421,9 @@ internal sealed class ExpenseReportService(
         : report.PreapprovalGrantId is null ? "Coordinator"
         : "Pre-approval manager";
 
-    /// <summary>
-    /// A pre-approved report has no category; its first reviewer is a manager of the grant's program, the person who
-    /// already decided it.
-    /// </summary>
-    private async Task<ExpenseMutationResult?> GetFirstReviewerRefusalAsync(
-        ExpenseReportDto report, Guid actorUserId, CancellationToken ct)
-    {
-        if (report.PreapprovalGrantId is { } grantId)
-            return (await preapprovals.ListManagedGrantIdsAsync(actorUserId, ct)).Contains(grantId)
-                ? null
-                : ExpenseMutationResult.OperatorFailure("Actor is not a manager of the report's pre-approval program.");
-
-        var categoryId = report.BudgetCategoryId;
-        if (categoryId is null)
-            return ExpenseMutationResult.OperatorFailure("Report is not booked to a budget category; there is no coordinator to endorse it.");
-        var category = await budgetService.GetCategoryByIdAsync(categoryId.Value, ct);
-        if (category is null)
-            throw new InvalidOperationException("Budget category not found.");
-        if (!category.TeamId.HasValue)
-            return ExpenseMutationResult.OperatorFailure("Category has no owning team; coordinator endorsement is not valid.");
-        var isCoordinator = await teamService.IsUserCoordinatorOfTeamAsync(
-            category.TeamId.Value, actorUserId, ct);
-        if (!isCoordinator)
-            return ExpenseMutationResult.OperatorFailure("Actor is not a coordinator of the category's team.");
-        return null;
-    }
+    private Task<ExpenseMutationResult?> GetFirstReviewerRefusalAsync(
+        ExpenseReportDto report, Guid actorUserId, CancellationToken ct) =>
+        reportAccess.GetFirstReviewerRefusalAsync(report, actorUserId, ct);
 
     /// <summary>Includes accounts merged into this one. The member's IBAN is Finance's slice.</summary>
     public Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct) =>

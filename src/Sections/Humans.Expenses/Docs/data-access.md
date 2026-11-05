@@ -87,3 +87,7 @@ the creditor as `ExpenseHoldedPublisher` binds it) and `IHoldedService.IsConfigu
 ---
 
 
+
+The same `ExpenseReportAccess` owner also reads per-report edit/decline eligibility
+and resolves submitter/first-reviewer authority through its existing dependencies.
+The report service calls it before the unchanged mutations; it performs no writes.
