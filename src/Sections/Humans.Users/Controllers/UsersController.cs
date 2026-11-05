@@ -4,7 +4,7 @@ using Humans.Base.Enums;
 using Humans.Base.Extensions;
 using Humans.Teams.Contracts;
 using Humans.Users.Models;
-using Humans.Users.Services;
+using Humans.Users.Contracts;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
@@ -15,13 +15,13 @@ namespace Humans.Users.Controllers;
 [Authorize]
 [Route("Users")]
 internal sealed class UsersController(
-    IUserManagement userService,
+    IUserService userService,
     ITeamService teamService,
     IConfiguration configuration,
     ConfigurationRegistry configRegistry,
     IClock clock) : HumansControllerBase(userService)
 {
-    private readonly IUserManagement _userService = userService;
+    private readonly IUserService _userService = userService;
 
     [HttpGet("Birthdays")]
     public async Task<IActionResult> Birthdays(int? month, CancellationToken ct)

@@ -18,7 +18,7 @@ public class UsersControllerTests
     [HumansFact]
     public async Task Map_ListsEveryoneWithALocationExceptSuspended()
     {
-        var users = Substitute.For<IUserManagement>();
+        var users = Substitute.For<IUserService>();
         var active = Located("Unreviewed", UserState.Active, withLocation: true);
         var suspended = Located("Suspended", UserState.Suspended, withLocation: true);
         var nowhere = Located("Nowhere", UserState.Active, withLocation: false);
