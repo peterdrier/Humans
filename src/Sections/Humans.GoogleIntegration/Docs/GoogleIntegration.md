@@ -133,7 +133,8 @@ Google integration management is consolidated in `GoogleController` (`[Route("Go
 - Team-resource authorization resolves non-privileged viewers before checking their
   department's resource-management permission. Merged cookies use the surviving
   account; missing accounts are denied and request cancellation propagates. The
-  TeamsAdmin/Board/Admin bypass and department-only scope remain unchanged.
+  TeamsAdmin/Admin bypass and department-only scope remain unchanged; Board is not
+  in the bypass (it reads the page through `TeamsPolicies.Read`).
 
 - Administrative account preflight honours browser cancellation before sync-setting,
   provisioning, account-management, recovery-credential and sync-queue operations.
