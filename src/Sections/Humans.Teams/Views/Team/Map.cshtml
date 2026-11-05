@@ -12,6 +12,7 @@
 
 @section Styles {
     <style>
+        #map { width: 100%; height: max(450px, calc(100vh - 300px)); }
         .map-bubble {
             display: flex;
             align-items: center;
@@ -32,10 +33,10 @@
             box-shadow: 0 0 0 5px color-mix(in srgb, var(--h-map-cluster-large) 30%, transparent), 0 1px 3px rgb(0 0 0 / 30%);
         }
         .map-bubble--person {
-            width: 14px;
-            height: 14px;
+            width: 20px;
+            height: 20px;
             background: var(--h-map-person);
-            box-shadow: 0 1px 3px rgb(0 0 0 / 40%);
+            box-shadow: 0 0 0 4px color-mix(in srgb, var(--h-map-person) 30%, transparent), 0 1px 3px rgb(0 0 0 / 40%);
         }
         /* Google's header row pads the title down to the close button's top edge; centre it on the button instead. */
         #map .gm-style-iw-chr {
@@ -89,7 +90,7 @@
             @string.Format(Localizer["Teams_Map_Count"].Value, Model.Markers.Count)
         </div>
         <div class="card-body p-0">
-            <div id="map" style="height: 600px; width: 100%;"></div>
+            <div id="map"></div>
         </div>
     </div>
 }
@@ -131,7 +132,7 @@ else
                     el.className = 'map-bubble map-bubble--person';
                     return el;
                 }
-                const size = Math.round(24 + 12 * Math.log10(count));
+                const size = Math.round(28 + 12 * Math.log10(count));
                 el.className = 'map-bubble' + (count >= 50 ? ' map-bubble--large' : '');
                 el.style.width = el.style.height = size + 'px';
                 el.style.fontSize = Math.round(size * 0.4) + 'px';
