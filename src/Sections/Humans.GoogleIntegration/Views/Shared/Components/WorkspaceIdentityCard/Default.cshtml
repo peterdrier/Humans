@@ -1,18 +1,10 @@
 @model WorkspaceIdentityCardViewModel
 @* Admin-only page (/Users/Admin/{id}): English copy, no localization keys. *@
-@{
-    var badgeClass = Model.Status switch
-    {
-        GoogleEmailStatus.Valid => "bg-success",
-        GoogleEmailStatus.Rejected => "bg-danger",
-        _ => "bg-secondary"
-    };
-}
 <div class="card mb-4">
     <div class="card-header">Google Sync</div>
     <div class="card-body">
         <div class="mb-2">
-            <span class="badge @badgeClass me-1">@Model.Status</span>
+            <status-badge value="@Model.Status" class="me-1" />
             @if (Model.Status == GoogleEmailStatus.Rejected)
             {
                 <small class="text-danger">Email rejected by Google sync</small>

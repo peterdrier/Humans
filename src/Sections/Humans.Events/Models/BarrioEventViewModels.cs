@@ -15,8 +15,6 @@ internal sealed class CampEventRowViewModel
     public int? PriorityRank { get; set; }
     public bool CanEdit { get; set; }
     public bool CanWithdraw { get; set; }
-
-    public string StatusBadgeClass => EventStatusPresentation.BadgeClass(Status);
 }
 
 internal sealed class CampEventFormViewModel : EventProposalFormViewModel

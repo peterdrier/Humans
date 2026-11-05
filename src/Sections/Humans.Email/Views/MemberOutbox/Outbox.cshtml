@@ -47,17 +47,10 @@
                             @for (var i = 0; i < Model.Count; i++)
                             {
                                 var msg = Model[i];
-                                var statusClass = msg.Status switch
-                                {
-                                    EmailOutboxStatus.Queued => "bg-warning text-dark",
-                                    EmailOutboxStatus.Sent => "bg-success",
-                                    EmailOutboxStatus.Failed => "bg-danger",
-                                    _ => "bg-secondary"
-                                };
                                 var collapseId = $"msg-body-{i}";
                                 <tr data-bs-toggle="collapse" data-bs-target="#@collapseId" role="button" style="cursor: pointer;">
                                     <td>@msg.Subject</td>
-                                    <td><span class="badge @statusClass">@SharedLocalizer.EnumDisplay(msg.Status)@* Enum_EmailOutboxStatus_* is Humans.Email's set, left in SharedResource *@</span></td>
+                                    <td><status-badge value="@msg.Status" /></td>
                                     <td>@msg.CreatedAt.ToDateTimeUtc().ToDateTime()</td>
                                 </tr>
                                 <tr class="collapse" id="@collapseId">

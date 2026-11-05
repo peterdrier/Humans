@@ -119,7 +119,7 @@
                     <tr class="issues-list-item @(isSelected ? "table-active" : "")"
                         data-issue-id="@issue.Id" style="cursor: pointer;">
                         <td>
-                            <span class="badge @IssuePresentation.StatusPillClass(issue.Status)">@Localizer.EnumDisplay(issue.Status)</span>
+                            <status-badge value="@issue.Status" localizer="@Localizer" />
                         </td>
                         <td>
                             <div class="d-flex align-items-center gap-1">

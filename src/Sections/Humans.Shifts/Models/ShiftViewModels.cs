@@ -250,13 +250,6 @@ internal sealed class ShiftDisplayItem
         _ => string.Empty
     };
 
-    internal static string PeriodBadgeClass(ShiftPeriod period) => period switch
-    {
-        ShiftPeriod.Build => "bg-info",
-        ShiftPeriod.Event => "bg-success",
-        _ => "bg-secondary"
-    };
-
     public ShiftInfo Shift { get; set; } = null!;
     public Instant AbsoluteStart { get; set; }
     public Instant AbsoluteEnd { get; set; }
