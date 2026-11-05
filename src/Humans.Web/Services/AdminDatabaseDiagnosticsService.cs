@@ -11,4 +11,7 @@ internal sealed class AdminDatabaseDiagnosticsService(
 
     public Task<int> ClearHangfireLocksAsync(CancellationToken ct = default) =>
         repository.ClearHangfireLocksAsync(ct);
+
+    public Task<DatabaseInfo> GetDatabaseInfoAsync(CancellationToken ct = default) =>
+        repository.GetDatabaseInfoAsync(ct);
 }

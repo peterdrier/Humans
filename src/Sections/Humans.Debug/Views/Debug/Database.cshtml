@@ -1,0 +1,191 @@
+@using Humans.Base.Interfaces.Admin
+@model DatabaseInfo
+@{
+    ViewData["Title"] = "Database";
+    var s = Model.Summary;
+    static decimal Kb(long bytes) => Math.Round(bytes / 1024m, 1);
+}
+
+<div class="page-head">
+    <div>
+        <h1 class="title">Database</h1>
+        <p class="sub" title="@s.FullVersion">@s.DatabaseName · PostgreSQL @s.ServerVersion</p>
+    </div>
+    <div class="d-flex align-items-center gap-3">
+        <a asp-controller="Admin" asp-action="Index" class="btn btn-outline-secondary btn-sm">
+            <i class="fa-solid fa-arrow-left me-1"></i>Admin
+        </a>
+    </div>
+</div>
+
+<div class="stats">
+    <div class="stat">
+        <div class="label">Size</div>
+        <div class="value">@s.DatabaseSize</div>
+    </div>
+    <div class="stat">
+        <div class="label">Tables</div>
+        <div class="value">@Model.Tables.Count.ToString("N0")</div>
+    </div>
+    <div class="stat">
+        <div class="label">Rows</div>
+        <div class="value">@Model.Tables.Sum(t => t.Rows).ToString("N0")</div>
+    </div>
+    <div class="stat">
+        <div class="label">Indexes</div>
+        <div class="value">@Model.Indexes.Count.ToString("N0")</div>
+    </div>
+    <div class="stat">
+        <div class="label">Connections</div>
+        <div class="value">@s.Connections<em>/ @s.MaxConnections</em></div>
+    </div>
+    <div class="stat">
+        <div class="label">Cache hit rate</div>
+        <div class="value">@(s.CacheHitPercent?.ToString("F2") ?? "—")<em>%</em></div>
+    </div>
+    <div class="stat">
+        <div class="label">Commits</div>
+        <div class="value text-success">@s.Commits.ToString("N0")</div>
+    </div>
+    <div class="stat">
+        <div class="label">Rollbacks</div>
+        <div class="value text-warning">@s.Rollbacks.ToString("N0")</div>
+    </div>
+    <div class="stat">
+        <div class="label">Deadlocks</div>
+        <div class="value @(s.Deadlocks > 0 ? "text-danger" : null)">@s.Deadlocks.ToString("N0")</div>
+    </div>
+    <div class="stat">
+        <div class="label">Temp files</div>
+        <div class="value">@s.TempFiles.ToString("N0")<em>@Kb(s.TempBytes).ToString("N0") KB</em></div>
+    </div>
+    <div class="stat">
+        <div class="label">Server started</div>
+        <div class="value">@s.ServerStartedAt.ToDateTime()</div>
+    </div>
+    <div class="stat">
+        <div class="label">Stats reset</div>
+        <div class="value">@(s.StatsResetAt?.ToDateTime() ?? "never")</div>
+    </div>
+</div>
+
+<ul class="nav nav-tabs mt-4 mb-3" id="databaseTabs" role="tablist">
+    <li class="nav-item" role="presentation">
+        <button class="nav-link active" id="tables-tab" data-bs-toggle="tab"
+                data-bs-target="#tables" type="button" role="tab"
+                aria-controls="tables" aria-selected="true">
+            Tables <span class="badge text-bg-light ms-1">@Model.Tables.Count</span>
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="indexes-tab" data-bs-toggle="tab"
+                data-bs-target="#indexes" type="button" role="tab"
+                aria-controls="indexes" aria-selected="false">
+            Indexes <span class="badge text-bg-light ms-1">@Model.Indexes.Count</span>
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="connections-tab" data-bs-toggle="tab"
+                data-bs-target="#connections" type="button" role="tab"
+                aria-controls="connections" aria-selected="false">
+            Connections <span class="badge text-bg-light ms-1">@Model.Connections.Count</span>
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="settings-tab" data-bs-toggle="tab"
+                data-bs-target="#settings" type="button" role="tab"
+                aria-controls="settings" aria-selected="false">
+            Settings <span class="badge text-bg-light ms-1">@Model.Settings.Count</span>
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="extensions-tab" data-bs-toggle="tab"
+                data-bs-target="#extensions" type="button" role="tab"
+                aria-controls="extensions" aria-selected="false">
+            Extensions <span class="badge text-bg-light ms-1">@Model.Extensions.Count</span>
+        </button>
+    </li>
+</ul>
+
+<div class="tab-content">
+    <div class="tab-pane fade show active" id="tables" role="tabpanel" aria-labelledby="tables-tab">
+    @{
+        var tablesTable = TableModel.For(Model.Tables)
+            .Column("Schema", t => t.Schema)
+            .Column("Table", t => t.Name)
+            .Column("Rows", t => t.Rows, c => c.Number().End())
+            .Column("Total (KB)", t => Kb(t.TotalBytes), c => c.Number().End())
+            .Column("Data (KB)", t => Kb(t.TableBytes), c => c.Number().End())
+            .Column("Index (KB)", t => Kb(t.IndexBytes), c => c.Number().End())
+            .Column("Dead rows", t => t.DeadRows, c => c.Number().End())
+            .Column("Seq scans", t => t.SeqScans, c => c.Number().End())
+            .Column("Index scans", t => t.IndexScans, c => c.Number().End())
+            .Column("Inserts", t => t.Inserts, c => c.Number().End())
+            .Column("Updates", t => t.Updates, c => c.Number().End())
+            .Column("Deletes", t => t.Deletes, c => c.Number().End())
+            .Column("Last vacuum", t => t.LastVacuum, c => c.DateTime())
+            .Column("Last analyze", t => t.LastAnalyze, c => c.DateTime())
+            .SearchBox(placeholder: "Filter tables...")
+            .Id("dbTablesTable")
+            .Build();
+    }
+    <partial name="_Table" model="tablesTable" />
+    </div>
+    <div class="tab-pane fade" id="indexes" role="tabpanel" aria-labelledby="indexes-tab">
+    @{
+        var indexesTable = TableModel.For(Model.Indexes)
+            .Column("Schema", i => i.Schema)
+            .Column("Table", i => i.Table)
+            .Column("Index", i => i.Name)
+            .Column("Primary", i => i.IsPrimary, c => c.BoolIcon())
+            .Column("Unique", i => i.IsUnique, c => c.BoolIcon())
+            .Column("Size (KB)", i => Kb(i.Bytes), c => c.Number().End())
+            .Column("Scans", i => i.Scans, c => c.Number().End())
+            .SearchBox(placeholder: "Filter indexes...")
+            .Id("dbIndexesTable")
+            .Build();
+    }
+    <partial name="_Table" model="indexesTable" />
+    </div>
+    <div class="tab-pane fade" id="connections" role="tabpanel" aria-labelledby="connections-tab">
+    @{
+        var connectionsTable = TableModel.For(Model.Connections)
+            .Column("PID", c => c.Pid, o => o.End())
+            .Column("Application", c => c.Application)
+            .Column("User", c => c.User)
+            .Column("Client", c => c.ClientAddress)
+            .Column("State", c => c.State)
+            .Column("Waiting on", c => c.WaitEvent)
+            .Column("Connected", c => c.BackendStart, o => o.DateTime())
+            .Column("Query started", c => c.QueryStart, o => o.DateTime())
+            .Column("Last query", c => c.Query, o => o.Css("font-monospace small text-break"))
+            .Id("dbConnectionsTable")
+            .Build();
+    }
+    <partial name="_Table" model="connectionsTable" />
+    </div>
+    <div class="tab-pane fade" id="settings" role="tabpanel" aria-labelledby="settings-tab">
+    @{
+        var settingsTable = TableModel.For(Model.Settings)
+            .Column("Category", x => x.Category)
+            .Column("Setting", x => x.Name, o => o.Css("font-monospace"))
+            .Column("Value", x => x.Value, o => o.Css("font-monospace"))
+            .Column("Source", x => x.Source)
+            .SearchBox(placeholder: "Filter settings...")
+            .Id("dbSettingsTable")
+            .Build();
+    }
+    <partial name="_Table" model="settingsTable" />
+    </div>
+    <div class="tab-pane fade" id="extensions" role="tabpanel" aria-labelledby="extensions-tab">
+    @{
+        var extensionsTable = TableModel.For(Model.Extensions)
+            .Column("Extension", e => e.Name)
+            .Column("Version", e => e.Version)
+            .Column("Schema", e => e.Schema)
+            .Id("dbExtensionsTable")
+            .Build();
+    }
+    <partial name="_Table" model="extensionsTable" />
+    </div>
+</div>
