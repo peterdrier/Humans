@@ -1072,12 +1072,11 @@ internal sealed class BudgetRepository(IDbContextFactory<BudgetDbContext> factor
         var revenueDescriptions = new HashSet<string>(StringComparer.Ordinal);
         var feeDescriptions = new HashSet<string>(StringComparer.Ordinal);
 
-        // Persist canonical English descriptions independently of the operator's UI language.
-        using var culture = new CultureScope("en");
+        // Descriptions are persisted match keys: invariant, independent of UI language and display typography.
         var created = 0;
         foreach (var week in projection?.CalculateWeeks(today) ?? [])
         {
-            var weekLabel = $"{week.Start.ToWeekdayDayMonth()}–{week.End.ToWeekdayDayMonth()}";
+            var weekLabel = $"{week.Start.ToInvariantWeekdayMonthDay()}–{week.End.ToInvariantWeekdayMonthDay()}";
             var revenueDescription = $"{TicketingProjectedPrefix}Week of {weekLabel}";
             revenueDescriptions.Add(revenueDescription);
             created += UpsertTicketingLineItem(ctx, revenueCategory,

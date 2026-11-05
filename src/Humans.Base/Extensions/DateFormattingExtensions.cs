@@ -107,6 +107,11 @@ public static class DateFormattingExtensions
     public static string ToInvariantYearMonth(this YearMonth value) =>
         value.ToString("yyyy-MM", CultureInfo.InvariantCulture);
 
+    /// <summary>Invariant weekday, month and day for persisted text and match keys, e.g. "Tue Jun 30".
+    /// Never changes with display typography or the request culture.</summary>
+    public static string ToInvariantWeekdayMonthDay(this LocalDate value) =>
+        value.ToString("ddd MMM d", CultureInfo.InvariantCulture);
+
     /// <summary>Invariant abbreviated weekday for export headers, e.g. "Tue".</summary>
     public static string ToInvariantWeekdayAbbrev(this LocalDate value) =>
         value.ToString("ddd", CultureInfo.InvariantCulture);
