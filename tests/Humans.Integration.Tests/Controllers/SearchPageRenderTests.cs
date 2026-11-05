@@ -13,7 +13,6 @@ namespace Humans.Integration.Tests.Controllers;
 /// Failures render as a 200 with degraded content. The section is reachable only because <c>Humans.Web.csproj</c>
 /// references it; a missing reference builds green and 404s. Each Humans hit is Users'
 /// <c>&lt;vc:user-search-result&gt;</c>, bound only by this section's <c>@addTagHelper *, Humans.Users</c>.
-/// <c>Search_MinChars</c> stays in SharedResource because Shell's <c>/Profile/Search</c> reads it too.
 /// </para>
 /// <para>
 /// Every dev persona's burner name is "Dev &lt;role&gt;", so <c>q=Dev</c> fills the Humans bucket with no other fixture.

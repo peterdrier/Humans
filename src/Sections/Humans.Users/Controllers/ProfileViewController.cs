@@ -200,25 +200,4 @@ internal sealed class ProfileViewController(
 
         return PartialView("_HumanPopoverPublic", vm);
     }
-
-    [HttpGet("Search")]
-    public async Task<IActionResult> Search(string? q, CancellationToken ct)
-    {
-        var viewModel = new HumanSearchViewModel { Query = q };
-
-        if (!q.HasSearchTerm())
-        {
-            return View(viewModel);
-        }
-
-        // Never the Admin bit here. Uncapped, so relevance ranking can surface the right person.
-        var results = await _userService.SearchUsersAsync(
-            q, PersonSearchFields.PublicAll, limit: int.MaxValue, ct);
-
-        viewModel.Results = results
-            .OrderByRelevance()
-            .ToList();
-
-        return View(viewModel);
-    }
 }
