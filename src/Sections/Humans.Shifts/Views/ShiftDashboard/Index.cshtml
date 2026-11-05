@@ -18,23 +18,20 @@
 }
 
 <div class="container py-4">
-    <div class="d-flex justify-content-between align-items-center mb-3">
-        <h2>@Localizer["Shifts_ShiftDash_Title"]</h2>
-        <div class="d-flex gap-2 align-items-center">
-            @if (Model.IsDevelopment)
-            {
-                <form method="post" action="/dev/seed/dashboard" class="d-inline">
-                    @Html.AntiForgeryToken()
-                    <button type="submit" class="btn btn-sm btn-outline-warning">Seed dashboard (dev)</button>
-                </form>
-                <form method="post" action="/dev/seed/dashboard/reset" class="d-inline">
-                    @Html.AntiForgeryToken()
-                    <button type="submit" class="btn btn-sm btn-outline-danger">Reset &amp; reseed (dev)</button>
-                </form>
-            }
-            <span class="badge bg-secondary fs-6">@string.Format(Localizer["Shifts_ShiftDash_ShiftsCount"].Value, Model.Shifts.Count)</span>
-        </div>
-    </div>
+    <page-header title="@(Localizer["Shifts_ShiftDash_Title"].Value)">
+        @if (Model.IsDevelopment)
+        {
+            <form method="post" action="/dev/seed/dashboard" class="d-inline">
+                @Html.AntiForgeryToken()
+                <button type="submit" class="btn btn-sm btn-outline-warning">Seed dashboard (dev)</button>
+            </form>
+            <form method="post" action="/dev/seed/dashboard/reset" class="d-inline">
+                @Html.AntiForgeryToken()
+                <button type="submit" class="btn btn-sm btn-outline-danger">Reset &amp; reseed (dev)</button>
+            </form>
+        }
+        <span class="badge bg-secondary fs-6">@string.Format(Localizer["Shifts_ShiftDash_ShiftsCount"].Value, Model.Shifts.Count)</span>
+    </page-header>
 
 
     @{

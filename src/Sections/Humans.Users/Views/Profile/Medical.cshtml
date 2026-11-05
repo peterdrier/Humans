@@ -12,7 +12,7 @@
    Anyone else sees them only through MedicalDataViewer-gated surfaces. *@
 <div class="row">
     <div class="col-12" style="max-width: 720px; margin: 0 auto;">
-        <h1>@Localizer["Users_Profile_DietaryMedical_MedicalConditions_Title"]</h1>
+        <page-header title="@(Localizer["Users_Profile_DietaryMedical_MedicalConditions_Title"].Value)" />
 
         <form asp-action="Medical" method="post" novalidate>
             @Html.AntiForgeryToken()
