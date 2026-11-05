@@ -129,7 +129,7 @@ internal sealed partial class WorkgroupService
             return new(WorkgroupErrorKeys.PurposeRequired);
         if (string.IsNullOrWhiteSpace(deliverable))
             return new(WorkgroupErrorKeys.DeliverableRequired);
-        if (!string.IsNullOrWhiteSpace(discordChannelUrl) && WorkgroupRegisterReader.SafeDiscordLink(discordChannelUrl) is null)
+        if (!string.IsNullOrWhiteSpace(discordChannelUrl) && WorkgroupRegisterReader.SafeHttpLink(discordChannelUrl) is null)
             return new(WorkgroupErrorKeys.DiscordUrlInvalid);
         return null;
     }
@@ -142,6 +142,8 @@ internal sealed partial class WorkgroupService
             return new(WorkgroupErrorKeys.WindowInvalid);
         if (save.LocationUrl?.Trim().Length > 2000)
             return new(WorkgroupErrorKeys.TextTooLong, 2000);
+        if (!string.IsNullOrWhiteSpace(save.LocationUrl) && WorkgroupRegisterReader.SafeHttpLink(save.LocationUrl) is null)
+            return new(WorkgroupErrorKeys.LocationUrlInvalid);
         if (save.Description?.Trim().Length > 4000)
             return new(WorkgroupErrorKeys.TextTooLong, 4000);
         // The rule and its zone travel together: a rule without a zone can't say which 19:00 it repeats.

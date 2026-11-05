@@ -348,6 +348,7 @@
   <data name="Workgroups_Todo_MembershipRequests_Description" xml:space="preserve"><value>{0} heeft {1} verzoek(en) om lid te worden.</value></data>
   <data name="Workgroups_Todo_MembershipRequests_Action" xml:space="preserve"><value>Verzoeken beoordelen</value></data>
   <data name="Workgroups_Error_DiscordUrlInvalid" xml:space="preserve"><value>Voer een absolute HTTP- of HTTPS-URL in voor de Discord-link.</value></data>
+  <data name="Workgroups_Error_LocationUrlInvalid" xml:space="preserve"><value>Voer een absolute HTTP- of HTTPS-URL in voor de vergaderlink.</value></data>
   <data name="Enum_MembershipTier_Volunteer" xml:space="preserve"><value>Vrijwilliger</value></data>
   <data name="Enum_MembershipTier_Colaborador" xml:space="preserve"><value>Colaborador</value></data>
   <data name="Enum_MembershipTier_Asociado" xml:space="preserve"><value>Asociado</value></data>
