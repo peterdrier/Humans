@@ -38,11 +38,15 @@ public class SharedJsHelpersTests
     public void AntiforgeryTokenLookups_LiveInSiteJsOnly()
     {
         var offenders = ViewAndScriptFiles()
-            .Where(f => !IsSiteJs(f) && File.ReadAllText(f).Contains("input[name=\"__RequestVerificationToken\"]", StringComparison.Ordinal))
+            .Where(f => !IsSiteJs(f) && !IsKioskView(f) && File.ReadAllText(f).Contains("input[name=\"__RequestVerificationToken\"]", StringComparison.Ordinal))
             .ToList();
 
         offenders.Should().BeEmpty("Humans.csrfToken() is the one antiforgery lookup");
     }
+
+    // _GateLayout is a standalone kiosk shell that never loads site.js, so Humans.csrfToken() is undefined there.
+    private static bool IsKioskView(string path) =>
+        path.Replace('\\', '/').Contains("/Humans.Gate/Views/", StringComparison.Ordinal);
 
     private static bool IsSiteJs(string path) =>
         string.Equals(Path.GetFileName(path), "site.js", StringComparison.Ordinal);

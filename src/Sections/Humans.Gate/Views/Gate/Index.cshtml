@@ -90,7 +90,7 @@
             evaluateUrl: '@Url.Action("Evaluate", "Gate")',
             decisionUrl: '@Url.Action("Decision", "Gate")',
             logoutUrl: '@Url.Action("Logout", "Account")',
-            token: Humans.csrfToken()
+            token: document.querySelector('input[name="__RequestVerificationToken"]').value
         });
     </script>
 }
