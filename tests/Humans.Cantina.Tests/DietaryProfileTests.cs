@@ -94,6 +94,67 @@ public class DietaryProfileTests
         read.HasPreference.Should().BeFalse();
     }
 
+    [HumansTheory]
+    [Xunit.InlineData("preference", "Cantina_Dietary_PreferenceTooLong")]
+    [Xunit.InlineData("allergy", "Cantina_Dietary_OtherTextTooLong")]
+    [Xunit.InlineData("intolerance", "Cantina_Dietary_OtherTextTooLong")]
+    public async Task Save_OverlongStoredText_RefusesWithoutReplacingOptOut(string field, string expectedError)
+    {
+        var id = Guid.NewGuid();
+        SeedUser(id);
+        await _sut.DeclineAsync(id, Ct);
+        var before = await _sut.GetDietaryProfileAsync(id, Ct);
+        var answers = field switch
+        {
+            "preference" => Answers(id, preference: new string('x', 201)),
+            "allergy" => Answers(id, allergies: [DietaryOptions.OtherOption], allergyOther: new string('x', 501)),
+            _ => Answers(id, intolerances: [DietaryOptions.OtherOption], intoleranceOther: new string('x', 501))
+        };
+
+        var error = await _sut.SaveAsync(id, answers, Ct);
+
+        error.Should().Be(expectedError);
+        (await _sut.GetDietaryProfileAsync(id, Ct)).Should().BeEquivalentTo(before);
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task Save_ExactStorageBounds_PreserveUnicodeAndTrimOtherText(bool supplementaryCharacters)
+    {
+        var id = Guid.NewGuid();
+        SeedUser(id);
+        var character = supplementaryCharacters ? "🌱" : "x";
+        var preference = string.Concat(Enumerable.Repeat(character, 200));
+        var other = string.Concat(Enumerable.Repeat(character, 500));
+
+        var error = await _sut.SaveAsync(id, Answers(id, preference,
+            [DietaryOptions.OtherOption], "  " + other + "  ",
+            [DietaryOptions.OtherOption], "  " + other + "  "), Ct);
+
+        error.Should().BeNull();
+        var saved = await _sut.GetDietaryProfileAsync(id, Ct);
+        saved!.DietaryPreference.Should().Be(preference);
+        saved.AllergyOtherText.Should().Be(other);
+        saved.IntoleranceOtherText.Should().Be(other);
+    }
+
+    [HumansFact]
+    public async Task Save_LengthGuards_IgnoreDiscardedText()
+    {
+        var id = Guid.NewGuid();
+        SeedUser(id);
+
+        var error = await _sut.SaveAsync(id, Answers(id, preference: new string(' ', 201),
+            allergyOther: new string('x', 501), intoleranceOther: new string('x', 501)), Ct);
+
+        error.Should().BeNull();
+        var saved = await _sut.GetDietaryProfileAsync(id, Ct);
+        saved!.DietaryPreference.Should().BeNull();
+        saved.AllergyOtherText.Should().BeNull();
+        saved.IntoleranceOtherText.Should().BeNull();
+    }
+
     [HumansFact]
     public async Task Save_Normalizes_UnknownChipsDropped_OtherTextOnlyWithOther()
     {

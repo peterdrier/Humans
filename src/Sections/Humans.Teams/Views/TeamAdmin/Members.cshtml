@@ -9,8 +9,9 @@
     <span>@Localizer["Teams_TeamAdmin_ManageMembers"]</span>
 }
 
-<h1>@Localizer["Teams_TeamAdmin_ManageMembers"]</h1>
-<p class="text-muted">@Localizer["Teams_MyTeams_Team"]: @Model.TeamName @(Model.IsSystemTeam ? string.Format("({0})", Localizer["Teams_TeamAdmin_SystemTeam"].Value) : "")</p>
+<page-header title="@(Localizer["Teams_TeamAdmin_ManageMembers"].Value)">
+    <page-header-subtitle>@Localizer["Teams_MyTeams_Team"]: @Model.TeamName @(Model.IsSystemTeam ? string.Format("({0})", Localizer["Teams_TeamAdmin_SystemTeam"].Value) : "")</page-header-subtitle>
+</page-header>
 
 
 @if (Model.IsSystemTeam)

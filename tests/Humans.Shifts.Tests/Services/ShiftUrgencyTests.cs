@@ -1,47 +1,20 @@
-using Humans.Shifts.Data;
 using Humans.Shifts.Domain;
-using Humans.Auth.Contracts;
 using AwesomeAssertions;
-using Humans.AuditLog.Contracts;
 using Humans.Settings.Contracts;
 using Humans.Shifts.Contracts;
-using Humans.Teams.Contracts;
 using Humans.Shifts.Services;
-using Humans.Shifts.Tests.Infrastructure;
-using Microsoft.Extensions.Caching.Memory;
 using NodaTime;
 using NodaTime.Testing;
-using NSubstitute;
 
 namespace Humans.Shifts.Tests.Services;
 
 public class ShiftUrgencyTests
 {
-    private readonly ShiftManagementService _service;
-
     // Clock is March 1, 2026 12:00 UTC. Distant event settings (~122 days out)
     // keep proximity boost small so base score tests remain meaningful.
     private static readonly Instant TestNow = Instant.FromUtc(2026, 3, 1, 12, 0);
     private static readonly EventSettingsInfo DistantEvent = MakeCalendar(new LocalDate(2026, 7, 1), "UTC");
-
-    public ShiftUrgencyTests()
-    {
-        var serviceProvider = new ServiceLocatorBuilder()
-            .With<ITeamService>()
-            .With<IRoleAssignmentService>()
-            .Build();
-
-        _service = new ShiftManagementService(
-            Substitute.For<IShiftManagementRepository>(),
-            Substitute.For<IAuditLogService>(),
-            Substitute.For<IAdminAuthorizationService>(),
-            serviceProvider,
-            new MemoryCache(new MemoryCacheOptions()),
-            new ShiftViewProbe().Cache,
-            new EventCalendarResolver(Substitute.For<ISettingsService>(), Substitute.For<Humans.Shifts.Data.IShiftManagementRepository>()),
-            new FakeClock(TestNow),
-            Microsoft.Extensions.Logging.Abstractions.NullLogger<ShiftManagementService>.Instance);
-    }
+    private static readonly FakeClock Clock = new(TestNow);
 
     private static EventSettingsInfo MakeCalendar(
         LocalDate gateOpeningDate, string timeZoneId, int eventEndOffset = 6, int strikeEndOffset = 9) => new(
@@ -65,7 +38,7 @@ public class ShiftUrgencyTests
         var shift = MakeShift(ShiftPriority.Normal, minVol: 2, maxVol: 7, durationHours: 4);
         var confirmedCount = 2;
 
-        var score = _service.CalculateScore(shift, confirmedCount, DistantEvent);
+        var score = ShiftUrgencyRanking.CalculateScore(shift, confirmedCount, DistantEvent, Clock);
 
         score.Should().BeApproximately(20 * 1.08, 0.5);
     }
@@ -78,7 +51,7 @@ public class ShiftUrgencyTests
         var shift = MakeShift(ShiftPriority.Essential, minVol: 5, maxVol: 6, durationHours: 8);
         var confirmedCount = 4;
 
-        var score = _service.CalculateScore(shift, confirmedCount, DistantEvent);
+        var score = ShiftUrgencyRanking.CalculateScore(shift, confirmedCount, DistantEvent, Clock);
 
         score.Should().BeApproximately(192 * 1.08, 5);
     }
@@ -93,8 +66,8 @@ public class ShiftUrgencyTests
         allDay.StartTime = LocalTime.Midnight;
         var timedWorkWindow = MakeShift(ShiftPriority.Normal, minVol: 2, maxVol: 7, durationHours: 10);
 
-        var score = _service.CalculateScore(allDay, 2, DistantEvent);
-        var expected = _service.CalculateScore(timedWorkWindow, 2, DistantEvent);
+        var score = ShiftUrgencyRanking.CalculateScore(allDay, 2, DistantEvent, Clock);
+        var expected = ShiftUrgencyRanking.CalculateScore(timedWorkWindow, 2, DistantEvent, Clock);
 
         score.Should().Be(expected);
     }
@@ -105,7 +78,7 @@ public class ShiftUrgencyTests
         var shift = MakeShift(ShiftPriority.Important, minVol: 2, maxVol: 5, durationHours: 4);
         var confirmedCount = 5;
 
-        var score = _service.CalculateScore(shift, confirmedCount, DistantEvent);
+        var score = ShiftUrgencyRanking.CalculateScore(shift, confirmedCount, DistantEvent, Clock);
 
         score.Should().Be(0);
     }
@@ -121,9 +94,9 @@ public class ShiftUrgencyTests
         var distantShift = MakeShift(ShiftPriority.Normal, minVol: 2, maxVol: 12, durationHours: 8);
 
         // Tomorrow: 5 remaining, ~1 day out → base=40, proximity ≈ 6x → ~240
-        var tomorrowScore = _service.CalculateScore(tomorrowShift, 2, tomorrowEvent);
+        var tomorrowScore = ShiftUrgencyRanking.CalculateScore(tomorrowShift, 2, tomorrowEvent, Clock);
         // 30 days: 10 remaining, ~30 days out → base=80, proximity ≈ 1.3x → ~104
-        var distantScore = _service.CalculateScore(distantShift, 2, distantEvent);
+        var distantScore = ShiftUrgencyRanking.CalculateScore(distantShift, 2, distantEvent, Clock);
 
         tomorrowScore.Should().BeGreaterThan(distantScore);
     }
@@ -151,7 +124,7 @@ public class ShiftUrgencyTests
             .OrderByDescending(u => u.UrgencyScore)
             .ToList();
 
-        var result = ShiftManagementService.ApplyPeriodDiverseLimit(ranked, 3);
+        var result = ShiftUrgencyRanking.ApplyPeriodDiverseLimit(ranked, 3);
 
         result.Should().HaveCount(3);
         // Must include the event and strike shifts despite lower scores
@@ -177,7 +150,7 @@ public class ShiftUrgencyTests
             .OrderByDescending(u => u.UrgencyScore)
             .ToList();
 
-        var result = ShiftManagementService.ApplyPeriodDiverseLimit(ranked, 3);
+        var result = ShiftUrgencyRanking.ApplyPeriodDiverseLimit(ranked, 3);
 
         result.Should().HaveCount(3);
         // All build shifts — no diversity needed, just takes top 3
@@ -194,7 +167,7 @@ public class ShiftUrgencyTests
             MakeUrgentShift(dayOffset: 8, score: 9, remaining: 3)
         };
 
-        var result = ShiftManagementService.ApplyPeriodDiverseLimit(ranked, 2);
+        var result = ShiftUrgencyRanking.ApplyPeriodDiverseLimit(ranked, 2);
 
         result.Should().BeSameAs(ranked);
     }
@@ -216,7 +189,7 @@ public class ShiftUrgencyTests
             MakeUrgentShift(dayOffset: 1, score: 30, remaining: 3)
         };
 
-        var result = ShiftManagementService.ApplyPeriodDiverseLimit(ranked, 5);
+        var result = ShiftUrgencyRanking.ApplyPeriodDiverseLimit(ranked, 5);
 
         result.Should().HaveCount(2); // Only 2 available, returns all
     }
@@ -241,7 +214,7 @@ public class ShiftUrgencyTests
             MakeUrgentShift(dayOffset: 4, score: 10, remaining: 2)
         };
 
-        var result = ShiftManagementService.ApplyPeriodDiverseLimit(ranked, 3);
+        var result = ShiftUrgencyRanking.ApplyPeriodDiverseLimit(ranked, 3);
 
         for (var i = 1; i < result.Count; i++)
         {

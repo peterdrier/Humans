@@ -162,8 +162,8 @@ public class CachingUserServiceTests
         var testCt = Xunit.TestContext.Current.CancellationToken;
         var userId = Guid.NewGuid();
         var now = Instant.FromUtc(2026, 1, 1, 0, 0);
-        var email = new UserEmailInfo(Guid.NewGuid(), "member@example.com", false, false, false,
-            null, null, null, null, now, now, default);
+        var email = new UserEmailInfo(Guid.NewGuid(), "member@example.com", false, false,
+            null, null, null, null, now, now);
         var original = SampleUserInfo(userId) with
         {
             UserEmails = string.Equals(operation, "add", StringComparison.Ordinal) ? [] : [email]
@@ -454,8 +454,6 @@ public class CachingUserServiceTests
             Email = "eight@example.com",
             IsVerified = true,
             IsPrimary = true,
-            IsGoogle = true,
-            GoogleEmailStatus = LegacyGoogleEmailStatus.Valid,
             Provider = "Google",
             ProviderKey = "subject-xyz",
         };

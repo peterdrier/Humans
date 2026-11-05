@@ -76,7 +76,7 @@ links to the public voting-method note at
 Ordinary surveys keep the existing default: anyone authorized to use Surveys
 results may see them while Open.
 
-While an Asociado vote is Open, Board/Admin may see participation only:
+While an Asociado vote is Open, Surveys Admin, Board and Admin may see participation only:
 eligible, started, completed, outstanding, response rate, and reminder status.
 No answer-derived data from any question type is available through results
 pages, exports, Backdoor endpoints, raw-response views, or respondent

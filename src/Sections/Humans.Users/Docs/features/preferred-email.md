@@ -123,8 +123,6 @@ UserEmail
 ├── UserId: Guid (FK → User)
 ├── Email: string (256)
 ├── IsVerified: bool
-├── IsGoogle: bool (frozen; the Google identity is GoogleIntegration's)
-├── GoogleEmailStatus: LegacyGoogleEmailStatus (frozen; sync status is GoogleIntegration's)
 ├── IsPrimary: bool (exactly one per user; DB column keeps the legacy name IsNotificationTarget per no-drops-until-prod-verified)
 ├── Visibility: ContactFieldVisibility? (null = hidden)
 ├── VerificationSentAt: Instant? (rate limiting)

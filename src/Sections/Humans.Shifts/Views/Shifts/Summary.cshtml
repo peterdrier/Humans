@@ -8,24 +8,25 @@
 }
 
 <div class="container-fluid py-3">
-    <h1 class="h3 mb-1">Shift summary by camp</h1>
-    <p class="text-muted mb-3">
-        @if (Model.Scope == ShiftSummaryScope.Team)
-        {
-            <a asp-action="Summary">All teams</a><text> › </text><span>@Model.TeamName</span>
-        }
-        else if (Model.Scope == ShiftSummaryScope.Rota)
-        {
-            <a asp-action="Summary">All teams</a><text> › </text>
-            <a asp-action="SummaryTeam" asp-route-teamSlug="@Model.TeamSlug">@Model.TeamName</a><text> › </text><span>@Model.RotaName</span>
-        }
-        else
-        {
-            <text>All teams</text>
-        }
-        <span class="mx-1">·</span> @Model.EventName
-        <span class="mx-1">·</span> confirmed signups only
-    </p>
+    <page-header title="Shift summary by camp">
+        <page-header-subtitle>
+            @if (Model.Scope == ShiftSummaryScope.Team)
+            {
+                <a asp-action="Summary">All teams</a><text> › </text><span>@Model.TeamName</span>
+            }
+            else if (Model.Scope == ShiftSummaryScope.Rota)
+            {
+                <a asp-action="Summary">All teams</a><text> › </text>
+                <a asp-action="SummaryTeam" asp-route-teamSlug="@Model.TeamSlug">@Model.TeamName</a><text> › </text><span>@Model.RotaName</span>
+            }
+            else
+            {
+                <text>All teams</text>
+            }
+            <span class="mx-1">·</span> @Model.EventName
+            <span class="mx-1">·</span> confirmed signups only
+        </page-header-subtitle>
+    </page-header>
 
     <div class="row g-4">
         <div class="col-xl-6">

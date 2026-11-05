@@ -23,11 +23,10 @@ internal sealed class CashFlowService(IBudgetService budgetService, ITicketServi
 
     /// <summary>
     /// A year with a configured <c>VendorEventId</c> counts only that event's orders, otherwise the current event's.
-    /// Budget's TicketingBudgetService holds the same rule.
     /// </summary>
     internal async Task<decimal> GetGrossTicketRevenueAsync(BudgetYearDetail year, CancellationToken ct = default) =>
         (await ticketService.GetTicketOrdersAsync(ct))
-            .Where(o => o.PaymentStatus == TicketPaymentStatus.Paid && o.IsForEvent(year.VendorEventId))
+            .Where(o => o.IsForEvent(year.VendorEventId, paidOnly: true))
             .Sum(o => o.TotalAmount);
 
     /// <summary>An unknown period falls back to monthly.</summary>

@@ -82,7 +82,7 @@ internal sealed partial class PreapprovalService : IUserDataContributor, IUserMe
         var dropped = await repository.ReassignToUserAsync(mergedFromUserId, mergedToUserId, now, ct);
         foreach (var grantId in dropped)
         {
-            await ResolveRequestAsync(grantId, actorUserId, ct);
+            await notices.ResolveRequestAsync(grantId, actorUserId, ct);
             await auditLog.LogAsync(PreapprovalsAuditActions.PreapprovalMergeDroppedApplication, AuditEntityTypes.Grant, grantId,
                 $"Duplicate pending application dropped on merge of {mergedFromUserId} into {mergedToUserId}.",
                 actorUserId, relatedEntityId: mergedToUserId, relatedEntityType: AuditSubjectTypes.User);

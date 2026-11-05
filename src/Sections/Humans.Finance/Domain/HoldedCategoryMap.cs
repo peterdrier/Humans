@@ -3,6 +3,8 @@ namespace Humans.Finance.Domain;
 
 internal sealed class HoldedCategoryMap
 {
+    internal const int TagMaxLength = 128;
+
     public Guid Id { get; init; }
     public Guid BudgetCategoryId { get; set; }
     public int HoldedAccountNumber { get; set; }

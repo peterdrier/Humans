@@ -4,10 +4,9 @@
     ViewData["Title"] = "Email Problems";
 }
 
-<h1>Email Problems</h1>
-<p class="text-muted">
-    Scanned at @Model.ScannedAt.ToInvariantTimestamp() · @Model.TotalProblems total problems
-</p>
+<page-header title="Email Problems">
+    <page-header-subtitle>Scanned at @Model.ScannedAt.ToInvariantTimestamp() · @Model.TotalProblems total problems</page-header-subtitle>
+</page-header>
 
 <h2>Cross-user conflicts</h2>
 <p class="text-muted">

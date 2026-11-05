@@ -14,8 +14,7 @@
     <span>@Localizer["Store_Order"]</span>
 }
 
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <h1 class="mb-0">@Localizer["Store_Order"]</h1>
+<page-header title="@(Localizer["Store_Order"].Value)">
     <div class="d-flex align-items-center gap-2">
         <span class="badge bg-info text-dark fs-6">@Localizer.EnumDisplay(order.CounterpartyType)</span>
         <span class="badge bg-secondary fs-6">@Localizer.EnumDisplay(order.State)</span>
@@ -44,7 +43,7 @@
             </form>
         }
     </div>
-</div>
+</page-header>
 
 
 @if (!isTeamOrder)

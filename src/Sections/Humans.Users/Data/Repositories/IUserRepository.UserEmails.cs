@@ -31,7 +31,7 @@ internal partial interface IUserRepository
 
     /// <summary>
     /// Account-merge fold: re-FKs source rows to target. A shared address collapses onto the
-    /// target's row (IsVerified OR-combined); moved rows lose IsPrimary and IsGoogle so the
+    /// target's row (IsVerified OR-combined); moved rows lose IsPrimary so the
     /// target's selections stand.
     /// </summary>
     Task ReassignUserEmailsToUserAsync(

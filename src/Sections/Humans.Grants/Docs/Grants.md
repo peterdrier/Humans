@@ -124,6 +124,8 @@ Admin pages live at `/Grants/Admin` (`GrantsAdminController`), in the Admin side
 
 ## Architecture
 
+The internal `GrantNotices` owns recipient lookup and the complete issued/revoked email and in-app delivery job, reused for resend. `GrantService` retains persistence, audit ordering, notification timestamps and the existing profile-link alias. Culture selection, independent channel failures, lookup retry and cancellation boundaries are unchanged. No public contract or DI registration is added.
+
 **Owning services:** `GrantService`
 **Owned tables:** `grant_programs`, `grant_program_managers`, `grants`
 **Status:** (A) Migrated — born in its own project, 2026-10-21 (nobodies-collective/Humans#2099).

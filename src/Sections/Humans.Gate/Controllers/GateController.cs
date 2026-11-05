@@ -67,6 +67,8 @@ internal sealed class GateController(
                 ClientScanAt: null, Note: null, OverrideEarly: overrideEarly, SupervisorPin: supervisorPin),
             scanner.Id, ct);
 
+        if (decision.InputTooLong) return BadRequest();
+
         return PartialView("_VerdictCard", GateScanCardViewModel.FromDecision(decision, barcode, childWithAdult));
     }
 

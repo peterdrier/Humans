@@ -190,14 +190,13 @@ internal sealed partial class CampRepository : ICampRepository
     }
 
     public async Task<bool> SeasonExistsAsync(
-        Guid campId, Guid eventSettingsId, int? unassignedYear, CancellationToken ct = default)
+        Guid campId, Guid eventSettingsId, CancellationToken ct = default)
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);
         return await ctx.CampSeasons
             .AsNoTracking()
             .AnyAsync(s => s.CampId == campId
-                && (s.EventSettingsId == eventSettingsId
-                    || (s.EventSettingsId == null && s.Year == unassignedYear)), ct);
+                && s.EventSettingsId == eventSettingsId, ct);
     }
 
     public async Task<CampSeason?> GetLatestSeasonAsync(
@@ -233,12 +232,11 @@ internal sealed partial class CampRepository : ICampRepository
     }
 
     public async Task<int> SetNameLockDateForEventAsync(
-        Guid eventSettingsId, int? unassignedYear, LocalDate lockDate, CancellationToken ct = default)
+        Guid eventSettingsId, LocalDate lockDate, CancellationToken ct = default)
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);
         var seasons = await ctx.CampSeasons
-            .Where(s => s.EventSettingsId == eventSettingsId
-                || (s.EventSettingsId == null && s.Year == unassignedYear))
+            .Where(s => s.EventSettingsId == eventSettingsId)
             .ToListAsync(ct);
 
         var changed = seasons.Where(s => s.NameLockDate != lockDate).ToList();
@@ -435,49 +433,6 @@ internal sealed partial class CampRepository : ICampRepository
 
         await ctx.SaveChangesAsync(ct);
         return true;
-    }
-
-    public async Task<int> AddMissingEventSettingsAsync(
-        IReadOnlyDictionary<Guid, bool> registrationOpenByEventId, CancellationToken ct = default)
-    {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-        var existing = await ctx.CampEventSettings.Select(r => r.EventSettingsId).ToListAsync(ct);
-        var added = registrationOpenByEventId.Keys.Except(existing)
-            .Select(id => new CampEventSettings { EventSettingsId = id, RegistrationOpen = registrationOpenByEventId[id] })
-            .ToList();
-        ctx.CampEventSettings.AddRange(added);
-        await ctx.SaveChangesAsync(ct);
-        return added.Count;
-    }
-
-    public async Task<bool> ClearLegacyOpenSeasonsAsync(CancellationToken ct = default)
-    {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-        var settings = await ctx.CampSettings.OrderBy(s => s.Id).FirstAsync(ct); // arch:db-sort-ok deterministic camp-settings selector by identity
-        if (settings.OpenSeasons.Count == 0)
-            return false;
-
-        settings.OpenSeasons = [];
-        await ctx.SaveChangesAsync(ct);
-        return true;
-    }
-
-    public async Task<IReadOnlyList<CampSeason>> GetSeasonsWithoutEventIdAsync(CancellationToken ct = default)
-    {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-        return await ctx.CampSeasons.AsNoTracking().Where(s => s.EventSettingsId == null).ToListAsync(ct);
-    }
-
-    public async Task<int> AssignSeasonEventIdsAsync(
-        IReadOnlyDictionary<Guid, Guid> eventSettingsIdBySeasonId, CancellationToken ct = default)
-    {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-        var ids = eventSettingsIdBySeasonId.Keys.ToList();
-        var rows = await ctx.CampSeasons.Where(s => ids.Contains(s.Id) && s.EventSettingsId == null).ToListAsync(ct);
-        foreach (var row in rows)
-            row.EventSettingsId = eventSettingsIdBySeasonId[row.Id];
-        await ctx.SaveChangesAsync(ct);
-        return rows.Count;
     }
 
     public async Task<CampMemberInsertResult> RequestMembershipAsync(

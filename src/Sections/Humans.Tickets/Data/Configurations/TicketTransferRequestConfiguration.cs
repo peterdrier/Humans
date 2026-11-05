@@ -25,7 +25,7 @@ internal sealed class TicketTransferRequestConfiguration : IEntityTypeConfigurat
 
         builder.Property(x => x.ReceiverLegalName)
             .IsRequired()
-            .HasMaxLength(256);
+            .HasMaxLength(513);
 
         builder.Property(x => x.ReceiverEmail)
             .IsRequired()

@@ -214,9 +214,6 @@
   <data name="Users_ProfileEdit_TierLocked" xml:space="preserve">
     <value>Ihre Kategorie ist gesperrt, da Sie einen aktiven oder ausstehenden Antrag haben.</value>
   </data>
-  <data name="Users_ProfileEdit_MotivationHelp" xml:space="preserve">
-    <value>Mindestens 50 Zeichen. Dies hilft dem Vorstand, Ihre Ziele zu verstehen.</value>
-  </data>
   <data name="Users_ProfileEdit_BurnerNamePlaceholder" xml:space="preserve">
     <value>Der Name, unter dem Sie bekannt sind</value>
   </data>

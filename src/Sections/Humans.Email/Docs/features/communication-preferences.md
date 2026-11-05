@@ -61,7 +61,7 @@ When a user opts out of Facilitated Messages, the "Send Message" button is hidde
 
 **Entity:** `CommunicationPreference` (table: `email_communication_preferences`, Email's since Users decomposition commit 14)
 - `UserId` + `Category` (unique index) — one row per user per category
-- `OptedOut` (bool?) — true = user does NOT receive email for this category; null = a cleared row (reset, or the merge source), read as the category default
+- `OptedOut` (bool?) — true = user does NOT receive email for this category; null = a historical cleared row, read as the category default (resets and merges now delete the row)
 - `InboxEnabled` (bool) — true = user receives in-app alerts for this category
 - `UpdatedAt` (Instant) — when preference was last changed
 - `UpdateSource` (string) — how it was set: "Profile" (signed-in profile UI), "Guest" (signed-in Guest dashboard, profileless), "MagicLink" (anonymous unsubscribe-token endpoints), "OneClick" (RFC 8058 List-Unsubscribe), "Default" (historical lazy seed), "DataMigration"

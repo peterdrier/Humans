@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using Humans.Users.Contracts;
+using Humans.GoogleIntegration.Contracts;
 
 namespace Humans.Users.Data.Configurations;
 
@@ -43,15 +44,15 @@ internal sealed class UserEmailConfiguration : IEntityTypeConfiguration<UserEmai
         builder.Property(e => e.ProviderKey)
             .HasMaxLength(256);
 
-        builder.Property(e => e.IsGoogle)
+        builder.Property<bool>("IsGoogle")
             .IsRequired();
 
-        // Frozen per-address Google sync status: string-converted enum, Unknown default/sentinel.
-        builder.Property(e => e.GoogleEmailStatus)
+        // Retained on disk until the separate column-drop migration; no runtime readers remain.
+        builder.Property<GoogleEmailStatus>("GoogleEmailStatus")
             .HasConversion<string>()
             .HasMaxLength(50)
-            .HasDefaultValue(LegacyGoogleEmailStatus.Unknown)
-            .HasSentinel(LegacyGoogleEmailStatus.Unknown)
+            .HasDefaultValue(GoogleEmailStatus.Unknown)
+            .HasSentinel(GoogleEmailStatus.Unknown)
             .IsRequired();
 
         builder.HasOne<User>()

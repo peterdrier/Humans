@@ -9,13 +9,8 @@ using NodaTime;
 namespace Humans.GoogleIntegration.Services;
 
 /// <summary>
-/// Until <c>google.workspace-identities</c> has run, a member without a row reads the frozen legacy <c>user_emails</c>
-/// flags through <see cref="UserInfo"/>.
+/// Resolves a verified <c>@nobodies.team</c> address first, then the verified designation, primary, or first address.
 /// </summary>
-/// <remarks>
-/// Resolved on every read: a verified <c>@nobodies.team</c> address wins, else the designated address while verified,
-/// else the verified primary, else the first verified address.
-/// </remarks>
 internal sealed class WorkspaceIdentityService(
     IWorkspaceIdentityRepository repo,
     IUserService users,
@@ -119,47 +114,21 @@ internal sealed class WorkspaceIdentityService(
         var info = await users.GetUserInfoAsync(userId, ct);
         var id = info?.Id ?? userId;
         var row = await repo.GetAsync(id, ct);
-        var designated = row is not null ? row.Email : LegacyDesignation(info)?.Email;
+        var designated = row?.Email;
         if (designated is null || !Same(designated, email)) return;
 
-        // A cleared row, not a delete: the read must not fall back to the frozen legacy flag.
         await repo.UpsertAsync(id, null, GoogleEmailStatus.Unknown, clock.GetCurrentInstant(), ct);
     }
 
-    public async Task<IReadOnlyList<LegacyWorkspaceIdentityRow>> GetUncopiedLegacyIdentitiesAsync(
-        CancellationToken ct = default)
-    {
-        var copied = (await repo.GetAllAsync(ct)).Select(r => r.UserId).ToHashSet();
-        return [.. (await users.GetAllUserInfosAsync(ct))
-            .Where(u => !copied.Contains(u.Id) && HasLegacyState(u))
-            .Select(u => (User: u, Identity: Resolve(u, null)))
-            .Where(x => x.Identity is not null)
-            .OrderBy(x => x.User.CreatedAt)
-            .Select(x => new LegacyWorkspaceIdentityRow(
-                x.User.Id, x.User.BurnerName, x.Identity!.Email, x.Identity.Status))];
-    }
-
-    public async Task<int> CopyLegacyIdentitiesAsync(CancellationToken ct = default)
-    {
-        var now = clock.GetCurrentInstant();
-        var written = 0;
-        foreach (var row in await GetUncopiedLegacyIdentitiesAsync(ct))
-        {
-            if (await repo.TryInsertAsync(row.UserId, row.Email, row.Status, now, ct))
-                written++;
-        }
-        return written;
-    }
-
-    /// <summary>The effective identity for <paramref name="info"/> given its row (null = none yet,
-    /// so the legacy flags stand in). Null when the member has no verified address.</summary>
+    /// <summary>Null when the member has no verified address. A missing or cleared designation uses the
+    /// verified domain address, primary, or first address, with an Unknown verdict.</summary>
     internal static WorkspaceIdentity? Resolve(UserInfo info, WorkspaceIdentityRecord? row)
     {
         // UserEmails is ordered primary first, then by address.
         var verified = info.UserEmails.Where(e => e.IsVerified).ToList();
         if (verified.Count == 0) return null;
 
-        var designated = row is not null ? row.Email : LegacyDesignation(info)?.Email;
+        var designated = row?.Email;
         var designatedRow = designated is null ? null : verified.FirstOrDefault(e => Same(e.Email, designated));
         var nobodies = verified.FirstOrDefault(e => IsNobodies(e.Email));
 
@@ -171,7 +140,7 @@ internal sealed class WorkspaceIdentityService(
 
         var status = row is not null
             ? (row.Email is not null && Same(row.Email, chosen.Email) ? row.Status : GoogleEmailStatus.Unknown)
-            : LegacyStatus(chosen);
+            : GoogleEmailStatus.Unknown;
         return new WorkspaceIdentity(info.Id, chosen.Email, status);
     }
 
@@ -179,20 +148,7 @@ internal sealed class WorkspaceIdentityService(
 
     private static bool IsNobodies(string email) => email.EndsWith(NobodiesTeamSuffix, StringComparison.OrdinalIgnoreCase);
 
-    // The readers of the obsolete legacy fields: the read fallback and the copy above. Deleted with
-    // the migration once production reports it done.
-#pragma warning disable HUM_USER_GOOGLE_IDENTITY // the fallback and copy the fields are kept for (plan §3.1)
-    private static UserEmailInfo? LegacyDesignation(UserInfo? info) =>
-        info?.UserEmails.FirstOrDefault(e => e.IsGoogle && e.IsVerified);
-
-    private static GoogleEmailStatus LegacyStatus(UserEmailInfo email) => (GoogleEmailStatus)(int)email.GoogleEmailStatus;
-
-    private static bool HasLegacyState(UserInfo info) =>
-        info.UserEmails.Any(e => e.IsVerified && (e.IsGoogle || e.GoogleEmailStatus != LegacyGoogleEmailStatus.Unknown));
-#pragma warning restore HUM_USER_GOOGLE_IDENTITY
-
-    /// <summary>The survivor keeps its own identity, as before (Users' merge clears the flag on the
-    /// rows it moves); the archived account's row is deleted.</summary>
+    /// <summary>The survivor keeps its own identity; the archived account's row is deleted.</summary>
     public async Task ReassignAsync(
         Guid mergedFromUserId, Guid mergedToUserId, Guid actorUserId, Instant now, CancellationToken ct)
     {
@@ -219,8 +175,6 @@ internal sealed class WorkspaceIdentityService(
 
     public IReadOnlyDictionary<string, string?> ErasureDeclaration => Erasure;
 
-    /// <summary>Deletes the member's row. The legacy <c>user_emails</c> flags go with the address
-    /// rows Users erases.</summary>
     public async Task EraseForUserAsync(Guid userId, CancellationToken ct) =>
         await repo.DeleteAsync(userId, ct);
 }

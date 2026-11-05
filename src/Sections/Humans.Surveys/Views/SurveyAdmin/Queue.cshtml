@@ -5,7 +5,7 @@
     var zone = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
 }
 
-<h1 class="mb-3">@Localizer["Surveys_Admin_Queue_Title"]</h1>
+<page-header title="@(Localizer["Surveys_Admin_Queue_Title"].Value)" />
 <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
 
 @if (Model.Items.Count == 0)

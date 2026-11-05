@@ -20,7 +20,12 @@ public sealed record UrgentShiftInfo(
     double UrgencyScore,
     int ConfirmedCount,
     int RemainingSlots,
-    IReadOnlyList<ShiftSignupInfo> Signups);
+    IReadOnlyList<ShiftSignupInfo> Signups)
+{
+    /// <summary>For browse rows, the early-entry cutoff for this rota's team, accounting for the query's viewer.
+    /// Without a viewer, the cutoff applies without a privilege exemption.</summary>
+    public bool EarlyEntrySignupsClosed { get; init; }
+}
 
 /// <summary>
 /// Member names match <c>Shift</c>'s so the rota partials bind unchanged. <c>StartTime</c> and

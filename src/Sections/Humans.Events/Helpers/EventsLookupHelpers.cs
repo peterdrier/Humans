@@ -32,8 +32,11 @@ internal static class EventsLookupHelpers
         return days;
     }
 
-    /// <summary>The active season name, else the slug.</summary>
-    public static string? ResolveCampName(CampInfo? camp) => camp?.Active?.Name ?? camp?.Slug;
+    /// <summary>The requested season's name or slug; unscoped camp views use the latest season.</summary>
+    public static string? ResolveCampName(CampInfo? camp, Guid? eventSettingsId = null) =>
+        eventSettingsId is { } eventId
+            ? camp?.GetSeasonForEvent(eventId)?.Name ?? camp?.Slug
+            : camp?.Active?.Name ?? camp?.Slug;
 
     public static async Task<Dictionary<Guid, UserInfo>> LoadSubmittersAsync(
         IUserService users, IEnumerable<Guid> userIds, CancellationToken ct = default)
@@ -52,11 +55,12 @@ internal static class EventsLookupHelpers
         return await guide.GetEventSettingsByIdAsync(guideSettings.EventSettingsId, ct);
     }
 
+    // Event-scoped CampInfo carries only that season, so Active cannot pick another event's name.
     public static async Task<Dictionary<Guid, CampInfo>> LoadCampsByIdAsync(
-        ICampService camps, int? year, CancellationToken ct = default)
+        ICampService camps, Guid? eventSettingsId, CancellationToken ct = default)
     {
-        if (year is null) return [];
-        var list = await camps.GetCampsForYearAsync(year.Value, ct);
+        if (eventSettingsId is null) return [];
+        var list = await camps.GetCampsForEventAsync(eventSettingsId.Value, ct);
         return list.ToDictionary(c => c.Id);
     }
 }

@@ -18,8 +18,7 @@
     <span>@category.Name</span>
 }
 
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <h1 class="mb-0">@category.Name</h1>
+<page-header title="@category.Name">
     @if (Model.CanEdit)
     {
         <span class="badge bg-success fs-6">@Localizer["Budget_CategoryEditable"]</span>
@@ -28,7 +27,7 @@
     {
         <span class="badge bg-secondary fs-6">@Localizer["Budget_CategoryReadOnly"]</span>
     }
-</div>
+</page-header>
 
 
 <div class="alert alert-warning d-flex align-items-center" role="alert">

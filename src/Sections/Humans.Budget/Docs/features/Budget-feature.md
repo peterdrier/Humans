@@ -197,7 +197,7 @@ Outbound invoices to members/barrios:
 - Data model: BudgetYear, BudgetGroup, BudgetCategory, BudgetLineItem, BudgetAuditLog
 - EF Core migration with HasBudget on Team for department auto-mapping
 - FinanceAdmin role (replaces "Treasurer" in original spec)
-- Budget CRUD at `/Finance/*` via then-FinanceController (owned by `BudgetAdminController` since the controller split)
+- Budget CRUD at `/Budget/Admin/*` via `BudgetAdminController`
 - Field-level audit trail with old/new values (separate BudgetAuditLog table)
 - Nav link visible to FinanceAdmin + Admin
 - **Exit:** Can recreate 2026 spreadsheet budget in the app
@@ -216,14 +216,14 @@ Outbound invoices to members/barrios:
   - Breakdown table with category amounts and percentages
   - No line-item, salary, or overhead detail visible
   - Coordinators see link to department detail view
-- **Nav:** "Budget" link (to `/Budget/Summary`) visible to all authenticated users; FinanceAdmin/Admin also get a "Budget" group in the admin sidebar with an "Overview" entry (`/Finance`)
+- **Nav:** "Budget" link (to `/Budget/Summary`) visible to all authenticated users; FinanceAdmin/Admin also get a "Budget" group in the admin sidebar with an "Overview" entry (`/Budget/Admin`)
 - **Exit:** Coordinators can manage their department budgets; all members see where money goes
 
 ### V1c: Sign Convention and VAT Tracking — IMPLEMENTED (#282, #283)
 - **Sign convention:** Positive amounts = income, negative amounts = expenses
   - Removed `min=0` constraints on all budget amount inputs
   - Both `BudgetCategory.AllocatedAmount` and `BudgetLineItem.Amount` accept negative values
-- **VAT/IVA tracking:** `VatRate` int on `BudgetLineItem` (service-validated 0–21; the line-item UI offers 0%, 10%, 21%)
+- **VAT/IVA tracking:** `VatRate` int on `BudgetLineItem` (service-validated 0–21, with expected refusals before writes for invalid line-item or ticketing-projection input; the line-item UI offers 0%, 10%, 21%)
   - Virtual VAT entries computed for line items with VatRate > 0 and an ExpectedDate
   - VAT has converse sign: income generates VAT liability (expense), expenses generate VAT credit (income)
   - Settlement date ~6 weeks after end of quarter containing the expected date
@@ -271,7 +271,7 @@ Outbound invoices to members/barrios:
 - **Exit:** Ticket sales actuals flow into budget as weekly line items; projections available for planning
 
 ### V1e: Finance Consolidation — IMPLEMENTED (#325)
-- **Consolidated `/Finance` index** (YearDetail view):
+- **Consolidated `/Budget/Admin` index** (YearDetail view):
   - Tree-style accordion: year selector, groups as expandable sections, categories within each group, line items within each category
   - Each category shows `AllocatedAmount` as budget target alongside actual line item totals with remaining amount
   - Negative `AllocatedAmount` displayed as "Planned spend" with absolute values; positive as "Income target"
@@ -289,7 +289,7 @@ Outbound invoices to members/barrios:
   - Items without `ExpectedDate` shown in separate "Unscheduled" section
   - Includes `IsCashflowOnly` items (relevant to actual cash movement)
   - Restricted groups visible (FinanceAdmin/Admin only page)
-  - Accessible from Finance section toolbar
+  - Accessible from the year-detail toolbar and the `/Finance` overview
 - **Exit:** FinanceAdmin can see when money comes in and goes out across the budget year
 
 ### V2b: Stripe Integration (2-3 sessions)
@@ -302,9 +302,9 @@ Outbound invoices to members/barrios:
 - Current invariants: [`Finance.md`](../../../Humans.Finance/Docs/Finance.md) — the authoritative doc; the bullets below describe the original design and were superseded during implementation (no `HoldedTransaction` entity or `Slug`-based tag matching landed)
 - Tracked in: [nobodies-collective/Humans#463](https://github.com/nobodies-collective/Humans/issues/463)
 - Promoted Finance to its own section ([`Finance.md`](../../../Humans.Finance/Docs/Finance.md)); Budget narrowed to planning + public summary
-- Shipped attribution is Account → Tag → Unmatched: Holded purchase docs land in a `HoldedExpenseDoc` entity (Finance-owned), matched to budget categories via `HoldedCategoryMap` (booked Holded account id first, normalized tag fallback second)
+- Shipped attribution is Account → Managed → Tag → Unmatched: the Holded section mirrors the purchase documents, and Finance matches them on read to budget categories via `HoldedCategoryMap` (booked Holded account id first, normalized tag fallback second)
 - Treasurer surface at `/Finance/HoldedUnmatched` (unmatched-doc worklist) and `/Finance/HoldedAccounts` (account provisioning)
-- Budget's CRUD half of the old `/Finance` controller became `BudgetAdminController`, keeping the same route prefix; Finance's own `FinanceController` owns only the Holded/creditor actions. Both controllers now live in their own section projects (`Humans.Budget.Controllers` / `Humans.Finance.Controllers`) with disjoint action templates under `[Route("Finance")]`
+- Budget's CRUD half of the old `/Finance` controller is `BudgetAdminController` at `/Budget/Admin`; Finance's own `FinanceController` owns `/Finance` (the overview and the Holded/creditor/SEPA actions). The controllers live in their own section projects (`Humans.Budget.Controllers` / `Humans.Finance.Controllers`)
 - **Exit:** Expenses flow into Finance and roll up as planned-vs-actual on the year-detail view
 
 ### V2d: Invoicing (1-2 sessions)

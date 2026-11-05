@@ -502,4 +502,5 @@
   <data name="Shifts_Notification_ChangeApprovedRange" xml:space="preserve"><value>Range approved ({1} shifts) for '{0}'.</value></data>
   <data name="Shifts_Notification_ChangeRefusedRange" xml:space="preserve"><value>Range refused ({1} shifts) for '{0}'.</value></data>
   <data name="Shifts_Notification_ChangeBailedRange" xml:space="preserve"><value>Range bail from '{0}' ({1} shifts).</value></data>
+  <data name="Shifts_TagPreferencesInvalid" xml:space="preserve"><value>Some selected tags are no longer available. Review your selection and try again.</value></data>
 </root>

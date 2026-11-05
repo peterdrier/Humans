@@ -16,8 +16,7 @@ internal sealed class Event
     public Guid SubmitterUserId { get; set; }
 
     /// <summary>
-    /// Settings' event row this entry belongs to. Null only on rows older than the column; the
-    /// <c>events.event-ids</c> data migration assigns them, and until then they count as the guide's current event.
+    /// Settings' event row this entry belongs to. An unassigned row is excluded from configured guide reads.
     /// </summary>
     public Guid? EventSettingsId { get; set; }
     public Guid CategoryId { get; set; }
@@ -75,12 +74,9 @@ internal sealed class Event
         status is EventStatus.Pending or EventStatus.Approved
         || (!isCampEvent && status is EventStatus.Draft);
 
-    /// <summary>
-    /// True when the entry belongs to <paramref name="eventSettingsId"/>. An unassigned entry, or a null event (the
-    /// guide is not configured yet), matches, so nothing disappears before the data migration runs.
-    /// </summary>
+    /// <summary>A null filter is an intentionally unscoped read.</summary>
     public bool IsInEvent(Guid? eventSettingsId) =>
-        eventSettingsId is null || EventSettingsId is null || EventSettingsId == eventSettingsId;
+        eventSettingsId is null || EventSettingsId == eventSettingsId;
 
     /// <inheritdoc cref="IsEditableBySubmitter(EventStatus, bool)"/>
     public bool CanBeEditedBySubmitter => IsEditableBySubmitter(Status, CampId is not null);

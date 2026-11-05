@@ -14,17 +14,14 @@
     <span>@Localizer["Surveys_Admin_Results_Breadcrumb"]</span>
 }
 
-<div class="d-flex justify-content-between align-items-center mb-3">
-    <h1 class="mb-0">@(string.IsNullOrWhiteSpace(Model.Title) ? untitled : Model.Title)</h1>
-    <div class="d-flex align-items-center gap-2">
-        <status-badge value="@Model.Status" localizer="@Localizer" />
-        @if (!Model.IsEmbargoed && Model.CanExport)
-        {
-            <a asp-controller="SurveyAdmin" asp-action="ExportCsv" asp-route-id="@Model.SurveyId" class="btn btn-outline-secondary btn-sm">@Localizer["Surveys_Admin_Results_DownloadCsv"]</a>
-            <a asp-controller="SurveyAdmin" asp-action="ExportJson" asp-route-id="@Model.SurveyId" class="btn btn-outline-secondary btn-sm">@Localizer["Surveys_Admin_Results_DownloadJson"]</a>
-        }
-    </div>
-</div>
+<page-header title="@(string.IsNullOrWhiteSpace(Model.Title) ? untitled : Model.Title)">
+    <status-badge value="@Model.Status" localizer="@Localizer" />
+    @if (!Model.IsEmbargoed && Model.CanExport)
+    {
+        <a asp-controller="SurveyAdmin" asp-action="ExportCsv" asp-route-id="@Model.SurveyId" class="btn btn-outline-secondary btn-sm">@Localizer["Surveys_Admin_Results_DownloadCsv"]</a>
+        <a asp-controller="SurveyAdmin" asp-action="ExportJson" asp-route-id="@Model.SurveyId" class="btn btn-outline-secondary btn-sm">@Localizer["Surveys_Admin_Results_DownloadJson"]</a>
+    }
+</page-header>
 
 @if (Model.IsEmbargoed)
 {

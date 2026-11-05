@@ -4,13 +4,12 @@
     ViewData["Title"] = "Store payment method repair";
 }
 
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <h1 class="mb-0">Store payment method repair</h1>
+<page-header title="Store payment method repair">
     <div class="btn-group">
         <a asp-action="Payments" class="btn btn-outline-secondary">Payments</a>
         <a asp-controller="Store" asp-action="Index" class="btn btn-outline-secondary">Back to Store</a>
     </div>
-</div>
+</page-header>
 
 <p class="text-muted">
     Payment methods are moving from an int column to a string one. New payments write both; every

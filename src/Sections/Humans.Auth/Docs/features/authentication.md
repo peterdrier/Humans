@@ -68,7 +68,7 @@ User (extends IdentityUser<Guid>)
 ├── ProfilePictureUrl: string? (2048)
 ├── CreatedAt: Instant
 ├── LastLoginAt: Instant?
-└── Navigation: UserEmails (required for Email override), EventParticipations (frozen legacy; Tickets owns participation)
+└── Navigation: UserEmails (internal to Base/Users; required for the Email override)
 ```
 
 ### RoleAssignment Entity

@@ -88,6 +88,8 @@
   <data name="Cantina_Dietary_PageTitle" xml:space="preserve"><value>Ernährungsangaben</value></data>
   <data name="Cantina_Dietary_Saved" xml:space="preserve"><value>Deine Ernährungsangaben wurden gespeichert.</value></data>
   <data name="Cantina_Dietary_SaveFailed" xml:space="preserve"><value>Die Ernährungsangaben konnten nicht gespeichert werden.</value></data>
+  <data name="Cantina_Dietary_PreferenceTooLong" xml:space="preserve"><value>Die Ernährungspräferenz darf höchstens 200 Zeichen enthalten.</value></data>
+  <data name="Cantina_Dietary_OtherTextTooLong" xml:space="preserve"><value>Die Angaben zu sonstigen Allergien oder Unverträglichkeiten dürfen höchstens 500 Zeichen enthalten.</value></data>
   <data name="Cantina_Dietary_LoadFailed" xml:space="preserve"><value>Die Ernährungsangaben konnten nicht geladen werden.</value></data>
   <data name="Cantina_Dietary_OptionalHint" xml:space="preserve"><value>Freiwillig. Es hilft der Kantine, die Mahlzeiten für lange Schichten zu planen, und hat nie Einfluss auf deine Schichtanmeldungen.</value></data>
   <data name="Cantina_Dietary_DeclineButton" xml:space="preserve"><value>Ich möchte nicht antworten</value></data>

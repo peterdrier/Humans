@@ -122,8 +122,8 @@ public sealed record CampSeasonInfo(
     int? JoinedMemberCount)
 {
     /// <summary>
-    /// Settings' event this season belongs to. A season not yet assigned by the <c>camps.event-ids</c> data
-    /// migration carries the event that migration would give it; null only when Settings has no event that year.
+    /// Settings' event this season is assigned to. Unassigned legacy seasons retain null; their year does not
+    /// confer event ownership.
     /// </summary>
     public Guid? EventSettingsId { get; init; }
 

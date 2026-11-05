@@ -270,7 +270,7 @@ CampSeason
 CampSettings
 ├── Id: Guid
 ├── PublicYear: int [dead column (nobodies-collective#1632); year now resolves from Settings' active event]
-├── OpenSeasons: List<int> [JSON; legacy fallback for events with no CampEventSettings row]
+├── OpenSeasons: List<int> [unused legacy JSON column; registration uses CampEventSettings]
 └── EeStartDate: LocalDate? [dead column (nobodies-collective#1633); replaced by EventSettings.EarlyEntryStartOffset]
 ```
 

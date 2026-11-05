@@ -47,7 +47,6 @@ Several system operations need to run automatically without user interaction: sy
 | WorkgroupRhythmJob | Daily 6:00 AM | Workgroups' daily reporting-rhythm pass (design §13) |
 | PreapprovalRemindersJob | Daily 5:00 AM | `preapprovals-reminders`: 14-day and 3-day claim-deadline reminders to Open pre-approval holders, each recorded once per `(grant, kind, deadline)` in `pre_reminders_sent`; never changes a grant |
 | SepaBankBookingJob | Every 2 hours at :17 | `sepa-bank-booking`: the SEPA bank-line sweep — book the transfers whose Sabadell line has landed and retry pending reconciles |
-| FeedbackReplyDelivery (`feedback-reply-emails`) | Every minute | Retry durable feedback replies whose Email handoff has not yet been acknowledged |
 
 > **Note:** `SystemTeamSyncJob` and `GoogleResourceReconciliationJob` were historically disabled by default because they modify Google Shared Drive and Group permissions; both are now registered as normal scheduled jobs (`teams-system-sync` hourly, `google-resource-reconciliation` daily at 03:00) in `RecurringJobExtensions.UseHumansRecurringJobs`. `GoogleResourceReconciliationJob` still no-ops per service when that service's sync mode is `None` (configured at `/Google/SyncSettings`). The manual "Sync Now" button at `/Google/Sync` remains available for on-demand runs. `SendAdminDailyDigestJob` / `SendBoardDailyDigestJob` have been retired and their job types no longer exist; deleting a job needs no cleanup step, because startup removes every stored Hangfire schedule that is not in the roll-call.
 
@@ -69,22 +68,25 @@ Several system operations need to run automatically without user interaction: sy
       - Parse document content (ES/EN)
       - Create new DocumentVersion
       - Update LegalDocument.CurrentCommitSha
-3. If any documents were updated:
-   a. Identify all active users missing new required consents
-   b. Send ONE consolidated "Action Required" email per user
+3. For each new version of a required document:
+   a. Notify the active members of the document's team (a re-consent notice
+      when the version requires re-consent, a published notice when the
+      document is new), grouped by preferred language
+   b. Email each of those members once, listing every required document
+      they still have to sign
    c. Log summary of updates and notifications
 ```
 
 **Triggers**:
 - New document versions requiring re-consent
-- Email notifications to affected members (consolidated)
+- Notifications to the document's team members, linking to `/Consent`
 - Status changes for non-compliant members
 
 **Error Handling**:
 - GitHub API failures: Retry with backoff
 - Parse failures: Log and skip, alert admin
 - Partial sync: Continue with remaining docs
-- N+1 Protection: Users loaded in batches for notification loop
+- A failed notification dispatch is logged and does not fail the sync
 
 ---
 

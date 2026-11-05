@@ -10,7 +10,7 @@
     <span>@ViewData["Title"]</span>
 }
 
-<h1>@ViewData["Title"]</h1>
+<page-header title="@(ViewData["Title"]?.ToString())" />
 
 <div class="card mw-720">
     <div class="card-body">

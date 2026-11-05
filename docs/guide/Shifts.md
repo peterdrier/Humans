@@ -98,7 +98,7 @@ Reach Volunteer Coordination at [volunteers@nobodies.team](mailto:volunteers@nob
 
 Admins get the site-wide shift view and can approve, refuse, bail, or voluntell across any department. **ShiftsNoInfo** has the same signup powers but can't create or edit rotas and shifts. **ShiftsAdmin** has full coordinator capabilities across every department.
 
-**Board** members can read the shift dashboard, volunteer tracking, workload and post-event stats, but can't change anything.
+**Board** members can read the shift dashboard, every department's rotas at `/Teams/{slug}/Shifts`, volunteer tracking, workload and post-event stats, but can't change anything.
 
 Admin-only controls:
 

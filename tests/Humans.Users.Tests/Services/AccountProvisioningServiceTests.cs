@@ -262,11 +262,7 @@ public class AccountProvisioningServiceTests
                 UserId = userId,
                 Email = email,
                 IsVerified = true,
-                // Simulates the EnsurePrimaryInvariantAsync + EnsureGoogleInvariantAsync
-                // orchestrator behaviour for newly-provisioned single-row
-                // users — the fresh row becomes both Primary and Google.
                 IsPrimary = true,
-                IsGoogle = true,
                 Visibility = null,
                 CreatedAt = now,
                 UpdatedAt = now,
@@ -300,7 +296,6 @@ public class AccountProvisioningServiceTests
                 Email = email,
                 IsVerified = true,
                 IsPrimary = true,
-                IsGoogle = true,
                 Visibility = null,
                 CreatedAt = now,
                 UpdatedAt = now,
@@ -730,11 +725,8 @@ public class AccountProvisioningServiceTests
     }
 
     [HumansFact]
-    public async Task FindOrCreateUserByEmailAsync_NewUser_GetsExactlyOneIsGoogleRow()
+    public async Task FindOrCreateUserByEmailAsync_NewUser_GetsOneVerifiedPrimaryEmail()
     {
-        // AccountProvisioningService path enforces the IsGoogle invariant via
-        // the IUserEmailService orchestrator — a newly-provisioned user gets
-        // exactly one IsGoogle row (the one we just created).
         var result = await _service.FindOrCreateUserByEmailAsync(
             "ivy@example.com", "Ivy", ContactSource.TicketTailor, Xunit.TestContext.Current.CancellationToken);
 
@@ -745,7 +737,6 @@ public class AccountProvisioningServiceTests
             .ToList();
 
         rowsForUser.Should().HaveCount(1);
-        rowsForUser[0].IsGoogle.Should().BeTrue();
         rowsForUser[0].IsPrimary.Should().BeTrue();
         rowsForUser[0].IsVerified.Should().BeTrue();
     }

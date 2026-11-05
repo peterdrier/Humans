@@ -116,7 +116,6 @@ public sealed class MergeFixtureBuilder
             Email = email,
             IsVerified = verified,
             IsPrimary = isPrimary,
-            IsGoogle = isGoogle,
             Provider = isGoogle ? "Google" : null,
             ProviderKey = isGoogle ? $"sub-{Guid.NewGuid():N}" : null,
             CreatedAt = _now,

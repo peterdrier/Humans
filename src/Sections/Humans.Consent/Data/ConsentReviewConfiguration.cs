@@ -18,13 +18,13 @@ internal sealed class ConsentReviewConfiguration : IEntityTypeConfiguration<Cons
             .HasMaxLength(20);
 
         builder.Property(r => r.Notes)
-            .HasMaxLength(4000);
+            .HasMaxLength(ConsentReview.MaxTextLength);
 
         builder.Property(r => r.IsApproved)
             .IsRequired();
 
         builder.Property(r => r.RejectionReason)
-            .HasMaxLength(4000);
+            .HasMaxLength(ConsentReview.MaxTextLength);
 
         builder.Property(r => r.UpdatedAt)
             .IsRequired();

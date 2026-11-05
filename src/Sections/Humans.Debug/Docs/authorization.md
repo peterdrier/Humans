@@ -3,7 +3,7 @@
 | Controller | Scope | Roles | Source |
 |---|---|---|---|
 | `DebugController` | Class | `Board, Admin` | `PolicyNames.BoardOrAdmin` |
-| `DebugController` actions — `Logs`, `HttpErrors`, `Maintenance`, `Configuration`, `DbStats`, `CacheStats`, `ClientStats`, `Timings`, `Sections`, `FormatGallery`, `Translations` | Action | `Board, Admin` | `PolicyNames.BoardOrAdmin` (all inherit the class-level policy; read-only) |
+| `DebugController` actions — `Logs`, `HttpErrors`, `Maintenance`, `Configuration`, `Database`, `DbStats`, `CacheStats`, `ClientStats`, `Timings`, `Sections`, `FormatGallery`, `Translations` | Action | `Board, Admin` | `PolicyNames.BoardOrAdmin` (all inherit the class-level policy; read-only) |
 | `DebugController.ClearHangfireLocks` / `ResetDbStats` / `ResetCacheStats` | Action | `Admin` | `PolicyNames.AdminOnly` (the mutating POSTs) |
 | `DebugController.DbVersion` | Action | `AllowAnonymous` | Override |
 | `UsersDebugController` (`Index`) | Class | `Board, Admin` | `PolicyNames.BoardOrAdmin` (`/Debug/Users`) |

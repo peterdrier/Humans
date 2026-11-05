@@ -156,14 +156,14 @@ archived account and the survivor.
 | Section | Contributor | Shape |
 |---------|-------------|-------|
 | `Account` | `UserService` | Single object with user identity, display name, preferred language, lifecycle state, deletion request/scheduled/post-event-hold instants, created/last-login instants. |
-| `UserEmails` | `UserService` | Array of `{ Email, IsVerified, IsOAuth, IsNotificationTarget, IsGoogle, GoogleEmailStatus, VerificationSentAt, CreatedAt, UpdatedAt, Visibility }` (`IsOAuth` is true when a provider is linked; `IsGoogle` / `GoogleEmailStatus` are the frozen legacy flags — the live record is the `WorkspaceIdentity` slice; key names are pinned for export stability). |
+| `UserEmails` | `UserService` | Array of `{ Email, IsVerified, IsOAuth, IsNotificationTarget, VerificationSentAt, CreatedAt, UpdatedAt, Visibility }` (`IsOAuth` is true when a provider is linked; the Workspace identity is the `WorkspaceIdentity` slice). |
 | `Profile` | `UserService` | Single object with burner name, legal name, birthday (month/day only), city/country, lat/lng, bio, pronouns, contribution interests, board notes, suspension state, emergency contact, medical conditions, created/updated instants. Tier, consent review and food answers are the `MembershipTier`, `ConsentReview` and `DietaryProfile` slices. |
 | `MergedProfiles` | `UserService` | Array of `{ UserId, Profile }` for archived profiles in the transitive merge chain. Reuses the current profile shape, including retained medical data; requests under an archived ID resolve to the survivor first. |
 | `ContactFields` | `UserService` | Array of `{ FieldType, Label, Value, Visibility }`. |
 | `VolunteerHistory` | `UserService` | Array of `{ Date, EventName, Description, CreatedAt }`. |
 | `Languages` | `UserService` | Array of `{ LanguageCode, Proficiency }`. |
 | `CommunicationPreferences` | `CommunicationPreferenceService` (Email) | Array of `{ Category, OptedOut, InboxEnabled, SubscribedAt, UpdatedAt, UpdateSource }` — the effective preferences. Deleted on erasure. |
-| `WorkspaceIdentity` | `WorkspaceIdentityService` (GoogleIntegration) | Single object `{ Email, Status }` — the member's effective Google Workspace identity (the legacy `UserEmails` flags answering until the `google.workspace-identities` copy runs); null when the member has no verified address. Erasure deletes the `google_workspace_identities` row. |
+| `WorkspaceIdentity` | `WorkspaceIdentityService` (GoogleIntegration) | Single object `{ Email, Status }` — the member's effective Google Workspace identity; null when the member has no verified address. Erasure deletes the `google_workspace_identities` row. |
 | `EventParticipations` | `EventParticipationService` (Tickets) | Array of `{ Year, Status, Source, DeclaredAt, CheckedInAt }` covering every event-year the user has a participation record for (Ticketed / Attended / NoShow / NotAttending); requests under an archived ID resolve to the survivor. Retained on erasure. |
 | `Applications` | `ApplicationDecisionService` | Array of tier application records with `StateHistory` inline. |
 | `MembershipTier` | `MembershipTierService` | Single object `{ Tier, GrantedAt, ExpiresAt, GrantedByApplicationId }`; null for a Volunteer. Retained on erasure (register of members). |

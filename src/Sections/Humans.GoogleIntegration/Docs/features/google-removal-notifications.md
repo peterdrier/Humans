@@ -50,7 +50,7 @@ Tracked in: peterdrier/Humans#639. Initial implementation: peterdrier/Humans#404
 - Body directs the user to contact their team coordinator if the removed address should still have had access
 
 ### US-41.3: Localized delivery
-**As a** Spanish / Catalan / German / French / Italian / English-speaking member
+**As a** Spanish / Catalan / German / French / Italian / Dutch / English-speaking member
 **I want to** receive removal notifications in my preferred language
 **So that** the message is actionable without translation
 
@@ -99,7 +99,7 @@ The send target in both variants is the address that was removed — the mailbox
 
 - All three templates render through `BrandedEmailBodyComposer` for the standard header / footer
 - All three are enqueued with `MessageCategory.System` — the existing outbox path suppresses the unsubscribe footer for system-category messages, which matches the spec's intent (action-confirmation notifications are not unsubscribable)
-- GoogleIntegration owns the copy: `GoogleIntegrationEmails` builds each `EmailMessage` from `GoogleIntegrationResource{,.es,.de,.it,.fr,.ca}.resx` (`src/Sections/Humans.GoogleIntegration/`) keyed `GoogleIntegration_Email_GoogleGroupRemoval_LossOfAccess_*`, `GoogleIntegration_Email_GoogleDriveRemoval_LossOfAccess_*`, `GoogleIntegration_Email_GoogleAccessRemoval_SecondaryCleanup_*`; Email supplies transport only (`memory/architecture/email-templates-live-in-sender.md`)
+- GoogleIntegration owns the copy: `GoogleIntegrationEmails` builds each `EmailMessage` from `GoogleIntegrationResource{,.es,.de,.it,.fr,.ca,.nl}.resx` (`src/Sections/Humans.GoogleIntegration/`) keyed `GoogleIntegration_Email_GoogleGroupRemoval_LossOfAccess_*`, `GoogleIntegration_Email_GoogleDriveRemoval_LossOfAccess_*`, `GoogleIntegration_Email_GoogleAccessRemoval_SecondaryCleanup_*`; Email supplies transport only (`memory/architecture/email-templates-live-in-sender.md`)
 - Resource-name fallback: if `resourceName` is missing, use `resourceIdentifier` (group email or URL); if both are missing, fall back to `(unknown)` rather than crashing
 
 ## Group-Email Derivation

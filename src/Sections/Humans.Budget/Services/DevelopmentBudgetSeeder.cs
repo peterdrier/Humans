@@ -181,7 +181,9 @@ internal sealed class DevelopmentBudgetSeeder(
             ?? throw new InvalidOperationException($"Budget year {budgetYearId} not found after creation");
 
         var departmentGroup = currentYear.Groups.Single(g => g.IsDepartmentGroup);
-        await budgetService.UpdateGroupAsync(departmentGroup.Id, departmentGroup.Name, 0, departmentGroup.IsRestricted, actorUserId);
+        var departmentUpdate = await budgetService.UpdateGroupAsync(departmentGroup.Id, departmentGroup.Name, 0, departmentGroup.IsRestricted, actorUserId);
+        if (departmentUpdate.Refusal is not null)
+            throw new InvalidOperationException(departmentUpdate.Refusal);
 
         var sharedServicesGroup = currentYear.Groups.FirstOrDefault(g =>
             string.Equals(g.Name, "Shared Services", StringComparison.Ordinal));
@@ -200,10 +202,14 @@ internal sealed class DevelopmentBudgetSeeder(
             sharedServicesGroupRestricted = sharedServicesGroup.IsRestricted;
         }
 
-        await budgetService.UpdateGroupAsync(sharedServicesGroupId, "Shared Services", 1, sharedServicesGroupRestricted, actorUserId);
+        var sharedServicesUpdate = await budgetService.UpdateGroupAsync(sharedServicesGroupId, "Shared Services", 1, sharedServicesGroupRestricted, actorUserId);
+        if (sharedServicesUpdate.Refusal is not null)
+            throw new InvalidOperationException(sharedServicesUpdate.Refusal);
 
         var ticketingGroup = currentYear.Groups.Single(g => g.IsTicketingGroup);
-        await budgetService.UpdateGroupAsync(ticketingGroup.Id, ticketingGroup.Name, 2, ticketingGroup.IsRestricted, actorUserId);
+        var ticketingUpdate = await budgetService.UpdateGroupAsync(ticketingGroup.Id, ticketingGroup.Name, 2, ticketingGroup.IsRestricted, actorUserId);
+        if (ticketingUpdate.Refusal is not null)
+            throw new InvalidOperationException(ticketingUpdate.Refusal);
 
         var categoriesCreated = 0;
         var lineItemsCreated = 0;
@@ -265,7 +271,7 @@ internal sealed class DevelopmentBudgetSeeder(
             await SeedLineItemsAsync(category, ticketSeed.LineItems, actorUserId, () => lineItemsCreated++);
         }
 
-        await budgetService.UpdateTicketingProjectionAsync(
+        var projection = await budgetService.UpdateTicketingProjectionAsync(
             ticketingGroup.Id,
             startDate: new LocalDate(publicYear, 1, 15),
             eventDate: new LocalDate(publicYear, 8, 24),
@@ -277,6 +283,8 @@ internal sealed class DevelopmentBudgetSeeder(
             stripeFeeFixed: 0.25m,
             ticketTailorFeePercent: 3.00m,
             actorUserId);
+        if (projection.Refusal is not null)
+            throw new InvalidOperationException(projection.Refusal);
 
         logger.LogInformation(
             "Development budget seed completed for {BudgetYearCode}: teamsCreated={TeamsCreated}, teamsUpdated={TeamsUpdated}, categoriesCreated={CategoriesCreated}, lineItemsCreated={LineItemsCreated}",

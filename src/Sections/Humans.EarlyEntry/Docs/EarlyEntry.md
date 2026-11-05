@@ -93,7 +93,7 @@ the next request with no signal to this section.
 
 ## Cross-Section Dependencies
 
-Outbound (the `.csproj` references `Humans.Base` only):
+Outbound (the `.csproj` references `Humans.Base` and `Humans.Shifts.Contracts` only):
 
 - **Users** — `IUserService` through `HumansControllerBase.FindUserInfoByIdAsync`, for the
   roster's legal-name column.

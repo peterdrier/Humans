@@ -54,9 +54,8 @@
             }
         }
 
-        <div class="d-flex justify-content-between align-items-start mb-3">
-            <div>
-                <h1 class="mb-1">@Model.Name</h1>
+        <page-header title="@Model.Name">
+            <page-header-subtitle>
                 @if (Model.CurrentSeason?.EventSettingsId is { } seasonEventId)
                 {
                     <p class="mb-1">
@@ -72,20 +71,18 @@
                         @Localizer["Camps_Details_AlsoKnownAs"] @string.Join(", ", Model.HistoricalNames)
                     </p>
                 }
-            </div>
-            <div class="d-flex gap-1">
-                @if (Model.IsSwissCamp)
-                {
-                    <span class="badge bg-danger fs-6">
-                        <i class="fa-solid fa-flag me-1"></i>@Localizer["Camps_Details_SwissCampBadge"]
-                    </span>
-                }
-                @if (Model.CurrentSeason?.Status == CampSeasonStatus.Full)
-                {
-                    <span class="badge bg-warning text-dark fs-6">@Localizer["Camps_Card_Full"]</span>
-                }
-            </div>
-        </div>
+            </page-header-subtitle>
+            @if (Model.IsSwissCamp)
+            {
+                <span class="badge bg-danger fs-6">
+                    <i class="fa-solid fa-flag me-1"></i>@Localizer["Camps_Details_SwissCampBadge"]
+                </span>
+            }
+            @if (Model.CurrentSeason?.Status == CampSeasonStatus.Full)
+            {
+                <span class="badge bg-warning text-dark fs-6">@Localizer["Camps_Card_Full"]</span>
+            }
+        </page-header>
 
         @if (Model.CurrentSeason != null)
         {

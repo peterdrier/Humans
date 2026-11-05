@@ -78,6 +78,7 @@
   <data name="Onboarding_WelcomeCTA" xml:space="preserve"><value>Sign in or create account</value></data>
   <data name="Onboarding_WelcomeFooter" xml:space="preserve"><value>Already have an account? Same button — sign in and you'll land straight on the shifts page.</value></data>
   <data name="Onboarding_WelcomeContact" xml:space="preserve"><value>Questions? Reach us at</value></data>
+  <data name="Onboarding_WelcomeTour" xml:space="preserve"><value>New here? See what Humans does (in English)</value></data>
   <data name="Onboarding_GuestAccountSubtitle" xml:space="preserve"><value>Even without a profile, you can manage your account and data.</value></data>
   <data name="Onboarding_GuestAccountTitle" xml:space="preserve"><value>Your stuff</value></data>
   <data name="Onboarding_GuestBarriosDescription" xml:space="preserve"><value>The neighbourhoods people build and live in during the event</value></data>

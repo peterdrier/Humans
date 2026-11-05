@@ -46,3 +46,10 @@ Hangfire scheduling names the public job class from Shell's roll-call.
 ---
 
 
+
+### BudgetReader (internal, owned by BudgetService)
+
+Repository: `IBudgetRepository`. Owns budget view reads, coordinator scope and
+shared DTO mapping; uses the existing Teams contract for names/scope and clock
+for ticketing projection dates. Mutation results reuse its mapping. No writes,
+cache or separate DI registration.

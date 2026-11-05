@@ -11,9 +11,7 @@
     <span>@Localizer["Expenses_ReviewQueue"]</span>
 }
 
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <h1>@Localizer["Expenses_ReviewQueue"]</h1>
-</div>
+<page-header title="@(Localizer["Expenses_ReviewQueue"].Value)" />
 
 @* A written-off push looks healthy everywhere else, so without this it is only found by reconciling Holded by hand.
    Finance admins are the only ones who can act on it. *@
