@@ -227,6 +227,32 @@ public sealed class TicketTransferServiceTests
         _vendor.ReceivedCalls().Should().BeEmpty();
     }
 
+    [HumansFact]
+    public async Task CreateRequest_PreservesMaximumLengthProfileName_WithinSnapshotColumn()
+    {
+        var firstName = new string('A', 256);
+        var lastName = new string('B', 256);
+        var fullName = $"{firstName} {lastName}";
+        _userService.GetUserInfoAsync(_receiverId, Arg.Any<CancellationToken>())
+            .Returns(WrapInUserInfo(MakeUser(_receiverId, "Alice"),
+                UserFixtures.Profile(burnerName: "Alice", firstName: firstName, lastName: lastName)));
+        StubAttendee(TicketAttendeeStatus.Valid, _senderId);
+
+        var result = await _service.CreateRequestAsync(
+            new TicketTransferRequestDto(_attendeeId, _receiverId, "Going abroad"), _senderId,
+            Xunit.TestContext.Current.CancellationToken);
+
+        result.Transfer!.ReceiverLegalName.Should().Be(fullName);
+        await _transferRepo.Received(1).AddAsync(
+            Arg.Is<TicketTransferRequest>(r => r.ReceiverLegalName == fullName), Arg.Any<CancellationToken>());
+        await using var db = new TicketsDbContext(new DbContextOptionsBuilder<TicketsDbContext>()
+            .UseInMemoryDatabase(Guid.NewGuid().ToString()).Options);
+        var columnLength = db.Model.FindEntityType(typeof(TicketTransferRequest))!
+            .FindProperty(nameof(TicketTransferRequest.ReceiverLegalName))!.GetMaxLength();
+        columnLength.Should().NotBeNull();
+        fullName.Length.Should().BeLessThanOrEqualTo(columnLength!.Value);
+    }
+
     [HumansTheory]
     [Xunit.InlineData("es", "Solicitud de transferencia de entrada")]
     [Xunit.InlineData("", "Ticket transfer requested")]

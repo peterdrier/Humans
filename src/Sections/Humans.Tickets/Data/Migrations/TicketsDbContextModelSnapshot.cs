@@ -18,7 +18,7 @@ namespace Humans.Tickets.Data.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "10.0.10")
+                .HasAnnotation("ProductVersion", "10.0.13")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
@@ -319,8 +319,8 @@ namespace Humans.Tickets.Data.Migrations
 
                     b.Property<string>("ReceiverLegalName")
                         .IsRequired()
-                        .HasMaxLength(256)
-                        .HasColumnType("character varying(256)");
+                        .HasMaxLength(513)
+                        .HasColumnType("character varying(513)");
 
                     b.Property<Guid>("ReceiverUserId")
                         .HasColumnType("uuid");
