@@ -10,6 +10,36 @@
 
 <page-header title="@(Localizer["Teams_Map_Title"].Value)" />
 
+@section Styles {
+    <style>
+        .map-bubble {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            background: var(--h-map-cluster);
+            color: var(--h-text-on-dark);
+            border: 2px solid var(--h-warm-white);
+            box-shadow: 0 0 0 4px color-mix(in srgb, var(--h-map-cluster) 30%, transparent), 0 1px 3px rgb(0 0 0 / 30%);
+            font-weight: 600;
+            line-height: 1;
+            cursor: pointer;
+            transition: transform 0.15s ease;
+        }
+        .map-bubble:hover { transform: scale(1.1); }
+        .map-bubble--large {
+            background: var(--h-map-cluster-large);
+            box-shadow: 0 0 0 5px color-mix(in srgb, var(--h-map-cluster-large) 30%, transparent), 0 1px 3px rgb(0 0 0 / 30%);
+        }
+        .map-bubble--person {
+            width: 14px;
+            height: 14px;
+            background: var(--h-map-person);
+            box-shadow: 0 1px 3px rgb(0 0 0 / 40%);
+        }
+    </style>
+}
+
 @if (Model.Markers.Count > 0)
 {
     <div class="card">
@@ -52,12 +82,21 @@ else
             const clrMutedText = cssVar('--h-muted-text');
             const clrTextOnDark = cssVar('--h-text-on-dark');
             const clrTextSecondary = cssVar('--h-text-secondary');
-            const clrMapPin = cssVar('--h-map-pin');
-            const clrMapPinBorder = cssVar('--h-map-pin-border');
-            const clrMapClusterLarge = cssVar('--h-map-cluster-large');
-            const clrMapClusterLargeBorder = cssVar('--h-map-cluster-large-border');
-            const clrMapClusterMedium = cssVar('--h-map-cluster-medium');
-            const clrMapClusterMediumBorder = cssVar('--h-map-cluster-medium-border');
+
+            // Diameter grows with log(count) so a 300-person cluster stays readable without swallowing its neighbours.
+            function bubble(count) {
+                const el = document.createElement('div');
+                if (count === 1) {
+                    el.className = 'map-bubble map-bubble--person';
+                    return el;
+                }
+                const size = Math.round(24 + 12 * Math.log10(count));
+                el.className = 'map-bubble' + (count >= 50 ? ' map-bubble--large' : '');
+                el.style.width = el.style.height = size + 'px';
+                el.style.fontSize = Math.round(size * 0.4) + 'px';
+                el.textContent = count;
+                return el;
+            }
 
             function avatarHtml(m, size) {
                 const s = size || 40;
@@ -92,12 +131,14 @@ else
 
             async function initMap() {
                 const { Map, InfoWindow } = await google.maps.importLibrary("maps");
-                const { AdvancedMarkerElement, PinElement } = await google.maps.importLibrary("marker");
+                const { AdvancedMarkerElement } = await google.maps.importLibrary("marker");
 
                 const map = new Map(document.getElementById("map"), {
                     zoom: 3,
                     center: { lat: 40, lng: -3 },
-                    mapId: "volunteer-map"
+                    mapId: "volunteer-map",
+                    mapTypeControl: false,
+                    streetViewControl: false
                 });
 
                 const infoWindow = new InfoWindow();
@@ -106,27 +147,13 @@ else
 
                 for (const group of groups) {
                     const first = group[0];
-                    let pinContent;
-
-                    if (group.length > 1) {
-                        const pin = new PinElement({
-                            glyph: '' + group.length,
-                            glyphColor: clrTextOnDark,
-                            background: clrMapPin,
-                            borderColor: clrMapPinBorder,
-                            scale: 1.1
-                        });
-                        pinContent = pin.element;
-                    } else {
-                        pinContent = undefined; // default pin
-                    }
 
                     const marker = new AdvancedMarkerElement({
                         position: { lat: first.latitude, lng: first.longitude },
                         map: map,
                         title: group.length > 1 ? group.length + ' humans' : first.displayName,
                         gmpClickable: true,
-                        content: pinContent
+                        content: bubble(group.length)
                     });
 
                     marker._people = group;
@@ -148,26 +175,23 @@ else
                 if (typeof markerClusterer !== 'undefined') {
                     var renderer = {
                         render: function(ref) {
-                            var count = ref.count;
-                            var position = ref.position;
                             var totalPeople = 0;
                             for (var gm of ref.markers) {
                                 totalPeople += (gm._people ? gm._people.length : 1);
                             }
-                            var pin = new PinElement({
-                                glyph: '' + totalPeople,
-                                glyphColor: clrTextOnDark,
-                                background: totalPeople > 10 ? clrMapClusterLarge : totalPeople > 5 ? clrMapClusterMedium : clrMapPin,
-                                borderColor: totalPeople > 10 ? clrMapClusterLargeBorder : totalPeople > 5 ? clrMapClusterMediumBorder : clrMapPinBorder,
-                                scale: 1.2 + Math.min(totalPeople / 50, 0.6)
-                            });
                             return new AdvancedMarkerElement({
-                                position: position,
-                                content: pin.element
+                                position: ref.position,
+                                content: bubble(totalPeople),
+                                zIndex: totalPeople
                             });
                         }
                     };
-                    new markerClusterer.MarkerClusterer({ markers: mapMarkers, map: map, renderer: renderer });
+                    new markerClusterer.MarkerClusterer({
+                        markers: mapMarkers,
+                        map: map,
+                        renderer: renderer,
+                        algorithm: new markerClusterer.SuperClusterAlgorithm({ radius: 80 })
+                    });
                 }
 
                 if (markers.length > 1) {
