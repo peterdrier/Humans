@@ -32,45 +32,38 @@ else
         }
     </div>
 
-    <table class="table align-middle">
-        <thead>
-            <tr>
-                <th>Member</th>
-                <th>Account</th>
-                <th class="text-end">Owed before</th>
-                <th class="text-end">Owed after</th>
-                <th>Deleted documents</th>
-                <th>Deleted contacts</th>
-                <th>Failures</th>
-            </tr>
-        </thead>
-        <tbody>
-        @foreach (var m in Model.Members)
-        {
-            <tr>
-                <td><vc:human user-id="@m.UserId" link="None" /> <div class="text-muted small">@m.ContactName</div></td>
-                <td>
-                    @if (m.SupplierAccountNum is { } account)
-                    {
-                        <a asp-action="CreditorStatement" asp-route-accountNum="@account">@account</a>
-                    }
-                    else
-                    {
-                        <span>—</span>
-                    }
-                </td>
-                <td class="text-end">@Owed(m.BalanceBefore)</td>
-                <td class="text-end">@Owed(m.BalanceAfter)</td>
-                <td class="font-monospace small">@(m.DeletedDocIds.Count == 0 ? "—" : string.Join(", ", m.DeletedDocIds))</td>
-                <td class="font-monospace small">@(m.DeletedContactIds.Count == 0 ? "—" : string.Join(", ", m.DeletedContactIds))</td>
-                <td class="small text-danger">
-                    @foreach (var f in m.Failures)
-                    {
-                        <div>@f</div>
-                    }
-                </td>
-            </tr>
-        }
-        </tbody>
-    </table>
+        Func<HoldedDuplicateMemberResult, IHtmlContent> resultCell0 = @<text><vc:human user-id="@item.UserId" link="None" /> <div class="text-muted small">@item.ContactName</div></text>;
+        Func<HoldedDuplicateMemberResult, IHtmlContent> resultCell1 = @<text>
+            @if (item.SupplierAccountNum is { } account)
+            {
+                <a asp-action="CreditorStatement" asp-route-accountNum="@account">@account</a>
+            }
+            else
+            {
+                <span>—</span>
+            }
+
+        </text>;
+        Func<HoldedDuplicateMemberResult, IHtmlContent> resultCell2 = @<text>@Owed(item.BalanceBefore)</text>;
+        Func<HoldedDuplicateMemberResult, IHtmlContent> resultCell3 = @<text>@Owed(item.BalanceAfter)</text>;
+        Func<HoldedDuplicateMemberResult, IHtmlContent> resultCell4 = @<text>@(item.DeletedDocIds.Count == 0 ? "—" : string.Join(", ", item.DeletedDocIds))</text>;
+        Func<HoldedDuplicateMemberResult, IHtmlContent> resultCell5 = @<text>@(item.DeletedContactIds.Count == 0 ? "—" : string.Join(", ", item.DeletedContactIds))</text>;
+        Func<HoldedDuplicateMemberResult, IHtmlContent> resultCell6 = @<text>
+            @foreach (var f in item.Failures)
+            {
+                <div>@f</div>
+            }
+
+        </text>;
+        var membersTable = TableModel.For(Model.Members)
+            .Template("Member", resultCell0)
+            .Template("Account", resultCell1, sortBy: m => m.SupplierAccountNum)
+            .Template("Owed before", resultCell2, o => o.End(), sortBy: m => m.BalanceBefore)
+            .Template("Owed after", resultCell3, o => o.End(), sortBy: m => m.BalanceAfter)
+            .Template("Deleted documents", resultCell4, o => o.Css("font-monospace small"))
+            .Template("Deleted contacts", resultCell5, o => o.Css("font-monospace small"))
+            .Template("Failures", resultCell6, o => o.Css("small text-danger").NoSort())
+            .Css("align-middle")
+            .Build();
+    <partial name="_Table" model="membersTable" />
 }

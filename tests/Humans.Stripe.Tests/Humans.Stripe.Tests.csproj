@@ -11,6 +11,8 @@
       this project names the SDK directly. It is the only test project that may.
     -->
     <PackageReference Include="Stripe.net" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" />
+    <PackageReference Include="NodaTime.Testing" />
   </ItemGroup>
 
   <ItemGroup>

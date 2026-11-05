@@ -148,13 +148,13 @@
                     var rowHref = Model.RowHref(row);
                     if (!string.IsNullOrEmpty(rowHref))
                     {
-                        <tr data-href="@rowHref" class="@Model.RowCss(row)">
+                        <tr data-href="@rowHref" class="@Model.RowCss(row)" @Model.RowData(row)>
                             @{ RenderCells(row); }
                         </tr>
                     }
                     else
                     {
-                        <tr class="@Model.RowCss(row)">
+                        <tr class="@Model.RowCss(row)" @Model.RowData(row)>
                             @{ RenderCells(row); }
                         </tr>
                     }

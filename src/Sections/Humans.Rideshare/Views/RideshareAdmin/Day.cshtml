@@ -25,48 +25,36 @@
 }
 else
 {
-    <div class="table-responsive">
-        <table class="table table-sm align-middle">
-            <thead>
-                <tr>
-                    <th>Direction</th>
-                    <th>From / to</th>
-                    <th>Departs</th>
-                    <th>Status</th>
-                    <th>Driver</th>
-                    <th>Seats</th>
-                    <th>Accepted riders</th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach (var row in Model.Trips)
-                {
-                    var t = row.Trip;
-                    <tr>
-                        <td>@t.Direction</td>
-                        <td>@t.MemberPlaceLabel</td>
-                        <td>@t.DepartureDate.ToInvariantDate() (@t.ExpectedDurationDays d)</td>
-                        <td><span class="badge @EnumBadgeMap.For(t.Status)">@t.Status</span></td>
-                        <td><vc:human user-id="@t.UserId" layout="AvatarName" link="Admin" /></td>
-                        <td>@(t.SeatsOffered - t.SeatsRemaining) / @t.SeatsOffered</td>
-                        <td>
-                            @if (row.Riders.Count == 0)
-                            {
-                                <span class="text-muted">—</span>
-                            }
-                            else
-                            {
-                                <ul class="list-unstyled mb-0">
-                                    @foreach (var rider in row.Riders)
-                                    {
-                                        <li><vc:human user-id="@rider.UserId" link="Admin" /> <span class="text-muted">× @rider.Seats</span></li>
-                                    }
-                                </ul>
-                            }
-                        </td>
-                    </tr>
-                }
-            </tbody>
-        </table>
-    </div>
+        Func<DayRosterRow, IHtmlContent> tripCell0 = @<text>@item.Trip.Direction</text>;
+        Func<DayRosterRow, IHtmlContent> tripCell1 = @<text>@item.Trip.MemberPlaceLabel</text>;
+        Func<DayRosterRow, IHtmlContent> tripCell2 = @<text>@item.Trip.DepartureDate.ToInvariantDate() (@item.Trip.ExpectedDurationDays d)</text>;
+        Func<DayRosterRow, IHtmlContent> tripCell4 = @<text><vc:human user-id="@item.Trip.UserId" layout="AvatarName" link="Admin" /></text>;
+        Func<DayRosterRow, IHtmlContent> tripCell5 = @<text>@(item.Trip.SeatsOffered - item.Trip.SeatsRemaining) / @item.Trip.SeatsOffered</text>;
+        Func<DayRosterRow, IHtmlContent> tripCell6 = @<text>
+            @if (item.Riders.Count == 0)
+            {
+                <span class="text-muted">—</span>
+            }
+            else
+            {
+                <ul class="list-unstyled mb-0">
+                    @foreach (var rider in item.Riders)
+                    {
+                        <li><vc:human user-id="@rider.UserId" link="Admin" /> <span class="text-muted">× @rider.Seats</span></li>
+                    }
+                </ul>
+            }
+
+        </text>;
+        var tripsTable = TableModel.For(Model.Trips)
+            .Template("Direction", tripCell0)
+            .Template("From / to", tripCell1)
+            .Template("Departs", tripCell2, sortBy: r => r.Trip.DepartureDate)
+            .Column("Status", r => r.Trip.Status, o => o.EnumBadge())
+            .Template("Driver", tripCell4)
+            .Template("Seats", tripCell5, sortBy: r => r.Trip.SeatsOffered - r.Trip.SeatsRemaining)
+            .Template("Accepted riders", tripCell6, sortBy: r => r.Riders.Count)
+            .Css("align-middle")
+            .Build();
+    <partial name="_Table" model="tripsTable" />
 }

@@ -3,6 +3,41 @@
     var p = Model.Program;
     ViewData["Title"] = p.Name;
     var byHand = p.IssuedBy == GrantIssuer.Managers;
+
+    Func<GrantInfo, IHtmlContent> whoCell =
+        @<text><vc:human user-id="@item.UserId" layout="AvatarName" size="28" /></text>;
+    Func<GrantInfo, IHtmlContent> issuedCell =
+        @<text><vc:human user-id="@item.IssuedByUserId" link="None" /> @item.IssuedAt.ToDateTime()@(item.SourceRef is null ? "" : $" ({item.SourceRef})")</text>;
+    Func<GrantInfo, IHtmlContent> revokedCell = @<text>
+        @if (item.RevokedAt is { } revokedAt)
+        {
+            <vc:human user-id="@(item.RevokedByUserId ?? Guid.Empty)" link="None" /> @revokedAt.ToDateTime()
+            @if (!string.IsNullOrEmpty(item.RevokeReason)) { <div>@item.RevokeReason</div> }
+        }
+    </text>;
+    Func<GrantInfo, IHtmlContent> actionsCell = @<text>
+        @if (item.RevokedAt is null && Model.CanManage)
+        {
+            <form method="post" asp-action="Resend" asp-route-programId="@p.Id" asp-route-grantId="@item.Id" class="d-inline">
+                <button type="submit" class="btn btn-sm btn-outline-secondary">Resend notice</button>
+            </form>
+            <form method="post" asp-action="Revoke" asp-route-programId="@p.Id" asp-route-grantId="@item.Id" class="d-inline-flex gap-1 align-items-center ms-1"
+                  data-confirm="Revoke this grant? The person is told.">
+                <input type="text" name="reason" class="form-control form-control-sm" style="width: 180px;" placeholder="Reason (optional, they see it)" maxlength="500" />
+                <button type="submit" class="btn btn-sm btn-outline-danger">Revoke</button>
+            </form>
+        }
+    </text>;
+    var grantsTable = TableModel.For(Model.Grants.ToList())
+        .Template("Who", whoCell)
+        .Column("State", g => g.State(Model.Today), o => o.EnumBadge())
+        .Column("Expires", g => g.ExpiresOn, o => o.Date())
+        .Template("Issued", issuedCell, o => o.Css("small text-muted"), sortBy: g => g.IssuedAt)
+        .Column("Notified", g => g.NotifiedAt, o => o.DateTime().Css("small text-muted"))
+        .Template("Revoked", revokedCell, o => o.Css("small text-muted"), sortBy: g => g.RevokedAt)
+        .Template("", actionsCell, o => o.NoSort().Css("text-end text-nowrap"))
+        .Css("align-middle")
+        .Build();
 }
 
 <page-header title="@p.Name" badge="@p.Status.ToString()" badge-class="@(EnumBadgeMap.For(p.Status) + " fs-6")">
@@ -90,44 +125,7 @@ else if (Model.CanManage)
 }
 else
 {
-    <div class="table-responsive">
-        <table class="table align-middle">
-            <thead><tr><th>Who</th><th>State</th><th>Expires</th><th>Issued</th><th>Notified</th><th>Revoked</th><th></th></tr></thead>
-            <tbody>
-                @foreach (var g in Model.Grants)
-                {
-                    var state = g.State(Model.Today);
-                    <tr>
-                        <td><vc:human user-id="@g.UserId" layout="AvatarName" size="28" /></td>
-                        <td><span class="badge @EnumBadgeMap.For(state)">@state</span></td>
-                        <td>@(g.ExpiresOn?.ToDate() ?? "—")</td>
-                        <td class="small text-muted"><vc:human user-id="@g.IssuedByUserId" link="None" /> @g.IssuedAt.ToDateTime()@(g.SourceRef is null ? "" : $" ({g.SourceRef})")</td>
-                        <td class="small text-muted">@(g.NotifiedAt?.ToDateTime() ?? "—")</td>
-                        <td class="small text-muted">
-                            @if (g.RevokedAt is { } revokedAt)
-                            {
-                                <vc:human user-id="@(g.RevokedByUserId ?? Guid.Empty)" link="None" /> @revokedAt.ToDateTime()
-                                @if (!string.IsNullOrEmpty(g.RevokeReason)) { <div>@g.RevokeReason</div> }
-                            }
-                        </td>
-                        <td class="text-end text-nowrap">
-                            @if (g.RevokedAt is null && Model.CanManage)
-                            {
-                                <form method="post" asp-action="Resend" asp-route-programId="@p.Id" asp-route-grantId="@g.Id" class="d-inline">
-                                    <button type="submit" class="btn btn-sm btn-outline-secondary">Resend notice</button>
-                                </form>
-                                <form method="post" asp-action="Revoke" asp-route-programId="@p.Id" asp-route-grantId="@g.Id" class="d-inline-flex gap-1 align-items-center ms-1"
-                                      data-confirm="Revoke this grant? The person is told.">
-                                    <input type="text" name="reason" class="form-control form-control-sm" style="width: 180px;" placeholder="Reason (optional, they see it)" maxlength="500" />
-                                    <button type="submit" class="btn btn-sm btn-outline-danger">Revoke</button>
-                                </form>
-                            }
-                        </td>
-                    </tr>
-                }
-            </tbody>
-        </table>
-    </div>
+    <partial name="_Table" model="grantsTable" />
 }
 
 <script>

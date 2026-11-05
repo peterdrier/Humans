@@ -2,6 +2,29 @@
 @model Humans.Tickets.Models.TicketSalesAggregatesViewModel
 @{
     ViewData["Title"] = "Sales Aggregates";
+
+    var ui = System.Globalization.CultureInfo.CurrentUICulture;
+    var ticketTypeTable = TableModel.For(Model.ByTicketType)
+        .Column("Ticket Type", t => t.TicketTypeName)
+        .Column($"Price ({Model.Currency})", t => t.Price, o => o.Currency().End())
+        .Column("Tickets", t => t.TicketsSold, o => o.Number().End())
+        .Column($"Face Value ({Model.Currency})", t => t.FaceValue, o => o.Currency().End())
+        .Footer(new TableFooterCell("Total"), new TableFooterCell(""),
+            new TableFooterCell(Model.ByTicketType.Sum(t => t.TicketsSold).ToString("N0", ui), "text-end"),
+            new TableFooterCell(Model.ByTicketType.Sum(t => t.FaceValue).ToString("N2", ui), "text-end"))
+        .Build();
+    var campaignTable = TableModel.For(Model.ByDiscountCampaign)
+        .Column("Campaign", c => c.CampaignTitle)
+        .Column("Codes Granted", c => c.CodesGranted, o => o.Number().End())
+        .Column("Codes Used", c => c.CodesUsed, o => o.Number().End())
+        .Column($"Each ({Model.Currency})", c => c.AverageDiscount, o => o.Currency().End())
+        .Column($"Total ({Model.Currency})", c => c.TotalDiscount, o => o.Currency().End())
+        .Footer(new TableFooterCell("Total"),
+            new TableFooterCell(Model.ByDiscountCampaign.Sum(d => d.CodesGranted ?? 0).ToString("N0", ui), "text-end"),
+            new TableFooterCell(Model.ByDiscountCampaign.Sum(d => d.CodesUsed).ToString("N0", ui), "text-end"),
+            new TableFooterCell(""),
+            new TableFooterCell(Model.ByDiscountCampaign.Sum(d => d.TotalDiscount).ToString("N2", ui), "text-end"))
+        .Build();
 }
 
 <div class="container-fluid px-4">
@@ -256,35 +279,7 @@
         <div class="card-body p-0">
             @if (Model.ByTicketType.Count > 0)
             {
-                <table class="table table-sm table-hover mb-0">
-                    <thead>
-                        <tr>
-                            <th>Ticket Type</th>
-                            <th class="text-end">Price (@Model.Currency)</th>
-                            <th class="text-end">Tickets</th>
-                            <th class="text-end">Face Value (@Model.Currency)</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach (var type in Model.ByTicketType)
-                        {
-                            <tr>
-                                <td>@type.TicketTypeName</td>
-                                <td class="text-end">@type.Price.ToString("N2", System.Globalization.CultureInfo.CurrentUICulture)</td>
-                                <td class="text-end">@type.TicketsSold.ToString("N0", System.Globalization.CultureInfo.CurrentUICulture)</td>
-                                <td class="text-end">@type.FaceValue.ToString("N2", System.Globalization.CultureInfo.CurrentUICulture)</td>
-                            </tr>
-                        }
-                    </tbody>
-                    <tfoot>
-                        <tr class="fw-bold">
-                            <td>Total</td>
-                            <td></td>
-                            <td class="text-end">@Model.ByTicketType.Sum(t => t.TicketsSold).ToString("N0", System.Globalization.CultureInfo.CurrentUICulture)</td>
-                            <td class="text-end">@Model.ByTicketType.Sum(t => t.FaceValue).ToString("N2", System.Globalization.CultureInfo.CurrentUICulture)</td>
-                        </tr>
-                    </tfoot>
-                </table>
+                <partial name="_Table" model="ticketTypeTable" />
                 <div class="px-3 py-2">
                     <small class="text-muted">
                         <i class="fa-solid fa-circle-info"></i>
@@ -308,38 +303,7 @@
         <div class="card-body p-0">
             @if (Model.ByDiscountCampaign.Count > 0)
             {
-                <table class="table table-sm table-hover mb-0">
-                    <thead>
-                        <tr>
-                            <th>Campaign</th>
-                            <th class="text-end">Codes Granted</th>
-                            <th class="text-end">Codes Used</th>
-                            <th class="text-end">Each (@Model.Currency)</th>
-                            <th class="text-end">Total (@Model.Currency)</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach (var campaign in Model.ByDiscountCampaign)
-                        {
-                            <tr>
-                                <td>@campaign.CampaignTitle</td>
-                                <td class="text-end">@(campaign.CodesGranted?.ToString("N0", System.Globalization.CultureInfo.CurrentUICulture) ?? "—")</td>
-                                <td class="text-end">@campaign.CodesUsed.ToString("N0", System.Globalization.CultureInfo.CurrentUICulture)</td>
-                                <td class="text-end">@campaign.AverageDiscount.ToString("N2", System.Globalization.CultureInfo.CurrentUICulture)</td>
-                                <td class="text-end">@campaign.TotalDiscount.ToString("N2", System.Globalization.CultureInfo.CurrentUICulture)</td>
-                            </tr>
-                        }
-                    </tbody>
-                    <tfoot>
-                        <tr class="fw-bold">
-                            <td>Total</td>
-                            <td class="text-end">@Model.ByDiscountCampaign.Sum(d => d.CodesGranted ?? 0).ToString("N0", System.Globalization.CultureInfo.CurrentUICulture)</td>
-                            <td class="text-end">@Model.ByDiscountCampaign.Sum(d => d.CodesUsed).ToString("N0", System.Globalization.CultureInfo.CurrentUICulture)</td>
-                            <td></td>
-                            <td class="text-end">@Model.ByDiscountCampaign.Sum(d => d.TotalDiscount).ToString("N2", System.Globalization.CultureInfo.CurrentUICulture)</td>
-                        </tr>
-                    </tfoot>
-                </table>
+                <partial name="_Table" model="campaignTable" />
                 <div class="px-3 py-2">
                     <small class="text-muted">
                         <i class="fa-solid fa-circle-info"></i>

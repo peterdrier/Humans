@@ -24,90 +24,89 @@
 }
 else
 {
-    <div class="table-responsive mb-4">
-        <table class="table table-sm align-middle">
-            <thead>
-                <tr><th>Category id</th><th class="text-end">Entries</th><th class="text-end">Spend</th><th>Top merchants</th><th>Cardholders</th><th></th></tr>
-            </thead>
-            <tbody>
-                @foreach (var u in Model.Unlinked)
-                {
-                    <tr>
-                        <td><code class="small">@u.CategoryId</code></td>
-                        <td class="text-end">@N(u.Count)</td>
-                        <td class="text-end text-nowrap">@u.Spend.ToEuro()</td>
-                        <td class="small">@string.Join(", ", u.TopMerchants)</td>
-                        <td class="small">@string.Join(", ", u.Cardholders)</td>
-                        <td>
-                            <form authorize-policy="@FinancePolicies.Manage" asp-action="Link" method="post" class="d-flex gap-1">
-                                @Html.AntiForgeryToken()
-                                <input type="hidden" name="pleoCategoryId" value="@u.CategoryId" />
-                                <select name="categoryId" class="form-select form-select-sm" required>
-                                    <option value="">Link to…</option>
-                                    @foreach (var n in Model.UnlinkedNames)
-                                    {
-                                        <option value="@n.Value">@n.Label</option>
-                                    }
-                                </select>
-                                <button type="submit" class="btn btn-sm btn-primary">Link</button>
-                            </form>
-                        </td>
-                    </tr>
-                }
-            </tbody>
-        </table>
-    </div>
+        Func<PleoUnlinkedCategory, IHtmlContent> unlinkedCell0 = @<text><code class="small">@item.CategoryId</code></text>;
+        Func<PleoUnlinkedCategory, IHtmlContent> unlinkedCell1 = @<text>@N(item.Count)</text>;
+        Func<PleoUnlinkedCategory, IHtmlContent> unlinkedCell2 = @<text>@item.Spend.ToEuro()</text>;
+        Func<PleoUnlinkedCategory, IHtmlContent> unlinkedCell3 = @<text>@string.Join(", ", item.TopMerchants)</text>;
+        Func<PleoUnlinkedCategory, IHtmlContent> unlinkedCell4 = @<text>@string.Join(", ", item.Cardholders)</text>;
+        Func<PleoUnlinkedCategory, IHtmlContent> unlinkedCell5 = @<text>
+            <form authorize-policy="@FinancePolicies.Manage" asp-action="Link" method="post" class="d-flex gap-1">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="pleoCategoryId" value="@item.CategoryId" />
+                <select name="categoryId" class="form-select form-select-sm" required>
+                    <option value="">Link to…</option>
+                    @foreach (var n in Model.UnlinkedNames)
+                    {
+                        <option value="@n.Value">@n.Label</option>
+                    }
+                </select>
+                <button type="submit" class="btn btn-sm btn-primary">Link</button>
+            </form>
+
+        </text>;
+        var unlinkedTable = TableModel.For(Model.Unlinked)
+            .Template("Category id", unlinkedCell0)
+            .Template("Entries", unlinkedCell1, o => o.End(), sortBy: u => u.Count)
+            .Template("Spend", unlinkedCell2, o => o.End().Css("text-nowrap"), sortBy: u => u.Spend)
+            .Template("Top merchants", unlinkedCell3, o => o.Css("small"))
+            .Template("Cardholders", unlinkedCell4, o => o.Css("small"))
+            .Template("", unlinkedCell5, o => o.NoSort())
+            .Css("align-middle")
+            .Build();
+    <partial name="_Table" model="unlinkedTable" />
 }
 
 <h2 class="h5">Categories</h2>
-<div class="table-responsive mb-4">
-    <table class="table table-sm align-middle">
-        <thead>
-            <tr><th>Name</th><th>Holded account</th><th>Linked id</th><th class="text-end">Entries</th><th class="text-end">Spend</th><th></th></tr>
-        </thead>
-        <tbody>
-            @foreach (var c in Model.Categories)
+@{
+    Func<PleoCategoryRow, IHtmlContent> categoryCell0 = @<text>@item.Name</text>;
+    Func<PleoCategoryRow, IHtmlContent> categoryCell1 = @<text>
+        <span class="@(item.CodeProblem ? "text-danger" : "")">
+                                @item.HoldedCode · @(item.HoldedName ?? "not in Pleo's chart")
+                                @if (item.CodeProblem && item.HoldedName is not null)
+                                {
+                                    <span class="small">(archived)</span>
+                                }
+                            </span>
+    </text>;
+    Func<PleoCategoryRow, IHtmlContent> categoryCell2 = @<text>
+        @if (item.PleoCategoryId is null)
+        {
+            <span class="text-muted">not linked</span>
+        }
+        else
+        {
+            <code class="small">@item.PleoCategoryId</code>
+            @if (item.SetAt is { } at)
             {
-                <tr>
-                    <td>@c.Name</td>
-                    <td class="@(c.CodeProblem ? "text-danger" : "")">
-                        @c.HoldedCode · @(c.HoldedName ?? "not in Pleo's chart")
-                        @if (c.CodeProblem && c.HoldedName is not null)
-                        {
-                            <span class="small">(archived)</span>
-                        }
-                    </td>
-                    <td>
-                        @if (c.PleoCategoryId is null)
-                        {
-                            <span class="text-muted">not linked</span>
-                        }
-                        else
-                        {
-                            <code class="small">@c.PleoCategoryId</code>
-                            @if (c.SetAt is { } at)
-                            {
-                                <div class="small text-muted">@at.ToDate(madrid)</div>
-                            }
-                        }
-                    </td>
-                    <td class="text-end">@N(c.Count)</td>
-                    <td class="text-end text-nowrap">@c.Spend.ToEuro()</td>
-                    <td>
-                        @if (c.PleoCategoryId is not null)
-                        {
-                            <form authorize-policy="@FinancePolicies.Manage" asp-action="Unlink" method="post">
-                                @Html.AntiForgeryToken()
-                                <input type="hidden" name="categoryId" value="@c.Id" />
-                                <button type="submit" class="btn btn-sm btn-outline-secondary">Unlink</button>
-                            </form>
-                        }
-                    </td>
-                </tr>
+                <div class="small text-muted">@at.ToDate(madrid)</div>
             }
-        </tbody>
-    </table>
-</div>
+        }
+
+    </text>;
+    Func<PleoCategoryRow, IHtmlContent> categoryCell3 = @<text>@N(item.Count)</text>;
+    Func<PleoCategoryRow, IHtmlContent> categoryCell4 = @<text>@item.Spend.ToEuro()</text>;
+    Func<PleoCategoryRow, IHtmlContent> categoryCell5 = @<text>
+        @if (item.PleoCategoryId is not null)
+        {
+            <form authorize-policy="@FinancePolicies.Manage" asp-action="Unlink" method="post">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="categoryId" value="@item.Id" />
+                <button type="submit" class="btn btn-sm btn-outline-secondary">Unlink</button>
+            </form>
+        }
+
+    </text>;
+    var categoriesTable = TableModel.For(Model.Categories)
+        .Template("Name", categoryCell0, sortBy: c => c.Name)
+        .Template("Holded account", categoryCell1, sortBy: c => c.HoldedCode)
+        .Template("Linked id", categoryCell2, sortBy: c => c.PleoCategoryId)
+        .Template("Entries", categoryCell3, o => o.End(), sortBy: c => c.Count)
+        .Template("Spend", categoryCell4, o => o.End().Css("text-nowrap"), sortBy: c => c.Spend)
+        .Template("", categoryCell5, o => o.NoSort())
+        .Css("align-middle")
+        .Build();
+}
+<partial name="_Table" model="categoriesTable" />
 
 <div authorize-policy="@FinancePolicies.Manage" class="card mb-4">
     <div class="card-header">Add a category</div>

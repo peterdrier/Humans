@@ -34,6 +34,19 @@ public class TableModelBuilderTests
     }
 
     [HumansFact]
+    public void RowData_renders_encoded_data_attributes()
+    {
+        var table = TableModel.For(Rows)
+            .Column("Name", r => r.Name)
+            .RowData("state", r => string.Equals(r.Name, "a", StringComparison.Ordinal) ? "x\"y" : null)
+            .Build();
+
+        using var writer = new StringWriter();
+        table.RowData(Rows[0]).WriteTo(writer, System.Text.Encodings.Web.HtmlEncoder.Default);
+        writer.ToString().Should().Be(" data-state=\"x&quot;y\"");
+    }
+
+    [HumansFact]
     public void ServerMode_captures_sort_state_pager_and_hidden_fields()
     {
         var pager = new PagerViewModel(totalPages: 3, currentPage: 1, action: "Index");
