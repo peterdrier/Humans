@@ -202,6 +202,48 @@ src/Sections/Humans.Store/Data/Migrations/20261021133426_DropStoreTreasurySyncSt
 # Step 4 deviation: ships inside peterdrier/Humans#2201 with the event-id change, which needs it.
 src/Sections/Humans.Camps/Data/Migrations/20261029213715_AddCampEventIds.cs:DropIndex(name=IX_camp_seasons_CampId_Year,table=camp_seasons)#1
 
+# event_settings (Shifts) EventName, Year, TimeZoneId, GateOpeningDate, BuildStartOffset, EventEndOffset,
+# StrikeEndOffset, FirstCrewStartOffset, SetupWeekStartOffset, PreEventWeekStartOffset,
+# FinishingWeekendStartOffset, EarlyEntryCapacity, BarriosEarlyEntryAllocation, EarlyEntryClose, IsActive
+# and IX_event_settings_IsActive: the calendar copies Settings' settings_event replaced
+# (peterdrier/Humans#1761). The four int sub-period offsets are dead copies of the nullable SubPeriod*Start
+# columns, which stay.
+# Evidence: pickaxe (log -p -G over each property name) over full history of the Shifts paths: the last
+# writers (including the single-active `active.IsActive = false`) went in ec0a27adf (#1756); later hits
+# are EF configuration (153216e4c's HasDefaultValue on the four offsets) and reads of the Settings DTO, not
+# the entity. Removing the properties broke only test fixtures that used the row to stand in for
+# Settings' calendar; they now fake ISettingsService directly.
+# Approval: Peter, 2026-11-04, project thread ("fix A-E", covering peterdrier/Humans#1761).
+# Down() caveat: EF re-adds EarlyEntryCapacity as jsonb NOT NULL DEFAULT '', which PostgreSQL rejects as
+# invalid JSON, so Down() fails as generated; every other column re-adds with a constant default, not
+# its old value.
+src/Sections/Humans.Shifts/Data/Migrations/20261104172244_DropShiftsEventSettingsCalendarColumns.cs:DropIndex(name=IX_event_settings_IsActive,table=event_settings)#1
+src/Sections/Humans.Shifts/Data/Migrations/20261104172244_DropShiftsEventSettingsCalendarColumns.cs:DropColumn(name=BarriosEarlyEntryAllocation,table=event_settings)#1
+src/Sections/Humans.Shifts/Data/Migrations/20261104172244_DropShiftsEventSettingsCalendarColumns.cs:DropColumn(name=BuildStartOffset,table=event_settings)#1
+src/Sections/Humans.Shifts/Data/Migrations/20261104172244_DropShiftsEventSettingsCalendarColumns.cs:DropColumn(name=EarlyEntryCapacity,table=event_settings)#1
+src/Sections/Humans.Shifts/Data/Migrations/20261104172244_DropShiftsEventSettingsCalendarColumns.cs:DropColumn(name=EarlyEntryClose,table=event_settings)#1
+src/Sections/Humans.Shifts/Data/Migrations/20261104172244_DropShiftsEventSettingsCalendarColumns.cs:DropColumn(name=EventEndOffset,table=event_settings)#1
+src/Sections/Humans.Shifts/Data/Migrations/20261104172244_DropShiftsEventSettingsCalendarColumns.cs:DropColumn(name=EventName,table=event_settings)#1
+src/Sections/Humans.Shifts/Data/Migrations/20261104172244_DropShiftsEventSettingsCalendarColumns.cs:DropColumn(name=FinishingWeekendStartOffset,table=event_settings)#1
+src/Sections/Humans.Shifts/Data/Migrations/20261104172244_DropShiftsEventSettingsCalendarColumns.cs:DropColumn(name=FirstCrewStartOffset,table=event_settings)#1
+src/Sections/Humans.Shifts/Data/Migrations/20261104172244_DropShiftsEventSettingsCalendarColumns.cs:DropColumn(name=GateOpeningDate,table=event_settings)#1
+src/Sections/Humans.Shifts/Data/Migrations/20261104172244_DropShiftsEventSettingsCalendarColumns.cs:DropColumn(name=IsActive,table=event_settings)#1
+src/Sections/Humans.Shifts/Data/Migrations/20261104172244_DropShiftsEventSettingsCalendarColumns.cs:DropColumn(name=PreEventWeekStartOffset,table=event_settings)#1
+src/Sections/Humans.Shifts/Data/Migrations/20261104172244_DropShiftsEventSettingsCalendarColumns.cs:DropColumn(name=SetupWeekStartOffset,table=event_settings)#1
+src/Sections/Humans.Shifts/Data/Migrations/20261104172244_DropShiftsEventSettingsCalendarColumns.cs:DropColumn(name=StrikeEndOffset,table=event_settings)#1
+src/Sections/Humans.Shifts/Data/Migrations/20261104172244_DropShiftsEventSettingsCalendarColumns.cs:DropColumn(name=TimeZoneId,table=event_settings)#1
+src/Sections/Humans.Shifts/Data/Migrations/20261104172244_DropShiftsEventSettingsCalendarColumns.cs:DropColumn(name=Year,table=event_settings)#1
+
+# camp_settings (Camps) PublicYear and EeStartDate: replaced by the active Settings event's Year and
+# settings_event's EarlyEntryStartOffset (peterdrier/Humans#1761). PublicYear's HasData seed value goes too.
+# Evidence: pickaxe (log -p -G 'PublicYear|EeStartDate') over full history of the Camps paths: the
+# last writers, SetPublicYearAsync and SetEeStartDateAsync, and the last entity read went in ec0a27adf
+# (#1756). Every later PublicYear read is CampSettingsInfo.PublicYear, the active event year. The
+# integration tests that read the column now read ICampService.GetSettingsAsync.
+# Approval: Peter, 2026-11-04, project thread ("fix A-E", covering peterdrier/Humans#1761).
+# Down() caveat: PublicYear re-adds as NOT NULL DEFAULT 0 (the seed row gets 2026 back).
+src/Sections/Humans.Camps/Data/Migrations/20261104172247_DropCampSettingsDeadColumns.cs:DropColumn(name=EeStartDate,table=camp_settings)#1
+src/Sections/Humans.Camps/Data/Migrations/20261104172247_DropCampSettingsDeadColumns.cs:DropColumn(name=PublicYear,table=camp_settings)#1
 # city_planning_settings.PlacementOpensAt / PlacementClosesAt — admin-entered, display-only barrio
 # placement dates (CITYPLANNING-8 in peterdrier/Humans#2156). They never gated placement.
 # Evidence: pickaxe (log -S 'PlacementOpensAt =' / 'PlacementClosesAt =') over full history. Written

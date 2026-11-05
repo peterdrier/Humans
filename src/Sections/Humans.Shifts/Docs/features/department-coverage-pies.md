@@ -90,7 +90,7 @@ filled     += hours × min(confirmed signups on shift, shift.MaxVolunteers)
 
 ### Date range filter
 
-When the page has a `fromDate` / `toDate` filter applied, the same window is applied per-shift via `EventSettings.GateOpeningDate + DayOffset`. The percentage matches what the user is filtering to.
+When the page has a `fromDate` / `toDate` filter applied, the same window is applied per-shift via the Settings event's `GateOpeningDate + DayOffset`. The percentage matches what the user is filtering to.
 
 ### Display ordering
 

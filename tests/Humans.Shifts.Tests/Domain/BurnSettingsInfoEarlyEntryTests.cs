@@ -1,15 +1,19 @@
-using Humans.Shifts.Domain;
+using Humans.Shifts.Contracts;
 using AwesomeAssertions;
 using NodaTime;
 
 namespace Humans.Shifts.Tests.Domain;
 
-public class EventSettingsTests
+public class BurnSettingsInfoEarlyEntryTests
 {
     private static readonly Instant Close = Instant.FromUtc(2026, 6, 15, 12, 0);
 
-    private static EventSettings EventWithClose(Instant? close) =>
-        new() { Id = Guid.NewGuid(), EarlyEntryClose = close };
+    private static BurnSettingsInfo EventWithClose(Instant? close) => new(
+        Guid.NewGuid(), "Event", 2026, "Europe/Madrid", new LocalDate(2026, 7, 1),
+        BuildStartOffset: -14, EventEndOffset: 6, StrikeEndOffset: 9,
+        FirstCrewStartOffset: -25, SetupWeekStartOffset: -16, PreEventWeekStartOffset: -9,
+        FinishingWeekendStartOffset: -4, EarlyEntryCapacity: new Dictionary<int, int>(),
+        BarriosEarlyEntryAllocation: null, EarlyEntryClose: close, IsShiftBrowsingOpen: true);
 
     [HumansFact]
     public void IsEarlyEntryClosed_NoCloseConfigured_ReturnsFalse()

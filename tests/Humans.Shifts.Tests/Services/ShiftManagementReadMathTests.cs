@@ -162,7 +162,7 @@ public sealed class ShiftManagementReadMathTests : ShiftsTestHarness
         int month, int day, double durationHours, double transitionDayHours)
     {
         var (es, rota) = SeedScenario();
-        es.GateOpeningDate = new LocalDate(2026, month, day);
+        Calendars[es.Id].GateOpeningDate = new LocalDate(2026, month, day);
         SeedShift(rota, dayOffset: 0, min: 1, max: 2, durationHours: durationHours, startHour: 0);
         await SaveAllAsync(Ct);
 
@@ -371,21 +371,28 @@ public sealed class ShiftManagementReadMathTests : ShiftsTestHarness
             Members: [],
             ParentTeamId: team.ParentTeamId);
 
-    private static EventSettings NewEventSettings() =>
-        new()
+    private EventSettings NewEventSettings()
+    {
+        var es = new EventSettings
         {
             Id = Guid.NewGuid(),
+            IsShiftBrowsingOpen = true,
+            CreatedAt = TestNow,
+            UpdatedAt = TestNow
+        };
+        Calendars[es.Id] = new TestEventCalendar
+        {
+            Id = es.Id,
             EventName = "Test Event 2026",
             TimeZoneId = "Europe/Madrid",
             GateOpeningDate = GateOpening,
             BuildStartOffset = -5,
             EventEndOffset = 6,
             StrikeEndOffset = 9,
-            IsShiftBrowsingOpen = true,
             IsActive = true,
-            CreatedAt = TestNow,
-            UpdatedAt = TestNow
         };
+        return es;
+    }
 
     private (EventSettings Es, Rota Rota) SeedScenario(ShiftPriority priority = ShiftPriority.Normal)
     {

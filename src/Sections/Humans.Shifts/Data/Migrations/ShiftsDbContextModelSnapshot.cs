@@ -29,66 +29,16 @@ namespace Humans.Shifts.Data.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
-                    b.Property<string>("BarriosEarlyEntryAllocation")
-                        .HasColumnType("jsonb");
-
-                    b.Property<int>("BuildStartOffset")
-                        .HasColumnType("integer");
-
                     b.Property<Instant>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("EarlyEntryCapacity")
-                        .IsRequired()
-                        .HasColumnType("jsonb");
-
-                    b.Property<Instant?>("EarlyEntryClose")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<int>("EventEndOffset")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("EventName")
-                        .IsRequired()
-                        .HasMaxLength(256)
-                        .HasColumnType("character varying(256)");
-
-                    b.Property<int>("FinishingWeekendStartOffset")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer")
-                        .HasDefaultValue(-4);
-
-                    b.Property<int>("FirstCrewStartOffset")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer")
-                        .HasDefaultValue(-25);
-
-                    b.Property<LocalDate>("GateOpeningDate")
-                        .HasColumnType("date");
 
                     b.Property<int?>("GlobalVolunteerCap")
                         .HasColumnType("integer");
 
-                    b.Property<bool>("IsActive")
-                        .HasColumnType("boolean");
-
                     b.Property<bool>("IsShiftBrowsingOpen")
                         .HasColumnType("boolean");
 
-                    b.Property<int>("PreEventWeekStartOffset")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer")
-                        .HasDefaultValue(-9);
-
                     b.Property<int>("ReminderLeadTimeHours")
-                        .HasColumnType("integer");
-
-                    b.Property<int>("SetupWeekStartOffset")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer")
-                        .HasDefaultValue(-16);
-
-                    b.Property<int>("StrikeEndOffset")
                         .HasColumnType("integer");
 
                     b.Property<int?>("SubPeriodFinishingWeekendStart")
@@ -103,20 +53,10 @@ namespace Humans.Shifts.Data.Migrations
                     b.Property<int?>("SubPeriodSetupWeekStart")
                         .HasColumnType("integer");
 
-                    b.Property<string>("TimeZoneId")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)");
-
                     b.Property<Instant>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<int>("Year")
-                        .HasColumnType("integer");
-
                     b.HasKey("Id");
-
-                    b.HasIndex("IsActive");
 
                     b.ToTable("event_settings", (string)null);
                 });

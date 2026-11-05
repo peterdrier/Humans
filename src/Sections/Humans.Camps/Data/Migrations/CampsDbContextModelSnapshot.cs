@@ -429,15 +429,9 @@ namespace Humans.Camps.Data.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
-                    b.Property<LocalDate?>("EeStartDate")
-                        .HasColumnType("date");
-
                     b.Property<string>("OpenSeasons")
                         .IsRequired()
                         .HasColumnType("jsonb");
-
-                    b.Property<int>("PublicYear")
-                        .HasColumnType("integer");
 
                     b.HasKey("Id");
 
@@ -447,8 +441,7 @@ namespace Humans.Camps.Data.Migrations
                         new
                         {
                             Id = new Guid("00000000-0000-0000-0010-000000000001"),
-                            OpenSeasons = "[2026]",
-                            PublicYear = 2026
+                            OpenSeasons = "[2026]"
                         });
                 });
 
