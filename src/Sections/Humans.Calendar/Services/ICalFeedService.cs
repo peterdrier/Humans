@@ -98,6 +98,8 @@ internal sealed class ICalFeedService(
                 ev.RecurrenceRule = new RecurrencePattern(rule);
                 if (zonesAdded.Add(zone.Id)) calendar.AddTimeZone(zone.Id);
             }
+            // Google Calendar draws its Join button from this property; other clients ignore it.
+            if (item.LocationUrl is not null) ev.AddProperty("X-GOOGLE-CONFERENCE", item.LocationUrl);
             calendar.Events.Add(ev);
         }
 

@@ -229,7 +229,7 @@ public class ICalFeedServiceTests
     }
 
     [HumansFact]
-    public async Task GetFeedIcsAsync_LocationUrl_LeadsTheDescriptionAndFillsAnEmptyLocation()
+    public async Task GetFeedIcsAsync_LocationUrl_IsAGoogleConferenceLeadsTheDescriptionAndFillsAnEmptyLocation()
     {
         var userId = Guid.NewGuid();
         var token = Guid.NewGuid();
@@ -242,6 +242,7 @@ public class ICalFeedServiceTests
 
         var ics = await service.GetFeedIcsAsync(userId, token, TestContext.Current.CancellationToken);
 
+        ics.Should().Contain($"X-GOOGLE-CONFERENCE:{url}");
         var events = Ical.Net.Calendar.Load(ics!)!.Events;
         events[0]!.Description.Should().Be($"{url}\n\nAgenda");
         events[0]!.Location.Should().Be("Room 1");
