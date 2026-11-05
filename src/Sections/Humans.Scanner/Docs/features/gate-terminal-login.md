@@ -46,7 +46,7 @@ cannot be opened by the kiosk account.
   (`GateTerminalAccountSeeder`). User row with the well-known GUID + a minimal
   Profile ("Gate Terminal", legal name Gate/Terminal) created through the canonical
   `SaveProfileAsync` path so `UserStateClassifier` yields `Active` (the membership
-  filter requires it). Consent check is auto-cleared so the account never sits in
+  filter requires it). The account is marked fake in Users (on every password set) so it never sits in
   the Consent Coordinator review queue. If setup fails after creating the user,
   another password-set attempt resumes setup on that row. Until a password exists,
   profile and consent-review annotation must both succeed before a password is set.

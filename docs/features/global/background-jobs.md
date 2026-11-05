@@ -72,7 +72,9 @@ Several system operations need to run automatically without user interaction: sy
    a. Notify the active members of the document's team (a re-consent notice
       when the version requires re-consent, a published notice when the
       document is new), grouped by preferred language
-   b. Log summary of updates and notifications
+   b. Email each of those members once, listing every required document
+      they still have to sign
+   c. Log summary of updates and notifications
 ```
 
 **Triggers**:

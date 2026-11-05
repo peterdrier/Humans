@@ -173,7 +173,7 @@ Triggered by:
 ```
 Document Updated (new version published)
     │
-Day 0: In-app notice to the document's team members
+Day 0: Email and in-app notice to the document's team members
     │
 Before the deadline: re-consent reminder emails (ConsentReminderDaysBeforeSuspension, with cooldown)
     │

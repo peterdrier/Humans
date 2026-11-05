@@ -225,7 +225,7 @@ Repository: `IEventParticipationRepository` (Singleton, `IDbContextFactory<Ticke
 
 | Table | R/W |
 |-------|-----|
-| EventParticipations (`tickets_event_participations`) | R/W (W: member declaration, ticket sync, Gate admit via `ITicketWrite`, admin backfill, merge fold; a `null` `Status` is a cleared record) |
+| EventParticipations (`tickets_event_participations`) | R/W (W: member declaration, ticket sync, Gate admit via `ITicketWrite`, admin backfill, merge fold; a `null` `Status` is a historical cleared row) |
 
 Implements the internal `IEventParticipationManagement` (and so `ITicketWrite`),
 `IUserDataContributor` (slice `EventParticipations`, retained on erasure) and
@@ -261,9 +261,9 @@ a person) the first time a ticket admin sets its password from
 `/Tickets/Admin/Gate`. Creates the account
 via `IAccountProvisioningService.CreateAccountAsync`, sets the password through
 `IUserSignInService`, saves its profile through Users' canonical
-`IProfileEditorService.SaveProfileAsync`, clears its consent check via
-Consent's `IConsentWrite.RecordConsentCheckAsync`, invalidates the user-access
-cache, and logs via `IAuditLogService`. Users refreshes its own `UserInfo`
+`IProfileEditorService.SaveProfileAsync`, marks it fake via Users'
+`IUserWrite.MarkFakeAsync` (keeping it out of the Consent Coordinator review
+queue), and logs via `IAuditLogService`. Users refreshes its own `UserInfo`
 entry on the create and the profile save. No direct
 DB or cache access of its own — every mutation goes through another
 section's public service surface.
