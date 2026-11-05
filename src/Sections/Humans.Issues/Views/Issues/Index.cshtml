@@ -101,7 +101,7 @@
         <div class="col-md-5 col-lg-4 border-end overflow-auto" style="max-height: 80vh;">
             @if (Model.Issues.Count == 0)
             {
-                <p class="text-muted p-3">@Localizer["Issue_NoneFound"]</p>
+                <empty-state class="p-3">@Localizer["Issue_NoneFound"]</empty-state>
             }
             <table class="table table-hover table-sm align-middle issues-table mb-0">
                 @* Three headers for three cells: the reporter and comment count live inside the title and updated cells. *@

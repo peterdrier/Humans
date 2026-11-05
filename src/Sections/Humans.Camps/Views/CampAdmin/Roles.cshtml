@@ -19,7 +19,7 @@
     @if (Model.Active.Count == 0)
     {
         <div class="card-body">
-            <p class="text-muted mb-0">No active camp roles defined yet. Use <strong>Add role</strong> to create the first one.</p>
+            <empty-state class="mb-0">No active camp roles defined yet. Use <strong>Add role</strong> to create the first one.</empty-state>
         </div>
     }
     else

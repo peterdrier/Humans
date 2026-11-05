@@ -156,7 +156,7 @@
                 </div>
                 @if (Model.PendingMembers.Count == 0)
                 {
-                    <div class="px-3 pb-2 text-muted small fst-italic">@Localizer["Camps_Members_NoPendingRequests"]</div>
+                    <empty-state class="px-3 pb-2 small fst-italic">@Localizer["Camps_Members_NoPendingRequests"]</empty-state>
                 }
                 else
                 {
@@ -196,7 +196,7 @@
                 </div>
                 @if (Model.ActiveMembers.Count == 0)
                 {
-                    <div class="px-3 pb-2 text-muted small fst-italic">@Localizer["Camps_Details_RosterEmpty"]</div>
+                    <empty-state class="px-3 pb-2 small fst-italic">@Localizer["Camps_Details_RosterEmpty"]</empty-state>
                 }
                 else
                 {

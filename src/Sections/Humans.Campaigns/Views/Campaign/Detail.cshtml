@@ -121,7 +121,7 @@
     <div class="card-body p-0">
         @if (Model.Campaign.Grants.Count == 0)
         {
-            <p class="text-muted text-center py-4 mb-0">No grants yet. Use Send Wave to distribute codes.</p>
+            <empty-state class="py-4 mb-0">No grants yet. Use Send Wave to distribute codes.</empty-state>
         }
         else
         {

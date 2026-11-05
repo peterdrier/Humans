@@ -32,14 +32,14 @@
     }
     else
     {
-        <p class="text-muted small mb-0">@Localizer["Agent_ContextCardEmpty"]</p>
+        <empty-state class="small mb-0">@Localizer["Agent_ContextCardEmpty"]</empty-state>
     }
 </details>
 
 <h4>@Localizer["Agent_ConversationTranscript"]</h4>
 @if (orderedMessages.Count == 0)
 {
-    <p class="text-muted">@Localizer["Agent_ConversationEmpty"]</p>
+    <empty-state>@Localizer["Agent_ConversationEmpty"]</empty-state>
 }
 else
 {

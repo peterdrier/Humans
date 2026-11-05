@@ -172,7 +172,7 @@
     <div class="card-body">
         @if (results.Peeks.Count == 0)
         {
-            <p class="text-muted mb-0">@Localizer["Governance_Votes_PeeksEmpty"]</p>
+            <empty-state class="mb-0">@Localizer["Governance_Votes_PeeksEmpty"]</empty-state>
         }
         else
         {

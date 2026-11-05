@@ -219,7 +219,7 @@
 
     @if (Model.Shifts.Count == 0)
     {
-        <div class="alert alert-info">@Localizer["Shifts_ShiftDash_NoShiftsMatch"]</div>
+        <empty-state>@Localizer["Shifts_ShiftDash_NoShiftsMatch"]</empty-state>
     }
     else
     {
