@@ -37,6 +37,53 @@
             background: var(--h-map-person);
             box-shadow: 0 1px 3px rgb(0 0 0 / 40%);
         }
+        .map-popup-header {
+            font-family: var(--h-font-display);
+            font-weight: 600;
+            font-size: 1rem;
+            color: var(--h-text);
+            padding-top: 4px;
+        }
+        .map-popup-count {
+            display: inline-block;
+            min-width: 1.6em;
+            padding: 1px 6px;
+            margin-left: 4px;
+            border-radius: 999px;
+            background: var(--h-map-cluster);
+            color: var(--h-text-on-dark);
+            font-size: 0.75rem;
+            text-align: center;
+            vertical-align: middle;
+        }
+        .map-popup {
+            max-height: 280px;
+            font-family: var(--h-font-body);
+            overflow-y: auto;
+            scrollbar-width: thin;
+            scrollbar-color: var(--h-border) transparent;
+            padding-right: 4px;
+        }
+        .map-popup--grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            column-gap: 12px;
+        }
+        .map-person {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 3px 4px;
+            border-radius: 6px;
+            color: var(--h-text);
+            font-weight: 500;
+            text-decoration: none;
+            white-space: nowrap;
+            overflow: hidden;
+        }
+        .map-person span { overflow: hidden; text-overflow: ellipsis; }
+        .map-person:hover { background: var(--h-bg-hover); color: var(--h-text); }
+        .map-person img, .map-person div { flex-shrink: 0; }
     </style>
 }
 
@@ -81,7 +128,6 @@ else
             const cssVar = (name) => _cs.getPropertyValue(name).trim();
             const clrMutedText = cssVar('--h-muted-text');
             const clrTextOnDark = cssVar('--h-text-on-dark');
-            const clrTextSecondary = cssVar('--h-text-secondary');
 
             // Diameter grows with log(count) so a 300-person cluster stays readable without swallowing its neighbours.
             function bubble(count) {
@@ -110,13 +156,24 @@ else
             }
 
             function personHtml(m) {
-                const location = [m.city, m.countryCode].filter(Boolean).join(', ');
-                return '<div style="display:flex;align-items:center;gap:8px;padding:4px 0;">' +
-                    avatarHtml(m, 36) +
-                    '<div>' +
-                    '<a href="/Profile/' + m.userId + '" style="font-weight:600;text-decoration:none;">' + Humans.escapeHtml(m.displayName) + '</a>' +
-                    (location ? '<br><span style="color:' + clrTextSecondary + ';font-size:0.85em;">' + Humans.escapeHtml(location) + '</span>' : '') +
-                    '</div></div>';
+                return '<a class="map-person" href="/Profile/' + m.userId + '">' +
+                    avatarHtml(m, 28) +
+                    '<span>' + Humans.escapeHtml(m.displayName) + '</span></a>';
+            }
+
+            // Everyone in a popup shares one location, so it goes in the header once instead of on every row.
+            function popupHeader(people) {
+                const first = people[0];
+                const el = document.createElement('div');
+                el.className = 'map-popup-header';
+                el.textContent = [first.city, first.countryCode].filter(Boolean).join(', ');
+                if (people.length > 1) {
+                    const count = document.createElement('span');
+                    count.className = 'map-popup-count';
+                    count.textContent = people.length;
+                    el.append(' ', count);
+                }
+                return el;
             }
 
             function groupByLocation(data) {
@@ -159,14 +216,15 @@ else
                     marker._people = group;
 
                     marker.addEventListener("gmp-click", function () {
-                        const people = marker._people;
-                        let html = '<div style="max-height:300px;overflow-y:auto;">';
+                        const people = [...marker._people].sort((a, b) => a.displayName.localeCompare(b.displayName));
+                        let html = '<div class="map-popup' + (people.length > 8 ? ' map-popup--grid' : '') + '">';
                         for (const p of people) {
                             html += personHtml(p);
                         }
                         html += '</div>';
+                        infoWindow.setHeaderContent(popupHeader(people));
                         infoWindow.setContent(html);
-                        infoWindow.open({ anchor: marker, map: map });
+                        infoWindow.open({ anchor: marker, map: map, shouldFocus: false });
                     });
 
                     mapMarkers.push(marker);
