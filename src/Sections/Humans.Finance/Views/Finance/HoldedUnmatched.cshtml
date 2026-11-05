@@ -5,24 +5,21 @@
     ViewData["Title"] = "Holded Unmatched Documents";
 }
 
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <h1 class="mb-0">Holded Unmatched Documents</h1>
-    <div class="d-flex gap-2">
-        <form authorize-policy="@Humans.Finance.Contracts.FinancePolicies.Manage" asp-action="RunHoldedSync" method="post" class="d-inline">
-            @Html.AntiForgeryToken()
-            <button type="submit" class="btn btn-outline-primary">
-                <i class="fa-solid fa-arrows-rotate me-1"></i>Sync Now
-            </button>
-        </form>
-        <a href="/Holded" class="btn btn-outline-secondary"
-           title="Ledger mirror status, its sweep buttons and the full account list live on the Holded admin screen.">
-            <i class="fa-solid fa-rotate me-1"></i>Holded sync
-        </a>
-        <a asp-controller="BudgetAdmin" asp-action="Index" class="btn btn-outline-secondary">
-            <i class="fa-solid fa-arrow-left me-1"></i>Back to Finance
-        </a>
-    </div>
-</div>
+<page-header title="Holded Unmatched Documents">
+    <form authorize-policy="@Humans.Finance.Contracts.FinancePolicies.Manage" asp-action="RunHoldedSync" method="post" class="d-inline">
+        @Html.AntiForgeryToken()
+        <button type="submit" class="btn btn-outline-primary">
+            <i class="fa-solid fa-arrows-rotate me-1"></i>Sync Now
+        </button>
+    </form>
+    <a href="/Holded" class="btn btn-outline-secondary"
+       title="Ledger mirror status, its sweep buttons and the full account list live on the Holded admin screen.">
+        <i class="fa-solid fa-rotate me-1"></i>Holded sync
+    </a>
+    <a asp-controller="BudgetAdmin" asp-action="Index" class="btn btn-outline-secondary">
+        <i class="fa-solid fa-arrow-left me-1"></i>Back to Finance
+    </a>
+</page-header>
 
 
 @if (!Model.Any())

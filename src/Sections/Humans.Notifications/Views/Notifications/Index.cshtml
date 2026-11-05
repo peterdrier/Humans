@@ -4,7 +4,7 @@
     ViewData["Title"] = Localizer["Notifications_PageTitle"];
 }
 
-<h1>@Localizer["Notifications_PageTitle"]</h1>
+<page-header title="@(Localizer["Notifications_PageTitle"].Value)" />
 
 <div class="notification-toolbar mb-3">
     <form method="get" asp-action="Index" class="notification-search-form">

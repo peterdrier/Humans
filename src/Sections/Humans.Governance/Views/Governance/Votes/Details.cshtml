@@ -19,13 +19,10 @@
     <span>@vote.Title</span>
 }
 
-<div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
-    <h1 class="mb-0">@vote.Title</h1>
-    <div class="d-flex gap-2">
-        <span class="badge bg-secondary">@Localizer["Governance_Votes_Kind_" + vote.Kind]</span>
-        <span class="badge @EnumBadgeMap.For(vote.Status)">@Localizer["Governance_Votes_Status_" + vote.Status]</span>
-    </div>
-</div>
+<page-header title="@vote.Title">
+    <span class="badge bg-secondary">@Localizer["Governance_Votes_Kind_" + vote.Kind]</span>
+    <span class="badge @EnumBadgeMap.For(vote.Status)">@Localizer["Governance_Votes_Status_" + vote.Status]</span>
+</page-header>
 
 <p class="text-muted">
     @if (vote.Status == AssemblyVoteStatus.Open)

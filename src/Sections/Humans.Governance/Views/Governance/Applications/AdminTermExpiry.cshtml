@@ -3,10 +3,9 @@
     ViewData["Title"] = "Term expiry correction (temp)";
 }
 
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <h1>Term expiry correction <span class="badge bg-warning text-dark">temp</span></h1>
+<page-header title="Term expiry correction" badge="temp" badge-class="bg-warning text-dark">
     <span class="text-muted">@Model.Count drifted</span>
-</div>
+</page-header>
 
 <p class="text-muted">
     Approved applications whose stored expiry is not what the calculator gives for their approval date.

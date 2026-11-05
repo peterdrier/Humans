@@ -7,10 +7,9 @@
     var unmirrorable = snapshot.Unmirrorable.OrderBy(r => r.AdmittedAt).ToList();
 }
 
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <h1>Vendor check-in backfill</h1>
+<page-header title="Vendor check-in backfill">
     <small class="text-muted">Temp page — remove after use</small>
-</div>
+</page-header>
 
 <p class="text-muted">
     Gate admits recorded locally in <code>gate_scan_events</code> but not yet checked in at
