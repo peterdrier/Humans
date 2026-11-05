@@ -47,7 +47,7 @@
                 <div>
                     <div class="fw-semibold">
                         @Localizer.EnumDisplay(trip.Direction) · @trip.MemberPlaceLabel
-                        <span class="badge @EnumBadgeMap.For(trip.Status) ms-1">@Localizer.EnumDisplay(trip.Status)</span>
+                        <status-badge value="@trip.Status" class="ms-1" localizer="@Localizer" />
                         @if (trip.Status == TripStatus.Active && trip.IsFull)
                         {
                             <span class="badge bg-secondary">@Localizer["Rideshare_Full"]</span>
@@ -110,7 +110,7 @@
                 <div>
                     <div class="fw-semibold">
                         @Localizer.EnumDisplay(request.Direction) · @request.PickupPlaceLabel
-                        <span class="badge @EnumBadgeMap.For(request.Status) ms-1">@Localizer.EnumDisplay(request.Status)</span>
+                        <status-badge value="@request.Status" class="ms-1" localizer="@Localizer" />
                         @if (request.IsMatched)
                         {
                             <span class="badge bg-info text-dark">@Localizer["Rideshare_Matched"]</span>

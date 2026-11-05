@@ -13,7 +13,7 @@
                     @Model.Title
                 </h4>
                 <div class="d-flex gap-2 align-items-center flex-wrap">
-                    <span class="badge @IssuePresentation.StatusPillClass(Model.Status)">@Localizer.EnumDisplay(Model.Status)</span>
+                    <status-badge value="@Model.Status" localizer="@Localizer" />
                     <span class="badge bg-light text-muted border">@Localizer.EnumDisplay(Model.Category)</span>
                     <span class="badge bg-light text-muted border">@Model.AreaLabel</span>
                 </div>
@@ -158,7 +158,7 @@
                     }
                     else
                     {
-                        <span class="badge @IssuePresentation.StatusPillClass(Model.Status)">@Localizer.EnumDisplay(Model.Status)</span>
+                        <status-badge value="@Model.Status" localizer="@Localizer" />
                     }
                 </dd>
 

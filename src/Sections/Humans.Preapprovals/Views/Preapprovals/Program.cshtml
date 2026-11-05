@@ -56,7 +56,7 @@
                     }
                 </span>
                 <span>
-                    <span class="badge @EnumBadgeMap.For(g.Status)">@Localizer.EnumDisplay(g.Status)</span>
+                    <status-badge value="@g.Status" localizer="@Localizer" />
                     @if (g.IsClaimable(Model.Today))
                     {
                         <a href="/Expenses/New?grant=@g.Id" class="btn btn-sm btn-primary ms-2">@Localizer["Preapprovals_FileExpense"]</a>

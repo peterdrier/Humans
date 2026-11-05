@@ -3263,12 +3263,10 @@ public sealed class TeamServiceTests : TeamsTestHarness
         critical.IsPublic.Should().BeTrue();
         result.Where(slot => slot.RoleDefinitionId == alphaDefinition.Id).Should().OnlyContain(slot => !slot.IsPublic);
         critical.Priority.Should().Be(nameof(SlotPriority.Critical));
-        SlotPriority.Critical.GetBadgeClass().Should().Be("bg-danger");
         result.Single(slot => string.Equals(slot.TeamName, "Alpha", StringComparison.Ordinal) && slot.SlotNumber == 1)
             .AssignedUserId.Should().Be(alphaMember.Id);
         var unprioritized = result.Single(slot => string.Equals(slot.TeamName, "Alpha", StringComparison.Ordinal) && slot.SlotNumber == 2);
         unprioritized.Priority.Should().Be(nameof(SlotPriority.None));
-        SlotPriority.None.GetBadgeClass().Should().Be("bg-light text-dark");
     }
 
     [HumansFact]

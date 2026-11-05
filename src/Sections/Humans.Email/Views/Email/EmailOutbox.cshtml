@@ -95,16 +95,7 @@
         </text>;
         Func<EmailOutboxMessageDto, IHtmlContent> templateCell = @<text><code class="small">@item.TemplateName</code></text>;
         Func<EmailOutboxMessageDto, IHtmlContent> statusCell = @<text>
-            @{
-                var badgeClass = item.Status switch
-                {
-                    EmailOutboxStatus.Queued => "bg-warning text-dark",
-                    EmailOutboxStatus.Sent => "bg-success",
-                    EmailOutboxStatus.Failed => "bg-danger",
-                    _ => "bg-secondary"
-                };
-            }
-            <span class="badge @badgeClass">@item.Status</span>
+            <status-badge value="@item.Status" />
             @if (item.RetryCount > 0)
             {
                 <small class="text-muted ms-1">×@item.RetryCount</small>

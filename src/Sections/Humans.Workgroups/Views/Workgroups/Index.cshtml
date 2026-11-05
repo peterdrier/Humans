@@ -79,7 +79,7 @@ else
                         <td><a asp-action="Details" asp-route-slug="@w.Slug">@w.Name</a></td>
                         <td>@await Html.PartialAsync("_WorkgroupCoordinators", w)</td>
                         <td>
-                            <span class="badge @EnumBadgeMap.For(w.Status)">@Localizer.EnumDisplay(w.Status)</span>
+                            <status-badge value="@w.Status" localizer="@Localizer" />
                             @if (w.IsRegistrationOverdue(Model.Now))
                             {
                                 <span class="badge bg-danger ms-1">@Localizer["Workgroups_RegistrationOverdue"]</span>
@@ -116,7 +116,7 @@ else
                     <tr>
                         <td><a asp-action="Details" asp-route-slug="@w.Slug">@w.Name</a></td>
                         <td>
-                            <span class="badge @EnumBadgeMap.For(w.Status)">@Localizer.EnumDisplay(w.Status)</span>
+                            <status-badge value="@w.Status" localizer="@Localizer" />
                             @if (w.Status == WorkgroupStatus.Dormant && w.DormantReason is { } reason)
                             {
                                 <span class="text-muted small ms-1">(@Localizer.EnumDisplay(reason))</span>
