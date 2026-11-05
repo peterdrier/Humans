@@ -89,6 +89,8 @@
   <data name="Cantina_Dietary_PageTitle" xml:space="preserve"><value>Dietary info</value></data>
   <data name="Cantina_Dietary_Saved" xml:space="preserve"><value>Your dietary info has been saved.</value></data>
   <data name="Cantina_Dietary_SaveFailed" xml:space="preserve"><value>Failed to save dietary info.</value></data>
+  <data name="Cantina_Dietary_PreferenceTooLong" xml:space="preserve"><value>Dietary preference must be 200 characters or fewer.</value></data>
+  <data name="Cantina_Dietary_OtherTextTooLong" xml:space="preserve"><value>Other allergy or intolerance details must be 500 characters or fewer.</value></data>
   <data name="Cantina_Dietary_LoadFailed" xml:space="preserve"><value>Failed to load dietary info.</value></data>
   <data name="Cantina_Dietary_OptionalHint" xml:space="preserve"><value>Optional. It helps the cantina plan meals for long shifts and never affects your shift signups.</value></data>
   <data name="Cantina_Dietary_DeclineButton" xml:space="preserve"><value>I don't want to answer</value></data>
