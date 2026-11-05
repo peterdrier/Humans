@@ -197,74 +197,58 @@
 @if (Model.Members.Any())
 {
     <div class="card">
-        <div class="table-responsive">
-            <table class="table table-hover mb-0">
-                <thead>
-                    <tr>
-                        <th>@SharedLocalizer["Teams_Member"]</th>
-                        <th>@SharedLocalizer["MyTeams_Role"]</th>
-                        @if (Model.CanProvisionEmails)
-                        {
-                            <th>@@nobodies.team</th>
-                        }
-                        <th>@Localizer["Teams_MyTeams_Joined"]</th>
-                        @if (Model.CanManageRoles)
-                        {
-                            <th>@Localizer["Teams_MyTeams_Actions"]</th>
-                        }
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach (var member in Model.Members)
-                    {
-                        <tr>
-                            <td>
-                                <vc:human user-id="@member.UserId" layout="AvatarName" size="40" />
-                            </td>
-                            <td>
-                                @await Html.PartialAsync("_RoleBadge", member.IsCoordinator ? TeamMemberRole.Coordinator : TeamMemberRole.Member)
-                            </td>
-                            @if (Model.CanProvisionEmails)
-                            {
-                                <td>
-                                    @if (member.NobodiesTeamEmail is not null)
-                                    {
-                                        <code class="small">@member.NobodiesTeamEmail</code>
-                                    }
-                                    else
-                                    {
-                                        <form asp-controller="TeamAdmin" asp-action="ProvisionEmail" asp-route-slug="@Model.TeamSlug" asp-route-userId="@member.LiveUserId" method="post" class="d-inline">
-                                            @Html.AntiForgeryToken()
-                                            <div class="input-group input-group-sm" style="min-width: 220px;">
-                                                <input type="text" name="emailPrefix" class="form-control form-control-sm"
-                                                       placeholder="username" required style="max-width: 120px;" />
-                                                <span class="input-group-text">@@nobodies.team</span>
-                                                <button type="submit" class="btn btn-sm btn-outline-primary"
-                                                        data-confirm="Provision a new @@nobodies.team account?">
-                                                    <i class="fa-solid fa-plus"></i>
-                                                </button>
-                                            </div>
-                                        </form>
-                                    }
-                                </td>
-                            }
-                            <td>@member.JoinedAt.ToDate()</td>
-                            @if (Model.CanManageRoles)
-                            {
-                                <td>
-                                    <form asp-action="RemoveMember" asp-route-slug="@Model.TeamSlug" asp-route-userId="@member.UserId" method="post" class="d-inline">
-                                        @Html.AntiForgeryToken()
-                                        <button type="submit" class="btn btn-sm btn-outline-danger" data-confirm="@Localizer["Teams_TeamAdmin_RemoveConfirm"].Value">
-                                            @Localizer["Teams_TeamAdmin_Remove"]
-                                        </button>
-                                    </form>
-                                </td>
-                            }
-                        </tr>
-                    }
-                </tbody>
-            </table>
-        </div>
+        @{
+            Func<TeamMemberViewModel, IHtmlContent> memberCell =
+                @<text><vc:human user-id="@item.UserId" layout="AvatarName" size="40" /></text>;
+            Func<TeamMemberViewModel, IHtmlContent> roleCell =
+                @<text>@await Html.PartialAsync("_RoleBadge", item.IsCoordinator ? TeamMemberRole.Coordinator : TeamMemberRole.Member)</text>;
+            Func<TeamMemberViewModel, IHtmlContent> joinedCell = @<text>@item.JoinedAt.ToDate()</text>;
+            Func<TeamMemberViewModel, IHtmlContent> emailCell = @<text>
+                @if (item.NobodiesTeamEmail is not null)
+                {
+                    <code class="small">@item.NobodiesTeamEmail</code>
+                }
+                else
+                {
+                    <form asp-controller="TeamAdmin" asp-action="ProvisionEmail" asp-route-slug="@Model.TeamSlug" asp-route-userId="@item.LiveUserId" method="post" class="d-inline">
+                        @Html.AntiForgeryToken()
+                        <div class="input-group input-group-sm" style="min-width: 220px;">
+                            <input type="text" name="emailPrefix" class="form-control form-control-sm"
+                                   placeholder="username" required style="max-width: 120px;" />
+                            <span class="input-group-text">@@nobodies.team</span>
+                            <button type="submit" class="btn btn-sm btn-outline-primary"
+                                    data-confirm="Provision a new @@nobodies.team account?">
+                                <i class="fa-solid fa-plus"></i>
+                            </button>
+                        </div>
+                    </form>
+                }
+
+            </text>;
+            Func<TeamMemberViewModel, IHtmlContent> actionsCell = @<text>
+                <form asp-action="RemoveMember" asp-route-slug="@Model.TeamSlug" asp-route-userId="@item.UserId" method="post" class="d-inline">
+                    @Html.AntiForgeryToken()
+                    <button type="submit" class="btn btn-sm btn-outline-danger" data-confirm="@Localizer["Teams_TeamAdmin_RemoveConfirm"].Value">
+                        @Localizer["Teams_TeamAdmin_Remove"]
+                    </button>
+                </form>
+
+            </text>;
+            var membersBuilder = TableModel.For(Model.Members)
+                .Template(SharedLocalizer["Teams_Member"], memberCell)
+                .Template(SharedLocalizer["MyTeams_Role"], roleCell, sortBy: m => m.IsCoordinator ? 0 : 1);
+            if (Model.CanProvisionEmails)
+            {
+                membersBuilder.Template("@nobodies.team", emailCell, sortBy: m => m.NobodiesTeamEmail);
+            }
+            membersBuilder.Template(Localizer["Teams_MyTeams_Joined"], joinedCell, sortBy: m => m.JoinedAt);
+            if (Model.CanManageRoles)
+            {
+                membersBuilder.Template(Localizer["Teams_MyTeams_Actions"], actionsCell, o => o.NoSort());
+            }
+            var membersTable = membersBuilder.Build();
+        }
+        <partial name="_Table" model="membersTable" />
     </div>
 }
 else
