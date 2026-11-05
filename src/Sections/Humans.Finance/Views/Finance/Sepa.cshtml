@@ -61,29 +61,22 @@
 {
     <div class="card mb-4">
         <div class="card-header">Bank lines needing a human</div>
-        <table class="table table-hover mb-0 align-middle">
-            <thead>
-                <tr>
-                    <th>Date</th>
-                    <th class="text-end">Amount</th>
-                    <th>Description</th>
-                    <th>Account</th>
-                    <th>Why</th>
-                </tr>
-            </thead>
-            <tbody>
-            @foreach (var m in Model.UnmatchedMovements)
-            {
-                <tr>
-                    <td>@m.Date.ToInvariantDate()</td>
-                    <td class="text-end">@m.Amount.ToEuro()</td>
-                    <td class="text-muted small">@(m.Description ?? "—")</td>
-                    <td>@(m.ParsedAccountNum?.ToString() ?? "—")</td>
-                    <td class="text-muted small">@m.Reason</td>
-                </tr>
-            }
-            </tbody>
-        </table>
+        @{
+            Func<SepaBankMovementVm, IHtmlContent> unmatchedCell0 = @<text>@item.Date.ToInvariantDate()</text>;
+            Func<SepaBankMovementVm, IHtmlContent> unmatchedCell1 = @<text>@item.Amount.ToEuro()</text>;
+            Func<SepaBankMovementVm, IHtmlContent> unmatchedCell2 = @<text>@(item.Description ?? "—")</text>;
+            Func<SepaBankMovementVm, IHtmlContent> unmatchedCell3 = @<text>@(item.ParsedAccountNum?.ToString() ?? "—")</text>;
+            Func<SepaBankMovementVm, IHtmlContent> unmatchedCell4 = @<text>@item.Reason</text>;
+            var unmatchedTable = TableModel.For(Model.UnmatchedMovements)
+                .Template("Date", unmatchedCell0, sortBy: m => m.Date)
+                .Template("Amount", unmatchedCell1, o => o.End(), sortBy: m => m.Amount)
+                .Template("Description", unmatchedCell2, o => o.Css("text-muted small"))
+                .Template("Account", unmatchedCell3)
+                .Template("Why", unmatchedCell4, o => o.Css("text-muted small"))
+                .Css("align-middle")
+                .Build();
+        }
+        <partial name="_Table" model="unmatchedTable" />
     </div>
 }
 
@@ -215,142 +208,134 @@
                 </div>
             </div>
         }
-        <table class="table table-hover mb-0 align-middle">
-            <thead>
-                <tr>
-                    <th>Account</th>
-                    <th>Member</th>
-                    <th>IBAN</th>
-                    <th class="text-end">Amount</th>
-                    <th>Status</th>
-                    <th style="width: 16rem">Book</th>
-                    <th style="width: 9rem">Withdraw</th>
-                </tr>
-            </thead>
-            <tbody>
-            @foreach (var t in file.Transfers)
-            {
-                <tr>
-                    <td>
-                        <a asp-action="CreditorStatement" asp-route-accountNum="@t.Row.SupplierAccountNum">@t.Row.SupplierAccountNum</a>
-                    </td>
-                    <td><vc:human user-id="@t.Row.UserId" link="None" /><div class="text-muted small">@t.Row.CreditorName</div></td>
-                    <td class="font-monospace small">@t.Row.IbanMasked</td>
-                    <td class="text-end">@t.Row.Amount.ToEuro()</td>
-                    <td>
-                        @if (t.Row.WithdrawnAt is { } withdrawnAt)
+        @{
+            Func<SepaTransferVm, IHtmlContent> transferCell0 = @<text><a asp-action="CreditorStatement" asp-route-accountNum="@item.Row.SupplierAccountNum">@item.Row.SupplierAccountNum</a></text>;
+            Func<SepaTransferVm, IHtmlContent> transferCell1 = @<text><vc:human user-id="@item.Row.UserId" link="None" /><div class="text-muted small">@item.Row.CreditorName</div></text>;
+            Func<SepaTransferVm, IHtmlContent> transferCell2 = @<text>@item.Row.IbanMasked</text>;
+            Func<SepaTransferVm, IHtmlContent> transferCell3 = @<text>@item.Row.Amount.ToEuro()</text>;
+            Func<SepaTransferVm, IHtmlContent> transferCell4 = @<text>
+                @if (item.Row.WithdrawnAt is { } withdrawnAt)
+                {
+                    <span class="badge text-bg-dark">Withdrawn</span>
+                    <div class="text-muted small">@withdrawnAt.ToDateTime(madrid) by <vc:human user-id="@(item.Row.WithdrawnByUserId ?? Guid.Empty)" link="None" /></div>
+                }
+                else if (item.Row.BookedAt is { } bookedAt)
+                {
+                    <span class="badge text-bg-success">Booked</span>
+                    @if (item.Row.ReconcilePending && item.Row.JournalEntryAmount is { } entryAmount)
+                    {
+                        <span class="badge text-bg-warning" title="Holded only links treasury objects to a bank line, never a ledger entry, so this share of the line is matched in Holded by hand; the sweep cannot clear it.">@entryAmount.ToEuro() of this line was posted as a journal entry and needs a manual match in Holded (@item.Row.HoldedBankMovementId)</span>
+                    }
+                    else if (item.Row.ReconcilePending)
+                    {
+                        <span class="badge text-bg-warning" title="While Holded reads the line pending, the sweep re-issues the reconcile from the recorded payment ids every two hours and stamps the row once the line reads reconciled. A line that reads partial is a human's to finish in Holded.">Reconcile pending (@item.Row.HoldedBankMovementId)</span>
+                    }
+                    <div class="text-muted small">@bookedAt.ToDateTime(madrid) by
+                        @if (item.Row.BookedByUserId is { } bookedBy)
                         {
-                            <span class="badge text-bg-dark">Withdrawn</span>
-                            <div class="text-muted small">@withdrawnAt.ToDateTime(madrid) by <vc:human user-id="@(t.Row.WithdrawnByUserId ?? Guid.Empty)" link="None" /></div>
-                        }
-                        else if (t.Row.BookedAt is { } bookedAt)
-                        {
-                            <span class="badge text-bg-success">Booked</span>
-                            @if (t.Row.ReconcilePending && t.Row.JournalEntryAmount is { } entryAmount)
-                            {
-                                <span class="badge text-bg-warning" title="Holded only links treasury objects to a bank line, never a ledger entry, so this share of the line is matched in Holded by hand; the sweep cannot clear it.">@entryAmount.ToEuro() of this line was posted as a journal entry and needs a manual match in Holded (@t.Row.HoldedBankMovementId)</span>
-                            }
-                            else if (t.Row.ReconcilePending)
-                            {
-                                <span class="badge text-bg-warning" title="While Holded reads the line pending, the sweep re-issues the reconcile from the recorded payment ids every two hours and stamps the row once the line reads reconciled. A line that reads partial is a human's to finish in Holded.">Reconcile pending (@t.Row.HoldedBankMovementId)</span>
-                            }
-                            <div class="text-muted small">@bookedAt.ToDateTime(madrid) by
-                                @if (t.Row.BookedByUserId is { } bookedBy)
-                                {
-                                    <vc:human user-id="@bookedBy" link="None" />
-                                }
-                                else
-                                {
-                                    <text>automatic sweep</text>
-                                }
-                            </div>
+                            <vc:human user-id="@bookedBy" link="None" />
                         }
                         else
                         {
-                            <span class="badge text-bg-secondary">Generated</span>
+                            <text>automatic sweep</text>
                         }
-                    </td>
-                    @* Booking is idempotent in the service; this column is display, not the gate. *@
-                    <td>
-                        @if (t.Row.IsWithdrawn)
-                        {
-                            <span class="text-muted small">cancelled at the bank — nothing to book</span>
-                        }
-                        else if (t.Row.IsBooked)
-                        {
-                            <div class="text-muted small font-monospace">@(t.Row.HoldedBankMovementId ?? "—")</div>
-                        }
-                        else if (Model.UnavailableReason is not null)
-                        {
-                            <span class="text-muted small">—</span>
-                        }
-                        else if (t.Row.NotBookableReason is { } reason)
-                        {
-                            <span class="text-muted small">@reason</span>
-                        }
-                        else if (t.Row.CanBook)
-                        {
-                            @if (t.Row.CandidateMatchedByText)
-                            {
-                                <form authorize-policy="@Humans.Finance.Contracts.FinancePolicies.Manage" asp-action="BookSepaTransfer" method="post"
-                                      data-confirm="Book @t.Row.Amount.ToEuro() to @t.MemberName against Sabadell line @t.Row.CandidateBankMovementId? This posts real payments, and a journal entry for anything the member's documents do not cover.">
-                                    @Html.AntiForgeryToken()
-                                    <input type="hidden" name="transferId" value="@t.Row.TransferId" />
-                                    <input type="hidden" name="bankMovementId" value="@t.Row.CandidateBankMovementId" />
-                                    <input type="hidden" name="days" value="@Model.ToleranceDays" />
-                                    <button type="submit" class="btn btn-sm btn-primary">
-                                        <i class="fa-solid fa-file-invoice-dollar me-1"></i>Book against this line
-                                    </button>
-                                </form>
-                                <span class="badge text-bg-success">Line names this account</span>
-                            }
-                            else
-                            {
-                                <span class="badge text-bg-warning">Matched on amount and date only</span>
-                                <div class="small">booked with the file, above</div>
-                            }
-                            <div class="text-muted small">
-                                @(t.Row.CandidateBankMovementDate?.ToInvariantDate() ?? "—")
-                                · @(t.Row.CandidateBankMovementAmount?.ToEuro() ?? "—")
-                                <div class="font-monospace">@t.Row.CandidateBankMovementId</div>
-                                <div>@(t.Row.CandidateBankMovementDescription ?? "—")</div>
-                            </div>
-                        }
-                        else if (file.BatchLine is not null)
-                        {
-                            <span class="text-muted small">paid by the file's one bank line — Process above</span>
-                        }
-                        else
-                        {
-                            <span class="text-muted small">waiting for the Sabadell line</span>
-                        }
-                    </td>
-                    @* The service re-derives the same refusal; this column is display, not the gate. *@
-                    <td>
-                        @if (Humans.Finance.Services.Service.WithdrawRefusal(t.Row) is { } cannotWithdraw)
-                        {
-                            @if (!t.Row.IsWithdrawn)
-                            {
-                                <span class="text-muted small">@cannotWithdraw</span>
-                            }
-                        }
-                        else
-                        {
-                            <form authorize-policy="@Humans.Finance.Contracts.FinancePolicies.Manage" asp-action="WithdrawSepaTransfer" method="post"
-                                  data-confirm="Withdraw the @t.Row.Amount.ToEuro() transfer to @t.MemberName from @file.FileName? Only do this once the bank has cancelled it: the row is kept as withdrawn, no bank line will be paired with it, and the member is emailed that it was cancelled.">
-                                @Html.AntiForgeryToken()
-                                <input type="hidden" name="transferId" value="@t.Row.TransferId" />
-                                <input type="hidden" name="days" value="@Model.ToleranceDays" />
-                                <button type="submit" class="btn btn-sm btn-outline-danger">
-                                    <i class="fa-solid fa-ban me-1"></i>Withdraw
-                                </button>
-                            </form>
-                        }
-                    </td>
-                </tr>
-            }
-            </tbody>
-        </table>
+                    </div>
+                }
+                else
+                {
+                    <span class="badge text-bg-secondary">Generated</span>
+                }
+
+            </text>;
+            Func<SepaTransferVm, IHtmlContent> transferCell5 = @<text>
+                @if (item.Row.IsWithdrawn)
+                {
+                    <span class="text-muted small">cancelled at the bank — nothing to book</span>
+                }
+                else if (item.Row.IsBooked)
+                {
+                    <div class="text-muted small font-monospace">@(item.Row.HoldedBankMovementId ?? "—")</div>
+                }
+                else if (Model.UnavailableReason is not null)
+                {
+                    <span class="text-muted small">—</span>
+                }
+                else if (item.Row.NotBookableReason is { } reason)
+                {
+                    <span class="text-muted small">@reason</span>
+                }
+                else if (item.Row.CanBook)
+                {
+                    @if (item.Row.CandidateMatchedByText)
+                    {
+                        <form authorize-policy="@Humans.Finance.Contracts.FinancePolicies.Manage" asp-action="BookSepaTransfer" method="post"
+                              data-confirm="Book @item.Row.Amount.ToEuro() to @item.MemberName against Sabadell line @item.Row.CandidateBankMovementId? This posts real payments, and a journal entry for anything the member's documents do not cover.">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="transferId" value="@item.Row.TransferId" />
+                            <input type="hidden" name="bankMovementId" value="@item.Row.CandidateBankMovementId" />
+                            <input type="hidden" name="days" value="@Model.ToleranceDays" />
+                            <button type="submit" class="btn btn-sm btn-primary">
+                                <i class="fa-solid fa-file-invoice-dollar me-1"></i>Book against this line
+                            </button>
+                        </form>
+                        <span class="badge text-bg-success">Line names this account</span>
+                    }
+                    else
+                    {
+                        <span class="badge text-bg-warning">Matched on amount and date only</span>
+                        <div class="small">booked with the file, above</div>
+                    }
+                    <div class="text-muted small">
+                        @(item.Row.CandidateBankMovementDate?.ToInvariantDate() ?? "—")
+                        · @(item.Row.CandidateBankMovementAmount?.ToEuro() ?? "—")
+                        <div class="font-monospace">@item.Row.CandidateBankMovementId</div>
+                        <div>@(item.Row.CandidateBankMovementDescription ?? "—")</div>
+                    </div>
+                }
+                else if (file.BatchLine is not null)
+                {
+                    <span class="text-muted small">paid by the file's one bank line — Process above</span>
+                }
+                else
+                {
+                    <span class="text-muted small">waiting for the Sabadell line</span>
+                }
+
+            </text>;
+            Func<SepaTransferVm, IHtmlContent> transferCell6 = @<text>
+                @if (Humans.Finance.Services.Service.WithdrawRefusal(item.Row) is { } cannotWithdraw)
+                {
+                    @if (!item.Row.IsWithdrawn)
+                    {
+                        <span class="text-muted small">@cannotWithdraw</span>
+                    }
+                }
+                else
+                {
+                    <form authorize-policy="@Humans.Finance.Contracts.FinancePolicies.Manage" asp-action="WithdrawSepaTransfer" method="post"
+                          data-confirm="Withdraw the @item.Row.Amount.ToEuro() transfer to @item.MemberName from @file.FileName? Only do this once the bank has cancelled it: the row is kept as withdrawn, no bank line will be paired with it, and the member is emailed that it was cancelled.">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="transferId" value="@item.Row.TransferId" />
+                        <input type="hidden" name="days" value="@Model.ToleranceDays" />
+                        <button type="submit" class="btn btn-sm btn-outline-danger">
+                            <i class="fa-solid fa-ban me-1"></i>Withdraw
+                        </button>
+                    </form>
+                }
+
+            </text>;
+            var transfersTable = TableModel.For(file.Transfers)
+                .Template("Account", transferCell0, sortBy: t => t.Row.SupplierAccountNum)
+                .Template("Member", transferCell1, sortBy: t => t.MemberName)
+                .Template("IBAN", transferCell2, o => o.Css("font-monospace small"))
+                .Template("Amount", transferCell3, o => o.End(), sortBy: t => t.Row.Amount)
+                .Template("Status", transferCell4, sortBy: t => t.Row.IsWithdrawn ? 2 : t.Row.IsBooked ? 1 : 0)
+                .Template("Book", transferCell5, o => o.NoSort())
+                .Template("Withdraw", transferCell6, o => o.NoSort())
+                .Css("align-middle")
+                .Build();
+        }
+        <partial name="_Table" model="transfersTable" />
         </div>
     </div>
 }

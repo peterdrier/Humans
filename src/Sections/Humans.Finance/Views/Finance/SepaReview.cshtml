@@ -15,59 +15,48 @@
 </div>
 
 <div class="card mb-3" style="width: fit-content; max-width: 100%; overflow-x: auto">
-    <table class="table table-hover mb-0 align-middle w-auto">
-        <thead>
-            <tr>
-                <th>Human</th>
-                <th>Account</th>
-                <th title="The name the bank receives.">Full name</th>
-                <th>IBAN</th>
-                <th class="text-end">Owed</th>
-                <th class="text-end">This payment</th>
-                <th class="text-end">Owed after</th>
-                <th>Checks</th>
-            </tr>
-        </thead>
-        <tbody>
-        @foreach (var l in Model.Lines)
-        {
-            <tr>
-                <td><vc:human user-id="@l.UserId" link="None" /></td>
-                <td><a asp-action="CreditorStatement" asp-route-accountNum="@l.SupplierAccountNum">@l.SupplierAccountNum</a></td>
-                <td>@l.CreditorName</td>
-                <td class="font-monospace text-nowrap">@l.IbanMasked</td>
-                <td class="text-end text-nowrap">@l.Owed.ToEuro()</td>
-                <td class="text-end text-nowrap fw-semibold">@l.Amount.ToEuro()</td>
-                <td class="text-end text-nowrap">@l.OwedAfter.ToEuro()</td>
-                <td class="text-nowrap">
-                    @if (!Model.Matches.TryGetValue(l.SupplierAccountNum, out var match))
-                    {
-                        <span class="text-muted">—</span>
-                    }
-                    else if (match.HasWarnings)
-                    {
-                        <a asp-action="CreditorStatement" asp-route-accountNum="@l.SupplierAccountNum"
-                           class="text-danger fw-semibold text-decoration-none"
-                           data-bs-toggle="tooltip" title="@string.Join("; ", match.Warnings)">
-                            <i class="fa-solid fa-triangle-exclamation me-1"></i>Mismatch
-                        </a>
-                    }
-                    else
-                    {
-                        <span class="text-success" title="Expense docs and ledger purchases match."><i class="fa-solid fa-check"></i></span>
-                    }
-                </td>
-            </tr>
-        }
-        </tbody>
-        <tfoot>
-            <tr class="fw-semibold">
-                <td colspan="5">@Model.Lines.Count transfer@(Model.Lines.Count == 1 ? "" : "s")</td>
-                <td class="text-end text-nowrap">@Model.Total.ToEuro()</td>
-                <td colspan="2"></td>
-            </tr>
-        </tfoot>
-    </table>
+    @{
+        Func<SepaPayoutPreviewLine, IHtmlContent> lineCell0 = @<text><vc:human user-id="@item.UserId" link="None" /></text>;
+        Func<SepaPayoutPreviewLine, IHtmlContent> lineCell1 = @<text><a asp-action="CreditorStatement" asp-route-accountNum="@item.SupplierAccountNum">@item.SupplierAccountNum</a></text>;
+        Func<SepaPayoutPreviewLine, IHtmlContent> lineCell2 = @<text>@item.CreditorName</text>;
+        Func<SepaPayoutPreviewLine, IHtmlContent> lineCell3 = @<text>@item.IbanMasked</text>;
+        Func<SepaPayoutPreviewLine, IHtmlContent> lineCell4 = @<text>@item.Owed.ToEuro()</text>;
+        Func<SepaPayoutPreviewLine, IHtmlContent> lineCell5 = @<text>@item.Amount.ToEuro()</text>;
+        Func<SepaPayoutPreviewLine, IHtmlContent> lineCell6 = @<text>@item.OwedAfter.ToEuro()</text>;
+        Func<SepaPayoutPreviewLine, IHtmlContent> lineCell7 = @<text>
+            @if (!Model.Matches.TryGetValue(item.SupplierAccountNum, out var match))
+            {
+                <span class="text-muted">—</span>
+            }
+            else if (match.HasWarnings)
+            {
+                <a asp-action="CreditorStatement" asp-route-accountNum="@item.SupplierAccountNum"
+                   class="text-danger fw-semibold text-decoration-none"
+                   data-bs-toggle="tooltip" title="@string.Join("; ", match.Warnings)">
+                    <i class="fa-solid fa-triangle-exclamation me-1"></i>Mismatch
+                </a>
+            }
+            else
+            {
+                <span class="text-success" title="Expense docs and ledger purchases match."><i class="fa-solid fa-check"></i></span>
+            }
+
+        </text>;
+        var linesTable = TableModel.For(Model.Lines)
+            .Template("Human", lineCell0, sortBy: l => l.CreditorName)
+            .Template("Account", lineCell1, sortBy: l => l.SupplierAccountNum)
+            .Template("Full name", lineCell2)
+            .Template("IBAN", lineCell3, o => o.Css("font-monospace text-nowrap"))
+            .Template("Owed", lineCell4, o => o.End().Css("text-nowrap"), sortBy: l => l.Owed)
+            .Template("This payment", lineCell5, o => o.End().Css("text-nowrap fw-semibold"), sortBy: l => l.Amount)
+            .Template("Owed after", lineCell6, o => o.End().Css("text-nowrap"), sortBy: l => l.OwedAfter)
+            .Template("Checks", lineCell7, o => o.Css("text-nowrap"))
+            .Footer(new TableFooterCell($"{Model.Lines.Count} transfer{(Model.Lines.Count == 1 ? "" : "s")}"), new TableFooterCell(""), new TableFooterCell(""), new TableFooterCell(""), new TableFooterCell(""),
+                new TableFooterCell(Model.Total.ToEuro(), "text-end text-nowrap"), new TableFooterCell(""), new TableFooterCell(""))
+            .Css("align-middle")
+            .Build();
+    }
+    <partial name="_Table" model="linesTable" />
 </div>
 
 <form authorize-policy="@Humans.Finance.Contracts.FinancePolicies.Manage" id="sepaGenerate" asp-action="GenerateSepa" method="post"
