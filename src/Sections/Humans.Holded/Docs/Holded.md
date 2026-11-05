@@ -234,6 +234,8 @@ Audit entries stay with the calling section, which knows why it wrote.
 
 ## Architecture
 
+Internal `HoldedAccountReader` owns account-list, statement and journal-entry projections, including shared balance rows, display signs and counterparties. The summary reuses its account rows. `Service` retains synchronization, reconciliation, metering and existing contract entry points; mirror reads, ordering and raw-sign reconciliation are unchanged.
+
 **Owning section:** `Holded` (`src/Sections/Humans.Holded`)
 **Public contract:** `Humans.Holded.Contracts` (the `Contracts/` folder): `IHoldedService` (+ `HoldedLedgerLineInfo`, `HoldedChartAccountInfo`, `HoldedPurchaseDocInfo`, `HoldedPurchaseDocMirror`) for the mirrors, `IHoldedWrite` (+ its outcome records) for writes, and the connector surface — `IHoldedClient` and its DTOs (see [`Holded-connector.md`](Holded-connector.md))
 Connector DTOs expose consumed fields only; usage reads contain the API period and call count, and contact creation carries no unsupported custom user id.
