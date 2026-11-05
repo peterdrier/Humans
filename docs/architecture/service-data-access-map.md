@@ -180,13 +180,10 @@ Every table is owned by exactly one repository; there are no HUM0025
    read-only contracts the section's services implement directly. All keep
    the cross-section coupling minimal and `[SurfaceBudget]`-bounded.
 
-3. **`IProfileService` retired into `IUserService`.** The Profile-section
-   service surface is folded into `IUserService` as part of the
-   Users+Profile section merge; the interface's `[SurfaceBudget]` is
-   intentionally suspended during the merge.
-   `ProfileEditorService` and `ContactFieldService` remain in
-   `Humans.Users/Services/` as section-internal collaborators; the only
-   Application-layer service named `ProfileService` is a thin
+3. **Profile reads and writes go through `IUserService`.** The unified
+   User+Profile read-model sits behind `IUserService`; `ProfileEditorService`
+   and `ContactFieldService` live in `Humans.Users/Services/` as
+   section-internal collaborators, and `ProfileService` is a thin
    `IProfilePictureService` implementation for picture-bytes IO.
 
 4. **Tickets ↔ Profiles email lookup.**

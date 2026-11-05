@@ -30,7 +30,7 @@ This section owns no entities and no tables. Everything it creates belongs to an
 | `/dev/seed/budget` | POST | `FinancePolicies.Manage` | Budget demo data, via `IBudgetDemoSeeder` in Budget's `Contracts/` folder |
 | `/dev/seed/camp-roles` | POST | `CampsPolicies.Manage` | Five system camp-role definitions |
 | `/dev/seed/dashboard` | POST | `ShiftsPolicies.Manage` | Coordinator-dashboard demo: one event, 8 departments, 5 subteams, ~120 humans, rotas/shifts/signups |
-| `/dev/seed/dashboard/reset` | POST | `AdminOnly` | Delete everything the dashboard seed created |
+| `/dev/seed/dashboard/reset` | POST | `AdminOnly` | Delete everything the dashboard seed created, then reseed |
 
 Every route 404s when the dev-auth gate is closed. `/dev/login/*` additionally does not exist at all in Production - see Negative Access Rules.
 
