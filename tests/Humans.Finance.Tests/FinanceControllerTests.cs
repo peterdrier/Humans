@@ -46,6 +46,13 @@ public class FinanceControllerTests
 
     private readonly IFinanceService _finance = Substitute.For<IFinanceService>();
     private readonly IFinanceAdminService _connector = Substitute.For<IFinanceAdminService>();
+    private SepaBookingRunner? _sepaRunner;
+
+    /// <summary>Resolves <see cref="_connector"/> in its run scope, as the app resolves the real service.</summary>
+    private SepaBookingRunner SepaRunner => _sepaRunner ??= new(
+        new ServiceCollection().AddSingleton(_connector).BuildServiceProvider()
+            .GetRequiredService<IServiceScopeFactory>(),
+        SystemClock.Instance, NullLogger<SepaBookingRunner>.Instance);
     private readonly IUserService _users = Substitute.For<IUserService>();
     private readonly IBudgetService _budget = Substitute.For<IBudgetService>();
     private readonly IExpenseReportService _expenses = Substitute.For<IExpenseReportService>();
@@ -69,7 +76,7 @@ public class FinanceControllerTests
             new CreditorMatchService(_holdedLedger, _expenses),
             new FinanceOverviewService(_holdedLedger, _finance, _expenses, _budget,
                 new CashFlowService(_budget, Substitute.For<ITicketService>()), Substitute.For<Humans.Pleo.Contracts.IPleoService>(), SystemClock.Instance),
-            TestPleo.Booking(), TestPleo.Runner(),
+            TestPleo.Booking(), TestPleo.Runner(), SepaRunner,
             NullLogger<FinanceController>.Instance)
         {
             ControllerContext = new()
@@ -244,6 +251,26 @@ public class FinanceControllerTests
             Assert.Empty(payments.ReceivedCalls());
         }
         await _users.Received(1).GetUserInfoAsync(Ana, request.Token);
+    }
+
+    [HumansFact]
+    public async Task BookSepaTransfer_RunsOffTheRequest_RefusesASecondStart_AndKeepsTheOutcome()
+    {
+        var release = new TaskCompletionSource<SepaBookingResult>();
+        _connector.BookSepaTransferAsync(Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<int>())
+            .Returns(release.Task);
+        var controller = MakeControllerWithHttpContext(Ana);
+
+        // The request returns while Holded is still answering.
+        (await controller.BookSepaTransfer(Guid.NewGuid(), "bank")).Should().BeOfType<RedirectToActionResult>();
+        SepaRunner.Run!.IsRunning.Should().BeTrue();
+
+        await controller.BookSepaFileMatches(Guid.NewGuid());
+        controller.TempData.Values.Should().Contain("A booking is already running; nothing more was started.");
+        await _connector.DidNotReceiveWithAnyArgs().BookSepaFileMatchesAsync(default, default, default);
+
+        release.SetResult(new SepaBookingResult(false, "Holded refused the payment"));
+        SepaRunner.Run!.Result!.Message.Should().Be("Holded refused the payment");
     }
 
     [HumansFact]

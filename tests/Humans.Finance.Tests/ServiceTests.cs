@@ -1,3 +1,4 @@
+using Microsoft.Extensions.DependencyInjection;
 using Humans.Base.Caching;
 using Humans.Base.Extensions;
 using Humans.Finance.Controllers;
@@ -181,6 +182,8 @@ public class HoldedFinanceServiceTests
                 _budget, new CashFlowService(_budget, Substitute.For<Humans.Tickets.Contracts.ITicketService>()),
                 Substitute.For<Humans.Pleo.Contracts.IPleoService>(), SystemClock.Instance),
             TestPleo.Booking(), TestPleo.Runner(),
+            new SepaBookingRunner(Substitute.For<IServiceScopeFactory>(), SystemClock.Instance,
+                NullLogger<SepaBookingRunner>.Instance),
             NullLogger<FinanceController>.Instance)
         {
             ControllerContext = new()

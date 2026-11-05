@@ -28,6 +28,7 @@ internal sealed class FinanceController(
     FinanceOverviewService overview,
     PleoBooking pleoBooking,
     PleoBookingRunner pleoRunner,
+    SepaBookingRunner sepaRunner,
     ILogger<FinanceController> logger) : HumansControllerBase(userService)
 {
     private static readonly DateTimeZone MadridZone = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
@@ -290,11 +291,11 @@ internal sealed class FinanceController(
             .OrderByDescending(f => f.GeneratedAt)
             .ToList();
 
-        return View(new SepaPayoutsPageVm(files, unavailable, unmatched, bankFeedError, days));
+        return View(new SepaPayoutsPageVm(files, unavailable, unmatched, bankFeedError, days, sepaRunner.Run));
     }
 
-    /// <summary>No <c>CancellationToken</c> reaches the service: a booking that has posted a payment must finish
-    /// even if the admin closes the tab.</summary>
+    /// <summary>Starts the booking off the request and comes straight back; the page follows it. No
+    /// <c>CancellationToken</c> reaches the service: a booking that has posted a payment must finish.</summary>
     [HttpPost("Sepa/Book")]
     [Authorize(Policy = FinancePolicies.Manage)]
     [ValidateAntiForgeryToken]
@@ -307,9 +308,8 @@ internal sealed class FinanceController(
         var actorUserId = actor.Id;
         if (!ModelState.IsValid) return MalformedMutation(actorUserId);
 
-        var result = await holdedConnector.BookSepaTransferAsync(transferId, bankMovementId, actorUserId, days);
-        if (result.Succeeded) SetSuccess(result.Message); else SetError(result.Message);
-
+        StartSepaBooking("Booking one transfer",
+            s => s.BookSepaTransferAsync(transferId, bankMovementId, actorUserId, days));
         return RedirectToAction(nameof(Sepa), new { days });
     }
 
@@ -385,9 +385,8 @@ internal sealed class FinanceController(
         var actorUserId = actor.Id;
         if (!ModelState.IsValid) return MalformedMutation(actorUserId);
 
-        var result = await holdedConnector.BookSepaFileAsync(fileId, bankMovementId, actorUserId, days);
-        if (result.Succeeded) SetSuccess(result.Message); else SetError(result.Message);
-
+        StartSepaBooking("Booking a file against its one Sabadell line",
+            s => s.BookSepaFileAsync(fileId, bankMovementId, actorUserId, days));
         return RedirectToAction(nameof(Sepa), new { days });
     }
 
@@ -404,10 +403,15 @@ internal sealed class FinanceController(
         var actorUserId = actor.Id;
         if (!ModelState.IsValid) return MalformedMutation(actorUserId);
 
-        var result = await holdedConnector.BookSepaFileMatchesAsync(fileId, actorUserId, days);
-        if (result.Succeeded) SetSuccess(result.Message); else SetError(result.Message);
-
+        StartSepaBooking("Booking a file's matched transfers",
+            s => s.BookSepaFileMatchesAsync(fileId, actorUserId, days));
         return RedirectToAction(nameof(Sepa), new { days });
+    }
+
+    private void StartSepaBooking(string what, Func<IFinanceAdminService, Task<SepaBookingResult>> booking)
+    {
+        if (!sepaRunner.TryStart(what, booking))
+            SetError("A booking is already running; nothing more was started.");
     }
 
     private BadRequestObjectResult MalformedMutation(Guid actorUserId)

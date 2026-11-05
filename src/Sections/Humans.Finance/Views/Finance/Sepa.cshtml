@@ -42,6 +42,23 @@
     <span class="text-muted small">Default @Humans.Finance.Services.IFinanceAdminService.DefaultSepaMatchToleranceDays. Widen it when the bank executed a file late; every booking from this view uses the same window.</span>
 </form>
 
+@if (Model.Run is { IsRunning: true } running)
+{
+    <div class="alert alert-info">
+        <i class="fa-solid fa-spinner fa-spin me-1"></i>@running.What, started
+        @running.StartedAt.ToDateTime(madrid). This page refreshes itself; leaving it
+        does not stop the booking.
+    </div>
+    <script>setTimeout(function () { location.reload(); }, 3000);</script>
+}
+else if (Model.Run is { Result: { } last } finished)
+{
+    <div class="alert @(last.Succeeded ? "alert-success" : "alert-danger")">
+        <strong>Last booking</strong> (@finished.What.ToLowerInvariant(),
+        @finished.StartedAt.ToDateTime(madrid)): @last.Message
+    </div>
+}
+
 @if (Model.UnavailableReason is { } unavailable)
 {
     <div class="alert alert-warning">

@@ -64,6 +64,12 @@ through `IHoldedWrite.PostJournalEntryAsync`. `PleoBookingState` holds the
 current/last run; `PleoBookingRunner` runs `BookAsync` in its own scope off the
 request. Injected by `FinanceController` only.
 
+### SepaBookingRunner (Singleton, section-internal)
+
+No repository, no tables. Runs one `/Finance/Sepa` booking at a time through
+`IFinanceAdminService` in its own scope off the request, and holds the current/last
+run for the page. Injected by `FinanceController` only.
+
 ### CreditorMatchService (Scoped, section-internal)
 
 No repository, no tables, no cache. Matches Holded creditor ledger lines against

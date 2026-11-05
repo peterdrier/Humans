@@ -104,7 +104,14 @@ internal sealed record SepaPayoutsPageVm(
     string? UnavailableReason,
     IReadOnlyList<SepaBankMovementVm> UnmatchedMovements,
     string? BankFeedError,
-    int ToleranceDays);
+    int ToleranceDays,
+    SepaBookingRunVm? Run = null);
+
+/// <summary>The current or last booking run started from the page. <paramref name="Result"/> is null while it runs.</summary>
+internal sealed record SepaBookingRunVm(string What, Instant StartedAt, Instant? FinishedAt, SepaBookingResult? Result)
+{
+    public bool IsRunning => FinishedAt is null;
+}
 
 /// <summary><paramref name="Message"/> is admin-facing: the reason on failure, what was posted on success.</summary>
 internal sealed record SepaBookingResult(bool Succeeded, string Message);
