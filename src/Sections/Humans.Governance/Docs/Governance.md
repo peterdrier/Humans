@@ -400,6 +400,8 @@ The Board-voting dashboard controller orders member columns by display name with
 
 ## Architecture
 
+The internal `AssemblyVoteDrafts` owns draft read/create/update/delete, blank-only translation filling, validation and option construction. `AssemblyVoteService` forwards the existing authoring methods and reuses the same text bounds and safe-URL policy. Draft-state/revision guards, official-culture rules, ranked-option validation and cancellation remain unchanged. Opening, electorate construction, voting, results, peeks, closing effects and GDPR retain their existing owners; no public contract or DI registration is added.
+
 The internal `ApplicationReader` owns member application history/detail, filtered admin lists/detail, pending snapshots, Board dashboard/detail and summary counts, including shared history/vote projections. `ApplicationDecisionService` forwards the existing reads and retains voting-badge caching, decisions, tier changes, reminder workflows, GDPR and expiry repair. Ownership checks, filter/paging behavior, applicant fallbacks, vote/history ordering and cancellation are unchanged. No public contract or DI registration is added.
 
 **Owning services:** `ApplicationDecisionService`, `MembershipTierService`, `MembershipCalculator`, `MembershipQuery`, `AssemblyVoteService`
