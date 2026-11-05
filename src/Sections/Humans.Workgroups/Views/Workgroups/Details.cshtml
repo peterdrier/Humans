@@ -234,7 +234,10 @@
             <div class="fw-semibold">@nextMeeting.Title</div>
             <div class="small text-muted">
                 @nextMeeting.StartUtc.ToWeekdayDayMonth() · @nextMeeting.StartUtc.ToTime()–@nextMeeting.EndUtc.ToTime()
-                @if (!string.IsNullOrWhiteSpace(nextMeeting.Location)) { <span> · @nextMeeting.Location</span> }
+                @if (!string.IsNullOrWhiteSpace(nextMeeting.Location) || nextMeeting.LocationUrl is not null)
+                {
+                    <span> · <partial name="_CalendarLocation" model="(nextMeeting.Location, nextMeeting.LocationUrl)" /></span>
+                }
                 @if (nextMeeting.IsPublic) { <span class="badge bg-info text-dark ms-1">@Localizer["Workgroups_PublicMeeting"]</span> }
             </div>
             @if (!string.IsNullOrWhiteSpace(nextMeeting.Description))
@@ -490,6 +493,10 @@
                                 <a asp-action="EditLogEntry" asp-route-slug="@w.Slug" asp-route-id="@entry.Log.Id" class="btn btn-sm btn-link">@SharedLocalizer["Common_Edit"]</a>
                             }
                         </div>
+                        @if (entry.Meeting is { } mtg && (!string.IsNullOrWhiteSpace(mtg.Location) || mtg.LocationUrl is not null))
+                        {
+                            <div class="mt-1 small text-muted"><partial name="_CalendarLocation" model="(mtg.Location, mtg.LocationUrl)" /></div>
+                        }
                         @if (!string.IsNullOrWhiteSpace(entry.Meeting?.Description))
                         {
                             <div class="mt-1 small text-muted pre-line">@entry.Meeting.Description</div>

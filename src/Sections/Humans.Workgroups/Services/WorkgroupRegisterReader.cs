@@ -40,7 +40,7 @@ internal sealed class WorkgroupRegisterReader(IWorkgroupRepository repository) :
         w.DormantReason,
         w.Reasons,
         w.DriveFolderId,
-        SafeDiscordLink(w.DiscordChannelUrl),
+        SafeHttpLink(w.DiscordChannelUrl),
         w.AppliedByUserId,
         w.AppliedAt,
         w.RegisteredAt,
@@ -52,7 +52,7 @@ internal sealed class WorkgroupRegisterReader(IWorkgroupRepository repository) :
         w.Meetings
             .Where(m => m.DeletedAt is null)
             .Select(m => new WorkgroupMeetingInfo(
-                m.Id, m.Title, m.StartUtc, m.EndUtc, m.Location, m.LocationUrl, m.IsPublic,
+                m.Id, m.Title, m.StartUtc, m.EndUtc, m.Location, SafeHttpLink(m.LocationUrl), m.IsPublic,
                 m.Minutes, m.CreatedByUserId, m.CreatedAt, m.UpdatedAt, m.Description,
                 m.RecurrenceRule, m.RecurrenceTimezone))
             .ToList(),
@@ -96,7 +96,7 @@ internal sealed class WorkgroupRegisterReader(IWorkgroupRepository repository) :
             .ToList());
 
     // Also guards stored legacy links when projecting them into an href.
-    internal static string? SafeDiscordLink(string? url)
+    internal static string? SafeHttpLink(string? url)
     {
         var trimmed = url?.Trim();
         return Uri.TryCreate(trimmed, UriKind.Absolute, out var uri)
