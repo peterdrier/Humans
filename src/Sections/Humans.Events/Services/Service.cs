@@ -1,4 +1,3 @@
-using System.Text.Json;
 using Humans.AuditLog.Contracts;
 using Humans.Base.Csv;
 using Humans.Camps.Contracts;
@@ -33,6 +32,8 @@ internal sealed class EventService(
     IStringLocalizer<EventsResource> localizer)
     : IEventManagement, ICalendarFeedContributor
 {
+    private readonly EventPersonalData personalData = new(repo, settingsService, clock, logger, localizer, userService);
+
     public async Task<EventGuideSettingsView?> GetGuideSettingsAsync(CancellationToken ct = default)
     {
         var settings = await repo.GetGuideSettingsAsync(ct);
@@ -170,26 +171,26 @@ internal sealed class EventService(
     {
         var guideEventId = await GetGuideEventIdAsync(ct);
         var events = await repo.GetUserSubmissionsAsync(userId, ct);
-        return events.Where(e => e.IsInEvent(guideEventId)).Select(ToEventInfo).ToList();
+        return events.Where(e => e.IsInEvent(guideEventId)).Select(EventInfo.FromEvent).ToList();
     }
 
     public async Task<EventInfo?> GetUserEventAsync(Guid eventId, Guid userId, CancellationToken ct = default)
     {
         var guideEvent = await repo.GetUserEventAsync(eventId, userId, ct);
-        return guideEvent is null ? null : ToEventInfo(guideEvent);
+        return guideEvent is null ? null : EventInfo.FromEvent(guideEvent);
     }
 
     public async Task<IReadOnlyList<EventInfo>> GetCampSubmissionsAsync(Guid campId, CancellationToken ct = default)
     {
         var guideEventId = await GetGuideEventIdAsync(ct);
         var events = await repo.GetCampSubmissionsAsync(campId, ct);
-        return events.Where(e => e.IsInEvent(guideEventId)).Select(ToEventInfo).ToList();
+        return events.Where(e => e.IsInEvent(guideEventId)).Select(EventInfo.FromEvent).ToList();
     }
 
     public async Task<EventInfo?> GetCampEventAsync(Guid eventId, Guid campId, CancellationToken ct = default)
     {
         var guideEvent = await repo.GetCampEventAsync(eventId, campId, ct);
-        return guideEvent is null ? null : ToEventInfo(guideEvent);
+        return guideEvent is null ? null : EventInfo.FromEvent(guideEvent);
     }
 
     public async Task<CampSubmissionsSummary> GetCampSubmissionsSummaryAsync(Guid campId, CancellationToken ct = default)
@@ -323,54 +324,6 @@ internal sealed class EventService(
         await repo.SaveEventAndModerationActionAsync(guideEvent, action, ct);
     }
 
-    public async Task<IReadOnlyList<(Guid EntryId, string Title, Instant StartAt, Guid EventSettingsId, string EventName)>> GetUnassignedGuideEntriesAsync(
-        CancellationToken ct = default)
-    {
-        var events = (await settingsService.GetAllEventSettingsAsync(ct))
-            .Where(e => e.Status != EventSettingsStatus.Deleted)
-            .OrderBy(e => e.GateOpeningDate)
-            .ToList();
-        if (events.Count == 0) return [];
-
-        // The GDPR read: every entry regardless of status or event.
-        return [.. (await repo.GetAllEventsForDashboardAsync(ct))
-            .Where(e => e.EventSettingsId is null)
-            .Select(e =>
-            {
-                var owner = PickEventFor(e.StartAt, events);
-                return (e.Id, e.Title, e.StartAt, owner.Id, owner.EventName);
-            })];
-    }
-
-    public async Task<int> AssignGuideEntryEventIdsAsync(CancellationToken ct = default)
-    {
-        var pending = await GetUnassignedGuideEntriesAsync(ct);
-        return await repo.AssignEventSettingsIdsAsync(pending.ToDictionary(p => p.EntryId, p => p.EventSettingsId), ct);
-    }
-
-    /// <summary>
-    /// The event whose build-to-strike window holds the start's local date; otherwise the one whose gate opening is
-    /// nearest (earliest on a tie). <paramref name="events"/> is non-empty and ordered by gate opening.
-    /// </summary>
-    internal static EventSettingsInfo PickEventFor(Instant startAt, IReadOnlyList<EventSettingsInfo> events)
-    {
-        var nearest = events[0];
-        var nearestDistance = int.MaxValue;
-        foreach (var candidate in events)
-        {
-            var zone = DateTimeZoneProviders.Tzdb.GetZoneOrNull(candidate.TimeZoneId) ?? DateTimeZone.Utc;
-            var offset = Period.Between(candidate.GateOpeningDate, startAt.InZone(zone).Date, PeriodUnits.Days).Days;
-            if (offset >= candidate.BuildStartOffset && offset <= candidate.StrikeEndOffset)
-                return candidate;
-            if (Math.Abs(offset) < nearestDistance)
-            {
-                nearest = candidate;
-                nearestDistance = Math.Abs(offset);
-            }
-        }
-        return nearest;
-    }
-
     /// <summary>Null when the submission window is closed or not configured.</summary>
     private async Task<EventGuideSettings?> GetOpenSubmissionSettingsAsync(CancellationToken ct)
     {
@@ -380,9 +333,8 @@ internal sealed class EventService(
         return null;
     }
 
-    /// <summary>The event the guide is configured for; null when the guide has no settings yet.</summary>
-    private async Task<Guid?> GetGuideEventIdAsync(CancellationToken ct) =>
-        (await repo.GetGuideSettingsAsync(ct))?.EventSettingsId;
+    private Task<Guid?> GetGuideEventIdAsync(CancellationToken ct) =>
+        personalData.GetGuideEventIdAsync(ct);
 
     private async Task EnsureValidRecurrenceDaysAsync(bool isRecurring, string? recurrenceDays, CancellationToken ct)
     {
@@ -471,70 +423,23 @@ internal sealed class EventService(
             "indicates a DI registration mistake — IEventService must resolve to " +
             "the caching decorator.");
 
-    public Task<HashSet<Guid>> GetFavouriteEventIdsAsync(Guid userId, CancellationToken ct = default)
-        => repo.GetFavouriteEventIdsAsync(userId, ct);
+    public Task<HashSet<Guid>> GetFavouriteEventIdsAsync(Guid userId, CancellationToken ct = default) =>
+        personalData.GetFavouriteEventIdsAsync(userId, ct);
 
-    public async Task<IReadOnlyList<EventFavouriteInfo>> GetFavouritesWithEventsAsync(Guid userId, CancellationToken ct = default) =>
-        (await LoadFavouritesWithCalendarAsync(userId, ct)).Favourites;
+    public Task<IReadOnlyList<EventFavouriteInfo>> GetFavouritesWithEventsAsync(Guid userId, CancellationToken ct = default) =>
+        personalData.GetFavouritesWithEventsAsync(userId, ct);
 
-    private async Task<(IReadOnlyList<EventFavouriteInfo> Favourites, EventSettingsInfo? Calendar)> LoadFavouritesWithCalendarAsync(
-        Guid userId, CancellationToken ct)
-    {
-        var guideSettings = await repo.GetGuideSettingsAsync(ct);
-        var guideEventId = guideSettings?.EventSettingsId;
-        var favourites = await repo.GetFavouritesWithEventsAsync(userId, ct);
-        if (favourites.Count == 0) return ([], null);
+    public Task<bool> AddFavouriteAsync(Guid userId, Guid eventId, int? dayOffset, CancellationToken ct = default) =>
+        personalData.AddFavouriteAsync(userId, eventId, dayOffset, ct);
 
-        var eventSettings = guideSettings is null
-            ? null
-            : await settingsService.GetEventSettingsByIdAsync(guideSettings.EventSettingsId, ct);
-        var canExpand = GetTimeZone(eventSettings) is not null;
-        var projected = favourites.Where(f => f.Event.IsInEvent(guideEventId)).Select(f => new EventFavouriteInfo(
-                f.Id, f.UserId, f.GuideEventId, f.DayOffset, f.CreatedAt, ToEventInfo(f.Event)))
-            .GroupBy(f => f.GuideEventId)
-            .SelectMany(group =>
-            {
-                // A recurrence edit can leave several day bookmarks for one single event.
-                // Project a whole-event target so the existing remove path clears them all.
-                var wholeEvent = group.FirstOrDefault(f => !canExpand || !f.Event.IsRecurring
-                    || string.IsNullOrWhiteSpace(f.Event.RecurrenceDays) || f.DayOffset is null);
-                return wholeEvent is null ? group.ToArray() : [wholeEvent with { DayOffset = null }];
-            }).ToList();
-        return (projected, eventSettings);
-    }
+    public Task<bool> RemoveFavouriteAsync(Guid userId, Guid eventId, int? dayOffset, CancellationToken ct = default) =>
+        personalData.RemoveFavouriteAsync(userId, eventId, dayOffset, ct);
 
-    public async Task<bool> AddFavouriteAsync(Guid userId, Guid eventId, int? dayOffset, CancellationToken ct = default)
-    {
-        var ev = await repo.GetApprovedEventByIdAsync(eventId, ct) is { } found
-            && found.IsInEvent(await GetGuideEventIdAsync(ct))
-            ? found
-            : throw new KeyNotFoundException();
-        if (dayOffset is { } day && ev.IsRecurring && !string.IsNullOrWhiteSpace(ev.RecurrenceDays)
-            && !ev.RecurrenceDays
-                .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-                .Any(value => int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var offset)
-                    && offset == day))
-        {
-            throw new ArgumentOutOfRangeException(nameof(dayOffset));
-        }
+    public Task<List<string>> GetExcludedCategorySlugsAsync(Guid userId, CancellationToken ct = default) =>
+        personalData.GetExcludedCategorySlugsAsync(userId, ct);
 
-        return await repo.AddFavouriteIfAbsentAsync(BuildFavourite(userId, eventId, dayOffset), ct);
-    }
-
-    public Task<bool> RemoveFavouriteAsync(Guid userId, Guid eventId, int? dayOffset, CancellationToken ct = default)
-        => repo.RemoveFavouriteAsync(userId, eventId, dayOffset, ct);
-
-    public async Task<List<string>> GetExcludedCategorySlugsAsync(Guid userId, CancellationToken ct = default)
-    {
-        var pref = await repo.GetPreferenceAsync(userId, ct);
-        if (pref == null) return [];
-        return (JsonSerializer.Deserialize<List<string>>(pref.ExcludedCategorySlugs) ?? [])
-            .Select(slug => slug.ToLowerInvariant()).ToList();
-    }
-
-    public Task SavePreferenceAsync(Guid userId, List<string> slugs, CancellationToken ct = default)
-        => repo.UpsertPreferenceAsync(userId,
-            JsonSerializer.Serialize(slugs.Select(slug => slug.ToLowerInvariant())), clock.GetCurrentInstant(), ct);
+    public Task SavePreferenceAsync(Guid userId, List<string> slugs, CancellationToken ct = default) =>
+        personalData.SavePreferenceAsync(userId, slugs, ct);
 
     public async Task<Dictionary<EventStatus, int>> GetEventStatusCountsAsync(CancellationToken ct = default)
         => await repo.GetModerationStatusCountsAsync(await GetGuideEventIdAsync(ct), ct);
@@ -543,13 +448,13 @@ internal sealed class EventService(
     {
         var guideEventId = await GetGuideEventIdAsync(ct);
         var events = await repo.GetEventsByStatusAsync(status, ct);
-        return events.Where(e => e.IsInEvent(guideEventId)).Select(ToEventInfo).ToList();
+        return events.Where(e => e.IsInEvent(guideEventId)).Select(EventInfo.FromEvent).ToList();
     }
 
     public async Task<EventInfo?> GetEventForModerationAsync(Guid eventId, CancellationToken ct = default)
     {
         var guideEvent = await repo.GetEventWithDetailsAsync(eventId, ct);
-        return guideEvent is null ? null : ToEventInfo(guideEvent);
+        return guideEvent is null ? null : EventInfo.FromEvent(guideEvent);
     }
 
     public async Task<IReadOnlyList<CampEventOverlap>> GetCampEventsForOverlapAsync(CancellationToken ct = default)
@@ -603,17 +508,17 @@ internal sealed class EventService(
     {
         var guideEventId = await GetGuideEventIdAsync(ct);
         var events = await repo.GetAllEventsForDashboardAsync(ct);
-        return events.Where(e => e.IsInEvent(guideEventId)).Select(ToEventInfo).ToList();
+        return events.Where(e => e.IsInEvent(guideEventId)).Select(EventInfo.FromEvent).ToList();
     }
 
     public async Task<byte[]> GetApprovedEventsForExportAsync(Guid actorUserId, CancellationToken ct = default)
     {
         var settings = await repo.GetGuideSettingsAsync(ct);
         var events = (await repo.GetApprovedEventsAsync(null, null, null, null, [], ct))
-            .Where(e => e.IsInEvent(settings?.EventSettingsId)).Select(ToEventInfo).ToList();
+            .Where(e => e.IsInEvent(settings?.EventSettingsId)).Select(EventInfo.FromEvent).ToList();
         var eventSettings = settings is null ? null : await settingsService.GetEventSettingsByIdAsync(settings.EventSettingsId, ct);
         var tz = GetTimeZone(eventSettings);
-        var campsById = await LoadCampsByIdAsync(camps, eventSettings?.GateOpeningDate.Year, ct);
+        var campsById = await LoadCampsByIdAsync(camps, eventSettings?.Id, ct);
         var submitters = await LoadSubmittersAsync(
             userService, events.Where(e => e.CampId == null).Select(e => e.SubmitterUserId).Distinct(), ct);
 
@@ -703,161 +608,17 @@ internal sealed class EventService(
         SubmittedAt: e.SubmittedAt,
         LastUpdatedAt: e.LastUpdatedAt);
 
-    // Project defensively: Category may be null and EventVenue / moderation history unloaded.
-    private static EventInfo ToEventInfo(Event e) => new(
-        Id: e.Id,
-        CampId: e.CampId,
-        GuideSharedVenueId: e.GuideSharedVenueId,
-        SubmitterUserId: e.SubmitterUserId,
-        CategoryId: e.CategoryId,
-        CategoryName: e.Category?.Name ?? string.Empty,
-        CategorySlug: e.Category?.Slug ?? string.Empty,
-        CategoryIsSensitive: e.Category?.IsSensitive ?? false,
-        VenueName: e.EventVenue?.Name,
-        Title: e.Title,
-        Description: e.Description,
-        LocationNote: e.LocationNote,
-        Host: e.Host,
-        StartAt: e.StartAt,
-        DurationMinutes: e.DurationMinutes,
-        IsRecurring: e.IsRecurring,
-        RecurrenceDays: e.RecurrenceDays,
-        PriorityRank: e.PriorityRank,
-        Status: e.Status,
-        SubmittedAt: e.SubmittedAt,
-        LastUpdatedAt: e.LastUpdatedAt,
-        ModerationHistory: e.EventModerationActions
-            .Select(a => new EventModerationHistoryInfo(a.ActorUserId, a.Action, a.Reason, a.CreatedAt))
-            .ToList());
-
-    private EventFavourite BuildFavourite(Guid userId, Guid eventId, int? dayOffset) => new()
-    {
-        Id = Guid.NewGuid(),
-        UserId = userId,
-        GuideEventId = eventId,
-        DayOffset = dayOffset,
-        CreatedAt = clock.GetCurrentInstant()
-    };
-
     // Nothing public to contribute to the community calendar yet.
     public Task<IReadOnlyList<CalendarFeedItem>> GetPublicItemsForWindowAsync(Instant from, Instant to, CancellationToken ct) =>
         Task.FromResult<IReadOnlyList<CalendarFeedItem>>([]);
 
-    public async Task<IReadOnlyList<CalendarFeedItem>> GetCalendarItemsForUserAsync(Guid userId, CancellationToken ct)
-    {
-        // Moderation can drop an event out of the feed without touching the favourite row.
-        var (favourites, burn) = await LoadFavouritesWithCalendarAsync(userId, ct);
-        var approved = favourites.Where(f => f.Event.Status == EventStatus.Approved).ToList();
-        if (approved.Count == 0) return [];
+    public Task<IReadOnlyList<CalendarFeedItem>> GetCalendarItemsForUserAsync(Guid userId, CancellationToken ct) =>
+        personalData.GetCalendarItemsForUserAsync(userId, ct);
 
-        var tz = burn is null ? null : DateTimeZoneProviders.Tzdb.GetZoneOrNull(burn.TimeZoneId);
-        if (burn is not null && tz is null)
-        {
-            logger.LogWarning(
-                "Burn settings {EventSettingsId} have unknown timezone {TimeZoneId}; iCal feed falls back to single occurrences keyed by UTC date",
-                burn.Id,
-                burn.TimeZoneId);
-        }
+    public Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct) =>
+        personalData.ContributeForUserAsync(userId, ct);
 
-        var items = new List<CalendarFeedItem>();
-        foreach (var favourite in approved)
-        {
-            var e = favourite.Event;
-            var occurrences = e.GetOccurrenceInstants(burn?.GateOpeningDate, tz, favourite.DayOffset);
-
-            var location = string.Join(" — ", new[] { e.VenueName, e.LocationNote }
-                .Where(s => !string.IsNullOrWhiteSpace(s)));
-            var description = string.Join("\n\n", new[]
-            {
-                e.Description,
-                string.IsNullOrWhiteSpace(e.Host) ? null : $"{localizer["Events_Submission_FieldHost"]}: {e.Host}",
-                string.IsNullOrWhiteSpace(e.CategoryName) ? null : $"{localizer["Events_Submission_FieldCategory"]}: {e.CategoryName}",
-            }.Where(s => !string.IsNullOrWhiteSpace(s)));
-
-            foreach (var start in occurrences)
-            {
-                var dateKey = DateFormattingExtensions.IcalBasicDatePattern.Format(start.InZone(tz ?? DateTimeZone.Utc).Date);
-                items.Add(new CalendarFeedItem(
-                    Uid: $"event-{e.Id}-{dateKey}@humans.nobodies.team",
-                    Source: "Events",
-                    Summary: e.Title,
-                    Description: description.Length == 0 ? null : description,
-                    Start: start,
-                    End: start.Plus(Duration.FromMinutes(e.DurationMinutes)),
-                    Location: location.Length == 0 ? null : location,
-                    // No per-event public page; the schedule is where favourites live.
-                    Url: "/Events/Schedule"));
-            }
-        }
-
-        return items;
-    }
-
-    public async Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct)
-    {
-        var info = await userService.GetUserInfoAsync(userId, ct);
-        var userIds = info?.AllUserIds ?? [userId];
-        var favourites = new List<EventFavourite>();
-        var preferences = new List<EventPreference>();
-        foreach (var id in userIds)
-        {
-            favourites.AddRange(await repo.GetFavouritesForContributorAsync(id, ct));
-            if (await repo.GetPreferenceAsync(id, ct) is { } preference)
-                preferences.Add(preference);
-        }
-        var submissions = (await repo.GetAllEventsForDashboardAsync(ct))
-            .Where(e => userIds.Contains(e.SubmitterUserId));
-        var requestedPreference = preferences.FirstOrDefault(p => p.UserId == userId);
-
-        var shaped = new
-        {
-            SubmittedEvents = submissions
-                .OrderBy(e => e.SubmittedAt)
-                .ThenBy(e => e.Id)
-                .Select(e => new
-                {
-                    e.Id,
-                    e.CampId,
-                    e.GuideSharedVenueId,
-                    e.CategoryId,
-                    e.Title,
-                    e.Description,
-                    e.LocationNote,
-                    e.Host,
-                    StartAt = e.StartAt.ToIso8601(),
-                    e.DurationMinutes,
-                    e.IsRecurring,
-                    e.RecurrenceDays,
-                    e.PriorityRank,
-                    Status = e.Status.ToString(),
-                    SubmittedAt = e.SubmittedAt.ToIso8601(),
-                    LastUpdatedAt = e.LastUpdatedAt.ToIso8601()
-                }).ToList(),
-            Favourites = favourites
-                .OrderBy(f => f.CreatedAt)
-                .Select(f => new
-                {
-                    f.GuideEventId,
-                    f.DayOffset,
-                    CreatedAt = f.CreatedAt.ToIso8601()
-                }).ToList(),
-            Preference = requestedPreference is null ? null : new
-            {
-                requestedPreference.ExcludedCategorySlugs,
-                UpdatedAt = requestedPreference.UpdatedAt.ToIso8601()
-            },
-            AdditionalPreferences = preferences.Where(p => p.UserId != userId).OrderBy(p => p.UpdatedAt).Select(p => new
-            {
-                p.UserId,
-                p.ExcludedCategorySlugs,
-                UpdatedAt = p.UpdatedAt.ToIso8601()
-            }).ToList()
-        };
-
-        return [new UserDataSlice(Events, shaped)];
-    }
-
-    internal const string Events = "Events";
+    internal const string Events = EventPersonalData.Events;
 
     // Static and internal: CachingEventService returns it from an uninitialized instance.
     internal static readonly IReadOnlyDictionary<string, string?> Erasure =

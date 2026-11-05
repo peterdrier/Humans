@@ -124,6 +124,8 @@ The calendar is intentionally open: no resource-based authorization gates edit/d
 
 ## Invariants
 
+- The internal `CalendarRecurrenceRules` owns RRULE parsing, validation, legacy all-day cutoff conversion and finite-series bounds. Event writes and the public recurrence validator share it; occurrence-window expansion, override decisions and persistence remain in their existing owners.
+
 - Member event history supplies localized empty text to the shared audit component in all supported cultures; its event predicate and history entries are unchanged.
 
 - Grid and list browser titles use Base’s invariant `yyyy-MM` formatter for their month identifier.
@@ -205,6 +207,8 @@ The calendar is intentionally open: no resource-based authorization gates edit/d
 - **Inbound (contributor fan-out):** Shifts (`ShiftSignupService`), Events (`EventService`) and Workgroups (`WorkgroupCalendarContributor`) implement `ICalendarFeedContributor` — both `GetCalendarItemsForUserAsync` (personal feed) and `GetPublicItemsForWindowAsync` (community calendar; Shifts and Events return an empty list, Workgroups returns the public meetings of its active workgroups); Scanner reads `IICalFeedService` for the ticket card's shift commitments; Workgroups implements `ICalendarEventForm` and renders the shared `_CalendarEventForm` partial for its meeting create/edit page; Debug's widget gallery and Users' admin detail render `UserCalendarViewComponent`. All but Users reference `Humans.Calendar` from their project file; Users renders it through the `IUserPart` seam (`IUserPart`), invoked by `Type`, and has no reference to resolve. The fan-out inverts the arrow either way, so Calendar names none of them.
 
 ## Architecture
+
+The internal `CalendarOccurrenceComposer` owns supplied-snapshot window composition: filtering, team-name lookup, expansion and scoped live contributor fan-out. `CalendarService` retains the forwarding entry point, event persistence and exception writes; `CachingCalendarService` remains the sole query/cache facade. Contributor scope lifetime, team-filter exclusion, recurrence mapping, failure isolation and cancellation are unchanged. No contract or DI registration is added.
 
 A lazy per-key cache miss cannot republish its old result after an intervening cache eviction or refresh.
 

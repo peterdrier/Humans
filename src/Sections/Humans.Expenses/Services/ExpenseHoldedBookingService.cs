@@ -45,7 +45,7 @@ internal sealed class ExpenseHoldedBookingService(
                 report.Id, lineId, report.Status, creditors(report.SubmitterUserId), report.HoldedContactId, docId,
                 description, ExpenseHoldedPublisher.DocNotes(report.Id), booked,
                 report.SubmittedAt ?? report.CreatedAt,
-                ExpenseReportService.ResolveSyncState(outboxEvent, configured),
+                ExpenseHoldedTimelineReader.ResolveSyncState(outboxEvent, configured),
                 outboxEvent?.ProcessedAt);
 
             // A legacy push wrote one document for the whole payable and left the lines unlinked.

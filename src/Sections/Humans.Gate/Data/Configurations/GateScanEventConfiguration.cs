@@ -17,16 +17,16 @@ internal sealed class GateScanEventConfiguration : IEntityTypeConfiguration<Gate
 
         builder.Property(x => x.Barcode)
             .IsRequired()
-            .HasMaxLength(128);
+            .HasMaxLength(GateScanEvent.BarcodeMaxLength);
 
         builder.Property(x => x.Verdict)
             .IsRequired()
             .HasConversion<string>()
             .HasMaxLength(40);
 
-        builder.Property(x => x.LaneId).HasMaxLength(64);
-        builder.Property(x => x.Note).HasMaxLength(1000);
-        builder.Property(x => x.AdmitDedupeKey).HasMaxLength(128);
+        builder.Property(x => x.LaneId).HasMaxLength(GateScanEvent.LaneIdMaxLength);
+        builder.Property(x => x.Note).HasMaxLength(GateScanEvent.NoteMaxLength);
+        builder.Property(x => x.AdmitDedupeKey).HasMaxLength(GateScanEvent.BarcodeMaxLength);
 
         // At most one admit per barcode across all lanes. Postgres excludes nulls, so non-admit rows never collide.
         builder.HasIndex(x => x.AdmitDedupeKey)

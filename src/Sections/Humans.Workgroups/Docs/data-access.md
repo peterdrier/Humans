@@ -95,3 +95,10 @@ Neither owns a table or touches `WorkgroupsDbContext` directly — both go throu
 `IWorkgroupService`, consistent with "repository is the only DbContext caller."
 
 ---
+
+### WorkgroupRegisterReader (internal, owned by WorkgroupService)
+
+Repository: `IWorkgroupRepository`. Reads the register graph or an individual
+workgroup and projects members, meetings, logs, documents and comments. Shares
+those projections and the safe Discord-link predicate with existing mutation
+guards. No writes, cache or separate DI registration.

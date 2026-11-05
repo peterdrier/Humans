@@ -1,4 +1,6 @@
 using System.Globalization;
+using Humans.Base.Interfaces;
+using Humans.Email.Contracts;
 using Humans.Base.Extensions;
 using Humans.Grants.Domain;
 using Humans.Notifications.Contracts;
@@ -7,16 +9,21 @@ using Humans.Users.Contracts;
 namespace Humans.Grants.Services;
 
 /// <summary>Failures never fail the write: the row and the audit entry are the record, and a manager can resend.</summary>
-internal sealed partial class GrantService
+internal sealed class GrantNotices(
+    IUserService users,
+    INotificationEmitter notifications,
+    IEmailService email,
+    GrantsEmails emailFactory,
+    ILogger<GrantService> logger) : IApplicationService
 {
     private static readonly System.Resources.ResourceManager NoticeResources = new(typeof(GrantsResource));
 
     internal const string ProfileUrl = "/Profile/Me";
 
-    private Task AnnounceIssuedAsync(Grant grant, GrantProgram program, CancellationToken ct) =>
+    internal Task AnnounceIssuedAsync(Grant grant, GrantProgram program, CancellationToken ct) =>
         AnnounceAsync(grant, program, GrantNoticeKind.Issued, GrantsNotificationSources.GrantReceived, ct);
 
-    private Task AnnounceRevokedAsync(Grant grant, GrantProgram program, CancellationToken ct) =>
+    internal Task AnnounceRevokedAsync(Grant grant, GrantProgram program, CancellationToken ct) =>
         AnnounceAsync(grant, program, GrantNoticeKind.Revoked, GrantsNotificationSources.GrantRevoked, ct);
 
     private async Task AnnounceAsync(

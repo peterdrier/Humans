@@ -108,3 +108,10 @@ builds one sample per template via `SurveysEmails` for `/Email/EmailPreview`.
 No DB access, no cache.
 
 ---
+
+### SurveyDefinitionReader (internal, owned by SurveyService)
+
+Repository: `ISurveyRepository`. Reads summary counts, official invitation/public
+links and complete survey definitions. Reuses the existing invite-token provider
+and `SurveyQuestionMapping`; no cross-section dependencies, cache or separate
+DI registration. The existing survey service remains the caller-facing contract.

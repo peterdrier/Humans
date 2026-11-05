@@ -113,6 +113,7 @@
   <data name="Onboarding_WelcomeContact" xml:space="preserve">
     <value>Domande? Scrivici a</value>
   </data>
+  <data name="Onboarding_WelcomeTour" xml:space="preserve"><value>Sei appena arrivato? Scopri cosa fa Humans (in inglese)</value></data>
   <data name="Onboarding_GuestAccountSubtitle" xml:space="preserve">
     <value>Anche senza profilo, puoi gestire il tuo account e i tuoi dati.</value>
   </data>

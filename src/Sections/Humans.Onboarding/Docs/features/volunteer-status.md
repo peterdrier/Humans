@@ -62,7 +62,7 @@ The consent check is a Consent Coordinator **audit annotation** on the Volunteer
 
 ## Membership Status
 
-Governance's `MembershipCalculator.ComputeStatusAsync` computes it, in this order: no profile gives None; suspended gives Suspended; `UserState` not Active gives Pending if Bare, else None; Active with no active roles and not a Volunteers member gives None; expired Volunteers consents give Inactive; otherwise Active. There is no Rejected status. See [Membership Status](../../../Humans.Governance/Docs/features/membership-status.md).
+Governance's `MembershipCalculator.GetMembershipSnapshotAsync` computes its status, in this order: no profile gives None; suspended gives Suspended; `UserState` not Active gives Pending if Bare, else None; Active with no active roles and not a Volunteers member gives None; expired Volunteers consents give Inactive; otherwise Active. There is no Rejected status. See [Membership Status](../../../Humans.Governance/Docs/features/membership-status.md).
 
 ## Volunteer Gating (MembershipRequiredFilter)
 

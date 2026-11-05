@@ -69,7 +69,7 @@ Issues is the only in-app reporting path. It replaced Feedback, the single globa
 **As** a reporter or handler, **I want** to know when something happens on an issue I'm involved in, **so that** I don't have to refresh `/Issues` to keep the conversation moving.
 
 **Acceptance Criteria:**
-- When a new issue is submitted, an in-app `IssuesNotificationSources.IssueSubmitted` notification fans out to role-holders of `issue.Section`, or to Admins when no role owns the queue, keyed by `sourceKey: issue.Id.ToString()`; when the issue transitions to a terminal status, `IssuesService.ResolveSubmittedNotificationsAsync` resolves those notifications by that sourceKey
+- When a new issue is submitted, an in-app `IssuesNotificationSources.IssueSubmitted` notification fans out to role-holders of `issue.Section`, or to Admins when no role owns the queue, keyed by `sourceKey: issue.Id.ToString()`; when the issue transitions to a terminal status, `IssueNotices.ResolveSubmittedNotificationsAsync` resolves those notifications by that sourceKey
 - When a comment is posted, an in-app notification goes to the **other party** — the queue's handlers (same Admin fallback) + assignee when the reporter comments, the reporter + assignee when a handler comments. Email is only sent when a **handler** comments (to the reporter); reporter→handler comments are in-app only because handlers already see new comments in their queue.
 - When status changes, the reporter and current assignee are notified
 - When an issue is assigned, the new assignee is notified

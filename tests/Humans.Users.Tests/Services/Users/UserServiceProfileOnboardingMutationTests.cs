@@ -173,7 +173,6 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
             IsPrimary = true,
             Provider = "Google",
             ProviderKey = "sub-1",
-            IsGoogle = false,
         });
         accountUser.State = hasDeletionHold ? UserState.DeletePending : UserState.Bare;
         var arrival = Clock.GetCurrentInstant();
@@ -259,7 +258,7 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
     }
 
     [HumansFact]
-    public async Task ContributeForUserAsync_ExportsOwnEmailLifecycleAndGoogleSyncState()
+    public async Task ContributeForUserAsync_ExportsOwnEmailLifecycleWithoutRetiredGoogleState()
     {
         var userId = Guid.NewGuid();
         var otherUserId = Guid.NewGuid();
@@ -270,9 +269,7 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
             new UserEmail
             {
                 Id = Guid.NewGuid(), UserId = userId, Email = "google@example.com",
-                IsVerified = true, IsPrimary = true, IsGoogle = true,
-                GoogleEmailStatus = LegacyGoogleEmailStatus.Rejected,
-                CreatedAt = createdAt,
+                IsVerified = true, IsPrimary = true, CreatedAt = createdAt,
                 UpdatedAt = createdAt.Plus(NodaTime.Duration.FromHours(2)),
                 VerificationSentAt = createdAt.Plus(NodaTime.Duration.FromHours(1)),
             },
@@ -294,14 +291,12 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
         var emails = json.RootElement.EnumerateArray().ToList();
         emails.Should().HaveCount(2);
         var google = emails.Single(e => string.Equals(e.GetProperty("Email").GetString(), "google@example.com", StringComparison.Ordinal));
-        google.GetProperty("IsGoogle").GetBoolean().Should().BeTrue();
-        google.GetProperty("GoogleEmailStatus").GetString().Should().Be("Rejected");
+        google.TryGetProperty("IsGoogle", out _).Should().BeFalse();
+        google.TryGetProperty("GoogleEmailStatus", out _).Should().BeFalse();
         google.GetProperty("CreatedAt").GetString().Should().Be("2026-03-01T12:00:00Z");
         google.GetProperty("UpdatedAt").GetString().Should().Be("2026-03-01T14:00:00Z");
         google.GetProperty("VerificationSentAt").GetString().Should().Be("2026-03-01T13:00:00Z");
         var manual = emails.Single(e => string.Equals(e.GetProperty("Email").GetString(), "manual@example.com", StringComparison.Ordinal));
-        manual.GetProperty("IsGoogle").GetBoolean().Should().BeFalse();
-        manual.GetProperty("GoogleEmailStatus").GetString().Should().Be("Unknown");
         manual.GetProperty("VerificationSentAt").GetString().Should().BeNull();
     }
 

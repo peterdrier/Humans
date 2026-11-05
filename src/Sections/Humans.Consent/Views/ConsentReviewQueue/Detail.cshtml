@@ -104,6 +104,7 @@
                         @Html.AntiForgeryToken()
                         <div class="mb-2">
                             <textarea name="notes" class="form-control" rows="2" placeholder="@Localizer["Consent_Queue_NotesPlaceholder"].Value"></textarea>
+                            <div class="form-text">Maximum 4,000 characters.</div>
                         </div>
                         <button type="submit" class="btn btn-success w-100"
                                 data-confirm="@Localizer["Consent_Queue_ClearConfirm"].Value">
@@ -125,6 +126,7 @@
                         @Html.AntiForgeryToken()
                         <div class="mb-2">
                             <textarea name="notes" class="form-control" rows="2" placeholder="@Localizer["Consent_Queue_FlagReasonPlaceholder"].Value"></textarea>
+                            <div class="form-text">Maximum 4,000 characters.</div>
                         </div>
                         <button type="submit" class="btn btn-danger w-100"
                                 data-confirm="@Localizer["Consent_Queue_FlagConfirm"].Value">
@@ -139,6 +141,7 @@
                     @Html.AntiForgeryToken()
                     <div class="mb-2">
                         <textarea name="reason" class="form-control" rows="2" placeholder="@Localizer["Consent_Queue_RejectReasonPlaceholder"].Value"></textarea>
+                        <div class="form-text">Maximum 4,000 characters.</div>
                     </div>
                     <button type="submit" class="btn btn-outline-danger w-100"
                             data-confirm="@Localizer["Consent_Queue_RejectConfirm"].Value">

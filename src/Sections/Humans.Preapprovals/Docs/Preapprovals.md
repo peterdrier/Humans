@@ -226,6 +226,8 @@ Admin pages live under the section's URL space, not `/Admin`; they are localizat
 
 ## Architecture
 
+The internal `PreapprovalNotices` owns recipient resolution, localized delivery and standing-notice completion. Ordinary delivery failures remain best-effort; reminder delivery propagates failures before the service writes its sent stamp. Audits, transactions, reminder selection and stamps remain in `PreapprovalService`.
+
 **Owning services:** `PreapprovalService` (`Humans.Preapprovals`; `IPreapprovalService` / `IPreapprovalWrite` public in `Contracts/`, `IPreapprovalManagement` internal)
 **Owned tables:** `pre_programs`, `pre_program_managers`, `pre_grants`, `pre_reminders_sent`
 **Status:** (A) Migrated — built as a section from day one (2026-10-16).
@@ -245,7 +247,7 @@ A `Contracts/` folder in the section (no leaf project: nothing Preapprovals refe
 ### For (A) Migrated sections
 
 - `PreapprovalService` lives in `Services/` as partial files (core, Programs, Grants,
-  Notices, Reminders, Gdpr) and never imports `Microsoft.EntityFrameworkCore`.
+  Reminders, Gdpr) and never imports `Microsoft.EntityFrameworkCore`.
 - `IPreapprovalRepository` (impl in `Data/`) is the only code path that touches the four
   tables; it hands over detached graphs and takes scalars back.
 - **Decorator decision** — no caching decorator. Rationale: a few programs a year, pages

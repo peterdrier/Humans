@@ -86,4 +86,8 @@ the creditor as `ExpenseHoldedPublisher` binds it) and `IHoldedService.IsConfigu
 
 ---
 
+### ExpenseReportAccess (internal, owned by `ExpenseReportService`)
 
+Reads through `IExpenseRepository`: both review queues, per-report edit/decline eligibility,
+and submitter/first-reviewer authority. The report service calls it before the unchanged
+mutations; it performs no writes and has no DI registration.

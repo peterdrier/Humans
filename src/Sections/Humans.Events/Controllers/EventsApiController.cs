@@ -44,7 +44,7 @@ internal sealed class EventsApiController(
 
         var excludedSlugs = await GetExcludedSlugsAsync(ct);
         var events = await guide.GetApprovedEventsAsync(barrioId, null, null, q, excludedSlugs, ct);
-        var campsById = await LoadCampsByIdAsync(camps, gateOpeningDate?.Year, ct);
+        var campsById = await LoadCampsByIdAsync(camps, eventSettings?.Id, ct);
         var submitterInfoById = await EventsLookupHelpers.LoadSubmittersAsync(
             UserService, events.Where(e => e.CampId == null).Select(e => e.SubmitterUserId).Distinct(), ct);
 
@@ -81,7 +81,7 @@ internal sealed class EventsApiController(
         if (e == null) return NotFound();
 
         var gateOpeningDate = eventSettings?.GateOpeningDate;
-        var campsById = await LoadCampsByIdAsync(camps, gateOpeningDate?.Year, ct);
+        var campsById = await LoadCampsByIdAsync(camps, eventSettings?.Id, ct);
         var campName = ResolveCampNameById(e.CampId, campsById);
         var submitterName = e.CampId == null
             ? (await UserService.GetUserInfoAsync(e.SubmitterUserId, ct))?.BurnerName
@@ -97,7 +97,7 @@ internal sealed class EventsApiController(
         var ct = HttpContext.RequestAborted;
         var guideSettings = await guide.GetGuideSettingsAsync(ct);
         var eventSettings = await LoadBurnSettingsAsync(guide, guideSettings, ct);
-        var campsById = await LoadCampsByIdAsync(camps, eventSettings?.GateOpeningDate.Year, ct);
+        var campsById = await LoadCampsByIdAsync(camps, eventSettings?.Id, ct);
 
         var events = await guide.GetApprovedEventsAsync(null, null, null, null, [], ct);
         var barrioGroups = events
@@ -130,7 +130,7 @@ internal sealed class EventsApiController(
         var events = await guide.GetApprovedEventsAsync(id, null, null, null, [], ct);
         if (!events.Any()) return NotFound();
 
-        var campsById = await LoadCampsByIdAsync(camps, gateOpeningDate?.Year, ct);
+        var campsById = await LoadCampsByIdAsync(camps, eventSettings?.Id, ct);
         var camp = campsById.GetValueOrDefault(id);
         var campName = ResolveCampName(camp);
 
@@ -214,7 +214,7 @@ internal sealed class EventsApiController(
         var gateOpeningDate = eventSettings?.GateOpeningDate;
 
         var favourites = await guide.GetFavouritesWithEventsAsync(user.Id, ct);
-        var campsById = await LoadCampsByIdAsync(camps, gateOpeningDate?.Year, ct);
+        var campsById = await LoadCampsByIdAsync(camps, eventSettings?.Id, ct);
         var submitterInfoById = await EventsLookupHelpers.LoadSubmittersAsync(
             UserService, favourites.Where(f => f.Event.CampId == null).Select(f => f.Event.SubmitterUserId).Distinct(), ct);
         var results = favourites.SelectMany(f =>

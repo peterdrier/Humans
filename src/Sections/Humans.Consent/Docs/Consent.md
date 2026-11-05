@@ -173,6 +173,9 @@ Document archival uses the shared `data-confirm` handler: each click prompts onc
 
 ## Invariants
 
+- Review notes and rejection reasons are limited to 4,000 Unicode characters before any review write or audit. Oversized text that would be written returns `ReviewTextTooLong`; existing rejection preconditions retain precedence, and valid text is stored without truncation. The operator queue shows the limit and specific refusal feedback.
+
+
 - Commit-summary fetch failures remain a null fallback: GitHub API failures log Warning with status only, without raw error bodies or exception stacks; unexpected failures log Error with diagnostics. Caller cancellation still propagates.
 
 - Consent review detail and submission each resolve the person once: profile/name checks and prior-signature lookup use that same snapshot’s complete current/merged ID chain. Other consent-chain reads retain their standalone resolution.
@@ -218,6 +221,7 @@ Document archival uses the shared `data-confirm` handler: each click prompts onc
 - Synced version content is fetched by each file’s immutable blob SHA, after resolving the latest commit changing that path on the configured branch and pinning its metadata read to that commit. The canonical Spanish content and version SHA come from the same fetch, reused without a second branch read. Change summaries use that canonical file’s commit reference; the blob SHA remains the version identity.
 - GitHub document reads use the configured `GitHub:Branch`, including both directory discovery and translated file content for the anonymous `/Legal` pages.
 - When a new document version is published, existing consents for the old version become stale and re-consent is required.
+- Internal `LegalDocumentPublication` owns single-document GitHub sync, version persistence, cache eviction, publication audit and localized fan-out. `LegalDocumentSyncService` retains document administration, read projections and batch error handling; the runner retains durable re-consent batching. Publication still evicts before audit and fan-out, and unchanged content only touches its sync timestamp. Job attribution and cancellation boundaries are preserved; no DI registration or public contract is added.
 - Per-user reads on `consent_records` chain-follow merge tombstones via the resolved record's `UserInfo.AllUserIds` so consents signed under a now-merged source id surface for the fold target. Consent records stay at source after merge, DB triggers (`prevent_consent_record_update`, `prevent_consent_record_delete`) make any rewrite physically impossible.
 - New signatures use the resolved survivor ID, including when a widget submits an archived account ID. Required-consent checks and post-save suspension-notification cleanup use that same ID; existing immutable signatures keep their original attribution.
 

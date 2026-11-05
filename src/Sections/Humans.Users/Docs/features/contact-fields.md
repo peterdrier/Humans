@@ -237,8 +237,6 @@ UserEmail
 ├── IsVerified: bool
 ├── Provider: string?            ← OAuth provider ("Google" today) that owns this row; null = no OAuth identity linked
 ├── ProviderKey: string?         ← OAuth subject/key for the linked identity
-├── IsGoogle: bool               ← frozen; Google identity is GoogleIntegration's
-├── GoogleEmailStatus            ← frozen LegacyGoogleEmailStatus; sync status is GoogleIntegration's
 ├── IsPrimary: bool              ← exactly one verified email per user (DB column still named IsNotificationTarget)
 ├── Visibility: ContactFieldVisibility? ← null = hidden from profile
 ├── VerificationSentAt: Instant?

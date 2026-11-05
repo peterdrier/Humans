@@ -31,6 +31,9 @@ internal sealed class TeamService(
     IClock clock,
     ILogger<TeamService> logger) : ITeamManagementService, ITeamSeeding, IGoogleGroupMembershipSource, IUserMerge, IEarlyEntryProvider
 {
+    private readonly TeamDataExport dataExport = new(repo, serviceProvider);
+    private readonly TeamPageContent pageContentOwner = new(repo, clock, auditLogService, logger);
+    private readonly TeamSnapshotReader snapshotReader = new(repo, serviceProvider, shiftManagementService);
     private readonly TeamMembershipNotices membershipNotices = new(notificationService, serviceProvider, logger);
     private readonly TeamGoogleGroupMemberships googleGroupMemberships = new(repo, logger);
     private static readonly TrackedLock JoinRequestLock = new("Teams.JoinRequest");
@@ -40,9 +43,9 @@ internal sealed class TeamService(
         "roster", "birthdays", "map", "my", "sync", "summary", "create", "search", "tree"
     };
 
-    internal const string TeamMemberships = "TeamMemberships";
-    internal const string TeamJoinRequests = "TeamJoinRequests";
-    internal const string TeamEarlyEntry = "TeamEarlyEntry";
+    internal const string TeamMemberships = TeamDataExport.TeamMemberships;
+    internal const string TeamJoinRequests = TeamDataExport.TeamJoinRequests;
+    internal const string TeamEarlyEntry = TeamDataExport.TeamEarlyEntry;
 
     // Lazy: UserService injects ITeamManagement, closing a cycle.
     private ITeamResourceService TeamResourceService
@@ -341,82 +344,16 @@ internal sealed class TeamService(
         return new(Team: team);
     }
 
-    public async Task<TeamPageUpdateResult> UpdateTeamPageContentAsync(
+    public Task<TeamPageUpdateResult> UpdateTeamPageContentAsync(
         Guid teamId,
         string? pageContent,
         IReadOnlyList<TeamPageCallToActionInput> callsToAction,
         bool isPublicPage,
         bool showCoordinatorsOnPublicPage,
         Guid updatedByUserId,
-        CancellationToken cancellationToken = default)
-    {
-        var normalizedCallsToAction = callsToAction
-            .Where(c => !string.IsNullOrWhiteSpace(c.Text) && !string.IsNullOrWhiteSpace(c.Url))
-            .Select(c => new CallToAction { Text = c.Text!.Trim(), Url = c.Url!.Trim(), Style = c.Style })
-            .ToList();
-
-        try
-        {
-            var team = await repo.FindForMutationAsync(teamId, cancellationToken);
-            if (team is null)
-                return Refuse($"Team {teamId} not found");
-
-            if (normalizedCallsToAction.Count > 3)
-                return Refuse("A team can have at most 3 calls to action.");
-
-            if (normalizedCallsToAction.Count(c => c.Style == CallToActionStyle.Primary) > 1)
-                return Refuse("Only one primary call to action is allowed.");
-
-            if (normalizedCallsToAction.Any(c => !IsSafeCallToActionUrl(c.Url)))
-                return Refuse("Calls to action require a relative URL or an HTTP, HTTPS or mailto URL.");
-
-            var canBePublic = !team.IsSystemTeam && !team.ParentTeamId.HasValue;
-
-            if (isPublicPage && !canBePublic)
-                return Refuse("Only departments (non-system, top-level teams) can be made public.");
-
-            var now = clock.GetCurrentInstant();
-            team.PageContent = pageContent;
-            team.CallsToAction = normalizedCallsToAction;
-            team.IsPublicPage = isPublicPage;
-            team.ShowCoordinatorsOnPublicPage = canBePublic && isPublicPage && showCoordinatorsOnPublicPage;
-            team.PageContentUpdatedAt = now;
-            team.PageContentUpdatedByUserId = updatedByUserId;
-            team.UpdatedAt = now;
-
-            var conflict = await repo.UpdateTeamAsync(team, cancellationToken);
-            if (conflict != TeamUpdateConflict.None)
-            {
-                logger.LogWarning("Team page update rejected for team {TeamId}: {Conflict}", teamId, conflict);
-                return new TeamPageUpdateResult(false, null);
-            }
-
-            await auditLogService.LogAsync(
-                TeamsAuditActions.TeamPageContentUpdated, nameof(Team), teamId,
-                $"Team page content updated. Public: {isPublicPage}",
-                updatedByUserId);
-
-            return TeamPageUpdateResult.Success();
-        }
-        catch (Exception ex) when (ex is not OperationCanceledException)
-        {
-            logger.LogError(ex, "Failed to update team page for team {TeamId} by user {UserId}", teamId, updatedByUserId);
-            return new TeamPageUpdateResult(false, null);
-        }
-
-        TeamPageUpdateResult Refuse(string reason)
-        {
-            logger.LogWarning("Team page update rejected for team {TeamId} by user {UserId}: {Reason}", teamId, updatedByUserId, reason);
-            return TeamPageUpdateResult.Failed(reason);
-        }
-    }
-
-    // Shared by writes and the page projection, so unsafe legacy values never become links.
-    internal static bool IsSafeCallToActionUrl(string? url) =>
-        !string.IsNullOrWhiteSpace(url)
-        && !url.Any(char.IsControl)
-        && Uri.TryCreate(url, UriKind.RelativeOrAbsolute, out var uri)
-        && (!uri.IsAbsoluteUri || uri.Scheme is "http" or "https" or "mailto");
+        CancellationToken cancellationToken = default) =>
+        pageContentOwner.UpdateTeamPageContentAsync(teamId, pageContent, callsToAction,
+            isPublicPage, showCoordinatorsOnPublicPage, updatedByUserId, cancellationToken);
 
     public async Task<TeamUpdateResult> CreateTeamWithGoogleGroupAsync(
         string name,
@@ -1152,7 +1089,7 @@ internal sealed class TeamService(
         if (team is null)
             return new(Refusal: $"Team {teamId} not found");
 
-        if (SlotCountAndPrioritiesRefusal(slotCount, priorities) is { } prioritiesRefusal)
+        if (RoleCapacityRefusal(slotCount, priorities, estimatedHours) is { } prioritiesRefusal)
             return new(Refusal: prioritiesRefusal);
         if (RoleNameRefusal(name) is { } nameRefusal)
             return new(Refusal: nameRefusal);
@@ -1211,7 +1148,7 @@ internal sealed class TeamService(
         if (!canManage)
             return new(Refusal: "User does not have permission to manage role definitions for this team");
 
-        if (SlotCountAndPrioritiesRefusal(slotCount, priorities) is { } prioritiesRefusal)
+        if (RoleCapacityRefusal(slotCount, priorities, estimatedHours) is { } prioritiesRefusal)
             return new(Refusal: prioritiesRefusal);
 
         if (!canToggleManagement)
@@ -1337,33 +1274,8 @@ internal sealed class TeamService(
         Guid teamId, CancellationToken cancellationToken = default)
     {
         var definitions = await repo.GetRoleDefinitionsAsync(teamId, cancellationToken);
-        return definitions.Select(definition => ToRoleDefinitionSnapshot(definition)).ToList();
+        return definitions.Select(definition => TeamSnapshotReader.ToRoleDefinitionSnapshot(definition)).ToList();
     }
-
-    private static TeamRoleDefinitionSnapshot ToRoleDefinitionSnapshot(
-        TeamRoleDefinition definition,
-        Team? fallbackTeam = null) =>
-        new(
-            definition.Id,
-            definition.TeamId,
-            definition.Team?.Name ?? fallbackTeam?.Name ?? string.Empty,
-            definition.Team?.Slug ?? fallbackTeam?.Slug ?? string.Empty,
-            definition.Name,
-            definition.Description,
-            definition.SlotCount,
-            definition.EstimatedHours,
-            definition.Priorities,
-            definition.SortOrder,
-            definition.IsManagement,
-            definition.Period,
-            definition.IsPublic,
-            definition.Assignments
-                .Select(assignment => new TeamRoleAssignmentSnapshot(
-                    assignment.Id,
-                    assignment.TeamMemberId,
-                    assignment.SlotIndex,
-                    assignment.TeamMember?.UserId))
-                .ToList());
 
     private async Task<(TeamRoleDefinition Definition, Team Team)> RequireRoleAssignmentManagementAsync(
         Guid roleDefinitionId, Guid actorUserId, CancellationToken cancellationToken)
@@ -1622,24 +1534,9 @@ internal sealed class TeamService(
         CancellationToken cancellationToken = default) =>
         repo.GetPublicManagementRoleNamesByTeamIdsAsync(teamIds.ToList(), cancellationToken);
 
-    public async Task<AdminTeamListResult> GetAdminTeamListAsync(
-        int page,
-        int pageSize,
-        CancellationToken cancellationToken = default)
-    {
-        var (items, totalCount) = await repo.GetAllForAdminAsync(page, pageSize, cancellationToken);
-
-        var pendingShiftCounts = await shiftManagementService
-            .GetActivePendingShiftSignupCountsByTeamAsync(cancellationToken);
-
-        var teamIds = items.Select(t => t.Id).ToList();
-        var resourceSummaries = await TeamResourceService
-            .GetTeamResourceSummariesAsync(teamIds, cancellationToken);
-
-        return new AdminTeamListResult(
-            BuildAdminTeamSummaries(items, pendingShiftCounts, resourceSummaries),
-            totalCount);
-    }
+    public Task<AdminTeamListResult> GetAdminTeamListAsync(
+        int page, int pageSize, CancellationToken cancellationToken = default) =>
+        snapshotReader.GetAdminTeamListAsync(page, pageSize, cancellationToken);
 
     // CachingTeamService owns the cache.
     public void InvalidateActiveTeamsCache() { }
@@ -1679,67 +1576,8 @@ internal sealed class TeamService(
         await SystemTeamSync.SyncMembershipForUserAsync(targetUserId, SystemTeamType.Coordinators, cancellationToken);
     }
 
-    public async Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct)
-    {
-        var info = await UserService.GetUserInfoAsync(userId, ct);
-        List<TeamMember> memberships = [];
-        List<TeamJoinRequest> joinRequests = [];
-        List<TeamEarlyEntryGrant> eeGrants = [];
-        foreach (var id in info?.AllUserIds ?? [userId])
-        {
-            memberships.AddRange(await repo.GetAllMembershipsForUserAsync(id, ct));
-            joinRequests.AddRange(await repo.GetAllJoinRequestsForUserAsync(id, ct));
-            eeGrants.AddRange(await repo.GetEarlyEntryGrantsForUserAsync(id, ct));
-        }
-        var teamIds = memberships.Select(tm => tm.TeamId)
-            .Concat(joinRequests.Select(tjr => tjr.TeamId))
-            .Concat(eeGrants.Select(g => g.TeamId))
-            .Distinct()
-            .ToList();
-        var teamsById = await repo.GetByIdsWithParentsAsync(teamIds, ct);
-
-        string GetTeamName(Guid teamId) =>
-            teamsById.TryGetValue(teamId, out var team) ? team.Name : string.Empty;
-
-        var membershipSlice = new UserDataSlice(TeamMemberships, memberships.Select(tm => new
-        {
-            TeamName = GetTeamName(tm.TeamId),
-            tm.Role,
-            JoinedAt = tm.JoinedAt.ToIso8601(),
-            LeftAt = tm.LeftAt.ToIso8601(),
-            TeamRoles = tm.RoleAssignments.Select(tra => new
-            {
-                RoleName = tra.TeamRoleDefinition.Name,
-                AssignedAt = tra.AssignedAt.ToIso8601()
-            })
-        }).ToList());
-
-        var joinRequestSlice = new UserDataSlice(TeamJoinRequests, joinRequests.Select(tjr => new
-        {
-            TeamName = GetTeamName(tjr.TeamId),
-            tjr.Status,
-            tjr.Message,
-            tjr.ReviewNotes,
-            RequestedAt = tjr.RequestedAt.ToIso8601(),
-            ResolvedAt = tjr.ResolvedAt.ToIso8601(),
-            StateHistory = tjr.StateHistory.OrderBy(h => h.ChangedAt).Select(h => new
-            {
-                h.Status,
-                ChangedAt = h.ChangedAt.ToIso8601(),
-                h.Notes
-            }).ToList()
-        }).ToList());
-
-        var earlyEntrySlice = new UserDataSlice(TeamEarlyEntry, eeGrants.Select(g => new
-        {
-            TeamName = GetTeamName(g.TeamId),
-            g.ProjectName,
-            EntryDate = g.EntryDate.ToInvariantDate(),
-            GrantedAt = g.CreatedAt.ToIso8601(),
-        }).ToList());
-
-        return [membershipSlice, joinRequestSlice, earlyEntrySlice];
-    }
+    public Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct) =>
+        dataExport.ContributeForUserAsync(userId, ct);
 
     /// <summary>Join requests are hard-deleted: they carry the applicant's free-text message.</summary>
     public async Task EraseForUserAsync(Guid userId, CancellationToken ct)
@@ -1773,6 +1611,7 @@ internal sealed class TeamService(
             throw new InvalidOperationException($"Early entry is not enabled for team {teamId}.");
         if (userId == Guid.Empty)
             throw new ArgumentException("UserId must be a non-empty GUID.", nameof(userId));
+        userId = await ResolveMembershipTargetAsync(userId, ct);
 
         var grant = new TeamEarlyEntryGrant
         {
@@ -1820,81 +1659,12 @@ internal sealed class TeamService(
     private async Task<IReadOnlyDictionary<Guid, TeamInfo>> LoadTeamsByIdAsync(CancellationToken ct = default) =>
         await ResolveTeamMembersAsync(await GetTeamSnapshotsAsync(ct), ct);
 
-    public async Task<IReadOnlyDictionary<Guid, TeamInfo>> ResolveTeamMembersAsync(
-        IReadOnlyDictionary<Guid, TeamReadSnapshot> teams, CancellationToken ct = default)
-    {
-        var userIds = teams.Values.SelectMany(t => t.Members.Select(m => m.UserId)).Distinct().ToList();
-        var users = userIds.Count == 0
-            ? new Dictionary<Guid, UserInfo>()
-            : await UserService.GetUserInfosAsync(userIds, ct);
-        return teams.ToDictionary(pair => pair.Key, pair => pair.Value.Team with
-        {
-            Members = pair.Value.Members.Select(member =>
-            {
-                users.TryGetValue(member.UserId, out var user);
-                return new TeamMemberInfo(
-                    member.TeamMemberId, member.UserId, user?.BurnerName ?? string.Empty,
-                    user?.Email, user?.ProfilePictureUrl, member.Role, member.JoinedAt);
-            }).ToList(),
-        });
-    }
+    public Task<IReadOnlyDictionary<Guid, TeamInfo>> ResolveTeamMembersAsync(
+        IReadOnlyDictionary<Guid, TeamReadSnapshot> teams, CancellationToken ct = default) =>
+        snapshotReader.ResolveTeamMembersAsync(teams, ct);
 
-    public async Task<IReadOnlyDictionary<Guid, TeamReadSnapshot>> GetTeamSnapshotsAsync(CancellationToken ct = default)
-    {
-        var teams = await repo.GetAllWithMembersAsync(ct);
-        var managementHolders = await repo.GetActiveManagementRoleHolderUserIdsByTeamAsync(ct);
-        var roleDefinitionsByTeam = await repo.GetAllRoleDefinitionsByTeamAsync(ct);
-        var childIdsByParent = teams
-            .Where(t => t.ParentTeamId.HasValue)
-            .GroupBy(t => t.ParentTeamId!.Value)
-            .ToDictionary(g => g.Key, g => (IReadOnlyList<Guid>)g.Select(t => t.Id).ToList());
-        var pendingCounts = await repo.GetPendingCountsByTeamIdsAsync(
-            teams.Select(t => t.Id).ToList(), ct);
-
-        return teams.ToDictionary(
-            t => t.Id,
-            t => BuildTeamSnapshot(t, managementHolders, roleDefinitionsByTeam, childIdsByParent, pendingCounts));
-    }
-
-    private static TeamReadSnapshot BuildTeamSnapshot(
-        Team team,
-        IReadOnlyDictionary<Guid, IReadOnlySet<Guid>> managementHolders,
-        IReadOnlyDictionary<Guid, IReadOnlyList<TeamRoleDefinition>> roleDefinitionsByTeam,
-        IReadOnlyDictionary<Guid, IReadOnlyList<Guid>> childIdsByParent,
-        IReadOnlyDictionary<Guid, int> pendingCounts) => new(new TeamInfo(
-        Id: team.Id,
-        Name: team.Name,
-        Description: team.Description,
-        Slug: team.Slug,
-        IsActive: team.IsActive,
-        IsSystemTeam: team.IsSystemTeam,
-        SystemTeamType: team.SystemTeamType,
-        RequiresApproval: team.RequiresApproval,
-        IsPublicPage: team.IsPublicPage,
-        IsHidden: team.IsHidden,
-        IsPromotedToDirectory: team.IsPromotedToDirectory,
-        CreatedAt: team.CreatedAt,
-        Members: [],
-        ParentTeamId: team.ParentTeamId,
-        GoogleGroupPrefix: team.GoogleGroupPrefix,
-        HasBudget: team.HasBudget,
-        IsSensitive: team.IsSensitive,
-        UpdatedAt: team.UpdatedAt,
-        CustomSlug: team.CustomSlug,
-        ManagementRoleHolderUserIds: managementHolders.TryGetValue(team.Id, out var holders) ? holders : null,
-        RoleDefinitions: roleDefinitionsByTeam.TryGetValue(team.Id, out var defs)
-            ? defs.Select(d => ToRoleDefinitionSnapshot(d, team)).ToList()
-            : null,
-        ChildTeamIds: childIdsByParent.TryGetValue(team.Id, out var childIds) ? childIds : null,
-        ShowCoordinatorsOnPublicPage: team.ShowCoordinatorsOnPublicPage,
-        PageContent: team.PageContent,
-        CallsToAction: team.CallsToAction,
-        PageContentUpdatedAt: team.PageContentUpdatedAt,
-        PageContentUpdatedByUserId: team.PageContentUpdatedByUserId,
-        PendingRequestCount: pendingCounts.TryGetValue(team.Id, out var pending) ? pending : 0,
-        EarlyEntryEnabled: team.EarlyEntryEnabled),
-        team.Members.Where(m => m.LeftAt is null)
-            .Select(m => new TeamMemberReference(m.Id, m.UserId, m.Role, m.JoinedAt)).ToList());
+    public Task<IReadOnlyDictionary<Guid, TeamReadSnapshot>> GetTeamSnapshotsAsync(CancellationToken ct = default) =>
+        snapshotReader.GetTeamSnapshotsAsync(ct);
 
     private async Task<Team> GetRoleDefinitionTeamAsync(TeamRoleDefinition definition, CancellationToken ct)
     {
@@ -1939,64 +1709,6 @@ internal sealed class TeamService(
         };
     }
 
-    private static IReadOnlyList<AdminTeamSummary> BuildAdminTeamSummaries(
-        IReadOnlyList<Team> teams,
-        IReadOnlyDictionary<Guid, int> pendingShiftCounts,
-        IReadOnlyDictionary<Guid, TeamResourceSummary> resourceSummaries)
-    {
-        var ordered = new List<AdminTeamSummary>(teams.Count);
-
-        foreach (var team in teams)
-        {
-            if (team.ParentTeamId.HasValue)
-                continue;
-
-            ordered.Add(CreateAdminTeamSummary(team, isChildTeam: false, pendingShiftCounts, resourceSummaries));
-
-            var children = teams
-                .Where(child => child.ParentTeamId == team.Id)
-                .OrderBy(child => child.Name, StringComparer.OrdinalIgnoreCase);
-
-            ordered.AddRange(children.Select(child =>
-                CreateAdminTeamSummary(child, isChildTeam: true, pendingShiftCounts, resourceSummaries)));
-        }
-
-        return ordered;
-    }
-
-    private static AdminTeamSummary CreateAdminTeamSummary(
-        Team team,
-        bool isChildTeam,
-        IReadOnlyDictionary<Guid, int> pendingShiftCounts,
-        IReadOnlyDictionary<Guid, TeamResourceSummary> resourceSummaries)
-    {
-        var systemTeamType = team.SystemTeamType != SystemTeamType.None
-            ? team.SystemTeamType.ToString()
-            : null;
-        var resourceSummary = resourceSummaries.TryGetValue(team.Id, out var summary)
-            ? summary
-            : TeamResourceSummary.Empty;
-
-        return new AdminTeamSummary(
-            team.Id,
-            team.Name,
-            team.Slug,
-            team.IsActive,
-            team.RequiresApproval,
-            team.IsSystemTeam,
-            systemTeamType,
-            team.Members.Count,
-            team.JoinRequests.Count,
-            resourceSummary.HasMailGroup,
-            team.GoogleGroupEmail,
-            resourceSummary.DriveResourceCount,
-            team.RoleDefinitions.Sum(role => role.SlotCount),
-            team.CreatedAt,
-            isChildTeam,
-            pendingShiftCounts.GetValueOrDefault(team.Id),
-            team.IsHidden);
-    }
-
     private static TeamJoinRequestSnapshot ToJoinRequestSnapshot(TeamJoinRequest request) => new(
         request.Id,
         request.TeamId,
@@ -2033,7 +1745,7 @@ internal sealed class TeamService(
         return null;
     }
 
-    private static string? SlotCountAndPrioritiesRefusal(int slotCount, List<SlotPriority> priorities)
+    private static string? RoleCapacityRefusal(int slotCount, List<SlotPriority> priorities, int? estimatedHours)
     {
         if (slotCount < 1)
             return "Slot count must be at least 1";
@@ -2043,6 +1755,8 @@ internal sealed class TeamService(
 
         if (priorities.Any(priority => !Enum.IsDefined(priority)))
             return "Each slot priority must be a defined priority value";
+        if (estimatedHours is < 0)
+            return "Estimated hours cannot be negative";
         return null;
     }
 

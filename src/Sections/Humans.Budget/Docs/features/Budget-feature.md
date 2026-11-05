@@ -223,7 +223,7 @@ Outbound invoices to members/barrios:
 - **Sign convention:** Positive amounts = income, negative amounts = expenses
   - Removed `min=0` constraints on all budget amount inputs
   - Both `BudgetCategory.AllocatedAmount` and `BudgetLineItem.Amount` accept negative values
-- **VAT/IVA tracking:** `VatRate` int on `BudgetLineItem` (service-validated 0–21; the line-item UI offers 0%, 10%, 21%)
+- **VAT/IVA tracking:** `VatRate` int on `BudgetLineItem` (service-validated 0–21, with expected refusals before writes for invalid line-item or ticketing-projection input; the line-item UI offers 0%, 10%, 21%)
   - Virtual VAT entries computed for line items with VatRate > 0 and an ExpectedDate
   - VAT has converse sign: income generates VAT liability (expense), expenses generate VAT credit (income)
   - Settlement date ~6 weeks after end of quarter containing the expected date

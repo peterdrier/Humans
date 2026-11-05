@@ -1,3 +1,4 @@
+using System.Text;
 using Humans.AuditLog.Contracts;
 using Humans.Base.Extensions;
 using Humans.Consent.Contracts;
@@ -46,6 +47,8 @@ internal sealed class ConsentReviewService(
         {
             if (cleared && row.RejectedAt is not null)
                 return "AlreadyRejected";
+            if (notes?.EnumerateRunes().Count() > ConsentReview.MaxTextLength)
+                return "ReviewTextTooLong";
             row.Status = status;
             row.CheckedAt = now;
             row.CheckedByUserId = reviewerId;
@@ -78,6 +81,8 @@ internal sealed class ConsentReviewService(
         {
             if (row.RejectedAt is not null)
                 return "AlreadyRejected";
+            if (reason?.EnumerateRunes().Count() > ConsentReview.MaxTextLength)
+                return "ReviewTextTooLong";
             row.RejectionReason = reason;
             row.RejectedAt = now;
             row.RejectedByUserId = reviewerId;

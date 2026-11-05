@@ -219,6 +219,8 @@ internal sealed class DepartmentShiftGroup
 
 internal sealed class RotaShiftGroup
 {
+    public bool EarlyEntrySignupsClosed { get; set; }
+
     public RotaInfo Rota { get; set; } = null!;
     public List<ShiftDisplayItem> Shifts { get; set; } = [];
 

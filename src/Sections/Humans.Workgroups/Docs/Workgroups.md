@@ -491,7 +491,7 @@ should end is the Board's decision, taken on the register in front of them.
 - **Settings**: `ISettingsService` — legacy root-folder read fallback until the admin saves section-owned settings.
 - **Surveys**: `ISurveyAnalysisRead` — `LinkSurveyAsync` reads the posted survey to check the
   actor authored it before writing the log entry. One-way: Surveys never references Workgroups.
-- **Notifications, Email, AuditLog**: crosscuts, per Triggers above. Member notifications
+- **Notifications, Email, AuditLog**: crosscuts, per Triggers above. The internal `WorkgroupNotices` owns recipient lookup, culture grouping, Board delivery and independent best-effort sends. Lifecycle, document, membership, GDPR and rhythm paths invoke it after their existing state/audit steps; transitions, rhythm timing and Drive synchronization remain in `WorkgroupService`. Member notifications
   use existing localized labels, grouped by supported recipient language (English fallback); authored content is unchanged.
   A merged-member alias carries both the resolved live id and its language into grouping,
   with one delivery per live recipient even when multiple requested ids resolve to them.
@@ -520,6 +520,10 @@ should end is the Board's decision, taken on the register in front of them.
 - **Consent**: nothing new is gated — joining is the member's own action.
 
 ## Architecture
+
+The internal `WorkgroupRegisterReader` owns register, slug, ID and member reads and their complete group/document projections. Mutation guards reuse those projections and the same safe Discord-link policy. `WorkgroupService` keeps the existing entry points and all writes; cached graphs, deleted-meeting filtering, member selection and workflow authorization remain unchanged. No public contract or DI registration is added.
+
+The internal `WorkgroupDataExport` owns all six GDPR export slices, including register-name lookup and author/responder/moderator attribution. `WorkgroupService` retains the existing entry point, erasure with coordinator-loss notification and account merge; export keys, shapes, ordering and cancellation are unchanged. No public contract or DI registration is added.
 
 **Owning services:** `WorkgroupService` (inner, keyed `"workgroups-inner"`),
 `CachingWorkgroupService` (Singleton decorator)

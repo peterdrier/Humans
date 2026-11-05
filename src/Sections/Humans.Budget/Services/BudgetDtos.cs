@@ -98,3 +98,5 @@ internal sealed record TicketingProjectionUpdateCommand(
 
 internal readonly record struct BudgetSaveResult<T>(
     T? Value = null, string? Refusal = null) where T : class;
+
+internal readonly record struct TicketingProjectionSaveResult(int Count = 0, string? Refusal = null);

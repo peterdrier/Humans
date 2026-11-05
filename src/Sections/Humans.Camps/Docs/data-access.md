@@ -127,3 +127,11 @@ contact email, and lead user ids as parameters to `SendFacilitatedMessageAsync`.
 ---
 
 
+
+### CampReadProjection (internal, owned by CampService)
+
+Repository: `ICampRepository`. Owns direct camp/season/member reads, edit-model
+selection, DTO mapping and active-role enrichment. Uses the existing Settings
+contract and clock for edit-data fallback and date projection. Event registration
+selection and cross-section coordination stay in `CampService`; no separate DI
+registration or cache.

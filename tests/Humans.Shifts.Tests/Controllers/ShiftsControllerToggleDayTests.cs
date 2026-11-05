@@ -68,6 +68,7 @@ public class ShiftsControllerToggleDayTests
 
     public ShiftsControllerToggleDayTests()
     {
+        _shiftMgmt.SetVolunteerTagPreferencesAsync(Arg.Any<Guid>(), Arg.Any<IReadOnlyList<Guid>>()).Returns(true);
         _volunteerTrackingService.SetAvailabilityAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<IReadOnlyList<int>>())
             .Returns(true);
         _localizer[Arg.Any<string>()].Returns(ci =>
@@ -156,6 +157,21 @@ public class ShiftsControllerToggleDayTests
         var result = await sut.SaveAvailability([int.MaxValue]);
 
         result.Should().BeOfType<BadRequestObjectResult>().Which.Value.Should().Be("Selecciona días del calendario del evento.");
+        sut.TempData.Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task SaveTagPreferences_UnknownSelection_ReturnsLocalizedRefusal()
+    {
+        var userId = Guid.NewGuid();
+        var sut = BuildSut(userId, MakeUserInfo(userId, "Alice", "Alice", "Example"));
+        _shiftMgmt.SetVolunteerTagPreferencesAsync(userId, Arg.Any<IReadOnlyList<Guid>>()).Returns(false);
+        _localizer["Shifts_TagPreferencesInvalid"].Returns(
+            new LocalizedString("Shifts_TagPreferencesInvalid", "Revisa las etiquetas seleccionadas."));
+
+        var result = await sut.SaveTagPreferences([Guid.NewGuid()]);
+
+        result.Should().BeOfType<BadRequestObjectResult>().Which.Value.Should().Be("Revisa las etiquetas seleccionadas.");
         sut.TempData.Should().BeEmpty();
     }
 

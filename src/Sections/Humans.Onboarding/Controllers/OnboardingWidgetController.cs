@@ -11,7 +11,6 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Microsoft.Extensions.Localization;
-using NodaTime;
 
 namespace Humans.Onboarding.Controllers;
 
@@ -27,7 +26,6 @@ internal sealed class OnboardingWidgetController(
     ISettingsService settingsService,
     IShiftView shiftView,
     IOnboardingService onboardingService,
-    IClock clock,
     IStringLocalizer<OnboardingResource> localizer,
     ILogger<OnboardingWidgetController> logger) : HumansControllerBase(userService)
 {
@@ -118,17 +116,15 @@ internal sealed class OnboardingWidgetController(
         if (es is null)
             return View(OnboardingShiftsStepBuilder.BuildEmpty(priority ?? string.Empty));
 
+        var userId = (await GetCurrentUserInfoAsync(ct))?.Id ?? CurrentUserId();
         // The full event-wide set: the builder's stats line needs it, and it filters for display.
         var urgentShifts = await shiftMgmt.GetBrowseShiftsAsync(new ShiftBrowseQuery(
             es.Id,
-            Flags: ShiftBrowseQueryFlags.IncludeSignups), ct);
-        var userId = (await GetCurrentUserInfoAsync(ct))?.Id ?? CurrentUserId();
+            Flags: ShiftBrowseQueryFlags.IncludeSignups, ViewerUserId: userId), ct);
         var userShiftView = await shiftView.GetUserAsync(userId, ct);
         var (shiftIds, statuses) = ShiftSignupHelper.ResolveActiveStatuses(userShiftView.Signups);
-        // Onboarding viewers are never privileged, so the early-entry lock applies once the close has passed.
-        var earlyEntryClosed = es.IsEarlyEntryClosed(clock.GetCurrentInstant());
         var vm = OnboardingShiftsStepBuilder.Build(
-            es, urgentShifts, shiftIds, statuses, priority ?? string.Empty, earlyEntryClosed);
+            es, urgentShifts, shiftIds, statuses, priority ?? string.Empty);
         return View(vm);
     }
 

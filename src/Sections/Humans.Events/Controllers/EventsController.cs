@@ -55,7 +55,7 @@ internal sealed class EventsController(
         foreach (var camp in managedCamps)
         {
             var summary = await guide.GetCampSubmissionsSummaryAsync(camp.Id, ct);
-            var campName = ResolveCampDisplayName(camp);
+            var campName = ResolveCampDisplayName(camp, guideSettings?.EventSettingsId);
             barrioBlocks.Add(new BarrioSubmissionsBlock
             {
                 CampId = camp.Id,
@@ -330,7 +330,7 @@ internal sealed class EventsController(
 
         var gateOpeningDate = eventSettings?.GateOpeningDate;
         var favourites = await guide.GetFavouritesWithEventsAsync(user.Id, ct);
-        var campsById = await LoadCampsByIdAsync(CampService, gateOpeningDate?.Year, ct);
+        var campsById = await LoadCampsByIdAsync(CampService, eventSettings?.Id, ct);
 
         var scheduleItems = favourites.SelectMany(f =>
         {
@@ -409,7 +409,7 @@ internal sealed class EventsController(
             .ToLookup(f => f.GuideEventId, f => f.DayOffset);
         var events = await guide.GetApprovedEventsAsync(null, venueId, categoryId, q, excludedSlugs, ct);
 
-        var campsById = await LoadCampsByIdAsync(CampService, gateOpeningDate?.Year, ct);
+        var campsById = await LoadCampsByIdAsync(CampService, eventSettings?.Id, ct);
 
         var occurrences = EventOccurrenceExpander.Expand(
             events, favouriteDaysByEventId, gateOpeningDate, tz, filterDays);
@@ -593,7 +593,7 @@ internal sealed class EventsController(
         if (!ModelState.IsValid)
         {
             model.CampId = camp.Id;
-            model.CampName = ResolveCampDisplayName(camp);
+            model.CampName = ResolveCampDisplayName(camp, eventSettings.Id);
             model.CampSlug = slug;
             await PopulateDropdownsAsync(model, eventSettings, ct);
             return View("BarrioEventForm", model);
@@ -630,7 +630,7 @@ internal sealed class EventsController(
             }
             ModelState.AddModelError(result.Field ?? string.Empty, localizer[errorKey].Value);
             model.CampId = camp.Id;
-            model.CampName = ResolveCampDisplayName(camp);
+            model.CampName = ResolveCampDisplayName(camp, eventSettings.Id);
             model.CampSlug = slug;
             await PopulateDropdownsAsync(model, eventSettings);
             return View("BarrioEventForm", model);
@@ -701,7 +701,7 @@ internal sealed class EventsController(
         {
             model.Id = eventId;
             model.CampId = camp.Id;
-            model.CampName = ResolveCampDisplayName(camp);
+            model.CampName = ResolveCampDisplayName(camp, eventSettings.Id);
             model.CampSlug = slug;
             await PopulateDropdownsAsync(model, eventSettings, ct);
             return View("BarrioEventForm", model);
@@ -718,7 +718,7 @@ internal sealed class EventsController(
             ModelState.AddModelError(result.Field ?? string.Empty, localizer[errorKey].Value);
             model.Id = eventId;
             model.CampId = camp.Id;
-            model.CampName = ResolveCampDisplayName(camp);
+            model.CampName = ResolveCampDisplayName(camp, eventSettings.Id);
             model.CampSlug = slug;
             await PopulateDropdownsAsync(model, eventSettings);
             return View("BarrioEventForm", model);
@@ -761,7 +761,9 @@ internal sealed class EventsController(
         var (error, _, camp) = await ResolveCampEventManagementAsync(slug);
         if (error != null) return error;
 
-        var bytes = await guide.BuildBulkUploadTemplateAsync(camp.Id, ResolveCampDisplayName(camp), ct);
+        var guideSettings = await guide.GetGuideSettingsAsync(ct);
+        var bytes = await guide.BuildBulkUploadTemplateAsync(
+            camp.Id, ResolveCampDisplayName(camp, guideSettings?.EventSettingsId), ct);
         return File(bytes, "text/csv", $"{slug}-events.csv");
     }
 
@@ -867,7 +869,8 @@ internal sealed class EventsController(
 
 
     // camp is non-null at every call site; Slug is always set, so a name always resolves.
-    private static string ResolveCampDisplayName(CampInfo camp) => ResolveCampName(camp)!;
+    private static string ResolveCampDisplayName(CampInfo camp, Guid? eventSettingsId) =>
+        ResolveCampName(camp, eventSettingsId)!;
 
     private string FormatEventFeedback(string resourceKey, string title) =>
         string.Format(localizer[resourceKey].Value, title);
@@ -877,7 +880,7 @@ internal sealed class EventsController(
         var model = new CampEventFormViewModel
         {
             CampId = camp.Id,
-            CampName = ResolveCampDisplayName(camp),
+            CampName = ResolveCampDisplayName(camp, burn.Id),
             CampSlug = slug,
             TimeZoneId = burn.TimeZoneId
         };

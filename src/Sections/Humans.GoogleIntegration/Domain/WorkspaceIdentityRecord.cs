@@ -3,17 +3,13 @@ using NodaTime;
 
 namespace Humans.GoogleIntegration.Domain;
 
-/// <summary>
-/// One row per member. Supersedes <c>user_emails.IsGoogle</c> and <c>GoogleEmailStatus</c>, which Users leaves
-/// unwritten until the <c>google.workspace-identities</c> data migration has run in production.
-/// </summary>
+/// <summary>A member's Workspace identity designation and sync verdict.</summary>
 internal sealed class WorkspaceIdentityRecord
 {
     /// <summary>Bare id, no FK to <c>users</c>.</summary>
     public Guid UserId { get; init; }
 
-    /// <summary>The designated address. Null when the designation was cleared: the row then
-    /// records that, so the read never falls back to the legacy <c>IsGoogle</c> flag.</summary>
+    /// <summary>The designated address, or null when the designation was cleared.</summary>
     public string? Email { get; set; }
 
     /// <summary>

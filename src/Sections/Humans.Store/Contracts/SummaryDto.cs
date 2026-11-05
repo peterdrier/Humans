@@ -9,7 +9,7 @@ internal sealed record SummaryDto(
 internal sealed record ProductAggregateDto(
     Guid ProductId,
     string ProductName,
-    int TotalQty,
+    long TotalQty,
     decimal TotalRevenueEur);
 
 internal sealed record CrossTabDto(
@@ -19,11 +19,11 @@ internal sealed record CrossTabDto(
 internal sealed record CrossTabColumn(
     Guid ProductId,
     string ProductName,
-    int TotalQty);
+    long TotalQty);
 
 internal sealed record CrossTabRow(
     OrderCounterpartyType CounterpartyType,
     Guid CounterpartyId,
     string CounterpartyName,
-    int TotalQty,
-    IReadOnlyDictionary<Guid, int> QtyByProduct);
+    long TotalQty,
+    IReadOnlyDictionary<Guid, long> QtyByProduct);

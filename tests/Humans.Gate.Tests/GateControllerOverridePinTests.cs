@@ -146,6 +146,19 @@ public class GateControllerOverridePinTests
     }
 
     [HumansFact]
+    public async Task Decision_OverlongInput_ReturnsBadRequest()
+    {
+        _gate.RecordDecisionAsync(Arg.Any<GateDecisionInput>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(new GateDecisionResult(GateVerdict.Unresolved, null, null, false, null, null, InputTooLong: true));
+        var controller = BuildController(Pin);
+
+        var result = await controller.Decision(Barcode, true, false, false, null, null,
+            TestContext.Current.CancellationToken);
+
+        result.Should().BeOfType<BadRequestResult>();
+    }
+
+    [HumansFact]
     public async Task Decision_ExplicitIdConfirmation_RecordsTheDecision()
     {
         var controller = BuildController(Pin);

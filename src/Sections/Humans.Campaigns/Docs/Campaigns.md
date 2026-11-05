@@ -152,7 +152,9 @@ email template is copied into audit. Refused mutations emit no success entry.
 
 ## Architecture
 
-**Owning services:** `CampaignService`
+`CampaignService` owns campaign configuration, lifecycle, code imports, tracking and personal-data coordination. Its internal `CampaignWaveDelivery` owns the complete preview/send/resend job: team targeting, per-grant persistence and audit, email enqueueing and localized in-app notices. The existing management interface delegates to that owner; it adds no public contract or DI registration.
+
+**Owning services:** `CampaignService`, internal `CampaignWaveDelivery`
 **Owned tables:** `campaigns`, `campaign_codes`, `campaign_grants`
 **Status:** (A) Own project. Everything but `Section` is `internal` (HUM0034); the cross-section surface is the `Contracts/` folder (namespace `Humans.Campaigns.Contracts`).
 

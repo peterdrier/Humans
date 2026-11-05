@@ -111,6 +111,14 @@ internal sealed class GateService(
     public async Task<GateDecisionResult> RecordDecisionAsync(
         GateDecisionInput input, Guid scannedByUserId, CancellationToken ct = default)
     {
+        if (!FitsStorage(GateBarcode.Normalize(input.Barcode), GateScanEvent.BarcodeMaxLength)
+            || !FitsStorage(input.LaneId, GateScanEvent.LaneIdMaxLength)
+            || !FitsStorage(input.Note, GateScanEvent.NoteMaxLength))
+        {
+            logger.LogWarning("Rejected gate decision exceeding storage limits from scanner {ScannerId}", scannedByUserId);
+            return new GateDecisionResult(GateVerdict.Unresolved, null, null, false, null, null, InputTooLong: true);
+        }
+
         var overrideAuthorized = input.ChildWithAdult || input.OverrideEarly;
         if (overrideAuthorized && VerifySharedOverridePin(input.SupervisorPin) is { } failure)
             return failure;
@@ -145,6 +153,9 @@ internal sealed class GateService(
             eval.PreviousAdmitAt, eval.PreviousAdmitByUserId,
             VendorTicketId: admit ? eval.VendorTicketId : null);
     }
+
+    private static bool FitsStorage(string? value, int limit) =>
+        value is null || value.EnumerateRunes().Count() <= limit;
 
     private GateDecisionResult? VerifySharedOverridePin(string? pin)
     {
