@@ -163,6 +163,10 @@ internal sealed class DebugController(
         });
     }
 
+    [HttpGet("Database")]
+    public async Task<IActionResult> Database(CancellationToken ct) =>
+        View(await databaseDiagnostics.GetDatabaseInfoAsync(ct));
+
     [HttpGet("DbStats")]
     public IActionResult DbStats()
     {

@@ -32,6 +32,7 @@ One controller per audience: `DebugController` (`/Debug/*`, diagnostics and the 
 | `/Debug/HttpErrors` | GET | Board, Admin | Rolling buffer of the last 1000 error responses (status > 399); per-request detail with timestamp, code, method, URL, IP, user, and classified client label |
 | `/Debug/Configuration` | GET | Board, Admin | Auto-discovered configuration status; sensitive values masked |
 | `/Debug/DbVersion` | GET | Anonymous | Migration status JSON for deployment tooling |
+| `/Debug/Database` | GET | Board, Admin | Server version, size, connections, settings, extensions; per-table live row counts (pg_stat, no count(*)), sizes and activity; per-index size and scans |
 | `/Debug/DbStats` | GET | Board, Admin | Query statistics |
 | `/Debug/DbStats/Reset` | POST | Admin | Reset query statistics |
 | `/Debug/CacheStats` | GET | Board, Admin | Cache hit/miss/size statistics |

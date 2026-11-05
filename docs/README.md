@@ -115,7 +115,7 @@ Terse, authoritative invariant docs for each major section: concepts, data model
 | [Debug](../src/Sections/Humans.Debug/Docs/Debug.md) | Developer/diagnostics section: admin-only pages exposing operational insight (client demographics, request health) that no domain section owns — owns no tables |
 | [Development](../src/Sections/Humans.Development/Docs/Development.md) | Dev-only tooling: persona sign-in and fixture seeding, never reachable in Production — owns no tables |
 | [Early Entry](../src/Sections/Humans.EarlyEntry/Docs/EarlyEntry.md) | Cross-source Early Entry: who may enter the site before gates open, on which day, and because of what — owns no data, fans out over every contributing section |
-| [Email](../src/Sections/Humans.Email/Docs/Email.md) | Transactional email outbox: queue, render, deliver, retry, and pause/resume — backs campaign sends, onboarding, shift, and feedback emails |
+| [Email](../src/Sections/Humans.Email/Docs/Email.md) | Transactional email outbox: queue, render, deliver, retry, and pause/resume — backs campaign sends, onboarding, and shift emails |
 | [Events](../src/Sections/Humans.Events/Docs/Events.md) | Event programming: submission, moderation, browsing, export, and preference management for festival events |
 | [Expenses](../src/Sections/Humans.Expenses/Docs/Expenses.md) | Expense reports submitted by members and approved by Finance Admin; approval books into Holded async, and paid/unpaid status is read back from the member's Holded creditor ledger rather than stamped on the report — payment itself happens externally, with no SEPA-file generation in the app |
 | [Finance](../src/Sections/Humans.Finance/Docs/Finance.md) | Treasurer's reality side of money — actuals, reconciliation, and treasurer-facing operational data sharing keys with Budget |
@@ -227,7 +227,9 @@ Humans.Base            Bottom of the graph: role markers, architecture attribute
 
 | Document | Description |
 |----------|-------------|
-| [Design Rules](architecture/design-rules.md) | Persistence, service ownership, repository / store / decorator pattern, cross-domain join ban, authorization, migration strategy |
+| [Design Rules](architecture/design-rules.md) | The regulations under the hard rules: layering, service and table ownership, repository layer, join ban, cross-service calls, crosscuts and fan-out, Shell seams, personal data, authorization, append-only entities, the caching pattern |
+| [Base](../src/Humans.Base/Docs/Base.md) | What `Humans.Base` holds: markers, attributes, `TrackedCache`, the persistence seam, the Users/Audit/Gdpr cores, the shared view layer |
+| [Shell](../src/Humans.Web/Docs/Shell.md) | What `Humans.Web` holds and the seam catalog: how section contributions are composed into nav, admin, jobs, policies and settings |
 | [Conventions](architecture/conventions.md) | Domain invariants, transactions, integration, time/config, rendering (Razor vs fetch), testing, exception rule, smell checklist |
 | [Dependency Graph](architecture/dependency-graph.md) | Service-to-service dependency graph, current vs target edges, circular dependency analysis |
 | [Project Rules Catalog](../memory/INDEX.md) | Atomic rules (one per file under `memory/<bucket>/`). `architecture/coding-rules.md` is now a stub redirecting here. |
