@@ -248,7 +248,7 @@
                     .Template("Status", statusCell, sortBy: a => a.IsSuspended ? 1 : 0)
                     .Template("2FA", account2faCell, sortBy: a => a.IsEnrolledIn2Sv ? 1 : 0)
                     .Template("Recovery Email", recoveryEmailCell, sortBy: a => a.RecoveryEmail)
-                    .Template("Created", createdCell, sortBy: a => a.CreationTime)
+                    .Template("Created", createdCell, c => c.Css("text-nowrap"), sortBy: a => a.CreationTime)
                     .Template("Last Login", lastLoginCell, sortBy: a => a.LastLoginTime)
                     .Template(Localizer["GoogleIntegration_Accounts_Actions"], actionsCell, o => o.End())
                     .Id("accounts-table")

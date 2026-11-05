@@ -37,7 +37,7 @@
         .Template("File", sepaFileCell, sortBy: t => t.FileName)
         .Column("IBAN", t => t.IbanMasked, o => o.Css("font-monospace small"))
         .Template("Status", sepaStatusCell, o => o.Css("text-nowrap"))
-        .Template("Amount", sepaAmountCell, o => o.End(), sortBy: t => t.Amount)
+        .Template("Amount", sepaAmountCell, o => o.Css("text-nowrap").End(), sortBy: t => t.Amount)
         .Css("align-middle")
         .Build();
 

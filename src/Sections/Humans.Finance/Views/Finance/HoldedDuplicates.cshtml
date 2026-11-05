@@ -90,7 +90,7 @@ else
             </text>;
             var linesTable = TableModel.For(member.Lines)
                 .Template("Line", lineCell)
-                .Template("Amount", amountCell, o => o.End(), sortBy: l => l.Amount)
+                .Template("Amount", amountCell, o => o.Css("text-nowrap").End(), sortBy: l => l.Amount)
                 .Column("Kept", r => r.KeptDocId, o => o.Css("font-monospace small"))
                 .Column("Duplicates to delete", r => r.DeletableDocIds.Count == 0 ? "—" : string.Join(", ", r.DeletableDocIds), o => o.Css("font-monospace small"))
                 .Template("Refused", refusedCell, o => o.Css("small").NoSort())

@@ -150,7 +150,7 @@
                         .Human("Human", g => g[0].UserId)
                         .Template("Profile", pendingProfileCell, o => o.NoSort())
                         .Column("Shift", g => g[0].RotaName)
-                        .Template("Date", pendingDateCell, sortBy: g => g[0].Shift.DayOffset)
+                        .Template("Date", pendingDateCell, c => c.Css("text-nowrap"), sortBy: g => g[0].Shift.DayOffset)
                         .Template("Submitted", pendingSubmittedCell, sortBy: g => g[0].CreatedAt)
                         .Template("", pendingActionsCell, o => o.NoSort())
                         .Build();

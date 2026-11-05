@@ -53,7 +53,7 @@ else
                 .Template("Date", dateCell, o => o.Css("text-nowrap"), sortBy: d => d.Date)
                 .Template("Doc #", docCell, o => o.Css("text-nowrap"), sortBy: d => d.DocNumber)
                 .Template("Contact", contactCell, sortBy: d => d.ContactName)
-                .Template("Total", totalCell, o => o.End(), sortBy: d => d.Total)
+                .Template("Total", totalCell, o => o.Css("text-nowrap").End(), sortBy: d => d.Total)
                 .Template("Approved", approvedCell, sortBy: d => d.IsApproved ? 1 : 0)
                 .Column("Booked account", r => r.BookedAccountId ?? "—", o => o.Css("small").Code())
                 .Template("Tags", tagsCell, o => o.Css("small"))

@@ -102,7 +102,7 @@
         </text>;
         var table = TableModel.For(Model.Orders.ToList())
             .Template("Order ID", orderIdCell)
-            .Column("Date", o => o.PurchasedAt.ToWeekdayDayMonth(), c => c.Sort("date", descendingFirst: true))
+            .Column("Date", o => o.PurchasedAt.ToWeekdayDayMonth(), c => c.Css("text-nowrap").Sort("date", descendingFirst: true))
             .Column("Purchaser", o => o.BuyerName, c => c.Sort("name"))
             .Template("Email", emailCell)
             .Link("Tickets", o => o.AttendeeCount, o => Url.Action("Attendees", new { filterOrderId = o.VendorOrderId }), c => c.Sort("tickets", descendingFirst: true))

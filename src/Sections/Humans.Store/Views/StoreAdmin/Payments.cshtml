@@ -120,7 +120,7 @@ else
         @{
             var stripeTable = TableModel.For(Model.Rows)
                 .Column("Created (UTC)", r => r.CreatedAt?.ToInvariantTimestamp() ?? "—")
-                .Column("Amount", r => r.AmountEur.HasValue ? r.AmountEur.Value.ToEuro() : "—", c => c.NoSort().End())
+                .Column("Amount", r => r.AmountEur.HasValue ? r.AmountEur.Value.ToEuro() : "—", c => c.Css("text-nowrap").NoSort().End())
                 .Template("Status", stripeStatusCell)
                 .Template("Order", stripeOrderCell)
                 .Column("PaymentIntent", r => r.PaymentIntentId ?? "—", o => o.Code().Css("small"))
@@ -138,7 +138,7 @@ else
         @{
             var orphansTable = TableModel.For(report.Orphans)
                 .Column("Recorded (UTC)", o => o.ReceivedAt.ToInvariantTimestamp())
-                .Column("Amount", o => o.AmountEur.ToEuro(), c => c.NoSort().End())
+                .Column("Amount", o => o.AmountEur.ToEuro(), c => c.Css("text-nowrap").NoSort().End())
                 .Link("Order", o => o.OrderLabel ?? o.OrderId.ToString(), o => Url.Action("Order", "Store", new { id = o.OrderId }))
                 .Column("PaymentIntent", o => o.PaymentIntentId, o => o.Code().Css("small"))
                 .Build();

@@ -27,7 +27,7 @@ public class TableModelBuilderTests
 
         table.Columns.Select(c => c.Header).Should().Equal("Name", "Amount", "Actions");
         table.Columns[1].Format.Should().Be(CellFormat.Currency);
-        table.Columns[1].CellCssClass.Should().Be("text-end");
+        table.Columns[1].CellCssClass.Should().Be("text-end text-nowrap");
         table.Columns[2].Format.Should().Be(CellFormat.Template);
         table.RowCount.Should().Be(2);
         table.Mode.Should().Be(TableMode.Client);
