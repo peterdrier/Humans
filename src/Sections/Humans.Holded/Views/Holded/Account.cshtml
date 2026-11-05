@@ -73,7 +73,7 @@
     <div class="card-header"><i class="fa-solid fa-list me-1"></i>Journal lines</div>
     @if (Model.Lines.Count == 0)
     {
-        <div class="card-body text-muted text-center py-4">No cached lines for this account.</div>
+        <div class="card-body py-4"><empty-state class="mb-0">No cached lines for this account.</empty-state></div>
     }
     else
     {

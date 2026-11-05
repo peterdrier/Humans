@@ -1,5 +1,6 @@
 using Humans.Grants.Contracts;
 using Humans.Base.Enums;
+using Humans.Base.Extensions;
 using Humans.Users.Contracts;
 using AwesomeAssertions;
 using Humans.AuditLog.Contracts;
@@ -299,16 +300,20 @@ public sealed class GrantTests : GrantsTestHarness
         await Email.Received(1).SendAsync(Arg.Is<EmailMessage>(m => m.RecipientEmail == $"{person}@example.org"), Arg.Any<CancellationToken>());
     }
 
+    public static Xunit.TheoryData<string, string> RecipientLanguages()
+    {
+        var data = new Xunit.TheoryData<string, string>
+        {
+            { "unsupported", CultureCatalog.DefaultCultureCode },
+            { "", CultureCatalog.DefaultCultureCode },
+        };
+        foreach (var code in CultureCatalog.SupportedCultureCodes)
+            data.Add(code, code);
+        return data;
+    }
+
     [HumansTheory]
-    [Xunit.InlineData("en", "en")]
-    [Xunit.InlineData("es", "es")]
-    [Xunit.InlineData("de", "de")]
-    [Xunit.InlineData("it", "it")]
-    [Xunit.InlineData("fr", "fr")]
-    [Xunit.InlineData("ca", "ca")]
-    [Xunit.InlineData("nl", "nl")]
-    [Xunit.InlineData("unsupported", "en")]
-    [Xunit.InlineData("", "en")]
+    [Xunit.MemberData(nameof(RecipientLanguages))]
     public async Task Resend_RecipientLookupFailure_UsesRecoveredRecipientMetadata(string language, string expectedCulture)
     {
         var person = Guid.NewGuid();

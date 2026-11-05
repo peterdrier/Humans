@@ -42,13 +42,10 @@ wrong home for one whose only cross-boundary use is a colour lookup. The test is
   `StatusBadgeExtensions.GetBadgeClass(ExpenseReportStatus)` had exactly two call sites, both in
   Expenses' own views.
 
-`Humans.Shifts`'s `ShiftPeriod`/`SignupStatus` rows are registered from `Humans.Shifts/Section.cs`
-and pinned by `ShiftsArchitectureTests.SectionRegistersABadgeClassForEveryShiftPeriodAndSignupStatus`.
-Base's `StatusBadgeExtensions` was retired outright: its only two call sites were Users' views, so
-it now lives in `Humans.Users/Extensions/` as an `internal` class rather than a registry. Budget's
-`BudgetYearStatus` overload is likewise a section-local extension rather than an
-`EnumBadgeMap.Register` row, because its three admin views call `GetBadgeClass()` directly and the
-map only serves `CellFormat.EnumBadge` table columns.
+Each section's rows are registered from its `Section.cs` and pinned by a `<Section>BadgeRowsTests` in its test project.
+Every enum status badge now reads the map: views render `<status-badge value="@x.Status" />`, and the section-level
+`GetBadgeClass` helpers (Budget, Expenses, Teams, Events, Issues, Shifts) were retired into `Section.Register` rows. A helper
+keyed on non-enum input (a percentage, a string status) stays where it is.
 
 Related: [`section-project-cycle-fix`](section-project-cycle-fix.md),
 [`sections-are-logical-units`](sections-are-logical-units.md),

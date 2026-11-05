@@ -1,3 +1,5 @@
+@using Humans.Base.Interfaces
+@using Humans.Base.Models
 @model DailyMatrixDto
 
 @functions {
@@ -88,21 +90,9 @@
         <p class="text-muted small"><i class="fa-solid fa-lock me-1"></i>@Localizer["Cantina_Roster_HealthHidden"]</p>
     }
 
-    <div class="card mb-4">
-        <div class="card-body">
-            <div class="row text-center">
-                <div class="col">
-                    <div class="h3 mb-0">@Model.TotalOnSite</div>
-                    <div class="text-muted small">@Localizer["Cantina_Day_TotalOnSite"]</div>
-                </div>
-                <div class="col">
-                    <div class="h3 mb-0 @(Model.UnansweredCount > 0 ? "text-warning" : "text-muted")">
-                        @Model.UnansweredCount
-                    </div>
-                    <div class="text-muted small">@Localizer["Cantina_Day_Unanswered"]</div>
-                </div>
-            </div>
-        </div>
+    <div class="stats" style="--stats-cols: 2">
+        <partial name="_StatTile" model='new StatTileViewModel(Localizer["Cantina_Day_TotalOnSite"].Value, Model.TotalOnSite.ToString())' />
+        <partial name="_StatTile" model='new StatTileViewModel(Localizer["Cantina_Day_Unanswered"].Value, Model.UnansweredCount.ToString(), Severity: Model.UnansweredCount > 0 ? TileSeverity.Warning : TileSeverity.Normal)' />
     </div>
 
     @if (Model.People.Count == 0)

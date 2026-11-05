@@ -187,7 +187,7 @@ public class TicketTransferControllerTests
             if (cancel)
             {
                 await controller.Cancel(Guid.NewGuid(), TestContext.Current.CancellationToken);
-                controller.TempData[TempDataKeys.ErrorMessage].Should().Be("Transferencia no encontrada.");
+                controller.TempData[TempDataKeys.ErrorMessage].Should().Be(localizer["Tickets_TicketTransfer_NotFound"].Value);
             }
             else
             {

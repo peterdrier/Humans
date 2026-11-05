@@ -7,7 +7,7 @@
     Func<WorkgroupInfo, IHtmlContent> coordinatorsCell =
         @<text>@await Html.PartialAsync("_WorkgroupCoordinators", item)</text>;
     Func<WorkgroupInfo, IHtmlContent> pendingStatusCell = @<text>
-        <span class="badge @EnumBadgeMap.For(item.Status)">@Localizer.EnumDisplay(item.Status)</span>
+        <status-badge value="@item.Status" localizer="@Localizer" />
         @if (item.IsRegistrationOverdue(Model.Now))
         {
             <span class="badge bg-danger ms-1">@Localizer["Workgroups_RegistrationOverdue"]</span>
@@ -22,7 +22,7 @@
         .Build();
 
     Func<WorkgroupInfo, IHtmlContent> archiveStatusCell = @<text>
-        <span class="badge @EnumBadgeMap.For(item.Status)">@Localizer.EnumDisplay(item.Status)</span>
+        <status-badge value="@item.Status" localizer="@Localizer" />
         @if (item.Status == WorkgroupStatus.Dormant && item.DormantReason is { } reason)
         {
             <span class="text-muted small ms-1">(@Localizer.EnumDisplay(reason))</span>
@@ -50,7 +50,7 @@
 <h2 class="h4 mt-4">@Localizer["Workgroups_Active"] <span class="badge bg-secondary">@Model.Active.Count</span></h2>
 @if (Model.Active.Count == 0)
 {
-    <p class="text-muted">@Localizer["Workgroups_NoActive"]</p>
+    <empty-state>@Localizer["Workgroups_NoActive"]</empty-state>
 }
 else
 {
@@ -92,7 +92,7 @@ else
 <h2 class="h4 mt-4">@Localizer["Workgroups_Pending"] <span class="badge bg-secondary">@Model.Pending.Count</span></h2>
 @if (Model.Pending.Count == 0)
 {
-    <p class="text-muted">@Localizer["Workgroups_NoPending"]</p>
+    <empty-state>@Localizer["Workgroups_NoPending"]</empty-state>
 }
 else
 {
@@ -102,7 +102,7 @@ else
 <h2 class="h4 mt-4">@Localizer["Workgroups_Archive"] <span class="badge bg-secondary">@Model.Archive.Count</span></h2>
 @if (Model.Archive.Count == 0)
 {
-    <p class="text-muted">@Localizer["Workgroups_NoArchive"]</p>
+    <empty-state>@Localizer["Workgroups_NoArchive"]</empty-state>
 }
 else
 {

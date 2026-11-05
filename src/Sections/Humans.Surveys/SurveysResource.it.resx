@@ -346,7 +346,6 @@
   <data name="Surveys_EmailPreviewTo" xml:space="preserve"><value>A:</value></data>
   <data name="Surveys_EmailPreviewSubject" xml:space="preserve"><value>Oggetto:</value></data>
   <data name="Surveys_EmailPreviewFrameTitle" xml:space="preserve"><value>Anteprima dell’email di invito al sondaggio</value></data>
-  <data name="Surveys_BreadcrumbNavigation" xml:space="preserve"><value>Navigazione breadcrumb</value></data>
   <data name="Surveys_StartPreview" xml:space="preserve"><value>Avvia anteprima</value></data>
   <data name="Surveys_PreviewThankYou" xml:space="preserve"><value>Anteprima dei ringraziamenti</value></data>
   <data name="Surveys_Validation_AudienceUnsupported" xml:space="preserve"><value>Il pubblico selezionato per il sondaggio non è supportato.</value></data>

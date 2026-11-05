@@ -4,13 +4,11 @@
     var priorityOptions = new[] { "None", "Critical", "Important", "NiceToHave" };
 }
 
-<nav aria-label="breadcrumb">
-    <ol class="breadcrumb">
-        <li class="breadcrumb-item"><a asp-controller="Team" asp-action="Index">@SharedLocalizer["Teams_Title"]</a></li>
-        <li class="breadcrumb-item"><a asp-controller="Team" asp-action="Details" asp-route-slug="@Model.Slug">@Model.TeamName</a></li>
-        <li class="breadcrumb-item active" aria-current="page">Roles</li>
-    </ol>
-</nav>
+@section Crumbs {
+    <a asp-controller="Team" asp-action="Index">@SharedLocalizer["Teams_Title"]</a>
+    <a asp-controller="Team" asp-action="Details" asp-route-slug="@Model.Slug">@Model.TeamName</a>
+    <span>Roles</span>
+}
 
 <h1>Manage Roles</h1>
 <p class="text-muted">@Localizer["Teams_MyTeams_Team"]: @Model.TeamName</p>
@@ -26,8 +24,7 @@
                     <h5 class="mb-0 d-inline">@role.Name</h5>
                     @if (role.Period != RolePeriod.YearRound)
                     {
-                        var rpBadge = role.Period.GetBadgeClass();
-                        <span class="badge @rpBadge ms-2">@role.Period</span>
+                        <status-badge value="@role.Period" class="ms-2" />
                     }
                     @if (!role.IsPublic)
                     {
@@ -170,7 +167,7 @@
                         {
                             <tr>
                                 <td>@(slot.SlotIndex + 1)</td>
-                                <td><span class="badge @slot.Priority.GetBadgeClass()">@(slot.Priority == SlotPriority.NiceToHave ? "Nice to Have" : slot.Priority.ToString())</span></td>
+                                <td><status-badge value="@slot.Priority" /></td>
                                 <td>
                                     @if (slot.IsFilled && slot.AssignedUserId.HasValue)
                                     {
@@ -218,7 +215,7 @@
 }
 else
 {
-    <div class="alert alert-info">No roles defined for this team yet.</div>
+    <empty-state>No roles defined for this team yet.</empty-state>
 }
 
 <div class="card mb-4">

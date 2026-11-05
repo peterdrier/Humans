@@ -124,7 +124,7 @@
     <div class="card-body p-0">
         @if (Model.Accounts.Count == 0)
         {
-            <p class="text-muted text-center py-4 mb-0">No @@nobodies.team accounts found.</p>
+            <empty-state class="py-4 mb-0">No @@nobodies.team accounts found.</empty-state>
         }
         else
         {
@@ -290,14 +290,11 @@
                         Hand these to <code>@recoveryCreds.Email</code> securely — they cannot be retrieved again after you close this dialog.
                     </div>
 
-                    <pre id="recovery-credentials-text" class="bg-light p-3 border rounded mb-3 small" style="white-space: pre-wrap;">@clipboardText</pre>
+                    <pre id="recovery-credentials-text" class="bg-light p-3 border rounded mb-3 small pre-wrap">@clipboardText</pre>
 
-                    <button type="button" class="btn btn-outline-primary btn-sm" id="copy-recovery-credentials">
+                    <button type="button" class="btn btn-outline-primary btn-sm" data-copy="#recovery-credentials-text" data-copied="Copied">
                         <i class="fa-solid fa-copy me-1"></i>Copy to clipboard
                     </button>
-                    <span id="copy-recovery-credentials-feedback" class="text-success ms-2" style="display:none;">
-                        <i class="fa-solid fa-check me-1"></i>Copied
-                    </span>
 
                     <hr />
 
@@ -333,7 +330,7 @@
                 }
                 if (!userIdField || !userIdField.value) {
                     e.preventDefault();
-                    alert('Please search and select a human first.');
+                    showToast('Please search and select a human first.', 'danger');
                 }
             });
         });
@@ -357,7 +354,7 @@
             });
         })();
 
-        // Recovery-credentials modal: copy-to-clipboard, acknowledgement gate, and auto-show once.
+        // Recovery-credentials modal: acknowledgement gate, and auto-show once.
         (function () {
             var modalEl = document.getElementById('recovery-credentials-modal');
             if (!modalEl) return;
@@ -373,22 +370,7 @@
                 });
             }
 
-            var copyBtn = document.getElementById('copy-recovery-credentials');
             var credsEl = document.getElementById('recovery-credentials-text');
-            var feedback = document.getElementById('copy-recovery-credentials-feedback');
-            if (copyBtn && credsEl) {
-                copyBtn.addEventListener('click', function () {
-                    var text = credsEl.textContent || '';
-                    if (navigator.clipboard && navigator.clipboard.writeText) {
-                        navigator.clipboard.writeText(text).then(function () {
-                            if (feedback) {
-                                feedback.style.display = 'inline';
-                                setTimeout(function () { feedback.style.display = 'none'; }, 2000);
-                            }
-                        });
-                    }
-                });
-            }
 
             // On close, clear the credentials from the DOM so browser back/refresh can't re-expose them.
             modalEl.addEventListener('hidden.bs.modal', function () {

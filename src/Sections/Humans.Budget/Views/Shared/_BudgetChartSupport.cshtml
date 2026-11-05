@@ -10,26 +10,11 @@
             return cssValue(prefix + (index + 1));
         });
     };
-    var callbacks = [];
-    var loading = false;
+    // Callers are body scripts that run before site.js defines Humans.
     var load = function (callback) {
-        if (typeof Chart !== 'undefined') {
-            callback();
-            return;
-        }
-
-        callbacks.push(callback);
-        if (loading) return;
-        loading = true;
-
-        var script = document.createElement('script');
-        script.src = 'https://cdn.jsdelivr.net/npm/chart.js@4.5.1/dist/chart.umd.min.js';
-        script.integrity = 'sha384-jb8JQMbMoBUzgWatfe6COACi2ljcDdZQ2OxczGA3bGNeWe+6DChMTBJemed7ZnvJ';
-        script.crossOrigin = 'anonymous';
-        script.onload = function () {
-            callbacks.splice(0).forEach(function (ready) { ready(); });
-        };
-        document.head.appendChild(script);
+        var start = function () { Humans.loadChartJs().then(callback); };
+        if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start);
+        else start();
     };
 
     window.HumansBudgetCharts = {

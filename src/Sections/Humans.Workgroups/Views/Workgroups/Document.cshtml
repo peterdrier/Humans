@@ -17,18 +17,16 @@
     var editorHtml = new Microsoft.AspNetCore.Html.HtmlString(editorWriter.ToString().Trim());
 }
 
-<nav aria-label="@Localizer["Workgroups_BreadcrumbNavigation"]">
-    <ol class="breadcrumb">
-        <li class="breadcrumb-item"><a asp-action="Index">@Localizer["Workgroups_Title"]</a></li>
-        <li class="breadcrumb-item"><a asp-action="Details" asp-route-slug="@w.Slug">@w.Name</a></li>
-        <li class="breadcrumb-item active" aria-current="page">@d.Title</li>
-    </ol>
-</nav>
+@section Crumbs {
+    <a asp-action="Index">@Localizer["Workgroups_Title"]</a>
+    <a asp-action="Details" asp-route-slug="@w.Slug">@w.Name</a>
+    <span>@d.Title</span>
+}
 
 <div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-2">
     <div>
         <h1 class="mb-1">@d.Title</h1>
-        <span class="badge @EnumBadgeMap.For(d.Status)">@Localizer.EnumDisplay(d.Status)</span>
+        <status-badge value="@d.Status" localizer="@Localizer" />
         <span class="badge bg-light text-dark border">@Localizer.EnumDisplay(d.Kind)</span>
         @if (Model.IsOpenForComment)
         {
@@ -36,7 +34,7 @@
         }
         @if (d.Disposition is { } disposition)
         {
-            <span class="badge @EnumBadgeMap.For(disposition)">@Localizer.EnumDisplay(disposition)</span>
+            <status-badge value="@disposition" localizer="@Localizer" />
         }
     </div>
     @if (Model.CanDoMemberWork && d.Status != WorkgroupDocumentStatus.Delivered)
@@ -146,7 +144,7 @@ else if (d.Disposition is { } recorded && !string.IsNullOrWhiteSpace(d.Dispositi
 
 @if (categories.Count == 0)
 {
-    <p class="text-muted">@Localizer["Workgroups_NoComments"]</p>
+    <empty-state>@Localizer["Workgroups_NoComments"]</empty-state>
 }
 else
 {
@@ -168,7 +166,7 @@ else
                             }
                             <span class="text-muted small"><vc:human user-id="@(c.AuthorUserId ?? Guid.Empty)" link="None" /> · @c.CreatedAt.ToDateTime()</span>
                         </div>
-                        <span class="badge @EnumBadgeMap.For(c.Disposition)">@Localizer.EnumDisplay(c.Disposition)</span>
+                        <status-badge value="@c.Disposition" localizer="@Localizer" />
                     </div>
                     @if (hidden)
                     {

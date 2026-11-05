@@ -1,16 +1,10 @@
 @model SurveyAdminIndexViewModel
+@using Humans.Base.Models.Tables
 
 @{
     ViewData["Title"] = Localizer["Surveys_Admin_Index_Title"].Value;
     Guid.TryParse(User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value, out var viewerId);
 
-    string StatusBadge(SurveyStatus s) => s switch
-    {
-        SurveyStatus.Open => "bg-success",
-        SurveyStatus.Closed => "bg-secondary",
-        SurveyStatus.PendingApproval => "bg-info text-dark",
-        _ => "bg-warning text-dark",
-    };
     bool CanEdit(SurveyAdminSummary s) =>
         Model.ManagesEverySurvey || (s.Status == SurveyStatus.Draft && s.CreatedByUserId == viewerId);
     int Rate(SurveyAdminSummary s) =>
@@ -37,12 +31,12 @@
         @if (item.Status == SurveyStatus.Open && Model.SeesEverySurvey)
         {
             <a asp-controller="SurveyAdmin" asp-action="Official" asp-route-id="@item.Id"
-               class="badge @StatusBadge(item.Status) text-decoration-none"
+               class="badge @EnumBadgeMap.For(item.Status) text-decoration-none"
                title="Open the official survey link">@Localizer.EnumDisplay(item.Status)</a>
         }
         else
         {
-            <span class="badge @StatusBadge(item.Status)">@Localizer.EnumDisplay(item.Status)</span>
+            <status-badge value="@item.Status" localizer="@Localizer" />
         }
     </text>;
     Func<SurveyAdminSummary, IHtmlContent> actionsCell = @<text>
@@ -86,14 +80,12 @@
         .Build();
 }
 
-@if (Model.SeesEverySurvey)
-{
-    <nav aria-label="breadcrumb">
-        <ol class="breadcrumb">
-            <li class="breadcrumb-item"><a asp-controller="Admin" asp-action="Index">Admin</a></li>
-            <li class="breadcrumb-item active" aria-current="page">@Localizer["Surveys_Admin_Index_Title"]</li>
-        </ol>
-    </nav>
+@section Crumbs {
+    @if (Model.SeesEverySurvey)
+    {
+        <a asp-controller="Admin" asp-action="Index">Admin</a>
+        <span>@Localizer["Surveys_Admin_Index_Title"]</span>
+    }
 }
 
 <div class="d-flex justify-content-between align-items-center mb-3">

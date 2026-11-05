@@ -219,7 +219,7 @@
 
     @if (Model.Shifts.Count == 0)
     {
-        <div class="alert alert-info">@Localizer["Shifts_ShiftDash_NoShiftsMatch"]</div>
+        <empty-state>@Localizer["Shifts_ShiftDash_NoShiftsMatch"]</empty-state>
     }
     else
     {
@@ -239,12 +239,6 @@
             var isUnderstaffed = totalConfirmed < totalMin;
             var dayCount = group.Select(i => i.Shift.DayOffset).Distinct().Count();
             var isHighlighted = Model.SelectedRotaId.HasValue && group.Key.RotaId == Model.SelectedRotaId.Value;
-            var priorityBadge = group.Key.Priority switch
-            {
-                ShiftPriority.Essential => "bg-danger",
-                ShiftPriority.Important => "bg-warning text-dark",
-                _ => "bg-secondary"
-            };
 
             <div class="accordion-item @(isHighlighted ? "border-warning" : "")">
                 <h2 class="accordion-header">
@@ -260,7 +254,7 @@
                             <small class="text-muted">/ @totalMin–@totalMax slots</small>
                             <small class="text-muted ms-2">· @dayCount day@(dayCount == 1 ? "" : "s")</small>
                         </span>
-                        <span class="badge @priorityBadge me-3">@group.Key.Priority</span>
+                        <status-badge value="@group.Key.Priority" class="me-3" />
                     </button>
                 </h2>
                 <div id="@groupId" class="accordion-collapse collapse">
@@ -343,7 +337,6 @@
 })();
 </script>
 <script>
-@await Html.PartialAsync("~/Views/Shared/_EscapeHtmlScript.cshtml")
 @await Html.PartialAsync("~/Views/Shared/_VolunteerSearchScript.cshtml", new ViewDataDictionary(ViewData)
 {
     ["SearchUrl"] = searchUrl,

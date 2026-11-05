@@ -6,8 +6,6 @@
 
     Func<GrantInfo, IHtmlContent> whoCell =
         @<text><vc:human user-id="@item.UserId" layout="AvatarName" size="28" /></text>;
-    Func<GrantInfo, IHtmlContent> stateCell =
-        @<text><span class="badge @EnumBadgeMap.For(item.State(Model.Today))">@item.State(Model.Today)</span></text>;
     Func<GrantInfo, IHtmlContent> issuedCell =
         @<text><vc:human user-id="@item.IssuedByUserId" link="None" /> @item.IssuedAt.ToDateTime()@(item.SourceRef is null ? "" : $" ({item.SourceRef})")</text>;
     Func<GrantInfo, IHtmlContent> revokedCell = @<text>
@@ -32,7 +30,7 @@
     </text>;
     var grantsTable = TableModel.For(Model.Grants.ToList())
         .Template("Who", whoCell)
-        .Template("State", stateCell, sortBy: g => g.State(Model.Today))
+        .Column("State", g => g.State(Model.Today), o => o.EnumBadge())
         .Column("Expires", g => g.ExpiresOn, o => o.Date())
         .Template("Issued", issuedCell, o => o.Css("small text-muted"), sortBy: g => g.IssuedAt)
         .Column("Notified", g => g.NotifiedAt, o => o.DateTime().Css("small text-muted"))
@@ -41,13 +39,6 @@
         .Css("align-middle")
         .Build();
 }
-
-<nav aria-label="breadcrumb">
-    <ol class="breadcrumb">
-        <li class="breadcrumb-item"><a asp-action="Index">Grant programs</a></li>
-        <li class="breadcrumb-item active" aria-current="page">@p.Name</li>
-    </ol>
-</nav>
 
 <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
     <h1 class="mb-0">@p.Name <span class="badge @EnumBadgeMap.For(p.Status) fs-6 align-middle">@p.Status</span></h1>
@@ -107,7 +98,7 @@ else if (!byHand)
 }
 else if (Model.CanManage)
 {
-    <div class="card mb-4" style="max-width: 760px;">
+    <div class="card mb-4 mw-760">
         <div class="card-body">
             <h2 class="h5 card-title">Grant to people</h2>
             <p class="small text-muted">Add people one at a time, then grant. Anyone who already holds this grant is skipped. Each person gets an email and a notice.</p>
@@ -117,7 +108,7 @@ else if (Model.CanManage)
             </div>
             <form method="post" asp-action="Issue" asp-route-programId="@p.Id">
                 <ul class="list-group mb-2" id="grants-issue-list"></ul>
-                <div class="mb-2" style="max-width: 240px;">
+                <div class="mb-2 mw-240">
                     <label class="form-label small" for="grants-expires">Expires on (optional)</label>
                     <input type="date" name="expiresOn" id="grants-expires" class="form-control form-control-sm" />
                     <div class="form-text">Overrides the program's date for these grants.</div>
@@ -131,7 +122,7 @@ else if (Model.CanManage)
 <h2 class="h4 mt-4">Grants</h2>
 @if (p.Grants.Count == 0)
 {
-    <p class="text-muted">No grants yet.</p>
+    <empty-state>No grants yet.</empty-state>
 }
 else
 {

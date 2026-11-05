@@ -36,7 +36,6 @@
   <data name="Guide_Group_Questions" xml:space="preserve"><value>Preguntas frecuentes</value></data>
   <data name="Guide_Group_Appendix" xml:space="preserve"><value>Apéndice</value></data>
   <data name="Guide_Navigation" xml:space="preserve"><value>Navegación de la guía</value></data>
-  <data name="Guide_Breadcrumbs" xml:space="preserve"><value>Ruta de navegación</value></data>
   <data name="Guide_Page_GettingStarted" xml:space="preserve"><value>Primeros pasos</value></data>
   <data name="Guide_Page_Glossary" xml:space="preserve"><value>Glosario</value></data>
   <data name="Guide_Page_Profiles" xml:space="preserve"><value>Perfiles</value></data>

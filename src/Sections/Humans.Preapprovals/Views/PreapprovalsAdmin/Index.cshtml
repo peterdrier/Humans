@@ -11,7 +11,7 @@
         }
     </text>;
     Func<ProgramInfo, IHtmlContent> statusCell = @<text>
-        <span class="badge @EnumBadgeMap.For(item.Status)">@item.Status</span>
+        <status-badge value="@item.Status" />
         @if (item.AcceptsApplications && item.IsAcceptingApplications(Model.Today))
         {
             <span class="badge bg-info text-dark">Accepting applications</span>
@@ -42,7 +42,7 @@
 
 @if (Model.Programs.Count == 0)
 {
-    <p class="text-muted">No programs yet.</p>
+    <empty-state>No programs yet.</empty-state>
 }
 else
 {

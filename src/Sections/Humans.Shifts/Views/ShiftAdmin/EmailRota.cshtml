@@ -3,15 +3,13 @@
     ViewData["Title"] = string.Format(Localizer["Shifts_EmailRota_Title"].Value, Model.RotaName);
 }
 
-<div class="container py-4">
-    <nav aria-label="breadcrumb">
-        <ol class="breadcrumb">
-            <li class="breadcrumb-item"><a asp-controller="Team" asp-action="Index">@SharedLocalizer["Teams_Title"]</a></li>
-            <li class="breadcrumb-item"><a asp-controller="ShiftAdmin" asp-action="Index" asp-route-slug="@Model.TeamSlug">@Localizer["Shifts_Title"]</a></li>
-            <li class="breadcrumb-item active" aria-current="page">@Localizer["Shifts_EmailRota_Breadcrumb"]</li>
-        </ol>
-    </nav>
+@section Crumbs {
+    <a asp-controller="Team" asp-action="Index">@SharedLocalizer["Teams_Title"]</a>
+    <a asp-controller="ShiftAdmin" asp-action="Index" asp-route-slug="@Model.TeamSlug">@Localizer["Shifts_Title"]</a>
+    <span>@Localizer["Shifts_EmailRota_Breadcrumb"]</span>
+}
 
+<div class="container py-4">
     <h2>@string.Format(Localizer["Shifts_EmailRota_Heading"].Value, Model.RotaName)</h2>
 
 
@@ -64,7 +62,7 @@
                 <div class="card-body">
                     @if (Model.RecipientCount == 0)
                     {
-                        <p class="text-muted mb-0">@Localizer["Shifts_EmailRota_NoRecipients"]</p>
+                        <empty-state class="mb-0">@Localizer["Shifts_EmailRota_NoRecipients"]</empty-state>
                     }
                     else
                     {

@@ -53,16 +53,12 @@ public class TableColumnTests
     }
 
     [HumansTheory]
-    [Xunit.InlineData("en", "1,234.50", "1,234.5")]
-    [Xunit.InlineData("es", "1.234,50", "1.234,5")]
-    [Xunit.InlineData("de", "1.234,50", "1.234,5")]
-    [Xunit.InlineData("it", "1.234,50", "1.234,5")]
-    [Xunit.InlineData("fr", "1\u202f234,50", "1\u202f234,5")]
-    [Xunit.InlineData("ca", "1.234,50", "1.234,5")]
-    [Xunit.InlineData("nl", "1.234,50", "1.234,5")]
-    public void Numeric_cells_use_ui_culture_and_keep_invariant_sort_values(
-        string culture, string expectedCurrency, string expectedNumber)
+    [Xunit.MemberData(nameof(SupportedCultures.All), MemberType = typeof(SupportedCultures))]
+    public void Numeric_cells_use_ui_culture_and_keep_invariant_sort_values(string culture)
     {
+        var ui = CultureInfo.GetCultureInfo(culture);
+        var expectedCurrency = 1234.5m.ToString("N2", ui);
+        var expectedNumber = 1234.5m.ToString("#,##0.##", ui);
         using var scope = new CultureScope(culture);
         CultureInfo.CurrentCulture = CultureInfo.GetCultureInfo("en");
         var row = new Row { Amount = 1234.5m };

@@ -3,6 +3,7 @@ const { test } = require('node:test');
 const { readFileSync } = require('node:fs');
 const { resolve } = require('node:path');
 const vm = require('node:vm');
+const { installHumans } = require('../../browser-support/humans-js.cjs');
 
 function historyPanel() {
     const events = {}, requests = [], previews = [];
@@ -28,7 +29,7 @@ function historyPanel() {
     const source = readFileSync(resolve(__dirname,
         '../../../src/Sections/Humans.CityPlanning/wwwroot/js/city-planning/barrio-map/edit.js'), 'utf8')
         .replace(/^import[^\n]*;\s*$/gm, '').replaceAll('export ', '');
-    vm.createContext(context); vm.runInContext(source, context);
+    installHumans(context); vm.createContext(context); vm.runInContext(source, context);
     return { list, title, state, previews, requests, shows: () => shows, deletions: () => deletions,
         load: id => context.loadHistory(id),
         finish(index, id) { requests[index].resolveResponse({ ok: true, json: async () => [{ id: id + '-version', geoJson: '{}', modifiedByDisplayName: id, modifiedAt: 'Now', areaSqm: 50, note: id }] }); },

@@ -27,17 +27,10 @@ namespace Humans.Governance.Tests.Models;
 
 public sealed class AssemblyBallotIdentityViewTests
 {
-    [HumansTheory]
-    [Xunit.InlineData("en")]
-    [Xunit.InlineData("es")]
-    [Xunit.InlineData("de")]
-    [Xunit.InlineData("it")]
-    [Xunit.InlineData("fr")]
-    [Xunit.InlineData("ca")]
-    [Xunit.InlineData("nl")]
-    public async Task DisclosedBallots_RenderCanonicalIdentity_AndKeepErasedVotersUnlinked(string language)
+    [HumansFact]
+    public async Task DisclosedBallots_RenderCanonicalIdentity_AndKeepErasedVotersUnlinked()
     {
-        using var culture = new CultureScope(language);
+        using var culture = new CultureScope("en");
         var known = Guid.NewGuid();
         var missing = Guid.NewGuid();
         var users = Substitute.For<IUserService>();

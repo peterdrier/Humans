@@ -1,6 +1,7 @@
 @using Humans.Base.Authorization
 @using Microsoft.AspNetCore.Authorization
 @using Humans.Web.Authorization
+@using Microsoft.AspNetCore.Html
 @inject IAuthorizationService AuthService
 <!DOCTYPE html>
 <html lang="@System.Globalization.CultureInfo.CurrentUICulture.TwoLetterISOLanguageName">
@@ -135,6 +136,25 @@
             {
                 <vc:temp-data-alerts />
             }
+            @{
+                // RenderSectionAsync writes straight to the output, so capture the section to hand it over.
+                IHtmlContent? crumbs = null;
+                if (IsSectionDefined("Crumbs"))
+                {
+                    using var buffer = new StringWriter();
+                    PushWriter(buffer);
+                    try
+                    {
+                        await RenderSectionAsync("Crumbs");
+                    }
+                    finally
+                    {
+                        PopWriter();
+                    }
+                    crumbs = new HtmlString(buffer.ToString());
+                }
+            }
+            <vc:breadcrumb trail="@crumbs" />
             @RenderBody()
         </main>
     </div>
@@ -159,8 +179,6 @@
     <script src="~/js/site.js" asp-append-version="true"></script>
     <script src="~/js/client-metrics.js" asp-append-version="true" defer></script>
     @await RenderSectionAsync("Scripts", required: false)
-    @* A page's admin-shell crumbs have no place in the member layout. *@
-    @if (IsSectionDefined("Crumbs")) { IgnoreSection("Crumbs"); }
     <vc:chrome-slot name="body-end" />
 </body>
 </html>

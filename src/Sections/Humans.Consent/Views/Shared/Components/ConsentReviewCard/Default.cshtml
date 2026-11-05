@@ -10,7 +10,7 @@
                 <strong><i class="fa-solid fa-ban me-1"></i> Rejected</strong>
                 @if (!string.IsNullOrEmpty(Model.RejectionReason))
                 {
-                    <p class="mb-1 mt-1" style="white-space: pre-wrap;">@Model.RejectionReason</p>
+                    <p class="mb-1 mt-1 pre-wrap">@Model.RejectionReason</p>
                 }
                 <small class="text-muted">
                     @if (Model.RejectedAt.HasValue)
@@ -29,13 +29,7 @@
             <dd class="col-sm-8">
                 @if (Model.Status.HasValue)
                 {
-                    var badgeClass = Model.Status.Value switch
-                    {
-                        ConsentCheckStatus.Cleared => "bg-success",
-                        ConsentCheckStatus.Flagged => "bg-danger",
-                        _ => "bg-warning"
-                    };
-                    <span class="badge @badgeClass">@Model.Status.Value</span>
+                    <status-badge value="@Model.Status.Value" />
                 }
                 else
                 {

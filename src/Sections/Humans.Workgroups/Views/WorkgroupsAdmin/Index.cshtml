@@ -82,7 +82,7 @@
 @{ var pending = Model.Pending.ToList(); }
 @if (pending.Count == 0)
 {
-    <p class="text-muted">Nothing waiting on the Secretary.</p>
+    <empty-state>Nothing waiting on the Secretary.</empty-state>
 }
 else
 {
@@ -93,7 +93,7 @@ else
 @{ var awaiting = Model.AwaitingDisposition.ToList(); }
 @if (awaiting.Count == 0)
 {
-    <p class="text-muted">Nothing delivered is waiting on a Board reply.</p>
+    <empty-state>Nothing delivered is waiting on a Board reply.</empty-state>
 }
 else
 {
@@ -106,7 +106,7 @@ else
 }
 @if (active.Count == 0)
 {
-    <p class="text-muted">No active groups.</p>
+    <empty-state>No active groups.</empty-state>
 }
 else
 {
@@ -117,7 +117,7 @@ else
 @{ var dormant = Model.Register.Where(w => w.Status == WorkgroupStatus.Dormant).ToList(); }
 @if (dormant.Count == 0)
 {
-    <p class="text-muted">No dormant groups.</p>
+    <empty-state>No dormant groups.</empty-state>
 }
 else
 {

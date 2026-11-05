@@ -12,7 +12,7 @@
 <div class="d-flex justify-content-between align-items-center mb-4">
     <div class="d-flex align-items-center gap-3">
         <h1 class="mb-0">@year.Name</h1>
-        <span class="badge @year.Status.GetBadgeClass() fs-6">@year.Status</span>
+        <status-badge value="@year.Status" class="fs-6" />
     </div>
     <div class="d-flex gap-2">
         @if (allYears.Count > 1)
@@ -27,7 +27,7 @@
                         <li>
                             <a asp-action="YearDetail" asp-route-id="@y.Id" class="dropdown-item @(y.Id == year.Id ? "active" : "")">
                                 @y.Name
-                                <span class="badge @y.Status.GetBadgeClass() ms-1">@y.Status</span>
+                                <status-badge value="@y.Status" class="ms-1" />
                             </a>
                         </li>
                     }
@@ -137,7 +137,7 @@
 {
     <div class="card">
         <div class="card-body text-center py-4">
-            <p class="text-muted mb-2">No groups yet. Add groups in Finance Admin to start building the budget.</p>
+            <empty-state class="mb-2">No groups yet. Add groups in Finance Admin to start building the budget.</empty-state>
             <a asp-action="Admin" class="btn btn-outline-primary btn-sm">
                 <i class="fa-solid fa-plus me-1"></i>Go to Finance Admin
             </a>

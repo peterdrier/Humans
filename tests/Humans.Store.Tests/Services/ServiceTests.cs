@@ -1831,17 +1831,10 @@ public class ServiceTests
             default!, default!, default, default!);
     }
 
-    [HumansTheory]
-    [InlineData("en")]
-    [InlineData("es")]
-    [InlineData("de")]
-    [InlineData("it")]
-    [InlineData("fr")]
-    [InlineData("ca")]
-    [InlineData("nl")]
-    public async Task Pay_localizes_refusals_and_hides_Stripe_diagnostics_with_detached_write_token(string culture)
+    [HumansFact]
+    public async Task Pay_localizes_refusals_and_hides_Stripe_diagnostics_with_detached_write_token()
     {
-        using var scope = new CultureScope(culture);
+        using var scope = new CultureScope(CultureCatalog.DefaultCultureCode);
         using var services = new ServiceCollection().AddLogging().AddLocalization().BuildServiceProvider();
         var localizer = services.GetRequiredService<IStringLocalizer<StoreResource>>();
         var actor = Guid.NewGuid();

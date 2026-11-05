@@ -1,4 +1,5 @@
 using Humans.Base.Authorization;
+using Humans.Base.Models.Tables;
 using Humans.Base.Hosting;
 using Humans.Base.Interfaces;
 using Humans.Email.Contracts;
@@ -25,6 +26,16 @@ public sealed class Section : ISection, ISectionAdminNav, ISectionChrome, ISecti
 {
     public void Register(IServiceCollection services, IConfiguration configuration)
     {
+        EnumBadgeMap.Register(new Dictionary<Enum, string>
+        {
+            [IssueStatus.Triage] = "bg-warning text-dark",
+            [IssueStatus.Open] = "bg-primary text-white",
+            [IssueStatus.InProgress] = "bg-info text-dark",
+            [IssueStatus.Resolved] = "bg-success text-white",
+            [IssueStatus.WontFix] = "bg-secondary text-white",
+            [IssueStatus.Duplicate] = "bg-secondary text-white",
+        });
+
         services.AddSingleton<IAuditActionContributor, IssuesAuditActions>();
         services.AddSingleton<INotificationSourceContributor, IssuesNotificationSources>();
         services.AddSectionDbContext<IssuesDbContext>(sentinelTable: "issues");

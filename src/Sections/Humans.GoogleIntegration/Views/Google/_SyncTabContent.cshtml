@@ -110,7 +110,7 @@
 
 @if (result.Diffs.Count == 0)
 {
-    <div class="alert alert-info">No resources found for this type.</div>
+    <empty-state>No resources found for this type.</empty-state>
 }
 else
 {
@@ -243,7 +243,7 @@ else
                     }
                     else
                     {
-                        <div class="p-3 text-muted">No members</div>
+                        <empty-state class="p-3">No members</empty-state>
                     }
                 </div>
             </div>

@@ -21,14 +21,13 @@
 
 @if (Model.Trips.Count == 0)
 {
-    <p class="text-muted">No rides on this day.</p>
+    <empty-state>No rides on this day.</empty-state>
 }
 else
 {
         Func<DayRosterRow, IHtmlContent> tripCell0 = @<text>@item.Trip.Direction</text>;
         Func<DayRosterRow, IHtmlContent> tripCell1 = @<text>@item.Trip.MemberPlaceLabel</text>;
         Func<DayRosterRow, IHtmlContent> tripCell2 = @<text>@item.Trip.DepartureDate.ToInvariantDate() (@item.Trip.ExpectedDurationDays d)</text>;
-        Func<DayRosterRow, IHtmlContent> tripCell3 = @<text><span class="badge @EnumBadgeMap.For(item.Trip.Status)">@item.Trip.Status</span></text>;
         Func<DayRosterRow, IHtmlContent> tripCell4 = @<text><vc:human user-id="@item.Trip.UserId" layout="AvatarName" link="Admin" /></text>;
         Func<DayRosterRow, IHtmlContent> tripCell5 = @<text>@(item.Trip.SeatsOffered - item.Trip.SeatsRemaining) / @item.Trip.SeatsOffered</text>;
         Func<DayRosterRow, IHtmlContent> tripCell6 = @<text>
@@ -51,7 +50,7 @@ else
             .Template("Direction", tripCell0)
             .Template("From / to", tripCell1)
             .Template("Departs", tripCell2, sortBy: r => r.Trip.DepartureDate)
-            .Template("Status", tripCell3, sortBy: r => r.Trip.Status)
+            .Column("Status", r => r.Trip.Status, o => o.EnumBadge())
             .Template("Driver", tripCell4)
             .Template("Seats", tripCell5, sortBy: r => r.Trip.SeatsOffered - r.Trip.SeatsRemaining)
             .Template("Accepted riders", tripCell6, sortBy: r => r.Riders.Count)

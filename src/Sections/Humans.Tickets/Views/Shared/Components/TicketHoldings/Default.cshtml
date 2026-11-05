@@ -8,7 +8,7 @@
     <div class="card-body py-3 d-flex flex-column gap-2">
         @if (Model.Tickets.Count == 0)
         {
-            <p class="text-muted small mb-0">@Localizer["Tickets_TicketHoldings_Empty"]</p>
+            <empty-state class="small mb-0">@Localizer["Tickets_TicketHoldings_Empty"]</empty-state>
         }
         else
         {

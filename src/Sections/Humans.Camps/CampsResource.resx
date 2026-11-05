@@ -237,7 +237,6 @@
   <data name="Camps_Flash_UnknownError" xml:space="preserve"><value>Unknown error.</value></data>
   <data name="Camps_Flash_RoleUnassigned" xml:space="preserve"><value>Role unassigned.</value></data>
   <data name="Camps_Flash_AssignmentNotFound" xml:space="preserve"><value>Assignment not found.</value></data>
-  <data name="Camps_Details_Breadcrumb" xml:space="preserve"><value>Breadcrumb</value></data>
   <data name="Camps_Details_Slide" xml:space="preserve"><value>Slide {0}</value></data>
   <data name="Camps_Details_Previous" xml:space="preserve"><value>Previous</value></data>
   <data name="Camps_Details_Next" xml:space="preserve"><value>Next</value></data>

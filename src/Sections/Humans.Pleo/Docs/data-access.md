@@ -20,5 +20,6 @@ Repository: `IPleoRepository`.
 | PleoSyncStates | R/W (one row) |
 | PleoCategories | R/W (link, unlink, add from `/Pleo/Categories`; never by a sweep) |
 
-No cross-section service calls. Its only outbound is `IPleoClient`, this section's read-only connector to
+No cross-section service calls. Read by Finance through `IPleoService` (settled entries, wallet balance) for
+`/Finance` and `/Finance/Pleo`. Its only outbound is `IPleoClient`, this section's read-only connector to
 `external.pleo.io` (and Pleo's receipt CDN).

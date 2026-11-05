@@ -26,15 +26,13 @@
             : Convert.ToString(fallback, System.Globalization.CultureInfo.InvariantCulture) ?? "";
 }
 
-<div class="container py-4">
-    <nav aria-label="breadcrumb">
-        <ol class="breadcrumb">
-            <li class="breadcrumb-item"><a asp-controller="Team" asp-action="Index">Teams</a></li>
-            <li class="breadcrumb-item"><a asp-controller="Team" asp-action="Details" asp-route-slug="@Model.Department.Slug">@Model.Department.Name</a></li>
-            <li class="breadcrumb-item active">Shifts</li>
-        </ol>
-    </nav>
+@section Crumbs {
+    <a asp-controller="Team" asp-action="Index">Teams</a>
+    <a asp-controller="Team" asp-action="Details" asp-route-slug="@Model.Department.Slug">@Model.Department.Name</a>
+    <span>Shifts</span>
+}
 
+<div class="container py-4">
     <div class="d-flex justify-content-between align-items-center mb-3">
         <h2>@Model.Department.Name — Shifts</h2>
         <div>
@@ -72,7 +70,7 @@
             <div class="card-body">
                 @if (pendingGroups.Count == 0)
                 {
-                    <p class="text-muted mb-0">No pending signups match the "Incomplete onboarding" filter.</p>
+                    <empty-state class="mb-0">No pending signups match the "Incomplete onboarding" filter.</empty-state>
                 }
                 else
                 {
@@ -293,21 +291,11 @@
                                 </div>
                                 <div class="col-md-4">
                                     <label class="form-label">Description</label>
-                                    <textarea name="Description" class="form-control" rows="2">@EditValue(isEditingRota, "Description", isEditingRota ? invalidRotaEdit!.Description : rota.Description)</textarea>
-                                    <div class="form-text">
-                                        <a href="#" data-bs-toggle="modal" data-bs-target="#markdownHelpModal">
-                                            <i class="fa-solid fa-circle-info me-1"></i>Markdown
-                                        </a>
-                                    </div>
+                                    <markdown-editor name="Description" id="edit-rota-description-@rota.Id.ToString("N")" rows="2" value="@(EditValue(isEditingRota, "Description", isEditingRota ? invalidRotaEdit!.Description : rota.Description))" />
                                 </div>
                                 <div class="col-md-4">
                                     <label class="form-label">Practical Info</label>
-                                    <textarea name="PracticalInfo" class="form-control" rows="2" placeholder="Meeting point, instructions...">@EditValue(isEditingRota, "PracticalInfo", isEditingRota ? invalidRotaEdit!.PracticalInfo : rota.PracticalInfo)</textarea>
-                                    <div class="form-text">
-                                        <a href="#" data-bs-toggle="modal" data-bs-target="#markdownHelpModal">
-                                            <i class="fa-solid fa-circle-info me-1"></i>Markdown
-                                        </a>
-                                    </div>
+                                    <markdown-editor name="PracticalInfo" id="edit-rota-practical-@rota.Id.ToString("N")" rows="2" placeholder="Meeting point, instructions..." value="@(EditValue(isEditingRota, "PracticalInfo", isEditingRota ? invalidRotaEdit!.PracticalInfo : rota.PracticalInfo))" />
                                 </div>
                                 <div class="col-md-2">
                                     <button type="submit" class="btn btn-primary">Save</button>
@@ -418,7 +406,6 @@
                                             var shiftDate = Model.EventSettings.GateOpeningDate.PlusDays(shift.DayOffset);
                                             var shiftDateLabel = shiftDate.ToWeekdayDayMonth();
                                             var phase = shift.GetShiftPeriod(Model.EventSettings);
-                                            var phaseBadge = ShiftDisplayItem.PeriodBadgeClass(phase);
                                             var phaseLabel = phase switch
                                             {
                                                 ShiftPeriod.Build => "Set-up",
@@ -427,7 +414,7 @@
                                                 _ => ""
                                             };
                                         }
-                                        <td><span class="badge @phaseBadge me-1">@phaseLabel</span>@if (isPast){<span class="badge bg-secondary bg-opacity-50 me-1">past</span>}@shiftDateLabel</td>
+                                        <td><status-badge value="@phase" text="@phaseLabel" class="me-1" />@if (isPast){<span class="badge bg-secondary bg-opacity-50 me-1">past</span>}@shiftDateLabel</td>
                                         <td>@shift.StartTime.ToTime()</td>
                                         <td>@(shift.IsAllDay ? "Full day" : $"{shift.DurationHours}h")</td>
                                         @{
@@ -519,12 +506,7 @@
                                                         @Html.ValidationSummary(false, "", new { @class = "text-danger" })
                                                     }
                                                     <div class="mb-2">
-                                                        <textarea name="Description" class="form-control form-control-sm" rows="2" placeholder="Shift duties, notes...">@EditValue(isEditingShift, "Description", isEditingShift ? invalidShiftEdit!.Description : shift.Description)</textarea>
-                                                        <div class="form-text">
-                                                            <a href="#" data-bs-toggle="modal" data-bs-target="#markdownHelpModal">
-                                                                <i class="fa-solid fa-circle-info me-1"></i>Markdown
-                                                            </a>
-                                                        </div>
+                                                        <markdown-editor name="Description" id="edit-shift-description-@shift.Id.ToString("N")" rows="2" placeholder="Shift duties, notes..." value="@(EditValue(isEditingShift, "Description", isEditingShift ? invalidShiftEdit!.Description : shift.Description))" />
                                                     </div>
                                                     @{
                                                         var (editPeriodStart, editPeriodEnd) = rota.Period switch
@@ -692,7 +674,7 @@
                 }
                 else
                 {
-                    <p class="text-muted">No shifts yet.</p>
+                    <empty-state>No shifts yet.</empty-state>
                 }
 
                 @if (Model.CanManageShifts && rota.Period != RotaPeriod.Event)
@@ -1001,21 +983,11 @@
                     <div class="row g-2 mt-2">
                         <div class="col-md-6">
                             <label class="form-label">Description</label>
-                            <textarea name="Description" class="form-control" rows="2"></textarea>
-                            <div class="form-text">
-                                <a href="#" data-bs-toggle="modal" data-bs-target="#markdownHelpModal">
-                                    <i class="fa-solid fa-circle-info me-1"></i>Markdown
-                                </a>
-                            </div>
+                            <markdown-editor name="Description" id="create-rota-description" rows="2" />
                         </div>
                         <div class="col-md-6">
                             <label class="form-label">Practical Info</label>
-                            <textarea name="PracticalInfo" class="form-control" rows="2" placeholder="Meeting point, instructions..."></textarea>
-                            <div class="form-text">
-                                <a href="#" data-bs-toggle="modal" data-bs-target="#markdownHelpModal">
-                                    <i class="fa-solid fa-circle-info me-1"></i>Markdown
-                                </a>
-                            </div>
+                            <markdown-editor name="PracticalInfo" id="create-rota-practical" rows="2" placeholder="Meeting point, instructions..." />
                         </div>
                     </div>
                     @if (Model.AllTags.Count > 0)
@@ -1072,7 +1044,6 @@
 
 <script>
 (function() {
-    @await Html.PartialAsync("~/Views/Shared/_EscapeHtmlScript.cshtml")
     @await Html.PartialAsync("~/Views/Shared/_VolunteerSearchScript.cshtml", new ViewDataDictionary(ViewData)
     {
         ["SearchUrl"] = searchUrl,
@@ -1098,14 +1069,14 @@
         showBtn.addEventListener('click', function() {
             var startOffset = parseInt(startSelect.value);
             var endOffset = parseInt(endSelect.value);
-            if (startOffset > endOffset) { alert('Start must be before end.'); return; }
+            if (startOffset > endOffset) { showToast('Start must be before end.', 'danger'); return; }
 
             var days = allDays.filter(function(d) { return d.offset >= startOffset && d.offset <= endOffset && existingDays.indexOf(d.offset) === -1; });
-            if (days.length === 0) { alert('All days in this range already have shifts.'); return; }
+            if (days.length === 0) { showToast('All days in this range already have shifts.', 'danger'); return; }
             tbody.innerHTML = '';
             days.forEach(function(day, i) {
                 var tr = document.createElement('tr');
-                tr.innerHTML = '<td>' + escapeHtml(day.label) + '</td>'
+                tr.innerHTML = '<td>' + Humans.escapeHtml(day.label) + '</td>'
                     + '<td><input type="hidden" name="Days[' + i + '].DayOffset" value="' + day.offset + '" />'
                     + '<input type="number" name="Days[' + i + '].MinVolunteers" value="2" class="form-control form-control-sm staffing-min" style="width:80px" min="0" data-idx="' + i + '" /></td>'
                     + '<td><input type="number" name="Days[' + i + '].MaxVolunteers" value="5" class="form-control form-control-sm staffing-max" style="width:80px" min="1" data-idx="' + i + '" /></td>';
@@ -1254,10 +1225,10 @@
             var html = '<ul class="list-group list-group-flush">';
             results.forEach(function(result) {
                 html += '<li class="list-group-item list-group-item-action voluntell-range-pick" style="cursor:pointer"'
-                    + ' data-user-id="' + escapeHtml(result.userId) + '"'
-                    + ' data-display-name="' + escapeHtml(result.displayName) + '"'
-                    + ' data-rota-id="' + escapeHtml(rotaId) + '">';
-                html += '<strong>' + escapeHtml(result.displayName) + '</strong>';
+                    + ' data-user-id="' + Humans.escapeHtml(result.userId) + '"'
+                    + ' data-display-name="' + Humans.escapeHtml(result.displayName) + '"'
+                    + ' data-rota-id="' + Humans.escapeHtml(rotaId) + '">';
+                html += '<strong>' + Humans.escapeHtml(result.displayName) + '</strong>';
                 html += ' <small class="text-muted">(' + result.bookedShiftCount + ' shifts)</small>';
                 html += '</li>';
             });
@@ -1317,17 +1288,13 @@
 
     var tagSearchUrl = '@Url.Action("SearchTags", "ShiftAdmin", new { slug = Model.Department.Slug })';
     var tagCreateUrl = '@Url.Action("CreateTag", "ShiftAdmin", new { slug = Model.Department.Slug })';
-    var antiForgeryToken = document.querySelector('input[name="__RequestVerificationToken"]')?.value || '';
 
     // Medical badge: the text is not in the page; each click is one audited reveal.
     document.addEventListener('click', function(e) {
         var btn = e.target.closest('.medical-reveal');
         if (!btn || btn.disabled) return;
         btn.disabled = true;
-        fetch(btn.getAttribute('data-reveal-url'), {
-            method: 'POST',
-            headers: { 'RequestVerificationToken': antiForgeryToken }
-        })
+        Humans.postJson(btn.getAttribute('data-reveal-url'))
         .then(function(r) { return r.ok ? r.json() : Promise.reject(r.status); })
         .then(function(data) {
             var text = document.createElement('span');
@@ -1351,12 +1318,7 @@
             btn.disabled = true;
             input.disabled = true;
 
-            fetch(tagCreateUrl, {
-                method: 'POST',
-                redirect: 'error',
-                headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'RequestVerificationToken': antiForgeryToken },
-                body: 'name=' + encodeURIComponent(tagName) + '&__RequestVerificationToken=' + encodeURIComponent(antiForgeryToken)
-            })
+            Humans.postForm(tagCreateUrl, { name: tagName }, { redirect: 'error' })
             .then(function(r) {
                 if (!r.ok) throw new Error('Tag creation failed');
                 return r.json();
@@ -1370,7 +1332,7 @@
                     div.className = 'form-check form-check-inline';
                     var cbId = pickerId + '-tag-' + tag.id.replace(/-/g, '');
                     div.innerHTML = '<input class="form-check-input tag-checkbox" type="checkbox" data-tag-id="' + tag.id + '" id="' + cbId + '" checked />'
-                        + '<label class="form-check-label" for="' + cbId + '">' + escapeHtml(tag.name) + '</label>';
+                        + '<label class="form-check-label" for="' + cbId + '">' + Humans.escapeHtml(tag.name) + '</label>';
                     container.appendChild(div);
                     div.querySelector('.tag-checkbox').addEventListener('change', function() { syncTagIds(pickerId); });
                 }

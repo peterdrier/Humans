@@ -332,23 +332,30 @@ public class EmailProvisioningServiceTests
             Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
     }
 
+    public static TheoryData<string, string> RecipientLanguages()
+    {
+        var data = new TheoryData<string, string>
+        {
+            { "xx", CultureCatalog.DefaultCultureCode },
+            { "", CultureCatalog.DefaultCultureCode },
+            { " ", CultureCatalog.DefaultCultureCode },
+            { "not a culture!", CultureCatalog.DefaultCultureCode },
+            { "fr-FR", CultureCatalog.DefaultCultureCode },
+        };
+        foreach (var code in CultureCatalog.SupportedCultureCodes)
+            data.Add(code, code);
+        return data;
+    }
+
     [HumansTheory]
-    [InlineData("en", "Your @nobodies.team account is ready", "View profile", "en")]
-    [InlineData("es", "Tu cuenta @nobodies.team está lista", "Ver perfil", "es")]
-    [InlineData("de", "Dein @nobodies.team-Konto ist bereit", "Profil ansehen", "de")]
-    [InlineData("it", "Il tuo account @nobodies.team è pronto", "Visualizza profilo", "it")]
-    [InlineData("fr", "Ton compte @nobodies.team est prêt", "Voir le profil", "fr")]
-    [InlineData("ca", "El teu compte @nobodies.team està llest", "Mostra el perfil", "ca")]
-    [InlineData("nl", "Je @nobodies.team-account is klaar", "Profiel bekijken", "nl")]
-    [InlineData("xx", "Your @nobodies.team account is ready", "View profile", "en")]
-    [InlineData("", "Your @nobodies.team account is ready", "View profile", "en")]
-    [InlineData(" ", "Your @nobodies.team account is ready", "View profile", "en")]
-    [InlineData("not a culture!", "Your @nobodies.team account is ready", "View profile", "en")]
-    [InlineData("fr-FR", "Your @nobodies.team account is ready", "View profile", "en")]
-    public async Task ProvisionNobodiesEmailAsync_FreePrefix_LocalizesRecipientNotice(
-        string language, string expectedTitle, string expectedAction, string expectedCulture)
+    [MemberData(nameof(RecipientLanguages))]
+    public async Task ProvisionNobodiesEmailAsync_FreePrefix_LocalizesRecipientNotice(string language, string expectedCulture)
     {
         using var actorCulture = new CultureScope("fr");
+        var resources = new System.Resources.ResourceManager(typeof(GoogleIntegrationResource));
+        var recipientCulture = System.Globalization.CultureInfo.GetCultureInfo(expectedCulture);
+        var expectedTitle = resources.GetString("GoogleIntegration_Email_WorkspaceCredentials_Subject", recipientCulture);
+        var expectedAction = resources.GetString("GoogleIntegration_Notification_ViewProfile", recipientCulture);
         var f = BuildFixture();
 
         var userId = Guid.NewGuid();

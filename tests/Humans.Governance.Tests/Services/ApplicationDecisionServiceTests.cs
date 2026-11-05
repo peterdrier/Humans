@@ -434,21 +434,19 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
         (await GovernanceDb.Applications.CountAsync(TestContext.Current.CancellationToken)).Should().Be(expectedSuccess ? 1 : 0);
     }
 
+    public static TheoryData<string, string?, string> InvalidMotivations()
+    {
+        var data = new TheoryData<string, string?, string>();
+        foreach (var culture in CultureCatalog.SupportedCultureCodes)
+        {
+            data.Add(culture, null, "Profile_MotivationRequired");
+            data.Add(culture, "short", "Application_MotivationLength");
+        }
+        return data;
+    }
+
     [HumansTheory]
-    [InlineData("en", null, "Profile_MotivationRequired")]
-    [InlineData("en", "short", "Application_MotivationLength")]
-    [InlineData("es", null, "Profile_MotivationRequired")]
-    [InlineData("es", "short", "Application_MotivationLength")]
-    [InlineData("de", null, "Profile_MotivationRequired")]
-    [InlineData("de", "short", "Application_MotivationLength")]
-    [InlineData("it", null, "Profile_MotivationRequired")]
-    [InlineData("it", "short", "Application_MotivationLength")]
-    [InlineData("fr", null, "Profile_MotivationRequired")]
-    [InlineData("fr", "short", "Application_MotivationLength")]
-    [InlineData("ca", null, "Profile_MotivationRequired")]
-    [InlineData("ca", "short", "Application_MotivationLength")]
-    [InlineData("nl", null, "Profile_MotivationRequired")]
-    [InlineData("nl", "short", "Application_MotivationLength")]
+    [MemberData(nameof(InvalidMotivations))]
     public async Task Create_invalid_motivation_reaches_localized_service_validation(string culture, string? motivation, string resourceKey)
     {
         using var cultureScope = new CultureScope(culture);
@@ -980,10 +978,16 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
         var args = _notificationService.ReceivedCalls().Single().GetArguments();
         args[0].Should().Be(approve ? GovernanceNotificationSources.ApplicationApproved : GovernanceNotificationSources.ApplicationRejected);
         ((IReadOnlyList<Guid>)args[4]!).Should().ContainSingle().Which.Should().Be(userId);
-        args[3].Should().Be(approve ? "Tu solicitud de Colaborador ha sido aprobada" : "Tu solicitud de Colaborador no ha sido aprobada");
-        args[5].Should().Be(approve ? "¡Enhorabuena! Tu solicitud de Colaborador ha sido aprobada." : "Tu solicitud de Colaborador no ha sido aprobada.");
+        var resources = new System.Resources.ResourceManager(typeof(GovernanceResource));
+        string Notice(string key, CultureInfo culture) =>
+            string.Format(culture, resources.GetString(key, culture)!, MembershipTier.Colaborador);
+        var recipientCulture = CultureInfo.GetCultureInfo("es");
+        var titleKey = approve ? "Governance_Notification_ApplicationApproved" : "Governance_Notification_ApplicationRejected";
+        args[3].Should().Be(Notice(titleKey, recipientCulture))
+            .And.NotBe(Notice(titleKey, CultureInfo.InvariantCulture));
+        args[5].Should().Be(Notice(titleKey + "Body", recipientCulture));
         args[6].Should().Be("/Governance/Applications");
-        args[7].Should().Be("Ver solicitud");
+        args[7].Should().Be(resources.GetString("Governance_Notification_ViewApplication", recipientCulture));
         await _userService.Received(1).GetUserInfoAsync(userId, Arg.Any<CancellationToken>());
     }
 
