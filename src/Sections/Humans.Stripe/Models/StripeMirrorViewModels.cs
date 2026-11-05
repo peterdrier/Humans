@@ -1,8 +1,19 @@
+using System.Globalization;
+using Humans.Base.Extensions;
 using NodaTime;
 
 namespace Humans.Stripe.Models;
 
 internal sealed record StripeOption(string Value, string Label);
+
+/// <summary>EUR as euros; any other currency as its own code, never under a euro sign it was not converted to.</summary>
+internal static class StripeMoneyFormat
+{
+    public static string Show(decimal value, string currency, bool signed = false) =>
+        string.Equals(currency, "EUR", StringComparison.Ordinal)
+            ? signed ? value.ToSignedEuro() : value.ToEuro()
+            : $"{value.ToString(signed ? "+#,0.00;-#,0.00;0.00" : "#,0.00", CultureInfo.InvariantCulture)} {currency}";
+}
 
 internal sealed record StripeSyncInfo(string Status, Instant? LastSyncAt, string? LastError);
 

@@ -92,9 +92,9 @@
                     </td>
                     <td class="small">@t.Description</td>
                     <td class="small">@t.CustomerName<div class="text-muted">@t.CustomerEmail</div></td>
-                    <td class="text-end text-nowrap">@t.Amount.ToSignedEuro()@(t.Currency == "EUR" ? "" : $" {t.Currency}")</td>
-                    <td class="text-end text-nowrap text-muted">@(t.Fee == 0m ? "" : t.Fee.ToEuro())</td>
-                    <td class="text-end text-nowrap">@t.Net.ToSignedEuro()</td>
+                    <td class="text-end text-nowrap">@StripeMoneyFormat.Show(t.Amount, t.Currency, signed: true)</td>
+                    <td class="text-end text-nowrap text-muted">@(t.Fee == 0m ? "" : StripeMoneyFormat.Show(t.Fee, t.Currency))</td>
+                    <td class="text-end text-nowrap">@StripeMoneyFormat.Show(t.Net, t.Currency, signed: true)</td>
                     <td class="text-nowrap small">@t.AvailableOn.ToDate()</td>
                     <td class="small">
                         @if (t.PayoutId is not null)

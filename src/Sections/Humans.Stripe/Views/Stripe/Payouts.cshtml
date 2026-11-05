@@ -46,7 +46,7 @@
                     <td class="text-nowrap">@p.ArrivalDate.ToDate()</td>
                     <td class="small">@p.AccountName</td>
                     <td><a asp-action="Transactions" asp-route-q="@p.Id"><code class="small">@p.Id</code></a></td>
-                    <td class="text-end text-nowrap">@p.Amount.ToEuro()@(p.Currency == "EUR" ? "" : $" {p.Currency}")</td>
+                    <td class="text-end text-nowrap">@StripeMoneyFormat.Show(p.Amount, p.Currency)</td>
                     <td class="small @(p.Status == "paid" ? "" : "text-danger")">@p.Status
                         @if (p.FailureMessage is not null)
                         {
@@ -64,7 +64,7 @@
                             <span class="text-muted">—</span>
                         }
                     </td>
-                    <td class="text-end text-nowrap @(p.LinkedMismatch ? "text-danger" : "")">@(p.Automatic ? p.LinkedNet.ToEuro() : "")</td>
+                    <td class="text-end text-nowrap @(p.LinkedMismatch ? "text-danger" : "")">@(p.Automatic ? StripeMoneyFormat.Show(p.LinkedNet, p.Currency) : "")</td>
                 </tr>
             }
         </tbody>

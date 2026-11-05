@@ -86,8 +86,8 @@
                         {
                             <tr>
                                 <td>Stripe balance (@b.Currency)</td>
-                                <td class="text-muted small">@b.Available.ToEuro() available · @b.Pending.ToEuro() pending</td>
-                                <td class="text-end text-nowrap fw-semibold">@b.Total.ToEuro()</td>
+                                <td class="text-muted small">@StripeMoneyFormat.Show(b.Available, b.Currency) available · @StripeMoneyFormat.Show(b.Pending, b.Currency) pending</td>
+                                <td class="text-end text-nowrap fw-semibold">@StripeMoneyFormat.Show(b.Total, b.Currency)</td>
                             </tr>
                         }
                         <tr>

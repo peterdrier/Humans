@@ -52,7 +52,10 @@ public sealed class StripeMirrorClientTests
         if (path.EndsWith("/balance", StringComparison.Ordinal))
             return """{"object":"balance","available":[{"amount":0,"currency":"eur"}],"pending":[{"amount":0,"currency":"eur"}]}""";
         if (path.EndsWith("/payouts", StringComparison.Ordinal))
-            return List(false, """{"id":"po_1","object":"payout","amount":31002,"currency":"eur","status":"paid","automatic":true,"arrival_date":1784592000,"created":1784564011}""");
+            return List(false,
+                """{"id":"po_1","object":"payout","amount":31002,"currency":"eur","status":"paid","automatic":true,"reconciliation_status":"completed","arrival_date":1784592000,"created":1784564011}""",
+                // A split payout's secondary part: Stripe answers 400 to a breakdown request for it.
+                """{"id":"po_2","object":"payout","amount":5,"currency":"eur","status":"paid","automatic":true,"reconciliation_status":"not_applicable","arrival_date":1784592000,"created":1784564011}""");
         if (query.Contains("payout=po_1", StringComparison.Ordinal))
             return List(false, """{"id":"txn_c","object":"balance_transaction"}""", """{"id":"txn_p","object":"balance_transaction"}""");
         return query.Contains("starting_after=txn_c", StringComparison.Ordinal) ? List(false, Payout) : List(true, Charge);
@@ -79,7 +82,9 @@ public sealed class StripeMirrorClientTests
         charge.Metadata.Should().Contain("79159110");
         charge.Raw.Should().Contain("\"source\":\"py_1\"").And.NotContain("4242", "card details are not mirrored");
         fetch.Transactions[1].PayoutId.Should().Be("po_1");
-        fetch.Payouts.Single().Automatic.Should().BeTrue();
+        fetch.Payouts.Select(p => p.Id).Should().Equal("po_1", "po_2");
+        _requests.Should().NotContain(r => r.Uri.Query.Contains("po_2", StringComparison.Ordinal),
+            "a non-reconcilable payout is mirrored but never broken down");
         fetch.Balances.Single().Currency.Should().Be("EUR");
     }
 

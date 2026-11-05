@@ -15,7 +15,7 @@
     <dt class="col-sm-3">Created</dt><dd class="col-sm-9">@t.Created.ToDateTime(madrid)</dd>
     <dt class="col-sm-3">Available on</dt><dd class="col-sm-9">@t.AvailableOn.ToDate()</dd>
     <dt class="col-sm-3">Amount / fee / net</dt>
-    <dd class="col-sm-9">@t.Amount.ToSignedEuro() / @t.Fee.ToEuro() / @t.Net.ToSignedEuro() @(t.Currency == "EUR" ? "" : t.Currency)</dd>
+    <dd class="col-sm-9">@StripeMoneyFormat.Show(t.Amount, t.Currency, signed: true) / @StripeMoneyFormat.Show(t.Fee, t.Currency) / @StripeMoneyFormat.Show(t.Net, t.Currency, signed: true)</dd>
     <dt class="col-sm-3">Description</dt><dd class="col-sm-9">@t.Description</dd>
     <dt class="col-sm-3">Buyer</dt><dd class="col-sm-9">@t.CustomerName @t.CustomerEmail</dd>
     <dt class="col-sm-3">Source</dt><dd class="col-sm-9"><code>@t.SourceId</code></dd>

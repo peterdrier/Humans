@@ -67,9 +67,12 @@ internal sealed class StripeMirrorClient(IHttpClient? httpClient = null) : IStri
             after => new PayoutService(client).ListAsync(new PayoutListOptions { Limit = PageLimit, StartingAfter = after }, Request(), ct),
             p => p.Id, "payouts");
 
-        // Stripe links transactions only to automatic payouts. A paid payout wins over a failed one listing the same row.
+        // Stripe links transactions only to reconcilable automatic payouts; asking for a split payout's secondary part
+        // (reconciliation_status not_applicable) is a 400. A paid payout wins over a failed one listing the same row.
         var payoutOf = new Dictionary<string, string>(StringComparer.Ordinal);
-        foreach (var payout in payouts.Where(p => p.Automatic).OrderBy(p => string.Equals(p.Status, "paid", StringComparison.Ordinal)))
+        foreach (var payout in payouts
+                     .Where(p => p.Automatic && !string.Equals(p.ReconciliationStatus, "not_applicable", StringComparison.Ordinal))
+                     .OrderBy(p => string.Equals(p.Status, "paid", StringComparison.Ordinal)))
         {
             var ids = await AllPagesAsync(after => transactionService.ListAsync(
                 new BalanceTransactionListOptions { Payout = payout.Id, Limit = PageLimit, StartingAfter = after }, Request(), ct),
