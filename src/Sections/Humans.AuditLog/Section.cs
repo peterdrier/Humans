@@ -22,6 +22,7 @@ public sealed class Section : ISection, ISectionAdminNav, ISectionAdminTiles, IS
     {
         services.AddSectionDbContext<AuditLogDbContext>(sentinelTable: "audit_log");
 
+        services.AddSingleton<IAuditActionContributor, RetiredAuditActions>();
         services.AddSingleton<AuditActionRegistry>();
         // Constructed at startup so a duplicate or over-long action name fails the boot, not the first audit page.
         services.AddSingleton<IHostedService>(sp => sp.GetRequiredService<AuditActionRegistry>());
