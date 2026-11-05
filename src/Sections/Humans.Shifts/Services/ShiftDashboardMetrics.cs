@@ -9,7 +9,6 @@ using Humans.Shifts.Services.Dtos;
 using Humans.Teams.Contracts;
 using Humans.Tickets.Contracts;
 using Humans.Users.Contracts;
-using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.DependencyInjection;
 using NodaTime;
 
@@ -19,34 +18,13 @@ internal sealed class ShiftDashboardMetrics(
     IShiftManagementRepository repo,
     EventCalendarResolver calendarResolver,
     IServiceProvider serviceProvider,
-    IMemoryCache cache,
-    IClock clock,
-    TimeSpan cacheTtl) : IApplicationService
+    IClock clock) : IApplicationService
 {
     private ITeamService TeamService => serviceProvider.GetRequiredService<ITeamService>();
     private ITicketService TicketQueryService => serviceProvider.GetRequiredService<ITicketService>();
     private IUserService UserService => serviceProvider.GetRequiredService<IUserService>();
 
-    internal static string OverviewCacheKey(Guid eventId, ShiftPeriod? period) =>
-        $"dashboard-overview:{eventId}:{period?.ToString() ?? "all"}";
-    internal static string TrendsCacheKey(Guid eventId, TrendWindow window, ShiftPeriod? period) =>
-        $"dashboard-trends:{eventId}:{window}:{period?.ToString() ?? "all"}";
-
-    public async Task<DashboardOverview> GetDashboardOverviewAsync(Guid eventSettingsId, ShiftPeriod? period = null, BuildSubPeriod? subPeriod = null, CancellationToken ct = default)
-    {
-        // Sub-periods would fan the cache key out 4x, so only the base period is cached.
-        if (subPeriod is not null)
-            return await ComputeDashboardOverviewAsync(eventSettingsId, period, subPeriod, ct);
-
-        var cached = await cache.GetOrCreateAsync(OverviewCacheKey(eventSettingsId, period), async entry =>
-        {
-            entry.SlidingExpiration = cacheTtl;
-            return await ComputeDashboardOverviewAsync(eventSettingsId, period, subPeriod: null, ct);
-        });
-        return cached!;
-    }
-
-    private async Task<DashboardOverview> ComputeDashboardOverviewAsync(Guid eventSettingsId, ShiftPeriod? period, BuildSubPeriod? subPeriod, CancellationToken ct)
+    internal async Task<DashboardOverview> ComputeDashboardOverviewAsync(Guid eventSettingsId, ShiftPeriod? period, BuildSubPeriod? subPeriod, CancellationToken ct)
     {
         var es = await calendarResolver.GetAsync(eventSettingsId, ct);
         if (es is null)
@@ -107,23 +85,7 @@ internal sealed class ShiftDashboardMetrics(
             staffing.TotalSlots > 0 ? 100.0 * staffing.FilledSlots / staffing.TotalSlots : 0d;
     }
 
-    public async Task<IReadOnlyList<DashboardTrendPoint>> GetDashboardTrendsAsync(
-        Guid eventSettingsId, TrendWindow window, ShiftPeriod? period = null,
-        BuildSubPeriod? subPeriod = null, CancellationToken ct = default)
-    {
-        // Sub-periods would fan the cache key out 4x, so only the base period is cached.
-        if (subPeriod is not null)
-            return await ComputeDashboardTrendsAsync(eventSettingsId, window, period, subPeriod, ct);
-
-        var cached = await cache.GetOrCreateAsync(TrendsCacheKey(eventSettingsId, window, period), async entry =>
-        {
-            entry.SlidingExpiration = cacheTtl;
-            return await ComputeDashboardTrendsAsync(eventSettingsId, window, period, subPeriod: null, ct);
-        });
-        return cached!;
-    }
-
-    private async Task<IReadOnlyList<DashboardTrendPoint>> ComputeDashboardTrendsAsync(
+    internal async Task<IReadOnlyList<DashboardTrendPoint>> ComputeDashboardTrendsAsync(
         Guid eventSettingsId, TrendWindow window, ShiftPeriod? period, BuildSubPeriod? subPeriod, CancellationToken ct)
     {
         // CreatedAt is Shifts-owned, not on the Settings calendar; TrendWindow.All starts there.

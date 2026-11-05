@@ -5,7 +5,6 @@ using Humans.Shifts.Models;
 using Humans.Shifts.Services.Dtos;
 using Humans.Teams.Contracts;
 using Humans.Users.Contracts;
-using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Humans.Shifts.Services;
@@ -13,31 +12,12 @@ namespace Humans.Shifts.Services;
 internal sealed class ShiftCoordinatorActivity(
     IShiftManagementRepository repo,
     EventCalendarResolver calendarResolver,
-    IServiceProvider serviceProvider,
-    IMemoryCache cache,
-    TimeSpan cacheTtl) : IApplicationService
+    IServiceProvider serviceProvider) : IApplicationService
 {
     private ITeamService TeamService => serviceProvider.GetRequiredService<ITeamService>();
     private IUserService UserService => serviceProvider.GetRequiredService<IUserService>();
 
-    internal static string CacheKey(Guid eventId, ShiftPeriod? period) =>
-        $"dashboard-coordinator-activity:{eventId}:{period?.ToString() ?? "all"}";
-
-    public async Task<IReadOnlyList<CoordinatorActivityRow>> GetCoordinatorActivityAsync(Guid eventSettingsId, ShiftPeriod? period = null, BuildSubPeriod? subPeriod = null, CancellationToken ct = default)
-    {
-        // Sub-periods would fan the cache key out 4x, so only the base period is cached.
-        if (subPeriod is not null)
-            return await ComputeCoordinatorActivityAsync(eventSettingsId, period, subPeriod, ct);
-
-        var cached = await cache.GetOrCreateAsync(CacheKey(eventSettingsId, period), async entry =>
-        {
-            entry.SlidingExpiration = cacheTtl;
-            return await ComputeCoordinatorActivityAsync(eventSettingsId, period, subPeriod: null, ct);
-        });
-        return cached!;
-    }
-
-    private async Task<IReadOnlyList<CoordinatorActivityRow>> ComputeCoordinatorActivityAsync(Guid eventSettingsId, ShiftPeriod? period, BuildSubPeriod? subPeriod, CancellationToken ct)
+    internal async Task<IReadOnlyList<CoordinatorActivityRow>> ComputeCoordinatorActivityAsync(Guid eventSettingsId, ShiftPeriod? period, BuildSubPeriod? subPeriod, CancellationToken ct)
     {
         int? minDayOffset = null;
         int? maxDayOffset = null;

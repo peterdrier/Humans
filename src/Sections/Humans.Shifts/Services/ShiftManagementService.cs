@@ -36,8 +36,8 @@ internal sealed class ShiftManagementService(
     ILogger<ShiftManagementService> logger) : IShiftManagement, IUserMerge
 {
     private static readonly TimeSpan DashboardCacheTtl = TimeSpan.FromMinutes(5);
-    private readonly ShiftDashboardMetrics dashboardMetrics = new(repo, calendarResolver, serviceProvider, cache, clock, DashboardCacheTtl);
-    private readonly ShiftCoordinatorActivity coordinatorActivity = new(repo, calendarResolver, serviceProvider, cache, DashboardCacheTtl);
+    private readonly ShiftDashboardMetrics dashboardMetrics = new(repo, calendarResolver, serviceProvider, clock);
+    private readonly ShiftCoordinatorActivity coordinatorActivity = new(repo, calendarResolver, serviceProvider);
     private const string OverallCoverageCacheKey = "dashboard-overall-coverage";
 
     private static readonly decimal AllDayShiftHours = (decimal)Shift.AllDayWindowHours;
@@ -1208,11 +1208,11 @@ internal sealed class ShiftManagementService(
     }
 
     internal static string OverviewCacheKey(Guid eventId, ShiftPeriod? period) =>
-        ShiftDashboardMetrics.OverviewCacheKey(eventId, period);
+        $"dashboard-overview:{eventId}:{period?.ToString() ?? "all"}";
     internal static string CoordinatorActivityCacheKey(Guid eventId, ShiftPeriod? period) =>
-        ShiftCoordinatorActivity.CacheKey(eventId, period);
+        $"dashboard-coordinator-activity:{eventId}:{period?.ToString() ?? "all"}";
     internal static string TrendsCacheKey(Guid eventId, TrendWindow window, ShiftPeriod? period) =>
-        ShiftDashboardMetrics.TrendsCacheKey(eventId, window, period);
+        $"dashboard-trends:{eventId}:{window}:{period?.ToString() ?? "all"}";
 
     public void InvalidateDashboardCaches(Guid eventSettingsId) => EvictDashboardCaches(eventSettingsId);
 
@@ -1229,17 +1229,49 @@ internal sealed class ShiftManagementService(
         cache.Remove(OverallCoverageCacheKey);
     }
 
-    public Task<DashboardOverview> GetDashboardOverviewAsync(
-        Guid eventSettingsId, ShiftPeriod? period = null, BuildSubPeriod? subPeriod = null, CancellationToken ct = default) =>
-        dashboardMetrics.GetDashboardOverviewAsync(eventSettingsId, period, subPeriod, ct);
+    public async Task<DashboardOverview> GetDashboardOverviewAsync(Guid eventSettingsId, ShiftPeriod? period = null, BuildSubPeriod? subPeriod = null, CancellationToken ct = default)
+    {
+        // Sub-periods would fan the cache key out 4x, so only the base period is cached.
+        if (subPeriod is not null)
+            return await dashboardMetrics.ComputeDashboardOverviewAsync(eventSettingsId, period, subPeriod, ct);
 
-    public Task<IReadOnlyList<CoordinatorActivityRow>> GetCoordinatorActivityAsync(
-        Guid eventSettingsId, ShiftPeriod? period = null, BuildSubPeriod? subPeriod = null, CancellationToken ct = default) =>
-        coordinatorActivity.GetCoordinatorActivityAsync(eventSettingsId, period, subPeriod, ct);
+        var cached = await cache.GetOrCreateAsync(OverviewCacheKey(eventSettingsId, period), async entry =>
+        {
+            entry.SlidingExpiration = DashboardCacheTtl;
+            return await dashboardMetrics.ComputeDashboardOverviewAsync(eventSettingsId, period, subPeriod: null, ct);
+        });
+        return cached!;
+    }
 
-    public Task<IReadOnlyList<DashboardTrendPoint>> GetDashboardTrendsAsync(
-        Guid eventSettingsId, TrendWindow window, ShiftPeriod? period = null, BuildSubPeriod? subPeriod = null, CancellationToken ct = default) =>
-        dashboardMetrics.GetDashboardTrendsAsync(eventSettingsId, window, period, subPeriod, ct);
+    public async Task<IReadOnlyList<CoordinatorActivityRow>> GetCoordinatorActivityAsync(Guid eventSettingsId, ShiftPeriod? period = null, BuildSubPeriod? subPeriod = null, CancellationToken ct = default)
+    {
+        // Sub-periods would fan the cache key out 4x, so only the base period is cached.
+        if (subPeriod is not null)
+            return await coordinatorActivity.ComputeCoordinatorActivityAsync(eventSettingsId, period, subPeriod, ct);
+
+        var cached = await cache.GetOrCreateAsync(CoordinatorActivityCacheKey(eventSettingsId, period), async entry =>
+        {
+            entry.SlidingExpiration = DashboardCacheTtl;
+            return await coordinatorActivity.ComputeCoordinatorActivityAsync(eventSettingsId, period, subPeriod: null, ct);
+        });
+        return cached!;
+    }
+
+    public async Task<IReadOnlyList<DashboardTrendPoint>> GetDashboardTrendsAsync(
+        Guid eventSettingsId, TrendWindow window, ShiftPeriod? period = null,
+        BuildSubPeriod? subPeriod = null, CancellationToken ct = default)
+    {
+        // Sub-periods would fan the cache key out 4x, so only the base period is cached.
+        if (subPeriod is not null)
+            return await dashboardMetrics.ComputeDashboardTrendsAsync(eventSettingsId, window, period, subPeriod, ct);
+
+        var cached = await cache.GetOrCreateAsync(TrendsCacheKey(eventSettingsId, window, period), async entry =>
+        {
+            entry.SlidingExpiration = DashboardCacheTtl;
+            return await dashboardMetrics.ComputeDashboardTrendsAsync(eventSettingsId, window, period, subPeriod: null, ct);
+        });
+        return cached!;
+    }
 
     public async Task<IReadOnlyList<DailyDepartmentStaffing>> GetDailyDepartmentStaffingAsync(
         Guid eventSettingsId, ShiftPeriod? period, BuildSubPeriod? subPeriod = null, CancellationToken ct = default)
