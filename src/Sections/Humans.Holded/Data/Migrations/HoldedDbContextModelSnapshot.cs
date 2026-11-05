@@ -99,6 +99,49 @@ namespace Humans.Holded.Data.Migrations
                     b.ToTable("holded_api_calls", (string)null);
                 });
 
+            modelBuilder.Entity("Humans.Holded.Domain.HoldedContact", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("Address")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Email")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Iban")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<Instant>("LastSyncedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Mobile")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Name")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Phone")
+                        .HasColumnType("text");
+
+                    b.Property<int?>("SupplierAccountNum")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("TaxCode")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("TradeName")
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("holded_contacts", (string)null);
+                });
+
             modelBuilder.Entity("Humans.Holded.Domain.HoldedLedgerLine", b =>
                 {
                     b.Property<Guid>("Id")
@@ -194,6 +237,9 @@ namespace Humans.Holded.Data.Migrations
 
                     b.Property<string>("Notes")
                         .HasColumnType("text");
+
+                    b.Property<decimal?>("PaymentsPending")
+                        .HasColumnType("decimal(14,2)");
 
                     b.Property<decimal>("Subtotal")
                         .HasColumnType("decimal(14,2)");

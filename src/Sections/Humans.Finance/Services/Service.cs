@@ -16,7 +16,6 @@ using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
-using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Options;
 using NodaTime;
 using static Humans.Finance.Services.SepaText;
@@ -31,7 +30,6 @@ internal sealed class Service(
     IHoldedWrite holdedWrite,
     IExpenseHoldedBookingService expenses,
     IClock clock,
-    IMemoryCache cache,
     IAuditLogService audit,
     IUserService users,
     IEmailService emailService,
@@ -56,11 +54,9 @@ internal sealed class Service(
     internal const int ExpenseAccountBlockStart = 62900100;
     internal const string HoldedExpenseAccount = HoldedCategoryAccounts.HoldedExpenseAccount;
 
-    private static readonly TimeSpan ContactsCacheDuration = TimeSpan.FromMinutes(2);
-
     internal const string ContactListUnavailable =
-        "Holded's contact list could not be read, so no member's creditor account is known. It is retried after "
-        + "two minutes; if this persists, check the Holded connection.";
+        "The Holded contact mirror has never synced, so no member's creditor account is known. Run Sync now on "
+        + "/Holded.";
     private static readonly DateTimeZone MadridZone = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
     private readonly HoldedCategoryAccounts categoryAccounts = new(repo, client, budget, clock, audit, logger);
     private readonly SepaBankBooking booking = new(repo, client, holded, holdedWrite, clock, bookingState, audit, sepa, logger);
@@ -394,25 +390,23 @@ internal sealed class Service(
             .Select(x => ToBinding(x.Binding))
             .ToList();
 
-        // Same OpenDocs filter the booking applies. One list call per render; a vendor failure costs the column. The
-        // list also feeds the duplicate check: an inflated balance makes the row unpayable, and null (unreadable) is
-        // refused too.
+        // From the purchase-document mirror, as stale as the ledger balances beside it. Same OpenDocs filter the
+        // booking applies. The docs also feed the duplicate check: an inflated balance makes the row unpayable, and
+        // null (never synced) is refused too. Open counts stay unknown until every doc carries its payments pending.
         Dictionary<string, int>? openDocsByContact = null;
         HashSet<Guid>? flaggedUsers = null;
-        try
+        var mirror = await holded.GetPurchaseDocumentsAsync(ct);
+        if (mirror.LastSyncAt is not null)
         {
-            var purchaseDocs = await client.ListPurchaseDocumentsAsync(ct);
-            openDocsByContact = SepaBankBooking.OpenDocs(purchaseDocs)
-                .Where(d => !string.IsNullOrEmpty(d.ContactId))
-                .GroupBy(d => d.ContactId!, StringComparer.Ordinal)
-                .ToDictionary(g => g.Key, g => g.Count(), StringComparer.Ordinal);
+            var purchaseDocs = mirror.Docs.Select(ToListItem).ToList();
+            if (mirror.Docs.All(d => d.PaymentsPending is not null))
+                openDocsByContact = SepaBankBooking.OpenDocs(purchaseDocs)
+                    .Where(d => !string.IsNullOrEmpty(d.ContactId))
+                    .GroupBy(d => d.ContactId!, StringComparer.Ordinal)
+                    .ToDictionary(g => g.Key, g => g.Count(), StringComparer.Ordinal);
             flaggedUsers = (await FindDuplicateDocumentsAsync(purchaseDocs, contactById, ct))
                 .Select(m => m.Booking.CreditorUserId)
                 .ToHashSet();
-        }
-        catch (Exception ex) when (ex is HoldedTransientException or HoldedPermanentException)
-        {
-            logger.LogWarning("Holded purchase documents unavailable; /Finance/Creditors shows no open-document counts and cannot rule out duplicates. {Reason}", ex.Message);
         }
 
         // An unbooked transfer means the balance is still open in Holded, so paying again would pay twice. A withdrawn
@@ -467,6 +461,24 @@ internal sealed class Service(
         return (rows, unresolved, null);
     }
 
+    /// <summary>The list shape the booking filter and duplicate matcher read.</summary>
+    private static HoldedPurchaseDocListItemDto ToListItem(HoldedPurchaseDocInfo d) => new()
+    {
+        Id = d.Id,
+        DocNumber = d.DocNumber,
+        ContactId = d.ContactId,
+        ContactName = d.ContactName,
+        Description = d.Description,
+        Date = d.Date.AtStartOfDayInZone(MadridZone).ToInstant(),
+        Subtotal = d.Subtotal,
+        Tax = d.Tax,
+        Total = d.Total,
+        PaymentsPending = d.PaymentsPending ?? 0m,
+        IsDraft = !d.IsApproved,
+        Currency = d.Currency,
+        Tags = d.Tags,
+    };
+
     private static string? GetNotPayableReason(CreditorAccountRow row)
     {
         var account = $"Creditor account {row.SupplierAccountNum}";
@@ -475,7 +487,7 @@ internal sealed class Service(
             0 => $"{account} is not bound to a member — bind it first.",
             > 1 => $"{account} is bound to {row.Bindings.Count} members — unbind all but the one who owns it first.",
             _ when row.HasDuplicateDocuments is null =>
-                $"{account}: Holded's document list could not be read, so duplicate documents cannot be ruled out — try again later.",
+                $"{account}: the Holded purchase-document mirror has never synced, so duplicate documents cannot be ruled out — run Sync now on /Holded.",
             _ when row.HasDuplicateDocuments == true =>
                 $"{account} has duplicate documents in Holded — remove them on /Finance/HoldedDuplicates first.",
             _ when row.PendingPayoutFileName is { } file =>
@@ -496,41 +508,12 @@ internal sealed class Service(
     }
 
     /// <summary>Keyed by contact id, the identity a binding stores. The rows and the payout both resolve through this
-    /// one map, so a row's name and IBAN cannot disagree with the file's. Null when Holded's list is unreadable.</summary>
+    /// one map, so a row's name and IBAN cannot disagree with the file's. From the contact mirror; null when it has
+    /// never synced.</summary>
     private async Task<Dictionary<string, HoldedContactDto>?> ContactsByIdAsync(CancellationToken ct) =>
-        (await ListContactsOrNullAsync(ct))?
+        (await holded.GetContactsAsync(ct))?
         .GroupBy(c => c.Id, StringComparer.Ordinal)
         .ToDictionary(g => g.Key, g => g.First(), StringComparer.Ordinal);
-
-    /// <summary>Cached because every /Finance/Creditors and /Expenses/{id} load reads the same list; a failure is
-    /// cached too, as null, so a down Holded is not hammered. Anything but a vendor failure is a bug and throws.</summary>
-    private async Task<IReadOnlyList<HoldedContactDto>?> ListContactsOrNullAsync(CancellationToken ct) =>
-        await cache.GetOrCreateAsync(CacheKeys.HoldedContacts, async entry =>
-        {
-            entry.AbsoluteExpirationRelativeToNow = ContactsCacheDuration;
-            try
-            {
-                return await client.ListContactsAsync(ct);
-            }
-            catch (HoldedTransientException ex)
-            {
-                logger.LogWarning("Holded contact list unavailable; creditor accounts cannot be resolved. {Reason}", ex.Message);
-                return null;
-            }
-            catch (HoldedPermanentException ex)
-            {
-                // A rejected key or a removed endpoint blanks every name until someone acts — Error, not Warning.
-                logger.LogError(ex, "Holded rejected the contact list; creditor accounts cannot be resolved.");
-                return null;
-            }
-            catch (Exception ex) when (ex is JsonException or InvalidOperationException)
-            {
-                // Malformed body, or a 200 carrying Holded's {"status":0,...} error object where the
-                // contact array should be. Still a vendor failure — it must not take the page down.
-                logger.LogError(ex, "Holded returned an unreadable contact list; creditor accounts cannot be resolved.");
-                return null;
-            }
-        });
 
     public async Task<CreditorContactBinding?> GetCreditorContactByUserAsync(
         Guid userId, CancellationToken ct = default)
@@ -612,7 +595,9 @@ internal sealed class Service(
                 $"Account {supplierAccountNum} is already bound to a different member. " +
                 "Check /Finance/Creditors to see who, and unbind them there first.");
 
-        var contact = (await client.ListContactsAsync(ct))
+        // Refreshed first, so a contact made in Holded since the last sync binds, and the rows read it afterwards.
+        await holded.SyncContactsAsync(ct);
+        var contact = (await holded.GetContactsAsync(ct) ?? [])
             .FirstOrDefault(c => c.SupplierAccountNum == supplierAccountNum);
         if (contact is null)
             return CreditorBindResult.Failure(
@@ -716,6 +701,36 @@ internal sealed class Service(
     public async Task<string> EnsureCreditorContactAsync(
         Guid userId, string legalName, string? burnerName, string? iban,
         string? seedContactId, int? seedAccountNum, string jobName, CancellationToken ct = default)
+    {
+        var contactId = await EnsureCreditorContactCoreAsync(
+            userId, legalName, burnerName, iban, seedContactId, seedAccountNum, jobName, ct);
+        await EnsureContactMirroredAsync(contactId, accountNum: null, ct);
+        return contactId;
+    }
+
+    /// <summary>A contact a push minted or numbered must be in the mirror before the next nightly sync, or recon and
+    /// /Finance/Creditors call its binding missing. One list call, and only when the mirror lacks it. A failure is
+    /// logged, not thrown: the push already succeeded, and the nightly sync catches up.</summary>
+    private async Task EnsureContactMirroredAsync(string contactId, int? accountNum, CancellationToken ct)
+    {
+        var mirrored = (await holded.GetContactsAsync(ct))?
+            .FirstOrDefault(c => string.Equals(c.Id, contactId, StringComparison.Ordinal));
+        if (mirrored is not null && (accountNum is null || mirrored.SupplierAccountNum == accountNum)) return;
+        try
+        {
+            await holded.SyncContactsAsync(ct);
+        }
+        catch (Exception ex) when (ex is HoldedTransientException or HoldedPermanentException)
+        {
+            logger.LogWarning(
+                "Holded contact {ContactId} is not in the contact mirror and the refresh failed; it appears after the "
+                + "next sync. {Reason}", contactId, ex.Message);
+        }
+    }
+
+    private async Task<string> EnsureCreditorContactCoreAsync(
+        Guid userId, string legalName, string? burnerName, string? iban,
+        string? seedContactId, int? seedAccountNum, string jobName, CancellationToken ct)
     {
         var binding = await repo.GetCreditorContactByUserAsync(userId, ct);
         var allBindings = await repo.GetCreditorContactsAsync(ct);
@@ -881,6 +896,7 @@ internal sealed class Service(
         // Which account a member is paid from is the Board's business, and this write moves it on Holded's word alone,
         // so every change is audited, a first resolution included.
         if (!written || binding.SupplierAccountNum == supplierAccountNum) return;
+        await EnsureContactMirroredAsync(binding.HoldedContactId, supplierAccountNum, ct);
         var previous = binding.SupplierAccountNum?.ToString(CultureInfo.InvariantCulture) ?? "(unresolved)";
         await audit.LogAsync(FinanceAuditActions.HoldedCreditorAccountNumChanged, HoldedCreditorAccount, userId,
             $"Creditor account changed from {previous} to {supplierAccountNum} (Holded contact "
@@ -977,6 +993,20 @@ internal sealed class Service(
             return (null,
                 $"Creditor account {duplicate.Key} was selected twice — a payout pays each account once.");
 
+        // The file pays the IBAN on Holded's contact now, not last night's: a fix made in Holded today must not pay the
+        // old account. So a payout refreshes the contact mirror first and refuses without it.
+        try
+        {
+            if (!await holded.SyncContactsAsync(ct))
+                return (null, "A Holded contact sync is already running, so the payees' IBANs cannot be "
+                              + "confirmed — try again in a moment.");
+        }
+        catch (Exception ex) when (ex is HoldedTransientException or HoldedPermanentException)
+        {
+            return (null,
+                $"Holded's contacts could not be refreshed, so the payees' IBANs cannot be confirmed: {ex.Message}");
+        }
+
         var (rows, _, contactsUnavailable) = await ListCreditorAccountsAsync(ct);
         if (contactsUnavailable is not null)
             return (null, contactsUnavailable);
@@ -1005,7 +1035,7 @@ internal sealed class Service(
                     $"Creditor account {s.SupplierAccountNum}: {Euros(s.Amount)} is more than the "
                     + $"{Euros(row.OwedToMember)} owed.");
 
-            // The cache may have refreshed since the row read; never pay a vanished contact or IBAN.
+            // Never pay a contact or IBAN the mirror lacks.
             if (!contactById.TryGetValue(row.Bindings[0].HoldedContactId, out var contact)
                 || string.IsNullOrWhiteSpace(contact.Iban))
                 return (null,

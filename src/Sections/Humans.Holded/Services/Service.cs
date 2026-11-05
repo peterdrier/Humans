@@ -47,6 +47,7 @@ internal sealed class Service(
 
     // Same reasoning, its own gate: the two syncs write different tables.
     private static readonly SemaphoreSlim PurchaseDocSyncGate = new(1, 1);
+    private static readonly SemaphoreSlim ContactSyncGate = new(1, 1);
 
     // The plan allows ~2,000 Holded calls a month: 50 a night is at most ~1,500, leaving the rest for the ledger sweep,
     // the list call and the pushes. A backlog drains over several nights, newest documents first.
@@ -217,7 +218,8 @@ internal sealed class Service(
             state?.StatusChangedAt,
             docs.Select(d => new HoldedPurchaseDocInfo(
                     d.Id, d.DocNumber, d.ContactName, d.ContactId, d.Description, d.Date, d.Subtotal, d.Tax, d.Total,
-                    d.Currency, d.IsApproved, d.Notes, d.Tags, d.BookedAccountId, PurchaseDocUrl(d.Id)))
+                    d.Currency, d.IsApproved, d.Notes, d.Tags, d.BookedAccountId, PurchaseDocUrl(d.Id),
+                    d.PaymentsPending))
                 .ToList());
     }
 
@@ -280,6 +282,97 @@ internal sealed class Service(
         }
     }
 
+    public async Task<IReadOnlyList<HoldedContactDto>?> GetContactsAsync(CancellationToken ct = default)
+    {
+        var state = (await repo.GetSyncStatesAsync(ct)).FirstOrDefault(s => s.Kind == HoldedSyncKind.Contacts);
+        if (state?.LastSyncAt is null) return null;
+        return (await repo.GetContactsAsync(ct))
+            .Select(c => new HoldedContactDto
+            {
+                Id = c.Id,
+                Name = c.Name,
+                SupplierAccountNum = c.SupplierAccountNum,
+                TradeName = c.TradeName,
+                Email = c.Email,
+                Phone = c.Phone,
+                Mobile = c.Mobile,
+                Iban = c.Iban,
+                TaxCode = c.TaxCode,
+                Address = c.Address,
+            })
+            .ToList();
+    }
+
+    public async Task<bool> SyncContactsAsync(CancellationToken ct = default)
+    {
+        if (!await ContactSyncGate.WaitAsync(0, ct))
+        {
+            logger.LogInformation("Holded contact sync already in progress — skipping this request.");
+            return false;
+        }
+
+        try
+        {
+            var now = clock.GetCurrentInstant();
+            var state = await repo.GetOrCreateSyncStateAsync(HoldedSyncKind.Contacts, ct);
+            state.SyncStatus = HoldedSyncStatus.Running;
+            state.StatusChangedAt = now;
+            await repo.SaveSyncStateAsync(state, ct);
+
+            try
+            {
+                var contacts = (await client.ListContactsAsync(ct))
+                    .Select(c => new HoldedContact
+                    {
+                        Id = c.Id,
+                        Name = c.Name,
+                        SupplierAccountNum = c.SupplierAccountNum,
+                        TradeName = c.TradeName,
+                        Email = c.Email,
+                        Phone = c.Phone,
+                        Mobile = c.Mobile,
+                        Iban = c.Iban,
+                        TaxCode = c.TaxCode,
+                        Address = c.Address,
+                    })
+                    .ToList();
+                await repo.ReplaceContactsAsync(contacts, now, ct);
+
+                state.SyncStatus = HoldedSyncStatus.Idle;
+                state.LastSyncAt = now;
+                state.StatusChangedAt = now;
+                state.LastCount = contacts.Count;
+                state.LastError = null;
+                await repo.SaveSyncStateAsync(state, ct);
+                await DrainCallLogAsync(ct);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                if (ex is OperationCanceledException && ct.IsCancellationRequested)
+                    logger.LogWarning("Holded contact sync cancelled by the caller");
+                else
+                    logger.LogError(ex, "Holded contact sync failed");
+                try
+                {
+                    state.SyncStatus = HoldedSyncStatus.Error;
+                    state.LastError = TruncateForState(ex.Message);
+                    state.StatusChangedAt = clock.GetCurrentInstant();
+                    await repo.SaveSyncStateAsync(state, CancellationToken.None);
+                }
+                catch (Exception saveEx)
+                {
+                    logger.LogError(saveEx, "Failed to persist contact sync error state");
+                }
+                throw;
+            }
+        }
+        finally
+        {
+            ContactSyncGate.Release();
+        }
+    }
+
     /// <summary>
     /// One GET per document whose notes the mirror lacks, newest first, at most <see cref="MaxNotesFetchesPerRun"/> a
     /// run; the rest keep theirs through the upsert. A failed GET leaves the notes unknown for the next sync to retry
@@ -337,6 +430,7 @@ internal sealed class Service(
         Currency = doc.Currency,
         // Strict: an absent `draft` is not approved, so a doc never leaks into budget actuals on a guess.
         IsApproved = doc.IsDraft == false,
+        PaymentsPending = doc.PaymentsPending,
         Tags = [.. doc.Tags, .. doc.Lines.SelectMany(l => l.Tags)],
         BookedAccountId = doc.Lines.Count > 0 ? doc.Lines[0].AccountId : null,
         LastSyncedAt = now,

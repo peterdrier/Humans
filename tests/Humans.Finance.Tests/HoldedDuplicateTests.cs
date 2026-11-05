@@ -43,7 +43,7 @@ public class HoldedDuplicateTests
 
     private Service MakeService(ILogger<Service>? logger = null) => new(
         _repo, _client, Substitute.For<IBudgetService>(), _holded, _write, _expenses, new FakeClock(FixedNow),
-        new MemoryCache(new MemoryCacheOptions()), _audit, Substitute.For<IUserService>(),
+        _audit, Substitute.For<IUserService>(),
         Substitute.For<IEmailService>(), TestFinanceEmails.Create(),
         Options.Create(new SepaOptions()),
         new TrackedCache<string, Dictionary<string, int>>("Finance.SepaStuckBankLines", warmOnStartup: false, NullLogger<Service>.Instance),
@@ -51,7 +51,7 @@ public class HoldedDuplicateTests
 
     public HoldedDuplicateTests()
     {
-        _client.ListContactsAsync(Arg.Any<CancellationToken>()).Returns([Contact("c1", Account)]);
+        _holded.GetContactsAsync(Arg.Any<CancellationToken>()).Returns([Contact("c1", Account)]);
         _repo.GetCreditorContactsAsync(Arg.Any<CancellationToken>()).Returns([Binding("c1")]);
         _repo.GetSepaPayoutTransferRowsAsync(Arg.Any<CancellationToken>()).Returns(new List<SepaPayoutTransferRow>());
         _client.ListAccountingAccountsAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedAccountDto>());
@@ -293,7 +293,7 @@ public class HoldedDuplicateTests
     {
         // Catherine Morgaine Ryan: bound to 41000067 (c1); the race made c2 on 41000068 with the same
         // name, carrying only the duplicate documents.
-        _client.ListContactsAsync(Arg.Any<CancellationToken>()).Returns([Contact("c1", Account), Contact("c2", 41000068)]);
+        _holded.GetContactsAsync(Arg.Any<CancellationToken>()).Returns([Contact("c1", Account), Contact("c2", 41000068)]);
         _expenses.GetHoldedBookingsAsync(Arg.Any<CancellationToken>()).Returns([Booking("doc-a")]);
         _client.ListPurchaseDocumentsAsync(Arg.Any<CancellationToken>()).Returns([Doc("doc-a"), Doc("doc-b", contactId: "c2")]);
 
@@ -309,7 +309,7 @@ public class HoldedDuplicateTests
     public async Task DryRun_AnUnboundTwinBoundToAnotherMember_IsNeverSearched()
     {
         var other = Guid.NewGuid();
-        _client.ListContactsAsync(Arg.Any<CancellationToken>()).Returns([Contact("c1", Account), Contact("c2", 41000068)]);
+        _holded.GetContactsAsync(Arg.Any<CancellationToken>()).Returns([Contact("c1", Account), Contact("c2", 41000068)]);
         _repo.GetCreditorContactsAsync(Arg.Any<CancellationToken>()).Returns([Binding("c1"), Binding("c2", other)]);
         _expenses.GetHoldedBookingsAsync(Arg.Any<CancellationToken>()).Returns([Booking("doc-a")]);
         _client.ListPurchaseDocumentsAsync(Arg.Any<CancellationToken>()).Returns([Doc("doc-a"), Doc("doc-b", contactId: "c2")]);
@@ -322,7 +322,7 @@ public class HoldedDuplicateTests
     [HumansFact]
     public async Task DryRun_AnEmptyUnboundCreditorContact_IsListedNotTouched()
     {
-        _client.ListContactsAsync(Arg.Any<CancellationToken>()).Returns([Contact("c1", Account), Contact("c-empty", 41000062, "Someone Else")]);
+        _holded.GetContactsAsync(Arg.Any<CancellationToken>()).Returns([Contact("c1", Account), Contact("c-empty", 41000062, "Someone Else")]);
         _expenses.GetHoldedBookingsAsync(Arg.Any<CancellationToken>()).Returns(new List<ExpenseHoldedBooking>());
         _client.ListPurchaseDocumentsAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedPurchaseDocListItemDto>());
 
@@ -346,7 +346,7 @@ public class HoldedDuplicateTests
     [HumansFact]
     public async Task Apply_DeletesTheDocumentsThenTheOrphanContact_AuditsEachId_AndResyncs()
     {
-        _client.ListContactsAsync(Arg.Any<CancellationToken>()).Returns([Contact("c1", Account), Contact("c2", 41000068)]);
+        _holded.GetContactsAsync(Arg.Any<CancellationToken>()).Returns([Contact("c1", Account), Contact("c2", 41000068)]);
         _expenses.GetHoldedBookingsAsync(Arg.Any<CancellationToken>()).Returns([Booking("doc-a")]);
         _client.ListPurchaseDocumentsAsync(Arg.Any<CancellationToken>())
             .Returns([Doc("doc-a"), Doc("doc-b", contactId: "c2"), Doc("doc-c", contactId: "c2")]);
@@ -389,7 +389,7 @@ public class HoldedDuplicateTests
     [HumansFact]
     public async Task Apply_ARefusedDocumentKeepsItsContact_AndAFailedDeleteIsReported()
     {
-        _client.ListContactsAsync(Arg.Any<CancellationToken>()).Returns([Contact("c1", Account), Contact("c2", 41000068)]);
+        _holded.GetContactsAsync(Arg.Any<CancellationToken>()).Returns([Contact("c1", Account), Contact("c2", 41000068)]);
         _expenses.GetHoldedBookingsAsync(Arg.Any<CancellationToken>()).Returns([Booking("doc-a")]);
         _client.ListPurchaseDocumentsAsync(Arg.Any<CancellationToken>())
             .Returns([Doc("doc-a"), Doc("doc-b", contactId: "c2"), Doc("doc-paid", contactId: "c2", pending: 0m)]);
@@ -409,7 +409,7 @@ public class HoldedDuplicateTests
     [HumansFact]
     public async Task Apply_VerifiesNotesBySingleGetAtRunTime_AndDeletesOnlyVerifiedOnes()
     {
-        _client.ListContactsAsync(Arg.Any<CancellationToken>()).Returns([Contact("c1", Account), Contact("c2", 41000068)]);
+        _holded.GetContactsAsync(Arg.Any<CancellationToken>()).Returns([Contact("c1", Account), Contact("c2", 41000068)]);
         _expenses.GetHoldedBookingsAsync(Arg.Any<CancellationToken>()).Returns([Booking("doc-a")]);
         _client.ListPurchaseDocumentsAsync(Arg.Any<CancellationToken>())
             .Returns([Doc("doc-a"), Doc("doc-b", contactId: "c2"), Doc("doc-other", contactId: "c2")]);
@@ -465,7 +465,7 @@ public class HoldedDuplicateTests
     {
         _expenses.GetHoldedBookingsAsync(Arg.Any<CancellationToken>()).Returns([Booking("doc-a")]);
         _client.ListPurchaseDocumentsAsync(Arg.Any<CancellationToken>()).Returns([Doc("doc-a"), Doc("doc-b")]);
-        _client.ListContactsAsync(Arg.Any<CancellationToken>()).Throws(new HoldedTransientException("timeout"));
+        _holded.GetContactsAsync(Arg.Any<CancellationToken>()).Returns((IReadOnlyList<HoldedContactDto>?)null);
 
         var result = await MakeService().RemoveHoldedDuplicatesAsync(Actor);
 

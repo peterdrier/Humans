@@ -45,6 +45,7 @@ public sealed class HoldedPurchaseDocSyncTests
         Subtotal = 100m,
         Tax = 21m,
         Total = 121m,
+        PaymentsPending = 121m,
         IsDraft = draft,
     };
 
@@ -85,6 +86,7 @@ public sealed class HoldedPurchaseDocSyncTests
         a.Description.Should().Be("ER: Train");
         a.Tags.Should().Equal("comms", "ops");
         a.BookedAccountId.Should().Be("acc-1");
+        a.PaymentsPending.Should().Be(121m);
         a.Date.Should().Be(new LocalDate(2026, 4, 1));
         a.HoldedUrl.Should().Be("https://app.holded.com/expenses/list#open:purchase-a");
         var b = mirror.Docs.Single(d => string.Equals(d.Id, "b", StringComparison.Ordinal));
@@ -151,5 +153,21 @@ public sealed class HoldedPurchaseDocSyncTests
         mirror.LastError.Should().Contain("holded down");
         mirror.LastSyncAt.Should().Be(FixedNow);
         mirror.Docs.Should().ContainSingle();
+    }
+
+    [HumansFact]
+    public async Task ContactSync_ReplacesTheMirror_WhichIsNullUntilTheFirstSync()
+    {
+        (await _service.GetContactsAsync(Ct)).Should().BeNull();
+        _client.ListContactsAsync(Arg.Any<CancellationToken>()).Returns(
+            [new HoldedContactDto { Id = "c1", Name = "Ana", SupplierAccountNum = 40000004, Iban = "ES79" }],
+            [new HoldedContactDto { Id = "c2", Name = "Ben" }]);
+
+        (await _service.SyncContactsAsync(Ct)).Should().BeTrue();
+        (await _service.GetContactsAsync(Ct)).Should().ContainSingle()
+            .Which.Should().BeEquivalentTo(new { Id = "c1", Name = "Ana", SupplierAccountNum = 40000004, Iban = "ES79" });
+
+        (await _service.SyncContactsAsync(Ct)).Should().BeTrue();
+        (await _service.GetContactsAsync(Ct)).Should().ContainSingle().Which.Id.Should().Be("c2");
     }
 }
