@@ -100,7 +100,7 @@
     @if (Model.PendingCamps.Count == 0)
     {
         <div class="card-body">
-            <p class="text-muted mb-0">No camps pending review.</p>
+            <empty-state class="mb-0">No camps pending review.</empty-state>
         </div>
     }
     else

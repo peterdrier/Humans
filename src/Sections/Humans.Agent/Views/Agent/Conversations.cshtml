@@ -29,7 +29,7 @@
 
 @if (!Model.Rows.Any())
 {
-    <p class="text-muted">@Localizer["Agent_HistoryEmpty"]</p>
+    <empty-state>@Localizer["Agent_HistoryEmpty"]</empty-state>
 }
 else
 {

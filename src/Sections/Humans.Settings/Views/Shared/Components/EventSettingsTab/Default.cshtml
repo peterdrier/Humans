@@ -3,7 +3,7 @@
 
 @if (Model.Settings is null)
 {
-    <p class="text-muted">@Localizer["Settings_NoEventConfigured"]</p>
+    <empty-state>@Localizer["Settings_NoEventConfigured"]</empty-state>
 }
 else if (Model.CanEdit)
 {

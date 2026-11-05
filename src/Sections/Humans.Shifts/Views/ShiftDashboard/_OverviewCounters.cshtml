@@ -1,3 +1,5 @@
+@using Humans.Base.Interfaces
+@using Humans.Base.Models
 @model (DashboardOverview Overview, ShiftPeriod? SelectedPeriod)
 
 @{
@@ -8,83 +10,41 @@
 
     // TEMP: ticket figures are not shareable yet; flip once they are. DashboardOverview still computes them.
     var showTicketData = false;
+
+    var fill = o.PeriodFillRates;
+    var buildFill = StaffingCoveragePresentation.Describe(fill.BuildPct);
+    var eventFill = StaffingCoveragePresentation.Describe(fill.EventPct);
+    var strikeFill = StaffingCoveragePresentation.Describe(fill.StrikePct);
+    Func<dynamic, IHtmlContent> periodBadges = @<div class="mt-2">
+        <span class="badge @buildFill.BadgeClass me-1">@SharedLocalizer["Shifts_SetUp"] @fill.BuildPct.ToString("0")% <span class="visually-hidden">@Localizer[buildFill.StatusKey]</span></span>
+        <span class="badge @eventFill.BadgeClass me-1">@SharedLocalizer["Shifts_Event"] @fill.EventPct.ToString("0")% <span class="visually-hidden">@Localizer[eventFill.StatusKey]</span></span>
+        <span class="badge @strikeFill.BadgeClass">@SharedLocalizer["Shifts_Strike"] @fill.StrikePct.ToString("0")% <span class="visually-hidden">@Localizer[strikeFill.StatusKey]</span></span>
+    </div>;
+
+    var notAvailable = SharedLocalizer["Common_NotAvailable"].Value;
+    var ticketDataHidden = Localizer["Shifts_ShiftDash_Overview_TicketData_Hidden"].Value;
+    var ticketHolders = showTicketData
+        ? new StatTileViewModel(Localizer["Shifts_ShiftDash_Overview_TicketHolders"].Value, o.TicketHolderCount.ToString(), Subline: Localizer["Shifts_ShiftDash_Overview_TicketHoldersSubline"].Value)
+        : new StatTileViewModel(Localizer["Shifts_ShiftDash_Overview_TicketHolders"].Value, notAvailable, Subline: ticketDataHidden);
+    var engaged = showTicketData
+        ? new StatTileViewModel(Localizer["Shifts_ShiftDash_Overview_TicketHoldersEngaged"].Value, o.TicketHoldersEngaged.ToString(), $"/ {o.TicketHolderCount} ({engagedPct:0}%)", string.Format(Localizer["Shifts_ShiftDash_Overview_EngagedSubline"].Value, unreached))
+        : new StatTileViewModel(Localizer["Shifts_ShiftDash_Overview_TicketHoldersEngaged"].Value, notAvailable, Subline: ticketDataHidden);
+    var nonTicket = showTicketData
+        ? new StatTileViewModel(Localizer["Shifts_ShiftDash_Overview_NonTicketSignups"].Value, o.NonTicketSignups.ToString(), Subline: Localizer["Shifts_ShiftDash_Overview_NonTicketSubline"].Value)
+        : new StatTileViewModel(Localizer["Shifts_ShiftDash_Overview_NonTicketSignups"].Value, notAvailable, Subline: ticketDataHidden);
+    IHtmlContent? periodBadgesOrNone = null;
+    if (!Model.SelectedPeriod.HasValue)
+    {
+        periodBadgesOrNone = periodBadges(0);
+    }
+    var filled = new StatTileViewModel(Localizer["Shifts_ShiftDash_Overview_ShiftsFilled"].Value, o.FilledSlots.ToString(), $"/ {o.TotalSlots} ({slotsPct:0}%)", Extra: periodBadgesOrNone);
+    var stale = new StatTileViewModel(Localizer["Shifts_ShiftDash_Overview_StalePending"].Value, o.StalePendingCount.ToString(), Subline: Localizer["Shifts_ShiftDash_Overview_StaleSubline"].Value, Severity: o.StalePendingCount > 0 ? TileSeverity.Warning : TileSeverity.Normal);
 }
 
-<div class="row g-3 mb-4">
-    <div class="col-md-4 col-lg">
-        <div class="card h-100">
-            <div class="card-body">
-                <div class="text-muted small text-uppercase">@Localizer["Shifts_ShiftDash_Overview_ShiftsFilled"]</div>
-                <div class="fs-3 fw-bold">@o.FilledSlots <span class="text-muted fs-6">/ @o.TotalSlots (@slotsPct.ToString("0")%)</span></div>
-                @if (!Model.SelectedPeriod.HasValue)
-                {
-                    <div class="mt-2">
-                        <span class="badge @StaffingCoveragePresentation.Describe(o.PeriodFillRates.BuildPct).BadgeClass me-1">@SharedLocalizer["Shifts_SetUp"] @o.PeriodFillRates.BuildPct.ToString("0")% <span class="visually-hidden">@Localizer[StaffingCoveragePresentation.Describe(o.PeriodFillRates.BuildPct).StatusKey]</span></span>
-                        <span class="badge @StaffingCoveragePresentation.Describe(o.PeriodFillRates.EventPct).BadgeClass me-1">@SharedLocalizer["Shifts_Event"] @o.PeriodFillRates.EventPct.ToString("0")% <span class="visually-hidden">@Localizer[StaffingCoveragePresentation.Describe(o.PeriodFillRates.EventPct).StatusKey]</span></span>
-                        <span class="badge @StaffingCoveragePresentation.Describe(o.PeriodFillRates.StrikePct).BadgeClass">@SharedLocalizer["Shifts_Strike"] @o.PeriodFillRates.StrikePct.ToString("0")% <span class="visually-hidden">@Localizer[StaffingCoveragePresentation.Describe(o.PeriodFillRates.StrikePct).StatusKey]</span></span>
-                    </div>
-                }
-            </div>
-        </div>
-    </div>
-    <div class="col-md-4 col-lg">
-        <div class="card h-100">
-            <div class="card-body">
-                <div class="text-muted small text-uppercase">@Localizer["Shifts_ShiftDash_Overview_TicketHolders"]</div>
-                @if (showTicketData)
-                {
-                    <div class="fs-3 fw-bold">@o.TicketHolderCount</div>
-                    <div class="text-muted small">@Localizer["Shifts_ShiftDash_Overview_TicketHoldersSubline"]</div>
-                }
-                else
-                {
-                    <div class="fs-3 fw-bold text-muted">@SharedLocalizer["Common_NotAvailable"]</div>
-                    <div class="text-muted small">@Localizer["Shifts_ShiftDash_Overview_TicketData_Hidden"]</div>
-                }
-            </div>
-        </div>
-    </div>
-    <div class="col-md-4 col-lg">
-        <div class="card h-100 @(showTicketData ? "border-primary" : "")">
-            <div class="card-body">
-                <div class="text-muted small text-uppercase">@Localizer["Shifts_ShiftDash_Overview_TicketHoldersEngaged"]</div>
-                @if (showTicketData)
-                {
-                    <div class="fs-3 fw-bold">@o.TicketHoldersEngaged <span class="text-muted fs-6">/ @o.TicketHolderCount (@engagedPct.ToString("0")%)</span></div>
-                    <div class="text-muted small">@string.Format(Localizer["Shifts_ShiftDash_Overview_EngagedSubline"].Value, unreached)</div>
-                }
-                else
-                {
-                    <div class="fs-3 fw-bold text-muted">@SharedLocalizer["Common_NotAvailable"]</div>
-                    <div class="text-muted small">@Localizer["Shifts_ShiftDash_Overview_TicketData_Hidden"]</div>
-                }
-            </div>
-        </div>
-    </div>
-    <div class="col-md-4 col-lg">
-        <div class="card h-100">
-            <div class="card-body">
-                <div class="text-muted small text-uppercase">@Localizer["Shifts_ShiftDash_Overview_NonTicketSignups"]</div>
-                @if (showTicketData)
-                {
-                    <div class="fs-3 fw-bold">@o.NonTicketSignups</div>
-                    <div class="text-muted small">@Localizer["Shifts_ShiftDash_Overview_NonTicketSubline"]</div>
-                }
-                else
-                {
-                    <div class="fs-3 fw-bold text-muted">@SharedLocalizer["Common_NotAvailable"]</div>
-                    <div class="text-muted small">@Localizer["Shifts_ShiftDash_Overview_TicketData_Hidden"]</div>
-                }
-            </div>
-        </div>
-    </div>
-    <div class="col-md-4 col-lg">
-        <div class="card h-100 @(o.StalePendingCount > 0 ? "border-warning" : "")">
-            <div class="card-body">
-                <div class="text-muted small text-uppercase">@Localizer["Shifts_ShiftDash_Overview_StalePending"]</div>
-                <div class="fs-3 fw-bold">@o.StalePendingCount</div>
-                <div class="text-muted small">@Localizer["Shifts_ShiftDash_Overview_StaleSubline"]</div>
-            </div>
-        </div>
-    </div>
+<div class="stats" style="--stats-cols: 5">
+    <partial name="_StatTile" model="filled" />
+    <partial name="_StatTile" model="ticketHolders" />
+    <partial name="_StatTile" model="engaged" />
+    <partial name="_StatTile" model="nonTicket" />
+    <partial name="_StatTile" model="stale" />
 </div>

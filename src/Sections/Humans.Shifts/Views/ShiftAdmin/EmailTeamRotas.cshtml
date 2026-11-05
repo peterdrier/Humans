@@ -101,7 +101,7 @@
                 <div class="card-body">
                     @if (Model.RecipientCount == 0)
                     {
-                        <p class="text-muted mb-0">@Localizer["Shifts_EmailTeamRotas_NoRecipients"]</p>
+                        <empty-state class="mb-0">@Localizer["Shifts_EmailTeamRotas_NoRecipients"]</empty-state>
                     }
                     else
                     {

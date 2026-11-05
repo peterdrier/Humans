@@ -10,7 +10,7 @@
 
 @if (Model.Items.Count == 0)
 {
-    <p class="text-muted">@Localizer["Surveys_Admin_Queue_Empty"]</p>
+    <empty-state>@Localizer["Surveys_Admin_Queue_Empty"]</empty-state>
 }
 else
 {

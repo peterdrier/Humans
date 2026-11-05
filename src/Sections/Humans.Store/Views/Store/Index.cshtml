@@ -108,7 +108,7 @@ else
                 }
                 else
                 {
-                    <div class="p-3 text-muted">@Localizer["Store_NoOrders"]</div>
+                    <empty-state class="p-3">@Localizer["Store_NoOrders"]</empty-state>
                 }
             </div>
         </div>
@@ -118,7 +118,7 @@ else
 <h2 class="h4 mb-3">@Localizer["Store_CatalogHeading", Model.Year]</h2>
 @if (!Model.Catalog.Any())
 {
-    <div class="alert alert-secondary">@Localizer["Store_NoProducts", Model.Year]</div>
+    <empty-state>@Localizer["Store_NoProducts", Model.Year]</empty-state>
 }
 else
 {

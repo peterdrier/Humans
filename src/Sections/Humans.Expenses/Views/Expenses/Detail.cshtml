@@ -93,7 +93,7 @@
             <div class="card-header"><strong>@Localizer["Expenses_ExpenseLines"]</strong></div>
             @if (r.Lines.Count == 0)
             {
-                <div class="card-body text-muted">@Localizer["Expenses_Detail_NoLines"]</div>
+                <div class="card-body"><empty-state class="mb-0">@Localizer["Expenses_Detail_NoLines"]</empty-state></div>
             }
             else
             {

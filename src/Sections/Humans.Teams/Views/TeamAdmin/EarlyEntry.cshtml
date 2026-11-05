@@ -13,7 +13,7 @@
     <div class="card-body p-0">
         @if (Model.Grants.Count == 0)
         {
-            <p class="text-muted m-3 mb-0">No early-entry grants yet.</p>
+            <empty-state class="m-3 mb-0">No early-entry grants yet.</empty-state>
         }
         else
         {
