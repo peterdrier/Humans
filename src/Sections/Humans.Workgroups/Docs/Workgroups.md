@@ -492,7 +492,7 @@ should end is the Board's decision, taken on the register in front of them.
 - **Settings**: `ISettingsService` — legacy root-folder read fallback until the admin saves section-owned settings.
 - **Surveys**: `ISurveyAnalysisRead` — `LinkSurveyAsync` reads the posted survey to check the
   actor authored it before writing the log entry. One-way: Surveys never references Workgroups.
-- **Notifications, Email, AuditLog**: crosscuts, per Triggers above. Member notifications
+- **Notifications, Email, AuditLog**: crosscuts, per Triggers above. The internal `WorkgroupNotices` owns recipient lookup, culture grouping, Board delivery and independent best-effort sends. Lifecycle, document, membership, GDPR and rhythm paths invoke it after their existing state/audit steps; transitions, rhythm timing and Drive synchronization remain in `WorkgroupService`. Member notifications
   use existing localized labels, grouped by supported recipient language (English fallback); authored content is unchanged.
   A merged-member alias carries both the resolved live id and its language into grouping,
   with one delivery per live recipient even when multiple requested ids resolve to them.
