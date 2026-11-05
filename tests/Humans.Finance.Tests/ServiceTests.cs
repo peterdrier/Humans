@@ -38,7 +38,7 @@ public class HoldedFinanceServiceTests
     private readonly IHoldedRepository _repo = Substitute.For<IHoldedRepository>();
     private readonly IHoldedClient _client = Substitute.For<IHoldedClient>();
     private readonly IBudgetService _budget = Substitute.For<IBudgetService>();
-    private readonly IHoldedService _holded = Substitute.For<IHoldedService>();
+    private readonly IHoldedService _holded = TestContacts.Holded();
     private readonly IHoldedWrite _write = Substitute.For<IHoldedWrite>();
     private readonly FakeClock _clock = new(FixedNow);
     private readonly TrackedCache<string, Dictionary<string, int>> _bookingState = new(
@@ -151,7 +151,7 @@ public class HoldedFinanceServiceTests
     {
         _repo.GetCategoryMapAsync(Arg.Any<CancellationToken>()).Returns(Array.Empty<HoldedCategoryMap>());
         _repo.GetCreditorContactsAsync(Arg.Any<CancellationToken>()).Returns(Array.Empty<HoldedCreditorContact>());
-        _holded.GetContactsAsync(Arg.Any<CancellationToken>()).Returns(Array.Empty<HoldedContactDto>());
+        _holded.GetContactsAsync(Arg.Any<CancellationToken>()).Returns(TestContacts.Synced(Array.Empty<HoldedContactDto>()));
         _client.ListExpenseAccountsAsync(Arg.Any<CancellationToken>()).Returns(call =>
         {
             call.Arg<CancellationToken>().ThrowIfCancellationRequested();
@@ -497,10 +497,10 @@ public class HoldedFinanceServiceTests
         {
             new() { UserId = userId, HoldedContactId = "c1", SupplierAccountNum = null, Source = CreditorContactSource.Auto },
         });
-        _holded.GetContactsAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedContactDto>
+        _holded.GetContactsAsync(Arg.Any<CancellationToken>()).Returns(TestContacts.Synced(new List<HoldedContactDto>
         {
             new() { Id = "c1", Name = "Daniela Marquez", SupplierAccountNum = 40000004 },
-        });
+        }));
 
         var (rows, _, _) = await MakeService().ListCreditorAccountsAsync(TestContext.Current.CancellationToken);
 
@@ -524,10 +524,10 @@ public class HoldedFinanceServiceTests
             new() { UserId = first, HoldedContactId = "c1", SupplierAccountNum = 40000004, Source = CreditorContactSource.Manual },
             new() { UserId = second, HoldedContactId = "c1", SupplierAccountNum = 40000007, Source = CreditorContactSource.Auto },
         });
-        _holded.GetContactsAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedContactDto>
+        _holded.GetContactsAsync(Arg.Any<CancellationToken>()).Returns(TestContacts.Synced(new List<HoldedContactDto>
         {
             new() { Id = "c1", Name = "Daniela Marquez", SupplierAccountNum = 40000004 },
-        });
+        }));
 
         var (rows, _, _) = await MakeService().ListCreditorAccountsAsync(TestContext.Current.CancellationToken);
 
@@ -548,10 +548,10 @@ public class HoldedFinanceServiceTests
         {
             new() { UserId = userId, HoldedContactId = "c1", SupplierAccountNum = null, Source = CreditorContactSource.Auto },
         });
-        _holded.GetContactsAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedContactDto>
+        _holded.GetContactsAsync(Arg.Any<CancellationToken>()).Returns(TestContacts.Synced(new List<HoldedContactDto>
         {
             new() { Id = "c1", Name = "Daniela Marquez", SupplierAccountNum = null },
-        });
+        }));
 
         var (_, unresolved, _) = await MakeService()
             .ListCreditorAccountsAsync(TestContext.Current.CancellationToken);
@@ -570,10 +570,10 @@ public class HoldedFinanceServiceTests
         {
             new() { UserId = userId, HoldedContactId = "c1", SupplierAccountNum = null, Source = CreditorContactSource.Auto },
         });
-        _holded.GetContactsAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedContactDto>
+        _holded.GetContactsAsync(Arg.Any<CancellationToken>()).Returns(TestContacts.Synced(new List<HoldedContactDto>
         {
             new() { Id = "c1", Name = "Daniela Marquez", SupplierAccountNum = 40000004 },
-        });
+        }));
 
         var (_, unresolved, _) = await MakeService()
             .ListCreditorAccountsAsync(TestContext.Current.CancellationToken);
@@ -588,7 +588,7 @@ public class HoldedFinanceServiceTests
         {
             new() { UserId = Guid.NewGuid(), HoldedContactId = "c1", SupplierAccountNum = 40000004, Source = CreditorContactSource.Manual },
         });
-        _holded.GetContactsAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedContactDto>());
+        _holded.GetContactsAsync(Arg.Any<CancellationToken>()).Returns(TestContacts.Synced(new List<HoldedContactDto>()));
 
         var (rows, unresolved, unavailable) = await MakeService()
             .ListCreditorAccountsAsync(TestContext.Current.CancellationToken);
@@ -605,7 +605,7 @@ public class HoldedFinanceServiceTests
         {
             new() { UserId = Guid.NewGuid(), HoldedContactId = "c1", SupplierAccountNum = 40000004, Source = CreditorContactSource.Manual },
         });
-        _holded.GetContactsAsync(Arg.Any<CancellationToken>()).Returns((IReadOnlyList<HoldedContactDto>?)null);
+        _holded.GetContactsAsync(Arg.Any<CancellationToken>()).Returns(new HoldedContactMirror(null, []));
         _holded.GetLedgerLinesAsync(40000004, Arg.Any<CancellationToken>())
             .Returns(new List<HoldedLedgerLineInfo> { Line(1, 0, 40000004, FixedNow, credit: 50m) });
         var service = MakeService();
@@ -643,7 +643,7 @@ public class HoldedFinanceServiceTests
         {
             Line(1, 0, 40000004, FixedNow, credit: 50m),
         });
-        _holded.GetContactsAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedContactDto>
+        _holded.GetContactsAsync(Arg.Any<CancellationToken>()).Returns(TestContacts.Synced(new List<HoldedContactDto>
         {
             new()
             {
@@ -652,7 +652,7 @@ public class HoldedFinanceServiceTests
                 Iban = "ES9121000418450200051332", TaxCode = "X1234567L", Address = "Calle Mayor 1, 28013 Madrid",
             },
             new() { Id = "c2", Name = "Someone Else", SupplierAccountNum = 40000007 },
-        });
+        }));
 
         var ledger = await MakeService().GetCreditorLedgerAsync(40000004, TestContext.Current.CancellationToken);
 
@@ -677,10 +677,10 @@ public class HoldedFinanceServiceTests
         {
             Line(1, 0, 40000004, FixedNow, credit: 50m),
         });
-        _holded.GetContactsAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedContactDto>
+        _holded.GetContactsAsync(Arg.Any<CancellationToken>()).Returns(TestContacts.Synced(new List<HoldedContactDto>
         {
             new() { Id = "c2", Name = "Someone Else", SupplierAccountNum = 40000007 },
-        });
+        }));
 
         var ledger = await MakeService().GetCreditorLedgerAsync(40000004, TestContext.Current.CancellationToken);
 
@@ -1249,13 +1249,13 @@ public class HoldedFinanceServiceTests
         _holded.GetAccountBalancesAsync(Arg.Any<CancellationToken>())
             .Returns(new Dictionary<int, decimal> { [40000004] = -40m });
         _repo.GetCreditorContactsAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedCreditorContact>());
-        _holded.GetContactsAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedContactDto>
+        _holded.GetContactsAsync(Arg.Any<CancellationToken>()).Returns(TestContacts.Synced(new List<HoldedContactDto>
         {
             new() { Id = "c1", Name = "Daniela Marquez", SupplierAccountNum = 40000004 },
             new() { Id = "c2", Name = "Maria Garcia", SupplierAccountNum = 40000012 },  // no ledger lines yet
             new() { Id = "c3", Name = "A Client", SupplierAccountNum = null },          // not a supplier
             new() { Id = "c4", Name = "Acme Supplies SL", SupplierAccountNum = 42000000 }, // vendor, outside the block
-        });
+        }));
 
         var (rows, _, _) = await MakeService().ListCreditorAccountsAsync(TestContext.Current.CancellationToken);
 
@@ -1282,14 +1282,14 @@ public class HoldedFinanceServiceTests
         var cat = Guid.NewGuid();
         _holded.GetAccountBalancesAsync(Arg.Any<CancellationToken>())
             .Returns(new Dictionary<int, decimal> { [40000004] = -40m, [40000005] = -5m, [40000006] = -6m, [40000007] = -7m });
-        _holded.GetContactsAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedContactDto>
+        _holded.GetContactsAsync(Arg.Any<CancellationToken>()).Returns(TestContacts.Synced(new List<HoldedContactDto>
         {
             new() { Id = "c-ana", Name = "Ana", SupplierAccountNum = 40000004 },
             new() { Id = "c-ben", Name = "Ben", SupplierAccountNum = 40000005 },
             new() { Id = "c-cat", Name = "Cat", SupplierAccountNum = 40000006 },
             new() { Id = "c-dan", Name = "Dan", SupplierAccountNum = 40000007 },
             new() { Id = "c-cat2", Name = "Cat", SupplierAccountNum = 40000006 },
-        });
+        }));
         _repo.GetCreditorContactsAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedCreditorContact>
         {
             new() { UserId = ana, HoldedContactId = "c-ana", SupplierAccountNum = 40000004, Source = CreditorContactSource.Manual },
@@ -1337,10 +1337,10 @@ public class HoldedFinanceServiceTests
         var ana = Guid.NewGuid();
         _holded.GetAccountBalancesAsync(Arg.Any<CancellationToken>())
             .Returns(new Dictionary<int, decimal> { [40000004] = -40m });
-        _holded.GetContactsAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedContactDto>
+        _holded.GetContactsAsync(Arg.Any<CancellationToken>()).Returns(TestContacts.Synced(new List<HoldedContactDto>
         {
             new() { Id = "c-ana", Name = "Ana", SupplierAccountNum = 40000004 },
-        });
+        }));
         _repo.GetCreditorContactsAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedCreditorContact>
         {
             new() { UserId = ana, HoldedContactId = "c-ana", SupplierAccountNum = 40000004, Source = CreditorContactSource.Manual },
@@ -1379,10 +1379,10 @@ public class HoldedFinanceServiceTests
         {
             new() { UserId = Guid.NewGuid(), HoldedContactId = "c1", SupplierAccountNum = null, Source = CreditorContactSource.Auto },
         });
-        _holded.GetContactsAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedContactDto>
+        _holded.GetContactsAsync(Arg.Any<CancellationToken>()).Returns(TestContacts.Synced(new List<HoldedContactDto>
         {
             new() { Id = "c1", Name = "Daniela Marquez", SupplierAccountNum = 40000004 },
-        });
+        }));
 
         var result = await MakeService().SetCreditorContactAsync(
             Guid.NewGuid(), 40000004, Admin, TestContext.Current.CancellationToken);
@@ -1397,7 +1397,7 @@ public class HoldedFinanceServiceTests
     public async Task SetCreditorContact_NoHoldedContactCarriesAccount_FailsAndWritesNothing()
     {
         _repo.GetCreditorContactsAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedCreditorContact>());
-        _holded.GetContactsAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedContactDto>());
+        _holded.GetContactsAsync(Arg.Any<CancellationToken>()).Returns(TestContacts.Synced(new List<HoldedContactDto>()));
 
         var result = await MakeService().SetCreditorContactAsync(
             Guid.NewGuid(), 40000004, Admin, TestContext.Current.CancellationToken);
@@ -1419,10 +1419,10 @@ public class HoldedFinanceServiceTests
         {
             new() { UserId = userId, HoldedContactId = "c1", SupplierAccountNum = 40000004, Source = CreditorContactSource.Auto },
         });
-        _holded.GetContactsAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedContactDto>
+        _holded.GetContactsAsync(Arg.Any<CancellationToken>()).Returns(TestContacts.Synced(new List<HoldedContactDto>
         {
             new() { Id = "c1", Name = "Daniela Marquez", SupplierAccountNum = 40000004 },
-        });
+        }));
 
         var result = await MakeService().SetCreditorContactAsync(
             userId, 40000004, Admin, TestContext.Current.CancellationToken);
@@ -1874,13 +1874,13 @@ public class HoldedFinanceServiceTests
                 [42000000] = -1m,
             });
         _repo.GetCreditorContactsAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedCreditorContact>());
-        _holded.GetContactsAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedContactDto>
+        _holded.GetContactsAsync(Arg.Any<CancellationToken>()).Returns(TestContacts.Synced(new List<HoldedContactDto>
         {
             new() { Id = "lo-out", Name = "Vendor", SupplierAccountNum = 39999999 },
             new() { Id = "lo-in", Name = "First member", SupplierAccountNum = 40000000 },
             new() { Id = "hi-in", Name = "Last member", SupplierAccountNum = 41999999 },
             new() { Id = "hi-out", Name = "Vendor", SupplierAccountNum = 42000000 },
-        });
+        }));
 
         var (rows, _, _) = await MakeService().ListCreditorAccountsAsync(TestContext.Current.CancellationToken);
 
@@ -1917,10 +1917,10 @@ public class HoldedFinanceServiceTests
     public async Task SetCreditorContact_OnTheBlockBoundary_IsAccepted(int accountNum)
     {
         _repo.GetCreditorContactsAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedCreditorContact>());
-        _holded.GetContactsAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedContactDto>
+        _holded.GetContactsAsync(Arg.Any<CancellationToken>()).Returns(TestContacts.Synced(new List<HoldedContactDto>
         {
             new() { Id = "c1", Name = "Member", SupplierAccountNum = accountNum },
-        });
+        }));
 
         var result = await MakeService().SetCreditorContactAsync(
             Guid.NewGuid(), accountNum, Admin, TestContext.Current.CancellationToken);
@@ -1954,8 +1954,8 @@ public class HoldedFinanceServiceTests
     }
 
     private void ContactsOn40000004(params string[] ids) =>
-        _holded.GetContactsAsync(Arg.Any<CancellationToken>()).Returns(
-            ids.Select(id => new HoldedContactDto { Id = id, SupplierAccountNum = 40000004 }).ToList());
+        _holded.GetContactsAsync(Arg.Any<CancellationToken>()).Returns(TestContacts.Synced(
+            ids.Select(id => new HoldedContactDto { Id = id, SupplierAccountNum = 40000004 }).ToList()));
 
     [HumansFact]
     public async Task ContributeForUser_BoundMember_ExportsTheBindingAndNothingElse()
@@ -2273,10 +2273,10 @@ public class HoldedFinanceServiceTests
         {
             new() { UserId = userId, HoldedContactId = "c1", SupplierAccountNum = 40000004, Source = CreditorContactSource.Auto },
         });
-        _holded.GetContactsAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedContactDto>
+        _holded.GetContactsAsync(Arg.Any<CancellationToken>()).Returns(TestContacts.Synced(new List<HoldedContactDto>
         {
             new() { Id = "c1", Name = "Ana Ruiz", SupplierAccountNum = 40000004, Iban = iban },
-        });
+        }));
         return userId;
     }
 
@@ -2493,11 +2493,11 @@ public class HoldedFinanceServiceTests
             new() { UserId = firstUserId, HoldedContactId = "c1", SupplierAccountNum = 40000004 },
             new() { UserId = secondUserId, HoldedContactId = "c2", SupplierAccountNum = 40000005 },
         });
-        _holded.GetContactsAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedContactDto>
+        _holded.GetContactsAsync(Arg.Any<CancellationToken>()).Returns(TestContacts.Synced(new List<HoldedContactDto>
         {
             new() { Id = "c1", Name = "Ana Ruiz", SupplierAccountNum = 40000004, Iban = AnaIban },
             new() { Id = "c2", Name = "Dani", SupplierAccountNum = 40000005, Iban = "NL91ABNA0417164300" },
-        });
+        }));
         _users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, UserInfo>
             {
@@ -2738,11 +2738,11 @@ public class HoldedFinanceServiceTests
         {
             new() { UserId = userId, HoldedContactId = "c2", SupplierAccountNum = 40000004, Source = CreditorContactSource.Auto },
         });
-        _holded.GetContactsAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedContactDto>
+        _holded.GetContactsAsync(Arg.Any<CancellationToken>()).Returns(TestContacts.Synced(new List<HoldedContactDto>
         {
             new() { Id = "c1", Name = "Wrong Person", SupplierAccountNum = 40000004, Iban = "NL91ABNA0417164300" },
             new() { Id = "c2", Name = "Ana Ruiz", SupplierAccountNum = 40000004, Iban = AnaIban },
-        });
+        }));
         return userId;
     }
 

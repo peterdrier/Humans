@@ -511,9 +511,11 @@ internal sealed class Service(
     /// one map, so a row's name and IBAN cannot disagree with the file's. From the contact mirror; null when it has
     /// never synced.</summary>
     private async Task<Dictionary<string, HoldedContactDto>?> ContactsByIdAsync(CancellationToken ct) =>
-        (await holded.GetContactsAsync(ct))?
-        .GroupBy(c => c.Id, StringComparer.Ordinal)
-        .ToDictionary(g => g.Key, g => g.First(), StringComparer.Ordinal);
+        await holded.GetContactsAsync(ct) is not { LastSyncAt: not null } mirror
+            ? null
+            : mirror.Contacts
+                .GroupBy(c => c.Id, StringComparer.Ordinal)
+                .ToDictionary(g => g.Key, g => g.First(), StringComparer.Ordinal);
 
     public async Task<CreditorContactBinding?> GetCreditorContactByUserAsync(
         Guid userId, CancellationToken ct = default)
@@ -597,7 +599,7 @@ internal sealed class Service(
 
         // Refreshed first, so a contact made in Holded since the last sync binds, and the rows read it afterwards.
         await holded.SyncContactsAsync(ct);
-        var contact = (await holded.GetContactsAsync(ct) ?? [])
+        var contact = (await holded.GetContactsAsync(ct)).Contacts
             .FirstOrDefault(c => c.SupplierAccountNum == supplierAccountNum);
         if (contact is null)
             return CreditorBindResult.Failure(
@@ -713,7 +715,7 @@ internal sealed class Service(
     /// logged, not thrown: the push already succeeded, and the nightly sync catches up.</summary>
     private async Task EnsureContactMirroredAsync(string contactId, int? accountNum, CancellationToken ct)
     {
-        var mirrored = (await holded.GetContactsAsync(ct))?
+        var mirrored = (await holded.GetContactsAsync(ct)).Contacts
             .FirstOrDefault(c => string.Equals(c.Id, contactId, StringComparison.Ordinal));
         if (mirrored is not null && (accountNum is null || mirrored.SupplierAccountNum == accountNum)) return;
         try

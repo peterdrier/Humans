@@ -65,9 +65,8 @@ public interface IHoldedService : IApplicationService
     /// documents that lack them, newest first. False when a sync was already running and this one was skipped.</summary>
     Task<bool> SyncPurchaseDocumentsAsync(CancellationToken ct = default);
 
-    /// <summary>Every mirrored contact; null when the contact mirror has never synced. A failed sync leaves the last
-    /// good list.</summary>
-    Task<IReadOnlyList<HoldedContactDto>?> GetContactsAsync(CancellationToken ct = default);
+    /// <summary>Every mirrored contact, with when the mirror last synced.</summary>
+    Task<HoldedContactMirror> GetContactsAsync(CancellationToken ct = default);
 
     /// <summary>Replaces the contact mirror with Holded's whole list: one paged list call. Callers that just minted or
     /// bound a contact run it so the mirror carries it before the next nightly sync. False when a sync was already

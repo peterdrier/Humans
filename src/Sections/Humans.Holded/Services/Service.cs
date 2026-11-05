@@ -282,11 +282,10 @@ internal sealed class Service(
         }
     }
 
-    public async Task<IReadOnlyList<HoldedContactDto>?> GetContactsAsync(CancellationToken ct = default)
+    public async Task<HoldedContactMirror> GetContactsAsync(CancellationToken ct = default)
     {
         var state = (await repo.GetSyncStatesAsync(ct)).FirstOrDefault(s => s.Kind == HoldedSyncKind.Contacts);
-        if (state?.LastSyncAt is null) return null;
-        return (await repo.GetContactsAsync(ct))
+        return new HoldedContactMirror(state?.LastSyncAt, (await repo.GetContactsAsync(ct))
             .Select(c => new HoldedContactDto
             {
                 Id = c.Id,
@@ -300,7 +299,7 @@ internal sealed class Service(
                 TaxCode = c.TaxCode,
                 Address = c.Address,
             })
-            .ToList();
+            .ToList());
     }
 
     public async Task<bool> SyncContactsAsync(CancellationToken ct = default)

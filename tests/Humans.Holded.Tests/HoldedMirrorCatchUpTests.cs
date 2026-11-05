@@ -21,6 +21,8 @@ public sealed class HoldedMirrorCatchUpTests
         var holded = Substitute.For<IHoldedService>();
         holded.GetPurchaseDocumentsAsync(Arg.Any<CancellationToken>()).Returns(new HoldedPurchaseDocMirror(
             synced ? Instant.FromUtc(2026, 11, 3, 3, 0) : null, "Idle", null, 0, null, []));
+        holded.GetContactsAsync(Arg.Any<CancellationToken>()).Returns(new HoldedContactMirror(
+            synced ? Instant.FromUtc(2026, 11, 3, 3, 0) : null, []));
         var jobs = Substitute.For<IBackgroundJobClient>();
         var scopes = new ServiceCollection().AddSingleton(holded).BuildServiceProvider()
             .GetRequiredService<IServiceScopeFactory>();
