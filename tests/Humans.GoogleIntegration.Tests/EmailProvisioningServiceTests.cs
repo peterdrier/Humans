@@ -206,6 +206,42 @@ public class EmailProvisioningServiceTests
         await f.UserEmailService.Received(1).GetUserEmailsAsync(userId, Arg.Any<CancellationToken>());
     }
 
+    [HumansFact]
+    public async Task ProvisionNobodiesEmailAsync_DeliversCredentialsDespiteAuditFailure()
+    {
+        var f = BuildFixture();
+        var userId = Guid.NewGuid();
+        f.UserService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(WrapInUserInfo(
+            userId, UserFixtures.Profile(firstName: "Person", lastName: "Test"), email: "personal@example.org"));
+        f.UserEmailService.GetUserEmailsAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(new List<UserEmailEditDto>());
+        f.WorkspaceUserService.GetAccountAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns((WorkspaceUserAccount?)null);
+        string? issuedPassword = null;
+        f.WorkspaceUserService.ProvisionAccountAsync(
+                Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(),
+                Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns(call =>
+            {
+                issuedPassword = call.ArgAt<string>(3);
+                return new WorkspaceUserAccount("person@nobodies.team", "Person", "Test", false,
+                    DateTime.UtcNow, null, IsEnrolledIn2Sv: false);
+            });
+        f.Audit.LogAsync(GoogleIntegrationAuditActions.WorkspaceAccountProvisioned,
+                Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<Guid>(),
+                Arg.Any<Guid?>(), Arg.Any<string?>())
+            .Returns(Task.FromException(new InvalidOperationException("Audit unavailable")));
+
+        var result = await f.Service.ProvisionNobodiesEmailAsync(userId, "person", userId);
+
+        result.Success.Should().BeTrue();
+        issuedPassword.Should().NotBeNullOrEmpty();
+        await f.Emails.Received(1).SendAsync(Arg.Is<EmailMessage>(message =>
+            message.RecipientEmail == "personal@example.org" && message.HtmlBody.Contains(System.Net.WebUtility.HtmlEncode(issuedPassword!))),
+            Arg.Any<CancellationToken>());
+        f.Notifications.ReceivedCalls().Should().ContainSingle();
+    }
+
     [HumansTheory]
     [InlineData(true)]
     [InlineData(false)]
