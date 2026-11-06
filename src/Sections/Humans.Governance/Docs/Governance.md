@@ -273,6 +273,8 @@ The Consent Coordinator review queue (`GET /Consent/ReviewQueue`, `POST /Consent
 
 - Assembly-vote administration (including peek and ballot disclosure) and term-expiry correction resolve their actor through Users before proceeding. Merged sessions audit the surviving account; missing accounts receive Challenge for vote administration and Unauthorized for term correction. Actor lookup cancellation propagates before service calls. Existing mutation tokens, frozen rosters and member ballot eligibility are unchanged.
 
+- Bulk membership partitions (used by the Users language card) prioritize pending deletion, suspension, then incomplete/non-active accounts, before separating active accounts by required consents. Uncleared and flagged consent reviews do not exclude an active account; explicit rejection still does. The existing `PendingApproval` result bucket remains empty.
+
 - Membership status uses account state, active affiliations and consent deadlines; the Consent Coordinator review is an independent annotation. Bare accounts are pending, suspended accounts remain suspended, and other non-active states cannot become active through stale affiliations.
 
 - The section’s things-to-do contribution forwards caller cancellation through all data reads. Aborted reads propagate instead of being logged or converted into missing prompts.

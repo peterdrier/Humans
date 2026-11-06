@@ -97,16 +97,65 @@ public class MembershipPartitionTests
         result.MissingConsents.Should().NotContain(userId);
     }
 
-    [HumansFact]
-    public async Task PartitionUsersAsync_PendingApproval_GoesToPendingApprovalBucket()
+    [HumansTheory]
+    [Xunit.InlineData(null, true)]
+    [Xunit.InlineData(ConsentCheckStatus.Flagged, true)]
+    [Xunit.InlineData(ConsentCheckStatus.Cleared, true)]
+    [Xunit.InlineData(null, false)]
+    [Xunit.InlineData(ConsentCheckStatus.Flagged, false)]
+    [Xunit.InlineData(ConsentCheckStatus.Cleared, false)]
+    public async Task PartitionUsersAsync_ReviewAnnotationDoesNotGateActiveAccounts(ConsentCheckStatus? reviewStatus, bool consented)
     {
         var userId = SeedUser();
-        SeedProfile(userId, isApproved: false, isSuspended: false);
+        SeedProfile(userId, isApproved: reviewStatus == ConsentCheckStatus.Cleared, isSuspended: false);
+        _reviews[userId] = _reviews[userId] with { Status = reviewStatus };
+        var versionId = SeedRequiredVersion(SystemTeamIds.Volunteers);
+        if (consented) SeedConsent(userId, versionId);
 
         var result = await _service.PartitionUsersAsync([userId], Xunit.TestContext.Current.CancellationToken);
 
-        result.PendingApproval.Should().Contain(userId);
-        result.Active.Should().NotContain(userId);
+        result.PendingApproval.Should().BeEmpty();
+        result.IncompleteSignup.Should().BeEmpty();
+        (consented ? result.Active : result.MissingConsents).Should().ContainSingle().Which.Should().Be(userId);
+        (consented ? result.MissingConsents : result.Active).Should().BeEmpty();
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(UserState.Bare)]
+    [Xunit.InlineData(UserState.Rejected)]
+    [Xunit.InlineData(UserState.Deleted)]
+    [Xunit.InlineData(UserState.Merged)]
+    [Xunit.InlineData(UserState.DeletePending)]
+    [Xunit.InlineData(UserState.Suspended)]
+    [Xunit.InlineData(UserState.AdminSuspended)]
+    public async Task PartitionUsersAsync_NonActiveAccountsAreExcludedDespiteClearedReview(UserState state)
+    {
+        var userId = SeedUser();
+        SeedProfile(userId, isApproved: true, isSuspended: false);
+        _usersById[userId].State = state;
+
+        var result = await _service.PartitionUsersAsync([userId], Xunit.TestContext.Current.CancellationToken);
+
+        result.Active.Should().BeEmpty();
+        result.MissingConsents.Should().BeEmpty();
+        if (state == UserState.DeletePending)
+            result.PendingDeletion.Should().Contain(userId);
+        else if (state is UserState.Suspended or UserState.AdminSuspended)
+            result.Suspended.Should().Contain(userId);
+        else
+            result.IncompleteSignup.Should().Contain(userId);
+    }
+
+    [HumansFact]
+    public async Task PartitionUsersAsync_SuspensionPrecedesMissingProfile()
+    {
+        var userId = SeedUser();
+        _usersById[userId].State = UserState.AdminSuspended;
+
+        var result = await _service.PartitionUsersAsync([userId], Xunit.TestContext.Current.CancellationToken);
+
+        result.Suspended.Should().ContainSingle().Which.Should().Be(userId);
+        result.IncompleteSignup.Should().BeEmpty();
     }
 
     [HumansFact]
