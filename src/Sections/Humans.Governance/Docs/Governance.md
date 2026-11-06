@@ -232,6 +232,7 @@ Colaborador and Asociado memberships have 2-year synchronized terms expiring Dec
 - On approval: `Application.TermExpiresAt` is set and the member's `governance_membership_tiers` row takes the tier, the term and the application id.
 - Admin term-expiry correction commits each application’s expiry and any tier granted by that application in one save, then audits. Failure preserves both dates and keeps the application in the drift list for retry. Missing tier rows are not created; tiers granted by other applications are unchanged.
 - On expiry without renewal: the next `SystemTeamSyncJob` run removes the human from the Colaboradors / Asociados system team (computed from the date-filtered active approvals), and Governance's daily `MembershipTierExpiryJob` **downgrades the member's tier** — to another tier the human still holds an active approval for, otherwise to `Volunteer` — writing an `GovernanceAuditActions.TierDowngraded` entry per downgrade.
+- The active-approval list, per-person existence check and alternative-tier lookup share one repository predicate: Approved status, with no term end or a term end on/after the supplied day.
 - A fallback tier's granting application and expiry come from its latest active approval under the same date rule used to select the tier. A later expired approval cannot supply the fallback metadata; null term expiry remains active, and today's expiry is inclusive.
 - Renewal: new Application entity (same tier), goes through normal Board voting.
 - Reminder: `TermRenewalReminderJob` sends reminders 90 days before expiry.
