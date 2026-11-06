@@ -46,6 +46,8 @@ The base builds with `Microsoft.NET.Sdk.Razor` + `AddRazorSupportForMvc` to host
 
 ### Behavioural notes
 
+- Replacement cache reloads use the existing mutation generation to guard publication. An intervening cache mutation discards the affected row and marks warmed caches cold, so a later read retries source instead of publishing an older value or deletion. Other rows remain cached.
+
 - Shared Markdown renders only disabled checkbox inputs for task lists. Authored hidden, text, submit and image inputs are removed so content cannot introduce active form controls; checked and unchecked task lists remain visible.
 
 - Shared dismiss controls (member alerts, Markdown help, login errors, dynamically created toasts) use `Common_Close` for their accessible label; both Shell layouts supply it to the toast helper.

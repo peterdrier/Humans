@@ -174,9 +174,13 @@ public class TrackedCache<TKey, TValue> : IHostedService, ICacheStats where TKey
     /// <see cref="DeleteKey"/>. The replacement primitive for warmed caches
     /// that have a per-key loader. A failed reload evicts the old value and
     /// marks warmed caches cold so the next read retries from source.
+    /// An intervening cache mutation also discards the row for retry: the
+    /// loaded snapshot must not overwrite a newer refresh or restore a deletion.
     /// </summary>
     public async Task<TValue?> ReplaceAsync(TKey key, CancellationToken ct = default)
     {
+        long generation;
+        lock (_mutationGate) generation = _mutationGeneration;
         TValue? loaded;
         try
         {
@@ -191,8 +195,16 @@ public class TrackedCache<TKey, TValue> : IHostedService, ICacheStats where TKey
             throw;
         }
 
-        if (loaded is not null) Set(key, loaded);
-        else DeleteKey(key);
+        lock (_mutationGate)
+        {
+            if (generation != _mutationGeneration)
+            {
+                if (_warmOnStartup) _warmedUp = false;
+                Invalidate(key);
+            }
+            else if (loaded is not null) Set(key, loaded);
+            else DeleteKey(key);
+        }
         return loaded;
     }
 

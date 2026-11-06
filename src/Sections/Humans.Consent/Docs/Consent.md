@@ -173,6 +173,8 @@ Document archival uses the shared `data-confirm` handler: each click prompts onc
 
 ## Invariants
 
+- A replacement consent-snapshot reload cannot publish across an intervening cache mutation. The affected alias is evicted for source retry, so an older reload cannot overwrite a newer signature refresh or restore an evicted snapshot.
+
 - Review notes and rejection reasons are limited to 4,000 Unicode characters before any review write or audit. Oversized text that would be written returns `ReviewTextTooLong`; existing rejection preconditions retain precedence, and valid text is stored without truncation. The operator queue shows the limit and specific refusal feedback.
 
 

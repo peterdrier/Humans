@@ -19,6 +19,28 @@ namespace Humans.Users.Tests.Services.Users;
 
 public class CachingUserServiceTests
 {
+    [HumansFact]
+    public async Task DelayedEmailRefresh_DoesNotRestoreAnOlderAccountState()
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var userId = Guid.NewGuid();
+        var before = SampleUserInfo(userId) with { State = UserState.Active };
+        var current = before with { State = UserState.DeletePending };
+        var sut = CreateSut();
+        await PrimeAsync(sut, before);
+        var pending = new TaskCompletionSource<UserInfo?>(TaskCreationOptions.RunContinuationsAsynchronously);
+        _inner.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(new ValueTask<UserInfo?>(pending.Task));
+        var oldRefresh = sut.RefreshUserEmailsAsync(userId, ct);
+        _inner.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(new ValueTask<UserInfo?>(current));
+        _inner.GetAllUserInfosAsync(Arg.Any<CancellationToken>()).Returns((IReadOnlyCollection<UserInfo>)[current]);
+        await sut.RefreshAsync(userId, ct);
+        pending.SetResult(before);
+        await oldRefresh;
+
+        (await sut.GetUserInfoAsync(userId, ct))!.State.Should().Be(UserState.DeletePending);
+        (await sut.GetAllUserInfosAsync(ct)).Should().ContainSingle().Which.State.Should().Be(UserState.DeletePending);
+    }
+
     private readonly IUserManagement _inner = Substitute.For<IUserManagement>();
 
     [HumansTheory]
