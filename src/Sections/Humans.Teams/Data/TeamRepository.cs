@@ -656,7 +656,7 @@ internal sealed class TeamRepository(IDbContextFactory<TeamsDbContext> factory) 
         return true;
     }
 
-    public async Task<(TeamRoleAssignment Assignment, bool AutoAddedToTeam, TeamMember Member)> AssignToRoleAsync(
+    public async Task<TeamRoleAssignmentMutationResult> AssignToRoleAsync(
         Guid roleDefinitionId,
         Guid targetUserId,
         Guid actorUserId,
@@ -669,17 +669,16 @@ internal sealed class TeamRepository(IDbContextFactory<TeamsDbContext> factory) 
 
         var definition = await db.Set<TeamRoleDefinition>()
             .Include(d => d.Assignments)
-            .FirstOrDefaultAsync(d => d.Id == roleDefinitionId, ct)
-            ?? throw new InvalidOperationException($"Role definition {roleDefinitionId} not found");
+            .FirstOrDefaultAsync(d => d.Id == roleDefinitionId, ct);
+        if (definition is null)
+            return new(Refusal: $"Role definition {roleDefinitionId} not found");
 
-        TeamMember teamMember;
-        var autoAddedToTeam = false;
+        TeamMember? teamMember;
 
         if (autoAddMember is not null)
         {
             teamMember = autoAddMember;
             db.TeamMembers.Add(teamMember);
-            autoAddedToTeam = true;
 
             var pendingRequest = await db.TeamJoinRequests
                 .FirstOrDefaultAsync(r => r.TeamId == definition.TeamId
@@ -696,15 +695,16 @@ internal sealed class TeamRepository(IDbContextFactory<TeamsDbContext> factory) 
         else
         {
             teamMember = await db.TeamMembers
-                .FirstOrDefaultAsync(tm => tm.TeamId == definition.TeamId && tm.UserId == targetUserId && tm.LeftAt == null, ct)
-                ?? throw new InvalidOperationException("Team member not found");
+                .FirstOrDefaultAsync(tm => tm.TeamId == definition.TeamId && tm.UserId == targetUserId && tm.LeftAt == null, ct);
+            if (teamMember is null)
+                return new(Refusal: "Team member not found");
         }
 
         if (definition.Assignments.Any(a => a.TeamMemberId == teamMember.Id))
-            throw new InvalidOperationException("User is already assigned to this role");
+            return new(Refusal: "User is already assigned to this role");
 
         if (definition.Assignments.Count >= definition.SlotCount)
-            throw new InvalidOperationException($"All {definition.SlotCount} slots for role are filled");
+            return new(Refusal: $"All {definition.SlotCount} slots for role are filled");
 
         var usedSlots = definition.Assignments.Select(a => a.SlotIndex).ToHashSet();
         var nextSlotIndex = Enumerable.Range(0, definition.SlotCount).First(i => !usedSlots.Contains(i));
@@ -724,26 +724,27 @@ internal sealed class TeamRepository(IDbContextFactory<TeamsDbContext> factory) 
             teamMember.Role = TeamMemberRole.Coordinator;
 
         await db.SaveChangesAsync(ct);
-        return (assignment, autoAddedToTeam, teamMember);
+        return new(Assignment: assignment);
     }
 
-    public async Task<(bool Demoted, Guid TargetUserId)> UnassignFromRoleAsync(
+    public async Task<TeamRoleAssignmentMutationResult> UnassignFromRoleAsync(
         Guid roleDefinitionId, Guid teamMemberId, CancellationToken ct = default)
     {
         await using var db = await factory.CreateDbContextAsync(ct);
 
         var definition = await db.Set<TeamRoleDefinition>()
-            .FirstOrDefaultAsync(d => d.Id == roleDefinitionId, ct)
-            ?? throw new InvalidOperationException($"Role definition {roleDefinitionId} not found");
+            .FirstOrDefaultAsync(d => d.Id == roleDefinitionId, ct);
+        if (definition is null)
+            return new(Refusal: $"Role definition {roleDefinitionId} not found");
 
         var assignment = await db.Set<TeamRoleAssignment>()
             .Include(a => a.TeamMember)
-            .FirstOrDefaultAsync(a => a.TeamRoleDefinitionId == roleDefinitionId && a.TeamMemberId == teamMemberId, ct)
-            ?? throw new InvalidOperationException("Assignment not found");
+            .FirstOrDefaultAsync(a => a.TeamRoleDefinitionId == roleDefinitionId && a.TeamMemberId == teamMemberId, ct);
+        if (assignment is null)
+            return new(Refusal: "Assignment not found");
 
         db.Set<TeamRoleAssignment>().Remove(assignment);
 
-        var demoted = false;
         if (definition.IsManagement)
         {
             var hasOtherManagementAssignments = await db.Set<TeamRoleAssignment>()
@@ -753,12 +754,11 @@ internal sealed class TeamRepository(IDbContextFactory<TeamsDbContext> factory) 
             if (!hasOtherManagementAssignments && assignment.TeamMember.Role == TeamMemberRole.Coordinator)
             {
                 assignment.TeamMember.Role = TeamMemberRole.Member;
-                demoted = true;
             }
         }
 
         await db.SaveChangesAsync(ct);
-        return (demoted, assignment.TeamMember.UserId);
+        return new(Assignment: assignment);
     }
 
     public async Task PersistRoleDefinitionUpdateAsync(

@@ -289,9 +289,13 @@ public class TeamAdminControllerMembersTests
     [InlineData("add", true)]
     [InlineData("edit", true)]
     [InlineData("remove", true)]
+    [InlineData("assign", true)]
+    [InlineData("unassign", true)]
+    [InlineData("assign", false)]
+    [InlineData("unassign", false)]
     [InlineData("add", false)]
     [InlineData("edit", false)]
-    public async Task EarlyEntryMutation_RefusalFeedbackAndDependencyFailures(string operation, bool dependencyFailure)
+    public async Task TeamMutation_RefusalFeedbackAndDependencyFailures(string operation, bool dependencyFailure)
     {
         var actorId = Guid.NewGuid();
         var teams = Substitute.For<ITeamManagementService>();
@@ -324,6 +328,10 @@ public class TeamAdminControllerMembersTests
             .Returns(_ => dependencyFailure ? throw failure : new TeamEarlyEntryMutationResult("Expected refusal"));
         teams.RemoveEarlyEntryGrantAsync(team.Id, Arg.Any<Guid>(), actorId, Arg.Any<CancellationToken>())
             .Returns(_ => throw failure);
+        teams.AssignToRoleAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), actorId, Arg.Any<CancellationToken>())
+            .Returns(_ => dependencyFailure ? throw failure : new TeamRoleAssignmentMutationResult(Refusal: "Expected refusal"));
+        teams.UnassignFromRoleAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), actorId, Arg.Any<CancellationToken>())
+            .Returns(_ => dependencyFailure ? throw failure : new TeamRoleAssignmentMutationResult(Refusal: "Expected refusal"));
 
         Func<Task<IActionResult>> action = operation switch
         {
@@ -331,6 +339,8 @@ public class TeamAdminControllerMembersTests
                 new AddTeamEarlyEntryInput { UserId = Guid.NewGuid(), EntryDate = "2026-07-06", ProjectName = "Build" }, TestContext.Current.CancellationToken),
             "edit" => () => controller.EditEarlyEntry(team.Slug,
                 new EditTeamEarlyEntryInput { GrantId = Guid.NewGuid(), EntryDate = "2026-07-06", ProjectName = "Build" }, TestContext.Current.CancellationToken),
+            "assign" => () => controller.AssignRole(team.Slug, Guid.NewGuid(), new AssignRoleModel { UserId = Guid.NewGuid() }),
+            "unassign" => () => controller.UnassignRole(team.Slug, Guid.NewGuid(), Guid.NewGuid()),
             _ => () => controller.RemoveEarlyEntry(team.Slug, Guid.NewGuid(), TestContext.Current.CancellationToken)
         };
 

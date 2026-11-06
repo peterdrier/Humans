@@ -3068,14 +3068,9 @@ public sealed class TeamServiceTests : TeamsTestHarness
         }
         await SaveAllAsync(TestContext.Current.CancellationToken);
 
-        Func<Task> add = async () =>
-        {
-            if (assignRole)
-                await _service.AssignToRoleAsync(definition.Id, targetId, actor.Id, TestContext.Current.CancellationToken);
-        };
-
         if (assignRole)
-            await add.Should().ThrowAsync<InvalidOperationException>();
+            (await _service.AssignToRoleAsync(definition.Id, targetId, actor.Id, TestContext.Current.CancellationToken))
+                .Refusal.Should().Contain("missing, deleted or merged");
         else
             (await _service.AddMemberToTeamAsync(team.Id, targetId, actor.Id, TestContext.Current.CancellationToken))
                 .Refusal.Should().Contain("missing, deleted or merged");
@@ -3135,10 +3130,11 @@ public sealed class TeamServiceTests : TeamsTestHarness
         _userService.GetUserInfoAsync(sourceId, Arg.Any<CancellationToken>()).Returns(new ValueTask<UserInfo?>(
             UserInfo.Create(target, [], [], null)));
 
-        var assignment = await _service.AssignToRoleAsync(definition.Id, sourceId, actor.Id,
+        var result = await _service.AssignToRoleAsync(definition.Id, sourceId, actor.Id,
             TestContext.Current.CancellationToken);
 
-        assignment.TeamMemberId.Should().Be(member.Id);
+        result.Succeeded.Should().BeTrue();
+        result.Assignment!.TeamMemberId.Should().Be(member.Id);
         (await TeamsDb.TeamMembers.CountAsync(TestContext.Current.CancellationToken)).Should().Be(1);
         (await GoogleIntegrationDb.GoogleSyncOutboxEvents.CountAsync(TestContext.Current.CancellationToken)).Should().Be(0);
     }

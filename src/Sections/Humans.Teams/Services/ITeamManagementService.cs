@@ -259,12 +259,12 @@ internal interface ITeamManagementService : ITeamManagement
         Guid teamId, CancellationToken cancellationToken = default);
 
     /// <summary>Next free slot; then reconciles the target's Coordinators system-team membership.</summary>
-    Task<TeamRoleAssignment> AssignToRoleAsync(
+    Task<TeamRoleAssignmentMutationResult> AssignToRoleAsync(
         Guid roleDefinitionId, Guid targetUserId, Guid actorUserId,
         CancellationToken cancellationToken = default);
 
     /// <summary>Then reconciles the target's Coordinators system-team membership.</summary>
-    Task UnassignFromRoleAsync(
+    Task<TeamRoleAssignmentMutationResult> UnassignFromRoleAsync(
         Guid roleDefinitionId, Guid teamMemberId, Guid actorUserId,
         CancellationToken cancellationToken = default);
 

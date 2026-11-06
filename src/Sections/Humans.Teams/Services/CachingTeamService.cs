@@ -392,21 +392,21 @@ internal sealed class CachingTeamService(
         return team.RoleDefinitions;
     }
 
-    public Task<TeamRoleAssignment> AssignToRoleAsync(
+    public Task<TeamRoleAssignmentMutationResult> AssignToRoleAsync(
         Guid roleDefinitionId,
         Guid targetUserId,
         Guid actorUserId,
         CancellationToken cancellationToken = default) =>
         MutateAsync(inner => inner.AssignToRoleAsync(
-            roleDefinitionId, targetUserId, actorUserId, cancellationToken));
+            roleDefinitionId, targetUserId, actorUserId, cancellationToken), result => result.Succeeded);
 
-    public Task UnassignFromRoleAsync(
+    public Task<TeamRoleAssignmentMutationResult> UnassignFromRoleAsync(
         Guid roleDefinitionId,
         Guid teamMemberId,
         Guid actorUserId,
         CancellationToken cancellationToken = default) =>
         MutateAsync(inner => inner.UnassignFromRoleAsync(
-            roleDefinitionId, teamMemberId, actorUserId, cancellationToken));
+            roleDefinitionId, teamMemberId, actorUserId, cancellationToken), result => result.Succeeded);
 
     public async Task<IReadOnlyList<Guid>> GetUserCoordinatedTeamIdsAsync(
         Guid userId,

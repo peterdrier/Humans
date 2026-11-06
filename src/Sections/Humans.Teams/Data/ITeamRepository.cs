@@ -119,7 +119,7 @@ internal interface ITeamRepository : IRepository
     /// A non-null <paramref name="autoAddMember"/> adds the user to the team (with an outbox event). Also approves any
     /// pending join request.
     /// </summary>
-    Task<(TeamRoleAssignment Assignment, bool AutoAddedToTeam, TeamMember Member)> AssignToRoleAsync(
+    Task<TeamRoleAssignmentMutationResult> AssignToRoleAsync(
         Guid roleDefinitionId,
         Guid targetUserId,
         Guid actorUserId,
@@ -129,7 +129,7 @@ internal interface ITeamRepository : IRepository
         CancellationToken ct = default);
 
     /// <summary>Demotes from Coordinator when this was the member's last management assignment.</summary>
-    Task<(bool Demoted, Guid TargetUserId)> UnassignFromRoleAsync(
+    Task<TeamRoleAssignmentMutationResult> UnassignFromRoleAsync(
         Guid roleDefinitionId, Guid teamMemberId, CancellationToken ct = default);
 
     /// <summary>Persists the definition and reconciles assigned members' roles when management changes.</summary>
