@@ -1175,8 +1175,9 @@ internal sealed class TeamService(
         if (!canToggleManagement)
             isManagement = definition.IsManagement;
 
-        if (slotCount < definition.Assignments.Count)
-            return new(Refusal: $"Cannot reduce slot count to {slotCount} — {definition.Assignments.Count} slots are currently filled");
+        if (slotCount < definition.Assignments.Count
+            || definition.Assignments.Any(assignment => assignment.SlotIndex >= slotCount))
+            return new(Refusal: $"Cannot reduce slot count to {slotCount} — unassign humans from the slots being removed first");
 
         if (!string.Equals(definition.Name, name, StringComparison.Ordinal))
         {

@@ -283,6 +283,42 @@ public sealed class TeamRoleServiceTests : TeamsTestHarness
         refused.Refusal.Should().Match("*Cannot reduce slot count*");
     }
 
+    [HumansTheory]
+    [Xunit.InlineData(3, 2, false)]
+    [Xunit.InlineData(1, 2, true)]
+    [Xunit.InlineData(3, 4, true)]
+    public async Task UpdateRoleDefinitionAsync_Resize_PreservesOccupiedSlotPositions(
+        int occupiedSlotIndex, int newSlotCount, bool succeeds)
+    {
+        var admin = SeedUser("Admin");
+        SeedAdminRole(admin);
+        var team = SeedTeam("Test Team");
+        var holder = SeedUser("Holder");
+        var role = SeedRoleDefinition(team, slotCount: 4);
+        var member = SeedMember(team, holder);
+        SeedRoleAssignment(role, member, occupiedSlotIndex);
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
+
+        var result = await _service.UpdateRoleDefinitionAsync(
+            role.Id, role.Name, role.Description, newSlotCount,
+            Enumerable.Repeat(SlotPriority.None, newSlotCount).ToList(), role.SortOrder,
+            role.IsManagement, role.Period, admin.Id, cancellationToken: Xunit.TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().Be(succeeds);
+        ClearAllTrackers();
+        var storedRole = await TeamsDb.TeamRoleDefinitions.AsNoTracking()
+            .SingleAsync(d => d.Id == role.Id, Xunit.TestContext.Current.CancellationToken);
+        storedRole.SlotCount.Should().Be(succeeds ? newSlotCount : 4);
+        var storedAssignment = await TeamsDb.TeamRoleAssignments.AsNoTracking()
+            .SingleAsync(a => a.TeamRoleDefinitionId == role.Id, Xunit.TestContext.Current.CancellationToken);
+        storedAssignment.SlotIndex.Should().Be(occupiedSlotIndex);
+        if (!succeeds)
+        {
+            result.Refusal.Should().Contain("Cannot reduce slot count");
+            AuditLog.ReceivedCalls().Should().BeEmpty();
+        }
+    }
+
     [HumansFact]
     public async Task UpdateRoleDefinitionAsync_SetIsManagement_WhenAnotherRoleAlreadyManagement_ReturnsRefusal()
     {
