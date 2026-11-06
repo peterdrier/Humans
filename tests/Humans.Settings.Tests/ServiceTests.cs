@@ -4,6 +4,8 @@ using Humans.Settings.Contracts;
 using Humans.Settings.Data;
 using Humans.Settings.Domain;
 using Humans.Settings.Services;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using NodaTime;
 using NSubstitute;
 using TestContext = Xunit.TestContext;
@@ -50,6 +52,122 @@ public sealed class ServiceTests
         EarlyEntryClose = Instant.FromUtc(2026, 7, 4, 12, 0),
         Status = isActive ? EventSettingsStatus.Active : EventSettingsStatus.Inactive,
     };
+
+    [HumansTheory]
+    [Xunit.InlineData("save", 1)]
+    [Xunit.InlineData("timezone", 1)]
+    [Xunit.InlineData("activate", 1)]
+    [Xunit.InlineData("seed", 1)]
+    [Xunit.InlineData("seed", 2)]
+    [Xunit.InlineData("delete", 1)]
+    public async Task EventWrite_LostSaveAcknowledgement_NotifiesAffectedEvents(string operation, int failedSave)
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var previous = MakeEntity(Guid.NewGuid());
+        var next = MakeEntity(Guid.NewGuid(), isActive: false);
+        next.GateOpeningDate = new LocalDate(2027, 7, 9);
+        var options = new DbContextOptionsBuilder<SettingsDbContext>()
+            .UseInMemoryDatabase(Guid.NewGuid().ToString()).Options;
+        await using (var seed = new SettingsDbContext(options))
+        {
+            seed.EventSettings.AddRange(previous, next);
+            await seed.SaveChangesAsync(ct);
+        }
+        var failure = new IOException("Persistence acknowledgement failed");
+        var writeOptions = new DbContextOptionsBuilder<SettingsDbContext>(options)
+            .AddInterceptors(new LostSettingsSaveAcknowledgement(failure, failedSave)).Options;
+        var service = new Service(new Repository(new TestDbContextFactory<SettingsDbContext>(writeOptions)),
+            _auditLog, [_listenerOne, _listenerTwo], _clock,
+            Microsoft.Extensions.Logging.Abstractions.NullLogger<Service>.Instance);
+        var draft = MakeDto(next.Id, EventSettingsStatus.Inactive) with
+        { GateOpeningDate = next.GateOpeningDate, EventName = "Revised" };
+        Func<Task> write = operation switch
+        {
+            "save" => async () => { await service.SaveEventSettingsAsync(draft, Actor, ct); },
+            "timezone" => async () => { await service.SaveTimeZoneAsync("Atlantic/Canary", Actor, ct); },
+            "activate" => async () => { await service.ActivateEventSettingsAsync(next.Id, Actor, ct); },
+            "seed" => () => service.CreateActiveEventAsync(draft, ct),
+            _ => async () => { await service.DeleteEventAsync(next.Id, ct); }
+        };
+
+        (await write.Should().ThrowAsync<IOException>()).Which.Should().BeSameAs(failure);
+
+        var expectedIds = operation switch
+        {
+            "timezone" or "activate" => new[] { previous.Id, next.Id },
+            "seed" when failedSave == 1 => [previous.Id],
+            "seed" => [previous.Id, next.Id],
+            _ => [next.Id]
+        };
+        foreach (var listener in new[] { _listenerOne, _listenerTwo })
+            listener.ReceivedCalls().Select(call => (Guid)call.GetArguments()[0]!)
+                .Should().BeEquivalentTo(expectedIds);
+        await using var verify = new SettingsDbContext(options);
+        switch (operation)
+        {
+            case "save":
+                (await verify.EventSettings.FindAsync([next.Id], ct))!.EventName.Should().Be("Revised");
+                break;
+            case "timezone":
+                (await verify.Settings.SingleAsync(ct)).Value.Should().Be("Atlantic/Canary");
+                break;
+            case "activate":
+            case "seed":
+                (await verify.EventSettings.FindAsync([previous.Id], ct))!.Status.Should().Be(EventSettingsStatus.Inactive);
+                (await verify.EventSettings.FindAsync([next.Id], ct))!.Status.Should().Be(
+                    string.Equals(operation, "seed", StringComparison.Ordinal) && failedSave == 1
+                        ? EventSettingsStatus.Inactive : EventSettingsStatus.Active);
+                break;
+            case "delete":
+                (await verify.EventSettings.FindAsync([next.Id], ct)).Should().BeNull();
+                break;
+        }
+        _auditLog.ReceivedCalls().Should().BeEmpty();
+    }
+
+    private sealed class LostSettingsSaveAcknowledgement(IOException failure, int failedSave) : SaveChangesInterceptor
+    {
+        private int _saves;
+
+        public override ValueTask<int> SavedChangesAsync(
+            SaveChangesCompletedEventData eventData, int result, CancellationToken cancellationToken = default) =>
+            ++_saves == failedSave ? throw failure : ValueTask.FromResult(result);
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData("save")]
+    [Xunit.InlineData("timezone")]
+    [Xunit.InlineData("activate")]
+    public async Task EventWrite_AuditFailure_StillNotifiesAffectedEvents(string operation)
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var previous = MakeEntity(Guid.NewGuid());
+        var next = MakeEntity(Guid.NewGuid(), isActive: false);
+        next.GateOpeningDate = new LocalDate(2027, 7, 9);
+        _repository.GetAllEventSettingsAsync(Arg.Any<CancellationToken>()).Returns([previous, next]);
+        _repository.GetEventSettingsByIdAsync(next.Id, Arg.Any<CancellationToken>()).Returns(next);
+        _repository.SetActiveEventSettingsAsync(next.Id, Now, Arg.Any<CancellationToken>()).Returns([previous, next]);
+        var failure = new IOException("Audit unavailable");
+        _auditLog.LogAsync(Arg.Any<AuditActionDefinition>(), Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<string>(), Actor)
+            .Returns(Task.FromException(failure));
+        var service = BuildSut();
+        Func<Task> write = operation switch
+        {
+            "save" => async () => { await service.SaveEventSettingsAsync(
+                MakeDto(next.Id, EventSettingsStatus.Inactive) with { GateOpeningDate = next.GateOpeningDate }, Actor, ct); },
+            "timezone" => async () => { await service.SaveTimeZoneAsync("Atlantic/Canary", Actor, ct); },
+            _ => async () => { await service.ActivateEventSettingsAsync(next.Id, Actor, ct); }
+        };
+
+        (await write.Should().ThrowAsync<IOException>()).Which.Should().BeSameAs(failure);
+
+        foreach (var listener in new[] { _listenerOne, _listenerTwo })
+        {
+            listener.Received(1).EventSettingsChanged(next.Id);
+            if (!string.Equals(operation, "save", StringComparison.Ordinal))
+                listener.Received(1).EventSettingsChanged(previous.Id);
+        }
+    }
 
     [HumansFact]
     public async Task GetActiveEventSettingsAsync_MapsEveryFieldOntoTheDto()
