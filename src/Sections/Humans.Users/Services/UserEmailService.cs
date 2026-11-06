@@ -152,7 +152,7 @@ internal sealed class UserEmailService(
         var pendingEmail = await repository.GetUserEmailByIdAndUserIdAsync(emailId, userId, cancellationToken);
         if (pendingEmail is null || pendingEmail.IsVerified || pendingEmail.Provider is not null)
         {
-            throw new ValidationException("No email pending verification.");
+            return new VerifyEmailResult(string.Empty, false) { NoPendingVerification = true };
         }
 
         // As in VerifyEmailAsync: an address verified on another account becomes a merge request.

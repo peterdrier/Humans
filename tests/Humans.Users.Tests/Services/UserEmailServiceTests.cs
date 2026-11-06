@@ -1653,20 +1653,24 @@ public class UserEmailServiceTests
     }
 
     [HumansFact]
-    public async Task AdminMarkVerifiedAsync_RowNotFound_Throws()
+    public async Task AdminMarkVerifiedAsync_RowNotFound_ReturnsRefusal()
     {
         var userId = Guid.NewGuid();
         var rowId = Guid.NewGuid();
         _repository.GetUserEmailByIdAndUserIdAsync(rowId, userId, Arg.Any<CancellationToken>())
             .Returns((UserEmail?)null);
 
-        var act = async () => await _service.AdminMarkVerifiedAsync(userId, rowId, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+        var result = await _service.AdminMarkVerifiedAsync(userId, rowId, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
 
-        await act.Should().ThrowAsync<System.ComponentModel.DataAnnotations.ValidationException>();
+        result.NoPendingVerification.Should().BeTrue();
+        result.Email.Should().BeEmpty();
+        result.ErrorKey.Should().BeNull();
+        result.MergeRequestCreated.Should().BeFalse();
+        await _repository.DidNotReceive().UpdateUserEmailAsync(Arg.Any<UserEmail>(), Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
-    public async Task AdminMarkVerifiedAsync_AlreadyVerified_Throws()
+    public async Task AdminMarkVerifiedAsync_AlreadyVerified_ReturnsRefusal()
     {
         var userId = Guid.NewGuid();
         var rowId = Guid.NewGuid();
@@ -1680,13 +1684,17 @@ public class UserEmailServiceTests
                 Provider = null,
             });
 
-        var act = async () => await _service.AdminMarkVerifiedAsync(userId, rowId, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+        var result = await _service.AdminMarkVerifiedAsync(userId, rowId, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
 
-        await act.Should().ThrowAsync<System.ComponentModel.DataAnnotations.ValidationException>();
+        result.NoPendingVerification.Should().BeTrue();
+        result.Email.Should().BeEmpty();
+        result.ErrorKey.Should().BeNull();
+        result.MergeRequestCreated.Should().BeFalse();
+        await _repository.DidNotReceive().UpdateUserEmailAsync(Arg.Any<UserEmail>(), Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
-    public async Task AdminMarkVerifiedAsync_OAuthRow_Throws()
+    public async Task AdminMarkVerifiedAsync_OAuthRow_ReturnsRefusal()
     {
         // Provider != null rows are verified through the OAuth callback,
         // not via this admin path — even an admin shouldn't bypass that.
@@ -1703,9 +1711,13 @@ public class UserEmailServiceTests
                 ProviderKey = "sub-x",
             });
 
-        var act = async () => await _service.AdminMarkVerifiedAsync(userId, rowId, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+        var result = await _service.AdminMarkVerifiedAsync(userId, rowId, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
 
-        await act.Should().ThrowAsync<System.ComponentModel.DataAnnotations.ValidationException>();
+        result.NoPendingVerification.Should().BeTrue();
+        result.Email.Should().BeEmpty();
+        result.ErrorKey.Should().BeNull();
+        result.MergeRequestCreated.Should().BeFalse();
+        await _repository.DidNotReceive().UpdateUserEmailAsync(Arg.Any<UserEmail>(), Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
