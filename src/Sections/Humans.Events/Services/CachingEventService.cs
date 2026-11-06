@@ -344,7 +344,7 @@ internal sealed class CachingEventService(
     public Task<IReadOnlyList<EventFavouriteInfo>> GetFavouritesWithEventsAsync(Guid userId, CancellationToken ct = default) =>
         WithInnerAsync(inner => inner.GetFavouritesWithEventsAsync(userId, ct));
 
-    public Task<bool> AddFavouriteAsync(Guid userId, Guid eventId, int? dayOffset, CancellationToken ct = default) =>
+    public Task<AddFavouriteOutcome> AddFavouriteAsync(Guid userId, Guid eventId, int? dayOffset, CancellationToken ct = default) =>
         WithInnerAsync(inner => inner.AddFavouriteAsync(userId, eventId, dayOffset, ct));
 
     public Task<bool> RemoveFavouriteAsync(Guid userId, Guid eventId, int? dayOffset, CancellationToken ct = default) =>

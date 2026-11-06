@@ -219,6 +219,7 @@ Member create, edit, withdrawal and bulk-import preflight reads retain browser c
 - Individual, barrio and moderation editor forms share live title/description character counters, using each input’s existing maximum length. Typing or clearing text updates the remaining count without changing the localized labels or server validation.
 
 - Admin category/venue GETs and moderation queue/edit GETs retain request cancellation through their service reads and settings, camp and submitter lookups.
+- Adding a favourite returns explicit outcomes for unavailable events, invalid recurrence days and existing favourites (HTTP 404, 400 and 409). Unexpected dependency failures propagate rather than being presented as invalid targets; refusals do not write.
 - Events API GETs retain browser cancellation across guide/burn settings, approved events, categories, preferences, favourites and camp/submitter lookups. Cancellation propagates without a fallback response; authenticated mutation endpoints retain their existing token boundaries.
 
 - Global-search result rows pass browser cancellation to the approved-event lookup; approved-only visibility and missing-result behavior are unchanged.
