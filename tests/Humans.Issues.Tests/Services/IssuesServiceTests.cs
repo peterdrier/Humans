@@ -2431,6 +2431,86 @@ public sealed class IssuesServiceTests
         await _fileStorage.Received(1).DeleteAsync(key, CancellationToken.None);
     }
 
+    [HumansTheory]
+    [InlineData("before")]
+    [InlineData("after")]
+    [InlineData("verification")]
+    [InlineData("storage")]
+    public async Task PurgeExpiredAsync_LostAcknowledgement_CleansOnlyConfirmedDeletedScreenshots(string failureStage)
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var options = NewSectionDbOptions<IssuesDbContext>();
+        var first = Guid.NewGuid();
+        var second = Guid.NewGuid();
+        var live = Guid.NewGuid();
+        var firstKey = $"uploads/issues/{first}/shot.png";
+        var secondKey = $"uploads/issues/{second}/shot.png";
+        var liveKey = $"uploads/issues/{live}/shot.png";
+        var old = Clock.GetCurrentInstant() - Duration.FromDays(200);
+        await using (var seed = new IssuesDbContext(options))
+        {
+            foreach (var (id, key) in new[] { (first, firstKey), (second, secondKey), (live, liveKey) })
+                seed.Issues.Add(new Issue
+                {
+                    Id = id, ReporterUserId = Guid.NewGuid(), Category = IssueCategory.Bug,
+                    Title = "Retention", Description = "Test", CreatedAt = old, UpdatedAt = old,
+                    Status = id == live ? IssueStatus.Open : IssueStatus.Resolved,
+                    ResolvedAt = id == live ? null : old, ScreenshotStoragePath = key,
+                });
+            await seed.SaveChangesAsync(ct);
+        }
+        var failure = new IOException("Retention save failed");
+        var failingOptions = new DbContextOptionsBuilder<IssuesDbContext>(options)
+            .AddInterceptors(new FailRetentionSave(failure, string.Equals(failureStage, "before", StringComparison.Ordinal))).Options;
+        var inner = new IssuesRepository(new TestDbContextFactory<IssuesDbContext>(failingOptions));
+        var repo = Substitute.For<IIssuesRepository>();
+        repo.GetExpiredTerminalAsync(Arg.Any<Instant>(), Arg.Any<CancellationToken>())
+            .Returns(call => inner.GetExpiredTerminalAsync(call.Arg<Instant>(), call.Arg<CancellationToken>()));
+        repo.DeleteByIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(call => inner.DeleteByIdsAsync(call.Arg<IReadOnlyCollection<Guid>>(), call.Arg<CancellationToken>()));
+        repo.GetByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            call.Arg<CancellationToken>().Should().Be(CancellationToken.None);
+            return call.Arg<Guid>() == first && string.Equals(failureStage, "verification", StringComparison.Ordinal)
+                ? Task.FromException<Issue?>(new IOException("Verification unavailable"))
+                : inner.GetByIdAsync(call.Arg<Guid>(), call.Arg<CancellationToken>());
+        });
+        var files = new HashSet<string>(StringComparer.Ordinal) { firstKey, secondKey, liveKey };
+        var storage = Substitute.For<IFileStorage>();
+        storage.DeleteAsync(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            call.Arg<CancellationToken>().Should().Be(CancellationToken.None);
+            if (string.Equals(failureStage, "storage", StringComparison.Ordinal) && string.Equals(call.Arg<string>(), firstKey, StringComparison.Ordinal))
+                throw new IOException("Storage unavailable");
+            files.Remove(call.Arg<string>());
+            return Task.CompletedTask;
+        });
+        var service = new IssuesApplicationService(repo, _userService, _roleService,
+            _emailService, _emailMessages, _notificationService, _notificationInbox, AuditLog, AuditViewer,
+            Clock, storage, SectionCatalog, Domain.TestIssueQueues.Shipped(), _logger);
+
+        var purge = () => service.PurgeExpiredAsync(ct);
+        (await purge.Should().ThrowAsync<IOException>()).Which.Should().BeSameAs(failure);
+
+        files.Contains(firstKey).Should().Be(failureStage is "before" or "verification" or "storage");
+        files.Contains(secondKey).Should().Be(string.Equals(failureStage, "before", StringComparison.Ordinal));
+        files.Should().Contain(liveKey);
+        await using var verify = new IssuesDbContext(options);
+        (await verify.Issues.CountAsync(ct)).Should().Be(string.Equals(failureStage, "before", StringComparison.Ordinal) ? 3 : 1);
+    }
+
+    private sealed class FailRetentionSave(Exception failure, bool beforeCommit) : SaveChangesInterceptor
+    {
+        public override ValueTask<InterceptionResult<int>> SavingChangesAsync(DbContextEventData eventData,
+            InterceptionResult<int> result, CancellationToken cancellationToken = default)
+        {
+            if (beforeCommit) throw failure;
+            return ValueTask.FromResult(result);
+        }
+        public override ValueTask<int> SavedChangesAsync(SaveChangesCompletedEventData eventData,
+            int result, CancellationToken cancellationToken = default) => throw failure;
+    }
+
     [HumansFact]
     public async Task PurgeExpiredAsync_DeletesTerminalIssuesOlderThanSixMonths()
     {
