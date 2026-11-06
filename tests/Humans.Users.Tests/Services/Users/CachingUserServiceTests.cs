@@ -21,6 +21,105 @@ public class CachingUserServiceTests
 {
     private readonly IUserManagement _inner = Substitute.For<IUserManagement>();
 
+    [HumansTheory]
+    [InlineData("SetPreferredLanguage")]
+    [InlineData("RecordLogin")]
+    [InlineData("MarkFake")]
+    [InlineData("SetDeletionPending")]
+    [InlineData("ClearDeletion")]
+    [InlineData("EnsureStubProfile")]
+    [InlineData("SetSuspension")]
+    [InlineData("SetRejected")]
+    [InlineData("SaveProfile")]
+    [InlineData("SaveMedicalConditions")]
+    [InlineData("SaveProfileLanguages")]
+    [InlineData("SuspendProfilesForMissingConsent")]
+    [InlineData("AddUserEmail")]
+    [InlineData("UpdateUserEmail")]
+    [InlineData("RemoveUserEmail")]
+    [InlineData("ApplyUserEmailReconcilePlan")]
+    [InlineData("ApplyExpiredDeletionAnonymization")]
+    [InlineData("AnonymizeForMerge")]
+    [InlineData("DeleteUsers")]
+    [InlineData("Reassign")]
+    public async Task Mutation_UnknownCompletion_DropsAllPotentiallyChangedUsers(string operation)
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var userId = Guid.NewGuid();
+        var otherId = Guid.NewGuid();
+        IReadOnlyCollection<Guid> affectedIds = [userId, otherId];
+        var before = new[] { SampleUserInfo(userId, "Before"), SampleUserInfo(otherId, "Other before") };
+        var after = new[] { SampleUserInfo(userId, "After"), SampleUserInfo(otherId, "Other after") };
+        var committed = false;
+        _inner.GetAllUserInfosAsync(Arg.Any<CancellationToken>())
+            .Returns(_ => (IReadOnlyCollection<UserInfo>)(committed ? after : before));
+        var sut = CreateSut();
+        (await sut.GetUserInfoAsync(userId, ct))!.BurnerName.Should().Be("Before");
+        var failure = new IOException("Write acknowledgement failed");
+        Task InvokeAsync(IUserManagement service) => operation switch
+        {
+            "SetPreferredLanguage" => service.SetPreferredLanguageAsync(userId, "es", ct),
+            "RecordLogin" => service.RecordLoginAsync(userId, ct),
+            "MarkFake" => service.MarkFakeAsync(userId, otherId, "test", ct),
+            "SetDeletionPending" => service.SetDeletionPendingAsync(userId, default, default, null, ct),
+            "ClearDeletion" => service.ClearDeletionAsync(userId, ct),
+            "EnsureStubProfile" => service.EnsureStubProfileAsync(userId, ct: ct),
+            "SetSuspension" => service.SetSuspensionAsync(userId, true, ct: ct),
+            "SetRejected" => service.SetRejectedAsync(userId, ct),
+            "SaveProfile" => service.SaveProfileAsync(userId, null!, ct: ct),
+            "SaveMedicalConditions" => service.SaveMedicalConditionsAsync(userId, "updated", ct),
+            "SaveProfileLanguages" => service.SaveProfileLanguagesAsync(otherId, [], ct),
+            "SuspendProfilesForMissingConsent" => service.SuspendProfilesForMissingConsentAsync(affectedIds, ct),
+            "AddUserEmail" => service.AddUserEmailAsync(userId, null!, ct),
+            "UpdateUserEmail" => service.UpdateUserEmailAsync(userId, otherId, null!, ct),
+            "RemoveUserEmail" => service.RemoveUserEmailAsync(userId, otherId, null!, ct),
+            "ApplyUserEmailReconcilePlan" => service.ApplyUserEmailReconcilePlanAsync(userId, null!, ct),
+            "ApplyExpiredDeletionAnonymization" => service.ApplyExpiredDeletionAnonymizationAsync(userId, ct),
+            "AnonymizeForMerge" => service.AnonymizeForMergeAsync(userId, otherId, default, ct),
+            "DeleteUsers" => service.DeleteUsersAsync(affectedIds, ct),
+            "Reassign" => service.ReassignAsync(userId, otherId, otherId, default, ct),
+            _ => throw new ArgumentOutOfRangeException(nameof(operation))
+        };
+        _inner.When(inner => InvokeAsync(inner)).Do(_ =>
+        {
+            committed = true;
+            throw failure;
+        });
+
+        Func<Task> write = () => InvokeAsync(sut);
+        (await write.Should().ThrowAsync<IOException>()).Which.Should().BeSameAs(failure);
+
+        (await sut.GetUserInfoAsync(userId, ct))!.BurnerName.Should().Be("After");
+        (await sut.GetUserInfoAsync(otherId, ct))!.BurnerName.Should().Be("Other after");
+    }
+
+    [HumansFact]
+    public async Task SuspendProfiles_RefreshFailure_DoesNotLeaveOtherChangedUsersStale()
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var first = Guid.NewGuid();
+        var second = Guid.NewGuid();
+        IReadOnlyCollection<UserInfo> stored = [SampleUserInfo(first, "Before"), SampleUserInfo(second, "Other before")];
+        _inner.GetAllUserInfosAsync(Arg.Any<CancellationToken>()).Returns(_ => stored);
+        var sut = CreateSut();
+        await sut.GetUserInfoAsync(first, ct);
+        _inner.SuspendProfilesForMissingConsentAsync(Arg.Any<IReadOnlyCollection<Guid>>(), ct)
+            .Returns(_ =>
+            {
+                stored = [SampleUserInfo(first, "After"), SampleUserInfo(second, "Other after")];
+                return (IReadOnlySet<Guid>)new HashSet<Guid> { first, second };
+            });
+        var failure = new IOException("Refresh read failed");
+        _inner.GetUserInfoAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(_ => ValueTask.FromException<UserInfo?>(failure));
+
+        var write = () => sut.SuspendProfilesForMissingConsentAsync([first, second], ct);
+        (await write.Should().ThrowAsync<IOException>()).Which.Should().BeSameAs(failure);
+
+        (await sut.GetUserInfoAsync(first, ct))!.BurnerName.Should().Be("After");
+        (await sut.GetUserInfoAsync(second, ct))!.BurnerName.Should().Be("Other after");
+    }
+
     private CachingUserService CreateSut()
     {
         var services = new ServiceCollection();
