@@ -10,6 +10,7 @@ using Humans.Preapprovals.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Expenses.Services.Dtos;
 using Humans.Base.Helpers;
+using Humans.Base.Threading;
 using Microsoft.Extensions.Options;
 using NodaTime;
 using System.Globalization;
@@ -52,6 +53,9 @@ internal sealed class ExpenseReportService(
 
     /// <summary>Claim deadlines are Europe/Madrid dates.</summary>
     private static readonly DateTimeZone MadridZone = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
+
+    // Scoped transitions hold this through ambient transaction disposal and completion.
+    private static readonly TrackedLock TransitionLock = new("Expenses.ReportTransitions");
 
     internal static string AttachmentKey(Guid id, string extension) =>
         $"uploads/expense-attachments/{id}{extension}";
@@ -256,6 +260,7 @@ internal sealed class ExpenseReportService(
         CancellationToken ct = default) =>
         RunMutationAsync(ct, async () =>
         {
+            using var transition = await TransitionLock.AcquireAsync(logger, ct);
             var (editableReport, refusal) = await GetEditableReportAsync(reportId, actorUserId, actorIsFinanceAdmin, ct);
             if (refusal is not null) return refusal;
             var report = editableReport!;
@@ -813,6 +818,7 @@ internal sealed class ExpenseReportService(
         Guid reportId, Guid actorUserId, bool actorIsFinanceAdmin, CancellationToken ct = default) =>
         RunMutationAsync(ct, async () =>
         {
+            using var transition = await TransitionLock.AcquireAsync(logger, ct);
             var report = await repo.GetByIdAsync(reportId, ct);
             if (report is null) return ExpenseMutationResult.Failure("Expenses_Validation_CouldNotSubmitReport");
             if (!actorIsFinanceAdmin && !await IsSubmitterAsync(report, actorUserId, ct))
@@ -924,6 +930,7 @@ internal sealed class ExpenseReportService(
         Guid reportId, Guid submitterUserId, CancellationToken ct = default) =>
         RunMutationAsync(ct, async () =>
         {
+            using var transition = await TransitionLock.AcquireAsync(logger, ct);
             var report = await repo.GetByIdAsync(reportId, ct);
             if (report is null) return ExpenseMutationResult.Failure("Expenses_Flash_WithdrawFailed");
             if (!await IsSubmitterAsync(report, submitterUserId, ct))
@@ -1294,6 +1301,7 @@ internal sealed class ExpenseReportService(
         CancellationToken ct = default) =>
         RunMutationAsync(ct, async () =>
         {
+            using var transition = await TransitionLock.AcquireAsync(logger, ct);
             var report = await repo.GetByIdAsync(reportId, ct);
             if (report is null) return ExpenseMutationResult.OperatorFailure("Could not approve the report. It may not be in an approvable status.");
 
