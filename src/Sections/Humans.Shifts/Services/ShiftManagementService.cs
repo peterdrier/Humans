@@ -72,23 +72,28 @@ internal sealed class ShiftManagementService(
         Guid eventSettingsId, bool isShiftBrowsingOpen, int? globalVolunteerCap, int reminderLeadTimeHours,
         BuildSubPeriodStarts subPeriods, Guid actorUserId)
     {
-        var entity = await EnsureKnobsRowAsync(eventSettingsId);
-        entity.IsShiftBrowsingOpen = isShiftBrowsingOpen;
-        entity.GlobalVolunteerCap = globalVolunteerCap;
-        entity.ReminderLeadTimeHours = reminderLeadTimeHours;
-        SetSubPeriods(entity, subPeriods);
-        entity.UpdatedAt = clock.GetCurrentInstant();
-        await repo.SaveEventSettingsAsync(entity, EntityMutationMode.Update);
-        await auditLogService.LogAsync(
-            ShiftsAuditActions.ShiftSettingsUpdated, nameof(EventSettings), eventSettingsId,
-            $"Shift settings saved: browsing {(isShiftBrowsingOpen ? "open" : "closed")}, "
-            + $"volunteer cap {globalVolunteerCap?.ToString(CultureInfo.InvariantCulture) ?? "none"}, reminder {reminderLeadTimeHours}h, "
-            + $"build sub-periods start first crew {subPeriods.FirstCrew}, set-up week {subPeriods.SetupWeek}, "
-            + $"pre-event week {subPeriods.PreEventWeek}, finishing weekend {subPeriods.FinishingWeekend}.",
-            actorUserId);
-
-        EvictDashboardCaches(eventSettingsId);
-        viewInvalidator.InvalidateAll();
+        try
+        {
+            var entity = await EnsureKnobsRowAsync(eventSettingsId);
+            entity.IsShiftBrowsingOpen = isShiftBrowsingOpen;
+            entity.GlobalVolunteerCap = globalVolunteerCap;
+            entity.ReminderLeadTimeHours = reminderLeadTimeHours;
+            SetSubPeriods(entity, subPeriods);
+            entity.UpdatedAt = clock.GetCurrentInstant();
+            await repo.SaveEventSettingsAsync(entity, EntityMutationMode.Update);
+            await auditLogService.LogAsync(
+                ShiftsAuditActions.ShiftSettingsUpdated, nameof(EventSettings), eventSettingsId,
+                $"Shift settings saved: browsing {(isShiftBrowsingOpen ? "open" : "closed")}, "
+                + $"volunteer cap {globalVolunteerCap?.ToString(CultureInfo.InvariantCulture) ?? "none"}, reminder {reminderLeadTimeHours}h, "
+                + $"build sub-periods start first crew {subPeriods.FirstCrew}, set-up week {subPeriods.SetupWeek}, "
+                + $"pre-event week {subPeriods.PreEventWeek}, finishing weekend {subPeriods.FinishingWeekend}.",
+                actorUserId);
+        }
+        finally
+        {
+            EvictDashboardCaches(eventSettingsId);
+            viewInvalidator.InvalidateAll();
+        }
     }
 
     private static void SetSubPeriods(EventSettings entity, BuildSubPeriodStarts starts)
@@ -117,10 +122,17 @@ internal sealed class ShiftManagementService(
 
     public async Task SetShiftBrowsingOpenAsync(Guid eventSettingsId, bool isOpen)
     {
-        var entity = await EnsureKnobsRowAsync(eventSettingsId);
-        entity.IsShiftBrowsingOpen = isOpen;
-        entity.UpdatedAt = clock.GetCurrentInstant();
-        await repo.SaveEventSettingsAsync(entity, EntityMutationMode.Update);
+        try
+        {
+            var entity = await EnsureKnobsRowAsync(eventSettingsId);
+            entity.IsShiftBrowsingOpen = isOpen;
+            entity.UpdatedAt = clock.GetCurrentInstant();
+            await repo.SaveEventSettingsAsync(entity, EntityMutationMode.Update);
+        }
+        finally
+        {
+            viewInvalidator.InvalidateAll();
+        }
     }
 
     public async Task<Guid> CreateRotaAsync(CreateRotaInput input, IReadOnlyList<Guid>? tagIds = null)
@@ -229,9 +241,15 @@ internal sealed class ShiftManagementService(
         var oldTeamName = oldTeam?.Name ?? "(unknown)";
 
         // Targeted write: only TeamId + UpdatedAt are marked modified so concurrent edits don't clobber.
-        await repo.UpdateRotaTeamAssignmentAsync(
-            rota.Id, input.TargetTeamId, clock.GetCurrentInstant());
-        viewInvalidator.InvalidateRota(rota.Id);
+        try
+        {
+            await repo.UpdateRotaTeamAssignmentAsync(
+                rota.Id, input.TargetTeamId, clock.GetCurrentInstant());
+        }
+        finally
+        {
+            viewInvalidator.InvalidateRota(rota.Id);
+        }
 
         await auditLogService.LogAsync(
             ShiftsAuditActions.RotaMovedToTeam, nameof(Rota), rota.Id,
@@ -258,11 +276,16 @@ internal sealed class ShiftManagementService(
         var removedSignups = rota.Shifts.SelectMany(s => s.ShiftSignups).ToList();
         var affectedUserIds = removedSignups.Select(s => s.UserId).Distinct().ToList();
 
-        await repo.DeleteRotaCascadeAsync(rotaId);
-
-        viewInvalidator.InvalidateRota(rotaId);
-        foreach (var uid in affectedUserIds)
-            viewInvalidator.InvalidateUser(uid);
+        try
+        {
+            await repo.DeleteRotaCascadeAsync(rotaId);
+        }
+        finally
+        {
+            viewInvalidator.InvalidateRota(rotaId);
+            foreach (var uid in affectedUserIds)
+                viewInvalidator.InvalidateUser(uid);
+        }
         await AuditDeletedPendingSignupsAsync(removedSignups, actorUserId, $"rota '{rota.Name}' was deleted");
         return new ShiftDeletionResult();
     }
@@ -389,8 +412,14 @@ internal sealed class ShiftManagementService(
 
         if (toInsert.Count > 0)
         {
-            await repo.AddShiftsAsync(toInsert);
-            viewInvalidator.InvalidateRota(input.RotaId);
+            try
+            {
+                await repo.AddShiftsAsync(toInsert);
+            }
+            finally
+            {
+                viewInvalidator.InvalidateRota(input.RotaId);
+            }
         }
 
         return ShiftGenerationResult.Success($"Created {toInsert.Count} shifts for '{rota.Name}'.", toInsert.Count);
@@ -450,8 +479,14 @@ internal sealed class ShiftManagementService(
 
         if (toInsert.Count > 0)
         {
-            await repo.AddShiftsAsync(toInsert);
-            viewInvalidator.InvalidateRota(input.RotaId);
+            try
+            {
+                await repo.AddShiftsAsync(toInsert);
+            }
+            finally
+            {
+                viewInvalidator.InvalidateRota(input.RotaId);
+            }
         }
 
         return ShiftGenerationResult.Success($"Generated {toInsert.Count} shifts for '{rota.Name}'.", toInsert.Count);
@@ -491,8 +526,14 @@ internal sealed class ShiftManagementService(
             UpdatedAt = now
         };
 
-        await repo.SaveShiftAsync(shift, EntityMutationMode.Add);
-        viewInvalidator.InvalidateRota(input.RotaId);
+        try
+        {
+            await repo.SaveShiftAsync(shift, EntityMutationMode.Add);
+        }
+        finally
+        {
+            viewInvalidator.InvalidateRota(input.RotaId);
+        }
         return ShiftMutationResult.Success("Shift created.", shift.Id);
     }
 
@@ -541,8 +582,14 @@ internal sealed class ShiftManagementService(
         shift.AdminOnly = input.AdminOnly;
         shift.UpdatedAt = clock.GetCurrentInstant();
 
-        await repo.SaveShiftAsync(shift, EntityMutationMode.Update);
-        viewInvalidator.InvalidateShift(shift.Id);
+        try
+        {
+            await repo.SaveShiftAsync(shift, EntityMutationMode.Update);
+        }
+        finally
+        {
+            viewInvalidator.InvalidateShift(shift.Id);
+        }
         return ShiftMutationResult.Success("Shift updated.", shift.Id);
     }
 
@@ -559,12 +606,17 @@ internal sealed class ShiftManagementService(
         var removedSignups = shift.ShiftSignups.ToList();
         var affectedUserIds = removedSignups.Select(s => s.UserId).Distinct().ToList();
 
-        await repo.DeleteShiftCascadeAsync(shiftId);
-
-        viewInvalidator.InvalidateShift(shiftId);
-        viewInvalidator.InvalidateRota(rotaId);
-        foreach (var uid in affectedUserIds)
-            viewInvalidator.InvalidateUser(uid);
+        try
+        {
+            await repo.DeleteShiftCascadeAsync(shiftId);
+        }
+        finally
+        {
+            viewInvalidator.InvalidateShift(shiftId);
+            viewInvalidator.InvalidateRota(rotaId);
+            foreach (var uid in affectedUserIds)
+                viewInvalidator.InvalidateUser(uid);
+        }
         await AuditDeletedPendingSignupsAsync(removedSignups, actorUserId,
             $"shift in '{shift.Rota.Name}' on day {shift.DayOffset} was deleted");
         return new ShiftDeletionResult();
@@ -787,8 +839,14 @@ internal sealed class ShiftManagementService(
             return false;
         }
 
-        await repo.SetVolunteerTagPreferencesAsync(userId, tagIds);
-        viewInvalidator.InvalidateUser(userId);
+        try
+        {
+            await repo.SetVolunteerTagPreferencesAsync(userId, tagIds);
+        }
+        finally
+        {
+            viewInvalidator.InvalidateUser(userId);
+        }
         return true;
     }
 
@@ -818,11 +876,17 @@ internal sealed class ShiftManagementService(
         entity.Languages = [.. profile.Languages];
         entity.UpdatedAt = now;
 
-        if (existing is null)
-            await repo.AddVolunteerEventProfileAsync(entity);
-        else
-            await repo.UpdateVolunteerEventProfileAsync(entity);
-        viewInvalidator.InvalidateUser(profile.UserId);
+        try
+        {
+            if (existing is null)
+                await repo.AddVolunteerEventProfileAsync(entity);
+            else
+                await repo.UpdateVolunteerEventProfileAsync(entity);
+        }
+        finally
+        {
+            viewInvalidator.InvalidateUser(profile.UserId);
+        }
     }
 
     public async Task<ShiftVolunteerProfileInfo?> GetShiftProfileAsync(Guid userId, CancellationToken ct = default)
@@ -863,9 +927,15 @@ internal sealed class ShiftManagementService(
     public async Task ReassignAsync(Guid sourceUserId, Guid targetUserId, Guid actorUserId, Instant updatedAt,
         CancellationToken ct)
     {
-        await repo.ReassignProfilesAndTagPrefsToUserAsync(sourceUserId, targetUserId, updatedAt, ct);
-        viewInvalidator.InvalidateUser(sourceUserId);
-        viewInvalidator.InvalidateUser(targetUserId);
+        try
+        {
+            await repo.ReassignProfilesAndTagPrefsToUserAsync(sourceUserId, targetUserId, updatedAt, ct);
+        }
+        finally
+        {
+            viewInvalidator.InvalidateUser(sourceUserId);
+            viewInvalidator.InvalidateUser(targetUserId);
+        }
     }
 
     public Task<PostEventStats?> GetPostEventStatsAsync(
