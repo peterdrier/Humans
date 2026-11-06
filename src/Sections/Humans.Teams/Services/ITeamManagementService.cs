@@ -291,11 +291,11 @@ internal interface ITeamManagementService : ITeamManagement
     /// <summary>Unordered: display order is the caller's.</summary>
     Task<IReadOnlyList<TeamEarlyEntryGrantInfo>> GetEarlyEntryGrantsForTeamAsync(Guid teamId, CancellationToken ct = default);
 
-    /// <summary>Throws unless the team has <see cref="Team.EarlyEntryEnabled"/>.</summary>
-    Task AddEarlyEntryGrantAsync(Guid teamId, Guid userId, LocalDate entryDate, string projectName, Guid actorUserId, CancellationToken ct = default);
+    /// <summary>Returns a refusal unless the team has <see cref="Team.EarlyEntryEnabled"/> and the person is available.</summary>
+    Task<TeamEarlyEntryMutationResult> AddEarlyEntryGrantAsync(Guid teamId, Guid userId, LocalDate entryDate, string projectName, Guid actorUserId, CancellationToken ct = default);
 
     /// <summary>A grant on another team counts as not found.</summary>
-    Task EditEarlyEntryGrantAsync(Guid teamId, Guid grantId, LocalDate entryDate, string projectName, Guid actorUserId, CancellationToken ct = default);
+    Task<TeamEarlyEntryMutationResult> EditEarlyEntryGrantAsync(Guid teamId, Guid grantId, LocalDate entryDate, string projectName, Guid actorUserId, CancellationToken ct = default);
 
     /// <summary>Idempotent. A grant on another team counts as not found.</summary>
     Task RemoveEarlyEntryGrantAsync(Guid teamId, Guid grantId, Guid actorUserId, CancellationToken ct = default);
@@ -351,6 +351,11 @@ internal sealed record TeamDeactivationResult(string? Refusal = null)
 }
 
 internal sealed record TeamRoleDefinitionMutationResult(TeamRoleDefinition? Definition = null, string? Refusal = null)
+{
+    public bool Succeeded => Refusal is null;
+}
+
+internal sealed record TeamEarlyEntryMutationResult(string? Refusal = null)
 {
     public bool Succeeded => Refusal is null;
 }

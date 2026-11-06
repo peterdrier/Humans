@@ -38,6 +38,7 @@ internal sealed class TeamService(
     private readonly TeamGoogleGroupMemberships googleGroupMemberships = new(repo, logger);
     private static readonly TrackedLock JoinRequestLock = new("Teams.JoinRequest");
     private const int MaxTeamSlugLength = 256;
+    private const string UnavailableMembershipTargetMessage = "Cannot add a missing, deleted or merged account to a team.";
     private static readonly HashSet<string> ReservedTeamSlugs = new(StringComparer.Ordinal)
     {
         "roster", "birthdays", "map", "my", "sync", "summary", "create", "search", "tree"
@@ -1329,7 +1330,8 @@ internal sealed class TeamService(
         var (definition, team) = await RequireRoleAssignmentManagementAsync(
             roleDefinitionId, actorUserId, cancellationToken);
 
-        targetUserId = await ResolveMembershipTargetAsync(targetUserId, cancellationToken);
+        targetUserId = await ResolveMembershipTargetAsync(targetUserId, cancellationToken)
+            ?? throw new InvalidOperationException(UnavailableMembershipTargetMessage);
         var existingMember = await repo.FindActiveMemberForMutationAsync(definition.TeamId, targetUserId, cancellationToken);
         var now = clock.GetCurrentInstant();
 
@@ -1634,15 +1636,19 @@ internal sealed class TeamService(
             .ToList();
     }
 
-    public async Task AddEarlyEntryGrantAsync(Guid teamId, Guid userId, LocalDate entryDate, string projectName, Guid actorUserId, CancellationToken ct = default)
+    public async Task<TeamEarlyEntryMutationResult> AddEarlyEntryGrantAsync(Guid teamId, Guid userId, LocalDate entryDate, string projectName, Guid actorUserId, CancellationToken ct = default)
     {
-        var team = await repo.GetByIdAsync(teamId, ct)
-            ?? throw new InvalidOperationException($"Team {teamId} not found.");
+        var team = await repo.GetByIdAsync(teamId, ct);
+        if (team is null)
+            return new(Refusal: $"Team {teamId} not found.");
         if (!team.EarlyEntryEnabled)
-            throw new InvalidOperationException($"Early entry is not enabled for team {teamId}.");
+            return new(Refusal: $"Early entry is not enabled for team {teamId}.");
         if (userId == Guid.Empty)
-            throw new ArgumentException("UserId must be a non-empty GUID.", nameof(userId));
-        userId = await ResolveMembershipTargetAsync(userId, ct);
+            return new(Refusal: "UserId must be a non-empty GUID.");
+        var targetUserId = await ResolveMembershipTargetAsync(userId, ct);
+        if (targetUserId is null)
+            return new(Refusal: UnavailableMembershipTargetMessage);
+        userId = targetUserId.Value;
 
         var grant = new TeamEarlyEntryGrant
         {
@@ -1656,19 +1662,21 @@ internal sealed class TeamService(
         await repo.AddEarlyEntryGrantAsync(grant, ct);
         await auditLogService.LogAsync(TeamsAuditActions.EarlyEntryGranted, nameof(TeamEarlyEntryGrant), grant.Id,
             $"EE granted to {userId} on {entryDate} for \"{grant.ProjectName}\" (team {teamId})", actorUserId);
+        return new();
     }
 
-    public async Task EditEarlyEntryGrantAsync(Guid teamId, Guid grantId, LocalDate entryDate, string projectName, Guid actorUserId, CancellationToken ct = default)
+    public async Task<TeamEarlyEntryMutationResult> EditEarlyEntryGrantAsync(Guid teamId, Guid grantId, LocalDate entryDate, string projectName, Guid actorUserId, CancellationToken ct = default)
     {
         var grant = await repo.FindEarlyEntryGrantForMutationAsync(grantId, ct);
         if (grant is null || grant.TeamId != teamId)
-            throw new InvalidOperationException($"EE grant {grantId} not found.");
+            return new(Refusal: $"EE grant {grantId} not found.");
         grant.EntryDate = entryDate;
         grant.ProjectName = projectName.Trim();
         grant.UpdatedAt = clock.GetCurrentInstant();
         await repo.UpdateEarlyEntryGrantAsync(grant, ct);
         await auditLogService.LogAsync(TeamsAuditActions.EarlyEntryUpdated, nameof(TeamEarlyEntryGrant), grant.Id,
             $"EE updated for {grant.UserId}: {entryDate}, \"{grant.ProjectName}\"", actorUserId);
+        return new();
     }
 
     public async Task RemoveEarlyEntryGrantAsync(Guid teamId, Guid grantId, Guid actorUserId, CancellationToken ct = default)
@@ -1705,12 +1713,10 @@ internal sealed class TeamService(
             : throw new InvalidOperationException($"Team {definition.TeamId} not found");
     }
 
-    private async Task<Guid> ResolveMembershipTargetAsync(Guid userId, CancellationToken ct)
+    private async Task<Guid?> ResolveMembershipTargetAsync(Guid userId, CancellationToken ct)
     {
         var user = await UserService.GetUserInfoAsync(userId, ct);
-        if (user is null || user.IsTombstone)
-            throw new InvalidOperationException("Cannot add a missing, deleted or merged account to a team.");
-        return user.Id;
+        return user is null || user.IsTombstone ? null : user.Id;
     }
 
     private async Task<GoogleSyncOutboxEvent?> BuildOutboxEventAsync(

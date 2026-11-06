@@ -739,17 +739,15 @@ internal sealed class TeamAdminController(
             return View(nameof(EarlyEntry), await BuildEarlyEntryPageAsync(team, ct));
         }
 
-        try
+        var result = await _teamService.AddEarlyEntryGrantAsync(
+            team.Id, input.UserId, parsed.Value, input.ProjectName, user.Id, ct);
+        if (result.Refusal is { } refusal)
         {
-            await _teamService.AddEarlyEntryGrantAsync(
-                team.Id, input.UserId, parsed.Value, input.ProjectName, user.Id, ct);
+            logger.LogWarning("Early entry grant refused for team {TeamId} by user {UserId}: {Reason}", team.Id, user.Id, refusal);
+            SetError(refusal);
+        }
+        else
             SetSuccess("Early entry granted.");
-        }
-        catch (Exception ex) when (ex is InvalidOperationException or DbUpdateException or ArgumentException)
-        {
-            logger.LogWarning(ex, "Failed to grant early entry for team {TeamId} by user {UserId}", team.Id, user.Id);
-            SetError(ex.Message);
-        }
 
         return RedirectToAction(nameof(EarlyEntry), new { slug });
     }
@@ -779,17 +777,15 @@ internal sealed class TeamAdminController(
             return View(nameof(EarlyEntry), await BuildEarlyEntryPageAsync(team, ct));
         }
 
-        try
+        var result = await _teamService.EditEarlyEntryGrantAsync(
+            team.Id, input.GrantId, parsed.Value, input.ProjectName, user.Id, ct);
+        if (result.Refusal is { } refusal)
         {
-            await _teamService.EditEarlyEntryGrantAsync(
-                team.Id, input.GrantId, parsed.Value, input.ProjectName, user.Id, ct);
+            logger.LogWarning("Early entry update refused for grant {GrantId} in team {TeamId} by user {UserId}: {Reason}", input.GrantId, team.Id, user.Id, refusal);
+            SetError(refusal);
+        }
+        else
             SetSuccess("Early entry updated.");
-        }
-        catch (Exception ex) when (ex is InvalidOperationException or DbUpdateException or ArgumentException)
-        {
-            logger.LogWarning(ex, "Failed to update early entry grant {GrantId} for team {TeamId} by user {UserId}", input.GrantId, team.Id, user.Id);
-            SetError(ex.Message);
-        }
 
         return RedirectToAction(nameof(EarlyEntry), new { slug });
     }
@@ -809,16 +805,8 @@ internal sealed class TeamAdminController(
             return NotFound();
         }
 
-        try
-        {
-            await _teamService.RemoveEarlyEntryGrantAsync(team.Id, grantId, user.Id, ct);
-            SetSuccess("Early entry revoked.");
-        }
-        catch (Exception ex) when (ex is InvalidOperationException or DbUpdateException or ArgumentException)
-        {
-            logger.LogWarning(ex, "Failed to revoke early entry grant {GrantId} for team {TeamId} by user {UserId}", grantId, team.Id, user.Id);
-            SetError(ex.Message);
-        }
+        await _teamService.RemoveEarlyEntryGrantAsync(team.Id, grantId, user.Id, ct);
+        SetSuccess("Early entry revoked.");
 
         return RedirectToAction(nameof(EarlyEntry), new { slug });
     }

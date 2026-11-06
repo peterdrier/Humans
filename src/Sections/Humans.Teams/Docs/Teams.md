@@ -281,6 +281,7 @@ This section's controllers. `TeamController` (`[Route("Teams")]`) handles both a
 - Inactive teams grant no Early Entry: the roster excludes grants of deactivated teams. Grants are kept and resume if the team is reactivated.
 - Toggling `EarlyEntryEnabled` off never deletes existing grants — they simply stop appearing on the roster while disabled.
 - `RemoveEarlyEntryGrantAsync` is idempotent (removing an absent grant is a no-op).
+- Early-entry add/edit return internal results for unavailable teams or people and missing/foreign grants before writes or audit. Operator feedback logs refusals at Warning without exception stacks. Storage and other dependency failures propagate on add, edit and removal; they are never rendered as ordinary refusal messages.
 - The team early-entry grant table renders each grantee through Human from its user ID; it keeps no copied display name. Project/date ordering remains unchanged.
 - `ManageEarlyEntry` authority: Admin / TeamsAdmin on any team; `EarlyEntryAdmin` on any team (this operation only); a team coordinator (or parent-department coordinator) on their own team.
 - `EarlyEntryAdmin` is declared by EarlyEntry's `ISectionRoles` with `OpensAdminShell: false` (assignable, surfaces in the role-assignment UI) but deliberately **not** in the `AnyAdminRole` policy — its only surface is the per-team `Teams/{slug}/EarlyEntry` page reached from Team Details, not the admin shell. The omission is the design, not a gap.
