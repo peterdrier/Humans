@@ -519,34 +519,49 @@ internal sealed class ExpenseReportService(
             // Read the line before it is gone — the audit entry names what was removed, not an id.
             var removed = report.Lines.FirstOrDefault(l => l.Id == lineId);
 
-            // One atomic save removes the line, its proof rows and their attachment rows; files go only after the
-            // commit; cleanup failures cannot reverse the metadata deletion.
-            var removedAttachments = await repo.RemoveLineAsync(reportId, lineId, ct)
-                ?? throw new InvalidOperationException("Failed to remove line.");
-
-            // The deletion has committed; its audit and file cleanup must finish even if the request ends.
-            await AuditOnBehalfEditAsync(report, actorUserId,
-                removed is null
-                    ? $"Removed line {lineId}"
-                    : $"Removed line \"{removed.Description}\" €{removed.Amount}", CancellationToken.None);
-
-            foreach (var attachment in removedAttachments)
+            var candidates = report.Lines.Where(line => line.Id == lineId || line.ParentLineId == lineId)
+                .Select(line => line.Attachment).OfType<ExpenseAttachmentDto>()
+                .Select(attachment => (attachment.Id, attachment.Extension)).ToList();
+            IReadOnlyList<ExpenseAttachment>? removedAttachments = null;
+            try
             {
-                try
-                {
-                    await fileStorage.DeleteAsync(
-                        AttachmentKey(attachment.Id, attachment.Extension), CancellationToken.None);
-                }
-                catch (Exception ex)
-                {
-                    logger.LogError(ex,
-                        "Could not delete attachment file {AttachmentId} while removing line {LineId}",
-                        attachment.Id, lineId);
-                }
-            }
+                // One atomic save removes the line, its proof rows and their attachment metadata.
+                removedAttachments = await repo.RemoveLineAsync(reportId, lineId, ct)
+                    ?? throw new InvalidOperationException("Failed to remove line.");
 
-            return ExpenseMutationResult.Success;
+                await AuditOnBehalfEditAsync(report, actorUserId,
+                    removed is null
+                        ? $"Removed line {lineId}"
+                        : $"Removed line \"{removed.Description}\" €{removed.Amount}", CancellationToken.None);
+                return ExpenseMutationResult.Success;
+            }
+            finally
+            {
+                await CleanupUnlinkedAttachmentsAsync(
+                    removedAttachments is null ? candidates : removedAttachments.Select(a => (a.Id, a.Extension)), lineId);
+            }
         }, "Error removing line {LineId} from report {ReportId}", lineId, reportId);
+
+    private async Task CleanupUnlinkedAttachmentsAsync(
+        IEnumerable<(Guid Id, string Extension)> attachments, Guid lineId)
+    {
+        foreach (var attachment in attachments.Distinct())
+        {
+            try
+            {
+                // A save can commit before its acknowledgement or audit fails. Verify the actual linkage
+                // without caller cancellation; a failed verification retains the file for safety.
+                if (await repo.GetReportIdByAttachmentIdAsync(attachment.Id, CancellationToken.None) is not null)
+                    continue;
+                await fileStorage.DeleteAsync(AttachmentKey(attachment.Id, attachment.Extension), CancellationToken.None);
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Could not verify or delete attachment file {AttachmentId} while removing line {LineId}",
+                    attachment.Id, lineId);
+            }
+        }
+    }
 
     private const long AttachmentMaxBytes = 20 * 1024 * 1024;
     private const int AttachmentFileNameMaxLength = 255;
@@ -727,32 +742,26 @@ internal sealed class ExpenseReportService(
 
             if (line.Attachment is null) return ExpenseMutationResult.Success; // idempotent
 
-            var removed = await repo.RemoveLineAttachmentAsync(reportId, lineId, ct);
-            if (removed is null) return ExpenseMutationResult.Success;
-
-            await auditLogService.LogAsync(
-                ExpensesAuditActions.ExpenseAttachmentRemoved,
-                AuditEntityTypes.Report, reportId,
-                $"Attachment removed from line {lineId}.",
-                actorUserId,
-                relatedEntityId: report.SubmitterUserId,
-                relatedEntityType: AuditSubjectTypes.User);
-
-            // Post-commit cleanup: metadata and audit are written, so request cancellation
-            // must not strand the file.
+            ExpenseAttachment? removed = null;
             try
             {
-                await fileStorage.DeleteAsync(
-                    AttachmentKey(removed.Id, removed.Extension), CancellationToken.None);
-            }
-            catch (Exception ex)
-            {
-                logger.LogError(ex,
-                    "Could not delete attachment file {AttachmentId} for line {LineId}",
-                    removed.Id, lineId);
-            }
+                removed = await repo.RemoveLineAttachmentAsync(reportId, lineId, ct);
+                if (removed is null) return ExpenseMutationResult.Success;
 
-            return ExpenseMutationResult.Success;
+                await auditLogService.LogAsync(
+                    ExpensesAuditActions.ExpenseAttachmentRemoved,
+                    AuditEntityTypes.Report, reportId,
+                    $"Attachment removed from line {lineId}.",
+                    actorUserId,
+                    relatedEntityId: report.SubmitterUserId,
+                    relatedEntityType: AuditSubjectTypes.User);
+                return ExpenseMutationResult.Success;
+            }
+            finally
+            {
+                await CleanupUnlinkedAttachmentsAsync(
+                    [(removed?.Id ?? line.Attachment.Id, removed?.Extension ?? line.Attachment.Extension)], lineId);
+            }
         }, "Error removing attachment from line {LineId} on report {ReportId}", lineId, reportId);
 
     public Task<ExpenseMutationResult> SubmitWithResultAsync(

@@ -1078,6 +1078,90 @@ public sealed partial class ExpenseReportServiceTests
         result.Error!.ResourceKey.Should().Be("Expenses_Validation_LineNotOnReport");
     }
 
+    [HumansTheory]
+    [InlineData(false, "before")]
+    [InlineData(false, "after")]
+    [InlineData(false, "audit")]
+    [InlineData(false, "verification")]
+    [InlineData(true, "before")]
+    [InlineData(true, "after")]
+    [InlineData(true, "audit")]
+    [InlineData(true, "verification")]
+    public async Task AttachmentRemoval_Failures_DeleteOnlyConfirmedUnlinkedFiles(bool removeLine, string failureStage)
+    {
+        var ct = TestContext.Current.CancellationToken;
+        SetupActiveYear();
+        var submitter = Guid.NewGuid();
+        var actor = Guid.NewGuid();
+        var reportId = (await _sut.CreateDraftAsync(submitter, submitter, CategoryAccountNumber, "Test", ct: ct)).ReportId!.Value;
+        var lineId = (await _sut.AddLineWithResultAsync(reportId, submitter, false, "Item", 10m,
+            removeLine ? ExpenseLineType.Invoice : ExpenseLineType.Receipt, ct: ct)).LineId!.Value;
+        var attachments = new List<ExpenseAttachment> { MakeAttachment(submitter) };
+        await _expenseRepo.ReplaceLineAttachmentAsync(reportId, lineId, attachments[0], ct);
+        if (removeLine)
+        {
+            var proofId = (await _sut.AddLineWithResultAsync(reportId, submitter, false, "Proof", 10m,
+                parentLineId: lineId, ct: ct)).LineId!.Value;
+            attachments.Add(MakeAttachment(submitter));
+            await _expenseRepo.ReplaceLineAttachmentAsync(reportId, proofId, attachments[1], ct);
+        }
+        var remainingFiles = attachments.Select(a => ExpenseReportService.AttachmentKey(a.Id, a.Extension))
+            .ToHashSet(StringComparer.Ordinal);
+        _fileStorage.DeleteAsync(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            call.Arg<CancellationToken>().Should().Be(CancellationToken.None);
+            remainingFiles.Remove(call.Arg<string>());
+            return Task.CompletedTask;
+        });
+        var failure = new IOException("Removal dependency failed");
+        var options = new DbContextOptionsBuilder<ExpensesDbContext>(_expensesOptions);
+        if (!string.Equals(failureStage, "audit", StringComparison.Ordinal))
+            options.AddInterceptors(new FailRemovalSave(failure, string.Equals(failureStage, "before", StringComparison.Ordinal)));
+        var inner = new ExpenseRepository(new TestDbContextFactory<ExpensesDbContext>(options.Options));
+        var repository = Substitute.For<IExpenseRepository>();
+        repository.GetByIdAsync(reportId, Arg.Any<CancellationToken>()).Returns(call => inner.GetByIdAsync(reportId, call.Arg<CancellationToken>()));
+        repository.RemoveLineAsync(reportId, lineId, Arg.Any<CancellationToken>())
+            .Returns(call => inner.RemoveLineAsync(reportId, lineId, call.Arg<CancellationToken>()));
+        repository.RemoveLineAttachmentAsync(reportId, lineId, Arg.Any<CancellationToken>())
+            .Returns(call => inner.RemoveLineAttachmentAsync(reportId, lineId, call.Arg<CancellationToken>()));
+        repository.GetReportIdByAttachmentIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            call.Arg<CancellationToken>().Should().Be(CancellationToken.None);
+            return string.Equals(failureStage, "verification", StringComparison.Ordinal)
+                ? Task.FromException<Guid?>(failure)
+                : inner.GetReportIdByAttachmentIdAsync(call.Arg<Guid>(), call.Arg<CancellationToken>());
+        });
+        if (string.Equals(failureStage, "audit", StringComparison.Ordinal))
+            AuditLog.LogAsync(Arg.Any<AuditActionDefinition>(), Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<string>(),
+                Arg.Any<Guid>(), Arg.Any<Guid?>(), Arg.Any<string?>()).Returns(Task.FromException(failure));
+        var service = new ExpenseReportService(repository, _fileStorage, _budgetService, _teamService,
+            _userService, _emailService, TestExpensesEmails.Create(), AuditLog, Substitute.For<IAuditViewerService>(),
+            _holdedService, _finance, _financeWrite, _preapprovals, _preapprovalWrites, Clock,
+            NullLogger<ExpenseReportService>.Instance, Options.Create(new TravelReimbursementConfig()));
+
+        var result = removeLine
+            ? await service.RemoveLineWithResultAsync(reportId, actor, true, lineId, ct)
+            : await service.RemoveAttachmentFromLineAsync(reportId, actor, true, lineId, ct);
+
+        result.Succeeded.Should().BeFalse();
+        result.Error.Should().BeNull();
+        await using var verify = new ExpensesDbContext(_expensesOptions);
+        var beforeCommit = string.Equals(failureStage, "before", StringComparison.Ordinal);
+        (await verify.ExpenseAttachments.CountAsync(ct)).Should().Be(beforeCommit ? attachments.Count : 0);
+        remainingFiles.Count.Should().Be(beforeCommit || string.Equals(failureStage, "verification", StringComparison.Ordinal)
+            ? attachments.Count : 0);
+    }
+
+    private sealed class FailRemovalSave(IOException failure, bool beforeCommit) : SaveChangesInterceptor
+    {
+        public override ValueTask<InterceptionResult<int>> SavingChangesAsync(
+            DbContextEventData eventData, InterceptionResult<int> result, CancellationToken cancellationToken = default) =>
+            beforeCommit ? throw failure : ValueTask.FromResult(result);
+
+        public override ValueTask<int> SavedChangesAsync(
+            SaveChangesCompletedEventData eventData, int result, CancellationToken cancellationToken = default) => throw failure;
+    }
+
     [HumansFact]
     public async Task RemoveAttachmentFromLineAsync_UnlinksAndDeletesFile_Audits()
     {
