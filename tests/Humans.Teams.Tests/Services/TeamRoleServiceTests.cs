@@ -34,6 +34,7 @@ namespace Humans.Teams.Tests.Services;
 public sealed class TeamRoleServiceTests : TeamsTestHarness
 {
     private readonly TeamService _service;
+    private readonly ISystemTeamSync _systemTeamSync = Substitute.For<ISystemTeamSync>();
 
     public TeamRoleServiceTests() : base(Instant.FromUtc(2026, 3, 11, 12, 0))
     {
@@ -65,7 +66,7 @@ public sealed class TeamRoleServiceTests : TeamsTestHarness
             .With<ITeamManagement>()
             .With<IRoleAssignmentService>(roleAssignmentService)
             .With<IEmailService>()
-            .With<ISystemTeamSync>()
+            .With(_systemTeamSync)
             .With<IGoogleSyncOutboxService>(googleOutboxService)
             .With<IGoogleIntegrationService>()
             .With(teamResourceService)
@@ -334,10 +335,6 @@ public sealed class TeamRoleServiceTests : TeamsTestHarness
         result.Definition!.IsManagement.Should().BeTrue();
     }
 
-    /// <summary>
-    /// Flipping IsManagement on a role with assignees must invalidate shift authorization for every
-    /// assignee; that needs the repository to load Assignments.TeamMember, or the user-id set is empty.
-    /// </summary>
     [HumansFact]
     public async Task UpdateRoleDefinitionAsync_FlipIsManagementWithAssignees_MakesEachAssigneeACoordinator()
     {
@@ -363,10 +360,21 @@ public sealed class TeamRoleServiceTests : TeamsTestHarness
             .Should().Contain(team.Id);
         (await _service.GetUserCoordinatedTeamIdsAsync(user2.Id, Xunit.TestContext.Current.CancellationToken))
             .Should().Contain(team.Id);
+
+        ClearAllTrackers();
+        var members = await TeamsDb.TeamMembers.AsNoTracking()
+            .Where(m => m.TeamId == team.Id).ToListAsync(Xunit.TestContext.Current.CancellationToken);
+        members.Should().HaveCount(2).And.OnlyContain(m => m.Role == TeamMemberRole.Coordinator);
+        await _systemTeamSync.Received(1).SyncMembershipForUserAsync(
+            user1.Id, SystemTeamType.Coordinators, Arg.Any<CancellationToken>());
+        await _systemTeamSync.Received(1).SyncMembershipForUserAsync(
+            user2.Id, SystemTeamType.Coordinators, Arg.Any<CancellationToken>());
     }
 
-    [HumansFact]
-    public async Task ToggleRoleIsManagementAsync_ClearWithAssignedMembers_DemotesCoordinators()
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task ManagementRoleDemotion_WithAssignedMembers_DemotesCoordinators(bool editRole)
     {
         var admin = SeedUser("Admin");
         SeedAdminRole(admin);
@@ -377,7 +385,12 @@ public sealed class TeamRoleServiceTests : TeamsTestHarness
         SeedRoleAssignment(mgmtRole, member, slotIndex: 0);
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
 
-        var result = await _service.ToggleRoleIsManagementAsync(mgmtRole.Id, admin.Id, Xunit.TestContext.Current.CancellationToken);
+        var result = editRole
+            ? await _service.UpdateRoleDefinitionAsync(
+                mgmtRole.Id, mgmtRole.Name, null, 2, [SlotPriority.None, SlotPriority.None], 0,
+                isManagement: false, mgmtRole.Period, admin.Id,
+                cancellationToken: Xunit.TestContext.Current.CancellationToken)
+            : await _service.ToggleRoleIsManagementAsync(mgmtRole.Id, admin.Id, Xunit.TestContext.Current.CancellationToken);
 
         result.Definition!.IsManagement.Should().BeFalse();
 
@@ -388,6 +401,8 @@ public sealed class TeamRoleServiceTests : TeamsTestHarness
 
         var memberInDb = await TeamsDb.TeamMembers.AsNoTracking().FirstOrDefaultAsync(m => m.Id == member.Id, Xunit.TestContext.Current.CancellationToken);
         memberInDb!.Role.Should().Be(TeamMemberRole.Member);
+        await _systemTeamSync.Received(1).SyncMembershipForUserAsync(
+            user.Id, SystemTeamType.Coordinators, Arg.Any<CancellationToken>());
     }
 
     [HumansFact]

@@ -762,9 +762,9 @@ internal sealed class TeamRepository(IDbContextFactory<TeamsDbContext> factory) 
         return (demoted, assignment.TeamMember.UserId);
     }
 
-    public async Task<(IReadOnlyList<Guid> DemotedUserIds, bool DemotedMembers)> PersistRoleDefinitionUpdateAsync(
+    public async Task PersistRoleDefinitionUpdateAsync(
         TeamRoleDefinition definition,
-        bool clearingIsManagement,
+        bool managementChanged,
         CancellationToken ct = default)
     {
         await using var db = await factory.CreateDbContextAsync(ct);
@@ -772,83 +772,35 @@ internal sealed class TeamRepository(IDbContextFactory<TeamsDbContext> factory) 
         db.Set<TeamRoleDefinition>().Attach(definition);
         db.Entry(definition).State = EntityState.Modified;
 
-        var demotedUserIds = new List<Guid>();
-        var demotedMembers = false;
-
-        if (clearingIsManagement)
+        if (managementChanged)
         {
             var assignedMemberIds = await db.Set<TeamRoleAssignment>()
                 .Where(a => a.TeamRoleDefinitionId == definition.Id)
                 .Select(a => a.TeamMemberId)
                 .ToListAsync(ct);
+            var members = await db.TeamMembers
+                .Where(m => assignedMemberIds.Contains(m.Id))
+                .ToListAsync(ct);
 
-            if (assignedMemberIds.Count > 0)
+            foreach (var member in members)
             {
-                var members = await db.TeamMembers
-                    .Where(m => assignedMemberIds.Contains(m.Id) && m.Role == TeamMemberRole.Coordinator)
-                    .ToListAsync(ct);
-
-                foreach (var member in members)
+                if (definition.IsManagement)
+                {
+                    member.Role = TeamMemberRole.Coordinator;
+                }
+                else
                 {
                     var hasOtherManagement = await db.Set<TeamRoleAssignment>()
                         .AnyAsync(a => a.TeamMemberId == member.Id
                             && a.TeamRoleDefinitionId != definition.Id
                             && a.TeamRoleDefinition.IsManagement, ct);
                     if (!hasOtherManagement)
-                    {
                         member.Role = TeamMemberRole.Member;
-                        demotedMembers = true;
-                        demotedUserIds.Add(member.UserId);
-                    }
                 }
             }
         }
 
         await db.SaveChangesAsync(ct);
-        return (demotedUserIds, demotedMembers);
-    }
-
-    public async Task<bool> PersistRoleIsManagementAsync(
-        TeamRoleDefinition definition,
-        bool clearingIsManagement,
-        CancellationToken ct = default)
-    {
-        await using var db = await factory.CreateDbContextAsync(ct);
-
-        db.Set<TeamRoleDefinition>().Attach(definition);
-        db.Entry(definition).State = EntityState.Modified;
-
-        var demoted = false;
-        if (clearingIsManagement)
-        {
-            var assignedMemberIds = await db.Set<TeamRoleAssignment>()
-                .Where(a => a.TeamRoleDefinitionId == definition.Id)
-                .Select(a => a.TeamMemberId)
-                .ToListAsync(ct);
-
-            if (assignedMemberIds.Count > 0)
-            {
-                var members = await db.TeamMembers
-                    .Where(m => assignedMemberIds.Contains(m.Id) && m.Role == TeamMemberRole.Coordinator)
-                    .ToListAsync(ct);
-
-                foreach (var member in members)
-                {
-                    var hasOtherManagement = await db.Set<TeamRoleAssignment>()
-                        .AnyAsync(a => a.TeamMemberId == member.Id
-                            && a.TeamRoleDefinitionId != definition.Id
-                            && a.TeamRoleDefinition.IsManagement, ct);
-                    if (!hasOtherManagement)
-                    {
-                        member.Role = TeamMemberRole.Member;
-                        demoted = true;
-                    }
-                }
-            }
-        }
-
-        await db.SaveChangesAsync(ct);
-        return demoted;
     }
 
     public async Task<int> RevokeAllMembershipsAsync(

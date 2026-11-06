@@ -1182,7 +1182,7 @@ internal sealed class TeamService(
         definition.Priorities = priorities;
         definition.SortOrder = sortOrder;
 
-        var clearingIsManagement = definition.IsManagement && !isManagement;
+        var managementChanged = definition.IsManagement != isManagement;
 
         definition.IsPublic = isPublic;
         definition.IsManagement = isManagement;
@@ -1190,13 +1190,16 @@ internal sealed class TeamService(
         definition.UpdatedAt = clock.GetCurrentInstant();
 
         await repo.PersistRoleDefinitionUpdateAsync(
-            definition, clearingIsManagement, cancellationToken);
+            definition, managementChanged, cancellationToken);
 
         await auditLogService.LogAsync(
             TeamsAuditActions.TeamRoleDefinitionUpdated, nameof(TeamRoleDefinition), definition.Id,
             $"Role definition '{name}' updated for team {team.Name}",
             actorUserId,
             relatedEntityId: definition.TeamId, relatedEntityType: nameof(Team));
+
+        if (managementChanged)
+            await SyncRoleAssigneesAsync(definition, cancellationToken);
 
         return new(Definition: definition);
     }
@@ -1253,13 +1256,11 @@ internal sealed class TeamService(
                 return new(Refusal: "Another role in this team is already marked as the management role");
         }
 
-        var clearingIsManagement = definition.IsManagement && !isManagement && definition.Assignments.Count > 0;
-
         definition.IsManagement = isManagement;
         definition.UpdatedAt = clock.GetCurrentInstant();
 
-        await repo.PersistRoleIsManagementAsync(
-            definition, clearingIsManagement, cancellationToken);
+        await repo.PersistRoleDefinitionUpdateAsync(
+            definition, managementChanged: true, cancellationToken);
 
         await auditLogService.LogAsync(
             TeamsAuditActions.TeamRoleDefinitionUpdated, nameof(TeamRoleDefinition), definition.Id,
@@ -1267,7 +1268,15 @@ internal sealed class TeamService(
             actorUserId,
             relatedEntityId: definition.TeamId, relatedEntityType: nameof(Team));
 
+        await SyncRoleAssigneesAsync(definition, cancellationToken);
+
         return new(Definition: definition);
+    }
+
+    private async Task SyncRoleAssigneesAsync(TeamRoleDefinition definition, CancellationToken cancellationToken)
+    {
+        foreach (var userId in definition.Assignments.Select(a => a.TeamMember.UserId).Distinct())
+            await SystemTeamSync.SyncMembershipForUserAsync(userId, SystemTeamType.Coordinators, cancellationToken);
     }
 
     public async Task<IReadOnlyList<TeamRoleDefinitionSnapshot>> GetRoleDefinitionsAsync(

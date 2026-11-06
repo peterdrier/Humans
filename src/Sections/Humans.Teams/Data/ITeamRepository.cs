@@ -132,19 +132,10 @@ internal interface ITeamRepository : IRepository
     Task<(bool Demoted, Guid TargetUserId)> UnassignFromRoleAsync(
         Guid roleDefinitionId, Guid teamMemberId, CancellationToken ct = default);
 
-    /// <summary>
-    /// Then demotes members who were coordinators only through this role. The caller invalidates the team cache when
-    /// members were demoted.
-    /// </summary>
-    Task<(IReadOnlyList<Guid> DemotedUserIds, bool DemotedMembers)> PersistRoleDefinitionUpdateAsync(
+    /// <summary>Persists the definition and reconciles assigned members' roles when management changes.</summary>
+    Task PersistRoleDefinitionUpdateAsync(
         TeamRoleDefinition definition,
-        bool clearingIsManagement,
-        CancellationToken ct = default);
-
-    /// <summary>Demotes coordinators server-side when <paramref name="clearingIsManagement"/>. Returns whether any were.</summary>
-    Task<bool> PersistRoleIsManagementAsync(
-        TeamRoleDefinition definition,
-        bool clearingIsManagement,
+        bool managementChanged,
         CancellationToken ct = default);
 
     Task<TeamJoinRequest?> FindUserPendingRequestAsync(
