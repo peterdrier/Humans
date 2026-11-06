@@ -2638,6 +2638,52 @@ public sealed class AssemblyVoteServiceTests : IDisposable
         persisted.ClosesAt.Should().Be(extended, "the extension is the newer fact");
     }
 
+    [HumansTheory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task AssemblySweep_RecipientDiscoveryFailureStillClosesVotesAndDeliversOtherVotes(bool reminder)
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var now = _fx.Clock.GetCurrentInstant();
+        var closesAt = now + (reminder ? Duration.FromHours(12) : Duration.FromDays(5));
+        var failedVote = await _fx.AddVoteAsync(closesAt: closesAt);
+        var reachedVote = await _fx.AddVoteAsync(closesAt: closesAt);
+        var lapsed = await _fx.AddVoteAsync(closesAt: now - Duration.FromMinutes(1));
+        var failed = Guid.NewGuid();
+        var reached = Guid.NewGuid();
+        _fx.StubActiveUsers(failed, reached);
+        var people = await _fx.Users.GetUserInfosAsync(new[] { failed, reached }, ct);
+        var failedRow = await _fx.AddRosterRowAsync(failedVote.Id, failed, isOfficial: true, notified: reminder);
+        var reachedRow = await _fx.AddRosterRowAsync(reachedVote.Id, reached, isOfficial: true, notified: reminder);
+        var failure = new IOException("Vote recipient discovery failed");
+        var recovered = false;
+        _fx.Users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), ct)
+            .Returns(call => !recovered && call.Arg<IReadOnlyCollection<Guid>>().Contains(failed)
+                ? ValueTask.FromException<IReadOnlyDictionary<Guid, UserInfo>>(failure)
+                : ValueTask.FromResult(people));
+        var run = () => _fx.Service.RunLapseAndReminderSweepAsync(ct);
+
+        var error = await run.Should().ThrowAsync<AggregateException>();
+
+        error.Which.InnerExceptions.Should().ContainSingle().Which.Should().BeSameAs(failure);
+        var closed = await _fx.Db.AssemblyVotes.AsNoTracking().SingleAsync(v => v.Id == lapsed.Id, ct);
+        closed.Status.Should().Be(AssemblyVoteStatus.Closed);
+        closed.ResultJson.Should().NotBeNull();
+        var rows = await _fx.Db.AssemblyVoteRosterEntries.AsNoTracking().ToDictionaryAsync(r => r.Id, ct);
+        (reminder ? rows[failedRow.Id].ReminderSentAt : rows[failedRow.Id].NotifiedAt).Should().BeNull();
+        (reminder ? rows[reachedRow.Id].ReminderSentAt : rows[reachedRow.Id].NotifiedAt).Should().NotBeNull();
+        var delivered = _fx.Email.ReceivedCalls().Should().ContainSingle().Subject
+            .GetArguments()[0].Should().BeOfType<EmailMessage>().Subject;
+        delivered.UserId.Should().Be(reached);
+
+        recovered = true;
+        _fx.Email.ClearReceivedCalls();
+        (await run()).Should().Be(0);
+        var retried = _fx.Email.ReceivedCalls().Should().ContainSingle().Subject
+            .GetArguments()[0].Should().BeOfType<EmailMessage>().Subject;
+        retried.UserId.Should().Be(failed);
+    }
+
     public enum AssemblyDeliveryRead { OpeningEligibility, ReminderEligibility, ReminderBallot }
 
     [HumansTheory]
