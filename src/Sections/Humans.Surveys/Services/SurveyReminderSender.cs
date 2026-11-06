@@ -61,23 +61,23 @@ internal sealed class SurveyReminderSender(
                 continue;
             }
 
-            if (!surveys.TryGetValue(inv.SurveyId, out var meta))
-            {
-                var survey = await repo.GetByIdAsync(inv.SurveyId, ct);
-                if (survey is null) continue;
-                meta = (
-                    survey.Title,
-                    survey.DefaultCulture,
-                    SurveyWizardFlow.IsAnswerable(survey.Status, survey.OpensAt, survey.ClosesAt, now));
-                surveys[inv.SurveyId] = meta;
-            }
-
-            if (!meta.Answerable) continue;
-
-            // Per-invitee guard (mirrors SendInvitesAsync): preparation or transport failure must not abort the
-            // sweep. ReminderSentAt stays unstamped on failure so the failed run can retry.
+            // Keep metadata loading inside the per-invitee guard too: a failed read
+            // must leave this invitation due without blocking later reminders.
             try
             {
+                if (!surveys.TryGetValue(inv.SurveyId, out var meta))
+                {
+                    var survey = await repo.GetByIdAsync(inv.SurveyId, ct);
+                    if (survey is null) continue;
+                    meta = (
+                        survey.Title,
+                        survey.DefaultCulture,
+                        SurveyWizardFlow.IsAnswerable(survey.Status, survey.OpensAt, survey.ClosesAt, now));
+                    surveys[inv.SurveyId] = meta;
+                }
+
+                if (!meta.Answerable) continue;
+
                 var preferredCulture = user.PreferredLanguage;
                 var culture = preferredCulture.IsSupportedCultureCode()
                     ? preferredCulture!
