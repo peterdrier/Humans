@@ -565,7 +565,7 @@ Self-service profile functionality lives under `/Profile`, split by shape across
 | `/Profile/{id}/PublicPopover` | `[AllowAnonymous]` — public-page coordinator popover; 404 unless the target coordinates a public-page team ([spec](features/public-coordinator-popover.md)) |
 | `/Email/SendMessage/{id}` | GET/POST — send facilitated message; served by Email's `FacilitatedMessageController` (the profile card links to it). Send as team is Teams' `/Teams/{teamId}/SendMessage/{id}`, offered by Teams' `Profile` user part |
 | `/Users/Birthdays` | Birthday calendar by month: every non-suspended human with a birthday set, with their non-system team names; linked from a member-dashboard card |
-| `/Users/Map` | Humans map: every non-suspended human with a location set; linked from a member-dashboard card |
+| `/Users/Map` | Humans map: every non-suspended human with a location set; shared-location marker titles reuse the localized map count in every supported culture; linked from a member-dashboard card |
 | `/Profile/Picture` | `[AllowAnonymous]` — profile picture bytes |
 | `/api/profiles/search` | API people search |
 | `/api/profiles/burner-name-count` | Live burner-name collision count, excluding the caller ([spec](features/burner-name-collision-warning.md)) |
