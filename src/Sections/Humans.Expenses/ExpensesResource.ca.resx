@@ -305,4 +305,6 @@
   <data name="Expenses_SubjectHelp" xml:space="preserve"><value>Obligatori. Indica el nom del projecte al qual correspon aquesta despesa, p. ex. el del teu projecte artístic.</value></data>
   <data name="Expenses_Validation_SubjectRequired" xml:space="preserve"><value>Afegeix un assumpte (el nom del projecte) abans d'enviar.</value></data>
   <data name="Expenses_Validation_AmountPrecision" xml:space="preserve"><value>Introdueix un import amb un màxim de dos decimals.</value></data>
+  <data name="Expenses_Flash_DraftSavedFollowupFailed" xml:space="preserve"><value>L’esborrany s’ha desat, però no s’ha pogut completar la sol·licitud. Revisa’l abans de continuar.</value></data>
+  <data name="Expenses_Flash_DraftOutcomeUnknown" xml:space="preserve"><value>No s’ha pogut confirmar si l’esborrany s’ha desat. Revisa els informes existents abans de crear un altre esborrany.</value></data>
 </root>

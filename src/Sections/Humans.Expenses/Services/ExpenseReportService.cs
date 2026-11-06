@@ -124,6 +124,7 @@ internal sealed class ExpenseReportService(
         CancellationToken ct = default)
     {
         Guid? reportId = null;
+        Guid? attemptedId = null;
         var result = await RunMutationAsync(ct, async () =>
         {
             var (resolved, refusal) = preapprovalGrantId is { } grantId
@@ -150,6 +151,7 @@ internal sealed class ExpenseReportService(
                 CreatedAt = now,
                 UpdatedAt = now
             };
+            attemptedId = report.Id;
             await repo.AddDraftAsync(report, ct);
             reportId = report.Id;
 
@@ -160,7 +162,7 @@ internal sealed class ExpenseReportService(
                 await auditLogService.LogAsync(
                     ExpensesAuditActions.ExpenseCreatedOnBehalf,
                     AuditEntityTypes.Report, report.Id,
-                    $"Created expense report on behalf of {await DescribeMemberAsync(submitterUserId, ct)}."
+                    $"Created expense report on behalf of {await DescribeMemberAsync(submitterUserId, CancellationToken.None)}."
                     + DescribeGrant(preapprovalGrantId),
                     actorUserId,
                     relatedEntityId: submitterUserId,
@@ -170,7 +172,22 @@ internal sealed class ExpenseReportService(
             return ExpenseMutationResult.Success;
         }, "Error creating draft expense report for {SubmitterUserId}", submitterUserId);
 
-        return new ExpenseCreateDraftResult(result.Succeeded, result.Error, reportId);
+        var uncertain = false;
+        if (!result.Succeeded && reportId is null && attemptedId is { } candidate)
+        {
+            try
+            {
+                // A save can commit before its acknowledgement fails. Recover the draft instead of offering a duplicate.
+                if (await repo.GetByIdAsync(candidate, CancellationToken.None) is not null)
+                    reportId = candidate;
+            }
+            catch (Exception ex)
+            {
+                uncertain = true;
+                logger.LogError(ex, "Could not verify new expense draft {ReportId} after a failed save", candidate);
+            }
+        }
+        return new ExpenseCreateDraftResult(result.Succeeded, result.Error, reportId) { OutcomeUncertain = uncertain };
     }
 
     private static string DescribeGrant(Guid? grantId) =>

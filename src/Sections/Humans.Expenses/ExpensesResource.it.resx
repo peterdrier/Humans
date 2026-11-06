@@ -305,4 +305,6 @@
   <data name="Expenses_SubjectHelp" xml:space="preserve"><value>Obbligatorio. Indica il nome del progetto a cui si riferisce la spesa, ad es. il tuo progetto artistico.</value></data>
   <data name="Expenses_Validation_SubjectRequired" xml:space="preserve"><value>Aggiungi un oggetto (il nome del progetto) prima di inviare.</value></data>
   <data name="Expenses_Validation_AmountPrecision" xml:space="preserve"><value>Inserisci un importo con al massimo due cifre decimali.</value></data>
+  <data name="Expenses_Flash_DraftSavedFollowupFailed" xml:space="preserve"><value>La bozza è stata salvata, ma non è stato possibile completare la richiesta. Controllala prima di continuare.</value></data>
+  <data name="Expenses_Flash_DraftOutcomeUnknown" xml:space="preserve"><value>Non è stato possibile confermare se la bozza è stata salvata. Controlla le note spese esistenti prima di creare un’altra bozza.</value></data>
 </root>

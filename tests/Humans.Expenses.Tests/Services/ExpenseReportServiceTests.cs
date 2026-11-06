@@ -369,6 +369,54 @@ public sealed partial class ExpenseReportServiceTests
         controller.TempData.Should().BeEmpty();
     }
 
+    [HumansTheory]
+    [InlineData("before")]
+    [InlineData("after")]
+    [InlineData("audit")]
+    [InlineData("unverifiable")]
+    public async Task CreateDraftAsync_Failure_ReportsOnlyConfirmedSavedDrafts(string failureStage)
+    {
+        var ct = TestContext.Current.CancellationToken;
+        SetupActiveYear();
+        var submitter = Guid.NewGuid();
+        var actor = Guid.NewGuid();
+        var failure = new IOException("Draft creation dependency failed");
+        var options = new DbContextOptionsBuilder<ExpensesDbContext>(_expensesOptions);
+        if (!string.Equals(failureStage, "audit", StringComparison.Ordinal))
+            options.AddInterceptors(new FailRemovalSave(failure, string.Equals(failureStage, "before", StringComparison.Ordinal)));
+        var inner = new ExpenseRepository(new TestDbContextFactory<ExpensesDbContext>(options.Options));
+        Guid? attemptedId = null;
+        var repository = Substitute.For<IExpenseRepository>();
+        repository.AddDraftAsync(Arg.Any<ExpenseReport>(), Arg.Any<CancellationToken>()).Returns(async call =>
+        {
+            attemptedId = call.Arg<ExpenseReport>().Id;
+            await inner.AddDraftAsync(call.Arg<ExpenseReport>(), call.Arg<CancellationToken>());
+        });
+        repository.GetByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            call.Arg<CancellationToken>().Should().Be(CancellationToken.None);
+            return string.Equals(failureStage, "unverifiable", StringComparison.Ordinal)
+                ? Task.FromException<ExpenseReportDto?>(new IOException("Verification unavailable"))
+                : inner.GetByIdAsync(call.Arg<Guid>(), call.Arg<CancellationToken>());
+        });
+        if (string.Equals(failureStage, "audit", StringComparison.Ordinal))
+            AuditLog.LogAsync(Arg.Any<AuditActionDefinition>(), Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<string>(),
+                Arg.Any<Guid>(), Arg.Any<Guid?>(), Arg.Any<string?>()).Returns(Task.FromException(failure));
+        var service = new ExpenseReportService(repository, _fileStorage, _budgetService, _teamService,
+            _userService, _emailService, TestExpensesEmails.Create(), AuditLog, Substitute.For<IAuditViewerService>(),
+            _holdedService, _finance, _financeWrite, _preapprovals, _preapprovalWrites, Clock,
+            NullLogger<ExpenseReportService>.Instance, Options.Create(new TravelReimbursementConfig()));
+
+        var result = await service.CreateDraftAsync(submitter, actor, CategoryAccountNumber, "Draft", ct: ct);
+
+        result.Succeeded.Should().BeFalse();
+        attemptedId.Should().NotBeNull();
+        result.ReportId.Should().Be(failureStage is "after" or "audit" ? attemptedId : null);
+        result.OutcomeUncertain.Should().Be(string.Equals(failureStage, "unverifiable", StringComparison.Ordinal));
+        await using var verify = new ExpensesDbContext(_expensesOptions);
+        (await verify.ExpenseReports.CountAsync(ct)).Should().Be(string.Equals(failureStage, "before", StringComparison.Ordinal) ? 0 : 1);
+    }
+
     [HumansFact]
     public async Task CreateDraftAsync_CreatesReport_WithDraftStatusAndZeroTotal()
     {
