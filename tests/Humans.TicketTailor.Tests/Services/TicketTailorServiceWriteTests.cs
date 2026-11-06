@@ -1,5 +1,7 @@
 using System.Net;
 using System.Text.Json.Nodes;
+using Humans.Base.Extensions;
+using Microsoft.AspNetCore.WebUtilities;
 using AwesomeAssertions;
 using Humans.Tickets.Contracts;
 using NodaTime;
@@ -423,26 +425,56 @@ public class TicketTailorServiceWriteTests
     }
 
     [HumansTheory]
-    [InlineData(DiscountType.Percentage, "\"type\":\"percentage\"", "\"value\":25")]
-    [InlineData(DiscountType.Fixed, "\"type\":\"monetary\"", "\"value\":2500")]
-    public async Task GenerateDiscountCodesAsync_PostsNoboPrefixedCodesWithMonetaryValuesInCents(
-        DiscountType type, string expectedType, string expectedValue)
+    [InlineData(DiscountType.Percentage, 25, "percentage", "price_percent", "25", false)]
+    [InlineData(DiscountType.Percentage, 25, "percentage", "price_percent", "25", true)]
+    [InlineData(DiscountType.Fixed, 25.25, "fixed_amount", "price", "2525", false)]
+    [InlineData(DiscountType.Fixed, 25.25, "fixed_amount", "price", "2525", true)]
+    public async Task GenerateDiscountCodesAsync_PostsDiscountFormsWithOptionalExpiry(
+        DiscountType type, decimal value, string expectedType, string amountField, string expectedValue, bool withExpiry)
     {
         var handler = new RecordingHttpHandler();
-        handler.EnqueueResponse(HttpStatusCode.OK, new { code = "NOBO-ONE" });
-        handler.EnqueueResponse(HttpStatusCode.OK, new { code = "NOBO-TWO" });
+        handler.EnqueueResponse(HttpStatusCode.Created, new { code = "NOBO-ONE" });
+        handler.EnqueueResponse(HttpStatusCode.Created, new { code = "NOBO-TWO" });
+        Instant? expiry = withExpiry ? Instant.FromUnixTimeSeconds(1794000000) : null;
+        using var culture = new CultureScope("es");
 
         var service = TicketTailorTestHost.CreateService(handler);
         var codes = await service.GenerateDiscountCodesAsync(
-            new DiscountCodeSpec(Count: 2, DiscountType: type, DiscountValue: 25m, ExpiresAt: null),
+            new DiscountCodeSpec(Count: 2, DiscountType: type, DiscountValue: value, ExpiresAt: expiry),
             TestContext.Current.CancellationToken);
 
         codes.Should().Equal("NOBO-ONE", "NOBO-TWO");
         handler.Requests.Should().HaveCount(2);
         foreach (var (request, body) in handler.Requests)
         {
-            request.RequestUri!.ToString().Should().EndWith("/voucher_codes");
-            body.Should().MatchRegex("\"code\":\"NOBO-[0-9A-F]{8}\"").And.Contain(expectedType).And.Contain(expectedValue);
+            request.RequestUri!.ToString().Should().EndWith("/discounts");
+            request.Content!.Headers.ContentType!.MediaType.Should().Be("application/x-www-form-urlencoded");
+            var fields = QueryHelpers.ParseQuery(body);
+            fields["code"].ToString().Should().MatchRegex("^NOBO-[0-9A-F]{8}$");
+            fields["name"].Should().Equal(fields["code"]);
+            fields["type"].ToString().Should().Be(expectedType);
+            fields[amountField].ToString().Should().Be(expectedValue);
+            fields.Should().NotContainKey(type == DiscountType.Percentage ? "price" : "price_percent");
+            if (withExpiry) fields["expires"].ToString().Should().Be("1794000000");
+            else fields.Should().NotContainKey("expires");
         }
+    }
+
+    [HumansTheory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData(" ")]
+    public async Task GenerateDiscountCodesAsync_RefusesSuccessfulResponseWithoutCode(string? code)
+    {
+        var handler = new RecordingHttpHandler();
+        handler.EnqueueResponse(HttpStatusCode.Created, new { code });
+        var service = TicketTailorTestHost.CreateService(handler);
+
+        var generate = () => service.GenerateDiscountCodesAsync(
+            new DiscountCodeSpec(1, DiscountType.Percentage, 25m, null), TestContext.Current.CancellationToken);
+
+        var failure = await generate.Should().ThrowAsync<HttpRequestException>();
+        failure.Which.Message.Should().Contain("missing required code");
+        handler.RequestCount.Should().Be(1);
     }
 }
