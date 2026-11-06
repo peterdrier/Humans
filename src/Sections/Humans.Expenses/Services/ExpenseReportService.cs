@@ -355,8 +355,16 @@ internal sealed class ExpenseReportService(
             LineType = lineType,
             ParentLineId = parentLineId
         };
-        var ok = await repo.AddLineAsync(reportId, line, ct);
-        if (!ok) throw new InvalidOperationException("Failed to add line.");
+        try
+        {
+            var ok = await repo.AddLineAsync(reportId, line, ct);
+            if (!ok) throw new InvalidOperationException("Failed to add line.");
+        }
+        catch
+        {
+            await TryRollbackAddedLineAsync(reportId, line.Id);
+            throw;
+        }
 
         return (new(true, null, line.Id), report);
     }
@@ -391,28 +399,28 @@ internal sealed class ExpenseReportService(
                 description, amount, lineType, parentLineId, ct);
             if (added.Error is { } addRefusal) return Reject(addRefusal);
             var lineId = added.LineId!.Value;
-            if (file is not null)
+            ExpenseError? attachmentRefusal = null;
+            try
             {
-                ExpenseError? attachmentRefusal;
-                try
-                {
+                if (file is not null)
                     attachmentRefusal = await StoreAttachmentAsync(
                         reportId, actorUserId, actorIsFinanceAdmin, lineId, file.FileName, file.ContentType, file.Content, ct);
-                }
-                catch
-                {
-                    // The form retries the whole add, so a line left behind here would duplicate.
-                    await repo.RemoveLineAsync(reportId, lineId, CancellationToken.None);
-                    throw;
-                }
-                if (attachmentRefusal is not null)
-                {
-                    await repo.RemoveLineAsync(reportId, lineId, CancellationToken.None);
-                    return Reject(attachmentRefusal);
-                }
+                if (attachmentRefusal is null)
+                    await AuditOnBehalfEditAsync(report!, actorUserId,
+                        $"Added {(parentLineId is null ? "line" : "proof row")} \"{description}\" €{amount}", CancellationToken.None);
             }
-            await AuditOnBehalfEditAsync(report!, actorUserId,
-                $"Added {(parentLineId is null ? "line" : "proof row")} \"{description}\" €{amount}", ct);
+            catch
+            {
+                // The form retries the whole add. Undo the new line and any linked upload before failing.
+                await TryRollbackAddedLineAsync(reportId, lineId);
+                throw;
+            }
+            if (attachmentRefusal is not null)
+            {
+                if (!await TryRollbackAddedLineAsync(reportId, lineId))
+                    return new ExpenseAddLineResult(false, null, null);
+                return Reject(attachmentRefusal);
+            }
             return new ExpenseAddLineResult(true, null, lineId);
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
@@ -423,6 +431,42 @@ internal sealed class ExpenseReportService(
         {
             logger.LogError(ex, "Error adding line to report {ReportId}", reportId);
             return new ExpenseAddLineResult(false, null, null);
+        }
+    }
+
+    private async Task<bool> TryRollbackAddedLineAsync(Guid reportId, Guid lineId)
+    {
+        ExpenseReportDto? report = null;
+        try
+        {
+            report = await repo.GetByIdAsync(reportId, CancellationToken.None);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Could not read attachments before rolling back new line {LineId}", lineId);
+        }
+        var candidates = report?.Lines.Where(line => line.Id == lineId || line.ParentLineId == lineId)
+            .Select(line => line.Attachment).OfType<ExpenseAttachmentDto>()
+            .Select(attachment => (attachment.Id, attachment.Extension)).ToList() ?? [];
+        IReadOnlyList<ExpenseAttachment>? removed = null;
+        try
+        {
+            try
+            {
+                removed = await repo.RemoveLineAsync(reportId, lineId, CancellationToken.None);
+            }
+            finally
+            {
+                // Retain the pre-delete ids too: compensation can itself commit before its acknowledgement fails.
+                await CleanupUnlinkedAttachmentsAsync(
+                    removed is null ? candidates : removed.Select(a => (a.Id, a.Extension)), lineId);
+            }
+            return true;
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Could not roll back new expense line {LineId} on report {ReportId}", lineId, reportId);
+            return false;
         }
     }
 

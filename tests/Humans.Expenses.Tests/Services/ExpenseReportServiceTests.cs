@@ -1283,6 +1283,85 @@ public sealed partial class ExpenseReportServiceTests
         result.Error!.ResourceKey.Should().Be("Expenses_Validation_ParentLineNotFound");
     }
 
+    [HumansTheory]
+    [InlineData("line-save", false)]
+    [InlineData("line-save", true)]
+    [InlineData("audit", false)]
+    [InlineData("audit", true)]
+    [InlineData("rollback-ack", false)]
+    [InlineData("rollback-ack", true)]
+    [InlineData("attachment-rollback", true)]
+    public async Task AddLineWithResultAsync_FailedCompoundAdd_DoesNotLeaveARetryDuplicateOrUnlinkedFile(
+        string failureStage, bool withFile)
+    {
+        var ct = TestContext.Current.CancellationToken;
+        SetupActiveYear();
+        var submitter = Guid.NewGuid();
+        var actor = Guid.NewGuid();
+        var reportId = (await _sut.CreateDraftAsync(submitter, submitter, CategoryAccountNumber, "Test", ct: ct)).ReportId!.Value;
+        var files = new HashSet<string>(StringComparer.Ordinal);
+        _fileStorage.SaveAsync(Arg.Any<string>(), Arg.Any<Stream>(), Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            files.Add(call.Arg<string>());
+            return Task.CompletedTask;
+        });
+        _fileStorage.DeleteAsync(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            call.Arg<CancellationToken>().Should().Be(CancellationToken.None);
+            files.Remove(call.Arg<string>());
+            return Task.CompletedTask;
+        });
+        var acknowledgement = new FailAfterCommit { Armed = string.Equals(failureStage, "line-save", StringComparison.Ordinal) };
+        var options = new DbContextOptionsBuilder<ExpensesDbContext>(_expensesOptions).AddInterceptors(acknowledgement).Options;
+        var inner = new ExpenseRepository(new TestDbContextFactory<ExpensesDbContext>(options));
+        var repository = Substitute.For<IExpenseRepository>();
+        repository.GetByIdAsync(reportId, Arg.Any<CancellationToken>()).Returns(call => inner.GetByIdAsync(reportId, call.Arg<CancellationToken>()));
+        repository.AddLineAsync(reportId, Arg.Any<ExpenseLine>(), Arg.Any<CancellationToken>())
+            .Returns(call => inner.AddLineAsync(reportId, call.Arg<ExpenseLine>(), call.Arg<CancellationToken>()));
+        repository.RemoveLineAsync(reportId, Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(call => inner.RemoveLineAsync(reportId, call.ArgAt<Guid>(1), call.Arg<CancellationToken>()));
+        var failure = new IOException("Compound add failed");
+        var replacements = 0;
+        repository.ReplaceLineAttachmentAsync(reportId, Arg.Any<Guid>(), Arg.Any<ExpenseAttachment?>(), Arg.Any<CancellationToken>(),
+                Arg.Any<(Instant, string?, Guid?, Instant?)?>())
+            .Returns(call =>
+            {
+                if (++replacements == 2 && string.Equals(failureStage, "attachment-rollback", StringComparison.Ordinal))
+                    throw new IOException("Attachment rollback failed");
+                return inner.ReplaceLineAttachmentAsync(reportId, call.ArgAt<Guid>(1), call.Arg<ExpenseAttachment?>(), call.Arg<CancellationToken>());
+            });
+        repository.GetReportIdByAttachmentIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(call => inner.GetReportIdByAttachmentIdAsync(call.Arg<Guid>(), call.Arg<CancellationToken>()));
+        var failingAction = string.Equals(failureStage, "attachment-rollback", StringComparison.Ordinal)
+            ? ExpensesAuditActions.ExpenseAttachmentUploaded : ExpensesAuditActions.ExpenseEditedOnBehalf;
+        AuditLog.LogAsync(Arg.Any<AuditActionDefinition>(), Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<string>(),
+            Arg.Any<Guid>(), Arg.Any<Guid?>(), Arg.Any<string?>()).Returns(call =>
+        {
+            if (call.Arg<AuditActionDefinition>() == failingAction)
+            {
+                acknowledgement.Armed = string.Equals(failureStage, "rollback-ack", StringComparison.Ordinal);
+                throw failure;
+            }
+            return Task.CompletedTask;
+        });
+        var service = new ExpenseReportService(repository, _fileStorage, _budgetService, _teamService,
+            _userService, _emailService, TestExpensesEmails.Create(), AuditLog, Substitute.For<IAuditViewerService>(),
+            _holdedService, _finance, _financeWrite, _preapprovals, _preapprovalWrites, Clock,
+            NullLogger<ExpenseReportService>.Instance, Options.Create(new TravelReimbursementConfig()));
+        using var content = new MemoryStream([1, 2, 3]);
+
+        var result = await service.AddLineWithResultAsync(reportId, actor, true, "Receipt", 10m,
+            file: withFile ? new ExpenseFileUpload("receipt.pdf", "application/pdf", content) : null, ct: ct);
+
+        result.Succeeded.Should().BeFalse();
+        result.LineId.Should().BeNull();
+        await using var verify = new ExpensesDbContext(_expensesOptions);
+        (await verify.ExpenseLines.CountAsync(ct)).Should().Be(0);
+        (await verify.ExpenseAttachments.CountAsync(ct)).Should().Be(0);
+        (await verify.ExpenseReports.SingleAsync(ct)).Total.Should().Be(0m);
+        files.Should().BeEmpty();
+    }
+
     [HumansFact]
     public async Task AddLineWithResultAsync_WithFile_CreatesLineAndAttachment_InOneCall()
     {
