@@ -250,13 +250,13 @@ public class ExpenseReconTests
 
     private readonly IHoldedRepository _repo = Substitute.For<IHoldedRepository>();
     private readonly IHoldedClient _client = Substitute.For<IHoldedClient>();
-    private readonly IHoldedService _holded = Substitute.For<IHoldedService>();
+    private readonly IHoldedService _holded = TestContacts.Holded();
     private readonly IExpenseHoldedBookingService _expenses = Substitute.For<IExpenseHoldedBookingService>();
     private readonly IUserService _users = Substitute.For<IUserService>();
 
     private Service MakeService() => new(
         _repo, _client, Substitute.For<IBudgetService>(), _holded, Substitute.For<IHoldedWrite>(), _expenses, new FakeClock(SyncedAt),
-        new MemoryCache(new MemoryCacheOptions()), Substitute.For<IAuditLogService>(), _users,
+        Substitute.For<IAuditLogService>(), _users,
         Substitute.For<IEmailService>(), TestFinanceEmails.Create(),
         Options.Create(new SepaOptions()),
         new TrackedCache<string, Dictionary<string, int>>("Finance.SepaStuckBankLines", warmOnStartup: false, NullLogger<Service>.Instance),
@@ -271,8 +271,8 @@ public class ExpenseReconTests
         _expenses.GetHoldedReconLinesAsync(Arg.Any<CancellationToken>()).Returns([Line()]);
         _repo.GetCreditorContactsAsync(Arg.Any<CancellationToken>()).Returns(
             [new HoldedCreditorContact { UserId = Alice, HoldedContactId = "c-alice", SupplierAccountNum = stored }]);
-        _client.ListContactsAsync(Arg.Any<CancellationToken>()).Returns(
-            [new HoldedContactDto { Id = "c-alice", SupplierAccountNum = contacts }]);
+        _holded.GetContactsAsync(Arg.Any<CancellationToken>()).Returns(TestContacts.Synced(
+            [new HoldedContactDto { Id = "c-alice", SupplierAccountNum = contacts }]));
         _repo.GetSepaPayoutTransferRowsAsync(Arg.Any<CancellationToken>()).Returns(new List<SepaPayoutTransferRow>());
         _holded.GetAccountBalancesAsync(Arg.Any<CancellationToken>())
             .Returns(new Dictionary<int, decimal> { [contacts] = -100m, [stored] = 0m });
@@ -293,7 +293,7 @@ public class ExpenseReconTests
         _holded.GetLedgerSyncedAtAsync(Arg.Any<CancellationToken>()).Returns(SyncedAt);
         _holded.GetAccountBalancesAsync(Arg.Any<CancellationToken>())
             .Returns(new Dictionary<int, decimal> { [AliceAccount] = -100m });
-        _client.ListContactsAsync(Arg.Any<CancellationToken>()).ThrowsAsync(new HoldedTransientException("timeout"));
+        _holded.GetContactsAsync(Arg.Any<CancellationToken>()).Returns(new HoldedContactMirror(null, []));
 
         var report = await MakeService().GetExpenseReconAsync(null, TestContext.Current.CancellationToken);
 
@@ -310,8 +310,8 @@ public class ExpenseReconTests
             new HoldedCreditorContact { UserId = Alice, HoldedContactId = "c-alice", SupplierAccountNum = AliceAccount },
             new HoldedCreditorContact { UserId = Guid.NewGuid(), HoldedContactId = "c-unparsed", SupplierAccountNum = 41000099 },
         ]);
-        _client.ListContactsAsync(Arg.Any<CancellationToken>()).Returns(
-            [new HoldedContactDto { Id = "c-alice", SupplierAccountNum = AliceAccount }]);
+        _holded.GetContactsAsync(Arg.Any<CancellationToken>()).Returns(TestContacts.Synced(
+            [new HoldedContactDto { Id = "c-alice", SupplierAccountNum = AliceAccount }]));
 
         var report = await MakeService().GetExpenseReconAsync(null, TestContext.Current.CancellationToken);
 

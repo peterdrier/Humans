@@ -28,9 +28,9 @@ Cross-section calls via `IAuditLogService`, `ICampService`,
 `ITeamService` (team-order counterparty surface),
 `ISettingsService`, `IUserService` (current-user resolution in controllers and order authorization), `IStripeService` (the `Humans.Stripe` connector
 section — creates Checkout sessions, lists sessions for reconciliation, handles
-webhook events including SEPA async-payment transitions), `IHoldedClient` (the
-`Humans.Holded` connector section — contact upsert, sales-document create/approve/read
-and the chart-of-accounts read that resolves account numbers to Holded ids), plus
+webhook events including SEPA async-payment transitions), `IHoldedService` / `IHoldedWrite`
+(the `Humans.Holded` section — contact create, sales-document issue/approve/tag search, and the
+chart sync that confirms each account number exists), plus
 `IClock`. No `IMemoryCache`.
 
 The service owns the full Stripe **payment flow**: synchronous card/wallet
@@ -68,7 +68,7 @@ Repository: `IStoreRepository`.
 | store_orders | W (`SaveIssuedInvoiceAsync` — frozen `InvoiceIssued` row) |
 | store_order_lines | W (repriced line snapshots, same save) |
 
-Cross-section calls via `IHoldedClient` (the section's only outbound Holded write) and
+Cross-section calls via `IHoldedService` / `IHoldedWrite` (the section's only outbound Holded write) and
 `IAuditLogService`, plus `IClock`, `IOptions<StoreSectionOptions>` and the shared
 `StoreOrderReader`. Issuance reprices the order's line snapshots from the live catalog,
 builds one Holded line per order line (plus a tax-0 line per deposit), creates **and

@@ -52,6 +52,14 @@ internal interface IHoldedMirrorRepository : IRepository
 
     Task<IReadOnlyList<HoldedPurchaseDoc>> GetPurchaseDocsAsync(CancellationToken ct = default);
 
+    /// <summary>Overwrites the stored notes of the mirrored documents named; an id not mirrored is skipped.</summary>
+    Task SetPurchaseDocNotesAsync(IReadOnlyDictionary<string, string> notesById, CancellationToken ct = default);
+
+    /// <summary>The fetch is the whole list: contacts absent from <paramref name="contacts"/> are deleted.</summary>
+    Task ReplaceContactsAsync(IReadOnlyList<HoldedContact> contacts, Instant now, CancellationToken ct = default);
+
+    Task<IReadOnlyList<HoldedContact>> GetContactsAsync(CancellationToken ct = default);
+
     Task<HoldedSyncState> GetOrCreateSyncStateAsync(HoldedSyncKind kind, CancellationToken ct = default);
     Task SaveSyncStateAsync(HoldedSyncState state, CancellationToken ct = default);
     Task<IReadOnlyList<HoldedSyncState>> GetSyncStatesAsync(CancellationToken ct = default);

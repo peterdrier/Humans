@@ -34,7 +34,8 @@ public class ServiceTeamOrdersTests
     private readonly ISettingsService _shifts = Substitute.For<ISettingsService>();
     private readonly IStripeService _stripe = Substitute.For<IStripeService>();
     private readonly FakeClock _clock = new(Instant.FromUtc(2026, 3, 14, 12, 0));
-    private readonly IHoldedClient _holded = Substitute.For<IHoldedClient>();
+    private readonly IHoldedService _holded = Substitute.For<IHoldedService>();
+    private readonly IHoldedWrite _holdedWrite = Substitute.For<IHoldedWrite>();
     private readonly StoreSectionOptions _storeOptions = new();
     private readonly Service _service;
 
@@ -45,7 +46,7 @@ public class ServiceTeamOrdersTests
             .Returns(new Dictionary<Guid, TeamInfo>());
         _campService.GetCampsForYearAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
             .Returns(new List<CampInfo>());
-        _service = new Service(_repo, _audit, _campService, _teams, _clock, _shifts, _stripe, _holded, Options.Create(_storeOptions), NullLogger<Service>.Instance);
+        _service = new Service(_repo, _audit, _campService, _teams, _clock, _shifts, _stripe, _holded, _holdedWrite, Options.Create(_storeOptions), NullLogger<Service>.Instance);
     }
 
     [HumansFact]
