@@ -5,6 +5,7 @@ using Humans.Auth.Contracts;
 using Humans.Teams.Domain;
 using AwesomeAssertions;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -105,6 +106,201 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
             NullLogger<ShiftSignupService>.Instance,
             _users,
             _localizer);
+    }
+
+    public enum SignupWrite
+    {
+        SignUp, Approve, Refuse, Bail, Voluntell, VoluntellRange, NoShow, Remove,
+        SignUpRange, ApproveRange, RefuseRange, BailRange, BulkCancel, Merge
+    }
+
+    [HumansTheory]
+    [InlineData(SignupWrite.SignUp)]
+    [InlineData(SignupWrite.Approve)]
+    [InlineData(SignupWrite.Refuse)]
+    [InlineData(SignupWrite.Bail)]
+    [InlineData(SignupWrite.Voluntell)]
+    [InlineData(SignupWrite.VoluntellRange)]
+    [InlineData(SignupWrite.NoShow)]
+    [InlineData(SignupWrite.Remove)]
+    [InlineData(SignupWrite.SignUpRange)]
+    [InlineData(SignupWrite.ApproveRange)]
+    [InlineData(SignupWrite.RefuseRange)]
+    [InlineData(SignupWrite.BailRange)]
+    [InlineData(SignupWrite.BulkCancel)]
+    [InlineData(SignupWrite.Merge)]
+    public async Task SignupWrite_CommittedButAcknowledgementFails_EvictsViewsAndDashboard(SignupWrite operation)
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var (es, rota, shift) = SeedShiftScenario(SignupPolicy.Public);
+        rota.IsVisibleToVolunteers = true;
+        shift.IsAllDay = operation is SignupWrite.VoluntellRange or SignupWrite.SignUpRange
+            or SignupWrite.ApproveRange or SignupWrite.RefuseRange or SignupWrite.BailRange;
+        var userId = Guid.NewGuid();
+        var actorId = Guid.NewGuid();
+        var blockId = Guid.NewGuid();
+        var createsSignup = operation is SignupWrite.SignUp or SignupWrite.Voluntell
+            or SignupWrite.SignUpRange or SignupWrite.VoluntellRange;
+        ShiftSignup? signup = null;
+        if (!createsSignup)
+        {
+            signup = SeedSignup(userId, shift.Id, operation is SignupWrite.Approve or SignupWrite.Refuse
+                or SignupWrite.ApproveRange or SignupWrite.RefuseRange ? SignupStatus.Pending : SignupStatus.Confirmed);
+            signup.SignupBlockId = blockId;
+        }
+        await SaveAllAsync(ct);
+        if (operation == SignupWrite.NoShow) Clock.Advance(Duration.FromDays(60));
+        await _views.PrimeRotaAsync(rota.Id, shift);
+        await _views.PrimeUserAsync(userId, shift);
+        await _views.PrimeUserAsync(actorId);
+        var failure = new IOException("Persistence acknowledgement failed");
+        var options = new DbContextOptionsBuilder<ShiftsDbContext>(
+                (DbContextOptions<ShiftsDbContext>)ShiftsDb.GetService<IDbContextOptions>())
+            .AddInterceptors(new FailSignupAcknowledgement(failure)).Options;
+        await using var db = new ShiftsDbContext(options);
+        var repo = new ShiftRepository(ShiftsDbFactory, db, Clock);
+        var management = Substitute.For<IShiftManagement>();
+        var service = new ShiftSignupService(repo, Substitute.For<IVolunteerTrackingRepository>(), management,
+            NewCalendarResolver(), AuditLog, Notifier, AdminAuthorization, _views.Cache,
+            new ServiceLocatorBuilder().With(_teamService).With(_roleAssignmentService).Build(),
+            Clock, NullLogger<ShiftSignupService>.Instance, _users, _localizer);
+        Func<Task> write = operation switch
+        {
+            SignupWrite.SignUp => () => service.SignUpAsync(userId, shift.Id, flags: ShiftSignupRequestFlags.Privileged),
+            SignupWrite.Approve => () => service.ApproveAsync(signup!.Id, actorId),
+            SignupWrite.Refuse => () => service.RefuseAsync(signup!.Id, actorId, null),
+            SignupWrite.Bail => () => service.BailAsync(signup!.Id, userId, null),
+            SignupWrite.Voluntell => () => service.VoluntellAsync(userId, shift.Id, actorId),
+            SignupWrite.VoluntellRange => () => service.VoluntellRangeAsync(userId, rota.Id, 1, 1, actorId),
+            SignupWrite.NoShow => () => service.MarkNoShowAsync(signup!.Id, actorId),
+            SignupWrite.Remove => () => service.RemoveSignupAsync(signup!.Id, actorId, null),
+            SignupWrite.SignUpRange => () => service.SignUpRangeAsync(userId, rota.Id, 1, 1, flags: ShiftSignupRequestFlags.Privileged),
+            SignupWrite.ApproveRange => () => service.ApproveRangeAsync(blockId, actorId),
+            SignupWrite.RefuseRange => () => service.RefuseRangeAsync(blockId, actorId, null),
+            SignupWrite.BailRange => () => service.BailRangeAsync(blockId, userId),
+            SignupWrite.BulkCancel => () => service.CancelActiveSignupsForUserAsync(userId, "Cancelled", ct),
+            SignupWrite.Merge => () => service.ReassignAsync(userId, actorId, actorId, TestNow, ct),
+            _ => throw new ArgumentOutOfRangeException(nameof(operation))
+        };
+
+        (await write.Should().ThrowAsync<IOException>()).Which.Should().BeSameAs(failure);
+
+        (await _views.IsUserCachedAsync(userId)).Should().BeFalse();
+        (await _views.IsRotaCachedAsync(rota.Id)).Should().BeFalse();
+        (await _views.IsUserCachedAsync(actorId)).Should().Be(operation is not (SignupWrite.Merge or SignupWrite.BulkCancel));
+        management.Received(1).InvalidateDashboardCaches(es.Id);
+        AuditLog.ReceivedCalls().Should().BeEmpty();
+        Notifier.ReceivedCalls().Should().BeEmpty();
+        await using var persisted = await ShiftsDbFactory.CreateDbContextAsync(ct);
+        var saved = await persisted.ShiftSignups.SingleAsync(ct);
+        saved.UserId.Should().Be(operation == SignupWrite.Merge ? actorId : userId);
+        saved.Status.Should().Be(operation switch
+        {
+            SignupWrite.Refuse or SignupWrite.RefuseRange => SignupStatus.Refused,
+            SignupWrite.Bail or SignupWrite.BailRange => SignupStatus.Bailed,
+            SignupWrite.NoShow => SignupStatus.NoShow,
+            SignupWrite.Remove or SignupWrite.BulkCancel => SignupStatus.Cancelled,
+            _ => SignupStatus.Confirmed
+        });
+    }
+
+    public enum ErasureSave
+    {
+        ClearReasons = 1, CancelSignups = 2, DeleteProfile = 3, DeleteTracking = 4, DeleteTags = 5
+    }
+
+    [HumansTheory]
+    [InlineData(ErasureSave.ClearReasons)]
+    [InlineData(ErasureSave.CancelSignups)]
+    [InlineData(ErasureSave.DeleteProfile)]
+    [InlineData(ErasureSave.DeleteTracking)]
+    [InlineData(ErasureSave.DeleteTags)]
+    public async Task Erasure_AnyCommittedStepFails_ClearsUserAndRotaCopies(ErasureSave failingSave)
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var (es, rota, shift) = SeedShiftScenario(SignupPolicy.Public);
+        var userId = Guid.NewGuid();
+        var signup = SeedSignup(userId, shift.Id, SignupStatus.Confirmed);
+        signup.StatusReason = "Private note";
+        ShiftsDb.VolunteerEventProfiles.Add(new VolunteerEventProfile
+        { Id = Guid.NewGuid(), UserId = userId, CreatedAt = TestNow, UpdatedAt = TestNow });
+        ShiftsDb.GeneralAvailability.Add(new GeneralAvailability
+        { Id = Guid.NewGuid(), UserId = userId, EventSettingsId = es.Id, CreatedAt = TestNow, UpdatedAt = TestNow });
+        var tag = new ShiftTag { Id = Guid.NewGuid(), Name = "Cooking" };
+        ShiftsDb.ShiftTags.Add(tag);
+        ShiftsDb.VolunteerTagPreferences.Add(new VolunteerTagPreference { UserId = userId, ShiftTagId = tag.Id });
+        await SaveAllAsync(ct);
+        await _views.PrimeUserAsync(userId, shift);
+        await _views.PrimeUserAsync(Guid.NewGuid(), shift);
+        await _views.PrimeRotaAsync(rota.Id, shift);
+        var failure = new IOException("Erasure acknowledgement failed");
+        var options = new DbContextOptionsBuilder<ShiftsDbContext>(
+                (DbContextOptions<ShiftsDbContext>)ShiftsDb.GetService<IDbContextOptions>())
+            .AddInterceptors(new FailSignupAcknowledgement(failure, (int)failingSave)).Options;
+        await using var db = new ShiftsDbContext(options);
+        var repo = new ShiftRepository(new Humans.Testing.TestDbContextFactory<ShiftsDbContext>(options), db, Clock);
+        var service = new ShiftSignupService(repo, new VolunteerTrackingRepository(db), Substitute.For<IShiftManagement>(),
+            NewCalendarResolver(), AuditLog, Notifier, AdminAuthorization, _views.Cache,
+            new ServiceLocatorBuilder().Build(), Clock, NullLogger<ShiftSignupService>.Instance, _users, _localizer);
+
+        Func<Task> erase = () => service.EraseForUserAsync(userId, ct);
+
+        (await erase.Should().ThrowAsync<IOException>()).Which.Should().BeSameAs(failure);
+        (await _views.IsUserCachedAsync(userId)).Should().BeFalse();
+        (await _views.IsRotaCachedAsync(rota.Id)).Should().BeFalse();
+        await using var persisted = await ShiftsDbFactory.CreateDbContextAsync(ct);
+        (await persisted.ShiftSignups.SingleAsync(ct)).StatusReason.Should()
+            .Be(failingSave == ErasureSave.ClearReasons ? null : "Account deletion");
+        if (failingSave >= ErasureSave.CancelSignups)
+            (await persisted.ShiftSignups.SingleAsync(ct)).Status.Should().Be(SignupStatus.Cancelled);
+        if (failingSave >= ErasureSave.DeleteProfile)
+            (await persisted.VolunteerEventProfiles.CountAsync(ct)).Should().Be(0);
+        if (failingSave >= ErasureSave.DeleteTracking)
+            (await persisted.GeneralAvailability.CountAsync(ct)).Should().Be(0);
+        if (failingSave >= ErasureSave.DeleteTags)
+            (await persisted.VolunteerTagPreferences.CountAsync(ct)).Should().Be(0);
+    }
+
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task BulkDeletion_UnknownCountEvictsAll_ZeroRetainsRota(bool fails)
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var (es, rota, shift) = SeedShiftScenario(SignupPolicy.Public);
+        var user = Guid.NewGuid();
+        SeedSignup(user, shift.Id, SignupStatus.Confirmed);
+        await SaveAllAsync(ct);
+        var repo = Substitute.For<IShiftManagementRepository>();
+        repo.GetForUsersAsync(Arg.Any<IReadOnlyCollection<Guid>>(), null, Arg.Any<CancellationToken>())
+            .Returns(c => _repo.GetForUsersAsync(c.Arg<IReadOnlyCollection<Guid>>(), ct: c.Arg<CancellationToken>()));
+        var failure = new IOException("Deletion acknowledgement failed");
+        repo.DeleteAllForUsersAsync(Arg.Any<IReadOnlyCollection<Guid>>(), ct)
+            .Returns(fails ? Task.FromException<int>(failure) : Task.FromResult(0));
+        await _views.PrimeUserAsync(user, shift);
+        await _views.PrimeRotaAsync(rota.Id, shift);
+        var management = Substitute.For<IShiftManagement>();
+        var service = new ShiftSignupService(repo, Substitute.For<IVolunteerTrackingRepository>(), management,
+            NewCalendarResolver(), AuditLog, Notifier, AdminAuthorization, _views.Cache,
+            new ServiceLocatorBuilder().Build(), Clock, NullLogger<ShiftSignupService>.Instance, _users, _localizer);
+        Func<Task> remove = () => service.DeleteAllForUsersAsync([user], ct);
+
+        if (fails) (await remove.Should().ThrowAsync<IOException>()).Which.Should().BeSameAs(failure);
+        else await remove();
+
+        (await _views.IsUserCachedAsync(user)).Should().BeFalse();
+        (await _views.IsRotaCachedAsync(rota.Id)).Should().Be(!fails);
+        if (fails) management.Received(1).InvalidateDashboardCaches(es.Id);
+        else management.DidNotReceiveWithAnyArgs().InvalidateDashboardCaches(default);
+        await AdminAuthorization.Received(1).RequireCurrentUserIsAdminAsync(ct);
+    }
+
+    private sealed class FailSignupAcknowledgement(IOException failure, int saveNumber = 1) : SaveChangesInterceptor
+    {
+        private int _saved;
+        public override ValueTask<int> SavedChangesAsync(
+            SaveChangesCompletedEventData eventData, int result, CancellationToken cancellationToken = default) =>
+            ++_saved == saveNumber ? throw failure : ValueTask.FromResult(result);
     }
 
     [HumansTheory]
