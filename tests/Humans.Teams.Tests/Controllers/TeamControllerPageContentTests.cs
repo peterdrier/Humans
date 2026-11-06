@@ -774,7 +774,7 @@ public class TeamControllerPageContentTests
     }
 
     [HumansFact]
-    public async Task Details_OrdersMembersByRoleThenNameBeforeMapping()
+    public async Task Details_OrdersMembersAndChildLinksBeforeMapping()
     {
         var team = new TeamPageTeamSummary(
             Guid.NewGuid(), "Test", "Test", null, "test", true, false, false,
@@ -783,8 +783,14 @@ public class TeamControllerPageContentTests
         var coordinator = new TeamPageMemberSummary(Guid.NewGuid(), "Coordinator", null, null, TeamMemberRole.Coordinator, null);
         var zeta = new TeamPageMemberSummary(Guid.NewGuid(), "zeta", null, null, TeamMemberRole.Member, null);
         var alpha = new TeamPageMemberSummary(Guid.NewGuid(), "Alpha", null, null, TeamMemberRole.Member, null);
+        var children = new[]
+        {
+            new TeamPageTeamLink(Guid.NewGuid(), "zeta", "zeta"),
+            new TeamPageTeamLink(Guid.NewGuid(), "alpha", "alpha"),
+            new TeamPageTeamLink(Guid.NewGuid(), "Alpha", "alpha-upper")
+        };
         var page = new TeamPageDetailResult(
-            team, [coordinator, zeta, alpha], [], [], [], false, false, false, false, false, false, false,
+            team, [coordinator, zeta, alpha], children, [], [], false, false, false, false, false, false, false,
             null, 0, null, [], []);
         var pages = Substitute.For<ITeamPageService>();
         pages.GetTeamPageDetailAsync("test", null, false, Arg.Any<CancellationToken>()).Returns(page);
@@ -802,6 +808,7 @@ public class TeamControllerPageContentTests
         var model = result.Should().BeOfType<ViewResult>().Subject.Model
             .Should().BeOfType<TeamDetailViewModel>().Subject;
         model.Members.Select(m => m.UserId).Should().Equal(alpha.UserId, zeta.UserId, coordinator.UserId);
+        model.ChildTeams.Select(child => child.Name).Should().Equal("Alpha", "alpha", "zeta");
     }
 
     [HumansFact]

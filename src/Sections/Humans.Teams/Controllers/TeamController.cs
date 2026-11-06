@@ -139,7 +139,7 @@ internal sealed class TeamController(
             Resources = teamPage.Resources.OrderBy(r => r.ProvisionedAt).Select(MapTeamResource).ToList(),
             Members = members,
             ParentTeam = team.ParentTeam,
-            ChildTeams = teamPage.ChildTeams,
+            ChildTeams = teamPage.ChildTeams.OrderBy(child => child.Name, StringComparer.Ordinal).ToList(),
             IsCurrentUserMember = teamPage.IsCurrentUserMember,
             IsCurrentUserCoordinator = teamPage.IsCurrentUserCoordinator,
             CanCurrentUserJoin = teamPage.CanCurrentUserJoin,
