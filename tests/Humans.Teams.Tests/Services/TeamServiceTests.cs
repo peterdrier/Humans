@@ -981,6 +981,44 @@ public sealed class TeamServiceTests : TeamsTestHarness
         stored.IsPromotedToDirectory.Should().BeTrue();
     }
 
+    [HumansTheory]
+    [InlineData(false, true, true, true)]
+    [InlineData(true, false, true, true)]
+    [InlineData(false, false, true, false)]
+    [InlineData(false, false, false, true)]
+    [InlineData(false, false, true, true)]
+    [InlineData(true, true, true, false)]
+    public async Task UpdateTeamAsync_DepartmentEligibilityChange_ReconcilesActiveCoordinators(
+        bool wasChild, bool becomesChild, bool wasActive, bool becomesActive)
+    {
+        var parent = SeedTeam("Parent");
+        var team = SeedTeam("Crew");
+        team.ParentTeamId = wasChild ? parent.Id : null;
+        team.IsActive = wasActive;
+        var coordinator = SeedUser(displayName: "Coordinator");
+        SeedTeamMember(team.Id, coordinator.Id, TeamMemberRole.Coordinator);
+        var member = SeedUser(displayName: "Member");
+        SeedTeamMember(team.Id, member.Id);
+        var formerCoordinator = SeedUser(displayName: "Former coordinator");
+        SeedTeamMember(team.Id, formerCoordinator.Id, TeamMemberRole.Coordinator,
+            leftAt: Clock.GetCurrentInstant() - Duration.FromDays(1));
+        await SaveAllAsync(TestContext.Current.CancellationToken);
+
+        var result = await _service.UpdateTeamAsync(
+            team.Id, team.Name, team.Description, team.RequiresApproval, becomesActive,
+            parentTeamId: becomesChild ? parent.Id : null,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeTrue();
+        var eligibilityChanged = (wasActive && !wasChild) != (becomesActive && !becomesChild);
+        await _systemTeamSync.Received(eligibilityChanged ? 1 : 0).SyncMembershipForUserAsync(
+            coordinator.Id, SystemTeamType.Coordinators, Arg.Any<CancellationToken>());
+        await _systemTeamSync.DidNotReceive().SyncMembershipForUserAsync(
+            member.Id, SystemTeamType.Coordinators, Arg.Any<CancellationToken>());
+        await _systemTeamSync.DidNotReceive().SyncMembershipForUserAsync(
+            formerCoordinator.Id, SystemTeamType.Coordinators, Arg.Any<CancellationToken>());
+    }
+
     [HumansFact]
     public async Task UpdateTeamAsync_BecomingChild_ForcesPublicPageFalse()
     {
@@ -3456,7 +3494,7 @@ public sealed class TeamServiceTests : TeamsTestHarness
         var team = SeedTeam("Doomed Team");
         var alice = SeedUser(displayName: "Alice");
         var bob = SeedUser(displayName: "Bob");
-        SeedTeamMember(team.Id, alice.Id);
+        SeedTeamMember(team.Id, alice.Id, TeamMemberRole.Coordinator);
         SeedTeamMember(team.Id, bob.Id);
         // Previously-left member should NOT be touched.
         var ghost = SeedUser(displayName: "Ghost");
@@ -3499,6 +3537,13 @@ public sealed class TeamServiceTests : TeamsTestHarness
             .Should().Be(2, "already-left memberships must not receive another removal audit");
         await _service.DeleteTeamAsync(team.Id, actor, TestContext.Current.CancellationToken);
         AuditLog.ReceivedCalls().Count(c => string.Equals(c.GetMethodInfo().Name, nameof(IAuditLogService.LogAsync), StringComparison.Ordinal)).Should().Be(2);
+
+        await _systemTeamSync.Received(1).SyncMembershipForUserAsync(
+            alice.Id, SystemTeamType.Coordinators, Arg.Any<CancellationToken>());
+        await _systemTeamSync.DidNotReceive().SyncMembershipForUserAsync(
+            bob.Id, SystemTeamType.Coordinators, Arg.Any<CancellationToken>());
+        await _systemTeamSync.DidNotReceive().SyncMembershipForUserAsync(
+            ghost.Id, SystemTeamType.Coordinators, Arg.Any<CancellationToken>());
 
         // DeactivateResourcesForTeamAsync is intentionally NOT called from DeleteTeamAsync:
         // flipping GoogleResource.IsActive here would make the next reconciliation tick

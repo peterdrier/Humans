@@ -185,7 +185,7 @@ internal interface ITeamRepository : IRepository
 
     Task RemoveRoleDefinitionAsync(TeamRoleDefinition definition, CancellationToken ct = default);
 
-    Task<IReadOnlyList<Guid>> GetUserIdsWithManagementOnTeamAsync(
+    Task<IReadOnlyList<Guid>> GetActiveCoordinatorUserIdsForTeamAsync(
         Guid teamId, CancellationToken ct = default);
 
     /// <summary>Also removes their role assignments. Returns the number of memberships closed.</summary>

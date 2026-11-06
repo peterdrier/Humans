@@ -287,9 +287,10 @@ internal sealed class TeamService(
             customSlug = null;
         }
 
-        var becomingChild = parentTeamId.HasValue && !team.ParentTeamId.HasValue;
-        var managementUserIds = becomingChild
-            ? await repo.GetUserIdsWithManagementOnTeamAsync(teamId, cancellationToken)
+        var wasActiveDepartment = team.IsActive && !team.ParentTeamId.HasValue;
+        var willBeActiveDepartment = isActive && !parentTeamId.HasValue;
+        var coordinatorUserIds = wasActiveDepartment != willBeActiveDepartment
+            ? await repo.GetActiveCoordinatorUserIdsForTeamAsync(teamId, cancellationToken)
             : (IReadOnlyList<Guid>)[];
 
         var nameChanged = !string.Equals(team.Name, name, StringComparison.Ordinal);
@@ -333,11 +334,8 @@ internal sealed class TeamService(
         var updateConflict = await repo.UpdateTeamAsync(team, cancellationToken);
         if (updateConflict != TeamUpdateConflict.None) return new(Conflict: updateConflict);
 
-        if (managementUserIds.Count > 0)
-        {
-            foreach (var userId in managementUserIds)
-                await SystemTeamSync.SyncMembershipForUserAsync(userId, SystemTeamType.Coordinators, cancellationToken);
-        }
+        foreach (var userId in coordinatorUserIds)
+            await SystemTeamSync.SyncMembershipForUserAsync(userId, SystemTeamType.Coordinators, cancellationToken);
 
         logger.LogInformation("Updated team {TeamId} ({TeamName})", teamId, name);
 
@@ -465,6 +463,9 @@ internal sealed class TeamService(
 
         var now = clock.GetCurrentInstant();
 
+        var coordinatorUserIds = team.ParentTeamId.HasValue
+            ? (IReadOnlyList<Guid>)[]
+            : await repo.GetActiveCoordinatorUserIdsForTeamAsync(teamId, cancellationToken);
         var closedUsers = await repo.DeactivateTeamAsync(teamId, now, cancellationToken);
         foreach (var userId in closedUsers)
         {
@@ -473,6 +474,9 @@ internal sealed class TeamService(
                 $"Membership ended when {team.Name} was deactivated",
                 actorUserId, relatedEntityId: userId, relatedEntityType: AuditSubjectTypes.User);
         }
+
+        foreach (var userId in coordinatorUserIds)
+            await SystemTeamSync.SyncMembershipForUserAsync(userId, SystemTeamType.Coordinators, cancellationToken);
 
         logger.LogInformation(
             "Deactivated team {TeamId} ({TeamName}); closed {MemberCount} memberships",

@@ -517,14 +517,13 @@ internal sealed class TeamRepository(IDbContextFactory<TeamsDbContext> factory) 
         await db.SaveChangesAsync(ct);
     }
 
-    public async Task<IReadOnlyList<Guid>> GetUserIdsWithManagementOnTeamAsync(
+    public async Task<IReadOnlyList<Guid>> GetActiveCoordinatorUserIdsForTeamAsync(
         Guid teamId, CancellationToken ct = default)
     {
         await using var db = await factory.CreateDbContextAsync(ct);
-        return await db.Set<TeamRoleAssignment>()
-            .Where(a => a.TeamRoleDefinition.TeamId == teamId
-                && a.TeamRoleDefinition.IsManagement)
-            .Select(a => a.TeamMember.UserId)
+        return await db.TeamMembers
+            .Where(m => m.TeamId == teamId && m.LeftAt == null && m.Role == TeamMemberRole.Coordinator)
+            .Select(m => m.UserId)
             .Distinct()
             .ToListAsync(ct);
     }
