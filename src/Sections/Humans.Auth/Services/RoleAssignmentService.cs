@@ -124,9 +124,14 @@ internal sealed class RoleAssignmentService(
             CreatedByUserId = assignerId
         };
 
-        await repository.AddAsync(roleAssignment, ct);
-        // Evict before anything below reads roles back (the Board team sync).
-        rowCache.Clear();
+        try
+        {
+            await repository.AddAsync(roleAssignment, ct);
+        }
+        finally
+        {
+            rowCache.Clear();
+        }
 
         await auditLogService.LogAsync(
             AuthAuditActions.RoleAssigned, AuditSubjectTypes.User, userId,
@@ -170,9 +175,14 @@ internal sealed class RoleAssignmentService(
                 : $"{roleAssignment.Notes} | Ended: {notes}";
         }
 
-        await repository.UpdateAsync(roleAssignment, ct);
-        // Evict before anything below reads roles back (the Board team sync).
-        rowCache.Clear();
+        try
+        {
+            await repository.UpdateAsync(roleAssignment, ct);
+        }
+        finally
+        {
+            rowCache.Clear();
+        }
 
         await auditLogService.LogAsync(
             AuthAuditActions.RoleEnded, AuditSubjectTypes.User, roleAssignment.UserId,
@@ -258,8 +268,14 @@ internal sealed class RoleAssignmentService(
             role.ValidTo = now;
         }
 
-        await repository.UpdateManyAsync(activeRoles, ct);
-        rowCache.Clear();
+        try
+        {
+            await repository.UpdateManyAsync(activeRoles, ct);
+        }
+        finally
+        {
+            rowCache.Clear();
+        }
 
         return activeRoles.Count;
     }
@@ -319,8 +335,14 @@ internal sealed class RoleAssignmentService(
             row.RoleName = catalog.Canonical(row.RoleName);
         }
 
-        await repository.UpdateManyAsync(rows, ct);
-        rowCache.Clear();
+        try
+        {
+            await repository.UpdateManyAsync(rows, ct);
+        }
+        finally
+        {
+            rowCache.Clear();
+        }
         return rows.Count;
     }
 

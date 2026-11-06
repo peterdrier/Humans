@@ -4,6 +4,7 @@ using System.Resources;
 using Humans.Base.Extensions;
 using Xunit;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
@@ -63,6 +64,80 @@ public sealed class RoleAssignmentServiceTests : AuthTestHarness
             TestRoles.Catalog(),
             Clock,
             NullLogger<RoleAssignmentService>.Instance);
+    }
+
+    [HumansTheory]
+    [InlineData("assign", false)]
+    [InlineData("end", false)]
+    [InlineData("revoke", false)]
+    [InlineData("assign", true)]
+    [InlineData("end", true)]
+    [InlineData("revoke", true)]
+    public async Task RoleWriteFailure_CachedClaimsMatchPersistedRoles(string operation, bool beforeCommit)
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var userId = Guid.NewGuid();
+        var actorId = Guid.NewGuid();
+        var failure = new IOException("Role save acknowledgement failed");
+        var interceptor = new FailRoleSave(failure, beforeCommit);
+        var options = new DbContextOptionsBuilder<AuthDbContext>()
+            .UseInMemoryDatabase(Guid.NewGuid().ToString()).AddInterceptors(interceptor).Options;
+        var repository = new RoleAssignmentRepository(new TestDbContextFactory<AuthDbContext>(options));
+        var assignment = new RoleAssignment
+        {
+            Id = Guid.NewGuid(), UserId = userId, RoleName = RoleNames.Board,
+            ValidFrom = Clock.GetCurrentInstant() - Duration.FromDays(1),
+            CreatedAt = Clock.GetCurrentInstant(), CreatedByUserId = actorId,
+        };
+        if (!string.Equals(operation, "assign", StringComparison.Ordinal))
+            await repository.AddAsync(assignment, ct);
+        RoleAssignmentService? service = null;
+        var services = new ServiceCollection();
+        services.AddKeyedScoped<IRoleAssignmentManagement>(CachingRoleAssignmentService.InnerServiceKey, (_, _) => service!);
+        using var provider = services.BuildServiceProvider();
+        var cache = new CachingRoleAssignmentService(provider.GetRequiredService<IServiceScopeFactory>(),
+            Clock, NullLogger<CachingRoleAssignmentService>.Instance);
+        service = new RoleAssignmentService(repository, _userService, AuditLog, Notifier, _systemTeamSync,
+            cache, TestRoles.Catalog(), Clock, NullLogger<RoleAssignmentService>.Instance);
+        var initial = await cache.GetActiveForUserAsync(userId, ct);
+        initial.Count.Should().Be(string.Equals(operation, "assign", StringComparison.Ordinal) ? 0 : 1);
+        interceptor.Armed = true;
+
+        Func<Task> action = async () =>
+        {
+            switch (operation)
+            {
+                case "assign": await service.AssignRoleAsync(userId, RoleNames.Board, actorId, null, ct); break;
+                case "end": await service.EndRoleAsync(assignment.Id, actorId, null, ct); break;
+                default: await service.RevokeAllActiveAsync(userId, ct); break;
+            }
+        };
+        (await action.Should().ThrowAsync<IOException>()).Which.Should().BeSameAs(failure);
+
+        var stored = (await repository.GetByUserIdAsync(userId, ct))
+            .Where(role => role.IsActive(Clock.GetCurrentInstant())).Select(role => role.RoleName).ToList();
+        stored.Count.Should().Be(beforeCommit ? initial.Count : string.Equals(operation, "assign", StringComparison.Ordinal) ? 1 : 0);
+        (await cache.GetActiveForUserAsync(userId, ct)).Select(role => role.RoleName).Should().BeEquivalentTo(stored);
+    }
+
+    private sealed class FailRoleSave(Exception failure, bool beforeCommit) : SaveChangesInterceptor
+    {
+        public bool Armed { get; set; }
+
+        public override ValueTask<InterceptionResult<int>> SavingChangesAsync(
+            DbContextEventData eventData,
+            InterceptionResult<int> result, CancellationToken cancellationToken = default)
+        {
+            if (Armed && beforeCommit) throw failure;
+            return ValueTask.FromResult(result);
+        }
+
+        public override ValueTask<int> SavedChangesAsync(SaveChangesCompletedEventData eventData,
+            int result, CancellationToken cancellationToken = default)
+        {
+            if (Armed && !beforeCommit) throw failure;
+            return ValueTask.FromResult(result);
+        }
     }
 
     [HumansFact]
