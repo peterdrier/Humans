@@ -425,11 +425,8 @@ internal sealed class SurveyService(
             audienceType, survey.AudienceTeamId, survey.AudienceLoggedInSince, ct);
         if (recipients.Count == 0) return 0;
         var participationRows = await repo.GetInvitationsAsync(surveyId, ct);
-        var alreadyInvited = await InvitedUserIdsResolvedAsync(participationRows, ct);
-        var completedPublicParticipants = participationRows
-            .Where(invitation => invitation.SentAt is null && invitation.Completed)
-            .Select(invitation => invitation.UserId);
-        return recipients.Except(alreadyInvited).Except(completedPublicParticipants).Count();
+        var excluded = await ExcludedRecipientUserIdsAsync(participationRows, ct);
+        return recipients.Except(excluded).Count();
     }
 
     public async Task<SendResult> SendInvitesAsync(Guid surveyId, Guid actorUserId, CancellationToken ct = default)
@@ -449,14 +446,8 @@ internal sealed class SurveyService(
         var target = await audience.ResolveRecipientIdsAsync(
             audienceType, survey.AudienceTeamId, survey.AudienceLoggedInSince, ct);
         var participationRows = await repo.GetInvitationsAsync(surveyId, ct);
-        var alreadyInvited = await InvitedUserIdsResolvedAsync(participationRows, ct);
-        var completedPublicParticipants = participationRows
-            .Where(invitation => invitation.SentAt is null && invitation.Completed)
-            .Select(invitation => invitation.UserId);
-        var netNew = target
-            .Except(alreadyInvited)
-            .Except(completedPublicParticipants)
-            .ToList();
+        var excluded = await ExcludedRecipientUserIdsAsync(participationRows, ct);
+        var netNew = target.Except(excluded).ToList();
         var existingParticipation = participationRows.ToDictionary(invitation => invitation.UserId);
 
         var users = await userService.GetUserInfosAsync(netNew, ct);
@@ -540,19 +531,18 @@ internal sealed class SurveyService(
     }
 
     /// <summary>
-    /// Invited ids plus, for any that has since been merged away, its survivor. Invitations are
-    /// never re-pointed on merge, so the audience (live ids) is compared against both, or the
-    /// survivor is invited a second time to a survey their archived id already holds.
+    /// Emailed invitees and completed public participants, including their merge survivors. Participation
+    /// rows keep their original ids, but the live audience must not re-invite the same human under a new id.
     /// </summary>
-    private async Task<HashSet<Guid>> InvitedUserIdsResolvedAsync(
+    private async Task<HashSet<Guid>> ExcludedRecipientUserIdsAsync(
         IReadOnlyList<SurveyInvitation> invitations, CancellationToken ct)
     {
-        var invited = invitations.Where(invitation => invitation.SentAt is not null)
+        var excluded = invitations.Where(invitation => invitation.SentAt is not null || invitation.Completed)
             .Select(invitation => invitation.UserId).ToHashSet();
-        if (invited.Count == 0) return invited;
-        foreach (var info in (await userService.GetUserInfosAsync(invited.ToList(), ct)).Values)
-            invited.Add(info.Id);
-        return invited;
+        if (excluded.Count == 0) return excluded;
+        foreach (var info in (await userService.GetUserInfosAsync(excluded.ToList(), ct)).Values)
+            excluded.Add(info.Id);
+        return excluded;
     }
 
     public async Task<IReadOnlyList<SurveyInviteStatus>> GetInviteStatusesAsync(Guid surveyId, CancellationToken ct = default)

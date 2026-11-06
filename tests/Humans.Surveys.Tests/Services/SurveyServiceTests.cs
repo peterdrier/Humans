@@ -1663,17 +1663,20 @@ public class SurveyServiceTests
             Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>());
     }
 
-    [HumansFact]
-    public async Task SendInvitesAsync_skips_a_completed_public_participant()
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task SendInvitesAsync_skips_a_completed_public_participant_including_after_merge(bool merged)
     {
         var teamId = Guid.NewGuid();
         var userId = Guid.NewGuid();
+        var storedUserId = merged ? Guid.NewGuid() : userId;
         var survey = SurveyWith(SurveyStatus.Open, SurveyAudienceType.Team, teamId);
         var participation = new SurveyInvitation
         {
             Id = Guid.NewGuid(),
             SurveyId = survey.Id,
-            UserId = userId,
+            UserId = storedUserId,
             SentAt = null,
             Completed = true,
         };
@@ -1683,11 +1686,24 @@ public class SurveyServiceTests
         _repo.GetInvitationsAsync(survey.Id, Arg.Any<CancellationToken>())
             .Returns([participation]);
 
-        var result = await CreateService().SendInvitesAsync(
+        var user = UserInfoWithName(userId, "Completed", "Human") with { IdentityEmailColumn = "completed@example.org" };
+        var users = new Dictionary<Guid, UserInfo> { [userId] = user };
+        users[storedUserId] = user;
+        _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(call => new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
+                users.Where(pair => call.Arg<IReadOnlyCollection<Guid>>().Contains(pair.Key))
+                    .ToDictionary(pair => pair.Key, pair => pair.Value)));
+        var service = CreateService();
+        (await service.PreviewAudienceCountAsync(survey.Id, TestContext.Current.CancellationToken)).Should().Be(0);
+
+        var result = await service.SendInvitesAsync(
             survey.Id, Guid.NewGuid(), TestContext.Current.CancellationToken);
 
         result.InvitationsCreated.Should().Be(0);
         result.EmailsQueued.Should().Be(0);
+        await _repo.DidNotReceive().AddInvitationAndSaveAsync(Arg.Any<SurveyInvitation>(), Arg.Any<CancellationToken>());
+        participation.SentAt.Should().BeNull();
+        participation.Completed.Should().BeTrue();
         await _repo.DidNotReceive().UpdateInvitationStatusAsync(
             Arg.Any<Guid>(), Arg.Any<EmailOutboxStatus>(), Arg.Any<Instant>(),
             Arg.Any<CancellationToken>());
