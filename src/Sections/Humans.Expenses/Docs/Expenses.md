@@ -152,6 +152,8 @@ The submitter-facing `/Expenses/{id}` detail view localizes report labels and st
 
 ## Invariants
 
+- Copied IBANs may contain Unicode whitespace (including no-break spaces, tabs and wrapped lines); validation and storage use the compact uppercase identifier. Checksum and allowed-character checks still apply. Masked displays remove presentation separators before choosing the visible prefix and suffix.
+
 - Controller mutation preflight honours request cancellation while resolving the
   actor and report, and while loading an invalid new-report form's account/grant
   options. These reads finish before mutation handling; writes and post-attempt
