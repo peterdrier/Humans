@@ -148,7 +148,9 @@ Admin pages live under the section's URL space, not `/Admin`; they are localizat
   arrives anyway is 400.
 - Program create/edit forms require explicit kind, status and application-intake choices. Missing fields redisplay validation errors before any program change, audit or notification; they cannot reopen a Closed program or disable applications. Explicit Open, fixed-per-person and false choices remain valid, including the hidden kind value on locked programs.
 - One pending application per person per program across every id they have held; a second
-  submit edits it.
+  submit edits it. A process-wide application lock spans the fresh program read, pending-row
+  lookup, save and completion effects across scoped requests. Overlapping submissions, including
+  merged aliases, edit one row instead of creating duplicate applications; waiting observes caller cancellation.
 - Claim is idempotent for the report already holding the grant and skips the deadline check
   for it (a rejected report resubmitting). Release and consume need the holding report. All three transitions return `PreapprovalWriteResult`: expected state/deadline/missing-grant refusals leave the grant unchanged; successful claims carry a booking stamp. Metadata dependency failures propagate to the caller, and request cancellation remains attached to the ambient Expenses transaction. Grant writes return before their completion effects: Expenses collects the owning section’s audit and inbox actions, runs them only after its transaction commits with `CancellationToken.None`, and discards them on refusal or rollback. Completion failures are logged without reversing the committed report/grant.
 - Withdrawal retains the historical expense-report id. Revocation notices link to a report and require action only when the grant was Claimed at revocation; revocation and amount-change audits describe a report as holding the grant only while Claimed.
