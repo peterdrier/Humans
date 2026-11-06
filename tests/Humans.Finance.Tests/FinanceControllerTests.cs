@@ -56,7 +56,7 @@ public class FinanceControllerTests
     private readonly IUserService _users = Substitute.For<IUserService>();
     private readonly IBudgetService _budget = Substitute.For<IBudgetService>();
     private readonly IExpenseReportService _expenses = Substitute.For<IExpenseReportService>();
-    private readonly IHoldedService _holdedLedger = Substitute.For<IHoldedService>();
+    private readonly IHoldedService _holdedLedger = TestContacts.Holded();
 
     public FinanceControllerTests()
     {

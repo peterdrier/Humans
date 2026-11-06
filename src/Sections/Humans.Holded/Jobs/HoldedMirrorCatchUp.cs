@@ -25,7 +25,7 @@ internal sealed class HoldedMirrorCatchUp(
         using var scope = scopes.CreateScope();
         var holded = scope.ServiceProvider.GetRequiredService<IHoldedService>();
         if ((await holded.GetPurchaseDocumentsAsync(cancellationToken)).LastSyncAt is not null
-            && await holded.GetContactsAsync(cancellationToken) is not null) return;
+            && (await holded.GetContactsAsync(cancellationToken)).LastSyncAt is not null) return;
 
         jobs.Enqueue<HoldedSyncJob>(job => job.ExecuteAsync(CancellationToken.None));
         logger.LogInformation("Holded purchase-document or contact mirror has never synced; queued a sync");

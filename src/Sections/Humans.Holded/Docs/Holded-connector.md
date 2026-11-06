@@ -124,10 +124,8 @@ one `HoldedTransport`. Operation clients own their wire payloads, parsing and en
 failure rules; `HoldedJson` holds the shared wire-value readers and null-omitting serializer
 options. They add no interfaces or DI registrations, and the public contract stays unchanged.
 
-**Consumers outside the section** (each to move onto `IHoldedService` / `IHoldedWrite`, ledger debt
-`CENTRAL-105`; `IHoldedClient` goes internal when none remain): Expenses (`ExpenseHoldedPublisher` and
-`ExpenseReportBackgroundProcessor` for the push), Finance (`Service`, `HoldedCategoryAccounts`) and Store
-(`Service`, `StoreInvoiceIssuer`) reach it through the public `Contracts/` folder, as does this section's own mirror sync.
+**Consumers outside the section:** none. Every other section calls only `IHoldedService` and
+`IHoldedWrite`; `IHoldedClient` can go internal.
 
 **The jobs live with their sections.** `HoldedSyncJob` is in `Humans.Holded/Jobs/`, a shim over
 this section's own `IHoldedNightlySync`; `HoldedExpenseOutboxJob` is in `Humans.Expenses/Jobs/`,

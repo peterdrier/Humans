@@ -13,7 +13,8 @@ namespace Humans.Finance.Services;
 
 internal sealed class HoldedCategoryAccounts(
     IHoldedRepository repo,
-    IHoldedClient client,
+    IHoldedService holded,
+    IHoldedWrite holdedWrite,
     IBudgetService budget,
     IClock clock,
     IAuditLogService audit,
@@ -31,11 +32,11 @@ internal sealed class HoldedCategoryAccounts(
         var map = await repo.GetCategoryMapAsync(ct);
         var activeByCat = map.ToDictionary(m => m.BudgetCategoryId);
 
-        // Avoid numbers in BOTH the local map and the live chart, so one taken remotely but missing locally (a failed
+        // Avoid numbers in BOTH the local map and the chart mirror, so one taken remotely but missing locally (a failed
         // map write, or an account made directly in Holded) is never re-proposed.
-        var remoteAccounts = await client.ListExpenseAccountsAsync(ct);
+        var remoteAccounts = await holded.GetChartAsync(ct);
         var usedNumbers = map.Select(m => m.HoldedAccountNumber)
-            .Concat(remoteAccounts.Select(a => a.AccountNum))
+            .Concat(remoteAccounts.Select(a => a.Number))
             .ToHashSet();
 
         var rows = new List<HoldedProvisioningRow>();
@@ -104,6 +105,8 @@ internal sealed class HoldedCategoryAccounts(
     public async Task<int> ProvisionAsync(
         int blockStart, bool addAll, Guid actorUserId, CancellationToken ct = default)
     {
+        // The plan proposes numbers the mirror lacks; a stale mirror would propose one made in Holded's UI since.
+        await holded.SyncChartAsync(ct);
         var plan = await GetProvisioningPlanAsync(blockStart, ct);
         var toAdd = plan.Rows.Where(r => string.Equals(r.State, "ToAdd", StringComparison.Ordinal)).ToList();
         if (!addAll)
@@ -117,11 +120,15 @@ internal sealed class HoldedCategoryAccounts(
             try
             {
                 var accountName = $"{row.GroupName} / {row.CategoryName}";
-                var id = await client.CreateExpenseAccountAsync(row.ProposedAccountNum!.Value, accountName, ct);
+                var account = await holdedWrite.EnsureExpenseAccountAsync(
+                    row.ProposedAccountNum!.Value, accountName, ct);
+                var id = account.HoldedId;
                 // Audited as soon as Holded holds the account: a failed map save below must not hide it.
                 await audit.LogAsync(FinanceAuditActions.HoldedCategoryAccountProvisioned, HoldedExpenseAccount,
                     row.BudgetCategoryId,
-                    $"Provisioned Holded expense account {row.ProposedAccountNum.Value} '{accountName}'",
+                    account.Created
+                        ? $"Provisioned Holded expense account {row.ProposedAccountNum.Value} '{accountName}'"
+                        : $"Mapped existing Holded expense account {row.ProposedAccountNum.Value} for '{accountName}'",
                     actorUserId);
                 await repo.AddCategoryMapAsync(new HoldedCategoryMap
                 {

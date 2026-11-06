@@ -110,6 +110,31 @@ internal sealed class Service(
                 a.Number, a.Name, PgcAccountNames.EnglishName(a.Number, a.Name), a.Group, a.Archived, a.Balance))
             .ToList();
 
+    public async Task<Instant?> GetChartSyncedAtAsync(CancellationToken ct = default) =>
+        (await repo.GetSyncStatesAsync(ct)).FirstOrDefault(s => s.Kind == HoldedSyncKind.Accounts)?.LastSyncAt;
+
+    public async Task SyncChartAsync(CancellationToken ct = default)
+    {
+        await RefreshChartAsync(clock.GetCurrentInstant(), ct);
+        await DrainCallLogAsync(ct);
+    }
+
+    /// <summary>One list call. The upsert never drops an account, so one Holded stops listing stays mirrored.</summary>
+    private async Task<IReadOnlyList<HoldedAccountDto>> RefreshChartAsync(Instant now, CancellationToken ct)
+    {
+        var accounts = await client.ListAccountingAccountsAsync(ct);
+        await repo.UpsertAccountsAsync(accounts.Select(a => ToAccountEntity(a, now)).ToList(), now, ct);
+
+        var accountsState = await repo.GetOrCreateSyncStateAsync(HoldedSyncKind.Accounts, ct);
+        accountsState.SyncStatus = HoldedSyncStatus.Idle;
+        accountsState.LastSyncAt = now;
+        accountsState.StatusChangedAt = now;
+        accountsState.LastCount = accounts.Count;
+        accountsState.LastError = null;
+        await repo.SaveSyncStateAsync(accountsState, ct);
+        return accounts;
+    }
+
     public async Task<bool> SyncLedgerAsync(bool full = false, CancellationToken ct = default)
     {
         if (!await LedgerSyncGate.WaitAsync(0, ct))
@@ -283,11 +308,10 @@ internal sealed class Service(
         }
     }
 
-    public async Task<IReadOnlyList<HoldedContactDto>?> GetContactsAsync(CancellationToken ct = default)
+    public async Task<HoldedContactMirror> GetContactsAsync(CancellationToken ct = default)
     {
         var state = (await repo.GetSyncStatesAsync(ct)).FirstOrDefault(s => s.Kind == HoldedSyncKind.Contacts);
-        if (state?.LastSyncAt is null) return null;
-        return (await repo.GetContactsAsync(ct))
+        return new HoldedContactMirror(state?.LastSyncAt, (await repo.GetContactsAsync(ct))
             .Select(c => new HoldedContactDto
             {
                 Id = c.Id,
@@ -301,7 +325,7 @@ internal sealed class Service(
                 TaxCode = c.TaxCode,
                 Address = c.Address,
             })
-            .ToList();
+            .ToList());
     }
 
     public async Task<HoldedBankMovementMirror> GetBankMovementsAsync(
@@ -594,16 +618,7 @@ internal sealed class Service(
     private async Task<List<(int AccountNum, decimal HoldedBalance, decimal LocalBalance)>>
         RefreshAccountsAndReconcileAsync(LocalDate today, Instant now, CancellationToken ct)
     {
-        var accounts = await client.ListAccountingAccountsAsync(ct);
-        await repo.UpsertAccountsAsync(accounts.Select(a => ToAccountEntity(a, now)).ToList(), now, ct);
-
-        var accountsState = await repo.GetOrCreateSyncStateAsync(HoldedSyncKind.Accounts, ct);
-        accountsState.SyncStatus = HoldedSyncStatus.Idle;
-        accountsState.LastSyncAt = now;
-        accountsState.StatusChangedAt = now;
-        accountsState.LastCount = accounts.Count;
-        accountsState.LastError = null;
-        await repo.SaveSyncStateAsync(accountsState, ct);
+        var accounts = await RefreshChartAsync(now, ct);
 
         var localBalances = await GetAccountBalancesAsync(ct: ct);
         var drifted = accounts

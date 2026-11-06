@@ -158,16 +158,16 @@ public sealed class HoldedPurchaseDocSyncTests
     [HumansFact]
     public async Task ContactSync_ReplacesTheMirror_WhichIsNullUntilTheFirstSync()
     {
-        (await _service.GetContactsAsync(Ct)).Should().BeNull();
+        (await _service.GetContactsAsync(Ct)).LastSyncAt.Should().BeNull();
         _client.ListContactsAsync(Arg.Any<CancellationToken>()).Returns(
             [new HoldedContactDto { Id = "c1", Name = "Ana", SupplierAccountNum = 40000004, Iban = "ES79" }],
             [new HoldedContactDto { Id = "c2", Name = "Ben" }]);
 
         (await _service.SyncContactsAsync(Ct)).Should().BeTrue();
-        (await _service.GetContactsAsync(Ct)).Should().ContainSingle()
+        (await _service.GetContactsAsync(Ct)).Contacts.Should().ContainSingle()
             .Which.Should().BeEquivalentTo(new { Id = "c1", Name = "Ana", SupplierAccountNum = 40000004, Iban = "ES79" });
 
         (await _service.SyncContactsAsync(Ct)).Should().BeTrue();
-        (await _service.GetContactsAsync(Ct)).Should().ContainSingle().Which.Id.Should().Be("c2");
+        (await _service.GetContactsAsync(Ct)).Contacts.Should().ContainSingle().Which.Id.Should().Be("c2");
     }
 }
