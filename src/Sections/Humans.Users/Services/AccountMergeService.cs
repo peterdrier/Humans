@@ -204,31 +204,46 @@ internal sealed class AccountMergeService(
 
         var now = clock.GetCurrentInstant();
 
-        // One transaction, or a dangling PendingEmailId blocks a future Accept.
-        using (var scope = new TransactionScope(
-            TransactionScopeOption.Required,
-            new TransactionOptions { IsolationLevel = IsolationLevel.ReadCommitted },
-            TransactionScopeAsyncFlowOption.Enabled))
+        var completed = false;
+        try
         {
-            await userRepository.RemoveUserEmailByIdAsync(request.PendingEmailId, ct);
+            // One transaction, or a dangling PendingEmailId blocks a future Accept.
+            using (var scope = new TransactionScope(
+                TransactionScopeOption.Required,
+                new TransactionOptions { IsolationLevel = IsolationLevel.ReadCommitted },
+                TransactionScopeAsyncFlowOption.Enabled))
+            {
+                await userRepository.RemoveUserEmailByIdAsync(request.PendingEmailId, ct);
 
-            request.Status = AccountMergeRequestStatus.Rejected;
-            request.ResolvedAt = now;
-            request.ResolvedByUserId = adminUserId;
-            request.AdminNotes = notes;
-            await mergeRepository.UpdateAsync(request, ct);
+                request.Status = AccountMergeRequestStatus.Rejected;
+                request.ResolvedAt = now;
+                request.ResolvedByUserId = adminUserId;
+                request.AdminNotes = notes;
+                await mergeRepository.UpdateAsync(request, ct);
 
-            scope.Complete();
+                scope.Complete();
+            }
+
+            await auditLogService.LogAsync(
+                UsersAuditActions.AccountMergeRejected,
+                nameof(AccountMergeRequest), request.Id,
+                $"Rejected merge request for email {request.Email} (target: {request.TargetUserId}, source: {request.SourceUserId})",
+                adminUserId);
+            completed = true;
         }
-
-        await auditLogService.LogAsync(
-            UsersAuditActions.AccountMergeRejected,
-            nameof(AccountMergeRequest), request.Id,
-            $"Rejected merge request for email {request.Email} (target: {request.TargetUserId}, source: {request.SourceUserId})",
-            adminUserId);
-
-        // After commit.
-        await userInfoRefresher.RefreshAsync(request.TargetUserId, ct);
+        finally
+        {
+            try
+            {
+                // Identity may have published provisional email data. Reload after transaction disposal,
+                // whether it committed or rolled back, even when the audit or caller has failed.
+                await userInfoRefresher.RefreshAsync(request.TargetUserId, CancellationToken.None);
+            }
+            catch (Exception ex) when (!completed)
+            {
+                logger.LogError(ex, "UserInfo refresh failed after merge rejection for {UserId}", request.TargetUserId);
+            }
+        }
         return new();
     }
 

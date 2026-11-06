@@ -1,4 +1,5 @@
 using System.Transactions;
+using Microsoft.Extensions.DependencyInjection;
 using Xunit;
 using Microsoft.EntityFrameworkCore;
 using Humans.Users.Data;
@@ -37,6 +38,89 @@ public class AccountMergeServiceMergeTests
             mergeRepository ?? _mergeRepo, _userEmailRepo, _audit, _userInfoRefresher,
             NullLogger<AccountMergeService>.Instance, _clock,
             _userMerges, _userService);
+
+    [HumansFact]
+    public async Task RejectAsync_Rollback_RestoresThePendingEmailInTheCache()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var target = Guid.NewGuid();
+        var email = new UserEmail
+        {
+            Id = Guid.NewGuid(), UserId = target, Email = "pending@example.org", IsVerified = false
+        };
+        IReadOnlyList<UserEmail> stored = [email];
+        UserInfo Snapshot() => UserInfo.Create(new User { Id = target }, stored, [], null);
+        _userService.GetAllUserInfosAsync(Arg.Any<CancellationToken>())
+            .Returns(_ => (IReadOnlyCollection<UserInfo>)[Snapshot()]);
+        _userService.GetUserInfoAsync(target, Arg.Any<CancellationToken>())
+            .Returns(_ => ValueTask.FromResult<UserInfo?>(Snapshot()));
+        var services = new ServiceCollection();
+        services.AddKeyedScoped<IUserManagement>(CachingUserService.InnerServiceKey, (_, _) => _userService);
+        var cache = new CachingUserService(services.BuildServiceProvider().GetRequiredService<IServiceScopeFactory>(),
+            NullLogger<CachingUserService>.Instance);
+        (await cache.GetRawUserInfoAsync(target, ct))!.UserEmails.Should().ContainSingle();
+        var request = new AccountMergeRequest
+        {
+            Id = Guid.NewGuid(), TargetUserId = target, SourceUserId = Guid.NewGuid(),
+            PendingEmailId = email.Id, Email = email.Email, Status = AccountMergeRequestStatus.Pending
+        };
+        _mergeRepo.GetByIdPlainAsync(request.Id, Arg.Any<CancellationToken>()).Returns(request);
+        _userEmailRepo.RemoveUserEmailByIdAsync(email.Id, Arg.Any<CancellationToken>()).Returns(async _ =>
+        {
+            Transaction.Current!.TransactionCompleted += (_, args) =>
+            {
+                if (args.Transaction!.TransactionInformation.Status == TransactionStatus.Aborted)
+                    stored = [email];
+            };
+            stored = [];
+            // Models Identity's save interceptor reading its transaction's provisional rows.
+            await cache.RefreshUserEmailsAsync(target, CancellationToken.None);
+            (await cache.GetRawUserInfoAsync(target, ct))!.UserEmails.Should().BeEmpty();
+            return true;
+        });
+        var failure = new IOException("Metadata unavailable");
+        _mergeRepo.UpdateAsync(request, Arg.Any<CancellationToken>()).Returns(Task.FromException(failure));
+        var service = new AccountMergeService(_mergeRepo, _userEmailRepo, _audit, cache,
+            NullLogger<AccountMergeService>.Instance, _clock, _userMerges, _userService);
+
+        var reject = () => service.RejectAsync(request.Id, Guid.NewGuid(), ct: ct);
+        (await reject.Should().ThrowAsync<IOException>()).Which.Should().BeSameAs(failure);
+
+        stored.Should().ContainSingle();
+        (await cache.GetRawUserInfoAsync(target, ct))!.UserEmails.Should().ContainSingle(e => e.Id == email.Id);
+        _audit.ReceivedCalls().Should().BeEmpty();
+    }
+
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task RejectAsync_AuditFailure_RefreshesWithoutMaskingTheError(bool refreshFails)
+    {
+        var request = new AccountMergeRequest
+        {
+            Id = Guid.NewGuid(), TargetUserId = Guid.NewGuid(), SourceUserId = Guid.NewGuid(),
+            PendingEmailId = Guid.NewGuid(), Email = "pending@example.org", Status = AccountMergeRequestStatus.Pending
+        };
+        _mergeRepo.GetByIdPlainAsync(request.Id, Arg.Any<CancellationToken>()).Returns(request);
+        var actor = Guid.NewGuid();
+        var failure = new IOException("Audit unavailable");
+        using var cancellation = new CancellationTokenSource();
+        _audit.LogAsync(UsersAuditActions.AccountMergeRejected, nameof(AccountMergeRequest), request.Id,
+            Arg.Any<string>(), actor).Returns(async _ =>
+        {
+            await cancellation.CancelAsync();
+            throw failure;
+        });
+        if (refreshFails)
+            _userInfoRefresher.RefreshAsync(request.TargetUserId, Arg.Any<CancellationToken>(), Arg.Any<string>(), Arg.Any<string>())
+                .Returns(Task.FromException(new IOException("Refresh unavailable")));
+
+        var reject = () => BuildSut().RejectAsync(request.Id, actor, ct: cancellation.Token);
+        (await reject.Should().ThrowAsync<IOException>()).Which.Should().BeSameAs(failure);
+
+        await _userInfoRefresher.Received(1).RefreshAsync(
+            request.TargetUserId, CancellationToken.None, Arg.Any<string>(), Arg.Any<string>());
+    }
 
     private void SetupUsers(Guid sourceId, Guid targetId, bool sourceTombstoned = false)
     {
@@ -81,6 +165,15 @@ public class AccountMergeServiceMergeTests
             updateTransactionId = Transaction.Current?.TransactionInformation.LocalIdentifier;
             return metadataFails ? Task.FromException(failure) : Task.CompletedTask;
         });
+        var refreshAfterDisposal = false;
+        _userInfoRefresher.RefreshAsync(request.TargetUserId, Arg.Any<CancellationToken>(), Arg.Any<string>(), Arg.Any<string>())
+            .Returns(call =>
+            {
+                call.Arg<CancellationToken>().Should().Be(CancellationToken.None);
+                refreshAfterDisposal = Transaction.Current is null
+                    && transaction?.TransactionInformation.Status == (metadataFails ? TransactionStatus.Aborted : TransactionStatus.Committed);
+                return Task.CompletedTask;
+            });
         var auditAfterCommit = false;
         _audit.LogAsync(UsersAuditActions.AccountMergeRejected, nameof(AccountMergeRequest), request.Id,
             Arg.Any<string>(), actor).Returns(_ =>
@@ -105,6 +198,7 @@ public class AccountMergeServiceMergeTests
                 request.ResolvedByUserId.Should().Be(actor);
                 request.AdminNotes.Should().Be("Declined");
             }
+            refreshAfterDisposal.Should().BeTrue();
             transaction.Should().NotBeNull();
             updateTransactionId.Should().Be(transaction!.TransactionInformation.LocalIdentifier);
             transaction.TransactionInformation.Status.Should().Be(metadataFails ? TransactionStatus.Aborted : TransactionStatus.Committed);
