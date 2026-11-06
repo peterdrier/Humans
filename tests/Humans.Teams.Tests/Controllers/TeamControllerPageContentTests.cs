@@ -59,6 +59,38 @@ public class TeamControllerPageContentTests
     }
 
     [HumansFact]
+    public async Task Summary_OrdersAllParentsAndChildren_AndInheritsParentBuckets()
+    {
+        var teams = Substitute.For<ITeamManagementService>();
+        AdminTeamSummary Row(string name, Guid? parentId = null, bool hidden = false, bool system = false) =>
+            new(Guid.NewGuid(), name, name, true, false, system,
+                system ? nameof(SystemTeamType.Volunteers) : null, 0, 0, false, null, 0, 0,
+                Instant.FromUtc(2026, 1, 1, 0, 0), parentId, 0, hidden);
+        var alpha = Row("Alpha");
+        var zulu = Row("Zulu");
+        var hidden = Row("Hidden", hidden: true);
+        var system = Row("Volunteers", system: true);
+        var childAlpha = Row("alpha child", zulu.Id);
+        var childZulu = Row("Zulu child", zulu.Id);
+        var hiddenChild = Row("Visible child", hidden.Id);
+        teams.GetAdminTeamListAsync(Arg.Any<CancellationToken>())
+            .Returns(new[] { childZulu, hiddenChild, zulu, system, childAlpha, hidden, alpha });
+        var controller = new TeamController(
+            teams, Substitute.For<ITeamPageService>(), Substitute.For<IUserService>(),
+            Substitute.For<ITeamResourceService>(), Substitute.For<IStringLocalizer<TeamsResource>>(),
+            Substitute.For<IStringLocalizer<SharedResource>>(), Substitute.For<IAuthorizationService>(),
+            NullLogger<TeamController>.Instance);
+
+        var result = await controller.Summary(TestContext.Current.CancellationToken);
+
+        var model = result.Should().BeOfType<ViewResult>().Which.Model.Should().BeOfType<AdminTeamListViewModel>().Which;
+        model.Departments.Select(t => t.Name).Should().Equal("Alpha", "Zulu", "alpha child", "Zulu child");
+        model.Hidden.Select(t => t.Name).Should().Equal("Hidden", "Visible child");
+        model.System.Should().ContainSingle().Which.Name.Should().Be("Volunteers");
+        model.Departments.Skip(2).Should().OnlyContain(t => t.IsChildTeam);
+    }
+
+    [HumansFact]
     public async Task Roster_OrdersUnsortedOwnerDataByPriorityTeamRoleAndSlot()
     {
         using var services = new ServiceCollection().AddLogging().AddLocalization().BuildServiceProvider();

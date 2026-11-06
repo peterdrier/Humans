@@ -37,13 +37,9 @@ internal sealed record AdminTeamSummary(
     int DriveResourceCount,
     int RoleSlotCount,
     Instant CreatedAt,
-    bool IsChildTeam,
+    Guid? ParentTeamId,
     int PendingShiftSignupCount,
     bool IsHidden);
-
-internal sealed record AdminTeamListResult(
-    IReadOnlyList<AdminTeamSummary> Teams,
-    int TotalCount);
 
 internal sealed record TeamJoinRequestSnapshot(
     Guid Id,
@@ -208,11 +204,8 @@ internal interface ITeamManagementService : ITeamManagement
         IEnumerable<Guid> teamIds,
         CancellationToken cancellationToken = default);
 
-    /// <summary>Ordered, ready for projection.</summary>
-    Task<AdminTeamListResult> GetAdminTeamListAsync(
-        int page,
-        int pageSize,
-        CancellationToken cancellationToken = default);
+    /// <summary>All teams with admin counts. Hierarchy and display ordering belong to the caller.</summary>
+    Task<IReadOnlyList<AdminTeamSummary>> GetAdminTeamListAsync(CancellationToken cancellationToken = default);
 
     /// <summary>Bypasses the join-request workflow.</summary>
     Task<TeamJoinReviewResult> AddMemberToTeamAsync(

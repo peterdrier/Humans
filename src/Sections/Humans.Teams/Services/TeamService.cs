@@ -1582,9 +1582,8 @@ internal sealed class TeamService(
         CancellationToken cancellationToken = default) =>
         repo.GetPublicManagementRoleNamesByTeamIdsAsync(teamIds.ToList(), cancellationToken);
 
-    public Task<AdminTeamListResult> GetAdminTeamListAsync(
-        int page, int pageSize, CancellationToken cancellationToken = default) =>
-        snapshotReader.GetAdminTeamListAsync(page, pageSize, cancellationToken);
+    public Task<IReadOnlyList<AdminTeamSummary>> GetAdminTeamListAsync(CancellationToken cancellationToken = default) =>
+        snapshotReader.GetAdminTeamListAsync(cancellationToken);
 
     // CachingTeamService owns the cache.
     public void InvalidateActiveTeamsCache() { }

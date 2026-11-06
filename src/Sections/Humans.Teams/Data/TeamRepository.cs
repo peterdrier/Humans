@@ -98,26 +98,15 @@ internal sealed class TeamRepository(IDbContextFactory<TeamsDbContext> factory) 
                 g => (IReadOnlyList<TeamRoleDefinition>)g.ToList());
     }
 
-    public async Task<(IReadOnlyList<Team> Items, int TotalCount)> GetAllForAdminAsync(
-        int page, int pageSize, CancellationToken ct = default)
+    public async Task<IReadOnlyList<Team>> GetAllForAdminAsync(CancellationToken ct = default)
     {
         await using var db = await factory.CreateDbContextAsync(ct);
-
-        var query = db.Teams
+        return await db.Teams
             .AsNoTracking()
             .Include(t => t.Members.Where(m => m.LeftAt == null))
             .Include(t => t.JoinRequests.Where(r => r.Status == TeamJoinRequestStatus.Pending))
-            .Include(t => t.RoleDefinitions);
-
-        var totalCount = await query.CountAsync(ct);
-        var items = await query
-            .OrderBy(t => t.SystemTeamType) // arch:db-sort-ok admin page window
-            .ThenBy(t => t.Name) // arch:db-sort-ok admin page window
-            .Skip((int)Math.Clamp(((long)page - 1) * pageSize, 0, int.MaxValue))
-            .Take(pageSize)
+            .Include(t => t.RoleDefinitions)
             .ToListAsync(ct);
-
-        return (items, totalCount);
     }
 
     public async Task<IReadOnlyDictionary<Guid, Team>> GetByIdsWithParentsAsync(

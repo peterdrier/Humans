@@ -37,8 +37,7 @@ internal interface ITeamRepository : IRepository
         CancellationToken ct = default);
 
     /// <summary>Paged in the database: the include graph is too expensive to load wholesale.</summary>
-    Task<(IReadOnlyList<Team> Items, int TotalCount)> GetAllForAdminAsync(
-        int page, int pageSize, CancellationToken ct = default);
+    Task<IReadOnlyList<Team>> GetAllForAdminAsync(CancellationToken ct = default);
 
     /// <summary>Also loads referenced parents missing from the requested set.</summary>
     Task<IReadOnlyDictionary<Guid, Team>> GetByIdsWithParentsAsync(

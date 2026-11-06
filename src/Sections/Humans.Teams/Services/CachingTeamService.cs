@@ -300,11 +300,8 @@ internal sealed class CachingTeamService(
         CancellationToken cancellationToken = default) =>
         MutateAsync(inner => inner.SetGoogleGroupPrefixAsync(teamId, prefix, cancellationToken), static result => result.Updated);
 
-    public Task<AdminTeamListResult> GetAdminTeamListAsync(
-        int page,
-        int pageSize,
-        CancellationToken cancellationToken = default) =>
-        WithInnerAsync(inner => inner.GetAdminTeamListAsync(page, pageSize, cancellationToken));
+    public Task<IReadOnlyList<AdminTeamSummary>> GetAdminTeamListAsync(CancellationToken cancellationToken = default) =>
+        WithInnerAsync(inner => inner.GetAdminTeamListAsync(cancellationToken));
 
     public Task<TeamJoinReviewResult> AddMemberToTeamAsync(
         Guid teamId,

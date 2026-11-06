@@ -2963,32 +2963,28 @@ public sealed class TeamServiceTests : TeamsTestHarness
         result.Members.Should().BeEmpty();
     }
 
-    [HumansFact]
-    public async Task GetAdminTeamListAsync_ReturnsPaginatedResults()
+    [HumansFact(Timeout = 10000)]
+    public async Task GetAdminTeamListAsync_IncludesEveryTeamBeyondFormerSummaryLimit()
     {
-        SeedTeam("Alpha");
-        SeedTeam("Beta");
-        SeedTeam("Charlie");
+        for (var i = 0; i < 501; i++) SeedTeam($"Team {i}");
         await SaveAllAsync(TestContext.Current.CancellationToken);
 
-        var result = await _service.GetAdminTeamListAsync(1, 2, TestContext.Current.CancellationToken);
+        var result = await _service.GetAdminTeamListAsync(TestContext.Current.CancellationToken);
 
-        result.Teams.Should().HaveCount(2);
-        result.TotalCount.Should().Be(3);
+        result.Should().HaveCount(501);
     }
 
     [HumansFact]
-    public async Task GetAdminTeamListAsync_SecondPage_ReturnsRemainingItems()
+    public async Task GetAdminTeamListAsync_IncludesChildRowsWithEarlierNames()
     {
-        SeedTeam("Alpha");
-        SeedTeam("Beta");
-        SeedTeam("Charlie");
+        var parent = SeedTeam("Zulu parent");
+        var child = SeedTeam("Alpha child");
+        child.ParentTeamId = parent.Id;
         await SaveAllAsync(TestContext.Current.CancellationToken);
 
-        var result = await _service.GetAdminTeamListAsync(2, 2, TestContext.Current.CancellationToken);
+        var result = await _service.GetAdminTeamListAsync(TestContext.Current.CancellationToken);
 
-        result.Teams.Should().ContainSingle();
-        result.TotalCount.Should().Be(3);
+        result.Should().Contain(t => t.Id == child.Id);
     }
 
     [HumansFact]
@@ -2999,9 +2995,9 @@ public sealed class TeamServiceTests : TeamsTestHarness
         SeedTeamMember(team.Id, active.Id);
         await SaveAllAsync(TestContext.Current.CancellationToken);
 
-        var result = await _service.GetAdminTeamListAsync(1, 10, TestContext.Current.CancellationToken);
+        var result = await _service.GetAdminTeamListAsync(TestContext.Current.CancellationToken);
 
-        result.Teams.Single().MemberCount.Should().Be(1);
+        result.Single().MemberCount.Should().Be(1);
     }
 
     [HumansFact]
@@ -3012,9 +3008,9 @@ public sealed class TeamServiceTests : TeamsTestHarness
         SeedJoinRequest(team.Id, u1.Id);
         await SaveAllAsync(TestContext.Current.CancellationToken);
 
-        var result = await _service.GetAdminTeamListAsync(1, 10, TestContext.Current.CancellationToken);
+        var result = await _service.GetAdminTeamListAsync(TestContext.Current.CancellationToken);
 
-        result.Teams.Single().PendingRequestCount.Should().Be(1);
+        result.Single().PendingRequestCount.Should().Be(1);
     }
 
     [HumansFact]
@@ -3024,24 +3020,9 @@ public sealed class TeamServiceTests : TeamsTestHarness
         SeedTeam("Inactive", isActive: false);
         await SaveAllAsync(TestContext.Current.CancellationToken);
 
-        var result = await _service.GetAdminTeamListAsync(1, 10, TestContext.Current.CancellationToken);
+        var result = await _service.GetAdminTeamListAsync(TestContext.Current.CancellationToken);
 
-        result.TotalCount.Should().Be(2);
-        result.Teams.Should().HaveCount(2);
-    }
-
-    [HumansFact]
-    public async Task GetAdminTeamListAsync_SystemTeamsOrderedFirst()
-    {
-        SeedTeam("Zebra");
-        SeedTeam("Volunteers", type: SystemTeamType.Volunteers);
-        await SaveAllAsync(TestContext.Current.CancellationToken);
-
-        var result = await _service.GetAdminTeamListAsync(1, 10, TestContext.Current.CancellationToken);
-
-        // SystemTeamType.None(0) < Volunteers(1), so None sorts first in ascending order
-        result.Teams[0].SystemTeamType.Should().BeNull();
-        result.Teams[1].SystemTeamType.Should().Be(nameof(SystemTeamType.Volunteers));
+        result.Should().HaveCount(2);
     }
 
     [HumansTheory]
@@ -3427,9 +3408,9 @@ public sealed class TeamServiceTests : TeamsTestHarness
 
         await SaveAllAsync(TestContext.Current.CancellationToken);
 
-        var result = await _service.GetAdminTeamListAsync(1, 500, TestContext.Current.CancellationToken);
+        var result = await _service.GetAdminTeamListAsync(TestContext.Current.CancellationToken);
 
-        var summary = result.Teams.Should().ContainSingle(t => t.Name == "Dept A").Subject;
+        var summary = result.Should().ContainSingle(t => t.Name == "Dept A").Subject;
         summary.PendingShiftSignupCount.Should().Be(2);
     }
 
@@ -3447,9 +3428,9 @@ public sealed class TeamServiceTests : TeamsTestHarness
 
         await SaveAllAsync(TestContext.Current.CancellationToken);
 
-        var result = await _service.GetAdminTeamListAsync(1, 500, TestContext.Current.CancellationToken);
+        var result = await _service.GetAdminTeamListAsync(TestContext.Current.CancellationToken);
 
-        var summary = result.Teams.Should().ContainSingle(t => t.Name == "Dept B").Subject;
+        var summary = result.Should().ContainSingle(t => t.Name == "Dept B").Subject;
         summary.PendingShiftSignupCount.Should().Be(0);
     }
 
