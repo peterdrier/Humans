@@ -48,6 +48,51 @@ namespace Humans.Teams.Tests.Services;
 
 public sealed class TeamServiceTests : TeamsTestHarness
 {
+
+    public enum CanonicalNotice { JoinRequest, MemberJoined, Approved, Rejected, Added, Removed }
+
+    [HumansTheory]
+    [InlineData(CanonicalNotice.JoinRequest)]
+    [InlineData(CanonicalNotice.MemberJoined)]
+    [InlineData(CanonicalNotice.Approved)]
+    [InlineData(CanonicalNotice.Rejected)]
+    [InlineData(CanonicalNotice.Added)]
+    [InlineData(CanonicalNotice.Removed)]
+    public async Task CanonicalNoticeRecipients_TeamMembership(CanonicalNotice notice)
+    {
+        var source = Guid.NewGuid();
+        var live = Guid.NewGuid();
+        var other = Guid.NewGuid();
+        var users = Substitute.For<IUserService>();
+        var liveInfo = UserInfo.Create(new User { Id = live, BurnerName = "Live", PreferredLanguage = "es" },
+            [new UserEmail { UserId = live, Email = "live@example.org", IsVerified = true, IsPrimary = true }], [], null);
+        foreach (var id in new[] { source, live, other })
+            users.GetUserInfoAsync(id, Arg.Any<CancellationToken>()).Returns(id == other
+                ? UserInfo.Create(new User { Id = other, PreferredLanguage = "es" }, [], [], null) : liveInfo);
+        users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, UserInfo> { [source] = liveInfo });
+        var team = new Team { Id = Guid.NewGuid(), Name = "Team", Slug = "team" };
+        foreach (var id in new[] { source, live, other })
+            team.Members.Add(new TeamMember { Id = Guid.NewGuid(), TeamId = team.Id, UserId = id, Role = TeamMemberRole.Coordinator });
+        var provider = new ServiceLocatorBuilder().With(users).With<ITeamResourceService>(_teamResourceService)
+            .With(_emailService).With(TestTeamsEmails.Create()).Build();
+        var notices = new TeamMembershipNotices(Notifier, provider, NullLogger<TeamService>.Instance);
+        var ct = TestContext.Current.CancellationToken;
+        switch (notice)
+        {
+            case CanonicalNotice.JoinRequest: await notices.SendTeamJoinRequestSubmittedNotificationAsync(team, source, ct); break;
+            case CanonicalNotice.MemberJoined: await notices.SendTeamMemberAddedNotificationAsync(team, source, ct); break;
+            case CanonicalNotice.Approved: await notices.SendJoinRequestApprovedNotificationAsync(team, source, ct); break;
+            case CanonicalNotice.Rejected: await notices.SendJoinRequestRejectedNotificationAsync(team, source, ct); break;
+            case CanonicalNotice.Added: await notices.SendAddedToTeamEmailAsync(source, team, ct); break;
+            case CanonicalNotice.Removed: await notices.SendMemberRemovedNotificationAsync(team, source, team.Id, ct); break;
+        }
+
+        var recipients = Notifier.ReceivedCalls().SelectMany(call => (IReadOnlyList<Guid>)call.GetArguments()[4]!).ToList();
+        recipients.Should().BeEquivalentTo(notice is CanonicalNotice.JoinRequest or CanonicalNotice.MemberJoined
+            ? new[] { live, other } : [live]);
+    }
+
     private readonly TeamService _service;
     private readonly ITeamManagementService _teamCache = Substitute.For<ITeamManagementService>();
     private readonly TeamPageService _pages;

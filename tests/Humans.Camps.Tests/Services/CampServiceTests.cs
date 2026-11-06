@@ -29,6 +29,37 @@ namespace Humans.Camps.Tests.Services;
 
 public sealed class CampServiceTests : CampsTestHarness
 {
+
+    public enum CanonicalNotice { SeasonClosure, Approved, Rejected }
+
+    [HumansTheory]
+    [InlineData(CanonicalNotice.SeasonClosure)]
+    [InlineData(CanonicalNotice.Approved)]
+    [InlineData(CanonicalNotice.Rejected)]
+    public async Task CanonicalNoticeRecipients_CampMembership(CanonicalNotice notice)
+    {
+        var source = Guid.NewGuid();
+        var live = Guid.NewGuid();
+        var other = Guid.NewGuid();
+        var repo = Substitute.For<ICampRepository>();
+        var camp = new Camp { Id = Guid.NewGuid(), Slug = "camp" };
+        repo.GetByIdAsync(camp.Id, Arg.Any<CancellationToken>()).Returns(camp);
+        repo.GetPendingRequesterUserIdsForSeasonAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(new List<Guid> { source, live, other });
+        foreach (var id in new[] { source, live, other })
+            _userService.GetUserInfoAsync(id, Arg.Any<CancellationToken>()).Returns(
+                UserInfo.Create(new User { Id = id == source ? live : id, PreferredLanguage = "es" }, [], [], null));
+        var notices = new CampMembershipNotices(repo, _userService, Notifier, NullLogger<CampService>.Instance);
+
+        if (notice == CanonicalNotice.SeasonClosure)
+            await notices.NotifyPendingRequestersOfSeasonClosureAsync(Guid.NewGuid(), camp.Id, 2026);
+        else
+            await notices.NotifyDecisionAsync(camp.Id, Guid.NewGuid(), source, Guid.NewGuid(), notice == CanonicalNotice.Approved);
+
+        var recipients = Notifier.ReceivedCalls().SelectMany(call => (IReadOnlyList<Guid>)call.GetArguments()[4]!).ToList();
+        recipients.Should().BeEquivalentTo(notice == CanonicalNotice.SeasonClosure ? new[] { live, other } : [live]);
+    }
+
     private static readonly Guid TestActorId = Guid.NewGuid();
     private static readonly EventSettingsInfo Event2025 = BurnFixtures.Burn(eventName: "Nowhere 2025", year: 2025);
     private static readonly EventSettingsInfo Event2026 = BurnFixtures.Burn(eventName: "Nowhere 2026", year: 2026);

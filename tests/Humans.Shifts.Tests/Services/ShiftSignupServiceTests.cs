@@ -1,3 +1,4 @@
+using Microsoft.Extensions.DependencyInjection;
 using System.Globalization;
 using System.Resources;
 using Humans.Shifts.Domain;
@@ -33,6 +34,40 @@ namespace Humans.Shifts.Tests.Services;
 
 public sealed class ShiftSignupServiceTests : ShiftsTestHarness
 {
+
+    public enum CanonicalNotice { Assignment, CoverageGap }
+
+    [HumansTheory]
+    [InlineData(CanonicalNotice.Assignment)]
+    [InlineData(CanonicalNotice.CoverageGap)]
+    public async Task CanonicalNoticeRecipients_ShiftSignup(CanonicalNotice notice)
+    {
+        var source = Guid.NewGuid();
+        var live = Guid.NewGuid();
+        var other = Guid.NewGuid();
+        foreach (var id in new[] { source, live, other })
+            _users.GetUserInfoAsync(id, Arg.Any<CancellationToken>()).Returns(
+                UserInfo.Create(new User { Id = id == source ? live : id, PreferredLanguage = "es" }, [], [], null));
+        var team = BuildTeamInfoWithCoordinator(Guid.NewGuid(), source);
+        team.Members.Add(new(Guid.NewGuid(), live, "Live", null, null, TeamMemberRole.Coordinator, Instant.MinValue));
+        team.Members.Add(new(Guid.NewGuid(), other, "Other", null, null, TeamMemberRole.Coordinator, Instant.MinValue));
+        _teamService.GetTeamAsync(team.Id, Arg.Any<CancellationToken>()).Returns(team);
+        using var provider = new Microsoft.Extensions.DependencyInjection.ServiceCollection()
+            .AddSingleton(_teamService).BuildServiceProvider();
+        var notices = new ShiftSignupNotices(Notifier,
+            new EventCalendarResolver(Substitute.For<Humans.Settings.Contracts.ISettingsService>(), _repo), _users, provider,
+            NullLogger<ShiftSignupService>.Instance);
+
+        if (notice == CanonicalNotice.Assignment)
+            await notices.SendAssignmentNoticeAsync(source, Guid.NewGuid(), "Shifts_Notification_AssignedDay", "Rota", 1);
+        else
+            await notices.CheckAndNotifyCoverageGapAsync(new ShiftSignup { Id = Guid.NewGuid() },
+                new Shift { Id = Guid.NewGuid(), MinVolunteers = 1, Rota = new Rota { Id = Guid.NewGuid(), TeamId = team.Id, Name = "Rota" } });
+
+        var recipients = Notifier.ReceivedCalls().SelectMany(call => (IReadOnlyList<Guid>)call.GetArguments()[4]!).ToList();
+        recipients.Should().BeEquivalentTo(notice == CanonicalNotice.CoverageGap ? new[] { live, other } : [live]);
+    }
+
     private readonly ShiftManagementService _shiftMgmt;
     private readonly ShiftRepository _repo;
     private readonly ShiftSignupService _service;
