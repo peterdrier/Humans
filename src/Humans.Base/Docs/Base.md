@@ -31,7 +31,7 @@ Types live under `Humans.Base.<folder>`, folder-mirrored (`Humans.Base.Authoriza
 | `Authorization/` | `PolicyNames` (the cross-section policies), `RoleChecks`, `IDescribedRequirement` |
 | `Configuration/` | `ConfigurationRegistry`, the inventory `ISectionConfiguration` contributions feed |
 | `Controllers/` | `HumansControllerBase` |
-| `Services/` | The GitHub content sources behind the guide and community KB — the one place Octokit is used |
+| `Services/` | The GitHub content sources behind the guide and community KB — the one place Octokit is used. Both use the internal `GitHubMarkdownReader` for file/folder/tree reads, caller cancellation, missing-list results and truncated-tree reporting. Repository settings, tokens, product headers and the community source’s folder-only restriction stay with each source. |
 | `Csv/`, `Logging/`, `Metering/`, `Threading/`, `Diagnostics/`, `Helpers/`, `Extensions/`, `Constants/`, `Enums/` | Section-agnostic utilities: the single CSV seam, Serilog enrichers and the in-memory sink, meters, display extensions, reserved ids |
 
 ## The shared view layer
