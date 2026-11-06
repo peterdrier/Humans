@@ -54,25 +54,18 @@ public class HoldedDuplicateTests
         _holded.GetContactsAsync(Arg.Any<CancellationToken>()).Returns(TestContacts.Synced([Contact("c1", Account)]));
         _repo.GetCreditorContactsAsync(Arg.Any<CancellationToken>()).Returns([Binding("c1")]);
         _repo.GetSepaPayoutTransferRowsAsync(Arg.Any<CancellationToken>()).Returns(new List<SepaPayoutTransferRow>());
-        _client.ListAccountingAccountsAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedAccountDto>());
         _holded.SyncLedgerAsync(Arg.Any<bool>(), Arg.Any<CancellationToken>()).Returns(true);
-        // The single GET is the only read that carries notes; by default every document is the push's.
-        _client.GetPurchaseDocumentAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
-            .Returns(ci => FullDoc(ci.Arg<string>()));
+        _holded.SyncPurchaseDocumentsAsync(Arg.Any<CancellationToken>()).Returns(true);
+        _holded.SyncContactsAsync(Arg.Any<CancellationToken>()).Returns(true);
+        _holded.GetChartAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedChartAccountInfo>());
     }
 
-    /// <summary>The single-GET shape of a document: the one read that returns <c>notes</c>.</summary>
-    private static HoldedPurchaseDocumentDto FullDoc(string id, string? notes = null, bool noNotes = false) => new()
-    {
-        Id = id,
-        DocNumber = id,
-        Subtotal = 120m,
-        Tax = 0m,
-        Total = 120m,
-        PaymentsTotal = 0m,
-        PaymentsPending = 120m,
-        Notes = noNotes ? null : notes ?? $"Expense report {ReportId}",
-    };
+    /// <summary>Notes the mirror holds per document; by default every document is the push's.</summary>
+    private readonly Dictionary<string, string?> _notes = new(StringComparer.Ordinal);
+
+    private void Mirror(IEnumerable<HoldedPurchaseDocListItemDto> docs) =>
+        _holded.GetPurchaseDocumentsAsync(Arg.Any<CancellationToken>()).Returns(_ => TestPurchaseMirror.Of(docs,
+            id => _notes.TryGetValue(id, out var n) ? n : $"Expense report {ReportId}"));
 
     private static HoldedContactDto Contact(string id, int account, string name = "Catherine Morgaine Ryan") =>
         new() { Id = id, Name = name, SupplierAccountNum = account };
@@ -193,7 +186,7 @@ public class HoldedDuplicateTests
     public async Task DryRun_ListsTheDuplicatePerMember_WithTotals()
     {
         _expenses.GetHoldedBookingsAsync(Arg.Any<CancellationToken>()).Returns([Booking("doc-a")]);
-        _client.ListPurchaseDocumentsAsync(Arg.Any<CancellationToken>()).Returns([Doc("doc-a"), Doc("doc-b")]);
+        Mirror([Doc("doc-a"), Doc("doc-b")]);
 
         var vm = await MakeService().GetHoldedDuplicatesAsync(TestContext.Current.CancellationToken);
 
@@ -216,8 +209,7 @@ public class HoldedDuplicateTests
     public async Task DryRun_ADuplicateWithAPayment_IsRefusedAndListedForAHuman()
     {
         _expenses.GetHoldedBookingsAsync(Arg.Any<CancellationToken>()).Returns([Booking("doc-a")]);
-        _client.ListPurchaseDocumentsAsync(Arg.Any<CancellationToken>())
-            .Returns([Doc("doc-a"), Doc("doc-paid", pending: 0m), Doc("doc-draft", draft: true, pending: 0m)]);
+        Mirror([Doc("doc-a"), Doc("doc-paid", pending: 0m), Doc("doc-draft", draft: true, pending: 0m)]);
 
         var vm = await MakeService().GetHoldedDuplicatesAsync(TestContext.Current.CancellationToken);
 
@@ -234,15 +226,12 @@ public class HoldedDuplicateTests
     [HumansFact]
     public async Task DryRun_ACandidateWhoseNotesAreNotThePushs_IsRefusedNotDeletable()
     {
-        // Description and total match from the list; the single GET says the notes differ (another
-        // report's push) or are empty (a hand-made document). Neither is this line's duplicate.
+        // Description and total match; the mirrored notes differ (another report's push) or are empty (a
+        // hand-made document). Neither is this line's duplicate.
         _expenses.GetHoldedBookingsAsync(Arg.Any<CancellationToken>()).Returns([Booking("doc-a")]);
-        _client.ListPurchaseDocumentsAsync(Arg.Any<CancellationToken>())
-            .Returns([Doc("doc-a"), Doc("doc-b"), Doc("doc-other"), Doc("doc-blank")]);
-        _client.GetPurchaseDocumentAsync("doc-other", Arg.Any<CancellationToken>())
-            .Returns(FullDoc("doc-other", $"Expense report {Guid.NewGuid()}"));
-        _client.GetPurchaseDocumentAsync("doc-blank", Arg.Any<CancellationToken>())
-            .Returns(FullDoc("doc-blank", noNotes: true));
+        Mirror([Doc("doc-a"), Doc("doc-b"), Doc("doc-other"), Doc("doc-blank")]);
+        _notes["doc-other"] = $"Expense report {Guid.NewGuid()}";
+        _notes["doc-blank"] = "";
 
         var vm = await MakeService().GetHoldedDuplicatesAsync(TestContext.Current.CancellationToken);
 
@@ -250,7 +239,6 @@ public class HoldedDuplicateTests
         line.DeletableDocIds.Should().Equal("doc-b");
         line.Refused.Select(r => r.DocId).Should().BeEquivalentTo(["doc-other", "doc-blank"]);
         line.Refused.Should().AllSatisfy(r => r.Reason.Should().Contain("notes do not match the push"));
-        await _client.DidNotReceive().GetPurchaseDocumentAsync("doc-a", Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -262,9 +250,8 @@ public class HoldedDuplicateTests
         var report2 = Guid.NewGuid();
         var line2 = Booking("doc-b", report: report2);
         _expenses.GetHoldedBookingsAsync(Arg.Any<CancellationToken>()).Returns([Booking("doc-a"), line2]);
-        _client.ListPurchaseDocumentsAsync(Arg.Any<CancellationToken>()).Returns([Doc("doc-a"), Doc("doc-b"), Doc("doc-b2")]);
-        _client.GetPurchaseDocumentAsync("doc-b2", Arg.Any<CancellationToken>())
-            .Returns(FullDoc("doc-b2", $"Expense report {report2}"));
+        Mirror([Doc("doc-a"), Doc("doc-b"), Doc("doc-b2")]);
+        _notes["doc-b2"] = $"Expense report {report2}";
 
         var vm = await MakeService().GetHoldedDuplicatesAsync(TestContext.Current.CancellationToken);
 
@@ -277,25 +264,13 @@ public class HoldedDuplicateTests
     }
 
     [HumansFact]
-    public async Task DryRun_APaidOrDraftCandidate_IsRefusedWithoutTheGet()
-    {
-        _expenses.GetHoldedBookingsAsync(Arg.Any<CancellationToken>()).Returns([Booking("doc-a")]);
-        _client.ListPurchaseDocumentsAsync(Arg.Any<CancellationToken>())
-            .Returns([Doc("doc-a"), Doc("doc-paid", pending: 0m), Doc("doc-draft", draft: true, pending: 0m)]);
-
-        await MakeService().GetHoldedDuplicatesAsync(TestContext.Current.CancellationToken);
-
-        await _client.DidNotReceive().GetPurchaseDocumentAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
-    }
-
-    [HumansFact]
     public async Task DryRun_ContactPair_TheUnboundTwinIsAnOrphanOnceItsDocumentsAreAllDuplicates()
     {
         // Catherine Morgaine Ryan: bound to 41000067 (c1); the race made c2 on 41000068 with the same
         // name, carrying only the duplicate documents.
         _holded.GetContactsAsync(Arg.Any<CancellationToken>()).Returns(TestContacts.Synced([Contact("c1", Account), Contact("c2", 41000068)]));
         _expenses.GetHoldedBookingsAsync(Arg.Any<CancellationToken>()).Returns([Booking("doc-a")]);
-        _client.ListPurchaseDocumentsAsync(Arg.Any<CancellationToken>()).Returns([Doc("doc-a"), Doc("doc-b", contactId: "c2")]);
+        Mirror([Doc("doc-a"), Doc("doc-b", contactId: "c2")]);
 
         var vm = await MakeService().GetHoldedDuplicatesAsync(TestContext.Current.CancellationToken);
 
@@ -312,7 +287,7 @@ public class HoldedDuplicateTests
         _holded.GetContactsAsync(Arg.Any<CancellationToken>()).Returns(TestContacts.Synced([Contact("c1", Account), Contact("c2", 41000068)]));
         _repo.GetCreditorContactsAsync(Arg.Any<CancellationToken>()).Returns([Binding("c1"), Binding("c2", other)]);
         _expenses.GetHoldedBookingsAsync(Arg.Any<CancellationToken>()).Returns([Booking("doc-a")]);
-        _client.ListPurchaseDocumentsAsync(Arg.Any<CancellationToken>()).Returns([Doc("doc-a"), Doc("doc-b", contactId: "c2")]);
+        Mirror([Doc("doc-a"), Doc("doc-b", contactId: "c2")]);
 
         var vm = await MakeService().GetHoldedDuplicatesAsync(TestContext.Current.CancellationToken);
 
@@ -324,7 +299,7 @@ public class HoldedDuplicateTests
     {
         _holded.GetContactsAsync(Arg.Any<CancellationToken>()).Returns(TestContacts.Synced([Contact("c1", Account), Contact("c-empty", 41000062, "Someone Else")]));
         _expenses.GetHoldedBookingsAsync(Arg.Any<CancellationToken>()).Returns(new List<ExpenseHoldedBooking>());
-        _client.ListPurchaseDocumentsAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedPurchaseDocListItemDto>());
+        Mirror([]);
 
         var vm = await MakeService().GetHoldedDuplicatesAsync(TestContext.Current.CancellationToken);
 
@@ -333,14 +308,35 @@ public class HoldedDuplicateTests
     }
 
     [HumansFact]
-    public async Task DryRun_WhenHoldedCannotBeRead_SaysSoInsteadOfJudging()
+    public async Task DryRun_ACandidateWhoseNotesOrPaymentsAreNotMirroredYet_IsRefused()
     {
-        _client.ListPurchaseDocumentsAsync(Arg.Any<CancellationToken>()).Throws(new HoldedTransientException("timeout"));
+        _expenses.GetHoldedBookingsAsync(Arg.Any<CancellationToken>()).Returns([Booking("doc-a")]);
+        _notes["doc-b"] = null;
+        var mirror = TestPurchaseMirror.Of([Doc("doc-a"), Doc("doc-b"), Doc("doc-c")],
+            id => _notes.TryGetValue(id, out var n) ? n : $"Expense report {ReportId}");
+        _holded.GetPurchaseDocumentsAsync(Arg.Any<CancellationToken>()).Returns(mirror with
+        {
+            Docs = mirror.Docs.Select(d => string.Equals(d.Id, "doc-c", StringComparison.Ordinal) ? d with { PaymentsPending = null } : d).ToList(),
+        });
 
         var vm = await MakeService().GetHoldedDuplicatesAsync(TestContext.Current.CancellationToken);
 
-        vm.Error.Should().Contain("timeout");
+        var line = vm.Members.Single().Lines.Single();
+        line.DeletableDocIds.Should().BeEmpty();
+        line.Refused.Single(r => string.Equals(r.DocId, "doc-b", StringComparison.Ordinal)).Reason.Should().Contain("notes are not mirrored");
+        line.Refused.Single(r => string.Equals(r.DocId, "doc-c", StringComparison.Ordinal)).Reason.Should().Contain("payments are not mirrored");
+    }
+
+    [HumansFact]
+    public async Task DryRun_WhenThePurchaseMirrorNeverSynced_SaysSoInsteadOfJudging()
+    {
+        _holded.GetPurchaseDocumentsAsync(Arg.Any<CancellationToken>()).Returns(TestPurchaseMirror.NeverSynced);
+
+        var vm = await MakeService().GetHoldedDuplicatesAsync(TestContext.Current.CancellationToken);
+
+        vm.Error.Should().Be(Service.PurchaseMirrorUnavailable);
         vm.Members.Should().BeEmpty();
+        await _holded.DidNotReceive().SyncPurchaseDocumentsAsync(Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -348,9 +344,8 @@ public class HoldedDuplicateTests
     {
         _holded.GetContactsAsync(Arg.Any<CancellationToken>()).Returns(TestContacts.Synced([Contact("c1", Account), Contact("c2", 41000068)]));
         _expenses.GetHoldedBookingsAsync(Arg.Any<CancellationToken>()).Returns([Booking("doc-a")]);
-        _client.ListPurchaseDocumentsAsync(Arg.Any<CancellationToken>())
-            .Returns([Doc("doc-a"), Doc("doc-b", contactId: "c2"), Doc("doc-c", contactId: "c2")]);
-        _client.ListAccountingAccountsAsync(Arg.Any<CancellationToken>()).Returns(
+        Mirror([Doc("doc-a"), Doc("doc-b", contactId: "c2"), Doc("doc-c", contactId: "c2")]);
+        _holded.GetChartAsync(Arg.Any<CancellationToken>()).Returns(
             [Account_(Account, -360m)],
             [Account_(Account, -120m)]);
 
@@ -369,13 +364,15 @@ public class HoldedDuplicateTests
 
         Received.InOrder(() =>
         {
-            _ = _client.DeletePurchaseDocumentAsync("doc-b", Arg.Any<CancellationToken>());
-            _ = _client.DeletePurchaseDocumentAsync("doc-c", Arg.Any<CancellationToken>());
-            _ = _client.DeleteContactAsync("c2", Arg.Any<CancellationToken>());
+            _ = _holded.SyncPurchaseDocumentsAsync(Arg.Any<CancellationToken>());
+            _ = _write.DeletePurchaseDocumentByIdAsync("doc-b", Arg.Any<CancellationToken>());
+            _ = _write.DeletePurchaseDocumentByIdAsync("doc-c", Arg.Any<CancellationToken>());
+            _ = _write.DeleteContactAsync("c2", Arg.Any<CancellationToken>());
+            _ = _holded.SyncPurchaseDocumentsAsync(Arg.Any<CancellationToken>());
             _ = _holded.SyncLedgerAsync(Arg.Any<bool>(), Arg.Any<CancellationToken>());
         });
-        await _client.DidNotReceive().DeletePurchaseDocumentAsync("doc-a", Arg.Any<CancellationToken>());
-        await _client.DidNotReceive().DeleteContactAsync("c1", Arg.Any<CancellationToken>());
+        await _write.DidNotReceive().DeletePurchaseDocumentByIdAsync("doc-a", Arg.Any<CancellationToken>());
+        await _write.DidNotReceive().DeleteContactAsync("c1", Arg.Any<CancellationToken>());
 
         await _audit.Received(1).LogAsync(FinanceAuditActions.HoldedDuplicateRemoved, "ExpenseLine", Arg.Any<Guid>(),
             Arg.Is<string>(d => d.Contains("doc-b") && d.Contains("kept doc-a") && d.Contains("41000067")),
@@ -391,43 +388,35 @@ public class HoldedDuplicateTests
     {
         _holded.GetContactsAsync(Arg.Any<CancellationToken>()).Returns(TestContacts.Synced([Contact("c1", Account), Contact("c2", 41000068)]));
         _expenses.GetHoldedBookingsAsync(Arg.Any<CancellationToken>()).Returns([Booking("doc-a")]);
-        _client.ListPurchaseDocumentsAsync(Arg.Any<CancellationToken>())
-            .Returns([Doc("doc-a"), Doc("doc-b", contactId: "c2"), Doc("doc-paid", contactId: "c2", pending: 0m)]);
-        _client.DeletePurchaseDocumentAsync("doc-b", Arg.Any<CancellationToken>()).Throws(new HoldedPermanentException("409 in use"));
+        Mirror([Doc("doc-a"), Doc("doc-b", contactId: "c2"), Doc("doc-paid", contactId: "c2", pending: 0m)]);
+        _write.DeletePurchaseDocumentByIdAsync("doc-b", Arg.Any<CancellationToken>()).Throws(new HoldedPermanentException("409 in use"));
 
         var result = await MakeService().RemoveHoldedDuplicatesAsync(Actor);
 
         var member = result.Members.Should().ContainSingle().Subject;
         member.DeletedDocIds.Should().BeEmpty();
         member.Failures.Should().ContainSingle().Which.Should().Contain("doc-b");
-        await _client.DidNotReceive().DeletePurchaseDocumentAsync("doc-paid", Arg.Any<CancellationToken>());
-        await _client.DidNotReceive().DeleteContactAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
+        await _write.DidNotReceive().DeletePurchaseDocumentByIdAsync("doc-paid", Arg.Any<CancellationToken>());
+        await _write.DidNotReceive().DeleteContactAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
         await _audit.DidNotReceive().LogAsync(Arg.Any<AuditActionDefinition>(), Arg.Any<string>(), Arg.Any<Guid>(),
             Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<Guid?>(), Arg.Any<string?>());
     }
 
     [HumansFact]
-    public async Task Apply_VerifiesNotesBySingleGetAtRunTime_AndDeletesOnlyVerifiedOnes()
+    public async Task Apply_DeletesOnlyDocumentsWhoseMirroredNotesAreThePushs()
     {
         _holded.GetContactsAsync(Arg.Any<CancellationToken>()).Returns(TestContacts.Synced([Contact("c1", Account), Contact("c2", 41000068)]));
         _expenses.GetHoldedBookingsAsync(Arg.Any<CancellationToken>()).Returns([Booking("doc-a")]);
-        _client.ListPurchaseDocumentsAsync(Arg.Any<CancellationToken>())
-            .Returns([Doc("doc-a"), Doc("doc-b", contactId: "c2"), Doc("doc-other", contactId: "c2")]);
-        _client.GetPurchaseDocumentAsync("doc-other", Arg.Any<CancellationToken>())
-            .Returns(FullDoc("doc-other", $"Expense report {Guid.NewGuid()}"));
+        Mirror([Doc("doc-a"), Doc("doc-b", contactId: "c2"), Doc("doc-other", contactId: "c2")]);
+        _notes["doc-other"] = $"Expense report {Guid.NewGuid()}";
 
         var result = await MakeService().RemoveHoldedDuplicatesAsync(Actor);
 
         var member = result.Members.Should().ContainSingle().Subject;
         member.DeletedDocIds.Should().Equal("doc-b");
         member.DeletedContactIds.Should().BeEmpty(); // doc-other still sits on c2
-        Received.InOrder(() =>
-        {
-            _ = _client.GetPurchaseDocumentAsync("doc-b", Arg.Any<CancellationToken>());
-            _ = _client.DeletePurchaseDocumentAsync("doc-b", Arg.Any<CancellationToken>());
-        });
-        await _client.DidNotReceive().DeletePurchaseDocumentAsync("doc-other", Arg.Any<CancellationToken>());
-        await _client.DidNotReceive().DeletePurchaseDocumentAsync("doc-a", Arg.Any<CancellationToken>());
+        await _write.DidNotReceive().DeletePurchaseDocumentByIdAsync("doc-other", Arg.Any<CancellationToken>());
+        await _write.DidNotReceive().DeletePurchaseDocumentByIdAsync("doc-a", Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -436,9 +425,8 @@ public class HoldedDuplicateTests
         var report2 = Guid.NewGuid();
         var line2 = Booking("doc-b", report: report2);
         _expenses.GetHoldedBookingsAsync(Arg.Any<CancellationToken>()).Returns([Booking("doc-a"), line2]);
-        _client.ListPurchaseDocumentsAsync(Arg.Any<CancellationToken>()).Returns([Doc("doc-a"), Doc("doc-b"), Doc("doc-b2")]);
-        _client.GetPurchaseDocumentAsync("doc-b2", Arg.Any<CancellationToken>())
-            .Returns(FullDoc("doc-b2", $"Expense report {report2}"));
+        Mirror([Doc("doc-a"), Doc("doc-b"), Doc("doc-b2")]);
+        _notes["doc-b2"] = $"Expense report {report2}";
 
         var result = await MakeService().RemoveHoldedDuplicatesAsync(Actor);
 
@@ -448,51 +436,44 @@ public class HoldedDuplicateTests
     }
 
     [HumansFact]
-    public async Task Apply_WhenAVerifyingGetFails_DeletesNothing()
+    public async Task Apply_WhenTheRefreshingSyncFailsOrIsBusy_DeletesNothing()
     {
         _expenses.GetHoldedBookingsAsync(Arg.Any<CancellationToken>()).Returns([Booking("doc-a")]);
-        _client.ListPurchaseDocumentsAsync(Arg.Any<CancellationToken>()).Returns([Doc("doc-a"), Doc("doc-b"), Doc("doc-c")]);
-        _client.GetPurchaseDocumentAsync("doc-c", Arg.Any<CancellationToken>()).Throws(new HoldedTransientException("timeout"));
+        Mirror([Doc("doc-a"), Doc("doc-b")]);
+        _holded.SyncPurchaseDocumentsAsync(Arg.Any<CancellationToken>())
+            .Returns(_ => throw new HoldedTransientException("timeout"), _ => false);
 
-        var result = await MakeService().RemoveHoldedDuplicatesAsync(Actor);
-
-        result.Error.Should().Contain("nothing was deleted");
-        await _client.DidNotReceive().DeletePurchaseDocumentAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
+        (await MakeService().RemoveHoldedDuplicatesAsync(Actor)).Error.Should().Contain("nothing was deleted");
+        (await MakeService().RemoveHoldedDuplicatesAsync(Actor)).Error.Should().Contain("nothing was deleted");
+        await _write.DidNotReceive().DeletePurchaseDocumentByIdAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
     public async Task Apply_WhenTheContactListCannotBeRead_DeletesNothingAndSaysWhy()
     {
         _expenses.GetHoldedBookingsAsync(Arg.Any<CancellationToken>()).Returns([Booking("doc-a")]);
-        _client.ListPurchaseDocumentsAsync(Arg.Any<CancellationToken>()).Returns([Doc("doc-a"), Doc("doc-b")]);
+        Mirror([Doc("doc-a"), Doc("doc-b")]);
         _holded.GetContactsAsync(Arg.Any<CancellationToken>()).Returns(new HoldedContactMirror(null, []));
 
         var result = await MakeService().RemoveHoldedDuplicatesAsync(Actor);
 
         result.Error.Should().Be("Nothing was deleted: " + Service.ContactListUnavailable);
-        await _client.DidNotReceive().DeletePurchaseDocumentAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
+        await _write.DidNotReceive().DeletePurchaseDocumentByIdAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
     public async Task Apply_WithNothingToDelete_DeletesNothing()
     {
         _expenses.GetHoldedBookingsAsync(Arg.Any<CancellationToken>()).Returns([Booking("doc-a")]);
-        _client.ListPurchaseDocumentsAsync(Arg.Any<CancellationToken>()).Returns([Doc("doc-a")]);
+        Mirror([Doc("doc-a")]);
 
         var result = await MakeService().RemoveHoldedDuplicatesAsync(Actor);
 
         result.Error.Should().Contain("nothing was deleted");
-        await _client.DidNotReceive().DeletePurchaseDocumentAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
+        await _write.DidNotReceive().DeletePurchaseDocumentByIdAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
         await _holded.DidNotReceive().SyncLedgerAsync(Arg.Any<bool>(), Arg.Any<CancellationToken>());
     }
 
-    private static HoldedAccountDto Account_(int number, decimal balance) => new()
-    {
-        Id = number.ToString(System.Globalization.CultureInfo.InvariantCulture),
-        Number = number,
-        Name = "Creditor",
-        Debit = 0m,
-        Credit = 0m,
-        Balance = balance,
-    };
+    private static HoldedChartAccountInfo Account_(int number, decimal balance) =>
+        new(number, "Creditor", null, null, false, balance);
 }

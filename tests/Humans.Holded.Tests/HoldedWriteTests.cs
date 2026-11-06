@@ -6,7 +6,6 @@ using Humans.Holded.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
-using NodaTime.Testing;
 using NSubstitute;
 
 namespace Humans.Holded.Tests;
@@ -26,7 +25,7 @@ public sealed class HoldedWriteTests
         var options = new DbContextOptionsBuilder<HoldedDbContext>()
             .UseInMemoryDatabase(Guid.NewGuid().ToString()).Options;
         _repo = new Repository(new TestDbContextFactory<HoldedDbContext>(options));
-        _write = new HoldedWrite(_client, _repo, _holded, new FakeClock(Now), NullLogger<HoldedWrite>.Instance);
+        _write = new HoldedWrite(_client, _repo, _holded, NullLogger<HoldedWrite>.Instance);
         _client.ListContactsAsync(Arg.Any<CancellationToken>()).Returns(
         [
             new HoldedContactDto { Id = "c1", Name = "Ana García", SupplierAccountNum = 41000012 },
@@ -121,21 +120,17 @@ public sealed class HoldedWriteTests
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
         await _repo.UpsertAccountsAsync([new HoldedAccount { Number = 62900128, HoldedId = "a", Name = "Camp" }], Now, ct);
-        var camp = new HoldedAccountDto { Id = "a", Number = 62900128, Name = "Camp", Debit = 0, Credit = 0, Balance = 0 };
-        var sound = new HoldedAccountDto { Id = "c", Number = 62900130, Name = "Sound", Debit = 0, Credit = 0, Balance = 0 };
-        var art = new HoldedAccountDto { Id = "b", Number = 62900129, Name = "Art", Debit = 0, Credit = 0, Balance = 0 };
-        _client.ListAccountingAccountsAsync(Arg.Any<CancellationToken>()).Returns([camp, sound], [camp, sound, art]);
         // Made in Holded's UI since the last sync: in the live list, not in the mirror.
         _client.ListExpenseAccountsAsync(Arg.Any<CancellationToken>()).Returns(
             [new HoldedExpenseAccountDto { Id = "c", AccountNum = 62900130, Name = "Sound" }]);
+        _client.CreateExpenseAccountAsync(62900129, "Art", Arg.Any<CancellationToken>()).Returns("b");
 
-        (await _write.EnsureExpenseAccountAsync(62900128, "Camp", ct)).Should().BeFalse();
-        (await _write.EnsureExpenseAccountAsync(62900130, "Sound", ct)).Should().BeFalse();
-        (await _write.EnsureExpenseAccountAsync(62900129, "Art", ct)).Should().BeTrue();
+        (await _write.EnsureExpenseAccountAsync(62900128, "Camp", ct)).Should().Be(new HoldedExpenseAccountOutcome("a", false));
+        (await _write.EnsureExpenseAccountAsync(62900130, "Sound", ct)).Should().Be(new HoldedExpenseAccountOutcome("c", false));
+        (await _write.EnsureExpenseAccountAsync(62900129, "Art", ct)).Should().Be(new HoldedExpenseAccountOutcome("b", true));
 
         await _client.Received(1).CreateExpenseAccountAsync(Arg.Any<int>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
-        await _client.Received(1).CreateExpenseAccountAsync(62900129, "Art", Arg.Any<CancellationToken>());
-        (await _repo.GetAccountsAsync(ct)).Select(a => a.Number).Should().Contain([62900129, 62900130]);
+        await _holded.Received(2).SyncChartAsync(Arg.Any<CancellationToken>());
     }
 
     [HumansTheory]

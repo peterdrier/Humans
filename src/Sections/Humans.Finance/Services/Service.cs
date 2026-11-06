@@ -52,13 +52,20 @@ internal sealed class Service(
 
     /// <summary>First number of the P&amp;L expense block both provisioning paths allocate from.</summary>
     internal const int ExpenseAccountBlockStart = 62900100;
+
+    // PGC group 6, the accounts Holded's expenses-accounts list holds.
+    private const int ExpenseAccountsFrom = 60000000;
+    private const int ExpenseAccountsTo = 69999999;
     internal const string HoldedExpenseAccount = HoldedCategoryAccounts.HoldedExpenseAccount;
+
+    internal const string PurchaseMirrorUnavailable =
+        "The Holded purchase-document mirror has never synced, so no duplicate can be judged. Run Sync now on /Holded.";
 
     internal const string ContactListUnavailable =
         "The Holded contact mirror has never synced, so no member's creditor account is known. Run Sync now on "
         + "/Holded.";
     private static readonly DateTimeZone MadridZone = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
-    private readonly HoldedCategoryAccounts categoryAccounts = new(repo, client, budget, clock, audit, logger);
+    private readonly HoldedCategoryAccounts categoryAccounts = new(repo, holded, holdedWrite, budget, clock, audit, logger);
     private readonly SepaBankBooking booking = new(repo, client, holdedWrite, clock, bookingState, audit, sepa, logger);
     private readonly SepaPayoutEmails payoutEmails = new(users, emailService, emails, logger);
 
@@ -74,54 +81,61 @@ internal sealed class Service(
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
         name = name.Trim();
 
-        IReadOnlyList<HoldedExpenseAccountDto> chart;
+        IReadOnlyList<HoldedChartAccountInfo> chart;
         try
         {
-            chart = await client.ListExpenseAccountsAsync(ct);
+            // Matching by name against a stale mirror would miss an account made in Holded's UI and mint its twin.
+            await holded.SyncChartAsync(ct);
+            chart = await holded.GetChartAsync(ct);
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Failed to read the Holded expense chart while creating or linking account '{Name}'", name);
+            logger.LogError(ex, "Failed to refresh the Holded chart while creating or linking account '{Name}'", name);
             throw;
         }
 
         var map = await repo.GetCategoryMapAsync(ct);
         var managed = await repo.GetManagedAccountsAsync(ct);
+        var expenseChart = chart.Where(a => a.Number is >= ExpenseAccountsFrom and <= ExpenseAccountsTo).ToList();
 
-        HoldedExpenseAccountDto? found;
+        HoldedChartAccountInfo? found;
         if (existingAccountNum is { } num)
         {
-            found = chart.FirstOrDefault(a => a.AccountNum == num)
+            found = expenseChart.FirstOrDefault(a => a.Number == num)
                 ?? throw new InvalidOperationException($"Holded has no expense account {num}.");
         }
         else
         {
             var wanted = HoldedMatcher.NormalizeAccountName(name);
-            found = chart.FirstOrDefault(a => string.Equals(HoldedMatcher.NormalizeAccountName(a.Name), wanted, StringComparison.Ordinal));
+            found = expenseChart.FirstOrDefault(a =>
+                !a.Archived
+                && string.Equals(HoldedMatcher.NormalizeAccountName(a.Name), wanted, StringComparison.Ordinal));
         }
 
         var now = clock.GetCurrentInstant();
         if (found is not null)
         {
-            var isCategoryAccount = map.Any(m => m.HoldedAccountNumber == found.AccountNum);
+            // In the mirror, so this only reads its id.
+            var linked = await holdedWrite.EnsureExpenseAccountAsync(found.Number, found.Name, ct);
+            var isCategoryAccount = map.Any(m => m.HoldedAccountNumber == found.Number);
             if (!isCategoryAccount)
-                await RegisterManagedAsync(found.AccountNum, found.Id, found.Name, managed, now, ct);
+                await RegisterManagedAsync(found.Number, linked.HoldedId, found.Name, managed, now, ct);
             await audit.LogAsync(FinanceAuditActions.HoldedExpenseAccountLinked, HoldedExpenseAccount, Guid.Empty,
-                $"Linked Holded expense account {found.AccountNum} '{found.Name}' for '{name}'", "Finance");
-            return new ExpenseAccountRef(found.AccountNum, found.Id, found.Name, Created: false);
+                $"Linked Holded expense account {found.Number} '{found.Name}' for '{name}'", "Finance");
+            return new ExpenseAccountRef(found.Number, linked.HoldedId, found.Name, Created: false);
         }
 
         var used = map.Select(m => m.HoldedAccountNumber)
             .Concat(managed.Select(m => m.HoldedAccountNumber))
-            .Concat(chart.Select(a => a.AccountNum))
+            .Concat(chart.Select(a => a.Number))
             .ToHashSet();
         var next = ExpenseAccountBlockStart;
         while (used.Contains(next)) next++;
 
-        string id;
+        HoldedExpenseAccountOutcome created;
         try
         {
-            id = await client.CreateExpenseAccountAsync(next, name, ct);
+            created = await holdedWrite.EnsureExpenseAccountAsync(next, name, ct);
         }
         catch (Exception ex)
         {
@@ -131,8 +145,8 @@ internal sealed class Service(
 
         await audit.LogAsync(FinanceAuditActions.HoldedExpenseAccountCreated, HoldedExpenseAccount, Guid.Empty,
             $"Created Holded expense account {next} '{name}'", "Finance");
-        await RegisterManagedAsync(next, id, name, managed, now, ct);
-        return new ExpenseAccountRef(next, id, name, Created: true);
+        await RegisterManagedAsync(next, created.HoldedId, name, managed, now, ct);
+        return new ExpenseAccountRef(next, created.HoldedId, name, Created: true);
     }
 
     private Task RegisterManagedAsync(
@@ -769,7 +783,7 @@ internal sealed class Service(
                 ? burnerName
                 : null;
 
-            contactId = await client.CreateContactAsync(new HoldedContactInput
+            contactId = await holdedWrite.CreateContactAsync(new HoldedContactInput
             {
                 Name = legalName,
                 TradeName = tradeName,
@@ -844,7 +858,7 @@ internal sealed class Service(
 
         try
         {
-            await client.DeleteContactAsync(contactId, ct);
+            await holdedWrite.DeleteContactAsync(contactId, ct);
             await audit.LogAsync(FinanceAuditActions.HoldedDuplicateRemoved, AuditSubjectTypes.User, userId,
                 $"DELETED duplicate Holded contact {contactId} that a concurrent push created; kept "
                 + $"{bound.HoldedContactId}.",
@@ -1240,27 +1254,26 @@ internal sealed class Service(
                             && !string.IsNullOrWhiteSpace(c.Name))
                 .ToLookup(c => c.Name!.Trim(), c => c.Id, StringComparer.OrdinalIgnoreCase));
 
-    public async Task<HoldedDuplicatesVm> GetHoldedDuplicatesAsync(CancellationToken ct = default)
-    {
-        try
-        {
-            return await BuildDuplicatePlanAsync(ct);
-        }
-        catch (Exception ex) when (ex is HoldedTransientException or HoldedPermanentException)
-        {
-            logger.LogWarning("Holded could not be read for /Finance/HoldedDuplicates. {Reason}", ex.Message);
-            return new HoldedDuplicatesVm([], [], "Holded could not be read, so nothing can be judged: " + ex.Message);
-        }
-    }
+    public Task<HoldedDuplicatesVm> GetHoldedDuplicatesAsync(CancellationToken ct = default) =>
+        BuildDuplicatePlanAsync(ct);
 
     /// <summary>
-    /// Live reads, never a stored plan. Each candidate Holded would let go is fetched once for its notes and the claim
-    /// re-run, so a candidate goes to the line whose notes it carries and only an exact match can be deleted. A failed
-    /// fetch fails the whole plan.
+    /// From the mirrors, never a stored plan. The claim is re-run on each candidate's mirrored notes, so a candidate
+    /// goes to the line whose notes it carries and only an exact match can be deleted. One whose notes or payments the
+    /// mirror does not know yet is refused.
     /// </summary>
     private async Task<HoldedDuplicatesVm> BuildDuplicatePlanAsync(CancellationToken ct)
     {
-        var docs = await client.ListPurchaseDocumentsAsync(ct);
+        var mirror = await holded.GetPurchaseDocumentsAsync(ct);
+        if (mirror.LastSyncAt is null)
+            return new HoldedDuplicatesVm([], [], PurchaseMirrorUnavailable);
+        var docs = mirror.Docs.Select(ToListItem).ToList();
+        var notesById = mirror.Docs.ToDictionary(d => d.Id, d => d.Notes, StringComparer.Ordinal);
+        var paymentsUnknown = mirror.Docs.Where(d => d.PaymentsPending is null).Select(d => d.Id)
+            .ToHashSet(StringComparer.Ordinal);
+        string? Refusal(HoldedPurchaseDocListItemDto d) => paymentsUnknown.Contains(d.Id)
+            ? "its payments are not mirrored yet — sync Holded and look again"
+            : DeleteRefusal(d);
         // Without it the same-named sibling contacts go unseen, so the plan would look complete while missing them.
         if (await ContactsByIdAsync(ct) is not { } contactById)
             return new HoldedDuplicatesVm([], [], ContactListUnavailable);
@@ -1272,13 +1285,10 @@ internal sealed class Service(
             .ToLookup(d => d.ContactId!, StringComparer.Ordinal);
 
         var candidates = HoldedDuplicateMatcher.Find(bookings, docs, contactsByUser);
-        var notesById = new Dictionary<string, string?>(StringComparer.Ordinal);
-        foreach (var d in candidates.SelectMany(m => m.Duplicates))
-            if (DeleteRefusal(d) is null)
-                notesById[d.Id] = (await client.GetPurchaseDocumentAsync(d.Id, ct)).Notes;
         var verified = HoldedDuplicateMatcher.Find(bookings, docs, contactsByUser,
             (b, d) => HoldedDuplicateMatcher.Matches(b, d)
-                      && notesById.TryGetValue(d.Id, out var notes)
+                      && Refusal(d) is null
+                      && notesById.GetValueOrDefault(d.Id) is { } notes
                       && string.Equals(notes, b.Notes, StringComparison.Ordinal));
         var deletableIds = verified.SelectMany(m => m.Duplicates.Select(d => d.Id)).ToHashSet(StringComparer.Ordinal);
         var byRef = (IEqualityComparer<ExpenseHoldedBooking>)ReferenceEqualityComparer.Instance;
@@ -1294,7 +1304,10 @@ internal sealed class Service(
             var deletable = ok?.Duplicates.Select(d => d.Id).ToList() ?? [];
             var refused = (named?.Duplicates ?? [])
                 .Where(d => !deletableIds.Contains(d.Id))
-                .Select(d => new HoldedDuplicateRefusal(d.Id, d.Total, DeleteRefusal(d) ?? "notes do not match the push — judge it by hand"))
+                .Select(d => new HoldedDuplicateRefusal(d.Id, d.Total, Refusal(d)
+                    ?? (notesById.GetValueOrDefault(d.Id) is null
+                        ? "its notes are not mirrored yet — the next sync reads them"
+                        : "notes do not match the push — judge it by hand")))
                 .ToList();
             if (deletable.Count == 0 && refused.Count == 0) continue;
             var kept = (ok ?? named)!.Kept;
@@ -1358,6 +1371,10 @@ internal sealed class Service(
         HoldedDuplicatesVm plan;
         try
         {
+            // Deletion judges Holded as it is now, not as the nightly sync left it.
+            if (!await holded.SyncPurchaseDocumentsAsync(ct) || !await holded.SyncContactsAsync(ct))
+                return new HoldedDuplicateApplyResult(
+                    [], "A Holded sync is already running — nothing was deleted; try again in a moment.", null);
             plan = await BuildDuplicatePlanAsync(ct);
         }
         catch (Exception ex) when (ex is HoldedTransientException or HoldedPermanentException)
@@ -1384,7 +1401,7 @@ internal sealed class Service(
                 {
                     try
                     {
-                        await client.DeletePurchaseDocumentAsync(docId, ct);
+                        await holdedWrite.DeletePurchaseDocumentByIdAsync(docId, ct);
                         deletedDocs.Add(docId);
                         await audit.LogAsync(
                             FinanceAuditActions.HoldedDuplicateRemoved, ExpenseLineEntityType, line.LineId,
@@ -1406,7 +1423,7 @@ internal sealed class Service(
                 {
                     try
                     {
-                        await client.DeleteContactAsync(contactId, ct);
+                        await holdedWrite.DeleteContactAsync(contactId, ct);
                         deletedContacts.Add(contactId);
                         await audit.LogAsync(
                             FinanceAuditActions.HoldedDuplicateRemoved, AuditSubjectTypes.User, member.UserId,
@@ -1430,11 +1447,12 @@ internal sealed class Service(
         string? syncError = null;
         try
         {
+            await holded.SyncPurchaseDocumentsAsync(ct);
             await holded.SyncLedgerAsync(ct: ct);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            logger.LogError(ex, "The ledger sync after removing Holded duplicates failed; the deletions stand.");
+            logger.LogError(ex, "The Holded sync after removing duplicates failed; the deletions stand.");
             syncError = ex.Message;
         }
 
@@ -1452,10 +1470,11 @@ internal sealed class Service(
     {
         try
         {
-            return (await client.ListAccountingAccountsAsync(ct))
+            await holded.SyncChartAsync(ct);
+            return (await holded.GetChartAsync(ct))
                 .Where(a => IsMemberCreditorAccount(a.Number))
                 .GroupBy(a => a.Number)
-                .ToDictionary(g => g.Key, g => g.First().Balance);
+                .ToDictionary(g => g.Key, g => g.First().HoldedBalance);
         }
         catch (Exception ex) when (ex is HoldedTransientException or HoldedPermanentException)
         {

@@ -48,6 +48,14 @@ public interface IHoldedService : IApplicationService
     /// <summary>The whole chart from the mirror, archived accounts included. Consumers choose display order.</summary>
     Task<IReadOnlyList<HoldedChartAccountInfo>> GetChartAsync(CancellationToken ct = default);
 
+    /// <summary>When the chart mirror last refreshed, by <see cref="SyncChartAsync"/> or a ledger sweep; null when
+    /// never.</summary>
+    Task<Instant?> GetChartSyncedAtAsync(CancellationToken ct = default);
+
+    /// <summary>Refreshes the chart mirror from Holded: one list call. For a caller about to choose accounts by
+    /// number or name.</summary>
+    Task SyncChartAsync(CancellationToken ct = default);
+
     /// <summary>False when a sweep was already running and this one was skipped. <paramref name="full"/> false:
     /// trailing window anchored on now; true or a cold cache: inception to today. Both refresh the accounts cache,
     /// reconcile totals with targeted re-pulls, and drain the API call log.</summary>
