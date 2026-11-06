@@ -73,6 +73,11 @@ public interface IHoldedService : IApplicationService
     /// documents that lack them, newest first. False when a sync was already running and this one was skipped.</summary>
     Task<bool> SyncPurchaseDocumentsAsync(CancellationToken ct = default);
 
+    /// <summary>Re-reads the notes of the documents named, one GET each, into the mirror: the list sync never
+    /// re-reads notes it already holds, so a caller about to act on them refreshes first. Throws when one cannot be
+    /// read.</summary>
+    Task SyncPurchaseDocumentNotesAsync(IReadOnlyCollection<string> documentIds, CancellationToken ct = default);
+
     /// <summary>Every mirrored contact, with when the mirror last synced.</summary>
     Task<HoldedContactMirror> GetContactsAsync(CancellationToken ct = default);
 

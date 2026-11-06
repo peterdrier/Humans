@@ -178,6 +178,16 @@ internal sealed class Repository(IDbContextFactory<HoldedDbContext> factory)
         return await ctx.HoldedApiCalls.AsNoTracking().ToListAsync(ct);
     }
 
+    public async Task SetPurchaseDocNotesAsync(
+        IReadOnlyDictionary<string, string> notesById, CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        var ids = notesById.Keys.ToList();
+        foreach (var doc in await ctx.HoldedPurchaseDocs.Where(d => ids.Contains(d.Id)).ToListAsync(ct))
+            doc.Notes = notesById[doc.Id];
+        await ctx.SaveChangesAsync(ct);
+    }
+
     public async Task ReplacePurchaseDocsAsync(
         IReadOnlyList<HoldedPurchaseDoc> docs, Instant now, CancellationToken ct = default)
     {

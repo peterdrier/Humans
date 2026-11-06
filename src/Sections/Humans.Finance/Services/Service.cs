@@ -1377,6 +1377,14 @@ internal sealed class Service(
                 return new HoldedDuplicateApplyResult(
                     [], "A Holded sync is already running — nothing was deleted; try again in a moment.", null);
             plan = await BuildDuplicatePlanAsync(ct);
+            // The list sync keeps notes it already holds, and an accountant may have edited them since: re-read the
+            // notes of every document about to be deleted, then judge again.
+            var deletable = plan.Members.SelectMany(m => m.Lines).SelectMany(l => l.DeletableDocIds).ToList();
+            if (deletable.Count > 0)
+            {
+                await holded.SyncPurchaseDocumentNotesAsync(deletable, ct);
+                plan = await BuildDuplicatePlanAsync(ct);
+            }
         }
         catch (Exception ex) when (ex is HoldedTransientException or HoldedPermanentException)
         {

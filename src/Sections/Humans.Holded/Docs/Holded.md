@@ -165,7 +165,8 @@ logged, the write stands), `CreatePurchaseDocumentAsync`, `UploadPurchaseAttachm
 number refused) and `ApproveSalesDocumentAsync`.
 
 No other section calls `IHoldedClient`: reads come from the mirrors, a caller that needs fresh data
-runs the mirror's sync first (`SyncContactsAsync`, `SyncPurchaseDocumentsAsync`, `SyncChartAsync`),
+runs the mirror's sync first (`SyncContactsAsync`, `SyncPurchaseDocumentsAsync`,
+`SyncPurchaseDocumentNotesAsync` for named documents, `SyncChartAsync`),
 and each mirror reports its last sync. Audit entries stay with the calling section, which knows why
 it wrote.
 
