@@ -46,6 +46,8 @@ The base builds with `Microsoft.NET.Sdk.Razor` + `AddRazorSupportForMvc` to host
 
 ### Behavioural notes
 
+- Memory-cache helpers cover typed reads, exclusive token/cooldown reservations and camp-contact rate-limit invalidation.
+
 - Bulk cache warmups use a coordinator-supplied row publisher guarded by the existing mutation generation. A concurrent mutation during loading, publication or finalization discards the partial attempt and retries the complete snapshot and derived indexes under the existing warmup lock. Cancellation and loader failures leave the cache cold.
 
 - Replacement cache reloads use the existing mutation generation to guard publication. An intervening cache mutation discards the affected row and marks warmed caches cold, so a later read retries source instead of publishing an older value or deletion. Other rows remain cached.

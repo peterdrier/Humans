@@ -53,20 +53,6 @@ public static class MemoryCacheExtensions
 
     private static readonly Lock ReservationGate = new();
 
-    public static bool TryUpdateExistingValue<TValue>(
-        this IMemoryCache cache,
-        object key,
-        Action<TValue> update)
-    {
-        if (!cache.TryGetExistingValue(key, out TValue? value))
-        {
-            return false;
-        }
-
-        update(value);
-        return true;
-    }
-
     public static void InvalidateCampContactRateLimit(this IMemoryCache cache, Guid userId, Guid campId) =>
         cache.Remove(CacheKeys.CampContactRateLimit(userId, campId));
 }
