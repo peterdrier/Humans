@@ -1903,6 +1903,49 @@ public sealed class AssemblyVoteServiceTests : IDisposable
             .NotifiedAt.Should().NotBeNull();
     }
 
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task OpeningAlert_RoutesMergedRosterRowsToOneLiveRecipient(bool lookupFails)
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var vote = await _fx.AddVoteAsync();
+        var source = Guid.NewGuid();
+        var survivor = Guid.NewGuid();
+        var sourceRow = await _fx.AddRosterRowAsync(vote.Id, source, isOfficial: true, notified: false);
+        var survivorRow = await _fx.AddRosterRowAsync(vote.Id, survivor, isOfficial: false, notified: false);
+        _fx.StubMergedInto(source, survivor);
+        if (lookupFails)
+            _fx.Users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+                .Returns(ValueTask.FromException<IReadOnlyDictionary<Guid, UserInfo>>(new IOException("Identity lookup unavailable")));
+        var effects = new AssemblyVoteEffects(_fx.Repository, _fx.Users, _fx.Email, _fx.Messages,
+            _fx.Notifications, _fx.NotificationResolve, _fx.Audit, _fx.Clock,
+            Microsoft.Extensions.Logging.Abstractions.NullLogger<AssemblyVoteService>.Instance,
+            AssemblyVoteService.MaxTitleLength, AssemblyVoteService.LapseJobName);
+
+        await effects.AfterTransitionAsync("opening notices", vote.Id,
+            token => effects.NotifyRosterOpenedAsync(vote, [sourceRow, survivorRow], token));
+
+        var notice = _fx.Notifications.ReceivedCalls().Should().ContainSingle().Subject.GetArguments();
+        notice[0].Should().Be(GovernanceNotificationSources.AssemblyVoteOpened);
+        var recipients = (IReadOnlyList<Guid>)notice[4]!;
+        if (lookupFails) recipients.Should().BeEquivalentTo(new[] { source, survivor });
+        else recipients.Should().ContainSingle().Which.Should().Be(survivor);
+        var roster = await _fx.Repository.GetRosterAsync(vote.Id, ct);
+        roster.Select(row => row.UserId).Should().BeEquivalentTo(new Guid?[] { source, survivor });
+        if (lookupFails)
+        {
+            roster.Should().OnlyContain(row => row.NotifiedAt == null);
+            await _fx.Email.DidNotReceive().SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>());
+        }
+        else
+        {
+            roster.Should().OnlyContain(row => row.NotifiedAt != null);
+            await _fx.Email.Received(1).SendAsync(
+                Arg.Is<EmailMessage>(message => message.UserId == survivor), Arg.Any<CancellationToken>());
+        }
+    }
+
     [HumansFact]
     public async Task OpenAsync_RaisesTheInAppNotificationBeforeTheRosterEmails()
     {

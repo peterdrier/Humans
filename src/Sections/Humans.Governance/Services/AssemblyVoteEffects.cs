@@ -96,6 +96,20 @@ internal sealed class AssemblyVoteEffects(
             && await repository.GetByIdAsync(vote.Id, ct) is { } open
             && open.AcceptsBallotsAt(clock.GetCurrentInstant()))
         {
+            try
+            {
+                var people = await users.GetUserInfosAsync(userIds, ct);
+                userIds = userIds.Select(id => people.GetValueOrDefault(id)?.Id ?? id).Distinct().ToList();
+            }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Assembly vote {VoteId}: recipient lookup failed; alerting the stored roster IDs", vote.Id);
+            }
+
             await notifications.SendAsync(
                 GovernanceNotificationSources.AssemblyVoteOpened,
                 NotificationClass.Actionable,
