@@ -11,11 +11,49 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.EntityFrameworkCore;
 using NodaTime;
 using Humans.Agent.Domain;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 
 namespace Humans.Agent.Tests;
 
 public class AgentSettingsServiceTests
 {
+    public enum WarmupFailure { SettingsRead, Shutdown }
+
+    [HumansTheory]
+    [Xunit.InlineData(WarmupFailure.SettingsRead)]
+    [Xunit.InlineData(WarmupFailure.Shutdown)]
+    public async Task Boot_OptionalSettingsWarmupFailure_PreservesDisabledDefaults(WarmupFailure stage)
+    {
+        using var cancellation = new CancellationTokenSource();
+        if (stage == WarmupFailure.Shutdown) await cancellation.CancelAsync();
+        Exception failure = stage == WarmupFailure.Shutdown
+            ? new OperationCanceledException(cancellation.Token)
+            : new IOException("Settings read unavailable");
+        var repo = Substitute.For<IAgentRepository>();
+        repo.GetSettingsAsync(Arg.Any<CancellationToken>()).Returns(Task.FromException<AgentSettings?>(failure));
+        var store = new AgentSettingsStore();
+        var service = new AgentSettingsService(repo, store, new TestClock(Instant.FromUtc(2026, 4, 22, 9, 0)),
+            Substitute.For<IAuditLogService>(), Substitute.For<IAnthropicClient>(), NullLogger<AgentSettingsService>.Instance);
+        var logger = Substitute.For<Microsoft.Extensions.Logging.ILogger<AgentSettingsStoreWarmupHostedService>>();
+        using var services = new ServiceCollection().AddSingleton<IAgentSettingsService>(service)
+            .AddSingleton(logger).AddHostedService<AgentSettingsStoreWarmupHostedService>().BuildServiceProvider();
+        var warmup = services.GetRequiredService<IHostedService>();
+
+        if (stage == WarmupFailure.Shutdown)
+        {
+            var start = () => warmup.StartAsync(cancellation.Token);
+            (await start.Should().ThrowAsync<OperationCanceledException>()).Which.Should().BeSameAs(failure);
+        }
+        else
+        {
+            await warmup.StartAsync(cancellation.Token);
+            logger.ReceivedCalls().Select(call => call.GetArguments()).Should().Contain(args =>
+                (Microsoft.Extensions.Logging.LogLevel)args[0]! == Microsoft.Extensions.Logging.LogLevel.Warning && ReferenceEquals(args[3], failure));
+        }
+        store.Current.Enabled.Should().BeFalse();
+    }
+
     [HumansFact]
     public async Task Updating_persists_to_db_and_refreshes_store()
     {
