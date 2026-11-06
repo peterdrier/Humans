@@ -618,7 +618,7 @@ internal sealed class ExpenseReportService(
             }
             catch (Exception ex)
             {
-                logger.LogError(ex, "Could not verify or delete attachment file {AttachmentId} while removing line {LineId}",
+                logger.LogError(ex, "Could not verify or delete attachment file {AttachmentId} for line {LineId}",
                     attachment.Id, lineId);
             }
         }
@@ -723,40 +723,24 @@ internal sealed class ExpenseReportService(
         }
         catch
         {
-            var metadataRemoved = true;
             try
             {
                 // Restore metadata, linkage and any decline/total change atomically, including when the failed
                 // save committed before throwing. Keep the old file until audit succeeds.
-                var rollback = await repo.ReplaceLineAttachmentAsync(
+                await repo.ReplaceLineAttachmentAsync(
                     reportId, lineId, previousAttachment, CancellationToken.None,
                     declineState: line.Declined
                         ? (report.UpdatedAt, line.DeclinedReason, line.DeclinedByUserId, line.DeclinedAt)
                         : null);
-                metadataRemoved = rollback.Found;
             }
             catch (Exception ex)
             {
-                metadataRemoved = false;
                 logger.LogError(ex,
                     "Could not roll back attachment metadata {AttachmentId} for line {LineId}",
                     attachmentId, lineId);
             }
 
-            if (metadataRemoved)
-            {
-                try
-                {
-                    await fileStorage.DeleteAsync(
-                        AttachmentKey(attachmentId, extension), CancellationToken.None);
-                }
-                catch (Exception ex)
-                {
-                    logger.LogError(ex,
-                        "Could not delete attachment file {AttachmentId} after upload rollback",
-                        attachmentId);
-                }
-            }
+            await CleanupUnlinkedAttachmentsAsync([(attachmentId, extension)], lineId);
 
             throw;
         }

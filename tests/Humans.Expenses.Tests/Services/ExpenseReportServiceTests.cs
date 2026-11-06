@@ -1665,6 +1665,72 @@ public sealed partial class ExpenseReportServiceTests
             ExpenseReportService.AttachmentKey(previous.Id, previous.Extension), Arg.Any<CancellationToken>());
     }
 
+    [HumansTheory]
+    [InlineData(false, "after")]
+    [InlineData(true, "after")]
+    [InlineData(false, "before")]
+    [InlineData(true, "before")]
+    [InlineData(false, "verification")]
+    [InlineData(true, "verification")]
+    public async Task AttachmentRollback_UncertainSave_DeletesOnlyConfirmedUnlinkedUpload(bool replacing, string failureStage)
+    {
+        var ct = TestContext.Current.CancellationToken;
+        SetupActiveYear();
+        var submitter = Guid.NewGuid();
+        var id = (await _sut.CreateDraftAsync(submitter, submitter, CategoryAccountNumber, "Test", ct: ct)).ReportId!.Value;
+        var lineId = (await _sut.AddLineWithResultAsync(id, submitter, false, "Receipt", 40m, ct: ct)).LineId!.Value;
+        var previous = replacing ? MakeAttachment(submitter) : null;
+        if (previous is not null) await _expenseRepo.ReplaceLineAttachmentAsync(id, lineId, previous, ct);
+        var acknowledgement = new FailAfterCommit();
+        var options = new DbContextOptionsBuilder<ExpensesDbContext>(_expensesOptions).AddInterceptors(acknowledgement).Options;
+        var inner = new ExpenseRepository(new TestDbContextFactory<ExpensesDbContext>(options));
+        var repository = Substitute.For<IExpenseRepository>();
+        repository.GetByIdAsync(id, Arg.Any<CancellationToken>()).Returns(call => inner.GetByIdAsync(id, call.Arg<CancellationToken>()));
+        var replacements = 0;
+        repository.ReplaceLineAttachmentAsync(id, lineId, Arg.Any<ExpenseAttachment?>(), Arg.Any<CancellationToken>(),
+            Arg.Any<(Instant, string?, Guid?, Instant?)?>()).Returns(call =>
+            {
+                if (++replacements == 2 && string.Equals(failureStage, "before", StringComparison.Ordinal))
+                    throw new IOException("Rollback unavailable");
+                return inner.ReplaceLineAttachmentAsync(id, lineId, call.Arg<ExpenseAttachment?>(), call.Arg<CancellationToken>());
+            });
+        repository.GetReportIdByAttachmentIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            call.Arg<CancellationToken>().Should().Be(CancellationToken.None);
+            return string.Equals(failureStage, "verification", StringComparison.Ordinal)
+                ? Task.FromException<Guid?>(new IOException("Verification unavailable"))
+                : inner.GetReportIdByAttachmentIdAsync(call.Arg<Guid>(), call.Arg<CancellationToken>());
+        });
+        AuditLog.LogAsync(ExpensesAuditActions.ExpenseAttachmentUploaded, Arg.Any<string>(), id,
+            Arg.Any<string>(), submitter, submitter, AuditSubjectTypes.User).Returns(_ =>
+            {
+                acknowledgement.Armed = !string.Equals(failureStage, "before", StringComparison.Ordinal);
+                throw new IOException("Upload audit unavailable");
+            });
+        string? uploadedKey = null;
+        _fileStorage.SaveAsync(Arg.Any<string>(), Arg.Any<Stream>(), Arg.Any<CancellationToken>())
+            .Returns(call => { uploadedKey = call.Arg<string>(); return Task.CompletedTask; });
+        var service = new ExpenseReportService(repository, _fileStorage, _budgetService, _teamService,
+            _userService, _emailService, TestExpensesEmails.Create(), AuditLog, Substitute.For<IAuditViewerService>(),
+            _holdedService, _finance, _financeWrite, _preapprovals, _preapprovalWrites, Clock,
+            NullLogger<ExpenseReportService>.Instance, Options.Create(new TravelReimbursementConfig()));
+        using var content = new MemoryStream([1, 2, 3]);
+
+        var result = await service.AttachFileToLineWithResultAsync(id, submitter, false, lineId,
+            "receipt.pdf", "application/pdf", content, ct);
+
+        result.Succeeded.Should().BeFalse();
+        var report = (await inner.GetByIdAsync(id, ct))!;
+        if (string.Equals(failureStage, "before", StringComparison.Ordinal))
+            (report.Lines.Single().AttachmentId != previous?.Id).Should().BeTrue();
+        else
+            report.Lines.Single().AttachmentId.Should().Be(previous?.Id);
+        await _fileStorage.Received(string.Equals(failureStage, "after", StringComparison.Ordinal) ? 1 : 0)
+            .DeleteAsync(uploadedKey!, CancellationToken.None);
+        if (previous is not null)
+            await _fileStorage.DidNotReceive().DeleteAsync(ExpenseReportService.AttachmentKey(previous.Id, previous.Extension), Arg.Any<CancellationToken>());
+    }
+
     [HumansFact]
     public async Task AttachFileToLineAsync_FailedReplacement_RestoresPreviousAttachment()
     {
