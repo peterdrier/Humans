@@ -41,6 +41,32 @@ public class CachingUserServiceTests
         (await sut.GetAllUserInfosAsync(ct)).Should().ContainSingle().Which.State.Should().Be(UserState.DeletePending);
     }
 
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task OnDemandWarm_DoesNotRestoreAnOlderAccountSnapshot(bool deleted)
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var userId = Guid.NewGuid();
+        var before = SampleUserInfo(userId) with { State = UserState.Active };
+        var current = before with { State = UserState.Suspended };
+        var pending = new TaskCompletionSource<IReadOnlyCollection<UserInfo>>(TaskCreationOptions.RunContinuationsAsynchronously);
+        _inner.GetAllUserInfosAsync(Arg.Any<CancellationToken>())
+            .Returns(pending.Task, Task.FromResult<IReadOnlyCollection<UserInfo>>(deleted ? [] : [current]));
+        _inner.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(new ValueTask<UserInfo?>(current));
+        var sut = CreateSut();
+        var read = sut.GetAllUserInfosAsync(ct);
+        if (deleted) sut.DeleteKey(userId);
+        else await sut.RefreshAsync(userId, ct);
+        pending.SetResult([before]);
+
+        var people = await read;
+
+        if (deleted) people.Should().BeEmpty();
+        else people.Should().ContainSingle().Which.State.Should().Be(UserState.Suspended);
+        sut.IsWarmedUp.Should().BeTrue();
+    }
+
     private readonly IUserManagement _inner = Substitute.For<IUserManagement>();
 
     [HumansTheory]

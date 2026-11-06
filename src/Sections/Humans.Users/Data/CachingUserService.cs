@@ -294,11 +294,11 @@ internal sealed class CachingUserService(
     /// <summary>
     /// Bulk-loads each contributing table once. An empty system is a legitimate warm state.
     /// </summary>
-    protected override async Task WarmAllAsync(CancellationToken ct)
+    protected override async Task WarmAllAsync(Action<Guid, UserInfo> publish, CancellationToken ct)
     {
         var users = await WithInnerAsync(inner => inner.GetAllUserInfosAsync(ct));
         foreach (var user in users)
-            Set(user.Id, user);
+            publish(user.Id, user);
     }
 
     /// <inheritdoc cref="IUserInfoSliceRefresher.RefreshAsync" />

@@ -30,6 +30,8 @@
 
 Role assignments (temporal), magic-link login/signup, claims transformation.
 
+Bulk cache warmups publish through the shared mutation guard. A refresh, deletion, eviction or clear overlapping the load discards the partial attempt and reloads the full snapshot and derived indexes before a read can treat the cache as warmed.
+
 ## Concepts
 
 - **Role Assignment** is a temporal assignment of a role name (e.g. `Admin`, `Board`, `TeamsAdmin`, `UsersAdmin`, `ConsentCoordinator`, …) to a human, with a `ValidFrom` and optional `ValidTo`. `RoleAssignmentClaimsTransformation` reads active assignments on every request (from Auth's in-memory role-assignment cache, no per-user claims cache) and projects them into ASP.NET role claims so `[Authorize(Roles = ...)]`, `[Authorize(Policy = …)]`, and `User.IsInRole()` work. The same transformation also stamps the stored `UserState` claim — the single source of truth for access (`UserState == Active`, i.e. the user entered their legal name, grants full app access).

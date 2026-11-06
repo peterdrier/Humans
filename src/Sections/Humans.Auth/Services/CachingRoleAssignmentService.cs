@@ -45,7 +45,7 @@ internal sealed class CachingRoleAssignmentService
         return counts;
     }
 
-    protected override async Task WarmAllAsync(CancellationToken ct)
+    protected override async Task WarmAllAsync(Action<Guid, RoleAssignmentRow> publish, CancellationToken ct)
     {
         var now = _clock.GetCurrentInstant();
         var (items, _) = await WithInnerAsync(inner => inner.GetFilteredAsync(
@@ -64,7 +64,7 @@ internal sealed class CachingRoleAssignmentService
                 item.RoleName,
                 item.ValidFrom,
                 item.ValidTo);
-            Set(row.Id, row);
+            publish(row.Id, row);
         }
     }
 

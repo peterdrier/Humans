@@ -17,6 +17,8 @@
 
 External ticket vendor sync (orders + attendees), Stripe-fee enrichment, auto-matching to humans by email, event-participation derivation.
 
+Bulk cache warmups publish through the shared mutation guard. A refresh, deletion, eviction or clear overlapping the load discards the partial attempt and reloads the full snapshot and derived indexes before a read can treat the cache as warmed.
+
 ## Concepts
 
 - **Ticket Orders** and **Ticket Attendees** are records synced from an external ticket vendor (Ticket Tailor in production, an in-process stub in dev). They are not manually created in the system.

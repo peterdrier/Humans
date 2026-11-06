@@ -13,6 +13,8 @@
 
 Departments and sub-teams, join requests, role definitions, team pages, and linked Google resources.
 
+Bulk cache warmups publish through the shared mutation guard. A refresh, deletion, eviction or clear overlapping the load discards the partial attempt and reloads the full snapshot and derived indexes before a read can treat the cache as warmed.
+
 ## Concepts
 
 - A **Department** is a team with no parent.

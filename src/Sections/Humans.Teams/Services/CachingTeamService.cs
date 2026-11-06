@@ -638,12 +638,12 @@ internal sealed class CachingTeamService(
         IReadOnlyDictionary<Guid, TeamReadSnapshot> teams, CancellationToken ct = default) =>
         WithInnerAsync(inner => inner.ResolveTeamMembersAsync(teams, ct));
 
-    protected override async Task WarmAllAsync(CancellationToken ct)
+    protected override async Task WarmAllAsync(Action<Guid, TeamReadSnapshot> publish, CancellationToken ct)
     {
         var teams = await WithInnerAsync(inner => inner.GetTeamSnapshotsAsync(ct));
 
         foreach (var (teamId, team) in teams)
-            Set(teamId, team);
+            publish(teamId, team);
 
         _teamIdsByUserId.Clear();
         foreach (var team in teams.Values)

@@ -10,6 +10,8 @@
 
 Community calendar: one-off and recurring events per team, with per-occurrence overrides/cancellations. Spec: [`src/Sections/Humans.Calendar/Docs/features/community-calendar.md`](features/community-calendar.md).
 
+Bulk cache warmups publish through the shared mutation guard. A refresh, deletion, eviction or clear overlapping the load discards the partial attempt and reloads the full snapshot and derived indexes before a read can treat the cache as warmed.
+
 ## Concepts
 
 - **CalendarEvent** — a single scheduled event or recurring event series belonging to a team. Can be a one-time event or repeat according to an RFC 5545 recurrence rule.

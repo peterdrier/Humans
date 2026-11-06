@@ -32,6 +32,8 @@ The agent's `fetch_section_guide` tool reaches this file under the canonical key
 
 The User aggregate and its identity surface. Profile-adjacent User properties (Google email preference, contact import) are documented under [Part 2 — Profiles](#part-2--profiles) because `CachingUserService` stitches them into `UserInfo`; this section owns the entity itself, the identity framework extensions, and cross-event participation state.
 
+Bulk cache warmups publish through the shared mutation guard. A refresh, deletion, eviction or clear overlapping the load discards the partial attempt and reloads the full snapshot and derived indexes before a read can treat the cache as warmed.
+
 ## Concepts
 
 - A **User** is the ASP.NET Core Identity aggregate for every human in the system. Authenticates via Google OAuth or magic link. The entity extends `IdentityUser<Guid>`.

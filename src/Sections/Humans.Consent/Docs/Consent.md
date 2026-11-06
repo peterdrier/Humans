@@ -18,6 +18,8 @@ Deliberate choices: Spanish is the binding text and the only one hashed; complet
 
 Out of scope: deciding who is a member (Governance), suspending for missing consents (Users), the sign-up rejection workflow the queue's Reject triggers (Onboarding), sending mail (Email).
 
+Bulk cache warmups publish through the shared mutation guard. A refresh, deletion, eviction or clear overlapping the load discards the partial attempt and reloads the full snapshot and derived indexes before a read can treat the cache as warmed.
+
 ## Concepts
 
 - A **Legal Document** is a named, team-scoped document (e.g., "Privacy Policy", "Volunteer Agreement"). Documents on the Volunteers system team apply to every active human. Each document points at a folder in the configured GitHub repository and is synced from there by `LegalDocumentSyncService` / `SyncLegalDocumentsJob`.

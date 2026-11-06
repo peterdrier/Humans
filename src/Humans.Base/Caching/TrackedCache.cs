@@ -246,16 +246,19 @@ public class TrackedCache<TKey, TValue> : IHostedService, ICacheStats where TKey
     /// Subclasses override to populate the cache with all current rows. Called
     /// once at startup (when <c>warmOnStartup: true</c>) and again on demand
     /// for caches whose subclass invokes <see cref="EnsureWarmedAsync"/> after
-    /// a <see cref="Clear"/>. Use <see cref="Set"/> to populate; do not touch
+    /// a <see cref="Clear"/>. Use the supplied publisher to populate; do not touch
     /// the warmed flag — the base manages it via <see cref="EnsureWarmedAsync"/>.
+    /// Publish rows only through <paramref name="publish"/> so overlapping mutations
+    /// discard this attempt and retry the complete snapshot, including derived indexes.
     /// Default is a no-op (for caches with no all-rows model).
     /// </summary>
-    protected virtual Task WarmAllAsync(CancellationToken ct) => Task.CompletedTask;
+    protected virtual Task WarmAllAsync(Action<TKey, TValue> publish, CancellationToken ct) => Task.CompletedTask;
 
     /// <summary>
     /// Idempotent warmup with semaphore-coalesced concurrency. Calls the
     /// subclass's <see cref="WarmAllAsync"/> and flips <see cref="IsWarmedUp"/>
-    /// on success. Called by <see cref="IHostedService.StartAsync"/> at app
+    /// on a mutation-free publication. Interrupted attempts reload under the same warmup lock.
+    /// Called by <see cref="IHostedService.StartAsync"/> at app
     /// startup; load-all readers call it on demand to recover from a
     /// <see cref="Clear"/> or a startup that failed to warm.
     /// </summary>
@@ -263,9 +266,41 @@ public class TrackedCache<TKey, TValue> : IHostedService, ICacheStats where TKey
     {
         if (_warmedUp) return;
         using var _ = await _warmLock.AcquireAsync(_logger, ct);
-        if (_warmedUp) return;
-        await WarmAllAsync(ct);
-        _warmedUp = true;
+        while (true)
+        {
+            ct.ThrowIfCancellationRequested();
+            long generation;
+            lock (_mutationGate)
+            {
+                if (_warmedUp) return;
+                generation = _mutationGeneration;
+            }
+            var interrupted = false;
+            void Publish(TKey key, TValue value)
+            {
+                lock (_mutationGate)
+                {
+                    if (generation != _mutationGeneration)
+                    {
+                        interrupted = true;
+                        return;
+                    }
+                    Set(key, value);
+                    generation = _mutationGeneration;
+                }
+            }
+
+            await WarmAllAsync(Publish, ct);
+            lock (_mutationGate)
+            {
+                if (!interrupted && generation == _mutationGeneration)
+                {
+                    _warmedUp = true;
+                    return;
+                }
+                Clear();
+            }
+        }
     }
 
     Task IHostedService.StartAsync(CancellationToken ct) =>

@@ -169,9 +169,9 @@ public class TrackedCacheReplacementTests
 
         public Action<int, string> BeginLoad() => CreateLoadPublisher();
 
-        protected override Task WarmAllAsync(CancellationToken ct)
+        protected override Task WarmAllAsync(Action<int, string> publish, CancellationToken ct)
         {
-            if (SourceValue is not null) Set(1, SourceValue);
+            if (SourceValue is not null) publish(1, SourceValue);
             return Task.CompletedTask;
         }
 
