@@ -8,10 +8,4 @@ public static class UsersPolicies
 
     /// <summary>Users Admin or Admin: suspend, reject, role assignment and Workspace email changes.</summary>
     public const string Manage = "UsersManage";
-
-    /// <summary>
-    /// Users Admin who is neither Admin nor Board: drives the standalone "Humans" nav link for a viewer the admin shell
-    /// would otherwise not lead to the human list.
-    /// </summary>
-    public const string UsersAdminOnly = "UsersAdminOnly";
 }

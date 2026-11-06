@@ -25,6 +25,5 @@
 | Handler | Requirement | Resource | Path |
 |---|---|---|---|
 | `UserEmailAuthorizationHandler` | `UserEmailOperationRequirement` (`View`: self, UsersAdmin, Admin, Board; `Edit`: self, UsersAdmin, Admin) | `Guid` (target user id) | `Authorization/UserEmailAuthorizationHandler.cs` (registered in `Section.cs`) |
-| `HumanAdminOnlyHandler` | `HumanAdminOnlyRequirement` | none (role check: UsersAdmin but not Admin/Board) | `Authorization/HumanAdminOnlyHandler.cs` (registered in `Section.cs`; backs `UsersPolicies.UsersAdminOnly`, which has no `[Authorize(Policy=...)]` call site yet) |
 
 Email self-access compares the resolved actor's surviving id with the exact target id; it never expands credential ownership to merged-away ids. A missing actor has no self grant. Role grants do not require an actor lookup.
