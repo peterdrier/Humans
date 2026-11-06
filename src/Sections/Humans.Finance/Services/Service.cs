@@ -24,7 +24,6 @@ namespace Humans.Finance.Services;
 
 internal sealed class Service(
     IHoldedRepository repo,
-    IHoldedClient client,
     IBudgetService budget,
     IHoldedService holded,
     IHoldedWrite holdedWrite,
@@ -67,7 +66,7 @@ internal sealed class Service(
         + "/Holded.";
     private static readonly DateTimeZone MadridZone = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
     private readonly HoldedCategoryAccounts categoryAccounts = new(repo, holded, holdedWrite, budget, clock, audit, logger);
-    private readonly SepaBankBooking booking = new(repo, client, holdedWrite, clock, bookingState, audit, sepa, logger);
+    private readonly SepaBankBooking booking = new(repo, holded, holdedWrite, clock, bookingState, audit, sepa, logger);
     private readonly SepaPayoutEmails payoutEmails = new(users, emailService, emails, logger);
 
     public Task<HoldedProvisioningPlan> GetProvisioningPlanAsync(int blockStart, CancellationToken ct = default) =>
@@ -477,7 +476,7 @@ internal sealed class Service(
     }
 
     /// <summary>The list shape the booking filter and duplicate matcher read.</summary>
-    private static HoldedPurchaseDocListItemDto ToListItem(HoldedPurchaseDocInfo d) => new()
+    internal static HoldedPurchaseDocListItemDto ToListItem(HoldedPurchaseDocInfo d) => new()
     {
         Id = d.Id,
         DocNumber = d.DocNumber,
@@ -1191,7 +1190,7 @@ internal sealed class Service(
         if (bankMovementId is { Length: > 0 })
             return $"Transfer to {ibanMasked} is tied to Sabadell line {bankMovementId} — it cannot be withdrawn.";
         if (paymentRefs is { Length: > 0 })
-            return $"Transfer to {ibanMasked} already posted Holded payment(s) {paymentRefs} — settle it in Holded instead.";
+            return $"Transfer to {ibanMasked} already posted Holded payment(s) {paymentRefs} — the money moved, so it cannot be withdrawn; book it to finish.";
         return null;
     }
 
@@ -1199,7 +1198,7 @@ internal sealed class Service(
         GetSepaTransfersAsync(CancellationToken ct = default) => booking.GetSepaTransfersAsync(ct);
 
     public Task<(IReadOnlyList<SepaPayoutTransferRow> Rows, string? UnavailableReason,
-        IReadOnlyList<SepaBankMovementVm> UnmatchedMovements, string? BankFeedError)>
+        IReadOnlyList<SepaBankMovementVm> UnmatchedMovements, string? BankFeedError, Instant? BankFeedSyncedAt)>
         GetSepaPayoutsAsync(int toleranceDays = IFinanceAdminService.DefaultSepaMatchToleranceDays,
             CancellationToken ct = default) => booking.GetSepaPayoutsAsync(toleranceDays, ct);
 

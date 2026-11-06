@@ -64,6 +64,12 @@ through `IHoldedWrite.PostJournalEntryAsync`. `PleoBookingState` holds the
 current/last run; `PleoBookingRunner` runs `BookAsync` in its own scope off the
 request. Injected by `FinanceController` only.
 
+### SepaBookingRunner (Singleton, section-internal)
+
+No repository, no tables. Runs one `/Finance/Sepa` booking at a time through
+`IFinanceAdminService` in its own scope off the request, and holds the current/last
+run for the page. Injected by `FinanceController` only.
+
 ### CreditorMatchService (Scoped, section-internal)
 
 No repository, no tables, no cache. Matches Holded creditor ledger lines against
@@ -112,12 +118,12 @@ screens, so also not cross-section surface. `BookSepaTransferAsync` is marked
 `[ExternalWrite]` and takes no `CancellationToken`: it posts payments to Holded
 and has to finish once it has started
 ([`cancellation-token-propagation`](../../../../memory/architecture/cancellation-token-propagation.md)).
-It calls the Holded section's `IHoldedClient.ListBankMovementsAsync` (find and
-match the bank line), `ListAccountingAccountsAsync` (live balance),
-`ListLedgerEntriesAsync` (what is already posted, by tag) and
-`ReconcileBankMovementAsync` (nobodies-collective/Humans#1185), alongside the
-existing `PayPurchaseDocumentAsync` / `ListPurchaseDocumentsAsync`. Journal remainders use
-`IHoldedWrite.PostJournalEntryAsync`, returning a confirmation outcome rather than a connector reference.
+It makes no `IHoldedClient` call. Reads go sync-then-mirror through `IHoldedService`:
+`SyncBankMovementsAsync` / `GetBankMovementsAsync` (find and match the bank line; `GET /Finance/Sepa`
+reads the mirror without syncing), `SyncAccountLedgerAsync` / `GetLedgerLinesAsync` (balance and what
+is already posted) and `SyncPurchaseDocumentsAsync` / `GetPurchaseDocumentsAsync` (open documents).
+Writes go through `IHoldedWrite`: `PayPurchaseDocumentAsync`, `ReconcileBankMovementAsync` and
+`PostJournalEntryAsync` (nobodies-collective/Humans#1185).
 `WithdrawSepaTransferAsync`, `CancelSepaFileAsync`, `GetHoldedDuplicatesAsync` and `RemoveHoldedDuplicatesAsync`
 (`[ExternalWrite]`, no token) serve `POST /Finance/Sepa/Withdraw`, `/Finance/Sepa/CancelFile` and
 `/Finance/HoldedDuplicates`; the duplicate check reads the linked expense lines

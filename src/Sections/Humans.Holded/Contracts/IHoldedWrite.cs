@@ -8,7 +8,7 @@ namespace Humans.Holded.Contracts;
 /// The only way another section writes to Holded; nothing outside the Holded section calls Holded's API. The ensure
 /// members take Humans keys (account numbers, names, the text Humans wrote), find the Holded ids they need live inside
 /// the call, are safe to repeat, and return an outcome. The id-keyed members serve callers that already store Holded's
-/// ids (creditor bindings, expense lines, store orders) and do exactly one step each. Writes never take a
+/// ids (creditor bindings, expense lines, store orders, SEPA payment refs) and do exactly one step each. Writes never take a
 /// request-scoped cancellation token.
 /// </summary>
 public interface IHoldedWrite : IApplicationService
@@ -103,6 +103,23 @@ public interface IHoldedWrite : IApplicationService
     /// has no key to find an earlier post by, so callers record the outcome and never repeat a posted entry.
     /// <see cref="HoldedJournalEntryOutcome.Confirmed"/> is false when Holded accepted the entry without a readable
     /// id; it is posted either way.</summary>
+    /// <summary>Pays <paramref name="amount"/> of one purchase document from <paramref name="treasuryId"/> (Holded's
+    /// default when blank), dated <paramref name="date"/>. Not idempotent. Returns the payment's ref, the one Holded id
+    /// this face hands out: a bank-line reconcile has to name it. An <c>unconfirmed:{documentId}</c> ref means Holded
+    /// took the payment but its id could not be read; it is posted either way. Throws only when nothing was posted,
+    /// including after a 5xx, which is checked against the document.</summary>
+    [ExternalWrite]
+    Task<string> PayPurchaseDocumentAsync(
+        string documentId, decimal amount, string? treasuryId, LocalDate date, string? description,
+        CancellationToken ct = default);
+
+    /// <summary>Reconciles one bank line against payment refs (<see cref="HoldedReconcileDocumentType"/>). Throws
+    /// <see cref="HoldedPermanentException"/> when Holded refuses the pairing; a refused reconcile moved no money.</summary>
+    [ExternalWrite]
+    Task ReconcileBankMovementAsync(
+        string treasuryAccountId, string movementId, IReadOnlyList<HoldedReconcileDocumentRef> documents,
+        CancellationToken ct = default);
+
     [ExternalWrite]
     Task<HoldedJournalEntryOutcome> PostJournalEntryAsync(
         LocalDate date, int debitAccount, int creditAccount, decimal amount, string description,

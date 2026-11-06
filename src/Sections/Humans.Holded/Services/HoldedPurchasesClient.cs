@@ -183,9 +183,18 @@ internal sealed class HoldedPurchasesClient(HoldedTransport transport, ILogger<H
             HttpMethod.Post, $"/api/v2/purchases/{documentId}/payments")
         { Content = JsonContent.Create(payload, options: OmitNulls) };
 
-        using var resp = await transport.SendAsync(req, ct);
+        // A 5xx can arrive after Holded saved the payment (production, 2026-11-05): only the document says which.
+        HoldedTransientException? refused = null;
+        try
+        {
+            using var resp = await transport.SendAsync(req, ct);
+        }
+        catch (HoldedTransientException ex)
+        {
+            refused = ex;
+        }
 
-        // From here the payment IS posted: throwing would read as "not paid" and the caller would pay again. The
+        // From here the payment may be posted: throwing would read as "not paid" and the caller would pay again. The
         // sentinel names the document a human has to check.
         IReadOnlyList<HoldedPaymentDetailDto> after;
         try
@@ -195,8 +204,8 @@ internal sealed class HoldedPurchasesClient(HoldedTransport transport, ILogger<H
         catch (Exception ex) when (ex is HoldedTransientException or HoldedPermanentException)
         {
             logger.LogWarning(ex,
-                "Holded accepted a payment on purchase document {DocumentId} but the document could not be re-read for its id; recording it as unconfirmed.",
-                documentId);
+                "Holded {Outcome} a payment on purchase document {DocumentId} but the document could not be re-read for its id; recording it as unconfirmed.",
+                refused is null ? "accepted" : "answered " + refused.Message + " to", documentId);
             return UnconfirmedPaymentRefPrefix + documentId;
         }
 
@@ -209,6 +218,9 @@ internal sealed class HoldedPurchasesClient(HoldedTransport transport, ILogger<H
                             || string.Equals(p.BankId, treasuryId, StringComparison.Ordinal)))
             .ToList();
         if (matches.Count == 1) return matches[0].Id;
+        // Refused and nothing new on the document: it was not posted.
+        if (refused is not null && after.All(p => known.Contains(p.Id)))
+            System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw(refused);
 
         logger.LogWarning(
             "Holded accepted a payment of {Amount} dated {Date} on purchase document {DocumentId} but payments_detail shows {Count} new matching entries (before: [{Before}], after: [{After}]); recording it as unconfirmed.",

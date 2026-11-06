@@ -48,6 +48,7 @@ internal sealed class Service(
     // Same reasoning, its own gate: the two syncs write different tables.
     private static readonly SemaphoreSlim PurchaseDocSyncGate = new(1, 1);
     private static readonly SemaphoreSlim ContactSyncGate = new(1, 1);
+    private static readonly SemaphoreSlim BankMovementSyncGate = new(1, 1);
 
     // The plan allows ~2,000 Holded calls a month: 50 a night is at most ~1,500, leaving the rest for the ledger sweep,
     // the list call and the pushes. A backlog drains over several nights, newest documents first.
@@ -341,6 +342,86 @@ internal sealed class Service(
                 Address = c.Address,
             })
             .ToList());
+    }
+
+    public async Task<HoldedBankMovementMirror> GetBankMovementsAsync(
+        string treasuryAccountId, LocalDate from, LocalDate to, CancellationToken ct = default)
+    {
+        var state = (await repo.GetSyncStatesAsync(ct)).FirstOrDefault(s => s.Kind == HoldedSyncKind.BankMovements);
+        var rows = await repo.GetBankMovementsAsync(treasuryAccountId, from, to, ct);
+        return new HoldedBankMovementMirror(state?.LastSyncAt, rows
+            .Select(m => new HoldedBankMovementDto
+            {
+                Id = m.Id,
+                Date = m.Date,
+                Amount = m.Amount,
+                Description = m.Description,
+                Status = m.Status,
+            })
+            .ToList());
+    }
+
+    public async Task<bool> SyncBankMovementsAsync(
+        string treasuryAccountId, LocalDate from, LocalDate to, IReadOnlySet<string>? skipUnreadableDateIds = null,
+        CancellationToken ct = default)
+    {
+        if (!await BankMovementSyncGate.WaitAsync(0, ct))
+        {
+            logger.LogInformation("Holded bank-feed sync already in progress — skipping this request.");
+            return false;
+        }
+
+        try
+        {
+            var now = clock.GetCurrentInstant();
+            var state = await repo.GetOrCreateSyncStateAsync(HoldedSyncKind.BankMovements, ct);
+            try
+            {
+                var movements = (await client.ListBankMovementsAsync(
+                        treasuryAccountId, from, to, ct, skipUnreadableDateIds))
+                    .Select(m => new HoldedBankMovement
+                    {
+                        TreasuryAccountId = treasuryAccountId,
+                        Id = m.Id,
+                        Date = m.Date,
+                        Amount = m.Amount,
+                        Description = m.Description,
+                        Status = m.Status,
+                    })
+                    .ToList();
+                await repo.ReplaceBankMovementsAsync(treasuryAccountId, from, to, movements, now, ct);
+
+                state.SyncStatus = HoldedSyncStatus.Idle;
+                state.LastSyncAt = now;
+                state.StatusChangedAt = now;
+                state.LastCount = movements.Count;
+                state.LastError = null;
+                await repo.SaveSyncStateAsync(state, ct);
+                await DrainCallLogAsync(ct);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                // The caller gets the exception and decides; a stuck-date line is routine for the SEPA sweep.
+                logger.LogWarning(ex, "Holded bank-feed sync failed");
+                try
+                {
+                    state.SyncStatus = HoldedSyncStatus.Error;
+                    state.LastError = TruncateForState(ex.Message);
+                    state.StatusChangedAt = clock.GetCurrentInstant();
+                    await repo.SaveSyncStateAsync(state, CancellationToken.None);
+                }
+                catch (Exception saveEx)
+                {
+                    logger.LogError(saveEx, "Failed to persist bank-feed sync error state");
+                }
+                throw;
+            }
+        }
+        finally
+        {
+            BankMovementSyncGate.Release();
+        }
     }
 
     public async Task<bool> SyncContactsAsync(CancellationToken ct = default)
