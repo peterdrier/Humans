@@ -73,6 +73,8 @@ All under `FinancePolicies.Read`; English-only finance-admin pages like `/Holded
 
 ## Invariants
 
+- Imported entry notes and saved sync errors are bounded to 2,000 UTF-16 units without splitting surrogate pairs. The raw vendor entry remains intact, and recording an error preserves the original exception and existing mirror.
+
 - A sweep fetches entries, chart, cardholders and balance (three to five calls) before writing anything, then
   replaces the four cache tables in one save: rows the sweep did not return are deleted. A failed call leaves the
   mirror as it was and records the error on the sync row.
