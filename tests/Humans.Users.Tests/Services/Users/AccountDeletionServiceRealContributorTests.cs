@@ -14,6 +14,7 @@ using Humans.Users.Data.Repositories;
 using Humans.Users.Services;
 using Humans.Users.Tests.Infrastructure;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Hosting;
 using NSubstitute;
@@ -67,6 +68,70 @@ public sealed class AccountDeletionServiceRealContributorTests : ServiceTestHarn
             Clock,
             Substitute.For<IHostEnvironment>(),
             NullLogger<AccountDeletionService>.Instance);
+    }
+
+    [HumansTheory]
+    [InlineData(false, false)]
+    [InlineData(false, true)]
+    [InlineData(true, false)]
+    [InlineData(true, true)]
+    public async Task Erasure_PartialProfileCommit_RefreshesTheFailedAccount(bool expiry, bool archived)
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var survivor = SeedUser(Guid.NewGuid(), "Survivor");
+        var source = SeedUser(Guid.NewGuid(), "Archived");
+        source.MergedToUserId = survivor.Id;
+        source.MergedAt = Clock.GetCurrentInstant();
+        source.State = UserState.Merged;
+        var failedId = archived ? source.Id : survivor.Id;
+        var profile = new Profile
+        {
+            Id = Guid.NewGuid(), UserId = failedId, FirstName = "Private", LastName = "Name",
+            EmergencyContactPhone = "Private emergency contact", CreatedAt = Clock.GetCurrentInstant(),
+            UpdatedAt = Clock.GetCurrentInstant()
+        };
+        Db.Profiles.Add(profile);
+        await SaveAllAsync(ct);
+        var services = new ServiceCollection();
+        services.AddKeyedScoped<IUserManagement>(CachingUserService.InnerServiceKey, (_, _) => _userService);
+        var cache = new CachingUserService(
+            services.BuildServiceProvider().GetRequiredService<IServiceScopeFactory>(),
+            NullLogger<CachingUserService>.Instance);
+        (await cache.GetRawUserInfoAsync(failedId, ct))!.Profile!.EmergencyContactPhone
+            .Should().Be("Private emergency contact");
+        var failure = new IOException("Later erasure step failed");
+        using var cancellation = new CancellationTokenSource();
+        var gdpr = Substitute.For<IGdprService>();
+        gdpr.EraseForUserAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(async call =>
+        {
+            var id = call.Arg<Guid>();
+            if (id != failedId)
+            {
+                await _userService.EraseForUserAsync(id, call.Arg<CancellationToken>());
+                return;
+            }
+            // This is the first committed step inside the real Account contributor; later steps can fail.
+            await _userService.AnonymizeProfileForDeletionAsync(id, call.Arg<CancellationToken>());
+            await cancellation.CancelAsync();
+            throw failure;
+        });
+        var audit = Substitute.For<IAuditLogService>();
+        var service = new AccountDeletionService(cache, Substitute.For<IUserEmailService>(),
+            _teamService, Substitute.For<IRoleAssignmentWrite>(), gdpr, _ticketQueryService, cache,
+            audit, Substitute.For<IEmailService>(), TestUsersEmails.Create(), Clock,
+            Substitute.For<IHostEnvironment>(), NullLogger<AccountDeletionService>.Instance);
+        Func<Task> erase = expiry
+            ? async () => { await service.AnonymizeExpiredAccountAsync(survivor.Id, cancellation.Token); }
+            : async () => { await service.PurgeAsync(survivor.Id, ct: cancellation.Token); };
+
+        (await erase.Should().ThrowAsync<IOException>()).Which.Should().BeSameAs(failure);
+
+        (await Db.Profiles.AsNoTracking().SingleAsync(p => p.UserId == failedId, ct))
+            .EmergencyContactPhone.Should().BeNull();
+        (await cache.GetRawUserInfoAsync(failedId, ct))!.Profile!.EmergencyContactPhone.Should().BeNull();
+        if (archived)
+            await gdpr.DidNotReceive().EraseForUserAsync(survivor.Id, Arg.Any<CancellationToken>());
+        audit.ReceivedCalls().Should().BeEmpty();
     }
 
     [HumansFact]
