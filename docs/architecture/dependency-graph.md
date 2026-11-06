@@ -233,7 +233,9 @@ graph LR
 
     Survey[SurveyService]:::surveys
     SurveyPrevEmail[SurveyPreviewEmailService]:::surveys
-    SurveyReminder[SurveyReminderSender]:::surveys
+    SurveyReminder[SurveyInvitationDelivery]:::surveys
+    SurveyAudience[SurveyAudience]:::surveys
+    ShiftView[ShiftViewService]:::shifts
     SurveyFiller[SurveyTranslationFiller]:::surveys
 
     SettingsSvc[SettingsWriteService]:::settings
@@ -659,12 +661,13 @@ graph LR
 
     %% Surveys
     Survey --> Audit
-    Survey --> Team
     Survey --> User
-    Survey --> TicketQ
-    Survey --> Email
     Survey --> GTrans
-    Survey --> AppDec
+    SurveyAudience --> Team
+    SurveyAudience --> User
+    SurveyAudience --> AppDec
+    SurveyAudience --> TicketQ
+    SurveyAudience --> ShiftView
     SurveyPrevEmail --> User
     SurveyPrevEmail --> Email
     SurveyPrevEmail --> EmailPreview

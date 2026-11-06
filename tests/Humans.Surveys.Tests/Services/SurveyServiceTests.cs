@@ -61,14 +61,23 @@ public class SurveyServiceTests
             .Returns(Array.Empty<SurveyInvitation>());
     }
 
-    private SurveyService CreateService(ILogger<SurveyService>? logger = null, ISurveyRepository? repository = null) => new(
-        repository ?? _repo, _audit, _clock, logger ?? NullLogger<SurveyService>.Instance,
-        _teamService, _userService, _governance, _ticketService, _shiftView,
-        _emailService, _emailMessages, _tokenProvider, _translation, _fileStorage);
+    private SurveyService CreateService(ILogger<SurveyService>? logger = null, ISurveyRepository? repository = null)
+    {
+        var ownerRepo = repository ?? _repo;
+        var ownerLogger = logger ?? NullLogger<SurveyService>.Instance;
+        var audience = CreateAudience(ownerLogger);
+        return new SurveyService(ownerRepo, _audit, _clock, ownerLogger, _userService, audience,
+            CreateInvitationDelivery(ownerRepo, audience), _tokenProvider, _translation, _fileStorage);
+    }
 
-    private SurveyReminderSender CreateReminderSender() => new(
-        _repo, _audit, _clock, _userService, _emailService,
-        _emailMessages, _tokenProvider, NullLogger<SurveyReminderSender>.Instance);
+    private SurveyAudience CreateAudience(ILogger? logger = null) =>
+        new(_teamService, _userService, _governance, _ticketService, _shiftView, logger ?? NullLogger.Instance);
+
+    private SurveyInvitationDelivery CreateInvitationDelivery(ISurveyRepository repository, SurveyAudience audience) =>
+        new(repository, _audit, _clock, _userService, _emailService,
+            _emailMessages, _tokenProvider, audience, NullLogger<SurveyInvitationDelivery>.Instance);
+
+    private SurveyInvitationDelivery CreateReminderSender() => CreateInvitationDelivery(_repo, CreateAudience());
 
     /// <summary>A Surveys Admin viewer: may edit any survey, so ownership never shadows what a test is pinning.</summary>
     private static SurveyViewer SurveysAdmin(Guid userId) => new(userId, SeesEverySurvey: true, ManagesEverySurvey: true);
@@ -1841,9 +1850,7 @@ public class SurveyServiceTests
                     "the invitation is unsent until the outbox accepts it");
                 if (fail) throw new InvalidOperationException("outbox unavailable");
             });
-        var service = new SurveyService(repo, _audit, _clock, NullLogger<SurveyService>.Instance,
-            _teamService, _userService, _governance, _ticketService, _shiftView,
-            _emailService, _emailMessages, _tokenProvider, _translation, _fileStorage);
+        var service = CreateService(repository: repo);
 
         var first = await service.SendInvitesAsync(survey.Id, Guid.NewGuid(), ct);
         first.Failed.Should().Be(1);
