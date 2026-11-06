@@ -49,6 +49,7 @@ namespace Humans.Teams.Tests.Services;
 public sealed class TeamServiceTests : TeamsTestHarness
 {
     private readonly TeamService _service;
+    private readonly ITeamManagementService _teamCache = Substitute.For<ITeamManagementService>();
     private readonly TeamPageService _pages;
     private readonly IUserService _userService;
     private readonly IEmailService _emailService = Substitute.For<IEmailService>();
@@ -89,6 +90,7 @@ public sealed class TeamServiceTests : TeamsTestHarness
             new GoogleSyncOutboxRepository(GoogleIntegrationDbFactory));
         var serviceProvider = new ServiceLocatorBuilder()
             .With<ITeamManagement>()
+            .With(_teamCache)
             .With<IRoleAssignmentService>(_roleAssignmentService)
             .With(_emailService)
             .With(TestTeamsEmails.Create())
@@ -1050,18 +1052,25 @@ public sealed class TeamServiceTests : TeamsTestHarness
         await AdminAuthorization.DidNotReceive().RequireCurrentUserIsAdminAsync(Arg.Any<CancellationToken>());
     }
 
-    [HumansFact]
-    public async Task CreateTeamWithGoogleGroup_ProvisioningFails_ClearsPrefixAndWarns()
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task CreateTeamWithGoogleGroup_ProvisioningFails_ClearsPrefixAndWarns(bool returnsError)
     {
         _googleSyncService.EnsureTeamGroupAsync(Arg.Any<Guid>(), cancellationToken: Arg.Any<CancellationToken>())
-            .Returns<GroupLinkResult>(_ => throw new InvalidOperationException("Workspace down"));
+            .Returns<GroupLinkResult>(_ => returnsError
+                ? GroupLinkResult.Error("Workspace down")
+                : throw new InvalidOperationException("Workspace down"));
 
         var result = await _service.CreateTeamWithGoogleGroupAsync(
             "Gate Crew", null, requiresApproval: false, googleGroupPrefix: "gate-crew",
             cancellationToken: TestContext.Current.CancellationToken);
 
+        result.Succeeded.Should().BeTrue();
         result.GroupWarning.Should().Contain("Google Group setup failed")
+            .And.Contain("Workspace down")
             .And.Contain("prefix has been cleared");
+        result.Team!.GoogleGroupPrefix.Should().BeNull();
         ClearAllTrackers();
         var reloaded = await TeamsDb.Teams.SingleAsync(t => t.Id == result.Team!.Id, TestContext.Current.CancellationToken);
         reloaded.GoogleGroupPrefix.Should().BeNull();
@@ -1091,34 +1100,83 @@ public sealed class TeamServiceTests : TeamsTestHarness
             Arg.Any<Guid>(), Arg.Any<bool>(), Arg.Any<CancellationToken>());
     }
 
-    [HumansFact]
-    public async Task UpdateTeamWithGoogleGroup_GroupNeedsConfirmation_ReturnsWarning()
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task TeamWithGoogleGroup_GroupNeedsConfirmation_ReturnsWarning(bool createTeam)
     {
         var team = SeedTeam("Alpha");
         await SaveAllAsync(TestContext.Current.CancellationToken);
-        _googleSyncService.EnsureTeamGroupAsync(team.Id, cancellationToken: Arg.Any<CancellationToken>())
+        _googleSyncService.EnsureTeamGroupAsync(Arg.Any<Guid>(), cancellationToken: Arg.Any<CancellationToken>())
             .Returns(GroupLinkResult.NeedsConfirmation("Group was deactivated.", Guid.NewGuid()));
 
-        var result = await _service.UpdateTeamWithGoogleGroupAsync(
-            team.Id, team.Name, team.Description, team.RequiresApproval, team.IsActive,
-            cancellationToken: TestContext.Current.CancellationToken);
+        var result = createTeam
+            ? await _service.CreateTeamWithGoogleGroupAsync(
+                "New Crew", null, false, googleGroupPrefix: "new-crew",
+                cancellationToken: TestContext.Current.CancellationToken)
+            : await _service.UpdateTeamWithGoogleGroupAsync(
+                team.Id, team.Name, team.Description, team.RequiresApproval, team.IsActive,
+                cancellationToken: TestContext.Current.CancellationToken);
 
         result.GroupWarning.Should().Be("Group was deactivated.");
     }
 
-    [HumansFact]
-    public async Task UpdateTeamWithGoogleGroup_GroupOk_NoWarning()
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task TeamWithGoogleGroup_GroupOk_NoWarning(bool createTeam)
     {
         var team = SeedTeam("Alpha");
         await SaveAllAsync(TestContext.Current.CancellationToken);
-        _googleSyncService.EnsureTeamGroupAsync(team.Id, cancellationToken: Arg.Any<CancellationToken>())
+        _googleSyncService.EnsureTeamGroupAsync(Arg.Any<Guid>(), cancellationToken: Arg.Any<CancellationToken>())
             .Returns(GroupLinkResult.Ok());
 
-        var result = await _service.UpdateTeamWithGoogleGroupAsync(
-            team.Id, team.Name, team.Description, team.RequiresApproval, team.IsActive,
-            cancellationToken: TestContext.Current.CancellationToken);
+        var result = createTeam
+            ? await _service.CreateTeamWithGoogleGroupAsync(
+                "New Crew", null, false, googleGroupPrefix: "new-crew",
+                cancellationToken: TestContext.Current.CancellationToken)
+            : await _service.UpdateTeamWithGoogleGroupAsync(
+                team.Id, team.Name, team.Description, team.RequiresApproval, team.IsActive,
+                cancellationToken: TestContext.Current.CancellationToken);
 
         result.GroupWarning.Should().BeNull();
+    }
+
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task TeamWithGoogleGroup_ProvisioningReadsCommittedTeamFromWarmCache(bool createTeam)
+    {
+        var team = SeedTeam("Existing Crew");
+        team.GoogleGroupPrefix = "old-prefix";
+        await SaveAllAsync(TestContext.Current.CancellationToken);
+        using var provider = new ServiceCollection()
+            .AddKeyedScoped<ITeamManagementService>(CachingTeamService.InnerServiceKey, (_, _) => _service)
+            .BuildServiceProvider();
+        var cached = new CachingTeamService(provider.GetRequiredService<IServiceScopeFactory>(),
+            NullLogger<CachingTeamService>.Instance);
+        await cached.GetTeamsAsync(TestContext.Current.CancellationToken);
+        _teamCache.When(t => t.InvalidateActiveTeamsCache()).Do(_ => cached.InvalidateActiveTeamsCache());
+        TeamInfo? observedTeam = null;
+        _googleSyncService.EnsureTeamGroupAsync(Arg.Any<Guid>(), cancellationToken: Arg.Any<CancellationToken>())
+            .Returns(async call =>
+            {
+                observedTeam = await cached.GetTeamAsync(call.Arg<Guid>(), TestContext.Current.CancellationToken);
+                return GroupLinkResult.Ok();
+            });
+
+        var result = createTeam
+            ? await cached.CreateTeamWithGoogleGroupAsync(
+                "New Crew", null, false, googleGroupPrefix: "new-prefix",
+                cancellationToken: TestContext.Current.CancellationToken)
+            : await cached.UpdateTeamWithGoogleGroupAsync(
+                team.Id, team.Name, team.Description, team.RequiresApproval, team.IsActive,
+                googleGroupPrefix: "new-prefix", cancellationToken: TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeTrue();
+        observedTeam.Should().NotBeNull();
+        observedTeam!.Id.Should().Be(result.Team!.Id);
+        observedTeam.GoogleGroupPrefix.Should().Be("new-prefix");
     }
 
     [HumansFact]

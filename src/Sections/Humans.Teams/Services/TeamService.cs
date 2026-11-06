@@ -372,19 +372,31 @@ internal sealed class TeamService(
         string? groupWarning = null;
         if (!string.IsNullOrEmpty(googleGroupPrefix))
         {
+            // Provisioning reads Teams back through its cache before the outer mutation completes.
+            serviceProvider.GetRequiredService<ITeamManagementService>().InvalidateActiveTeamsCache();
             try
             {
-                await GoogleSyncService.EnsureTeamGroupAsync(team.Id, cancellationToken: cancellationToken);
+                var groupResult = await GoogleSyncService.EnsureTeamGroupAsync(team.Id, cancellationToken: cancellationToken);
+                groupWarning = GroupLinkWarning(groupResult);
+                if (groupWarning is not null)
+                    logger.LogWarning("Google Group setup incomplete for new team {TeamId}: {Reason}", team.Id, groupWarning);
+                if (groupResult.RequiresConfirmation)
+                    return result with { GroupWarning = groupWarning };
             }
             catch (Exception ex)
             {
-                // Clear the prefix so the team never points at a missing group; the admin can retry from team edit.
                 logger.LogError(ex, "Failed to create Google Group for new team {TeamId}, clearing prefix", team.Id);
-                var compensation = await UpdateTeamAsync(
+                groupWarning = ex.Message;
+            }
+
+            if (groupWarning is not null)
+            {
+                // Clear the prefix so the team never points at a missing group; the admin can retry from team edit.
+                result = await UpdateTeamAsync(
                     team.Id, team.Name, team.Description, team.RequiresApproval, team.IsActive,
                     team.ParentTeamId, googleGroupPrefix: null, cancellationToken: cancellationToken);
-                compensation.RequireSuccess();
-                groupWarning = $"Team created but Google Group setup failed: {ex.Message}. The group prefix has been cleared.";
+                result.RequireSuccess();
+                groupWarning = $"Team created but Google Group setup failed: {groupWarning}. The group prefix has been cleared.";
             }
         }
 
@@ -414,15 +426,13 @@ internal sealed class TeamService(
 
         if (!result.Succeeded) return result;
 
+        // The callback must see the saved prefix, including a cleared one, rather than the previous snapshot.
+        serviceProvider.GetRequiredService<ITeamManagementService>().InvalidateActiveTeamsCache();
         string? groupWarning;
         try
         {
             var groupResult = await GoogleSyncService.EnsureTeamGroupAsync(teamId, cancellationToken: cancellationToken);
-            groupWarning = groupResult.Success
-                ? null
-                : groupResult.RequiresConfirmation
-                    ? groupResult.WarningMessage ?? "Confirmation required for group reactivation."
-                    : groupResult.ErrorMessage ?? "Google Group linking failed.";
+            groupWarning = GroupLinkWarning(groupResult);
         }
         catch (Exception ex)
         {
@@ -432,6 +442,13 @@ internal sealed class TeamService(
 
         return result with { GroupWarning = groupWarning };
     }
+
+    private static string? GroupLinkWarning(GroupLinkResult result) =>
+        result.Success
+            ? null
+            : result.RequiresConfirmation
+                ? result.WarningMessage ?? "Confirmation required for group reactivation."
+                : result.ErrorMessage ?? "Google Group linking failed.";
 
     public async Task<TeamDeactivationResult> DeleteTeamAsync(Guid teamId, Guid actorUserId, CancellationToken cancellationToken = default)
     {

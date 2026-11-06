@@ -79,7 +79,7 @@ internal interface ITeamManagementService : ITeamManagement
     Task<IReadOnlyDictionary<Guid, TeamInfo>> ResolveTeamMembersAsync(
         IReadOnlyDictionary<Guid, TeamReadSnapshot> teams, CancellationToken ct = default);
 
-    /// <summary>Evicts after the Teams system-membership reconciliation completes.</summary>
+    /// <summary>Evicts the Teams read graph for same-section write and reconciliation flows.</summary>
     void InvalidateActiveTeamsCache();
 
     /// <summary><c>CachingTeamService</c> is the registered contributor.</summary>
