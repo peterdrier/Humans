@@ -268,6 +268,8 @@ a map board lets people spot each other by eye. No booking, no payment, no autom
 - **Offer travel spans must fit within the supported date range.** Creation validates both the posted departure and the seeded inverse departure; edits validate the new departure and duration before persistence. Invalid spans return the localized invalid-date refusal.
 - **Creating an inbound (or outbound) offer auto-seeds the inverse leg.** `LinkedTripId` is a soft, display-only link — the two legs are not otherwise coupled and are edited/cancelled independently.
 
+- **Mutation access failures are explicit results.** Missing trips, requests and interests return 404; ownership denials return 403. Both form and redirect actions log these expected failures without exception stacks. Dependency exceptions propagate rather than being converted to access failures. Existing ownership checks run before edits, persistence and notifications.
+
 ## Negative Access Rules
 
 - Unauthenticated visitors **cannot** view the board or reach any `/Rideshare` or `/api/rideshare` route.

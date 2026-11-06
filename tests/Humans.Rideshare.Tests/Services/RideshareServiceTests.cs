@@ -26,6 +26,60 @@ namespace Humans.Rideshare.Tests.Services;
 /// </summary>
 public sealed class RideshareServiceTests : RideshareTestHarness
 {
+    public enum MissingMutationTarget
+    {
+        UpdateOffer,
+        CancelOffer,
+        UpdateRequest,
+        CancelRequest,
+        ExpressInterestTrip,
+        ExpressInterestRequest,
+        AcceptInterest,
+        DeclineInterest,
+        WithdrawInterest
+    }
+
+    [HumansTheory]
+    [InlineData(MissingMutationTarget.UpdateOffer)]
+    [InlineData(MissingMutationTarget.CancelOffer)]
+    [InlineData(MissingMutationTarget.UpdateRequest)]
+    [InlineData(MissingMutationTarget.CancelRequest)]
+    [InlineData(MissingMutationTarget.ExpressInterestTrip)]
+    [InlineData(MissingMutationTarget.ExpressInterestRequest)]
+    [InlineData(MissingMutationTarget.AcceptInterest)]
+    [InlineData(MissingMutationTarget.DeclineInterest)]
+    [InlineData(MissingMutationTarget.WithdrawInterest)]
+    public async Task MissingMutationTargets_ReturnNotFoundWithoutWriting(MissingMutationTarget target)
+    {
+        var actor = SeedUser();
+        var missing = Guid.NewGuid();
+        var trip = target == MissingMutationTarget.ExpressInterestRequest ? await SeedTripAsync(actor) : null;
+        var service = NewService();
+
+        var result = await (target switch
+        {
+            MissingMutationTarget.UpdateOffer => service.UpdateOfferAsync(missing, actor, NewTripSave(), Ct),
+            MissingMutationTarget.CancelOffer => service.CancelOfferAsync(missing, actor, Ct),
+            MissingMutationTarget.UpdateRequest => service.UpdateRequestAsync(missing, actor, NewRequestSave(), Ct),
+            MissingMutationTarget.CancelRequest => service.CancelRequestAsync(missing, actor, Ct),
+            MissingMutationTarget.ExpressInterestTrip => service.ExpressInterestAsync(actor, missing, null, 1, null, Ct),
+            MissingMutationTarget.ExpressInterestRequest => service.ExpressInterestAsync(actor, trip!.Id, missing, 1, null, Ct),
+            MissingMutationTarget.AcceptInterest => service.AcceptInterestAsync(missing, actor, Ct),
+            MissingMutationTarget.DeclineInterest => service.DeclineInterestAsync(missing, actor, Ct),
+            MissingMutationTarget.WithdrawInterest => service.WithdrawInterestAsync(missing, actor, Ct),
+            _ => throw new ArgumentOutOfRangeException(nameof(target))
+        });
+
+        result.AccessFailure.Should().Be(RideshareAccessFailure.NotFound);
+        result.Id.Should().BeNull();
+        result.Refusal.Should().BeNull();
+        await using var ctx = OpenContext();
+        (await ctx.Interests.CountAsync(Ct)).Should().Be(0);
+        (await ctx.Requests.CountAsync(Ct)).Should().Be(0);
+        (await ctx.Trips.CountAsync(Ct)).Should().Be(trip is null ? 0 : 1);
+        Notifications.ReceivedCalls().Should().BeEmpty();
+    }
+
     [HumansTheory]
     [InlineData(false)]
     [InlineData(true)]
@@ -293,7 +347,7 @@ public sealed class RideshareServiceTests : RideshareTestHarness
         var service = NewService();
 
         var stranger = () => service.CancelOfferAsync(trip.Id, SeedUser("Bo"), Ct);
-        await stranger.Should().ThrowAsync<UnauthorizedAccessException>();
+        (await stranger()).AccessFailure.Should().Be(RideshareAccessFailure.Forbidden);
 
         Clock.AdvanceHours(1);
         var cancelledAt = Clock.GetCurrentInstant();
@@ -315,7 +369,7 @@ public sealed class RideshareServiceTests : RideshareTestHarness
         var service = NewService();
 
         var stranger = () => service.CancelRequestAsync(request.Id, SeedUser("Bo"), Ct);
-        await stranger.Should().ThrowAsync<UnauthorizedAccessException>();
+        (await stranger()).AccessFailure.Should().Be(RideshareAccessFailure.Forbidden);
 
         Clock.AdvanceHours(1);
         var cancelledAt = Clock.GetCurrentInstant();
@@ -330,14 +384,14 @@ public sealed class RideshareServiceTests : RideshareTestHarness
     }
 
     [HumansFact]
-    public async Task UpdateOffer_ByAnotherHuman_Throws()
+    public async Task UpdateOffer_ByAnotherHuman_ReturnsForbidden()
     {
         await SeedSettingsAsync();
         var trip = await SeedTripAsync(SeedUser("Ada"));
 
         var act = () => NewService().UpdateOfferAsync(trip.Id, SeedUser("Bo"), NewTripSave(seats: 4), Ct);
 
-        await act.Should().ThrowAsync<UnauthorizedAccessException>();
+        (await act()).AccessFailure.Should().Be(RideshareAccessFailure.Forbidden);
     }
 
     [HumansFact]
@@ -352,14 +406,14 @@ public sealed class RideshareServiceTests : RideshareTestHarness
     }
 
     [HumansFact]
-    public async Task UpdateRequest_ByAnotherHuman_Throws()
+    public async Task UpdateRequest_ByAnotherHuman_ReturnsForbidden()
     {
         var request = await SeedRequestAsync(SeedUser("Ada"));
 
         var act = () => NewService().UpdateRequestAsync(
             request.Id, SeedUser("Bo"), NewRequestSave(partySize: 2), Ct);
 
-        await act.Should().ThrowAsync<UnauthorizedAccessException>();
+        (await act()).AccessFailure.Should().Be(RideshareAccessFailure.Forbidden);
     }
 
     [HumansFact]
@@ -600,7 +654,7 @@ public sealed class RideshareServiceTests : RideshareTestHarness
     }
 
     [HumansFact]
-    public async Task AcceptAndDecline_ByAnyoneButThePostingOwner_Throw()
+    public async Task AcceptAndDecline_ByAnyoneButThePostingOwner_ReturnForbidden()
     {
         var trip = await SeedTripAsync(SeedUser("Ada"));
         var rider = SeedUser("Bo");
@@ -610,8 +664,8 @@ public sealed class RideshareServiceTests : RideshareTestHarness
         var accept = () => service.AcceptInterestAsync(interest.Id, rider, Ct);
         var decline = () => service.DeclineInterestAsync(interest.Id, SeedUser("Cy"), Ct);
 
-        await accept.Should().ThrowAsync<UnauthorizedAccessException>();
-        await decline.Should().ThrowAsync<UnauthorizedAccessException>();
+        (await accept()).AccessFailure.Should().Be(RideshareAccessFailure.Forbidden);
+        (await decline()).AccessFailure.Should().Be(RideshareAccessFailure.Forbidden);
     }
 
     [HumansFact]
@@ -642,7 +696,7 @@ public sealed class RideshareServiceTests : RideshareTestHarness
         var service = NewService();
 
         var byDriver = () => service.AcceptInterestAsync(interest.Id, driver, Ct);
-        await byDriver.Should().ThrowAsync<UnauthorizedAccessException>();
+        (await byDriver()).AccessFailure.Should().Be(RideshareAccessFailure.Forbidden);
 
         await service.AcceptInterestAsync(interest.Id, rider, Ct);
         await using var ctx = OpenContext();
@@ -683,7 +737,7 @@ public sealed class RideshareServiceTests : RideshareTestHarness
         var service = NewService();
 
         var thirdParty = () => service.WithdrawInterestAsync(onTrip.Id, SeedUser("Cy"), Ct);
-        await thirdParty.Should().ThrowAsync<UnauthorizedAccessException>();
+        (await thirdParty()).AccessFailure.Should().Be(RideshareAccessFailure.Forbidden);
 
         await service.WithdrawInterestAsync(onTrip.Id, driver, Ct);   // the trip's driver owns this posting
         await service.WithdrawInterestAsync(onPin.Id, rider, Ct);     // the pin's rider owns that one
@@ -844,7 +898,7 @@ public sealed class RideshareServiceTests : RideshareTestHarness
 
         var act = () => NewService().ExpressInterestAsync(SeedUser("Cy"), trip.Id, request.Id, 1, null, Ct);
 
-        await act.Should().ThrowAsync<UnauthorizedAccessException>();
+        (await act()).AccessFailure.Should().Be(RideshareAccessFailure.Forbidden);
     }
 
     [HumansFact]
