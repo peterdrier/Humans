@@ -664,6 +664,9 @@ internal sealed class SurveyService(
                 "Only identified or completion-tracked public responses need a participation ledger.");
         }
 
+        if (await HasCompletedMergedParticipationAsync(surveyId, userId, ct))
+            return null;
+
         var createdAt = anonymity == ResponseAnonymity.CompletionTracked
             ? NonCorrelatablePublicParticipationCreatedAt
             : clock.GetCurrentInstant();
@@ -745,6 +748,18 @@ internal sealed class SurveyService(
             ct);
     }
 
+    private async Task<bool> HasCompletedMergedParticipationAsync(Guid surveyId, Guid userId, CancellationToken ct)
+    {
+        var human = await userService.GetUserInfoAsync(userId, ct);
+        if (human is null || (human.Id == userId && human.MergedUserIds.Count == 0))
+            return false;
+
+        // Frozen participation rows retain the old account id; the completion rule belongs to the human.
+        var ids = human.AllUserIds.Append(userId).ToHashSet();
+        return (await repo.GetInvitationsAsync(surveyId, ct))
+            .Any(invitation => invitation.Completed && ids.Contains(invitation.UserId));
+    }
+
     private async Task<SubmissionPreparation> PrepareSubmissionAsync(
         SurveySubmission submission, CancellationToken ct)
     {
@@ -778,7 +793,9 @@ internal sealed class SurveyService(
         if (submission.Anonymity != ResponseAnonymity.Anonymous && submission.InvitationId is { } gateInvId)
         {
             var invitation = await repo.GetInvitationByIdAsync(gateInvId, ct);
-            if (invitation?.Completed == true)
+            if (invitation?.Completed == true
+                || (submission.UserId is { } participantId
+                    && await HasCompletedMergedParticipationAsync(submission.SurveyId, participantId, ct)))
             {
                 return new SubmissionPreparation([], [], [], [], AlreadyCompleted: true);
             }
@@ -815,6 +832,12 @@ internal sealed class SurveyService(
         CancellationToken ct)
     {
         using var finalization = await ResponseFinalizationLock.AcquireAsync(logger, ct);
+        // Another account in the same merge chain may have completed since preparation. Keep the
+        // duplicate check inside the same lock as persistence, without linking anonymous ballots.
+        if (submission.Anonymity != ResponseAnonymity.Anonymous && submission.UserId is { } participantId
+            && await HasCompletedMergedParticipationAsync(submission.SurveyId, participantId, ct))
+            return;
+
         switch (submission.Anonymity)
         {
             case ResponseAnonymity.Identified:

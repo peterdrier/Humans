@@ -2744,6 +2744,84 @@ public class SurveyServiceTests
             Arg.Any<SurveyResponse>(), Arg.Any<CancellationToken>());
     }
 
+    [HumansTheory]
+    [InlineData(ResponseAnonymity.Identified, false)]
+    [InlineData(ResponseAnonymity.Identified, true)]
+    [InlineData(ResponseAnonymity.CompletionTracked, false)]
+    [InlineData(ResponseAnonymity.CompletionTracked, true)]
+    public async Task StartPublicTrackedResponseAsync_checks_completed_merged_accounts(ResponseAnonymity anonymity, bool completed)
+    {
+        var surveyId = Guid.NewGuid();
+        var survivor = Guid.NewGuid();
+        var archived = Guid.NewGuid();
+        _userService.GetUserInfoAsync(survivor, Arg.Any<CancellationToken>())
+            .Returns(Asociado(survivor) with { MergedUserIds = [archived] });
+        _repo.GetInvitationsAsync(surveyId, Arg.Any<CancellationToken>()).Returns([
+            new SurveyInvitation { Id = Guid.NewGuid(), SurveyId = surveyId, UserId = archived, Completed = completed }
+        ]);
+        _repo.GetOrCreateParticipationAsync(surveyId, survivor, Arg.Any<Instant>(), Arg.Any<CancellationToken>())
+            .Returns(new SurveyInvitation { Id = Guid.NewGuid(), SurveyId = surveyId, UserId = survivor });
+
+        var started = await CreateService().StartPublicTrackedResponseAsync(
+            surveyId, survivor, anonymity, "en", TestContext.Current.CancellationToken);
+
+        if (completed)
+        {
+            started.Should().BeNull();
+            await _repo.DidNotReceive().GetOrCreateParticipationAsync(
+                Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<Instant>(), Arg.Any<CancellationToken>());
+            await _repo.DidNotReceive().AddResponseAsync(Arg.Any<SurveyResponse>(), Arg.Any<CancellationToken>());
+        }
+        else
+        {
+            started.Should().NotBeNull();
+            await _repo.Received(1).GetOrCreateParticipationAsync(
+                surveyId, survivor, Arg.Any<Instant>(), Arg.Any<CancellationToken>());
+        }
+    }
+
+    [HumansTheory]
+    [InlineData(ResponseAnonymity.Identified, false)]
+    [InlineData(ResponseAnonymity.Identified, true)]
+    [InlineData(ResponseAnonymity.CompletionTracked, false)]
+    [InlineData(ResponseAnonymity.CompletionTracked, true)]
+    [InlineData(ResponseAnonymity.Anonymous, false)]
+    public async Task AdvanceWizardAsync_completion_follows_the_merge_chain_at_finalization(
+        ResponseAnonymity anonymity, bool completedAfterPreparation)
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var survey = SurveyForSubmit(out var questionId, out _);
+        survey.IsAsociadoVote = anonymity == ResponseAnonymity.CompletionTracked;
+        var survivor = Guid.NewGuid();
+        var archived = Guid.NewGuid();
+        _userService.GetUserInfoAsync(survivor, Arg.Any<CancellationToken>())
+            .Returns(Asociado(survivor) with { MergedUserIds = [archived] });
+        var reads = 0;
+        _repo.GetInvitationsAsync(survey.Id, Arg.Any<CancellationToken>()).Returns(_ =>
+            (IReadOnlyList<SurveyInvitation>)[new SurveyInvitation
+            {
+                Id = Guid.NewGuid(), SurveyId = survey.Id, UserId = archived,
+                Completed = !completedAfterPreparation || ++reads > 1
+            }]);
+        var submission = new SurveySubmission(survey.Id, Guid.NewGuid(), survivor,
+            anonymity == ResponseAnonymity.Identified ? Guid.NewGuid() : null,
+            anonymity, SurveyInputMethod.UserSpecificLink, "en", [Ans(questionId, "yes")]);
+
+        var outcome = await CreateService().AdvanceWizardAsync(
+            WizardState(survey, submission), 1, back: false, submission.Answers, ct);
+
+        outcome.Outcome.Should().Be(SurveyWizardOutcome.Submitted);
+        await _repo.DidNotReceive().FinalizeIdentifiedResponseAsync(
+            Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<IReadOnlyList<SurveyAnswer>>(), Arg.Any<Instant>(),
+            Arg.Any<SurveyInputMethod>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+        await _repo.DidNotReceive().FinalizeCompletionTrackedResponseAsync(
+            Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<SurveyResponse>(), Arg.Any<CancellationToken>());
+        if (anonymity == ResponseAnonymity.Anonymous)
+            await _repo.Received(1).AddResponseWithAnswersAndSaveAsync(Arg.Any<SurveyResponse>(), ct);
+        else
+            await _repo.DidNotReceive().AddResponseWithAnswersAndSaveAsync(Arg.Any<SurveyResponse>(), Arg.Any<CancellationToken>());
+    }
+
     [HumansFact]
     public async Task StartPublicTrackedResponseAsync_identified_restores_existing_draft_answers()
     {
