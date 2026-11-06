@@ -1,4 +1,3 @@
-using System.Diagnostics.CodeAnalysis;
 using Humans.Base.Caching;
 using Microsoft.Extensions.Caching.Memory;
 
@@ -6,21 +5,6 @@ namespace Humans.Base.Extensions;
 
 public static class MemoryCacheExtensions
 {
-    public static bool TryGetExistingValue<TValue>(
-        this IMemoryCache cache,
-        object key,
-        [NotNullWhen(true)] out TValue? value)
-    {
-        if (cache.TryGetValue(key, out var cached) && cached is TValue typed)
-        {
-            value = typed;
-            return true;
-        }
-
-        value = default;
-        return false;
-    }
-
     /// <summary>
     /// Takes an exclusive reservation on <paramref name="key"/> for the given duration.
     /// Returns true to exactly one caller; every later caller gets false until the
