@@ -73,7 +73,7 @@ Members sign in using their Google account, which provides their primary email a
 **So that** my account stays clean
 
 **Acceptance Criteria:**
-- Cannot remove the *last verified email* — the delete is blocked if it would leave the user with zero verified `UserEmail` rows. (Per email-identity-decoupling spec PR 1, replacing the previous IsOAuth-based block. The original "preserve at least one auth method" rule was tightened to also cover notification reachability: OAuth-only users would still be able to sign in, but every system email would have nowhere to go since `User.Email` is null for post-PR-1 users.)
+- Cannot remove the *last verified email* — the delete is blocked if it would leave the user with zero verified `UserEmail` rows. Signing in is not enough: every system email needs a verified address to go to.
 - If the deleted row was the notification target, hand off to the next verified row (ordered alphabetically by `Email`) before removal.
 - Unverified rows are always deletable — they aren't notification targets and can't be used for magic-link sign-in.
 - Confirmation prompt before removal.
