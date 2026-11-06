@@ -46,6 +46,8 @@ The base builds with `Microsoft.NET.Sdk.Razor` + `AddRazorSupportForMvc` to host
 
 ### Behavioural notes
 
+- Shared Markdown renders only disabled checkbox inputs for task lists. Authored hidden, text, submit and image inputs are removed so content cannot introduce active form controls; checked and unchecked task lists remain visible.
+
 - Shared dismiss controls (member alerts, Markdown help, login errors, dynamically created toasts) use `Common_Close` for their accessible label; both Shell layouts supply it to the toast helper.
 - The human-search picker rejects stale searches: a lookup dismissed with Escape or an outside click is invalidated, timers and response versions belong to each input, and an older response never replaces a newer result.
 - The email composer preview is ordered per modal: only the latest preview can replace its frame, subject or error, and separate modal instances stay independent.
