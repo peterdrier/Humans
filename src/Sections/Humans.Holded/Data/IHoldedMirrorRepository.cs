@@ -57,6 +57,15 @@ internal interface IHoldedMirrorRepository : IRepository
 
     Task<IReadOnlyList<HoldedContact>> GetContactsAsync(CancellationToken ct = default);
 
+    /// <summary>Replaces every row of <paramref name="treasuryAccountId"/> dated inside [<paramref name="from"/>,
+    /// <paramref name="to"/>] with <paramref name="movements"/>.</summary>
+    Task ReplaceBankMovementsAsync(
+        string treasuryAccountId, LocalDate from, LocalDate to, IReadOnlyList<HoldedBankMovement> movements,
+        Instant now, CancellationToken ct = default);
+
+    Task<IReadOnlyList<HoldedBankMovement>> GetBankMovementsAsync(
+        string treasuryAccountId, LocalDate from, LocalDate to, CancellationToken ct = default);
+
     Task<HoldedSyncState> GetOrCreateSyncStateAsync(HoldedSyncKind kind, CancellationToken ct = default);
     Task SaveSyncStateAsync(HoldedSyncState state, CancellationToken ct = default);
     Task<IReadOnlyList<HoldedSyncState>> GetSyncStatesAsync(CancellationToken ct = default);

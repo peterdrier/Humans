@@ -73,4 +73,17 @@ public interface IHoldedService : IApplicationService
     /// bound a contact run it so the mirror carries it before the next nightly sync. False when a sync was already
     /// running and this one was skipped.</summary>
     Task<bool> SyncContactsAsync(CancellationToken ct = default);
+
+    /// <summary>The mirrored bank feed of one treasury account dated inside [<paramref name="from"/>,
+    /// <paramref name="to"/>], as fresh as <see cref="HoldedBankMovementMirror.LastSyncAt"/>. Order not guaranteed.</summary>
+    Task<HoldedBankMovementMirror> GetBankMovementsAsync(
+        string treasuryAccountId, LocalDate from, LocalDate to, CancellationToken ct = default);
+
+    /// <summary>Replaces the mirrored lines of one treasury account inside the window with Holded's. Throws what the
+    /// feed read throws, mirror untouched: a pending outgoing line with no readable date fails it
+    /// (<c>HoldedPermanentException.BankMovementId</c> names it) unless its id is in
+    /// <paramref name="skipUnreadableDateIds"/>. False when a sync was already running and this one was skipped.</summary>
+    Task<bool> SyncBankMovementsAsync(
+        string treasuryAccountId, LocalDate from, LocalDate to, IReadOnlySet<string>? skipUnreadableDateIds = null,
+        CancellationToken ct = default);
 }

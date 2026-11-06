@@ -132,6 +132,16 @@ internal sealed class HoldedWrite(
         return HoldedDeleteOutcome.Deleted;
     }
 
+    public Task<string> PayPurchaseDocumentAsync(
+        string documentId, decimal amount, string? treasuryId, LocalDate date, string? description,
+        CancellationToken ct = default) =>
+        client.PayPurchaseDocumentAsync(documentId, amount, treasuryId, date, description, ct);
+
+    public Task ReconcileBankMovementAsync(
+        string treasuryAccountId, string movementId, IReadOnlyList<HoldedReconcileDocumentRef> documents,
+        CancellationToken ct = default) =>
+        client.ReconcileBankMovementAsync(treasuryAccountId, movementId, documents, ct);
+
     public async Task<HoldedJournalEntryOutcome> PostJournalEntryAsync(
         LocalDate date, int debitAccount, int creditAccount, decimal amount, string description,
         CancellationToken ct = default)

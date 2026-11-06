@@ -97,7 +97,7 @@ booking is triggered two ways — the sweep (below) and the page's own Book butt
 same `Service.BookSepaTransferAsync(transferId, bankMovementId, actorUserId)`
 (`actorUserId` null = the sweep, audited under its job name).
 
-1. **Find the line.** `client.ListBankMovementsAsync` over the last 92 days (the 90-day feed window
+1. **Find the line.** Sync Holded's bank-feed mirror (`IHoldedService.SyncBankMovementsAsync`), then read it, over the last 92 days (the 90-day feed window
    plus the 2-day generation slack a line may precede its file by) on `Sepa:TreasuryAccountId`; the posted `bankMovementId` must be in it or the booking refuses.
 2. **Validate the pairing, server-side** — never trust the posted id: the line is outgoing and its
    amount matches the transfer exactly; it is `pending` in Holded; if its description names a
@@ -107,16 +107,14 @@ same `Service.BookSepaTransferAsync(transferId, bankMovementId, actorUserId)`
    and date — or, for a textless line, it is one of an equal-count set (below) and this transfer is
    the one the set's order gives it; no other pending line could have paid this transfer; no other
    row already carries this movement id.
-3. **Live balance.** `client.ListAccountingAccountsAsync()`, the row for the creditor account,
-   `owedNow = -Balance` — the account's live total, not a windowed reconstruction. It gates nothing;
+3. **Current balance.** Sync the creditor account's ledger (`IHoldedService.SyncAccountLedgerAsync`,
+   refusing while a sync is busy), then `owedNow` = Σ(credit − debit) over its mirrored lines. It gates nothing;
    it is what the audit entry names when the transfer pays more than the account owes.
-4. **What is already posted**, from the ledger entries on the creditor account tagged with this
-   transfer's row id — this is what makes a retry resume instead of double-pay. The window runs
-   from the day the file was generated (or the bank line, whichever is earlier) to today, with a
-   week of slack either end: postings this flow makes are dated the bank line, but a pre-#1185 run
-   dated them the **click**, which can be weeks off. The account number is filtered here as well as
-   in the query — both legs of our journal entry carry the same tag, so an unfiltered read would net
-   to zero and re-post everything.
+4. **What is already posted**, from the same synced lines tagged with this transfer's row id, plus
+   the `payment` lines dated the bank line counted against the saved payment ids — this is what makes
+   a retry resume instead of double-pay. The account's whole history is read, so a pre-#1185 posting
+   dated the **click** is seen too. Only the creditor account's lines count — both legs of our
+   journal entry carry the same tag, so an unfiltered read would net to zero and re-post everything.
 5. **The arithmetic**: `toPost = transfer.Amount - posted`, rounded to cents — never capped by
    `owedNow`. The file went to the bank and the money left, so the whole transfer reaches the
    ledger whatever the balance says. Already fully posted → post nothing, skip to reconcile.

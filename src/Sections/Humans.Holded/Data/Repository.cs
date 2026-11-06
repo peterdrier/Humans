@@ -251,6 +251,47 @@ internal sealed class Repository(IDbContextFactory<HoldedDbContext> factory)
         await ctx.SaveChangesAsync(ct);
     }
 
+    public async Task ReplaceBankMovementsAsync(
+        string treasuryAccountId, LocalDate from, LocalDate to, IReadOnlyList<HoldedBankMovement> movements,
+        Instant now, CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        var ids = movements.Select(m => m.Id).ToList();
+        // A line Holded re-dated across the window's edge is matched by id too.
+        var existing = await ctx.HoldedBankMovements
+            .Where(m => m.TreasuryAccountId == treasuryAccountId
+                        && ((m.Date >= from && m.Date <= to) || ids.Contains(m.Id)))
+            .ToDictionaryAsync(m => m.Id, StringComparer.Ordinal, ct);
+        var keep = ids.ToHashSet(StringComparer.Ordinal);
+        ctx.HoldedBankMovements.RemoveRange(existing.Values.Where(m => !keep.Contains(m.Id)));
+        foreach (var m in movements)
+        {
+            if (existing.TryGetValue(m.Id, out var cur))
+            {
+                cur.Date = m.Date;
+                cur.Amount = m.Amount;
+                cur.Description = m.Description;
+                cur.Status = m.Status;
+                cur.LastSyncedAt = now;
+            }
+            else
+            {
+                m.LastSyncedAt = now;
+                ctx.HoldedBankMovements.Add(m);
+            }
+        }
+        await ctx.SaveChangesAsync(ct);
+    }
+
+    public async Task<IReadOnlyList<HoldedBankMovement>> GetBankMovementsAsync(
+        string treasuryAccountId, LocalDate from, LocalDate to, CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        return await ctx.HoldedBankMovements.AsNoTracking()
+            .Where(m => m.TreasuryAccountId == treasuryAccountId && m.Date >= from && m.Date <= to)
+            .ToListAsync(ct);
+    }
+
     public async Task<IReadOnlyList<HoldedContact>> GetContactsAsync(CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);

@@ -266,7 +266,8 @@ internal sealed class FinanceController(
     public async Task<IActionResult> Sepa(
         CancellationToken ct, int days = IFinanceAdminService.DefaultSepaMatchToleranceDays)
     {
-        var (rows, unavailable, unmatched, bankFeedError) = await holdedConnector.GetSepaPayoutsAsync(days, ct);
+        var (rows, unavailable, unmatched, bankFeedError, bankFeedSyncedAt) =
+            await holdedConnector.GetSepaPayoutsAsync(days, ct);
 
         var names = new Dictionary<Guid, string>();
         var ids = rows.Select(r => r.UserId).Distinct().ToList();
@@ -291,7 +292,7 @@ internal sealed class FinanceController(
             .OrderByDescending(f => f.GeneratedAt)
             .ToList();
 
-        return View(new SepaPayoutsPageVm(files, unavailable, unmatched, bankFeedError, days, sepaRunner.Run));
+        return View(new SepaPayoutsPageVm(files, unavailable, unmatched, bankFeedError, bankFeedSyncedAt, days, sepaRunner.Run));
     }
 
     /// <summary>Starts the booking off the request and comes straight back; the page follows it. No

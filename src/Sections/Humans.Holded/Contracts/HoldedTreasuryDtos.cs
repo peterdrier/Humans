@@ -17,6 +17,10 @@ public sealed record HoldedBankMovementDto
     public required string Status { get; init; }
 }
 
+/// <summary>The bank-feed mirror. <paramref name="LastSyncAt"/> is the last successful sync of any window; null
+/// when none has completed.</summary>
+public sealed record HoldedBankMovementMirror(Instant? LastSyncAt, IReadOnlyList<HoldedBankMovementDto> Movements);
+
 public sealed record HoldedReconcileDocumentRef(string DocumentId, string DocumentType);
 
 /// <summary>Reconcile against the payment ids <c>POST purchases/{id}/payments</c> returned, never the purchase

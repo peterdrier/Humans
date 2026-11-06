@@ -59,7 +59,7 @@ internal sealed class Service(
         + "/Holded.";
     private static readonly DateTimeZone MadridZone = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
     private readonly HoldedCategoryAccounts categoryAccounts = new(repo, client, budget, clock, audit, logger);
-    private readonly SepaBankBooking booking = new(repo, client, holded, holdedWrite, clock, bookingState, audit, sepa, logger);
+    private readonly SepaBankBooking booking = new(repo, holded, holdedWrite, clock, bookingState, audit, sepa, logger);
     private readonly SepaPayoutEmails payoutEmails = new(users, emailService, emails, logger);
 
     public Task<HoldedProvisioningPlan> GetProvisioningPlanAsync(int blockStart, CancellationToken ct = default) =>
@@ -462,7 +462,7 @@ internal sealed class Service(
     }
 
     /// <summary>The list shape the booking filter and duplicate matcher read.</summary>
-    private static HoldedPurchaseDocListItemDto ToListItem(HoldedPurchaseDocInfo d) => new()
+    internal static HoldedPurchaseDocListItemDto ToListItem(HoldedPurchaseDocInfo d) => new()
     {
         Id = d.Id,
         DocNumber = d.DocNumber,
@@ -1182,7 +1182,7 @@ internal sealed class Service(
         GetSepaTransfersAsync(CancellationToken ct = default) => booking.GetSepaTransfersAsync(ct);
 
     public Task<(IReadOnlyList<SepaPayoutTransferRow> Rows, string? UnavailableReason,
-        IReadOnlyList<SepaBankMovementVm> UnmatchedMovements, string? BankFeedError)>
+        IReadOnlyList<SepaBankMovementVm> UnmatchedMovements, string? BankFeedError, Instant? BankFeedSyncedAt)>
         GetSepaPayoutsAsync(int toleranceDays = IFinanceAdminService.DefaultSepaMatchToleranceDays,
             CancellationToken ct = default) => booking.GetSepaPayoutsAsync(toleranceDays, ct);
 

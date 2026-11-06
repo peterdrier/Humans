@@ -972,7 +972,7 @@ public class FinanceControllerTests
                 Transfer(older, "old.xml", Stamp(1), admin, Ana, 40000002),
                 Transfer(newer, "new.xml", Stamp(2), admin, Ana, 40000002),
             },
-            null, [], null));
+            null, [], null, null));
         NameThem((Ana, "Ada"), (Bo, "Zoe"), (admin, "Treasurer"));
 
         var page = SepaPageOf(await MakeController().Sepa(TestContext.Current.CancellationToken));
@@ -989,7 +989,7 @@ public class FinanceControllerTests
         using var cancellation = new CancellationTokenSource();
         _connector.GetSepaPayoutsAsync(Arg.Any<int>(), Arg.Any<CancellationToken>()).Returns((
             new List<SepaPayoutTransferRow> { Transfer(Guid.NewGuid(), "f.xml", Stamp(1), Ana, Ana, 40000002) },
-            null, [], null));
+            null, [], null, null));
         _users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(call =>
             {
@@ -1008,7 +1008,7 @@ public class FinanceControllerTests
     {
         _connector.GetSepaPayoutsAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
             .Returns((new List<SepaPayoutTransferRow>(), "Sepa:TreasuryAccountId is not configured.",
-                [], null));
+                [], null, null));
 
         var page = SepaPageOf(await MakeController().Sepa(TestContext.Current.CancellationToken));
 
@@ -1026,7 +1026,7 @@ public class FinanceControllerTests
         };
         _connector.GetSepaPayoutsAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
             .Returns((new List<SepaPayoutTransferRow>(), null,
-                unmatched, null));
+                unmatched, null, null));
 
         var page = SepaPageOf(await MakeController().Sepa(TestContext.Current.CancellationToken));
 
@@ -1038,7 +1038,7 @@ public class FinanceControllerTests
     {
         _connector.GetSepaPayoutsAsync(Arg.Any<int>(), Arg.Any<CancellationToken>()).Returns((
             new List<SepaPayoutTransferRow> { Transfer(Guid.NewGuid(), "f.xml", Stamp(1), Ana, Ana, 40000002) },
-            null, [], "Holded's bank feed did not answer."));
+            null, [], "Holded's bank feed did not answer.", null));
         NameThem((Ana, "Ada"));
 
         var page = SepaPageOf(await MakeController().Sepa(TestContext.Current.CancellationToken));
@@ -1117,7 +1117,7 @@ public class FinanceControllerTests
             WithdrawnByUserId = Bo,
         };
         _connector.GetSepaPayoutsAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
-            .Returns((new List<SepaPayoutTransferRow> { row }, null, [], null));
+            .Returns((new List<SepaPayoutTransferRow> { row }, null, [], null, null));
         NameThem((Ana, "Ada"), (Bo, "Zoe"), (admin, "Treasurer"));
 
         var page = SepaPageOf(await MakeController().Sepa(TestContext.Current.CancellationToken));
@@ -1198,7 +1198,7 @@ public class FinanceControllerTests
     public async Task Sepa_PassesThePostedToleranceToTheServiceAndThePage()
     {
         _connector.GetSepaPayoutsAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
-            .Returns((new List<SepaPayoutTransferRow>(), null, new List<SepaBankMovementVm>(), null));
+            .Returns((new List<SepaPayoutTransferRow>(), null, new List<SepaBankMovementVm>(), null, null));
 
         var page = SepaPageOf(await MakeController().Sepa(TestContext.Current.CancellationToken, days: 7));
 
@@ -1259,7 +1259,7 @@ public class FinanceControllerTests
         };
         var model = new SepaPayoutsPageVm([
             new(fileId, "f.xml", Stamp(1), generatedBy,
-                [new(booked, "Confirmation name"), new(withdrawn, "Confirmation name")], null)], null, [], null, 3);
+                [new(booked, "Confirmation name"), new(withdrawn, "Confirmation name")], null)], null, [], null, null, 3);
 
         var html = await RenderAsync("Sepa", model);
 

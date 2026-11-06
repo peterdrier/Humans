@@ -17,8 +17,7 @@ current and metering every call against the allowance is part of the job.
 Good looks like: every balance a member or admin sees comes from the cache, the cache is never
 silently short, and every call is counted. The section's own pages show the cached copies and the
 API-call accounting, nothing more. Out of scope: summaries and decisions about money (Finance owns
-them; Expenses and Store decide in their own lanes), keying anything by member, and mirroring the
-bank feed.
+them; Expenses and Store decide in their own lanes), and keying anything by member.
 
 The **ledger mirror**: a local, re-derivable copy of Holded's daybook and chart of accounts,
 plus the sync that maintains it and the `/Holded` admin screen. The **purchase-document mirror**
@@ -55,8 +54,9 @@ to this section too and has its own doc ([`Holded-connector.md`](Holded-connecto
 | `holded_accounts` | chart-of-accounts cache with Holded's debit/credit/balance totals |
 | `holded_api_calls` | per-call metering (endpoint, status, rate-limit headers) |
 | `holded_purchase_docs` | purchase-document mirror keyed on Holded's doc id: number, contact, description, Madrid date, amounts, approved (`draft == false`; absent reads as not approved), payments pending (null until re-synced), notes, doc + line tags, first line's booked account |
+| `holded_bank_movements` | bank-feed mirror keyed on `(TreasuryAccountId, Id)`: date, signed amount, description, status. Window replace: a sync is the truth for its date window plus any id it returned |
 | `holded_contacts` | contact mirror keyed on Holded's contact id: name, supplier account number, trade name, email, phone, mobile, IBAN, tax code, address. Full pull with replace semantics |
-| `holded_sync_states` | one row per sync kind (`Ledger`, `Accounts`, `FullSync`, `PurchaseDocs`), lazy-created |
+| `holded_sync_states` | one row per sync kind (`Ledger`, `Accounts`, `FullSync`, `PurchaseDocs`, `Contacts`, `BankMovements`), lazy-created |
 
 Sentinel table is `holded_accounts` — created by this baseline alone, so its existence proves
 the baseline ran. (`holded_ledger_lines` could not carry that proof: the historical chain and
@@ -154,8 +154,11 @@ is safe to repeat, and returns an outcome, never a Holded id.
   (an older document's lines leave the mirror at the nightly balance check's re-pull).
 - `PostJournalEntryAsync` — the client's ledger-entry post behind the face; not idempotent, the
   outcome says whether Holded confirmed it.
+- `PayPurchaseDocumentAsync` / `ReconcileBankMovementAsync` — the client's treasury payment and
+  bank-line reconcile behind the face, for SEPA booking. The payment returns Holded's payment id
+  (or an `unconfirmed:` marker), the one Holded id this face hands out: the reconcile must name it.
 
-Not here yet: paying a creditor from a treasury, the bank feed and reconcile, sales documents (they
+Not here yet: sales documents (they
 move with the Finance and Store phases). Callers still on `IHoldedClient` are debt `CENTRAL-105`.
 Audit entries stay with the calling section, which knows why it wrote.
 
@@ -208,11 +211,12 @@ Audit entries stay with the calling section, which knows why it wrote.
   `Checked` (Holded's manual tick, not bank reconciliation; null until the line is re-synced).
   `doc_description` and `tags` are not stored.
 - API-call metering drains honour cancellation before consuming the buffer, then persist consumed records independently of request cancellation. Overview reads remain cancellable afterward.
-- The treasury bank feed (`IHoldedClient.ListBankMovementsAsync` /
-  `ReconcileBankMovementAsync`) is **not** mirrored here — Finance's SEPA booking flow
-  (nobodies-collective/Humans#1185) reads it live over a bounded window; its rules are in
-  [`Holded-connector.md`](Holded-connector.md). A follow-up reconciliation panel is where a
-  bank-movements mirror table would land; see `2026-08-10-holded-v2-migration-design.md`.
+- The treasury bank feed is mirrored per window: `SyncBankMovementsAsync(treasury, from, to)` reads
+  Holded's feed for that window and replaces it in `holded_bank_movements`; `GetBankMovementsAsync`
+  reads the mirror with the `BankMovements` state's `LastSyncAt` (null until a sync succeeds). A
+  sync already running answers false, a failed one throws and keeps the last good stamp. Finance's
+  SEPA booking syncs before every read it moves money on; `/Finance/Sepa` reads the mirror alone.
+  The feed's parsing rules are in [`Holded-connector.md`](Holded-connector.md).
 - Nothing here is keyed by member, so this section holds no consent gate and no erasure path.
   It is not free of personal data: a creditor account's name is the member's and the lines on it
   are their reimbursement history, identifiable through Finance's member→creditor binding.

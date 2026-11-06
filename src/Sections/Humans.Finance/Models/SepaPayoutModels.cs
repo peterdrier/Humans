@@ -94,7 +94,7 @@ internal sealed record SepaPayoutFileVm(
 /// <list type="bullet">
 /// <item><paramref name="UnavailableReason"/> is set when missing configuration turns booking off for every row; the
 /// page says so once.</item>
-/// <item><paramref name="BankFeedError"/> is set when the live feed failed: every row falls back to "waiting for the
+/// <item><paramref name="BankFeedError"/> is set when the feed mirror has never synced: every row falls back to "waiting for the
 /// Sabadell line" and the page shows a banner instead of failing.</item>
 /// <item><paramref name="ToleranceDays"/> is the page's editable matching window, posted back with every booking.</item>
 /// </list>
@@ -104,6 +104,7 @@ internal sealed record SepaPayoutsPageVm(
     string? UnavailableReason,
     IReadOnlyList<SepaBankMovementVm> UnmatchedMovements,
     string? BankFeedError,
+    Instant? BankFeedSyncedAt,
     int ToleranceDays,
     SepaBookingRunVm? Run = null);
 

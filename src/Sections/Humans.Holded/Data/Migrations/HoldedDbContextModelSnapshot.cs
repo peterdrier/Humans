@@ -99,6 +99,40 @@ namespace Humans.Holded.Data.Migrations
                     b.ToTable("holded_api_calls", (string)null);
                 });
 
+            modelBuilder.Entity("Humans.Holded.Domain.HoldedBankMovement", b =>
+                {
+                    b.Property<string>("TreasuryAccountId")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("Id")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<decimal>("Amount")
+                        .HasColumnType("decimal(14,2)");
+
+                    b.Property<LocalDate>("Date")
+                        .HasColumnType("date");
+
+                    b.Property<string>("Description")
+                        .HasColumnType("text");
+
+                    b.Property<Instant>("LastSyncedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.HasKey("TreasuryAccountId", "Id");
+
+                    b.HasIndex("TreasuryAccountId", "Date");
+
+                    b.ToTable("holded_bank_movements", (string)null);
+                });
+
             modelBuilder.Entity("Humans.Holded.Domain.HoldedContact", b =>
                 {
                     b.Property<string>("Id")
