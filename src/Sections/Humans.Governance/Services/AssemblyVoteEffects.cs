@@ -146,15 +146,15 @@ internal sealed class AssemblyVoteEffects(
 
         foreach (var (rosterRow, rows, info, address, language) in recipients)
         {
-            // Re-read per recipient, with the clock: a stop, cancel, extend or lapse mid-batch
-            // ends it rather than mailing the rest a deadline — or a vote — that no longer stands.
-            var sentAt = clock.GetCurrentInstant();
-            var current = await repository.GetByIdAsync(vote.Id, ct);
-            if (current is null || !current.AcceptsBallotsAt(sentAt)) break;
-            var closesAt = AssemblyVotePresentation.ClosingLocal(current.ClosesAt);
-
             try
             {
+                // Re-read per recipient, with the clock: a stop, cancel, extend or lapse mid-batch
+                // ends it rather than mailing the rest a deadline — or a vote — that no longer stands.
+                var sentAt = clock.GetCurrentInstant();
+                var current = await repository.GetByIdAsync(vote.Id, ct);
+                if (current is null || !current.AcceptsBallotsAt(sentAt)) break;
+                var closesAt = AssemblyVotePresentation.ClosingLocal(current.ClosesAt);
+
                 await email.SendAsync(
                     WithRosterDeliveryId(messages.AssemblyVoteOpened(
                         info.Id,
@@ -341,31 +341,31 @@ internal sealed class AssemblyVoteEffects(
 
             foreach (var (rosterRow, rows, info, address, language) in recipients)
             {
-                // Eligibility is re-read per recipient, not trusted from the list: sending
-                // the whole roster takes long enough for somebody to vote, or for an Admin to
-                // stop, cancel or extend the vote, and "you have not voted and the vote closes
-                // soon" is wrong in each case — all but the first for everybody left.
-                var current = await repository.GetByIdAsync(vote.Id, ct);
-                if (current is null || current.Status != AssemblyVoteStatus.Open) break;
-
-                // The clock per recipient, read after the vote: a lapse mid-batch stops the
-                // mailing, and an Extend committed before this read cannot clear this stamp.
-                var sentAt = clock.GetCurrentInstant();
-
-                // The deadline from that same read: an Extend mid-batch moves it, and the rest of
-                // the roster is reminded when the new deadline comes into range.
-                if (current.ClosesAt <= sentAt || current.ClosesAt > sentAt + ReminderLeadTime) break;
-                var closesAt = AssemblyVotePresentation.ClosingLocal(current.ClosesAt);
-
-                // Over every row the human holds: a ballot cast mid-batch lands on whichever
-                // of their rows EffectiveRosterAsync resolved them to.
-                if (await HasBallotOnAnyRowAsync(vote.Id, rows, ct))
-                {
-                    continue;
-                }
-
                 try
                 {
+                    // Eligibility is re-read per recipient, not trusted from the list: sending
+                    // the whole roster takes long enough for somebody to vote, or for an Admin to
+                    // stop, cancel or extend the vote, and "you have not voted and the vote closes
+                    // soon" is wrong in each case — all but the first for everybody left.
+                    var current = await repository.GetByIdAsync(vote.Id, ct);
+                    if (current is null || current.Status != AssemblyVoteStatus.Open) break;
+
+                    // The clock per recipient, read after the vote: a lapse mid-batch stops the
+                    // mailing, and an Extend committed before this read cannot clear this stamp.
+                    var sentAt = clock.GetCurrentInstant();
+
+                    // The deadline from that same read: an Extend mid-batch moves it, and the rest of
+                    // the roster is reminded when the new deadline comes into range.
+                    if (current.ClosesAt <= sentAt || current.ClosesAt > sentAt + ReminderLeadTime) break;
+                    var closesAt = AssemblyVotePresentation.ClosingLocal(current.ClosesAt);
+
+                    // Over every row the human holds: a ballot cast mid-batch lands on whichever
+                    // of their rows EffectiveRosterAsync resolved them to.
+                    if (await HasBallotOnAnyRowAsync(vote.Id, rows, ct))
+                    {
+                        continue;
+                    }
+
                     await email.SendAsync(
                         WithRosterDeliveryId(messages.AssemblyVoteReminder(
                             info.Id,

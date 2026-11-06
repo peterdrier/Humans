@@ -17,6 +17,8 @@ using Microsoft.Extensions.Localization;
 using Humans.AuditLog.Contracts;
 using Humans.Email.Contracts;
 using Humans.Governance.Domain;
+using Humans.Governance.Data;
+using Microsoft.Extensions.Logging.Abstractions;
 using Humans.Governance.Services;
 using Humans.Governance.Services.Dtos;
 using Humans.Governance.Tests.Infrastructure;
@@ -2634,6 +2636,65 @@ public sealed class AssemblyVoteServiceTests : IDisposable
             .FirstAsync(v => v.Id == vote.Id, TestContext.Current.CancellationToken);
         persisted.Status.Should().Be(AssemblyVoteStatus.Closed);
         persisted.ClosesAt.Should().Be(extended, "the extension is the newer fact");
+    }
+
+    public enum AssemblyDeliveryRead { OpeningEligibility, ReminderEligibility, ReminderBallot }
+
+    [HumansTheory]
+    [InlineData(AssemblyDeliveryRead.OpeningEligibility)]
+    [InlineData(AssemblyDeliveryRead.ReminderEligibility)]
+    [InlineData(AssemblyDeliveryRead.ReminderBallot)]
+    public async Task AssemblyDelivery_ReadFailureLeavesRecipientDueAndContinues(AssemblyDeliveryRead read)
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var now = _fx.Clock.GetCurrentInstant();
+        var vote = await _fx.AddVoteAsync(closesAt: now + Duration.FromHours(12));
+        var failed = Guid.NewGuid();
+        var reached = Guid.NewGuid();
+        _fx.StubActiveUsers(failed, reached);
+        var opening = read == AssemblyDeliveryRead.OpeningEligibility;
+        var failedRow = await _fx.AddRosterRowAsync(vote.Id, failed, isOfficial: true, notified: !opening);
+        var reachedRow = await _fx.AddRosterRowAsync(vote.Id, reached, isOfficial: true, notified: !opening);
+        IReadOnlyList<AssemblyVoteRoster> roster = [failedRow, reachedRow];
+        var repo = Substitute.For<IAssemblyVoteRepository>();
+        repo.GetRosterAsync(vote.Id, ct).Returns(roster);
+        repo.GetRosterNeedingReminderAsync(vote.Id, ct).Returns(roster);
+        repo.GetOpenVotesClosingBetweenAsync(now, now + Duration.FromHours(24), ct)
+            .Returns(new[] { vote });
+        repo.GetByIdAsync(vote.Id, ct).Returns(vote);
+        var failure = new IOException("Recipient eligibility read failed");
+        if (read == AssemblyDeliveryRead.ReminderBallot)
+            repo.GetBallotForRosterAsync(vote.Id, failedRow.Id, ct)
+                .Returns(Task.FromException<AssemblyBallot?>(failure));
+        else
+            repo.GetByIdAsync(vote.Id, ct)
+                .Returns(_ => Task.FromException<AssemblyVote?>(failure), _ => Task.FromResult<AssemblyVote?>(vote));
+        var effects = new AssemblyVoteEffects(repo, _fx.Users, _fx.Email, _fx.Messages,
+            _fx.Notifications, _fx.NotificationResolve, _fx.Audit, _fx.Clock,
+            NullLogger.Instance, AssemblyVoteService.MaxTitleLength, AssemblyVoteService.LapseJobName);
+        var failures = new List<Exception>();
+
+        if (opening) await effects.RetryOpenedEmailsAsync(vote, failures, ct);
+        else await effects.SendRemindersAsync(now, failures, ct);
+
+        failures.Should().ContainSingle().Which.Should().BeSameAs(failure);
+        var delivered = _fx.Email.ReceivedCalls().Should().ContainSingle().Subject
+            .GetArguments()[0].Should().BeOfType<EmailMessage>().Subject;
+        delivered.UserId.Should().Be(reached);
+        if (opening)
+        {
+            await repo.Received(1).StampNotifiedAsync(
+                Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Count == 1 && ids.Contains(reachedRow.Id)), now, vote.ClosesAt, ct);
+            await repo.DidNotReceive().StampNotifiedAsync(
+                Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Contains(failedRow.Id)), Arg.Any<Instant>(), Arg.Any<Instant>(), ct);
+        }
+        else
+        {
+            await repo.Received(1).StampReminderSentAsync(
+                Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Count == 1 && ids.Contains(reachedRow.Id)), now, vote.ClosesAt, ct);
+            await repo.DidNotReceive().StampReminderSentAsync(
+                Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Contains(failedRow.Id)), Arg.Any<Instant>(), Arg.Any<Instant>(), ct);
+        }
     }
 
     [HumansTheory]
