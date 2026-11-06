@@ -1331,66 +1331,84 @@ internal sealed class ExpenseReportService(
 
             var outboxEventId = Guid.NewGuid();
             var now = clock.GetCurrentInstant();
-            bool ok;
-            if (report.PreapprovalGrantId is not { } consumedGrantId)
-            {
-                ok = await repo.ApproveAsync(
-                    reportId, actorUserId, overrideBooking, maxAmount, now, outboxEventId, ct);
-            }
-            else
-            {
-                var afterCommit = new List<Func<CancellationToken, Task>>();
-                using (var scope = new TransactionScope(
-                    TransactionScopeOption.Required,
-                    new TransactionOptions { IsolationLevel = IsolationLevel.ReadCommitted },
-                    TransactionScopeAsyncFlowOption.Enabled))
-                {
-                    var consumption = await preapprovalWrites.ConsumeAsync(consumedGrantId, reportId, actorUserId, ct, afterCommit.Add);
-                    if (consumption.Refusal is { } refusal)
-                    {
-                        logger.LogWarning("Pre-approval {GrantId} refused consumption by report {ReportId}: {Reason}", consumedGrantId, reportId, refusal);
-                        return ExpenseMutationResult.OperatorFailure("The report's pre-approval was revoked or is no longer held by it; reject the report.");
-                    }
-                    ok = await repo.ApproveAsync(
-                        reportId, actorUserId, overrideBooking, maxAmount, now, outboxEventId, ct);
-                    if (ok) scope.Complete();
-                }
-                if (ok)
-                    foreach (var complete in afterCommit) await complete(CancellationToken.None);
-            }
-            if (!ok) return ExpenseMutationResult.OperatorFailure("Could not approve the report. It may not be in an approvable status.");
-
-            await auditLogService.LogAsync(
-                ExpensesAuditActions.ExpenseApprove,
-                AuditEntityTypes.Report, reportId,
-                "Finance approved expense report." + MaxAmountDetail(maxAmount)
-                + (report.PreapprovalGrantId is { } g ? $" Consumed pre-approval {g}." : ""),
-                actorUserId);
-
-            if (overrideBooking is not null)
-            {
-                await auditLogService.LogAsync(
-                    ExpensesAuditActions.ExpenseCategoryOverride,
-                    AuditEntityTypes.Report, reportId,
-                    $"Account overridden during approval from {report.HoldedAccountNumber} to {overrideBooking.HoldedAccountNumber}"
-                    + (overrideBooking.BudgetCategoryId is { } overrideCategory
-                        ? $" (budget category {overrideCategory})."
-                        : " (no budget category)."),
-                    actorUserId);
-            }
-
-            // The approval is committed and its Holded push queued; a failed notice must not
-            // report it as a failed approval.
+            bool? ok = null;
+            var attempted = false;
+            var committed = false;
             try
             {
-                await SendApprovedEmailAsync(reportId, ct);
-            }
-            catch (Exception ex) when (ex is not OperationCanceledException)
-            {
-                logger.LogError(ex, "Expense report {ReportId} approved but the approval email failed", reportId);
-            }
+                if (report.PreapprovalGrantId is not { } consumedGrantId)
+                {
+                    attempted = true;
+                    ok = await repo.ApproveAsync(
+                        reportId, actorUserId, overrideBooking, maxAmount, now, outboxEventId, ct);
+                    committed = ok == true;
+                }
+                else
+                {
+                    var afterCommit = new List<Func<CancellationToken, Task>>();
+                    using (var scope = new TransactionScope(
+                        TransactionScopeOption.Required,
+                        new TransactionOptions { IsolationLevel = IsolationLevel.ReadCommitted },
+                        TransactionScopeAsyncFlowOption.Enabled))
+                    {
+                        var consumption = await preapprovalWrites.ConsumeAsync(consumedGrantId, reportId, actorUserId, ct, afterCommit.Add);
+                        if (consumption.Refusal is { } refusal)
+                        {
+                            logger.LogWarning("Pre-approval {GrantId} refused consumption by report {ReportId}: {Reason}", consumedGrantId, reportId, refusal);
+                            return ExpenseMutationResult.OperatorFailure("The report's pre-approval was revoked or is no longer held by it; reject the report.");
+                        }
+                        attempted = true;
+                        ok = await repo.ApproveAsync(
+                            reportId, actorUserId, overrideBooking, maxAmount, now, outboxEventId, ct);
+                        if (ok == true) scope.Complete();
+                    }
+                    if (ok == true)
+                    {
+                        committed = true;
+                        foreach (var complete in afterCommit) await complete(CancellationToken.None);
+                    }
+                }
+                if (ok != true) return ExpenseMutationResult.OperatorFailure("Could not approve the report. It may not be in an approvable status.");
 
-            return ExpenseMutationResult.Success;
+                await auditLogService.LogAsync(
+                    ExpensesAuditActions.ExpenseApprove,
+                    AuditEntityTypes.Report, reportId,
+                    "Finance approved expense report." + MaxAmountDetail(maxAmount)
+                    + (report.PreapprovalGrantId is { } g ? $" Consumed pre-approval {g}." : ""),
+                    actorUserId);
+
+                if (overrideBooking is not null)
+                {
+                    await auditLogService.LogAsync(
+                        ExpensesAuditActions.ExpenseCategoryOverride,
+                        AuditEntityTypes.Report, reportId,
+                        $"Account overridden during approval from {report.HoldedAccountNumber} to {overrideBooking.HoldedAccountNumber}"
+                        + (overrideBooking.BudgetCategoryId is { } overrideCategory
+                            ? $" (budget category {overrideCategory})."
+                            : " (no budget category)."),
+                        actorUserId);
+                }
+                return ExpenseMutationResult.Success;
+            }
+            finally
+            {
+                if (committed || (attempted && ok != false))
+                {
+                    try
+                    {
+                        // The report and its push event commit atomically. Match this attempt's event before
+                        // announcing an approval whose save acknowledgement failed.
+                        if (!committed)
+                            committed = (await repo.GetLatestOutboxForReportAsync(reportId, CancellationToken.None))?.Id == outboxEventId;
+                        if (committed)
+                            await SendApprovedEmailAsync(reportId, CancellationToken.None);
+                    }
+                    catch (Exception ex)
+                    {
+                        logger.LogError(ex, "Could not verify approval or send its notification for expense report {ReportId}", reportId);
+                    }
+                }
+            }
 
         }, "Error approving expense report {ReportId}", reportId);
 

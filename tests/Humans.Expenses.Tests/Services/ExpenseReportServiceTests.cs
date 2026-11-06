@@ -3131,6 +3131,77 @@ public sealed partial class ExpenseReportServiceTests
         await _emailService.DidNotReceive().SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>());
     }
 
+    [HumansTheory]
+    [InlineData("before")]
+    [InlineData("after")]
+    [InlineData("audit")]
+    [InlineData("callback")]
+    [InlineData("verification")]
+    [InlineData("notice-cancel")]
+    public async Task ApprovalFailureBoundary_AttemptsNoticeOnlyForConfirmedCommits(string failureStage)
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var (_, category) = SetupActiveYear();
+        var reportId = Guid.NewGuid();
+        var submitter = Guid.NewGuid();
+        var actor = Guid.NewGuid();
+        var failure = new IOException("Approval follow-up failed");
+        if (string.Equals(failureStage, "callback", StringComparison.Ordinal))
+        {
+            var grant = MakeGrant(status: GrantStatus.Claimed);
+            await SeedGrantReportAsync(reportId, submitter, grant.Id, ExpenseReportStatus.Submitted);
+            _preapprovals.GetGrantAsync(grant.Id, Arg.Any<CancellationToken>()).Returns(grant);
+            _preapprovalWrites.ConsumeAsync(grant.Id, reportId, actor, Arg.Any<CancellationToken>(),
+                Arg.Any<Action<Func<CancellationToken, Task>>?>()).Returns(call =>
+                {
+                    call.ArgAt<Action<Func<CancellationToken, Task>>>(4)(_ => Task.FromException(failure));
+                    return new PreapprovalWriteResult();
+                });
+        }
+        else
+            await SeedReportWithStatusAsync(reportId, submitter, category.Id, Guid.NewGuid(), ExpenseReportStatus.Submitted);
+        StubSubmitter(submitter, "Ana", "ana@example.com", "es");
+        var attempts = 0;
+        _emailService.SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            call.Arg<CancellationToken>().Should().Be(CancellationToken.None);
+            attempts++;
+            return string.Equals(failureStage, "notice-cancel", StringComparison.Ordinal)
+                ? Task.FromException(new OperationCanceledException("Provider cancelled")) : Task.CompletedTask;
+        });
+        var options = new DbContextOptionsBuilder<ExpensesDbContext>(_expensesOptions);
+        if (failureStage is "before" or "after" or "verification")
+            options.AddInterceptors(new FailRemovalSave(failure, string.Equals(failureStage, "before", StringComparison.Ordinal)));
+        var inner = new ExpenseRepository(new TestDbContextFactory<ExpensesDbContext>(options.Options));
+        var repository = Substitute.For<IExpenseRepository>();
+        repository.GetByIdAsync(reportId, Arg.Any<CancellationToken>()).Returns(call => inner.GetByIdAsync(reportId, call.Arg<CancellationToken>()));
+        repository.ApproveAsync(reportId, actor, Arg.Any<ExpenseBooking?>(), Arg.Any<decimal?>(), Arg.Any<Instant>(),
+            Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(call => inner.ApproveAsync(reportId, actor,
+                call.ArgAt<ExpenseBooking?>(2), call.ArgAt<decimal?>(3), call.ArgAt<Instant>(4), call.ArgAt<Guid>(5), call.Arg<CancellationToken>()));
+        repository.GetLatestOutboxForReportAsync(reportId, Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            call.Arg<CancellationToken>().Should().Be(CancellationToken.None);
+            return string.Equals(failureStage, "verification", StringComparison.Ordinal)
+                ? Task.FromException<HoldedExpenseOutboxEvent?>(new IOException("Verification unavailable"))
+                : inner.GetLatestOutboxForReportAsync(reportId, call.Arg<CancellationToken>());
+        });
+        if (string.Equals(failureStage, "audit", StringComparison.Ordinal))
+            AuditLog.LogAsync(ExpensesAuditActions.ExpenseApprove, AuditEntityTypes.Report, reportId, Arg.Any<string>(), actor)
+                .Returns(Task.FromException(failure));
+        var service = new ExpenseReportService(repository, _fileStorage, _budgetService, _teamService,
+            _userService, _emailService, TestExpensesEmails.Create(), AuditLog, Substitute.For<IAuditViewerService>(),
+            _holdedService, _finance, _financeWrite, _preapprovals, _preapprovalWrites, Clock,
+            NullLogger<ExpenseReportService>.Instance, Options.Create(new TravelReimbursementConfig()));
+
+        var result = await service.ApproveWithResultAsync(reportId, actor, null, null, ct);
+
+        result.Succeeded.Should().Be(string.Equals(failureStage, "notice-cancel", StringComparison.Ordinal));
+        attempts.Should().Be(failureStage is "before" or "verification" ? 0 : 1);
+        await using var verify = new ExpensesDbContext(_expensesOptions);
+        (await verify.ExpenseReports.SingleAsync(ct)).Status.Should().Be(
+            string.Equals(failureStage, "before", StringComparison.Ordinal) ? ExpenseReportStatus.Submitted : ExpenseReportStatus.Approved);
+    }
+
     [HumansFact]
     public async Task ApproveWithResultAsync_WhenTheApprovalEmailFails_StillReportsSuccess()
     {
