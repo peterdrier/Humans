@@ -231,6 +231,8 @@ it wrote.
   The contact mirror holds the same personal data Holded's contact list does (a member's name,
   IBAN, email, phone, address). It is keyed by Holded's contact id, not by member, follows Holded
   on every sync, and Finance's creditor statement and payout already read it through the binding.
+  Finance's contributor exports each bound contact's row (its `HoldedCreditorContacts` slice, IBAN
+  masked) and declares fiscal retention for it: the row mirrors Holded's counterparty record.
 
 ## Negative Access Rules
 
