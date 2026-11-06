@@ -207,6 +207,82 @@ public class SurveyServiceTests
         await _repo.DidNotReceive().AddAsync(Arg.Any<Survey>(), Arg.Any<CancellationToken>());
     }
 
+    public enum InvitationDeliveryFailure { EnqueueAcknowledgement, StatusMarker }
+
+    [HumansTheory]
+    [InlineData(InvitationDeliveryFailure.EnqueueAcknowledgement)]
+    [InlineData(InvitationDeliveryFailure.StatusMarker)]
+    public async Task SendInvitesAsync_retry_reuses_delivery_without_suppressing_reminder(InvitationDeliveryFailure failureStage)
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var teamId = Guid.NewGuid();
+        var userId = Guid.NewGuid();
+        var survey = SurveyWith(SurveyStatus.Open, SurveyAudienceType.Team, teamId);
+        var invitation = new SurveyInvitation
+        {
+            Id = Guid.NewGuid(), SurveyId = survey.Id, UserId = userId, CreatedAt = _clock.GetCurrentInstant()
+        };
+        _repo.GetByIdAsync(survey.Id, Arg.Any<CancellationToken>()).Returns(survey);
+        _repo.GetInvitationsAsync(survey.Id, Arg.Any<CancellationToken>()).Returns([invitation]);
+        _teamService.GetTeamAsync(teamId, Arg.Any<CancellationToken>()).Returns(TeamWith(teamId, userId));
+        _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(new Dictionary<Guid, UserInfo>
+            {
+                [userId] = UserInfoWithName(userId, string.Empty, string.Empty) with { IdentityEmailColumn = "human@example.org" }
+            }));
+        _tokenProvider.Create(invitation.Id).Returns("token");
+        var deliveries = new Dictionary<Guid, EmailMessage>();
+        var attempts = new List<EmailMessage>();
+        var failed = false;
+        _emailService.SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            var message = call.Arg<EmailMessage>();
+            attempts.Add(message);
+            // Email's persisted-enqueue contract: only an explicit delivery id is idempotent.
+            deliveries.TryAdd(message.DeliveryId ?? Guid.NewGuid(), message);
+            if (!failed && failureStage == InvitationDeliveryFailure.EnqueueAcknowledgement)
+            {
+                failed = true;
+                throw new IOException("Enqueue acknowledgement lost");
+            }
+            return Task.CompletedTask;
+        });
+        _repo.UpdateInvitationStatusAsync(invitation.Id, Arg.Any<EmailOutboxStatus>(), Arg.Any<Instant>(), Arg.Any<CancellationToken>())
+            .Returns(call =>
+            {
+                var status = call.Arg<EmailOutboxStatus>();
+                if (!failed && status == EmailOutboxStatus.Queued && failureStage == InvitationDeliveryFailure.StatusMarker)
+                {
+                    failed = true;
+                    throw new IOException("Invitation status save failed");
+                }
+                if (status == EmailOutboxStatus.Queued) invitation.SentAt = call.Arg<Instant>();
+                invitation.LatestEmailStatus = status;
+                return Task.CompletedTask;
+            });
+        var service = CreateService();
+
+        (await service.SendInvitesAsync(survey.Id, Guid.NewGuid(), ct)).Failed.Should().Be(1);
+        invitation.SentAt.Should().BeNull();
+        (await service.SendInvitesAsync(survey.Id, Guid.NewGuid(), ct)).EmailsQueued.Should().Be(1);
+
+        attempts.Should().HaveCount(2);
+        attempts[0].DeliveryId.Should().NotBeNull();
+        attempts[1].DeliveryId.Should().Be(attempts[0].DeliveryId);
+        attempts[0].DeliveryId.Should().NotBe(invitation.Id);
+        deliveries.Should().ContainSingle();
+        invitation.SentAt.Should().NotBeNull();
+        (await service.SendInvitesAsync(survey.Id, Guid.NewGuid(), ct)).InvitationsCreated.Should().Be(0);
+        attempts.Should().HaveCount(2);
+
+        invitation.SentAt = _clock.GetCurrentInstant() - Duration.FromDays(8);
+        _repo.GetInvitationsDueForReminderAsync(Arg.Any<Instant>(), Arg.Any<CancellationToken>()).Returns([invitation]);
+        (await CreateReminderSender().SendDueRemindersAsync(ct)).Should().Be(1);
+
+        deliveries.Should().HaveCount(2);
+        deliveries[invitation.Id].TemplateName.Should().Be("survey_reminder");
+    }
+
     [HumansTheory]
     [InlineData(SurveyQuestionType.SingleChoice, false, 100)]
     [InlineData(SurveyQuestionType.SingleChoice, false, 101)]

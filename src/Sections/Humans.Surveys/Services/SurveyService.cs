@@ -1,4 +1,6 @@
 using Humans.GoogleIntegration.Contracts;
+using System.Security.Cryptography;
+using System.Text;
 using Humans.Base.Extensions;
 using Humans.Base.Threading;
 using Humans.AuditLog.Contracts;
@@ -509,6 +511,12 @@ internal sealed class SurveyService(
                 var msg = emailMessages.SurveyInvitation(
                     userId,
                     email, name, title, token, culture, customSubject, customMessage);
+                // Retry the invitation delivery without consuming the reminder's invitation-id delivery key.
+                var deliveryKey = $"{msg.TemplateName}:{inv.Id:N}";
+                msg = msg with
+                {
+                    DeliveryId = new Guid(SHA256.HashData(Encoding.UTF8.GetBytes(deliveryKey)).AsSpan(0, 16))
+                };
 
                 await emailService.SendAsync(msg, sendCt);
                 await repo.UpdateInvitationStatusAsync(
