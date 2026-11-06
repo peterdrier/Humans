@@ -18,6 +18,81 @@ namespace Humans.Users.Tests.Services;
 
 public class UserEmailServiceTests
 {
+    public enum RemovalOverlap { UnlinkThenDelete, UnlinkThenUnlink, DeleteThenUnlink }
+
+    [HumansTheory]
+    [Xunit.InlineData(RemovalOverlap.UnlinkThenDelete)]
+    [Xunit.InlineData(RemovalOverlap.UnlinkThenUnlink)]
+    [Xunit.InlineData(RemovalOverlap.DeleteThenUnlink)]
+    public async Task OverlappingRemovals_AcrossServiceScopes_PreserveAVerifiedSignInMethod(RemovalOverlap overlap)
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var userId = Guid.NewGuid();
+        var user = new User { Id = userId };
+        var linked = new UserEmail
+        {
+            Id = Guid.NewGuid(), UserId = userId, Email = "linked@example.com", IsVerified = true,
+            IsPrimary = true, Provider = "Google", ProviderKey = "linked-key"
+        };
+        var other = new UserEmail
+        {
+            Id = Guid.NewGuid(), UserId = userId, Email = "other@example.com", IsVerified = true,
+            Provider = overlap == RemovalOverlap.UnlinkThenUnlink ? "GitHub" : null,
+            ProviderKey = overlap == RemovalOverlap.UnlinkThenUnlink ? "other-key" : null
+        };
+        var rows = new List<UserEmail> { linked, other };
+        _repository.GetUserEmailByIdAndUserIdAsync(Arg.Any<Guid>(), userId, Arg.Any<CancellationToken>())
+            .Returns(call => rows.SingleOrDefault(row => row.Id == call.ArgAt<Guid>(0)));
+        _repository.GetUserEmailsByUserIdForMutationAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(_ => Task.FromResult<IReadOnlyList<UserEmail>>(rows.ToList()));
+        _repository.RemoveUserEmailAsync(Arg.Any<UserEmail>(), Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            rows.Remove(call.Arg<UserEmail>());
+            return Task.CompletedTask;
+        });
+        _userManager.FindByIdAsync(userId.ToString()).Returns(user);
+        var firstReachedRemoval = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var releaseFirst = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        _userManager.RemoveLoginAsync(user, Arg.Any<string>(), Arg.Any<string>()).Returns(async call =>
+        {
+            if (overlap != RemovalOverlap.DeleteThenUnlink
+                && string.Equals(call.ArgAt<string>(2), "linked-key", StringComparison.Ordinal))
+            {
+                firstReachedRemoval.SetResult();
+                await releaseFirst.Task.WaitAsync(ct);
+            }
+            return IdentityResult.Success;
+        });
+        if (overlap == RemovalOverlap.DeleteThenUnlink)
+            _ticketService.GetTicketOrdersAsync(Arg.Any<CancellationToken>()).Returns(async _ =>
+            {
+                firstReachedRemoval.SetResult();
+                await releaseFirst.Task.WaitAsync(ct);
+                return (IReadOnlyList<TicketOrderInfo>)[];
+            });
+
+        var secondScope = new UserEmailService(_repository, _userService, _userManager, _clock,
+            _auditLogService, _serviceProvider, NullLogger<UserEmailService>.Instance);
+        var first = RemoveFirstAsync();
+        await firstReachedRemoval.Task.WaitAsync(ct);
+        var second = RemoveSecondAsync();
+        releaseFirst.SetResult();
+        var results = await Task.WhenAll(first, second);
+
+        results.Should().Equal(true, false);
+        rows.Should().ContainSingle().Which.IsVerified.Should().BeTrue();
+        await _repository.Received(1).RemoveUserEmailAsync(Arg.Any<UserEmail>(), Arg.Any<CancellationToken>());
+
+        async Task<bool> RemoveFirstAsync() => overlap == RemovalOverlap.DeleteThenUnlink
+            ? (await _service.DeleteEmailAsync(userId, other.Id, ct)).Succeeded
+            : (await _service.UnlinkAsync(userId, linked.Id, userId, ct)).Succeeded;
+
+        async Task<bool> RemoveSecondAsync() => overlap == RemovalOverlap.UnlinkThenDelete
+            ? (await secondScope.DeleteEmailAsync(userId, other.Id, ct)).Succeeded
+            : (await secondScope.UnlinkAsync(userId,
+                overlap == RemovalOverlap.UnlinkThenUnlink ? other.Id : linked.Id, userId, ct)).Succeeded;
+    }
+
     private readonly IUserRepository _repository = Substitute.For<IUserRepository>();
     private readonly IAccountMergeService _mergeService = Substitute.For<IAccountMergeService>();
     private readonly IUserManagement _userService = Substitute.For<IUserManagement>();
