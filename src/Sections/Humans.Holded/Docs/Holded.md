@@ -148,16 +148,26 @@ is safe to repeat, and returns an outcome, never a Holded id.
   attachment did not go up: Holded's v2 purchase GET has no attachment field, so the caller remembers.
   Approves a draft.
 - `EnsureExpenseAccountAsync` — chart mirror by number, else Holded's live `expenses-accounts` list,
-  else POST; the chart mirror is refreshed whenever it lacked the number.
+  else POST; the chart mirror is refreshed whenever it lacked the number. Returns the account's Holded
+  id (what a caller that books to it stores) and whether it was created.
 - `DeletePurchaseDocumentAsync` — finds the document live (contact, description, total, date);
   refuses when its notes differ or it carries a payment; deletes, then runs the trailing ledger sync
   (an older document's lines leave the mirror at the nightly balance check's re-pull).
 - `PostJournalEntryAsync` — the client's ledger-entry post behind the face; not idempotent, the
   outcome says whether Holded confirmed it.
 
-Not here yet: paying a creditor from a treasury, the bank feed and reconcile, sales documents (they
-move with the Finance and Store phases). Callers still on `IHoldedClient` are debt `CENTRAL-105`.
-Audit entries stay with the calling section, which knows why it wrote.
+Id-keyed writes for callers that already store Holded's ids, one step each:
+`CreateContactAsync` / `DeleteContactAsync` (each refreshes the contact mirror; a failed refresh is
+logged, the write stands), `CreatePurchaseDocumentAsync`, `UploadPurchaseAttachmentAsync`,
+`EnsurePurchaseDocumentApprovedAsync`, `DeletePurchaseDocumentByIdAsync`, and for sales documents
+`FindSalesDocumentsByTagAsync` (both kinds, read live: the issuance guard), `IssueSalesDocumentAsync`
+(create, approve, read back; each line's `AccountNum` resolved through the chart mirror, an unknown
+number refused) and `ApproveSalesDocumentAsync`.
+
+No other section calls `IHoldedClient`: reads come from the mirrors, a caller that needs fresh data
+runs the mirror's sync first (`SyncContactsAsync`, `SyncPurchaseDocumentsAsync`, `SyncChartAsync`),
+and each mirror reports its last sync. Audit entries stay with the calling section, which knows why
+it wrote.
 
 ## Actors & Roles
 
@@ -174,7 +184,7 @@ Audit entries stay with the calling section, which knows why it wrote.
 
 - The summary controller orders sync-state rows by kind using ordinal comparison, and the calls controller orders Madrid month buckets oldest first (the pivot's columns). Services supply the state and aggregated counts without display ordering.
 
-- `GetChartAsync` returns mirror account metadata, including archived accounts, without display ordering. Workgroups' account pickers order by number in their views.
+- `GetChartAsync` returns mirror account metadata, including archived accounts, without display ordering. Workgroups' account pickers order by number in their views. `SyncChartAsync` refreshes it in one list call (the ledger sweep does too); `GetChartSyncedAtAsync` says when.
 
 - Vendor-error IBAN redaction recognizes valid human-formatted values even when whitespace or hyphens split the country code and check digits.
 
@@ -252,5 +262,5 @@ Connector DTOs expose consumed fields only; usage reads contain the API period a
 **Owned tables:** the five above
 **Target shape:** [`health.md`](health.md); the single-mirror design is
 the 2026-10-30 Holded section-flow record (phase 1 built the reads and
-pages; the callers still on `IHoldedClient` are ledger debt `CENTRAL-105`). Historical design record:
+pages; phase 2 moved every outside caller off `IHoldedClient`). Historical design record:
 [`2026-08-10-holded-v2-migration-design.md`](2026-08-10-holded-v2-migration-design.md).

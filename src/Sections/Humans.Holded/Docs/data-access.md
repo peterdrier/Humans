@@ -30,10 +30,10 @@ Repository: `IHoldedMirrorRepository`.
 | Table | R/W |
 |-------|-----|
 | HoldedLedgerLines | R/W (replace-window upsert via `SyncLedgerAsync` — full history on cold cache or `full: true`, else a 45-day trailing window; one account's full history via `SyncAccountLedgerAsync`; read by account (optional window and type), by entry numbers, and as per-account / per-account-and-type / windowed sums grouped in SQL — never the whole table) |
-| HoldedSyncStates | R/W (one row per `HoldedSyncKind`: Ledger, FullSync, Accounts, PurchaseDocs) |
+| HoldedSyncStates | R/W (one row per `HoldedSyncKind`: Ledger, FullSync, Accounts, PurchaseDocs, Contacts) |
 | HoldedPurchaseDocs | R/W (full replace via `SyncPurchaseDocumentsAsync`, an unfetched note keeps the stored one; read whole by `GetPurchaseDocumentsAsync`, which Finance attributes on read) |
 | HoldedContacts | R/W (full replace via `SyncContactsAsync`; read whole by `GetContactsAsync`, null until the first sync) |
-| HoldedAccounts | R/W (chart-of-accounts cache, refreshed and reconciled every sync) |
+| HoldedAccounts | R/W (chart-of-accounts cache, refreshed and reconciled every ledger sync, or alone by `SyncChartAsync`) |
 | HoldedApiCalls | R/W (drained from `IHoldedCallLog` after each sync/overview read) |
 
 No cross-section service calls — `IHoldedClient` (this section's own connector, see
@@ -45,9 +45,9 @@ call-budget display. Implements `IHoldedService` (the ledger-read
 surface consumed cross-section by Finance's `Service` —
 `GetLedgerLinesAsync`, `GetAccountBalancesAsync`; also `IsConfigured`,
 `GetEntryAsync`, `GetPurchaseLinesAsync`, `GetOpenDocumentAmountsAsync`,
-`GetSumsByAccountAsync`, `GetChartAsync`, `GetPurchaseDocumentsAsync`,
-`SyncPurchaseDocumentsAsync`, `GetContactsAsync` and `SyncContactsAsync` for the callers that will move off
-`IHoldedClient`) and `IHoldedAdminService` (the `/Holded` pages — summary,
+`GetSumsByAccountAsync`, `GetChartAsync`, `GetChartSyncedAtAsync`, `SyncChartAsync`,
+`GetPurchaseDocumentsAsync`, `SyncPurchaseDocumentsAsync`, `GetContactsAsync` and `SyncContactsAsync`
+for Finance, Expenses and Store) and `IHoldedAdminService` (the `/Holded` pages — summary,
 accounts, calls by month, account statements, entries). No
 `IMemoryCache`. In-process `SemaphoreSlim` gates serialize
 `SyncLedgerAsync`, `SyncPurchaseDocumentsAsync` and `SyncContactsAsync` runs (the nightly Hangfire job and an admin-triggered
@@ -55,9 +55,11 @@ sync can otherwise race the replace-window).
 
 ### HoldedWrite (Scoped — implements `IHoldedWrite`)
 
-Repository: `IHoldedMirrorRepository`. Reads `HoldedAccounts` (an expense account's Holded id by
-number) and upserts it after creating an expense account. Calls `IHoldedClient` for every lookup and
-write, and `IHoldedService.SyncLedgerAsync` after a delete. No other tables.
+Repository: `IHoldedMirrorRepository`. Reads `HoldedAccounts` (an account's Holded id by number, for
+purchase and sales lines). Calls `IHoldedClient` for every lookup and write, and `IHoldedService`
+to refresh a mirror after a write: `SyncChartAsync` after creating an expense account,
+`SyncContactsAsync` after a contact create or delete, `SyncLedgerAsync` after a matched delete. No
+other tables.
 
 ---
 

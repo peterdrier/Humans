@@ -16,7 +16,8 @@ internal sealed class StoreInvoiceIssuer(
     IStoreRepository repo,
     IAuditLogService audit,
     IClock clock,
-    IHoldedClient holdedClient,
+    IHoldedService holded,
+    IHoldedWrite holdedWrite,
     IOptions<StoreSectionOptions> options,
     StoreOrderReader orderReader,
     ILogger logger) : IApplicationService
@@ -47,7 +48,7 @@ internal sealed class StoreInvoiceIssuer(
         if (order.Lines.Count == 0)
             return Refuse(order, actorUserId, "Cannot invoice an order with no lines.");
 
-        if (!holdedClient.IsConfigured)
+        if (!holded.IsConfigured)
             return Refuse(order, actorUserId,
                 "Holded is not configured in this environment, so no invoice can be issued.");
 
@@ -81,8 +82,7 @@ internal sealed class StoreInvoiceIssuer(
 
                 // Created but not approved. A draft books no revenue and carries no number, so freezing against it
                 // leaves the order invoiced with no legal invoice: finish the issuance instead.
-                await holdedClient.ApproveSalesDocumentAsync(adoptedKind, adoptedDoc.Id, CancellationToken.None);
-                adoptedDoc = await holdedClient.GetSalesDocumentAsync(
+                adoptedDoc = await holdedWrite.ApproveSalesDocumentAsync(
                     adoptedKind, adoptedDoc.Id, CancellationToken.None);
             }
             return await CommitInvoiceAsync(
@@ -124,7 +124,7 @@ internal sealed class StoreInvoiceIssuer(
         {
             // Not the request token: everything from here writes to Holded, and a half-created contact or document has
             // no local compensation.
-            contactId = await holdedClient.CreateContactAsync(
+            contactId = await holdedWrite.CreateContactAsync(
                 new HoldedContactInput
                 {
                     Name = counterparty.Name,
@@ -148,10 +148,8 @@ internal sealed class StoreInvoiceIssuer(
             Lines = documentLines,
         };
 
-        var docId = await holdedClient.CreateSalesDocumentAsync(kind, input, CancellationToken.None);
-        // A draft books no revenue, so approval is part of issuance.
-        await holdedClient.ApproveSalesDocumentAsync(kind, docId, CancellationToken.None);
-        var document = await holdedClient.GetSalesDocumentAsync(kind, docId, CancellationToken.None);
+        // A draft books no revenue, so issuing approves it.
+        var document = await holdedWrite.IssueSalesDocumentAsync(kind, input, CancellationToken.None);
 
         return await CommitInvoiceAsync(
             order, document, totals,
@@ -252,12 +250,7 @@ internal sealed class StoreInvoiceIssuer(
     private async Task<(HoldedSalesDocumentKind Kind, HoldedSalesDocumentDto Document)?>
         FindAlreadyIssuedDocumentAsync(string tag, CancellationToken ct)
     {
-        var found = new List<(HoldedSalesDocumentKind Kind, HoldedSalesDocumentDto Document)>();
-        foreach (var kind in new[] { HoldedSalesDocumentKind.Invoice, HoldedSalesDocumentKind.SalesReceipt })
-        {
-            foreach (var id in await holdedClient.FindSalesDocumentIdsByTagAsync(kind, tag, ct))
-                found.Add((kind, await holdedClient.GetSalesDocumentAsync(kind, id, ct)));
-        }
+        var found = await holdedWrite.FindSalesDocumentsByTagAsync(tag, ct);
         if (found.Count == 0) return null;
         if (found.Count > 1)
             // The duplicate this guard prevents already happened; only a factura rectificativa clears it. Adopting one
@@ -341,17 +334,16 @@ internal sealed class StoreInvoiceIssuer(
                 + "configured (Store:DepositLiabilityAccountNum). Deposits are not income and "
                 + "must not be booked to a revenue account.");
 
-        // items[].account is the chart account's id, not its 8-digit number, so resolve against the live chart on every
-        // issue; that also picks up an account Acountax created minutes ago.
+        // Holded resolves each number to its chart id when issuing; syncing the chart first picks up an account Acountax
+        // created minutes ago.
         var wanted = order.Lines
             .Select(l => products[l.ProductId].HoldedRevenueAccountNum!.Value)
             .Concat(needsDepositAccount ? [depositAccountNum!.Value] : Array.Empty<int>())
             .ToHashSet();
-        var accountIdsByNum = (await holdedClient.ListAccountingAccountsAsync(ct))
-            .Where(a => wanted.Contains(a.Number))
-            .ToDictionary(a => a.Number, a => a.Id);
+        await holded.SyncChartAsync(ct);
+        var chart = (await holded.GetChartAsync(ct)).Select(a => a.Number).ToHashSet();
 
-        var unknown = wanted.Where(n => !accountIdsByNum.ContainsKey(n)).ToList();
+        var unknown = wanted.Where(n => !chart.Contains(n)).ToList();
         if (unknown.Count > 0)
             return ([],
                 "These accounts do not exist in Holded's chart of accounts: "
@@ -369,7 +361,7 @@ internal sealed class StoreInvoiceIssuer(
                 Units = line.Qty,
                 Price = t.EffectiveUnitPrice,
                 Taxes = [SalesTaxKey(t.EffectiveVatRate)],
-                AccountId = accountIdsByNum[product.HoldedRevenueAccountNum!.Value],
+                AccountNum = product.HoldedRevenueAccountNum!.Value,
             });
 
             if (t.EffectiveDeposit is not { } depositPerUnit || depositPerUnit <= 0m) continue;
@@ -379,7 +371,7 @@ internal sealed class StoreInvoiceIssuer(
                 Units = line.Qty,
                 Price = depositPerUnit,
                 Taxes = [SalesTaxKey(0m)],
-                AccountId = accountIdsByNum[depositAccountNum!.Value],
+                AccountNum = depositAccountNum!.Value,
             });
         }
         return (lines, null);

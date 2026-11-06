@@ -30,7 +30,8 @@ public class HoldedOutboxDuplicateGuardTests
     private static readonly Instant Now = Instant.FromUtc(2026, 5, 10, 12, 0);
 
     private readonly ExpenseRepository _repo;
-    private readonly IHoldedClient _holded = Substitute.For<IHoldedClient>();
+    private readonly IHoldedWrite _holded = Substitute.For<IHoldedWrite>();
+    private readonly IHoldedService _holdedService = Substitute.For<IHoldedService>();
     private readonly IAuditLogService _audit = Substitute.For<IAuditLogService>();
     private readonly Guid _reportId = Guid.NewGuid();
     private readonly Guid _lineId = Guid.NewGuid();
@@ -43,21 +44,9 @@ public class HoldedOutboxDuplicateGuardTests
             .Options;
         _repo = new ExpenseRepository(new TestDbContextFactory<ExpensesDbContext>(options));
 
-        _holded.IsConfigured.Returns(true);
-        _holded.GetContactAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
-            .Returns(new HoldedContactDto { Id = "contact-1", SupplierAccountNum = 40000050 });
-        _holded.GetPurchaseDocumentAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
-            .Returns(new HoldedPurchaseDocumentDto
-            {
-                Id = "doc",
-                DocNumber = "",
-                Subtotal = 0m,
-                Tax = 0m,
-                Total = 0m,
-                PaymentsTotal = 0m,
-                PaymentsPending = 0m,
-                ApprovedAt = null,
-            });
+        _holdedService.IsConfigured.Returns(true);
+        _holdedService.GetContactsAsync(Arg.Any<CancellationToken>())
+            .Returns(new HoldedContactMirror(Instant.FromUtc(2026, 1, 1, 0, 0), [new HoldedContactDto { Id = "contact-1", SupplierAccountNum = 40000050 }]));
 
         using var ctx = new ExpensesDbContext(options);
         ctx.ExpenseReports.Add(new ExpenseReport
@@ -94,7 +83,7 @@ public class HoldedOutboxDuplicateGuardTests
                 Arg.Any<string?>(), Arg.Any<int?>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns("contact-1");
         return new ExpenseReportBackgroundProcessor(
-            _repo, Substitute.For<IFileStorage>(), Substitute.For<IUserService>(), _holded,
+            _repo, Substitute.For<IFileStorage>(), Substitute.For<IUserService>(), _holdedService, _holded,
             Substitute.For<IFinanceService>(), writes, _audit, new FakeClock(Now),
             NullLogger<ExpenseReportBackgroundProcessor>.Instance);
     }
@@ -115,8 +104,8 @@ public class HoldedOutboxDuplicateGuardTests
 
         await NewProcessor().DrainHoldedOutboxAsync(10, ct);
 
-        await _holded.Received(1).ApprovePurchaseDocumentAsync("doc-A", Arg.Any<CancellationToken>());
-        await _holded.DidNotReceive().ApprovePurchaseDocumentAsync("doc-B", Arg.Any<CancellationToken>());
+        await _holded.Received(1).EnsurePurchaseDocumentApprovedAsync("doc-A", Arg.Any<CancellationToken>());
+        await _holded.DidNotReceive().EnsurePurchaseDocumentApprovedAsync("doc-B", Arg.Any<CancellationToken>());
         (await _repo.GetByIdAsync(_reportId, ct))!.Lines.Single().HoldedDocId.Should().Be("doc-A");
         (await _repo.GetUnprocessedOutboxAsync(Now + Duration.FromDays(1), 10, ct)).Should().BeEmpty();
         await _audit.Received(1).LogAsync(

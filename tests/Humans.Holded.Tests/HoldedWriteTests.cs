@@ -160,4 +160,69 @@ public sealed class HoldedWriteTests
 
         (await _write.PostJournalEntryAsync(Date, 57200001, 41000012, 50m, "x", ct)).Confirmed.Should().BeFalse();
     }
+
+    [HumansFact]
+    public async Task IssueSalesDocument_books_each_line_to_the_chart_id_of_its_number_and_refuses_an_unknown_one()
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        await _repo.UpsertAccountsAsync([new HoldedAccount { Number = 70500000, HoldedId = "rev", Name = "Ventas" }], Now, ct);
+        var doc = new HoldedSalesDocumentDto { Id = "s1", DocNumber = "F1", Subtotal = 1, Tax = 0, Total = 1, Lines = [], RawJson = "{}" };
+        _client.CreateSalesDocumentAsync(HoldedSalesDocumentKind.Invoice, Arg.Any<HoldedSalesDocumentInput>(), Arg.Any<CancellationToken>())
+            .Returns("s1");
+        _client.GetSalesDocumentAsync(HoldedSalesDocumentKind.Invoice, "s1", Arg.Any<CancellationToken>()).Returns(doc);
+        HoldedSalesDocumentInput Input(int num) => new()
+        {
+            ContactName = "Camp",
+            Date = Now,
+            Description = "d",
+            Notes = "n",
+            Tags = [],
+            Lines = [new HoldedSalesDocumentLineInput { Name = "Ice", Units = 1, Price = 1, AccountNum = num }],
+        };
+
+        (await _write.IssueSalesDocumentAsync(HoldedSalesDocumentKind.Invoice, Input(70500000), ct)).Should().Be(doc);
+        var act = () => _write.IssueSalesDocumentAsync(HoldedSalesDocumentKind.Invoice, Input(70599999), ct);
+
+        await act.Should().ThrowAsync<HoldedPermanentException>();
+        await _client.Received(1).CreateSalesDocumentAsync(HoldedSalesDocumentKind.Invoice,
+            Arg.Is<HoldedSalesDocumentInput>(i => i.Lines.Single().AccountId == "rev"), Arg.Any<CancellationToken>());
+        await _client.Received(1).ApproveSalesDocumentAsync(HoldedSalesDocumentKind.Invoice, "s1", Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task EnsurePurchaseDocumentApproved_approves_only_a_draft()
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        _client.GetPurchaseDocumentAsync("d1", Arg.Any<CancellationToken>()).Returns(Doc("d1", approvedAt: Now));
+        _client.GetPurchaseDocumentAsync("d2", Arg.Any<CancellationToken>()).Returns(Doc("d2", approvedAt: null));
+
+        await _write.EnsurePurchaseDocumentApprovedAsync("d1", ct);
+        await _write.EnsurePurchaseDocumentApprovedAsync("d2", ct);
+
+        await _client.Received(1).ApprovePurchaseDocumentAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
+        await _client.Received(1).ApprovePurchaseDocumentAsync("d2", Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task CreateContact_refreshes_the_contact_mirror()
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        _client.CreateContactAsync(Arg.Any<HoldedContactInput>(), Arg.Any<CancellationToken>()).Returns("c9");
+
+        (await _write.CreateContactAsync(new HoldedContactInput { Name = "Camp", Type = "client" }, ct)).Should().Be("c9");
+
+        await _holded.Received(1).SyncContactsAsync(Arg.Any<CancellationToken>());
+    }
+
+    private static HoldedPurchaseDocumentDto Doc(string id, Instant? approvedAt) => new()
+    {
+        Id = id,
+        DocNumber = id,
+        Subtotal = 0,
+        Tax = 0,
+        Total = 0,
+        PaymentsTotal = 0,
+        PaymentsPending = 0,
+        ApprovedAt = approvedAt,
+    };
 }
