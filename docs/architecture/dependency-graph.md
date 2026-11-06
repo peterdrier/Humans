@@ -247,6 +247,8 @@ graph LR
     Workgroup[WorkgroupService]:::workgroups
 
     Preapproval[PreapprovalService]:::preapprovals
+    PreapprovalReminders[PreapprovalDeadlineReminders]:::preapprovals
+    PreapprovalNotices[PreapprovalNotices]:::preapprovals
 
     Grant[GrantService]:::grants
 
@@ -705,10 +707,14 @@ graph LR
     %% Preapprovals
     Preapproval --> User
     Preapproval --> Finance
-    Preapproval --> NotifEmitter
-    Preapproval --> NotifInbox
-    Preapproval --> Email
+    Preapproval --> PreapprovalNotices
     Preapproval --> Audit
+    PreapprovalReminders --> PreapprovalNotices
+    PreapprovalReminders --> Audit
+    PreapprovalNotices --> User
+    PreapprovalNotices --> NotifEmitter
+    PreapprovalNotices --> NotifInbox
+    PreapprovalNotices --> Email
 
     %% Grants
     Grant --> User

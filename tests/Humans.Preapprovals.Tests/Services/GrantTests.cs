@@ -389,8 +389,7 @@ public sealed class GrantTests : PreapprovalsTestHarness
                 }
                 await actual.AddGrantsAsync(call.Arg<IReadOnlyList<PreapprovalGrant>>(), call.Arg<CancellationToken>());
             });
-        PreapprovalService ScopedService() => new(repository, Users, Finance, Notifications, NotificationResolve,
-            Email, EmailFactory, AuditLog, Clock, Logger);
+        PreapprovalService ScopedService() => new(repository, Users, Finance, NewNotices(), AuditLog, Clock, Logger);
         var first = ScopedService().ApplyAsync(program.Id, applicant, "First note", 400m, Ct);
         await saving.Task.WaitAsync(Ct);
         var next = ScopedService().ApplyAsync(program.Id, throughMergedAlias ? archived : applicant, "Latest note", 450m, Ct);

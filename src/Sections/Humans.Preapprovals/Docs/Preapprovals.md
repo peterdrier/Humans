@@ -228,9 +228,9 @@ Admin pages live under the section's URL space, not `/Admin`; they are localizat
 
 ## Architecture
 
-The internal `PreapprovalNotices` owns recipient resolution, localized delivery and standing-notice completion. Ordinary delivery failures remain best-effort; reminder delivery propagates failures before the service writes its sent stamp. Audits, transactions, reminder selection and stamps remain in `PreapprovalService`.
+The scoped internal `PreapprovalNotices` owns recipient resolution, localized delivery and standing-notice completion, shared by grant management and deadline reminders. Ordinary delivery failures remain best-effort. `PreapprovalDeadlineReminders` owns reminder selection, transactional delivery and sent stamps, then audits after commit. The recurring job calls this component directly; it does not resolve grant management. Reminder windows, Madrid dates, source keys, audit identity, failure aggregation and retry behavior are unchanged.
 
-**Owning services:** `PreapprovalService` (`Humans.Preapprovals`; `IPreapprovalService` / `IPreapprovalWrite` public in `Contracts/`, `IPreapprovalManagement` internal)
+**Owning services:** `PreapprovalDeadlineReminders` (internal reminder pass), `PreapprovalService` (`Humans.Preapprovals`; `IPreapprovalService` / `IPreapprovalWrite` public in `Contracts/`, `IPreapprovalManagement` internal)
 **Owned tables:** `pre_programs`, `pre_program_managers`, `pre_grants`, `pre_reminders_sent`
 **Status:** (A) Migrated — built as a section from day one (2026-10-16).
 
@@ -242,14 +242,14 @@ A `Contracts/` folder in the section (no leaf project: nothing Preapprovals refe
 |---|---:|---|
 | `IPreapprovalService` (public) | 3 | `ListClaimableForUserAsync`, `GetGrantAsync`, `ListManagedGrantIdsAsync` (the grants a named manager may first-review in Expenses). Returns `GrantOption` or ids, never entities. |
 | `IPreapprovalWrite` (public) | 3 | The three Expenses transitions `ClaimAsync` / `ReleaseAsync` / `ConsumeAsync` (returning `PreapprovalWriteResult`, with a `GrantStamp` on successful claims). An interface rather than a view component because each must run inside the `TransactionScope` Expenses opens around its own status change. |
-| `IPreapprovalManagement : IPreapprovalService, IPreapprovalWrite` (internal) | all the rest | Administration, issuing, applying, approving, declining, revoking, reminders. |
+| `IPreapprovalManagement : IPreapprovalService, IPreapprovalWrite` (internal) | all the rest | Administration, issuing, applying, approving, declining, revoking. |
 
 `GrantOption`, `GrantStamp`, `PreapprovalWriteResult` and `GrantStatus` are the public types beside them.
 
 ### For (A) Migrated sections
 
 - `PreapprovalService` lives in `Services/` as partial files (core, Programs, Grants,
-  Reminders, Gdpr) and never imports `Microsoft.EntityFrameworkCore`.
+  Gdpr) and never imports `Microsoft.EntityFrameworkCore`.
 - `IPreapprovalRepository` (impl in `Data/`) is the only code path that touches the four
   tables; it hands over detached graphs and takes scalars back.
 - **Decorator decision** — no caching decorator. Rationale: a few programs a year, pages

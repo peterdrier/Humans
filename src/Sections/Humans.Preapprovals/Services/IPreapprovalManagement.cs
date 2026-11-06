@@ -43,7 +43,4 @@ internal interface IPreapprovalManagement : IPreapprovalService, IPreapprovalWri
     /// <summary>One application per person per program; a second submit edits the pending one.</summary>
     Task<PreapprovalMutationResult<Guid>> ApplyAsync(
         Guid programId, Guid applicantUserId, string? note, decimal? requestedAmount, CancellationToken ct = default);
-
-    /// <summary>The nightly pass: 14-day and 3-day reminders to Open grant holders, each recorded once per deadline.</summary>
-    Task SendDeadlineRemindersAsync(CancellationToken ct = default);
 }
