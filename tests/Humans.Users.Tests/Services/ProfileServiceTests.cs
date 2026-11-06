@@ -657,6 +657,27 @@ public sealed class ProfileServiceTests : ServiceTestHarness
         Clock,
         NullLogger<UserService>.Instance, AuditLog);
 
+    [HumansTheory]
+    [Xunit.InlineData(double.NaN, 0)]
+    [Xunit.InlineData(0, double.PositiveInfinity)]
+    [Xunit.InlineData(90.1, 0)]
+    [Xunit.InlineData(-90.1, 0)]
+    [Xunit.InlineData(0, 180.1)]
+    [Xunit.InlineData(0, -180.1)]
+    public async Task SaveProfileAsync_InvalidCoordinates_ReturnsRefusalWithoutWrites(double latitude, double longitude)
+    {
+        var userId = Guid.NewGuid();
+        await SeedUserAsync(userId);
+        var request = MakeRequest() with { Latitude = latitude, Longitude = longitude };
+
+        var result = await _editor.SaveProfileAsync(userId, request, Xunit.TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeFalse();
+        result.ErrorKey.Should().Be("Users_Profile_InvalidLocation");
+        await _userService.DidNotReceiveWithAnyArgs().SaveProfileAsync(default, default!);
+        (await Db.Profiles.CountAsync(Xunit.TestContext.Current.CancellationToken)).Should().Be(0);
+    }
+
     [HumansFact]
     public async Task SaveProfileAsync_EmptyCvWithoutNoPriorExperienceFlag_ReturnsRefusalWithoutWrites()
     {
