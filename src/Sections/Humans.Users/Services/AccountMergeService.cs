@@ -115,31 +115,51 @@ internal sealed class AccountMergeService(
             "Admin {AdminId} merging: folding archived {ArchivedId} into survivor {SurvivorId}",
             adminUserId, archivedUserId, survivorUserId);
 
-        // 1. Move every section's user-keyed rows archived -> survivor. Each commits
-        //    independently and re-moving is a no-op, so the step is retryable.
-        foreach (var merger in userMerges)
-            await merger.ReassignAsync(archivedUserId, survivorUserId, adminUserId, now, ct);
+        try
+        {
+            // 1. Move every section's user-keyed rows archived -> survivor. Each commits
+            //    independently and re-moving is a no-op, so the step is retryable.
+            foreach (var merger in userMerges)
+                await merger.ReassignAsync(archivedUserId, survivorUserId, adminUserId, now, ct);
 
-        // 2. Settle the pending email the row-collapse missed. A missing or consumed one is
-        //    the desired end state, so the result is ignored.
-        if (pendingEmailIdToVerify is Guid pendingId)
-            await userRepository.MarkUserEmailVerifiedAsync(pendingId, now, ct);
+            // 2. Settle the pending email the row-collapse missed. A missing or consumed one is
+            //    the desired end state, so the result is ignored.
+            if (pendingEmailIdToVerify is Guid pendingId)
+                await userRepository.MarkUserEmailVerifiedAsync(pendingId, now, ct);
 
-        // 3. Tombstone the archived account LAST: the observable commit point. No wipe —
-        //    chain-follow reads need the redirect.
-        await userService.AnonymizeForMergeAsync(archivedUserId, survivorUserId, now, ct);
+            // 3. Tombstone the archived account LAST: the observable commit point. No wipe —
+            //    chain-follow reads need the redirect.
+            await userService.AnonymizeForMergeAsync(archivedUserId, survivorUserId, now, ct);
 
-        // 4. Audit.
-        await auditLogService.LogAsync(
-            UsersAuditActions.AccountMergeAccepted,
-            nameof(User), archivedUserId,
-            $"Folded archived {archivedUserId} into survivor {survivorUserId}. Notes: {notes ?? "(none)"}",
-            adminUserId,
-            relatedEntityId: survivorUserId, relatedEntityType: nameof(User));
+            // 4. Audit.
+            await auditLogService.LogAsync(
+                UsersAuditActions.AccountMergeAccepted,
+                nameof(User), archivedUserId,
+                $"Folded archived {archivedUserId} into survivor {survivorUserId}. Notes: {notes ?? "(none)"}",
+                adminUserId,
+                relatedEntityId: survivorUserId, relatedEntityType: nameof(User));
 
-        // 5. Best-effort: the tombstone already makes leftover requests self-reconcilable.
-        await CloseRequestsForPairAsync(survivorUserId, archivedUserId, adminUserId, now, notes, ct);
-        return new();
+            // 5. Best-effort: the tombstone already makes leftover requests self-reconcilable.
+            await CloseRequestsForPairAsync(survivorUserId, archivedUserId, adminUserId, now, notes, ct);
+            return new();
+        }
+        catch
+        {
+            // Earlier contributors may already have moved Users-owned rows. Reload both raw accounts
+            // even when a later contributor prevents the final tombstone/cache refresh.
+            foreach (var id in new[] { archivedUserId, survivorUserId })
+            {
+                try
+                {
+                    await userInfoRefresher.RefreshAsync(id, CancellationToken.None);
+                }
+                catch (Exception ex)
+                {
+                    logger.LogError(ex, "UserInfo refresh failed after incomplete merge for {UserId}", id);
+                }
+            }
+            throw;
+        }
     }
 
     private static AccountMergeRequestSnapshot ToSnapshot(
