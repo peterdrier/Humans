@@ -33,7 +33,7 @@ Repository: `IHoldedMirrorRepository`.
 | HoldedLedgerLines | R/W (replace-window upsert via `SyncLedgerAsync` — full history on cold cache or `full: true`, else a 45-day trailing window; one account's full history via `SyncAccountLedgerAsync`; read by account (optional window and type), by entry numbers, and as per-account / per-account-and-type / windowed sums grouped in SQL — never the whole table) |
 | HoldedSyncStates | R/W (one row per `HoldedSyncKind`: Ledger, FullSync, Accounts, PurchaseDocs, Contacts, BankMovements) |
 | HoldedBankMovements | R/W (window replace via `SyncBankMovementsAsync`; read by treasury and date window by `GetBankMovementsAsync`) |
-| HoldedPurchaseDocs | R/W (full replace via `SyncPurchaseDocumentsAsync`, an unfetched note keeps the stored one; read whole by `GetPurchaseDocumentsAsync`, which Finance attributes on read) |
+| HoldedPurchaseDocs | R/W (full replace via `SyncPurchaseDocumentsAsync`, an unfetched note keeps the stored one; named documents' notes re-read by `SyncPurchaseDocumentNotesAsync`; read whole by `GetPurchaseDocumentsAsync`, which Finance attributes on read) |
 | HoldedContacts | R/W (full replace via `SyncContactsAsync`; read whole by `GetContactsAsync`, null until the first sync) |
 | HoldedAccounts | R/W (chart-of-accounts cache, refreshed and reconciled every ledger sync, or alone by `SyncChartAsync`) |
 | HoldedApiCalls | R/W (drained from `IHoldedCallLog` after each sync/overview read) |
@@ -48,7 +48,7 @@ surface consumed cross-section by Finance's `Service` —
 `GetLedgerLinesAsync`, `GetAccountBalancesAsync`; also `IsConfigured`,
 `GetEntryAsync`, `GetPurchaseLinesAsync`, `GetOpenDocumentAmountsAsync`,
 `GetSumsByAccountAsync`, `GetChartAsync`, `GetChartSyncedAtAsync`, `SyncChartAsync`,
-`GetPurchaseDocumentsAsync`, `SyncPurchaseDocumentsAsync`, `GetContactsAsync` and `SyncContactsAsync`
+`GetPurchaseDocumentsAsync`, `SyncPurchaseDocumentsAsync`, `SyncPurchaseDocumentNotesAsync`, `GetContactsAsync` and `SyncContactsAsync`
 for Finance, Expenses and Store) and `IHoldedAdminService` (the `/Holded` pages — summary,
 accounts, calls by month, account statements, entries). No
 `IMemoryCache`. In-process `SemaphoreSlim` gates serialize

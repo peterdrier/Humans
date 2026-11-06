@@ -365,6 +365,9 @@ public class HoldedDuplicateTests
         Received.InOrder(() =>
         {
             _ = _holded.SyncPurchaseDocumentsAsync(Arg.Any<CancellationToken>());
+            _ = _holded.SyncPurchaseDocumentNotesAsync(
+                Arg.Is<IReadOnlyCollection<string>>(ids => ids.Order(StringComparer.Ordinal).SequenceEqual(new[] { "doc-b", "doc-c" })),
+                Arg.Any<CancellationToken>());
             _ = _write.DeletePurchaseDocumentByIdAsync("doc-b", Arg.Any<CancellationToken>());
             _ = _write.DeletePurchaseDocumentByIdAsync("doc-c", Arg.Any<CancellationToken>());
             _ = _write.DeleteContactAsync("c2", Arg.Any<CancellationToken>());
@@ -417,6 +420,20 @@ public class HoldedDuplicateTests
         member.DeletedContactIds.Should().BeEmpty(); // doc-other still sits on c2
         await _write.DidNotReceive().DeletePurchaseDocumentByIdAsync("doc-other", Arg.Any<CancellationToken>());
         await _write.DidNotReceive().DeletePurchaseDocumentByIdAsync("doc-a", Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task Apply_ANoteEditedInHoldedSinceItWasMirrored_IsJudgedOnTheFreshNote()
+    {
+        _expenses.GetHoldedBookingsAsync(Arg.Any<CancellationToken>()).Returns([Booking("doc-a")]);
+        Mirror([Doc("doc-a"), Doc("doc-b")]);
+        _holded.When(h => h.SyncPurchaseDocumentNotesAsync(Arg.Any<IReadOnlyCollection<string>>(), Arg.Any<CancellationToken>()))
+            .Do(_ => _notes["doc-b"] = "Hotel deposit, keep");
+
+        var result = await MakeService().RemoveHoldedDuplicatesAsync(Actor);
+
+        result.DeletedDocuments.Should().Be(0);
+        await _write.DidNotReceive().DeletePurchaseDocumentByIdAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
     }
 
     [HumansFact]

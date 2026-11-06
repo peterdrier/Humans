@@ -23,4 +23,4 @@ Teams are how Nobodies Collective organises humans around shared interests and r
 
 ### Searching for Humans
 
-Use the **Search** button to find humans across all teams by name or email. The **Roster** view shows all active humans in a flat list. The **Map** shows humans by location. **Birthdays** shows upcoming celebrations.
+Use the **Search** button to find humans across all teams by name or email. The **Roster** view shows all active humans in a flat list.

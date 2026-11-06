@@ -1,19 +1,15 @@
 using Humans.Shifts.Contracts;
-using Humans.Consent.Contracts;
 using Humans.Teams.Data;
 using Humans.GoogleIntegration.Contracts;
 using Humans.Base.Extensions;
 using Humans.Base.Controllers;
 using Humans.Teams.Services;
-using Microsoft.Extensions.Configuration;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Localization;
-using Humans.Base.Configuration;
 using Humans.Base.Enums;
 using Humans.Teams.Authorization;
 using Humans.Teams.Models;
-using NodaTime;
 using Humans.Teams.Contracts;
 using Humans.Base;
 using Humans.Base.Authorization;
@@ -27,13 +23,9 @@ internal sealed class TeamController(
     ITeamManagementService teamService,
     ITeamPageService teamPageService,
     IUserService userService,
-    IConsentService consentService,
     ITeamResourceService teamResourceService,
     IStringLocalizer<TeamsResource> localizer,
     IStringLocalizer<SharedResource> sharedLocalizer,
-    IConfiguration configuration,
-    ConfigurationRegistry configRegistry,
-    IClock clock,
     IAuthorizationService authorizationService,
     ILogger<TeamController> logger) : HumansControllerBase(userService)
 {
@@ -221,71 +213,6 @@ internal sealed class TeamController(
         };
     }
 
-    [HttpGet("Birthdays")]
-    public async Task<IActionResult> Birthdays(int? month, CancellationToken ct)
-    {
-        var (currentUserError, _) = await ResolveCurrentUserOrUnauthorizedAsync(ct);
-        if (currentUserError is not null)
-        {
-            return currentUserError;
-        }
-
-        var currentZone = HttpContext.Session.GetUserTimeZone();
-        var currentMonth = month ?? clock.GetCurrentInstant().InZone(currentZone).Month;
-        if (currentMonth < 1 || currentMonth > 12)
-            currentMonth = clock.GetCurrentInstant().InZone(currentZone).Month;
-
-        var approved = await ApprovedUserIdsAsync(ct);
-        var profilesWithBirthdays = (await _userService.GetAllUserInfosAsync(ct).ConfigureAwait(false))
-            .Where(u => u.Profile is not null && approved.Contains(u.Id) && !u.IsSuspended
-                        && u.Profile.BirthdayMonth == currentMonth
-                        && u.Profile.BirthdayDay.HasValue)
-            .OrderBy(u => u.Profile!.BirthdayDay)
-            .Select(u => new BirthdayProfileInfo(
-                u.Id,
-                u.BurnerName,
-                u.ProfilePictureUrl,
-                u.Profile!.HasCustomPicture,
-                u.Profile.Id,
-                u.Profile.BirthdayDay!.Value,
-                u.Profile.BirthdayMonth!.Value))
-            .ToList();
-
-        var userIds = profilesWithBirthdays.Select(p => p.UserId).ToList();
-        var userIdSet = userIds.ToHashSet();
-        var teamsById = await teamService.GetTeamsAsync(ct);
-        var teamsByUser = new Dictionary<Guid, List<string>>();
-        foreach (var team in teamsById.Values
-            .Where(t => t.IsActive && t.SystemTeamType == SystemTeamType.None && !t.IsHidden))
-        {
-            foreach (var member in team.Members.Where(m => userIdSet.Contains(m.UserId)))
-            {
-                if (!teamsByUser.TryGetValue(member.UserId, out var names))
-                {
-                    names = [];
-                    teamsByUser[member.UserId] = names;
-                }
-                names.Add(team.Name);
-            }
-        }
-
-        var monthName = new DateTime(2000, currentMonth, 1).ToMonthName();
-
-        var viewModel = new BirthdayCalendarViewModel
-        {
-            CurrentMonth = currentMonth,
-            CurrentMonthName = monthName,
-            Birthdays = profilesWithBirthdays.Select(p => new BirthdayEntryViewModel
-            {
-                UserId = p.UserId,
-                DayOfMonth = p.Day,
-                TeamNames = teamsByUser.GetValueOrDefault(p.UserId, [])
-            }).ToList()
-        };
-
-        return View(viewModel);
-    }
-
     [HttpGet("Roster")]
     public async Task<IActionResult> Roster(string? priority, string? status, string? period, CancellationToken ct = default)
     {
@@ -326,39 +253,6 @@ internal sealed class TeamController(
             }).ToList();
 
         return View(new RosterSummaryViewModel { Slots = slots, PriorityFilter = priority, StatusFilter = status, PeriodFilter = period });
-    }
-
-    [HttpGet("Map")]
-    public async Task<IActionResult> Map(CancellationToken ct)
-    {
-        var approved = await ApprovedUserIdsAsync(ct);
-        var profiles = (await _userService.GetAllUserInfosAsync(ct).ConfigureAwait(false))
-            .Where(u => u.Profile is { Latitude: not null, Longitude: not null } && approved.Contains(u.Id) && !u.IsSuspended)
-            .Select(u => new LocationProfileInfo(
-                u.Id,
-                u.BurnerName,
-                u.ProfilePictureUrl,
-                u.Profile!.Latitude!.Value,
-                u.Profile.Longitude!.Value,
-                u.Profile.City,
-                u.Profile.CountryCode))
-            .ToList();
-
-        var markers = profiles.Select(p => new MapMarkerViewModel
-        {
-            UserId = p.UserId,
-            DisplayName = p.DisplayName,
-            ProfilePictureUrl = p.ProfilePictureUrl,
-            Latitude = p.Latitude,
-            Longitude = p.Longitude,
-            City = p.City,
-            CountryCode = p.CountryCode
-        }).ToList();
-
-        ViewData["GoogleMapsApiKey"] = configuration.GetRequiredSetting(
-            configRegistry, "GoogleMaps:ApiKey", "Google Maps", isSensitive: true);
-
-        return View(new MapViewModel { Markers = markers });
     }
 
     [HttpGet("My")]
@@ -818,11 +712,4 @@ internal sealed class TeamController(
     {
         model.EligibleParents = await GetEligibleParentTeamsAsync(excludeTeamId, ct);
     }
-
-    // Birthdays and the map list members the Consent Coordinator cleared.
-    private async Task<HashSet<Guid>> ApprovedUserIdsAsync(CancellationToken ct) =>
-        (await consentService.GetConsentReviewsAsync(ct)).Values
-            .Where(r => r.IsApproved)
-            .Select(r => r.UserId)
-            .ToHashSet();
 }

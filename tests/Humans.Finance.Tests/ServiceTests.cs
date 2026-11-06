@@ -2139,6 +2139,29 @@ public class HoldedFinanceServiceTests
     }
 
     [HumansFact]
+    public async Task ContributeForUser_BoundMember_ExportsTheMirroredContact_WithTheIbanMasked()
+    {
+        var userId = Guid.NewGuid();
+        _repo.GetCreditorContactByUserAsync(userId, Arg.Any<CancellationToken>()).Returns(
+            new HoldedCreditorContact { UserId = userId, HoldedContactId = "c1", SupplierAccountNum = 40000004 });
+        _repo.GetCreditorContactsAsync(Arg.Any<CancellationToken>()).Returns(
+            new List<HoldedCreditorContact> { new() { UserId = userId, HoldedContactId = "c1", SupplierAccountNum = 40000004 } });
+        _holded.GetContactsAsync(Arg.Any<CancellationToken>()).Returns(TestContacts.Synced([new HoldedContactDto
+        {
+            Id = "c1", Name = "Ana Ruiz", SupplierAccountNum = 40000004, Email = "ana@example.org",
+            Iban = "ES9121000418450200051332",
+        }]));
+
+        var slices = await MakeService().ContributeForUserAsync(userId, TestContext.Current.CancellationToken);
+
+        var contact = JsonSerializer.SerializeToElement(slices.Should()
+            .ContainSingle(s => s.SectionName == Service.HoldedCreditorContacts).Subject.Data)[0];
+        contact.GetProperty("Email").GetString().Should().Be("ana@example.org");
+        contact.GetProperty("Iban").GetString().Should().NotContain("0200051332");
+        MakeService().ErasureDeclaration[Service.HoldedCreditorContacts].Should().Contain("Art. 30");
+    }
+
+    [HumansFact]
     public async Task ContributeForUser_AccountSharedByTwoMembers_ExportsNeitherTheOthersLines()
     {
         // A collision the automatic paths write through: two members on one 400000xx. The lines carry

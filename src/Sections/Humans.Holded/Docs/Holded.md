@@ -168,7 +168,8 @@ logged, the write stands), `CreatePurchaseDocumentAsync`, `UploadPurchaseAttachm
 number refused) and `ApproveSalesDocumentAsync`.
 
 No other section calls `IHoldedClient`: reads come from the mirrors, a caller that needs fresh data
-runs the mirror's sync first (`SyncContactsAsync`, `SyncPurchaseDocumentsAsync`, `SyncChartAsync`),
+runs the mirror's sync first (`SyncContactsAsync`, `SyncPurchaseDocumentsAsync`,
+`SyncPurchaseDocumentNotesAsync` for named documents, `SyncChartAsync`),
 and each mirror reports its last sync. Audit entries stay with the calling section, which knows why
 it wrote.
 
@@ -235,6 +236,8 @@ it wrote.
   The contact mirror holds the same personal data Holded's contact list does (a member's name,
   IBAN, email, phone, address). It is keyed by Holded's contact id, not by member, follows Holded
   on every sync, and Finance's creditor statement and payout already read it through the binding.
+  Finance's contributor exports each bound contact's row (its `HoldedCreditorContacts` slice, IBAN
+  masked) and declares fiscal retention for it: the row mirrors Holded's counterparty record.
 
 ## Negative Access Rules
 

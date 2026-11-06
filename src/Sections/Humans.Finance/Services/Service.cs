@@ -48,6 +48,7 @@ internal sealed class Service(
     internal const string AdditionalHoldedCreditorAccounts = "AdditionalHoldedCreditorAccounts";
     internal const string SepaPayouts = "SepaPayouts";
     internal const string CreditorLedger = "CreditorLedger";
+    internal const string HoldedCreditorContacts = "HoldedCreditorContacts";
 
     /// <summary>First number of the P&amp;L expense block both provisioning paths allocate from.</summary>
     internal const int ExpenseAccountBlockStart = 62900100;
@@ -1375,6 +1376,14 @@ internal sealed class Service(
                 return new HoldedDuplicateApplyResult(
                     [], "A Holded sync is already running — nothing was deleted; try again in a moment.", null);
             plan = await BuildDuplicatePlanAsync(ct);
+            // The list sync keeps notes it already holds, and an accountant may have edited them since: re-read the
+            // notes of every document about to be deleted, then judge again.
+            var deletable = plan.Members.SelectMany(m => m.Lines).SelectMany(l => l.DeletableDocIds).ToList();
+            if (deletable.Count > 0)
+            {
+                await holded.SyncPurchaseDocumentNotesAsync(deletable, ct);
+                plan = await BuildDuplicatePlanAsync(ct);
+            }
         }
         catch (Exception ex) when (ex is HoldedTransientException or HoldedPermanentException)
         {
@@ -1495,6 +1504,7 @@ internal sealed class Service(
         }
         // Free-text descriptions included: they are the member's data too.
         var ledgerLines = new List<CreditorLedgerLine>();
+        var boundContacts = new List<HoldedContactDto>();
         if (bindings.Count > 0)
         {
             // Without the contact list no binding resolves to an account, and an export missing the member's ledger
@@ -1512,11 +1522,19 @@ internal sealed class Service(
             // Ledger lines carry no user id, so an account another member is also bound to would leak their lines.
             // Withheld until an admin resolves the collision.
             var ownIds = bindings.Select(b => b.UserId).ToHashSet();
-            var shared = (await repo.GetCreditorContactsAsync(ct))
+            var othersBindings = (await repo.GetCreditorContactsAsync(ct))
                 .Where(b => !ownIds.Contains(b.UserId))
+                .ToList();
+            var shared = othersBindings
                 .Select(b => ResolveCreditorAccount(b, contacts))
                 .OfType<int>()
                 .ToHashSet();
+            // A contact another member is bound to may carry their details, so it waits for the collision too.
+            var othersContacts = othersBindings.Select(b => b.HoldedContactId).ToHashSet(StringComparer.Ordinal);
+            boundContacts.AddRange(bindings.Select(b => b.HoldedContactId)
+                .Distinct(StringComparer.Ordinal)
+                .Where(id => !othersContacts.Contains(id))
+                .Select(id => contacts[id]));
             foreach (var num in bindings.Select(b => ResolveCreditorAccount(b, contacts)).OfType<int>().Distinct())
             {
                 if (shared.Contains(num))
@@ -1578,6 +1596,21 @@ internal sealed class Service(
                 l.Credit,
                 l.RunningBalance,
             }).ToList()),
+
+            // The Holded contact mirror's row for each bound contact, IBAN masked as above.
+            new UserDataSlice(HoldedCreditorContacts, boundContacts.Count == 0 ? null : boundContacts.Select(c => new
+            {
+                c.Id,
+                c.Name,
+                c.TradeName,
+                c.SupplierAccountNum,
+                c.Email,
+                c.Phone,
+                c.Mobile,
+                Iban = string.IsNullOrWhiteSpace(c.Iban) ? null : IbanFormatter.Mask(c.Iban),
+                c.TaxCode,
+                c.Address,
+            }).ToList()),
         ];
     }
 
@@ -1597,13 +1630,21 @@ internal sealed class Service(
         "no user id: once the creditor binding is erased they are no longer linkable to the person " +
         "through this system. GDPR Art. 17(3)(b).";
 
+    private const string ContactRetention =
+        "Retained, nothing erased here: these rows mirror the member's creditor contact in Holded, the " +
+        "association's accounting system, where it is the counterparty record of the books. Spanish law " +
+        "requires the books and their supporting documents be kept 6 years (Código de Comercio Art. 30) " +
+        "and 4 years for tax purposes (Ley 58/2003 Art. 66). The mirror is replaced from Holded on every " +
+        "sync, so it holds what Holded holds and no more. GDPR Art. 17(3)(b).";
+
     private static readonly IReadOnlyDictionary<string, string?> Erasure =
         new Dictionary<string, string?>(StringComparer.Ordinal)
         {
             [HoldedCreditorAccount] = null,
             [AdditionalHoldedCreditorAccounts] = null,
             [SepaPayouts] = PayoutRetention,
-            [CreditorLedger] = LedgerRetention
+            [CreditorLedger] = LedgerRetention,
+            [HoldedCreditorContacts] = ContactRetention,
         };
 
     public IReadOnlyDictionary<string, string?> ErasureDeclaration => Erasure;

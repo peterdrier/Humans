@@ -58,6 +58,8 @@ public class UsersPageRenderTests(HumansTestDatabase database) : IntegrationTest
         ("/Profile/Me/Medical", "Medical conditions"),                       // Users_Profile_DietaryMedical_MedicalConditions_Title
         ("/Email/CommunicationPreferences", "Communication Preferences"),    // Users_CommPrefs_Title (served by Email)
         ("/Email/Outbox", "My Emails"),                                      // Email_Outbox_MyTitle (served by Email)
+        ("/Users/Birthdays", "Birthday Calendar"),                           // Users_Birthdays_Title
+        ("/Users/Map", "Humans Map"),                                        // Users_Map_Title
     ];
 
     [HumansFact(Timeout = 180000)]
@@ -107,25 +109,14 @@ public class UsersPageRenderTests(HumansTestDatabase database) : IntegrationTest
     }
 
     /// <summary>
-    /// Both assertions are on content only the row can have produced: a <c>NotContain("&lt;vc:")</c> check passes on
-    /// an empty-state page, so the persona's own name and the match badge prove the element bound.
+    /// Assertions are on content only the row can have produced: a <c>NotContain("&lt;vc:")</c> check passes on
+    /// an empty-state page, so the persona's own name and the row's meta line prove it bound.
     /// </summary>
     [HumansFact(Timeout = 120000)]
-    public async Task Both_person_search_surfaces_render_their_result_rows()
+    public async Task Admin_directory_renders_its_result_rows()
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
         var userId = await Factory.SignInAsFullyOnboardedAsync(Client, DevPersona.Admin);
-
-        var publicSearch = await Client.GetAsync("/Profile/Search?q=Dev", ct);
-        publicSearch.StatusCode.Should().Be(HttpStatusCode.OK);
-        var publicHtml = await publicSearch.Content.ReadAsStringAsync(ct);
-
-        publicHtml.Should().Contain("Dev Admin",
-            because: "<vc:user-search-result> must resolve the hit and render the human");
-        publicHtml.Should().Contain("Matched in",
-            because: "Search_MatchedIn is written by the component's own markup and nothing else "
-                   + "on this page emits it");
-        AssertRenderedCleanly(publicHtml, "GET /Profile/Search?q=Dev");
 
         var adminList = await Client.GetAsync("/Users/Admin", ct);
         adminList.StatusCode.Should().Be(HttpStatusCode.OK);

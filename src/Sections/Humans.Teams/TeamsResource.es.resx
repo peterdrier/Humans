@@ -404,33 +404,6 @@
   <data name="Teams_EditTeamPage_Saved" xml:space="preserve">
     <value>Página del equipo actualizada.</value>
   </data>
-  <data name="Teams_Birthdays_Title" xml:space="preserve">
-    <value>Calendario de cumpleaños</value>
-  </data>
-  <data name="Teams_Birthdays_Count" xml:space="preserve">
-    <value>{0} cumpleaños en {1}</value>
-  </data>
-  <data name="Teams_Birthdays_Count_One" xml:space="preserve">
-    <value>{0} cumpleaños en {1}</value>
-  </data>
-  <data name="Teams_Birthdays_None" xml:space="preserve">
-    <value>No hay cumpleaños en {0}.</value>
-  </data>
-  <data name="Teams_Birthdays_Privacy" xml:space="preserve">
-    <value>Solo se muestran los humans que han establecido su cumpleaños.</value>
-  </data>
-  <data name="Teams_Map_Title" xml:space="preserve">
-    <value>Mapa de Humans</value>
-  </data>
-  <data name="Teams_Map_Count" xml:space="preserve">
-    <value>{0} humans con ubicación</value>
-  </data>
-  <data name="Teams_Map_None" xml:space="preserve">
-    <value>Ningún human ha establecido su ubicación aún.</value>
-  </data>
-  <data name="Teams_Map_Privacy" xml:space="preserve">
-    <value>Solo se muestran los humans que han establecido su ubicación. La ubicación es aproximada y se basa en la ciudad.</value>
-  </data>
   <data name="Teams_TeamAdmin_AddMember" xml:space="preserve">
     <value>Agregar miembro</value>
   </data>

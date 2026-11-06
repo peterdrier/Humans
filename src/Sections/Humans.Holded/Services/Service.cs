@@ -308,6 +308,22 @@ internal sealed class Service(
         }
     }
 
+    public async Task SyncPurchaseDocumentNotesAsync(
+        IReadOnlyCollection<string> documentIds, CancellationToken ct = default)
+    {
+        var notes = new Dictionary<string, string>(StringComparer.Ordinal);
+        try
+        {
+            foreach (var id in documentIds.Distinct(StringComparer.Ordinal))
+                notes[id] = (await client.GetPurchaseDocumentAsync(id, ct)).Notes?.Trim() ?? "";
+        }
+        finally
+        {
+            await DrainCallLogAsync(ct);
+        }
+        await repo.SetPurchaseDocNotesAsync(notes, ct);
+    }
+
     public async Task<HoldedContactMirror> GetContactsAsync(CancellationToken ct = default)
     {
         var state = (await repo.GetSyncStatesAsync(ct)).FirstOrDefault(s => s.Kind == HoldedSyncKind.Contacts);
