@@ -134,8 +134,6 @@ public sealed class Section :
 
         services.AddSingleton<IAuthorizationHandler, UserEmailAuthorizationHandler>();
 
-        services.AddSingleton<IAuthorizationHandler, HumanAdminOnlyHandler>();
-
         services.AddScoped<ProfileService>();
         services.AddScoped<IProfilePictureService>(sp => sp.GetRequiredService<ProfileService>());
 
@@ -289,9 +287,6 @@ public sealed class Section :
 
         options.AddPolicy(UsersPolicies.Manage, policy =>
             policy.RequireRole(UsersRoles.UsersAdmin, RoleNames.Admin));
-
-        options.AddPolicy(UsersPolicies.UsersAdminOnly, policy =>
-            policy.AddRequirements(new HumanAdminOnlyRequirement()));
     }
 
     async ValueTask<IEnumerable<ThingsToDoEntry>> ISectionThingsToDo.EntriesAsync(

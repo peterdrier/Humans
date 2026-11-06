@@ -232,9 +232,6 @@
   <data name="Users_ProfileEdit_LegalNameHelp" xml:space="preserve">
     <value>Vereist voor officiële documenten en ondertekening.</value>
   </data>
-  <data name="Users_ProfileEdit_Select" xml:space="preserve">
-    <value>Selecteren</value>
-  </data>
   <data name="Users_ProfileEdit_City" xml:space="preserve">
     <value>Stad</value>
   </data>

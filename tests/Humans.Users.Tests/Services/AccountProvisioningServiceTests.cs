@@ -531,7 +531,7 @@ public class AccountProvisioningServiceTests
             "alice@example.com", "Alice Smith", ContactSource.TicketTailor, Xunit.TestContext.Current.CancellationToken);
 
         result.Created.Should().BeTrue();
-        // User.Email is no longer the identity — the verified row is.
+        // User.Email is not the identity: the verified row is.
         StoredUser(result.UserId).Email.Should().BeNull();
         StoredUser(result.UserId).BurnerName.Should().Be("Alice Smith");
         StoredUser(result.UserId).ContactSource.Should().Be(ContactSource.TicketTailor);
@@ -717,8 +717,7 @@ public class AccountProvisioningServiceTests
         result2.Created.Should().BeFalse();
         result3.Created.Should().BeFalse();
 
-        // Only one user should exist. User.Email is no longer the identity —
-        // assert via the UserEmail row instead.
+        // Only one user should exist. User.Email is not the identity: assert via the UserEmail row.
         _userEmailFake.All
             .Count(ue => string.Equals(ue.Email, "henry@example.com", StringComparison.Ordinal))
             .Should().Be(1);

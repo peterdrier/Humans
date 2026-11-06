@@ -232,9 +232,6 @@
   <data name="Users_ProfileEdit_LegalNameHelp" xml:space="preserve">
     <value>Necesario para documentos oficiales y firmas.</value>
   </data>
-  <data name="Users_ProfileEdit_Select" xml:space="preserve">
-    <value>Seleccionar</value>
-  </data>
   <data name="Users_ProfileEdit_City" xml:space="preserve">
     <value>Ciudad</value>
   </data>
