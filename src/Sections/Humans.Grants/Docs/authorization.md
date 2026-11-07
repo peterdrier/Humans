@@ -1,3 +1,8 @@
+<!-- freshness:triggers
+  src/Sections/Humans.Grants/**
+  tests/Humans.Grants.Tests/**
+-->
+
 # Grants — Authorization
 
 | Controller | Scope | Roles | Source |

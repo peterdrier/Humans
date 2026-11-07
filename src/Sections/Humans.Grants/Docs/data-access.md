@@ -1,3 +1,8 @@
+<!-- freshness:triggers
+  src/Sections/Humans.Grants/**
+  tests/Humans.Grants.Tests/**
+-->
+
 # Grants — Data Access
 
 ## Grants
@@ -32,7 +37,6 @@ gallery entry over it.
 
 ### GrantNotices (internal, owned by GrantService)
 
-No repository or cache. Resolves recipients through the existing Users contract
-and sends the owning section’s localized copy through Email and Notifications.
-Issue, resend and revoke reuse this owner after their existing persistence/audit
-steps. No separate DI registration.
+No repository or cache. Resolves recipients through `IUserService` and sends
+the section's localized copy through Email and Notifications; issue, resend and
+revoke call it after persist and audit. Not registered in DI.
