@@ -178,6 +178,16 @@ internal sealed class Repository(IDbContextFactory<HoldedDbContext> factory)
         return await ctx.HoldedApiCalls.AsNoTracking().ToListAsync(ct);
     }
 
+    public async Task SetPurchaseDocNotesAsync(
+        IReadOnlyDictionary<string, string> notesById, CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        var ids = notesById.Keys.ToList();
+        foreach (var doc in await ctx.HoldedPurchaseDocs.Where(d => ids.Contains(d.Id)).ToListAsync(ct))
+            doc.Notes = notesById[doc.Id];
+        await ctx.SaveChangesAsync(ct);
+    }
+
     public async Task ReplacePurchaseDocsAsync(
         IReadOnlyList<HoldedPurchaseDoc> docs, Instant now, CancellationToken ct = default)
     {
@@ -199,6 +209,7 @@ internal sealed class Repository(IDbContextFactory<HoldedDbContext> factory)
                 cur.Total = d.Total;
                 cur.Currency = d.Currency;
                 cur.IsApproved = d.IsApproved;
+                cur.PaymentsPending = d.PaymentsPending;
                 cur.Notes = d.Notes ?? cur.Notes;
                 cur.Tags = d.Tags;
                 cur.BookedAccountId = d.BookedAccountId;
@@ -217,6 +228,43 @@ internal sealed class Repository(IDbContextFactory<HoldedDbContext> factory)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
         return await ctx.HoldedPurchaseDocs.AsNoTracking().ToListAsync(ct);
+    }
+
+    public async Task ReplaceContactsAsync(
+        IReadOnlyList<HoldedContact> contacts, Instant now, CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        var ids = contacts.Select(c => c.Id).ToHashSet(StringComparer.Ordinal);
+        var existing = await ctx.HoldedContacts.ToDictionaryAsync(c => c.Id, StringComparer.Ordinal, ct);
+        ctx.HoldedContacts.RemoveRange(existing.Values.Where(c => !ids.Contains(c.Id)));
+        foreach (var c in contacts)
+        {
+            if (existing.TryGetValue(c.Id, out var cur))
+            {
+                cur.Name = c.Name;
+                cur.SupplierAccountNum = c.SupplierAccountNum;
+                cur.TradeName = c.TradeName;
+                cur.Email = c.Email;
+                cur.Phone = c.Phone;
+                cur.Mobile = c.Mobile;
+                cur.Iban = c.Iban;
+                cur.TaxCode = c.TaxCode;
+                cur.Address = c.Address;
+                cur.LastSyncedAt = now;
+            }
+            else
+            {
+                c.LastSyncedAt = now;
+                ctx.HoldedContacts.Add(c);
+            }
+        }
+        await ctx.SaveChangesAsync(ct);
+    }
+
+    public async Task<IReadOnlyList<HoldedContact>> GetContactsAsync(CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        return await ctx.HoldedContacts.AsNoTracking().ToListAsync(ct);
     }
 
     public async Task<HoldedSyncState> GetOrCreateSyncStateAsync(

@@ -25,7 +25,8 @@ internal sealed class Service(
     IClock clock,
     ISettingsService settingsService,
     IStripeService stripeService,
-    IHoldedClient holdedClient,
+    IHoldedService holded,
+    IHoldedWrite holdedWrite,
     IOptions<StoreSectionOptions> options,
     ILogger<Service> logger) : IApplicationService
 {
@@ -626,7 +627,7 @@ internal sealed class Service(
             return RefuseAdminMutation(orderId, actorUserId, "Order not found.");
         if (order.TeamId is not null)
             return RefuseAdminMutation(orderId, actorUserId, "Team orders are non-billable.");
-        return await new StoreInvoiceIssuer(repo, audit, clock, holdedClient, options, orderReader, logger)
+        return await new StoreInvoiceIssuer(repo, audit, clock, holded, holdedWrite, options, orderReader, logger)
             .IssueAsync(order, actorUserId, ct);
     }
 

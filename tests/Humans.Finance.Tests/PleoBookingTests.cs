@@ -16,7 +16,7 @@ namespace Humans.Finance.Tests;
 internal static class TestPleo
 {
     public static PleoBooking Booking() => new(
-        Substitute.For<IPleoService>(), Substitute.For<IHoldedService>(), Substitute.For<IHoldedWrite>(),
+        Substitute.For<IPleoService>(), TestContacts.Holded(), Substitute.For<IHoldedWrite>(),
         Substitute.For<IAuditLogService>(), new PleoBookingState(), SystemClock.Instance,
         NullLogger<PleoBooking>.Instance);
 
@@ -31,7 +31,7 @@ public class PleoBookingTests
     private static readonly IReadOnlySet<int> Open = new HashSet<int> { Food, PleoBooking.PleoTreasury };
 
     private readonly IPleoService _pleo = Substitute.For<IPleoService>();
-    private readonly IHoldedService _holded = Substitute.For<IHoldedService>();
+    private readonly IHoldedService _holded = TestContacts.Holded();
     private readonly IHoldedWrite _write = Substitute.For<IHoldedWrite>();
     private readonly PleoBookingState _state = new();
     private readonly List<HoldedLedgerLineInfo> _ledger = [];

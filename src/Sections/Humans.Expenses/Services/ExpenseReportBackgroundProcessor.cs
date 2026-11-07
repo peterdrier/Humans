@@ -14,7 +14,8 @@ internal sealed class ExpenseReportBackgroundProcessor(
     IExpenseRepository repo,
     IFileStorage fileStorage,
     IUserService userService,
-    IHoldedClient holdedClient,
+    IHoldedService holded,
+    IHoldedWrite holdedWrite,
     IFinanceService finance,
     IFinanceWrite financeWrite,
     IAuditLogService auditLogService,
@@ -22,7 +23,7 @@ internal sealed class ExpenseReportBackgroundProcessor(
     ILogger<ExpenseReportBackgroundProcessor> logger) : IExpenseReportBackgroundProcessor, IApplicationService
 {
     private readonly ExpenseHoldedPublisher holdedPublisher = new(
-        repo, fileStorage, userService, holdedClient, finance, financeWrite, auditLogService, logger);
+        repo, fileStorage, userService, holded, holdedWrite, finance, financeWrite, auditLogService, logger);
 
     /// <summary>
     /// With the 2^n-minute backoff, ten attempts span roughly 17 hours: long enough to ride out a Holded outage, short
@@ -52,7 +53,7 @@ internal sealed class ExpenseReportBackgroundProcessor(
         {
             // No API key (PR previews, local dev): don't drain, or every 401 would write off a queued event. The
             // same flag makes /Expenses/{id} show NotConfigured instead of Queued.
-            if (!holdedClient.IsConfigured)
+            if (!holded.IsConfigured)
             {
                 logger.LogDebug(
                     "HOLDED_API_KEY_V2 not configured — skipping Holded expense outbox drain.");

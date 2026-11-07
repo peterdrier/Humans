@@ -37,7 +37,7 @@ grant's lifecycle follows the report's), plus the section's own `ExpensesEmails`
 Repository: `IExpenseRepository` (reads approved reports, updates
 `HoldedExpenseOutboxEvents`). Selection, the in-process single-drain gate, retry/backoff, permanent-failure audit and the
 configured-key gate live here; the section's `HoldedExpenseOutboxJob` drives it. Cross-section
-calls via `IFileStorage`, `IUserService`, `IHoldedClient`, `IFinanceService`,
+calls via `IFileStorage`, `IUserService`, `IHoldedService`, `IHoldedWrite`, `IFinanceService`,
 `IFinanceWrite`, `IAuditLogService`, plus `IClock`. No `IMemoryCache`.
 
 ### ExpenseHoldedPublisher (internal — `IApplicationService`, constructed by `ExpenseReportBackgroundProcessor`)
@@ -54,7 +54,7 @@ document + attachment conversation for one approved report. Repository: `IExpens
 | HoldedExpenseOutboxEvents | W (completion) |
 
 Cross-section calls via `IFileStorage`, `IUserService` (submitter, survivor after merge),
-`IHoldedClient` (Holded section — vendor API), `IFinanceService` / `IFinanceWrite`
+`IHoldedWrite` and the contact mirror on `IHoldedService` (Holded section), `IFinanceService` / `IFinanceWrite`
 (Finance section owns creditor identity and the contact binding), `IAuditLogService`. No
 `IMemoryCache`.
 

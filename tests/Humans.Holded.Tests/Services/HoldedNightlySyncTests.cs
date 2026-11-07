@@ -70,6 +70,7 @@ public class HoldedNightlySyncTests
     {
         var holded = Substitute.For<IHoldedService>();
         holded.SyncPurchaseDocumentsAsync(Arg.Any<CancellationToken>()).Returns(true);
+        holded.SyncContactsAsync(Arg.Any<CancellationToken>()).Returns(true);
         holded.SyncLedgerAsync(false, Arg.Any<CancellationToken>()).Returns(false);
         var logger = new CapturingLogger<HoldedNightlySync>();
         var sync = MakeSync(holded, apiKey: "k", logger);
@@ -85,6 +86,7 @@ public class HoldedNightlySyncTests
     {
         var holded = Substitute.For<IHoldedService>();
         holded.SyncPurchaseDocumentsAsync(Arg.Any<CancellationToken>()).Returns(true);
+        holded.SyncContactsAsync(Arg.Any<CancellationToken>()).Returns(true);
         holded.SyncLedgerAsync(false, Arg.Any<CancellationToken>()).Returns(true);
         var logger = new CapturingLogger<HoldedNightlySync>();
         var sync = MakeSync(holded, apiKey: "k", logger);

@@ -68,7 +68,7 @@ public sealed partial class ExpenseReportServiceTests
     private readonly IFinanceWrite _financeWrite = Substitute.For<IFinanceWrite>();
     private readonly IEmailService _emailService = Substitute.For<IEmailService>();
     private readonly IHoldedService _holdedService = Substitute.For<IHoldedService>();
-    private readonly IHoldedClient _holdedClient = Substitute.For<IHoldedClient>();
+    private readonly IHoldedWrite _holdedWrite = Substitute.For<IHoldedWrite>();
     private readonly IPreapprovalService _preapprovals = Substitute.For<IPreapprovalService>();
     private readonly IPreapprovalWrite _preapprovalWrites = Substitute.For<IPreapprovalWrite>();
     private readonly ExpenseReportService _sut;
@@ -90,9 +90,8 @@ public sealed partial class ExpenseReportServiceTests
         _preapprovalWrites.ConsumeAsync(default, default, default, default, Arg.Any<Action<Func<CancellationToken, Task>>?>()).ReturnsForAnyArgs(new PreapprovalWriteResult());
         _expenseRepo = new ExpenseRepository(new TestDbContextFactory<ExpensesDbContext>(_expensesOptions));
 
-        // DrainHoldedOutboxAsync returns early unless IHoldedClient.IsConfigured, so the
+        // DrainHoldedOutboxAsync returns early unless IHoldedService.IsConfigured, so the
         // substitute has to claim a key or it returns before touching anything.
-        _holdedClient.IsConfigured.Returns(true);
         _holdedService.IsConfigured.Returns(true);
 
         _fileStorage = Substitute.For<IFileStorage>();
@@ -118,7 +117,7 @@ public sealed partial class ExpenseReportServiceTests
             NullLogger<ExpenseReportService>.Instance,
             Options.Create(new TravelReimbursementConfig()));
         _backgroundProcessor = new ExpenseReportBackgroundProcessor(
-            _expenseRepo, _fileStorage, _userService, _holdedClient, _finance, _financeWrite, AuditLog, Clock,
+            _expenseRepo, _fileStorage, _userService, _holdedService, _holdedWrite, _finance, _financeWrite, AuditLog, Clock,
             NullLogger<ExpenseReportBackgroundProcessor>.Instance);
     }
 
@@ -4230,21 +4229,10 @@ public sealed partial class ExpenseReportServiceTests
                 Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<string?>(),
                 Arg.Any<string?>(), Arg.Any<int?>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns("contact-123");
-        _holdedClient.CreatePurchaseDocumentAsync(Arg.Any<HoldedPurchaseDocumentInput>(), Arg.Any<CancellationToken>())
+        _holdedWrite.CreatePurchaseDocumentAsync(Arg.Any<HoldedPurchaseDocumentInput>(), Arg.Any<CancellationToken>())
             .Returns("doc-1");
-        _holdedClient.GetContactAsync("contact-123", Arg.Any<CancellationToken>())
-            .Returns(new HoldedContactDto { Id = "contact-123", SupplierAccountNum = 40000007 });
-        _holdedClient.GetPurchaseDocumentAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
-            .Returns(new HoldedPurchaseDocumentDto
-            {
-                Id = "doc-1",
-                DocNumber = "",
-                Subtotal = 0m,
-                Tax = 0m,
-                Total = 0m,
-                PaymentsTotal = 0m,
-                PaymentsPending = 0m,
-            });
+        _holdedService.GetContactsAsync(Arg.Any<CancellationToken>())
+            .Returns(new HoldedContactMirror(Instant.FromUtc(2026, 1, 1, 0, 0), [new HoldedContactDto { Id = "contact-123", SupplierAccountNum = 40000007 }]));
         _fileStorage.TryReadAsync(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(new byte[] { 1, 2, 3 });
 
         var reportId = (await _sut.CreateDraftAsync(userId, userId, CategoryAccountNumber, "note", ct: TestContext.Current.CancellationToken)).ReportId!.Value;
@@ -4263,9 +4251,9 @@ public sealed partial class ExpenseReportServiceTests
 
         await _backgroundProcessor.DrainHoldedOutboxAsync(100, TestContext.Current.CancellationToken);
 
-        await _holdedClient.Received(1).CreatePurchaseDocumentAsync(
+        await _holdedWrite.Received(1).CreatePurchaseDocumentAsync(
             Arg.Any<HoldedPurchaseDocumentInput>(), Arg.Any<CancellationToken>());
-        await _holdedClient.Received(1).CreatePurchaseDocumentAsync(
+        await _holdedWrite.Received(1).CreatePurchaseDocumentAsync(
             Arg.Is<HoldedPurchaseDocumentInput>(i =>
                 string.Equals(i.Description, "ER: Wood", StringComparison.Ordinal)
                 && i.Lines.Sum(l => l.Amount) == 50m),
@@ -4295,21 +4283,10 @@ public sealed partial class ExpenseReportServiceTests
                 Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<string?>(),
                 Arg.Any<string?>(), Arg.Any<int?>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns("contact-123");
-        _holdedClient.CreatePurchaseDocumentAsync(Arg.Any<HoldedPurchaseDocumentInput>(), Arg.Any<CancellationToken>())
+        _holdedWrite.CreatePurchaseDocumentAsync(Arg.Any<HoldedPurchaseDocumentInput>(), Arg.Any<CancellationToken>())
             .Returns("doc-1");
-        _holdedClient.GetContactAsync("contact-123", Arg.Any<CancellationToken>())
-            .Returns(new HoldedContactDto { Id = "contact-123", SupplierAccountNum = 40000007 });
-        _holdedClient.GetPurchaseDocumentAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
-            .Returns(new HoldedPurchaseDocumentDto
-            {
-                Id = "doc-1",
-                DocNumber = "",
-                Subtotal = 0m,
-                Tax = 0m,
-                Total = 0m,
-                PaymentsTotal = 0m,
-                PaymentsPending = 0m,
-            });
+        _holdedService.GetContactsAsync(Arg.Any<CancellationToken>())
+            .Returns(new HoldedContactMirror(Instant.FromUtc(2026, 1, 1, 0, 0), [new HoldedContactDto { Id = "contact-123", SupplierAccountNum = 40000007 }]));
         _fileStorage.TryReadAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(new byte[] { 1, 2, 3 });
 
@@ -4348,21 +4325,10 @@ public sealed partial class ExpenseReportServiceTests
                 Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<string?>(),
                 Arg.Any<string?>(), Arg.Any<int?>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns("contact-123");
-        _holdedClient.CreatePurchaseDocumentAsync(Arg.Any<HoldedPurchaseDocumentInput>(), Arg.Any<CancellationToken>())
+        _holdedWrite.CreatePurchaseDocumentAsync(Arg.Any<HoldedPurchaseDocumentInput>(), Arg.Any<CancellationToken>())
             .Returns("doc-1");
-        _holdedClient.GetContactAsync("contact-123", Arg.Any<CancellationToken>())
-            .Returns(new HoldedContactDto { Id = "contact-123", SupplierAccountNum = 40000007 });
-        _holdedClient.GetPurchaseDocumentAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
-            .Returns(new HoldedPurchaseDocumentDto
-            {
-                Id = "doc-1",
-                DocNumber = "",
-                Subtotal = 0m,
-                Tax = 0m,
-                Total = 0m,
-                PaymentsTotal = 0m,
-                PaymentsPending = 0m,
-            });
+        _holdedService.GetContactsAsync(Arg.Any<CancellationToken>())
+            .Returns(new HoldedContactMirror(Instant.FromUtc(2026, 1, 1, 0, 0), [new HoldedContactDto { Id = "contact-123", SupplierAccountNum = 40000007 }]));
         _fileStorage.TryReadAsync(
                 ExpenseReportService.AttachmentKey(line.Attachment!.Id, line.Attachment.Extension),
                 Arg.Any<CancellationToken>())
@@ -4413,21 +4379,10 @@ public sealed partial class ExpenseReportServiceTests
                 Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<string?>(),
                 Arg.Any<string?>(), Arg.Any<int?>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns("contact-123");
-        _holdedClient.CreatePurchaseDocumentAsync(Arg.Any<HoldedPurchaseDocumentInput>(), Arg.Any<CancellationToken>())
+        _holdedWrite.CreatePurchaseDocumentAsync(Arg.Any<HoldedPurchaseDocumentInput>(), Arg.Any<CancellationToken>())
             .Returns("doc-1");
-        _holdedClient.GetContactAsync("contact-123", Arg.Any<CancellationToken>())
-            .Returns(new HoldedContactDto { Id = "contact-123", SupplierAccountNum = 40000007 });
-        _holdedClient.GetPurchaseDocumentAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
-            .Returns(new HoldedPurchaseDocumentDto
-            {
-                Id = "doc-1",
-                DocNumber = "",
-                Subtotal = 0m,
-                Tax = 0m,
-                Total = 0m,
-                PaymentsTotal = 0m,
-                PaymentsPending = 0m,
-            });
+        _holdedService.GetContactsAsync(Arg.Any<CancellationToken>())
+            .Returns(new HoldedContactMirror(Instant.FromUtc(2026, 1, 1, 0, 0), [new HoldedContactDto { Id = "contact-123", SupplierAccountNum = 40000007 }]));
         _fileStorage.TryReadAsync(
                 ExpenseReportService.AttachmentKey(line.Attachment!.Id, line.Attachment.Extension),
                 Arg.Any<CancellationToken>())
