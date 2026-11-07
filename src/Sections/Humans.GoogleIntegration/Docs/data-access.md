@@ -15,7 +15,7 @@ live under `Services/Workspace/`. **DbContext:**
 verdicts are written to the member's workspace identity through
 `IWorkspaceIdentityManagement.SetStatusFromSyncAsync` with the attempted
 address. Users' retired `user_emails.IsGoogle` / `GoogleEmailStatus` columns
-remain shadow-mapped for a separate schema drop.
+are dropped.
 
 `GoogleSyncOutboxEvents` is written only by this section's own
 `GoogleSyncOutboxService` / `GoogleSyncOutboxRepository`; `TeamService`

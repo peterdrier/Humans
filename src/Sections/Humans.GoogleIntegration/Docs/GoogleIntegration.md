@@ -38,7 +38,7 @@ Per-service sync-mode configuration. Holds `UpdatedByUserId` — a bare cross-se
 
 **Table:** `google_workspace_identities`
 
-A member's designated Google Workspace identity: `UserId` (PK, bare Guid, no FK), `Email` (nullable, max 256), `Status` (`GoogleEmailStatus` as string: `Unknown`, `Valid`, `Rejected`), `UpdatedAt`. One row per user. A row with `Email = null` records a cleared designation. Resolution then uses verified domain, primary, or first-address fallback; its verdict is Unknown. Users' retired identity columns remain mapped only as shadow properties for a separate drop PR.
+A member's designated Google Workspace identity: `UserId` (PK, bare Guid, no FK), `Email` (nullable, max 256), `Status` (`GoogleEmailStatus` as string: `Unknown`, `Valid`, `Rejected`), `UpdatedAt`. One row per user. A row with `Email = null` records a cleared designation. Resolution then uses verified domain, primary, or first-address fallback; its verdict is Unknown. Users' retired `users.GoogleEmail` column remains mapped only as a shadow property for a separate drop PR; `user_emails.IsGoogle` / `GoogleEmailStatus` are dropped.
 
 ### GoogleSyncOutboxEvent
 
