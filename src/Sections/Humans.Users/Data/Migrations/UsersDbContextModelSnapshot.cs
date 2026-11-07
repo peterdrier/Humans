@@ -188,16 +188,6 @@ namespace Humans.Users.Data.Migrations
                         .HasMaxLength(256)
                         .HasColumnType("character varying(256)");
 
-                    b.Property<string>("GoogleEmailStatus")
-                        .IsRequired()
-                        .ValueGeneratedOnAdd()
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)")
-                        .HasDefaultValue("Unknown");
-
-                    b.Property<bool>("IsGoogle")
-                        .HasColumnType("boolean");
-
                     b.Property<bool>("IsPrimary")
                         .HasColumnType("boolean")
                         .HasColumnName("IsNotificationTarget");

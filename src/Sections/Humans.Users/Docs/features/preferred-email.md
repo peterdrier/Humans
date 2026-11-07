@@ -134,7 +134,7 @@ UserEmail
 
 `User` carries no Google-email property or helper (analyzer `HUM0001` enforces it). The canonical read path is:
 
-- The Google sync target is GoogleIntegration's `IGoogleIntegrationService.GetWorkspaceIdentityAsync` (Users decomposition commit 15; `UserInfo.GoogleEmail` and the `IsGoogle` flag are retired/frozen).
+- The Google sync target is GoogleIntegration's `IGoogleIntegrationService.GetWorkspaceIdentityAsync` (Users decomposition commit 15; `UserInfo.GoogleEmail` and the `IsGoogle` flag are retired).
 - `UserInfo.PrimaryEmail` — the `UserEmail` row flagged `IsPrimary = true`; used for system notification emails.
 
 The `GoogleEmail` column is retained on disk as an EF shadow property pending a deferred column-drop PR per `memory/architecture/no-drops-until-prod-verified.md`.

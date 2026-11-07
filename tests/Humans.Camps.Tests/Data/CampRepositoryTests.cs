@@ -260,8 +260,7 @@ public sealed class CampRepositoryTests : IDisposable
         _dbContext.CampSettings.Add(new CampSettings
         {
             Id = Guid.NewGuid(),
-            PublicYear = 2026,
-            OpenSeasons = [2026]
+            PublicYear = 2026
         });
         await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
@@ -517,8 +516,7 @@ public sealed class CampRepositoryTests : IDisposable
         _dbContext.CampSettings.Add(new CampSettings
         {
             Id = Guid.NewGuid(),
-            PublicYear = 2026,
-            OpenSeasons = [2026]
+            PublicYear = 2026
         });
         await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
     }
