@@ -17,8 +17,7 @@ namespace Humans.Grants.Tests.Infrastructure;
 /// <summary>
 /// Base class for the section's tests: a per-test in-memory <see cref="GrantsDbContext"/> and
 /// factory, a deterministic clock, substitutes for every cross-section seam the service talks
-/// to, and seeders for programs and grants. Member names follow the other section harnesses
-/// (memory/code/service-test-harness.md): <c>Db</c>, <c>DbFactory</c>, <c>Clock</c>, <c>SeedUser</c>.
+/// to, and seeders for programs and grants.
 /// </summary>
 public abstract class GrantsTestHarness : IDisposable
 {
