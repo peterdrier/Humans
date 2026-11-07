@@ -65,7 +65,7 @@ ViewComponents/, Views/    two profile cards and three admin pages
   `src/Sections/Humans.Grants/Services/GrantService.Programs.cs:24` and
   `src/Sections/Humans.Grants/Services/GrantService.Programs.cs:71`.
 - A missing or tombstoned recipient or manager refuses the whole write before anything is saved:
-  `src/Sections/Humans.Grants/Services/GrantService.cs:85`, used by
+  `src/Sections/Humans.Grants/Services/GrantService.cs:89`, used by
   `src/Sections/Humans.Grants/Services/GrantService.Grants.cs:31` and
   `src/Sections/Humans.Grants/Services/GrantService.Programs.cs:26`.
 - A revoked grant is never revoked again or resent:
@@ -98,8 +98,10 @@ ViewComponents/, Views/    two profile cards and three admin pages
 
 - **No job flips expiry.** State is a date comparison at read time.
 - **No caching decorator.** A handful of programs, read on a few admin pages and one card.
-- **No localization of admin pages or program-level refusals**
-  (`memory/code/localization-admin-exempt.md`); member-facing copy is localized.
+- **Admin pages and program-level refusals are English only**, under
+  `memory/code/localization-admin-exempt.md`; member-facing copy is localized. Program managers
+  are ordinary volunteers who reach these pages, so whether the exemption covers them is open
+  (Needs Peter).
 - **No "already held" signal from `IGrantWrite.IssueAsync`.** The source gets the existing id;
   Low Income accepted that.
 
@@ -120,4 +122,4 @@ ViewComponents/, Views/    two profile cards and three admin pages
 
 | Run | Date | Headline | PR |
 |---|---|---|---|
-| 1 | 2026-11-07 | First doctor pass | pending |
+| 1 | 2026-11-07 | First doctor pass: docs describe what the section does now, one profile link, untested invariants pinned | pending |
