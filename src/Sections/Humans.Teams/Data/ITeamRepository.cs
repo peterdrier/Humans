@@ -36,7 +36,7 @@ internal interface ITeamRepository : IRepository
     Task<IReadOnlyDictionary<Guid, IReadOnlyList<TeamRoleDefinition>>> GetAllRoleDefinitionsByTeamAsync(
         CancellationToken ct = default);
 
-    /// <summary>Paged in the database: the include graph is too expensive to load wholesale.</summary>
+    /// <summary>Every team, including inactive; unordered.</summary>
     Task<IReadOnlyList<Team>> GetAllForAdminAsync(CancellationToken ct = default);
 
     /// <summary>Also loads referenced parents missing from the requested set.</summary>

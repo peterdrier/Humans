@@ -90,7 +90,6 @@ public class MembershipPartitionTests
         var result = await _service.PartitionUsersAsync([userId], Xunit.TestContext.Current.CancellationToken);
 
         result.Active.Should().Contain(userId);
-        result.PendingApproval.Should().NotContain(userId);
         result.Suspended.Should().NotContain(userId);
         result.IncompleteSignup.Should().NotContain(userId);
         result.PendingDeletion.Should().NotContain(userId);
@@ -114,7 +113,6 @@ public class MembershipPartitionTests
 
         var result = await _service.PartitionUsersAsync([userId], Xunit.TestContext.Current.CancellationToken);
 
-        result.PendingApproval.Should().BeEmpty();
         result.IncompleteSignup.Should().BeEmpty();
         (consented ? result.Active : result.MissingConsents).Should().ContainSingle().Which.Should().Be(userId);
         (consented ? result.MissingConsents : result.Active).Should().BeEmpty();
@@ -235,7 +233,6 @@ public class MembershipPartitionTests
         var result = await _service.PartitionUsersAsync(allIds, Xunit.TestContext.Current.CancellationToken);
 
         var totalCount = result.Active.Count
-            + result.PendingApproval.Count
             + result.Suspended.Count
             + result.IncompleteSignup.Count
             + result.PendingDeletion.Count
@@ -271,7 +268,7 @@ public class MembershipPartitionTests
 
         var buckets = new[]
         {
-            result.Active, result.PendingApproval, result.Suspended,
+            result.Active, result.Suspended,
             result.IncompleteSignup, result.PendingDeletion, result.MissingConsents
         };
 

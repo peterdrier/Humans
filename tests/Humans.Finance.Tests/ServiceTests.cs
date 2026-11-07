@@ -3483,7 +3483,7 @@ public class HoldedFinanceServiceTests
         await _client.Received(1).CreateExpenseAccountAsync(
             62900100, "Workgroups / New", Arg.Any<CancellationToken>());
         await _audit.Received(1).LogAsync(
-            FinanceAuditActions.HoldedExpenseAccountCreated, HoldedExpenseAccounts.HoldedExpenseAccount, Guid.Empty,
+            FinanceAuditActions.HoldedExpenseAccountCreated, Service.HoldedExpenseAccount, Guid.Empty,
             Arg.Is<string>(description => description.Contains("62900100") && description.Contains("Workgroups / New")),
             "Finance", null, null);
     }

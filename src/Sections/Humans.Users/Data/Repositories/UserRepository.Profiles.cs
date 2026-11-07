@@ -200,7 +200,7 @@ internal sealed partial class UserRepository
         return suspended;
     }
 
-    public async Task<(Guid ProfileId, string? ContentType, string? StorageKey)?> ReassignSubAggregatesToUserAsync(
+    public async Task ReassignSubAggregatesToUserAsync(
         Guid sourceUserId, Guid targetUserId, Instant updatedAt,
         CancellationToken ct = default)
     {
@@ -209,16 +209,12 @@ internal sealed partial class UserRepository
         var sourceProfile = await ctx.Profiles
             .FirstOrDefaultAsync(p => p.UserId == sourceUserId, ct);
         if (sourceProfile is null)
-            return null;
+            return;
 
         var targetProfile = await ctx.Profiles
             .FirstOrDefaultAsync(p => p.UserId == targetUserId, ct);
         if (targetProfile is null)
-            return null;
-
-        var previousPicture = (ProfileId: sourceProfile.Id,
-            ContentType: sourceProfile.ProfilePictureContentType,
-            StorageKey: sourceProfile.ProfilePictureStorageKey);
+            return;
 
         var sourceVolunteerHistory = await ctx.VolunteerHistoryEntries
             .Where(v => v.ProfileId == sourceProfile.Id)
@@ -298,7 +294,6 @@ internal sealed partial class UserRepository
         sourceProfile.UpdatedAt = updatedAt;
 
         await ctx.SaveChangesAsync(ct);
-        return previousPicture;
     }
 
     public async Task<bool> AnonymizeForDeletionByUserIdAsync(

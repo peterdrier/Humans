@@ -309,7 +309,6 @@ internal sealed class MembershipCalculator(
 
         return new MembershipPartition(
             incompleteSignup,
-            [],
             active,
             missingConsents,
             suspended,
