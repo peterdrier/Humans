@@ -511,12 +511,14 @@ public sealed class ServiceImageTests
             foreach (var year in new[] { 2025, 2026 })
                 seed.ContainerPlacements.Add(new ContainerPlacement
                 {
-                    ContainerId = container.Id, Year = year,
+                    ContainerId = container.Id,
+                    Year = year,
                     PlacementImageStoragePath = $"uploads/containers/placement-{year}.jpg",
                 });
             seed.ContainerPlacements.Add(new ContainerPlacement
             {
-                ContainerId = other.Id, Year = 2026,
+                ContainerId = other.Id,
+                Year = 2026,
                 PlacementImageStoragePath = "uploads/containers/other.jpg",
             });
             await seed.SaveChangesAsync(ct);

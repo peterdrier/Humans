@@ -229,7 +229,10 @@ public class SurveyServiceTests
         var survey = SurveyWith(SurveyStatus.Open, SurveyAudienceType.Team, teamId);
         var invitation = new SurveyInvitation
         {
-            Id = Guid.NewGuid(), SurveyId = survey.Id, UserId = userId, CreatedAt = _clock.GetCurrentInstant()
+            Id = Guid.NewGuid(),
+            SurveyId = survey.Id,
+            UserId = userId,
+            CreatedAt = _clock.GetCurrentInstant()
         };
         _repo.GetByIdAsync(survey.Id, Arg.Any<CancellationToken>()).Returns(survey);
         _repo.GetInvitationsAsync(survey.Id, Arg.Any<CancellationToken>()).Returns([invitation]);

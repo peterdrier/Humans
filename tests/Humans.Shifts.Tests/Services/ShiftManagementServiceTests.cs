@@ -123,7 +123,10 @@ public sealed class ShiftManagementServiceTests : ShiftsTestHarness
         if (operation is ManagementWrite.UpdateProfile or ManagementWrite.ReassignProfile)
             ShiftsDb.VolunteerEventProfiles.Add(new VolunteerEventProfile
             {
-                Id = Guid.NewGuid(), UserId = user.Id, CreatedAt = TestNow, UpdatedAt = TestNow
+                Id = Guid.NewGuid(),
+                UserId = user.Id,
+                CreatedAt = TestNow,
+                UpdatedAt = TestNow
             });
         await SaveAllAsync(ct);
         var targetTeamId = Guid.NewGuid();

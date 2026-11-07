@@ -56,9 +56,13 @@ public sealed class ContactFieldServiceTests : ServiceTestHarness
         var profile = await CreateProfileAsync(userId);
         var field = new ContactField
         {
-            Id = Guid.NewGuid(), ProfileId = profile.Id, FieldType = ContactFieldType.Phone,
-            Value = "old-number", Visibility = ContactFieldVisibility.AllActiveProfiles,
-            CreatedAt = Clock.GetCurrentInstant(), UpdatedAt = Clock.GetCurrentInstant()
+            Id = Guid.NewGuid(),
+            ProfileId = profile.Id,
+            FieldType = ContactFieldType.Phone,
+            Value = "old-number",
+            Visibility = ContactFieldVisibility.AllActiveProfiles,
+            CreatedAt = Clock.GetCurrentInstant(),
+            UpdatedAt = Clock.GetCurrentInstant()
         };
         Db.ContactFields.Add(field);
         await Db.SaveChangesAsync(ct);

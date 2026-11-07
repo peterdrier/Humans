@@ -83,9 +83,12 @@ public sealed class ServiceTests
         { GateOpeningDate = next.GateOpeningDate, EventName = "Revised" };
         Func<Task> write = operation switch
         {
-            "save" => async () => { await service.SaveEventSettingsAsync(draft, Actor, ct); },
-            "timezone" => async () => { await service.SaveTimeZoneAsync("Atlantic/Canary", Actor, ct); },
-            "activate" => async () => { await service.ActivateEventSettingsAsync(next.Id, Actor, ct); },
+            "save" => async () => { await service.SaveEventSettingsAsync(draft, Actor, ct); }
+            ,
+            "timezone" => async () => { await service.SaveTimeZoneAsync("Atlantic/Canary", Actor, ct); }
+            ,
+            "activate" => async () => { await service.ActivateEventSettingsAsync(next.Id, Actor, ct); }
+            ,
             "seed" => () => service.CreateActiveEventAsync(draft, ct),
             _ => async () => { await service.DeleteEventAsync(next.Id, ct); }
         };
@@ -153,9 +156,14 @@ public sealed class ServiceTests
         var service = BuildSut();
         Func<Task> write = operation switch
         {
-            "save" => async () => { await service.SaveEventSettingsAsync(
-                MakeDto(next.Id, EventSettingsStatus.Inactive) with { GateOpeningDate = next.GateOpeningDate }, Actor, ct); },
-            "timezone" => async () => { await service.SaveTimeZoneAsync("Atlantic/Canary", Actor, ct); },
+            "save" => async () =>
+            {
+                await service.SaveEventSettingsAsync(
+                MakeDto(next.Id, EventSettingsStatus.Inactive) with { GateOpeningDate = next.GateOpeningDate }, Actor, ct);
+            }
+            ,
+            "timezone" => async () => { await service.SaveTimeZoneAsync("Atlantic/Canary", Actor, ct); }
+            ,
             _ => async () => { await service.ActivateEventSettingsAsync(next.Id, Actor, ct); }
         };
 

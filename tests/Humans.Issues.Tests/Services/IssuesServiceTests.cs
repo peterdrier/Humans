@@ -2452,10 +2452,16 @@ public sealed class IssuesServiceTests
             foreach (var (id, key) in new[] { (first, firstKey), (second, secondKey), (live, liveKey) })
                 seed.Issues.Add(new Issue
                 {
-                    Id = id, ReporterUserId = Guid.NewGuid(), Category = IssueCategory.Bug,
-                    Title = "Retention", Description = "Test", CreatedAt = old, UpdatedAt = old,
+                    Id = id,
+                    ReporterUserId = Guid.NewGuid(),
+                    Category = IssueCategory.Bug,
+                    Title = "Retention",
+                    Description = "Test",
+                    CreatedAt = old,
+                    UpdatedAt = old,
                     Status = id == live ? IssueStatus.Open : IssueStatus.Resolved,
-                    ResolvedAt = id == live ? null : old, ScreenshotStoragePath = key,
+                    ResolvedAt = id == live ? null : old,
+                    ScreenshotStoragePath = key,
                 });
             await seed.SaveChangesAsync(ct);
         }

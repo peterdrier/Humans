@@ -31,12 +31,20 @@ public class UserEmailServiceTests
         var user = new User { Id = userId };
         var linked = new UserEmail
         {
-            Id = Guid.NewGuid(), UserId = userId, Email = "linked@example.com", IsVerified = true,
-            IsPrimary = true, Provider = "Google", ProviderKey = "linked-key"
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            Email = "linked@example.com",
+            IsVerified = true,
+            IsPrimary = true,
+            Provider = "Google",
+            ProviderKey = "linked-key"
         };
         var other = new UserEmail
         {
-            Id = Guid.NewGuid(), UserId = userId, Email = "other@example.com", IsVerified = true,
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            Email = "other@example.com",
+            IsVerified = true,
             Provider = overlap == RemovalOverlap.UnlinkThenUnlink ? "GitHub" : null,
             ProviderKey = overlap == RemovalOverlap.UnlinkThenUnlink ? "other-key" : null
         };

@@ -53,12 +53,18 @@ public class VolunteerTrackingServiceTests
         {
             seed.GeneralAvailability.Add(new GeneralAvailability
             {
-                Id = Guid.NewGuid(), UserId = userId, EventSettingsId = es.Id,
-                AvailableDayOffsets = [-5], CreatedAt = TestNow, UpdatedAt = TestNow
+                Id = Guid.NewGuid(),
+                UserId = userId,
+                EventSettingsId = es.Id,
+                AvailableDayOffsets = [-5],
+                CreatedAt = TestNow,
+                UpdatedAt = TestNow
             });
             seed.VolunteerBuildStatuses.Add(new VolunteerBuildStatus
             {
-                Id = Guid.NewGuid(), UserId = userId, EventSettingsId = es.Id,
+                Id = Guid.NewGuid(),
+                UserId = userId,
+                EventSettingsId = es.Id,
                 BarrioSetupStartDate = es.GateOpeningDate.PlusDays(-2),
                 DayOffs = [new DayOffEntry(-4, null, targetId, TestNow), new DayOffEntry(-2, null, targetId, TestNow)]
             });

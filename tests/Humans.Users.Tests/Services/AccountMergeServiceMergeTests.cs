@@ -51,7 +51,10 @@ public class AccountMergeServiceMergeTests
         var target = Guid.NewGuid();
         var email = new UserEmail
         {
-            Id = Guid.NewGuid(), UserId = target, Email = "pending@example.org", IsVerified = false
+            Id = Guid.NewGuid(),
+            UserId = target,
+            Email = "pending@example.org",
+            IsVerified = false
         };
         IReadOnlyList<UserEmail> stored = [email];
         UserInfo Snapshot() => UserInfo.Create(new User { Id = target }, stored, [], null);
@@ -66,8 +69,12 @@ public class AccountMergeServiceMergeTests
         (await cache.GetRawUserInfoAsync(target, ct))!.UserEmails.Should().ContainSingle();
         var request = new AccountMergeRequest
         {
-            Id = Guid.NewGuid(), TargetUserId = target, SourceUserId = Guid.NewGuid(),
-            PendingEmailId = email.Id, Email = email.Email, Status = AccountMergeRequestStatus.Pending
+            Id = Guid.NewGuid(),
+            TargetUserId = target,
+            SourceUserId = Guid.NewGuid(),
+            PendingEmailId = email.Id,
+            Email = email.Email,
+            Status = AccountMergeRequestStatus.Pending
         };
         _mergeRepo.GetByIdPlainAsync(request.Id, Arg.Any<CancellationToken>()).Returns(request);
         _userEmailRepo.RemoveUserEmailByIdAsync(email.Id, Arg.Any<CancellationToken>()).Returns(async _ =>
@@ -103,8 +110,12 @@ public class AccountMergeServiceMergeTests
     {
         var request = new AccountMergeRequest
         {
-            Id = Guid.NewGuid(), TargetUserId = Guid.NewGuid(), SourceUserId = Guid.NewGuid(),
-            PendingEmailId = Guid.NewGuid(), Email = "pending@example.org", Status = AccountMergeRequestStatus.Pending
+            Id = Guid.NewGuid(),
+            TargetUserId = Guid.NewGuid(),
+            SourceUserId = Guid.NewGuid(),
+            PendingEmailId = Guid.NewGuid(),
+            Email = "pending@example.org",
+            Status = AccountMergeRequestStatus.Pending
         };
         _mergeRepo.GetByIdPlainAsync(request.Id, Arg.Any<CancellationToken>()).Returns(request);
         var actor = Guid.NewGuid();
@@ -139,8 +150,11 @@ public class AccountMergeServiceMergeTests
         var targetProfile = new Profile { Id = Guid.NewGuid(), UserId = target.Id, FirstName = "Target", LastName = "Human" };
         var field = new ContactField
         {
-            Id = Guid.NewGuid(), ProfileId = sourceProfile.Id, FieldType = ContactFieldType.Phone,
-            Value = "contact-number", Visibility = ContactFieldVisibility.BoardOnly
+            Id = Guid.NewGuid(),
+            ProfileId = sourceProfile.Id,
+            FieldType = ContactFieldType.Phone,
+            Value = "contact-number",
+            Visibility = ContactFieldVisibility.BoardOnly
         };
         var options = new DbContextOptionsBuilder<UsersDbContext>()
             .UseInMemoryDatabase(Guid.NewGuid().ToString()).Options;

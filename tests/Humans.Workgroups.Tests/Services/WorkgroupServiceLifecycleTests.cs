@@ -36,7 +36,10 @@ public sealed class WorkgroupServiceLifecycleTests : WorkgroupsTestHarness
         var other = (await Users.GetUserInfoAsync(otherId, Ct))!;
         var people = new Dictionary<Guid, UserInfo>
         {
-            [firstAlias] = survivor, [secondAlias] = survivor, [survivorId] = survivor, [otherId] = other
+            [firstAlias] = survivor,
+            [secondAlias] = survivor,
+            [survivorId] = survivor,
+            [otherId] = other
         };
         Users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(call => new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(

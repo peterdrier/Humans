@@ -86,8 +86,12 @@ public sealed class AccountDeletionServiceRealContributorTests : ServiceTestHarn
         var failedId = archived ? source.Id : survivor.Id;
         var profile = new Profile
         {
-            Id = Guid.NewGuid(), UserId = failedId, FirstName = "Private", LastName = "Name",
-            EmergencyContactPhone = "Private emergency contact", CreatedAt = Clock.GetCurrentInstant(),
+            Id = Guid.NewGuid(),
+            UserId = failedId,
+            FirstName = "Private",
+            LastName = "Name",
+            EmergencyContactPhone = "Private emergency contact",
+            CreatedAt = Clock.GetCurrentInstant(),
             UpdatedAt = Clock.GetCurrentInstant()
         };
         Db.Profiles.Add(profile);
@@ -122,7 +126,7 @@ public sealed class AccountDeletionServiceRealContributorTests : ServiceTestHarn
             Substitute.For<IHostEnvironment>(), NullLogger<AccountDeletionService>.Instance);
         Func<Task> erase = expiry
             ? async () => { await service.AnonymizeExpiredAccountAsync(survivor.Id, cancellation.Token); }
-            : async () => { await service.PurgeAsync(survivor.Id, ct: cancellation.Token); };
+        : async () => { await service.PurgeAsync(survivor.Id, ct: cancellation.Token); };
 
         (await erase.Should().ThrowAsync<IOException>()).Which.Should().BeSameAs(failure);
 

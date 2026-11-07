@@ -231,7 +231,8 @@ public sealed class ConsentServiceTests : ConsentTestHarness
         var sourceId = Guid.NewGuid();
         var info = WrapInUserInfo(userId, UserFixtures.Profile(
             burnerName: "Burner", firstName: "First", lastName: "Last",
-            createdAt: Clock.GetCurrentInstant())) with { MergedUserIds = [sourceId] };
+            createdAt: Clock.GetCurrentInstant())) with
+        { MergedUserIds = [sourceId] };
         foreach (var id in info.AllUserIds)
             _userService.GetUserInfoAsync(id, Arg.Any<CancellationToken>()).Returns(info);
         var versionId = Guid.NewGuid();

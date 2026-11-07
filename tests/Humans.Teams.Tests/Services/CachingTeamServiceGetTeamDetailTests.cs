@@ -290,7 +290,9 @@ public sealed class CachingTeamServiceGetTeamDetailTests : IDisposable
         foreach (var child in new[] { zeta, alpha })
             child.Members.Add(new TeamMember
             {
-                Id = Guid.NewGuid(), TeamId = child.Id, UserId = memberId,
+                Id = Guid.NewGuid(),
+                TeamId = child.Id,
+                UserId = memberId,
                 Role = child == zeta ? TeamMemberRole.Coordinator : TeamMemberRole.Member,
                 JoinedAt = child.CreatedAt
             });

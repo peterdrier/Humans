@@ -1071,7 +1071,7 @@ public class ExpenseReportServiceHoldedOutboxTests
         _repo.GetUnprocessedOutboxAsync(Arg.Any<Instant>(), BatchSize, ct).Returns([failedEvent, healthyEvent]);
         _repo.GetByIdAsync(broken.Id, ct).Returns(broken);
         _repo.GetByIdAsync(healthy.Id, ct).Returns(healthy);
-        _holdedClient.CreatePurchaseDocumentAsync(Arg.Any<HoldedPurchaseDocumentInput>(), ct)
+        _holdedWrite.CreatePurchaseDocumentAsync(Arg.Any<HoldedPurchaseDocumentInput>(), ct)
             .Returns(Task.FromException<string>(failure), Task.FromResult("healthy-doc"));
 
         await _backgroundProcessor.DrainHoldedOutboxAsync(BatchSize, ct);

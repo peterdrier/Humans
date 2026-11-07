@@ -618,7 +618,9 @@ public sealed class TeamRoleServiceTests : TeamsTestHarness
         else
             TeamsDb.TeamJoinRequests.Add(new TeamJoinRequest
             {
-                Id = Guid.NewGuid(), TeamId = team.Id, UserId = user2.Id,
+                Id = Guid.NewGuid(),
+                TeamId = team.Id,
+                UserId = user2.Id,
                 RequestedAt = Clock.GetCurrentInstant()
             });
         SeedRoleAssignment(role, member1, slotIndex: 0);

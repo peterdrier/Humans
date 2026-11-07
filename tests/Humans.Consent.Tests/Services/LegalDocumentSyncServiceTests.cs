@@ -108,9 +108,14 @@ public sealed class LegalDocumentSyncServiceTests : ConsentTestHarness
         var versionId = Guid.NewGuid();
         LegalDb.DocumentVersions.Add(new DocumentVersion
         {
-            Id = versionId, LegalDocumentId = document.Id, VersionNumber = "v1.0",
-            CommitSha = "old-sha", Content = new Dictionary<string, string>(StringComparer.Ordinal) { ["es"] = "old" },
-            EffectiveFrom = Clock.GetCurrentInstant(), CreatedAt = Clock.GetCurrentInstant(), ChangesSummary = "old"
+            Id = versionId,
+            LegalDocumentId = document.Id,
+            VersionNumber = "v1.0",
+            CommitSha = "old-sha",
+            Content = new Dictionary<string, string>(StringComparer.Ordinal) { ["es"] = "old" },
+            EffectiveFrom = Clock.GetCurrentInstant(),
+            CreatedAt = Clock.GetCurrentInstant(),
+            ChangesSummary = "old"
         });
         await SaveAllAsync(ct);
         var services = new ServiceCollection();
@@ -134,10 +139,14 @@ public sealed class LegalDocumentSyncServiceTests : ConsentTestHarness
         StubGitHubFolder("privacy/", "new", string.Equals(operation, "touch", StringComparison.Ordinal) ? "old-sha" : "new-sha", "new summary");
         Func<Task> write = operation switch
         {
-            "create" => async () => { await writer.CreateLegalDocumentWithInitialSyncAsync(request, _actorUserId, ct); },
-            "update" => async () => { await writer.UpdateLegalDocumentAsync(document.Id, request, _actorUserId, ct); },
-            "archive" => async () => { await writer.ArchiveLegalDocumentAsync(document.Id, _actorUserId, ct); },
-            "summary" => async () => { await writer.UpdateVersionSummaryAsync(document.Id, versionId, "revised summary", _actorUserId, ct); },
+            "create" => async () => { await writer.CreateLegalDocumentWithInitialSyncAsync(request, _actorUserId, ct); }
+            ,
+            "update" => async () => { await writer.UpdateLegalDocumentAsync(document.Id, request, _actorUserId, ct); }
+            ,
+            "archive" => async () => { await writer.ArchiveLegalDocumentAsync(document.Id, _actorUserId, ct); }
+            ,
+            "summary" => async () => { await writer.UpdateVersionSummaryAsync(document.Id, versionId, "revised summary", _actorUserId, ct); }
+            ,
             _ => async () => { await writer.SyncDocumentAsync(document.Id, ct); }
         };
 
