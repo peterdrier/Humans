@@ -176,9 +176,9 @@
         Badges showing volunteer event profile info — skills, quirks, dietary, languages, optional medical. Synthetic sample below.
     </div>
     @ParamsBlock(
-        ("@@model", "<code>VolunteerBadgesViewModel</code> (skills from VEP; dietary from Cantina, medical from Profile)")
+        ("@@model", "<code>VolunteerBadgesViewModel</code> (skills from VEP; dietary from Cantina; no medical data)")
     )
-    <div class="wg-auth-line"><code>CanRevealMedical=true</code> only for a MedicalDataViewer — gate at the call site; the text itself comes from the audited reveal, never the model.</div>
+    <div class="wg-auth-line"><code>CanRevealMedical=true</code> only for a UsersPolicies.MedicalDataViewer holder; the button calls Users' audited reveal, and Shifts never sees the text.</div>
     <div class="wg-card-example">
         @await Html.PartialAsync("_VolunteerProfileBadges",
             new VolunteerBadgesViewModel(
@@ -187,7 +187,6 @@
                 Quirks: ["Early riser", "Coffee snob"],
                 Languages: ["English", "Spanish"],
                 DietaryPreference: null,
-                HasMedicalConditions: false,
                 CanRevealMedical: true))
     </div>
 </div>

@@ -27,10 +27,6 @@ public static class ShiftsRoles
     public static bool CanManageDepartment(ClaimsPrincipal user) =>
         IsPrivilegedSignupApprover(user) || user.IsInRole(ShiftsAdmin);
 
-    /// <summary>Who may open a member's medical conditions through the audited reveal; mirrors <c>ShiftsPolicies.MedicalDataViewer</c>.</summary>
-    public static bool CanViewMedical(ClaimsPrincipal user) =>
-        IsPrivilegedSignupApprover(user) || RoleChecks.IsBoard(user);
-
     /// <summary>Admin or Shifts Admin; deliberately excludes Shifts NoInfo, who approves signups but manages no rotas.</summary>
     public static bool IsVolunteerManager(ClaimsPrincipal user) =>
         RoleChecks.IsAdmin(user) || user.IsInRole(ShiftsAdmin);

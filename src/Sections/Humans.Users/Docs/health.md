@@ -79,7 +79,7 @@ The shapes imply one register with one cache and one write funnel:
 - An address is rewritten by exactly one path: the OAuth reconcile, matched on
   `(Provider, ProviderKey)`.
 - Birthday carries month and day only.
-- `MedicalConditions` is Art. 9 data and is gated at every render by `ShiftsPolicies.MedicalDataViewer`.
+- `MedicalConditions` is Art. 9 data and is off the cached `UserInfo`; `MedicalConditionsService` is its only reader, and others get it only through the audited reveal (`UsersPolicies.MedicalDataViewer`).
 - A merge is ordered, not transactional; every `IUserMerge.ReassignAsync` is idempotent; the
   source row becomes a tombstone (`MergedToUserId`, `MergedAt`, far-future lockout) and is never
   deleted; tombstones cannot sign in.

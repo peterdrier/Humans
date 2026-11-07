@@ -31,7 +31,7 @@ Access is role-based only. There is no team-membership-based path.
 
 ## GDPR (special-category data)
 
-`MedicalConditions` (GDPR Art. 9 health data) is **excluded entirely** from this page and from the CSV, regardless of viewer role. The cantina plans around food, not medical history; medical conditions remain visible only via the per-volunteer `_VolunteerProfileBadges` partial's audited reveal (`POST /Shifts/Medical/{userId}/Reveal`, Shifts-owned; existing path, unchanged).
+`MedicalConditions` (GDPR Art. 9 health data) is **excluded entirely** from this page and from the CSV, regardless of viewer role. The cantina plans around food, not medical history; medical conditions remain visible only through Users' audited reveal (`POST /Profile/{id}/Medical/Reveal`).
 
 This tightens the Art. 9 boundary: cantina coordinators don't need health data and don't get it. The exclusion happens at the DTO boundary (not at query time) so the field can never reach the view layer.
 

@@ -1,5 +1,7 @@
 using Humans.Base.Interfaces;
 using Humans.Users.Services;
+using Humans.AuditLog.Contracts;
+using Humans.Users.Data.Repositories;
 using System.Security.Claims;
 using AwesomeAssertions;
 using Humans.Base;
@@ -18,6 +20,7 @@ namespace Humans.Users.Tests.Contributions;
 public class ThingsToDoMedicalPromptTests
 {
     private readonly IUserService _userService = Substitute.For<IUserService>();
+    private readonly IUserRepository _repo = Substitute.For<IUserRepository>();
     private readonly ICantinaService _cantina = Substitute.For<ICantinaService>();
     private readonly IShiftView _shiftView = Substitute.For<IShiftView>();
     private readonly IMembershipCalculator _membershipCalculator = Substitute.For<IMembershipCalculator>();
@@ -41,6 +44,7 @@ public class ThingsToDoMedicalPromptTests
 
         _services = new ServiceCollection()
             .AddSingleton(_userService)
+            .AddSingleton(new MedicalConditionsService(_repo, _userService, Substitute.For<IAuditLogService>()))
             .AddSingleton(_cantina)
             .AddSingleton(_shiftView)
             .AddSingleton(_membershipCalculator)
@@ -91,7 +95,6 @@ public class ThingsToDoMedicalPromptTests
         var entries = await _sut.EntriesAsync(_services, Principal(userId));
 
         entries.Should().NotContain(e => e.Key == "medical");
-        await _cantina.DidNotReceiveWithAnyArgs().GetDietaryProfileAsync(default);
     }
 
     [HumansFact]
@@ -127,7 +130,9 @@ public class ThingsToDoMedicalPromptTests
     private Guid StubUser(string? dietary, string? medical, bool declined = false)
     {
         var userId = Guid.NewGuid();
-        _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(UserInfoWith(userId, medical));
+        _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(UserInfoWith(userId));
+        _repo.GetByUserIdReadOnlyAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(new Profile { UserId = userId, BurnerName = "Test", MedicalConditions = medical });
         _cantina.GetDietaryProfileAsync(userId, Arg.Any<CancellationToken>())
             .Returns(dietary is null && !declined
                 ? null
@@ -140,11 +145,11 @@ public class ThingsToDoMedicalPromptTests
     private static ClaimsPrincipal Principal(Guid userId) =>
         new(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, userId.ToString())], "test"));
 
-    private static UserInfo UserInfoWith(Guid userId, string? medical) => UserInfoFactory.Create(
+    private static UserInfo UserInfoWith(Guid userId) => UserInfoFactory.Create(
         user: new User { Id = userId, DisplayName = "Test", PreferredLanguage = "en" },
         userEmails: [],
         externalLogins: [],
-        profile: new Profile { UserId = userId, BurnerName = "Test", MedicalConditions = medical },
+        profile: new Profile { UserId = userId, BurnerName = "Test" },
         contactFields: [],
         profileLanguages: [],
         volunteerHistory: []);

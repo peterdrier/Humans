@@ -388,7 +388,7 @@ A contact is identified by `ContactSource != null && LastLoginAt == null`. When 
 | EmergencyContactName | string? (256) | null | Private — self + Board. |
 | EmergencyContactPhone | string? (50) | null | Private — self + Board. |
 | EmergencyContactRelationship | string? (100) | null | Private — self + Board. |
-| MedicalConditions | string? (4000) | null | **GDPR Art. 9** health data. On the cached `UserInfo`; shown to others only through Shifts' audited reveal (`ShiftsPolicies.MedicalDataViewer`: Admin, Board, ShiftsNoInfo), which records `MedicalConditionsRevealed` against the member. Owner edits their own on `/Profile/Me/Medical` and sees the reveal history there. |
+| MedicalConditions | string? (4000) | null | **GDPR Art. 9** health data. Not on the cached `UserInfo`; `MedicalConditionsService` is its only reader. Shown to others only through Users' audited reveal `POST /Profile/{id}/Medical/Reveal` (`UsersPolicies.MedicalDataViewer`: Admin, Board, ShiftsNoInfo), which records `MedicalConditionsRevealed` against the member. No other section knows whether a member has conditions. Owner edits their own on `/Profile/Me/Medical` and sees the reveal history there. |
 | ProfilePictureContentType | string? (100) | null | MIME type of the stored picture. Doubles as the "has custom picture?" predicate (`HasCustomProfilePicture`) and supplies the file extension — the picture bytes themselves live on the filesystem. |
 | ProfilePictureStorageKey | string? (300) | null | Versioned `IFileStorage` key of the current picture (`uploads/profile-pictures/{profileId}-{guid}{.ext}`). Null for pictures still at the legacy deterministic key `{profileId}{.ext}`; readers fall back to it. Cleared with the content type on removal, merge and anonymization. |
 | ContributionInterests | string? | null | Skills / availability statement (publicly visible on profile). |
@@ -560,6 +560,7 @@ Self-service profile functionality lives under `/Profile`, split by shape across
 | `/Email/Outbox` | Own email outbox — served by Email's `MemberOutboxController`, linked from the Profile page |
 | `/Profile/{id}` | View another human's profile |
 | `/Profile/{id}/Popover` | Quick profile popup |
+| `/Profile/{id}/Medical/Reveal` | POST (`UsersPolicies.MedicalDataViewer`: Admin, Board, ShiftsNoInfo) — audited reveal of one member's medical conditions as JSON (`{ text }`, null when nothing is on file, then nothing is audited); a merged-away id resolves to the survivor. Shifts' roster badge calls it |
 | `/Profile/{id}/PublicPopover` | `[AllowAnonymous]` — public-page coordinator popover; 404 unless the target coordinates a public-page team ([spec](features/public-coordinator-popover.md)) |
 | `/Email/SendMessage/{id}` | GET/POST — send facilitated message; served by Email's `FacilitatedMessageController` (the profile card links to it). Send as team is Teams' `/Teams/{teamId}/SendMessage/{id}`, offered by Teams' `Profile` user part |
 | `/Users/Birthdays` | Birthday calendar by month: every non-suspended human with a birthday set, with their non-system team names; linked from a member-dashboard card |

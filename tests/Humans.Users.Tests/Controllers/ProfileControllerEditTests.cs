@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Mvc.ModelBinding.Validation;
 using Humans.Base.Extensions;
 using Humans.Users.Controllers;
 using Humans.Users.Services;
+using Humans.Users.Data.Repositories;
 using Humans.Users.Models;
 using System.Reflection;
 using System.Security.Claims;
@@ -58,6 +59,7 @@ public class ProfileControllerEditTests
     private readonly IOnboardingIntake _onboardingService = Substitute.For<IOnboardingIntake>();
     private readonly IConfiguration _configuration = Substitute.For<IConfiguration>();
     private readonly IMembershipCalculator _membershipCalculator = Substitute.For<IMembershipCalculator>();
+    private readonly IUserRepository _userRepository = Substitute.For<IUserRepository>();
     private readonly ProfileController _controller;
     private readonly Guid _userId = Guid.NewGuid();
     private readonly Guid _profileId = Guid.NewGuid();
@@ -94,7 +96,8 @@ public class ProfileControllerEditTests
             localizer,
             sharedLocalizer,
             _governanceService,
-            _membershipCalculator);
+            _membershipCalculator,
+            new MedicalConditionsService(_userRepository, _userService, Substitute.For<IAuditLogService>()));
 
         var identity = new ClaimsIdentity([
             new Claim(ClaimTypes.NameIdentifier, _userId.ToString())
@@ -506,15 +509,15 @@ public class ProfileControllerEditTests
     [HumansFact]
     public async Task Medical_Get_ShowsOnlyTheSignedInMembersOwnConditions()
     {
-        _userService.GetUserInfoAsync(_userId, Arg.Any<CancellationToken>())
-            .Returns(BuildUserInfo(new Profile { UserId = _userId, BurnerName = "Burner", MedicalConditions = "Epilepsy" }));
+        _userRepository.GetByUserIdReadOnlyAsync(_userId, Arg.Any<CancellationToken>())
+            .Returns(new Profile { UserId = _userId, BurnerName = "Burner", MedicalConditions = "Epilepsy" });
 
         var result = await _controller.Medical(CancellationToken.None);
 
         var model = result.Should().BeOfType<ViewResult>().Which.Model.Should().BeOfType<MedicalViewModel>().Which;
         model.MedicalConditions.Should().Be("Epilepsy");
         model.UserId.Should().Be(_userId, "the reveal list below the form is keyed on the signed-in member");
-        await _userService.Received().GetUserInfoAsync(_userId, Arg.Any<CancellationToken>());
+        await _userRepository.Received().GetByUserIdReadOnlyAsync(_userId, Arg.Any<CancellationToken>());
     }
 
     [HumansTheory]

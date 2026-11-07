@@ -197,7 +197,7 @@ public sealed class ShiftAdminPageBuilderTests
     [HumansTheory]
     [Xunit.InlineData(true)]
     [Xunit.InlineData(false)]
-    public async Task MedicalBadge_IsAFlagForViewersOnly_TheTextStaysOnTheServer(bool canViewMedical)
+    public async Task MedicalButton_FollowsTheViewersPolicy_WithNoMedicalDataInShifts(bool canViewMedical)
     {
         var userId = Guid.NewGuid();
         StubRotas(MakeRota(MakeShift(MakePending(userId))));
@@ -212,7 +212,6 @@ public sealed class ShiftAdminPageBuilderTests
                     Id = Guid.NewGuid(),
                     UserId = userId,
                     BurnerName = "Ann",
-                    MedicalConditions = "Epilepsy",
                     CreatedAt = TestNow,
                     UpdatedAt = TestNow,
                 }),
@@ -225,7 +224,6 @@ public sealed class ShiftAdminPageBuilderTests
         var badges = vm.VolunteerProfiles[userId];
         badges.UserId.Should().Be(userId);
         badges.CanRevealMedical.Should().Be(canViewMedical);
-        badges.HasMedicalConditions.Should().Be(canViewMedical);
     }
 
     private void StubRotas(params ShiftAdminRota[] rotas) =>

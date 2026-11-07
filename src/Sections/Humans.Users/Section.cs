@@ -137,6 +137,7 @@ public sealed class Section :
         services.AddSingleton<IAuthorizationHandler, HumanAdminOnlyHandler>();
 
         services.AddScoped<ProfileService>();
+        services.AddScoped<MedicalConditionsService>();
         services.AddScoped<IProfilePictureService>(sp => sp.GetRequiredService<ProfileService>());
 
         services.AddScoped<IHumanLifecycleService, HumanLifecycleService>();
@@ -290,6 +291,9 @@ public sealed class Section :
         options.AddPolicy(UsersPolicies.Manage, policy =>
             policy.RequireRole(UsersRoles.UsersAdmin, RoleNames.Admin));
 
+        options.AddPolicy(UsersPolicies.MedicalDataViewer, policy =>
+            policy.RequireRole(RoleNames.Admin, RoleNames.Board, ShiftsRoles.ShiftsNoInfo));
+
         options.AddPolicy(UsersPolicies.UsersAdminOnly, policy =>
             policy.AddRequirements(new HumanAdminOnlyRequirement()));
     }
@@ -316,7 +320,7 @@ public sealed class Section :
             entries.Add(ConsentCheckEntry(localizer, profile is not null && review.Status == ConsentCheckStatus.Cleared));
         }
 
-        var medical = await MedicalEntryAsync(services, localizer, logger, profile, userId, ct);
+        var medical = await MedicalEntryAsync(services, localizer, logger, userId, ct);
         if (medical is not null)
         {
             entries.Add(medical);
@@ -371,18 +375,18 @@ public sealed class Section :
         IServiceProvider services,
         IStringLocalizer<SharedResource> localizer,
         ILogger logger,
-        ProfileInfo? profile,
         Guid userId, CancellationToken ct)
     {
-        if (!string.IsNullOrEmpty(profile?.MedicalConditions))
-        {
-            return null;
-        }
-
         try
         {
             var dietary = await services.GetRequiredService<ICantinaService>().GetDietaryProfileAsync(userId, ct);
             if (dietary is { HasPreference: true } or { DeclinedToAnswer: true })
+            {
+                return null;
+            }
+
+            var medical = await services.GetRequiredService<MedicalConditionsService>().GetOwnAsync(userId, ct);
+            if (!string.IsNullOrEmpty(medical))
             {
                 return null;
             }

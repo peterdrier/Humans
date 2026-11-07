@@ -20,7 +20,4 @@ public static class ShiftsPolicies
 
     /// <summary>Shifts NoInfo or Admin: approves signups that need a privileged approver.</summary>
     public const string PrivilegedSignupApprover = "ShiftsPrivilegedSignupApprover";
-
-    /// <summary>Shifts NoInfo, Board or Admin: the audited medical reveal. Every reveal is audited, which is what lets Board in.</summary>
-    public const string MedicalDataViewer = "ShiftsMedicalDataViewer";
 }

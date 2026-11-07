@@ -1289,8 +1289,10 @@
         .then(function(r) { return r.ok ? r.json() : Promise.reject(r.status); })
         .then(function(data) {
             var text = document.createElement('span');
-            text.className = 'badge bg-danger text-wrap text-start';
-            text.textContent = data.text;
+            text.className = data.text
+                ? 'badge bg-danger text-wrap text-start'
+                : 'badge bg-light text-dark border';
+            text.textContent = data.text || btn.getAttribute('data-none-text');
             btn.replaceWith(text);
         })
         .catch(function() {

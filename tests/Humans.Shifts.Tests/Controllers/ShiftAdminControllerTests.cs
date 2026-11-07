@@ -1109,6 +1109,9 @@ public class ShiftAdminControllerTests
     private ShiftAdminController BuildSut(
         IStringLocalizer<ShiftsResource>? localizer = null, IAuthorizationService? authorization = null)
     {
+        authorization ??= Substitute.For<IAuthorizationService>();
+        authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(), UsersPolicies.MedicalDataViewer)
+            .Returns(AuthorizationResult.Failed());
         var ctrl = new ShiftAdminController(
             _teamService,
             _shiftMgmt,
@@ -1116,7 +1119,7 @@ public class ShiftAdminControllerTests
             _signupService,
             _shiftView,
             _userService,
-            authorization ?? Substitute.For<IAuthorizationService>(),
+            authorization,
             Substitute.For<IClock>(),
             new ShiftAdminPageBuilder(_shiftMgmt, Substitute.For<IMembershipCalculator>(), _userService, Substitute.For<ICantinaService>(), _teamService),
             new ShiftVolunteerSearchBuilder(_burnSettings, _userService, Substitute.For<ICantinaService>(), _shiftView, _signupService, _tracking),

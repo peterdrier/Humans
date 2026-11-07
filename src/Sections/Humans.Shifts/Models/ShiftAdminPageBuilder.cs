@@ -113,15 +113,14 @@ internal sealed class ShiftAdminPageBuilder(
         var result = new Dictionary<Guid, VolunteerBadgesViewModel>();
         if (userIds.Count == 0) return result;
 
-        // Skills from the shift profile, dietary from Cantina, medical from Profile, gated here on MedicalDataViewer.
+        // Skills from the shift profile, dietary from Cantina.
         var diets = await cantina.GetDietaryProfilesAsync(userIds, ct);
         foreach (var uid in userIds)
         {
             var vep = await shiftManagement.GetShiftProfileAsync(uid, ct);
             userInfos.TryGetValue(uid, out var info);
-            var person = info?.Profile;
             diets.TryGetValue(uid, out var diet);
-            if (vep is null && person is null && diet is null) continue;
+            if (vep is null && info?.Profile is null && diet is null) continue;
 
             result[uid] = new VolunteerBadgesViewModel(
                 UserId: uid,
@@ -129,7 +128,6 @@ internal sealed class ShiftAdminPageBuilder(
                 Quirks: vep?.Quirks ?? [],
                 Languages: vep?.Languages ?? [],
                 DietaryPreference: diet?.DietaryPreference,
-                HasMedicalConditions: canViewMedical && !string.IsNullOrEmpty(person?.MedicalConditions),
                 CanRevealMedical: canViewMedical);
         }
 

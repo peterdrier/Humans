@@ -139,12 +139,12 @@ public class ShiftVolunteerSearchBuilderTests
     [HumansFact]
     public void SearchRows_NeverCarryMedicalConditions()
     {
-        // Art. 9 data leaves the server only through ShiftsController.RevealMedical, one audited person at a time.
+        // Shifts holds no medical data; Users reveals it through ProfileViewController.RevealMedical, audited.
         typeof(VolunteerSearchResult).GetProperties().Select(p => p.Name)
             .Should().NotContain(name => name.Contains("Medical", StringComparison.Ordinal));
         typeof(VolunteerBadgesViewModel).GetProperties()
             .Where(p => p.PropertyType == typeof(string)).Select(p => p.Name)
-            .Should().Equal(["DietaryPreference"], "the badge model carries a medical flag, never the text");
+            .Should().Equal(["DietaryPreference"], "the badge model carries no medical data");
     }
 
     [HumansFact]

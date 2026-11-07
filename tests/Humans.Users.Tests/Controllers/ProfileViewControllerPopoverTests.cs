@@ -73,7 +73,10 @@ public class ProfileViewControllerPopoverTests
             _teamService,
             _campService,
             Substitute.For<IGovernanceService>(),
-            _authorizationService);
+            _authorizationService,
+            new MedicalConditionsService(
+                Substitute.For<Humans.Users.Data.Repositories.IUserRepository>(), _userService,
+                Substitute.For<Humans.AuditLog.Contracts.IAuditLogService>()));
 
         var identity = new ClaimsIdentity([
             new Claim(ClaimTypes.NameIdentifier, _viewerId.ToString()),

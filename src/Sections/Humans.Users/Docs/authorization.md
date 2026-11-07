@@ -6,6 +6,7 @@
 | `ProfileController` / `ProfileEmailsController` own-profile actions (`Index`, `Me`, `Me/Edit`, `Me/Medical`, `Me/Emails/*`, `Me/LinkedAccounts/Unlink`) | Action | `[Authorize]` (authenticated) | `[AllowBeforeActiveMembership]` — own-profile maintenance stays reachable before Active; `ProfileViewController` has none |
 | `ProfileEmailsController.VerifyEmail` (`Me/Emails/Verify`) | Action | `AllowAnonymous` | Override |
 | `ProfileViewController.Picture` | Action | `AllowAnonymous` | Override |
+| `ProfileViewController.RevealMedical` (POST `{id:guid}/Medical/Reveal`) | Action | `Admin, Board, ShiftsNoInfo` | `UsersPolicies.MedicalDataViewer` — returns the medical-conditions text as JSON and writes a `MedicalConditionsRevealed` audit entry per reveal, which is what admits Board |
 | `ProfileViewController.PublicPopover` | Action | `AllowAnonymous` | Override (`[HttpGet("{id:guid}/PublicPopover")]`; 404s unless target is a coordinator on a public-page team) |
 | `ProfileEmailsController.AdminAddVerifiedEmail` (`{id:guid}/Admin/Emails/AddVerified`) | Action | `Admin` | `PolicyNames.AdminOnly` |
 | `ProfileEmailsController.AdminVerifyEmail` (`{id:guid}/Admin/Emails/Verify`) | Action | `Admin` | `PolicyNames.AdminOnly` |

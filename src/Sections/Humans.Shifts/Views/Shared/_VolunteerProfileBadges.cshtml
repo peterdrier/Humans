@@ -19,12 +19,13 @@
         {
             <span class="badge bg-primary me-1">@lang</span>
         }
-        @if (Model.CanRevealMedical && Model.HasMedicalConditions)
+        @if (Model.CanRevealMedical)
         {
-            @* The text is not in the page: the click posts to the audited reveal and shows what comes back.
-               Medical_Badge is in SharedResource; Localizer here would render the raw key. *@
+            @* Shifts never knows whether conditions are on file: the click posts to Users' audited reveal and
+               shows what comes back. Medical_Badge is in SharedResource; Localizer here would render the raw key. *@
             <button type="button" class="badge bg-danger border-0 medical-reveal"
-                    data-reveal-url="@Url.Action("RevealMedical", "Shifts", new { userId = Model.UserId })"
+                    data-reveal-url="@Url.Action("RevealMedical", "ProfileView", new { id = Model.UserId })"
+                    data-none-text="@Localizer["Shifts_Medical_NoneOnFile"].Value"
                     data-failed-text="@Localizer["Shifts_Medical_RevealFailed"].Value"
                     title="@Localizer["Shifts_Medical_RevealTitle"].Value">
                 <i class="fa-solid fa-eye me-1"></i>@SharedLocalizer["Medical_Badge"]
