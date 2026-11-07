@@ -211,11 +211,12 @@ internal sealed class ProfileViewController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> RevealMedical(Guid id, CancellationToken ct)
     {
-        if (GetCurrentUserId() is not { } actorId) return Forbid();
+        // Resolved, so a merged-away session audits the survivor and a gone account reads nothing.
+        if (await GetCurrentUserInfoAsync(ct) is not { } actor) return Forbid();
 
         // Null text is "nothing on file": the button shows for every viewer the policy admits, because no
         // other section may know whether a member has conditions.
-        var text = await medicalConditions.RevealAsync(id, actorId, ct);
+        var text = await medicalConditions.RevealAsync(id, actor.Id, ct);
         return Json(new { text });
     }
 }

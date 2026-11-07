@@ -560,7 +560,7 @@ Self-service profile functionality lives under `/Profile`, split by shape across
 | `/Email/Outbox` | Own email outbox — served by Email's `MemberOutboxController`, linked from the Profile page |
 | `/Profile/{id}` | View another human's profile |
 | `/Profile/{id}/Popover` | Quick profile popup |
-| `/Profile/{id}/Medical/Reveal` | POST (`UsersPolicies.MedicalDataViewer`: Admin, Board, ShiftsNoInfo) — audited reveal of one member's medical conditions as JSON (`{ text }`, null when nothing is on file, then nothing is audited); a merged-away id resolves to the survivor. Shifts' roster badge calls it |
+| `/Profile/{id}/Medical/Reveal` | POST (`UsersPolicies.MedicalDataViewer`: Admin, Board, ShiftsNoInfo) — audited reveal of one member's medical conditions as JSON (`{ text }`, null when nothing is on file, then nothing is audited); a merged-away id resolves to the survivor. The actor is resolved first: a merged session audits the survivor, a missing account gets Forbid with no medical read. Shifts' roster badge calls it |
 | `/Profile/{id}/PublicPopover` | `[AllowAnonymous]` — public-page coordinator popover; 404 unless the target coordinates a public-page team ([spec](features/public-coordinator-popover.md)) |
 | `/Email/SendMessage/{id}` | GET/POST — send facilitated message; served by Email's `FacilitatedMessageController` (the profile card links to it). Send as team is Teams' `/Teams/{teamId}/SendMessage/{id}`, offered by Teams' `Profile` user part |
 | `/Users/Birthdays` | Birthday calendar by month: every non-suspended human with a birthday set, with their non-system team names; linked from a member-dashboard card |
