@@ -11,6 +11,8 @@ using Humans.Base.Enums;
 using Humans.Base.Extensions;
 using Humans.Shifts.Data;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.Caching.Memory;
 using NodaTime;
 using NSubstitute;
@@ -85,6 +87,139 @@ public sealed class ShiftManagementServiceTests : ShiftsTestHarness
             team.IsPublicPage, team.IsHidden, team.IsPromotedToDirectory, team.CreatedAt,
             Members: [],
             ParentTeamId: team.ParentTeamId);
+
+    public enum ManagementWrite
+    {
+        Knobs, NewKnobs, BrowsingSwitch, MoveRota, DeleteRota, BuildGeneration, EventGeneration,
+        CreateShift, UpdateShift, DeleteShift, TagPreferences, CreateProfile, UpdateProfile, ReassignProfile
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(ManagementWrite.Knobs)]
+    [Xunit.InlineData(ManagementWrite.NewKnobs)]
+    [Xunit.InlineData(ManagementWrite.BrowsingSwitch)]
+    [Xunit.InlineData(ManagementWrite.MoveRota)]
+    [Xunit.InlineData(ManagementWrite.DeleteRota)]
+    [Xunit.InlineData(ManagementWrite.BuildGeneration)]
+    [Xunit.InlineData(ManagementWrite.EventGeneration)]
+    [Xunit.InlineData(ManagementWrite.CreateShift)]
+    [Xunit.InlineData(ManagementWrite.UpdateShift)]
+    [Xunit.InlineData(ManagementWrite.DeleteShift)]
+    [Xunit.InlineData(ManagementWrite.TagPreferences)]
+    [Xunit.InlineData(ManagementWrite.CreateProfile)]
+    [Xunit.InlineData(ManagementWrite.UpdateProfile)]
+    [Xunit.InlineData(ManagementWrite.ReassignProfile)]
+    public async Task ManagementWrite_AcknowledgementFails_EvictsCommittedViews(ManagementWrite operation)
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var (settings, rota) = SeedRotaScenario(
+            operation == ManagementWrite.EventGeneration ? RotaPeriod.Event : RotaPeriod.Build);
+        var shift = SeedShift(rota, rota.Period == RotaPeriod.Event ? 0 : -3);
+        var user = SeedUser("Builder");
+        var targetUser = SeedUser("Survivor");
+        SeedSignup(shift, user, SignupStatus.Pending);
+        var tag = new ShiftTag { Id = Guid.NewGuid(), Name = "Cooking" };
+        ShiftsDb.ShiftTags.Add(tag);
+        if (operation is ManagementWrite.UpdateProfile or ManagementWrite.ReassignProfile)
+            ShiftsDb.VolunteerEventProfiles.Add(new VolunteerEventProfile
+            {
+                Id = Guid.NewGuid(),
+                UserId = user.Id,
+                CreatedAt = TestNow,
+                UpdatedAt = TestNow
+            });
+        await SaveAllAsync(ct);
+        var targetTeamId = Guid.NewGuid();
+        _teamService.GetTeamAsync(targetTeamId, Arg.Any<CancellationToken>()).Returns(
+            ToTeamInfo(new Team { Id = targetTeamId, Name = "Target", Slug = "target" }));
+        var views = new ShiftViewProbe();
+        await views.PrimeRotaAsync(rota.Id, shift);
+        await views.PrimeUserAsync(user.Id, shift);
+        await views.PrimeUserAsync(targetUser.Id);
+        var eventId = operation == ManagementWrite.NewKnobs ? Guid.NewGuid() : settings.Id;
+        Cache.Set(ShiftManagementService.OverviewCacheKey(eventId, null), new object());
+        var failure = new IOException("Persistence acknowledgement failed");
+        var options = new DbContextOptionsBuilder<ShiftsDbContext>(
+                (DbContextOptions<ShiftsDbContext>)ShiftsDb.GetService<IDbContextOptions>())
+            .AddInterceptors(new FailManagementAcknowledgement(failure)).Options;
+        var repo = new ShiftRepository(new Humans.Testing.TestDbContextFactory<ShiftsDbContext>(options), ShiftsDb, Clock);
+        var service = new ShiftManagementService(
+            repo, AuditLog, AdminAuthorization, new ServiceLocatorBuilder().With(_teamService).Build(),
+            Cache, views.Cache, NewCalendarResolver(), Clock,
+            Microsoft.Extensions.Logging.Abstractions.NullLogger<ShiftManagementService>.Instance);
+        Func<Task> mutate = operation switch
+        {
+            ManagementWrite.Knobs or ManagementWrite.NewKnobs => () => service.SaveKnobsAsync(
+                eventId, false, null, 24, BuildSubPeriodStarts.Default, user.Id),
+            ManagementWrite.BrowsingSwitch => () => service.SetShiftBrowsingOpenAsync(eventId, false),
+            ManagementWrite.MoveRota => () => service.MoveRotaToTeamAsync(new MoveRotaInput(rota.Id, rota.TeamId, targetTeamId, user.Id)),
+            ManagementWrite.DeleteRota => () => service.DeleteRotaAsync(rota.Id, user.Id),
+            ManagementWrite.BuildGeneration => () => service.CreateBuildStrikeShiftsAsync(
+                new ConfigureBuildStrikeStaffingInput(rota.Id, rota.TeamId, [new DayStaffingInput(-2, 1, 3)])),
+            ManagementWrite.EventGeneration => () => service.GenerateEventShiftsAsync(
+                new GenerateEventShiftsInput(rota.Id, rota.TeamId, 1, 1, [new ShiftTimeSlotInput(LocalTime.Noon, 4)], 1, 3)),
+            ManagementWrite.CreateShift => () => service.CreateShiftAsync(
+                new CreateShiftInput(rota.Id, rota.TeamId, "New", -2, LocalTime.Noon, 4, 1, 3, false, false)),
+            ManagementWrite.UpdateShift => () => service.UpdateShiftAsync(
+                new UpdateShiftInput(shift.Id, rota.TeamId, "Changed", -2, LocalTime.Noon, 4, 1, 3, false)),
+            ManagementWrite.DeleteShift => () => service.DeleteShiftAsync(shift.Id, user.Id),
+            ManagementWrite.TagPreferences => () => service.SetVolunteerTagPreferencesAsync(user.Id, [tag.Id]),
+            ManagementWrite.CreateProfile or ManagementWrite.UpdateProfile => () => service.UpdateShiftProfileAsync(
+                new ShiftVolunteerProfileInfo(user.Id, ["Cooking"], [], [])),
+            ManagementWrite.ReassignProfile => () => service.ReassignAsync(user.Id, targetUser.Id, targetUser.Id, TestNow, ct),
+            _ => throw new ArgumentOutOfRangeException(nameof(operation))
+        };
+
+        (await mutate.Should().ThrowAsync<IOException>()).Which.Should().BeSameAs(failure);
+
+        (await views.IsUserCachedAsync(user.Id)).Should().BeFalse();
+        if (operation is ManagementWrite.TagPreferences or ManagementWrite.CreateProfile
+            or ManagementWrite.UpdateProfile or ManagementWrite.ReassignProfile)
+            (await views.IsRotaCachedAsync(rota.Id)).Should().BeTrue();
+        else
+            (await views.IsRotaCachedAsync(rota.Id)).Should().BeFalse();
+        if (operation == ManagementWrite.ReassignProfile)
+            (await views.IsUserCachedAsync(targetUser.Id)).Should().BeFalse();
+        if (operation is ManagementWrite.Knobs or ManagementWrite.NewKnobs)
+            Cache.TryGetValue(ShiftManagementService.OverviewCacheKey(eventId, null), out _).Should().BeFalse();
+        await using var persisted = await ShiftsDbFactory.CreateDbContextAsync(ct);
+        switch (operation)
+        {
+            case ManagementWrite.Knobs or ManagementWrite.NewKnobs or ManagementWrite.BrowsingSwitch:
+                (await persisted.EventSettings.SingleAsync(e => e.Id == eventId, ct)).IsShiftBrowsingOpen.Should().BeFalse();
+                break;
+            case ManagementWrite.MoveRota:
+                (await persisted.Rotas.SingleAsync(r => r.Id == rota.Id, ct)).TeamId.Should().Be(targetTeamId);
+                break;
+            case ManagementWrite.DeleteRota:
+                (await persisted.Rotas.AnyAsync(r => r.Id == rota.Id, ct)).Should().BeFalse();
+                break;
+            case ManagementWrite.BuildGeneration or ManagementWrite.EventGeneration or ManagementWrite.CreateShift:
+                (await persisted.Shifts.CountAsync(ct)).Should().Be(2);
+                break;
+            case ManagementWrite.UpdateShift:
+                (await persisted.Shifts.SingleAsync(s => s.Id == shift.Id, ct)).Description.Should().Be("Changed");
+                break;
+            case ManagementWrite.DeleteShift:
+                (await persisted.Shifts.AnyAsync(s => s.Id == shift.Id, ct)).Should().BeFalse();
+                break;
+            case ManagementWrite.TagPreferences:
+                (await persisted.VolunteerTagPreferences.SingleAsync(ct)).ShiftTagId.Should().Be(tag.Id);
+                break;
+            case ManagementWrite.CreateProfile or ManagementWrite.UpdateProfile:
+                (await persisted.VolunteerEventProfiles.SingleAsync(ct)).Skills.Should().Equal("Cooking");
+                break;
+            case ManagementWrite.ReassignProfile:
+                (await persisted.VolunteerEventProfiles.SingleAsync(ct)).UserId.Should().Be(targetUser.Id);
+                break;
+        }
+    }
+
+    private sealed class FailManagementAcknowledgement(IOException failure) : SaveChangesInterceptor
+    {
+        public override ValueTask<int> SavedChangesAsync(
+            SaveChangesCompletedEventData eventData, int result, CancellationToken cancellationToken = default) => throw failure;
+    }
 
     [HumansTheory]
     [Xunit.InlineData(true, true)]

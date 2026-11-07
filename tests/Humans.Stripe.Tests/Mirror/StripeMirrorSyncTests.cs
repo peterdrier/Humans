@@ -81,6 +81,25 @@ public sealed class StripeMirrorSyncTests
         states.Should().NotContain(s => string.Equals(s.AccountId, "acct_i", StringComparison.Ordinal), "an account without its key is never swept");
     }
 
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task Failed_sweep_stores_a_complete_unicode_error_and_continues_other_accounts(bool pairFits)
+    {
+        var prefix = new string('e', pairFits ? 1998 : 1999);
+        _client.FetchAsync(Tickets, Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<StripeAccountFetch>(new IOException(prefix + "😀tail")));
+        Returns(Store, Txn("healthy", "acct_s", 100));
+
+        (await _service.SyncAsync(Ct)).Should().Be(StripeSyncOutcome.SomeFailed);
+
+        var error = (await _repo.GetSyncStatesAsync(Ct)).Single(s => string.Equals(s.AccountId, Tickets.Id, StringComparison.Ordinal));
+        error.LastError.Should().Be(prefix + (pairFits ? "😀" : ""));
+        var encode = () => new System.Text.UTF8Encoding(false, true).GetBytes(error.LastError!);
+        encode.Should().NotThrow();
+        (await _repo.GetTransactionsAsync(Ct)).Should().ContainSingle().Which.Id.Should().Be("healthy");
+    }
+
     [HumansFact]
     public async Task No_configured_key_means_no_sweep()
     {

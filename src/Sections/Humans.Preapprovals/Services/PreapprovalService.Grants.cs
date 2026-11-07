@@ -1,5 +1,6 @@
 using Humans.AuditLog.Contracts;
 using Humans.Base.Extensions;
+using Humans.Base.Threading;
 using Humans.Notifications.Contracts;
 using Humans.Preapprovals.Contracts;
 using Humans.Preapprovals.Domain;
@@ -12,6 +13,9 @@ internal sealed partial class PreapprovalService
 {
     private const int LabelMax = 200;
     private const int NoteMax = 2000;
+
+    // Scoped requests must share the pending-application check and save boundary.
+    private static readonly TrackedLock ApplicationLock = new("Preapprovals.Apply");
 
     public async Task<PreapprovalMutationResult<Guid>> IssueAsync(
         Guid programId, Guid beneficiaryUserId, decimal? amount, string? label, Guid actorUserId,
@@ -88,6 +92,7 @@ internal sealed partial class PreapprovalService
     public async Task<PreapprovalMutationResult<Guid>> ApplyAsync(
         Guid programId, Guid applicantUserId, string? note, decimal? requestedAmount, CancellationToken ct = default)
     {
+        using var gate = await ApplicationLock.AcquireAsync(logger, ct);
         var program = await repository.GetProgramAsync(programId, ct);
         if (program is null) return new(Refusal: new PreapprovalRefusal(PreapprovalErrorKeys.NotFound));
         if ((note?.Length ?? 0) > NoteMax) return new(Refusal: new PreapprovalRefusal(PreapprovalErrorKeys.TextTooLong));

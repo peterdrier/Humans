@@ -44,14 +44,21 @@ internal sealed class Service(
             return new(false, "Invalid IANA timezone ID.");
 
         var previous = await GetTimeZoneIdAsync(cancellationToken);
-        await repository.SetValueAsync(SettingKeys.EventTimeZoneId, timeZoneId, cancellationToken);
+        var eventIds = (await repository.GetAllEventSettingsAsync(cancellationToken)).Select(row => row.Id).ToList();
+        try
+        {
+            await repository.SetValueAsync(SettingKeys.EventTimeZoneId, timeZoneId, cancellationToken);
+        }
+        finally
+        {
+            // Every event's derived dates move, including if the write committed before its acknowledgement failed.
+            foreach (var id in eventIds)
+                NotifyChangeListeners(id);
+        }
         await auditLog.LogAsync(
             SettingsAuditActions.EventSettingsUpdated, AuditEntityTypes.EventTimeZone, Guid.Empty,
             $"Event timezone changed from {previous} to {timeZoneId}.", actorUserId);
 
-        // Every event's derived dates move with the timezone.
-        foreach (var row in await repository.GetAllEventSettingsAsync(cancellationToken))
-            NotifyChangeListeners(row.Id);
         return new(true);
     }
 
@@ -89,9 +96,15 @@ internal sealed class Service(
                 + $"({FormatWindow(overlapping)}). Events must not overlap.");
         }
 
-        await repository.UpsertEventSettingsAsync(
-            ToEntity(settings with { TimeZoneId = await GetTimeZoneIdAsync(cancellationToken) }),
-            clock.GetCurrentInstant(), cancellationToken);
+        var entity = ToEntity(settings with { TimeZoneId = await GetTimeZoneIdAsync(cancellationToken) });
+        try
+        {
+            await repository.UpsertEventSettingsAsync(entity, clock.GetCurrentInstant(), cancellationToken);
+        }
+        finally
+        {
+            NotifyChangeListeners(settings.Id);
+        }
 
         var description =
             $"Event settings saved for '{settings.EventName}' ({settings.Year}): "
@@ -101,8 +114,6 @@ internal sealed class Service(
         await auditLog.LogAsync(
             SettingsAuditActions.EventSettingsUpdated, AuditEntityTypes.EventSettings, settings.Id, description, actorUserId);
 
-        // Consuming sections cache dates derived from this row; tell them.
-        NotifyChangeListeners(settings.Id);
         return new(true);
     }
 
@@ -128,8 +139,20 @@ internal sealed class Service(
         if (target.Status == EventSettingsStatus.Active)
             return new(true);
 
-        var changed = await repository.SetActiveEventSettingsAsync(
-            eventSettingsId, clock.GetCurrentInstant(), cancellationToken);
+        var affectedIds = (await repository.GetAllEventSettingsAsync(cancellationToken))
+            .Where(row => row.Status == EventSettingsStatus.Active)
+            .Select(row => row.Id).Append(eventSettingsId).Distinct().ToList();
+        IReadOnlyList<EventSettings>? changed = null;
+        try
+        {
+            changed = await repository.SetActiveEventSettingsAsync(
+                eventSettingsId, clock.GetCurrentInstant(), cancellationToken);
+        }
+        finally
+        {
+            foreach (var id in changed is null ? affectedIds : changed.Select(row => row.Id))
+                NotifyChangeListeners(id);
+        }
         var previous = changed.Where(e => e.Id != eventSettingsId).Select(e => $"'{e.EventName}'").ToList();
 
         var description = previous.Count == 0
@@ -138,8 +161,6 @@ internal sealed class Service(
         await auditLog.LogAsync(
             SettingsAuditActions.EventSettingsUpdated, AuditEntityTypes.EventSettings, target.Id, description, actorUserId);
 
-        foreach (var row in changed)
-            NotifyChangeListeners(row.Id);
         return new(true);
     }
 
@@ -164,15 +185,27 @@ internal sealed class Service(
         if (current is not null && current.Id != settings.Id)
         {
             current.Status = EventSettingsStatus.Inactive;
-            await repository.UpsertEventSettingsAsync(current, clock.GetCurrentInstant(), cancellationToken);
+            try
+            {
+                await repository.UpsertEventSettingsAsync(current, clock.GetCurrentInstant(), cancellationToken);
+            }
+            finally
+            {
+                NotifyChangeListeners(current.Id);
+            }
         }
 
-        await repository.UpsertEventSettingsAsync(
-            ToEntity(settings with { Status = EventSettingsStatus.Active }),
-            clock.GetCurrentInstant(),
-            cancellationToken);
-
-        NotifyChangeListeners(settings.Id);
+        try
+        {
+            await repository.UpsertEventSettingsAsync(
+                ToEntity(settings with { Status = EventSettingsStatus.Active }),
+                clock.GetCurrentInstant(),
+                cancellationToken);
+        }
+        finally
+        {
+            NotifyChangeListeners(settings.Id);
+        }
     }
 
     private string? ValidateEventDates(EventSettingsInfo settings)
@@ -208,9 +241,17 @@ internal sealed class Service(
     /// <inheritdoc />
     public async Task<int> DeleteEventAsync(Guid id, CancellationToken cancellationToken = default)
     {
-        var deleted = await repository.DeleteEventSettingsAsync(id, cancellationToken);
-        if (deleted > 0) NotifyChangeListeners(id);
-        return deleted;
+        int? deleted = null;
+        try
+        {
+            deleted = await repository.DeleteEventSettingsAsync(id, cancellationToken);
+            return deleted.Value;
+        }
+        finally
+        {
+            if (deleted is null or > 0)
+                NotifyChangeListeners(id);
+        }
     }
 
     /// <summary>

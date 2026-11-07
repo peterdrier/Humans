@@ -117,19 +117,26 @@ internal sealed class ContactFieldService(
 
         // Resolve the cache key before committing; a failed lookup must not skip refresh.
         var ownerUserId = await userRepository.GetOwnerUserIdAsync(profileId, cancellationToken);
-        await userRepository.BatchSaveAsync(toAdd, toUpdate, toDelete, cancellationToken);
-
-        if (ownerUserId is not null)
+        try
         {
-            try
+            await userRepository.BatchSaveAsync(toAdd, toUpdate, toDelete, cancellationToken);
+        }
+        finally
+        {
+            if (ownerUserId is not null)
             {
-                await userInfoRefresher.RefreshAsync(ownerUserId.Value, cancellationToken);
-            }
-            catch (Exception ex) when (ex is not OperationCanceledException)
-            {
-                logger.LogError(ex,
-                    "Contact fields saved but UserInfo refresh failed for {UserId}",
-                    ownerUserId.Value);
+                try
+                {
+                    // The write may have committed even if its acknowledgement failed. Finish the refresh
+                    // independently of the request so old contact values and visibility cannot remain cached.
+                    await userInfoRefresher.RefreshAsync(ownerUserId.Value, CancellationToken.None);
+                }
+                catch (Exception ex)
+                {
+                    logger.LogError(ex,
+                        "UserInfo refresh failed after contact field write for {UserId}",
+                        ownerUserId.Value);
+                }
             }
         }
     }

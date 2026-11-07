@@ -31,7 +31,7 @@ Types live under `Humans.Base.<folder>`, folder-mirrored (`Humans.Base.Authoriza
 | `Authorization/` | `PolicyNames` (the cross-section policies), `RoleChecks`, `IDescribedRequirement` |
 | `Configuration/` | `ConfigurationRegistry`, the inventory `ISectionConfiguration` contributions feed |
 | `Controllers/` | `HumansControllerBase` |
-| `Services/` | The GitHub content sources behind the guide and community KB — the one place Octokit is used |
+| `Services/` | The GitHub content sources behind the guide and community KB — the one place Octokit is used. Both use the internal `GitHubMarkdownReader` for file/folder/tree reads, caller cancellation, missing-list results and truncated-tree reporting. Repository settings, tokens, product headers and the community source’s folder-only restriction stay with each source. |
 | `Csv/`, `Logging/`, `Metering/`, `Threading/`, `Diagnostics/`, `Helpers/`, `Extensions/`, `Constants/`, `Enums/` | Section-agnostic utilities: the single CSV seam, Serilog enrichers and the in-memory sink, meters, display extensions, reserved ids |
 
 ## The shared view layer
@@ -45,6 +45,14 @@ The base builds with `Microsoft.NET.Sdk.Razor` + `AddRazorSupportForMvc` to host
 - **View models** (`Models/`): the generic table models (`Models/Tables/`), `PagerViewModel`, `PagedListViewModel`, the help and access-matrix models, the human-search picker models.
 
 ### Behavioural notes
+
+- Memory-cache helpers cover exclusive token/cooldown reservations and camp-contact rate-limit invalidation.
+
+- Bulk cache warmups use a coordinator-supplied row publisher guarded by the existing mutation generation. A concurrent mutation during loading, publication or finalization discards the partial attempt and retries the complete snapshot and derived indexes under the existing warmup lock. Cancellation and loader failures leave the cache cold.
+
+- Replacement cache reloads use the existing mutation generation to guard publication. An intervening cache mutation discards the affected row and marks warmed caches cold, so a later read retries source instead of publishing an older value or deletion. Other rows remain cached.
+
+- Shared Markdown renders only disabled checkbox inputs for task lists. Authored hidden, text, submit and image inputs are removed so content cannot introduce active form controls; checked and unchecked task lists remain visible.
 
 - Shared dismiss controls (member alerts, Markdown help, login errors, dynamically created toasts) use `Common_Close` for their accessible label; both Shell layouts supply it to the toast helper.
 - The human-search picker rejects stale searches: a lookup dismissed with Escape or an outside click is invalidated, timers and response versions belong to each input, and an older response never replaces a newer result.

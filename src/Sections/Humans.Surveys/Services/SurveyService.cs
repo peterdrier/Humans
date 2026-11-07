@@ -2,15 +2,10 @@ using Humans.GoogleIntegration.Contracts;
 using Humans.Base.Extensions;
 using Humans.Base.Threading;
 using Humans.AuditLog.Contracts;
-using Humans.Email.Contracts;
 using Humans.Gdpr.Contracts;
-using Humans.Governance.Contracts;
 using Humans.Users.Contracts;
 using Humans.Surveys.Data;
-using Humans.Shifts.Contracts;
 using Humans.Surveys.Contracts;
-using Humans.Teams.Contracts;
-using Humans.Tickets.Contracts;
 using Humans.Base.Enums;
 using Humans.Base.Interfaces;
 using Humans.Surveys.Domain;
@@ -23,13 +18,9 @@ internal sealed class SurveyService(
     IAuditLogService auditLog,
     IClock clock,
     ILogger<SurveyService> logger,
-    ITeamService teamService,
     IUserService userService,
-    IGovernanceService governanceService,
-    ITicketService ticketService,
-    IShiftView shiftView,
-    IEmailService emailService,
-    SurveysEmails emailMessages,
+    SurveyAudience audience,
+    SurveyInvitationDelivery invitationDelivery,
     ISurveyInviteTokenProvider tokenProvider,
     IGoogleTranslationService translation,
     IFileStorage fileStorage) : ISurveyService, IUserDataContributor, IUserMerge
@@ -37,7 +28,6 @@ internal sealed class SurveyService(
     private readonly SurveyDefinitionReader definitionReader = new(repo, tokenProvider);
     private readonly SurveyResultsReader resultsReader = new(repo, userService, auditLog);
     private readonly SurveyDataExport dataExport = new(repo, userService);
-    private readonly SurveyAudience audience = new(teamService, userService, governanceService, ticketService, shiftView, logger);
     private readonly SurveyImageUploads imageUploads = new(fileStorage, logger);
     private readonly SurveyTranslationFiller translationFiller = new(translation);
 
@@ -409,163 +399,14 @@ internal sealed class SurveyService(
         return new();
     }
 
-    public async Task<int> PreviewAudienceCountAsync(Guid surveyId, CancellationToken ct = default)
-    {
-        var survey = await repo.GetByIdAsync(surveyId, ct);
-        if (survey?.AudienceType is null) return 0;
-        var audienceType = survey.AudienceType.Value;
-        if (Enum.IsDefined(audienceType) &&
-            SurveyDefinitionValidation.AudienceConfigurationError(
-                audienceType, survey.AudienceTeamId, survey.AudienceLoggedInSince, requireAudience: true) is not null)
-            return 0;
+    public Task<int> PreviewAudienceCountAsync(Guid surveyId, CancellationToken ct = default) =>
+        invitationDelivery.PreviewAudienceCountAsync(surveyId, ct);
 
-        var recipients = await audience.ResolveRecipientIdsAsync(
-            audienceType, survey.AudienceTeamId, survey.AudienceLoggedInSince, ct);
-        if (recipients.Count == 0) return 0;
-        var participationRows = await repo.GetInvitationsAsync(surveyId, ct);
-        var alreadyInvited = await InvitedUserIdsResolvedAsync(participationRows, ct);
-        var completedPublicParticipants = participationRows
-            .Where(invitation => invitation.SentAt is null && invitation.Completed)
-            .Select(invitation => invitation.UserId);
-        return recipients.Except(alreadyInvited).Except(completedPublicParticipants).Count();
-    }
+    public Task<SendResult> SendInvitesAsync(Guid surveyId, Guid actorUserId, CancellationToken ct = default) =>
+        invitationDelivery.SendInvitesAsync(surveyId, actorUserId, ct);
 
-    public async Task<SendResult> SendInvitesAsync(Guid surveyId, Guid actorUserId, CancellationToken ct = default)
-    {
-        var survey = await repo.GetByIdAsync(surveyId, ct);
-        if (survey is null)
-            return new SendResult(0, 0, 0, "Survey not found.");
-        if (survey.Status != SurveyStatus.Open)
-            return new SendResult(0, 0, 0, "Invitations can only be sent for an Open survey.");
-        var audienceError = SurveyDefinitionValidation.AudienceConfigurationError(
-            survey.AudienceType, survey.AudienceTeamId, survey.AudienceLoggedInSince, requireAudience: true);
-        if (audienceError is not null)
-            return new SendResult(0, 0, 0, audienceError.DiagnosticMessage);
-        var audienceType = survey.AudienceType!.Value;
-
-        var now = clock.GetCurrentInstant();
-        var target = await audience.ResolveRecipientIdsAsync(
-            audienceType, survey.AudienceTeamId, survey.AudienceLoggedInSince, ct);
-        var participationRows = await repo.GetInvitationsAsync(surveyId, ct);
-        var alreadyInvited = await InvitedUserIdsResolvedAsync(participationRows, ct);
-        var completedPublicParticipants = participationRows
-            .Where(invitation => invitation.SentAt is null && invitation.Completed)
-            .Select(invitation => invitation.UserId);
-        var netNew = target
-            .Except(alreadyInvited)
-            .Except(completedPublicParticipants)
-            .ToList();
-        var existingParticipation = participationRows.ToDictionary(invitation => invitation.UserId);
-
-        var users = await userService.GetUserInfosAsync(netNew, ct);
-        var invitationsCreated = 0;
-        var emailsQueued = 0;
-        var failed = 0;
-
-        // Once invitation writes begin, finish the batch independently of request cancellation.
-        // Stamp SentAt only after enqueue acceptance so failures stay eligible for retry.
-        ct.ThrowIfCancellationRequested();
-        var sendCt = CancellationToken.None;
-
-        foreach (var userId in netNew)
-        {
-            if (!users.TryGetValue(userId, out var user) || user.Email is not { } email || string.IsNullOrWhiteSpace(email))
-            {
-                logger.LogWarning(
-                    "User {UserId} has no notification email for survey {SurveyId}; skipping invitation",
-                    userId, surveyId);
-                continue;
-            }
-
-            SurveyInvitation inv;
-            if (existingParticipation.TryGetValue(userId, out var existing))
-            {
-                inv = existing;
-            }
-            else
-            {
-                inv = new SurveyInvitation
-                {
-                    Id = Guid.NewGuid(),
-                    SurveyId = surveyId,
-                    UserId = userId,
-                    CreatedAt = now,
-                };
-                await repo.AddInvitationAndSaveAsync(inv, sendCt);
-            }
-            invitationsCreated++;
-
-            try
-            {
-                var preferredCulture = user.PreferredLanguage;
-                var culture = preferredCulture.IsSupportedCultureCode()
-                    ? preferredCulture!
-                    : survey.DefaultCulture;
-                var name = user.BurnerName;
-                var title = survey.Title.Resolve(culture, survey.DefaultCulture);
-                var customSubject = survey.InvitationEmailSubject.ResolveOptional(culture, survey.DefaultCulture);
-                var customMessage = survey.InvitationEmailMessage.ResolveOptional(culture, survey.DefaultCulture);
-                var token = tokenProvider.Create(inv.Id);
-                var msg = emailMessages.SurveyInvitation(
-                    userId,
-                    email, name, title, token, culture, customSubject, customMessage);
-
-                await emailService.SendAsync(msg, sendCt);
-                await repo.UpdateInvitationStatusAsync(
-                    inv.Id, EmailOutboxStatus.Queued, clock.GetCurrentInstant(), sendCt);
-                emailsQueued++;
-            }
-            catch (Exception ex)
-            {
-                logger.LogError(ex,
-                    "Failed to prepare, enqueue or record survey invitation email for user {UserId} invitation {InvitationId} in survey {SurveyId}",
-                    userId, inv.Id, surveyId);
-                await repo.UpdateInvitationStatusAsync(inv.Id, EmailOutboxStatus.Failed, now, sendCt);
-                failed++;
-            }
-        }
-
-        await auditLog.LogAsync(SurveysAuditActions.SurveyInvitesSent, AuditEntityTypes.Survey, surveyId,
-            $"Sent {invitationsCreated} invitation(s)", actorUserId);
-
-        return new SendResult(invitationsCreated, emailsQueued, failed);
-    }
-
-    /// <summary>
-    /// Invited ids plus, for any that has since been merged away, its survivor. Invitations are
-    /// never re-pointed on merge, so the audience (live ids) is compared against both, or the
-    /// survivor is invited a second time to a survey their archived id already holds.
-    /// </summary>
-    private async Task<HashSet<Guid>> InvitedUserIdsResolvedAsync(
-        IReadOnlyList<SurveyInvitation> invitations, CancellationToken ct)
-    {
-        var invited = invitations.Where(invitation => invitation.SentAt is not null)
-            .Select(invitation => invitation.UserId).ToHashSet();
-        if (invited.Count == 0) return invited;
-        foreach (var info in (await userService.GetUserInfosAsync(invited.ToList(), ct)).Values)
-            invited.Add(info.Id);
-        return invited;
-    }
-
-    public async Task<IReadOnlyList<SurveyInviteStatus>> GetInviteStatusesAsync(Guid surveyId, CancellationToken ct = default)
-    {
-        var invitations = (await repo.GetInvitationsAsync(surveyId, ct))
-            .Where(invitation => invitation.SentAt is not null)
-            .ToList();
-        if (invitations.Count == 0) return [];
-
-        var userIds = invitations.Select(i => i.UserId).Distinct().ToList();
-        var users = await userService.GetUserInfosAsync(userIds, ct);
-
-        return invitations.Select(i => new SurveyInviteStatus(
-            i.UserId,
-            users.TryGetValue(i.UserId, out var user) ? user.BurnerName : i.UserId.ToString(),
-            i.LatestEmailStatus,
-            i.Completed,
-            i.Started,
-            i.SentAt,
-            i.ReminderSentAt)).ToList();
-    }
+    public Task<IReadOnlyList<SurveyInviteStatus>> GetInviteStatusesAsync(Guid surveyId, CancellationToken ct = default) =>
+        invitationDelivery.GetInviteStatusesAsync(surveyId, ct);
 
     public async Task<SurveyAnswerContext?> ResolveAnswerContextAsync(string token, CancellationToken ct = default)
     {
@@ -666,6 +507,9 @@ internal sealed class SurveyService(
                 "Only identified or completion-tracked public responses need a participation ledger.");
         }
 
+        if (await HasCompletedMergedParticipationAsync(surveyId, userId, ct))
+            return null;
+
         var createdAt = anonymity == ResponseAnonymity.CompletionTracked
             ? NonCorrelatablePublicParticipationCreatedAt
             : clock.GetCurrentInstant();
@@ -747,6 +591,18 @@ internal sealed class SurveyService(
             ct);
     }
 
+    private async Task<bool> HasCompletedMergedParticipationAsync(Guid surveyId, Guid userId, CancellationToken ct)
+    {
+        var human = await userService.GetUserInfoAsync(userId, ct);
+        if (human is null || (human.Id == userId && human.MergedUserIds.Count == 0))
+            return false;
+
+        // Frozen participation rows retain the old account id; the completion rule belongs to the human.
+        var ids = human.AllUserIds.Append(userId).ToHashSet();
+        return (await repo.GetInvitationsAsync(surveyId, ct))
+            .Any(invitation => invitation.Completed && ids.Contains(invitation.UserId));
+    }
+
     private async Task<SubmissionPreparation> PrepareSubmissionAsync(
         SurveySubmission submission, CancellationToken ct)
     {
@@ -780,7 +636,9 @@ internal sealed class SurveyService(
         if (submission.Anonymity != ResponseAnonymity.Anonymous && submission.InvitationId is { } gateInvId)
         {
             var invitation = await repo.GetInvitationByIdAsync(gateInvId, ct);
-            if (invitation?.Completed == true)
+            if (invitation?.Completed == true
+                || (submission.UserId is { } participantId
+                    && await HasCompletedMergedParticipationAsync(submission.SurveyId, participantId, ct)))
             {
                 return new SubmissionPreparation([], [], [], [], AlreadyCompleted: true);
             }
@@ -817,6 +675,12 @@ internal sealed class SurveyService(
         CancellationToken ct)
     {
         using var finalization = await ResponseFinalizationLock.AcquireAsync(logger, ct);
+        // Another account in the same merge chain may have completed since preparation. Keep the
+        // duplicate check inside the same lock as persistence, without linking anonymous ballots.
+        if (submission.Anonymity != ResponseAnonymity.Anonymous && submission.UserId is { } participantId
+            && await HasCompletedMergedParticipationAsync(submission.SurveyId, participantId, ct))
+            return;
+
         switch (submission.Anonymity)
         {
             case ResponseAnonymity.Identified:

@@ -334,6 +334,26 @@ public sealed class ExpensesControllerPreapprovalTests
         await _reports.Received(1).CreateDraftAsync(_actorId, _actorId, 0, null, grant.Id, Arg.Any<CancellationToken>());
     }
 
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task NewPost_AfterUncertainCreation_DoesNotOfferAnotherCreate(bool unverifiable)
+    {
+        var reportId = Guid.NewGuid();
+        _reports.CreateDraftAsync(_actorId, _actorId, 0, null, null, Arg.Any<CancellationToken>())
+            .Returns(new ExpenseCreateDraftResult(false, null, unverifiable ? null : reportId)
+            { OutcomeUncertain = unverifiable });
+        var controller = Build();
+
+        var result = (await controller.New(new ExpenseNewViewModel())).Should().BeOfType<RedirectToActionResult>().Subject;
+
+        result.ActionName.Should().Be(unverifiable ? nameof(ExpensesController.Index) : nameof(ExpensesController.Edit));
+        if (!unverifiable) result.RouteValues!["id"].Should().Be(reportId);
+        controller.TempData[TempDataKeys.ErrorMessage].Should().Be(unverifiable
+            ? "Expenses_Flash_DraftOutcomeUnknown" : "Expenses_Flash_DraftSavedFollowupFailed");
+        await _reports.Received(1).CreateDraftAsync(_actorId, _actorId, 0, null, null, Arg.Any<CancellationToken>());
+    }
+
     [HumansFact]
     public async Task NewPost_WithoutAGrant_StillRequiresTheAccount()
     {

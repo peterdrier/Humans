@@ -235,7 +235,7 @@ internal sealed class DevelopmentDashboardSeeder(
 
         // Infrastructure coords logged in 9 days ago (stale) to drive the red chip on the dashboard. Picked before
         // the cohort is created so each coord's last login is seeded on its account.
-        var coordPicks = new List<(Guid TeamId, int UserIndex)>();
+        var coordPicks = new HashSet<(Guid TeamId, int UserIndex)>();
         var coordLastLogins = new Dictionary<int, Instant>();
         foreach (var parent in parentTeams.Values)
         {
@@ -279,17 +279,9 @@ internal sealed class DevelopmentDashboardSeeder(
 
         foreach (var (teamId, index) in coordPicks)
         {
-            try
-            {
-                await teamSeeding.AddSeededMemberAsync(
-                    teamId, users[index].Id, TeamMemberRole.Coordinator, now.Minus(Duration.FromDays(60)),
-                    cancellationToken);
-            }
-            catch (InvalidOperationException)
-            {
-                // The RNG may pick the same user as a coord for multiple teams or twice for
-                // the same team; ignore duplicate membership (it's just demo data).
-            }
+            await teamSeeding.AddSeededMemberAsync(
+                teamId, users[index].Id, TeamMemberRole.Coordinator, now.Minus(Duration.FromDays(60)),
+                cancellationToken);
         }
 
         foreach (var user in users)

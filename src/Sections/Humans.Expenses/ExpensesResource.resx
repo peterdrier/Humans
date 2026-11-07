@@ -318,4 +318,6 @@
   <data name="Expenses_SubjectHelp" xml:space="preserve"><value>Required. Enter the project name this expense is for, e.g. the name of your art project.</value></data>
   <data name="Expenses_Validation_SubjectRequired" xml:space="preserve"><value>Add a subject (the project name) before submitting.</value></data>
   <data name="Expenses_Validation_AmountPrecision" xml:space="preserve"><value>Enter an amount with no more than two decimal places.</value></data>
+  <data name="Expenses_Flash_DraftSavedFollowupFailed" xml:space="preserve"><value>The draft was saved, but the request could not be completed. Review it before continuing.</value></data>
+  <data name="Expenses_Flash_DraftOutcomeUnknown" xml:space="preserve"><value>We could not confirm whether the draft was saved. Check existing reports before creating another draft.</value></data>
 </root>

@@ -1,4 +1,5 @@
 using Humans.GoogleIntegration.Contracts;
+using System.Collections.Concurrent;
 using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.DependencyInjection;
@@ -7,6 +8,7 @@ using Humans.AuditLog.Contracts;
 using Humans.Users.Data.Repositories;
 using Humans.Users.Contracts;
 using Humans.Base.Helpers;
+using Humans.Base.Threading;
 using Humans.Users.Helpers;
 
 namespace Humans.Users.Services;
@@ -20,6 +22,9 @@ internal sealed class UserEmailService(
     IServiceProvider serviceProvider,
     ILogger<UserEmailService> logger) : IUserEmailService, IUserMerge
 {
+    // Keep the last-sign-in check and removal together across request scopes.
+    private static readonly ConcurrentDictionary<Guid, TrackedLock> RemovalLocks = new();
+
     private readonly UserEmailReader reader = new(repository, userService, clock, serviceProvider);
     private readonly UserEmailReconciliation reconciliation = new(repository, userService, clock, auditLogService, serviceProvider, logger);
 
@@ -152,7 +157,7 @@ internal sealed class UserEmailService(
         var pendingEmail = await repository.GetUserEmailByIdAndUserIdAsync(emailId, userId, cancellationToken);
         if (pendingEmail is null || pendingEmail.IsVerified || pendingEmail.Provider is not null)
         {
-            throw new ValidationException("No email pending verification.");
+            return new VerifyEmailResult(string.Empty, false) { NoPendingVerification = true };
         }
 
         // As in VerifyEmailAsync: an address verified on another account becomes a merge request.
@@ -200,6 +205,8 @@ internal sealed class UserEmailService(
     public async Task<DeleteEmailResult> DeleteEmailAsync(
         Guid userId, Guid emailId, CancellationToken cancellationToken = default)
     {
+        using var removal = await RemovalLocks.GetOrAdd(userId,
+            static id => new TrackedLock($"Users.EmailRemoval[{id}]")).AcquireAsync(logger, cancellationToken);
         var email = await repository.GetUserEmailByIdAndUserIdAsync(emailId, userId, cancellationToken);
         if (email is null)
             return new DeleteEmailResult(false, "Users_EmailUpdate_NotFound");
@@ -422,6 +429,8 @@ internal sealed class UserEmailService(
         Guid userId, Guid userEmailId, Guid actorUserId,
         CancellationToken cancellationToken = default)
     {
+        using var removal = await RemovalLocks.GetOrAdd(userId,
+            static id => new TrackedLock($"Users.EmailRemoval[{id}]")).AcquireAsync(logger, cancellationToken);
         var row = await repository.GetUserEmailByIdAndUserIdAsync(userEmailId, userId, cancellationToken);
         if (row is null) return new(false);
         if (string.IsNullOrEmpty(row.Provider) || string.IsNullOrEmpty(row.ProviderKey))

@@ -18,6 +18,38 @@ namespace Humans.Governance.Tests.Services;
 
 public sealed class TermRenewalReminderJobTests
 {
+    [HumansFact]
+    public async Task ExecuteAsync_RoutesMergedApplicantsNoticeToTheLiveRecipient()
+    {
+        var applications = Substitute.For<IGovernanceManagement>();
+        var users = Substitute.For<IUserService>();
+        var email = Substitute.For<IEmailService>();
+        var notifications = Substitute.For<INotificationEmitter>();
+        var clock = new FakeClock(Instant.FromUtc(2026, 3, 1, 12, 0));
+        var candidate = new ApplicationRenewalReminderCandidate(Guid.NewGuid(), Guid.NewGuid(),
+            MembershipTier.Colaborador, clock.GetCurrentInstant(), new LocalDate(2026, 5, 20));
+        var liveId = Guid.NewGuid();
+        applications.GetExpiringApplicationsNeedingReminderAsync(Arg.Any<LocalDate>(), Arg.Any<LocalDate>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IReadOnlyList<ApplicationRenewalReminderCandidate>>([candidate]));
+        applications.GetPendingApplicationUserTiersAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IReadOnlySet<(Guid UserId, MembershipTier Tier)>>(new HashSet<(Guid, MembershipTier)>()));
+        users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, UserInfo>
+            {
+                [candidate.UserId] = new User { Id = liveId, BurnerName = "Member", Email = "member@example.org" }.ToUserInfo()
+            });
+        var job = new TermRenewalReminderJob(applications, users, email, TestGovernanceEmails.Create(),
+            notifications, Substitute.For<IHumansMetrics>(), NullLogger<TermRenewalReminderJob>.Instance, clock);
+
+        await job.ExecuteAsync(CancellationToken.None);
+
+        var notice = notifications.ReceivedCalls().Should().ContainSingle().Subject.GetArguments();
+        notice[0].Should().Be(GovernanceNotificationSources.TermRenewalReminder);
+        ((IReadOnlyList<Guid>)notice[4]!).Should().ContainSingle().Which.Should().Be(liveId);
+        await email.Received(1).SendAsync(Arg.Is<EmailMessage>(message => message.UserId == liveId), CancellationToken.None);
+        await applications.Received(1).MarkRenewalReminderSentAsync(candidate.Id, clock.GetCurrentInstant(), CancellationToken.None);
+    }
+
     [HumansTheory]
     [Xunit.InlineData(null)]
     [Xunit.InlineData("")]

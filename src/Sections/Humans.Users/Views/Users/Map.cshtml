@@ -115,6 +115,8 @@ else
         <script>
             const markers = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Markers, new System.Text.Json.JsonSerializerOptions { PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase }));
 
+            const groupTitle = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Localizer["Users_Map_Count"].Value));
+
             const _cs = getComputedStyle(document.documentElement);
             const cssVar = (name) => _cs.getPropertyValue(name).trim();
             const clrMutedText = cssVar('--h-muted-text');
@@ -193,7 +195,7 @@ else
                     const marker = new AdvancedMarkerElement({
                         position: { lat: first.latitude, lng: first.longitude },
                         map: map,
-                        title: group.length > 1 ? group.length + ' humans' : first.displayName,
+                        title: group.length > 1 ? groupTitle.replace('{0}', group.length) : first.displayName,
                         gmpClickable: true,
                         content: bubble(group.length)
                     });

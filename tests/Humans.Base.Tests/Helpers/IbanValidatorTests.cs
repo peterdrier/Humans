@@ -54,10 +54,21 @@ public class IbanValidatorTests
             .Should().Be("ES9121000418450200051332");
     }
 
-    [HumansFact]
-    public void IsValid_StripsNarrowNoBreakSpace()
+    [HumansTheory]
+    [InlineData(" ")]
+    [InlineData("\u202f")]
+    [InlineData("\u00a0")]
+    [InlineData("\t")]
+    [InlineData("\r\n")]
+    public void CopiedIban_WhitespaceDoesNotChangeItsIdentityOrChecksum(string separator)
     {
-        IbanValidator.IsValid("ES91 2100 0418 4502 0005 1332").Should().BeTrue();
+        var formatted = separator + string.Join(separator, "es91", "2100", "0418", "4502", "0005", "1332") + separator;
+
+        IbanValidator.Normalize(formatted).Should().Be("ES9121000418450200051332");
+        IbanValidator.IsValid(formatted).Should().BeTrue();
+        IbanValidator.IsValid(formatted.Replace("1332", "1333", StringComparison.Ordinal)).Should().BeFalse();
+        IbanValidator.CurrencyOf(formatted).Should().Be("EUR");
+        IbanValidator.IsEea(formatted).Should().BeTrue();
     }
 
     [HumansTheory]

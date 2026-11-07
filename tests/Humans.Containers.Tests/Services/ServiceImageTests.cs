@@ -348,7 +348,7 @@ public sealed class ServiceImageTests
         uploaded.Should().HaveCount(2);
         var saved = await _sut.GetAllAsync(ct);
         var linked = saved.SelectMany(container => container.Images).Select(image => image.Url.TrimStart('/')).ToList();
-        await _fileStorage.Received(afterCommit ? 0 : 2).DeleteAsync(Arg.Any<string>(), CancellationToken.None);
+        await _fileStorage.Received(afterCommit ? before?.Images.Count ?? 0 : 2).DeleteAsync(Arg.Any<string>(), CancellationToken.None);
         foreach (var key in uploaded)
         {
             if (afterCommit) linked.Should().Contain(key);
@@ -359,7 +359,10 @@ public sealed class ServiceImageTests
             }
         }
         foreach (var image in before?.Images ?? [])
-            await _fileStorage.DidNotReceive().DeleteAsync(image.Url.TrimStart('/'), Arg.Any<CancellationToken>());
+        {
+            if (afterCommit) await _fileStorage.Received(1).DeleteAsync(image.Url.TrimStart('/'), CancellationToken.None);
+            else await _fileStorage.DidNotReceive().DeleteAsync(image.Url.TrimStart('/'), Arg.Any<CancellationToken>());
+        }
         if (!afterCommit && updating) saved.Should().ContainSingle().Which.Should().BeEquivalentTo(before);
         else if (!afterCommit) saved.Should().BeEmpty();
     }
@@ -480,6 +483,118 @@ public sealed class ServiceImageTests
         updated.Images.Should().BeEmpty();
     }
 
+    [HumansTheory]
+    [InlineData("update", "before")]
+    [InlineData("update", "after")]
+    [InlineData("update", "audit")]
+    [InlineData("update", "verification")]
+    [InlineData("delete", "before")]
+    [InlineData("delete", "after")]
+    [InlineData("delete", "audit")]
+    [InlineData("delete", "verification")]
+    [InlineData("remove-placement", "before")]
+    [InlineData("remove-placement", "after")]
+    [InlineData("remove-placement", "audit")]
+    [InlineData("remove-placement", "verification")]
+    [InlineData("replace-placement", "before")]
+    [InlineData("replace-placement", "after")]
+    [InlineData("replace-placement", "audit")]
+    [InlineData("replace-placement", "verification")]
+    public async Task Image_mutation_failures_clean_only_confirmed_unreferenced_files(string operation, string failureStage)
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var container = await SeedContainerAsync("uploads/containers/legacy.jpg", galleryImages: 2);
+        var other = await SeedContainerAsync();
+        var images = await new Repository(new TestDbContextFactory<ContainersDbContext>(_containersOptions)).GetImagesAsync([container.Id], ct);
+        await using (var seed = new ContainersDbContext(_containersOptions))
+        {
+            foreach (var year in new[] { 2025, 2026 })
+                seed.ContainerPlacements.Add(new ContainerPlacement
+                {
+                    ContainerId = container.Id,
+                    Year = year,
+                    PlacementImageStoragePath = $"uploads/containers/placement-{year}.jpg",
+                });
+            seed.ContainerPlacements.Add(new ContainerPlacement
+            {
+                ContainerId = other.Id,
+                Year = 2026,
+                PlacementImageStoragePath = "uploads/containers/other.jpg",
+            });
+            await seed.SaveChangesAsync(ct);
+        }
+        var files = images.Select(image => image.StoragePath).Concat(new[]
+        {
+            container.ImageStoragePath!, "uploads/containers/placement-2025.jpg", "uploads/containers/placement-2026.jpg", "uploads/containers/other.jpg",
+        }).ToHashSet(StringComparer.Ordinal);
+        var originalFiles = files.ToList();
+        var uploads = new List<string>();
+        _fileStorage.SaveAsync(Arg.Any<string>(), Arg.Any<Stream>(), Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            files.Add(call.Arg<string>()); uploads.Add(call.Arg<string>()); return Task.CompletedTask;
+        });
+        _fileStorage.DeleteAsync(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            call.Arg<CancellationToken>().Should().Be(CancellationToken.None);
+            files.Remove(call.Arg<string>()); return Task.CompletedTask;
+        });
+        var failure = new IOException("Image mutation failed");
+        var options = new DbContextOptionsBuilder<ContainersDbContext>(_containersOptions);
+        if (failureStage is "before" or "after" or "verification")
+            options.AddInterceptors(new FailImageMetadataSave(!string.Equals(failureStage, "before", StringComparison.Ordinal), failure));
+        var inner = new Repository(new TestDbContextFactory<ContainersDbContext>(options.Options));
+        var repo = Substitute.For<IContainerRepository>();
+        var containerReads = 0;
+        var galleryReads = 0;
+        var placementReads = 0;
+        repo.GetByIdAsync(container.Id, Arg.Any<CancellationToken>()).Returns(call =>
+            ++containerReads > 1 && string.Equals(failureStage, "verification", StringComparison.Ordinal)
+                ? Task.FromException<Container?>(new IOException("Verification unavailable"))
+                : inner.GetByIdAsync(container.Id, call.Arg<CancellationToken>()));
+        repo.GetImagesAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>()).Returns(call =>
+            ++galleryReads > 1 && string.Equals(failureStage, "verification", StringComparison.Ordinal)
+                ? Task.FromException<IReadOnlyList<ContainerImage>>(new IOException("Verification unavailable"))
+                : inner.GetImagesAsync(call.Arg<IReadOnlyCollection<Guid>>(), call.Arg<CancellationToken>()));
+        repo.GetPlacementAsync(container.Id, 2026, Arg.Any<CancellationToken>()).Returns(call =>
+            ++placementReads > 1 && string.Equals(failureStage, "verification", StringComparison.Ordinal)
+                ? Task.FromException<ContainerPlacement?>(new IOException("Verification unavailable"))
+                : inner.GetPlacementAsync(container.Id, 2026, call.Arg<CancellationToken>()));
+        repo.GetPlacementsAsync(Arg.Any<int?>(), Arg.Any<CancellationToken>()).Returns(call =>
+            inner.GetPlacementsAsync(call.Arg<int?>(), call.Arg<CancellationToken>()));
+        repo.UpdateAsync(Arg.Any<Container>(), Arg.Any<IReadOnlyCollection<ContainerImage>>(), Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(call => inner.UpdateAsync(call.Arg<Container>(), call.Arg<IReadOnlyCollection<ContainerImage>>(), call.Arg<IReadOnlyCollection<Guid>>(), call.Arg<CancellationToken>()));
+        repo.DeleteAsync(container.Id, Arg.Any<CancellationToken>()).Returns(call => inner.DeleteAsync(container.Id, call.Arg<CancellationToken>()));
+        repo.UpsertPlacementAsync(Arg.Any<ContainerPlacement>(), Arg.Any<CancellationToken>()).Returns(call => inner.UpsertPlacementAsync(call.Arg<ContainerPlacement>(), call.Arg<CancellationToken>()));
+        if (string.Equals(failureStage, "audit", StringComparison.Ordinal))
+            _auditLog.LogAsync(Arg.Any<AuditActionDefinition>(), Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<string>(),
+                Arg.Any<Guid>(), Arg.Any<Guid?>(), Arg.Any<string?>()).Returns(Task.FromException(failure));
+        var service = new Service(repo, _fileStorage, _camps, _auditLog, new FakeClock(StartTime), _logger);
+
+        Func<Task> action = async () =>
+        {
+            if (string.Equals(operation, "delete", StringComparison.Ordinal))
+                await service.DeleteAsync(container.Id, Guid.NewGuid(), ct);
+            else if (string.Equals(operation, "update", StringComparison.Ordinal))
+                await service.UpdateAsync(container.Id, new ContainerData(CampId, "Updated", null, FakeImages(1), [Guid.Empty, images[0].Id]), Guid.NewGuid(), ct);
+            else
+                await service.UpdatePlacementNotesAsync(container.Id, 2026, "Updated",
+                    string.Equals(operation, "replace-placement", StringComparison.Ordinal) ? FakeImages(1)[0] : null,
+                    string.Equals(operation, "remove-placement", StringComparison.Ordinal), Guid.NewGuid(), ct);
+        };
+        (await action.Should().ThrowAsync<IOException>()).Which.Should().BeSameAs(failure);
+
+        await using var verify = new ContainersDbContext(_containersOptions);
+        var references = (await verify.Containers.ToListAsync(ct)).Select(c => c.ImageStoragePath)
+            .Concat((await verify.ContainerImages.ToListAsync(ct)).Select(i => i.StoragePath))
+            .Concat((await verify.ContainerPlacements.ToListAsync(ct)).Select(p => p.PlacementImageStoragePath))
+            .OfType<string>().ToHashSet(StringComparer.Ordinal);
+        if (string.Equals(failureStage, "verification", StringComparison.Ordinal))
+            files.Should().BeEquivalentTo(originalFiles.Concat(uploads));
+        else
+            files.Should().BeEquivalentTo(references);
+        files.Should().Contain("uploads/containers/other.jpg");
+    }
+
     [HumansFact]
     public async Task DeleteAsync_preserves_image_files_when_the_database_delete_fails()
     {
@@ -487,6 +602,8 @@ public sealed class ServiceImageTests
         var container = await SeedContainerAsync(legacyImagePath: "uploads/containers/legacy.jpg");
         var repo = Substitute.For<IContainerRepository>();
         repo.GetByIdAsync(container.Id, Arg.Any<CancellationToken>()).Returns(container);
+        repo.GetImagesAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>()).Returns([]);
+        repo.GetPlacementsAsync(null, Arg.Any<CancellationToken>()).Returns([]);
         var original = new IOException("Database delete failed");
         repo.DeleteAsync(container.Id, Arg.Any<CancellationToken>()).Returns(Task.FromException<IReadOnlyList<string>>(original));
         var service = new Service(repo, _fileStorage, Substitute.For<ICampService>(), _auditLog, new FakeClock(StartTime), _logger);

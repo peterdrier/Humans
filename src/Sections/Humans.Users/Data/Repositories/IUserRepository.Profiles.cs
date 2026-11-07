@@ -74,8 +74,7 @@ internal partial interface IUserRepository
     /// History dedups on (year, event name); languages on code, keeping the higher proficiency
     /// (target wins ties). Contact fields are not touched. No-op if either user has no profile.
     /// </remarks>
-    /// <returns>The source picture metadata after the fold commits, or null when no profiles were folded.</returns>
-    Task<(Guid ProfileId, string? ContentType, string? StorageKey)?> ReassignSubAggregatesToUserAsync(
+    Task ReassignSubAggregatesToUserAsync(
         Guid sourceUserId, Guid targetUserId, Instant updatedAt,
         CancellationToken ct = default);
 }

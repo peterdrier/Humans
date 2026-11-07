@@ -163,21 +163,20 @@ internal sealed class IssuesRepository(IDbContextFactory<IssuesDbContext> factor
         await db.SaveChangesAsync(ct);
     }
 
-    public async Task<IReadOnlyList<Guid>> GetExpiredTerminalAsync(
+    public async Task<IReadOnlyList<Issue>> GetExpiredTerminalAsync(
         Instant cutoff, CancellationToken ct = default)
     {
         await using var db = await factory.CreateDbContextAsync(ct);
         return await db.Issues
             .AsNoTracking()
             .Where(i => i.ResolvedAt != null && i.ResolvedAt <= cutoff)
-            .Select(i => i.Id)
             .ToListAsync(ct);
     }
 
-    public async Task<(int Deleted, IReadOnlyList<string> ScreenshotKeys)> DeleteByIdsAsync(
+    public async Task<int> DeleteByIdsAsync(
         IReadOnlyCollection<Guid> ids, CancellationToken ct = default)
     {
-        if (ids.Count == 0) return (0, []);
+        if (ids.Count == 0) return 0;
 
         // Load-then-RemoveRange rather than ExecuteDeleteAsync, which the EF InMemory test provider does not support.
         await using var db = await factory.CreateDbContextAsync(ct);
@@ -185,10 +184,10 @@ internal sealed class IssuesRepository(IDbContextFactory<IssuesDbContext> factor
             .Where(i => ids.Contains(i.Id))
             .ToListAsync(ct);
 
-        if (toDelete.Count == 0) return (0, []);
+        if (toDelete.Count == 0) return 0;
 
         db.Issues.RemoveRange(toDelete);
         await db.SaveChangesAsync(ct);
-        return (toDelete.Count, toDelete.Select(i => i.ScreenshotStoragePath).OfType<string>().ToList());
+        return toDelete.Count;
     }
 }

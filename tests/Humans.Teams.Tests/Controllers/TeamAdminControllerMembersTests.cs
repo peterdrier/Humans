@@ -286,6 +286,82 @@ public class TeamAdminControllerMembersTests
     }
 
     [HumansTheory]
+    [InlineData("add", true)]
+    [InlineData("edit", true)]
+    [InlineData("remove", true)]
+    [InlineData("assign", true)]
+    [InlineData("unassign", true)]
+    [InlineData("assign", false)]
+    [InlineData("unassign", false)]
+    [InlineData("add", false)]
+    [InlineData("edit", false)]
+    public async Task TeamMutation_RefusalFeedbackAndDependencyFailures(string operation, bool dependencyFailure)
+    {
+        var actorId = Guid.NewGuid();
+        var teams = Substitute.For<ITeamManagementService>();
+        var users = Substitute.For<IUserService>();
+        users.GetUserInfoAsync(actorId, Arg.Any<CancellationToken>())
+            .Returns(UserInfo.Create(new User { Id = actorId }, [], [], null));
+        var team = new TeamInfo(Guid.NewGuid(), "Team", null, "team", true, false, SystemTeamType.None,
+            false, false, false, false, Instant.MinValue, [], EarlyEntryEnabled: true);
+        teams.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(new Dictionary<Guid, TeamInfo> { [team.Id] = team });
+        var authorization = Substitute.For<IAuthorizationService>();
+        authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), team, Arg.Any<IEnumerable<IAuthorizationRequirement>>())
+            .Returns(AuthorizationResult.Success());
+        var http = new DefaultHttpContext
+        {
+            User = new ClaimsPrincipal(new ClaimsIdentity(
+                [new Claim(ClaimTypes.NameIdentifier, actorId.ToString())], "test"))
+        };
+        var logger = Substitute.For<ILogger<TeamAdminController>>();
+        var controller = new TeamAdminController(teams, Substitute.For<ITeamResourceService>(), users,
+            Substitute.For<IEmailProvisioningService>(), authorization, logger,
+            Substitute.For<IStringLocalizer<TeamsResource>>(), Substitute.For<ITicketService>())
+        {
+            ControllerContext = new ControllerContext { HttpContext = http },
+            TempData = new TempDataDictionary(http, Substitute.For<ITempDataProvider>())
+        };
+        var failure = new Microsoft.EntityFrameworkCore.DbUpdateException("Storage failed");
+        teams.AddEarlyEntryGrantAsync(team.Id, Arg.Any<Guid>(), Arg.Any<LocalDate>(), Arg.Any<string>(), actorId, Arg.Any<CancellationToken>())
+            .Returns(_ => dependencyFailure ? throw failure : new TeamEarlyEntryMutationResult("Expected refusal"));
+        teams.EditEarlyEntryGrantAsync(team.Id, Arg.Any<Guid>(), Arg.Any<LocalDate>(), Arg.Any<string>(), actorId, Arg.Any<CancellationToken>())
+            .Returns(_ => dependencyFailure ? throw failure : new TeamEarlyEntryMutationResult("Expected refusal"));
+        teams.RemoveEarlyEntryGrantAsync(team.Id, Arg.Any<Guid>(), actorId, Arg.Any<CancellationToken>())
+            .Returns(_ => throw failure);
+        teams.AssignToRoleAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), actorId, Arg.Any<CancellationToken>())
+            .Returns(_ => dependencyFailure ? throw failure : new TeamRoleAssignmentMutationResult(Refusal: "Expected refusal"));
+        teams.UnassignFromRoleAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), actorId, Arg.Any<CancellationToken>())
+            .Returns(_ => dependencyFailure ? throw failure : new TeamRoleAssignmentMutationResult(Refusal: "Expected refusal"));
+
+        Func<Task<IActionResult>> action = operation switch
+        {
+            "add" => () => controller.AddEarlyEntry(team.Slug,
+                new AddTeamEarlyEntryInput { UserId = Guid.NewGuid(), EntryDate = "2026-07-06", ProjectName = "Build" }, TestContext.Current.CancellationToken),
+            "edit" => () => controller.EditEarlyEntry(team.Slug,
+                new EditTeamEarlyEntryInput { GrantId = Guid.NewGuid(), EntryDate = "2026-07-06", ProjectName = "Build" }, TestContext.Current.CancellationToken),
+            "assign" => () => controller.AssignRole(team.Slug, Guid.NewGuid(), new AssignRoleModel { UserId = Guid.NewGuid() }),
+            "unassign" => () => controller.UnassignRole(team.Slug, Guid.NewGuid(), Guid.NewGuid()),
+            _ => () => controller.RemoveEarlyEntry(team.Slug, Guid.NewGuid(), TestContext.Current.CancellationToken)
+        };
+
+        if (dependencyFailure)
+        {
+            await action.Should().ThrowAsync<Microsoft.EntityFrameworkCore.DbUpdateException>()
+                .Where(ex => ReferenceEquals(ex, failure));
+            controller.TempData.Should().BeEmpty();
+        }
+        else
+        {
+            (await action()).Should().BeOfType<RedirectToActionResult>();
+            controller.TempData[TempDataKeys.ErrorMessage].Should().Be("Expected refusal");
+            controller.TempData.Should().NotContainKey(TempDataKeys.SuccessMessage);
+            var log = logger.ReceivedCalls().Should().ContainSingle().Subject.GetArguments();
+            log[0].Should().Be(LogLevel.Warning);
+            log[3].Should().BeNull();
+        }
+    }
+
+    [HumansTheory]
     [InlineData(false, "")]
     [InlineData(true, "")]
     [InlineData(false, "2026-02-31")]

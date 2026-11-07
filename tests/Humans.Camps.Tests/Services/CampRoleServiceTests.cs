@@ -362,6 +362,31 @@ public sealed class CampRoleServiceTests : CampsTestHarness
     }
 
     [HumansFact]
+    public async Task Assign_notice_routes_merged_member_to_live_recipient()
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var (_, season) = await SeedCampWithSeasonAsync();
+        var member = await SeedActiveMemberAsync(season.Id);
+        var def = await SeedDefinitionAsync();
+        var liveUserId = Guid.NewGuid();
+        _campAccess.GetCampMemberStatusAsync(member.Id, Arg.Any<CancellationToken>())
+            .Returns(new CampMemberLookup(season.Id, member.UserId, CampMemberStatus.Active));
+        _userService.GetUserInfoAsync(member.UserId, Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<UserInfo?>(UserInfo.Create(
+                new User { Id = liveUserId, PreferredLanguage = "es" }, [], [], null)));
+
+        var outcome = await _service.AssignAsync(season.Id, def.Id, member.Id, _actorUserId, ct);
+
+        outcome.Should().Be(AssignCampRoleOutcome.Assigned);
+        var notice = Notifier.ReceivedCalls().Should().ContainSingle().Subject.GetArguments();
+        notice[0].Should().Be(CampsNotificationSources.CampRoleAssigned);
+        notice[3].Should().Be($"Se te ha asignado el rol {def.Name}.");
+        ((IReadOnlyList<Guid>)notice[4]!).Should().ContainSingle().Which.Should().Be(liveUserId);
+        notice[10].Should().Be(CancellationToken.None);
+        (await CampsDb.CampRoleAssignments.AsNoTracking().SingleAsync(ct)).CampMemberId.Should().Be(member.Id);
+    }
+
+    [HumansFact]
     public async Task Assign_returns_MemberNotActive_when_member_is_pending()
     {
         var (_, season) = await SeedCampWithSeasonAsync();

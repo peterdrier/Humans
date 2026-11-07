@@ -257,36 +257,23 @@ internal sealed partial class ApplicationRepository(IDbContextFactory<Governance
 
     public async Task<IReadOnlyList<Guid>> GetActiveApprovedTierUserIdsAsync(
         MembershipTier tier, LocalDate today, CancellationToken ct = default) =>
-        await WithContextAsync(async ctx => await ctx.Applications
-            .AsNoTracking()
-            .Where(a => a.Status == ApplicationStatus.Approved
-                && a.MembershipTier == tier
-                && (a.TermExpiresAt == null || a.TermExpiresAt >= today))
+        await WithContextAsync(async ctx => await ActiveApprovedApplications(ctx, today)
+            .Where(a => a.MembershipTier == tier)
             .Select(a => a.UserId)
             .Distinct()
             .ToListAsync(ct), ct);
 
     public Task<bool> HasActiveApprovedTierAsync(
         Guid userId, MembershipTier tier, LocalDate today, CancellationToken ct = default) =>
-        WithContextAsync(ctx => ctx.Applications
-            .AsNoTracking()
-            .AnyAsync(a =>
-                a.UserId == userId &&
-                a.Status == ApplicationStatus.Approved &&
-                a.MembershipTier == tier &&
-                (a.TermExpiresAt == null || a.TermExpiresAt >= today),
-                ct), ct);
+        WithContextAsync(ctx => ActiveApprovedApplications(ctx, today)
+            .AnyAsync(a => a.UserId == userId && a.MembershipTier == tier, ct), ct);
 
     public async Task<IReadOnlyDictionary<Guid, MembershipTier>> GetOtherActiveTierAssignmentsAsync(
         MembershipTier excludeTier, LocalDate today, CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
-        var rows = await ctx.Applications
-            .AsNoTracking()
-            .Where(a => a.Status == ApplicationStatus.Approved
-                && a.MembershipTier != excludeTier
-                && a.MembershipTier != MembershipTier.Volunteer
-                && (a.TermExpiresAt == null || a.TermExpiresAt >= today))
+        var rows = await ActiveApprovedApplications(ctx, today)
+            .Where(a => a.MembershipTier != excludeTier && a.MembershipTier != MembershipTier.Volunteer)
             .Select(a => new { a.UserId, a.MembershipTier })
             .ToListAsync(ct);
 
@@ -294,6 +281,11 @@ internal sealed partial class ApplicationRepository(IDbContextFactory<Governance
             .GroupBy(r => r.UserId)
             .ToDictionary(g => g.Key, g => g.First().MembershipTier);
     }
+
+    private static IQueryable<MemberApplication> ActiveApprovedApplications(GovernanceDbContext ctx, LocalDate today) =>
+        ctx.Applications.AsNoTracking()
+            .Where(a => a.Status == ApplicationStatus.Approved
+                && (a.TermExpiresAt == null || a.TermExpiresAt >= today));
 
     public async Task<int> ScrubFreeTextForUserAsync(
         Guid userId, Instant updatedAt, CancellationToken ct = default)

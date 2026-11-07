@@ -40,7 +40,7 @@ public interface IMembershipCalculator : IOrchestrator
 
     /// <summary>
     /// Every input user lands in exactly one bucket. Priority: PendingDeletion, Suspended, IncompleteSignup,
-    /// PendingApproval, then MissingConsents or Active.
+    /// then MissingConsents or Active. Consent review annotations do not gate membership.
     /// </summary>
     Task<MembershipPartition> PartitionUsersAsync(
         IEnumerable<Guid> userIds, CancellationToken ct = default);
