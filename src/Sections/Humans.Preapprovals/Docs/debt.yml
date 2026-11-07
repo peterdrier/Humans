@@ -1,0 +1,8 @@
+# Section debt ledger for Humans.Preapprovals. Shape: memory/process/debt-ledger-additions.md.
+version: 1
+next_id: 2
+inbox:
+  - added: 2026-11-07
+    id: PREAPPROVALS-1
+    what: "PreapprovalsAdminController.Index restates the program-manager visibility rule (user.AllUserIds.Any(p.IsManager)) beside a FinancePolicies.Read check instead of asking the section's program resource handler; same shape as GRANTS-1 in src/Sections/Humans.Grants/Docs/debt.yml. Found by the 2026-11-07 Grants section-doctor run."
+    review: panel

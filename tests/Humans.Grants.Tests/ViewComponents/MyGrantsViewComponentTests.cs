@@ -49,6 +49,25 @@ public sealed class MyGrantsViewComponentTests : GrantsTestHarness
         model.Grants.Select(g => g.Id).Should().Equal(grant.Id);
     }
 
+    [HumansFact]
+    public async Task RendersNothing_OnSomeoneElsesProfile()
+    {
+        var holder = SeedUser("Holder");
+        await SeedGrantAsync(await SeedProgramAsync(), holder);
+        var http = new DefaultHttpContext
+        {
+            User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, SeedUser("Other").ToString())], "test"))
+        };
+        var component = new MyGrantsViewComponent(NewService(), Users)
+        {
+            ViewComponentContext = new ViewComponentContext { ViewContext = new ViewContext { HttpContext = http } }
+        };
+
+        var result = await component.InvokeAsync(holder, ProfileCardViewMode.Self);
+
+        result.Should().BeOfType<ContentViewComponentResult>().Which.Content.Should().BeEmpty();
+    }
+
     private async Task<GrantsCardViewModel> CardAsync(Guid holder, Guid? viewerClaim = null)
     {
         var http = new DefaultHttpContext
