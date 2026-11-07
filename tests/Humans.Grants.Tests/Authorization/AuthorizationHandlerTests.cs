@@ -3,6 +3,7 @@ using Humans.Finance.Contracts;
 using System.Security.Claims;
 using AwesomeAssertions;
 using Humans.Base.Constants;
+using Humans.Base.Interfaces;
 using Humans.Grants.Authorization;
 using Humans.Grants.Contracts;
 using Humans.Grants.Services;
@@ -12,6 +13,7 @@ using Humans.Grants.Tests.Infrastructure;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 
@@ -171,6 +173,29 @@ public sealed class AuthorizationHandlerTests : GrantsTestHarness
         var model = result.Should().BeOfType<ViewResult>().Subject.Model.Should().BeOfType<AdminIndexViewModel>().Subject;
         model.CanAdminister.Should().BeFalse();
         model.Programs.Select(p => p.Id).Should().BeEquivalentTo([throughAlias.Id, throughSurvivor.Id]);
+    }
+
+    [HumansFact]
+    public async Task ManagerOfA_ActingOnBsGrantThroughAsRoute_IsNotFound_AndChangesNothing()
+    {
+        var manager = SeedUser("Manager");
+        var a = await SeedProgramAsync(name: "A", managers: manager);
+        var grantOfB = await SeedGrantAsync(await SeedProgramAsync(name: "B"), SeedUser("Holder"));
+        await using var provider = new ServiceCollection()
+            .AddLogging()
+            .AddAuthorization(options => ((ISectionPolicies)new Section()).AddPolicies(options))
+            .AddSingleton<IAuthorizationHandler>(new ProgramAuthorizationHandler(Users, new HttpContextAccessor()))
+            .BuildServiceProvider();
+        var service = NewService();
+        var controller = new GrantsAdminController(service, Users, provider.GetRequiredService<IAuthorizationService>(), Settings,
+            NullLogger<GrantsAdminController>.Instance)
+        {
+            ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext { User = Principal(manager) } }
+        };
+
+        (await controller.Revoke(a.Id, grantOfB.Id, "no", Ct)).Should().BeOfType<NotFoundResult>();
+        (await controller.Resend(a.Id, grantOfB.Id, Ct)).Should().BeOfType<NotFoundResult>();
+        (await service.GetGrantsForUserAsync(grantOfB.UserId, Ct)).Single().RevokedAt.Should().BeNull();
     }
 
     [HumansFact]
