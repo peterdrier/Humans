@@ -122,4 +122,4 @@ ViewComponents/, Views/    two profile cards and three admin pages
 
 | Run | Date | Headline | PR |
 |---|---|---|---|
-| 1 | 2026-11-07 | First doctor pass: docs describe what the section does now, one profile link, untested invariants pinned | pending |
+| 1 | 2026-11-07 | First doctor pass: docs describe what the section does now, one profile link, untested invariants pinned | peterdrier/Humans#2342 |
