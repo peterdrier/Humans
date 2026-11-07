@@ -53,7 +53,7 @@ internal sealed class GrantNotices(
             var emailLanguage = recipient.PreferredLanguage;
             var emailCulture = emailLanguage.IsSupportedCultureCode() ? emailLanguage! : CultureCatalog.DefaultCultureCode;
             await email.SendAsync(emailFactory.Notice(new GrantNoticeRequest(
-                recipient.Id, recipient.Email, recipient.BurnerName, kind, program.Name, program.Entitles, expiresOn, ProfileUrl,
+                recipient.Id, recipient.Email, recipient.BurnerName, kind, program.Name, program.Entitles, expiresOn,
                 grant.RevokeReason, emailCulture)), ct);
         }, ct);
     }

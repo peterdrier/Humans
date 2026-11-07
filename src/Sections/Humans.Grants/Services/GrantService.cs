@@ -23,7 +23,6 @@ internal sealed partial class GrantService(
     ILogger<GrantService> logger) : IGrantManagement
 {
     private readonly GrantNotices notices = new(users, notifications, email, emailFactory, logger);
-    internal const string ProfileUrl = GrantNotices.ProfileUrl;
 
     internal static readonly DateTimeZone MadridZone = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
 
