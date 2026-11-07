@@ -34,7 +34,7 @@ internal sealed partial class GrantService : IUserDataContributor, IUserMerge
         var grants = rows.Grants.Select(g => new
         {
             Program = g.Program.Name,
-            Year = EventOf(g.Program, events)?.Year ?? g.Program.Year,
+            Year = YearOf(g.Program, events),
             g.Program.Entitles,
             g.SourceRef,
             ExpiresOn = (g.ExpiresOn ?? g.Program.GrantsExpireOn)?.ToInvariantDate(),
@@ -49,7 +49,7 @@ internal sealed partial class GrantService : IUserDataContributor, IUserMerge
             ProgramsCreated = rows.ProgramsCreated.Select(p => new
             {
                 p.Name,
-                Year = EventOf(p, events)?.Year ?? p.Year,
+                Year = YearOf(p, events),
                 CreatedAt = p.CreatedAt.ToIso8601()
             }).ToList(),
             ManagerOf = rows.ManagerRows.Select(m => new { Program = m.Program.Name, AddedAt = m.AddedAt.ToIso8601() }).ToList(),

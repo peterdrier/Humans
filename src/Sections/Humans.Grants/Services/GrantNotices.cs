@@ -33,8 +33,7 @@ internal sealed class GrantNotices(
         UserInfo? person = null;
         await BestEffortAsync("recipient lookup", kind, grant.Id,
             async () => person = await users.GetUserInfoAsync(grant.UserId, ct), ct);
-        var language = person?.PreferredLanguage;
-        var culture = language.IsSupportedCultureCode() ? language! : CultureCatalog.DefaultCultureCode;
+        var culture = CultureOf(person);
         var expiresOn = grant.ExpiresOn ?? program.GrantsExpireOn;
 
         await BestEffortAsync("in-app notice", kind, grant.Id,
@@ -50,13 +49,14 @@ internal sealed class GrantNotices(
                     kind, grant.UserId, grant.Id);
                 return;
             }
-            var emailLanguage = recipient.PreferredLanguage;
-            var emailCulture = emailLanguage.IsSupportedCultureCode() ? emailLanguage! : CultureCatalog.DefaultCultureCode;
             await email.SendAsync(emailFactory.Notice(new GrantNoticeRequest(
                 recipient.Id, recipient.Email, recipient.BurnerName, kind, program.Name, program.Entitles, expiresOn,
-                grant.RevokeReason, emailCulture)), ct);
+                grant.RevokeReason, CultureOf(recipient))), ct);
         }, ct);
     }
+
+    private static string CultureOf(UserInfo? person) =>
+        person?.PreferredLanguage is { } language && language.IsSupportedCultureCode() ? language : CultureCatalog.DefaultCultureCode;
 
     private async Task BestEffortAsync(string step, GrantNoticeKind kind, Guid grantId, Func<Task> send, CancellationToken ct)
     {
