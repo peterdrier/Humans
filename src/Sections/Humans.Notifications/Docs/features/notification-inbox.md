@@ -79,7 +79,7 @@ Shared between popup and inbox. 3px left border accent by priority/class. Title 
 
 ## Cleanup
 
-`CleanupNotificationsJob` runs daily. It deletes resolved notifications older than 7 days, unresolved informational notifications older than 30 days, and unresolved rows of retired sources (the ones their sections declare `Retired`: `ApplicationSubmitted`, `ConsentReviewNeeded` and `VolunteerApproved` today) that have no remaining resolution path. Other actionable unresolved notifications are never auto-deleted. Badge counts are read from the rows on every request, so each committed deletion shows at once, even if a later cleanup step fails.
+`CleanupNotificationsJob` runs daily. It deletes resolved notifications older than 7 days, unresolved informational notifications older than 30 days, and unresolved rows of retired sources (the ones declared `Retired`: `ApplicationSubmitted`, `ConsentReviewNeeded` and `VolunteerApproved` by their sections, and the deleted Feedback section's `FeedbackResponse` in `RetiredNotificationSources`) that have no remaining resolution path. Other actionable unresolved notifications are never auto-deleted. Badge counts are read from the rows on every request, so each committed deletion shows at once, even if a later cleanup step fails.
 
 ## Authorization
 

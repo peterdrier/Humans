@@ -1,111 +1,76 @@
-# Freshness sweep: 2026-11-05
+# Freshness sweep: 2026-11-08
 
 **Mode:** diff
-**Previous anchor:** `f71de1eb`
-**New anchor:** `8eacc6bf` (upstream/main)
-**Worktree base:** `origin/main` @ `3e48ed48` (frozen at start; contains upstream/main)
-**Diff window:** 67 commits, 1,933 files. The Users-core and User-entity moves into Base touched nearly every
-section, so every mechanical entry and 159 marked editorial docs were dirty. Matched files were triaged for real
-behavior change; pure namespace churn was skipped.
+**Previous anchor:** `8eacc6bf`
+**New anchor:** `48eb2e5b` (upstream/main)
+**Worktree base:** `origin/main` @ `9fc2ddc9` (frozen at start; contains upstream/main)
+**Diff window:** 28 commits, 1,194 files. Most were UI-component churn (page-header, `@section Crumbs`, sortable
+table, status-badge, empty-state, JS helpers) and the nl culture. The behavior changes were the tech-debt sweep's
+service extractions and migration retirements, the Stripe mirror, Pleo booking into Holded, the Feedback section
+removal, the Board roster read, `/Debug/Database`, and two dropped settings columns. That left 154 marked
+editorial docs and every mechanical entry dirty. Each dirty doc was checked against the substantive commits.
 
-**Result:** every dirty doc was reviewed and edited where it had drifted. Every verifier in
-`docs/scripts/freshness-checks/` passes except `dev-stats` (environmental, see Skipped); `diff-mode.sh` passes
-17/17 and `verify-triggers.sh --check` finds no dead triggers.
-
-Most drift came from: the Users core, audit append path and GDPR contributor seam moving into `Humans.Base`
-(sections lost their AuditLog/Gdpr project refs); the Feedback section's removal; the Holded/Finance/Pleo
-reshuffle (`IFinanceService`, purchase mirror in Holded, `/Finance` overview, Budget admin at `/Budget/Admin`,
-Pleo mirror); Board read-only access (#2219); and Users' legacy storage drop (null rows now read as historical).
+**Result:** 24 entries updated (4 mechanical, 20 editorial docs). Every verifier in
+`docs/scripts/freshness-checks/` passes except `dev-stats` (environmental, see Skipped). `diff-mode.sh` passes
+17/17, and `verify-triggers.sh --check` finds no dead triggers.
 
 ## Updated automatically
 
-- `dependency-graph`: added ConsentReviewQueueService, FinanceOverviewService, HoldedWrite, PleoService,
-  ShiftSignupNotices, SurveyTranslationFiller; Finance/Store nodes renamed FinanceService/StoreService; removed
-  HoldedDocumentSync; ~20 stale edges dropped (UserEmailService, ShiftView, PaymentDetails), AuditViewer/HoldedWrite
-  edges added; roster gains TeamGoogleGroupMemberships, UserSignInService, ShiftViewService; `linkStyle` re-indexed.
-- `service-data-access-map`: ShiftSignupNotices, SurveyTranslationFiller, RideshareNotices headings; rollup
-  (Users legacy tables gone, HoldedPurchaseDocs, GrantsDbContext row); dependency lists in
-  Shifts, Surveys, Rideshare, Finance, Consent, CityPlanning, Issues, Tickets, Users, Governance, Camps, Google.
-- `authorization-inventory`: `AuthorizeAsync` call-site table and view-map line numbers regenerated (Board Read
-  checks on Shifts/Teams, Grants/Preapprovals Read/Manage split, PrivateUploadMiddleware row removed). No
-  per-section `authorization.md` needed changes.
-- `about-page-packages`: Ical.Net 5.2.4, Google.Apis.Auth 1.78.0, AngleSharp 1.9.0, HtmlSanitizer 10.0.1120,
-  Markdig 1.5.1.
-- `docs-readme-index`: dead `superpowers/plans/` row removed, `plans/` row narrowed to what remains, stale
-  four-layer architecture blurb replaced with the sections/Base/Shell shape.
-- `reforge-history`: 3 days appended.
-- `guid-reservations`, `code-analysis-suppressions`: checked, no change.
+- `dependency-graph`: redrawn from every service constructor. It adds the services extracted by the debt sweep
+  (Shifts readers/metrics, Users readers/mutations, Governance notices/effects and others), which now carry the
+  lazy edges `ShiftManagementService` used to hold. 8 services joined the no-edge roster and ShiftViewService
+  left it. `linkStyle` was re-indexed.
+- `service-data-access-map`: 31 extracted services got headings across 13 section maps. Finance `Service` and
+  `SepaBankBooking` now go through `IHoldedService`/`IHoldedWrite` and the TrackedCache slot. All four Shifts
+  dashboard cache keys are listed, and Store names its three helpers. In the rollup, the Feedback line is gone and
+  the AdminDatabaseDiagnostics entry covers `/Debug/Database`.
+- `authorization-inventory`: added the UsersController row in Users `authorization.md`. The Teams Roster row now
+  names `ResolveTeamViewAsync`.
+- `reforge-history`: 5 days appended.
+- `about-page-packages`, `docs-readme-index`, `guid-reservations`, `code-analysis-suppressions`: checked, no change.
 
 ## Dead trigger globs
 
 ### Repaired
-- `Rideshare.md` — `src/Sections/Humans.AuditLog/Contracts/IAuditLogService.cs` → `src/Humans.Base/AuditLog/IAuditLogService.cs`
-- `Rideshare.md` — `src/Sections/Humans.Gdpr/Contracts/IUserDataContributor.cs` → `src/Humans.Base/Gdpr/IUserDataContributor.cs`
+None.
 
 ### Unresolved
 None.
 
 ## Fixed in place (editorial drift)
 
-- **Architecture/global:** `AGENTS.md` (Base has no project refs; holds Users core, audit append, GDPR seam);
-  `design-rules.md`, `code-analysis.md`, `roslyn-analysis.md` (User entity and audit write face in Base);
-  `conventions.md` (Feedback mentions); `background-jobs.md` (FeedbackReplyDelivery gone; legal-doc sync sends
-  in-app notices plus one email per member); `admin-shell.md` (Pleo group, real Finance/Holded items);
-  `seed-data.md` (Pleo category seeds); `Backdoor.md`, `finance-read-api.md` (feedback API gone, expense-recon
-  route); `Development.md`; `Feedback.md` tombstone date.
-- **Users/Auth:** `Users.md` (AccountMarkedFake, IUserWrite members, IUserEmailService, contributor names);
-  `Auth.md` (IUserSignInService); `authentication.md`; `user-search-overhaul.md` (State-based rejection);
-  `email-flag-violations-remediation.md`; guide YourData.
-- **Consent/Onboarding/Governance:** `Consent.md` (review queue owned here, every refusal shows a message);
-  `legal-documents-consent.md` and `volunteer-status.md` (grace expiry suspends via
-  SuspendNonCompliantMembersJob); `Governance.md`, `assembly-votes.md`; `onboarding-pipeline.md`; guide
-  LegalAndConsent.
-- **Money:** `Finance.md`, `Budget-feature.md`, guide Budget (`/Budget/Admin`, `/Finance` overview, IsActive
-  dropped); `sepa-payout.md`, `expense-reimbursement-process.md` (SEPA review step; refusals table repaired);
-  `Holded-connector.md`; `Expenses.md`; `Store.md`, `Store-feature.md`, guide Store (one checkout attempt per
-  order, invoice-recovery refusal); `grants.md`; `preapprovals.md`; `workgroup-budget.md`; guide Expenses (IBAN on
-  the report page); `Pleo.md` (migrated wheat).
-- **Tickets/Gate:** `Tickets.md`, `event-participation.md`, Tickets `data-access.md` (legacy fallback gone);
-  `gate-terminal-login.md` (account marked fake); `Gate.md`, `Containers.md`, `EarlyEntry.md`; guide Tickets.
-- **Events/Camps:** `Camps.md`, `Cantina.md`, `daily-roster.md` (one audit row per reveal), `CityPlanning.md`,
-  `Events.md`, `Rideshare.md` (history prose → current state).
-- **Shifts/Teams/Google:** `Teams.md`, `Teams-feature.md`, guides Teams/Shifts/GoogleIntegration (Board
-  read-only); `GoogleIntegration.md`, `workspace-account-provisioning.md`, `google-integration.md`,
-  `43-google-group-membership-sync.md` (per-group transport errors, Drive retry); `google-removal-notifications.md`
-  (nl); `Shifts.md`, `email-a-rota.md`; `Workgroups.md` (MeetingNotes log kind).
-- **Email/Notifications/platform:** `Email.md`, `communication-preferences.md`; `Issues.md`, `issues-system.md`,
-  `Agent.md`, `Agent-feature.md`, guide Issues (Feedback gone); `Campaigns.md`, `MailerLite.md`, `Monitor.md`,
-  `Settings.md`; guide Admin (bell semantics); Surveys `ranked-choice-voting.md`, `survey-preview.md`.
+- **Money:** `admin-shell.md` (Stripe sidebar group, Finance "Pleo reconcile" tab); `sepa-payout.md` (a retry
+  after PARTIAL resumes from saved payment ids); `Holded.md` (seven owned tables, contact/bank mirrors, full
+  inbound caller list: Expenses, Store, Workgroups, Backdoor); `workgroup-budget.md` (expense-account link uses
+  the chart mirror); `Budget.md` (Feedback dropped from the decorator rationale).
+- **People:** `Teams-feature.md`, `Teams.md`, `hidden-teams.md`, guide Teams/Profiles (Roster through the
+  team-view resolver; birthdays/map now at `/Users/Birthdays`, `/Users/Map`); `Users.md` (Workspace-identity
+  columns dropped, `EnsurePrimaryInvariantAsync` on UserEmailMutations); `notification-inbox.md` (FeedbackResponse
+  purged as retired); `google-removal-notifications.md`; `Shifts.md` (ShiftStaffingAggregation);
+  `Governance.md` (ApplicationReader).
+- **Platform:** guide Admin, `administration.md`, `Debug.md` (`/Debug/Database`); `CityPlanning.md`,
+  `Surveys.md` (Feedback dropped from the decorator rationale).
 
 ## Pruned
 
-- `docs/superpowers/specs/2026-08-10-pleo-connector-design.md` (52 lines). Pleo shipped (#2276); `Pleo.md`
-  already covers the API, tables, sweep and pages.
-
-### Wheat migrated
-- Pleo spec §Pleo API facts → `Pleo.md` Invariants: the mirror polls (no entry-level webhooks); cardholders via
-  `/v2/employees`. Verified against `PleoClient` (`/v2/employees`, `accounting-entries:search`).
-
-### Not pruned
-Under the 5% target (2,178 lines): the remaining candidates are cited. `fk-cut-inventory.md` (test baseline), the
-freshness-sweep, debt-sweep and section-doctor designs (`.claude/` skills); `users-decomposition-plan.md` is too
-young.
+Nothing this sweep. The remaining candidates are all cited: `fk-cut-inventory.md` is a test baseline; the
+freshness-sweep, debt-sweep and section-doctor designs are referenced by `.claude/` skills; and
+`users-decomposition-plan.md` (2026-10-19) is younger than 60 days.
 
 ## Unmarked editorial (add `freshness:triggers`)
 
 Surveys `ranked-choice-voting.md`, `grid-questions.md`, `survey-preview.md`, `survey-information-blocks.md`,
 `survey-intro-markdown.md`, `survey-invitation-email-copy.md`; Backdoor `finance-read-api.md`; Finance
-`sepa-payout.md`; Notifications `notification-api.md`. (Checked this sweep for this window's concrete drift.)
+`sepa-payout.md`; Notifications `notification-api.md`; Stripe `stripe-mirror.md`.
 
 ## Flagged for human review
 
-- **Code bug, not doc drift:** `/Teams/{slug}/Roster` is `[Authorize(BoardOrAdmin)]` but calls
-  `ResolveTeamManagementAsync`, which `TeamAuthorizationHandler` denies to Board → Board gets 403. Docs still say
-  Board can open it (Teams.md, guide Teams, Teams-feature US-6.13); left until the code is decided.
-- `tests/e2e/tests/admin-shell.spec.ts` expects the old Finance/Holded sidebar items and no Pleo group (test code,
-  outside the sweep).
-- `notification-board.md` still names Feedback as an emitting section; kept as an approved-design snapshot.
-- Public `/api/stats/files` (#2292, `FileStatsApiController` in the Shell) is documented in no section doc.
+- `.claude/skills/test-site/SKILL.md` smoke steps still hit `/Teams/Map` and `/Teams/Birthdays`, which moved to
+  `/Users/*` with no redirect. This is outside the sweep's scope.
+- `tests/e2e/tests/admin-shell.spec.ts` sidebar matrix has no Stripe, Pleo or "Pleo reconcile" rows (test code).
+- `src/Sections/Humans.Budget/Docs/health.md` still cites Feedback. It is a doctor-owned file, so it was left.
+- These are kept as snapshots: `notification-board.md`, the dated Surveys/Workgroups design records (no nl, Feedback
+  references) and the historical problem statement in `user-search-overhaul.md`.
 
 ## Proposed for review
 
@@ -113,10 +78,9 @@ None — all candidates resolved this sweep.
 
 ## Questions
 
-- Roster for Board: fix the code (read view) or narrow the docs to Admin/TeamsAdmin/coordinators? Tracked in peterdrier/Humans#2306.
-- `volunteer-status.md` "Becoming Inactive" still lists "removed from Volunteers team by system sync" beside the
-  suspension flow; left as is (unsure whether Inactive is still reachable that way).
-- `profile-search-detail.md` says per-result contact-field reads are not cached; may now be cached `UserInfo`.
+- `Users.md`: should the "Frozen legacy (awaiting drop)" table list `users.GoogleEmail`? The prose says it is
+  still a shadow column, and it was retired by nobodies-collective/Humans#1102 rather than by the
+  `google.workspace-identities` migration.
 
 ## Skipped (errors)
 

@@ -160,3 +160,37 @@ action, public-page flags and timestamps; audits successful writes through
 `IAuditLogService`. Shares its safe URL predicate with `TeamPageSummaryMapper`.
 No separate DI registration or cache; the existing management facade and caching
 decorator remain the entry point.
+
+### TeamDataExport (internal, owned by TeamService)
+
+Repository: `ITeamRepository`. Builds the three GDPR export slices (`TeamMemberships`,
+`TeamJoinRequests`, `TeamEarlyEntry`) behind `TeamService`'s `IUserDataContributor` path.
+Read-only; no DI registration, no cache.
+
+| Table | R/W |
+|-------|-----|
+| TeamMembers | R (per account in the merge chain) |
+| TeamRoleAssignments | R (loaded with the membership) |
+| TeamRoleDefinitions | R (loaded with the assignment) |
+| TeamJoinRequests | R |
+| TeamJoinRequestStateHistories | R (loaded with the request) |
+| TeamEarlyEntryGrants | R |
+| Teams | R (team behind each row, with its parents) |
+
+Cross-section call via `IUserService` (merge chain), lazy-resolved through `IServiceProvider`.
+
+### TeamSnapshotReader (internal, owned by TeamService)
+
+Repository: `ITeamRepository`. Admin team list and the team tree/summary snapshots. Read-only; no DI
+registration. No cache of its own — the caching decorator serves the cross-section reads.
+
+| Table | R/W |
+|-------|-----|
+| Teams | R |
+| TeamMembers | R (active members) |
+| TeamJoinRequests | R (pending counts per team) |
+| TeamRoleDefinitions | R |
+| TeamRoleAssignments | R (active management-role holders) |
+
+Cross-section calls via `IShiftService` (pending shift counts per team) and, lazy-resolved through
+`IServiceProvider`, `IUserService` and `ITeamResourceService` (linked Google resources).

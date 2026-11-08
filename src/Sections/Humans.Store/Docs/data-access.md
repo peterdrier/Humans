@@ -54,8 +54,8 @@ Store-owned candidates; the service resolves each cross-section season through
 `ICampService`, updates only resolvable rows, and audits every confirmed repair.
 
 `IssueInvoiceAsync` delegates to `StoreInvoiceIssuer`; live pricing and counterparty
-names come from `StoreOrderReader`. The service constructs both helpers with its
-`IStoreRepository`; accounting reads also resolve `StoreOrderReader` through `IStoreAccountingRead`.
+names come from `StoreOrderReader`. The service constructs its helpers (`StoreOrderReader`,
+`StoreStripePayments`, `StoreCatalog`) with its `IStoreRepository`; accounting reads also resolve `StoreOrderReader` through `IStoreAccountingRead`.
 
 ### StoreInvoiceIssuer (internal — `IApplicationService`, constructed per issuance by `Service`)
 
@@ -105,6 +105,18 @@ Records Stripe payments from checkout webhooks and missing-payment recovery thro
 the same idempotent recording path under a process-wide `TrackedLock`. Recovery reads
 checkout sessions through `IStripeService`; report reads remain in `Service`.
 Cross-section calls also use `IAuditLogService`, plus `IClock`. No `IMemoryCache`.
+
+### StoreCatalog (internal — `IApplicationService`, constructed once by `Service`)
+
+Repository: `IStoreRepository`.
+
+| Table | R/W |
+|-------|-----|
+| store_products | R/W (active and all-products listings per year; add, update, activate/deactivate) |
+
+The product catalog behind `/Store` and the admin product screens; `StoreOrderReader` reuses its
+`MapProduct` projection. Each product change is audited through `IAuditLogService`; `IClock` for
+timestamps. No other cross-section calls, no `IMemoryCache`.
 
 ### BalanceCalculator
 

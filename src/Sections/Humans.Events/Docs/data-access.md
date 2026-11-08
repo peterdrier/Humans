@@ -65,6 +65,21 @@ before applying changed rows to a barrio's events.
 No cross-section calls — `IClock` and `IStringLocalizer<EventsResource>` only. No
 `IMemoryCache`.
 
+### EventPersonalData (internal — `IApplicationService`, constructed by `EventService`)
+
+Not DI-registered; shares `EventService`'s `IEventRepository`. Owns favourites, category
+preferences, personal-calendar expansion and the GDPR export projection.
+
+| Table | R/W |
+|-------|-----|
+| EventFavourites | R/W (add if absent, remove, list with events) |
+| EventPreferences | R/W (upsert category preference) |
+| Events | R (approved event by id; dashboard list; events behind favourites) |
+| EventGuideSettings | R (active guide edition) |
+
+Cross-section calls via `ISettingsService` (edition settings by id for timezone and recurrence
+expansion) and `IUserService` (merge chain on export), plus `IClock`. No `IMemoryCache`.
+
 ### CachingEventService (Singleton, `Humans.Events.Services`)
 
 | Cache | Type | Read | Write | Invalidate |

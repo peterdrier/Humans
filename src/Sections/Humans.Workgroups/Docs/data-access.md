@@ -102,3 +102,27 @@ Repository: `IWorkgroupRepository`. Reads the register graph or an individual
 workgroup and projects members, meetings, logs, documents and comments. Shares
 those projections and the safe Discord-link predicate with existing mutation
 guards. No writes, cache or separate DI registration.
+
+### WorkgroupDataExport (internal, owned by WorkgroupService)
+
+Repository: `IWorkgroupRepository`. Builds the six GDPR export slices (`WorkgroupApplications`,
+`WorkgroupMemberships`, `WorkgroupLogEntries`, `WorkgroupMeetings`, `WorkgroupDocuments`,
+`WorkgroupComments`) from the member's own rows (`GetRowsForUserAsync`). Read-only; no DI
+registration, no cache, no cross-section calls.
+
+| Table | R/W |
+|-------|-----|
+| workgroups | R (applications the member filed) |
+| workgroup_members | R |
+| workgroup_log_entries | R |
+| workgroup_meetings | R |
+| workgroup_documents | R |
+| workgroup_document_comments | R |
+
+### WorkgroupNotices (internal, owned by WorkgroupService)
+
+No repository. Sends the workgroup application, decision and membership notifications and
+emails, and returns the successful dispatches for the rhythm audit. Cross-section calls via
+`IUserService`, `IRoleAssignmentService` (recipients), `INotificationService` (in-app, inbox
+preferences applied there), `IEmailService` and the section's `WorkgroupsEmails` builder. Not
+DI-registered. No DB access, no cache.

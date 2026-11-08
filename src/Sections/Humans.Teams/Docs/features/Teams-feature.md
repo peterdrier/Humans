@@ -174,7 +174,7 @@ Nobodies Collective operates through self-organizing working groups (teams). Tea
 **So that** I can identify who's who for compliance/legal purposes without needing coordinator access
 
 **Acceptance Criteria:**
-- Roster page at `/Teams/{slug}/Roster`, gated to Board or Admin (narrower than the coordinator-inclusive team-management resolver used elsewhere on `TeamAdminController`)
+- Roster page at `/Teams/{slug}/Roster`, gated to Board or Admin (the policy narrows the coordinator-inclusive team-view resolver; Board holds no team-management right)
 - Lists every team member with their human card (avatar + burner name), legal name, and join date
 - Sorted by legal name by default; any column header re-sorts the table
 - Linked from the team detail page's management sidebar, visible only to Board/Admin
