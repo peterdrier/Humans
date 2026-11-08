@@ -26,7 +26,7 @@ namespace Humans.Finance.Tests;
 
 /// <summary>
 /// One test per acceptance criterion of bank-line-driven SEPA booking, over the fake
-/// <see cref="IHoldedClient"/> the rest of this project already uses.
+/// <see cref="IHoldedFeed"/> the rest of this project already uses.
 /// </summary>
 public class SepaBankBookingTests
 {
@@ -45,7 +45,7 @@ public class SepaBankBookingTests
     private const int Account = 40000004;
 
     private readonly IHoldedRepository _repo = Substitute.For<IHoldedRepository>();
-    private readonly IHoldedClient _client = Substitute.For<IHoldedClient>();
+    private readonly IHoldedFeed _feed = Substitute.For<IHoldedFeed>();
     private readonly IBudgetService _budget = Substitute.For<IBudgetService>();
     private readonly IHoldedService _holded = TestContacts.Holded();
     private readonly IHoldedWrite _write = Substitute.For<IHoldedWrite>();
@@ -71,7 +71,7 @@ public class SepaBankBookingTests
         _sepa.CreditorIdentifier = "G12345678901";
         _sepa.TreasuryAccountId = "treasury-1";
         _sepa.TreasuryLedgerAccount = 57200001;
-        _client.IsConfigured.Returns(true);
+        _feed.IsConfigured.Returns(true);
 
         SeedTransfer(30m);
         SeedRows(Row(TransferId, _userId));
@@ -80,7 +80,7 @@ public class SepaBankBookingTests
         SeedOwed(30m);
         SeedTaggedLines();
         SeedOpenDocs();
-        TestHoldedSync.Wire(_holded, _client);
+        TestHoldedSync.Wire(_holded, _feed);
         _write.PayPurchaseDocumentAsync(
                 Arg.Any<string>(), Arg.Any<decimal>(), Arg.Any<string>(), Arg.Any<LocalDate>(),
                 Arg.Any<string>(), Arg.Any<CancellationToken>())
@@ -401,7 +401,7 @@ public class SepaBankBookingTests
         SeedOwed(1200m);
         SeedOpenDocs(Enumerable.Range(1, 120).Select(i => Doc("d" + i, 10m, i)).ToArray());
         var reads = 0;
-        _client.ListBankMovementsAsync(
+        _feed.ListBankMovementsAsync(
                 Arg.Any<string>(), Arg.Any<LocalDate>(), Arg.Any<LocalDate>(),
                 Arg.Any<CancellationToken>(), Arg.Any<IReadOnlySet<string>?>())
             .Returns(_ =>
@@ -434,7 +434,7 @@ public class SepaBankBookingTests
         SeedOwed(1100m);
         SeedOpenDocs(Enumerable.Range(1, 110).Select(i => Doc("d" + i, 10m, i)).ToArray());
         var reads = 0;
-        _client.ListBankMovementsAsync(
+        _feed.ListBankMovementsAsync(
                 Arg.Any<string>(), Arg.Any<LocalDate>(), Arg.Any<LocalDate>(),
                 Arg.Any<CancellationToken>(), Arg.Any<IReadOnlySet<string>?>())
             .Returns(_ =>
@@ -490,7 +490,7 @@ public class SepaBankBookingTests
         SeedOwed(600m);
         SeedOpenDocs(Enumerable.Range(1, 60).Select(i => Doc("d" + i, 10m, i)).ToArray());
         var reads = 0;
-        _client.ListBankMovementsAsync(
+        _feed.ListBankMovementsAsync(
                 Arg.Any<string>(), Arg.Any<LocalDate>(), Arg.Any<LocalDate>(),
                 Arg.Any<CancellationToken>(), Arg.Any<IReadOnlySet<string>?>())
             .Returns(_ =>
@@ -524,7 +524,7 @@ public class SepaBankBookingTests
         var refs = string.Join(",", Enumerable.Range(1, 70).Select(i => "pay-" + i));
         SeedRows(Row(TransferId, _userId, amount: 700m, bookedAt: FixedNow, movementId: MovementId, paymentRefs: refs));
         var reads = 0;
-        _client.ListBankMovementsAsync(
+        _feed.ListBankMovementsAsync(
                 Arg.Any<string>(), Arg.Any<LocalDate>(), Arg.Any<LocalDate>(),
                 Arg.Any<CancellationToken>(), Arg.Any<IReadOnlySet<string>?>())
             .Returns(_ =>
@@ -576,7 +576,7 @@ public class SepaBankBookingTests
         // stamp ReconciledAt.
         SeedOpenDocs(Doc("d1", 10m, 1));
         var reads = 0;
-        _client.ListBankMovementsAsync(
+        _feed.ListBankMovementsAsync(
                 Arg.Any<string>(), Arg.Any<LocalDate>(), Arg.Any<LocalDate>(),
                 Arg.Any<CancellationToken>(), Arg.Any<IReadOnlySet<string>?>())
             .Returns(_ =>
@@ -601,7 +601,7 @@ public class SepaBankBookingTests
                 Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns("unconfirmed:d1");
         var reads = 0;
-        _client.ListBankMovementsAsync(
+        _feed.ListBankMovementsAsync(
                 Arg.Any<string>(), Arg.Any<LocalDate>(), Arg.Any<LocalDate>(),
                 Arg.Any<CancellationToken>(), Arg.Any<IReadOnlySet<string>?>())
             .Returns(_ =>
@@ -859,7 +859,7 @@ public class SepaBankBookingTests
         SeedRows(Row(TransferId, _userId, bookedAt: FixedNow, movementId: MovementId,
             paymentRefs: "pay-1,unconfirmed:d2,pay-3"));
         var reads = 0;
-        _client.ListBankMovementsAsync(
+        _feed.ListBankMovementsAsync(
                 Arg.Any<string>(), Arg.Any<LocalDate>(), Arg.Any<LocalDate>(),
                 Arg.Any<CancellationToken>(), Arg.Any<IReadOnlySet<string>?>())
             .Returns(_ =>
@@ -891,7 +891,7 @@ public class SepaBankBookingTests
             Row(TransferId, _userId, bookedAt: FixedNow, movementId: MovementId, paymentRefs: "pay-1"),
             Row(second, Guid.NewGuid(), bookedAt: FixedNow, movementId: MovementId, paymentRefs: "pay-2"));
         var reads = 0;
-        _client.ListBankMovementsAsync(
+        _feed.ListBankMovementsAsync(
                 Arg.Any<string>(), Arg.Any<LocalDate>(), Arg.Any<LocalDate>(),
                 Arg.Any<CancellationToken>(), Arg.Any<IReadOnlySet<string>?>())
             .Returns(_ =>
@@ -958,7 +958,7 @@ public class SepaBankBookingTests
         SeedRows(Row(TransferId, _userId, bookedAt: FixedNow - Duration.FromDays(1),
             movementId: MovementId, generatedAt: generatedAt));
         // The stub honours the requested window, as the live feed does.
-        _client.ListBankMovementsAsync(
+        _feed.ListBankMovementsAsync(
                 Arg.Any<string>(), Arg.Any<LocalDate>(), Arg.Any<LocalDate>(),
                 Arg.Any<CancellationToken>(), Arg.Any<IReadOnlySet<string>?>())
             .Returns(ci => ci.ArgAt<LocalDate>(1) <= lineDate
@@ -982,7 +982,7 @@ public class SepaBankBookingTests
         SeedRows(Row(TransferId, _userId, bookedAt: FixedNow - Duration.FromDays(199),
             movementId: MovementId, generatedAt: generatedAt));
         // The stub honours the requested window, as the live feed does.
-        _client.ListBankMovementsAsync(
+        _feed.ListBankMovementsAsync(
                 Arg.Any<string>(), Arg.Any<LocalDate>(), Arg.Any<LocalDate>(),
                 Arg.Any<CancellationToken>(), Arg.Any<IReadOnlySet<string>?>())
             .Returns(ci => ci.ArgAt<LocalDate>(1) <= lineDate
@@ -1003,7 +1003,7 @@ public class SepaBankBookingTests
 
         await MakeService().RunSepaBookingSweepAsync(TestContext.Current.CancellationToken);
 
-        await _client.DidNotReceiveWithAnyArgs().ListBankMovementsAsync(
+        await _feed.DidNotReceiveWithAnyArgs().ListBankMovementsAsync(
             default!, default, default);
         await AssertNothingPostedAsync();
     }
@@ -1011,7 +1011,7 @@ public class SepaBankBookingTests
     /// <summary>A feed where <paramref name="stuckIds"/> are pending outgoing lines with no readable
     /// date: the client fails closed on the first one unless it was told to skip it.</summary>
     private void SeedStuckFeed(params string[] stuckIds) =>
-        _client.ListBankMovementsAsync(
+        _feed.ListBankMovementsAsync(
                 Arg.Any<string>(), Arg.Any<LocalDate>(), Arg.Any<LocalDate>(),
                 Arg.Any<CancellationToken>(), Arg.Any<IReadOnlySet<string>?>())
             .Returns(ci =>
@@ -1077,7 +1077,7 @@ public class SepaBankBookingTests
     {
         SeedStuckFeed("stuck-1");
         await RunSweepAsync(2);
-        _client.ListBankMovementsAsync(
+        _feed.ListBankMovementsAsync(
                 Arg.Any<string>(), Arg.Any<LocalDate>(), Arg.Any<LocalDate>(),
                 Arg.Any<CancellationToken>(), Arg.Any<IReadOnlySet<string>?>())
             .Returns(ci => ci.ArgAt<IReadOnlySet<string>?>(4) is { Count: > 0 }
@@ -1142,7 +1142,7 @@ public class SepaBankBookingTests
         var service = MakeService();
         Task<SepaBookingResult>? second = null;
         var accounts = OwedAccounts(30m);
-        _client.ListAccountingAccountsAsync(Arg.Any<CancellationToken>()).Returns(async _ =>
+        _feed.ListAccountingAccountsAsync(Arg.Any<CancellationToken>()).Returns(async _ =>
         {
             if (second is null)
             {
@@ -1535,7 +1535,7 @@ public class SepaBankBookingTests
         var lineDate = new LocalDate(2026, 1, 26);
         SeedRows(Row(TransferId, _userId, generatedAt: generatedAt));
         SeedContacts(_userId);
-        _client.ListBankMovementsAsync(
+        _feed.ListBankMovementsAsync(
                 Arg.Any<string>(), Arg.Any<LocalDate>(), Arg.Any<LocalDate>(),
                 Arg.Any<CancellationToken>(), Arg.Any<IReadOnlySet<string>?>())
             .Returns(ci => ci.ArgAt<LocalDate>(1) <= lineDate
@@ -1851,7 +1851,7 @@ public class SepaBankBookingTests
     public async Task BookFile_FeedUnreadable_RefusesAndPostsNothing()
     {
         SeedMatchedFile(bothLines: true);
-        _client.ListBankMovementsAsync(
+        _feed.ListBankMovementsAsync(
                 Arg.Any<string>(), Arg.Any<LocalDate>(), Arg.Any<LocalDate>(),
                 Arg.Any<CancellationToken>(), Arg.Any<IReadOnlySet<string>?>())
             .ThrowsAsync(new HoldedTransientException("Holded 503"));
@@ -2001,7 +2001,7 @@ public class SepaBankBookingTests
                 Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(new HoldedJournalEntryOutcome(false));
         var reads = 0;
-        _client.ListBankMovementsAsync(
+        _feed.ListBankMovementsAsync(
                 Arg.Any<string>(), Arg.Any<LocalDate>(), Arg.Any<LocalDate>(),
                 Arg.Any<CancellationToken>(), Arg.Any<IReadOnlySet<string>?>())
             .Returns(_ =>
@@ -2057,7 +2057,7 @@ public class SepaBankBookingTests
         var lineDate = new LocalDate(2026, 1, 29);
         SeedRows(Row(TransferId, _userId, generatedAt: generatedAt));
         // The stub honours the requested window, as the live feed does.
-        _client.ListBankMovementsAsync(
+        _feed.ListBankMovementsAsync(
                 Arg.Any<string>(), Arg.Any<LocalDate>(), Arg.Any<LocalDate>(),
                 Arg.Any<CancellationToken>(), Arg.Any<IReadOnlySet<string>?>())
             .Returns(ci => ci.ArgAt<LocalDate>(1) <= lineDate
@@ -2296,7 +2296,7 @@ public class SepaBankBookingTests
     {
         SeedBatch(bookedFirst: Batch[0].Id, withDocs: true);
         var reads = 0;
-        _client.ListBankMovementsAsync(
+        _feed.ListBankMovementsAsync(
                 Arg.Any<string>(), Arg.Any<LocalDate>(), Arg.Any<LocalDate>(),
                 Arg.Any<CancellationToken>(), Arg.Any<IReadOnlySet<string>?>())
             .Returns(_ =>
@@ -2348,7 +2348,7 @@ public class SepaBankBookingTests
     /// <summary>Tagged lines the fake only returns when the window the service asked for contains
     /// them — what makes the width of that window testable.</summary>
     private void SeedLedgerWindow(params (LocalDate On, decimal Debit)[] lines) =>
-        _client.ListLedgerEntriesAsync(
+        _feed.ListLedgerEntriesAsync(
                 Arg.Any<LocalDate>(), Arg.Any<LocalDate>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())
             .Returns(ci =>
             {
@@ -2438,13 +2438,13 @@ public class SepaBankBookingTests
         };
 
     private void SeedMovements(params HoldedBankMovementDto[] movements) =>
-        _client.ListBankMovementsAsync(
+        _feed.ListBankMovementsAsync(
                 Arg.Any<string>(), Arg.Any<LocalDate>(), Arg.Any<LocalDate>(), Arg.Any<CancellationToken>(), Arg.Any<IReadOnlySet<string>?>())
             .Returns(movements.ToList());
 
     /// <summary>The live chart of accounts, as one owed amount per creditor account.</summary>
     private void SeedOwed(decimal owed, params (int Account, decimal Owed)[] others) =>
-        _client.ListAccountingAccountsAsync(Arg.Any<CancellationToken>()).Returns(
+        _feed.ListAccountingAccountsAsync(Arg.Any<CancellationToken>()).Returns(
             others.Prepend((Account: Account, Owed: owed))
                 .Select(a => new HoldedAccountDto
                 {
@@ -2472,7 +2472,7 @@ public class SepaBankBookingTests
         };
 
     private void SeedTaggedLines(params HoldedLedgerLineDto[] lines) =>
-        _client.ListLedgerEntriesAsync(
+        _feed.ListLedgerEntriesAsync(
                 Arg.Any<LocalDate>(), Arg.Any<LocalDate>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())
             .Returns(lines.ToList());
 
@@ -2508,5 +2508,5 @@ public class SepaBankBookingTests
             .ToArray());
 
     private void SeedOpenDocs(params HoldedPurchaseDocListItemDto[] docs) =>
-        _client.ListPurchaseDocumentsAsync(Arg.Any<CancellationToken>()).Returns(docs.ToList());
+        _feed.ListPurchaseDocumentsAsync(Arg.Any<CancellationToken>()).Returns(docs.ToList());
 }

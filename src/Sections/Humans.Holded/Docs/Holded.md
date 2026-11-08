@@ -167,7 +167,7 @@ logged, the write stands), `CreatePurchaseDocumentAsync`, `UploadPurchaseAttachm
 (create, approve, read back; each line's `AccountNum` resolved through the chart mirror, an unknown
 number refused) and `ApproveSalesDocumentAsync`.
 
-No other section calls `IHoldedClient`: reads come from the mirrors, a caller that needs fresh data
+`IHoldedClient` is internal, so no other section can call it: reads come from the mirrors, a caller that needs fresh data
 runs the mirror's sync first (`SyncContactsAsync`, `SyncPurchaseDocumentsAsync`,
 `SyncPurchaseDocumentNotesAsync` for named documents, `SyncChartAsync`),
 and each mirror reports its last sync. Audit entries stay with the calling section, which knows why
@@ -262,10 +262,10 @@ it wrote.
 Internal `HoldedAccountReader` owns account-list, statement and journal-entry projections, including shared balance rows, display signs and counterparties. The summary reuses its account rows. `Service` retains synchronization, reconciliation, metering and existing contract entry points; mirror reads, ordering and raw-sign reconciliation are unchanged.
 
 **Owning section:** `Holded` (`src/Sections/Humans.Holded`)
-**Public contract:** `Humans.Holded.Contracts` (the `Contracts/` folder): `IHoldedService` (+ `HoldedLedgerLineInfo`, `HoldedChartAccountInfo`, `HoldedPurchaseDocInfo`, `HoldedPurchaseDocMirror`) for the mirrors, `IHoldedWrite` (+ its outcome records) for writes, and the connector surface — `IHoldedClient` and its DTOs (see [`Holded-connector.md`](Holded-connector.md))
+**Public contract:** `Humans.Holded.Contracts` (the `Contracts/` folder): `IHoldedService` (+ `HoldedLedgerLineInfo`, `HoldedChartAccountInfo`, `HoldedPurchaseDocInfo`, `HoldedPurchaseDocMirror`) for the mirrors, `IHoldedWrite` (+ its outcome records) for writes, and the DTOs both carry. The connector itself, `IHoldedClient` (`Services/`), is internal (see [`Holded-connector.md`](Holded-connector.md))
 Connector DTOs expose consumed fields only; usage reads contain the API period and call count, and contact creation carries no unsupported custom user id.
 
-**Connector implementation:** `HoldedClient` delegates to internal purchases, sales, contacts, accounting and treasury clients. One shared `HoldedTransport` owns auth, retry, paging, metering and timing; endpoint payloads and parsers stay with their operation group. The existing public client contract and typed-client registration are unchanged.
+**Connector implementation:** `HoldedClient` delegates to internal purchases, sales, contacts, accounting and treasury clients. One shared `HoldedTransport` owns auth, retry, paging, metering and timing; endpoint payloads and parsers stay with their operation group. The internal client contract and typed-client registration are unchanged.
 **Owned tables:** the five above
 **Target shape:** [`health.md`](health.md); the single-mirror design is
 the 2026-10-30 Holded section-flow record (phase 1 built the reads and

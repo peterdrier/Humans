@@ -41,7 +41,7 @@ public sealed class Section : ISection, ISectionAdminNav, ISectionConfiguration,
 
         services.AddSingleton<Services.IHoldedCallLog, Services.HoldedCallLog>();
 
-        services.AddHttpClient<IHoldedClient, Services.HoldedClient>((sp, client) =>
+        services.AddHttpClient<Services.IHoldedClient, Services.HoldedClient>((sp, client) =>
         {
             var opts = sp.GetRequiredService<IOptions<HoldedClientOptions>>().Value;
             client.BaseAddress = new Uri(opts.BaseUrl);

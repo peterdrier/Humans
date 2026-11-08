@@ -1,5 +1,5 @@
 <!-- freshness:triggers
-  src/Sections/Humans.Holded/Contracts/IHoldedClient.cs
+  src/Sections/Humans.Holded/Services/IHoldedClient.cs
   src/Sections/Humans.Holded/Contracts/Holded*.cs
   src/Sections/Humans.Holded/Services/Holded*Client.cs
   src/Sections/Humans.Holded/Services/HoldedTransport.cs
@@ -109,23 +109,24 @@ section** it belongs to (ledger mirror, sync, `/Holded` admin screen) has its ow
 
 ## Cross-Section Dependencies
 
-Inbound: the consumers listed under Architecture, plus this section's own mirror
-(ledger, accounts, usage). Outbound: none — the connector owns no tables and no UI.
+Inbound: this section only: its mirror syncs (ledger, accounts, documents, contacts, bank movements,
+usage) and `HoldedWrite`. Outbound: none — the connector owns no tables and no UI.
 
 ## Architecture
 
-**Owning surface:** `IHoldedClient`, its DTOs, its typed exceptions and `HoldedClientOptions`
-are public in `Humans.Holded/Contracts/` (namespace `Humans.Holded.Contracts`); the impl `HoldedClient` and the `IHoldedCallLog`
-singleton are `internal` in `Humans.Holded/Services/`. All of it is registered by this
+**Owning surface:** `IHoldedClient`, its impl `HoldedClient` and the `IHoldedCallLog` singleton are
+`internal` in `Humans.Holded/Services/`, so the compiler stops any other section from calling Holded. Its DTOs,
+typed exceptions and `HoldedClientOptions` stay public in `Humans.Holded/Contracts/`, because
+`IHoldedService` and `IHoldedWrite` carry them. All of it is registered by this
 section's `Section.cs`.
 
 `HoldedClient` composes internal purchases, sales, contacts, accounting and treasury clients over
 one `HoldedTransport`. Operation clients own their wire payloads, parsing and endpoint-specific
 failure rules; `HoldedJson` holds the shared wire-value readers and null-omitting serializer
-options. They add no interfaces or DI registrations, and the public contract stays unchanged.
+options. They add no interfaces or DI registrations, and the client contract stays unchanged.
 
-**Consumers outside the section:** none. Every other section calls only `IHoldedService` and
-`IHoldedWrite`; `IHoldedClient` can go internal.
+**Consumers outside the section:** none, and none can compile: every other section calls only
+`IHoldedService` and `IHoldedWrite`.
 
 **The jobs live with their sections.** `HoldedSyncJob` is in `Humans.Holded/Jobs/`, a shim over
 this section's own `IHoldedNightlySync`; `HoldedExpenseOutboxJob` is in `Humans.Expenses/Jobs/`,
