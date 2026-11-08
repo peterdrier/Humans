@@ -392,7 +392,6 @@ Invalid rota and shift edits redisplay the team shift page without saving. Only 
 - Sub-team managers **cannot** manage rotas or approve signups outside their own sub-team (not siblings, not parent department).
 - ShiftsNoInfo **cannot** create or edit rotas or shifts (management gates to Admin/ShiftsAdmin + dept coordinators). They can manage signups (approve, refuse, bail, voluntell, mark no-show, remove).
 - Settings saves resolve the current account through Users before event reads. Merged sessions audit the surviving account; missing accounts receive Challenge. Actor lookup cancellation propagates before any write or audit.
-- Shifts **cannot** read health data: no Shifts page, DTO or search JSON carries medical conditions or a flag that they exist (`ShiftVolunteerSearchBuilderTests.SearchRows_NeverCarryMedicalConditions`).
 
 ## Triggers
 

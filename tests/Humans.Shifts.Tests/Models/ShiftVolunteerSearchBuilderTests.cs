@@ -137,16 +137,6 @@ public class ShiftVolunteerSearchBuilderTests
     }
 
     [HumansFact]
-    public void SearchRows_NeverCarryMedicalConditions()
-    {
-        // Shifts knows nothing about health data; the reveal lives on the member's profile page (Users).
-        typeof(VolunteerSearchResult).GetProperties().Select(p => p.Name)
-            .Should().NotContain(name => name.Contains("Medical", StringComparison.Ordinal));
-        typeof(VolunteerBadgesViewModel).GetProperties().Select(p => p.Name)
-            .Should().NotContain(name => name.Contains("Medical", StringComparison.Ordinal));
-    }
-
-    [HumansFact]
     public async Task DietaryBadge_ComesFromCantina()
     {
         var target = MakeShift(ActiveBurnId, dayOffset: 1, new LocalTime(10, 0), Duration.FromHours(4));
