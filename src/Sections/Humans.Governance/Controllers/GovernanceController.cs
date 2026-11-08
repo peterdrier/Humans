@@ -42,7 +42,7 @@ internal sealed class GovernanceController(
             BoardMemberIds = data.BoardMemberIds
                 .OrderBy(id => boardInfos.TryGetValue(id, out var info) ? info.BurnerName : string.Empty, StringComparer.CurrentCultureIgnoreCase)
                 .ToList(),
-            OpenVotes = data.OpenVotes,
+            OpenVotes = data.OpenVotes.OrderBy(v => v.ClosesAt).ToList(),
             UnvotedApplicationCount = data.UnvotedApplicationCount
         };
 

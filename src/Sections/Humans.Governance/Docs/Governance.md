@@ -14,7 +14,7 @@ The `humans.asociados` gauge counts distinct humans with active approved Asociad
 
 The Governance page’s tier totals and Colaborador prompts use active approved terms, not cached profile tiers or historical approvals. A human with both commitments counts in each tier. The application-history page uses the same active-term rule for its Colaborador prompt.
 
-The Governance page is the association's home for every signed-in member: tier totals and the Board head count, a "Needs a decision" card (open assembly votes closing soonest first, plus — for Board role holders only — the count of tier applications awaiting their vote), the workgroups slot, the statutes, the viewer's own membership and application, and the Board role holders. A Volunteer sees the same page; only the Board-queue row and the membership card differ by viewer.
+The Governance page is the association's home for every signed-in member: tier totals and the Board head count, a "Needs a decision" card (open assembly votes, closing soonest first, plus — for Board role holders only — the count of tier applications awaiting their vote), the workgroups slot, the statutes, the viewer's own membership and application, and the Board role holders. A Volunteer sees the same page; only the Board-queue row and the membership card differ by viewer.
 
 ## Concepts
 

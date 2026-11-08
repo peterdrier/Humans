@@ -76,7 +76,7 @@ public sealed class GovernanceIndexServiceTests
             new AssemblyVoteParticipation(0, 0, 0, 0, 0, 0, null));
 
     [HumansFact]
-    public async Task GetIndexDataAsync_lists_only_open_votes_closing_soonest_first()
+    public async Task GetIndexDataAsync_lists_only_open_votes()
     {
         var userId = Guid.NewGuid();
         Applications.GetUserApplicationsAsync(userId, Arg.Any<CancellationToken>()).Returns([]);
@@ -87,7 +87,7 @@ public sealed class GovernanceIndexServiceTests
 
         var data = await CreateService().GetIndexDataAsync(userId);
 
-        data.OpenVotes.Should().Equal(sooner, later);
+        data.OpenVotes.Should().BeEquivalentTo([later, sooner]);
     }
 
     [HumansTheory]

@@ -32,7 +32,6 @@ internal sealed class GovernanceIndexService(
 
         var openVotes = (await assemblyVotes.GetVotesForMemberAsync(userId, ct))
             .Where(v => v.Status == AssemblyVoteStatus.Open)
-            .OrderBy(v => v.ClosesAt)
             .ToList();
 
         return new GovernanceIndexData(
