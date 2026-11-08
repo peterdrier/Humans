@@ -803,5 +803,8 @@
   </data>
   <data name="Users_Birthdays_CardDescription" xml:space="preserve"><value>Mira quién celebra su cumpleaños este mes.</value></data>
   <data name="Users_Map_CardDescription" xml:space="preserve"><value>Mira dónde están los humans en el mundo.</value></data>
+  <data name="Users_Medical_NoneOnFile" xml:space="preserve"><value>No hay condiciones médicas registradas.</value></data>
+  <data name="Users_Medical_RevealFailed" xml:space="preserve"><value>No se pudieron cargar los datos médicos.</value></data>
+  <data name="Users_Medical_RevealTitle" xml:space="preserve"><value>Mostrar datos médicos (cada consulta queda registrada en el registro de auditoría)</value></data>
   <data name="Users_Profile_InvalidLocation" xml:space="preserve"><value>Selecciona una ubicación válida.</value></data>
 </root>

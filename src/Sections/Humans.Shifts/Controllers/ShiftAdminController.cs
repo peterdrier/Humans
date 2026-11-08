@@ -65,7 +65,6 @@ internal sealed class ShiftAdminController(
             es,
             canManage,
             canApprove,
-            ShiftsRoles.CanViewMedical(User),
             incompleteOnboarding,
             clock.GetCurrentInstant()), ct);
 

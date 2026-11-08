@@ -44,11 +44,11 @@ public class DietaryProfileTests
 
     private static CancellationToken Ct => Xunit.TestContext.Current.CancellationToken;
 
-    private UserInfo SeedUser(Guid id, string? medical = null, Guid? resolvesTo = null)
+    private UserInfo SeedUser(Guid id, Guid? resolvesTo = null)
     {
         var info = UserInfo.Create(
             new User { Id = resolvesTo ?? id, BurnerName = "Ana", CreatedAt = Now },
-            [], [], UserFixtures.Profile(medicalConditions: medical));
+            [], [], UserFixtures.Profile());
         _users.GetUserInfoAsync(id, Arg.Any<CancellationToken>()).Returns(info);
         return info;
     }
@@ -76,9 +76,9 @@ public class DietaryProfileTests
     public async Task Read_NoRow_IsNull()
     {
         var id = Guid.NewGuid();
-        SeedUser(id, medical: "Epilepsy");
+        SeedUser(id);
 
-        (await _sut.GetDietaryProfileAsync(id, Ct)).Should().BeNull("medical conditions are not a food answer");
+        (await _sut.GetDietaryProfileAsync(id, Ct)).Should().BeNull();
     }
 
     [HumansFact]
@@ -316,16 +316,16 @@ public class DietaryProfileTests
     }
 
     [HumansFact]
-    public async Task Export_CarriesTheFoodAnswers_NeverMedical_AndEraseDeletesTheRow()
+    public async Task Export_CarriesTheFoodAnswers_AndEraseDeletesTheRow()
     {
         var id = Guid.NewGuid();
-        SeedUser(id, medical: "Asthma");
+        SeedUser(id);
         await _sut.SaveAsync(id, Answers(id, allergies: ["Egg"]), Ct);
 
         var slice = (await _sut.ContributeForUserAsync(id, Ct)).Single();
         slice.SectionName.Should().Be(DietaryProfileService.DietaryProfileSlice);
         var json = System.Text.Json.JsonSerializer.Serialize(slice.Data);
-        json.Should().Contain("Vegan").And.Contain("Egg").And.NotContain("Asthma")
+        json.Should().Contain("Vegan").And.Contain("Egg")
             .And.Contain("\"DeclinedToAnswer\":false");
         _sut.ErasureDeclaration.Should().ContainKey(DietaryProfileService.DietaryProfileSlice);
 

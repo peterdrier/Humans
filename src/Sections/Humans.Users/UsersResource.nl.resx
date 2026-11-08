@@ -811,5 +811,8 @@
   </data>
   <data name="Users_Birthdays_CardDescription" xml:space="preserve"><value>Zie wie er deze maand jarig is.</value></data>
   <data name="Users_Map_CardDescription" xml:space="preserve"><value>Zie waar de humans op de wereld zijn.</value></data>
+  <data name="Users_Medical_NoneOnFile" xml:space="preserve"><value>Geen medische gegevens bekend.</value></data>
+  <data name="Users_Medical_RevealFailed" xml:space="preserve"><value>Kan de medische gegevens niet laden.</value></data>
+  <data name="Users_Medical_RevealTitle" xml:space="preserve"><value>Medische gegevens tonen (elke inzage wordt vastgelegd in het auditlog)</value></data>
   <data name="Users_Profile_InvalidLocation" xml:space="preserve"><value>Selecteer een geldige locatie.</value></data>
 </root>

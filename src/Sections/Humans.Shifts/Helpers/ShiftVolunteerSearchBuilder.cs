@@ -9,7 +9,6 @@ using Humans.Shifts.Services.Dtos;
 
 namespace Humans.Shifts.Helpers;
 
-// Medical conditions never enter the search projection: the shift admin page reveals them per person, audited.
 
 internal enum VolunteerSearchBuildStatus
 {

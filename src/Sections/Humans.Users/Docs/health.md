@@ -82,8 +82,9 @@ The shapes imply one register with one cache and one write funnel:
   `(Provider, ProviderKey)` — `src/Humans.Analyzers/EmailMutationPathsAnalyzer.cs`.
 - Birthday carries month and day only; the year is stored as 4 —
   `src/Sections/Humans.Users/Services/UserProfileMutations.cs:130`.
-- `MedicalConditions` is Art. 9 data: the owner edits it on `/Profile/Me/Medical`, and anyone else
-  sees it only behind `ShiftsPolicies.MedicalDataViewer` — `src/Sections/Humans.Users/Controllers/ProfileController.cs:317`.
+- `MedicalConditions` is Art. 9 data and is off the cached `UserInfo`; `MedicalConditionsService` is
+  its only reader. The owner edits it on `/Profile/Me/Medical`; anyone else gets it only through the
+  audited reveal behind `UsersPolicies.MedicalDataViewer` — `src/Sections/Humans.Users/Controllers/ProfileViewController.cs:209`.
 - A merge leaves the source row as a tombstone (`MergedToUserId`, far-future lockout) and never
   deletes it — `src/Sections/Humans.Users/Data/Repositories/UserRepository.cs:175`,
   `src/Sections/Humans.Users/Data/Repositories/UserRepository.cs:205`. The merge is ordered, not
@@ -98,7 +99,7 @@ The shapes imply one register with one cache and one write funnel:
 - Contact-field visibility resolves from the viewer's relation to the owner: self and Board see
   all, coordinators see `CoordinatorsAndBoard` and below, shared-team members see `MyTeams` and
   below, other active members see `AllActiveProfiles` only — `src/Sections/Humans.Users/Helpers/ContactFieldVisibilityRules.cs:10`.
-- Nobody opens a suspended member's profile page — `src/Sections/Humans.Users/Controllers/ProfileViewController.cs:58`;
+- Nobody opens a suspended member's profile page — `src/Sections/Humans.Users/Controllers/ProfileViewController.cs:59`;
   the popover still shows a suspended member's basic identity with a suspended badge.
 
 ## 5. Seams

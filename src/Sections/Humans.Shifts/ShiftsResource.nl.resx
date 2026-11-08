@@ -1275,8 +1275,6 @@
   </data>
   <data name="Shifts_StatusReasonTooLong" xml:space="preserve"><value>Redenen mogen niet langer zijn dan 1.000 tekens.</value></data>
   <data name="Shifts_Bail_NotActive" xml:space="preserve"><value>Deze aanmelding is niet meer actief. Je kunt je er niet meer voor afmelden.</value></data>
-  <data name="Shifts_Medical_RevealTitle" xml:space="preserve"><value>Medische gegevens tonen (elke inzage wordt vastgelegd in het auditlog)</value></data>
-  <data name="Shifts_Medical_RevealFailed" xml:space="preserve"><value>Kan de medische gegevens niet laden.</value></data>
   <data name="Shifts_Notification_CoverageGapTitle" xml:space="preserve"><value>Onderbezetting: {0} dag {1}</value></data>
   <data name="Shifts_Notification_CoverageGapBody" xml:space="preserve"><value>Slechts {0}/{1} humans bevestigd.</value></data>
   <data name="Shifts_Notification_FindCover" xml:space="preserve"><value>Vervanging zoeken →</value></data>

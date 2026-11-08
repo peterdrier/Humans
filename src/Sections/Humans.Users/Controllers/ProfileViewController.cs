@@ -30,7 +30,8 @@ internal sealed class ProfileViewController(
     ITeamService teamService,
     ICampService campService,
     IGovernanceService governanceService,
-    IAuthorizationService authorizationService) : HumansControllerBase(userService)
+    IAuthorizationService authorizationService,
+    MedicalConditionsService medicalConditions) : HumansControllerBase(userService)
 {
     private readonly IUserManagement _userService = userService;
 
@@ -199,5 +200,23 @@ internal sealed class ProfileViewController(
         };
 
         return PartialView("_HumanPopoverPublic", vm);
+    }
+
+    /// <summary>
+    /// Hands one member's medical conditions to a MedicalDataViewer and records who looked (the IBAN reveal
+    /// pattern). The text never renders in a page: a reveal button posts here and shows the answer.
+    /// </summary>
+    [HttpPost("{id:guid}/Medical/Reveal")]
+    [Authorize(Policy = UsersPolicies.MedicalDataViewer)]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> RevealMedical(Guid id, CancellationToken ct)
+    {
+        // Resolved, so a merged-away session audits the survivor and a gone account reads nothing.
+        if (await GetCurrentUserInfoAsync(ct) is not { } actor) return Forbid();
+
+        // Null text is "nothing on file": the button shows for every viewer the policy admits, because no
+        // other section may know whether a member has conditions.
+        var text = await medicalConditions.RevealAsync(id, actor.Id, ct);
+        return Json(new { text });
     }
 }

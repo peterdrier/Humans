@@ -261,10 +261,6 @@ public sealed class Section :
 
         options.AddPolicy(ShiftsPolicies.PrivilegedSignupApprover, policy =>
             policy.RequireRole(RoleNames.Admin, ShiftsRoles.ShiftsNoInfo));
-
-        // Every reveal is audited (ShiftsController.RevealMedical), which is what lets Board in.
-        options.AddPolicy(ShiftsPolicies.MedicalDataViewer, policy =>
-            policy.RequireRole(RoleNames.Admin, RoleNames.Board, ShiftsRoles.ShiftsNoInfo));
     }
 
     IEnumerable<SettingsTab> ISectionSettings.Tabs() =>

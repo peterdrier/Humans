@@ -33,7 +33,8 @@ internal sealed class ProfileController(
     IStringLocalizer<UsersResource> localizer,
     IStringLocalizer<SharedResource> sharedLocalizer,
     IGovernanceService governanceService,
-    IMembershipCalculator membershipCalculator) : HumansControllerBase(userService)
+    IMembershipCalculator membershipCalculator,
+    MedicalConditionsService medicalConditions) : HumansControllerBase(userService)
 {
     private readonly IUserManagement _userService = userService;
 
@@ -312,7 +313,7 @@ internal sealed class ProfileController(
         return (true, result.Value.Data, result.Value.ContentType);
     }
 
-    // GDPR Art. 9 data: owner-only here, and shown elsewhere only behind MedicalDataViewer.
+    // GDPR Art. 9 data: owner-only here; anyone else goes through ProfileViewController.RevealMedical.
     [HttpGet("Me/Medical")]
     [AllowBeforeActiveMembership]
     public async Task<IActionResult> Medical(CancellationToken ct)
@@ -321,7 +322,11 @@ internal sealed class ProfileController(
         if (user is null)
             return NotFound();
 
-        return View(new MedicalViewModel { MedicalConditions = user.Profile?.MedicalConditions, UserId = user.Id });
+        return View(new MedicalViewModel
+        {
+            MedicalConditions = await medicalConditions.GetOwnAsync(user.Id, ct),
+            UserId = user.Id,
+        });
     }
 
     [HttpPost("Me/Medical")]

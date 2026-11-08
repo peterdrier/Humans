@@ -8,4 +8,10 @@ public static class UsersPolicies
 
     /// <summary>Users Admin or Admin: suspend, reject, role assignment and Workspace email changes.</summary>
     public const string Manage = "UsersManage";
+
+    /// <summary>
+    /// Admin, Board or Shifts NoInfo: may open one member's medical conditions through the audited reveal
+    /// (<c>POST /Profile/{id}/Medical/Reveal</c>). Every reveal is audited, which is what lets Board in.
+    /// </summary>
+    public const string MedicalDataViewer = "UsersMedicalDataViewer";
 }

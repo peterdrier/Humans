@@ -278,11 +278,10 @@ These actions rely on `if` checks + early return/forbid instead of `[Authorize(P
 | Grants | `GrantsPolicies.Read`, `GrantsPolicies.Manage`; `GrantPrograms` — section-local in `GrantProgramsPolicy` |
 | Preapprovals | `PreapprovalsManage`, `PreapprovalsAccess` — section-local in `PreapprovalsPolicies` |
 | Rideshare | `RidesharePolicies.Read`, `RidesharePolicies.Manage` |
-| Shifts | `ShiftsPolicies.Read`, `ShiftsPolicies.Manage`, `ShiftsPolicies.ManageVolunteers`, `ShiftsPolicies.DepartmentRead`, `ShiftsPolicies.PrivilegedSignupApprover`, `ShiftsPolicies.MedicalDataViewer` (`Read` also gates the Early Entry roster) |
+| Shifts | `ShiftsPolicies.Read`, `ShiftsPolicies.Manage`, `ShiftsPolicies.ManageVolunteers`, `ShiftsPolicies.DepartmentRead`, `ShiftsPolicies.PrivilegedSignupApprover` (`Read` also gates the Early Entry roster) |
 | Store | `StorePolicies.Read`, `StorePolicies.Manage` |
 | Teams | `TeamsPolicies.Read`, `TeamsPolicies.Manage` |
 | Tickets | `TicketsPolicies.Read`, `TicketsPolicies.Manage` (also gate Campaigns' detail page and code generation, and the Gate admin pages) |
-| Users | `UsersPolicies.Read`, `UsersPolicies.Manage` |
 
 | Policy | Roles | Notes |
 |---|---|---|
@@ -292,6 +291,7 @@ These actions rely on `if` checks + early return/forbid instead of `[Authorize(P
 | `BoardOrAdmin` | Board, Admin | Board's own decisions (Governance, workgroups, legal documents) and the operator tooling reads |
 | `UsersPolicies.Read` | UsersAdmin, Board, Admin | Human admin pages, the admin cards on a profile, Google's per-human page |
 | `UsersPolicies.Manage` | UsersAdmin, Admin | Suspend, unsuspend, reject, role assignment, Workspace email and provisioning |
+| `UsersPolicies.MedicalDataViewer` | ShiftsNoInfo, Board, Admin | The audited medical reveal |
 | `TeamsPolicies.Read` | TeamsAdmin, Board, Admin | Teams summary, team settings form, Google resource sync |
 | `TeamsPolicies.Manage` | TeamsAdmin, Admin | Create and edit teams; deleting a team is `AdminOnly` |
 | `CampsPolicies.Read` | CampsAdmin, Board, Admin | Camps admin overview and roles |
@@ -323,7 +323,6 @@ These actions rely on `if` checks + early return/forbid instead of `[Authorize(P
 | `ShiftsPolicies.ManageVolunteers` | ShiftsAdmin, Admin | Rota moves and the volunteer-tracking grid; also `ShiftsRoles.IsVolunteerManager` |
 | `ShiftsPolicies.DepartmentRead` | `ShiftsPolicies.Read` OR any team coordinator | Composite (`IsAnyTeamManagerOrCoordinatorHandler`); the dashboard and shift summaries |
 | `ShiftsPolicies.PrivilegedSignupApprover` | ShiftsNoInfo, Admin | Also `ShiftsRoles.IsPrivilegedSignupApprover` |
-| `ShiftsPolicies.MedicalDataViewer` | ShiftsNoInfo, Board, Admin | The audited medical reveal; also `ShiftsRoles.CanViewMedical` |
 | `AppAccess` | `UserState == Active` | The single nav-visibility gate |
 | `RoleAssignmentManage` | Resource-based (target role name) | Wraps Auth's `RoleAssignmentOperationRequirement.Manage` — see §6 |
 | `PreapprovalsManage` | Admin, Board, FinanceAdmin OR a manager of any program | Section-local, composite (`PreapprovalsPolicyHandler`) |
@@ -337,7 +336,7 @@ The per-object handlers (team admin pages, Google team resources, member email e
 - `ShiftsPolicies.Read` and `ShiftsPolicies.DepartmentRead` are intentionally distinct: the first is role-list-based, the second additionally permits any team manager/coordinator (composite via `IsAnyTeamManagerOrCoordinatorHandler`).
 - `AppAccess` is the single nav-visibility gate: `UserState == Active` (the user entered their legal name). A plain `RequireAssertion` — no custom requirement/handler. It replaced the former `IsActiveMember` / `ActiveMemberOrShiftAccess` policies (and there is no separate shift access).
 - `CampsPolicies.Compliance` is deliberately broader than `CampsPolicies.Manage`: it short-circuits for CampsAdmin/Board/Admin and otherwise admits any team/sub-team coordinator (composite via `CampComplianceAccessHandler`, reusing the same `IShiftService.GetCoordinatorTeamIdsAsync` lookup as `IsAnyTeamManagerOrCoordinatorHandler`). It gates only the read-only Barrios compliance matrix; the camp-management writes in `CampAdminController` stay on `CampsPolicies.Manage`.
-- `ShiftsPolicies.MedicalDataViewer` is a data-access policy, not a page-access policy. It controls whether the medical reveal is offered within pages the user already has access to; the text itself comes only from the audited `POST /Shifts/Medical/{userId}/Reveal`.
+- `UsersPolicies.MedicalDataViewer` is a data-access policy, not a page-access policy. It controls whether the medical reveal is offered within pages the user already has access to (the member's profile page, `/Profile/{id}`); the text itself comes only from Users' audited `POST /Profile/{id}/Medical/Reveal`.
 - Operator tooling (`/Debug/*`, `/Backdoor`, `/Agent/Admin/*`, Hangfire) is `BoardOrAdmin` to read; every state-changing POST there is `AdminOnly`.
 - `GateAdmit` is `ScannerAccess` minus Board (same assertion, `admitsBoard: false`): the durable gate write surface (`/Gate/Decision`, `/Gate/Claim` POST, `/Gate/ClaimPin`, `/Gate/EndShift`) never rides on the read-only Scanner gate. The supervisor roles that may authorize an override are Admin and TicketsAdmin. Supervisor overrides inside `Decision` are a second factor on top of the policy — the shared `Gate:SupervisorPin`, not an identity check (see §4).
 - `AnyAdminRole` gates the admin-shell entry point (`/Admin`). Sidebar items inside the shell are filtered per-item by `AdminSidebarViewComponent` against each item's policy. The role list is derived from the sections' `ISectionRoles` through Auth's `RoleCatalog` (every role with `OpensAdminShell`), so a new section role joins without a Shell edit; `EarlyEntryAdmin` opts out.
@@ -484,4 +483,3 @@ Only `Admin` and `Board` are `RoleNames` constants in Base. Every other role is 
 |---|---|
 | `IsPrivilegedSignupApprover` | `ShiftsPolicies.PrivilegedSignupApprover` |
 | `CanManageDepartment` | `ShiftsPolicies.DepartmentRead` (role-list portion; composite extends with team-manager OR) |
-| `CanViewMedical` | `ShiftsPolicies.MedicalDataViewer` |
