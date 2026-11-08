@@ -29,13 +29,19 @@ internal sealed class VolunteerTrackingService(
 
         var offsets = dayOffsets.Distinct().Order().ToArray();
         var now = clock.GetCurrentInstant();
-        await trackingRepo.UpsertAvailabilityAsync(userId, eventSettingsId, offsets, now);
+        try
+        {
+            await trackingRepo.UpsertAvailabilityAsync(userId, eventSettingsId, offsets, now);
+        }
+        finally
+        {
+            viewInvalidator.InvalidateUser(userId);
+        }
         await audit.LogAsync(
             offsets.Length == 0 ? ShiftsAuditActions.VolunteerAvailabilityCleared : ShiftsAuditActions.VolunteerAvailabilitySet,
             "GeneralAvailability", userId,
             $"EventSettingsId={eventSettingsId}; AvailableDays={offsets.Length}; self-service update", userId,
             relatedEntityId: eventSettingsId, relatedEntityType: "EventSettings");
-        viewInvalidator.InvalidateUser(userId);
         return true;
     }
 
@@ -79,7 +85,14 @@ internal sealed class VolunteerTrackingService(
         }
 
         offsets.Sort();
-        await trackingRepo.UpsertAvailabilityAsync(userId, eventSettingsId, offsets, clock.GetCurrentInstant(), ct).ConfigureAwait(false);
+        try
+        {
+            await trackingRepo.UpsertAvailabilityAsync(userId, eventSettingsId, offsets, clock.GetCurrentInstant(), ct).ConfigureAwait(false);
+        }
+        finally
+        {
+            viewInvalidator.InvalidateUser(userId);
+        }
         await (available
             ? audit.LogAsync(
                 ShiftsAuditActions.VolunteerAvailabilitySet, nameof(GeneralAvailability), userId,
@@ -87,7 +100,6 @@ internal sealed class VolunteerTrackingService(
             : audit.LogAsync(
                 ShiftsAuditActions.VolunteerAvailabilityCleared, nameof(GeneralAvailability), userId,
                 $"DayOffset={dayOffset}; availability cleared by coordinator", coordinatorUserId)).ConfigureAwait(false);
-        viewInvalidator.InvalidateUser(userId);
         return true;
     }
 
@@ -352,15 +364,23 @@ internal sealed class VolunteerTrackingService(
             return new SetCampSetupResult(false, "Shifts_VolTrack_Err_SetupBeforeFirstSignup", null);
         }
 
-        var trimmed = await trackingRepo.UpsertCampSetupAsync(
-            targetUserId,
-            es.Id,
-            barrioSetupStartDate,
-            notes,
-            coordinatorUserId,
-            clock.GetCurrentInstant(),
-            setupOffsetThreshold: setupOffset,
-            ct).ConfigureAwait(false);
+        IReadOnlyList<int> trimmed;
+        try
+        {
+            trimmed = await trackingRepo.UpsertCampSetupAsync(
+                targetUserId,
+                es.Id,
+                barrioSetupStartDate,
+                notes,
+                coordinatorUserId,
+                clock.GetCurrentInstant(),
+                setupOffsetThreshold: setupOffset,
+                ct).ConfigureAwait(false);
+        }
+        finally
+        {
+            viewInvalidator.InvalidateUser(targetUserId);
+        }
 
         await audit.LogAsync(
             ShiftsAuditActions.VolunteerCampSetupSet,
@@ -381,7 +401,6 @@ internal sealed class VolunteerTrackingService(
                     coordinatorUserId))).ConfigureAwait(false);
         }
 
-        viewInvalidator.InvalidateUser(targetUserId);
         return new SetCampSetupResult(true, null, trimmed);
     }
 
@@ -389,22 +408,28 @@ internal sealed class VolunteerTrackingService(
         Guid targetUserId, Guid coordinatorUserId, CancellationToken ct = default)
     {
         var es = await RequireActiveEventAsync(ct).ConfigureAwait(false);
-        await trackingRepo.UpsertCampSetupAsync(
-            targetUserId,
-            es.Id,
-            barrioSetupStartDate: null,
-            notes: null,
-            setByUserId: null,
-            setAt: null,
-            setupOffsetThreshold: null,
-            ct).ConfigureAwait(false);
+        try
+        {
+            await trackingRepo.UpsertCampSetupAsync(
+                targetUserId,
+                es.Id,
+                barrioSetupStartDate: null,
+                notes: null,
+                setByUserId: null,
+                setAt: null,
+                setupOffsetThreshold: null,
+                ct).ConfigureAwait(false);
+        }
+        finally
+        {
+            viewInvalidator.InvalidateUser(targetUserId);
+        }
         await audit.LogAsync(
             ShiftsAuditActions.VolunteerCampSetupCleared,
             nameof(VolunteerBuildStatus),
             targetUserId,
             "BarrioSetupStartDate cleared",
             coordinatorUserId).ConfigureAwait(false);
-        viewInvalidator.InvalidateUser(targetUserId);
     }
 
     public async Task<SetDayOffResult> SetDayOffAsync(
@@ -438,14 +463,20 @@ internal sealed class VolunteerTrackingService(
             MarkedByUserId: coordinatorUserId,
             MarkedAt: clock.GetCurrentInstant());
 
-        await trackingRepo.UpsertDayOffAsync(targetUserId, es.Id, entry, ct).ConfigureAwait(false);
+        try
+        {
+            await trackingRepo.UpsertDayOffAsync(targetUserId, es.Id, entry, ct).ConfigureAwait(false);
+        }
+        finally
+        {
+            viewInvalidator.InvalidateUser(targetUserId);
+        }
         await audit.LogAsync(
             ShiftsAuditActions.VolunteerDayOffMarked,
             nameof(VolunteerBuildStatus),
             targetUserId,
             $"DayOffset={dayOffset}; reason={(string.IsNullOrWhiteSpace(reason) ? "—" : reason)}",
             coordinatorUserId).ConfigureAwait(false);
-        viewInvalidator.InvalidateUser(targetUserId);
         return new SetDayOffResult(true, null);
     }
 
@@ -454,10 +485,17 @@ internal sealed class VolunteerTrackingService(
     {
         var es = await RequireActiveEventAsync(ct).ConfigureAwait(false);
 
-        var removed = await trackingRepo
-            .RemoveDayOffAsync(targetUserId, es.Id, dayOffset, ct)
-            .ConfigureAwait(false);
-        if (removed)
+        bool? removed = null;
+        try
+        {
+            removed = await trackingRepo.RemoveDayOffAsync(targetUserId, es.Id, dayOffset, ct).ConfigureAwait(false);
+        }
+        finally
+        {
+            // A failed acknowledgement leaves removal uncertain; a confirmed no-op keeps the view.
+            if (removed is not false) viewInvalidator.InvalidateUser(targetUserId);
+        }
+        if (removed == true)
         {
             await audit.LogAsync(
                 ShiftsAuditActions.VolunteerDayOffCleared,
@@ -465,9 +503,8 @@ internal sealed class VolunteerTrackingService(
                 targetUserId,
                 $"DayOffset={dayOffset}; cleared by coordinator",
                 coordinatorUserId).ConfigureAwait(false);
-            viewInvalidator.InvalidateUser(targetUserId);
         }
-        return new ClearDayOffResult(removed);
+        return new ClearDayOffResult(removed == true);
     }
 
     public async Task<VolunteerBuildStripDto?> GetUserBuildStripAsync(
@@ -544,9 +581,15 @@ internal sealed class VolunteerTrackingService(
     public async Task ReassignAsync(Guid sourceUserId, Guid targetUserId, Guid actorUserId, Instant updatedAt,
         CancellationToken ct)
     {
-        await trackingRepo.ReassignAvailabilityToUserAsync(sourceUserId, targetUserId, updatedAt, ct);
-        viewInvalidator.InvalidateUser(sourceUserId);
-        viewInvalidator.InvalidateUser(targetUserId);
+        try
+        {
+            await trackingRepo.ReassignAvailabilityToUserAsync(sourceUserId, targetUserId, updatedAt, ct);
+        }
+        finally
+        {
+            viewInvalidator.InvalidateUser(sourceUserId);
+            viewInvalidator.InvalidateUser(targetUserId);
+        }
     }
 
     private async Task<BurnSettingsInfo> RequireActiveEventAsync(CancellationToken ct) =>

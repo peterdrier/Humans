@@ -83,6 +83,50 @@ public sealed class PleoSyncTests
         mirrored.Single(e => string.Equals(e.Id, "a", StringComparison.Ordinal)).AmountEur.Should().Be(-25.00m);
     }
 
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task Bounded_entry_notes_preserve_unicode_and_the_original_raw_payload(bool pairFits)
+    {
+        var prefix = new string('n', pairFits ? 1998 : 1999);
+        var note = prefix + "😀tail";
+        var wire = System.Text.Json.Nodes.JsonNode.Parse(Entry("unicode").GetRawText())!;
+        wire["note"] = note;
+        _entries = [Parse(wire.ToJsonString())];
+
+        await SyncAsync();
+
+        var entry = (await _repo.GetEntriesAsync(Xunit.TestContext.Current.CancellationToken)).Single();
+        entry.Note.Should().Be(prefix + (pairFits ? "😀" : ""));
+        var encode = () => new System.Text.UTF8Encoding(false, true).GetBytes(entry.Note!);
+        encode.Should().NotThrow();
+        Parse(entry.Raw).GetProperty("note").GetString().Should().Be(note);
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task Bounded_sync_errors_preserve_unicode_and_the_original_failure(bool pairFits)
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        _entries = [Entry("existing")];
+        await SyncAsync();
+        var prefix = new string('e', pairFits ? 1998 : 1999);
+        var failure = new IOException(prefix + "😀tail");
+        _client.SearchEntriesAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<IReadOnlyList<JsonElement>>(failure));
+
+        var action = () => SyncAsync();
+        (await action.Should().ThrowAsync<IOException>()).Which.Should().BeSameAs(failure);
+
+        var state = (await _repo.GetSyncStateAsync(ct))!;
+        state.SyncStatus.Should().Be(Domain.PleoSyncStatus.Error);
+        state.LastError.Should().Be(prefix + (pairFits ? "😀" : ""));
+        var encode = () => new System.Text.UTF8Encoding(false, true).GetBytes(state.LastError!);
+        encode.Should().NotThrow();
+        (await _repo.GetEntriesAsync(ct)).Should().ContainSingle().Which.Id.Should().Be("existing");
+    }
+
     [HumansFact]
     public async Task Wallet_balance_is_the_last_sweeps_current_balance()
     {

@@ -6,6 +6,36 @@ namespace Humans.Base.Tests.Extensions;
 public sealed class SanitizedMarkdownRendererTests
 {
     [HumansTheory]
+    [Xunit.InlineData("<input type=\"hidden\" name=\"Answer\" value=\"injected\">")]
+    [Xunit.InlineData("<input type=\"submit\" value=\"Continue\">")]
+    [Xunit.InlineData("<input type=\"text\" placeholder=\"Password\">")]
+    [Xunit.InlineData("<input type=\"checkbox\" checked>")]
+    [Xunit.InlineData("<input type=\"image\" src=\"https://example.com/pixel.png\" disabled>")]
+    [Xunit.InlineData("<input disabled>")]
+    public void Render_removes_inputs_other_than_disabled_task_checkboxes(string input)
+    {
+        var html = SanitizedMarkdownRenderer.Render("Before " + input + " after");
+
+        html.Should().NotContain("<input");
+        html.Should().Contain("Before").And.Contain("after");
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(true)]
+    [Xunit.InlineData(false)]
+    public void Render_preserves_disabled_checked_and_unchecked_task_checkboxes(bool allowImages)
+    {
+        var html = SanitizedMarkdownRenderer.Render("- [x] Done\n- [ ] Pending", allowImages);
+        using var document = new AngleSharp.Html.Parser.HtmlParser().ParseDocument(html);
+        var inputs = document.QuerySelectorAll("input");
+
+        inputs.Should().HaveCount(2);
+        inputs.Should().OnlyContain(input => input.GetAttribute("type") == "checkbox" && input.HasAttribute("disabled"));
+        inputs[0].HasAttribute("checked").Should().BeTrue();
+        inputs[1].HasAttribute("checked").Should().BeFalse();
+    }
+
+    [HumansTheory]
     [Xunit.InlineData("[link](destination)", "javascript:alert(1)")]
     [Xunit.InlineData("![image](destination)", "http://example.org/tracker.png")]
     public void Render_sanitizes_urls_after_html_composition(string markdown, string unsafeUrl)

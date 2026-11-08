@@ -72,7 +72,7 @@ internal sealed class Service(
             {
                 state.SyncStatus = PleoSyncStatus.Error;
                 state.StatusChangedAt = clock.GetCurrentInstant();
-                state.LastError = ex.Message.Length <= 2000 ? ex.Message : ex.Message[..2000];
+                state.LastError = BoundMirrorText(ex.Message);
                 await repo.SaveSyncStateAsync(state, CancellationToken.None);
                 throw;
             }
@@ -131,10 +131,20 @@ internal sealed class Service(
             MerchantName = w.Merchant?.Name,
             MerchantCategoryCode = w.Merchant?.MerchantCategoryCode,
             MerchantCountry = w.Merchant?.Address?.Country,
-            Note = w.Note is { Length: > 2000 } note ? note[..2000] : w.Note,
+            Note = BoundMirrorText(w.Note),
             ReceiptCount = w.ReceiptIds?.Count ?? 0,
             Raw = raw,
         };
+    }
+
+    private static string? BoundMirrorText(string? value)
+    {
+        const int maxLength = 2000;
+        if (value is null || value.Length <= maxLength) return value;
+        var length = maxLength;
+        if (char.IsHighSurrogate(value[length - 1]) && char.IsLowSurrogate(value[length]))
+            length--;
+        return value[..length];
     }
 
     private static Instant? ToInstant(DateTimeOffset? at) => at is { } v ? Instant.FromDateTimeOffset(v) : null;

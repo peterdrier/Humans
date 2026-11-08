@@ -5,8 +5,11 @@ using Humans.Base.Extensions;
 using Humans.Users.Services;
 using Humans.Users.Tests.Infrastructure;
 using Humans.Users.Data.Repositories;
+using Humans.Users.Data;
+using NodaTime;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 using Xunit;
@@ -899,6 +902,72 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
             await _fileStorage.DidNotReceive().DeleteAsync(previousKey, Arg.Any<CancellationToken>());
         }
         await _fileStorage.DidNotReceive().DeleteAsync(survivorKey, Arg.Any<CancellationToken>());
+    }
+
+    [HumansTheory]
+    [InlineData("before")]
+    [InlineData("after")]
+    [InlineData("verification")]
+    public async Task ReassignAsync_UncertainProfileFold_CleansOnlyAnUnreferencedSourcePicture(string failureStage)
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var sourceUserId = Guid.NewGuid();
+        var targetUserId = Guid.NewGuid();
+        var sourceId = await SeedUserWithProfileAsync(sourceUserId);
+        var targetId = await SeedUserWithProfileAsync(targetUserId);
+        var source = await Db.Profiles.SingleAsync(p => p.Id == sourceId, ct);
+        var target = await Db.Profiles.SingleAsync(p => p.Id == targetId, ct);
+        var sourceKey = $"uploads/profile-pictures/{sourceId}-old.png";
+        const string targetKey = "uploads/profile-pictures/survivor.png";
+        source.ProfilePictureContentType = target.ProfilePictureContentType = "image/png";
+        source.ProfilePictureStorageKey = sourceKey;
+        target.ProfilePictureStorageKey = targetKey;
+        await Db.SaveChangesAsync(ct);
+        var failure = new IOException("Profile fold save failed");
+        var options = new DbContextOptionsBuilder<UsersDbContext>(DbOptions)
+            .AddInterceptors(new FailProfileFoldSave(failure, string.Equals(failureStage, "before", StringComparison.Ordinal))).Options;
+        var inner = new UserRepository(new TestDbContextFactory(options), Clock);
+        var repo = Substitute.For<IUserRepository>();
+        repo.ReassignLoginsToUserAsync(sourceUserId, targetUserId, Arg.Any<CancellationToken>())
+            .Returns(call => inner.ReassignLoginsToUserAsync(sourceUserId, targetUserId, call.Arg<CancellationToken>()));
+        repo.GetByUserIdReadOnlyAsync(sourceUserId, Arg.Any<CancellationToken>())
+            .Returns(call => inner.GetByUserIdReadOnlyAsync(sourceUserId, call.Arg<CancellationToken>()));
+        repo.ReassignSubAggregatesToUserAsync(sourceUserId, targetUserId, Arg.Any<Instant>(), Arg.Any<CancellationToken>())
+            .Returns(call => inner.ReassignSubAggregatesToUserAsync(sourceUserId, targetUserId, call.Arg<Instant>(), call.Arg<CancellationToken>()));
+        repo.GetProfilePictureLocationAsync(sourceId, Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            call.Arg<CancellationToken>().Should().Be(CancellationToken.None);
+            return string.Equals(failureStage, "verification", StringComparison.Ordinal)
+                ? Task.FromException<(string, string?)?>(new IOException("Verification unavailable"))
+                : inner.GetProfilePictureLocationAsync(sourceId, call.Arg<CancellationToken>());
+        });
+        var service = new UserService(repo, AdminAuthorization, _fileStorage, Clock, NullLogger<UserService>.Instance, AuditLog);
+
+        var merge = () => service.ReassignAsync(sourceUserId, targetUserId, Guid.NewGuid(), Clock.GetCurrentInstant(), ct);
+        (await merge.Should().ThrowAsync<IOException>()).Which.Should().BeSameAs(failure);
+
+        var stored = await Db.Profiles.AsNoTracking().SingleAsync(p => p.Id == sourceId, ct);
+        stored.ProfilePictureStorageKey.Should().Be(string.Equals(failureStage, "before", StringComparison.Ordinal) ? sourceKey : null);
+        await _fileStorage.Received(string.Equals(failureStage, "after", StringComparison.Ordinal) ? 1 : 0).DeleteAsync(sourceKey, CancellationToken.None);
+        await _fileStorage.DidNotReceive().DeleteAsync(targetKey, Arg.Any<CancellationToken>());
+    }
+
+    private sealed class FailProfileFoldSave(Exception failure, bool beforeCommit) : SaveChangesInterceptor
+    {
+        private bool _savingProfile;
+        public override ValueTask<InterceptionResult<int>> SavingChangesAsync(DbContextEventData eventData,
+            InterceptionResult<int> result, CancellationToken cancellationToken = default)
+        {
+            _savingProfile = eventData.Context!.ChangeTracker.Entries<Profile>().Any(entry => entry.State == EntityState.Modified);
+            if (_savingProfile && beforeCommit) throw failure;
+            return ValueTask.FromResult(result);
+        }
+        public override ValueTask<int> SavedChangesAsync(SaveChangesCompletedEventData eventData,
+            int result, CancellationToken cancellationToken = default)
+        {
+            if (_savingProfile && !beforeCommit) throw failure;
+            return ValueTask.FromResult(result);
+        }
     }
 
     [HumansFact]

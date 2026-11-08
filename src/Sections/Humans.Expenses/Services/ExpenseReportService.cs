@@ -10,6 +10,7 @@ using Humans.Preapprovals.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Expenses.Services.Dtos;
 using Humans.Base.Helpers;
+using Humans.Base.Threading;
 using Microsoft.Extensions.Options;
 using NodaTime;
 using System.Globalization;
@@ -52,6 +53,9 @@ internal sealed class ExpenseReportService(
 
     /// <summary>Claim deadlines are Europe/Madrid dates.</summary>
     private static readonly DateTimeZone MadridZone = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
+
+    // Scoped transitions hold this through ambient transaction disposal and completion.
+    private static readonly TrackedLock TransitionLock = new("Expenses.ReportTransitions");
 
     internal static string AttachmentKey(Guid id, string extension) =>
         $"uploads/expense-attachments/{id}{extension}";
@@ -124,6 +128,7 @@ internal sealed class ExpenseReportService(
         CancellationToken ct = default)
     {
         Guid? reportId = null;
+        Guid? attemptedId = null;
         var result = await RunMutationAsync(ct, async () =>
         {
             var (resolved, refusal) = preapprovalGrantId is { } grantId
@@ -150,6 +155,7 @@ internal sealed class ExpenseReportService(
                 CreatedAt = now,
                 UpdatedAt = now
             };
+            attemptedId = report.Id;
             await repo.AddDraftAsync(report, ct);
             reportId = report.Id;
 
@@ -160,7 +166,7 @@ internal sealed class ExpenseReportService(
                 await auditLogService.LogAsync(
                     ExpensesAuditActions.ExpenseCreatedOnBehalf,
                     AuditEntityTypes.Report, report.Id,
-                    $"Created expense report on behalf of {await DescribeMemberAsync(submitterUserId, ct)}."
+                    $"Created expense report on behalf of {await DescribeMemberAsync(submitterUserId, CancellationToken.None)}."
                     + DescribeGrant(preapprovalGrantId),
                     actorUserId,
                     relatedEntityId: submitterUserId,
@@ -170,7 +176,22 @@ internal sealed class ExpenseReportService(
             return ExpenseMutationResult.Success;
         }, "Error creating draft expense report for {SubmitterUserId}", submitterUserId);
 
-        return new ExpenseCreateDraftResult(result.Succeeded, result.Error, reportId);
+        var uncertain = false;
+        if (!result.Succeeded && reportId is null && attemptedId is { } candidate)
+        {
+            try
+            {
+                // A save can commit before its acknowledgement fails. Recover the draft instead of offering a duplicate.
+                if (await repo.GetByIdAsync(candidate, CancellationToken.None) is not null)
+                    reportId = candidate;
+            }
+            catch (Exception ex)
+            {
+                uncertain = true;
+                logger.LogError(ex, "Could not verify new expense draft {ReportId} after a failed save", candidate);
+            }
+        }
+        return new ExpenseCreateDraftResult(result.Succeeded, result.Error, reportId) { OutcomeUncertain = uncertain };
     }
 
     private static string DescribeGrant(Guid? grantId) =>
@@ -239,6 +260,7 @@ internal sealed class ExpenseReportService(
         CancellationToken ct = default) =>
         RunMutationAsync(ct, async () =>
         {
+            using var transition = await TransitionLock.AcquireAsync(logger, ct);
             var (editableReport, refusal) = await GetEditableReportAsync(reportId, actorUserId, actorIsFinanceAdmin, ct);
             if (refusal is not null) return refusal;
             var report = editableReport!;
@@ -355,8 +377,16 @@ internal sealed class ExpenseReportService(
             LineType = lineType,
             ParentLineId = parentLineId
         };
-        var ok = await repo.AddLineAsync(reportId, line, ct);
-        if (!ok) throw new InvalidOperationException("Failed to add line.");
+        try
+        {
+            var ok = await repo.AddLineAsync(reportId, line, ct);
+            if (!ok) throw new InvalidOperationException("Failed to add line.");
+        }
+        catch
+        {
+            await TryRollbackAddedLineAsync(reportId, line.Id);
+            throw;
+        }
 
         return (new(true, null, line.Id), report);
     }
@@ -391,28 +421,28 @@ internal sealed class ExpenseReportService(
                 description, amount, lineType, parentLineId, ct);
             if (added.Error is { } addRefusal) return Reject(addRefusal);
             var lineId = added.LineId!.Value;
-            if (file is not null)
+            ExpenseError? attachmentRefusal = null;
+            try
             {
-                ExpenseError? attachmentRefusal;
-                try
-                {
+                if (file is not null)
                     attachmentRefusal = await StoreAttachmentAsync(
                         reportId, actorUserId, actorIsFinanceAdmin, lineId, file.FileName, file.ContentType, file.Content, ct);
-                }
-                catch
-                {
-                    // The form retries the whole add, so a line left behind here would duplicate.
-                    await repo.RemoveLineAsync(reportId, lineId, CancellationToken.None);
-                    throw;
-                }
-                if (attachmentRefusal is not null)
-                {
-                    await repo.RemoveLineAsync(reportId, lineId, CancellationToken.None);
-                    return Reject(attachmentRefusal);
-                }
+                if (attachmentRefusal is null)
+                    await AuditOnBehalfEditAsync(report!, actorUserId,
+                        $"Added {(parentLineId is null ? "line" : "proof row")} \"{description}\" €{amount}", CancellationToken.None);
             }
-            await AuditOnBehalfEditAsync(report!, actorUserId,
-                $"Added {(parentLineId is null ? "line" : "proof row")} \"{description}\" €{amount}", ct);
+            catch
+            {
+                // The form retries the whole add. Undo the new line and any linked upload before failing.
+                await TryRollbackAddedLineAsync(reportId, lineId);
+                throw;
+            }
+            if (attachmentRefusal is not null)
+            {
+                if (!await TryRollbackAddedLineAsync(reportId, lineId))
+                    return new ExpenseAddLineResult(false, null, null);
+                return Reject(attachmentRefusal);
+            }
             return new ExpenseAddLineResult(true, null, lineId);
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
@@ -423,6 +453,42 @@ internal sealed class ExpenseReportService(
         {
             logger.LogError(ex, "Error adding line to report {ReportId}", reportId);
             return new ExpenseAddLineResult(false, null, null);
+        }
+    }
+
+    private async Task<bool> TryRollbackAddedLineAsync(Guid reportId, Guid lineId)
+    {
+        ExpenseReportDto? report = null;
+        try
+        {
+            report = await repo.GetByIdAsync(reportId, CancellationToken.None);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Could not read attachments before rolling back new line {LineId}", lineId);
+        }
+        var candidates = report?.Lines.Where(line => line.Id == lineId || line.ParentLineId == lineId)
+            .Select(line => line.Attachment).OfType<ExpenseAttachmentDto>()
+            .Select(attachment => (attachment.Id, attachment.Extension)).ToList() ?? [];
+        IReadOnlyList<ExpenseAttachment>? removed = null;
+        try
+        {
+            try
+            {
+                removed = await repo.RemoveLineAsync(reportId, lineId, CancellationToken.None);
+            }
+            finally
+            {
+                // Retain the pre-delete ids too: compensation can itself commit before its acknowledgement fails.
+                await CleanupUnlinkedAttachmentsAsync(
+                    removed is null ? candidates : removed.Select(a => (a.Id, a.Extension)), lineId);
+            }
+            return true;
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Could not roll back new expense line {LineId} on report {ReportId}", lineId, reportId);
+            return false;
         }
     }
 
@@ -519,34 +585,49 @@ internal sealed class ExpenseReportService(
             // Read the line before it is gone — the audit entry names what was removed, not an id.
             var removed = report.Lines.FirstOrDefault(l => l.Id == lineId);
 
-            // One atomic save removes the line, its proof rows and their attachment rows; files go only after the
-            // commit; cleanup failures cannot reverse the metadata deletion.
-            var removedAttachments = await repo.RemoveLineAsync(reportId, lineId, ct)
-                ?? throw new InvalidOperationException("Failed to remove line.");
-
-            // The deletion has committed; its audit and file cleanup must finish even if the request ends.
-            await AuditOnBehalfEditAsync(report, actorUserId,
-                removed is null
-                    ? $"Removed line {lineId}"
-                    : $"Removed line \"{removed.Description}\" €{removed.Amount}", CancellationToken.None);
-
-            foreach (var attachment in removedAttachments)
+            var candidates = report.Lines.Where(line => line.Id == lineId || line.ParentLineId == lineId)
+                .Select(line => line.Attachment).OfType<ExpenseAttachmentDto>()
+                .Select(attachment => (attachment.Id, attachment.Extension)).ToList();
+            IReadOnlyList<ExpenseAttachment>? removedAttachments = null;
+            try
             {
-                try
-                {
-                    await fileStorage.DeleteAsync(
-                        AttachmentKey(attachment.Id, attachment.Extension), CancellationToken.None);
-                }
-                catch (Exception ex)
-                {
-                    logger.LogError(ex,
-                        "Could not delete attachment file {AttachmentId} while removing line {LineId}",
-                        attachment.Id, lineId);
-                }
-            }
+                // One atomic save removes the line, its proof rows and their attachment metadata.
+                removedAttachments = await repo.RemoveLineAsync(reportId, lineId, ct)
+                    ?? throw new InvalidOperationException("Failed to remove line.");
 
-            return ExpenseMutationResult.Success;
+                await AuditOnBehalfEditAsync(report, actorUserId,
+                    removed is null
+                        ? $"Removed line {lineId}"
+                        : $"Removed line \"{removed.Description}\" €{removed.Amount}", CancellationToken.None);
+                return ExpenseMutationResult.Success;
+            }
+            finally
+            {
+                await CleanupUnlinkedAttachmentsAsync(
+                    removedAttachments is null ? candidates : removedAttachments.Select(a => (a.Id, a.Extension)), lineId);
+            }
         }, "Error removing line {LineId} from report {ReportId}", lineId, reportId);
+
+    private async Task CleanupUnlinkedAttachmentsAsync(
+        IEnumerable<(Guid Id, string Extension)> attachments, Guid lineId)
+    {
+        foreach (var attachment in attachments.Distinct())
+        {
+            try
+            {
+                // A save can commit before its acknowledgement or audit fails. Verify the actual linkage
+                // without caller cancellation; a failed verification retains the file for safety.
+                if (await repo.GetReportIdByAttachmentIdAsync(attachment.Id, CancellationToken.None) is not null)
+                    continue;
+                await fileStorage.DeleteAsync(AttachmentKey(attachment.Id, attachment.Extension), CancellationToken.None);
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Could not verify or delete attachment file {AttachmentId} for line {LineId}",
+                    attachment.Id, lineId);
+            }
+        }
+    }
 
     private const long AttachmentMaxBytes = 20 * 1024 * 1024;
     private const int AttachmentFileNameMaxLength = 255;
@@ -647,40 +728,24 @@ internal sealed class ExpenseReportService(
         }
         catch
         {
-            var metadataRemoved = true;
             try
             {
                 // Restore metadata, linkage and any decline/total change atomically, including when the failed
                 // save committed before throwing. Keep the old file until audit succeeds.
-                var rollback = await repo.ReplaceLineAttachmentAsync(
+                await repo.ReplaceLineAttachmentAsync(
                     reportId, lineId, previousAttachment, CancellationToken.None,
                     declineState: line.Declined
                         ? (report.UpdatedAt, line.DeclinedReason, line.DeclinedByUserId, line.DeclinedAt)
                         : null);
-                metadataRemoved = rollback.Found;
             }
             catch (Exception ex)
             {
-                metadataRemoved = false;
                 logger.LogError(ex,
                     "Could not roll back attachment metadata {AttachmentId} for line {LineId}",
                     attachmentId, lineId);
             }
 
-            if (metadataRemoved)
-            {
-                try
-                {
-                    await fileStorage.DeleteAsync(
-                        AttachmentKey(attachmentId, extension), CancellationToken.None);
-                }
-                catch (Exception ex)
-                {
-                    logger.LogError(ex,
-                        "Could not delete attachment file {AttachmentId} after upload rollback",
-                        attachmentId);
-                }
-            }
+            await CleanupUnlinkedAttachmentsAsync([(attachmentId, extension)], lineId);
 
             throw;
         }
@@ -727,38 +792,33 @@ internal sealed class ExpenseReportService(
 
             if (line.Attachment is null) return ExpenseMutationResult.Success; // idempotent
 
-            var removed = await repo.RemoveLineAttachmentAsync(reportId, lineId, ct);
-            if (removed is null) return ExpenseMutationResult.Success;
-
-            await auditLogService.LogAsync(
-                ExpensesAuditActions.ExpenseAttachmentRemoved,
-                AuditEntityTypes.Report, reportId,
-                $"Attachment removed from line {lineId}.",
-                actorUserId,
-                relatedEntityId: report.SubmitterUserId,
-                relatedEntityType: AuditSubjectTypes.User);
-
-            // Post-commit cleanup: metadata and audit are written, so request cancellation
-            // must not strand the file.
+            ExpenseAttachment? removed = null;
             try
             {
-                await fileStorage.DeleteAsync(
-                    AttachmentKey(removed.Id, removed.Extension), CancellationToken.None);
-            }
-            catch (Exception ex)
-            {
-                logger.LogError(ex,
-                    "Could not delete attachment file {AttachmentId} for line {LineId}",
-                    removed.Id, lineId);
-            }
+                removed = await repo.RemoveLineAttachmentAsync(reportId, lineId, ct);
+                if (removed is null) return ExpenseMutationResult.Success;
 
-            return ExpenseMutationResult.Success;
+                await auditLogService.LogAsync(
+                    ExpensesAuditActions.ExpenseAttachmentRemoved,
+                    AuditEntityTypes.Report, reportId,
+                    $"Attachment removed from line {lineId}.",
+                    actorUserId,
+                    relatedEntityId: report.SubmitterUserId,
+                    relatedEntityType: AuditSubjectTypes.User);
+                return ExpenseMutationResult.Success;
+            }
+            finally
+            {
+                await CleanupUnlinkedAttachmentsAsync(
+                    [(removed?.Id ?? line.Attachment.Id, removed?.Extension ?? line.Attachment.Extension)], lineId);
+            }
         }, "Error removing attachment from line {LineId} on report {ReportId}", lineId, reportId);
 
     public Task<ExpenseMutationResult> SubmitWithResultAsync(
         Guid reportId, Guid actorUserId, bool actorIsFinanceAdmin, CancellationToken ct = default) =>
         RunMutationAsync(ct, async () =>
         {
+            using var transition = await TransitionLock.AcquireAsync(logger, ct);
             var report = await repo.GetByIdAsync(reportId, ct);
             if (report is null) return ExpenseMutationResult.Failure("Expenses_Validation_CouldNotSubmitReport");
             if (!actorIsFinanceAdmin && !await IsSubmitterAsync(report, actorUserId, ct))
@@ -870,6 +930,7 @@ internal sealed class ExpenseReportService(
         Guid reportId, Guid submitterUserId, CancellationToken ct = default) =>
         RunMutationAsync(ct, async () =>
         {
+            using var transition = await TransitionLock.AcquireAsync(logger, ct);
             var report = await repo.GetByIdAsync(reportId, ct);
             if (report is null) return ExpenseMutationResult.Failure("Expenses_Flash_WithdrawFailed");
             if (!await IsSubmitterAsync(report, submitterUserId, ct))
@@ -1240,6 +1301,7 @@ internal sealed class ExpenseReportService(
         CancellationToken ct = default) =>
         RunMutationAsync(ct, async () =>
         {
+            using var transition = await TransitionLock.AcquireAsync(logger, ct);
             var report = await repo.GetByIdAsync(reportId, ct);
             if (report is null) return ExpenseMutationResult.OperatorFailure("Could not approve the report. It may not be in an approvable status.");
 
@@ -1261,66 +1323,84 @@ internal sealed class ExpenseReportService(
 
             var outboxEventId = Guid.NewGuid();
             var now = clock.GetCurrentInstant();
-            bool ok;
-            if (report.PreapprovalGrantId is not { } consumedGrantId)
-            {
-                ok = await repo.ApproveAsync(
-                    reportId, actorUserId, overrideBooking, maxAmount, now, outboxEventId, ct);
-            }
-            else
-            {
-                var afterCommit = new List<Func<CancellationToken, Task>>();
-                using (var scope = new TransactionScope(
-                    TransactionScopeOption.Required,
-                    new TransactionOptions { IsolationLevel = IsolationLevel.ReadCommitted },
-                    TransactionScopeAsyncFlowOption.Enabled))
-                {
-                    var consumption = await preapprovalWrites.ConsumeAsync(consumedGrantId, reportId, actorUserId, ct, afterCommit.Add);
-                    if (consumption.Refusal is { } refusal)
-                    {
-                        logger.LogWarning("Pre-approval {GrantId} refused consumption by report {ReportId}: {Reason}", consumedGrantId, reportId, refusal);
-                        return ExpenseMutationResult.OperatorFailure("The report's pre-approval was revoked or is no longer held by it; reject the report.");
-                    }
-                    ok = await repo.ApproveAsync(
-                        reportId, actorUserId, overrideBooking, maxAmount, now, outboxEventId, ct);
-                    if (ok) scope.Complete();
-                }
-                if (ok)
-                    foreach (var complete in afterCommit) await complete(CancellationToken.None);
-            }
-            if (!ok) return ExpenseMutationResult.OperatorFailure("Could not approve the report. It may not be in an approvable status.");
-
-            await auditLogService.LogAsync(
-                ExpensesAuditActions.ExpenseApprove,
-                AuditEntityTypes.Report, reportId,
-                "Finance approved expense report." + MaxAmountDetail(maxAmount)
-                + (report.PreapprovalGrantId is { } g ? $" Consumed pre-approval {g}." : ""),
-                actorUserId);
-
-            if (overrideBooking is not null)
-            {
-                await auditLogService.LogAsync(
-                    ExpensesAuditActions.ExpenseCategoryOverride,
-                    AuditEntityTypes.Report, reportId,
-                    $"Account overridden during approval from {report.HoldedAccountNumber} to {overrideBooking.HoldedAccountNumber}"
-                    + (overrideBooking.BudgetCategoryId is { } overrideCategory
-                        ? $" (budget category {overrideCategory})."
-                        : " (no budget category)."),
-                    actorUserId);
-            }
-
-            // The approval is committed and its Holded push queued; a failed notice must not
-            // report it as a failed approval.
+            bool? ok = null;
+            var attempted = false;
+            var committed = false;
             try
             {
-                await SendApprovedEmailAsync(reportId, ct);
-            }
-            catch (Exception ex) when (ex is not OperationCanceledException)
-            {
-                logger.LogError(ex, "Expense report {ReportId} approved but the approval email failed", reportId);
-            }
+                if (report.PreapprovalGrantId is not { } consumedGrantId)
+                {
+                    attempted = true;
+                    ok = await repo.ApproveAsync(
+                        reportId, actorUserId, overrideBooking, maxAmount, now, outboxEventId, ct);
+                    committed = ok == true;
+                }
+                else
+                {
+                    var afterCommit = new List<Func<CancellationToken, Task>>();
+                    using (var scope = new TransactionScope(
+                        TransactionScopeOption.Required,
+                        new TransactionOptions { IsolationLevel = IsolationLevel.ReadCommitted },
+                        TransactionScopeAsyncFlowOption.Enabled))
+                    {
+                        var consumption = await preapprovalWrites.ConsumeAsync(consumedGrantId, reportId, actorUserId, ct, afterCommit.Add);
+                        if (consumption.Refusal is { } refusal)
+                        {
+                            logger.LogWarning("Pre-approval {GrantId} refused consumption by report {ReportId}: {Reason}", consumedGrantId, reportId, refusal);
+                            return ExpenseMutationResult.OperatorFailure("The report's pre-approval was revoked or is no longer held by it; reject the report.");
+                        }
+                        attempted = true;
+                        ok = await repo.ApproveAsync(
+                            reportId, actorUserId, overrideBooking, maxAmount, now, outboxEventId, ct);
+                        if (ok == true) scope.Complete();
+                    }
+                    if (ok == true)
+                    {
+                        committed = true;
+                        foreach (var complete in afterCommit) await complete(CancellationToken.None);
+                    }
+                }
+                if (ok != true) return ExpenseMutationResult.OperatorFailure("Could not approve the report. It may not be in an approvable status.");
 
-            return ExpenseMutationResult.Success;
+                await auditLogService.LogAsync(
+                    ExpensesAuditActions.ExpenseApprove,
+                    AuditEntityTypes.Report, reportId,
+                    "Finance approved expense report." + MaxAmountDetail(maxAmount)
+                    + (report.PreapprovalGrantId is { } g ? $" Consumed pre-approval {g}." : ""),
+                    actorUserId);
+
+                if (overrideBooking is not null)
+                {
+                    await auditLogService.LogAsync(
+                        ExpensesAuditActions.ExpenseCategoryOverride,
+                        AuditEntityTypes.Report, reportId,
+                        $"Account overridden during approval from {report.HoldedAccountNumber} to {overrideBooking.HoldedAccountNumber}"
+                        + (overrideBooking.BudgetCategoryId is { } overrideCategory
+                            ? $" (budget category {overrideCategory})."
+                            : " (no budget category)."),
+                        actorUserId);
+                }
+                return ExpenseMutationResult.Success;
+            }
+            finally
+            {
+                if (committed || (attempted && ok != false))
+                {
+                    try
+                    {
+                        // The report and its push event commit atomically. Match this attempt's event before
+                        // announcing an approval whose save acknowledgement failed.
+                        if (!committed)
+                            committed = (await repo.GetLatestOutboxForReportAsync(reportId, CancellationToken.None))?.Id == outboxEventId;
+                        if (committed)
+                            await SendApprovedEmailAsync(reportId, CancellationToken.None);
+                    }
+                    catch (Exception ex)
+                    {
+                        logger.LogError(ex, "Could not verify approval or send its notification for expense report {ReportId}", reportId);
+                    }
+                }
+            }
 
         }, "Error approving expense report {ReportId}", reportId);
 

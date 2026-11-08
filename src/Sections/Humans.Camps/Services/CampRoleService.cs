@@ -301,10 +301,13 @@ internal sealed class CampRoleService(
         // Assignment is committed; request cancellation must not skip its notification.
         try
         {
+            var recipientId = memberLookup.UserId;
             var culture = CultureInfo.GetCultureInfo("en");
             try
             {
-                var language = (await userService.GetUserInfoAsync(memberLookup.UserId, CancellationToken.None))?.PreferredLanguage;
+                var person = await userService.GetUserInfoAsync(memberLookup.UserId, CancellationToken.None);
+                recipientId = person?.Id ?? memberLookup.UserId;
+                var language = person?.PreferredLanguage;
                 culture = CultureInfo.GetCultureInfo(language.IsSupportedCultureCode() ? language! : "en");
             }
             catch (Exception ex)
@@ -317,7 +320,7 @@ internal sealed class CampRoleService(
                 notificationClass: NotificationClass.Informational,
                 priority: NotificationPriority.Normal,
                 title: string.Format(culture, NoticeResources.GetString("Camps_Notification_RoleAssigned", culture)!, def.Name),
-                recipientUserIds: [memberLookup.UserId],
+                recipientUserIds: [recipientId],
                 cancellationToken: CancellationToken.None);
         }
         catch (Exception ex)

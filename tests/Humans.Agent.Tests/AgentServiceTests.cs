@@ -5,6 +5,7 @@ using Humans.Agent.Services.Stores;
 using Humans.Agent.Services;
 using Humans.Agent.Data;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
@@ -20,6 +21,51 @@ namespace Humans.Agent.Tests;
 
 public class AgentServiceTests
 {
+    public enum TurnTermination { Complete, Abandon }
+
+    [HumansTheory]
+    [Xunit.InlineData(TurnTermination.Complete)]
+    [Xunit.InlineData(TurnTermination.Abandon)]
+    public async Task Ask_accounts_for_provider_usage_even_when_the_error_trace_cannot_be_saved(TurnTermination termination)
+    {
+        var userId = Guid.NewGuid();
+        var store = new AgentRateLimitStore();
+        var interceptor = new RejectAssistantSave();
+        var (service, client) = await BuildServiceAsync(settings =>
+        {
+            settings.Enabled = true;
+            settings.DailyMessageCap = 1;
+        }, rateLimitStore: store, saveInterceptor: interceptor);
+        client.EnqueueTurn(
+            new AgentTurnToken("Answer", null, null,
+                Usage: new AgentTurnFinalizer(100, 20, 5, 3, "test-model", null)),
+            new AgentTurnToken(null, null, new AgentTurnFinalizer(100, 20, 5, 3, "test-model", "end_turn")));
+
+        var run = async () =>
+        {
+            await foreach (var token in service.AskAsync(new AgentTurnRequest(Guid.Empty, userId, "Question", "en"),
+                Xunit.TestContext.Current.CancellationToken))
+            {
+                if (termination == TurnTermination.Abandon && token.TextDelta is not null)
+                    break;
+            }
+        };
+        var failure = await run.Should().ThrowAsync<DbUpdateException>();
+        failure.Which.Should().BeSameAs(interceptor.Failure);
+        var usage = store.Get(userId, new LocalDate(2026, 4, 21), 12);
+        usage.MessagesToday.Should().Be(1);
+        usage.MessagesThisHour.Should().Be(1);
+        usage.TokensToday.Should().Be(123);
+
+        var providerRequest = client.LastRequest;
+        var nextTurn = new List<AgentTurnToken>();
+        await foreach (var token in service.AskAsync(new AgentTurnRequest(Guid.Empty, userId, "Retry", "en"),
+            Xunit.TestContext.Current.CancellationToken))
+            nextTurn.Add(token);
+        nextTurn.Last().Finalizer!.StopReason.Should().Be("rate_limited");
+        client.LastRequest.Should().BeSameAs(providerRequest);
+    }
+
     [HumansFact]
     public async Task Export_formats_conversation_and_message_dates_and_excludes_other_users()
     {
@@ -1140,10 +1186,12 @@ public class AgentServiceTests
         IAgentRateLimitStore? rateLimitStore = null,
         IAgentToolDispatcher? toolDispatcher = null,
         ILogger<AgentService>? logger = null,
-        IUserService? users = null)
+        IUserService? users = null,
+        SaveChangesInterceptor? saveInterceptor = null)
     {
         var dbOptions = new DbContextOptionsBuilder<AgentDbContext>()
             .UseInMemoryDatabase(Guid.NewGuid().ToString())
+            .AddInterceptors(saveInterceptor is null ? [] : [saveInterceptor])
             .Options;
         var db = new AgentDbContext(dbOptions);
 
@@ -1191,6 +1239,21 @@ public class AgentServiceTests
         var svc = new AgentService(settingsService, ratelimit, abuse, repo, new AgentRetentionRunStore(),
             snapshots, preload, assembler, tools, client, options, clock, resolvedLogger, users ?? Substitute.For<IUserService>());
         return (svc, client);
+    }
+
+    private sealed class RejectAssistantSave : SaveChangesInterceptor
+    {
+        public DbUpdateException Failure { get; } = new("Assistant trace persistence failed");
+
+        public override ValueTask<InterceptionResult<int>> SavingChangesAsync(
+            DbContextEventData eventData, InterceptionResult<int> result, CancellationToken cancellationToken = default)
+        {
+            if (eventData.Context!.ChangeTracker.Entries<AgentMessage>().Any(entry =>
+                entry.State == EntityState.Added && entry.Entity.Role == AgentRole.Assistant
+                    && entry.Entity.RefusalReason is null or "error"))
+                throw Failure;
+            return base.SavingChangesAsync(eventData, result, cancellationToken);
+        }
     }
 
     private sealed class FakeClock(Instant now) : IClock

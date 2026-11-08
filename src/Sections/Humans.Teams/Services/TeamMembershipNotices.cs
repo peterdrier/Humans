@@ -45,12 +45,14 @@ internal sealed class TeamMembershipNotices(
         {
             var displayName = (await UserService.GetUserInfoAsync(userId, cancellationToken))?.BurnerName;
             var recipientsByCulture = new Dictionary<CultureInfo, List<Guid>>();
+            var recipientIds = new HashSet<Guid>();
             foreach (var coordinatorId in coordinatorUserIds)
             {
-                var culture = await GetRecipientCultureAsync(coordinatorId, cancellationToken);
+                var (recipientId, culture) = await ResolveRecipientAsync(coordinatorId, cancellationToken);
+                if (!recipientIds.Add(recipientId)) continue;
                 if (!recipientsByCulture.TryGetValue(culture, out var recipients))
                     recipientsByCulture[culture] = recipients = [];
-                recipients.Add(coordinatorId);
+                recipients.Add(recipientId);
             }
 
             foreach (var (culture, recipients) in recipientsByCulture)
@@ -94,12 +96,13 @@ internal sealed class TeamMembershipNotices(
             .Distinct()
             .ToList();
 
-    private async Task<CultureInfo> GetRecipientCultureAsync(Guid userId, CancellationToken cancellationToken)
+    private async Task<(Guid UserId, CultureInfo Culture)> ResolveRecipientAsync(Guid userId, CancellationToken cancellationToken)
     {
         try
         {
-            var language = (await UserService.GetUserInfoAsync(userId, cancellationToken))?.PreferredLanguage;
-            return CultureInfo.GetCultureInfo(language.IsSupportedCultureCode() ? language! : "en");
+            var person = await UserService.GetUserInfoAsync(userId, cancellationToken);
+            var language = person?.PreferredLanguage;
+            return (person?.Id ?? userId, CultureInfo.GetCultureInfo(language.IsSupportedCultureCode() ? language! : "en"));
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
@@ -108,7 +111,7 @@ internal sealed class TeamMembershipNotices(
         catch (Exception ex)
         {
             logger.LogError(ex, "Failed to resolve notification language for user {UserId}; using English", userId);
-            return CultureInfo.GetCultureInfo("en");
+            return (userId, CultureInfo.GetCultureInfo("en"));
         }
     }
 
@@ -119,14 +122,14 @@ internal sealed class TeamMembershipNotices(
     {
         try
         {
-            var culture = await GetRecipientCultureAsync(requesterUserId, cancellationToken);
+            var (recipientId, culture) = await ResolveRecipientAsync(requesterUserId, cancellationToken);
             var title = string.Format(culture, NoticeResources.GetString("Teams_Notification_JoinApproved", culture)!, team.Name);
             await notificationService.SendAsync(
                 TeamsNotificationSources.TeamJoinRequestDecided,
                 NotificationClass.Informational,
                 NotificationPriority.Normal,
                 title,
-                [requesterUserId],
+                [recipientId],
                 body: string.Format(culture, NoticeResources.GetString("Teams_Notification_Welcome", culture)!, team.Name),
                 actionUrl: $"/Teams/{team.Slug}",
                 actionLabel: NoticeResources.GetString("Teams_Notification_ViewTeam", culture),
@@ -145,14 +148,14 @@ internal sealed class TeamMembershipNotices(
     {
         try
         {
-            var culture = await GetRecipientCultureAsync(requesterUserId, cancellationToken);
+            var (recipientId, culture) = await ResolveRecipientAsync(requesterUserId, cancellationToken);
             var title = string.Format(culture, NoticeResources.GetString("Teams_Notification_JoinRejected", culture)!, team.Name);
             await notificationService.SendAsync(
                 TeamsNotificationSources.TeamJoinRequestDecided,
                 NotificationClass.Informational,
                 NotificationPriority.Normal,
                 title,
-                [requesterUserId],
+                [recipientId],
                 body: string.Format(culture, NoticeResources.GetString("Teams_Notification_JoinRejected", culture)!, team.Name) + ".",
                 actionUrl: "/Teams",
                 actionLabel: NoticeResources.GetString("Teams_MyTeams_BrowseTeams", culture),
@@ -168,6 +171,7 @@ internal sealed class TeamMembershipNotices(
     {
         if (team.IsHidden) return;
 
+        var recipientId = userId;
         var culture = CultureInfo.GetCultureInfo("en");
         try
         {
@@ -175,6 +179,7 @@ internal sealed class TeamMembershipNotices(
             if (!users.TryGetValue(userId, out var user))
                 return;
 
+            recipientId = user.Id;
             culture = CultureInfo.GetCultureInfo(user.PreferredLanguage.IsSupportedCultureCode() ? user.PreferredLanguage : "en");
 
             var email = user.Email;
@@ -209,7 +214,7 @@ internal sealed class TeamMembershipNotices(
                 NotificationClass.Informational,
                 NotificationPriority.Normal,
                 title,
-                [userId],
+                [recipientId],
                 body: null,
                 actionUrl: $"/Teams/{team.Slug}",
                 cancellationToken: cancellationToken);
@@ -225,14 +230,14 @@ internal sealed class TeamMembershipNotices(
     {
         try
         {
-            var culture = await GetRecipientCultureAsync(userId, cancellationToken);
+            var (recipientId, culture) = await ResolveRecipientAsync(userId, cancellationToken);
             var title = string.Format(culture, NoticeResources.GetString("Teams_Notification_MemberRemoved", culture)!, team.Name);
             await notificationService.SendAsync(
                 TeamsNotificationSources.TeamMemberRemoved,
                 NotificationClass.Informational,
                 NotificationPriority.Normal,
                 title,
-                [userId],
+                [recipientId],
                 body: null,
                 actionUrl: "/Teams",
                 cancellationToken: cancellationToken);

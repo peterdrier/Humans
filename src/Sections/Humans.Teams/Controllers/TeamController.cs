@@ -139,7 +139,7 @@ internal sealed class TeamController(
             Resources = teamPage.Resources.OrderBy(r => r.ProvisionedAt).Select(MapTeamResource).ToList(),
             Members = members,
             ParentTeam = team.ParentTeam,
-            ChildTeams = teamPage.ChildTeams,
+            ChildTeams = teamPage.ChildTeams.OrderBy(child => child.Name, StringComparer.Ordinal).ToList(),
             IsCurrentUserMember = teamPage.IsCurrentUserMember,
             IsCurrentUserCoordinator = teamPage.IsCurrentUserCoordinator,
             CanCurrentUserJoin = teamPage.CanCurrentUserJoin,
@@ -472,13 +472,18 @@ internal sealed class TeamController(
     [Authorize(Policy = TeamsPolicies.Read)]
     public async Task<IActionResult> Summary(CancellationToken ct)
     {
-        var result = await teamService.GetAdminTeamListAsync(1, 500, ct);
-
+        var summaries = await teamService.GetAdminTeamListAsync(ct);
+        var ordered = summaries.Where(team => team.ParentTeamId is null)
+            .OrderBy(team => Enum.TryParse<SystemTeamType>(team.SystemTeamType, out var type) ? type : SystemTeamType.None)
+            .ThenBy(team => team.Name, StringComparer.OrdinalIgnoreCase)
+            .SelectMany(parent => new[] { parent }.Concat(summaries
+                .Where(child => child.ParentTeamId == parent.Id)
+                .OrderBy(child => child.Name, StringComparer.OrdinalIgnoreCase)));
         var viewModel = new AdminTeamListViewModel();
 
         // Children inherit the parent's bucket.
         List<AdminTeamViewModel>? currentBucket = null;
-        foreach (var team in result.Teams.Select(summary => new AdminTeamViewModel
+        foreach (var team in ordered.Select(summary => new AdminTeamViewModel
         {
             Id = summary.Id,
             Name = summary.Name,
@@ -494,7 +499,7 @@ internal sealed class TeamController(
             DriveResourceCount = summary.DriveResourceCount,
             RoleSlotCount = summary.RoleSlotCount,
             CreatedAt = summary.CreatedAt.ToDateTimeUtc(),
-            IsChildTeam = summary.IsChildTeam,
+            IsChildTeam = summary.ParentTeamId.HasValue,
             PendingShiftSignupCount = summary.PendingShiftSignupCount,
             IsHidden = summary.IsHidden
         }))

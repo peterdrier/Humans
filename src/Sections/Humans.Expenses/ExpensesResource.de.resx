@@ -305,4 +305,6 @@
   <data name="Expenses_SubjectHelp" xml:space="preserve"><value>Pflichtfeld. Gib den Namen des Projekts an, für das die Ausgabe anfällt, z. B. deines Kunstprojekts.</value></data>
   <data name="Expenses_Validation_SubjectRequired" xml:space="preserve"><value>Bitte gib vor dem Absenden einen Betreff (den Projektnamen) an.</value></data>
   <data name="Expenses_Validation_AmountPrecision" xml:space="preserve"><value>Gib einen Betrag mit höchstens zwei Nachkommastellen ein.</value></data>
+  <data name="Expenses_Flash_DraftSavedFollowupFailed" xml:space="preserve"><value>Der Entwurf wurde gespeichert, aber die Anfrage konnte nicht abgeschlossen werden. Prüfe ihn, bevor du fortfährst.</value></data>
+  <data name="Expenses_Flash_DraftOutcomeUnknown" xml:space="preserve"><value>Es konnte nicht bestätigt werden, ob der Entwurf gespeichert wurde. Prüfe die vorhandenen Berichte, bevor du einen weiteren Entwurf erstellst.</value></data>
 </root>

@@ -110,10 +110,10 @@ internal sealed class RideshareService(
     public async Task<RideshareMutationResult> UpdateOfferAsync(Guid tripId, Guid actorUserId, TripSave save, CancellationToken ct = default)
     {
         using var mutation = await InterestMutationLock.AcquireAsync(logger, ct);
-        var trip = await repository.GetTripAsync(tripId, ct)
-            ?? throw new KeyNotFoundException($"Trip {tripId} not found.");
+        var trip = await repository.GetTripAsync(tripId, ct);
+        if (trip is null) return new(AccessFailure: RideshareAccessFailure.NotFound);
         if (trip.UserId != actorUserId)
-            throw new UnauthorizedAccessException("Only the driver can edit this ride.");
+            return new(AccessFailure: RideshareAccessFailure.Forbidden);
         if (trip.Status == TripStatus.Cancelled)
             return new(Refusal: new("Rideshare_Error_CancelledRideEdit"));
 
@@ -158,10 +158,10 @@ internal sealed class RideshareService(
     public async Task<RideshareMutationResult> CancelOfferAsync(Guid tripId, Guid actorUserId, CancellationToken ct = default)
     {
         using var mutation = await InterestMutationLock.AcquireAsync(logger, ct);
-        var trip = await repository.GetTripAsync(tripId, ct)
-            ?? throw new KeyNotFoundException($"Trip {tripId} not found.");
+        var trip = await repository.GetTripAsync(tripId, ct);
+        if (trip is null) return new(AccessFailure: RideshareAccessFailure.NotFound);
         if (trip.UserId != actorUserId)
-            throw new UnauthorizedAccessException("Only the driver can cancel this ride.");
+            return new(AccessFailure: RideshareAccessFailure.Forbidden);
         if (trip.Status == TripStatus.Cancelled)
             return new();
 
@@ -200,10 +200,10 @@ internal sealed class RideshareService(
     public async Task<RideshareMutationResult> UpdateRequestAsync(Guid requestId, Guid actorUserId, RequestSave save, CancellationToken ct = default)
     {
         using var mutation = await InterestMutationLock.AcquireAsync(logger, ct);
-        var request = await repository.GetRequestAsync(requestId, ct)
-            ?? throw new KeyNotFoundException($"Request {requestId} not found.");
+        var request = await repository.GetRequestAsync(requestId, ct);
+        if (request is null) return new(AccessFailure: RideshareAccessFailure.NotFound);
         if (request.UserId != actorUserId)
-            throw new UnauthorizedAccessException("Only the rider can edit this request.");
+            return new(AccessFailure: RideshareAccessFailure.Forbidden);
         if (request.Status == RequestStatus.Cancelled)
             return new(Refusal: new("Rideshare_Error_CancelledRequestEdit"));
 
@@ -220,10 +220,10 @@ internal sealed class RideshareService(
     public async Task<RideshareMutationResult> CancelRequestAsync(Guid requestId, Guid actorUserId, CancellationToken ct = default)
     {
         using var mutation = await InterestMutationLock.AcquireAsync(logger, ct);
-        var request = await repository.GetRequestAsync(requestId, ct)
-            ?? throw new KeyNotFoundException($"Request {requestId} not found.");
+        var request = await repository.GetRequestAsync(requestId, ct);
+        if (request is null) return new(AccessFailure: RideshareAccessFailure.NotFound);
         if (request.UserId != actorUserId)
-            throw new UnauthorizedAccessException("Only the rider can cancel this request.");
+            return new(AccessFailure: RideshareAccessFailure.Forbidden);
         if (request.Status == RequestStatus.Cancelled)
             return new();
 
@@ -237,8 +237,8 @@ internal sealed class RideshareService(
         Guid fromUserId, Guid tripId, Guid? requestId, int seats, string? message, CancellationToken ct = default)
     {
         using var mutation = await InterestMutationLock.AcquireAsync(logger, ct);
-        var trip = await repository.GetTripAsync(tripId, ct)
-            ?? throw new KeyNotFoundException($"Trip {tripId} not found.");
+        var trip = await repository.GetTripAsync(tripId, ct);
+        if (trip is null) return new(AccessFailure: RideshareAccessFailure.NotFound);
         if (trip.Status != TripStatus.Active)
             return new(Refusal: new("Rideshare_Error_RideUnavailable"));
 
@@ -246,10 +246,10 @@ internal sealed class RideshareService(
         if (requestId is { } rid)
         {
             // Driver answering a pin: the seat comes from the driver's own trip.
-            request = await repository.GetRequestAsync(rid, ct)
-                ?? throw new KeyNotFoundException($"Request {rid} not found.");
+            request = await repository.GetRequestAsync(rid, ct);
+            if (request is null) return new(AccessFailure: RideshareAccessFailure.NotFound);
             if (trip.UserId != fromUserId)
-                throw new UnauthorizedAccessException("Only the driver of this ride can answer a request with it.");
+                return new(AccessFailure: RideshareAccessFailure.Forbidden);
             if (request.UserId == fromUserId)
                 return new(Refusal: new("Rideshare_Error_OwnRequest"));
             if (CheckAnswerable(trip, request) is { } answerRefusal) return new(Refusal: answerRefusal);
@@ -293,7 +293,8 @@ internal sealed class RideshareService(
     public async Task<RideshareMutationResult> AcceptInterestAsync(Guid interestId, Guid actorUserId, CancellationToken ct = default)
     {
         using var mutation = await InterestMutationLock.AcquireAsync(logger, ct);
-        var interest = await LoadInterestForOwnerAsync(interestId, actorUserId, ct);
+        var (interest, accessFailure) = await LoadInterestForOwnerAsync(interestId, actorUserId, ct);
+        if (interest is null) return new(AccessFailure: accessFailure);
         if (interest.Status != InterestStatus.Pending)
             return new(Refusal: new("Rideshare_Error_InterestNotPending"));
         if (interest.Trip.Status != TripStatus.Active)
@@ -315,7 +316,8 @@ internal sealed class RideshareService(
     public async Task<RideshareMutationResult> DeclineInterestAsync(Guid interestId, Guid actorUserId, CancellationToken ct = default)
     {
         using var mutation = await InterestMutationLock.AcquireAsync(logger, ct);
-        var interest = await LoadInterestForOwnerAsync(interestId, actorUserId, ct);
+        var (interest, accessFailure) = await LoadInterestForOwnerAsync(interestId, actorUserId, ct);
+        if (interest is null) return new(AccessFailure: accessFailure);
         if (interest.Status != InterestStatus.Pending)
             return new(Refusal: new("Rideshare_Error_InterestNotPending"));
 
@@ -331,10 +333,10 @@ internal sealed class RideshareService(
     public async Task<RideshareMutationResult> WithdrawInterestAsync(Guid interestId, Guid actorUserId, CancellationToken ct = default)
     {
         using var mutation = await InterestMutationLock.AcquireAsync(logger, ct);
-        var interest = await repository.GetInterestAsync(interestId, ct)
-            ?? throw new KeyNotFoundException($"Interest {interestId} not found.");
+        var interest = await repository.GetInterestAsync(interestId, ct);
+        if (interest is null) return new(AccessFailure: RideshareAccessFailure.NotFound);
         if (interest.FromUserId != actorUserId && PostingOwner(interest) != actorUserId)
-            throw new UnauthorizedAccessException("Only the two people involved can withdraw this.");
+            return new(AccessFailure: RideshareAccessFailure.Forbidden);
         if (interest.Status is not (InterestStatus.Pending or InterestStatus.Accepted))
             return new(Refusal: new("Rideshare_Error_InterestNotWithdrawable"));
 
@@ -550,13 +552,14 @@ internal sealed class RideshareService(
         request.Notes = Clean(save.Notes);
     }
 
-    private async Task<RideshareInterest> LoadInterestForOwnerAsync(Guid interestId, Guid actorUserId, CancellationToken ct)
+    private async Task<(RideshareInterest? Interest, RideshareAccessFailure? Failure)> LoadInterestForOwnerAsync(
+        Guid interestId, Guid actorUserId, CancellationToken ct)
     {
-        var interest = await repository.GetInterestAsync(interestId, ct)
-            ?? throw new KeyNotFoundException($"Interest {interestId} not found.");
-        if (PostingOwner(interest) != actorUserId)
-            throw new UnauthorizedAccessException("Only the owner of the posting can answer this.");
-        return interest;
+        var interest = await repository.GetInterestAsync(interestId, ct);
+        if (interest is null) return (null, RideshareAccessFailure.NotFound);
+        return PostingOwner(interest) == actorUserId
+            ? (interest, null)
+            : (null, RideshareAccessFailure.Forbidden);
     }
 
     /// <summary>Who answers: the rider when the interest answered their request, else the driver.</summary>

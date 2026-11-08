@@ -10,6 +10,8 @@
 
 Community calendar: one-off and recurring events per team, with per-occurrence overrides/cancellations. Spec: [`src/Sections/Humans.Calendar/Docs/features/community-calendar.md`](features/community-calendar.md).
 
+Bulk cache warmups publish through the shared mutation guard. A refresh, deletion, eviction or clear overlapping the load discards the partial attempt and reloads the full snapshot and derived indexes before a read can treat the cache as warmed.
+
 ## Concepts
 
 - **CalendarEvent** — a single scheduled event or recurring event series belonging to a team. Can be a one-time event or repeat according to an RFC 5545 recurrence rule.
@@ -210,7 +212,7 @@ The calendar is intentionally open: no resource-based authorization gates edit/d
 
 The internal `CalendarOccurrenceComposer` owns supplied-snapshot window composition: filtering, team-name lookup, expansion and scoped live contributor fan-out. `CalendarService` retains the forwarding entry point, event persistence and exception writes; `CachingCalendarService` remains the sole query/cache facade. Contributor scope lifetime, team-filter exclusion, recurrence mapping, failure isolation and cancellation are unchanged. No contract or DI registration is added.
 
-A lazy per-key cache miss cannot republish its old result after an intervening cache eviction or refresh.
+A lazy per-key cache miss cannot republish its old result after an intervening cache eviction or refresh. Replacement reloads discard the affected event for source retry after an intervening cache mutation, including an older null result; the cache becomes cold so load-all reads recover the complete event set.
 
 **Owning services:** `CalendarService` (keyed inner: mutations plus the row loads the cache warms and refreshes from), `CachingCalendarService` (decorator exposing `ICalendarService` and `ICalendarQueries`), `CalendarFeedTokenService` (internal: the feed credential's lifecycle, plus the section's `IUserDataContributor` and `IUserMerge`), `ICalFeedService` (personal iCal feed orchestrator — owns no tables, injects no repository)
 **Owned tables:** `calendar_events`, `calendar_event_exceptions`, `calendar_feed_tokens`

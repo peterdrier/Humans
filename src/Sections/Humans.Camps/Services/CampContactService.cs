@@ -83,11 +83,13 @@ internal sealed class CampContactService(
                 logger.LogError(ex, "Failed to resolve camp lead languages for camp {CampId}; using English", campId);
             }
 
-            var languageGroups = leadUserIds.Distinct().GroupBy(id =>
+            var languageGroups = leadUserIds.Select(id =>
             {
-                var language = leadUsers.GetValueOrDefault(id)?.PreferredLanguage;
-                return language.IsSupportedCultureCode() ? language! : "en";
-            }, StringComparer.Ordinal);
+                var person = leadUsers.GetValueOrDefault(id);
+                var language = person?.PreferredLanguage;
+                return (UserId: person?.Id ?? id, Language: language.IsSupportedCultureCode() ? language! : "en");
+            }).DistinctBy(recipient => recipient.UserId)
+                .GroupBy(recipient => recipient.Language, StringComparer.Ordinal);
             foreach (var group in languageGroups)
             {
                 try
@@ -100,7 +102,7 @@ internal sealed class CampContactService(
                         NotificationClass.Informational,
                         NotificationPriority.Normal,
                         title,
-                        group.ToList(),
+                        group.Select(recipient => recipient.UserId).ToList(),
                         actionUrl: campDetailsUrl,
                         actionLabel: NoticeResources.GetString("Camps_Notification_ViewCamp", culture));
                 }

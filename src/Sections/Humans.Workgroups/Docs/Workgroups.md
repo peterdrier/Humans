@@ -494,7 +494,7 @@ should end is the Board's decision, taken on the register in front of them.
 - **Notifications, Email, AuditLog**: crosscuts, per Triggers above. The internal `WorkgroupNotices` owns recipient lookup, culture grouping, Board delivery and independent best-effort sends. Lifecycle, document, membership, GDPR and rhythm paths invoke it after their existing state/audit steps; transitions, rhythm timing and Drive synchronization remain in `WorkgroupService`. Member notifications
   use existing localized labels, grouped by supported recipient language (English fallback); authored content is unchanged.
   A merged-member alias carries both the resolved live id and its language into grouping,
-  with one delivery per live recipient even when multiple requested ids resolve to them.
+  with one delivery per live recipient even when multiple requested ids resolve to them. Lifecycle and Board emails apply the same resolved-ID deduplication: outbox ownership uses the live recipient ID from the same snapshot as address, name and language, so merged aliases cannot queue duplicate copies or assign new mail to an archived account.
 - **Base / Users**: `IUserDataContributor` (`Humans.Base.Gdpr`), `IUserMerge` (`Humans.Users.Contracts`) — see GDPR below.
 - **Finance**: `IFinanceWrite.CreateOrLinkExpenseAccountAsync` /
   `SetExpenseAccountActiveAsync` (outbound). **Holded**: `IHoldedService.GetChartAsync`

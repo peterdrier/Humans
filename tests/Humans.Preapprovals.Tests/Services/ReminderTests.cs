@@ -21,7 +21,7 @@ public sealed class ReminderTests : PreapprovalsTestHarness
         (int DaysLeft, ReminderKind? Expected)[] cases =
             [(15, null), (14, ReminderKind.D14), (4, ReminderKind.D14), (3, ReminderKind.D3), (0, ReminderKind.D3), (-1, null)];
         foreach (var (daysLeft, expected) in cases)
-            PreapprovalService.ReminderKindFor(Today, Today.PlusDays(daysLeft)).Should().Be(expected, $"{daysLeft} days left");
+            PreapprovalDeadlineReminders.ReminderKindFor(Today, Today.PlusDays(daysLeft)).Should().Be(expected, $"{daysLeft} days left");
     }
 
     [HumansFact]
@@ -30,7 +30,7 @@ public sealed class ReminderTests : PreapprovalsTestHarness
         var program = await SeedProgramAsync(claimBy: Today.PlusDays(10));
         var person = SeedUser("Person", language: "fr");
         var grant = await SeedGrantAsync(program, person);
-        var service = NewService();
+        var service = NewReminders();
         Transaction? transaction = null;
         Email.SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>()).Returns(_ =>
         {
@@ -39,7 +39,7 @@ public sealed class ReminderTests : PreapprovalsTestHarness
         });
         var auditAfterCommit = false;
         AuditLog.LogAsync(PreapprovalsAuditActions.PreapprovalReminderSent, AuditEntityTypes.Grant, grant.Id,
-            Arg.Any<string>(), PreapprovalService.ReminderJobName, program.Id, AuditEntityTypes.Program).Returns(_ =>
+            Arg.Any<string>(), PreapprovalDeadlineReminders.ReminderJobName, program.Id, AuditEntityTypes.Program).Returns(_ =>
         {
             auditAfterCommit = Transaction.Current is null
                 && transaction?.TransactionInformation.Status == TransactionStatus.Committed;
@@ -54,7 +54,7 @@ public sealed class ReminderTests : PreapprovalsTestHarness
             Arg.Any<string?>(), Arg.Any<string?>(), PreapprovalNotices.FileBySourceKey(grant.Id), Arg.Any<CancellationToken>());
         await Email.Received(1).SendAsync(Arg.Is<EmailMessage>(m => m.TemplateName == "preapproval_deadline_reminder" && m.Culture == "fr"), Arg.Any<CancellationToken>());
         await AuditLog.Received(1).LogAsync(PreapprovalsAuditActions.PreapprovalReminderSent, AuditEntityTypes.Grant, grant.Id,
-            Arg.Is<string>(d => d.StartsWith("14-day", StringComparison.Ordinal)), PreapprovalService.ReminderJobName, program.Id, AuditEntityTypes.Program);
+            Arg.Is<string>(d => d.StartsWith("14-day", StringComparison.Ordinal)), PreapprovalDeadlineReminders.ReminderJobName, program.Id, AuditEntityTypes.Program);
 
         using (transaction)
         {
@@ -73,7 +73,7 @@ public sealed class ReminderTests : PreapprovalsTestHarness
     {
         var program = await SeedProgramAsync(claimBy: Today.PlusDays(10));
         var grant = await SeedGrantAsync(program);
-        var service = NewService();
+        var service = NewReminders();
         await service.SendDeadlineRemindersAsync(Ct);
         SetToday(Today.PlusDays(8));
 
@@ -98,7 +98,7 @@ public sealed class ReminderTests : PreapprovalsTestHarness
         var expired = await SeedGrantAsync(past);
         await SeedGrantAsync(far);
 
-        await NewService().SendDeadlineRemindersAsync(Ct);
+        await NewReminders().SendDeadlineRemindersAsync(Ct);
 
         await Notifications.DidNotReceiveWithAnyArgs().SendAsync(default!, default, default, default!, default!);
         await using var db = OpenContext();
@@ -111,7 +111,7 @@ public sealed class ReminderTests : PreapprovalsTestHarness
     {
         var program = await SeedProgramAsync(claimBy: Today.PlusDays(10));
         var grant = await SeedGrantAsync(program);
-        var service = NewService();
+        var service = NewReminders();
         await service.SendDeadlineRemindersAsync(Ct);
 
         await using (var db = OpenContext())
@@ -149,7 +149,7 @@ public sealed class ReminderTests : PreapprovalsTestHarness
             Email.SendAsync(Arg.Is<EmailMessage>(m => m.RecipientEmail.StartsWith(broken.ToString(), StringComparison.Ordinal)), Arg.Any<CancellationToken>())
                 .Returns(_ => recovered ? Task.CompletedTask : throw failure);
 
-        var act = () => NewService().SendDeadlineRemindersAsync(Ct);
+        var act = () => NewReminders().SendDeadlineRemindersAsync(Ct);
 
         var error = await act.Should().ThrowAsync<AggregateException>();
         error.Which.InnerExceptions.Should().ContainSingle().Which.Should().BeSameAs(failure);
@@ -158,11 +158,11 @@ public sealed class ReminderTests : PreapprovalsTestHarness
         var markers = await db.RemindersSent.ToListAsync(Ct);
         markers.Should().ContainSingle().Which.GrantId.Should().Be(ok.Id);
         await AuditLog.DidNotReceive().LogAsync(PreapprovalsAuditActions.PreapprovalReminderSent,
-            AuditEntityTypes.Grant, failed.Id, Arg.Any<string>(), PreapprovalService.ReminderJobName,
+            AuditEntityTypes.Grant, failed.Id, Arg.Any<string>(), PreapprovalDeadlineReminders.ReminderJobName,
             program.Id, AuditEntityTypes.Program);
 
         recovered = true;
-        await NewService().SendDeadlineRemindersAsync(Ct);
+        await NewReminders().SendDeadlineRemindersAsync(Ct);
         await using var afterRetry = OpenContext();
         (await afterRetry.RemindersSent.Select(marker => marker.GrantId).ToListAsync(Ct))
             .Should().BeEquivalentTo([failed.Id, ok.Id]);

@@ -40,19 +40,11 @@ Repository: `ISurveyRepository`.
 | survey_responses | R/W |
 | survey_answers | R/W |
 
-Cross-section calls via `ITeamService` (audience resolution — team
-members for `SurveyAudienceType.Team`), `IUserService` (active-member
-enumeration, canonical notification addresses, display-name stitching in results / export), `ITicketService`
-(audience resolution — current-event ticket holders for
-`SurveyAudienceType.TicketHolders`), `IShiftView` (audience resolution —
-shift participants for `SurveyAudienceType.ShiftParticipants`),
-`IGovernanceService` (Asociado audience and eligibility: current membership tier plus active account state; the Consent Coordinator review does not gate access),
-`IEmailService` (outbox
-enqueue), the section's own `SurveysEmails` builder (invitation templates),
-`ISurveyInviteTokenProvider` (section-local, data-protection invite tokens),
-`IGoogleTranslationService` (Cloud Translation pre-fill for admin translation
-helper), `IAuditLogService`, `IFileStorage` (Information-block images under
-`uploads/surveys/`).
+Direct cross-section calls use `IUserService` (member identity and response/export stitching),
+`IGoogleTranslationService`, `IAuditLogService` and `IFileStorage` (Information-block images under
+`uploads/surveys/`). The scoped `SurveyAudience` supplies audience and access predicates;
+`SurveyInvitationDelivery` owns initial/reminder transport and invitation delivery-status reads.
+`ISurveyInviteTokenProvider` remains section-local for answer-link resolution.
 
 Implements `IUserDataContributor` (three GDPR export slices:
 `SurveyService.SurveyResponses` — identified responses only; anonymous
@@ -73,12 +65,21 @@ No repository, no `IMemoryCache`, no table access. Fills blank localized texts o
 the default culture, one batched `IGoogleTranslationService` call per target culture; authored text is never
 overwritten. Returns the updated edit input and the filled count; `SurveyService` persists it.
 
-### SurveyReminderSender (Scoped — `ISurveyReminderSender`)
+### SurveyAudience (Scoped)
 
-Owns the daily reminder batch through the existing job contract. Reads `surveys` and
-`survey_invitations` through `ISurveyRepository`, then stamps `ReminderSentAt` after
-Email outbox acceptance. Uses `IUserService` (canonical name, culture and email together), `SurveysEmails`,
-`ISurveyInviteTokenProvider`, `IEmailService`, `IAuditLogService` and `IClock`.
+No repository or table access. Owns the six audience predicates and Asociado eligibility using
+`ITeamService`, `IUserService`, `IGovernanceService`, `ITicketService` and `IShiftView`.
+The same scoped instance serves survey access/approval checks and invitation delivery.
+
+### SurveyInvitationDelivery (Scoped — `ISurveyReminderSender`)
+
+Reuses the former reminder sender for audience preview, initial invitations, delivery-status reads
+and daily reminders. Reads `surveys` and `survey_invitations` through `ISurveyRepository` and
+creates invitation rows before delivery and stamps successful sends/reminders after Email outbox acceptance. Uses `SurveyAudience`, `IUserService`
+(canonical name, culture and email together), `SurveysEmails`, `ISurveyInviteTokenProvider`,
+`IEmailService`, `IAuditLogService` and `IClock`. The existing reminder contract resolves to the
+same scoped instance; `SurveyService` forwards its existing internal invitation entry points.
+Stable delivery IDs, audit actors, cancellation boundaries and retry behavior are preserved.
 
 ### SurveyPreviewEmailService (Scoped, `Humans.Surveys.Services`)
 

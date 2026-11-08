@@ -278,6 +278,36 @@ public sealed class CachingTeamServiceGetTeamDetailTests : IDisposable
         result.ChildTeams.Select(c => c.Id).Should().BeEquivalentTo([publicChild.Id]);
     }
 
+    [HumansFact]
+    public async Task TeamPage_MemberInMultipleSubteams_KeepsFirstNameOrderedAffiliation()
+    {
+        var parent = MakeTeam("Department");
+        var zeta = MakeTeam("Zeta");
+        var alpha = MakeTeam("Alpha");
+        zeta.ParentTeamId = parent.Id;
+        alpha.ParentTeamId = parent.Id;
+        var memberId = Guid.NewGuid();
+        foreach (var child in new[] { zeta, alpha })
+            child.Members.Add(new TeamMember
+            {
+                Id = Guid.NewGuid(),
+                TeamId = child.Id,
+                UserId = memberId,
+                Role = child == zeta ? TeamMemberRole.Coordinator : TeamMemberRole.Member,
+                JoinedAt = child.CreatedAt
+            });
+        SeedTeams(parent, zeta, alpha);
+
+        var page = await _pages.GetTeamPageDetailAsync("department", Guid.NewGuid(), false,
+            Xunit.TestContext.Current.CancellationToken);
+
+        var member = page!.SubteamMembers.Should().ContainSingle().Subject;
+        member.UserId.Should().Be(memberId);
+        member.ChildTeamName.Should().Be("Alpha");
+        member.IsCoordinator.Should().BeFalse();
+        page.SubteamLeads.Should().ContainSingle().Which.ChildTeamName.Should().Be("Zeta");
+    }
+
     private void SeedTeams(params Team[] teams)
     {
         var childIdsByParent = teams

@@ -939,7 +939,19 @@ internal sealed class AssemblyVoteService(
 
         // Reminders first: closing a lapsed vote makes its roster ineligible for one.
         var failures = new List<Exception>();
-        await effects.SendRemindersAsync(now, failures, ct);
+        try
+        {
+            await effects.SendRemindersAsync(now, failures, ct);
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            failures.Add(ex);
+            logger.LogError(ex, "Assembly reminder discovery failed; continuing vote closure and recovery.");
+        }
 
         var lapsed = await repository.GetLapsedOpenVotesAsync(now, ct);
         var closed = 0;
@@ -966,7 +978,19 @@ internal sealed class AssemblyVoteService(
         foreach (var vote in await repository.GetAllAsync(ct))
         {
             await FinishInterruptedCloseAsync(vote, ct);
-            await effects.RetryOpenedEmailsAsync(vote, failures, ct);
+            try
+            {
+                await effects.RetryOpenedEmailsAsync(vote, failures, ct);
+            }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                failures.Add(ex);
+                logger.LogError(ex, "Assembly vote {VoteId}: opening-email retry preparation failed.", vote.Id);
+            }
         }
 
         if (failures.Count > 0)

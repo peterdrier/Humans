@@ -21,3 +21,8 @@ internal sealed class TeamRoleAssignment
 
     public Guid AssignedByUserId { get; init; }
 }
+
+internal sealed record TeamRoleAssignmentMutationResult(TeamRoleAssignment? Assignment = null, string? Refusal = null)
+{
+    public bool Succeeded => Refusal is null;
+}

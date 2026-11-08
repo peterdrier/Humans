@@ -20,7 +20,7 @@ internal sealed class ApplicationDecisionNotices(
 
     internal async Task SendApprovalAsync(MemberApplication application, CancellationToken cancellationToken)
     {
-        var culture = await SendDecisionEmailAsync(
+        var (recipientId, culture) = await SendDecisionEmailAsync(
             application,
             "approval",
             (recipientEmail, user, language) => emailMessages.ApplicationApproved(
@@ -33,6 +33,7 @@ internal sealed class ApplicationDecisionNotices(
 
         await SendDecisionNotificationAsync(
             application,
+            recipientId,
             GovernanceNotificationSources.ApplicationApproved,
             "Governance_Notification_ApplicationApproved",
             "Governance_Notification_ApplicationApprovedBody",
@@ -44,7 +45,7 @@ internal sealed class ApplicationDecisionNotices(
 
     internal async Task SendRejectionAsync(MemberApplication application, string reason, CancellationToken cancellationToken)
     {
-        var culture = await SendDecisionEmailAsync(
+        var (recipientId, culture) = await SendDecisionEmailAsync(
             application,
             "rejection",
             (recipientEmail, user, language) => emailMessages.ApplicationRejected(
@@ -58,6 +59,7 @@ internal sealed class ApplicationDecisionNotices(
 
         await SendDecisionNotificationAsync(
             application,
+            recipientId,
             GovernanceNotificationSources.ApplicationRejected,
             "Governance_Notification_ApplicationRejected",
             "Governance_Notification_ApplicationRejectedBody",
@@ -67,19 +69,21 @@ internal sealed class ApplicationDecisionNotices(
 
     }
 
-    private async Task<CultureInfo> SendDecisionEmailAsync(
+    private async Task<(Guid UserId, CultureInfo Culture)> SendDecisionEmailAsync(
         MemberApplication application,
         string decisionName,
         Func<string, UserInfo, string, EmailMessage> buildMessage,
         CancellationToken cancellationToken)
     {
+        var recipientId = application.UserId;
         var culture = CultureInfo.GetCultureInfo("en");
         try
         {
             var user = await userService.GetUserInfoAsync(application.UserId, cancellationToken);
             if (user is null)
-                return culture;
+                return (recipientId, culture);
 
+            recipientId = user.Id;
             culture = CultureInfo.GetCultureInfo(user.PreferredLanguage.IsSupportedCultureCode() ? user.PreferredLanguage : "en");
 
             var recipientEmail = user.Email;
@@ -104,11 +108,12 @@ internal sealed class ApplicationDecisionNotices(
                 "Failed to send {DecisionName} email for {ApplicationId}",
                 decisionName, application.Id);
         }
-        return culture;
+        return (recipientId, culture);
     }
 
     private async Task SendDecisionNotificationAsync(
         MemberApplication application,
+        Guid recipientUserId,
         NotificationSourceDefinition source,
         string titleKey,
         string bodyKey,
@@ -123,7 +128,7 @@ internal sealed class ApplicationDecisionNotices(
                 NotificationClass.Informational,
                 NotificationPriority.Normal,
                 string.Format(culture, NoticeResources.GetString(titleKey, culture)!, application.MembershipTier),
-                [application.UserId],
+                [recipientUserId],
                 body: string.Format(culture, NoticeResources.GetString(bodyKey, culture)!, application.MembershipTier),
                 actionUrl: "/Governance/Applications",
                 actionLabel: NoticeResources.GetString("Governance_Notification_ViewApplication", culture),

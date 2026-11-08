@@ -139,6 +139,7 @@ integration uses — see [`memory/code/stripe-restricted-keys.md`](../../../../m
   are untouched. A failed account records the error on its sync row and keeps its mirror; the
   others still sweep. The pager fails closed (`has_more` on an empty page, or a 500-page cap,
   throws). One sweep at a time: an in-process gate shared by the job and Sync now.
+- Bounded mirror text (transaction descriptions, buyer names/emails, payout failures and saved sync errors) preserves complete UTF-16 surrogate pairs, so truncation cannot turn valid vendor text into invalid Unicode.
 - The mirror is read-only: list and retrieve calls only, whatever the key's scopes.
 - Payout link: Stripe links transactions only to automatic payouts, so `PayoutId` is null on a
   manual-payout account (Tickets); a payout's own row carries its id.

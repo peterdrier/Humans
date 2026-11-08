@@ -347,6 +347,9 @@ public class ProfileControllerEditTests
             ("EmergencyContactRelationship", "Validation_MaxLength", ["", 100]),
             ("BirthdayMonth", "Validation_Range", ["", 1, 12]),
             ("BirthdayDay", "Validation_Range", ["", 1, 31]));
+        AssertErrors(new ProfileViewModel { Latitude = double.NaN, Longitude = 180.1 },
+            ("Latitude", "Validation_Range", ["", -90, 90]),
+            ("Longitude", "Validation_Range", ["", -180, 180]));
         AssertErrors(new MedicalViewModel { MedicalConditions = new string('x', 4001) },
             ("MedicalConditions", "Validation_MaxLength", ["", 4000]));
         AssertErrors(new ProfileViewModel
