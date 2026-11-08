@@ -1,7 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk.Razor">
 
   <PropertyGroup>
-    <!-- MVC views/controllers, not Blazor components. -->
     <AddRazorSupportForMvc>true</AddRazorSupportForMvc>
   </PropertyGroup>
 
@@ -12,12 +11,10 @@
   </ItemGroup>
 
   <ItemGroup>
-    <!-- Base only: Tour owns no tables — no DbContext, no repository, no migrations. -->
     <ProjectReference Include="..\..\Humans.Base\Humans.Base.csproj" />
   </ItemGroup>
 
   <ItemGroup>
-    <!-- The section owns its documentation; keep it visible in Solution Explorer. -->
     <None Include="**\*.md" />
   </ItemGroup>
 
