@@ -76,7 +76,7 @@ The shapes imply one register with one cache and one write funnel:
 - A verified account holds exactly one verified `IsPrimary` address — `EnsurePrimaryInvariantAsync`,
   `src/Sections/Humans.Users/Services/UserEmailMutations.cs:209`. A verified address belongs to at
   most one account: verifying an address another account holds verified opens a merge request
-  instead — `src/Sections/Humans.Users/Services/UserEmailService.cs:127`. `user_emails.IsGoogle`
+  instead — `src/Sections/Humans.Users/Services/UserEmailService.cs:132`. `user_emails.IsGoogle`
   is dropped; the Workspace identity is GoogleIntegration's.
 - An address is rewritten by exactly one path, the OAuth reconcile matched on
   `(Provider, ProviderKey)` — `src/Humans.Analyzers/EmailMutationPathsAnalyzer.cs`.
