@@ -4,6 +4,11 @@ using Humans.AuditLog.Contracts;
 using Xunit;
 using Humans.Expenses.Contracts;
 using Humans.Expenses.Data;
+using Humans.Expenses.Services;
+using Humans.Expenses.Tests.Infrastructure;
+using Humans.Expenses.Services.Dtos;
+using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
 using Humans.Expenses.Domain;
 using Humans.Preapprovals.Contracts;
 using NodaTime;
@@ -19,6 +24,73 @@ namespace Humans.Expenses.Tests.Services;
 /// </summary>
 public sealed partial class ExpenseReportServiceTests
 {
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Submit_SharedGrant_IsHeldThroughTransactionCompletionAcrossScopes(bool rollbackFirst)
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var owner = Guid.NewGuid();
+        var grant = MakeGrant();
+        var firstId = await CreateSubmittableGrantDraftAsync(owner, grant);
+        var nextId = await CreateSubmittableGrantDraftAsync(owner, grant);
+        Guid? committedHolder = null;
+        _preapprovals.GetGrantAsync(grant.Id, ct).Returns(_ => Task.FromResult<GrantOption?>(
+            grant with { Status = committedHolder is null ? GrantStatus.Open : GrantStatus.Claimed }));
+        _preapprovalWrites.ClaimAsync(grant.Id, Arg.Any<Guid>(), owner, ct,
+            Arg.Any<Action<Func<CancellationToken, Task>>?>()).Returns(call =>
+        {
+            var reportId = call.ArgAt<Guid>(1);
+            if (committedHolder is { } held && held != reportId)
+                return Task.FromResult(new PreapprovalWriteResult(Refusal: "Held by another report"));
+            System.Transactions.Transaction.Current.Should().NotBeNull();
+            call.ArgAt<Action<Func<CancellationToken, Task>>>(4)(token =>
+            {
+                System.Transactions.Transaction.Current.Should().BeNull();
+                token.Should().Be(CancellationToken.None);
+                committedHolder = reportId;
+                return Task.CompletedTask;
+            });
+            return Task.FromResult(new PreapprovalWriteResult(StampOf(grant)));
+        });
+        var saving = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var repository = Substitute.For<IExpenseRepository>();
+        repository.GetByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(call => _expenseRepo.GetByIdAsync(call.Arg<Guid>(), call.Arg<CancellationToken>()));
+        repository.SubmitAsync(Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<Instant>(),
+            Arg.Any<ExpenseBooking?>(), Arg.Any<decimal?>(), Arg.Any<CancellationToken>()).Returns(async call =>
+        {
+            var id = call.ArgAt<Guid>(0);
+            if (id == firstId)
+            {
+                saving.SetResult();
+                await release.Task.WaitAsync(ct);
+                if (rollbackFirst) throw new IOException("Report save failed");
+            }
+            return await _expenseRepo.SubmitAsync(id, call.ArgAt<string>(1), call.ArgAt<string>(2),
+                call.ArgAt<Instant>(3), call.ArgAt<ExpenseBooking?>(4), call.ArgAt<decimal?>(5), call.Arg<CancellationToken>());
+        });
+        ExpenseReportService ScopedService() => new(repository, _fileStorage, _budgetService, _teamService,
+            _userService, _emailService, TestExpensesEmails.Create(), AuditLog, Substitute.For<IAuditViewerService>(),
+            _holdedService, _finance, _financeWrite, _preapprovals, _preapprovalWrites, Clock,
+            NullLogger<ExpenseReportService>.Instance, Options.Create(new TravelReimbursementConfig()));
+        var first = ScopedService().SubmitWithResultAsync(firstId, owner, false, ct);
+        await saving.Task.WaitAsync(ct);
+        var next = ScopedService().SubmitWithResultAsync(nextId, owner, false, ct);
+        release.SetResult();
+
+        var results = await Task.WhenAll(first, next).WaitAsync(ct);
+
+        results[0].Succeeded.Should().Be(!rollbackFirst);
+        results[1].Succeeded.Should().Be(rollbackFirst);
+        committedHolder.Should().Be(rollbackFirst ? nextId : firstId);
+        var firstReport = (await _expenseRepo.GetByIdAsync(firstId, ct))!;
+        var nextReport = (await _expenseRepo.GetByIdAsync(nextId, ct))!;
+        firstReport.Status.Should().Be(rollbackFirst ? ExpenseReportStatus.Draft : ExpenseReportStatus.Submitted);
+        nextReport.Status.Should().Be(rollbackFirst ? ExpenseReportStatus.Submitted : ExpenseReportStatus.Draft);
+    }
+
     private const int GrantAccountNumber = 62900500;
     private const string GrantAccountId = "acc-grant";
     /// <summary>FakeNow is 2026-05-10 12:00 UTC: 14:00 in Madrid, so today is the 10th.</summary>

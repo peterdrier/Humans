@@ -40,4 +40,8 @@ public record DeleteEmailResult(bool Succeeded, string? ErrorKey = null);
 public record UnlinkEmailResult(bool Succeeded, string? ErrorKey = null);
 
 /// <summary><c>Email</c> is empty for a refusal; <c>MergeRequestCreated</c> means verification opened a merge request instead.</summary>
-public record VerifyEmailResult(string Email, bool MergeRequestCreated, string? ErrorKey = null);
+public record VerifyEmailResult(string Email, bool MergeRequestCreated, string? ErrorKey = null)
+{
+    /// <summary>The admin target is missing, already verified, or provider-attached.</summary>
+    public bool NoPendingVerification { get; init; }
+}

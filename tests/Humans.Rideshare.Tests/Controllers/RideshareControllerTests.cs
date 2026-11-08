@@ -75,8 +75,8 @@ public sealed class RideshareControllerTests
     {
         var missing = Guid.NewGuid();
         var notMine = Guid.NewGuid();
-        _rideshare.AcceptInterestAsync(missing, _me, Arg.Any<CancellationToken>()).ThrowsAsync(new KeyNotFoundException());
-        _rideshare.AcceptInterestAsync(notMine, _me, Arg.Any<CancellationToken>()).ThrowsAsync(new UnauthorizedAccessException());
+        _rideshare.AcceptInterestAsync(missing, _me, Arg.Any<CancellationToken>()).Returns(new RideshareMutationResult(AccessFailure: RideshareAccessFailure.NotFound));
+        _rideshare.AcceptInterestAsync(notMine, _me, Arg.Any<CancellationToken>()).Returns(new RideshareMutationResult(AccessFailure: RideshareAccessFailure.Forbidden));
         var controller = BuildController();
 
         (await controller.Accept(missing, Ct)).Should().BeOfType<NotFoundResult>();
@@ -369,9 +369,9 @@ public sealed class RideshareControllerTests
     public async Task OfferPost_MapsMissingAndForbidden_AndLogsWithoutStack(bool forbidden)
     {
         var id = Guid.NewGuid();
-        Exception error = forbidden ? new UnauthorizedAccessException("Only the driver can edit this ride")
-            : new KeyNotFoundException($"Trip {id} not found");
-        _rideshare.UpdateOfferAsync(id, _me, Arg.Any<TripSave>(), Arg.Any<CancellationToken>()).ThrowsAsync(error);
+        var failure = forbidden ? RideshareAccessFailure.Forbidden : RideshareAccessFailure.NotFound;
+        _rideshare.UpdateOfferAsync(id, _me, Arg.Any<TripSave>(), Arg.Any<CancellationToken>())
+            .Returns(new RideshareMutationResult(AccessFailure: failure));
         var model = new OfferFormViewModel { Id = id, MemberPlaceLabel = "Paris", DepartureDate = "2026-07-03" };
         var controller = BuildController();
 
@@ -381,7 +381,7 @@ public sealed class RideshareControllerTests
         else result.Should().BeOfType<NotFoundResult>();
         controller.TempData.Should().BeEmpty();
         AssertExpectedWarnings(1);
-        _logger.ReceivedCalls().Single().GetArguments()[2]!.ToString().Should().Contain(error.Message);
+        _logger.ReceivedCalls().Single().GetArguments()[2]!.ToString().Should().Contain(failure.ToString());
     }
 
     [HumansFact]
@@ -448,13 +448,25 @@ public sealed class RideshareControllerTests
         controller.TempData[TempDataKeys.SuccessMessage].Should().Be("L:Rideshare_OfferSaved");
     }
 
+    public enum MutationPath { Toast, Form, Admin }
+    public enum DependencyFailure { Unexpected, MissingKey, Unauthorized }
+
     [HumansTheory]
-    [InlineData("toast")]
-    [InlineData("form")]
-    [InlineData("admin")]
-    public async Task DependencyFaultsPropagateWithoutRefusalFeedback(string path)
+    [InlineData(MutationPath.Toast, DependencyFailure.Unexpected)]
+    [InlineData(MutationPath.Form, DependencyFailure.Unexpected)]
+    [InlineData(MutationPath.Admin, DependencyFailure.Unexpected)]
+    [InlineData(MutationPath.Toast, DependencyFailure.MissingKey)]
+    [InlineData(MutationPath.Form, DependencyFailure.MissingKey)]
+    [InlineData(MutationPath.Toast, DependencyFailure.Unauthorized)]
+    [InlineData(MutationPath.Form, DependencyFailure.Unauthorized)]
+    public async Task DependencyFaultsPropagateWithoutRefusalFeedback(MutationPath path, DependencyFailure failureKind)
     {
-        var fault = new InvalidOperationException("database diagnostic");
+        Exception fault = failureKind switch
+        {
+            DependencyFailure.MissingKey => new KeyNotFoundException("dependency diagnostic"),
+            DependencyFailure.Unauthorized => new UnauthorizedAccessException("dependency diagnostic"),
+            _ => new InvalidOperationException("database diagnostic")
+        };
         _rideshare.AcceptInterestAsync(Arg.Any<Guid>(), _me, Arg.Any<CancellationToken>()).ThrowsAsync(fault);
         _rideshare.CreateOfferAsync(_me, EventId, Arg.Any<TripSave>(), Arg.Any<CancellationToken>()).ThrowsAsync(fault);
         _rideshare.SaveSettingsAsync(EventId, Arg.Any<SettingsSave>(), _me, Arg.Any<CancellationToken>()).ThrowsAsync(fault);
@@ -467,10 +479,10 @@ public sealed class RideshareControllerTests
         };
         Func<Task<IActionResult>> action = path switch
         {
-            "toast" => () => member.Accept(Guid.NewGuid(), Ct),
-            "form" => () => member.Offer(new OfferFormViewModel
+            MutationPath.Toast => () => member.Accept(Guid.NewGuid(), Ct),
+            MutationPath.Form => () => member.Offer(new OfferFormViewModel
             { MemberPlaceLabel = "Paris", DepartureDate = "2026-07-03" }, Ct),
-            "admin" => () => admin.Index(new RideshareSettingsViewModel
+            MutationPath.Admin => () => admin.Index(new RideshareSettingsViewModel
             {
                 EventSettingsId = EventId,
                 DestinationLabel = "Burn",
@@ -482,7 +494,7 @@ public sealed class RideshareControllerTests
             _ => throw new ArgumentOutOfRangeException(nameof(path))
         };
 
-        (await action.Should().ThrowAsync<InvalidOperationException>()).Which.Should().BeSameAs(fault);
+        (await action.Should().ThrowAsync<Exception>()).Which.Should().BeSameAs(fault);
         member.TempData.Should().BeEmpty();
         member.ModelState.IsValid.Should().BeTrue();
         admin.ModelState.IsValid.Should().BeTrue();

@@ -173,61 +173,45 @@ internal sealed class UserProfileMutations(
                 break;
         }
 
-        // The repository re-derives User.State (Bare->Active) and carries a suspension forward.
+        var currentPictureKey = ProfilePictureKeys.Resolve(
+            profile.Id, profile.ProfilePictureContentType, profile.ProfilePictureStorageKey);
         try
         {
             await repo.UpdateAsync(profile, ct, volunteerHistory);
+            return new UserProfileSaveResult(profile.Id, previousPictureKey, currentPictureKey);
         }
-        catch when (newPictureKey is not null)
+        finally
         {
-            await DeleteUnreferencedPictureAsync(profile.Id, newPictureKey);
-            throw;
-        }
-
-        // Delete the superseded file before the fallible post-commit steps below, so a throw there
-        // cannot orphan it (the old key is no longer in the DB).
-        var currentPictureKey = ProfilePictureKeys.Resolve(
-            profile.Id, profile.ProfilePictureContentType, profile.ProfilePictureStorageKey);
-        if (previousPictureKey is not null
-            && !string.Equals(previousPictureKey, currentPictureKey, StringComparison.Ordinal))
-        {
-            await DeleteSupersededPictureAsync(profile.Id, previousPictureKey);
-        }
-
-        return new UserProfileSaveResult(profile.Id, previousPictureKey, currentPictureKey);
-    }
-
-    internal async Task DeleteSupersededPictureAsync(Guid profileId, string key)
-    {
-        try
-        {
-            await fileStorage.DeleteAsync(key, CancellationToken.None);
-        }
-        catch (Exception ex)
-        {
-            logger.LogWarning(ex,
-                "Failed to delete superseded profile picture for {ProfileId}; current picture metadata is already committed",
-                profileId);
+            if (newPictureKey is not null || !string.Equals(previousPictureKey, currentPictureKey, StringComparison.Ordinal))
+                await DeleteSupersededPictureAsync(profile.Id, previousPictureKey, newPictureKey);
         }
     }
 
-    // A failed save may have committed. Verify its persisted reference before deleting new bytes.
-    private async Task DeleteUnreferencedPictureAsync(Guid profileId, string key)
+    internal async Task DeleteSupersededPictureAsync(Guid profileId, params string?[] keys)
     {
+        var candidates = keys.OfType<string>().Distinct(StringComparer.Ordinal).ToList();
+        if (candidates.Count == 0) return;
         try
         {
             var picture = await repo.GetProfilePictureLocationAsync(profileId, CancellationToken.None);
-            if (picture is { } current && string.Equals(
-                ProfilePictureKeys.Resolve(profileId, current.ContentType, current.StorageKey), key,
-                StringComparison.Ordinal))
-                return;
-
-            await fileStorage.DeleteAsync(key, CancellationToken.None);
+            var currentKey = picture is { } current
+                ? ProfilePictureKeys.Resolve(profileId, current.ContentType, current.StorageKey)
+                : null;
+            foreach (var key in candidates.Where(key => !string.Equals(key, currentKey, StringComparison.Ordinal)))
+            {
+                try
+                {
+                    await fileStorage.DeleteAsync(key, CancellationToken.None);
+                }
+                catch (Exception ex)
+                {
+                    logger.LogWarning(ex, "Failed to delete superseded profile picture for {ProfileId}", profileId);
+                }
+            }
         }
         catch (Exception ex)
         {
-            logger.LogWarning(ex,
-                "Failed to verify or clean up profile picture for {ProfileId} after a failed save", profileId);
+            logger.LogWarning(ex, "Failed to verify profile picture references for {ProfileId}; retaining files", profileId);
         }
     }
 

@@ -115,6 +115,29 @@ public class CampContactServiceTests : IDisposable
     }
 
     [HumansFact]
+    public async Task Contact_notice_routes_merged_leads_to_one_live_recipient()
+    {
+        var archivedLead = Guid.NewGuid();
+        var liveLead = Guid.NewGuid();
+        var person = UserInfo.Create(new User { Id = liveLead, PreferredLanguage = "es" }, [], [], null);
+        _users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, UserInfo> { [archivedLead] = person, [liveLead] = person });
+
+        var result = await _service.SendFacilitatedMessageAsync(
+            _campId, "camp@example.com", "Camp", _senderId, "Alice", "alice@example.com",
+            "Hello", false, [archivedLead, liveLead, archivedLead], "/Barrios/camp");
+
+        result.Success.Should().BeTrue();
+        var notice = _notificationEmitter.ReceivedCalls().Should().ContainSingle().Subject.GetArguments();
+        notice[0].Should().Be(CampsNotificationSources.FacilitatedMessageReceived);
+        ((IReadOnlyList<Guid>)notice[4]!).Should().ContainSingle().Which.Should().Be(liveLead);
+        var culture = CultureInfo.GetCultureInfo("es");
+        notice[3].Should().Be(string.Format(culture,
+            new ResourceManager(typeof(CampsResource)).GetString("Camps_Notification_MessageReceived", culture)!, "Camp"));
+        notice[10].Should().Be(CancellationToken.None);
+    }
+
+    [HumansFact]
     public async Task Contact_notice_failed_language_lookup_falls_back_to_English()
     {
         _users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())

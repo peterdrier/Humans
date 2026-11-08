@@ -1,7 +1,6 @@
 using System.Globalization;
 using Humans.AuditLog.Contracts;
 using Humans.Base.Extensions;
-using Humans.Email.Contracts;
 using Humans.Finance.Contracts;
 using Humans.Notifications.Contracts;
 using Humans.Preapprovals.Contracts;
@@ -13,27 +12,19 @@ using NodaTime;
 namespace Humans.Preapprovals.Services;
 
 /// <summary>
-/// Every state change is a person's action (or Expenses' on their behalf); the only timer is the reminder pass, which
-/// never touches a grant.
+/// Every state change is a person's action (or Expenses' on their behalf). Deadline reminders have a separate owner.
 /// </summary>
 /// <remarks>"Today" is the Europe/Madrid date, the zone the association books in.</remarks>
 internal sealed partial class PreapprovalService(
     IPreapprovalRepository repository,
     IUserService users,
     IFinanceService finance,
-    INotificationEmitter notifications,
-    INotificationAutoResolve notificationResolve,
-    IEmailService email,
-    PreapprovalsEmails emailFactory,
+    PreapprovalNotices notices,
     IAuditLogService auditLog,
     IClock clock,
     ILogger<PreapprovalService> logger) : IPreapprovalManagement
 {
-    private readonly PreapprovalNotices notices = new(users, notifications, notificationResolve, email, emailFactory, logger);
-
-    private static readonly DateTimeZone MadridZone = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
-
-    internal const string ReminderJobName = "PreapprovalRemindersJob";
+    internal static readonly DateTimeZone MadridZone = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
 
     private LocalDate Today => clock.GetCurrentInstant().InZone(MadridZone).Date;
 
@@ -191,7 +182,7 @@ internal sealed partial class PreapprovalService(
         p.Managers.Select(m => m.UserId).ToList(),
         p.Grants.Select(g => ToInfo(g, p)).ToList());
 
-    private static GrantInfo ToInfo(PreapprovalGrant g) => ToInfo(g, g.Program);
+    internal static GrantInfo ToInfo(PreapprovalGrant g) => ToInfo(g, g.Program);
 
     private static GrantInfo ToInfo(PreapprovalGrant g, PreapprovalProgram p) => new(
         g.Id, g.ProgramId, p.Name, p.Kind, g.BeneficiaryUserId, g.Label, g.MaxAmount, g.Status,
@@ -225,7 +216,7 @@ internal sealed partial class PreapprovalService(
         : decimal.Round(amount, 2) != amount ? new(PreapprovalErrorKeys.AmountPrecision)
         : null;
 
-    private static string Euros(decimal amount) => amount.ToString("N2", CultureInfo.InvariantCulture) + " €";
+    internal static string Euros(decimal amount) => amount.ToString("N2", CultureInfo.InvariantCulture) + " €";
     private Task AuditGrantAsync(
         AuditActionDefinition action, Domain.PreapprovalGrant grant, string description, Guid actorUserId,
         Guid? expenseReportId = null) =>

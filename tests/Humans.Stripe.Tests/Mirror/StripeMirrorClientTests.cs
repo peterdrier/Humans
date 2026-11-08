@@ -88,6 +88,39 @@ public sealed class StripeMirrorClientTests
         fetch.Balances.Single().Currency.Should().Be("EUR");
     }
 
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task Bounded_mirror_fields_preserve_complete_unicode_characters(bool pairFits)
+    {
+        var namePrefix = new string('n', pairFits ? 254 : 255);
+        var descriptionPrefix = new string('d', pairFits ? 998 : 999);
+        var name = System.Text.Json.JsonSerializer.Serialize(namePrefix + "😀tail");
+        var description = System.Text.Json.JsonSerializer.Serialize(descriptionPrefix + "😀tail");
+        Respond(r => Route(r)
+            .Replace("\"Order for Elsewhere\"", description, StringComparison.Ordinal)
+            .Replace("\"Ana Buyer\"", name, StringComparison.Ordinal)
+            .Replace("\"buyer@example.org\"", name, StringComparison.Ordinal)
+            .Replace("\"reconciliation_status\":\"completed\"",
+                "\"reconciliation_status\":\"completed\",\"failure_message\":" + description, StringComparison.Ordinal));
+        var account = new StripeMirrorAccount { Name = "Tickets", Id = "acct_t", ApiKey = "sk_org_test" };
+
+        var fetch = await new StripeMirrorClient(_http).FetchAsync(account, Ct);
+
+        var charge = fetch.Transactions[0];
+        var suffix = pairFits ? "😀" : "";
+        charge.CustomerName.Should().Be(namePrefix + suffix);
+        charge.CustomerEmail.Should().Be(namePrefix + suffix);
+        charge.Description.Should().Be(descriptionPrefix + suffix);
+        fetch.Payouts[0].FailureMessage.Should().Be(descriptionPrefix + suffix);
+        var encoder = new System.Text.UTF8Encoding(false, true);
+        foreach (var value in new[] { charge.CustomerName, charge.CustomerEmail, charge.Description, fetch.Payouts[0].FailureMessage })
+        {
+            var encode = () => encoder.GetBytes(value!);
+            encode.Should().NotThrow();
+        }
+    }
+
     [HumansFact]
     public async Task An_account_with_its_own_key_sends_no_Stripe_Context()
     {

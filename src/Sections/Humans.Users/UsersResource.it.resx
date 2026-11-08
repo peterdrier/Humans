@@ -815,4 +815,5 @@
   <data name="Users_Profile_NewLayoutNote" xml:space="preserve">
     <value>Anteprima di un nuovo layout. La pagina attuale:</value>
   </data>
+  <data name="Users_Profile_InvalidLocation" xml:space="preserve"><value>Seleziona una posizione valida.</value></data>
 </root>

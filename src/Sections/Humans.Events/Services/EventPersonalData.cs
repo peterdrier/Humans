@@ -56,22 +56,23 @@ internal sealed class EventPersonalData(
         return (projected, eventSettings);
     }
 
-    public async Task<bool> AddFavouriteAsync(Guid userId, Guid eventId, int? dayOffset, CancellationToken ct = default)
+    public async Task<AddFavouriteOutcome> AddFavouriteAsync(Guid userId, Guid eventId, int? dayOffset, CancellationToken ct = default)
     {
-        var ev = await repo.GetApprovedEventByIdAsync(eventId, ct) is { } found
-            && found.IsInEvent(await GetGuideEventIdAsync(ct))
-            ? found
-            : throw new KeyNotFoundException();
+        var ev = await repo.GetApprovedEventByIdAsync(eventId, ct);
+        if (ev is null || !ev.IsInEvent(await GetGuideEventIdAsync(ct)))
+            return AddFavouriteOutcome.EventUnavailable;
         if (dayOffset is { } day && ev.IsRecurring && !string.IsNullOrWhiteSpace(ev.RecurrenceDays)
             && !ev.RecurrenceDays
                 .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
                 .Any(value => int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var offset)
                     && offset == day))
         {
-            throw new ArgumentOutOfRangeException(nameof(dayOffset));
+            return AddFavouriteOutcome.InvalidDay;
         }
 
-        return await repo.AddFavouriteIfAbsentAsync(BuildFavourite(userId, eventId, dayOffset), ct);
+        return await repo.AddFavouriteIfAbsentAsync(BuildFavourite(userId, eventId, dayOffset), ct)
+            ? AddFavouriteOutcome.Added
+            : AddFavouriteOutcome.AlreadyExists;
     }
 
     public Task<bool> RemoveFavouriteAsync(Guid userId, Guid eventId, int? dayOffset, CancellationToken ct = default)

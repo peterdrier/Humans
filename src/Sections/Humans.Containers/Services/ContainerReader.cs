@@ -31,14 +31,14 @@ internal sealed class ContainerReader(
 
     public async Task<IReadOnlyList<ContainerPlacementDto>> GetPlacementsByYearAsync(int year, CancellationToken ct = default)
     {
-        var placements = await repo.GetPlacementsByYearAsync(year, ct);
+        var placements = await repo.GetPlacementsAsync(year, ct);
         return placements.Select(ToPlacementDto).ToList();
     }
 
     public async Task<ContainerAdminOverview> GetAdminOverviewAsync(int year, CancellationToken ct = default)
     {
         var allContainers = await repo.GetAllAsync(ct);
-        var placements = await repo.GetPlacementsByYearAsync(year, ct);
+        var placements = await repo.GetPlacementsAsync(year, ct);
         var placementByContainerId = placements.ToDictionary(p => p.ContainerId, p => p);
         var imagesByContainerId = await LoadImagesAsync(allContainers, ct);
 

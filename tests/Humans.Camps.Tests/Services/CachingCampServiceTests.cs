@@ -760,7 +760,7 @@ public sealed class CachingCampServiceTests : CampsTestHarness
         var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         _innerSubstitute.GetCampsForYearAsync(2026, Arg.Any<CancellationToken>()).Returns(async _ =>
         {
-            started.SetResult();
+            started.TrySetResult();
             await release.Task.WaitAsync(ct);
             return [];
         });
@@ -778,6 +778,7 @@ public sealed class CachingCampServiceTests : CampsTestHarness
 
         (await _service.GetSettingsAsync(ct)).OpenSeasons.Should().Contain(2027,
             "finishing the older camp warmup must not restore its settings snapshot");
+        await _innerSubstitute.Received().GetCampsForYearAsync(2027, Arg.Any<CancellationToken>());
     }
 
     [HumansFact]

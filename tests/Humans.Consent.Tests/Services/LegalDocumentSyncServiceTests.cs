@@ -15,6 +15,8 @@ using Humans.AuditLog.Contracts;
 using AwesomeAssertions;
 using Humans.Notifications.Contracts;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
+using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using NodaTime;
@@ -90,6 +92,99 @@ public sealed class LegalDocumentSyncServiceTests : ConsentTestHarness
             }),
             Clock,
             NullLogger<LegalDocumentSyncService>.Instance);
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData("create")]
+    [Xunit.InlineData("update")]
+    [Xunit.InlineData("archive")]
+    [Xunit.InlineData("summary")]
+    [Xunit.InlineData("touch")]
+    [Xunit.InlineData("publish")]
+    public async Task LegalWrite_LostSaveAcknowledgement_DiscardsStaleSnapshot(string operation)
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var document = await SeedDocumentAsync("Privacy", folderPath: "privacy/", currentCommitSha: "old-sha");
+        var versionId = Guid.NewGuid();
+        LegalDb.DocumentVersions.Add(new DocumentVersion
+        {
+            Id = versionId,
+            LegalDocumentId = document.Id,
+            VersionNumber = "v1.0",
+            CommitSha = "old-sha",
+            Content = new Dictionary<string, string>(StringComparer.Ordinal) { ["es"] = "old" },
+            EffectiveFrom = Clock.GetCurrentInstant(),
+            CreatedAt = Clock.GetCurrentInstant(),
+            ChangesSummary = "old"
+        });
+        await SaveAllAsync(ct);
+        var services = new ServiceCollection();
+        services.AddKeyedScoped<ILegalDocumentSyncManagement>(CachingLegalDocumentSyncService.InnerServiceKey,
+            (_, _) => _service);
+        var cache = new CachingLegalDocumentSyncService(
+            services.BuildServiceProvider().GetRequiredService<IServiceScopeFactory>(), Clock,
+            NullLogger<CachingLegalDocumentSyncService>.Instance);
+        (await cache.GetActiveRequiredDocumentsForTeamsAsync(null, ct)).Should().ContainSingle();
+
+        var failure = new IOException("Persistence acknowledgement failed");
+        var options = new DbContextOptionsBuilder<LegalDbContext>(
+            (DbContextOptions<LegalDbContext>)LegalDb.GetService<IDbContextOptions>())
+            .AddInterceptors(new LostLegalSaveAcknowledgement(failure)).Options;
+        var writer = new LegalDocumentSyncService(
+            new LegalDocumentRepository(new TestDbContextFactory<LegalDbContext>(options)),
+            _gitHub, Notifier, _teamService, _userService, cache, _audit,
+            Options.Create(new GitHubSettings()), Clock, NullLogger<LegalDocumentSyncService>.Instance);
+        var request = new AdminLegalDocumentUpsertRequest("Revised", _team.Id, true, true, 14, null);
+        Clock.Advance(Duration.FromHours(1));
+        StubGitHubFolder("privacy/", "new", string.Equals(operation, "touch", StringComparison.Ordinal) ? "old-sha" : "new-sha", "new summary");
+        Func<Task> write = operation switch
+        {
+            "create" => async () => { await writer.CreateLegalDocumentWithInitialSyncAsync(request, _actorUserId, ct); }
+            ,
+            "update" => async () => { await writer.UpdateLegalDocumentAsync(document.Id, request, _actorUserId, ct); }
+            ,
+            "archive" => async () => { await writer.ArchiveLegalDocumentAsync(document.Id, _actorUserId, ct); }
+            ,
+            "summary" => async () => { await writer.UpdateVersionSummaryAsync(document.Id, versionId, "revised summary", _actorUserId, ct); }
+            ,
+            _ => async () => { await writer.SyncDocumentAsync(document.Id, ct); }
+        };
+
+        (await write.Should().ThrowAsync<IOException>()).Which.Should().BeSameAs(failure);
+
+        cache.BulkInvalidations.Should().Be(1);
+        var refreshed = await cache.GetActiveRequiredDocumentsForTeamsAsync(null, ct);
+        switch (operation)
+        {
+            case "create":
+                refreshed.Should().HaveCount(2).And.Contain(d => d.Name == "Revised");
+                break;
+            case "update":
+                refreshed.Single().Name.Should().Be("Revised");
+                break;
+            case "archive":
+                refreshed.Should().BeEmpty();
+                break;
+            case "summary":
+                refreshed.Single().Versions.Single().ChangesSummary.Should().Be("revised summary");
+                break;
+            case "publish":
+                refreshed.Single().Versions.Should().HaveCount(2)
+                    .And.Contain(v => v.Content["es"] == "new");
+                break;
+            case "touch":
+                await using (var verify = await LegalDbFactory.CreateDbContextAsync(ct))
+                    (await verify.LegalDocuments.SingleAsync(ct)).LastSyncedAt.Should().Be(Clock.GetCurrentInstant());
+                break;
+        }
+        _audit.ReceivedCalls().Should().BeEmpty();
+        Notifier.ReceivedCalls().Should().BeEmpty();
+    }
+
+    private sealed class LostLegalSaveAcknowledgement(IOException failure) : SaveChangesInterceptor
+    {
+        public override ValueTask<int> SavedChangesAsync(
+            SaveChangesCompletedEventData eventData, int result, CancellationToken cancellationToken = default) => throw failure;
     }
 
     [HumansTheory]

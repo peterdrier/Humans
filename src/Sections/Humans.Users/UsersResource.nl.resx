@@ -823,4 +823,5 @@
   <data name="Users_Profile_NewLayoutNote" xml:space="preserve">
     <value>Voorbeeld van een nieuwe indeling. De huidige pagina:</value>
   </data>
+  <data name="Users_Profile_InvalidLocation" xml:space="preserve"><value>Selecteer een geldige locatie.</value></data>
 </root>

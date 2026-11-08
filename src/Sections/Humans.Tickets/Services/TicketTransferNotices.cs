@@ -21,13 +21,13 @@ internal sealed class TicketTransferNotices(
     {
         var ticketLabel = TicketLabel(attendee.AttendeeName, attendee.VendorTicketId);
         var reviewUrl = $"/Tickets/Admin/Transfers/Detail/{request.Id}";
-        var (senderEmail, senderName, senderCulture) = await SafeResolveSenderAsync(senderUserId, request.Id, ct);
+        var (senderId, senderEmail, senderName, senderCulture) = await SafeResolveSenderAsync(senderUserId, request.Id, ct);
 
         if (!string.IsNullOrWhiteSpace(senderEmail))
         {
             await SafeSendAsync(request.Id, "transfer-requested (sender)", () =>
                 emailService.SendAsync(emailMessages.TicketTransferRequested(
-                    senderUserId, senderEmail, senderName, request.ReceiverLegalName, ticketLabel, senderCulture), ct), ct);
+                    senderId, senderEmail, senderName, request.ReceiverLegalName, ticketLabel, senderCulture), ct), ct);
         }
 
         await SafeSendAsync(request.Id, "transfer-requested (team)", () =>
@@ -43,22 +43,22 @@ internal sealed class TicketTransferNotices(
         var ticketLabel = TicketLabel(
             attendee?.AttendeeName ?? request.ReceiverLegalName,
             attendee?.VendorTicketId ?? string.Empty);
-        var (senderEmail, senderName, senderCulture) = await SafeResolveSenderAsync(request.SenderUserId, request.Id, ct);
+        var (senderId, senderEmail, senderName, senderCulture) = await SafeResolveSenderAsync(request.SenderUserId, request.Id, ct);
 
         if (!string.IsNullOrWhiteSpace(senderEmail))
         {
             await SafeSendAsync(request.Id, "transfer-decision (sender)", () =>
                 emailService.SendAsync(emailMessages.TicketTransferDecision(
-                    request.SenderUserId, senderEmail, senderName, successful, ticketLabel,
+                    senderId, senderEmail, senderName, successful, ticketLabel,
                     request.ReceiverLegalName, reason, senderCulture), ct), ct);
         }
 
         if (!string.IsNullOrWhiteSpace(request.ReceiverEmail))
         {
-            var receiverCulture = await SafeResolveReceiverCultureAsync(request, ct);
+            var (receiverId, receiverCulture) = await SafeResolveReceiverAsync(request, ct);
             await SafeSendAsync(request.Id, "transfer-decision (receiver)", () =>
                 emailService.SendAsync(emailMessages.TicketTransferDecision(
-                    request.ReceiverUserId, request.ReceiverEmail, request.ReceiverLegalName, successful, ticketLabel,
+                    receiverId, request.ReceiverEmail, request.ReceiverLegalName, successful, ticketLabel,
                     request.ReceiverLegalName, reason, receiverCulture), ct), ct);
         }
     }
@@ -79,7 +79,7 @@ internal sealed class TicketTransferNotices(
         }
     }
 
-    private async Task<(string? Email, string Name, string? Culture)> SafeResolveSenderAsync(
+    private async Task<(Guid UserId, string? Email, string Name, string? Culture)> SafeResolveSenderAsync(
         Guid senderUserId, Guid transferId, CancellationToken ct)
     {
         try
@@ -94,17 +94,19 @@ internal sealed class TicketTransferNotices(
         {
             logger.LogError(ex, "Failed to resolve sender {SenderUserId} for transfer {TransferId} notifications",
                 senderUserId, transferId);
-            return (null, "there", null);
+            return (senderUserId, null, "there", null);
         }
     }
 
     // A failed lookup falls back to English, never the acting admin's request culture.
-    private async Task<string> SafeResolveReceiverCultureAsync(TicketTransferRequest request, CancellationToken ct)
+    private async Task<(Guid UserId, string Culture)> SafeResolveReceiverAsync(TicketTransferRequest request, CancellationToken ct)
     {
         try
         {
-            var language = (await userService.GetUserInfoAsync(request.ReceiverUserId, ct))?.PreferredLanguage;
-            return language.IsSupportedCultureCode() ? language! : CultureCatalog.DefaultCultureCode;
+            var info = await userService.GetUserInfoAsync(request.ReceiverUserId, ct);
+            var language = info?.PreferredLanguage;
+            return (info?.Id ?? request.ReceiverUserId,
+                language.IsSupportedCultureCode() ? language! : CultureCatalog.DefaultCultureCode);
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {
@@ -114,7 +116,7 @@ internal sealed class TicketTransferNotices(
         {
             logger.LogError(ex, "Failed to resolve receiver {ReceiverUserId} culture for transfer {TransferId} notification",
                 request.ReceiverUserId, request.Id);
-            return "en";
+            return (request.ReceiverUserId, "en");
         }
     }
 
@@ -136,13 +138,13 @@ internal sealed class TicketTransferNotices(
         }
     }
 
-    private async Task<(string? Email, string Name, string? Culture)> ResolveSenderAsync(Guid senderUserId, CancellationToken ct)
+    private async Task<(Guid UserId, string? Email, string Name, string? Culture)> ResolveSenderAsync(Guid senderUserId, CancellationToken ct)
     {
         var info = await userService.GetUserInfoAsync(senderUserId, ct);
         var email = info?.Email;
         var name = info?.BurnerName;
         var language = info?.PreferredLanguage;
-        return (email, string.IsNullOrWhiteSpace(name) ? "there" : name,
+        return (info?.Id ?? senderUserId, email, string.IsNullOrWhiteSpace(name) ? "there" : name,
             language.IsSupportedCultureCode() ? language : CultureCatalog.DefaultCultureCode);
     }
 

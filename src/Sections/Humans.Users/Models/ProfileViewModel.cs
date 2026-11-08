@@ -43,8 +43,10 @@ internal sealed class ProfileViewModel
     [StringLength(2, ErrorMessage = "Validation_MaxLength")]
     public string? CountryCode { get; set; }
 
+    [Range(-90d, 90d, ErrorMessage = "Validation_Range")]
     public double? Latitude { get; set; }
 
+    [Range(-180d, 180d, ErrorMessage = "Validation_Range")]
     public double? Longitude { get; set; }
 
     [StringLength(512, ErrorMessage = "Validation_MaxLength")]

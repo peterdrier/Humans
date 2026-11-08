@@ -710,15 +710,18 @@ internal sealed class IssuesService(
         var expired = await repo.GetExpiredTerminalAsync(cutoff, ct);
         if (expired.Count == 0) return 0;
 
-        var (deleted, screenshotKeys) = await repo.DeleteByIdsAsync(expired, ct);
-
-        await DeleteScreenshotsAsync(screenshotKeys);
-
-        logger.LogInformation(
-            "PurgeExpiredAsync: deleted {Count} issues older than {Cutoff} (retention {Days}d)",
-            deleted, cutoff, RetentionPeriod.Days);
-
-        return deleted;
+        try
+        {
+            var deleted = await repo.DeleteByIdsAsync(expired.Select(issue => issue.Id).ToList(), ct);
+            logger.LogInformation(
+                "PurgeExpiredAsync: deleted {Count} issues older than {Cutoff} (retention {Days}d)",
+                deleted, cutoff, RetentionPeriod.Days);
+            return deleted;
+        }
+        finally
+        {
+            await DeleteScreenshotsAsync(expired);
+        }
     }
 
     public async Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct)
@@ -788,19 +791,21 @@ internal sealed class IssuesService(
     }
 
     /// <summary>
-    /// Best-effort screenshot cleanup after retention has committed its row removal.
+    /// Best-effort cleanup of pre-read screenshots whose issue rows are confirmed deleted.
     /// </summary>
-    private async Task DeleteScreenshotsAsync(IReadOnlyList<string> keys)
+    private async Task DeleteScreenshotsAsync(IReadOnlyList<Issue> issues)
     {
-        foreach (var key in keys)
+        foreach (var issue in issues)
         {
+            if (issue.ScreenshotStoragePath is not { } key) continue;
             try
             {
+                if (await repo.GetByIdAsync(issue.Id, CancellationToken.None) is not null) continue;
                 await fileStorage.DeleteAsync(key, CancellationToken.None);
             }
             catch (Exception ex)
             {
-                logger.LogWarning(ex, "Failed to delete issue screenshot {Key}", key);
+                logger.LogWarning(ex, "Failed to verify or delete issue screenshot {Key}", key);
             }
         }
     }

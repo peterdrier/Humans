@@ -29,6 +29,37 @@ namespace Humans.Camps.Tests.Services;
 
 public sealed class CampServiceTests : CampsTestHarness
 {
+
+    public enum CanonicalNotice { SeasonClosure, Approved, Rejected }
+
+    [HumansTheory]
+    [InlineData(CanonicalNotice.SeasonClosure)]
+    [InlineData(CanonicalNotice.Approved)]
+    [InlineData(CanonicalNotice.Rejected)]
+    public async Task CanonicalNoticeRecipients_CampMembership(CanonicalNotice notice)
+    {
+        var source = Guid.NewGuid();
+        var live = Guid.NewGuid();
+        var other = Guid.NewGuid();
+        var repo = Substitute.For<ICampRepository>();
+        var camp = new Camp { Id = Guid.NewGuid(), Slug = "camp" };
+        repo.GetByIdAsync(camp.Id, Arg.Any<CancellationToken>()).Returns(camp);
+        repo.GetPendingRequesterUserIdsForSeasonAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(new List<Guid> { source, live, other });
+        foreach (var id in new[] { source, live, other })
+            _userService.GetUserInfoAsync(id, Arg.Any<CancellationToken>()).Returns(
+                UserInfo.Create(new User { Id = id == source ? live : id, PreferredLanguage = "es" }, [], [], null));
+        var notices = new CampMembershipNotices(repo, _userService, Notifier, NullLogger<CampService>.Instance);
+
+        if (notice == CanonicalNotice.SeasonClosure)
+            await notices.NotifyPendingRequestersOfSeasonClosureAsync(Guid.NewGuid(), camp.Id, 2026);
+        else
+            await notices.NotifyDecisionAsync(camp.Id, Guid.NewGuid(), source, Guid.NewGuid(), notice == CanonicalNotice.Approved);
+
+        var recipients = Notifier.ReceivedCalls().SelectMany(call => (IReadOnlyList<Guid>)call.GetArguments()[4]!).ToList();
+        recipients.Should().BeEquivalentTo(notice == CanonicalNotice.SeasonClosure ? new[] { live, other } : [live]);
+    }
+
     private static readonly Guid TestActorId = Guid.NewGuid();
     private static readonly EventSettingsInfo Event2025 = BurnFixtures.Burn(eventName: "Nowhere 2025", year: 2025);
     private static readonly EventSettingsInfo Event2026 = BurnFixtures.Burn(eventName: "Nowhere 2026", year: 2026);
@@ -2652,6 +2683,103 @@ public sealed class CampServiceTests : CampsTestHarness
 
         await act.Should().ThrowAsync<InvalidOperationException>();
         AuditLog.ReceivedCalls().Should().BeEmpty();
+    }
+
+    [HumansTheory]
+    [InlineData(false, "before")]
+    [InlineData(false, "after")]
+    [InlineData(false, "audit")]
+    [InlineData(false, "verification")]
+    [InlineData(true, "before")]
+    [InlineData(true, "after")]
+    [InlineData(true, "audit")]
+    [InlineData(true, "verification")]
+    public async Task Failed_image_deletion_cleans_only_confirmed_unreferenced_files(bool deleteCamp, string failureStage)
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var failure = new IOException("Deletion failed");
+        var interceptor = new FailImageDeletionSave(failure, string.Equals(failureStage, "before", StringComparison.Ordinal));
+        var options = new DbContextOptionsBuilder<CampsDbContext>()
+            .UseInMemoryDatabase(Guid.NewGuid().ToString())
+            .ConfigureWarnings(w => w.Ignore(InMemoryEventId.TransactionIgnoredWarning))
+            .AddInterceptors(interceptor).Options;
+        var factory = new TestDbContextFactory<CampsDbContext>(options);
+        var camp = new Camp { Id = Guid.NewGuid(), Slug = "delete-images" };
+        var image = new CampImage { Id = Guid.NewGuid(), CampId = camp.Id, StoragePath = "uploads/camps/photo.jpg" };
+        var other = new CampImage { Id = Guid.NewGuid(), CampId = camp.Id, StoragePath = "uploads/camps/other.jpg" };
+        await using (var seed = new CampsDbContext(options))
+        {
+            seed.Camps.Add(camp);
+            seed.CampImages.AddRange(image, other);
+            await seed.SaveChangesAsync(ct);
+        }
+        var inner = new CampRepository(factory);
+        var repository = Substitute.For<ICampRepository>();
+        var campReads = 0;
+        var imageReads = 0;
+        repository.GetByIdAsync(camp.Id, Arg.Any<CancellationToken>()).Returns(call =>
+            ++campReads > 1 && string.Equals(failureStage, "verification", StringComparison.Ordinal)
+                ? Task.FromException<Camp?>(new IOException("Verification unavailable"))
+                : inner.GetByIdAsync(camp.Id, call.Arg<CancellationToken>()));
+        repository.GetImageForMutationAsync(image.Id, Arg.Any<CancellationToken>()).Returns(call =>
+            ++imageReads > 1 && string.Equals(failureStage, "verification", StringComparison.Ordinal)
+                ? Task.FromException<CampImage?>(new IOException("Verification unavailable"))
+                : inner.GetImageForMutationAsync(image.Id, call.Arg<CancellationToken>()));
+        repository.DeleteCampAsync(camp.Id, Arg.Any<CancellationToken>()).Returns(call => inner.DeleteCampAsync(camp.Id, call.Arg<CancellationToken>()));
+        repository.DeleteImageAsync(image.Id, Arg.Any<CancellationToken>()).Returns(call => inner.DeleteImageAsync(image.Id, call.Arg<CancellationToken>()));
+        var files = new HashSet<string>(StringComparer.Ordinal) { image.StoragePath, other.StoragePath };
+        var storage = Substitute.For<IFileStorage>();
+        storage.DeleteAsync(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            call.Arg<CancellationToken>().Should().Be(CancellationToken.None);
+            files.Remove(call.Arg<string>());
+            return Task.CompletedTask;
+        });
+        if (string.Equals(failureStage, "audit", StringComparison.Ordinal))
+            AuditLog.LogAsync(deleteCamp ? CampsAuditActions.CampDeleted : CampsAuditActions.CampImageDeleted,
+                Arg.Any<string>(), deleteCamp ? camp.Id : image.Id, Arg.Any<string>(), TestActorId,
+                Arg.Any<Guid?>(), Arg.Any<string?>()).Returns(Task.FromException(failure));
+        interceptor.Armed = failureStage is "before" or "after" or "verification";
+        var service = new CampService(repository, AuditLog, Substitute.For<ISystemTeamSync>(), storage, Notifier,
+            new Lazy<ICampRoleService>(() => _campRoleService), new Lazy<ICityPlanningWrite>(() => _cityPlanningService),
+            _userService, Substitute.For<Humans.Tickets.Contracts.ITicketService>(), _settingsService,
+            Clock, NullLogger<CampService>.Instance);
+
+        Func<Task> action = async () =>
+        {
+            if (deleteCamp) await service.DeleteCampAsync(camp.Id, TestActorId, ct);
+            else await service.DeleteImageAsync(camp.Id, image.Id, TestActorId, ct);
+        };
+        (await action.Should().ThrowAsync<IOException>()).Which.Should().BeSameAs(failure);
+
+        if (failureStage is "before" or "verification")
+            files.Should().BeEquivalentTo([image.StoragePath, other.StoragePath]);
+        else if (deleteCamp)
+            files.Should().BeEmpty();
+        else
+            files.Should().BeEquivalentTo([other.StoragePath]);
+        await using var verify = new CampsDbContext(options);
+        var stillPresent = deleteCamp
+            ? await verify.Camps.AnyAsync(c => c.Id == camp.Id, ct)
+            : await verify.CampImages.AnyAsync(i => i.Id == image.Id, ct);
+        stillPresent.Should().Be(string.Equals(failureStage, "before", StringComparison.Ordinal));
+    }
+
+    private sealed class FailImageDeletionSave(Exception failure, bool beforeCommit) : SaveChangesInterceptor
+    {
+        public bool Armed { get; set; }
+        public override ValueTask<InterceptionResult<int>> SavingChangesAsync(DbContextEventData eventData,
+            InterceptionResult<int> result, CancellationToken cancellationToken = default)
+        {
+            if (Armed && beforeCommit) throw failure;
+            return ValueTask.FromResult(result);
+        }
+        public override ValueTask<int> SavedChangesAsync(SaveChangesCompletedEventData eventData,
+            int result, CancellationToken cancellationToken = default)
+        {
+            if (Armed && !beforeCommit) throw failure;
+            return ValueTask.FromResult(result);
+        }
     }
 
     [HumansTheory]

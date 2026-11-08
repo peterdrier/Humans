@@ -279,54 +279,29 @@ internal sealed class MembershipCalculator(
         var usersById = await userService.GetUserInfosAsync(allIds, ct);
 
         var pendingDeletion = allIds
-            .Where(id => usersById.TryGetValue(id, out var u) && u.DeletionRequestedAt != null)
+            .Where(id => usersById.TryGetValue(id, out var u)
+                && (u.State == UserState.DeletePending || u.DeletionRequestedAt != null))
             .ToHashSet();
 
         var remaining = allIds.Where(id => !pendingDeletion.Contains(id)).ToList();
-        var incompleteSignup = new HashSet<Guid>();
-        foreach (var id in remaining)
-        {
-            if (!usersById.TryGetValue(id, out var u) || u.Profile is null)
-            {
-                incompleteSignup.Add(id);
-            }
-        }
-
-        remaining = remaining.Where(id => !incompleteSignup.Contains(id)).ToList();
-
-        var suspended = new HashSet<Guid>();
-        foreach (var id in remaining)
-        {
-            if (usersById[id].IsSuspended)
-            {
-                suspended.Add(id);
-            }
-        }
-
+        var suspended = remaining
+            .Where(id => usersById.TryGetValue(id, out var u) && u.IsSuspended)
+            .ToHashSet();
         remaining = remaining.Where(id => !suspended.Contains(id)).ToList();
 
-        // Rejected → IncompleteSignup.
+        var incompleteSignup = remaining
+            .Where(id => !usersById.TryGetValue(id, out var u) || u.Profile is null || u.State != UserState.Active)
+            .ToHashSet();
+        remaining = remaining.Where(id => !incompleteSignup.Contains(id)).ToList();
+
+        // Rejection kicks a member out; Clear/Flag review annotations never gate admission.
         var reviews = remaining.Count == 0
             ? new Dictionary<Guid, ConsentReviewInfo>()
             : await ConsentService.GetConsentReviewsAsync(ct);
-        var pendingApproval = new HashSet<Guid>();
         foreach (var id in remaining)
-        {
-            var review = reviews.GetValueOrDefault(usersById[id].Id) ?? ConsentReviewInfo.None(id);
-            if (!review.IsApproved)
-            {
-                if (review.IsRejected)
-                {
-                    incompleteSignup.Add(id);
-                }
-                else
-                {
-                    pendingApproval.Add(id);
-                }
-            }
-        }
-
-        remaining = remaining.Where(id => !pendingApproval.Contains(id) && !incompleteSignup.Contains(id)).ToList();
+            if (reviews.GetValueOrDefault(usersById[id].Id)?.IsRejected == true)
+                incompleteSignup.Add(id);
+        remaining = remaining.Where(id => !incompleteSignup.Contains(id)).ToList();
 
         var usersWithConsents = await GetUsersWithAllRequiredConsentsForTeamAsync(remaining, SystemTeamIds.Volunteers, ct);
         var active = remaining.Where(usersWithConsents.Contains).ToHashSet();
@@ -334,7 +309,6 @@ internal sealed class MembershipCalculator(
 
         return new MembershipPartition(
             incompleteSignup,
-            pendingApproval,
             active,
             missingConsents,
             suspended,
