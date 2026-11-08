@@ -125,7 +125,7 @@ DI registration. The existing survey service remains the caller-facing contract.
 
 ### SurveyDataExport (internal, owned by SurveyService)
 
-Repository: `ISurveyRepository`. Builds the three GDPR export slices (`SurveyResponses`,
+Repository: `ISurveyRepository`. Builds the GDPR export slices (`SurveyResponses`,
 `AuthoredSurveys`, `SurveyInvitations`) behind `SurveyService`'s `IUserDataContributor`; resolves
 the merge chain through `IUserService`. Read-only; no DI registration, no cache.
 

@@ -266,7 +266,7 @@ Internal `HoldedAccountReader` owns account-list, statement and journal-entry pr
 Connector DTOs expose consumed fields only; usage reads contain the API period and call count, and contact creation carries no unsupported custom user id.
 
 **Connector implementation:** `HoldedClient` delegates to internal purchases, sales, contacts, accounting and treasury clients. One shared `HoldedTransport` owns auth, retry, paging, metering and timing; endpoint payloads and parsers stay with their operation group. The existing public client contract and typed-client registration are unchanged.
-**Owned tables:** the seven above
+**Owned tables:** those above
 **Target shape:** [`health.md`](health.md); the single-mirror design is
 the 2026-10-30 Holded section-flow record (phase 1 built the reads and
 pages; phase 2 moved every outside caller off `IHoldedClient`). Historical design record:

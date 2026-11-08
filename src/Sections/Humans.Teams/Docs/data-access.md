@@ -163,7 +163,7 @@ decorator remain the entry point.
 
 ### TeamDataExport (internal, owned by TeamService)
 
-Repository: `ITeamRepository`. Builds the three GDPR export slices (`TeamMemberships`,
+Repository: `ITeamRepository`. Builds the GDPR export slices (`TeamMemberships`,
 `TeamJoinRequests`, `TeamEarlyEntry`) behind `TeamService`'s `IUserDataContributor` path.
 Read-only; no DI registration, no cache.
 

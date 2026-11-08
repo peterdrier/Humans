@@ -21,8 +21,8 @@ editorial docs and every mechanical entry dirty. Each dirty doc was checked agai
   lazy edges `ShiftManagementService` used to hold. 8 services joined the no-edge roster and ShiftViewService
   left it. `linkStyle` was re-indexed.
 - `service-data-access-map`: 31 extracted services got headings across 13 section maps. Finance `Service` and
-  `SepaBankBooking` now go through `IHoldedService`/`IHoldedWrite` and the TrackedCache slot. All four Shifts
-  dashboard cache keys are listed, and Store names its three helpers. In the rollup, the Feedback line is gone and
+  `SepaBankBooking` now go through `IHoldedService`/`IHoldedWrite` and the TrackedCache slot. Every Shifts
+  dashboard cache key is listed, and Store names all its helpers. In the rollup, the Feedback line is gone and
   the AdminDatabaseDiagnostics entry covers `/Debug/Database`.
 - `authorization-inventory`: added the UsersController row in Users `authorization.md`. The Teams Roster row now
   names `ResolveTeamViewAsync`.
@@ -40,7 +40,7 @@ None.
 ## Fixed in place (editorial drift)
 
 - **Money:** `admin-shell.md` (Stripe sidebar group, Finance "Pleo reconcile" tab); `sepa-payout.md` (a retry
-  after PARTIAL resumes from saved payment ids); `Holded.md` (seven owned tables, contact/bank mirrors, full
+  after PARTIAL resumes from saved payment ids); `Holded.md` (contact and bank-movement tables, mirrors, full
   inbound caller list: Expenses, Store, Workgroups, Backdoor); `workgroup-budget.md` (expense-account link uses
   the chart mirror); `Budget.md` (Feedback dropped from the decorator rationale).
 - **People:** `Teams-feature.md`, `Teams.md`, `hidden-teams.md`, guide Teams/Profiles (Roster through the
@@ -75,6 +75,13 @@ Surveys `ranked-choice-voting.md`, `grid-questions.md`, `survey-preview.md`, `su
 ## Proposed for review
 
 None — all candidates resolved this sweep.
+
+## Review follow-up
+
+- Codex: derived counts (`Holded.md` owned tables, GDPR export slice counts in Surveys/Teams/Workgroups
+  data-access maps) deleted per `no-derived-aggregates-in-docs`.
+- `test-site` smoke steps retargeted to `/Users/Map` and `/Users/Birthdays` (Peter, 2026-11-08). The
+  `admin-shell.spec.ts` and `Users.md` items are left as they are (Peter, 2026-11-08).
 
 ## Questions
 

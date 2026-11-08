@@ -105,7 +105,7 @@ guards. No writes, cache or separate DI registration.
 
 ### WorkgroupDataExport (internal, owned by WorkgroupService)
 
-Repository: `IWorkgroupRepository`. Builds the six GDPR export slices (`WorkgroupApplications`,
+Repository: `IWorkgroupRepository`. Builds the GDPR export slices (`WorkgroupApplications`,
 `WorkgroupMemberships`, `WorkgroupLogEntries`, `WorkgroupMeetings`, `WorkgroupDocuments`,
 `WorkgroupComments`) from the member's own rows (`GetRowsForUserAsync`). Read-only; no DI
 registration, no cache, no cross-section calls.
