@@ -1,5 +1,6 @@
 <!-- freshness:triggers
   src/Sections/Humans.Grants/**
+  tests/Humans.Grants.Tests/**
   src/Sections/Humans.LowIncome/Controllers/LowIncomeAdminController.cs
 -->
 <!-- freshness:flag-on-change
@@ -25,7 +26,7 @@ The association hands individual people entitlements: a cheaper ticket, early en
 - I see and act only on the programs I manage; I cannot issue under a source program.
 
 **As a source section (Low Income), I issue and revoke** through `IGrantWrite`, passing only my source key.
-- Grants resolves the open program for the key; none open is an error.
+- Grants resolves the open program for the key; none open is refused (`GrantWriteRefusal.NoOpenProgram`).
 - Issuing to a current holder returns the existing grant.
 - A missing or erased recipient is refused (`GrantWriteRefusal.RecipientUnavailable`).
 

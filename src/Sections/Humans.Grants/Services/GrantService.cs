@@ -23,7 +23,6 @@ internal sealed partial class GrantService(
     ILogger<GrantService> logger) : IGrantManagement
 {
     private readonly GrantNotices notices = new(users, notifications, email, emailFactory, logger);
-    internal const string ProfileUrl = GrantNotices.ProfileUrl;
 
     internal static readonly DateTimeZone MadridZone = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
 
@@ -65,6 +64,11 @@ internal sealed partial class GrantService(
 
     private static EventSettingsInfo? EventOf(GrantProgram p, IReadOnlyList<EventSettingsInfo> events) =>
         p.EventSettingsId is { } id ? events.FirstOrDefault(e => e.Id == id) : null;
+
+    private static int YearOf(GrantProgram p, IReadOnlyList<EventSettingsInfo> events) => EventOf(p, events)?.Year ?? p.Year;
+
+    private async Task<int> YearOfAsync(GrantProgram p, CancellationToken ct) =>
+        YearOf(p, await settingsService.GetAllEventSettingsAsync(ct));
 
     /// <summary>The year comes from the event, which a gate-opening change can move to another year.</summary>
     private static GrantInfo ToInfo(Grant g, GrantProgram p, EventSettingsInfo? evt) => new(

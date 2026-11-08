@@ -300,6 +300,24 @@ public sealed class GrantTests : GrantsTestHarness
         await Email.Received(1).SendAsync(Arg.Is<EmailMessage>(m => m.RecipientEmail == $"{person}@example.org"), Arg.Any<CancellationToken>());
     }
 
+    [HumansFact]
+    public async Task EmailFailure_StillSendsTheInAppNotice()
+    {
+        var person = SeedUser();
+        var program = await SeedProgramAsync();
+        Email.SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>())
+            .ThrowsAsync(new InvalidOperationException("smtp down"));
+
+        var result = await NewService().IssueToAsync(program.Id, [person], null, SeedUser(), Ct);
+
+        result.Refusal.Should().BeNull();
+        Logger.Entries.Should().Contain(e => e.Exception is InvalidOperationException);
+        await Notifications.Received(1).SendAsync(Arg.Any<NotificationSourceDefinition>(), Arg.Any<NotificationClass>(),
+            Arg.Any<NotificationPriority>(), Arg.Any<string>(), Arg.Is<IReadOnlyList<Guid>>(r => r.Contains(person)),
+            Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(),
+            Arg.Any<CancellationToken>());
+    }
+
     public static Xunit.TheoryData<string, string> RecipientLanguages()
     {
         var data = new Xunit.TheoryData<string, string>
@@ -437,6 +455,17 @@ public sealed class GrantTests : GrantsTestHarness
 
         (await ReadGrantAsync(grant.Id)).RevokeReason.Should().Be("Withdrew");
         await ReceivedNoticeAsync(GrantsNotificationSources.GrantRevoked, person);
+    }
+
+    [HumansFact]
+    public async Task State_RevokedWinsOverExpired()
+    {
+        var person = SeedUser();
+        await SeedGrantAsync(await SeedProgramAsync(), person, expiresOn: Today.PlusDays(-1), revoked: true);
+
+        var grant = (await NewService().GetGrantsForUserAsync(person, Ct)).Single();
+
+        grant.State(Today).Should().Be(GrantState.Revoked);
     }
 
     [HumansFact]
