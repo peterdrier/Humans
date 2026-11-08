@@ -81,7 +81,7 @@ internal interface IEventManagement : IApplicationService, IEventService
 
     Task<IReadOnlyList<EventFavouriteInfo>> GetFavouritesWithEventsAsync(Guid userId, CancellationToken ct = default);
     // Null dayOffset means the whole event.
-    Task<bool> AddFavouriteAsync(Guid userId, Guid eventId, int? dayOffset, CancellationToken ct = default);
+    Task<AddFavouriteOutcome> AddFavouriteAsync(Guid userId, Guid eventId, int? dayOffset, CancellationToken ct = default);
     Task<bool> RemoveFavouriteAsync(Guid userId, Guid eventId, int? dayOffset, CancellationToken ct = default);
 
     Task<List<string>> GetExcludedCategorySlugsAsync(Guid userId, CancellationToken ct = default);

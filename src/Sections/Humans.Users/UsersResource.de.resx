@@ -809,4 +809,5 @@
   <data name="Users_Medical_NoneOnFile" xml:space="preserve"><value>Keine medizinischen Angaben hinterlegt.</value></data>
   <data name="Users_Medical_RevealFailed" xml:space="preserve"><value>Die medizinischen Angaben konnten nicht geladen werden.</value></data>
   <data name="Users_Medical_RevealTitle" xml:space="preserve"><value>Medizinische Angaben anzeigen (jeder Aufruf wird im Audit-Log festgehalten)</value></data>
+  <data name="Users_Profile_InvalidLocation" xml:space="preserve"><value>Wähle einen gültigen Standort aus.</value></data>
 </root>

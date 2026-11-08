@@ -166,9 +166,14 @@ internal sealed partial class LegalDocumentSyncService(
             CreatedAt = clock.GetCurrentInstant()
         };
 
-        var created = await repository.AddAsync(document, cancellationToken);
-        cache.InvalidateAll();
-        return created;
+        try
+        {
+            return await repository.AddAsync(document, cancellationToken);
+        }
+        finally
+        {
+            cache.InvalidateAll();
+        }
     }
 
     public async Task<AdminLegalDocumentCreateResult?> CreateLegalDocumentWithInitialSyncAsync(
@@ -228,20 +233,29 @@ internal sealed partial class LegalDocumentSyncService(
             return null;
         }
 
-        var updated = await repository.UpdateAsync(
-            documentId,
-            request.Name,
-            request.TeamId,
-            request.IsRequired,
-            request.IsActive,
-            request.GracePeriodDays,
-            request.GitHubFolderPath,
-            cancellationToken);
+        bool? updated = null;
+        try
+        {
+            updated = await repository.UpdateAsync(
+                documentId,
+                request.Name,
+                request.TeamId,
+                request.IsRequired,
+                request.IsActive,
+                request.GracePeriodDays,
+                request.GitHubFolderPath,
+                cancellationToken);
+        }
+        finally
+        {
+            // Unknown completion can mean the write committed before its acknowledgement failed.
+            if (updated != false)
+                cache.InvalidateAll();
+        }
 
-        if (!updated)
+        if (updated == false)
             return null;
 
-        cache.InvalidateAll();
         await audit.LogAsync(ConsentAuditActions.LegalDocumentUpdated, "LegalDocument", documentId,
             $"Updated '{request.Name}': team {request.TeamId}, required {request.IsRequired}, " +
             $"active {request.IsActive}, grace period {request.GracePeriodDays} days, folder '{request.GitHubFolderPath}'.",
@@ -254,10 +268,20 @@ internal sealed partial class LegalDocumentSyncService(
         Guid actorUserId,
         CancellationToken cancellationToken = default)
     {
-        var archived = await repository.ArchiveAsync(documentId, cancellationToken);
+        LegalDocument? archived;
+        bool? changed = null;
+        try
+        {
+            archived = await repository.ArchiveAsync(documentId, cancellationToken);
+            changed = archived is not null;
+        }
+        finally
+        {
+            if (changed != false)
+                cache.InvalidateAll();
+        }
         if (archived is not null)
         {
-            cache.InvalidateAll();
             await audit.LogAsync(ConsentAuditActions.LegalDocumentArchived, "LegalDocument", documentId,
                 $"Archived '{archived.Name}'.", actorUserId);
         }
@@ -283,18 +307,26 @@ internal sealed partial class LegalDocumentSyncService(
             return VersionSummaryUpdateResult.TooLong;
         }
 
-        var updated = await repository.UpdateVersionSummaryAsync(
-            documentId, versionId, summary, cancellationToken);
-
-        if (updated)
+        bool? updated = null;
+        try
         {
-            cache.InvalidateAll();
+            updated = await repository.UpdateVersionSummaryAsync(
+                documentId, versionId, summary, cancellationToken);
+        }
+        finally
+        {
+            if (updated != false)
+                cache.InvalidateAll();
+        }
+
+        if (updated == true)
+        {
             await audit.LogAsync(ConsentAuditActions.LegalDocumentVersionSummaryUpdated, "LegalDocument", documentId,
                 $"Updated summary of version {versionId} to '{summary}'.", actorUserId,
                 relatedEntityId: versionId, relatedEntityType: "DocumentVersion");
         }
 
-        return updated ? VersionSummaryUpdateResult.Updated : VersionSummaryUpdateResult.NotFound;
+        return updated == true ? VersionSummaryUpdateResult.Updated : VersionSummaryUpdateResult.NotFound;
     }
 
     [GeneratedRegex(

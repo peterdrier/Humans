@@ -223,6 +223,51 @@ public sealed class ConsentServiceTests : ConsentTestHarness
         await _humanLifecycleService.Received(1).RestoreConsentSuspensionAsync(userId, CancellationToken.None);
     }
 
+    [HumansFact]
+    public async Task SubmitConsentAsync_LostSaveAcknowledgement_EvictsEveryMergedAlias()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var userId = Guid.NewGuid();
+        var sourceId = Guid.NewGuid();
+        var info = WrapInUserInfo(userId, UserFixtures.Profile(
+            burnerName: "Burner", firstName: "First", lastName: "Last",
+            createdAt: Clock.GetCurrentInstant())) with
+        { MergedUserIds = [sourceId] };
+        foreach (var id in info.AllUserIds)
+            _userService.GetUserInfoAsync(id, Arg.Any<CancellationToken>()).Returns(info);
+        var versionId = Guid.NewGuid();
+        SeedDocumentVersion(versionId, "Privacy Policy",
+            new Dictionary<string, string>(StringComparer.Ordinal) { ["es"] = "text" });
+        foreach (var id in info.AllUserIds)
+            (await _cache.GetConsentedVersionIdsAsync(id, ct)).Should().BeEmpty();
+
+        var repository = Substitute.For<IConsentRepository>();
+        var persisted = new ConsentRepository(LegalDbFactory);
+        var failure = new IOException("Persistence acknowledgement failed");
+        repository.AddAsync(Arg.Any<ConsentRecord>(), Arg.Any<CancellationToken>())
+            .Returns(async call =>
+            {
+                await persisted.AddAsync(call.ArgAt<ConsentRecord>(0), call.ArgAt<CancellationToken>(1));
+                throw failure;
+            });
+        var service = new ConsentService(repository, _cache, _legalDocumentSyncService,
+            _humanLifecycleService, _userService,
+            new ServiceLocatorBuilder().With(_membershipCalculator).Build(),
+            _metrics, Clock, NullLogger<ConsentService>.Instance);
+
+        var submit = () => service.SubmitConsentAsync(sourceId, versionId, true, "127.0.0.1", "Agent", ct);
+        (await submit.Should().ThrowAsync<IOException>()).Which.Should().BeSameAs(failure);
+
+        (await LegalDb.ConsentRecords.SingleAsync(ct)).UserId.Should().Be(userId);
+        foreach (var id in info.AllUserIds)
+            (await _cache.GetConsentedVersionIdsAsync(id, ct)).Should().Contain(versionId);
+        (await _cache.SubmitConsentAsync(sourceId, versionId, true, "127.0.0.1", "Agent", ct))
+            .ErrorKey.Should().Be("AlreadyConsented");
+        _metrics.DidNotReceive().RecordConsentGiven();
+        await _membershipCalculator.DidNotReceive()
+            .HasAllRequiredConsentsAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+    }
+
     [HumansTheory]
     [InlineData(false)]
     [InlineData(true)]

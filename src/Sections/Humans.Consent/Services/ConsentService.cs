@@ -166,11 +166,17 @@ internal sealed class ConsentService(
             ExplicitConsent = explicitConsent
         };
 
-        await repo.AddAsync(consentRecord, ct);
-        // Evict before the membership check below reads it back; the decorator's ReplaceAsync runs only after
-        // this returns.
-        foreach (var id in info.AllUserIds)
-            consentCache.Invalidate(id);
+        try
+        {
+            await repo.AddAsync(consentRecord, ct);
+        }
+        finally
+        {
+            // A failed acknowledgement can follow a committed signature. Evict every alias before any
+            // membership check reads it back, even when the decorator never reaches its inline refresh.
+            foreach (var id in info.AllUserIds)
+                consentCache.Invalidate(id);
+        }
         metrics.RecordConsentGiven();
 
         logger.LogInformation(

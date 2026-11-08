@@ -270,7 +270,7 @@ public sealed class ProfileServiceTests : ServiceTestHarness
     [HumansTheory]
     [Xunit.InlineData(false)]
     [Xunit.InlineData(true)]
-    public async Task SaveProfileAsync_LostSaveAcknowledgement_PreservesCommittedPicture(bool replacingPicture)
+    public async Task SaveProfileAsync_LostSaveAcknowledgement_PreservesOnlyCommittedPicture(bool replacingPicture)
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
         var userId = Guid.NewGuid();
@@ -292,8 +292,31 @@ public sealed class ProfileServiceTests : ServiceTestHarness
         var picture = await _service.GetProfilePictureAsync(profileId, ct);
         picture.Should().NotBeNull();
         picture.Value.Data.Should().Equal(4, 5, 6);
-        if (replacingPicture)
-            _fileStorage.Files[PicKey(profileId, "image/png")].Should().Equal(1, 2, 3);
+        _fileStorage.Files.Keys.Should().ContainSingle().Which.Should().Be(saved.ProfilePictureStorageKey);
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task SaveProfileAsync_RemovalFailure_DeletesOnlyAnUnreferencedPicture(bool afterCommit)
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var userId = Guid.NewGuid();
+        var profileId = await SeedUserWithProfileAsync(userId, withPicture: true);
+        SaveChangesInterceptor interceptor = afterCommit ? new LoseProfileSaveAcknowledgement() : new RejectUserNameSave();
+        var options = new DbContextOptionsBuilder<UsersDbContext>(DbOptions).AddInterceptors(interceptor).Options;
+        var service = new UserService(new UserRepository(new TestDbContextFactory(options), Clock), AdminAuthorization,
+            _pictureStorage, Clock, NullLogger<UserService>.Instance, AuditLog);
+        var command = new UserProfileSaveCommand(
+            "TestBurner", "Test", "User", null, null, null, null, null, null, null, null, null,
+            null, null, null, null, null, false, UserProfilePictureMutation.Remove, null);
+
+        var save = () => service.SaveProfileAsync(userId, command, null, ct);
+        await save.Should().ThrowAsync<InvalidOperationException>();
+
+        var stored = await Db.Profiles.AsNoTracking().SingleAsync(profile => profile.Id == profileId, ct);
+        stored.ProfilePictureContentType.Should().Be(afterCommit ? null : "image/png");
+        _fileStorage.Files.ContainsKey(PicKey(profileId, "image/png")).Should().Be(!afterCommit);
     }
 
     private sealed class LoseProfileSaveAcknowledgement : SaveChangesInterceptor
@@ -340,6 +363,7 @@ public sealed class ProfileServiceTests : ServiceTestHarness
         var existing = await Db.Profiles.AsNoTracking().FirstAsync(p => p.Id == profileId, Xunit.TestContext.Current.CancellationToken);
         var failingRepo = Substitute.For<IUserRepository>();
         failingRepo.GetByUserIdAsync(userId, Arg.Any<CancellationToken>()).Returns(existing);
+        failingRepo.GetProfilePictureLocationAsync(profileId, Arg.Any<CancellationToken>()).Returns(("image/png", (string?)null));
         failingRepo.UpdateAsync(Arg.Any<Profile>(), Arg.Any<CancellationToken>(), Arg.Any<IReadOnlyList<CVEntry>?>())
             .ThrowsAsync(new InvalidOperationException("Database unavailable"));
         var sut = new UserService(
@@ -632,6 +656,27 @@ public sealed class ProfileServiceTests : ServiceTestHarness
         Substitute.For<IFileStorage>(),
         Clock,
         NullLogger<UserService>.Instance, AuditLog);
+
+    [HumansTheory]
+    [Xunit.InlineData(double.NaN, 0)]
+    [Xunit.InlineData(0, double.PositiveInfinity)]
+    [Xunit.InlineData(90.1, 0)]
+    [Xunit.InlineData(-90.1, 0)]
+    [Xunit.InlineData(0, 180.1)]
+    [Xunit.InlineData(0, -180.1)]
+    public async Task SaveProfileAsync_InvalidCoordinates_ReturnsRefusalWithoutWrites(double latitude, double longitude)
+    {
+        var userId = Guid.NewGuid();
+        await SeedUserAsync(userId);
+        var request = MakeRequest() with { Latitude = latitude, Longitude = longitude };
+
+        var result = await _editor.SaveProfileAsync(userId, request, Xunit.TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeFalse();
+        result.ErrorKey.Should().Be("Users_Profile_InvalidLocation");
+        await _userService.DidNotReceiveWithAnyArgs().SaveProfileAsync(default, default!);
+        (await Db.Profiles.CountAsync(Xunit.TestContext.Current.CancellationToken)).Should().Be(0);
+    }
 
     [HumansFact]
     public async Task SaveProfileAsync_EmptyCvWithoutNoPriorExperienceFlag_ReturnsRefusalWithoutWrites()

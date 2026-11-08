@@ -154,8 +154,11 @@ internal sealed record ExpenseMutationResult(bool Succeeded, ExpenseError? Error
 /// <summary><see cref="LineId"/> is set on success so the caller can redirect into the new line's flow.</summary>
 internal sealed record ExpenseAddLineResult(bool Succeeded, ExpenseError? Error, Guid? LineId);
 
-/// <summary><see cref="ReportId"/> is set on success.</summary>
-internal sealed record ExpenseCreateDraftResult(bool Succeeded, ExpenseError? Error, Guid? ReportId);
+/// <summary><see cref="ReportId"/> identifies a confirmed saved draft, including failures after persistence.</summary>
+internal sealed record ExpenseCreateDraftResult(bool Succeeded, ExpenseError? Error, Guid? ReportId)
+{
+    public bool OutcomeUncertain { get; init; }
+}
 
 /// <summary>A member resource key with format arguments, or feedback for an operator-only action.</summary>
 internal sealed record ExpenseError(string? ResourceKey, object[] Arguments, string? OperatorMessage = null);

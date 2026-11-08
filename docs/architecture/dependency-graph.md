@@ -233,7 +233,9 @@ graph LR
 
     Survey[SurveyService]:::surveys
     SurveyPrevEmail[SurveyPreviewEmailService]:::surveys
-    SurveyReminder[SurveyReminderSender]:::surveys
+    SurveyReminder[SurveyInvitationDelivery]:::surveys
+    SurveyAudience[SurveyAudience]:::surveys
+    ShiftView[ShiftViewService]:::shifts
     SurveyFiller[SurveyTranslationFiller]:::surveys
 
     SettingsSvc[SettingsWriteService]:::settings
@@ -245,6 +247,8 @@ graph LR
     Workgroup[WorkgroupService]:::workgroups
 
     Preapproval[PreapprovalService]:::preapprovals
+    PreapprovalReminders[PreapprovalDeadlineReminders]:::preapprovals
+    PreapprovalNotices[PreapprovalNotices]:::preapprovals
 
     Grant[GrantService]:::grants
 
@@ -659,12 +663,13 @@ graph LR
 
     %% Surveys
     Survey --> Audit
-    Survey --> Team
     Survey --> User
-    Survey --> TicketQ
-    Survey --> Email
     Survey --> GTrans
-    Survey --> AppDec
+    SurveyAudience --> Team
+    SurveyAudience --> User
+    SurveyAudience --> AppDec
+    SurveyAudience --> TicketQ
+    SurveyAudience --> ShiftView
     SurveyPrevEmail --> User
     SurveyPrevEmail --> Email
     SurveyPrevEmail --> EmailPreview
@@ -702,10 +707,14 @@ graph LR
     %% Preapprovals
     Preapproval --> User
     Preapproval --> Finance
-    Preapproval --> NotifEmitter
-    Preapproval --> NotifInbox
-    Preapproval --> Email
+    Preapproval --> PreapprovalNotices
     Preapproval --> Audit
+    PreapprovalReminders --> PreapprovalNotices
+    PreapprovalReminders --> Audit
+    PreapprovalNotices --> User
+    PreapprovalNotices --> NotifEmitter
+    PreapprovalNotices --> NotifInbox
+    PreapprovalNotices --> Email
 
     %% Grants
     Grant --> User

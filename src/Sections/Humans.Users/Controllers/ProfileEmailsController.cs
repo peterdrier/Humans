@@ -3,7 +3,6 @@ using Humans.Users.Services;
 // @e2e: profile.spec.ts
 using Humans.Base.Attributes;
 using Humans.Base.Controllers;
-using System.ComponentModel.DataAnnotations;
 using System.Globalization;
 using System.Web;
 using Humans.Users.Authorization;
@@ -667,28 +666,24 @@ internal sealed class ProfileEmailsController(
         if (actor is null)
             return Forbid();
 
-        try
+        var result = await userEmailService.AdminMarkVerifiedAsync(id, emailId, actor.Id, ct);
+        if (result.NoPendingVerification)
         {
-            var result = await userEmailService.AdminMarkVerifiedAsync(id, emailId, actor.Id, ct);
-            if (result.ErrorKey is { } errorKey)
-            {
-                SetError(LocalizeEmailRefusal(errorKey));
-            }
-            else if (result.MergeRequestCreated)
-            {
-                SetSuccess(localizer["Users_EmailGrid_AdminVerifyMergeRequested"].Value);
-            }
-            else
-            {
-                SetSuccess(localizer["Users_EmailGrid_AdminVerifySuccess"].Value);
-            }
+            logger.LogWarning("Admin email verification refused: no pending plain email {EmailId} for user {UserId}", emailId, id);
+            SetError("No email pending verification.");
         }
-        catch (Exception ex) when (ex is ValidationException or InvalidOperationException)
+        else if (result.ErrorKey is { } errorKey)
         {
-            logger.LogWarning(
-                "Admin failed to manually verify email {EmailId} for user {UserId}: {Reason}",
-                emailId, id, ex.Message);
-            SetError(ex.Message);
+            logger.LogWarning("Admin email verification refused for email {EmailId}, user {UserId}: {ErrorKey}", emailId, id, errorKey);
+            SetError(LocalizeEmailRefusal(errorKey));
+        }
+        else if (result.MergeRequestCreated)
+        {
+            SetSuccess(localizer["Users_EmailGrid_AdminVerifyMergeRequested"].Value);
+        }
+        else
+        {
+            SetSuccess(localizer["Users_EmailGrid_AdminVerifySuccess"].Value);
         }
 
         return RedirectToAction(nameof(AdminEmails), new { id });

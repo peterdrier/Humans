@@ -162,6 +162,70 @@ public class ProfileEmailsControllerGridTests
         _auditLogService.ReceivedCalls().Should().BeEmpty();
     }
 
+    public enum AdminVerificationOutcome { NoPending, Refused, Verified, MergeRequested }
+
+    [HumansTheory]
+    [InlineData(AdminVerificationOutcome.NoPending)]
+    [InlineData(AdminVerificationOutcome.Refused)]
+    [InlineData(AdminVerificationOutcome.Verified)]
+    [InlineData(AdminVerificationOutcome.MergeRequested)]
+    public async Task AdminVerifyEmail_FormatsExplicitOutcome(AdminVerificationOutcome outcome)
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var row = Guid.NewGuid();
+        var target = Guid.NewGuid();
+        _userEmailService.AdminMarkVerifiedAsync(target, row, _userId, ct).Returns(
+            new VerifyEmailResult(outcome == AdminVerificationOutcome.NoPending ? string.Empty : "email@example.test",
+                outcome == AdminVerificationOutcome.MergeRequested,
+                outcome == AdminVerificationOutcome.Refused ? "Users_EmailUpdate_AccountUnavailable" : null)
+            { NoPendingVerification = outcome == AdminVerificationOutcome.NoPending });
+
+        var result = await _controller.AdminVerifyEmail(target, row, ct);
+
+        var redirect = result.Should().BeOfType<RedirectToActionResult>().Subject;
+        redirect.ActionName.Should().Be(nameof(ProfileEmailsController.AdminEmails));
+        redirect.RouteValues!["id"].Should().Be(target);
+        var refused = outcome is AdminVerificationOutcome.NoPending or AdminVerificationOutcome.Refused;
+        _controller.TempData.ContainsKey("ErrorMessage").Should().Be(refused);
+        _controller.TempData.ContainsKey("SuccessMessage").Should().Be(!refused);
+        if (refused)
+        {
+            _controller.TempData["ErrorMessage"].Should().Be(outcome == AdminVerificationOutcome.NoPending
+                ? "No email pending verification." : "Users_EmailUpdate_AccountUnavailable");
+            var log = _logger.ReceivedCalls().Single().GetArguments();
+            log[0].Should().Be(LogLevel.Warning);
+            log[3].Should().BeNull();
+        }
+        else
+        {
+            _controller.TempData["SuccessMessage"].Should().Be(outcome == AdminVerificationOutcome.MergeRequested
+                ? "Users_EmailGrid_AdminVerifyMergeRequested" : "Users_EmailGrid_AdminVerifySuccess");
+            _logger.ReceivedCalls().Should().BeEmpty();
+        }
+    }
+
+    public enum AdminVerificationDependencyFailure { Validation, Operation }
+
+    [HumansTheory]
+    [InlineData(AdminVerificationDependencyFailure.Validation)]
+    [InlineData(AdminVerificationDependencyFailure.Operation)]
+    public async Task AdminVerifyEmail_PropagatesDependencyFailures(AdminVerificationDependencyFailure kind)
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var row = Guid.NewGuid();
+        Exception failure = kind == AdminVerificationDependencyFailure.Validation
+            ? new ValidationException("Private dependency diagnostic")
+            : new InvalidOperationException("Private dependency diagnostic");
+        _userEmailService.AdminMarkVerifiedAsync(_userId, row, _userId, ct)
+            .Returns(Task.FromException<VerifyEmailResult>(failure));
+
+        var act = () => _controller.AdminVerifyEmail(_userId, row, ct);
+
+        (await act.Should().ThrowAsync<Exception>()).Which.Should().BeSameAs(failure);
+        _controller.TempData.Should().BeEmpty();
+        _logger.ReceivedCalls().Should().BeEmpty();
+    }
+
     [HumansFact]
     public async Task Emails_RequestAborted_CancelsEmailGridReads()
     {

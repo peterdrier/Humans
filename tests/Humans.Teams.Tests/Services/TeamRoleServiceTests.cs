@@ -34,6 +34,7 @@ namespace Humans.Teams.Tests.Services;
 public sealed class TeamRoleServiceTests : TeamsTestHarness
 {
     private readonly TeamService _service;
+    private readonly ISystemTeamSync _systemTeamSync = Substitute.For<ISystemTeamSync>();
 
     public TeamRoleServiceTests() : base(Instant.FromUtc(2026, 3, 11, 12, 0))
     {
@@ -65,7 +66,7 @@ public sealed class TeamRoleServiceTests : TeamsTestHarness
             .With<ITeamManagement>()
             .With<IRoleAssignmentService>(roleAssignmentService)
             .With<IEmailService>()
-            .With<ISystemTeamSync>()
+            .With(_systemTeamSync)
             .With<IGoogleSyncOutboxService>(googleOutboxService)
             .With<IGoogleIntegrationService>()
             .With(teamResourceService)
@@ -282,6 +283,42 @@ public sealed class TeamRoleServiceTests : TeamsTestHarness
         refused.Refusal.Should().Match("*Cannot reduce slot count*");
     }
 
+    [HumansTheory]
+    [Xunit.InlineData(3, 2, false)]
+    [Xunit.InlineData(1, 2, true)]
+    [Xunit.InlineData(3, 4, true)]
+    public async Task UpdateRoleDefinitionAsync_Resize_PreservesOccupiedSlotPositions(
+        int occupiedSlotIndex, int newSlotCount, bool succeeds)
+    {
+        var admin = SeedUser("Admin");
+        SeedAdminRole(admin);
+        var team = SeedTeam("Test Team");
+        var holder = SeedUser("Holder");
+        var role = SeedRoleDefinition(team, slotCount: 4);
+        var member = SeedMember(team, holder);
+        SeedRoleAssignment(role, member, occupiedSlotIndex);
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
+
+        var result = await _service.UpdateRoleDefinitionAsync(
+            role.Id, role.Name, role.Description, newSlotCount,
+            Enumerable.Repeat(SlotPriority.None, newSlotCount).ToList(), role.SortOrder,
+            role.IsManagement, role.Period, admin.Id, cancellationToken: Xunit.TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().Be(succeeds);
+        ClearAllTrackers();
+        var storedRole = await TeamsDb.TeamRoleDefinitions.AsNoTracking()
+            .SingleAsync(d => d.Id == role.Id, Xunit.TestContext.Current.CancellationToken);
+        storedRole.SlotCount.Should().Be(succeeds ? newSlotCount : 4);
+        var storedAssignment = await TeamsDb.TeamRoleAssignments.AsNoTracking()
+            .SingleAsync(a => a.TeamRoleDefinitionId == role.Id, Xunit.TestContext.Current.CancellationToken);
+        storedAssignment.SlotIndex.Should().Be(occupiedSlotIndex);
+        if (!succeeds)
+        {
+            result.Refusal.Should().Contain("Cannot reduce slot count");
+            AuditLog.ReceivedCalls().Should().BeEmpty();
+        }
+    }
+
     [HumansFact]
     public async Task UpdateRoleDefinitionAsync_SetIsManagement_WhenAnotherRoleAlreadyManagement_ReturnsRefusal()
     {
@@ -334,10 +371,6 @@ public sealed class TeamRoleServiceTests : TeamsTestHarness
         result.Definition!.IsManagement.Should().BeTrue();
     }
 
-    /// <summary>
-    /// Flipping IsManagement on a role with assignees must invalidate shift authorization for every
-    /// assignee; that needs the repository to load Assignments.TeamMember, or the user-id set is empty.
-    /// </summary>
     [HumansFact]
     public async Task UpdateRoleDefinitionAsync_FlipIsManagementWithAssignees_MakesEachAssigneeACoordinator()
     {
@@ -363,10 +396,21 @@ public sealed class TeamRoleServiceTests : TeamsTestHarness
             .Should().Contain(team.Id);
         (await _service.GetUserCoordinatedTeamIdsAsync(user2.Id, Xunit.TestContext.Current.CancellationToken))
             .Should().Contain(team.Id);
+
+        ClearAllTrackers();
+        var members = await TeamsDb.TeamMembers.AsNoTracking()
+            .Where(m => m.TeamId == team.Id).ToListAsync(Xunit.TestContext.Current.CancellationToken);
+        members.Should().HaveCount(2).And.OnlyContain(m => m.Role == TeamMemberRole.Coordinator);
+        await _systemTeamSync.Received(1).SyncMembershipForUserAsync(
+            user1.Id, SystemTeamType.Coordinators, Arg.Any<CancellationToken>());
+        await _systemTeamSync.Received(1).SyncMembershipForUserAsync(
+            user2.Id, SystemTeamType.Coordinators, Arg.Any<CancellationToken>());
     }
 
-    [HumansFact]
-    public async Task ToggleRoleIsManagementAsync_ClearWithAssignedMembers_DemotesCoordinators()
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task ManagementRoleDemotion_WithAssignedMembers_DemotesCoordinators(bool editRole)
     {
         var admin = SeedUser("Admin");
         SeedAdminRole(admin);
@@ -377,7 +421,12 @@ public sealed class TeamRoleServiceTests : TeamsTestHarness
         SeedRoleAssignment(mgmtRole, member, slotIndex: 0);
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
 
-        var result = await _service.ToggleRoleIsManagementAsync(mgmtRole.Id, admin.Id, Xunit.TestContext.Current.CancellationToken);
+        var result = editRole
+            ? await _service.UpdateRoleDefinitionAsync(
+                mgmtRole.Id, mgmtRole.Name, null, 2, [SlotPriority.None, SlotPriority.None], 0,
+                isManagement: false, mgmtRole.Period, admin.Id,
+                cancellationToken: Xunit.TestContext.Current.CancellationToken)
+            : await _service.ToggleRoleIsManagementAsync(mgmtRole.Id, admin.Id, Xunit.TestContext.Current.CancellationToken);
 
         result.Definition!.IsManagement.Should().BeFalse();
 
@@ -388,6 +437,8 @@ public sealed class TeamRoleServiceTests : TeamsTestHarness
 
         var memberInDb = await TeamsDb.TeamMembers.AsNoTracking().FirstOrDefaultAsync(m => m.Id == member.Id, Xunit.TestContext.Current.CancellationToken);
         memberInDb!.Role.Should().Be(TeamMemberRole.Member);
+        await _systemTeamSync.Received(1).SyncMembershipForUserAsync(
+            user.Id, SystemTeamType.Coordinators, Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -409,6 +460,59 @@ public sealed class TeamRoleServiceTests : TeamsTestHarness
         refused.Refusal.Should().Match("*Cannot set IsManagement*");
     }
 
+    [HumansTheory]
+    [Xunit.InlineData(false, false)]
+    [Xunit.InlineData(true, false)]
+    [Xunit.InlineData(false, true)]
+    [Xunit.InlineData(true, true)]
+    public async Task RoleAssignmentMutation_MissingRoleOrPermission_RefusesBeforeMutation(bool unassign, bool missingRole)
+    {
+        var actor = SeedUser("Actor");
+        var team = SeedTeam("Test Team");
+        var holder = SeedUser("Holder");
+        var member = SeedMember(team, holder);
+        var role = SeedRoleDefinition(team);
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
+        var roleId = missingRole ? Guid.NewGuid() : role.Id;
+
+        var result = unassign
+            ? await _service.UnassignFromRoleAsync(roleId, member.Id, actor.Id, Xunit.TestContext.Current.CancellationToken)
+            : await _service.AssignToRoleAsync(roleId, holder.Id, actor.Id, Xunit.TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeFalse();
+        result.Refusal.Should().Contain(missingRole ? "not found" : "permission");
+        (await TeamsDb.TeamRoleAssignments.CountAsync(Xunit.TestContext.Current.CancellationToken)).Should().Be(0);
+        (await TeamsDb.TeamMembers.CountAsync(Xunit.TestContext.Current.CancellationToken)).Should().Be(1);
+        (await GoogleIntegrationDb.GoogleSyncOutboxEvents.CountAsync(Xunit.TestContext.Current.CancellationToken)).Should().Be(0);
+        AuditLog.ReceivedCalls().Should().BeEmpty();
+        _systemTeamSync.ReceivedCalls().Should().BeEmpty();
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task RoleAssignmentMutation_AlreadyAssignedOrMissingAssignment_RefusesWithoutAudit(bool unassign)
+    {
+        var admin = SeedUser("Admin");
+        SeedAdminRole(admin);
+        var team = SeedTeam("Test Team");
+        var holder = SeedUser("Holder");
+        var member = SeedMember(team, holder);
+        var role = SeedRoleDefinition(team);
+        if (!unassign) SeedRoleAssignment(role, member, 0);
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
+
+        var result = unassign
+            ? await _service.UnassignFromRoleAsync(role.Id, member.Id, admin.Id, Xunit.TestContext.Current.CancellationToken)
+            : await _service.AssignToRoleAsync(role.Id, holder.Id, admin.Id, Xunit.TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeFalse();
+        result.Refusal.Should().Contain(unassign ? "Assignment not found" : "already assigned");
+        (await TeamsDb.TeamRoleAssignments.CountAsync(Xunit.TestContext.Current.CancellationToken)).Should().Be(unassign ? 0 : 1);
+        AuditLog.ReceivedCalls().Should().BeEmpty();
+        _systemTeamSync.ReceivedCalls().Should().BeEmpty();
+    }
+
     [HumansFact]
     public async Task AssignToRoleAsync_ValidMember_CreatesAssignment()
     {
@@ -422,12 +526,13 @@ public sealed class TeamRoleServiceTests : TeamsTestHarness
 
         var result = await _service.AssignToRoleAsync(role.Id, user.Id, admin.Id, Xunit.TestContext.Current.CancellationToken);
 
-        result.Should().NotBeNull();
-        result.TeamRoleDefinitionId.Should().Be(role.Id);
-        result.SlotIndex.Should().Be(0);
+        result.Succeeded.Should().BeTrue();
+        result.Assignment.Should().NotBeNull();
+        result.Assignment!.TeamRoleDefinitionId.Should().Be(role.Id);
+        result.Assignment!.SlotIndex.Should().Be(0);
 
         var inDb = await TeamsDb.Set<TeamRoleAssignment>()
-            .FirstOrDefaultAsync(a => a.Id == result.Id, Xunit.TestContext.Current.CancellationToken);
+            .FirstOrDefaultAsync(a => a.Id == result.Assignment!.Id, Xunit.TestContext.Current.CancellationToken);
         inDb.Should().NotBeNull();
     }
 
@@ -444,8 +549,9 @@ public sealed class TeamRoleServiceTests : TeamsTestHarness
 
         var result = await _service.AssignToRoleAsync(role.Id, user.Id, admin.Id, Xunit.TestContext.Current.CancellationToken);
 
-        result.Should().NotBeNull();
-        result.TeamRoleDefinitionId.Should().Be(role.Id);
+        result.Succeeded.Should().BeTrue();
+        result.Assignment.Should().NotBeNull();
+        result.Assignment!.TeamRoleDefinitionId.Should().Be(role.Id);
 
         var memberInDb = await TeamsDb.TeamMembers
             .FirstOrDefaultAsync(tm => tm.TeamId == team.Id && tm.UserId == user.Id && tm.LeftAt == null, Xunit.TestContext.Current.CancellationToken);
@@ -453,7 +559,7 @@ public sealed class TeamRoleServiceTests : TeamsTestHarness
     }
 
     [HumansFact]
-    public async Task AssignToRoleAsync_NonMemberOnSystemTeam_Throws()
+    public async Task AssignToRoleAsync_NonMemberOnSystemTeam_ReturnsRefusal()
     {
         // System-team membership is sync-managed; role assignment must not be a
         // backdoor for injecting non-members (and firing Google sync side effects).
@@ -465,10 +571,10 @@ public sealed class TeamRoleServiceTests : TeamsTestHarness
         // Deliberately not adding user as team member
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
 
-        var act = () => _service.AssignToRoleAsync(role.Id, user.Id, admin.Id, Xunit.TestContext.Current.CancellationToken);
+        var result = await _service.AssignToRoleAsync(role.Id, user.Id, admin.Id, Xunit.TestContext.Current.CancellationToken);
 
-        await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("*system team*");
+        result.Succeeded.Should().BeFalse();
+        result.Refusal.Should().Contain("system team");
 
         var memberInDb = await TeamsDb.TeamMembers
             .FirstOrDefaultAsync(tm => tm.TeamId == team.Id && tm.UserId == user.Id && tm.LeftAt == null, Xunit.TestContext.Current.CancellationToken);
@@ -490,12 +596,15 @@ public sealed class TeamRoleServiceTests : TeamsTestHarness
 
         var result = await _service.AssignToRoleAsync(role.Id, user.Id, admin.Id, Xunit.TestContext.Current.CancellationToken);
 
-        result.Should().NotBeNull();
-        result.TeamRoleDefinitionId.Should().Be(role.Id);
+        result.Succeeded.Should().BeTrue();
+        result.Assignment.Should().NotBeNull();
+        result.Assignment!.TeamRoleDefinitionId.Should().Be(role.Id);
     }
 
-    [HumansFact]
-    public async Task AssignToRoleAsync_AllSlotsFilled_Throws()
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task AssignToRoleAsync_AllSlotsFilled_RefusesWithoutMembershipOrOutbox(bool alreadyMember)
     {
         var admin = SeedUser("Admin");
         SeedAdminRole(admin);
@@ -504,14 +613,32 @@ public sealed class TeamRoleServiceTests : TeamsTestHarness
         var user2 = SeedUser("User2");
         var role = SeedRoleDefinition(team, slotCount: 1, sortOrder: 1);
         var member1 = SeedMember(team, user1);
-        SeedMember(team, user2);
+        if (alreadyMember)
+            SeedMember(team, user2);
+        else
+            TeamsDb.TeamJoinRequests.Add(new TeamJoinRequest
+            {
+                Id = Guid.NewGuid(),
+                TeamId = team.Id,
+                UserId = user2.Id,
+                RequestedAt = Clock.GetCurrentInstant()
+            });
         SeedRoleAssignment(role, member1, slotIndex: 0);
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
 
-        var act = () => _service.AssignToRoleAsync(role.Id, user2.Id, admin.Id, Xunit.TestContext.Current.CancellationToken);
+        var result = await _service.AssignToRoleAsync(role.Id, user2.Id, admin.Id, Xunit.TestContext.Current.CancellationToken);
 
-        await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("*slots*filled*");
+        result.Succeeded.Should().BeFalse();
+        result.Refusal.Should().Match("*slots*filled*");
+        ClearAllTrackers();
+        (await TeamsDb.TeamMembers.CountAsync(Xunit.TestContext.Current.CancellationToken)).Should().Be(alreadyMember ? 2 : 1);
+        (await TeamsDb.TeamRoleAssignments.CountAsync(Xunit.TestContext.Current.CancellationToken)).Should().Be(1);
+        if (!alreadyMember)
+            (await TeamsDb.TeamJoinRequests.SingleAsync(Xunit.TestContext.Current.CancellationToken))
+                .Status.Should().Be(TeamJoinRequestStatus.Pending);
+        (await GoogleIntegrationDb.GoogleSyncOutboxEvents.CountAsync(Xunit.TestContext.Current.CancellationToken)).Should().Be(0);
+        AuditLog.ReceivedCalls().Should().BeEmpty();
+        _systemTeamSync.ReceivedCalls().Should().BeEmpty();
     }
 
     [HumansFact]

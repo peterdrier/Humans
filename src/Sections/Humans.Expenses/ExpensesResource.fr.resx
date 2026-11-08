@@ -305,4 +305,6 @@
   <data name="Expenses_SubjectHelp" xml:space="preserve"><value>Obligatoire. Indiquez le nom du projet concerné par cette dépense, p. ex. votre projet artistique.</value></data>
   <data name="Expenses_Validation_SubjectRequired" xml:space="preserve"><value>Ajoutez un objet (le nom du projet) avant de soumettre.</value></data>
   <data name="Expenses_Validation_AmountPrecision" xml:space="preserve"><value>Saisissez un montant avec au maximum deux décimales.</value></data>
+  <data name="Expenses_Flash_DraftSavedFollowupFailed" xml:space="preserve"><value>Le brouillon a été enregistré, mais la demande n’a pas pu être terminée. Vérifiez-le avant de continuer.</value></data>
+  <data name="Expenses_Flash_DraftOutcomeUnknown" xml:space="preserve"><value>Nous n’avons pas pu confirmer si le brouillon a été enregistré. Vérifiez les notes de frais existantes avant de créer un autre brouillon.</value></data>
 </root>

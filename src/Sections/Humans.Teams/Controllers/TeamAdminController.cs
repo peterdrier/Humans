@@ -2,7 +2,6 @@ using Humans.GoogleIntegration.Contracts;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Humans.Teams.Services;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Localization;
 using Humans.Tickets.Contracts;
 using Humans.Base.Extensions;
@@ -595,16 +594,14 @@ internal sealed class TeamAdminController(
             return teamError;
         }
 
-        try
+        var result = await _teamService.AssignToRoleAsync(roleId, model.UserId, user.Id);
+        if (result.Refusal is { } refusal)
         {
-            await _teamService.AssignToRoleAsync(roleId, model.UserId, user.Id);
+            logger.LogWarning("Role assignment refused for member {MemberUserId}, role {RoleId}, team {TeamId} by user {UserId}: {Reason}", model.UserId, roleId, team.Id, user.Id, refusal);
+            SetError(refusal);
+        }
+        else
             SetSuccess("Member assigned to role.");
-        }
-        catch (Exception ex) when (ex is InvalidOperationException or DbUpdateException or ArgumentException)
-        {
-            logger.LogWarning(ex, "Failed to assign member {MemberUserId} to role {RoleId} in team {TeamId} by user {UserId}", model.UserId, roleId, team.Id, user.Id);
-            SetError(ex.Message);
-        }
 
         return RedirectToAction(nameof(Roles), new { slug });
     }
@@ -619,16 +616,14 @@ internal sealed class TeamAdminController(
             return teamError;
         }
 
-        try
+        var result = await _teamService.UnassignFromRoleAsync(roleId, memberId, user.Id);
+        if (result.Refusal is { } refusal)
         {
-            await _teamService.UnassignFromRoleAsync(roleId, memberId, user.Id);
+            logger.LogWarning("Role unassignment refused for member {MemberId}, role {RoleId}, team {TeamId} by user {UserId}: {Reason}", memberId, roleId, team.Id, user.Id, refusal);
+            SetError(refusal);
+        }
+        else
             SetSuccess("Member unassigned from role.");
-        }
-        catch (Exception ex) when (ex is InvalidOperationException or DbUpdateException or ArgumentException)
-        {
-            logger.LogWarning(ex, "Failed to unassign member {MemberId} from role {RoleId} in team {TeamId} by user {UserId}", memberId, roleId, team.Id, user.Id);
-            SetError(ex.Message);
-        }
 
         return RedirectToAction(nameof(Roles), new { slug });
     }
@@ -739,17 +734,15 @@ internal sealed class TeamAdminController(
             return View(nameof(EarlyEntry), await BuildEarlyEntryPageAsync(team, ct));
         }
 
-        try
+        var result = await _teamService.AddEarlyEntryGrantAsync(
+            team.Id, input.UserId, parsed.Value, input.ProjectName, user.Id, ct);
+        if (result.Refusal is { } refusal)
         {
-            await _teamService.AddEarlyEntryGrantAsync(
-                team.Id, input.UserId, parsed.Value, input.ProjectName, user.Id, ct);
+            logger.LogWarning("Early entry grant refused for team {TeamId} by user {UserId}: {Reason}", team.Id, user.Id, refusal);
+            SetError(refusal);
+        }
+        else
             SetSuccess("Early entry granted.");
-        }
-        catch (Exception ex) when (ex is InvalidOperationException or DbUpdateException or ArgumentException)
-        {
-            logger.LogWarning(ex, "Failed to grant early entry for team {TeamId} by user {UserId}", team.Id, user.Id);
-            SetError(ex.Message);
-        }
 
         return RedirectToAction(nameof(EarlyEntry), new { slug });
     }
@@ -779,17 +772,15 @@ internal sealed class TeamAdminController(
             return View(nameof(EarlyEntry), await BuildEarlyEntryPageAsync(team, ct));
         }
 
-        try
+        var result = await _teamService.EditEarlyEntryGrantAsync(
+            team.Id, input.GrantId, parsed.Value, input.ProjectName, user.Id, ct);
+        if (result.Refusal is { } refusal)
         {
-            await _teamService.EditEarlyEntryGrantAsync(
-                team.Id, input.GrantId, parsed.Value, input.ProjectName, user.Id, ct);
+            logger.LogWarning("Early entry update refused for grant {GrantId} in team {TeamId} by user {UserId}: {Reason}", input.GrantId, team.Id, user.Id, refusal);
+            SetError(refusal);
+        }
+        else
             SetSuccess("Early entry updated.");
-        }
-        catch (Exception ex) when (ex is InvalidOperationException or DbUpdateException or ArgumentException)
-        {
-            logger.LogWarning(ex, "Failed to update early entry grant {GrantId} for team {TeamId} by user {UserId}", input.GrantId, team.Id, user.Id);
-            SetError(ex.Message);
-        }
 
         return RedirectToAction(nameof(EarlyEntry), new { slug });
     }
@@ -809,16 +800,8 @@ internal sealed class TeamAdminController(
             return NotFound();
         }
 
-        try
-        {
-            await _teamService.RemoveEarlyEntryGrantAsync(team.Id, grantId, user.Id, ct);
-            SetSuccess("Early entry revoked.");
-        }
-        catch (Exception ex) when (ex is InvalidOperationException or DbUpdateException or ArgumentException)
-        {
-            logger.LogWarning(ex, "Failed to revoke early entry grant {GrantId} for team {TeamId} by user {UserId}", grantId, team.Id, user.Id);
-            SetError(ex.Message);
-        }
+        await _teamService.RemoveEarlyEntryGrantAsync(team.Id, grantId, user.Id, ct);
+        SetSuccess("Early entry revoked.");
 
         return RedirectToAction(nameof(EarlyEntry), new { slug });
     }

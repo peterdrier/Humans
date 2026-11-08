@@ -503,6 +503,30 @@ public class ExpenseRepositoryTests
         ids.Should().Equal(approved.Id);
     }
 
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task CompletedOutboxEvent_FailureBookkeepingPreservesSuccess(bool writeOff)
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var reportId = Guid.NewGuid();
+        var processedAt = Instant.FromUtc(2026, 5, 5, 0, 0);
+        var ev = NewOutbox(reportId, retryCount: 9, processedAt: processedAt);
+        await SeedOutboxAsync(ev);
+
+        if (writeOff)
+            await _sut.MarkOutboxFailedPermanentlyAsync(ev.Id, "Lost acknowledgement", processedAt + Duration.FromMinutes(1), ct);
+        else
+            await _sut.IncrementOutboxRetryAsync(ev.Id, "Lost acknowledgement", processedAt + Duration.FromMinutes(2), ct);
+
+        var stored = (await _sut.GetLatestOutboxForReportAsync(reportId, ct))!;
+        stored.ProcessedAt.Should().Be(processedAt);
+        stored.RetryCount.Should().Be(9);
+        stored.FailedPermanently.Should().BeFalse();
+        stored.LastError.Should().BeNull();
+        stored.NextRetryAt.Should().BeNull();
+    }
+
     [HumansFact]
     public async Task MarkOutboxFailedPermanentlyAsync_CountsTheAttemptThatFailed()
     {

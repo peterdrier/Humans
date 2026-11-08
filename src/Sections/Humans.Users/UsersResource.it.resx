@@ -809,4 +809,5 @@
   <data name="Users_Medical_NoneOnFile" xml:space="preserve"><value>Nessuna condizione medica registrata.</value></data>
   <data name="Users_Medical_RevealFailed" xml:space="preserve"><value>Impossibile caricare i dati medici.</value></data>
   <data name="Users_Medical_RevealTitle" xml:space="preserve"><value>Mostra i dati medici (ogni consultazione viene registrata nel registro di audit)</value></data>
+  <data name="Users_Profile_InvalidLocation" xml:space="preserve"><value>Seleziona una posizione valida.</value></data>
 </root>

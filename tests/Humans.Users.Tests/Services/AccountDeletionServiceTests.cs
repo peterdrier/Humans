@@ -584,11 +584,9 @@ public class AccountDeletionServiceTests
     }
 
     [HumansFact]
-    public async Task AnonymizeExpiredAccountAsync_ErasureFailureAbortsBeforeCacheInvalidation()
+    public async Task AnonymizeExpiredAccountAsync_ErasureFailureRefreshesBeforePropagating()
     {
-        // A failing erasure must abort the run: the Account contributor (inside Gdpr) never
-        // clears DeletionScheduledFor, so tomorrow's job retries the whole fan-out. The
-        // post-erasure cross-section cache invalidations must not run either.
+        // Erasure failures still abort for retry, but earlier committed profile changes must be reloaded.
         var userId = Guid.NewGuid();
         _userService.GetRawUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(MakeUser(userId));
         _gdprService.When(x => x.EraseForUserAsync(userId, Arg.Any<CancellationToken>()))
@@ -597,8 +595,8 @@ public class AccountDeletionServiceTests
         var act = () => _service.AnonymizeExpiredAccountAsync(userId, Xunit.TestContext.Current.CancellationToken);
 
         await act.Should().ThrowAsync<InvalidOperationException>();
-        await _userInfoRefresher.DidNotReceive().RefreshAsync(
-            userId, Arg.Any<CancellationToken>(), Arg.Any<string>(), Arg.Any<string>());
+        await _userInfoRefresher.Received(1).RefreshAsync(
+            userId, CancellationToken.None, Arg.Any<string>(), Arg.Any<string>());
     }
 
     [HumansFact]
@@ -621,6 +619,21 @@ public class AccountDeletionServiceTests
         await _gdprService.Received(1).EraseForUserAsync(archived, Arg.Any<CancellationToken>());
         await _userInfoRefresher.Received(1).RefreshAsync(
             archived, Arg.Any<CancellationToken>(), Arg.Any<string>(), Arg.Any<string>());
+    }
+
+    [HumansFact]
+    public async Task ErasureAndRefreshFailure_PreservesTheErasureError()
+    {
+        var userId = Guid.NewGuid();
+        _userService.GetRawUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(MakeUser(userId));
+        var failure = new IOException("Erasure failed");
+        _gdprService.EraseForUserAsync(userId, Arg.Any<CancellationToken>()).Returns(Task.FromException(failure));
+        _userInfoRefresher.RefreshAsync(userId, Arg.Any<CancellationToken>(), Arg.Any<string>(), Arg.Any<string>())
+            .Returns(Task.FromException(new IOException("Refresh failed")));
+
+        var erase = () => _service.AnonymizeExpiredAccountAsync(userId, Xunit.TestContext.Current.CancellationToken);
+
+        (await erase.Should().ThrowAsync<IOException>()).Which.Should().BeSameAs(failure);
     }
 
     private static UserInfo MakeUser(

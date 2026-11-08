@@ -69,7 +69,7 @@ internal sealed class UsersController(
     public async Task<IActionResult> Map(CancellationToken ct)
     {
         var markers = (await _userService.GetAllUserInfosAsync(ct))
-            .Where(u => !u.IsSuspended && u.Profile is { Latitude: not null, Longitude: not null })
+            .Where(u => !u.IsSuspended && u.Profile is { Latitude: >= -90d and <= 90d, Longitude: >= -180d and <= 180d })
             .Select(u => new MapMarkerViewModel
             {
                 UserId = u.Id,

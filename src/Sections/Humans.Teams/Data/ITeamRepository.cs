@@ -36,9 +36,8 @@ internal interface ITeamRepository : IRepository
     Task<IReadOnlyDictionary<Guid, IReadOnlyList<TeamRoleDefinition>>> GetAllRoleDefinitionsByTeamAsync(
         CancellationToken ct = default);
 
-    /// <summary>Paged in the database: the include graph is too expensive to load wholesale.</summary>
-    Task<(IReadOnlyList<Team> Items, int TotalCount)> GetAllForAdminAsync(
-        int page, int pageSize, CancellationToken ct = default);
+    /// <summary>Every team, including inactive; unordered.</summary>
+    Task<IReadOnlyList<Team>> GetAllForAdminAsync(CancellationToken ct = default);
 
     /// <summary>Also loads referenced parents missing from the requested set.</summary>
     Task<IReadOnlyDictionary<Guid, Team>> GetByIdsWithParentsAsync(
@@ -119,7 +118,7 @@ internal interface ITeamRepository : IRepository
     /// A non-null <paramref name="autoAddMember"/> adds the user to the team (with an outbox event). Also approves any
     /// pending join request.
     /// </summary>
-    Task<(TeamRoleAssignment Assignment, bool AutoAddedToTeam, TeamMember Member)> AssignToRoleAsync(
+    Task<TeamRoleAssignmentMutationResult> AssignToRoleAsync(
         Guid roleDefinitionId,
         Guid targetUserId,
         Guid actorUserId,
@@ -129,22 +128,13 @@ internal interface ITeamRepository : IRepository
         CancellationToken ct = default);
 
     /// <summary>Demotes from Coordinator when this was the member's last management assignment.</summary>
-    Task<(bool Demoted, Guid TargetUserId)> UnassignFromRoleAsync(
+    Task<TeamRoleAssignmentMutationResult> UnassignFromRoleAsync(
         Guid roleDefinitionId, Guid teamMemberId, CancellationToken ct = default);
 
-    /// <summary>
-    /// Then demotes members who were coordinators only through this role. The caller invalidates the team cache when
-    /// members were demoted.
-    /// </summary>
-    Task<(IReadOnlyList<Guid> DemotedUserIds, bool DemotedMembers)> PersistRoleDefinitionUpdateAsync(
+    /// <summary>Persists the definition and reconciles assigned members' roles when management changes.</summary>
+    Task PersistRoleDefinitionUpdateAsync(
         TeamRoleDefinition definition,
-        bool clearingIsManagement,
-        CancellationToken ct = default);
-
-    /// <summary>Demotes coordinators server-side when <paramref name="clearingIsManagement"/>. Returns whether any were.</summary>
-    Task<bool> PersistRoleIsManagementAsync(
-        TeamRoleDefinition definition,
-        bool clearingIsManagement,
+        bool managementChanged,
         CancellationToken ct = default);
 
     Task<TeamJoinRequest?> FindUserPendingRequestAsync(
@@ -194,7 +184,7 @@ internal interface ITeamRepository : IRepository
 
     Task RemoveRoleDefinitionAsync(TeamRoleDefinition definition, CancellationToken ct = default);
 
-    Task<IReadOnlyList<Guid>> GetUserIdsWithManagementOnTeamAsync(
+    Task<IReadOnlyList<Guid>> GetActiveCoordinatorUserIdsForTeamAsync(
         Guid teamId, CancellationToken ct = default);
 
     /// <summary>Also removes their role assignments. Returns the number of memberships closed.</summary>

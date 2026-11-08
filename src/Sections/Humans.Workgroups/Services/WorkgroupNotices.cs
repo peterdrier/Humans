@@ -120,21 +120,23 @@ internal sealed class WorkgroupNotices(
             return;
         }
 
+        var recipientIds = new HashSet<Guid>();
         foreach (var id in ids)
         {
             infos.TryGetValue(id, out var info);
             var address = info?.Email;
-            if (string.IsNullOrWhiteSpace(address))
+            if (info is null || string.IsNullOrWhiteSpace(address))
             {
                 logger.LogWarning(
                     "Skipping workgroup {Kind} email for {UserId} on {WorkgroupId}: no effective email",
                     kind, id, w.Id);
                 continue;
             }
+            if (!recipientIds.Add(info.Id)) continue;
 
-            var language = info?.PreferredLanguage;
+            var language = info.PreferredLanguage;
             await SendNoticeAsync(new WorkgroupNoticeRequest(
-                id, address, info?.BurnerName, kind, w.Name, w.Slug, detail,
+                info.Id, address, info.BurnerName, kind, w.Name, w.Slug, detail,
                 language.IsSupportedCultureCode() ? language : CultureCatalog.DefaultCultureCode), ct);
         }
     }

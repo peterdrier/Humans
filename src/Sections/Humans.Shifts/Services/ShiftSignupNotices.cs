@@ -28,14 +28,14 @@ internal sealed class ShiftSignupNotices(
     {
         try
         {
-            var culture = await GetRecipientCultureAsync(userId);
+            var (recipientId, culture) = await ResolveRecipientAsync(userId);
             var title = string.Format(culture, NoticeResources.GetString(resourceKey, culture)!, args);
             await notificationService.SendAsync(
                 ShiftsNotificationSources.ShiftAssigned,
                 NotificationClass.Informational,
                 NotificationPriority.Normal,
                 title,
-                [userId],
+                [recipientId],
                 body: null,
                 actionUrl: "/Shifts",
                 actionLabel: NoticeResources.GetString("Shifts_BrowseAvailable", culture));
@@ -46,17 +46,18 @@ internal sealed class ShiftSignupNotices(
         }
     }
 
-    private async Task<CultureInfo> GetRecipientCultureAsync(Guid userId)
+    private async Task<(Guid UserId, CultureInfo Culture)> ResolveRecipientAsync(Guid userId)
     {
         try
         {
-            var language = (await users.GetUserInfoAsync(userId))?.PreferredLanguage;
-            return CultureInfo.GetCultureInfo(language.IsSupportedCultureCode() ? language! : "en");
+            var person = await users.GetUserInfoAsync(userId);
+            var language = person?.PreferredLanguage;
+            return (person?.Id ?? userId, CultureInfo.GetCultureInfo(language.IsSupportedCultureCode() ? language! : "en"));
         }
         catch (Exception ex)
         {
             logger.LogError(ex, "Failed to resolve shift notice language for user {UserId}; using English", userId);
-            return CultureInfo.GetCultureInfo("en");
+            return (userId, CultureInfo.GetCultureInfo("en"));
         }
     }
 
@@ -122,12 +123,14 @@ internal sealed class ShiftSignupNotices(
             .Distinct()
             .ToList() ?? [];
         var recipientsByCulture = new Dictionary<CultureInfo, List<Guid>>();
+        var recipientIds = new HashSet<Guid>();
         foreach (var coordinatorId in coordinatorIds)
         {
-            var culture = await GetRecipientCultureAsync(coordinatorId);
+            var (recipientId, culture) = await ResolveRecipientAsync(coordinatorId);
+            if (!recipientIds.Add(recipientId)) continue;
             if (!recipientsByCulture.TryGetValue(culture, out var recipients))
                 recipientsByCulture[culture] = recipients = [];
-            recipients.Add(coordinatorId);
+            recipients.Add(recipientId);
         }
 
         foreach (var (culture, recipients) in recipientsByCulture)

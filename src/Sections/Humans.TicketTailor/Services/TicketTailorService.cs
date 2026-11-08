@@ -221,22 +221,27 @@ internal sealed class TicketTailorService : ITicketVendorService
         var codes = new List<string>();
         for (var i = 0; i < spec.Count; i++)
         {
-            var payload = new
+            var code = $"NOBO-{Guid.NewGuid().ToString("N")[..8].ToUpperInvariant()}";
+            var percentage = spec.DiscountType == DiscountType.Percentage;
+            var value = percentage ? spec.DiscountValue : spec.DiscountValue * 100m;
+            var fields = new Dictionary<string, string>(StringComparer.Ordinal)
             {
-                code = $"NOBO-{Guid.NewGuid().ToString("N")[..8].ToUpperInvariant()}",
-                type = spec.DiscountType == DiscountType.Percentage ? "percentage" : "monetary",
-                value = spec.DiscountType == DiscountType.Percentage
-                    ? spec.DiscountValue
-                    : spec.DiscountValue * 100, // TT uses cents for monetary
+                ["code"] = code,
+                ["name"] = code,
+                ["type"] = percentage ? "percentage" : "fixed_amount",
+                [percentage ? "price_percent" : "price"] = value.ToString("0.############################", CultureInfo.InvariantCulture),
             };
+            if (spec.ExpiresAt is { } expires)
+                fields["expires"] = expires.ToUnixTimeSeconds().ToString(CultureInfo.InvariantCulture);
 
-            using var response = await _httpClient.PostAsJsonAsync(
-                $"{BaseUrl}/voucher_codes", payload, JsonOptions, ct);
+            using var form = new FormUrlEncodedContent(fields);
+            using var response = await _httpClient.PostAsync($"{BaseUrl}/discounts", form, ct);
             response.EnsureSuccessStatusCode();
 
-            var result = await response.Content.ReadFromJsonAsync<TtVoucherCode>(JsonOptions, ct);
-            if (result?.Code is not null)
-                codes.Add(result.Code);
+            var result = await response.Content.ReadFromJsonAsync<TtDiscountCode>(JsonOptions, ct);
+            if (string.IsNullOrWhiteSpace(result?.Code))
+                throw new HttpRequestException("TicketTailor discount response is missing required code.");
+            codes.Add(result.Code);
         }
 
         _logger.LogInformation("Generated {Count} discount codes via TicketTailor", codes.Count);
@@ -549,7 +554,7 @@ internal sealed class TicketTailorService : ITicketVendorService
     internal sealed record TtTicketGroup(
         int? MaxQuantity);
 
-    internal sealed record TtVoucherCode(
+    internal sealed record TtDiscountCode(
         string? Code);
 
     internal sealed record TtVoidResponse(

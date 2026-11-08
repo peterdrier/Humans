@@ -140,12 +140,11 @@ internal sealed class AgentService : IAgentService, IAgentConversationRetention
         // `yield` inside its implicit try/finally, so the enumerator is driven by hand. turnUsage is shared with
         // RunTurnAsync so a turn that breaks partway is still billed.
         var turnUsage = new TurnUsage();
-        var turn = RunTurnAsync(request, conversation, settings, priorTurns, today, hour, turnUsage, cancellationToken);
+        var turn = RunTurnAsync(request, conversation, settings, priorTurns, turnUsage, cancellationToken);
         await using var enumerator = turn.GetAsyncEnumerator(cancellationToken);
         // False until the assistant message for this turn is on disk — written either by
         // RunTurnAsync itself (it yields its finalizer only after AppendMessageAsync) or by
-        // the finally below. While it's false the persisted user message still owes the user
-        // a reply, and the turn is still unbilled.
+        // the finally below. While it's false the persisted user message still owes the user a reply.
         var assistantPersisted = false;
         Exception? turnFailure = null;
         try
@@ -190,9 +189,7 @@ internal sealed class AgentService : IAgentService, IAgentConversationRetention
                     yield break;
                 }
 
-                // RunTurnAsync yields its finalizer last, after AppendMessageAsync and its own
-                // _rateLimit.Record — seeing one means the turn is fully persisted and billed,
-                // so a disconnect while writing that very frame must not double up on either.
+                // The finalizer follows persistence, so disconnecting while writing it must not add an error trace.
                 if (current!.Finalizer is not null)
                     assistantPersisted = true;
                 yield return current;
@@ -202,19 +199,21 @@ internal sealed class AgentService : IAgentService, IAgentConversationRetention
         {
             // Also reached by disposal: AgentController awaits WriteSse outside this method, so a browser that
             // disconnects mid-write disposes the iterator at a `yield return` and resumes here, not in the catch.
-            if (!assistantPersisted)
+            try
             {
-                if (turnFailure is null)
-                    _logger.LogWarning(
-                        "Agent turn abandoned mid-stream (likely client disconnect) for conversation {ConversationId}",
-                        conversation.Id);
-                // CancellationToken.None: the turn may be failing BECAUSE cancellationToken
-                // fired (client disconnect), and the whole point is to still leave a trace.
-                await AppendFailureMessageAsync(conversation.Id, "error", settings.Model, turnUsage, CancellationToken.None);
-                // Bill it. The provider already charged us for whatever the turn consumed
-                // before it broke, so leaving those tokens out understates admin spend and the
-                // DailyTokenCap; and a turn that fails deterministically must still cost a
-                // message, or a repeatable backend error becomes an unmetered send loop.
+                if (!assistantPersisted)
+                {
+                    if (turnFailure is null)
+                        _logger.LogWarning(
+                            "Agent turn abandoned mid-stream (likely client disconnect) for conversation {ConversationId}",
+                            conversation.Id);
+                    // A disconnect must not cancel the attempt to leave a trace.
+                    await AppendFailureMessageAsync(conversation.Id, "error", settings.Model, turnUsage, CancellationToken.None);
+                }
+            }
+            finally
+            {
+                // Provider usage counts even when the transcript cannot be saved. Record once, before releasing the turn lock.
                 _rateLimit.Record(request.UserId, today, hour,
                     messagesDelta: 1, tokensDelta: turnUsage.InputTokensIncludingCacheWrites + turnUsage.OutputTokens);
             }
@@ -250,8 +249,6 @@ internal sealed class AgentService : IAgentService, IAgentConversationRetention
         AgentConversation conversation,
         AgentSettingsDto settings,
         List<AgentMessage> priorTurns,
-        LocalDate today,
-        int hour,
         TurnUsage usage,
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
@@ -453,9 +450,6 @@ internal sealed class AgentService : IAgentService, IAgentConversationRetention
             HandedOffToFeedbackId = null
         };
         await _repo.AppendMessageAsync(message, cancellationToken);
-
-        var totalTokens = message.PromptTokens + message.OutputTokens;
-        _rateLimit.Record(request.UserId, today, hour, messagesDelta: 1, tokensDelta: totalTokens);
 
         var fallbackFinalizer = finalFinalizer ?? new AgentTurnFinalizer(0, 0, 0, 0, _settings.Current.Model, "unknown");
         // Stamp the conversation id so the client can reuse it on the next send, and

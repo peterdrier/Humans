@@ -104,4 +104,15 @@ public class IbanFormatterTests
     {
         IbanFormatter.Mask("NL75 ABNA 0123 4567 89").Should().Be("NL75****789");
     }
+
+    [HumansTheory]
+    [InlineData("\u00a0")]
+    [InlineData("\t")]
+    [InlineData("\r\n")]
+    public void Mask_HandlesWhitespaceAroundAndWithinCopiedIban(string separator)
+    {
+        var formatted = separator + string.Join(separator, "es91", "2100", "0418", "4502", "0005", "1332") + separator;
+
+        IbanFormatter.Mask(formatted).Should().Be("es91****332");
+    }
 }
