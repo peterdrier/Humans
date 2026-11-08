@@ -84,8 +84,13 @@ public abstract class PreapprovalsTestHarness : IDisposable
 
     /// <summary>The service over the real repository and the substitutes above.</summary>
     private protected PreapprovalService NewService(PreapprovalsEmails? emailFactory = null) => new(
-        new PreapprovalRepository(DbFactory), Users, Finance, Notifications, NotificationResolve,
-        Email, emailFactory ?? EmailFactory, AuditLog, Clock, Logger);
+        new PreapprovalRepository(DbFactory), Users, Finance, NewNotices(emailFactory), AuditLog, Clock, Logger);
+
+    private protected PreapprovalNotices NewNotices(PreapprovalsEmails? emailFactory = null) => new(
+        Users, Notifications, NotificationResolve, Email, emailFactory ?? EmailFactory, Logger);
+
+    private protected PreapprovalDeadlineReminders NewReminders() => new(
+        new PreapprovalRepository(DbFactory), NewNotices(), AuditLog, Clock, Logger);
 
     /// <summary>A fresh context over the same store — what a test reads back through.</summary>
     private protected PreapprovalsDbContext OpenContext() => DbFactory.CreateDbContext();

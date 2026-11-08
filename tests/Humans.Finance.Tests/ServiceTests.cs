@@ -38,10 +38,9 @@ public class HoldedFinanceServiceTests
     private readonly IHoldedRepository _repo = Substitute.For<IHoldedRepository>();
     private readonly IHoldedClient _client = Substitute.For<IHoldedClient>();
     private readonly IBudgetService _budget = Substitute.For<IBudgetService>();
-    private readonly IHoldedService _holded = Substitute.For<IHoldedService>();
+    private readonly IHoldedService _holded = TestContacts.Holded();
     private readonly IHoldedWrite _write = Substitute.For<IHoldedWrite>();
     private readonly FakeClock _clock = new(FixedNow);
-    private readonly IMemoryCache _cache = new MemoryCache(new MemoryCacheOptions());
     private readonly TrackedCache<string, Dictionary<string, int>> _bookingState = new(
         "Finance.SepaStuckBankLines", warmOnStartup: false, NullLogger<Service>.Instance);
     private readonly IAuditLogService _audit = Substitute.For<IAuditLogService>();
@@ -61,6 +60,8 @@ public class HoldedFinanceServiceTests
 
     public HoldedFinanceServiceTests()
     {
+        // A payout refreshes the contact mirror first; an unstubbed Task<bool> reads as a sync already running.
+        _holded.SyncContactsAsync(Arg.Any<CancellationToken>()).Returns(true);
         // An unstubbed Task<bool> yields false, which the service reads as a lost unique-index race.
         _repo.UpsertCreditorContactAsync(
                 Arg.Any<HoldedCreditorContact>(), Arg.Any<Instant>(), Arg.Any<CancellationToken>())
@@ -79,9 +80,9 @@ public class HoldedFinanceServiceTests
                 PaymentsTotal = 0m,
                 PaymentsPending = 0m,
             });
-        // The document mirror never synced and holds nothing.
+        // The document mirror synced and holds nothing.
         _holded.GetPurchaseDocumentsAsync(Arg.Any<CancellationToken>())
-            .Returns(new HoldedPurchaseDocMirror(null, "Idle", null, 0, null, []));
+            .Returns(new HoldedPurchaseDocMirror(FixedNow, "Idle", null, 0, FixedNow, []));
     }
 
     /// <summary>A mirrored purchase document; the defaults are an approved, untagged, unbooked 2026 document.</summary>
@@ -123,7 +124,6 @@ public class HoldedFinanceServiceTests
         _write,
         _expenses,
         _clock,
-        _cache,
         _audit,
         _users,
         _emailService,
@@ -133,7 +133,7 @@ public class HoldedFinanceServiceTests
 
     /// <summary>Same service, with a logger the test can read back.</summary>
     private Service MakeService(ILogger<Service> logger) => new(
-        _repo, _client, _budget, _holded, _write, _expenses, _clock, _cache, _audit,
+        _repo, _client, _budget, _holded, _write, _expenses, _clock, _audit,
         _users, _emailService, TestFinanceEmails.Create(), Options.Create(_sepa), _bookingState,
         Substitute.For<IPaymentDetailsManagement>(), logger);
 
@@ -151,11 +151,11 @@ public class HoldedFinanceServiceTests
     {
         _repo.GetCategoryMapAsync(Arg.Any<CancellationToken>()).Returns(Array.Empty<HoldedCategoryMap>());
         _repo.GetCreditorContactsAsync(Arg.Any<CancellationToken>()).Returns(Array.Empty<HoldedCreditorContact>());
-        _client.ListContactsAsync(Arg.Any<CancellationToken>()).Returns(Array.Empty<HoldedContactDto>());
-        _client.ListExpenseAccountsAsync(Arg.Any<CancellationToken>()).Returns(call =>
+        _holded.GetContactsAsync(Arg.Any<CancellationToken>()).Returns(TestContacts.Synced(Array.Empty<HoldedContactDto>()));
+        _holded.GetChartAsync(Arg.Any<CancellationToken>()).Returns(call =>
         {
             call.Arg<CancellationToken>().ThrowIfCancellationRequested();
-            return Array.Empty<HoldedExpenseAccountDto>();
+            return Array.Empty<HoldedChartAccountInfo>();
         });
         _holded.GetPurchaseDocumentsAsync(Arg.Any<CancellationToken>()).Returns(call =>
         {
@@ -374,11 +374,8 @@ public class HoldedFinanceServiceTests
         _repo.GetCategoryMapAsync(Arg.Any<CancellationToken>()).ReturnsForAnyArgs(new List<HoldedCategoryMap>());
 
         // … but Holded already has an account at the first block number.
-        _client.ListExpenseAccountsAsync(Arg.Any<CancellationToken>()).ReturnsForAnyArgs(
-            new List<HoldedExpenseAccountDto>
-            {
-                new() { Id = "acc-x", AccountNum = 6290010, Name = "Existing" },
-            });
+        _holded.GetChartAsync(Arg.Any<CancellationToken>()).ReturnsForAnyArgs(
+            new List<HoldedChartAccountInfo> { new(6290010, "Existing", null, null, false, 0m) });
 
         var svc = MakeService();
         var plan = await svc.GetProvisioningPlanAsync(blockStart: 6290010, ct: TestContext.Current.CancellationToken);
@@ -497,10 +494,10 @@ public class HoldedFinanceServiceTests
         {
             new() { UserId = userId, HoldedContactId = "c1", SupplierAccountNum = null, Source = CreditorContactSource.Auto },
         });
-        _client.ListContactsAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedContactDto>
+        _holded.GetContactsAsync(Arg.Any<CancellationToken>()).Returns(TestContacts.Synced(new List<HoldedContactDto>
         {
             new() { Id = "c1", Name = "Daniela Marquez", SupplierAccountNum = 40000004 },
-        });
+        }));
 
         var (rows, _, _) = await MakeService().ListCreditorAccountsAsync(TestContext.Current.CancellationToken);
 
@@ -524,10 +521,10 @@ public class HoldedFinanceServiceTests
             new() { UserId = first, HoldedContactId = "c1", SupplierAccountNum = 40000004, Source = CreditorContactSource.Manual },
             new() { UserId = second, HoldedContactId = "c1", SupplierAccountNum = 40000007, Source = CreditorContactSource.Auto },
         });
-        _client.ListContactsAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedContactDto>
+        _holded.GetContactsAsync(Arg.Any<CancellationToken>()).Returns(TestContacts.Synced(new List<HoldedContactDto>
         {
             new() { Id = "c1", Name = "Daniela Marquez", SupplierAccountNum = 40000004 },
-        });
+        }));
 
         var (rows, _, _) = await MakeService().ListCreditorAccountsAsync(TestContext.Current.CancellationToken);
 
@@ -548,10 +545,10 @@ public class HoldedFinanceServiceTests
         {
             new() { UserId = userId, HoldedContactId = "c1", SupplierAccountNum = null, Source = CreditorContactSource.Auto },
         });
-        _client.ListContactsAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedContactDto>
+        _holded.GetContactsAsync(Arg.Any<CancellationToken>()).Returns(TestContacts.Synced(new List<HoldedContactDto>
         {
             new() { Id = "c1", Name = "Daniela Marquez", SupplierAccountNum = null },
-        });
+        }));
 
         var (_, unresolved, _) = await MakeService()
             .ListCreditorAccountsAsync(TestContext.Current.CancellationToken);
@@ -570,10 +567,10 @@ public class HoldedFinanceServiceTests
         {
             new() { UserId = userId, HoldedContactId = "c1", SupplierAccountNum = null, Source = CreditorContactSource.Auto },
         });
-        _client.ListContactsAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedContactDto>
+        _holded.GetContactsAsync(Arg.Any<CancellationToken>()).Returns(TestContacts.Synced(new List<HoldedContactDto>
         {
             new() { Id = "c1", Name = "Daniela Marquez", SupplierAccountNum = 40000004 },
-        });
+        }));
 
         var (_, unresolved, _) = await MakeService()
             .ListCreditorAccountsAsync(TestContext.Current.CancellationToken);
@@ -588,7 +585,7 @@ public class HoldedFinanceServiceTests
         {
             new() { UserId = Guid.NewGuid(), HoldedContactId = "c1", SupplierAccountNum = 40000004, Source = CreditorContactSource.Manual },
         });
-        _client.ListContactsAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedContactDto>());
+        _holded.GetContactsAsync(Arg.Any<CancellationToken>()).Returns(TestContacts.Synced(new List<HoldedContactDto>()));
 
         var (rows, unresolved, unavailable) = await MakeService()
             .ListCreditorAccountsAsync(TestContext.Current.CancellationToken);
@@ -605,7 +602,7 @@ public class HoldedFinanceServiceTests
         {
             new() { UserId = Guid.NewGuid(), HoldedContactId = "c1", SupplierAccountNum = 40000004, Source = CreditorContactSource.Manual },
         });
-        _client.ListContactsAsync(Arg.Any<CancellationToken>()).ThrowsAsync(new HoldedTransientException("timeout"));
+        _holded.GetContactsAsync(Arg.Any<CancellationToken>()).Returns(new HoldedContactMirror(null, []));
         _holded.GetLedgerLinesAsync(40000004, Arg.Any<CancellationToken>())
             .Returns(new List<HoldedLedgerLineInfo> { Line(1, 0, 40000004, FixedNow, credit: 50m) });
         var service = MakeService();
@@ -643,7 +640,7 @@ public class HoldedFinanceServiceTests
         {
             Line(1, 0, 40000004, FixedNow, credit: 50m),
         });
-        _client.ListContactsAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedContactDto>
+        _holded.GetContactsAsync(Arg.Any<CancellationToken>()).Returns(TestContacts.Synced(new List<HoldedContactDto>
         {
             new()
             {
@@ -652,7 +649,7 @@ public class HoldedFinanceServiceTests
                 Iban = "ES9121000418450200051332", TaxCode = "X1234567L", Address = "Calle Mayor 1, 28013 Madrid",
             },
             new() { Id = "c2", Name = "Someone Else", SupplierAccountNum = 40000007 },
-        });
+        }));
 
         var ledger = await MakeService().GetCreditorLedgerAsync(40000004, TestContext.Current.CancellationToken);
 
@@ -677,10 +674,10 @@ public class HoldedFinanceServiceTests
         {
             Line(1, 0, 40000004, FixedNow, credit: 50m),
         });
-        _client.ListContactsAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedContactDto>
+        _holded.GetContactsAsync(Arg.Any<CancellationToken>()).Returns(TestContacts.Synced(new List<HoldedContactDto>
         {
             new() { Id = "c2", Name = "Someone Else", SupplierAccountNum = 40000007 },
-        });
+        }));
 
         var ledger = await MakeService().GetCreditorLedgerAsync(40000004, TestContext.Current.CancellationToken);
 
@@ -739,7 +736,7 @@ public class HoldedFinanceServiceTests
         var ct = TestContext.Current.CancellationToken;
         var gate = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var posts = 0;
-        _client.CreateContactAsync(Arg.Any<HoldedContactInput>(), Arg.Any<CancellationToken>())
+        _write.CreateContactAsync(Arg.Any<HoldedContactInput>(), Arg.Any<CancellationToken>())
             .Returns(async _ =>
             {
                 if (Interlocked.Increment(ref posts) == 1)
@@ -767,8 +764,8 @@ public class HoldedFinanceServiceTests
         await _repo.DidNotReceive().TryInsertCreditorContactAsync(
             Arg.Is<HoldedCreditorContact>(c => c.HoldedContactId == "contact-A"), Arg.Any<CancellationToken>());
         await _repo.DidNotReceiveWithAnyArgs().UpsertCreditorContactAsync(default!, default);
-        await _client.Received(1).DeleteContactAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
-        await _client.Received(1).DeleteContactAsync("contact-A", Arg.Any<CancellationToken>());
+        await _write.Received(1).DeleteContactAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
+        await _write.Received(1).DeleteContactAsync("contact-A", Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -777,13 +774,13 @@ public class HoldedFinanceServiceTests
         var userId = Guid.NewGuid();
         _repo.GetCreditorContactByUserAsync(userId, Arg.Any<CancellationToken>())
             .Returns(null, BoundTo(userId, "contact-B"));
-        _client.CreateContactAsync(Arg.Any<HoldedContactInput>(), Arg.Any<CancellationToken>()).Returns("contact-A");
+        _write.CreateContactAsync(Arg.Any<HoldedContactInput>(), Arg.Any<CancellationToken>()).Returns("contact-A");
 
         var id = await MakeService().EnsureCreditorContactAsync(
             userId, "Maria Garcia", null, null, null, null, "TestJob", TestContext.Current.CancellationToken);
 
         id.Should().Be("contact-B");
-        await _client.Received(1).DeleteContactAsync("contact-A", Arg.Any<CancellationToken>());
+        await _write.Received(1).DeleteContactAsync("contact-A", Arg.Any<CancellationToken>());
         await _repo.DidNotReceiveWithAnyArgs().UpsertCreditorContactAsync(default!, default);
         // An automated delete in Holded is the Board's to see, under the job that made it.
         await _audit.Received(1).LogAsync(FinanceAuditActions.HoldedDuplicateRemoved, nameof(User), userId,
@@ -798,7 +795,7 @@ public class HoldedFinanceServiceTests
         // Initial read and the pre-write re-read see nothing; the insert loses; the next read finds the winner.
         _repo.GetCreditorContactByUserAsync(userId, Arg.Any<CancellationToken>())
             .Returns(null, null, BoundTo(userId, "contact-B"));
-        _client.CreateContactAsync(Arg.Any<HoldedContactInput>(), Arg.Any<CancellationToken>()).Returns("contact-A");
+        _write.CreateContactAsync(Arg.Any<HoldedContactInput>(), Arg.Any<CancellationToken>()).Returns("contact-A");
         _repo.TryInsertCreditorContactAsync(Arg.Any<HoldedCreditorContact>(), Arg.Any<CancellationToken>())
             .Returns(false);
 
@@ -806,7 +803,7 @@ public class HoldedFinanceServiceTests
             userId, "Maria Garcia", null, null, null, null, "TestJob", TestContext.Current.CancellationToken);
 
         id.Should().Be("contact-B");
-        await _client.Received(1).DeleteContactAsync("contact-A", Arg.Any<CancellationToken>());
+        await _write.Received(1).DeleteContactAsync("contact-A", Arg.Any<CancellationToken>());
         await _repo.Received(3).GetCreditorContactByUserAsync(userId, Arg.Any<CancellationToken>());
     }
 
@@ -815,7 +812,7 @@ public class HoldedFinanceServiceTests
     {
         var userId = Guid.NewGuid();
         _repo.GetCreditorContactByUserAsync(userId, Arg.Any<CancellationToken>()).Returns((HoldedCreditorContact?)null);
-        _client.CreateContactAsync(Arg.Any<HoldedContactInput>(), Arg.Any<CancellationToken>()).Returns("contact-A");
+        _write.CreateContactAsync(Arg.Any<HoldedContactInput>(), Arg.Any<CancellationToken>()).Returns("contact-A");
 
         var id = await MakeService().EnsureCreditorContactAsync(
             userId, "Maria Garcia", null, null, null, null, "TestJob", TestContext.Current.CancellationToken);
@@ -831,7 +828,7 @@ public class HoldedFinanceServiceTests
     {
         var userId = Guid.NewGuid();
         _repo.GetCreditorContactByUserAsync(userId, Arg.Any<CancellationToken>()).Returns((HoldedCreditorContact?)null);
-        _client.CreateContactAsync(Arg.Any<HoldedContactInput>(), Arg.Any<CancellationToken>()).Returns("new-contact");
+        _write.CreateContactAsync(Arg.Any<HoldedContactInput>(), Arg.Any<CancellationToken>()).Returns("new-contact");
 
         var id = await MakeService().EnsureCreditorContactAsync(
             userId, "Maria Garcia", "Meri", "ES9121000418450200051332", null, null,
@@ -839,7 +836,7 @@ public class HoldedFinanceServiceTests
             TestContext.Current.CancellationToken);
 
         id.Should().Be("new-contact");
-        await _client.Received(1).CreateContactAsync(
+        await _write.Received(1).CreateContactAsync(
             Arg.Is<HoldedContactInput>(i =>
                 i.Name == "Maria Garcia" &&
                 i.TradeName == "Meri" &&
@@ -857,14 +854,14 @@ public class HoldedFinanceServiceTests
     {
         var userId = Guid.NewGuid();
         _repo.GetCreditorContactByUserAsync(userId, Arg.Any<CancellationToken>()).Returns((HoldedCreditorContact?)null);
-        _client.CreateContactAsync(Arg.Any<HoldedContactInput>(), Arg.Any<CancellationToken>()).Returns("c");
+        _write.CreateContactAsync(Arg.Any<HoldedContactInput>(), Arg.Any<CancellationToken>()).Returns("c");
 
         await MakeService().EnsureCreditorContactAsync(
             userId, "Maria Garcia", "Maria Garcia", null, null, null,
             "TestJob",
             TestContext.Current.CancellationToken);
 
-        await _client.Received(1).CreateContactAsync(
+        await _write.Received(1).CreateContactAsync(
             Arg.Is<HoldedContactInput>(i => i.TradeName == null), Arg.Any<CancellationToken>());
     }
 
@@ -891,7 +888,7 @@ public class HoldedFinanceServiceTests
             TestContext.Current.CancellationToken);
 
         id.Should().Be("existing-c");
-        await _client.DidNotReceive().CreateContactAsync(Arg.Any<HoldedContactInput>(), Arg.Any<CancellationToken>());
+        await _write.DidNotReceive().CreateContactAsync(Arg.Any<HoldedContactInput>(), Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -907,7 +904,7 @@ public class HoldedFinanceServiceTests
 
         // Lazy-seed from a prior pushed report -> the seeded contact as is: no create, no update.
         id.Should().Be("seed-c");
-        await _client.DidNotReceive().CreateContactAsync(Arg.Any<HoldedContactInput>(), Arg.Any<CancellationToken>());
+        await _write.DidNotReceive().CreateContactAsync(Arg.Any<HoldedContactInput>(), Arg.Any<CancellationToken>());
         await _repo.Received(1).UpsertCreditorContactAsync(
             Arg.Is<HoldedCreditorContact>(c => c.HoldedContactId == "seed-c" && c.SupplierAccountNum == 40000004),
             FixedNow, Arg.Any<CancellationToken>());
@@ -928,7 +925,7 @@ public class HoldedFinanceServiceTests
                 SupplierAccountNum = null,
                 Source = CreditorContactSource.Manual,
             });
-        _client.CreateContactAsync(Arg.Any<HoldedContactInput>(), Arg.Any<CancellationToken>()).Returns("m-c");
+        _write.CreateContactAsync(Arg.Any<HoldedContactInput>(), Arg.Any<CancellationToken>()).Returns("m-c");
 
         await MakeService().EnsureCreditorContactAsync(
             userId, "Daniela Marquez", null, null, null, 40000001,
@@ -963,7 +960,7 @@ public class HoldedFinanceServiceTests
             TestContext.Current.CancellationToken);
 
         id.Should().Be("c1");
-        await _client.DidNotReceive().CreateContactAsync(Arg.Any<HoldedContactInput>(), Arg.Any<CancellationToken>());
+        await _write.DidNotReceive().CreateContactAsync(Arg.Any<HoldedContactInput>(), Arg.Any<CancellationToken>());
         await _repo.DidNotReceive().UpsertCreditorContactAsync(
             Arg.Any<HoldedCreditorContact>(), Arg.Any<Instant>(), Arg.Any<CancellationToken>());
     }
@@ -983,7 +980,7 @@ public class HoldedFinanceServiceTests
                 SupplierAccountNum = null,
                 Source = CreditorContactSource.Auto,
             });
-        _client.CreateContactAsync(Arg.Any<HoldedContactInput>(), Arg.Any<CancellationToken>()).Returns("c1");
+        _write.CreateContactAsync(Arg.Any<HoldedContactInput>(), Arg.Any<CancellationToken>()).Returns("c1");
 
         await MakeService().EnsureCreditorContactAsync(
             userId, "Peter Drier", null, null, null, 40000004,
@@ -1012,7 +1009,7 @@ public class HoldedFinanceServiceTests
                 Source = CreditorContactSource.Auto,
             },
             (HoldedCreditorContact?)null); // re-check right before the write: admin unbound mid-push
-        _client.CreateContactAsync(Arg.Any<HoldedContactInput>(), Arg.Any<CancellationToken>()).Returns("c1");
+        _write.CreateContactAsync(Arg.Any<HoldedContactInput>(), Arg.Any<CancellationToken>()).Returns("c1");
 
         var id = await MakeService().EnsureCreditorContactAsync(
             userId, "Peter Drier", null, null, null, 40000004,
@@ -1052,7 +1049,7 @@ public class HoldedFinanceServiceTests
                 Source = CreditorContactSource.Manual,
             });
         _repo.GetCreditorContactsAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedCreditorContact>());
-        _client.CreateContactAsync(Arg.Any<HoldedContactInput>(), Arg.Any<CancellationToken>()).Returns("c1");
+        _write.CreateContactAsync(Arg.Any<HoldedContactInput>(), Arg.Any<CancellationToken>()).Returns("c1");
 
         var id = await MakeService(logger)
             .EnsureCreditorContactAsync(
@@ -1087,7 +1084,7 @@ public class HoldedFinanceServiceTests
                 Source = CreditorContactSource.Manual,
             });
         _repo.GetCreditorContactsAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedCreditorContact>());
-        _client.CreateContactAsync(Arg.Any<HoldedContactInput>(), Arg.Any<CancellationToken>()).Returns("c-new");
+        _write.CreateContactAsync(Arg.Any<HoldedContactInput>(), Arg.Any<CancellationToken>()).Returns("c-new");
 
         var id = await MakeService(logger)
             .EnsureCreditorContactAsync(
@@ -1097,7 +1094,7 @@ public class HoldedFinanceServiceTests
 
         // The admin's bind stands; the contact this push minted is retracted, not left as a second one.
         id.Should().Be("c-admin");
-        await _client.Received(1).DeleteContactAsync("c-new", Arg.Any<CancellationToken>());
+        await _write.Received(1).DeleteContactAsync("c-new", Arg.Any<CancellationToken>());
         await _repo.DidNotReceive().UpsertCreditorContactAsync(
             Arg.Any<HoldedCreditorContact>(), Arg.Any<Instant>(), Arg.Any<CancellationToken>());
         logger.Entries.Should().ContainSingle(e => e.Level == LogLevel.Warning)
@@ -1249,13 +1246,13 @@ public class HoldedFinanceServiceTests
         _holded.GetAccountBalancesAsync(Arg.Any<CancellationToken>())
             .Returns(new Dictionary<int, decimal> { [40000004] = -40m });
         _repo.GetCreditorContactsAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedCreditorContact>());
-        _client.ListContactsAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedContactDto>
+        _holded.GetContactsAsync(Arg.Any<CancellationToken>()).Returns(TestContacts.Synced(new List<HoldedContactDto>
         {
             new() { Id = "c1", Name = "Daniela Marquez", SupplierAccountNum = 40000004 },
             new() { Id = "c2", Name = "Maria Garcia", SupplierAccountNum = 40000012 },  // no ledger lines yet
             new() { Id = "c3", Name = "A Client", SupplierAccountNum = null },          // not a supplier
             new() { Id = "c4", Name = "Acme Supplies SL", SupplierAccountNum = 42000000 }, // vendor, outside the block
-        });
+        }));
 
         var (rows, _, _) = await MakeService().ListCreditorAccountsAsync(TestContext.Current.CancellationToken);
 
@@ -1282,14 +1279,14 @@ public class HoldedFinanceServiceTests
         var cat = Guid.NewGuid();
         _holded.GetAccountBalancesAsync(Arg.Any<CancellationToken>())
             .Returns(new Dictionary<int, decimal> { [40000004] = -40m, [40000005] = -5m, [40000006] = -6m, [40000007] = -7m });
-        _client.ListContactsAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedContactDto>
+        _holded.GetContactsAsync(Arg.Any<CancellationToken>()).Returns(TestContacts.Synced(new List<HoldedContactDto>
         {
             new() { Id = "c-ana", Name = "Ana", SupplierAccountNum = 40000004 },
             new() { Id = "c-ben", Name = "Ben", SupplierAccountNum = 40000005 },
             new() { Id = "c-cat", Name = "Cat", SupplierAccountNum = 40000006 },
             new() { Id = "c-dan", Name = "Dan", SupplierAccountNum = 40000007 },
             new() { Id = "c-cat2", Name = "Cat", SupplierAccountNum = 40000006 },
-        });
+        }));
         _repo.GetCreditorContactsAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedCreditorContact>
         {
             new() { UserId = ana, HoldedContactId = "c-ana", SupplierAccountNum = 40000004, Source = CreditorContactSource.Manual },
@@ -1297,7 +1294,7 @@ public class HoldedFinanceServiceTests
             new() { UserId = cat, HoldedContactId = "c-cat", SupplierAccountNum = 40000006, Source = CreditorContactSource.Manual },
             new() { UserId = Guid.NewGuid(), HoldedContactId = "c-cat2", SupplierAccountNum = 40000006, Source = CreditorContactSource.Auto },
         });
-        _client.ListPurchaseDocumentsAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedPurchaseDocListItemDto>
+        _holded.GetPurchaseDocumentsAsync(Arg.Any<CancellationToken>()).Returns(TestPurchaseMirror.Of(new List<HoldedPurchaseDocListItemDto>
         {
             OpenDoc("a1", "c-ana", 10m), OpenDoc("a2", "c-ana", 20m),
             OpenDoc("a3", "c-ana", 0m),                   // paid off
@@ -1305,7 +1302,7 @@ public class HoldedFinanceServiceTests
             OpenDoc("b1", "c-ben", 5m),
             OpenDoc("x1", "c-cat", 6m),
             OpenDoc("v1", null, 9m),                      // no contact
-        });
+        }));
 
         var (rows, _, _) = await MakeService().ListCreditorAccountsAsync(TestContext.Current.CancellationToken);
 
@@ -1313,6 +1310,8 @@ public class HoldedFinanceServiceTests
         rows.Single(r => r.SupplierAccountNum == 40000005).OpenDocumentCount.Should().Be(1);
         rows.Single(r => r.SupplierAccountNum == 40000006).OpenDocumentCount.Should().BeNull("a collision is unpayable");
         rows.Single(r => r.SupplierAccountNum == 40000007).OpenDocumentCount.Should().BeNull("unbound");
+        await _client.DidNotReceiveWithAnyArgs().ListPurchaseDocumentsAsync();
+        await _client.DidNotReceiveWithAnyArgs().ListContactsAsync();
 
         static HoldedPurchaseDocListItemDto OpenDoc(string id, string? contactId, decimal pending, bool draft = false) => new()
         {
@@ -1330,56 +1329,24 @@ public class HoldedFinanceServiceTests
     }
 
     [HumansFact]
-    public async Task ListCreditorAccounts_PurchaseDocumentsUnavailable_StillRendersRowsWithoutCounts()
+    public async Task ListCreditorAccounts_PurchaseMirrorNeverSynced_StillRendersRowsWithoutCounts()
     {
         var ana = Guid.NewGuid();
         _holded.GetAccountBalancesAsync(Arg.Any<CancellationToken>())
             .Returns(new Dictionary<int, decimal> { [40000004] = -40m });
-        _client.ListContactsAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedContactDto>
+        _holded.GetContactsAsync(Arg.Any<CancellationToken>()).Returns(TestContacts.Synced(new List<HoldedContactDto>
         {
             new() { Id = "c-ana", Name = "Ana", SupplierAccountNum = 40000004 },
-        });
+        }));
         _repo.GetCreditorContactsAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedCreditorContact>
         {
             new() { UserId = ana, HoldedContactId = "c-ana", SupplierAccountNum = 40000004, Source = CreditorContactSource.Manual },
         });
-        _client.ListPurchaseDocumentsAsync(Arg.Any<CancellationToken>())
-            .Returns<IReadOnlyList<HoldedPurchaseDocListItemDto>>(_ => throw new HoldedTransientException("down"));
+        _holded.GetPurchaseDocumentsAsync(Arg.Any<CancellationToken>()).Returns(TestPurchaseMirror.NeverSynced);
 
         var (rows, _, _) = await MakeService().ListCreditorAccountsAsync(TestContext.Current.CancellationToken);
 
         rows.Should().ContainSingle().Which.OpenDocumentCount.Should().BeNull();
-    }
-
-    [HumansFact]
-    public async Task ListCreditorAccounts_UnexpectedClientFailure_Propagates()
-    {
-        _holded.GetAccountBalancesAsync(Arg.Any<CancellationToken>())
-            .Returns(new Dictionary<int, decimal>());
-        _repo.GetCreditorContactsAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedCreditorContact>());
-        // Only vendor-call failures degrade to blank names; a bug must not be silently absorbed.
-        _client.ListContactsAsync(Arg.Any<CancellationToken>())
-            .Throws(new NullReferenceException("mapping bug"));
-
-        var act = async () => await MakeService()
-            .ListCreditorAccountsAsync(TestContext.Current.CancellationToken);
-
-        await act.Should().ThrowAsync<NullReferenceException>();
-    }
-
-    [HumansFact]
-    public async Task ListCreditorAccounts_UnreadableHoldedResponse_IsUnavailable()
-    {
-        _holded.GetAccountBalancesAsync(Arg.Any<CancellationToken>())
-            .Returns(new Dictionary<int, decimal> { [40000004] = -40m });
-        _repo.GetCreditorContactsAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedCreditorContact>());
-        // A malformed body is still a vendor failure: the page says so rather than 500.
-        _client.ListContactsAsync(Arg.Any<CancellationToken>())
-            .Throws(new JsonException("unexpected token"));
-
-        var (_, _, unavailable) = await MakeService().ListCreditorAccountsAsync(TestContext.Current.CancellationToken);
-
-        unavailable.Should().Be(Service.ContactListUnavailable);
     }
 
     [HumansFact]
@@ -1409,10 +1376,10 @@ public class HoldedFinanceServiceTests
         {
             new() { UserId = Guid.NewGuid(), HoldedContactId = "c1", SupplierAccountNum = null, Source = CreditorContactSource.Auto },
         });
-        _client.ListContactsAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedContactDto>
+        _holded.GetContactsAsync(Arg.Any<CancellationToken>()).Returns(TestContacts.Synced(new List<HoldedContactDto>
         {
             new() { Id = "c1", Name = "Daniela Marquez", SupplierAccountNum = 40000004 },
-        });
+        }));
 
         var result = await MakeService().SetCreditorContactAsync(
             Guid.NewGuid(), 40000004, Admin, TestContext.Current.CancellationToken);
@@ -1427,7 +1394,7 @@ public class HoldedFinanceServiceTests
     public async Task SetCreditorContact_NoHoldedContactCarriesAccount_FailsAndWritesNothing()
     {
         _repo.GetCreditorContactsAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedCreditorContact>());
-        _client.ListContactsAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedContactDto>());
+        _holded.GetContactsAsync(Arg.Any<CancellationToken>()).Returns(TestContacts.Synced(new List<HoldedContactDto>()));
 
         var result = await MakeService().SetCreditorContactAsync(
             Guid.NewGuid(), 40000004, Admin, TestContext.Current.CancellationToken);
@@ -1449,10 +1416,10 @@ public class HoldedFinanceServiceTests
         {
             new() { UserId = userId, HoldedContactId = "c1", SupplierAccountNum = 40000004, Source = CreditorContactSource.Auto },
         });
-        _client.ListContactsAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedContactDto>
+        _holded.GetContactsAsync(Arg.Any<CancellationToken>()).Returns(TestContacts.Synced(new List<HoldedContactDto>
         {
             new() { Id = "c1", Name = "Daniela Marquez", SupplierAccountNum = 40000004 },
-        });
+        }));
 
         var result = await MakeService().SetCreditorContactAsync(
             userId, 40000004, Admin, TestContext.Current.CancellationToken);
@@ -1543,7 +1510,7 @@ public class HoldedFinanceServiceTests
         {
             new() { UserId = otherUserId, HoldedContactId = "c-theirs", SupplierAccountNum = 40000012, Source = CreditorContactSource.Manual },
         });
-        _client.CreateContactAsync(Arg.Any<HoldedContactInput>(), Arg.Any<CancellationToken>()).Returns("c-fresh");
+        _write.CreateContactAsync(Arg.Any<HoldedContactInput>(), Arg.Any<CancellationToken>()).Returns("c-fresh");
 
         await MakeService(logger)
             .EnsureCreditorContactAsync(
@@ -1552,7 +1519,7 @@ public class HoldedFinanceServiceTests
                 TestContext.Current.CancellationToken);
 
         // The refused seed is not reused: Holded gets a new contact, splitting the two members apart.
-        await _client.Received(1).CreateContactAsync(Arg.Any<HoldedContactInput>(), Arg.Any<CancellationToken>());
+        await _write.Received(1).CreateContactAsync(Arg.Any<HoldedContactInput>(), Arg.Any<CancellationToken>());
         await _repo.Received(1).TryInsertCreditorContactAsync(
             Arg.Is<HoldedCreditorContact>(c =>
                 c.UserId == userId && c.HoldedContactId == "c-fresh" && c.SupplierAccountNum == null),
@@ -1574,7 +1541,7 @@ public class HoldedFinanceServiceTests
         {
             new() { UserId = otherUserId, HoldedContactId = "c-shared", SupplierAccountNum = null, Source = CreditorContactSource.Auto },
         });
-        _client.CreateContactAsync(Arg.Any<HoldedContactInput>(), Arg.Any<CancellationToken>()).Returns("c-fresh");
+        _write.CreateContactAsync(Arg.Any<HoldedContactInput>(), Arg.Any<CancellationToken>()).Returns("c-fresh");
 
         await MakeService(logger)
             .EnsureCreditorContactAsync(
@@ -1582,7 +1549,7 @@ public class HoldedFinanceServiceTests
                 "TestJob",
                 TestContext.Current.CancellationToken);
 
-        await _client.Received(1).CreateContactAsync(Arg.Any<HoldedContactInput>(), Arg.Any<CancellationToken>());
+        await _write.Received(1).CreateContactAsync(Arg.Any<HoldedContactInput>(), Arg.Any<CancellationToken>());
         logger.Entries.Should().ContainSingle(e => e.Level == LogLevel.Error)
             .Which.Message.Should().Contain("c-shared");
     }
@@ -1600,7 +1567,7 @@ public class HoldedFinanceServiceTests
         {
             new() { UserId = otherUserId, HoldedContactId = "c-theirs", SupplierAccountNum = 40000012, Source = CreditorContactSource.Manual },
         });
-        _client.CreateContactAsync(Arg.Any<HoldedContactInput>(), Arg.Any<CancellationToken>()).Returns("c-fresh");
+        _write.CreateContactAsync(Arg.Any<HoldedContactInput>(), Arg.Any<CancellationToken>()).Returns("c-fresh");
 
         await MakeService().EnsureCreditorContactAsync(
             userId, "Ana Ruiz", null, null, seedContactId: "c-theirs", seedAccountNum: 40000012,
@@ -1629,7 +1596,7 @@ public class HoldedFinanceServiceTests
             TestContext.Current.CancellationToken);
 
         id.Should().Be("c-mine");
-        await _client.DidNotReceive().CreateContactAsync(Arg.Any<HoldedContactInput>(), Arg.Any<CancellationToken>());
+        await _write.DidNotReceive().CreateContactAsync(Arg.Any<HoldedContactInput>(), Arg.Any<CancellationToken>());
         await _repo.Received(1).UpsertCreditorContactAsync(
             Arg.Is<HoldedCreditorContact>(c => c.HoldedContactId == "c-mine" && c.SupplierAccountNum == 40000012),
             FixedNow, Arg.Any<CancellationToken>());
@@ -1770,7 +1737,7 @@ public class HoldedFinanceServiceTests
                 CreatedAt = FixedNow,
                 UpdatedAt = FixedNow,
             }).ToList());
-        _client.ListExpenseAccountsAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedExpenseAccountDto>());
+        _holded.GetChartAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedChartAccountInfo>());
 
         var plan = await MakeService().GetProvisioningPlanAsync(62900100, TestContext.Current.CancellationToken);
 
@@ -1787,14 +1754,15 @@ public class HoldedFinanceServiceTests
     public async Task Provision_AddOne_CreatesExactlyTheFirstPendingAccount()
     {
         var (catA, catB) = TwoUnmappedCategories();
-        _client.CreateExpenseAccountAsync(Arg.Any<int>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
-            .Returns(ci => $"acc-{ci.ArgAt<int>(0)}");
+        _write.EnsureExpenseAccountAsync(Arg.Any<int>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(ci => new HoldedExpenseAccountOutcome($"acc-{ci.ArgAt<int>(0)}", Created: true));
 
         var created = await MakeService().ProvisionAsync(
             blockStart: 6290010, addAll: false, actorUserId: Admin, ct: TestContext.Current.CancellationToken);
 
         created.Should().Be(1);
-        await _client.Received(1).CreateExpenseAccountAsync(
+        await _holded.Received(1).SyncChartAsync(Arg.Any<CancellationToken>());
+        await _write.Received(1).EnsureExpenseAccountAsync(
             Arg.Any<int>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
         var row = _repo.ReceivedCalls()
             .Where(c => string.Equals(c.GetMethodInfo().Name, nameof(IHoldedRepository.AddCategoryMapAsync), StringComparison.Ordinal))
@@ -1813,8 +1781,8 @@ public class HoldedFinanceServiceTests
     public async Task Provision_AddAll_CreatesEveryPendingAccountAndNeverRemovesAMapRow()
     {
         TwoUnmappedCategories();
-        _client.CreateExpenseAccountAsync(Arg.Any<int>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
-            .Returns(ci => $"acc-{ci.ArgAt<int>(0)}");
+        _write.EnsureExpenseAccountAsync(Arg.Any<int>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(ci => new HoldedExpenseAccountOutcome($"acc-{ci.ArgAt<int>(0)}", Created: true));
 
         var created = await MakeService().ProvisionAsync(
             blockStart: 6290010, addAll: true, actorUserId: Admin, ct: TestContext.Current.CancellationToken);
@@ -1835,9 +1803,8 @@ public class HoldedFinanceServiceTests
         // Partial success is deliberate: an account already created in Holded must keep its map row,
         // or the number is stranded remotely with nothing pointing at it.
         TwoUnmappedCategories();
-        _client.CreateExpenseAccountAsync(6290010, Arg.Any<string>(), Arg.Any<CancellationToken>())
-            .Returns("acc-6290010");
-        _client.CreateExpenseAccountAsync(6290011, Arg.Any<string>(), Arg.Any<CancellationToken>())
+        _write.EnsureExpenseAccountAsync(6290010, Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(new HoldedExpenseAccountOutcome("acc-6290010", Created: true));
+        _write.EnsureExpenseAccountAsync(6290011, Arg.Any<string>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new InvalidOperationException("holded said no"));
 
         var act = async () => await MakeService().ProvisionAsync(
@@ -1852,8 +1819,7 @@ public class HoldedFinanceServiceTests
     public async Task Provision_MapSaveFailsAfterHoldedCreatedTheAccount_StillAuditsTheAccount()
     {
         var (catA, _) = TwoUnmappedCategories();
-        _client.CreateExpenseAccountAsync(Arg.Any<int>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
-            .Returns("acc-6290010");
+        _write.EnsureExpenseAccountAsync(Arg.Any<int>(), Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(new HoldedExpenseAccountOutcome("acc-6290010", Created: true));
         _repo.AddCategoryMapAsync(Arg.Any<HoldedCategoryMap>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new InvalidOperationException("db down"));
 
@@ -1904,13 +1870,13 @@ public class HoldedFinanceServiceTests
                 [42000000] = -1m,
             });
         _repo.GetCreditorContactsAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedCreditorContact>());
-        _client.ListContactsAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedContactDto>
+        _holded.GetContactsAsync(Arg.Any<CancellationToken>()).Returns(TestContacts.Synced(new List<HoldedContactDto>
         {
             new() { Id = "lo-out", Name = "Vendor", SupplierAccountNum = 39999999 },
             new() { Id = "lo-in", Name = "First member", SupplierAccountNum = 40000000 },
             new() { Id = "hi-in", Name = "Last member", SupplierAccountNum = 41999999 },
             new() { Id = "hi-out", Name = "Vendor", SupplierAccountNum = 42000000 },
-        });
+        }));
 
         var (rows, _, _) = await MakeService().ListCreditorAccountsAsync(TestContext.Current.CancellationToken);
 
@@ -1947,10 +1913,10 @@ public class HoldedFinanceServiceTests
     public async Task SetCreditorContact_OnTheBlockBoundary_IsAccepted(int accountNum)
     {
         _repo.GetCreditorContactsAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedCreditorContact>());
-        _client.ListContactsAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedContactDto>
+        _holded.GetContactsAsync(Arg.Any<CancellationToken>()).Returns(TestContacts.Synced(new List<HoldedContactDto>
         {
             new() { Id = "c1", Name = "Member", SupplierAccountNum = accountNum },
-        });
+        }));
 
         var result = await MakeService().SetCreditorContactAsync(
             Guid.NewGuid(), accountNum, Admin, TestContext.Current.CancellationToken);
@@ -1984,8 +1950,8 @@ public class HoldedFinanceServiceTests
     }
 
     private void ContactsOn40000004(params string[] ids) =>
-        _client.ListContactsAsync(Arg.Any<CancellationToken>()).Returns(
-            ids.Select(id => new HoldedContactDto { Id = id, SupplierAccountNum = 40000004 }).ToList());
+        _holded.GetContactsAsync(Arg.Any<CancellationToken>()).Returns(TestContacts.Synced(
+            ids.Select(id => new HoldedContactDto { Id = id, SupplierAccountNum = 40000004 }).ToList()));
 
     [HumansFact]
     public async Task ContributeForUser_BoundMember_ExportsTheBindingAndNothingElse()
@@ -2171,6 +2137,29 @@ public class HoldedFinanceServiceTests
     }
 
     [HumansFact]
+    public async Task ContributeForUser_BoundMember_ExportsTheMirroredContact_WithTheIbanMasked()
+    {
+        var userId = Guid.NewGuid();
+        _repo.GetCreditorContactByUserAsync(userId, Arg.Any<CancellationToken>()).Returns(
+            new HoldedCreditorContact { UserId = userId, HoldedContactId = "c1", SupplierAccountNum = 40000004 });
+        _repo.GetCreditorContactsAsync(Arg.Any<CancellationToken>()).Returns(
+            new List<HoldedCreditorContact> { new() { UserId = userId, HoldedContactId = "c1", SupplierAccountNum = 40000004 } });
+        _holded.GetContactsAsync(Arg.Any<CancellationToken>()).Returns(TestContacts.Synced([new HoldedContactDto
+        {
+            Id = "c1", Name = "Ana Ruiz", SupplierAccountNum = 40000004, Email = "ana@example.org",
+            Iban = "ES9121000418450200051332",
+        }]));
+
+        var slices = await MakeService().ContributeForUserAsync(userId, TestContext.Current.CancellationToken);
+
+        var contact = JsonSerializer.SerializeToElement(slices.Should()
+            .ContainSingle(s => s.SectionName == Service.HoldedCreditorContacts).Subject.Data)[0];
+        contact.GetProperty("Email").GetString().Should().Be("ana@example.org");
+        contact.GetProperty("Iban").GetString().Should().NotContain("0200051332");
+        MakeService().ErasureDeclaration[Service.HoldedCreditorContacts].Should().Contain("Art. 30");
+    }
+
+    [HumansFact]
     public async Task ContributeForUser_AccountSharedByTwoMembers_ExportsNeitherTheOthersLines()
     {
         // A collision the automatic paths write through: two members on one 400000xx. The lines carry
@@ -2303,10 +2292,10 @@ public class HoldedFinanceServiceTests
         {
             new() { UserId = userId, HoldedContactId = "c1", SupplierAccountNum = 40000004, Source = CreditorContactSource.Auto },
         });
-        _client.ListContactsAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedContactDto>
+        _holded.GetContactsAsync(Arg.Any<CancellationToken>()).Returns(TestContacts.Synced(new List<HoldedContactDto>
         {
             new() { Id = "c1", Name = "Ana Ruiz", SupplierAccountNum = 40000004, Iban = iban },
-        });
+        }));
         return userId;
     }
 
@@ -2523,11 +2512,11 @@ public class HoldedFinanceServiceTests
             new() { UserId = firstUserId, HoldedContactId = "c1", SupplierAccountNum = 40000004 },
             new() { UserId = secondUserId, HoldedContactId = "c2", SupplierAccountNum = 40000005 },
         });
-        _client.ListContactsAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedContactDto>
+        _holded.GetContactsAsync(Arg.Any<CancellationToken>()).Returns(TestContacts.Synced(new List<HoldedContactDto>
         {
             new() { Id = "c1", Name = "Ana Ruiz", SupplierAccountNum = 40000004, Iban = AnaIban },
             new() { Id = "c2", Name = "Dani", SupplierAccountNum = 40000005, Iban = "NL91ABNA0417164300" },
-        });
+        }));
         _users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, UserInfo>
             {
@@ -2731,6 +2720,21 @@ public class HoldedFinanceServiceTests
     }
 
     [HumansFact]
+    public async Task GenerateSepaPayout_ContactRefreshFails_IsRefusedAndWritesNothing()
+    {
+        ConfigureSepa();
+        SeedPayableCreditor();
+        _holded.SyncContactsAsync(Arg.Any<CancellationToken>()).ThrowsAsync(new HoldedTransientException("503"));
+
+        var result = await MakeService().GenerateSepaPayoutAsync(
+            [new SepaPayoutSelection(40000004, 10m)], 50m, Guid.NewGuid(),
+            TestContext.Current.CancellationToken);
+
+        result.ErrorMessage.Should().Contain("IBANs cannot be confirmed");
+        await _repo.DidNotReceiveWithAnyArgs().AddSepaPayoutAsync(default!, default!);
+    }
+
+    [HumansFact]
     public async Task ListCreditorAccounts_CarriesTheContactIbanMaskedOnly()
     {
         SeedPayableCreditor();
@@ -2753,11 +2757,11 @@ public class HoldedFinanceServiceTests
         {
             new() { UserId = userId, HoldedContactId = "c2", SupplierAccountNum = 40000004, Source = CreditorContactSource.Auto },
         });
-        _client.ListContactsAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedContactDto>
+        _holded.GetContactsAsync(Arg.Any<CancellationToken>()).Returns(TestContacts.Synced(new List<HoldedContactDto>
         {
             new() { Id = "c1", Name = "Wrong Person", SupplierAccountNum = 40000004, Iban = "NL91ABNA0417164300" },
             new() { Id = "c2", Name = "Ana Ruiz", SupplierAccountNum = 40000004, Iban = AnaIban },
-        });
+        }));
         return userId;
     }
 
@@ -3439,9 +3443,15 @@ public class HoldedFinanceServiceTests
     private void NoCategoryMap() =>
         _repo.GetCategoryMapAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedCategoryMap>());
 
-    private void LiveChart(params (int Num, string Id, string Name)[] accounts) =>
-        _client.ListExpenseAccountsAsync(Arg.Any<CancellationToken>()).Returns(
-            accounts.Select(a => new HoldedExpenseAccountDto { AccountNum = a.Num, Id = a.Id, Name = a.Name }).ToList());
+    /// <summary>The chart mirror holds these accounts, so Holded's ensure only reads each one's id.</summary>
+    private void LiveChart(params (int Num, string Id, string Name)[] accounts)
+    {
+        _holded.GetChartAsync(Arg.Any<CancellationToken>()).Returns(
+            accounts.Select(a => new HoldedChartAccountInfo(a.Num, a.Name, null, null, false, 0m)).ToList());
+        foreach (var a in accounts)
+            _write.EnsureExpenseAccountAsync(a.Num, Arg.Any<string>(), Arg.Any<CancellationToken>())
+                .Returns(new HoldedExpenseAccountOutcome(a.Id, Created: false));
+    }
 
     [HumansFact]
     public async Task CreateOrLink_NoMatch_CreatesAtNextFreeNumberAndRegisters()
@@ -3452,11 +3462,12 @@ public class HoldedFinanceServiceTests
             new() { Id = Guid.NewGuid(), BudgetCategoryId = Guid.NewGuid(), HoldedAccountNumber = 62900100, HoldedAccountId = "cat-0", Tag = "x" },
         });
         LiveChart((62900100, "cat-0", "Departments / Geeks"), (62900101, "manual-1", "Something by hand"));
-        _client.CreateExpenseAccountAsync(62900102, "Workgroups / ALM 2027", Arg.Any<CancellationToken>()).Returns("new-1");
+        _write.EnsureExpenseAccountAsync(62900102, "Workgroups / ALM 2027", Arg.Any<CancellationToken>()).Returns(new HoldedExpenseAccountOutcome("new-1", Created: true));
 
         var result = await MakeService().CreateOrLinkExpenseAccountAsync("Workgroups / ALM 2027", null, TestContext.Current.CancellationToken);
 
         result.Should().Be(new ExpenseAccountRef(62900102, "new-1", "Workgroups / ALM 2027", Created: true));
+        await _holded.Received(1).SyncChartAsync(Arg.Any<CancellationToken>());
         await _repo.Received(1).UpsertManagedAccountAsync(
             Arg.Is<HoldedManagedAccount>(a => a.HoldedAccountNumber == 62900102 && a.HoldedAccountId == "new-1"
                 && a.Label == "Workgroups / ALM 2027" && a.IsActive && a.CreatedAt == FixedNow),
@@ -3471,8 +3482,7 @@ public class HoldedFinanceServiceTests
         NoManagedAccounts();
         NoCategoryMap();
         LiveChart();
-        _client.CreateExpenseAccountAsync(62900100, "Workgroups / New", Arg.Any<CancellationToken>())
-            .Returns("new-account");
+        _write.EnsureExpenseAccountAsync(62900100, "Workgroups / New", Arg.Any<CancellationToken>()).Returns(new HoldedExpenseAccountOutcome("new-account", Created: true));
         _repo.UpsertManagedAccountAsync(Arg.Any<HoldedManagedAccount>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new InvalidOperationException("Registry unavailable"));
 
@@ -3480,7 +3490,7 @@ public class HoldedFinanceServiceTests
             "Workgroups / New", null, TestContext.Current.CancellationToken);
 
         await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("Registry unavailable");
-        await _client.Received(1).CreateExpenseAccountAsync(
+        await _write.Received(1).EnsureExpenseAccountAsync(
             62900100, "Workgroups / New", Arg.Any<CancellationToken>());
         await _audit.Received(1).LogAsync(
             FinanceAuditActions.HoldedExpenseAccountCreated, Service.HoldedExpenseAccount, Guid.Empty,
@@ -3498,7 +3508,6 @@ public class HoldedFinanceServiceTests
         var result = await MakeService().CreateOrLinkExpenseAccountAsync("Workgroups / ALM 2027", null, TestContext.Current.CancellationToken);
 
         result.Should().Be(new ExpenseAccountRef(62900150, "acc-150", "workgroups /  alm 2027", Created: false));
-        await _client.DidNotReceive().CreateExpenseAccountAsync(Arg.Any<int>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
         await _repo.Received(1).UpsertManagedAccountAsync(
             Arg.Is<HoldedManagedAccount>(a => a.HoldedAccountNumber == 62900150 && a.Label == "workgroups /  alm 2027"),
             Arg.Any<CancellationToken>());
@@ -3516,7 +3525,6 @@ public class HoldedFinanceServiceTests
         var result = await MakeService().CreateOrLinkExpenseAccountAsync("Workgroups / ALM 2027", 62900151, TestContext.Current.CancellationToken);
 
         result.Should().Be(new ExpenseAccountRef(62900151, "acc-151", "Other", Created: false));
-        await _client.DidNotReceive().CreateExpenseAccountAsync(Arg.Any<int>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -3557,7 +3565,7 @@ public class HoldedFinanceServiceTests
         });
         NoCategoryMap();
         LiveChart();
-        _client.CreateExpenseAccountAsync(62900101, "Workgroups / New", Arg.Any<CancellationToken>()).Returns("new-2");
+        _write.EnsureExpenseAccountAsync(62900101, "Workgroups / New", Arg.Any<CancellationToken>()).Returns(new HoldedExpenseAccountOutcome("new-2", Created: true));
 
         var result = await MakeService().CreateOrLinkExpenseAccountAsync("Workgroups / New", null, TestContext.Current.CancellationToken);
 

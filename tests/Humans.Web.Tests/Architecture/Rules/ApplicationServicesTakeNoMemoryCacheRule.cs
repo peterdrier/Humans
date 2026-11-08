@@ -19,8 +19,6 @@ public class ApplicationServicesTakeNoMemoryCacheRule
         // Nav-badge counts: each wraps a real query and evicts its own key. AdminDashboardService is not here: its
         // reads are already served by CachingUserService.
         SectionType("Humans.Governance.Services.ApplicationDecisionService"),  // ApplicationDecisionService.VotingBadgeCacheKey(userId)
-        // CacheKeys.HoldedContacts, 2-min TTL, so admin pages don't call Holded live on every load.
-        SectionType("Humans.Finance.Services.Service"),
         // Rendered guide pages fetched from GitHub: not an entity read, and Guide owns no tables to decorate, so the
         // service is the cache.
         SectionType("Humans.Guide.Services.GuideContentService"),

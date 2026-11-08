@@ -37,13 +37,9 @@ internal sealed record AdminTeamSummary(
     int DriveResourceCount,
     int RoleSlotCount,
     Instant CreatedAt,
-    bool IsChildTeam,
+    Guid? ParentTeamId,
     int PendingShiftSignupCount,
     bool IsHidden);
-
-internal sealed record AdminTeamListResult(
-    IReadOnlyList<AdminTeamSummary> Teams,
-    int TotalCount);
 
 internal sealed record TeamJoinRequestSnapshot(
     Guid Id,
@@ -79,7 +75,7 @@ internal interface ITeamManagementService : ITeamManagement
     Task<IReadOnlyDictionary<Guid, TeamInfo>> ResolveTeamMembersAsync(
         IReadOnlyDictionary<Guid, TeamReadSnapshot> teams, CancellationToken ct = default);
 
-    /// <summary>Evicts after the Teams system-membership reconciliation completes.</summary>
+    /// <summary>Evicts the Teams read graph for same-section write and reconciliation flows.</summary>
     void InvalidateActiveTeamsCache();
 
     /// <summary><c>CachingTeamService</c> is the registered contributor.</summary>
@@ -208,11 +204,8 @@ internal interface ITeamManagementService : ITeamManagement
         IEnumerable<Guid> teamIds,
         CancellationToken cancellationToken = default);
 
-    /// <summary>Ordered, ready for projection.</summary>
-    Task<AdminTeamListResult> GetAdminTeamListAsync(
-        int page,
-        int pageSize,
-        CancellationToken cancellationToken = default);
+    /// <summary>All teams with admin counts. Hierarchy and display ordering belong to the caller.</summary>
+    Task<IReadOnlyList<AdminTeamSummary>> GetAdminTeamListAsync(CancellationToken cancellationToken = default);
 
     /// <summary>Bypasses the join-request workflow.</summary>
     Task<TeamJoinReviewResult> AddMemberToTeamAsync(
@@ -259,12 +252,12 @@ internal interface ITeamManagementService : ITeamManagement
         Guid teamId, CancellationToken cancellationToken = default);
 
     /// <summary>Next free slot; then reconciles the target's Coordinators system-team membership.</summary>
-    Task<TeamRoleAssignment> AssignToRoleAsync(
+    Task<TeamRoleAssignmentMutationResult> AssignToRoleAsync(
         Guid roleDefinitionId, Guid targetUserId, Guid actorUserId,
         CancellationToken cancellationToken = default);
 
     /// <summary>Then reconciles the target's Coordinators system-team membership.</summary>
-    Task UnassignFromRoleAsync(
+    Task<TeamRoleAssignmentMutationResult> UnassignFromRoleAsync(
         Guid roleDefinitionId, Guid teamMemberId, Guid actorUserId,
         CancellationToken cancellationToken = default);
 
@@ -291,11 +284,11 @@ internal interface ITeamManagementService : ITeamManagement
     /// <summary>Unordered: display order is the caller's.</summary>
     Task<IReadOnlyList<TeamEarlyEntryGrantInfo>> GetEarlyEntryGrantsForTeamAsync(Guid teamId, CancellationToken ct = default);
 
-    /// <summary>Throws unless the team has <see cref="Team.EarlyEntryEnabled"/>.</summary>
-    Task AddEarlyEntryGrantAsync(Guid teamId, Guid userId, LocalDate entryDate, string projectName, Guid actorUserId, CancellationToken ct = default);
+    /// <summary>Returns a refusal unless the team has <see cref="Team.EarlyEntryEnabled"/> and the person is available.</summary>
+    Task<TeamEarlyEntryMutationResult> AddEarlyEntryGrantAsync(Guid teamId, Guid userId, LocalDate entryDate, string projectName, Guid actorUserId, CancellationToken ct = default);
 
     /// <summary>A grant on another team counts as not found.</summary>
-    Task EditEarlyEntryGrantAsync(Guid teamId, Guid grantId, LocalDate entryDate, string projectName, Guid actorUserId, CancellationToken ct = default);
+    Task<TeamEarlyEntryMutationResult> EditEarlyEntryGrantAsync(Guid teamId, Guid grantId, LocalDate entryDate, string projectName, Guid actorUserId, CancellationToken ct = default);
 
     /// <summary>Idempotent. A grant on another team counts as not found.</summary>
     Task RemoveEarlyEntryGrantAsync(Guid teamId, Guid grantId, Guid actorUserId, CancellationToken ct = default);
@@ -351,6 +344,11 @@ internal sealed record TeamDeactivationResult(string? Refusal = null)
 }
 
 internal sealed record TeamRoleDefinitionMutationResult(TeamRoleDefinition? Definition = null, string? Refusal = null)
+{
+    public bool Succeeded => Refusal is null;
+}
+
+internal sealed record TeamEarlyEntryMutationResult(string? Refusal = null)
 {
     public bool Succeeded => Refusal is null;
 }

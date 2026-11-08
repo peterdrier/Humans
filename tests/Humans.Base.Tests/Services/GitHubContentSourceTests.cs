@@ -4,12 +4,47 @@ using Humans.Base.Interfaces;
 using Humans.Base.Services;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
+using NSubstitute;
+using Octokit;
 using Xunit;
 
 namespace Humans.Base.Tests.Services;
 
 public sealed class GitHubContentSourceTests
 {
+    public enum ReadOperation { File, Folder, Tree }
+
+    [HumansTheory]
+    [InlineData(ReadOperation.File)]
+    [InlineData(ReadOperation.Folder)]
+    [InlineData(ReadOperation.Tree)]
+    public async Task PendingRead_CancellationStopsWaitingWithoutReturningAMiss(ReadOperation operation)
+    {
+        var client = Substitute.For<IGitHubClient>();
+        client.Repository.Content.GetRawContentByRef("owner", "repo", "docs/page.md", "main")
+            .Returns(new TaskCompletionSource<byte[]>(TaskCreationOptions.RunContinuationsAsynchronously).Task);
+        client.Repository.Content.GetAllContentsByRef("owner", "repo", "docs", "main")
+            .Returns(new TaskCompletionSource<IReadOnlyList<RepositoryContent>>(TaskCreationOptions.RunContinuationsAsynchronously).Task);
+        client.Git.Tree.GetRecursive("owner", "repo", "main")
+            .Returns(new TaskCompletionSource<TreeResponse>(TaskCreationOptions.RunContinuationsAsynchronously).Task);
+        var reader = new GitHubMarkdownReader(client, NullLogger.Instance);
+        using var cancellation = new CancellationTokenSource();
+        Task read = operation switch
+        {
+            ReadOperation.File => reader.GetMarkdownAsync("owner", "repo", "main", "docs/", "page", cancellation.Token),
+            ReadOperation.Folder => reader.ListMarkdownStemsAsync("owner", "repo", "main", "docs/", cancellation.Token),
+            ReadOperation.Tree => reader.ListMarkdownPathsAsync("owner", "repo", "main", cancellation.Token),
+            _ => throw new ArgumentOutOfRangeException(nameof(operation))
+        };
+        read.IsCompleted.Should().BeFalse();
+
+        await cancellation.CancelAsync();
+
+        var awaitRead = async () => await read.WaitAsync(TestContext.Current.CancellationToken);
+        var error = await awaitRead.Should().ThrowAsync<OperationCanceledException>();
+        error.Which.CancellationToken.Should().Be(cancellation.Token);
+    }
+
     [HumansTheory]
     [InlineData(false, "default")]
     [InlineData(false, "file")]

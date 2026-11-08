@@ -174,6 +174,17 @@ internal sealed class ExpensesController(
                 return RedirectToAction(nameof(Edit), new { id = result.ReportId });
             }
 
+            if (result.ReportId is { } savedId)
+            {
+                SetError(localizer["Expenses_Flash_DraftSavedFollowupFailed"]);
+                return RedirectToAction(nameof(Edit), new { id = savedId });
+            }
+            if (result.OutcomeUncertain)
+            {
+                SetError(localizer["Expenses_Flash_DraftOutcomeUnknown"]);
+                return RedirectToAction(nameof(Index));
+            }
+
             SetError(GetErrorMessage(result.Error) is { } reason
                 ? $"{localizer["Expenses_Flash_CreateFailed"]} {reason}"
                 : localizer["Expenses_Flash_CreateFailed"].Value);

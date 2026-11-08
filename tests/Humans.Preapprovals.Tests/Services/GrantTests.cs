@@ -10,6 +10,7 @@ using Humans.AuditLog.Contracts;
 using Humans.Notifications.Contracts;
 using Humans.Preapprovals.Contracts;
 using Humans.Preapprovals.Domain;
+using Humans.Preapprovals.Data;
 using Humans.Preapprovals.Services;
 using Humans.Preapprovals.Tests.Infrastructure;
 using Microsoft.EntityFrameworkCore;
@@ -357,6 +358,54 @@ public sealed class GrantTests : PreapprovalsTestHarness
         var perGrant = await SeedProgramAsync(kind: ProgramKind.PerGrantAmount, perPerson: null);
         (await service.IssueManyAsync(perGrant.Id, [a], SeedUser(), Ct)).Refusal!.Key.Should().Be(PreapprovalErrorKeys.IssueManyFixedOnly);
         (await service.IssueManyAsync(program.Id, [], SeedUser(), Ct)).Refusal!.Key.Should().Be(PreapprovalErrorKeys.NoBeneficiaries);
+    }
+
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Apply_OverlappingScopedRequests_EditOnePendingApplication(bool throughMergedAlias)
+    {
+        var program = await SeedProgramAsync(kind: ProgramKind.PerGrantAmount, perPerson: null);
+        var archived = Guid.NewGuid();
+        var applicant = SeedUser("Applicant", mergedIds: throughMergedAlias ? [archived] : []);
+        var person = await Users.GetUserInfoAsync(applicant, Ct);
+        Users.GetUserInfoAsync(archived, Arg.Any<CancellationToken>()).Returns(person);
+        var actual = new PreapprovalRepository(DbFactory);
+        var repository = Substitute.For<IPreapprovalRepository>();
+        repository.GetProgramAsync(program.Id, Arg.Any<CancellationToken>())
+            .Returns(call => actual.GetProgramAsync(program.Id, call.Arg<CancellationToken>()));
+        repository.UpdateGrantAsync(Arg.Any<PreapprovalGrant>(), Arg.Any<CancellationToken>())
+            .Returns(call => actual.UpdateGrantAsync(call.Arg<PreapprovalGrant>(), call.Arg<CancellationToken>()));
+        var saving = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var inserts = 0;
+        repository.AddGrantsAsync(Arg.Any<IReadOnlyList<PreapprovalGrant>>(), Arg.Any<CancellationToken>())
+            .Returns(async call =>
+            {
+                if (Interlocked.Increment(ref inserts) == 1)
+                {
+                    saving.SetResult();
+                    await release.Task.WaitAsync(Ct);
+                }
+                await actual.AddGrantsAsync(call.Arg<IReadOnlyList<PreapprovalGrant>>(), call.Arg<CancellationToken>());
+            });
+        PreapprovalService ScopedService() => new(repository, Users, Finance, NewNotices(), AuditLog, Clock, Logger);
+        var first = ScopedService().ApplyAsync(program.Id, applicant, "First note", 400m, Ct);
+        await saving.Task.WaitAsync(Ct);
+        var next = ScopedService().ApplyAsync(program.Id, throughMergedAlias ? archived : applicant, "Latest note", 450m, Ct);
+        release.SetResult();
+
+        var results = await Task.WhenAll(first, next).WaitAsync(Ct);
+
+        results.Should().OnlyContain(result => result.Refusal == null);
+        results[1].Value.Should().Be(results[0].Value);
+        await using var db = OpenContext();
+        var row = (await db.Grants.ToListAsync(Ct)).Should().ContainSingle().Subject;
+        row.BeneficiaryUserId.Should().Be(applicant);
+        row.Status.Should().Be(GrantStatus.Applied);
+        row.ApplicationNote.Should().Be("Latest note");
+        row.MaxAmount.Should().Be(450m);
+        row.RequestedAmount.Should().Be(450m);
     }
 
     [HumansFact]

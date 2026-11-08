@@ -27,6 +27,9 @@ public sealed record HoldedSalesDocumentLineInput
     public IReadOnlyList<string> Taxes { get; init; } = [];
     /// <summary>Null falls back to Holded's default income account.</summary>
     public string? AccountId { get; init; }
+    /// <summary>The ledger account number; <see cref="IHoldedWrite.IssueSalesDocumentAsync"/> resolves it to
+    /// <see cref="AccountId"/>.</summary>
+    public int? AccountNum { get; init; }
 }
 
 public sealed record HoldedSalesDocumentInput

@@ -20,53 +20,19 @@ internal sealed class TeamSnapshotReader(
 
     private ITeamResourceService TeamResourceService => serviceProvider.GetRequiredService<ITeamResourceService>();
 
-    public async Task<AdminTeamListResult> GetAdminTeamListAsync(
-        int page,
-        int pageSize,
-        CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<AdminTeamSummary>> GetAdminTeamListAsync(CancellationToken cancellationToken = default)
     {
-        var (items, totalCount) = await repo.GetAllForAdminAsync(page, pageSize, cancellationToken);
-
+        var teams = await repo.GetAllForAdminAsync(cancellationToken);
         var pendingShiftCounts = await shiftManagementService
             .GetActivePendingShiftSignupCountsByTeamAsync(cancellationToken);
-
-        var teamIds = items.Select(t => t.Id).ToList();
         var resourceSummaries = await TeamResourceService
-            .GetTeamResourceSummariesAsync(teamIds, cancellationToken);
+            .GetTeamResourceSummariesAsync(teams.Select(t => t.Id).ToList(), cancellationToken);
 
-        return new AdminTeamListResult(
-            BuildAdminTeamSummaries(items, pendingShiftCounts, resourceSummaries),
-            totalCount);
-    }
-
-    private static IReadOnlyList<AdminTeamSummary> BuildAdminTeamSummaries(
-        IReadOnlyList<Team> teams,
-        IReadOnlyDictionary<Guid, int> pendingShiftCounts,
-        IReadOnlyDictionary<Guid, TeamResourceSummary> resourceSummaries)
-    {
-        var ordered = new List<AdminTeamSummary>(teams.Count);
-
-        foreach (var team in teams)
-        {
-            if (team.ParentTeamId.HasValue)
-                continue;
-
-            ordered.Add(CreateAdminTeamSummary(team, isChildTeam: false, pendingShiftCounts, resourceSummaries));
-
-            var children = teams
-                .Where(child => child.ParentTeamId == team.Id)
-                .OrderBy(child => child.Name, StringComparer.OrdinalIgnoreCase);
-
-            ordered.AddRange(children.Select(child =>
-                CreateAdminTeamSummary(child, isChildTeam: true, pendingShiftCounts, resourceSummaries)));
-        }
-
-        return ordered;
+        return teams.Select(team => CreateAdminTeamSummary(team, pendingShiftCounts, resourceSummaries)).ToList();
     }
 
     private static AdminTeamSummary CreateAdminTeamSummary(
         Team team,
-        bool isChildTeam,
         IReadOnlyDictionary<Guid, int> pendingShiftCounts,
         IReadOnlyDictionary<Guid, TeamResourceSummary> resourceSummaries)
     {
@@ -92,7 +58,7 @@ internal sealed class TeamSnapshotReader(
             resourceSummary.DriveResourceCount,
             team.RoleDefinitions.Sum(role => role.SlotCount),
             team.CreatedAt,
-            isChildTeam,
+            team.ParentTeamId,
             pendingShiftCounts.GetValueOrDefault(team.Id),
             team.IsHidden);
     }

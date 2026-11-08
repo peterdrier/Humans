@@ -179,7 +179,7 @@ Resource-based via `OrderAuthorizationHandler` keyed on `OrderOperationRequireme
 | `ISettingsService` | derive the active event year + time zone for OrderableUntil deadline gate |
 | `IAuditLogService` | audit every write |
 | `IStripeService` | Checkout Session creation; webhook signature verification; listing Store Checkout Sessions (`ListStoreCheckoutSessionsAsync`) for reconciliation |
-| `IHoldedClient` | factura issuance (treasury sync is not built) |
+| `IHoldedService` / `IHoldedWrite` | factura issuance and the chart check (treasury sync is not built) |
 | `IUserService` | current-user resolution in the Store controllers |
 | Backdoor (consumer) | `/api/backdoor/store/*` reads the accounting export through `IStoreAccountingRead` |
 

@@ -305,4 +305,6 @@
   <data name="Expenses_SubjectHelp" xml:space="preserve"><value>Verplicht. Vul de naam in van het project waarvoor deze declaratie is, bijv. de naam van je kunstproject.</value></data>
   <data name="Expenses_Validation_SubjectRequired" xml:space="preserve"><value>Voeg een onderwerp (de projectnaam) toe voordat je indient.</value></data>
   <data name="Expenses_Validation_AmountPrecision" xml:space="preserve"><value>Voer een bedrag in met maximaal twee decimalen.</value></data>
+  <data name="Expenses_Flash_DraftSavedFollowupFailed" xml:space="preserve"><value>Het concept is opgeslagen, maar het verzoek kon niet worden afgerond. Controleer het voordat je verdergaat.</value></data>
+  <data name="Expenses_Flash_DraftOutcomeUnknown" xml:space="preserve"><value>We konden niet bevestigen of het concept is opgeslagen. Controleer bestaande declaraties voordat je nog een concept aanmaakt.</value></data>
 </root>

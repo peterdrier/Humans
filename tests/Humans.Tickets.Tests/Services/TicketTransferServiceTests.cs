@@ -32,6 +32,59 @@ namespace Humans.Tickets.Tests.Services;
 /// </summary>
 public sealed class TicketTransferServiceTests
 {
+    public enum TransferNotice { Requested, Approved, Rejected }
+
+    [HumansTheory]
+    [Xunit.InlineData(TransferNotice.Requested)]
+    [Xunit.InlineData(TransferNotice.Approved)]
+    [Xunit.InlineData(TransferNotice.Rejected)]
+    public async Task TransferNotices_UseLiveOwnersAndPreserveStoredReceiverContact(TransferNotice notice)
+    {
+        var sender = MakeUser(Guid.NewGuid(), "Current Sender");
+        sender.BurnerName = "Current Sender";
+        sender.PreferredLanguage = "es";
+        var receiver = MakeUser(Guid.NewGuid(), "Current Receiver");
+        receiver.BurnerName = "Current Receiver";
+        receiver.PreferredLanguage = "de";
+        var senderInfo = WrapInUserInfo(sender, null);
+        _userService.GetUserInfoAsync(_senderId, Arg.Any<CancellationToken>()).Returns(senderInfo);
+        _userService.GetUserInfoAsync(_receiverId, Arg.Any<CancellationToken>()).Returns(WrapInUserInfo(receiver, null));
+        var request = MakePending(Guid.NewGuid(), "recorded@example.org");
+        var notices = new TicketTransferNotices(_ticketRepo, _userService, _emailService, _emailMessages,
+            NullLogger<TicketTransferService>.Instance);
+
+        if (notice == TransferNotice.Requested)
+            await notices.NotifyRequestedAsync(request, MakeAttendee(_attendeeId, _orderId, _senderId, TicketAttendeeStatus.Valid),
+                _senderId, Xunit.TestContext.Current.CancellationToken);
+        else
+            await notices.NotifyDecisionAsync(request, notice == TransferNotice.Approved, "Decision reason",
+                Xunit.TestContext.Current.CancellationToken);
+
+        var messages = _emailService.ReceivedCalls().Select(call => call.GetArguments()[0]).Cast<EmailMessage>().ToList();
+        messages.Should().HaveCount(2);
+        var senderMessage = messages.Should().ContainSingle(message => message.UserId == sender.Id).Subject;
+        senderMessage.RecipientEmail.Should().Be(senderInfo.Email);
+        senderMessage.RecipientName.Should().Be("Current Sender");
+        var subjectKey = notice switch
+        {
+            TransferNotice.Requested => "Tickets_TicketTransfer_Email_Requested_Subject",
+            TransferNotice.Approved => "Tickets_TicketTransfer_Email_Completed_Subject",
+            _ => "Tickets_TicketTransfer_Email_Cancelled_Subject"
+        };
+        senderMessage.Subject.Should().Be(Subject(subjectKey, "es"));
+        if (notice == TransferNotice.Requested)
+            messages.Should().ContainSingle(message => message.UserId == null && message.TemplateName == "ticket_transfer_team");
+        else
+        {
+            var receiverMessage = messages.Should().ContainSingle(message => message.UserId == receiver.Id).Subject;
+            receiverMessage.RecipientEmail.Should().Be(request.ReceiverEmail);
+            receiverMessage.RecipientName.Should().Be(request.ReceiverLegalName);
+            receiverMessage.Subject.Should().Be(Subject(subjectKey, "de"));
+        }
+        request.SenderUserId.Should().Be(_senderId);
+        request.ReceiverUserId.Should().Be(_receiverId);
+    }
+
     private static readonly Instant _now = Instant.FromUtc(2026, 5, 5, 10, 0);
     private readonly FakeClock _clock = new(_now);
 

@@ -476,7 +476,7 @@ public sealed class EventServiceTests
 
         var added = await _service.AddFavouriteAsync(userId, eventId, dayOffset: 4, TestContext.Current.CancellationToken);
 
-        added.Should().BeTrue();
+        added.Should().Be(AddFavouriteOutcome.Added);
         _repo.Favourites.Should().ContainSingle(f =>
             f.UserId == userId
             && f.GuideEventId == eventId
@@ -495,7 +495,7 @@ public sealed class EventServiceTests
 
         var added = await _service.AddFavouriteAsync(userId, eventId, dayOffset: 4, TestContext.Current.CancellationToken);
 
-        added.Should().BeFalse();
+        added.Should().Be(AddFavouriteOutcome.AlreadyExists);
         _repo.Favourites.Should().ContainSingle();
         _repo.SaveChangesCount.Should().Be(1);
     }
@@ -509,9 +509,9 @@ public sealed class EventServiceTests
         var ev = new Event { Id = Guid.NewGuid(), Status = EventStatus.Approved, IsRecurring = true, RecurrenceDays = "0, 2,4" };
         _repo.Events.Add(ev);
 
-        var act = () => _service.AddFavouriteAsync(Guid.NewGuid(), ev.Id, day, TestContext.Current.CancellationToken);
+        var outcome = await _service.AddFavouriteAsync(Guid.NewGuid(), ev.Id, day, TestContext.Current.CancellationToken);
 
-        await act.Should().ThrowAsync<ArgumentOutOfRangeException>().Where(e => e.ParamName == "dayOffset");
+        outcome.Should().Be(AddFavouriteOutcome.InvalidDay);
         _repo.Favourites.Should().BeEmpty();
         _repo.SaveChangesCount.Should().Be(0);
     }
@@ -524,16 +524,16 @@ public sealed class EventServiceTests
 
         var added = await _service.AddFavouriteAsync(Guid.NewGuid(), ev.Id, 999, TestContext.Current.CancellationToken);
 
-        added.Should().BeTrue();
+        added.Should().Be(AddFavouriteOutcome.Added);
         _repo.Favourites.Should().ContainSingle().Which.DayOffset.Should().Be(999);
     }
 
     [HumansFact]
     public async Task AddFavouriteAsync_RejectsMissingEvents()
     {
-        var act = () => _service.AddFavouriteAsync(Guid.NewGuid(), Guid.NewGuid(), null, TestContext.Current.CancellationToken);
+        var outcome = await _service.AddFavouriteAsync(Guid.NewGuid(), Guid.NewGuid(), null, TestContext.Current.CancellationToken);
 
-        await act.Should().ThrowAsync<KeyNotFoundException>();
+        outcome.Should().Be(AddFavouriteOutcome.EventUnavailable);
         _repo.Favourites.Should().BeEmpty();
         _repo.SaveChangesCount.Should().Be(0);
     }
@@ -545,9 +545,9 @@ public sealed class EventServiceTests
     {
         var ev = new Event { Id = Guid.NewGuid(), Status = status };
         _repo.Events.Add(ev);
-        var act = () => _service.AddFavouriteAsync(Guid.NewGuid(), ev.Id, null, TestContext.Current.CancellationToken);
+        var outcome = await _service.AddFavouriteAsync(Guid.NewGuid(), ev.Id, null, TestContext.Current.CancellationToken);
 
-        await act.Should().ThrowAsync<KeyNotFoundException>();
+        outcome.Should().Be(AddFavouriteOutcome.EventUnavailable);
         _repo.Favourites.Should().BeEmpty();
         _repo.SaveChangesCount.Should().Be(0);
     }

@@ -336,17 +336,18 @@ public sealed class ServicePlacementTests
 
         (await save.Should().ThrowAsync<IOException>()).Which.Should().BeSameAs(failure);
         uploaded.Should().NotBeNull();
-        await _fileStorage.DidNotReceive().DeleteAsync(before.PlacementImageUrl!.TrimStart('/'), Arg.Any<CancellationToken>());
         var saved = await GetPlacementAsync(container.Id);
         if (afterCommit)
         {
             saved.PlacementImageUrl.Should().Be('/' + uploaded);
-            await _fileStorage.DidNotReceiveWithAnyArgs().DeleteAsync(default!);
+            await _fileStorage.Received(1).DeleteAsync(before.PlacementImageUrl!.TrimStart('/'), CancellationToken.None);
+            await _fileStorage.DidNotReceive().DeleteAsync(uploaded!, Arg.Any<CancellationToken>());
         }
         else
         {
             saved.Should().BeEquivalentTo(before);
             await _fileStorage.Received(1).DeleteAsync(uploaded!, CancellationToken.None);
+            await _fileStorage.DidNotReceive().DeleteAsync(before.PlacementImageUrl!.TrimStart('/'), Arg.Any<CancellationToken>());
         }
     }
 
@@ -357,7 +358,7 @@ public sealed class ServicePlacementTests
     {
         var id = Guid.NewGuid();
         var repo = Substitute.For<IContainerRepository>();
-        repo.GetPlacementAsync(id, Year, Arg.Any<CancellationToken>()).Returns(new ContainerPlacement
+        repo.GetPlacementAsync(id, Year, Arg.Any<CancellationToken>()).Returns(_ => new ContainerPlacement
         {
             ContainerId = id,
             Year = Year,
@@ -374,7 +375,15 @@ public sealed class ServicePlacementTests
             removeImage ? null : Sketch(), removeImage, ActorUserId, TestContext.Current.CancellationToken);
 
         await act.Should().ThrowAsync<IOException>();
-        await _fileStorage.DidNotReceive().DeleteAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
+        await _fileStorage.DidNotReceive().DeleteAsync("uploads/containers/original.jpg", Arg.Any<CancellationToken>());
+        if (removeImage)
+            await _fileStorage.DidNotReceiveWithAnyArgs().DeleteAsync(default!);
+        else
+        {
+            var savedKey = (string)_fileStorage.ReceivedCalls().Single(call =>
+                string.Equals(call.GetMethodInfo().Name, nameof(IFileStorage.SaveAsync), StringComparison.Ordinal)).GetArguments()[0]!;
+            await _fileStorage.Received(1).DeleteAsync(savedKey, CancellationToken.None);
+        }
         await _auditLog.DidNotReceive().LogAsync(
             ContainersAuditActions.ContainerPlacementNotesUpdated, Arg.Any<string>(), Arg.Any<Guid>(),
             Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<Guid?>(), Arg.Any<string?>());

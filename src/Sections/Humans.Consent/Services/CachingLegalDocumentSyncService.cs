@@ -108,7 +108,7 @@ internal sealed class CachingLegalDocumentSyncService(
         return AsReadOnlyDictionary;
     }
 
-    protected override async Task WarmAllAsync(CancellationToken ct)
+    protected override async Task WarmAllAsync(Action<Guid, ActiveRequiredLegalDocumentSnapshot> publish, CancellationToken ct)
     {
         await using var scope = scopeFactory.CreateAsyncScope();
         var inner = scope.ServiceProvider.GetRequiredKeyedService<ILegalDocumentSyncManagement>(InnerServiceKey);
@@ -118,7 +118,7 @@ internal sealed class CachingLegalDocumentSyncService(
 
         foreach (var info in docs)
         {
-            Set(info.Id, info);
+            publish(info.Id, info);
             foreach (var v in info.Versions)
                 versionIndex[v.Id] = info.Id;
         }

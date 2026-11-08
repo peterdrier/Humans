@@ -67,8 +67,9 @@ longer needs a redeploy.
    whole batch before any selection is looked at.
 4. `Service.GenerateSepaPayoutAsync` takes the posted cap as a parameter (the config key is only the
    screen's prefill default), re-derives payability server-side, checks each amount against the
-   balance, resolves the payee's name and unmasked IBAN from the cached Holded contact list
-   **keyed on the binding's `HoldedContactId`**, and mints one `SepaPayoutTransfer` per row,
+   balance, refreshes the Holded contact mirror (`SyncContactsAsync`; a failed or skipped refresh
+   refuses the payout, so an IBAN fixed in Holded today is the one paid), resolves the payee's name
+   and unmasked IBAN from it **keyed on the binding's `HoldedContactId`**, and mints one `SepaPayoutTransfer` per row,
    stamping that same `HoldedContactId` onto it. Two Holded contacts can share one 400000xx;
    keying by account number instead would pay whichever of them Holded happened to list first,
    which is not necessarily the bound member — and the stamped id is what booking later checks the

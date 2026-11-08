@@ -40,16 +40,16 @@ public sealed class FormViewModelTests
             (new OfferFormViewModel { CapacityNote = new string('x', 501) }, "CapacityNote", "Validation_MaxLength", ["CapacityNote", 500]),
             (new OfferFormViewModel { Restrictions = new string('x', 501) }, "Restrictions", "Validation_MaxLength", ["Restrictions", 500]),
             (new OfferFormViewModel { CostNote = new string('x', 501) }, "CostNote", "Validation_MaxLength", ["CostNote", 500]),
-            (new OfferFormViewModel { Latitude = 91 }, "Latitude", "Validation_Range", ["Latitude", -90, 90]),
-            (new OfferFormViewModel { Longitude = 181 }, "Longitude", "Validation_Range", ["Longitude", -180, 180]),
+            (new OfferFormViewModel { Latitude = 90.1 }, "Latitude", "Validation_Range", ["Latitude", -90, 90]),
+            (new OfferFormViewModel { Longitude = 180.1 }, "Longitude", "Validation_Range", ["Longitude", -180, 180]),
             (new OfferFormViewModel { ExpectedDurationDays = 0 }, "ExpectedDurationDays", "Validation_Range", ["ExpectedDurationDays", 1, 30]),
             (new OfferFormViewModel { SeatsOffered = 21 }, "SeatsOffered", "Validation_Range", ["SeatsOffered", 1, 20]),
             (new RequestFormViewModel(), "PickupPlaceLabel", "Validation_Required", ["PickupPlaceLabel"]),
             (new RequestFormViewModel { PickupPlaceLabel = "Town" }, "DesiredDate", "Validation_Required", ["DesiredDate"]),
             (new RequestFormViewModel { PickupPlaceLabel = new string('x', 257) }, "PickupPlaceLabel", "Validation_MaxLength", ["PickupPlaceLabel", 256]),
             (new RequestFormViewModel { Notes = new string('x', 1001) }, "Notes", "Validation_MaxLength", ["Notes", 1000]),
-            (new RequestFormViewModel { Latitude = 91 }, "Latitude", "Validation_Range", ["Latitude", -90, 90]),
-            (new RequestFormViewModel { Longitude = 181 }, "Longitude", "Validation_Range", ["Longitude", -180, 180]),
+            (new RequestFormViewModel { Latitude = 90.1 }, "Latitude", "Validation_Range", ["Latitude", -90, 90]),
+            (new RequestFormViewModel { Longitude = 180.1 }, "Longitude", "Validation_Range", ["Longitude", -180, 180]),
             (new RequestFormViewModel { PartySize = 21 }, "PartySize", "Validation_Range", ["PartySize", 1, 20]),
         };
         foreach (var (model, field, key, arguments) in cases)
@@ -60,6 +60,22 @@ public sealed class FormViewModelTests
             expected.ResourceNotFound.Should().BeFalse();
             context.ModelState[field]!.Errors.Should().ContainSingle().Which.ErrorMessage.Should().Be(expected.Value);
         }
+    }
+
+    [HumansTheory]
+    [InlineData(90.1, 0)]
+    [InlineData(-90.1, 0)]
+    [InlineData(0, 180.1)]
+    [InlineData(0, -180.1)]
+    public void SettingsCoordinates_RejectFractionalValuesOutsideBounds(double latitude, double longitude)
+    {
+        var model = new RideshareSettingsViewModel { DestinationLatitude = latitude, DestinationLongitude = longitude };
+        var validLatitude = System.ComponentModel.DataAnnotations.Validator.TryValidateProperty(latitude,
+            new System.ComponentModel.DataAnnotations.ValidationContext(model) { MemberName = nameof(model.DestinationLatitude) }, null);
+        var validLongitude = System.ComponentModel.DataAnnotations.Validator.TryValidateProperty(longitude,
+            new System.ComponentModel.DataAnnotations.ValidationContext(model) { MemberName = nameof(model.DestinationLongitude) }, null);
+
+        (validLatitude && validLongitude).Should().BeFalse();
     }
 
     private static readonly LocalDate July3 = new(2026, 7, 3);

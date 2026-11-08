@@ -34,6 +34,7 @@ public sealed class CachingCampServiceTests : CampsTestHarness
     private readonly ICampRoleService _roleInner = Substitute.For<ICampRoleService>();
     private readonly ISettingsService _settingsService;
     private readonly CachingCampService _service;
+    private List<int> _openSeasons = [];
 
     public CachingCampServiceTests()
     {
@@ -96,7 +97,7 @@ public sealed class CachingCampServiceTests : CampsTestHarness
         {
             var settings = await repo.GetSettingsReadOnlyAsync(ct);
             var publicYear = settings?.PublicYear ?? Clock.GetCurrentInstant().InUtc().Year;
-            var openYears = settings?.OpenSeasons ?? [];
+            var openYears = _openSeasons;
             return new CampSettingsInfo(publicYear, openYears)
             {
                 Events = [.. openYears.Append(publicYear).Distinct().OrderDescending()
@@ -497,9 +498,9 @@ public sealed class CachingCampServiceTests : CampsTestHarness
             CampsDb.CampSettings.Add(new CampSettings
             {
                 Id = Guid.Parse("00000000-0000-0000-0010-000000000001"),
-                PublicYear = publicYear,
-                OpenSeasons = openSeasons
+                PublicYear = publicYear
             });
+            _openSeasons = openSeasons;
             await SaveAllAsync(TestContext.Current.CancellationToken);
         }
     }
@@ -760,16 +761,14 @@ public sealed class CachingCampServiceTests : CampsTestHarness
         var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         _innerSubstitute.GetCampsForYearAsync(2026, Arg.Any<CancellationToken>()).Returns(async _ =>
         {
-            started.SetResult();
+            started.TrySetResult();
             await release.Task.WaitAsync(ct);
             return [];
         });
         var warmup = _service.GetCampsForYearAsync(2026, ct);
         await started.Task.WaitAsync(ct);
 
-        var settings = await CampsDb.CampSettings.SingleAsync(ct);
-        settings.OpenSeasons = [2026, 2027];
-        await SaveAllAsync(ct);
+        _openSeasons = [2026, 2027];
         // A settings write verb is the decorator's own settings-slot eviction path.
         await _service.OpenSeasonAsync(Guid.NewGuid(), TestActorId, ct);
         (await _service.GetSettingsAsync(ct)).OpenSeasons.Should().Contain(2027);
@@ -778,6 +777,7 @@ public sealed class CachingCampServiceTests : CampsTestHarness
 
         (await _service.GetSettingsAsync(ct)).OpenSeasons.Should().Contain(2027,
             "finishing the older camp warmup must not restore its settings snapshot");
+        await _innerSubstitute.Received().GetCampsForYearAsync(2027, Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -789,9 +789,7 @@ public sealed class CachingCampServiceTests : CampsTestHarness
         (await _service.GetSettingsAsync(ct)).OpenSeasons.Should().NotContain(2027);
         _innerSubstitute.OpenSeasonAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), mutationCancellation.Token).Returns(async _ =>
         {
-            var settings = await CampsDb.CampSettings.SingleAsync(ct);
-            settings.OpenSeasons = [2026, 2027];
-            await SaveAllAsync(ct);
+            _openSeasons = [2026, 2027];
             await mutationCancellation.CancelAsync();
         });
 

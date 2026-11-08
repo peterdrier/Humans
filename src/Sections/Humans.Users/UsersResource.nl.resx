@@ -811,4 +811,5 @@
   </data>
   <data name="Users_Birthdays_CardDescription" xml:space="preserve"><value>Zie wie er deze maand jarig is.</value></data>
   <data name="Users_Map_CardDescription" xml:space="preserve"><value>Zie waar de humans op de wereld zijn.</value></data>
+  <data name="Users_Profile_InvalidLocation" xml:space="preserve"><value>Selecteer een geldige locatie.</value></data>
 </root>

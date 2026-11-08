@@ -31,7 +31,6 @@ public class PreferredLanguageCalculatorTests
         };
         var partition = new MembershipPartition(
             IncompleteSignup: [],
-            PendingApproval: [],
             Active: [u1, u2],
             MissingConsents: [u3],
             Suspended: [u4Suspended],
@@ -55,7 +54,6 @@ public class PreferredLanguageCalculatorTests
             .ToList();
         var partition = new MembershipPartition(
             IncompleteSignup: [],
-            PendingApproval: [],
             Active: [.. enUsers, esUser],
             MissingConsents: [],
             Suspended: [],

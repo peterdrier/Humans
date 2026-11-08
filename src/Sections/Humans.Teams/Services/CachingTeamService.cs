@@ -193,10 +193,10 @@ internal sealed class CachingTeamService(
     public Task<IReadOnlyList<TeamEarlyEntryGrantInfo>> GetEarlyEntryGrantsForTeamAsync(Guid teamId, CancellationToken ct = default)
         => WithInnerAsync(inner => inner.GetEarlyEntryGrantsForTeamAsync(teamId, ct));
 
-    public Task AddEarlyEntryGrantAsync(Guid teamId, Guid userId, LocalDate entryDate, string projectName, Guid actorUserId, CancellationToken ct = default)
+    public Task<TeamEarlyEntryMutationResult> AddEarlyEntryGrantAsync(Guid teamId, Guid userId, LocalDate entryDate, string projectName, Guid actorUserId, CancellationToken ct = default)
         => WithInnerAsync(inner => inner.AddEarlyEntryGrantAsync(teamId, userId, entryDate, projectName, actorUserId, ct));
 
-    public Task EditEarlyEntryGrantAsync(Guid teamId, Guid grantId, LocalDate entryDate, string projectName, Guid actorUserId, CancellationToken ct = default)
+    public Task<TeamEarlyEntryMutationResult> EditEarlyEntryGrantAsync(Guid teamId, Guid grantId, LocalDate entryDate, string projectName, Guid actorUserId, CancellationToken ct = default)
         => WithInnerAsync(inner => inner.EditEarlyEntryGrantAsync(teamId, grantId, entryDate, projectName, actorUserId, ct));
 
     public Task RemoveEarlyEntryGrantAsync(Guid teamId, Guid grantId, Guid actorUserId, CancellationToken ct = default)
@@ -300,11 +300,8 @@ internal sealed class CachingTeamService(
         CancellationToken cancellationToken = default) =>
         MutateAsync(inner => inner.SetGoogleGroupPrefixAsync(teamId, prefix, cancellationToken), static result => result.Updated);
 
-    public Task<AdminTeamListResult> GetAdminTeamListAsync(
-        int page,
-        int pageSize,
-        CancellationToken cancellationToken = default) =>
-        WithInnerAsync(inner => inner.GetAdminTeamListAsync(page, pageSize, cancellationToken));
+    public Task<IReadOnlyList<AdminTeamSummary>> GetAdminTeamListAsync(CancellationToken cancellationToken = default) =>
+        WithInnerAsync(inner => inner.GetAdminTeamListAsync(cancellationToken));
 
     public Task<TeamJoinReviewResult> AddMemberToTeamAsync(
         Guid teamId,
@@ -392,21 +389,21 @@ internal sealed class CachingTeamService(
         return team.RoleDefinitions;
     }
 
-    public Task<TeamRoleAssignment> AssignToRoleAsync(
+    public Task<TeamRoleAssignmentMutationResult> AssignToRoleAsync(
         Guid roleDefinitionId,
         Guid targetUserId,
         Guid actorUserId,
         CancellationToken cancellationToken = default) =>
         MutateAsync(inner => inner.AssignToRoleAsync(
-            roleDefinitionId, targetUserId, actorUserId, cancellationToken));
+            roleDefinitionId, targetUserId, actorUserId, cancellationToken), result => result.Succeeded);
 
-    public Task UnassignFromRoleAsync(
+    public Task<TeamRoleAssignmentMutationResult> UnassignFromRoleAsync(
         Guid roleDefinitionId,
         Guid teamMemberId,
         Guid actorUserId,
         CancellationToken cancellationToken = default) =>
         MutateAsync(inner => inner.UnassignFromRoleAsync(
-            roleDefinitionId, teamMemberId, actorUserId, cancellationToken));
+            roleDefinitionId, teamMemberId, actorUserId, cancellationToken), result => result.Succeeded);
 
     public async Task<IReadOnlyList<Guid>> GetUserCoordinatedTeamIdsAsync(
         Guid userId,
@@ -641,12 +638,12 @@ internal sealed class CachingTeamService(
         IReadOnlyDictionary<Guid, TeamReadSnapshot> teams, CancellationToken ct = default) =>
         WithInnerAsync(inner => inner.ResolveTeamMembersAsync(teams, ct));
 
-    protected override async Task WarmAllAsync(CancellationToken ct)
+    protected override async Task WarmAllAsync(Action<Guid, TeamReadSnapshot> publish, CancellationToken ct)
     {
         var teams = await WithInnerAsync(inner => inner.GetTeamSnapshotsAsync(ct));
 
         foreach (var (teamId, team) in teams)
-            Set(teamId, team);
+            publish(teamId, team);
 
         _teamIdsByUserId.Clear();
         foreach (var team in teams.Values)

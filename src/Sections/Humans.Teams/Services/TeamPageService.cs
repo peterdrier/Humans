@@ -244,7 +244,6 @@ internal sealed class TeamPageService(
                 Members: coordinators,
                 ChildTeams: EnumerateChildren(team, teamsById)
                     .Where(c => c.IsActive && c.IsPublicPage && !c.IsHidden)
-                    .OrderBy(c => c.Name, StringComparer.Ordinal)
                     .Select(MapTeamLink)
                     .ToList(),
                 RoleDefinitions: [],
@@ -285,7 +284,6 @@ internal sealed class TeamPageService(
                 .ToList(),
             ChildTeams: EnumerateChildren(team, teamsById)
                 .Where(c => c.IsActive && (!c.IsHidden || canSeeHiddenTeams))
-                .OrderBy(c => c.Name, StringComparer.Ordinal)
                 .Select(MapTeamLink)
                 .ToList(),
             RoleDefinitions: team.RoleDefinitions ?? [],
@@ -366,7 +364,8 @@ internal sealed class TeamPageService(
         var leads = new List<TeamPageChildTeamMemberSummary>();
         var rollupMembers = new List<TeamPageChildTeamMemberSummary>();
 
-        foreach (var child in childTeams)
+        // First child wins a repeated human's affiliation and role metadata; preserve that selection order.
+        foreach (var child in childTeams.OrderBy(child => child.Name, StringComparer.Ordinal))
         {
             if (!childMembersByTeam.TryGetValue(child.Id, out var childMembers))
                 continue;

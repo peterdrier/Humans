@@ -41,9 +41,9 @@ public interface IUserEmailService
 
     /// <summary>
     /// Verifies a pending plain row without a token, when the admin confirmed ownership another way. Same
-    /// duplicate branch as <see cref="VerifyEmailAsync"/>; audited to <paramref name="actorUserId"/>. Throws
-    /// <see cref="System.ComponentModel.DataAnnotations.ValidationException"/> when the row is missing, already
-    /// verified or provider-attached (those verify through the OAuth callback).
+    /// duplicate branch as <see cref="VerifyEmailAsync"/>; audited to <paramref name="actorUserId"/>.
+    /// Returns <see cref="VerifyEmailResult.NoPendingVerification"/> when the row is missing, already verified or
+    /// provider-attached (those verify through the OAuth callback). Dependency faults propagate.
     /// </summary>
     Task<VerifyEmailResult> AdminMarkVerifiedAsync(
         Guid userId,

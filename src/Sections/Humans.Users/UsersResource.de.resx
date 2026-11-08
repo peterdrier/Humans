@@ -803,4 +803,5 @@
   </data>
   <data name="Users_Birthdays_CardDescription" xml:space="preserve"><value>Sieh, wer diesen Monat Geburtstag hat.</value></data>
   <data name="Users_Map_CardDescription" xml:space="preserve"><value>Sieh, wo auf der Welt die Humans sind.</value></data>
+  <data name="Users_Profile_InvalidLocation" xml:space="preserve"><value>Wähle einen gültigen Standort aus.</value></data>
 </root>

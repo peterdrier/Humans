@@ -174,9 +174,6 @@ internal sealed class AccountDeletionService(
         // the real name and break IsGdprAnonymized.
         await EraseEverySectionAsync(userId, ct);
 
-        // Contributors run against the inner UserService, so the decorator hasn't seen the collapse.
-        await userInfoRefresher.RefreshAsync(userId, ct);
-
         // Must not name the human: the audit log survives erasure.
         const string description = "Admin-initiated purge: identity collapsed";
         if (actorId is Guid actor)
@@ -209,10 +206,6 @@ internal sealed class AccountDeletionService(
         // mid-cascade failure retries the whole fan-out tomorrow.
         await EraseEverySectionAsync(userId, ct);
 
-        // Contributors write through the inner UserService, so the decorator hasn't seen these
-        // writes and admin search would keep matching the erased human by their real name.
-        await userInfoRefresher.RefreshAsync(userId, ct);
-
         return summary;
     }
 
@@ -223,18 +216,32 @@ internal sealed class AccountDeletionService(
     /// </summary>
     /// <remarks>
     /// Cache invalidation is interleaved, not batched: a contributor that throws mid-chain still
-    /// leaves every earlier id erased and dropped, and a <see cref="PurgeAsync"/> has no daily retry.
+    /// leaves every attempted id refreshed or evicted, and a <see cref="PurgeAsync"/> has no daily retry.
     /// </remarks>
     private async Task EraseEverySectionAsync(Guid userId, CancellationToken ct)
     {
         foreach (var subjectId in await MergeChainAsync(userId, ct))
         {
-            await gdprService.EraseForUserAsync(subjectId, ct);
-
-            // Callers only invalidate the survivor; a stale entry would keep the tombstone's name
-            // searchable after it was erased.
-            if (subjectId != userId)
-                await userInfoRefresher.RefreshAsync(subjectId, ct);
+            var erased = false;
+            try
+            {
+                await gdprService.EraseForUserAsync(subjectId, ct);
+                erased = true;
+            }
+            finally
+            {
+                try
+                {
+                    // Contributors can commit profile erasure before a later step fails. Refresh the
+                    // attempted id too, including the survivor, without the caller's cancellation.
+                    await userInfoRefresher.RefreshAsync(subjectId, CancellationToken.None);
+                }
+                catch (Exception ex) when (!erased)
+                {
+                    // ReplaceAsync evicts on failure; preserve the erasure error that drives the retry.
+                    logger.LogError(ex, "UserInfo refresh failed after incomplete erasure for {UserId}", subjectId);
+                }
+            }
         }
     }
 

@@ -36,7 +36,7 @@ public class CreditorPayabilityTests
 
     private readonly IHoldedRepository _repo = Substitute.For<IHoldedRepository>();
     private readonly IHoldedClient _client = Substitute.For<IHoldedClient>();
-    private readonly IHoldedService _holded = Substitute.For<IHoldedService>();
+    private readonly IHoldedService _holded = TestContacts.Holded();
     private readonly IHoldedWrite _write = Substitute.For<IHoldedWrite>();
     private readonly IExpenseHoldedBookingService _expenses = Substitute.For<IExpenseHoldedBookingService>();
     private readonly IUserService _users = Substitute.For<IUserService>();
@@ -49,25 +49,27 @@ public class CreditorPayabilityTests
 
     private Service MakeService() => new(
         _repo, _client, Substitute.For<IBudgetService>(), _holded, _write, _expenses, new FakeClock(FixedNow),
-        new MemoryCache(new MemoryCacheOptions()), Substitute.For<IAuditLogService>(), _users,
+        Substitute.For<IAuditLogService>(), _users,
         Substitute.For<IEmailService>(), TestFinanceEmails.Create(),
         Options.Create(_sepa), new TrackedCache<string, Dictionary<string, int>>("Finance.SepaStuckBankLines", warmOnStartup: false, NullLogger<Service>.Instance),
         Substitute.For<IPaymentDetailsManagement>(), NullLogger<Service>.Instance);
 
     public CreditorPayabilityTests()
     {
+        // A payout refreshes the contact mirror first; an unstubbed Task<bool> reads as a sync already running.
+        _holded.SyncContactsAsync(Arg.Any<CancellationToken>()).Returns(true);
         _holded.GetAccountBalancesAsync(Arg.Any<CancellationToken>())
             .Returns(new Dictionary<int, decimal> { [Account] = -4800m });
-        _client.ListContactsAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedContactDto>
+        _holded.GetContactsAsync(Arg.Any<CancellationToken>()).Returns(TestContacts.Synced(new List<HoldedContactDto>
         {
             new() { Id = "c1", Name = "Paul Vivien", SupplierAccountNum = Account, Iban = "ES7921000813610123456789" },
-        });
+        }));
         _repo.GetCreditorContactsAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedCreditorContact>
         {
             new() { UserId = UserId, HoldedContactId = "c1", SupplierAccountNum = Account, Source = CreditorContactSource.Auto },
         });
         _repo.GetSepaPayoutTransferRowsAsync(Arg.Any<CancellationToken>()).Returns(new List<SepaPayoutTransferRow>());
-        _client.ListPurchaseDocumentsAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedPurchaseDocListItemDto>());
+        _holded.GetPurchaseDocumentsAsync(Arg.Any<CancellationToken>()).Returns(TestPurchaseMirror.Of(new List<HoldedPurchaseDocListItemDto>()));
         _expenses.GetHoldedBookingsAsync(Arg.Any<CancellationToken>()).Returns(new List<ExpenseHoldedBooking>());
         _users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, UserInfo>());
@@ -138,7 +140,7 @@ public class CreditorPayabilityTests
     public async Task Row_WhoseMemberHasDuplicateDocuments_IsNotPayable_AndTheGenerationRefusesIt()
     {
         _expenses.GetHoldedBookingsAsync(Arg.Any<CancellationToken>()).Returns([Booking("doc-a")]);
-        _client.ListPurchaseDocumentsAsync(Arg.Any<CancellationToken>()).Returns([Doc("doc-a", 4800m), Doc("doc-b", 4800m)]);
+        _holded.GetPurchaseDocumentsAsync(Arg.Any<CancellationToken>()).Returns(TestPurchaseMirror.Of([Doc("doc-a", 4800m), Doc("doc-b", 4800m)]));
         var service = MakeService();
 
         var (rows, _, _) = await service.ListCreditorAccountsAsync(TestContext.Current.CancellationToken);
@@ -156,7 +158,7 @@ public class CreditorPayabilityTests
     [HumansFact]
     public async Task Row_WhenHoldedsDocumentsCannotBeRead_HasAnUnknownFlag_AndTheGenerationRefuses()
     {
-        _client.ListPurchaseDocumentsAsync(Arg.Any<CancellationToken>()).Throws(new HoldedTransientException("Holded 503"));
+        _holded.GetPurchaseDocumentsAsync(Arg.Any<CancellationToken>()).Returns(TestPurchaseMirror.NeverSynced);
         var service = MakeService();
 
         var (rows, _, _) = await service.ListCreditorAccountsAsync(TestContext.Current.CancellationToken);
@@ -175,7 +177,7 @@ public class CreditorPayabilityTests
     {
         // Martina's two 3.40 tolls: each line keeps its own document, nothing is flagged.
         _expenses.GetHoldedBookingsAsync(Arg.Any<CancellationToken>()).Returns([Booking("doc-a"), Booking("doc-b")]);
-        _client.ListPurchaseDocumentsAsync(Arg.Any<CancellationToken>()).Returns([Doc("doc-a", 4800m), Doc("doc-b", 4800m)]);
+        _holded.GetPurchaseDocumentsAsync(Arg.Any<CancellationToken>()).Returns(TestPurchaseMirror.Of([Doc("doc-a", 4800m), Doc("doc-b", 4800m)]));
 
         var (rows, _, _) = await MakeService().ListCreditorAccountsAsync(TestContext.Current.CancellationToken);
 
@@ -199,9 +201,9 @@ public class CreditorPayabilityTests
             }).ToList());
         _holded.GetAccountBalancesAsync(Arg.Any<CancellationToken>())
             .Returns(new Dictionary<int, decimal> { [Account] = balance });
-        _client.ListContactsAsync(Arg.Any<CancellationToken>()).Returns([
+        _holded.GetContactsAsync(Arg.Any<CancellationToken>()).Returns(TestContacts.Synced([
             new HoldedContactDto { Id = "c1", Name = "Paul", SupplierAccountNum = Account, Iban = iban },
-        ]);
+        ]));
         var service = MakeService();
 
         var (rows, _, _) = await service.ListCreditorAccountsAsync(TestContext.Current.CancellationToken);

@@ -276,11 +276,11 @@ internal sealed class CachingTicketQueryService
         ILogger logger)
         : TrackedCache<Guid, TicketOrderInfo>("Tickets.Orders", warmOnStartup: true, logger)
     {
-        protected override async Task WarmAllAsync(CancellationToken ct)
+        protected override async Task WarmAllAsync(Action<Guid, TicketOrderInfo> publish, CancellationToken ct)
         {
             var orders = await loadOrders(ct);
             foreach (var order in orders)
-                Set(order.Id, order);
+                publish(order.Id, order);
         }
 
         internal Task EnsureWarmedForReadAsync(CancellationToken ct) => EnsureWarmedAsync(ct);

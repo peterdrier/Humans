@@ -37,12 +37,12 @@ internal interface IIssuesRepository : IRepository
     /// </summary>
     Task<IReadOnlyList<Issue>> GetForUserExportAsync(Guid userId, CancellationToken ct = default);
 
-    /// <summary>Ids of issues whose <c>ResolvedAt</c> is at or before <paramref name="cutoff"/>.</summary>
-    Task<IReadOnlyList<Guid>> GetExpiredTerminalAsync(
+    /// <summary>Issues whose <c>ResolvedAt</c> is at or before <paramref name="cutoff"/>.</summary>
+    Task<IReadOnlyList<Issue>> GetExpiredTerminalAsync(
         Instant cutoff, CancellationToken ct = default);
 
-    /// <summary>Comments cascade. Returns rows removed and their screenshot keys, for the caller to delete.</summary>
-    Task<(int Deleted, IReadOnlyList<string> ScreenshotKeys)> DeleteByIdsAsync(IReadOnlyCollection<Guid> ids, CancellationToken ct = default);
+    /// <summary>Comments cascade. Returns the number of rows removed.</summary>
+    Task<int> DeleteByIdsAsync(IReadOnlyCollection<Guid> ids, CancellationToken ct = default);
 
     /// <summary>
     /// GDPR Art. 17: hard-deletes the user's reported issues and detaches them from comments and triage fields on

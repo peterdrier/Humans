@@ -137,6 +137,14 @@ internal sealed record EventEdit(
     string? RecurrenceDays,
     int? PriorityRank);
 
+internal enum AddFavouriteOutcome
+{
+    Added,
+    AlreadyExists,
+    EventUnavailable,
+    InvalidDay
+}
+
 /// <summary>
 /// A null <see cref="DayOffset"/> means every occurrence. Several day bookmarks retained on a now non-recurring event
 /// project as one whole-event target.

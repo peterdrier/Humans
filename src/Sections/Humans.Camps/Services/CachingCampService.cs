@@ -614,7 +614,7 @@ internal sealed class CachingCampService(
     /// <summary>
     /// Discovers camps in PublicYear ∪ OpenSeasons ∪ currentYear, then caches their full history.
     /// </summary>
-    protected override async Task WarmAllAsync(CancellationToken ct)
+    protected override async Task WarmAllAsync(Action<Guid, CampInfo> publish, CancellationToken ct)
     {
         var settings = await GetSettingsAsync(ct);
         var years = new HashSet<int>();
@@ -637,7 +637,7 @@ internal sealed class CachingCampService(
             // Slug/id reads also authorize leads from earlier seasons. A year-filtered
             // projection cannot serve as the canonical camp, even on a warm cache hit.
             var camp = await WithInnerAsync(inner => inner.GetCampByIdAsync(campId, ct));
-            if (camp is not null) Set(campId, camp);
+            if (camp is not null) publish(campId, camp);
         }
 
         _warmYears = years;
