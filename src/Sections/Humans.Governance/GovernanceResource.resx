@@ -68,7 +68,6 @@
   <data name="Governance_NoteNotRequired" xml:space="preserve"><value>Note: You don't need to be an asociado to access resources or participate in events.</value></data>
   <data name="Governance_Statutes" xml:space="preserve"><value>Statutes</value></data>
   <data name="Governance_Statutes_ContentNotAvailable" xml:space="preserve"><value>Content not available.</value></data>
-  <data name="Governance_MemberCounts" xml:space="preserve"><value>Community</value></data>
   <data name="Governance_Colaboradores" xml:space="preserve"><value>Colaboradores</value></data>
   <data name="Governance_Asociados" xml:space="preserve"><value>Asociados</value></data>
   <data name="Governance_MyApplications_Title" xml:space="preserve"><value>My Applications</value></data>
@@ -305,4 +304,14 @@
   <data name="Governance_BoardVoting_NoteTooLong" xml:space="preserve"><value>The note must be 4,000 characters or fewer. Your vote was not changed.</value></data>
   <data name="Governance_BoardVoting_DecisionNoteTooLong" xml:space="preserve"><value>The decision note must be 4,000 characters or fewer. The application was not finalized.</value></data>
   <data name="Governance_BoardVoting_DecisionNoteRequired" xml:space="preserve"><value>A decision note is required to reject an application. The application was not finalized.</value></data>
+  <data name="Governance_BoardMembers" xml:space="preserve"><value>Board members</value></data>
+  <data name="Governance_TheBoard" xml:space="preserve"><value>The Board</value></data>
+  <data name="Governance_NoBoardMembers" xml:space="preserve"><value>No one holds the Board role right now.</value></data>
+  <data name="Governance_NeedsDecision" xml:space="preserve"><value>Needs a decision</value></data>
+  <data name="Governance_NothingToDecide" xml:space="preserve"><value>Nothing is open for a decision right now.</value></data>
+  <data name="Governance_AllVotes" xml:space="preserve"><value>All votes</value></data>
+  <data name="Governance_CastVote" xml:space="preserve"><value>Vote</value></data>
+  <data name="Governance_UnvotedApplications" xml:space="preserve"><value>Tier applications awaiting your vote: {0}</value><comment>{0} = number of applications</comment></data>
+  <data name="Governance_ReviewApplications" xml:space="preserve"><value>Review</value></data>
+  <data name="Governance_YourMembership" xml:space="preserve"><value>Your membership</value></data>
 </root>

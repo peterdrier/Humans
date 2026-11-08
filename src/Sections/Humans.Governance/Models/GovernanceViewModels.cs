@@ -1,10 +1,13 @@
 using Humans.Governance.Contracts;
+using Humans.Governance.Services.Dtos;
 using NodaTime;
 
 namespace Humans.Governance.Models;
 
 internal sealed class GovernanceIndexViewModel
 {
+    public Guid UserId { get; set; }
+
     /// <summary>
     /// Statutes content by language code (e.g., "es" → markdown, "en" → markdown).
     /// </summary>
@@ -20,7 +23,10 @@ internal sealed class GovernanceIndexViewModel
     public bool CanApply { get; set; }
     public bool IsApprovedColaborador { get; set; }
 
-    // Tier member counts for the sidebar
     public int ColaboradorCount { get; set; }
     public int AsociadoCount { get; set; }
+
+    public IReadOnlyList<Guid> BoardMemberIds { get; set; } = [];
+    public IReadOnlyList<AssemblyVoteListItem> OpenVotes { get; set; } = [];
+    public int UnvotedApplicationCount { get; set; }
 }

@@ -1,5 +1,6 @@
 using Humans.Base.Interfaces;
 using Humans.Governance.Contracts;
+using Humans.Governance.Services.Dtos;
 using NodaTime;
 
 namespace Humans.Governance.Services;
@@ -20,4 +21,7 @@ internal sealed record GovernanceIndexData(
     bool CanApply,
     bool IsApprovedColaborador,
     int ColaboradorCount,
-    int AsociadoCount);
+    int AsociadoCount,
+    IReadOnlyList<Guid> BoardMemberIds,
+    IReadOnlyList<AssemblyVoteListItem> OpenVotes,
+    int UnvotedApplicationCount);
