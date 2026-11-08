@@ -65,13 +65,12 @@ Name history for tracking renames.
 ### CampSettings
 
 Singleton settings retain the unused legacy open-season year list; registration uses `CampEventSettings`. Per-season name-lock fields `NameLockDate` and `NameLockedAt`
-live on `CampSeason`. `PublicYear` and `EeStartDate` columns are **dead**
-(nobodies-collective#1632, #1633): no longer read or written, kept mapped only so the EF model
-matches the database until a Peter-approved follow-up drops them. The public year resolves
+live on `CampSeason`. The public year resolves
 from `ISettingsService.GetActiveEventSettingsAsync().Year`, falling back to the clock's current
 year when no event is active; the EE start date resolves from
 `EventSettings.EarlyEntryStartOffset` (`GateOpeningDate.PlusDays(offset)`), both surfaced via
-`CampSettingsInfo` (a DTO, not the entity).
+`CampSettingsInfo` (a DTO, not the entity). The old `PublicYear` and `EeStartDate` columns were
+dropped in peterdrier/Humans#1761.
 
 **Table:** `camp_settings`
 

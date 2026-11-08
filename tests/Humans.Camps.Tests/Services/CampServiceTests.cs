@@ -3461,7 +3461,6 @@ public sealed class CampServiceTests : CampsTestHarness
             CampsDb.CampSettings.Add(new CampSettings
             {
                 Id = Guid.Parse("00000000-0000-0000-0010-000000000001"),
-                PublicYear = 2026,
                 OpenSeasons = [2026]
             });
             await SaveAllAsync(TestContext.Current.CancellationToken);

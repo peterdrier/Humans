@@ -1,3 +1,4 @@
+using Humans.Camps.Contracts;
 using Humans.Camps.Data;
 using Humans.Camps.Domain;
 using Humans.Store.Contracts;
@@ -92,7 +93,7 @@ public class StorePayActionTests(HumansTestDatabase database) : IntegrationTestB
         var db = scope.ServiceProvider.GetRequiredService<CampsDbContext>();
         var storeDb = scope.ServiceProvider.GetRequiredService<StoreDbContext>();
 
-        var year = (await db.CampSettings.FirstAsync(Xunit.TestContext.Current.CancellationToken)).PublicYear;
+        var year = (await scope.ServiceProvider.GetRequiredService<ICampService>().GetSettingsAsync(Xunit.TestContext.Current.CancellationToken)).PublicYear;
         var seasonId = await db.Set<CampSeason>().AsNoTracking()
             .Where(s => s.Camp.Slug == "barrio-1")
             .Select(s => s.Id).FirstAsync(Xunit.TestContext.Current.CancellationToken);

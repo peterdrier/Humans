@@ -105,13 +105,7 @@ public class ShiftUrgencyTests
     public void ApplyPeriodDiverseLimit_EnsuresEventAndStrikeRepresented()
     {
         // 3 build shifts with highest scores, 1 event, 1 strike
-        var es = new EventSettings
-        {
-            GateOpeningDate = new LocalDate(2026, 7, 1),
-            EventEndOffset = 3,
-            StrikeEndOffset = 5,
-            TimeZoneId = "UTC"
-        };
+        var es = UrgencyBurn();
 
         var buildShifts = Enumerable.Range(0, 3).Select(i =>
             MakeUrgentShift(dayOffset: -5 + i, score: 100 - i, remaining: 10, es)).ToList();
@@ -137,13 +131,7 @@ public class ShiftUrgencyTests
     [HumansFact]
     public void ApplyPeriodDiverseLimit_OnlyBuildShifts_TakesTopN()
     {
-        var es = new EventSettings
-        {
-            GateOpeningDate = new LocalDate(2026, 7, 1),
-            EventEndOffset = 3,
-            StrikeEndOffset = 5,
-            TimeZoneId = "UTC"
-        };
+        var es = UrgencyBurn();
 
         var ranked = Enumerable.Range(0, 5).Select(i =>
             MakeUrgentShift(dayOffset: -5 + i, score: 50 - i * 5, remaining: 10))
@@ -175,13 +163,7 @@ public class ShiftUrgencyTests
     [HumansFact]
     public void ApplyPeriodDiverseLimit_FewShifts_ReturnsAll()
     {
-        var es = new EventSettings
-        {
-            GateOpeningDate = new LocalDate(2026, 7, 1),
-            EventEndOffset = 3,
-            StrikeEndOffset = 5,
-            TimeZoneId = "UTC"
-        };
+        var es = UrgencyBurn();
 
         var ranked = new List<UrgentShiftInfo>
         {
@@ -197,13 +179,7 @@ public class ShiftUrgencyTests
     [HumansFact]
     public void ApplyPeriodDiverseLimit_ResultIsSortedByScoreDescending()
     {
-        var es = new EventSettings
-        {
-            GateOpeningDate = new LocalDate(2026, 7, 1),
-            EventEndOffset = 3,
-            StrikeEndOffset = 5,
-            TimeZoneId = "UTC"
-        };
+        var es = UrgencyBurn();
 
         var ranked = new List<UrgentShiftInfo>
         {
@@ -237,8 +213,15 @@ public class ShiftUrgencyTests
         };
     }
 
+    private static BurnSettingsInfo UrgencyBurn() => new(
+        Guid.NewGuid(), "Test Event", 2026, "UTC", new LocalDate(2026, 7, 1),
+        BuildStartOffset: 0, EventEndOffset: 3, StrikeEndOffset: 5,
+        FirstCrewStartOffset: -25, SetupWeekStartOffset: -16, PreEventWeekStartOffset: -9,
+        FinishingWeekendStartOffset: -4, EarlyEntryCapacity: new Dictionary<int, int>(),
+        BarriosEarlyEntryAllocation: null, EarlyEntryClose: null, IsShiftBrowsingOpen: false);
+
     private static UrgentShiftInfo MakeUrgentShift(
-        int dayOffset, double score, int remaining, EventSettings? es = null) =>
+        int dayOffset, double score, int remaining, IBurnSettingsInfo? es = null) =>
         UrgentShiftFixtures.Urgent(
             shift: UrgentShiftFixtures.Shift(dayOffset: dayOffset, maxVolunteers: remaining + 1),
             burn: es,

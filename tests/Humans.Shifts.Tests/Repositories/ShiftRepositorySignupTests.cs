@@ -150,9 +150,6 @@ public class ShiftRepositorySignupTests : IDisposable
             _shiftsDbContext.EventSettings.Add(new EventSettings
             {
                 Id = esId,
-                EventName = "TestEvent",
-                GateOpeningDate = new LocalDate(2026, 7, 1),
-                TimeZoneId = "UTC"
             });
         }
 

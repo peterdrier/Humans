@@ -447,14 +447,18 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
         var calendar = new EventSettings
         {
             Id = Guid.NewGuid(),
+            IsShiftBrowsingOpen = true,
+        };
+        Calendars[calendar.Id] = new TestEventCalendar
+        {
+            Id = calendar.Id,
             EventName = "Test Event",
             TimeZoneId = "Europe/Madrid",
             GateOpeningDate = new LocalDate(2026, 7, 1),
             BuildStartOffset = -14,
             EventEndOffset = 6,
             StrikeEndOffset = 9,
-            IsShiftBrowsingOpen = true,
-            IsActive = true
+            IsActive = true,
         };
         ShiftsDb.EventSettings.Add(calendar);
         await ShiftsDb.SaveChangesAsync(ct);
@@ -743,7 +747,7 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
         var expected = string.Format(CultureInfo.CurrentUICulture,
             resources.GetString("Shifts_Signup_TimeConflict", CultureInfo.CurrentUICulture)!,
             rota.Name, resources.GetString("Shifts_Signup_UnknownTeam", CultureInfo.CurrentUICulture),
-            es.GateOpeningDate.PlusDays(shift1.DayOffset).At(shift1.StartTime)
+            Calendars[es.Id].GateOpeningDate.PlusDays(shift1.DayOffset).At(shift1.StartTime)
                 .ToDateTimeUnspecified().ToMonthDayTime());
         result.Error.Should().Be(expected);
     }
@@ -904,7 +908,7 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
     {
         var (es, _, shift) = SeedShiftScenario(SignupPolicy.Public);
         shift.DayOffset = -1;
-        es.EarlyEntryClose = TestNow - Duration.FromHours(1);
+        Calendars[es.Id].EarlyEntryClose = TestNow - Duration.FromHours(1);
         var userId = Guid.NewGuid();
         await SaveAllAsync(TestContext.Current.CancellationToken);
 
@@ -919,7 +923,7 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
     {
         var (es, _, shift) = SeedShiftScenario(SignupPolicy.Public);
         shift.DayOffset = -1;
-        es.EarlyEntryClose = TestNow - Duration.FromHours(1);
+        Calendars[es.Id].EarlyEntryClose = TestNow - Duration.FromHours(1);
         var userId = Guid.NewGuid();
         await SaveAllAsync(TestContext.Current.CancellationToken);
 
@@ -986,7 +990,7 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
     {
         var (es, _, shift) = SeedShiftScenario(SignupPolicy.RequireApproval);
         shift.DayOffset = -1;
-        es.EarlyEntryClose = TestNow - Duration.FromHours(1);
+        Calendars[es.Id].EarlyEntryClose = TestNow - Duration.FromHours(1);
         var signup = SeedSignup(Guid.NewGuid(), shift.Id, SignupStatus.Pending);
         await SaveAllAsync(TestContext.Current.CancellationToken);
 
@@ -1001,7 +1005,7 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
     {
         var (es, _, shift) = SeedShiftScenario(SignupPolicy.RequireApproval);
         shift.DayOffset = -1;
-        es.EarlyEntryClose = TestNow - Duration.FromHours(1);
+        Calendars[es.Id].EarlyEntryClose = TestNow - Duration.FromHours(1);
         var signup = SeedSignup(Guid.NewGuid(), shift.Id, SignupStatus.Pending);
         var reviewerId = Guid.NewGuid();
         _roleAssignmentService.HasActiveRoleAsync(reviewerId, RoleNames.Admin).Returns(true);
@@ -1022,7 +1026,7 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
         if (earlyEntry)
         {
             shift.DayOffset = -1;
-            settings.EarlyEntryClose = TestNow + Duration.FromDays(1);
+            Calendars[settings.Id].EarlyEntryClose = TestNow + Duration.FromDays(1);
         }
         var userId = Guid.NewGuid();
         var signup = SeedSignup(userId, shift.Id, SignupStatus.Confirmed);
@@ -1154,7 +1158,7 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
         // Make this a build shift (day offset < 0)
         shift.DayOffset = -1;
         // Set EE close to the past
-        es.EarlyEntryClose = TestNow - Duration.FromHours(1);
+        Calendars[es.Id].EarlyEntryClose = TestNow - Duration.FromHours(1);
         var userId = Guid.NewGuid();
         var signup = SeedSignup(userId, shift.Id, SignupStatus.Confirmed);
         await SaveAllAsync(TestContext.Current.CancellationToken);
@@ -1433,7 +1437,7 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
         // Make the shift end in the past, mirroring MarkNoShow_AfterShiftEnd:
         // gate opening 2026-06-14, day 0, 08:00 +2h → ends 10:00 Madrid = 08:00 UTC < TestNow (12:00 UTC).
         var (es, _, shift) = SeedShiftScenario(SignupPolicy.RequireApproval);
-        es.GateOpeningDate = new LocalDate(2026, 6, 14);
+        Calendars[es.Id].GateOpeningDate = new LocalDate(2026, 6, 14);
         shift.DayOffset = 0;
         shift.StartTime = new LocalTime(8, 0);
         shift.Duration = Duration.FromHours(2);
@@ -1492,7 +1496,7 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
     {
         var (es, _, shift) = SeedShiftScenario(SignupPolicy.Public);
         // Gate opening 2026-06-15, day 0, 14:00 +4h ends 18:00 Madrid = 16:00 UTC, after TestNow (12:00 UTC).
-        es.GateOpeningDate = new LocalDate(2026, 6, 15);
+        Calendars[es.Id].GateOpeningDate = new LocalDate(2026, 6, 15);
         shift.DayOffset = 0;
         shift.StartTime = new LocalTime(14, 0);
 
@@ -1514,7 +1518,7 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
     {
         var (es, rota, shift) = SeedShiftScenario(SignupPolicy.Public);
         // Both the event-day and build-day shift finish before TestNow.
-        es.GateOpeningDate = new LocalDate(2026, 6, 14);
+        Calendars[es.Id].GateOpeningDate = new LocalDate(2026, 6, 14);
         rota.Period = affectsEarlyEntry ? RotaPeriod.Build : RotaPeriod.Event;
         shift.DayOffset = dayOffset;
         shift.StartTime = new LocalTime(8, 0);
@@ -1542,7 +1546,7 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
         var (es, _, shift) = SeedShiftScenario(SignupPolicy.Public);
         // Same past-ending shift as MarkNoShow_AfterShiftEnd_SetsNoShow, so the
         // shift-end guard passes and the status guard is the one under test.
-        es.GateOpeningDate = new LocalDate(2026, 6, 14);
+        Calendars[es.Id].GateOpeningDate = new LocalDate(2026, 6, 14);
         shift.DayOffset = 0;
         shift.StartTime = new LocalTime(8, 0);
         shift.Duration = Duration.FromHours(2);
@@ -2028,7 +2032,7 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
         rota.Period = RotaPeriod.Build;
         SeedAllDayShift(rota, dayOffset: -3);
         SeedAllDayShift(rota, dayOffset: -2);
-        es.EarlyEntryClose = TestNow - Duration.FromHours(1);
+        Calendars[es.Id].EarlyEntryClose = TestNow - Duration.FromHours(1);
         var userId = Guid.NewGuid();
         await SaveAllAsync(TestContext.Current.CancellationToken);
 
@@ -2048,7 +2052,7 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
     {
         var (settings, _, shift) = SeedShiftScenario(SignupPolicy.Public);
         shift.DayOffset = -1;
-        if (earlyEntryClosed) settings.EarlyEntryClose = TestNow - Duration.FromHours(1);
+        if (earlyEntryClosed) Calendars[settings.Id].EarlyEntryClose = TestNow - Duration.FromHours(1);
         var userId = Guid.NewGuid();
         var signup = SeedSignup(userId, shift.Id, SignupStatus.Confirmed);
         signup.SignupBlockId = Guid.NewGuid();
@@ -2286,7 +2290,7 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
         // gate opening 2026-06-14 → build days -3..-1 = 2026-06-11..13, all-day windows end
         // 18:00 Madrid = 16:00 UTC, all before TestNow (2026-06-15 12:00 UTC) → all past.
         var (es, rota, _) = SeedShiftScenario(SignupPolicy.Public);
-        es.GateOpeningDate = new LocalDate(2026, 6, 14);
+        Calendars[es.Id].GateOpeningDate = new LocalDate(2026, 6, 14);
         rota.Period = RotaPeriod.Build;
         for (var day = -3; day <= -1; day++)
             SeedAllDayShift(rota, day);
@@ -2306,7 +2310,7 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
         // gate opening 2026-06-16 → days -3..-1 = 2026-06-13,14,15. Day -1 (2026-06-15) all-day
         // window ends 18:00 Madrid = 16:00 UTC > TestNow (12:00 UTC) → future present in range.
         var (es, rota, _) = SeedShiftScenario(SignupPolicy.Public);
-        es.GateOpeningDate = new LocalDate(2026, 6, 16);
+        Calendars[es.Id].GateOpeningDate = new LocalDate(2026, 6, 16);
         rota.Period = RotaPeriod.Build;
         for (var day = -3; day <= -1; day++)
             SeedAllDayShift(rota, day);
@@ -2749,7 +2753,7 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
         LocalizeSignupMessages();
         var (es, _, shift) = SeedShiftScenario(SignupPolicy.Public);
         shift.DayOffset = -1;
-        es.EarlyEntryCapacity = new Dictionary<int, int> { [-1] = filledCapacity ? 1 : 0 };
+        Calendars[es.Id].EarlyEntryCapacity = new Dictionary<int, int> { [-1] = filledCapacity ? 1 : 0 };
         if (filledCapacity)
             SeedSignup(Guid.NewGuid(), shift.Id, SignupStatus.Confirmed);
         await SaveAllAsync(TestContext.Current.CancellationToken);
@@ -2761,7 +2765,7 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
         var resources = new ResourceManager(typeof(ShiftsResource));
         result.Warning.Should().Be(string.Format(CultureInfo.CurrentUICulture,
             resources.GetString("Shifts_Signup_RangeEarlyEntryCapacityDays", CultureInfo.CurrentUICulture)!,
-            es.GateOpeningDate.PlusDays(-1).ToWeekdayDayMonth()));
+            Calendars[es.Id].GateOpeningDate.PlusDays(-1).ToWeekdayDayMonth()));
     }
 
     private void LocalizeSignupMessages()
@@ -2783,9 +2787,9 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
         // instants can only differ if each row is resolved against its own calendar.
         var (_, madridRota, madridShift) = SeedShiftScenario(SignupPolicy.Public);
         var (aucklandEs, aucklandRota, _) = SeedShiftScenario(SignupPolicy.Public);
-        aucklandEs.IsActive = false;
-        aucklandEs.TimeZoneId = "Pacific/Auckland";
-        aucklandEs.GateOpeningDate = new LocalDate(2025, 1, 15);
+        Calendars[aucklandEs.Id].IsActive = false;
+        Calendars[aucklandEs.Id].TimeZoneId = "Pacific/Auckland";
+        Calendars[aucklandEs.Id].GateOpeningDate = new LocalDate(2025, 1, 15);
         aucklandRota.Name = "Southern Rota";
         var aucklandShift = SeedShift(aucklandRota, dayOffset: 1, startHour: 10, durationHours: 4);
         var userId = Guid.NewGuid();
@@ -2815,16 +2819,20 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
         var es = new EventSettings
         {
             Id = Guid.NewGuid(),
+            IsShiftBrowsingOpen = true,
+            CreatedAt = TestNow,
+            UpdatedAt = TestNow,
+        };
+        Calendars[es.Id] = new TestEventCalendar
+        {
+            Id = es.Id,
             EventName = "Test Event 2026",
             TimeZoneId = "Europe/Madrid",
             GateOpeningDate = new LocalDate(2026, 7, 1),
             BuildStartOffset = -14,
             EventEndOffset = 6,
             StrikeEndOffset = 9,
-            IsShiftBrowsingOpen = true,
             IsActive = true,
-            CreatedAt = TestNow,
-            UpdatedAt = TestNow
         };
         ShiftsDb.EventSettings.Add(es);
 

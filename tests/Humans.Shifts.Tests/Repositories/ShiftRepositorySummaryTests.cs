@@ -152,9 +152,6 @@ public class ShiftRepositorySummaryTests : IDisposable
     private void SeedEvent(Guid esId) => _shiftsDbContext.EventSettings.Add(new EventSettings
     {
         Id = esId,
-        EventName = "TestEvent",
-        GateOpeningDate = new LocalDate(2026, 7, 1),
-        TimeZoneId = "UTC"
     });
 
     private void SeedRota(Guid rotaId, Guid esId, Guid teamId) => _shiftsDbContext.Rotas.Add(new Rota

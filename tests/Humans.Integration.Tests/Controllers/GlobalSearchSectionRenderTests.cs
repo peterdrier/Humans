@@ -194,7 +194,8 @@ public class GlobalSearchSectionRenderTests(HumansTestDatabase database) : Integ
         await teamsDb.SaveChangesAsync(ct);
 
         var campsDb = sp.GetRequiredService<CampsDbContext>();
-        var publicYear = (await campsDb.CampSettings.AsNoTracking().FirstAsync(ct)).PublicYear;
+        var campSettings = await sp.GetRequiredService<ICampService>().GetSettingsAsync(ct);
+        var publicYear = campSettings.PublicYear;
         var camp = new Camp
         {
             Id = Guid.NewGuid(),
@@ -218,20 +219,13 @@ public class GlobalSearchSectionRenderTests(HumansTestDatabase database) : Integ
         await campsDb.SaveChangesAsync(ct);
 
         var shiftsDb = sp.GetRequiredService<ShiftsDbContext>();
-        var eventSettings = await shiftsDb.EventSettings.FirstOrDefaultAsync(e => e.IsActive, ct);
+        var activeEventId = campSettings.ActiveEventSettingsId ?? Guid.NewGuid();
+        var eventSettings = await shiftsDb.EventSettings.FirstOrDefaultAsync(e => e.Id == activeEventId, ct);
         if (eventSettings is null)
         {
             eventSettings = new EventSettings
             {
-                Id = Guid.NewGuid(),
-                EventName = $"{token} Burn",
-                Year = publicYear,
-                TimeZoneId = "Europe/Madrid",
-                GateOpeningDate = new LocalDate(publicYear, 7, 1),
-                BuildStartOffset = -10,
-                EventEndOffset = 6,
-                StrikeEndOffset = 8,
-                IsActive = true,
+                Id = activeEventId,
                 CreatedAt = now,
                 UpdatedAt = now,
             };

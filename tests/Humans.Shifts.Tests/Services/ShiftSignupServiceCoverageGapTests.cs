@@ -103,7 +103,7 @@ public sealed class ShiftSignupServiceCoverageGapTests : ShiftsTestHarness
         var change = notices.Single(args => (NotificationSourceDefinition)args[0]! == ShiftsNotificationSources.ShiftSignupChange);
         change[3].Should().Be(Copy("Shifts_Notification_SignupChangeTitle", "Rota"));
         using var recipientCulture = new CultureScope(language);
-        change[5].Should().Be($"{Copy("Shifts_Notification_ChangeRemoved", "Rota", 1)} (Rota, {calendar.GateOpeningDate.PlusDays(1).ToWeekdayDayMonth()})");
+        change[5].Should().Be($"{Copy("Shifts_Notification_ChangeRemoved", "Rota", 1)} (Rota, {Calendars[calendar.Id].GateOpeningDate.PlusDays(1).ToWeekdayDayMonth()})");
         change[7].Should().Be(Copy("Shifts_Notification_View"));
         foreach (var notice in notices)
         {
@@ -317,16 +317,20 @@ public sealed class ShiftSignupServiceCoverageGapTests : ShiftsTestHarness
         var es = new EventSettings
         {
             Id = Guid.NewGuid(),
+            IsShiftBrowsingOpen = true,
+            CreatedAt = TestNow,
+            UpdatedAt = TestNow,
+        };
+        Calendars[es.Id] = new TestEventCalendar
+        {
+            Id = es.Id,
             EventName = "CoverageGap Event",
             TimeZoneId = "Europe/Madrid",
             GateOpeningDate = new LocalDate(2026, 7, 1),
             BuildStartOffset = -14,
             EventEndOffset = 6,
             StrikeEndOffset = 9,
-            IsShiftBrowsingOpen = true,
             IsActive = true,
-            CreatedAt = TestNow,
-            UpdatedAt = TestNow
         };
         ShiftsDb.EventSettings.Add(es);
 

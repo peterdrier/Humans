@@ -96,8 +96,6 @@ on every read.
   service.
 - **Search on the inner service throws** — search is cache-only by design.
 - **Reserved slug `create`** for role definitions.
-- **Dead `PublicYear`/`EeStartDate` columns on `camp_settings`** stay mapped until
-  peterdrier/Humans#1761 drops them.
 
 ## History
 
