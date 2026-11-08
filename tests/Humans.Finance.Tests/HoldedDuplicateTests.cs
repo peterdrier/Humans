@@ -42,7 +42,7 @@ public class HoldedDuplicateTests
     private readonly IAuditLogService _audit = Substitute.For<IAuditLogService>();
 
     private Service MakeService(ILogger<Service>? logger = null) => new(
-        _repo, _client, Substitute.For<IBudgetService>(), _holded, _write, _expenses, new FakeClock(FixedNow),
+        _repo, Substitute.For<IBudgetService>(), _holded, _write, _expenses, new FakeClock(FixedNow),
         _audit, Substitute.For<IUserService>(),
         Substitute.For<IEmailService>(), TestFinanceEmails.Create(),
         Options.Create(new SepaOptions()),

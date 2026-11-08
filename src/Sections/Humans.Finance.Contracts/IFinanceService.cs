@@ -50,8 +50,8 @@ public interface IFinanceService : IApplicationService
     /// <summary>Active and archived rows: what each budget category is actually booked to today.</summary>
     Task<IReadOnlyList<CategoryAccountRow>> GetCategoryMapAsync(CancellationToken ct = default);
 
-    /// <summary>The rows <c>/Finance/Sepa</c> renders, without the candidate-line halves that need a live bank-feed
-    /// read. <c>UnavailableReason</c> is set when missing configuration turns booking off for the whole screen.</summary>
+    /// <summary>The rows <c>/Finance/Sepa</c> renders, without the candidate-line halves that need the bank
+    /// feed. <c>UnavailableReason</c> is set when missing configuration turns booking off for the whole screen.</summary>
     Task<(IReadOnlyList<SepaPayoutTransferRow> Transfers, string? UnavailableReason)>
         GetSepaTransfersAsync(CancellationToken ct = default);
 }

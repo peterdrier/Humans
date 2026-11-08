@@ -84,7 +84,7 @@ section** it belongs to (ledger mirror, sync, `/Holded` admin screen) has its ow
   is never returned. `ListLedgerEntriesAsync` requests `end_date = to + 1 day` so its own `to`
   parameter stays inclusive for callers; without this, same-day entries never reach the ledger
   mirror even though account balances already include them.
-- Bank movements (`GET /treasury/accounts/{id}/bank-movements`, read live, never mirrored) carry
+- Bank movements (`GET /treasury/accounts/{id}/bank-movements`, read only by the bank-feed mirror sync) carry
   no `date` key: a line's date is `booking_date` (what Holded stamps on the payment leg and ledger
   entry at reconciliation), falling back to `value_date`. Both are ISO 8601 with an offset and the
   date part is taken as given, never shifted to Europe/Madrid. A line with neither date is skipped
@@ -124,9 +124,8 @@ one `HoldedTransport`. Operation clients own their wire payloads, parsing and en
 failure rules; `HoldedJson` holds the shared wire-value readers and null-omitting serializer
 options. They add no interfaces or DI registrations, and the public contract stays unchanged.
 
-**Consumers outside the section:** Finance's `SepaBankBooking` until its move onto `IHoldedService` /
-`IHoldedWrite` lands; `IHoldedClient` goes internal then. Expenses, Store and the rest of Finance call
-only `IHoldedService` and `IHoldedWrite`.
+**Consumers outside the section:** none. Every other section calls only `IHoldedService` and
+`IHoldedWrite`; `IHoldedClient` can go internal.
 
 **The jobs live with their sections.** `HoldedSyncJob` is in `Humans.Holded/Jobs/`, a shim over
 this section's own `IHoldedNightlySync`; `HoldedExpenseOutboxJob` is in `Humans.Expenses/Jobs/`,

@@ -36,7 +36,8 @@ public interface IHoldedClient
     /// The POST returns no id, so the id is the one new <c>payments_detail</c> entry matching amount, date and
     /// treasury, read before and after. A failed before-read throws (nothing was posted). Once posted it never
     /// throws: when the after-read fails or zero or several entries match it returns
-    /// <c>"unconfirmed:{documentId}"</c>, which callers persist like any ref.</summary>
+    /// <c>"unconfirmed:{documentId}"</c>, which callers persist like any ref. A 5xx on the POST is checked against the
+    /// document too, since Holded may have saved it: it throws only when the document gained no payment.</summary>
     Task<string> PayPurchaseDocumentAsync(
         string documentId, decimal amount, string? treasuryId, LocalDate date, string? description,
         CancellationToken ct = default);

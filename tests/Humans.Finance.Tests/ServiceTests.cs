@@ -1,3 +1,4 @@
+using Microsoft.Extensions.DependencyInjection;
 using Humans.Base.Caching;
 using Humans.Base.Extensions;
 using Humans.Finance.Controllers;
@@ -118,7 +119,6 @@ public class HoldedFinanceServiceTests
 
     private Service MakeService(FinanceEmails? emailTemplates = null) => new(
         _repo,
-        _client,
         _budget,
         _holded,
         _write,
@@ -133,7 +133,7 @@ public class HoldedFinanceServiceTests
 
     /// <summary>Same service, with a logger the test can read back.</summary>
     private Service MakeService(ILogger<Service> logger) => new(
-        _repo, _client, _budget, _holded, _write, _expenses, _clock, _audit,
+        _repo, _budget, _holded, _write, _expenses, _clock, _audit,
         _users, _emailService, TestFinanceEmails.Create(), Options.Create(_sepa), _bookingState,
         Substitute.For<IPaymentDetailsManagement>(), logger);
 
@@ -181,6 +181,8 @@ public class HoldedFinanceServiceTests
                 _budget, new CashFlowService(_budget, Substitute.For<Humans.Tickets.Contracts.ITicketService>()),
                 Substitute.For<Humans.Pleo.Contracts.IPleoService>(), SystemClock.Instance),
             TestPleo.Booking(), TestPleo.Runner(),
+            new SepaBookingRunner(Substitute.For<IServiceScopeFactory>(), SystemClock.Instance,
+                NullLogger<SepaBookingRunner>.Instance),
             NullLogger<FinanceController>.Instance)
         {
             ControllerContext = new()
@@ -2306,6 +2308,7 @@ public class HoldedFinanceServiceTests
         _sepa.CreditorIdentifier = "G12345678901";
         _sepa.TreasuryAccountId = "treasury-1";
         _sepa.TreasuryLedgerAccount = 57200001;
+        TestHoldedSync.Wire(_holded, _client);
     }
 
     [HumansFact]
@@ -2917,7 +2920,7 @@ public class HoldedFinanceServiceTests
     private void SeedPaymentIds(params string[] ids)
     {
         var next = 0;
-        _client.PayPurchaseDocumentAsync(
+        _write.PayPurchaseDocumentAsync(
                 Arg.Any<string>(), Arg.Any<decimal>(), Arg.Any<string>(), Arg.Any<LocalDate>(),
                 Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(_ => ids[next++]);
@@ -2973,7 +2976,7 @@ public class HoldedFinanceServiceTests
 
         result.Succeeded.Should().BeFalse();
         result.Message.Should().Contain("already booked");
-        await _client.DidNotReceiveWithAnyArgs().PayPurchaseDocumentAsync(
+        await _write.DidNotReceiveWithAnyArgs().PayPurchaseDocumentAsync(
             default!, default, default, default, default);
     }
 
@@ -2989,7 +2992,7 @@ public class HoldedFinanceServiceTests
 
         result.Succeeded.Should().BeFalse();
         result.Message.Should().Contain("no Holded contact binding");
-        await _client.DidNotReceiveWithAnyArgs().PayPurchaseDocumentAsync(
+        await _write.DidNotReceiveWithAnyArgs().PayPurchaseDocumentAsync(
             default!, default, default, default, default);
     }
 
@@ -3014,7 +3017,7 @@ public class HoldedFinanceServiceTests
 
         result.Succeeded.Should().BeFalse();
         result.Message.Should().Contain("binding changed");
-        await _client.DidNotReceiveWithAnyArgs().PayPurchaseDocumentAsync(
+        await _write.DidNotReceiveWithAnyArgs().PayPurchaseDocumentAsync(
             default!, default, default, default, default);
     }
 
@@ -3042,7 +3045,7 @@ public class HoldedFinanceServiceTests
         result.Succeeded.Should().BeFalse();
         result.Message.Should().Contain("different Holded contact");
         await _client.DidNotReceiveWithAnyArgs().ListPurchaseDocumentsAsync();
-        await _client.DidNotReceiveWithAnyArgs().PayPurchaseDocumentAsync(
+        await _write.DidNotReceiveWithAnyArgs().PayPurchaseDocumentAsync(
             default!, default, default, default, default);
         await _repo.DidNotReceiveWithAnyArgs().SaveSepaTransferBookingAsync(
             default, default, default, default!, default, default);
@@ -3079,7 +3082,7 @@ public class HoldedFinanceServiceTests
 
         result.Succeeded.Should().BeFalse();
         result.Message.Should().Contain("Sepa:TreasuryAccountId");
-        await _client.DidNotReceiveWithAnyArgs().PayPurchaseDocumentAsync(
+        await _write.DidNotReceiveWithAnyArgs().PayPurchaseDocumentAsync(
             default!, default, default, default, default);
     }
 
@@ -3097,7 +3100,7 @@ public class HoldedFinanceServiceTests
 
         result.Succeeded.Should().BeFalse();
         result.Message.Should().Contain("Sepa:TreasuryLedgerAccount");
-        await _client.DidNotReceiveWithAnyArgs().PayPurchaseDocumentAsync(
+        await _write.DidNotReceiveWithAnyArgs().PayPurchaseDocumentAsync(
             default!, default, default, default, default);
     }
 
@@ -3119,7 +3122,7 @@ public class HoldedFinanceServiceTests
 
         result.Succeeded.Should().BeTrue();
         result.Message.Should().Contain("and a journal entry for 20.00 EUR");
-        await _client.Received(1).PayPurchaseDocumentAsync("d1", 10m, "treasury-1", Arg.Any<LocalDate>(),
+        await _write.Received(1).PayPurchaseDocumentAsync("d1", 10m, "treasury-1", Arg.Any<LocalDate>(),
             "SEPA payout E11111111111111111111111111111111", Arg.Any<CancellationToken>());
         await _write.Received(1).PostJournalEntryAsync(
             BankLineDate, 40000004, 57200001, 20m,
@@ -3146,7 +3149,7 @@ public class HoldedFinanceServiceTests
         var result = await MakeService().BookSepaTransferAsync(BookableTransferId, BookableMovementId, Guid.NewGuid());
 
         result.Succeeded.Should().BeTrue();
-        await _client.DidNotReceiveWithAnyArgs().PayPurchaseDocumentAsync(
+        await _write.DidNotReceiveWithAnyArgs().PayPurchaseDocumentAsync(
             default!, default, default, default, default);
         await _write.Received(1).PostJournalEntryAsync(
             Arg.Any<LocalDate>(), 40000004, 57200001, 30m, Arg.Any<string>(), Arg.Any<CancellationToken>());
@@ -3198,12 +3201,12 @@ public class HoldedFinanceServiceTests
         result.Succeeded.Should().BeTrue();
         Received.InOrder(() =>
         {
-            _ = _client.PayPurchaseDocumentAsync("oldest", 12m, "treasury-1", Arg.Any<LocalDate>(),
+            _ = _write.PayPurchaseDocumentAsync("oldest", 12m, "treasury-1", Arg.Any<LocalDate>(),
                 Arg.Any<string>(), Arg.Any<CancellationToken>());
-            _ = _client.PayPurchaseDocumentAsync("middle", 18m, "treasury-1", Arg.Any<LocalDate>(),
+            _ = _write.PayPurchaseDocumentAsync("middle", 18m, "treasury-1", Arg.Any<LocalDate>(),
                 Arg.Any<string>(), Arg.Any<CancellationToken>());
         });
-        await _client.DidNotReceive().PayPurchaseDocumentAsync(
+        await _write.DidNotReceive().PayPurchaseDocumentAsync(
             "newest", Arg.Any<decimal>(), Arg.Any<string>(), Arg.Any<LocalDate>(),
             Arg.Any<string>(), Arg.Any<CancellationToken>());
         // Fully covered by documents: nothing is left for a journal entry.
@@ -3242,9 +3245,9 @@ public class HoldedFinanceServiceTests
         SeedBookableTransfer();
         SeedBankLine();
         SeedOpenDocs(Doc("oldest", 12m, 1), Doc("middle", 40m, 10));
-        _client.PayPurchaseDocumentAsync("oldest", Arg.Any<decimal>(), Arg.Any<string>(),
+        _write.PayPurchaseDocumentAsync("oldest", Arg.Any<decimal>(), Arg.Any<string>(),
             Arg.Any<LocalDate>(), Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns("pay-a");
-        _client.PayPurchaseDocumentAsync("middle", Arg.Any<decimal>(), Arg.Any<string>(),
+        _write.PayPurchaseDocumentAsync("middle", Arg.Any<decimal>(), Arg.Any<string>(),
             Arg.Any<LocalDate>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Throws(new HoldedPermanentException("Holded 400"));
 
@@ -3264,9 +3267,9 @@ public class HoldedFinanceServiceTests
         var userId = SeedBookableTransfer();
         SeedBankLine();
         SeedOpenDocs(Doc("oldest", 12m, 1), Doc("middle", 40m, 10));
-        _client.PayPurchaseDocumentAsync("oldest", Arg.Any<decimal>(), Arg.Any<string>(),
+        _write.PayPurchaseDocumentAsync("oldest", Arg.Any<decimal>(), Arg.Any<string>(),
             Arg.Any<LocalDate>(), Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns("pay-a");
-        _client.PayPurchaseDocumentAsync("middle", Arg.Any<decimal>(), Arg.Any<string>(),
+        _write.PayPurchaseDocumentAsync("middle", Arg.Any<decimal>(), Arg.Any<string>(),
             Arg.Any<LocalDate>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Throws(new HoldedPermanentException("Holded 400"));
         var actor = Guid.NewGuid();
@@ -3290,7 +3293,7 @@ public class HoldedFinanceServiceTests
         _sepa.TreasuryAccountId = "";
         SeedTransferRows();
 
-        var (rows, unavailable, _, _) = await MakeService().GetSepaPayoutsAsync(ct: TestContext.Current.CancellationToken);
+        var (rows, unavailable, _, _, _) = await MakeService().GetSepaPayoutsAsync(ct: TestContext.Current.CancellationToken);
 
         unavailable.Should().Contain("Sepa:TreasuryAccountId");
         rows.Should().ContainSingle().Which.NotBookableReason.Should().BeNull();
@@ -3322,7 +3325,7 @@ public class HoldedFinanceServiceTests
         _sepa.TreasuryLedgerAccount = null;
         SeedTransferRows();
 
-        var (rows, unavailable, _, _) = await MakeService().GetSepaPayoutsAsync(ct: TestContext.Current.CancellationToken);
+        var (rows, unavailable, _, _, _) = await MakeService().GetSepaPayoutsAsync(ct: TestContext.Current.CancellationToken);
 
         unavailable.Should().Contain("Sepa:TreasuryLedgerAccount");
         rows.Should().ContainSingle().Which.NotBookableReason.Should().BeNull();
@@ -3336,7 +3339,7 @@ public class HoldedFinanceServiceTests
         _repo.GetCreditorContactsAsync(Arg.Any<CancellationToken>())
             .Returns(new List<HoldedCreditorContact>());
 
-        var (rows, _, _, _) = await MakeService().GetSepaPayoutsAsync(ct: TestContext.Current.CancellationToken);
+        var (rows, _, _, _, _) = await MakeService().GetSepaPayoutsAsync(ct: TestContext.Current.CancellationToken);
 
         rows.Should().ContainSingle().Which.NotBookableReason.Should().Contain("no Holded contact binding");
     }
@@ -3351,7 +3354,7 @@ public class HoldedFinanceServiceTests
             new() { UserId = userId, HoldedContactId = "c2", SupplierAccountNum = 40000099 },
         });
 
-        var (rows, _, _, _) = await MakeService().GetSepaPayoutsAsync(ct: TestContext.Current.CancellationToken);
+        var (rows, _, _, _, _) = await MakeService().GetSepaPayoutsAsync(ct: TestContext.Current.CancellationToken);
 
         var row = rows.Should().ContainSingle().Subject;
         row.CanBook.Should().BeFalse();
@@ -3370,7 +3373,7 @@ public class HoldedFinanceServiceTests
             new() { UserId = userId, HoldedContactId = "c2", SupplierAccountNum = 40000004 },
         });
 
-        var (rows, _, _, _) = await MakeService().GetSepaPayoutsAsync(ct: TestContext.Current.CancellationToken);
+        var (rows, _, _, _, _) = await MakeService().GetSepaPayoutsAsync(ct: TestContext.Current.CancellationToken);
 
         var row = rows.Should().ContainSingle().Subject;
         row.CanBook.Should().BeFalse();
@@ -3389,7 +3392,7 @@ public class HoldedFinanceServiceTests
             new() { UserId = userId, HoldedContactId = "c2", SupplierAccountNum = 40000004 },
         });
 
-        var (rows, _, _, _) = await MakeService().GetSepaPayoutsAsync(ct: TestContext.Current.CancellationToken);
+        var (rows, _, _, _, _) = await MakeService().GetSepaPayoutsAsync(ct: TestContext.Current.CancellationToken);
 
         // CanBook also needs a matched bank line; this test covers only the account/contact guard,
         // so it checks the guard directly.
@@ -3408,7 +3411,7 @@ public class HoldedFinanceServiceTests
             new() { UserId = userId, HoldedContactId = "c1", SupplierAccountNum = 40000004 },
         });
 
-        var (rows, _, _, _) = await MakeService().GetSepaPayoutsAsync(ct: TestContext.Current.CancellationToken);
+        var (rows, _, _, _, _) = await MakeService().GetSepaPayoutsAsync(ct: TestContext.Current.CancellationToken);
 
         // CanBook also needs a matched bank line; this test covers only the account/contact guard,
         // so it checks the guard directly.

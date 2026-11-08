@@ -84,6 +84,7 @@ public sealed class Section :
         // Both outlive a request: the run keeps going after the page is left, and its holds must span runs.
         services.AddSingleton<PleoBookingState>();
         services.AddSingleton<PleoBookingRunner>();
+        services.AddSingleton<SepaBookingRunner>();
     }
 
     IEnumerable<AdminNavGroup> ISectionAdminNav.Groups() =>
