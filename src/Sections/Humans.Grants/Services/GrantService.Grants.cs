@@ -63,7 +63,7 @@ internal sealed partial class GrantService
         if (grant is null) return new("Grant not found.");
         if (grant.RevokedAt is not null) return new("A revoked grant has no notice to resend.");
 
-        var year = EventOf(grant.Program, await settingsService.GetAllEventSettingsAsync(ct))?.Year ?? grant.Program.Year;
+        var year = await YearOfAsync(grant.Program, ct);
         grant.NotifiedAt = clock.GetCurrentInstant();
         await repository.UpdateGrantAsync(grant, ct);
         await AuditGrantAsync(GrantsAuditActions.GrantNoticeResent, grant,
@@ -97,7 +97,7 @@ internal sealed partial class GrantService
         GrantProgram program, IReadOnlyList<Grant> grants, Guid actorUserId,
         Func<Grant, int, string> describe, CancellationToken ct)
     {
-        var year = EventOf(program, await settingsService.GetAllEventSettingsAsync(ct))?.Year ?? program.Year;
+        var year = await YearOfAsync(program, ct);
         await repository.AddGrantsAsync(grants, ct);
         // The grants committed; finish their audit and notices after the browser disconnects.
         foreach (var grant in grants)
@@ -134,7 +134,7 @@ internal sealed partial class GrantService
 
     private async Task RevokeCoreAsync(Grant grant, string? reason, Guid actorUserId, CancellationToken ct)
     {
-        var year = EventOf(grant.Program, await settingsService.GetAllEventSettingsAsync(ct))?.Year ?? grant.Program.Year;
+        var year = await YearOfAsync(grant.Program, ct);
         grant.RevokedAt = clock.GetCurrentInstant();
         grant.RevokedByUserId = actorUserId;
         grant.RevokeReason = reason;

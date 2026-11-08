@@ -815,5 +815,8 @@
   <data name="Users_Profile_NewLayoutNote" xml:space="preserve">
     <value>Aperçu d'une nouvelle mise en page. La page actuelle :</value>
   </data>
+  <data name="Users_Medical_NoneOnFile" xml:space="preserve"><value>Aucune condition médicale enregistrée.</value></data>
+  <data name="Users_Medical_RevealFailed" xml:space="preserve"><value>Impossible de charger les informations médicales.</value></data>
+  <data name="Users_Medical_RevealTitle" xml:space="preserve"><value>Afficher les informations médicales (chaque consultation est enregistrée dans le journal d'audit)</value></data>
   <data name="Users_Profile_InvalidLocation" xml:space="preserve"><value>Choisissez un lieu valide.</value></data>
 </root>

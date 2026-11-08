@@ -6,7 +6,7 @@ namespace Humans.Shifts.Contracts;
 /// </summary>
 public interface IShiftVolunteerProfiles
 {
-    /// <summary>Null when the user has none. Dietary and medical data are Profile's.</summary>
+    /// <summary>Null when the user has none.</summary>
     Task<ShiftVolunteerProfileInfo?> GetShiftProfileAsync(Guid userId, CancellationToken ct = default);
 
     /// <summary>Case-insensitive contains on name.</summary>

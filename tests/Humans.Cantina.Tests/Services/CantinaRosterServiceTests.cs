@@ -709,15 +709,13 @@ public class CantinaRosterServiceTests
         SetupDay(WeekStartOffset + 0, userId);
         // Profile carries medical; the cantina DTO/JSON must still omit it.
         SetupHumans((userId, UserFixtures.Profile(
-            burnerName: "Sensitive",
-            medicalConditions: "Severe peanut allergy"),
+            burnerName: "Sensitive"),
             new DietaryProfileInfo(userId, "Omnivore", [], null, [], null)));
 
         var result = Xunit.Assert.IsType<WeeklyRosterDto>(await _service.GetWeeklyRosterAsync(WeekStartOffset, ct: Xunit.TestContext.Current.CancellationToken));
 
         var json = JsonSerializer.Serialize(result);
         json.Should().NotContain("MedicalConditions");
-        json.Should().NotContain("Severe peanut allergy");
     }
 
     [HumansFact]

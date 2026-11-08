@@ -84,7 +84,7 @@ public class MovedSharedPartialsRenderTests(HumansTestDatabase database) : Integ
         // A call site missed in the Localizer to SharedLocalizer rebind renders the key.
         foreach (var key in new[]
                  {
-                     "ShiftsSummary_", "Medical_Badge", "Profile_Coordinator", "Teams_Member",
+                     "ShiftsSummary_", "Profile_Coordinator", "Teams_Member",
                      "Search_MatchedIn",
                  })
         {

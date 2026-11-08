@@ -1,4 +1,4 @@
-// Patterns follow nobodies.team so the two pages feel like siblings. Everything degrades to a static page without JS.
+// Patterns follow nobodies.team so the two pages feel like siblings.
 (function () {
     'use strict';
 
@@ -105,7 +105,6 @@
 
         draw();
 
-        // Stop animating while the hero is off-screen.
         var hero = document.querySelector('.tour-hero');
         if (hero && 'IntersectionObserver' in window) {
             new IntersectionObserver(function (entries) {

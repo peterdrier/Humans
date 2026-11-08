@@ -31,7 +31,7 @@ Access is role-based only. There is no team-membership-based path.
 
 ## GDPR (special-category data)
 
-`MedicalConditions` (GDPR Art. 9 health data) is **excluded entirely** from this page and from the CSV, regardless of viewer role. The cantina plans around food, not medical history; medical conditions remain visible only via the per-volunteer `_VolunteerProfileBadges` partial's audited reveal (`POST /Shifts/Medical/{userId}/Reveal`, Shifts-owned; existing path, unchanged).
+`MedicalConditions` (GDPR Art. 9 health data) is **excluded entirely** from this page and from the CSV, regardless of viewer role. The cantina plans around food, not medical history; medical conditions remain visible only through Users' audited reveal (`POST /Profile/{id}/Medical/Reveal`).
 
 This tightens the Art. 9 boundary: cantina coordinators don't need health data and don't get it. The exclusion happens at the DTO boundary (not at query time) so the field can never reach the view layer.
 
@@ -255,7 +255,7 @@ New / updated components:
 ## Negative access rules
 
 - A user **cannot** see the roster page unless they hold `Admin`, `Board` or `CantinaAdmin`, and **cannot** download the CSV unless they hold `Admin` or `CantinaAdmin`. No other path grants access.
-- The roster page and CSV **never** include `MedicalConditions` — `CantinaRosterService` never reads it and the cantina DTOs have no such field. To see medical conditions, viewers use the per-profile badges' audited medical reveal.
+- The roster page and CSV **never** include `MedicalConditions` — `CantinaRosterService` never reads it and the cantina DTOs have no such field. To see medical conditions, viewers use the audited reveal on the member's profile page (`/Profile/{id}`).
 - The access-denied redirect **must not** leak any roster data, including the week's headcount or label.
 - `Refused` / `Bailed` / `NoShow` / `Cancelled` signups **must not** contribute to any count or row, even if the volunteer also has a qualifying signup on a different day.
 - The roster reads only the currently active event's signups — no cross-event aggregation.
