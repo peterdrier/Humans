@@ -15,6 +15,18 @@ Public marketing page: what Humans is, in plain language, for visitors evaluatin
 Styled as a long-form landing page in the nobodies.team visual language (own `_TourLayout`,
 full-bleed hero, scroll animations) rather than the Shell chrome.
 
+**What good looks like.** Someone from another burn who has never signed in reads one page and
+knows what Humans does, that it is real and used, and how to reach the team. Every capability
+the copy names exists in the app today.
+
+**Deliberate choices.** English only; static copy, never live numbers; its own layout, not the
+member chrome; no data, no services. The headline numbers (humans, sections, languages) are
+hand-maintained and stay visible: on a public page they carry weight, so they are updated by
+hand as they change rather than dropped.
+
+**Out of scope.** Per-burn configuration, sign-up or contact forms, live statistics,
+translations.
+
 ## Concepts
 
 - The **Tour page** is the anonymous-reachable capability overview at `/Tour`. Static content;

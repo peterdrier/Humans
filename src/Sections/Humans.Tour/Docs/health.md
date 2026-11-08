@@ -69,7 +69,7 @@ reference it has.
 ## 5. Seams
 
 - **Welcome link.** Onboarding's `/Welcome` links `/Tour` by raw URL, invisible to the
-  activation scan. Onboarding's call.
+  activation scan. No seam is wanted while Tour is always on.
 - **Per-burn configuration.** The page describes it as the roadmap. Nothing in this section
   builds it or should.
 
@@ -79,7 +79,7 @@ reference it has.
   resx and binds no localizer, and an i18n sweep must not wire one in.
 - **No service or view model.** A static page has no rule to enforce once.
 - **No live statistics.** A public page must not query member data; the hero's numbers are
-  copy.
+  copy, updated by hand as they change, and never dropped to avoid the upkeep.
 - **Not on the Shell layout.** The member chrome (navbar, container, login partial) is
   what the page steps out of on purpose; the fixed header is its whole chrome.
 - **No Contracts leaf.** Nothing outside the section names a Tour type.
