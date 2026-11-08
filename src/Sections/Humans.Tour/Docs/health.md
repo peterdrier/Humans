@@ -111,4 +111,4 @@ reference it has.
 | Run | Date | Headline | PR |
 |---|---|---|---|
 | 1 | 2026-09-06 | First doctoring: CI-run tests for a section that had none; docs and comments cut to the current state | peterdrier/Humans#1611 |
-| 2 | 2026-11-08 | Invariants cite where they are enforced; a false localization claim corrected; the dashboard card's component pinned | pending |
+| 2 | 2026-11-08 | Invariants cite where they are enforced; a false localization claim corrected; the dashboard card's component pinned | peterdrier/Humans#2345 |
