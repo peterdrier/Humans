@@ -75,7 +75,7 @@ Extends `IdentityUser<Guid>` with project-specific columns.
 | State | UserState | Lifecycle state and the single source of truth for access, suspension included (`Bare`, `Active`, `DeletePending`, `Suspended`, `Rejected`, `Deleted`, `Merged`, `AdminSuspended`). Required string column (`HasConversion<string>()`, physical default `Bare`); written at each transition and never derived on read. The full app is reachable only when `State == Active`. |
 | MarkedFakeAt | Instant? | Set once when the account is not a real person (the gate terminal, dev personas); null for every member. Read as `UserInfo.IsFake`. Orthogonal to `State`, so a fake account still moves through the same states. Written only by `IUserWrite.MarkFakeAsync`, idempotent, audited once (`UsersAuditActions.AccountMarkedFake`). Queues and counts of people skip fake accounts by reading `IsFake`. |
 
-**Shadow columns (no C# property):** `users.GoogleEmail` is kept on disk as an EF shadow property (`UserConfiguration.cs`); no production code reads or writes it any more (nobodies-collective/Humans#1102 retired the last reader) and the column drop is deferred to a later PR per `memory/architecture/no-drops-until-prod-verified.md`. The Workspace identity read path is GoogleIntegration's `IGoogleIntegrationService.GetWorkspaceIdentityAsync`. `user_emails.IsGoogle` and `user_emails.GoogleEmailStatus` are also retained as shadow columns, without runtime readers, until their separate drop PR; display sorting is alphabetical on `Email`. Analyzer `HUM0001` (`UserEmailLegacyFieldAnalyzer`) rejects any reference to the legacy properties (`User.GoogleEmail`, `UserEmail.IsOAuth`, `UserEmail.DisplayOrder`).
+**Shadow columns (no C# property):** `users.GoogleEmail` is kept on disk as an EF shadow property (`UserConfiguration.cs`); no production code reads or writes it any more (nobodies-collective/Humans#1102 retired the last reader) and the column drop is deferred to a later PR per `memory/architecture/no-drops-until-prod-verified.md`. The Workspace identity read path is GoogleIntegration's `IGoogleIntegrationService.GetWorkspaceIdentityAsync`. Display sorting is alphabetical on `Email`. Analyzer `HUM0001` (`UserEmailLegacyFieldAnalyzer`) rejects any reference to the legacy properties (`User.GoogleEmail`, `UserEmail.IsOAuth`, `UserEmail.DisplayOrder`).
 
 **Profile-adjacent fields** — `ContactSource`, `ExternalSourceId` — are also described under [Part 2 — Profiles](#user-identity-extension) because `CachingUserService` stitches them into `UserInfo`. The canonical field table is here; Part 2 describes `UserInfo` projection semantics.
 
@@ -353,7 +353,7 @@ User is owned by the **Users/Identity** section; the properties below are the pr
 
 `User` has no `GoogleEmail` property; the `users.GoogleEmail` column is an EF shadow property (`UserConfiguration.cs`) kept pending a deferred column-drop PR per `memory/architecture/no-drops-until-prod-verified.md`. `UserInfo.GoogleEmail` is gone (Users decomposition commit 15): the Google Workspace address is `IGoogleIntegrationService.GetWorkspaceIdentityAsync`; `UserInfo.PrimaryEmail` is the contact address.
 
-Google sync status is GoogleIntegration's (`google_workspace_identities.Status`). The retired per-address `user_emails.GoogleEmailStatus` column is shadow-mapped using the canonical enum, stored as a string with its existing `Unknown` default, awaiting a separate drop PR. It has no runtime readers or flag-clearing writes.
+Google sync status is GoogleIntegration's (`google_workspace_identities.Status`).
 
 #### Contact-import properties
 
@@ -476,8 +476,6 @@ Self and admin email-grid mutation rejections remain Warning logs with the membe
 | IsVerified | bool | Required |
 | Provider | string? (64) | OAuth provider that owns this row when the user signed in via OIDC ("Google" today; future Apple/Microsoft). Null when no OAuth identity is linked. Single-row-per-(Provider, ProviderKey) is service-enforced |
 | ProviderKey | string? (256) | OAuth subject/key (OIDC `sub`) for the linked identity. Stable across Google Workspace email renames. `(Provider, ProviderKey)` is the only legitimate match key for rewriting `Email` (via `UserEmailService.ReconcileOAuthIdentityAsync`) |
-| IsGoogle | bool (shadow) | Retained on disk for a separate drop PR; no runtime readers. |
-| GoogleEmailStatus | enum as string (50, shadow) | Retains the `Unknown` database default until the separate drop PR; no runtime readers. |
 | IsPrimary | bool | Exactly one verified email per user is the system-notification target. Service-enforced via `EnsurePrimaryInvariantAsync`; column persists under legacy name `IsNotificationTarget` per `no-column-drops-for-decoupling.md` |
 | Visibility | ContactFieldVisibility? | Stored as string (max 50); null hides the email from profile view |
 | VerificationSentAt | Instant? | Last time a verification email was sent (rate limiting) |
@@ -523,11 +521,10 @@ Sub-aggregate of Profile — no separate service. Records languages spoken with 
 
 ### Frozen legacy (awaiting drop)
 
-These columns await separate schema drops. A registered data migration's production `done` reading is standing approval under `memory/architecture/no-drops-until-prod-verified.md`. The Workspace identity migration and readers are retired: production reported `google.workspace-identities`, `pending: 0, done: true` on 2026-11-05. Schema drops remain separate feature work under policy D9, outside the debt ledger.
+These columns await separate schema drops. A registered data migration's production `done` reading is standing approval under `memory/architecture/no-drops-until-prod-verified.md`. Production reported `google.workspace-identities`, `pending: 0, done: true` on 2026-11-05; `user_emails.IsGoogle` / `GoogleEmailStatus` are dropped (`DropUserEmailsLegacyGoogleColumns`). Schema drops remain separate feature work under policy D9, outside the debt ledger.
 
 | Legacy object | Replaced by | Migration key |
 |---|---|---|
-| `user_emails.IsGoogle`, `user_emails.GoogleEmailStatus` | GoogleIntegration `google_workspace_identities` | `google.workspace-identities` |
 | `users.UnsubscribedFromCampaigns`, `users.SuppressScheduleChangeEmails` | none (dead, no migration) | none |
 
 `LegacyGoogleEmailStatus` and the legacy `UserEmailInfo` fields are retired.

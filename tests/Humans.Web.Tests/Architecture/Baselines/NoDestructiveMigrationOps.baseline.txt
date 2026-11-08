@@ -333,3 +333,32 @@ src/Sections/Humans.Users/Data/Migrations/20261104164406_DropUsersLegacyStorage.
 # row reads inactive to the old code. Don't roll back without Peter's guidance; the recovery is a
 # forward fix in code, never a hand edit of the data.
 src/Sections/Humans.Finance/Data/Migrations/20261104170024_DropHoldedCategoryMapIsActive.cs:DropColumn(name=IsActive,table=holded_category_map)#1
+
+# user_emails.IsGoogle (bool) and user_emails.GoogleEmailStatus (varchar(50), default 'Unknown') —
+# the per-address Google Workspace identity flag and sync status, replaced by GoogleIntegration's
+# google_workspace_identities (migration key google.workspace-identities; peterdrier/Humans#2322).
+# Evidence: retirement (copy, read fallback and writers deleted; shadow-mapped only) merged in
+# peterdrier/Humans#2321 as b29bd463d, contained in production commit
+# 48eb2e5bd64adeca10fa23196ebe469b9f6f20ed (/api/version, read 2026-11-07). This PR removes the
+# shadow mappings.
+# Approval: production /api/data-migrations reading 2026-11-05, recorded in peterdrier/Humans#2322:
+# google.workspace-identities "pending":0,"done":true — the standing approval in
+# memory/architecture/no-drops-until-prod-verified.md ("Standing approval: a data migration
+# reporting done").
+src/Sections/Humans.Users/Data/Migrations/20261107081416_DropUserEmailsLegacyGoogleColumns.cs:DropColumn(name=GoogleEmailStatus,table=user_emails)#1
+src/Sections/Humans.Users/Data/Migrations/20261107081416_DropUserEmailsLegacyGoogleColumns.cs:DropColumn(name=IsGoogle,table=user_emails)#1
+
+# camp_settings.OpenSeasons (jsonb, seeded [2026]) — the legacy open-season year list, replaced by
+# per-event camp_event_settings rows (migration key camps.event-ids; peterdrier/Humans#2322).
+# CampSettingsInfo.OpenSeasons stays: it is computed from camp_event_settings, not this column.
+# Evidence: retirement (copy and year-based registration fallback deleted; column mapped only)
+# merged in peterdrier/Humans#2321 as b29bd463d, contained in production commit
+# 48eb2e5bd64adeca10fa23196ebe469b9f6f20ed (/api/version, read 2026-11-07). This PR removes the
+# entity property, its mapping and its seed value.
+# Approval: production /api/data-migrations reading 2026-11-05, recorded in peterdrier/Humans#2322:
+# camps.event-ids "pending":0,"done":true — the standing approval in
+# memory/architecture/no-drops-until-prod-verified.md ("Standing approval: a data migration
+# reporting done").
+# Down() caveat: EF re-adds the column as jsonb NOT NULL DEFAULT '', which Postgres rejects, so a
+# rollback re-adds it by hand (accepted shape, peterdrier/Humans#1379).
+src/Sections/Humans.Camps/Data/Migrations/20261107081446_DropCampSettingsOpenSeasons.cs:DropColumn(name=OpenSeasons,table=camp_settings)#1

@@ -64,7 +64,7 @@ Name history for tracking renames.
 
 ### CampSettings
 
-Singleton settings retain the unused legacy open-season year list; registration uses `CampEventSettings`. Per-season name-lock fields `NameLockDate` and `NameLockedAt`
+Singleton settings; registration uses `CampEventSettings`. Per-season name-lock fields `NameLockDate` and `NameLockedAt`
 live on `CampSeason`. `PublicYear` and `EeStartDate` columns are **dead**
 (nobodies-collective#1632, #1633): no longer read or written, kept mapped only so the EF model
 matches the database until a Peter-approved follow-up drops them. The public year resolves
@@ -231,7 +231,7 @@ Admin season opening, name-lock-date changes and EE slot-cap updates require the
 - Manually supplied historical names are trimmed and must contain 1–256 characters. Registration validates every supplied historical name before creating any camp rows; later additions return localized refusals without persisting invalid names. Manual additions and removals audit the acting manager and stored name after saving, with the historical-name id and related camp. Refused operations write no audit entry.
 - **Name-lock + historical-name auto-log:** renaming a season through `UpdateCampAsync` (using the internal `ChangeSeasonNameAsync` helper) is rejected once the season's `NameLockDate` has passed (today ≥ `NameLockDate`). Before the lock date, a rename auto-records the *old* name as a `CampHistoricalName` with `Source = NameChange` and writes a `CampNameChanged` audit entry.
 - Camp registration is open or closed per Settings event. Opening/closing it audits the acting admin and the event name against `CampEventSettings` (keyed by the event id); changing an event's name-lock date audits the event name against `CampSettings`. `CachingCampService` listens for Settings event saves (`IEventSettingsChangeListener`) and drops its settings snapshot, since open years derive from event years.
-- The `camps.event-ids` copy and year-based ownership/registration fallbacks are retired: production reported `pending: 0, done: true` at `https://humans.nobodies.team/api/data-migrations` on 2026-11-05. Seasons use their stored event id, and registration uses only `camp_event_settings`. The legacy JSON column and model seed remain mapped unchanged for a separate schema drop. No-op writes leave no audit; save and audit completion ignore caller cancellation once the write starts.
+- The `camps.event-ids` copy and year-based ownership/registration fallbacks are retired: production reported `pending: 0, done: true` at `https://humans.nobodies.team/api/data-migrations` on 2026-11-05. Seasons use their stored event id, and registration uses only `camp_event_settings`. The legacy `camp_settings.OpenSeasons` column and its seed are dropped (`DropCampSettingsOpenSeasons`). No-op writes leave no audit; save and audit completion ignore caller cancellation once the write starts.
 - Resource-based authorization per design-rules.md, *Authorization*: `CampAuthorizationHandler` + `CampOperationRequirement` gate all admin writes.
 - Membership is **per-season**. One live (`Pending`/`Active`) row per `(CampSeasonId, UserId)` enforced by a partial unique index. `Removed` rows are kept for audit and do not block re-requests.
 - Membership mutations (approve, reject, remove) are **scoped to the authorizing camp**. A lead or CampsAdmin operating on camp A cannot mutate a member row whose season belongs to camp B even if they know the row id.
