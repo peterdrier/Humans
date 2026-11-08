@@ -137,9 +137,6 @@
     <value>Estatuts</value>
   </data>
   <data name="Governance_Statutes_ContentNotAvailable" xml:space="preserve"><value>Contingut no disponible.</value></data>
-  <data name="Governance_MemberCounts" xml:space="preserve">
-    <value>Comunitat</value>
-  </data>
   <data name="Governance_Colaboradores" xml:space="preserve">
     <value>Col·laboradors</value>
   </data>
@@ -745,4 +742,14 @@
   <data name="Governance_BoardVoting_NoteTooLong" xml:space="preserve"><value>La nota ha de tenir com a màxim 4000 caràcters. El teu vot no s’ha modificat.</value></data>
   <data name="Governance_BoardVoting_DecisionNoteTooLong" xml:space="preserve"><value>La nota de la decisió ha de tenir com a màxim 4000 caràcters. La sol·licitud no s’ha finalitzat.</value></data>
   <data name="Governance_BoardVoting_DecisionNoteRequired" xml:space="preserve"><value>Per rebutjar una sol·licitud cal una nota de la decisió. La sol·licitud no s’ha finalitzat.</value></data>
+  <data name="Governance_BoardMembers" xml:space="preserve"><value>Membres de la Junta</value></data>
+  <data name="Governance_TheBoard" xml:space="preserve"><value>La Junta</value></data>
+  <data name="Governance_NoBoardMembers" xml:space="preserve"><value>Ara mateix ningú no té el rol de la Junta.</value></data>
+  <data name="Governance_NeedsDecision" xml:space="preserve"><value>Pendent de decisió</value></data>
+  <data name="Governance_NothingToDecide" xml:space="preserve"><value>Ara mateix no hi ha res obert per decidir.</value></data>
+  <data name="Governance_AllVotes" xml:space="preserve"><value>Totes les votacions</value></data>
+  <data name="Governance_CastVote" xml:space="preserve"><value>Vota</value></data>
+  <data name="Governance_UnvotedApplications" xml:space="preserve"><value>Sol·licituds de nivell pendents del teu vot: {0}</value></data>
+  <data name="Governance_ReviewApplications" xml:space="preserve"><value>Revisa</value></data>
+  <data name="Governance_YourMembership" xml:space="preserve"><value>La teva membresia</value></data>
 </root>

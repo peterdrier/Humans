@@ -1,6 +1,8 @@
+@using NodaTime
 @model Humans.Governance.Models.GovernanceIndexViewModel
 @{
     ViewData["Title"] = Localizer["Governance_Title"].Value;
+    var madridZone = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
 
     var orderedLanguages = Model.StatutesContent
         .OrderByDisplayLanguage(canonicalFirst: true)
@@ -14,97 +16,83 @@
         TabsCssClass = "nav nav-tabs px-3 pt-3",
         EmptyMessage = Localizer["Governance_Statutes_ContentNotAvailable"].Value
     };
+    var culture = System.Globalization.CultureInfo.CurrentCulture;
+    StatTileViewModel[] tiles =
+    [
+        new(Localizer["Governance_Asociados"].Value, Model.AsociadoCount.ToString(culture)),
+        new(Localizer["Governance_Colaboradores"].Value, Model.ColaboradorCount.ToString(culture)),
+        new(Localizer["Governance_BoardMembers"].Value, Model.BoardMemberIds.Count.ToString(culture)),
+    ];
 }
 
 <page-header title="@(Localizer["Governance_Title"].Value)">
     <vc:access-matrix section="Governance" />
 </page-header>
 
-<div class="row mb-4">
-    <div class="col-md-8">
-        @if (!Model.HasApplication)
-        {
-            <div class="card">
-                <div class="card-body">
-                    <h5 class="card-title">@Localizer["Governance_NotYetApplied"]</h5>
-                    <p class="card-text text-muted">
-                        @Localizer["Governance_AsociadoDescription"]
-                    </p>
-                    <p class="card-text text-muted">
-                        @Localizer["Governance_Optional"]
-                    </p>
-                    <a asp-controller="GovernanceApplications" asp-action="Create" class="btn btn-outline-primary">@Localizer["Governance_ApplyButton"]</a>
-                </div>
+<div class="stats" style="--stats-cols: 3">
+    @foreach (var tile in tiles)
+    {
+        <partial name="_StatTile" model="tile" />
+    }
+</div>
+
+<div class="row g-4 mb-4">
+    <div class="col-lg-8">
+        <div class="card mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span class="fw-semibold">@Localizer["Governance_NeedsDecision"]</span>
+                <a asp-controller="GovernanceVotes" asp-action="Index" class="small">@Localizer["Governance_AllVotes"]</a>
             </div>
-        }
-        else
-        {
-            <div class="card">
-                <div class="card-header d-flex justify-content-between align-items-center">
-                    <div>
-                        <span>@Localizer["Governance_YourApplication"]</span>
-                        @if (Model.ApplicationTier.HasValue)
-                        {
-                            <span class="badge bg-primary ms-2">@Model.ApplicationTier.Value</span>
-                        }
-                    </div>
-                    <span class="badge @Model.ApplicationStatusBadgeClass">@SharedLocalizer["ApplicationStatus_" + Model.ApplicationStatus.ToString()]</span>
-                </div>
+            @if (Model.OpenVotes.Count == 0 && Model.UnvotedApplicationCount == 0)
+            {
                 <div class="card-body">
-                    <dl class="row mb-0">
-                        @if (Model.ApplicationTier.HasValue)
-                        {
-                            <dt class="col-sm-4">@Localizer["Governance_Tier"]</dt>
-                            <dd class="col-sm-8">@Model.ApplicationTier.Value</dd>
-                        }
-
-                        <dt class="col-sm-4">@Localizer["Governance_Submitted"]</dt>
-                        <dd class="col-sm-8">@Model.ApplicationSubmittedAt.ToDate()</dd>
-
-                        @if (Model.ApplicationResolvedAt.HasValue)
-                        {
-                            <dt class="col-sm-4">@Localizer["Governance_Resolved"]</dt>
-                            <dd class="col-sm-8">@Model.ApplicationResolvedAt.ToDate()</dd>
-                        }
-
-                        @if (Model.ApplicationTermExpiresAt.HasValue)
-                        {
-                            <dt class="col-sm-4">@Localizer["Governance_TermExpiry"]</dt>
-                            <dd class="col-sm-8">@Model.ApplicationTermExpiresAt.ToDate()</dd>
-                        }
-                    </dl>
-
-                    @if (Model.ApplicationStatus == ApplicationStatus.Submitted)
-                    {
-                        <hr />
-                        <p class="text-muted mb-0">@Localizer["Governance_UnderReviewMessage"]</p>
-                    }
-                    else if (Model.ApplicationStatus == ApplicationStatus.Approved)
-                    {
-                        <hr />
-                        <p class="text-success mb-0">
-                            @(Model.ApplicationTier == MembershipTier.Asociado
-                                ? Localizer["Governance_ApprovedMessageAsociado"]
-                                : Localizer["Governance_ApprovedMessageColaborador"])
-                        </p>
-                    }
-                    else if (Model.ApplicationStatus == ApplicationStatus.Rejected)
-                    {
-                        <hr />
-                        <p class="text-muted mb-0">@Localizer["Governance_RejectedMessage"]</p>
-                        @if (Model.CanApply)
-                        {
-                            <a asp-controller="GovernanceApplications" asp-action="Create" class="btn btn-outline-primary mt-3">@Localizer["Governance_ApplyButton"]</a>
-                        }
-                    }
+                    <empty-state class="mb-0">@Localizer["Governance_NothingToDecide"]</empty-state>
                 </div>
-            </div>
-        }
+            }
+            else
+            {
+                <ul class="list-group list-group-flush">
+                    @foreach (var vote in Model.OpenVotes)
+                    {
+                        var voted = vote.Participation.OfficialCast + vote.Participation.IndicativeCast;
+                        var roster = vote.Participation.OfficialRoster + vote.Participation.IndicativeRoster;
+                        var canVote = vote.IsOnRoster && !vote.HasBallot;
+                        <li class="list-group-item d-flex flex-wrap align-items-center gap-3 py-3">
+                            <div class="flex-grow-1">
+                                <a asp-controller="GovernanceVotes" asp-action="Details" asp-route-voteId="@vote.Id" class="fw-semibold text-decoration-none">@vote.Title</a>
+                                <div class="small text-muted">
+                                    @Localizer["Governance_Votes_ClosesAt", vote.ClosesAt.ToDateTime(madridZone)]
+                                    · @Localizer["Governance_Votes_Turnout", voted, roster]
+                                    @if (vote.IsOnRoster)
+                                    {
+                                        <text>· @(vote.HasBallot ? Localizer["Governance_Votes_BallotIn"] : Localizer["Governance_Votes_BallotNotIn"])</text>
+                                    }
+                                </div>
+                            </div>
+                            <a asp-controller="GovernanceVotes" asp-action="Details" asp-route-voteId="@vote.Id"
+                               class="btn btn-sm @(canVote ? "btn-primary" : "btn-outline-secondary")">
+                                @(canVote ? Localizer["Governance_CastVote"] : Localizer["Governance_Votes_ViewVote"])
+                            </a>
+                        </li>
+                    }
+                    @if (Model.UnvotedApplicationCount > 0)
+                    {
+                        <li class="list-group-item d-flex flex-wrap align-items-center gap-3 py-3">
+                            <div class="flex-grow-1 fw-semibold">@Localizer["Governance_UnvotedApplications", Model.UnvotedApplicationCount]</div>
+                            <a asp-controller="GovernanceBoardVoting" asp-action="BoardVoting" class="btn btn-sm btn-primary">@Localizer["Governance_ReviewApplications"]</a>
+                        </li>
+                    }
+                </ul>
+            }
+        </div>
+
+        @* Sections contribute their governance-layer tiles here; Governance names none of them. *@
+        <vc:chrome-slot name="@Humans.Base.Interfaces.ChromeSlots.GovernanceDashboard" />
 
         @if (orderedLanguages.Count > 0)
         {
-            <div class="card mt-4">
-                <div class="card-header">@Localizer["Governance_Statutes"]</div>
+            <div class="card">
+                <div class="card-header fw-semibold">@Localizer["Governance_Statutes"]</div>
                 <div class="card-body p-0">
                     @await Html.PartialAsync("_TabbedMarkdownDocuments", statutesTabs)
                 </div>
@@ -112,57 +100,117 @@
         }
     </div>
 
-    <div class="col-md-4">
-        @if (Model.ApplicationStatus != ApplicationStatus.Approved)
-        {
-            <div class="card mb-3">
-                <div class="card-header">@Localizer["Governance_WhatIsAsociado"]</div>
-                <div class="card-body">
-                    <p class="mb-2">@Localizer["Governance_AsociadoLawDescription"]</p>
-                    <p class="mb-2"><strong>@Localizer["Governance_AsociadoCanDo"]</strong></p>
-                    <ul class="mb-0">
-                        <li>@Localizer["Governance_AttendAssemblies"]</li>
-                        <li>@Localizer["Governance_VoteOnDecisions"]</li>
-                        <li>@Localizer["Governance_ParticipateElections"]</li>
-                    </ul>
-                </div>
+    <div class="col-lg-4">
+        <div class="card mb-4">
+            <div class="card-header d-flex align-items-center">
+                <span class="fw-semibold">@Localizer["Governance_YourMembership"]</span>
+                <vc:membership-tier-badge user-id="@Model.UserId" />
             </div>
-            <div class="card mb-3">
-                <div class="card-header">@Localizer["Governance_WhoShouldApply"]</div>
-                <div class="card-body">
-                    <p class="mb-2">@Localizer["Governance_WhoShouldApplyDescription"]</p>
-                    <ul class="mb-2">
-                        <li>@Localizer["Governance_CampLeads"]</li>
-                        <li>@Localizer["Governance_MetaVolunteers"]</li>
-                        <li>@Localizer["Governance_LongTermMembers"]</li>
-                    </ul>
-                    <p class="mb-2 text-muted"><small>@Localizer["Governance_BoardReviews"]</small></p>
-                    <p class="mb-0 text-muted"><small>@Localizer["Governance_NoteNotRequired"]</small></p>
-                </div>
-            </div>
-        }
-        <div class="card mt-3">
-            <div class="card-header">@Localizer["Governance_MemberCounts"]</div>
             <div class="card-body">
-                <dl class="row mb-0">
-                    <dt class="col-8">@Localizer["Governance_Colaboradores"]</dt>
-                    <dd class="col-4 text-end mb-2">@Model.ColaboradorCount</dd>
-                    <dt class="col-8">@Localizer["Governance_Asociados"]</dt>
-                    <dd class="col-4 text-end mb-0">@Model.AsociadoCount</dd>
-                </dl>
+                @if (!Model.HasApplication)
+                {
+                    <p class="small text-muted">@Localizer["Governance_Optional"]</p>
+                    <a asp-controller="GovernanceApplications" asp-action="Create" class="btn btn-sm btn-outline-primary">@Localizer["Governance_ApplyButton"]</a>
+                }
+                else
+                {
+                    <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
+                        <span>@Localizer["Governance_YourApplication"]</span>
+                        @if (Model.ApplicationTier.HasValue)
+                        {
+                            <span class="badge bg-primary">@Model.ApplicationTier.Value</span>
+                        }
+                        <span class="badge @Model.ApplicationStatusBadgeClass">@SharedLocalizer["ApplicationStatus_" + Model.ApplicationStatus.ToString()]</span>
+                    </div>
+                    <dl class="row small mb-2">
+                        <dt class="col-6 fw-normal text-muted">@Localizer["Governance_Submitted"]</dt>
+                        <dd class="col-6 mb-1">@Model.ApplicationSubmittedAt.ToDate()</dd>
+                        @if (Model.ApplicationResolvedAt.HasValue)
+                        {
+                            <dt class="col-6 fw-normal text-muted">@Localizer["Governance_Resolved"]</dt>
+                            <dd class="col-6 mb-1">@Model.ApplicationResolvedAt.ToDate()</dd>
+                        }
+                        @if (Model.ApplicationTermExpiresAt.HasValue)
+                        {
+                            <dt class="col-6 fw-normal text-muted">@Localizer["Governance_TermExpiry"]</dt>
+                            <dd class="col-6 mb-1">@Model.ApplicationTermExpiresAt.ToDate()</dd>
+                        }
+                    </dl>
+
+                    @if (Model.ApplicationStatus == ApplicationStatus.Submitted)
+                    {
+                        <p class="small text-muted mb-2">@Localizer["Governance_UnderReviewMessage"]</p>
+                    }
+                    else if (Model.ApplicationStatus == ApplicationStatus.Approved)
+                    {
+                        <p class="small text-success mb-2">
+                            @(Model.ApplicationTier == MembershipTier.Asociado
+                                ? Localizer["Governance_ApprovedMessageAsociado"]
+                                : Localizer["Governance_ApprovedMessageColaborador"])
+                        </p>
+                    }
+                    else if (Model.ApplicationStatus == ApplicationStatus.Rejected)
+                    {
+                        <p class="small text-muted mb-2">@Localizer["Governance_RejectedMessage"]</p>
+                        @if (Model.CanApply)
+                        {
+                            <a asp-controller="GovernanceApplications" asp-action="Create" class="btn btn-sm btn-outline-primary mb-2">@Localizer["Governance_ApplyButton"]</a>
+                        }
+                    }
+
+                    @if (Model.IsApprovedColaborador && Model.CanApply)
+                    {
+                        <p class="small mb-2">@Localizer["Governance_ColaboradorCanApply"]</p>
+                        <a asp-controller="GovernanceApplications" asp-action="Create" class="btn btn-sm btn-outline-primary mb-2">@Localizer["Governance_ApplyForAsociado"]</a>
+                    }
+
+                    <div><a asp-controller="GovernanceApplications" asp-action="Index" class="small">@Localizer["Governance_MyApplications_Title"]</a></div>
+                }
             </div>
+            @if (Model.ApplicationStatus != ApplicationStatus.Approved)
+            {
+                <details class="border-top">
+                    <summary class="card-body py-2 small" style="cursor:pointer; min-height:44px; display:flex; align-items:center;">
+                        @Localizer["Governance_WhatIsAsociado"]
+                    </summary>
+                    <div class="card-body pt-0 small">
+                        <p class="mb-2">@Localizer["Governance_AsociadoLawDescription"]</p>
+                        <p class="mb-1"><strong>@Localizer["Governance_AsociadoCanDo"]</strong></p>
+                        <ul class="mb-2">
+                            <li>@Localizer["Governance_AttendAssemblies"]</li>
+                            <li>@Localizer["Governance_VoteOnDecisions"]</li>
+                            <li>@Localizer["Governance_ParticipateElections"]</li>
+                        </ul>
+                        <p class="mb-1"><strong>@Localizer["Governance_WhoShouldApply"]</strong></p>
+                        <p class="mb-1">@Localizer["Governance_WhoShouldApplyDescription"]</p>
+                        <ul class="mb-2">
+                            <li>@Localizer["Governance_CampLeads"]</li>
+                            <li>@Localizer["Governance_MetaVolunteers"]</li>
+                            <li>@Localizer["Governance_LongTermMembers"]</li>
+                        </ul>
+                        <p class="mb-0 text-muted">@Localizer["Governance_BoardReviews"]</p>
+                    </div>
+                </details>
+            }
         </div>
-        @if (Model.IsApprovedColaborador && Model.CanApply)
-        {
-            <div class="card mt-3 border-info">
-                <div class="card-body text-info-emphasis bg-info-subtle">
-                    <p class="mb-2">@Localizer["Governance_ColaboradorCanApply"]</p>
-                    <a asp-controller="GovernanceApplications" asp-action="Create" class="btn btn-sm btn-outline-info">@Localizer["Governance_ApplyForAsociado"]</a>
+
+        <div class="card">
+            <div class="card-header fw-semibold">@Localizer["Governance_TheBoard"]</div>
+            @if (Model.BoardMemberIds.Count == 0)
+            {
+                <div class="card-body">
+                    <empty-state class="mb-0">@Localizer["Governance_NoBoardMembers"]</empty-state>
                 </div>
-            </div>
-        }
+            }
+            else
+            {
+                <ul class="list-group list-group-flush">
+                    @foreach (var boardMemberId in Model.BoardMemberIds)
+                    {
+                        <li class="list-group-item"><vc:human user-id="@boardMemberId" layout="AvatarName" size="32" /></li>
+                    }
+                </ul>
+            }
+        </div>
     </div>
 </div>
-
-@* Sections contribute their governance-layer tiles here; Governance names none of them. *@
-<vc:chrome-slot name="@Humans.Base.Interfaces.ChromeSlots.GovernanceDashboard" />

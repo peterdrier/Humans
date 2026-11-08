@@ -137,9 +137,6 @@
     <value>Statuto</value>
   </data>
   <data name="Governance_Statutes_ContentNotAvailable" xml:space="preserve"><value>Contenuto non disponibile.</value></data>
-  <data name="Governance_MemberCounts" xml:space="preserve">
-    <value>Comunità</value>
-  </data>
   <data name="Governance_Colaboradores" xml:space="preserve">
     <value>Colaboradores</value>
   </data>
@@ -745,4 +742,14 @@
   <data name="Governance_BoardVoting_NoteTooLong" xml:space="preserve"><value>La nota deve contenere al massimo 4000 caratteri. Il tuo voto non è stato modificato.</value></data>
   <data name="Governance_BoardVoting_DecisionNoteTooLong" xml:space="preserve"><value>La nota della decisione deve contenere al massimo 4000 caratteri. La domanda non è stata finalizzata.</value></data>
   <data name="Governance_BoardVoting_DecisionNoteRequired" xml:space="preserve"><value>Per respingere una domanda serve una nota della decisione. La domanda non è stata finalizzata.</value></data>
+  <data name="Governance_BoardMembers" xml:space="preserve"><value>Membri del Consiglio</value></data>
+  <data name="Governance_TheBoard" xml:space="preserve"><value>Il Consiglio</value></data>
+  <data name="Governance_NoBoardMembers" xml:space="preserve"><value>Al momento nessuno ha il ruolo di Consiglio.</value></data>
+  <data name="Governance_NeedsDecision" xml:space="preserve"><value>In attesa di decisione</value></data>
+  <data name="Governance_NothingToDecide" xml:space="preserve"><value>Al momento non c'è nulla da decidere.</value></data>
+  <data name="Governance_AllVotes" xml:space="preserve"><value>Tutte le votazioni</value></data>
+  <data name="Governance_CastVote" xml:space="preserve"><value>Vota</value></data>
+  <data name="Governance_UnvotedApplications" xml:space="preserve"><value>Candidature in attesa del tuo voto: {0}</value></data>
+  <data name="Governance_ReviewApplications" xml:space="preserve"><value>Esamina</value></data>
+  <data name="Governance_YourMembership" xml:space="preserve"><value>La tua adesione</value></data>
 </root>

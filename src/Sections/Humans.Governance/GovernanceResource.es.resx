@@ -137,9 +137,6 @@
     <value>Estatutos</value>
   </data>
   <data name="Governance_Statutes_ContentNotAvailable" xml:space="preserve"><value>Contenido no disponible.</value></data>
-  <data name="Governance_MemberCounts" xml:space="preserve">
-    <value>Comunidad</value>
-  </data>
   <data name="Governance_Colaboradores" xml:space="preserve">
     <value>Colaboradores</value>
   </data>
@@ -745,4 +742,14 @@
   <data name="Governance_BoardVoting_NoteTooLong" xml:space="preserve"><value>La nota debe tener como máximo 4000 caracteres. Tu voto no se ha modificado.</value></data>
   <data name="Governance_BoardVoting_DecisionNoteTooLong" xml:space="preserve"><value>La nota de la decisión debe tener como máximo 4000 caracteres. La solicitud no se ha finalizado.</value></data>
   <data name="Governance_BoardVoting_DecisionNoteRequired" xml:space="preserve"><value>Para rechazar una solicitud hace falta una nota de la decisión. La solicitud no se ha finalizado.</value></data>
+  <data name="Governance_BoardMembers" xml:space="preserve"><value>Miembros de la Junta</value></data>
+  <data name="Governance_TheBoard" xml:space="preserve"><value>La Junta</value></data>
+  <data name="Governance_NoBoardMembers" xml:space="preserve"><value>Ahora mismo nadie tiene el rol de la Junta.</value></data>
+  <data name="Governance_NeedsDecision" xml:space="preserve"><value>Pendiente de decisión</value></data>
+  <data name="Governance_NothingToDecide" xml:space="preserve"><value>Ahora mismo no hay nada abierto para decidir.</value></data>
+  <data name="Governance_AllVotes" xml:space="preserve"><value>Todas las votaciones</value></data>
+  <data name="Governance_CastVote" xml:space="preserve"><value>Votar</value></data>
+  <data name="Governance_UnvotedApplications" xml:space="preserve"><value>Solicitudes de nivel pendientes de tu voto: {0}</value></data>
+  <data name="Governance_ReviewApplications" xml:space="preserve"><value>Revisar</value></data>
+  <data name="Governance_YourMembership" xml:space="preserve"><value>Tu membresía</value></data>
 </root>
