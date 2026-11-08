@@ -806,4 +806,13 @@
   </data>
   <data name="Users_Birthdays_CardDescription" xml:space="preserve"><value>Découvre qui fête son anniversaire ce mois-ci.</value></data>
   <data name="Users_Map_CardDescription" xml:space="preserve"><value>Découvre où se trouvent les humans dans le monde.</value></data>
+  <data name="Users_Profile_Participation" xml:space="preserve">
+    <value>Participation</value>
+  </data>
+  <data name="Users_Profile_Settings" xml:space="preserve">
+    <value>Paramètres</value>
+  </data>
+  <data name="Users_Profile_NewLayoutNote" xml:space="preserve">
+    <value>Aperçu d'une nouvelle mise en page. La page actuelle :</value>
+  </data>
 </root>

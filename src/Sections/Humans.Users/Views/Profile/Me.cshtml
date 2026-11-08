@@ -1,0 +1,59 @@
+@model Humans.Users.Models.ProfileViewModel
+@{
+    ViewData["Title"] = Localizer["Users_Profile_Title"].Value;
+}
+
+<div class="row g-4 align-items-start">
+    <div class="col-lg-4">
+        <vc:profile-card user-id="@Model.UserId" view-mode="@ProfileCardViewMode.Self" layout="Identity" />
+
+        <div class="card mb-3">
+            <div class="card-header">@Localizer["Users_Profile_Settings"]</div>
+            <div class="list-group list-group-flush">
+                <a asp-controller="ProfileEmails" asp-action="Emails" class="list-group-item list-group-item-action">@Localizer["Users_Emails_Title"]</a>
+                <a asp-controller="CommunicationPreferences" asp-action="Index" class="list-group-item list-group-item-action">@Localizer["Users_CommPrefs_Title"]</a>
+                <a asp-controller="MemberOutbox" asp-action="MyOutbox" class="list-group-item list-group-item-action">@Localizer["Users_Profile_MyEmails"]</a>
+            </div>
+            <div class="list-group list-group-flush border-top">
+                <a asp-controller="ShiftProfile" asp-action="ShiftInfo" class="list-group-item list-group-item-action">@Localizer["Users_Profile_ShiftInfo"]</a>
+                <a asp-controller="CantinaProfile" asp-action="Dietary" class="list-group-item list-group-item-action">@Localizer["Users_Profile_DietaryLink"]</a>
+                <a asp-controller="Profile" asp-action="Medical" class="list-group-item list-group-item-action">@Localizer["Users_Profile_DietaryMedical_MedicalConditions_Title"]</a>
+            </div>
+            <div class="list-group list-group-flush border-top">
+                <a asp-controller="Consent" asp-action="Index" class="list-group-item list-group-item-action">
+                    @SharedLocalizer["Dashboard_ManageConsents"]
+                    @if (Model.HasPendingConsents)
+                    {
+                        <span class="badge bg-warning text-dark float-end">@Model.PendingConsentCount</span>
+                    }
+                </a>
+                <a asp-controller="MyData" asp-action="Index" class="list-group-item list-group-item-action">@Localizer["Users_ProfilePrivacy_Title"]</a>
+                <a asp-controller="Governance" asp-action="Index" class="list-group-item list-group-item-action">@SharedLocalizer["Nav_Governance"]</a>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-8">
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+            <h2 class="h3 mb-0">@Localizer["Users_Profile_Participation"]</h2>
+            <div class="d-flex gap-2 align-items-center">
+                <small class="text-muted">@Localizer["Users_Profile_NewLayoutNote"] <a asp-controller="Profile" asp-action="Me">@Localizer["Users_Profile_Title"]</a></small>
+                <vc:access-matrix section="Profile" />
+                <a asp-controller="UsersAdmin" asp-action="AdminDetail" asp-route-id="@Model.UserId" class="btn btn-sm btn-outline-secondary" authorize-policy="@Humans.Users.Contracts.UsersPolicies.Read">
+                    <i class="fa-solid fa-user-shield"></i> @SharedLocalizer["Common_Admin"] <i class="fa-solid fa-lock auth-lock-icon"></i>
+                </a>
+            </div>
+        </div>
+
+        <partial name="_ProfileAlerts" model="Model" />
+
+        <div class="profile-tiles mb-3">
+            <vc:profile-card user-id="@Model.UserId" view-mode="@ProfileCardViewMode.Self" layout="Teams" />
+            <vc:my-camps />
+            <vc:user-parts slot="@Humans.Base.Interfaces.UserPartSlots.Profile" user-id="@Model.UserId" view-mode="@ProfileCardViewMode.Self" />
+            <vc:user-parts slot="@Humans.Base.Interfaces.UserPartSlots.ProfileSidebar" user-id="@Model.UserId" view-mode="@ProfileCardViewMode.Self" />
+        </div>
+
+        <vc:profile-card user-id="@Model.UserId" view-mode="@ProfileCardViewMode.Self" layout="History" />
+    </div>
+</div>

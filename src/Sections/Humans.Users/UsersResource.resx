@@ -419,4 +419,13 @@
   <data name="Users_Map_Privacy" xml:space="preserve"><value>Only humans who have set their location are shown. Location is approximate and based on city.</value></data>
   <data name="Users_Birthdays_CardDescription" xml:space="preserve"><value>See who is celebrating this month.</value></data>
   <data name="Users_Map_CardDescription" xml:space="preserve"><value>See where humans are around the world.</value></data>
+  <data name="Users_Profile_Participation" xml:space="preserve">
+    <value>Participation</value>
+  </data>
+  <data name="Users_Profile_Settings" xml:space="preserve">
+    <value>Settings</value>
+  </data>
+  <data name="Users_Profile_NewLayoutNote" xml:space="preserve">
+    <value>Preview of a new layout. The current page:</value>
+  </data>
 </root>

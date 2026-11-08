@@ -806,4 +806,13 @@
   </data>
   <data name="Users_Birthdays_CardDescription" xml:space="preserve"><value>Mira qui celebra l'aniversari aquest mes.</value></data>
   <data name="Users_Map_CardDescription" xml:space="preserve"><value>Mira on són els humans arreu del món.</value></data>
+  <data name="Users_Profile_Participation" xml:space="preserve">
+    <value>Participació</value>
+  </data>
+  <data name="Users_Profile_Settings" xml:space="preserve">
+    <value>Configuració</value>
+  </data>
+  <data name="Users_Profile_NewLayoutNote" xml:space="preserve">
+    <value>Previsualització d'un nou disseny. La pàgina actual:</value>
+  </data>
 </root>
