@@ -63,9 +63,24 @@ internal sealed class ProfileController(
     [AllowBeforeActiveMembership]
     public async Task<IActionResult> Me(CancellationToken ct)
     {
+        var viewModel = await BuildOwnProfileAsync(ct);
+        return viewModel is null ? NotFound() : View("Index", viewModel);
+    }
+
+    // Side-by-side trial of the identity-column layout; /Profile/Me stays the live page until Peter picks.
+    [HttpGet("~/Users/Me")]
+    [AllowBeforeActiveMembership]
+    public async Task<IActionResult> UsersMe(CancellationToken ct)
+    {
+        var viewModel = await BuildOwnProfileAsync(ct);
+        return viewModel is null ? NotFound() : View("Me", viewModel);
+    }
+
+    private async Task<ProfileViewModel?> BuildOwnProfileAsync(CancellationToken ct)
+    {
         var info = await GetCurrentUserInfoAsync(ct);
         if (info is null)
-            return NotFound();
+            return null;
 
         var profile = info.Profile;
         var snapshot = await membershipCalculator.GetMembershipSnapshotAsync(info.Id, ct);
@@ -90,7 +105,7 @@ internal sealed class ProfileController(
             viewModel.TierApplicationBadgeClass = EnumBadgeMap.For(latestApplication.Status);
         }
 
-        return View("Index", viewModel);
+        return viewModel;
     }
 
     [HttpGet("Me/Edit")]

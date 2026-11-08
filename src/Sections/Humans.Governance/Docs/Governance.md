@@ -14,6 +14,8 @@ The `humans.asociados` gauge counts distinct humans with active approved Asociad
 
 The Governance page’s tier totals and Colaborador prompts use active approved terms, not cached profile tiers or historical approvals. A human with both commitments counts in each tier. The application-history page uses the same active-term rule for its Colaborador prompt.
 
+The Governance page is the association's home for every signed-in member: tier totals and the Board head count, a "Needs a decision" card (open assembly votes, closing soonest first, plus — for Board role holders only — the count of tier applications awaiting their vote), the workgroups slot, the statutes, the viewer's own membership and application, and the Board role holders. A Volunteer sees the same page; only the Board-queue row and the membership card differ by viewer.
+
 ## Concepts
 
 - **Volunteer** is the standard membership tier. Nearly all humans are Volunteers. Becoming a Volunteer happens through the onboarding process — not through the application/voting workflow described here.
@@ -244,7 +246,7 @@ These controllers serve this section.
 
 | Controller | Routes | Notes |
 |------------|--------|-------|
-| `GovernanceController` | `GET /Governance` — overview + tier counts + statutes |
+| `GovernanceController` | `GET /Governance` — association home: tier and Board counts, open votes, Board queue (Board only), workgroups slot, membership card, Board list, statutes |
 | `GovernanceApplicationsController` | `GET /Governance/Applications` — user's own applications | `GET /Governance/Applications/Create`, `POST /Governance/Applications/Create` — submit | `GET /Governance/Applications/Details/{id}`, `POST /Governance/Applications/Withdraw/{id}` | `GET /Governance/Applications/Admin` — admin list (BoardOrAdmin) | `GET /Governance/Applications/Admin/{id}` — admin detail (BoardOrAdmin) | `GET /Governance/Applications/Admin/TermExpiry`, `POST /Governance/Applications/Admin/TermExpiry/Fix` — the temporary term-expiry repair page (AdminOnly) |
 | `GovernanceBoardVotingController` | `GET /Governance/BoardVoting` — voting dashboard (BoardOrAdmin) | `GET /Governance/BoardVoting/{id}` — voting detail (BoardOrAdmin) | `POST /Governance/BoardVoting/Vote` — cast vote (BoardOnly) | `POST /Governance/BoardVoting/Finalize` — approve/reject (AdminOnly) |
 | `GovernanceVotesController` | `GET /Governance/Votes` — every vote, Open first (authenticated) | `GET /Governance/Votes/{id}` — text, stats, and the ballot form for roster members | `POST /Governance/Votes/{id}/Ballot` — cast or change | `GET /Governance/Votes/{id}/Results` and `.../Results.csv` — the stored result (Closed only) |
@@ -397,7 +399,7 @@ The Board-voting dashboard controller orders member columns by display name with
 - **Onboarding:** Tier applications are a separate, optional path — never block Volunteer onboarding.
 - **Consent:** `ILegalDocumentService` — `GovernanceIndexService` renders the statutes on `/Governance`; `MembershipCalculator` reads `ILegalDocumentSyncService` and `IConsentService` (see Architecture). Consent checks are reviewed alongside (but independently of) tier applications.
 - **Users/Identity:** `IUserService.GetUserInfosAsync` — applicant email and Board-member names, stitched into DTOs; applicant, reviewer and history-author names ride as user ids and render through `Human`.
-- **Auth:** `IRoleAssignmentService.GetActiveUserIdsInRoleAsync` — used by `ApplicationReader.GetBoardVotingDashboardAsync` (behind `ApplicationDecisionService`) to enumerate Board member IDs for vote grid headers, and by `AssemblyVoteService` to put the active Board role holders on the official roster.
+- **Auth:** `IRoleAssignmentService.GetActiveUserIdsInRoleAsync` — used by `ApplicationReader.GetBoardVotingDashboardAsync` (behind `ApplicationDecisionService`) to enumerate Board member IDs for vote grid headers, by `GovernanceIndexService` for the Governance page's Board list and count, and by `AssemblyVoteService` to put the active Board role holders on the official roster.
 - **Email:** Governance owns its six templates — `GovernanceEmails` (internal) builds each `EmailMessage` from Governance's own `Governance_Email_*` keys in `GovernanceResource`, rendered in the recipient's culture via `CultureScope`; `GovernanceEmailPreviews` (`IEmailPreviewContributor`, registered in `Section.Register`) lists all six at `/Email/EmailPreview`. Email supplies transport only — `IEmailService.SendAsync` (`memory/architecture/email-templates-live-in-sender.md`, peterdrier/Humans#1651).
 - **Assembly votes** additionally use: `IUserService` (names, preferred language, active state and canonical notification address from the same snapshot); `ITeamService` for Volunteers-team membership when `IndicativeAudience = AllMembers`; `IEmailService.SendAsync` with the `GovernanceEmails` messages (`AssemblyVoteOpened`, `AssemblyVoteReminder`, `AssemblyVoteCancelled`); `INotificationEmitter` + `INotificationAutoResolve` with `GovernanceNotificationSources.AssemblyVoteOpened`; `IAuditLogService`; `IGoogleTranslationService` for the draft-only translate-blanks assist; and `IUserDataContributor` / `ErasureDeclaration` for GDPR. **Nothing new on `Humans.Governance.Contracts`** — no other section reads votes, and the roster is derived from Governance's own data.
 

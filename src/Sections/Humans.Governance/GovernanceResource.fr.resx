@@ -137,9 +137,6 @@
     <value>Statuts</value>
   </data>
   <data name="Governance_Statutes_ContentNotAvailable" xml:space="preserve"><value>Contenu non disponible.</value></data>
-  <data name="Governance_MemberCounts" xml:space="preserve">
-    <value>Communauté</value>
-  </data>
   <data name="Governance_Colaboradores" xml:space="preserve">
     <value>Colaboradores</value>
   </data>
@@ -745,4 +742,14 @@
   <data name="Governance_BoardVoting_NoteTooLong" xml:space="preserve"><value>La note ne doit pas dépasser 4000 caractères. Votre vote n’a pas été modifié.</value></data>
   <data name="Governance_BoardVoting_DecisionNoteTooLong" xml:space="preserve"><value>La note de décision ne doit pas dépasser 4000 caractères. La demande n’a pas été finalisée.</value></data>
   <data name="Governance_BoardVoting_DecisionNoteRequired" xml:space="preserve"><value>Une note de décision est requise pour rejeter une demande. La demande n’a pas été finalisée.</value></data>
+  <data name="Governance_BoardMembers" xml:space="preserve"><value>Membres du Bureau</value></data>
+  <data name="Governance_TheBoard" xml:space="preserve"><value>Le Bureau</value></data>
+  <data name="Governance_NoBoardMembers" xml:space="preserve"><value>Personne n'a le rôle du Bureau pour le moment.</value></data>
+  <data name="Governance_NeedsDecision" xml:space="preserve"><value>En attente de décision</value></data>
+  <data name="Governance_NothingToDecide" xml:space="preserve"><value>Rien n'est ouvert à la décision pour le moment.</value></data>
+  <data name="Governance_AllVotes" xml:space="preserve"><value>Tous les votes</value></data>
+  <data name="Governance_CastVote" xml:space="preserve"><value>Voter</value></data>
+  <data name="Governance_UnvotedApplications" xml:space="preserve"><value>Candidatures en attente de ton vote : {0}</value></data>
+  <data name="Governance_ReviewApplications" xml:space="preserve"><value>Examiner</value></data>
+  <data name="Governance_YourMembership" xml:space="preserve"><value>Ton adhésion</value></data>
 </root>

@@ -537,6 +537,7 @@ Self-service profile functionality lives under `/Profile`, split by shape across
 |-------|---------|
 | `/Profile` | Redirect to `/Profile/Me` |
 | `/Profile/Me` | View own profile |
+| `/Users/Me` | View own profile, identity-column layout (trial beside `/Profile/Me` until one is retired) |
 | `/Profile/Me/Edit` | GET/POST — edit own profile |
 | `/Profile/Me/Emails` | Email management grid |
 | `/Profile/Me/Emails/Add` | POST — add an address and send its verification link |
