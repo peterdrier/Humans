@@ -15,7 +15,9 @@
 <div class="card mb-3">
     <div class="card-body d-flex flex-column gap-3">
         <div class="text-center">
-            <vc:human user-id="@Model.UserId" layout="Avatar" size="160" link="None" />
+            <div class="d-flex justify-content-center">
+                <vc:human user-id="@Model.UserId" layout="Avatar" size="160" link="None" />
+            </div>
             <h1 class="h2 mt-3 mb-1">@humanHtml</h1>
             @if (!string.IsNullOrEmpty(Model.Pronouns))
             {

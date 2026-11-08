@@ -3,10 +3,12 @@
     ViewData["Title"] = Localizer["Users_Profile_Title"].Value;
 }
 
-<div class="row g-4 align-items-start">
-    <div class="col-lg-4">
+<div class="profile-layout">
+    <div class="profile-layout-identity">
         <vc:profile-card user-id="@Model.UserId" view-mode="@ProfileCardViewMode.Self" layout="Identity" />
+    </div>
 
+    <div class="profile-layout-settings">
         <div class="card mb-3">
             <div class="card-header">@Localizer["Users_Profile_Settings"]</div>
             <div class="list-group list-group-flush">
@@ -33,7 +35,7 @@
         </div>
     </div>
 
-    <div class="col-lg-8">
+    <div class="profile-layout-main">
         <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
             <h2 class="h3 mb-0">@Localizer["Users_Profile_Participation"]</h2>
             <div class="d-flex gap-2 align-items-center">
