@@ -36,8 +36,8 @@ somebody else's job.
 
 ```
 Section.cs                 role, admin nav entry, policies, profile parts, DI
-Contracts/                 IGrantWrite (+ its result records), GrantsPolicies, GrantsRoles
-Authorization/             the pages policy handler and the per-program resource handler
+Contracts/                 IGrantWrite and its result records; GrantsPolicies (public so the Board read-access test finds it)
+Authorization/             the role, the pages policy handler and the per-program resource handler
 Controllers/               GrantsAdminController: translate only; one ManageAsync pipeline for issue/revoke/resend
 Services/GrantService.*    one partial class: reads, programs, grants, GDPR/merge
 Services/GrantNotices      the only sender; owns the profile link both channels point at
@@ -99,9 +99,8 @@ ViewComponents/, Views/    two profile cards and three admin pages
 - **No job flips expiry.** State is a date comparison at read time.
 - **No caching decorator.** A handful of programs, read on a few admin pages and one card.
 - **Admin pages and program-level refusals are English only**, under
-  `memory/code/localization-admin-exempt.md`; member-facing copy is localized. Program managers
-  are ordinary volunteers who reach these pages, so whether the exemption covers them is open
-  (Needs Peter).
+  `memory/code/localization-admin-exempt.md`, including for the program managers who reach them
+  (Peter, 2026-11-08). Member-facing copy is localized.
 - **No "already held" signal from `IGrantWrite.IssueAsync`.** The source gets the existing id;
   Low Income accepted that.
 

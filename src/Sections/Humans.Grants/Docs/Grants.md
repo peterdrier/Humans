@@ -11,6 +11,8 @@
 
 A grant entitles a human to a thing (a cheaper ticket, early entry for build, staying late for strike). How the thing is delivered is not this section's concern. Grants replaces Campaigns for 2027 onward (nobodies-collective/Humans#2099); Campaigns stays until every feature that used campaign codes has a replacement. Feature spec: [features/grants.md](features/grants.md).
 
+Grants is the one record of who is entitled to what, for which event. Any part of the system that decides someone qualifies (Low Income today, others later) records it here through one narrow write; a person always knows what they hold and when it ends; the Board can see every grant and who gave or took it. Deliberate choices: state is computed from dates, never stored; a revoked grant keeps its row; a program is filled either by its managers or by one source section, never both. Out of scope: delivering the thing (codes, prices, gate lists), and per-person eligibility, which belongs to the deciding section.
+
 ## Concepts
 
 - A **Grant program** is one kind of entitlement for one event (picked from the Settings events; the program's year follows it): a name, what it **entitles** the person to (shown to them verbatim), an optional default expiry, and **who issues** it: its own managers by hand, or a **source** section (Low Income) identified by a source key.
@@ -91,7 +93,7 @@ Admin pages live at `/Grants/Admin` (`GrantsAdminController`), in the Admin side
 - Every issue, revoke, resend and program change writes an audit entry (`GrantIssued`, `GrantRevoked`, `GrantNoticeResent`, `GrantProgram*`). Program edits persist fields and manager additions/removals together in one save; a failed manager write leaves the program unchanged and emits no success audit.
 - Grant reads, GDPR exports (held grants and programs created), and issue/revoke/resend audits use the program's current Settings event year, falling back to its stored year when the event is unavailable. Audit year resolution finishes before the mutation commits.
 - A failed email or in-app notice is logged and never fails the write; the two channels fail independently (an in-app outage still sends the email, and vice versa); a manager can resend. A successful recipient lookup supplies the email address too; if that lookup fails, the email step looks the person up again and uses that result's id, burner name, language and address.
-- Program-level refusals are English text: every page that shows them is admin-only (`memory/code/localization-admin-exempt.md`). Member-facing copy (notice, email, My grants card) is in all supported cultures.
+- Admin pages and program-level refusals are English text, including for the program managers who reach them (`memory/code/localization-admin-exempt.md`; Peter, 2026-11-08). Member-facing copy (notice, email, My grants card) is in all supported cultures.
 
 ## Negative Access Rules
 

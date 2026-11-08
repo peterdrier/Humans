@@ -1,10 +1,10 @@
 using System.Security.Claims;
 using Humans.Base.Authorization;
 
-namespace Humans.Grants.Contracts;
+namespace Humans.Grants.Authorization;
 
 /// <summary>Grants' grantable role and its predicates. Declared to Auth by Grants' <c>Section</c>.</summary>
-public static class GrantsRoles
+internal static class GrantsRoles
 {
     /// <summary>
     /// Grants Admin: creates grant programs, names their managers, and issues, revokes and resends on any program.

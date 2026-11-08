@@ -14,7 +14,7 @@
 | `GrantsAdminController.Edit` (GET/POST) | Action + in-method | Admin, Grants Admin; then `AuthorizeAsync(User, program, ProgramOperationRequirement.Administer)` | `GrantsPolicies.Manage` + resource-based |
 | `GrantsAdminController.Issue` / `Revoke` / `Resend` | Action + in-method | The class gate, then `ProgramOperationRequirement.Manage` via `ManageAsync` (Admin, Grants Admin, or a manager of this program; never Board); a grant route whose grant is not in that program returns 404 | `GrantProgramsPolicy.Name` + resource-based |
 
-Every data-modifying action names its own policy; `GrantsAdminAuthorizationTests` pins them. `GrantsPolicies` (Read, Manage) and `GrantsRoles` live in `Contracts/`; the section-local program-pages policy lives in `Authorization/GrantProgramsPolicy.cs`. All three are registered in `Section.cs`.
+Every data-modifying action names its own policy; `GrantsAdminAuthorizationTests` pins them. `GrantsPolicies` (Read, Manage) lives in `Contracts/` and stays public: `BoardReadsEverythingTests` finds every section's Read/Manage pair by public type. `GrantsRoles` and `GrantProgramsPolicy` are internal, in `Authorization/`. All three are registered in `Section.cs`.
 
 ## View components
 

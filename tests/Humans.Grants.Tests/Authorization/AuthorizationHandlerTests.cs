@@ -5,7 +5,6 @@ using AwesomeAssertions;
 using Humans.Base.Constants;
 using Humans.Base.Interfaces;
 using Humans.Grants.Authorization;
-using Humans.Grants.Contracts;
 using Humans.Grants.Services;
 using Humans.Grants.Controllers;
 using Humans.Grants.Models;
