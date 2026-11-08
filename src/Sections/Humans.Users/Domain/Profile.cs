@@ -59,8 +59,8 @@ internal sealed class Profile
     public string? EmergencyContactRelationship { get; set; }
 
     /// <summary>
-    /// GDPR Art. 9 health data, present on the cached UserInfo: every render or serialize surface
-    /// MUST gate it behind the MedicalDataViewer policy.
+    /// GDPR Art. 9 health data. Not on the cached UserInfo; <c>MedicalConditionsService</c> is its only reader,
+    /// and anyone but the owner gets it through the audited reveal.
     /// </summary>
     [PersonalData]
     public string? MedicalConditions { get; set; }

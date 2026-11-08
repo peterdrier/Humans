@@ -806,5 +806,8 @@
   </data>
   <data name="Users_Birthdays_CardDescription" xml:space="preserve"><value>Mira qui celebra l'aniversari aquest mes.</value></data>
   <data name="Users_Map_CardDescription" xml:space="preserve"><value>Mira on són els humans arreu del món.</value></data>
+  <data name="Users_Medical_NoneOnFile" xml:space="preserve"><value>No hi ha condicions mèdiques registrades.</value></data>
+  <data name="Users_Medical_RevealFailed" xml:space="preserve"><value>No s'han pogut carregar les dades mèdiques.</value></data>
+  <data name="Users_Medical_RevealTitle" xml:space="preserve"><value>Mostra les dades mèdiques (cada consulta queda registrada al registre d'auditoria)</value></data>
   <data name="Users_Profile_InvalidLocation" xml:space="preserve"><value>Selecciona una ubicació vàlida.</value></data>
 </root>

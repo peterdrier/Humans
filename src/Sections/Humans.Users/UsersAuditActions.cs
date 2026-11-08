@@ -55,4 +55,7 @@ internal sealed class UsersAuditActions : AuditActionContributor
     public static readonly AuditActionDefinition StubProfileBackfilled = new("StubProfileBackfilled");
 
     public static readonly AuditActionDefinition AccountMarkedFake = new("AccountMarkedFake");
+
+    // Entity "User" + the subject's id is what the member's own medical page lists.
+    public static readonly AuditActionDefinition MedicalConditionsRevealed = new("MedicalConditionsRevealed");
 }

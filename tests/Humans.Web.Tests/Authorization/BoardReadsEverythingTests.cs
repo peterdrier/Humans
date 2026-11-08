@@ -39,7 +39,7 @@ public sealed class BoardReadsEverythingTests : IDisposable
         "ConsentReviewQueueController",
         "CantinaController.RevealHealth",
         "CantinaController.RevealDayHealth",
-        "ShiftsController.RevealMedical",
+        "ProfileViewController.RevealMedical",
         "GoogleController.SyncPreview",
         "GrantsAdminController",
         "PreapprovalsAdminController",

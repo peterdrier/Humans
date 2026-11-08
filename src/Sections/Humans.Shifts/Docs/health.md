@@ -74,8 +74,7 @@ The shapes imply:
   Confirmed signup of the same user; all-day means 08:00–18:00 local.
 - Every signup state change writes one audit entry and one coordinator notification; a
   bail/remove that drops a shift below `MinVolunteers` raises a coverage-gap notification.
-- Medical data is gated at every render, never stripped in a service; only Admin/NoInfoAdmin
-  see it.
+- Shifts holds no health data; medical conditions are Users', food answers Cantina's.
 - Deleting a rota or shift with a Confirmed signup is refused; pending signups are Cancelled.
 - Every mutation evicts the per-user / per-rota view cache and, for signups, the dashboard
   aggregates.
@@ -121,7 +120,7 @@ The shapes imply:
   but never rendered (documented write-path asymmetry).
 - Voluntell is allowed on past shifts (retroactive correction); the volunteer notification is
   suppressed for past shifts, the audit entry never is.
-- `ShiftsResource` leaves `ShiftsSummary_` keys and `Medical_Badge` in `SharedResource`
+- `ShiftsResource` leaves `ShiftsSummary_` keys in `SharedResource`
   because the partials that bind them live in Teams/UI and a rebind would be a reference cycle.
 
 ## History

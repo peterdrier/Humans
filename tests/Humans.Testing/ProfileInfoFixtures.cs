@@ -39,7 +39,6 @@ public static class UserFixtures
         string? emergencyContactName = null,
         string? emergencyContactPhone = null,
         string? emergencyContactRelationship = null,
-        string? medicalConditions = null,
         string? profilePictureContentType = null,
         Instant? createdAt = null,
         Instant? updatedAt = null,
@@ -67,7 +66,6 @@ public static class UserFixtures
             EmergencyContactName: emergencyContactName,
             EmergencyContactPhone: emergencyContactPhone,
             EmergencyContactRelationship: emergencyContactRelationship,
-            MedicalConditions: medicalConditions,
             // Derived as UserInfoFactory does, so no fixture can have a picture without a content type.
             HasCustomPicture: profilePictureContentType is not null,
             ProfilePictureContentType: profilePictureContentType,

@@ -4,10 +4,6 @@ using Humans.Cantina.Services.Dtos;
 
 namespace Humans.Cantina.Services;
 
-/// <summary>
-/// The medical boundary is an exclusion, not a narrower read: the cached profile carries <c>MedicalConditions</c>, and
-/// this service never reads it. The guarantee lives here and in the output records, not in the read contract.
-/// </summary>
 internal interface ICantinaRosterService : IApplicationService
 {
     /// <summary>

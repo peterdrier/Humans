@@ -61,7 +61,6 @@ internal static class UserInfoFactory
             EmergencyContactName: profile.EmergencyContactName,
             EmergencyContactPhone: profile.EmergencyContactPhone,
             EmergencyContactRelationship: profile.EmergencyContactRelationship,
-            MedicalConditions: profile.MedicalConditions,
             HasCustomPicture: profile.ProfilePictureContentType is not null,
             ProfilePictureContentType: profile.ProfilePictureContentType,
             CreatedAt: profile.CreatedAt,

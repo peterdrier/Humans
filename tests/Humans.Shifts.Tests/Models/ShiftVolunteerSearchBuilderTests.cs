@@ -137,17 +137,6 @@ public class ShiftVolunteerSearchBuilderTests
     }
 
     [HumansFact]
-    public void SearchRows_NeverCarryMedicalConditions()
-    {
-        // Art. 9 data leaves the server only through ShiftsController.RevealMedical, one audited person at a time.
-        typeof(VolunteerSearchResult).GetProperties().Select(p => p.Name)
-            .Should().NotContain(name => name.Contains("Medical", StringComparison.Ordinal));
-        typeof(VolunteerBadgesViewModel).GetProperties()
-            .Where(p => p.PropertyType == typeof(string)).Select(p => p.Name)
-            .Should().Equal(["DietaryPreference"], "the badge model carries a medical flag, never the text");
-    }
-
-    [HumansFact]
     public async Task DietaryBadge_ComesFromCantina()
     {
         var target = MakeShift(ActiveBurnId, dayOffset: 1, new LocalTime(10, 0), Duration.FromHours(4));

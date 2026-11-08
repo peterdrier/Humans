@@ -16,7 +16,6 @@ internal sealed record ShiftAdminPageRequest(
     BurnSettingsInfo EventSettings,
     bool CanManage,
     bool CanApprove,
-    bool CanViewMedical,
     bool IncompleteOnboarding,
     Instant Now);
 
@@ -37,7 +36,7 @@ internal sealed class ShiftAdminPageBuilder(
         var userLookup = allUserIds.Count == 0
             ? new Dictionary<Guid, UserInfo>()
             : await userService.GetUserInfosAsync(allUserIds, ct);
-        var profileDict = await LoadProfilesAsync(allUserIds, userLookup, request.CanViewMedical, ct);
+        var profileDict = await LoadProfilesAsync(allUserIds, userLookup, ct);
         var allDepartments = await LoadTransferDepartmentsAsync(request.Department, ct);
         var allTags = await shiftManagement.GetTagsAsync(ct: ct);
         var staffingSnapshot = await shiftManagement.GetStaffingSnapshotAsync(request.EventSettings.Id, request.Department.Id, ct: ct);
@@ -107,30 +106,25 @@ internal sealed class ShiftAdminPageBuilder(
 
     private async Task<Dictionary<Guid, VolunteerBadgesViewModel>> LoadProfilesAsync(
         IReadOnlyList<Guid> userIds,
-        IReadOnlyDictionary<Guid, UserInfo> userInfos,
-        bool canViewMedical, CancellationToken ct)
+        IReadOnlyDictionary<Guid, UserInfo> userInfos, CancellationToken ct)
     {
         var result = new Dictionary<Guid, VolunteerBadgesViewModel>();
         if (userIds.Count == 0) return result;
 
-        // Skills from the shift profile, dietary from Cantina, medical from Profile, gated here on MedicalDataViewer.
+        // Skills from the shift profile, dietary from Cantina.
         var diets = await cantina.GetDietaryProfilesAsync(userIds, ct);
         foreach (var uid in userIds)
         {
             var vep = await shiftManagement.GetShiftProfileAsync(uid, ct);
             userInfos.TryGetValue(uid, out var info);
-            var person = info?.Profile;
             diets.TryGetValue(uid, out var diet);
-            if (vep is null && person is null && diet is null) continue;
+            if (vep is null && info?.Profile is null && diet is null) continue;
 
             result[uid] = new VolunteerBadgesViewModel(
-                UserId: uid,
                 Skills: vep?.Skills ?? [],
                 Quirks: vep?.Quirks ?? [],
                 Languages: vep?.Languages ?? [],
-                DietaryPreference: diet?.DietaryPreference,
-                HasMedicalConditions: canViewMedical && !string.IsNullOrEmpty(person?.MedicalConditions),
-                CanRevealMedical: canViewMedical);
+                DietaryPreference: diet?.DietaryPreference);
         }
 
         return result;

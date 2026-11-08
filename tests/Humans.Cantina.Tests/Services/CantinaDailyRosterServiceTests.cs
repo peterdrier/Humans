@@ -268,15 +268,13 @@ public class CantinaDailyRosterServiceTests
         var userId = Guid.NewGuid();
         SetupDay(0, userId);
         SetupHumans((userId, UserFixtures.Profile(
-            burnerName: "Sensitive",
-            medicalConditions: "Severe peanut allergy"),
+            burnerName: "Sensitive"),
             new DietaryProfileInfo(userId, "Omnivore", [], null, [], null)));
 
         var result = Xunit.Assert.IsType<DailyMatrixDto>(await _service.GetDailyRosterAsync(dayOffset: 0, ct: Xunit.TestContext.Current.CancellationToken));
 
         var json = JsonSerializer.Serialize(result);
         json.Should().NotContain("MedicalConditions");
-        json.Should().NotContain("Severe peanut allergy");
     }
 
     [HumansFact]
