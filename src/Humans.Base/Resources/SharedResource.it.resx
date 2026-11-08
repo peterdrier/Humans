@@ -1150,9 +1150,6 @@
   <data name="ShiftsSummary_ManageShifts" xml:space="preserve">
     <value>Gestisci turni</value>
   </data>
-  <data name="Medical_Badge" xml:space="preserve">
-    <value>Medico</value>
-  </data>
   <data name="Privacy_Lead" xml:space="preserve">
     <value>Humans gestisce l'appartenenza a Nobodies Collective e tratta i dati personali in conformità con il GDPR e la legge spagnola sulla protezione dei dati (LOPDGDD).</value>
   </data>

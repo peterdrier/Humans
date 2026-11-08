@@ -255,7 +255,7 @@ New / updated components:
 ## Negative access rules
 
 - A user **cannot** see the roster page unless they hold `Admin`, `Board` or `CantinaAdmin`, and **cannot** download the CSV unless they hold `Admin` or `CantinaAdmin`. No other path grants access.
-- The roster page and CSV **never** include `MedicalConditions` — `CantinaRosterService` never reads it and the cantina DTOs have no such field. To see medical conditions, viewers use the per-profile badges' audited medical reveal.
+- The roster page and CSV **never** include `MedicalConditions` — `CantinaRosterService` never reads it and the cantina DTOs have no such field. To see medical conditions, viewers use the audited reveal on the member's profile page (`/Profile/{id}`).
 - The access-denied redirect **must not** leak any roster data, including the week's headcount or label.
 - `Refused` / `Bailed` / `NoShow` / `Cancelled` signups **must not** contribute to any count or row, even if the volunteer also has a qualifying signup on a different day.
 - The roster reads only the currently active event's signups — no cross-event aggregation.

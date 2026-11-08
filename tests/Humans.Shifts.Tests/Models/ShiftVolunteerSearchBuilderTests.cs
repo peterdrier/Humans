@@ -139,12 +139,11 @@ public class ShiftVolunteerSearchBuilderTests
     [HumansFact]
     public void SearchRows_NeverCarryMedicalConditions()
     {
-        // Shifts holds no medical data; Users reveals it through ProfileViewController.RevealMedical, audited.
+        // Shifts knows nothing about health data; the reveal lives on the member's profile page (Users).
         typeof(VolunteerSearchResult).GetProperties().Select(p => p.Name)
             .Should().NotContain(name => name.Contains("Medical", StringComparison.Ordinal));
-        typeof(VolunteerBadgesViewModel).GetProperties()
-            .Where(p => p.PropertyType == typeof(string)).Select(p => p.Name)
-            .Should().Equal(["DietaryPreference"], "the badge model carries no medical data");
+        typeof(VolunteerBadgesViewModel).GetProperties().Select(p => p.Name)
+            .Should().NotContain(name => name.Contains("Medical", StringComparison.Ordinal));
     }
 
     [HumansFact]

@@ -1150,9 +1150,6 @@
   <data name="ShiftsSummary_ManageShifts" xml:space="preserve">
     <value>Gérer les quarts</value>
   </data>
-  <data name="Medical_Badge" xml:space="preserve">
-    <value>Médical</value>
-  </data>
   <data name="Privacy_Lead" xml:space="preserve">
     <value>Humans gère les adhésions de Nobodies Collective et traite les données personnelles conformément au RGPD et à la loi espagnole sur la protection des données (LOPDGDD).</value>
   </data>

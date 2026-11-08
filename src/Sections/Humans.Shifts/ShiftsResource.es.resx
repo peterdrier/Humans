@@ -1275,9 +1275,6 @@
   </data>
   <data name="Shifts_StatusReasonTooLong" xml:space="preserve"><value>El motivo no puede superar los 1000 caracteres.</value></data>
   <data name="Shifts_Bail_NotActive" xml:space="preserve"><value>Esta inscripción ya no está activa y no se puede cancelar.</value></data>
-  <data name="Shifts_Medical_RevealTitle" xml:space="preserve"><value>Mostrar datos médicos (cada consulta queda registrada en el registro de auditoría)</value></data>
-  <data name="Shifts_Medical_RevealFailed" xml:space="preserve"><value>No se pudieron cargar los datos médicos.</value></data>
-  <data name="Shifts_Medical_NoneOnFile" xml:space="preserve"><value>No hay condiciones médicas registradas.</value></data>
   <data name="Shifts_Notification_CoverageGapTitle" xml:space="preserve"><value>Falta de cobertura: {0} día {1}</value></data>
   <data name="Shifts_Notification_CoverageGapBody" xml:space="preserve"><value>Solo {0}/{1} humans confirmados.</value></data>
   <data name="Shifts_Notification_FindCover" xml:space="preserve"><value>Buscar cobertura →</value></data>

@@ -27,7 +27,7 @@ The food answers are Cantina's (`cantina_dietary_profiles`, Users decomposition 
 
 - **Dietary form** (`/Cantina/Dietary`, Cantina's `CantinaProfileController`): any authenticated user, own answers only — the controller takes the user from the principal, never from the route.
 - **Medical form** (`/Profile/Me/Medical`, Users' `ProfileController`): any authenticated user, own conditions only.
-- **Reading medical conditions:** owner, `ShiftsNoInfo`, `Board`, `Admin` (`UsersPolicies.MedicalDataViewer`), only through Users' audited reveal (`POST /Profile/{id}/Medical/Reveal`). Shifts' roster button calls it; neither Shifts nor Cantina reads medical data.
+- **Reading medical conditions:** owner, `ShiftsNoInfo`, `Board`, `Admin` (`UsersPolicies.MedicalDataViewer`), only through Users' audited reveal (`POST /Profile/{id}/Medical/Reveal`). The button is on the member's profile page (`/Profile/{id}`); neither Shifts nor Cantina knows medical data exists.
 - **Reading dietary answers:** any surface that already shows the volunteer's shift profile (coordinators, shift admins, volunteer search) and the `CantinaPolicies.Read` roster, all through `ICantinaService`.
 
 Both forms carry `[AllowBeforeActiveMembership]` so a not-yet-Active member can still answer them.

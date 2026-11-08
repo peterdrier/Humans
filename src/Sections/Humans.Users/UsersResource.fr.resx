@@ -806,4 +806,7 @@
   </data>
   <data name="Users_Birthdays_CardDescription" xml:space="preserve"><value>Découvre qui fête son anniversaire ce mois-ci.</value></data>
   <data name="Users_Map_CardDescription" xml:space="preserve"><value>Découvre où se trouvent les humans dans le monde.</value></data>
+  <data name="Users_Medical_NoneOnFile" xml:space="preserve"><value>Aucune condition médicale enregistrée.</value></data>
+  <data name="Users_Medical_RevealFailed" xml:space="preserve"><value>Impossible de charger les informations médicales.</value></data>
+  <data name="Users_Medical_RevealTitle" xml:space="preserve"><value>Afficher les informations médicales (chaque consultation est enregistrée dans le journal d'audit)</value></data>
 </root>

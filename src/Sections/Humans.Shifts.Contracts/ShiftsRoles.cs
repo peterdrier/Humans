@@ -16,8 +16,8 @@ public static class ShiftsRoles
     public const string ShiftsAdmin = "ShiftsAdmin";
 
     /// <summary>
-    /// Shifts NoInfo: approves and voluntells shift signups but does not create or edit shifts; may reveal volunteer
-    /// medical data. Stored as <c>NoInfoAdmin</c> before 2026-10.
+    /// Shifts NoInfo: approves and voluntells shift signups but does not create or edit shifts.
+    /// Stored as <c>NoInfoAdmin</c> before 2026-10.
     /// </summary>
     public const string ShiftsNoInfo = "ShiftsNoInfo";
 

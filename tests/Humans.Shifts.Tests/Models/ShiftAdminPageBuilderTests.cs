@@ -88,7 +88,7 @@ public sealed class ShiftAdminPageBuilderTests
         var builder = new ShiftAdminPageBuilder(_shiftManagement, _membership, _userService, _cantina, _teamService);
 
         await builder.BuildAsync(new ShiftAdminPageRequest(
-            Department, Event, true, true, false, true, TestNow), cancellation.Token);
+            Department, Event, true, true, true, TestNow), cancellation.Token);
 
         await _shiftManagement.Received(1).GetRotasByDepartmentAsync(Department.Id, Event.Id, cancellation.Token);
         await _membership.Received(1).GetUsersWithAllRequiredConsentsForTeamAsync(
@@ -194,38 +194,6 @@ public sealed class ShiftAdminPageBuilderTests
             Arg.Any<CancellationToken>());
     }
 
-    [HumansTheory]
-    [Xunit.InlineData(true)]
-    [Xunit.InlineData(false)]
-    public async Task MedicalButton_FollowsTheViewersPolicy_WithNoMedicalDataInShifts(bool canViewMedical)
-    {
-        var userId = Guid.NewGuid();
-        StubRotas(MakeRota(MakeShift(MakePending(userId))));
-        _membership.GetUsersWithAllRequiredConsentsForTeamAsync(
-                Arg.Any<IEnumerable<Guid>>(), SystemTeamIds.Volunteers, Arg.Any<CancellationToken>())
-            .Returns(new HashSet<Guid>());
-        _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(new Dictionary<Guid, UserInfo>
-            {
-                [userId] = UserInfoStubHelpers.MakeUserInfo(userId, profile: new Profile
-                {
-                    Id = Guid.NewGuid(),
-                    UserId = userId,
-                    BurnerName = "Ann",
-                    CreatedAt = TestNow,
-                    UpdatedAt = TestNow,
-                }),
-            });
-        var builder = new ShiftAdminPageBuilder(_shiftManagement, _membership, _userService, _cantina, _teamService);
-
-        var vm = await builder.BuildAsync(new ShiftAdminPageRequest(
-            Department, Event, CanManage: true, CanApprove: true, canViewMedical, IncompleteOnboarding: false, TestNow));
-
-        var badges = vm.VolunteerProfiles[userId];
-        badges.UserId.Should().Be(userId);
-        badges.CanRevealMedical.Should().Be(canViewMedical);
-    }
-
     private void StubRotas(params ShiftAdminRota[] rotas) =>
         _shiftManagement.GetRotasByDepartmentAsync(Department.Id, Event.Id)
             .Returns(rotas.ToList());
@@ -238,7 +206,6 @@ public sealed class ShiftAdminPageBuilderTests
             Event,
             CanManage: true,
             CanApprove: true,
-            CanViewMedical: false,
             IncompleteOnboarding: true,
             Now: TestNow));
     }

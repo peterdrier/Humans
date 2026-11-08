@@ -106,6 +106,22 @@
             </div>
         }
 
+        @if (!Model.IsOwnProfile && (await AuthService.AuthorizeAsync(User, Humans.Users.Contracts.UsersPolicies.MedicalDataViewer)).Succeeded)
+        {
+            @* Art. 9: the text is not in the page. Each click is one audited reveal, listed to the member. *@
+            <div class="card mb-4">
+                <div class="card-header"><i class="fa-solid fa-notes-medical me-1"></i> @Localizer["Users_Profile_DietaryMedical_MedicalConditions_Title"]</div>
+                <div class="card-body">
+                    <button type="button" class="btn btn-sm btn-outline-danger" id="medical-reveal"
+                            data-reveal-url="@Url.Action("RevealMedical", "ProfileView", new { id = Model.UserId })"
+                            data-none-text="@Localizer["Users_Medical_NoneOnFile"].Value"
+                            data-failed-text="@Localizer["Users_Medical_RevealFailed"].Value">
+                        <i class="fa-solid fa-eye me-1"></i>@Localizer["Users_Medical_RevealTitle"]
+                    </button>
+                </div>
+            </div>
+        }
+
         @if (Model.CanViewSentMessages)
         {
             @* The AuditLog section ships no resource set, so this page passes its own copy in. *@
@@ -150,3 +166,25 @@
         </div>
     }
 </div>
+
+@section Scripts {
+    <script>
+        document.getElementById('medical-reveal')?.addEventListener('click', function () {
+            var btn = this;
+            btn.disabled = true;
+            Humans.postJson(btn.getAttribute('data-reveal-url'))
+                .then(function (r) { return r.ok ? r.json() : Promise.reject(r.status); })
+                .then(function (data) {
+                    var text = document.createElement('p');
+                    text.className = data.text ? 'mb-0 text-danger' : 'mb-0 text-muted';
+                    text.style.whiteSpace = 'pre-wrap';
+                    text.textContent = data.text || btn.getAttribute('data-none-text');
+                    btn.replaceWith(text);
+                })
+                .catch(function () {
+                    btn.disabled = false;
+                    btn.title = btn.getAttribute('data-failed-text');
+                });
+        });
+    </script>
+}

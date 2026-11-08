@@ -419,4 +419,7 @@
   <data name="Users_Map_Privacy" xml:space="preserve"><value>Only humans who have set their location are shown. Location is approximate and based on city.</value></data>
   <data name="Users_Birthdays_CardDescription" xml:space="preserve"><value>See who is celebrating this month.</value></data>
   <data name="Users_Map_CardDescription" xml:space="preserve"><value>See where humans are around the world.</value></data>
+  <data name="Users_Medical_NoneOnFile" xml:space="preserve"><value>No medical conditions on file.</value></data>
+  <data name="Users_Medical_RevealFailed" xml:space="preserve"><value>Could not load the medical details.</value></data>
+  <data name="Users_Medical_RevealTitle" xml:space="preserve"><value>Show medical details (every look is recorded in the audit log)</value></data>
 </root>

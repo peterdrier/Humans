@@ -1274,9 +1274,6 @@
   </data>
   <data name="Shifts_StatusReasonTooLong" xml:space="preserve"><value>Die Begründung darf höchstens 1000 Zeichen lang sein.</value></data>
   <data name="Shifts_Bail_NotActive" xml:space="preserve"><value>Diese Anmeldung ist nicht mehr aktiv und kann nicht mehr abgesagt werden.</value></data>
-  <data name="Shifts_Medical_RevealTitle" xml:space="preserve"><value>Medizinische Angaben anzeigen (jeder Aufruf wird im Audit-Log festgehalten)</value></data>
-  <data name="Shifts_Medical_RevealFailed" xml:space="preserve"><value>Die medizinischen Angaben konnten nicht geladen werden.</value></data>
-  <data name="Shifts_Medical_NoneOnFile" xml:space="preserve"><value>Keine medizinischen Angaben hinterlegt.</value></data>
   <data name="Shifts_Notification_CoverageGapTitle" xml:space="preserve"><value>Unbesetzte Schichten: {0} Tag {1}</value></data>
   <data name="Shifts_Notification_CoverageGapBody" xml:space="preserve"><value>Nur {0}/{1} humans bestätigt.</value></data>
   <data name="Shifts_Notification_FindCover" xml:space="preserve"><value>Ersatz finden →</value></data>

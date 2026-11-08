@@ -484,9 +484,6 @@
   <data name="Shifts_Dashboard_OffSeasonBody" xml:space="preserve"><value>Thanks for this year. Shifts open again when the Board publishes the next event.</value></data>
   <data name="Shifts_StatusReasonTooLong" xml:space="preserve"><value>Reasons cannot exceed 1,000 characters.</value></data>
   <data name="Shifts_Bail_NotActive" xml:space="preserve"><value>This signup is no longer active. You cannot bail from it.</value></data>
-  <data name="Shifts_Medical_RevealTitle" xml:space="preserve"><value>Show medical details (every look is recorded in the audit log)</value></data>
-  <data name="Shifts_Medical_RevealFailed" xml:space="preserve"><value>Could not load the medical details.</value></data>
-  <data name="Shifts_Medical_NoneOnFile" xml:space="preserve"><value>No medical conditions on file.</value></data>
   <data name="Shifts_Notification_CoverageGapTitle" xml:space="preserve"><value>Coverage gap: {0} day {1}</value></data>
   <data name="Shifts_Notification_CoverageGapBody" xml:space="preserve"><value>Only {0}/{1} humans confirmed.</value></data>
   <data name="Shifts_Notification_FindCover" xml:space="preserve"><value>Find cover →</value></data>

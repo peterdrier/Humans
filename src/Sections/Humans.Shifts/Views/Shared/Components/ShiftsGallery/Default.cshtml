@@ -173,21 +173,18 @@
         <span class="wg-card-path">src/Sections/Humans.Shifts/Views/Shared/_VolunteerProfileBadges.cshtml</span>
     </div>
     <div class="wg-card-note">
-        Badges showing volunteer event profile info — skills, quirks, dietary, languages, optional medical. Synthetic sample below.
+        Badges showing volunteer event profile info — skills, quirks, dietary, languages. Synthetic sample below.
     </div>
     @ParamsBlock(
-        ("@@model", "<code>VolunteerBadgesViewModel</code> (skills from VEP; dietary from Cantina; no medical data)")
+        ("@@model", "<code>VolunteerBadgesViewModel</code> (skills from VEP; dietary from Cantina)")
     )
-    <div class="wg-auth-line"><code>CanRevealMedical=true</code> only for a UsersPolicies.MedicalDataViewer holder; the button calls Users' audited reveal, and Shifts never sees the text.</div>
     <div class="wg-card-example">
         @await Html.PartialAsync("_VolunteerProfileBadges",
             new VolunteerBadgesViewModel(
-                UserId: Guid.Empty,
                 Skills: ["Welding", "First Aid"],
                 Quirks: ["Early riser", "Coffee snob"],
                 Languages: ["English", "Spanish"],
-                DietaryPreference: null,
-                CanRevealMedical: true))
+                DietaryPreference: null))
     </div>
 </div>
 
