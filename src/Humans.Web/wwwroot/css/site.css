@@ -3068,3 +3068,36 @@ body.city-map-fullscreen main {
 @media (max-width: 767.98px) {
     .stats { grid-template-columns: 1fr; }
 }
+
+/* /Users/Me: section-contributed cards laid out as equal tiles. */
+.profile-tiles {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 1rem;
+    align-items: start;
+}
+.profile-tiles > .card { margin-bottom: 0 !important; }
+.profile-facts {
+    display: grid;
+    grid-template-columns: max-content minmax(0, 1fr);
+    gap: .4rem 1rem;
+}
+.profile-facts dt { color: var(--h-text-secondary); font-weight: 600; }
+.profile-facts dd { margin: 0; }
+.profile-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas: "identity" "main" "settings";
+    gap: 0 1.5rem;
+    align-items: start;
+}
+.profile-layout-identity { grid-area: identity; }
+.profile-layout-main { grid-area: main; }
+.profile-layout-settings { grid-area: settings; }
+@media (min-width: 992px) {
+    .profile-layout {
+        grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
+        grid-template-rows: auto 1fr;
+        grid-template-areas: "identity main" "settings main";
+    }
+}
