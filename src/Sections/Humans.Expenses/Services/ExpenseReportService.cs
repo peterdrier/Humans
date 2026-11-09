@@ -45,6 +45,7 @@ internal sealed class ExpenseReportService(
     internal const string ExpenseReports = ExpenseReportExport.ExpenseReports;
     internal const string ExpenseAuditLog = ExpenseReportExport.ExpenseAuditLog;
 
+    private ExpenseReportReview Review => new(repo, auditLogService, clock, reportAccess);
     private readonly ExpenseReportAudit reportAudit = new(userService, auditLogService, logger);
     private ExpensePayeeIban PayeeIban => new(repo, userService, financeWrite, auditLogService, clock, logger, reportAudit);
     private readonly ExpenseReportAccess reportAccess = new(repo, userService, budgetService, teamService, preapprovals);
@@ -769,147 +770,29 @@ internal sealed class ExpenseReportService(
         }
     }
 
-    private static string MaxAmountDetail(decimal? maxAmount) =>
-        maxAmount is { } cap
-            ? $" Authorized maximum {cap.ToString("0.00", CultureInfo.InvariantCulture)} EUR."
-            : "";
-
-    private async Task<(decimal? Amount, ExpenseMutationResult? Refusal)> ResolveReviewCapAsync(
-        Guid? grantId, decimal? requestedAmount, CancellationToken ct)
-    {
-        if (requestedAmount is { } amount && decimal.Round(amount, 2) != amount)
-            return (null, ExpenseMutationResult.Failure("Expenses_Validation_AmountPrecision"));
-
-        if (grantId is not { } id) return (requestedAmount, null);
-
-        var grant = await preapprovals.GetGrantAsync(id, ct);
-        if (grant is null)
-            return (null, ExpenseMutationResult.OperatorFailure("The report's pre-approval no longer exists; reject the report."));
-        if (requestedAmount > grant.MaxAmount)
-            return (null, ExpenseMutationResult.OperatorFailure(
-                $"The cap cannot exceed the pre-approved {grant.MaxAmount.ToString("0.00", CultureInfo.InvariantCulture)} EUR."));
-
-        return (requestedAmount ?? grant.MaxAmount, null);
-    }
-
     public Task<ExpenseMutationResult> CoordinatorEndorseWithResultAsync(
         Guid reportId, Guid coordinatorUserId, bool actorIsFinanceAdmin, decimal? maxAmount,
         CancellationToken ct = default) =>
-        RunMutationAsync(ct, async () =>
-        {
-            var report = await repo.GetByIdAsync(reportId, ct);
-            if (report is null) return ExpenseMutationResult.OperatorFailure("Could not endorse the report. It may no longer be in Submitted status.");
-
-            if (!actorIsFinanceAdmin && await GetFirstReviewerRefusalAsync(report, coordinatorUserId, ct) is { } refusal)
-                return refusal;
-
-            var cap = await ResolveReviewCapAsync(report.PreapprovalGrantId, maxAmount, ct);
-            if (cap.Refusal is { } capRefusal) return capRefusal;
-            maxAmount = cap.Amount;
-
-            var now = clock.GetCurrentInstant();
-            var ok = await repo.CoordinatorEndorseAsync(reportId, coordinatorUserId, maxAmount, now, ct);
-            if (!ok) return ExpenseMutationResult.OperatorFailure("Could not endorse the report. It may no longer be in Submitted status.");
-
-            await auditLogService.LogAsync(
-                ExpensesAuditActions.ExpenseEndorse,
-                AuditEntityTypes.Report, reportId,
-                ReviewerLabel(report, actorIsFinanceAdmin)
-                    + " endorsed expense report." + MaxAmountDetail(maxAmount),
-                coordinatorUserId);
-
-            return ExpenseMutationResult.Success;
-
-        }, "Error endorsing expense report {ReportId}", reportId);
+        RunMutationAsync(ct, () => Review.CoordinatorEndorseWithResultAsync(reportId, coordinatorUserId, actorIsFinanceAdmin, maxAmount, ct),
+            "Error endorsing expense report {ReportId}", reportId);
 
     public Task<ExpenseMutationResult> CoordinatorRejectWithResultAsync(
         Guid reportId, Guid coordinatorUserId, bool actorIsFinanceAdmin, string reason,
         CancellationToken ct = default) =>
-        RunMutationAsync(ct, async () =>
-        {
-            var report = await repo.GetByIdAsync(reportId, ct);
-            if (report is null) return ExpenseMutationResult.OperatorFailure("Could not reject the report. It may no longer be in Submitted status.");
-
-            if (!actorIsFinanceAdmin && await GetFirstReviewerRefusalAsync(report, coordinatorUserId, ct) is { } refusal)
-                return refusal;
-
-            var now = clock.GetCurrentInstant();
-            var ok = await repo.CoordinatorRejectAsync(reportId, coordinatorUserId, reason, now, ct);
-            if (!ok) return ExpenseMutationResult.OperatorFailure("Could not reject the report. It may no longer be in Submitted status.");
-
-            await auditLogService.LogAsync(
-                ExpensesAuditActions.ExpenseCoordinatorReject,
-                AuditEntityTypes.Report, reportId,
-                $"{ReviewerLabel(report, actorIsFinanceAdmin)} rejected expense report: {reason}",
-                coordinatorUserId);
-
-            return ExpenseMutationResult.Success;
-
-        }, "Error coordinator-rejecting expense report {ReportId}", reportId);
+        RunMutationAsync(ct, () => Review.CoordinatorRejectWithResultAsync(reportId, coordinatorUserId, actorIsFinanceAdmin, reason, ct),
+            "Error coordinator-rejecting expense report {ReportId}", reportId);
 
     public Task<ExpenseMutationResult> DeclineLineWithResultAsync(
         Guid reportId, Guid actorUserId, bool actorIsFinanceAdmin, Guid lineId, string reason,
         CancellationToken ct = default) =>
-        RunMutationAsync(ct, async () =>
-        {
-            var trimmed = reason?.Trim();
-            if (string.IsNullOrEmpty(trimmed))
-                return ExpenseMutationResult.OperatorFailure("A reason is required to decline a line.");
-            if (trimmed.Length > DeclineReasonMaxLength)
-                return ExpenseMutationResult.OperatorFailure(
-                    $"The reason can be at most {DeclineReasonMaxLength} characters.");
-
-            var (report, line, refusal) = await GetDeclinableLineAsync(
-                reportId, actorUserId, actorIsFinanceAdmin, lineId, ct);
-            if (refusal is not null) return refusal;
-            if (line!.Declined)
-                return ExpenseMutationResult.OperatorFailure("That line is already declined.");
-
-            var ok = await repo.SetLineDeclinedAsync(
-                reportId, lineId, declined: true, trimmed, actorUserId, clock.GetCurrentInstant(), ct);
-            if (!ok) return ExpenseMutationResult.OperatorFailure("Could not decline the line.");
-
-            await auditLogService.LogAsync(
-                ExpensesAuditActions.ExpenseLineDeclined,
-                AuditEntityTypes.Report, reportId,
-                $"{ReviewerLabel(report!, actorIsFinanceAdmin)} declined line "
-                    + $"\"{line.Description}\" ({line.Amount.ToString("0.00", CultureInfo.InvariantCulture)} EUR): {trimmed}",
-                actorUserId);
-
-            return ExpenseMutationResult.Success;
-        }, "Error declining line {LineId} on report {ReportId}", lineId, reportId);
+        RunMutationAsync(ct, () => Review.DeclineLineWithResultAsync(reportId, actorUserId, actorIsFinanceAdmin, lineId, reason, ct),
+            "Error declining line {LineId} on report {ReportId}", lineId, reportId);
 
     public Task<ExpenseMutationResult> UndoDeclineLineWithResultAsync(
         Guid reportId, Guid actorUserId, bool actorIsFinanceAdmin, Guid lineId,
         CancellationToken ct = default) =>
-        RunMutationAsync(ct, async () =>
-        {
-            var (report, line, refusal) = await GetDeclinableLineAsync(
-                reportId, actorUserId, actorIsFinanceAdmin, lineId, ct);
-            if (refusal is not null) return refusal;
-            if (!line!.Declined)
-                return ExpenseMutationResult.OperatorFailure("That line is not declined.");
-
-            var ok = await repo.SetLineDeclinedAsync(
-                reportId, lineId, declined: false, reason: null, byUserId: null, clock.GetCurrentInstant(), ct);
-            if (!ok) return ExpenseMutationResult.OperatorFailure("Could not undo the decline.");
-
-            await auditLogService.LogAsync(
-                ExpensesAuditActions.ExpenseLineDeclineUndone,
-                AuditEntityTypes.Report, reportId,
-                $"{ReviewerLabel(report!, actorIsFinanceAdmin)} undid the decline of line "
-                    + $"\"{line.Description}\" ({line.Amount.ToString("0.00", CultureInfo.InvariantCulture)} EUR); "
-                    + $"it had been declined: {line.DeclinedReason}",
-                actorUserId);
-
-            return ExpenseMutationResult.Success;
-        }, "Error undoing decline of line {LineId} on report {ReportId}", lineId, reportId);
-
-    private const int DeclineReasonMaxLength = 1000;
-
-    private Task<(ExpenseReportDto? Report, ExpenseLineDto? Line, ExpenseMutationResult? Refusal)>
-        GetDeclinableLineAsync(Guid reportId, Guid actorUserId, bool actorIsFinanceAdmin, Guid lineId, CancellationToken ct) =>
-        reportAccess.GetDeclinableLineAsync(reportId, actorUserId, actorIsFinanceAdmin, lineId, ct);
+        RunMutationAsync(ct, () => Review.UndoDeclineLineWithResultAsync(reportId, actorUserId, actorIsFinanceAdmin, lineId, ct),
+            "Error undoing decline of line {LineId} on report {ReportId}", lineId, reportId);
 
     /// <summary>
     /// Re-reads the report so the amount is the DTO's own <c>Payable</c>, cap included. Sent after the save: the outbox
@@ -959,7 +842,7 @@ internal sealed class ExpenseReportService(
                 overrideBooking = resolved;
             }
 
-            var cap = await ResolveReviewCapAsync(report.PreapprovalGrantId, maxAmount, ct);
+            var cap = await reportAccess.ResolveReviewCapAsync(report.PreapprovalGrantId, maxAmount, ct);
             if (cap.Refusal is { } capRefusal) return capRefusal;
             maxAmount = cap.Amount;
 
@@ -1007,7 +890,7 @@ internal sealed class ExpenseReportService(
                 await auditLogService.LogAsync(
                     ExpensesAuditActions.ExpenseApprove,
                     AuditEntityTypes.Report, reportId,
-                    "Finance approved expense report." + MaxAmountDetail(maxAmount)
+                    "Finance approved expense report." + ExpenseReportAudit.MaxAmountDetail(maxAmount)
                     + (report.PreapprovalGrantId is { } g ? $" Consumed pre-approval {g}." : ""),
                     actorUserId);
 
@@ -1049,24 +932,8 @@ internal sealed class ExpenseReportService(
     public Task<ExpenseMutationResult> FinanceRejectWithResultAsync(
         Guid reportId, Guid actorUserId, string reason,
         CancellationToken ct = default) =>
-        RunMutationAsync(ct, async () =>
-        {
-            var report = await repo.GetByIdAsync(reportId, ct);
-            if (report is null) return ExpenseMutationResult.OperatorFailure("Could not reject the report. It may not be in a rejectable status.");
-
-            var now = clock.GetCurrentInstant();
-            var ok = await repo.FinanceRejectAsync(reportId, actorUserId, reason, now, ct);
-            if (!ok) return ExpenseMutationResult.OperatorFailure("Could not reject the report. It may not be in a rejectable status.");
-
-            await auditLogService.LogAsync(
-                ExpensesAuditActions.ExpenseReject,
-                AuditEntityTypes.Report, reportId,
-                $"Finance rejected expense report: {reason}",
-                actorUserId);
-
-            return ExpenseMutationResult.Success;
-
-        }, "Error finance-rejecting expense report {ReportId}", reportId);
+        RunMutationAsync(ct, () => Review.FinanceRejectWithResultAsync(reportId, actorUserId, reason, ct),
+            "Error finance-rejecting expense report {ReportId}", reportId);
 
     public async Task<IReadOnlyList<Guid>> GetFailedHoldedPushReportIdsAsync(bool actorIsFinanceAdmin, CancellationToken ct = default)
         => actorIsFinanceAdmin ? await repo.GetFailedOutboxReportIdsAsync(ct) : [];
@@ -1137,15 +1004,6 @@ internal sealed class ExpenseReportService(
             return (null, ExpenseMutationResult.Failure("Expenses_Validation_CategoryNotFound"));
         return (new ExpenseBooking(account.AccountNum, account.AccountId, mapRow.BudgetCategoryId, activeYear.Id), null);
     }
-
-    private static string ReviewerLabel(ExpenseReportDto report, bool actorIsFinanceAdmin) =>
-        actorIsFinanceAdmin ? "Finance admin"
-        : report.PreapprovalGrantId is null ? "Coordinator"
-        : "Pre-approval manager";
-
-    private Task<ExpenseMutationResult?> GetFirstReviewerRefusalAsync(
-        ExpenseReportDto report, Guid actorUserId, CancellationToken ct) =>
-        reportAccess.GetFirstReviewerRefusalAsync(report, actorUserId, ct);
 
     /// <summary>Includes accounts merged into this one. The member's IBAN is Finance's slice.</summary>
     public Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct) =>

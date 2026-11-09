@@ -1,3 +1,4 @@
+using System.Globalization;
 using Humans.AuditLog.Contracts;
 using Humans.Base.Interfaces;
 using Humans.Expenses.Contracts;
@@ -46,5 +47,10 @@ internal sealed class ExpenseReportAudit(
             relatedEntityId: report.SubmitterUserId,
             relatedEntityType: AuditSubjectTypes.User);
     }
+
+    internal static string MaxAmountDetail(decimal? maxAmount) =>
+        maxAmount is { } cap
+            ? $" Authorized maximum {cap.ToString("0.00", CultureInfo.InvariantCulture)} EUR."
+            : "";
 
 }

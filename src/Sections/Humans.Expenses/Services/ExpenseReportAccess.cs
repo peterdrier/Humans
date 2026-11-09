@@ -1,3 +1,4 @@
+using System.Globalization;
 using Humans.Base.Interfaces;
 using Humans.Budget.Contracts;
 using Humans.Expenses.Contracts;
@@ -158,5 +159,23 @@ internal sealed class ExpenseReportAccess(
     /// <summary>Submitted, not yet approved: has a payee snapshot and a booked year, but is not final.</summary>
     internal static bool IsPendingApproval(ExpenseReportStatus status) =>
         status is ExpenseReportStatus.Submitted or ExpenseReportStatus.CoordinatorEndorsed;
+
+    internal async Task<(decimal? Amount, ExpenseMutationResult? Refusal)> ResolveReviewCapAsync(
+        Guid? grantId, decimal? requestedAmount, CancellationToken ct)
+    {
+        if (requestedAmount is { } amount && decimal.Round(amount, 2) != amount)
+            return (null, ExpenseMutationResult.Failure("Expenses_Validation_AmountPrecision"));
+
+        if (grantId is not { } id) return (requestedAmount, null);
+
+        var grant = await preapprovals.GetGrantAsync(id, ct);
+        if (grant is null)
+            return (null, ExpenseMutationResult.OperatorFailure("The report's pre-approval no longer exists; reject the report."));
+        if (requestedAmount > grant.MaxAmount)
+            return (null, ExpenseMutationResult.OperatorFailure(
+                $"The cap cannot exceed the pre-approved {grant.MaxAmount.ToString("0.00", CultureInfo.InvariantCulture)} EUR."));
+
+        return (requestedAmount ?? grant.MaxAmount, null);
+    }
 
 }
