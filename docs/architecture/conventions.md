@@ -95,7 +95,7 @@ These are heuristics, not laws — a clearer name that violates one of them beat
 
 ## Integration
 
-External systems stay behind an interface in the owning section's `Contracts` (project or folder) with the implementation in that section's `Services/` — `IHoldedClient` in `Humans.Holded.Contracts`, the client in `Humans.Holded/Services/`; same shape for Google, Stripe, TicketTailor, MailerLite and Email.
+External systems stay behind an interface in the owning section's `Contracts` (project or folder) with the implementation in that section's `Services/` — Holded's `IHoldedService` and `IHoldedWrite` in `Humans.Holded.Contracts`, the raw `IHoldedClient` internal in `Humans.Holded/Services/`; same shape for Google, Stripe, TicketTailor, MailerLite and Email.
 
 Do not leak raw provider concerns through multiple layers.
 

@@ -4,23 +4,40 @@ using NSubstitute;
 
 namespace Humans.Finance.Tests;
 
-/// <summary>Stands in for Holded's sync-then-mirror reads by answering them from the <see cref="IHoldedClient"/>
-/// fake, so a test seeds Holded's data once, in the client's shape. A sync reads the client (and throws what it
-/// throws); the mirror then serves what the last sync read.</summary>
+/// <summary>Holded's data as a test seeds it, in the shape Holded returns it. Finance never sees this:
+/// <see cref="TestHoldedSync"/> serves it through the <see cref="IHoldedService"/> syncs and mirrors.</summary>
+public interface IHoldedFeed
+{
+    bool IsConfigured { get; }
+
+    Task<IReadOnlyList<HoldedPurchaseDocListItemDto>> ListPurchaseDocumentsAsync(CancellationToken ct = default);
+
+    Task<IReadOnlyList<HoldedLedgerLineDto>> ListLedgerEntriesAsync(
+        LocalDate from, LocalDate to, int? accountNum = null, CancellationToken ct = default);
+
+    Task<IReadOnlyList<HoldedAccountDto>> ListAccountingAccountsAsync(CancellationToken ct = default);
+
+    Task<IReadOnlyList<HoldedBankMovementDto>> ListBankMovementsAsync(
+        string treasuryAccountId, LocalDate from, LocalDate to, CancellationToken ct = default,
+        IReadOnlySet<string>? skipUnreadableDateIds = null);
+}
+
+/// <summary>Answers Holded's sync-then-mirror reads from an <see cref="IHoldedFeed"/>, so a test seeds Holded's
+/// data once. A sync reads the feed (and throws what it throws); the mirror then serves what the last sync read.</summary>
 internal static class TestHoldedSync
 {
-    public static void Wire(IHoldedService holded, IHoldedClient client)
+    public static void Wire(IHoldedService holded, IHoldedFeed feed)
     {
-        holded.IsConfigured.Returns(_ => client.IsConfigured);
+        holded.IsConfigured.Returns(_ => feed.IsConfigured);
 
-        IReadOnlyList<HoldedBankMovementDto> feed = [];
+        IReadOnlyList<HoldedBankMovementDto> movements = [];
         var synced = false;
         holded.SyncBankMovementsAsync(
                 Arg.Any<string>(), Arg.Any<LocalDate>(), Arg.Any<LocalDate>(), Arg.Any<IReadOnlySet<string>?>(),
                 Arg.Any<CancellationToken>())
             .Returns(async ci =>
             {
-                feed = await client.ListBankMovementsAsync(
+                movements = await feed.ListBankMovementsAsync(
                     ci.ArgAt<string>(0), ci.ArgAt<LocalDate>(1), ci.ArgAt<LocalDate>(2), ci.ArgAt<CancellationToken>(4),
                     ci.ArgAt<IReadOnlySet<string>?>(3));
                 synced = true;
@@ -29,9 +46,9 @@ internal static class TestHoldedSync
         holded.GetBankMovementsAsync(
                 Arg.Any<string>(), Arg.Any<LocalDate>(), Arg.Any<LocalDate>(), Arg.Any<CancellationToken>())
             .Returns(async ci => new HoldedBankMovementMirror(Instant.FromUtc(2026, 1, 1, 0, 0), synced
-                ? feed
+                ? movements
                 // A page read with no sync before it: what the nightly sync would have stored.
-                : await client.ListBankMovementsAsync(
+                : await feed.ListBankMovementsAsync(
                     ci.ArgAt<string>(0), ci.ArgAt<LocalDate>(1), ci.ArgAt<LocalDate>(2), CancellationToken.None,
                     null)));
 
@@ -40,12 +57,12 @@ internal static class TestHoldedSync
         holded.GetLedgerLinesAsync(Arg.Any<int>(), Arg.Any<CancellationToken>()).Returns(async ci =>
         {
             var account = ci.ArgAt<int>(0);
-            var entries = (await client.ListLedgerEntriesAsync(
+            var entries = (await feed.ListLedgerEntriesAsync(
                     LocalDate.MinIsoValue, LocalDate.MaxIsoValue, account, CancellationToken.None))
                 .Select(l => new HoldedLedgerLineInfo(
                     l.EntryNumber, l.Line, l.AccountNum, l.Date, l.Type, l.Description, l.Debit, l.Credit))
                 .ToList();
-            var balance = (await client.ListAccountingAccountsAsync(CancellationToken.None))
+            var balance = (await feed.ListAccountingAccountsAsync(CancellationToken.None))
                 .Where(a => a.Number == account).Select(a => a.Balance).DefaultIfEmpty(0m).First();
             var opening = -balance + entries.Where(l => l.AccountNum == account).Sum(l => l.Debit - l.Credit);
             return (IReadOnlyList<HoldedLedgerLineInfo>)entries
@@ -56,6 +73,6 @@ internal static class TestHoldedSync
 
         holded.SyncPurchaseDocumentsAsync(Arg.Any<CancellationToken>()).Returns(true);
         holded.GetPurchaseDocumentsAsync(Arg.Any<CancellationToken>()).Returns(async _ =>
-            TestPurchaseMirror.Of(await client.ListPurchaseDocumentsAsync(CancellationToken.None)));
+            TestPurchaseMirror.Of(await feed.ListPurchaseDocumentsAsync(CancellationToken.None)));
     }
 }
