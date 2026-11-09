@@ -506,7 +506,7 @@ internal sealed class ShiftManagementService(
             return ShiftMutationResult.Failure("Shift date must fall within the rota's period.");
 
         if (GetShiftInputRefusal(input.MinVolunteers, input.MaxVolunteers,
-                input.IsAllDay ? null : input.DurationHours) is { } refusal)
+                input.DurationHours, input.IsAllDay) is { } refusal)
             return ShiftMutationResult.Failure(refusal);
 
         var now = clock.GetCurrentInstant();
@@ -537,13 +537,35 @@ internal sealed class ShiftManagementService(
         return ShiftMutationResult.Success("Shift created.", shift.Id);
     }
 
-    private static string? GetShiftInputRefusal(int minimum, int maximum, double? durationHours = null)
+    private static string? GetShiftInputRefusal(
+        int minimum, int maximum, double? durationHours = null, bool isAllDay = false)
     {
         if (minimum < 0) return "MinVolunteers cannot be negative.";
         if (maximum < 1) return "MaxVolunteers must be at least one.";
         if (minimum > maximum) return "MinVolunteers cannot exceed MaxVolunteers.";
-        if (durationHours is { } hours && (!double.IsFinite(hours) || hours <= 0))
-            return "Shift duration must be a positive finite number of hours.";
+        if (durationHours is not { } hours) return null;
+        if (!double.IsFinite(hours) || (!isAllDay && hours <= 0))
+            return isAllDay
+                ? "Shift duration must be a finite number of hours."
+                : "Shift duration must be a positive finite number of hours.";
+
+        Duration duration;
+        try
+        {
+            duration = Duration.FromHours(hours);
+        }
+        catch (ArgumentOutOfRangeException)
+        {
+            return "Shift duration is outside the supported range.";
+        }
+
+        if (!isAllDay)
+        {
+            if (duration < Duration.FromSeconds(1))
+                return "Shift duration must be at least one second.";
+            if (duration != Duration.FromSeconds((long)duration.TotalSeconds))
+                return "Shift duration must contain a whole number of seconds.";
+        }
         return null;
     }
 
@@ -570,7 +592,7 @@ internal sealed class ShiftManagementService(
             return ShiftMutationResult.Failure("Shift date must fall within the rota's period.");
 
         if (GetShiftInputRefusal(input.MinVolunteers, input.MaxVolunteers,
-                shift.IsAllDay ? null : input.DurationHours) is { } refusal)
+                input.DurationHours, shift.IsAllDay) is { } refusal)
             return ShiftMutationResult.Failure(refusal);
 
         shift.Description = input.Description;

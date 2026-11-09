@@ -843,6 +843,15 @@ public sealed class ShiftManagementWriteGuardTests : ShiftsTestHarness
     [InlineData("update", -1d)]
     [InlineData("event", double.NaN)]
     [InlineData("create", double.PositiveInfinity)]
+    [InlineData("create", double.MaxValue)]
+    [InlineData("update", double.MaxValue)]
+    [InlineData("event", double.MaxValue)]
+    [InlineData("create", double.Epsilon)]
+    [InlineData("update", double.Epsilon)]
+    [InlineData("event", double.Epsilon)]
+    [InlineData("create", 0.0003d)]
+    [InlineData("update", 0.0003d)]
+    [InlineData("event", 0.0003d)]
     public async Task TimedShiftWrites_RejectInvalidDurationWithoutChangingRows(string action, double hours)
     {
         var (_, rota, _) = SeedRotaScenario(RotaPeriod.Event);
@@ -871,6 +880,39 @@ public sealed class ShiftManagementWriteGuardTests : ShiftsTestHarness
     }
 
     [HumansTheory]
+    [InlineData(false, double.NaN)]
+    [InlineData(true, double.NaN)]
+    [InlineData(false, double.PositiveInfinity)]
+    [InlineData(true, double.PositiveInfinity)]
+    [InlineData(false, double.MaxValue)]
+    [InlineData(true, double.MaxValue)]
+    public async Task AllDayShiftWrites_RefuseUnrepresentableDurationBeforeChangingRows(bool update, double hours)
+    {
+        var (_, rota, _) = SeedRotaScenario(RotaPeriod.Build);
+        var shift = update ? SeedShift(rota, -3) : null;
+        if (shift is not null) shift.IsAllDay = true;
+        await SaveAllAsync(Ct);
+        var originalDescription = shift?.Description;
+
+        var result = update
+            ? await _service.UpdateShiftAsync(NewUpdateInput(shift!, rota.TeamId, -3) with
+                { DurationHours = hours, Description = "Attempted invalid edit" })
+            : await _service.CreateShiftAsync(NewShiftInput(rota, -3) with { IsAllDay = true, DurationHours = hours });
+
+        result.Succeeded.Should().BeFalse();
+        result.Message.Should().Contain("duration");
+        ShiftsDb.ChangeTracker.Clear();
+        var rows = await ShiftsDb.Shifts.ToListAsync(Ct);
+        if (shift is null) rows.Should().BeEmpty();
+        else
+        {
+            var unchanged = rows.Should().ContainSingle().Subject;
+            unchanged.Duration.Should().Be(Duration.FromHours(4));
+            unchanged.Description.Should().Be(originalDescription);
+        }
+    }
+
+    [HumansTheory]
     [InlineData(false)]
     [InlineData(true)]
     public async Task AllDayShiftWrites_KeepTheIgnoredDurationSentinel(bool update)
@@ -887,19 +929,21 @@ public sealed class ShiftManagementWriteGuardTests : ShiftsTestHarness
         result.Succeeded.Should().BeTrue();
     }
 
-    [HumansFact]
-    public async Task CreateShiftAsync_AcceptsZeroMinimumAndPositiveFractionalDuration()
+    [HumansTheory]
+    [InlineData(0.25d, 900)]
+    [InlineData(1d / 3600, 1)]
+    public async Task CreateShiftAsync_AcceptsZeroMinimumAndWholeSecondDurations(double hours, int seconds)
     {
         var (_, rota, _) = SeedRotaScenario(RotaPeriod.Event);
         await SaveAllAsync(Ct);
 
         var result = await _service.CreateShiftAsync(NewShiftInput(rota, 0) with
-        { MinVolunteers = 0, MaxVolunteers = 1, DurationHours = 0.25 });
+        { MinVolunteers = 0, MaxVolunteers = 1, DurationHours = hours });
 
         result.Succeeded.Should().BeTrue();
         var shift = await ShiftsDb.Shifts.SingleAsync(Ct);
         shift.MinVolunteers.Should().Be(0);
-        shift.Duration.Should().Be(Duration.FromMinutes(15));
+        shift.Duration.Should().Be(Duration.FromSeconds(seconds));
     }
 
     [HumansTheory]
