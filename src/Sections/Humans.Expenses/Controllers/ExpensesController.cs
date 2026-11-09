@@ -31,11 +31,10 @@ internal sealed class ExpensesController(
     ILogger<ExpensesController> logger,
     IStringLocalizer<ExpensesResource> localizer) : HumansControllerBase(userService)
 {
+    private readonly ExpensePageBuilder pageBuilder = new(service, budgetService, finance, preapprovals, clock, localizer);
     private readonly IUserService _userService = userService;
 
-    /// <summary>Claim deadlines are Europe/Madrid dates.</summary>
-    private static readonly DateTimeZone MadridZone = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
-    private LocalDate Today => clock.GetCurrentInstant().InZone(MadridZone).Date;
+    private LocalDate Today => pageBuilder.Today;
 
     [HttpGet("")]
     public async Task<IActionResult> Index()
@@ -45,51 +44,7 @@ internal sealed class ExpensesController(
             var (errorResult, user) = await RequireCurrentUserAsync(HttpContext.RequestAborted);
             if (errorResult is not null) return errorResult;
 
-            // Newest first across every merged account id, not per id.
-            var reports = (await service.GetForSubmitterAsync(user.Id, HttpContext.RequestAborted))
-                .OrderByDescending(r => r.CreatedAt).ToList();
-            var activeYear = await budgetService.GetActiveYearAsync(HttpContext.RequestAborted);
-
-            var bookingLabels = await ResolveBookingLabelsAsync(reports, HttpContext.RequestAborted);
-
-            var coordinatorQueue = await service.GetCoordinatorQueueAsync(user.Id, HttpContext.RequestAborted);
-            var coordinatorTeamIds = await budgetService.GetEffectiveCoordinatorTeamIdsAsync(user.Id, HttpContext.RequestAborted);
-            var openGrants = (await preapprovals.ListClaimableForUserAsync(user.Id, HttpContext.RequestAborted))
-                .OrderBy(g => g.ClaimBy).ThenBy(g => g.ProgramName, StringComparer.OrdinalIgnoreCase).ToList();
-
-            // Own account only. GetCreditorLedgerAsync returns null both for "not bound" and "bound, nothing cached
-            // yet", so the binding is read separately: telling a bound member to get bound is worse than silence.
-            CreditorLedger? accountLedger = null;
-            var binding = await finance.GetCreditorContactByUserAsync(user.Id, HttpContext.RequestAborted);
-            var boundAccountNum = binding?.SupplierAccountNum;
-            if (boundAccountNum is { } accNum)
-            {
-                var led = await finance.GetCreditorLedgerAsync(accNum, HttpContext.RequestAborted);
-                if (led is not null)
-                    accountLedger = led with
-                    {
-                        Lines = led.Lines
-                            .OrderByDescending(l => l.Date)
-                            .ThenByDescending(l => l.EntryNumber)
-                            .ThenBy(l => l.Line)
-                            .ToList()
-                    };
-            }
-
-            var model = new ExpensesIndexViewModel
-            {
-                Reports = reports,
-                HasActiveYear = activeYear is not null,
-                HasIban = (await GetIbanViewAsync(user.Id, HttpContext.RequestAborted)).HasIban,
-                BookingLabels = bookingLabels,
-                OpenGrants = openGrants,
-                Today = Today,
-                AccountLedger = accountLedger,
-                BoundAccountNum = boundAccountNum,
-                // A claim waiting on this viewer's sign-off always earns the link.
-                IsCoordinator = coordinatorTeamIds.Count > 0 || coordinatorQueue.Count > 0,
-                CoordinatorQueueCount = coordinatorQueue.Count,
-            };
+            var model = await pageBuilder.BuildIndexAsync(user.Id, HttpContext.RequestAborted);
             return View(model);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
@@ -744,18 +699,7 @@ internal sealed class ExpensesController(
             if (errorResult is not null) return errorResult;
 
             var isFinanceAdmin = await IsFinanceAdminAsync();
-            var reports = (await service.GetReviewQueueAsync(user.Id, isFinanceAdmin, HttpContext.RequestAborted))
-                .OrderByDescending(r => r.SubmittedAt ?? r.CreatedAt)
-                .ToList();
-            return View(new ExpenseReviewViewModel
-            {
-                Reports = reports,
-                BookingLabels = await ResolveBookingLabelsAsync(reports, HttpContext.RequestAborted),
-                Grants = await ResolveGrantsAsync(reports, HttpContext.RequestAborted),
-                FailedHoldedPushReportIds = (await service.GetFailedHoldedPushReportIdsAsync(
-                    isFinanceAdmin, HttpContext.RequestAborted)).ToHashSet(),
-                IsFinanceAdmin = isFinanceAdmin,
-            });
+            return View(await pageBuilder.BuildReviewAsync(user.Id, isFinanceAdmin, HttpContext.RequestAborted));
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
@@ -894,63 +838,9 @@ internal sealed class ExpensesController(
 
     /// <summary>The account's label (retired accounts included, so an old report still reads), or for reports that
     /// predate the account column, their category in the booked year.</summary>
-    private async Task<IReadOnlyDictionary<Guid, string>> ResolveBookingLabelsAsync(
-        IReadOnlyList<ExpenseReportDto> reports, CancellationToken ct)
-    {
-        var labels = new Dictionary<Guid, string>();
-        if (reports.Count == 0) return labels;
-
-        Dictionary<int, string>? accountLabels = null;
-        Dictionary<Guid, string>? unpinnedCategoryLabels = null;
-        var categoryLabelsByYear = new Dictionary<Guid, Dictionary<Guid, string>>();
-        foreach (var report in reports)
-        {
-            if (report.HoldedAccountNumber != 0)
-            {
-                accountLabels ??= (await finance.ListExpenseAccountsAsync(activeOnly: false, ct))
-                    .GroupBy(a => a.AccountNum)
-                    .ToDictionary(g => g.Key, g => g.First().Label);
-                labels[report.Id] = accountLabels.TryGetValue(report.HoldedAccountNumber, out var accountLabel)
-                    ? accountLabel
-                    : report.HoldedAccountNumber.ToString(CultureInfo.InvariantCulture);
-            }
-            else
-            {
-                var categoryLabels = report.BudgetYearId is { } yearId
-                    ? categoryLabelsByYear.GetValueOrDefault(yearId)
-                    : unpinnedCategoryLabels;
-                if (categoryLabels is null)
-                {
-                    var year = report.BudgetYearId is { } bookedYearId
-                        ? await budgetService.GetYearByIdAsync(bookedYearId, ct)
-                        : await budgetService.GetActiveYearAsync(ct);
-                    categoryLabels = year?.Groups
-                        .SelectMany(g => g.Categories.Select(c => (c.Id, Display: $"{g.Name} / {c.Name}")))
-                        .ToDictionary(x => x.Id, x => x.Display)
-                        ?? [];
-                    if (report.BudgetYearId is { } loadedYearId)
-                        categoryLabelsByYear[loadedYearId] = categoryLabels;
-                    else
-                        unpinnedCategoryLabels = categoryLabels;
-                }
-                labels[report.Id] = report.BudgetCategoryId is { } categoryId
-                                    && categoryLabels.TryGetValue(categoryId, out var categoryLabel)
-                    ? categoryLabel
-                    : localizer["Expenses_Detail_UnknownCategory"].Value;
-            }
-        }
-        return labels;
-    }
-
-    private async Task<IReadOnlyDictionary<Guid, GrantOption>> ResolveGrantsAsync(
-        IReadOnlyList<ExpenseReportDto> reports, CancellationToken ct)
-    {
-        var grants = new Dictionary<Guid, GrantOption>();
-        foreach (var report in reports)
-            if (report.PreapprovalGrantId is { } grantId && await preapprovals.GetGrantAsync(grantId, ct) is { } grant)
-                grants[report.Id] = grant;
-        return grants;
-    }
+    private Task<IReadOnlyDictionary<Guid, string>> ResolveBookingLabelsAsync(
+        IReadOnlyList<ExpenseReportDto> reports, CancellationToken ct) =>
+        pageBuilder.ResolveBookingLabelsAsync(reports, ct);
 
     private async Task PopulateEditModelAsync(ExpenseEditViewModel model, ExpenseReportDto report)
     {
@@ -1007,11 +897,7 @@ internal sealed class ExpensesController(
             SetError(GetErrorMessage(result.Error) is null ? errorPrefix : $"{errorPrefix}: {GetErrorMessage(result.Error)}");
     }
 
-    private async Task<(bool HasIban, string? MaskedIban)> GetIbanViewAsync(Guid userId, CancellationToken ct = default)
-    {
-        var iban = await finance.GetIbanAsync(userId, ct);
-        var hasIban = !string.IsNullOrEmpty(iban);
-        return (hasIban, hasIban ? IbanFormatter.Mask(iban!) : null);
-    }
+    private Task<(bool HasIban, string? MaskedIban)> GetIbanViewAsync(Guid userId, CancellationToken ct = default) =>
+        pageBuilder.GetIbanViewAsync(userId, ct);
 
 }
