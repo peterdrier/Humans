@@ -188,17 +188,7 @@ internal sealed class Service(
                     logger.LogWarning("Holded ledger sync cancelled by the caller");
                 else
                     logger.LogError(ex, "Holded ledger sync failed");
-                try
-                {
-                    state.SyncStatus = HoldedSyncStatus.Error;
-                    state.LastError = TruncateForState(ex.Message);
-                    state.StatusChangedAt = clock.GetCurrentInstant();
-                    await repo.SaveSyncStateAsync(state, CancellationToken.None);
-                }
-                catch (Exception saveEx)
-                {
-                    logger.LogError(saveEx, "Failed to persist ledger-sync error state");
-                }
+                await PersistSyncFailureAsync(state, ex);
                 throw;
             }
         }
@@ -288,17 +278,7 @@ internal sealed class Service(
                     logger.LogWarning("Holded purchase-document sync cancelled by the caller");
                 else
                     logger.LogError(ex, "Holded purchase-document sync failed");
-                try
-                {
-                    state.SyncStatus = HoldedSyncStatus.Error;
-                    state.LastError = TruncateForState(ex.Message);
-                    state.StatusChangedAt = clock.GetCurrentInstant();
-                    await repo.SaveSyncStateAsync(state, CancellationToken.None);
-                }
-                catch (Exception saveEx)
-                {
-                    logger.LogError(saveEx, "Failed to persist purchase-document sync error state");
-                }
+                await PersistSyncFailureAsync(state, ex);
                 throw;
             }
         }
@@ -404,17 +384,7 @@ internal sealed class Service(
             {
                 // The caller gets the exception and decides; a stuck-date line is routine for the SEPA sweep.
                 logger.LogWarning(ex, "Holded bank-feed sync failed");
-                try
-                {
-                    state.SyncStatus = HoldedSyncStatus.Error;
-                    state.LastError = TruncateForState(ex.Message);
-                    state.StatusChangedAt = clock.GetCurrentInstant();
-                    await repo.SaveSyncStateAsync(state, CancellationToken.None);
-                }
-                catch (Exception saveEx)
-                {
-                    logger.LogError(saveEx, "Failed to persist bank-feed sync error state");
-                }
+                await PersistSyncFailureAsync(state, ex);
                 throw;
             }
         }
@@ -474,17 +444,7 @@ internal sealed class Service(
                     logger.LogWarning("Holded contact sync cancelled by the caller");
                 else
                     logger.LogError(ex, "Holded contact sync failed");
-                try
-                {
-                    state.SyncStatus = HoldedSyncStatus.Error;
-                    state.LastError = TruncateForState(ex.Message);
-                    state.StatusChangedAt = clock.GetCurrentInstant();
-                    await repo.SaveSyncStateAsync(state, CancellationToken.None);
-                }
-                catch (Exception saveEx)
-                {
-                    logger.LogError(saveEx, "Failed to persist contact sync error state");
-                }
+                await PersistSyncFailureAsync(state, ex);
                 throw;
             }
         }
@@ -691,6 +651,21 @@ internal sealed class Service(
             RateLimitRemaining = r.RateLimitRemaining,
             RateLimitWindow = r.RateLimitWindow,
         }).ToList(), CancellationToken.None); // Drained records must reach the mirror despite request cancellation.
+    }
+
+    private async Task PersistSyncFailureAsync(HoldedSyncState state, Exception failure)
+    {
+        try
+        {
+            state.SyncStatus = HoldedSyncStatus.Error;
+            state.LastError = TruncateForState(failure.Message);
+            state.StatusChangedAt = clock.GetCurrentInstant();
+            await repo.SaveSyncStateAsync(state, CancellationToken.None);
+        }
+        catch (Exception saveEx)
+        {
+            logger.LogError(saveEx, "Failed to persist {SyncKind} sync error state", state.Kind);
+        }
     }
 
     /// <summary>LastError is varchar(2000): an unbounded message would fail the save and report a finished refresh

@@ -42,7 +42,7 @@ to this section too and has its own doc ([`Holded-connector.md`](Holded-connecto
   per run, logged when capped). Residual mismatches are **reportable state** on the sync row,
   never a failure — Holded's own chart totals can exclude unconfirmed entries.
 
-- Saved ledger error text stays within 2000 UTF-16 code units without splitting a Unicode surrogate pair. The original exception still propagates in full, and the sync gate is released.
+- Ledger, purchase-document, bank-feed and contact syncs share one failure-state persistence path: mark `Error`, bound the message to 2000 UTF-16 code units without splitting a surrogate pair, and timestamp/save independently of request cancellation. A failed error-state save logs the sync kind without replacing the original exception; each caller still releases its own sync gate.
 
 - **Interrupted manual syncs** remain recorded as `Error` and propagate caller cancellation. Caller-aborted document/ledger syncs and their controller log stack-free warnings; dependency failures remain errors with exceptions.
 
