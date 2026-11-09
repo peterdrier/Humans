@@ -1,4 +1,7 @@
 @model Humans.Users.Models.ProfileCardViewModel
+@{
+    const int RecentCount = 5;
+}
 
 @if (Model.VolunteerHistory.Count > 0 || !string.IsNullOrEmpty(Model.ContributionInterests) || Model.IsOwnProfile)
 {
@@ -9,7 +12,16 @@
         <div class="card-body">
             @if (Model.VolunteerHistory.Count > 0)
             {
-                <partial name="_ProfileCvEntries" model="Model.VolunteerHistory" />
+                <partial name="_ProfileCvEntries" model="Model.VolunteerHistory.Take(RecentCount).ToList()" />
+                @if (Model.VolunteerHistory.Count > RecentCount)
+                {
+                    <details class="mt-2">
+                        <summary class="small">@Localizer["Users_Profile_ShowAllCv", Model.VolunteerHistory.Count]</summary>
+                        <div class="mt-2">
+                            <partial name="_ProfileCvEntries" model="Model.VolunteerHistory.Skip(RecentCount).ToList()" />
+                        </div>
+                    </details>
+                }
             }
             else if (Model.IsOwnProfile)
             {

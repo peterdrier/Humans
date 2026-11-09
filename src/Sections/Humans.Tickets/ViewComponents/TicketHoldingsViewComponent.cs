@@ -30,8 +30,9 @@ public sealed class TicketHoldingsViewComponent(
             .Select(t => TicketStubInfo.From(t, earlyEntry?.EarliestEntryDate))
             .ToList();
 
-        return View(new TicketHoldingsViewModel(holdings.OrderCount, stubs));
+        return View(new TicketHoldingsViewModel(userId, viewMode, holdings.OrderCount, stubs));
     }
 }
 
-internal sealed record TicketHoldingsViewModel(int OrderCount, IReadOnlyList<TicketStubInfo> Tickets);
+internal sealed record TicketHoldingsViewModel(
+    Guid UserId, ProfileCardViewMode ViewMode, int OrderCount, IReadOnlyList<TicketStubInfo> Tickets);

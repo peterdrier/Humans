@@ -820,6 +820,9 @@
   <data name="Users_Profile_Settings" xml:space="preserve">
     <value>Instellingen</value>
   </data>
+  <data name="Users_Profile_ShowAllCv" xml:space="preserve">
+    <value>Alles tonen ({0})</value>
+  </data>
   <data name="Users_Profile_NewLayoutNote" xml:space="preserve">
     <value>Voorbeeld van een nieuwe indeling. De huidige pagina:</value>
   </data>

@@ -3069,14 +3069,12 @@ body.city-map-fullscreen main {
     .stats { grid-template-columns: 1fr; }
 }
 
-/* /Users/Me: section-contributed cards laid out as equal tiles. */
+/* /Users/Me: section-contributed cards packed into columns so a short card never leaves a hole beside a tall one. */
 .profile-tiles {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-    gap: 1rem;
-    align-items: start;
+    columns: 2 300px;
+    column-gap: 1rem;
 }
-.profile-tiles > .card { margin-bottom: 0 !important; }
+.profile-tiles > * { break-inside: avoid; }
 .profile-facts {
     display: grid;
     grid-template-columns: max-content minmax(0, 1fr);
@@ -3087,17 +3085,25 @@ body.city-map-fullscreen main {
 .profile-layout {
     display: grid;
     grid-template-columns: minmax(0, 1fr);
-    grid-template-areas: "identity" "main" "settings";
+    grid-template-areas: "identity" "main" "settings" "board";
     gap: 0 1.5rem;
     align-items: start;
 }
 .profile-layout-identity { grid-area: identity; }
 .profile-layout-main { grid-area: main; }
 .profile-layout-settings { grid-area: settings; }
+.profile-layout-board { grid-area: board; }
 @media (min-width: 992px) {
     .profile-layout {
         grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
-        grid-template-rows: auto 1fr;
-        grid-template-areas: "identity main" "settings main";
+        grid-template-rows: auto auto 1fr;
+        grid-template-areas: "identity main" "settings main" "board main";
     }
+}
+/* Fixed date/event widths keep the folded "show all" rows aligned with the recent ones. */
+.profile-cv {
+    display: grid;
+    grid-template-columns: 4.5rem minmax(0, 11rem) minmax(0, 1fr);
+    gap: .35rem 1rem;
+    align-items: baseline;
 }
