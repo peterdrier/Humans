@@ -72,14 +72,23 @@ internal sealed class TeamResourceGoogleClient(
 
             var fullGroup = await cloudIdentity.Groups.Get(lookupResponse.Name).ExecuteAsync(ct);
             var numericId = lookupResponse.Name["groups/".Length..];
-            var emailLocal = groupEmail.Split('@')[0];
-            var displayUrl = $"https://groups.google.com/a/{_settings.Domain}/g/{emailLocal}";
+            var resolvedEmail = fullGroup.GroupKey?.Id?.Trim();
+            var separator = resolvedEmail?.LastIndexOf('@') ?? -1;
+            if (resolvedEmail is null || separator <= 0 || separator == resolvedEmail.Length - 1)
+            {
+                logger.LogWarning("Google Group {GroupId} returned no usable group email address", numericId);
+                return new GroupLookupResult(null,
+                    new GoogleClientError(502, "Google returned no usable group email address."));
+            }
+            var emailLocal = resolvedEmail[..separator];
+            var domain = resolvedEmail[(separator + 1)..];
+            var displayUrl = $"https://groups.google.com/a/{domain}/g/{emailLocal}";
 
             return new GroupLookupResult(
                 new ResolvedGroup(
                     NumericId: numericId,
-                    NormalizedEmail: groupEmail,
-                    DisplayName: fullGroup.DisplayName ?? groupEmail,
+                    NormalizedEmail: resolvedEmail,
+                    DisplayName: fullGroup.DisplayName ?? resolvedEmail,
                     DisplayUrl: displayUrl),
                 Error: null);
         }
