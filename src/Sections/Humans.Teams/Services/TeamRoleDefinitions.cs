@@ -1,3 +1,4 @@
+using Humans.GoogleIntegration.Contracts;
 using Humans.AuditLog.Contracts;
 using Humans.Base.Enums;
 using Humans.Base.Interfaces;
@@ -14,7 +15,8 @@ internal sealed class TeamRoleDefinitions(
     IAuditLogService auditLogService,
     IClock clock,
     IServiceProvider serviceProvider,
-    TeamSnapshotReader snapshotReader) : IApplicationService
+    TeamSnapshotReader snapshotReader,
+    TeamMembershipOutbox membershipOutbox) : IApplicationService
 {
     private ISystemTeamSync SystemTeamSync => serviceProvider.GetRequiredService<ISystemTeamSync>();
 
@@ -243,6 +245,117 @@ internal sealed class TeamRoleDefinitions(
         if (estimatedHours is < 0)
             return "Estimated hours cannot be negative";
         return null;
+    }
+
+    private async Task<(TeamRoleDefinition? Definition, Team? Team, string? Refusal)> ResolveRoleAssignmentManagementAsync(
+        Guid roleDefinitionId, Guid actorUserId, CancellationToken cancellationToken)
+    {
+        var definition = await repo.FindRoleDefinitionForMutationAsync(roleDefinitionId, cancellationToken);
+        if (definition is null)
+            return (null, null, $"Role definition {roleDefinitionId} not found");
+        var team = await snapshotReader.GetRoleDefinitionTeamAsync(definition, cancellationToken);
+
+        var canManage = await snapshotReader.CanUserApproveRequestsForTeamAsync(definition.TeamId, actorUserId, cancellationToken);
+        if (!canManage)
+            return (null, null, "User does not have permission to manage role assignments for this team");
+
+        return (definition, team, null);
+    }
+
+    internal async Task<TeamRoleAssignmentMutationResult> AssignToRoleAsync(
+        Guid roleDefinitionId, Guid targetUserId, Guid actorUserId,
+        CancellationToken cancellationToken = default)
+    {
+        var (definition, team, refusal) = await ResolveRoleAssignmentManagementAsync(
+            roleDefinitionId, actorUserId, cancellationToken);
+        if (definition is null || team is null)
+            return new(Refusal: refusal);
+
+        var resolvedUserId = await snapshotReader.ResolveMembershipTargetAsync(targetUserId, cancellationToken);
+        if (resolvedUserId is null)
+            return new(Refusal: TeamSnapshotReader.UnavailableMembershipTargetMessage);
+        targetUserId = resolvedUserId.Value;
+        var existingMember = await repo.FindActiveMemberForMutationAsync(definition.TeamId, targetUserId, cancellationToken);
+        var now = clock.GetCurrentInstant();
+
+        TeamMember? autoAddMember = null;
+        GoogleSyncOutboxEvent? outboxEvent = null;
+        if (existingMember is null)
+        {
+            if (team.IsSystemTeam)
+                return new(Refusal: "Cannot add members to system teams via role assignment; only existing members can be assigned to roles on system teams.");
+
+            autoAddMember = new TeamMember
+            {
+                Id = Guid.NewGuid(),
+                TeamId = definition.TeamId,
+                UserId = targetUserId,
+                Role = TeamMemberRole.Member,
+                JoinedAt = now
+            };
+            outboxEvent = await membershipOutbox.BuildOutboxEventAsync(
+                autoAddMember.Id, definition.TeamId, targetUserId,
+                GoogleSyncOutboxEventTypes.AddUserToTeamResources, cancellationToken);
+        }
+
+        var result = await membershipOutbox.AssignToRoleWithOutboxAsync(
+            roleDefinitionId,
+            targetUserId,
+            actorUserId,
+            autoAddMember,
+            outboxEvent,
+            promoteToCoordinator: definition.IsManagement,
+            now,
+            cancellationToken);
+
+        if (!result.Succeeded)
+            return result;
+
+        if (autoAddMember is not null)
+        {
+            await auditLogService.LogAsync(
+                TeamsAuditActions.TeamMemberAdded, nameof(Team), definition.TeamId,
+                $"Auto-added to {team.Name} via role assignment",
+                actorUserId,
+                relatedEntityId: targetUserId, relatedEntityType: AuditSubjectTypes.User);
+        }
+
+        await auditLogService.LogAsync(
+            TeamsAuditActions.TeamRoleAssigned, nameof(TeamRoleDefinition), roleDefinitionId,
+            $"Assigned to role '{definition.Name}' in {team.Name}",
+            actorUserId,
+            relatedEntityId: targetUserId, relatedEntityType: AuditSubjectTypes.User);
+
+        // Management roles promote: reconcile Coordinators in the mutation.
+        await SystemTeamSync.SyncMembershipForUserAsync(targetUserId, SystemTeamType.Coordinators, cancellationToken);
+
+        return result;
+    }
+
+    internal async Task<TeamRoleAssignmentMutationResult> UnassignFromRoleAsync(
+        Guid roleDefinitionId, Guid teamMemberId, Guid actorUserId,
+        CancellationToken cancellationToken = default)
+    {
+        var (definition, team, refusal) = await ResolveRoleAssignmentManagementAsync(
+            roleDefinitionId, actorUserId, cancellationToken);
+        if (definition is null || team is null)
+            return new(Refusal: refusal);
+
+        var result = await repo.UnassignFromRoleAsync(
+            roleDefinitionId, teamMemberId, cancellationToken);
+        if (!result.Succeeded)
+            return result;
+        var targetUserId = result.Assignment!.TeamMember.UserId;
+
+        await auditLogService.LogAsync(
+            TeamsAuditActions.TeamRoleUnassigned, nameof(TeamRoleDefinition), roleDefinitionId,
+            $"Unassigned from role '{definition.Name}' in {team.Name}",
+            actorUserId,
+            relatedEntityId: targetUserId, relatedEntityType: AuditSubjectTypes.User);
+
+        // Losing a management role can demote: reconcile Coordinators in the mutation.
+        await SystemTeamSync.SyncMembershipForUserAsync(targetUserId, SystemTeamType.Coordinators, cancellationToken);
+        return result;
     }
 
 }
