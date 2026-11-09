@@ -1,3 +1,4 @@
+using static Humans.Workgroups.Services.WorkgroupAccess;
 using static Humans.Workgroups.Services.WorkgroupJournal;
 using Humans.Base.Extensions;
 using Humans.AuditLog.Contracts;
@@ -114,7 +115,7 @@ internal sealed partial class WorkgroupService
         await AnnounceDecisionAsync(workgroup, WorkgroupNoticeKind.Withdrawn, reasons.Trim(), ct);
         // Withdrawn isn't Active, so the source stops claiming write access.
         await RequestDriveSyncAsync(workgroup, ct);
-        await SetAccountActiveAsync(workgroup, isActive: false, ct);
+        await Budgets.SetAccountActiveAsync(workgroup, isActive: false, ct);
         return new();
     }
 
@@ -153,7 +154,7 @@ internal sealed partial class WorkgroupService
             $"Reactivated '{workgroup.Name}'", actorUserId);
         await AnnounceDecisionAsync(workgroup, WorkgroupNoticeKind.Reactivated, detail: null, ct);
         await RequestDriveSyncAsync(workgroup, ct);
-        await SetAccountActiveAsync(workgroup, isActive: true, ct);
+        await Budgets.SetAccountActiveAsync(workgroup, isActive: true, ct);
         return new();
     }
 
@@ -204,16 +205,16 @@ internal sealed partial class WorkgroupService
         var budget = bootstrap.Budget is { Amount: not null } b ? b : null;
         if (budget is not null)
         {
-            if (ValidateBudgetAmount(budget.Amount) is { } budgetRefusal)
+            if (WorkgroupBudgets.ValidateBudgetAmount(budget.Amount) is { } budgetRefusal)
                 return new(Refusal: budgetRefusal);
-            var accountResult = await ResolveBudgetAccountAsync(workgroup, budget.ExistingAccountNum, ct);
+            var accountResult = await Budgets.ResolveBudgetAccountAsync(workgroup, budget.ExistingAccountNum, ct);
             if (accountResult.Refusal is { } accountRefusal) return new(Refusal: accountRefusal);
             var account = accountResult.Value!;
             workgroup.BudgetAmount = budget.Amount;
             workgroup.HoldedAccountNumber = account.AccountNum;
             workgroup.HoldedAccountId = account.AccountId;
             workgroup.LogEntries.Add(SystemEntry(workgroup.Id, WorkgroupLogKind.BudgetSet, now,
-                BudgetLogBody(workgroup), actorUserId));
+                WorkgroupBudgets.BudgetLogBody(workgroup), actorUserId));
         }
 
         var folderResult = await CreateGroupFolderAsync(workgroup, ct);
@@ -228,7 +229,7 @@ internal sealed partial class WorkgroupService
         await AnnounceDecisionAsync(workgroup, WorkgroupNoticeKind.Registered, detail: null, ct);
         await RequestDriveSyncAsync(workgroup, ct);
         if (budget is not null)
-            await journal.AuditAsync(WorkgroupsAuditActions.WorkgroupBudgetSet, workgroup, BudgetAuditSummary(workgroup), actorUserId);
+            await journal.AuditAsync(WorkgroupsAuditActions.WorkgroupBudgetSet, workgroup, WorkgroupBudgets.BudgetAuditSummary(workgroup), actorUserId);
 
         return new(workgroup.Id);
     }

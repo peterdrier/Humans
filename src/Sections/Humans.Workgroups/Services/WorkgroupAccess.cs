@@ -44,4 +44,11 @@ internal sealed class WorkgroupAccess(IWorkgroupRepository repository) : IApplic
         return result;
     }
 
+    internal static WorkgroupRefusal? RequireStatus(Workgroup w, params WorkgroupStatus[] allowed)
+    {
+        if (!allowed.Contains(w.Status))
+            return new(WorkgroupErrorKeys.WrongStatus);
+        return null;
+    }
+
 }
