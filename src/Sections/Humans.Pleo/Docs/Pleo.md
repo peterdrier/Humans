@@ -125,7 +125,7 @@ step) brings the export and deletion paths with it. `SetByUserId` on a category 
 
 ## Architecture
 
-The internal `PleoMirrorReader` owns mirror snapshots, summary/reconciliation and entry/category projections, Madrid-window settled reads, wallet balance, and live receipt reads. `Service` delegates its seven existing read entry points and retains sync and category mutations. Repository read order, live-account preference, spend/refund classification, receipt scope and error handling, logger category and cancellation are unchanged. The reader performs no writes; no public contract or DI registration is added.
+The internal `PleoMirrorReader` owns mirror snapshots, summary/reconciliation and entry/category projections, Madrid-window settled reads, wallet balance, and live receipt reads. `Service` delegates its seven existing read entry points and retains category mutations and forwards sync to `PleoMirrorSync`. Repository read order, live-account preference, spend/refund classification, receipt scope and error handling, logger category and cancellation are unchanged. The reader performs no writes; no public contract or DI registration is added.
 
 ### Public contract
 
@@ -133,3 +133,5 @@ The internal `PleoMirrorReader` owns mirror snapshots, summary/reconciliation an
 its Holded code or null and whether it has a receipt. Finance books only entries with both. `GetWalletBalanceAsync` —
 the wallet's current EUR balance at the last sweep (`PleoWalletBalance`), null before one or in another currency; the
 `/Finance` and `/Finance/Pleo` balance check. Served from the mirror. Everything else is internal.
+
+Internal `PleoMirrorSync` owns the full sweep and its vendor-to-mirror conversions, including the shared non-blocking gate and sync-state reporting. Fetch order, skipped/duplicate-row handling, atomic replacement, timestamps, cancellation, original-error preservation and logger category are unchanged. Category mappings remain outside the sweep. No public contract, job signature or DI registration is added.
