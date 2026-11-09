@@ -544,7 +544,7 @@ internal sealed class GoogleWorkspaceSyncService(
     {
         // A failing source throws out of here: the outbox retries the event, whereas a partial
         // roster would read as "no claim" and silently drop the new member's grant.
-        var load = await GoogleDriveAccessSyncService.LoadClaimsAsync(
+        var load = await DriveAccessClaims.LoadClaimsAsync(
             driveAccessSources, googleId, logger, ct, rethrowSourceFailures: true);
         var claim = load.Claims.SingleOrDefault(c => string.Equals(c.FolderId, googleId, StringComparison.OrdinalIgnoreCase));
         var level = claim?.Access.GetValueOrDefault(userId) ?? DrivePermissionLevel.None;
