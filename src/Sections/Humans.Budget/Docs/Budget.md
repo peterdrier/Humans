@@ -305,3 +305,5 @@ folder) on its `Section` entry point, declaring the queue key and the roles that
 issues filed against it — `FinanceAdmin`, plus `Admin`, which handles every queue. Issues
 discovers the declaration through DI and holds no list of sections; dropping the seam
 sends this section's stored issues to the Admin-only queue.
+
+Internal `BudgetYearManagement` owns year creation, status/edit/archive operations, department scaffolding/synchronization and ticketing-group setup. `BudgetService` retains its existing entry points. Budgetable-team selection/order, vendor-event normalization, timestamp evaluation, repository-owned audit writes, refusals and logger category are unchanged. Category, line-item and ticketing-projection mutations retain their existing amount/tax validation. No public contract or DI registration is added.

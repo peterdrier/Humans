@@ -22,6 +22,7 @@ internal sealed class BudgetService(
     /// <summary>GDPR export JSON key.</summary>
     internal const string BudgetAuditLog = "BudgetAuditLog";
 
+    private readonly BudgetYearManagement yearManagement = new(repository, teamService, clock, logger);
     private readonly BudgetReader reader = new(repository, teamService, clock);
 
     public Task<IReadOnlyList<BudgetYearSummarySnapshot>> GetAllYearsAsync(bool includeArchived = false, CancellationToken ct = default) =>
@@ -38,107 +39,23 @@ internal sealed class BudgetService(
     public Task<CoordinatorBudgetViewData> GetCoordinatorBudgetViewDataAsync(Guid userId, bool isFinanceAdmin, CancellationToken ct = default) =>
         reader.GetCoordinatorBudgetViewDataAsync(userId, isFinanceAdmin, ct);
 
-    public async Task<BudgetYearDetail> CreateYearAsync(string year, string name, Guid actorUserId)
-    {
-        var now = clock.GetCurrentInstant();
+    public Task<BudgetYearDetail> CreateYearAsync(string year, string name, Guid actorUserId) =>
+        yearManagement.CreateYearAsync(year, name, actorUserId);
 
-        var teamRefs = await GetBudgetableTeamsAsync();
+    public Task<BudgetYearMutationResult> UpdateYearStatusAsync(Guid yearId, BudgetYearStatus status, Guid actorUserId) =>
+        yearManagement.UpdateYearStatusAsync(yearId, status, actorUserId);
 
-        var draft = new BudgetYearDraft(
-            Id: Guid.NewGuid(),
-            Year: year,
-            Name: name,
-            BudgetableTeams: teamRefs,
-            ActorUserId: actorUserId,
-            Now: now);
+    public Task<BudgetYearMutationResult> UpdateYearAsync(Guid yearId, string year, string name, string? vendorEventId, Guid actorUserId) =>
+        yearManagement.UpdateYearAsync(yearId, year, name, vendorEventId, actorUserId);
 
-        await repository.CreateYearWithScaffoldAsync(draft);
+    public Task<BudgetYearMutationResult> DeleteYearAsync(Guid yearId, Guid actorUserId) =>
+        yearManagement.DeleteYearAsync(yearId, actorUserId);
 
-        logger.LogInformation(
-            "Created budget year {Year} ({Name}) with {TeamCount} department categories",
-            year, name, teamRefs.Count);
+    public Task<int> SyncDepartmentsAsync(Guid budgetYearId, Guid actorUserId) =>
+        yearManagement.SyncDepartmentsAsync(budgetYearId, actorUserId);
 
-        return new BudgetYearDetail(
-            draft.Id,
-            year,
-            name,
-            BudgetYearStatus.Draft,
-            IsDeleted: false,
-            Groups: []);
-    }
-
-    public async Task<BudgetYearMutationResult> UpdateYearStatusAsync(Guid yearId, BudgetYearStatus status, Guid actorUserId)
-    {
-        var now = clock.GetCurrentInstant();
-
-        var result = await repository.UpdateYearStatusAsync(yearId, status, actorUserId, now);
-        if (!result.Succeeded) return result;
-
-        logger.LogInformation(
-            "Updated budget year {YearId} status to {NewStatus}",
-            yearId, status);
-        return result;
-    }
-
-    public async Task<BudgetYearMutationResult> UpdateYearAsync(Guid yearId, string year, string name, string? vendorEventId, Guid actorUserId)
-    {
-        var now = clock.GetCurrentInstant();
-
-        var result = await repository.UpdateYearAsync(
-            yearId, year, name, string.IsNullOrWhiteSpace(vendorEventId) ? null : vendorEventId.Trim(), actorUserId, now);
-        return result;
-    }
-
-    public async Task<BudgetYearMutationResult> DeleteYearAsync(Guid yearId, Guid actorUserId)
-    {
-        var now = clock.GetCurrentInstant();
-
-        var result = await repository.SoftDeleteYearAsync(yearId, actorUserId, now);
-        if (!result.Succeeded) return result;
-
-        logger.LogInformation("Archived budget year {YearId}", yearId);
-        return result;
-    }
-
-    private async Task<List<BudgetableTeamRef>> GetBudgetableTeamsAsync() =>
-        (await teamService.GetTeamsAsync()).Values
-            .Where(t => t.IsActive && t.HasBudget)
-            .OrderBy(t => t.Name, StringComparer.Ordinal)
-            .Select(t => new BudgetableTeamRef(t.Id, t.Name))
-            .ToList();
-
-    public async Task<int> SyncDepartmentsAsync(Guid budgetYearId, Guid actorUserId)
-    {
-        var now = clock.GetCurrentInstant();
-
-        var teamRefs = await GetBudgetableTeamsAsync();
-
-        var created = await repository.SyncDepartmentCategoriesAsync(
-            budgetYearId, teamRefs, actorUserId, now);
-
-        if (created > 0)
-            logger.LogInformation(
-                "Synced {Count} departments into budget year {YearId}",
-                created, budgetYearId);
-
-        return created;
-    }
-
-    public async Task<EnsureTicketingGroupResult> EnsureTicketingGroupAsync(Guid budgetYearId, Guid actorUserId)
-    {
-        var now = clock.GetCurrentInstant();
-
-        var created = await repository.EnsureTicketingGroupAsync(budgetYearId, actorUserId, now);
-
-        if (created)
-            logger.LogInformation("Added ticketing group to budget year {YearId}", budgetYearId);
-
-        return new EnsureTicketingGroupResult(
-            created,
-            created
-                ? "Ticketing group added to this budget year."
-                : "Ticketing group already exists for this budget year.");
-    }
+    public Task<EnsureTicketingGroupResult> EnsureTicketingGroupAsync(Guid budgetYearId, Guid actorUserId) =>
+        yearManagement.EnsureTicketingGroupAsync(budgetYearId, actorUserId);
 
     public async Task<BudgetGroupDetail> CreateGroupAsync(
         Guid budgetYearId, string name, bool isRestricted, Guid actorUserId)
