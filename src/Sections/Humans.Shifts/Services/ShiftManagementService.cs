@@ -35,6 +35,7 @@ internal sealed class ShiftManagementService(
     ILogger<ShiftManagementService> logger) : IShiftManagement, IUserMerge
 {
     private static readonly TimeSpan DashboardCacheTtl = TimeSpan.FromMinutes(5);
+    private readonly ShiftVolunteerProfiles volunteerProfiles = new(repo, viewInvalidator, clock, logger);
     private readonly ShiftDashboardMetrics dashboardMetrics = new(repo, calendarResolver, serviceProvider, clock);
     private readonly ShiftCoordinatorActivity coordinatorActivity = new(repo, calendarResolver, serviceProvider);
     private readonly ShiftCoverageReports coverageReports = new(repo, calendarResolver, serviceProvider);
@@ -867,40 +868,14 @@ internal sealed class ShiftManagementService(
         Guid eventSettingsId, ShiftPeriod? period, BuildSubPeriod? subPeriod = null, CancellationToken ct = default) =>
         coverageReports.GetShiftDurationBreakdownAsync(eventSettingsId, period, subPeriod, ct);
 
-    public async Task<IReadOnlyList<ShiftTagSummary>> GetTagsAsync(string? query = null, CancellationToken ct = default)
-    {
-        var tags = await repo.GetTagsAsync(query, ct);
-        return tags
-            .Select(tag => new ShiftTagSummary(tag.Id, tag.Name))
-            .ToList();
-    }
+    public Task<IReadOnlyList<ShiftTagSummary>> GetTagsAsync(string? query = null, CancellationToken ct = default) =>
+        volunteerProfiles.GetTagsAsync(query, ct);
 
-    public async Task<ShiftTagSummary> GetOrCreateTagAsync(string name)
-    {
-        var trimmed = name.Trim();
-        var tag = await repo.GetOrCreateTagAsync(trimmed);
-        return new ShiftTagSummary(tag.Id, tag.Name);
-    }
+    public Task<ShiftTagSummary> GetOrCreateTagAsync(string name) =>
+        volunteerProfiles.GetOrCreateTagAsync(name);
 
-    public async Task<bool> SetVolunteerTagPreferencesAsync(Guid userId, IReadOnlyList<Guid> tagIds)
-    {
-        var knownIds = (await repo.GetTagsAsync()).Select(tag => tag.Id).ToHashSet();
-        if (tagIds.Any(id => !knownIds.Contains(id)))
-        {
-            logger.LogWarning("Rejected unknown volunteer tag preferences for user {UserId}", userId);
-            return false;
-        }
-
-        try
-        {
-            await repo.SetVolunteerTagPreferencesAsync(userId, tagIds);
-        }
-        finally
-        {
-            viewInvalidator.InvalidateUser(userId);
-        }
-        return true;
-    }
+    public Task<bool> SetVolunteerTagPreferencesAsync(Guid userId, IReadOnlyList<Guid> tagIds) =>
+        volunteerProfiles.SetVolunteerTagPreferencesAsync(userId, tagIds);
 
     public async Task<IReadOnlyDictionary<Guid, int>> GetActivePendingShiftSignupCountsByTeamAsync(
         CancellationToken cancellationToken = default)
@@ -912,42 +887,11 @@ internal sealed class ShiftManagementService(
         return await repo.GetPendingSignupCountsByTeamAsync(eventSettings.Id, null, null, cancellationToken);
     }
 
-    public async Task UpdateShiftProfileAsync(ShiftVolunteerProfileInfo profile)
-    {
-        var now = clock.GetCurrentInstant();
-        var existing = await repo.GetVolunteerEventProfileAsync(profile.UserId);
-        var entity = existing ?? new VolunteerEventProfile
-        {
-            Id = Guid.NewGuid(),
-            UserId = profile.UserId,
-            CreatedAt = now
-        };
+    public Task UpdateShiftProfileAsync(ShiftVolunteerProfileInfo profile) =>
+        volunteerProfiles.UpdateShiftProfileAsync(profile);
 
-        entity.Skills = [.. profile.Skills];
-        entity.Quirks = [.. profile.Quirks];
-        entity.Languages = [.. profile.Languages];
-        entity.UpdatedAt = now;
-
-        try
-        {
-            if (existing is null)
-                await repo.AddVolunteerEventProfileAsync(entity);
-            else
-                await repo.UpdateVolunteerEventProfileAsync(entity);
-        }
-        finally
-        {
-            viewInvalidator.InvalidateUser(profile.UserId);
-        }
-    }
-
-    public async Task<ShiftVolunteerProfileInfo?> GetShiftProfileAsync(Guid userId, CancellationToken ct = default)
-    {
-        var profile = await repo.GetVolunteerEventProfileAsync(userId, ct);
-        return profile is null
-            ? null
-            : new ShiftVolunteerProfileInfo(profile.UserId, profile.Skills, profile.Quirks, profile.Languages);
-    }
+    public Task<ShiftVolunteerProfileInfo?> GetShiftProfileAsync(Guid userId, CancellationToken ct = default) =>
+        volunteerProfiles.GetShiftProfileAsync(userId, ct);
 
     public async Task<bool> HasQualifyingCantinaSignupAsync(
         Guid userId,
@@ -976,19 +920,9 @@ internal sealed class ShiftManagementService(
             ShiftDayUserStatusScope.ConfirmedOnly,
             ct);
 
-    public async Task ReassignAsync(Guid sourceUserId, Guid targetUserId, Guid actorUserId, Instant updatedAt,
-        CancellationToken ct)
-    {
-        try
-        {
-            await repo.ReassignProfilesAndTagPrefsToUserAsync(sourceUserId, targetUserId, updatedAt, ct);
-        }
-        finally
-        {
-            viewInvalidator.InvalidateUser(sourceUserId);
-            viewInvalidator.InvalidateUser(targetUserId);
-        }
-    }
+    public Task ReassignAsync(Guid sourceUserId, Guid targetUserId, Guid actorUserId, Instant updatedAt,
+        CancellationToken ct) =>
+        volunteerProfiles.ReassignAsync(sourceUserId, targetUserId, actorUserId, updatedAt, ct);
 
     public Task<PostEventStats?> GetPostEventStatsAsync(
         Guid eventSettingsId,
