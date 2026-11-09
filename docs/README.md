@@ -231,7 +231,7 @@ Humans.Base            Bottom of the graph: role markers, architecture attribute
 | [Base](../src/Humans.Base/Docs/Base.md) | What `Humans.Base` holds: markers, attributes, `TrackedCache`, the persistence seam, the Users/Audit/Gdpr cores, the shared view layer |
 | [Shell](../src/Humans.Web/Docs/Shell.md) | What `Humans.Web` holds and the seam catalog: how section contributions are composed into nav, admin, jobs, policies and settings |
 | [Conventions](architecture/conventions.md) | Domain invariants, transactions, integration, time/config, rendering (Razor vs fetch), testing, exception rule, smell checklist |
-| [Dependency Graph](architecture/dependency-graph.md) | Service-to-service dependency graph, current vs target edges, circular dependency analysis |
+| [Dependency Graph](architecture/dependency-graph.md) | Section-to-section project-reference graph, generated from the `.csproj` files |
 | [Project Rules Catalog](../memory/INDEX.md) | Atomic rules (one per file under `memory/<bucket>/`). `architecture/coding-rules.md` is now a stub redirecting here. |
 | [Code Review Rules](architecture/code-review-rules.md) | Hard-reject rules for code review |
 | [Service / Data Access Map](architecture/service-data-access-map.md) | Per-service table access inventory |
