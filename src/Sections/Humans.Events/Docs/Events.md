@@ -311,3 +311,5 @@ Member create, edit, withdrawal and bulk-import preflight reads retain browser c
 - Guide settings save returns a refusal if the selected event edition disappears between lookup and write, warning without an exception and performing no write. The operator form keeps the selected-edition field error; dependency faults propagate instead of exposing their messages as validation errors. Successful saves refresh the settings cache.
 
 - Global text search selects the highest-scoring matches before applying its result limit, with ordinal case-insensitive name and ID tie-breakers. Existing visibility and event-scope rules still apply; GUID queries retain direct lookup.
+
+The internal `EventGuidePageBuilder` composes member browse and schedule pages using the existing occurrence-expansion and conflict helpers. `EventsController` retains authentication and query binding. Guide scoping, read order, camp enrichment, favourite targets, category/venue/day filters, timezone fallback, conflict flags and display ordering are unchanged. Authoring submissions and moderator print/export retain their separate workflows. No public contract or DI registration is added.
