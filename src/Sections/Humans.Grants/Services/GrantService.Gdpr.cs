@@ -28,13 +28,13 @@ internal sealed partial class GrantService : IUserDataContributor, IUserMerge
 
     public async Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct)
     {
-        var rows = await repository.GetRowsForUsersAsync(await AllIdsAsync(userId, ct), ct);
+        var rows = await repository.GetRowsForUsersAsync(await reader.AllIdsAsync(userId, ct), ct);
         var events = await settingsService.GetAllEventSettingsAsync(ct);
 
         var grants = rows.Grants.Select(g => new
         {
             Program = g.Program.Name,
-            Year = YearOf(g.Program, events),
+            Year = GrantReader.YearOf(g.Program, events),
             g.Program.Entitles,
             g.SourceRef,
             ExpiresOn = (g.ExpiresOn ?? g.Program.GrantsExpireOn)?.ToInvariantDate(),
@@ -49,7 +49,7 @@ internal sealed partial class GrantService : IUserDataContributor, IUserMerge
             ProgramsCreated = rows.ProgramsCreated.Select(p => new
             {
                 p.Name,
-                Year = YearOf(p, events),
+                Year = GrantReader.YearOf(p, events),
                 CreatedAt = p.CreatedAt.ToIso8601()
             }).ToList(),
             ManagerOf = rows.ManagerRows.Select(m => new { Program = m.Program.Name, AddedAt = m.AddedAt.ToIso8601() }).ToList(),

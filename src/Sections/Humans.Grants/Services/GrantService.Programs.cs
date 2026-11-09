@@ -77,7 +77,7 @@ internal sealed partial class GrantService
         Change(changes, "entitles", program.Entitles, save.Entitles.Trim(), v => program.Entitles = v);
         Change(changes, "description", program.Description, Trimmed(save.Description), v => program.Description = v);
         // By id: two events may share a name.
-        if (EventOf(program, events) is var before && before?.Id != evt.Id)
+        if (GrantReader.EventOf(program, events) is var before && before?.Id != evt.Id)
             changes.Add($"event {before?.EventName ?? program.Year.ToString(CultureInfo.InvariantCulture)} → {evt.EventName}");
         program.EventSettingsId = evt.Id;
         program.Year = evt.Year;

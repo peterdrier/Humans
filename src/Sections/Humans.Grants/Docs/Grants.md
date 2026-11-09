@@ -144,3 +144,5 @@ The internal `GrantNotices` (not registered in DI) owns recipient lookup, the pr
 - `GrantService` lives in `Services/` and never imports `Microsoft.EntityFrameworkCore`; `GrantRepository` (Singleton over `IDbContextFactory<GrantsDbContext>`) is the only path to the tables.
 - No caching decorator: a handful of programs, read on a few admin pages and one profile card.
 - Display stitching through `<vc:human>`.
+
+Internal `GrantReader` owns program/member grant reads, manager visibility, event enrichment and merged-account id lookup. Holding checks, mutation audit year resolution and GDPR export reuse its helpers. Settings lookup order, current-event-year fallback, archived-id handling, DTO fields and ordering are unchanged. The façade retains its entry points, Madrid-date rule, mutations, notice/audit ordering and retention. No public contract or DI registration is added.
