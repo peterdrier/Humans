@@ -8,7 +8,7 @@
 | Controller | Scope | Roles | Source |
 |---|---|---|---|
 | `GrantsAdminController` | Class | Admin, Grants Admin, Board, or a manager of at least one program | `GrantProgramsPolicy.Name` (section-local policy, `GrantsPolicyHandler`) — `/Grants/Admin` |
-| `GrantsAdminController.Index` | In-method | `GrantsPolicies.Read` (Admin, Grants Admin, Board) lists every program, others only the programs they manage; `GrantsPolicies.Manage` drives `CanAdminister` | Policy check |
+| `GrantsAdminController.Index` | In-method | `ProgramOperationRequirement.View` on each program (Admin, Grants Admin, Board, or a manager of that program); `GrantsPolicies.Manage` drives `CanAdminister` | Resource-based + policy check |
 | `GrantsAdminController.New` (GET/POST) | Action | Admin, Grants Admin — managers and Board cannot create programs | `GrantsPolicies.Manage` |
 | `GrantsAdminController.Program` | In-method | `ProgramOperationRequirement.View`; `Manage` and `Administer` drive `CanManage` and `CanAdminister`, so Board sees no forms | Resource-based |
 | `GrantsAdminController.Edit` (GET/POST) | Action + in-method | Admin, Grants Admin; then `AuthorizeAsync(User, program, ProgramOperationRequirement.Administer)` | `GrantsPolicies.Manage` + resource-based |

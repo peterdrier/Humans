@@ -121,7 +121,7 @@ Admin pages live under the section's URL space, not `/Admin`; they are localizat
 
 ## Invariants
 
-- Authorization’s program-manager and member-access reads retain HTTP request cancellation; callers without an HTTP context use the non-cancellable default. Program-resource authorization and the admin index match manager rows against all of the resolved viewer’s current and merged IDs. A manager still cannot administer programs or manage an unrelated program.
+- Authorization’s program-manager and member-access reads retain HTTP request cancellation; callers without an HTTP context use the non-cancellable default. The program page and admin index both use `ProgramOperationRequirement.View`, matching manager rows against all of the resolved viewer’s current and merged IDs. A manager still cannot administer programs or manage an unrelated program.
 
 - Admin program pages and edit forms render manager and actor IDs through the shared Human component without profile links. Missing members use its localized fallback. Manager order and comma separators are preserved; page models carry no display-name dictionary. Program create/edit resolves posted manager IDs to surviving accounts and deduplicates them in posted order. Missing or tombstoned managers refuse the complete save before fields, manager rows, audits or deadline notices change; historical manager authorization remains merge-aware.
 

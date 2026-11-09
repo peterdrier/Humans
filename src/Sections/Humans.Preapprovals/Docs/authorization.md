@@ -6,7 +6,7 @@
 | `PreapprovalsController.Index` | In-method | `authorization.AuthorizeAsync(User, PreapprovalsPolicies.Manage)` drives the `CanManage` flag (Manage button) | Policy check |
 | `PreapprovalsController.Program` / `Apply` | In-method | No per-program check beyond the class policy; the service refuses applications to closed / not-accepting / past-deadline programs (`BadRequest`) | — |
 | `PreapprovalsAdminController` | Class | Admin, Board, FinanceAdmin, or a manager of at least one program | `PreapprovalsPolicies.Manage` (section-local policy, `PreapprovalsPolicyHandler`) — `/Preapprovals/Admin` |
-| `PreapprovalsAdminController.Index` | In-method | `FinancePolicies.Read` (Admin, Board, FinanceAdmin) lists every program, else only the caller's; `FinancePolicies.Manage` drives `CanAdminister` | Policy check |
+| `PreapprovalsAdminController.Index` | In-method | `ProgramOperationRequirement.View` on each program (Admin, Board, FinanceAdmin, or a manager of that program); `FinancePolicies.Manage` drives `CanAdminister` | Resource-based + policy check |
 | `PreapprovalsAdminController.New` (GET/POST) | Action | Admin, FinanceAdmin | `FinancePolicies.Manage` |
 | `PreapprovalsAdminController.Program` (GET) | In-method | `ProgramOperationRequirement.View`; `Manage` and `Administer` drive `CanManage` and `CanAdminister`, so Board sees no forms | Resource-based |
 | `PreapprovalsAdminController.Edit` (GET/POST) | In-method | `AuthorizeAsync(User, program, ProgramOperationRequirement.Administer)` via `AuthorizedAsync` | Resource-based |

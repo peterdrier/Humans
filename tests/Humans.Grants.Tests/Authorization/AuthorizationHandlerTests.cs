@@ -158,10 +158,12 @@ public sealed class AuthorizationHandlerTests : GrantsTestHarness
         var program = (await service.GetProgramAsync(throughAlias.Id, Ct))!;
         (await PolicyAllowedAsync(viewer)).Should().BeTrue();
         (await ProgramAllowedAsync(viewer, program, ProgramOperationRequirement.Manage)).Should().BeTrue();
-        var authorization = Substitute.For<IAuthorizationService>();
-        authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(), Arg.Any<string>())
-            .Returns(AuthorizationResult.Failed());
-        var controller = new GrantsAdminController(service, Users, authorization, Settings,
+        await using var provider = new ServiceCollection()
+            .AddLogging()
+            .AddAuthorization(options => ((ISectionPolicies)new Section()).AddPolicies(options))
+            .AddSingleton<IAuthorizationHandler>(new ProgramAuthorizationHandler(Users, new HttpContextAccessor()))
+            .BuildServiceProvider();
+        var controller = new GrantsAdminController(service, Users, provider.GetRequiredService<IAuthorizationService>(), Settings,
             NullLogger<GrantsAdminController>.Instance)
         {
             ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext { User = viewer } }
@@ -172,6 +174,32 @@ public sealed class AuthorizationHandlerTests : GrantsTestHarness
         var model = result.Should().BeOfType<ViewResult>().Subject.Model.Should().BeOfType<AdminIndexViewModel>().Subject;
         model.CanAdminister.Should().BeFalse();
         model.Programs.Select(p => p.Id).Should().BeEquivalentTo([throughAlias.Id, throughSurvivor.Id]);
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(RoleNames.Admin, true)]
+    [Xunit.InlineData(GrantsRoles.GrantsAdmin, true)]
+    [Xunit.InlineData(RoleNames.Board, false)]
+    public async Task Index_ReadingRolesSeeEveryProgram_WithoutManagerAssignments(string role, bool canAdminister)
+    {
+        var first = await SeedProgramAsync(name: "A");
+        var second = await SeedProgramAsync(name: "B");
+        await using var provider = new ServiceCollection()
+            .AddLogging()
+            .AddAuthorization(options => ((ISectionPolicies)new Section()).AddPolicies(options))
+            .AddSingleton<IAuthorizationHandler>(new ProgramAuthorizationHandler(Users, new HttpContextAccessor()))
+            .BuildServiceProvider();
+        var controller = new GrantsAdminController(NewService(), Users, provider.GetRequiredService<IAuthorizationService>(), Settings,
+            NullLogger<GrantsAdminController>.Instance)
+        {
+            ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext { User = Principal(SeedUser("Reader"), role) } }
+        };
+
+        var result = await controller.Index(Ct);
+
+        var model = result.Should().BeOfType<ViewResult>().Subject.Model.Should().BeOfType<AdminIndexViewModel>().Subject;
+        model.Programs.Select(p => p.Id).Should().BeEquivalentTo([first.Id, second.Id]);
+        model.CanAdminister.Should().Be(canAdminister);
     }
 
     [HumansFact]

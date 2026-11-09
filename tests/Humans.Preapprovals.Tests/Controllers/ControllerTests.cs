@@ -151,13 +151,14 @@ public sealed class ControllerTests : PreapprovalsTestHarness
     public async Task Board_reads_every_program_and_changes_nothing()
     {
         var program = await SeedProgramAsync(name: "A");
+        var other = await SeedProgramAsync(name: "B");
         var application = await SeedGrantAsync(program, status: GrantStatus.Applied);
         var controller = BuildAdmin(SeedUser("Board member"), RoleNames.Board);
 
         var index = (await controller.Index(Ct)).Should().BeOfType<ViewResult>().Which.Model.Should().BeOfType<AdminIndexViewModel>().Subject;
         var page = (await controller.Program(program.Id, Ct)).Should().BeOfType<ViewResult>().Which.Model.Should().BeOfType<AdminProgramViewModel>().Subject;
 
-        index.Programs.Select(p => p.Id).Should().Equal(program.Id);
+        index.Programs.Select(p => p.Id).Should().Equal(program.Id, other.Id);
         index.CanAdminister.Should().BeFalse();
         page.CanManage.Should().BeFalse();
         page.CanAdminister.Should().BeFalse();
@@ -165,6 +166,22 @@ public sealed class ControllerTests : PreapprovalsTestHarness
         (await controller.Issue(program.Id, SeedUser(), null, null, Ct)).Should().BeOfType<ForbidResult>();
         (await controller.Edit(program.Id, Ct)).Should().BeOfType<ForbidResult>();
         (await ReadGrantAsync(application.Id)).Status.Should().Be(GrantStatus.Applied);
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(FinanceRoles.FinanceAdmin)]
+    [Xunit.InlineData(RoleNames.Admin)]
+    public async Task Index_AdministratorsSeeEveryProgram_WithoutManagerAssignments(string role)
+    {
+        var first = await SeedProgramAsync(name: "A");
+        var second = await SeedProgramAsync(name: "B");
+        var controller = BuildAdmin(SeedUser("Role holder"), role);
+
+        var result = await controller.Index(Ct);
+
+        var index = result.Should().BeOfType<ViewResult>().Subject.Model.Should().BeOfType<AdminIndexViewModel>().Subject;
+        index.Programs.Select(p => p.Id).Should().Equal(first.Id, second.Id);
+        index.CanAdminister.Should().BeTrue();
     }
 
     [HumansTheory]
@@ -355,8 +372,6 @@ public sealed class ControllerTests : PreapprovalsTestHarness
         services.AddAuthorization(options =>
         {
             ((ISectionPolicies)new Section()).AddPolicies(options);
-            options.AddPolicy(FinancePolicies.Read,
-                policy => policy.RequireRole(FinanceRoles.FinanceAdmin, RoleNames.Board, RoleNames.Admin));
             options.AddPolicy(FinancePolicies.Manage,
                 policy => policy.RequireRole(FinanceRoles.FinanceAdmin, RoleNames.Admin));
         });

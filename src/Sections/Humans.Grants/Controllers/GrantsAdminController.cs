@@ -27,12 +27,15 @@ internal sealed class GrantsAdminController(
     [HttpGet("")]
     public async Task<IActionResult> Index(CancellationToken ct)
     {
-        var (error, user) = await ResolveCurrentUserOrChallengeAsync(ct);
+        var (error, _) = await ResolveCurrentUserOrChallengeAsync(ct);
         if (error is not null) return error;
 
-        var programs = await grants.GetProgramsAsync(ct);
-        if (!(await authorization.AuthorizeAsync(User, GrantsPolicies.Read)).Succeeded)
-            programs = programs.Where(p => user.AllUserIds.Any(p.IsManager)).ToList();
+        var programs = new List<ProgramInfo>();
+        foreach (var program in await grants.GetProgramsAsync(ct))
+        {
+            if ((await authorization.AuthorizeAsync(User, program, ProgramOperationRequirement.View)).Succeeded)
+                programs.Add(program);
+        }
         return View(new AdminIndexViewModel
         {
             Today = grants.Today,
