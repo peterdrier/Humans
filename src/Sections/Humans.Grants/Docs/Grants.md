@@ -146,3 +146,5 @@ The internal `GrantNotices` (not registered in DI) owns recipient lookup, the pr
 - Display stitching through `<vc:human>`.
 
 Internal `GrantReader` owns program/member grant reads, manager visibility, event enrichment and merged-account id lookup. Holding checks, mutation audit year resolution and GDPR export reuse its helpers. Settings lookup order, current-event-year fallback, archived-id handling, DTO fields and ordering are unchanged. The façade retains its entry points, Madrid-date rule, mutations, notice/audit ordering and retention. No public contract or DI registration is added.
+
+Internal `GrantProgramAdministration` owns complete program creation/update, validation, event/source selection and manager reconciliation. `GrantReader` shares live-person checks and the open-source predicate with grant issuance; `GrantJournal` owns the existing audit metadata and optional-text normalization. Refusal order, manager canonicalization, source uniqueness, event-change descriptions, timestamps and persistence/audit order are unchanged. Grant issuance, revocation and notices retain their workflow; no public contract or DI registration is added.

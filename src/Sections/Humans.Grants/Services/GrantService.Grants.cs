@@ -27,7 +27,7 @@ internal sealed partial class GrantService
         var recipients = new List<IReadOnlyList<Guid>>();
         foreach (var id in ids)
         {
-            var personIds = await ResolveAvailablePersonIdsAsync(id, ct);
+            var personIds = await reader.ResolveAvailablePersonIdsAsync(id, ct);
             if (personIds is null) return new(Refusal: "One or more selected people are no longer available.");
             recipients.Add(personIds);
         }
@@ -53,7 +53,7 @@ internal sealed partial class GrantService
         if (grant.RevokedAt is not null) return new("The grant is already revoked.");
         if ((reason?.Length ?? 0) > ReasonMax) return new("The reason is too long.");
 
-        await RevokeCoreAsync(grant, Trimmed(reason), actorUserId, ct);
+        await RevokeCoreAsync(grant, GrantJournal.Trimmed(reason), actorUserId, ct);
         return GrantMutationResult.Ok;
     }
 
@@ -66,7 +66,7 @@ internal sealed partial class GrantService
         var year = await reader.YearOfAsync(grant.Program, ct);
         grant.NotifiedAt = clock.GetCurrentInstant();
         await repository.UpdateGrantAsync(grant, ct);
-        await AuditGrantAsync(GrantsAuditActions.GrantNoticeResent, grant,
+        await journal.AuditGrantAsync(GrantsAuditActions.GrantNoticeResent, grant,
             $"Notice for \"{grant.Program.Name}\" ({year}) sent again.", actorUserId);
         await notices.AnnounceIssuedAsync(grant, grant.Program, CancellationToken.None);
         return GrantMutationResult.Ok;
@@ -75,13 +75,13 @@ internal sealed partial class GrantService
     public async Task<GrantIssueResult> IssueAsync(
         string sourceKey, Guid userId, string? sourceRef, Guid actorUserId, CancellationToken ct = default)
     {
-        sourceRef = Trimmed(sourceRef);
+        sourceRef = GrantJournal.Trimmed(sourceRef);
         if (sourceRef?.Length > SourceRefMax)
             return new(Guid.Empty, GrantWriteRefusal.SourceReferenceTooLong);
         var program = await SourceProgramAsync(sourceKey, ct);
         if (program is null) return new(Guid.Empty, GrantWriteRefusal.NoOpenProgram);
 
-        var personIds = await ResolveAvailablePersonIdsAsync(userId, ct);
+        var personIds = await reader.ResolveAvailablePersonIdsAsync(userId, ct);
         if (personIds is null) return new(Guid.Empty, GrantWriteRefusal.RecipientUnavailable);
         var live = program.Grants.FirstOrDefault(g => personIds.Contains(g.UserId) && g.RevokedAt is null);
         if (live is not null) return new(live.Id);
@@ -102,7 +102,7 @@ internal sealed partial class GrantService
         // The grants committed; finish their audit and notices after the browser disconnects.
         foreach (var grant in grants)
         {
-            await AuditGrantAsync(GrantsAuditActions.GrantIssued, grant, describe(grant, year), actorUserId);
+            await journal.AuditGrantAsync(GrantsAuditActions.GrantIssued, grant, describe(grant, year), actorUserId);
             await notices.AnnounceIssuedAsync(grant, program, CancellationToken.None);
         }
     }
@@ -118,19 +118,15 @@ internal sealed partial class GrantService
         var live = program.Grants.FirstOrDefault(g => personIds.Contains(g.UserId) && g.RevokedAt is null);
         if (live is null) return new(false);
         live.Program = program;
-        await RevokeCoreAsync(live, Trimmed(reason), actorUserId, ct);
+        await RevokeCoreAsync(live, GrantJournal.Trimmed(reason), actorUserId, ct);
         return new(true);
     }
 
     private async Task<GrantProgram?> SourceProgramAsync(string sourceKey, CancellationToken ct)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(sourceKey);
-        return (await repository.GetProgramsAsync(ct)).SingleOrDefault(p => IsOpenSource(p, sourceKey));
+        return (await repository.GetProgramsAsync(ct)).SingleOrDefault(p => GrantReader.IsOpenSource(p, sourceKey));
     }
-
-    private static bool IsOpenSource(GrantProgram program, string sourceKey) =>
-        program.IssuedBy == GrantIssuer.Source && program.Status == GrantProgramStatus.Open
-        && string.Equals(program.SourceKey, sourceKey, StringComparison.Ordinal);
 
     private async Task RevokeCoreAsync(Grant grant, string? reason, Guid actorUserId, CancellationToken ct)
     {
@@ -142,7 +138,7 @@ internal sealed partial class GrantService
         // The grant committed; finish its audit and notices after the browser disconnects.
         ct = CancellationToken.None;
 
-        await AuditGrantAsync(GrantsAuditActions.GrantRevoked, grant,
+        await journal.AuditGrantAsync(GrantsAuditActions.GrantRevoked, grant,
             $"Revoked under \"{grant.Program.Name}\" ({year}){(reason is null ? "" : $": {reason}")}.",
             actorUserId);
         await notices.AnnounceRevokedAsync(grant, grant.Program, ct);

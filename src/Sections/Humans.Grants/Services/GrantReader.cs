@@ -10,7 +10,8 @@ namespace Humans.Grants.Services;
 internal sealed class GrantReader(
     IGrantRepository repository,
     IUserService users,
-    ISettingsService settingsService) : IApplicationService
+    ISettingsService settingsService,
+    ILogger<GrantService> logger) : IApplicationService
 {
     internal async Task<IReadOnlyList<ProgramInfo>> GetProgramsAsync(CancellationToken ct = default)
     {
@@ -66,5 +67,18 @@ internal sealed class GrantReader(
         var info = await users.GetUserInfoAsync(userId, ct);
         return info is null ? [userId] : info.AllUserIds;
     }
+
+    internal async Task<IReadOnlyList<Guid>?> ResolveAvailablePersonIdsAsync(Guid userId, CancellationToken ct)
+    {
+        var person = await users.GetUserInfoAsync(userId, ct);
+        if (person is not null && !person.IsTombstone) return person.AllUserIds;
+
+        logger.LogWarning("Grant write refused for unavailable person {UserId}", userId);
+        return null;
+    }
+
+    internal static bool IsOpenSource(GrantProgram program, string sourceKey) =>
+        program.IssuedBy == GrantIssuer.Source && program.Status == GrantProgramStatus.Open
+        && string.Equals(program.SourceKey, sourceKey, StringComparison.Ordinal);
 
 }
