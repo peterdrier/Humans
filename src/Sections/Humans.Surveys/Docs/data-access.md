@@ -122,3 +122,35 @@ Repository: `ISurveyRepository`. Reads summary counts, official invitation/publi
 links and complete survey definitions. Reuses the existing invite-token provider
 and `SurveyQuestionMapping`; no cross-section dependencies, cache or separate
 DI registration. The existing survey service remains the caller-facing contract.
+
+### SurveyDataExport (internal, owned by SurveyService)
+
+Repository: `ISurveyRepository`. Builds the GDPR export slices (`SurveyResponses`,
+`AuthoredSurveys`, `SurveyInvitations`) behind `SurveyService`'s `IUserDataContributor`; resolves
+the merge chain through `IUserService`. Read-only; no DI registration, no cache.
+
+| Table | R/W |
+|-------|-----|
+| survey_responses | R (identified responses only, per account in the merge chain) |
+| survey_answers | R (loaded with the response) |
+| surveys | R (authored surveys; the survey behind each response) |
+| survey_questions | R (loaded with an authored survey) |
+| survey_invitations | R (the person's invitation ledger) |
+
+### SurveyResultsReader (internal, owned by SurveyService)
+
+Repository: `ISurveyRepository`. Aggregated results per question, scoped by response mode, with the
+embargo check; the raw per-response export for Backdoor. Read-only apart from its audit entry; no DI
+registration, no cache.
+
+| Table | R/W |
+|-------|-----|
+| surveys | R |
+| survey_questions | R |
+| survey_question_options | R |
+| survey_responses | R (`GetResponsesForResultsAsync`) |
+| survey_answers | R (loaded with the response) |
+| survey_invitations | R (completion-tracked counts) |
+
+Cross-section calls via `IUserService` (respondent identity on the identified export) and
+`IAuditLogService` (`SurveyResponsesExported`).

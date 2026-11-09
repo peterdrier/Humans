@@ -38,6 +38,7 @@ Each contact field has its own visibility setting, so you can share your Signal 
 - **Outbox** (`/Email/Outbox`) — the emails the system has sent to you
 - **View another human** (`/Profile/{id}`) — another human's profile, filtered by visibility
 - **Search** (`/Search`) — find other humans by name
+- **Birthdays** (`/Users/Birthdays`) and **Humans map** (`/Users/Map`) — birthday calendar by month and a map of where humans are; both linked from cards on your dashboard
 
 ## As a Volunteer
 

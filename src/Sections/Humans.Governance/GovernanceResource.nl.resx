@@ -137,9 +137,6 @@
     <value>Statuten</value>
   </data>
   <data name="Governance_Statutes_ContentNotAvailable" xml:space="preserve"><value>Inhoud niet beschikbaar.</value></data>
-  <data name="Governance_MemberCounts" xml:space="preserve">
-    <value>Community</value>
-  </data>
   <data name="Governance_Colaboradores" xml:space="preserve">
     <value>Colaboradores</value>
   </data>
@@ -745,4 +742,14 @@
   <data name="Governance_BoardVoting_NoteTooLong" xml:space="preserve"><value>De notitie mag maximaal 4.000 tekens bevatten. Je stem is niet gewijzigd.</value></data>
   <data name="Governance_BoardVoting_DecisionNoteTooLong" xml:space="preserve"><value>De toelichting bij het besluit mag maximaal 4.000 tekens bevatten. De aanvraag is niet afgerond.</value></data>
   <data name="Governance_BoardVoting_DecisionNoteRequired" xml:space="preserve"><value>Er is een toelichting bij het besluit vereist om een aanvraag af te wijzen. De aanvraag is niet afgerond.</value></data>
+  <data name="Governance_BoardMembers" xml:space="preserve"><value>Bestuursleden</value></data>
+  <data name="Governance_TheBoard" xml:space="preserve"><value>Het bestuur</value></data>
+  <data name="Governance_NoBoardMembers" xml:space="preserve"><value>Niemand heeft op dit moment de bestuursrol.</value></data>
+  <data name="Governance_NeedsDecision" xml:space="preserve"><value>Wacht op een besluit</value></data>
+  <data name="Governance_NothingToDecide" xml:space="preserve"><value>Er staat op dit moment niets open voor een besluit.</value></data>
+  <data name="Governance_AllVotes" xml:space="preserve"><value>Alle stemmingen</value></data>
+  <data name="Governance_CastVote" xml:space="preserve"><value>Stemmen</value></data>
+  <data name="Governance_UnvotedApplications" xml:space="preserve"><value>Lidmaatschapsaanvragen die op jouw stem wachten: {0}</value></data>
+  <data name="Governance_ReviewApplications" xml:space="preserve"><value>Beoordelen</value></data>
+  <data name="Governance_YourMembership" xml:space="preserve"><value>Jouw lidmaatschap</value></data>
 </root>

@@ -137,9 +137,6 @@
     <value>Satzung</value>
   </data>
   <data name="Governance_Statutes_ContentNotAvailable" xml:space="preserve"><value>Inhalt nicht verfügbar.</value></data>
-  <data name="Governance_MemberCounts" xml:space="preserve">
-    <value>Gemeinschaft</value>
-  </data>
   <data name="Governance_Colaboradores" xml:space="preserve">
     <value>Colaboradores</value>
   </data>
@@ -745,4 +742,14 @@
   <data name="Governance_BoardVoting_NoteTooLong" xml:space="preserve"><value>Die Notiz darf höchstens 4000 Zeichen enthalten. Deine Stimme wurde nicht geändert.</value></data>
   <data name="Governance_BoardVoting_DecisionNoteTooLong" xml:space="preserve"><value>Die Entscheidungsnotiz darf höchstens 4000 Zeichen enthalten. Der Antrag wurde nicht abgeschlossen.</value></data>
   <data name="Governance_BoardVoting_DecisionNoteRequired" xml:space="preserve"><value>Zum Ablehnen eines Antrags ist eine Entscheidungsnotiz erforderlich. Der Antrag wurde nicht abgeschlossen.</value></data>
+  <data name="Governance_BoardMembers" xml:space="preserve"><value>Vorstandsmitglieder</value></data>
+  <data name="Governance_TheBoard" xml:space="preserve"><value>Der Vorstand</value></data>
+  <data name="Governance_NoBoardMembers" xml:space="preserve"><value>Derzeit hat niemand die Vorstandsrolle.</value></data>
+  <data name="Governance_NeedsDecision" xml:space="preserve"><value>Entscheidung nötig</value></data>
+  <data name="Governance_NothingToDecide" xml:space="preserve"><value>Derzeit steht nichts zur Entscheidung an.</value></data>
+  <data name="Governance_AllVotes" xml:space="preserve"><value>Alle Abstimmungen</value></data>
+  <data name="Governance_CastVote" xml:space="preserve"><value>Abstimmen</value></data>
+  <data name="Governance_UnvotedApplications" xml:space="preserve"><value>Mitgliedschaftsanträge, die auf deine Stimme warten: {0}</value></data>
+  <data name="Governance_ReviewApplications" xml:space="preserve"><value>Prüfen</value></data>
+  <data name="Governance_YourMembership" xml:space="preserve"><value>Deine Mitgliedschaft</value></data>
 </root>

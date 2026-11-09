@@ -104,7 +104,7 @@ The single screen and status endpoint for every section's legacy → new copy, a
 
 ## Cross-Section Dependencies
 
-Debug consumes in-memory telemetry trackers (`IClientStatsTracker`, `IHttpStatusTracker`, query/cache statistics), the configuration registry, `IAdminDatabaseDiagnosticsService` for migration status and Hangfire lock cleanup, and `ISectionCatalog` (`Humans.Base.Interfaces`, published by Shell at startup) to render `/Debug/Sections`. That page names no section: everything on it arrives through the catalog.
+Debug consumes in-memory telemetry trackers (`IClientStatsTracker`, `IHttpStatusTracker`, query/cache statistics), the configuration registry, `IAdminDatabaseDiagnosticsService` for migration status, `/Debug/Database` server/table/index info and Hangfire lock cleanup, and `ISectionCatalog` (`Humans.Base.Interfaces`, published by Shell at startup) to render `/Debug/Sections`. That page names no section: everything on it arrives through the catalog.
 
 `/Debug/DataMigrations` and `/api/data-migrations` compose every section's `ISectionDataMigrations` contribution and audit through `IAuditLogService`; they name no section.
 

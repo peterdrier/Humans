@@ -20,7 +20,11 @@ public sealed class ProfileCardViewComponent(
     IRoleAssignmentService roleAssignmentService,
     ICommunicationPreferenceService commPrefService) : ViewComponent
 {
-    public async Task<IViewComponentResult> InvokeAsync(Guid userId, ProfileCardViewMode viewMode)
+    // Default is the whole card (/Profile/Me, /Profile/{id}); /Users/Me splits it into
+    // Identity (left column), Teams (a tile) and History (Burner CV).
+    private static readonly HashSet<string> Layouts = new(StringComparer.Ordinal) { "Default", "Identity", "Teams", "History" };
+
+    public async Task<IViewComponentResult> InvokeAsync(Guid userId, ProfileCardViewMode viewMode, string layout = "Default")
     {
         var ct = HttpContext.RequestAborted;
         var info = await userService.GetUserInfoAsync(userId, ct);
@@ -139,7 +143,7 @@ public sealed class ProfileCardViewComponent(
                 && await commPrefService.AcceptsFacilitatedMessagesAsync(userId, ct)
         };
 
-        return View(model);
+        return View(Layouts.Contains(layout) ? layout : "Default", model);
     }
 
     private static string GetDisplayName(

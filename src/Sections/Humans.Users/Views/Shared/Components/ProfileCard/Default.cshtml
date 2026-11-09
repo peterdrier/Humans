@@ -181,19 +181,7 @@
         {
             <hr />
             <h6 class="text-muted mb-2">@Localizer["Users_Profile_BurnerCV"]</h6>
-            @foreach (var entry in Model.VolunteerHistory)
-            {
-                <div class="d-flex align-items-center py-1">
-                    <span class="text-muted me-3" style="min-width: 50px; font-size: 0.85em;">@entry.FormattedDate</span>
-                    <span class="fw-medium me-3" style="min-width: 180px;">@entry.EventName</span>
-                    @if (!string.IsNullOrEmpty(entry.Description))
-                    {
-                        var previewLength = entry.Description.Length > 80
-                            && char.IsHighSurrogate(entry.Description[79]) && char.IsLowSurrogate(entry.Description[80]) ? 79 : 80;
-                        <span class="text-muted text-truncate" style="font-size: 0.9em;">@(entry.Description.Length > 80 ? entry.Description[..previewLength] + "..." : entry.Description)</span>
-                    }
-                </div>
-            }
+            <partial name="_ProfileCvEntries" model="Model.VolunteerHistory" />
         }
         else if (Model.IsOwnProfile)
         {
@@ -205,79 +193,4 @@
     </div>
 </div>
 
-@if (Model.CanViewLegalName)
-{
-    <div class="card mb-4">
-        <div class="card-header d-flex justify-content-between align-items-center">
-            <span>
-                <i class="fa-solid fa-lock me-1"></i>
-                @Localizer["Users_Profile_BoardInformation"]
-            </span>
-            @if (Model.IsOwnProfile)
-            {
-                <a asp-controller="Profile" asp-action="Edit" class="btn btn-sm btn-outline-primary">@SharedLocalizer["Common_Edit"]</a>
-            }
-        </div>
-        <div class="card-body">
-            <small class="text-muted d-block mb-3">@Localizer["Users_Profile_OnlyVisibleToYouAndBoard"]</small>
-
-            <dl class="row mb-0">
-                <dt class="col-3">@Localizer["Users_Profile_LegalName"]</dt>
-                <dd class="col-9">
-                    @if (!string.IsNullOrEmpty(Model.FirstName) || !string.IsNullOrEmpty(Model.LastName))
-                    {
-                        @($"{Model.FirstName} {Model.LastName}")
-                    }
-                    else
-                    {
-                        <text>@SharedLocalizer["Common_NotProvided"]</text>
-                    }
-                </dd>
-
-                @if (!string.IsNullOrEmpty(Model.EmergencyContactName) || !string.IsNullOrEmpty(Model.EmergencyContactPhone))
-                {
-                    <dt class="col-3">@Localizer["Users_Profile_EmergencyContact"]</dt>
-                    <dd class="col-9">
-                        @if (!string.IsNullOrEmpty(Model.EmergencyContactName))
-                        {
-                            @Model.EmergencyContactName
-                        }
-                        @if (!string.IsNullOrEmpty(Model.EmergencyContactRelationship))
-                        {
-                            <text> (@Model.EmergencyContactRelationship)</text>
-                        }
-                        @if (!string.IsNullOrEmpty(Model.EmergencyContactPhone))
-                        {
-                            <text> — </text><a href="tel:@Model.EmergencyContactPhone">@Model.EmergencyContactPhone</a>
-                        }
-                    </dd>
-                }
-
-                @foreach (var email in Model.BoardOnlyUserEmails)
-                {
-                    <dt class="col-3">
-                        <i class="fa-solid fa-envelope me-1"></i>
-                        @Localizer["Users_CommPrefs_Email"]
-                    </dt>
-                    <dd class="col-9">
-                        <a href="mailto:@email.Email">@email.Email</a>
-                        @if (email.IsPrimary)
-                        {
-                            <span class="badge bg-primary ms-1" title="@Localizer["Users_Profile_NotificationTarget"]" data-bs-toggle="tooltip"><i class="fa-solid fa-bell"></i> @Localizer["Users_Profile_NotificationTargetShort"]</span>
-                        }
-                        @if (email.VisibilityBadgeKey is not null)
-                        {
-                            <span class="badge bg-light text-muted border ms-1">@Localizer[email.VisibilityBadgeKey]</span>
-                        }
-                    </dd>
-                }
-
-                @if (!string.IsNullOrEmpty(Model.BoardNotes))
-                {
-                    <dt class="col-3">@Localizer["Users_Profile_BoardNotes"]</dt>
-                    <dd class="col-9 pre-line">@Model.BoardNotes</dd>
-                }
-            </dl>
-        </div>
-    </div>
-}
+<partial name="_ProfileBoardInfo" model="Model" />

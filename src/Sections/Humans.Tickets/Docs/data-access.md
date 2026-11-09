@@ -295,3 +295,31 @@ Repositories: `ITicketTransferRepository`, `ITicketRepository`. Owns transfer
 queue/detail/confirmation reads and shared row projection; uses existing Tickets
 holdings and Users contracts for personal attendee choices and recipient snapshots.
 Mutation results reuse its row projection. No writes, cache or separate DI registration.
+
+### TicketSalesReports (internal, owned by TicketQueryService)
+
+Repository: `ITicketRepository`. Dashboard totals, sales-over-time, payment-method, discount-code,
+refund and recent-order reports for the ticket admin surface. No DI registration; the cache
+shell and decorator sit above it. No `IMemoryCache`.
+
+| Table | R/W |
+|-------|-----|
+| TicketOrders | R |
+| TicketAttendees | R (sold counts, paid attendee type and price rows) |
+| TicketSyncStates | R/W (`ResetStaleRunningStateAsync` resets a sync stuck in Running for 30 minutes) |
+
+Cross-section calls via `IBudgetService` (active year and budget summary), `ICampaignService`
+(discount-code tracking), and `IClock`.
+
+### TicketTransferNotices (internal, owned by TicketTransferService)
+
+Repository: `ITicketRepository` (read-only: `GetAttendeeByIdAsync`). Best-effort email to the sender,
+recipient and ticket holder after a transfer decision is persisted; a failed lookup or send is
+logged and never changes the outcome. No DI registration, no cache.
+
+| Table | R/W |
+|-------|-----|
+| TicketAttendees | R |
+
+Cross-section calls via `IUserService` (recipient culture and canonical contact email) and
+`IEmailService`, with the section's `TicketsEmails` builder.

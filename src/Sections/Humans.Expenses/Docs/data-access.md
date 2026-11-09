@@ -91,3 +91,32 @@ the creditor as `ExpenseHoldedPublisher` binds it) and `IHoldedService.IsConfigu
 Reads through `IExpenseRepository`: both review queues, per-report edit/decline eligibility,
 and submitter/first-reviewer authority. The report service calls it before the unchanged
 mutations; it performs no writes and has no DI registration.
+
+### ExpenseHoldedTimelineReader (internal, owned by `ExpenseReportService`)
+
+Repository: `IExpenseRepository`. Builds a report's Holded timeline for the submitter and
+reviewers; the booking service reuses its sync-state resolution. Read-only; no DI registration.
+
+| Table | R/W |
+|-------|-----|
+| HoldedExpenseOutboxEvents | R (latest outbox event for the report) |
+| ExpenseReports | R (every report of each account the submitter has held, with lines and attachments) |
+| ExpenseLines | R (loaded with the report) |
+| ExpenseAttachments | R (loaded with the line) |
+
+Cross-section calls via `IFinanceService` (creditor status), `IUserService` (merge chain) and
+`IHoldedService` (configured flag). No `IMemoryCache`.
+
+### ExpenseReportExport (internal, owned by `ExpenseReportService`)
+
+Repository: `IExpenseRepository`. Builds the `ExpenseReports` and `ExpenseAuditLog` GDPR export
+slices behind `ExpenseReportService`'s `IUserDataContributor`. Read-only; no DI registration.
+
+| Table | R/W |
+|-------|-----|
+| ExpenseReports | R (per account in the merge chain) |
+| ExpenseLines | R (loaded with the report) |
+| ExpenseAttachments | R (loaded with the line) |
+
+Cross-section calls via `IUserService` (merge chain) and `IAuditViewerService` (the audit entries
+about the member's reports). No `IMemoryCache`.

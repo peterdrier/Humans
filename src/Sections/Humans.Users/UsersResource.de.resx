@@ -806,6 +806,15 @@
   </data>
   <data name="Users_Birthdays_CardDescription" xml:space="preserve"><value>Sieh, wer diesen Monat Geburtstag hat.</value></data>
   <data name="Users_Map_CardDescription" xml:space="preserve"><value>Sieh, wo auf der Welt die Humans sind.</value></data>
+  <data name="Users_Profile_Participation" xml:space="preserve">
+    <value>Mitwirkung</value>
+  </data>
+  <data name="Users_Profile_Settings" xml:space="preserve">
+    <value>Einstellungen</value>
+  </data>
+  <data name="Users_Profile_NewLayoutNote" xml:space="preserve">
+    <value>Vorschau eines neuen Layouts. Die aktuelle Seite:</value>
+  </data>
   <data name="Users_Medical_NoneOnFile" xml:space="preserve"><value>Keine medizinischen Angaben hinterlegt.</value></data>
   <data name="Users_Medical_RevealFailed" xml:space="preserve"><value>Die medizinischen Angaben konnten nicht geladen werden.</value></data>
   <data name="Users_Medical_RevealTitle" xml:space="preserve"><value>Medizinische Angaben anzeigen (jeder Aufruf wird im Audit-Log festgehalten)</value></data>

@@ -99,10 +99,12 @@ cross-section analysis, the cache inventory, and the out-of-service access appen
 
 ### AdminDatabaseDiagnosticsService (Scoped — `src/Humans.Web/Services/`)
 
-Repository: `IAdminDatabaseDiagnosticsRepository` (`src/Humans.Web/Repositories/`) —
-raw diagnostics over the database (migration-history status across every section's
-`__EFMigrationsHistory*` table, Hangfire lock clearing). No owning section, no owned
-application tables. No cross-section service calls, no `IMemoryCache`.
+Repository: `IAdminDatabaseDiagnosticsRepository` (`src/Humans.Web/Repositories/Admin/`, opens
+`SystemDbContext`) — raw diagnostics over the database: migration-history status across every
+section's `__EFMigrationsHistory*` table, Hangfire lock clearing, and the `/Debug/Database` page
+(server summary, per-table sizes and scan counts, indexes, connections, settings, extensions) read
+from PostgreSQL catalog and statistics views only — never a section's application tables. No owning
+section, no owned application tables. No cross-section service calls, no `IMemoryCache`.
 
 The member and admin dashboards have no orchestrator service: `/` and `/Admin` are
 Shell frames whose cards are section-contributed (`ISectionChrome` slots), each card
@@ -317,7 +319,7 @@ Every table is owned by exactly one repository; there are no HUM0025
 15. **The per-section DbContext split is complete — "one
     table, one repository" is a compile/schema-enforced boundary for
     every table-owning section, with no shared context left.** Every section
-    context (Feedback's carries no tables, only the migration that dropped them; see the full DbContext table in the intro Methodology block
+    context (see the full DbContext table in the intro Methodology block
     above) maps **only** its own section's tables via explicit
     `ApplyConfiguration` calls (no assembly scanning), so a section's
     repository cannot accidentally `Set<T>()` a foreign table without
