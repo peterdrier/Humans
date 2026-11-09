@@ -1224,6 +1224,85 @@ public sealed class BudgetServiceTests
         persisted.Amount.Should().Be(100m);
     }
 
+    public enum ProjectionDecimalField
+    {
+        DailySalesRate,
+        AverageTicketPrice,
+        StripeFeePercent,
+        StripeFeeFixed,
+        TicketTailorFeePercent
+    }
+
+    [HumansTheory]
+    [InlineData(ProjectionDecimalField.DailySalesRate, "0.001")]
+    [InlineData(ProjectionDecimalField.DailySalesRate, "10000000000000000")]
+    [InlineData(ProjectionDecimalField.AverageTicketPrice, "-1.005")]
+    [InlineData(ProjectionDecimalField.AverageTicketPrice, "-10000000000000000")]
+    [InlineData(ProjectionDecimalField.StripeFeeFixed, "0.001")]
+    [InlineData(ProjectionDecimalField.StripeFeeFixed, "10000000000000000")]
+    [InlineData(ProjectionDecimalField.StripeFeePercent, "0.00001")]
+    [InlineData(ProjectionDecimalField.StripeFeePercent, "100000000000000")]
+    [InlineData(ProjectionDecimalField.TicketTailorFeePercent, "-0.00001")]
+    [InlineData(ProjectionDecimalField.TicketTailorFeePercent, "-100000000000000")]
+    public async Task ProjectionDecimal_RefusesRoundingAndOverflowBeforeParametersForecastsOrAudit(
+        ProjectionDecimalField field, string rawValue)
+    {
+        var seeded = await SeedTicketingYearAsync();
+        var value = decimal.Parse(rawValue, CultureInfo.InvariantCulture);
+
+        var result = await _service.UpdateTicketingProjectionAsync(
+            seeded.GroupId, new LocalDate(2026, 4, 1), new LocalDate(2026, 4, 7), 10,
+            dailySalesRate: field == ProjectionDecimalField.DailySalesRate ? value : 5m,
+            averageTicketPrice: field == ProjectionDecimalField.AverageTicketPrice ? value : 120m,
+            vatRate: 10,
+            stripeFeePercent: field == ProjectionDecimalField.StripeFeePercent ? value : 1.5m,
+            stripeFeeFixed: field == ProjectionDecimalField.StripeFeeFixed ? value : 0.3m,
+            ticketTailorFeePercent: field == ProjectionDecimalField.TicketTailorFeePercent ? value : 0.5m,
+            actorUserId: Guid.NewGuid(), refreshProjections: true, ct: TestContext.Current.CancellationToken);
+
+        result.Refusal.Should().NotBeNull();
+        await using var db = await BudgetDbFactory.CreateDbContextAsync(TestContext.Current.CancellationToken);
+        var saved = await db.TicketingProjections.SingleAsync(TestContext.Current.CancellationToken);
+        saved.Should().BeEquivalentTo(new
+        {
+            StartDate = (LocalDate?)null,
+            EventDate = (LocalDate?)null,
+            InitialSalesCount = 0,
+            DailySalesRate = 0m,
+            AverageTicketPrice = 0m,
+            StripeFeePercent = 0m,
+            StripeFeeFixed = 0m,
+            TicketTailorFeePercent = 0m,
+        });
+        (await db.BudgetLineItems.CountAsync(TestContext.Current.CancellationToken)).Should().Be(0);
+        (await db.BudgetAuditLogs.CountAsync(TestContext.Current.CancellationToken)).Should().Be(0);
+    }
+
+    [HumansTheory]
+    [InlineData("0", "0")]
+    [InlineData("-1.2300", "-1.234500")]
+    [InlineData("9999999999999999.99", "99999999999999.9999")]
+    [InlineData("-9999999999999999.99", "-99999999999999.9999")]
+    public async Task ProjectionDecimal_PreservesRepresentableSignedValues(string rawAmount, string rawPercentage)
+    {
+        var seeded = await SeedTicketingYearAsync();
+        var amount = decimal.Parse(rawAmount, CultureInfo.InvariantCulture);
+        var percentage = decimal.Parse(rawPercentage, CultureInfo.InvariantCulture);
+
+        var result = await _service.UpdateTicketingProjectionAsync(seeded.GroupId, null, null, 0,
+            amount, amount, 10, percentage, amount, percentage, Guid.NewGuid(),
+            ct: TestContext.Current.CancellationToken);
+
+        result.Refusal.Should().BeNull();
+        await using var db = await BudgetDbFactory.CreateDbContextAsync(TestContext.Current.CancellationToken);
+        var saved = await db.TicketingProjections.SingleAsync(TestContext.Current.CancellationToken);
+        saved.DailySalesRate.Should().Be(amount);
+        saved.AverageTicketPrice.Should().Be(amount);
+        saved.StripeFeeFixed.Should().Be(amount);
+        saved.StripeFeePercent.Should().Be(percentage);
+        saved.TicketTailorFeePercent.Should().Be(percentage);
+    }
+
     [HumansTheory]
     [InlineData(-1)]
     [InlineData(22)]
@@ -2015,12 +2094,14 @@ public sealed class BudgetServiceTests
     }
 
     [HumansTheory]
-    [InlineData(22, 5, 47, 15, 5, 15)]
+    [InlineData(22, 5, 17, 15, 5, 15)]
     [InlineData(1, 5, 35, 15, 5, 15)]
+    [InlineData(16, 5, 47, 15, 5, 15)]
+    [InlineData(18, 5, 37, 15, 5, 15)]
     [InlineData(22, 0, 12, 15, 5, 1)]
-    [InlineData(22, 5, 47, 13, 5, 5)]
+    [InlineData(22, 5, 17, 13, 5, 5)]
     [InlineData(22, 0, 12, 13, 5, 1)]
-    [InlineData(22, 5, 47, 12, 4, 35)]
+    [InlineData(22, 5, 17, 12, 4, 35)]
     public async Task Ticketing_projection_preview_matches_materialized_weeks(
         int startDay, int dailyRate, int firstWeekTickets, int eventDay, int weeks, int lastWeekTickets)
     {
@@ -2062,6 +2143,23 @@ public sealed class BudgetServiceTests
             lines.Single(li => li.BudgetCategoryId == feesCatId && li.ExpectedDate == week.WeekStart
                 && li.Description.Contains("TT fees:", StringComparison.Ordinal)).Amount.Should().Be(-week.ProjectedTtFees);
         }
+    }
+
+    [HumansFact]
+    public async Task Ticketing_projection_with_an_inverted_sales_period_has_no_forecast_rows()
+    {
+        Clock.Reset(Instant.FromUtc(2026, 3, 17, 12, 0));
+        var (groupId, _, _, _) = await SeedTicketingYearAsync();
+        await ConfigureProjectionAsync(groupId, new LocalDate(2026, 3, 22),
+            new LocalDate(2026, 3, 20), 19.99m, 5m);
+
+        (await _service.GetTicketingProjectionEntriesAsync(groupId, TestContext.Current.CancellationToken))
+            .Should().BeEmpty();
+        await _service.SyncTicketingActualsAsync(_yearId, [], null, TestContext.Current.CancellationToken);
+
+        await using var stored = await BudgetDbFactory.CreateDbContextAsync(TestContext.Current.CancellationToken);
+        (await stored.BudgetLineItems.Where(line => line.IsAutoGenerated)
+            .ToListAsync(TestContext.Current.CancellationToken)).Should().BeEmpty();
     }
 
     [HumansTheory]

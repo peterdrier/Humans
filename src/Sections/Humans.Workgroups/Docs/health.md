@@ -76,23 +76,23 @@ loader and must not be gated. The group-loading methods take the check from the 
 
 - **Member work happens only on an Active group.** Every member-facing write returns
   `RequireAcceptsMemberWork`'s refusal unless the status is Active
-  (`Services/WorkgroupService.Helpers.cs:126`). A member-facing write that skips it is a
+  (`Services/WorkgroupAccess.cs`). A member-facing write that skips it is a
   violation.
 - **Letting people in is the coordinators' call.** Joining only files a pending request
-  (`Services/WorkgroupService.cs:138`); approving, declining and adding refuse anyone who is not
+  (`Services/WorkgroupMembership.cs`); approving, declining and adding refuse anyone who is not
   a current coordinator unless the caller acts as Board or Admin
-  (`Services/WorkgroupService.Helpers.cs:134`).
+  (`Services/WorkgroupAccess.cs`).
 - **One or two coordinators, never zero by accident.** Setting coordinators refuses a count
-  outside one-to-two (`Services/WorkgroupService.cs:394`) and any id that is not a current,
-  non-pending member (`Services/WorkgroupService.cs:398`); the last coordinator leaving must name
-  a replacement unless the caller acts as admin (`Services/WorkgroupService.cs:283`).
+  outside one-to-two (`Services/WorkgroupMembership.cs`) and any id that is not a current,
+  non-pending member (`Services/WorkgroupMembership.cs`); the last coordinator leaving must name
+  a replacement unless the caller acts as admin (`Services/WorkgroupMembership.cs`).
 - **The Secretary's refusals are written down.** Refuse, Withdraw and Close call `RequireReasons`
   before anything else (`Services/WorkgroupService.Lifecycle.cs:81`,
   `Services/WorkgroupService.Lifecycle.cs:105`, `Services/WorkgroupService.Lifecycle.cs:135`),
   which refuses blank (`Services/WorkgroupService.Helpers.cs:163`).
 - **A group is never registered without somewhere to work.** The Drive subfolder is created
   before the status flips (`Services/WorkgroupService.Lifecycle.cs:28`); a failure there returns
-  a refusal and leaves the row untouched (`Services/WorkgroupService.Lifecycle.cs:298`).
+  a refusal and leaves the row untouched (`Services/WorkgroupDriveFolders.cs`).
 - **A decision, once committed, finishes.** After the first write each mutation drops its
   cancellation token, so the log entry, audit row and notices that follow cannot be torn off by a
   closed tab (`Services/WorkgroupService.Helpers.cs:561`); Register drops it before it starts
@@ -101,41 +101,41 @@ loader and must not be gated. The group-loading methods take the check from the 
   clear in one write (`Services/WorkgroupService.Lifecycle.cs:158`).
 - **The daily pass never changes a group's status, and never persists a judgement about
   silence.** It reads `SilenceFor(now)` to decide whether a thirty-day multiple has come round
-  (`Services/WorkgroupService.Rhythm.cs:50`) and then only notifies and audits. A status
+  (`Services/WorkgroupRhythm.cs`) and then only notifies and audits. A status
   assignment in that file is a violation, and so is a column, log entry or flag recording that a
   group has gone quiet.
 - **A promised comment window is never cut short.** Delivering refuses while the window is still
-  open (`Services/WorkgroupService.Documents.cs:183`), and so does a member ending the group
+  open (`Services/WorkgroupDocumentWorkflow.cs`), and so does a member ending the group
   (`Services/WorkgroupService.cs:628`). Closing early moves the end of the window to now and keeps
-  the comments (`Services/WorkgroupService.Documents.cs:158`).
+  the comments (`Services/WorkgroupDocumentWorkflow.cs`).
 - **A comment window only opens on a Published document with categories that fit.** Anything
-  else is refused (`Services/WorkgroupService.Documents.cs:112`), so is an empty category list
-  (`Services/WorkgroupService.Documents.cs:120`) and a category longer than the column a comment
-  stores it in (`Services/WorkgroupService.Documents.cs:124`).
+  else is refused (`Services/WorkgroupDocumentWorkflow.cs`), so is an empty category list
+  (`Services/WorkgroupDocumentWorkflow.cs`) and a category longer than the column a comment
+  stores it in (`Services/WorkgroupDocumentWorkflow.cs`).
 - **Delivered freezes the body.** Editing a Delivered document is refused
-  (`Services/WorkgroupService.Documents.cs:63`), and a disposition may only be recorded on one
+  (`Services/WorkgroupDocumentWorkflow.cs`), and a disposition may only be recorded on one
   (`Services/WorkgroupService.Lifecycle.cs:263`).
 - **Commenting is gated by the window, and for a sensitive group by membership.** A sensitive
-  group refuses comments from non-members (`Services/WorkgroupService.Documents.cs:220`);
+  group refuses comments from non-members (`Services/WorkgroupDocumentWorkflow.cs`);
   otherwise any signed-in human may comment while the window is open
-  (`Services/WorkgroupService.Documents.cs:225`), in a category the document declared
-  (`Services/WorkgroupService.Documents.cs:229`).
+  (`Services/WorkgroupDocumentWorkflow.cs`), in a category the document declared
+  (`Services/WorkgroupDocumentWorkflow.cs`).
 - **A sensitive group's content stays inside it.** Its documents 404 for anyone but members and
   the Board (`Controllers/WorkgroupsController.cs:311`), its roster and history render only for
   them (`Models/WorkgroupViewModels.cs:129`), and its meetings never reach the public calendar
   (`Services/Contributors/WorkgroupCalendarContributor.cs:37`).
 - **A bulk answer never overwrites an individual one.** The per-category response touches only
-  still-Pending, non-hidden comments (`Services/WorkgroupService.Documents.cs:297`).
+  still-Pending, non-hidden comments (`Services/WorkgroupDocumentWorkflow.cs`).
 - **System log entries never change.** Editing or deleting checks the stored kind as well as the
-  posted one (`Services/WorkgroupService.cs:544`, `Services/WorkgroupService.cs:573`) against
-  the four kinds a human may write (`Services/WorkgroupService.Helpers.cs:153`).
+  posted one (`Services/WorkgroupActivity.cs`, `Services/WorkgroupActivity.cs`) against
+  the four kinds a human may write (`Services/WorkgroupActivity.cs`).
 - **A slug never shadows a route.** The reserve loop skips the reserved segments and any slug
   already taken (`Services/WorkgroupService.Helpers.cs:290`), after trimming to the column's
   budget (`Services/WorkgroupService.Helpers.cs:285`).
 - **Only the repository touches the tables.** `WorkgroupRepository` is the one holder of
   `IDbContextFactory<WorkgroupsDbContext>` (`Data/WorkgroupRepository.cs:7`).
 - **Moderation is auditable.** Hiding a comment writes an audit entry with the reason
-  (`Services/WorkgroupService.Documents.cs:337`).
+  (`Services/WorkgroupDocumentWorkflow.cs`).
 - **Erasure keeps the association's record.** Attribution columns are nulled and membership rows
   deleted (`Data/WorkgroupRepository.cs:229`); bodies stay. An Active group whose only
   coordinator is this person is listed before the rows go
@@ -145,7 +145,7 @@ loader and must not be gated. The group-loading methods take the check from the 
 ## 5. Seams
 
 - **`WorkgroupLogKind.SurveySent` is declared and never written.** Only `SurveySubmitted` is
-  (`Services/WorkgroupService.cs:603`). The send half of the survey lane is reserved, not built.
+  (`Services/WorkgroupActivity.cs`). The send half of the survey lane is reserved, not built.
 - **`WorkgroupOperationRequirement.Read` has no production caller.** The handler answers it and
   only the tests ask; the register is gated by `PolicyNames.AppAccess` at the controller.
 
@@ -176,7 +176,7 @@ loader and must not be gated. The group-loading methods take the check from the 
 - **`ct = CancellationToken.None` mid-method is deliberate.** It marks the commit boundary in
   each mutation (above, under Invariants); the parameter is kept so every signature matches.
 - **The nudge fires on exact multiples of the thirty-day window**
-  (`Services/WorkgroupService.Rhythm.cs:56`). A pass that misses the day skips that nudge; the
+  (`Services/WorkgroupRhythm.cs`). A pass that misses the day skips that nudge; the
   register badge is the durable signal, the notification is not.
 - **A member may write a `StatusRequested` log entry directly.** `RequireMemberKind` admits it,
   while the dedicated `/RequestStatus` route also notifies the coordinators. Two ways in; nothing

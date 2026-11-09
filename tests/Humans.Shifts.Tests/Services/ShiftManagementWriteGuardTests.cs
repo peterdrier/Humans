@@ -843,6 +843,15 @@ public sealed class ShiftManagementWriteGuardTests : ShiftsTestHarness
     [InlineData("update", -1d)]
     [InlineData("event", double.NaN)]
     [InlineData("create", double.PositiveInfinity)]
+    [InlineData("create", double.MaxValue)]
+    [InlineData("update", double.MaxValue)]
+    [InlineData("event", double.MaxValue)]
+    [InlineData("create", double.Epsilon)]
+    [InlineData("update", double.Epsilon)]
+    [InlineData("event", double.Epsilon)]
+    [InlineData("create", 0.0003d)]
+    [InlineData("update", 0.0003d)]
+    [InlineData("event", 0.0003d)]
     public async Task TimedShiftWrites_RejectInvalidDurationWithoutChangingRows(string action, double hours)
     {
         var (_, rota, _) = SeedRotaScenario(RotaPeriod.Event);
@@ -871,6 +880,98 @@ public sealed class ShiftManagementWriteGuardTests : ShiftsTestHarness
     }
 
     [HumansTheory]
+    [InlineData("create", false, 100_000_000d, false)]
+    [InlineData("update", false, 100_000_000d, false)]
+    [InlineData("event", false, 100_000_000d, false)]
+    [InlineData("create", false, 72d, true)]
+    [InlineData("update", false, 72d, true)]
+    [InlineData("event", false, 72d, true)]
+    [InlineData("create", true, 40d, false)]
+    [InlineData("update", true, 40d, false)]
+    [InlineData("event", true, 40d, false)]
+    [InlineData("create", true, 39d, true)]
+    [InlineData("update", true, 39d, true)]
+    [InlineData("event", true, 39d, true)]
+    public async Task ShiftWrites_KeepAbsoluteAndLocalEndsWithinTheCalendar(
+        string action, bool nearCalendarEnd, double hours, bool expectedSuccess)
+    {
+        var (calendar, rota, _) = SeedRotaScenario(RotaPeriod.Event);
+        if (nearCalendarEnd)
+        {
+            calendar.GateOpeningDate = new LocalDate(9999, 12, 30);
+            calendar.EventEndOffset = 0;
+            calendar.StrikeEndOffset = 0;
+        }
+        var original = string.Equals(action, "update", StringComparison.Ordinal) ? SeedShift(rota, 0) : null;
+        var originalDescription = original?.Description;
+        await SaveAllAsync(Ct);
+
+        var succeeded = action switch
+        {
+            "create" => (await _service.CreateShiftAsync(NewShiftInput(rota, 0) with { DurationHours = hours })).Succeeded,
+            "update" => (await _service.UpdateShiftAsync(NewUpdateInput(original!, rota.TeamId, 0) with
+            { DurationHours = hours, Description = "Changed schedule" })).Succeeded,
+            _ => (await _service.GenerateEventShiftsAsync(new GenerateEventShiftsInput(rota.Id, rota.TeamId, 0, 0,
+                [new ShiftTimeSlotInput(new LocalTime(8, 0), 4), new ShiftTimeSlotInput(new LocalTime(8, 0), hours)], 1, 2))).Succeeded
+        };
+
+        succeeded.Should().Be(expectedSuccess);
+        ShiftsDb.ChangeTracker.Clear();
+        var rows = await ShiftsDb.Shifts.ToListAsync(Ct);
+        if (expectedSuccess)
+        {
+            rows.Should().Contain(row => row.Duration == Duration.FromHours(hours));
+            var resolvedCalendar = await NewCalendarResolver().GetAsync(calendar.Id, Ct);
+            foreach (var row in rows)
+            {
+                var end = row.GetAbsoluteEnd(resolvedCalendar!);
+                end.InUtc().Year.Should().BeInRange(1, 9999);
+                end.InZone(DateTimeZoneProviders.Tzdb[calendar.TimeZoneId]).Year.Should().BeInRange(1, 9999);
+            }
+        }
+        else if (original is null) rows.Should().BeEmpty();
+        else
+        {
+            var unchanged = rows.Should().ContainSingle().Subject;
+            unchanged.Duration.Should().Be(Duration.FromHours(4));
+            unchanged.Description.Should().Be(originalDescription);
+        }
+    }
+
+    [HumansTheory]
+    [InlineData(false, double.NaN)]
+    [InlineData(true, double.NaN)]
+    [InlineData(false, double.PositiveInfinity)]
+    [InlineData(true, double.PositiveInfinity)]
+    [InlineData(false, double.MaxValue)]
+    [InlineData(true, double.MaxValue)]
+    public async Task AllDayShiftWrites_RefuseUnrepresentableDurationBeforeChangingRows(bool update, double hours)
+    {
+        var (_, rota, _) = SeedRotaScenario(RotaPeriod.Build);
+        var shift = update ? SeedShift(rota, -3) : null;
+        if (shift is not null) shift.IsAllDay = true;
+        await SaveAllAsync(Ct);
+        var originalDescription = shift?.Description;
+
+        var result = update
+            ? await _service.UpdateShiftAsync(NewUpdateInput(shift!, rota.TeamId, -3) with
+            { DurationHours = hours, Description = "Attempted invalid edit" })
+            : await _service.CreateShiftAsync(NewShiftInput(rota, -3) with { IsAllDay = true, DurationHours = hours });
+
+        result.Succeeded.Should().BeFalse();
+        result.Message.Should().Contain("duration");
+        ShiftsDb.ChangeTracker.Clear();
+        var rows = await ShiftsDb.Shifts.ToListAsync(Ct);
+        if (shift is null) rows.Should().BeEmpty();
+        else
+        {
+            var unchanged = rows.Should().ContainSingle().Subject;
+            unchanged.Duration.Should().Be(Duration.FromHours(4));
+            unchanged.Description.Should().Be(originalDescription);
+        }
+    }
+
+    [HumansTheory]
     [InlineData(false)]
     [InlineData(true)]
     public async Task AllDayShiftWrites_KeepTheIgnoredDurationSentinel(bool update)
@@ -887,19 +988,23 @@ public sealed class ShiftManagementWriteGuardTests : ShiftsTestHarness
         result.Succeeded.Should().BeTrue();
     }
 
-    [HumansFact]
-    public async Task CreateShiftAsync_AcceptsZeroMinimumAndPositiveFractionalDuration()
+    [HumansTheory]
+    [InlineData(0.25d, 900)]
+    [InlineData(1d / 3600, 1)]
+    [InlineData(2.3d, 8280)]
+    [InlineData(1.15d, 4140)]
+    public async Task CreateShiftAsync_AcceptsZeroMinimumAndWholeSecondDurations(double hours, int seconds)
     {
         var (_, rota, _) = SeedRotaScenario(RotaPeriod.Event);
         await SaveAllAsync(Ct);
 
         var result = await _service.CreateShiftAsync(NewShiftInput(rota, 0) with
-        { MinVolunteers = 0, MaxVolunteers = 1, DurationHours = 0.25 });
+        { MinVolunteers = 0, MaxVolunteers = 1, DurationHours = hours });
 
         result.Succeeded.Should().BeTrue();
         var shift = await ShiftsDb.Shifts.SingleAsync(Ct);
         shift.MinVolunteers.Should().Be(0);
-        shift.Duration.Should().Be(Duration.FromMinutes(15));
+        shift.Duration.Should().Be(Duration.FromSeconds(seconds));
     }
 
     [HumansTheory]

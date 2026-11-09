@@ -1,11 +1,18 @@
 using Humans.AuditLog.Contracts;
+using Humans.Base.Interfaces;
+using Humans.Workgroups.Data;
 using Humans.Notifications.Contracts;
 using Humans.Workgroups.Domain;
 using NodaTime;
 
 namespace Humans.Workgroups.Services;
 
-internal sealed partial class WorkgroupService
+internal sealed class WorkgroupRhythm(
+    IWorkgroupRepository repository,
+    WorkgroupNotices notices,
+    IAuditLogService auditLog,
+    IClock clock,
+    ILogger<WorkgroupService> logger) : IApplicationService
 {
     public async Task RunDailyRhythmAsync(CancellationToken ct = default)
     {
@@ -15,7 +22,7 @@ internal sealed partial class WorkgroupService
         foreach (var workgroup in graph.Workgroups)
         {
             ct.ThrowIfCancellationRequested();
-            var info = ToInfo(workgroup);
+            var info = WorkgroupRegisterReader.ToInfo(workgroup);
 
             // One group's failure isn't the pass's: the rest still get their notices.
             try
@@ -79,4 +86,12 @@ internal sealed partial class WorkgroupService
     /// </summary>
     private static bool JustCrossed(Duration elapsed, Duration threshold) =>
         elapsed >= threshold && elapsed - threshold < Duration.FromDays(1);
+    private async Task AuditJobAsync(AuditActionDefinition action, Workgroup w, string description)
+    {
+        await auditLog.LogAsync(action, AuditEntityTypes.Workgroup, w.Id, description,
+            WorkgroupRhythmJobName);
+    }
+
+    internal const string WorkgroupRhythmJobName = "WorkgroupRhythmJob";
+
 }

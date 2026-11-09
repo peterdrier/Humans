@@ -28,6 +28,9 @@ internal sealed class RoleAssignmentsController(
     ILogger<RoleAssignmentsController> logger,
     IStringLocalizer<SharedResource> localizer) : HumansControllerBase(userService)
 {
+    // Admin-only page: English per memory/code/localization-admin-exempt.md.
+    private const string NotesTooLongMessage = "Notes must be 2,000 characters or fewer.";
+
     [HttpGet("Auth/Admin/Roles")]
     public async Task<IActionResult> Roles(string? role, bool showInactive = false, int page = 1)
     {
@@ -115,6 +118,8 @@ internal sealed class RoleAssignmentsController(
 
         if (result.Success)
             SetSuccess(string.Format(localizer["Admin_RoleAssigned"].Value, model.RoleName));
+        else if (string.Equals(result.ErrorKey, "NotesTooLong", StringComparison.Ordinal))
+            SetError(NotesTooLongMessage);
         else
             SetError(string.Format(localizer["Admin_RoleAlreadyActive"].Value, model.RoleName));
 
@@ -157,6 +162,8 @@ internal sealed class RoleAssignmentsController(
                 localizer["Admin_RoleEnded"].Value,
                 roleAssignment.RoleName,
                 roleAssignment.UserDisplayName));
+        else if (string.Equals(result.ErrorKey, "NotesTooLong", StringComparison.Ordinal))
+            SetError(NotesTooLongMessage);
         else
             SetError(localizer["Admin_RoleNotActive"].Value);
 

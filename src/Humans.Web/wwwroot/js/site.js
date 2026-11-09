@@ -71,12 +71,59 @@
         return chartPromise;
     }
 
+    // Builds a posted list from a human-search picker, including any server-rendered entries.
+    function initHumanSelectionList(options) {
+        var add = document.getElementById(options.addId);
+        if (!add) return;
+        var text = document.getElementById('human-search-' + options.instanceKey);
+        var hidden = document.getElementById('human-search-hidden-' + options.instanceKey);
+        var list = document.getElementById(options.listId);
+        var count = options.countId ? document.getElementById(options.countId) : null;
+        var submit = options.submitId ? document.getElementById(options.submitId) : null;
+
+        function refresh() {
+            if (count) count.textContent = list.children.length;
+            if (submit) submit.disabled = list.children.length === 0;
+        }
+        list.addEventListener('click', function (event) {
+            var remove = event.target.closest('.human-selection-remove');
+            if (!remove) return;
+            remove.closest('li').remove();
+            refresh();
+        });
+        add.addEventListener('click', function () {
+            var id = hidden.value;
+            if (!id || Array.from(list.querySelectorAll('input')).some(function (input) { return input.value === id; })) return;
+            var item = document.createElement('li');
+            item.className = 'list-group-item d-flex justify-content-between align-items-center';
+            var label = document.createElement('span');
+            label.textContent = text.value;
+            var input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = options.fieldName;
+            input.value = id;
+            var remove = document.createElement('button');
+            remove.type = 'button';
+            remove.className = 'btn btn-sm btn-outline-secondary human-selection-remove';
+            remove.textContent = '✕';
+            item.appendChild(label);
+            item.appendChild(input);
+            item.appendChild(remove);
+            list.appendChild(item);
+            hidden.value = '';
+            text.value = '';
+            refresh();
+        });
+        refresh();
+    }
+
     window.Humans = Object.assign(window.Humans || {}, {
         csrfToken: csrfToken,
         escapeHtml: escapeHtml,
         postJson: postJson,
         postForm: postForm,
-        loadChartJs: loadChartJs
+        loadChartJs: loadChartJs,
+        initHumanSelectionList: initHumanSelectionList
     });
 })();
 

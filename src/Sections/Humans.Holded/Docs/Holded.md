@@ -42,7 +42,7 @@ to this section too and has its own doc ([`Holded-connector.md`](Holded-connecto
   per run, logged when capped). Residual mismatches are **reportable state** on the sync row,
   never a failure — Holded's own chart totals can exclude unconfirmed entries.
 
-- Saved ledger error text stays within 2000 UTF-16 code units without splitting a Unicode surrogate pair. The original exception still propagates in full, and the sync gate is released.
+- Ledger, purchase-document, bank-feed and contact syncs share one failure-state persistence path: mark `Error`, bound the message to 2000 UTF-16 code units without splitting a surrogate pair, and timestamp/save independently of request cancellation. A failed error-state save logs the sync kind without replacing the original exception; each caller still releases its own sync gate.
 
 - **Interrupted manual syncs** remain recorded as `Error` and propagate caller cancellation. Caller-aborted document/ledger syncs and their controller log stack-free warnings; dependency failures remain errors with exceptions.
 
@@ -271,3 +271,5 @@ Connector DTOs expose consumed fields only; usage reads contain the API period a
 the 2026-10-30 Holded section-flow record (phase 1 built the reads and
 pages; phase 2 moved every outside caller off `IHoldedClient`). Historical design record:
 [`2026-08-10-holded-v2-migration-design.md`](2026-08-10-holded-v2-migration-design.md).
+
+Internal `HoldedMirrorSync` owns chart/ledger/account/document/note/contact/bank mirror synchronization, shared gates, reconciliation, call-log persistence and failure reporting. `Service` retains its read APIs and forwards sync entry points; the existing `HoldedAccountReader` owns the balance query shared with reconciliation. Sync budgets, window conversion, request order, gates, replacement semantics, timestamps, cancellation, error preservation and logger category are unchanged. Summary reads reuse call-log draining and the same Madrid timezone; no public contract, job signature or DI registration is added.

@@ -73,11 +73,14 @@ All under `FinancePolicies.Read`; English-only finance-admin pages like `/Holded
 
 ## Invariants
 
-- Imported entry notes and saved sync errors are bounded to 2,000 UTF-16 units without splitting surrogate pairs. The raw vendor entry remains intact, and recording an error preserves the original exception and existing mirror.
+- A category-link POST with a missing or blank Pleo id returns the existing invalid-id refusal before any mapping save or audit, then redirects to Categories with error feedback.
+
+- The internal `PleoTextBounds` bounds imported entry notes and saved sync errors to 2,000 UTF-16 units and permanent HTTP-error body previews to 300, without splitting surrogate pairs. The preview must remain valid UTF-8 before it becomes part of a stored sync error. The raw vendor entry remains intact, and recording an error preserves the original exception and existing mirror.
 
 - A sweep fetches entries, chart, cardholders and balance (three to five calls) before writing anything, then
   replaces the four cache tables in one save: rows the sweep did not return are deleted. A failed call leaves the
-  mirror as it was and records the error on the sync row.
+  mirror as it was and records the error on the sync row. If that diagnostic save also fails, the secondary failure
+  is logged without replacing the original sync or caller-cancellation exception; the sync gate is still released.
 - The pager fails closed: a body without `data`, `hasNextPage` without a cursor, a repeated cursor or the 100-page
   cap throws, so a short fetch can never delete rows.
 - Entries without an id or family are skipped and counted on the sync row.
@@ -122,9 +125,13 @@ step) brings the export and deletion paths with it. `SetByUserId` on a category 
 
 ## Architecture
 
+The internal `PleoMirrorReader` owns mirror snapshots, summary/reconciliation and entry/category projections, Madrid-window settled reads, wallet balance, and live receipt reads. `Service` delegates its seven existing read entry points and retains category mutations and forwards sync to `PleoMirrorSync`. Repository read order, live-account preference, spend/refund classification, receipt scope and error handling, logger category and cancellation are unchanged. The reader performs no writes; no public contract or DI registration is added.
+
 ### Public contract
 
 `IPleoService` (`Contracts/`): `GetSettledEntriesAsync(from, to)` — entries settled in a Madrid-date window, each with
 its Holded code or null and whether it has a receipt. Finance books only entries with both. `GetWalletBalanceAsync` —
 the wallet's current EUR balance at the last sweep (`PleoWalletBalance`), null before one or in another currency; the
 `/Finance` and `/Finance/Pleo` balance check. Served from the mirror. Everything else is internal.
+
+Internal `PleoMirrorSync` owns the full sweep and its vendor-to-mirror conversions, including the shared non-blocking gate and sync-state reporting. Fetch order, skipped/duplicate-row handling, atomic replacement, timestamps, cancellation, original-error preservation and logger category are unchanged. Category mappings remain outside the sweep. No public contract, job signature or DI registration is added.

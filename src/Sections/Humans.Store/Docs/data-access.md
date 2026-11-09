@@ -83,7 +83,7 @@ Repository: `IStoreRepository`.
 | Table | R/W |
 |-------|-----|
 | store_products | R (catalog and year-wide pricing) |
-| store_orders | R (index, summary and accounting export) |
+| store_orders | R (single-order DTOs, index, summary and accounting export) |
 | store_order_lines | R (effective prices and quantities) |
 | store_payments | R (settled accounting payments and balances) |
 | store_invoices | R (accounting invoice numbers) |
@@ -103,7 +103,8 @@ Repository: `IStoreRepository`.
 
 Records Stripe payments from checkout webhooks and missing-payment recovery through
 the same idempotent recording path under a process-wide `TrackedLock`. Recovery reads
-checkout sessions through `IStripeService`; report reads remain in `Service`.
+checkout sessions through `IStripeService`. The same owner validates checkout requests
+and assembles reconciliation reports, reusing `StoreOrderReader` for order DTOs.
 Cross-section calls also use `IAuditLogService`, plus `IClock`. No `IMemoryCache`.
 
 ### StoreCatalog (internal — `IApplicationService`, constructed once by `Service`)

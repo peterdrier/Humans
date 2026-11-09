@@ -8,11 +8,11 @@
 | Controller | Scope | Roles | Source |
 |---|---|---|---|
 | `GrantsAdminController` | Class | Admin, Grants Admin, Board, or a manager of at least one program | `GrantProgramsPolicy.Name` (section-local policy, `GrantsPolicyHandler`) — `/Grants/Admin` |
-| `GrantsAdminController.Index` | In-method | `GrantsPolicies.Read` (Admin, Grants Admin, Board) lists every program, others only the programs they manage; `GrantsPolicies.Manage` drives `CanAdminister` | Policy check |
+| `GrantsAdminController.Index` | In-method | `ProgramOperationRequirement.View` on each program (Admin, Grants Admin, Board, or a manager of that program); `GrantsPolicies.Manage` drives `CanAdminister` | Resource-based + policy check |
 | `GrantsAdminController.New` (GET/POST) | Action | Admin, Grants Admin — managers and Board cannot create programs | `GrantsPolicies.Manage` |
 | `GrantsAdminController.Program` | In-method | `ProgramOperationRequirement.View`; `Manage` and `Administer` drive `CanManage` and `CanAdminister`, so Board sees no forms | Resource-based |
 | `GrantsAdminController.Edit` (GET/POST) | Action + in-method | Admin, Grants Admin; then `AuthorizeAsync(User, program, ProgramOperationRequirement.Administer)` | `GrantsPolicies.Manage` + resource-based |
-| `GrantsAdminController.Issue` / `Revoke` / `Resend` | Action + in-method | The class gate, then `ProgramOperationRequirement.Manage` via `ManageAsync` (Admin, Grants Admin, or a manager of this program; never Board); a grant route whose grant is not in that program returns 404 | `GrantProgramsPolicy.Name` + resource-based |
+| `GrantsAdminController.Issue` / `Revoke` / `Resend` | Action + in-method | The class gate, then `ProgramOperationRequirement.Manage` via `ManageAsync` (Admin, Grants Admin, or a manager of this program; never Board); the service checks the grant belongs to that program before any side effects; missing or foreign grants return 404 | `GrantProgramsPolicy.Name` + resource-based |
 
 Every data-modifying action names its own policy; `GrantsAdminAuthorizationTests` pins them. `GrantsPolicies` (Read, Manage) lives in `Contracts/` and stays public: `BoardReadsEverythingTests` finds every section's Read/Manage pair by public type. `GrantsRoles` and `GrantProgramsPolicy` are internal, in `Authorization/`. All three are registered in `Section.cs`.
 

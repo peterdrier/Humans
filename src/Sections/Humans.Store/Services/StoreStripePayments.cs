@@ -1,3 +1,6 @@
+using System.Globalization;
+using System.Resources;
+using Humans.Base.Attributes;
 using Humans.AuditLog.Contracts;
 using Humans.Base.Interfaces;
 using Humans.Base.Threading;
@@ -17,7 +20,119 @@ internal sealed class StoreStripePayments(
     IClock clock,
     ILogger logger) : IApplicationService
 {
+    private static readonly ResourceManager Resources = new(typeof(StoreResource));
+
     private static readonly TrackedLock StripePaymentLock = new("Store.StripePayments");
+
+    [ExternalWrite]
+    public async Task<CheckoutSessionResult> CreateStripeCheckoutSessionAsync(
+        OrderDto order,
+        decimal amountEur,
+        string returnUrl,
+        CancellationToken ct = default)
+    {
+        string? errorKey = null;
+        decimal? maximumAmount = null;
+        if (order.CounterpartyType == OrderCounterpartyType.Team)
+            errorKey = "Store_NonBillableText";
+        else if (!stripeService.IsStoreCheckoutConfigured)
+            errorKey = "Store_CheckoutUnconfigured";
+        else if (amountEur <= 0)
+            errorKey = "Store_PaymentPositive";
+        else if (decimal.Round(amountEur, 2) != amountEur)
+            errorKey = "Store_PaymentPrecision";
+        else if (amountEur > order.BalanceEur)
+        {
+            errorKey = "Store_PaymentAboveBalance";
+            maximumAmount = order.BalanceEur;
+        }
+        else if (order.Payments.Any(p => p.Status == PaymentStatus.Pending))
+            errorKey = "Store_PaymentPending";
+
+        if (errorKey is not null)
+        {
+            logger.LogWarning("Store checkout rejected for order {OrderId}: {ErrorKey}", order.Id, errorKey);
+            return new CheckoutSessionResult(null, errorKey, maximumAmount);
+        }
+
+        var name = order.CounterpartyName ?? Resources.GetString("Store_CheckoutCampOrder", CultureInfo.CurrentUICulture)!;
+        var description = $"Nobodies Collective - {name}";
+        var sessionUrl = await OpenCheckoutSessionAsync(
+            order.Id, amountEur, returnUrl, order.CounterpartyEmail, description, ct);
+        if (sessionUrl is null)
+            return new CheckoutSessionResult(null, "Store_PaymentPending");
+        return new CheckoutSessionResult(sessionUrl, null);
+    }
+
+    public async Task<StripeReconciliationReport> GetStripeReconciliationAsync(
+        StoreOrderReader orderReader, CancellationToken ct = default)
+    {
+        var sessionsOrNull = await stripeService.ListStoreCheckoutSessionsAsync(ct);
+        var stripeQueried = sessionsOrNull is not null;
+        var sessions = sessionsOrNull ?? [];
+        var recorded = await repo.GetRecordedStripePaymentsAsync(ct);
+        var recordedByPi = recorded.ToDictionary(p => p.PaymentIntentId, p => p.Status, StringComparer.Ordinal);
+
+        var matchedIds = sessions.Where(s => s.OrderId is not null).Select(s => s.OrderId!.Value)
+            .Concat(recorded.Select(p => p.OrderId))
+            .Distinct();
+        var orders = new Dictionary<Guid, OrderDto>();
+        foreach (var id in matchedIds)
+        {
+            var order = await orderReader.GetOrderAsync(id, ct);
+            if (order is not null) orders[id] = order;
+        }
+
+        var rows = new List<StripeReconciliationRow>(sessions.Count);
+        foreach (var s in sessions)
+        {
+            OrderDto? order = s.OrderId is { } oid && orders.TryGetValue(oid, out var o) ? o : null;
+            rows.Add(new StripeReconciliationRow(
+                s.SessionId, s.PaymentIntentId, s.AmountEur, s.PaymentStatus, s.CreatedAt,
+                s.OrderId, order?.CounterpartyDisplayName,
+                ClassifyStripeSession(s, order, recordedByPi)));
+        }
+
+        // Orphans only when Stripe was actually queried: an unreadable Stripe yields an empty session list, which
+        // does not make every recorded payment an orphan.
+        var stripePis = sessions.Where(s => s.PaymentIntentId is not null)
+            .Select(s => s.PaymentIntentId!).ToHashSet(StringComparer.Ordinal);
+        var orphans = stripeQueried
+            ? recorded
+                .Where(p => !stripePis.Contains(p.PaymentIntentId))
+                .Select(p => new StripeOrphanPayment(
+                    p.PaymentIntentId, p.OrderId,
+                    orders.TryGetValue(p.OrderId, out var oo) ? oo.CounterpartyDisplayName : null,
+                    p.AmountEur, p.ReceivedAt))
+                .ToList()
+            : new List<StripeOrphanPayment>();
+
+        return new StripeReconciliationReport(
+            stripeService.IsStoreWebhookConfigured,
+            stripeService.IsStoreCheckoutConfigured,
+            stripeQueried,
+            rows,
+            orphans);
+    }
+
+    private static StripeReconciliationStatus ClassifyStripeSession(
+        StoreCheckoutSessionData s, OrderDto? order, IReadOnlyDictionary<string, PaymentStatus> recordedByPi)
+    {
+        if (!string.Equals(s.PaymentStatus, "paid", StringComparison.Ordinal))
+            return StripeReconciliationStatus.Unpaid;
+        if (s.PaymentIntentId is { } pi && recordedByPi.TryGetValue(pi, out var paymentStatus))
+            // Stripe says paid but the local row hasn't settled: the amount isn't in the balance yet, so it must not
+            // present as plain "Recorded".
+            return paymentStatus switch
+            {
+                PaymentStatus.Paid => StripeReconciliationStatus.Recorded,
+                PaymentStatus.Pending => StripeReconciliationStatus.RecordedPending,
+                _ => StripeReconciliationStatus.RecordedFailed,
+            };
+        if (order is null || s.PaymentIntentId is null || order.CounterpartyType == OrderCounterpartyType.Team)
+            return StripeReconciliationStatus.Unmatched;
+        return StripeReconciliationStatus.Missing;
+    }
 
     public async Task<StripeReconciliationResult> RecordMissingStripePaymentsAsync(
         Guid actorUserId, CancellationToken ct = default)

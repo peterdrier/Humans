@@ -52,6 +52,13 @@ Cross-section calls via `ISettingsService` (active event settings),
 section's own `EventsEmails` builder supplying the message. The inner service has no
 `IMemoryCache`. CSV bulk import runs through `EventBulkImporter`.
 
+### EventGuideConfiguration (internal — constructed by EventService, not DI-registered)
+
+Uses the shared `IEventRepository` for the guide-settings singleton, categories and
+venues. Resolves event editions/timezones through `ISettingsService`; uses the same
+clock and logger as `EventService`. Owns configuration reads, projections and writes;
+the existing caching facade still owns invalidation. No cache or direct DbContext.
+
 ### EventBulkImporter (internal — `IApplicationService`, constructed per import by `EventService`)
 
 Not DI-registered; shares `EventService`'s `IEventRepository`. Validates the whole CSV

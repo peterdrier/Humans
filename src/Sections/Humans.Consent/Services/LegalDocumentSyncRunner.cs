@@ -95,7 +95,9 @@ internal sealed class LegalDocumentSyncRunner(
         }
 
         var users = await userService.GetUserInfosAsync(userDocuments.Keys.ToList(), cancellationToken);
-        var recipients = userDocuments.Keys.Where(users.ContainsKey).GroupBy(id => users[id].Id).ToList();
+        var recipients = userDocuments.Keys
+            .Where(id => users.TryGetValue(id, out var user) && user.IsActive)
+            .GroupBy(id => users[id].Id).ToList();
         var consented = await consents.GetConsentMapForUsersAsync(recipients.Select(group => group.Key).ToList(), cancellationToken);
         var notificationCount = 0;
         foreach (var recipient in recipients)

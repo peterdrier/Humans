@@ -126,7 +126,7 @@ internal sealed class GoogleSyncOutboxRepository(IDbContextFactory<GoogleIntegra
 
         entity.FailedPermanently = true;
         entity.ProcessedAt = processedAt;
-        entity.LastError = Truncate(lastError);
+        entity.LastError = StoredGoogleText.Bound(lastError, LastErrorMaxLength);
         await ctx.SaveChangesAsync(ct);
     }
 
@@ -143,7 +143,7 @@ internal sealed class GoogleSyncOutboxRepository(IDbContextFactory<GoogleIntegra
             return (false, 0);
 
         entity.RetryCount += 1;
-        entity.LastError = Truncate(lastError);
+        entity.LastError = StoredGoogleText.Bound(lastError, LastErrorMaxLength);
 
         var exhausted = entity.RetryCount >= maxRetryCount;
         if (exhausted)
@@ -154,14 +154,5 @@ internal sealed class GoogleSyncOutboxRepository(IDbContextFactory<GoogleIntegra
 
         await ctx.SaveChangesAsync(ct);
         return (exhausted, entity.RetryCount);
-    }
-
-    private static string Truncate(string value)
-    {
-        if (value.Length <= LastErrorMaxLength) return value;
-        var length = LastErrorMaxLength;
-        if (char.IsHighSurrogate(value[length - 1]) && char.IsLowSurrogate(value[length]))
-            length--;
-        return value[..length];
     }
 }

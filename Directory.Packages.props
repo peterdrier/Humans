@@ -5,13 +5,13 @@
   </PropertyGroup>
   <ItemGroup>
     <!-- AI/LLM -->
-    <PackageVersion Include="Anthropic" Version="13.3.0" />
+    <PackageVersion Include="Anthropic" Version="13.6.0" />
     <!-- Core Framework -->
     <PackageVersion Include="ClosedXML" Version="0.105.1" />
     <!-- CSV — ALL CSV reading/writing goes through CsvHelper (memory/code/csv-use-csvhelper.md). Exact package name "CsvHelper" only; "CsvHelper.Excel.Core.Net" is known malware. -->
     <PackageVersion Include="CsvHelper" Version="34.0.0" />
     <!-- 9.1.973 is the first stable release resolving AngleSharp 1.x — required to clear GHSA-pgww-w46g-26qg (nobodies-collective/Humans#929). -->
-    <PackageVersion Include="HtmlSanitizer" Version="10.0.1120" />
+    <PackageVersion Include="HtmlSanitizer" Version="11.0.26" />
     <PackageVersion Include="Ical.Net" Version="5.2.4" />
     <PackageVersion Include="Markdig" Version="1.5.1" />
     <!-- User-Agent parsing for /Admin/ClientStats (code-based, no regex DB; library telemetry left off) -->
@@ -48,9 +48,9 @@
          exposed the latent Octokit constraint. Drop when Octokit ships without Newtonsoft. -->
     <PackageVersion Include="Newtonsoft.Json" Version="13.0.4" />
     <!-- Google Workspace APIs -->
-    <PackageVersion Include="Google.Apis.Admin.Directory.directory_v1" Version="1.76.0.4274" />
-    <PackageVersion Include="Google.Apis.CloudIdentity.v1" Version="1.77.0.4309" />
-    <PackageVersion Include="Google.Apis.Drive.v3" Version="1.77.0.4301" />
+    <PackageVersion Include="Google.Apis.Admin.Directory.directory_v1" Version="1.78.0.4274" />
+    <PackageVersion Include="Google.Apis.CloudIdentity.v1" Version="1.78.0.4309" />
+    <PackageVersion Include="Google.Apis.Drive.v3" Version="1.78.0.4313" />
     <PackageVersion Include="Google.Apis.DriveActivity.v2" Version="1.74.0.3880" />
     <PackageVersion Include="Google.Apis.Groupssettings.v1" Version="1.74.0.2721" />
     <PackageVersion Include="Google.Apis.Auth" Version="1.78.0" />
@@ -103,7 +103,7 @@
          NU1903 fails restore). Drop when Testcontainers ships against SSH.NET >= 2026.0.0. -->
     <PackageVersion Include="SSH.NET" Version="2026.0.0" />
     <!-- HTML parsing for the localization-coverage sweep; pinned to the version HtmlSanitizer already resolves so the solution-wide graph is unchanged. -->
-    <PackageVersion Include="AngleSharp" Version="1.9.0" />
+    <PackageVersion Include="AngleSharp" Version="1.10.0" />
     <PackageVersion Include="xunit.v3.mtp-off" Version="4.0.2" />
     <PackageVersion Include="xunit.v3.extensibility.core" Version="4.0.2" />
     <PackageVersion Include="xunit.runner.visualstudio" Version="4.0.1" />

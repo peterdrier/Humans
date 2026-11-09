@@ -334,7 +334,7 @@ future run doesn't re-derive it:
 - **`NoDestructiveMigrationOps.baseline.txt`.** An approval ledger of
   immutable, already-shipped migrations with Peter's written sign-off above
   each — not a backlog. The rule guards new drops, never sweep existing ones.
-- **The `[DontFix]` classes** (`AuditLogService`, `RoleAssignmentService`).
+- **The `[DontFix]` classes** (`AuditLogService`).
   Peter-only, permanent. Never "fix" them, never add the attribute elsewhere.
 - **The `TicketRepository` rows in `DisplaySortInControllers.baseline.txt`.**
   Peter ruled these stay until the paged grid's sort is redesigned

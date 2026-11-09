@@ -1,5 +1,3 @@
-using System.Globalization;
-using System.Resources;
 using Humans.AuditLog.Contracts;
 using Humans.Base.Attributes;
 using Humans.Base.Interfaces;
@@ -30,10 +28,10 @@ internal sealed class Service(
     IOptions<StoreSectionOptions> options,
     ILogger<Service> logger) : IApplicationService
 {
-    private static readonly ResourceManager Resources = new(typeof(StoreResource));
-
+    private readonly StoreOrderAdministration orderAdministration = new(repo, audit, clock, logger);
     private readonly StoreOrderReader orderReader = new(repo, campService, teamService, clock, settingsService);
     private readonly StoreStripePayments stripePayments = new(repo, audit, stripeService, clock, logger);
+    private readonly StoreMetadataRepair metadataRepair = new(repo, audit, campService, clock, logger);
     private readonly StoreCatalog productCatalog = new(repo, audit, clock, logger);
 
     public Task<IndexData> GetIndexDataAsync(Guid userId, CancellationToken ct = default) =>
@@ -90,103 +88,20 @@ internal sealed class Service(
     public Task<AdminMutationResult> DeactivateProductAsync(Guid productId, Guid actorUserId, CancellationToken ct = default) =>
         productCatalog.DeactivateProductAsync(productId, actorUserId, ct);
 
-    public async Task<OrderDto?> GetOrderAsync(Guid orderId, CancellationToken ct = default)
-    {
-        var o = await repo.GetOrderWithLinesAndPaymentsAsync(orderId, ct);
-        if (o is null) return null;
-        var productIds = o.Lines.Select(l => l.ProductId).Distinct().ToList();
-        var productNames = await orderReader.LoadProductNamesAsync(productIds, ct);
-        var currentPrices = await LoadCurrentPricesAsync(ct);
-        return await orderReader.MapOrderAsync(o, productNames, currentPrices, ct);
-    }
+    public Task<OrderDto?> GetOrderAsync(Guid orderId, CancellationToken ct = default) =>
+        orderReader.GetOrderAsync(orderId, ct);
 
-    public async Task<OrderYearRepairReport> GetOrderYearRepairReportAsync(CancellationToken ct = default)
-    {
-        var orders = await repo.GetOrdersWithMissingYearAsync(ct);
-        var rows = new List<OrderYearRepairRow>(orders.Count);
-        foreach (var order in orders)
-        {
-            var season = order.CampSeasonId is { } seasonId
-                ? await campService.GetCampSeasonByIdAsync(seasonId, ct)
-                : null;
-            rows.Add(new OrderYearRepairRow(
-                order.Id,
-                order.CampSeasonId,
-                season?.Name,
-                season?.Year));
-        }
+    public Task<OrderYearRepairReport> GetOrderYearRepairReportAsync(CancellationToken ct = default) =>
+        metadataRepair.GetOrderYearRepairReportAsync(ct);
 
-        return new OrderYearRepairReport(rows);
-    }
+    public Task<int> RepairOrderYearsAsync(Guid actorUserId, CancellationToken ct = default) =>
+        metadataRepair.RepairOrderYearsAsync(actorUserId, ct);
 
-    public async Task<int> RepairOrderYearsAsync(Guid actorUserId, CancellationToken ct = default)
-    {
-        var orders = await repo.GetOrdersWithMissingYearAsync(ct);
-        var repaired = 0;
-        foreach (var order in orders)
-        {
-            if (await ResolveLegacyOrderYearAsync(order, actorUserId, nameof(RepairOrderYearsAsync), ct))
-                repaired++;
-        }
+    public Task<IReadOnlyList<PaymentMethodRepairRow>> GetPaymentMethodRepairRowsAsync(CancellationToken ct = default) =>
+        metadataRepair.GetPaymentMethodRepairRowsAsync(ct);
 
-        return repaired;
-    }
-
-    public async Task<IReadOnlyList<PaymentMethodRepairRow>> GetPaymentMethodRepairRowsAsync(CancellationToken ct = default)
-    {
-        var payments = await repo.GetPaymentsMissingMethodNameAsync(ct);
-        return payments
-            .Select(p => new PaymentMethodRepairRow(p.Id, p.OrderId, p.Method, p.AmountEur, p.ReceivedAt))
-            .ToList();
-    }
-
-    /// <summary>Copies each legacy payment's int <see cref="Payment.Method"/> into <see cref="Payment.MethodName"/>, one audit entry per row.</summary>
-    public async Task<int> RepairPaymentMethodNamesAsync(Guid actorUserId, CancellationToken ct = default)
-    {
-        var payments = await repo.GetPaymentsMissingMethodNameAsync(ct);
-        foreach (var payment in payments)
-        {
-            await repo.SetPaymentMethodNameAsync(payment.Id, payment.Method, ct);
-            await audit.LogAsync(
-                StoreAuditActions.StorePaymentMethodBackfilled, AuditEntityTypes.Payment, payment.Id,
-                $"Copied payment method {payment.Method} into the string column",
-                actorUserId, payment.OrderId, AuditEntityTypes.Order);
-        }
-
-        return payments.Count;
-    }
-
-    private async Task<bool> ResolveLegacyOrderYearAsync(
-        Order order,
-        Guid actorUserId,
-        string source,
-        CancellationToken ct)
-    {
-        if (order.Year != 0 || order.CampSeasonId is not { } seasonId)
-            return false;
-
-        var season = await campService.GetCampSeasonByIdAsync(seasonId, ct);
-        if (season is null)
-            return false;
-
-        order.Year = season.Year;
-        order.UpdatedAt = clock.GetCurrentInstant();
-        await repo.UpdateOrderAsync(order, ct);
-        var description = $"Resolved legacy store order year as {season.Year} from camp season {seasonId}";
-        await audit.LogAsync(
-            StoreAuditActions.StoreOrderYearBackfilled,
-            AuditEntityTypes.Order,
-            order.Id,
-            description,
-            actorUserId);
-        logger.LogInformation(
-            "Resolved legacy Store order {OrderId} year as {Year} from camp season {CampSeasonId} via {Source}",
-            order.Id,
-            season.Year,
-            seasonId,
-            source);
-        return true;
-    }
+    public Task<int> RepairPaymentMethodNamesAsync(Guid actorUserId, CancellationToken ct = default) =>
+        metadataRepair.RepairPaymentMethodNamesAsync(actorUserId, ct);
 
     public async Task<MutationResult> CreateOrderAsync(Guid campSeasonId, Guid actorUserId, CancellationToken ct = default)
     {
@@ -210,36 +125,8 @@ internal sealed class Service(
             $"Created store order for camp season {campSeasonId}", ct);
     }
 
-    public async Task<AdminMutationResult> DeleteOrderAsync(Guid orderId, Guid actorUserId, CancellationToken ct = default)
-    {
-        var order = await repo.GetOrderWithLinesAndPaymentsAsync(orderId, ct);
-        if (order is null) return RefuseAdminMutation(orderId, actorUserId, "Order not found.");
-
-        // An issued order is held by a restrictive FK from store_invoices, and a paid one reads zero-balance; without
-        // this the delete blows up in EF.
-        if (order.State != OrderState.Open)
-            return RefuseAdminMutation(orderId, actorUserId,
-                $"Order {orderId} has been invoiced; an invoiced order cannot be deleted.");
-
-        // Payments cascade on delete, and any payment row, whatever its status, is a money record that must outlive
-        // the order.
-        if (order.Payments.Count > 0)
-            return RefuseAdminMutation(orderId, actorUserId,
-                $"Order {orderId} has payments recorded; an order with payments cannot be deleted.");
-
-        var currentPrices = await LoadCurrentPricesAsync(ct);
-        var balance = BalanceCalculator.Compute(order, currentPrices).BalanceEur;
-        if (balance != 0m)
-            return RefuseAdminMutation(orderId, actorUserId,
-                $"Order {orderId} has a non-zero balance (EUR {balance:0.00}); only zero-balance orders may be deleted.");
-
-        await repo.DeleteOrderAsync(orderId, ct);
-        await audit.LogAsync(
-            StoreAuditActions.StoreOrderDeleted, AuditEntityTypes.Order, orderId,
-            $"Deleted store order {orderId}",
-            actorUserId);
-        return AdminMutationResult.Success;
-    }
+    public Task<AdminMutationResult> DeleteOrderAsync(Guid orderId, Guid actorUserId, CancellationToken ct = default) =>
+        orderAdministration.DeleteOrderAsync(orderId, actorUserId, orderReader, ct);
 
     public async Task<MutationResult> CreateTeamOrderAsync(Guid teamId, Guid actorUserId, CancellationToken ct = default)
     {
@@ -298,7 +185,7 @@ internal sealed class Service(
         if (order.State != OrderState.Open)
             return RefuseMutation("Store_OrderLinesFrozen", orderId, actorUserId);
 
-        await ResolveLegacyOrderYearAsync(order, actorUserId, nameof(AddLineAsync), ct);
+        await metadataRepair.ResolveLegacyOrderYearAsync(order, actorUserId, nameof(AddLineAsync), ct);
         if (order.Year == 0)
             return RefuseMutation("Store_OrderYearUnresolved", orderId, actorUserId);
 
@@ -401,44 +288,9 @@ internal sealed class Service(
     public Task<int> GetCurrentEventYearAsync(CancellationToken ct = default) => orderReader.GetCurrentEventYearAsync(ct);
 
     [ExternalWrite]
-    public async Task<CheckoutSessionResult> CreateStripeCheckoutSessionAsync(
-        OrderDto order,
-        decimal amountEur,
-        string returnUrl,
-        CancellationToken ct = default)
-    {
-        string? errorKey = null;
-        decimal? maximumAmount = null;
-        if (order.CounterpartyType == OrderCounterpartyType.Team)
-            errorKey = "Store_NonBillableText";
-        else if (!stripeService.IsStoreCheckoutConfigured)
-            errorKey = "Store_CheckoutUnconfigured";
-        else if (amountEur <= 0)
-            errorKey = "Store_PaymentPositive";
-        else if (decimal.Round(amountEur, 2) != amountEur)
-            errorKey = "Store_PaymentPrecision";
-        else if (amountEur > order.BalanceEur)
-        {
-            errorKey = "Store_PaymentAboveBalance";
-            maximumAmount = order.BalanceEur;
-        }
-        else if (order.Payments.Any(p => p.Status == PaymentStatus.Pending))
-            errorKey = "Store_PaymentPending";
-
-        if (errorKey is not null)
-        {
-            logger.LogWarning("Store checkout rejected for order {OrderId}: {ErrorKey}", order.Id, errorKey);
-            return new CheckoutSessionResult(null, errorKey, maximumAmount);
-        }
-
-        var name = order.CounterpartyName ?? Resources.GetString("Store_CheckoutCampOrder", CultureInfo.CurrentUICulture)!;
-        var description = $"Nobodies Collective - {name}";
-        var sessionUrl = await stripePayments.OpenCheckoutSessionAsync(
-            order.Id, amountEur, returnUrl, order.CounterpartyEmail, description, ct);
-        if (sessionUrl is null)
-            return new CheckoutSessionResult(null, "Store_PaymentPending");
-        return new CheckoutSessionResult(sessionUrl, null);
-    }
+    public Task<CheckoutSessionResult> CreateStripeCheckoutSessionAsync(
+        OrderDto order, decimal amountEur, string returnUrl, CancellationToken ct = default) =>
+        stripePayments.CreateStripeCheckoutSessionAsync(order, amountEur, returnUrl, ct);
 
     public Task RecordStripePaymentAsync(
         Guid orderId,
@@ -453,163 +305,26 @@ internal sealed class Service(
     /// books money sent back by hand from the Stripe dashboard, stored negative and citing its reference. Refunds are
     /// uncapped (a camp may have overpaid); deposit returns never exceed the order's deposits.
     /// </summary>
-    public async Task<AdminMutationResult> RecordAdminPaymentAsync(
+    public Task<AdminMutationResult> RecordAdminPaymentAsync(
         Guid orderId,
         PaymentMethod method,
         decimal amountEur,
         string? externalRef,
         string? notes,
         Guid actorUserId,
-        CancellationToken ct = default)
-    {
-        if (method is not (PaymentMethod.DepositReturn or PaymentMethod.Refund))
-            return RefuseAdminMutation(orderId, actorUserId, $"Only deposit returns and refunds can be recorded by hand, not {method}.");
-        if (amountEur <= 0)
-            return RefuseAdminMutation(orderId, actorUserId, "Amount must be greater than zero.");
-        if (amountEur > 9_999_999_999.99m || decimal.Round(amountEur, 2) != amountEur)
-            return RefuseAdminMutation(orderId, actorUserId,
-                "Amount must be at most 9,999,999,999.99 with no more than two decimal places.");
-        if (method == PaymentMethod.Refund && string.IsNullOrWhiteSpace(externalRef))
-            return RefuseAdminMutation(orderId, actorUserId, "A refund needs a reference (e.g. the Stripe refund id).");
-
-        var order = await repo.GetOrderWithLinesAndPaymentsAsync(orderId, ct);
-        if (order is null) return RefuseAdminMutation(orderId, actorUserId, "Order not found.");
-        if (order.TeamId is not null)
-            return RefuseAdminMutation(orderId, actorUserId, "Team orders are non-billable.");
-
-        externalRef = string.IsNullOrWhiteSpace(externalRef) ? null : externalRef.Trim();
-        notes = string.IsNullOrWhiteSpace(notes) ? null : notes.Trim();
-        if (externalRef is { Length: > 200 })
-            return RefuseAdminMutation(orderId, actorUserId, "Payment reference must be 200 characters or fewer.");
-        if (notes is { Length: > 1000 })
-            return RefuseAdminMutation(orderId, actorUserId, "Payment notes must be 1000 characters or fewer.");
-
-        if (method == PaymentMethod.DepositReturn)
-        {
-            var depositTotal = BalanceCalculator.Compute(order, await LoadCurrentPricesAsync(ct)).DepositTotalEur;
-            var alreadyReturned = order.Payments
-                .Where(p => p.Method == PaymentMethod.DepositReturn && p.Status == PaymentStatus.Paid)
-                .Sum(p => p.AmountEur);
-            var remaining = depositTotal - alreadyReturned;
-            if (amountEur > remaining)
-                return RefuseAdminMutation(orderId, actorUserId,
-                    $"Deposit return of EUR {amountEur:0.00} exceeds the EUR {remaining:0.00} of deposit still held "
-                    + $"(EUR {depositTotal:0.00} deposited, EUR {alreadyReturned:0.00} already returned).");
-        }
-
-        var signed = method == PaymentMethod.Refund ? -amountEur : amountEur;
-        var payment = new Payment
-        {
-            Id = Guid.NewGuid(),
-            OrderId = orderId,
-            AmountEur = signed,
-            Method = method,
-            MethodName = method,
-            Status = PaymentStatus.Paid,
-            ExternalRef = externalRef,
-            Notes = notes,
-            ReceivedAt = clock.GetCurrentInstant(),
-            RecordedByUserId = actorUserId,
-        };
-        await repo.AddPaymentAsync(payment, ct);
-        await audit.LogAsync(
-            StoreAuditActions.StorePaymentRecorded, AuditEntityTypes.Payment, payment.Id,
-            $"Recorded {method} of EUR {signed:0.00} on order {orderId}"
-                + (payment.ExternalRef is null ? string.Empty : $" (ref {payment.ExternalRef})"),
-            actorUserId, orderId, AuditEntityTypes.Order);
-        return AdminMutationResult.Success;
-    }
+        CancellationToken ct = default) =>
+        orderAdministration.RecordAdminPaymentAsync(orderId, method, amountEur, externalRef, notes, actorUserId, orderReader, ct);
 
     /// <summary>
     /// Hard delete of a payment recorded in error. The row is gone for good, so the audit entry carries everything
     /// needed to reconstruct it.
     /// </summary>
-    public async Task<AdminMutationResult> DeletePaymentAsync(
-        Guid orderId, Guid paymentId, Guid actorUserId, CancellationToken ct = default)
-    {
-        var order = await repo.GetOrderWithLinesAndPaymentsAsync(orderId, ct);
-        if (order is null) return RefuseAdminMutation(orderId, actorUserId, "Order not found.");
-        var payment = order.Payments.FirstOrDefault(p => p.Id == paymentId);
-        if (payment is null) return RefuseAdminMutation(orderId, actorUserId, "Payment not found on this order.");
+    public Task<AdminMutationResult> DeletePaymentAsync(
+        Guid orderId, Guid paymentId, Guid actorUserId, CancellationToken ct = default) =>
+        orderAdministration.DeletePaymentAsync(orderId, paymentId, actorUserId, ct);
 
-        await repo.DeletePaymentAsync(paymentId, ct);
-        await audit.LogAsync(
-            StoreAuditActions.StorePaymentDeleted, AuditEntityTypes.Payment, payment.Id,
-            $"Deleted {payment.Method} payment of EUR {payment.AmountEur:0.00} ({payment.Status}) on order {orderId}, "
-                + $"received {payment.ReceivedAt}, ref {payment.ExternalRef ?? "none"}, PI {payment.StripePaymentIntentId ?? "none"}, "
-                + $"recorded by {payment.RecordedByUserId?.ToString() ?? "none"}, notes {payment.Notes ?? "none"}",
-            actorUserId, orderId, AuditEntityTypes.Order);
-        return AdminMutationResult.Success;
-    }
-
-    public async Task<StripeReconciliationReport> GetStripeReconciliationAsync(CancellationToken ct = default)
-    {
-        var sessionsOrNull = await stripeService.ListStoreCheckoutSessionsAsync(ct);
-        var stripeQueried = sessionsOrNull is not null;
-        var sessions = sessionsOrNull ?? [];
-        var recorded = await repo.GetRecordedStripePaymentsAsync(ct);
-        var recordedByPi = recorded.ToDictionary(p => p.PaymentIntentId, p => p.Status, StringComparer.Ordinal);
-
-        var matchedIds = sessions.Where(s => s.OrderId is not null).Select(s => s.OrderId!.Value)
-            .Concat(recorded.Select(p => p.OrderId))
-            .Distinct();
-        var orders = new Dictionary<Guid, OrderDto>();
-        foreach (var id in matchedIds)
-        {
-            var order = await GetOrderAsync(id, ct);
-            if (order is not null) orders[id] = order;
-        }
-
-        var rows = new List<StripeReconciliationRow>(sessions.Count);
-        foreach (var s in sessions)
-        {
-            OrderDto? order = s.OrderId is { } oid && orders.TryGetValue(oid, out var o) ? o : null;
-            rows.Add(new StripeReconciliationRow(
-                s.SessionId, s.PaymentIntentId, s.AmountEur, s.PaymentStatus, s.CreatedAt,
-                s.OrderId, order?.CounterpartyDisplayName,
-                ClassifyStripeSession(s, order, recordedByPi)));
-        }
-
-        // Orphans only when Stripe was actually queried: an unreadable Stripe yields an empty session list, which
-        // does not make every recorded payment an orphan.
-        var stripePis = sessions.Where(s => s.PaymentIntentId is not null)
-            .Select(s => s.PaymentIntentId!).ToHashSet(StringComparer.Ordinal);
-        var orphans = stripeQueried
-            ? recorded
-                .Where(p => !stripePis.Contains(p.PaymentIntentId))
-                .Select(p => new StripeOrphanPayment(
-                    p.PaymentIntentId, p.OrderId,
-                    orders.TryGetValue(p.OrderId, out var oo) ? oo.CounterpartyDisplayName : null,
-                    p.AmountEur, p.ReceivedAt))
-                .ToList()
-            : new List<StripeOrphanPayment>();
-
-        return new StripeReconciliationReport(
-            stripeService.IsStoreWebhookConfigured,
-            stripeService.IsStoreCheckoutConfigured,
-            stripeQueried,
-            rows,
-            orphans);
-    }
-
-    private static StripeReconciliationStatus ClassifyStripeSession(
-        StoreCheckoutSessionData s, OrderDto? order, IReadOnlyDictionary<string, PaymentStatus> recordedByPi)
-    {
-        if (!string.Equals(s.PaymentStatus, "paid", StringComparison.Ordinal))
-            return StripeReconciliationStatus.Unpaid;
-        if (s.PaymentIntentId is { } pi && recordedByPi.TryGetValue(pi, out var paymentStatus))
-            // Stripe says paid but the local row hasn't settled: the amount isn't in the balance yet, so it must not
-            // present as plain "Recorded".
-            return paymentStatus switch
-            {
-                PaymentStatus.Paid => StripeReconciliationStatus.Recorded,
-                PaymentStatus.Pending => StripeReconciliationStatus.RecordedPending,
-                _ => StripeReconciliationStatus.RecordedFailed,
-            };
-        if (order is null || s.PaymentIntentId is null || order.CounterpartyType == OrderCounterpartyType.Team)
-            return StripeReconciliationStatus.Unmatched;
-        return StripeReconciliationStatus.Missing;
-    }
+    public Task<StripeReconciliationReport> GetStripeReconciliationAsync(CancellationToken ct = default) =>
+        stripePayments.GetStripeReconciliationAsync(orderReader, ct);
 
     public Task<StripeReconciliationResult> RecordMissingStripePaymentsAsync(
         Guid actorUserId, CancellationToken ct = default) =>
@@ -620,27 +335,10 @@ internal sealed class Service(
 
     /// <summary>Issues or recovers the billable order's invoice and freezes its prices.</summary>
     [ExternalWrite]
-    public async Task<AdminMutationResult> IssueInvoiceAsync(Guid orderId, Guid actorUserId, CancellationToken ct = default)
-    {
-        var order = await repo.GetOrderWithLinesAndPaymentsAsync(orderId, ct);
-        if (order is null)
-            return RefuseAdminMutation(orderId, actorUserId, "Order not found.");
-        if (order.TeamId is not null)
-            return RefuseAdminMutation(orderId, actorUserId, "Team orders are non-billable.");
-        return await new StoreInvoiceIssuer(repo, audit, clock, holded, holdedWrite, options, orderReader, logger)
-            .IssueAsync(order, actorUserId, ct);
-    }
-
-    private AdminMutationResult RefuseAdminMutation(Guid orderId, Guid actorUserId, string reason)
-    {
-        logger.LogWarning("Store admin mutation rejected for order {OrderId}, actor {ActorUserId}: {Reason}",
-            orderId, actorUserId, reason);
-        return AdminMutationResult.Refused(reason);
-    }
+    public Task<AdminMutationResult> IssueInvoiceAsync(Guid orderId, Guid actorUserId, CancellationToken ct = default) =>
+        new StoreInvoiceIssuer(repo, audit, clock, holded, holdedWrite, options, orderReader, logger)
+            .IssueAsync(orderId, actorUserId, ct);
 
     public Task<SummaryDto> GetStoreSummaryAsync(int year, CancellationToken ct = default) =>
         orderReader.GetStoreSummaryAsync(year, ct);
-
-    private Task<IReadOnlyDictionary<Guid, BalanceCalculator.ProductPrice>> LoadCurrentPricesAsync(
-        CancellationToken ct) => orderReader.LoadCurrentPricesAsync(ct);
 }

@@ -15,6 +15,7 @@ using Humans.Preapprovals.Services;
 using Humans.Preapprovals.Tests.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 using NSubstitute;
+using NodaTime;
 
 namespace Humans.Preapprovals.Tests.Services;
 
@@ -112,10 +113,10 @@ public sealed class GrantTests : PreapprovalsTestHarness
             case "issue-many": await service.IssueManyAsync(program.Id, [beneficiary, SeedUser()], actor, request.Token); break;
             case "apply":
             case "edit-application": await service.ApplyAsync(program.Id, beneficiary, "Saved note", null, request.Token); break;
-            case "approve": await service.ApproveAsync(grant!.Id, null, actor, request.Token); break;
-            case "decline": await service.DeclineAsync(grant!.Id, "Declined", actor, request.Token); break;
-            case "revoke": await service.RevokeAsync(grant!.Id, "Revoked", actor, request.Token); break;
-            case "change-amount": await service.ChangeAmountAsync(grant!.Id, 400m, actor, request.Token); break;
+            case "approve": await service.ApproveAsync(program.Id, grant!.Id, null, actor, request.Token); break;
+            case "decline": await service.DeclineAsync(program.Id, grant!.Id, "Declined", actor, request.Token); break;
+            case "revoke": await service.RevokeAsync(program.Id, grant!.Id, "Revoked", actor, request.Token); break;
+            case "change-amount": await service.ChangeAmountAsync(program.Id, grant!.Id, 400m, actor, request.Token); break;
         }
 
         request.IsCancellationRequested.Should().BeTrue();
@@ -515,6 +516,44 @@ public sealed class GrantTests : PreapprovalsTestHarness
         (await OpenContext().Grants.CountAsync(Ct)).Should().Be(0);
     }
 
+    [HumansTheory]
+    [InlineData("approve", false)]
+    [InlineData("approve", true)]
+    [InlineData("decline", false)]
+    [InlineData("decline", true)]
+    [InlineData("revoke", false)]
+    [InlineData("revoke", true)]
+    [InlineData("amount", false)]
+    [InlineData("amount", true)]
+    public async Task GrantMutation_RefusesMissingOrForeignGrant_WithoutChangingCommitments(string operation, bool missingGrant)
+    {
+        var actor = SeedUser("Manager");
+        var routed = await SeedProgramAsync(name: "A", managers: actor);
+        var other = await SeedProgramAsync(name: "B");
+        var grant = await SeedGrantAsync(other, amount: 300m,
+            status: operation is "approve" or "decline" ? GrantStatus.Applied : GrantStatus.Claimed,
+            expenseReportId: Guid.NewGuid());
+        var targetId = missingGrant ? Guid.NewGuid() : grant.Id;
+        Clock.Advance(Duration.FromDays(2));
+        var service = NewService();
+
+        var result = operation switch
+        {
+            "approve" => await service.ApproveAsync(routed.Id, targetId, null, actor, Ct),
+            "decline" => await service.DeclineAsync(routed.Id, targetId, "Declined", actor, Ct),
+            "revoke" => await service.RevokeAsync(routed.Id, targetId, "Revoked", actor, Ct),
+            "amount" => await service.ChangeAmountAsync(routed.Id, targetId, 400m, actor, Ct),
+            _ => throw new ArgumentOutOfRangeException(nameof(operation)),
+        };
+
+        result.Refusal!.Key.Should().Be(PreapprovalErrorKeys.NotFound);
+        (await ReadGrantAsync(grant.Id)).Should().BeEquivalentTo(grant, options => options.Excluding(g => g.Program));
+        AuditLog.ReceivedCalls().Should().BeEmpty();
+        Notifications.ReceivedCalls().Should().BeEmpty();
+        NotificationResolve.ReceivedCalls().Should().BeEmpty();
+        Email.ReceivedCalls().Should().BeEmpty();
+    }
+
     [HumansFact]
     public async Task Approve_PerGrant_LowersToAmount_ChecksCeiling_ResolvesRequest_NotifiesBeneficiary()
     {
@@ -525,8 +564,8 @@ public sealed class GrantTests : PreapprovalsTestHarness
         var actor = SeedUser("Manager");
         var service = NewService();
 
-        (await service.ApproveAsync(application.Id, null, actor, Ct)).Refusal!.Key.Should().Be(PreapprovalErrorKeys.CeilingExceeded);
-        var result = await service.ApproveAsync(application.Id, 300m, actor, Ct);
+        (await service.ApproveAsync(program.Id, application.Id, null, actor, Ct)).Refusal!.Key.Should().Be(PreapprovalErrorKeys.CeilingExceeded);
+        var result = await service.ApproveAsync(program.Id, application.Id, 300m, actor, Ct);
 
         result.Refusal.Should().BeNull();
         var grant = await ReadGrantAsync(application.Id);
@@ -548,8 +587,8 @@ public sealed class GrantTests : PreapprovalsTestHarness
         var application = await SeedGrantAsync(program, amount: 300m, status: GrantStatus.Applied);
         var service = NewService();
 
-        (await service.ApproveAsync(application.Id, 200m, SeedUser(), Ct)).Refusal!.Key.Should().Be(PreapprovalErrorKeys.AmountNotAllowed);
-        (await service.ApproveAsync(application.Id, null, SeedUser(), Ct)).Refusal.Should().BeNull();
+        (await service.ApproveAsync(program.Id, application.Id, 200m, SeedUser(), Ct)).Refusal!.Key.Should().Be(PreapprovalErrorKeys.AmountNotAllowed);
+        (await service.ApproveAsync(program.Id, application.Id, null, SeedUser(), Ct)).Refusal.Should().BeNull();
         (await ReadGrantAsync(application.Id)).MaxAmount.Should().Be(300m);
     }
 
@@ -561,8 +600,8 @@ public sealed class GrantTests : PreapprovalsTestHarness
         var closed = await SeedProgramAsync(status: ProgramStatus.Closed);
         var application = await SeedGrantAsync(closed, status: GrantStatus.Applied);
         var service = NewService();
-        (await service.ApproveAsync(open.Id, null, SeedUser(), Ct)).Refusal!.Key.Should().Be(PreapprovalErrorKeys.WrongStatus);
-        (await service.ApproveAsync(application.Id, null, SeedUser(), Ct)).Refusal!.Key.Should().Be(PreapprovalErrorKeys.ProgramClosed);
+        (await service.ApproveAsync(program.Id, open.Id, null, SeedUser(), Ct)).Refusal!.Key.Should().Be(PreapprovalErrorKeys.WrongStatus);
+        (await service.ApproveAsync(closed.Id, application.Id, null, SeedUser(), Ct)).Refusal!.Key.Should().Be(PreapprovalErrorKeys.ProgramClosed);
     }
 
     [HumansFact]
@@ -573,7 +612,7 @@ public sealed class GrantTests : PreapprovalsTestHarness
         var application = await SeedGrantAsync(program, beneficiary: person, status: GrantStatus.Applied);
         var actor = SeedUser("Manager");
 
-        var result = await NewService().DeclineAsync(application.Id, "Not this year", actor, Ct);
+        var result = await NewService().DeclineAsync(program.Id, application.Id, "Not this year", actor, Ct);
 
         result.Refusal.Should().BeNull();
         var grant = await ReadGrantAsync(application.Id);
@@ -600,7 +639,7 @@ public sealed class GrantTests : PreapprovalsTestHarness
         var grant = await SeedGrantAsync(program, beneficiary: person, amount: 300m, status: status, expenseReportId: reportId);
         var actor = SeedUser("Manager");
 
-        var result = await NewService().RevokeAsync(grant.Id, "Budget cut", actor, Ct);
+        var result = await NewService().RevokeAsync(program.Id, grant.Id, "Budget cut", actor, Ct);
 
         result.Refusal.Should().BeNull();
         var after = await ReadGrantAsync(grant.Id);
@@ -629,8 +668,8 @@ public sealed class GrantTests : PreapprovalsTestHarness
         var program = await SeedProgramAsync();
         var grant = await SeedGrantAsync(program, status: status);
         var service = NewService();
-        (await service.RevokeAsync(grant.Id, null, SeedUser(), Ct)).Refusal!.Key.Should().Be(PreapprovalErrorKeys.WrongStatus);
-        (await service.ChangeAmountAsync(grant.Id, 50m, SeedUser(), Ct)).Refusal!.Key.Should().Be(PreapprovalErrorKeys.WrongStatus);
+        (await service.RevokeAsync(program.Id, grant.Id, null, SeedUser(), Ct)).Refusal!.Key.Should().Be(PreapprovalErrorKeys.WrongStatus);
+        (await service.ChangeAmountAsync(program.Id, grant.Id, 50m, SeedUser(), Ct)).Refusal!.Key.Should().Be(PreapprovalErrorKeys.WrongStatus);
     }
 
     [HumansFact]
@@ -647,7 +686,7 @@ public sealed class GrantTests : PreapprovalsTestHarness
 
         var issued = await service.IssueAsync(program.Id, person, oldAmount, "Art", actor, Ct);
         issued.Refusal.Should().BeNull();
-        (await service.ChangeAmountAsync(issued.Value, newAmount, actor, Ct)).Refusal.Should().BeNull();
+        (await service.ChangeAmountAsync(program.Id, issued.Value, newAmount, actor, Ct)).Refusal.Should().BeNull();
 
         string oldText;
         string newText;
@@ -691,9 +730,9 @@ public sealed class GrantTests : PreapprovalsTestHarness
         var actor = SeedUser("Manager");
         var service = NewService();
 
-        (await service.ChangeAmountAsync(grant.Id, 500m, actor, Ct)).Refusal!.Key.Should().Be(PreapprovalErrorKeys.CeilingExceeded);
-        (await service.ChangeAmountAsync(grant.Id, 0m, actor, Ct)).Refusal!.Key.Should().Be(PreapprovalErrorKeys.AmountPositive);
-        var result = await service.ChangeAmountAsync(grant.Id, 400m, actor, Ct);
+        (await service.ChangeAmountAsync(program.Id, grant.Id, 500m, actor, Ct)).Refusal!.Key.Should().Be(PreapprovalErrorKeys.CeilingExceeded);
+        (await service.ChangeAmountAsync(program.Id, grant.Id, 0m, actor, Ct)).Refusal!.Key.Should().Be(PreapprovalErrorKeys.AmountPositive);
+        var result = await service.ChangeAmountAsync(program.Id, grant.Id, 400m, actor, Ct);
 
         result.Refusal.Should().BeNull();
         (await ReadGrantAsync(grant.Id)).MaxAmount.Should().Be(400m);

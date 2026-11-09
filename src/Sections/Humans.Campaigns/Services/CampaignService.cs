@@ -31,6 +31,8 @@ internal sealed class CampaignService(
     private readonly CampaignWaveDelivery waveDelivery = new(
         repository, teamService, userService, notificationService, emailService, emailMessages, clock, audit, logger);
 
+    private CampaignReader Reader => new(repository, teamService, userService, waveDelivery);
+
     internal const string CampaignGrants = "CampaignGrants";
 
     public async Task<CampaignCreateResult> CreateAsync(string title, string? description,
@@ -86,54 +88,16 @@ internal sealed class CampaignService(
         return null;
     }
 
-    public async Task<IReadOnlyList<CampaignGrantSummary>> GetActiveOrCompletedGrantsForUserAsync(
-        Guid userId, CancellationToken ct = default)
-    {
-        var grants = await repository.GetActiveOrCompletedGrantsForUserAsync(userId, ct);
-        return grants.Select(ToSummary).ToList();
-    }
+    public Task<IReadOnlyList<CampaignGrantSummary>> GetActiveOrCompletedGrantsForUserAsync(
+        Guid userId, CancellationToken ct = default) =>
+        Reader.GetActiveOrCompletedGrantsForUserAsync(userId, ct);
 
-    public async Task<IReadOnlyList<CampaignGrantSummary>> GetAllGrantsForUserAsync(
-        Guid userId, CancellationToken ct = default)
-    {
-        var grants = await repository.GetAllGrantsForUserAsync(userId, ct);
-        return grants.Select(ToSummary).ToList();
-    }
+    public Task<IReadOnlyList<CampaignGrantSummary>> GetAllGrantsForUserAsync(
+        Guid userId, CancellationToken ct = default) =>
+        Reader.GetAllGrantsForUserAsync(userId, ct);
 
-    private static CampaignGrantSummary ToSummary(CampaignGrant grant) =>
-        new(
-            grant.Id,
-            grant.CampaignId,
-            grant.Campaign.Title,
-            grant.CampaignCodeId,
-            grant.Code.Code,
-            grant.UserId,
-            grant.AssignedAt,
-            grant.RedeemedAt);
-
-    private static CampaignAdminSummary ToAdminSummary(Campaign campaign) =>
-        new(
-            campaign.Id,
-            campaign.Title,
-            campaign.Description,
-            campaign.Status,
-            campaign.Grants.Select(ToSummary).ToList());
-
-    public async Task<CampaignEditSnapshot?> GetByIdAsync(Guid id, CancellationToken ct = default)
-    {
-        var campaign = await repository.GetByIdAsync(id, ct);
-        return campaign is null ? null : ToEditSnapshot(campaign);
-    }
-
-    private static CampaignEditSnapshot ToEditSnapshot(Campaign campaign) =>
-        new(
-            campaign.Id,
-            campaign.Title,
-            campaign.Description,
-            campaign.EmailSubject,
-            campaign.EmailBodyTemplate,
-            campaign.ReplyToAddress,
-            campaign.Status);
+    public Task<CampaignEditSnapshot?> GetByIdAsync(Guid id, CancellationToken ct = default) =>
+        Reader.GetByIdAsync(id, ct);
 
     public async Task<CampaignUpdateResult> UpdateAsync(
         Guid actorUserId,
@@ -164,161 +128,30 @@ internal sealed class CampaignService(
         return new CampaignUpdateResult(true);
     }
 
-    public async Task<IReadOnlyList<CampaignListSummary>> GetAllAsync(CancellationToken ct = default)
-    {
-        var campaigns = await repository.GetAllAsync(ct);
-        return campaigns.Select(ToListSummary).ToList();
-    }
+    public Task<IReadOnlyList<CampaignListSummary>> GetAllAsync(CancellationToken ct = default) =>
+        Reader.GetAllAsync(ct);
 
-    private static CampaignListSummary ToListSummary(Campaign campaign)
-    {
-        var assignedCodes = campaign.Grants.Select(g => g.CampaignCodeId).Distinct().Count();
-        return new CampaignListSummary(
-            campaign.Id,
-            campaign.Title,
-            campaign.Status,
-            campaign.Codes.Count,
-            assignedCodes,
-            campaign.CreatedAt);
-    }
+    public Task<CampaignDetailPageDto?> GetDetailPageAsync(Guid id, CancellationToken ct = default) =>
+        Reader.GetDetailPageAsync(id, ct);
 
-    public async Task<CampaignDetailPageDto?> GetDetailPageAsync(Guid id, CancellationToken ct = default)
-    {
-        var campaign = await repository.GetByIdAsync(id, ct);
-        if (campaign is null)
-            return null;
-
-        var totalCodes = campaign.Codes.Count;
-        var assignedCodeIds = campaign.Grants.Select(g => g.CampaignCodeId).ToHashSet();
-        var availableCodes = totalCodes - assignedCodeIds.Count;
-        var codesRedeemed = campaign.Grants.Count(g => g.RedeemedAt is not null);
-        var totalGrants = campaign.Grants.Count;
-
-        return new CampaignDetailPageDto(
-            ToAdminSummary(campaign),
-            new CampaignDetailStatsDto(
-                totalCodes,
-                availableCodes,
-                codesRedeemed,
-                totalGrants));
-    }
-
-    public async Task<CampaignSendWavePageDto?> GetSendWavePageAsync(
-        Guid campaignId,
-        Guid? teamId,
-        CancellationToken ct = default)
-    {
-        var campaign = await repository.GetByIdAsync(campaignId, ct);
-        if (campaign is null)
-            return null;
-
-        var teams = (await teamService.GetTeamsAsync(ct)).Values
-            .Where(t => t.IsActive);
-        var teamOptions = teams
-            .Select(t => new CampaignTeamOptionDto(t.Id, t.Name))
-            .ToList();
-
-        var preview = teamId.HasValue
-            ? await PreviewWaveSendAsync(campaignId, teamId.Value, ct)
-            : null;
-
-        return new CampaignSendWavePageDto(ToAdminSummary(campaign), teamOptions, teamId, preview);
-    }
+    public Task<CampaignSendWavePageDto?> GetSendWavePageAsync(
+        Guid campaignId, Guid? teamId, CancellationToken ct = default) =>
+        Reader.GetSendWavePageAsync(campaignId, teamId, ct);
 
     public Task<Guid?> GetCampaignIdForGrantAsync(Guid grantId, CancellationToken ct = default) =>
-        repository.GetCampaignIdForGrantAsync(grantId, ct);
+        Reader.GetCampaignIdForGrantAsync(grantId, ct);
 
-    public async Task<CampaignImportResult> ImportCodesAsync(Guid actorUserId, Guid campaignId, IEnumerable<string> codes, CancellationToken ct = default)
-    {
-        var campaign = await repository.FindForMutationWithCodesAsync(campaignId, ct);
-        if (campaign is null)
-            return new CampaignImportResult(false, ErrorKey: "NotFound");
+    private CampaignCodeInventory Codes => new(repository, ticketDiscountCodes, Reader, clock, audit, logger);
 
-        var existingCodes = campaign.Codes
-            .Select(c => c.Code)
-            .ToHashSet(StringComparer.OrdinalIgnoreCase);
-
-        var now = clock.GetCurrentInstant();
-        var imported = 0;
-        var skipped = 0;
-        var maxOrder = campaign.Codes.Any() ? campaign.Codes.Max(c => c.ImportOrder) : 0;
-        var newCodes = new List<CampaignCode>();
-
-        foreach (var code in codes)
-        {
-            var trimmed = code.Trim();
-            if (string.IsNullOrEmpty(trimmed))
-                continue;
-
-            var characterCount = trimmed.EnumerateRunes().Count();
-            if (characterCount > CampaignCode.CodeMaxLength)
-            {
-                logger.LogWarning("Rejected campaign {CampaignId} code import: length {Length} exceeds {Limit}",
-                    campaignId, characterCount, CampaignCode.CodeMaxLength);
-                return new CampaignImportResult(false, ErrorKey: "CodeTooLong");
-            }
-
-            if (existingCodes.Contains(trimmed))
-            {
-                skipped++;
-                continue;
-            }
-
-            maxOrder++;
-            newCodes.Add(new CampaignCode
-            {
-                Id = Guid.NewGuid(),
-                CampaignId = campaignId,
-                Code = trimmed,
-                ImportOrder = maxOrder,
-                ImportedAt = now
-            });
-            existingCodes.Add(trimmed);
-            imported++;
-        }
-
-        await repository.AddCampaignCodesAsync(newCodes, ct);
-        await audit.LogAsync(CampaignsAuditActions.CampaignCodesImported, "Campaign", campaignId,
-            $"Imported {newCodes.Count} codes.", actorUserId);
-
-        logger.LogInformation(
-            "Campaign {CampaignId}: imported {Imported} codes, skipped {Skipped} duplicates",
-            campaignId, imported, skipped);
-        return new CampaignImportResult(true, imported, skipped);
-    }
+    public Task<CampaignImportResult> ImportCodesAsync(
+        Guid actorUserId, Guid campaignId, IEnumerable<string> codes, CancellationToken ct = default) =>
+        Codes.ImportCodesAsync(actorUserId, campaignId, codes, ct);
 
     [ExternalWrite]
-    public async Task<CampaignGenerateCodesResult> GenerateAndImportDiscountCodesAsync(
-        Guid actorUserId,
-        Guid campaignId,
-        int count,
-        string discountType,
-        decimal discountValue,
-        CancellationToken ct = default)
-    {
-        var campaign = await GetByIdAsync(campaignId, ct);
-        if (campaign is null)
-            return new CampaignGenerateCodesResult(false, "NotFound");
-
-        if (campaign.Status != CampaignStatus.Draft)
-            return new CampaignGenerateCodesResult(false, "NotDraft");
-
-        if (count <= 0)
-            return new CampaignGenerateCodesResult(false, "InvalidCount");
-
-        if (!Enum.TryParse<TicketDiscountKind>(discountType, ignoreCase: true, out var parsedKind) ||
-            !Enum.IsDefined(parsedKind))
-            return new CampaignGenerateCodesResult(false, "InvalidDiscountType");
-
-        // Through Tickets' contract, never the Base vendor port: Tickets is the only door to ticketing.
-        var request = new TicketDiscountCodeRequest(count, parsedKind, discountValue, ExpiresAt: null);
-        var codes = await ticketDiscountCodes.GenerateAsync(request, ct);
-        var imported = await ImportCodesAsync(actorUserId, campaignId, codes, ct);
-
-        return imported.Success
-            ? new CampaignGenerateCodesResult(true, GeneratedCount: imported.Imported)
-            : new CampaignGenerateCodesResult(false, imported.ErrorKey);
-    }
+    public Task<CampaignGenerateCodesResult> GenerateAndImportDiscountCodesAsync(
+        Guid actorUserId, Guid campaignId, int count, string discountType,
+        decimal discountValue, CancellationToken ct = default) =>
+        Codes.GenerateAndImportDiscountCodesAsync(actorUserId, campaignId, count, discountType, discountValue, ct);
 
     public async Task<CampaignUpdateResult> ActivateAsync(Guid actorUserId, Guid campaignId, CancellationToken ct = default)
     {
@@ -384,51 +217,8 @@ internal sealed class CampaignService(
         return repository.MarkGrantsRedeemedAsync(redemptions, ct);
     }
 
-    public async Task<CampaignCodeTrackingData> GetCodeTrackingAsync(CancellationToken ct = default)
-    {
-        var summaryRows = await repository.GetCodeTrackingSummariesAsync(ct);
-        var grantRowsRaw = await repository.GetCodeTrackingGrantRowsAsync(ct);
-
-        var userIds = grantRowsRaw.Select(r => r.UserId).Distinct().ToList();
-        var users = userIds.Count > 0
-            ? await userService.GetUserInfosAsync(userIds, ct)
-            : new Dictionary<Guid, UserInfo>();
-
-        var grantRows = new List<CampaignCodeTrackingGrant>(grantRowsRaw.Count);
-        foreach (var row in grantRowsRaw)
-        {
-            var recipientName = users.TryGetValue(row.UserId, out var user)
-                ? user.BurnerName
-                : string.Empty;
-
-            grantRows.Add(new CampaignCodeTrackingGrant(
-                GrantId: row.GrantId,
-                CampaignId: row.CampaignId,
-                CampaignTitle: row.CampaignTitle,
-                UserId: row.UserId,
-                RecipientName: recipientName,
-                Code: row.Code,
-                RedeemedAt: row.RedeemedAt));
-        }
-
-        var grantsByCampaign = grantRowsRaw
-            .GroupBy(r => r.CampaignId)
-            .ToDictionary(g => g.Key, g => g.ToList());
-
-        var summaries = summaryRows
-            .Select(s =>
-            {
-                grantsByCampaign.TryGetValue(s.CampaignId, out var grants);
-                var total = grants?.Count ?? 0;
-                var redeemed = grants?.Count(g => g.RedeemedAt is not null) ?? 0;
-                return new CampaignCodeTrackingSummary(
-                    s.CampaignId, s.CampaignTitle, total, redeemed)
-                { CreatedAt = s.CreatedAt };
-            })
-            .ToList();
-
-        return new CampaignCodeTrackingData(summaries, grantRows);
-    }
+    public Task<CampaignCodeTrackingData> GetCodeTrackingAsync(CancellationToken ct = default) =>
+        Reader.GetCodeTrackingAsync(ct);
 
     public async Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct)
     {

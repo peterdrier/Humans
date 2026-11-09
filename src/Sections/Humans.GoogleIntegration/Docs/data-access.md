@@ -91,6 +91,13 @@ via `IUserService` (merge-aware). The legacy Workspace identity migration and fa
 Audits `Set` via `IAuditLogService`. No cache (the `UserInfo` read is cached by
 Users' decorator; the table is one row per member).
 
+### GoogleGroupClaimReader (internal — constructed by GoogleGroupSyncService)
+
+No repository or cache. Collects expected group membership through
+`IGoogleGroupMembershipSource` and maps active group resources through
+`ITeamResourceManagement` and `ITeamService`. Uses the existing options object and
+orchestrator logger; does not write or decide reconciliation actions.
+
 ### GoogleGroupSyncService (Scoped)
 
 No repository directly — operates over external clients and the

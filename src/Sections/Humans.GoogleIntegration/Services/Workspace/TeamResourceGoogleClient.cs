@@ -26,9 +26,9 @@ internal sealed class TeamResourceGoogleClient(
     {
         using var timer = logger.TimeOperation();
         _ = expectFolder; // Ignored: the real connector uses the MIME type returned by Drive.
+        var drive = await GetDriveServiceAsync(ct);
         try
         {
-            var drive = await GetDriveServiceAsync(ct);
             var request = drive.Files.Get(itemId);
             request.Fields = "id, name, webViewLink, mimeType, parents, driveId";
             request.SupportsAllDrives = true;
@@ -58,28 +58,42 @@ internal sealed class TeamResourceGoogleClient(
                 Item: null,
                 Error: new GoogleClientError(ex.Error?.Code ?? 0, ex.Error?.Message));
         }
+        catch (Exception ex) when (GoogleClientError.IsTransportError(ex))
+        {
+            logger.LogWarning(ex, "Transport error looking up Drive item {ItemId}", itemId);
+            return new DriveLookupResult(Item: null, Error: new GoogleClientError(0, ex.Message));
+        }
     }
 
     public async Task<GroupLookupResult> LookupGroupAsync(string groupEmail, CancellationToken ct = default)
     {
         using var _ = logger.TimeOperation();
+        var cloudIdentity = await GetCloudIdentityServiceAsync(ct);
         try
         {
-            var cloudIdentity = await GetCloudIdentityServiceAsync(ct);
             var lookupRequest = cloudIdentity.Groups.Lookup();
             lookupRequest.GroupKeyId = groupEmail;
             var lookupResponse = await lookupRequest.ExecuteAsync(ct);
 
             var fullGroup = await cloudIdentity.Groups.Get(lookupResponse.Name).ExecuteAsync(ct);
             var numericId = lookupResponse.Name["groups/".Length..];
-            var emailLocal = groupEmail.Split('@')[0];
-            var displayUrl = $"https://groups.google.com/a/{_settings.Domain}/g/{emailLocal}";
+            var resolvedEmail = fullGroup.GroupKey?.Id?.Trim();
+            var separator = resolvedEmail?.LastIndexOf('@') ?? -1;
+            if (resolvedEmail is null || separator <= 0 || separator == resolvedEmail.Length - 1)
+            {
+                logger.LogWarning("Google Group {GroupId} returned no usable group email address", numericId);
+                return new GroupLookupResult(null,
+                    new GoogleClientError(502, "Google returned no usable group email address."));
+            }
+            var emailLocal = resolvedEmail[..separator];
+            var domain = resolvedEmail[(separator + 1)..];
+            var displayUrl = $"https://groups.google.com/a/{domain}/g/{emailLocal}";
 
             return new GroupLookupResult(
                 new ResolvedGroup(
                     NumericId: numericId,
-                    NormalizedEmail: groupEmail,
-                    DisplayName: fullGroup.DisplayName ?? groupEmail,
+                    NormalizedEmail: resolvedEmail,
+                    DisplayName: fullGroup.DisplayName ?? resolvedEmail,
                     DisplayUrl: displayUrl),
                 Error: null);
         }
@@ -90,6 +104,11 @@ internal sealed class TeamResourceGoogleClient(
             return new GroupLookupResult(
                 Group: null,
                 Error: new GoogleClientError(ex.Error?.Code ?? 0, ex.Error?.Message));
+        }
+        catch (Exception ex) when (GoogleClientError.IsTransportError(ex))
+        {
+            logger.LogWarning(ex, "Transport error looking up Group {GroupEmail}", groupEmail);
+            return new GroupLookupResult(Group: null, Error: new GoogleClientError(0, ex.Message));
         }
     }
 

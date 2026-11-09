@@ -24,22 +24,28 @@ namespace Humans.Consent.Tests.Services;
 public sealed class LegalDocumentSyncRunnerTests
 {
     [HumansTheory]
-    [InlineData(false, "es", "es", "member@example.com")]
-    [InlineData(false, null, "en", "member@example.com")]
-    [InlineData(false, "", "en", "member@example.com")]
-    [InlineData(false, "pt", "en", "member@example.com")]
-    [InlineData(false, "fr-FR", "en", "member@example.com")]
-    [InlineData(false, "not a culture!", "en", "member@example.com")]
-    [InlineData(true, "en", "en", "member@example.com")]
-    [InlineData(false, "es", "es", "")]
-    [InlineData(false, "es", "es", " \t ")]
+    [InlineData(false, "es", "es", "member@example.com", UserState.Active, true)]
+    [InlineData(false, null, "en", "member@example.com", UserState.Active, true)]
+    [InlineData(false, "", "en", "member@example.com", UserState.Active, true)]
+    [InlineData(false, "pt", "en", "member@example.com", UserState.Active, true)]
+    [InlineData(false, "fr-FR", "en", "member@example.com", UserState.Active, true)]
+    [InlineData(false, "not a culture!", "en", "member@example.com", UserState.Active, true)]
+    [InlineData(true, "en", "en", "member@example.com", UserState.Active, true)]
+    [InlineData(false, "es", "es", "", UserState.Active, true)]
+    [InlineData(false, "es", "es", " \t ", UserState.Active, true)]
+    [InlineData(false, "es", "es", "member@example.com", UserState.Rejected, true)]
+    [InlineData(false, "es", "es", "member@example.com", UserState.Deleted, true)]
+    [InlineData(false, "es", "es", "member@example.com", UserState.Merged, true)]
+    [InlineData(false, "es", "es", "member@example.com", UserState.Bare, false)]
+    [InlineData(false, "es", "es", "member@example.com", UserState.Suspended, true)]
+    [InlineData(false, "es", "es", "member@example.com", UserState.AdminSuspended, true)]
     public async Task Sync_NotifiesOnlyForOutstandingRequiredDocumentsInMembersTeams(
-        bool alreadyConsented, string? language, string expectedLanguage, string recipientEmail)
+        bool alreadyConsented, string? language, string expectedLanguage, string recipientEmail, UserState state, bool hasProfile)
     {
         using var culture = new CultureScope("fr");
-        var member = new User { Id = Guid.NewGuid(), BurnerName = "Member", PreferredLanguage = language! };
+        var member = new User { Id = Guid.NewGuid(), BurnerName = "Member", PreferredLanguage = language!, State = state };
         var user = UserInfo.Create(member,
-            [new UserEmail { Id = Guid.NewGuid(), UserId = member.Id, Email = recipientEmail, IsVerified = true, IsPrimary = true }], [], null);
+            [new UserEmail { Id = Guid.NewGuid(), UserId = member.Id, Email = recipientEmail, IsVerified = true, IsPrimary = true }], [], hasProfile ? Humans.Testing.UserFixtures.Profile() : null);
         var own = MakeDocument("Own required", true);
         var other = MakeDocument("Other required", true);
         var optional = MakeDocument("Own optional", false);
@@ -72,7 +78,7 @@ public sealed class LegalDocumentSyncRunnerTests
 
         var messages = email.ReceivedCalls().Where(c => string.Equals(c.GetMethodInfo().Name, nameof(IEmailService.SendAsync), StringComparison.Ordinal))
             .Select(c => (EmailMessage)c.GetArguments()[0]!).ToList();
-        if (alreadyConsented || string.IsNullOrWhiteSpace(recipientEmail))
+        if (alreadyConsented || string.IsNullOrWhiteSpace(recipientEmail) || !user.IsActive)
             messages.Should().BeEmpty();
         else
         {

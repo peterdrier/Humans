@@ -60,7 +60,7 @@ public sealed class GdprTests : PreapprovalsTestHarness
         var service = NewService();
         Guid applicationId;
         await using (var db = OpenContext()) applicationId = (await db.Grants.SingleAsync(Ct)).Id;
-        (await service.ApproveAsync(applicationId, null, manager, Ct)).Refusal.Should().BeNull();
+        (await service.ApproveAsync(program.Id, applicationId, null, manager, Ct)).Refusal.Should().BeNull();
 
         var slices = await (service).ContributeForUserAsync(manager, Ct);
 

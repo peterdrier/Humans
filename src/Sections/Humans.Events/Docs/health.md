@@ -60,7 +60,7 @@ Behavioural facts stated so a violation is recognisable, each with the line that
 
 1. Only `Pending` events accept a moderation decision — `Domain/Event.cs:208`.
 2. An admin in-place edit preserves `Status` — an approved listing is never silently re-queued —
-   `Services/Service.cs:273`.
+   `Services/EventGuideAuthoring.cs`.
 3. Nothing unapproved leaves through `/api/events*`: every read there is served from the
    approved-only projection — `Data/Repository.cs:264`, `Data/Repository.cs:291`,
    `Data/Repository.cs:389`.

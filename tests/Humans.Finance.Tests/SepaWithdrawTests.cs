@@ -222,8 +222,8 @@ public class SepaWithdrawTests
 
         row.IsWithdrawn.Should().BeTrue();
         row.CanBook.Should().BeFalse();
-        Service.WithdrawRefusal(row).Should().Contain("already withdrawn");
-        Service.WithdrawRefusal(row with { WithdrawnAt = null }).Should().BeNull();
-        Service.WithdrawRefusal(row with { WithdrawnAt = null, BookedAt = FixedNow }).Should().Contain("booked");
+        SepaBankBooking.WithdrawRefusal(row).Should().Contain("already withdrawn");
+        SepaBankBooking.WithdrawRefusal(row with { WithdrawnAt = null }).Should().BeNull();
+        SepaBankBooking.WithdrawRefusal(row with { WithdrawnAt = null, BookedAt = FixedNow }).Should().Contain("booked");
     }
 }

@@ -25,6 +25,19 @@ internal sealed class LegalDocumentPublication(
 {
     private static readonly ResourceManager NoticeResources = new(typeof(ConsentResource));
 
+    internal async Task<string?> SyncDocumentAsync(
+        Guid documentId, Guid? actorUserId, CancellationToken cancellationToken)
+    {
+        var document = await repository.GetByIdAsync(documentId, cancellationToken);
+        if (document is null)
+        {
+            logger.LogWarning("Document {DocumentId} not found", documentId);
+            return null;
+        }
+
+        return await SyncSingleDocumentAsync(document, actorUserId, cancellationToken);
+    }
+
     internal async Task<string?> SyncSingleDocumentAsync(
         LegalDocument document,
         Guid? actorUserId,

@@ -1,5 +1,4 @@
 using System.Globalization;
-using System.Transactions;
 using Humans.AuditLog.Contracts;
 using Humans.Base.Interfaces.Caching;
 using Humans.CityPlanning.Contracts;
@@ -19,26 +18,20 @@ namespace Humans.Camps.Services;
 internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMerge
 {
     /// <summary>GDPR export JSON key for this contributor's data.</summary>
-    internal const string CampRoleAssignments = "CampRoleAssignments";
-    internal const string CampMemberships = "CampMemberships";
+    internal const string CampRoleAssignments = CampDataLifecycle.CampRoleAssignments;
+    internal const string CampMemberships = CampDataLifecycle.CampMemberships;
 
     private readonly ICampRepository _repo;
-    private readonly IAuditLogService _auditLog;
-    private readonly ISystemTeamSync _systemTeamSync;
-    private readonly IFileStorage _fileStorage;
     private readonly CampImageGallery _imageGallery;
     private readonly CampReadProjection _readProjection;
+    private readonly CampDataLifecycle _dataLifecycle;
     private readonly CampMembershipTransitions _memberships;
     private readonly CampSeasonLifecycle _seasons;
-    // Lazy: CityPlanningService injects ICampService, closing the cycle.
-    private readonly Lazy<ICityPlanningWrite> _cityPlanningService;
-    private readonly IUserService _userService;
+    private readonly CampRegistration _registration;
+    private readonly CampDetails _details;
+    private readonly CampDeletion _deletion;
     private readonly ISettingsService _settingsService;
     private readonly IClock _clock;
-    private readonly ILogger<CampService> _logger;
-
-    private const int MaxHistoricalNameLength = 256;
-    private const int MaxCampSlugLength = 256;
 
     public CampService(
         ICampRepository repo,
@@ -56,130 +49,27 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
     {
         _repo = repo;
         _readProjection = new CampReadProjection(repo, settingsService, clock);
-        _auditLog = auditLog;
-        _systemTeamSync = systemTeamSync;
-        _fileStorage = fileStorage;
+        _dataLifecycle = new CampDataLifecycle(repo, userService, systemTeamSync);
         _imageGallery = new CampImageGallery(repo, fileStorage, clock, auditLog, logger);
         var membershipNotices = new CampMembershipNotices(repo, userService, notificationEmitter, logger);
         _seasons = new CampSeasonLifecycle(repo, auditLog, settingsService, membershipNotices, clock);
+        _registration = new CampRegistration(repo, auditLog, systemTeamSync, _seasons, clock, logger);
+        _details = new CampDetails(repo, auditLog, _seasons, clock);
+        _deletion = new CampDeletion(repo, auditLog, fileStorage, cityPlanningService, logger);
         _memberships = new CampMembershipTransitions(repo, auditLog, userService, settingsService, tickets,
             campRoleService, membershipNotices, clock);
-        _cityPlanningService = cityPlanningService;
-        _userService = userService;
         _settingsService = settingsService;
         _clock = clock;
-        _logger = logger;
     }
 
-    public async Task<CampWriteResult<Camp>> CreateCampAsync(
+    public Task<CampWriteResult<Camp>> CreateCampAsync(
         Guid createdByUserId, string name, string contactEmail, string contactPhone,
         string? webOrSocialUrl, List<CampLink>? links, bool isSwissCamp, int timesAtNowhere,
         CampSeasonData seasonData, List<string>? historicalNames, Guid eventSettingsId,
-        CancellationToken cancellationToken = default)
-    {
-        var targetEvent = (await GetRegistrationByEventAsync(cancellationToken))
-            .FirstOrDefault(r => r.EventSettingsId == eventSettingsId);
-        if (targetEvent is null)
-            return new(null, "Camps_Flash_SeasonNotOpen");
-        if (historicalNames?.Any(string.IsNullOrWhiteSpace) == true)
-            return new(null, "Camps_Flash_NameRequired");
-        if (historicalNames?.Any(n => n.Trim().Length > MaxHistoricalNameLength) == true)
-            return new(null, "Camps_Validation_HistoricalNameLength");
-
-        var slug = SlugHelper.GenerateSlug(name);
-        if (slug.Length == 0)
-            slug = "camp";
-        if (SlugHelper.IsReservedCampSlug(slug))
-        {
-            return new(null, "Camps_Flash_ReservedName");
-        }
-
-        var baseSlug = slug;
-        var suffix = 2;
-        while (await _repo.SlugExistsAsync(slug, cancellationToken))
-        {
-            var suffixText = "-" + suffix.ToString(CultureInfo.InvariantCulture);
-            var prefixLength = Math.Min(baseSlug.Length, MaxCampSlugLength - suffixText.Length);
-            slug = baseSlug[..prefixLength].TrimEnd('-') + suffixText;
-            suffix++;
-        }
-
-        var now = _clock.GetCurrentInstant();
-        var camp = new Camp
-        {
-            Id = Guid.NewGuid(),
-            Slug = slug,
-            ContactEmail = contactEmail,
-            ContactPhone = contactPhone,
-            WebOrSocialUrl = links is { Count: > 0 } ? null : webOrSocialUrl,
-            Links = links,
-            IsSwissCamp = isSwissCamp,
-            TimesAtNowhere = timesAtNowhere,
-            CreatedByUserId = createdByUserId,
-            CreatedAt = now,
-            UpdatedAt = now
-        };
-
-        var season = CampSeasonLifecycle.CreateSeasonFromData(camp.Id, targetEvent.Year, name, seasonData, now);
-        season.EventSettingsId = eventSettingsId;
-
-        var member = new CampMember
-        {
-            Id = Guid.NewGuid(),
-            CampSeasonId = season.Id,
-            UserId = createdByUserId,
-            Status = CampMemberStatus.Active,
-            RequestedAt = now,
-            ConfirmedAt = now,
-            ConfirmedByUserId = createdByUserId,
-        };
-
-        var leadDef = await _repo.GetSpecialDefinitionAsync(CampSpecialRole.Lead, cancellationToken);
-        CampRoleAssignment? leadAssignment = null;
-        if (leadDef is not null)
-        {
-            leadAssignment = new CampRoleAssignment
-            {
-                Id = Guid.NewGuid(),
-                CampSeasonId = season.Id,
-                CampRoleDefinitionId = leadDef.Id,
-                CampMemberId = member.Id,
-                AssignedAt = now,
-                AssignedByUserId = createdByUserId,
-            };
-        }
-        else
-        {
-            _logger.LogWarning(
-                "Camp Lead role definition missing while creating camp {CampId}; creator added as Active member without a lead assignment. Run 'Seed system roles'.",
-                camp.Id);
-        }
-
-        List<CampHistoricalName>? historicalNameEntities = null;
-        if (historicalNames is { Count: > 0 })
-        {
-            historicalNameEntities = historicalNames.Select(oldName => new CampHistoricalName
-            {
-                Id = Guid.NewGuid(),
-                CampId = camp.Id,
-                Name = oldName.Trim(),
-                Source = CampNameSource.Manual,
-                CreatedAt = now
-            }).ToList();
-        }
-
-        await _repo.CreateCampAsync(camp, season, member, leadAssignment, historicalNameEntities, cancellationToken);
-
-        await _auditLog.LogAsync(
-            CampsAuditActions.CampCreated, nameof(Camp), camp.Id,
-            $"Registered camp '{name}' for {targetEvent.EventName}",
-            createdByUserId);
-
-        await _systemTeamSync.SyncMembershipForUserAsync(
-            createdByUserId, SystemTeamType.BarrioLeads, cancellationToken);
-
-        return new(camp);
-    }
+        CancellationToken cancellationToken = default) =>
+        _registration.CreateCampAsync(
+            createdByUserId, name, contactEmail, contactPhone, webOrSocialUrl, links, isSwissCamp, timesAtNowhere,
+            seasonData, historicalNames, eventSettingsId, cancellationToken);
 
     public Task<CampInfo?> GetCampBySlugAsync(string slug, CancellationToken cancellationToken = default) =>
         _readProjection.GetCampBySlugAsync(slug, cancellationToken);
@@ -323,197 +213,21 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
     public Task<CampAdminMutationResult> ReactivateSeasonAsync(Guid seasonId, Guid actorUserId, CancellationToken cancellationToken = default) =>
         _seasons.ReactivateSeasonAsync(seasonId, actorUserId, cancellationToken);
 
-    public async Task<CampUpdateResult> UpdateCampAsync(
+    public Task<CampUpdateResult> UpdateCampAsync(
         CampUpdateInput input,
-        Guid actorUserId, CancellationToken cancellationToken = default)
-    {
-        // Prove the season belongs to the camp before the first write: the scoped check
-        // inside UpdateSeasonAsync fires only after the camp-level fields have committed,
-        // which would leave a partial update behind an uninvalidated cache on failure.
-        var scopedSeason = await _repo.GetSeasonByIdAsync(input.SeasonId, cancellationToken);
-        if (scopedSeason is null)
-        {
-            return CampUpdateResult.Failure("Camps_Flash_RoleSeasonNotFound");
-        }
+        Guid actorUserId, CancellationToken cancellationToken = default) =>
+        _details.UpdateCampAsync(input, actorUserId, cancellationToken);
 
-        if (scopedSeason.CampId != input.CampId)
-        {
-            return CampUpdateResult.Failure("Camps_Flash_SeasonWrongCamp");
-        }
+    public Task<CampAdminMutationResult> DeleteCampAsync(Guid campId, Guid actorUserId, CancellationToken cancellationToken = default) =>
+        _deletion.DeleteCampAsync(campId, actorUserId, cancellationToken);
 
-        var updated = await _repo.UpdateCampFieldsAsync(
-            input.CampId,
-            input.ContactEmail,
-            input.ContactPhone,
-            input.WebOrSocialUrl,
-            input.Links,
-            input.IsSwissCamp,
-            input.TimesAtNowhere,
-            input.HideHistoricalNames,
-            _clock.GetCurrentInstant(),
-            cancellationToken);
+    public Task<CampUpdateResult> AddHistoricalNameAsync(
+        Guid campId, string name, Guid actorUserId, CancellationToken cancellationToken = default) =>
+        _details.AddHistoricalNameAsync(campId, name, actorUserId, cancellationToken);
 
-        if (!updated)
-        {
-            return CampUpdateResult.Failure("Camps_Flash_CampNotFound");
-        }
-
-        await _auditLog.LogAsync(
-            CampsAuditActions.CampUpdated, nameof(Camp), input.CampId,
-            $"Updated camp {input.CampId}",
-            actorUserId);
-
-        var seasonUpdate = await UpdateSeasonAsync(input.CampId, input.SeasonId, input.SeasonData, actorUserId, cancellationToken);
-        if (!seasonUpdate.Succeeded) return seasonUpdate;
-
-        var currentSeason = await _repo.GetSeasonByIdAsync(input.SeasonId, cancellationToken);
-        if (currentSeason is null) return CampUpdateResult.Failure("Camps_Flash_RoleSeasonNotFound");
-
-        if (!string.Equals(currentSeason.Name, input.SeasonName, StringComparison.Ordinal))
-        {
-            var today = _clock.GetCurrentInstant().InUtc().Date;
-            var nameLocked = currentSeason.NameLockDate.HasValue && today >= currentSeason.NameLockDate.Value;
-            if (!nameLocked)
-            {
-                var nameUpdate = await ChangeSeasonNameAsync(input.CampId, currentSeason.Id, input.SeasonName, actorUserId, cancellationToken);
-                if (!nameUpdate.Succeeded) return nameUpdate;
-            }
-        }
-
-        return CampUpdateResult.Success();
-    }
-
-    public async Task<CampAdminMutationResult> DeleteCampAsync(Guid campId, Guid actorUserId, CancellationToken cancellationToken = default)
-    {
-        var camp = await _repo.GetByIdAsync(campId, cancellationToken);
-        if (camp is null) return new(false, "Camp not found.");
-
-        // CityPlanning keys polygon history on CampSeasonId; clear it through its service before deleting. Both writes
-        // share one ambient transaction so a failure in either can't leave a live camp with its polygon history gone.
-        // A SaveCampPolygonAsync landing between cleanup and commit still orphans a row: an accepted trade.
-        var seasonIds = camp.Seasons.Select(s => s.Id).ToList();
-        IReadOnlyList<string>? deletedImagePaths = null;
-        var attempted = false;
-        try
-        {
-            using (var scope = new TransactionScope(
-                TransactionScopeOption.Required,
-                new TransactionOptions { IsolationLevel = IsolationLevel.ReadCommitted },
-                TransactionScopeAsyncFlowOption.Enabled))
-            {
-                if (seasonIds.Count > 0)
-                {
-                    var removed = await _cityPlanningService.Value
-                        .DeleteCampPolygonsForSeasonsAsync(seasonIds, cancellationToken);
-                    if (removed > 0)
-                    {
-                        _logger.LogInformation(
-                            "Deleted {Rows} city-planning polygon/history rows for {Seasons} seasons of camp {CampId}",
-                            removed, seasonIds.Count, campId);
-                    }
-                }
-
-                attempted = true;
-                deletedImagePaths = await _repo.DeleteCampAsync(campId, cancellationToken);
-                if (deletedImagePaths is null)
-                {
-                    return new(false, "Camp not found.");
-                }
-
-                scope.Complete();
-            }
-
-            await _auditLog.LogAsync(
-                CampsAuditActions.CampDeleted, nameof(Camp), campId,
-                $"Camp {campId} permanently deleted",
-                actorUserId);
-
-            return new(true);
-        }
-        finally
-        {
-            if (attempted)
-            {
-                var deleted = false;
-                try
-                {
-                    // Verify after the transaction scope exits; a failed save may have committed or rolled back.
-                    deleted = await _repo.GetByIdAsync(campId, CancellationToken.None) is null;
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Could not verify camp {CampId} deletion before image cleanup", campId);
-                }
-
-                if (deleted)
-                {
-                    foreach (var path in deletedImagePaths ?? camp.Images.Select(image => image.StoragePath).ToList())
-                    {
-                        try
-                        {
-                            await _fileStorage.DeleteAsync(path, CancellationToken.None);
-                        }
-                        catch (Exception ex)
-                        {
-                            _logger.LogError(ex,
-                                "Failed to delete camp image file at {StoragePath} during camp delete for {CampId}; DB row already removed",
-                                path, campId);
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    public async Task<CampUpdateResult> AddHistoricalNameAsync(
-        Guid campId, string name, Guid actorUserId, CancellationToken cancellationToken = default)
-    {
-        if (string.IsNullOrWhiteSpace(name))
-            return CampUpdateResult.Failure("Camps_Flash_NameRequired");
-        name = name.Trim();
-        if (name.Length > MaxHistoricalNameLength)
-            return CampUpdateResult.Failure("Camps_Validation_HistoricalNameLength");
-
-        var entry = new CampHistoricalName
-        {
-            Id = Guid.NewGuid(),
-            CampId = campId,
-            Name = name,
-            Source = CampNameSource.Manual,
-            CreatedAt = _clock.GetCurrentInstant()
-        };
-
-        await _repo.AddHistoricalNameAsync(entry, cancellationToken);
-        await _auditLog.LogAsync(
-            CampsAuditActions.CampHistoricalNameAdded, nameof(CampHistoricalName), entry.Id,
-            $"Added historical name '{name}'", actorUserId,
-            relatedEntityId: campId, relatedEntityType: nameof(Camp));
-        return CampUpdateResult.Success();
-    }
-
-    public async Task<CampUpdateResult> RemoveHistoricalNameAsync(
-        Guid scopedCampId, Guid historicalNameId, Guid actorUserId, CancellationToken cancellationToken = default)
-    {
-        var camp = await _repo.GetByIdAsync(scopedCampId, cancellationToken);
-        if (camp is null) return CampUpdateResult.Failure("Camps_Flash_CampNotFound");
-        var entry = camp.HistoricalNames.FirstOrDefault(n => n.Id == historicalNameId);
-        if (entry is null)
-        {
-            return CampUpdateResult.Failure("Camps_Flash_HistoricalNameWrongCamp");
-        }
-
-        var removed = await _repo.RemoveHistoricalNameAsync(historicalNameId, cancellationToken);
-        if (!removed)
-        {
-            return CampUpdateResult.Failure("Camps_Flash_HistoricalNameNotFound");
-        }
-        await _auditLog.LogAsync(
-            CampsAuditActions.CampHistoricalNameRemoved, nameof(CampHistoricalName), historicalNameId,
-            $"Removed historical name '{entry.Name}'", actorUserId,
-            relatedEntityId: scopedCampId, relatedEntityType: nameof(Camp));
-        return CampUpdateResult.Success();
-
-    }
+    public Task<CampUpdateResult> RemoveHistoricalNameAsync(
+        Guid scopedCampId, Guid historicalNameId, Guid actorUserId, CancellationToken cancellationToken = default) =>
+        _details.RemoveHistoricalNameAsync(scopedCampId, historicalNameId, actorUserId, cancellationToken);
 
     public Task<CampSeasonInfo?> GetCampSeasonByIdAsync(
         Guid campSeasonId, CancellationToken cancellationToken = default) =>
@@ -591,67 +305,17 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
         Guid campMemberId, Guid userId, CancellationToken cancellationToken = default) =>
         _memberships.LeaveCampAsync(campMemberId, userId, cancellationToken);
 
-    public async Task ReassignAsync(Guid sourceUserId, Guid targetUserId, Guid actorUserId, Instant updatedAt,
-        CancellationToken ct)
-    {
-        // Called from AccountMergeService.MergeAsync's ordered fan-out; must stay idempotent.
-        await _repo.ReassignMembershipsToUserAsync(sourceUserId, targetUserId, updatedAt, ct);
+    public Task ReassignAsync(Guid sourceUserId, Guid targetUserId, Guid actorUserId, Instant updatedAt,
+        CancellationToken ct) =>
+        _dataLifecycle.ReassignAsync(sourceUserId, targetUserId, actorUserId, updatedAt, ct);
 
-        // Lead moves change Barrio Leads team membership for both users.
-        await _systemTeamSync.SyncMembershipForUserAsync(sourceUserId, SystemTeamType.BarrioLeads, ct);
-        await _systemTeamSync.SyncMembershipForUserAsync(targetUserId, SystemTeamType.BarrioLeads, ct);
-    }
+    public Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct) =>
+        _dataLifecycle.ContributeForUserAsync(userId, ct);
 
-    public async Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct)
-    {
-        userId = (await _userService.GetUserInfoAsync(userId, ct))?.Id ?? userId;
-        var roleAssignments = await _repo.GetAllAssignmentsForUserAsync(userId, ct);
+    internal static readonly IReadOnlyDictionary<string, string?> Erasure = CampDataLifecycle.Erasure;
 
-        var shapedRoles = roleAssignments.Select(a => new
-        {
-            CampSlug = a.CampSeason.Camp.Slug,
-            SeasonYear = a.CampSeason.Year,
-            RoleName = a.Definition.Name,
-            AssignedAt = a.AssignedAt.ToIso8601(),
-            a.AssignedByUserId
-        }).ToList();
-
-        var memberships = await _repo.GetAllMembershipsForUserAsync(userId, ct);
-        var shapedMemberships = memberships.Select(m => new
-        {
-            m.Id,
-            m.CampSeasonId,
-            CampSlug = m.CampSeason.Camp.Slug,
-            SeasonYear = m.CampSeason.Year,
-            Status = m.Status.ToString(),
-            RequestedAt = m.RequestedAt.ToIso8601(),
-            ConfirmedAt = m.ConfirmedAt?.ToIso8601(),
-            m.ConfirmedByUserId,
-            RemovedAt = m.RemovedAt?.ToIso8601(),
-            m.RemovedByUserId,
-            m.HasEarlyEntry
-        }).ToList();
-
-        return [new UserDataSlice(CampRoleAssignments, shapedRoles), new UserDataSlice(CampMemberships, shapedMemberships)];
-    }
-
-    internal static readonly IReadOnlyDictionary<string, string?> Erasure =
-        new Dictionary<string, string?>(StringComparer.Ordinal)
-        {
-            [CampRoleAssignments] = null,
-            [CampMemberships] = null
-        };
-
-    /// <summary>
-    /// Drops the user's camp memberships and every role assignment hanging off
-    /// them (Camp Lead included — it is a role assignment).
-    /// </summary>
-    public async Task EraseForUserAsync(Guid userId, CancellationToken ct)
-    {
-        await _repo.DeleteCampFootprintForUserAsync(userId, ct);
-        // The cached CampInfo rosters this just emptied are dropped by CachingCampService,
-        // the registered IUserDataContributor, which refreshes after this returns.
-    }
+    public Task EraseForUserAsync(Guid userId, CancellationToken ct) =>
+        _dataLifecycle.EraseForUserAsync(userId, ct);
 
     public Task<CampAdminMutationResult> SetCampSeasonEeSlotCountAsync(
         Guid campSeasonId, int slotCount, Guid actorUserId,
