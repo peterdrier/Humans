@@ -115,6 +115,7 @@ Humans.Finance/
   Services/
     Service.cs                 facade for shapes A–G
     HoldedCreditorReader.cs     shape D: status, accounts and statements
+    FinancePersonalData.cs      financial export and retention declarations
     SepaBankBooking.cs         shape F and the sweep
     HoldedMatcher.cs           pure attribution, no dependencies
     HoldedDuplicateMatcher.cs  pure duplicate detection, no dependencies
