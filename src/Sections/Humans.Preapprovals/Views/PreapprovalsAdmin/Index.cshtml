@@ -10,7 +10,7 @@
     </text>;
     Func<ProgramInfo, IHtmlContent> statusCell = @<text>
         <status-badge value="@item.Status" />
-        @if (item.AcceptsApplications && item.IsAcceptingApplications(Model.Today))
+        @if (item.IsAcceptingApplications(Model.Today))
         {
             <span class="badge bg-info text-dark">Accepting applications</span>
         }

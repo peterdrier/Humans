@@ -47,7 +47,7 @@ public sealed class ProgramViewTests
                 UserInfo.Create(new User { Id = id, BurnerName = name }, [], [], null));
         var now = Instant.FromUtc(2027, 3, 1, 12, 0);
         var programId = Guid.NewGuid();
-        var grant = new GrantInfo(Guid.NewGuid(), programId, "Program", ProgramKind.FixedPerPerson,
+        var grant = new GrantInfo(Guid.NewGuid(), programId, "Program",
             Guid.NewGuid(), null, 20m, GrantStatus.Open, null, null, issuer, now, null,
             new LocalDate(2027, 5, 1), now, now);
         var program = new ProgramInfo(programId, "Program", null, ProgramKind.FixedPerPerson,

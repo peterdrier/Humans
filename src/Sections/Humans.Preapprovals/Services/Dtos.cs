@@ -21,11 +21,6 @@ internal sealed record ProgramInfo(
     /// <summary>What counts against the ceiling.</summary>
     public decimal Granted => Grants.Where(g => g.CountsAgainstCeiling).Sum(g => g.MaxAmount);
 
-    public decimal Consumed => Grants.Where(g => g.Status == GrantStatus.Consumed).Sum(g => g.MaxAmount);
-
-    /// <summary>The Applied queue a manager sees beside what is committed.</summary>
-    public decimal Requested => Grants.Where(g => g.Status == GrantStatus.Applied).Sum(g => g.MaxAmount);
-
     /// <summary>Revoked, plus Open past the deadline. Frozen rows, never adjusted.</summary>
     public decimal NotClaimed(LocalDate today) => Grants
         .Where(g => g.Status == GrantStatus.Revoked || (g.Status == GrantStatus.Open && today > ClaimBy))
@@ -51,7 +46,6 @@ internal sealed record GrantInfo(
     Guid Id,
     Guid ProgramId,
     string ProgramName,
-    ProgramKind ProgramKind,
     Guid BeneficiaryUserId,
     string? Label,
     decimal MaxAmount,
