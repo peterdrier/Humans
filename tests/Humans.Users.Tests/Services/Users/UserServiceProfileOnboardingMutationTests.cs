@@ -34,6 +34,31 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
     }
 
     [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task RecordLogin_MetadataFailure_DoesNotBlockSignIn_ButPreservesCancellation(bool cancelled)
+    {
+        var userId = Guid.NewGuid();
+        using var request = new CancellationTokenSource();
+        if (cancelled) await request.CancelAsync();
+        var repository = Substitute.For<IUserRepository>();
+        var failure = cancelled
+            ? (Exception)new OperationCanceledException(request.Token)
+            : new IOException("Last-login write unavailable");
+        repository.SetLastLoginAsync(userId, Arg.Any<Instant>(), request.Token)
+            .Returns(Task.FromException<bool>(failure));
+        var service = new UserService(repository, AdminAuthorization, _fileStorage, Clock,
+            NullLogger<UserService>.Instance, AuditLog);
+
+        var record = () => service.RecordLoginAsync(userId, request.Token);
+
+        if (cancelled)
+            await record.Should().ThrowAsync<OperationCanceledException>();
+        else
+            await record.Should().NotThrowAsync();
+    }
+
+    [HumansTheory]
     [InlineData("invalid", "Validation_EmailAddress")]
     [InlineData("overlong", "Validation_EmailAddress")]
     [InlineData("duplicate", "Users_Profile_EmailAlreadyAdded")]

@@ -94,7 +94,18 @@ internal sealed class UserService(
 
     public async Task RecordLoginAsync(Guid userId, CancellationToken ct = default)
     {
-        await repo.SetLastLoginAsync(userId, clock.GetCurrentInstant(), ct);
+        try
+        {
+            await repo.SetLastLoginAsync(userId, clock.GetCurrentInstant(), ct);
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to record login for user {UserId}; sign-in continues", userId);
+        }
     }
 
     public async Task MarkFakeAsync(Guid userId, Guid actorUserId, string reason, CancellationToken ct = default)

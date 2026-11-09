@@ -10,6 +10,7 @@ public interface IUserWrite
 
     /// <summary>
     /// After any successful sign-in. The only writer of <c>LastLoginAt</c>: sign-in flows must not set it directly.
+    /// Tracking failures are logged without blocking sign-in; caller cancellation propagates.
     /// No-op if the user doesn't exist.
     /// </summary>
     Task RecordLoginAsync(Guid userId, CancellationToken ct = default);
