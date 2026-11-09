@@ -14,7 +14,7 @@ internal sealed class Service(
     IAuditLogService audit,
     ILogger<Service> logger) : IPleoService, IPleoAdminService
 {
-    private readonly PleoMirrorSync mirrorSync = new(repo, client, clock, logger);
+    private readonly PleoMirrorSync mirrorSync = new(repo, client, clock, audit, logger);
     private readonly PleoMirrorReader mirrorReader = new(repo, client, logger);
 
     private const string AuditEntity = "PleoCategory";
@@ -45,7 +45,7 @@ internal sealed class Service(
     public Task<PleoCategoriesPage> GetCategoriesPageAsync(CancellationToken ct = default) =>
         mirrorReader.GetCategoriesPageAsync(ct);
 
-    // ── Category mapping (the one table the sweep never touches) ────────────
+    // ── Category mapping by hand (the sweep fills in what nobody linked) ────
 
     public async Task<string?> LinkCategoryAsync(
         string pleoCategoryId, Guid categoryId, Guid userId, CancellationToken ct = default)
