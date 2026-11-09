@@ -49,6 +49,32 @@ saved inherited-access preferences, auditing each correction via `IAuditLogServi
 The sync management facade retains the existing methods; no separate DI registration
 or cache.
 
+### GoogleGroupSettings (internal, owned by GoogleWorkspaceSyncService)
+
+Repository: `IGoogleResourceRepository`. Detects and corrects drift between each active team
+Group's Google settings and the configured baseline; no separate DI registration.
+
+| Table | R/W |
+|-------|-----|
+| GoogleResources | R (active Group resources) |
+
+Sync mode comes from `ISyncSettingsService` (the `SyncServiceSettings` table stays with its
+owning service). Cross-section calls via `ITeamService` (active teams only), `IAuditLogService`,
+`IGoogleDirectoryClient` and `IGoogleGroupProvisioningClient`. No cache.
+
+### GoogleSyncOutboxAdministration (internal, owned by GoogleWorkspaceSyncService)
+
+Repository: `IGoogleSyncOutboxRepository`. Outbox counts, the recent-events list, requeue of one
+or all failed events, and the per-user sync re-run that appends fresh events; no separate DI
+registration.
+
+| Table | R/W |
+|-------|-----|
+| GoogleSyncOutboxEvents | R/W (counts, recent list; requeue; `AddRangeAsync` for the user re-run) |
+
+Cross-section calls via `ITeamService` (the user's memberships), `IAuditLogService` (requeue and
+re-run audits), the section's own `IWorkspaceIdentityManagement`, and `IClock`. No cache.
+
 ### WorkspaceIdentityService (Scoped)
 
 Repository: `IWorkspaceIdentityRepository` (Singleton, `IDbContextFactory`).

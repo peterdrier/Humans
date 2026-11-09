@@ -51,13 +51,13 @@ the group page is a pull by Workgroups through `IHoldedService.GetLedgerLinesAsy
 
 - `IFinanceWrite.CreateOrLinkExpenseAccountAsync(string name, int? existingAccountNum, CancellationToken)`
   → `ExpenseAccountRef(int AccountNum, string AccountId, string Name, bool Created)`.
-  1. `existingAccountNum` given: the account must exist in the live chart
-     (`IHoldedClient.ListExpenseAccountsAsync`); returns it, `Created = false`. Unknown number → throws.
-  2. Otherwise match `name` against the live chart by normalized name (trim, collapse whitespace,
+  1. `existingAccountNum` given: the account must exist in the chart mirror, synced first
+     (`IHoldedService.SyncChartAsync` then `GetChartAsync`); returns it, `Created = false`. Unknown number → throws.
+  2. Otherwise match `name` against that chart by normalized name (trim, collapse whitespace,
      case-insensitive, accents folded). A hit is returned, `Created = false`. This is the
      dup guard: two clicks, or a name typed twice, never produce twin accounts.
   3. Otherwise allocate the next free number in the `62900100` block against the local
-     category map, the local managed registry and the live chart (same loop as
+     category map, the local managed registry and the chart (same loop as
      `GetProvisioningPlanAsync`), create the account, return it with `Created = true`.
   Every path upserts a `holded_managed_accounts` row unless the account is already in
   `holded_category_map` (a budget-category account linked on purpose stays Finance's category
@@ -69,7 +69,7 @@ the group page is a pull by Workgroups through `IHoldedService.GetLedgerLinesAsy
   Union of the category map (label `Group / Category` from the active budget year; inactive when the category is not in that year)
   and the managed registry (its `Label`). Cache reads only — no Holded call. This is what the
   Workgroups picker and the phase-2 Expenses dropdown consume; the "link existing" picker in
-  Workgroups shows the full live chart via `IHoldedClient.ListExpenseAccountsAsync` so an account
+  Workgroups shows the full chart mirror via `IHoldedService.GetChartAsync` so an account
   created by hand in Holded can be linked too.
 
 **Attribution.** `HoldedMatcher.Match` gets the managed registry's account ids alongside the

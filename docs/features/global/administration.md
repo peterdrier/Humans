@@ -160,6 +160,7 @@ Google sync, settings, account provisioning, and audit routes have been extracte
 | `/Users/Admin/{id}/Purge` | PurgeHuman | POST: Dev/QA user purge (non-production); on `UsersAdminController` |
 | `/Debug/Configuration` | Configuration | Configuration status page |
 | `/Debug/Logs` | Logs | View recent log entries |
+| `/Debug/Database` | Database | Database server info, per-table and per-index statistics |
 | `/Debug/DbStats` | DbStats | Database query statistics |
 | `/Debug/DbStats/Reset` | ResetDbStats | POST: Reset query statistics |
 | `/Debug/CacheStats` | CacheStats | Cache hit/miss statistics per key type |

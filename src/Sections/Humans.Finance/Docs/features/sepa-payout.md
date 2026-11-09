@@ -176,13 +176,13 @@ it cannot disappear from the FIFO list and be replaced by a journal remainder. D
   row says so — "<amount> of this line was posted as a journal entry and needs a manual match in
   Holded", the amount read off the `entry:` token in `HoldedPaymentRefs` — instead of the generic
   reconcile-pending text, and the sweep's re-issue cannot help.
-- **A retry after `PARTIAL` is refused.** Holded discards the description on a purchase
-  payment, so the `SEPA payout E<id>` tag never reaches the ledger for a payment and the step-4 sum
-  reads 0 for it — a retry would post the money again as a journal entry. A run that posted
-  payments and then stopped writes their ids to `HoldedPaymentRefs` with `BookedAt` still null
-  (`PostedButNotBooked`); the page shows the reason in place of the button and `Book` refuses
-  naming the ids. The transfer is settled in Holded by hand. A journal entry keeps its tag, so a
-  run that posted *only* an entry still resumes from the tag sum.
+- **A retry after `PARTIAL` resumes from the saved payment ids.** Holded discards the description
+  on a purchase payment, so the `SEPA payout E<id>` tag never reaches the ledger for a payment. A run
+  that posted payments and then stopped writes their ids to `HoldedPaymentRefs` with `BookedAt` still
+  null (`PostedButNotBooked`); the retry counts the creditor account's `payment` lines dated the bank
+  line against those ids (step 4) and posts only the rest. It refuses, nothing posted, when a saved id
+  is `unconfirmed:` (the page shows the reason in place of the button) or the counts differ; those are
+  settled in Holded by hand. A journal entry keeps its tag, so it resumes from the tag sum.
 - **A transfer older than the feed window can only be settled by hand.** Matching ignores rows
   generated more than 90 days ago — otherwise one stale row makes every later transfer of the same
   account and amount permanently ambiguous, with no way to clear it. Such a row renders with
@@ -457,7 +457,7 @@ slice — plus the booking guards that do not depend on the bank line (already b
 member, rebound member, unconfigured treasury and ledger account) and what `/Finance/Sepa` renders
 in each case. `SepaBankBookingTests.cs` covers the bank-line-driven flow: the matcher (amount,
 account, ambiguity, already-booked, already-reconciled), the resume arithmetic, FIFO allocation
-dated the bank line, the payment-id reconcile and when it stamps, the refused retry after a
+dated the bank line, the payment-id reconcile and when it stamps, the resumed retry after a
 PARTIAL run, the sweep's re-issue, and its own booking pass — plus the
 ways a booking could over-post or over-claim: a second booking racing the first, a resume from a
 click-dated legacy posting, a transfer or resume beyond what the account owes (booked in full,
