@@ -77,7 +77,8 @@ All under `FinancePolicies.Read`; English-only finance-admin pages like `/Holded
 
 - A sweep fetches entries, chart, cardholders and balance (three to five calls) before writing anything, then
   replaces the four cache tables in one save: rows the sweep did not return are deleted. A failed call leaves the
-  mirror as it was and records the error on the sync row.
+  mirror as it was and records the error on the sync row. If that diagnostic save also fails, the secondary failure
+  is logged without replacing the original sync or caller-cancellation exception; the sync gate is still released.
 - The pager fails closed: a body without `data`, `hasNextPage` without a cursor, a repeated cursor or the 100-page
   cap throws, so a short fetch can never delete rows.
 - Entries without an id or family are skipped and counted on the sync row.

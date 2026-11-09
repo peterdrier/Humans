@@ -70,10 +70,17 @@ internal sealed class Service(
             }
             catch (Exception ex)
             {
-                state.SyncStatus = PleoSyncStatus.Error;
-                state.StatusChangedAt = clock.GetCurrentInstant();
-                state.LastError = PleoTextBounds.Bound(ex.Message, 2000);
-                await repo.SaveSyncStateAsync(state, CancellationToken.None);
+                try
+                {
+                    state.SyncStatus = PleoSyncStatus.Error;
+                    state.StatusChangedAt = clock.GetCurrentInstant();
+                    state.LastError = PleoTextBounds.Bound(ex.Message, 2000);
+                    await repo.SaveSyncStateAsync(state, CancellationToken.None);
+                }
+                catch (Exception saveEx)
+                {
+                    logger.LogError(saveEx, "Failed to persist Pleo sync error state");
+                }
                 throw;
             }
         }
