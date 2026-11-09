@@ -1,3 +1,4 @@
+using static Humans.Workgroups.Services.WorkgroupJournal;
 using Humans.AuditLog.Contracts;
 using Humans.Calendar.Contracts;
 using Humans.Base.Constants;
@@ -14,25 +15,6 @@ namespace Humans.Workgroups.Services;
 internal sealed partial class WorkgroupService
 {
     private static WorkgroupInfo ToInfo(Workgroup w) => WorkgroupRegisterReader.ToInfo(w);
-
-    private static WorkgroupDocumentInfo ToInfo(WorkgroupDocument d) => WorkgroupRegisterReader.ToInfo(d);
-
-    private async Task<WorkgroupMutationResult<Workgroup>> RequireAsync(Guid workgroupId, CancellationToken ct)
-    {
-        var workgroup = await repository.GetWorkgroupAsync(workgroupId, ct);
-        return workgroup is null
-            ? new(Refusal: new(WorkgroupErrorKeys.NotFound))
-            : new(workgroup);
-    }
-
-    /// <summary>The group, refused unless it exists and accepts member work.</summary>
-    private async Task<WorkgroupMutationResult<Workgroup>> RequireActiveAsync(Guid workgroupId, CancellationToken ct)
-    {
-        var result = await RequireAsync(workgroupId, ct);
-        if (result.Refusal is null && RequireAcceptsMemberWork(result.Value!) is { } stateRefusal)
-            return new(Refusal: stateRefusal);
-        return result;
-    }
 
     private async Task<WorkgroupMutationResult<WorkgroupMeeting>> RequireLiveMeetingAsync(Guid meetingId, CancellationToken ct)
     {
@@ -53,27 +35,6 @@ internal sealed partial class WorkgroupService
         if (meetingId == currentMeetingId) return new(meetingId);
         var meeting = await RequireLiveMeetingAsync(meetingId, ct);
         return meeting.Value?.WorkgroupId == workgroupId ? new(meetingId) : new(Refusal: new(WorkgroupErrorKeys.NotFound));
-    }
-
-    /// <summary>Member mutations are frozen before registration and once the group ends.</summary>
-    private static WorkgroupRefusal? RequireAcceptsMemberWork(Workgroup w)
-    {
-        if (w.Status != WorkgroupStatus.Active)
-            return new(WorkgroupErrorKeys.Frozen);
-        return null;
-    }
-
-    private async Task<WorkgroupMutationResult<Workgroup>> RequireMembershipManagerAsync(
-        Guid workgroupId, Guid actorUserId, bool asAdmin, CancellationToken ct)
-    {
-        var result = await RequireActiveAsync(workgroupId, ct);
-        if (result.Refusal is not null) return result;
-        if (!asAdmin && !result.Value!.Members.Any(m => m.UserId == actorUserId && m.LeftAt is null && m.IsPending != true
-                && m.Role == WorkgroupMemberRole.Coordinator))
-        {
-            return new(Refusal: new(WorkgroupErrorKeys.NotACoordinator));
-        }
-        return result;
     }
 
     private static WorkgroupRefusal? RequireStatus(Workgroup w, params WorkgroupStatus[] allowed)
@@ -211,25 +172,6 @@ internal sealed partial class WorkgroupService
             IsPending = isPending ? true : null
         };
 
-    private static WorkgroupLogEntry SystemEntry(
-        Guid workgroupId,
-        WorkgroupLogKind kind,
-        Instant now,
-        string? body,
-        Guid? authorUserId = null,
-        Guid? documentId = null) => new()
-        {
-            Id = Guid.NewGuid(),
-            WorkgroupId = workgroupId,
-            Kind = kind,
-            OccurredOn = now.InUtc().Date,
-            Body = Trimmed(body),
-            AuthorUserId = authorUserId,
-            DocumentId = documentId,
-            CreatedAt = now,
-            UpdatedAt = now
-        };
-
     /// <summary>
     /// Suffixed until free. Reserved route segments count as taken, so a group called "Apply" gets <c>apply-2</c>
     /// rather than shadowing the form.
@@ -263,9 +205,6 @@ internal sealed partial class WorkgroupService
 
     private const int SlugBudget = 96;
 
-    private static string? Trimmed(string? value) =>
-        string.IsNullOrWhiteSpace(value) ? null : value.Trim();
-
     private async Task<string> NameOfAsync(Guid userId, CancellationToken ct)
     {
         var info = await users.GetUserInfoAsync(userId, ct);
@@ -278,20 +217,6 @@ internal sealed partial class WorkgroupService
         return userIds
             .Select(id => infos.TryGetValue(id, out var info) ? info.BurnerName : "A member")
             .ToList();
-    }
-
-    private async Task AuditAsync(
-        AuditActionDefinition action,
-        Workgroup w,
-        string description,
-        Guid actorUserId,
-        string entityType = AuditEntityTypes.Workgroup,
-        Guid? entityId = null)
-    {
-        var id = entityId ?? w.Id;
-        await auditLog.LogAsync(action, entityType, id, description, actorUserId,
-            relatedEntityId: id == w.Id ? null : w.Id,
-            relatedEntityType: id == w.Id ? null : AuditEntityTypes.Workgroup);
     }
 
     /// <summary>Failures are logged, never surfaced: the daily reconciliation covers the drift.</summary>
@@ -355,7 +280,7 @@ internal sealed partial class WorkgroupService
             ClosePendingRequests(w, now));
         ct = CancellationToken.None;
 
-        await AuditAsync(WorkgroupsAuditActions.WorkgroupClosed, w, $"Group ended ({reason})", actorUserId);
+        await journal.AuditAsync(WorkgroupsAuditActions.WorkgroupClosed, w, $"Group ended ({reason})", actorUserId);
 
         var info = ToInfo(w);
         var coordinators = info.CoordinatorUserIds();

@@ -1,3 +1,4 @@
+using static Humans.Workgroups.Services.WorkgroupJournal;
 using Humans.Base.Extensions;
 using Humans.AuditLog.Contracts;
 using Humans.Notifications.Contracts;
@@ -11,7 +12,7 @@ internal sealed partial class WorkgroupService
     {
         // Registration completes even if the initiating request disconnects.
         ct = CancellationToken.None;
-        var workgroupResult = await RequireAsync(workgroupId, ct);
+        var workgroupResult = await access.RequireAsync(workgroupId, ct);
         if (workgroupResult.Refusal is { } workgroupRefusal) return new(Refusal: workgroupRefusal);
         var workgroup = workgroupResult.Value!;
         if (RequireStatus(workgroup, WorkgroupStatus.Applied, WorkgroupStatus.Referred) is { } statusRefusal) return new(Refusal: statusRefusal);
@@ -32,7 +33,7 @@ internal sealed partial class WorkgroupService
         await repository.UpdateWorkgroupAsync(workgroup, ct,
             [SystemEntry(workgroup.Id, WorkgroupLogKind.Registered, now, body: null)]);
 
-        await AuditAsync(WorkgroupsAuditActions.WorkgroupRegistered, workgroup,
+        await journal.AuditAsync(WorkgroupsAuditActions.WorkgroupRegistered, workgroup,
             $"Registered '{workgroup.Name}' with Drive folder {workgroup.DriveFolderId}", actorUserId);
         await AnnounceDecisionAsync(workgroup, WorkgroupNoticeKind.Registered, detail: null, ct);
         await RequestDriveSyncAsync(workgroup, ct);
@@ -42,7 +43,7 @@ internal sealed partial class WorkgroupService
     public async Task<WorkgroupMutationResult> ReferAsync(
         Guid workgroupId, Guid actorUserId, string? note, CancellationToken ct = default)
     {
-        var workgroupResult = await RequireAsync(workgroupId, ct);
+        var workgroupResult = await access.RequireAsync(workgroupId, ct);
         if (workgroupResult.Refusal is { } workgroupRefusal) return new(Refusal: workgroupRefusal);
         var workgroup = workgroupResult.Value!;
         if (RequireStatus(workgroup, WorkgroupStatus.Applied) is { } statusRefusal) return new(Refusal: statusRefusal);
@@ -54,7 +55,7 @@ internal sealed partial class WorkgroupService
             [SystemEntry(workgroup.Id, WorkgroupLogKind.Referred, now, Trimmed(note))]);
         ct = CancellationToken.None;
 
-        await AuditAsync(WorkgroupsAuditActions.WorkgroupReferred, workgroup,
+        await journal.AuditAsync(WorkgroupsAuditActions.WorkgroupReferred, workgroup,
             $"Referred '{workgroup.Name}' to the Board{(Trimmed(note) is { } n ? $": {n}" : "")}",
             actorUserId);
 
@@ -70,7 +71,7 @@ internal sealed partial class WorkgroupService
         Guid workgroupId, Guid actorUserId, string reasons, CancellationToken ct = default)
     {
         if (RequireReasons(reasons) is { } reasonsRefusal) return new(Refusal: reasonsRefusal);
-        var workgroupResult = await RequireAsync(workgroupId, ct);
+        var workgroupResult = await access.RequireAsync(workgroupId, ct);
         if (workgroupResult.Refusal is { } workgroupRefusal) return new(Refusal: workgroupRefusal);
         var workgroup = workgroupResult.Value!;
         if (RequireStatus(workgroup, WorkgroupStatus.Applied, WorkgroupStatus.Referred) is { } statusRefusal) return new(Refusal: statusRefusal);
@@ -83,7 +84,7 @@ internal sealed partial class WorkgroupService
             [SystemEntry(workgroup.Id, WorkgroupLogKind.Refused, now, reasons.Trim())]);
         ct = CancellationToken.None;
 
-        await AuditAsync(WorkgroupsAuditActions.WorkgroupRefused, workgroup,
+        await journal.AuditAsync(WorkgroupsAuditActions.WorkgroupRefused, workgroup,
             $"Refused '{workgroup.Name}': {reasons.Trim()}", actorUserId);
         await AnnounceDecisionAsync(workgroup, WorkgroupNoticeKind.Refused, reasons.Trim(), ct);
         return new();
@@ -93,7 +94,7 @@ internal sealed partial class WorkgroupService
         Guid workgroupId, Guid actorUserId, string reasons, CancellationToken ct = default)
     {
         if (RequireReasons(reasons) is { } reasonsRefusal) return new(Refusal: reasonsRefusal);
-        var workgroupResult = await RequireAsync(workgroupId, ct);
+        var workgroupResult = await access.RequireAsync(workgroupId, ct);
         if (workgroupResult.Refusal is { } workgroupRefusal) return new(Refusal: workgroupRefusal);
         var workgroup = workgroupResult.Value!;
         if (RequireStatus(workgroup, WorkgroupStatus.Active, WorkgroupStatus.Dormant) is { } statusRefusal) return new(Refusal: statusRefusal);
@@ -108,7 +109,7 @@ internal sealed partial class WorkgroupService
             [SystemEntry(workgroup.Id, WorkgroupLogKind.Withdrawn, now, reasons.Trim())],
             ClosePendingRequests(workgroup, now));
         ct = CancellationToken.None;
-        await AuditAsync(WorkgroupsAuditActions.WorkgroupWithdrawn, workgroup,
+        await journal.AuditAsync(WorkgroupsAuditActions.WorkgroupWithdrawn, workgroup,
             $"Withdrew registration of '{workgroup.Name}': {reasons.Trim()}", actorUserId);
         await AnnounceDecisionAsync(workgroup, WorkgroupNoticeKind.Withdrawn, reasons.Trim(), ct);
         // Withdrawn isn't Active, so the source stops claiming write access.
@@ -121,7 +122,7 @@ internal sealed partial class WorkgroupService
         Guid workgroupId, Guid actorUserId, string reasons, CancellationToken ct = default)
     {
         if (RequireReasons(reasons) is { } reasonsRefusal) return new(Refusal: reasonsRefusal);
-        var workgroupResult = await RequireAsync(workgroupId, ct);
+        var workgroupResult = await access.RequireAsync(workgroupId, ct);
         if (workgroupResult.Refusal is { } workgroupRefusal) return new(Refusal: workgroupRefusal);
         var workgroup = workgroupResult.Value!;
         if (RequireStatus(workgroup, WorkgroupStatus.Active) is { } statusRefusal) return new(Refusal: statusRefusal);
@@ -133,7 +134,7 @@ internal sealed partial class WorkgroupService
 
     public async Task<WorkgroupMutationResult> ReactivateAsync(Guid workgroupId, Guid actorUserId, CancellationToken ct = default)
     {
-        var workgroupResult = await RequireAsync(workgroupId, ct);
+        var workgroupResult = await access.RequireAsync(workgroupId, ct);
         if (workgroupResult.Refusal is { } workgroupRefusal) return new(Refusal: workgroupRefusal);
         var workgroup = workgroupResult.Value!;
         if (RequireStatus(workgroup, WorkgroupStatus.Dormant) is { } statusRefusal) return new(Refusal: statusRefusal);
@@ -148,7 +149,7 @@ internal sealed partial class WorkgroupService
             [SystemEntry(workgroup.Id, WorkgroupLogKind.Reactivated, now, body: null)]);
         ct = CancellationToken.None;
 
-        await AuditAsync(WorkgroupsAuditActions.WorkgroupReactivated, workgroup,
+        await journal.AuditAsync(WorkgroupsAuditActions.WorkgroupReactivated, workgroup,
             $"Reactivated '{workgroup.Name}'", actorUserId);
         await AnnounceDecisionAsync(workgroup, WorkgroupNoticeKind.Reactivated, detail: null, ct);
         await RequestDriveSyncAsync(workgroup, ct);
@@ -220,14 +221,14 @@ internal sealed partial class WorkgroupService
         workgroup.DriveFolderId = folderResult.Value!;
         await repository.AddWorkgroupAsync(workgroup, ct);
 
-        await AuditAsync(WorkgroupsAuditActions.WorkgroupRegisteredExisting, workgroup,
+        await journal.AuditAsync(WorkgroupsAuditActions.WorkgroupRegisteredExisting, workgroup,
             $"Registered the existing group '{workgroup.Name}', backdated to "
                 + $"{bootstrap.RegisteredAt.InUtc().Date.ToInvariantDate()}",
             actorUserId);
         await AnnounceDecisionAsync(workgroup, WorkgroupNoticeKind.Registered, detail: null, ct);
         await RequestDriveSyncAsync(workgroup, ct);
         if (budget is not null)
-            await AuditAsync(WorkgroupsAuditActions.WorkgroupBudgetSet, workgroup, BudgetAuditSummary(workgroup), actorUserId);
+            await journal.AuditAsync(WorkgroupsAuditActions.WorkgroupBudgetSet, workgroup, BudgetAuditSummary(workgroup), actorUserId);
 
         return new(workgroup.Id);
     }
@@ -242,7 +243,7 @@ internal sealed partial class WorkgroupService
         if (RequireReasons(note) is { } noteRefusal)
             return new(Refusal: noteRefusal);
 
-        var documentResult = await RequireDocumentAsync(documentId, ct, requireActive: false);
+        var documentResult = await DocumentWorkflow.RequireDocumentAsync(documentId, ct, requireActive: false);
         if (documentResult.Refusal is { } documentRefusal) return new(Refusal: documentRefusal);
         var (workgroup, document) = documentResult.Value;
         if (document.Status != WorkgroupDocumentStatus.Delivered)
@@ -258,7 +259,7 @@ internal sealed partial class WorkgroupService
             [SystemEntry(workgroup.Id, WorkgroupLogKind.DispositionRecorded, now,
                 $"{disposition}: {note.Trim()}", documentId: document.Id)]);
         ct = CancellationToken.None;
-        await AuditAsync(WorkgroupsAuditActions.WorkgroupDispositionRecorded, workgroup,
+        await journal.AuditAsync(WorkgroupsAuditActions.WorkgroupDispositionRecorded, workgroup,
             $"Recorded {disposition} on '{document.Title}': {note.Trim()}", actorUserId,
             AuditEntityTypes.WorkgroupDocument, document.Id);
 

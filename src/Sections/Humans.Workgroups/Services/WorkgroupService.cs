@@ -1,3 +1,5 @@
+using static Humans.Workgroups.Services.WorkgroupAccess;
+using static Humans.Workgroups.Services.WorkgroupJournal;
 using System.Globalization;
 using System.Text.RegularExpressions;
 using Humans.Base.Extensions;
@@ -34,6 +36,9 @@ internal sealed partial class WorkgroupService(
     IClock clock,
     ILogger<WorkgroupService> logger) : IWorkgroupService
 {
+    private readonly WorkgroupAccess access = new(repository);
+    private readonly WorkgroupJournal journal = new(auditLog);
+    private WorkgroupDocumentWorkflow DocumentWorkflow => new(repository, access, journal, notices, clock);
     private readonly WorkgroupDataExport dataExport = new(repository);
     private readonly WorkgroupRegisterReader registerReader = new(repository);
 
@@ -104,7 +109,7 @@ internal sealed partial class WorkgroupService(
 
     public async Task<WorkgroupMutationResult> JoinAsync(Guid workgroupId, Guid userId, CancellationToken ct = default)
     {
-        var workgroupResult = await RequireActiveAsync(workgroupId, ct);
+        var workgroupResult = await access.RequireActiveAsync(workgroupId, ct);
         if (workgroupResult.Refusal is { } workgroupRefusal) return new(Refusal: workgroupRefusal);
         var workgroup = workgroupResult.Value!;
 
@@ -127,7 +132,7 @@ internal sealed partial class WorkgroupService(
     public async Task<WorkgroupMutationResult> ApproveMemberAsync(
         Guid workgroupId, Guid actorUserId, Guid userId, bool asAdmin = false, CancellationToken ct = default)
     {
-        var workgroupResult = await RequireMembershipManagerAsync(workgroupId, actorUserId, asAdmin, ct);
+        var workgroupResult = await access.RequireMembershipManagerAsync(workgroupId, actorUserId, asAdmin, ct);
         if (workgroupResult.Refusal is { } workgroupRefusal) return new(Refusal: workgroupRefusal);
         var workgroup = workgroupResult.Value!;
 
@@ -141,7 +146,7 @@ internal sealed partial class WorkgroupService(
     public async Task<WorkgroupMutationResult> DeclineMemberAsync(
         Guid workgroupId, Guid actorUserId, Guid userId, bool asAdmin = false, CancellationToken ct = default)
     {
-        var workgroupResult = await RequireMembershipManagerAsync(workgroupId, actorUserId, asAdmin, ct);
+        var workgroupResult = await access.RequireMembershipManagerAsync(workgroupId, actorUserId, asAdmin, ct);
         if (workgroupResult.Refusal is { } workgroupRefusal) return new(Refusal: workgroupRefusal);
         var workgroup = workgroupResult.Value!;
 
@@ -163,7 +168,7 @@ internal sealed partial class WorkgroupService(
     public async Task<WorkgroupMutationResult> AddMemberAsync(
         Guid workgroupId, Guid actorUserId, Guid userId, bool asAdmin = false, CancellationToken ct = default)
     {
-        var workgroupResult = await RequireMembershipManagerAsync(workgroupId, actorUserId, asAdmin, ct);
+        var workgroupResult = await access.RequireMembershipManagerAsync(workgroupId, actorUserId, asAdmin, ct);
         if (workgroupResult.Refusal is { } workgroupRefusal) return new(Refusal: workgroupRefusal);
         var workgroup = workgroupResult.Value!;
         var target = await ResolveMemberTargetAsync(userId, ct);
@@ -211,7 +216,7 @@ internal sealed partial class WorkgroupService(
         bool asAdmin = false,
         CancellationToken ct = default)
     {
-        var workgroupResult = await RequireAsync(workgroupId, ct);
+        var workgroupResult = await access.RequireAsync(workgroupId, ct);
         if (workgroupResult.Refusal is { } workgroupRefusal) return new(Refusal: workgroupRefusal);
         var workgroup = workgroupResult.Value!;
         if (!asAdmin && RequireAcceptsMemberWork(workgroup) is { } stateRefusal)
@@ -265,7 +270,7 @@ internal sealed partial class WorkgroupService(
         ct = CancellationToken.None;
         if (promoted is not null)
         {
-            await AuditAsync(WorkgroupsAuditActions.WorkgroupCoordinatorsChanged, workgroup,
+            await journal.AuditAsync(WorkgroupsAuditActions.WorkgroupCoordinatorsChanged, workgroup,
                 $"Coordination handed to {promotedName} when the last coordinator left",
                 userId);
         }
@@ -277,7 +282,7 @@ internal sealed partial class WorkgroupService(
     public async Task<WorkgroupMutationResult> RequestStatusAsync(
         Guid workgroupId, Guid actorUserId, string? question, CancellationToken ct = default)
     {
-        var workgroupResult = await RequireActiveAsync(workgroupId, ct);
+        var workgroupResult = await access.RequireActiveAsync(workgroupId, ct);
         if (workgroupResult.Refusal is { } workgroupRefusal) return new(Refusal: workgroupRefusal);
         var workgroup = workgroupResult.Value!;
 
@@ -306,7 +311,7 @@ internal sealed partial class WorkgroupService(
         Guid workgroupId, Guid actorUserId, WorkgroupRegisterEdit edit, CancellationToken ct = default)
     {
         ArgumentNullException.ThrowIfNull(edit);
-        var workgroupResult = await RequireActiveAsync(workgroupId, ct);
+        var workgroupResult = await access.RequireActiveAsync(workgroupId, ct);
         if (workgroupResult.Refusal is { } workgroupRefusal) return new(Refusal: workgroupRefusal);
         var workgroup = workgroupResult.Value!;
         if (ValidateRegisterFields(edit.Name, edit.Purpose, edit.Deliverable, edit.DiscordChannelUrl) is { } fieldsRefusal) return new(Refusal: fieldsRefusal);
@@ -344,7 +349,7 @@ internal sealed partial class WorkgroupService(
         CancellationToken ct = default)
     {
         ArgumentNullException.ThrowIfNull(coordinatorUserIds);
-        var workgroupResult = await RequireAsync(workgroupId, ct);
+        var workgroupResult = await access.RequireAsync(workgroupId, ct);
         if (workgroupResult.Refusal is { } workgroupRefusal) return new(Refusal: workgroupRefusal);
         var workgroup = workgroupResult.Value!;
         if (!asAdmin && RequireAcceptsMemberWork(workgroup) is { } stateRefusal)
@@ -380,7 +385,7 @@ internal sealed partial class WorkgroupService(
             [SystemEntry(workgroup.Id, WorkgroupLogKind.CoordinatorChanged, now,
                 string.Join(", ", names), authorUserId: asAdmin ? null : actorUserId)]);
         ct = CancellationToken.None;
-        await AuditAsync(WorkgroupsAuditActions.WorkgroupCoordinatorsChanged, workgroup,
+        await journal.AuditAsync(WorkgroupsAuditActions.WorkgroupCoordinatorsChanged, workgroup,
             $"Coordinators set to {string.Join(", ", names)}", actorUserId);
 
         var info = ToInfo(workgroup);
@@ -396,7 +401,7 @@ internal sealed partial class WorkgroupService(
         Guid workgroupId, Guid actorUserId, WorkgroupMeetingSave save, CancellationToken ct = default)
     {
         ArgumentNullException.ThrowIfNull(save);
-        var workgroupResult = await RequireActiveAsync(workgroupId, ct);
+        var workgroupResult = await access.RequireActiveAsync(workgroupId, ct);
         if (workgroupResult.Refusal is { } workgroupRefusal) return new(Refusal: workgroupRefusal);
         var workgroup = workgroupResult.Value!;
         if (ValidateMeeting(save) is { } meetingValidationRefusal) return new(Refusal: meetingValidationRefusal);
@@ -423,7 +428,7 @@ internal sealed partial class WorkgroupService(
         var meetingResult = await RequireLiveMeetingAsync(meetingId, ct);
         if (meetingResult.Refusal is { } meetingRefusal) return new(Refusal: meetingRefusal);
         var meeting = meetingResult.Value!;
-        var workgroupResult = await RequireActiveAsync(meeting.WorkgroupId, ct);
+        var workgroupResult = await access.RequireActiveAsync(meeting.WorkgroupId, ct);
         if (workgroupResult.Refusal is { } workgroupRefusal) return new(Refusal: workgroupRefusal);
         var workgroup = workgroupResult.Value!;
         if (ValidateMeeting(save) is { } meetingValidationRefusal) return new(Refusal: meetingValidationRefusal);
@@ -433,7 +438,7 @@ internal sealed partial class WorkgroupService(
         await repository.UpdateMeetingAsync(meeting, ct);
 
         // The row is overwritten, so the audit entry is the only record of the meeting the members were told about.
-        await AuditAsync(WorkgroupsAuditActions.WorkgroupMeetingUpdated, workgroup,
+        await journal.AuditAsync(WorkgroupsAuditActions.WorkgroupMeetingUpdated, workgroup,
             $"Edited the meeting of {meeting.StartUtc.InUtc().Date.ToInvariantDate()}", actorUserId,
             AuditEntityTypes.WorkgroupMeeting, meeting.Id);
         return new();
@@ -444,7 +449,7 @@ internal sealed partial class WorkgroupService(
         var meetingResult = await RequireLiveMeetingAsync(meetingId, ct);
         if (meetingResult.Refusal is { } meetingRefusal) return new(Refusal: meetingRefusal);
         var meeting = meetingResult.Value!;
-        var workgroupResult = await RequireActiveAsync(meeting.WorkgroupId, ct);
+        var workgroupResult = await access.RequireActiveAsync(meeting.WorkgroupId, ct);
         if (workgroupResult.Refusal is { } workgroupRefusal) return new(Refusal: workgroupRefusal);
         var workgroup = workgroupResult.Value!;
 
@@ -453,7 +458,7 @@ internal sealed partial class WorkgroupService(
         meeting.UpdatedAt = now;
         await repository.UpdateMeetingAsync(meeting, ct);
 
-        await AuditAsync(WorkgroupsAuditActions.WorkgroupMeetingDeleted, workgroup,
+        await journal.AuditAsync(WorkgroupsAuditActions.WorkgroupMeetingDeleted, workgroup,
             $"Deleted the meeting of {meeting.StartUtc.InUtc().Date.ToInvariantDate()}", actorUserId,
             AuditEntityTypes.WorkgroupMeeting, meeting.Id);
         return new();
@@ -463,7 +468,7 @@ internal sealed partial class WorkgroupService(
         Guid workgroupId, Guid actorUserId, WorkgroupLogEntrySave save, CancellationToken ct = default)
     {
         ArgumentNullException.ThrowIfNull(save);
-        var workgroupResult = await RequireActiveAsync(workgroupId, ct);
+        var workgroupResult = await access.RequireActiveAsync(workgroupId, ct);
         if (workgroupResult.Refusal is { } workgroupRefusal) return new(Refusal: workgroupRefusal);
         var workgroup = workgroupResult.Value!;
         if (RequireMemberKind(save.Kind) is { } kindRefusal) return new(Refusal: kindRefusal);
@@ -499,7 +504,7 @@ internal sealed partial class WorkgroupService(
         ArgumentNullException.ThrowIfNull(save);
         var entry = await repository.GetLogEntryAsync(entryId, ct);
         if (entry is null) return new(Refusal: new(WorkgroupErrorKeys.NotFound));
-        var workgroupResult = await RequireActiveAsync(entry.WorkgroupId, ct);
+        var workgroupResult = await access.RequireActiveAsync(entry.WorkgroupId, ct);
         if (workgroupResult.Refusal is { } workgroupRefusal) return new(Refusal: workgroupRefusal);
         var workgroup = workgroupResult.Value!;
         if (RequireMemberKind(entry.Kind) is { } kindRefusal) return new(Refusal: kindRefusal);
@@ -520,7 +525,7 @@ internal sealed partial class WorkgroupService(
         await repository.UpdateLogEntryAsync(entry, ct);
 
         // The log keeps no history of its own, so without this an edit is as invisible as a deletion.
-        await AuditAsync(WorkgroupsAuditActions.WorkgroupLogEntryUpdated, workgroup,
+        await journal.AuditAsync(WorkgroupsAuditActions.WorkgroupLogEntryUpdated, workgroup,
             $"Edited the {entry.Kind} entry of {entry.OccurredOn.ToInvariantDate()}", actorUserId,
             AuditEntityTypes.WorkgroupLogEntry, entryId);
         return new();
@@ -530,14 +535,14 @@ internal sealed partial class WorkgroupService(
     {
         var entry = await repository.GetLogEntryAsync(entryId, ct);
         if (entry is null) return new(Refusal: new(WorkgroupErrorKeys.NotFound));
-        var workgroupResult = await RequireActiveAsync(entry.WorkgroupId, ct);
+        var workgroupResult = await access.RequireActiveAsync(entry.WorkgroupId, ct);
         if (workgroupResult.Refusal is { } workgroupRefusal) return new(Refusal: workgroupRefusal);
         var workgroup = workgroupResult.Value!;
         if (RequireMemberKind(entry.Kind) is { } kindRefusal) return new(Refusal: kindRefusal);
 
         await repository.DeleteLogEntryAsync(entryId, ct);
         // The log keeps no tombstone, so the audit trail is where the deletion stays visible.
-        await AuditAsync(WorkgroupsAuditActions.WorkgroupLogEntryDeleted, workgroup,
+        await journal.AuditAsync(WorkgroupsAuditActions.WorkgroupLogEntryDeleted, workgroup,
             $"Deleted the {entry.Kind} entry of {entry.OccurredOn.ToInvariantDate()}", actorUserId,
             AuditEntityTypes.WorkgroupLogEntry, entryId);
         return new();
@@ -546,7 +551,7 @@ internal sealed partial class WorkgroupService(
     public async Task<WorkgroupMutationResult> LinkSurveyAsync(
         Guid workgroupId, Guid actorUserId, Guid surveyId, CancellationToken ct = default)
     {
-        var workgroupResult = await RequireActiveAsync(workgroupId, ct);
+        var workgroupResult = await access.RequireActiveAsync(workgroupId, ct);
         if (workgroupResult.Refusal is { } workgroupRefusal) return new(Refusal: workgroupRefusal);
         var workgroup = workgroupResult.Value!;
 
@@ -578,7 +583,7 @@ internal sealed partial class WorkgroupService(
         if (reason is not (WorkgroupDormantReason.Delivered or WorkgroupDormantReason.Abandoned))
             return new(Refusal: new(WorkgroupErrorKeys.DoneReasonInvalid));
 
-        var workgroupResult = await RequireActiveAsync(workgroupId, ct);
+        var workgroupResult = await access.RequireActiveAsync(workgroupId, ct);
         if (workgroupResult.Refusal is { } workgroupRefusal) return new(Refusal: workgroupRefusal);
         var workgroup = workgroupResult.Value!;
 
@@ -598,7 +603,7 @@ internal sealed partial class WorkgroupService(
         if (ValidateBudgetAmount(save.Amount) is { } budgetRefusal)
             return new(Refusal: budgetRefusal);
 
-        var workgroupResult = await RequireAsync(workgroupId, ct);
+        var workgroupResult = await access.RequireAsync(workgroupId, ct);
         if (workgroupResult.Refusal is { } workgroupRefusal) return new(Refusal: workgroupRefusal);
         var workgroup = workgroupResult.Value!;
         if (RequireStatus(workgroup, WorkgroupStatus.Applied, WorkgroupStatus.Referred,
@@ -629,7 +634,7 @@ internal sealed partial class WorkgroupService(
         await repository.UpdateWorkgroupAsync(workgroup, ct,
             [SystemEntry(workgroup.Id, WorkgroupLogKind.BudgetSet, now, BudgetLogBody(workgroup),
                 authorUserId: actorUserId)]);
-        await AuditAsync(WorkgroupsAuditActions.WorkgroupBudgetSet, workgroup, BudgetAuditSummary(workgroup), actorUserId);
+        await journal.AuditAsync(WorkgroupsAuditActions.WorkgroupBudgetSet, workgroup, BudgetAuditSummary(workgroup), actorUserId);
         return new(account);
     }
 
