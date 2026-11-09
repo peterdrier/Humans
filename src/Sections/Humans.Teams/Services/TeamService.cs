@@ -34,6 +34,7 @@ internal sealed class TeamService(
     private readonly TeamDataExport dataExport = new(repo, serviceProvider);
     private readonly TeamPageContent pageContentOwner = new(repo, clock, auditLogService, logger);
     private readonly TeamSnapshotReader snapshotReader = new(repo, serviceProvider, shiftManagementService);
+    private TeamRoleDefinitions RoleDefinitions => new(repo, auditLogService, clock, serviceProvider, snapshotReader);
     private TeamEarlyEntry EarlyEntry => new(repo, auditLogService, clock, snapshotReader);
     private readonly TeamMembershipNotices membershipNotices = new(notificationService, serviceProvider, logger);
     private readonly TeamGoogleGroupMemberships googleGroupMemberships = new(repo, logger);
@@ -783,7 +784,7 @@ internal sealed class TeamService(
         if (request is null)
             return new(Refusal: "Join request not found");
 
-        var canApprove = await CanUserApproveRequestsForTeamAsync(request.TeamId, approverUserId, cancellationToken);
+        var canApprove = await snapshotReader.CanUserApproveRequestsForTeamAsync(request.TeamId, approverUserId, cancellationToken);
         if (!canApprove)
             return new(Refusal: "User does not have permission to approve requests for this team");
 
@@ -850,7 +851,7 @@ internal sealed class TeamService(
         if (request is null)
             return new(Refusal: "Join request not found");
 
-        var canApprove = await CanUserApproveRequestsForTeamAsync(request.TeamId, approverUserId, cancellationToken);
+        var canApprove = await snapshotReader.CanUserApproveRequestsForTeamAsync(request.TeamId, approverUserId, cancellationToken);
         if (!canApprove)
             return new(Refusal: "User does not have permission to reject requests for this team");
 
@@ -906,28 +907,9 @@ internal sealed class TeamService(
         return request is null ? null : ToJoinRequestSnapshot(request);
     }
 
-    private async Task<bool> CanUserApproveRequestsForTeamAsync(
-        Guid teamId,
-        Guid userId,
-        CancellationToken cancellationToken = default)
-    {
-        var isAdmin = await RoleAssignmentService.IsUserAdminAsync(userId, cancellationToken);
-        if (isAdmin) return true;
-
-        var isTeamsAdmin = await RoleAssignmentService.IsUserTeamsAdminAsync(userId, cancellationToken);
-        if (isTeamsAdmin) return true;
-
-        return await IsUserCoordinatorOfTeamAsync(teamId, userId, cancellationToken);
-    }
-
-    public async Task<bool> IsUserCoordinatorOfTeamAsync(
-        Guid teamId,
-        Guid userId,
-        CancellationToken cancellationToken = default)
-    {
-        var teamsById = await LoadTeamsByIdAsync(cancellationToken);
-        return TeamCoordinatorAccess.IsCoordinatorOfActiveTeam(teamsById, teamId, userId);
-    }
+    public Task<bool> IsUserCoordinatorOfTeamAsync(
+        Guid teamId, Guid userId, CancellationToken cancellationToken = default) =>
+        snapshotReader.IsUserCoordinatorOfTeamAsync(teamId, userId, cancellationToken);
 
     public Task<TeamMemberRemovalResult> RemoveMemberAsync(
         Guid teamId,
@@ -946,7 +928,7 @@ internal sealed class TeamService(
         if (team.IsSystemTeam)
             return RefuseMemberRemoval(teamId, userId, actorUserId, "Teams_RemoveMember_SystemTeam", "Cannot remove members from system team manually");
 
-        var canApprove = await CanUserApproveRequestsForTeamAsync(teamId, actorUserId, cancellationToken);
+        var canApprove = await snapshotReader.CanUserApproveRequestsForTeamAsync(teamId, actorUserId, cancellationToken);
         if (!canApprove)
             return RefuseMemberRemoval(teamId, userId, actorUserId, "Teams_RemoveMember_Permission", "User does not have permission to remove members from this team");
 
@@ -1102,214 +1084,32 @@ internal sealed class TeamService(
             relatedEntityId: userId, relatedEntityType: AuditSubjectTypes.User);
     }
 
-    public async Task<TeamRoleDefinitionMutationResult> CreateRoleDefinitionAsync(
+    public Task<TeamRoleDefinitionMutationResult> CreateRoleDefinitionAsync(
         Guid teamId, string name, string? description, int slotCount,
         List<SlotPriority> priorities, int sortOrder, RolePeriod period, Guid actorUserId,
-        bool isPublic = true,
-        int? estimatedHours = null,
-        CancellationToken cancellationToken = default)
-    {
-        var team = await repo.GetByIdAsync(teamId, cancellationToken);
-        if (team is null)
-            return new(Refusal: $"Team {teamId} not found");
+        bool isPublic = true, int? estimatedHours = null, CancellationToken cancellationToken = default) =>
+        RoleDefinitions.CreateRoleDefinitionAsync(teamId, name, description, slotCount, priorities,
+            sortOrder, period, actorUserId, isPublic, estimatedHours, cancellationToken);
 
-        if (RoleCapacityRefusal(slotCount, priorities, estimatedHours) is { } prioritiesRefusal)
-            return new(Refusal: prioritiesRefusal);
-        if (RoleNameRefusal(name) is { } nameRefusal)
-            return new(Refusal: nameRefusal);
-
-        var lowerName = name.ToLowerInvariant();
-        var nameExists = await repo.RoleDefinitionNameExistsAsync(teamId, lowerName, excludingId: null, cancellationToken);
-        if (nameExists)
-            return new(Refusal: $"A role definition with name '{name}' already exists for this team");
-
-        var canManage = await CanUserApproveRequestsForTeamAsync(teamId, actorUserId, cancellationToken);
-        if (!canManage)
-            return new(Refusal: "User does not have permission to manage role definitions for this team");
-
-        var now = clock.GetCurrentInstant();
-        var definition = new TeamRoleDefinition
-        {
-            Id = Guid.NewGuid(),
-            TeamId = teamId,
-            Name = name,
-            Description = description,
-            SlotCount = slotCount,
-            EstimatedHours = estimatedHours,
-            Priorities = priorities,
-            SortOrder = sortOrder,
-            IsPublic = isPublic,
-            Period = period,
-            CreatedAt = now,
-            UpdatedAt = now
-        };
-
-        await repo.AddRoleDefinitionAsync(definition, cancellationToken);
-
-        await auditLogService.LogAsync(
-            TeamsAuditActions.TeamRoleDefinitionCreated, nameof(TeamRoleDefinition), definition.Id,
-            $"Role definition '{name}' created for team {team.Name}",
-            actorUserId,
-            relatedEntityId: teamId, relatedEntityType: nameof(Team));
-
-        return new(Definition: definition);
-    }
-
-    public async Task<TeamRoleDefinitionMutationResult> UpdateRoleDefinitionAsync(
+    public Task<TeamRoleDefinitionMutationResult> UpdateRoleDefinitionAsync(
         Guid roleDefinitionId, string name, string? description, int slotCount,
         List<SlotPriority> priorities, int sortOrder, bool isManagement, RolePeriod period, Guid actorUserId,
-        bool isPublic = true,
-        bool canToggleManagement = true,
-        int? estimatedHours = null,
-        CancellationToken cancellationToken = default)
-    {
-        var definition = await repo.FindRoleDefinitionForMutationAsync(roleDefinitionId, cancellationToken);
-        if (definition is null)
-            return new(Refusal: $"Role definition {roleDefinitionId} not found");
-        var team = await GetRoleDefinitionTeamAsync(definition, cancellationToken);
+        bool isPublic = true, bool canToggleManagement = true, int? estimatedHours = null,
+        CancellationToken cancellationToken = default) =>
+        RoleDefinitions.UpdateRoleDefinitionAsync(roleDefinitionId, name, description, slotCount, priorities,
+            sortOrder, isManagement, period, actorUserId, isPublic, canToggleManagement, estimatedHours, cancellationToken);
 
-        var canManage = await CanUserApproveRequestsForTeamAsync(definition.TeamId, actorUserId, cancellationToken);
-        if (!canManage)
-            return new(Refusal: "User does not have permission to manage role definitions for this team");
+    public Task<TeamRoleDefinitionMutationResult> DeleteRoleDefinitionAsync(
+        Guid roleDefinitionId, Guid actorUserId, CancellationToken cancellationToken = default) =>
+        RoleDefinitions.DeleteRoleDefinitionAsync(roleDefinitionId, actorUserId, cancellationToken);
 
-        if (RoleCapacityRefusal(slotCount, priorities, estimatedHours) is { } prioritiesRefusal)
-            return new(Refusal: prioritiesRefusal);
+    public Task<TeamRoleDefinitionMutationResult> ToggleRoleIsManagementAsync(
+        Guid roleDefinitionId, Guid actorUserId, CancellationToken cancellationToken = default) =>
+        RoleDefinitions.ToggleRoleIsManagementAsync(roleDefinitionId, actorUserId, cancellationToken);
 
-        if (!canToggleManagement)
-            isManagement = definition.IsManagement;
-
-        if (slotCount < definition.Assignments.Count
-            || definition.Assignments.Any(assignment => assignment.SlotIndex >= slotCount))
-            return new(Refusal: $"Cannot reduce slot count to {slotCount} — unassign humans from the slots being removed first");
-
-        if (!string.Equals(definition.Name, name, StringComparison.Ordinal))
-        {
-            if (RoleNameRefusal(name) is { } nameRefusal)
-                return new(Refusal: nameRefusal);
-            var lowerName = name.ToLowerInvariant();
-            var nameExists = await repo.RoleDefinitionNameExistsAsync(definition.TeamId, lowerName, excludingId: roleDefinitionId, cancellationToken);
-            if (nameExists)
-                return new(Refusal: $"A role definition with name '{name}' already exists for this team");
-        }
-
-        if (isManagement && !definition.IsManagement)
-        {
-            var existingManagement = await repo.OtherRoleHasIsManagementAsync(
-                definition.TeamId, roleDefinitionId, cancellationToken);
-            if (existingManagement)
-                return new(Refusal: "Another role in this team is already marked as the management role");
-        }
-
-        definition.Name = name;
-        definition.Description = description;
-        definition.SlotCount = slotCount;
-        definition.EstimatedHours = estimatedHours;
-        definition.Priorities = priorities;
-        definition.SortOrder = sortOrder;
-
-        var managementChanged = definition.IsManagement != isManagement;
-
-        definition.IsPublic = isPublic;
-        definition.IsManagement = isManagement;
-        definition.Period = period;
-        definition.UpdatedAt = clock.GetCurrentInstant();
-
-        await repo.PersistRoleDefinitionUpdateAsync(
-            definition, managementChanged, cancellationToken);
-
-        await auditLogService.LogAsync(
-            TeamsAuditActions.TeamRoleDefinitionUpdated, nameof(TeamRoleDefinition), definition.Id,
-            $"Role definition '{name}' updated for team {team.Name}",
-            actorUserId,
-            relatedEntityId: definition.TeamId, relatedEntityType: nameof(Team));
-
-        if (managementChanged)
-            await SyncRoleAssigneesAsync(definition, cancellationToken);
-
-        return new(Definition: definition);
-    }
-
-    public async Task<TeamRoleDefinitionMutationResult> DeleteRoleDefinitionAsync(
-        Guid roleDefinitionId, Guid actorUserId,
-        CancellationToken cancellationToken = default)
-    {
-        var definition = await repo.FindRoleDefinitionForMutationAsync(roleDefinitionId, cancellationToken);
-        if (definition is null)
-            return new(Refusal: $"Role definition {roleDefinitionId} not found");
-        var team = await GetRoleDefinitionTeamAsync(definition, cancellationToken);
-
-        if (definition.IsManagement && definition.Assignments.Count > 0)
-            return new(Refusal: "Cannot delete the management role while members are assigned to it. Unassign all members first.");
-
-        var canManage = await CanUserApproveRequestsForTeamAsync(definition.TeamId, actorUserId, cancellationToken);
-        if (!canManage)
-            return new(Refusal: "User does not have permission to manage role definitions for this team");
-
-        await repo.RemoveRoleDefinitionAsync(definition, cancellationToken);
-
-        await auditLogService.LogAsync(
-            TeamsAuditActions.TeamRoleDefinitionDeleted, nameof(TeamRoleDefinition), definition.Id,
-            $"Role definition '{definition.Name}' deleted from team {team.Name}",
-            actorUserId,
-            relatedEntityId: definition.TeamId, relatedEntityType: nameof(Team));
-
-        return new();
-    }
-
-    public async Task<TeamRoleDefinitionMutationResult> ToggleRoleIsManagementAsync(
-        Guid roleDefinitionId, Guid actorUserId,
-        CancellationToken cancellationToken = default)
-    {
-        var definition = await repo.FindRoleDefinitionForMutationAsync(roleDefinitionId, cancellationToken);
-        if (definition is null)
-            return new(Refusal: $"Role definition {roleDefinitionId} not found");
-        var team = await GetRoleDefinitionTeamAsync(definition, cancellationToken);
-
-        var canManage = await CanUserApproveRequestsForTeamAsync(definition.TeamId, actorUserId, cancellationToken);
-        if (!canManage)
-            return new(Refusal: "User does not have permission to manage role definitions for this team");
-
-        var isManagement = !definition.IsManagement;
-        if (isManagement)
-        {
-            if (definition.Assignments.Count > 0)
-                return new(Refusal: "Cannot set IsManagement while members are assigned to the role");
-
-            var existingManagement = await repo.OtherRoleHasIsManagementAsync(
-                definition.TeamId, roleDefinitionId, cancellationToken);
-            if (existingManagement)
-                return new(Refusal: "Another role in this team is already marked as the management role");
-        }
-
-        definition.IsManagement = isManagement;
-        definition.UpdatedAt = clock.GetCurrentInstant();
-
-        await repo.PersistRoleDefinitionUpdateAsync(
-            definition, managementChanged: true, cancellationToken);
-
-        await auditLogService.LogAsync(
-            TeamsAuditActions.TeamRoleDefinitionUpdated, nameof(TeamRoleDefinition), definition.Id,
-            $"IsManagement set to {isManagement} on role '{definition.Name}' in {team.Name}",
-            actorUserId,
-            relatedEntityId: definition.TeamId, relatedEntityType: nameof(Team));
-
-        await SyncRoleAssigneesAsync(definition, cancellationToken);
-
-        return new(Definition: definition);
-    }
-
-    private async Task SyncRoleAssigneesAsync(TeamRoleDefinition definition, CancellationToken cancellationToken)
-    {
-        foreach (var userId in definition.Assignments.Select(a => a.TeamMember.UserId).Distinct())
-            await SystemTeamSync.SyncMembershipForUserAsync(userId, SystemTeamType.Coordinators, cancellationToken);
-    }
-
-    public async Task<IReadOnlyList<TeamRoleDefinitionSnapshot>> GetRoleDefinitionsAsync(
-        Guid teamId, CancellationToken cancellationToken = default)
-    {
-        var definitions = await repo.GetRoleDefinitionsAsync(teamId, cancellationToken);
-        return definitions.Select(definition => TeamSnapshotReader.ToRoleDefinitionSnapshot(definition)).ToList();
-    }
+    public Task<IReadOnlyList<TeamRoleDefinitionSnapshot>> GetRoleDefinitionsAsync(
+        Guid teamId, CancellationToken cancellationToken = default) =>
+        snapshotReader.GetRoleDefinitionsAsync(teamId, cancellationToken);
 
     private async Task<(TeamRoleDefinition? Definition, Team? Team, string? Refusal)> ResolveRoleAssignmentManagementAsync(
         Guid roleDefinitionId, Guid actorUserId, CancellationToken cancellationToken)
@@ -1317,9 +1117,9 @@ internal sealed class TeamService(
         var definition = await repo.FindRoleDefinitionForMutationAsync(roleDefinitionId, cancellationToken);
         if (definition is null)
             return (null, null, $"Role definition {roleDefinitionId} not found");
-        var team = await GetRoleDefinitionTeamAsync(definition, cancellationToken);
+        var team = await snapshotReader.GetRoleDefinitionTeamAsync(definition, cancellationToken);
 
-        var canManage = await CanUserApproveRequestsForTeamAsync(definition.TeamId, actorUserId, cancellationToken);
+        var canManage = await snapshotReader.CanUserApproveRequestsForTeamAsync(definition.TeamId, actorUserId, cancellationToken);
         if (!canManage)
             return (null, null, "User does not have permission to manage role assignments for this team");
 
@@ -1654,8 +1454,8 @@ internal sealed class TeamService(
     private Task DeleteEarlyEntryGrantsForUserAsync(Guid userId, CancellationToken ct) =>
         EarlyEntry.DeleteEarlyEntryGrantsForUserAsync(userId, ct);
 
-    private async Task<IReadOnlyDictionary<Guid, TeamInfo>> LoadTeamsByIdAsync(CancellationToken ct = default) =>
-        await ResolveTeamMembersAsync(await GetTeamSnapshotsAsync(ct), ct);
+    private Task<IReadOnlyDictionary<Guid, TeamInfo>> LoadTeamsByIdAsync(CancellationToken ct = default) =>
+        snapshotReader.LoadTeamsByIdAsync(ct);
 
     public Task<IReadOnlyDictionary<Guid, TeamInfo>> ResolveTeamMembersAsync(
         IReadOnlyDictionary<Guid, TeamReadSnapshot> teams, CancellationToken ct = default) =>
@@ -1663,15 +1463,6 @@ internal sealed class TeamService(
 
     public Task<IReadOnlyDictionary<Guid, TeamReadSnapshot>> GetTeamSnapshotsAsync(CancellationToken ct = default) =>
         snapshotReader.GetTeamSnapshotsAsync(ct);
-
-    private async Task<Team> GetRoleDefinitionTeamAsync(TeamRoleDefinition definition, CancellationToken ct)
-    {
-        var teamsById = await repo.GetByIdsWithParentsAsync([definition.TeamId], ct);
-        return teamsById.TryGetValue(definition.TeamId, out var team)
-            ? team
-            : throw new InvalidOperationException($"Team {definition.TeamId} not found");
-    }
-
 
     private async Task<GoogleSyncOutboxEvent?> BuildOutboxEventAsync(
         Guid teamMemberId,
@@ -1724,31 +1515,6 @@ internal sealed class TeamService(
             UserDisplayName = user?.BurnerName,
             UserProfilePictureUrl = user?.ProfilePictureUrl
         };
-    }
-
-    private static string? RoleNameRefusal(string name)
-    {
-        if (string.IsNullOrWhiteSpace(name))
-            return "Role name cannot be empty";
-
-        if (name.Length > 100)
-            return "Role name cannot exceed 100 characters";
-        return null;
-    }
-
-    private static string? RoleCapacityRefusal(int slotCount, List<SlotPriority> priorities, int? estimatedHours)
-    {
-        if (slotCount < 1)
-            return "Slot count must be at least 1";
-
-        if (priorities.Count != slotCount)
-            return $"Priorities count ({priorities.Count}) must match slot count ({slotCount})";
-
-        if (priorities.Any(priority => !Enum.IsDefined(priority)))
-            return "Each slot priority must be a defined priority value";
-        if (estimatedHours is < 0)
-            return "Estimated hours cannot be negative";
-        return null;
     }
 
     public async Task<IReadOnlyList<TeamRoleReconciliationMembership>> GetActiveMembershipsForRoleReconciliationAsync(

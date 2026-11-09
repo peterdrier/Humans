@@ -1,3 +1,5 @@
+using Humans.Auth.Contracts;
+using Humans.Base.Helpers;
 using Humans.Base.Interfaces;
 using Humans.GoogleIntegration.Contracts;
 using Humans.Teams.Contracts;
@@ -15,6 +17,8 @@ internal sealed class TeamSnapshotReader(
     IServiceProvider serviceProvider,
     IShiftService shiftManagementService) : IApplicationService
 {
+    private IRoleAssignmentService RoleAssignmentService => serviceProvider.GetRequiredService<IRoleAssignmentService>();
+
     // Lazy: Users depends on Teams during service resolution.
     private IUserService UserService => serviceProvider.GetRequiredService<IUserService>();
 
@@ -171,4 +175,46 @@ internal sealed class TeamSnapshotReader(
                     assignment.SlotIndex,
                     assignment.TeamMember?.UserId))
                 .ToList());
+    internal async Task<bool> CanUserApproveRequestsForTeamAsync(
+        Guid teamId,
+        Guid userId,
+        CancellationToken cancellationToken = default)
+    {
+        var isAdmin = await RoleAssignmentService.IsUserAdminAsync(userId, cancellationToken);
+        if (isAdmin) return true;
+
+        var isTeamsAdmin = await RoleAssignmentService.IsUserTeamsAdminAsync(userId, cancellationToken);
+        if (isTeamsAdmin) return true;
+
+        return await IsUserCoordinatorOfTeamAsync(teamId, userId, cancellationToken);
+    }
+
+    internal async Task<bool> IsUserCoordinatorOfTeamAsync(
+        Guid teamId,
+        Guid userId,
+        CancellationToken cancellationToken = default)
+    {
+        var teamsById = await LoadTeamsByIdAsync(cancellationToken);
+        return TeamCoordinatorAccess.IsCoordinatorOfActiveTeam(teamsById, teamId, userId);
+    }
+
+    internal async Task<IReadOnlyDictionary<Guid, TeamInfo>> LoadTeamsByIdAsync(CancellationToken ct = default) =>
+        await ResolveTeamMembersAsync(await GetTeamSnapshotsAsync(ct), ct);
+
+    internal async Task<Team> GetRoleDefinitionTeamAsync(TeamRoleDefinition definition, CancellationToken ct)
+    {
+        var teamsById = await repo.GetByIdsWithParentsAsync([definition.TeamId], ct);
+        return teamsById.TryGetValue(definition.TeamId, out var team)
+            ? team
+            : throw new InvalidOperationException($"Team {definition.TeamId} not found");
+    }
+
+
+    internal async Task<IReadOnlyList<TeamRoleDefinitionSnapshot>> GetRoleDefinitionsAsync(
+        Guid teamId, CancellationToken cancellationToken = default)
+    {
+        var definitions = await repo.GetRoleDefinitionsAsync(teamId, cancellationToken);
+        return definitions.Select(definition => TeamSnapshotReader.ToRoleDefinitionSnapshot(definition)).ToList();
+    }
+
 }
