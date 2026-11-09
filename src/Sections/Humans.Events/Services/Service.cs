@@ -32,140 +32,75 @@ internal sealed class EventService(
     IStringLocalizer<EventsResource> localizer)
     : IEventManagement, ICalendarFeedContributor
 {
+    private readonly EventGuideConfiguration guideConfiguration = new(repo, settingsService, clock, logger);
     private readonly EventPersonalData personalData = new(repo, settingsService, clock, logger, localizer, userService);
 
-    public async Task<EventGuideSettingsView?> GetGuideSettingsAsync(CancellationToken ct = default)
-    {
-        var settings = await repo.GetGuideSettingsAsync(ct);
-        return settings is null ? null : await ToGuideSettingsViewAsync(settings, ct);
-    }
+    public Task<EventGuideSettingsView?> GetGuideSettingsAsync(CancellationToken ct = default) =>
+        guideConfiguration.GetGuideSettingsAsync(ct);
 
-    private async Task<EventGuideSettingsView> ToGuideSettingsViewAsync(EventGuideSettings settings, CancellationToken ct)
-    {
-        var burn = await settingsService.GetEventSettingsByIdAsync(settings.EventSettingsId, ct);
-        return new EventGuideSettingsView(
-            Id: settings.Id,
-            EventSettingsId: settings.EventSettingsId,
-            SubmissionOpenAt: settings.SubmissionOpenAt,
-            SubmissionCloseAt: settings.SubmissionCloseAt,
-            GuidePublishAt: settings.GuidePublishAt,
-            MaxPrintSlots: settings.MaxPrintSlots,
-            TimeZoneId: burn?.TimeZoneId,
-            CreatedAt: settings.CreatedAt,
-            UpdatedAt: settings.UpdatedAt);
-    }
+    public Task<IReadOnlyList<EventSettingsInfo>> GetEventSettingsOptionsAsync(CancellationToken ct = default) =>
+        guideConfiguration.GetEventSettingsOptionsAsync(ct);
 
-    public async Task<IReadOnlyList<EventSettingsInfo>> GetEventSettingsOptionsAsync(CancellationToken ct = default)
-    {
-        // At most one active burn; a list keeps the admin picker forward-compatible.
-        var active = await settingsService.GetActiveEventSettingsAsync(ct);
-        return active is null ? [] : [active];
-    }
+    public Task<EventSettingsInfo?> GetEventSettingsByIdAsync(Guid id, CancellationToken ct = default) =>
+        guideConfiguration.GetEventSettingsByIdAsync(id, ct);
 
-    public Task<EventSettingsInfo?> GetEventSettingsByIdAsync(Guid id, CancellationToken ct = default)
-        => settingsService.GetEventSettingsByIdAsync(id, ct);
-
-    public async Task<bool> SaveGuideSettingsAsync(
+    public Task<bool> SaveGuideSettingsAsync(
         Guid? existingId, Guid eventSettingsId,
         LocalDateTime submissionOpenAt, LocalDateTime submissionCloseAt, LocalDateTime guidePublishAt,
-        int maxPrintSlots, CancellationToken ct = default)
-    {
-        var burn = await settingsService.GetEventSettingsByIdAsync(eventSettingsId, ct);
-        if (burn is null)
-        {
-            logger.LogWarning("Guide settings save rejected: event settings {EventSettingsId} no longer exist", eventSettingsId);
-            return false;
-        }
+        int maxPrintSlots, CancellationToken ct = default) =>
+        guideConfiguration.SaveGuideSettingsAsync(
+            existingId, eventSettingsId, submissionOpenAt, submissionCloseAt, guidePublishAt, maxPrintSlots, ct);
 
-        var tz = DateTimeZoneProviders.Tzdb.GetZoneOrNull(burn.TimeZoneId);
-        var now = clock.GetCurrentInstant();
+    public Task<IReadOnlyList<EventCategoryView>> GetActiveCategoriesAsync(CancellationToken ct = default) =>
+        guideConfiguration.GetActiveCategoriesAsync(ct);
 
-        var settings = new EventGuideSettings
-        {
-            Id = existingId ?? Guid.NewGuid(),
-            EventSettingsId = eventSettingsId,
-            SubmissionOpenAt = ToInstant(submissionOpenAt, tz),
-            SubmissionCloseAt = ToInstant(submissionCloseAt, tz),
-            GuidePublishAt = ToInstant(guidePublishAt, tz),
-            MaxPrintSlots = maxPrintSlots,
-            CreatedAt = now,
-            UpdatedAt = now
-        };
+    public Task<IReadOnlyList<EventCategoryManageInfo>> GetAllCategoriesAsync(CancellationToken ct = default) =>
+        guideConfiguration.GetAllCategoriesAsync(ct);
 
-        await repo.UpsertGuideSettingsAsync(settings, ct);
-        return true;
-    }
+    public Task<EventCategoryView?> GetCategoryAsync(Guid id, CancellationToken ct = default) =>
+        guideConfiguration.GetCategoryAsync(id, ct);
 
-    public async Task<IReadOnlyList<EventCategoryView>> GetActiveCategoriesAsync(CancellationToken ct = default)
-    {
-        var categories = await repo.GetActiveCategoriesAsync(ct);
-        return categories.Select(ToCategoryView).ToList();
-    }
+    public Task<bool> CategorySlugExistsAsync(string slug, Guid? excludeId = null, CancellationToken ct = default) =>
+        guideConfiguration.CategorySlugExistsAsync(slug, excludeId, ct);
 
-    public async Task<IReadOnlyList<EventCategoryManageInfo>> GetAllCategoriesAsync(CancellationToken ct = default)
-    {
-        var categories = await repo.GetAllCategoriesAsync(ct);
-        return categories.Select(c => new EventCategoryManageInfo(
-            c.Id, c.Name, c.Slug, c.IsSensitive, c.DisplayOrder, c.IsActive, c.Events.Count)).ToList();
-    }
+    public Task<int> GetNextCategoryOrderAsync(CancellationToken ct = default) =>
+        guideConfiguration.GetNextCategoryOrderAsync(ct);
 
-    public async Task<EventCategoryView?> GetCategoryAsync(Guid id, CancellationToken ct = default)
-    {
-        var category = await repo.GetCategoryAsync(id, ct);
-        return category is null ? null : ToCategoryView(category);
-    }
+    public Task CreateCategoryAsync(EventCategory category, CancellationToken ct = default) =>
+        guideConfiguration.CreateCategoryAsync(category, ct);
 
-    public Task<bool> CategorySlugExistsAsync(string slug, Guid? excludeId = null, CancellationToken ct = default)
-        => repo.CategorySlugExistsAsync(slug, excludeId, ct);
+    public Task UpdateCategoryAsync(EventCategory category, CancellationToken ct = default) =>
+        guideConfiguration.UpdateCategoryAsync(category, ct);
 
-    public async Task<int> GetNextCategoryOrderAsync(CancellationToken ct = default)
-        => await repo.GetMaxCategoryOrderAsync(ct) + 1;
+    public Task<(bool deleted, int linkedCount)> DeleteCategoryAsync(Guid id, CancellationToken ct = default) =>
+        guideConfiguration.DeleteCategoryAsync(id, ct);
 
-    public Task CreateCategoryAsync(EventCategory category, CancellationToken ct = default)
-        => repo.AddCategoryAsync(category, ct);
+    public Task MoveCategoryAsync(Guid id, int direction, CancellationToken ct = default) =>
+        guideConfiguration.MoveCategoryAsync(id, direction, ct);
 
-    public Task UpdateCategoryAsync(EventCategory category, CancellationToken ct = default)
-        => repo.SaveCategoryAsync(category, ct);
+    public Task<IReadOnlyList<EventVenueView>> GetActiveVenuesAsync(CancellationToken ct = default) =>
+        guideConfiguration.GetActiveVenuesAsync(ct);
 
-    public Task<(bool deleted, int linkedCount)> DeleteCategoryAsync(Guid id, CancellationToken ct = default)
-        => repo.DeleteCategoryAsync(id, ct);
+    public Task<IReadOnlyList<EventVenueManageInfo>> GetAllVenuesAsync(CancellationToken ct = default) =>
+        guideConfiguration.GetAllVenuesAsync(ct);
 
-    public Task MoveCategoryAsync(Guid id, int direction, CancellationToken ct = default)
-        => repo.SwapCategoryOrderAsync(id, direction, ct);
+    public Task<EventVenueView?> GetVenueAsync(Guid id, CancellationToken ct = default) =>
+        guideConfiguration.GetVenueAsync(id, ct);
 
-    public async Task<IReadOnlyList<EventVenueView>> GetActiveVenuesAsync(CancellationToken ct = default)
-    {
-        var venues = await repo.GetActiveVenuesAsync(ct);
-        return venues.Select(ToVenueView).ToList();
-    }
+    public Task<int> GetNextVenueOrderAsync(CancellationToken ct = default) =>
+        guideConfiguration.GetNextVenueOrderAsync(ct);
 
-    public async Task<IReadOnlyList<EventVenueManageInfo>> GetAllVenuesAsync(CancellationToken ct = default)
-    {
-        var venues = await repo.GetAllVenuesAsync(ct);
-        return venues.Select(v => new EventVenueManageInfo(
-            v.Id, v.Name, v.Description, v.LocationDescription, v.DisplayOrder, v.IsActive, v.Events.Count)).ToList();
-    }
+    public Task CreateVenueAsync(EventVenue venue, CancellationToken ct = default) =>
+        guideConfiguration.CreateVenueAsync(venue, ct);
 
-    public async Task<EventVenueView?> GetVenueAsync(Guid id, CancellationToken ct = default)
-    {
-        var venue = await repo.GetVenueAsync(id, ct);
-        return venue is null ? null : ToVenueView(venue);
-    }
+    public Task UpdateVenueAsync(EventVenue venue, CancellationToken ct = default) =>
+        guideConfiguration.UpdateVenueAsync(venue, ct);
 
-    public async Task<int> GetNextVenueOrderAsync(CancellationToken ct = default)
-        => await repo.GetMaxVenueOrderAsync(ct) + 1;
+    public Task<(bool deleted, int linkedCount)> DeleteVenueAsync(Guid id, CancellationToken ct = default) =>
+        guideConfiguration.DeleteVenueAsync(id, ct);
 
-    public Task CreateVenueAsync(EventVenue venue, CancellationToken ct = default)
-        => repo.AddVenueAsync(venue, ct);
-
-    public Task UpdateVenueAsync(EventVenue venue, CancellationToken ct = default)
-        => repo.SaveVenueAsync(venue, ct);
-
-    public Task<(bool deleted, int linkedCount)> DeleteVenueAsync(Guid id, CancellationToken ct = default)
-        => repo.DeleteVenueAsync(id, ct);
-
-    public Task MoveVenueAsync(Guid id, int direction, CancellationToken ct = default)
-        => repo.SwapVenueOrderAsync(id, direction, ct);
+    public Task MoveVenueAsync(Guid id, int direction, CancellationToken ct = default) =>
+        guideConfiguration.MoveVenueAsync(id, direction, ct);
 
     public async Task<IReadOnlyList<EventInfo>> GetUserSubmissionsAsync(Guid userId, CancellationToken ct = default)
     {
@@ -569,22 +504,6 @@ internal sealed class EventService(
             $"Approved event guide CSV exported: {rows.Count} rows", actorUserId);
         return bytes;
     }
-
-    private static EventCategoryView ToCategoryView(EventCategory c) => new(
-        Id: c.Id,
-        Name: c.Name,
-        Slug: c.Slug,
-        IsSensitive: c.IsSensitive,
-        DisplayOrder: c.DisplayOrder,
-        IsActive: c.IsActive);
-
-    private static EventVenueView ToVenueView(EventVenue v) => new(
-        Id: v.Id,
-        Name: v.Name,
-        Description: v.Description,
-        LocationDescription: v.LocationDescription,
-        DisplayOrder: v.DisplayOrder,
-        IsActive: v.IsActive);
 
     private static ApprovedEventView ToApprovedEventView(Event e) => new(
         Id: e.Id,
