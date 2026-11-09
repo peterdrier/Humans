@@ -1,3 +1,5 @@
+using Humans.Finance.Contracts;
+using Humans.Expenses.Services.Dtos;
 using System.Globalization;
 using Humans.Base.Interfaces;
 using Humans.Budget.Contracts;
@@ -15,7 +17,8 @@ internal sealed class ExpenseReportAccess(
     IUserService userService,
     IBudgetService budgetService,
     ITeamService teamService,
-    IPreapprovalService preapprovals) : IApplicationService
+    IPreapprovalService preapprovals,
+    IFinanceService finance) : IApplicationService
 {
     public async Task<IReadOnlyList<ExpenseReportDto>> GetReviewQueueAsync(
         Guid viewerUserId, bool isFinanceAdmin, CancellationToken ct = default)
@@ -176,6 +179,64 @@ internal sealed class ExpenseReportAccess(
                 $"The cap cannot exceed the pre-approved {grant.MaxAmount.ToString("0.00", CultureInfo.InvariantCulture)} EUR."));
 
         return (requestedAmount ?? grant.MaxAmount, null);
+    }
+
+    /// <summary>
+    /// The grant's account, with no category or year, which routes the report past endorsement. The grant must be
+    /// claimable by the submitter today; the one a draft already holds (<paramref name="heldGrantId"/>) is always kept,
+    /// so a rejected report can be corrected after the deadline it met.
+    /// </summary>
+    internal async Task<(ExpenseBooking? Booking, ExpenseMutationResult? Refusal)> ResolveGrantBookingAsync(
+        Guid grantId, Guid submitterUserId, Guid? heldGrantId, CancellationToken ct)
+    {
+        var grant = grantId == heldGrantId
+            ? await preapprovals.GetGrantAsync(grantId, ct)
+            : (await preapprovals.ListClaimableForUserAsync(submitterUserId, ct)).FirstOrDefault(g => g.Id == grantId);
+        if (grant is null)
+            return (null, ExpenseMutationResult.Failure("Expenses_Validation_PreapprovalNotClaimable"));
+        return (new ExpenseBooking(grant.HoldedAccountNumber, grant.HoldedAccountId, null, null), null);
+    }
+
+    /// <summary>
+    /// Resolves what a report books to from the account the submitter picked. A budget-category
+    /// account also carries the category it maps to and that category's year; any other account
+    /// carries neither, which is what routes the report past coordinator endorsement. A draft takes
+    /// the active year's categories; a report past submit (<paramref name="pinnedYearId"/> set)
+    /// accepts only its own year's, so a header edit never moves its accounting year.
+    /// </summary>
+    internal async Task<(ExpenseBooking? Booking, ExpenseMutationResult? Refusal)> ResolveBookingAsync(
+        int holdedAccountNumber, Guid? pinnedYearId, CancellationToken ct)
+    {
+        var account = (await finance.ListExpenseAccountsAsync(activeOnly: true, ct))
+            .FirstOrDefault(a => a.AccountNum == holdedAccountNumber);
+        if (account is null)
+            return (null, ExpenseMutationResult.Failure("Expenses_Validation_AccountNotFound"));
+        if (!account.IsBudgetCategory)
+            return (new ExpenseBooking(account.AccountNum, account.AccountId, null, null), null);
+
+        // The option list said this account is a budget category, so the map row exists; the
+        // category behind it may still be gone or belong to another year.
+        var mapRow = (await finance.GetCategoryMapAsync(ct))
+            .FirstOrDefault(m => m.HoldedAccountNumber == holdedAccountNumber);
+        if (mapRow is null)
+            return (null, ExpenseMutationResult.Failure("Expenses_Validation_CategoryNotFound"));
+
+        if (pinnedYearId is { } pinned)
+        {
+            var snapshot = await budgetService.GetCategoryByIdAsync(mapRow.BudgetCategoryId, ct);
+            if (snapshot is null)
+                return (null, ExpenseMutationResult.Failure("Expenses_Validation_CategoryNotFound"));
+            if (snapshot.BudgetGroup?.BudgetYearId != pinned)
+                return (null, ExpenseMutationResult.Failure("Expenses_Validation_CategoryDifferentBudgetYear"));
+            return (new ExpenseBooking(account.AccountNum, account.AccountId, snapshot.Id, pinned), null);
+        }
+
+        var activeYear = await budgetService.GetActiveYearAsync(ct)
+            ?? throw new InvalidOperationException("No active budget year.");
+        var inActiveYear = activeYear.Groups.SelectMany(g => g.Categories).Any(c => c.Id == mapRow.BudgetCategoryId);
+        if (!inActiveYear)
+            return (null, ExpenseMutationResult.Failure("Expenses_Validation_CategoryNotFound"));
+        return (new ExpenseBooking(account.AccountNum, account.AccountId, mapRow.BudgetCategoryId, activeYear.Id), null);
     }
 
 }

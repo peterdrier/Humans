@@ -53,4 +53,10 @@ internal sealed class ExpenseReportAudit(
             ? $" Authorized maximum {cap.ToString("0.00", CultureInfo.InvariantCulture)} EUR."
             : "";
 
+    internal static string DescribeGrant(Guid? grantId) =>
+        grantId is { } id ? $" Filed against pre-approval {id}." : "";
+
+    internal static string DescribeNote(string? note) =>
+        string.IsNullOrWhiteSpace(note) ? "cleared" : $"\"{note}\"";
+
 }
