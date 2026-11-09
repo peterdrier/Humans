@@ -52,10 +52,11 @@ whole reporter list, gated by its one caller: `Index` asks for it only inside
   (`CanHandle`).
 - **`Data/`** — `IssuesDbContext` + the one repository. Repository projections are repo-local
   tuples/records; no service-layer DTO travels down into `Data/`.
-- **`Services/`** — `IssuesService`: submit, thread assembly, badge count, retention, GDPR, and
-  the field mutations behind one private pipeline. It is the only enforcement point both
-  doors share: `CanSee` gates every per-item read, `FindHandleableAsync` gates every mutation,
-  and out-of-reach answers exactly what gone answers.
+- **`Services/`** — `IssuesService` coordinates submission and field mutations. `IssueReader`
+  owns viewer-scoped reads, thread assembly and badge counts; its shared visibility and
+  identity helpers also gate comments and mutations. `IssueDataLifecycle` owns retention
+  and GDPR, and `IssueNotices` owns delivery. Both doors use the same visibility rules:
+  out-of-reach answers exactly what gone answers.
 - **`Controllers/` + `Models/` + `Views/`** — one controller, one page (list + inline detail),
   one submit form, one widget modal. View models carry only what a `.cshtml` renders. Every
   action builds its viewer through `ViewerFor` and reads admin-ness off it — never `User.IsInRole`
