@@ -152,7 +152,7 @@ Google integration management is consolidated in `GoogleController` (`[Route("Go
 
 - Activity-log resource-name filtering combines linked resource ids with a case-insensitive literal match on unlinked descriptions. Escaped matching runs before the database row limit; the growing log is never loaded into memory for this search.
 
-- Persisted resource errors are bounded to 2000 UTF-16 units; sync-log descriptions (including their job prefix) and errors are bounded to 4000. Bounds preserve surrogate pairs so long vendor failures cannot prevent failure-state or audit-row persistence.
+- The internal `StoredGoogleText` helper bounds persisted resource errors to 2000 UTF-16 units and outbox errors and sync-log text (including the job prefix) to 4000. All three persistence paths reuse its surrogate-safe boundary so long vendor failures cannot prevent failure-state or audit-row persistence.
 
 - Outbox error previews preserve whole UTF-16 surrogate pairs within their existing 120-unit limit; tooltips retain the complete stored error, and retry behavior is unchanged.
 
