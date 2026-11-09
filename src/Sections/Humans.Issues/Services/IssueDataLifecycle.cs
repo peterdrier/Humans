@@ -91,7 +91,7 @@ internal sealed class IssueDataLifecycle(
                 "with authorship detached (SenderUserId nulled), per GDPR Art. 17(3)(b)."
         };
 
-    internal IReadOnlyDictionary<string, string?> ErasureDeclaration => Erasure;
+    internal static IReadOnlyDictionary<string, string?> ErasureDeclaration => Erasure;
 
     /// <summary>Reported issues and their free text are hard-deleted; triage links elsewhere are detached.</summary>
     internal async Task EraseForUserAsync(Guid userId, CancellationToken ct)

@@ -525,7 +525,7 @@ internal sealed class IssuesService(
     public async Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct) =>
         await lifecycle.ContributeForUserAsync(await reader.UserIdsAsync(userId, ct), ct);
 
-    public IReadOnlyDictionary<string, string?> ErasureDeclaration => lifecycle.ErasureDeclaration;
+    public IReadOnlyDictionary<string, string?> ErasureDeclaration => IssueDataLifecycle.ErasureDeclaration;
 
     public Task EraseForUserAsync(Guid userId, CancellationToken ct) =>
         lifecycle.EraseForUserAsync(userId, ct);

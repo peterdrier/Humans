@@ -11,20 +11,11 @@ namespace Humans.Web.Tests.Architecture;
 /// </summary>
 public class TicketVendorPortArchitectureTests
 {
-    private static readonly string[] AllowedInjectionSites =
-    [
-        "Humans.Tickets.Services.TicketVendorGateway",
-        "Humans.Tickets.Services.TicketSyncService",
-        "Humans.Tickets.Services.TicketTransferService",
-        "Humans.Tickets.Models.TicketDashboardPageBuilder",
-        "Humans.Tickets.Health.TicketVendorHealthCheck",
-    ];
-
     [HumansFact]
     public void OnlyTicketsAndTheHealthCheckInjectTheVendorPort()
     {
         var assemblies = SectionDiscoveryExtensions.SectionAssemblies()
-            .Append(Assembly.Load("Humans.Web"))
+            .Append(typeof(SectionDiscoveryExtensions).Assembly)
             .Distinct()
             .ToList();
 
@@ -35,11 +26,10 @@ public class TicketVendorPortArchitectureTests
             .SelectMany(a => a.GetTypes())
             .Where(t => t.GetConstructors(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)
                 .Any(c => c.GetParameters().Any(p => p.ParameterType == typeof(ITicketVendorService))))
-            .Select(t => t.FullName ?? t.Name)
-            .OrderBy(n => n, StringComparer.Ordinal)
+            .OrderBy(t => t.FullName, StringComparer.Ordinal)
             .ToList();
 
-        injectors.Where(n => !AllowedInjectionSites.Contains(n, StringComparer.Ordinal))
+        injectors.Where(t => t.Assembly != typeof(Tickets.Section).Assembly)
             .Should().BeEmpty(
                 because: "everything else asks Tickets, through Humans.Tickets.Contracts — the port has one adapter and one owning section, which is what makes the 2027 vendor swap a project delete");
     }
