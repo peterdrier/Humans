@@ -8,7 +8,7 @@ Runs during `dotnet build`:
 - **Microsoft.VisualStudio.Threading.Analyzers** - Async/threading
 - **Humans.Analyzers** (HUMxxxx) - In-repo architecture rules ([catalogue + pattern](#humansanalyzers-build-time-architecture-rules))
 
-<!-- freshness:auto id="suppressions" prompt-file=".claude/skills/freshness-sweep/prompts/suppressions.md" -->
+<!-- freshness:auto id="suppressions" prompt-file="docs/maintenance/freshness-sweep/prompts/suppressions.md" -->
 
 **Common suppressions in `Directory.Build.props`:**
 - `CS1591` - Missing XML comment for publicly visible type or member

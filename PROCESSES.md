@@ -1,6 +1,6 @@
 # Development Processes
 
-How to use the skills and agents in this project. Ordered by typical workflow. Each skill's full instructions live in `.claude/skills/<name>/SKILL.md`.
+How to use the skills and agents in this project. Ordered by typical workflow. Each skill's full instructions live in `.claude/skills/<name>/SKILL.md`; scheduled maintenance procedures live in `docs/maintenance/`.
 
 ## Planning: `/plan-sprint`
 
@@ -109,16 +109,16 @@ How to use the skills and agents in this project. Ordered by typical workflow. E
 
 **What it does:** Opens the promotion PR from `peterdrier/Humans:main` to `nobodies-collective/Humans:main` with a qualified commit summary. Merging it needs Peter's explicit go.
 
-## Section health: `/section-doctor`
+## Section health: section doctor
 
-**When:** The daily per-section improvement run, or `doctor <section>` on demand.
+**When:** Run by the [maintenance dispatcher](docs/maintenance/dispatcher.md) on weekdays, or on demand.
 
-**What it does:** Picks a section, inventories every file, derives its target shape, and strikes a ranked list of findings on a 2–3h budget. One PR per run; the run report and Needs-Peter queue live in `docs/health/runs/`. `resume` applies Peter's answers later.
+**What it does:** Picks a section, inventories every file, derives its target shape, and strikes a ranked list of findings on a 2–3h budget. One PR per run; the run report and Needs-Peter queue live in `docs/health/runs/`. `resume` applies Peter's answers later. Procedure: [`docs/maintenance/section-doctor/README.md`](docs/maintenance/section-doctor/README.md).
 
 ```
-/section-doctor
-/section-doctor --section=Camps
-/section-doctor resume
+follow docs/maintenance/section-doctor/README.md
+follow docs/maintenance/section-doctor/README.md with --section=Camps
+follow docs/maintenance/section-doctor/README.md with resume
 ```
 
 ## Section boundaries: `/section-align`
@@ -132,26 +132,26 @@ How to use the skills and agents in this project. Ordered by typical workflow. E
 /section-align section Camps --inventory-only
 ```
 
-## Debt: `/debt-sweep` and `/debt-review`
+## Debt: `/debt-sweep` and debt review
 
 **When:** Daily debt burndown.
 
-**What they do:** `/debt-sweep` works the least-recently-served theme in `docs/architecture/debt-ledger.yml` for a time budget and opens one PR. `/debt-review` reviews, repairs and stewards the nightly Codex debt PR (`codex/daily-debt/<date>`), judging each commit GOOD / REPAIR / REVERT.
+**What they do:** `/debt-sweep` works the least-recently-served theme in `docs/architecture/debt-ledger.yml` for a time budget and opens one PR. Debt review ([`docs/maintenance/debt-review/README.md`](docs/maintenance/debt-review/README.md), started by the dispatcher once Codex's PR is up) reviews, repairs and stewards the nightly Codex debt PR (`codex/daily-debt/<date>`), judging each commit GOOD / REPAIR / REVERT.
 
 ```
 /debt-sweep --budget=2h
-/debt-review          # today's codex/daily-debt PR
+follow docs/maintenance/debt-review/README.md   # newest unreviewed codex/daily-debt PR
 ```
 
-## Docs: `/freshness-sweep` and `/cleanup-memory`
+## Docs: freshness sweep and `/cleanup-memory`
 
 **When:** Docs may have drifted from code, or rule files need hygiene.
 
-**What they do:** `/freshness-sweep` refreshes the docs listed in `docs/architecture/freshness-catalog.yml` against code changed since the last sweep and opens one PR. `/cleanup-memory` migrates durable rules from per-machine agent memory into `memory/` and audits the in-repo rules for dead links, duplication and drift.
+**What they do:** The freshness sweep ([`docs/maintenance/freshness-sweep/README.md`](docs/maintenance/freshness-sweep/README.md), Wednesdays via the dispatcher) refreshes the docs listed in `docs/architecture/freshness-catalog.yml` against code changed since the last sweep and opens one PR. `/cleanup-memory` migrates durable rules from per-machine agent memory into `memory/` and audits the in-repo rules for dead links, duplication and drift.
 
 ```
-/freshness-sweep
-/freshness-sweep --full
+follow docs/maintenance/freshness-sweep/README.md
+follow docs/maintenance/freshness-sweep/README.md with --full
 /cleanup-memory report-only
 ```
 
@@ -205,11 +205,11 @@ These are used internally by the skills above:
 |-------|---------|---------|
 | `batch-worker` | `/execute-sprint` | Implements a batch of issues with review loops |
 | `spec-compliance-reviewer` | `/spec-review` | Checks code against issue acceptance criteria |
-| `doctor-reader` | `/section-doctor` | Reading threads (freshness, tests, history, comments, inbox) |
-| `doctor-reviewer`, `doctor-reviewer-light`, `doctor-reviewer-critical` | `/section-doctor` | Score-blind second-opinion gate for non-mechanical strikes, tiered by section risk |
+| `doctor-reader` | section doctor | Reading threads (freshness, tests, history, comments, inbox) |
+| `doctor-reviewer`, `doctor-reviewer-light`, `doctor-reviewer-critical` | section doctor | Score-blind second-opinion gate for non-mechanical strikes, tiered by section risk |
 | `ef-migration-reviewer` | Manual (before committing migrations) | Reviews EF Core migrations for common traps |
 
-Codex runs its own nightly debt and bug-hunt passes from `.codex/` (see `.codex/README.md`); `/debt-review` picks up their PRs.
+Codex runs its own nightly debt and bug-hunt passes from `.codex/` (see `.codex/README.md`); debt review picks up their PRs.
 
 ## Typical Session Flow
 

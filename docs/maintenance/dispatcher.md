@@ -1,53 +1,50 @@
 # Maintenance dispatcher
 
-The one scheduled task for Humans maintenance. It runs every 3 hours on a small model, reads state, starts at most a few jobs, and exits. It does no maintenance work itself beyond tagging Codex. Each job is a fire-only scheduled task that runs in its own session on a full model.
+The one scheduled task for Humans maintenance. It runs in the Humans Development project every 3 hours on a small model. It reads state, asks for a project thread per job that is due, and exits. Apart from tagging Codex, it does no work itself.
 
 ## Rules
 
 - **Read, decide, exit.** No builds, no checkouts, no code reading.
-- **GitHub is the memory.** "Already done" is decided from PRs, comments, and each job's last fire time, never from anything this run remembers. Two ticks in a row must make the same decision.
-- **Fire, don't do.** A job starts with `fire_trigger` on the scheduled task named in the tables below, found by name in `list_triggers`. A job that's missing or disabled gets one line in the summary and is skipped.
-- **Clean up after yourself.** End with at most 5 summary lines, then archive this run's own session (`get_session` with no id, then `archive_session`). Post nothing in the project unless something needs Peter.
+- **Start a job** by asking the coordinator (`message_coordinator`) for a thread with exactly this text: `Start a thread titled "<Job> YYYY-MM-DD" with this instruction: follow docs/maintenance/<doc> as an unattended run.` The thread does the work on the project's default model.
+- **Started today** means `list_threads` (since 00:00 Madrid today) shows a thread titled `<Job> YYYY-MM-DD` for today's date. Never start a job twice in one day; two ticks in a row must make the same decision.
+- **Clean up after yourself.** Post nothing in the project unless something needs Peter. End with at most 5 summary lines, then archive this run's own session (`get_session` with no id, then `archive_session`).
 
-Times are Europe/Madrid. A job "fired today" means its `last_run.fired_at` falls on today's Madrid date.
+All times are Europe/Madrid.
 
 ## 1. Tag Codex
 
-Codex no longer reviews PRs by itself, so each PR gets one `@codex review` comment. For every open, non-draft PR on peterdrier/Humans not authored by Dependabot: if no comment contains `@codex review` and Codex has not reviewed it, comment `@codex review`. Never post it twice on one PR ([`pr-review-feedback-handling`](../../memory/process/pr-review-feedback-handling.md)).
+Codex no longer reviews PRs on its own, so each PR gets one `@codex review` comment. For every open, non-draft PR on peterdrier/Humans not authored by Dependabot: if no comment contains `@codex review` and Codex has not reviewed it, comment `@codex review`. Never post it twice on one PR ([`pr-review-feedback-handling`](../../memory/process/pr-review-feedback-handling.md)).
 
 ## 2. Debt review
 
-The Codex runner opens its `codex/daily-debt/<date>` PR only when its run has finished. Fire **Daily debt PR review** when all of these hold:
+The Codex runner opens its `codex/daily-debt/<date>` PR only when its run has finished. Start **Debt review** (`debt-review/README.md`) when all of these hold:
 
 - an open `codex/daily-debt/*` PR exists;
 - it has no comment starting `## Debt review` and no commit with a `Review-round:` trailer (a review already owns it);
-- the job has not fired in the last 6 hours (a review may still be running).
+- no Debt review thread was started today.
 
-## 3. Daily jobs
+## 3. Daily
 
-Fire each once per day, at the first tick at or after its time, if it has not fired today.
-
-| Time | Task |
-|------|------|
-| 03:00 | Daily issue drain (peterdrier/Humans) |
-| 07:00 | Daily triage (prod) |
+At the first tick at or after 03:00, start **Issue drain** (`issue-drain.md`) unless it was started today.
 
 ## 4. Rotation
 
-One maintenance PR per day at most. At the first tick at or after 07:00, look up today's entry. Fire it unless it has fired today, or a PR it opened earlier is still open (backpressure: that day is skipped, not queued).
+At most one maintenance PR a day. At the first tick at or after 07:00, look up today's entry and start it, unless it was started today or a PR it opened earlier is still open. With an open PR, skip the day (backpressure); nothing is queued.
 
-| Day | Task | Its open PR is a branch starting |
-|-----|------|----------------------------------|
-| Sunday | Weekly dependency upgrades | `deps/weekly-` |
-| Monday | Section doctor | `section-doctor/` |
-| Tuesday | Section doctor | `section-doctor/` |
-| Wednesday | Freshness sweep | `freshness-sweep/` |
-| Thursday | Section doctor | `section-doctor/` |
-| Friday | Section doctor | `section-doctor/` |
-| Saturday | none | |
+| Day | Job | Doc | Its open PR's branch starts |
+|-----|-----|-----|-----------------------------|
+| Sunday | Dependency upgrades | `dependency-upgrades.md` | `deps/weekly-` |
+| Monday | Section doctor | `section-doctor/README.md` | `section-doctor/` |
+| Tuesday | Section doctor | `section-doctor/README.md` | `section-doctor/` |
+| Wednesday | Freshness sweep | `freshness-sweep/README.md` | `freshness-sweep/` |
+| Thursday | Section doctor | `section-doctor/README.md` | `section-doctor/` |
+| Friday | Section doctor | `section-doctor/README.md` | `section-doctor/` |
+| Saturday | none | | |
 
-Monday also fires **Flaky test tracker** at the first tick at or after 16:00.
+## Not dispatched
+
+Prod triage keeps its own scheduled task, because it needs the production API key in its own environment.
 
 ## Changing the schedule
 
-Edit the tables in this doc. The scheduled tasks themselves hold only their own job's prompt and no schedule.
+Edit this doc. The dispatcher's scheduled task only says to follow it.

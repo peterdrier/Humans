@@ -1,9 +1,3 @@
----
-name: debt-review
-description: "Review, repair and steward the nightly Codex debt-sweep PR (branch codex/daily-debt/<date>). Judges every commit GOOD / REPAIR / REVERT, triages the bot review findings through /fix, lands one round-1 commit, files follow-up issues, then stewards the PR itself with a 3-round ceiling. Also opens at most one flagged ⚠️ DESTRUCTIVE drop PR a night for a retirement already on production; Peter merges it. Run by the 08:00 UTC cloud routine; also '/debt-review', '/debt-review 1789'."
-argument-hint: "(none — today's codex/daily-debt PR) | 1789"
----
-
 # Debt review — validate the nightly Codex PR
 
 The Codex runner (`.codex/cron/run-daily-debt.sh`) opens one PR a night on
@@ -11,6 +5,9 @@ The Codex runner (`.codex/cron/run-daily-debt.sh`) opens one PR a night on
 Green is not good: this skill decides which commits are worth keeping, repairs or
 reverts the rest, deals with the bot findings, and gets the PR mergeable for Peter.
 Peter merges. Never merge, never force-push, never rewrite the branch's history.
+
+Unattended runs push by URL, file issues on `peterdrier/Humans`, and also fix any build or
+formatting failure (the code-quality action) on the PR.
 
 Budget: **3 review rounds total** for this PR (Peter, 2026-09-22), and this run's commit
 is round 1.
@@ -69,7 +66,7 @@ it — `git revert` handles that.
 
 ## 3. Triage the bot findings
 
-Run the [`/fix`](../fix/SKILL.md) gates on every unresolved thread (Codex, Claude bot,
+Run the [`/fix`](../../../.claude/skills/fix/SKILL.md) gates on every unresolved thread (Codex, Claude bot,
 Gemini; both repos) at round 1. A finding on a commit you are reverting is resolved as
 `REVERTED — <sha> reverted in <new sha>`, no other triage. A finding that points at the
 same defect as a REPAIR verdict is fixed by that repair. Print the /fix triage table.
@@ -160,7 +157,7 @@ path in [`no-drops-until-prod-verified`](../../../memory/architecture/no-drops-u
 - Add the baseline entries. `Approval:` cites the production reading in the issue and the atom.
   `Evidence:` cites the retiring PR and the production commit that contains it.
 - Gate on the §4 build and tests, then run the
-  [`ef-migration-reviewer`](../../agents/ef-migration-reviewer.md) agent. If either fails, don't
+  [`ef-migration-reviewer`](../../../.claude/agents/ef-migration-reviewer.md) agent. If either fails, don't
   open the PR: comment on the issue saying why.
 
 **The PR has to say it is dangerous**, in the title, the label and the body's first lines:
@@ -187,7 +184,7 @@ Subscribe to the drop PR and steward it under §7 with its own `Ceiling: 3`.
 
 No hand-off: this session is the steward (subscribed since §1). End the
 turn with the summary below, and on every wake follow the `pd:steward` skill's
-wake protocol, with the [`.claude/steward.md`](../../steward.md) overlay, with `Ceiling: 3` (rounds spent: 1, or 0 if §4 pushed nothing). Round
+wake protocol, with the [`.claude/steward.md`](../../../.claude/steward.md) overlay, with `Ceiling: 3` (rounds spent: 1, or 0 if §4 pushed nothing). Round
 workers are `pd:orch-opus-medium` via Task, per the round-worker brief with `Ceiling: 3`. At the ceiling, or
 when the PR is merged or closed, `unsubscribe_pr_activity` and stop.
 
