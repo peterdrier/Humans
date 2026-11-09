@@ -285,4 +285,14 @@ internal sealed class TeamSnapshotReader(
         };
     }
 
+    internal async Task<IReadOnlyList<UserTeamMembershipInfo>> GetUserTeamMembershipsAsync(
+        Guid userId, CancellationToken cancellationToken = default)
+    {
+        var memberships = await repo.GetActiveByUserIdAsync(userId, cancellationToken);
+        return memberships
+            .Select(m => new UserTeamMembershipInfo(
+                m.Id, m.TeamId, m.Team.Name, m.Team.Slug, m.Team.IsSystemTeam, m.Role, m.JoinedAt))
+            .ToList();
+    }
+
 }
