@@ -22,6 +22,8 @@ internal sealed class CalendarService(
     ILogger<CalendarService> logger,
     IServiceScopeFactory scopeFactory) : ICalendarService
 {
+    private readonly CalendarMutationAudit mutationAudit = new(audit, logger);
+    private CalendarOccurrenceMutations OccurrenceMutations => new(repo, clock, mutationAudit, logger);
     private readonly CalendarOccurrenceComposer occurrenceComposer = new(teams, scopeFactory, logger);
 
     /// <summary>Forms use an inclusive last day; storage uses an exclusive date.</summary>
@@ -56,7 +58,7 @@ internal sealed class CalendarService(
 
         await repo.AddAsync(ev, ct);
 
-        await LogCommittedMutationAsync(
+        await mutationAudit.LogCommittedMutationAsync(
             CalendarAuditActions.CalendarEventCreated, ev.Id,
             $"Created calendar event '{ev.Title}'", createdByUserId, ev.OwningTeamId);
 
@@ -175,7 +177,7 @@ internal sealed class CalendarService(
                 var dtoOverride = new OverrideOccurrenceDto(exception.OverrideStartUtc, exception.OverrideEndUtc,
                     exception.OverrideTitle, exception.OverrideDescription, exception.OverrideLocation, exception.OverrideLocationUrl,
                     exception.OverrideStartDate, exception.OverrideEndDateExclusive);
-                if (GetOverrideRefusal(updated, exception.OriginalOccurrenceStartUtc,
+                if (CalendarRecurrenceRules.GetOverrideRefusal(updated, exception.OriginalOccurrenceStartUtc,
                         exception.OriginalOccurrenceDate, dtoOverride) is not null)
                 {
                     rejection = CalendarEventMutationResult.Failed("Calendar_InvalidOccurrenceOverride");
@@ -221,7 +223,7 @@ internal sealed class CalendarService(
             return CalendarEventMutationResult.Missing("Calendar event not found.");
         }
 
-        await LogCommittedMutationAsync(
+        await mutationAudit.LogCommittedMutationAsync(
             CalendarAuditActions.CalendarEventUpdated, mutated.Id,
             $"Updated calendar event '{mutated.Title}'", updatedByUserId, mutated.OwningTeamId);
 
@@ -255,179 +257,15 @@ internal sealed class CalendarService(
         var result = await repo.SoftDeleteAsync(id, now, ct);
         if (result is null) return;
 
-        await LogCommittedMutationAsync(
+        await mutationAudit.LogCommittedMutationAsync(
             CalendarAuditActions.CalendarEventDeleted, id,
             $"Deleted calendar event '{result.Value.Title}'", deletedByUserId, result.Value.OwningTeamId);
     }
 
-    public async Task<bool> CancelOccurrenceAsync(Guid eventId, Instant? originalOccurrenceStartUtc, Guid userId, CancellationToken ct = default, LocalDate? originalDate = null)
-    {
-        return await UpsertExceptionAsync(eventId, originalOccurrenceStartUtc, userId,
-            apply: x => x.IsCancelled = true,
-            auditAction: CalendarAuditActions.CalendarOccurrenceCancelled,
-            auditDescription: $"Cancelled occurrence {(originalDate is { } date ? NodaTime.Text.LocalDatePattern.Iso.Format(date) : originalOccurrenceStartUtc.ToIso8601())}",
-            ct, originalDate);
-    }
+    public Task<bool> CancelOccurrenceAsync(Guid eventId, Instant? originalOccurrenceStartUtc, Guid userId, CancellationToken ct = default, LocalDate? originalDate = null) =>
+        OccurrenceMutations.CancelOccurrenceAsync(eventId, originalOccurrenceStartUtc, userId, ct, originalDate);
 
-    public async Task<bool> OverrideOccurrenceAsync(Guid eventId, Instant? originalOccurrenceStartUtc, OverrideOccurrenceDto dto, Guid userId, CancellationToken ct = default, LocalDate? originalDate = null)
-    {
-        return await UpsertExceptionAsync(eventId, originalOccurrenceStartUtc, userId,
-            apply: x =>
-            {
-                x.IsCancelled = false;
-                x.OverrideStartUtc = dto.OverrideStartUtc;
-                x.OverrideEndUtc = dto.OverrideEndUtc;
-                x.OverrideStartDate = dto.OverrideStartDate;
-                x.OverrideEndDateExclusive = dto.OverrideEndDateExclusive;
-                x.OverrideTitle = dto.OverrideTitle;
-                x.OverrideDescription = dto.OverrideDescription;
-                x.OverrideLocation = dto.OverrideLocation;
-                x.OverrideLocationUrl = dto.OverrideLocationUrl;
-            },
-            auditAction: CalendarAuditActions.CalendarOccurrenceOverridden,
-            auditDescription: $"Overrode occurrence {(originalDate is { } date ? NodaTime.Text.LocalDatePattern.Iso.Format(date) : originalOccurrenceStartUtc.ToIso8601())}",
-            ct, originalDate, dto);
-    }
-
-    private async Task<bool> UpsertExceptionAsync(
-        Guid eventId, Instant? originalUtc, Guid userId,
-        Action<CalendarEventException> apply,
-        AuditActionDefinition auditAction, string auditDescription,
-        CancellationToken ct, LocalDate? originalDate, OverrideOccurrenceDto? overrideDto = null)
-    {
-        var now = clock.GetCurrentInstant();
-        var ev = await repo.GetEventByIdAsync(eventId, ct);
-        if (ev is null) return Refuse("Calendar event not found.");
-        var info = CalendarOccurrenceExpander.ToInfo(ev);
-        if (string.IsNullOrWhiteSpace(info.RecurrenceRule) ||
-            (info.IsAllDay ? originalDate is null || originalUtc is not null : originalUtc is null || originalDate is not null))
-            return Refuse("The occurrence identity must match the series' date or time type.");
-        var refusal = GetOverrideRefusal(info, originalUtc, originalDate, overrideDto);
-        if (refusal is not null) return Refuse(refusal);
-        if (!IsOccurrenceIdentity(info, originalUtc, originalDate))
-            return Refuse("The occurrence identity is not generated by this series.");
-        var legacyStart = originalDate is null ? null : ev.Exceptions.FirstOrDefault(x =>
-            x.OriginalOccurrenceDate is null && x.OriginalOccurrenceStartUtc is { } old &&
-            old.InZone(DateTimeZoneProviders.Tzdb[ev.RecurrenceTimezone ?? "Europe/Madrid"]).Date == originalDate)?.OriginalOccurrenceStartUtc;
-
-        var repositoryRefusal = await repo.UpsertExceptionAsync(
-            eventId,
-            originalUtc ?? legacyStart,
-            createdByUserId: userId,
-            now: now,
-            apply: x =>
-            {
-                if (info.IsAllDay)
-                {
-                    var previous = info.Exceptions.FirstOrDefault(e => e.Id == x.Id);
-                    x.OverrideStartDate = previous?.OverrideStartDate;
-                    x.OverrideEndDateExclusive = previous?.OverrideEndDateExclusive;
-                    x.OverrideStartUtc = null;
-                    x.OverrideEndUtc = null;
-                }
-                apply(x);
-            },
-            ct: ct, originalDate: originalDate);
-        if (repositoryRefusal is not null) return Refuse(repositoryRefusal);
-
-        await LogCommittedMutationAsync(auditAction, eventId, auditDescription, userId);
-        return true;
-
-        bool Refuse(string reason)
-        {
-            logger.LogWarning("Calendar occurrence mutation rejected for event {EventId}, actor {UserId}: {Reason}",
-                eventId, userId, reason);
-            return false;
-        }
-    }
-
-    private async Task LogCommittedMutationAsync(
-        AuditActionDefinition action, Guid eventId, string description, Guid actorUserId, Guid? owningTeamId = null)
-    {
-        // The mutation is committed; an audit failure must not prevent the cache refresh.
-        try
-        {
-            await audit.LogAsync(
-                action, AuditEntityTypes.CalendarEvent, eventId, description, actorUserId,
-                relatedEntityId: owningTeamId,
-                relatedEntityType: owningTeamId.HasValue ? AuditEntityTypes.Team : null);
-        }
-        catch (Exception ex)
-        {
-            logger.LogCritical(ex,
-                "Audit-log write failed AFTER {AuditAction} on calendar event {EventId} by {UserId}: {Description}. Mutation was committed; reconcile audit trail manually.",
-                action, eventId, actorUserId, description);
-        }
-    }
-
-    private bool IsOccurrenceIdentity(CalendarEventInfo info, Instant? originalUtc, LocalDate? originalDate)
-    {
-        // Existing exceptions remain editable after a recurrence-rule change.
-        if (info.Exceptions.Any(x => info.IsAllDay
-            ? x.OriginalOccurrenceDate == originalDate
-            : x.OriginalOccurrenceStartUtc == originalUtc)) return true;
-        try
-        {
-            var from = info.IsAllDay ? originalDate!.Value.AtMidnight().InUtc().ToInstant() : originalUtc!.Value;
-            var to = from.Plus(info.IsAllDay ? NodaTime.Duration.FromDays(1) : NodaTime.Duration.FromTicks(1));
-            return CalendarOccurrenceExpander.Expand([info with { Exceptions = [] }], from, to,
-                new Dictionary<Guid, string>(), logger, DateTimeZone.Utc)
-                .Any(x => info.IsAllDay
-                    ? x.OriginalOccurrenceDate == originalDate
-                    : x.OriginalOccurrenceStartUtc == originalUtc);
-        }
-        catch (OverflowException)
-        {
-            return false;
-        }
-        catch (ArgumentOutOfRangeException)
-        {
-            return false;
-        }
-    }
-
-    private static string? GetOverrideRefusal(
-        CalendarEventInfo info, Instant? originalUtc, LocalDate? originalDate, OverrideOccurrenceDto? dto)
-    {
-        if (dto is null) return null; // Cancellation preserves the existing override.
-        if (info.IsAllDay)
-        {
-            if (dto.OverrideStartUtc is not null || dto.OverrideEndUtc is not null)
-                return "An all-day occurrence cannot have a time.";
-            var start = dto.OverrideStartDate ?? originalDate!.Value;
-            LocalDate end;
-            try
-            {
-                var days = NodaTime.Period.Between(info.StartDate!.Value, info.EndDateExclusive!.Value, PeriodUnits.Days).Days;
-                // Expansion reconstructs the original range before applying a moved override.
-                _ = originalDate!.Value.PlusDays(days);
-                end = dto.OverrideEndDateExclusive ?? start.PlusDays(days);
-            }
-            catch (OverflowException)
-            {
-                return "An all-day occurrence requires a representable date range.";
-            }
-            if (end <= start) return "An all-day occurrence requires a non-empty date range.";
-        }
-        else
-        {
-            if (dto.OverrideStartDate is not null || dto.OverrideEndDateExclusive is not null)
-                return "A timed occurrence cannot have all-day dates.";
-            var start = dto.OverrideStartUtc ?? originalUtc!.Value;
-            Instant end;
-            try
-            {
-                var duration = (info.EndUtc ?? info.StartUtc!.Value) - info.StartUtc!.Value;
-                _ = originalUtc!.Value.Plus(duration);
-                end = dto.OverrideEndUtc ?? start.Plus(duration);
-            }
-            catch (OverflowException)
-            {
-                return "A timed occurrence requires a representable time range.";
-            }
-            if (end < start) return "An occurrence cannot end before it starts.";
-        }
-        return null;
-    }
+    public Task<bool> OverrideOccurrenceAsync(Guid eventId, Instant? originalOccurrenceStartUtc, OverrideOccurrenceDto dto, Guid userId, CancellationToken ct = default, LocalDate? originalDate = null) =>
+        OccurrenceMutations.OverrideOccurrenceAsync(eventId, originalOccurrenceStartUtc, dto, userId, ct, originalDate);
 
 }

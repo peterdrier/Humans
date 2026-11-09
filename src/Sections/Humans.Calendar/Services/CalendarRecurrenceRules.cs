@@ -1,3 +1,4 @@
+using Humans.Calendar.Services.Dtos;
 using Humans.Base.Extensions;
 using Ical.Net;
 using Ical.Net.DataTypes;
@@ -180,5 +181,49 @@ internal static class CalendarRecurrenceRules
             var date = value.EndsWith('Z') ? local.InUtc().ToInstant().InZone(zone).Date : local.Date;
             return "UNTIL=" + DateFormattingExtensions.IcalBasicDatePattern.Format(date);
         }));
+
+    internal static string? GetOverrideRefusal(
+        CalendarEventInfo info, Instant? originalUtc, LocalDate? originalDate, OverrideOccurrenceDto? dto)
+    {
+        if (dto is null) return null; // Cancellation preserves the existing override.
+        if (info.IsAllDay)
+        {
+            if (dto.OverrideStartUtc is not null || dto.OverrideEndUtc is not null)
+                return "An all-day occurrence cannot have a time.";
+            var start = dto.OverrideStartDate ?? originalDate!.Value;
+            LocalDate end;
+            try
+            {
+                var days = NodaTime.Period.Between(info.StartDate!.Value, info.EndDateExclusive!.Value, PeriodUnits.Days).Days;
+                // Expansion reconstructs the original range before applying a moved override.
+                _ = originalDate!.Value.PlusDays(days);
+                end = dto.OverrideEndDateExclusive ?? start.PlusDays(days);
+            }
+            catch (OverflowException)
+            {
+                return "An all-day occurrence requires a representable date range.";
+            }
+            if (end <= start) return "An all-day occurrence requires a non-empty date range.";
+        }
+        else
+        {
+            if (dto.OverrideStartDate is not null || dto.OverrideEndDateExclusive is not null)
+                return "A timed occurrence cannot have all-day dates.";
+            var start = dto.OverrideStartUtc ?? originalUtc!.Value;
+            Instant end;
+            try
+            {
+                var duration = (info.EndUtc ?? info.StartUtc!.Value) - info.StartUtc!.Value;
+                _ = originalUtc!.Value.Plus(duration);
+                end = dto.OverrideEndUtc ?? start.Plus(duration);
+            }
+            catch (OverflowException)
+            {
+                return "A timed occurrence requires a representable time range.";
+            }
+            if (end < start) return "An occurrence cannot end before it starts.";
+        }
+        return null;
+    }
 
 }
