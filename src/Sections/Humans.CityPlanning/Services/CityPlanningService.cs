@@ -237,6 +237,9 @@ internal sealed class CityPlanningService(
         if (!double.IsFinite(areaSqm) || areaSqm < 0)
             return new(string.Empty, 0, Refusal: "Area must be finite and non-negative.");
 
+        if (await campService.GetCampSeasonByIdAsync(campSeasonId, cancellationToken) is null)
+            return new(string.Empty, 0, Refusal: "Camp season not found.");
+
         var now = clock.GetCurrentInstant();
         var polygon = await repo.SavePolygonAndAppendHistoryAsync(
             campSeasonId, geoJson, areaSqm, modifiedByUserId, note, now, cancellationToken);

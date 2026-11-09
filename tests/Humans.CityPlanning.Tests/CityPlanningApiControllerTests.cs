@@ -55,6 +55,10 @@ public sealed class CityPlanningApiControllerTests : CityPlanningTestBase
     {
         _users.GetUserInfoAsync(_userId, Arg.Any<CancellationToken>())
             .Returns(UserInfo.Create(new User { Id = _userId }, [], [], profile: null));
+        _campService.GetCampSeasonByIdAsync(_campSeasonId, Arg.Any<CancellationToken>())
+            .Returns(new CampSeasonInfo(_campSeasonId, Guid.NewGuid(), "camp", 2026, null, "Camp", "", "",
+                [], CampSeasonStatus.Pending, YesNoMaybe.No, YesNoMaybe.No, AdultPlayspacePolicy.No,
+                0, null, null, null, 0, null, null));
         _campService.GetSettingsAsync(Arg.Any<CancellationToken>())
             .Returns(new CampSettingsInfo(2026, []));
         _teamService.GetTeamsAsync(Arg.Any<CancellationToken>())
@@ -389,7 +393,9 @@ public sealed class CityPlanningApiControllerTests : CityPlanningTestBase
                 IsPromotedToDirectory: false, CreatedAt: Instant.MinValue,
                 Members: [new(Guid.NewGuid(), _userId, string.Empty, null, null, TeamMemberRole.Member, Instant.MinValue)]),
         });
-        await _service.SaveCampPolygonAsync(Guid.NewGuid(), Square, 10, Guid.NewGuid(), cancellationToken: ct);
+        var otherSeason = (await _campService.GetCampSeasonByIdAsync(_campSeasonId, ct))! with { Id = Guid.NewGuid() };
+        _campService.GetCampSeasonByIdAsync(otherSeason.Id, Arg.Any<CancellationToken>()).Returns(otherSeason);
+        await _service.SaveCampPolygonAsync(otherSeason.Id, Square, 10, Guid.NewGuid(), cancellationToken: ct);
         var otherSeasonHistoryId = (await CityPlanningDb.CampPolygonHistories.SingleAsync(ct)).Id;
 
         var result = await CreateController().RestoreCampPolygon(_campSeasonId, otherSeasonHistoryId, ct);
@@ -515,7 +521,7 @@ public sealed class CityPlanningApiControllerTests : CityPlanningTestBase
     [HumansTheory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task PolygonWrite_BroadcastPreparationFailure_ReturnsSavedResult(bool restore)
+    public async Task PolygonWrite_MissingCampSeason_RefusesWithoutWritingOrBroadcasting(bool restore)
     {
         var ct = TestContext.Current.CancellationToken;
         Guid historyId = default;
@@ -525,7 +531,34 @@ public sealed class CityPlanningApiControllerTests : CityPlanningTestBase
             historyId = (await CityPlanningDb.CampPolygonHistories.SingleAsync(ct)).Id;
         }
         _campService.GetCampSeasonByIdAsync(_campSeasonId, Arg.Any<CancellationToken>())
-            .ThrowsAsync(new IOException("Camp directory unavailable"));
+            .Returns((CampSeasonInfo?)null);
+        var controller = CreateController(CampsRoles.CampsAdmin);
+
+        var result = restore
+            ? await controller.RestoreCampPolygon(_campSeasonId, historyId, ct)
+            : await controller.SaveCampPolygon(_campSeasonId, new SaveCampPolygonRequest(Square, 10), ct);
+
+        result.Should().BeOfType<BadRequestResult>();
+        (await CityPlanningDb.CampPolygons.CountAsync(ct)).Should().Be(restore ? 1 : 0);
+        (await CityPlanningDb.CampPolygonHistories.CountAsync(ct)).Should().Be(restore ? 1 : 0);
+        await _allClients.DidNotReceiveWithAnyArgs().SendCoreAsync(default!, default!, default);
+    }
+
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task PolygonWrite_BroadcastPreparationFailure_ReturnsSavedResult(bool restore)
+    {
+        var ct = TestContext.Current.CancellationToken;
+        Guid historyId = default;
+        if (restore)
+        {
+            await _service.SaveCampPolygonAsync(_campSeasonId, Square, 10, _userId, cancellationToken: ct);
+            historyId = (await CityPlanningDb.CampPolygonHistories.SingleAsync(ct)).Id;
+        }
+        var season = await _campService.GetCampSeasonByIdAsync(_campSeasonId, ct);
+        _campService.GetCampSeasonByIdAsync(_campSeasonId, Arg.Any<CancellationToken>())
+            .Returns(_ => season, _ => throw new IOException("Camp directory unavailable"));
         var controller = CreateController(CampsRoles.CampsAdmin);
 
         var result = restore
