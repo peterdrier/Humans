@@ -43,7 +43,7 @@ Admin is layered. **UsersAdmin** does human management — the list, detail, rol
 - `/AuditLog` — global audit log, filterable and paginated.
 - `/Notifications` — your notification inbox.
 - `/Settings#google-sync` — per-service sync mode (Admin only), a tab on the Settings page.
-- `/Debug/Configuration`, `/Debug/Logs`, `/Debug/HttpErrors`, `/Debug/DbStats`, `/Debug/CacheStats`, `/Debug/DbVersion` — technical diagnostics.
+- `/Debug/Configuration`, `/Debug/Logs`, `/Debug/HttpErrors`, `/Debug/Database`, `/Debug/DbStats`, `/Debug/CacheStats`, `/Debug/DbVersion` — technical diagnostics.
 - `/Debug/Maintenance/ClearHangfireLocks` — clear stuck job locks (Admin only; requires restart).
 - `/Users/Admin/AccountMerges` — the unified duplicate-detection + merge-request queue.
 - `/Users/Admin/{id}/Purge` — permanent delete, disabled in production.
@@ -97,6 +97,7 @@ Board can open these pages and read them; every action on them is **Admin only**
 - **API keys** (`/Backdoor`) allocates, rotates and revokes the personal keys that open the `/api/backdoor/*` machine APIs — the log, agent-transcript, issue and survey surfaces. A key goes to one human (a full Admin or a Board member), authenticates as them, and is shown in plaintext exactly once. Board sees the key list; only Admin allocates, rotates and revokes.
 - **Logs** (`/Debug/Logs`) shows recent in-memory Serilog entries for quick triage without shelling in.
 - **HTTP errors** (`/Debug/HttpErrors`) shows recent HTTP error responses for quick diagnosis.
+- **Database** (`/Debug/Database`) shows the database server's version, size, connections and settings, plus per-table row counts, sizes and activity and per-index size and scans.
 - **DbStats**, **CacheStats**, **DbVersion** report query statistics, cache hit/miss rates, and applied and pending EF migrations.
 - **ClearHangfireLocks** removes stuck background-job locks; the app must be restarted afterwards to re-register recurring jobs.
 - **Hangfire dashboard** (`/hangfire`) opens for Board and Admin; only Admin can re-queue or otherwise change jobs.

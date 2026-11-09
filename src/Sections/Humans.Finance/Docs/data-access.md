@@ -38,6 +38,19 @@ updates booking/payment-reference/reconciliation columns on `SepaPayoutTransfers
 and calls Holded through its contract. Its shared booking gate covers all entry
 points. No provisioning, Budget or email dependency.
 
+### HoldedCategoryAccounts (section-internal, composed by `Service`)
+
+Repository: `IHoldedRepository` (shared with its owner). Provisions Holded expense accounts for
+the active budget year's categories and records the mapping; not DI-registered.
+
+| Table | R/W |
+|-------|-----|
+| HoldedCategoryMap | R/W (`GetCategoryMapAsync`, `AddCategoryMapAsync`) |
+
+Cross-section calls via `IBudgetService` (active-year categories), `IHoldedService` (chart of
+accounts mirror) and `IHoldedWrite` (`EnsureExpenseAccountAsync`), plus `IAuditLogService` and
+`IClock`. No cache.
+
 ### CashFlowService (Scoped, section-internal)
 
 No repository, no tables, no cache. Computes `/Finance/CashFlow` from
@@ -91,16 +104,18 @@ Cross-section calls via `IBudgetService` (`budget` in the ctor), `IHoldedService
 mirror read surface — `holded` in the ctor; ledger-line /
 account-balance reads for creditor status, ledger, and account listing, and the purchase-document
 mirror for actuals, the unmatched queue and expense recon),
-`IHoldedWrite` (Holded's write face: creditor contacts, expense accounts, purchase-document
-deletes, and SEPA payments, reconciles and journal entries), `IAuditLogService`
+`IHoldedWrite` (Holded's write face: creditor contacts, expense accounts, purchase documents,
+`PayPurchaseDocumentAsync`, bank reconcile, journal entries), `IExpenseHoldedBookingService`
+(Expenses — linked expense lines, DTOs only), `IPaymentDetailsManagement` (IBAN), `IAuditLogService`
 (one entry per SEPA credit transfer generated, and one per transfer booked), and
 `IUserService` / `IEmailService` (the payout-generated and
 payout-withdrawn notification to each creditor, through the section's `FinanceEmails` builder).
 Implements the public `IFinanceService` and `IFinanceWrite` (their IBAN members delegate to
 `IPaymentDetailsManagement`), the internal `IFinanceAdminService` and `IUserDataContributor`.
-Injects `IMemoryCache` for the 2-minute Holded contact-list entry
-(`CacheKeys.HoldedContacts`) and `IOptions<SepaOptions>` for the organisation's
-SEPA identity.
+Injects `IOptions<SepaOptions>` for the organisation's SEPA identity and the singleton
+`TrackedCache<string, Dictionary<string, int>>` (`CacheKeys.SepaStuckBankLines`, held by the composed
+`SepaBankBooking`) for sweep failure counts. No `IMemoryCache`; Holded contacts are read from the
+Holded mirror through `IHoldedService.GetContactsAsync`.
 
 `IFinanceAdminService` (`Services/IFinanceAdminService.cs`) is
 **internal** — Finance's own screens' read models, not cross-section surface.
@@ -131,8 +146,8 @@ deletes through `IHoldedWrite.DeletePurchaseDocumentByIdAsync` / `DeleteContactA
 `GetExpenseReconAsync` (public, `IFinanceService`; `/Finance/ExpenseRecon`, the
 `/Finance/Creditors` banner, `ExpenseReconJob` and Backdoor) reads `HoldedCreditorContacts` and `SepaPayoutTransfers`, plus
 `IExpenseHoldedBookingService.GetHoldedReconLinesAsync`, `IHoldedService.GetLedgerSyncedAtAsync`,
-`GetAccountBalancesAsync` and `GetLedgerLinesAsync` (every creditor-range account), the contact mirror (`IHoldedService.GetContactsAsync`)
-that `/Finance/Creditors` also reads (which account each bound contact is on), and
+`GetAccountBalancesAsync` and `GetLedgerLinesAsync` (every creditor-range account), `IHoldedService.GetContactsAsync`
+(the contact mirror `/Finance/Creditors` also reads — which account each bound contact is on), and
 `IUserService.GetUserInfosAsync`. **No write.**
 
 `RunSepaBookingSweepAsync` (also `[ExternalWrite]`) is the bank-line sweep: books every unbooked

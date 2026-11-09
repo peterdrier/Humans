@@ -181,3 +181,41 @@ Repository: `IAssemblyVoteRepository`. Owns draft authoring and its existing
 state/revision guards; uses the existing translation contract, clock and logger.
 Shares bounded-text and safe-URL policy with the service. No legal-vote transitions,
 cache or separate DI registration.
+
+### ApplicationDecisionNotices (internal, owned by ApplicationDecisionService)
+
+No repository. Sends the approval, rejection and withdrawal email and in-app
+notification for a decided `Application` through `IUserService`, `IEmailService`,
+`INotificationEmitter` and the `GovernanceEmails` builder, localised to the applicant's
+language. Not DI-registered — the decision service constructs it. No DB access, no cache.
+
+### AssemblyVoteDataExport (internal, owned by AssemblyVoteService)
+
+Repository: `IAssemblyVoteRepository`. Builds the member's GDPR export slices
+(`AssemblyVotes`, `AssemblyVoteActions`) behind `AssemblyVoteService`'s
+`IUserDataContributor`; resolves the merge chain through `IUserService`. Read-only. Not
+DI-registered. No cache.
+
+| Table | R/W |
+|-------|-----|
+| AssemblyVoteRosterEntries | R (`GetVotingRecordForUserAsync`) |
+| AssemblyVotes | R (voting record; votes the user created or peeked at via `GetActorRecordForUserAsync`) |
+| AssemblyBallots | R |
+| AssemblyBallotHistories | R (revisions included with the ballot) |
+| AssemblyVotePeeks | R (`GetActorRecordForUserAsync`) |
+
+### AssemblyVoteEffects (internal, owned by AssemblyVoteService)
+
+Repository: `IAssemblyVoteRepository`. Owns the notification side of the vote lifecycle:
+open and close notices, the pre-close reminder sweep, and the roster `NotifiedAt` /
+`ReminderSentAt` stamps. Not DI-registered. No cache.
+
+| Table | R/W |
+|-------|-----|
+| AssemblyVotes | R (`GetByIdAsync`, `GetOpenVotesClosingBetweenAsync`) |
+| AssemblyVoteOptions | R (loaded with the vote) |
+| AssemblyVoteRosterEntries | R/W (roster reads; `StampNotifiedAsync`, `StampReminderSentAsync` write the stamps) |
+| AssemblyBallots | R (`GetBallotForRosterAsync`, reminder filter) |
+
+Cross-section calls via `IUserService`, `IEmailService`, `INotificationEmitter`,
+`INotificationAutoResolve`, `IAuditLogService`, `IClock`, and the section's `GovernanceEmails`.

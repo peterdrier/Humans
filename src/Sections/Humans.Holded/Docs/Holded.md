@@ -209,7 +209,7 @@ it wrote.
   untouched. Finance calls it on 57200003 before and after a Pleo booking run, so its "already in Holded"
   judgement is Holded's own current ledger.
 - Reads (`IHoldedService`: lines, balances, entry, purchase lines, open document amounts, sums by account,
-  chart, purchase documents, contacts, last ledger sync) never call Holded, and nothing loads the whole ledger table: balances and sums are grouped
+  chart, purchase documents, contacts, bank movements, last ledger sync) never call Holded, and nothing loads the whole ledger table: balances and sums are grouped
   in the database, statements load only their own entries. Amounts are Holded's raw sign.
 - `GetLedgerSyncedAtAsync` is the later `LastSyncAt` of the `Ledger` and `FullSync` states, stamped only
   on success, so a failed sweep leaves the last good one. Finance's expense recon uses it to tell a push
@@ -255,18 +255,18 @@ it wrote.
 ## Cross-Section Dependencies
 
 - Outbound: `IHoldedClient` (this section's own connector). Finance's `FinancePolicies` constants only.
-- Inbound: Finance (creditor statuses/statements, the purchase mirror for actuals and recon, and its manual purchase sync, via `IHoldedService`; the 57200003 re-pull and journal entries for Pleo booking via `IHoldedService.SyncAccountLedgerAsync` and `IHoldedWrite.PostJournalEntryAsync`), the nightly job.
+- Inbound: Finance (creditor statuses/statements, the purchase mirror for actuals and recon, the contact and bank-feed mirrors for creditors and SEPA, and their syncs, via `IHoldedService`; the 57200003 re-pull and journal entries for Pleo booking via `IHoldedService.SyncAccountLedgerAsync` and `IHoldedWrite.PostJournalEntryAsync`); Expenses (contact mirror plus purchase-document create/approve/attachment writes for publishing reports); Store (chart mirror plus contact and sales-document writes for invoices); Workgroups (chart mirror for the expense-account picker); Backdoor (purchase-document reads for the finance read API); the nightly job.
 
 ## Architecture
 
 Internal `HoldedAccountReader` owns account-list, statement and journal-entry projections, including shared balance rows, display signs and counterparties. The summary reuses its account rows. `Service` retains synchronization, reconciliation, metering and existing contract entry points; mirror reads, ordering and raw-sign reconciliation are unchanged.
 
 **Owning section:** `Holded` (`src/Sections/Humans.Holded`)
-**Public contract:** `Humans.Holded.Contracts` (the `Contracts/` folder): `IHoldedService` (+ `HoldedLedgerLineInfo`, `HoldedChartAccountInfo`, `HoldedPurchaseDocInfo`, `HoldedPurchaseDocMirror`) for the mirrors, `IHoldedWrite` (+ its outcome records) for writes, and the connector DTOs and typed exceptions (see [`Holded-connector.md`](Holded-connector.md)); `IHoldedClient` itself is internal
+**Public contract:** `Humans.Holded.Contracts` (the `Contracts/` folder): `IHoldedService` (+ `HoldedLedgerLineInfo`, `HoldedChartAccountInfo`, `HoldedPurchaseDocInfo`, `HoldedPurchaseDocMirror`, `HoldedContactMirror`, `HoldedBankMovementMirror`) for the mirrors, `IHoldedWrite` (+ its outcome records) for writes, and the connector DTOs and typed exceptions (see [`Holded-connector.md`](Holded-connector.md)); `IHoldedClient` itself is internal
 Connector DTOs expose consumed fields only; usage reads contain the API period and call count, and contact creation carries no unsupported custom user id.
 
 **Connector implementation:** `HoldedClient` delegates to internal purchases, sales, contacts, accounting and treasury clients. One shared `HoldedTransport` owns auth, retry, paging, metering and timing; endpoint payloads and parsers stay with their operation group. The client contract and typed-client registration are unchanged.
-**Owned tables:** the five above
+**Owned tables:** those above
 **Target shape:** [`health.md`](health.md); the single-mirror design is
 the 2026-10-30 Holded section-flow record (phase 1 built the reads and
 pages; phase 2 moved every outside caller off `IHoldedClient`). Historical design record:
