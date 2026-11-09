@@ -3,6 +3,7 @@ using Humans.Stripe.Data;
 using Humans.Stripe.Domain;
 using Humans.Stripe.Services;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using NodaTime;
@@ -98,6 +99,66 @@ public sealed class StripeMirrorSyncTests
         var encode = () => new System.Text.UTF8Encoding(false, true).GetBytes(error.LastError!);
         encode.Should().NotThrow();
         (await _repo.GetTransactionsAsync(Ct)).Should().ContainSingle().Which.Id.Should().Be("healthy");
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task Diagnostic_save_failure_preserves_account_isolation_and_cancellation(bool requestAborted)
+    {
+        Returns(Tickets, Txn("old-ticket", Tickets.Id, 100));
+        Returns(Store, Txn("old-store", Store.Id, 50));
+        await _service.SyncAsync(Ct);
+        var oldCursor = (await _repo.GetSyncStatesAsync(Ct)).Single(state => string.Equals(state.AccountId, Tickets.Id, StringComparison.Ordinal)).LastSyncAt;
+        using var cancellation = CancellationTokenSource.CreateLinkedTokenSource(Ct);
+        Exception failure = requestAborted
+            ? new OperationCanceledException(cancellation.Token)
+            : new InvalidOperationException("Stripe unavailable");
+        var diagnosticFailure = new IOException("Cannot save account diagnostic");
+        var repository = Substitute.For<IStripeMirrorRepository>();
+        repository.GetSyncStatesAsync(Arg.Any<CancellationToken>())
+            .Returns(call => _repo.GetSyncStatesAsync(call.Arg<CancellationToken>()));
+        repository.ReplaceAccountAsync(Arg.Any<StripeAccountSnapshot>(), Arg.Any<Instant>(), Arg.Any<CancellationToken>())
+            .Returns(call => _repo.ReplaceAccountAsync(call.Arg<StripeAccountSnapshot>(), call.Arg<Instant>(), call.Arg<CancellationToken>()));
+        repository.SaveSyncStateAsync(Arg.Any<StripeSyncState>(), Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            var state = call.Arg<StripeSyncState>();
+            if (state.SyncStatus == StripeSyncStatus.Error)
+            {
+                call.Arg<CancellationToken>().Should().Be(CancellationToken.None);
+                throw diagnosticFailure;
+            }
+            return _repo.SaveSyncStateAsync(state, call.Arg<CancellationToken>());
+        });
+        _client.FetchAsync(Tickets, Arg.Any<CancellationToken>()).Returns(async Task<StripeAccountFetch> (_) =>
+        {
+            if (requestAborted) await cancellation.CancelAsync();
+            throw failure;
+        });
+        Returns(Store, Txn("new-store", Store.Id, 75));
+        var logger = new CapturingLogger<StripeMirrorService>();
+        var service = new StripeMirrorService(repository, _client,
+            Options.Create(new StripeMirrorOptions { Accounts = [Tickets, Store] }),
+            new FakeClock(Instant.FromUtc(2026, 11, 6, 12, 0)), _users, logger);
+
+        if (requestAborted)
+        {
+            var observed = await Xunit.Record.ExceptionAsync(() => service.SyncAsync(cancellation.Token));
+            observed.Should().BeSameAs(failure);
+        }
+        else
+        {
+            (await service.SyncAsync(cancellation.Token)).Should().Be(StripeSyncOutcome.SomeFailed);
+            logger.Entries.Should().Contain(entry => ReferenceEquals(entry.Exception, failure));
+        }
+        logger.Entries.Should().Contain(entry => entry.Level == LogLevel.Error
+            && ReferenceEquals(entry.Exception, diagnosticFailure) && entry.Message.Contains(Tickets.Id, StringComparison.Ordinal));
+        (await _repo.GetSyncStatesAsync(Ct)).Single(state => string.Equals(state.AccountId, Tickets.Id, StringComparison.Ordinal)).LastSyncAt.Should().Be(oldCursor);
+        (await _repo.GetTransactionsAsync(Ct)).Select(row => row.Id)
+            .Should().BeEquivalentTo(["old-ticket", requestAborted ? "old-store" : "new-store"]);
+
+        Returns(Tickets, Txn("recovered-ticket", Tickets.Id, 125));
+        (await service.SyncAsync(Ct)).Should().Be(StripeSyncOutcome.Synced);
     }
 
     [HumansFact]
