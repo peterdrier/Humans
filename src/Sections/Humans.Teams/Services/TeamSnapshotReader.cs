@@ -20,6 +20,14 @@ internal sealed class TeamSnapshotReader(
 
     private ITeamResourceService TeamResourceService => serviceProvider.GetRequiredService<ITeamResourceService>();
 
+    internal const string UnavailableMembershipTargetMessage = "Cannot add a missing, deleted or merged account to a team.";
+
+    internal async Task<Guid?> ResolveMembershipTargetAsync(Guid userId, CancellationToken ct)
+    {
+        var user = await UserService.GetUserInfoAsync(userId, ct);
+        return user is null || user.IsTombstone ? null : user.Id;
+    }
+
     public async Task<IReadOnlyList<AdminTeamSummary>> GetAdminTeamListAsync(CancellationToken cancellationToken = default)
     {
         var teams = await repo.GetAllForAdminAsync(cancellationToken);
