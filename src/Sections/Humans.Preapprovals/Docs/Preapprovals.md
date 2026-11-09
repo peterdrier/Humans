@@ -262,3 +262,5 @@ A `Contracts/` folder in the section (no leaf project: nothing Preapprovals refe
   `IEmailService`, `IAuditLogService`.
 - **Architecture enforcement** — analyzers HUM0030/32/34/36; `SectionResourceParityTests`
   across every culture; `GdprExportDependencyInjectionTests` for the contributor.
+
+Internal `PreapprovalReader` owns program/grant reads, claimable and managed-grant selection, member visibility checks, DTO projection and merged-account id lookup. Mutations reuse its projection and Madrid-date rule, while GDPR export reuses its id lookup. Deadline comparisons, current/archived identity handling, short-circuit reads, grant fields and ordering are unchanged. Issuance, applications, decisions, program changes, expense claim/release/consume, notices and retention stay in their existing owners. The façade keeps its signatures; no contract or DI registration is added.

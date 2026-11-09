@@ -85,7 +85,7 @@ internal sealed partial class PreapprovalService
         foreach (var grant in grants)
         {
             await AuditGrantAsync(PreapprovalsAuditActions.PreapprovalGrantIssued, grant, describe(grant), actorUserId);
-            await AnnounceIssuedAsync(ToInfo(grant, program), CancellationToken.None);
+            await AnnounceIssuedAsync(PreapprovalReader.ToInfo(grant, program), CancellationToken.None);
         }
     }
 
@@ -97,7 +97,7 @@ internal sealed partial class PreapprovalService
         if (program is null) return new(Refusal: new PreapprovalRefusal(PreapprovalErrorKeys.NotFound));
         if ((note?.Length ?? 0) > NoteMax) return new(Refusal: new PreapprovalRefusal(PreapprovalErrorKeys.TextTooLong));
 
-        var info = ToInfo(program);
+        var info = PreapprovalReader.ToInfo(program);
         if (!info.IsAcceptingApplications(Today))
             return new(Refusal: new PreapprovalRefusal(
                 program.Status == ProgramStatus.Closed ? PreapprovalErrorKeys.ProgramClosed
@@ -136,7 +136,7 @@ internal sealed partial class PreapprovalService
             await AuditGrantAsync(PreapprovalsAuditActions.PreapprovalGrantApplied, pending,
                 $"Application to \"{program.Name}\" edited: {Euros(amount)}.", applicantUserId);
             await notices.ResolveRequestAsync(pending.Id, applicantUserId, ct);
-            await AnnounceApplicationAsync(info, ToInfo(pending, program), ct);
+            await AnnounceApplicationAsync(info, PreapprovalReader.ToInfo(pending, program), ct);
             return new(pending.Id);
         }
 
@@ -148,7 +148,7 @@ internal sealed partial class PreapprovalService
         ct = CancellationToken.None;
         await AuditGrantAsync(PreapprovalsAuditActions.PreapprovalGrantApplied, grant,
             $"Applied to \"{program.Name}\": {Euros(amount)}.", applicantUserId);
-        await AnnounceApplicationAsync(info, ToInfo(grant, program), ct);
+        await AnnounceApplicationAsync(info, PreapprovalReader.ToInfo(grant, program), ct);
         return new(grant.Id);
     }
 
@@ -181,7 +181,7 @@ internal sealed partial class PreapprovalService
             $"{(grant.RequestedAmount is { } r && r != grant.MaxAmount ? $" (requested {Euros(r)})" : "")}; claim by {program.ClaimBy.ToInvariantDate()}.",
             actorUserId);
         await notices.ResolveRequestAsync(grant.Id, actorUserId, ct);
-        await AnnounceIssuedAsync(ToInfo(grant, program), ct);
+        await AnnounceIssuedAsync(PreapprovalReader.ToInfo(grant, program), ct);
         return PreapprovalMutationResult.Ok;
     }
 
@@ -206,7 +206,7 @@ internal sealed partial class PreapprovalService
         await AuditGrantAsync(PreapprovalsAuditActions.PreapprovalGrantDeclined, grant,
             $"Application to \"{grant.Program.Name}\" declined{(reason is null ? "" : $": {reason}")}.", actorUserId);
         await notices.ResolveRequestAsync(grant.Id, actorUserId, ct);
-        var info = ToInfo(grant);
+        var info = PreapprovalReader.ToInfo(grant);
         await notices.NotifyDecidedAsync(info, "Preapprovals_Notice_Declined", reason, ct);
         await notices.EmailAsync(info, PreapprovalNoticeKind.Declined, reason, ct);
         return PreapprovalMutationResult.Ok;
@@ -235,7 +235,7 @@ internal sealed partial class PreapprovalService
             $"{(holdingReportId is { } r ? $" while held by expense report {r}" : "")}{(why is null ? "" : $": {why}")}.",
             actorUserId);
         await notices.ResolveFileByAsync(grant.Id, actorUserId, ct);
-        var info = ToInfo(grant);
+        var info = PreapprovalReader.ToInfo(grant);
         await notices.NotifyDecidedAsync(info, "Preapprovals_Notice_Revoked", why, ct, holdingReportId: holdingReportId);
         await notices.EmailAsync(info, PreapprovalNoticeKind.Revoked, why, ct);
         return PreapprovalMutationResult.Ok;
@@ -266,7 +266,7 @@ internal sealed partial class PreapprovalService
             $"Amount under \"{program.Name}\"{LabelSuffix(grant)} changed {Euros(old)} → {Euros(amount)}" +
             $"{(grant.Status == GrantStatus.Claimed && grant.ExpenseReportId is { } r ? $" (held by expense report {r}; its cap follows at next submit)" : "")}.",
             actorUserId);
-        var info = ToInfo(grant, program);
+        var info = PreapprovalReader.ToInfo(grant, program);
         await notices.NotifyDecidedAsync(info, "Preapprovals_Notice_AmountChanged", null, ct, previousAmount: old);
         await notices.EmailAsync(info, PreapprovalNoticeKind.AmountChanged, null, ct, previousAmount: old);
         return PreapprovalMutationResult.Ok;

@@ -24,50 +24,33 @@ internal sealed partial class PreapprovalService(
     IClock clock,
     ILogger<PreapprovalService> logger) : IPreapprovalManagement
 {
-    internal static readonly DateTimeZone MadridZone = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
+    private readonly PreapprovalReader reader = new(repository, users, clock);
 
-    private LocalDate Today => clock.GetCurrentInstant().InZone(MadridZone).Date;
+    private LocalDate Today => reader.Today;
 
-    public async Task<IReadOnlyList<ProgramInfo>> GetProgramsAsync(CancellationToken ct = default) =>
-        (await repository.GetProgramsAsync(ct)).Select(ToInfo).ToList();
+    public Task<IReadOnlyList<ProgramInfo>> GetProgramsAsync(CancellationToken ct = default) =>
+        reader.GetProgramsAsync(ct);
 
-    public async Task<ProgramInfo?> GetProgramAsync(Guid programId, CancellationToken ct = default)
-    {
-        var program = await repository.GetProgramAsync(programId, ct);
-        return program is null ? null : ToInfo(program);
-    }
+    public Task<ProgramInfo?> GetProgramAsync(Guid programId, CancellationToken ct = default) =>
+        reader.GetProgramAsync(programId, ct);
 
-    public async Task<IReadOnlyList<GrantInfo>> GetGrantsForUserAsync(Guid userId, CancellationToken ct = default) =>
-        (await repository.GetGrantsForUsersAsync(await AllIdsAsync(userId, ct), ct)).Select(ToInfo).ToList();
+    public Task<IReadOnlyList<GrantInfo>> GetGrantsForUserAsync(Guid userId, CancellationToken ct = default) =>
+        reader.GetGrantsForUserAsync(userId, ct);
 
-    public async Task<IReadOnlyList<GrantOption>> ListClaimableForUserAsync(Guid userId, CancellationToken ct)
-    {
-        var today = Today;
-        return (await repository.GetGrantsForUsersAsync(await AllIdsAsync(userId, ct), ct))
-            .Where(g => g.Status == GrantStatus.Open && today <= g.Program.ClaimBy)
-            .Select(ToOption)
-            .ToList();
-    }
+    public Task<IReadOnlyList<GrantOption>> ListClaimableForUserAsync(Guid userId, CancellationToken ct) =>
+        reader.ListClaimableForUserAsync(userId, ct);
 
-    public async Task<GrantOption?> GetGrantAsync(Guid grantId, CancellationToken ct)
-    {
-        var grant = await repository.GetGrantAsync(grantId, ct);
-        return grant is null ? null : ToOption(grant);
-    }
+    public Task<GrantOption?> GetGrantAsync(Guid grantId, CancellationToken ct) =>
+        reader.GetGrantAsync(grantId, ct);
 
-    public async Task<IReadOnlySet<Guid>> ListManagedGrantIdsAsync(Guid userId, CancellationToken ct) =>
-        (await repository.GetGrantIdsOfManagedProgramsAsync(await AllIdsAsync(userId, ct), ct)).ToHashSet();
+    public Task<IReadOnlySet<Guid>> ListManagedGrantIdsAsync(Guid userId, CancellationToken ct) =>
+        reader.ListManagedGrantIdsAsync(userId, ct);
 
-    public async Task<bool> HasAnythingForUserAsync(Guid userId, CancellationToken ct = default)
-    {
-        var ids = await AllIdsAsync(userId, ct);
-        return await repository.HasGrantsForUsersAsync(ids, ct)
-            || await repository.ManagesAnyProgramAsync(ids, ct)
-            || await repository.AnyProgramAcceptsApplicationsAsync(Today, ct);
-    }
+    public Task<bool> HasAnythingForUserAsync(Guid userId, CancellationToken ct = default) =>
+        reader.HasAnythingForUserAsync(userId, ct);
 
-    public async Task<bool> ManagesAnyProgramAsync(Guid userId, CancellationToken ct = default) =>
-        await repository.ManagesAnyProgramAsync(await AllIdsAsync(userId, ct), ct);
+    public Task<bool> ManagesAnyProgramAsync(Guid userId, CancellationToken ct = default) =>
+        reader.ManagesAnyProgramAsync(userId, ct);
 
     public async Task<PreapprovalWriteResult> ClaimAsync(Guid grantId, Guid expenseReportId, Guid actorUserId, CancellationToken ct, Action<Func<CancellationToken, Task>>? afterCommit = null)
     {
@@ -126,7 +109,7 @@ internal sealed partial class PreapprovalService(
             await AuditGrantAsync(PreapprovalsAuditActions.PreapprovalGrantReleased, grant,
                 $"Released by withdrawal of expense report {expenseReportId}; open again until {grant.Program.ClaimBy.ToInvariantDate()}.",
                 actorUserId, expenseReportId);
-            await notices.NotifyFileByAsync(ToInfo(grant), "Preapprovals_Notice_Released", NotificationPriority.Normal, completionToken);
+            await notices.NotifyFileByAsync(PreapprovalReader.ToInfo(grant), "Preapprovals_Notice_Released", NotificationPriority.Normal, completionToken);
         }, ct, afterCommit);
         return new();
     }
@@ -176,36 +159,12 @@ internal sealed partial class PreapprovalService(
     private static GrantStamp Stamp(PreapprovalGrant grant) => new(
         grant.MaxAmount, grant.Program.HoldedAccountNumber, grant.Program.HoldedAccountId, grant.Program.ClaimBy);
 
-    private static ProgramInfo ToInfo(PreapprovalProgram p) => new(
-        p.Id, p.Name, p.Description, p.Kind, p.PerPersonAmount, p.TotalCeiling, p.HoldedAccountNumber,
-        p.AcceptsApplications, p.ClaimBy, p.Status,
-        p.Managers.Select(m => m.UserId).ToList(),
-        p.Grants.Select(g => ToInfo(g, p)).ToList());
-
-    internal static GrantInfo ToInfo(PreapprovalGrant g) => ToInfo(g, g.Program);
-
-    private static GrantInfo ToInfo(PreapprovalGrant g, PreapprovalProgram p) => new(
-        g.Id, g.ProgramId, p.Name, p.Kind, g.BeneficiaryUserId, g.Label, g.MaxAmount, g.Status,
-        g.ApplicationNote, g.RequestedAmount, g.DecidedByUserId, g.DecidedAt, g.ExpenseReportId,
-        p.ClaimBy, g.CreatedAt, g.UpdatedAt);
-
-    private static GrantOption ToOption(PreapprovalGrant g) => new(
-        g.Id, g.Program.Name, g.Label, g.MaxAmount, g.Program.HoldedAccountNumber,
-        g.Program.HoldedAccountId, g.Program.ClaimBy, g.Status);
-
     private async Task<UserInfo?> ResolveAvailablePersonAsync(Guid userId, CancellationToken ct)
     {
         var person = await users.GetUserInfoAsync(userId, ct);
         if (person is not null && !person.IsTombstone) return person;
         logger.LogWarning("Preapproval write refused for unavailable person {UserId}", userId);
         return null;
-    }
-
-    /// <summary>So a grant under a since-merged id is still theirs.</summary>
-    private async Task<IReadOnlyList<Guid>> AllIdsAsync(Guid userId, CancellationToken ct)
-    {
-        var info = await users.GetUserInfoAsync(userId, ct);
-        return info is null ? [userId] : info.AllUserIds;
     }
 
     private const decimal MaxStoredAmount = 9_999_999_999_999_999.99m;

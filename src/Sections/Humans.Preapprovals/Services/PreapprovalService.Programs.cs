@@ -69,7 +69,7 @@ internal sealed partial class PreapprovalService
         var account = await ResolveAccountAsync(save.HoldedAccountNumber, keep: program, ct);
         if (account is null) return new(new PreapprovalRefusal(PreapprovalErrorKeys.AccountNotFound));
 
-        var info = ToInfo(program);
+        var info = PreapprovalReader.ToInfo(program);
         if (save.TotalCeiling is { } ceiling && ceiling < info.Granted)
             return new(new PreapprovalRefusal(PreapprovalErrorKeys.CeilingBelowCommitted, Euros(info.Granted)));
 
@@ -141,7 +141,7 @@ internal sealed partial class PreapprovalService
         foreach (var grant in program.Grants.Where(g => g.Status == GrantStatus.Open))
         {
             await notices.ResolveFileByAsync(grant.Id, actorUserId, ct);
-            var info = ToInfo(grant, program);
+            var info = PreapprovalReader.ToInfo(grant, program);
             await notices.NotifyFileByAsync(info, "Preapprovals_Notice_DeadlineChanged", NotificationPriority.High, ct);
             await notices.EmailAsync(info, PreapprovalNoticeKind.DeadlineChanged, detail: null, ct);
         }
