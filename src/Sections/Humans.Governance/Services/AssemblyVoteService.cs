@@ -36,6 +36,7 @@ internal sealed class AssemblyVoteService(
     ILogger<AssemblyVoteService> logger)
     : IAssemblyVoteService, IUserDataContributor, IUserMerge
 {
+    private readonly AssemblyVoteResultReader resultReader = new(repository, users, clock);
     private readonly AssemblyVoteDataExport dataExport = new(repository, users);
     private readonly AssemblyVoteDrafts drafts = new(repository, translation, clock, logger);
 
@@ -410,61 +411,12 @@ internal sealed class AssemblyVoteService(
     /// <summary>Stores the tally on the already-closed vote; also the settle path's repair.</summary>
     private async Task StoreResultAsync(AssemblyVote vote, CancellationToken ct)
     {
-        var result = await ComputeResultAsync(vote, ct);
+        var result = await resultReader.ComputeResultAsync(vote, ct);
         vote.ResultJson = JsonSerializer.Serialize(result, ResultJsonOptions);
 
         // Closed is the state this write expects and the one it leaves: the tally lands on the
         // row the close already stamped, and a vote cancelled out from under it gets nothing.
         await repository.UpdateAsync(vote, AssemblyVoteStatus.Closed, ct: ct);
-    }
-
-    /// <summary>
-    /// Counts the vote's ballots into a storable result: the official audience always, the
-    /// indicative audience separately when the vote has one. The two are never merged.
-    /// </summary>
-    private async Task<AssemblyVoteResult> ComputeResultAsync(AssemblyVote vote, CancellationToken ct)
-    {
-        var roster = await repository.GetRosterAsync(vote.Id, ct);
-        var ballots = await repository.GetBallotsAsync(vote.Id, ct);
-        var byRoster = ballots.ToDictionary(b => b.RosterId);
-
-        var official = Tally(vote, roster.Where(r => r.IsOfficial).ToList(), byRoster);
-        var indicative = vote.IndicativeAudience == IndicativeAudience.None
-            ? null
-            : Tally(vote, roster.Where(r => !r.IsOfficial).ToList(), byRoster);
-
-        return new AssemblyVoteResult(
-            official,
-            indicative,
-            vote.Kind == AssemblyVoteKind.YesNo
-                ? AssemblyVoteMethod.YesNo
-                : AssemblyVoteMethod.InstantRunoff,
-            clock.GetCurrentInstant());
-    }
-
-    private static AssemblyVoteAudienceResult Tally(
-        AssemblyVote vote,
-        IReadOnlyList<AssemblyVoteRoster> audience,
-        Dictionary<Guid, AssemblyBallot> ballotsByRoster)
-    {
-        var cast = audience
-            .Select(r => ballotsByRoster.GetValueOrDefault(r.Id))
-            .OfType<AssemblyBallot>()
-            .Select(b => new AssemblyVoteCounting.CountableBallot(b.Choice, b.Ranking))
-            .ToList();
-
-        if (vote.Kind == AssemblyVoteKind.YesNo)
-        {
-            var (tally, verdict) = AssemblyVoteCounting.CountYesNo(cast, vote.RequiredMajority);
-            return new AssemblyVoteAudienceResult(
-                audience.Count, cast.Count, tally, null, null, verdict, []);
-        }
-
-        var (rounds, winner, rankedVerdict, notes) = AssemblyVoteCounting.CountInstantRunoff(
-            cast, vote.Options.ToList());
-
-        return new AssemblyVoteAudienceResult(
-            audience.Count, cast.Count, null, rounds, winner, rankedVerdict, notes);
     }
 
     public async Task<AssemblyVoteResultsView?> GetResultsAsync(
@@ -492,7 +444,7 @@ internal sealed class AssemblyVoteService(
         var disclose = viewerIsBoardOrAdmin
                        || (vote.BallotDisclosure == BallotDisclosure.RosterSeesNames && roster is not null);
 
-        var disclosed = disclose ? await DisclosureRowsAsync(voteId, ct) : null;
+        var disclosed = disclose ? await resultReader.DisclosureRowsAsync(voteId, ct) : null;
 
         if (viewerIsBoardOrAdmin)
         {
@@ -505,62 +457,9 @@ internal sealed class AssemblyVoteService(
         return new AssemblyVoteResultsView(
             await DetailAsync(vote, roster, ownBallot, ct),
             result,
-            await PeekViewsAsync(voteId, ct),
+            await resultReader.PeekViewsAsync(voteId, ct),
             disclosed,
-            AssemblyVotePresentation.BuildActa(vote, result, await ClosedByNameAsync(vote, ct)));
-    }
-
-    /// <summary>Every standing ballot with its voter's name, for a disclosed results view.</summary>
-    private async Task<IReadOnlyList<AssemblyBallotDisclosureRow>> DisclosureRowsAsync(
-        Guid voteId, CancellationToken ct)
-    {
-        var roster = await repository.GetRosterAsync(voteId, ct);
-        var ballots = await repository.GetBallotsAsync(voteId, ct);
-        var byRoster = ballots.ToDictionary(b => b.RosterId);
-
-        var userIds = roster.Where(r => r.UserId is not null).Select(r => r.UserId!.Value).ToList();
-        var infos = await users.GetUserInfosAsync(userIds, ct);
-
-        return roster
-            .Select(r => (Roster: r, Ballot: byRoster.GetValueOrDefault(r.Id)))
-            .Where(x => x.Ballot is not null)
-            .Select(x => new AssemblyBallotDisclosureRow(
-                x.Roster.UserId,
-                x.Roster.UserId is { } id && infos.TryGetValue(id, out var info)
-                    ? info.BurnerName
-                    // An erased roster row keeps its ballot but loses its name — the count
-                    // stays right and the person is gone, which is what Art. 17 asks for.
-                    : "—",
-                x.Roster.IsOfficial,
-                x.Ballot!.Choice,
-                x.Ballot.Ranking,
-                x.Ballot.Revision))
-            .ToList();
-    }
-
-    private async Task<IReadOnlyList<AssemblyVotePeekView>> PeekViewsAsync(
-        Guid voteId, CancellationToken ct)
-    {
-        var peeks = await repository.GetPeeksAsync(voteId, ct);
-        if (peeks.Count == 0) return [];
-
-        return peeks
-            .Select(p => new AssemblyVotePeekView(
-                p.AdminUserId,
-                p.PeekedAt))
-            .ToList();
-    }
-
-    /// <summary>
-    /// The name of the admin who stopped the vote, for the acta. Null when the vote lapsed
-    /// at its announced time (nobody closed it) or when the account no longer resolves —
-    /// the acta says "an administrator" then rather than inventing a name.
-    /// </summary>
-    private async Task<string?> ClosedByNameAsync(AssemblyVote vote, CancellationToken ct)
-    {
-        if (vote.ClosedByUserId is not { } closerId) return null;
-        var infos = await users.GetUserInfosAsync([closerId], ct);
-        return infos.TryGetValue(closerId, out var info) ? info.BurnerName : null;
+            AssemblyVotePresentation.BuildActa(vote, result, await resultReader.ClosedByNameAsync(vote, ct)));
     }
 
     public async Task<IReadOnlyList<AssemblyVoteListItem>> GetAllForAdminAsync(
@@ -877,7 +776,7 @@ internal sealed class AssemblyVoteService(
             GovernanceAuditActions.AssemblyVotePeeked, AuditEntityTypes.AssemblyVote, vote.Id,
             $"Peeked at the live tally of open assembly vote {vote.Id}.", adminUserId);
 
-        return (await ComputeResultAsync(vote, ct), true);
+        return (await resultReader.ComputeResultAsync(vote, ct), true);
     }
 
     public async Task<IReadOnlyList<AssemblyBallotDisclosureRow>?> GetBallotsForBoardAsync(
@@ -894,7 +793,7 @@ internal sealed class AssemblyVoteService(
             GovernanceAuditActions.AssemblyBallotsViewed, AuditEntityTypes.AssemblyVote, voteId,
             $"Listed the individual ballots of assembly vote {voteId}.", actorUserId);
 
-        return await DisclosureRowsAsync(voteId, ct);
+        return await resultReader.DisclosureRowsAsync(voteId, ct);
     }
 
     /// <summary>
